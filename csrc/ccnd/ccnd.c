@@ -4101,6 +4101,195 @@ af_name(int family)
     }
 }
 
+static int
+ccnd_listen_on_wildcards(struct ccnd_handle *h)
+{
+    int fd;
+    int res;
+    int whichpf;
+    struct addrinfo hints = {0};
+    struct addrinfo *addrinfo = NULL;
+    struct addrinfo *a;
+    
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_flags = AI_PASSIVE;
+    for (whichpf = 0; whichpf < 2; whichpf++) {
+        hints.ai_family = whichpf ? PF_INET6 : PF_INET;
+        res = getaddrinfo(NULL, h->portstr, &hints, &addrinfo);
+        if (res == 0) {
+            for (a = addrinfo; a != NULL; a = a->ai_next) {
+                fd = socket(a->ai_family, SOCK_DGRAM, 0);
+                if (fd != -1) {
+                    struct face *face = NULL;
+                    int yes = 1;
+                    int rcvbuf = 0;
+                    socklen_t rcvbuf_sz;
+		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                    rcvbuf_sz = sizeof(rcvbuf);
+                    getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
+                    if (a->ai_family == AF_INET6)
+                        ccnd_setsockopt_v6only(h, fd);
+		    res = bind(fd, a->ai_addr, a->ai_addrlen);
+                    if (res != 0) {
+                        close(fd);
+                        continue;
+                    }
+                    face = record_connection(h, fd,
+                                             a->ai_addr, a->ai_addrlen,
+                                             CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
+                    if (face == NULL) {
+                        close(fd);
+                        continue;
+                    }
+                    if (a->ai_family == AF_INET)
+                        h->ipv4_faceid = face->faceid;
+                    else
+                        h->ipv6_faceid = face->faceid;
+                    ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
+                                 af_name(a->ai_family), fd, rcvbuf);
+                }
+            }
+            for (a = addrinfo; a != NULL; a = a->ai_next) {
+                fd = socket(a->ai_family, SOCK_STREAM, 0);
+                if (fd != -1) {
+                    int yes = 1;
+		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                    if (a->ai_family == AF_INET6)
+                        ccnd_setsockopt_v6only(h, fd);
+		    res = bind(fd, a->ai_addr, a->ai_addrlen);
+                    if (res != 0) {
+                        close(fd);
+                        continue;
+                    }
+                    res = listen(fd, 30);
+                    if (res == -1) {
+                        close(fd);
+                        continue;
+                    }
+                    record_connection(h, fd,
+                                      a->ai_addr, a->ai_addrlen,
+                                      CCN_FACE_PASSIVE);
+                    ccnd_msg(h, "accepting %s connections on fd %d",
+                             af_name(a->ai_family), fd);
+                }
+            }
+            freeaddrinfo(addrinfo);
+        }
+    }
+    return(0);
+}
+
+static int
+ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
+{
+    int fd;
+    int res;
+    struct addrinfo hints = {0};
+    struct addrinfo *addrinfo = NULL;
+    struct addrinfo *a;
+    int ok = 0;
+    
+    ccnd_msg(h, "listen_on %s", addr);
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_flags = AI_PASSIVE;
+    res = getaddrinfo(addr, h->portstr, &hints, &addrinfo);
+    if (res == 0) {
+        for (a = addrinfo; a != NULL; a = a->ai_next) {
+            fd = socket(a->ai_family, SOCK_DGRAM, 0);
+            if (fd != -1) {
+                struct face *face = NULL;
+                int yes = 1;
+                int rcvbuf = 0;
+                socklen_t rcvbuf_sz;
+                setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                rcvbuf_sz = sizeof(rcvbuf);
+                getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
+                if (a->ai_family == AF_INET6)
+                    ccnd_setsockopt_v6only(h, fd);
+                res = bind(fd, a->ai_addr, a->ai_addrlen);
+                if (res != 0) {
+                    close(fd);
+                    continue;
+                }
+                face = record_connection(h, fd,
+                                         a->ai_addr, a->ai_addrlen,
+                                         CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
+                if (face == NULL) {
+                    close(fd);
+                    continue;
+                }
+                if (a->ai_family == AF_INET)
+                    h->ipv4_faceid = face->faceid;
+                else
+                    h->ipv6_faceid = face->faceid;
+                ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
+                             af_name(a->ai_family), fd, rcvbuf);
+                ok++;
+            }
+        }
+        for (a = addrinfo; a != NULL; a = a->ai_next) {
+            fd = socket(a->ai_family, SOCK_STREAM, 0);
+            if (fd != -1) {
+                int yes = 1;
+                setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                if (a->ai_family == AF_INET6)
+                    ccnd_setsockopt_v6only(h, fd);
+                res = bind(fd, a->ai_addr, a->ai_addrlen);
+                if (res != 0) {
+                    close(fd);
+                    continue;
+                }
+                res = listen(fd, 30);
+                if (res == -1) {
+                    close(fd);
+                    continue;
+                }
+                record_connection(h, fd,
+                                  a->ai_addr, a->ai_addrlen,
+                                  CCN_FACE_PASSIVE);
+                ccnd_msg(h, "accepting %s connections on fd %d",
+                         af_name(a->ai_family), fd);
+                ok++;
+            }
+        }
+        freeaddrinfo(addrinfo);
+    }
+    return(ok > 0 ? 0 : -1);
+}
+
+static int
+ccnd_listen_on(struct ccnd_handle *h, const char *addrs)
+{
+    unsigned char ch;
+    unsigned char dlm;
+    int res = 0;
+    int i;
+    struct ccn_charbuf *addr = NULL;
+    
+    if (addrs == NULL || !*addrs || 0 == strcmp(addrs, "*"))
+        return(ccnd_listen_on_wildcards(h));
+    addr = ccn_charbuf_create();
+    for (i = 0, ch = addrs[i]; addrs[i] != 0;) {
+        addr->length = 0;
+        dlm = 0;
+        if (ch == '[') {
+            dlm = ']';
+            ch = addrs[++i];
+        }
+        for (; ch > ' ' && ch != ',' && ch != ';' && ch != dlm; ch = addrs[++i])
+            ccn_charbuf_append_value(addr, ch, 1);
+        if (ch && ch == dlm)
+            ch = addrs[++i];
+        if (addr->length > 0) {
+            res |= ccnd_listen_on_address(h, ccn_charbuf_as_string(addr));
+        }
+        while ((0 < ch && ch <= ' ') || ch == ',' || ch == ';')
+            ch = addrs[++i];
+    }
+    ccn_charbuf_destroy(&addr);
+    return(res);
+}
+
 /**
  * Start a new ccnd instance
  * @param progname - name of program binary, used for locating helpers
@@ -4116,13 +4305,9 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     const char *entrylimit;
     const char *mtu;
     const char *data_pause;
+    const char *listen_on;
     int fd;
-    int res;
-    int whichpf;
     struct ccnd_handle *h;
-    struct addrinfo hints = {0};
-    struct addrinfo *addrinfo = NULL;
-    struct addrinfo *a;
     struct hashtb_param param = {0};
     
     sockname = ccnd_get_local_sockname();
@@ -4188,8 +4373,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         ccnd_msg(h, "%s: %s", sockname, strerror(errno));
     else
         ccnd_msg(h, "listening on %s", sockname);
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE;
     entrylimit = getenv("CCND_CAP");
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
@@ -4216,71 +4399,10 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         if (h->data_pause_microsec > 1000000)
             h->data_pause_microsec = 1000000;
     }
+    listen_on = getenv("CCND_LISTEN_ON");
     h->flood = 0;
     h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
-    for (whichpf = 0; whichpf < 2; whichpf++) {
-        hints.ai_family = whichpf ? PF_INET6 : PF_INET;
-        res = getaddrinfo(NULL, portstr, &hints, &addrinfo);
-        if (res == 0) {
-            for (a = addrinfo; a != NULL; a = a->ai_next) {
-                fd = socket(a->ai_family, SOCK_DGRAM, 0);
-                if (fd != -1) {
-                    struct face *face = NULL;
-                    int yes = 1;
-                    int rcvbuf = 0;
-                    socklen_t rcvbuf_sz;
-		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-                    rcvbuf_sz = sizeof(rcvbuf);
-                    getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
-                    if (a->ai_family == AF_INET6)
-                        ccnd_setsockopt_v6only(h, fd);
-		    res = bind(fd, a->ai_addr, a->ai_addrlen);
-                    if (res != 0) {
-                        close(fd);
-                        continue;
-                    }
-                    face = record_connection(h, fd,
-                                             a->ai_addr, a->ai_addrlen,
-                                             CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
-                    if (face == NULL) {
-                        close(fd);
-                        continue;
-                    }
-                    if (a->ai_family == AF_INET)
-                        h->ipv4_faceid = face->faceid;
-                    else
-                        h->ipv6_faceid = face->faceid;
-                    ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
-                                 af_name(a->ai_family), fd, rcvbuf);
-                }
-            }
-            for (a = addrinfo; a != NULL; a = a->ai_next) {
-                fd = socket(a->ai_family, SOCK_STREAM, 0);
-                if (fd != -1) {
-                    int yes = 1;
-		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-                    if (a->ai_family == AF_INET6)
-                        ccnd_setsockopt_v6only(h, fd);
-		    res = bind(fd, a->ai_addr, a->ai_addrlen);
-                    if (res != 0) {
-                        close(fd);
-                        continue;
-                    }
-                    res = listen(fd, 30);
-                    if (res == -1) {
-                        close(fd);
-                        continue;
-                    }
-                    record_connection(h, fd,
-                                      a->ai_addr, a->ai_addrlen,
-                                      CCN_FACE_PASSIVE);
-                    ccnd_msg(h, "accepting %s connections on fd %d",
-                             af_name(a->ai_family), fd);
-                }
-            }
-            freeaddrinfo(addrinfo);
-        }
-    }
+    ccnd_listen_on(h, listen_on);
     clean_needed(h);
     age_forwarding_needed(h);
     ccnd_internal_client_start(h);

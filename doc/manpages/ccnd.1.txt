@@ -70,6 +70,14 @@ Options for *ccnd* are set via environment variables.
     CCND_KEYSTORE_DIRECTORY=
       Directory readable only by ccnd where its keystores are kept
       Defaults to a private subdirectory of /var/tmp
+    CCND_LISTEN_ON=
+      List of ip addresses to listen on; defaults to wildcard. The
+      addresses may be enclosed in square brackets.  The list elements
+      are separated by whitespace, commas, or semicolons.  Both IPv4 and
+      IPv6 addresses may be used.  Set this if you want to limit
+      connectivity to a particular set of configured addresses.
+      The most useful non-default setting is probably "localhost".
+      Note that outgoing tcp connections may still be made.
 
 EXIT STATUS
 -----------

@@ -159,4 +159,6 @@ const char *ccnd_usage_message =
     "    CCND_KEYSTORE_DIRECTORY=\n"
     "      Directory readable only by ccnd where its keystores are kept\n"
     "      Defaults to a private subdirectory of /var/tmp\n"
+    "    CCND_LISTEN_ON=\n"
+    "      List of ip addresses to listen on; defaults to wildcard\n"
     ;
