@@ -1001,7 +1001,7 @@ ccnd_getboundsocket(void *dat, struct sockaddr *who, socklen_t wholen)
         return(-1);
     }
     record_connection(h, ans, who, wholen,
-                      CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
+                      CCN_FACE_DGRAM | CCN_FACE_PASSIVE | CCN_FACE_NORECV);
     return(ans);
 }
 
@@ -3980,7 +3980,7 @@ prepare_poll_fds(struct ccnd_handle *h)
         else
             j = --k;
         h->fds[j].fd = face->recv_fd;
-        h->fds[j].events = POLLIN;
+        h->fds[j].events = ((face->flags & CCN_FACE_NORECV) == 0) ? POLLIN : 0;
         if ((face->outbuf != NULL || (face->flags & CCN_FACE_CLOSING) != 0))
             h->fds[j].events |= POLLOUT;
     }
