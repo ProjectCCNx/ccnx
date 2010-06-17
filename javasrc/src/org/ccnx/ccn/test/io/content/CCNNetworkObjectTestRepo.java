@@ -337,6 +337,24 @@ public class CCNNetworkObjectTestRepo {
 		}
 		Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 		Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
+		
+		// Sleep for a while and see how fast the interests come. Should be only 2 interests.
+		System.out.println("Sleeping, count background interests.");
+		long time = System.currentTimeMillis();
+		Thread.sleep(2000);
+		long elapsed = System.currentTimeMillis() - time;
+		long count = (elapsed/4000) + 1;
+		System.out.println("Slept " + elapsed/1000.0 + " seconds, should have been " + count + " interests.");
+		
+		CCNTime t3 = saveAndLog("Third string", c2, null, "Here is the third string.");
+		if (!c1.getVersion().equals(t3)) {
+			synchronized (c1) {
+				c1.wait(5000);
+			}
+		}
+		Assert.assertEquals("c1 update 3", c1.getVersion(), c2.getVersion());
+		Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
+		
 		c1.cancelInterest();
 	}
 	

@@ -22,6 +22,13 @@ public class LocalCopyListener implements UpdateListener {
 	protected static LocalCopyListener backupListener = new LocalCopyListener();
 	
 	public static void startBackup(CCNNetworkObject<?> objectToSyncToRepository) throws IOException {
+		
+		// addListener will check for already having the listener. Check here,
+		// though, to skip the localCopy if we already are listening for updates.
+		if (objectToSyncToRepository.hasListener(backupListener)) {
+			return;
+		}
+		
 		if (objectToSyncToRepository.isSaved()) {
 			if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
 				Log.info(Log.FAC_IO, "startBackup: backing up previously-retrieved object version {0}", objectToSyncToRepository.getVersionedName());

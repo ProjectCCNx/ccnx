@@ -20,6 +20,8 @@ package org.ccnx.ccn.impl.security.crypto.util;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -31,17 +33,24 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
+import java.util.Enumeration;
 
+import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DEREncodable;
 import org.bouncycastle.asn1.DERObject;
+import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.DEROutputStream;
+import org.bouncycastle.asn1.DERString;
+import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.asn1.x509.X509Extensions;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.Tuple;
 
 
 
@@ -270,4 +279,98 @@ public class CryptoUtil {
 		return ((ASN1OctetString)keyID).getOctets();
 	}
 
+	/**
+	 * Helper method to pull SubjectAlternativeNames from a certificate. BouncyCastle has
+	 * one of these, but it isn't included on all platforms. We get one by default from X509Certificate
+	 * but it returns us a collection of ? and we can't ever know what the ? is because we might
+	 * get a different impl class on different platforms. So we have to roll our own.
+	 * 
+	 * We filter the general names down to ones we can handle.
+	 * @param certificate
+	 * @return
+	 * @throws IOException 
+	 * @throws CertificateEncodingException 
+	 */
+    public static ArrayList<Tuple<Integer, String>> getSubjectAlternativeNames(X509Certificate certificate)
+    		throws IOException, CertificateEncodingException {        
+
+    	byte[] encodedExtension = certificate.getExtensionValue(X509Extensions.SubjectAlternativeName.getId());
+    	
+    	ArrayList<Tuple<Integer, String>> list = new ArrayList<Tuple<Integer, String>>();
+    	
+    	if (null == encodedExtension) {
+    		return list;
+    	}
+    	
+		// content of extension is wrapped in a DEROctetString
+		DEROctetString content = (DEROctetString)CryptoUtil.decode(encodedExtension);
+		byte [] encapsulatedOctetString = content.getOctets();
+		
+		ASN1InputStream aIn = new ASN1InputStream(encapsulatedOctetString);
+		ASN1Encodable decodedObject = (ASN1Encodable)aIn.readObject();
+		ASN1Sequence sequence = (ASN1Sequence)decodedObject.getDERObject();
+    	
+        Integer tag;
+        GeneralName generalName;
+        
+        Enumeration<?> it = sequence.getObjects();
+        while (it.hasMoreElements()) {
+        	generalName = GeneralName.getInstance(it.nextElement());
+        	tag = generalName.getTagNo();
+        	
+        	switch (tag) {
+        	case GeneralName.dNSName:
+            case GeneralName.rfc822Name:
+            case GeneralName.uniformResourceIdentifier:
+            	list.add(new Tuple<Integer,String>(tag, ((DERString)generalName.getName()).getString()));
+            default:
+            	// ignore other types
+        	}
+        }
+        return list;
+    }
+    
+    /**
+     * Get the first DNS name in the subject alternative names.
+     * @throws IOException 
+     * @throws CertificateEncodingException 
+     */
+    public static String getSubjectAlternativeNameDNSName(X509Certificate certificate) throws IOException, CertificateEncodingException {
+    	return findSubjectAlternativeName(GeneralName.dNSName, certificate);
+    }
+    
+    /**
+     * Get the first email address in the subject alternative names.
+     * @throws IOException 
+     * @throws CertificateEncodingException 
+     */
+    public static String getSubjectAlternativeNameEmailAddress(X509Certificate certificate) throws IOException, CertificateEncodingException {
+    	return findSubjectAlternativeName(GeneralName.rfc822Name, certificate);
+    }
+    
+    /**
+     * Get the first DNS name in the subject alternative names.
+     * @throws IOException 
+     * @throws URISyntaxException 
+     * @throws CertificateEncodingException 
+     */
+    public static URI getSubjectAlternativeNameURI(X509Certificate certificate) throws IOException, URISyntaxException, CertificateEncodingException {
+    	String uriString = findSubjectAlternativeName(GeneralName.uniformResourceIdentifier, certificate);
+    	
+    	if (null == uriString) {
+    		return null;
+    	}
+    	return new URI(uriString);
+    }
+
+    public static String findSubjectAlternativeName(int tag, X509Certificate certificate) throws IOException, CertificateEncodingException {
+    	ArrayList<Tuple<Integer,String>> alternativeNames = getSubjectAlternativeNames(certificate);
+    	
+    	for (Tuple<Integer,String> name : alternativeNames) {
+    		if (name.first() == tag) {
+    			return name.second();
+    		}
+    	}
+    	return null;
+    }
 }

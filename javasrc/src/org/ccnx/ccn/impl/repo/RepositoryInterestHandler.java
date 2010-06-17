@@ -26,8 +26,8 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
-import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
+import org.ccnx.ccn.profiles.repo.RepositoryOperations;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -60,16 +60,15 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 			Log.finer(Log.FAC_REPO, "Saw interest: {0}", interest.name());
 		try {
-			int pos = -1;
-			if (interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes())) {
+			if (RepositoryOperations.isStartWriteOperation(interest)) {
 				if (!allowGenerated(interest)) return true;
 				startWrite(interest);
-			} else if (interest.name().contains(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes())) {
+			} else if (RepositoryOperations.isNameEnumerationOperation(interest)) {
 				if (!allowGenerated(interest)) return true;
 				nameEnumeratorResponse(interest);
-			} else if ((pos = interest.name().whereLast(CommandMarker.COMMAND_MARKER_REPO_CHECKED_START_WRITE.getBytes())) >= 0) {
+			} else if (RepositoryOperations.isCheckedWriteOperation(interest)) {
 				if (!allowGenerated(interest)) return true;
-				startWriteChecked(interest, pos);				
+				startWriteChecked(interest);				
 			} else {
 				ContentObject content = _server.getRepository().getContent(interest);
 				if (content != null) {
@@ -188,27 +187,23 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 * Handle requests to check for specific stream content and read and store it if not
 	 * already present.
 	 * @param interest the interest containing the request
-	 * @param pos index of the command marker in the interest name
 	 * @throws RepositoryException
 	 * @throws ContentEncodingException
 	 * @throws IOException
 	 */
-	private void startWriteChecked(Interest interest, int pos) {
+	private void startWriteChecked(Interest interest) {
 		if (isDuplicateRequest(interest)) return;
 		
 		if (isWriteSuspended(interest)) return;
 
 		try {
 			Log.finer(Log.FAC_REPO, "Repo checked write request: {0}", interest.name());
-			ContentName orig = interest.name();
-			if (pos+3 >= orig.count()) {
+			if (!RepositoryOperations.verifyCheckedWrite(interest)) {
 				Log.warning(Log.FAC_REPO, "Repo checked write malformed request {0}", interest.name());
 				return;
 			}
-			// Strip out the command marker and nonce so we get name with those components removed from middle
-			ContentName head = orig.subname(0, pos);
-			ContentName tail = orig.subname(pos+2, orig.count()-pos-2);
-			ContentName target = head.append(tail);
+			
+			ContentName target = RepositoryOperations.getCheckedWriteTarget(interest);
 
 			boolean verified = false;
 			RepositoryInfoObject rio = null;

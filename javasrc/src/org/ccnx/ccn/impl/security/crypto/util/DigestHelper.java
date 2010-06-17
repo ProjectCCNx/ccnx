@@ -272,7 +272,7 @@ public class DigestHelper {
 	 * @return the corresponding String.
 	 */
 	public static String printBytes(byte [] binaryObject, int radix) {
-		BigInteger bi = new BigInteger(1,binaryObject);
+		BigInteger bi = new BigInteger(binaryObject);
 		return bi.toString(radix);
 	}
 
