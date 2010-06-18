@@ -98,6 +98,7 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
     size_t nonce_size = 0;
     size_t i;
     
+    
     if (h != NULL && h->debug == 0)
         return;
     c = ccn_charbuf_create();
@@ -107,6 +108,7 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
     ccn_uri_append(c, ccnb, ccnb_size, 1);
     ccn_charbuf_putf(c, " (%u bytes)", (unsigned)ccnb_size);
     if (ccn_parse_interest(ccnb, ccnb_size, &pi, NULL) >= 0) {
+        const char *p = "";
         ccn_ref_tagged_BLOB(CCN_DTAG_Nonce, ccnb,
                   pi.offset[CCN_PI_B_Nonce],
                   pi.offset[CCN_PI_E_Nonce],
@@ -114,8 +116,10 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
                   &nonce_size);
         if (nonce_size > 0) {
             ccn_charbuf_putf(c, " ");
+            if (nonce_size == 12)
+                p = "CCC-P-F-T-NN";
             for (i = 0; i < nonce_size; i++)
-                ccn_charbuf_putf(c, "%02X", nonce[i]);
+                ccn_charbuf_putf(c, "%s%02X", (*p) && (*p++)=='-' ? "-" : "", nonce[i]);
         }
     }
     ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
