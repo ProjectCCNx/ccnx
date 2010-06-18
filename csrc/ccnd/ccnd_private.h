@@ -388,9 +388,6 @@ void ccnd_debug_ccnb(struct ccnd_handle *h,
                      struct face *face,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
-/** These two flags are here so that debug==-1 gives maximum output */
-#define CCND_DEBUG_MONOTONE (1U << 30) /**< ignore debug suppression flags */
-#define CCND_DEBUG_SEMCLEAN (1U << 29) /**< ignore flags that change behavior */
 
 struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
 void ccnd_run(struct ccnd_handle *h);

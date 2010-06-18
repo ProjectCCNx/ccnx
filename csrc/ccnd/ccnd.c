@@ -4415,10 +4415,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
     if (listen_on != NULL && listen_on[0] != 0)
         ccnd_msg(h, "CCND_LISTEN_ON=%s", listen_on);
-    if ((h->debug & CCND_DEBUG_SEMCLEAN) == 0) {
-        if (h->debug & 256)
-            h->appnonce = &ccnd_append_debug_nonce;
-    }
+    if (h->debug & 256)
+        h->appnonce = &ccnd_append_debug_nonce;
     /* Do keystore setup early, it takes a while the first time */
     ccnd_init_internal_keystore(h);
     ccnd_reseed(h);
