@@ -2816,6 +2816,21 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
     return(extra_delay);
 }
 
+static void
+ccnd_append_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
+        int noncebytes = 6;
+        unsigned char *s = NULL;
+        int i;
+        
+        ccn_charbuf_append_tt(cb, CCN_DTAG_Nonce, CCN_DTAG);
+        ccn_charbuf_append_tt(cb, noncebytes, CCN_BLOB);
+        s = ccn_charbuf_reserve(cb, noncebytes);
+        for (i = 0; i < noncebytes; i++)
+            s[i] = nrand48(h->seed) >> i;
+        cb->length += noncebytes;
+        ccn_charbuf_append_closer(cb);
+}
+
 /**
  * Schedules the propagation of an Interest message.
  */
@@ -2859,20 +2874,11 @@ propagate_interest(struct ccnd_handle *h,
     }
     if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
         /* This interest has no nonce; add one before going on */
-        int noncebytes = 6;
         size_t nonce_start = 0;
-        int i;
-        unsigned char *s = NULL;
         cb = charbuf_obtain(h);
         ccn_charbuf_append(cb, msg, pi->offset[CCN_PI_B_Nonce]);
         nonce_start = cb->length;
-        ccn_charbuf_append_tt(cb, CCN_DTAG_Nonce, CCN_DTAG);
-        ccn_charbuf_append_tt(cb, noncebytes, CCN_BLOB);
-        s = ccn_charbuf_reserve(cb, noncebytes);
-        for (i = 0; i < noncebytes; i++)
-            s[i] = nrand48(h->seed) >> i;
-        cb->length += noncebytes;
-        ccn_charbuf_append_closer(cb);
+        ccnd_append_nonce(h, face, cb);
         noncesize = cb->length - nonce_start;
         ccn_charbuf_append(cb, msg + pi->offset[CCN_PI_B_OTHER],
                                pi->offset[CCN_PI_E] - pi->offset[CCN_PI_B_OTHER]);
