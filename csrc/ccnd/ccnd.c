@@ -2817,7 +2817,25 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
 }
 
 static void
-ccnd_append_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
+ccnd_append_debug_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
+        unsigned char s[12];
+        int i;
+        
+        for (i = 0; i < 3; i++)
+            s[i] = h->ccnd_id[i];
+        s[i++] = h->logpid >> 8;
+        s[i++] = h->logpid;
+        s[i++] = face->faceid >> 8;
+        s[i++] = face->faceid;
+        s[i++] = h->sec;
+        s[i++] = h->usec * 256 / 1000000;
+        for (; i < sizeof(s); i++)
+            s[i] = nrand48(h->seed);
+        ccnb_append_tagged_blob(cb, CCN_DTAG_Nonce, s, i);
+}
+
+static void
+ccnd_append_plain_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
         int noncebytes = 6;
         unsigned char *s = NULL;
         int i;
@@ -2878,7 +2896,7 @@ propagate_interest(struct ccnd_handle *h,
         cb = charbuf_obtain(h);
         ccn_charbuf_append(cb, msg, pi->offset[CCN_PI_B_Nonce]);
         nonce_start = cb->length;
-        ccnd_append_nonce(h, face, cb);
+        (h->appnonce)(h, face, cb);
         noncesize = cb->length - nonce_start;
         ccn_charbuf_append(cb, msg + pi->offset[CCN_PI_B_OTHER],
                                pi->offset[CCN_PI_E] - pi->offset[CCN_PI_B_OTHER]);
@@ -4075,10 +4093,13 @@ ccnd_get_local_sockname(void)
 static void
 ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 {
+    struct ccnd_handle *h = self->data;
     struct timeval now = {0};
     gettimeofday(&now, 0);
     result->s = now.tv_sec;
     result->micros = now.tv_usec;
+    h->sec = now.tv_sec;
+    h->usec = now.tv_usec;
 }
 
 void
@@ -4322,6 +4343,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         return(h);
     h->logger = logger;
     h->loggerdata = loggerdata;
+    h->appnonce = &ccnd_append_plain_nonce;
     h->logpid = (int)getpid();
     h->progname = progname;
     h->debug = -1;
@@ -4393,6 +4415,10 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
     if (listen_on != NULL && listen_on[0] != 0)
         ccnd_msg(h, "CCND_LISTEN_ON=%s", listen_on);
+    if ((h->debug & CCND_DEBUG_SEMCLEAN) == 0) {
+        if (h->debug & 256)
+            h->appnonce = &ccnd_append_debug_nonce;
+    }
     /* Do keystore setup early, it takes a while the first time */
     ccnd_init_internal_keystore(h);
     ccnd_reseed(h);

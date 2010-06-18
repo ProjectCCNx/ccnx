@@ -87,6 +87,8 @@ struct ccnd_handle {
     nfds_t nfds;                    /**< number of entries in fds array */
     struct pollfd *fds;             /**< used for poll system call */
     struct ccn_gettime ticktock;    /**< our time generator */
+    long sec;                       /**< cached gettime seconds */
+    unsigned usec;                  /**< cached gettime microseconds */
     struct ccn_schedule *sched;     /**< our schedule */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
@@ -134,6 +136,8 @@ struct ccnd_handle {
     struct ccn_scheduled_event *internal_client_refresh;
     struct ccn_scheduled_event *notice_push;
     unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
+    void (*appnonce)(struct ccnd_handle *, struct face *, struct ccn_charbuf *);
+                                    /**< pluggable nonce generation */
 };
 
 /**
@@ -385,7 +389,7 @@ void ccnd_debug_ccnb(struct ccnd_handle *h,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
 /** These two flags are here so that debug==-1 gives maximum output */
-#define CCND_DEBUG_MONOTONE (1U << 30) /**< ignore debug supression flags */
+#define CCND_DEBUG_MONOTONE (1U << 30) /**< ignore debug suppression flags */
 #define CCND_DEBUG_SEMCLEAN (1U << 29) /**< ignore flags that change behavior */
 
 struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
