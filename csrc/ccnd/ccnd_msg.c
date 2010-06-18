@@ -140,7 +140,7 @@ const char *ccnd_usage_message =
     "      32 - gory interest details\n"
     "      64 - log occasional human-readable timestamps\n"
     "      128 - face registration debugging\n"
-    "      bitwise OR these together for combinations; -1 gets everything\n"
+    "      bitwise OR these together for combinations; -1 gets max logging\n"
     "    CCN_LOCAL_PORT=\n"
     "      UDP port for unicast clients (default "CCN_DEFAULT_UNICAST_PORT").\n"
     "      Also listens on this TCP port for stream connections.\n"

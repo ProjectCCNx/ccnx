@@ -4318,14 +4318,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->loggerdata = loggerdata;
     h->logpid = (int)getpid();
     h->progname = progname;
-    debugstr = getenv("CCND_DEBUG");
-    if (debugstr != NULL && debugstr[0] != 0) {
-        h->debug = atoi(debugstr);
-        if (h->debug == 0 && debugstr[0] != '0')
-            h->debug = 1;
-    }
-    else
-        h->debug = (1 << 16);
+    h->debug = -1;
     h->skiplinks = ccn_indexbuf_create();
     param.finalize_data = h;
     h->face_limit = 1024; /* soft limit */
@@ -4352,27 +4345,18 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
     h->data_pause_microsec = 10000;
+    debugstr = getenv("CCND_DEBUG");
+    if (debugstr != NULL && debugstr[0] != 0) {
+        h->debug = atoi(debugstr);
+        if (h->debug == 0 && debugstr[0] != '0')
+            h->debug = 1;
+    }
+    else
+        h->debug = 1;
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = CCN_DEFAULT_UNICAST_PORT;
     h->portstr = portstr;
-    /* Do keystore setup early, it takes a while the first time */
-    ccnd_init_internal_keystore(h);
-    ccnd_reseed(h);
-    if (h->face0 == NULL) {
-        struct face *face;
-        face = calloc(1, sizeof(*face));
-        face->recv_fd = -1;
-        face->sendface = 0;
-        face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
-        h->face0 = face;
-    }
-    enroll_face(h, h->face0);
-    fd = create_local_listener(h, sockname, 42);
-    if (fd == -1)
-        ccnd_msg(h, "%s: %s", sockname, strerror(errno));
-    else
-        ccnd_msg(h, "listening on %s", sockname);
     entrylimit = getenv("CCND_CAP");
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
@@ -4400,6 +4384,26 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
             h->data_pause_microsec = 1000000;
     }
     listen_on = getenv("CCND_LISTEN_ON");
+    ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
+    if (listen_on != NULL && listen_on[0] != 0)
+        ccnd_msg(h, "CCND_LISTEN_ON=%s", listen_on);
+    /* Do keystore setup early, it takes a while the first time */
+    ccnd_init_internal_keystore(h);
+    ccnd_reseed(h);
+    if (h->face0 == NULL) {
+        struct face *face;
+        face = calloc(1, sizeof(*face));
+        face->recv_fd = -1;
+        face->sendface = 0;
+        face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
+        h->face0 = face;
+    }
+    enroll_face(h, h->face0);
+    fd = create_local_listener(h, sockname, 42);
+    if (fd == -1)
+        ccnd_msg(h, "%s: %s", sockname, strerror(errno));
+    else
+        ccnd_msg(h, "listening on %s", sockname);
     h->flood = 0;
     h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
     ccnd_listen_on(h, listen_on);
