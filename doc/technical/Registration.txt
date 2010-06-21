@@ -158,22 +158,26 @@ CCN_FORW_LOCAL         32
 .........................
 The `CCN_FORW_ACTIVE` bit indicates that the entry is active;
 interests will not be sent for inactive entries.
+
 `CCN_FORW_CHILD_INHERIT` says that this entry may be used even if there is a
 longer match available.
+
 `CCN_FORW_ADVERTISE` says that the prefix may be advertised to other nodes.
+
 `CCN_FORW_LAST` indicates that this entry should be used last, if nothing else
 worked.
+This is intended to be used by ccndc and similar programs to monitor
+unanswered interests.
+
 `CCN_FORW_CAPTURE` says that no shorter prefix may be used, overriding any
-child-inherit bits that would make the shorter entries usable.  However, entries
-with `CCN_FORW_LAST` set are not subject to capture.
+child-inherit bits that would otherwise make the shorter entries usable.
+However, entries with `CCN_FORW_LAST` set are not subject to capture.
+
 `CCN_FORW_LOCAL` restricts the namespace to use by applications on the local
 machine.
 
 Note that `CCN_FORW_ADVERTISE`, `CCN_FORW_CAPTURE` and `CCN_FORW_LOCAL` affect
 the prefix as a whole, rather than the individual registrations.
-
-`CCN_FORW_LAST` is intended to be used by ccndc and similar programs to monitor
-unanswered interests.
 
 === FreshnessSeconds
 FreshnessSeconds is optional in a request, but is treated as a hint by ccnd.
