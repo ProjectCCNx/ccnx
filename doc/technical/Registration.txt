@@ -169,6 +169,7 @@ longer match available.
 worked.
 This is intended to be used by ccndc and similar programs to monitor
 unanswered interests.
+The presence of this flag on any entry causes the associated face to be considered non-local for interest forwarding purposes.
 
 `CCN_FORW_CAPTURE` says that no shorter prefix may be used, overriding any
 child-inherit bits that would otherwise make the shorter entries usable.

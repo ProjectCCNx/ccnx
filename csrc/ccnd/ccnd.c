@@ -2026,8 +2026,13 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     if (face == NULL)
         return(-1);
     /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
-    if (flags >= 0 && (flags & CCN_FORW_LAST) != 0)
+    if (flags >= 0 && (flags & CCN_FORW_LAST) != 0) {
         face->flags |= CCN_FACE_DC;
+        if ((face->flags & CCN_FACE_GG) != 0) {
+            face->flags &= ~CCN_FACE_GG;
+            face->flags |= CCN_FACE_REGOK;
+        }
+    }
     hashtb_start(h->nameprefix_tab, e);
     res = nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
@@ -2360,7 +2365,9 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
         goto Finish;
     /* consider the source ... */
     reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+    if (reqface == NULL)
+        goto Finish;
+    if ((reqface->flags & (CCN_FACE_GG | CCN_FACE_REGOK)) == 0)
         goto Finish;
     if (forwarding_entry->lifetime < 0)
         forwarding_entry->lifetime = 60;
