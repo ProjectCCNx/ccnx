@@ -204,6 +204,7 @@ struct face {
 #define CCN_FACE_CLOSING (1 << 13) /**< close stream when output is done */
 #define CCN_FACE_PASSIVE (1 << 14) /**< a listener or a bound dgram socket */
 #define CCN_FACE_NORECV (1 << 15) /**< use for sending only */
+#define CCN_FACE_REGOK (1 << 16) /**< Allowed to do prefix registration */
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
