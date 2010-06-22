@@ -269,7 +269,7 @@ struct propagating_entry {
 #define CCN_PR_UNSENT   0x01 /**< interest has not been sent anywhere yet */
 #define CCN_PR_WAIT1    0x02 /**< interest has been sent to one place */
 #define CCN_PR_STUFFED1 0x04 /**< was stuffed before sent anywhere else */
-#define CCN_PR________  0x08
+#define CCN_PR_TAP      0x08 /**< at least one tap face is present */
 #define CCN_PR_EQV      0x10 /**< a younger similar interest exists */
 #define CCN_PR_SCOPE0   0x20 /**< interest scope is 0 */
 #define CCN_PR_SCOPE1   0x40 /**< interest scope is 1 (this host) */
@@ -282,6 +282,7 @@ struct propagating_entry {
 struct nameprefix_entry {
     struct propagating_entry pe_head; /**< list head for propagating entries */
     struct ccn_indexbuf *forward_to; /**< faceids to forward to */
+    struct ccn_indexbuf *tap;    /**< faceids to forward to as tap*/
     struct ccn_forwarding *forwarding; /**< detailed forwarding info */
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
     int children;                /**< number of children */

@@ -728,6 +728,7 @@ finalize_nameprefix(struct hashtb_enumerator *e)
             consume(h, head->next);
     }
     ccn_indexbuf_destroy(&npe->forward_to);
+    ccn_indexbuf_destroy(&npe->tap);
     while (npe->forwarding != NULL) {
         struct ccn_forwarding *f = npe->forwarding;
         npe->forwarding = f->next;
@@ -1414,17 +1415,29 @@ note_content_from(struct ccnd_handle *h,
 
 /**
  * Use the history to reorder the interest forwarding.
+ *
+ * @returns number of tap faces that are present.
  */
-static void
+static int
 reorder_outbound_using_history(struct ccnd_handle *h,
                                struct nameprefix_entry *npe,
                                struct propagating_entry *pe)
 {
+    int ntap = 0;
+    int i;
+    
     if (npe->osrc != CCN_NOFACEID)
         promote_outbound(pe, npe->osrc);
     /* Process npe->src last so it will be tried first */
     if (npe->src != CCN_NOFACEID)
         promote_outbound(pe, npe->src);
+    /* Tap are really first. */
+    if (npe->tap != NULL) {
+        ntap = npe->tap->n;
+        for (i = 0; i < ntap; i++)
+            promote_outbound(pe, npe->tap->buf[i]);
+    }
+    return(ntap);
 }
 
 /**
@@ -2524,6 +2537,7 @@ static void
 update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
 {
     struct ccn_indexbuf *x = NULL;
+    struct ccn_indexbuf *tap = NULL;
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *p = NULL;
     unsigned wantflags;
@@ -2548,6 +2562,11 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
                 if (h->debug & 32)
                     ccnd_msg(h, "fwd.%d adding %u", __LINE__, f->faceid);
                 ccn_indexbuf_set_insert(x, f->faceid);
+                if ((f->flags & CCN_FORW_TAP) != 0) {
+                    if (tap == NULL)
+                        tap = ccn_indexbuf_create();
+                    ccn_indexbuf_set_insert(tap, f->faceid);
+                }
                 if ((f->flags & CCN_FORW_LAST) != 0)
                     lastfaceid = f->faceid;
             }
@@ -2562,6 +2581,8 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     npe->fgen = h->forward_to_gen;
     if (x->n == 0)
         ccn_indexbuf_destroy(&npe->forward_to);
+    ccn_indexbuf_destroy(&npe->tap);
+    npe->tap = tap;
 }
 
 /**
@@ -2685,7 +2706,11 @@ do_propagate(struct ccn_schedule *sched,
             h->interests_sent += 1;
             h->interest_faceid = pe->faceid;
             next_delay = nrand48(h->seed) % 8192 + 500;
-            if ((pe->flags & CCN_PR_UNSENT) != 0) {
+            if (((pe->flags & CCN_PR_TAP) != 0) &&
+                  ccn_indexbuf_member(nameprefix_for_pe(h, pe)->tap, pe->faceid)) {
+                next_delay = special_delay = 1;
+            }
+            else if ((pe->flags & CCN_PR_UNSENT) != 0) {
                 pe->flags &= ~CCN_PR_UNSENT;
                 pe->flags |= CCN_PR_WAIT1;
                 next_delay = special_delay = ev->evint;
@@ -2869,6 +2894,7 @@ propagate_interest(struct ccnd_handle *h,
     unsigned char *msg_out = msg;
     size_t msg_out_size = pi->offset[CCN_PI_E];
     int usec;
+    int ntap;
     int delaymask;
     int extra_delay = 0;
     struct ccn_indexbuf *outbound = NULL;
@@ -2938,16 +2964,19 @@ propagate_interest(struct ccnd_handle *h,
                 pe->flags |= CCN_PR_SCOPE2;
             pe->fgen = h->forward_to_gen;
             link_propagating_interest_to_nameprefix(h, pe, npe);
-            reorder_outbound_using_history(h, npe, pe);
-            if (outbound->n > 0 &&
-                  outbound->buf[0] == npe->src &&
+            ntap = reorder_outbound_using_history(h, npe, pe);
+            if (outbound->n > ntap &&
+                  outbound->buf[ntap] == npe->src &&
                   extra_delay == 0) {
                 pe->flags = CCN_PR_UNSENT;
                 delaymask = 0xFF;
             }
             outbound = NULL;
             res = 0;
-            usec = (nrand48(h->seed) & delaymask) + 1 + extra_delay;
+            if (ntap > 0)
+                (usec = 1, pe->flags |= CCN_PR_TAP);
+            else
+                usec = (nrand48(h->seed) & delaymask) + 1 + extra_delay;
             usec = pe_next_usec(h, pe, usec, __LINE__);
             ccn_schedule_event(h->sched, usec, do_propagate, pe, npe->usec);
         }
