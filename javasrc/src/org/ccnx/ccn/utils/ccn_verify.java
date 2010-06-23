@@ -73,17 +73,10 @@ public class ccn_verify {
 					if (!co.verify(pubKey)) {
 						System.out.println("BAD: Object: " + co.name() + " in file: " + args[i] + " failed to verify.");
 
-						// take it apart
-						if (pubKey instanceof RSAPublicKey) {
-							RSAPublicKey rsaKey = (RSAPublicKey) pubKey;
-							BigInteger sigInt = new BigInteger(1, co.signature().signature());
-							BigInteger paddedMessage = sigInt.modPow(rsaKey.getPublicExponent(), rsaKey.getModulus());
-							System.out.println("\nSignature: " + DataUtils.printHexBytes(co.signature().signature()) + "\n");
-							System.out.println("Inverted signature: " + DataUtils.printHexBytes(paddedMessage.toByteArray()) + "\n");
-						}
-									
+						debugSig(pubKey, co.signature().signature());
 					} else {
 						System.out.println("GOOD: Object: " + co.name() + " in file: " + args[i] + " verified.");
+						debugSig(pubKey, co.signature().signature());
 					}
 				} else {
 					System.out.println("NO KEY PROVIDED TO VERIFY OBJECT: " + co.name());
@@ -92,6 +85,28 @@ public class ccn_verify {
 		} catch (Exception e) {
 			System.out.println("Exception in ccn_verify: " + e.getClass().getName() + ": " + e.getMessage());
 			e.printStackTrace();
+		}
+	}
+	
+	public static void debugSig(PublicKey pubKey, byte [] signature) {
+		
+		if (!(pubKey instanceof RSAPublicKey)) {
+			return;
+		}
+		// take it apart
+		RSAPublicKey rsaKey = (RSAPublicKey) pubKey;
+		BigInteger sigInt = new BigInteger(1, signature);
+		BigInteger sigSigInt = new BigInteger(signature);
+		System.out.println("Signature length " + signature.length + " sign? " + sigSigInt.signum());
+
+		BigInteger paddedMessage = sigInt.modPow(rsaKey.getPublicExponent(), rsaKey.getModulus());
+		System.out.println("\nSignature: " + DataUtils.printHexBytes(signature) + "\n");
+		System.out.println("Inverted signature: " + DataUtils.printHexBytes(paddedMessage.toByteArray()) + "\n");
+	
+		if (sigSigInt.signum() < 0) {
+			BigInteger paddedSignedMessage = sigSigInt.modPow(rsaKey.getPublicExponent(), rsaKey.getModulus());
+			System.out.println("Inverted signed signature: " + DataUtils.printHexBytes(paddedSignedMessage.toByteArray()) + "\n");
+		
 		}
 	}
 
