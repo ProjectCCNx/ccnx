@@ -183,9 +183,16 @@ public class SystemConfiguration {
 	public static int CCND_OP_TIMEOUT = CCND_OP_TIMEOUT_DEFAULT;
 	
 	/**
+	 * System default timeout
+	 */
+	protected static final String CCND_TIMEOUT_PROPERTY = "org.ccnx.default.timeout";
+	public final static int CCND_TIMEOUT_DEFAULT = EXTRA_LONG_TIMEOUT;
+	public static int CCND_DEFAULT_TIMEOUT = CCND_TIMEOUT_DEFAULT;
+	
+	/**
 	 * Settable system default timeout.
 	 */
-	protected static int _defaultTimeout = EXTRA_LONG_TIMEOUT;
+	protected static int _defaultTimeout = CCND_TIMEOUT_DEFAULT;
 	
 	/**
 	 * Get system default timeout.
@@ -324,6 +331,15 @@ public class SystemConfiguration {
 //			Log.fine("PING_TIMEOUT = " + PING_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The default flow controller timeout must be an integer.");
+			throw e;
+		}
+		
+		// Allow override of ccn default timeout.
+		try {
+			_defaultTimeout = Integer.parseInt(System.getProperty(CCND_TIMEOUT_PROPERTY, Integer.toString(CCND_TIMEOUT_DEFAULT)));
+//			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The ccnd default timeout must be an integer.");
 			throw e;
 		}
 
