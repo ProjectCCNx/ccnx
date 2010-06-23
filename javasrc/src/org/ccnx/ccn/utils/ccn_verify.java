@@ -22,44 +22,71 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 
 import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.KeyLocator;
 
 /**
  * Command-line utility program to verify CCNx objects stored in a file.
  */
 public class ccn_verify {
-	
+
 	public static void usage() {
-		System.out.println("ccn_verify key_file ccnb_input_file [input_file [input_file...]] ");
+		System.out.println("ccn_verify [key_file] ccnb_input_file [input_file [input_file...]] (if no key file, input file must contain KEY type key locator)");
 	}
 
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		if (args.length < 2)  {
+		if (args.length < 1)  {
 			usage();
 			return;
 		}
-		
 		try {
-		
-			PublicKey pubKey = readKeyFile(args[0]);
-	
-			for (int i=1; i < args.length; ++i) {
+
+			PublicKey pubKey = null;
+			int start = 0;
+
+			if (args.length > 1) {
+				pubKey = readKeyFile(args[0]);
+				start++;
+			}
+
+			for (int i=start; i < args.length; ++i) {
 				ContentObject co = readObjectFile(args[i]);
-				
-				if (!co.verify(pubKey)) {
-					System.out.println("BAD: Object: " + co.name() + " in file: " + args[i] + " failed to verify.");
+
+				if ((null == pubKey) && (KeyLocator.KeyLocatorType.KEY == co.signedInfo().getKeyLocator().type())) {
+					pubKey = co.signedInfo().getKeyLocator().key();
+				}
+
+				if (null != pubKey) {
+					if (!co.verify(pubKey)) {
+						System.out.println("BAD: Object: " + co.name() + " in file: " + args[i] + " failed to verify.");
+
+						// take it apart
+						if (pubKey instanceof RSAPublicKey) {
+							RSAPublicKey rsaKey = (RSAPublicKey) pubKey;
+							BigInteger sigInt = new BigInteger(1, co.signature().signature());
+							BigInteger paddedMessage = sigInt.modPow(rsaKey.getPublicExponent(), rsaKey.getModulus());
+							System.out.println("\nSignature: " + DataUtils.printHexBytes(co.signature().signature()) + "\n");
+							System.out.println("Inverted signature: " + DataUtils.printHexBytes(paddedMessage.toByteArray()) + "\n");
+						}
+									
+					} else {
+						System.out.println("GOOD: Object: " + co.name() + " in file: " + args[i] + " verified.");
+					}
 				} else {
-					System.out.println("GOOD: Object: " + co.name() + " in file: " + args[i] + " verified.");
+					System.out.println("NO KEY PROVIDED TO VERIFY OBJECT: " + co.name());
 				}
 			}
 		} catch (Exception e) {
@@ -67,20 +94,20 @@ public class ccn_verify {
 			e.printStackTrace();
 		}
 	}
-		
+
 	public static ContentObject readObjectFile(String filePath) 
-			throws ContentDecodingException, FileNotFoundException {
+	throws ContentDecodingException, FileNotFoundException {
 		FileInputStream fis = new FileInputStream(filePath);
 		BufferedInputStream bis = new BufferedInputStream(fis);
 		ContentObject co = new ContentObject();
 		co.decode(bis);
 		return co;
-		
+
 	}
-	
+
 	public static PublicKey readKeyFile(String filePath) 
-			throws ContentDecodingException, IOException, FileNotFoundException, 
-				CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
+	throws ContentDecodingException, IOException, FileNotFoundException, 
+	CertificateEncodingException, InvalidKeySpecException, NoSuchAlgorithmException {
 		ContentObject keyObject = readObjectFile(filePath);
 		try {
 			return CryptoUtil.getPublicKey(keyObject.content());
