@@ -190,6 +190,17 @@ public class SystemConfiguration {
 	public static int CCND_DEFAULT_TIMEOUT = CCND_TIMEOUT_DEFAULT;
 	
 	/**
+	 * GetLatestVersion attempt timeout
+	 * TODO  This timeout is set to MEDIUM_TIMEOUT to work around the problem
+	 * in ccnd where some interests take >300ms (and sometimes longer, have seen periodic delays >800ms)
+	 * when that bug is found and fixed, this can be reduced back to the SHORT_TIMEOUT.
+	 * long attemptTimeout = SystemConfiguration.SHORT_TIMEOUT;
+	 */
+	protected static final String CCND_GLV_TIMEOUT_PROPERTY = "org.ccnx.glv.timeout";
+	public final static int CCND_GLV_TIMEOUT_DEFAULT = MEDIUM_TIMEOUT;
+	public static int CCND_GLV_ATTEMPT_TIMEOUT = CCND_GLV_TIMEOUT_DEFAULT;
+	
+	/**
 	 * Settable system default timeout.
 	 */
 	protected static int _defaultTimeout = CCND_TIMEOUT_DEFAULT;
@@ -351,6 +362,16 @@ public class SystemConfiguration {
 			System.err.println("The ccnd op timeout must be an integer.");
 			throw e;
 		}
+		
+		// Allow override of getLatestVersion attemp timeout.
+		try {
+			CCND_GLV_ATTEMPT_TIMEOUT = Integer.parseInt(System.getProperty(CCND_GLV_TIMEOUT_PROPERTY, Integer.toString(CCND_GLV_TIMEOUT_DEFAULT)));
+//			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The ccnd op timeout must be an integer.");
+			throw e;
+		}
+
 		
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
