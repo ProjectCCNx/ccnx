@@ -149,7 +149,8 @@ incoming_content(
     }
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT)
         return(0);
-    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED) abort();
+    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED && kind != CCN_UPCALL_CONTENT_BAD)
+        abort();
 
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
@@ -162,6 +163,12 @@ incoming_content(
         ccn_uri_append(c, ccnb, ccnb_size, 1);
         fprintf(stderr, "How did this happen?  %s\n", ccn_charbuf_as_string(uri));
         exit(1);
+    }
+    
+    if (kind == CCN_UPCALL_CONTENT_BAD) {
+        ccn_uri_append(uri, ccnb, ccnb_size, 1);
+        fprintf(stderr, "*** VERIFICATION FAILURE *** %s\n", ccn_charbuf_as_string(uri));
+        uri->length = 0;
     }
     
     data->counter[0]++; /* Tell main that something new came in */
