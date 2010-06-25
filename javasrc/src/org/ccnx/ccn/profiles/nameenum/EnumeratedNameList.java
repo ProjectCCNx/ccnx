@@ -440,7 +440,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				// don't want to miss results in case we are started again.
 				Log.info("ENUMERATION STOPPED: but {0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
 			} else {
-				Log.info("{0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
+				Log.info(names.size() + " new name enumeration results: our prefix: {0} returned prefix: {1}", _namePrefix, prefix);
 			}
 		}
 		if (!prefix.equals(_namePrefix)) {
