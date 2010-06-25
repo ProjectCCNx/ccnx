@@ -452,16 +452,18 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 	
 	/**
-	 * Returns the wrapped key object corresponding to the specified wrapped key name.
+	 * Returns the wrapped key object corresponding to the specified wrapped key name. We know
+	 * there is only one version of this object, so avoid getLatestVersion.
 	 * @param wrappedKeyName
 	 * @return
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
 	 */
 	public WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws ContentDecodingException, IOException {
-		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _handle);
+		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, null, null, _handle);
+		wrappedKey.updateAny();
 		if (!wrappedKey.available()) { // for some reason we timed out, try again.
-			wrappedKey.update();
+			wrappedKey.updateAny();
 		}
 		return wrappedKey;		
 	}
