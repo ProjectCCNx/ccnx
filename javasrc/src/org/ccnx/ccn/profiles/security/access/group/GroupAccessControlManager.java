@@ -580,7 +580,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws ContentEncodingException 
 	 * @throws InvalidKeyException 
 	 */
-	public void initializeNamespace(ACL rootACL) 
+	public ACLObject initializeNamespace(ACL rootACL) 
 	throws InvalidKeyException, ContentEncodingException, ContentNotReadyException, 
 	ContentGoneException, IOException {
 		// generates the new node key		
@@ -589,6 +589,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// write the root ACL
 		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(_namespace), rootACL, handle());
 		aclo.save();
+		return aclo;
 	}
 
 	/**
@@ -849,6 +850,34 @@ public class GroupAccessControlManager extends AccessControlManager {
 		aclo.save();
 		return aclo.acl();
 	}
+	
+	/**
+	 * Adds an ACL to a node that doesn't have one, or replaces one that exists.
+	 * Just writes, doesn't bother to look at any current ACL. Does need to pull
+	 * the effective node key at this node, though, to wrap the old ENK in a new
+	 * node key. Gets handed in effective ACL, to avoid having to search.
+	 * 
+	 * @param nodeName the name of the node
+	 * @param newACL the new ACL
+	 * @return
+	 * @throws InvalidKeyException 
+	 * @throws IOException 
+	 * @throws ContentGoneException 
+	 * @throws ContentNotReadyException 
+	 * @throws NoSuchAlgorithmException 
+	 */
+	public ACL setACL(ContentName nodeName, ACL newACL, ACLObject effectiveACLObject) 
+	throws AccessDeniedException, InvalidKeyException, ContentNotReadyException, ContentGoneException, IOException, NoSuchAlgorithmException {
+		// Throws access denied exception if we can't read the old node key.
+		NodeKey effectiveNodeKey = getEffectiveNodeKey(nodeName, effectiveACLObject);
+		// generates the new node key, wraps it under the new acl, and wraps the old node key
+		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
+		// write the acl
+		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(nodeName), newACL, handle());
+		aclo.save();
+		return aclo.acl();
+	}
+
 
 	/**
 	 * Delete the ACL at this node if one exists, returning control to the
@@ -1280,7 +1309,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * Get the effective node key in force at this node, used to derive keys to 
 	 * encrypt  content. Vertical chaining. Works if you ask for node which has
 	 * a node key.
-	 * TODO -- when called by writers, check to see if node key is dirty & update.
 	 * @param nodeName
 	 * @return
 	 * @throws AccessDeniedException 
@@ -1307,6 +1335,40 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		return effectiveNodeKey;
 	}
+	
+	/**
+	 * Write path:
+	 * Get the effective node key in force at this node, used to derive keys to 
+	 * encrypt  content. Vertical chaining. Works if you ask for node which has
+	 * a node key. Hand in node with existing node key to avoid search.
+	 * @param nodeName
+	 * @return
+	 * @throws AccessDeniedException 
+	 * @throws ContentEncodingException 
+	 * @throws ContentDecodingException
+	 * @throws IOException
+	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
+	 */
+	public NodeKey getEffectiveNodeKey(ContentName nodeName, ACLObject effectiveACL) 
+	throws AccessDeniedException, InvalidKeyException, ContentEncodingException, 
+	ContentDecodingException, IOException, NoSuchAlgorithmException {
+		// Get the ancestor node key in force at this node.
+		NodeKey nodeKey = getLatestNodeKeyForNode(
+				AccessControlProfile.accessRoot(effectiveACL.getBaseName()));
+		if (null == nodeKey) {
+			throw new AccessDeniedException("Cannot retrieve node key for node: " + nodeName + ".");
+		}
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info(Log.FAC_ACCESSCONTROL, "Found node key at {0}", nodeKey.storedNodeKeyName());
+		}
+		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel());
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info(Log.FAC_ACCESSCONTROL, "Computing effective node key for {0} using stored node key {1}", nodeName, effectiveNodeKey.storedNodeKeyName());
+		}
+		return effectiveNodeKey;
+	}
+
 
 	/**
 	 * Like #getEffectiveNodeKey(ContentName), except checks to see if node
