@@ -590,15 +590,9 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		}
 	
 		if ((!result) && Log.isLoggable(Log.FAC_VERIFY, Level.WARNING)) {
-			String proxyString = null;
-			try {
-				proxyString = DataUtils.printHexBytes(CCNDigestHelper.digest(object.computeProxy()));
-			} catch (CertificateEncodingException e) {
-				proxyString = "<encoding error>";
-			}
 			Log.info("VERIFICATION FAILURE: " + object.name() + " timestamp: " + object.signedInfo().getTimestamp() + " content length: " + object.contentLength() + 
 					" ephemeral digest: " + DataUtils.printBytes(object.digest()) + 
-					" proxy sha256 digest: " + proxyString);
+					" to be signed sha256 digest: " + DataUtils.printHexBytes(CCNDigestHelper.digest(object.prepareContent())));
 			SystemConfiguration.outputDebugObject(object);
 		}
 	
