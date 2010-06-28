@@ -97,7 +97,7 @@ public class Log {
 	public static final int FAC_ENCODING	= 13;
 	public static final int FAC_IO			= 14;
 	public static final int FAC_SIGNING		= 15;
-	public static final int FAC_VERIFY		= 15;
+	public static final int FAC_VERIFY		= 16;
 
 
 	// The System property name for each Facility
