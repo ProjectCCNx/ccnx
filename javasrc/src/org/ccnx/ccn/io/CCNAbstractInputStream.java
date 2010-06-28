@@ -35,6 +35,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -1808,13 +1809,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			// signature, the proxy ought to match as well.
 			if ((null != _verifiedRootSignature) && (Arrays.equals(_verifiedRootSignature, segment.signature().signature()))) {
 				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
-					if( Log.isLoggable(Level.WARNING) )
-						Log.warning("Found segment: " + segment.name() + " whose digest fails to verify; segment length: " + segment.contentLength());
-
-					if (Log.isLoggable(Level.INFO)) {
+					if (Log.isLoggable(Log.FAC_VERIFY, Level.WARNING)) {
+						Log.warning("VERIFICATION FAILURE: Found segment: " + segment.name() + " whose digest fails to verify; segment length: " + segment.contentLength());
 						Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
 								" proxy: " + DataUtils.printBytes(proxy) +
-								" expected proxy: " + DataUtils.printBytes(_verifiedProxy));
+								" expected proxy: " + DataUtils.printBytes(_verifiedProxy) +
+								" ephemeral digest: " + DataUtils.printBytes(segment.digest()));
+						SystemConfiguration.outputDebugObject(segment);
 					}
 					return false;
 				}
@@ -1822,8 +1823,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				// Verifying a new segment. See if the signature verifies, otherwise store the signature
 				// and proxy.
 				if (!ContentObject.verify(proxy, segment.signature().signature(), segment.signedInfo(), segment.signature().digestAlgorithm(), _handle.keyManager())) {
-					if( Log.isLoggable(Level.WARNING) )
-					Log.warning("Found segment: " + segment.name().toString() + " whose signature fails to verify; segment length: " + segment.contentLength() + ".");
+					if (Log.isLoggable(Level.WARNING)) {
+						Log.warning("VERIFICATION FAILURE: Found segment: " + segment.name().toString() + " whose signature fails to verify; segment length: " + segment.contentLength() + ".");
+						Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
+								" proxy: " + DataUtils.printBytes(proxy) +
+								" expected proxy: " + DataUtils.printBytes(_verifiedProxy) +
+								" ephemeral digest: " + DataUtils.printBytes(segment.digest()));
+						SystemConfiguration.outputDebugObject(segment);
+					}
 					return false;
 				} else {
 					// Remember current verifiers
