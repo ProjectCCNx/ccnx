@@ -17,7 +17,9 @@
 
 package org.ccnx.ccn.test;
 
-import org.ccnx.ccn.config.SystemConfiguration;
+import java.util.logging.Level;
+
+import org.ccnx.ccn.impl.support.Log;
 import org.junit.Test;
 
 /**
@@ -29,7 +31,7 @@ public class BasePutGetTest extends LibraryTestBase {
 	public void testGetPut() throws Throwable {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		// Library.setLevel(Level.FINEST);
-		SystemConfiguration.setDebugFlag(SystemConfiguration.DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
+		Log.setLevel(Log.FAC_SIGNING, Level.FINEST);
 		System.out.println("TEST: PutThread/GetThread");
 		int id = getUniqueId();
 		Thread putter = new Thread(new PutThread(count, id));

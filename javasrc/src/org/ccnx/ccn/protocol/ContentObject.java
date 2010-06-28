@@ -34,7 +34,6 @@ import java.util.logging.Level;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -46,9 +45,9 @@ import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.CCNSignatureHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.NullOutputStream;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
-import org.ccnx.ccn.io.NullOutputStream;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
@@ -165,7 +164,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		if (null != content)
 			System.arraycopy(content, offset, _content, 0, length);
 		_signature = signature;
-		if ((null != signature) && SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+		if ((null != signature) && Log.isLoggable(Log.FAC_SIGNING, Level.FINEST)) {
 			try {
 				byte [] digest = CCNDigestHelper.digest(this.encode());
 				byte [] tbsdigest = CCNDigestHelper.digest(prepareContent(name, signedInfo, content, offset, length));

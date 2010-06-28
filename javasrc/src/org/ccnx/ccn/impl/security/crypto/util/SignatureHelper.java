@@ -28,6 +28,7 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidParameterSpecException;
+import java.util.logging.Level;
 
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.DEREncodable;
@@ -197,16 +198,11 @@ public class SignatureHelper {
 	throws NoSuchAlgorithmException, InvalidParameterSpecException, 
 	InvalidAlgorithmParameterException
 	{
-		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-			Log.warning(
-					"SignatureHelper: getSignatureAlgorithm, hash: " +
-					hashAlgorithm + " key alg: " + signingKey.getAlgorithm());
-		}
 		String signatureAlgorithmOID = getSignatureAlgorithmOID(
 				hashAlgorithm, signingKey.getAlgorithm());
 	
 		if (signatureAlgorithmOID == null) {
-			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+			if (Log.isLoggable(Level.WARNING)) {
 				Log.warning("Error: got no signature algorithm!");
 			}
 			throw new NoSuchAlgorithmException(

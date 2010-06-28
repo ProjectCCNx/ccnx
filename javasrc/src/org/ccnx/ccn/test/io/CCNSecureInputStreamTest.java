@@ -242,7 +242,7 @@ public class CCNSecureInputStreamTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		Log.setLevel(Level.FINEST);
-		SystemConfiguration.setDebugFlag(SystemConfiguration.DEBUGGING_FLAGS.DEBUG_SIGNATURES, true);
+		Log.setLevel(Log.FAC_SIGNING, Level.FINEST);
 		outputLibrary = CCNHandle.open();
 		inputLibrary = CCNHandle.open();
 				
