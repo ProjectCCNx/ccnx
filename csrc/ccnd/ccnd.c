@@ -2046,7 +2046,7 @@ ccnd_reg_prefix(struct ccnd_handle *h,
                 flags = f->flags & CCN_FORW_PUBMASK;
             f->flags = (CCN_FORW_REFRESHED | flags);
             res |= flags;
-            if (h->debug & 2) {
+            if (h->debug & (2 | 4)) {
                 struct ccn_charbuf *prefix = ccn_charbuf_create();
                 struct ccn_charbuf *debugtag = ccn_charbuf_create();
                 ccn_charbuf_putf(debugtag, "prefix,ff=%s%x",
@@ -2509,7 +2509,7 @@ ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     for (f = npe->forwarding; f != NULL; f = f->next) {
 	if (f->faceid == forwarding_entry->faceid) {
 	    found = 1;
-            if (h->debug & 2)
+            if (h->debug & (2 | 4))
                 ccnd_debug_ccnb(h, __LINE__, "prefix_unreg", face,
                                 forwarding_entry->name_prefix->buf,
                                 forwarding_entry->name_prefix->length);
