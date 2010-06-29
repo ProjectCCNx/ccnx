@@ -69,6 +69,19 @@ static const char *resp405 =
     "HTTP/1.1 405 Method Not Allowed" CRLF
     "Connection: close" CRLF CRLF;
 
+static void
+ccnd_stats_http_set_debug(struct ccnd_handle *h, struct face *face, int level)
+{
+    struct ccn_charbuf *response = ccn_charbuf_create();
+    
+    h->debug = 1;
+    ccnd_msg(h, "CCND_DEBUG=%d", level);
+    h->debug = level;
+    ccn_charbuf_putf(response, "<title>CCND_DEBUG=%d</title><tt>CCND_DEBUG=%d</tt>" CRLF, level, level);
+    send_http_response(h, face, "text/html", response);
+    ccn_charbuf_destroy(&response);
+}
+
 int
 ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
 {
@@ -99,6 +112,21 @@ ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
         0 == strcmp(rbuf, "GET /? ")) {
         response = collect_stats_html(h);
         send_http_response(h, face, "text/html", response);
+    }
+    else if (0 == strcmp(rbuf, "GET /?l=none ")) {
+        ccnd_stats_http_set_debug(h, face, 0);
+    }
+    else if (0 == strcmp(rbuf, "GET /?l=low ")) {
+        ccnd_stats_http_set_debug(h, face, 1);
+    }
+    else if (0 == strcmp(rbuf, "GET /?l=co ")) {
+        ccnd_stats_http_set_debug(h, face, 4);
+    }
+    else if (0 == strcmp(rbuf, "GET /?l=med ")) {
+        ccnd_stats_http_set_debug(h, face, 71);
+    }
+    else if (0 == strcmp(rbuf, "GET /?l=high ")) {
+        ccnd_stats_http_set_debug(h, face, -1);
     }
     else if (0 == strcmp(rbuf, "GET /?f=xml ")) {
         response = collect_stats_xml(h);
