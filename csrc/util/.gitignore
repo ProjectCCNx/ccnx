@@ -1,4 +1,5 @@
 Makefile
+ccndlogging
 ccndstart
 ccndstatus
 ccndstop
