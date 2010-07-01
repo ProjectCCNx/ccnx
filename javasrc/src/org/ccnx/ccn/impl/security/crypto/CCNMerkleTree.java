@@ -24,8 +24,6 @@ import java.security.SignatureException;
 import java.util.logging.Level;
 
 import org.bouncycastle.asn1.DEROctetString;
-import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
