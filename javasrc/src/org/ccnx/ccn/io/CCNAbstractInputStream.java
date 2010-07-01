@@ -1809,7 +1809,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			if ((null != _verifiedRootSignature) && (Arrays.equals(_verifiedRootSignature, segment.signature().signature()))) {
 				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
 					if (Log.isLoggable(Log.FAC_VERIFY, Level.WARNING)) {
-						Log.warning("VERIFICATION FAILURE: Found segment: " + segment.name() + " whose digest fails to verify; segment length: " + segment.contentLength());
+						Log.warning("VERIFICATION FAILURE: Found segment of stream: " + segment.name() + " whose digest fails to verify; segment length: " + segment.contentLength());
 						Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
 								" proxy: " + DataUtils.printBytes(proxy) +
 								" expected proxy: " + DataUtils.printBytes(_verifiedProxy) +
@@ -1823,7 +1823,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				// and proxy.
 				if (!ContentObject.verify(proxy, segment.signature().signature(), segment.signedInfo(), segment.signature().digestAlgorithm(), _handle.keyManager())) {
 					if (Log.isLoggable(Level.WARNING)) {
-						Log.warning("VERIFICATION FAILURE: Found segment: " + segment.name().toString() + " whose signature fails to verify; segment length: " + segment.contentLength() + ".");
+						Log.warning("VERIFICATION FAILURE: Found segment of stream: " + segment.name().toString() + " whose signature fails to verify; segment length: " + segment.contentLength() + ".");
 						Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
 								" proxy: " + DataUtils.printBytes(proxy) +
 								" expected proxy: " + DataUtils.printBytes(_verifiedProxy) +
