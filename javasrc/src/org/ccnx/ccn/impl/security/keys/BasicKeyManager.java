@@ -514,8 +514,9 @@ public class BasicKeyManager extends KeyManager {
 				SecureKeyCache keyCache = EncryptedObjectFileHelper.readEncryptedObject(keyCacheFile, getDefaultSigningKey());
 				
 				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
-					Log.info(Log.FAC_KEYS, "Loaded saved key cached data from file {0}, got {1} key locator values.", 
+					Log.info(Log.FAC_KEYS, "Loaded saved key cached data from file {0}, got {1} keys values.", 
 							keyCacheFile.getAbsolutePath(), keyCache.size());
+					keyCache.printContents();
 				}
 				
 				// merge key caches

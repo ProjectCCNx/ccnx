@@ -396,6 +396,21 @@ public class SecureKeyCache implements Serializable {
 			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: privateKeyMap contains a key with name {0} and hash {1}", 
 					cn, DataUtils.printHexBytes(_nameKeyMap.get(cn)));
 		}
+		
+		Log.info(Log.FAC_ACCESSCONTROL, "Dumping _keyMap"); 
+		for (byte [] keyHash : _keyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "  KeyID: {0}", DataUtils.printHexBytes(keyHash));
+		}
+		
+		Log.info(Log.FAC_ACCESSCONTROL, "Dumping _myKeyMap"); 
+		for (byte [] keyHash : _myKeyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "  KeyID: {0}", DataUtils.printHexBytes(keyHash));
+		}
+		
+		Log.info(Log.FAC_ACCESSCONTROL, "Dumping _privateKeyMap"); 
+		for (byte [] keyHash : _privateKeyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "  KeyID: {0}", DataUtils.printHexBytes(keyHash));
+		}
 	}
 
 }
