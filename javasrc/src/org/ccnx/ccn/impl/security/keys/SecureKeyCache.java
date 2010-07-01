@@ -265,6 +265,11 @@ public class SecureKeyCache implements Serializable {
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		if (null != keyName) {
 			_nameKeyMap.put(keyName, publicKeyIdentifier);
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding private key {0} with name {1}",
+					DataUtils.printHexBytes(publicKeyIdentifier), keyName);
+		} else {
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding private key {0}",
+					DataUtils.printHexBytes(publicKeyIdentifier));			
 		}
 	}
 
@@ -276,6 +281,8 @@ public class SecureKeyCache implements Serializable {
 	public void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		_myKeyMap.put(publicKeyIdentifier, pk);
+		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding my private key {0}",
+				DataUtils.printHexBytes(publicKeyIdentifier));			
 	}
 	
 	/**
@@ -288,6 +295,11 @@ public class SecureKeyCache implements Serializable {
 		_keyMap.put(id, key);
 		if (null != name) {
 			_nameKeyMap.put(name, id);
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} with name {1}",
+					DataUtils.printHexBytes(id), name);
+		} else {
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0}",
+					DataUtils.printHexBytes(id));			
 		}
 	}
 	
