@@ -257,7 +257,6 @@ public class SystemConfiguration {
 		}
 			
 		DEBUG_DATA_DIRECTORY = System.getProperty(DEBUG_DATA_DIRECTORY_PROPERTY, DEFAULT_DEBUG_DATA_DIRECTORY);
-		
 	}
 	
 	static {
@@ -409,6 +408,10 @@ public class SystemConfiguration {
 	
 	public static void setDebugFlag(String debugFlag) {
 		setDebugFlag(debugFlag, true);
+	}
+	
+	public static void setDebugDataDirectory(String dir) {
+		DEBUG_DATA_DIRECTORY=dir;
 	}
 	
 	public static void outputDebugData(ContentName name, XMLEncodable data) {
