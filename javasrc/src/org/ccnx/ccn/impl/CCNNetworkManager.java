@@ -337,9 +337,8 @@ public class CCNNetworkManager implements Runnable {
 			// happen while holding this lock because that would give the 
 			// application callback code power to block library processing.
 			// Instead, we use a flag that is checked and set under this lock
-			// to be sure that on exit from invalidate() there will be 
-			// no future deliveries based on the now-invalid registration.
-			while (true) {
+			// to be sure that on exit from invalidate() there will be. // Back off to avoid livelock situations  
+			for (int i = 0; true; i = (2 * i + 1) & 63) {
 				synchronized (this) {
 					// Make invalid, this will prevent any new delivery that comes
 					// along from doing anything.
@@ -351,7 +350,7 @@ public class CCNNetworkManager implements Runnable {
 						return;
 					}
 				}
-				Thread.yield();
+				if (i == 0) { Thread.yield(); } else { try { Thread.sleep(i); } catch (Exception e) {} }
 			}
 		}
 		
