@@ -104,7 +104,7 @@ public class CCNNetworkObjectTest {
 		try {
 			Log.info("Tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
 			Log.flush();
-			Log.setLevel(oldLevel);
+			Log.setDefaultLevel(oldLevel);
 			if (flosser != null) {
 				flosser.stop();
 				flosser = null;

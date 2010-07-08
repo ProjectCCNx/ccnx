@@ -382,6 +382,8 @@
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
+			<jvmarg value="-Xdebug"/>
+			<jvmarg value="-Xrunjdwp:transport=dt_socket,server=y,address=4810,suspend=n"/>
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
