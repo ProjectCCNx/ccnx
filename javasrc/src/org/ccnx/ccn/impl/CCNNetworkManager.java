@@ -778,17 +778,6 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 	
-	protected void finalize() throws Throwable {
-		try {
-			if (_run) {
-				Log.warning("Somebody needs to close()");
-				shutdown();
-			}
-		} finally {
-			super.finalize();
-		}
-	}
-
 	/**
 	 * Turns on writing of all packets to a file for test/debug
 	 * Overrides any previous setTap or environment/property setting.

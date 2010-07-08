@@ -40,7 +40,7 @@ public class BaseLibrarySink {
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Log.setDefaultLevel(Level.FINEST);
+		Log.setLevel(Level.FINEST);
 	}
 
 	/**

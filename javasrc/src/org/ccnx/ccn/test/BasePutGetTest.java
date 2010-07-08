@@ -31,7 +31,7 @@ public class BasePutGetTest extends LibraryTestBase {
 	public void testGetPut() throws Throwable {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		// Library.setLevel(Level.FINEST);
-		Log.setDefaultLevel(Log.FAC_SIGNING, Level.FINEST);
+		Log.setLevel(Log.FAC_SIGNING, Level.FINEST);
 		System.out.println("TEST: PutThread/GetThread");
 		int id = getUniqueId();
 		Thread putter = new Thread(new PutThread(count, id));
