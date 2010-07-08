@@ -94,7 +94,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	protected File _repositoryFile;
 
 	Map<Integer,RepoFile> _files;
-	RepoFile _activeWriteFile;
+	RepoFile _activeWriteFile = null;
 	ContentTree _index;
 	
 	public class RepoFile {
@@ -428,6 +428,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			}
 			return null;
 		}
+		if (null == _activeWriteFile)
+			return null;
 		try {	
 			NameEnumerationResponse ner = new NameEnumerationResponse();
 			synchronized(_activeWriteFile) {
