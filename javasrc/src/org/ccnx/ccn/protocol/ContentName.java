@@ -61,7 +61,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public static class DotDotComponent extends Exception { // Need to strip off a component
 		private static final long serialVersionUID = 4667513234636853164L;
 	}; 
-
+    private static final String HEX_DIGITS = "0123456789ABCDEF";
+    
     // Constructors
 	public ContentName() {
 		this(0, (ArrayList<byte[]>)null);
@@ -590,8 +591,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 					ch == '-' || ch == '.' || ch == '_' || ch == '~')
 				// Since these are all BMP characters, the can be represented in one Java Character
 				result.append(Character.toChars(ch)[0]);
-			else
-				result.append(String.format("%%%02X", ch));
+			else {
+                result.append("%");
+                result.append(HEX_DIGITS.charAt((ch >> 4) & 0xF));
+                result.append(HEX_DIGITS.charAt(ch & 0xF));
+            }
 		}
 		int i = 0;
 		for (i = 0; i < result.length() && result.charAt(i) == '.'; i++) {
