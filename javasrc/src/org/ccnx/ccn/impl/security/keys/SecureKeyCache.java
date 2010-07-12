@@ -261,7 +261,7 @@ public class SecureKeyCache implements Serializable {
 	 * @param publicKeyIdentifier the digest of the public key
 	 * @param pk the private key
 	 */
-	public void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
+	public synchronized void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyMap.put(publicKeyIdentifier, pk);
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		if (null != keyName) {
@@ -279,7 +279,7 @@ public class SecureKeyCache implements Serializable {
 	 * @param publicKeyIdentifier the digest of the public key.
 	 * @param pk the corresponding private key.
 	 */
-	public void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
+	public synchronized void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		_myKeyMap.put(publicKeyIdentifier, pk);
 		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding my private key {0}",
@@ -291,7 +291,7 @@ public class SecureKeyCache implements Serializable {
 	 * @param name the name of the key.
 	 * @param key the key.
 	 */
-	public void addKey(ContentName name, Key key) {
+	public synchronized void addKey(ContentName name, Key key) {
 		byte [] id = getKeyIdentifier(key);
 		_keyMap.put(id, key);
 		if (null != name) {
@@ -336,7 +336,7 @@ public class SecureKeyCache implements Serializable {
 	 * 
 	 * @param cache the SecureKeyCache to merge with
 	 */
-	public void merge(SecureKeyCache cache) {
+	public synchronized void merge(SecureKeyCache cache) {
 		
 		/**
 		_keyMap.putAll(cache._keyMap);
