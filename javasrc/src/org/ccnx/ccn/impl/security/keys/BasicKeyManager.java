@@ -560,6 +560,8 @@ public class BasicKeyManager extends KeyManager {
 			return;
 		}
 		
+		getSecureKeyCache().validateForWriting();
+		
 		File keyCacheFile = new File(_keyStoreDirectory, _keyCacheFileName); 
 		
 		EncryptedObjectFileHelper.writeEncryptedObject(keyCacheFile, getSecureKeyCache(), getDefaultPublicKey());
