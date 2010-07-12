@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
@@ -295,11 +296,11 @@ public class SecureKeyCache implements Serializable {
 		_keyMap.put(id, key);
 		if (null != name) {
 			_nameKeyMap.put(name, id);
-			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} with name {1}",
-					DataUtils.printHexBytes(id), name);
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} with name {1} of type (2)",
+					DataUtils.printHexBytes(id), name, key.getClass().getName());
 		} else {
-			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0}",
-					DataUtils.printHexBytes(id));			
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} of type {1}",
+					DataUtils.printHexBytes(id), key.getClass().getName());			
 		}
 	}
 	
@@ -423,6 +424,46 @@ public class SecureKeyCache implements Serializable {
 		for (byte [] keyHash : _privateKeyMap.keySet()) {
 			Log.info(Log.FAC_ACCESSCONTROL, "  KeyID: {0}", DataUtils.printHexBytes(keyHash));
 		}
+	}
+	
+	/**
+	 * Make sure everything in here is Serializable.
+	 * @return
+	 */
+	public boolean validateForWriting() {
+		boolean valid = true;
+		for (Key key : _keyMap.values()) {
+			if (!(key instanceof Serializable)) {
+				if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
+					Log.warning(Log.FAC_KEYS, "Cannot serialize key of type {0}: {1}", key.getClass().getName(),
+							key);
+				}
+				valid = false;
+			}
+		}
+		
+		for (Key key : _myKeyMap.values()) {
+			if (!(key instanceof Serializable)) {
+				if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
+					Log.warning(Log.FAC_KEYS, "Cannot serialize key of type {0}: {1}", key.getClass().getName(),
+							key);
+				}
+				valid = false;
+			}
+		}
+		
+		for (Key key : _privateKeyMap.values()) {
+			if (!(key instanceof Serializable)) {
+				if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
+					Log.warning(Log.FAC_KEYS, "Cannot serialize key of type {0}: {1}", key.getClass().getName(),
+							key);
+				}
+				valid = false;
+			}
+		}
+
+		return valid;
+
 	}
 
 }
