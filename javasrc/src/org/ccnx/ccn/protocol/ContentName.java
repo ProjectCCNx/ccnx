@@ -582,17 +582,19 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		// except that this is almost certainly less efficient and some versions of Java 
 		// have bugs that prevent flagging illegal overlong UTF-8 encodings (CVE-2008-2938).
 		// Also, it is much easier to verify what this is doing and compare to the C library implementation.
-		StringBuffer result = new StringBuffer();
+        //
+        // Initial allocation is based on the documented behavior of StringBuilder's buffer
+        // expansion algorithm being 2+2*length if expansion is required.
+		StringBuilder result = new StringBuilder((1 + 3 * bs.length) / 2);
 		for (int i = 0; i < bs.length; i++) {
-			byte ch = bs[i];
+			char ch = (char) bs[i];
 			if (('a' <= ch && ch <= 'z') ||
 					('A' <= ch && ch <= 'Z') ||
 					('0' <= ch && ch <= '9') ||
 					ch == '-' || ch == '.' || ch == '_' || ch == '~')
-				// Since these are all BMP characters, the can be represented in one Java Character
-				result.append(Character.toChars(ch)[0]);
+				result.append(ch);
 			else {
-                result.append("%");
+                result.append('%');
                 result.append(HEX_DIGITS.charAt((ch >> 4) & 0xF));
                 result.append(HEX_DIGITS.charAt(ch & 0xF));
             }
