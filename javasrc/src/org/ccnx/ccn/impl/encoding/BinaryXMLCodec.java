@@ -287,6 +287,20 @@ public class BinaryXMLCodec implements XMLCodec {
 		return tv;
 	}
 		
+	/**
+	 * Helper method, return the number of significant bits of x.
+         *
+         * Deprecated; unused here, but left since it is public.
+         *
+	 * @param x number we want to know bit length of
+	 * @return bit length of x
+	 */
+	public static int numbits(long x) {
+		if (0 == x)
+			return 0;
+		return (LONG_BITS - Long.numberOfLeadingZeros(x)); 
+	}
+			
 	public static int numEncodingBytes(long x) {
 		int numbytes = 1;
 		// Last byte gives you XML_TT_VAL_BITS
