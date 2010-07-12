@@ -117,10 +117,12 @@ public class SystemConfiguration {
 	public static int FC_TIMEOUT = FC_TIMEOUT_DEFAULT;
 	
 	/**
-	 * How long to wait for a ping timeout in CCNNetworkManager
+	 * How long to wait for a ping timeout in CCNNetworkManager, in ms
+	 *
+	 * This should be longer than the interest timeout to permit at least one re-expression.
 	 */
 	protected static final String PING_TIMEOUT_PROPERTY = "org.ccnx.ping.timeout";
-	public final static int PING_TIMEOUT_DEFAULT = 1000;
+	public final static int PING_TIMEOUT_DEFAULT = 4200;
 	public static int PING_TIMEOUT = PING_TIMEOUT_DEFAULT;
 	
 	/**
