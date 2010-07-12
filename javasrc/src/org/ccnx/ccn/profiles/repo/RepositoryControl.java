@@ -17,6 +17,9 @@
 package org.ccnx.ccn.profiles.repo;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
@@ -46,6 +49,11 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  *
  */
 public class RepositoryControl {
+	
+	/**
+	 * Temporary cache of blocks we have synced, to avoid double-syncing blocks.
+	 */
+    protected static Set<ContentName> syncedObjects = Collections.synchronizedSet(new HashSet<ContentName>());
 
 	/**
 	 * Request that a local repository preserve a copy
@@ -108,7 +116,7 @@ public class RepositoryControl {
 		Log.info("RepositoryControl.localRepoSync called for name {0}", name);
 
 		// Request preserving the dereferenced content of the stream first
-		result = internalRepoSync(handle, name, segment, digest);
+		result = internalRepoSync(handle, name, segment, digest, stream.getFirstSegment().fullName());
 		
 		// Now also deal with each of the links dereferenced to get to the ultimate content
 		LinkObject link = stream.getDereferencedLink();
@@ -123,7 +131,7 @@ public class RepositoryControl {
 				Log.info("localRepoSync synchronizing link: {0}", link);
 			}
 
-			if (!internalRepoSync(handle, name, segment, digest)) {
+			if (!internalRepoSync(handle, name, segment, digest, link.getFirstSegment().fullName())) {
 				result = false;
 			}
 			link = link.getDereferencedLink();
@@ -189,7 +197,7 @@ public class RepositoryControl {
 		}
 
 		// Request preserving the dereferenced content of the stream first
-		result = internalRepoSync(handle, name, segment, digest);
+		result = internalRepoSync(handle, name, segment, digest, obj.getFirstSegment().fullName());
 		
 		// Now also deal with each of the links dereferenced to get to the ultimate content
 		LinkObject link = obj.getDereferencedLink();
@@ -200,7 +208,7 @@ public class RepositoryControl {
 			name = link.getVersionedName(); // we need versioned name; link basename may or may not be
 			segment = link.firstSegmentNumber();
 
-			if (!internalRepoSync(handle, name, segment, digest)) {
+			if (!internalRepoSync(handle, name, segment, digest, link.getFirstSegment().fullName())) {
 				result = false;
 			}
 			link = link.getDereferencedLink();
@@ -250,7 +258,18 @@ public class RepositoryControl {
 	 * @param startingSegmentNumber Initial segment number of the stream
 	 * @param firstDigest Digest of the first segment
 	 */
-	static boolean internalRepoSync(CCNHandle handle, ContentName baseName, Long startingSegmentNumber, byte[] firstDigest) throws IOException {
+	static boolean internalRepoSync(CCNHandle handle, ContentName baseName, Long startingSegmentNumber, 
+									byte[] firstDigest, ContentName fullName) throws IOException {
+		
+		// UNNECESSARY OVERHEAD: shouldn't have to re-generate full name here, so hand it in.
+		// probably better way than sending in both name and parts.
+		if (syncedObjects.contains(fullName)) {
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
+				Log.info(Log.FAC_IO, "Sync: skipping already-synced object {0}", fullName);
+			}			
+		}
+		
+		// INCORRECT: the protocol is using a nonce.
 		// We do not use a nonce in this protocol, because a cached confirmation is satisfactory,
 		// assuming verification of the repository that published it.
 		
@@ -286,11 +305,21 @@ public class RepositoryControl {
 		
 		if (co.signedInfo().getType() != ContentType.DATA)
 			throw new IOException("Invalid repository response for checked write, type " + co.signedInfo().getType());
+		
 		RepositoryInfo repoInfo = new RepositoryInfo();
 		try {
 			repoInfo.decode(co.content());
-			if (repoInfo.getType() == RepoInfoType.DATA) {
+			
+			// At this point, a repo has responded and will deal with our data. Don't need to
+			// sync it again.
+			syncedObjects.add(fullName);
+			
+			if (repoInfo.getType() == RepoInfoType.DATA) {			
 				// This type from checked write is confirmation that content already held
+				// TODO improve result handling. Currently we get true if repo has content already,
+				// false if error or repo is storing content but didn't have it already. We don't care
+				// whether repo had it already, all we care is whether it is already or will be synced --
+				// want to separate errors, repo non-response from "repo will take care of it" responses.
 				return true;
 			}
 		} catch (ContentDecodingException e) {

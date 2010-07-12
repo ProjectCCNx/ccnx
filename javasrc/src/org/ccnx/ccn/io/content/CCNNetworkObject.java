@@ -1252,6 +1252,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			return null;
 		}
 	}
+	
+	/**
+	 * Returns the first segment of this object.
+	 */
+	public ContentObject getFirstSegment() {
+		return _firstSegment;
+	}
 
 	/**
 	 * If we traversed a link to get this object, make it available.

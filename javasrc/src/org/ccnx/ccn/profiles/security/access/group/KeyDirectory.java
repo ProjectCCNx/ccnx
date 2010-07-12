@@ -937,10 +937,9 @@ public class KeyDirectory extends EnumeratedNameList {
 			}
 			return null;
 		}
-
-		// TODO this will only work if we've done enumeration or the key is in our cache.
-		// Need to make it do enumeration itself if key isn't in cache and we haven't done
-		// enumeration -- KD can keep track of whether we've enumerated or not.
+		
+		// This will pull from the cache if it's in our cache, and otherwise
+		// will start enumerating if necessary.
 		// This throws AccessDeniedException...
 		Key wrappingKey = getUnwrappedKey(wko.wrappedKey().wrappingKeyIdentifier());
 		if (null == wrappingKey) {
