@@ -77,26 +77,6 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	protected static final int NONCE_KEY_LENGTH = 128;
 	
 	/**
-	 * A subtype of ContentName that encodes on the wire with a different
-	 * label.
-	 */
-	public class WrappingKeyName extends ContentName {
-
-		private static final long serialVersionUID = 1813748512053079957L;
-
-		public WrappingKeyName(ContentName name) {
-			super(name);
-		}
-		
-		public WrappingKeyName() {}
-		
-		@Override
-		public long getElementLabel() { 
-			return CCNProtocolDTags.WrappingKeyName;
-		}
-	}
-
-	/**
 	 * A CCNNetworkObject wrapper around WrappedKey, used for easily saving and retrieving
 	 * versioned WrappedKeys to CCN. A typical pattern for using network objects to save
 	 * objects that happen to be encodable or serializable is to incorporate such a static
