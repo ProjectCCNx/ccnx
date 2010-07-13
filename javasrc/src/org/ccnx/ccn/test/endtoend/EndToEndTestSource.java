@@ -35,6 +35,11 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 	protected CCNWriter _writer;
 	
 	@Test
+	public void source() throws Throwable {
+		puts();
+		server();
+	}
+
 	public void puts() throws Throwable {
 		assert(count <= Byte.MAX_VALUE);
 		System.out.println("Put sequence started");
@@ -51,7 +56,6 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 		System.out.println("Put sequence finished");
 	}
 	
-	@Test
 	public void server() throws Throwable {
 		System.out.println("PutServer started");
 		name = ContentName.fromNative("/BaseLibraryTest/");
@@ -65,7 +69,7 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 			throw error;
 		}
 	}
-
+	
 	public synchronized boolean handleInterest(Interest interest) {
 		boolean result = false;
 		try {
