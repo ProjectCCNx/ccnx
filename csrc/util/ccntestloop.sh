@@ -14,7 +14,7 @@
 
 : ${CCN_LOG_LEVEL_ALL:=WARNING}
 : ${CCN_TEST_BRANCH:=HEAD}
-: ${CCN_TEST_GITCOMMAND:=`command -v git || :`}
+: ${CCN_TEST_GITCOMMAND:=`command -v git || echo :`}
 
 Fail () {
     echo '***' Failed - $* >&2
