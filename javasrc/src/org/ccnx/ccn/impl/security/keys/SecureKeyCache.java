@@ -44,8 +44,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * A container for our private keys and other secret key 
  * material that we have retrieved (e.g. from access control).
  * 
- * TODO: provide mechanism to save and reload at least the non-keystore keys
- * as encrypted CCNx content.
+ * TODO: finish mechanism that saves the key cache between runs.
  */
 public class SecureKeyCache implements Serializable {
 	
