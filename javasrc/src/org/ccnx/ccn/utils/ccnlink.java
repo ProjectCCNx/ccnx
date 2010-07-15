@@ -29,7 +29,7 @@ import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
- * Command linke utility for making links. Currently does not take authenticator
+ * Command line utility for making links. Currently does not take authenticator
  * information, just target name.
  * TODO add ability to specify authenticators
  */
