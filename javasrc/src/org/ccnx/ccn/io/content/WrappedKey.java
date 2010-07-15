@@ -58,7 +58,12 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * type of key in any other type of key (as long as the latter is capable of
  * encryption), though use of this class with some key types or key lengths
  * may require installation of the Java unlimited strength cryptography policy
- * files to succeed.
+ * files to succeed. 
+ * 
+ * This class automatically handles generation of interstitial nonce keys for wrapping keys
+ * of incompatible lengths -- if you want to wrap a private key in another private key,
+ * it will generate a nonce key, wrap the first key in that nonce key, and that nonce key
+ * in the second private key. 
  * 
  * For now, we have a very loose definition of default -- the default wrap algorithm
  * depends on the type of key being used to wrap; similarly the default key algorithm
@@ -66,6 +71,9 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * usually know the type of the wrapping key, and can derive the wrapAlgorithm. The
  * keyAlgorithm is more often necessary to determine how to decode the key once unwrapped
  * so it is more frequently present. Both are optional.
+ * 
+ * If the caller does not specify a wrapping algorithm, a standards-based default is
+ * selected, see documentation for details.
  * 
  * If the caller specifies values they will be encoded on the wire and decoded on 
  * the other end; defaults will not currently be enforced automatically. This means

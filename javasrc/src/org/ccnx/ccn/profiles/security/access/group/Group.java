@@ -57,9 +57,13 @@ import org.ccnx.ccn.protocol.PublisherID;
 
 
 /**
- * Wrapper for Group public key, and a way to access its private keys.
- * The private keys are stored in a KeyDirectory, wrapped under the
- * public keys of the members of the group. 
+ * This class represents a Group for group-based access control. A Group
+ * is essentially a list of members, and a public/private key pair. The
+ * public key is stored in CCN and is used to encrypt node keys (see CCNx
+ * Access Control Specification); the private key is stored encrypted under
+ * the public keys of the members of the group (which could be users or
+ * groups). The private key is represented in a KeyDirectory.
+ * 
  * Model for private key access: if you're not allowed to get a key,
  * we throw AccessDeniedException.
  * 

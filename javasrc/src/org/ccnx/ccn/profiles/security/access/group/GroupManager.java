@@ -50,14 +50,17 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
 /**
- * Class for group management, including in particular:
+ * A meta-class for group management, handling in particular:
  * - Creation of new groups 
  * - Retrieval of existing groups
  * - Determination of group membership
  * - Retrieval of group private and public keys
  *
+ * There is currently one GroupManager per Group namespace. If you haven't loaded the GroupManager
+ * for a given namespace, and attempt to write ACLs naming groups defined in that namespace, you will
+ * get errors as the access control code won't recognise those entitites as Groups or be able to 
+ * find their public keys.
  */
-
 public class GroupManager {
 	
 	private GroupAccessControlManager _accessManager;
