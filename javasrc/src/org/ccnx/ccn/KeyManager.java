@@ -439,6 +439,11 @@ public abstract class KeyManager {
 	public abstract PrivateKey[] getSigningKeys();
 	
 	/**
+	 * Get the public key digest of all our signing keys -- essentially our available identities.
+	 */
+	public abstract PublisherPublicKeyDigest [] getAvailableIdentities();
+	
+	/**
 	 * Get any timestamp associate with this key.
 	 * @param keyID
 	 * @return
