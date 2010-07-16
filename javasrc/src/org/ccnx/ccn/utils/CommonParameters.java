@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx command line utilities
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.

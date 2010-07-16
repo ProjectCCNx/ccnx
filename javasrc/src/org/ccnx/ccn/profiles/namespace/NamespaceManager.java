@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2009,2010 Palo Alto Research Center, Inc.
