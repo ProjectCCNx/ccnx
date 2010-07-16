@@ -977,10 +977,32 @@ public class BasicKeyManager extends KeyManager {
 	/**
 	 * Get signing keys
 	 * @return private signing keys
+	 * TODO bug -- currently returns all the private keys in our cache, which includes decryption
+	 * keys. Replace with getPrivateKeys with getMyPrivateKeys once we're sure it won't cause trouble.
 	 */
 	@Override
 	public PrivateKey [] getSigningKeys() {
 		return _privateKeyCache.getPrivateKeys();
+	}
+	
+	/**
+	 * Get the public key digests corresponding to our available signing keys
+	 * 
+	 */
+	@Override
+	public PublisherPublicKeyDigest [] getAvailableIdentities() {
+		PrivateKey [] pks = _privateKeyCache.getMyPrivateKeys();
+		PublisherPublicKeyDigest [] ids = new PublisherPublicKeyDigest[pks.length];
+		int i=0;
+		for (PrivateKey pk : pks) {
+			PublisherPublicKeyDigest ppkd = _privateKeyCache.getPublicKeyIdentifier(pk);
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "KeyManager: have identity {0}", ppkd);
+			}
+			ids[i++] = ppkd; // a little dangerous; with low probability could be null, which
+				// caller might not expect.
+		}
+		return ids;
 	}
 	
 	/**
@@ -992,7 +1014,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PrivateKey getSigningKey(PublisherPublicKeyDigest publisher) {
-		if( Log.isLoggable(Log.FAC_KEYS, Level.FINER) )
+		if (Log.isLoggable(Log.FAC_KEYS, Level.FINER) )
 			Log.finer(Log.FAC_KEYS, "getSigningKey: retrieving key: " + publisher);
 		if (null == publisher)
 			return null;

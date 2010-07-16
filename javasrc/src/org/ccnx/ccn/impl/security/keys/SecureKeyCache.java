@@ -44,8 +44,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * A container for our private keys and other secret key 
  * material that we have retrieved (e.g. from access control).
  * 
- * TODO: provide mechanism to save and reload at least the non-keystore keys
- * as encrypted CCNx content.
+ * TODO: finish mechanism that saves the key cache between runs.
  */
 public class SecureKeyCache implements Serializable {
 	
@@ -73,6 +72,7 @@ public class SecureKeyCache implements Serializable {
 	/**
 	 * Constructor that loads keys from a KeyManager
 	 * @param keyManagerToLoadFrom the key manager
+	 * TODO bug -- should merge key caches, not just load signing keys.
 	 */
 	public SecureKeyCache(KeyManager keyManagerToLoadFrom) {
 		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
@@ -233,6 +233,9 @@ public class SecureKeyCache implements Serializable {
 		return null;
 	}
 	
+	/**
+	 * Returns all private keys in cache, loaded from keystore or picked up during operation.
+	 */
 	public PrivateKey [] getPrivateKeys() {
 		ArrayList<PrivateKey> allKeys = new ArrayList<PrivateKey>();
 		
@@ -243,7 +246,10 @@ public class SecureKeyCache implements Serializable {
 		return allKeys.toArray(pkarray);
 	}
 	
-	
+	public PrivateKey [] getMyPrivateKeys() {
+		PrivateKey [] pkarray = new PrivateKey[_myKeyMap.size()];
+		return _myKeyMap.values().toArray(pkarray);
+	}
 	
 	private ContentName getContentName(byte[] ident) {
 		for (ContentName name : _nameKeyMap.keySet()) {

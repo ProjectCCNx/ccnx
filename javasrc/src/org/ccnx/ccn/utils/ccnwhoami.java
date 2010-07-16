@@ -19,24 +19,24 @@ package org.ccnx.ccn.utils;
 
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
-import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
-import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.io.content.Link.LinkObject;
-import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
- * Command line utility for making links. Currently does not take authenticator
- * information, just target name.
- * TODO add ability to specify authenticators
+ * Command line utility for listing stored identity data (key locators). These
+ * are currently stored insecurely: TODO store as signed data.
+ * 
+ * NOTE: We don't actually expect users to use this tool to view their identities; their
+ * identities (even in the simple sense in which we use that term now) will usually be managed
+ * by software and users never see them. This tool is for testing and debugging.
  */
-public class ccnlink {
+public class ccnwhoami {
 
 	public static void usage() {
-		System.err.println("usage: ccnlink [-q] [-r] <link uri> <link target uri> [-as <pathToKeystore> [-name <friendly name]] (-q == quiet, -r == raw)");
+		System.err.println("usage: ccnwhoami [-q] [-as <pathToKeystore> [-name <friendly name]] (-q == quiet)");
 	}
 	/**
 	 * @param args
@@ -44,40 +44,42 @@ public class ccnlink {
 	public static void main(String[] args) {
 		try {
 			
+			if ((args.length >= 1) && (args[0].equals("-h"))) {
+				usage();
+				return;
+			}
+			
 			int offset = 0;
 			if ((args.length > 1) && (args[0].equals("-q"))) {
 				Log.setDefaultLevel(Level.WARNING);
 				offset++;
 			}
-			
-			SaveType type = SaveType.REPOSITORY;
-			if ((args.length-offset > 1) && (args[0].equals("-r"))) {
-				type = SaveType.RAW;	
-				offset++;
-			}
 
-			if (args.length-offset < 2) {
+			if (args.length-offset > 4) {
 				usage();
 				return;
 			}
 
-			ContentName linkName = ContentName.fromURI(args[offset++]);
-			ContentName targetName = ContentName.fromURI(args[offset++]);
-
-			Tuple<Integer, CCNHandle> tuple = CreateUserData.handleAs(args, offset);
+			Tuple<Integer, KeyManager> tuple = CreateUserData.keyManagerAs(args, offset);
 
 			// Can also use command line system properties and environment variables to
 			// point this handle to the correct user.
-			CCNHandle handle = ((null == tuple) || (null == tuple.second())) ? CCNHandle.getHandle() : tuple.second();
+			KeyManager km = ((null == tuple) || (null == tuple.second())) ? KeyManager.getDefaultKeyManager() : tuple.second();
 
-			LinkObject theLink = new LinkObject(linkName, new Link(targetName), type, handle);
-			theLink.save();
-			theLink.close();
+			PublisherPublicKeyDigest [] ids = km.getAvailableIdentities();
+			KeyLocator kl = null;
 			
-			System.out.println("Created link: " + theLink);
+			System.out.println("Key ID					Identity");
+			for (int i=0; i < ids.length; ++i) {
+				kl = km.getStoredKeyLocator(ids[i]);
+				if (null != kl) {
+					System.out.println(ids[i] + "					" + kl);
+				} else {
+					System.out.println(ids[i]);
+				}
+			}
 			
-			handle.close();
-			handle.keyManager().close();
+			km.close();
 			KeyManager.closeDefaultKeyManager();
 
 		} catch (Exception e) {

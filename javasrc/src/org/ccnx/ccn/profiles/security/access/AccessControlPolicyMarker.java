@@ -41,9 +41,21 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
 /**
- * Used to mark the top level in a namespace under access control
- * This class currently holds no data - it will be extended to hold access control 
- * configuration information for that namespace.
+ * We identify policies that apply to a given namespace (subtree of the name tree) by
+ * placing policy markers, as data, into that namespace. (Questions of how to authenticate
+ * these markers is up to the policy and namespace; they are signed as regular CCNx data
+ * and authentication policies can be based on signer information.)
+ * 
+ * This class specifies a policy marker used to indicat that a given namespace is under
+ * access control, and to specify what access control scheme should be used to protect
+ * and retrieve data in that namespace (questions of whether organizing access control
+ * by namespace are left to future work). This object contains a small amount of data --
+ * the access control profile used for the namespace (a string, used to index into a
+ * map of classes implementing that policy string), a set of ParameterizedName, defining
+ * mappings from strings to names within this namespace of interest to a given access control
+ * scheme (e.g. a prefix where access control groups might be defined, etc), and then a
+ * KeyValueSet of other, arbitrary parameters, for use by an access control scheme to store
+ * additional policy information that it requires.
  */
 public class AccessControlPolicyMarker extends GenericXMLEncodable implements PolicyMarker {
 	

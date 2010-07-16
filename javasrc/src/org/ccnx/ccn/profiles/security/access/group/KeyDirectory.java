@@ -61,8 +61,19 @@ import org.ccnx.ccn.protocol.PublisherID;
 
 
 /**
- * A key directory holds a set of keys, wrapped under different
- * target keys. It is implemented as a set of wrapped key objects
+ * A key directory holds a key (secret or private), distributed to entities
+ * (represented by public keys), by a set of key blocks each of which 
+ * wrapping that key under different target keys. If the key to be distributed
+ * is a private key, it is first wrapped under a nonce key, and that nonce
+ * key is stored encrypted under the keys of the receiving entitites. 
+ * 
+ * Essentially a KeyDirectory is a software wrapper for managing a set of content
+ * stored in CCNx (writing and reading portions of that content); that content
+ * consists of a set of key blocks used to give one key to a number of target
+ * entities.
+ * 
+ * Key blocks
+ * are implemented as a set of wrapped key objects
  * all stored in one directory. Wrapped key objects are typically short
  * and only need one segment. The directory the keys are stored in
  * is prefixed by a version, to allow the contents to evolve. In addition
@@ -70,12 +81,17 @@ import org.ccnx.ccn.protocol.PublisherID;
  * or subsequent versions of this key is kept. A particular wrapped key
  * entry's name would look like:
  *
- * <pre>.../v123/xxx/s0</pre>
+ * <pre><keyname>/#version/xxx/s0</pre>
  * <br>Where xxx is the identifier of the wrapped key.
  *
  * This structure is used for representing both node keys and group
  * (private) keys. We encapsulate functionality to walk such a directory
  * and find our target key here.
+ * 
+ * We also store links providing additional information about how to retrieve
+ * this key -- e.g. a link from a given group or principal name to a key ID-named
+ * block, in case a group member does not know an earlier version of their
+ * group public key. Or links to keys this key supercedes or precedes. 
  * 
  * Our model is that higher-level function may use this interface
  * to try many ways to get a given key. Some will work (access is

@@ -33,6 +33,12 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
+ * This is a sub-Profile of AccessControlProfile defining naming conventions used in a group-based
+ * access control scheme (where one can create Groups of users and other groups, and give rights to
+ * nametrees based on group membership). 
+ * For descriptions of data, and how this access control system functions, see the separate CCNx Access
+ * Control Specifications Document.
+ *
  * This class specifies how a number of access control elements are named:
  * - users, and their keys
  * - groups, and their keys

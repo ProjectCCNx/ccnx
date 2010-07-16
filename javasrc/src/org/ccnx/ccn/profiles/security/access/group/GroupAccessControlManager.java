@@ -73,6 +73,19 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
+ * This class implements a basic Group-based access control scheme. For full details,
+ * see the CCNx Access Control Specification. Management of Groups and Group members is
+ * handled by the GroupManager and Group classes. This class handles management and updating
+ * of access control (node) keys stored in the name tree, and any operation that requires 
+ * crawling that tree -- looking at more than one node at once. Operations on single nodes
+ * are handled by individual component classes (e.g. NodeKey).
+ * 
+ * TODO refactor this class and its use slightly; right now it is capable of handling multpile
+ * group and user namespaces, but it itself is limited to a single content namespace. This
+ * means that we have multiple GACMs, one per protected namespace; we should refactor
+ * so that we have one ACM of each type, and each manages multiple namespaces. This is
+ * not a large change, and might be more efficient.
+ * 
  * This class is used in updating node keys and by #getEffectiveNodeKey(ContentName).
  * To achieve this, we walk up the tree for this node. At each point, we check to
  * see if a node key exists. If one exists, we decrypt it if we know an appropriate

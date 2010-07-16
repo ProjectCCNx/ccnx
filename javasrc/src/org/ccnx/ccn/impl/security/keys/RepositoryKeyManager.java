@@ -37,7 +37,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * you create a keystore. After that, you can use a standard NetworkKeyManager,
  * as long as the data is still in the repo.
  */
-
 public class RepositoryKeyManager extends NetworkKeyManager {
 
 	/** Constructor
