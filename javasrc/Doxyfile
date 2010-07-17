@@ -241,7 +241,7 @@ PERL_PATH              = /usr/bin/perl
 #---------------------------------------------------------------------------
 MSCGEN_PATH            = 
 HIDE_UNDOC_RELATIONS   = NO
-HAVE_DOT               = YES
+HAVE_DOT               =           NO
 DOT_FONTNAME           = FreeSans
 DOT_FONTPATH           = 
 DOT_FONTSIZE           = 7
