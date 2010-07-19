@@ -555,7 +555,7 @@ public class VersioningProfile implements CCNProfile {
 		}
 		
 		int attempts = 0;
-		long attemptTimeout = SystemConfiguration.CCND_GLV_ATTEMPT_TIMEOUT;
+		long attemptTimeout = SystemConfiguration.GLV_ATTEMPT_TIMEOUT;
 		if (timeout == SystemConfiguration.NO_TIMEOUT) {
 			//the timeout sent in is equivalent to null...  try till we don't hear something back
 			//we will reset the remaining time after each return...
