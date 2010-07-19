@@ -185,9 +185,10 @@ public class SystemConfiguration {
 	/**
 	 * System default timeout
 	 */
-	protected static final String CCND_TIMEOUT_PROPERTY = "org.ccnx.default.timeout";
-	public final static int CCND_TIMEOUT_DEFAULT = EXTRA_LONG_TIMEOUT;
-	public static int CCND_DEFAULT_TIMEOUT = CCND_TIMEOUT_DEFAULT;
+	protected static final String CCNX_TIMEOUT_PROPERTY = "org.ccnx.default.timeout";
+	protected final static String CCNX_TIMEOUT_ENVIRONMENT_VARIABLE = "CCNX_TIMEOUT";
+	public final static int CCNX_TIMEOUT_DEFAULT = EXTRA_LONG_TIMEOUT;
+	public static int CCNX_DEFAULT_TIMEOUT = CCNX_TIMEOUT_DEFAULT;
 	
 	/**
 	 * GetLatestVersion attempt timeout
@@ -196,14 +197,22 @@ public class SystemConfiguration {
 	 * when that bug is found and fixed, this can be reduced back to the SHORT_TIMEOUT.
 	 * long attemptTimeout = SystemConfiguration.SHORT_TIMEOUT;
 	 */
-	protected static final String CCND_GLV_TIMEOUT_PROPERTY = "org.ccnx.glv.timeout";
-	public final static int CCND_GLV_TIMEOUT_DEFAULT = MEDIUM_TIMEOUT;
-	public static int CCND_GLV_ATTEMPT_TIMEOUT = CCND_GLV_TIMEOUT_DEFAULT;
+	protected static final String GLV_TIMEOUT_PROPERTY = "org.ccnx.glv.timeout";
+	protected final static String GLV_TIMEOUT_ENVIRONMENT_VARIABLE = "GLV_TIMEOUT";
+	public final static int GLV_TIMEOUT_DEFAULT = MEDIUM_TIMEOUT;
+	public static int GLV_ATTEMPT_TIMEOUT = GLV_TIMEOUT_DEFAULT;
+	
+	/**
+	 * "Short timeout" that can be set
+	 */
+	protected static final String SETTABLE_SHORT_TIMEOUT_PROPERTY = "org.ccnx.short.timeout";
+	protected final static String SETTABLE_SHORT_TIMEOUT_ENVIRONMENT_VARIABLE = "SETTABLE_SHORT_TIMEOUT";
+	public static int SETTABLE_SHORT_TIMEOUT = SHORT_TIMEOUT;
 	
 	/**
 	 * Settable system default timeout.
 	 */
-	protected static int _defaultTimeout = CCND_TIMEOUT_DEFAULT;
+	protected static int _defaultTimeout = CCNX_TIMEOUT_DEFAULT;
 	
 	/**
 	 * Get system default timeout.
@@ -347,7 +356,7 @@ public class SystemConfiguration {
 		
 		// Allow override of ccn default timeout.
 		try {
-			_defaultTimeout = Integer.parseInt(System.getProperty(CCND_TIMEOUT_PROPERTY, Integer.toString(CCND_TIMEOUT_DEFAULT)));
+			_defaultTimeout = Integer.parseInt(retrievePropertyOrEnvironmentVariable(CCNX_TIMEOUT_PROPERTY, CCNX_TIMEOUT_ENVIRONMENT_VARIABLE, Integer.toString(CCNX_TIMEOUT_DEFAULT)));
 //			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ccnd default timeout must be an integer.");
@@ -363,12 +372,21 @@ public class SystemConfiguration {
 			throw e;
 		}
 		
-		// Allow override of getLatestVersion attemp timeout.
+		// Allow override of getLatestVersion attempt timeout.
 		try {
-			CCND_GLV_ATTEMPT_TIMEOUT = Integer.parseInt(System.getProperty(CCND_GLV_TIMEOUT_PROPERTY, Integer.toString(CCND_GLV_TIMEOUT_DEFAULT)));
+			GLV_ATTEMPT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(GLV_TIMEOUT_PROPERTY, GLV_TIMEOUT_ENVIRONMENT_VARIABLE, Integer.toString(GLV_TIMEOUT_DEFAULT)));
 //			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
 		} catch (NumberFormatException e) {
-			System.err.println("The ccnd op timeout must be an integer.");
+			System.err.println("The getlastestversion attempt timeout must be an integer.");
+			throw e;
+		}
+		
+		// Allow override of settable short timeout.
+		try {
+			SETTABLE_SHORT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(SETTABLE_SHORT_TIMEOUT_PROPERTY, SETTABLE_SHORT_TIMEOUT_ENVIRONMENT_VARIABLE, Integer.toString(SHORT_TIMEOUT)));
+//			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The settable short timeout must be an integer.");
 			throw e;
 		}
 
