@@ -61,7 +61,7 @@ public class LibraryTestBase extends CCNTestBase {
 	public static int count = 55;
 	//public static int count = 5;
 	public static Random rand = new Random();
-	public static final int WAIT_DELAY = 50000;
+	public static final int WAIT_DELAY = 200000;
 	
 	protected static final String BASE_NAME = "/test/BaseLibraryTest/";
 	protected static ContentName PARENT_NAME = null;
