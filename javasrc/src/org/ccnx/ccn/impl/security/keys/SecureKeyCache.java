@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.impl.security.keys;
 
+import java.io.Serializable;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -24,14 +25,16 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.X509Certificate;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -41,11 +44,15 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * A container for our private keys and other secret key 
  * material that we have retrieved (e.g. from access control).
  * 
- * TODO: provide mechanism to save and reload at least the non-keystore keys
- * as encrypted CCNx content.
+ * TODO: finish mechanism that saves the key cache between runs.
  */
-public class SecureKeyCache {
+public class SecureKeyCache implements Serializable {
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 2652940059623137734L;
+
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 	
 	/** Map the digest of a key to the key. */
@@ -56,8 +63,6 @@ public class SecureKeyCache {
 	private TreeMap<byte [], PrivateKey> _privateKeyMap = new TreeMap<byte [], PrivateKey>(byteArrayComparator);
 	/** Map the digest of a private key to the digest of the corresponding public key. */
 	private TreeMap<byte [], byte []> _privateKeyIdentifierMap = new TreeMap<byte [], byte[]>(byteArrayComparator);
-	/** Map the digest of a key to its name */
-	private TreeMap<byte [], ContentName> _keyNameMap = new TreeMap<byte [], ContentName>(byteArrayComparator);
 	/** Map the name of a key to its digest */
 	private TreeMap<ContentName, byte []> _nameKeyMap = new TreeMap<ContentName, byte []>();
 	
@@ -67,6 +72,7 @@ public class SecureKeyCache {
 	/**
 	 * Constructor that loads keys from a KeyManager
 	 * @param keyManagerToLoadFrom the key manager
+	 * TODO bug -- should merge key caches, not just load signing keys.
 	 */
 	public SecureKeyCache(KeyManager keyManagerToLoadFrom) {
 		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
@@ -76,7 +82,7 @@ public class SecureKeyCache {
 			addMyPrivateKey(ppkd.digest(), pk);
 		}
 	}
-	
+		
 	/**
 	 * Load the private keys from a KeyStore.
 	 * @param keystore
@@ -140,9 +146,37 @@ public class SecureKeyCache {
 		}
 		return theKey;
 	}
+	
+	/**
+	 * Retrieve a key specified by its name.
+	 */
+	public Key getKey(ContentName desiredKeyName) {
+		byte [] keyID = _nameKeyMap.get(desiredKeyName);
+		if (null != keyID) {
+			return getKey(keyID);
+		}
+		return null;
+	}
+	
+	/**
+	 * Try both in one call.
+	 */
+	public Key getKey(ContentName desiredKeyName, byte [] desiredKeyID) {
+		Key targetKey = null;
+		
+		if (null != desiredKeyID) {
+			targetKey = getKey(desiredKeyID);
+		}
+		
+		if ((null == targetKey) && (null != desiredKeyName)) {
+			targetKey = getKey(desiredKeyName);
+		}
+		return targetKey;
+	}
 
 	/**
-	 * Checks whether we have a record of a key specified by its digest.
+	 * Checks whether we have a record of a key specified by its digest, or in the case
+	 * of a private key, the digest of the corresponding public key.
 	 * @param keyIdentifier the key digest.
 	 * @return
 	 */
@@ -164,24 +198,6 @@ public class SecureKeyCache {
 		if (_nameKeyMap.containsKey(keyName))
 			return true;
 		return false;
-	}
-
-	/**
-	 * Returns the name of a key specified by its digest
-	 * @param keyIdentifier the digest of the key.
-	 * @return the name of the key.
-	 */
-	public ContentName getNameForKey(byte [] keyIdentifier) {
-		return _keyNameMap.get(keyIdentifier);
-	}
-	
-	/**
-	 * Get the name of a specified key
-	 * @param key the key
-	 * @return the name
-	 */
-	public ContentName getNameForKey(Key key) {
-		return getNameForKey(getKeyIdentifier(key));
 	}
 	
 	/**
@@ -209,25 +225,58 @@ public class SecureKeyCache {
 		return key;
 	}
 	
-	public PrivateKey [] getPrivateKeys() {
-		Collection<PrivateKey> myKeys = _myKeyMap.values();
-		myKeys.addAll(_privateKeyMap.values());
-		PrivateKey [] pkarray = new PrivateKey[myKeys.size()];
-		return myKeys.toArray(pkarray);
+	public PrivateKey getPrivateKey(ContentName desiredKeyName) {
+		byte [] keyID = _nameKeyMap.get(desiredKeyName);
+		if (null != keyID) {
+			return getPrivateKey(keyID);
+		}
+		return null;
 	}
 	
 	/**
+	 * Returns all private keys in cache, loaded from keystore or picked up during operation.
+	 */
+	public PrivateKey [] getPrivateKeys() {
+		ArrayList<PrivateKey> allKeys = new ArrayList<PrivateKey>();
+		
+		allKeys.addAll(_myKeyMap.values());
+		allKeys.addAll(_privateKeyMap.values());
+		
+		PrivateKey [] pkarray = new PrivateKey[allKeys.size()];
+		return allKeys.toArray(pkarray);
+	}
+	
+	public PrivateKey [] getMyPrivateKeys() {
+		PrivateKey [] pkarray = new PrivateKey[_myKeyMap.size()];
+		return _myKeyMap.values().toArray(pkarray);
+	}
+	
+	private ContentName getContentName(byte[] ident) {
+		for (ContentName name : _nameKeyMap.keySet()) {
+			if (byteArrayComparator.compare(ident, _nameKeyMap.get(name)) == 0) {
+				return name;
+			}
+		}
+		return null;
+	}
+	
+	
+	/**
 	 * Records a private key and the name and digest of the corresponding public key.
-	 * @param keyName the name of the public key
+	 * @param keyName a name under which to look up the private key
 	 * @param publicKeyIdentifier the digest of the public key
 	 * @param pk the private key
 	 */
-	public void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
+	public synchronized void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyMap.put(publicKeyIdentifier, pk);
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		if (null != keyName) {
-			_keyNameMap.put(publicKeyIdentifier, keyName);
 			_nameKeyMap.put(keyName, publicKeyIdentifier);
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding private key {0} with name {1}",
+					DataUtils.printHexBytes(publicKeyIdentifier), keyName);
+		} else {
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding private key {0}",
+					DataUtils.printHexBytes(publicKeyIdentifier));			
 		}
 	}
 
@@ -236,9 +285,11 @@ public class SecureKeyCache {
 	 * @param publicKeyIdentifier the digest of the public key.
 	 * @param pk the corresponding private key.
 	 */
-	public void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
+	public synchronized void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		_myKeyMap.put(publicKeyIdentifier, pk);
+		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding my private key {0}",
+				DataUtils.printHexBytes(publicKeyIdentifier));			
 	}
 	
 	/**
@@ -246,12 +297,16 @@ public class SecureKeyCache {
 	 * @param name the name of the key.
 	 * @param key the key.
 	 */
-	public void addKey(ContentName name, Key key) {
+	public synchronized void addKey(ContentName name, Key key) {
 		byte [] id = getKeyIdentifier(key);
 		_keyMap.put(id, key);
 		if (null != name) {
-			_keyNameMap.put(id, name);
 			_nameKeyMap.put(name, id);
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} with name {1} of type (2)",
+					DataUtils.printHexBytes(id), name, key.getClass().getName());
+		} else {
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} of type {1}",
+					DataUtils.printHexBytes(id), key.getClass().getName());			
 		}
 	}
 	
@@ -268,4 +323,153 @@ public class SecureKeyCache {
 		// Works on symmetric and public.
 		return CCNDigestHelper.digest(key.getEncoded());
 	}
+	
+	/**
+	 * Return a total count of keys in this cache.
+	 * @return
+	 */
+	public int size() {
+		int count = _keyMap.size();
+		count += _myKeyMap.size();
+		count += _privateKeyMap.size();
+		return count;
+	}
+	
+	/**
+	 * Merges the SecureKeyCache with a given SecureKeyCache. The original SecureKeyCache
+	 * dominates, i.e. the merged cache will contain the names in the original cache if there
+	 * are any conflicts 
+	 * 
+	 * @param cache the SecureKeyCache to merge with
+	 */
+	public synchronized void merge(SecureKeyCache cache) {
+		
+		/**
+		_keyMap.putAll(cache._keyMap);
+		_myKeyMap.putAll(cache._myKeyMap);
+		_privateKeyMap.putAll(cache._privateKeyMap);
+		_privateKeyIdentifierMap.putAll(cache._privateKeyIdentifierMap);
+		
+		Collection<byte[]> digests = cache._nameKeyMap.values();
+		Iterator<byte[]> it = digests.iterator();
+		while (it.hasNext()) {
+			
+			if (this._nameKeyMap.containsValue(it.next())) {
+				it.remove();
+			}
+		}
+		
+		_nameKeyMap.putAll(cache._nameKeyMap);
+		*/
+		 
+		// check that all my private keys are already in cache
+		for (PrivateKey pkey : cache._myKeyMap.values()) {
+			byte[] identifier = cache.getPublicKeyIdentifier(pkey).digest();
+			if (!this._myKeyMap.containsKey(identifier)) {
+				this.addMyPrivateKey(identifier, pkey);
+			}
+		}
+		
+		// check that all other private keys are already in cache
+		for (PrivateKey pkey : cache._privateKeyMap.values()) {
+			byte[] identifier = cache.getPublicKeyIdentifier(pkey).digest();
+			ContentName name = cache.getContentName(identifier);
+			if (!this._privateKeyMap.containsKey(identifier)) {	
+				this.addPrivateKey(name, identifier, pkey);
+			}
+			else {
+				if (this.getContentName(identifier) == null) {
+					_nameKeyMap.put(name, identifier);
+				}
+			}
+		}
+		
+		// check that all symmetric keys are already in cache
+		for (Key key : cache._keyMap.values()) {
+			byte[] identifier = getKeyIdentifier(key);
+			ContentName name = cache.getContentName(identifier);
+			if (!this.containsKey(identifier)) {	
+				this.addKey(name, key);
+			}
+			else {
+				if (this.getContentName(identifier) == null) {
+					_nameKeyMap.put(name, identifier);
+				}
+			}
+		}
+			
+	}
+	
+	
+	/**
+	 * Debugging utility to print the contents of the secureKeyCache
+	 */
+	public void printContents() {
+		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: {0} keys in _keyMap ", _keyMap.size());
+		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: {0} keys in _myKeyMap ", _myKeyMap.size());
+		for (byte[] b: _myKeyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: myKeyMap contains key with hash {0}", DataUtils.printHexBytes(b));
+		}
+		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: {0} keys in _privateKeyMap ", _privateKeyMap.size());
+		for (ContentName cn: _nameKeyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: privateKeyMap contains a key with name {0} and hash {1}", 
+					cn, DataUtils.printHexBytes(_nameKeyMap.get(cn)));
+		}
+		
+		Log.info(Log.FAC_ACCESSCONTROL, "Dumping _keyMap"); 
+		for (byte [] keyHash : _keyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "  KeyID: {0}", DataUtils.printHexBytes(keyHash));
+		}
+		
+		Log.info(Log.FAC_ACCESSCONTROL, "Dumping _myKeyMap"); 
+		for (byte [] keyHash : _myKeyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "  KeyID: {0}", DataUtils.printHexBytes(keyHash));
+		}
+		
+		Log.info(Log.FAC_ACCESSCONTROL, "Dumping _privateKeyMap"); 
+		for (byte [] keyHash : _privateKeyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "  KeyID: {0}", DataUtils.printHexBytes(keyHash));
+		}
+	}
+	
+	/**
+	 * Make sure everything in here is Serializable.
+	 * @return
+	 */
+	public boolean validateForWriting() {
+		boolean valid = true;
+		for (Key key : _keyMap.values()) {
+			if (!(key instanceof Serializable)) {
+				if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
+					Log.warning(Log.FAC_KEYS, "Cannot serialize key of type {0}: {1}", key.getClass().getName(),
+							key);
+				}
+				valid = false;
+			}
+		}
+		
+		for (Key key : _myKeyMap.values()) {
+			if (!(key instanceof Serializable)) {
+				if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
+					Log.warning(Log.FAC_KEYS, "Cannot serialize key of type {0}: {1}", key.getClass().getName(),
+							key);
+				}
+				valid = false;
+			}
+		}
+		
+		for (Key key : _privateKeyMap.values()) {
+			if (!(key instanceof Serializable)) {
+				if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
+					Log.warning(Log.FAC_KEYS, "Cannot serialize key of type {0}: {1}", key.getClass().getName(),
+							key);
+				}
+				valid = false;
+			}
+		}
+
+		return valid;
+
+	}
+
 }

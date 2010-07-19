@@ -69,7 +69,10 @@ main(int argc, char **argv)
                 content_only = 1;
                 break;
             case 'v':
-                resolve_version = 1;
+                if (resolve_version == 0)
+                    resolve_version = CCN_V_HIGHEST;
+                else
+                    resolve_version = CCN_V_HIGH;
                 break;
             case 'h':
             default:
@@ -111,8 +114,8 @@ main(int argc, char **argv)
         ccn_charbuf_append_closer(templ); /* </Interest> */
     }
     resultbuf = ccn_charbuf_create();
-    if (resolve_version) {
-        res = ccn_resolve_version(h, name, CCN_V_HIGHEST, 500);
+    if (resolve_version != 0) {
+        res = ccn_resolve_version(h, name, resolve_version, 500);
         if (res >= 0) {
             ccn_uri_append(resultbuf, name->buf, name->length, 1);
             fprintf(stderr, "== %s\n",

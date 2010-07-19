@@ -32,14 +32,19 @@ import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
+import org.ccnx.ccn.io.content.LocalCopyListener;
+import org.ccnx.ccn.io.content.LocalCopyWrapper;
+import org.ccnx.ccn.io.content.UpdateListener;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.ccnx.ccn.test.io.content.CCNNetworkObjectTest.CounterListener;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -77,7 +82,7 @@ public class CCNNetworkObjectTestRepo {
 	static Collection big;
 	static CCNHandle handle;
 	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
-		
+	
 	static void setupNamespace(ContentName name) throws IOException {
 	}
 	
@@ -332,6 +337,24 @@ public class CCNNetworkObjectTestRepo {
 		}
 		Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 		Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
+		
+		// Sleep for a while and see how fast the interests come. Should be only 2 interests.
+		System.out.println("Sleeping, count background interests.");
+		long time = System.currentTimeMillis();
+		Thread.sleep(2000);
+		long elapsed = System.currentTimeMillis() - time;
+		long count = (elapsed/4000) + 1;
+		System.out.println("Slept " + elapsed/1000.0 + " seconds, should have been " + count + " interests.");
+		
+		CCNTime t3 = saveAndLog("Third string", c2, null, "Here is the third string.");
+		if (!c1.getVersion().equals(t3)) {
+			synchronized (c1) {
+				c1.wait(5000);
+			}
+		}
+		Assert.assertEquals("c1 update 3", c1.getVersion(), c2.getVersion());
+		Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
+		
 		c1.cancelInterest();
 	}
 	
@@ -419,6 +442,138 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertEquals(so.string(), sowrite.string());
 		Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
 	}
+	
+	@Test
+	public void testUpdateListener() throws Exception {
+		
+		SaveType saveType = SaveType.REPOSITORY;
+		CCNHandle writeHandle = CCNHandle.open();
+		CCNHandle readHandle = CCNHandle.open();
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateListener"), 
+										stringObjName);
+		
+		CCNStringObject writeObject = 
+			new CCNStringObject(testName, "Something to listen to.", saveType, writeHandle);
+		writeObject.save();
+		
+		CounterListener ourListener = new CounterListener();
+		CCNStringObject readObject = 
+			new CCNStringObject(testName, null, null, readHandle);
+		readObject.addListener(ourListener);
+		boolean result = readObject.update();
+		
+		Assert.assertTrue(result);
+		Assert.assertTrue(ourListener.getCounter() == 1);
+		
+		readObject.updateInBackground();
+		
+		writeObject.save("New stuff! New stuff!");
+		synchronized(readObject) {
+			if (ourListener.getCounter() == 1)
+				readObject.wait();
+		}
+		// For some reason, we're getting two updates on our updateInBackground...
+		Assert.assertTrue(ourListener.getCounter() > 1);
+	}
+
+	@Test
+	public void testLocalCopyWrapper() throws Exception {
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testLocalCopyWrapper"), collectionObjName);
+		CCNStringObject so = new CCNStringObject(testName, handle);
+		LocalCopyWrapper wo = new LocalCopyWrapper(so);
+		Assert.assertFalse(wo.available());
+		class Record { boolean callback = false; }
+		Record record = new Record();
+		
+		class Listener implements UpdateListener {
+			Record _rec;
+			
+			public Listener(Record r) {
+				_rec = r;
+			}
+			public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
+				synchronized (_rec) {
+					_rec.callback = true;
+					_rec.notifyAll();
+				}
+			}
+		};
+		
+		// ask for it in background
+		wo.updateInBackground(false, new Listener(record));
+		
+		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write", SaveType.RAW, CCNHandle.open());
+		setupNamespace(testName);
+		saveAndLog("Delayed write", sowrite, null, "Now we write");
+		wo.waitForData();
+		Assert.assertTrue(wo.available());
+		Assert.assertEquals(((CCNStringObject)wo.object()).string(), sowrite.string());
+		Assert.assertEquals(wo.getVersionedName(), sowrite.getVersionedName());
+		
+		synchronized (record) {
+			if (!record.callback) {
+				record.wait(5000);
+			}
+			Assert.assertEquals(true, record.callback);
+		}
+		// Should be in the repo by now
+		Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+	}
+	
+	@Test
+	public void testLocalCopyListener() throws Exception {
+		
+		// The local copy wrapper API isn't applicable in very many situations. Try this instead.
+		
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testLocalCopyListener"), collectionObjName);
+		
+		LocalCopyListener copyListener = new LocalCopyListener();
+		
+		// Would like to test functionality that arranges for existing version to get written
+		// to the repo, but can't do that without a flosser or using a flow server.
+		CCNStringObject so = new CCNStringObject(testName, handle);
+		so.addListener(copyListener);
+		
+		Assert.assertFalse(so.available());
+		
+		class Record { boolean callback = false; }
+		Record record = new Record();
+		
+		class Listener implements UpdateListener {
+			Record _rec;
+			
+			public Listener(Record r) {
+				_rec = r;
+			}
+			public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
+				synchronized (_rec) {
+					_rec.callback = true;
+					_rec.notifyAll();
+				}
+			}
+		};
+		
+		// ask for it in background
+		so.updateInBackground(false, new Listener(record));
+		
+		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write", SaveType.RAW, CCNHandle.open());
+		setupNamespace(testName);
+		saveAndLog("Delayed write", sowrite, null, "Now we write");
+		so.waitForData();
+		Assert.assertTrue(so.available());
+		Assert.assertEquals(so.string(), sowrite.string());
+		Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
+		
+		synchronized (record) {
+			if (!record.callback) {
+				record.wait(5000);
+			}
+			Assert.assertEquals(true, record.callback);
+		}
+		// Should be in the repo by now
+		Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+	}
+
 
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
 		CCNTime oldVersion = ecd.getVersion();

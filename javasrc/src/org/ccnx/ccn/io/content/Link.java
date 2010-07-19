@@ -30,9 +30,11 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
@@ -195,7 +197,19 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	public ContentName targetName() { return _targetName; }
 	public String targetLabel() { return _targetLabel; }
 	public LinkAuthenticator targetAuthenticator() { return _targetAuthenticator; }
-		
+	
+	public void setTargetLabel(String label) {
+		_targetLabel = label;
+	}
+	
+	public void setTargetName(ContentName name) {
+		_targetName = name;
+	}
+	
+	public void setTargetAuthenticator(LinkAuthenticator authenticator) {
+		_targetAuthenticator = authenticator;
+	}
+	
 	/**
 	 * A stab at a dereference() method. Dereferencing is not well-defined in this
 	 * general setting -- we don't know what we'll find down below this name. A link may
@@ -219,6 +233,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		
 		// getLatestVersion will return the latest version of an unversioned name, or the
 		// latest version after a given version. So if given a specific version, get that one.
+		// TODO -- verify, use non-default verifier.
 		if (VersioningProfile.hasTerminalVersion(targetName())) {
 			return handle.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
 		}
@@ -231,7 +246,14 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			return result;
 		}
 		// Alright, last shot -- resolve link to unversioned data.
-		return handle.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
+		Interest unversionedInterest = SegmentationProfile.anySegmentInterest(targetName(),
+				(null != targetAuthenticator()) ? targetAuthenticator().publisher() : null);
+
+		result = handle.get(unversionedInterest, timeout);
+		if ((null != result) && !SegmentationProfile.isSegment(result.name())) {
+			return null;
+		}
+		return result;
 	}
 	
 	@Override

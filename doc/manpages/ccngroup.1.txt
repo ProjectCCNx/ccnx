@@ -1,0 +1,73 @@
+CCNGROUP(1)
+===========
+
+NAME
+----
+ccngroup - show and modify access control groups for access control of
+a CCNx content namespace.
+
+SYNOPSIS
+--------
+*ccngroup* [-as 'keystore'] -list
+
+*ccngroup* [-as 'keystore'] -listmembers 'groupFriendlyName'
+
+*ccngroup* [-as 'keystore'] -create 'groupFriendlyName' 'groupMember'...
+
+*ccngroup* [-as 'keystore'] -delete 'groupFriendlyName'
+
+*ccngroup* [-as 'keystore'] -add 'groupFriendlyName' 'groupMemberToAdd'...
+
+*ccngroup* [-as 'keystore'] -remove 'groupFriendlyName' 'groupMemberToRemove'...
+
+DESCRIPTION
+-----------
+The *ccngroup* utility lists or modifies access control groups
+published with CCNx. Groups may be referenced in access control lists
+(ACLs) under the CCNx access control profile.
+
+Groups have short, human-readable "friendly" names by which they are identified
+with this tool, although the internal identifier for a group
+is a digest of a public key.
+
+OPTIONS
+-------
+*-as* 'pathToKeystore'::
+	Specifies a file path to a keystore; this is used for signing any
+        newly-created content.  Applicable to all operations.  The default
+        keystore is used if this is not specified.
+
+*-list*::
+	List the groups that exist.
+
+*-listmembers* 'groupFriendlyName'::
+	List the members of the group 'groupFriendlyName'.
+
+*-create* 'groupFriendlyName' 'groupMember'...::
+	Create the group named 'groupFriendlyName' with initial
+	members 'groupMember'...
+
+*-delete* 'groupFriendlyName'::
+	Delete the group named 'groupFriendlyName'.
+
+*-add* 'groupFriendlyName' 'groupMemberToAdd'...::
+        Add the 'groupMemberToAdd'... members to the group 'groupFriendlyName'.
+       	
+*-remove* 'groupFriendlyName' 'groupMemberToRemove'...::
+	Remove the 'groupMemberToRemove'... members from the group
+	'groupFriendlyName'.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; retrieval error)
+
+AUTHOR
+------
+Philippe Golle <pgolle@parc.com>
+
+
+

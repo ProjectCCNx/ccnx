@@ -27,7 +27,6 @@ import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
-import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
@@ -230,7 +229,7 @@ public class ccnacl {
 			
 			// Set access control policy marker	
 			ContentName profileName = ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING);
-			AccessControlPolicyMarker.create(domainPrefix, profileName, domainRootACL, parameterizedNames, null, SaveType.REPOSITORY, CCNHandle.open());
+			GroupAccessControlManager.create(domainPrefix, profileName, domainRootACL, parameterizedNames, null, SaveType.REPOSITORY, CCNHandle.open());
 		
 		} catch (Exception e) {
 			e.printStackTrace();

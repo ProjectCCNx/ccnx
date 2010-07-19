@@ -81,6 +81,10 @@ public class DigestHelper {
 		_md.update(content, offset, len);
 	}
 	
+	public void update(byte [] content) {
+		_md.update(content);
+	}
+	
 	/**
 	 * Completes the hash computation by performing final operations such as padding. 
 	 * The digest is reset after this call is made. 
@@ -268,7 +272,7 @@ public class DigestHelper {
 	 * @return the corresponding String.
 	 */
 	public static String printBytes(byte [] binaryObject, int radix) {
-		BigInteger bi = new BigInteger(1,binaryObject);
+		BigInteger bi = new BigInteger(binaryObject);
 		return bi.toString(radix);
 	}
 

@@ -12,9 +12,10 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-ANT = ant
+ANT = `command -v ant || echo echo SKIPPING ant`
 JAR = ccn.jar
-LIBS = $(JAR) lib/bcprov-jdk16-143.jar lib/kxml2-2.3.0.jar
+LIBS = $(JAR) lib/bcprov-jdk16-143.jar lib/kxml2-2.3.0.jar $(EXTRA_LIBS)
+EXTRA_LIBS = `find lib/bcprov-jdk15-143.jar -print 2>/dev/null`
 WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
                echo Skipping java build in $$(pwd -L) -    \
                     $(ANT) is not installed; "
@@ -51,7 +52,7 @@ uninstall:
 
 # Use ant to actually do the work for these targets
 jar clean test: _always
-	@type $(ANT) > /dev/null && $(ANT) -k $@ || $(WHINE)
+	$(ANT) -k $@
 
 test: test-alone
 test-alone: _always

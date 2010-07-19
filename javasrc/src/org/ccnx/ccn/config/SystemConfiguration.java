@@ -82,7 +82,7 @@ public class SystemConfiguration {
 	public static final int SHORT_TIMEOUT = 300;
 	
 	
-	public enum DEBUGGING_FLAGS {DEBUG_SIGNATURES, DUMP_DAEMONCMD, REPO_EXITDUMP};
+	public enum DEBUGGING_FLAGS {DEBUG_SIGN, DEBUG_VERIFY, DUMP_DAEMONCMD, REPO_EXITDUMP};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 
 	/**
@@ -257,7 +257,6 @@ public class SystemConfiguration {
 		}
 			
 		DEBUG_DATA_DIRECTORY = System.getProperty(DEBUG_DATA_DIRECTORY_PROPERTY, DEFAULT_DEBUG_DATA_DIRECTORY);
-		
 	}
 	
 	static {
@@ -411,6 +410,10 @@ public class SystemConfiguration {
 		setDebugFlag(debugFlag, true);
 	}
 	
+	public static void setDebugDataDirectory(String dir) {
+		DEBUG_DATA_DIRECTORY=dir;
+	}
+	
 	public static void outputDebugData(ContentName name, XMLEncodable data) {
 		try {
 			byte [] encoded = data.encode();
@@ -450,6 +453,46 @@ public class SystemConfiguration {
 			Log.warning("Exception attempting to log debug data for name: " + name.toString() + " " + e.getClass().getName() + ": " + e.getMessage());
 		}
 	}
+	
+	public static void outputDebugObject(File dataDir, String postfix, ContentObject object) {
+		// Output debug data under a given name.
+		try {	
+			if (!dataDir.exists()) {
+				if (!dataDir.mkdirs()) {
+					Log.warning("outputDebugData: Cannot create debug data directory: " + dataDir.getAbsolutePath());
+					return;
+				}
+			}
+			/*
+			File outputParent = new File(dataDir, object.name().toString());
+			if (!outputParent.exists()) {
+				if (!outputParent.mkdirs()) {
+					Log.warning("outputDebugData: cannot create data parent directory: " + outputParent);
+				}
+			}
+			*/
+			byte [] objectDigest = object.digest();
+			StringBuffer contentName = new StringBuffer(new BigInteger(1, objectDigest).toString(DEBUG_RADIX));
+			if (null != postfix) {
+				contentName = contentName.append(postfix);
+			}
+			contentName.append(".ccnb");
+			File outputFile = new File(dataDir, contentName.toString());
+			
+			Log.finest("Attempting to output debug data for name " + object.name().toString() + " to file " + outputFile.getAbsolutePath());
+			
+			FileOutputStream fos = new FileOutputStream(outputFile);
+			object.encode(fos);
+			fos.close();
+		} catch (Exception e) {
+			Log.warning("Exception attempting to log debug data for name: " + object.name().toString() + " " + e.getClass().getName() + ": " + e.getMessage());
+		}
+	}
+	
+	public static void outputDebugObject(ContentObject object) {
+		outputDebugObject(new File(DEBUG_DATA_DIRECTORY), null, object);
+	}
+
 	
 	/**
 	 * Log information about an object at level Level.INFO. See logObject(Level, String, ContentObject) for details.

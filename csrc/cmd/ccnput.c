@@ -57,6 +57,8 @@ usage(const char *progname)
             "\n"
             "  -h - print this message and exit"
             "\n"
+            "  -k key_uri - use this name for key locator"
+            "\n"
             "  -f - force - send content even if no interest received"
             "\n"
             "  -v - verbose"
@@ -121,18 +123,23 @@ main(int argc, char **argv)
     enum ccn_content_type content_type = CCN_CONTENT_DATA;
     struct ccn_closure in_interest = {.p=&incoming_interest};
     const char *postver = NULL;
+    const char *key_uri = NULL;
     int force = 0;
     int verbose = 0;
     int timeout = -1;
+    int setfinal = 0;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
-    while ((res = getopt(argc, argv, "fhlvV:t:w:x:")) != -1) {
+    while ((res = getopt(argc, argv, "fhk:lvV:t:w:x:")) != -1) {
         switch (res) {
             case 'f':
                 force = 1;
                 break;
             case 'l':
-                // NYI - set FinalBlockID to last comp of name
+                setfinal = 1; // set FinalBlockID to last comp of name
+                break;
+            case 'k':
+                key_uri = optarg;
                 break;
             case 'x':
                 expire = atol(optarg);
@@ -145,6 +152,8 @@ main(int argc, char **argv)
             case 'V':
                 versioned = 1;
                 postver = optarg;
+                if (0 == memcmp(postver, "%00", 3))
+                    setfinal = 1;
                 break;
 	    case 'w':
                 timeout = atol(optarg);
@@ -239,7 +248,7 @@ main(int argc, char **argv)
     temp = ccn_charbuf_create();
     
     /* Ask for a FinalBlockID if appropriate. */
-    if (postver != NULL && 0 == memcmp(postver, "%00", 3))
+    if (setfinal)
         sp.sp_flags |= CCN_SP_FINAL_BLOCK;
     
     if (res < 0) {
@@ -249,6 +258,45 @@ main(int argc, char **argv)
     
     /* Set content type */
     sp.type = content_type;
+    
+    /* Set freshness */
+    if (expire >= 0) {
+        if (sp.template_ccnb == NULL) {
+            sp.template_ccnb = ccn_charbuf_create();
+            ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
+        }
+        else if (sp.template_ccnb->length > 0) {
+            sp.template_ccnb->length--;
+        }
+        ccnb_tagged_putf(sp.template_ccnb, CCN_DTAG_FreshnessSeconds, "%ld", expire);
+        sp.sp_flags |= CCN_SP_TEMPL_FRESHNESS;
+        ccn_charbuf_append_closer(sp.template_ccnb);
+    }
+    
+    /* Set key locator, if supplied */
+    if (key_uri != NULL) {
+        struct ccn_charbuf *c = ccn_charbuf_create();
+        res = ccn_name_from_uri(c, key_uri);
+        if (res < 0) {
+            fprintf(stderr, "%s is not a valid ccnx URI\n", key_uri);
+            exit(1);
+        }
+        if (sp.template_ccnb == NULL) {
+            sp.template_ccnb = ccn_charbuf_create();
+            ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
+        }
+        else if (sp.template_ccnb->length > 0) {
+            sp.template_ccnb->length--;
+        }
+        ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyLocator, CCN_DTAG);
+        ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyName, CCN_DTAG);
+        ccn_charbuf_append(sp.template_ccnb, c->buf, c->length);
+        ccn_charbuf_append_closer(sp.template_ccnb);
+        ccn_charbuf_append_closer(sp.template_ccnb);
+        sp.sp_flags |= CCN_SP_TEMPL_KEY_LOCATOR;
+        ccn_charbuf_append_closer(sp.template_ccnb);
+        ccn_charbuf_destroy(&c);
+    }
     
     /* Create the signed content object, ready to go */
     temp->length = 0;
@@ -301,5 +349,6 @@ main(int argc, char **argv)
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&pname);
     ccn_charbuf_destroy(&temp);
+    ccn_charbuf_destroy(&sp.template_ccnb);
     exit(status);
 }

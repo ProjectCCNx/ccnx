@@ -121,6 +121,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected boolean _isGone = false;
 	
 	/**
+	 * The first segment for the stored data
+	 */
+	protected ContentObject _firstSegment = null;
+	
+	/**
 	 * If the name we started with was actually a link, detect that, store the link,
 	 * and dereference it to get the content. Call updateLink() to update the link
 	 * itself, and if updated, to update the dereferenced value.
@@ -151,6 +156,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use handle defaults
 	protected KeyLocator _keyLocator; // locator to find publisher key
 	protected SaveType _saveType = null; // what kind of flow controller to make if we don't have one
+	protected Integer _freshnessSeconds = null; // if we want to set short freshness
 	protected ContentKeys _keys;
 	
 	/**
@@ -259,8 +265,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Read constructor. Will try to pull latest version of this object, or a specific
 	 * named version if specified in the name. If read times out, will leave object in
-	 * its uninitialized state, and continue attempting to update it (one time) in the
-	 * background.
+	 * its uninitialized state.
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
@@ -279,8 +284,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Read constructor. Will try to pull latest version of this object, or a specific
 	 * named version if specified in the name. If read times out, will leave object in
-	 * its uninitialized state, and continue attempting to update it (one time) in the
-	 * background.
+	 * its uninitialized state.
+	 * 
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
@@ -310,8 +315,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	/**
 	 * Read constructor. Will try to pull latest version of this object, or a specific
 	 * named version if specified in the name. If read times out, will leave object in
-	 * its uninitialized state, and continue attempting to update it (one time) in the
-	 * background.
+	 * its uninitialized state.
+	 * 
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
@@ -406,6 +411,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_keyLocator = other._keyLocator;
 		_saveType = other._saveType;
 		_keys = (null != other._keys) ? other._keys.clone() : null;
+		_firstSegment = other._firstSegment;
 		// Do not copy update behavior. Even if other one is updating, we won't
 		// pick that up. Have to kick off manually.
 		
@@ -477,10 +483,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	/**
-	 * Close flow controller. Have to call setupSave to save with this object again.
+	 * Close flow controller, remove listeners. Have to call setupSave to save with this object again,
+	 * re-add listeners.
 	 * @return
 	 */
 	public synchronized void close() {
+		clearListeners();
 		if (null != _flowControl) {
 			_flowControl.close();
 		}
@@ -500,6 +508,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		} else if (saveType != _saveType){
 			throw new IOException("Cannot change save type, flow controller already set!");
 		}
+	}
+	
+	/**
+	 * If you want to set the lifetime of objects saved with this instance.
+	 * @param freshnessSeconds If null, will unset any freshness seconds (will
+	 * write objects that stay in cache till forced out); if a value will constrain
+	 * how long objects will stay in cache.
+	 */
+	public void setFreshnessSeconds(Integer freshnessSeconds) {
+		_freshnessSeconds = freshnessSeconds;
 	}
 	
 	/**
@@ -540,6 +558,43 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			return update(firstSegment);
 		}
 		return false;
+	}
+	
+	/**
+	 * The regular update does a call to do multi-hop get latest version -- i.e. it will try
+	 * multiple times to find the latest version of a piece of content, even if interposed caches
+	 * have something older. While that's great when you really need the latest, sometimes you are
+	 * happy with the latest available version available in your local ccnd cache; or you really
+	 * know there is only one version available and you don't want to try multiple times (and incur
+	 * a timeout) in an attempt to get a later version that does not exist. This call, updateAny,
+	 * claims to get "any" version available. In reality, it will do a single-hop latest version;
+	 * i.e. if there are two versions say in your local ccnd cache (or repo with nothing in the ccnd
+	 * cache), it will pull the later one. But
+	 * it won't move beyond those to find a newer version available at a writer, or to find a later
+	 * version in the repo than one in the ccnd cache. Use this if you know there is only one version
+	 * of something, or you want a fast path to the latest version where it really doesn't have to
+	 * be the "absolute" latest. 
+	 * 
+	 * Like all update methods, it will start from the version you've got -- so it is guaranteed to find
+	 * something after the current version this object knows about (if it has already found something),
+	 * and to time out and return false if there isn't anything later.
+	 */
+	public boolean updateAny(long timeout) throws ContentDecodingException, IOException {
+		if (null == _baseName) {
+			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
+		}
+		// Look for first segment of version after ours, or first version if we have none.
+		ContentObject firstSegment = 
+			VersioningProfile.getFirstBlockOfAnyLaterVersion(getVersionedName(), null, null, timeout, 
+					_handle.defaultVerifier(), _handle);
+		if (null != firstSegment) {
+			return update(firstSegment);
+		}
+		return false;
+	}
+	
+	public boolean updateAny() throws ContentDecodingException, IOException {
+		return updateAny(SystemConfiguration.getDefaultTimeout());
 	}
 
 	/**
@@ -616,9 +671,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				_currentPublisherKeyLocator = inputStream.publisherKeyLocator();
 				_isGone = false;
 			}
+			_firstSegment = inputStream.getFirstSegment();  // preserve first segment
 		} catch (NoMatchingContentFoundException nme) {
 			if (Log.isLoggable(Level.INFO))
-				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available. Updating once in background.", inputStream.getBaseName());
+				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available.", inputStream.getBaseName());
 			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
 			_baseName = nameAndVersion.first();
 
@@ -643,7 +699,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		clearError();
 
 		// Signal readers.
-		newVersionAvailable();
+		newVersionAvailable(false);
 		return true;
 	}
 	
@@ -722,8 +778,24 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public synchronized void addListener(UpdateListener listener) {
 		if (null == _updateListeners) {
 			_updateListeners = new HashSet<UpdateListener>();
+		} else if (_updateListeners.contains(listener)) {
+			return; // don't re-add
 		}
 		_updateListeners.add(listener);
+	}
+	
+	/**
+	 * Does this object already have this listener. Uses Object.equals
+	 * for comparison; so will only say yes if it has this *exact* listener
+	 * instance already registered.
+	 * @param listener
+	 * @return
+	 */
+	public synchronized boolean hasListener(UpdateListener listener) {
+		if (null == _updateListeners) {
+			return false;
+		}
+		return (_updateListeners.contains(listener));
 	}
 	
 	public void removeListener(UpdateListener listener) {
@@ -816,7 +888,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws ContentEncodingException if there is an error encoding the content
 	 * @throws IOException if there is an error reading the content from the network
 	 */
-	protected boolean saveInternal(CCNTime version, boolean gone, Interest outstandingInterest) 
+	protected synchronized boolean saveInternal(CCNTime version, boolean gone, Interest outstandingInterest) 
 				throws ContentEncodingException, IOException {
 
 		if (null == _baseName) {
@@ -869,6 +941,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// If it gets a versioned name, will respect it. 
 			// This will call startWrite on the flow controller.
 			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _keys, _flowControl);
+			cos.setFreshnessSeconds(_freshnessSeconds);
 			if (null != outstandingInterest) {
 				cos.addOutstandingInterest(outstandingInterest);
 			}
@@ -876,10 +949,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// digest stream; want to make sure we end up with a single non-MHT signed
 			// segment and no header on small objects
 			cos.close();
-			_currentPublisher = (_publisher == null) ? _flowControl.getHandle().getDefaultPublisher() : _publisher; // TODO DKS -- is this always correct?
-			// must match algorithm stream uses to get key locator if null; could have time of access problem
-			_currentPublisherKeyLocator = (_keyLocator == null) ? 
-					_flowControl.getHandle().keyManager().getKeyLocator(_publisher) : _keyLocator;
+			// Grab digest and segment number after close because for short objects there may not be 
+			// a segment generated until the close
+			_firstSegment = cos.getFirstSegment();
 		} else {
 			// saving object as gone, currently this is always one empty segment so we don't use an OutputStream
 			ContentName segmentedName = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
@@ -893,17 +965,19 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_flowControl.addNameSpace(name);
 			_flowControl.startWrite(name, Shape.STREAM); // Streams take care of this for the non-gone case.
 			_flowControl.put(goneObject);
+			_firstSegment = goneObject;
 			_flowControl.beforeClose();
 			_flowControl.afterClose();
-			_currentPublisher = goneObject.signedInfo().getPublisherKeyID();
-			_currentPublisherKeyLocator = goneObject.signedInfo().getKeyLocator();
 			_lastSaved = GONE_OUTPUT;
 		}
+		_currentPublisher = _firstSegment.signedInfo().getPublisherKeyID(); 
+		_currentPublisherKeyLocator = _firstSegment.signedInfo().getKeyLocator();
 		_currentVersionComponent = name.lastComponent();
 		_currentVersionName = name;
 		setDirty(false);
 		_available = true;
 
+		newVersionAvailable(true);
 		Log.finest("Saved object {0} publisher {1} key locator {2}", name, _currentPublisher, _currentPublisherKeyLocator);
 		return true;
 	}
@@ -1040,10 +1114,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	/**
 	 * Used to signal waiters and listeners that a new version is available.
+	 * @param wasSave is a new version available because we were saved, or because
+	 *   we found a new version on the network?
 	 */
-	protected void newVersionAvailable() {
-		if (Log.isLoggable(Level.INFO)) {
-			Log.info("newVersionAvailable: New version of object available: {0}", getVersionedName());
+	protected void newVersionAvailable(boolean wasSave) {
+		if (Log.isLoggable(Level.FINER)) {
+			Log.finer("newVersionAvailable: New version of object available: {0}", getVersionedName());
 		}
 		// by default signal all waiters
 		this.notifyAll();
@@ -1051,7 +1127,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// and any registered listeners
 		if (null != _updateListeners) {
 			for (UpdateListener listener : _updateListeners) {
-				listener.newVersionAvailable(this);
+				listener.newVersionAvailable(this, wasSave);
 			}
 		}
 	}
@@ -1138,12 +1214,52 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return _baseName;
 	}
 	
+	public CCNHandle getHandle() {
+		return _handle;
+	}
+	
 	public synchronized byte [] getVersionComponent() throws IOException {
 		if (isSaved())
 			return _currentVersionComponent;
 		return null;
 	}
 	
+	/**
+	 * Returns the first segment number for this object.
+	 * @return The index of the first segment of stream data or null if no segments generated yet.
+	 */
+	public Long firstSegmentNumber() {
+		if (null != _firstSegment) {
+			return SegmentationProfile.getSegmentNumber(_firstSegment.name());
+		} else {
+			return null;
+		}
+	}
+
+	/**
+	 * Returns the digest of the first segment of this object which may be used
+	 * to help identify object instance unambiguously. 
+	 * 
+	 * @return The digest of the first segment of this object if available, null otherwise
+	 */
+	public byte[] getFirstDigest() {	
+		// Do not attempt to force update here to leave control over whether reading
+		// or writing with the object creator.  The return value may be null if the
+		// object is not in a state of having a first segment
+		if (null != _firstSegment) {
+			return _firstSegment.digest();
+		} else {
+			return null;
+		}
+	}
+	
+	/**
+	 * Returns the first segment of this object.
+	 */
+	public ContentObject getFirstSegment() {
+		return _firstSegment;
+	}
+
 	/**
 	 * If we traversed a link to get this object, make it available.
 	 */
@@ -1259,7 +1375,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 			if (hasNewVersion) {
 				if (_continuousUpdates) {
-					// DKS TODO -- order with respect to newVersionAvailable and locking...
 					if (Log.isLoggable(Level.INFO)) 
 						Log.info("updateInBackground: handleContent: got a new version, continuous updates, calling updateInBackground recursively then returning null.");
 					updateInBackground(true);
@@ -1268,7 +1383,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 						Log.info("updateInBackground: handleContent: got a new version, not continuous updates, returning null.");
 					_continuousUpdates = false;
 				}
-				newVersionAvailable();
+				// the updates above call newVersionAvailable
 				return null; // implicit cancel of interest
 			} else {
 				if (null != excludeList) {

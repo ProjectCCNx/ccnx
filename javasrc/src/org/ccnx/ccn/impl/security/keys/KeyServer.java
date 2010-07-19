@@ -28,8 +28,12 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
- * This class publishes our keys, only if someone asks for them. It doesn't make its own
- * handle, unless really asked to.
+ * A small class to handle publishing keys to CCNx, without requiring a repository
+ * to be present. This class publishes our keys, only if someone asks for them. It doesn't make its own
+ * handle, unless really asked to. 
+ * TODO move to use the default handle, which requires making sure that the caller has the opportunity
+ * to provide signing key information to us if they don't want to have it pulled from the default
+ * handle.
  */
 public class KeyServer {
 
@@ -98,5 +102,18 @@ public class KeyServer {
 		// as the flow controller to serve it.
 		return KeyManager.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator, 
 				_keyServer, null, null, _handle.keyManager());
+	}
+
+	/**
+	 * Handle cases where people query us with short prefixes. The flow controller
+	 * will suppress duplicate or unnecessary registrations.
+	 * @param keyPrefix
+	 * @throws IOException 
+	 */
+	public void respondToKeyRequests(ContentName keyPrefix) throws IOException {
+		// Set up key server if it hasn't been set up already
+		initialize();
+		
+		_keyServer.addNameSpace(keyPrefix);
 	}
 }

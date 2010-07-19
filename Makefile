@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -13,7 +13,7 @@
 #
 
 # Subdirectories we build in
-TOPSUBDIRS = csrc schema javasrc doc/technical apps/ccnChat apps/ccnFileProxy
+TOPSUBDIRS = doc/manpages doc/technical csrc schema javasrc apps/ccnChat apps/ccnFileProxy
 # Packing list for packaging
 PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt $(TOPSUBDIRS) apps experiments
 
@@ -38,6 +38,7 @@ clean depend test check shared documentation dist-docs testinstall install unins
 clean-documentation: _always
 	rm -rf doc/ccode
 	rm -rf doc/javacode
+	(cd doc/manpages && pwd && $(MAKE) clean-documentation)
 	(cd doc/technical && pwd && $(MAKE) clean-documentation)
 
 clean: clean-testinstall
@@ -81,7 +82,7 @@ distfile: tar
 	ls -l ccnx-$(VERSION).tar.gz
 
 fixupversions: _always
-	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 csrc/Doxyfile.dist && Fix1 javasrc/Doxyfile && Fix1 javasrc/Doxyfile.dist
+	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 csrc/Doxyfile.dist && Fix1 javasrc/Doxyfile && Fix1 javasrc/Doxyfile.dist && Fix1 doc/manpages/Makefile
 
 MD5: _always
 	xargs openssl dgst < MANIFEST > MD5

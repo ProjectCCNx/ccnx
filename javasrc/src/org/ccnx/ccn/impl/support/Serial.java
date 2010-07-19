@@ -18,11 +18,12 @@ package org.ccnx.ccn.impl.support;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.Serializable;
 
 public class Serial {
 
 	@SuppressWarnings("unchecked")
-	public static <T> T readObject(ObjectInputStream input) throws IOException, ClassNotFoundException {
+	public static <T extends Serializable> T readObject(ObjectInputStream input) throws IOException, ClassNotFoundException {
 		return (T)input.readObject();
 	}
 }

@@ -37,6 +37,37 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
+/**
+ * Abstract class containing core functionality we expect to be common across all access control
+ * schemes. Key functionality provided:
+ * 
+ * * maintain static cache of AccessControlManager instances, one per controlled namespace; and
+ *   provide code to load ACMs (by retrieving a policy marker from a given nametree root and loading
+ *   the type of ACM specified in that policy marker), and to look them up
+ *   
+ * * whenever any content is to be written using a CCNOutputStream (or subclass) or network object,
+ *   keysForOutput is called to determine whether there is an access control manger in force for that
+ *   content's namespace, and to retrieve the appropriate content encryption keys to protect it using
+ *   that ACM instance.
+ *   
+ * * when a piece of encrypted content is read, keysForInput is used to retrieve the keys necessary to
+ *   decrypt it using the loaded ACM instance for that namespace (TODO could load ACMs automatically
+ *   in this case); according to the access control scheme supported by that ACM instance
+ *   
+ * * isProtectedContent determines whether a given piece of content that is about to be written should
+ *    be encrypted or not. The default policy exempts content of type KEY, LINK, and access control
+ *    metadata (data used to control access control) from encryption. (TODO need a special encrypted
+ *    LINK type - ELNK). Subclasses can add to this list of exemptions (by calling super.isProtectedContent
+ *    to determine their superclass' exemptions and then adding their own. They should not override 
+ *    the superclass' request to exempt something, otherwise things may break (in other words, they can
+ *    leave unencrypted more content than the superclass suggests, but probably should not encrypt
+ *    content the superclass says should not be encrypted).
+ *    
+ *  * data key handling -- content streams are encrypted using nonce keys; access control is used to
+ *    protect those nonce keys. Basic nonce key handling (creation, content encryption) is implemented
+ *    in this class, protection of nonce keys is left abstract for subclassess to implement.
+ *
+ */
 public abstract class AccessControlManager {
 
 	/**
@@ -73,6 +104,7 @@ public abstract class AccessControlManager {
 	protected ContentName _namespace;
 	protected CCNHandle _handle;
 	protected SecureRandom _random = new SecureRandom();
+	protected AccessControlPolicyMarkerObject _policy;
 
 
 	/**
@@ -89,7 +121,9 @@ public abstract class AccessControlManager {
 	 * @throws IOException
 	 */
 	public static AccessControlManager 
-			createAccessControlManager(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ContentNotReadyException, ContentGoneException, ErrorStateException, InstantiationException, IllegalAccessException, ConfigurationException, IOException {
+			createAccessControlManager(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) 
+				throws ContentNotReadyException, ContentGoneException, ErrorStateException, 
+							InstantiationException, IllegalAccessException, IOException {
 		
 		Class<? extends AccessControlManager> acmClazz = null;
 		synchronized(NamespaceManager.class) {
@@ -121,7 +155,8 @@ public abstract class AccessControlManager {
 	 */
 	public AccessControlManager() {}
 	
-	public abstract boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) throws ConfigurationException, IOException;
+	public abstract boolean initialize(AccessControlPolicyMarkerObject policyInformation, CCNHandle handle) 
+				throws IOException;
 
 	/**
 	 * Labels for deriving various types of keys.
@@ -132,6 +167,8 @@ public abstract class AccessControlManager {
 	}
 
 	public CCNHandle handle() { return _handle; }
+	
+	public AccessControlPolicyMarkerObject policy() { return _policy; } // if subclass set it in initialize()
 	
 	public boolean inProtectedNamespace(ContentName content) {
 		return NamespaceManager.inProtectedNamespace(_namespace, content);
@@ -351,9 +388,10 @@ public abstract class AccessControlManager {
 	}
 
 	/**
-	 * Called when a stream is opened for reading, to determine if the name is under a root ACL, and
-	 * if so find or create an AccessControlManager, and get keys for access. Only called if
-	 * content is encrypted.
+	 * Called when a stream containing encrypted content is opened for reading, 
+	 * to determine if the name is under a root ACL, and
+	 * if so find or create an AccessControlManager, and get keys for access. 
+	 * 
 	 * @param name name of the stream to be opened, without the segment number
 	 * @param publisher the publisher of the stream to open, in case that matters for key retrieva
 	 * @param library CCN Library instance to use for any network operations.
@@ -373,10 +411,6 @@ public abstract class AccessControlManager {
 				}
 				return acm.getContentKeys(name, publisher);
 			}
-		} catch (ConfigurationException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			Log.logException("ConfigurationException in keysForInput", e);
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
 			Log.logException("InvalidKeyException in keysForInput", e);
@@ -391,6 +425,8 @@ public abstract class AccessControlManager {
 
 	/**
 	 * Get keys to encrypt content as its' written, if that content is to be protected.
+	 * Called by the CCNOutputStream subclasses to get encryption keys for specific content
+	 * segments. 
 	 * @param name
 	 * @param publisher
 	 * @param type the type of content to be written. Mostly used to determine whether
@@ -435,10 +471,6 @@ public abstract class AccessControlManager {
 				
 				return getDefaultAlgorithmContentKeys(dataKey);
 			}
-		} catch (ConfigurationException e) {
-			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
-			Log.logException("ConfigurationException in keysForInput", e);
-			throw new IOException(e.getClass().getName() + ": Opening stream for input: " + e.getMessage());
 		} catch (InvalidKeyException e) {
 			// TODO use 1.6 constuctors that take nested exceptions when can move off 1.5
 			Log.logException("InvalidKeyException in keysForInput", e);
@@ -452,20 +484,19 @@ public abstract class AccessControlManager {
 	}
 	
 	/**
-	 * Manage the access control information we know about.
-	 * 
-	 * Find an ACM object that covers operations on a specific name. 
-	 * If none exists in memory then this searches up the name tree 
-	 * looking for the root of a namespace under access control,
-	 * and if it finds one creates an ACM. If none is found null is returned.
+	 * Find an ACM that controls access to content in a given namespace. Only looks
+	 * in the cache of already-loaded AccessControlManagers; it doesn't load additional
+	 * ACMs or search for policy objects. This is called by keysForOutput *every* time
+	 * content is written. It can't do extensive search. Use loadAccessControlManagerForNamespace
+	 * to load an ACM for a namespace if policy specifies to use one.
 	 * @param name
 	 * @param handle
 	 * @return null if namespace is not under access control, or an ACM to perform 
 	 * 	operations on the name if it is.
 	 * @throws IOException
-	 * @throws ConfigurationException 
 	 */
-	public static AccessControlManager findACM(ContentName name, CCNHandle handle)  throws IOException, ConfigurationException {
+	public static AccessControlManager findACM(ContentName name, CCNHandle handle)  
+					throws IOException {
 		// See if we already have an AccessControlManager covering this namespace
 		AccessControlManager acm = handle.keyManager().getAccessControlManagerForName(name);
 		
@@ -480,18 +511,25 @@ public abstract class AccessControlManager {
 	 * access control managers. 
 	 * TODO handle multiple policy points
 	 * TODO maybe handle policies overlapping in namespace
-	 * TODO check to make sure we haven't already loaded the ACM
 	 * @param namespace
 	 * @param handle
-	 * @return
+	 * @return The ACM we find if one already existed, or the new one we created, if configured;
+	 * if no AC configured for this namespace, return null;
 	 * @throws ConfigurationException
 	 * @throws ContentNotReadyException
 	 * @throws ContentGoneException
 	 * @throws ErrorStateException
 	 * @throws IOException
 	 */
-	public static boolean loadAccessControlManagerForNamespace(ContentName namespace, CCNHandle handle) throws ConfigurationException, ContentNotReadyException, ContentGoneException, ErrorStateException, IOException {
+	public static AccessControlManager loadAccessControlManagerForNamespace(ContentName namespace, CCNHandle handle) 
+			throws ContentNotReadyException, ContentGoneException, ErrorStateException, IOException {
 
+		// Make sure we haven't already loaded it.
+		AccessControlManager acm = findACM(namespace, handle);
+		
+		if (null != acm) {
+			return acm;
+		}
 		// See if we have an access control policy, and if so make an access control manager for it.
 
 		ContentName policyNamespace = NamespaceManager.findPolicyControlledNamespace(namespace, handle);
@@ -499,7 +537,7 @@ public abstract class AccessControlManager {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 				Log.finer(Log.FAC_ACCESSCONTROL, "No policy controlling name: {0}", namespace);
 			}
-			return false;
+			return null;
 		}
 
 		// TODO cache nonexistence of access control policy in policy namespace. Here or in NSM?
@@ -510,22 +548,22 @@ public abstract class AccessControlManager {
 				Log.finer(Log.FAC_ACCESSCONTROL, "No access control policy in policy namespace: {0}", policyNamespace);
 			}
 			// TODO add to negative cache
-			return false;
+			return null;
 		}
 
 		try {
-			AccessControlManager acm = AccessControlManager.createAccessControlManager(ro, handle);
+			acm = AccessControlManager.createAccessControlManager(ro, handle);
 			handle.keyManager().rememberAccessControlManager(acm);
-			return true;
+			return acm;
 			
 		} catch (InstantiationException e) {
 			Log.severe("InstantiationException attempting to create access control manager: " + e.getMessage());
 			Log.warningStackTrace(e);
-			throw new ConfigurationException("InstantiationException attempting to create access control manager: " + e.getMessage(), e);
+			throw new ErrorStateException("InstantiationException attempting to create access control manager: " + e.getMessage(), e);
 		} catch (IllegalAccessException e) {
 			Log.severe("IllegalAccessException attempting to create access control manager: " + e.getMessage());
 			Log.warningStackTrace(e);
-			throw new ConfigurationException("IllegalAccessException attempting to create access control manager: " + e.getMessage(), e);
+			throw new ErrorStateException("IllegalAccessException attempting to create access control manager: " + e.getMessage(), e);
 		}
 	}
 
@@ -558,5 +596,12 @@ public abstract class AccessControlManager {
 		
 		return true;
 	}
+	
+	/**
+	 * Each access control manager subclass should shut down any ongoing network operations.
+	 * We don't own our handle, so can't close that. But any outstanding interests should be
+	 * canceled; filters should be unregistered, and so on.
+	 */
+	public void shutdown() {}
 
 }

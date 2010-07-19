@@ -87,6 +87,8 @@ struct ccnd_handle {
     nfds_t nfds;                    /**< number of entries in fds array */
     struct pollfd *fds;             /**< used for poll system call */
     struct ccn_gettime ticktock;    /**< our time generator */
+    long sec;                       /**< cached gettime seconds */
+    unsigned usec;                  /**< cached gettime microseconds */
     struct ccn_schedule *sched;     /**< our schedule */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
@@ -128,11 +130,14 @@ struct ccnd_handle {
     const char *progname;           /**< our name, for locating helpers */
     struct ccn *internal_client;    /**< internal client */
     struct face *face0;             /**< special face for internal client */
+    struct ccn_charbuf *service_ccnb; /**< for local service discovery */
     struct ccn_seqwriter *notice;   /**< for notices of status changes */
     struct ccn_indexbuf *chface;    /**< faceids w/ recent status changes */
     struct ccn_scheduled_event *internal_client_refresh;
     struct ccn_scheduled_event *notice_push;
     unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
+    void (*appnonce)(struct ccnd_handle *, struct face *, struct ccn_charbuf *);
+                                    /**< pluggable nonce generation */
 };
 
 /**
@@ -198,7 +203,8 @@ struct face {
 #define CCN_FACE_LOOPBACK (1 << 12) /**< v4 or v6 loopback address */
 #define CCN_FACE_CLOSING (1 << 13) /**< close stream when output is done */
 #define CCN_FACE_PASSIVE (1 << 14) /**< a listener or a bound dgram socket */
-
+#define CCN_FACE_NORECV (1 << 15) /**< use for sending only */
+#define CCN_FACE_REGOK (1 << 16) /**< Allowed to do prefix registration */
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
@@ -264,7 +270,7 @@ struct propagating_entry {
 #define CCN_PR_UNSENT   0x01 /**< interest has not been sent anywhere yet */
 #define CCN_PR_WAIT1    0x02 /**< interest has been sent to one place */
 #define CCN_PR_STUFFED1 0x04 /**< was stuffed before sent anywhere else */
-#define CCN_PR________  0x08
+#define CCN_PR_TAP      0x08 /**< at least one tap face is present */
 #define CCN_PR_EQV      0x10 /**< a younger similar interest exists */
 #define CCN_PR_SCOPE0   0x20 /**< interest scope is 0 */
 #define CCN_PR_SCOPE1   0x40 /**< interest scope is 1 (this host) */
@@ -277,9 +283,11 @@ struct propagating_entry {
 struct nameprefix_entry {
     struct propagating_entry pe_head; /**< list head for propagating entries */
     struct ccn_indexbuf *forward_to; /**< faceids to forward to */
+    struct ccn_indexbuf *tap;    /**< faceids to forward to as tap*/
     struct ccn_forwarding *forwarding; /**< detailed forwarding info */
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
     int children;                /**< number of children */
+    unsigned flags;              /**< CCN_FORW_* flags about namespace */
     int fgen;                    /**< used to decide when forward_to is stale */
     unsigned src;                /**< faceid of recent content source */
     unsigned osrc;               /**< and of older matching content */
@@ -303,6 +311,7 @@ struct ccn_forwarding {
  * @def CCN_FORW_ADVERTISE      4
  * @def CCN_FORW_LAST           8
  * @def CCN_FORW_CAPTURE       16
+ * @def CCN_FORW_LOCAL         32
  */
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
  

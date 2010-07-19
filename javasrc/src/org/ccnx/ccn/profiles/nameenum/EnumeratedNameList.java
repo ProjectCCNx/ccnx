@@ -56,6 +56,14 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	protected boolean _enumerating = false;
 	
 	/**
+	 * Keep track of whether we've ever done enumeration, so we can start it automatically
+	 * if someone asks us for something not in our cache. This lets us relax the requirement
+	 * that callers pre-enumerate just in case. Can't use hasChildren; there might not
+	 * be any children but we might have tried enumeration already.
+	 */
+	protected boolean _hasEnumerated = false;
+
+	/**
 	 * Creates an EnumeratedNameList object
 	 * 
 	 * This constructor creates a new EnumeratedNameList object that will begin enumerating
@@ -83,6 +91,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		_namePrefix = namePrefix;
 		if (startEnumerating) {
 			_enumerating = true;
+			_hasEnumerated = true;
 			_enumerator = new CCNNameEnumerator(namePrefix, handle, this);
 		} else {
 			_enumerator = new CCNNameEnumerator(handle, this);
@@ -113,9 +122,12 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	public synchronized void startEnumerating() throws IOException {
 		_enumerating = true;
 		_enumerator.registerPrefix(_namePrefix);
+		_hasEnumerated = true;
 	}
 	
 	public boolean isEnumerating() { return _enumerating; }
+	
+	public boolean hasEnumerated() { return _hasEnumerated; }
 	
 	/**
 	 * First-come first-served interface to retrieve only new data from
@@ -134,7 +146,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 */
 	public SortedSet<ContentName> getNewData(long timeout) {
 		SortedSet<ContentName> childArray = null;
-		synchronized(_childLock) { // reentrant?
+		synchronized(_childLock) { // reentrant
 			while ((null == _children) || _children.size() == 0) {
 				waitForNewChildren(timeout);
 				if (timeout != SystemConfiguration.NO_TIMEOUT)
@@ -253,9 +265,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				} catch (InterruptedException e) {
 				}
 				if (Log.isLoggable(Level.INFO)) {
-					Log.info("Waiting for new data on prefix: {0}, updated {1}, our update {2}, now have " + 
-							((null == _children) ? 0 : _children.size()), _namePrefix + " new " + 
-							((null == _newChildren) ? 0 : _newChildren.size()) + ".", _lastUpdate, lastUpdate);
+					Log.info("Waiting for new data on prefix: {0}, updated {1}, our update {2}, have {3} children {4} new.", 
+							_namePrefix, _lastUpdate, lastUpdate,
+							((null == _children) ? 0 : _children.size()), 
+							((null == _newChildren) ? 0 : _newChildren.size()));
 				}
 			}
 			if ((null != _lastUpdate) && ((null == lastUpdate) || (_lastUpdate.after(lastUpdate)))) foundNewData = true;
@@ -427,7 +440,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				// don't want to miss results in case we are started again.
 				Log.info("ENUMERATION STOPPED: but {0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
 			} else {
-				Log.info("{0} new name enumeration results: our prefix: {1} returned prefix: {2}", names.size(), _namePrefix, prefix);
+				Log.info(names.size() + " new name enumeration results: our prefix: {0} returned prefix: {1}", _namePrefix, prefix);
 			}
 		}
 		if (!prefix.equals(_namePrefix)) {

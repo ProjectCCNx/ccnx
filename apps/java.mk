@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -12,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-ANT = ant
+ANT = `command -v ant || echo echo SKIPPING ant`
 LIBS = $(JAR)
 WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
                echo Skipping java build in $$(pwd -L) -    \
@@ -49,7 +49,7 @@ uninstall:
 
 # Use ant to actually do the work for these targets
 jar clean test: _always
-	@type $(ANT) > /dev/null; if [ $$? -eq 0 ]; then $(ANT) -k $@; else $(WHINE); fi
+	$(ANT) -k $@
 	@rm -f _always
 
 documentation: _always

@@ -24,6 +24,7 @@ import java.util.SortedSet;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
@@ -156,7 +157,7 @@ public class ccngroup {
 			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
 			GroupManager gm = acm.groupManager();
 			Thread.sleep(TIMEOUT);
-			Group g = gm.getGroup(groupName);
+			Group g = gm.getGroup(groupName, SystemConfiguration.getDefaultTimeout());
 			MembershipListObject ml = g.membershipList();
 			LinkedList<Link> lll = ml.contents();
 			System.out.println("The group " + groupName + " has " + lll.size() + " members:");
@@ -176,7 +177,7 @@ public class ccngroup {
 			ContentName root = ContentName.fromNative("/");
 			GroupAccessControlManager acm = new GroupAccessControlManager(root, groupStorage, userStorage, CCNHandle.open());
 			GroupManager gm = acm.groupManager();
-			gm.createGroup(groupName, membersToAdd);
+			gm.createGroup(groupName, membersToAdd, SystemConfiguration.getDefaultTimeout());
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -204,7 +205,7 @@ public class ccngroup {
 			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
 			GroupManager gm = acm.groupManager();
 			Thread.sleep(TIMEOUT);
-			Group g = gm.getGroup(groupName);
+			Group g = gm.getGroup(groupName, SystemConfiguration.getDefaultTimeout());
 			g.modify(membersToAdd, null);
 		} 
 		catch (AccessDeniedException aed) {
@@ -226,7 +227,7 @@ public class ccngroup {
 			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
 			GroupManager gm = acm.groupManager();
 			Thread.sleep(TIMEOUT);
-			Group g = gm.getGroup(groupName);
+			Group g = gm.getGroup(groupName, SystemConfiguration.getDefaultTimeout());
 			g.modify(null, membersToRemove);
 		}
 		catch (AccessDeniedException aed) {

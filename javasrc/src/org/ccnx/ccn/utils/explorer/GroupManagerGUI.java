@@ -37,6 +37,7 @@ import javax.swing.border.BevelBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
@@ -293,7 +294,7 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 				for (Link l: membersToRemove) {
 					System.out.println(l.targetName());
 				}
-				Group g = gm.getGroup(selectedGroupFriendlyName);
+				Group g = gm.getGroup(selectedGroupFriendlyName, SystemConfiguration.getDefaultTimeout());
 				g.modify(membersToAdd, membersToRemove);
 			} catch (AccessDeniedException ade) {
 				JOptionPane.showMessageDialog(this, "You do not have the access right to edit this group.");
@@ -312,7 +313,7 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 					for (Link l: membersToAdd) {
 						System.out.println(l.targetName());
 					}
-					gm.createGroup(newName, membersToAdd);
+					gm.createGroup(newName, membersToAdd, SystemConfiguration.getDefaultTimeout());
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

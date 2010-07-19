@@ -1,0 +1,35 @@
+CCNDSTATUS(1)
+=============
+
+NAME
+----
+ccndstatus - print out the status of the running ccnd
+
+SYNOPSIS
+--------
+*ccndstatus*
+
+DESCRIPTION
+-----------
+The *ccndstatus* utility prints out a plain-text version of the
+status report of the running *ccnd*.
+
+OPTIONS
+-------
+This utility does have have flags or arguments.
+
+The 'CCN_LOCAL_PORT' environment variable may be used to identify
+the port that the *ccnd* instance is using; if unset, the default
+port number (9695) is used.
+
+EXIT STATUS
+-----------
+*0*::
+     Success.
+
+*1*::
+     Failure - probably means that *ccnd* was not running.
+
+AUTHOR
+------
+Michael Plass <plass@parc.com>

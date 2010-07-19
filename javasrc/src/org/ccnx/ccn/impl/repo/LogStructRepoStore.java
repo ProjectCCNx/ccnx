@@ -44,6 +44,7 @@ import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -93,7 +94,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	protected File _repositoryFile;
 
 	Map<Integer,RepoFile> _files;
-	RepoFile _activeWriteFile;
+	RepoFile _activeWriteFile = null;
 	ContentTree _index;
 	
 	public class RepoFile {
@@ -116,6 +117,15 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	public ContentObject getContent(Interest interest)
 			throws RepositoryException {
 		return _index.get(interest, this);
+	}
+
+	/**
+	 * Check for content matching the given name, without retrieving the content itself.
+	 * @param name ContentName to match exactly, including digest as final explicit component
+	 * @return true if there is a ContentObject with exactly the given name, false otherwise
+	 */
+	public boolean hasContent(ContentName name) throws RepositoryException {
+		return _index.matchContent(name);
 	}
 
 	/**
@@ -291,6 +301,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				// prone to accidentally loading the user's key manager. If we close it more than
 				// once, that's ok.
 				KeyManager.setDefaultKeyManager(_km);
+				
+				// Serve our key using the localhost key discovery protocol
+				ServiceDiscoveryProfile.publishLocalServiceKey(ServiceDiscoveryProfile.REPOSITORY_SERVICE_NAME,
+						null, _km);
 
 			} catch (ConfigurationException e) {
 				Log.warning("ConfigurationException loading repository key store: " + e.getMessage());
@@ -414,6 +428,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			}
 			return null;
 		}
+		if (null == _activeWriteFile)
+			return null;
 		try {	
 			NameEnumerationResponse ner = new NameEnumerationResponse();
 			synchronized(_activeWriteFile) {
@@ -585,4 +601,5 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		return type.equals(RepositoryStore.REPO_SIMPLE_STATUS_REQUEST) 
 				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
+
 }

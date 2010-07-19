@@ -66,7 +66,7 @@ public class Log {
 	public static final String LOG_DIR_PROPERTY = "org.ccnx.ccn.LogDir";
 	public static final String LOG_DIR_ENV = "CCN_LOG_DIR";
 
-	static Logger _systemLogger = null;
+	protected static Logger _systemLogger = null;
 
 	//static int _level;
 	//static boolean useDefaultLevel = true; // reset if an external override of the default level was specified
@@ -92,7 +92,12 @@ public class Log {
 	public static final int FAC_ACCESSCONTROL = 8;
 	public static final int FAC_REPO 		= 9;
 	public static final int FAC_TIMING		= 10;  // includes a timestamp
-	
+	public static final int FAC_TRUST		= 11; // trust enforcement
+	public static final int FAC_KEYS		= 12; // key publishing/retrieval
+	public static final int FAC_ENCODING	= 13;
+	public static final int FAC_IO			= 14;
+	public static final int FAC_SIGNING		= 15;
+	public static final int FAC_VERIFY		= 16;
 
 
 	// The System property name for each Facility
@@ -108,6 +113,12 @@ public class Log {
 		DEFAULT_LOG_LEVEL_PROPERTY + ".AccessControl",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Repo",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Timing",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Trust",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Keys",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Encoding",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".IO",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Signing",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Verify",
 	};
 
 	// The environment variable for each facility
@@ -123,6 +134,12 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV + "_ACCESSCONTROL",
 		DEFAULT_LOG_LEVEL_ENV + "_REPO",
 		DEFAULT_LOG_LEVEL_ENV + "_TIMING",
+		DEFAULT_LOG_LEVEL_ENV + "_TRUST",
+		DEFAULT_LOG_LEVEL_ENV + "_KEYS",
+		DEFAULT_LOG_LEVEL_ENV + "_ENCODING",
+		DEFAULT_LOG_LEVEL_ENV + "_IO",
+		DEFAULT_LOG_LEVEL_ENV + "_SIGNING",
+		DEFAULT_LOG_LEVEL_ENV + "_VERIFY",
 	};
 
 	public static final Level [] FAC_LOG_LEVEL_DEFAULT = {
@@ -137,10 +154,18 @@ public class Log {
 		Level.INFO,		// Access control
 		Level.INFO,		// Repo
 		Level.INFO,		// Timing
+		Level.INFO,		// Trust
+		Level.INFO,		// Keys
+		Level.INFO,		// Encoding
+		Level.INFO,		// IO
+		Level.INFO,		// Signing
+		Level.INFO,		// Verify
 	};
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];
 	protected static int [] _fac_value = new int[FAC_LOG_LEVEL_PROPERTY.length];
+	
+	protected static boolean _timestamp = false;
 
 	// ==========================================================
 
@@ -333,10 +358,12 @@ public class Log {
 		if (FAC_DEFAULT <= facility && facility < _fac_level.length) {
 			_fac_level[facility] = l;
 			_fac_value[facility] = l.intValue();
+//			System.out.println(String.format("Log.setLevel(%d, %s)", facility, l));
 		} else if (facility == FAC_ALL) {
 			for (int i=FAC_DEFAULT; i < _fac_level.length; i++) {
 				_fac_level[i] = l;
 				_fac_value[i] = l.intValue();
+//				System.out.println(String.format("Log.setLevel(%d, %s)", facility, l));
 			}
 		}
 	}
@@ -380,7 +407,7 @@ public class Log {
 	/**
 	 * Set the facility log levels based on the defaults and system overrides
 	 */
-	protected static void setLogLevels() {
+	public static void setLogLevels() {
 		String logLevelName;
 		Level logLevel;
 
@@ -477,6 +504,16 @@ public class Log {
 	}
 
 	/**
+	 * Set flag for enabling/disabling timestamps on all messages
+	 */
+	
+	public static boolean setTimestamp(boolean enableTimestamp) {
+		boolean previous = _timestamp;
+		_timestamp = enableTimestamp;
+		return previous;
+	}
+	
+	/**
 	 * The main logging wrapper. Allows for variable parameters to the message.
 	 * Using the variable parameters here rather then constructing the message
 	 * yourself helps reduce CPU load when logging is disabled. (Since the
@@ -507,7 +544,7 @@ public class Log {
 		// Do this at the top of doLog to get timestamp closest to event
 		// Use %.6f to get format same as ccnd, even though we only have
 		// msec precision.
-		if( facility == FAC_TIMING ) {
+		if( (facility == FAC_TIMING)  || _timestamp) {
 			long now = System.currentTimeMillis();
 			double d = (double) now / 1000.0;
 			msg = String.format("%.6f %s", d, msg);

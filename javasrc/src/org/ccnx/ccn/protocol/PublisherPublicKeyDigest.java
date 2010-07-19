@@ -17,10 +17,14 @@
 
 package org.ccnx.ccn.protocol;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.net.URISyntaxException;
 import java.security.PublicKey;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -29,8 +33,11 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.security.KeyProfile;
+import org.ccnx.ccn.protocol.ContentName.DotDotComponent;
 
 
 /**
@@ -69,16 +76,44 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 		// Alas, Arrays.copyOf doesn't exist in 1.5, and we'd like
 		// to be mostly 1.5 compatible for now...
 		// _publisherPublicKeyDigest = Arrays.copyOf(publisherID, PUBLISHER_ID_LEN);
+		if (null == publisherPublicKeyDigest) {
+			throw new IllegalArgumentException("This is not a valid publisher public key digest!");
+		}
 		_publisherPublicKeyDigest = new byte[PublisherID.PUBLISHER_ID_LEN];
-		System.arraycopy(publisherPublicKeyDigest, 0, _publisherPublicKeyDigest, 0, PublisherID.PUBLISHER_ID_LEN);
+		
+		int len = Math.min(publisherPublicKeyDigest.length, PublisherID.PUBLISHER_ID_LEN); 
+		System.arraycopy(publisherPublicKeyDigest, 0, _publisherPublicKeyDigest, (PublisherID.PUBLISHER_ID_LEN-len), len);
 	}	
 	
 	/**
 	 * Expects the equivalent of publisherKeyID.toString
 	 * @param publisherPublicKeyDigest the string representation of the digest.
+	 * @throws IOException 
 	 */
-	public PublisherPublicKeyDigest(String publisherPublicKeyDigest) {
-		this(CCNDigestHelper.scanBytes(publisherPublicKeyDigest, 32));
+	public PublisherPublicKeyDigest(String publisherPublicKeyDigest) throws IOException {
+		this(DataUtils.base64Decode(publisherPublicKeyDigest.getBytes()));
+	}
+	
+	/**
+	 * Parses a URI-encoded key ID, with an optional keyid: command marker.
+	 * @throws URISyntaxException 
+	 * @throws DotDotComponent 
+	 */
+	public static PublisherPublicKeyDigest fromURIEncoded(String uriEncoded) throws DotDotComponent, URISyntaxException {
+		byte [] encodedBytes = ContentName.componentParseURI(uriEncoded);
+		
+		if (KeyProfile.KEY_NAME_COMPONENT_MARKER.isMarker(encodedBytes)) {
+			return new PublisherPublicKeyDigest(KeyProfile.getKeyIDFromNameComponent(encodedBytes));
+		}
+		// No marker
+		return new PublisherPublicKeyDigest(encodedBytes);
+	}
+	
+	/**
+	 * Gets a PublisherPublicKeyDigest for the public key in an X509Certificate.
+	 */
+	public static PublisherPublicKeyDigest fromCertificate(X509Certificate certificate) {
+		return new PublisherPublicKeyDigest(certificate.getPublicKey());
 	}
 	
 	/**
@@ -133,6 +168,14 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 		if (null == _publisherPublicKeyDigest) {
 			throw new ContentDecodingException("Cannot parse publisher key digest.");
 		}
+		if (_publisherPublicKeyDigest.length > PublisherID.PUBLISHER_ID_LEN) {
+			if (Log.isLoggable(Level.WARNING)) {
+				Log.warning("Truncating too-long PublisherPublicKeyDigest: {0}", CCNDigestHelper.printBytes(_publisherPublicKeyDigest, 32));
+			}
+			byte [] digest = new byte[PublisherID.PUBLISHER_ID_LEN];
+			System.arraycopy(_publisherPublicKeyDigest, 0, digest, 0, PublisherID.PUBLISHER_ID_LEN);
+			_publisherPublicKeyDigest = digest;
+		}
 	}
 
 	@Override
@@ -165,8 +208,7 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 
 	@Override
 	public String toString() {
-		// 	16 would be the most familiar option, but 32 is shorter
-		return CCNDigestHelper.printBytes(digest(), 32);
+		return DataUtils.base64Encode(digest(), PublisherID.PUBLISHER_ID_LEN*2);
 	}
 	
 	/**

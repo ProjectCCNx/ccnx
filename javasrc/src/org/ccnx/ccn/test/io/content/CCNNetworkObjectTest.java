@@ -33,6 +33,7 @@ import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
+import org.ccnx.ccn.io.content.UpdateListener;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -503,6 +504,83 @@ public class CCNNetworkObjectTest {
 		}
 	}
 	
+	@Test
+	public void testFirstSegmentInfo() throws Exception {
+		// Testing for matching info about first segment.
+		CCNHandle lput = CCNHandle.open();
+		CCNHandle lget = CCNHandle.open();
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testFirstSegmentInfo"), stringObjName);
+		try {
+
+			CCNTime desiredVersion = CCNTime.now();
+
+			CCNStringObject so = new CCNStringObject(testName, "First value", SaveType.RAW, lput);
+			setupNamespace(testName);
+			saveAndLog("SpecifiedVersion", so, desiredVersion, "Time: " + desiredVersion);
+			Assert.assertEquals("Didn't write correct version", desiredVersion, so.getVersion());
+
+			CCNStringObject ro = new CCNStringObject(testName, lget);
+			ro.waitForData(); 
+			Assert.assertEquals("Didn't read correct version", desiredVersion, ro.getVersion());
+
+			Assert.assertEquals("Didn't match first segment number", so.firstSegmentNumber(), ro.firstSegmentNumber());
+			Assert.assertArrayEquals("Didn't match first segment digest", so.getFirstDigest(), ro.getFirstDigest());
+		} finally {
+			removeNamespace(testName);
+		}
+	}
+		
+	static class CounterListener implements UpdateListener {
+
+		protected Integer _callbackCounter = 0;
+		
+		public int getCounter() { return _callbackCounter; }
+
+		public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
+			synchronized (_callbackCounter) {
+				_callbackCounter++;
+				if (Log.isLoggable(Level.INFO)) {
+					Log.info("UPDATE CALLBACK: counter is " + _callbackCounter + " was save? " + wasSave);
+				}
+			}
+		}		
+	}
+	
+	@Test
+	public void testUpdateListener() throws Exception {
+		
+		SaveType saveType = SaveType.RAW;
+		CCNHandle writeHandle = CCNHandle.open();
+		CCNHandle readHandle = CCNHandle.open();
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateListener"), 
+										stringObjName);
+		
+		CounterListener ourListener = new CounterListener();
+		
+		CCNStringObject readObject = 
+			new CCNStringObject(testName, null, null, readHandle);
+		readObject.addListener(ourListener);
+		setupNamespace(testName);
+
+		CCNStringObject writeObject = 
+			new CCNStringObject(testName, "Something to listen to.", saveType, writeHandle);
+		writeObject.save();
+		
+		boolean result = readObject.update();
+		Assert.assertTrue(result);
+		Assert.assertTrue(ourListener.getCounter() == 1);
+		
+		readObject.updateInBackground();
+		
+		writeObject.save("New stuff! New stuff!");
+		synchronized(readObject) {
+			if (ourListener.getCounter() == 1)
+				readObject.wait();
+		}
+		// For some reason, we're getting two updates on our updateInBackground...
+		Assert.assertTrue(ourListener.getCounter() > 1);
+	}
+
 	@Test
 	public void testVeryLast() throws Exception {
 		Log.info("CCNNetworkObjectTest: Entering testVeryLast -- dummy test to help track down blowup. Prefix {0}", testHelper.getClassNamespace());

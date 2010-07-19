@@ -23,6 +23,7 @@ import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -48,6 +49,7 @@ import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -55,9 +57,13 @@ import org.ccnx.ccn.protocol.PublisherID;
 
 
 /**
- * Wrapper for Group public key, and a way to access its private keys.
- * The private keys are stored in a KeyDirectory, wrapped under the
- * public keys of the members of the group. 
+ * This class represents a Group for group-based access control. A Group
+ * is essentially a list of members, and a public/private key pair. The
+ * public key is stored in CCN and is used to encrypt node keys (see CCNx
+ * Access Control Specification); the private key is stored encrypted under
+ * the public keys of the members of the group (which could be users or
+ * groups). The private key is represented in a KeyDirectory.
+ * 
  * Model for private key access: if you're not allowed to get a key,
  * we throw AccessDeniedException.
  * 
@@ -70,7 +76,7 @@ public class Group {
 	
 	private static final long PARENT_GROUP_ENUMERATION_TIMEOUT = 3000;
 	
-	private ContentName _groupNamespace;
+	private ParameterizedName _groupNamespace;
 	private PublicKeyObject _groupPublicKey;
 	private MembershipListObject _groupMembers; 
 	private String _groupFriendlyName;
@@ -92,10 +98,10 @@ public class Group {
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
 	 */
-	public Group(ContentName namespace, String groupFriendlyName, CCNHandle handle,GroupManager manager) 
+	public Group(ParameterizedName groupNamespace, String groupFriendlyName, CCNHandle handle,GroupManager manager) 
 			throws ContentDecodingException, IOException {
 		_handle = handle;
-		_groupNamespace = namespace;
+		_groupNamespace = groupNamespace;
 		_groupFriendlyName = groupFriendlyName;
 		_groupPublicKey = new PublicKeyObject(GroupAccessControlProfile.groupPublicKeyName(_groupNamespace, _groupFriendlyName), _handle);
 		_groupPublicKey.updateInBackground(true);
@@ -111,7 +117,7 @@ public class Group {
 	 * @throws ContentDecodingException 
 	 */
 	public Group(ContentName groupName, CCNHandle handle, GroupManager manager) throws ContentDecodingException, IOException {
-		this(groupName.parent(), GroupAccessControlProfile.groupNameToFriendlyName(groupName), handle,manager);
+		this(manager.getGroupStorage(), GroupAccessControlProfile.groupNameToFriendlyName(groupName), handle,manager);
 	}
 		
 	/**
@@ -126,11 +132,11 @@ public class Group {
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
-	Group(ContentName namespace, String groupFriendlyName, MembershipListObject members, 
+	Group(ParameterizedName groupNamespace, String groupFriendlyName, MembershipListObject members, 
 					CCNHandle handle, GroupManager manager) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException {	
+			throws ContentEncodingException, IOException, InvalidKeyException {	
 		_handle = handle;
-		_groupNamespace = namespace;
+		_groupNamespace = groupNamespace;
 		_groupFriendlyName = groupFriendlyName;
 		_groupManager = manager;
 		
@@ -150,7 +156,7 @@ public class Group {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public void addMembers(ArrayList<Link> newUsers) 
-			throws InvalidKeyException, ContentDecodingException, ConfigurationException, IOException, NoSuchAlgorithmException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		modify(newUsers, null);						
 	}
 
@@ -165,7 +171,7 @@ public class Group {
 	 */
 	public void removeMembers( ArrayList<Link> removedUsers) 
 			throws InvalidKeyException, ContentDecodingException, 
-					ConfigurationException, IOException, NoSuchAlgorithmException {
+					IOException, NoSuchAlgorithmException {
 		modify(null, removedUsers);
 	}
 	
@@ -203,7 +209,7 @@ public class Group {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Stop enumerating the private key directory.
 	 * @throws IOException
@@ -235,7 +241,7 @@ public class Group {
 	 * Get the name of the namespace for the group
 	 * @return the group namespace
 	 */
-	public ContentName groupName() {return ContentName.fromNative(_groupNamespace, _groupFriendlyName);}
+	public ContentName groupName() {return ContentName.fromNative(_groupNamespace.prefix(), _groupFriendlyName);}
 
 	/**
 	 * Returns a list containing all the members of a Group.
@@ -303,7 +309,7 @@ public class Group {
 	 * Get the public key of the group
 	 * @return the group public key
 	 */
-	PublicKeyObject publicKeyObject() { return _groupPublicKey; }
+	public PublicKeyObject publicKeyObject() { return _groupPublicKey; }
 	
 	/**
 	 * Get the group public key
@@ -345,7 +351,7 @@ public class Group {
 	 */
 	public void setMembershipList(GroupManager groupManager, java.util.Collection<Link> newMembers) 
 			throws ContentDecodingException, IOException, InvalidKeyException, 
-					ConfigurationException, NoSuchAlgorithmException {
+					NoSuchAlgorithmException {
 		// need to figure out if we need to know private key; if we do and we don't, throw access denied.
 		// We're deleting anyone that exists
 		this._groupManager = groupManager;
@@ -376,7 +382,7 @@ public class Group {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	private void newGroupPublicKeyNonRecursive(MembershipListObject ml) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException{
+			throws ContentEncodingException, IOException, InvalidKeyException, NoSuchAlgorithmException{
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForNoUpdates(SystemConfiguration.MEDIUM_TIMEOUT);
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
@@ -416,13 +422,14 @@ public class Group {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public void newGroupPublicKey(MembershipListObject ml) 
-			throws ContentEncodingException, IOException, InvalidKeyException, ConfigurationException, NoSuchAlgorithmException {
+			throws ContentEncodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
+
 		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForChildren();
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have access rights to private key for group " + friendlyName());
-		}else{
+		} else {
 			stopPrivateKeyDirectoryEnumeration();
 		}
 		
@@ -462,7 +469,7 @@ public class Group {
 	 * @throws InvalidKeyException
 	 */	
 	public Key createGroupPublicKey(MembershipListObject ml) 
-			throws ContentEncodingException, IOException, ConfigurationException, InvalidKeyException {
+			throws ContentEncodingException, IOException, InvalidKeyException {
 		
 		KeyPairGenerator kpg = null;
 		try {
@@ -474,7 +481,7 @@ public class Group {
 				}
 				throw new RuntimeException("Cannot find default group public key algorithm: " + GroupAccessControlManager.DEFAULT_GROUP_KEY_ALGORITHM + ": " + e.getMessage());
 			}
-			throw new ConfigurationException("Specified group public key algorithm " + _groupManager.getGroupKeyAlgorithm() + " not found. " + e.getMessage());
+			throw new InvalidKeyException("Specified group public key algorithm " + _groupManager.getGroupKeyAlgorithm() + " not found. " + e.getMessage());
 		}
 		kpg.initialize(GroupAccessControlManager.DEFAULT_GROUP_KEY_LENGTH);
 		KeyPair pair = kpg.generateKeyPair();
@@ -535,15 +542,20 @@ public class Group {
 			try {
 				// DKS TODO verify target public key against publisher, etc in link
 				
-				ContentName pkName = lr.targetName();
-				if (_groupManager.isGroup(lr)){
-					pkName = GroupAccessControlProfile.groupPublicKeyName(pkName);
+				ContentName mlName = lr.targetName();
+				ContentName pkName = null;
+				if (_groupManager.getAccessManager().isGroupName(mlName)){
+					// MLAC mods to make sure we fully parameterize key names
+					pkName = _groupManager.getAccessManager().groupPublicKeyName(mlName);
 					// write a back pointer from child group to parent group
 					// PG TODO check for existence of back pointer to avoid writing multiple copies of the same pointer
 					Link backPointer = new Link(groupName(), friendlyName(), null);
 					ContentName bpNamespace = GroupAccessControlProfile.groupPointerToParentGroupName(lr.targetName());
 					LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, SaveType.REPOSITORY, _handle);
 					bplo.save();
+				} else {
+					// MLAC mods to make sure we fully parameterize key names
+					pkName = _groupManager.getAccessManager().userPublicKeyName(mlName);
 				}
 
 				latestPublicKey = new PublicKeyObject(pkName, _handle);
@@ -568,6 +580,26 @@ public class Group {
 				}
 			}
 		}
+	}
+	
+	/**
+	 * You won't actually get the PrivateKey unles you have the rights to decrypt it;
+	 * otherwise you'll get an AccessDeniedException.
+	 * @throws IOException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
+	 */
+	public PrivateKey getPrivateKey() throws IOException, InvalidKeyException, NoSuchAlgorithmException {
+		// TODO might do a little unnecessary enumeration, but will pull from cache if in cache. 
+		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
+		PrivateKey privateKey = privateKeyDirectory.getPrivateKey();
+		if (null != privateKey) {
+			// Will redundantly re-add to cache. TODO move caching into getPrivateKey; it needs
+			// the public key to do that.
+			_handle.keyManager().getSecureKeyCache().addPrivateKey(privateKeyDirectory.getPrivateKeyBlockName(), 
+					publicKeyObject().publicKeyDigest().digest(), privateKey);
+		}
+		return privateKey;
 	}
 	
 	/**
@@ -618,7 +650,7 @@ public class Group {
 	 */
 	public void modify(java.util.Collection<Link> membersToAdd,
 					   java.util.Collection<Link> membersToRemove) 
-			throws InvalidKeyException, ContentDecodingException, IOException, ConfigurationException, NoSuchAlgorithmException {
+			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		
 		boolean addedMembers = false;
 		boolean removedMembers = false;
@@ -631,7 +663,7 @@ public class Group {
 		// Assume no concurrent writer.  
 		
 		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		privateKeyDirectory.waitForNoUpdates(SystemConfiguration.SHORT_TIMEOUT);
+		privateKeyDirectory.waitForNoUpdates(SystemConfiguration.getDefaultTimeout());
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());

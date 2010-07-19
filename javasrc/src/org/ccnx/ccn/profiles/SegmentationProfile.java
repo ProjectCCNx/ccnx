@@ -267,6 +267,19 @@ public class SegmentationProfile implements CCNProfile {
 	}
 	
 	/**
+	 * Creates an Interest that allows for only a segment number and an ephemeral digest below the
+	 * given prefix.
+	 * @param prefix
+	 * @param publisher
+	 * @return
+	 */
+	public static Interest anySegmentInterest(ContentName prefix, PublisherPublicKeyDigest publisher) {
+		Interest theInterest = Interest.lower(prefix, 2, publisher);
+		// theInterest.exclude(acceptSegments())
+		return theInterest;
+	}
+	
+	/**
 	 * Creates an Interest for the first segment.
 	 * 
 	 * @param name ContentName for the desired ContentObject

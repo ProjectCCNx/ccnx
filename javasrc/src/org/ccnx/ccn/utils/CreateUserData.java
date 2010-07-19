@@ -27,6 +27,7 @@ import java.util.SortedSet;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.security.keys.NetworkKeyManager;
@@ -36,7 +37,6 @@ import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.test.Flosser;
 
 
@@ -337,24 +337,34 @@ public class CreateUserData {
 	}
 	
 	/**
-	 * Publishes self-referential key objects under user namespace prefix. Might be
-	 * better to allow automated selection of key locators, in case configuration has
-	 * changed them.
+	 * Publishes self-referential key objects under user namespace prefix.
 	 * @param userNamespace
 	 * @return
 	 * @throws IOException
+	 * @throws InvalidKeyException 
 	 */
-	public PublicKeyObject [] publishUserKeysToRepository(ContentName userNamespace) throws IOException{
+	public PublicKeyObject [] publishUserKeysToRepository(ContentName userNamespace) throws IOException, InvalidKeyException{
 		PublicKeyObject [] results = new PublicKeyObject[_userKeyManagers.size()];
 		int i=0;
 		for (String friendlyName: _userKeyManagers.keySet()) {
 			CCNHandle userHandle = getHandleForUser(friendlyName);
 			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
-			KeyLocator ourLocator = new KeyLocator(keyName);
-			results[i++] = KeyManager.publishKeyToRepository(keyName, userHandle.keyManager().getDefaultPublicKey(),
-														   userHandle.keyManager().getDefaultKeyID(),
-														   ourLocator, userHandle);
+			results[i++] = userHandle.keyManager().publishSelfSignedKeyToRepository(
+					keyName, userHandle.keyManager().getDefaultPublicKey(),
+					userHandle.keyManager().getDefaultKeyID(), SystemConfiguration.getDefaultTimeout());
 		} 
+		return results;
+	}
+	
+	public PublicKeyObject [] publishUserKeysToRepositorySetLocators(ContentName userNamespace) throws InvalidKeyException, IOException {
+		PublicKeyObject [] results = publishUserKeysToRepository(userNamespace);
+		
+		int i=0;
+		for (String friendlyName: _userKeyManagers.keySet()) {
+			CCNHandle userHandle = getHandleForUser(friendlyName);
+			userHandle.keyManager().setKeyLocator(null, results[i].getPublisherKeyLocator());
+			i++;
+		}
 		return results;
 	}
 	
@@ -404,11 +414,25 @@ public class CreateUserData {
 	 * at offset was not -as.
 	 */
 	public static Tuple<Integer, CCNHandle> handleAs(String [] args, int offset) throws ConfigurationException, 
+			IOException, InvalidKeyException {
+		
+		Tuple<Integer, KeyManager> t = keyManagerAs(args, offset);
+		
+		if (null == t)
+			return null;
+		
+		return new Tuple<Integer, CCNHandle>(t.first(), CCNHandle.open(t.second()));
+	}
+	
+	public static Tuple<Integer, KeyManager> keyManagerAs(String [] args, int offset) throws ConfigurationException, 
 					IOException, InvalidKeyException {
 
 		String friendlyName = null;
 		String keystoreFileOrDirectoryPath = null;
 		int argsUsed = 0;
+		
+		if (args.length < offset + 2)
+			return null; // no as
 		
 		if (args.length >= offset+2) {
 			if (!args[offset].equals("-as")) {
@@ -440,7 +464,7 @@ public class CreateUserData {
 		KeyManager manager = CreateUserData.loadKeystoreFile(keystoreFileOrDirectory, friendlyName,
 				UserConfiguration.keystorePassword().toCharArray());
 		
-		return new Tuple<Integer, CCNHandle>(argsUsed, CCNHandle.open(manager));
+		return new Tuple<Integer, KeyManager>(argsUsed, manager);
 	}
 	
 	public static KeyManager keyManagerAs(String keystoreFileOrDirectoryPath, String friendlyName) throws InvalidKeyException, ConfigurationException, IOException {
@@ -453,7 +477,7 @@ public class CreateUserData {
 			friendlyName = keystoreFileOrDirectory.getName();
 		}
 		
-		Log.info("handleAs: loading data for user {0} from location {1}", friendlyName, keystoreFileOrDirectory);
+		Log.info("keyManagerAs: loading data for user {0} from location {1}", friendlyName, keystoreFileOrDirectory);
 		
 		KeyManager manager = CreateUserData.loadKeystoreFile(keystoreFileOrDirectory, friendlyName,
 				UserConfiguration.keystorePassword().toCharArray());

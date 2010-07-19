@@ -65,9 +65,9 @@ import org.ccnx.ccn.protocol.ContentName;
  * would be a command in the namespace "org.ccnx", where the command is "frobnicate",
  * which takes two arguments, in this case 1 and 37
  * 
- * The nonce protocol has only one operation, generating a nonce, with an optional argument
- * of a nonce length.
- * %C1.N.n[~<length>]~<nonce>
+ * The nonce protocol has only one operation, generating a nonce, with a
+ * random binary argument.
+ * %C1.N%00<binary argument>
  * 
  * A namespace org.ccnx.foo could have an operation bar, that took a single ccnb-encoded argument:
  * %C1.org.ccnx.foo.bar%C1<argument>
@@ -124,6 +124,18 @@ public class CommandMarker {
 	 */
 	public static final CommandMarker COMMAND_MARKER_REPO_START_WRITE = 
 		commandMarker(REPOSITORY_NAMESPACE, "sw");
+	/**
+	 * Checked Start Write: request storage of particular stream if not already held
+	 * The name prefix before the command marker component is the base name
+	 * The component after the command marker is a nonce
+	 * The next component is the starting segment component
+	 * The next and final component is the starting segment digest component explicitly
+	 * The command marker is in the middle so that the response from repo is not a data
+	 * object having another data object full name (digest included) as prefix of its name
+	 */
+	public static final CommandMarker COMMAND_MARKER_REPO_CHECKED_START_WRITE = 
+		commandMarker(REPOSITORY_NAMESPACE, "sw-c");
+
 	
 	/**
 	 * Some very simple markers that need no other support. See KeyProfile and
@@ -137,11 +149,6 @@ public class CommandMarker {
 	public static final CommandMarker COMMAND_MARKER_NONCE = commandMarker(NONCE_NAMESPACE, null);
 	
 	/**
-	 * GUID marker
-	 */
-	public static final CommandMarker COMMAND_MARKER_GUID = commandMarker(CommandMarker.MARKER_NAMESPACE, "G");
-	
-	/**
 	 * Marker for typed binary name components. These aren't general binary name components, but name
 	 * components with defined semantics. Specific examples are defined in their own profiles, see
 	 * KeyProfile and GuidProfile, as well as markers for access controls. The interpretation of these
@@ -153,6 +160,18 @@ public class CommandMarker {
 	 * have to centralize here for reference.
 	 */
 	public static final String MARKER_NAMESPACE = "M";
+	
+	/**
+	 * GUID marker
+	 */
+	public static final CommandMarker COMMAND_MARKER_GUID = commandMarker(CommandMarker.MARKER_NAMESPACE, "G");
+	
+	/**
+	 * Marker for a name component that is supposed to indicate a scope
+	 */
+	public static final CommandMarker COMMAND_MARKER_SCOPE = 
+		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "S");
+
 
 	/**
 	 * This in practice might be only the prefix, with additional variable arguments added
@@ -164,14 +183,35 @@ public class CommandMarker {
 		return new CommandMarker(namespace, command);
 	}
 	
+	public static final CommandMarker commandMarker(CommandMarker namespace, String command) {
+		return new CommandMarker(namespace, command);
+	}
+
+	protected CommandMarker(CommandMarker parent, String operation) {
+		
+		if (null == operation) {
+			_byteCommandMarker = parent.getBytes();
+		} else {
+			byte [] prefix = parent.getBytes();
+
+			StringBuffer sb = new StringBuffer(COMMAND_SEPARATOR);
+			sb.append(operation);
+			byte [] csb = ContentName.componentParseNative(sb.toString());
+			byte [] bc = new byte[csb.length + prefix.length];
+			System.arraycopy(prefix, 0, bc, 0, prefix.length);
+			System.arraycopy(csb, 0, bc, prefix.length, csb.length);
+			_byteCommandMarker = bc;
+		}
+	}
+	
 	protected CommandMarker(String namespace, String command) {
 		StringBuffer sb = new StringBuffer(namespace);
-		if ((null != namespace) && (namespace.length() > 0)) {
-			// otherwise use leading . and empty namespace
-			sb.append(COMMAND_SEPARATOR);
-		}
 		if ((null != command) && (command.length() > 0)) {
-			sb.append(command);
+			if ((null != namespace) && (namespace.length() > 0)) {
+				// otherwise use leading . and empty namespace
+				sb.append(COMMAND_SEPARATOR);
+			}			
+                        sb.append(command);
 		}
 		byte [] csb = ContentName.componentParseNative(sb.toString());
 		byte [] bc = new byte[csb.length + COMMAND_PREFIX.length];
@@ -210,7 +250,7 @@ public class CommandMarker {
 			// only one component
 			return new String(_byteCommandMarker, COMMAND_PREFIX.length, _byteCommandMarker.length-COMMAND_PREFIX.length);
 		}
-		int lastDot = DataUtils.byterindex(_byteCommandMarker, COMMAND_PREFIX.length, COMMAND_SEPARATOR_BYTE);
+		int lastDot = DataUtils.byterindex(_byteCommandMarker, _byteCommandMarker.length-1, COMMAND_SEPARATOR_BYTE);
 		return new String(_byteCommandMarker, COMMAND_PREFIX.length, lastDot-1-COMMAND_PREFIX.length);
 	}
 	
@@ -278,6 +318,13 @@ public class CommandMarker {
 	}
 	
 	/**
+	 * Helper method if you just need to add one argument
+	 */
+	public byte [] addArgument(String argument) {
+		return addArguments(new String[]{argument});
+	}
+	
+	/**
 	 * Helper method if you just need to add data.
 	 * @param applicationData -- raw binary
 	 * @return
@@ -305,6 +352,19 @@ public class CommandMarker {
 	 */
 	public boolean isMarker(byte [] nameComponent) {
 		return (0 == DataUtils.bytencmp(getBytes(), nameComponent, length()));
+	}
+	
+	/**
+	 * Find component that contains the marker
+	 * @param name
+	 * @return
+	 */
+	public int findMarker(ContentName name) {
+		for (int i = 0; i < name.count(); i++) {
+			if (isMarker(name.component(i)))
+				return i;
+		}
+		return -1;
 	}
 	
 	public static CommandMarker getMarker(byte [] nameComponent) {

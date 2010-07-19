@@ -147,7 +147,7 @@ public class KeyDirectoryTestRepo {
 		String randomGroupName = "testGroup" + rand.nextInt(10000);
 		ArrayList<Link> newMembers = new ArrayList<Link>();
 		newMembers.add(new Link(myIdentity));
-		Group myGroup = acm.groupManager().createGroup(randomGroupName, newMembers);
+		Group myGroup = acm.groupManager().createGroup(randomGroupName, newMembers, 0);
 		Assert.assertTrue(acm.groupManager().haveKnownGroupMemberships());
 		KeyDirectory pkd = myGroup.privateKeyDirectory(acm);
 		pkd.waitForChildren();

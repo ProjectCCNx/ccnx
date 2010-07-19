@@ -23,6 +23,7 @@ import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
@@ -137,7 +138,7 @@ public class GroupTestRepo {
 			newMembers.add(new Link(ContentName.fromNative(userNamespace, name)));
 		}
 		System.out.println("creating a group...");
-		Group newGroup = _gm.createGroup(_randomGroupName, newMembers);
+		Group newGroup = _gm.createGroup(_randomGroupName, newMembers, 0);
 
 		Assert.assertTrue(_gm.haveKnownGroupMemberships());
 		Assert.assertTrue(_gm.amCurrentGroupMember(newGroup));
@@ -161,7 +162,7 @@ public class GroupTestRepo {
 		Assert.assertTrue(_gm.amCurrentGroupMember(_randomGroupName));
 
 		//isGroup sometimes fails, there's a timing issue. 
-		Assert.assertTrue(_gm.isGroup(_randomGroupName));
+		Assert.assertTrue(_gm.isGroup(_randomGroupName, SystemConfiguration.EXTRA_LONG_TIMEOUT));
 		ContentName pkName = newGroup.publicKeyName();
 		System.out.println("new group's pk name is " + pkName);
 		Assert.assertTrue(_gm.isGroup(pkName));
@@ -172,7 +173,7 @@ public class GroupTestRepo {
 		ContentName childGroupNamespace = GroupAccessControlProfile.groupName(testStorePrefix, _randomGroupName);
 		System.out.println("child group namespace = " + childGroupNamespace);
 		newMembers.add(new Link(childGroupNamespace));
-		Group newParentGroup = _gm.createGroup(randomParentGroupName, newMembers);
+		Group newParentGroup = _gm.createGroup(randomParentGroupName, newMembers, 0);
 		
 		Assert.assertTrue(_gm.amCurrentGroupMember(newParentGroup));
 
@@ -189,10 +190,14 @@ public class GroupTestRepo {
 	
 	@Test
 	public void testGroupUpdate() throws Exception {
-		// This should in theory be updating in background.
-		Group ourExistingGroup = _gm.getGroup(_randomGroupName);
+
+		Group ourExistingGroup = _gm.getGroup(_randomGroupName, SystemConfiguration.EXTRA_LONG_TIMEOUT);
 		
-		Group aPointerCopy = _gm.getGroup(_randomGroupName);
+		// This should be a cache hit. Test that with a 0 timeout
+		Group aPointerCopy = _gm.getGroup(_randomGroupName, 0);
+		
+		Assert.assertNotNull("Unexpected cache miss!", aPointerCopy);
+		
 		// testing pointer equality -- these should be the same object
 		Assert.assertTrue(ourExistingGroup == aPointerCopy);
 		
@@ -201,7 +206,8 @@ public class GroupTestRepo {
 		GroupManager ourGM = ourACM.groupManager();
 		Thread.sleep(1000);
 		
-		Group aSeparateGroupCopy = ourGM.getGroup(_randomGroupName);
+		Group aSeparateGroupCopy = ourGM.getGroup(_randomGroupName, SystemConfiguration.EXTRA_LONG_TIMEOUT);
+
 		Assert.assertEquals(ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
 		Log.info("Original key name {0}, copy key name {1}", ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
 		System.out.println("Original key version: " + ourExistingGroup.publicKeyVersion());

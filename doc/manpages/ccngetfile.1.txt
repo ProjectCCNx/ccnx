@@ -1,0 +1,76 @@
+CCNGETFILE(1)
+=============
+
+NAME
+----
+ccngetfile - retrieve a file published as CCNx content and save it to a local file
+
+SYNOPSIS
+--------
+*ccngetfile* [-unversioned] [-timeout 'millis'] [-as 'pathToKeystore'] [-ac]  'ccnxname' 'filename'
+
+DESCRIPTION
+-----------
+The *ccngetfile* utility retrieves content published under the
+'ccnxname' and writes it to the local file 'filename'. The content
+must be published as a collection of CCNx Data in accordance with the
+naming conventions for segmented streams or files, optionally
+unversioned. For the default case of versioned content, *ccngetfile*
+will retrieve the latest version available.
+
+The 'ccnxname' must be specified using the CCNx URI encoding
+syntax. For simple cases of ASCII name components this is just
+pathname syntax with / delimiters.
+
+The 'filename' must be the pathname of a local file that will be
+written and will be overwritten if it already exists.
+
+The '-as' option sets the user key for decrypting published content.  This
+must point to a place in the filesystem where CCNx compatible keys have been
+saved.
+
+The '-ac' flag forces *ccngetfile* to obey access control restrictions.  If
+the user is not permitted to read in a given namespace, decryption will fail.
+
+
+OPTIONS
+-------
+*-unversioned*::
+     Do not seek a version identifier as the next component following the
+     'ccnxname' prefix in retrieved Data. This option may be used when the
+     supplied 'ccnxname' already includes an explicit version
+     component at the end (which must be URI encoded). This option may
+     also be used for content that is organized according to the
+     segmentation convention but does not use the versioning
+     convention at all. When this option is used, the FileInputStream
+     abstraction will not be used, since that implies versioning.
+
+*-timeout* 'millis'::
+     Set the timeout that will be used for all content retrievals on
+     during the stream reading.
+
+*-log* 'LEVEL'::
+     Set the logging level. 'LEVEL' must be the an acceptable Java
+     Logger level: either an integer or a level name (e.g. SEVERE).
+
+*-as* 'pathToKeystore'::
+     Set the user for decrypting published content.  This must point to a place
+     in the filesystem where ccnx compatible keys have been saved.
+
+*-ac*::
+     This options forces *ccngetfile* to obey access control restrictions.  If
+     the user is not permitted to read in a given namespace, decryption will
+     fail.
+
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; retrieval error)
+
+AUTHOR
+------
+Diana Smetters, <smetters@parc.com>

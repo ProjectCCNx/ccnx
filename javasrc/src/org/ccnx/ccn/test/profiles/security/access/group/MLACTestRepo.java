@@ -63,7 +63,7 @@ public class MLACTestRepo {
 			userKeystore[d] = ContentName.fromNative(userNamespace[d], "_keystore_");
 			groupNamespace[d] = GroupAccessControlProfile.groupNamespaceName(domainPrefix[d]);
 			td = new CreateUserData(userKeystore[d], userNames, userNames.length, true, "password".toCharArray(), _handle);
-			td.publishUserKeysToRepository(userNamespace[d]);			
+			td.publishUserKeysToRepositorySetLocators(userNamespace[d]);			
 		}
 	}
 	
@@ -96,7 +96,7 @@ public class MLACTestRepo {
 		groupMembers.add(new Link(ContentName.fromNative(userNamespace[1], userNames[0])));
 
 		firstGroupName = "group-" + rnd.nextInt(10000);
-		Group mixedGroup = _gm0.createGroup(firstGroupName, groupMembers);
+		Group mixedGroup = _gm0.createGroup(firstGroupName, groupMembers, 0);
 		Assert.assertNotNull(mixedGroup);
 	}
 	
@@ -114,7 +114,7 @@ public class MLACTestRepo {
 		// add Bob from domain1
 		groupMembers.add(new Link(ContentName.fromNative(userNamespace[1], userNames[1])));
 		
-		Group mixedGroupOfGroup = _gm1.createGroup("group-" + rnd.nextInt(10000), groupMembers);
+		Group mixedGroupOfGroup = _gm1.createGroup("group-" + rnd.nextInt(10000), groupMembers, 0);
 		Assert.assertNotNull(mixedGroupOfGroup);
 	}
 	

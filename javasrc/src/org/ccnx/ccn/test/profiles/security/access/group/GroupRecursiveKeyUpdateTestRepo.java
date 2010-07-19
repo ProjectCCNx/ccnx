@@ -11,10 +11,9 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
+import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.CCNTestHelper;
@@ -104,28 +103,28 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		G0Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[0])));
 		G0Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[1])));
 		groupName[0] = "group0-" + rand.nextInt(10000);
-		group[0] = acm.groupManager().createGroup(groupName[0], G0Members);
+		group[0] = acm.groupManager().createGroup(groupName[0], G0Members, 0);
 		
 		// create group4 containing user1
 		ArrayList<Link> G4Members = new ArrayList<Link>();
 		G4Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[1])));
 		groupName[4] = "group4-" + rand.nextInt(10000);
-		group[4] = acm.groupManager().createGroup(groupName[4], G4Members);
+		group[4] = acm.groupManager().createGroup(groupName[4], G4Members, 0);
 		
 		// create group1 and group2 containing group0
 		ArrayList<Link> G1G2Members = new ArrayList<Link>();
 		G1G2Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[0])));
 		groupName[1] = "group1-" + rand.nextInt(10000);
-		group[1] = acm.groupManager().createGroup(groupName[1], G1G2Members);
+		group[1] = acm.groupManager().createGroup(groupName[1], G1G2Members, 0);
 		groupName[2] = "group2-" + rand.nextInt(10000);
-		group[2] = acm.groupManager().createGroup(groupName[2], G1G2Members);
+		group[2] = acm.groupManager().createGroup(groupName[2], G1G2Members, 0);
 		
 		// create group3 containing group1 and group2
 		ArrayList<Link> G3Members = new ArrayList<Link>();
 		G3Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[1])));
 		G3Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[2])));
 		groupName[3] = "group3-" + rand.nextInt(10000);
-		group[3] = acm.groupManager().createGroup(groupName[3], G3Members);
+		group[3] = acm.groupManager().createGroup(groupName[3], G3Members, 0);
 		
 		// record the creation time of the original group keys
 		for (int i=0; i<numberOfGroups; i++) groupKeyCreationTime[i] = group[i].publicKeyVersion();

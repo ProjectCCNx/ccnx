@@ -37,17 +37,25 @@ import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.profiles.namespace.NamespaceProfile;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.namespace.PolicyMarker;
-import org.ccnx.ccn.profiles.security.access.group.ACL;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.group.ACL.ACLObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
 /**
- * Used to mark the top level in a namespace under access control
- * This class currently holds no data - it will be extended to hold access control 
- * configuration information for that namespace.
+ * We identify policies that apply to a given namespace (subtree of the name tree) by
+ * placing policy markers, as data, into that namespace. (Questions of how to authenticate
+ * these markers is up to the policy and namespace; they are signed as regular CCNx data
+ * and authentication policies can be based on signer information.)
+ * 
+ * This class specifies a policy marker used to indicat that a given namespace is under
+ * access control, and to specify what access control scheme should be used to protect
+ * and retrieve data in that namespace (questions of whether organizing access control
+ * by namespace are left to future work). This object contains a small amount of data --
+ * the access control profile used for the namespace (a string, used to index into a
+ * map of classes implementing that policy string), a set of ParameterizedName, defining
+ * mappings from strings to names within this namespace of interest to a given access control
+ * scheme (e.g. a prefix where access control groups might be defined, etc), and then a
+ * KeyValueSet of other, arbitrary parameters, for use by an access control scheme to store
+ * additional policy information that it requires.
  */
 public class AccessControlPolicyMarker extends GenericXMLEncodable implements PolicyMarker {
 	
@@ -95,31 +103,31 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 
 	/**
 	 * Set up a part of the namespace to be under access control.
-	 * This method writes the root block and root ACL to a repository.
+	 * This method writes the root block to a repository. Type-specific
+	 * initialization (e.g. writing ACLs) needs to be handled by the appropriate
+	 * subclass.
 	 * @param name The top of the namespace to be under access control
-	 * @param acl The access control list to be used for the root of the
-	 * namespace under access control.
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 */
-	public static void create(ContentName name, ACL acl, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException {
+	public static void create(ContentName name, SaveType saveType, CCNHandle handle) throws IOException {
 		AccessControlPolicyMarker r = new AccessControlPolicyMarker();
 
 		ContentName policyPrefix = NamespaceProfile.policyNamespace(name);
 		ContentName policyMarkerName = AccessControlProfile.getAccessControlPolicyName(policyPrefix);
 		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(policyMarkerName, r, saveType, handle);
 		ro.save();
-		
-		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(name), acl, handle);
-		aclo.save();
 	}
 	
 	/**
 	 * Set up a part of the namespace to be under access control.
-	 * This method writes the root block and root ACL to a repository.
+	 * This method writes the root block to a repository.
+	 * This needs to be generic, and can't
+	 * know about particular access control types. It will make and initialize
+	 * an access control manager of the appropriate type for this namespace,
+	 * load it into the search path, and hand it back. Type-specific initialization
+	 * must be done by the caller.
 	 * @param name The top of the namespace to be under access control
-	 * @param acl The access control list to be used for the root of the
-	 * namespace under access control.
 	 * @param parameterizedNames
 	 * @param parameters
 	 * @param saveType
@@ -127,8 +135,9 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 	 * @throws IOException
 	 * @throws ConfigurationException
 	 */
-	public static void create(ContentName name, ContentName profileName, ACL acl, ArrayList<ParameterizedName> parameterizedNames,
-			KeyValueSet parameters, SaveType saveType, CCNHandle handle) throws IOException, ConfigurationException, InvalidKeyException {
+	public static AccessControlManager create(ContentName name, ContentName profileName, ArrayList<ParameterizedName> parameterizedNames,
+			KeyValueSet parameters, SaveType saveType, CCNHandle handle) throws IOException, InvalidKeyException {
+		
 		AccessControlPolicyMarker r = new AccessControlPolicyMarker(profileName, parameterizedNames, parameters);
 		
 		ContentName policyPrefix = NamespaceProfile.policyNamespace(name);
@@ -136,10 +145,17 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 		AccessControlPolicyMarkerObject ro = new AccessControlPolicyMarkerObject(policyMarkerName, r, saveType, handle);
 		ro.save();
 
-		GroupAccessControlManager gacm = new GroupAccessControlManager();
-		gacm.initialize(ro, handle);
-		// create ACL and NK at the root of the namespace under access control
-		gacm.initializeNamespace(acl);
+		AccessControlManager acm;
+		try {
+			acm = AccessControlManager.createAccessControlManager(ro, handle);
+		} catch (InstantiationException e) {
+			throw new IOException("Cannot create access control manager of type " + profileName + ": " + e);
+		} catch (IllegalAccessException e) {
+			throw new IOException("Cannot create access control manager of type " + profileName + ": " + e);
+		}
+		handle.keyManager().rememberAccessControlManager(acm);
+		
+		return acm;
 	}	
 	
 	public AccessControlPolicyMarker(ContentName profileName) {

@@ -60,7 +60,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * all of the library functionality to write keys once that handle is sufficiently
  * initialized.
  */
-
 public class PublicKeyCache {
 
 	// Stop logging to key cache by default.
@@ -290,7 +289,9 @@ public class PublicKeyCache {
 				theKey = new PublicKeyObject(retrievedContent, handle);
 				if ((null != theKey) && (theKey.available())) {
 					if ((null != desiredKeyID) && (!theKey.publicKeyDigest().equals(desiredKeyID))) {
-						Log.fine("Got key at expected name {0}, but it wasn't the right key, wanted {0}, got {1}", 
+						Log.fine("Got key at expected name {0} from locator {1}, but it wasn't the right key, wanted {2}, got {3}", 
+								retrievedContent.name(),
+								locator,
 								desiredKeyID, theKey.publicKeyDigest());
 					} else {
 						// either we don't have a preferred key ID, or we matched
@@ -309,6 +310,9 @@ public class PublicKeyCache {
 			}
 			// TODO -- not sure this is exactly right, but a start...
 			Exclude currentExclude = keyInterest.exclude();
+			if (null == currentExclude) {
+				currentExclude = new Exclude();
+			}
 			currentExclude.add(new byte [][]{retrievedContent.digest()});
 			keyInterest.exclude(currentExclude);
 			iterationCount++;
@@ -371,5 +375,9 @@ public class PublicKeyCache {
 			}
 		}
 		return null;
+	}
+	
+	public ArrayList<Certificate> retrieveCertificates(PublisherPublicKeyDigest keyID) {
+		return _rawCertificateMap.get(keyID);
 	}
 }

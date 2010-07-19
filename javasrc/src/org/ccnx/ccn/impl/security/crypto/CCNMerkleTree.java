@@ -21,10 +21,9 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
+import java.util.logging.Level;
 
 import org.bouncycastle.asn1.DEROctetString;
-import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -260,7 +259,7 @@ public class CCNMerkleTree extends MerkleTree {
 									ContentObject.prepareContent(segmentName(leafIndex), 
 																 segmentSignedInfo(leafIndex),
 																 content, offset, length));
-			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+			if (Log.isLoggable(Log.FAC_SIGNING, Level.INFO)) {
 				Log.info("offset: " + offset + " block length: " + length + " blockDigest " + 
 						DataUtils.printBytes(blockDigest) + " content digest: " + 
 						DataUtils.printBytes(CCNDigestHelper.digest(content, offset, length)));

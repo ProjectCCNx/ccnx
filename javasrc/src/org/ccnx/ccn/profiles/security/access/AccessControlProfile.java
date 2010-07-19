@@ -3,8 +3,23 @@ package org.ccnx.ccn.profiles.security.access;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.namespace.NamespaceProfile;
 import org.ccnx.ccn.protocol.ContentName;
 
+/**
+ * This is a Profile defining basic naming and data standards to apply access control on a particular
+ * subtree and all the data contained below it. It is intended to be generic, and specialized by futher
+ * protocols (e.g. GroupAccessControlProfile), that would definte particular access control schemes.
+ * It focuses primarily on the definition of names for namespace control data, policy data, and keys.
+ * For descriptions of data, and how this access control system functions, see the separate CCNx Access
+ * Control Specifications Document.
+ * 
+ * It is not clear that the division between "generic" and "specific" is yet correct; what we want to do
+ * is define a small set of common features that need to be agreed on by all access control (by encryption)
+ * schemes that want to participate in this framework, and put all and only those common elements here.
+ * This is a first or 2nd cut; future iterations may move elements in or out.
+ *
+ */
 public class AccessControlProfile implements CCNProfile {
 
 	public static final CommandMarker ACCESS_CONTROL_MARKER = 
@@ -112,6 +127,15 @@ public class AccessControlProfile implements CCNProfile {
 	 */
 	public static boolean isAccessControlPolicyName(ContentName name) {
 		return name.contains(ACCESS_CONTROL_POLICY_NAME_BYTES);
+	}
+	
+	/**
+	 * Get the policy marker name for a given namespace to access control.
+	 */
+	public static ContentName getAccessControlPolicyMarkerName(ContentName accessControlNamespace) {
+		ContentName policyPrefix = NamespaceProfile.policyNamespace(accessControlNamespace);
+		ContentName policyMarkerName = AccessControlProfile.getAccessControlPolicyName(policyPrefix);
+		return policyMarkerName;
 	}
 	
 }

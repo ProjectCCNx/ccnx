@@ -443,6 +443,7 @@ ccn_destroy(struct ccn **hp)
     hashtb_destroy(&(h->keystores));
     ccn_charbuf_destroy(&h->interestbuf);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
+    ccn_charbuf_destroy(&h->default_pubid);
     if (h->tap != -1) {
 	close(h->tap);
     }
@@ -938,19 +939,54 @@ ccn_locate_key(struct ccn *h,
 }
 
 /**
+ * Get the name out of a Link.
+ *
+ * XXX - this needs a better home.
+ */
+static int
+ccn_append_link_name(struct ccn_charbuf *name, const unsigned char *data, size_t data_size)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    size_t start = 0;
+    size_t end = 0;
+    
+    d = ccn_buf_decoder_start(&decoder, data, data_size);
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Link)) {
+        ccn_buf_advance(d);
+        start = d->decoder.token_index;
+        ccn_parse_Name(d, NULL);
+        end = d->decoder.token_index;
+        ccn_buf_check_close(d);
+        if (d->decoder.state < 0)
+            return (d->decoder.state);
+        ccn_charbuf_append(name, data + start, end - start);
+        return(0);
+        }
+    return(-1);
+}
+
+/**
  * Called when we get an answer to a KeyLocator fetch issued by
  * ccn_initiate_key_fetch.  This does not really have to do much,
  * since the main content handling logic picks up the keys as they
  * go by.
  */
 static enum ccn_upcall_res
-handle_key(
-           struct ccn_closure *selfp,
+handle_key(struct ccn_closure *selfp,
            enum ccn_upcall_kind kind,
            struct ccn_upcall_info *info)
 {
     struct ccn *h = info->h;
     (void)h;
+    int type = 0;
+    const unsigned char *msg = NULL;
+    const unsigned char *data = NULL;
+    size_t size;
+    size_t data_size;
+    int res;
+    struct ccn_charbuf *name = NULL;
+    
     switch(kind) {
         case CCN_UPCALL_FINAL:
             free(selfp);
@@ -959,8 +995,32 @@ handle_key(
             /* Don't keep trying */
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_CONTENT:
+            type = ccn_get_content_type(msg, info->pco);
+            if (type == CCN_CONTENT_KEY)
+                return(CCN_UPCALL_RESULT_OK);
+            if (type == CCN_CONTENT_LINK) {
+                /* resolve the link */
+                /* XXX - should limit how much we work at this */
+                msg = info->content_ccnb;
+                size = info->pco->offset[CCN_PCO_E];
+                res = ccn_content_get_value(info->content_ccnb, size, info->pco,
+                                            &data, &data_size);
+                if (res < 0)
+                    return (CCN_UPCALL_RESULT_ERR);
+                name = ccn_charbuf_create();
+                res = ccn_append_link_name(name, data, data_size);
+                if (res < 0)
+                    return (CCN_UPCALL_RESULT_ERR);
+                res = ccn_express_interest(h, name, selfp, NULL);
+                ccn_charbuf_destroy(&name);
+                return(res);
+            }
+            return (CCN_UPCALL_RESULT_ERR);
         case CCN_UPCALL_CONTENT_UNVERIFIED:
-            return(CCN_UPCALL_RESULT_OK);
+            type = ccn_get_content_type(msg, info->pco);
+            if (type == CCN_CONTENT_KEY)
+                return(CCN_UPCALL_RESULT_OK);
+            return(CCN_UPCALL_RESULT_VERIFY);
         default:
             return (CCN_UPCALL_RESULT_ERR);
     }
@@ -1919,6 +1979,63 @@ finalize_keystore(struct hashtb_enumerator *e)
 }
 
 /**
+ * Place the public key associated with the params into result
+ * buffer, and its digest into digest_result.
+ *
+ * This is for one of our signing keys, not just any key.
+ * Result buffers may be NULL if the corresponding result is not wanted.
+ *
+ * @returns 0 for success, negative for error
+ */
+int
+ccn_get_public_key(struct ccn *h,
+                   const struct ccn_signing_params *params,
+                   struct ccn_charbuf *digest_result,
+                   struct ccn_charbuf *result)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_keystore *keystore = NULL;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    int res;
+    res = ccn_chk_signing_params(h, params, &sp, NULL, NULL, NULL);
+    if (res < 0)
+        return(res);
+    hashtb_start(h->keystores, e);
+    if (hashtb_seek(e, sp.pubid, sizeof(sp.pubid), 0) == HT_OLD_ENTRY) {
+        struct ccn_keystore **pk = e->data;
+        keystore = *pk;
+        if (digest_result != NULL) {
+            digest_result->length = 0;
+            ccn_charbuf_append(digest_result,
+                               ccn_keystore_public_key_digest(keystore),
+                               ccn_keystore_public_key_digest_length(keystore));
+        }
+        if (result != NULL) {
+            struct ccn_buf_decoder decoder;
+            struct ccn_buf_decoder *d;
+            const unsigned char *p;
+            size_t size;
+            result->length = 0;
+            ccn_append_pubkey_blob(result, ccn_keystore_public_key(keystore));
+            d = ccn_buf_decoder_start(&decoder, result->buf, result->length);
+            res = ccn_buf_match_blob(d, &p, &size);
+            if (res >= 0) {
+                memmove(result->buf, p, size);
+                result->length = size;
+                res = 0;
+            }
+        }
+    }
+    else {
+        res = NOTE_ERR(h, -1);
+        hashtb_delete(e);
+    }
+    hashtb_end(e);
+    return(res);
+}
+
+/**
  * This is mostly for use within the library,
  * but may be useful for some clients.
  */
@@ -2005,17 +2122,16 @@ ccn_chk_signing_params(struct ccn *h,
             ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Timestamp, 1, -1);
             stop = d->decoder.token_index;
             if ((needed & CCN_SP_TEMPL_TIMESTAMP) != 0) {
-                if (ptimestamp != NULL) {
-                    *ptimestamp = ccn_charbuf_create();
-                    i = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp,
-                                            d->buf,
-                                            start, stop,
-                                            &ptr, &size);
-                    if (i == 0) {
+                i = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp,
+                                        d->buf,
+                                        start, stop,
+                                        &ptr, &size);
+                if (i == 0) {
+                    if (ptimestamp != NULL) {
                         *ptimestamp = ccn_charbuf_create();
                         ccn_charbuf_append(*ptimestamp, ptr, size);
-                        needed &= ~CCN_SP_TEMPL_TIMESTAMP;
                     }
+                    needed &= ~CCN_SP_TEMPL_TIMESTAMP;
                 }
             }
             ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Type, 1, -1);
@@ -2038,8 +2154,8 @@ ccn_chk_signing_params(struct ccn *h,
                         *pfinalblockid = ccn_charbuf_create();
                         ccn_charbuf_append(*pfinalblockid,
                                            d->buf + start, stop - start);
-                        needed &= ~CCN_SP_TEMPL_FINAL_BLOCK_ID;
-                    };
+                    }
+                    needed &= ~CCN_SP_TEMPL_FINAL_BLOCK_ID;
                 }
             }
             start = d->decoder.token_index;
@@ -2048,12 +2164,12 @@ ccn_chk_signing_params(struct ccn *h,
             stop = d->decoder.token_index;
             if ((needed & CCN_SP_TEMPL_KEY_LOCATOR) != 0 && 
                 d->decoder.state >= 0 && stop > start) {
-                if (pfinalblockid != NULL) {
+                if (pkeylocator != NULL) {
                     *pkeylocator = ccn_charbuf_create();
                     ccn_charbuf_append(*pkeylocator,
                                        d->buf + start, stop - start);
-                    needed &= ~CCN_SP_TEMPL_KEY_LOCATOR;
                 }
+                needed &= ~CCN_SP_TEMPL_KEY_LOCATOR;
             }
             ccn_buf_check_close(d);
         }
@@ -2157,5 +2273,6 @@ ccn_sign_content(struct ccn *h,
     ccn_charbuf_destroy(&timestamp);
     ccn_charbuf_destroy(&keylocator);
     ccn_charbuf_destroy(&finalblockid);
+    ccn_charbuf_destroy(&signed_info);
     return(res);
 }

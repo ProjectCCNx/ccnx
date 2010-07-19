@@ -20,6 +20,12 @@ import java.security.KeyStore;
 
 import org.ccnx.ccn.protocol.CCNTime;
 
+/**
+ * Track a set of information about keystore files that we load, so that we can use it
+ * (e.g. versioning) for representing those keys in CCN, or storing related configuration
+ * data in the same directory.
+ *
+ */
 public class KeyStoreInfo {
 	// Where did we load this from
 	String _keyStoreURI;

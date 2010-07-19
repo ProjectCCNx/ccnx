@@ -18,8 +18,6 @@
 package org.ccnx.ccn.profiles.security.access.group;
 
 
-import java.util.logging.Level;
-
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -29,11 +27,18 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
+ * This is a sub-Profile of AccessControlProfile defining naming conventions used in a group-based
+ * access control scheme (where one can create Groups of users and other groups, and give rights to
+ * nametrees based on group membership). 
+ * For descriptions of data, and how this access control system functions, see the separate CCNx Access
+ * Control Specifications Document.
+ *
  * This class specifies how a number of access control elements are named:
  * - users, and their keys
  * - groups, and their keys
@@ -48,6 +53,10 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	public static final byte [] GROUP_PREFIX_BYTES = ContentName.componentParseNative(GROUP_PREFIX);
 	public static final String USER_PREFIX = "Users";
 	public static final byte [] USER_PREFIX_BYTES = ContentName.componentParseNative(USER_PREFIX);
+	
+	// The labels used to tag group or user storage information in AccessControlPolicyMarkerObjects
+	public static final String GROUP_LABEL = "Group";		
+	public static final String USER_LABEL = "User";
 	
 	public static final String GROUP_MEMBERSHIP_LIST_NAME = "MembershipList";
 	public static final String GROUP_POINTER_TO_PARENT_GROUP_NAME = "PointerToParentGroup";
@@ -74,7 +83,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	public static class PrincipalInfo {
 		
 		// Number of parts expected in a PI component representation
-		private static final int PI_COMPONENT_COUNT = 4;
+		// private static final int PI_COMPONENT_COUNT = 4;
 		
 		// However long our distinguishing hashes should be
 		public static final int DISTINGUISHING_HASH_LENGTH = 8;
@@ -83,14 +92,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		private byte[] _distinguishingHash;
 		private String _friendlyName;
 		private CCNTime _versionTimestamp;
-		
-		public PrincipalInfo(byte [] type, byte[] distinguishingHash, String friendlyName, CCNTime versionTimestamp) {
-			_typeMarker = type;
-			_distinguishingHash = distinguishingHash;
-			_friendlyName = friendlyName;
-			_versionTimestamp = versionTimestamp;
-		}
-		
+				
 		/**
 		 * Parse the principal info for a specified public key name
 		 * @param isGroup whether the principal is a group
@@ -116,23 +118,45 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			
 			if (!PrincipalInfo.isPrincipalNameComponent(principalInfoNameComponent) || (principalInfoNameComponent.length <= USER_PRINCIPAL_PREFIX.length))
 				throw new IllegalArgumentException("Not a valid principal name component!");
+			int pos = 0;
 			
-			// First time we see COMPONENT_SEPARATOR is the separation point.
-			// Could jump back based on fixed width of timestamp.
-			byte [][] pieces = 
-				DataUtils.binarySplit(principalInfoNameComponent, CCNProfile.COMPONENT_SEPARATOR[0]);
-			if (pieces.length < PI_COMPONENT_COUNT) {
-				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-					Log.warning(Log.FAC_ACCESSCONTROL, "Unexpected principal name format - insufficient number of components: " + 
-							ContentName.componentPrintURI(principalInfoNameComponent, USER_PRINCIPAL_PREFIX.length, principalInfoNameComponent.length-USER_PRINCIPAL_PREFIX.length));
-				}
-				throw new IllegalArgumentException("Not a valid principal name component -- insufficient number of components!");				
+			try {
+				// The group and user principal prefixes are of the same length
+				_typeMarker = new byte[GROUP_PRINCIPAL_PREFIX.length];
+				System.arraycopy(principalInfoNameComponent, pos, _typeMarker, 0, _typeMarker.length);
+				pos += _typeMarker.length;
+				pos += CCNProfile.COMPONENT_SEPARATOR.length;
+				
+				// The distinguishing hash is of length DISTINGUISHING_HASH_LENGTH
+				_distinguishingHash = new byte[DISTINGUISHING_HASH_LENGTH];
+				System.arraycopy(principalInfoNameComponent, pos, _distinguishingHash, 0, _distinguishingHash.length);
+				pos += _distinguishingHash.length;
+				pos += CCNProfile.COMPONENT_SEPARATOR.length;
+				
+				// friendly name until the next COMPONENT_SEPARATOR
+				// We only check for the first byte of COMPONENT_SEPARATOR 
+				// since that byte is known to not appear in a friendly name
+				int fnLength = 0;
+				while (principalInfoNameComponent[pos + fnLength] != CCNProfile.COMPONENT_SEPARATOR[0]) fnLength++;
+				byte[] friendlyNameBytes = new byte[fnLength];
+				System.arraycopy(principalInfoNameComponent, pos, friendlyNameBytes, 0, fnLength);
+				_friendlyName = ContentName.componentPrintNative(friendlyNameBytes);
+				pos += fnLength;
+				pos += CCNProfile.COMPONENT_SEPARATOR.length;
+	
+				// the rest is the timestamp
+				byte[] timestampBytes = new byte[principalInfoNameComponent.length - pos];
+				System.arraycopy(principalInfoNameComponent, pos, timestampBytes, 0, timestampBytes.length);
+				_versionTimestamp = new CCNTime(timestampBytes);
+			} catch (Exception e) {
+				// we're having some trouble here...
+				Log.severe(Log.FAC_ACCESSCONTROL, "PrincipalInfo: error in parsing component {0}", 
+						ContentName.componentPrintURI(principalInfoNameComponent));
+				Log.severe(Log.FAC_ACCESSCONTROL, "PrincipalInfo: typeMarker {0}, distinguishing hash {1}, friendly name {2}, timestamp {3}",
+						ContentName.componentPrintURI(_typeMarker), ContentName.componentPrintURI(_distinguishingHash),
+						_friendlyName, _versionTimestamp);
+				System.exit(1);
 			}
-			
-			_typeMarker = pieces[0];
-			_distinguishingHash = pieces[1];
-			_friendlyName = ContentName.componentPrintNative(pieces[2]);
-			_versionTimestamp = new CCNTime(pieces[3]);
 		}
 		
 		/**
@@ -172,29 +196,6 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			return component;
 		}
 		
-		/**
-		 * Parses the principal name from a group public key.
-		 * For groups, the last component of the public key is GROUP_PUBLIC_KEY_NAME = "Key".
-		 * The principal name is the one-before-last component.
-		 * @param publicKeyName the name of the group public key
-		 * @return the corresponding principal name
-		 */
-		public static String parsePrincipalNameFromGroupPublicKeyName(ContentName publicKeyName) {
-			ContentName cn = VersioningProfile.cutTerminalVersion(publicKeyName).first();
-			return ContentName.componentPrintNative(cn.component(cn.count() - 2));
-		}
-		
-		/**
-		 * Parses the principal name from a public key name.
-		 * Do not use this method for group public keys.
-		 * For groups, use instead parsePrincipalNameFromGroupPublicKeyName
-		 * @param publicKeyName the public key name
-		 * @return the corresponding principal name
-		 */
-		public static String parsePrincipalNameFromPublicKeyName(ContentName publicKeyName) {
-			return ContentName.componentPrintNative(VersioningProfile.cutTerminalVersion(publicKeyName).first().lastComponent());
-		}
-
 		public boolean isGroup() { return Arrays.areEqual(GROUP_PRINCIPAL_PREFIX, _typeMarker); }
 		public String friendlyName() { return _friendlyName; }
 		public byte[] distinguishingHash() { return _distinguishingHash; }
@@ -216,9 +217,15 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		 */
 		public static byte [] contentPrefixToDistinguishingHash(ContentName name) throws ContentEncodingException {
 			byte [] fullDigest = CCNDigestHelper.digest(name.encode());
+			// Ensure that the distinguishing hash is always exactly of length DISTINGUISHING_HASH_LENGTH
+			// to enable correct parsing of a byte[] representing a PrincipalInfo
 			if (fullDigest.length > DISTINGUISHING_HASH_LENGTH) {
 				byte [] returnedDigest = new byte[DISTINGUISHING_HASH_LENGTH];
 				System.arraycopy(fullDigest, 0, returnedDigest, 0, DISTINGUISHING_HASH_LENGTH);
+				return returnedDigest;
+			} else if (fullDigest.length < DISTINGUISHING_HASH_LENGTH) {
+				byte [] returnedDigest = new byte[DISTINGUISHING_HASH_LENGTH];
+				System.arraycopy(fullDigest, 0, returnedDigest, 0, fullDigest.length);
 				return returnedDigest;
 			}
 			return fullDigest;
@@ -320,8 +327,9 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @param groupFriendlyName the name of the group
 	 * @return the name of the group public key
 	 */
-	public static ContentName groupPublicKeyName(ContentName groupNamespaceName, String groupFriendlyName) {
-		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+	public static ContentName groupPublicKeyName(ParameterizedName groupStorage, String groupFriendlyName) {
+		ContentName groupFullName = ContentName.fromNative(groupStorage.prefix(), groupFriendlyName);
+		return groupPublicKeyName(groupStorage, groupFullName);
 	}
 	
 	/**
@@ -329,8 +337,18 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @param groupFullName the full name of the group
 	 * @return the name of the group public key
 	 */
-	public static ContentName groupPublicKeyName(ContentName groupFullName) {
-		return ContentName.fromNative(groupFullName,  AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+	public static ContentName groupPublicKeyName(ParameterizedName groupStorage, ContentName groupFullName) {
+		if (null != groupStorage.suffix()) {
+			return ContentName.fromNative(groupFullName.append(groupStorage.suffix()), AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+		}
+		return ContentName.fromNative(groupFullName, AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+	}
+	
+	public static ContentName userPublicKeyName(ParameterizedName userStorage, ContentName userName) {
+		if (null != userStorage.suffix()) {
+			return userName.append(userStorage.suffix());
+		}
+		return userName;
 	}
 	
 	/**
@@ -339,8 +357,8 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @param groupFriendlyName the name of the group
 	 * @return the name of the group membership list
 	 */
-	public static ContentName groupMembershipListName(ContentName groupNamespaceName, String groupFriendlyName) {
-		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName, groupFriendlyName),  GROUP_MEMBERSHIP_LIST_NAME);
+	public static ContentName groupMembershipListName(ParameterizedName groupNamespaceName, String groupFriendlyName) {
+		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName.prefix(), groupFriendlyName),  GROUP_MEMBERSHIP_LIST_NAME);
 	}
 
 	/**
@@ -353,13 +371,24 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	}
 
 	/**
-	 * Get the name of a group private key.
+	 * Get the name of a group private key key directory (containing the encrypted key blocks).
 	 * We hang the wrapped private key directly off the public key version.
 	 * @param groupPublicKeyNameAndVersion the versioned name of the group public key
 	 * @return the versioned name of the group private key
 	 */
 	public static ContentName groupPrivateKeyDirectory(ContentName groupPublicKeyNameAndVersion) {
 		return groupPublicKeyNameAndVersion;
+	}
+	
+	/**
+	 * Get the name of the private key block in a group private key directory, without version; 
+	 * useful for checking cache status.
+	 * @param groupFullName
+	 * @return
+	 */
+	public static ContentName groupPrivateKeyBlockName(ContentName groupPublicKeyNameAndVersion) {
+		return ContentName.fromNative(groupPrivateKeyDirectory(groupPublicKeyNameAndVersion), 
+				AccessControlProfile.GROUP_PRIVATE_KEY_NAME);
 	}
 	
 	public static ContentName groupPointerToParentGroupName(ContentName groupFullName) {

@@ -84,7 +84,10 @@ based (primarily) on time.  The remaining bytes are a big-endian
 binary encoding of the time in link:Timestamp.html[CCNx Timestamp
 format]. 
 
-The publisher generating the version stamp should try to avoid using a stamp earlier than (or the same as) any version of the file, to the extent that it knows about it.  It should also avoid generating stamps that are unreasonably far in the future.
+The publisher generating the version stamp should try to avoid
+using a stamp earlier than (or the same as) any version of the file,
+to the extent that it knows about it.
+It should also avoid generating stamps that are unreasonably far in the future.
 
 .Example:
 .........
@@ -175,7 +178,16 @@ which are stores of CCNx content, usually persistent stores.
 Start Write Command::
    `%C1.R.sw` - request repository to retrieve and store content.  The
    prefix of the name before this start write command component must
-   be the prefix of the content to be written.
+   be the prefix of the content to be written.  Following this there
+   should be a nonce component.
+
+Checked Start Write Command::
+   `%C1.R.sw-c` - similar to above, but the repository firsts checks
+   for the presence of the stream and does not store it if it is already
+   present.  The repository responds in either case.  Following the 
+   command component is a nonce component, a segment name component,
+   and an explicit digest component, the last two identifying precisely
+   the first segment of the stream to be stored.
 
 === Nonce (Namespace `N`)
 
@@ -186,7 +198,7 @@ Nonce Command::
    `%C1.N%00<noncevalue>` - where <noncevalue> is the random (binary)
    nonce value. 
 
-   Early verisions of this profile used an operation of 'n', and predated
+   Early versions of this profile used an operation of 'n', and predated
    the binary argument separator, resulting in nonce commands of 
    %C1.N.n<noncevalue>.
 
@@ -211,27 +223,44 @@ accidental collisions with application names.
 
 Marker namespaces in common use:
 
-Guid name components: to specify fixed random binary name components, which are used
+=== Guid name components:
+Thes are used to specify fixed random binary name components, which are used
 repeatedly over time, rather than nonces.
 ............................
 %C1.M.G%00<guid value>
 ............................
 
-Key ID name components: refer to a particular public key by its digest (currently
-SHA256). Equivalent to PublisherPublicKeyDigest, and the PublisherID included in the
-SignedInfo of each packet.
+=== Key ID name components:
+These refer to a particular public key by its digest (currently SHA256).
+Equivalent to PublisherPublicKeyDigest, and the PublisherID included in the
+SignedInfo of each ContentObject.
 ............................
 %C1.M.K%00<key id value>
 ............................
 
-Early versions of key ID name components took the form keyid<key id value>.
-
-Access control marker:
+=== Access control marker:
+Content relating to access control for a given namespace node is stored below
+this marker component.
 ............................
 %C1.M.ACCESS
 ............................
-content relating to access control for a given namespace node is stored below
-this marker component.
+
+=== Scoped name:
+This is used as the first component of a namespace that is restricted to the
+local machine.
+............................
+%C1.M.S.localhost
+............................
+
+=== Service discovery:
+This is used to denote a portion of the name tree used for service discovery.
+............................
+%C1.M.SRV
+............................
+For example
+`/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY`
+will get the local ccnd's public key.
+Similarly for other services.
 
 == Metadata 
 

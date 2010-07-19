@@ -37,7 +37,6 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.namespace.NamespaceManager;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
-import org.ccnx.ccn.profiles.security.access.AccessControlPolicyMarker;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
@@ -81,7 +80,7 @@ public class ACPerformanceTestRepo {
 		userKeystore = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
 	
 		cua = new CreateUserData(userKeystore, userNames, userNames.length, true, "password".toCharArray(), CCNHandle.open());
-		cua.publishUserKeysToRepository(userNamespace);
+		cua.publishUserKeysToRepositorySetLocators(userNamespace);
 
 		// The root ACL at domainPrefix has Alice as a manager
 		ArrayList<Link> ACLcontents = new ArrayList<Link>();
@@ -96,9 +95,9 @@ public class ACPerformanceTestRepo {
 		ParameterizedName gName = new ParameterizedName("Group", groupNamespace, null);
 		parameterizedNames.add(gName);
 		
-		// Set access control policy marker	
+		// Set access control policy marker, written as default user.
 		ContentName profileName = ContentName.fromNative(GroupAccessControlManager.PROFILE_NAME_STRING);
-		AccessControlPolicyMarker.create(domainPrefix, profileName, rootACL, parameterizedNames, null, SaveType.REPOSITORY, CCNHandle.open());
+		GroupAccessControlManager.create(domainPrefix, profileName, rootACL, parameterizedNames, null, SaveType.REPOSITORY, CCNHandle.getHandle());
 		
 		// get handle and ACM for Alice
 		_AliceHandle = cua.getHandleForUser(userNames[0]);

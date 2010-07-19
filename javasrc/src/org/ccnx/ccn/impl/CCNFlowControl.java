@@ -499,7 +499,7 @@ public class CCNFlowControl implements CCNFilterListener {
 		if (i == null)
 			return false;
 		synchronized (_holdingArea) {
-			Log.fine("Flow controller: got interest: {0}", i);
+			Log.fine("Flow controller {0}: got interest: {1}", this, i);
 			ContentObject co = getBestMatch(i, _holdingArea.keySet());
 			if (co != null) {
 				if( Log.isLoggable(Level.FINEST))

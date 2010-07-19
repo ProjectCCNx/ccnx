@@ -197,6 +197,23 @@ public class Collection extends GenericXMLEncodable implements XMLEncodable, Ite
 		return contents().get(i);
 	}
 	
+	/**
+	 * Return the first Link with matching label, if any.
+	 * @param label
+	 * @return
+	 */
+	public Link get(String label) {
+		if (null == label)
+			return null;
+		
+		for (Link link : _contents) {
+			if (label.equals(link.targetLabel())) {
+				return link;
+			}
+		}
+		return null;
+	}
+	
 	public void add(Link content) {
 		_contents.add(content);
 	}

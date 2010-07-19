@@ -633,6 +633,7 @@ public class CCNNetworkManager implements Runnable {
 				}
 			} catch (RuntimeException ex) {
 				Log.warning("failed to deliver interest: {0}", ex);
+				Log.warningStackTrace(ex);
 			}
 		}
 		@Override

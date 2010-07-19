@@ -35,6 +35,7 @@ import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -60,8 +61,19 @@ import org.ccnx.ccn.protocol.PublisherID;
 
 
 /**
- * A key directory holds a set of keys, wrapped under different
- * target keys. It is implemented as a set of wrapped key objects
+ * A key directory holds a key (secret or private), distributed to entities
+ * (represented by public keys), by a set of key blocks each of which 
+ * wrapping that key under different target keys. If the key to be distributed
+ * is a private key, it is first wrapped under a nonce key, and that nonce
+ * key is stored encrypted under the keys of the receiving entitites. 
+ * 
+ * Essentially a KeyDirectory is a software wrapper for managing a set of content
+ * stored in CCNx (writing and reading portions of that content); that content
+ * consists of a set of key blocks used to give one key to a number of target
+ * entities.
+ * 
+ * Key blocks
+ * are implemented as a set of wrapped key objects
  * all stored in one directory. Wrapped key objects are typically short
  * and only need one segment. The directory the keys are stored in
  * is prefixed by a version, to allow the contents to evolve. In addition
@@ -69,12 +81,17 @@ import org.ccnx.ccn.protocol.PublisherID;
  * or subsequent versions of this key is kept. A particular wrapped key
  * entry's name would look like:
  *
- * <pre>.../v123/xxx/s0</pre>
+ * <pre><keyname>/#version/xxx/s0</pre>
  * <br>Where xxx is the identifier of the wrapped key.
  *
  * This structure is used for representing both node keys and group
  * (private) keys. We encapsulate functionality to walk such a directory
  * and find our target key here.
+ * 
+ * We also store links providing additional information about how to retrieve
+ * this key -- e.g. a link from a given group or principal name to a key ID-named
+ * block, in case a group member does not know an earlier version of their
+ * group public key. Or links to keys this key supercedes or precedes. 
  * 
  * Our model is that higher-level function may use this interface
  * to try many ways to get a given key. Some will work (access is
@@ -86,13 +103,13 @@ import org.ccnx.ccn.protocol.PublisherID;
  * AccessDeniedException.
  */
 public class KeyDirectory extends EnumeratedNameList {
-	
+
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
-		
+
 	CCNHandle _handle;
 	GroupAccessControlManager _manager; // to get at key cache, GroupManager
 	boolean cacheHit; // true if one of the unwrapping keys is in our cache
-	
+
 	/**
 	 * Maps the friendly names of principals (typically groups) to their information.
 	 */
@@ -122,10 +139,10 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws IOException
 	 */
 	public KeyDirectory(GroupAccessControlManager manager, ContentName directoryName, CCNHandle handle) 
-					throws IOException {
+	throws IOException {
 		this(manager, directoryName, true, handle);
 	}
-	
+
 	/**
 	 * Directory name should be versioned, else we pull the latest version.
 	 * @param manager the access control manager.
@@ -134,7 +151,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws IOException
 	 */
 	public KeyDirectory(GroupAccessControlManager manager, ContentName directoryName, boolean enumerate, CCNHandle handle) 
-					throws IOException {
+	throws IOException {
 		super(directoryName, false, handle);
 		_handle = handle;
 		if (null == manager) {
@@ -153,22 +170,22 @@ public class KeyDirectory extends EnumeratedNameList {
 	protected void initialize(boolean startEnumerating) throws IOException {
 		if (!VersioningProfile.hasTerminalVersion(_namePrefix)) {
 			ContentObject latestVersionObject = 
-					VersioningProfile.getLatestVersion(_namePrefix, 
+				VersioningProfile.getLatestVersion(_namePrefix, 
 						null, SystemConfiguration.MAX_TIMEOUT, _enumerator.handle().defaultVerifier(), _enumerator.handle());
-			
+
 			if (null == latestVersionObject) {
 				throw new IOException("Cannot find content for any version of " + _namePrefix + "!");
 			}
-			
+
 			ContentName versionedNamePrefix = 
 				latestVersionObject.name().subname(0, _namePrefix.count() + 1);
-			
+
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINE)) {
 				Log.fine(Log.FAC_ACCESSCONTROL, "KeyDirectory: initialize: {0} is the latest version found for {1}.", versionedNamePrefix, _namePrefix);
 			}
 			_namePrefix = versionedNamePrefix;
 		}
-		
+
 		// We don't register prefix in constructor anymore; don't start enumerating till we finish
 		// initialize. Note that if you subclass KeyDirectory, will need to override initialize().
 		if (startEnumerating) {
@@ -177,7 +194,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			}
 		}
 	}
-	
+
 	/**
 	 * Called each time new data comes in, gets to parse it and load processed
 	 * arrays.
@@ -208,15 +225,14 @@ public class KeyDirectory extends EnumeratedNameList {
 			}
 		}
 	}
-	
+
 	@Override
 	public boolean hasResult() { 
 		// For now, we only report a result if we have an unwrapping key that is in our key cache.
 		// TODO: also consider reporting results if we have an unwrapping key for a group that we know we're a member of.
 		return cacheHit;
 	}
-	
-	
+
 	/**
 	 * Return a copy to avoid synchronization problems.
 	 * @throws ContentNotReadyException 
@@ -235,7 +251,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		return copy; 	
 	}
-	
+
 	/**
 	 * Return a copy to avoid synchronization problems.
 	 * @throws ContentNotReadyException 
@@ -256,7 +272,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		return copy; 	
 	}
-	
+
 	/**
 	 * Returns principal info
 	 * @throws ContentNotReadyException 
@@ -274,7 +290,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		return pi;
 	}
-	
+
 	/**
 	 * Returns a copy to avoid synchronization problems
 	 * @throws ContentNotReadyException 
@@ -292,7 +308,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		return copy;	
 	}
-	
+
 	/**
 	 * Adds a principal name
 	 * @param wkChildName the principal name
@@ -300,36 +316,27 @@ public class KeyDirectory extends EnumeratedNameList {
 	protected void addPrincipal(byte [] wkChildName) {
 		PrincipalInfo pi = new PrincipalInfo(wkChildName);
 		try{
-				_principalsLock.writeLock().lock();
-				_principals.put(pi.friendlyName(), pi);
+			_principalsLock.writeLock().lock();
+			_principals.put(pi.friendlyName(), pi);
 		}finally{
 			_principalsLock.writeLock().unlock();
 		}
 	}
-	
+
 	/**
 	 * Returns the wrapped key object corresponding to a public key specified by its digest.
+	 * Up to caller to decide when this is reasonable to call; should call available() on result.
 	 * @param keyID the digest of the specified public key. 
 	 * @return the corresponding wrapped key object.
 	 * @throws ContentDecodingException 
 	 * @throws IOException 
 	 */
 	public WrappedKeyObject getWrappedKeyForKeyID(byte [] keyID) throws ContentDecodingException, IOException {
-		if (!hasChildren()) {
-			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
-		}
-		try{
-			_keyIDLock.readLock().lock();
-			if (!_keyIDs.contains(keyID)) {
-				return null;
-			}
-		}finally{
-			_keyIDLock.readLock().unlock();
-		}
+
 		ContentName wrappedKeyName = getWrappedKeyNameForKeyID(keyID);
 		return getWrappedKey(wrappedKeyName);
 	}
-	
+
 	/**
 	 * Returns the wrapped key name for a public key specified by its digest.
 	 * @param keyID the digest of the public key.
@@ -338,7 +345,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	public ContentName getWrappedKeyNameForKeyID(byte [] keyID) {
 		return KeyProfile.keyName(_namePrefix, keyID);
 	}
-	
+
 	/**
 	 * Returns the wrapped key object corresponding to a specified principal.
 	 * @param principalName the principal.
@@ -348,11 +355,11 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws ContentDecodingException 
 	 */
 	public WrappedKeyObject getWrappedKeyForPrincipal(String principalName) 
-		throws ContentNotReadyException, ContentDecodingException, IOException {
+	throws ContentNotReadyException, ContentDecodingException, IOException {
 		if (!hasChildren()) {
 			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
 		}
-		
+
 		PrincipalInfo pi = null;
 		try{
 			_principalsLock.readLock().lock();
@@ -379,7 +386,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		ContentName wrappedKeyName = principalLink.getTargetName();
 		return getWrappedKey(wrappedKeyName);
 	}
-	
+
 	/**
 	 * Returns the wrapped key name for a specified principal.
 	 * @param isGroup whether the principal is a group.
@@ -391,7 +398,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		ContentName principalLinkName = new ContentName(_namePrefix, pi.toNameComponent());
 		return principalLinkName;
 	}
-	
+
 	/**
 	 * Returns the wrapped key name for a principal specified by the name of its public key. 
 	 * @param principalPublicKeyName the name of the public key of the principal.
@@ -416,20 +423,20 @@ public class KeyDirectory extends EnumeratedNameList {
 		try{
 			_otherNamesLock.readLock().lock();
 			b = _otherNames.contains(AccessControlProfile.SUPERSEDED_MARKER.getBytes());
-		}finally{
+		} finally {
 			_otherNamesLock.readLock().unlock();
 		}
 		return b;
 	}
-	
+
 	public ContentName getSupersededBlockName() {
 		return getSupersededBlockNameForKey(_namePrefix);
 	}
-	
+
 	public static ContentName getSupersededBlockNameForKey(ContentName versionedKeyName) {
 		return ContentName.fromNative(versionedKeyName, GroupAccessControlProfile.SUPERSEDED_MARKER);
 	}
-	
+
 	/**
 	 * We have several choices for how to represent superseded and previous keys.
 	 * Ignoring for now the case where we might have to have more than one per key directory
@@ -459,22 +466,33 @@ public class KeyDirectory extends EnumeratedNameList {
 			return null;
 		return getWrappedKey(getSupersededBlockName());
 	}
-	
+
 	/**
-	 * Returns the wrapped key object corresponding to the specified wrapped key name.
+	 * Returns the wrapped key object corresponding to the specified wrapped key name. We know
+	 * there is only one version of this object, so avoid getLatestVersion.
 	 * @param wrappedKeyName
 	 * @return
 	 * @throws IOException 
 	 * @throws ContentDecodingException 
 	 */
 	public WrappedKeyObject getWrappedKey(ContentName wrappedKeyName) throws ContentDecodingException, IOException {
-		WrappedKeyObject wrappedKey = new WrappedKeyObject(wrappedKeyName, _handle);
-		if (! wrappedKey.available()) {
-			wrappedKey.update();
+		WrappedKeyObject wrappedKey = null;
+
+		if (VersioningProfile.hasTerminalVersion(wrappedKeyName)) {
+			wrappedKey = new WrappedKeyObject(wrappedKeyName, _handle);
+			if (!wrappedKey.available()) { // for some reason we timed out, try again.
+				wrappedKey.update();
+			}
+		} else {
+			wrappedKey = new WrappedKeyObject(wrappedKeyName, null, null, _handle);
+			wrappedKey.updateAny();
+			if (!wrappedKey.available()) { // for some reason we timed out, try again.
+				wrappedKey.updateAny();
+			}
 		}
 		return wrappedKey;		
 	}
-	
+
 	/**
 	 * Checks for the existence of a previous key block
 	 * @throws ContentNotReadyException 
@@ -496,11 +514,11 @@ public class KeyDirectory extends EnumeratedNameList {
 	public ContentName getPreviousKeyBlockName() {
 		return getPreviousKeyBlockName(_namePrefix);
 	}
-	
+
 	public static ContentName getPreviousKeyBlockName(ContentName keyDirectoryName) {
 		return ContentName.fromNative(keyDirectoryName, AccessControlProfile.PREVIOUS_KEY_NAME);		
 	}
-	
+
 	/**
 	 * Returns a link to the previous key.
 	 * Previous key might be a link, if we're a simple newer version, or it might
@@ -554,21 +572,35 @@ public class KeyDirectory extends EnumeratedNameList {
 	public ContentName getPrivateKeyBlockName() {
 		return ContentName.fromNative(_namePrefix, AccessControlProfile.GROUP_PRIVATE_KEY_NAME);
 	}
-	
+
 	/**
-	 * Returns the private key object as a wrapped key object.
+	 * Returns the private key object, if one exists as a wrapped key object. Does
+	 * not check to see if we have a private key block; simply sends a request for it
+	 * (saves the requirement to do enumeration). Callers should check available() on the
+	 * result to see if we actually got one. In general, callers will know whether
+	 * one should exist or not. hasPrivateKeyBlock can be used to test (after enumeration)
+	 * whether one exists if you don't know.
 	 * @return
 	 * @throws IOException 
 	 * @throws ContentGoneException 
 	 * @throws ContentDecodingException 
 	 */
 	public WrappedKeyObject getPrivateKeyObject() throws ContentGoneException, IOException {
-		if (!hasPrivateKeyBlock()) // checks hasChildren
-			return null;
-		
+
 		return new WrappedKey.WrappedKeyObject(getPrivateKeyBlockName(), _handle);
 	}
-	
+
+	/**
+	 * @param expectedKeyID
+	 * @return True if the unwrapped key specified by expectedKeyID (if not null)
+	 * or by the KeyDirectory name, is in the secure key cache.
+	 */
+	public boolean isUnwrappedKeyInCache(byte [] expectedKeyID) {
+		SecureKeyCache skc = _handle.keyManager().getSecureKeyCache();
+		if (null != expectedKeyID) return skc.containsKey(expectedKeyID);
+		return skc.containsKey(getName());
+	}
+
 	/**
 	 * Unwrap and return the key wrapped in a wrapping key specified by its digest.
 	 * Find a copy of the key block in this directory that we can unwrap (either the private
@@ -582,11 +614,11 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public Key getUnwrappedKey(byte [] expectedKeyID) 
-			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
-		
+	throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
+
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 			if (expectedKeyID == null) {
-				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at {0} unwrapping key wihtout expectedKeyID", this._namePrefix);
+				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at {0} unwrapping key without expectedKeyID", this._namePrefix);
 			}
 			else {
 				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at {0} unwrapping key with expectedKeyID {1} ",
@@ -594,43 +626,66 @@ public class KeyDirectory extends EnumeratedNameList {
 						DataUtils.printHexBytes(expectedKeyID));			
 			}
 		}
-		
+
 		Key unwrappedKey = null;
 		byte [] retrievedKeyID = null;
-		
-		if (!hasChildren()) {
-			throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+
+		// Do we have the unwrapped key in our cache?
+		// First, look up the desired keyID in the cache. 
+		// If it's not in the cache, look up the desired key by name
+		SecureKeyCache skc = _handle.keyManager().getSecureKeyCache();
+		if ((null != expectedKeyID) && (skc.containsKey(expectedKeyID))) {
+			unwrappedKey = skc.getKey(expectedKeyID);
+			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: found desired unwrapped keyID in our cache.");
+		}
+		if ((null == unwrappedKey) && (skc.containsKey(getName()))) {
+			unwrappedKey = skc.getKey(skc.getKeyID(getName()));
+			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: found desired unwrapped key name in our cache.");			
 		}
 
-		// Do we have one of the wrapping keys already in our cache?
-		unwrappedKey = unwrapKeyViaCache();
-		
 		if (null == unwrappedKey) {
-			// Not in cache. Is it superseded?
-			if (hasSupersededBlock()) {
-				unwrappedKey = this.unwrapKeyViaSupersededKey();
-			} else {
-				// This is the current key. Enumerate principals and see if we can get a key to unwrap.
-				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-					Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at latest version of key {0}, attempting to unwrap.", getName());
-				}
-				// Assumption: if this key was encrypted directly for me, I would have had a cache
-				// hit already. The assumption is that I pre-load my cache with my own private key(s).
-				// So I don't care about principal entries if I get here, I only care about groups.
-				// Groups may come in three types: ones I know I am a member of, but don't have this
-				// particular key version for, ones I don't know anything about, and ones I believe
-				// I'm not a member of but someone might have added me.
-				if (_manager.haveKnownGroupMemberships()) {
-					unwrappedKey = unwrapKeyViaKnownGroupMembership();
-				}
-				if (null == unwrappedKey) {
-					// OK, we don't have any groups we know we are a member of. Do the other ones.
-					// Slower, as we crawl the groups tree.
-					unwrappedKey = this.unwrapKeyViaNotKnownGroupMembership();
+			// If we've never enumerated, now might be the time.
+			if (!hasEnumerated()) {
+				startEnumerating();
+			}
+			waitForNoUpdatesOrResult(SystemConfiguration.getDefaultTimeout());
+
+			// Only test here if we didn't get it via the cache.
+			if (!hasChildren()) {
+				throw new ContentNotReadyException("Need to call waitForData(); assuming directory known to be non-empty!");
+			}
+
+			// Do we have one of the wrapping keys already in our cache?
+			unwrappedKey = unwrapKeyViaCache();
+
+			if (null == unwrappedKey) {
+
+				// Not in cache. Is it superseded?
+				if (hasSupersededBlock()) {
+					unwrappedKey = this.unwrapKeyViaSupersededKey();
+				} else {
+					// This is the current key. Enumerate principals and see if we can get a key to unwrap.
+					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+						Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at latest version of key {0}, attempting to unwrap.", getName());
+					}
+					// Assumption: if this key was encrypted directly for me, I would have had a cache
+					// hit already. The assumption is that I pre-load my cache with my own private key(s).
+					// So I don't care about principal entries if I get here, I only care about groups.
+					// Groups may come in three types: ones I know I am a member of, but don't have this
+					// particular key version for, ones I don't know anything about, and ones I believe
+					// I'm not a member of but someone might have added me.
+					if (_manager.haveKnownGroupMemberships()) {
+						unwrappedKey = unwrapKeyViaKnownGroupMembership();
+					}
+					if (null == unwrappedKey) {
+						// OK, we don't have any groups we know we are a member of. Do the other ones.
+						// Slower, as we crawl the groups tree.
+						unwrappedKey = this.unwrapKeyViaNotKnownGroupMembership();
+					}
 				}
 			}
 		}
-		
+
 		if (null != unwrappedKey) {
 			_handle.keyManager().getSecureKeyCache().addKey(getName(), unwrappedKey);
 
@@ -644,11 +699,29 @@ public class KeyDirectory extends EnumeratedNameList {
 				}
 			}
 		}
-		// DKS TODO -- throw AccessDeniedException?
 		return unwrappedKey;
 	}
-		
-	
+
+	/**
+	 * Fast path -- once we have an idea which of our keys will unwrap this key,
+	 * get it. Can be called after enumeration, or if we have a guess of what key to
+	 * use.
+	 * @param keyIDOfCachedKeytoUse
+	 * @return
+	 * @throws IOException 
+	 * @throws ContentDecodingException 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws InvalidKeyException 
+	 */
+	public Key unwrapKeyViaCache(byte [] keyIDOfCachedKeytoUse) throws ContentDecodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
+
+		WrappedKeyObject wko = getWrappedKeyForKeyID(keyIDOfCachedKeytoUse);
+		if ((null == wko) || (!wko.available()) || (null == wko.wrappedKey())) {
+			return null;
+		}
+		return wko.wrappedKey().unwrapKey(_handle.keyManager().getSecureKeyCache().getKey(keyIDOfCachedKeytoUse));
+	}
+
 	public Key unwrapKeyViaCache() throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		Key unwrappedKey = null;
 		try {
@@ -663,10 +736,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				}
 				if (_handle.keyManager().getSecureKeyCache().containsKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.
-					WrappedKeyObject wko = getWrappedKeyForKeyID(keyid);
-					if (null != wko.wrappedKey()) {
-						unwrappedKey = wko.wrappedKey().unwrapKey(_handle.keyManager().getSecureKeyCache().getKey(keyid));
-					}
+					unwrappedKey = unwrapKeyViaCache(keyid);
 				}
 			}
 		} finally {
@@ -674,7 +744,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		return unwrappedKey;
 	}
-	
+
 	public Key unwrapKeyViaSupersededKey() throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		Key unwrappedKey = null;
 		// OK, is the superseding key just a newer version of this key? If it is, roll
@@ -689,7 +759,7 @@ public class KeyDirectory extends EnumeratedNameList {
 				Log.info(Log.FAC_ACCESSCONTROL, "Attempting to retrieve key {0} by retrieving superseding key {1}", 
 						getName(), supersededKeyBlock.wrappedKey().wrappingKeyName());
 			}
-			
+
 			Key unwrappedSupersedingKey = null;
 			KeyDirectory supersedingKeyDirectory = null;
 			try {
@@ -711,7 +781,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		return unwrappedKey;
 	}
-	
+
 	public Key unwrapKeyViaKnownGroupMembership() throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		Key unwrappedKey = null;
 		try{
@@ -722,7 +792,8 @@ public class KeyDirectory extends EnumeratedNameList {
 			for (String principal : _principals.keySet()) {
 				PrincipalInfo pInfo = _principals.get(principal);
 				GroupManager pgm = _manager.groupManager(pInfo.distinguishingHash());
-				if ((pgm == null) || (! pgm.isGroup(principal)) || (! pgm.amKnownGroupMember(principal))) {
+				if ((pgm == null) || (! pgm.isGroup(principal, SystemConfiguration.EXTRA_LONG_TIMEOUT)) || 
+						(! pgm.amKnownGroupMember(principal))) {
 					// On this pass, only do groups that I think I'm a member of. Do them
 					// first as it is likely faster.
 					continue;
@@ -744,7 +815,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		return unwrappedKey;
 	}
-	
+
 	public Key unwrapKeyViaNotKnownGroupMembership() throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 		Key unwrappedKey = null;
 		try{
@@ -756,7 +827,8 @@ public class KeyDirectory extends EnumeratedNameList {
 				}
 				PrincipalInfo pInfo = _principals.get(principal);
 				GroupManager pgm = _manager.groupManager(pInfo.distinguishingHash());
-				if ((pgm == null) || (! pgm.isGroup(principal)) || (pgm.amKnownGroupMember(principal))) {
+				if ((pgm == null) || (! pgm.isGroup(principal, SystemConfiguration.EXTRA_LONG_TIMEOUT)) || 
+						(pgm.amKnownGroupMember(principal))) {
 					// On this pass, only do groups that I don't think I'm a member of.
 					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 						Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: skipping principal {0}.", principal);
@@ -795,8 +867,8 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		return unwrappedKey;
 	}
-	
-	
+
+
 	/**
 	 * Unwrap the key wrapped under a specified principal, with a specified unwrapping key.
 	 * @param principal
@@ -810,8 +882,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	protected Key unwrapKeyForPrincipal(String principal, Key unwrappingKey) 
-			throws InvalidKeyException, ContentNotReadyException, 
-					ContentDecodingException, ContentGoneException, IOException, NoSuchAlgorithmException {		
+	throws InvalidKeyException, ContentNotReadyException, 
+	ContentDecodingException, ContentGoneException, IOException, NoSuchAlgorithmException {		
 		Key unwrappedKey = null;
 		if (null == unwrappingKey) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
@@ -835,7 +907,14 @@ public class KeyDirectory extends EnumeratedNameList {
 		}
 		return unwrappedKey;
 	}
-		
+
+	/**
+	 * @return true if the private key is in the secure key cache.
+	 */
+	public boolean isPrivateKeyInCache() {
+		return _handle.keyManager().getSecureKeyCache().containsKey(getPrivateKeyBlockName());
+	}
+
 	/**
 	 * Returns the private key stored in the KeyDirectory. 
 	 * The private key is wrapped in a wrapping key, which is itself wrapped.
@@ -854,23 +933,30 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws NoSuchAlgorithmException 
 	 */
 	public PrivateKey getPrivateKey() 
-			throws AccessDeniedException, InvalidKeyException, 
-					ContentNotReadyException, ContentGoneException, ContentDecodingException, 
-					IOException, NoSuchAlgorithmException {
-		if (!hasPrivateKeyBlock()) { // checks hasChildren
-			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-				Log.info(Log.FAC_ACCESSCONTROL, "No private key block exists with name {0}", getPrivateKeyBlockName());
-			}
-			return null;
+	throws AccessDeniedException, InvalidKeyException, 
+	ContentNotReadyException, ContentGoneException, ContentDecodingException, 
+	IOException, NoSuchAlgorithmException {
+
+		// is the private key already in the cache?
+		SecureKeyCache skc = _handle.keyManager().getSecureKeyCache();
+		if (skc.containsKey(getPrivateKeyBlockName())) {
+			Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getPrivateKey: found private key in cache.");
+			return skc.getPrivateKey(getPrivateKeyBlockName());
 		}
+
+		// Skip checking enumeration results. Assume we know we have one or not. Just
+		// as fast to do the get as to enumerate and then do the get.
 		WrappedKeyObject wko = getPrivateKeyObject();
-		if ((null == wko) || (null == wko.wrappedKey())) {
+		if ((null == wko) || (!wko.available()) || (null == wko.wrappedKey())) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info(Log.FAC_ACCESSCONTROL, "Cannot retrieve wrapped private key for {0}", getPrivateKeyBlockName());
 			}
 			return null;
 		}
-		// This should throw AccessDeniedException...
+		
+		// This will pull from the cache if it's in our cache, and otherwise
+		// will start enumerating if necessary.
+		// This throws AccessDeniedException...
 		Key wrappingKey = getUnwrappedKey(wko.wrappedKey().wrappingKeyIdentifier());
 		if (null == wrappingKey) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
@@ -878,7 +964,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			}
 			throw new AccessDeniedException("Cannot get key to unwrap private key " + getPrivateKeyBlockName());
 		}
-		
+
 		Key unwrappedPrivateKey = wko.wrappedKey().unwrapKey(wrappingKey);
 		if (!(unwrappedPrivateKey instanceof PrivateKey)) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
@@ -907,14 +993,14 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws VersionMissingException
 	 */
 	public void addWrappedKeyBlock(Key secretKeyToWrap, 
-								   ContentName publicKeyName, PublicKey publicKey) 
-			throws ContentEncodingException, IOException, InvalidKeyException, VersionMissingException {
+			ContentName publicKeyName, PublicKey publicKey) 
+	throws ContentEncodingException, IOException, InvalidKeyException, VersionMissingException {
 		WrappedKey wrappedKey = WrappedKey.wrapKey(secretKeyToWrap, null, null, publicKey);
 		wrappedKey.setWrappingKeyIdentifier(publicKey);
 		wrappedKey.setWrappingKeyName(publicKeyName);
 		WrappedKeyObject wko = 
 			new WrappedKeyObject(getWrappedKeyNameForKeyID(WrappedKey.wrappingKeyIdentifier(publicKey)),
-								 wrappedKey,SaveType.REPOSITORY, _handle);
+					wrappedKey,SaveType.REPOSITORY, _handle);
 		wko.save();
 		LinkObject lo = new LinkObject(getWrappedKeyNameForPrincipal(publicKeyName), new Link(wko.getVersionedName()), SaveType.REPOSITORY, _handle);
 		lo.save();
@@ -923,7 +1009,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					DataUtils.printHexBytes(secretKeyToWrap.getEncoded()), publicKeyName, DataUtils.printHexBytes(publicKey.getEncoded()), this._namePrefix);
 		}
 	}
-	
+
 	/**
 	 * Writes a private key block to the repository. 
 	 * @param privateKey the private key.
@@ -933,8 +1019,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws InvalidKeyException 
 	 */
 	public void addPrivateKeyBlock(PrivateKey privateKey, Key privateKeyWrappingKey)
-			throws ContentEncodingException, IOException, InvalidKeyException {
-		
+	throws ContentEncodingException, IOException, InvalidKeyException {
+
 		WrappedKey wrappedKey = WrappedKey.wrapKey(privateKey, null, null, privateKeyWrappingKey);	
 		wrappedKey.setWrappingKeyIdentifier(privateKeyWrappingKey);
 		WrappedKeyObject wko = new WrappedKeyObject(getPrivateKeyBlockName(), wrappedKey, SaveType.REPOSITORY, _handle);
@@ -952,12 +1038,12 @@ public class KeyDirectory extends EnumeratedNameList {
 	 */
 	public void addSupersededByBlock(Key oldPrivateKeyWrappingKey,
 			ContentName storedSupersedingKeyName, byte [] storedSupersedingKeyID, Key newPrivateKeyWrappingKey) 
-			throws InvalidKeyException, ContentEncodingException, IOException {
-		
+	throws InvalidKeyException, ContentEncodingException, IOException {
+
 		addSupersededByBlock(_namePrefix, oldPrivateKeyWrappingKey,
 				storedSupersedingKeyName, storedSupersedingKeyID, newPrivateKeyWrappingKey, _handle);
 	}
-	
+
 	/**
 	 * Add a superseded-by block to another node key, where we may have only its name, not its enumeration.
 	 * Use as a static method to add our own superseded-by blocks as well.
@@ -966,17 +1052,17 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws InvalidKeyException 
 	 */
 	public static void addSupersededByBlock(ContentName oldKeyVersionedNameToAddBlockTo, Key oldKeyToBeSuperseded, 
-											ContentName storedSupersedingKeyName, byte [] storedSupersedingKeyID,
-											Key supersedingKey, CCNHandle handle) 
-			throws ContentEncodingException, IOException, InvalidKeyException {
-		
+			ContentName storedSupersedingKeyName, byte [] storedSupersedingKeyID,
+			Key supersedingKey, CCNHandle handle) 
+	throws ContentEncodingException, IOException, InvalidKeyException {
+
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldKeyToBeSuperseded, null, null, supersedingKey);
 		wrappedKey.setWrappingKeyIdentifier(
 				((null == storedSupersedingKeyID) ? WrappedKey.wrappingKeyIdentifier(supersedingKey) : 
 					storedSupersedingKeyID));
 		wrappedKey.setWrappingKeyName(storedSupersedingKeyName);
 		WrappedKeyObject wko = new WrappedKeyObject(getSupersededBlockNameForKey(oldKeyVersionedNameToAddBlockTo), 
-													wrappedKey, SaveType.REPOSITORY, handle);
+				wrappedKey, SaveType.REPOSITORY, handle);
 		wko.save();
 	}
 
@@ -988,8 +1074,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws IOException 
 	 */ 
 	public void addPreviousKeyLink(ContentName previousKey, PublisherID previousKeyPublisher) 
-				throws ContentEncodingException, IOException {
-		
+	throws ContentEncodingException, IOException {
+
 		if (hasPreviousKeyBlock()) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
 				Log.warning(Log.FAC_ACCESSCONTROL, "Unexpected, already have previous key block : {0}", getPreviousKeyBlockName());
@@ -999,7 +1085,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		LinkObject pklo = new LinkObject(getPreviousKeyBlockName(), new Link(previousKey,la), SaveType.REPOSITORY, _handle);
 		pklo.save();
 	}
-	
+
 	/**
 	 * Writes a previous key block to the repository. 
 	 * @param oldPrivateKeyWrappingKey
@@ -1010,8 +1096,8 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @throws IOException 
 	 */
 	public void addPreviousKeyBlock(Key oldPrivateKeyWrappingKey,
-									ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) 
-				throws InvalidKeyException, ContentEncodingException, IOException {
+			ContentName supersedingKeyName, Key newPrivateKeyWrappingKey) 
+	throws InvalidKeyException, ContentEncodingException, IOException {
 		// DKS TODO -- do we need in the case of deletion of ACLs to allow for multiple previous key blocks simultaneously?
 		// Then need to add previous key id to previous key block name.
 		WrappedKey wrappedKey = WrappedKey.wrapKey(oldPrivateKeyWrappingKey, null, null, newPrivateKeyWrappingKey);
@@ -1024,7 +1110,7 @@ public class KeyDirectory extends EnumeratedNameList {
 					DataUtils.printHexBytes(oldPrivateKeyWrappingKey.getEncoded()),
 					supersedingKeyName,
 					DataUtils.printHexBytes(newPrivateKeyWrappingKey.getEncoded())
-					);
+			);
 		}
 	}
 }

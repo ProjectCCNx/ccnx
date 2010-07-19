@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -14,29 +14,28 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
-package org.ccnx.ccn.profiles.context;
+package org.ccnx.ccn.io.content;
 
-import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.CCNProfile;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
- * This is the very tiniest beginning of naming and scoping for things like
- *  /localhost, /thisroom, etc...
+ * A subtype of ContentName that encodes on the wire with a different
+ * label. Was a static inner class of WrappedKey, but that caused problems when we tried
+ * to serialize it without making WK serializable.
  */
-public class ContextualNamesProfile implements CCNProfile {
+public class WrappingKeyName extends ContentName {
 
-	public static final ContentName LOCALHOST;
+	private static final long serialVersionUID = 1813748512053079957L;
+
+	public WrappingKeyName(ContentName name) {
+		super(name);
+	}
 	
-	static {
-		ContentName tmpLH;
-		try {
-			tmpLH = ContentName.fromURI("ccnx:/localhost");
-		} catch (MalformedContentNameStringException e) {
-			tmpLH = null;
-			Log.warning("Serious configuration error: cannot parse built-in name for localhost!");
-		}	
-		LOCALHOST = tmpLH;
+	public WrappingKeyName() {}
+	
+	@Override
+	public long getElementLabel() { 
+		return CCNProtocolDTags.WrappingKeyName;
 	}
 }

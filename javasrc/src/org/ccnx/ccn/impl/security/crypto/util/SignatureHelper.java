@@ -28,6 +28,7 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidParameterSpecException;
+import java.util.logging.Level;
 
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.DEREncodable;
@@ -35,8 +36,6 @@ import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DERTags;
 import org.bouncycastle.asn1.DERUnknownTag;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
-import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.support.Log;
 
 
@@ -197,16 +196,11 @@ public class SignatureHelper {
 	throws NoSuchAlgorithmException, InvalidParameterSpecException, 
 	InvalidAlgorithmParameterException
 	{
-		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-			Log.warning(
-					"SignatureHelper: getSignatureAlgorithm, hash: " +
-					hashAlgorithm + " key alg: " + signingKey.getAlgorithm());
-		}
 		String signatureAlgorithmOID = getSignatureAlgorithmOID(
 				hashAlgorithm, signingKey.getAlgorithm());
 	
 		if (signatureAlgorithmOID == null) {
-			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+			if (Log.isLoggable(Level.WARNING)) {
 				Log.warning("Error: got no signature algorithm!");
 			}
 			throw new NoSuchAlgorithmException(

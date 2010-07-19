@@ -206,7 +206,8 @@ public class OIDLookup {
 		
 		_c2oid.put("DH", "1.2.840.113549.1.3.1");
 		_oid2c.put("1.2.840.113549.1.3.1", "DH");
-		
+		_oid2c.put("1.2.840.10046.2.1", "DH"); // ANSI 942, used by BouncyCastle
+	
 		_aliasMap = initAliasLookup();
 	}
 
