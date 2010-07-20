@@ -35,7 +35,6 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.StaticContentKeys;
 import org.ccnx.ccn.impl.security.crypto.UnbufferedCipherInputStream;
