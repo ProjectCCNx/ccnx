@@ -41,6 +41,8 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.sun.codemodel.internal.writer.PrologCodeWriter;
+
 /**
  * Test for versioned input streams. Uses a slightly simpler mechanism to set
  * up data in ccnd for the test, namely writing and simultaneously reading the
@@ -67,6 +69,21 @@ public class CCNVersionedInputStreamTest {
 	static CCNReader reader;
 	static final int MAX_FILE_SIZE = 1024*1024; // 1 MB
 	static final int BUF_SIZE = 4096;
+	
+	static final int MERKLE_TREE_LENGTH = SegmentationProfile.DEFAULT_BLOCKSIZE * CCNOutputStream.BLOCK_BUF_COUNT;
+	static int [] problematicLengths = {
+		SegmentationProfile.DEFAULT_BLOCKSIZE,
+		SegmentationProfile.DEFAULT_BLOCKSIZE/2,
+		SegmentationProfile.DEFAULT_BLOCKSIZE*2,
+		((int)(SegmentationProfile.DEFAULT_BLOCKSIZE*1.5)),
+		((int)(SegmentationProfile.DEFAULT_BLOCKSIZE*2.5)),
+		MERKLE_TREE_LENGTH + SegmentationProfile.DEFAULT_BLOCKSIZE,
+		MERKLE_TREE_LENGTH + SegmentationProfile.DEFAULT_BLOCKSIZE/2,
+		MERKLE_TREE_LENGTH + SegmentationProfile.DEFAULT_BLOCKSIZE*2,
+		MERKLE_TREE_LENGTH + ((int)(SegmentationProfile.DEFAULT_BLOCKSIZE*1.5)),
+		MERKLE_TREE_LENGTH + ((int)(SegmentationProfile.DEFAULT_BLOCKSIZE*2.5))};
+	static byte [][] problematicDigests = new byte[problematicLengths.length][];
+	static ContentName [] problematicNames = new ContentName[problematicLengths.length];
 
 	/**
 	 * Handle naming for the test
@@ -99,6 +116,11 @@ public class CCNVersionedInputStreamTest {
 		latestVersionMaxSegment = (int)Math.ceil(latestVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
 		latestVersionDigest = writeFileFloss(latestVersionName, latestVersionLength, randBytes);
 		
+		for (int i=0; i < problematicLengths.length; ++i) {
+			problematicNames[i] = VersioningProfile.addVersion(
+					testHelper.getClassChildName("LengthTest-" + problematicLengths[i]));
+			problematicDigests[i] = writeFileFloss(problematicNames[i], problematicLengths[i], randBytes);
+		}		
 	}
 	
 	/**
@@ -305,5 +327,17 @@ public class CCNVersionedInputStreamTest {
 		readDigest = readFile(vlatest, latestVersionLength);
 		Assert.assertArrayEquals(latestVersionDigest, readDigest);
 	}
-
+	
+	@Test
+	public void testReadProblematicLengths() throws Exception {
+		CCNVersionedInputStream vstream;
+		byte [] readDigest;
+		
+		for (int i=0; i < problematicLengths.length; ++i) {
+			vstream = new CCNVersionedInputStream(problematicNames[i], inputHandle);
+			readDigest = readFile(vstream, problematicLengths[i]);
+			Assert.assertArrayEquals("Stream " + i + " failed to match, length " + problematicLengths[i],
+									problematicDigests[i], readDigest);
+		}
+	}
 }
