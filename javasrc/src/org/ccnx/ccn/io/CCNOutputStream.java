@@ -22,7 +22,6 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
-import java.util.Arrays;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
