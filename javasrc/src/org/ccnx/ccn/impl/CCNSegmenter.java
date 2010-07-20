@@ -765,7 +765,7 @@ public class CCNSegmenter {
 
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
 				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
-				if( Log.isLoggable(Level.FINEST))
+				if (Log.isLoggable(Level.FINEST))
 					Log.finest("Created new encryption cipher "+thisCipher);
 				// Override content type to mark encryption.
 				// Note: we don't require that writers use our facilities for encryption, so
@@ -831,6 +831,7 @@ public class CCNSegmenter {
 				try {
 					// Make a separate cipher, so this segmenter can be used by multiple callers at once.
 					Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
+					// TODO -- incurs an extra copy
 					blockContent = thisCipher.doFinal(contentBlocks[i]);
 
 					// Override content type to mark encryption.
@@ -871,11 +872,13 @@ public class CCNSegmenter {
 				throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
 			}
 		}
+		// ContentObject constructor copies the content blocks, so that the buffer here
+		// can be reused by caller.
 		blocks[i] =  
 			new ContentObject(
 					SegmentationProfile.segmentName(rootName, nextSegmentIndex),
 					signedInfo,
-					contentBlocks[i], 0, lastBlockLength,
+					blockContent, 0, lastBlockLength,
 					(Signature)null);
 		return blocks;
 	}
