@@ -18,6 +18,7 @@ PAGE_NAMES = 			\
 	ccngroup		\
 	ccnd			\
 	ccndc			\
+	ccndlogging             \
 	ccndstart		\
         ccndstatus		\
 	ccndstop		\

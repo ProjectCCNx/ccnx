@@ -504,6 +504,7 @@ public class ContentNameTest {
 	@Test 
 	public void testRelations() throws MalformedContentNameStringException {
 		ContentName small = ContentName.fromURI(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR + subName1);
+		ContentName small2 = ContentName.fromURI(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR + subName1);
 		ContentName middle = ContentName.fromURI(small, subName2);
 		ContentName large = ContentName.fromURI(middle, document1);
 		
@@ -523,6 +524,7 @@ public class ContentNameTest {
 		assertTrue(large.isPrefixOf(large));
 		
 		assertEquals(small.compareTo(small), 0);
+		assertEquals(small.compareTo(small2), 0);
 		assertEquals(middle.compareTo(middle), 0);
 		assertEquals(large.compareTo(large), 0);
 
