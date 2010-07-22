@@ -116,7 +116,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 */
 	public ContentObject getContent(Interest interest)
 			throws RepositoryException {
-		return _index.get(interest, this);
+		ContentObject co =  _index.get(interest, this);
+		if( Log.isLoggable(Log.FAC_REPO, Level.FINE) )
+			Log.fine(Log.FAC_REPO, co == null ? "Didn't find it" : "Found it");
+		return co;
 	}
 
 	/**

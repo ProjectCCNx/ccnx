@@ -112,6 +112,7 @@ public class BasicPolicy implements Policy {
 	 * @throws XMLStreamException
 	 */
 	public void update(PolicyXML pxml, boolean fromNet) throws RepositoryException {
+		Log.info(Log.FAC_REPO, "Updating policy");
 		if (pxml._version == null)
 			throw new RepositoryException("No version in policy file");
 		if (!pxml._version.equals(POLICY_VERSION)) {
@@ -147,6 +148,13 @@ public class BasicPolicy implements Policy {
 		}
 			
 		_pxml.setNamespace(pxml.getNamespace());
+		if (null != pxml.getNamespace()) {
+			String message = "";
+			for (ContentName name : pxml.getNamespace()) {
+				message += name.toString() + ':';
+			}
+			Log.info(Log.FAC_REPO, "Policy has been updated new namespace is: " + message);
+		}
 	}
 
 	public ArrayList<ContentName> getNamespace() {
