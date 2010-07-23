@@ -73,13 +73,7 @@ public class RFSTest extends RepoTestBase {
 		DataUtils.deleteDirectory(_fileTest);
 		_fileTest.mkdirs();
 	}
-		
-	@Before
-	public void setUp() throws Exception {
-		super.setUp();
-		initRepoLog();
-	}
-						
+				
 	public void initRepoLog() throws Exception {
 		repolog = new LogStructRepoStore();
 		repolog.initialize(_fileTestDir, null, _repoName, _globalPrefix, null, null);
@@ -88,6 +82,7 @@ public class RFSTest extends RepoTestBase {
 	@Test
 	public void testRepo() throws Exception {
 		System.out.println("testing repo (log-structured implementation)");
+		initRepoLog();
 		test(repolog);
 		initRepoLog();
 		// Having initialized a new instance on the same stable storage stage produced by the
@@ -359,6 +354,7 @@ public class RFSTest extends RepoTestBase {
 	@Test
 	public void testPolicy() throws Exception {
 		// Writes all this content signed with the repository's key
+		initRepoLog();
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
 			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);

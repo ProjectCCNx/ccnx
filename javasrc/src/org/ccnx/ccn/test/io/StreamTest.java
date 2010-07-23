@@ -26,6 +26,7 @@ import java.security.InvalidKeyException;
 import java.security.SignatureException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
@@ -43,7 +44,7 @@ import org.junit.BeforeClass;
  * Basic stream test. Relies on old test infrastructure, 
  */
 public class StreamTest extends BlockReadWriteTest {
-	
+		
 	static int longSegments = (TEST_LONG_CONTENT.length()/SegmentationProfile.DEFAULT_BLOCKSIZE);
 	static int minSegments = 128;
 	static int numIterations = ((int)(minSegments/longSegments) + 1);
@@ -64,7 +65,7 @@ public class StreamTest extends BlockReadWriteTest {
 		istream.setTimeout(8000);
 		Log.info("Opened descriptor for reading: " + baseName);
 
-		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");
+		FileOutputStream os = new FileOutputStream(_testDir + fileName + "_testout.txt");
 		byte[] compareBytes = TEST_LONG_CONTENT.getBytes();
         byte[] bytes = new byte[compareBytes.length];
         int buflen;

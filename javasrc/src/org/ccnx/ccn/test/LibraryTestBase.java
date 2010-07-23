@@ -31,8 +31,8 @@ import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
@@ -42,7 +42,6 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.junit.Before;
 import org.junit.BeforeClass;
 
 
@@ -64,23 +63,23 @@ public class LibraryTestBase extends CCNTestBase {
 	public static final int WAIT_DELAY = 50000;
 	
 	protected static final String BASE_NAME = "/test/BaseLibraryTest/";
-	protected static ContentName PARENT_NAME = null;
+	protected static ContentName PARENT_NAME;
 	
 	protected static final boolean DO_TAP = true;
 		
 	protected HashSet<Integer> _resultSet = new HashSet<Integer>();
 	
 	protected static ArrayList<Integer> usedIds = new ArrayList<Integer>();
+	
+	static {
+		try {
+			PARENT_NAME = ContentName.fromNative(BASE_NAME);
+		} catch (MalformedContentNameStringException e) {}
+	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		// Let default logging level be set centrally so it can be overridden by property
-	}
-
-	@Before
-	public void setUp() throws Exception {
-		if (null == PARENT_NAME)
-			PARENT_NAME = ContentName.fromNative(BASE_NAME);
 	}
 
 	public void genericGetPut(Thread putter, Thread getter) throws Throwable {
