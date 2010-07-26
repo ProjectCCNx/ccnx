@@ -26,7 +26,6 @@ import java.security.InvalidKeyException;
 import java.security.SignatureException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
@@ -37,8 +36,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.BlockReadWriteTest;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-
-
 
 /**
  * Basic stream test. Relies on old test infrastructure, 
