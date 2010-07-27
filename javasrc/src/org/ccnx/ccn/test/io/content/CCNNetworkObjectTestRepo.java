@@ -138,6 +138,7 @@ public class CCNNetworkObjectTestRepo {
 			big.add(lrs[i]);
 		}
 		Log.info("Finihed setting up CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
+		handle.close();
 	}
 
 	@Test
@@ -182,6 +183,8 @@ public class CCNNetworkObjectTestRepo {
 			Assert.assertFalse("UpdateTime isn't newer than read time", soTime.equals(so2Time));
 			Assert.assertEquals("SaveTime doesn't match specific version read", soTime, sr4Time);
 		}
+		lput.close();
+		lget.close();
 	}
 
 	@Test
@@ -212,6 +215,8 @@ public class CCNNetworkObjectTestRepo {
 		CCNStringObject ro2 = new CCNStringObject(versionName, null);
 		ro2.waitForData();
 		Assert.assertEquals("Didn't read correct version", desiredVersion, ro2.getVersion());
+		lput.close();
+		lget.close();
 	}
 
 	@Test
@@ -234,9 +239,10 @@ public class CCNNetworkObjectTestRepo {
 	@Test
 	public void testStreamUpdate() throws Exception {
 		
+		CCNHandle tHandle = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testStreamUpdate"), collectionObjName);
 		CollectionObject testCollectionObject = 
-			new CollectionObject(testName, small1, SaveType.REPOSITORY, CCNHandle.open());
+			new CollectionObject(testName, small1, SaveType.REPOSITORY, tHandle);
 		setupNamespace(testName);
 		
 		saveAndLog("testStreamUpdate", testCollectionObject, null, small1);
@@ -280,10 +286,12 @@ public class CCNNetworkObjectTestRepo {
 		Collection decodedData3 = new Collection();
 		decodedData3.decode(vis3);
 		Assert.assertEquals("Decoding via stream full read fails to give expected result!", decodedData3, small1);
+		tHandle.close();
 	}
 	
 	@Test
 	public void testVersionOrdering() throws Exception {
+		CCNHandle tHandle = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name1");
 		ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name2");
 		
@@ -291,7 +299,7 @@ public class CCNNetworkObjectTestRepo {
 		setupNamespace(testName);
 		CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 		
-		CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, CCNHandle.open());
+		CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, tHandle);
 		CollectionObject c2 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, null);
 		setupNamespace(testName2);
 		CCNTime t1 = saveAndLog("Small", c1, null, small1);
@@ -302,19 +310,23 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertTrue(c2.contentEquals(c1));
 		Assert.assertFalse(c2.equals(c1));
 		Assert.assertTrue(VersioningProfile.isLaterVersionOf(c2.getVersionedName(), c1.getVersionedName()));
+		tHandle.close();
 	}
 	
 	@Test
 	public void testUpdateInBackground() throws Exception {
 		
+		CCNHandle thandle = CCNHandle.open();
+		CCNHandle thandle2 = CCNHandle.open();
+		CCNHandle thandle3 = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateInBackground"), stringObjName, "name1");
 		// Make writer first, so it picks up readers first interests even before it writes.
-		CCNStringObject c2 = new CCNStringObject(testName, (String)null, SaveType.REPOSITORY, CCNHandle.open());
+		CCNStringObject c2 = new CCNStringObject(testName, (String)null, SaveType.REPOSITORY, thandle);
 		
-		CCNStringObject c0 = new CCNStringObject(testName, (String)null, SaveType.REPOSITORY, CCNHandle.open());
+		CCNStringObject c0 = new CCNStringObject(testName, (String)null, SaveType.REPOSITORY, thandle2);
 		c0.updateInBackground();
 
-		CCNStringObject c1 = new CCNStringObject(testName, (String)null, SaveType.REPOSITORY, CCNHandle.open());
+		CCNStringObject c1 = new CCNStringObject(testName, (String)null, SaveType.REPOSITORY, thandle3);
 		c1.updateInBackground(true);
 
 		Assert.assertFalse(c0.available());
@@ -356,10 +368,14 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
 		
 		c1.cancelInterest();
+		thandle.close();
+		thandle2.close();
+		thandle3.close();
 	}
 	
 	@Test
 	public void testUpdateOtherName() throws Exception {
+		CCNHandle thandle = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name1");
 		ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name2");
 
@@ -367,7 +383,7 @@ public class CCNNetworkObjectTestRepo {
 		setupNamespace(testName);
 		CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 		
-		CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, CCNHandle.open());
+		CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, thandle);
 		// Cheat a little, make this one before the setupNamespace...
 		CollectionObject c2 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, null);
 		setupNamespace(testName2);
@@ -388,11 +404,13 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertTrue(VersioningProfile.isVersionOf(c0.getVersionedName(), testName2));
 		Assert.assertEquals(t3, t1);
 		Assert.assertTrue(c0.contentEquals(c1));	
+		thandle.close();
 	}
 
 	
 	@Test
 	public void testSaveAsGone() throws Exception {
+		CCNHandle thandle = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
 		CollectionObject c0 = new CollectionObject(testName, empty, SaveType.REPOSITORY, handle);
 		setupNamespace(testName);
@@ -404,7 +422,7 @@ public class CCNNetworkObjectTestRepo {
 		Assert.assertFalse("Should not be gone", c0.isGone());
 		Assert.assertTrue(t1.after(t0));
 		
-		CollectionObject c1 = new CollectionObject(testName, CCNHandle.open());
+		CollectionObject c1 = new CollectionObject(testName, thandle);
 		CCNTime t2 = waitForDataAndLog(testName.toString(), c1);
 		Assert.assertFalse("Read back should not be gone", c1.isGone());
 		Assert.assertEquals(t2, t1);
@@ -421,11 +439,13 @@ public class CCNNetworkObjectTestRepo {
 		CCNTime t4 = waitForDataAndLog(testName.toString(), c2);
 		Assert.assertTrue("Read back of " + c0.getVersionedName() + " should be gone, got " + c2.getVersionedName(), c2.isGone());
 		Assert.assertEquals(t4, t0);
+		thandle.close();
 
 	}
 	
 	@Test
 	public void testUpdateDoesNotExist() throws Exception {
+		CCNHandle thandle = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateDoesNotExist"), collectionObjName);
 		CCNStringObject so = new CCNStringObject(testName, handle);
 		// so should catch exception thrown by underlying stream when it times out.
@@ -434,13 +454,14 @@ public class CCNNetworkObjectTestRepo {
 		// ask for it in background
 		so.updateInBackground();
 		
-		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", SaveType.REPOSITORY, CCNHandle.open());
+		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", SaveType.REPOSITORY, thandle);
 		setupNamespace(testName);
 		saveAndLog("Delayed write", sowrite, null, "Now we write something.");
 		so.waitForData();
 		Assert.assertTrue(so.available());
 		Assert.assertEquals(so.string(), sowrite.string());
 		Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
+		thandle.close();
 	}
 	
 	@Test
@@ -474,10 +495,13 @@ public class CCNNetworkObjectTestRepo {
 		}
 		// For some reason, we're getting two updates on our updateInBackground...
 		Assert.assertTrue(ourListener.getCounter() > 1);
+		writeHandle.close();
+		readHandle.close();
 	}
 
 	@Test
 	public void testLocalCopyWrapper() throws Exception {
+		CCNHandle thandle = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testLocalCopyWrapper"), collectionObjName);
 		CCNStringObject so = new CCNStringObject(testName, handle);
 		LocalCopyWrapper wo = new LocalCopyWrapper(so);
@@ -502,7 +526,7 @@ public class CCNNetworkObjectTestRepo {
 		// ask for it in background
 		wo.updateInBackground(false, new Listener(record));
 		
-		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write", SaveType.RAW, CCNHandle.open());
+		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write", SaveType.RAW, thandle);
 		setupNamespace(testName);
 		saveAndLog("Delayed write", sowrite, null, "Now we write");
 		wo.waitForData();
@@ -518,6 +542,7 @@ public class CCNNetworkObjectTestRepo {
 		}
 		// Should be in the repo by now
 		Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+		thandle.close();
 	}
 	
 	@Test
@@ -556,7 +581,8 @@ public class CCNNetworkObjectTestRepo {
 		// ask for it in background
 		so.updateInBackground(false, new Listener(record));
 		
-		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write", SaveType.RAW, CCNHandle.open());
+		CCNHandle thandle = CCNHandle.open();
+		CCNStringObject sowrite = new CCNStringObject(testName, "Now we write", SaveType.RAW, thandle);
 		setupNamespace(testName);
 		saveAndLog("Delayed write", sowrite, null, "Now we write");
 		so.waitForData();
@@ -572,6 +598,7 @@ public class CCNNetworkObjectTestRepo {
 		}
 		// Should be in the repo by now
 		Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+		thandle.close();
 	}
 
 

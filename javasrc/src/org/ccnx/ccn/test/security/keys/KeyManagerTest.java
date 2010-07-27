@@ -86,7 +86,8 @@ public class KeyManagerTest {
 		// I'm actually about to add a bunch of lower-level write stuff
 		// for the access control, but that's not in place now.
 		Flosser flosser = new Flosser(testprefix);
-		CCNFlowControl fc = new CCNFlowControl(testprefix, CCNHandle.open());
+		CCNHandle thandle = CCNHandle.open();
+		CCNFlowControl fc = new CCNFlowControl(testprefix, thandle);
 
 		KeyManager km = KeyManager.getDefaultKeyManager();
 
@@ -127,6 +128,7 @@ public class KeyManagerTest {
 		}
 
 		flosser.stop();
+		thandle.close();
 	}
 
 }

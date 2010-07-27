@@ -12,6 +12,7 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,6 +35,12 @@ public class LastSegmentTest {
 		handle = CCNHandle.open();
 		putHandle = CCNHandle.open();
 		baseName = ContentName.fromURI("/lastSegmentTest");
+	}
+	
+	@After
+	public void tearDown() {
+		handle.close();
+		putHandle.close();
 	}
 	
 	/**

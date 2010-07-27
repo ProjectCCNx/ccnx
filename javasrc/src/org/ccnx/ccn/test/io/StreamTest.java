@@ -34,6 +34,8 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.BlockReadWriteTest;
+import org.ccnx.ccn.test.CCNTestBase;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
@@ -50,6 +52,12 @@ public class StreamTest extends BlockReadWriteTest {
 	public static void setUpBeforeClass() throws Exception {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		//Library.setDefaultLevel(Level.FINEST);
+		BlockReadWriteTest.setUpBeforeClass();
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		CCNTestBase.tearDownAfterClass();
 	}
 	
 	@Override

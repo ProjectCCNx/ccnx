@@ -27,6 +27,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 
@@ -50,6 +51,11 @@ public class BaseLibrarySource {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		Log.setDefaultLevel(Level.INFO);
 		rand = new Random();
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() {
+		handle.close();
 	}
 
 	/**

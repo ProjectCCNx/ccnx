@@ -94,7 +94,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		addContentToRepo(new ContentName(versionedName, "versionNameTest".getBytes()));
 		registerPrefix(versionedName);
 		testGetResponse(4);
-		
+		cleanupLibraries();
 	}
 	
 	private ContentName getVersionedName(String name){
@@ -164,6 +164,10 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 		}
 	}
 	
+	public void cleanupLibraries() {
+		getLibrary.close();
+		putLibrary.close();
+	}
 	
 	public void testRegisterPrefix(){
 		//adding a second prefix...  should never get a response,

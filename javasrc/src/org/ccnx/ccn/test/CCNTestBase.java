@@ -28,6 +28,7 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.Signature;
 import org.ccnx.ccn.protocol.SignedInfo;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 /**
@@ -75,5 +76,11 @@ public class CCNTestBase {
 		_testDir = System.getProperty(TEST_DIR);
 		if (null == _testDir)
 			_testDir = "./";
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		putHandle.close();
+		getHandle.close();
 	}
 }

@@ -103,6 +103,11 @@ public class PublicKeyObjectTestRepo {
 			storedKeyNames[i][2] = ContentName.fromNative(namespace, "testDHUser-" + i, "KEY");
 	    }
 	}
+	
+	@AfterClass
+	public static void cleanupAfterClass() {
+		handle.close();
+	}
 
 	@Test
 	public void testRawPublicKeyObject() throws Exception {
@@ -151,6 +156,8 @@ public class PublicKeyObjectTestRepo {
 		
 		PublicKeyObject testObject = new PublicKeyObject(firstSegment, CCNHandle.open());
 		Log.info("testObject available? " + testObject.available());
+		otherHandle.close();
+		testObject.close();
 	}
 
 	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, VersionMissingException {

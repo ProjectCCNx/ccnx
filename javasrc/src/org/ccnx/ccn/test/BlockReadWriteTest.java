@@ -31,6 +31,7 @@ import org.ccnx.ccn.io.CCNDescriptor;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
@@ -46,10 +47,15 @@ public class BlockReadWriteTest extends BasePutGetTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-	
+		BasePutGetTest.setUpBeforeClass();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		//Library.setLevel(Level.FINEST);
 		//SystemConfiguration.setDebugFlag("DEBUG_SIGNATURES");
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		CCNTestBase.tearDownAfterClass();
 	}
 
 	@Override

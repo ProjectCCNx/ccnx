@@ -42,6 +42,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 
@@ -79,7 +80,13 @@ public class LibraryTestBase extends CCNTestBase {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		CCNTestBase.setUpBeforeClass();
 		// Let default logging level be set centrally so it can be overridden by property
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		CCNTestBase.tearDownAfterClass();
 	}
 
 	public void genericGetPut(Thread putter, Thread getter) throws Throwable {

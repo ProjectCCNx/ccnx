@@ -30,6 +30,7 @@ import org.ccnx.ccn.profiles.search.Pathfinder;
 import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -51,6 +52,12 @@ public class PathfinderTestRepo {
 		writeHandle = CCNHandle.open();
 		readHandle = CCNHandle.open();
 		TARGET_POSTFIX_NAME  = ContentName.fromNative(TARGET_POSTFIX);
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() {
+		writeHandle.close();
+		readHandle.close();
 	}
 
 	@Test

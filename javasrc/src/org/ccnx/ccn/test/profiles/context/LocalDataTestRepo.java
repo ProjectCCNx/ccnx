@@ -28,6 +28,7 @@ import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -47,6 +48,11 @@ public class LocalDataTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		defaultHandle = CCNHandle.getHandle();
 		readHandle = CCNHandle.open();
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() {
+		readHandle.close();
 	}
 	
 	@Test

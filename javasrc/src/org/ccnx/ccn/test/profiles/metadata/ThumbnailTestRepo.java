@@ -46,6 +46,7 @@ public class ThumbnailTestRepo extends CCNTestBase {
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		CCNTestBase.setUpBeforeClass();
 	}
 
 	/**
@@ -53,6 +54,7 @@ public class ThumbnailTestRepo extends CCNTestBase {
 	 */
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
+		CCNTestBase.tearDownAfterClass();
 	}
 
 	/**

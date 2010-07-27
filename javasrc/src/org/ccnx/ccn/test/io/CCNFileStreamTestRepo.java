@@ -35,6 +35,7 @@ import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -76,6 +77,12 @@ public class CCNFileStreamTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		writeLib = CCNHandle.open();
 		readLib = CCNHandle.open();
+	}
+	
+	@AfterClass
+	public static void cleanUpAfterClass() throws Exception {
+		writeLib.close();
+		readLib.close();
 	}
 	
 	@Test
