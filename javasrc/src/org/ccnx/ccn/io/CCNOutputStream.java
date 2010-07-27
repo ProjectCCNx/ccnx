@@ -213,6 +213,10 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			  locator, publisher, type, keys, segmenter);
 
 		_buffers = new byte[BLOCK_BUF_COUNT][];
+		// Always make the first one; it simplifies error handling later and only is superfluous if we
+		// attempt to write an empty stream, which is rare.
+		_buffers[0] = new byte[_segmenter.getBlockSize()];
+		
 		_baseNameIndex = SegmentationProfile.baseSegment();
 
 		_dh = new CCNDigestHelper();
