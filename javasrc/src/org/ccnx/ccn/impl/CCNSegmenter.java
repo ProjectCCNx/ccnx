@@ -335,6 +335,10 @@ public class CCNSegmenter {
 			ContentKeys keys) 
 	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
+		if (null == content) {
+			throw new IOException("Content cannot be null!");
+		}
+		
 		if (null == publisher) {
 			publisher = _handle.keyManager().getDefaultKeyID();
 		}
@@ -703,6 +707,12 @@ public class CCNSegmenter {
 				// decryption key, we'll try to decrypt it.
 				type = ContentType.ENCR; 
 
+			} catch (IllegalArgumentException e) {
+				Log.warning("Exception: " + e);
+				Log.warning("Exception: offset " + offset + " length " + length + " content length " +
+						((null == content) ? "null" : content.length));
+				Log.warningStackTrace(e);
+				throw e;
 			} catch (IllegalBlockSizeException e) {
 				Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
 				throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
