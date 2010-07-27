@@ -179,6 +179,7 @@ public class SystemConfiguration {
 	 * Should be longer than the interest timeout to permit at least one re-expression.
 	 */
 	protected static final String CCND_OP_TIMEOUT_PROPERTY = "org.ccnx.ccnop.timeout";
+	protected final static String CCND_OP_TIMEOUT_ENVIRONMENT_VARIABLE = "CCND_OP_TIMEOUT";
 	public final static int CCND_OP_TIMEOUT_DEFAULT = 4200;
 	public static int CCND_OP_TIMEOUT = CCND_OP_TIMEOUT_DEFAULT;
 	
