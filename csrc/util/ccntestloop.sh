@@ -170,5 +170,6 @@ fi
 
 RunTest $RUN || Fail RunTest - stopping
 Echo Run number $RUN was successful
+Echo BUILD Failure rate is `ls -d javasrc/testout*FAILED 2>/dev/null | wc -l` / $RUN
 sleep 2
 exec ./bin/ccntestloop || Fail exec
