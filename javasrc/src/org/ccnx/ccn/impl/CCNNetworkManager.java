@@ -480,7 +480,7 @@ public class CCNNetworkManager implements Runnable {
 					ContentObject pending = null;
 					CCNInterestListener listener = null;
 					synchronized (this) {
-						if (this.data != null) {
+						if (null != this.data && null != this.listener) {
 							pending = this.data;
 							this.data = null;
 							listener = (CCNInterestListener)this.listener;
@@ -582,9 +582,10 @@ public class CCNNetworkManager implements Runnable {
 			manager = mgr;
 		}
 		
-		public synchronized void add(Interest i) {
+		public synchronized boolean add(Interest i) {
 			if (null == interest) {
 				interest = i;
+				return true;
 			} else {
 				// Special case, more than 1 interest pending for delivery
 				// Only 1 interest gets added at a time, but more than 1 
@@ -593,6 +594,7 @@ public class CCNNetworkManager implements Runnable {
 					extra = new ArrayList<Interest>(1);
 				}
 				extra.add(i);
+				return false;
 			}
 		}
 		
@@ -606,7 +608,7 @@ public class CCNNetworkManager implements Runnable {
 				CCNFilterListener listener = null;
 				// Grab pending interest(s) under the lock
 				synchronized (this) {
-					if (null != this.interest) {
+					if (null != this.interest && null != this.listener) {
 						pending = interest;
 						interest = null;
 						if (null != this.extra) { 
@@ -1303,8 +1305,8 @@ public class CCNNetworkManager implements Runnable {
 				if (filter.owner != ireg.owner) {
 					if( Log.isLoggable(Level.FINER) )
 						Log.finer("Schedule delivery for interest: {0}", ireg.interest);
-					filter.add(ireg.interest);
-					_threadpool.execute(filter);
+					if (filter.add(ireg.interest))
+						_threadpool.execute(filter);
 				}
 			}
 		}
