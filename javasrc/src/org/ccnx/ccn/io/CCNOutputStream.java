@@ -235,15 +235,85 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * Default is 4096.
 	 * @param blockSize in bytes
 	 */
-	public void setBlockSize(int blockSize) {
+	public synchronized void setBlockSize(int blockSize) {
 		if (blockSize <= 0) {
 			throw new IllegalArgumentException("Cannot set negative or zero block size!");
 		}
-		// We have an existing buffer. That might contain existing data. Changing the
-		// buffer size here to get the right number of blocks might require a forced flush
-		// or all sorts of complicated hijinks. For now, just stick with the same buffer;
-		// if we manage to go buffer-free, this won't matter.
+		if (blockSize == getBlockSize()) {
+			// doing nothing, return
+			return;
+		}
+		
 		getSegmenter().setBlockSize(blockSize);
+
+		// We may have existing buffers, if so we need to resize. Otherwise, we have
+		// our first buffer, which we need to reset.
+		if (_totalLength > 0) {
+			resizeBuffers(blockSize);
+		} else {
+			// We're going to assume that the only way you get more than one buffer set is to 
+			// have written data.
+			// Nothing written, throw away first buffer and replace it with one of the right size
+			_buffers[0] = new byte[blockSize];
+		}
+	}
+	
+	/**
+	 * Someone has called setBlockSize to something other than the current block size,
+	 * and we have data in the buffers. 
+	 */
+	private synchronized void resizeBuffers(int newBlockSize) {
+		byte [][] oldBuffers = new byte[_blockIndex+1][];
+		// Mostly _blockIndex is a very low number. Easier to simply copy off the
+		// few blocks we need to move than to keep track of which of the newBlockSize
+		// and oldBlockSize are bigger.
+		for (int i=0; i < _blockIndex; ++i) {
+			oldBuffers[i] = _buffers[i];
+			_buffers[i] = null;
+		}
+	
+		int oldBlockSize = _buffers[0].length; // we know we have one
+		
+		_buffers[0] = new byte[newBlockSize];
+		int newOffset = 0;
+		int newIndex = 0;
+		int toWriteNow = 0;
+		
+		int thisBufAvail = newBlockSize; // set this here to avoid reset on first iteration
+		
+		int oldBlockOffset;
+		int oldBlockRemaining;
+		
+		for (int i=0; i < _blockIndex+1; ++i) {
+			
+			if (thisBufAvail == 0) {
+				newIndex++;
+				newOffset = 0;
+				thisBufAvail = newBlockSize;
+			}
+			
+			if (_buffers[newOffset] == null) {
+				_buffers[newOffset] = new byte[newBlockSize];
+			}
+			
+			// Old blocks are all full except for last
+			oldBlockOffset = 0;
+			oldBlockRemaining = (i < _blockIndex) ? oldBlockSize : _blockOffset;
+			while (oldBlockRemaining > 0) {
+				thisBufAvail = newBlockSize - newOffset; 
+				toWriteNow = (thisBufAvail > oldBlockRemaining) ? oldBlockRemaining : thisBufAvail;
+
+				System.arraycopy(oldBuffers[i], oldBlockOffset, _buffers[newIndex], newOffset, toWriteNow);
+				
+				oldBlockRemaining -= toWriteNow;
+				
+				thisBufAvail -= toWriteNow;
+				newOffset += toWriteNow;			
+			}
+		}
+		
+		_blockIndex = newIndex;
+		_blockOffset = newOffset;
 	}
 
 	/**
@@ -328,7 +398,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws SignatureException if we cannot sign content
 	 * @throws NoSuchAlgorithmException if encryption requests invalid algorithm
 	 */
-	protected void writeToNetwork(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+	protected synchronized void writeToNetwork(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		if ((len < 0) || (null == buf) || ((offset + len) > buf.length))
 			throw new IllegalArgumentException("Invalid argument!");
 
@@ -406,7 +476,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws IOException
 	 * @throws InvalidAlgorithmParameterException 
 	 */
-	protected void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException, InvalidAlgorithmParameterException {		
+	protected synchronized void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException, InvalidAlgorithmParameterException {		
 
 		/**
 		 * XXX - Can the blockbuffers have holes?
