@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -36,13 +36,13 @@ import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.GeneralNames;
 
 /**
- * @author D.K. Smetters
- *
  * Reimplementation of BouncyCastle's AuthorityKeyIdentifier to allow
- * keyID to be set (must take authority key id from subject key id field of
+ * keyID to be set.
+ *
+ * We must take authority key id from subject key id field of
  * issuer's certificate if present; algorithm is not required by the standard so
- * may not match).
-  * <pre>
+ * may not match.
+ * <pre>
  * id-ce-authorityKeyIdentifier OBJECT IDENTIFIER ::=  { id-ce 35 }
  *
  *   AuthorityKeyIdentifier ::= SEQUENCE {
@@ -52,7 +52,7 @@ import org.bouncycastle.asn1.x509.GeneralNames;
  *
  *   KeyIdentifier ::= OCTET STRING
  * </pre>
-*/
+ */
 public class AuthorityKeyIdentifier implements DEREncodable, DERTags {
 
 	public static final int tag_KeyIdentifier 			= 0;
