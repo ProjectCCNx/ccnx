@@ -235,17 +235,23 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * Default is 4096.
 	 * @param blockSize in bytes
 	 */
-	public void setBlockSize(int blockSize) {
+	public synchronized void setBlockSize(int blockSize) throws IOException {
 		if (blockSize <= 0) {
 			throw new IllegalArgumentException("Cannot set negative or zero block size!");
 		}
-		// We have an existing buffer. That might contain existing data. Changing the
-		// buffer size here to get the right number of blocks might require a forced flush
-		// or all sorts of complicated hijinks. For now, just stick with the same buffer;
-		// if we manage to go buffer-free, this won't matter.
+		if (blockSize == getBlockSize()) {
+			// doing nothing, return
+			return;
+		}
+        if (_totalLength > 0) {
+            throw new IOException("Cannot set block size after writing");
+        }
+		
 		getSegmenter().setBlockSize(blockSize);
+        // Nothing written, throw away first buffer and replace it with one of the right size
+        _buffers[0] = new byte[blockSize];
 	}
-
+	
 	/**
 	 * Get segmentation block size.
 	 * @return block size in bytes
@@ -328,7 +334,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws SignatureException if we cannot sign content
 	 * @throws NoSuchAlgorithmException if encryption requests invalid algorithm
 	 */
-	protected void writeToNetwork(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+	protected synchronized void writeToNetwork(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		if ((len < 0) || (null == buf) || ((offset + len) > buf.length))
 			throw new IllegalArgumentException("Invalid argument!");
 
@@ -406,7 +412,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws IOException
 	 * @throws InvalidAlgorithmParameterException 
 	 */
-	protected void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException, InvalidAlgorithmParameterException {		
+	protected synchronized void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException, InvalidAlgorithmParameterException {		
 
 		/**
 		 * XXX - Can the blockbuffers have holes?
