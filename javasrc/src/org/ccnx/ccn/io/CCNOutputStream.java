@@ -235,7 +235,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * Default is 4096.
 	 * @param blockSize in bytes
 	 */
-	public synchronized void setBlockSize(int blockSize) {
+	public synchronized void setBlockSize(int blockSize) throws IOException {
 		if (blockSize <= 0) {
 			throw new IllegalArgumentException("Cannot set negative or zero block size!");
 		}
@@ -243,79 +243,15 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// doing nothing, return
 			return;
 		}
+        if (_totalLength > 0) {
+            throw new IOException("Cannot set block size after writing");
+        }
 		
 		getSegmenter().setBlockSize(blockSize);
-
-		// We may have existing buffers, if so we need to resize. Otherwise, we have
-		// our first buffer, which we need to reset.
-		if (_totalLength > 0) {
-			resizeBuffers(blockSize);
-		} else {
-			// We're going to assume that the only way you get more than one buffer set is to 
-			// have written data.
-			// Nothing written, throw away first buffer and replace it with one of the right size
-			_buffers[0] = new byte[blockSize];
-		}
+        // Nothing written, throw away first buffer and replace it with one of the right size
+        _buffers[0] = new byte[blockSize];
 	}
 	
-	/**
-	 * Someone has called setBlockSize to something other than the current block size,
-	 * and we have data in the buffers. 
-	 */
-	private synchronized void resizeBuffers(int newBlockSize) {
-		byte [][] oldBuffers = new byte[_blockIndex+1][];
-		// Mostly _blockIndex is a very low number. Easier to simply copy off the
-		// few blocks we need to move than to keep track of which of the newBlockSize
-		// and oldBlockSize are bigger.
-		for (int i=0; i < _blockIndex; ++i) {
-			oldBuffers[i] = _buffers[i];
-			_buffers[i] = null;
-		}
-	
-		int oldBlockSize = _buffers[0].length; // we know we have one
-		
-		_buffers[0] = new byte[newBlockSize];
-		int newOffset = 0;
-		int newIndex = 0;
-		int toWriteNow = 0;
-		
-		int thisBufAvail = newBlockSize; // set this here to avoid reset on first iteration
-		
-		int oldBlockOffset;
-		int oldBlockRemaining;
-		
-		for (int i=0; i < _blockIndex+1; ++i) {
-			
-			if (thisBufAvail == 0) {
-				newIndex++;
-				newOffset = 0;
-				thisBufAvail = newBlockSize;
-			}
-			
-			if (_buffers[newOffset] == null) {
-				_buffers[newOffset] = new byte[newBlockSize];
-			}
-			
-			// Old blocks are all full except for last
-			oldBlockOffset = 0;
-			oldBlockRemaining = (i < _blockIndex) ? oldBlockSize : _blockOffset;
-			while (oldBlockRemaining > 0) {
-				thisBufAvail = newBlockSize - newOffset; 
-				toWriteNow = (thisBufAvail > oldBlockRemaining) ? oldBlockRemaining : thisBufAvail;
-
-				System.arraycopy(oldBuffers[i], oldBlockOffset, _buffers[newIndex], newOffset, toWriteNow);
-				
-				oldBlockRemaining -= toWriteNow;
-				
-				thisBufAvail -= toWriteNow;
-				newOffset += toWriteNow;			
-			}
-		}
-		
-		_blockIndex = newIndex;
-		_blockOffset = newOffset;
-	}
-
 	/**
 	 * Get segmentation block size.
 	 * @return block size in bytes
