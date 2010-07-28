@@ -61,7 +61,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public static class DotDotComponent extends Exception { // Need to strip off a component
 		private static final long serialVersionUID = 4667513234636853164L;
 	}; 
-    private static final String HEX_DIGITS = "0123456789ABCDEF";
+    private static final char HEX_DIGITS[] = {
+    	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+    };
     
     // Constructors
 	public ContentName() {
@@ -570,6 +572,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @return
 	 */
 	public static String componentPrintURI(byte[] bs, int offset, int length) {
+		int i;
 		if (null == bs || bs.length == 0) {
 			// Empty component represented by three '.'
 			return "...";
@@ -586,7 +589,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
         // Initial allocation is based on the documented behavior of StringBuilder's buffer
         // expansion algorithm being 2+2*length if expansion is required.
 		StringBuilder result = new StringBuilder((1 + 3 * bs.length) / 2);
-		for (int i = 0; i < bs.length; i++) {
+		for (i = 0; i < bs.length && bs[i] == '.'; i++) {
+			continue;
+		}
+		if (i == bs.length) {
+			// all dots
+			result.append("...");
+		}
+		for (i = 0; i < bs.length; i++) {
 			char ch = (char) bs[i];
 			if (('a' <= ch && ch <= 'z') ||
 					('A' <= ch && ch <= 'Z') ||
@@ -595,17 +605,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				result.append(ch);
 			else {
                 result.append('%');
-                result.append(HEX_DIGITS.charAt((ch >> 4) & 0xF));
-                result.append(HEX_DIGITS.charAt(ch & 0xF));
+                result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
+                result.append(HEX_DIGITS[ch & 0xF]);
             }
-		}
-		int i = 0;
-		for (i = 0; i < result.length() && result.charAt(i) == '.'; i++) {
-			continue;
-		}
-		if (i == result.length()) {
-			// all dots
-			result.append("...");
 		}
 		return result.toString();
 	}
@@ -1219,16 +1221,18 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public int compareTo(ContentName o) {
 		if (this == o)
 			return 0;
-		int len = (this.count() > o.count()) ? this.count() : o.count();
+        int thisCount = this.count();
+        int oCount = o.count();
+		int len = (thisCount > oCount) ? thisCount : oCount;
 		int componentResult = 0;
 		for (int i=0; i < len; ++i) {
 			componentResult = DataUtils.compare(this.component(i), o.component(i));
 			if (0 != componentResult)
 				return componentResult;
 		}
-		if (this.count() < o.count())
+		if (thisCount < oCount)
 			return -1;
-		else if (this.count() > o.count())
+		else if (thisCount > oCount)
 			return 1;
 		return 0;
 	}

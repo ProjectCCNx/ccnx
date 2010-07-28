@@ -221,7 +221,7 @@ public class LatestVersionTest {
 			doneTime = System.currentTimeMillis();
 			System.out.println("took us "+(doneTime - checkTime)+"ms to get nothing back "+" check: "+checkTime+" done: "+doneTime);
 			Assert.assertNull(object);
-			Assert.assertTrue((doneTime - checkTime) < 5500 && (doneTime - checkTime) > 5000);
+			Assert.assertTrue((doneTime - checkTime) < 5500 && (doneTime - checkTime) >= 5000);
 			System.out.println("passed test for waiting 5 seconds");
 			
 			checkTime = System.currentTimeMillis();

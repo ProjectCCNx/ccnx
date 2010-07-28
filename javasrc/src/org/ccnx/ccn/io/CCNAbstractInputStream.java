@@ -879,6 +879,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: our out of order segments are past the requested segment...  we have a hole");
 						break;
+					} else {
+						outOfOrderSegments.remove(0);
 					}
 				}
 			}

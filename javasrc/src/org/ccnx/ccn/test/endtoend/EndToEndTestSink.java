@@ -34,8 +34,13 @@ import org.junit.Test;
  * NOTE: This test requires ccnd to be running and complementary source process
  */
 public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestListener {
-
+	
 	@Test
+	public void sink() throws Throwable {
+		gets();
+		server();
+	}
+	
 	public void gets() throws Throwable {
 		System.out.println("Get sequence started");
 		Random rand = new Random();
@@ -54,7 +59,6 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 		System.out.println("Get sequence finished");
 	}
 	
-	@Test
 	public void server() throws Throwable {
 		System.out.println("GetServer started");
 		Interest interest = new Interest("/BaseLibraryTest/server");

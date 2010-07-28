@@ -91,18 +91,22 @@ public class DataUtils {
 			if (null == right) {
 				result = 1;
 			} else {
+                int leftLength = left.length;
+                int rightLength = right.length;
 				// If a is shorter than b then a comes before b
-				if (left.length < right.length) {
+				if (leftLength < rightLength) {
 					result = -1;
-				} else if (left.length > right.length) {
+				} else if (leftLength > rightLength) {
 					result = 1;
 				} else {
 					// They have equal lengths - compare byte by byte
-					for (int i=0; i < left.length; ++i) {
-						if ((short)(left[i] & 0xff) < (short)(right[i] & 0xff)) {
+					for (int i=0; i < leftLength; ++i) {
+                        short leftSubI = (short)(left[i] & 0xff);
+                        short rightSubI = (short)(right[i] & 0xff);
+						if (leftSubI < rightSubI) {
 							result = -1;
 							break;
-						} else if ((short)(left[i] & 0xff) > (short)(right[i] & 0xff)) {
+						} else if (leftSubI > rightSubI) {
 							result = 1;
 							break;
 						}

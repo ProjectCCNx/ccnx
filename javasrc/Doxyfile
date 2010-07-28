@@ -2,7 +2,7 @@
 #
 # Part of the CCNx Java Library.
 #
-# Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -20,7 +20,7 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "Content-Centric Networking in Java"
-PROJECT_NUMBER         = 0.2.0
+PROJECT_NUMBER         = 0.3.0-prebeta
 OUTPUT_DIRECTORY       = ../doc/javacode
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English
@@ -110,7 +110,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 INPUT                  = src/org/ccnx/ccn/
 INPUT_ENCODING         = UTF-8
-FILE_PATTERNS          = *.java
+FILE_PATTERNS          = *.java ANNOTATIONS
 RECURSIVE              = YES
 EXCLUDE                = 
 EXCLUDE_SYMLINKS       = NO
@@ -126,9 +126,9 @@ FILTER_SOURCE_FILES    = NO
 #---------------------------------------------------------------------------
 # configuration options related to source browsing
 #---------------------------------------------------------------------------
-SOURCE_BROWSER         = NO
+SOURCE_BROWSER         = YES
 INLINE_SOURCES         = NO
-STRIP_CODE_COMMENTS    = YES
+STRIP_CODE_COMMENTS    = NO
 REFERENCED_BY_RELATION = NO
 REFERENCES_RELATION    = NO
 REFERENCES_LINK_SOURCE = YES
@@ -241,7 +241,7 @@ PERL_PATH              = /usr/bin/perl
 #---------------------------------------------------------------------------
 MSCGEN_PATH            = 
 HIDE_UNDOC_RELATIONS   = NO
-HAVE_DOT               = YES
+HAVE_DOT               =           NO
 DOT_FONTNAME           = FreeSans
 DOT_FONTPATH           = 
 DOT_FONTSIZE           = 7

@@ -1,4 +1,4 @@
-/*
+/**
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -39,7 +39,7 @@ public class TextXMLCodecTest {
 	public static void setUpBeforeClass() throws Exception {
 	
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Log.setLevel(Level.INFO);
+		Log.setDefaultLevel(Level.INFO);
 	}
 	
 	@Test

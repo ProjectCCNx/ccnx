@@ -73,14 +73,14 @@ public class PublicKeyObjectTestRepo {
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		Log.setLevel(oldLevel);
+		Log.setDefaultLevel(oldLevel);
 	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
 		oldLevel = Log.getLevel();
-		//Log.setLevel(Level.FINEST);
+		//Log.setDefaultLevel(Level.FINEST);
 		Security.addProvider(new BouncyCastleProvider());
 		// generate key pair
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
