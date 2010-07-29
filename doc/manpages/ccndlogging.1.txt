@@ -22,7 +22,9 @@ ARGUMENT
 --------
 The command takes one argument, the desired level.
 This maps into an appropriate setting of the effective *CCND_DEBUG* setting.
-
+The levels are *none*, *low*, *co*, *med*, and *high*.
+The *co* level shows content objects, but not interests (*CCND_DEBUG*=4);
+the others should be self-explanatory.
 
 ENVIRONMENT
 -----------

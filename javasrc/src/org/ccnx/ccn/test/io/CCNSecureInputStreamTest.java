@@ -240,8 +240,8 @@ public class CCNSecureInputStreamTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(Level.FINEST);
-		Log.setLevel(Log.FAC_SIGNING, Level.FINEST);
+		Log.setDefaultLevel(Level.FINEST);
+		Log.setDefaultLevel(Log.FAC_SIGNING, Level.FINEST);
 		outputLibrary = CCNHandle.open();
 		inputLibrary = CCNHandle.open();
 				

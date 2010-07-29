@@ -51,7 +51,7 @@ public class StreamTest extends BlockReadWriteTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		//Library.setLevel(Level.FINEST);
+		//Library.setDefaultLevel(Level.FINEST);
 	}
 	
 	@Override
