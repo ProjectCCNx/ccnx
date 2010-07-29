@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx command line utility for managing prefix registrations.
  *
  * Copyright (C) 2009 Palo Alto Research Center, Inc.
