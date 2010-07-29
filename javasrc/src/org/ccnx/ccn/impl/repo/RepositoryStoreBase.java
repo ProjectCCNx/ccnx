@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -144,7 +144,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 			try {
 				nameSpaceAL.add(ContentName.fromNative(nameSpace));
 			} catch (MalformedContentNameStringException e) {
-				Log.warning("Invalid namespace specified: {0}", nameSpace);
+				Log.warning(Log.FAC_REPO, "Invalid namespace specified: {0}", nameSpace);
 			}
 			_policy.setNamespace(nameSpaceAL);
 		} else

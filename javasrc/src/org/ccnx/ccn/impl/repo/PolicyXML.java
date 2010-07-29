@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -171,7 +171,7 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 				} catch (MalformedContentNameStringException e) {
 					throw new ContentDecodingException(e.getMessage());
 				}
-				Log.fine("Found policy element {0} with value {1}", foundElement.getTagValue(), value);
+				Log.fine(Log.FAC_REPO, "Found policy element {0} with value {1}", foundElement.getTagValue(), value);
 			}
 		} while (null != foundElement);
 		decoder.readEndElement();
