@@ -112,7 +112,14 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return void
 	 * */
 	public synchronized void stopEnumerating() {
+		if (!_enumerating) {
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("Enumerated name list: Not enumerating, so not canceling prefix.");
+			}
+			return;
+		}
 		_enumerator.cancelPrefix(_namePrefix);
+		_enumerating = false;
 	}
 	
 	/**
