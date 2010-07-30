@@ -1,0 +1,4 @@
+/**
+ * @package org.ccnx.ccn.io.content
+ * Support for Network Objects -- objects that serialize and deserialize themselves automatically to CCN.
+ */

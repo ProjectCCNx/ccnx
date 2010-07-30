@@ -1,0 +1,4 @@
+/**
+ * @package org.ccnx.ccn.profiles.security.access.group
+ * Implementation of a group-based %access control scheme on top of CCNx's pluggable %access control framework.
+ */
