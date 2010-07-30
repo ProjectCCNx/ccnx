@@ -13,6 +13,6 @@
 #
 
 AFTER : test_single_ccnd
-BEFORE : test_long_producer
+BEFORE : test_single_ccnd_teardown
 
 ccndstatus
