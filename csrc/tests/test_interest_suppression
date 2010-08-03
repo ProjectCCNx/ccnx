@@ -15,4 +15,60 @@
 AFTER : test_single_ccnd
 BEFORE : test_single_ccnd_teardown
 
+#
+# Test to verify that similar interests from different faces
+# don't all get forwarded.
+#
+
+#
+# Start up a ccnd to field our flurry of requests
+#
+CCND_DEBUG=7 WithCCND 4 ccnd 2>ccnd4.out &
+
+#
+# Construct the test interest
+#
+UNIQ=`GenSym TIS`
+ccn_xmltoccnb -w - <<EOF >unanswered.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">unanswered</Component>
+    <Component ccnbencoding="text">test</Component>
+    <Component ccnbencoding="text">$UNIQ</Component>
+  </Name>
+</Interest>
+EOF
+
+#
+# Set up forwarding for test
+#
+#  0 <--- 4
+#
+UP=$CCN_LOCAL_PORT_BASE
+WithCCND 4 ccndc add /unanswered/test tcp localhost $UP
+
+#
+# Send the interest from 50 sources
+#
+I=0
+while [ $I -lt 50 ]; do
+	WithCCND 4 ccndsmoketest -u localhost send unanswered.ccnb 2>/dev/null;
+	I=$((I+1))
+done
+
+#
+# Let things settle a bit before teardown.
+#
+sleep 1
+WithCCND 4 ccndstatus
+WithCCND 4 ccndstop
 ccndstatus
+
+#
+# See how we did.
+#
+COUNT=`grep -c "interest_to.*/unanswered/" ccnd4.out`
+echo COUNT=$COUNT
+[ $COUNT -gt 5 ] && SkipTest more copies of interest than expected - $COUNT
+[ $COUNT -lt 1 ] && SkipTest fewer copies of interest than expected - $COUNT
+true
