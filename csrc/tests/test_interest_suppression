@@ -23,7 +23,7 @@ BEFORE : test_single_ccnd_teardown
 #
 # Start up a ccnd to field our flurry of requests
 #
-CCND_DEBUG=7 WithCCND 4 ccnd 2>ccnd4.out &
+CCND_DEBUG=$((32+7)) WithCCND 4 ccnd 2>ccnd4.out &
 
 #
 # Construct the test interest
@@ -47,12 +47,30 @@ EOF
 UP=$CCN_LOCAL_PORT_BASE
 WithCCND 4 ccndc add /unanswered/test tcp localhost $UP
 
+dd if=/dev/zero bs=1 count=1 of=heartheat.ccnb
+
 #
-# Send the interest from 50 sources
+# Send the interest from 50 sources (simulated external)
 #
 I=0
 while [ $I -lt 50 ]; do
-	WithCCND 4 ccndsmoketest -u localhost send unanswered.ccnb 2>/dev/null;
+	WithCCND 4 ccndsmoketest -u localhost send unanswered.ccnb >/dev/null
+	I=$((I+1))
+done
+
+#
+# Send the interest from 25 sources (apps)
+#
+while [ $I -lt 75 ]; do
+	WithCCND 4 ccndsmoketest -t 1 -u localhost send heartheat.ccnb recv send unanswered.ccnb recv
+	I=$((I+1))
+done
+
+#
+# Send the interest from 10 unix-domain sources (apps)
+#
+while [ $I -lt 80 ]; do
+	WithCCND 4 ccndsmoketest -t 1 send unanswered.ccnb recv
 	I=$((I+1))
 done
 
@@ -61,14 +79,15 @@ done
 #
 sleep 1
 WithCCND 4 ccndstatus
-WithCCND 4 ccndstop
 ccndstatus
+
+WithCCND 4 ccndstop
 
 #
 # See how we did.
 #
 COUNT=`grep -c "interest_to.*/unanswered/" ccnd4.out`
 echo COUNT=$COUNT
-[ $COUNT -gt 5 ] && SkipTest more copies of interest than expected - $COUNT
-[ $COUNT -lt 1 ] && SkipTest fewer copies of interest than expected - $COUNT
+[ $COUNT -gt 5 ] && Fail more copies of interest than expected - $COUNT
+[ $COUNT -lt 1 ] && Fail fewer copies of interest than expected - $COUNT
 true
