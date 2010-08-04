@@ -148,12 +148,24 @@ public class UserConfiguration {
 	protected static final String CCNX_PUBLISH_KEYS_ENVIRONMENT_VARIABLE = "CCNX_PUBLISH_KEYS";
 	
 	/**
-	 * Property and variable to control whether we load/can set user's personal key cache and
-	 * configuration.
+	 * Property and variable to control whether we load/can set user's key-related configuration
+	 * (key locators, key cache, etc). Key cache saving and loading is additionally handled
+	 * below -- both this variable and that one need to be set to true to automatically save
+	 * and load the key cache; if CCNX_SAVE_KEY_CACHE_CONFIGURATION_PROPERTY is true but this
+	 * CCNX_USE_KEY_CONFIGURATION_PROPERTY is false, then users can manually save and load the
+	 * key cache, but it will not be handled automatically on startup.
 	 * 
 	 */
 	protected static final String CCNX_USE_KEY_CONFIGURATION_PROPERTY = "org.ccnx.config.UseKeyConfiguration";
 	protected static final String CCNX_USE_KEY_CONFIGURATION_ENVIRONMENT_VARIABLE = "CCNX_USE_KEY_CONFIGURATION";
+
+	/**
+	 * Variable to control whether key cache is saved on request and reloaded on startup.
+	 * See CCNX_USE_KEY_CONFIGURATION_PROPERTY.
+	 */
+	protected static final String CCNX_SAVE_KEY_CACHE_PROPERTY = "org.ccnx.config.SaveKeyCache";
+	protected static final String CCNX_SAVE_KEY_CACHE_ENVIRONMENT_VARIABLE = "CCNX_SAVE_KEY_CACHE";
+	protected static final String DEFAULT_SAVE_KEY_CACHE_SETTING = SystemConfiguration.STRING_FALSE; // default to off for now.
 
 	/**
 	 * Value of CCN directory.
@@ -208,6 +220,12 @@ public class UserConfiguration {
 	 * to configuration state.
 	 */
 	protected static Boolean _useKeyConfiguration;
+	
+	/**
+	 * Do we automatically save and load the key cache as part of the configuration data?
+	 * (Automatic loading of key cache happens only if _useKeyConfiguration is also true.)
+	 */
+	protected static Boolean _saveAndLoadKeyCache;
 	
 	protected static final String USER_DIR = System.getProperty("user.home");
 	protected static String FILE_SEP = System.getProperty("file.separator");
@@ -368,10 +386,30 @@ public class UserConfiguration {
 			String strPublish =  
 				SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_USE_KEY_CONFIGURATION_PROPERTY, 
 						CCNX_USE_KEY_CONFIGURATION_ENVIRONMENT_VARIABLE,
-						"true");
-			_useKeyConfiguration = strPublish.equalsIgnoreCase("true");
+						SystemConfiguration.STRING_TRUE);
+			_useKeyConfiguration = strPublish.equalsIgnoreCase(SystemConfiguration.STRING_TRUE);
 		}
 		return _useKeyConfiguration;
+	}
+
+	/**
+	 * Do we save the key cache when asked, and retrieve it on startup?
+	 * @return
+	 */
+	public static boolean saveAndLoadKeyCache() {
+		if (null == _saveAndLoadKeyCache) {
+			// Set default to be false, until we have turned on key cache encryption	
+			String strPublish =  
+				SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_SAVE_KEY_CACHE_PROPERTY, 
+						CCNX_SAVE_KEY_CACHE_ENVIRONMENT_VARIABLE,
+						DEFAULT_SAVE_KEY_CACHE_SETTING);
+			_saveAndLoadKeyCache = strPublish.equalsIgnoreCase(SystemConfiguration.STRING_TRUE);
+		}
+		return _saveAndLoadKeyCache;
+	}
+	
+	public static void setSaveAndLoadKeyCache(boolean saveKeyCache) {
+		_saveAndLoadKeyCache = saveKeyCache;
 	}
 
 	public static boolean publishKeys() { 
@@ -380,8 +418,8 @@ public class UserConfiguration {
 			String strPublish =  
 				SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_PUBLISH_KEYS_PROPERTY, 
 						CCNX_PUBLISH_KEYS_ENVIRONMENT_VARIABLE,
-						"true");
-			_publishKeys = strPublish.equalsIgnoreCase("true");
+						SystemConfiguration.STRING_TRUE);
+			_publishKeys = strPublish.equalsIgnoreCase(SystemConfiguration.STRING_TRUE);
 		}
 		return _publishKeys;
 	}
