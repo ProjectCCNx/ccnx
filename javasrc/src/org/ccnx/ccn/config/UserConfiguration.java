@@ -165,7 +165,7 @@ public class UserConfiguration {
 	 */
 	protected static final String CCNX_SAVE_KEY_CACHE_PROPERTY = "org.ccnx.config.SaveKeyCache";
 	protected static final String CCNX_SAVE_KEY_CACHE_ENVIRONMENT_VARIABLE = "CCNX_SAVE_KEY_CACHE";
-	protected static final String DEFAULT_SAVE_KEY_CACHE_SETTING = "false"; // default to off for now.
+	protected static final String DEFAULT_SAVE_KEY_CACHE_SETTING = SystemConfiguration.STRING_FALSE; // default to off for now.
 
 	/**
 	 * Value of CCN directory.
@@ -386,8 +386,8 @@ public class UserConfiguration {
 			String strPublish =  
 				SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_USE_KEY_CONFIGURATION_PROPERTY, 
 						CCNX_USE_KEY_CONFIGURATION_ENVIRONMENT_VARIABLE,
-						"true");
-			_useKeyConfiguration = strPublish.equalsIgnoreCase("true");
+						SystemConfiguration.STRING_TRUE);
+			_useKeyConfiguration = strPublish.equalsIgnoreCase(SystemConfiguration.STRING_TRUE);
 		}
 		return _useKeyConfiguration;
 	}
@@ -403,7 +403,7 @@ public class UserConfiguration {
 				SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_SAVE_KEY_CACHE_PROPERTY, 
 						CCNX_SAVE_KEY_CACHE_ENVIRONMENT_VARIABLE,
 						DEFAULT_SAVE_KEY_CACHE_SETTING);
-			_saveAndLoadKeyCache = strPublish.equalsIgnoreCase("true");
+			_saveAndLoadKeyCache = strPublish.equalsIgnoreCase(SystemConfiguration.STRING_TRUE);
 		}
 		return _saveAndLoadKeyCache;
 	}
@@ -418,8 +418,8 @@ public class UserConfiguration {
 			String strPublish =  
 				SystemConfiguration.retrievePropertyOrEnvironmentVariable(CCNX_PUBLISH_KEYS_PROPERTY, 
 						CCNX_PUBLISH_KEYS_ENVIRONMENT_VARIABLE,
-						"true");
-			_publishKeys = strPublish.equalsIgnoreCase("true");
+						SystemConfiguration.STRING_TRUE);
+			_publishKeys = strPublish.equalsIgnoreCase(SystemConfiguration.STRING_TRUE);
 		}
 		return _publishKeys;
 	}

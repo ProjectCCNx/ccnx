@@ -50,6 +50,12 @@ import org.ccnx.ccn.protocol.ContentObject;
 public class SystemConfiguration {
 	
 	/**
+	 * String constants, to define these in one place.
+	 */
+	public static final String STRING_FALSE = "false";
+	public static final String STRING_TRUE = "true";
+	
+	/**
 	 * System operation timeout. Very long timeout used to wait for system events
 	 * such as stopping Daemons.
 	 */
@@ -300,7 +306,7 @@ public class SystemConfiguration {
 		}
 		
 		// Allow printing of pipeline stats in CCNAbstractInputStream
-		PIPELINE_STATS = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, "false"));
+		PIPELINE_STATS = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, STRING_FALSE));
 		
 		
 			// Allow override of default ping timeout.
@@ -332,7 +338,7 @@ public class SystemConfiguration {
 		
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
-				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, "true"));
+				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, STRING_TRUE));
 
 	}
 
