@@ -67,7 +67,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 		desc.setTimeout(5000);
 		Log.info("Opened descriptor for reading: " + thisName);
 
-		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");
+		FileOutputStream os = new FileOutputStream(_testDir + fileName + "_testout.txt");
 		byte[] compareBytes = TEST_LONG_CONTENT.getBytes();
         byte[] bytes = new byte[compareBytes.length];
         int buflen;

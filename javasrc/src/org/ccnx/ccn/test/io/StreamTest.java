@@ -68,7 +68,7 @@ public class StreamTest extends BlockReadWriteTest {
 		sema.acquire(); // Block until puts started
 		CCNInputStream istream = new CCNInputStream(thisName, handle);
 		istream.setTimeout(8000);
-		Log.info("Opened descriptor for reading: " + baseName);
+		Log.info("StreamTest: Opened descriptor for reading: " + thisName);
 
 		FileOutputStream os = new FileOutputStream(_testDir + fileName + "_testout.txt");
 		byte[] compareBytes = TEST_LONG_CONTENT.getBytes();

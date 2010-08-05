@@ -423,8 +423,14 @@ public class CCNFlowControl implements CCNFilterListener {
 						}
 						elapsed = System.currentTimeMillis() - ourTime;
 					} while (_holdingArea.size() >= _capacity && elapsed < _timeout);						
-					if (_holdingArea.size() >= _capacity)
+					if (_holdingArea.size() >= _capacity) {
+						String names = "";
+						for (ContentName name : _filteredNames) {
+							names += name + ",";
+						}
+						Log.warning("Flow control buffer full for: " + names);
 						throw new IOException("Flow control buffer full and not draining");
+					}
 				}
 				assert(_holdingArea.size() < _capacity);
 				// Space verified so now can hold object. See note above for reason to always hold.
