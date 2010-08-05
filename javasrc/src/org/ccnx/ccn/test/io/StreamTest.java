@@ -109,7 +109,7 @@ public class StreamTest extends BlockReadWriteTest {
 		CCNOutputStream ostream = new CCNOutputStream(thisName, handle);
 		sema.release();	// put channel open
 		
-		Log.info("Opened output stream for writing: " + thisName);
+		Log.info("StreamTest: Opened output stream for writing: " + thisName);
 		Log.info("Writing " + TEST_LONG_CONTENT.length() + " bytes, " +
 						(TEST_LONG_CONTENT.length()/ostream.getBlockSize()) + " segments (" + numIterations + " iterations of content");
 		
