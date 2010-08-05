@@ -125,8 +125,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	public CCNFlowControl(ContentName name, CCNHandle handle) throws IOException {
 		this(handle);
 		if (name != null) {
-			if( Log.isLoggable(Level.FINEST))
-				Log.finest("adding namespace: " + name);
+			if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+				Log.finest(Log.FAC_IO, "adding namespace: " + name);
 			// don't call full addNameSpace, in order to allow subclasses to 
 			// override. just do minimal part
 			_filteredNames.add(name);
@@ -193,8 +193,8 @@ public class CCNFlowControl implements CCNFilterListener {
 		while (it.hasNext()) {
 			ContentName filteredName = it.next();
 			if (filteredName.isPrefixOf(name)) {
-				if( Log.isLoggable(Level.INFO))
-					Log.info("addNameSpace: not adding name: " + name + " already monitoring prefix: " + filteredName);
+				if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "addNameSpace: not adding name: " + name + " already monitoring prefix: " + filteredName);
 				return;		// Already part of filter
 			}
 			if (name.isPrefixOf(filteredName)) {
@@ -204,8 +204,8 @@ public class CCNFlowControl implements CCNFilterListener {
 		}
 		_filteredNames.add(name);
 		_handle.registerFilter(name, this);
-		if( Log.isLoggable(Level.INFO))
-			Log.info("Flow controller addNameSpace: added namespace: " + name);
+		if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "Flow controller addNameSpace: added namespace: " + name);
 	}
 	
 	/**
@@ -264,8 +264,8 @@ public class CCNFlowControl implements CCNFilterListener {
 			if (all || filteredName.equals(name)) {
 				_handle.unregisterFilter(filteredName, this);
 				it.remove();
-				if( Log.isLoggable(Level.FINEST))
-					Log.finest("removing namespace: " + name);
+				if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+					Log.finest(Log.FAC_IO, "removing namespace: " + name);
 				break;
 			}
 		}
@@ -400,8 +400,8 @@ public class CCNFlowControl implements CCNFilterListener {
 				// subclasses.  For example, a flow control may retain objects until it 
 				// has verified by separate communication that an intended recipient has 
 				// received them.
-				if( Log.isLoggable(Level.FINEST))
-					Log.finest("Holding {0}", co.name());
+				if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+					Log.finest(Log.FAC_IO, "Holding {0}", co.name());
 				// Must verify space in _holdingArea or block waiting for space
 				if (_holdingArea.size() >= _capacity) {
 					long ourTime = System.currentTimeMillis();
@@ -415,8 +415,8 @@ public class CCNFlowControl implements CCNFilterListener {
 					long elapsed = 0;
 					do {
 						try {
-							if( Log.isLoggable(Level.FINEST))
-								Log.finest("Waiting for drain ({0}, {1})", _holdingArea.size(), elapsed);
+							if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+								Log.finest(Log.FAC_IO, "Waiting for drain ({0}, {1})", _holdingArea.size(), elapsed);
 							_holdingArea.wait(_timeout-elapsed);
 						} catch (InterruptedException e) {
 							// intentional no-op
@@ -499,11 +499,12 @@ public class CCNFlowControl implements CCNFilterListener {
 		if (i == null)
 			return false;
 		synchronized (_holdingArea) {
-			Log.fine("Flow controller {0}: got interest: {1}", this, i);
+			if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+				Log.fine(Log.FAC_IO, "Flow controller {0}: got interest: {1}", this, i);
 			ContentObject co = getBestMatch(i, _holdingArea.keySet());
 			if (co != null) {
-				if( Log.isLoggable(Level.FINEST))
-					Log.finest("Found content {0} matching interest: {1}",co.name(), i);
+				if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+					Log.finest(Log.FAC_IO, "Found content {0} matching interest: {1}",co.name(), i);
 				try {
 					_handle.put(co);
 					afterPutAction(co);
@@ -544,8 +545,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	
 	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
 		ContentObject bestMatch = null;
-		if( Log.isLoggable(Level.FINEST))
-			Log.finest("Looking for best match to " + interest + " among " + set.size() + " options.");
+		if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+			Log.finest(Log.FAC_IO, "Looking for best match to " + interest + " among " + set.size() + " options.");
 		for (ContentName name : set) {
 			ContentObject result = _holdingArea.get(name);
 			
@@ -606,7 +607,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				
 				if (_nOut == startSize) {
 					for(ContentName co : _holdingArea.keySet()) {
-						Log.warning("FlowController: still holding: " + co.toString());
+						Log.warning(Log.FAC_IO, "FlowController: still holding: " + co.toString());
 					}
 					throw new IOException("Put(s) with no matching interests - size is " + _holdingArea.size());
 				}
@@ -663,12 +664,12 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * Debugging function to log unmatched interests.
 	 */
 	public void logUnmatchedInterests(String logMessage) {
-		if( Log.isLoggable(Level.INFO))
-			Log.info("{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
+		if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
 		for (Entry<UnmatchedInterest> interestEntry : _unmatchedInterests.values()) {
 			if (null != interestEntry.interest())
-				if( Log.isLoggable(Level.INFO))
-					Log.info("   Unmatched interest: {0}", interestEntry.interest());
+				if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "   Unmatched interest: {0}", interestEntry.interest());
 		}
 	}
 	
