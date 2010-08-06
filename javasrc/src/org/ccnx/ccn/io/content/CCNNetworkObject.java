@@ -27,6 +27,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
@@ -158,6 +159,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected SaveType _saveType = null; // what kind of flow controller to make if we don't have one
 	protected Integer _freshnessSeconds = null; // if we want to set short freshness
 	protected ContentKeys _keys;
+	protected ContentVerifier _verifier;
 	
 	/**
 	 *  Controls ongoing update.
@@ -256,6 +258,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_flowControl = flowControl;
 		_handle = _flowControl.getHandle();
 		_saveType = _flowControl.saveType();
+		_verifier = _handle.defaultVerifier();
 		// Register interests for our base name, if we have one.
 		if (null != name) {
 			flowControl.addNameSpace(name);
@@ -309,6 +312,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_flowControl = flowControl;
 		_handle = _flowControl.getHandle();
 		_saveType = _flowControl.saveType();
+		_verifier = _handle.defaultVerifier();
 		update(name, publisher);
 	}
 
@@ -389,6 +393,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_flowControl = flowControl;
 		_handle = _flowControl.getHandle();
 		_saveType = _flowControl.saveType();
+		_verifier = _handle.defaultVerifier();
 		update(firstSegment);
 	}
 	
@@ -412,6 +417,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_saveType = other._saveType;
 		_keys = (null != other._keys) ? other._keys.clone() : null;
 		_firstSegment = other._firstSegment;
+		_verifier = other._verifier;
 		// Do not copy update behavior. Even if other one is updating, we won't
 		// pick that up. Have to kick off manually.
 		
@@ -537,6 +543,17 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	protected EnumSet<FlagTypes> getInputStreamFlags() {
 		return null;
+	}
+	
+	/**
+	 * Allow verifier to be specified. Could put this in the constructors; though they 
+	 * are already complicated enough. If not set, the default verifier for the key manager
+	 * used by the object's handle is used.
+	 * @param verifier the verifier to use. Cannot be null. 
+	 */
+	public void setVerifier(ContentVerifier verifier) {
+		if (null != verifier)
+			_verifier = verifier;
 	}
 	
 	/**
