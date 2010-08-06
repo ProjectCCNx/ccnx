@@ -24,6 +24,7 @@ import java.util.logging.Level;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowServer;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
 import org.ccnx.ccn.impl.support.Log;
@@ -35,9 +36,11 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.UpdateListener;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
@@ -423,12 +426,79 @@ public class CCNNetworkObjectTest {
 			}
 			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
+			
 		} finally {
 			removeNamespace(testName);
 		}
 	}
-
 	
+	
+	@Test
+	public void testBackgroundVerifier() throws Exception {
+		
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testBackgroundVerifier"), stringObjName, "name1");
+		try {
+			CCNStringObject c0 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
+			c0.updateInBackground(true);
+			
+			CCNStringObject c1 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
+			c1.updateInBackground(true);
+			
+			CCNTime t1 = saveAndLog("First string", c0, null, "Here is the first string.");
+			
+			c0.waitForData();
+			c1.waitForData();
+			CCNTime c1Version = c1.getVersion();
+			
+			Assert.assertTrue(c0.available());
+			Assert.assertTrue(c0.isSaved());
+			Assert.assertTrue(c1.available());
+			Assert.assertTrue(c1.isSaved());
+			Assert.assertEquals(t1, c1Version);
+			
+			// Test background ability to throw away bogus data.
+			// change the version so a) it's later, and b) the signature won't verify
+			ContentName laterName = SegmentationProfile.segmentName(VersioningProfile.updateVersion(c1.getVersionedName()),
+									SegmentationProfile.baseSegment());
+			CCNFlowServer server = new CCNFlowServer(testName, null, false, CCNHandle.open());
+			server.addNameSpace(laterName);
+			
+			ContentObject bogon = 
+				new ContentObject(laterName, c0.getFirstSegment().signedInfo(),
+						c0.getFirstSegment().content(), c0.getFirstSegment().signature());
+			Log.info("Writing bogon: {0}", bogon.fullName());
+			
+			server.put(bogon);
+			
+			Thread.sleep(300);
+			
+			// Should be no update
+			Assert.assertEquals(c0.getVersion(), c1Version);
+			Assert.assertEquals(c1.getVersion(), c1Version);
+
+			// Now write a newer one
+			CCNStringObject c2 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
+			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
+			Log.info("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
+			if (!c0.getVersion().equals(t2)) {
+				synchronized (c0) {
+					c0.wait(5000);
+				}
+			}
+			Assert.assertEquals("c0 update", c0.getVersion(), c2.getVersion());
+			if (!c1.getVersion().equals(t2)) {
+				synchronized (c1) {
+					c1.wait(5000);
+				}
+			}
+			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
+			Assert.assertFalse(c1Version.equals(c1.getVersion()));
+			
+		} finally {
+			removeNamespace(testName);
+		}
+	}
+		
 	@Test
 	public void testSaveAsGone() throws Exception {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
