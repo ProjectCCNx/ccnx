@@ -649,7 +649,7 @@ public class VersioningProfile implements CCNProfile {
 						if (result!=null) {
 							if (Log.isLoggable(Level.FINE))
 								Log.fine("gLV we got something back: {0}", result.name());
-							if(verifier.verify(result)) {
+							if (verifier.verify(result)) {
 								Log.fine("gLV the returned answer verifies");
 								verifyDone = true;
 							} else {
