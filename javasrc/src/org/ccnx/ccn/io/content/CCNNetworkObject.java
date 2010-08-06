@@ -605,7 +605,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// Look for first segment of version after ours, or first version if we have none.
 		ContentObject firstSegment = 
 			VersioningProfile.getFirstBlockOfAnyLaterVersion(getVersionedName(), null, null, timeout, 
-					_handle.defaultVerifier(), _handle);
+					_verifier, _handle);
 		if (null != firstSegment) {
 			return update(firstSegment);
 		}
@@ -1388,10 +1388,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 							// handle things, pulling potentially multiple objects in a callback,
 							// or we just have to wait for issue #100011, and the ability to selectively
 							// exclude content digests.
-							excludes = new byte [][]{co.name().component(_currentInterest.name().count() - 1)};
+							excludes = new byte [][]{co.name().component(_currentInterest.name().count())};
 							if (Log.isLoggable(Level.INFO))
-								Log.info("updateInBackground: handleContent: got content for {0} that doesn't verify ({1}), excluding bogus version as temporary workaround FIX WHEN POSSIBLE", 
-										_currentInterest.name(), co.fullName());													
+								Log.info("updateInBackground: handleContent: got content for {0} that doesn't verify ({1}), excluding bogus version {2} as temporary workaround FIX WHEN POSSIBLE", 
+										_currentInterest.name(), co.fullName(), ContentName.componentPrintURI(excludes[0]));													
 							
 						} else {
 							update(co);
