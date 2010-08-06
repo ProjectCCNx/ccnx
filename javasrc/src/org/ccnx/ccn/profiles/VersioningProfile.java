@@ -692,7 +692,7 @@ public class VersioningProfile implements CCNProfile {
 							
 							result = SegmentationProfile.getSegment(notFirstBlockVersion, startingSegmentNumber, null, timeout, verifier, handle); // now that we have the latest version, go back for the first block.
 							//if this isn't the first segment...  then we should exclude it.  otherwise, we can use it!
-							if(result == null) {
+							if (result == null) {
 								//we couldn't get a new segment...
 								Log.fine("gLV could not get the first segment of the version we just found...  should exclude the version");
 								//excludes = addVersionToExcludes(excludes, startingVersion);
