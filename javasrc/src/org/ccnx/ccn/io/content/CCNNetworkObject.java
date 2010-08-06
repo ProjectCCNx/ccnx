@@ -214,6 +214,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 		}
 		_handle = handle;
+		_verifier = handle.defaultVerifier();
 		_baseName = name;
 		_publisher = publisher;
 		_keyLocator = locator;
@@ -342,6 +343,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 		}
 		_handle = handle;
+		_verifier = handle.defaultVerifier();
 		_baseName = name;
 		update(name, publisher);
 	}
@@ -368,6 +370,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 		}
 		_handle = handle;
+		_verifier = handle.defaultVerifier();
 		update(firstSegment);
 	}
 
