@@ -19,7 +19,6 @@ package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
 import java.io.InvalidObjectException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -1356,7 +1355,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public synchronized Interest handleContent(ContentObject co, Interest interest) {
 		try {
 			boolean hasNewVersion = false;
-			ArrayList<byte []> excludeList = null;
+			byte [][] excludes = null;
 			
 			try {
 				if (Log.isLoggable(Level.INFO))
@@ -1364,23 +1363,47 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
 					// OK, we have something that is a later version of our desired object.
 					// We're not sure it's actually the first content segment.
+					hasNewVersion = true;
+					
 					if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
 						if (Log.isLoggable(Level.INFO))
 							Log.info("updateInBackground: Background updating of {0}, got first segment: {1}", getVersionedName(), co.name());
-						update(co);
+						
+						// Streams assume caller has verified. So we verify here. 
+						// TODO add support for settable verifiers
+						if (!_verifier.verify(co)) {
+							if (Log.isLoggable(Log.FAC_SIGNING, Level.WARNING)) {
+								Log.warning(Log.FAC_SIGNING, "CCNNetworkObject: content object received from background update did not verify! Ignoring object: {0}", co.fullName());
+							}
+							hasNewVersion = false;
+							
+							// TODO -- exclude this one by digest, otherwise we're going 
+							// to get it back! For now, just copy the top-level part of GLV
+							// behavior and exclude this version component. This isn't the right
+							// answer, malicious objects can exclude new versions. But it's not clear
+							// if the right answer is to do full gLV here and let that machinery
+							// handle things, pulling potentially multiple objects in a callback,
+							// or we just have to wait for issue #100011, and the ability to selectively
+							// exclude content digests.
+							excludes = new byte [][]{co.name().component(_currentInterest.name().count() - 1)};
+							if (Log.isLoggable(Level.INFO))
+								Log.info("updateInBackground: handleContent: got content for {0} that doesn't verify ({1}), excluding bogus version as temporary workaround FIX WHEN POSSIBLE", 
+										_currentInterest.name(), co.fullName());													
+							
+						} else {
+							update(co);
+						}
 					} else {
 						// Have something that is not the first segment, like a repo write or a later segment. Go back
 						// for first segment.
 						ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
 						Log.info("updateInBackground: handleContent (network object): Have version information, now querying first segment of {0}", latestVersionName);
+						// This should verify the first segment when we get it.
 						update(latestVersionName, co.signedInfo().getPublisherKeyID());
 					}
 
-					hasNewVersion = true;
-					
 				} else {
-					excludeList = new ArrayList<byte []>();
-					excludeList.add(co.name().component(_currentInterest.name().count() - 1));
+					excludes = new byte [][]{co.name().component(_currentInterest.name().count() - 1)};
 					if (Log.isLoggable(Level.INFO))
 						Log.info("updateInBackground: handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());						
 				}
@@ -1403,9 +1426,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				// the updates above call newVersionAvailable
 				return null; // implicit cancel of interest
 			} else {
-				if (null != excludeList) {
-					byte [][] excludes = new byte[excludeList.size()][];
-					excludeList.toArray(excludes);
+				if (null != excludes) {
 					_currentInterest.exclude().add(excludes);
 				}
 				if (Log.isLoggable(Level.INFO)) 
