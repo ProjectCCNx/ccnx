@@ -759,7 +759,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					return;
 				} else {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: we need to wait longer to see if the original interest will return the segment");
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we need to wait longer to see if the original interest will return the segment: avgResponseTime: {0}", avgResponseTime);
 				}
 			}
 			//}
