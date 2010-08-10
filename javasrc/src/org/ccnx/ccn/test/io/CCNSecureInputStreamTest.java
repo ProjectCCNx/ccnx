@@ -54,6 +54,7 @@ import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.Flosser;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -274,6 +275,12 @@ public class CCNSecureInputStreamTest {
 			}
 		};
 		flosser.stop();
+	}
+	
+	@AfterClass
+	public static void cleanupAfterClass() {
+		outputLibrary.close();
+		inputLibrary.close();
 	}
 	
 	public static byte [] readFile(InputStream inputStream, int fileLength) throws IOException {

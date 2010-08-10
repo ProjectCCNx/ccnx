@@ -23,6 +23,7 @@ import java.util.Random;
 
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -53,14 +54,14 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 			// in the get()
 			assertEquals(true, value >= i);
 			i = value;
-			System.out.println("Got " + i);
+			Log.info("Got " + i);
 			checkGetResults(contents);
 		}
 		System.out.println("Get sequence finished");
 	}
 	
 	public void server() throws Throwable {
-		System.out.println("GetServer started");
+		Log.info("GetServer started");
 		Interest interest = new Interest("/BaseLibraryTest/server");
 		// Register interest
 		handle.expressInterest(interest, this);

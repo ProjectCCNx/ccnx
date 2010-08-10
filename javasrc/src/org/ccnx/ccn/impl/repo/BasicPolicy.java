@@ -112,6 +112,7 @@ public class BasicPolicy implements Policy {
 	 * @throws XMLStreamException
 	 */
 	public void update(PolicyXML pxml, boolean fromNet) throws RepositoryException {
+		Log.info(Log.FAC_REPO, "Updating policy");
 		if (pxml._version == null)
 			throw new RepositoryException("No version in policy file");
 		if (!pxml._version.equals(POLICY_VERSION)) {

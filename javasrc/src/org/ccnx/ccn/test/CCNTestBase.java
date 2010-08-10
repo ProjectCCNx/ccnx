@@ -28,12 +28,16 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.Signature;
 import org.ccnx.ccn.protocol.SignedInfo;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 /**
  * A place to put generic things needed by different tests
  */
 public class CCNTestBase {
+	
+	public static final String TEST_DIR = "ccn.test.dir";
+	
 	// A signature just used to allow tests to pass validation in which there are no keys
 	// corresponding to the publisherID's used.
 	static public Signature fakeSignature = null;
@@ -41,6 +45,8 @@ public class CCNTestBase {
 	
 	protected static CCNHandle putHandle = null;
 	protected static CCNHandle getHandle = null;
+	
+	protected static String _testDir;
 	
 	static {
 		try {
@@ -65,5 +71,16 @@ public class CCNTestBase {
 		CCNTime now = CCNTime.now();
 		KeyLocator locator = new KeyLocator(ContentName.fromNative("/key/" + pub.digest().toString()));
 		fakeSignedInfo = new SignedInfo(pub, now, SignedInfo.ContentType.DATA, locator);
+		
+		// Let test directory  be set centrally so it can be overridden by property
+		_testDir = System.getProperty(TEST_DIR);
+		if (null == _testDir)
+			_testDir = "./";
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		putHandle.close();
+		getHandle.close();
 	}
 }

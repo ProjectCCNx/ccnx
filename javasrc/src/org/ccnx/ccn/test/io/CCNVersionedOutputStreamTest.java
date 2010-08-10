@@ -20,6 +20,7 @@ import org.ccnx.ccn.io.CCNVersionedOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -89,6 +90,12 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 			Log.severe("Exception in setUpBeforeClass: {0}: {1}", e.getClass().getName(), e);
 			throw e;
 		}
+	}
+	
+	@AfterClass
+	public static void cleanupAfterClass() {
+		readHandle.close();
+		writeHandle.close();
 	}
 
 	@Test

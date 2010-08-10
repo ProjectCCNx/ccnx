@@ -96,6 +96,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 		//verify that we only get a response for names with the correct prefix and that are active
 		testGetCallbackNoResponse();
+		closeLibraries();
 	}
 	
 	
@@ -301,9 +302,6 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 	}
 	
-		
-
-	
 	public void testGetCallbackAfterCancel(){
 		//assert names are still null in case we got a response even though the request was canceled
 		Assert.assertNull(names);
@@ -331,8 +329,14 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.fail("Failed to open libraries for tests");
 		}
 	}
-    
 	
+	public void closeLibraries() {
+		if (null != putLibrary)
+			putLibrary.close();
+		if (null != getLibrary)
+			getLibrary.close();
+	}
+    
 
 	public int handleNameEnumerator(ContentName p, ArrayList<ContentName> n) {
 		

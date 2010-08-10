@@ -37,6 +37,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -119,6 +120,13 @@ public class CCNVersionedInputStreamTest {
 					testHelper.getClassChildName("LengthTest-" + problematicLengths[i]));
 			problematicDigests[i] = writeFileFloss(problematicNames[i], problematicLengths[i], randBytes);
 		}		
+	}
+	
+	@AfterClass
+	public static void cleanupAfterClass() {
+		outputHandle.close();
+		inputHandle.close();
+		inputHandle2.close();
 	}
 	
 	/**
