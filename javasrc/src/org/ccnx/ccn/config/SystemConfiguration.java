@@ -189,7 +189,6 @@ public class SystemConfiguration {
 	protected static final String CCNX_TIMEOUT_PROPERTY = "org.ccnx.default.timeout";
 	protected final static String CCNX_TIMEOUT_ENV_VAR = "CCNX_TIMEOUT";
 	public final static int CCNX_TIMEOUT_DEFAULT = EXTRA_LONG_TIMEOUT;
-	public static int CCNX_DEFAULT_TIMEOUT = CCNX_TIMEOUT_DEFAULT;
 	
 	/**
 	 * GetLatestVersion attempt timeout
