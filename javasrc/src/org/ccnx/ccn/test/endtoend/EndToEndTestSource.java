@@ -21,6 +21,7 @@ package org.ccnx.ccn.test.endtoend;
 import static org.junit.Assert.assertTrue;
 
 import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
@@ -42,22 +43,22 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 
 	public void puts() throws Throwable {
 		assert(count <= Byte.MAX_VALUE);
-		System.out.println("Put sequence started");
+		Log.info("Put sequence started");
 		CCNWriter writer = new CCNWriter("/BaseLibraryTest", handle);
 		writer.setTimeout(5000);
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			byte[] content = getRandomContent(i);
 			ContentName putResult = writer.put(ContentName.fromNative("/BaseLibraryTest/gets/" + new Integer(i).toString()), content);
-			System.out.println("Put " + i + " done: " + content.length + " content bytes");
+			Log.info("Put " + i + " done: " + content.length + " content bytes");
 			checkPutResults(putResult);
 		}
 		writer.close();
-		System.out.println("Put sequence finished");
+		Log.info("Put sequence finished");
 	}
 	
 	public void server() throws Throwable {
-		System.out.println("PutServer started");
+		Log.info("PutServer started");
 		name = ContentName.fromNative("/BaseLibraryTest/");
 		_writer = new CCNWriter(name, handle);
 		_writer.setTimeout(5000);
@@ -80,7 +81,7 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 			byte[] content = getRandomContent(next);
 			ContentName putResult = _writer.put(ContentName.fromNative("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
 			result = true;
-			System.out.println("Put " + next + " done: " + content.length + " content bytes");
+			Log.info("Put " + next + " done: " + content.length + " content bytes");
 			checkPutResults(putResult);
 			next++;
 			if (next >= count) {
