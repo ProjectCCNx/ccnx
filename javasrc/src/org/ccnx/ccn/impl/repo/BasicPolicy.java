@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -115,7 +115,7 @@ public class BasicPolicy implements Policy {
 		if (pxml._version == null)
 			throw new RepositoryException("No version in policy file");
 		if (!pxml._version.equals(POLICY_VERSION)) {
-			Log.warning("Bad version in policy file: {0}", pxml._version);
+			Log.warning(Log.FAC_REPO, "Bad version in policy file: {0}", pxml._version);
 			throw new RepositoryException("Bad version in policy file");
 		}
 		
@@ -123,7 +123,7 @@ public class BasicPolicy implements Policy {
 			throw new RepositoryException("No local name in policy file");
 		if (fromNet) {
 			if (!pxml._localName.equals(_pxml.getLocalName())) {
-				Log.warning("Repository local name doesn't match: request = {0}", pxml._localName);
+				Log.warning(Log.FAC_REPO, "Repository local name doesn't match: request = {0}", pxml._localName);
 				throw new RepositoryException("Repository local name doesn't match policy file");
 			}
 		} else {
@@ -147,6 +147,13 @@ public class BasicPolicy implements Policy {
 		}
 			
 		_pxml.setNamespace(pxml.getNamespace());
+		if (null != pxml.getNamespace()) {
+			String message = "";
+			for (ContentName name : pxml.getNamespace()) {
+				message += name.toString() + ':';
+			}
+			Log.info(Log.FAC_REPO, "Policy has been updated. New namespace is: " + message);
+		}
 	}
 
 	public ArrayList<ContentName> getNamespace() {
@@ -169,12 +176,12 @@ public class BasicPolicy implements Policy {
 	}
 	
 	public static PolicyXML createPolicyXML(InputStream stream) throws ContentDecodingException {
-		Log.info("Creating policy file");
+		Log.info(Log.FAC_REPO, "Creating policy file");
 		XMLDecoder decoder = XMLCodecFactory.getDecoder(TextXMLCodec.codecName());
 		decoder.beginDecoding(stream);
 		PolicyXML pxml = new PolicyXML();
 		pxml.decode(decoder);
-		Log.fine("Finished pxml decoding");
+		Log.fine(Log.FAC_REPO, "Finished pxml decoding");
 		decoder.endDecoding();
 		return pxml;
 	}
