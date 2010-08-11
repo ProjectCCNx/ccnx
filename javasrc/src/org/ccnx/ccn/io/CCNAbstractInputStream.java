@@ -735,12 +735,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					}
 				}
 
-				if(elapsed1 > avgResponseTime * 2 && avgResponseTime > -1) {
-					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
+				if((elapsed1 > avgResponseTime * 2 && avgResponseTime > -1) || (avgResponseTime == -1 && elapsed1 > SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT)) {
+					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) ) {
 						if(i.exclude() == null)
 							Log.info("PIPELINE: adding the base interest or the first holefilling attempt!!! {0}", i);
 						else
 							Log.info("PIPELINE: adding the first holefilling attempt! {0}",  i);
+					}
 					i.userTime = System.currentTimeMillis();
 					_handle.expressInterest(i, this);
 					if (index != -1)
@@ -755,17 +756,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					}
 
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: requested segment {0} to fill hole: {1} with Interest: {2}", hole, i.name(), i);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: requested segment {0} to fill hole: {1} with Interest: {2}", hole, i.name(), i);
 					return;
 				} else {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: we need to wait longer to see if the original interest will return the segment");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we need to wait longer to see if the original interest will return the segment: avgResponseTime: {0}", avgResponseTime);
 				}
 			}
 			//}
 		} catch (IOException e) {
 			if( Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING) )
-			Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline");
+				Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline");
 		}
 	}
 

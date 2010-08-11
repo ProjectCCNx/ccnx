@@ -87,6 +87,12 @@ public class SystemConfiguration {
 	 */
 	public static final int SHORT_TIMEOUT = 300;
 	
+	/**
+	 * Interest reexpression period
+	 * TODO - should this be user settable?  If so would probably need ccnd to know about it also
+	 */
+	public static final int INTEREST_REEXPRESSION_DEFAULT = 4000;
+	
 	
 	public enum DEBUGGING_FLAGS {DEBUG_SIGN, DEBUG_VERIFY, DUMP_DAEMONCMD, REPO_EXITDUMP};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();

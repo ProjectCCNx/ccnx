@@ -426,7 +426,7 @@ public class CCNNetworkManager implements Runnable {
 		public final Interest interest;
 		ContentObject data = null;
 		protected long nextRefresh;		// next time to refresh the interest
-		protected long nextRefreshPeriod = PERIOD * 2;	// period to wait before refresh
+		protected long nextRefreshPeriod = SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT;	// period to wait before refresh
 		
 		// All internal client interests must have an owner
 		public InterestRegistration(CCNNetworkManager mgr, Interest i, CCNInterestListener l, Object owner) {
