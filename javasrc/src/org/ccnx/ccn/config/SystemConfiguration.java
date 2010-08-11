@@ -178,7 +178,7 @@ public class SystemConfiguration {
 	 * An example is Face Creation and Prefix Registration.
 	 * Should be longer than the interest timeout to permit at least one re-expression.
 	 */
-	protected static final String CCND_OP_TIMEOUT_PROPERTY = "org.ccnx.ccndop.timeout";
+	protected static final String CCND_OP_TIMEOUT_PROPERTY = "org.ccnx.ccnop.timeout";
 	protected final static String CCND_OP_TIMEOUT_ENV_VAR = "CCND_OP_TIMEOUT";
 	public final static int CCND_OP_TIMEOUT_DEFAULT = 4200;
 	public static int CCND_OP_TIMEOUT = CCND_OP_TIMEOUT_DEFAULT;
@@ -377,7 +377,7 @@ public class SystemConfiguration {
 			GLV_ATTEMPT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(GLV_ATTEMPT_TIMEOUT_PROPERTY, GLV_ATTEMPT_TIMEOUT_ENV_VAR, Integer.toString(GLV_ATTEMPT_TIMEOUT_DEFAULT)));
 //			Log.fine("GLV_ATTEMPT_TIMEOUT = " + GLV_ATTEMPT_TIMEOUT);
 		} catch (NumberFormatException e) {
-			System.err.println("The getlastestversion attempt timeout must be an integer.");
+			System.err.println("The getlatestversion attempt timeout must be an integer.");
 			throw e;
 		}
 		
