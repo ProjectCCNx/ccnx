@@ -23,7 +23,9 @@ BEFORE : test_single_ccnd_teardown
 #
 # Start up a ccnd to field our flurry of requests
 #
-CCND_DEBUG=$((32+7)) WithCCND 4 ccnd 2>ccnd4.out &
+WithCCND 4 env CCND_DEBUG=7 ccnd 2>ccnd4.out &
+WithCCND 4 ccndsmoketest    	# Let forked ccnd get going
+trap "WithCCND 4 ccndstop" 0 	# Tear it down at end of test
 
 #
 # Construct the test interest
@@ -45,7 +47,8 @@ EOF
 #  0 <--- 4
 #
 UP=$CCN_LOCAL_PORT_BASE
-WithCCND 4 ccndc add /unanswered/test tcp localhost $UP
+WithCCND 4 ccndc add /unanswered/test tcp localhost $UP || SkipTest Unable to register prefix
+
 
 dd if=/dev/zero bs=1 count=1 of=heartheat.ccnb
 
@@ -80,8 +83,6 @@ done
 sleep 1
 WithCCND 4 ccndstatus
 ccndstatus
-
-WithCCND 4 ccndstop
 
 #
 # See how we did.
