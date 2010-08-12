@@ -26,6 +26,7 @@ ALLTESTS = \
   test_final_teardown \
   test_finished \
   test_happy_face \
+  test_interest_suppression \
   test_key_fetch \
   test_late \
   test_long_consumer \
