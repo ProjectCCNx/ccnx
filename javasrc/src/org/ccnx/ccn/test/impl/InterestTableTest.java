@@ -75,6 +75,7 @@ public class InterestTableTest extends CCNTestBase {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		CCNTestBase.setUpBeforeClass();
 		byte [] publisher = new byte[32];
 
 		try {
@@ -629,6 +630,7 @@ public class InterestTableTest extends CCNTestBase {
 	
 	@Test
 	public void testRemovesNext() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
+		setID(0);
 		removeByMatch = true;
 		runRemovesNextOrLast(InterestType.Next);
 		
@@ -638,6 +640,7 @@ public class InterestTableTest extends CCNTestBase {
 	
 	@Test
 	public void testRemovesLast() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
+		setID(0);
 		removeByMatch = true;
 		runRemovesNextOrLast(InterestType.Last);
 		
