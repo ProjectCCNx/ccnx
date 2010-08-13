@@ -712,7 +712,7 @@
 		<echo message="Running end-to-end test"/>
 		<parallel failonany="true">
 			<!-- timeout more than 2X average so sure timeout == failure -->
-			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="100000" dir="${testout}" showoutput="${showoutput}">
 				<classpath>
 					<path refid="classpath-run"/>
 				</classpath>
@@ -722,7 +722,7 @@
 				<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 				<test todir="${testout}"  name="org.ccnx.ccn.test.endtoend.EndToEndTestSource"/>
 			</junit>
-			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="100000" dir="${testout}" showoutput="${showoutput}">
 				<classpath>
 					<path refid="classpath-run"/>
 				</classpath>
