@@ -555,11 +555,7 @@ public class VersioningProfile implements CCNProfile {
 		}
 		
 		int attempts = 0;
-		//TODO  This timeout is set to SystemConfiguration.MEDIUM_TIMEOUT to work around the problem
-		//in ccnd where some interests take >300ms (and sometimes longer, have seen periodic delays >800ms)
-		//when that bug is found and fixed, this can be reduced back to the SHORT_TIMEOUT.
-		//long attemptTimeout = SystemConfiguration.SHORT_TIMEOUT;
-		long attemptTimeout = SystemConfiguration.MEDIUM_TIMEOUT;
+		long attemptTimeout = SystemConfiguration.GLV_ATTEMPT_TIMEOUT;
 		if (timeout == SystemConfiguration.NO_TIMEOUT) {
 			//the timeout sent in is equivalent to null...  try till we don't hear something back
 			//we will reset the remaining time after each return...

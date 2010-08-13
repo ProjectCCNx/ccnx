@@ -675,7 +675,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			sb.append(" minsc:" + _minSuffixComponents);
 
 		if (null != _publisher)
-			sb.append(" p:" + DataUtils.printHexBytes(_publisher.id()) + "");
+			sb.append(" p:" + _publisher);
 
 		if (null != _exclude)
 			sb.append(" ex("+_exclude+")");

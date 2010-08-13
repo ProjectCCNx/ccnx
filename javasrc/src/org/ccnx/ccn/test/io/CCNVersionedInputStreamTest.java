@@ -26,6 +26,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
@@ -313,8 +314,8 @@ public class CCNVersionedInputStreamTest {
 	@Test
 	public void testCCNVersionedInputStreamContentObjectCCNLibrary() throws Exception {
 		// we can make a new handle; as long as we don't use the outputHandle it should work
-		ContentObject firstVersionBlock = inputHandle.get(firstVersionName, 1000);
-		ContentObject latestVersionBlock = reader.get(Interest.last(defaultStreamName, defaultStreamName.count(), null), 1000);
+		ContentObject firstVersionBlock = inputHandle.get(firstVersionName, SystemConfiguration.getDefaultTimeout());
+		ContentObject latestVersionBlock = reader.get(Interest.last(defaultStreamName, defaultStreamName.count(), null), SystemConfiguration.getDefaultTimeout());
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, null, inputHandle);
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, null, inputHandle);
 		testArgumentRunner(vfirst, vlatest);

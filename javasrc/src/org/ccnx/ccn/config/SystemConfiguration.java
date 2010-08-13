@@ -89,11 +89,10 @@ public class SystemConfiguration {
 	
 	/**
 	 * Interest reexpression period
-	 * TODO - should this be user settable?  If so would probably need ccnd to know about it also
+	 * TODO - This is (currently) an architectual constant. Not all code has been changed to use it.
 	 */
 	public static final int INTEREST_REEXPRESSION_DEFAULT = 4000;
-	
-	
+		
 	public enum DEBUGGING_FLAGS {DEBUG_SIGN, DEBUG_VERIFY, DUMP_DAEMONCMD, REPO_EXITDUMP};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 
@@ -183,15 +182,43 @@ public class SystemConfiguration {
 	 *
 	 * An example is Face Creation and Prefix Registration.
 	 * Should be longer than the interest timeout to permit at least one re-expression.
+	 * TODO - ccnop would properly be spelled ccndop
 	 */
 	protected static final String CCND_OP_TIMEOUT_PROPERTY = "org.ccnx.ccnop.timeout";
+	protected final static String CCND_OP_TIMEOUT_ENV_VAR = "CCND_OP_TIMEOUT";
 	public final static int CCND_OP_TIMEOUT_DEFAULT = 4200;
 	public static int CCND_OP_TIMEOUT = CCND_OP_TIMEOUT_DEFAULT;
 	
 	/**
+	 * System default timeout
+	 */
+	protected static final String CCNX_TIMEOUT_PROPERTY = "org.ccnx.default.timeout";
+	protected final static String CCNX_TIMEOUT_ENV_VAR = "CCNX_TIMEOUT";
+	public final static int CCNX_TIMEOUT_DEFAULT = EXTRA_LONG_TIMEOUT;
+	
+	/**
+	 * GetLatestVersion attempt timeout.
+	 * TODO  This timeout is set to MEDIUM_TIMEOUT to work around the problem
+	 * in ccnd where some interests take >300ms (and sometimes longer, have seen periodic delays >800ms)
+	 * when that bug is found and fixed, this can be reduced back to the SHORT_TIMEOUT.
+	 * long attemptTimeout = SystemConfiguration.SHORT_TIMEOUT;
+	 */
+	protected static final String GLV_ATTEMPT_TIMEOUT_PROPERTY = "org.ccnx.glv.attempt.timeout";
+	protected final static String GLV_ATTEMPT_TIMEOUT_ENV_VAR = "GLV_ATTEMPT_TIMEOUT";
+	public final static int GLV_ATTEMPT_TIMEOUT_DEFAULT = MEDIUM_TIMEOUT;
+	public static int GLV_ATTEMPT_TIMEOUT = GLV_ATTEMPT_TIMEOUT_DEFAULT;
+	
+	/**
+	 * "Short timeout" that can be set
+	 */
+	protected static final String SETTABLE_SHORT_TIMEOUT_PROPERTY = "org.ccnx.short.timeout";
+	protected final static String SETTABLE_SHORT_TIMEOUT_ENV_VAR = "SETTABLE_SHORT_TIMEOUT";
+	public static int SETTABLE_SHORT_TIMEOUT = SHORT_TIMEOUT;
+	
+	/**
 	 * Settable system default timeout.
 	 */
-	protected static int _defaultTimeout = EXTRA_LONG_TIMEOUT;
+	protected static int _defaultTimeout = CCNX_TIMEOUT_DEFAULT;
 	
 	/**
 	 * Get system default timeout.
@@ -327,13 +354,22 @@ public class SystemConfiguration {
 		// Allow override of default flow controller timeout.
 		try {
 			FC_TIMEOUT = Integer.parseInt(System.getProperty(FC_TIMEOUT_PROPERTY, Integer.toString(FC_TIMEOUT_DEFAULT)));
-//			Log.fine("PING_TIMEOUT = " + PING_TIMEOUT);
+//			Log.fine("FC_TIMEOUT = " + FC_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The default flow controller timeout must be an integer.");
 			throw e;
 		}
+		
+		// Allow override of ccn default timeout.
+		try {
+			_defaultTimeout = Integer.parseInt(retrievePropertyOrEnvironmentVariable(CCNX_TIMEOUT_PROPERTY, CCNX_TIMEOUT_ENV_VAR, Integer.toString(CCNX_TIMEOUT_DEFAULT)));
+//			Log.fine("CCNX_TIMEOUT = " + CCNX_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The ccnd default timeout must be an integer.");
+			throw e;
+		}
 
-		// Allow override of ccn op timeout.
+		// Allow override of ccnd op timeout.
 		try {
 			CCND_OP_TIMEOUT = Integer.parseInt(System.getProperty(CCND_OP_TIMEOUT_PROPERTY, Integer.toString(CCND_OP_TIMEOUT_DEFAULT)));
 //			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
@@ -341,6 +377,25 @@ public class SystemConfiguration {
 			System.err.println("The ccnd op timeout must be an integer.");
 			throw e;
 		}
+		
+		// Allow override of getLatestVersion attempt timeout.
+		try {
+			GLV_ATTEMPT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(GLV_ATTEMPT_TIMEOUT_PROPERTY, GLV_ATTEMPT_TIMEOUT_ENV_VAR, Integer.toString(GLV_ATTEMPT_TIMEOUT_DEFAULT)));
+//			Log.fine("GLV_ATTEMPT_TIMEOUT = " + GLV_ATTEMPT_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The getlatestversion attempt timeout must be an integer.");
+			throw e;
+		}
+		
+		// Allow override of settable short timeout.
+		try {
+			SETTABLE_SHORT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(SETTABLE_SHORT_TIMEOUT_PROPERTY, SETTABLE_SHORT_TIMEOUT_ENV_VAR, Integer.toString(SHORT_TIMEOUT)));
+//			Log.fine("SETTABLE_SHORT_TIMEOUT = " + SETTABLE_SHORT_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The settable short timeout must be an integer.");
+			throw e;
+		}
+
 		
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
@@ -541,6 +596,7 @@ public class SystemConfiguration {
 	
 	protected static String _loggingConfiguration;
 	/**
+	 * TODO: Fix this incorrect comment
 	 * Property to turn off access control flags. Set it to any value and it will turn off
 	 * access control; used for testing.
 	 */
