@@ -50,7 +50,7 @@ UP=$CCN_LOCAL_PORT_BASE
 WithCCND 4 ccndc add /unanswered/test tcp localhost $UP || SkipTest Unable to register prefix
 
 
-dd if=/dev/zero bs=1 count=1 of=heartheat.ccnb
+dd if=/dev/zero bs=1 count=1 of=heartbeat.ccnb
 
 #
 # Send the interest from 50 sources (simulated external)
@@ -65,7 +65,7 @@ done
 # Send the interest from 25 sources (apps)
 #
 while [ $I -lt 75 ]; do
-	WithCCND 4 ccndsmoketest -t 1 -u localhost send heartheat.ccnb recv send unanswered.ccnb recv
+	WithCCND 4 ccndsmoketest -t 1 -u localhost send heartbeat.ccnb recv send unanswered.ccnb recv
 	I=$((I+1))
 done
 

@@ -9,6 +9,7 @@ ephemeral*
 *face*.ccnb
 *reg*.ccnb
 heartbeat.ccnb
+unanswered.ccnb
 *-pre.html
 *-post.html
 *-status-*.html
