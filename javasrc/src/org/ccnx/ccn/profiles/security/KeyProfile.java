@@ -65,6 +65,14 @@ public class KeyProfile implements CCNProfile {
 	}
 	
 	/**
+	 * Helper method to return key ID name component as a string.
+	 */
+	public static String keyIDToNameComponentAsString(byte [] keyID) {
+		return ContentName.componentPrintURI(keyIDToNameComponent(keyID));
+	}
+
+	
+	/**
 	 * This generates a name component which refers to the digest of a
 	 * public key, formatted in a standard way (e.g. with marker prefixes
 	 * if necessary and so on).
