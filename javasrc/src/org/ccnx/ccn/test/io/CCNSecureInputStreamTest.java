@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -35,7 +35,6 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.StaticContentKeys;
 import org.ccnx.ccn.impl.security.crypto.UnbufferedCipherInputStream;
@@ -55,6 +54,7 @@ import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.Flosser;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -241,8 +241,8 @@ public class CCNSecureInputStreamTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(Level.FINEST);
-		Log.setLevel(Log.FAC_SIGNING, Level.FINEST);
+		Log.setDefaultLevel(Level.FINEST);
+		Log.setDefaultLevel(Log.FAC_SIGNING, Level.FINEST);
 		outputLibrary = CCNHandle.open();
 		inputLibrary = CCNHandle.open();
 				
@@ -275,6 +275,12 @@ public class CCNSecureInputStreamTest {
 			}
 		};
 		flosser.stop();
+	}
+	
+	@AfterClass
+	public static void cleanupAfterClass() {
+		outputLibrary.close();
+		inputLibrary.close();
 	}
 	
 	public static byte [] readFile(InputStream inputStream, int fileLength) throws IOException {

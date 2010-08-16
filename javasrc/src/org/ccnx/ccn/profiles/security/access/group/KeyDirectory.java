@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -731,8 +731,9 @@ public class KeyDirectory extends EnumeratedNameList {
 			}
 			for (byte [] keyid : _keyIDs) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-					Log.info(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: the KD secret key is wrapped under a key whose id is {0}", 
-							DataUtils.printHexBytes(keyid) );
+					Log.info(Log.FAC_ACCESSCONTROL, 
+							"KeyDirectory getUnwrappedKey: the KD secret key is wrapped under a key whose id is {0}, name component {1}", 
+							DataUtils.printHexBytes(keyid), KeyProfile.keyIDToNameComponentAsString(keyid));
 				}
 				if (_handle.keyManager().getSecureKeyCache().containsKey(keyid)) {
 					// We have it, pull the block, unwrap the node key.

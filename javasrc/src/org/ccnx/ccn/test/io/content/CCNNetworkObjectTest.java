@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -24,6 +24,7 @@ import java.util.logging.Level;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowServer;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
 import org.ccnx.ccn.impl.support.Log;
@@ -35,9 +36,11 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.io.content.UpdateListener;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
@@ -104,7 +107,7 @@ public class CCNNetworkObjectTest {
 		try {
 			Log.info("Tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
 			Log.flush();
-			Log.setLevel(oldLevel);
+			Log.setDefaultLevel(oldLevel);
 			if (flosser != null) {
 				flosser.stop();
 				flosser = null;
@@ -121,7 +124,7 @@ public class CCNNetworkObjectTest {
 	public static void setUpBeforeClass() throws Exception {
 		Log.info("Setting up CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
 		oldLevel = Log.getLevel();
-		Log.setLevel(Level.INFO);
+		Log.setDefaultLevel(Level.INFO);
 		
 		handle = CCNHandle.open();
 		
@@ -165,6 +168,11 @@ public class CCNNetworkObjectTest {
 		
 		flosser = new Flosser();
 		Log.info("Finished setting up CCNNetworkObjectTest, prefix is: {0}.", testHelper.getClassNamespace());
+	}
+	
+	@AfterClass
+	public static void cleanupAfterClass() {
+		handle.close();
 	}
 
 	@Test
@@ -213,6 +221,8 @@ public class CCNNetworkObjectTest {
 			}
 		} finally {
 			removeNamespace(testName);
+			lput.close();
+			lget.close();
 		}
 	}
 
@@ -247,6 +257,8 @@ public class CCNNetworkObjectTest {
 			Assert.assertEquals("Didn't read correct version", desiredVersion, ro2.getVersion());
 		} finally {
 			removeNamespace(testName);
+			lput.close();
+			lget.close();
 		}
 	}
 
@@ -275,8 +287,9 @@ public class CCNNetworkObjectTest {
 	public void testStreamUpdate() throws Exception {
 
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testStreamUpdate"), collectionObjName);
+		CCNHandle tHandle = CCNHandle.open();
 		try {
-			CollectionObject testCollectionObject = new CollectionObject(testName, small1, SaveType.RAW, CCNHandle.open());
+			CollectionObject testCollectionObject = new CollectionObject(testName, small1, SaveType.RAW, tHandle);
 			setupNamespace(testName);
 
 			saveAndLog("testStreamUpdate", testCollectionObject, null, small1);
@@ -322,6 +335,7 @@ public class CCNNetworkObjectTest {
 			Assert.assertEquals("Decoding via stream full read fails to give expected result!", decodedData3, small1);
 		} finally {
 			removeNamespace(testName);
+			tHandle.close();
 		}
 	}
 	
@@ -329,14 +343,15 @@ public class CCNNetworkObjectTest {
 	public void testVersionOrdering() throws Exception {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name1");
 		ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name2");
-
+		CCNHandle tHandle = CCNHandle.open();
+		
 		try {
 
 			CollectionObject c0 = new CollectionObject(testName, empty, SaveType.RAW, handle);
 			setupNamespace(testName);
 			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 
-			CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.RAW, CCNHandle.open());
+			CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.RAW, tHandle);
 			CollectionObject c2 = new CollectionObject(testName2, small1, SaveType.RAW, null);
 			setupNamespace(testName2);
 			CCNTime t1 = saveAndLog("Small", c1, null, small1);
@@ -350,11 +365,13 @@ public class CCNNetworkObjectTest {
 		} finally {
 			removeNamespace(testName);
 			removeNamespace(testName2);
+			tHandle.close();
 		}
 	}
 	
 	@Test
 	public void testUpdateOtherName() throws Exception {
+		CCNHandle tHandle = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name1");
 		ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name2");
 		try {
@@ -363,7 +380,7 @@ public class CCNNetworkObjectTest {
 			setupNamespace(testName);
 			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
 
-			CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.RAW, CCNHandle.open());
+			CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.RAW, tHandle);
 			// Cheat a little, make this one before the setupNamespace...
 			CollectionObject c2 = new CollectionObject(testName2, small1, SaveType.RAW, null);
 			setupNamespace(testName2);
@@ -387,18 +404,22 @@ public class CCNNetworkObjectTest {
 		} finally {
 			removeNamespace(testName);
 			removeNamespace(testName2);
+			tHandle.close();
 		}
 	}
 	
 	@Test
 	public void testUpdateInBackground() throws Exception {
 		
+		CCNHandle tHandle = CCNHandle.open();
+		CCNHandle tHandle2 = CCNHandle.open();
+		CCNHandle tHandle3 = CCNHandle.open();
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateInBackground"), stringObjName, "name1");
 		try {
-			CCNStringObject c0 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
+			CCNStringObject c0 = new CCNStringObject(testName, (String)null, SaveType.RAW, tHandle);
 			c0.updateInBackground();
 			
-			CCNStringObject c1 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
+			CCNStringObject c1 = new CCNStringObject(testName, (String)null, SaveType.RAW, tHandle2);
 			c1.updateInBackground(true);
 			
 			Assert.assertFalse(c0.available());
@@ -406,7 +427,7 @@ public class CCNNetworkObjectTest {
 			Assert.assertFalse(c1.available());
 			Assert.assertFalse(c1.isSaved());
 			
-			CCNStringObject c2 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
+			CCNStringObject c2 = new CCNStringObject(testName, (String)null, SaveType.RAW, tHandle3);
 			CCNTime t1 = saveAndLog("First string", c2, null, "Here is the first string.");
 			Log.info("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
 			c0.waitForData();
@@ -423,16 +444,87 @@ public class CCNNetworkObjectTest {
 			}
 			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
+			
+		} finally {
+			removeNamespace(testName);
+			tHandle.close();
+			tHandle2.close();
+			tHandle3.close();
+		}
+	}
+	
+	
+	@Test
+	public void testBackgroundVerifier() throws Exception {
+		
+		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testBackgroundVerifier"), stringObjName, "name1");
+		try {
+			CCNStringObject c0 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
+			c0.updateInBackground(true);
+			
+			CCNStringObject c1 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
+			c1.updateInBackground(true);
+			
+			CCNTime t1 = saveAndLog("First string", c0, null, "Here is the first string.");
+			
+			c0.waitForData();
+			c1.waitForData();
+			CCNTime c1Version = c1.getVersion();
+			
+			Assert.assertTrue(c0.available());
+			Assert.assertTrue(c0.isSaved());
+			Assert.assertTrue(c1.available());
+			Assert.assertTrue(c1.isSaved());
+			Assert.assertEquals(t1, c1Version);
+			
+			// Test background ability to throw away bogus data.
+			// change the version so a) it's later, and b) the signature won't verify
+			ContentName laterName = SegmentationProfile.segmentName(VersioningProfile.updateVersion(c1.getVersionedName()),
+									SegmentationProfile.baseSegment());
+			CCNFlowServer server = new CCNFlowServer(testName, null, false, CCNHandle.open());
+			server.addNameSpace(laterName);
+			
+			ContentObject bogon = 
+				new ContentObject(laterName, c0.getFirstSegment().signedInfo(),
+						c0.getFirstSegment().content(), c0.getFirstSegment().signature());
+			Log.info("Writing bogon: {0}", bogon.fullName());
+			
+			server.put(bogon);
+			
+			Thread.sleep(300);
+			
+			// Should be no update
+			Assert.assertEquals(c0.getVersion(), c1Version);
+			Assert.assertEquals(c1.getVersion(), c1Version);
+
+			// Now write a newer one
+			CCNStringObject c2 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
+			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
+			Log.info("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
+			if (!c0.getVersion().equals(t2)) {
+				synchronized (c0) {
+					c0.wait(5000);
+				}
+			}
+			Assert.assertEquals("c0 update", c0.getVersion(), c2.getVersion());
+			if (!c1.getVersion().equals(t2)) {
+				synchronized (c1) {
+					c1.wait(5000);
+				}
+			}
+			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
+			Assert.assertFalse(c1Version.equals(c1.getVersion()));
+			
 		} finally {
 			removeNamespace(testName);
 		}
 	}
-
-	
+		
 	@Test
 	public void testSaveAsGone() throws Exception {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
-
+		CCNHandle tHandle = CCNHandle.open();
+		CCNHandle tHandle2 = CCNHandle.open();
 		try {
 			Log.info("TSAG: Entering testSaveAsGone");
 			CollectionObject c0 = new CollectionObject(testName, empty, SaveType.RAW, handle);
@@ -450,7 +542,7 @@ public class CCNNetworkObjectTest {
 			Assert.assertTrue(t1.after(t0));
 			Log.info("T2");
 
-			CollectionObject c1 = new CollectionObject(testName, CCNHandle.open());
+			CollectionObject c1 = new CollectionObject(testName, tHandle);
 			CCNTime t2 = waitForDataAndLog(testName.toString(), c1);
 			Assert.assertFalse("Read back should not be gone", c1.isGone());
 			Assert.assertEquals(t2, t1);
@@ -465,7 +557,7 @@ public class CCNNetworkObjectTest {
 			t0 = saveAsGoneAndLog("GoneAgain", c0);
 			Assert.assertTrue("Should be gone", c0.isGone());
 			Log.info("TSAG: Updating new object: {0}", testName);
-			CollectionObject c2 = new CollectionObject(testName, CCNHandle.open());
+			CollectionObject c2 = new CollectionObject(testName, tHandle2);
 			Log.info("TSAG: Waiting for: {0}", testName);
 			CCNTime t4 = waitForDataAndLog(testName.toString(), c2);
 			Log.info("TSAG: Waited for: {0}", c2.getVersionedName());
@@ -475,12 +567,15 @@ public class CCNNetworkObjectTest {
 
 		} finally {
 			removeNamespace(testName);
+			tHandle.close();
+			tHandle2.close();
 		}
 	}
 	
 	@Test
 	public void testUpdateDoesNotExist() throws Exception {
 		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateDoesNotExist"), collectionObjName);
+		CCNHandle tHandle = CCNHandle.open();
 		try {
 			Log.info("CCNNetworkObjectTest: Entering testUpdateDoesNotExist");
 			CCNStringObject so = new CCNStringObject(testName, handle);
@@ -489,7 +584,7 @@ public class CCNNetworkObjectTest {
 			// try to pick up anything that happens to appear
 			so.updateInBackground();
 			
-			CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", SaveType.RAW, CCNHandle.open());
+			CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", SaveType.RAW, tHandle);
 			setupNamespace(testName);
 			saveAndLog("testUpdateDoesNotExist: Delayed write", sowrite, null, "Now we write something.");
 			Log.flush();
@@ -501,6 +596,7 @@ public class CCNNetworkObjectTest {
 			Log.flush();
 		} finally {
 			removeNamespace(testName);
+			tHandle.close();
 		}
 	}
 	
@@ -527,6 +623,8 @@ public class CCNNetworkObjectTest {
 			Assert.assertArrayEquals("Didn't match first segment digest", so.getFirstDigest(), ro.getFirstDigest());
 		} finally {
 			removeNamespace(testName);
+			lput.close();
+			lget.close();
 		}
 	}
 		
@@ -579,6 +677,8 @@ public class CCNNetworkObjectTest {
 		}
 		// For some reason, we're getting two updates on our updateInBackground...
 		Assert.assertTrue(ourListener.getCounter() > 1);
+		writeHandle.close();
+		readHandle.close();
 	}
 
 	@Test

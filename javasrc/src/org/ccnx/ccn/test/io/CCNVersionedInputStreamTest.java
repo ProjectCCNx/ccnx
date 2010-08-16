@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -26,6 +26,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
@@ -37,6 +38,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -67,6 +69,21 @@ public class CCNVersionedInputStreamTest {
 	static CCNReader reader;
 	static final int MAX_FILE_SIZE = 1024*1024; // 1 MB
 	static final int BUF_SIZE = 4096;
+	
+	static final int MERKLE_TREE_LENGTH = SegmentationProfile.DEFAULT_BLOCKSIZE * CCNOutputStream.BLOCK_BUF_COUNT;
+	static int [] problematicLengths = {
+		SegmentationProfile.DEFAULT_BLOCKSIZE,
+		SegmentationProfile.DEFAULT_BLOCKSIZE/2,
+		SegmentationProfile.DEFAULT_BLOCKSIZE*2,
+		((int)(SegmentationProfile.DEFAULT_BLOCKSIZE*1.5)),
+		((int)(SegmentationProfile.DEFAULT_BLOCKSIZE*2.5)),
+		MERKLE_TREE_LENGTH + SegmentationProfile.DEFAULT_BLOCKSIZE,
+		MERKLE_TREE_LENGTH + SegmentationProfile.DEFAULT_BLOCKSIZE/2,
+		MERKLE_TREE_LENGTH + SegmentationProfile.DEFAULT_BLOCKSIZE*2,
+		MERKLE_TREE_LENGTH + ((int)(SegmentationProfile.DEFAULT_BLOCKSIZE*1.5)),
+		MERKLE_TREE_LENGTH + ((int)(SegmentationProfile.DEFAULT_BLOCKSIZE*2.5))};
+	static byte [][] problematicDigests = new byte[problematicLengths.length][];
+	static ContentName [] problematicNames = new ContentName[problematicLengths.length];
 
 	/**
 	 * Handle naming for the test
@@ -99,6 +116,18 @@ public class CCNVersionedInputStreamTest {
 		latestVersionMaxSegment = (int)Math.ceil(latestVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
 		latestVersionDigest = writeFileFloss(latestVersionName, latestVersionLength, randBytes);
 		
+		for (int i=0; i < problematicLengths.length; ++i) {
+			problematicNames[i] = VersioningProfile.addVersion(
+					testHelper.getClassChildName("LengthTest-" + problematicLengths[i]));
+			problematicDigests[i] = writeFileFloss(problematicNames[i], problematicLengths[i], randBytes);
+		}		
+	}
+	
+	@AfterClass
+	public static void cleanupAfterClass() {
+		outputHandle.close();
+		inputHandle.close();
+		inputHandle2.close();
 	}
 	
 	/**
@@ -285,8 +314,8 @@ public class CCNVersionedInputStreamTest {
 	@Test
 	public void testCCNVersionedInputStreamContentObjectCCNLibrary() throws Exception {
 		// we can make a new handle; as long as we don't use the outputHandle it should work
-		ContentObject firstVersionBlock = inputHandle.get(firstVersionName, 1000);
-		ContentObject latestVersionBlock = reader.get(Interest.last(defaultStreamName, defaultStreamName.count(), null), 1000);
+		ContentObject firstVersionBlock = inputHandle.get(firstVersionName, SystemConfiguration.getDefaultTimeout());
+		ContentObject latestVersionBlock = reader.get(Interest.last(defaultStreamName, defaultStreamName.count(), null), SystemConfiguration.getDefaultTimeout());
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, null, inputHandle);
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, null, inputHandle);
 		testArgumentRunner(vfirst, vlatest);
@@ -305,5 +334,17 @@ public class CCNVersionedInputStreamTest {
 		readDigest = readFile(vlatest, latestVersionLength);
 		Assert.assertArrayEquals(latestVersionDigest, readDigest);
 	}
-
+	
+	@Test
+	public void testReadProblematicLengths() throws Exception {
+		CCNVersionedInputStream vstream;
+		byte [] readDigest;
+		
+		for (int i=0; i < problematicLengths.length; ++i) {
+			vstream = new CCNVersionedInputStream(problematicNames[i], inputHandle);
+			readDigest = readFile(vstream, problematicLengths[i]);
+			Assert.assertArrayEquals("Stream " + i + " failed to match, length " + problematicLengths[i],
+									problematicDigests[i], readDigest);
+		}
+	}
 }

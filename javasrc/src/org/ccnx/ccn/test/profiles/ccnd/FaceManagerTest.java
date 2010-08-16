@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.

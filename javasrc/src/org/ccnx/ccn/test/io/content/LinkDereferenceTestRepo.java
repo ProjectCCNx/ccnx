@@ -129,7 +129,7 @@ public class LinkDereferenceTestRepo {
 		writer.newVersion(unversionedDataName, bigDataContent);
 
 		Link uvBigDataLink = new Link(unversionedDataName, "big", new LinkAuthenticator(new PublisherID(writeHandle.keyManager().getDefaultKeyID())));
-		ContentObject bigDataTarget = uvBigDataLink.dereference(SystemConfiguration.SHORT_TIMEOUT, readHandle);
+		ContentObject bigDataTarget = uvBigDataLink.dereference(SystemConfiguration.SETTABLE_SHORT_TIMEOUT, readHandle);
 		Log.info("BigData: Dereferenced link " + uvBigDataLink + ", retrieved content " + ((null == bigDataTarget) ? "null" : bigDataTarget.name()));
 		Assert.assertNotNull(bigDataTarget);
 		Assert.assertTrue(uvBigDataLink.targetName().isPrefixOf(bigDataTarget.name()));

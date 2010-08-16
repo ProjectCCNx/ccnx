@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -295,6 +295,7 @@ public class Flosser implements CCNInterestListener {
 			Log.info("Stopped flossing: remaining namespaces {0} (should be 0), subnamespaces {1} (should be 0).",
 						_interests.size(), _subInterests.size());
 		}
+		_handle.close();
 	}
 	
 	public void logNamespaces() {

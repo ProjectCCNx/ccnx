@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
@@ -337,9 +337,9 @@ public class CCNNetworkManager implements Runnable {
 			// happen while holding this lock because that would give the 
 			// application callback code power to block library processing.
 			// Instead, we use a flag that is checked and set under this lock
-			// to be sure that on exit from invalidate() there will be 
-			// no future deliveries based on the now-invalid registration.
-			while (true) {
+			// to be sure that on exit from invalidate() there will be.
+			// Back off to avoid livelock  
+			for (int i = 0; true; i = (2 * i + 1) & 63) {
 				synchronized (this) {
 					// Make invalid, this will prevent any new delivery that comes
 					// along from doing anything.
@@ -351,7 +351,15 @@ public class CCNNetworkManager implements Runnable {
 						return;
 					}
 				}
-				Thread.yield();
+				if (i == 0) {
+					Thread.yield();
+				} else {
+					if (i > 3) Log.finer("invalidate spin {0}", i);
+					try {
+						Thread.sleep(i);
+					} catch (InterruptedException e) {
+					}
+				}
 			}
 		}
 		
@@ -418,7 +426,7 @@ public class CCNNetworkManager implements Runnable {
 		public final Interest interest;
 		ContentObject data = null;
 		protected long nextRefresh;		// next time to refresh the interest
-		protected long nextRefreshPeriod = PERIOD * 2;	// period to wait before refresh
+		protected long nextRefreshPeriod = SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT;	// period to wait before refresh
 		
 		// All internal client interests must have an owner
 		public InterestRegistration(CCNNetworkManager mgr, Interest i, CCNInterestListener l, Object owner) {
@@ -472,7 +480,7 @@ public class CCNNetworkManager implements Runnable {
 					ContentObject pending = null;
 					CCNInterestListener listener = null;
 					synchronized (this) {
-						if (this.data != null) {
+						if (null != this.data && null != this.listener) {
 							pending = this.data;
 							this.data = null;
 							listener = (CCNInterestListener)this.listener;
@@ -574,9 +582,10 @@ public class CCNNetworkManager implements Runnable {
 			manager = mgr;
 		}
 		
-		public synchronized void add(Interest i) {
+		public synchronized boolean add(Interest i) {
 			if (null == interest) {
 				interest = i;
+				return true;
 			} else {
 				// Special case, more than 1 interest pending for delivery
 				// Only 1 interest gets added at a time, but more than 1 
@@ -585,6 +594,7 @@ public class CCNNetworkManager implements Runnable {
 					extra = new ArrayList<Interest>(1);
 				}
 				extra.add(i);
+				return false;
 			}
 		}
 		
@@ -598,7 +608,7 @@ public class CCNNetworkManager implements Runnable {
 				CCNFilterListener listener = null;
 				// Grab pending interest(s) under the lock
 				synchronized (this) {
-					if (null != this.interest) {
+					if (null != this.interest && null != this.listener) {
 						pending = interest;
 						interest = null;
 						if (null != this.extra) { 
@@ -1295,8 +1305,8 @@ public class CCNNetworkManager implements Runnable {
 				if (filter.owner != ireg.owner) {
 					if( Log.isLoggable(Level.FINER) )
 						Log.finer("Schedule delivery for interest: {0}", ireg.interest);
-					filter.add(ireg.interest);
-					_threadpool.execute(filter);
+					if (filter.add(ireg.interest))
+						_threadpool.execute(filter);
 				}
 			}
 		}

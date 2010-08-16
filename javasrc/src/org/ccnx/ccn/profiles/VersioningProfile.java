@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
@@ -555,11 +555,7 @@ public class VersioningProfile implements CCNProfile {
 		}
 		
 		int attempts = 0;
-		//TODO  This timeout is set to SystemConfiguration.MEDIUM_TIMEOUT to work around the problem
-		//in ccnd where some interests take >300ms (and sometimes longer, have seen periodic delays >800ms)
-		//when that bug is found and fixed, this can be reduced back to the SHORT_TIMEOUT.
-		//long attemptTimeout = SystemConfiguration.SHORT_TIMEOUT;
-		long attemptTimeout = SystemConfiguration.MEDIUM_TIMEOUT;
+		long attemptTimeout = SystemConfiguration.GLV_ATTEMPT_TIMEOUT;
 		if (timeout == SystemConfiguration.NO_TIMEOUT) {
 			//the timeout sent in is equivalent to null...  try till we don't hear something back
 			//we will reset the remaining time after each return...
@@ -649,7 +645,7 @@ public class VersioningProfile implements CCNProfile {
 						if (result!=null) {
 							if (Log.isLoggable(Level.FINE))
 								Log.fine("gLV we got something back: {0}", result.name());
-							if(verifier.verify(result)) {
+							if (verifier.verify(result)) {
 								Log.fine("gLV the returned answer verifies");
 								verifyDone = true;
 							} else {
@@ -692,7 +688,7 @@ public class VersioningProfile implements CCNProfile {
 							
 							result = SegmentationProfile.getSegment(notFirstBlockVersion, startingSegmentNumber, null, timeout, verifier, handle); // now that we have the latest version, go back for the first block.
 							//if this isn't the first segment...  then we should exclude it.  otherwise, we can use it!
-							if(result == null) {
+							if (result == null) {
 								//we couldn't get a new segment...
 								Log.fine("gLV could not get the first segment of the version we just found...  should exclude the version");
 								//excludes = addVersionToExcludes(excludes, startingVersion);

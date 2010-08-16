@@ -1,5 +1,4 @@
-/* -*- mode: java; tab-width: 4 -*- */
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
@@ -16,7 +15,9 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-
+/**
+ * PD org.ccnx.ccn.impl.support
+ */
 package org.ccnx.ccn.impl.support;
 
 import java.io.File;

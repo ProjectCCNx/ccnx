@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -1417,12 +1417,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 				Log.info(Log.FAC_ACCESSCONTROL, "getFreshEffectiveNodeKey: Found node key at {0}", nodeKey.storedNodeKeyName());
 			}
 		}
-		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-			Log.finer(Log.FAC_ACCESSCONTROL, "getFreshEffectiveNodeKey: retrieved stored node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), nodeKey);
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info(Log.FAC_ACCESSCONTROL, "getFreshEffectiveNodeKey: retrieved node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), nodeKey);
 		}
 		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
-		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-			Log.finer(Log.FAC_ACCESSCONTROL, "getFreshEffectiveNodeKey: computed effective node key for node {0} label {1}: {2} using stored node key {3}"
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info(Log.FAC_ACCESSCONTROL, "getFreshEffectiveNodeKey: computed effective node key for node {0} label {1}: {2} using stored node key {3}"
 					, nodeName, nodeKeyLabel(), effectiveNodeKey, effectiveNodeKey.storedNodeKeyName());
 		}
 		return effectiveNodeKey;
@@ -1595,15 +1595,20 @@ public class GroupAccessControlManager extends AccessControlManager {
 	@Override 
 	public Key getDataKeyWrappingKey(ContentName dataNodeName, ContentName wrappingKeyName, Key cachedWrappingKey) throws InvalidKeyException, ContentEncodingException {
 		NodeKey cachedWrappingKeyNK = new NodeKey(wrappingKeyName, cachedWrappingKey);
-		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-			Log.finer(Log.FAC_ACCESSCONTROL, "getNodeKeyForObject: retrieved stored node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), cachedWrappingKeyNK);
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info(Log.FAC_ACCESSCONTROL, "getDataKeyWrappingKey: retrieved cached stored node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), cachedWrappingKeyNK);
 		}
 		NodeKey enk = cachedWrappingKeyNK.computeDescendantNodeKey(dataNodeName, nodeKeyLabel());
-		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-			Log.finer(Log.FAC_ACCESSCONTROL, "getNodeKeyForObject: computed effective node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), enk);
-		}
 		if (null != enk) {
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+				Log.info(Log.FAC_ACCESSCONTROL, "getDataKeyWrappingKey: used cache to compute effective node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), enk);
+			}
 			return enk.nodeKey();
+		} else {
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+				Log.finer(Log.FAC_ACCESSCONTROL, "getDataKeyWrappingKey: cannot compute effective node key for node {0} label {1} from cached key {2}", 
+						dataNodeName, nodeKeyLabel(), cachedWrappingKeyNK);
+			}
 		}
 		return null;
 	}

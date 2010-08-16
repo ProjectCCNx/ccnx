@@ -12,14 +12,16 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-SCRIPTSRC = ccndstart.sh ccndstop.sh ccndstatus.sh shebang
+SCRIPTSRC = shebang \
+	ccndstart.sh ccndstop.sh ccndstatus.sh ccntestloop.sh ccndlogging.sh
 PROGRAMS = $(INSTALLED_PROGRAMS)
-INSTALLED_PROGRAMS = ccndstart ccndstop ccndstatus
+INSTALLED_PROGRAMS = ccndstart ccndstop ccndstatus ccntestloop ccndlogging
 
 default all: $(SCRIPTSRC) $(PROGRAMS)
 
-$(INSTALLED_PROGRAMS): $(@:=.sh) shebang
+$(INSTALLED_PROGRAMS): $(SCRIPTSRC) shebang
 	./shebang $(SH) $(@:=.sh) > $@
+	chmod +x $@
 
 clean:
 	rm -f $(PROGRAMS)

@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -28,6 +28,7 @@ import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -95,6 +96,13 @@ public class MultiResponderNameEnumerationTest implements BasicNameEnumeratorLis
 		} catch (IOException e) {
 			Assert.fail("IOException when setting up test. "+e.getMessage());
 		}
+	}
+	
+	@After
+	public void cleanup() {
+		_putHandle.close();
+		_getHandle.close();
+		_fileHandle.close();
 	}
 
 	private void putNERegisterName(ContentName n) {

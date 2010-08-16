@@ -1,7 +1,7 @@
-/**
+/*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -123,14 +123,14 @@ public class ExpandedPublicKeyObjectTestRepo {
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		Log.setLevel(oldLevel);
+		Log.setDefaultLevel(oldLevel);
 	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
 		oldLevel = Log.getLevel();
-		Log.setLevel(Level.FINEST);
+		Log.setDefaultLevel(Level.FINEST);
 		Security.addProvider(new BouncyCastleProvider());
 		// generate key pair
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");

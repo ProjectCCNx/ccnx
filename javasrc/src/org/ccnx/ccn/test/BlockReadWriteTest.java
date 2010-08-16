@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -31,6 +31,7 @@ import org.ccnx.ccn.io.CCNDescriptor;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
@@ -46,10 +47,15 @@ public class BlockReadWriteTest extends BasePutGetTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-	
+		BasePutGetTest.setUpBeforeClass();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
 		//Library.setLevel(Level.FINEST);
 		//SystemConfiguration.setDebugFlag("DEBUG_SIGNATURES");
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		CCNTestBase.tearDownAfterClass();
 	}
 
 	@Override
@@ -61,7 +67,7 @@ public class BlockReadWriteTest extends BasePutGetTest {
 		desc.setTimeout(5000);
 		Log.info("Opened descriptor for reading: " + thisName);
 
-		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");
+		FileOutputStream os = new FileOutputStream(_testDir + fileName + "_testout.txt");
 		byte[] compareBytes = TEST_LONG_CONTENT.getBytes();
         byte[] bytes = new byte[compareBytes.length];
         int buflen;

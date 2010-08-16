@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -242,18 +242,19 @@ public class WrappedKeyTest {
 										aLabel, wrappingKeyPair.getPublic());
 		wka.setWrappingKeyIdentifier(wrappingKeyID);
 		wka.setWrappingKeyName(wrappingKeyName);
+		CCNHandle thandle = CCNHandle.open();
+		CCNHandle thandle2 = CCNHandle.open();
 		
 		Flosser flosser = null;
 		try {
-			CCNHandle handle = CCNHandle.open();
 			flosser = new Flosser();
 			flosser.handleNamespace(storedKeyName);
 			WrappedKeyObject wko = 
-				new WrappedKeyObject(storedKeyName, wks, SaveType.RAW, handle);
+				new WrappedKeyObject(storedKeyName, wks, SaveType.RAW, thandle);
 			wko.save();
 			Assert.assertTrue(VersioningProfile.hasTerminalVersion(wko.getVersionedName()));
 			// should update in another thread
-			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName, CCNHandle.open()); // new handle
+			WrappedKeyObject wkoread = new WrappedKeyObject(storedKeyName, thandle2);
 			Assert.assertTrue(wkoread.available());
 			Assert.assertEquals(wkoread.getVersionedName(), wko.getVersionedName());
 			Assert.assertEquals(wkoread.wrappedKey(), wko.wrappedKey());
@@ -270,6 +271,8 @@ public class WrappedKeyTest {
 				flosser.stop();
 				Log.info("WrappedKeyTest: flosser stopped.");
 			}
+			thandle.close();
+			thandle2.close();
 		}
 		Log.info("Leaving testWrappedKeyObject");
 	}

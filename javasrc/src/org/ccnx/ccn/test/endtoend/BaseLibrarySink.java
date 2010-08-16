@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -23,6 +23,7 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 
@@ -40,7 +41,12 @@ public class BaseLibrarySink {
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Log.setLevel(Level.FINEST);
+		Log.setDefaultLevel(Level.FINEST);
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() {
+		handle.close();
 	}
 
 	/**

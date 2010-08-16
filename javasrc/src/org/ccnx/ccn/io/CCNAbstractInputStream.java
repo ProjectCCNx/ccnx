@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
@@ -735,12 +735,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					}
 				}
 
-				if(elapsed1 > avgResponseTime * 2 && avgResponseTime > -1) {
-					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
+				if((elapsed1 > avgResponseTime * 2 && avgResponseTime > -1) || (avgResponseTime == -1 && elapsed1 > SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT)) {
+					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) ) {
 						if(i.exclude() == null)
 							Log.info("PIPELINE: adding the base interest or the first holefilling attempt!!! {0}", i);
 						else
 							Log.info("PIPELINE: adding the first holefilling attempt! {0}",  i);
+					}
 					i.userTime = System.currentTimeMillis();
 					_handle.expressInterest(i, this);
 					if (index != -1)
@@ -755,17 +756,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					}
 
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: requested segment {0} to fill hole: {1} with Interest: {2}", hole, i.name(), i);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: requested segment {0} to fill hole: {1} with Interest: {2}", hole, i.name(), i);
 					return;
 				} else {
 					if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: we need to wait longer to see if the original interest will return the segment");
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we need to wait longer to see if the original interest will return the segment: avgResponseTime: {0}", avgResponseTime);
 				}
 			}
 			//}
 		} catch (IOException e) {
 			if( Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING) )
-			Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline");
+				Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline");
 		}
 	}
 
@@ -879,6 +880,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						if( Log.isLoggable(Log.FAC_PIPELINE, Level.INFO) )
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: our out of order segments are past the requested segment...  we have a hole");
 						break;
+					} else {
+						outOfOrderSegments.remove(0);
 					}
 				}
 			}
@@ -1343,8 +1346,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 			// dereference will check for link cycles
 			newSegment = _dereferencedLink.dereference(_timeout);
-			if (Log.isLoggable(Level.INFO))
-				Log.info("CCNAbstractInputStream: dereferencing link {0} to {1}, resulting data {2}", theLink.getVersionedName(),
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "CCNAbstractInputStream: dereferencing link {0} to {1}, resulting data {2}", theLink.getVersionedName(),
 						theLink.link(), ((null == newSegment) ? "null" : newSegment.name()));
 			if (newSegment == null) {
 				// TODO -- catch error states. Do we throw exception or return null?
@@ -1354,8 +1357,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				if (_dereferencedLink.hasError()) {
 					if (_dereferencedLink.getError() instanceof LinkCycleException) {
 						// Leave the link set on the input stream, so that caller can explore errors.
-						if (Log.isLoggable(Level.WARNING)) {
-							Log.warning("Hit link cycle on link {0} pointing to {1}, cannot dereference. See this.dereferencedLink() for more information!",
+						if (Log.isLoggable(Log.FAC_IO, Level.WARNING)) {
+							Log.warning(Log.FAC_IO, "Hit link cycle on link {0} pointing to {1}, cannot dereference. See this.dereferencedLink() for more information!",
 									_dereferencedLink.getVersionedName(), _dereferencedLink.link().targetName());
 						}
 					}
@@ -1373,8 +1376,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		_firstSegment = newSegment;
 	
 		if (newSegment.isType(ContentType.GONE)) {
-			if (Log.isLoggable(Level.INFO))
-				Log.info("setFirstSegment: got gone segment: {0}", newSegment.name());
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "setFirstSegment: got gone segment: {0}", newSegment.name());
 		} else if (newSegment.isType(ContentType.ENCR) && (null == _keys)) {
 			// The block is encrypted and we don't have keys
 			// Get the content name without the segment parent
@@ -1396,8 +1399,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		_currentSegment = null;
 		_segmentReadStream = null;
 		if (null == newSegment) {
-			if (Log.isLoggable(Level.INFO))
-				Log.info("FINDME: Setting current segment to null! Did a segment fail to verify?");
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "FINDME: Setting current segment to null! Did a segment fail to verify?");
 			return;
 		}
 
@@ -1418,17 +1421,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 					// Assume getBaseName() returns name without segment information.
 					// Log verification only on highest log level (won't execute on lower logging level).
-					if ( Log.isLoggable(Level.FINEST ))
-						Log.finest("Assert check: does getBaseName() match segmentless part of _currentSegment.name()? {0}",
+					if ( Log.isLoggable(Log.FAC_IO, Level.FINEST ))
+						Log.finest(Log.FAC_IO, "Assert check: does getBaseName() match segmentless part of _currentSegment.name()? {0}",
 								(SegmentationProfile.segmentRoot(_currentSegment.name()).equals(getBaseName())));
 
 					_cipher = _keys.getSegmentDecryptionCipher(getBaseName(), _publisher,
 							SegmentationProfile.getSegmentNumber(_currentSegment.name()));
 				} catch (InvalidKeyException e) {
-					Log.warning("InvalidKeyException: " + e.getMessage());
+					Log.warning(Log.FAC_IO, "InvalidKeyException: " + e.getMessage());
 					throw new IOException("InvalidKeyException: " + e.getMessage());
 				} catch (InvalidAlgorithmParameterException e) {
-					Log.warning("InvalidAlgorithmParameterException: " + e.getMessage());
+					Log.warning(Log.FAC_IO, "InvalidAlgorithmParameterException: " + e.getMessage());
 					throw new IOException("InvalidAlgorithmParameterException: " + e.getMessage());
 				}
 
@@ -1452,10 +1455,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				try {
 					tailData = _cipher.doFinal();
 				} catch (IllegalBlockSizeException e) {
-					Log.warning("IllegalBlockSizeException: " + e.getMessage());
+					Log.warning(Log.FAC_IO, "IllegalBlockSizeException: " + e.getMessage());
 					throw new IOException("IllegalBlockSizeException: " + e.getMessage());
 				} catch (BadPaddingException e) {
-					Log.warning("BadPaddingException: " + e.getMessage());
+					Log.warning(Log.FAC_IO, "BadPaddingException: " + e.getMessage());
 					throw new IOException("BadPaddingException: " + e.getMessage());
 				}
 				if ((null == tailData) || (0 == tailData.length)) {
@@ -1474,7 +1477,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			} else {
 				if (_currentSegment.signedInfo().getType().equals(ContentType.ENCR)) {
 					// We only do automated lookup of keys on first segment.
-					Log.warning("Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");
+					Log.warning(Log.FAC_IO, "Asked to read encrypted content, but not given a key to decrypt it. Decryption happening at higher level?");
 				}
 				_segmentReadStream = new ByteArrayInputStream(_currentSegment.content());
 			}
@@ -1701,8 +1704,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			return _firstSegment;
 		} else if (null != _startingSegmentNumber) {
 			ContentObject firstSegment = getSegment(_startingSegmentNumber);
-			if (Log.isLoggable(Level.FINE)) {
-				Log.fine("getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " + 
+			if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+				Log.fine(Log.FAC_IO, "getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " + 
 						((null == firstSegment) ? "no " : firstSegment.name()));
 			}
 			// Do not call setFirstSegment() here because that should only be done when 

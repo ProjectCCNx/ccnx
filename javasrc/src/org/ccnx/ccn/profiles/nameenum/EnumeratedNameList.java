@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
@@ -112,7 +112,14 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return void
 	 * */
 	public synchronized void stopEnumerating() {
+		if (!_enumerating) {
+			if (Log.isLoggable(Level.INFO)) {
+				Log.info("Enumerated name list: Not enumerating, so not canceling prefix.");
+			}
+			return;
+		}
 		_enumerator.cancelPrefix(_namePrefix);
+		_enumerating = false;
 	}
 	
 	/**

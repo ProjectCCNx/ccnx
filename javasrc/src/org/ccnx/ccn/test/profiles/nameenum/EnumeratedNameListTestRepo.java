@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -32,6 +32,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.protocol.ContentName;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -82,6 +83,11 @@ public class EnumeratedNameListTestRepo {
 		name3 = ContentName.fromNative(directory, name3String);
 		brokenPrefix = ContentName.fromNative(prefix1StringError);
 		putHandle = CCNHandle.open();
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() {
+		putHandle.close();
 	}
 	
 	@Test

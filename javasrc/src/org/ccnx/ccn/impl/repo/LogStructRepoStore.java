@@ -1,7 +1,7 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -116,7 +116,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 */
 	public ContentObject getContent(Interest interest)
 			throws RepositoryException {
-		return _index.get(interest, this);
+		ContentObject co =  _index.get(interest, this);
+		if( Log.isLoggable(Log.FAC_REPO, Level.FINE) )
+			Log.fine(Log.FAC_REPO, co == null ? "Didn't find it" : "Found it");
+		return co;
 	}
 
 	/**
@@ -219,11 +222,11 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 						_files.put(index, rfile);
 					} catch (NumberFormatException e) {
 						// Not valid file
-						Log.warning("Invalid file name " + filenames[i]);
+						Log.warning(Log.FAC_REPO, "Invalid file name " + filenames[i]);
 					} catch (FileNotFoundException e) {
-						Log.warning("Unable to open file to create index: " + filenames[i]);
+						Log.warning(Log.FAC_REPO, "Unable to open file to create index: " + filenames[i]);
 					} catch (IOException e) {
-						Log.warning("IOException reading file to create index: " + filenames[i]);
+						Log.warning(Log.FAC_REPO, "IOException reading file to create index: " + filenames[i]);
 					}
 				}
 			}
@@ -266,8 +269,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
-		if (Log.isLoggable(Level.WARNING)){
-			Log.warning("Starting repository; repository root is: {0}", _repositoryFile.getAbsolutePath());
+		if (Log.isLoggable(Log.FAC_REPO, Level.WARNING)){
+			Log.warning(Log.FAC_REPO, "Starting repository; repository root is: {0}", _repositoryFile.getAbsolutePath());
 		}
 		
 		// DKS -- we probably don't want to encrypt startWrites and other messages, 
@@ -289,13 +292,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 							LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
 				_km.initialize();
 				
-				if( Log.isLoggable(Level.FINEST))
-					Log.finest("Initialized repository key store.");
+				if( Log.isLoggable(Log.FAC_REPO, Level.FINEST))
+					Log.finest(Log.FAC_REPO, "Initialized repository key store.");
 				
 				handle = CCNHandle.open(_km);
 				
-				if( Log.isLoggable(Level.FINEST))
-					Log.finest("Opened repository handle.");
+				if( Log.isLoggable(Log.FAC_REPO, Level.FINEST))
+					Log.finest(Log.FAC_REPO, "Opened repository handle.");
 				
 				// Let's use our key manager as the default. That will make us less
 				// prone to accidentally loading the user's key manager. If we close it more than
@@ -307,13 +310,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 						null, _km);
 
 			} catch (ConfigurationException e) {
-				Log.warning("ConfigurationException loading repository key store: " + e.getMessage());
+				Log.warning(Log.FAC_REPO, "ConfigurationException loading repository key store: " + e.getMessage());
 				throw new RepositoryException("ConfigurationException loading repository key store!", e);
 			} catch (IOException e) {
-				Log.warning("IOException loading repository key store: " + e.getMessage());
+				Log.warning(Log.FAC_REPO, "IOException loading repository key store: " + e.getMessage());
 				throw new RepositoryException("IOException loading repository key store!", e);
 			} catch (InvalidKeyException e) {
-				Log.warning("InvalidKeyException loading repository key store: " + e.getMessage());
+				Log.warning(Log.FAC_REPO, "InvalidKeyException loading repository key store: " + e.getMessage());
 				throw new RepositoryException("InvalidKeyException loading repository key store!", e);
 			}
 		}
@@ -345,7 +348,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			}
 			
 		} catch (FileNotFoundException e) {
-			Log.warning("Error opening content output file index " + maxFileIndex);
+			Log.warning(Log.FAC_REPO, "Error opening content output file index " + maxFileIndex);
 		}
 			
 		// Verify stored policy info
@@ -423,8 +426,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 		if (!nameSpaceOK) {
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-				if( Log.isLoggable(Level.INFO))
-					Log.info("Repo rejecting content: {0}, not in registered namespace.", content.name());
+				Log.info(Log.FAC_REPO, "Repo rejecting content: {0}, not in registered namespace.", content.name());
 			}
 			return null;
 		}
@@ -557,7 +559,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				_index.dumpNamesTree(namesOut, nodelen);
 			}
 		} catch (FileNotFoundException ex) {
-			Log.warning("Unable to dump names to " + namesFile.getAbsolutePath());
+			Log.warning(Log.FAC_REPO, "Unable to dump names to " + namesFile.getAbsolutePath());
 		}
 	}
 
@@ -592,7 +594,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			} catch (IOException e) {}
 		}
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.REPO_EXITDUMP)) {
-			Log.warning("Debug flag ({0}) is set: dumping nametree now (on shutdown)", DEBUGGING_FLAGS.REPO_EXITDUMP.toString());
+			Log.warning(Log.FAC_REPO, "Debug flag ({0}) is set: dumping nametree now (on shutdown)", DEBUGGING_FLAGS.REPO_EXITDUMP.toString());
 			dumpNames(-1);
 		}
 	}

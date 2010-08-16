@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
@@ -79,7 +80,8 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			Interest interest) {
 
 		Interest interestToReturn = null;
-		Log.info("handleContent: got potential repo message: {0}", co.name());
+		if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
+			Log.info(Log.FAC_REPO, "handleContent: got potential repo message: {0}", co.name());
 		if (co.signedInfo().getType() != ContentType.DATA)
 			return interestToReturn;
 		RepositoryInfo repoInfo = new RepositoryInfo();
@@ -89,7 +91,8 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			case INFO:
 				for (Client client : _clients) {
 					if (client._name.isPrefixOf(co.name())) {
-						Log.fine("Marked client {0} initialized", client._name);
+						if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
+							Log.fine(Log.FAC_REPO, "Marked client {0} initialized", client._name);
 						client._initialized = true;
 					}
 				}
@@ -102,7 +105,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 				break;
 			}
 		} catch (ContentDecodingException e) {
-			Log.info("ContentDecodingException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
+			Log.info(Log.FAC_REPO, "ContentDecodingException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
 		}
 		// So far, we seem never to have anything to return.
 		return interestToReturn;
@@ -116,7 +119,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	private class RepoAckHandler implements BasicNameEnumeratorListener {
 
 		public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> names) {
-			Log.info("Enumeration response for {0} children of {1}.",  names.size(), prefix);
+			Log.info(Log.FAC_REPO, "Enumeration response for {0} children of {1}.",  names.size(), prefix);
 			for (ContentName name : names)
 				ack(new ContentName(prefix, name.component(0)));
 			return names.size();
@@ -179,7 +182,8 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 */
 	public void startWrite(ContentName name, Shape shape) throws IOException {
 		
-		Log.info("RepositoryFlowControl.startWrite called for name {0}, shape {1}", name, shape);
+		if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
+			Log.info(Log.FAC_REPO, "RepositoryFlowControl.startWrite called for name {0}, shape {1}", name, shape);
 		Client client = new Client(name, shape);
 		_clients.add(client);
 		
@@ -214,7 +218,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			
 			if (!client._initialized) {
 				_clients.remove();
-				Log.warning("No response from a repository, cannot add name space : " + name);
+				Log.warning(Log.FAC_REPO, "No response from a repository, cannot add name space : " + name);
 				throw new IOException("No response from a repository for " + name);
 			}
 		}
@@ -226,10 +230,12 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 */
 	public void ack(ContentName name) {
 		synchronized (_holdingArea) {
-			Log.fine("Handling ACK {0}", name);
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
+				Log.fine(Log.FAC_REPO, "Handling ACK {0}", name);
 			if (_holdingArea.get(name) != null) {
 				ContentObject co = _holdingArea.get(name);
-				Log.fine("CO {0} acked", co.name());
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
+					Log.fine(Log.FAC_REPO, "CO {0} acked", co.name());
 				_holdingArea.remove(co.name());
 				if (_holdingArea.size() < _capacity)
 					_holdingArea.notify();

@@ -1,7 +1,7 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -197,7 +197,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		if (isWriteSuspended(interest)) return;
 
 		try {
-			Log.finer(Log.FAC_REPO, "Repo checked write request: {0}", interest.name());
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+				Log.finer(Log.FAC_REPO, "Repo checked write request: {0}", interest.name());
 			if (!RepositoryOperations.verifyCheckedWrite(interest)) {
 				Log.warning(Log.FAC_REPO, "Repo checked write malformed request {0}", interest.name());
 				return;
@@ -215,13 +216,15 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				//      getContent(): need full object in this case, verify that last segment matches segment name => verified = true
 				verified = true;
 				// Send back a RepositoryInfoObject that contains a confirmation that content is already in repo
-				Log.finer(Log.FAC_REPO, "Checked write confirmed");
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+					Log.finer(Log.FAC_REPO, "Checked write confirmed");
 				ArrayList<ContentName> target_names = new ArrayList<ContentName>();
 				target_names.add(target);
 				rio = _server.getRepository().getRepoInfo(interest.name(), target_names);
 			} else {
 				// Send back response that does not confirm content
-				Log.finer(Log.FAC_REPO, "Checked write not confirmed");
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+					Log.finer(Log.FAC_REPO, "Checked write not confirmed");
 				rio = _server.getRepository().getRepoInfo(interest.name(), null);
 			}
 			if (null == rio)
@@ -231,7 +234,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 
 
 			if (!verified) {
-				Log.finer(Log.FAC_REPO, "Repo checked write no content for {0}, starting read", interest.name());
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+					Log.finer(Log.FAC_REPO, "Repo checked write no content for {0}, starting read", interest.name());
 				// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 0 
 				// because in this SPECIAL CASE we have the complete name of the first segment.
 				Interest readInterest = Interest.constructInterest(target, _server.getExcludes(), null, 0, 0, null);
@@ -247,7 +251,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				listener.getInterests().add(readInterest, null);
 				_handle.expressInterest(readInterest, listener);
 			} else {
-				Log.finer(Log.FAC_REPO, "Repo checked write content verified for {0}", interest.name());
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+					Log.finer(Log.FAC_REPO, "Repo checked write content verified for {0}", interest.name());
 			}
 		} catch (Exception e) {
 			Log.logStackTrace(Level.WARNING, e);

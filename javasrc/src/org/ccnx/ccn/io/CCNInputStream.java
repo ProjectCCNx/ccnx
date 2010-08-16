@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -213,6 +213,8 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
 		
 		if (_atEOF) {
+			if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+				Log.fine(Log.FAC_IO, "At EOF: " + ((null == _currentSegment) ? "null" : _currentSegment.name()));
 			return -1;
 		}
 		

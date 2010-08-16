@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
@@ -19,7 +19,6 @@ package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
 import java.io.InvalidObjectException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -27,6 +26,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
@@ -158,6 +158,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected SaveType _saveType = null; // what kind of flow controller to make if we don't have one
 	protected Integer _freshnessSeconds = null; // if we want to set short freshness
 	protected ContentKeys _keys;
+	protected ContentVerifier _verifier;
 	
 	/**
 	 *  Controls ongoing update.
@@ -213,6 +214,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 		}
 		_handle = handle;
+		_verifier = handle.defaultVerifier();
 		_baseName = name;
 		_publisher = publisher;
 		_keyLocator = locator;
@@ -256,6 +258,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_flowControl = flowControl;
 		_handle = _flowControl.getHandle();
 		_saveType = _flowControl.saveType();
+		_verifier = _handle.defaultVerifier();
 		// Register interests for our base name, if we have one.
 		if (null != name) {
 			flowControl.addNameSpace(name);
@@ -309,6 +312,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_flowControl = flowControl;
 		_handle = _flowControl.getHandle();
 		_saveType = _flowControl.saveType();
+		_verifier = _handle.defaultVerifier();
 		update(name, publisher);
 	}
 
@@ -339,6 +343,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 		}
 		_handle = handle;
+		_verifier = handle.defaultVerifier();
 		_baseName = name;
 		update(name, publisher);
 	}
@@ -365,6 +370,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 		}
 		_handle = handle;
+		_verifier = handle.defaultVerifier();
 		update(firstSegment);
 	}
 
@@ -389,6 +395,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_flowControl = flowControl;
 		_handle = _flowControl.getHandle();
 		_saveType = _flowControl.saveType();
+		_verifier = _handle.defaultVerifier();
 		update(firstSegment);
 	}
 	
@@ -412,6 +419,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_saveType = other._saveType;
 		_keys = (null != other._keys) ? other._keys.clone() : null;
 		_firstSegment = other._firstSegment;
+		_verifier = other._verifier;
 		// Do not copy update behavior. Even if other one is updating, we won't
 		// pick that up. Have to kick off manually.
 		
@@ -540,6 +548,17 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	/**
+	 * Allow verifier to be specified. Could put this in the constructors; though they 
+	 * are already complicated enough. If not set, the default verifier for the key manager
+	 * used by the object's handle is used.
+	 * @param verifier the verifier to use. Cannot be null. 
+	 */
+	public void setVerifier(ContentVerifier verifier) {
+		if (null != verifier)
+			_verifier = verifier;
+	}
+	
+	/**
 	 * Attempts to find a version after the latest one we have, or times out. If
 	 * it times out, it simply leaves the object unchanged.
 	 * @return returns true if it found an update, false if not
@@ -586,7 +605,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// Look for first segment of version after ours, or first version if we have none.
 		ContentObject firstSegment = 
 			VersioningProfile.getFirstBlockOfAnyLaterVersion(getVersionedName(), null, null, timeout, 
-					_handle.defaultVerifier(), _handle);
+					_verifier, _handle);
 		if (null != firstSegment) {
 			return update(firstSegment);
 		}
@@ -1339,7 +1358,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public synchronized Interest handleContent(ContentObject co, Interest interest) {
 		try {
 			boolean hasNewVersion = false;
-			ArrayList<byte []> excludeList = null;
+			byte [][] excludes = null;
 			
 			try {
 				if (Log.isLoggable(Level.INFO))
@@ -1347,23 +1366,47 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
 					// OK, we have something that is a later version of our desired object.
 					// We're not sure it's actually the first content segment.
+					hasNewVersion = true;
+					
 					if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
 						if (Log.isLoggable(Level.INFO))
 							Log.info("updateInBackground: Background updating of {0}, got first segment: {1}", getVersionedName(), co.name());
-						update(co);
+						
+						// Streams assume caller has verified. So we verify here. 
+						// TODO add support for settable verifiers
+						if (!_verifier.verify(co)) {
+							if (Log.isLoggable(Log.FAC_SIGNING, Level.WARNING)) {
+								Log.warning(Log.FAC_SIGNING, "CCNNetworkObject: content object received from background update did not verify! Ignoring object: {0}", co.fullName());
+							}
+							hasNewVersion = false;
+							
+							// TODO -- exclude this one by digest, otherwise we're going 
+							// to get it back! For now, just copy the top-level part of GLV
+							// behavior and exclude this version component. This isn't the right
+							// answer, malicious objects can exclude new versions. But it's not clear
+							// if the right answer is to do full gLV here and let that machinery
+							// handle things, pulling potentially multiple objects in a callback,
+							// or we just have to wait for issue #100011, and the ability to selectively
+							// exclude content digests.
+							excludes = new byte [][]{co.name().component(_currentInterest.name().count())};
+							if (Log.isLoggable(Level.INFO))
+								Log.info("updateInBackground: handleContent: got content for {0} that doesn't verify ({1}), excluding bogus version {2} as temporary workaround FIX WHEN POSSIBLE", 
+										_currentInterest.name(), co.fullName(), ContentName.componentPrintURI(excludes[0]));													
+							
+						} else {
+							update(co);
+						}
 					} else {
 						// Have something that is not the first segment, like a repo write or a later segment. Go back
 						// for first segment.
 						ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
 						Log.info("updateInBackground: handleContent (network object): Have version information, now querying first segment of {0}", latestVersionName);
+						// This should verify the first segment when we get it.
 						update(latestVersionName, co.signedInfo().getPublisherKeyID());
 					}
 
-					hasNewVersion = true;
-					
 				} else {
-					excludeList = new ArrayList<byte []>();
-					excludeList.add(co.name().component(_currentInterest.name().count() - 1));
+					excludes = new byte [][]{co.name().component(_currentInterest.name().count() - 1)};
 					if (Log.isLoggable(Level.INFO))
 						Log.info("updateInBackground: handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());						
 				}
@@ -1386,9 +1429,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				// the updates above call newVersionAvailable
 				return null; // implicit cancel of interest
 			} else {
-				if (null != excludeList) {
-					byte [][] excludes = new byte[excludeList.size()][];
-					excludeList.toArray(excludes);
+				if (null != excludes) {
 					_currentInterest.exclude().add(excludes);
 				}
 				if (Log.isLoggable(Level.INFO)) 
