@@ -150,6 +150,9 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return SortedSet<ContentName> Returns the array of single-component
 	 * 	content name children that are new to us, or null if we reached the
 	 *  timeout before new data arrived
+	 *  
+	 *  Deprecated due to likelihood of getting into trouble by attempting to use
+	 *  this interface. It is also buggy.
 	 */
 	@Deprecated
 	public SortedSet<ContentName> getNewData(long timeout) {
@@ -178,6 +181,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return SortedSet<ContentName> Returns the array of single-component
 	 * 	content name children that are new to us, or null if we reached the
 	 *  timeout before new data arrived
+	 *  
+	 *  Deprecated - see #getNewData(long)
 	 */
 	@Deprecated
 	public SortedSet<ContentName> getNewData() {
@@ -200,7 +205,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	/**
 	 * Returns true if the prefix has new names that have not been handled by the calling application.
 	 * @return true if there are new children available to process
+	 * 
+	 * Deprecated - see #getNewData(long)
 	 */
+	@Deprecated
 	public boolean hasNewData() {
 		return ((null != _newChildren) && (_newChildren.size() > 0));
 	}
@@ -257,7 +265,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * 
 	 * @param timeout Maximum time to wait for new data.
 	 * @return a boolean value that indicates whether new data was found.
+	 * 
+	 * Deprecated - see #getNewData(long)
 	 */
+	@Deprecated
 	public boolean waitForNewChildren(long timeout) {
 		boolean foundNewData = false;
 		synchronized(_childLock) {
@@ -290,7 +301,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * This method does not have a timeout and will wait forever.
 	 * 
 	 * @return void
+	 * 
+	 * Deprecated - see #getNewData(long)
 	 */
+	@Deprecated
 	public void waitForNewChildren() {
 		waitForNewChildren(SystemConfiguration.NO_TIMEOUT);
 	}
@@ -303,7 +317,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * returns immediately.
 	 * @param timeout Maximum amount of time to wait, if 0, waits forever.
 	 * @return void
+	 * 
+	 * Deprecated - see #getNewData(long)
 	 */
+	@Deprecated
 	public void waitForChildren(long timeout) {
 		while ((null == _children) || _children.size() == 0) {
 			waitForNewChildren(timeout);
@@ -316,7 +333,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Wait (block) for initial data to arrive, possibly forever. See #waitForData(long).
 	 * 
 	 * @return void
+	 * 
+	 * Deprecated - see #getNewData(long)
 	 */
+	@Deprecated
 	public void waitForChildren() {
 		waitForChildren(SystemConfiguration.NO_TIMEOUT);
 	}
@@ -325,7 +345,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Wait for new children to arrive until there is a period of length timeout during which 
 	 * no new child arrives. 
 	 * @param timeout The maximum amount of time to wait between consecutive children arrivals.
+	 * 
+	 * Deprecated - see #getNewData(long)
 	 */
+	@Deprecated
 	public void waitForNoUpdates(long timeout) {
 		Log.info("Waiting for updates on prefix {0} with max timeout of {1} ms between consecutive children arrivals.", 
 				_namePrefix, timeout);
@@ -345,7 +368,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Note that this method does not currently stop enumeration -- enumeration results will
 	 * continue to accumulate in the background (and request interests will continue to be sent);
 	 * callers must call stopEnumerating() to actually terminate enumeration.
+	 * 
+	 * Deprecated - see #getNewData(long)
 	 */
+	@Deprecated
 	public void waitForNoUpdatesOrResult(long timeout) {
 
 		Log.info("Waiting for updates on prefix {0} with max timeout of {1} ms between consecutive children arrivals.", 
@@ -517,7 +543,10 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @param handle CCNHandle to use for enumeration
 	 * @return ContentName The name supplied to the call with the latest version added.
 	 * @throws IOException
+	 * 
+	 * Deprecated - see #getNewData(long)
 	 */
+	@Deprecated
 	public static ContentName getLatestVersionName(ContentName name, CCNHandle handle) throws IOException {
 		EnumeratedNameList enl = new EnumeratedNameList(name, handle);
 		enl.waitForNoUpdates(SystemConfiguration.MAX_TIMEOUT);
@@ -552,8 +581,11 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return EnumeratedNameList Returns the parent EnumeratedNameList for the desired child,
 	 * if one is found.  Returns null if the child is not found.
 	 * 
-	 * @throws IOException 
+	 * @throws IOException
+	 * 
+	 * Deprecated - see #getNewData(long)
 	 */
+	@Deprecated
 	public static EnumeratedNameList exists(ContentName childName, ContentName prefixKnownToExist, CCNHandle handle) throws IOException {
 		Log.info("EnumeratedNameList.exists: the prefix known to exist is {0} and we are looking for childName {1}", prefixKnownToExist, childName);
 		if ((null == prefixKnownToExist) || (null == childName) || (!prefixKnownToExist.isPrefixOf(childName))) {
