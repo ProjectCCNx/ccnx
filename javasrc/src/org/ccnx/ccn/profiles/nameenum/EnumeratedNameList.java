@@ -151,6 +151,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * 	content name children that are new to us, or null if we reached the
 	 *  timeout before new data arrived
 	 */
+	@Deprecated
 	public SortedSet<ContentName> getNewData(long timeout) {
 		SortedSet<ContentName> childArray = null;
 		synchronized(_childLock) { // reentrant
@@ -178,6 +179,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * 	content name children that are new to us, or null if we reached the
 	 *  timeout before new data arrived
 	 */
+	@Deprecated
 	public SortedSet<ContentName> getNewData() {
 		return getNewData(SystemConfiguration.NO_TIMEOUT);
 	}
