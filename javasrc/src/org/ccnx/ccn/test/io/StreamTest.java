@@ -66,8 +66,12 @@ public class StreamTest extends BlockReadWriteTest {
 					InvalidKeyException, SignatureException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
+<<<<<<< HEAD
+=======
+		//Log.setLevel(Log.FAC_ALL, Level.FINEST);
+>>>>>>> 51cbfcc... Increase timeout for get side of StreamTest refs #100159
 		CCNInputStream istream = new CCNInputStream(thisName, handle);
-		istream.setTimeout(8000);
+		istream.setTimeout(120000);
 		Log.info("StreamTest: Opened descriptor for reading: " + thisName);
 
 		FileOutputStream os = new FileOutputStream(_testDir + fileName + "_testout.txt");
