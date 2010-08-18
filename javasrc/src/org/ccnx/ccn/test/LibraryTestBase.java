@@ -237,6 +237,8 @@ public class LibraryTestBase extends CCNTestBase {
 				System.out.println("Get thread finished");
 			} catch (Throwable ex) {
 				error = ex;
+				Log.warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.logStackTrace(Level.WARNING, ex);
 			}
 		}
 	}
@@ -308,6 +310,8 @@ public class LibraryTestBase extends CCNTestBase {
 
 			} catch (Throwable ex) {
 				error = ex;
+				Log.warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.logStackTrace(Level.WARNING, ex);
 			}
 		}
 		public synchronized Interest handleContent(ContentObject contentObject, Interest interest) {
@@ -370,6 +374,8 @@ public class LibraryTestBase extends CCNTestBase {
 
 			} catch (Throwable ex) {
 				error = ex;
+				Log.warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.logStackTrace(Level.WARNING, ex);
 			}
 		}
 
@@ -395,6 +401,8 @@ public class LibraryTestBase extends CCNTestBase {
 				}
 			} catch (Throwable e) {
 				error = e;
+				Log.warning("Exception in run: " + e.getClass().getName() + " message: " + e.getMessage());
+				Log.logStackTrace(Level.WARNING, e);
 			}
 			return result;
 		}
