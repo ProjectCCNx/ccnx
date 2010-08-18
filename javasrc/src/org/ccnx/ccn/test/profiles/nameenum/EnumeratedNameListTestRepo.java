@@ -27,6 +27,7 @@ import junit.framework.Assert;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
@@ -46,6 +47,8 @@ import org.junit.Test;
  * add data using a different interface and see if it shows up on the lists
  */
 public class EnumeratedNameListTestRepo { 
+	
+	protected static final int N_WAIT_ATTEMPTS = 100;
 	
 	EnumeratedNameList testList; //the enumeratednamelist object used to test the class
 	
@@ -133,25 +136,17 @@ public class EnumeratedNameListTestRepo {
 
 			// adding content to repo
 			ContentName latestName = addContentToRepo(name1, handle);
-			testList.waitForChildren();
+			waitForChildren(1);
 			Log.info("Added data to repo: " + latestName);
 
 			//testing that the enumerator has new data
-			Assert.assertTrue(testList.hasNewData());
-
-			//Testing that hasNewData returns true
-			Assert.assertTrue(testList.hasNewData());
+			Assert.assertTrue(testList.hasChildren());
 
 			//gets new data
-			SortedSet<ContentName> returnedBytes = testList.getNewData();
+			SortedSet<ContentName> returnedBytes = testList.getChildren();
 
 			Assert.assertNotNull(returnedBytes);
 			Assert.assertFalse(returnedBytes.isEmpty());
-			
-			// getNewData gets *new* data -- you got the last new data, there won't be any more
-			// until you add something else to the repo. i.e. this next call would block
-			// until there was new data for getNewData to return, and it *wouldn't* match the previous set.
-			// Assert.assertEquals(testList.getNewData(), returnedBytes.size());
 			System.out.println("Got " + returnedBytes.size() + " children: " + returnedBytes);
 			//only one thing has been added, so we can only expect one name
 			//System.out.println("Predicted strings " + name1String + ", " + name2String + ", " + name3String);
@@ -170,20 +165,11 @@ public class EnumeratedNameListTestRepo {
 				System.out.print(" "+n);
 			System.out.println();
 			
-			//testing that children exist
-			// DKS -- if you're testing a boolean, use assertTrue, not assertNotNull
-			Assert.assertTrue(testList.hasChildren());
-
 			//Testing that Name1 Exists
 			// only true if run on clean repo -- if not clean repo and clean ccnd cache, might be in second response
 			Assert.assertTrue(testList.hasChild(name1String));
 			
-			// Only definite if run on fresh repo
-			//as long as the EnumeratedNameList object isn't starting a new interest, this is correct.  a repo
-			//  wouldn't return old names after the last response
-			Assert.assertFalse(testList.hasNewData());
-			// Now add some more data
-			
+			// Now add some more data	
 			System.out.println("adding name2: "+name2);
 			addContentToRepo(name2, handle);
 			System.out.println("adding name3: "+name3);
@@ -197,8 +183,8 @@ public class EnumeratedNameListTestRepo {
 			//4 - same thing happens for the second object as 2
 			//5 - after both things are added an interest.last arrives from the CCNNameEnumerator.
 			
-			
-			SortedSet<ContentName> returnedBytes2 = testList.getNewData(); // will block for new data
+			waitForChildren(2);
+			SortedSet<ContentName> returnedBytes2 = testList.getChildren();
 			Assert.assertNotNull(returnedBytes2);
 			
 			System.out.print("names in list after adding name2 and name3:");
@@ -206,37 +192,21 @@ public class EnumeratedNameListTestRepo {
 				System.out.print(" "+n);
 			System.out.println();
 			
-			System.out.print("names in testlist after adding name2 and name3:");
-			for(ContentName n: testList.getChildren())
-				System.out.print(" "+n);
-			System.out.println();
-			
-			
-			// Might have older stuff from previous runs, so don't insist we get back only what we put in.
 			System.out.println("Got new data, second round size: " + returnedBytes2.size() + " first round " + returnedBytes.size());
-			//this is new data...  so comparing new data from one save to another doesn't really make sense
-			Assert.assertTrue(returnedBytes2.size() >= 1);
-			//since we have a new response, the first name has to be in there...
 			Assert.assertTrue(testList.hasChild(name2String));
 			//we might not have a response since the second name...  need to check again if it isn't in there yet 
 			if(!testList.hasChild(name3String)){
-				returnedBytes2 = testList.getNewData(); // will block for new data
-			//now we have the third response...
+				waitForChildren(3);
+				returnedBytes2 = testList.getChildren();
 
-				System.out.print("names in list after asking for new data again:");
+				System.out.print("names in list after waiting for more data:");
 				for(ContentName n: returnedBytes2)
 					System.out.print(" "+n);
 				System.out.println();
 			}
 			
-			System.out.print("names in testlist after adding name2 and name3:");
-			for(ContentName n: testList.getChildren())
-				System.out.print(" "+n);
-			System.out.println();
-			
 			Assert.assertTrue(testList.hasChild(name3String));
-
-			
+	
 			// This will add new versions
 			for (int i=0; i < 5; ++i) {
 				latestName = addContentToRepo(name1, handle);
@@ -244,8 +214,7 @@ public class EnumeratedNameListTestRepo {
 			}
 			
 			EnumeratedNameList versionList = new EnumeratedNameList(name1, handle);
-			versionList.waitForChildren();
-			Assert.assertTrue(versionList.hasNewData());
+			waitForChildren(4);
 			// Even though the addition of versions above is blocking and the new EnumeratedNameList
 			// is not created to start enumerating names until after the versions have been written,
 			// we don't have a guarantee that the repository will have fully processed the writes 
@@ -253,15 +222,9 @@ public class EnumeratedNameListTestRepo {
 			// commitment is obtained before returning from write this may change).  There is a timing 
 			// race with the last content written and the first name enumeration result.  For this reason
 			// we must be prepared to wait a second time.
-			// It could be possible that only waiting one more time is not sufficient...  if the writes are very slow,
-			// the timing could work out that there is a response per object.  adding loop to account for that
 			
-			for(int attempts = 1; attempts < 5; attempts++){
-				// 5 versions written just above plus 1 earlier addition under name1
-				versionList.getNewData(); // ignore result, we want to look at entire set once available
-				if(versionList.getChildren().size() >= 6)
-					attempts = 5;
-			}
+			waitForChildren(6);
+			
 			// Now we should have everything
 			ContentName latestReturnName = versionList.getLatestVersionChildName();
 			System.out.println("Got children: " + versionList.getChildren());
@@ -285,6 +248,21 @@ public class EnumeratedNameListTestRepo {
 		System.out.println("Saved new object: " + cso.getVersionedName());
 		return cso.getVersionedName();
 		
+	}
+	
+	private void waitForChildren(int n) {
+		for (int i = 0; i < N_WAIT_ATTEMPTS; i++) {
+			if (testList.hasChildren()) {
+				if (testList.getChildren().size() >= n)
+				return;
+			}
+			try {
+				Thread.sleep(SystemConfiguration.SETTABLE_SHORT_TIMEOUT);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 	
 }
