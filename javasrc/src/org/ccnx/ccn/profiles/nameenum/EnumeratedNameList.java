@@ -152,13 +152,13 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 *  timeout before new data arrived
 	 *  
 	 *  Deprecated due to likelihood of getting into trouble by attempting to use
-	 *  this interface. It is also buggy.
+	 *  this interface.
 	 */
 	@Deprecated
 	public SortedSet<ContentName> getNewData(long timeout) {
 		SortedSet<ContentName> childArray = null;
 		synchronized(_childLock) { // reentrant
-			while ((null == _children) || _children.size() == 0) {
+			while ((null == _newChildren) || _newChildren.size() == 0) {
 				waitForNewChildren(timeout);
 				if (timeout != SystemConfiguration.NO_TIMEOUT)
 					break;
