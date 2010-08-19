@@ -106,7 +106,7 @@ public class SystemConfiguration {
 	 */
 	public static final String DEBUG_DATA_DIRECTORY_PROPERTY = "com.parc.ccn.DebugDataDirectory";
 	protected static final String DEFAULT_DEBUG_DATA_DIRECTORY = "./CCN_DEBUG_DATA";
-	protected static String DEBUG_DATA_DIRECTORY = null;
+	public static String DEBUG_DATA_DIRECTORY = null;
 	
 	/** 
 	 * Tunable timeouts as well as timeout defaults.
