@@ -1420,9 +1420,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 					// Assume getBaseName() returns name without segment information.
 					// Log verification only on highest log level (won't execute on lower logging level).
-					if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+					if (Log.isLoggable(Log.FAC_IO, Level.FINEST)) {
 						if (!SegmentationProfile.segmentRoot(_currentSegment.name()).equals(getBaseName())) {
-							Log.fine(Log.FAC_IO, "ASSERT: getBaseName({0}) does not match segmentless part of _currentSegment.name({1})",
+							Log.finest(Log.FAC_IO, "ASSERT: getBaseName()={0} does not match segmentless part of _currentSegment.name()={1}",
 									getBaseName(),
 									SegmentationProfile.segmentRoot(_currentSegment.name()));
 						}
