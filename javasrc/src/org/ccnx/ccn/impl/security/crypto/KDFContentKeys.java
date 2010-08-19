@@ -92,7 +92,7 @@ public class KDFContentKeys extends EncryptedIVStaticContentKeys implements Clon
 		}
 		keyAndIV = KeyDerivationFunction.DeriveKeysForObject(getKeyAlgorithm(), getMasterKey().getEncoded(), contentInfo);
 		addCachedKeyInformation(contentInfo, keyAndIV);
-		Log.finer("KDFContentKeys: key for {0} publisher {1} is {2}", contentName, publisher, keyAndIV);
+		Log.finer("KDFContentKeys: key for {0} publisher {1} and segment " + segmentNumber + " is {2}", contentName, publisher, keyAndIV);
 		return keyAndIV;
 	}
 
