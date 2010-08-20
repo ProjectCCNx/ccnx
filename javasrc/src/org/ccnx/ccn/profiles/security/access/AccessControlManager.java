@@ -237,6 +237,11 @@ public abstract class AccessControlManager {
 		}
 		if (null != wrappingKey) {
 			dataKey = wdko.wrappedKey().unwrapKey(wrappingKey);
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINE)) {
+				Log.fine(Log.FAC_ACCESSCONTROL, "getDataKey: unwrapped data key {0}", 
+						DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(dataKey)));
+			}
+
 			return dataKey;
 		}
 		return null;
