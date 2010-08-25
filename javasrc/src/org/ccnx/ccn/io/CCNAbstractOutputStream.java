@@ -111,7 +111,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 	 */
 	protected void startWrite() throws IOException {
 		if (null == _keys) {
-			Log.info("CCNAbstractOutputStream: startWrite -- searching for keys.");
+			Log.info(Log.FAC_IO, "CCNAbstractOutputStream: startWrite -- searching for keys.");
 			_keys = AccessControlManager.keysForOutput(_baseName, _publisher, getType(), _handle);
 		}
 	}

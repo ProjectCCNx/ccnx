@@ -258,13 +258,13 @@ public class CCNWriter {
 			_segmenter.getFlowControl().afterClose();
 			return name;
 		} catch (InvalidKeyException e) {
-			Log.info("InvalidKeyException using key for publisher " + publisher + ".");
+			Log.info(Log.FAC_IO, "InvalidKeyException using key for publisher " + publisher + ".");
 			throw new SignatureException(e);
 		} catch (SignatureException e) {
-			Log.info("SignatureException using key for publisher " + publisher + ".");
+			Log.info(Log.FAC_IO, "SignatureException using key for publisher " + publisher + ".");
 			throw e;
 		} catch (NoSuchAlgorithmException e) {
-			Log.info("NoSuchAlgorithmException using key for publisher " + publisher + ".");
+			Log.info(Log.FAC_IO, "NoSuchAlgorithmException using key for publisher " + publisher + ".");
 			throw new SignatureException(e);
 		} catch (InvalidAlgorithmParameterException e) {
 			throw new IOException("Cannot encrypt content -- bad algorithm parameter!: " + e.getMessage());
