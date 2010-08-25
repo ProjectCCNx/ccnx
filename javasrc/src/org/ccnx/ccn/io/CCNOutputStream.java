@@ -270,6 +270,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			_segmenter.getFlowControl().beforeClose();
 			closeNetworkData();
 			_segmenter.getFlowControl().afterClose();
+			Log.info(Log.FAC_IO, "CCNOutputStream close: {0}", _baseName);
 		} catch (InvalidKeyException e) {
 			Log.logStackTrace(Level.WARNING, e);
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());

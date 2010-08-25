@@ -95,6 +95,7 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 		
 		// Initialize keys here now. 
 		_keys = keys;
+		Log.info(Log.FAC_IO, "CCNAbstractOutputStream: {0}", baseName);
 	}
 	
 	/**
