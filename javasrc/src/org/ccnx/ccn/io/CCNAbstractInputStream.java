@@ -230,6 +230,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			_startingSegmentNumber = startingSegmentNumber;
 		} 
 		//TODO this base name does not include the version!!!!!!!!!
+		Log.info(Log.FAC_IO, "CCNAbstractInputStream: {0} segment {1}", _baseName, _startingSegmentNumber);
 		startPipeline();
 	}
 
@@ -274,7 +275,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		}
 
 		setFirstSegment(startingSegment);
-
+		Log.info(Log.FAC_IO, "CCNAbstractInputStream: {0} segment {1}", _baseName, _startingSegmentNumber);
 		startPipeline();
 	}
 
@@ -1992,6 +1993,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	@Override
 	public void close() throws IOException {
 		// don't have to do anything.
+		Log.info(Log.FAC_IO, "CCNAbstractInputStream: close {0}", _baseName);
 	}
 
 	@Override

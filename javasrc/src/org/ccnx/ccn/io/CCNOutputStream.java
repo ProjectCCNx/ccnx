@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -270,6 +270,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			_segmenter.getFlowControl().beforeClose();
 			closeNetworkData();
 			_segmenter.getFlowControl().afterClose();
+			Log.info(Log.FAC_IO, "CCNOutputStream close: {0}", _baseName);
 		} catch (InvalidKeyException e) {
 			Log.logStackTrace(Level.WARNING, e);
 			throw new IOException("Cannot sign content -- invalid key!: " + e.getMessage());
