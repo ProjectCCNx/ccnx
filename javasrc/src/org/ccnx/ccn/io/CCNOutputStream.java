@@ -47,7 +47,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * fixed length (see CCNBlockOutputStream for non fixed-length segments).
  */
 public class CCNOutputStream extends CCNAbstractOutputStream {
-
+    
 	/**
 	 * Amount of data we keep around prior to forced flush, in terms of segmenter
 	 * blocks. We write to a limit lower than the maximum, to allow for expansion
@@ -55,7 +55,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * TODO calculate this dynamically based on the bulk signing method and overhead thereof
 	 */
 	public static final int BLOCK_BUF_COUNT = 128;
-
+    
 	/**
 	 * elapsed length written
 	 */
@@ -89,7 +89,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected Integer _freshnessSeconds; // if null, use default
 	
 	protected CCNDigestHelper _dh;
-
+    
 	/**
 	 * Constructor for a simple CCN output stream.
 	 * @param baseName name prefix under which to write content segments
@@ -99,7 +99,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	public CCNOutputStream(ContentName baseName, CCNHandle handle) throws IOException {
 		this(baseName, (PublisherPublicKeyDigest)null, handle);
 	}
-
+    
 	/**
 	 * Constructor for a simple CCN output stream.
 	 * @param baseName name prefix under which to write content segments
@@ -112,7 +112,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 						   CCNHandle handle) throws IOException {
 		this(baseName, null, publisher, null, null, handle);
 	}
-
+    
 	/**
 	 * Constructor for a simple CCN output stream.
 	 * @param baseName name prefix under which to write content segments
@@ -124,7 +124,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	public CCNOutputStream(ContentName baseName, ContentKeys keys, CCNHandle handle) throws IOException {
 		this(baseName, null, null, null, keys, handle);
 	}
-
+    
 	/**
 	 * Constructor for a simple CCN output stream.
 	 * @param baseName name prefix under which to write content segments
@@ -142,7 +142,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			  			   CCNHandle handle) throws IOException {
 		this(baseName, locator, publisher, null, keys, handle);
 	}
-
+    
 	/**
 	 * Constructor for a simple CCN output stream.
 	 * @param baseName name prefix under which to write content segments
@@ -163,12 +163,12 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 						   CCNHandle handle) throws IOException {
 		this(baseName, locator, publisher, type, keys, new CCNFlowControl(baseName, handle));
 	}
-
+    
 	/**
 	 * Special purpose constructor.
 	 */
 	protected CCNOutputStream() {}	
-
+    
 	/**
 	 * Low-level constructor used by clients that need to specify flow control behavior.
 	 * @param baseName name prefix under which to write content segments
@@ -182,14 +182,14 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws IOException if flow controller setup fails
 	 */
 	public CCNOutputStream(ContentName baseName, 
-							  KeyLocator locator, 
-							  PublisherPublicKeyDigest publisher,
-							  ContentType type, 
-							  ContentKeys keys,
-							  CCNFlowControl flowControl) throws IOException {
+                           KeyLocator locator, 
+                           PublisherPublicKeyDigest publisher,
+                           ContentType type, 
+                           ContentKeys keys,
+                           CCNFlowControl flowControl) throws IOException {
 		this(baseName, locator, publisher, type, keys, new CCNSegmenter(flowControl, null));
 	}
-
+    
 	/**
 	 * Low-level constructor used by subclasses that need to specify segmenter behavior.
 	 * @param baseName name prefix under which to write content segments
@@ -208,21 +208,21 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 							  ContentType type,
 							  ContentKeys keys,
 							  CCNSegmenter segmenter) throws IOException {
-
+        
 		super((SegmentationProfile.isSegment(baseName) ? SegmentationProfile.segmentRoot(baseName) : baseName),
 			  locator, publisher, type, keys, segmenter);
-
+        
 		_buffers = new byte[BLOCK_BUF_COUNT][];
 		// Always make the first one; it simplifies error handling later and only is superfluous if we
 		// attempt to write an empty stream, which is rare.
 		_buffers[0] = new byte[_segmenter.getBlockSize()];
 		
 		_baseNameIndex = SegmentationProfile.baseSegment();
-
+        
 		_dh = new CCNDigestHelper();
 		startWrite(); // set up flow controller to write
 	}
-
+    
 	@Override
 	protected void startWrite() throws IOException {
 		super.startWrite();
@@ -263,7 +263,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	public void setFreshnessSeconds(Integer freshnessSeconds) {
 		_freshnessSeconds = freshnessSeconds;
 	}
-
+    
 	@Override
 	public void close() throws IOException {
 		try {
@@ -284,12 +284,12 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			throw new IOException("Low-level network failure!: " + e.getMessage());
 		}
 	}
-
+    
 	@Override
 	public void flush() throws IOException {
 		flush(false); // if there is a partial block, don't flush it
 	}
-
+    
 	/**
 	 * Internal flush.
 	 * @param flushLastBlock Should we flush the last (partial) block, or hold it back
@@ -311,7 +311,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			throw new IOException("Cannot encrypt content -- bad algorithm parameter!: " + e.getMessage());
 		} 
 	}
-
+    
 	@Override
 	public void write(byte[] b, int off, int len) throws IOException {
 		try {
@@ -324,7 +324,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
 		}
 	}
-
+    
 	/**
 	 * Actually write bytes to the network.
 	 * @param buf as in write(byte[], int, int)
@@ -338,16 +338,16 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected synchronized void writeToNetwork(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		if ((len < 0) || (null == buf) || ((offset + len) > buf.length))
 			throw new IllegalArgumentException("Invalid argument!");
-
+        
 		long bytesToWrite = len;
-
+        
 		// Here's an advantage of the old, complicated way -- with that, only had to allocate
 		// as many blocks as you were going to write. 
 		while (bytesToWrite > 0) {
 			if (null == _buffers[_blockIndex]) {
 				_buffers[_blockIndex] = new byte[_segmenter.getBlockSize()];
 			}
-
+            
 			// Increment _blockIndex here, if do it at end of loop gets confusing
 			// Already checked for need to flush and flush at end of last loop
 			if (_blockOffset >= _buffers[_blockIndex].length) {
@@ -360,25 +360,25 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			
 			long thisBufAvail = _buffers[_blockIndex].length - _blockOffset;
 			long toWriteNow = (thisBufAvail > bytesToWrite) ? bytesToWrite : thisBufAvail;
-
+            
 			System.arraycopy(buf, (int)offset, _buffers[_blockIndex], (int)_blockOffset, (int)toWriteNow);
 			_dh.update(buf, (int) offset, (int)toWriteNow); // add to running digest of data
-
+            
 			bytesToWrite -= toWriteNow; // amount of data left to write in current call
 			_blockOffset += toWriteNow; // write offset into current block buffer
 			offset += toWriteNow; // read offset into input buffer
 			_totalLength += toWriteNow; // increment here so we can write log entries on partial writes
-			if (Log.isLoggable(Level.FINEST ))
-				Log.finest("write: added " + toWriteNow + " bytes to buffer. blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block), " + _totalLength + " written.");
-
+			if (Log.isLoggable(Log.FAC_IO, Level.FINEST ))
+				Log.finest(Log.FAC_IO, "write: added " + toWriteNow + " bytes to buffer. blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block), " + _totalLength + " written.");
+            
 			if ((_blockOffset >= _buffers[_blockIndex].length) && ((_blockIndex+1) >= _buffers.length)) {
 				// We're out of buffers. Time to flush to the network.
-				Log.fine("write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
+				Log.fine(Log.FAC_IO, "write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
 				flush(); // will reset _blockIndex and _blockOffset
 			}
 		}
 	}
-
+    
 	/**
 	 * Flush partial hanging block if we have one.
 	 * @throws InvalidKeyException
@@ -392,11 +392,11 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// small data objects (written as single blocks without headers); instead
 		// write them as single-fragment files. Subclasses will determine whether or not
 		// to write a header.
-		if( Log.isLoggable(Level.FINE ))
-			Log.fine("closeNetworkData: final flush, wrote " + _totalLength + " bytes, base index " + _baseNameIndex);
+		if(Log.isLoggable(Log.FAC_IO, Level.FINE))
+			Log.fine(Log.FAC_IO, "closeNetworkData: final flush, wrote " + _totalLength + " bytes, base index " + _baseNameIndex);
 		flush(true); // true means write out the partial last block, if there is one
 	}
-
+    
 	/** 
 	 * @param flushLastBlock Do we flush a partially-filled last block in the current set
 	 *   of blocks? Not normally, we want to fill blocks. So if a user calls a manual
@@ -414,14 +414,14 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws InvalidAlgorithmParameterException 
 	 */
 	protected synchronized void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException, InvalidAlgorithmParameterException {		
-
+        
 		/**
 		 * XXX - Can the blockbuffers have holes?
 		 *     DKS: no. The blockCount argument to putMerkleTree is intended to tell
 		 *     it how many of the blockBuffers array it should touch (are non-null).
 		 *     If there are holes, there is a bigger problem.
 		 */
-
+        
 		/**
 		 * Partial last block handling. If we are in the middle of writing a file, we only
 		 * flush complete blocks; up to _blockOffset % getBlockSize(). The only time
@@ -453,10 +453,10 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				return;
 			}
 		}
-
+        
 		if (null == _timestamp)
 			_timestamp = CCNTime.now();
-
+        
 		// First, are we flushing dangling blocks (e.g. on close())? If not, we always
 		// keep at least a partial block behind. There are two reasons for this; first to
 		// ensure we always write full blocks until the end, and second, to allow us to
@@ -491,41 +491,41 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// Single block to write. If we get here, we are forcing a flush (see above
 			// discussion about holding back partial or even a single full block till
 			// forced flush/close in order to set finalBlockID).
-
+            
 			// DKS TODO -- think about types, freshness, fix markers for impending last block/first block
-			if (Log.isLoggable(Level.FINE ))	
+			if (Log.isLoggable(Log.FAC_IO, Level.FINE ))	
 				if (writeCount < getBlockSize()) {
-					Log.fine("flush(): writing hanging partial last block of file: " + writeCount + " bytes, block total is " + getBlockSize() + ", holding back " + saveBytes + " bytes, called by close? " + flushLastBlock);
+					Log.fine(Log.FAC_IO, "flush(): writing hanging partial last block of file: " + writeCount + " bytes, block total is " +
+                             getBlockSize() + ", holding back " + saveBytes + " bytes, called by close? " + flushLastBlock);
 				} else {
-					Log.fine("flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
+					Log.fine(Log.FAC_IO, "flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
 				}
-			_baseNameIndex = 
-				_segmenter.putFragment(_baseName, _baseNameIndex, 
-					_buffers[0], 0, writeCount, 
-					_type, _timestamp, _freshnessSeconds, (flushLastBlock ? _baseNameIndex : null), 
-					_locator, _publisher, _keys);
+			_baseNameIndex = _segmenter.putFragment(_baseName, _baseNameIndex, 
+                                                    _buffers[0], 0, writeCount, 
+                                                    _type, _timestamp, _freshnessSeconds, (flushLastBlock ? _baseNameIndex : null), 
+                                                    _locator, _publisher, _keys);
 		} else {
-			if (Log.isLoggable(Level.INFO ))
-				Log.info("flush: putting merkle tree to the network, baseName " + _baseName +
-					" basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentNumberNameComponent(_baseNameIndex)) + "; " 
-					+ _blockOffset + 
-					" bytes written, holding back " + saveBytes + " flushing final blocks? " + flushLastBlock + ".");
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "flush: putting merkle tree to the network, baseName " + _baseName +
+                         " basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentNumberNameComponent(_baseNameIndex)) + "; " 
+                         + _blockOffset + 
+                         " bytes written, holding back " + saveBytes + " flushing final blocks? " + flushLastBlock + ".");
 			// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
 			// We always flush all the blocks starting from 0, so the baseBlockIndex is always 0.
 			// Two cases:
 			// no partial, write all blocks including potentially short last block
 			// don't write last block (whole or partial), write n-1 full blocks
 			_baseNameIndex = 
-				_segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers,
-										(preservePartial ? _blockIndex : _blockIndex+1),
-										0, 
-										(preservePartial ? getBlockSize() : _blockOffset),
-									     _type, _timestamp, _freshnessSeconds, 
-									     (flushLastBlock ? CCNSegmenter.LAST_SEGMENT : null), 
-									     _locator, _publisher, _keys);
+            _segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers,
+                                     (preservePartial ? _blockIndex : _blockIndex+1),
+                                     0, 
+                                     (preservePartial ? getBlockSize() : _blockOffset),
+                                     _type, _timestamp, _freshnessSeconds, 
+                                     (flushLastBlock ? CCNSegmenter.LAST_SEGMENT : null), 
+                                     _locator, _publisher, _keys);
 			
 		}
-
+        
 		if (preservePartial) {
 			System.arraycopy(_buffers[_blockIndex], _blockOffset-saveBytes, _buffers[0], 0, saveBytes);
 			_blockOffset = saveBytes;
@@ -534,8 +534,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		}
 		_blockIndex = 0;
 		
-		if (Log.isLoggable(Level.INFO))
-			Log.info("HEADER: CCNOutputStream: flushToNetwork: new _baseNameIndex {0}", _baseNameIndex);
+		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "HEADER: CCNOutputStream: flushToNetwork: new _baseNameIndex {0}", _baseNameIndex);
 	}
 	
 	/**

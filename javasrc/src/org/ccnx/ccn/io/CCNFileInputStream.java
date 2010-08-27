@@ -307,14 +307,14 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements Updat
 			return; // done already
 		// Ask for the header, but update it in the background, as it may not be there yet.
 		_header = new HeaderObject(MetadataProfile.headerName(baseName), null, null, publisher, null, _handle);
-		if( Log.isLoggable(Level.INFO ))
-			Log.info("Retrieving header : " + _header.getBaseName() + " in background.");
+		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "Retrieving header : " + _header.getBaseName() + " in background.");
 		_header.updateInBackground(false, this);
 		
 		if (SystemConfiguration.OLD_HEADER_NAMES) {
 			_oldHeader = new HeaderObject(MetadataProfile.oldHeaderName(baseName), null, null, publisher, null, _handle);
-			if( Log.isLoggable(Level.INFO ))
-				Log.info("Retrieving header under old name: " + _oldHeader.getBaseName() + " in background.");
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "Retrieving header under old name: " + _oldHeader.getBaseName() + " in background.");
 			_oldHeader.updateInBackground(false, this);
 		}
 	}
@@ -346,7 +346,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements Updat
 	@Override
 	public long skip(long n) throws IOException {
 		
-		Log.info("in skip({0})", n);
+		if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+            Log.fine(Log.FAC_IO, "in skip({0})", n);
 		
 		if (n < 0) {
 			return 0;
@@ -431,12 +432,13 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements Updat
 
 	@Override
 	public void seek(long position) throws IOException {
-		Log.info("Seeking stream to {0}: have header? {1}", position, hasHeader());
+        if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+            Log.fine(Log.FAC_IO, "Seeking stream to {0}: have header? {1}", position, hasHeader());
 		if (hasHeader()) {
 			int [] blockAndOffset = _header.positionToSegmentLocation(position);
-			if (Log.isLoggable(Level.INFO)) {
-				Log.info("seek:  position: {0} block: {1} offset: {2}", position, blockAndOffset[0], blockAndOffset[1]);
-				Log.info("currently have block {0}", currentSegmentNumber());
+			if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+				Log.fine(Log.FAC_IO, "seek:  position: {0} block: {1} offset: {2} currentSegment: {3}",
+                         position, blockAndOffset[0], blockAndOffset[1], currentSegmentNumber());
 			}
 			if (currentSegmentNumber() == blockAndOffset[0]) {
 				//already have the correct block
@@ -461,20 +463,20 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements Updat
 				setCurrentSegment(getSegment(blockAndOffset[0]));
 			super.skip(blockAndOffset[1]);
 			long check = _header.segmentLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
-			if (Log.isLoggable(Level.INFO))
-				Log.info("current position: block "+blockAndOffset[0]+" _blockOffset "+super.tell()+" ("+check+")");
+			if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+				Log.fine(Log.FAC_IO, "current position: block "+blockAndOffset[0]+" _blockOffset "+super.tell()+" ("+check+")");
 
 			if (_currentSegment != null) {
 				_atEOF=false;
 			}
 			// Might be at end of stream, so different value than came in...
 			//long check = _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
-			//Log.info("return val check: "+check);
+			//Log.info(Log.FAC_IO, "return val check: "+check);
 			
 			//return _header.blockLocationToPosition(blockAndOffset[0], blockAndOffset[1]);
 			//skip(check);
 			
-			//Library.info(" _blockOffset "+_blockOffset);
+			//Log.info(Log.FAC_IO, " _blockOffset "+_blockOffset);
 		} else {
 			super.seek(position);
 		}
@@ -499,8 +501,8 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements Updat
 
 	public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
 		if (!headerRequested()) {
-			if (Log.isLoggable(Level.WARNING)) {
-				Log.warning("CCNFileInputStream: got a notification of a new header version {0} when none requested!", 
+			if (Log.isLoggable(Log.FAC_IO, Level.WARNING)) {
+				Log.warning(Log.FAC_IO, "CCNFileInputStream: got a notification of a new header version {0} when none requested!", 
 						newVersion.getVersionedName());
 			}
 			return;
@@ -509,15 +511,15 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements Updat
 		if (MetadataProfile.isHeader(newVersion.getBaseName())) {
 			// cancel the old one
 			if (null != _oldHeader) {
-				if (Log.isLoggable(Level.FINE)) {
-					Log.fine("CCNFileInputStream: retrieved new header {0}, canceling request for old one.", 
+				if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+					Log.fine(Log.FAC_IO, "CCNFileInputStream: retrieved new header {0}, canceling request for old one.", 
 							newVersion.getVersionedName());
 				}
 				_oldHeader.cancelInterest();
 			}
 		} else if (null != _header) {
-			if (Log.isLoggable(Level.FINE)) {
-				Log.fine("CCNFileInputStream: retrieved old header {0}, canceling request for new one.", 
+			if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+				Log.fine(Log.FAC_IO, "CCNFileInputStream: retrieved old header {0}, canceling request for new one.", 
 						newVersion.getVersionedName());
 			}
 			_header.cancelInterest();			
