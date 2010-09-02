@@ -85,6 +85,7 @@
                          ChildSelector?,
                          AnswerOriginKind?,
                          Scope?,
+						 InterestLifetime?,
                          Nonce?)>
 <!ATTLIST Interest	%commonattrs;>
 
@@ -129,6 +130,9 @@
 
 <!ELEMENT Timestamp	(#PCDATA)>	<!-- binary, 12 bit fraction -->
 <!ATTLIST Timestamp	ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT InterestLifetime	(#PCDATA)>	<!-- binary, 12 bit fraction -->
+<!ATTLIST InterestLifetime	ccnbencoding CDATA #FIXED 'base64Binary'>
 
 <!ELEMENT FreshnessSeconds (#PCDATA)>	<!-- nonNegativeInteger -->
 

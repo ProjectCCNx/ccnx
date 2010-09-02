@@ -6,7 +6,7 @@ This is not XML.
 ccn-bad03.xml:1: element a: Schemas validity error : Element 'a': No matching global declaration available for the validation root.
 ccn-bad03.xml fails to validate
 ./shouldfail xmllint --noout --schema ccnx.xsd ccn-bad06.xml
-ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: Schemas validity error : Element 'SpublisherIssuerKeyDigest': This element is not expected. Expected is one of ( PublisherPublicKeyDigest, PublisherCertificateDigest, PublisherIssuerKeyDigest, PublisherIssuerCertificateDigest, Exclude, ChildSelector, AnswerOriginKind, Scope, Nonce ).
+ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: Schemas validity error : Element 'SpublisherIssuerKeyDigest': This element is not expected. Expected is one of ( PublisherPublicKeyDigest, PublisherCertificateDigest, PublisherIssuerKeyDigest, PublisherIssuerCertificateDigest, Exclude, ChildSelector, AnswerOriginKind, Scope, InterestLifetime, Nonce ).
 ccn-bad06.xml fails to validate
 ./shouldfail xmllint --noout --schema ccnx.xsd ccn-bad09.xml
 ccn-bad09.xml:15: element FinalBlockID: Schemas validity error : Element 'FinalBlockID': This element is not expected. Expected is ( Timestamp ).
@@ -57,7 +57,7 @@ This is not XML.
 ccn-bad03.xml:1: element a: validity error : No declaration for element a
 Document ccn-bad03.xml does not validate against ccnx.dtd
 ./shouldfail xmllint --noout --dtdvalid ccnx.dtd ccn-bad06.xml
-ccn-bad06.xml:2: element Interest: validity error : Element Interest content does not follow the DTD, expecting (Name , MinSuffixComponents? , MaxSuffixComponents? , (PublisherPublicKeyDigest | PublisherCertificateDigest | PublisherIssuerKeyDigest | PublisherIssuerCertificateDigest)? , Exclude? , ChildSelector? , AnswerOriginKind? , Scope? , Nonce?), got (Name MinSuffixComponents MaxSuffixComponents SpublisherIssuerKeyDigest ChildSelector AnswerOriginKind Scope )
+ccn-bad06.xml:2: element Interest: validity error : Element Interest content does not follow the DTD, expecting (Name , MinSuffixComponents? , MaxSuffixComponents? , (PublisherPublicKeyDigest | PublisherCertificateDigest | PublisherIssuerKeyDigest | PublisherIssuerCertificateDigest)? , Exclude? , ChildSelector? , AnswerOriginKind? , Scope? , InterestLifetime? , Nonce?), got (Name MinSuffixComponents MaxSuffixComponents SpublisherIssuerKeyDigest ChildSelector AnswerOriginKind Scope )
 ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: validity error : No declaration for element SpublisherIssuerKeyDigest
 ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: validity error : No declaration for attribute ccnbencoding of element SpublisherIssuerKeyDigest
 Document ccn-bad06.xml does not validate against ccnx.dtd

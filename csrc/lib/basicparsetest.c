@@ -42,13 +42,16 @@
 int
 main (int argc, char **argv)
 {
-    unsigned char buf[1000];
+    unsigned char buf[8800];
     ssize_t size;
     struct ccn_face_instance *face_instance;
     struct ccn_forwarding_entry *forwarding_entry;
     struct ccn_header *header;
     int res = 1;
     struct ccn_charbuf *c = ccn_charbuf_create();
+    int i;
+    struct ccn_parsed_interest parsed_interest = {0};
+    struct ccn_parsed_interest *pi = &parsed_interest;
     
     size = read(0, buf, sizeof(buf));
     if (size < 0)
@@ -107,6 +110,14 @@ main (int argc, char **argv)
         }
     }
     ccn_header_destroy(&header);
+
+    i = ccn_parse_interest(buf, size, pi, NULL);
+    if (i >= 0) {
+	res = 0;
+        printf("interest OK lifetime %jd (%d seconds)\n",
+               ccn_interest_lifetime(buf, pi),
+               ccn_interest_lifetime_seconds(buf, pi));
+    }
 
     if (res != 0) {
         printf("URP\n");

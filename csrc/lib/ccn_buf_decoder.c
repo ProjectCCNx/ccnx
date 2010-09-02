@@ -640,7 +640,7 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
                 return (d->decoder.state = -__LINE__);
         /* optional InterestLifetime */
         interest->offset[CCN_PI_B_InterestLifetime] = d->decoder.token_index;
-        res = ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_InterestLifetime, 1, 4);
+        res = ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_InterestLifetime, 1, 8);
         if (res >= 0)
             magic |= 20100401;
         interest->offset[CCN_PI_E_InterestLifetime] = d->decoder.token_index;

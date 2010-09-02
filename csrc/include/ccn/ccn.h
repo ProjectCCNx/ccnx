@@ -40,12 +40,12 @@
 #define CCN_API_VERSION 2008
 
 /**
- * Global interest lifetime.
+ * Interest lifetime default.
  *
- * Someday the interest lifetime will vary by situation, but for now
- * we use a globally applicable constant value.
+ * If the interest lifetime is not explicit, this is the default value.
  */
-#define CCN_INTEREST_LIFETIME_MICROSEC 4000000
+#define CCN_INTEREST_LIFETIME_SEC 4
+#define CCN_INTEREST_LIFETIME_MICROSEC (CCN_INTEREST_LIFETIME_SEC * 1000000)
 
 /* opaque declarations */
 struct ccn;
@@ -520,6 +520,19 @@ int
 ccn_parse_interest(const unsigned char *msg, size_t size,
                    struct ccn_parsed_interest *interest,
                    struct ccn_indexbuf *components);
+
+/*
+ * Returns the lifetime of the interest in units of 2**(-12) seconds
+ * (the same units as timestamps).
+ */
+intmax_t ccn_interest_lifetime(const unsigned char *msg,
+                               const struct ccn_parsed_interest *pi);
+/*
+ * As above, but result is in seconds.  Any fractional part is truncated, so
+ * this is not useful for short-lived interests.
+ */
+int ccn_interest_lifetime_seconds(const unsigned char *msg,
+                                  const struct ccn_parsed_interest *pi);
 
 /*********** ContentObject parsing ***********/
 /* Analogous to enum ccn_parsed_interest_offsetid, but for content */
