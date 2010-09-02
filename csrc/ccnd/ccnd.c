@@ -3248,6 +3248,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                      "orderpref: %d, "
                      "answerfrom: %d, "
                      "scope: %d, "
+					 "lifetime: %d.%04d, "
                      "excl: %d bytes, "
                      "etc: %d bytes",
                      pi->magic,
@@ -3255,9 +3256,11 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                      pi->min_suffix_comps,
                      pi->max_suffix_comps,
                      pi->orderpref, pi->answerfrom, pi->scope,
+					 ccn_interest_lifetime_seconds(msg, pi),
+					 (int)(ccn_interest_lifetime(msg, pi) & 0xFFF) * 10000 / 4096,
                      pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
                      pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
-        if (pi->magic != 20090701) {
+        if (pi->magic < 20090701) {
             if (++(h->oldformatinterests) == h->oldformatinterestgrumble) {
                 h->oldformatinterestgrumble *= 2;
                 ccnd_msg(h, "downrev interests received: %d (%d)",
