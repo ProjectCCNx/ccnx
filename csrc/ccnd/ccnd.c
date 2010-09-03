@@ -19,6 +19,7 @@
  
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <netdb.h>
 #include <poll.h>
 #include <signal.h>
@@ -2905,8 +2906,10 @@ propagate_interest(struct ccnd_handle *h,
     int delaymask;
     int extra_delay = 0;
     struct ccn_indexbuf *outbound = NULL;
+	intmax_t lifetime;
     
-    outbound = get_outbound_faces(h, face, msg, pi, npe);
+    lifetime = ccn_interest_lifetime(msg, pi);
+	outbound = get_outbound_faces(h, face, msg, pi, npe);
     if (outbound->n != 0) {
         extra_delay = adjust_outbound_for_existing_interests(h, face, msg, pi, npe, outbound);
         if (extra_delay < 0) {
@@ -2958,7 +2961,10 @@ propagate_interest(struct ccnd_handle *h,
             pe->size = msg_out_size;
             pe->faceid = face->faceid;
             face->pending_interests += 1;
-            pe->usec = CCN_INTEREST_LIFETIME_MICROSEC;
+            if (lifetime < INT_MAX / (1000000 >> 6) * (4096 >> 6))
+				pe->usec = lifetime * (1000000 >> 6) / (4096 >> 6);
+			else
+				pe->usec = INT_MAX;
             delaymask = 0xFFF;
             pe->sent = 0;            
             pe->outbound = outbound;
