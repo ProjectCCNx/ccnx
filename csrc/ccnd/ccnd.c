@@ -2461,7 +2461,7 @@ ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     struct ccn_forwarding **p = NULL;
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *npe = NULL;
-	
+    
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;        
@@ -2508,8 +2508,8 @@ ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     found = 0;
     p = &npe->forwarding;
     for (f = npe->forwarding; f != NULL; f = f->next) {
-		if (f->faceid == forwarding_entry->faceid) {
-			found = 1;
+        if (f->faceid == forwarding_entry->faceid) {
+            found = 1;
             if (h->debug & (2 | 4))
                 ccnd_debug_ccnb(h, __LINE__, "prefix_unreg", face,
                                 forwarding_entry->name_prefix->buf,
@@ -2518,8 +2518,8 @@ ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
             free(f);
             f = NULL;
             h->forward_to_gen += 1;
-			break;
-		}
+            break;
+        }
         p = &(f->next);
     }
     if (!found) 
@@ -4196,12 +4196,12 @@ ccnd_listen_on_wildcards(struct ccnd_handle *h)
                     int yes = 1;
                     int rcvbuf = 0;
                     socklen_t rcvbuf_sz;
-					setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                     rcvbuf_sz = sizeof(rcvbuf);
                     getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
                     if (a->ai_family == AF_INET6)
                         ccnd_setsockopt_v6only(h, fd);
-					res = bind(fd, a->ai_addr, a->ai_addrlen);
+                    res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);
                         continue;
@@ -4218,17 +4218,17 @@ ccnd_listen_on_wildcards(struct ccnd_handle *h)
                     else
                         h->ipv6_faceid = face->faceid;
                     ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
-							 af_name(a->ai_family), fd, rcvbuf);
+                             af_name(a->ai_family), fd, rcvbuf);
                 }
             }
             for (a = addrinfo; a != NULL; a = a->ai_next) {
                 fd = socket(a->ai_family, SOCK_STREAM, 0);
                 if (fd != -1) {
                     int yes = 1;
-					setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                     if (a->ai_family == AF_INET6)
                         ccnd_setsockopt_v6only(h, fd);
-					res = bind(fd, a->ai_addr, a->ai_addrlen);
+                    res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);
                         continue;
