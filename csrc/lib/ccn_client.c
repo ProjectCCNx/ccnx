@@ -84,6 +84,7 @@ struct expressed_interest {
     size_t size;                 /* its size in bytes */
     int target;                  /* how many we want outstanding (0 or 1) */
     int outstanding;             /* number currently outstanding (0 or 1) */
+	int lifetime_us;			 /* interest lifetime in microseconds */
     struct ccn_charbuf *wanted_pub; /* waiting for this pub to arrive */
     struct expressed_interest *next; /* link to next in list */
 };
@@ -505,7 +506,8 @@ ccn_construct_interest(struct ccn *h,
     size_t size;
     int res;
     
-    c->length = 0;
+    dest->lifetime_us = CCN_INTEREST_LIFETIME_MICROSEC;
+	c->length = 0;
     ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append(c, name_prefix->buf, name_prefix->length);
     res = 0;
@@ -514,7 +516,13 @@ ccn_construct_interest(struct ccn *h,
         res = ccn_parse_interest(interest_template->buf,
                                  interest_template->length, &pi, NULL);
         if (res >= 0) {
-            start = pi.offset[CCN_PI_E_Name];
+			intmax_t lifetime = ccn_interest_lifetime(interest_template->buf, &pi);
+			// XXX - for now, don't try to handle lifetimes over 30 seconds.
+			if (lifetime < 1 || lifetime > (30 << 12))
+				NOTE_ERR(h, EINVAL);
+			else
+				dest->lifetime_us = (lifetime * 1000000) >> 12;
+			start = pi.offset[CCN_PI_E_Name];
             size = pi.offset[CCN_PI_B_Nonce] - start;
             ccn_charbuf_append(c, interest_template->buf + start, size);
             start = pi.offset[CCN_PI_B_OTHER];
@@ -1282,7 +1290,7 @@ ccn_update_refresh_us(struct ccn *h, struct timeval *tv)
     int delta;
     if (tv->tv_sec < h->now.tv_sec)
         return;
-    if (tv->tv_sec > h->now.tv_sec + CCN_INTEREST_LIFETIME_MICROSEC / 100000)
+    if (tv->tv_sec > h->now.tv_sec + CCN_INTEREST_LIFETIME_SEC)
         return;
     delta = (tv->tv_sec  - h->now.tv_sec)*1000000 +
             (tv->tv_usec - h->now.tv_usec);
@@ -1316,14 +1324,14 @@ ccn_age_interest(struct ccn *h,
     }
     delta = (h->now.tv_sec  - interest->lasttime.tv_sec)*1000000 +
             (h->now.tv_usec - interest->lasttime.tv_usec);
-    if (delta >= CCN_INTEREST_LIFETIME_MICROSEC) {
+    if (delta >= interest->lifetime_us) {
         interest->outstanding = 0;
         delta = 0;
     }
     else if (delta < 0)
         delta = 0;
-    if (CCN_INTEREST_LIFETIME_MICROSEC - delta < h->refresh_us)
-        h->refresh_us = CCN_INTEREST_LIFETIME_MICROSEC - delta;
+    if (interest->lifetime_us - delta < h->refresh_us)
+        h->refresh_us = interest->lifetime_us - delta;
     interest->lasttime = h->now;
     while (delta > interest->lasttime.tv_usec) {
         delta -= 1000000;
