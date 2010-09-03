@@ -56,7 +56,7 @@ struct ccn {
     struct hashtb *interest_filters;
     struct ccn_skeleton_decoder decoder;
     struct ccn_indexbuf *scratch_indexbuf;
-    struct hashtb *keys;	/* public keys, by pubid */
+    struct hashtb *keys;    /* public keys, by pubid */
     struct hashtb *keystores;   /* unlocked private keys */
     struct ccn_charbuf *default_pubid;
     struct timeval now;
@@ -84,7 +84,7 @@ struct expressed_interest {
     size_t size;                 /* its size in bytes */
     int target;                  /* how many we want outstanding (0 or 1) */
     int outstanding;             /* number currently outstanding (0 or 1) */
-	int lifetime_us;			 /* interest lifetime in microseconds */
+    int lifetime_us;             /* interest lifetime in microseconds */
     struct ccn_charbuf *wanted_pub; /* waiting for this pub to arrive */
     struct expressed_interest *next; /* link to next in list */
 };
@@ -256,23 +256,23 @@ ccn_create(void)
     h->verbose_error = (s != NULL && s[0] != 0);
     s = getenv("CCN_TAP");
     if (s != NULL && s[0] != 0) {
-	char tap_name[255];
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(),
+    char tap_name[255];
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(),
                      (int)tv.tv_sec, (int)tv.tv_usec) >= 255) {
-	    fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
-	} else {
-	    h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
-	    if (h->tap == -1) {
-		NOTE_ERRNO(h);
-                ccn_perror(h, "Unable to open CCN_TAP file");
-	    }
-            else
-		fprintf(stderr, "CCN_TAP writing to %s\n", tap_name);
-	}
+        fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
     } else {
-	h->tap = -1;
+        h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
+        if (h->tap == -1) {
+        NOTE_ERRNO(h);
+                ccn_perror(h, "Unable to open CCN_TAP file");
+        }
+            else
+        fprintf(stderr, "CCN_TAP writing to %s\n", tap_name);
+    }
+    } else {
+    h->tap = -1;
     }
     return(h);
 }
@@ -445,9 +445,8 @@ ccn_destroy(struct ccn **hp)
     ccn_charbuf_destroy(&h->interestbuf);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
     ccn_charbuf_destroy(&h->default_pubid);
-    if (h->tap != -1) {
-	close(h->tap);
-    }
+    if (h->tap != -1)
+        close(h->tap);
     free(h);
     *hp = NULL;
 }
@@ -507,7 +506,7 @@ ccn_construct_interest(struct ccn *h,
     int res;
     
     dest->lifetime_us = CCN_INTEREST_LIFETIME_MICROSEC;
-	c->length = 0;
+    c->length = 0;
     ccn_charbuf_append_tt(c, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append(c, name_prefix->buf, name_prefix->length);
     res = 0;
@@ -516,13 +515,13 @@ ccn_construct_interest(struct ccn *h,
         res = ccn_parse_interest(interest_template->buf,
                                  interest_template->length, &pi, NULL);
         if (res >= 0) {
-			intmax_t lifetime = ccn_interest_lifetime(interest_template->buf, &pi);
-			// XXX - for now, don't try to handle lifetimes over 30 seconds.
-			if (lifetime < 1 || lifetime > (30 << 12))
-				NOTE_ERR(h, EINVAL);
-			else
-				dest->lifetime_us = (lifetime * 1000000) >> 12;
-			start = pi.offset[CCN_PI_E_Name];
+            intmax_t lifetime = ccn_interest_lifetime(interest_template->buf, &pi);
+            // XXX - for now, don't try to handle lifetimes over 30 seconds.
+            if (lifetime < 1 || lifetime > (30 << 12))
+                NOTE_ERR(h, EINVAL);
+            else
+                dest->lifetime_us = (lifetime * 1000000) >> 12;
+            start = pi.offset[CCN_PI_E_Name];
             size = pi.offset[CCN_PI_B_Nonce] - start;
             ccn_charbuf_append(c, interest_template->buf + start, size);
             start = pi.offset[CCN_PI_B_OTHER];
@@ -676,7 +675,7 @@ ccn_put(struct ccn *h, const void *p, size_t length)
     if (!(res == length && dd.state == 0))
         return(NOTE_ERR(h, EINVAL));
     if (h->tap != -1) {
-	res = write(h->tap, p, length);
+        res = write(h->tap, p, length);
         if (res == -1) {
             NOTE_ERRNO(h);
             (void)close(h->tap);

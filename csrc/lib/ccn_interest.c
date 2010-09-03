@@ -34,17 +34,17 @@ ccn_interest_lifetime(const unsigned char *msg,
 {
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d = NULL;
-	unsigned start = pi->offset[CCN_PI_B_InterestLifetime];
-	size_t size    = pi->offset[CCN_PI_E_InterestLifetime] - start;
-	uintmax_t val;
-	if (size == 0)
-		return(CCN_INTEREST_LIFETIME_SEC << 12);
-	d = ccn_buf_decoder_start(&decoder, msg + start, size);
-	val = ccn_parse_optional_tagged_binary_number(d, CCN_DTAG_InterestLifetime,
+    unsigned start = pi->offset[CCN_PI_B_InterestLifetime];
+    size_t size    = pi->offset[CCN_PI_E_InterestLifetime] - start;
+    uintmax_t val;
+    if (size == 0)
+        return(CCN_INTEREST_LIFETIME_SEC << 12);
+    d = ccn_buf_decoder_start(&decoder, msg + start, size);
+    val = ccn_parse_optional_tagged_binary_number(d, CCN_DTAG_InterestLifetime,
 			1, 7, CCN_INTEREST_LIFETIME_SEC << 12);
-	if (d->decoder.state < 0)
+    if (d->decoder.state < 0)
         return (d->decoder.state);
-	return(val);
+    return(val);
 }
 
 /**
@@ -56,8 +56,8 @@ int
 ccn_interest_lifetime_seconds(const unsigned char *msg,
                               const struct ccn_parsed_interest *pi)
 {
-	intmax_t val = ccn_interest_lifetime(msg, pi);
-	if (val < 0)
-		return(val);
-	return(val >> 12);
+    intmax_t val = ccn_interest_lifetime(msg, pi);
+    if (val < 0)
+        return(val);
+    return(val >> 12);
 }
