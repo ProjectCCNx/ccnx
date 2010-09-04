@@ -420,7 +420,14 @@ int ccn_parse_optional_tagged_nonNegativeInteger(struct ccn_buf_decoder *d,
 int ccn_parse_uintmax(struct ccn_buf_decoder *d, uintmax_t *result);
 int ccn_parse_tagged_string(struct ccn_buf_decoder *d,
                             enum ccn_dtag dtag, struct ccn_charbuf *store);
-
+/* check the decoder error state for these two - result can't be negative */
+uintmax_t ccn_parse_required_tagged_binary_number(struct ccn_buf_decoder *d,
+                                                  enum ccn_dtag dtag,
+                                                  int minlen, int maxlen);
+uintmax_t ccn_parse_optional_tagged_binary_number(struct ccn_buf_decoder *d,
+                                                  enum ccn_dtag dtag,
+                                                  int minlen, int maxlen,
+                                                  uintmax_t default_value);
 /**
  * Enter an error state if element closer not found.
  */
