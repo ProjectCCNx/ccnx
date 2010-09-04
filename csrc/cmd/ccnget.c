@@ -100,17 +100,37 @@ main(int argc, char **argv)
         fprintf(stderr, "%s: bad ccn URI: %s\n", argv[0], arg);
         exit(1);
     }
-    if (env_timeout != NULL && (res = atoi(env_timeout)) > 0)
-    timeout_ms = res * 1000;
-    if (allow_stale) {
+    if (env_timeout != NULL && (res = atoi(env_timeout)) > 0) {
+		timeout_ms = res * 1000;
+    }
+	if (allow_stale || env_timeout != NULL) {
         templ = ccn_charbuf_create();
         ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
         ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
         ccn_charbuf_append_closer(templ); /* </Name> */
-        ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-        ccnb_append_number(templ,
-                                                CCN_AOK_DEFAULT | CCN_AOK_STALE);
-        ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+		if (allow_stale) {
+			ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
+			ccnb_append_number(templ,
+							   CCN_AOK_DEFAULT | CCN_AOK_STALE);
+			ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
+		}
+		if (env_timeout != NULL) {
+			/*
+			 * Choose the interest lifetime so there are at least 3
+			 * expressions (in the unsatisfied case).
+			 */
+			unsigned char buf[3] = { 0 };
+			unsigned lifetime;
+			int i;
+			if (timeout_ms > 60000)
+				lifetime = 30 << 12;
+			else {
+				lifetime = timeout_ms * 2 / 5 * 4096 / 1000;
+			}
+			for (i = sizeof(buf) - 1; i >= 0; i--, lifetime >>= 8)
+				buf[i] = lifetime & 0xff;
+			ccnb_append_tagged_blob(templ, CCN_DTAG_InterestLifetime, buf, sizeof(buf));
+		}
         ccn_charbuf_append_closer(templ); /* </Interest> */
     }
     resultbuf = ccn_charbuf_create();

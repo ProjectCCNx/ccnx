@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -55,6 +55,7 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_Bloom, "Bloom"},
     {CCN_DTAG_BloomSeed, "BloomSeed"},
     {CCN_DTAG_AnswerOriginKind, "AnswerOriginKind"},
+    {CCN_DTAG_InterestLifetime, "InterestLifetime"},
     {CCN_DTAG_Witness, "Witness"},
     {CCN_DTAG_SignatureBits, "SignatureBits"},
     {CCN_DTAG_DigestAlgorithm, "DigestAlgorithm"},

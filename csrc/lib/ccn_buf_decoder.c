@@ -592,18 +592,14 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         res = ccn_parse_optional_tagged_nonNegativeInteger(d,
                                                            CCN_DTAG_MinSuffixComponents);
         interest->offset[CCN_PI_E_MinSuffixComponents] = d->decoder.token_index;
-        if (res >= 0) {
-            magic |= 20090701;
+        if (res >= 0)
             interest->min_suffix_comps = res;
-        }
         interest->offset[CCN_PI_B_MaxSuffixComponents] = d->decoder.token_index;
         res = ccn_parse_optional_tagged_nonNegativeInteger(d,
                                                            CCN_DTAG_MaxSuffixComponents);
         interest->offset[CCN_PI_E_MaxSuffixComponents] = d->decoder.token_index;
-        if (res >= 0) {
-            magic |= 20090701;
+        if (res >= 0)
             interest->max_suffix_comps = res;
-        }
         if (interest->max_suffix_comps < interest->min_suffix_comps)
             return (d->decoder.state = -__LINE__);
         /* optional PublisherID */
@@ -642,6 +638,12 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         if ((interest->answerfrom & CCN_AOK_EXPIRE) != 0 &&
             interest->scope != 0)
                 return (d->decoder.state = -__LINE__);
+        /* optional InterestLifetime */
+        interest->offset[CCN_PI_B_InterestLifetime] = d->decoder.token_index;
+        res = ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_InterestLifetime, 1, 8);
+        if (res >= 0)
+            magic |= 20100401;
+        interest->offset[CCN_PI_E_InterestLifetime] = d->decoder.token_index;
         /* optional Nonce */
         interest->offset[CCN_PI_B_Nonce] = d->decoder.token_index;
         res = ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_Nonce, 4, 64);
@@ -660,7 +662,7 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         return (CCN_DSTATE_ERR_CODING);
     if (magic == 0)
         magic = 20090701;
-    if (!(magic == 20090701 || magic == 20090415))
+    if (!(magic == 20090701 || magic == 20100401))
         return (d->decoder.state = -__LINE__);
     interest->magic = magic;
     return (ncomp);

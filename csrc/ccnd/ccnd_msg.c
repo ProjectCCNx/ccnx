@@ -71,7 +71,7 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
     ccn_charbuf_destroy(&b);
     /* if there's no one to hear, don't make a sound */
     if (res < 0)
-	h->debug = 0;
+        h->debug = 0;
 }
 
 /**

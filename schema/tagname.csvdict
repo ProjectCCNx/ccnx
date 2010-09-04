@@ -29,6 +29,7 @@
 44,Bloom
 45,BloomSeed
 47,AnswerOriginKind
+48,InterestLifetime
 53,Witness
 54,SignatureBits
 55,DigestAlgorithm

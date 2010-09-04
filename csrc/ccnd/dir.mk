@@ -52,6 +52,7 @@ clean:
 	rm -rf *.dSYM $(DEBRIS)
 
 check test: ccnd ccndsmoketest $(SCRIPTSRC)
+	! grep '^[	]' $(CSRC) $(HSRC)
 	./testbasics
 	: ---------------------- :
 	:  ccnd unit tests pass  :
