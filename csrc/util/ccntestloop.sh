@@ -72,16 +72,23 @@ PrintDetails () {
 }
 
 SaveLogs () {
-    test -d javasrc/testout || return 1
+	test -d javasrc/testout || return 1
 	PrintDetails > javasrc/testout/TEST-details.txt
 	grep -e BUILD -e 'Total time.*minutes' javasrc/testout/TEST-javasrc-testlog.txt
 	mv javasrc/testout javasrc/testout.$1
 }
 
+PruneOldLogs () {
+	Echo Pruning logs from older successful runs
+	# Leave 20 most recent successes
+	(cd javasrc; rm -rf `ls -dt testout.*[0123456789] | tail -n +20`; )
+	true
+}
+
 UpdateSources () {
 	Echo Updating for run $1
 	$CCN_TEST_GITCOMMAND checkout $CCN_TEST_BRANCH
-    $CCN_TEST_GITCOMMAND pull --no-commit origin $CCN_TEST_BRANCH
+	$CCN_TEST_GITCOMMAND pull --no-commit origin $CCN_TEST_BRANCH
 }
 
 SourcesChanged () {
@@ -130,7 +137,7 @@ RunJavaTest () {
 
 RunTest () {
 	Echo Starting run $1 at `date`
-	RunCTest && RunJavaTest && SaveLogs $1 && return 0
+	RunCTest && RunJavaTest && SaveLogs $1 && PruneOldLogs && return 0
 	SaveLogs $1.FAILED
 	return 1
 }
