@@ -100,7 +100,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 			if (names != null)
 				rri = new RepositoryInfo(getVersion(), _info.getGlobalPrefix(), _info.getLocalName(), names);	
 			RepositoryInfoObject rio = new RepositoryInfoObject(name, rri, SaveType.RAW, _handle);
-			rio.setFreshnessSeconds(1);
+			rio.setFreshnessSeconds(12); // Same time as repo will express interest
 			return rio;
 		} catch (Exception e) {
 			Log.logStackTrace(Level.WARNING, e);
