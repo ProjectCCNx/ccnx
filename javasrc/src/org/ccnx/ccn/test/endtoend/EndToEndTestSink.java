@@ -43,7 +43,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 	}
 	
 	public void gets() throws Throwable {
-		System.out.println("Get sequence started");
+		Log.info("Get sequence started");
 		Random rand = new Random();
 		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
@@ -79,11 +79,11 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 			String objString = contentObject.name().toString();
 			interest = new Interest(objString.substring(0, "/BaseLibraryTest/server".length()) + "/" + new Integer(next).toString());
 			// Register interest
-			next++;
 			checkGetResults(contentObject);
 			if (next >= BaseLibrarySource.count) {
 				sema.release();
 			}
+			next++;
 		} catch (Throwable e) {
 			error = e;
 		}

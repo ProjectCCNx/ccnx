@@ -78,7 +78,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 		
 		_timer = System.currentTimeMillis();
 
-		handleData(co);
 
 		boolean isFinalBlock = false;
 
@@ -138,6 +137,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 				// If we're confident about the final block ID, cancel previous extra interests
 				if (isFinalBlock) {
 					cancelHigherInterests(_finalBlockID);
+					handleData(co);
 					return null;
 				}
 			}
@@ -158,6 +158,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 				}
 			}
 		}
+		handleData(co);
 		return null;
 	}
 	
