@@ -174,8 +174,9 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 						action.equalsIgnoreCase(ActionType.UnRegister.value())) {
 					return true;
 				}
+				return false;
 			}
-			return false;
+			return true; 	// Responses don't have actions
 		}
 		/**
 		 * Used by NetworkObject to decode the object from a network stream.
