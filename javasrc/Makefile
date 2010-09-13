@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -51,8 +51,12 @@ uninstall:
 	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(INSTALL_BIN)/`basename $$i`; done
 
 # Use ant to actually do the work for these targets
-jar clean test: _always
+jar test: _always
 	$(ANT) -k $@
+
+clean: _always
+	$(ANT) -k clean
+	rm -f _always $(JAR)
 
 test: test-alone
 test-alone: _always

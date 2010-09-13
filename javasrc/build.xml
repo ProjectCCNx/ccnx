@@ -86,11 +86,7 @@
 		<doxygen configFilename="Doxyfile"/>
 	</target>
 
-    <target name="dictionary">
-      <copy file="../schema/tagname.csvdict" todir="src/org/ccnx/ccn/impl/encoding/"/>
-    </target>
-
-	<target name="compile" depends="dictionary">
+	<target name="compile">
 		<mkdir dir="${build}"/>
 		<depend srcdir="src" destdir="${build}" closure="yes"/>
 		<javac destdir="${build}"
