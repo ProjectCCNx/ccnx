@@ -54,7 +54,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * due to encryption.
 	 * TODO calculate this dynamically based on the bulk signing method and overhead thereof
 	 */
-	public static final int BLOCK_BUF_COUNT = 128;
+	public static final int BLOCK_BUF_COUNT = 2;
     
 	/**
 	 * elapsed length written

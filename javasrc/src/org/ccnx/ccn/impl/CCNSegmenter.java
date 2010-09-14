@@ -106,10 +106,12 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * constructs, such as streams, may buffer it above.
  */
 public class CCNSegmenter {
-	// TODO: Provide functionality that let client stream
-	// classes limit copies (e.g. by partially creating data-filled content objects,
-	// and not signing them till flush()).
-
+	
+	/**
+	 * Number of content objects we keep around prior to signing and outputting to the flow controller
+	 */
+	public static final int BLOCK_BUF_COUNT = 128;
+    
 	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
 	public static final long LAST_SEGMENT = Long.valueOf(-1);
 
@@ -117,6 +119,9 @@ public class CCNSegmenter {
 	protected int _blockIncrement = SegmentationProfile.DEFAULT_INCREMENT;
 	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
+	
+	protected ContentObject [] _blocks = new ContentObject[BLOCK_BUF_COUNT];
+	protected int _currentBlock = 0;
 
 	protected CCNHandle _handle;
 
@@ -613,26 +618,34 @@ public class CCNSegmenter {
 			}
 		}
 
-		ContentObject [] contentObjects = 
-			buildBlocks(rootName, baseSegmentNumber, 
+		//ContentObject [] contentObjects = 
+		//	buildBlocks(rootName, baseSegmentNumber, 
+		//			new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
+		//			contentBlocks, false, blockCount, firstBlockIndex, lastBlockLength, keys);
+		long nextIndex = newBlock(rootName, baseSegmentNumber, 
 					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
-					contentBlocks, false, blockCount, firstBlockIndex, lastBlockLength, keys);
+					contentBlocks[0], lastBlockLength, false, keys);
 
-		// Digest of complete contents
-		// If we're going to unique-ify the block names
-		// (or just in general) we need to incorporate the names
-		// and signedInfos in the MerkleTree blocks. 
-		// For now, this generates the root signature too, so can
-		// ask for the signature for each block.
-		_bulkSigner.signBlocks(contentObjects, signingKey);
-		if (null == _firstSegment) {
-			_firstSegment = contentObjects[0];
+		if (_currentBlock >= BLOCK_BUF_COUNT) {
+			// Digest of complete contents
+			// If we're going to unique-ify the block names
+			// (or just in general) we need to incorporate the names
+			// and signedInfos in the MerkleTree blocks. 
+			// For now, this generates the root signature too, so can
+			// ask for the signature for each block.
+			_bulkSigner.signBlocks(_blocks, signingKey);
+			if (null == _firstSegment) {
+				_firstSegment = _blocks[0].clone();
+			}
+			getFlowControl().put(_blocks);
+			_currentBlock = 0;
+	
+			//return nextSegmentIndex(
+			//		SegmentationProfile.getSegmentNumber(contentObjects[firstBlockIndex + blockCount - 1].name()), 
+			//		contentObjects[firstBlockIndex + blockCount - 1].contentLength());
 		}
-		getFlowControl().put(contentObjects);
-
-		return nextSegmentIndex(
-				SegmentationProfile.getSegmentNumber(contentObjects[firstBlockIndex + blockCount - 1].name()), 
-				contentObjects[firstBlockIndex + blockCount - 1].contentLength());
+		
+		return nextIndex;
 	}
 
 	/**
@@ -892,7 +905,44 @@ public class CCNSegmenter {
 					(Signature)null);
 		return blocks;
 	}
+	
+	protected long newBlock(ContentName rootName,
+			long segmentNumber, SignedInfo signedInfo,
+			byte contentBlock[], int blockLength, boolean isDigest,
+			ContentKeys keys) throws InvalidKeyException, InvalidAlgorithmParameterException, ContentEncodingException {
+		if (null != keys) {
+			try {
+				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
+				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), segmentNumber);
+				// TODO -- incurs an extra copy
+				contentBlock = thisCipher.doFinal(contentBlock, 0, blockLength);
 
+				// Override content type to mark encryption.
+				// Note: we don't require that writers use our facilities for encryption, so
+				// content previously encrypted may not be marked as type ENCR. So on the decryption
+				// side we don't require that encrypted data be marked ENCR -- if you give us a
+				// decryption key, we'll try to decrypt it.
+				signedInfo.setType(ContentType.ENCR);
+
+			} catch (IllegalBlockSizeException e) {
+				Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
+				throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
+			} catch (BadPaddingException e) {
+				Log.warning("Unexpected BadPaddingException for an algorithm we have already used!");
+				throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
+			}
+
+		}
+		_blocks[_currentBlock] =  
+			new ContentObject(
+					SegmentationProfile.segmentName(rootName, segmentNumber),
+					signedInfo,
+					contentBlock, 0, blockLength,
+					(Signature)null);
+		int contentLength = _blocks[_currentBlock].contentLength();
+		_currentBlock++;
+		return nextSegmentIndex(segmentNumber, contentLength);
+	}
 
 	/**
 	 * Increment segment number according to the numbering profile in force.
