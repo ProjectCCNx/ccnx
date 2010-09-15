@@ -380,6 +380,7 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void basicStreamEncryptDecrypt() throws IOException {
+		Log.setLevel(Log.FAC_PIPELINE, Level.INFO);
 		basic.streamEncryptDecrypt();
 	}
 	@Test

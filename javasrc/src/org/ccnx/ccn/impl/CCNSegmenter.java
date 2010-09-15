@@ -25,6 +25,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
+import java.util.ArrayList;
 import java.util.logging.Level;
 
 import javax.crypto.BadPaddingException;
@@ -120,8 +121,7 @@ public class CCNSegmenter {
 	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
-	protected ContentObject [] _blocks = new ContentObject[BLOCK_BUF_COUNT];
-	protected int _currentBlock = 0;
+	protected ArrayList<ContentObject> _blocks = new ArrayList<ContentObject>(BLOCK_BUF_COUNT);
 
 	protected CCNHandle _handle;
 
@@ -622,23 +622,29 @@ public class CCNSegmenter {
 		//	buildBlocks(rootName, baseSegmentNumber, 
 		//			new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
 		//			contentBlocks, false, blockCount, firstBlockIndex, lastBlockLength, keys);
-		long nextIndex = newBlock(rootName, baseSegmentNumber, 
-					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
-					contentBlocks[0], lastBlockLength, false, keys);
+		long nextIndex = baseSegmentNumber;
+		for (int i = firstBlockIndex; i < firstBlockIndex + blockCount; i++) {
+			nextIndex = newBlock(rootName, nextIndex, 
+						new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
+								contentBlocks[i], (i < firstBlockIndex + blockCount - 1)
+								?  contentBlocks[i].length : lastBlockLength, false, keys);
+		}
 
-		if (_currentBlock >= BLOCK_BUF_COUNT) {
+		if (_blocks.size() >= BLOCK_BUF_COUNT || null != finalSegmentIndex) {
 			// Digest of complete contents
 			// If we're going to unique-ify the block names
 			// (or just in general) we need to incorporate the names
 			// and signedInfos in the MerkleTree blocks. 
 			// For now, this generates the root signature too, so can
 			// ask for the signature for each block.
-			_bulkSigner.signBlocks(_blocks, signingKey);
+			ContentObject[] blocks = new ContentObject[_blocks.size()];
+			_blocks.toArray(blocks);
+			_bulkSigner.signBlocks(blocks, signingKey);
 			if (null == _firstSegment) {
-				_firstSegment = _blocks[0].clone();
+				_firstSegment = _blocks.get(0).clone();
 			}
-			getFlowControl().put(_blocks);
-			_currentBlock = 0;
+			getFlowControl().put(blocks);
+			_blocks.clear();
 	
 			//return nextSegmentIndex(
 			//		SegmentationProfile.getSegmentNumber(contentObjects[firstBlockIndex + blockCount - 1].name()), 
@@ -933,14 +939,14 @@ public class CCNSegmenter {
 			}
 
 		}
-		_blocks[_currentBlock] =  
+		ContentObject co =
 			new ContentObject(
 					SegmentationProfile.segmentName(rootName, segmentNumber),
 					signedInfo,
 					contentBlock, 0, blockLength,
 					(Signature)null);
-		int contentLength = _blocks[_currentBlock].contentLength();
-		_currentBlock++;
+		_blocks.add(co);
+		int contentLength = co.contentLength();
 		return nextSegmentIndex(segmentNumber, contentLength);
 	}
 
