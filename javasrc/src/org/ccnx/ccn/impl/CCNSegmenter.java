@@ -111,7 +111,7 @@ public class CCNSegmenter {
 	/**
 	 * Number of content objects we keep around prior to signing and outputting to the flow controller
 	 */
-	public static final int BLOCK_BUF_COUNT = 128;
+	public static final int HOLD_COUNT = 128;
     
 	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
 	public static final long LAST_SEGMENT = Long.valueOf(-1);
@@ -121,7 +121,7 @@ public class CCNSegmenter {
 	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
-	protected ArrayList<ContentObject> _blocks = new ArrayList<ContentObject>(BLOCK_BUF_COUNT);
+	protected ArrayList<ContentObject> _blocks = new ArrayList<ContentObject>(HOLD_COUNT);
 
 	protected CCNHandle _handle;
 
@@ -630,7 +630,7 @@ public class CCNSegmenter {
 								?  contentBlocks[i].length : lastBlockLength, false, keys);
 		}
 
-		if (_blocks.size() >= BLOCK_BUF_COUNT || null != finalSegmentIndex) {
+		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
 			// Digest of complete contents
 			// If we're going to unique-ify the block names
 			// (or just in general) we need to incorporate the names

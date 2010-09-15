@@ -31,7 +31,6 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -89,7 +88,7 @@ public class CCNFlowControl implements CCNFilterListener {
 		
 	// Designed to allow a CCNOutputStream to flush its current output once without
 	// causing the over-capacity blocking to be triggered
-	protected static final int DEFAULT_CAPACITY = CCNOutputStream.BLOCK_BUF_COUNT + 1;
+	protected static final int DEFAULT_CAPACITY = CCNSegmenter.HOLD_COUNT + 1;
 	
 	protected static final int DEFAULT_INTEREST_CAPACITY = 40;
 	
