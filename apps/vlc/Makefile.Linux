@@ -14,7 +14,7 @@
 libdir := $(shell pkg-config --variable=libdir vlc-plugin )
 vlclibdir := $(libdir)/vlc
 vlcplugindir := $(shell pkg-config --atleast-version=1.1.0 vlc-plugin && echo /modules)
-VLCPLUGINVERDEF := $(shell pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER\1/;s/\.//g;')
+VLCPLUGINVERDEF := $(shell pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER=\1/;s/\.//g;s/=0/=/')
 
 all: libaccess_ccn_plugin.so
 

@@ -13,7 +13,7 @@
 #
 libdir = $(shell pkg-config --variable=libdir vlc-plugin )
 vlclibdir = $(libdir)/vlc
-VLCPLUGINVERDEF = `pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER\1/;s/\.//g;'`
+VLCPLUGINVERDEF = `pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER=\1/;s/\.//g;s/=0/=/'`
 
 # You may have to specify ARCHOPT in some cases, for instance:
 #ARCHOPT = -arch `/usr/bin/arch`
