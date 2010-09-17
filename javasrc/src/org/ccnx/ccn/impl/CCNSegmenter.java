@@ -632,9 +632,7 @@ public class CCNSegmenter {
 		}
 
 		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
-			outputCurrentBlocks(signingKey, nextIndex);
-			_blocksIndex = nextIndex;
-	
+			outputCurrentBlocks(signingKey, nextIndex);	
 			//return nextSegmentIndex(
 			//		SegmentationProfile.getSegmentNumber(contentObjects[firstBlockIndex + blockCount - 1].name()), 
 			//		contentObjects[firstBlockIndex + blockCount - 1].contentLength());
@@ -963,7 +961,9 @@ public class CCNSegmenter {
 					(Signature)null);
 		_blocks.add(co);
 		int contentLength = co.contentLength();
-		return nextSegmentIndex(segmentNumber, contentLength);
+		long nextSegment = nextSegmentIndex(segmentNumber, contentLength);
+		_blocksIndex = nextSegment;
+		return nextSegment;
 	}
 
 	/**
