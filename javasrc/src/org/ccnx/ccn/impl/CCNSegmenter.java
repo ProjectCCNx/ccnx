@@ -631,20 +631,7 @@ public class CCNSegmenter {
 		}
 
 		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
-			// Digest of complete contents
-			// If we're going to unique-ify the block names
-			// (or just in general) we need to incorporate the names
-			// and signedInfos in the MerkleTree blocks. 
-			// For now, this generates the root signature too, so can
-			// ask for the signature for each block.
-			ContentObject[] blocks = new ContentObject[_blocks.size()];
-			_blocks.toArray(blocks);
-			_bulkSigner.signBlocks(blocks, signingKey);
-			if (null == _firstSegment) {
-				_firstSegment = _blocks.get(0).clone();
-			}
-			getFlowControl().put(blocks);
-			_blocks.clear();
+			outputCurrentBlocks(signingKey);
 	
 			//return nextSegmentIndex(
 			//		SegmentationProfile.getSegmentNumber(contentObjects[firstBlockIndex + blockCount - 1].name()), 
@@ -652,6 +639,30 @@ public class CCNSegmenter {
 		}
 		
 		return nextIndex;
+	}
+	
+	protected void outputCurrentBlocks(PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+		if (_blocks.size() == 0)
+			return;
+		
+		// Digest of complete contents
+		// If we're going to unique-ify the block names
+		// (or just in general) we need to incorporate the names
+		// and signedInfos in the MerkleTree blocks. 
+		// For now, this generates the root signature too, so can
+		// ask for the signature for each block.
+		ContentObject[] blocks = new ContentObject[_blocks.size()];
+		_blocks.toArray(blocks);
+		
+		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "flush: putting merkle tree to the network, name starts with " + blocks[0].name() + "; " 
+                    + _blocks.size() + " blocks");
+		_bulkSigner.signBlocks(blocks, signingKey);
+		if (null == _firstSegment) {
+			_firstSegment = _blocks.get(0).clone();
+		}
+		getFlowControl().put(blocks);
+		_blocks.clear();
 	}
 
 	/**
@@ -706,6 +717,8 @@ public class CCNSegmenter {
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
 		_flowControl.addNameSpace(rootName);
+		
+		outputCurrentBlocks(signingKey);
 
 		byte [] finalBlockID = ((null == finalSegmentIndex) ? null : 
 			((finalSegmentIndex.longValue() == LAST_SEGMENT) ? 

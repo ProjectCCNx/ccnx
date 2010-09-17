@@ -54,7 +54,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * due to encryption.
 	 * TODO calculate this dynamically based on the bulk signing method and overhead thereof
 	 */
-	public static final int BLOCK_BUF_COUNT = 2;
+	public static final int BLOCK_BUF_COUNT = 3;
     
 	/**
 	 * elapsed length written
@@ -506,7 +506,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
                                                     _locator, _publisher, _keys);
 		} else {
 			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
-				Log.info(Log.FAC_IO, "flush: putting merkle tree to the network, baseName " + _baseName +
+				Log.info(Log.FAC_IO, "flush: outputting to the segmenter, baseName " + _baseName +
                          " basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentNumberNameComponent(_baseNameIndex)) + "; " 
                          + _blockOffset + 
                          " bytes written, holding back " + saveBytes + " flushing final blocks? " + flushLastBlock + ".");
