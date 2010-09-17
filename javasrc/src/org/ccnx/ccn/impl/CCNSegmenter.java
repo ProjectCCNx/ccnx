@@ -122,6 +122,7 @@ public class CCNSegmenter {
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
 	protected ArrayList<ContentObject> _blocks = new ArrayList<ContentObject>(HOLD_COUNT);
+	protected long _blocksIndex = 0;
 
 	protected CCNHandle _handle;
 
@@ -631,7 +632,8 @@ public class CCNSegmenter {
 		}
 
 		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
-			outputCurrentBlocks(signingKey);
+			outputCurrentBlocks(signingKey, nextIndex);
+			_blocksIndex = nextIndex;
 	
 			//return nextSegmentIndex(
 			//		SegmentationProfile.getSegmentNumber(contentObjects[firstBlockIndex + blockCount - 1].name()), 
@@ -641,9 +643,9 @@ public class CCNSegmenter {
 		return nextIndex;
 	}
 	
-	protected void outputCurrentBlocks(PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+	protected long outputCurrentBlocks(PrivateKey signingKey, long index) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		if (_blocks.size() == 0)
-			return;
+			return index;
 		
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
@@ -663,6 +665,7 @@ public class CCNSegmenter {
 		}
 		getFlowControl().put(blocks);
 		_blocks.clear();
+		return _blocksIndex;
 	}
 
 	/**
@@ -718,7 +721,7 @@ public class CCNSegmenter {
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
 		_flowControl.addNameSpace(rootName);
 		
-		outputCurrentBlocks(signingKey);
+		segmentNumber = outputCurrentBlocks(signingKey, segmentNumber);
 
 		byte [] finalBlockID = ((null == finalSegmentIndex) ? null : 
 			((finalSegmentIndex.longValue() == LAST_SEGMENT) ? 
