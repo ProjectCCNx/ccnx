@@ -527,7 +527,10 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		}
         
 		if (preservePartial) {
-			System.arraycopy(_buffers[_blockIndex], _blockOffset-saveBytes, _buffers[0], 0, saveBytes);
+			//System.arraycopy(_buffers[_blockIndex], _blockOffset-saveBytes, _buffers[0], 0, saveBytes);
+			byte[] tmp = _buffers[_blockIndex];
+			_buffers[_blockIndex] = _buffers[0];
+			_buffers[0] = tmp;
 			_blockOffset = saveBytes;
 		} else {
 			_blockOffset = 0;
