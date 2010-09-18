@@ -632,7 +632,7 @@ public class CCNSegmenter {
 		}
 
 		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
-			outputCurrentBlocks(signingKey, nextIndex);	
+			outputCurrentBlocks(signingKey);	
 			//return nextSegmentIndex(
 			//		SegmentationProfile.getSegmentNumber(contentObjects[firstBlockIndex + blockCount - 1].name()), 
 			//		contentObjects[firstBlockIndex + blockCount - 1].contentLength());
@@ -641,9 +641,7 @@ public class CCNSegmenter {
 		return nextIndex;
 	}
 	
-	protected long outputCurrentBlocks(PrivateKey signingKey, long index) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
-		if (_blocks.size() == 0)
-			return index;
+	protected long outputCurrentBlocks(PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		
 		// Digest of complete contents
 		// If we're going to unique-ify the block names
@@ -718,59 +716,64 @@ public class CCNSegmenter {
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
 		_flowControl.addNameSpace(rootName);
-		
-		segmentNumber = outputCurrentBlocks(signingKey, segmentNumber);
 
 		byte [] finalBlockID = ((null == finalSegmentIndex) ? null : 
 			((finalSegmentIndex.longValue() == LAST_SEGMENT) ? 
 					SegmentationProfile.getSegmentNumberNameComponent(segmentNumber) : 
 						SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex)));
+		
+		SignedInfo signedInfo = new SignedInfo(publisher, timestamp, type, locator,freshnessSeconds, finalBlockID);
+		
+		if (_blocks.size() > 0) {
+			segmentNumber = newBlock(rootName, segmentNumber, 
+					signedInfo, content, length, false, keys);
+			if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex)
+				outputCurrentBlocks(signingKey);
+			
+		} else {
 
-		if (null != keys) {
-			try {
-				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, publisher, segmentNumber);
-				content = thisCipher.doFinal(content, offset, length);
-				offset = 0;
-				length = content.length;
-				// Override content type to mark encryption.
-				// Note: we don't require that writers use our facilities for encryption, so
-				// content previously encrypted may not be marked as type ENCR. So on the decryption
-				// side we don't require that encrypted data be marked ENCR -- if you give us a
-				// decryption key, we'll try to decrypt it.
-				type = ContentType.ENCR; 
-
-			} catch (IllegalArgumentException e) {
-				Log.warning("Exception: " + e);
-				Log.warning("Exception: offset " + offset + " length " + length + " content length " +
-						((null == content) ? "null" : content.length));
-				Log.warningStackTrace(e);
-				throw e;
-			} catch (IllegalBlockSizeException e) {
-				Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
-				throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
-			} catch (BadPaddingException e) {
-				Log.warning("Unexpected BadPaddingException for an algorithm we have already used!");
-				throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
+			if (null != keys) {
+				try {
+					// Make a separate cipher, so this segmenter can be used by multiple callers at once.
+					Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, publisher, segmentNumber);
+					content = thisCipher.doFinal(content, offset, length);
+					offset = 0;
+					length = content.length;
+					// Override content type to mark encryption.
+					// Note: we don't require that writers use our facilities for encryption, so
+					// content previously encrypted may not be marked as type ENCR. So on the decryption
+					// side we don't require that encrypted data be marked ENCR -- if you give us a
+					// decryption key, we'll try to decrypt it.
+					type = ContentType.ENCR; 
+	
+				} catch (IllegalArgumentException e) {
+					Log.warning("Exception: " + e);
+					Log.warning("Exception: offset " + offset + " length " + length + " content length " +
+							((null == content) ? "null" : content.length));
+					Log.warningStackTrace(e);
+					throw e;
+				} catch (IllegalBlockSizeException e) {
+					Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
+					throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
+				} catch (BadPaddingException e) {
+					Log.warning("Unexpected BadPaddingException for an algorithm we have already used!");
+					throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
+				}
 			}
+	
+			ContentObject co = 
+				new ContentObject(SegmentationProfile.segmentName(rootName, 
+						segmentNumber),
+						signedInfo, content, offset, length, signingKey);
+			if (null == _firstSegment) {
+				_firstSegment = co;
+			}
+			if( Log.isLoggable(Level.FINER))
+				Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
+			_flowControl.put(co);
+			segmentNumber = nextSegmentIndex(segmentNumber, co.contentLength());
 		}
-
-		ContentObject co = 
-			new ContentObject(SegmentationProfile.segmentName(rootName, 
-					segmentNumber),
-					new SignedInfo(publisher, timestamp,
-							type, locator,
-							freshnessSeconds, 
-							finalBlockID), 
-							content, offset, length, signingKey);
-		if (null == _firstSegment) {
-			_firstSegment = co;
-		}
-		if( Log.isLoggable(Level.FINER))
-			Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
-		_flowControl.put(co);
-
-		return nextSegmentIndex(segmentNumber, co.contentLength());
+		return segmentNumber;
 	}
 
 	/**
