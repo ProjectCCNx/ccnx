@@ -484,7 +484,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// The reading/verification code will
 		// cope just fine with a single file written in a mix of bulk and straight signature
 		// verified blocks.
-		int writeCount = (_blockIndex * getBlockSize()) + _blockOffset - saveBytes;
+		/* int writeCount = (_blockIndex * getBlockSize()) + _blockOffset - saveBytes;
 		if (writeCount <= getBlockSize()) {
 			// Two cases of single-block writes: we're on block 0, and (_blockOffset-saveBytes) > 0) --
 			// there are bytes to write; or we're on block 1 but are only writing block 0.
@@ -504,7 +504,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
                                                     _buffers[0], 0, writeCount, 
                                                     _type, _timestamp, _freshnessSeconds, (flushLastBlock ? _baseNameIndex : null), 
                                                     _locator, _publisher, _keys);
-		} else {
+		} else { */
 			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 				Log.info(Log.FAC_IO, "flush: outputting to the segmenter, baseName " + _baseName +
                          " basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentNumberNameComponent(_baseNameIndex)) + "; " 
@@ -517,14 +517,14 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// don't write last block (whole or partial), write n-1 full blocks
 			_baseNameIndex = 
             _segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers,
-                                     (preservePartial ? _blockIndex : _blockIndex+1),
+                                     (preservePartial && !flushLastBlock ? _blockIndex : _blockIndex+1),
                                      0, 
-                                     (preservePartial ? getBlockSize() : _blockOffset),
+                                     (preservePartial && !flushLastBlock ? getBlockSize() : _blockOffset),
                                      _type, _timestamp, _freshnessSeconds, 
                                      (flushLastBlock ? CCNSegmenter.LAST_SEGMENT : null), 
                                      _locator, _publisher, _keys);
 			
-		}
+		/* } */
         
 		if (preservePartial) {
 			//System.arraycopy(_buffers[_blockIndex], _blockOffset-saveBytes, _buffers[0], 0, saveBytes);
