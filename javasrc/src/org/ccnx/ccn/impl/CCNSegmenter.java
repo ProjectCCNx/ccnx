@@ -693,8 +693,9 @@ public class CCNSegmenter {
 
 	/**
 	 * Puts a single block of content of arbitrary length using a segment naming convention. The only
-	 * current use of this is to allow a Segmenter.put which has an offset defined. Otherwise this could
-	 * be folded into fragmentedPut and maybe it should be.
+	 * current use of this is to allow a Segmenter.put of less than a blocksize. 
+	 * I'm not quite sure why that needs to use this and it would be nice to get rid of this since its
+	 * mostly superfluous and duplicating other code at this point but for now I'll leave it in.
 	 * 
 	 * @param name name prefix to use for the object, without the segment number
 	 * @param segmentNumber the segment number to use for this object
