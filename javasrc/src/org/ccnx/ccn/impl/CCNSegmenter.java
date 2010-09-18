@@ -517,26 +517,16 @@ public class CCNSegmenter {
 			}
 		}
 
-		ContentObject [] contentObjects = 
+		long nextSegmentIndex = 
 			buildBlocks(rootName, baseSegmentNumber, 
 					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
-					content, offset, length, blockWidth, keys);
-
-		// Digest of complete contents
-		// If we're going to unique-ify the block names
-		// (or just in general) we need to incorporate the names
-		// and signedInfos in the MerkleTree blocks. 
-		// For now, this generates the root signature too, so can
-		// ask for the signature for each block.
-		_bulkSigner.signBlocks(contentObjects, signingKey);
-		if (null == _firstSegment) {
-			_firstSegment = contentObjects[0];
+					content, offset, length, blockWidth, keys, signingKey);
+		
+		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
+			outputCurrentBlocks(signingKey);	
 		}
-		getFlowControl().put(contentObjects);
 
-		return nextSegmentIndex(
-				SegmentationProfile.getSegmentNumber(contentObjects[contentObjects.length - 1].name()), 
-				contentObjects[contentObjects.length - 1].contentLength());
+		return nextSegmentIndex;
 	}
 
 	/** 
@@ -776,16 +766,19 @@ public class CCNSegmenter {
 	 * @param blockWidth
 	 * @param keys the keys to use for encrypting this segment, or null if unencrypted. The
 	 *   specific Key/IV used for this segment will be obtained by calling keys.getSegmentEncryptionCipher().
+	 * @param signingKey
 	 * @return
 	 * @throws InvalidKeyException
 	 * @throws InvalidAlgorithmParameterException
 	 * @throws IOException
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
 	 */
-	protected ContentObject[] buildBlocks(ContentName rootName,
+	protected long buildBlocks(ContentName rootName,
 			long baseSegmentNumber, SignedInfo signedInfo, 
 			byte[] content, int offset, int length, int blockWidth,
-			ContentKeys keys) 
-	throws InvalidKeyException, InvalidAlgorithmParameterException, IOException {
+			ContentKeys keys, PrivateKey signingKey) 
+	throws InvalidKeyException, InvalidAlgorithmParameterException, IOException, SignatureException, NoSuchAlgorithmException {
 
 		int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
 		ContentObject [] blocks = new ContentObject[blockCount];
@@ -811,17 +804,21 @@ public class CCNSegmenter {
 
 				dataStream = new UnbufferedCipherInputStream(dataStream, thisCipher);
 			}
-			blocks[i] =  
+			ContentObject co =
 				new ContentObject(
 						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
 						signedInfo,
 						dataStream, blockWidth);
+			_blocks.add(co);
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, 
-					blocks[i].contentLength());
+					co.contentLength());
 			offset += blockWidth;
 			length -= blockWidth;
+			if (_blocks.size() >= HOLD_COUNT) {
+				outputCurrentBlocks(signingKey);	
+			}
 		}
-		return blocks;
+		return nextSegmentIndex;
 	}
 
 	/**
