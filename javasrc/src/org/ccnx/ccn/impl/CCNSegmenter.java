@@ -123,7 +123,6 @@ public class CCNSegmenter {
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
 	protected ArrayList<ContentObject> _blocks = new ArrayList<ContentObject>(HOLD_COUNT);
-	protected long _blocksIndex = 0;
 
 	protected CCNHandle _handle;
 
@@ -875,7 +874,6 @@ public class CCNSegmenter {
 		_blocks.add(co);
 		int contentLength = co.contentLength();
 		long nextSegment = nextSegmentIndex(segmentNumber, contentLength);
-		_blocksIndex = nextSegment;
 		return nextSegment;
 	}
 
