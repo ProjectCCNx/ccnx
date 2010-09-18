@@ -627,7 +627,7 @@ public class CCNSegmenter {
 		for (int i = firstBlockIndex; i < firstBlockIndex + blockCount; i++) {
 			nextIndex = newBlock(rootName, nextIndex, 
 						new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
-								contentBlocks[i], (i < firstBlockIndex + blockCount - 1)
+								contentBlocks[i], 0, (i < firstBlockIndex + blockCount - 1)
 								?  contentBlocks[i].length : lastBlockLength, false, keys);
 		}
 
@@ -641,27 +641,39 @@ public class CCNSegmenter {
 		return nextIndex;
 	}
 	
-	protected long outputCurrentBlocks(PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+	protected void outputCurrentBlocks(PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+		if (_blocks.size() == 0)
+			return;
 		
-		// Digest of complete contents
-		// If we're going to unique-ify the block names
-		// (or just in general) we need to incorporate the names
-		// and signedInfos in the MerkleTree blocks. 
-		// For now, this generates the root signature too, so can
-		// ask for the signature for each block.
-		ContentObject[] blocks = new ContentObject[_blocks.size()];
-		_blocks.toArray(blocks);
+		if (_blocks.size() == 1) {
+			
+			ContentObject co = _blocks.get(0);
+			co.sign(signingKey);
+			if( Log.isLoggable(Level.FINER))
+				Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + co.contentLength() + ")");
+			_flowControl.put(co);
+			
+		} else {
 		
-		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
-			Log.info(Log.FAC_IO, "flush: putting merkle tree to the network, name starts with " + blocks[0].name() + "; " 
-                    + _blocks.size() + " blocks");
-		_bulkSigner.signBlocks(blocks, signingKey);
-		if (null == _firstSegment) {
-			_firstSegment = _blocks.get(0).clone();
+			// Digest of complete contents
+			// If we're going to unique-ify the block names
+			// (or just in general) we need to incorporate the names
+			// and signedInfos in the MerkleTree blocks. 
+			// For now, this generates the root signature too, so can
+			// ask for the signature for each block.
+			ContentObject[] blocks = new ContentObject[_blocks.size()];
+			_blocks.toArray(blocks);
+			
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "flush: putting merkle tree to the network, name starts with " + blocks[0].name() + "; " 
+	                    + _blocks.size() + " blocks");
+			_bulkSigner.signBlocks(blocks, signingKey);
+			getFlowControl().put(blocks);
 		}
-		getFlowControl().put(blocks);
+		if (null == _firstSegment) {
+			_firstSegment = _blocks.get(0);
+		}
 		_blocks.clear();
-		return _blocksIndex;
 	}
 
 	/**
@@ -724,13 +736,12 @@ public class CCNSegmenter {
 		
 		SignedInfo signedInfo = new SignedInfo(publisher, timestamp, type, locator,freshnessSeconds, finalBlockID);
 		
-		if (_blocks.size() > 0) {
-			segmentNumber = newBlock(rootName, segmentNumber, 
-					signedInfo, content, length, false, keys);
-			if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex)
-				outputCurrentBlocks(signingKey);
+		segmentNumber = newBlock(rootName, segmentNumber, 
+				signedInfo, content, offset, length, false, keys);
+		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex)
+			outputCurrentBlocks(signingKey);
 			
-		} else {
+		/* } else {
 
 			if (null != keys) {
 				try {
@@ -772,7 +783,7 @@ public class CCNSegmenter {
 				Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
 			_flowControl.put(co);
 			segmentNumber = nextSegmentIndex(segmentNumber, co.contentLength());
-		}
+		} */
 		return segmentNumber;
 	}
 
@@ -931,14 +942,17 @@ public class CCNSegmenter {
 	
 	protected long newBlock(ContentName rootName,
 			long segmentNumber, SignedInfo signedInfo,
-			byte contentBlock[], int blockLength, boolean isDigest,
+			byte contentBlock[], int offset, int blockLength, boolean isDigest,
 			ContentKeys keys) throws InvalidKeyException, InvalidAlgorithmParameterException, ContentEncodingException {
+		int length = blockLength;
 		if (null != keys) {
 			try {
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
 				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), segmentNumber);
 				// TODO -- incurs an extra copy
-				contentBlock = thisCipher.doFinal(contentBlock, 0, blockLength);
+				contentBlock = thisCipher.doFinal(contentBlock, offset, blockLength);
+				length = contentBlock.length;
+				offset = 0;
 
 				// Override content type to mark encryption.
 				// Note: we don't require that writers use our facilities for encryption, so
@@ -959,9 +973,7 @@ public class CCNSegmenter {
 		ContentObject co =
 			new ContentObject(
 					SegmentationProfile.segmentName(rootName, segmentNumber),
-					signedInfo,
-					contentBlock, 0, blockLength,
-					(Signature)null);
+					signedInfo,contentBlock, offset, length,(Signature)null);
 		_blocks.add(co);
 		int contentLength = co.contentLength();
 		long nextSegment = nextSegmentIndex(segmentNumber, contentLength);
