@@ -676,9 +676,6 @@ public class CCNSegmenter {
 			_bulkSigner.signBlocks(blocks, signingKey);
 			getFlowControl().put(blocks);
 		}
-		if (null == _firstSegment) {
-			_firstSegment = _blocks.get(0);
-		}
 		_blocks.clear();
 	}
 
@@ -807,6 +804,9 @@ public class CCNSegmenter {
 						signedInfo,
 						dataStream, blockWidth);
 			_blocks.add(co);
+			if (null == _firstSegment) {
+				_firstSegment = co;
+			}
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, 
 					co.contentLength());
 			offset += blockWidth;
@@ -869,6 +869,9 @@ public class CCNSegmenter {
 					SegmentationProfile.segmentName(rootName, segmentNumber),
 					signedInfo,contentBlock, offset, length,(Signature)null);
 		_blocks.add(co);
+		if (null == _firstSegment) {
+			_firstSegment = co;
+		}
 		int contentLength = co.contentLength();
 		long nextSegment = nextSegmentIndex(segmentNumber, contentLength);
 		return nextSegment;

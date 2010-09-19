@@ -350,7 +350,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// First see if we can do any writing without having to copy data
 		// We need to keep at least one block's worth of data around (see notes about withholding data in
 		// flushToNetwork).
-		if ((_blockOffset % getBlockSize() == 0) && offset == 0 && (len >= (getBlockSize() * 2))) {
+		if ((_blockOffset % getBlockSize() == 0) && (len >= (getBlockSize() * 2))) {
 			// Since we have more than one block of data after what's already there, we can flush
 			// everything we have to the segmenter now
 			if (_blockIndex > 0 || _blockOffset > 0) {
@@ -363,10 +363,10 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			}
 			long contiguousBytesToWrite = ((len / getBlockSize()) - 1) * getBlockSize();
 			bytesToWrite -= contiguousBytesToWrite;
-			offset += contiguousBytesToWrite;
 			_baseNameIndex = _segmenter.fragmentedPut(_baseName, _baseNameIndex,
 					buf, (int)offset, (int)contiguousBytesToWrite, getBlockSize(), _type, null,
 					_freshnessSeconds, null, _locator, _publisher, _keys);
+			offset += contiguousBytesToWrite;
 		}
         
 		// Here's an advantage of the old, complicated way -- with that, only had to allocate
