@@ -625,6 +625,9 @@ public class CCNSegmenter {
 						new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
 								contentBlocks[i], 0, (i < firstBlockIndex + blockCount - 1)
 								?  contentBlocks[i].length : lastBlockLength, keys);
+			if (_blocks.size() >= HOLD_COUNT) {
+				outputCurrentBlocks(signingKey);	
+			}
 		}
 
 		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
