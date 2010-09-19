@@ -414,7 +414,7 @@ public class CCNSegmenter {
 	 * @throws IOException 
 	 * @throws InvalidAlgorithmParameterException 
 	 */
-	protected long fragmentedPut(
+	public long fragmentedPut(
 			ContentName name, 
 			byte [] content, int offset, int length,
 			Long finalSegmentIndex,
@@ -619,7 +619,6 @@ public class CCNSegmenter {
 				outputCurrentBlocks(signingKey);	
 			}
 		}
-
 		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
 			outputCurrentBlocks(signingKey);	
 		}
@@ -781,8 +780,6 @@ public class CCNSegmenter {
 	throws InvalidKeyException, InvalidAlgorithmParameterException, IOException, SignatureException, NoSuchAlgorithmException {
 
 		int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
-		ContentObject [] blocks = new ContentObject[blockCount];
-
 		long nextSegmentIndex = baseSegmentNumber;
 
 		for (int i=0; i < blockCount; ++i) {

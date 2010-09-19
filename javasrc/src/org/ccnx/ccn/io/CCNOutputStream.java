@@ -325,6 +325,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			throw new IOException("Cannot sign content -- signature failure!: " + e.getMessage());
 		} catch (NoSuchAlgorithmException e) {
 			throw new IOException("Cannot sign content -- unknown algorithm!: " + e.getMessage());
+		} catch (InvalidAlgorithmParameterException e) {
+			throw new IOException("Cannot sign content -- Invalid algorithm parameter!: " + e.getMessage());
 		}
 	}
     
@@ -337,12 +339,35 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws InvalidKeyException if we cannot encrypt content as specified
 	 * @throws SignatureException if we cannot sign content
 	 * @throws NoSuchAlgorithmException if encryption requests invalid algorithm
+	 * @throws InvalidAlgorithmParameterException 
 	 */
-	protected synchronized void writeToNetwork(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException {
+	protected synchronized void writeToNetwork(byte[] buf, long offset, long len) throws IOException, InvalidKeyException, SignatureException, NoSuchAlgorithmException, InvalidAlgorithmParameterException {
 		if ((len < 0) || (null == buf) || ((offset + len) > buf.length))
 			throw new IllegalArgumentException("Invalid argument!");
         
 		long bytesToWrite = len;
+		
+		// First see if we can do any writing without having to copy data
+		// We need to keep at least one block's worth of data around (see notes about withholding data in
+		// flushToNetwork).
+		if ((_blockOffset % getBlockSize() == 0) && offset == 0 && (len >= (getBlockSize() * 2))) {
+			// Since we have more than one block of data after what's already there, we can flush
+			// everything we have to the segmenter now
+			if (_blockIndex > 0 || _blockOffset > 0) {
+				_baseNameIndex = 
+			        _segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers, _blockIndex+1,
+			                                 0, getBlockSize(),
+			                                 _type, _timestamp, _freshnessSeconds, null, 
+			                                 _locator, _publisher, _keys);
+				_blockOffset = _blockIndex = 0;			        
+			}
+			long contiguousBytesToWrite = ((len / getBlockSize()) - 1) * getBlockSize();
+			bytesToWrite -= contiguousBytesToWrite;
+			offset += contiguousBytesToWrite;
+			_baseNameIndex = _segmenter.fragmentedPut(_baseName, _baseNameIndex,
+					buf, (int)offset, (int)contiguousBytesToWrite, getBlockSize(), _type, null,
+					_freshnessSeconds, null, _locator, _publisher, _keys);
+		}
         
 		// Here's an advantage of the old, complicated way -- with that, only had to allocate
 		// as many blocks as you were going to write. 
