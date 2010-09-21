@@ -633,8 +633,10 @@ public class VersioningProfile implements CCNProfile {
 			
 			respondTime = System.currentTimeMillis() - interestTime;
 			
-			if (result == null && (timeout == SystemConfiguration.NO_TIMEOUT || respondTime < timeout))
+			if (result == null && respondTime == 0) {
 				Log.warning("gLV: handle.get returned null and did not wait the full timeout time for the object (timeout: {0} responseTime: {1}", timeout, respondTime);
+				return null;
+			}
 			
 			remainingTime = timeout - elapsedTime;
 			//remainingNullTime = remainingNullTime - respondTime;
