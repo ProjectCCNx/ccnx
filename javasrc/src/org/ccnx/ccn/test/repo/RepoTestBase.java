@@ -41,6 +41,7 @@ public class RepoTestBase extends LibraryTestBase {
 	
 	protected static String _topdir;
 	protected static String _fileTestDir;
+	protected static String _fileTestDir2;
 	protected static String _repoName = "TestRepository";
 	protected static String _globalPrefix = "/parc.com/csl/ccn/repositories";
 	protected static File _fileTest;
@@ -57,6 +58,7 @@ public class RepoTestBase extends LibraryTestBase {
 		_fileTestDir = System.getProperty("REPO_ROOT");
 		if( null == _fileTestDir )
 			_fileTestDir = "repotest";
+		_fileTestDir2 = _fileTestDir + "2";
 	}
 	
 	protected void checkNameSpace(String contentName, boolean expected) throws Exception {

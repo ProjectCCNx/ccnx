@@ -24,6 +24,7 @@ import java.security.KeyPairGenerator;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryStore;
+import org.ccnx.ccn.impl.repo.LogStructRepoStore.LogStructRepoStoreProfile;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarker;
@@ -56,6 +57,8 @@ public class RFSTest extends RepoTestBase {
 	
 	RepositoryStore repolog; // Instance of simple log-based repo implementation under test
 	
+	private final String Repository2 = "TestRepository2";
+	
 	private ContentName longName;
 	private byte[] longNameDigest;
 	private ContentName badCharName;
@@ -87,8 +90,24 @@ public class RFSTest extends RepoTestBase {
 		// Having initialized a new instance on the same stable storage stage produced by the
 		// test() method, now run testReinitialization to check consistency.
 		testReinitialization(repolog);
+		repolog.shutDown();
 	}
 	
+	@Test
+	public void testAddByFile() throws Exception {
+		System.out.println("testing adding to repo via file");
+		initRepoLog();
+		RepositoryStore repolog2 = new LogStructRepoStore();
+		repolog2.initialize(_fileTestDir2, null, Repository2, _globalPrefix, null, null);
+		ContentName name = ContentName.fromNative("/repoTest/testAddData");
+		ContentObject content = ContentObject.buildContentObject(name, "Testing add by file".getBytes());
+		repolog2.saveContent(content);
+		checkData(repolog2, name, "Testing add by file");
+		repolog2.shutDown();
+		repolog.addFromFile(new File(_fileTestDir2, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1"));
+		checkData(repolog, name, "Testing add by file");
+		repolog.shutDown();
+	}
 	
 	public void test(RepositoryStore repo) throws Exception{		
 		System.out.println("Repotest - Testing basic data");
@@ -385,7 +404,8 @@ public class RFSTest extends RepoTestBase {
 		// Test setting prefix from the prefix parameter
 		repo.initialize(_fileTestDir, null, _repoName, _globalPrefix, "/", null);
 		repo.saveContent(oonsContent);
-		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	
+		checkData(repo, outOfNameSpaceName, "Shouldn't see this");
+		repolog.shutDown();
 	}
 	
 	private void checkData(RepositoryStore repo, ContentName name, String data) throws RepositoryException {

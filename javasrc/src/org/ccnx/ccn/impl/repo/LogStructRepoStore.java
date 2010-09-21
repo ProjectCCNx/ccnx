@@ -80,7 +80,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		// OS dependencies -- some OSes seem to ignore case in keystore aliases
 		public static final String REPOSITORY_KEYSTORE_ALIAS = REPOSITORY_USER.toLowerCase();
 
-		private static String CONTENT_FILE_PREFIX = "repoFile";
+		public static String CONTENT_FILE_PREFIX = "repoFile";
 		private static String DEBUG_TREEDUMP_FILE = "debugNamesTree";
 
 		private static String DIAG_NAMETREE = "nametree"; // Diagnostic/signal to dump name tree to debug file
@@ -608,10 +608,12 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	public void addFromFile(File fileName) throws RepositoryException {
 		if (!fileName.exists())
 			throw new RepositoryException("File does not exist: " + fileName);
-		File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
-		if (!fileName.renameTo(repoFile))
-			throw new RepositoryException("Can not rename file: " + fileName);
-		createIndex(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex, _currentFileIndex);
-		_currentFileIndex++;
+		synchronized (_currentFileIndex) {
+			_currentFileIndex++;
+			File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
+			if (!fileName.renameTo(repoFile))
+				throw new RepositoryException("Can not rename file: " + fileName);
+			createIndex(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex, _currentFileIndex);
+		}
 	}
 }
