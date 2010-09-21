@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.impl.repo;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
@@ -26,6 +27,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.profiles.repo.RepositoryOperations;
 import org.ccnx.ccn.protocol.ContentName;
@@ -69,6 +71,9 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			} else if (RepositoryOperations.isCheckedWriteOperation(interest)) {
 				if (!allowGenerated(interest)) return true;
 				startWriteChecked(interest);				
+			} else if (RepositoryOperations.isAddFileOperation(interest)) {
+				if (!allowGenerated(interest)) return true;
+				addToRepoViaFile(interest);				
 			} else {
 				ContentObject content = _server.getRepository().getContent(interest);
 				if (content != null) {
@@ -259,8 +264,21 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			e.printStackTrace();
 		}
 	}
-
-
+	
+	/**
+	 * Add to the repository via file based on interest request
+	 * @param interest
+	 * @throws RepositoryException
+	 */
+	private void addToRepoViaFile(Interest interest) throws RepositoryException {
+		int i = CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.findMarker(interest.name());
+		if (i >= 0) {
+			String[] args = CommandMarker.getArguments(interest.name().component(i));
+			if (null != args && args.length > 0) {
+				_server.getRepository().addFromFile(new File(args[0]));
+			}
+		}
+	}
 	
 	/**
 	 * Handle name enumeration requests

@@ -38,6 +38,10 @@ public class RepositoryOperations {
 		return interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_CHECKED_START_WRITE.getBytes());
 	}
 	
+	public static boolean isAddFileOperation(Interest interest) {
+		return interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.getBytes());
+	}
+	
 	public static int getCheckedWriteMarkerPos(Interest interest) {
 		return interest.name().whereLast(CommandMarker.COMMAND_MARKER_REPO_CHECKED_START_WRITE.getBytes());
 	}
