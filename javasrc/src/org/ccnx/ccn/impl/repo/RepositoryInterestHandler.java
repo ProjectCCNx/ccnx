@@ -269,13 +269,17 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 * Add to the repository via file based on interest request
 	 * @param interest
 	 * @throws RepositoryException
+	 * @throws IOException 
+	 * @throws ContentEncodingException 
 	 */
-	private void addToRepoViaFile(Interest interest) throws RepositoryException {
+	private void addToRepoViaFile(Interest interest) throws RepositoryException, ContentEncodingException, IOException {
 		int i = CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.findMarker(interest.name());
 		if (i >= 0) {
 			String[] args = CommandMarker.getArguments(interest.name().component(i));
 			if (null != args && args.length > 0) {
 				_server.getRepository().bulkImport(new File(args[0]));
+				RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
+				rio.save(interest);
 			}
 		}
 	}
