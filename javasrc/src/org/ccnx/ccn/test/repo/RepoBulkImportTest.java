@@ -1,9 +1,12 @@
 package org.ccnx.ccn.test.repo;
 
+import junit.framework.Assert;
+
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
 import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore.LogStructRepoStoreProfile;
-import org.ccnx.ccn.profiles.CommandMarker;
+import org.ccnx.ccn.profiles.repo.RepositoryBulkImport;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.junit.Test;
@@ -24,10 +27,10 @@ public class RepoBulkImportTest extends RepoTestBase {
 		repolog3.saveContent(content);
 		repolog3.shutDown();
 		
-		// Create an Interest
-		CommandMarker argMarker = CommandMarker.getMarker(CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.getBytes());
-		argMarker.addArgument(_fileTestDir2 + ContentName.SEPARATOR 
-				+ LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1");
+		Assert.assertTrue(RepositoryBulkImport.bulkImport(getHandle, 
+				_fileTestDir3 + ContentName.SEPARATOR + LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1", 
+				SystemConfiguration.MAX_TIMEOUT));
+		checkData(name, "Testing add by file");
 		
 	}
 

@@ -112,8 +112,6 @@ public class BitBucketRepository extends RepositoryStoreBase {
 		return false;
 	}
 
-	public void addFromFile(File fileName) throws RepositoryException {
-		// TODO Auto-generated method stub
-		
+	public void bulkImport(File fileName) throws RepositoryException {		
 	}
 }
