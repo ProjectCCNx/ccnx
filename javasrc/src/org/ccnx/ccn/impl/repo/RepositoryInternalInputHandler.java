@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
@@ -38,9 +39,23 @@ public class RepositoryInternalInputHandler extends CCNHandle {
 	}
 	
 	public ContentObject get(Interest interest, long timeout) throws IOException {
+		long startTime = System.currentTimeMillis();
+		long stopTime;
 		while (true) {
 			try {
-				return _repo.getContent(interest);
+				ContentObject co = _repo.getContent(interest);
+				stopTime = System.currentTimeMillis();
+				if (co == null) {
+					//there is nothing to return...  sleep for remaining time
+					/*
+					try {
+						Thread.sleep(timeout - (stopTime - startTime));
+					} catch (InterruptedException e) {
+						Log.warning("error while sleeping in RepositoryInternalInputHandler");
+					}
+					*/
+				}
+				return co;
 			} catch (RepositoryException e) {
 				throw new IOException(e.getMessage());
 			}

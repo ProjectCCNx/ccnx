@@ -554,7 +554,10 @@ public class VersioningProfile implements CCNProfile {
 			verifier = handle.keyManager().getDefaultVerifier();
 		}
 		
-		int attempts = 0;
+		//remove code that loops...
+		//int attempts = 0;
+		//now switch over to use the timeout sent in to the function, no need to use an attempt timeout 
+		/*
 		long attemptTimeout = SystemConfiguration.GLV_ATTEMPT_TIMEOUT;
 		if (timeout == SystemConfiguration.NO_TIMEOUT) {
 			//the timeout sent in is equivalent to null...  try till we don't hear something back
@@ -567,11 +570,23 @@ public class VersioningProfile implements CCNProfile {
 		
 		if( timeout > attemptTimeout)
 			nullTimeout = timeout;
-		
-		long startTime;
+		*/
+		long startTime = System.currentTimeMillis();
+		long interestTime = 0;
+		long elapsedTime = 0;
 		long respondTime;
-		long remainingTime = attemptTimeout;
-		long remainingNullTime = nullTimeout; 
+		long remainingTime = timeout;
+		if (timeout == SystemConfiguration.NO_TIMEOUT) {
+			//glv called with no timeout...  should probably return what we have as soon as we have something
+			//to return and have suffered a timeout
+			System.out.println("gLV called with NO_TIMEOUT");
+			
+			//if something comes back, we should try for one more interest and then return what we have
+		} else if (timeout == 0) {
+			System.out.println("gLV called with timeout = 0, should just return the first thing we get");
+		}
+		
+		//long remainingNullTime = nullTimeout; 
 		
 		ContentName prefix = startingVersion;
 		if (hasTerminalVersion(prefix)) {
@@ -584,10 +599,12 @@ public class VersioningProfile implements CCNProfile {
 		
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
 		
-		while (attempts < SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS && remainingTime > 0) {
-			Log.fine("gLV attempts: {0} attemptTimeout: {1} remainingTime: {2} (timeout: {3})", attempts, attemptTimeout, remainingTime, timeout);
+		//while (attempts < SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS && remainingTime > 0) {
+		while (remainingTime > 0 || (timeout == SystemConfiguration.NO_TIMEOUT || timeout == 0)) {
+			//Log.fine("gLV attemptTimeout: {0} remainingTime: {1} (timeout: {2})", attemptTimeout, remainingTime, timeout);
+			System.out.println("gLV timeout: "+timeout+" remainingTime: "+remainingTime+" (timeout: "+timeout+")");
 			lastResult = result;
-			attempts++;
+			//attempts++;
 			Interest getLatestInterest = null;
 			if (findASegment) {
 				getLatestInterest = firstBlockLatestVersionInterest(startingVersion, publisher);
@@ -602,19 +619,40 @@ public class VersioningProfile implements CCNProfile {
 				getLatestInterest.exclude().add(e);
 			}
 			
-			startTime = System.currentTimeMillis();
-			result = handle.get(getLatestInterest, attemptTimeout);
-			respondTime = System.currentTimeMillis() - startTime;
-			remainingTime = remainingTime - respondTime;
-			remainingNullTime = remainingNullTime - respondTime;
+			System.out.println("timeout "+timeout+" startTime: "+startTime+" elapsedTime: "+elapsedTime+" remainingTime: "+remainingTime +" new elapsedTime = "+(System.currentTimeMillis() - startTime));
+			
+			interestTime = System.currentTimeMillis();
+			if (timeout == SystemConfiguration.NO_TIMEOUT) {
+				result = handle.get(getLatestInterest, timeout);
+			}  else if (timeout == 0) {
+				result = handle.get(getLatestInterest, SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT);
+			} else {
+				result = handle.get(getLatestInterest, timeout - elapsedTime);
+			}
+			elapsedTime = System.currentTimeMillis() - startTime;
+			
+			respondTime = System.currentTimeMillis() - interestTime;
+			
+			if (result == null && (timeout == SystemConfiguration.NO_TIMEOUT || respondTime < timeout))
+				Log.warning("gLV: handle.get returned null and did not wait the full timeout time for the object (timeout: {0} responseTime: {1}", timeout, respondTime);
+			
+			remainingTime = timeout - elapsedTime;
+			//remainingNullTime = remainingNullTime - respondTime;
 			if (Log.isLoggable(Level.FINE)) {
 				Log.fine("gLV INTEREST: {0}", getLatestInterest);
-				Log.fine("gLV trying handle.get with timeout: {0}", attemptTimeout);
+				Log.fine("gLV trying handle.get with timeout: {0}", timeout);
 				Log.fine("gLVTime sending Interest from gLV at {0}", startTime);
 				Log.fine("gLVTime returned from handle.get in {0} ms",respondTime);				
 				Log.fine("gLV remaining time is now {0} ms", remainingTime);
 			}
-					
+			
+			System.out.println("gLV INTEREST: "+ getLatestInterest);
+			System.out.println("gLV trying handle.get with timeout: "+ timeout);
+			System.out.println("gLVTime sending Interest from gLV at "+ System.currentTimeMillis() +" started at: "+startTime);
+			System.out.println("gLVTime returned from handle.get in "+ respondTime+" ms");				
+			System.out.println("gLV remaining time is now "+ remainingTime+" ms");
+			
+			
 			if (null != result){
 				if (Log.isLoggable(Level.INFO))
 					Log.info("gLV getLatestVersion: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());
@@ -640,7 +678,15 @@ public class VersioningProfile implements CCNProfile {
 							Log.fine("gLV result did not verify!  doing retry!! {0}", retry);
 							Log.fine("gLVTime sending retry interest at {0}", System.currentTimeMillis());
 						}
-						result = handle.get(retry, attemptTimeout);
+						System.out.println("gLV result did not verify, doing retry "+retry);
+						System.out.println("sending retry at: "+System.currentTimeMillis());
+						System.out.println("timeout: "+timeout);
+						//try to send the interest with the response time the bad content object was returned with
+						if (timeout == 0)
+							result = handle.get(retry, SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT);
+						else
+							result = handle.get(retry, respondTime);
+							//result = handle.get(retry, timeout);
 						
 						if (result!=null) {
 							if (Log.isLoggable(Level.FINE))
@@ -658,6 +704,11 @@ public class VersioningProfile implements CCNProfile {
 						}
 					}	
 					//TODO  if this is the latest version and we exclude it, we might not have anything to send back...  we should reset the starting version
+					System.out.println("the latest version did not verify and we might not have anything to send back...");
+					if (lastResult == null)
+						System.out.println("lastResult is null...  we have nothing to send back");
+					else
+						System.out.println("lastResult is NOT null, we have something to send back!");
 				} 
 				if (result!=null) {
 					//else {
@@ -710,23 +761,28 @@ public class VersioningProfile implements CCNProfile {
 					
 						if (timeout == SystemConfiguration.NO_TIMEOUT) {
 							//we want to keep trying for something new
-							remainingTime = attemptTimeout;
-							attempts = 0;
+							//TODO:  we don't want to wait forever...  we have something to hand back.  try one more time and then hand back what we have
+							//for now, setting this time to the interest re-expression time, need to think about this
+							timeout = SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT;
+							remainingTime = SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT;
+							
+							//attempts = 0;
 						}
 						
 						if (timeout == 0) {
 							//caller just wants the first answer...
-							attempts = SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS;
+							//attempts = SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS;
 							remainingTime = 0;
+							//just need to set the timeout to something other than 0 or -1 so we don't loop again.
+							timeout = SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT;
 						}
 						
 						if (remainingTime > 0) {
 							//we still have time to try for a better answer
-							Log.fine("gLV we still have time to try for a better answer");
-							attemptTimeout = remainingTime;
+							Log.fine("gLV we still have time to try for a better answer: remaining time = {0}", remainingTime);
 						} else {
 							Log.fine("gLV time is up, return what we have");
-							attempts = SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS;
+							//attempts = SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS;
 						}
 					
 						
@@ -750,11 +806,21 @@ public class VersioningProfile implements CCNProfile {
 				}
 				else {
 					Log.fine("gLV we didn't get anything, and we haven't had anything at all... try with remaining long timeout");
-					attemptTimeout = remainingNullTime;
-					remainingTime = remainingNullTime;
+					//if remaining time is done..  then we should return null
+					if (remainingTime > 0) {
+						System.out.println("remaining time is "+remainingTime+", we didn't get anything...  should be done");
+						Log.warning("we did not get anything back from our interest, but we still have time remaining.  timeout: {0} elapsedTime {1} remainingTime {2}", timeout, elapsedTime, remainingTime);
+						System.out.println("this means that we got something back that didn't verify...  let it try with the remaining time");
+						timeout = remainingTime;
+						System.out.println("timeout: "+timeout+" remainingTime: "+remainingTime+" elapsedTime: "+elapsedTime);
+					}
+					
+					//attemptTimeout = remainingNullTime;
+					//remainingTime = remainingNullTime;
 				}
 			}
-			Log.fine("gLV (after) attempts: {0} attemptTimeout: {1} remainingTime: {2} (timeout: {3})", attempts, attemptTimeout, remainingTime, timeout);
+			//Log.fine("gLV (after) attemptTimeout: {0} remainingTime: {1} (timeout: {2})", attemptTimeout, remainingTime, timeout);
+
 			if (result!=null)
 				startingVersion = SegmentationProfile.segmentRoot(result.name());
 		}
