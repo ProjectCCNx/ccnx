@@ -275,7 +275,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		if (i >= 0) {
 			String[] args = CommandMarker.getArguments(interest.name().component(i));
 			if (null != args && args.length > 0) {
-				_server.getRepository().addFromFile(new File(args[0]));
+				_server.getRepository().bulkImport(new File(args[0]));
 			}
 		}
 	}

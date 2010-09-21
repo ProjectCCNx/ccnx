@@ -131,9 +131,8 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 		return null;
 	}
 
-	public void addFromFile(File fileName) throws RepositoryException {
-		// TODO Auto-generated method stub
-		
+	public void bulkImport(File fileName) throws RepositoryException {
+		// not supported
 	}
     
 }

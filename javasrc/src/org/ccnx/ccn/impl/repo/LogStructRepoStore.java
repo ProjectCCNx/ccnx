@@ -605,7 +605,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
 
-	public void addFromFile(File fileName) throws RepositoryException {
+	public void bulkImport(File fileName) throws RepositoryException {
 		if (!fileName.exists())
 			throw new RepositoryException("File does not exist: " + fileName);
 		synchronized (_currentFileIndex) {

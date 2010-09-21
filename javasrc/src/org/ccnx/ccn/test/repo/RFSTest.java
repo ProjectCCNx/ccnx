@@ -104,7 +104,7 @@ public class RFSTest extends RepoTestBase {
 		repolog2.saveContent(content);
 		checkData(repolog2, name, "Testing add by file");
 		repolog2.shutDown();
-		repolog.addFromFile(new File(_fileTestDir2, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1"));
+		repolog.bulkImport(new File(_fileTestDir2, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1"));
 		checkData(repolog, name, "Testing add by file");
 		repolog.shutDown();
 	}
