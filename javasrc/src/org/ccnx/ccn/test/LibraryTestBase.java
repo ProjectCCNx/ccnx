@@ -224,7 +224,7 @@ public class LibraryTestBase extends CCNTestBase {
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+					((CCNHandle)handle).getNetworkManager().setTap(SystemConfiguration.DEBUG_DATA_DIRECTORY + "/LibraryTestDebug_" + Integer.toString(id) + "_get");
 				} catch (IOException ie) {
 				}
 			}
@@ -253,7 +253,7 @@ public class LibraryTestBase extends CCNTestBase {
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+					((CCNHandle)handle).getNetworkManager().setTap(SystemConfiguration.DEBUG_DATA_DIRECTORY + "/LibraryTestDebug_" + Integer.toString(id) + "_put");
 				} catch (IOException ie) {
 				}
 			}
@@ -287,7 +287,7 @@ public class LibraryTestBase extends CCNTestBase {
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+					((CCNHandle)handle).getNetworkManager().setTap(SystemConfiguration.DEBUG_DATA_DIRECTORY + "/LibraryTestDebug_" + Integer.toString(id) + "_get");
 				} catch (IOException ie) {
 				}
 			}
@@ -353,7 +353,7 @@ public class LibraryTestBase extends CCNTestBase {
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+					((CCNHandle)handle).getNetworkManager().setTap(SystemConfiguration.DEBUG_DATA_DIRECTORY + "/LibraryTestDebug_" + Integer.toString(id) + "_put");
 				} catch (IOException ie) {
 				}
 			}
