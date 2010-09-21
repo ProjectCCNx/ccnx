@@ -428,6 +428,11 @@ public class CommandMarker {
 		}
 		
 		int argumentEnd = binaryArgumentStart(nameComponent);
+		if (argumentEnd >= 0) {
+			if (argumentEnd <= argumentStart+1)
+				return null;	// no Argument or other malformed data
+		} else
+			argumentEnd = nameComponent.length;
 		
 		String argString = new String(nameComponent, argumentStart+1, argumentEnd-argumentStart-1);
 		return argString.split(UTF8_ARGUMENT_SEPARATOR);

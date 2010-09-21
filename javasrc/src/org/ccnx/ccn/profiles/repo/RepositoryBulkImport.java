@@ -22,13 +22,13 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 
 public class RepositoryBulkImport {
 	public static boolean bulkImport(CCNHandle handle, String fileName, long timeout) throws IOException {
 		// Create an Interest
 		CommandMarker argMarker = CommandMarker.getMarker(CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.getBytes());
-		argMarker.addArgument(fileName);
-		ContentObject co = handle.get(new ContentName(new byte[][]{argMarker.getBytes()}), timeout);
+		ContentObject co = handle.get(new ContentName(new byte[][]{argMarker.addArgument(fileName), Interest.generateNonce()}), timeout);
 		return co != null;
 	}
 }

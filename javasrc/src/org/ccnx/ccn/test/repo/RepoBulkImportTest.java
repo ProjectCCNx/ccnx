@@ -16,7 +16,7 @@ public class RepoBulkImportTest extends RepoTestBase {
 	private final String Repository3 = "TestRepository3";
 	
 	@Test
-	public void testAddByFile() throws Exception {
+	public void testBulkImport() throws Exception {
 		
 		// Create some data to add
 		System.out.println("testing adding to repo via file in running repo");

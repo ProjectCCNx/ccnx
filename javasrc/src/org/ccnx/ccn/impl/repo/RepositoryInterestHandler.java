@@ -71,9 +71,9 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			} else if (RepositoryOperations.isCheckedWriteOperation(interest)) {
 				if (!allowGenerated(interest)) return true;
 				startWriteChecked(interest);				
-			} else if (RepositoryOperations.isAddFileOperation(interest)) {
+			} else if (RepositoryOperations.isBulkImportOperation(interest)) {
 				if (!allowGenerated(interest)) return true;
-				addToRepoViaFile(interest);				
+				addBulkDataToRepo(interest);				
 			} else {
 				ContentObject content = _server.getRepository().getContent(interest);
 				if (content != null) {
@@ -272,7 +272,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 * @throws IOException 
 	 * @throws ContentEncodingException 
 	 */
-	private void addToRepoViaFile(Interest interest) throws RepositoryException, ContentEncodingException, IOException {
+	private void addBulkDataToRepo(Interest interest) throws RepositoryException, ContentEncodingException, IOException {
 		int i = CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.findMarker(interest.name());
 		if (i >= 0) {
 			String[] args = CommandMarker.getArguments(interest.name().component(i));
