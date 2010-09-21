@@ -95,6 +95,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 
 	Map<Integer,RepoFile> _files;
 	RepoFile _activeWriteFile = null;
+	Integer _currentFileIndex = 0;
 	ContentTree _index;
 	
 	public class RepoFile {
@@ -174,64 +175,68 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			if (filenames[i].startsWith(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX)) {
 				String indexPart = filenames[i].substring(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX.length());
 				if (null != indexPart && indexPart.length() > 0) {
-					try {
-						Integer index = Integer.parseInt(indexPart);
-						if (index > max) {
-							max = index.intValue();
-						}
-						RepoFile rfile = new RepoFile();
-						rfile.file = new File(_repositoryFile,filenames[i]);
-						rfile.openFile = new RandomAccessFile(rfile.file, "r");
-						InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
-						
-						if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
-							Log.fine(Log.FAC_REPO, "Creating index for {0}", filenames[i]);
-						}
-						while (true) {
-							FileRef ref = new FileRef();
-							ref.id = index.intValue();
-							ref.offset = rfile.openFile.getFilePointer();
-							if(ref.offset > 0)
-								ref.offset = ref.offset - is.available();
-							ContentObject tmp = new ContentObject();
-							try {
-								if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
-									//tmp.decode(is);
-									tmp.decode(is);
-								}
-								else{
-									if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-										Log.info(Log.FAC_REPO, "at the end of the file");
-									}
-									rfile.openFile.close();
-									rfile.openFile = null;
-									break;
-								}
-
-							} catch (ContentDecodingException e) {
-								Log.logStackTrace(Level.WARNING, e);
-								e.printStackTrace();
-								// Failed to decode, must be end of this one
-								//added check for end of file above
-								rfile.openFile.close();
-								rfile.openFile = null;
-								break;
-							}
-							_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
-						}
-						_files.put(index, rfile);
-					} catch (NumberFormatException e) {
-						// Not valid file
-						Log.warning(Log.FAC_REPO, "Invalid file name " + filenames[i]);
-					} catch (FileNotFoundException e) {
-						Log.warning(Log.FAC_REPO, "Unable to open file to create index: " + filenames[i]);
-					} catch (IOException e) {
-						Log.warning(Log.FAC_REPO, "IOException reading file to create index: " + filenames[i]);
+					Integer index = Integer.parseInt(indexPart);
+					if (index > max) {
+						max = index.intValue();
 					}
+					createIndex(filenames[i], index);
 				}
 			}
 		}
 		return new Integer(max);
+	}
+	
+	private void createIndex(String fileName, Integer index) {
+		try {
+			RepoFile rfile = new RepoFile();
+			rfile.file = new File(_repositoryFile,fileName);
+			rfile.openFile = new RandomAccessFile(rfile.file, "r");
+			InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
+			
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
+				Log.fine(Log.FAC_REPO, "Creating index for {0}", fileName);
+			}
+			while (true) {
+				FileRef ref = new FileRef();
+				ref.id = index.intValue();
+				ref.offset = rfile.openFile.getFilePointer();
+				if(ref.offset > 0)
+					ref.offset = ref.offset - is.available();
+				ContentObject tmp = new ContentObject();
+				try {
+					if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
+						//tmp.decode(is);
+						tmp.decode(is);
+					}
+					else{
+						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+							Log.info(Log.FAC_REPO, "at the end of the file");
+						}
+						rfile.openFile.close();
+						rfile.openFile = null;
+						break;
+					}
+
+				} catch (ContentDecodingException e) {
+					Log.logStackTrace(Level.WARNING, e);
+					e.printStackTrace();
+					// Failed to decode, must be end of this one
+					//added check for end of file above
+					rfile.openFile.close();
+					rfile.openFile = null;
+					break;
+				}
+				_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
+			}
+			_files.put(index, rfile);
+		} catch (NumberFormatException e) {
+			// Not valid file
+			Log.warning(Log.FAC_REPO, "Invalid file name " +fileName);
+		} catch (FileNotFoundException e) {
+			Log.warning(Log.FAC_REPO, "Unable to open file to create index: " + fileName);
+		} catch (IOException e) {
+			Log.warning(Log.FAC_REPO, "IOException reading file to create index: " + fileName);
+		}
 	}
 	
 	/**
@@ -324,23 +329,19 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 
 		// Internal initialization
 		_files = new HashMap<Integer, RepoFile>();
-		int maxFileIndex = createIndex();
+		_currentFileIndex = createIndex();
 		
-		// Internal initialization
-		//moved the following...  getContent depends on having an index
-		//_files = new HashMap<Integer, RepoFile>();
-		//int maxFileIndex = createIndex();
 		try {
-			if (maxFileIndex == 0) {
-				maxFileIndex = 1; // the index of a file we will actually write
+			if (_currentFileIndex == 0) {
+				_currentFileIndex = 1; // the index of a file we will actually write
 				RepoFile rfile = new RepoFile();
 				rfile.file = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX+"1");
 				rfile.openFile = new RandomAccessFile(rfile.file, "rw");
 				rfile.nextWritePos = 0;
-				_files.put(new Integer(maxFileIndex), rfile);
+				_files.put(new Integer(_currentFileIndex), rfile);
 				_activeWriteFile = rfile;
 			} else {
-				RepoFile rfile = _files.get(new Integer(maxFileIndex));
+				RepoFile rfile = _files.get(new Integer(_currentFileIndex));
 				long cursize = rfile.file.length();
 				rfile.openFile = new RandomAccessFile(rfile.file, "rw");
 				rfile.nextWritePos = cursize;
@@ -348,7 +349,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			}
 			
 		} catch (FileNotFoundException e) {
-			Log.warning(Log.FAC_REPO, "Error opening content output file index " + maxFileIndex);
+			Log.warning(Log.FAC_REPO, "Error opening content output file index " + _currentFileIndex);
 		}
 			
 		// Verify stored policy info
@@ -604,4 +605,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
 
+	public void addFromFile(File fileName) throws RepositoryException {
+		if (!fileName.exists())
+			throw new RepositoryException("File does not exist: " + fileName);
+		File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
+		if (!fileName.renameTo(repoFile))
+			throw new RepositoryException("Can not rename file: " + fileName);
+		createIndex(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex, _currentFileIndex);
+		_currentFileIndex++;
+	}
 }

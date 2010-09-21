@@ -107,6 +107,8 @@ public interface RepositoryStore {
 	 */
 	public boolean hasContent(ContentName name) throws RepositoryException;
 	
+	public void addFromFile(File fileName) throws RepositoryException;
+	
 	/**
 	 * Get namespace interest
 	 * @return

@@ -130,5 +130,10 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 	public Object getStatus(String type) {
 		return null;
 	}
+
+	public void addFromFile(File fileName) throws RepositoryException {
+		// TODO Auto-generated method stub
+		
+	}
     
 }

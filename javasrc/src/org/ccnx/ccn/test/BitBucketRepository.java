@@ -111,4 +111,9 @@ public class BitBucketRepository extends RepositoryStoreBase {
 	public boolean hasContent(ContentName name) throws RepositoryException {
 		return false;
 	}
+
+	public void addFromFile(File fileName) throws RepositoryException {
+		// TODO Auto-generated method stub
+		
+	}
 }
