@@ -796,6 +796,15 @@ public class VersioningProfile implements CCNProfile {
 			} //we got something back
 			
 			if (result == null) {
+				
+				//This check is added for the case where the underlying handle.get call did not respect the timeout.
+				//This should not happen in regular operation, but is a current behavior by an overridden handle
+				//for junit testing.  For now, log at a warning and return the object to avoid slowing the test suite.
+				if (respondTime == 0) {
+					Log.warning("gLV: handle.get returned null and did not wait the full timeout time for the object (timeout: {0} responseTime: {1}", timeout, respondTime);
+					return null;
+				}
+				
 				Log.fine("gLV we didn't get anything");
 				Log.info("getFirstBlockOfLatestVersion: no block available for later version of {0}", startingVersion);
 				//we didn't get a new version...  we can return the last one we received if it isn't null.
