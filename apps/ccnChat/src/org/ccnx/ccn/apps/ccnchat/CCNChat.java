@@ -27,6 +27,8 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.util.HashMap;
+import java.util.logging.Level;
 
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
@@ -38,10 +40,12 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.io.content.CCNStringObject;
+import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 
 /**
  * Based on a client/server chat example in Robert Sedgewick's Algorithms
@@ -58,6 +62,11 @@ public class CCNChat extends JFrame implements ActionListener {
 	// and don't have to treat our inputs differently than others.
 	protected CCNStringObject _readString;
 	protected CCNStringObject _writeString;
+	
+	// PM: Need these for storing the friendly names. 
+	protected CCNStringObject _readNameString;
+	protected CCNStringObject _writeNameString;
+	
 	protected Timestamp _lastUpdate;
 	boolean _finished = false;
 	
@@ -69,11 +78,22 @@ public class CCNChat extends JFrame implements ActionListener {
     protected JTextArea  _messagePane = new JTextArea(10, 32);
     private JTextField _typedText   = new JTextField(32);
 
+    // added by PM
+    // this is where we store the friendly name of the user
+    private HashMap<PublisherPublicKeyDigest, String> _friendlyNameToDigestHash;
+    private ContentName _friendlyNameNamespace;
+    private String _namespaceStr;
+        
+    
     public CCNChat(String namespace) throws MalformedContentNameStringException {
 
     	this._namespace = ContentName.fromURI(namespace);
-
-        // close output stream  - this will cause listen() to stop and exit
+      	
+    	// added by PM; commented out for now.
+    	this._namespaceStr = namespace;
+      	_friendlyNameToDigestHash = new HashMap<PublisherPublicKeyDigest, String>();
+      	
+    	// close output stream  - this will cause listen() to stop and exit
         addWindowListener(
             new WindowAdapter() {
                 public void windowClosing(WindowEvent e) {
@@ -139,15 +159,48 @@ public class CCNChat extends JFrame implements ActionListener {
         _typedText.requestFocusInWindow();
 	}
 	
-	public void listen() throws ConfigurationException, IOException {
-		_readString = new CCNStringObject(_namespace, (String)null, SaveType.RAW, CCNHandle.open());
-		_readString.updateInBackground(true);
+	public void listen() throws ConfigurationException, IOException, MalformedContentNameStringException {
+		
+		CCNHandle tempReadHandle = CCNHandle.open();
+		CCNHandle tempWriteHandle = CCNHandle.open();
+		
+		
+		//_readString = new CCNStringObject(_namespace, (String)null, SaveType.RAW, CCNHandle.open());
+		_readString = new CCNStringObject(_namespace, (String)null, SaveType.RAW, tempReadHandle);
+		_readString.updateInBackground(true); 
 		
 		String introduction = UserConfiguration.userName() + " has entered " + _namespace;
-		_writeString = new CCNStringObject(_namespace, introduction, SaveType.RAW, CCNHandle.open());
+		//_writeString = new CCNStringObject(_namespace, introduction, SaveType.RAW, CCNHandle.open());
+		_writeString = new CCNStringObject(_namespace, introduction, SaveType.RAW, tempWriteHandle);
 		_writeString.save();
+
+		// move this to a function later...... 
+		// Will now publish the user's friendly name under a new ContentName
+		String friendlyNameNamespaceStr = _namespaceStr + "/members/"; // + _writeString.getContentPublisher(); 
+		_friendlyNameNamespace = KeyProfile.keyName(ContentName.fromURI(friendlyNameNamespaceStr), _writeString.getContentPublisher());
+		System.out.println("**** Friendly Namespace is " + _friendlyNameNamespace);
+		
+		//read the string here.....	
+		_readNameString = new CCNStringObject(_friendlyNameNamespace, (String)null, SaveType.RAW, tempReadHandle);
+		_readNameString.updateInBackground(true);
+		//_readNameString.update(2000);				
+		
+		String publishedNameStr = UserConfiguration.userName();
+		System.out.println("*****I am adding my own friendly name as " + publishedNameStr);
+		_writeNameString = new CCNStringObject(_friendlyNameNamespace, publishedNameStr, SaveType.RAW, tempWriteHandle);
+		_writeNameString.save();
+		
+		
+		try {
+			addNameToHash(_writeNameString.getContentPublisher(), _writeNameString.string());
+		}
+		catch (IOException e) {
+			System.out.println("Unable to read from " + _writeNameString + "for writing to hashMap");
+		}
+		
 		
 		// Need to do synchronization for updates that come in while we're processing last one.
+		
 		while (!_finished) {
 			try {
 				synchronized(_readString) {
@@ -155,16 +208,68 @@ public class CCNChat extends JFrame implements ActionListener {
 				}
 			} catch (InterruptedException e) {
 			}
+			
 			if (_readString.isSaved()) {
 				Timestamp thisUpdate = _readString.getVersion();
 				if ((null == _lastUpdate) || thisUpdate.after(_lastUpdate)) {
 					System.out.println("Got an update: " + _readString.getVersion());
-					_lastUpdate = thisUpdate;
-					showMessage(_readString.getContentPublisher(), _readString.getPublisherKeyLocator(), thisUpdate, _readString.string());
-				} else {
+					_lastUpdate = thisUpdate;	
+					
+					//lookup friendly name to display for this user.....
+					String userFriendlyName = getFriendlyName(_readString.getContentPublisher());
+								
+						if (userFriendlyName.equals("")) {
+						
+							// Its not in the hashMap.. So, try and read the user's friendly name from the ContentName and then add it to the hashMap....
+						String userNameStr = _namespaceStr + "/members/";  
+						_friendlyNameNamespace = KeyProfile.keyName(ContentName.fromURI(userNameStr), _readString.getContentPublisher());
+						//System.out.println("**** Trying to read from friendly Namespace for this user: " + _friendlyNameNamespace);
+						
+						try {
+							_readNameString = new CCNStringObject(_friendlyNameNamespace, (String)null, SaveType.RAW, tempReadHandle);
+						} catch (Exception e) {
+						
+						}
+						
+						_readNameString.update(2000); // for now, I am just waiting for 2 secs.. Otherwise, I might have to update in background and have a callback
+						
+						
+						 if (_readNameString.available()) {
+							 
+							if (! _readString.getContentPublisher().equals(_readNameString.getContentPublisher())) {
+								//System.out.println("readString's publisher is " + _readString.getContentPublisher() + " readNameString's publisher is " + _readNameString.getContentPublisher());
+								 showMessage(_readString.getContentPublisher(), _readString.getPublisherKeyLocator(), thisUpdate, _readString.string());						 
+							} else { 
+													 
+							 //System.out.println("Found!!! friendly name  is " + _readNameString.string() + " for digest " + _readNameString.getContentPublisher().toString());
+							 addNameToHash(_readNameString.getContentPublisher(), _readNameString.string());
+							 showMessage(_readNameString.string(), thisUpdate, _readString.string());
+							}
+						 } else {
+							 showMessage(_readString.getContentPublisher(), _readString.getPublisherKeyLocator(), thisUpdate, _readString.string());
+						 }
+						 
+					} else {
+						//System.out.println("***** Got friendly name from hashMap itself: " + userFriendlyName);
+						showMessage(userFriendlyName, thisUpdate, _readString.string());	
+					}				
 				}
 			}
 		}
+	}
+	
+	protected String getFriendlyName(PublisherPublicKeyDigest digest) {
+		
+		if (_friendlyNameToDigestHash.containsKey(digest)) {
+			return _friendlyNameToDigestHash.get(digest);
+		} else {
+			//System.out.println("We DON'T have an entry in our hash for this " + digest);
+		return "";
+		}
+	}
+	
+	protected void addNameToHash(PublisherPublicKeyDigest digest, String friendlyName) {
+		_friendlyNameToDigestHash.put(digest,friendlyName);	
 	}
 	
 	/**
