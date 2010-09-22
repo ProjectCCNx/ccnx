@@ -617,7 +617,7 @@ public class CCNFlowControl implements CCNFilterListener {
 					}
 					throw new IOException("Put(s) with no matching interests - size is " + _holdingArea.size());
 				}
-				startSize = _holdingArea.size();
+				startSize = _nOut;
 			}
 		}
 	}
