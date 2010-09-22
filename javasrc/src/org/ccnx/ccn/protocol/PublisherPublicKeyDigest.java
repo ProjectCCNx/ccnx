@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -91,7 +91,10 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 	 * @throws IOException 
 	 */
 	public PublisherPublicKeyDigest(String publisherPublicKeyDigest) throws IOException {
-		this(DataUtils.base64Decode(publisherPublicKeyDigest.getBytes()));
+		_publisherPublicKeyDigest = DataUtils.base64Decode(publisherPublicKeyDigest.getBytes());
+		if (_publisherPublicKeyDigest.length != PublisherID.PUBLISHER_ID_LEN) {
+			throw new IOException("Not a valid base64Binary encoding of a PublisherPublicKeyDigest" + publisherPublicKeyDigest);
+		}
 	}
 	
 	/**
@@ -168,13 +171,11 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 		if (null == _publisherPublicKeyDigest) {
 			throw new ContentDecodingException("Cannot parse publisher key digest.");
 		}
-		if (_publisherPublicKeyDigest.length > PublisherID.PUBLISHER_ID_LEN) {
+		if (_publisherPublicKeyDigest.length != PublisherID.PUBLISHER_ID_LEN) {
 			if (Log.isLoggable(Level.WARNING)) {
-				Log.warning("Truncating too-long PublisherPublicKeyDigest: {0}", CCNDigestHelper.printBytes(_publisherPublicKeyDigest, 32));
+				Log.warning("Wrong length for PublisherPublicKeyDigest: {0}", CCNDigestHelper.printBytes(_publisherPublicKeyDigest, 32));
 			}
-			byte [] digest = new byte[PublisherID.PUBLISHER_ID_LEN];
-			System.arraycopy(_publisherPublicKeyDigest, 0, digest, 0, PublisherID.PUBLISHER_ID_LEN);
-			_publisherPublicKeyDigest = digest;
+			_publisherPublicKeyDigest = new PublisherPublicKeyDigest(_publisherPublicKeyDigest).digest();
 		}
 	}
 
