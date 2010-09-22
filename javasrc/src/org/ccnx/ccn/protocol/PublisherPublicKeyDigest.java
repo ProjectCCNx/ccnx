@@ -80,9 +80,13 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 			throw new IllegalArgumentException("This is not a valid publisher public key digest!");
 		}
 		_publisherPublicKeyDigest = new byte[PublisherID.PUBLISHER_ID_LEN];
-		
-		int len = Math.min(publisherPublicKeyDigest.length, PublisherID.PUBLISHER_ID_LEN); 
-		System.arraycopy(publisherPublicKeyDigest, 0, _publisherPublicKeyDigest, (PublisherID.PUBLISHER_ID_LEN-len), len);
+		int len = publisherPublicKeyDigest.length;
+		if (len > PublisherID.PUBLISHER_ID_LEN) {
+			len = PublisherID.PUBLISHER_ID_LEN;
+			Log.warning("Truncating PublisherPublicKeyDigest to {0} bytes", len);
+		}
+		System.arraycopy(publisherPublicKeyDigest, 0, _publisherPublicKeyDigest,
+						 (PublisherID.PUBLISHER_ID_LEN-len), len);
 	}	
 	
 	/**
@@ -163,10 +167,8 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 	}
 	
 	@Override
-	public void decode(XMLDecoder decoder) throws ContentDecodingException {
-		
-		// The format of a publisher ID is an octet string.
-
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {		
+		// The format of a publisher ID is an octet string of the correct length.
 		_publisherPublicKeyDigest = decoder.readBinaryElement(getElementLabel());
 		if (null == _publisherPublicKeyDigest) {
 			throw new ContentDecodingException("Cannot parse publisher key digest.");
@@ -184,8 +186,6 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 		if (!validate()) {
 			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		// The format of a publisher ID is:
-		// <PublisherID type=<type> id_content />
 		encoder.writeElement(getElementLabel(), digest());
 	}
 	
@@ -208,6 +208,9 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 	}
 
 	@Override
+	/**
+	 * The string representation is base64Binary (RFC 2045, section 6.8).
+	 */
 	public String toString() {
 		return DataUtils.base64Encode(digest(), PublisherID.PUBLISHER_ID_LEN*2);
 	}
