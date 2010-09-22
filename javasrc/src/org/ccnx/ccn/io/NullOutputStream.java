@@ -36,5 +36,15 @@ public class NullOutputStream extends OutputStream {
 	public void write(int b) throws IOException {
 		// Do nothing.
 	}
+    
+    @Override
+	public void write(byte [] b) throws IOException {
+        // Do nothing.
+	}
+    
+	@Override
+	public void write(byte[] b, int off, int len) throws IOException {
+        // Do nothing.
+	}
 
 }
