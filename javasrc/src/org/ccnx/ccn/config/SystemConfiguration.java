@@ -205,7 +205,7 @@ public class SystemConfiguration {
 	 */
 	protected static final String GLV_ATTEMPT_TIMEOUT_PROPERTY = "org.ccnx.glv.attempt.timeout";
 	protected final static String GLV_ATTEMPT_TIMEOUT_ENV_VAR = "GLV_ATTEMPT_TIMEOUT";
-	public final static int GLV_ATTEMPT_TIMEOUT_DEFAULT = MEDIUM_TIMEOUT;
+	public final static int GLV_ATTEMPT_TIMEOUT_DEFAULT = SHORT_TIMEOUT;
 	public static int GLV_ATTEMPT_TIMEOUT = GLV_ATTEMPT_TIMEOUT_DEFAULT;
 	
 	/**
