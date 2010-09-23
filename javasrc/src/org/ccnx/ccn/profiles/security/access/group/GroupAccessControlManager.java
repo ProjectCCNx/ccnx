@@ -495,6 +495,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		PublicKeyObject pko = new PublicKeyObject(identity, myPublicKey, SaveType.REPOSITORY, handle());
 		pko.save();
+		Log.finer(Log.FAC_ACCESSCONTROL, "Published identity {0}", identity);
 		_myIdentities.add(identity);
 	}
 
@@ -503,6 +504,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * Add an identity to my set. Assume the key is already published.
 	 */
 	public void addMyIdentity(ContentName identity) {
+		Log.finer(Log.FAC_ACCESSCONTROL, "Adding identity {0}", identity);
 		_myIdentities.add(identity);
 	}
 
