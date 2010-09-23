@@ -77,7 +77,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	public enum SaveType {
-		RAW ("RAW"), REPOSITORY ("REPOSITORY");
+		RAW ("RAW"), REPOSITORY ("REPOSITORY"), LOCALREPOSITORY("LOCALREPOSITORY");
 
 		SaveType(String str) { this._str = str; }
 		public String value() { return _str; }

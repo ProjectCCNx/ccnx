@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx command line utilities
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -73,9 +73,9 @@ public abstract class CommonOutput {
 				ostream = new CCNFileOutputStream(nodeName, handle);
 		} else {
 			if (CommonParameters.unversioned)
-				ostream = new RepositoryOutputStream(nodeName, handle);
+				ostream = new RepositoryOutputStream(nodeName, handle, CommonParameters.local);
 			else
-				ostream = new RepositoryFileOutputStream(nodeName, handle);
+				ostream = new RepositoryFileOutputStream(nodeName, handle, CommonParameters.local);
 		}
 		if (CommonParameters.timeout != null)
 			ostream.setTimeout(CommonParameters.timeout);
