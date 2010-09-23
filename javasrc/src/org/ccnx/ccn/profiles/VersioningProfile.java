@@ -563,11 +563,11 @@ public class VersioningProfile implements CCNProfile {
 		if (timeout == SystemConfiguration.NO_TIMEOUT) {
 			//glv called with no timeout...  should probably return what we have as soon as we have something
 			//to return and have suffered a timeout
-			System.out.println("gLV called with NO_TIMEOUT");
+			Log.finest("gLV called with NO_TIMEOUT");
 			
 			//if something comes back, we should try for one more interest and then return what we have
 		} else if (timeout == 0) {
-			System.out.println("gLV called with timeout = 0, should just return the first thing we get");
+			Log.finest("gLV called with timeout = 0, should just return the first thing we get");
 		}
 				
 		ContentName prefix = startingVersion;
@@ -582,8 +582,7 @@ public class VersioningProfile implements CCNProfile {
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
 		
 		while ( (remainingTime > 0 && elapsedTime < timeout) || (timeout == SystemConfiguration.NO_TIMEOUT || timeout == 0)) {
-			//Log.fine("gLV attemptTimeout: {0} remainingTime: {1} (timeout: {2})", attemptTimeout, remainingTime, timeout);
-			System.out.println("gLV timeout: "+timeout+" remainingTime: "+remainingTime+" (timeout: "+timeout+")");
+			Log.finer("gLV timeout: {0} remainingTime: {1} attemptTimeout: {2}", timeout, remainingTime, attemptTimeout);
 			lastResult = result;
 			//attempts++;
 			Interest getLatestInterest = null;
@@ -600,25 +599,23 @@ public class VersioningProfile implements CCNProfile {
 				getLatestInterest.exclude().add(e);
 			}
 			
-			System.out.println("timeout "+timeout+" startTime: "+startTime+" elapsedTime: "+elapsedTime+" remainingTime: "+remainingTime +" new elapsedTime = "+(System.currentTimeMillis() - startTime));
+			Log.finer("timeout {0} startTime: {1} elapsedTime: {2} remainingTime: {3} new elapsedTime = {4}", timeout, startTime, elapsedTime, remainingTime, (System.currentTimeMillis() - startTime));
 			
 			interestTime = System.currentTimeMillis();
 			long tempT;
 			if (timeout == SystemConfiguration.NO_TIMEOUT) {
-				result = handle.get(getLatestInterest, timeout);
 				tempT = timeout;
 			}  else if (timeout == 0) {
-				result = handle.get(getLatestInterest, attemptTimeout);
 				tempT = attemptTimeout;
 			} else {
 				if (remainingTime < timeout - elapsedTime) {
-					result = handle.get(getLatestInterest, remainingTime);
 					tempT = remainingTime;
 				} else {
-					result = handle.get(getLatestInterest, timeout - elapsedTime);
 					tempT = timeout - elapsedTime;
 				}
 			}
+			result = handle.get(getLatestInterest, tempT);
+			
 			elapsedTime = System.currentTimeMillis() - startTime;
 			
 			respondTime = System.currentTimeMillis() - interestTime;
@@ -631,18 +628,11 @@ public class VersioningProfile implements CCNProfile {
 			remainingTime = timeout - elapsedTime;
 			if (Log.isLoggable(Level.FINE)) {
 				Log.fine("gLV INTEREST: {0}", getLatestInterest);
-				Log.fine("gLV trying handle.get with timeout: {0}", timeout);
-				Log.fine("gLVTime sending Interest from gLV at {0}", startTime);
-				Log.fine("gLVTime returned from handle.get in {0} ms",respondTime);				
+				Log.fine("gLV trying handle.get with timeout: {0}", tempT);
+				Log.fine("gLVTime sending Interest from gLV at {0} started at: {1}", System.currentTimeMillis(), startTime);
+				Log.fine("gLVTime returned from handle.get in {0} ms",respondTime);
 				Log.fine("gLV remaining time is now {0} ms", remainingTime);
 			}
-			
-			System.out.println("gLV INTEREST: "+ getLatestInterest);
-			System.out.println("gLV trying handle.get with timeout: "+ tempT);
-			System.out.println("gLVTime sending Interest from gLV at "+ System.currentTimeMillis() +" started at: "+startTime);
-			System.out.println("gLVTime returned from handle.get in "+ respondTime+" ms");				
-			System.out.println("gLV remaining time is now "+ remainingTime+" ms");
-			
 			
 			if (null != result){
 				if (Log.isLoggable(Level.INFO))
@@ -669,15 +659,12 @@ public class VersioningProfile implements CCNProfile {
 							Log.fine("gLV result did not verify!  doing retry!! {0}", retry);
 							Log.fine("gLVTime sending retry interest at {0}", System.currentTimeMillis());
 						}
-						System.out.println("gLV result did not verify, doing retry "+retry);
-						System.out.println("sending retry at: "+System.currentTimeMillis());
-						System.out.println("timeout: "+timeout);
+						
 						//try to send the interest with the response time the bad content object was returned with
 						if (timeout == 0)
-							result = handle.get(retry, SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT);
+							result = handle.get(retry, attemptTimeout);
 						else
 							result = handle.get(retry, respondTime);
-							//result = handle.get(retry, timeout);
 						
 						if (result!=null) {
 							if (Log.isLoggable(Level.FINE))
@@ -695,11 +682,13 @@ public class VersioningProfile implements CCNProfile {
 						}
 					}	
 					//TODO  if this is the latest version and we exclude it, we might not have anything to send back...  we should reset the starting version
-					System.out.println("the latest version did not verify and we might not have anything to send back...");
-					if (lastResult == null)
-						System.out.println("lastResult is null...  we have nothing to send back");
-					else
-						System.out.println("lastResult is NOT null, we have something to send back!");
+					if (Log.isLoggable(Level.FINE)) {
+						Log.fine("the latest version did not verify and we might not have anything to send back...");
+						if (lastResult == null)
+							Log.fine("lastResult is null...  we have nothing to send back");
+						else
+							Log.fine("lastResult is NOT null, we have something to send back!");
+					}
 				} 
 				if (result!=null) {
 					//else {
@@ -811,11 +800,8 @@ public class VersioningProfile implements CCNProfile {
 					Log.fine("gLV we didn't get anything, and we haven't had anything at all... try with remaining long timeout");
 					//if remaining time is done..  then we should return null
 					if (remainingTime > 0) {
-						System.out.println("remaining time is "+remainingTime+", we didn't get anything...  should be done");
-						Log.warning("we did not get anything back from our interest, but we still have time remaining.  timeout: {0} elapsedTime {1} remainingTime {2}", timeout, elapsedTime, remainingTime);
-						System.out.println("this means that we got something back that didn't verify...  let it try with the remaining time");
+						Log.fine("we did not get anything back from our interest, but we still have time remaining.  timeout: {0} elapsedTime {1} remainingTime {2}", timeout, elapsedTime, remainingTime);
 						timeout = remainingTime;
-						System.out.println("timeout: "+timeout+" remainingTime: "+remainingTime+" elapsedTime: "+elapsedTime);
 					}
 				}
 			}
