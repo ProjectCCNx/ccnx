@@ -305,12 +305,13 @@ public class GroupManager {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 				Log.finer(Log.FAC_ACCESSCONTROL, "amCurrentGroupMember: {0} is a member of group {1}", lr.targetName(), group.groupName());
 			}
-			if (isGroup(lr)) {
+			GroupManager gm = _accessManager.groupManager(lr.targetName().parent());
+			if (gm != null && gm.isGroup(lr)) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 					Log.finer(Log.FAC_ACCESSCONTROL, "amCurrentGroupMember: {0} is itself a group.", lr.targetName());
 				}
 				String groupFriendlyName = GroupAccessControlProfile.groupNameToFriendlyName(lr.targetName());
-				if (amCurrentGroupMember(groupFriendlyName)) {
+				if (gm.amCurrentGroupMember(groupFriendlyName)) {
 					_myGroupMemberships.add(groupFriendlyName);
 					return true;
 				} else {
