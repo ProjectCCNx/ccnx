@@ -52,7 +52,7 @@ public class Log {
 	 * Allow override on command line or from configuration file.
 	 */
 	public static final String DEFAULT_APPLICATION_CLASS =
-		"org.ccnx.ccn.CCNHandle";
+		"ccnx";
 
 	public static final String DEFAULT_LOG_FILE = "ccn_";
 	public static final String DEFAULT_LOG_SUFFIX = ".log";
@@ -313,9 +313,6 @@ public class Log {
 		}
 		if (null != theHandler) {
 			_systemLogger.addHandler(theHandler);
-			for (int i = FAC_DEFAULT; i < _facilityLoggers.length; i++) {
-				_facilityLoggers[i].addHandler(theHandler);
-			}
 		}
 		// Could just do a console handler if the file won't open.
 		// Do that eventually, for debugging put in both.
@@ -344,6 +341,10 @@ public class Log {
 	// deprecated
 	public static String getApplicationClass() {
 		return DEFAULT_APPLICATION_CLASS;
+	}
+
+	public static String getApplicationClass(int facility) {
+		return FAC_NAME[facility];
 	}
 
 	public static void exitApplication() {
