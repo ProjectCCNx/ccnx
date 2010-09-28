@@ -578,6 +578,7 @@
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoIOTest.class"/>
+					<include name="org/ccnx/ccn/test/repo/RepoBulkImportTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
