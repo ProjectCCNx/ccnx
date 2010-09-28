@@ -560,11 +560,12 @@ public class VersioningProfile implements CCNProfile {
 		long respondTime;
 		long remainingTime = timeout;
 		long attemptTimeout = SystemConfiguration.GLV_ATTEMPT_TIMEOUT;
+		boolean noTimeout = false;
 		if (timeout == SystemConfiguration.NO_TIMEOUT) {
 			//glv called with no timeout...  should probably return what we have as soon as we have something
 			//to return and have suffered a timeout
 			Log.finest("gLV called with NO_TIMEOUT");
-			
+			noTimeout = true;
 			//if something comes back, we should try for one more interest and then return what we have
 		} else if (timeout == 0) {
 			Log.finest("gLV called with timeout = 0, should just return the first thing we get");
@@ -581,7 +582,7 @@ public class VersioningProfile implements CCNProfile {
 		
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
 		
-		while ( (remainingTime > 0 && elapsedTime < timeout) || (timeout == SystemConfiguration.NO_TIMEOUT || timeout == 0)) {
+		while ( (remainingTime > 0 && elapsedTime < timeout) || (noTimeout || timeout == 0)) {
 			Log.finer("gLV timeout: {0} remainingTime: {1} attemptTimeout: {2}", timeout, remainingTime, attemptTimeout);
 			lastResult = result;
 			//attempts++;
@@ -603,7 +604,7 @@ public class VersioningProfile implements CCNProfile {
 			
 			interestTime = System.currentTimeMillis();
 			long tempT;
-			if (timeout == SystemConfiguration.NO_TIMEOUT) {
+			if (noTimeout) {
 				tempT = timeout;
 			}  else if (timeout == 0) {
 				tempT = attemptTimeout;
@@ -737,7 +738,7 @@ public class VersioningProfile implements CCNProfile {
 						//this could be our answer...  set to lastResult and see if we have time to do better
 						lastResult = result;
 					
-						if (timeout == SystemConfiguration.NO_TIMEOUT) {
+						if (noTimeout) {
 							//we want to keep trying for something new
 							//we don't want to wait forever...  we have something to hand back.  try one more time and then hand back what we have
 							timeout = attemptTimeout;
