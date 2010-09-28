@@ -742,15 +742,11 @@ public class VersioningProfile implements CCNProfile {
 							//we don't want to wait forever...  we have something to hand back.  try one more time and then hand back what we have
 							timeout = attemptTimeout;
 							remainingTime = attemptTimeout;
-						}
-						
-						if (timeout == 0) {
+						} else if (timeout == 0) {
 							//caller just wants the first answer...
 							Log.fine("gLV we got an answer and the caller wants the first thing we found, returning");
 							return result;
-						}
-						
-						if (remainingTime > 0) {
+						} else if (remainingTime > 0) {
 							//we still have time to try for a better answer, but we shouldn't wait the full timeout
 							//The full timeout is the time to wait until there the answer is null.
 							//now we should wait the gLV attempt time.
