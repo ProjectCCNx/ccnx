@@ -19,11 +19,13 @@ package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -68,8 +70,7 @@ public class LatestVersionTest {
 	 */
 	@Before
 	public void setUp() throws Exception {
-		//Log.setLevel(Level.FINEST);
-		
+		Log.setDefaultLevel(Level.FINEST);
 		getHandle = CCNHandle.open();
 		baseName = ContentName.fromURI("/ccnx.org/test/latestVersionTest/"+(new CCNTime()).toShortString());
 		setUpResponder();
@@ -77,6 +78,7 @@ public class LatestVersionTest {
 	
 	@After
 	public void tearDown() {
+		
 		getHandle.close();
 		responderHandle.close();
 	}
@@ -162,11 +164,13 @@ public class LatestVersionTest {
 			responderHandle.put(obj2);
 			
 			object = VersioningProfile.getLatestVersion(baseName, null, timeout, getHandle.defaultVerifier(), getHandle); 
+			Assert.assertNotNull(object);
 			
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(two));
 			System.out.println("passed test for getLatestVersion with 2 versions available");
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, timeout, getHandle.defaultVerifier(), getHandle);
+			Assert.assertNotNull(object);
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(two));
 			System.out.println("passed test for getFirstBlockOfLatestVersion with 2 versions available");
 			
@@ -186,6 +190,7 @@ public class LatestVersionTest {
 		try {
 			System.out.println("calling gLV at: "+System.currentTimeMillis());			
 			object = VersioningProfile.getLatestVersion(baseName, null, timeout, getHandle.defaultVerifier(), getHandle);
+			Assert.assertNotNull(object);
 			System.out.println("got: "+object.name());
 			System.out.println("expecting to get: "+three);
 			
@@ -193,6 +198,7 @@ public class LatestVersionTest {
 			System.out.println("passed test for getLatestVersion with 3 versions available");
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, timeout, getHandle.defaultVerifier(), getHandle);
+			Assert.assertNotNull(object);
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(three));
 			System.out.println("passed test for getFirstBlockOfLatestVersion with 3 versions available");
 					
@@ -277,6 +283,7 @@ public class LatestVersionTest {
 		//something after version 2
 		try {
 			object = VersioningProfile.getLatestVersion(two, null, timeout, getHandle.defaultVerifier(), getHandle); 
+			Assert.assertNotNull(object);
 			
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(four));
 			
@@ -299,6 +306,7 @@ public class LatestVersionTest {
 			responderHandle.put(objSkip);
 			
 			object = VersioningProfile.getLatestVersion(baseName, null, timeout, getHandle.defaultVerifier(), getHandle); 
+			Assert.assertNotNull(object);
 			
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(skipSegment));
 			System.out.println("passed test for getLatestVersion with skipped segment available");
@@ -309,6 +317,8 @@ public class LatestVersionTest {
 			responseObjects.add(objSkip2);
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, timeout, getHandle.defaultVerifier(), getHandle);
+			Assert.assertNotNull(object);
+			
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(skipSegment0));
 			System.out.println("passed test for getFirstBlockOfLatestVersion with skipped segment available");
 			
@@ -334,6 +344,7 @@ public class LatestVersionTest {
 		try {
 			
 			object = VersioningProfile.getLatestVersion(baseName, null, SystemConfiguration.NO_TIMEOUT, getHandle.defaultVerifier(), getHandle);
+			Assert.assertNotNull(object);
 			System.out.println("got back :"+object.name());
 			Assert.assertTrue(object.name().equals(lastVersionPublished.name()));
 			System.out.println("passed test for no timeout");
@@ -348,6 +359,7 @@ public class LatestVersionTest {
 			lastVersionPublished = responseObjects.get(responseObjects.size()-1);
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, SystemConfiguration.NO_TIMEOUT, getHandle.defaultVerifier(), getHandle);
+			Assert.assertNotNull(object);
 			Assert.assertTrue(object.name().equals(lastVersionPublished.name()));
 			System.out.println("passed test for no timeout");
 			
@@ -405,12 +417,14 @@ public class LatestVersionTest {
 		try {
 						
 			object = VersioningProfile.getLatestVersion(baseName, null, timeout, ver, getHandle);
+			Assert.assertNotNull(object);
 			System.out.println("got: "+object.name());
 			System.out.println("expecting to get: "+verify.name());
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(verify.name()));
 			System.out.println("passed test for failed verification with newer version available");
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, timeout, ver, getHandle);
+			Assert.assertNotNull(object);
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(verify.name()));
 			System.out.println("passed test for getFirstBlockOfLatestVersion failed verification with newer version available");
 		
@@ -446,12 +460,14 @@ public class LatestVersionTest {
 		try {
 			
 			object = VersioningProfile.getLatestVersion(baseName, null, timeout, ver, getHandle);
+			Assert.assertNotNull(object);
 			System.out.println("got: "+object.fullName());
 			System.out.println("expecting to get: "+failVerify3.fullName());
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.fullName()) == VersioningProfile.getLastVersionAsLong(failVerify3.fullName()));
 			System.out.println("passed test for failed verification with multiple failures and a success");
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, timeout, ver, getHandle);
+			Assert.assertNotNull(object);
 			System.out.println("got: "+object.fullName());
 			System.out.println("expecting to get: "+failVerify3.fullName());
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.fullName()) == VersioningProfile.getLastVersionAsLong(failVerify3.fullName()));
@@ -486,12 +502,14 @@ public class LatestVersionTest {
 		try {
 			
 			object = VersioningProfile.getLatestVersion(baseName, null, timeout, ver, getHandle);
+			Assert.assertNotNull(object);
 			System.out.println("got: "+object.fullName());
 			System.out.println("expecting to get: "+objSkip3.fullName());
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.fullName()) == VersioningProfile.getLastVersionAsLong(objSkip3.fullName()));
 			System.out.println("passed test for missing first segment + failed verification");
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, timeout, ver, getHandle);
+			Assert.assertNotNull(object);
 			System.out.println("got: "+object.fullName());
 			System.out.println("expecting to get: "+failVerify3.fullName());
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.fullName()) == VersioningProfile.getLastVersionAsLong(failVerify3.fullName()));
