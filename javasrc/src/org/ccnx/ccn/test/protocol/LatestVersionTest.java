@@ -19,11 +19,13 @@ package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -68,8 +70,7 @@ public class LatestVersionTest {
 	 */
 	@Before
 	public void setUp() throws Exception {
-		//Log.setLevel(Level.FINEST);
-		
+		Log.setDefaultLevel(Level.FINEST);
 		getHandle = CCNHandle.open();
 		baseName = ContentName.fromURI("/ccnx.org/test/latestVersionTest/"+(new CCNTime()).toShortString());
 		setUpResponder();
@@ -77,6 +78,7 @@ public class LatestVersionTest {
 	
 	@After
 	public void tearDown() {
+		
 		getHandle.close();
 		responderHandle.close();
 	}
