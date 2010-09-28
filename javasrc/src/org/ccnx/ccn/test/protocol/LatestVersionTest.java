@@ -120,32 +120,43 @@ public class LatestVersionTest {
 		t1 = new CCNTime();
 		one = SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, t1), 0);
 		obj1 = ContentObject.buildContentObject(one, "here is version 1".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
-
-		t2 = new CCNTime();
+		
+		t2 = (CCNTime)t1.clone();
+		t2.increment(1);
 		two = SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, t2), 0);
 		obj2 = ContentObject.buildContentObject(two, "here is version 2".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 
-		t3 = new CCNTime();
+		t3 = (CCNTime) t1.clone();
+		t3.increment(2);
 		three = SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, t3), 0);
 		obj3 = ContentObject.buildContentObject(three, "here is version 3".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 	
-		t4 = new CCNTime();
+		t4 = (CCNTime)t1.clone();
+		t4.increment(3);
 		four = SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, t4), 0);
 		obj4 = ContentObject.buildContentObject(four, "here is version 4".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 	
-		skipTime = new CCNTime();
+		skipTime = (CCNTime)t1.clone();
+		skipTime.increment(4);
 		skipSegment = SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, skipTime), 5);
 		objSkip = ContentObject.buildContentObject(skipSegment, "here is skip".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(5));
 		skipSegment0 = SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, skipTime), 0);
 		objSkip0 = ContentObject.buildContentObject(skipSegment0, "here is skip".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(5));
 	
-		skipTime2 = new CCNTime();
+		skipTime2 = (CCNTime)t1.clone();
+		skipTime2.increment(5);
 		skipSegment2 = SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, skipTime2), 5);
 		objSkip2 = ContentObject.buildContentObject(skipSegment2, "here is skip 2".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(5));
 		
 		
-		System.out.println("made versions: "+one +" "+two+" "+three+" "+four);
+		System.out.println("made versions: "+one +" "+two+" "+three+" "+four+" "+skipTime+" "+skipTime2);
 		
+		Assert.assertTrue(t1.before(t2));
+		Assert.assertTrue(t2.before(t3));
+		Assert.assertTrue(t3.before(t4));
+		Assert.assertTrue(t4.before(skipTime));
+		Assert.assertTrue(skipTime.before(skipTime2));
+
 		try {
 			responderHandle.put(obj1);
 			responderHandle.put(obj2);
@@ -310,8 +321,12 @@ public class LatestVersionTest {
 		}
 		
 		//now put 15 responses in....
-		for(int i = 0; i < SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS + 5; i++)
-			responseObjects.add(ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is version generated".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0)));
+		CCNTime versionToAdd = new CCNTime();
+		for(int i = 0; i < SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS + 5; i++) {
+			versionToAdd.increment(1);
+			responseObjects.add(ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is version generated".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0)));
+			System.out.println("created version with time: "+versionToAdd+" object name: "+responseObjects.get(i).fullName());
+		}
 		
 		lastVersionPublished = responseObjects.get(responseObjects.size()-1);
 		
@@ -323,8 +338,12 @@ public class LatestVersionTest {
 			Assert.assertTrue(object.name().equals(lastVersionPublished.name()));
 			System.out.println("passed test for no timeout");
 		
-			for(int i =0; i < SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS; i++)
-				responseObjects.add(ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is version generated".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0)));
+			
+			for(int i =0; i < SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS; i++) {
+				versionToAdd.increment(1);
+				responseObjects.add(ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is version generated".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0)));
+				System.out.println("created version with time: "+versionToAdd+" object name: "+responseObjects.get(i).fullName());
+			}
 			
 			lastVersionPublished = responseObjects.get(responseObjects.size()-1);
 			
@@ -342,7 +361,8 @@ public class LatestVersionTest {
 		
 		//have the verifier fail the newest object make sure we get back the most recent verified version
 
-		failVerify = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
+		versionToAdd.increment(1);
+		failVerify = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(failVerify);
 		
 		//now put a unverifiable version
@@ -377,8 +397,8 @@ public class LatestVersionTest {
 		//then call again and make sure we have a newer version that passes
 
 		//have the verifier fail the newest object make sure we get back the most recent verified version
-
-		ContentObject verify = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is verify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
+		versionToAdd.increment(1);
+		ContentObject verify = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is verify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(verify);
 		
 		//now put a verifiable version
@@ -408,17 +428,10 @@ public class LatestVersionTest {
 		
 		//test that also has a content object that fails to verify (maybe do 2)
 		//and then also add one that does verify - same version.  make sure we get the verifiable one back
-		
-		failVerify1 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
+		versionToAdd.increment(1);
+		failVerify1 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(failVerify1);
 
-		long versionToAdd = System.currentTimeMillis();
-		try {
-			versionToAdd = VersioningProfile.getLastVersionAsLong(failVerify1.name());
-			
-		} catch (VersionMissingException e1) {
-			Assert.fail(e1.getMessage());
-		}
 		
 		failVerify2 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is a second failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(failVerify2);
@@ -459,10 +472,12 @@ public class LatestVersionTest {
 	
 		responseObjects.clear();
 		
-		ContentObject objSkip3 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 5), "here is skip 3".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(5));
+		versionToAdd.increment(1);
+		ContentObject objSkip3 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 5), "here is skip 3".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(5));
 		responseObjects.add(objSkip3);
 		
-		failVerify4 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName), 0), "here is a fourth verify, it should fail".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
+		versionToAdd.increment(1);
+		failVerify4 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is a fourth verify, it should fail".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(failVerify4);
 	
 		System.out.println("objSkip3: "+ objSkip3.fullName());
