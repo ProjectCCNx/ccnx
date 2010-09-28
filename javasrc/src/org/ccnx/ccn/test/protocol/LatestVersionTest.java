@@ -257,10 +257,12 @@ public class LatestVersionTest {
 			lastVersionPublished = obj4;
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, 0, getHandle.defaultVerifier(), getHandle);
+			Assert.assertNotNull(object);
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(three));
 			System.out.println("passed test for timeout 0 test");
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, 0, getHandle.defaultVerifier(), getHandle);
+			Assert.assertNotNull(object);
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(three));
 			System.out.println("passed test for timeout 0 test");
 			
@@ -367,14 +369,16 @@ public class LatestVersionTest {
 		try {
 						
 			object = VersioningProfile.getLatestVersion(baseName, null, timeout, ver, getHandle);
+			Assert.assertNotNull(object);
 			System.out.println("got: "+object.name());
 			System.out.println("expecting to get: "+lastVersionPublished.name());
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(lastVersionPublished.name()));
 			System.out.println("passed test for failed verification");
 			
 			object = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, timeout, ver, getHandle);
-			System.out.println("got: "+object.name());
 			System.out.println("expecting to get: "+lastVersionPublished.name());
+			Assert.assertNotNull(object);
+			System.out.println("got: "+object.name());
 			Assert.assertTrue(VersioningProfile.getLastVersionAsLong(object.name()) == VersioningProfile.getLastVersionAsLong(lastVersionPublished.name()));
 			System.out.println("passed test for getFirstBlockOfLatestVersion failed verification");
 
