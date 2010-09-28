@@ -21,6 +21,7 @@ import java.io.File;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryStore;
@@ -94,18 +95,22 @@ public class RFSTest extends RepoTestBase {
 	}
 	
 	@Test
-	public void testAddByFile() throws Exception {
-		System.out.println("testing adding to repo via file");
+	public void testBulkImport() throws Exception {
+		System.out.println("Testing bulk import to repo");
 		initRepoLog();
 		RepositoryStore repolog2 = new LogStructRepoStore();
 		repolog2.initialize(_fileTestDir2, null, Repository2, _globalPrefix, null, null);
 		ContentName name = ContentName.fromNative("/repoTest/testAddData");
-		ContentObject content = ContentObject.buildContentObject(name, "Testing add by file".getBytes());
+		ContentObject content = ContentObject.buildContentObject(name, "Testing bulk import".getBytes());
 		repolog2.saveContent(content);
-		checkData(repolog2, name, "Testing add by file");
+		checkData(repolog2, name, "Testing bulk import");
 		repolog2.shutDown();
-		repolog.bulkImport(new File(_fileTestDir2, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1"));
-		checkData(repolog, name, "Testing add by file");
+		File importDir = new File(_fileTestDir + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR);
+		Assert.assertTrue(importDir.mkdir());
+		File importFile = new File(_fileTestDir2, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1");
+		importFile.renameTo(new File(importDir, "BulkImportTest"));
+		repolog.bulkImport("BulkImportTest");
+		checkData(repolog, name, "Testing bulk import");
 		repolog.shutDown();
 	}
 	

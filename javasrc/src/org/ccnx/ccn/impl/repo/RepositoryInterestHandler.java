@@ -17,7 +17,6 @@
 
 package org.ccnx.ccn.impl.repo;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
@@ -277,7 +276,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		if (i >= 0) {
 			String[] args = CommandMarker.getArguments(interest.name().component(i));
 			if (null != args && args.length > 0) {
-				_server.getRepository().bulkImport(new File(args[0]));
+				_server.getRepository().bulkImport(args[0]);
 				RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
 				rio.save(interest);
 			}

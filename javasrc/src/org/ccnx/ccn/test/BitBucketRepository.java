@@ -112,6 +112,6 @@ public class BitBucketRepository extends RepositoryStoreBase {
 		return false;
 	}
 
-	public void bulkImport(File fileName) throws RepositoryException {		
+	public void bulkImport(String name) throws RepositoryException {		
 	}
 }

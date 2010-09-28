@@ -19,16 +19,30 @@ package org.ccnx.ccn.profiles.repo;
 import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
 public class RepositoryBulkImport {
-	public static boolean bulkImport(CCNHandle handle, String fileName, long timeout) throws IOException {
+	
+	/**
+	 * Import outside file data into repo. The data must be in wire format in the file and the file must have
+	 * been placed in {repoDir}/import/name.
+	 * 
+	 * @param handle
+	 * @param name name of the file in repoDir/import
+	 * @param timeout
+	 * @return true if successful
+	 * @throws IOException
+	 */
+	public static boolean bulkImport(CCNHandle handle, String name, long timeout) throws IOException {
 		// Create an Interest
+		if (name.contains(UserConfiguration.FILE_SEP))
+			throw new IOException("Pathnames for repo bulk import data not allowed");
 		CommandMarker argMarker = CommandMarker.getMarker(CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.getBytes());
-		ContentObject co = handle.get(new ContentName(new byte[][]{argMarker.addArgument(fileName), Interest.generateNonce()}), timeout);
+		ContentObject co = handle.get(new ContentName(new byte[][]{argMarker.addArgument(name), Interest.generateNonce()}), timeout);
 		return co != null;
 	}
 }

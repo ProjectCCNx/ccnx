@@ -36,6 +36,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
@@ -66,6 +67,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		public final static String META_DIR = ".meta";
 		public final static String NORMAL_COMPONENT = "0";
 		public final static String SPLIT_COMPONENT = "1";
+		
+		public static final String REPO_IMPORT_DIR = "import";
 
 		private static String DEFAULT_LOCAL_NAME = "Repository";
 		private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
@@ -73,7 +76,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		private static final String VERSION = "version";
 		private static final String REPO_LOCALNAME = "local";
 		private static final String REPO_GLOBALPREFIX = "global";
-		
+				
 		public static final char [] KEYSTORE_PASSWORD = "Th1s 1s n0t 8 g00d R3p0s1t0ry p8ssw0rd!".toCharArray();
 		public static final String KEYSTORE_FILE = "ccnx_repository_keystore";
 		public static final String REPOSITORY_USER = "Repository";
@@ -605,7 +608,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
 
-	public void bulkImport(File fileName) throws RepositoryException {
+	public void bulkImport(String name) throws RepositoryException {
+		if (name.contains(UserConfiguration.FILE_SEP))
+			throw new RepositoryException("Bulk import data can not contain pathnames");
+		File fileName = new File(_repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR + UserConfiguration.FILE_SEP + name);
 		if (!fileName.exists())
 			throw new RepositoryException("File does not exist: " + fileName);
 		synchronized (_currentFileIndex) {

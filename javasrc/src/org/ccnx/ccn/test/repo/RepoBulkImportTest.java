@@ -1,8 +1,11 @@
 package org.ccnx.ccn.test.repo;
 
+import java.io.File;
+
 import junit.framework.Assert;
 
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
 import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore.LogStructRepoStoreProfile;
@@ -26,10 +29,12 @@ public class RepoBulkImportTest extends RepoTestBase {
 		ContentObject content = ContentObject.buildContentObject(name, "Testing add by file".getBytes());
 		repolog3.saveContent(content);
 		repolog3.shutDown();
-		
-		Assert.assertTrue(RepositoryBulkImport.bulkImport(getHandle, 
-				_fileTestDir3 + ContentName.SEPARATOR + LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1", 
-				SystemConfiguration.MAX_TIMEOUT));
+		File importDir = new File(_fileTestDir + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR);
+		importDir.mkdir();	// We don't test this result because the dir may have been already created in a previous test
+							// and if so this would return false since the directory would not have "just been created"
+		File importFile = new File(_fileTestDir3, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1");
+		importFile.renameTo(new File(importDir, "BulkImportTest2"));
+		Assert.assertTrue(RepositoryBulkImport.bulkImport(getHandle, "BulkImportTest2", SystemConfiguration.MAX_TIMEOUT));
 		checkData(name, "Testing add by file");
 		
 	}
