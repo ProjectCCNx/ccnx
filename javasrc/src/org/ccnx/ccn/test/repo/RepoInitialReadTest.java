@@ -19,7 +19,6 @@ package org.ccnx.ccn.test.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -99,10 +98,6 @@ public class RepoInitialReadTest extends RepoTestBase {
 		}
 	}
 	
-	private void checkData(ContentName name, String data) throws IOException, InterruptedException{
-		checkData(new Interest(name), data.getBytes());
-	}
-	
 	private void checkDataWithDigest(ContentName name, String data) throws RepositoryException, IOException, InterruptedException {
 		// When generating an Interest for the exact name with content digest, need to set maxSuffixComponents
 		// to 0, signifying that name ends with explicit digest
@@ -111,12 +106,6 @@ public class RepoInitialReadTest extends RepoTestBase {
 		checkData(interest, data.getBytes());
 	}
 	
-	private void checkData(Interest interest, byte[] data) throws IOException, InterruptedException{
-		ContentObject testContent = getHandle.get(interest, 10000);
-		Assert.assertFalse(testContent == null);
-		Assert.assertTrue(Arrays.equals(data, testContent.content()));		
-	}
-
 	private void checkDataAndPublisher(ContentName name, String data, PublisherPublicKeyDigest publisher) 
 				throws IOException, InterruptedException {
 		Interest interest = new Interest(name, new PublisherID(publisher));

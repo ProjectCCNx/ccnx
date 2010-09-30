@@ -26,6 +26,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.profiles.repo.RepositoryOperations;
 import org.ccnx.ccn.protocol.ContentName;
@@ -69,6 +70,9 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			} else if (RepositoryOperations.isCheckedWriteOperation(interest)) {
 				if (!allowGenerated(interest)) return true;
 				startWriteChecked(interest);				
+			} else if (RepositoryOperations.isBulkImportOperation(interest)) {
+				if (!allowGenerated(interest)) return true;
+				addBulkDataToRepo(interest);				
 			} else {
 				ContentObject content = _server.getRepository().getContent(interest);
 				if (content != null) {
@@ -259,8 +263,25 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			e.printStackTrace();
 		}
 	}
-
-
+	
+	/**
+	 * Add to the repository via file based on interest request
+	 * @param interest
+	 * @throws RepositoryException
+	 * @throws IOException 
+	 * @throws ContentEncodingException 
+	 */
+	private void addBulkDataToRepo(Interest interest) throws RepositoryException, ContentEncodingException, IOException {
+		int i = CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.findMarker(interest.name());
+		if (i >= 0) {
+			String[] args = CommandMarker.getArguments(interest.name().component(i));
+			if (null != args && args.length > 0) {
+				_server.getRepository().bulkImport(args[0]);
+				RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
+				rio.save(interest);
+			}
+		}
+	}
 	
 	/**
 	 * Handle name enumeration requests

@@ -108,6 +108,14 @@ public interface RepositoryStore {
 	public boolean hasContent(ContentName name) throws RepositoryException;
 	
 	/**
+	 * Bulk import of data from a file. Data must be in a format compatible with the
+	 * repository store.  This would normally mean wire format
+	 * @param fileName the name of the file to import data from.
+	 * @throws RepositoryException
+	 */
+	public void bulkImport(String name) throws RepositoryException;
+	
+	/**
 	 * Get namespace interest
 	 * @return
 	 */

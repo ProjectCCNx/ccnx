@@ -448,6 +448,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			case REPOSITORY: 
 				_flowControl = new RepositoryFlowControl(_handle);
 				break;
+			case LOCALREPOSITORY:
+				_flowControl = new RepositoryFlowControl(_handle, true);
+				break;
 			default:
 				throw new IOException("Unknown save type: " + _saveType);
 			}

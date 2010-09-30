@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -60,5 +60,20 @@ public class CCNRepositoryWriter extends CCNWriter {
 			return new RepositoryFlowControl(namespace, handle);
 		}
 		return new RepositoryFlowControl(handle);
+	}
+	
+	/**
+	 * Create a repository flow controller. 
+	 * @param namespace
+	 * @param handle
+	 * @param local
+	 * @return
+	 * @throws IOException 
+	 */
+	protected CCNFlowControl getFlowController(ContentName namespace, CCNHandle handle, boolean local) throws IOException {
+		if (null != namespace) {
+			return new RepositoryFlowControl(namespace, handle, local);
+		}
+		return new RepositoryFlowControl(handle, local);
 	}
 }
