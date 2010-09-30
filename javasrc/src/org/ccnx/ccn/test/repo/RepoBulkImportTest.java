@@ -26,8 +26,11 @@ public class RepoBulkImportTest extends RepoTestBase {
 		RepositoryStore repolog3 = new LogStructRepoStore();
 		repolog3.initialize(_fileTestDir3, null, Repository3, _globalPrefix, null, null);
 		ContentName name = ContentName.fromNative("/repoTest/testAddData2");
-		ContentObject content = ContentObject.buildContentObject(name, "Testing add by file".getBytes());
+		ContentObject content = ContentObject.buildContentObject(name, "Testing bulk import".getBytes());
 		repolog3.saveContent(content);
+		ContentName name2 = ContentName.fromNative("/repoTest/testAddData3");
+		ContentObject content2 = ContentObject.buildContentObject(name2, "Testing bulk import #2".getBytes());
+		repolog3.saveContent(content2);
 		repolog3.shutDown();
 		File importDir = new File(_fileTestDir + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR);
 		importDir.mkdir();	// We don't test this result because the dir may have been already created in a previous test
@@ -35,8 +38,8 @@ public class RepoBulkImportTest extends RepoTestBase {
 		File importFile = new File(_fileTestDir3, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1");
 		importFile.renameTo(new File(importDir, "BulkImportTest2"));
 		Assert.assertTrue(RepositoryBulkImport.bulkImport(getHandle, "BulkImportTest2", SystemConfiguration.MAX_TIMEOUT));
-		checkData(name, "Testing add by file");
-		
+		checkData(name, "Testing bulk import");
+		checkData(name2, "Testing bulk import #2");	
 	}
 
 }
