@@ -491,11 +491,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				content.decode(is);
 				return content;
 			}
-		} catch (IndexOutOfBoundsException e) {
-			return null;
-		} catch (FileNotFoundException e) {
-			return null;
-		} catch (IOException e) { // handles ContentDecodingException
+		} catch (Exception e) {
+			Log.warning(Log.FAC_REPO, "Can't get content: " + e);
 			return null;
 		}
 	}
