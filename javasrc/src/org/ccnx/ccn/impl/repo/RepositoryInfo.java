@@ -60,6 +60,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	protected GlobalPrefix _globalPrefix = null; 
 	protected ArrayList<ContentName> _names = new ArrayList<ContentName>();
 	protected ContentName _policyName;
+	protected String _infoString = null;
 	protected RepoInfoType _type = RepoInfoType.INFO;
 	
 	/**
@@ -225,6 +226,22 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	}
 	
 	/**
+	 * Create String info to return
+	 * 
+	 * @param version
+	 * @param globalPrefix
+	 * @param localName
+	 * @param info - a string with info to return
+	 * @throws MalformedContentNameStringException
+	 */
+	public RepositoryInfo(String version, ContentName globalPrefix, String localName, String info) throws MalformedContentNameStringException {
+		_localName = localName;
+		_repoVersion = version;
+		_infoString = info;
+		_globalPrefix = new GlobalPrefix(globalPrefix);
+	}
+	
+	/**
 	 * Currently used only to test decoding/encoding
 	 * 
 	 * @param version
@@ -292,6 +309,14 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	}
 	
 	/**
+	 * Gets String info returned by the repo
+	 * @return
+	 */
+	public String getInfo() {
+		return _infoString;
+	}
+	
+	/**
 	 * Get the type of information encapsulated in this object (INFO or DATA).
 	 * @return
 	 */
@@ -331,6 +356,8 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 			name.decode(decoder);
 			_names.add(name);
 		}
+		if (decoder.peekStartElement(CCNProtocolDTags.InfoString))
+			_infoString = decoder.readUTF8Element(CCNProtocolDTags.InfoString);
 		decoder.readEndElement();
 	}
 
@@ -349,6 +376,8 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 			for (ContentName name : _names)
 				name.encode(encoder);
 		}
+		if (null != _infoString)
+			encoder.writeElement(CCNProtocolDTags.InfoString, _infoString);
 		encoder.writeEndElement();
 	}
 
@@ -415,6 +444,11 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 			if (other._type != null)
 				return false;
 		} else if (!_type.equals(other._type))
+			return false;
+		if (_infoString == null) {
+			if (other._infoString != null)
+				return false;
+		} else if (!_infoString.equals(other._infoString))
 			return false;
 		return true;
 	}

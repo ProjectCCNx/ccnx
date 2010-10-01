@@ -85,7 +85,7 @@ security-dtdbad00.xml:1: parser error : Start tag expected, '<' not found
 
 ^
 ./shouldfail xmllint --noout --dtdvalid repository.dtd repository-bad01.xml
-repository-bad01.xml:2: element RepositoryInfo: validity error : Element RepositoryInfo content does not follow the DTD, expecting (Version , Type , RepositoryVersion , GlobalPrefixName , LocalName , Name*), got (Version Type RepositoryVersion GlobalProofixName LocalName )
+repository-bad01.xml:2: element RepositoryInfo: validity error : Element RepositoryInfo content does not follow the DTD, expecting (Version , Type , RepositoryVersion , GlobalPrefixName , LocalName , Name* , InfoString?), got (Version Type RepositoryVersion GlobalProofixName LocalName )
 repository-bad01.xml:6: element GlobalProofixName: validity error : No declaration for element GlobalProofixName
 Document repository-bad01.xml does not validate against repository.dtd
 ./shouldfail xmllint --noout --dtdvalid repository.dtd repository-dtdbad00.xml

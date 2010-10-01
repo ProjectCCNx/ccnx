@@ -20,6 +20,10 @@ import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.repo.RepositoryInfo;
+import org.ccnx.ccn.impl.repo.RepositoryInfo.RepoInfoType;
+import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -43,6 +47,20 @@ public class RepositoryBulkImport {
 			throw new IOException("Pathnames for repo bulk import data not allowed");
 		CommandMarker argMarker = CommandMarker.getMarker(CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.getBytes());
 		ContentObject co = handle.get(new ContentName(new byte[][]{argMarker.addArgument(name), Interest.generateNonce()}), timeout);
-		return co != null;
+		if (co == null)
+			return false;
+		RepositoryInfo repoInfo = new RepositoryInfo();
+		try {
+			repoInfo.decode(co.content());
+			if (repoInfo.getType().equals(RepoInfoType.INFO)) {
+				String info = repoInfo.getInfo();
+				if (info.equals("OK"))
+					return true;
+				Log.warning(Log.FAC_REPO, "Bulk import had the following error: " + info);
+			}
+		} catch (ContentDecodingException e) {
+			Log.info(Log.FAC_REPO, "ContentDecodingException parsing RepositoryInfo: {0} from content object {1}.",  e.getMessage(), co.name());
+		}
+		return false;
 	}
 }

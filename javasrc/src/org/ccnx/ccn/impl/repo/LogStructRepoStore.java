@@ -182,14 +182,27 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 					if (index > max) {
 						max = index.intValue();
 					}
-					createIndex(filenames[i], index);
+					try {
+						createIndex(filenames[i], index, false);
+					} catch (RepositoryException e) {}	// This can't happen
 				}
 			}
 		}
 		return new Integer(max);
 	}
 	
-	private void createIndex(String fileName, Integer index) {
+	/**
+	 * Create index from specific file. For now we will allow errors during the initial index creation,
+	 * assuming that we want to keep trying if there's an error in the existing index files. If an import
+	 * file has an error though we want to abort. The issue of handling corrupt data in the repo in general
+	 * ought to be revisited.
+	 * 
+	 * @param fileName
+	 * @param index
+	 * @param fromImport - this is an "import" file.
+	 * @throws RepositoryException 
+	 */
+	private void createIndex(String fileName, Integer index, boolean fromImport) throws RepositoryException {
 		try {
 			RepoFile rfile = new RepoFile();
 			rfile.file = new File(_repositoryFile,fileName);
@@ -208,7 +221,6 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				ContentObject tmp = new ContentObject();
 				try {
 					if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
-						//tmp.decode(is);
 						tmp.decode(is);
 					}
 					else{
@@ -221,12 +233,14 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 					}
 
 				} catch (ContentDecodingException e) {
-					Log.logStackTrace(Level.WARNING, e);
-					e.printStackTrace();
 					// Failed to decode, must be end of this one
 					//added check for end of file above
 					rfile.openFile.close();
 					rfile.openFile = null;
+					if (fromImport)
+						throw new RepositoryException(e.getMessage());
+					Log.logStackTrace(Level.WARNING, e);
+					e.printStackTrace();
 					break;
 				}
 				_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
@@ -491,11 +505,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				content.decode(is);
 				return content;
 			}
-		} catch (IndexOutOfBoundsException e) {
-			return null;
-		} catch (FileNotFoundException e) {
-			return null;
-		} catch (IOException e) { // handles ContentDecodingException
+		} catch (Exception e) {
+			Log.warning(Log.FAC_REPO, "Can't get content: " + e);
 			return null;
 		}
 	}
@@ -611,15 +622,23 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	public void bulkImport(String name) throws RepositoryException {
 		if (name.contains(UserConfiguration.FILE_SEP))
 			throw new RepositoryException("Bulk import data can not contain pathnames");
-		File fileName = new File(_repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR + UserConfiguration.FILE_SEP + name);
-		if (!fileName.exists())
-			throw new RepositoryException("File does not exist: " + fileName);
+		File file = new File(_repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR + UserConfiguration.FILE_SEP + name);
+		if (!file.exists())
+			throw new RepositoryException("File does not exist: " + file);
 		synchronized (_currentFileIndex) {
 			_currentFileIndex++;
 			File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
-			if (!fileName.renameTo(repoFile))
-				throw new RepositoryException("Can not rename file: " + fileName);
-			createIndex(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex, _currentFileIndex);
+			if (!file.renameTo(repoFile))
+				throw new RepositoryException("Can not rename file: " + file);
+			try {
+				createIndex(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex, _currentFileIndex, true);
+			} catch (RepositoryException re) {
+				// The seemingly logical thing to do would be to verify the data for errors first and then submit it if it
+				// was OK. But that would require 2 passes through the data in the mainline case in which the data is good
+				// so instead we rename the file back if its bad.
+				repoFile.renameTo(file);
+				throw re;
+			}
 		}
 	}
 }
