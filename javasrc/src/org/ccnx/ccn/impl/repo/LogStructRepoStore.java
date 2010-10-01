@@ -207,49 +207,55 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 */
 	private void createIndex(String fileName, Integer index, boolean fromImport) throws RepositoryException {
 		try {
+			RepoFile rfile = new RepoFile();
+			rfile.file = new File(_repositoryFile,fileName);
+			rfile.openFile = new RandomAccessFile(rfile.file, "r");
+			InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
+			
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
+				Log.fine(Log.FAC_REPO, "Creating index for {0}", fileName);
+			}
+			
+			// Must be done before inserting into the index because once objects are inserted into the
+			// index, a lookup to this file can occur. If the object is inserted, even if all objects
+			// from the file are not yet inserted, a read of the file for the already inserted object
+			// should be OK. By doing it this way, we avoid having to stall all gets while a bulk import
+			// (which could be arbitrarily long) is in progress
 			synchronized (_files) {
-				RepoFile rfile = new RepoFile();
-				rfile.file = new File(_repositoryFile,fileName);
-				rfile.openFile = new RandomAccessFile(rfile.file, "r");
-				InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
-				
-				if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
-					Log.fine(Log.FAC_REPO, "Creating index for {0}", fileName);
-				}
-				while (true) {
-					FileRef ref = new FileRef();
-					ref.id = index.intValue();
-					ref.offset = rfile.openFile.getFilePointer();
-					if(ref.offset > 0)
-						ref.offset = ref.offset - is.available();
-					ContentObject tmp = new ContentObject();
-					try {
-						if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
-							tmp.decode(is);
+				_files.put(index, rfile);
+			}
+			while (true) {
+				FileRef ref = new FileRef();
+				ref.id = index.intValue();
+				ref.offset = rfile.openFile.getFilePointer();
+				if(ref.offset > 0)
+					ref.offset = ref.offset - is.available();
+				ContentObject tmp = new ContentObject();
+				try {
+					if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
+						tmp.decode(is);
+					}
+					else{
+						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+							Log.info(Log.FAC_REPO, "at the end of the file");
 						}
-						else{
-							if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-								Log.info(Log.FAC_REPO, "at the end of the file");
-							}
-							rfile.openFile.close();
-							rfile.openFile = null;
-							break;
-						}
-	
-					} catch (ContentDecodingException e) {
-						// Failed to decode, must be end of this one
-						//added check for end of file above
 						rfile.openFile.close();
 						rfile.openFile = null;
-						if (fromImport)
-							throw new RepositoryException(e.getMessage());
-						Log.logStackTrace(Level.WARNING, e);
-						e.printStackTrace();
 						break;
 					}
-					_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
+
+				} catch (ContentDecodingException e) {
+					// Failed to decode, must be end of this one
+					//added check for end of file above
+					rfile.openFile.close();
+					rfile.openFile = null;
+					if (fromImport)
+						throw new RepositoryException(e.getMessage());
+					Log.logStackTrace(Level.WARNING, e);
+					e.printStackTrace();
+					break;
 				}
-				_files.put(index, rfile);
+				_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
 			}
 		} catch (NumberFormatException e) {
 			// Not valid file
