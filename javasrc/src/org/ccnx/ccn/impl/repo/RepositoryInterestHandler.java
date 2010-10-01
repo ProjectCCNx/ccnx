@@ -163,7 +163,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null, 2, null, null);
 			RepositoryDataListener listener;
 			
-			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
+			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null, null);
 			if (null == rio)
 				return;		// Should have logged an error in getRepoInfo
 			// Hand the object the outstanding interest, so it can put its first block immediately.
@@ -224,12 +224,12 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					Log.finer(Log.FAC_REPO, "Checked write confirmed");
 				ArrayList<ContentName> target_names = new ArrayList<ContentName>();
 				target_names.add(target);
-				rio = _server.getRepository().getRepoInfo(interest.name(), target_names);
+				rio = _server.getRepository().getRepoInfo(interest.name(), null, target_names);
 			} else {
 				// Send back response that does not confirm content
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 					Log.finer(Log.FAC_REPO, "Checked write not confirmed");
-				rio = _server.getRepository().getRepoInfo(interest.name(), null);
+				rio = _server.getRepository().getRepoInfo(interest.name(), null, null);
 			}
 			if (null == rio)
 				return;		// Should have logged an error in getRepoInfo					
@@ -267,17 +267,25 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	/**
 	 * Add to the repository via file based on interest request
 	 * @param interest
+	 * @throws IOException 
+	 * @throws ContentEncodingException 
 	 * @throws RepositoryException
 	 * @throws IOException 
 	 * @throws ContentEncodingException 
 	 */
-	private void addBulkDataToRepo(Interest interest) throws RepositoryException, ContentEncodingException, IOException {
+	private void addBulkDataToRepo(Interest interest) throws ContentEncodingException, IOException {
 		int i = CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.findMarker(interest.name());
 		if (i >= 0) {
 			String[] args = CommandMarker.getArguments(interest.name().component(i));
+			String result = "OK";
 			if (null != args && args.length > 0) {
-				_server.getRepository().bulkImport(args[0]);
-				RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
+				try {
+					_server.getRepository().bulkImport(args[0]);
+				} catch (RepositoryException e) {
+					Log.warning(Log.FAC_REPO, "Bulk import error : " + e.getMessage());
+					result = e.getMessage();
+				}
+				RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), result, null);
 				rio.save(interest);
 			}
 		}

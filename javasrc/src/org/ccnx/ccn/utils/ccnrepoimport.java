@@ -127,8 +127,8 @@ public class ccnrepoimport {
 			
 			long starttime = System.currentTimeMillis();
 			
-			RepositoryBulkImport.bulkImport(handle, importName, timeout);
-			
+			boolean result = RepositoryBulkImport.bulkImport(handle, importName, timeout);
+			System.out.println("Bulk import of " + theFile + (result ? " succeeded" : " failed"));
 			System.out.println("ccnrepoimport took: "+(System.currentTimeMillis() - starttime)+" ms");
 			System.exit(0);
 

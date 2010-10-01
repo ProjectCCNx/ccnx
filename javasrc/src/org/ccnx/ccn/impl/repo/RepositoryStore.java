@@ -137,11 +137,12 @@ public interface RepositoryStore {
 	 * Get information about repository to return to write
 	 * requestor, possibly with confirmation filename for sync
 	 * @param name ContentName of netobject to write back out
+	 * @param info arbitrary String info to be returned
 	 * @param names Names of acked data for Ack protocol (currently unused)
 	 * 
 	 * @return
 	 */
-	RepositoryInfoObject getRepoInfo(ContentName name, ArrayList<ContentName> names);
+	RepositoryInfoObject getRepoInfo(ContentName name, String info, ArrayList<ContentName> names);
 		
 	/**
 	 * Get names to respond to name enumeration requests.  Returns null if there
