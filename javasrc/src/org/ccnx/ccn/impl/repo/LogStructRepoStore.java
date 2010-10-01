@@ -197,6 +197,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * file has an error though we want to abort. The issue of handling corrupt data in the repo in general
 	 * ought to be revisited.
 	 * 
+	 * Because index creation can now be done while the repo is actively doing file searches, care must be
+	 * taken to insure that the structures are stable before a get is allowed to proceed.
+	 * 
 	 * @param fileName
 	 * @param index
 	 * @param fromImport - this is an "import" file.
@@ -211,6 +214,15 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
 				Log.fine(Log.FAC_REPO, "Creating index for {0}", fileName);
+			}
+			
+			// Must be done before inserting into the index because once objects are inserted into the
+			// index, a lookup to this file can occur. If the object is inserted, even if all objects
+			// from the file are not yet inserted, a read of the file for the already inserted object
+			// should be OK. By doing it this way, we avoid having to stall all gets while a bulk import
+			// (which could be arbitrarily long) is in progress
+			synchronized (_files) {
+				_files.put(index, rfile);
 			}
 			while (true) {
 				FileRef ref = new FileRef();
@@ -245,7 +257,6 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				}
 				_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
 			}
-			_files.put(index, rfile);
 		} catch (NumberFormatException e) {
 			// Not valid file
 			Log.warning(Log.FAC_REPO, "Invalid file name " +fileName);
@@ -492,7 +503,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		// using our subtype of ContentRef
 		FileRef fref = (FileRef)ref;
 		try {
-			RepoFile file = _files.get(fref.id);
+			RepoFile file = null;
+			synchronized (_files) {
+				file = _files.get(fref.id);
+			}
 			if (null == file)
 				return null;
 			synchronized (file) {
