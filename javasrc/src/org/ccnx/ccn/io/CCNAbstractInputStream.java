@@ -537,6 +537,19 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: _lastSegmentNumber = {0}", _lastSegmentNumber);
+				
+				//if we haven't gotten a valid base segment, we do not want to advance the pipeline.
+				if (_lastRequestedPipelineSegment == SegmentationProfile.baseSegment()) {
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: the last segment number is the base segment, need to make sure we have received the base segment before we press on");
+					//the last thing we asked for was the base segment...  have we gotten it yet?
+					if (_lastInOrderSegment == -1) {
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: _lastInOrderSegment == -1, we have not received the base segment, do not advance the pipeline");
+						return;
+					} else {
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: _lastInOrderSegment == {0}, we have received the base segment, we can advance the pipeline!", _lastInOrderSegment);
+					}
+				}
+				
 				if (_lastSegmentNumber == -1) {
 					//we don't have the last segment already...
 					i = SegmentationProfile.segmentInterest(_basePipelineName, _lastRequestedPipelineSegment + 1, _publisher);
