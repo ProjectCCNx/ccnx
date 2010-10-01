@@ -197,6 +197,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * file has an error though we want to abort. The issue of handling corrupt data in the repo in general
 	 * ought to be revisited.
 	 * 
+	 * Because index creation can now be done while the repo is actively doing file searches, care must be
+	 * taken to insure that the structures are stable before a get is allowed to proceed.
+	 * 
 	 * @param fileName
 	 * @param index
 	 * @param fromImport - this is an "import" file.
@@ -204,48 +207,50 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 */
 	private void createIndex(String fileName, Integer index, boolean fromImport) throws RepositoryException {
 		try {
-			RepoFile rfile = new RepoFile();
-			rfile.file = new File(_repositoryFile,fileName);
-			rfile.openFile = new RandomAccessFile(rfile.file, "r");
-			InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
-			
-			if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
-				Log.fine(Log.FAC_REPO, "Creating index for {0}", fileName);
-			}
-			while (true) {
-				FileRef ref = new FileRef();
-				ref.id = index.intValue();
-				ref.offset = rfile.openFile.getFilePointer();
-				if(ref.offset > 0)
-					ref.offset = ref.offset - is.available();
-				ContentObject tmp = new ContentObject();
-				try {
-					if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
-						tmp.decode(is);
-					}
-					else{
-						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-							Log.info(Log.FAC_REPO, "at the end of the file");
+			synchronized (_files) {
+				RepoFile rfile = new RepoFile();
+				rfile.file = new File(_repositoryFile,fileName);
+				rfile.openFile = new RandomAccessFile(rfile.file, "r");
+				InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
+				
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
+					Log.fine(Log.FAC_REPO, "Creating index for {0}", fileName);
+				}
+				while (true) {
+					FileRef ref = new FileRef();
+					ref.id = index.intValue();
+					ref.offset = rfile.openFile.getFilePointer();
+					if(ref.offset > 0)
+						ref.offset = ref.offset - is.available();
+					ContentObject tmp = new ContentObject();
+					try {
+						if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
+							tmp.decode(is);
 						}
+						else{
+							if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+								Log.info(Log.FAC_REPO, "at the end of the file");
+							}
+							rfile.openFile.close();
+							rfile.openFile = null;
+							break;
+						}
+	
+					} catch (ContentDecodingException e) {
+						// Failed to decode, must be end of this one
+						//added check for end of file above
 						rfile.openFile.close();
 						rfile.openFile = null;
+						if (fromImport)
+							throw new RepositoryException(e.getMessage());
+						Log.logStackTrace(Level.WARNING, e);
+						e.printStackTrace();
 						break;
 					}
-
-				} catch (ContentDecodingException e) {
-					// Failed to decode, must be end of this one
-					//added check for end of file above
-					rfile.openFile.close();
-					rfile.openFile = null;
-					if (fromImport)
-						throw new RepositoryException(e.getMessage());
-					Log.logStackTrace(Level.WARNING, e);
-					e.printStackTrace();
-					break;
+					_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
 				}
-				_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
+				_files.put(index, rfile);
 			}
-			_files.put(index, rfile);
 		} catch (NumberFormatException e) {
 			// Not valid file
 			Log.warning(Log.FAC_REPO, "Invalid file name " +fileName);
@@ -492,7 +497,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		// using our subtype of ContentRef
 		FileRef fref = (FileRef)ref;
 		try {
-			RepoFile file = _files.get(fref.id);
+			RepoFile file = null;
+			synchronized (_files) {
+				file = _files.get(fref.id);
+			}
 			if (null == file)
 				return null;
 			synchronized (file) {
