@@ -48,6 +48,7 @@
 	<xs:element name="LocalName" type="xs:string"/>
     <!-- 0 or more names -->
 	<xs:element name="Name" type="NameType" minOccurs="0" maxOccurs="unbounded"/>
+	<xs:element name="InfoString" type="xs:string" minOccurs="0" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>
 

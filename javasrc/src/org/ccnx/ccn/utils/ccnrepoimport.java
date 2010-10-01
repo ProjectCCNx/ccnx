@@ -143,7 +143,7 @@ public class ccnrepoimport {
 	}
 	
 	public static void usage() {
-		System.out.println("usage: ccnrepoimport [-unversioned] [-timeout millis] <repodir> <filename>");
+		System.out.println("usage: ccnrepoimport [-timeout millis] [-log level] <repodir> <filename>");
 	}
 	
 }
