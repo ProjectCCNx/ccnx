@@ -380,7 +380,7 @@ public class ContentTree {
 					}
 					node.timestamp = ts;
 					
-					if (node.interestFlag && (ner==null || ner.getPrefix()==null)){
+					if (node.interestFlag && (ner != null && ner.getPrefix()==null)){
 						//we have added something to this node and someone was interested
 						//we need to get the child names and the prefix to send back
 						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
