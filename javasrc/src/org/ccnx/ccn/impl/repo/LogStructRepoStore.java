@@ -101,6 +101,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	Integer _currentFileIndex = 0;
 	ContentTree _index;
 	
+	protected HashMap<String, String> _bulkImportInProgress = new HashMap<String, String>();
+	
 	public class RepoFile {
 		File file;
 		RandomAccessFile openFile;
@@ -210,7 +212,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			RepoFile rfile = new RepoFile();
 			rfile.file = new File(_repositoryFile,fileName);
 			rfile.openFile = new RandomAccessFile(rfile.file, "r");
-			InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
+			InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8192);
 			
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
 				Log.fine(Log.FAC_REPO, "Creating index for {0}", fileName);
@@ -528,7 +530,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				}
 				file.openFile.seek(fref.offset);
 				ContentObject content = new ContentObject();
-				InputStream is = new BufferedInputStream(new RandomAccessInputStream(file.openFile), 8196);
+				InputStream is = new BufferedInputStream(new RandomAccessInputStream(file.openFile), 8192);
 				content.decode(is);
 				return content;
 			}
@@ -646,13 +648,18 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
 
-	public void bulkImport(String name) throws RepositoryException {
+	public boolean bulkImport(String name) throws RepositoryException {
 		if (name.contains(UserConfiguration.FILE_SEP))
 			throw new RepositoryException("Bulk import data can not contain pathnames");
 		File file = new File(_repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR + UserConfiguration.FILE_SEP + name);
-		if (!file.exists())
+		if (!file.exists()) {		
+			// Is this due to a reexpressed interest for bulk import already in progress?
+			if (_bulkImportInProgress.containsKey(name))
+					return false;		
 			throw new RepositoryException("File does not exist: " + file);
+		}
 		synchronized (_currentFileIndex) {
+			_bulkImportInProgress.put(name, name);
 			_currentFileIndex++;
 			File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
 			if (!file.renameTo(repoFile))
@@ -664,8 +671,11 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				// was OK. But that would require 2 passes through the data in the mainline case in which the data is good
 				// so instead we rename the file back if its bad.
 				repoFile.renameTo(file);
+				_bulkImportInProgress.remove(name);
 				throw re;
 			}
+			_bulkImportInProgress.remove(name);
 		}
+		return true;
 	}
 }

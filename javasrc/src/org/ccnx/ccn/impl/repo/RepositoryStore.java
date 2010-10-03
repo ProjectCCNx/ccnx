@@ -113,7 +113,7 @@ public interface RepositoryStore {
 	 * @param fileName the name of the file to import data from.
 	 * @throws RepositoryException
 	 */
-	public void bulkImport(String name) throws RepositoryException;
+	public boolean bulkImport(String name) throws RepositoryException;
 	
 	/**
 	 * Get namespace interest
