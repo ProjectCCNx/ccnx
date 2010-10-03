@@ -111,6 +111,7 @@ public interface RepositoryStore {
 	 * Bulk import of data from a file. Data must be in a format compatible with the
 	 * repository store.  This would normally mean wire format
 	 * @param fileName the name of the file to import data from.
+	 * @return false if reexpression for import in progress
 	 * @throws RepositoryException
 	 */
 	public boolean bulkImport(String name) throws RepositoryException;
