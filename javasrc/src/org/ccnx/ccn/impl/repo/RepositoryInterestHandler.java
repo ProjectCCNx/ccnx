@@ -280,7 +280,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			String result = "OK";
 			if (null != args && args.length > 0) {
 				try {
-					_server.getRepository().bulkImport(args[0]);
+					if (!_server.getRepository().bulkImport(args[0]))
+						return;		// reexpression - ignore
 				} catch (RepositoryException e) {
 					Log.warning(Log.FAC_REPO, "Bulk import error : " + e.getMessage());
 					result = e.getMessage();

@@ -101,6 +101,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	Integer _currentFileIndex = 0;
 	ContentTree _index;
 	
+	protected HashMap<String, String> _bulkImportInProgress = new HashMap<String, String>();
+	
 	public class RepoFile {
 		File file;
 		RandomAccessFile openFile;
@@ -198,7 +200,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * ought to be revisited.
 	 * 
 	 * Because index creation can now be done while the repo is actively doing file searches, care must be
-	 * taken to insure that the structures are stable before a get is allowed to proceed.
+	 * taken to synchronize events correctly.
 	 * 
 	 * @param fileName
 	 * @param index
@@ -210,7 +212,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			RepoFile rfile = new RepoFile();
 			rfile.file = new File(_repositoryFile,fileName);
 			rfile.openFile = new RandomAccessFile(rfile.file, "r");
-			InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
+			InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8192);
 			
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
 				Log.fine(Log.FAC_REPO, "Creating index for {0}", fileName);
@@ -221,39 +223,52 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			// from the file are not yet inserted, a read of the file for the already inserted object
 			// should be OK. By doing it this way, we avoid having to stall all gets while a bulk import
 			// (which could be arbitrarily long) is in progress
+			
 			synchronized (_files) {
 				_files.put(index, rfile);
 			}
+			
+			// Its true that its "OK" for someone to be reading the nodes as we are creating them
+			// but now we have to be careful to keep our filepointer correct, since it could be modified
+			// by a reader. The seek to a new spot in get is synchronized under the "RepoFile", so we
+			// keep track of where our pointer was also synchronized under the RepoFile so we can restore
+			// it to where it was in the case someone was reading one of our previously created nodes
+			// while the index creation is in progress.
+			long nextOffset = 0;
 			while (true) {
 				FileRef ref = new FileRef();
-				ref.id = index.intValue();
-				ref.offset = rfile.openFile.getFilePointer();
-				if(ref.offset > 0)
-					ref.offset = ref.offset - is.available();
 				ContentObject tmp = new ContentObject();
-				try {
-					if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
-						tmp.decode(is);
-					}
-					else{
-						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-							Log.info(Log.FAC_REPO, "at the end of the file");
+				synchronized (rfile) {
+					ref.id = index.intValue();
+					ref.offset = nextOffset;
+					rfile.openFile.seek(nextOffset);	// In case a get changed this in the meantime
+					if(ref.offset > 0)
+						ref.offset = ref.offset - is.available();
+					try {
+						if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
+							tmp.decode(is);
+							nextOffset = rfile.openFile.getFilePointer();
 						}
+						else{
+							if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+								Log.info(Log.FAC_REPO, "at the end of the file");
+							}
+							rfile.openFile.close();
+							rfile.openFile = null;
+							break;
+						}
+	
+					} catch (ContentDecodingException e) {
+						// Failed to decode, must be end of this one
+						//added check for end of file above
 						rfile.openFile.close();
 						rfile.openFile = null;
+						if (fromImport)
+							throw new RepositoryException(e.getMessage());
+						Log.logStackTrace(Level.WARNING, e);
+						e.printStackTrace();
 						break;
 					}
-
-				} catch (ContentDecodingException e) {
-					// Failed to decode, must be end of this one
-					//added check for end of file above
-					rfile.openFile.close();
-					rfile.openFile = null;
-					if (fromImport)
-						throw new RepositoryException(e.getMessage());
-					Log.logStackTrace(Level.WARNING, e);
-					e.printStackTrace();
-					break;
 				}
 				_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
 			}
@@ -515,7 +530,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				}
 				file.openFile.seek(fref.offset);
 				ContentObject content = new ContentObject();
-				InputStream is = new BufferedInputStream(new RandomAccessInputStream(file.openFile), 8196);
+				InputStream is = new BufferedInputStream(new RandomAccessInputStream(file.openFile), 8192);
 				content.decode(is);
 				return content;
 			}
@@ -633,13 +648,18 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
 
-	public void bulkImport(String name) throws RepositoryException {
+	public boolean bulkImport(String name) throws RepositoryException {
 		if (name.contains(UserConfiguration.FILE_SEP))
 			throw new RepositoryException("Bulk import data can not contain pathnames");
 		File file = new File(_repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR + UserConfiguration.FILE_SEP + name);
-		if (!file.exists())
+		if (!file.exists()) {		
+			// Is this due to a reexpressed interest for bulk import already in progress?
+			if (_bulkImportInProgress.containsKey(name))
+					return false;		
 			throw new RepositoryException("File does not exist: " + file);
+		}
 		synchronized (_currentFileIndex) {
+			_bulkImportInProgress.put(name, name);
 			_currentFileIndex++;
 			File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
 			if (!file.renameTo(repoFile))
@@ -651,8 +671,11 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				// was OK. But that would require 2 passes through the data in the mainline case in which the data is good
 				// so instead we rename the file back if its bad.
 				repoFile.renameTo(file);
+				_bulkImportInProgress.remove(name);
 				throw re;
 			}
+			_bulkImportInProgress.remove(name);
 		}
+		return true;
 	}
 }

@@ -131,8 +131,8 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 		return null;
 	}
 
-	public void bulkImport(String name) throws RepositoryException {
-		// not supported
+	public boolean bulkImport(String name) throws RepositoryException {
+		return false; // not supported
 	}
     
 }
