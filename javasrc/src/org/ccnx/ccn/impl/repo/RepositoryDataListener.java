@@ -111,7 +111,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 				}
 			}
 		}
-		synchronized (_interests) {
+    calculateInterests: synchronized (_interests) {
 			long largestSegmentNumberRequested = getLargestSegmentNumber();
 			_interests.remove(interest, null);
 
@@ -132,8 +132,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 				// If we're confident about the final block ID, cancel previous extra interests
 				if (isFinalSegment) {
 					cancelHigherInterests(_finalSegmentNumber);
-					handleData(co);
-					return null;
+                    break calculateInterests;
 				}
 			}
 			if (remainingWindow < 0)
