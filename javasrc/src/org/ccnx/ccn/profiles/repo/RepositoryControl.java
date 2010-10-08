@@ -158,7 +158,7 @@ public class RepositoryControl {
 					}
 
 					// This will traverse any links, and the signer credentials for the lot.
-					// If self-signed, don't sync it's signer or we'll loop
+					// If self-signed, don't sync its signer or we'll loop
 					// We do not change the result if the key was not previously synced; we care
 					// about content. Keys are potentially more often synced, but also more finicky --
 					// if we're syncing the auto-published keys we can have two copies that differ
