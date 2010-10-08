@@ -128,6 +128,14 @@ public class SystemConfiguration {
 	public static int FC_TIMEOUT = FC_TIMEOUT_DEFAULT;
 	
 	/**
+	 * Allow override to only save to a local repository
+	 */
+	protected static final String FC_LOCALREPOSITORY_PROPERTY = "org.ccnx.fc.localrepository";
+	protected final static String FC_LOCALREPOSITORY_ENV_VAR = "FC_LOCALREPOSITORY";
+	public final static boolean FC_LOCALREPOSITORY_DEFAULT = false;
+	public static boolean FC_LOCALREPOSITORY = FC_LOCALREPOSITORY_DEFAULT;
+	
+	/**
 	 * How long to wait for a ping timeout in CCNNetworkManager, in ms
 	 *
 	 * This should be longer than the interest timeout to permit at least one re-expression.
@@ -357,6 +365,14 @@ public class SystemConfiguration {
 //			Log.fine("FC_TIMEOUT = " + FC_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The default flow controller timeout must be an integer.");
+			throw e;
+		}
+		
+		// Allow override for local repository override 
+		try {
+			FC_LOCALREPOSITORY = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(FC_LOCALREPOSITORY_PROPERTY, FC_LOCALREPOSITORY_ENV_VAR, Boolean.toString(FC_LOCALREPOSITORY_DEFAULT)));
+		} catch (NumberFormatException e) {
+			System.err.println("The local repository flow controller override must be a boolean.");
 			throw e;
 		}
 		
