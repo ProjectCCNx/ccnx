@@ -224,7 +224,9 @@ public class RepositoryControl {
 			if (obj.getPublisherKeyLocator() == null) {
 				Log.warning("publisher key locator for object we are syncing is null");
 			} else {
-				Log.finer("publisher key locator for object to sync: "+obj.getPublisherKeyLocator());
+				if (Log.isLoggable(Level.FINER)) {
+					Log.finer("publisher key locator for object to sync: "+obj.getPublisherKeyLocator());
+				}
 				if (keyLocator.type() != KeyLocator.KeyLocatorType.NAME) {
 					Log.info("this object contains the key itself...  can skip trying to get the key in the repo");
 				} else {
