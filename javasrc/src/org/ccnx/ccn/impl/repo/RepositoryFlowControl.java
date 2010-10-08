@@ -27,6 +27,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -233,7 +234,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		ContentName repoWriteName = 
 			new ContentName(name, CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes(), Interest.generateNonce());
 		Interest writeInterest = new Interest(repoWriteName);
-		if (localRepo) {
+		if (localRepo || SystemConfiguration.FC_LOCALREPOSITORY) {
 			//this is meant to be written to a local repository, not any/multiple connected repos
 			writeInterest.scope(1);
 		}
@@ -362,7 +363,12 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	/**
 	 * Help users determine what type of flow controller this is.
 	 */
-	public SaveType saveType() { 
+	public SaveType saveType() {
+		//if the library is overridden with the property or environment variable
+		//for writing to a local repo, need to return LocalRepo save type
+		if (SystemConfiguration.FC_LOCALREPOSITORY)
+			return SaveType.LOCALREPOSITORY;
+		
 		if (localRepo)
 			return SaveType.LOCALREPOSITORY;
 		else
