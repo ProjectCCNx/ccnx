@@ -1702,7 +1702,6 @@ check_nameprefix_entries(struct ccnd_handle *h)
         if (npe->forward_to != NULL)
             check_forward_to(h, npe);
         if (  npe->src == CCN_NOFACEID &&
-              npe->forward_to == NULL &&
               npe->children == 0 &&
               npe->forwarding == NULL) {
             head = &npe->pe_head;
