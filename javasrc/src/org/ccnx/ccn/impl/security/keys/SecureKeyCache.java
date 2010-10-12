@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
@@ -43,8 +44,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * A container for our private keys and other secret key 
  * material that we have retrieved (e.g. from access control).
  * 
- * TODO: provide mechanism to save and reload at least the non-keystore keys
- * as encrypted CCNx content.
+ * TODO: finish mechanism that saves the key cache between runs.
  */
 public class SecureKeyCache implements Serializable {
 	
@@ -72,6 +72,7 @@ public class SecureKeyCache implements Serializable {
 	/**
 	 * Constructor that loads keys from a KeyManager
 	 * @param keyManagerToLoadFrom the key manager
+	 * TODO bug -- should merge key caches, not just load signing keys.
 	 */
 	public SecureKeyCache(KeyManager keyManagerToLoadFrom) {
 		PrivateKey [] pks = keyManagerToLoadFrom.getSigningKeys();
@@ -232,6 +233,9 @@ public class SecureKeyCache implements Serializable {
 		return null;
 	}
 	
+	/**
+	 * Returns all private keys in cache, loaded from keystore or picked up during operation.
+	 */
 	public PrivateKey [] getPrivateKeys() {
 		ArrayList<PrivateKey> allKeys = new ArrayList<PrivateKey>();
 		
@@ -242,7 +246,10 @@ public class SecureKeyCache implements Serializable {
 		return allKeys.toArray(pkarray);
 	}
 	
-	
+	public PrivateKey [] getMyPrivateKeys() {
+		PrivateKey [] pkarray = new PrivateKey[_myKeyMap.size()];
+		return _myKeyMap.values().toArray(pkarray);
+	}
 	
 	private ContentName getContentName(byte[] ident) {
 		for (ContentName name : _nameKeyMap.keySet()) {
@@ -260,11 +267,16 @@ public class SecureKeyCache implements Serializable {
 	 * @param publicKeyIdentifier the digest of the public key
 	 * @param pk the private key
 	 */
-	public void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
+	public synchronized void addPrivateKey(ContentName keyName, byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyMap.put(publicKeyIdentifier, pk);
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		if (null != keyName) {
 			_nameKeyMap.put(keyName, publicKeyIdentifier);
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding private key {0} with name {1}",
+					DataUtils.printHexBytes(publicKeyIdentifier), keyName);
+		} else {
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding private key {0}",
+					DataUtils.printHexBytes(publicKeyIdentifier));			
 		}
 	}
 
@@ -273,9 +285,11 @@ public class SecureKeyCache implements Serializable {
 	 * @param publicKeyIdentifier the digest of the public key.
 	 * @param pk the corresponding private key.
 	 */
-	public void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
+	public synchronized void addMyPrivateKey(byte [] publicKeyIdentifier, PrivateKey pk) {
 		_privateKeyIdentifierMap.put(getKeyIdentifier(pk), publicKeyIdentifier);
 		_myKeyMap.put(publicKeyIdentifier, pk);
+		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding my private key {0}",
+				DataUtils.printHexBytes(publicKeyIdentifier));			
 	}
 	
 	/**
@@ -283,11 +297,16 @@ public class SecureKeyCache implements Serializable {
 	 * @param name the name of the key.
 	 * @param key the key.
 	 */
-	public void addKey(ContentName name, Key key) {
+	public synchronized void addKey(ContentName name, Key key) {
 		byte [] id = getKeyIdentifier(key);
 		_keyMap.put(id, key);
 		if (null != name) {
 			_nameKeyMap.put(name, id);
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} with name {1} of type (2)",
+					DataUtils.printHexBytes(id), name, key.getClass().getName());
+		} else {
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} of type {1}",
+					DataUtils.printHexBytes(id), key.getClass().getName());			
 		}
 	}
 	
@@ -323,7 +342,7 @@ public class SecureKeyCache implements Serializable {
 	 * 
 	 * @param cache the SecureKeyCache to merge with
 	 */
-	public void merge(SecureKeyCache cache) {
+	public synchronized void merge(SecureKeyCache cache) {
 		
 		/**
 		_keyMap.putAll(cache._keyMap);
@@ -396,6 +415,61 @@ public class SecureKeyCache implements Serializable {
 			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: privateKeyMap contains a key with name {0} and hash {1}", 
 					cn, DataUtils.printHexBytes(_nameKeyMap.get(cn)));
 		}
+		
+		Log.info(Log.FAC_ACCESSCONTROL, "Dumping _keyMap"); 
+		for (byte [] keyHash : _keyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "  KeyID: {0}", DataUtils.printHexBytes(keyHash));
+		}
+		
+		Log.info(Log.FAC_ACCESSCONTROL, "Dumping _myKeyMap"); 
+		for (byte [] keyHash : _myKeyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "  KeyID: {0}", DataUtils.printHexBytes(keyHash));
+		}
+		
+		Log.info(Log.FAC_ACCESSCONTROL, "Dumping _privateKeyMap"); 
+		for (byte [] keyHash : _privateKeyMap.keySet()) {
+			Log.info(Log.FAC_ACCESSCONTROL, "  KeyID: {0}", DataUtils.printHexBytes(keyHash));
+		}
+	}
+	
+	/**
+	 * Make sure everything in here is Serializable.
+	 * @return
+	 */
+	public boolean validateForWriting() {
+		boolean valid = true;
+		for (Key key : _keyMap.values()) {
+			if (!(key instanceof Serializable)) {
+				if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
+					Log.warning(Log.FAC_KEYS, "Cannot serialize key of type {0}: {1}", key.getClass().getName(),
+							key);
+				}
+				valid = false;
+			}
+		}
+		
+		for (Key key : _myKeyMap.values()) {
+			if (!(key instanceof Serializable)) {
+				if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
+					Log.warning(Log.FAC_KEYS, "Cannot serialize key of type {0}: {1}", key.getClass().getName(),
+							key);
+				}
+				valid = false;
+			}
+		}
+		
+		for (Key key : _privateKeyMap.values()) {
+			if (!(key instanceof Serializable)) {
+				if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
+					Log.warning(Log.FAC_KEYS, "Cannot serialize key of type {0}: {1}", key.getClass().getName(),
+							key);
+				}
+				valid = false;
+			}
+		}
+
+		return valid;
+
 	}
 
 }

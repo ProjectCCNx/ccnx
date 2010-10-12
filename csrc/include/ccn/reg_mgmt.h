@@ -40,12 +40,14 @@ struct ccn_forwarding_entry {
 #define CCN_FORW_LAST           8
 #define CCN_FORW_CAPTURE       16
 #define CCN_FORW_LOCAL         32
+#define CCN_FORW_TAP           64
 #define CCN_FORW_PUBMASK (CCN_FORW_ACTIVE        | \
                           CCN_FORW_CHILD_INHERIT | \
                           CCN_FORW_ADVERTISE     | \
                           CCN_FORW_LAST          | \
                           CCN_FORW_CAPTURE       | \
-                          CCN_FORW_LOCAL         )
+                          CCN_FORW_LOCAL         | \
+                          CCN_FORW_TAP           )
 
 struct ccn_forwarding_entry *
 ccn_forwarding_entry_parse(const unsigned char *p, size_t size);

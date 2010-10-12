@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -37,7 +37,6 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * you create a keystore. After that, you can use a standard NetworkKeyManager,
  * as long as the data is still in the repo.
  */
-
 public class RepositoryKeyManager extends NetworkKeyManager {
 
 	/** Constructor

@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -437,6 +437,11 @@ public abstract class KeyManager {
 	 * @return an array of our currently available private keys
 	 */
 	public abstract PrivateKey[] getSigningKeys();
+	
+	/**
+	 * Get the public key digest of all our signing keys -- essentially our available identities.
+	 */
+	public abstract PublisherPublicKeyDigest [] getAvailableIdentities();
 	
 	/**
 	 * Get any timestamp associate with this key.

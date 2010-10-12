@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
@@ -34,7 +34,6 @@ import java.util.logging.Level;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -46,9 +45,9 @@ import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.CCNSignatureHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.NullOutputStream;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
-import org.ccnx.ccn.io.NullOutputStream;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
@@ -165,7 +164,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		if (null != content)
 			System.arraycopy(content, offset, _content, 0, length);
 		_signature = signature;
-		if ((null != signature) && SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
+		if ((null != signature) && Log.isLoggable(Log.FAC_SIGNING, Level.FINEST)) {
 			try {
 				byte [] digest = CCNDigestHelper.digest(this.encode());
 				byte [] tbsdigest = CCNDigestHelper.digest(prepareContent(name, signedInfo, content, offset, length));
@@ -244,7 +243,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			PrivateKey signingKey) throws InvalidKeyException, SignatureException {
 		
 		this(name, signedInfo, content, offset, length, (Signature)null);
-		_signature = sign(_name, _signedInfo, _content, 0, _content.length, signingKey);
+		setSignature(sign(_name, _signedInfo, _content, 0, _content.length, signingKey));
 	}
 
 	public ContentObject(ContentName name, 
@@ -511,9 +510,6 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 				CCNSignatureHelper.sign(digestAlgorithm, 
 						toBeSigned,
 						signingKey);
-			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-				SystemConfiguration.outputDebugData(name, toBeSigned);
-			}
 	
 		} catch (ContentEncodingException e) {
 			Log.logException("Exception encoding internally-generated XML name!", e);
@@ -585,11 +581,22 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 			return false;
 		}
 
+		boolean result; 
+		
 		if (null != contentProxy) {
-			return CCNSignatureHelper.verify(contentProxy, object.signature().signature(), object.signature().digestAlgorithm(), publicKey);
+			result = CCNSignatureHelper.verify(contentProxy, object.signature().signature(), object.signature().digestAlgorithm(), publicKey);
+		} else {
+			result = verify(object.name(), object.signedInfo(), object.content(), object.signature(), publicKey);
 		}
-
-		return verify(object.name(), object.signedInfo(), object.content(), object.signature(), publicKey);
+	
+		if ((!result) && Log.isLoggable(Log.FAC_VERIFY, Level.WARNING)) {
+			Log.info("VERIFICATION FAILURE: " + object.name() + " timestamp: " + object.signedInfo().getTimestamp() + " content length: " + object.contentLength() + 
+					" ephemeral digest: " + DataUtils.printBytes(object.digest()) + 
+					" to be signed sha256 digest: " + DataUtils.printHexBytes(CCNDigestHelper.digest(object.prepareContent())));
+			SystemConfiguration.outputDebugObject(object);
+		}
+	
+		return result;
 	}
 	
 	public static boolean verify(ContentObject object,
@@ -650,22 +657,6 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 					signature.signature(),
 					(signature.digestAlgorithm() == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm(),
 							publicKey);
-		if (!result) {
-			if (Log.isLoggable(Level.WARNING)) {
-				Log.warning("Verification failure: " + name + " timestamp: " + signedInfo.getTimestamp() + " content length: " + content.length + 
-					" signed content: " + 
-					DataUtils.printBytes(CCNDigestHelper.digest(((signature.digestAlgorithm() == null) ? CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM : signature.digestAlgorithm()), preparedContent)));
-			}
-			SystemConfiguration.logObject(Level.FINEST, "Verification failure:", new ContentObject(name, signedInfo, content, signature));
-			if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DEBUG_SIGNATURES)) {
-				SystemConfiguration.outputDebugData(name, new ContentObject(name, signedInfo, content, signature));
-			}
-		} else {
-			if (Log.isLoggable(Level.FINER)) {
-				Log.finer("Verification success: " + name + " timestamp: " + signedInfo.getTimestamp() + 
-						" signed content: " + DataUtils.printBytes(CCNDigestHelper.digest(preparedContent)));
-			}
-		}
 		return result;
 
 	}
@@ -722,6 +713,10 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		byte[] blockDigest = CCNDigestHelper.digest(
 					prepareContent(name(), signedInfo(), content()));
 		return signature().computeProxy(blockDigest, true);
+	}
+	
+	public byte [] prepareContent() throws ContentEncodingException {
+		return prepareContent(name(), signedInfo(), content());
 	}
 
 	public static byte [] prepareContent(ContentName name, 

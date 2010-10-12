@@ -1,7 +1,7 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -50,14 +50,17 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
 
 /**
- * Class for group management, including in particular:
+ * A meta-class for group management, handling in particular:
  * - Creation of new groups 
  * - Retrieval of existing groups
  * - Determination of group membership
  * - Retrieval of group private and public keys
  *
+ * There is currently one GroupManager per Group namespace. If you haven't loaded the GroupManager
+ * for a given namespace, and attempt to write ACLs naming groups defined in that namespace, you will
+ * get errors as the access control code won't recognise those entitites as Groups or be able to 
+ * find their public keys.
  */
-
 public class GroupManager {
 	
 	private GroupAccessControlManager _accessManager;
@@ -302,12 +305,13 @@ public class GroupManager {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 				Log.finer(Log.FAC_ACCESSCONTROL, "amCurrentGroupMember: {0} is a member of group {1}", lr.targetName(), group.groupName());
 			}
-			if (isGroup(lr)) {
+			GroupManager gm = _accessManager.groupManager(lr.targetName().parent());
+			if (gm != null && gm.isGroup(lr)) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 					Log.finer(Log.FAC_ACCESSCONTROL, "amCurrentGroupMember: {0} is itself a group.", lr.targetName());
 				}
 				String groupFriendlyName = GroupAccessControlProfile.groupNameToFriendlyName(lr.targetName());
-				if (amCurrentGroupMember(groupFriendlyName)) {
+				if (gm.amCurrentGroupMember(groupFriendlyName)) {
 					_myGroupMemberships.add(groupFriendlyName);
 					return true;
 				} else {

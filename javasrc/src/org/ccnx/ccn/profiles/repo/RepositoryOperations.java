@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2010 Palo Alto Research Center, Inc.
@@ -36,6 +36,11 @@ public class RepositoryOperations {
 
 	public static boolean isCheckedWriteOperation(Interest interest) {
 		return interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_CHECKED_START_WRITE.getBytes());
+	}
+	
+	public static boolean isBulkImportOperation(Interest interest) {
+		int i = CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.findMarker(interest.name());
+		return i >= 0;
 	}
 	
 	public static int getCheckedWriteMarkerPos(Interest interest) {

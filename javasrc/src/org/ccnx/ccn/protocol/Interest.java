@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
@@ -675,7 +675,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			sb.append(" minsc:" + _minSuffixComponents);
 
 		if (null != _publisher)
-			sb.append(" p:" + DataUtils.printHexBytes(_publisher.id()) + "");
+			sb.append(" p:" + _publisher);
 
 		if (null != _exclude)
 			sb.append(" ex("+_exclude+")");

@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -57,9 +57,13 @@ import org.ccnx.ccn.protocol.PublisherID;
 
 
 /**
- * Wrapper for Group public key, and a way to access its private keys.
- * The private keys are stored in a KeyDirectory, wrapped under the
- * public keys of the members of the group. 
+ * This class represents a Group for group-based access control. A Group
+ * is essentially a list of members, and a public/private key pair. The
+ * public key is stored in CCN and is used to encrypt node keys (see CCNx
+ * Access Control Specification); the private key is stored encrypted under
+ * the public keys of the members of the group (which could be users or
+ * groups). The private key is represented in a KeyDirectory.
+ * 
  * Model for private key access: if you're not allowed to get a key,
  * we throw AccessDeniedException.
  * 
@@ -205,7 +209,7 @@ public class Group {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Stop enumerating the private key directory.
 	 * @throws IOException
@@ -586,10 +590,12 @@ public class Group {
 	 * @throws InvalidKeyException 
 	 */
 	public PrivateKey getPrivateKey() throws IOException, InvalidKeyException, NoSuchAlgorithmException {
+		// TODO might do a little unnecessary enumeration, but will pull from cache if in cache. 
 		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		privateKeyDirectory.waitForNoUpdatesOrResult(SystemConfiguration.SHORT_TIMEOUT);
 		PrivateKey privateKey = privateKeyDirectory.getPrivateKey();
 		if (null != privateKey) {
+			// Will redundantly re-add to cache. TODO move caching into getPrivateKey; it needs
+			// the public key to do that.
 			_handle.keyManager().getSecureKeyCache().addPrivateKey(privateKeyDirectory.getPrivateKeyBlockName(), 
 					publicKeyObject().publicKeyDigest().digest(), privateKey);
 		}
@@ -657,7 +663,6 @@ public class Group {
 		// Assume no concurrent writer.  
 		
 		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		privateKeyDirectory.waitForNoUpdates(SystemConfiguration.getDefaultTimeout());
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());

@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2010 Palo Alto Research Center, Inc.
@@ -32,6 +32,7 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.utils.CreateUserData;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -65,6 +66,11 @@ public class KeyPublishingTestRepo {
 			userHandles[i] = testUsers.getHandleForUser(userNames[i]);
 		}
 		userKeyObjects = testUsers.publishUserKeysToRepositorySetLocators(testHelper.getClassChildName(USER_NAMESPACE));
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() {
+		myHandle.close();
 	}
 	
 	@Test

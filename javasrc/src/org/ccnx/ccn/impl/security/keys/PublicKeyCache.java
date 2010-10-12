@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -60,7 +60,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * all of the library functionality to write keys once that handle is sufficiently
  * initialized.
  */
-
 public class PublicKeyCache {
 
 	// Stop logging to key cache by default.

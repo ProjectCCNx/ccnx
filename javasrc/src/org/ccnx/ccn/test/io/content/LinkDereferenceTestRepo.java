@@ -1,3 +1,20 @@
+/*
+ * A CCNx library test.
+ *
+ * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+ 
 package org.ccnx.ccn.test.io.content;
 
 
@@ -129,7 +146,7 @@ public class LinkDereferenceTestRepo {
 		writer.newVersion(unversionedDataName, bigDataContent);
 
 		Link uvBigDataLink = new Link(unversionedDataName, "big", new LinkAuthenticator(new PublisherID(writeHandle.keyManager().getDefaultKeyID())));
-		ContentObject bigDataTarget = uvBigDataLink.dereference(SystemConfiguration.SHORT_TIMEOUT, readHandle);
+		ContentObject bigDataTarget = uvBigDataLink.dereference(SystemConfiguration.SETTABLE_SHORT_TIMEOUT, readHandle);
 		Log.info("BigData: Dereferenced link " + uvBigDataLink + ", retrieved content " + ((null == bigDataTarget) ? "null" : bigDataTarget.name()));
 		Assert.assertNotNull(bigDataTarget);
 		Assert.assertTrue(uvBigDataLink.targetName().isPrefixOf(bigDataTarget.name()));

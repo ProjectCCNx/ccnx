@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -20,6 +20,7 @@ package org.ccnx.ccn.io;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
@@ -138,7 +139,7 @@ public class CCNReader {
 			co = _handle.get(query, timeout);
 			if (co == null)
 				break;
-			Log.info("enumerate: retrieved " + co.fullName() + 
+			Log.info(Log.FAC_IO, "enumerate: retrieved " + co.fullName() + 
 					" on query: " + query.name());
 			result.add(co);
 			for (int i = co.name().count() - 1; i > count; i--) {
@@ -146,7 +147,7 @@ public class CCNReader {
 			}
 			query = Interest.next(co.name(), count, null);
 		}
-		Log.info("enumerate: retrieved " + result.size() + " objects.");
+		Log.info(Log.FAC_IO, "enumerate: retrieved " + result.size() + " objects.");
 		return result;
 	}
 
@@ -178,7 +179,7 @@ public class CCNReader {
 			return availableContent;
 		}
 		// Not in there, could be all sorts of places it was off. Don't worry about those for now. 
-		Log.info("Repository does not contain expected child of {0}, has {1} children at that point", availableContent.name(), enl.childCount());
+		Log.info(Log.FAC_IO, "Repository does not contain expected child of {0}, has {1} children at that point", availableContent.name(), enl.childCount());
 		return null;
 	}
 
@@ -284,17 +285,18 @@ public class CCNReader {
 		if (null == retrievedObject) {
 			// Couldn't find one at all. That means it's definitely not in a repository (or a cache,
 			// or a key server). Done.
-			Log.info("isContentAvailable: no content available corresponding to {0}", contentName);
+			Log.info(Log.FAC_IO, "isContentAvailable: no content available corresponding to {0}", contentName);
 			return null;
 		} else {
-			Log.finer("isContentAvailable: found content {0} matching name {1}", retrievedObject.name(), contentName);
+            if (Log.isLoggable(Log.FAC_IO, Level.FINER))
+                Log.finer(Log.FAC_IO, "isContentAvailable: found content {0} matching name {1}", retrievedObject.name(), contentName);
 	
 			// Found one. Does it contain what we want, if we know what that is?
 			if (null != desiredContentDigest) {
 				CCNInputStream inputStream = new CCNInputStream(retrievedObject, null, handle);
 				byte [] streamContent = CCNDigestHelper.digest(inputStream);
 				if (!Arrays.equals(streamContent, desiredContentDigest)) {
-					Log.info("Retrieved content {0} matching name {1}, but that stream's content is {2}, not expected {3}.", 
+					Log.info(Log.FAC_IO, "Retrieved content {0} matching name {1}, but that stream's content is {2}, not expected {3}.", 
 							retrievedObject.name(), contentName, DataUtils.printBytes(streamContent), DataUtils.printBytes(desiredContentDigest));
 					return null;
 				}

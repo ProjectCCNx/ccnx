@@ -1,7 +1,7 @@
-/**
+/*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -34,16 +34,16 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.BlockReadWriteTest;
+import org.ccnx.ccn.test.CCNTestBase;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-
-
 
 /**
  * Basic stream test. Relies on old test infrastructure, 
  */
 public class StreamTest extends BlockReadWriteTest {
-	
+		
 	static int longSegments = (TEST_LONG_CONTENT.length()/SegmentationProfile.DEFAULT_BLOCKSIZE);
 	static int minSegments = 128;
 	static int numIterations = ((int)(minSegments/longSegments) + 1);
@@ -51,7 +51,13 @@ public class StreamTest extends BlockReadWriteTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		//Library.setLevel(Level.FINEST);
+		//Library.setDefaultLevel(Level.FINEST);
+		BlockReadWriteTest.setUpBeforeClass();
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		CCNTestBase.tearDownAfterClass();
 	}
 	
 	@Override
@@ -60,11 +66,12 @@ public class StreamTest extends BlockReadWriteTest {
 					InvalidKeyException, SignatureException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
-		CCNInputStream istream = new CCNInputStream(thisName, handle);
-		istream.setTimeout(8000);
-		Log.info("Opened descriptor for reading: " + baseName);
 
-		FileOutputStream os = new FileOutputStream(fileName + "_testout.txt");
+		CCNInputStream istream = new CCNInputStream(thisName, handle);
+		istream.setTimeout(120000);
+		Log.info("StreamTest: Opened descriptor for reading: " + thisName);
+
+		FileOutputStream os = new FileOutputStream(_testDir + fileName + "_testout.txt");
 		byte[] compareBytes = TEST_LONG_CONTENT.getBytes();
         byte[] bytes = new byte[compareBytes.length];
         int buflen;
@@ -103,7 +110,7 @@ public class StreamTest extends BlockReadWriteTest {
 		CCNOutputStream ostream = new CCNOutputStream(thisName, handle);
 		sema.release();	// put channel open
 		
-		Log.info("Opened output stream for writing: " + thisName);
+		Log.info("StreamTest: Opened output stream for writing: " + thisName);
 		Log.info("Writing " + TEST_LONG_CONTENT.length() + " bytes, " +
 						(TEST_LONG_CONTENT.length()/ostream.getBlockSize()) + " segments (" + numIterations + " iterations of content");
 		

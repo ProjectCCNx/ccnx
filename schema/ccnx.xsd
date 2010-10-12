@@ -124,6 +124,15 @@
   </xs:simpleContent>
 </xs:complexType>
 
+<!-- Binary representation of relative time, relative to "now" -->
+<xs:complexType name="FinegrainLifetimeType">
+  <xs:simpleContent>
+    <xs:extension base="BinaryTime12">
+      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
 <!-- Note: SignedInfo was formerly known as ContentAuthenticator -->
 <xs:complexType name="SignedInfoType">
   <xs:sequence>
@@ -265,6 +274,8 @@
     <xs:element name="AnswerOriginKind" type="xs:nonNegativeInteger"
                         minOccurs="0" maxOccurs="1"/>
     <xs:element name="Scope" type="xs:nonNegativeInteger"
+			minOccurs="0" maxOccurs="1"/>
+    <xs:element name="InterestLifetime" type="FinegrainLifetimeType"
 			minOccurs="0" maxOccurs="1"/>
     <xs:element name="Nonce" type="Base64BinaryType"
 			minOccurs="0" maxOccurs="1"/>

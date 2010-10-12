@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -49,9 +49,10 @@ public class TestUserDataTestRepo {
 	
    @Test
 	public void testUserCreation() throws Exception {
+	    CCNHandle thandle = CCNHandle.open();
 		CreateUserData td = new CreateUserData(userKeyStorePrefix, userCount,
 				true,
-				"password".toCharArray(), CCNHandle.open());
+				"password".toCharArray(), thandle);
 		StringBuffer sb = new StringBuffer("Users: ");
 		for (String s : td.friendlyNames()) {
 			sb.append(" " + s);
@@ -134,6 +135,7 @@ public class TestUserDataTestRepo {
 		}
 
 		System.out.println("Success.");
+		thandle.close();
 	}
 
 }

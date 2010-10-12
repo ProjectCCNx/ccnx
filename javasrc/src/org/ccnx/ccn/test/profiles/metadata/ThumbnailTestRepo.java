@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -46,6 +46,7 @@ public class ThumbnailTestRepo extends CCNTestBase {
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		CCNTestBase.setUpBeforeClass();
 	}
 
 	/**
@@ -53,6 +54,7 @@ public class ThumbnailTestRepo extends CCNTestBase {
 	 */
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
+		CCNTestBase.tearDownAfterClass();
 	}
 
 	/**

@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -38,9 +38,32 @@ public class RepositoryInternalInputHandler extends CCNHandle {
 	}
 	
 	public ContentObject get(Interest interest, long timeout) throws IOException {
+		//long startTime = System.currentTimeMillis();
+		//long stopTime;
 		while (true) {
 			try {
-				return _repo.getContent(interest);
+				ContentObject co = _repo.getContent(interest);
+				/*
+				 * the code below is here as a reminder that this overridden version of get for the handle
+				 * that seems to be only used for testing.  this method ignores the timeout and can cause
+				 * the getLatestVersion code to work very hard and loop many times to try for the full
+				 * timeout it was called with.  The gLV code has been modified so that if the get returns null
+				 * and the response time from calling handle.get is 0, it will log the event at WARNING and
+				 * return null to the caller, it will not loop many times to attempt to get the object for the
+				 * full timeout it was called with.
+				//stopTime = System.currentTimeMillis();
+				if (co == null) {
+					//there is nothing to return...  sleep for remaining time
+					
+					try {
+						Thread.sleep(timeout - (stopTime - startTime));
+					} catch (InterruptedException e) {
+						Log.warning("error while sleeping in RepositoryInternalInputHandler");
+					}
+					
+				}
+				*/
+				return co;
 			} catch (RepositoryException e) {
 				throw new IOException(e.getMessage());
 			}

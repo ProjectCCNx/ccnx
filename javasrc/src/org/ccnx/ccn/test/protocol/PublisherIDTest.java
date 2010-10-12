@@ -1,7 +1,7 @@
-/**
+/*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -77,27 +77,30 @@ public class PublisherIDTest {
 	@Test
 	public void testPublisherToString() throws Exception {
 		
+		// Start with a java base 32 representation, a form used in debug output,
+		// but generally not in any actual protocols.
 		String id = "1lplh6o3q52k6jnnr0n7utmegju6cjjg3p7jhgfn8h1siubg20r7";
 		System.out.println("id length " + id.length());
-		PublisherPublicKeyDigest did = new PublisherPublicKeyDigest(id);
 		
 		byte [] sid = CCNDigestHelper.scanBytes(id, 32);
 		System.out.println("sid hex " + DataUtils.printHexBytes(sid));
+		PublisherPublicKeyDigest did = new PublisherPublicKeyDigest(sid);
+		Assert.assertEquals(did.digest().length, 256 / 8); // bytes in SHA-256
 		
 		System.out.println("id " + id);
-		System.out.println("id hex " + DataUtils.printHexBytes(id.getBytes()));
+		System.out.println("did hex " + DataUtils.printHexBytes(did.digest()));
 		System.out.println("did " + did);
 		System.out.println("PPKD(did) " + new PublisherPublicKeyDigest(did.toString()));
 		
 		String id2 = "6n6m4r0f8kagqeuvc2svrmpq2fopiee0f4ue61ut247ibpe083";
 		System.out.println("id2 length " + id2.length());
-		PublisherPublicKeyDigest did2 = new PublisherPublicKeyDigest(id2);
 		
 		byte [] sid2 = CCNDigestHelper.scanBytes(id2, 32);
 		System.out.println("sid2 hex " + DataUtils.printHexBytes(sid2));
+		PublisherPublicKeyDigest did2 = new PublisherPublicKeyDigest(sid2);
 		
 		System.out.println("id2 " + id2);
-		System.out.println("id2 hex " + DataUtils.printHexBytes(id2.getBytes()));
+		System.out.println("id2 hex " + DataUtils.printHexBytes(did2.digest()));
 		System.out.println("did2 " + did2);
 		System.out.println("PPKD(did2) " + new PublisherPublicKeyDigest(did2.toString()));
 		
@@ -110,9 +113,8 @@ public class PublisherIDTest {
 		System.out.println("Via printstream: " + DataUtils.printHexBytes(output));
 		String input = new String(output);
 		System.out.println("into a string: " + input);
-		// the PrintStream puts a CR onto the end, which causes trouble.
-	//	byte [] sid3 = CCNDigestHelper.scanBytes(input, 32);
-	//	System.out.println("sid3 hex " + DataUtils.printHexBytes(sid3));
+		byte [] sid3 = (new PublisherPublicKeyDigest(input)).digest();
+		System.out.println("sid3 hex " + DataUtils.printHexBytes(sid3));
 		
 		byte [] otherBytes = {(byte)0xff, (byte)0xff, (byte)0xd9, (byte)0xde, (byte)0x75, (byte)0xc5, 
 				(byte)0xa56, (byte)0xff, (byte)0x45, (byte)0x78,

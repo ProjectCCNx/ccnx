@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -27,6 +27,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 
@@ -48,8 +49,13 @@ public class BaseLibrarySource {
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
 		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Log.setLevel(Level.INFO);
+		Log.setDefaultLevel(Level.INFO);
 		rand = new Random();
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() {
+		handle.close();
 	}
 
 	/**

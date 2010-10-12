@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -136,6 +136,9 @@ public class CommandMarker {
 	public static final CommandMarker COMMAND_MARKER_REPO_CHECKED_START_WRITE = 
 		commandMarker(REPOSITORY_NAMESPACE, "sw-c");
 
+	public static final CommandMarker COMMAND_MARKER_REPO_ADD_FILE = 
+		commandMarker(REPOSITORY_NAMESPACE, "af");
+	
 	/**
 	 * Some very simple markers that need no other support. See KeyProfile and
 	 * MetadataProfile for related core markers that use the Marker namespace.
@@ -425,6 +428,11 @@ public class CommandMarker {
 		}
 		
 		int argumentEnd = binaryArgumentStart(nameComponent);
+		if (argumentEnd >= 0) {
+			if (argumentEnd <= argumentStart+1)
+				return null;	// no Argument or other malformed data
+		} else
+			argumentEnd = nameComponent.length;
 		
 		String argString = new String(nameComponent, argumentStart+1, argumentEnd-argumentStart-1);
 		return argString.split(UTF8_ARGUMENT_SEPARATOR);

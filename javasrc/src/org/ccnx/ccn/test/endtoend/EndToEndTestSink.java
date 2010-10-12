@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -23,6 +23,7 @@ import java.util.Random;
 
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -34,10 +35,15 @@ import org.junit.Test;
  * NOTE: This test requires ccnd to be running and complementary source process
  */
 public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestListener {
-
+	
 	@Test
+	public void sink() throws Throwable {
+		gets();
+		server();
+	}
+	
 	public void gets() throws Throwable {
-		System.out.println("Get sequence started");
+		Log.info("Get sequence started");
 		Random rand = new Random();
 		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
@@ -48,15 +54,14 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 			// in the get()
 			assertEquals(true, value >= i);
 			i = value;
-			System.out.println("Got " + i);
+			Log.info("Got " + i);
 			checkGetResults(contents);
 		}
 		System.out.println("Get sequence finished");
 	}
 	
-	@Test
 	public void server() throws Throwable {
-		System.out.println("GetServer started");
+		Log.info("GetServer started");
 		Interest interest = new Interest("/BaseLibraryTest/server");
 		// Register interest
 		handle.expressInterest(interest, this);
@@ -74,11 +79,11 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 			String objString = contentObject.name().toString();
 			interest = new Interest(objString.substring(0, "/BaseLibraryTest/server".length()) + "/" + new Integer(next).toString());
 			// Register interest
-			next++;
 			checkGetResults(contentObject);
 			if (next >= BaseLibrarySource.count) {
 				sema.release();
 			}
+			next++;
 		} catch (Throwable e) {
 			error = e;
 		}

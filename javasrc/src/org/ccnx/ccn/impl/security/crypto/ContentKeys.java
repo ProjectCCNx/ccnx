@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -37,6 +37,16 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
+/**
+ * ContentKeys is a container class holding a key and optional IV or counter value,
+ * plus an algorithm specifier. It is used to carry the state necessary to perform
+ * symmetric encryption of content. To do so, it requires a function that maps from
+ * a key set to the keying data to be used to encrypt/decrypt a specific block of
+ * content (see getSegmentEncryptionCipher and getSegmentDecryptionCipher), which may,
+ * either use this key material directly or use a key derivation function to obtain
+ * subkeys specific to each segment.
+ *
+ */
 public abstract class ContentKeys implements Cloneable {
 
 	public static final String DEFAULT_KEY_ALGORITHM = CryptoConstants.AES_ALGORITHM;

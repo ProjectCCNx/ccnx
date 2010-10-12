@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -335,6 +335,10 @@ public class CCNSegmenter {
 			ContentKeys keys) 
 	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
+		if (null == content) {
+			throw new IOException("Content cannot be null!");
+		}
+		
 		if (null == publisher) {
 			publisher = _handle.keyManager().getDefaultKeyID();
 		}
@@ -703,6 +707,12 @@ public class CCNSegmenter {
 				// decryption key, we'll try to decrypt it.
 				type = ContentType.ENCR; 
 
+			} catch (IllegalArgumentException e) {
+				Log.warning("Exception: " + e);
+				Log.warning("Exception: offset " + offset + " length " + length + " content length " +
+						((null == content) ? "null" : content.length));
+				Log.warningStackTrace(e);
+				throw e;
 			} catch (IllegalBlockSizeException e) {
 				Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
 				throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
@@ -765,7 +775,7 @@ public class CCNSegmenter {
 
 				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
 				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
-				if( Log.isLoggable(Level.FINEST))
+				if (Log.isLoggable(Level.FINEST))
 					Log.finest("Created new encryption cipher "+thisCipher);
 				// Override content type to mark encryption.
 				// Note: we don't require that writers use our facilities for encryption, so
@@ -831,6 +841,7 @@ public class CCNSegmenter {
 				try {
 					// Make a separate cipher, so this segmenter can be used by multiple callers at once.
 					Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
+					// TODO -- incurs an extra copy
 					blockContent = thisCipher.doFinal(contentBlocks[i]);
 
 					// Override content type to mark encryption.
@@ -871,11 +882,13 @@ public class CCNSegmenter {
 				throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
 			}
 		}
+		// ContentObject constructor copies the content blocks, so that the buffer here
+		// can be reused by caller.
 		blocks[i] =  
 			new ContentObject(
 					SegmentationProfile.segmentName(rootName, nextSegmentIndex),
 					signedInfo,
-					contentBlocks[i], 0, lastBlockLength,
+					blockContent, 0, lastBlockLength,
 					(Signature)null);
 		return blocks;
 	}

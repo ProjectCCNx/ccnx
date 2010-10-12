@@ -48,9 +48,13 @@ uninstall:
 	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(INSTALL_BIN)/`basename $$i`; done
 
 # Use ant to actually do the work for these targets
-jar clean test: _always
+jar test: _always
 	$(ANT) -k $@
 	@rm -f _always
+
+clean: _always
+	$(ANT) -k clean
+	rm -f _always $(JAR)
 
 documentation: _always
 

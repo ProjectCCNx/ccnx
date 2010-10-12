@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -486,9 +486,9 @@ public class BasicKeyManager extends KeyManager {
 	
 	public synchronized boolean loadSavedSecureKeyCache() throws ConfigurationException {
 		// Load values from our configuration file, which should be read in UserConfiguration.
-		if (!UserConfiguration.useKeyConfiguration()) {
+		if (!UserConfiguration.saveAndLoadKeyCache()) {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
-				Log.info(Log.FAC_KEYS, "Not loading key manager configuration data in response to user configuration variable.");
+				Log.info(Log.FAC_KEYS, "Not loading key cache in response to user configuration variable.");
 			}
 			return true;
 		}
@@ -514,8 +514,9 @@ public class BasicKeyManager extends KeyManager {
 				SecureKeyCache keyCache = EncryptedObjectFileHelper.readEncryptedObject(keyCacheFile, getDefaultSigningKey());
 				
 				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
-					Log.info(Log.FAC_KEYS, "Loaded saved key cached data from file {0}, got {1} key locator values.", 
+					Log.info(Log.FAC_KEYS, "Loaded saved key cached data from file {0}, got {1} keys values.", 
 							keyCacheFile.getAbsolutePath(), keyCache.size());
+					keyCache.printContents();
 				}
 				
 				// merge key caches
@@ -552,12 +553,14 @@ public class BasicKeyManager extends KeyManager {
 		// This prevents us from writing the data out to a file, where it could interact badly with 
 		// user state (e.g. if we're a unit test). It will still be changed in the runtime data,
 		// allowing unit tests to use it within a single execution.
-		if (!UserConfiguration.useKeyConfiguration()) {
+		if (!UserConfiguration.saveAndLoadKeyCache()) {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
 				Log.info(Log.FAC_KEYS, "Not saving key manager secure key cache data in response to user configuration variable.");
 			}
 			return;
 		}
+		
+		getSecureKeyCache().validateForWriting();
 		
 		File keyCacheFile = new File(_keyStoreDirectory, _keyCacheFileName); 
 		
@@ -974,10 +977,32 @@ public class BasicKeyManager extends KeyManager {
 	/**
 	 * Get signing keys
 	 * @return private signing keys
+	 * TODO bug -- currently returns all the private keys in our cache, which includes decryption
+	 * keys. Replace with getPrivateKeys with getMyPrivateKeys once we're sure it won't cause trouble.
 	 */
 	@Override
 	public PrivateKey [] getSigningKeys() {
 		return _privateKeyCache.getPrivateKeys();
+	}
+	
+	/**
+	 * Get the public key digests corresponding to our available signing keys
+	 * 
+	 */
+	@Override
+	public PublisherPublicKeyDigest [] getAvailableIdentities() {
+		PrivateKey [] pks = _privateKeyCache.getMyPrivateKeys();
+		PublisherPublicKeyDigest [] ids = new PublisherPublicKeyDigest[pks.length];
+		int i=0;
+		for (PrivateKey pk : pks) {
+			PublisherPublicKeyDigest ppkd = _privateKeyCache.getPublicKeyIdentifier(pk);
+			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+				Log.info(Log.FAC_KEYS, "KeyManager: have identity {0}", ppkd);
+			}
+			ids[i++] = ppkd; // a little dangerous; with low probability could be null, which
+				// caller might not expect.
+		}
+		return ids;
 	}
 	
 	/**
@@ -989,7 +1014,7 @@ public class BasicKeyManager extends KeyManager {
 	 */
 	@Override
 	public PrivateKey getSigningKey(PublisherPublicKeyDigest publisher) {
-		if( Log.isLoggable(Log.FAC_KEYS, Level.FINER) )
+		if (Log.isLoggable(Log.FAC_KEYS, Level.FINER) )
 			Log.finer(Log.FAC_KEYS, "getSigningKey: retrieving key: " + publisher);
 		if (null == publisher)
 			return null;

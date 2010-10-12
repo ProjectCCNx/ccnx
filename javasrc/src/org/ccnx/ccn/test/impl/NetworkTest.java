@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -30,6 +30,7 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -60,6 +61,12 @@ public class NetworkTest extends CCNTestBase {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() {
+		putHandle.close();
+		getHandle.close();
 	}
 
 	@Before

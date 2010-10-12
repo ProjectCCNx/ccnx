@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2010 Palo Alto Research Center, Inc.
@@ -17,6 +17,9 @@
 package org.ccnx.ccn.profiles.repo;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
@@ -35,6 +38,7 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 /**
@@ -46,6 +50,11 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  *
  */
 public class RepositoryControl {
+	
+	/**
+	 * Temporary cache of blocks we have synced, to avoid double-syncing blocks.
+	 */
+    protected static Set<ContentName> syncedObjects = Collections.synchronizedSet(new HashSet<ContentName>());
 
 	/**
 	 * Request that a local repository preserve a copy
@@ -108,7 +117,7 @@ public class RepositoryControl {
 		Log.info("RepositoryControl.localRepoSync called for name {0}", name);
 
 		// Request preserving the dereferenced content of the stream first
-		result = internalRepoSync(handle, name, segment, digest);
+		result = internalRepoSync(handle, name, segment, digest, stream.getFirstSegment().fullName());
 		
 		// Now also deal with each of the links dereferenced to get to the ultimate content
 		LinkObject link = stream.getDereferencedLink();
@@ -123,7 +132,7 @@ public class RepositoryControl {
 				Log.info("localRepoSync synchronizing link: {0}", link);
 			}
 
-			if (!internalRepoSync(handle, name, segment, digest)) {
+			if (!internalRepoSync(handle, name, segment, digest, link.getFirstSegment().fullName())) {
 				result = false;
 			}
 			link = link.getDereferencedLink();
@@ -149,7 +158,7 @@ public class RepositoryControl {
 					}
 
 					// This will traverse any links, and the signer credentials for the lot.
-					// If self-signed, don't sync it's signer or we'll loop
+					// If self-signed, don't sync its signer or we'll loop
 					// We do not change the result if the key was not previously synced; we care
 					// about content. Keys are potentially more often synced, but also more finicky --
 					// if we're syncing the auto-published keys we can have two copies that differ
@@ -188,7 +197,7 @@ public class RepositoryControl {
 			Log.info("RepositoryControl.localRepoSync called for net obj name {0}", name);
 		}
 		// Request preserving the dereferenced content of the stream first
-		result = internalRepoSync(handle, name, segment, digest);
+		result = internalRepoSync(handle, name, segment, digest, obj.getFirstSegment().fullName());
 		
 		// Now also deal with each of the links dereferenced to get to the ultimate content
 		LinkObject link = obj.getDereferencedLink();
@@ -199,7 +208,7 @@ public class RepositoryControl {
 			name = link.getVersionedName(); // we need versioned name; link basename may or may not be
 			segment = link.firstSegmentNumber();
 
-			if (!internalRepoSync(handle, name, segment, digest)) {
+			if (!internalRepoSync(handle, name, segment, digest, link.getFirstSegment().fullName())) {
 				result = false;
 			}
 			link = link.getDereferencedLink();
@@ -209,32 +218,46 @@ public class RepositoryControl {
 			// Finally, we need to ask repository to preserve the signer key (and any links
 			// we need to dereference to get to that (credentials)). We had to retrieve the
 			// key to verify it; it should likely still be in our cache.
-			PublicKeyObject signerKey = 
-				handle.keyManager().getPublicKeyObject(obj.getContentPublisher(), obj.getPublisherKeyLocator(), 
-						SystemConfiguration.FC_TIMEOUT);
-
-			if (null != signerKey) {
-				if (!signerKey.available()) {
-					if (Log.isLoggable(Level.INFO)) {
-						Log.info("Signer key {0} not available for syncing.", signerKey.getBaseName());
-					}
-				} else {
-					if (Log.isLoggable(Level.INFO)) {
-						Log.info("localRepoSync: synchronizing signer key {0}.", signerKey.getVersionedName());
-						Log.info("localRepoSync: is signer key self-signed? " + signerKey.isSelfSigned());
-					}
-
-					// This will traverse any links, and the signer credentials for the lot.
-					// If self-signed, don't sync it's signer or we'll loop
-					// We do not change the result if the key was not previously synced; we care
-					// about content. Keys are potentially more often synced, but also more finicky --
-					// if we're syncing the auto-published keys we can have two copies that differ
-					// only in signing time and signature.
-					localRepoSync(handle, signerKey, !signerKey.isSelfSigned());
-				}
+			
+			KeyLocator keyLocator = obj.getPublisherKeyLocator();
+			if (obj.getPublisherKeyLocator() == null) {
+				Log.warning("publisher key locator for object we are syncing is null");
 			} else {
-				if (Log.isLoggable(Level.INFO)) {
-					Log.info("Cannot retrieve signer key from locator {0}!", obj.getPublisherKeyLocator());
+				if (Log.isLoggable(Level.FINER)) {
+					Log.finer("publisher key locator for object to sync: "+obj.getPublisherKeyLocator());
+				}
+				if (keyLocator.type() != KeyLocator.KeyLocatorType.NAME) {
+					Log.info("this object contains the key itself...  can skip trying to get the key in the repo");
+				} else {
+
+					PublicKeyObject signerKey = 
+						handle.keyManager().getPublicKeyObject(obj.getContentPublisher(), obj.getPublisherKeyLocator(), 
+								SystemConfiguration.FC_TIMEOUT);
+
+					if (null != signerKey) {
+						if (!signerKey.available()) {
+							if (Log.isLoggable(Level.INFO)) {
+								Log.info("Signer key {0} not available for syncing.", signerKey.getBaseName());
+							}
+						} else {
+							if (Log.isLoggable(Level.INFO)) {
+								Log.info("localRepoSync: synchronizing signer key {0}.", signerKey.getVersionedName());
+								Log.info("localRepoSync: is signer key self-signed? " + signerKey.isSelfSigned());
+							}
+
+							// This will traverse any links, and the signer credentials for the lot.
+							// If self-signed, don't sync it's signer or we'll loop
+							// We do not change the result if the key was not previously synced; we care
+							// about content. Keys are potentially more often synced, but also more finicky --
+							// if we're syncing the auto-published keys we can have two copies that differ
+							// only in signing time and signature.
+							localRepoSync(handle, signerKey, !signerKey.isSelfSigned());
+						}
+					} else {
+						if (Log.isLoggable(Level.INFO)) {
+							Log.info("Cannot retrieve signer key from locator {0}!", obj.getPublisherKeyLocator());
+						}
+					}
 				}
 			}
 		}
@@ -249,7 +272,18 @@ public class RepositoryControl {
 	 * @param startingSegmentNumber Initial segment number of the stream
 	 * @param firstDigest Digest of the first segment
 	 */
-	static boolean internalRepoSync(CCNHandle handle, ContentName baseName, Long startingSegmentNumber, byte[] firstDigest) throws IOException {
+	static boolean internalRepoSync(CCNHandle handle, ContentName baseName, Long startingSegmentNumber, 
+									byte[] firstDigest, ContentName fullName) throws IOException {
+		
+		// UNNECESSARY OVERHEAD: shouldn't have to re-generate full name here, so hand it in.
+		// probably better way than sending in both name and parts.
+		if (syncedObjects.contains(fullName)) {
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
+				Log.info(Log.FAC_IO, "Sync: skipping already-synced object {0}", fullName);
+			}			
+		}
+		
+		// INCORRECT: the protocol is using a nonce.
 		// We do not use a nonce in this protocol, because a cached confirmation is satisfactory,
 		// assuming verification of the repository that published it.
 		
@@ -285,11 +319,21 @@ public class RepositoryControl {
 		
 		if (co.signedInfo().getType() != ContentType.DATA)
 			throw new IOException("Invalid repository response for checked write, type " + co.signedInfo().getType());
+		
 		RepositoryInfo repoInfo = new RepositoryInfo();
 		try {
 			repoInfo.decode(co.content());
-			if (repoInfo.getType() == RepoInfoType.DATA) {
+			
+			// At this point, a repo has responded and will deal with our data. Don't need to
+			// sync it again.
+			syncedObjects.add(fullName);
+			
+			if (repoInfo.getType() == RepoInfoType.DATA) {			
 				// This type from checked write is confirmation that content already held
+				// TODO improve result handling. Currently we get true if repo has content already,
+				// false if error or repo is storing content but didn't have it already. We don't care
+				// whether repo had it already, all we care is whether it is already or will be synced --
+				// want to separate errors, repo non-response from "repo will take care of it" responses.
 				return true;
 			}
 		} catch (ContentDecodingException e) {

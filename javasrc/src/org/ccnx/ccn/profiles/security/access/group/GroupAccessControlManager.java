@@ -1,7 +1,7 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -73,6 +73,19 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 
 /**
+ * This class implements a basic Group-based access control scheme. For full details,
+ * see the CCNx Access Control Specification. Management of Groups and Group members is
+ * handled by the GroupManager and Group classes. This class handles management and updating
+ * of access control (node) keys stored in the name tree, and any operation that requires 
+ * crawling that tree -- looking at more than one node at once. Operations on single nodes
+ * are handled by individual component classes (e.g. NodeKey).
+ * 
+ * TODO refactor this class and its use slightly; right now it is capable of handling multpile
+ * group and user namespaces, but it itself is limited to a single content namespace. This
+ * means that we have multiple GACMs, one per protected namespace; we should refactor
+ * so that we have one ACM of each type, and each manages multiple namespaces. This is
+ * not a large change, and might be more efficient.
+ * 
  * This class is used in updating node keys and by #getEffectiveNodeKey(ContentName).
  * To achieve this, we walk up the tree for this node. At each point, we check to
  * see if a node key exists. If one exists, we decrypt it if we know an appropriate
@@ -482,6 +495,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		PublicKeyObject pko = new PublicKeyObject(identity, myPublicKey, SaveType.REPOSITORY, handle());
 		pko.save();
+		Log.finer(Log.FAC_ACCESSCONTROL, "Published identity {0}", identity);
 		_myIdentities.add(identity);
 	}
 
@@ -490,6 +504,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * Add an identity to my set. Assume the key is already published.
 	 */
 	public void addMyIdentity(ContentName identity) {
+		Log.finer(Log.FAC_ACCESSCONTROL, "Adding identity {0}", identity);
 		_myIdentities.add(identity);
 	}
 
@@ -580,7 +595,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * @throws ContentEncodingException 
 	 * @throws InvalidKeyException 
 	 */
-	public void initializeNamespace(ACL rootACL) 
+	public ACLObject initializeNamespace(ACL rootACL) 
 	throws InvalidKeyException, ContentEncodingException, ContentNotReadyException, 
 	ContentGoneException, IOException {
 		// generates the new node key		
@@ -589,6 +604,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// write the root ACL
 		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(_namespace), rootACL, handle());
 		aclo.save();
+		return aclo;
 	}
 
 	/**
@@ -849,6 +865,34 @@ public class GroupAccessControlManager extends AccessControlManager {
 		aclo.save();
 		return aclo.acl();
 	}
+	
+	/**
+	 * Adds an ACL to a node that doesn't have one, or replaces one that exists.
+	 * Just writes, doesn't bother to look at any current ACL. Does need to pull
+	 * the effective node key at this node, though, to wrap the old ENK in a new
+	 * node key. Gets handed in effective ACL, to avoid having to search.
+	 * 
+	 * @param nodeName the name of the node
+	 * @param newACL the new ACL
+	 * @return
+	 * @throws InvalidKeyException 
+	 * @throws IOException 
+	 * @throws ContentGoneException 
+	 * @throws ContentNotReadyException 
+	 * @throws NoSuchAlgorithmException 
+	 */
+	public ACL setACL(ContentName nodeName, ACL newACL, ACLObject effectiveACLObject) 
+	throws AccessDeniedException, InvalidKeyException, ContentNotReadyException, ContentGoneException, IOException, NoSuchAlgorithmException {
+		// Throws access denied exception if we can't read the old node key.
+		NodeKey effectiveNodeKey = getEffectiveNodeKey(nodeName, effectiveACLObject);
+		// generates the new node key, wraps it under the new acl, and wraps the old node key
+		generateNewNodeKey(nodeName, effectiveNodeKey, newACL);
+		// write the acl
+		ACLObject aclo = new ACLObject(GroupAccessControlProfile.aclName(nodeName), newACL, handle());
+		aclo.save();
+		return aclo.acl();
+	}
+
 
 	/**
 	 * Delete the ACL at this node if one exists, returning control to the
@@ -1280,7 +1324,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * Get the effective node key in force at this node, used to derive keys to 
 	 * encrypt  content. Vertical chaining. Works if you ask for node which has
 	 * a node key.
-	 * TODO -- when called by writers, check to see if node key is dirty & update.
 	 * @param nodeName
 	 * @return
 	 * @throws AccessDeniedException 
@@ -1307,6 +1350,40 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		return effectiveNodeKey;
 	}
+	
+	/**
+	 * Write path:
+	 * Get the effective node key in force at this node, used to derive keys to 
+	 * encrypt  content. Vertical chaining. Works if you ask for node which has
+	 * a node key. Hand in node with existing node key to avoid search.
+	 * @param nodeName
+	 * @return
+	 * @throws AccessDeniedException 
+	 * @throws ContentEncodingException 
+	 * @throws ContentDecodingException
+	 * @throws IOException
+	 * @throws InvalidKeyException 
+	 * @throws NoSuchAlgorithmException 
+	 */
+	public NodeKey getEffectiveNodeKey(ContentName nodeName, ACLObject effectiveACL) 
+	throws AccessDeniedException, InvalidKeyException, ContentEncodingException, 
+	ContentDecodingException, IOException, NoSuchAlgorithmException {
+		// Get the ancestor node key in force at this node.
+		NodeKey nodeKey = getLatestNodeKeyForNode(
+				AccessControlProfile.accessRoot(effectiveACL.getBaseName()));
+		if (null == nodeKey) {
+			throw new AccessDeniedException("Cannot retrieve node key for node: " + nodeName + ".");
+		}
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info(Log.FAC_ACCESSCONTROL, "Found node key at {0}", nodeKey.storedNodeKeyName());
+		}
+		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel());
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info(Log.FAC_ACCESSCONTROL, "Computing effective node key for {0} using stored node key {1}", nodeName, effectiveNodeKey.storedNodeKeyName());
+		}
+		return effectiveNodeKey;
+	}
+
 
 	/**
 	 * Like #getEffectiveNodeKey(ContentName), except checks to see if node
@@ -1342,12 +1419,12 @@ public class GroupAccessControlManager extends AccessControlManager {
 				Log.info(Log.FAC_ACCESSCONTROL, "getFreshEffectiveNodeKey: Found node key at {0}", nodeKey.storedNodeKeyName());
 			}
 		}
-		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-			Log.finer(Log.FAC_ACCESSCONTROL, "getFreshEffectiveNodeKey: retrieved stored node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), nodeKey);
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info(Log.FAC_ACCESSCONTROL, "getFreshEffectiveNodeKey: retrieved node key for node {0} label {1}: {2}", nodeName, nodeKeyLabel(), nodeKey);
 		}
 		NodeKey effectiveNodeKey = nodeKey.computeDescendantNodeKey(nodeName, nodeKeyLabel()); 
-		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-			Log.finer(Log.FAC_ACCESSCONTROL, "getFreshEffectiveNodeKey: computed effective node key for node {0} label {1}: {2} using stored node key {3}"
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info(Log.FAC_ACCESSCONTROL, "getFreshEffectiveNodeKey: computed effective node key for node {0} label {1}: {2} using stored node key {3}"
 					, nodeName, nodeKeyLabel(), effectiveNodeKey, effectiveNodeKey.storedNodeKeyName());
 		}
 		return effectiveNodeKey;
@@ -1520,15 +1597,20 @@ public class GroupAccessControlManager extends AccessControlManager {
 	@Override 
 	public Key getDataKeyWrappingKey(ContentName dataNodeName, ContentName wrappingKeyName, Key cachedWrappingKey) throws InvalidKeyException, ContentEncodingException {
 		NodeKey cachedWrappingKeyNK = new NodeKey(wrappingKeyName, cachedWrappingKey);
-		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-			Log.finer(Log.FAC_ACCESSCONTROL, "getNodeKeyForObject: retrieved stored node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), cachedWrappingKeyNK);
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+			Log.info(Log.FAC_ACCESSCONTROL, "getDataKeyWrappingKey: retrieved cached stored node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), cachedWrappingKeyNK);
 		}
 		NodeKey enk = cachedWrappingKeyNK.computeDescendantNodeKey(dataNodeName, nodeKeyLabel());
-		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-			Log.finer(Log.FAC_ACCESSCONTROL, "getNodeKeyForObject: computed effective node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), enk);
-		}
 		if (null != enk) {
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+				Log.info(Log.FAC_ACCESSCONTROL, "getDataKeyWrappingKey: used cache to compute effective node key for node {0} label {1}: {2}", dataNodeName, nodeKeyLabel(), enk);
+			}
 			return enk.nodeKey();
+		} else {
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
+				Log.finer(Log.FAC_ACCESSCONTROL, "getDataKeyWrappingKey: cannot compute effective node key for node {0} label {1} from cached key {2}", 
+						dataNodeName, nodeKeyLabel(), cachedWrappingKeyNK);
+			}
 		}
 		return null;
 	}

@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -46,9 +46,15 @@ import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
- * This class represents Access Control Lists (ACLs).
- * An ACL maintains information about who is allowed to read, write
- * and manage (i.e. edit access rights to) the content in a CCN namespace.  
+ * This class represents an Access Control List (ACLs) for CCN content, for use with
+ * the Group-based access control scheme (though it might be useful to other schemes as well).
+ * 
+ * It offers a limited degree of expressibility -- it can grant read, write, or manage
+ * privileges to named users or groups (where users and groups are effectively
+ * public keys stored in locations defined by the profile). Permissions are supersets
+ * of one another -- writers can read, managers can read and write. Managers have the additional
+ * capability to change rights -- to create and edit ACLs. An ACL applies to all the content
+ * below it in the name tree until it is superseded by another ACL below it in that tree.  
  *
  */
 public class ACL extends Collection {

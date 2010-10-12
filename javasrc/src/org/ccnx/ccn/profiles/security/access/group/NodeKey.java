@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -38,9 +38,9 @@ import org.ccnx.ccn.protocol.ContentName;
 /**
  * This class represents node keys.
  * It includes methods for computing derived node keys for descendant nodes
- * using a key derivation function.
+ * using a key derivation function. For a definition and description of node keys,
+ * see the CCNx Access Control Specification.
  */
-
 public class NodeKey {
 	
 	/**

@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -132,8 +132,8 @@ public class CCNFileOutputStream extends CCNVersionedOutputStream {
 		
 		// Really want to query the segmenter about the last block we wrote.
 		Header headerData = new Header(SegmentationProfile.baseSegment(), this._baseNameIndex, blockSize, contentLength, contentDigest, contentTreeAuthenticator);
-		if( Log.isLoggable(Level.FINEST ))
-			Log.finest("HEADER: Writing header, starting segment " + headerData.start() + " count " + headerData.count() + " length " + headerData.length());
+		if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
+			Log.finest(Log.FAC_IO, "HEADER: Writing header, starting segment " + headerData.start() + " count " + headerData.count() + " length " + headerData.length());
 		// DKS TODO -- deal with header encryption, making sure it has same publisher as
 		// rest of file via the segmenter
 		// The segmenter contains the flow controller. Should do the right thing whether this

@@ -1,7 +1,7 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -36,6 +36,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
@@ -66,6 +67,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		public final static String META_DIR = ".meta";
 		public final static String NORMAL_COMPONENT = "0";
 		public final static String SPLIT_COMPONENT = "1";
+		
+		public static final String REPO_IMPORT_DIR = "import";
 
 		private static String DEFAULT_LOCAL_NAME = "Repository";
 		private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
@@ -73,14 +76,14 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		private static final String VERSION = "version";
 		private static final String REPO_LOCALNAME = "local";
 		private static final String REPO_GLOBALPREFIX = "global";
-		
+				
 		public static final char [] KEYSTORE_PASSWORD = "Th1s 1s n0t 8 g00d R3p0s1t0ry p8ssw0rd!".toCharArray();
 		public static final String KEYSTORE_FILE = "ccnx_repository_keystore";
 		public static final String REPOSITORY_USER = "Repository";
 		// OS dependencies -- some OSes seem to ignore case in keystore aliases
 		public static final String REPOSITORY_KEYSTORE_ALIAS = REPOSITORY_USER.toLowerCase();
 
-		private static String CONTENT_FILE_PREFIX = "repoFile";
+		public static String CONTENT_FILE_PREFIX = "repoFile";
 		private static String DEBUG_TREEDUMP_FILE = "debugNamesTree";
 
 		private static String DIAG_NAMETREE = "nametree"; // Diagnostic/signal to dump name tree to debug file
@@ -94,8 +97,11 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	protected File _repositoryFile;
 
 	Map<Integer,RepoFile> _files;
-	RepoFile _activeWriteFile;
+	RepoFile _activeWriteFile = null;
+	Integer _currentFileIndex = 0;
 	ContentTree _index;
+	
+	protected HashMap<String, String> _bulkImportInProgress = new HashMap<String, String>();
 	
 	public class RepoFile {
 		File file;
@@ -116,7 +122,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 */
 	public ContentObject getContent(Interest interest)
 			throws RepositoryException {
-		return _index.get(interest, this);
+		ContentObject co =  _index.get(interest, this);
+		if( Log.isLoggable(Log.FAC_REPO, Level.FINE) )
+			Log.fine(Log.FAC_REPO, co == null ? "Didn't find it" : "Found it");
+		return co;
 	}
 
 	/**
@@ -171,64 +180,106 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			if (filenames[i].startsWith(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX)) {
 				String indexPart = filenames[i].substring(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX.length());
 				if (null != indexPart && indexPart.length() > 0) {
-					try {
-						Integer index = Integer.parseInt(indexPart);
-						if (index > max) {
-							max = index.intValue();
-						}
-						RepoFile rfile = new RepoFile();
-						rfile.file = new File(_repositoryFile,filenames[i]);
-						rfile.openFile = new RandomAccessFile(rfile.file, "r");
-						InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8196);
-						
-						if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
-							Log.fine(Log.FAC_REPO, "Creating index for {0}", filenames[i]);
-						}
-						while (true) {
-							FileRef ref = new FileRef();
-							ref.id = index.intValue();
-							ref.offset = rfile.openFile.getFilePointer();
-							if(ref.offset > 0)
-								ref.offset = ref.offset - is.available();
-							ContentObject tmp = new ContentObject();
-							try {
-								if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
-									//tmp.decode(is);
-									tmp.decode(is);
-								}
-								else{
-									if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-										Log.info(Log.FAC_REPO, "at the end of the file");
-									}
-									rfile.openFile.close();
-									rfile.openFile = null;
-									break;
-								}
-
-							} catch (ContentDecodingException e) {
-								Log.logStackTrace(Level.WARNING, e);
-								e.printStackTrace();
-								// Failed to decode, must be end of this one
-								//added check for end of file above
-								rfile.openFile.close();
-								rfile.openFile = null;
-								break;
-							}
-							_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
-						}
-						_files.put(index, rfile);
-					} catch (NumberFormatException e) {
-						// Not valid file
-						Log.warning("Invalid file name " + filenames[i]);
-					} catch (FileNotFoundException e) {
-						Log.warning("Unable to open file to create index: " + filenames[i]);
-					} catch (IOException e) {
-						Log.warning("IOException reading file to create index: " + filenames[i]);
+					Integer index = Integer.parseInt(indexPart);
+					if (index > max) {
+						max = index.intValue();
 					}
+					try {
+						createIndex(filenames[i], index, false);
+					} catch (RepositoryException e) {}	// This can't happen
 				}
 			}
 		}
 		return new Integer(max);
+	}
+	
+	/**
+	 * Create index from specific file. For now we will allow errors during the initial index creation,
+	 * assuming that we want to keep trying if there's an error in the existing index files. If an import
+	 * file has an error though we want to abort. The issue of handling corrupt data in the repo in general
+	 * ought to be revisited.
+	 * 
+	 * Because index creation can now be done while the repo is actively doing file searches, care must be
+	 * taken to synchronize events correctly.
+	 * 
+	 * @param fileName
+	 * @param index
+	 * @param fromImport - this is an "import" file.
+	 * @throws RepositoryException 
+	 */
+	private void createIndex(String fileName, Integer index, boolean fromImport) throws RepositoryException {
+		try {
+			RepoFile rfile = new RepoFile();
+			rfile.file = new File(_repositoryFile,fileName);
+			rfile.openFile = new RandomAccessFile(rfile.file, "r");
+			InputStream is = new BufferedInputStream(new RandomAccessInputStream(rfile.openFile),8192);
+			
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
+				Log.fine(Log.FAC_REPO, "Creating index for {0}", fileName);
+			}
+			
+			// Must be done before inserting into the index because once objects are inserted into the
+			// index, a lookup to this file can occur. If the object is inserted, even if all objects
+			// from the file are not yet inserted, a read of the file for the already inserted object
+			// should be OK. By doing it this way, we avoid having to stall all gets while a bulk import
+			// (which could be arbitrarily long) is in progress
+			
+			synchronized (_files) {
+				_files.put(index, rfile);
+			}
+			
+			// Its true that its "OK" for someone to be reading the nodes as we are creating them
+			// but now we have to be careful to keep our filepointer correct, since it could be modified
+			// by a reader. The seek to a new spot in get is synchronized under the "RepoFile", so we
+			// keep track of where our pointer was also synchronized under the RepoFile so we can restore
+			// it to where it was in the case someone was reading one of our previously created nodes
+			// while the index creation is in progress.
+			long nextOffset = 0;
+			while (true) {
+				FileRef ref = new FileRef();
+				ContentObject tmp = new ContentObject();
+				synchronized (rfile) {
+					ref.id = index.intValue();
+					ref.offset = nextOffset;
+					rfile.openFile.seek(nextOffset);	// In case a get changed this in the meantime
+					if(ref.offset > 0)
+						ref.offset = ref.offset - is.available();
+					try {
+						if (rfile.openFile.getFilePointer()<rfile.openFile.length() || is.available()!=0) {
+							tmp.decode(is);
+							nextOffset = rfile.openFile.getFilePointer();
+						}
+						else{
+							if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+								Log.info(Log.FAC_REPO, "at the end of the file");
+							}
+							rfile.openFile.close();
+							rfile.openFile = null;
+							break;
+						}
+	
+					} catch (ContentDecodingException e) {
+						// Failed to decode, must be end of this one
+						//added check for end of file above
+						rfile.openFile.close();
+						rfile.openFile = null;
+						if (fromImport)
+							throw new RepositoryException(e.getMessage());
+						Log.logStackTrace(Level.WARNING, e);
+						e.printStackTrace();
+						break;
+					}
+				}
+				_index.insert(tmp, ref, rfile.file.lastModified(), this, null);
+			}
+		} catch (NumberFormatException e) {
+			// Not valid file
+			Log.warning(Log.FAC_REPO, "Invalid file name " +fileName);
+		} catch (FileNotFoundException e) {
+			Log.warning(Log.FAC_REPO, "Unable to open file to create index: " + fileName);
+		} catch (IOException e) {
+			Log.warning(Log.FAC_REPO, "IOException reading file to create index: " + fileName);
+		}
 	}
 	
 	/**
@@ -266,8 +317,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
-		if (Log.isLoggable(Level.WARNING)){
-			Log.warning("Starting repository; repository root is: {0}", _repositoryFile.getAbsolutePath());
+		if (Log.isLoggable(Log.FAC_REPO, Level.WARNING)){
+			Log.warning(Log.FAC_REPO, "Starting repository; repository root is: {0}", _repositoryFile.getAbsolutePath());
 		}
 		
 		// DKS -- we probably don't want to encrypt startWrites and other messages, 
@@ -289,13 +340,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 							LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
 				_km.initialize();
 				
-				if( Log.isLoggable(Level.FINEST))
-					Log.finest("Initialized repository key store.");
+				if( Log.isLoggable(Log.FAC_REPO, Level.FINEST))
+					Log.finest(Log.FAC_REPO, "Initialized repository key store.");
 				
 				handle = CCNHandle.open(_km);
 				
-				if( Log.isLoggable(Level.FINEST))
-					Log.finest("Opened repository handle.");
+				if( Log.isLoggable(Log.FAC_REPO, Level.FINEST))
+					Log.finest(Log.FAC_REPO, "Opened repository handle.");
 				
 				// Let's use our key manager as the default. That will make us less
 				// prone to accidentally loading the user's key manager. If we close it more than
@@ -307,13 +358,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 						null, _km);
 
 			} catch (ConfigurationException e) {
-				Log.warning("ConfigurationException loading repository key store: " + e.getMessage());
+				Log.warning(Log.FAC_REPO, "ConfigurationException loading repository key store: " + e.getMessage());
 				throw new RepositoryException("ConfigurationException loading repository key store!", e);
 			} catch (IOException e) {
-				Log.warning("IOException loading repository key store: " + e.getMessage());
+				Log.warning(Log.FAC_REPO, "IOException loading repository key store: " + e.getMessage());
 				throw new RepositoryException("IOException loading repository key store!", e);
 			} catch (InvalidKeyException e) {
-				Log.warning("InvalidKeyException loading repository key store: " + e.getMessage());
+				Log.warning(Log.FAC_REPO, "InvalidKeyException loading repository key store: " + e.getMessage());
 				throw new RepositoryException("InvalidKeyException loading repository key store!", e);
 			}
 		}
@@ -321,23 +372,19 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 
 		// Internal initialization
 		_files = new HashMap<Integer, RepoFile>();
-		int maxFileIndex = createIndex();
+		_currentFileIndex = createIndex();
 		
-		// Internal initialization
-		//moved the following...  getContent depends on having an index
-		//_files = new HashMap<Integer, RepoFile>();
-		//int maxFileIndex = createIndex();
 		try {
-			if (maxFileIndex == 0) {
-				maxFileIndex = 1; // the index of a file we will actually write
+			if (_currentFileIndex == 0) {
+				_currentFileIndex = 1; // the index of a file we will actually write
 				RepoFile rfile = new RepoFile();
 				rfile.file = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX+"1");
 				rfile.openFile = new RandomAccessFile(rfile.file, "rw");
 				rfile.nextWritePos = 0;
-				_files.put(new Integer(maxFileIndex), rfile);
+				_files.put(new Integer(_currentFileIndex), rfile);
 				_activeWriteFile = rfile;
 			} else {
-				RepoFile rfile = _files.get(new Integer(maxFileIndex));
+				RepoFile rfile = _files.get(new Integer(_currentFileIndex));
 				long cursize = rfile.file.length();
 				rfile.openFile = new RandomAccessFile(rfile.file, "rw");
 				rfile.nextWritePos = cursize;
@@ -345,7 +392,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			}
 			
 		} catch (FileNotFoundException e) {
-			Log.warning("Error opening content output file index " + maxFileIndex);
+			Log.warning(Log.FAC_REPO, "Error opening content output file index " + _currentFileIndex);
 		}
 			
 		// Verify stored policy info
@@ -423,11 +470,12 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 		if (!nameSpaceOK) {
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-				if( Log.isLoggable(Level.INFO))
-					Log.info("Repo rejecting content: {0}, not in registered namespace.", content.name());
+				Log.info(Log.FAC_REPO, "Repo rejecting content: {0}, not in registered namespace.", content.name());
 			}
 			return null;
 		}
+		if (null == _activeWriteFile)
+			return null;
 		try {	
 			NameEnumerationResponse ner = new NameEnumerationResponse();
 			synchronized(_activeWriteFile) {
@@ -470,7 +518,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		// using our subtype of ContentRef
 		FileRef fref = (FileRef)ref;
 		try {
-			RepoFile file = _files.get(fref.id);
+			RepoFile file = null;
+			synchronized (_files) {
+				file = _files.get(fref.id);
+			}
 			if (null == file)
 				return null;
 			synchronized (file) {
@@ -479,15 +530,12 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				}
 				file.openFile.seek(fref.offset);
 				ContentObject content = new ContentObject();
-				InputStream is = new BufferedInputStream(new RandomAccessInputStream(file.openFile), 8196);
+				InputStream is = new BufferedInputStream(new RandomAccessInputStream(file.openFile), 8192);
 				content.decode(is);
 				return content;
 			}
-		} catch (IndexOutOfBoundsException e) {
-			return null;
-		} catch (FileNotFoundException e) {
-			return null;
-		} catch (IOException e) { // handles ContentDecodingException
+		} catch (Exception e) {
+			Log.warning(Log.FAC_REPO, "Can't get content: " + e);
 			return null;
 		}
 	}
@@ -555,7 +603,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				_index.dumpNamesTree(namesOut, nodelen);
 			}
 		} catch (FileNotFoundException ex) {
-			Log.warning("Unable to dump names to " + namesFile.getAbsolutePath());
+			Log.warning(Log.FAC_REPO, "Unable to dump names to " + namesFile.getAbsolutePath());
 		}
 	}
 
@@ -590,7 +638,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			} catch (IOException e) {}
 		}
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.REPO_EXITDUMP)) {
-			Log.warning("Debug flag ({0}) is set: dumping nametree now (on shutdown)", DEBUGGING_FLAGS.REPO_EXITDUMP.toString());
+			Log.warning(Log.FAC_REPO, "Debug flag ({0}) is set: dumping nametree now (on shutdown)", DEBUGGING_FLAGS.REPO_EXITDUMP.toString());
 			dumpNames(-1);
 		}
 	}
@@ -600,4 +648,34 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
 
+	public boolean bulkImport(String name) throws RepositoryException {
+		if (name.contains(UserConfiguration.FILE_SEP))
+			throw new RepositoryException("Bulk import data can not contain pathnames");
+		File file = new File(_repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR + UserConfiguration.FILE_SEP + name);
+		if (!file.exists()) {		
+			// Is this due to a reexpressed interest for bulk import already in progress?
+			if (_bulkImportInProgress.containsKey(name))
+					return false;		
+			throw new RepositoryException("File does not exist: " + file);
+		}
+		synchronized (_currentFileIndex) {
+			_bulkImportInProgress.put(name, name);
+			_currentFileIndex++;
+			File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
+			if (!file.renameTo(repoFile))
+				throw new RepositoryException("Can not rename file: " + file);
+			try {
+				createIndex(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex, _currentFileIndex, true);
+			} catch (RepositoryException re) {
+				// The seemingly logical thing to do would be to verify the data for errors first and then submit it if it
+				// was OK. But that would require 2 passes through the data in the mainline case in which the data is good
+				// so instead we rename the file back if its bad.
+				repoFile.renameTo(file);
+				_bulkImportInProgress.remove(name);
+				throw re;
+			}
+			_bulkImportInProgress.remove(name);
+		}
+		return true;
+	}
 }

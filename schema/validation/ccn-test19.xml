@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">cmVwb1Rlc3Q=</Component>
+    <Component ccnbencoding="base64Binary">ZGF0YTI=</Component>
+    <Component ccnbencoding="base64Binary">+A==</Component>
+  </Name>
+  <Scope>0</Scope>
+  <InterestLifetime ccnbencoding="base64Binary">AAB10001</InterestLifetime>
+  <Nonce ccnbencoding="base64Binary">bguyKU4JG5m2</Nonce>
+</Interest>

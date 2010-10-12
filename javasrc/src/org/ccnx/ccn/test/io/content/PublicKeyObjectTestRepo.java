@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -73,14 +73,14 @@ public class PublicKeyObjectTestRepo {
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		Log.setLevel(oldLevel);
+		Log.setDefaultLevel(oldLevel);
 	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
 		oldLevel = Log.getLevel();
-		//Log.setLevel(Level.FINEST);
+		//Log.setDefaultLevel(Level.FINEST);
 		Security.addProvider(new BouncyCastleProvider());
 		// generate key pair
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -102,6 +102,11 @@ public class PublicKeyObjectTestRepo {
 			storedKeyNames[i][1] = ContentName.fromNative(namespace, "testDSAUser-" + i, "KEY");
 			storedKeyNames[i][2] = ContentName.fromNative(namespace, "testDHUser-" + i, "KEY");
 	    }
+	}
+	
+	@AfterClass
+	public static void cleanupAfterClass() {
+		handle.close();
 	}
 
 	@Test
@@ -151,6 +156,8 @@ public class PublicKeyObjectTestRepo {
 		
 		PublicKeyObject testObject = new PublicKeyObject(firstSegment, CCNHandle.open());
 		Log.info("testObject available? " + testObject.available());
+		otherHandle.close();
+		testObject.close();
 	}
 
 	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, VersionMissingException {

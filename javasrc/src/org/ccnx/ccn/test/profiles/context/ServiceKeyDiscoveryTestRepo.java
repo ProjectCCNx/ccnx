@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2010 Palo Alto Research Center, Inc.
@@ -26,6 +26,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -41,16 +42,20 @@ public class ServiceKeyDiscoveryTestRepo {
 	public static final String NOT_A_SERVICE = "NotAService";
 	
 	static CreateUserData serviceProviders = null;
-	public static final String USER_DIRECTORY = "./TestUsers"; 
+	public static final String USER_DIRECTORY = "TestUsers";
 	public static final String [] SERVICE_PROVIDERS = new String[]{
 		"PoodleServer", "KittenServer", "Repository", "Server"};
 
 	public static final int TEST_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT;
 	
+	public static String _testDir = "./";
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		if (null != System.getProperty(CCNTestBase.TEST_DIR))
+			_testDir = System.getProperty(CCNTestBase.TEST_DIR);
 		UserConfiguration.setPublishKeys(false);
-		serviceProviders = new CreateUserData(new File(USER_DIRECTORY), SERVICE_PROVIDERS, SERVICE_PROVIDERS.length,
+		serviceProviders = new CreateUserData(new File(_testDir + USER_DIRECTORY), SERVICE_PROVIDERS, SERVICE_PROVIDERS.length,
 				UserConfiguration.keystorePassword().toCharArray(), true);
 	}
 

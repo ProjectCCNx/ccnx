@@ -7,7 +7,7 @@ ccnputfile - publish a file as CCNx content
 
 SYNOPSIS
 --------
-*ccnputfile* [-v] [-raw] [-unversioned] [-timeout 'millis'] [-log 'LEVEL'] [-as 'pathToKeystore'] [-ac]  'ccnxname' 'filename|url'
+*ccnputfile* [-v] [-raw] [-unversioned] [-local] [-timeout 'millis'] [-log 'LEVEL'] [-as 'pathToKeystore'] [-ac]  'ccnxname' 'filename|url'
 
 DESCRIPTION
 -----------
@@ -28,7 +28,8 @@ the 'ccnxname'.
 The 'url' must be a valid url to be published under a 'ccnxname'.
 
 *ccnputfile* will publish versioned and segmented content objects, and the key
-used to sign them, to a repository by default.  If there is not a reachable
+used to sign them, to a repository by default. If the '-local' flag is used, a
+local repository on the same device will be used.  If there is not a reachable
 repository, *ccnputfile* will exit with a 'wait for put drain' error.  If
 there is a corresponding application able to retrieve the content (e.x.
 *ccngetfile*) *ccnputfile* can be used to publish the content with '-raw'. 
@@ -40,7 +41,6 @@ the content objects to satisfy the *ccngetfile* interests.
 where a user key has previously been stored.
 
 *ccnputfile* can additionally be used with access control using the '-ac' flag.
-
 
 OPTIONS
 -------
@@ -60,6 +60,10 @@ OPTIONS
      segmentation convention but does not use the versioning
      convention at all. When this option is used, the FileOutputStream
      abstraction will not be used, since that implies versioning.
+
+*-local*::
+     Specifies that a local repository be used to save the file.  The file will not
+     also be saved to repositories on remote devices. 
 
 *-timeout* 'millis'::
      Set the timeout that will be used for putting content objects on

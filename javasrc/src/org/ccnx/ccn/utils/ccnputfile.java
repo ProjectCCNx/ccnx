@@ -1,7 +1,7 @@
-/**
+/*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -88,8 +88,11 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 				CommonSecurity.setAccessControl();
 				if (startArg <= i)
 					startArg = i + 1;				
-			}
-			else {
+			} else if (args[i].equals("-local")) {
+				CommonParameters.local = true;
+				if (startArg <= i)
+					startArg = i + 1;
+			} else {
 				usage();
 			}	
 		}
@@ -149,7 +152,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 	}
 	
 	public void usage() {
-		System.out.println("usage: ccnputfile [-v (verbose)] [-raw] [-unversioned] [-timeout millis] [-log level] [-as pathToKeystore] [-ac (access control)] <ccnname> (<filename>|<url>)*");
+		System.out.println("usage: ccnputfile [-v (verbose)] [-raw] [-unversioned] [-local] [-timeout millis] [-log level] [-as pathToKeystore] [-ac (access control)] <ccnname> (<filename>|<url>)*");
 		System.exit(1);
 	}
 

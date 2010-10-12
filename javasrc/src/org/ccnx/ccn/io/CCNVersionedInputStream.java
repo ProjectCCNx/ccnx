@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -19,6 +19,7 @@ package org.ccnx.ccn.io;
 
 import java.io.IOException;
 import java.util.EnumSet;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
@@ -239,15 +240,15 @@ public class CCNVersionedInputStream extends CCNInputStream {
 			// Get exactly this version
 			return super.getFirstSegment();
 		}
-		Log.info("getFirstSegment: getting latest version of " + _baseName);
+		Log.info(Log.FAC_IO, "getFirstSegment: getting latest version of {0}", _baseName);
 		ContentObject result = 
 			VersioningProfile.getFirstBlockOfLatestVersion(_baseName, _startingSegmentNumber, _publisher, _timeout, this, _handle);
 		if (null != result){
-			Log.info("getFirstSegment: retrieved latest version object " + result.name() + " type: " + result.signedInfo().getTypeName());
-			//_baseName = result.name().cut(_baseName.count() + 1);
+            if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+                Log.info(Log.FAC_IO, "getFirstSegment: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());
 			_baseName = SegmentationProfile.segmentRoot(result.name());
 		} else {
-			Log.info("getFirstSegment: no segment available for latest version of " + _baseName);
+			Log.info(Log.FAC_IO, "getFirstSegment: no segment available for latest version of {0}", _baseName);
 		}
 		return result;
 	}

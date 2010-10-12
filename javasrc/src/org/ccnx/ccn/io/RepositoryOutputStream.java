@@ -1,7 +1,7 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -30,6 +30,8 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 /**
  * A subclass of CCNOutputStream which writes its segments to a repository.
+ * If the constructor is called with local set to true, the output stream will write
+ * to a repository on the local device.
  * If no repository is available, it will throw an exception.
  * 
  * Data written using this class can be read using a normal CCNInputStream; that
@@ -75,6 +77,52 @@ public class RepositoryOutputStream extends CCNOutputStream {
 								  ContentKeys keys, 
 								  CCNHandle handle) throws IOException {
 		super(name, locator, publisher, type, keys, new RepositoryFlowControl(name, handle));
+	}
+	
+
+	public RepositoryOutputStream(ContentName name, CCNHandle handle, boolean local) throws IOException {
+		this(name, null, null, handle, local);
+	}
+	
+	public RepositoryOutputStream(ContentName name,
+								  PublisherPublicKeyDigest publisher, 
+								  CCNHandle handle,
+								  boolean local) throws IOException {
+		this(name, null, publisher, handle, local);
+	}
+
+	public RepositoryOutputStream(ContentName name, 
+								  KeyLocator locator, 
+								  PublisherPublicKeyDigest publisher, 
+								  CCNHandle handle,
+								  boolean local) throws IOException {
+		this(name, locator, publisher, null, null, handle, local);
+	}
+
+	public RepositoryOutputStream(ContentName name, 
+								  ContentKeys keys,
+								  CCNHandle handle,
+								  boolean local) throws IOException {
+		this(name, null, null, keys, handle, local);
+	}
+
+	public RepositoryOutputStream(ContentName name, 
+								  KeyLocator locator,
+								  PublisherPublicKeyDigest publisher, 
+								  ContentKeys keys,
+								  CCNHandle handle,
+								  boolean local) throws IOException {
+		this(name, locator, publisher, null, keys, handle, local);
+	}
+
+	public RepositoryOutputStream(ContentName name, 
+								  KeyLocator locator,
+								  PublisherPublicKeyDigest publisher, 
+								  ContentType type,
+								  ContentKeys keys, 
+								  CCNHandle handle,
+								  boolean local) throws IOException {
+		super(name, locator, publisher, type, keys, new RepositoryFlowControl(name, handle, local));
 	}
 }
 

@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -19,10 +19,13 @@ package org.ccnx.ccn.test.repo;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.LibraryTestBase;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -41,6 +44,8 @@ public class RepoTestBase extends LibraryTestBase {
 	
 	protected static String _topdir;
 	protected static String _fileTestDir;
+	protected static String _fileTestDir2;
+	protected static String _fileTestDir3;
 	protected static String _repoName = "TestRepository";
 	protected static String _globalPrefix = "/parc.com/csl/ccn/repositories";
 	protected static File _fileTest;
@@ -57,6 +62,8 @@ public class RepoTestBase extends LibraryTestBase {
 		_fileTestDir = System.getProperty("REPO_ROOT");
 		if( null == _fileTestDir )
 			_fileTestDir = "repotest";
+		_fileTestDir2 = _fileTestDir + "2";
+		_fileTestDir3 = _fileTestDir + "3";
 	}
 	
 	protected void checkNameSpace(String contentName, boolean expected) throws Exception {
@@ -91,5 +98,15 @@ public class RepoTestBase extends LibraryTestBase {
 		ContentName baseName = ros.getBaseName();
 		ros.close();
 		return baseName;
+	}
+	
+	protected void checkData(ContentName name, String data) throws IOException, InterruptedException{
+		checkData(new Interest(name), data.getBytes());
+	}
+	
+	protected void checkData(Interest interest, byte[] data) throws IOException, InterruptedException{
+		ContentObject testContent = getHandle.get(interest, 10000);
+		Assert.assertFalse(testContent == null);
+		Assert.assertTrue(Arrays.equals(data, testContent.content()));		
 	}
 }

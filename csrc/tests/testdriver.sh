@@ -29,7 +29,7 @@ cd $(dirname "$0")
 
 # Set up PATH so the tested programs are used, rather than any that
 # might be installed.
-export PATH=.:../ccnd:../libexec:../cmd:../lib:$PATH:./stubs
+export PATH=.:../ccnd:../libexec:../cmd:../lib:../util:$PATH:./stubs
 
 # If there are any ccnds running on non-standard ports, wait a minute and retry.
 ls /tmp/.ccnd.sock.* 2>/dev/null && { echo There is something else happening, waiting one minute ... ; sleep 60; }

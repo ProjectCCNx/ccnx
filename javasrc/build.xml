@@ -48,6 +48,7 @@
 	<property name="REPO_GLOBAL" value="parc.com/csl/ccn/repositories"/>
 	<property name="USE_KEY_CONFIG_KEY" value="org.ccnx.config.UseKeyConfiguration"/>
 	<property name="USE_KEY_CONFIG_VAL" value="false"/>
+        <property name="CHATTY" value="FINER"/>
 	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
@@ -86,11 +87,7 @@
 		<doxygen configFilename="Doxyfile"/>
 	</target>
 
-    <target name="dictionary">
-      <copy file="../schema/tagname.csvdict" todir="src/org/ccnx/ccn/impl/encoding/"/>
-    </target>
-
-	<target name="compile" depends="dictionary">
+	<target name="compile">
 		<mkdir dir="${build}"/>
 		<depend srcdir="src" destdir="${build}" closure="yes"/>
 		<javac destdir="${build}"
@@ -557,7 +554,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -577,12 +574,13 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoIOTest.class"/>
+					<include name="org/ccnx/ccn/test/repo/RepoBulkImportTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -599,7 +597,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -660,7 +658,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -713,7 +711,7 @@
 		<echo message="Running end-to-end test"/>
 		<parallel failonany="true">
 			<!-- timeout more than 2X average so sure timeout == failure -->
-			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="100000" dir="${testout}" showoutput="${showoutput}">
 				<classpath>
 					<path refid="classpath-run"/>
 				</classpath>
@@ -723,7 +721,7 @@
 				<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 				<test todir="${testout}"  name="org.ccnx.ccn.test.endtoend.EndToEndTestSource"/>
 			</junit>
-			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="60000" dir="${testout}" showoutput="${showoutput}">
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="100000" dir="${testout}" showoutput="${showoutput}">
 				<classpath>
 					<path refid="classpath-run"/>
 				</classpath>
@@ -750,7 +748,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -773,7 +771,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -799,7 +797,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -821,7 +819,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINER"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">

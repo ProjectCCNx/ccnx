@@ -89,6 +89,7 @@ enum ccn_dtag {
     CCN_DTAG_Bloom = 44,
     CCN_DTAG_BloomSeed = 45,
     CCN_DTAG_AnswerOriginKind = 47,
+    CCN_DTAG_InterestLifetime = 48,
     CCN_DTAG_Witness = 53,
     CCN_DTAG_SignatureBits = 54,
     CCN_DTAG_DigestAlgorithm = 55,

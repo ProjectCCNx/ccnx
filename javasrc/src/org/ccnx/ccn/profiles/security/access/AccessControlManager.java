@@ -1,3 +1,20 @@
+/*
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package org.ccnx.ccn.profiles.security.access;
 
 import java.io.IOException;
@@ -37,6 +54,37 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
+/**
+ * Abstract class containing core functionality we expect to be common across all access control
+ * schemes. Key functionality provided:
+ * 
+ * * maintain static cache of AccessControlManager instances, one per controlled namespace; and
+ *   provide code to load ACMs (by retrieving a policy marker from a given nametree root and loading
+ *   the type of ACM specified in that policy marker), and to look them up
+ *   
+ * * whenever any content is to be written using a CCNOutputStream (or subclass) or network object,
+ *   keysForOutput is called to determine whether there is an access control manger in force for that
+ *   content's namespace, and to retrieve the appropriate content encryption keys to protect it using
+ *   that ACM instance.
+ *   
+ * * when a piece of encrypted content is read, keysForInput is used to retrieve the keys necessary to
+ *   decrypt it using the loaded ACM instance for that namespace (TODO could load ACMs automatically
+ *   in this case); according to the access control scheme supported by that ACM instance
+ *   
+ * * isProtectedContent determines whether a given piece of content that is about to be written should
+ *    be encrypted or not. The default policy exempts content of type KEY, LINK, and access control
+ *    metadata (data used to control access control) from encryption. (TODO need a special encrypted
+ *    LINK type - ELNK). Subclasses can add to this list of exemptions (by calling super.isProtectedContent
+ *    to determine their superclass' exemptions and then adding their own. They should not override 
+ *    the superclass' request to exempt something, otherwise things may break (in other words, they can
+ *    leave unencrypted more content than the superclass suggests, but probably should not encrypt
+ *    content the superclass says should not be encrypted).
+ *    
+ *  * data key handling -- content streams are encrypted using nonce keys; access control is used to
+ *    protect those nonce keys. Basic nonce key handling (creation, content encryption) is implemented
+ *    in this class, protection of nonce keys is left abstract for subclassess to implement.
+ *
+ */
 public abstract class AccessControlManager {
 
 	/**
@@ -206,6 +254,11 @@ public abstract class AccessControlManager {
 		}
 		if (null != wrappingKey) {
 			dataKey = wdko.wrappedKey().unwrapKey(wrappingKey);
+			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINE)) {
+				Log.fine(Log.FAC_ACCESSCONTROL, "getDataKey: unwrapped data key {0}", 
+						DataUtils.printHexBytes(WrappedKey.wrappingKeyIdentifier(dataKey)));
+			}
+
 			return dataKey;
 		}
 		return null;
@@ -357,9 +410,10 @@ public abstract class AccessControlManager {
 	}
 
 	/**
-	 * Called when a stream is opened for reading, to determine if the name is under a root ACL, and
-	 * if so find or create an AccessControlManager, and get keys for access. Only called if
-	 * content is encrypted.
+	 * Called when a stream containing encrypted content is opened for reading, 
+	 * to determine if the name is under a root ACL, and
+	 * if so find or create an AccessControlManager, and get keys for access. 
+	 * 
 	 * @param name name of the stream to be opened, without the segment number
 	 * @param publisher the publisher of the stream to open, in case that matters for key retrieva
 	 * @param library CCN Library instance to use for any network operations.
@@ -393,6 +447,8 @@ public abstract class AccessControlManager {
 
 	/**
 	 * Get keys to encrypt content as its' written, if that content is to be protected.
+	 * Called by the CCNOutputStream subclasses to get encryption keys for specific content
+	 * segments. 
 	 * @param name
 	 * @param publisher
 	 * @param type the type of content to be written. Mostly used to determine whether
@@ -450,12 +506,11 @@ public abstract class AccessControlManager {
 	}
 	
 	/**
-	 * Manage the access control information we know about.
-	 * 
-	 * Find an ACM object that covers operations on a specific name. 
-	 * If none exists in memory then this searches up the name tree 
-	 * looking for the root of a namespace under access control,
-	 * and if it finds one creates an ACM. If none is found null is returned.
+	 * Find an ACM that controls access to content in a given namespace. Only looks
+	 * in the cache of already-loaded AccessControlManagers; it doesn't load additional
+	 * ACMs or search for policy objects. This is called by keysForOutput *every* time
+	 * content is written. It can't do extensive search. Use loadAccessControlManagerForNamespace
+	 * to load an ACM for a namespace if policy specifies to use one.
 	 * @param name
 	 * @param handle
 	 * @return null if namespace is not under access control, or an ACM to perform 
@@ -478,7 +533,6 @@ public abstract class AccessControlManager {
 	 * access control managers. 
 	 * TODO handle multiple policy points
 	 * TODO maybe handle policies overlapping in namespace
-	 * TODO check to make sure we haven't already loaded the ACM
 	 * @param namespace
 	 * @param handle
 	 * @return The ACM we find if one already existed, or the new one we created, if configured;

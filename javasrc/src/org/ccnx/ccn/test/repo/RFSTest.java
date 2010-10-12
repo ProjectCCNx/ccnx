@@ -1,4 +1,4 @@
-/**
+/*
  * A CCNx library test.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -21,9 +21,11 @@ import java.io.File;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
 import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.impl.repo.RepositoryStore;
+import org.ccnx.ccn.impl.repo.LogStructRepoStore.LogStructRepoStoreProfile;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.CommandMarker;
@@ -40,7 +42,6 @@ import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -56,6 +57,8 @@ import org.junit.Test;
 public class RFSTest extends RepoTestBase {
 	
 	RepositoryStore repolog; // Instance of simple log-based repo implementation under test
+	
+	private final String Repository2 = "TestRepository2";
 	
 	private ContentName longName;
 	private byte[] longNameDigest;
@@ -73,13 +76,7 @@ public class RFSTest extends RepoTestBase {
 		DataUtils.deleteDirectory(_fileTest);
 		_fileTest.mkdirs();
 	}
-		
-	@Before
-	public void setUp() throws Exception {
-		super.setUp();
-		initRepoLog();
-	}
-						
+				
 	public void initRepoLog() throws Exception {
 		repolog = new LogStructRepoStore();
 		repolog.initialize(_fileTestDir, null, _repoName, _globalPrefix, null, null);
@@ -88,13 +85,34 @@ public class RFSTest extends RepoTestBase {
 	@Test
 	public void testRepo() throws Exception {
 		System.out.println("testing repo (log-structured implementation)");
+		initRepoLog();
 		test(repolog);
 		initRepoLog();
 		// Having initialized a new instance on the same stable storage stage produced by the
 		// test() method, now run testReinitialization to check consistency.
 		testReinitialization(repolog);
+		repolog.shutDown();
 	}
 	
+	@Test
+	public void testBulkImport() throws Exception {
+		System.out.println("Testing bulk import to repo");
+		initRepoLog();
+		RepositoryStore repolog2 = new LogStructRepoStore();
+		repolog2.initialize(_fileTestDir2, null, Repository2, _globalPrefix, null, null);
+		ContentName name = ContentName.fromNative("/repoTest/testAddData");
+		ContentObject content = ContentObject.buildContentObject(name, "Testing bulk import".getBytes());
+		repolog2.saveContent(content);
+		checkData(repolog2, name, "Testing bulk import");
+		repolog2.shutDown();
+		File importDir = new File(_fileTestDir + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR);
+		Assert.assertTrue(importDir.mkdir());
+		File importFile = new File(_fileTestDir2, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1");
+		importFile.renameTo(new File(importDir, "BulkImportTest"));
+		repolog.bulkImport("BulkImportTest");
+		checkData(repolog, name, "Testing bulk import");
+		repolog.shutDown();
+	}
 	
 	public void test(RepositoryStore repo) throws Exception{		
 		System.out.println("Repotest - Testing basic data");
@@ -359,6 +377,7 @@ public class RFSTest extends RepoTestBase {
 	@Test
 	public void testPolicy() throws Exception {
 		// Writes all this content signed with the repository's key
+		initRepoLog();
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
 			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
@@ -390,7 +409,8 @@ public class RFSTest extends RepoTestBase {
 		// Test setting prefix from the prefix parameter
 		repo.initialize(_fileTestDir, null, _repoName, _globalPrefix, "/", null);
 		repo.saveContent(oonsContent);
-		checkData(repo, outOfNameSpaceName, "Shouldn't see this");	
+		checkData(repo, outOfNameSpaceName, "Shouldn't see this");
+		repolog.shutDown();
 	}
 	
 	private void checkData(RepositoryStore repo, ContentName name, String data) throws RepositoryException {

@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -41,10 +41,9 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 /**
  * This is a network-based implementation of key manager.
  * In comparison with BasicKeyManager, this class reads (or writes) the user's
- * private key from (or to) CCN.   
+ * private key (as a java keystore) from (or to) CCN.   
  * @see BasicKeyManager, KeyManager
  */
-
 public class NetworkKeyManager extends BasicKeyManager {
 		
 	ContentName _keystoreName;

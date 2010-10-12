@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -97,10 +97,10 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
 	public CCNInputStream(ContentName baseName, PublisherPublicKeyDigest publisher, CCNHandle handle) 
-			throws IOException {
+    throws IOException {
 		this(baseName, null, publisher, handle);
 	}
-
+    
 	/**
 	 * Set up an input stream to read segmented CCN content under a given name. Content is assumed
 	 * to be unencrypted, or keys will be retrieved automatically via another
@@ -140,8 +140,8 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
 	public CCNInputStream(ContentName baseName, Long startingSegmentNumber, PublisherPublicKeyDigest publisher,
-			CCNHandle handle) throws IOException {
-
+                          CCNHandle handle) throws IOException {
+        
 		super(baseName, startingSegmentNumber, publisher, null, null, handle);
 	}
 	
@@ -164,11 +164,11 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	 * @throws IOException Not currently thrown, will be thrown when constructors retrieve first block.
 	 */
 	public CCNInputStream(ContentName baseName, Long startingSegmentNumber, PublisherPublicKeyDigest publisher, 
-			ContentKeys keys, CCNHandle handle) throws IOException {
-
+                          ContentKeys keys, CCNHandle handle) throws IOException {
+        
 		super(baseName, startingSegmentNumber, publisher, keys, null, handle);
 	}
-
+    
 	/**
 	 * Set up an input stream to read segmented CCN content starting with a given
 	 * ContentObject that has already been retrieved.  Content is assumed
@@ -213,12 +213,14 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	protected int readInternal(byte [] buf, int offset, int len) throws IOException {
 		
 		if (_atEOF) {
+			if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+				Log.fine(Log.FAC_IO, "At EOF: {0}", ((null == _currentSegment) ? "null" : _currentSegment.name()));
 			return -1;
 		}
 		
 		if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
 			Log.finest(Log.FAC_IO, getBaseName() + ": reading " + len + " bytes into buffer of length " + 
-				((null != buf) ? buf.length : "null") + " at offset " + offset);
+                       ((null != buf) ? buf.length : "null") + " at offset " + offset);
 		// is this the first block?
 		if (null == _currentSegment) {
 			// This will throw an exception if no block found, which is what we want.
@@ -226,7 +228,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		} 
 		if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
 			Log.finest(Log.FAC_IO, "reading from block: {0}, length: {1}", _currentSegment.name(),  
-				_currentSegment.contentLength());
+                       _currentSegment.contentLength());
 		
 		// Now we have a block in place. Read from it. If we run out of block before
 		// we've read len bytes, pull next block.
@@ -235,7 +237,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 		long readCount = 0;
 		while (lenToRead > 0) {
 			if (null == _segmentReadStream) {
-				Log.severe("Unexpected null block read stream!");
+				Log.severe(Log.FAC_IO, "Unexpected null block read stream!");
 			}
 			if (null != buf) {  // use for skip
 				if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
@@ -245,13 +247,13 @@ public class CCNInputStream extends CCNAbstractInputStream {
 			} else {
 				readCount = _segmentReadStream.skip(lenToRead);
 			}
-
+            
 			if (readCount <= 0) {
 				if (Log.isLoggable(Log.FAC_IO, Level.FINE))
 					Log.fine(Log.FAC_IO, "Tried to read at end of block, go get next block.");
 				if (!hasNextSegment()) {
-					if (Log.isLoggable(Level.FINE))
-						Log.fine("No next block expected, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
+					if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+						Log.fine(Log.FAC_IO, "No next block expected, setting _atEOF, returning " + ((lenRead > 0) ? lenRead : -1));
 					_atEOF = true;
 					if (lenRead > 0) {
 						return lenRead;
@@ -269,15 +271,15 @@ public class CCNInputStream extends CCNAbstractInputStream {
 					return -1; // no bytes read, at eof
 				}
 				setCurrentSegment(nextSegment);
-
+                
 				if (Log.isLoggable(Log.FAC_IO, Level.FINE))
-				Log.fine(Log.FAC_IO, "now reading from block: " + _currentSegment.name() + " length: " + 
-						_currentSegment.contentLength());
+                    Log.fine(Log.FAC_IO, "now reading from block: " + _currentSegment.name() + " length: " + 
+                             _currentSegment.contentLength());
 			} else {
 				offset += readCount;
 				lenToRead -= readCount;
 				lenRead += readCount;
-				if( Log.isLoggable(Log.FAC_IO, Level.FINEST ))
+				if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
 					Log.finest(Log.FAC_IO, "     read " + readCount + " bytes for " + lenRead + " total, " + lenToRead + " remaining.");
 			}
 		}

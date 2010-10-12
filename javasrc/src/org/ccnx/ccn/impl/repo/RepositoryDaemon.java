@@ -1,7 +1,7 @@
-/**
+/*
  * A CCNx repository.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -169,7 +169,7 @@ public class RepositoryDaemon extends Daemon {
 			_repo.initialize(repositoryRoot, policyFile, localName, globalPrefix, nameSpace, null);
 			_server = new RepositoryServer(_repo);
 			
-			Log.info("started repo with response name: "+_server.getResponseName());
+			Log.info(Log.FAC_REPO, "started repo with response name: "+_server.getResponseName());
 
 			
 		} catch (InvalidParameterException ipe) {
@@ -188,7 +188,7 @@ public class RepositoryDaemon extends Daemon {
 			String msg = "usage: " + this.getClass().getName() + " -start -root <repository_root> | -stop <pid> | -interactive | -signal <signal> <pid>" +
 			" [-log <level>] [-policy <policy_file>] [-local <local_name>] [-global <global_prefix>] [-bb]";
 			System.out.println(msg);
-			Log.severe(msg);
+			Log.severe(Log.FAC_REPO, msg);
 		} catch (Exception e) {
 			e.printStackTrace();
 			Log.logStackTrace(Level.SEVERE, e);
@@ -212,7 +212,7 @@ public class RepositoryDaemon extends Daemon {
 			
 		} catch (Exception e) {
 			System.err.println("Error attempting to start daemon.");
-			Log.warning("Error attempting to start daemon.");
+			Log.warning(Log.FAC_REPO, "Error attempting to start daemon.");
 			Log.warningStackTrace(e);
 		}
 	}

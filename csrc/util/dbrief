@@ -1,0 +1,42 @@
+#!/bin/sh
+#
+# util/dbrief
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2010 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2010 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+#
+# Starting with a doxygen config file, produce an abbreviated version that only
+# contains the settings that differ from the default.
+#
+# Note that to recover the verbose form, you can use doxygen -u Doxyfile
+#
+INFILE="${1:-Doxyfile}"
+test -f "$INFILE" || { echo $0 needs an input file; exit 1; }
+TMPDOX=`cksum "$INFILE" | while read a etc; do echo $a; done`.tmpdox
+cp "$INFILE" $TMPDOX || exit 1
+trap "rm -f $TMPDOX $TMPDOX.bak" 0
+echo '#' doxygen `doxygen --version` configuration from `cksum "$INFILE"`
+doxygen -s -u $TMPDOX >/dev/null
+doxygen -g - | diff -U0 - $TMPDOX | grep '^+[^+]' | cut -c 2-

@@ -19,6 +19,7 @@
  
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <netdb.h>
 #include <poll.h>
 #include <signal.h>
@@ -477,7 +478,7 @@ enroll_content(struct ccnd_handle *h, struct content_entry *content)
         while (i < h->content_by_accession_window)
             new_array[j++] = old_array[i++];
         h->content_by_accession_window = new_window;
-	free(old_array);
+    free(old_array);
     }
     h->content_by_accession[content->accession - h->accession_base] = content;
 }
@@ -728,6 +729,7 @@ finalize_nameprefix(struct hashtb_enumerator *e)
             consume(h, head->next);
     }
     ccn_indexbuf_destroy(&npe->forward_to);
+    ccn_indexbuf_destroy(&npe->tap);
     while (npe->forwarding != NULL) {
         struct ccn_forwarding *f = npe->forwarding;
         npe->forwarding = f->next;
@@ -1001,7 +1003,7 @@ ccnd_getboundsocket(void *dat, struct sockaddr *who, socklen_t wholen)
         return(-1);
     }
     record_connection(h, ans, who, wholen,
-                      CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
+                      CCN_FACE_DGRAM | CCN_FACE_PASSIVE | CCN_FACE_NORECV);
     return(ans);
 }
 
@@ -1414,17 +1416,29 @@ note_content_from(struct ccnd_handle *h,
 
 /**
  * Use the history to reorder the interest forwarding.
+ *
+ * @returns number of tap faces that are present.
  */
-static void
+static int
 reorder_outbound_using_history(struct ccnd_handle *h,
                                struct nameprefix_entry *npe,
                                struct propagating_entry *pe)
 {
+    int ntap = 0;
+    int i;
+    
     if (npe->osrc != CCN_NOFACEID)
         promote_outbound(pe, npe->osrc);
     /* Process npe->src last so it will be tried first */
     if (npe->src != CCN_NOFACEID)
         promote_outbound(pe, npe->src);
+    /* Tap are really first. */
+    if (npe->tap != NULL) {
+        ntap = npe->tap->n;
+        for (i = 0; i < ntap; i++)
+            promote_outbound(pe, npe->tap->buf[i]);
+    }
+    return(ntap);
 }
 
 /**
@@ -1688,7 +1702,6 @@ check_nameprefix_entries(struct ccnd_handle *h)
         if (npe->forward_to != NULL)
             check_forward_to(h, npe);
         if (  npe->src == CCN_NOFACEID &&
-              npe->forward_to == NULL &&
               npe->children == 0 &&
               npe->forwarding == NULL) {
             head = &npe->pe_head;
@@ -2013,8 +2026,13 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     if (face == NULL)
         return(-1);
     /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
-    if (flags >= 0 && (flags & CCN_FORW_LAST) != 0)
+    if (flags >= 0 && (flags & CCN_FORW_LAST) != 0) {
         face->flags |= CCN_FACE_DC;
+        if ((face->flags & CCN_FACE_GG) != 0) {
+            face->flags &= ~CCN_FACE_GG;
+            face->flags |= CCN_FACE_REGOK;
+        }
+    }
     hashtb_start(h->nameprefix_tab, e);
     res = nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
@@ -2028,7 +2046,7 @@ ccnd_reg_prefix(struct ccnd_handle *h,
                 flags = f->flags & CCN_FORW_PUBMASK;
             f->flags = (CCN_FORW_REFRESHED | flags);
             res |= flags;
-            if (h->debug & 2) {
+            if (h->debug & (2 | 4)) {
                 struct ccn_charbuf *prefix = ccn_charbuf_create();
                 struct ccn_charbuf *debugtag = ccn_charbuf_create();
                 ccn_charbuf_putf(debugtag, "prefix,ff=%s%x",
@@ -2347,7 +2365,9 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
         goto Finish;
     /* consider the source ... */
     reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+    if (reqface == NULL)
+        goto Finish;
+    if ((reqface->flags & (CCN_FACE_GG | CCN_FACE_REGOK)) == 0)
         goto Finish;
     if (forwarding_entry->lifetime < 0)
         forwarding_entry->lifetime = 60;
@@ -2440,7 +2460,7 @@ ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     struct ccn_forwarding **p = NULL;
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *npe = NULL;
-
+    
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;        
@@ -2483,13 +2503,13 @@ ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
                         forwarding_entry->name_prefix->buf + start,
                         stop - start);
     if (npe == NULL)
-    	goto Finish;
+        goto Finish;
     found = 0;
     p = &npe->forwarding;
     for (f = npe->forwarding; f != NULL; f = f->next) {
-	if (f->faceid == forwarding_entry->faceid) {
-	    found = 1;
-            if (h->debug & 2)
+        if (f->faceid == forwarding_entry->faceid) {
+            found = 1;
+            if (h->debug & (2 | 4))
                 ccnd_debug_ccnb(h, __LINE__, "prefix_unreg", face,
                                 forwarding_entry->name_prefix->buf,
                                 forwarding_entry->name_prefix->length);
@@ -2497,12 +2517,12 @@ ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
             free(f);
             f = NULL;
             h->forward_to_gen += 1;
-	    break;
-	}
+            break;
+        }
         p = &(f->next);
     }
     if (!found) 
-    	goto Finish;    
+        goto Finish;    
     result = ccn_charbuf_create();
     forwarding_entry->action = NULL;
     forwarding_entry->ccnd_id = h->ccnd_id;
@@ -2524,6 +2544,7 @@ static void
 update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
 {
     struct ccn_indexbuf *x = NULL;
+    struct ccn_indexbuf *tap = NULL;
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *p = NULL;
     unsigned wantflags;
@@ -2548,6 +2569,11 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
                 if (h->debug & 32)
                     ccnd_msg(h, "fwd.%d adding %u", __LINE__, f->faceid);
                 ccn_indexbuf_set_insert(x, f->faceid);
+                if ((f->flags & CCN_FORW_TAP) != 0) {
+                    if (tap == NULL)
+                        tap = ccn_indexbuf_create();
+                    ccn_indexbuf_set_insert(tap, f->faceid);
+                }
                 if ((f->flags & CCN_FORW_LAST) != 0)
                     lastfaceid = f->faceid;
             }
@@ -2562,6 +2588,8 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     npe->fgen = h->forward_to_gen;
     if (x->n == 0)
         ccn_indexbuf_destroy(&npe->forward_to);
+    ccn_indexbuf_destroy(&npe->tap);
+    npe->tap = tap;
 }
 
 /**
@@ -2685,7 +2713,11 @@ do_propagate(struct ccn_schedule *sched,
             h->interests_sent += 1;
             h->interest_faceid = pe->faceid;
             next_delay = nrand48(h->seed) % 8192 + 500;
-            if ((pe->flags & CCN_PR_UNSENT) != 0) {
+            if (((pe->flags & CCN_PR_TAP) != 0) &&
+                  ccn_indexbuf_member(nameprefix_for_pe(h, pe)->tap, pe->faceid)) {
+                next_delay = special_delay = 1;
+            }
+            else if ((pe->flags & CCN_PR_UNSENT) != 0) {
                 pe->flags &= ~CCN_PR_UNSENT;
                 pe->flags |= CCN_PR_WAIT1;
                 next_delay = special_delay = ev->evint;
@@ -2816,6 +2848,39 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
     return(extra_delay);
 }
 
+static void
+ccnd_append_debug_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
+        unsigned char s[12];
+        int i;
+        
+        for (i = 0; i < 3; i++)
+            s[i] = h->ccnd_id[i];
+        s[i++] = h->logpid >> 8;
+        s[i++] = h->logpid;
+        s[i++] = face->faceid >> 8;
+        s[i++] = face->faceid;
+        s[i++] = h->sec;
+        s[i++] = h->usec * 256 / 1000000;
+        for (; i < sizeof(s); i++)
+            s[i] = nrand48(h->seed);
+        ccnb_append_tagged_blob(cb, CCN_DTAG_Nonce, s, i);
+}
+
+static void
+ccnd_append_plain_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
+        int noncebytes = 6;
+        unsigned char *s = NULL;
+        int i;
+        
+        ccn_charbuf_append_tt(cb, CCN_DTAG_Nonce, CCN_DTAG);
+        ccn_charbuf_append_tt(cb, noncebytes, CCN_BLOB);
+        s = ccn_charbuf_reserve(cb, noncebytes);
+        for (i = 0; i < noncebytes; i++)
+            s[i] = nrand48(h->seed) >> i;
+        cb->length += noncebytes;
+        ccn_charbuf_append_closer(cb);
+}
+
 /**
  * Schedules the propagation of an Interest message.
  */
@@ -2836,10 +2901,13 @@ propagate_interest(struct ccnd_handle *h,
     unsigned char *msg_out = msg;
     size_t msg_out_size = pi->offset[CCN_PI_E];
     int usec;
+    int ntap;
     int delaymask;
     int extra_delay = 0;
     struct ccn_indexbuf *outbound = NULL;
+    intmax_t lifetime;
     
+    lifetime = ccn_interest_lifetime(msg, pi);
     outbound = get_outbound_faces(h, face, msg, pi, npe);
     if (outbound->n != 0) {
         extra_delay = adjust_outbound_for_existing_interests(h, face, msg, pi, npe, outbound);
@@ -2859,20 +2927,11 @@ propagate_interest(struct ccnd_handle *h,
     }
     if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
         /* This interest has no nonce; add one before going on */
-        int noncebytes = 6;
         size_t nonce_start = 0;
-        int i;
-        unsigned char *s = NULL;
         cb = charbuf_obtain(h);
         ccn_charbuf_append(cb, msg, pi->offset[CCN_PI_B_Nonce]);
         nonce_start = cb->length;
-        ccn_charbuf_append_tt(cb, CCN_DTAG_Nonce, CCN_DTAG);
-        ccn_charbuf_append_tt(cb, noncebytes, CCN_BLOB);
-        s = ccn_charbuf_reserve(cb, noncebytes);
-        for (i = 0; i < noncebytes; i++)
-            s[i] = nrand48(h->seed) >> i;
-        cb->length += noncebytes;
-        ccn_charbuf_append_closer(cb);
+        (h->appnonce)(h, face, cb);
         noncesize = cb->length - nonce_start;
         ccn_charbuf_append(cb, msg + pi->offset[CCN_PI_B_OTHER],
                                pi->offset[CCN_PI_E] - pi->offset[CCN_PI_B_OTHER]);
@@ -2901,7 +2960,10 @@ propagate_interest(struct ccnd_handle *h,
             pe->size = msg_out_size;
             pe->faceid = face->faceid;
             face->pending_interests += 1;
-            pe->usec = CCN_INTEREST_LIFETIME_MICROSEC;
+            if (lifetime < INT_MAX / (1000000 >> 6) * (4096 >> 6))
+                pe->usec = lifetime * (1000000 >> 6) / (4096 >> 6);
+            else
+                pe->usec = INT_MAX;
             delaymask = 0xFFF;
             pe->sent = 0;            
             pe->outbound = outbound;
@@ -2914,16 +2976,19 @@ propagate_interest(struct ccnd_handle *h,
                 pe->flags |= CCN_PR_SCOPE2;
             pe->fgen = h->forward_to_gen;
             link_propagating_interest_to_nameprefix(h, pe, npe);
-            reorder_outbound_using_history(h, npe, pe);
-            if (outbound->n > 0 &&
-                  outbound->buf[0] == npe->src &&
+            ntap = reorder_outbound_using_history(h, npe, pe);
+            if (outbound->n > ntap &&
+                  outbound->buf[ntap] == npe->src &&
                   extra_delay == 0) {
                 pe->flags = CCN_PR_UNSENT;
                 delaymask = 0xFF;
             }
             outbound = NULL;
             res = 0;
-            usec = (nrand48(h->seed) & delaymask) + 1 + extra_delay;
+            if (ntap > 0)
+                (usec = 1, pe->flags |= CCN_PR_TAP);
+            else
+                usec = (nrand48(h->seed) & delaymask) + 1 + extra_delay;
             usec = pe_next_usec(h, pe, usec, __LINE__);
             ccn_schedule_event(h->sched, usec, do_propagate, pe, npe->usec);
         }
@@ -3188,6 +3253,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                      "orderpref: %d, "
                      "answerfrom: %d, "
                      "scope: %d, "
+                     "lifetime: %d.%04d, "
                      "excl: %d bytes, "
                      "etc: %d bytes",
                      pi->magic,
@@ -3195,9 +3261,11 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                      pi->min_suffix_comps,
                      pi->max_suffix_comps,
                      pi->orderpref, pi->answerfrom, pi->scope,
+                     ccn_interest_lifetime_seconds(msg, pi),
+                     (int)(ccn_interest_lifetime(msg, pi) & 0xFFF) * 10000 / 4096,
                      pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
                      pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
-        if (pi->magic != 20090701) {
+        if (pi->magic < 20090701) {
             if (++(h->oldformatinterests) == h->oldformatinterestgrumble) {
                 h->oldformatinterestgrumble *= 2;
                 ccnd_msg(h, "downrev interests received: %d (%d)",
@@ -3980,7 +4048,7 @@ prepare_poll_fds(struct ccnd_handle *h)
         else
             j = --k;
         h->fds[j].fd = face->recv_fd;
-        h->fds[j].events = POLLIN;
+        h->fds[j].events = ((face->flags & CCN_FACE_NORECV) == 0) ? POLLIN : 0;
         if ((face->outbuf != NULL || (face->flags & CCN_FACE_CLOSING) != 0))
             h->fds[j].events |= POLLOUT;
     }
@@ -4069,10 +4137,13 @@ ccnd_get_local_sockname(void)
 static void
 ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 {
+    struct ccnd_handle *h = self->data;
     struct timeval now = {0};
     gettimeofday(&now, 0);
     result->s = now.tv_sec;
     result->micros = now.tv_usec;
+    h->sec = now.tv_sec;
+    h->usec = now.tv_usec;
 }
 
 void
@@ -4101,6 +4172,195 @@ af_name(int family)
     }
 }
 
+static int
+ccnd_listen_on_wildcards(struct ccnd_handle *h)
+{
+    int fd;
+    int res;
+    int whichpf;
+    struct addrinfo hints = {0};
+    struct addrinfo *addrinfo = NULL;
+    struct addrinfo *a;
+    
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_flags = AI_PASSIVE;
+    for (whichpf = 0; whichpf < 2; whichpf++) {
+        hints.ai_family = whichpf ? PF_INET6 : PF_INET;
+        res = getaddrinfo(NULL, h->portstr, &hints, &addrinfo);
+        if (res == 0) {
+            for (a = addrinfo; a != NULL; a = a->ai_next) {
+                fd = socket(a->ai_family, SOCK_DGRAM, 0);
+                if (fd != -1) {
+                    struct face *face = NULL;
+                    int yes = 1;
+                    int rcvbuf = 0;
+                    socklen_t rcvbuf_sz;
+                    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                    rcvbuf_sz = sizeof(rcvbuf);
+                    getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
+                    if (a->ai_family == AF_INET6)
+                        ccnd_setsockopt_v6only(h, fd);
+                    res = bind(fd, a->ai_addr, a->ai_addrlen);
+                    if (res != 0) {
+                        close(fd);
+                        continue;
+                    }
+                    face = record_connection(h, fd,
+                                             a->ai_addr, a->ai_addrlen,
+                                             CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
+                    if (face == NULL) {
+                        close(fd);
+                        continue;
+                    }
+                    if (a->ai_family == AF_INET)
+                        h->ipv4_faceid = face->faceid;
+                    else
+                        h->ipv6_faceid = face->faceid;
+                    ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
+                             af_name(a->ai_family), fd, rcvbuf);
+                }
+            }
+            for (a = addrinfo; a != NULL; a = a->ai_next) {
+                fd = socket(a->ai_family, SOCK_STREAM, 0);
+                if (fd != -1) {
+                    int yes = 1;
+                    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                    if (a->ai_family == AF_INET6)
+                        ccnd_setsockopt_v6only(h, fd);
+                    res = bind(fd, a->ai_addr, a->ai_addrlen);
+                    if (res != 0) {
+                        close(fd);
+                        continue;
+                    }
+                    res = listen(fd, 30);
+                    if (res == -1) {
+                        close(fd);
+                        continue;
+                    }
+                    record_connection(h, fd,
+                                      a->ai_addr, a->ai_addrlen,
+                                      CCN_FACE_PASSIVE);
+                    ccnd_msg(h, "accepting %s connections on fd %d",
+                             af_name(a->ai_family), fd);
+                }
+            }
+            freeaddrinfo(addrinfo);
+        }
+    }
+    return(0);
+}
+
+static int
+ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
+{
+    int fd;
+    int res;
+    struct addrinfo hints = {0};
+    struct addrinfo *addrinfo = NULL;
+    struct addrinfo *a;
+    int ok = 0;
+    
+    ccnd_msg(h, "listen_on %s", addr);
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_flags = AI_PASSIVE;
+    res = getaddrinfo(addr, h->portstr, &hints, &addrinfo);
+    if (res == 0) {
+        for (a = addrinfo; a != NULL; a = a->ai_next) {
+            fd = socket(a->ai_family, SOCK_DGRAM, 0);
+            if (fd != -1) {
+                struct face *face = NULL;
+                int yes = 1;
+                int rcvbuf = 0;
+                socklen_t rcvbuf_sz;
+                setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                rcvbuf_sz = sizeof(rcvbuf);
+                getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
+                if (a->ai_family == AF_INET6)
+                    ccnd_setsockopt_v6only(h, fd);
+                res = bind(fd, a->ai_addr, a->ai_addrlen);
+                if (res != 0) {
+                    close(fd);
+                    continue;
+                }
+                face = record_connection(h, fd,
+                                         a->ai_addr, a->ai_addrlen,
+                                         CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
+                if (face == NULL) {
+                    close(fd);
+                    continue;
+                }
+                if (a->ai_family == AF_INET)
+                    h->ipv4_faceid = face->faceid;
+                else
+                    h->ipv6_faceid = face->faceid;
+                ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
+                             af_name(a->ai_family), fd, rcvbuf);
+                ok++;
+            }
+        }
+        for (a = addrinfo; a != NULL; a = a->ai_next) {
+            fd = socket(a->ai_family, SOCK_STREAM, 0);
+            if (fd != -1) {
+                int yes = 1;
+                setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+                if (a->ai_family == AF_INET6)
+                    ccnd_setsockopt_v6only(h, fd);
+                res = bind(fd, a->ai_addr, a->ai_addrlen);
+                if (res != 0) {
+                    close(fd);
+                    continue;
+                }
+                res = listen(fd, 30);
+                if (res == -1) {
+                    close(fd);
+                    continue;
+                }
+                record_connection(h, fd,
+                                  a->ai_addr, a->ai_addrlen,
+                                  CCN_FACE_PASSIVE);
+                ccnd_msg(h, "accepting %s connections on fd %d",
+                         af_name(a->ai_family), fd);
+                ok++;
+            }
+        }
+        freeaddrinfo(addrinfo);
+    }
+    return(ok > 0 ? 0 : -1);
+}
+
+static int
+ccnd_listen_on(struct ccnd_handle *h, const char *addrs)
+{
+    unsigned char ch;
+    unsigned char dlm;
+    int res = 0;
+    int i;
+    struct ccn_charbuf *addr = NULL;
+    
+    if (addrs == NULL || !*addrs || 0 == strcmp(addrs, "*"))
+        return(ccnd_listen_on_wildcards(h));
+    addr = ccn_charbuf_create();
+    for (i = 0, ch = addrs[i]; addrs[i] != 0;) {
+        addr->length = 0;
+        dlm = 0;
+        if (ch == '[') {
+            dlm = ']';
+            ch = addrs[++i];
+        }
+        for (; ch > ' ' && ch != ',' && ch != ';' && ch != dlm; ch = addrs[++i])
+            ccn_charbuf_append_value(addr, ch, 1);
+        if (ch && ch == dlm)
+            ch = addrs[++i];
+        if (addr->length > 0) {
+            res |= ccnd_listen_on_address(h, ccn_charbuf_as_string(addr));
+        }
+        while ((0 < ch && ch <= ' ') || ch == ',' || ch == ';')
+            ch = addrs[++i];
+    }
+    ccn_charbuf_destroy(&addr);
+    return(res);
+}
+
 /**
  * Start a new ccnd instance
  * @param progname - name of program binary, used for locating helpers
@@ -4116,13 +4376,9 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     const char *entrylimit;
     const char *mtu;
     const char *data_pause;
+    const char *listen_on;
     int fd;
-    int res;
-    int whichpf;
     struct ccnd_handle *h;
-    struct addrinfo hints = {0};
-    struct addrinfo *addrinfo = NULL;
-    struct addrinfo *a;
     struct hashtb_param param = {0};
     
     sockname = ccnd_get_local_sockname();
@@ -4131,16 +4387,10 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         return(h);
     h->logger = logger;
     h->loggerdata = loggerdata;
+    h->appnonce = &ccnd_append_plain_nonce;
     h->logpid = (int)getpid();
     h->progname = progname;
-    debugstr = getenv("CCND_DEBUG");
-    if (debugstr != NULL && debugstr[0] != 0) {
-        h->debug = atoi(debugstr);
-        if (h->debug == 0 && debugstr[0] != '0')
-            h->debug = 1;
-    }
-    else
-        h->debug = (1 << 16);
+    h->debug = -1;
     h->skiplinks = ccn_indexbuf_create();
     param.finalize_data = h;
     h->face_limit = 1024; /* soft limit */
@@ -4167,29 +4417,18 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
     h->data_pause_microsec = 10000;
+    debugstr = getenv("CCND_DEBUG");
+    if (debugstr != NULL && debugstr[0] != 0) {
+        h->debug = atoi(debugstr);
+        if (h->debug == 0 && debugstr[0] != '0')
+            h->debug = 1;
+    }
+    else
+        h->debug = 1;
     portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = CCN_DEFAULT_UNICAST_PORT;
     h->portstr = portstr;
-    /* Do keystore setup early, it takes a while the first time */
-    ccnd_init_internal_keystore(h);
-    ccnd_reseed(h);
-    if (h->face0 == NULL) {
-        struct face *face;
-        face = calloc(1, sizeof(*face));
-        face->recv_fd = -1;
-        face->sendface = 0;
-        face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
-        h->face0 = face;
-    }
-    enroll_face(h, h->face0);
-    fd = create_local_listener(h, sockname, 42);
-    if (fd == -1)
-        ccnd_msg(h, "%s: %s", sockname, strerror(errno));
-    else
-        ccnd_msg(h, "listening on %s", sockname);
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE;
     entrylimit = getenv("CCND_CAP");
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
@@ -4216,71 +4455,32 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         if (h->data_pause_microsec > 1000000)
             h->data_pause_microsec = 1000000;
     }
+    listen_on = getenv("CCND_LISTEN_ON");
+    ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
+    if (listen_on != NULL && listen_on[0] != 0)
+        ccnd_msg(h, "CCND_LISTEN_ON=%s", listen_on);
+    // if (h->debug & 256)
+        h->appnonce = &ccnd_append_debug_nonce;
+    /* Do keystore setup early, it takes a while the first time */
+    ccnd_init_internal_keystore(h);
+    ccnd_reseed(h);
+    if (h->face0 == NULL) {
+        struct face *face;
+        face = calloc(1, sizeof(*face));
+        face->recv_fd = -1;
+        face->sendface = 0;
+        face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
+        h->face0 = face;
+    }
+    enroll_face(h, h->face0);
+    fd = create_local_listener(h, sockname, 42);
+    if (fd == -1)
+        ccnd_msg(h, "%s: %s", sockname, strerror(errno));
+    else
+        ccnd_msg(h, "listening on %s", sockname);
     h->flood = 0;
     h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
-    for (whichpf = 0; whichpf < 2; whichpf++) {
-        hints.ai_family = whichpf ? PF_INET6 : PF_INET;
-        res = getaddrinfo(NULL, portstr, &hints, &addrinfo);
-        if (res == 0) {
-            for (a = addrinfo; a != NULL; a = a->ai_next) {
-                fd = socket(a->ai_family, SOCK_DGRAM, 0);
-                if (fd != -1) {
-                    struct face *face = NULL;
-                    int yes = 1;
-                    int rcvbuf = 0;
-                    socklen_t rcvbuf_sz;
-		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-                    rcvbuf_sz = sizeof(rcvbuf);
-                    getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
-                    if (a->ai_family == AF_INET6)
-                        ccnd_setsockopt_v6only(h, fd);
-		    res = bind(fd, a->ai_addr, a->ai_addrlen);
-                    if (res != 0) {
-                        close(fd);
-                        continue;
-                    }
-                    face = record_connection(h, fd,
-                                             a->ai_addr, a->ai_addrlen,
-                                             CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
-                    if (face == NULL) {
-                        close(fd);
-                        continue;
-                    }
-                    if (a->ai_family == AF_INET)
-                        h->ipv4_faceid = face->faceid;
-                    else
-                        h->ipv6_faceid = face->faceid;
-                    ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
-                                 af_name(a->ai_family), fd, rcvbuf);
-                }
-            }
-            for (a = addrinfo; a != NULL; a = a->ai_next) {
-                fd = socket(a->ai_family, SOCK_STREAM, 0);
-                if (fd != -1) {
-                    int yes = 1;
-		    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-                    if (a->ai_family == AF_INET6)
-                        ccnd_setsockopt_v6only(h, fd);
-		    res = bind(fd, a->ai_addr, a->ai_addrlen);
-                    if (res != 0) {
-                        close(fd);
-                        continue;
-                    }
-                    res = listen(fd, 30);
-                    if (res == -1) {
-                        close(fd);
-                        continue;
-                    }
-                    record_connection(h, fd,
-                                      a->ai_addr, a->ai_addrlen,
-                                      CCN_FACE_PASSIVE);
-                    ccnd_msg(h, "accepting %s connections on fd %d",
-                             af_name(a->ai_family), fd);
-                }
-            }
-            freeaddrinfo(addrinfo);
-        }
-    }
+    ccnd_listen_on(h, listen_on);
     clean_needed(h);
     age_forwarding_needed(h);
     ccnd_internal_client_start(h);

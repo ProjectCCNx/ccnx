@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2010 Palo Alto Research Center, Inc.
@@ -118,6 +118,7 @@ public class CCNProtocolDTags {
 	public static final int Root = 107;
 	public static final int ProfileName = 108;
 	public static final int Parameters = 109;
+	public static final int InfoString = 110;
 	public static final int CCNProtocolDataUnit = 17702112;
 	public static final String CCNPROTOCOL_DATA_UNIT = "CCNProtocolDataUnit";
 	
@@ -139,7 +140,8 @@ public class CCNProtocolDTags {
 		"RepositoryInfo", "Version", "RepositoryVersion", "GlobalPrefix", "LocalName",
 		"Policy", "Namespace", "GlobalPrefixName", "PolicyVersion", "KeyValueSet", "KeyValuePair",
 		"IntegerValue", "DecimalValue", "StringValue", "BinaryValue", "NameValue", "Entry",
-		"ACL", "ParameterizedName", "Prefix", "Suffix", "Root", "ProfileName", "Parameters"};
+		"ACL", "ParameterizedName", "Prefix", "Suffix", "Root", "ProfileName", "Parameters",
+		"InfoString"};
 	protected static final int TAG_MAP_LENGTH = _tagToStringMap.length;
 
 	

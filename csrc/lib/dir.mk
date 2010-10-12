@@ -25,8 +25,8 @@ DEBRIS = ccn_verifysig
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC = ccn_bloom.c ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_charbuf.c ccn_client.c ccn_coding.c ccn_digest.c ccn_extend_dict.c \
-       ccn_dtag_table.c ccn_indexbuf.c ccn_keystore.c ccn_match.c \
-       ccn_reg_mgmt.c ccn_face_mgmt.c \
+       ccn_dtag_table.c ccn_indexbuf.c ccn_interest.c ccn_keystore.c \
+       ccn_match.c ccn_reg_mgmt.c ccn_face_mgmt.c \
        ccn_matrix.c ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
        ccn_seqwriter.c ccn_signing.c \
        ccn_sockcreate.c ccn_traverse.c ccn_uri.c \
@@ -41,7 +41,7 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_dtag_table.o ccn_schedule.o ccn_matrix.o ccn_extend_dict.o \
        ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o \
        ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o \
-       ccn_keystore.o ccn_seqwriter.o ccn_signing.o \
+       ccn_interest.o ccn_keystore.o ccn_seqwriter.o ccn_signing.o \
        ccn_sockcreate.o ccn_traverse.o \
        ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
        ccn_sockaddrutil.o ccn_setup_sockaddr_un.o \
@@ -185,6 +185,9 @@ ccn_extend_dict.o: ccn_extend_dict.c ../include/ccn/charbuf.h \
   ../include/ccn/extend_dict.h ../include/ccn/coding.h
 ccn_dtag_table.o: ccn_dtag_table.c ../include/ccn/coding.h
 ccn_indexbuf.o: ccn_indexbuf.c ../include/ccn/indexbuf.h
+ccn_interest.o: ccn_interest.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h
 ccn_keystore.o: ccn_keystore.c ../include/ccn/keystore.h
 ccn_match.o: ccn_match.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \

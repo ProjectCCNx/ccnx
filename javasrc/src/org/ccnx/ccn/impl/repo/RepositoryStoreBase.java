@@ -1,7 +1,7 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -94,12 +94,17 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * Gets current repository information to be used as content in a ContentObject
 	 * @param names intended for nonimplemented repository ACK protocol - currently unused
 	 */
-	public RepositoryInfoObject getRepoInfo(ContentName name, ArrayList<ContentName> names) {
+	public RepositoryInfoObject getRepoInfo(ContentName name, String info, ArrayList<ContentName> names) {
 		try {
 			RepositoryInfo rri = _info;
-			if (names != null)
-				rri = new RepositoryInfo(getVersion(), _info.getGlobalPrefix(), _info.getLocalName(), names);	
+			if (names != null || info != null) {
+				if (names != null)
+					rri = new RepositoryInfo(getVersion(), _info.getGlobalPrefix(), _info.getLocalName(), names);
+				else
+					rri = new RepositoryInfo(getVersion(), _info.getGlobalPrefix(), _info.getLocalName(), info);
+			}
 			RepositoryInfoObject rio = new RepositoryInfoObject(name, rri, SaveType.RAW, _handle);
+			rio.setFreshnessSeconds(12); // Same time as repo will express interest
 			return rio;
 		} catch (Exception e) {
 			Log.logStackTrace(Level.WARNING, e);
@@ -144,7 +149,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 			try {
 				nameSpaceAL.add(ContentName.fromNative(nameSpace));
 			} catch (MalformedContentNameStringException e) {
-				Log.warning("Invalid namespace specified: {0}", nameSpace);
+				Log.warning(Log.FAC_REPO, "Invalid namespace specified: {0}", nameSpace);
 			}
 			_policy.setNamespace(nameSpaceAL);
 		} else

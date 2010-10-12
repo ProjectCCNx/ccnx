@@ -1,7 +1,7 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -26,6 +26,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.profiles.repo.RepositoryOperations;
 import org.ccnx.ccn.protocol.ContentName;
@@ -69,6 +70,9 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			} else if (RepositoryOperations.isCheckedWriteOperation(interest)) {
 				if (!allowGenerated(interest)) return true;
 				startWriteChecked(interest);				
+			} else if (RepositoryOperations.isBulkImportOperation(interest)) {
+				if (!allowGenerated(interest)) return true;
+				addBulkDataToRepo(interest);				
 			} else {
 				ContentObject content = _server.getRepository().getContent(interest);
 				if (content != null) {
@@ -159,7 +163,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null, 2, null, null);
 			RepositoryDataListener listener;
 			
-			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null);
+			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null, null);
 			if (null == rio)
 				return;		// Should have logged an error in getRepoInfo
 			// Hand the object the outstanding interest, so it can put its first block immediately.
@@ -197,7 +201,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		if (isWriteSuspended(interest)) return;
 
 		try {
-			Log.finer(Log.FAC_REPO, "Repo checked write request: {0}", interest.name());
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+				Log.finer(Log.FAC_REPO, "Repo checked write request: {0}", interest.name());
 			if (!RepositoryOperations.verifyCheckedWrite(interest)) {
 				Log.warning(Log.FAC_REPO, "Repo checked write malformed request {0}", interest.name());
 				return;
@@ -215,14 +220,16 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				//      getContent(): need full object in this case, verify that last segment matches segment name => verified = true
 				verified = true;
 				// Send back a RepositoryInfoObject that contains a confirmation that content is already in repo
-				Log.finer(Log.FAC_REPO, "Checked write confirmed");
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+					Log.finer(Log.FAC_REPO, "Checked write confirmed");
 				ArrayList<ContentName> target_names = new ArrayList<ContentName>();
 				target_names.add(target);
-				rio = _server.getRepository().getRepoInfo(interest.name(), target_names);
+				rio = _server.getRepository().getRepoInfo(interest.name(), null, target_names);
 			} else {
 				// Send back response that does not confirm content
-				Log.finer(Log.FAC_REPO, "Checked write not confirmed");
-				rio = _server.getRepository().getRepoInfo(interest.name(), null);
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+					Log.finer(Log.FAC_REPO, "Checked write not confirmed");
+				rio = _server.getRepository().getRepoInfo(interest.name(), null, null);
 			}
 			if (null == rio)
 				return;		// Should have logged an error in getRepoInfo					
@@ -231,7 +238,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 
 
 			if (!verified) {
-				Log.finer(Log.FAC_REPO, "Repo checked write no content for {0}, starting read", interest.name());
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+					Log.finer(Log.FAC_REPO, "Repo checked write no content for {0}, starting read", interest.name());
 				// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 0 
 				// because in this SPECIAL CASE we have the complete name of the first segment.
 				Interest readInterest = Interest.constructInterest(target, _server.getExcludes(), null, 0, 0, null);
@@ -247,15 +255,42 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				listener.getInterests().add(readInterest, null);
 				_handle.expressInterest(readInterest, listener);
 			} else {
-				Log.finer(Log.FAC_REPO, "Repo checked write content verified for {0}", interest.name());
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+					Log.finer(Log.FAC_REPO, "Repo checked write content verified for {0}", interest.name());
 			}
 		} catch (Exception e) {
 			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
 	}
-
-
+	
+	/**
+	 * Add to the repository via file based on interest request
+	 * @param interest
+	 * @throws IOException 
+	 * @throws ContentEncodingException 
+	 * @throws RepositoryException
+	 * @throws IOException 
+	 * @throws ContentEncodingException 
+	 */
+	private void addBulkDataToRepo(Interest interest) throws ContentEncodingException, IOException {
+		int i = CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.findMarker(interest.name());
+		if (i >= 0) {
+			String[] args = CommandMarker.getArguments(interest.name().component(i));
+			String result = "OK";
+			if (null != args && args.length > 0) {
+				try {
+					if (!_server.getRepository().bulkImport(args[0]))
+						return;		// reexpression - ignore
+				} catch (RepositoryException e) {
+					Log.warning(Log.FAC_REPO, "Bulk import error : " + e.getMessage());
+					result = e.getMessage();
+				}
+				RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), result, null);
+				rio.save(interest);
+			}
+		}
+	}
 	
 	/**
 	 * Handle name enumeration requests

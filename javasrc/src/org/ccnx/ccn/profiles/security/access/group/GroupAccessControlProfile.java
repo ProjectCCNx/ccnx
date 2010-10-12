@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -33,6 +33,12 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
+ * This is a sub-Profile of AccessControlProfile defining naming conventions used in a group-based
+ * access control scheme (where one can create Groups of users and other groups, and give rights to
+ * nametrees based on group membership). 
+ * For descriptions of data, and how this access control system functions, see the separate CCNx Access
+ * Control Specifications Document.
+ *
  * This class specifies how a number of access control elements are named:
  * - users, and their keys
  * - groups, and their keys
@@ -365,13 +371,24 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	}
 
 	/**
-	 * Get the name of a group private key.
+	 * Get the name of a group private key key directory (containing the encrypted key blocks).
 	 * We hang the wrapped private key directly off the public key version.
 	 * @param groupPublicKeyNameAndVersion the versioned name of the group public key
 	 * @return the versioned name of the group private key
 	 */
 	public static ContentName groupPrivateKeyDirectory(ContentName groupPublicKeyNameAndVersion) {
 		return groupPublicKeyNameAndVersion;
+	}
+	
+	/**
+	 * Get the name of the private key block in a group private key directory, without version; 
+	 * useful for checking cache status.
+	 * @param groupFullName
+	 * @return
+	 */
+	public static ContentName groupPrivateKeyBlockName(ContentName groupPublicKeyNameAndVersion) {
+		return ContentName.fromNative(groupPrivateKeyDirectory(groupPublicKeyNameAndVersion), 
+				AccessControlProfile.GROUP_PRIVATE_KEY_NAME);
 	}
 	
 	public static ContentName groupPointerToParentGroupName(ContentName groupFullName) {

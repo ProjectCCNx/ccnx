@@ -1,5 +1,4 @@
-/* -*- mode: java; tab-width: 4 -*- */
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
@@ -16,7 +15,9 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-
+/**
+ * PD org.ccnx.ccn.impl.support
+ */
 package org.ccnx.ccn.impl.support;
 
 import java.io.File;
@@ -97,6 +98,20 @@ public class Log {
 	public static final int FAC_ENCODING	= 13;
 	public static final int FAC_IO			= 14;
 	public static final int FAC_SIGNING		= 15;
+	public static final int FAC_VERIFY		= 16;
+	public static final int FAC_USER4		= 17;
+	public static final int FAC_USER5		= 18;
+	public static final int FAC_USER6		= 19;
+	public static final int FAC_USER7		= 20;
+	public static final int FAC_USER8		= 21;
+	public static final int FAC_USER9		= 22;
+	public static final int FAC_USER10		= 23;
+	public static final int FAC_USER11		= 24;
+	public static final int FAC_USER12		= 25;
+	public static final int FAC_USER13		= 26;
+	public static final int FAC_USER14		= 27;
+	public static final int FAC_USER15		= 28;
+
 
 
 	// The System property name for each Facility
@@ -117,6 +132,19 @@ public class Log {
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Encoding",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".IO",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Signing",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Verify",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User4",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User5",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User6",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User7",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User8",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User9",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User10",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User11",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User12",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User13",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User14",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".User15",
 	};
 
 	// The environment variable for each facility
@@ -137,6 +165,19 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV + "_ENCODING",
 		DEFAULT_LOG_LEVEL_ENV + "_IO",
 		DEFAULT_LOG_LEVEL_ENV + "_SIGNING",
+		DEFAULT_LOG_LEVEL_ENV + "_VERIFY",
+		DEFAULT_LOG_LEVEL_ENV + "_USER4",
+		DEFAULT_LOG_LEVEL_ENV + "_USER5",
+		DEFAULT_LOG_LEVEL_ENV + "_USER6",
+		DEFAULT_LOG_LEVEL_ENV + "_USER7",
+		DEFAULT_LOG_LEVEL_ENV + "_USER8",
+		DEFAULT_LOG_LEVEL_ENV + "_USER9",
+		DEFAULT_LOG_LEVEL_ENV + "_USER10",
+		DEFAULT_LOG_LEVEL_ENV + "_USER11",
+		DEFAULT_LOG_LEVEL_ENV + "_USER12",
+		DEFAULT_LOG_LEVEL_ENV + "_USER13",
+		DEFAULT_LOG_LEVEL_ENV + "_USER14",
+		DEFAULT_LOG_LEVEL_ENV + "_USER15",
 	};
 
 	public static final Level [] FAC_LOG_LEVEL_DEFAULT = {
@@ -156,6 +197,19 @@ public class Log {
 		Level.INFO,		// Encoding
 		Level.INFO,		// IO
 		Level.INFO,		// Signing
+		Level.INFO,		// Verify
+		Level.INFO,		// User4
+		Level.INFO,		// User5
+		Level.INFO,		// User6
+		Level.INFO,		// User7
+		Level.INFO,		// User8
+		Level.INFO,		// User9
+		Level.INFO,		// User10
+		Level.INFO,		// User11
+		Level.INFO,		// User12
+		Level.INFO,		// User13
+		Level.INFO,		// User14
+		Level.INFO,		// User15
 	};
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];

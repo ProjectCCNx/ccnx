@@ -1,34 +1,34 @@
-CCNDSTATUS(1)
-=============
+CCNDLOGGING(1)
+==============
 
 NAME
 ----
-ccndstatus - print out the status of the running ccnd
+ccndlogging - change the log level of a running ccnd
 
 SYNOPSIS
 --------
-*ccndstatus*
+*ccndlogging [-T host] ( none | low | co | med | high )*
 
 DESCRIPTION
 -----------
-The *ccndstatus* utility prints out a plain-text version of the
-status report of the running *ccnd*.
+The *ccndlogging* utility changes the effective log level of a running *ccnd*.
 
 OPTIONS
 -------
-This utility does have have flags or arguments.
+*-T host*::
+     Control the *ccnd* instance running on the specified host, instead of the current host.
 
+ARGUMENT
+--------
+The command takes one argument, the desired level.
+This maps into an appropriate setting of the effective *CCND_DEBUG* setting.
+
+
+ENVIRONMENT
+-----------
 The 'CCN_LOCAL_PORT' environment variable may be used to identify
 the port that the *ccnd* instance is using; if unset, the default
 port number (9695) is used.
-
-EXIT STATUS
------------
-*0*::
-     Success.
-
-*1*::
-     Failure - probably means that *ccnd* was not running.
 
 AUTHOR
 ------

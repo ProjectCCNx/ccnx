@@ -1,4 +1,4 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
@@ -35,7 +35,13 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * This class records the membership list of Group. Might want to define its own tag.
+ * This class records the membership list of a Group, which can consist of
+ * individual users or other groups). This is sometimes redundant with other
+ * representations of the membership of a Group or association; it would be
+ * good in future work to make explicit membership lists optional (TODO).
+ * 
+ * Might want to define its own tag for encoding; right now it encodes as a straight
+ * Collection.
  */
 public class MembershipListObject extends Collection.CollectionObject {
 

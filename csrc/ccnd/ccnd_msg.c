@@ -71,7 +71,7 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
     ccn_charbuf_destroy(&b);
     /* if there's no one to hear, don't make a sound */
     if (res < 0)
-	h->debug = 0;
+        h->debug = 0;
 }
 
 /**
@@ -98,6 +98,7 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
     size_t nonce_size = 0;
     size_t i;
     
+    
     if (h != NULL && h->debug == 0)
         return;
     c = ccn_charbuf_create();
@@ -107,6 +108,7 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
     ccn_uri_append(c, ccnb, ccnb_size, 1);
     ccn_charbuf_putf(c, " (%u bytes)", (unsigned)ccnb_size);
     if (ccn_parse_interest(ccnb, ccnb_size, &pi, NULL) >= 0) {
+        const char *p = "";
         ccn_ref_tagged_BLOB(CCN_DTAG_Nonce, ccnb,
                   pi.offset[CCN_PI_B_Nonce],
                   pi.offset[CCN_PI_E_Nonce],
@@ -114,8 +116,10 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
                   &nonce_size);
         if (nonce_size > 0) {
             ccn_charbuf_putf(c, " ");
+            if (nonce_size == 12)
+                p = "CCC-P-F-T-NN";
             for (i = 0; i < nonce_size; i++)
-                ccn_charbuf_putf(c, "%02X", nonce[i]);
+                ccn_charbuf_putf(c, "%s%02X", (*p) && (*p++)=='-' ? "-" : "", nonce[i]);
         }
     }
     ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
@@ -140,7 +144,7 @@ const char *ccnd_usage_message =
     "      32 - gory interest details\n"
     "      64 - log occasional human-readable timestamps\n"
     "      128 - face registration debugging\n"
-    "      bitwise OR these together for combinations; -1 gets everything\n"
+    "      bitwise OR these together for combinations; -1 gets max logging\n"
     "    CCN_LOCAL_PORT=\n"
     "      UDP port for unicast clients (default "CCN_DEFAULT_UNICAST_PORT").\n"
     "      Also listens on this TCP port for stream connections.\n"
@@ -159,4 +163,6 @@ const char *ccnd_usage_message =
     "    CCND_KEYSTORE_DIRECTORY=\n"
     "      Directory readable only by ccnd where its keystores are kept\n"
     "      Defaults to a private subdirectory of /var/tmp\n"
+    "    CCND_LISTEN_ON=\n"
+    "      List of ip addresses to listen on; defaults to wildcard\n"
     ;

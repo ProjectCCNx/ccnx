@@ -1,7 +1,7 @@
-/**
+/*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -78,7 +78,6 @@ public class RepositoryDataListener implements CCNInterestListener {
 		
 		_timer = System.currentTimeMillis();
 
-		handleData(co);
 
 		boolean isFinalBlock = false;
 
@@ -119,7 +118,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 			// Note that this should only ask for 1 interest except for the first time through this code when it
 			// should ask for "windowSize" interests.
 			long firstInterestToRequest = getNextBlockID();
-			Log.finest("First interest to request is {0}", firstInterestToRequest);
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINEST)) {
+				Log.finest(Log.FAC_REPO, "First interest to request is {0}", firstInterestToRequest);
+			}
 			if (_currentBlock > firstInterestToRequest) // Can happen if last requested interest precedes all others
 				// out of order
 				firstInterestToRequest = _currentBlock;
@@ -136,6 +137,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 				// If we're confident about the final block ID, cancel previous extra interests
 				if (isFinalBlock) {
 					cancelHigherInterests(_finalBlockID);
+					handleData(co);
 					return null;
 				}
 			}
@@ -156,6 +158,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 				}
 			}
 		}
+		handleData(co);
 		return null;
 	}
 	
