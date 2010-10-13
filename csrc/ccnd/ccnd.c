@@ -2108,6 +2108,24 @@ Bail:
 }
 
 /**
+ * Register prefixes, expressed in the form of a list of URIs.
+ * The URIs in the charbuf are each terminated by nul.
+ */
+void
+ccnd_reg_uri_list(struct ccnd_handle *h,
+             struct ccn_charbuf *uris,
+             unsigned faceid,
+             int flags,
+             int expires)
+{
+    size_t i;
+    const char *s;
+    s = ccn_charbuf_as_string(uris);
+    for (i = 0; i + 1 < uris->length; i += strlen(s + i) + 1)
+        ccnd_reg_uri(h, s + i, faceid, flags, expires);
+}
+
+/**
  * Called when a face is first created, and (perhaps) a second time in the case
  * that a face transitions from the undecided state.
  */
@@ -2116,8 +2134,8 @@ register_new_face(struct ccnd_handle *h, struct face *face)
 {
     if (face->faceid != 0 && (face->flags & (CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE)) == 0) {
         ccnd_face_status_change(h, face->faceid);
-        if (h->flood)
-            ccnd_reg_uri(h, "ccnx:/", face->faceid,
+        if (h->flood && h->autoreg != NULL)
+            ccnd_reg_uri_list(h, h->autoreg, face->faceid,
                          CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
                          0x7FFFFFFF);
     }
@@ -4499,14 +4517,12 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     }
     listen_on = getenv("CCND_LISTEN_ON");
     autoreg = getenv("CCND_AUTOREG");
+    ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
     if (autoreg != NULL && autoreg[0] != 0) {
         h->autoreg = ccnd_parse_uri_list(h, "CCND_AUTOREG", autoreg);
-        if (h->autoreg != NULL) {
-            h->flood = 1;
+        if (h->autoreg != NULL)
             ccnd_msg(h, "CCND_AUTOREG=%s", autoreg);
-        }
     }
-    ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
     if (listen_on != NULL && listen_on[0] != 0)
         ccnd_msg(h, "CCND_LISTEN_ON=%s", listen_on);
     // if (h->debug & 256)
@@ -4528,7 +4544,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         ccnd_msg(h, "%s: %s", sockname, strerror(errno));
     else
         ccnd_msg(h, "listening on %s", sockname);
-    h->flood = 0;
+    h->flood = (h->autoreg != NULL);
     h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
     ccnd_listen_on(h, listen_on);
     clean_needed(h);
