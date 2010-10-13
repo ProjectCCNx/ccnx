@@ -4361,6 +4361,47 @@ ccnd_listen_on(struct ccnd_handle *h, const char *addrs)
     return(res);
 }
 
+static struct ccn_charbuf *
+ccnd_parse_uri_list(struct ccnd_handle *h, const char *what, const char *uris)
+{
+    struct ccn_charbuf *ans;
+    struct ccn_charbuf *name;
+    int i;
+    size_t j;
+    int res;
+    unsigned char ch;
+    const char *uri;
+
+    if (uris == NULL)
+        return(NULL);
+    ans = ccn_charbuf_create();
+    name = ccn_charbuf_create();
+    for (i = 0, ch = uris[0]; ch != 0;) {
+        while ((0 < ch && ch <= ' ') || ch == ',' || ch == ';')
+            ch = uris[++i];
+        j = ans->length;
+        while (ch > ' ' && ch != ',' && ch != ';') {
+            ccn_charbuf_append_value(ans, ch, 1);
+            ch = uris[++i];
+        }
+        if (j < ans->length) {
+            ccn_charbuf_append_value(ans, 0, 1);
+            uri = (const char *)ans->buf + j;
+            name->length = 0;
+            res = ccn_name_from_uri(name, uri);
+ccnd_msg(h, "%s: URI: %s res:%d", what, uri, res);
+            if (res < 0) {
+                ccnd_msg(h, "%s: invalid ccnx URI: %s", what, uri);
+                ans->length = j;
+            }
+        }
+    }
+    ccn_charbuf_destroy(&name);
+    if (ans->length == 0)
+        ccn_charbuf_destroy(&ans);
+    return(ans);
+}
+
 /**
  * Start a new ccnd instance
  * @param progname - name of program binary, used for locating helpers
@@ -4376,6 +4417,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     const char *entrylimit;
     const char *mtu;
     const char *data_pause;
+    const char *autoreg;
     const char *listen_on;
     int fd;
     struct ccnd_handle *h;
@@ -4456,6 +4498,14 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
             h->data_pause_microsec = 1000000;
     }
     listen_on = getenv("CCND_LISTEN_ON");
+    autoreg = getenv("CCND_AUTOREG");
+    if (autoreg != NULL && autoreg[0] != 0) {
+        h->autoreg = ccnd_parse_uri_list(h, "CCND_AUTOREG", autoreg);
+        if (h->autoreg != NULL) {
+            h->flood = 1;
+            ccnd_msg(h, "CCND_AUTOREG=%s", autoreg);
+        }
+    }
     ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
     if (listen_on != NULL && listen_on[0] != 0)
         ccnd_msg(h, "CCND_LISTEN_ON=%s", listen_on);
@@ -4541,6 +4591,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
         h->content_by_accession_window = 0;
     }
     ccn_charbuf_destroy(&h->scratch_charbuf);
+    ccn_charbuf_destroy(&h->autoreg);
     ccn_indexbuf_destroy(&h->skiplinks);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
     ccn_indexbuf_destroy(&h->unsol);
