@@ -4407,7 +4407,6 @@ ccnd_parse_uri_list(struct ccnd_handle *h, const char *what, const char *uris)
             uri = (const char *)ans->buf + j;
             name->length = 0;
             res = ccn_name_from_uri(name, uri);
-ccnd_msg(h, "%s: URI: %s res:%d", what, uri, res);
             if (res < 0) {
                 ccnd_msg(h, "%s: invalid ccnx URI: %s", what, uri);
                 ans->length = j;
