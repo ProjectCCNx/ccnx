@@ -2134,7 +2134,7 @@ register_new_face(struct ccnd_handle *h, struct face *face)
 {
     if (face->faceid != 0 && (face->flags & (CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE)) == 0) {
         ccnd_face_status_change(h, face->faceid);
-        if (h->flood && h->autoreg != NULL)
+        if (h->flood && h->autoreg != NULL && (face->flags & CCN_FACE_GG) == 0)
             ccnd_reg_uri_list(h, h->autoreg, face->faceid,
                          CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
                          0x7FFFFFFF);
