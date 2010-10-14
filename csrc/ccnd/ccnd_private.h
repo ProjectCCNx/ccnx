@@ -124,7 +124,8 @@ struct ccnd_handle {
     unsigned long logtime;          /**< see ccn_msg() */
     int logpid;                     /**< see ccn_msg() */
     int mtu;                        /**< Target size for stuffing interests */
-    int flood;                      // XXX - Temporary, for transition period
+    int flood;                      /**< Internal control for auto-reg */
+    struct ccn_charbuf *autoreg;    /**< URIs to auto-register */
     int force_zero_freshness;       /**< Simulate freshness=0 on all content */
     unsigned interest_faceid;       /**< for self_reg internal client */
     const char *progname;           /**< our name, for locating helpers */
@@ -222,7 +223,7 @@ struct content_entry {
     unsigned short *comps;      /**< Name Component byte boundary offsets */
     int ncomps;                 /**< Number of name components plus one */
     int flags;                  /**< see below */
-    const unsigned char *key;	/**< ccnb-encoded ContentObject */
+    const unsigned char *key;   /**< ccnb-encoded ContentObject */
     int key_size;               /**< Size of fragment prior to Content */
     int size;                   /**< Size of ContentObject */
     struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
