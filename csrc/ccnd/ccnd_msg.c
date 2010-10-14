@@ -165,4 +165,7 @@ const char *ccnd_usage_message =
     "      Defaults to a private subdirectory of /var/tmp\n"
     "    CCND_LISTEN_ON=\n"
     "      List of ip addresses to listen on; defaults to wildcard\n"
+    "    CCND_AUTOREG=\n"
+    "      List of prefixes to auto-register on new faces initiated by peers\n"
+    "      example: CCND_AUTOREG=ccnx:/like/this,ccnx:/and/this\n"
     ;
