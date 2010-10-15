@@ -37,6 +37,10 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * user pressed ENTER, we switch to INPUT mode.  received chat messages
  * are queued and only displayed when the user leaves INPUT mode
  * by pressing ENTER again.
+ * 
+ * System.in is buffered, so we can only get when the user presses ENTER.
+ * We will save whatever what typed before and put it as the start of
+ * the INPUT line.
  */
 public class CCNChatText implements Runnable, CCNChatCallback {
 
@@ -83,7 +87,8 @@ public class CCNChatText implements Runnable, CCNChatCallback {
 
 			// Check for a character input
 			try {
-				if( br.ready() && br.read() == '\n') {
+				if( br.ready() ) {
+					System.out.println("Switching to INPUT");
 					_mode = Mode.MODE_INPUT;
 				}
 			} catch(Exception e) {
@@ -92,9 +97,17 @@ public class CCNChatText implements Runnable, CCNChatCallback {
 
 			switch(_mode) {
 			case MODE_INPUT:
-				System.out.print("INPUT: ");
+				// Read in the current input and put it out there
 				try {
 					message = br.readLine();
+					
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+				
+				System.out.print("INPUT: " + message);
+				try {
+					message += br.readLine();
 					_chat.sendMessage(message);
 				} catch(Exception e) {
 					e.printStackTrace();
@@ -105,7 +118,7 @@ public class CCNChatText implements Runnable, CCNChatCallback {
 
 			case MODE_OUTPUT:
 				try {
-					message = _queue.poll(100, TimeUnit.MILLISECONDS);
+					message = _queue.poll(50, TimeUnit.MILLISECONDS);
 				} catch (InterruptedException e) {
 				}
 
