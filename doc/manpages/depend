@@ -1,3 +1,4 @@
+ccn_ccnbtoxml.1.html: ccn_ccnbtoxml.1.txt
 ccnacl.1.html: ccnacl.1.txt
 ccngroup.1.html: ccngroup.1.txt
 ccnd.1.html: ccnd.1.txt
@@ -15,6 +16,7 @@ ccnputmeta.1.html: ccnputmeta.1.txt
 ccngetmeta.1.html: ccngetmeta.1.txt
 ccnrm.1.html: ccnrm.1.txt
 ccn_repo.1.html: ccn_repo.1.txt
+ccn_ccnbtoxml.1.pdf: ccn_ccnbtoxml.1.txt
 ccnacl.1.pdf: ccnacl.1.txt
 ccngroup.1.pdf: ccngroup.1.txt
 ccnd.1.pdf: ccnd.1.txt
@@ -32,6 +34,7 @@ ccnputmeta.1.pdf: ccnputmeta.1.txt
 ccngetmeta.1.pdf: ccngetmeta.1.txt
 ccnrm.1.pdf: ccnrm.1.txt
 ccn_repo.1.pdf: ccn_repo.1.txt
+ccn_ccnbtoxml.1: ccn_ccnbtoxml.1.txt
 ccnacl.1: ccnacl.1.txt
 ccngroup.1: ccngroup.1.txt
 ccnd.1: ccnd.1.txt
