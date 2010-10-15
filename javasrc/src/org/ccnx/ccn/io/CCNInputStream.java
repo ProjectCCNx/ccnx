@@ -50,9 +50,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	 * to be unencrypted, or keys will be retrieved automatically via another
 	 * process. 
 	 * Will use the default handle given by CCNHandle#getHandle().
-	 * Note that this constructor does not currently retrieve any
-	 * data; data is not retrieved until read() is called. This will change in the future, and
-	 * this constructor will retrieve the first block.
+	 * This constructor will attempt to retrieve the first block of content.
 	 * 
 	 * @param baseName Name to read from. If contains a segment number, will start to read from that
 	 *    segment.
@@ -66,9 +64,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	 * Set up an input stream to read segmented CCN content under a given name. Content is assumed
 	 * to be unencrypted, or keys will be retrieved automatically via another
 	 * process.
-	 * Note that this constructor does not currently retrieve any
-	 * data; data is not retrieved until read() is called. This will change in the future, and
-	 * this constructor will retrieve the first block.
+	 * This constructor will attempt to retrieve the first block of content.
 	 * 
 	 * @param baseName Name to read from. If contains a segment number, will start to read from that
 	 *    segment.
@@ -84,9 +80,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	 * Set up an input stream to read segmented CCN content under a given name. Content is assumed
 	 * to be unencrypted, or keys will be retrieved automatically via another
 	 * process.
-	 * Note that this constructor does not currently retrieve any
-	 * data; data is not retrieved until read() is called. This will change in the future, and
-	 * this constructor will retrieve the first block.
+ 	 * This constructor will attempt to retrieve the first block of content.
 	 * 
 	 * @param baseName Name to read from. If contains a segment number, will start to read from that
 	 *    segment.
@@ -105,9 +99,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	 * Set up an input stream to read segmented CCN content under a given name. Content is assumed
 	 * to be unencrypted, or keys will be retrieved automatically via another
 	 * process.
-	 * Note that this constructor does not currently retrieve any
-	 * data; data is not retrieved until read() is called. This will change in the future, and
-	 * this constructor will retrieve the first block.
+	 * This constructor will attempt to retrieve the first block of content.
 	 * 
 	 * @param baseName Name to read from. If contains a segment number, will start to read from that
 	 *    segment.
@@ -125,9 +117,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	 * Set up an input stream to read segmented CCN content under a given name. Content is assumed
 	 * to be unencrypted, or keys will be retrieved automatically via another
 	 * process.
-	 * Note that this constructor does not currently retrieve any
-	 * data; data is not retrieved until read() is called. This will change in the future, and
-	 * this constructor will retrieve the first block.
+	 * This constructor will attempt to retrieve the first block of content.
 	 * 
 	 * @param baseName Name to read from. If contains a segment number, will start to read from that
 	 *    segment.
@@ -147,9 +137,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	
 	/**
 	 * Set up an input stream to read segmented CCN content under a given name. 
-	 * Note that this constructor does not currently retrieve any
-	 * data; data is not retrieved until read() is called. This will change in the future, and
-	 * this constructor will retrieve the first block.
+	 * This constructor will attempt to retrieve the first block of content.
 	 * 
 	 * @param baseName Name to read from. If contains a segment number, will start to read from that
 	 *    segment.
@@ -174,6 +162,7 @@ public class CCNInputStream extends CCNAbstractInputStream {
 	 * ContentObject that has already been retrieved.  Content is assumed
 	 * to be unencrypted, or keys will be retrieved automatically via another
 	 * process.
+	 * 
 	 * @param startingSegment The first segment to read from. If this is not the
 	 * 		first segment of the stream, reading will begin from this point.
 	 * 		We assume that the signature on this segment was verified by our caller.
