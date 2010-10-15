@@ -110,10 +110,6 @@ public final class CCNChatNet {
 		Log.setLevel(Log.FAC_ALL, level);
 	}
 	
-	// ==================================================================
-    // Method called by concrete UI class
-
-
 	
 	/**
 	 * This actual CCN loop to send/receive messages.  Called by
@@ -126,7 +122,7 @@ public final class CCNChatNet {
 	 * @throws IOException
 	 * @throws MalformedContentNameStringException
 	 */
-	protected void listen() throws ConfigurationException, IOException, MalformedContentNameStringException {
+	public void listen() throws ConfigurationException, IOException, MalformedContentNameStringException {
 		
 		CCNHandle tempReadHandle = CCNHandle.open();
 		CCNHandle tempWriteHandle = CCNHandle.open();
