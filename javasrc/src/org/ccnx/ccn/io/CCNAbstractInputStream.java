@@ -1995,23 +1995,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 		//cancel our outstanding interests
 		cancelInterests();
-		
-		synchronized (inOrderSegments) {
-			//clean up our state...
-			inOrderSegments = null;
-			outOfOrderSegments = null;
-			_nextPipelineSegment = -1;
-			_lastRequestedPipelineSegment = -1;
-			_lastInOrderSegment = -1;
-			_lastSegmentNumber = -1;
-			_currentSegment = null;			
-		}
-		
-		//if this is of type CCNFileInputStream, need to close the header
-		if (this instanceof CCNFileInputStream) {
-			//TODO add header closing code to CCNFileInputStream
-		}
-		
+		resetPipelineState();
 	}
 
 	@Override
