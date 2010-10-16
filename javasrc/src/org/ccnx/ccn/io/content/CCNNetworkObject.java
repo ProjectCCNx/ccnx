@@ -499,6 +499,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @return
 	 */
 	public synchronized void close() {
+		cancelInterest();
 		clearListeners();
 		if (null != _flowControl) {
 			_flowControl.close();
