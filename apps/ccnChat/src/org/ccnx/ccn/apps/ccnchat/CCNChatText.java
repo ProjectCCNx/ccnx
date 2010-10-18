@@ -29,12 +29,12 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
- * A test-based interface to CCNChat.
+ * A text-based interface to CCNChat.
  * 
  * Because we don't want to depend on an external curses library,
  * the UI uses a 2-mode interface.  The normal mode is OUTPUT, which
  * means received chat messages are displayed immediately.  If the
- * user pressed ENTER, we switch to INPUT mode.  received chat messages
+ * user pressed ENTER, we switch to INPUT mode.  Received chat messages
  * are queued and only displayed when the user leaves INPUT mode
  * by pressing ENTER again.
  * 
