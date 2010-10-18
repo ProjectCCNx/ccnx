@@ -526,4 +526,21 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements Updat
 		}
 		
 	}
+	
+	@Override
+	public void close() throws IOException{
+		Log.info(Log.FAC_IO, "CCNFileInputStream: close {0}.  closing header objects and will make call to shut down pipelining", _baseName);
+
+		//need to close the header object to cancel any outstanding interests
+		if (_header != null) {
+			_header.close();
+		}
+		
+		if (_oldHeader!=null) {
+			_oldHeader.close();
+		}
+		
+		//then make sure any pipelining state is also cleaned up...
+		super.close();
+	}
 }

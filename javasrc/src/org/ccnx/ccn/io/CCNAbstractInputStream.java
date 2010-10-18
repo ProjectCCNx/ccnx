@@ -1989,8 +1989,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	@Override
 	public void close() throws IOException {
-		// don't have to do anything.
-		Log.info(Log.FAC_IO, "CCNAbstractInputStream: close {0}", _baseName);
+		Log.info(Log.FAC_IO, "CCNAbstractInputStream: close {0}:  shutting down pipelining", _baseName);
+		
+		//now that we have pipelining, we need to cancel our interests and clean up
+
+		//cancel our outstanding interests
+		cancelInterests();
+		resetPipelineState();
 	}
 
 	@Override
