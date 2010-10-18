@@ -63,7 +63,7 @@ then
   exit 1
 fi
 
-if [[ "$GUI_OPTION" == "text" ]]; then
+if [ "$GUI_OPTION" = "text" ]; then
 	$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION org.ccnx.ccn.apps.ccnchat.CCNChatText $*
 else
 	$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION org.ccnx.ccn.apps.ccnchat.CCNChat $*
