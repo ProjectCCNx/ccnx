@@ -160,7 +160,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	private long _holes = 0;
 	private long _totalReceived = 0;
 	private long _pipelineStartTime;
-	private String readerReady = "-1";
+	private Long readerReady = -1L;
 
 	private double avgResponseTime = -1;
 
@@ -346,7 +346,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		//is there a reader ready?
 		long rr;
 		synchronized(readerReady) {
-			rr = Long.parseLong(readerReady);
+			rr = readerReady;
 		}
 		//while(rr > -1) {
 		if(rr > -1) {
@@ -365,7 +365,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						inOrderSegments.wait();
 						//readerReady.wait();
 						synchronized(readerReady) {
-							rr = Long.parseLong(readerReady);
+							rr = readerReady;
 						}
 					} catch (InterruptedException e) {
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: we can go back to processing");
@@ -1024,7 +1024,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			//is there a reader ready?
 			long rr;
 			synchronized(readerReady) {
-				rr = Long.parseLong(readerReady);
+				rr = readerReady;
 			}
 			if(rr > -1) {
 				//there is a reader waiting
@@ -1529,7 +1529,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		long ttgl = System.currentTimeMillis();
 
 		synchronized(readerReady){
-			readerReady = Long.toString(number);
+			readerReady = number;
 		}
 
 		synchronized (inOrderSegments) {
@@ -1562,7 +1562,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				advancePipeline(false);
 				synchronized(readerReady) {
 					//readerReady.notifyAll();
-					readerReady = "-1";
+					readerReady = -1L;
 					inOrderSegments.notifyAll();
 				}
 				return co;
@@ -1622,7 +1622,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 				synchronized(readerReady) {
 					//readerReady.notifyAll();
-					readerReady = "-1";
+					readerReady = -1L;
 					inOrderSegments.notifyAll();
 				}
 			}
