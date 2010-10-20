@@ -77,6 +77,7 @@ public class CCNNetworkManager implements Runnable {
 	public static final int MAX_PERIOD = PERIOD * 8;
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	public static final int THREAD_LIFE = 8;	// in seconds
+	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
 	
 	/**
 	 *  Definitions for which network protocol to use.  This allows overriding
