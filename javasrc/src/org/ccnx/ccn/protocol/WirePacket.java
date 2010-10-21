@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.protocol;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -80,5 +82,19 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 	
 	public XMLEncodable getPacket() {
 		return _content;
+	}
+	
+	public List<Interest> interests() {
+		ArrayList<Interest> list = new ArrayList<Interest>();
+		if (_content instanceof Interest)
+			list.add((Interest)_content);
+		return list;
+	}
+	
+	public List<ContentObject> data() {
+		ArrayList<ContentObject> list = new ArrayList<ContentObject>();
+		if (_content instanceof ContentObject)
+			list.add((ContentObject)_content);
+		return list;
 	}
 }
