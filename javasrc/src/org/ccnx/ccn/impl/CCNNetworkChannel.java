@@ -49,8 +49,6 @@ import org.ccnx.ccn.protocol.WirePacket;
  *  same input stream for both transports.
  */
 public class CCNNetworkChannel extends InputStream {
-	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
-												// also defines bytes in the buffer for both UDP and TCP
 	public static final int HEARTBEAT_PERIOD = 3500;
 	public static final int SOCKET_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT; // period to wait in ms.
 	public static final int DOWN_DELAY = SystemConfiguration.SHORT_TIMEOUT;	// Wait period for retry when ccnd is down
@@ -69,7 +67,7 @@ public class CCNNetworkChannel extends InputStream {
 	protected FileOutputStream _ncTapStreamIn = null;
 	
 	// Allocate datagram buffer
-	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(MAX_PAYLOAD);
+	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(CCNNetworkManager.MAX_PAYLOAD);
 	// The following lines can be uncommented to help with debugging (i.e. you can't easily look at
 	// what's in the buffer when an allocateDirect is done.
 	// TODO - this should be under the control of a debugging flag instead
