@@ -2252,14 +2252,14 @@ ccnd_req_newface(struct ccnd_handle *h,
                                   0);
     }
     if (newface != NULL) {
-        if ((newface->flags & CCN_FACE_CONNECTING) != 0)
-            goto Finish;
         newface->flags |= CCN_FACE_PERMANENT;
         face_instance->action = NULL;
         face_instance->ccnd_id = h->ccnd_id;
         face_instance->ccnd_id_size = sizeof(h->ccnd_id);
         face_instance->faceid = newface->faceid;
         face_instance->lifetime = 0x7FFFFFFF;
+        if ((newface->flags & CCN_FACE_CONNECTING) != 0)
+            face_instance->lifetime = 1;
         res = ccnb_append_face_instance(reply_body, face_instance);
     }    
 Finish:
