@@ -2147,22 +2147,24 @@ register_new_face(struct ccnd_handle *h, struct face *face)
  * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
             in its Content.
  * @param size is its size in bytes
- * @result on success the returned charbuf holds a new ccnd-encoded
- *         FaceInstance including faceid;
- *         returns NULL for any error.
+ * @param reply_body is a buffer to hold the Content of the reply, as a 
+ *         FaceInstance including faceid
+ * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
+ *         set the response type to NACK.
  *
  * Is is permitted for the face to already exist.
  * A newly created face will have no registered prefixes, and so will not
  * receive any traffic.
  */
-struct ccn_charbuf *
-ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+int
+ccnd_req_newface(struct ccnd_handle *h,
+                 const unsigned char *msg, size_t size,
+                 struct ccn_charbuf *reply_body)
 {
     struct ccn_parsed_ContentObject pco = {0};
     int res;
     const unsigned char *req;
     size_t req_size;
-    struct ccn_charbuf *result = NULL;
     struct ccn_face_instance *face_instance = NULL;
     struct addrinfo hints = {0};
     struct addrinfo *addrinfo = NULL;
@@ -2253,22 +2255,19 @@ ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
         if ((newface->flags & CCN_FACE_CONNECTING) != 0)
             goto Finish;
         newface->flags |= CCN_FACE_PERMANENT;
-        result = ccn_charbuf_create();
         face_instance->action = NULL;
         face_instance->ccnd_id = h->ccnd_id;
         face_instance->ccnd_id_size = sizeof(h->ccnd_id);
         face_instance->faceid = newface->faceid;
         face_instance->lifetime = 0x7FFFFFFF;
-        res = ccnb_append_face_instance(result, face_instance);
-        if (res < 0)
-            ccn_charbuf_destroy(&result);
+        res = ccnb_append_face_instance(reply_body, face_instance);
     }    
 Finish:
     h->flood = save; /* restore saved flood flag */
     ccn_face_instance_destroy(&face_instance);
     if (addrinfo != NULL)
         freeaddrinfo(addrinfo);
-    return(result);
+    return(res);
 }
 
 /**
@@ -2277,21 +2276,23 @@ Finish:
  * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
             in its Content.
  * @param size is its size in bytes
- * @result on success the returned charbuf holds a new ccnd-encoded
- *         FaceInstance including faceid;
- *         returns NULL for any error.
+ * @param reply_body is a buffer to hold the Content of the reply, as a 
+ *         FaceInstance including faceid
+ * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
+ *         set the response type to NACK.
  *
  * Is is an error if the face does not exist.
  */
-struct ccn_charbuf *
-ccnd_req_destroyface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+int
+ccnd_req_destroyface(struct ccnd_handle *h,
+                     const unsigned char *msg, size_t size,
+                     struct ccn_charbuf *reply_body)
 {
     struct ccn_parsed_ContentObject pco = {0};
     int res;
     int at = 0;
     const unsigned char *req;
     size_t req_size;
-    struct ccn_charbuf *result = NULL;
     struct ccn_face_instance *face_instance = NULL;
     struct face *reqface = NULL;
 
@@ -2316,35 +2317,33 @@ ccnd_req_destroyface(struct ccnd_handle *h, const unsigned char *msg, size_t siz
     if ((reqface->flags & CCN_FACE_GG) == 0) { at = __LINE__; goto Finish; }
     res = ccnd_destroy_face(h, face_instance->faceid);
     if (res < 0) { at = __LINE__; goto Finish; }
-    result = ccn_charbuf_create();
     face_instance->action = NULL;
     face_instance->ccnd_id = h->ccnd_id;
     face_instance->ccnd_id_size = sizeof(h->ccnd_id);
     face_instance->lifetime = 0;
-    res = ccnb_append_face_instance(result, face_instance);
+    res = ccnb_append_face_instance(reply_body, face_instance);
     if (res < 0) {
         at = __LINE__;
-        ccn_charbuf_destroy(&result);
     }
 Finish:
     if (at != 0)
         ccnd_msg(h, "ccnd_req_destroyface failed (line %d, res %d)", at, res);
     ccn_face_instance_destroy(&face_instance);
-    return(result);
+    return(res);
 }
 
 /**
  * Worker bee for two very similar public functions.
  */
-static struct ccn_charbuf *
+static int
 ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
-                   const unsigned char *msg, size_t size, int selfreg)
+                            const unsigned char *msg, size_t size, int selfreg,
+                            struct ccn_charbuf *reply_body)
 {
     struct ccn_parsed_ContentObject pco = {0};
     int res;
     const unsigned char *req;
     size_t req_size;
-    struct ccn_charbuf *result = NULL;
     struct ccn_forwarding_entry *forwarding_entry = NULL;
     struct face *face = NULL;
     struct face *reqface = NULL;
@@ -2406,17 +2405,16 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     if (res < 0)
         goto Finish;
     forwarding_entry->flags = res;
-    result = ccn_charbuf_create();
     forwarding_entry->action = NULL;
     forwarding_entry->ccnd_id = h->ccnd_id;
     forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
-    res = ccnb_append_forwarding_entry(result, forwarding_entry);
-    if (res < 0)
-        ccn_charbuf_destroy(&result);
+    res = ccnb_append_forwarding_entry(reply_body, forwarding_entry);
 Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
-    return(result);
+    if (res > 0)
+        res = 0;
+    return(res);
 }
 
 /**
@@ -2425,14 +2423,18 @@ Finish:
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @result on success the returned charbuf holds a new ccnd-encoded
- *         ForwardingEntry;
- *         returns NULL for any error.
+ * @param reply_body is a buffer to hold the Content of the reply, as a 
+ *         FaceInstance including faceid
+ * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
+ *         set the response type to NACK.
+ *
  */
-struct ccn_charbuf *
-ccnd_req_prefixreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+int
+ccnd_req_prefixreg(struct ccnd_handle *h,
+                   const unsigned char *msg, size_t size,
+                   struct ccn_charbuf *reply_body)
 {
-    return(ccnd_req_prefix_or_self_reg(h, msg, size, 0));
+    return(ccnd_req_prefix_or_self_reg(h, msg, size, 0, reply_body));
 }
 
 /**
@@ -2441,14 +2443,18 @@ ccnd_req_prefixreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @result on success the returned charbuf holds a new ccnd-encoded
- *         ForwardingEntry;
- *         returns NULL for any error.
+ * @param reply_body is a buffer to hold the Content of the reply, as a 
+ *         ccnb-encoded ForwardingEntry
+ * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
+ *         set the response type to NACK.
+ *
  */
-struct ccn_charbuf *
-ccnd_req_selfreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+int
+ccnd_req_selfreg(struct ccnd_handle *h,
+                 const unsigned char *msg, size_t size,
+                 struct ccn_charbuf *reply_body)
 {
-    return(ccnd_req_prefix_or_self_reg(h, msg, size, 1));
+    return(ccnd_req_prefix_or_self_reg(h, msg, size, 1, reply_body));
 }
 
 /**
@@ -2457,14 +2463,17 @@ ccnd_req_selfreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @result on success the returned charbuf holds a new ccnd-encoded
- *         ForwardingEntry;
- *         returns NULL for any error.
+ * @param reply_body is a buffer to hold the Content of the reply, as a 
+ *         ccnb-encoded ForwardingEntry
+ * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
+ *         set the response type to NACK.
+ *
  */
-struct ccn_charbuf *
-ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+int
+ccnd_req_unreg(struct ccnd_handle *h,
+               const unsigned char *msg, size_t size,
+               struct ccn_charbuf *reply_body)
 {
-    struct ccn_charbuf *result = NULL;
     struct ccn_parsed_ContentObject pco = {0};
     int n_name_comp = 0;
     int res;
@@ -2543,17 +2552,14 @@ ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     }
     if (!found) 
         goto Finish;    
-    result = ccn_charbuf_create();
     forwarding_entry->action = NULL;
     forwarding_entry->ccnd_id = h->ccnd_id;
     forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
-    res = ccnb_append_forwarding_entry(result, forwarding_entry);
-    if (res < 0)
-        ccn_charbuf_destroy(&result);
+    res = ccnb_append_forwarding_entry(reply_body, forwarding_entry);
 Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
-    return(result);
+    return(res);
 }
 
 /**
