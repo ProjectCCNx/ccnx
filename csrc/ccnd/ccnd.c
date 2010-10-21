@@ -2250,6 +2250,8 @@ ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
                                   0);
     }
     if (newface != NULL) {
+        if ((newface->flags & CCN_FACE_CONNECTING) != 0)
+            goto Finish;
         newface->flags |= CCN_FACE_PERMANENT;
         result = ccn_charbuf_create();
         face_instance->action = NULL;
@@ -4034,8 +4036,10 @@ do_deferred_write(struct ccnd_handle *h, int fd)
     }
     if ((face->flags & CCN_FACE_CLOSING) != 0)
         shutdown_client_fd(h, fd);
-    else if ((face->flags & CCN_FACE_CONNECTING) != 0)
+    else if ((face->flags & CCN_FACE_CONNECTING) != 0) {
         face->flags &= ~CCN_FACE_CONNECTING;
+        ccnd_face_status_change(h, face->faceid);
+    }
     else
         ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
 }
