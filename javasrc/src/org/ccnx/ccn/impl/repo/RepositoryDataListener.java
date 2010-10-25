@@ -86,7 +86,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 			if (thisSegmentNumber >= _largestSegmentNumberReceived)
 				_largestSegmentNumberReceived = thisSegmentNumber;
 
-			// For now, only set _finalBlockID when we *know* we have the correct final
+			// For now, only set _finalSegmentNumber when we *know* we have the correct final
 			// block number -- i.e. we get a block whose segment number matches the encoded
 			// final block. A pipelining stream may help us by setting the finalBlockID in several
 			// blocks prior to the last one, to let us know when to slow down -- but it's allowed
@@ -126,8 +126,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 			
 			// Make sure we don't go past prospective last block.
 			if (_finalSegmentNumber >= 0 && _finalSegmentNumber < (largestSegmentNumberRequested + remainingWindow)) {
-				// want max to be _finalBlockID or largestSegmentNumberRequested, whichever is larger,
-				// unless isFinalBlock is true, in which case max is _finalBlockID (i.e. no more interests)
+				// want max to be _finalSegmentNumber or largestSegmentNumberRequested, whichever is larger,
+				// unless isFinalSegment is true, in which case max is _finalSegmentNumber (i.e. no more interests)
 				remainingWindow = (int)(_finalSegmentNumber - largestSegmentNumberRequested + 1);
 				// If we're confident about the final block ID, cancel previous extra interests
 				if (isFinalSegment) {
