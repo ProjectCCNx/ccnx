@@ -132,7 +132,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 				// If we're confident about the final block ID, cancel previous extra interests
 				if (isFinalSegment) {
 					cancelHigherInterests(_finalSegmentNumber);
-                    break calculateInterests;
+                    break calculateInterests; // exit the synchronized block and process the data
 				}
 			}
 			if (remainingWindow < 0)
