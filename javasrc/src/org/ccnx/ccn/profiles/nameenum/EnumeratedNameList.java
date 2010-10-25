@@ -20,7 +20,9 @@ package org.ccnx.ccn.profiles.nameenum;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.logging.Level;
 
@@ -50,10 +52,24 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	protected BasicNameEnumeratorListener callback;
 	// make these contain something other than content names when the enumerator has better data types
 	protected SortedSet<ContentName> _children = new TreeSet<ContentName>();
-	protected SortedSet<ContentName> _newChildren = null;
+	//protected SortedSet<ContentName> _newChildren = null;
+	protected Map<Long, NewChildrenByThread> _newChildrenByThread = new TreeMap<Long, NewChildrenByThread>();
 	protected Object _childLock = new Object();
 	protected CCNTime _lastUpdate = null;
 	protected boolean _enumerating = false;
+	
+	private class NewChildrenByThread implements Comparable<NewChildrenByThread> {
+		private Long _id;		// If 0 this is in thread pool mode
+		private SortedSet<ContentName> _newChildren = null;
+		
+		private NewChildrenByThread(Long id) {
+			this._id = id;
+		}
+
+		public int compareTo(NewChildrenByThread o) {
+			return _id.compareTo(o._id);
+		}
+	}
 	
 	/**
 	 * Keep track of whether we've ever done enumeration, so we can start it automatically
@@ -139,54 +155,57 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	/**
 	 * First-come first-served interface to retrieve only new data from
 	 * enumeration responses as it arrives.  This method blocks and
-	 * waits for data, but grabs the new data for processing
-	 * (thus removing it from every other listener), in effect handing the
-	 * new children to the first consumer to wake up and makes the other
-	 * ones go around again. Useful for assigning work to a thread pool,
-	 * somewhat dangerous in other contexts -- if there is more than
-	 * one waiter, many waiters can wait forever.
+	 * waits for data, but grabs the new data for processing.
+	 * In threadPoolContext it will in effect removes the data from every other
+	 * listener who is listening in threadPoolContext, in effect handing the new 
+	 * children to the first consumer to wake up and makes the other ones go around again. 
+	 * There is currently no support for more than one simultaneous thread pool.
 	 * 
+	 * @param Are we getting data in threadPoolContext?
 	 * @param timeout maximum amount of time to wait, 0 to wait forever.
 	 * @return SortedSet<ContentName> Returns the array of single-component
 	 * 	content name children that are new to us, or null if we reached the
 	 *  timeout before new data arrived
-	 *  
-	 *  Deprecated due to likelihood of getting into trouble by attempting to use
-	 *  this interface.
 	 */
-	@Deprecated
-	public SortedSet<ContentName> getNewData(long timeout) {
+	public SortedSet<ContentName> getNewData(boolean threadPoolContext, long timeout) {
 		SortedSet<ContentName> childArray = null;
 		synchronized(_childLock) { // reentrant
-			while ((null == _newChildren) || _newChildren.size() == 0) {
-				waitForNewChildren(timeout);
+			Long id = threadPoolContext ? 0 : Thread.currentThread().getId();
+			NewChildrenByThread ncbt = _newChildrenByThread.get(id);
+			SortedSet<ContentName> newChildren = ncbt == null ? null : ncbt._newChildren;
+			while ((null == newChildren) || newChildren.size() == 0) {
+				waitForNewChildren(threadPoolContext, timeout);
+				ncbt = _newChildrenByThread.get(id);
+				newChildren = ncbt._newChildren;
 				if (timeout != SystemConfiguration.NO_TIMEOUT)
 					break;
 			}
+			
 			if (Log.isLoggable(Level.INFO)) {
-				Log.info("Waiting for new data on prefix: " + _namePrefix + " got " + ((null == _newChildren) ? 0 : _newChildren.size())
+				Log.info("Waiting for new data on prefix: " + _namePrefix + " got " + ((null == newChildren) ? 0 : newChildren.size())
 						+ ".");
 			}
 
-			if (null != _newChildren) {
-				childArray = _newChildren;
-				_newChildren = null;
+			if (null != newChildren) {
+				childArray = newChildren;
+				ncbt._newChildren = null;
 			}
 		}
 		return childArray;
 	}
 	
 	/**
-	 * Block and wait as long as it takes for new data to appear. See #getNewData(long).
+	 * Block and wait as long as it takes for new data to appear. See #getNewData(boolean, long).
 	 * @return SortedSet<ContentName> Returns the array of single-component
 	 * 	content name children that are new to us, or null if we reached the
 	 *  timeout before new data arrived
-	 *  
-	 *  Deprecated - see #getNewData(long)
 	 */
-	@Deprecated
 	public SortedSet<ContentName> getNewData() {
-		return getNewData(SystemConfiguration.NO_TIMEOUT);
+		return getNewData(false, SystemConfiguration.NO_TIMEOUT);
+	}
+	
+	public SortedSet<ContentName> getNewDataThreadPool() {
+		return getNewData(true, SystemConfiguration.NO_TIMEOUT);
 	}
 	
 	/**
@@ -205,12 +224,12 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	/**
 	 * Returns true if the prefix has new names that have not been handled by the calling application.
 	 * @return true if there are new children available to process
-	 * 
-	 * Deprecated - see #getNewData(long)
 	 */
-	@Deprecated
 	public boolean hasNewData() {
-		return ((null != _newChildren) && (_newChildren.size() > 0));
+		NewChildrenByThread ncbt = getNcbt();
+		if (null == ncbt)
+			return false;	// Never set up
+		return ((null != ncbt._newChildren) && (ncbt._newChildren.size() > 0));
 	}
 	
 	/**
@@ -265,12 +284,12 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * 
 	 * @param timeout Maximum time to wait for new data.
 	 * @return a boolean value that indicates whether new data was found.
-	 * 
-	 * Deprecated - see #getNewData(long)
 	 */
-	@Deprecated
-	public boolean waitForNewChildren(long timeout) {
+	public boolean waitForNewChildren(boolean threadPoolContext, long timeout) {
 		boolean foundNewData = false;
+		
+		Long id = threadPoolContext ? 0 : Thread.currentThread().getId();
+		_newChildrenByThread.put(id, new NewChildrenByThread(id));
 		synchronized(_childLock) {
 			CCNTime lastUpdate = _lastUpdate;
 			long timeRemaining = timeout;
@@ -285,10 +304,11 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				} catch (InterruptedException e) {
 				}
 				if (Log.isLoggable(Level.INFO)) {
+					SortedSet<ContentName> newChildren = _newChildrenByThread.get(id)._newChildren;
 					Log.info("Waiting for new data on prefix: {0}, updated {1}, our update {2}, have {3} children {4} new.", 
 							_namePrefix, _lastUpdate, lastUpdate,
 							((null == _children) ? 0 : _children.size()), 
-							((null == _newChildren) ? 0 : _newChildren.size()));
+							((null == newChildren) ? 0 : newChildren.size()));
 				}
 			}
 			if ((null != _lastUpdate) && ((null == lastUpdate) || (_lastUpdate.after(lastUpdate)))) foundNewData = true;
@@ -301,12 +321,28 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * This method does not have a timeout and will wait forever.
 	 * 
 	 * @return void
-	 * 
-	 * Deprecated - see #getNewData(long)
 	 */
-	@Deprecated
 	public void waitForNewChildren() {
-		waitForNewChildren(SystemConfiguration.NO_TIMEOUT);
+		waitForNewChildren(false, SystemConfiguration.NO_TIMEOUT);
+	}
+	
+	/**
+	 * Wait for new children to arrive.
+	 * 
+	 * @param timeout Maximum amount of time to wait, if 0, waits forever.
+	 * @return a boolean value that indicates whether new data was found.
+	 */
+	public boolean waitForNewChildren(long timeout) {
+		return waitForNewChildren(false, timeout);
+	}
+	
+	/**
+	 * Wait for new children to arrive in thread pool context.  See notes about this above.
+	 * @param timeout Maximum amount of time to wait, if 0, waits forever.
+	 * @return a boolean value that indicates whether new data was found.
+	 */
+	public boolean waitForNewChildrenThreadPool(long timeout) {
+		return waitForNewChildren(true, timeout);
 	}
 
 	/**
@@ -315,15 +351,13 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * forever if no children exist in a repository or there are not any applications responding to
 	 * name enumeration requests. Once we have an initial set of children, this method
 	 * returns immediately.
+	 * 
 	 * @param timeout Maximum amount of time to wait, if 0, waits forever.
 	 * @return void
-	 * 
-	 * Deprecated - see #getNewData(long)
 	 */
-	@Deprecated
 	public void waitForChildren(long timeout) {
 		while ((null == _children) || _children.size() == 0) {
-			waitForNewChildren(timeout);
+			waitForNewChildren(false, timeout);
 			if (timeout != SystemConfiguration.NO_TIMEOUT)
 				break;
 		}
@@ -334,9 +368,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * 
 	 * @return void
 	 * 
-	 * Deprecated - see #getNewData(long)
 	 */
-	@Deprecated
 	public void waitForChildren() {
 		waitForChildren(SystemConfiguration.NO_TIMEOUT);
 	}
@@ -345,15 +377,12 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Wait for new children to arrive until there is a period of length timeout during which 
 	 * no new child arrives. 
 	 * @param timeout The maximum amount of time to wait between consecutive children arrivals.
-	 * 
-	 * Deprecated - see #getNewData(long)
 	 */
-	@Deprecated
 	public void waitForNoUpdates(long timeout) {
 		Log.info("Waiting for updates on prefix {0} with max timeout of {1} ms between consecutive children arrivals.", 
 				_namePrefix, timeout);
 		long startTime = System.currentTimeMillis();
-		while (waitForNewChildren(timeout)) {
+		while (waitForNewChildren(false, timeout)) {
 			Log.info("Child or children found on prefix {0}", _namePrefix);
 		}
 		Log.info("Quit waiting for updates on prefix {0} after waiting in total {1} ms.", 
@@ -368,10 +397,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Note that this method does not currently stop enumeration -- enumeration results will
 	 * continue to accumulate in the background (and request interests will continue to be sent);
 	 * callers must call stopEnumerating() to actually terminate enumeration.
-	 * 
-	 * Deprecated - see #getNewData(long)
 	 */
-	@Deprecated
 	public void waitForNoUpdatesOrResult(long timeout) {
 
 		Log.info("Waiting for updates on prefix {0} with max timeout of {1} ms between consecutive children arrivals.", 
@@ -380,7 +406,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		if (hasResult()) {
 			return;
 		}
-		while (waitForNewChildren(timeout)) {
+		while (waitForNewChildren(false, timeout)) {
 			Log.info("Child or children found on prefix {0}. Have result? {1}", _namePrefix, hasResult());
 			if (hasResult()) break;
 		}
@@ -466,6 +492,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * 
 	 * @return int 
 	 */
+	@SuppressWarnings("unchecked")
 	public int handleNameEnumerator(ContentName prefix,
 								    ArrayList<ContentName> names) {
 		
@@ -495,10 +522,12 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 				}
 			}
 			if (!thisRoundNew.isEmpty()) {
-				if (null != _newChildren) {
-					_newChildren.addAll(thisRoundNew);
-				} else {
-					_newChildren = thisRoundNew;
+				for (NewChildrenByThread ncbt : _newChildrenByThread.values()) {
+					if (null != ncbt._newChildren) {
+						ncbt._newChildren.addAll(thisRoundNew);
+					} else {
+						ncbt._newChildren = (SortedSet<ContentName>)thisRoundNew.clone();
+					}
 				}
 				_children.addAll(thisRoundNew);
 				_lastUpdate = new CCNTime();
@@ -606,7 +635,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			Log.info("EnumeratedNameList.exists: enumerating the parent name {0}", parentName);
 			parentEnumerator.waitForChildren(SystemConfiguration.MAX_TIMEOUT);
 			while (! parentEnumerator.hasChild(childNameComponent)) {
-				if (! parentEnumerator.waitForNewChildren(SystemConfiguration.MAX_TIMEOUT)) break;
+				if (! parentEnumerator.waitForNewChildren(false, SystemConfiguration.MAX_TIMEOUT)) break;
 			}
 			if (parentEnumerator.hasChild(childNameComponent)) {
 				if (Log.isLoggable(Level.INFO)) {
@@ -631,5 +660,13 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		}
 		Log.info("EnumeratedNameList.exists: returning null for search of {0}", childName);
 		return null;
+	}
+	
+	private NewChildrenByThread getNcbt() {
+		Long id = Thread.currentThread().getId();
+		NewChildrenByThread ncbt = _newChildrenByThread.get(id);
+		if (null == ncbt)
+			ncbt = _newChildrenByThread.get(0);	// Thread pool
+		return ncbt;
 	}
 }
