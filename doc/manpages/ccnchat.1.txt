@@ -1,0 +1,40 @@
+CCNCHAT(1)
+==========
+
+NAME
+----
+ccnchat - start (or join) a chatroom
+
+SYNOPSIS
+--------
+*ccnchat* 'chatroomname'
+
+DESCRIPTION
+-----------
+The *ccnchat* utility allows one to  join an existing chat channel (or create a new one if that particular channel does not exist) specified by the 'chatroomname'. The 'chatroomname'  must be preceded by ccnx:/
+
+To run *ccnchat*, you first need to start ccnd using the *ccndstart(1)* command.
+
+
+ENVIRONMENT
+-----------
+
+Options for *ccnchat* are set via environment variables. 
+
+CCNX_USER_NAME=
+ friendlyname - You'll be known by this name in the chartroom.
+CCNX_DIR=
+/var/tmp/friendlyname/.ccnx - If you are running multiple instances of *ccnchat* on your machine, and you would like each instance to run under a different user (or friendly) name, then for each instance of *ccnchat*, you will have to set the CNN_USER_NAME and CCNX_DIR environment variables.
+
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; retrieval error)
+
+AUTHOR
+------
+Priya Mahadevan, <priya.mahadevan@parc.com>
