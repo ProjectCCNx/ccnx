@@ -350,11 +350,11 @@ public class EnumeratedNameListTestRepo {
 	private static void poolOps(EnumeratedNameList list) {
 		long currentTime = System.currentTimeMillis();
 		long lastTime = currentTime + (2 * SystemConfiguration.MAX_TIMEOUT);
-		while (contentSeenNoPool < 2 && currentTime < lastTime) {
+		while (contentSeenPool < 2 && currentTime < lastTime) {
 			synchronized (list) {
 				SortedSet<ContentName> names = list.getNewDataThreadPool(SystemConfiguration.MAX_TIMEOUT);
 				if (null != names)
-					contentSeenNoPool += names.size();
+					contentSeenPool += names.size();
 			}
 			currentTime = System.currentTimeMillis();
 		}
