@@ -140,16 +140,6 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
-	 * Shutdown anybody waiting for children on this list
-	 */
-	public void shutdown() {
-		_shutdown = true;
-		synchronized (_childLock) {
-			_childLock.notifyAll();
-		}
-	}
-	
-	/**
 	 * Starts enumeration, if we're not enumerating already.
 	 * @throws IOException
 	 */
@@ -164,15 +154,24 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	public boolean hasEnumerated() { return _hasEnumerated; }
 	
 	/**
-	 * First-come first-served interface to retrieve only new data from
-	 * enumeration responses as it arrives.  This method blocks and
-	 * waits for data, but grabs the new data for processing.
-	 * In threadPoolContext it will in effect removes the data from every other
+	 * Shutdown anybody waiting for children on this list
+	 */
+	public void shutdown() {
+		_shutdown = true;
+		synchronized (_childLock) {
+			_childLock.notifyAll();
+		}
+	}
+	
+	/**
+	 * Interface to retrieve only new data from enumeration responses as it arrives.  
+	 * This method blocks and waits for data, but grabs the new data for processing.
+	 * In threadPoolContext it will in effect remove the data from every other
 	 * listener who is listening in threadPoolContext, in effect handing the new 
-	 * children to the first consumer to wake up and makes the other ones go around again. 
+	 * children to the first consumer to wake up and make the other ones go around again. 
 	 * There is currently no support for more than one simultaneous thread pool.
 	 * 
-	 * @param Are we getting data in threadPoolContext?
+	 * @param threadPoolContext Are we getting data in threadPoolContext? (described above).
 	 * @param timeout maximum amount of time to wait, 0 to wait forever.
 	 * @return SortedSet<ContentName> Returns the array of single-component
 	 * 	content name children that are new to us, or null if we reached the
@@ -208,17 +207,32 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	/**
 	 * Block and wait as long as it takes for new data to appear. See #getNewData(boolean, long).
 	 * @return SortedSet<ContentName> Returns the array of single-component
-	 * 	content name children that are new to us, or null if we reached the
-	 *  timeout before new data arrived
+	 * 	content name children that are new to us. Waits forever if no new data appears
 	 */
 	public SortedSet<ContentName> getNewData() {
 		return getNewData(false, SystemConfiguration.NO_TIMEOUT);
 	}
 	
+	/**
+	 * Block and wait for timeout or until new data appears. See #getNewData(boolean, long).
+	 * @param timeout in ms
+	 * @return SortedSet<ContentName> Returns the array of single-component
+	 * 	content name children that are new to us, or null if we reached the
+	 *  timeout before new data arrived
+	 */
 	public SortedSet<ContentName> getNewData(long timeout) {
 		return getNewData(false, timeout);
 	}
 	
+	/**
+	 * Block and wait for timeout or until new data appears. See #getNewData(boolean, long).
+	 * Different from getNewData in that new data is shared among all threads accessing this
+	 * instance of EnumeratedNameList. So if another thread gets the data first, we won't get it.
+	 * @param timeout in ms
+	 * @return SortedSet<ContentName> Returns the array of single-component
+	 * 	content name children that are new to the list instance if we got it first, or null if we 
+	 *  reached the timeout before new data arrived
+	 */
 	public SortedSet<ContentName> getNewDataThreadPool(long timeout) {
 		return getNewData(true, timeout);
 	}
@@ -298,6 +312,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * Wait for new children to arrive.
 	 * 
 	 * @param timeout Maximum time to wait for new data.
+	 * @param threadPoolContext Are we waiting in threadPoolContext (i.e. other threads can grab children first)
+	 *        See #getNewData(boolean, long).
 	 * @return a boolean value that indicates whether new data was found.
 	 */
 	public boolean waitForNewChildren(boolean threadPoolContext, long timeout) {
@@ -558,6 +574,11 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		return 0;
 	}
 	
+	/**
+	 * Returns the latest version available under this prefix as a byte array.
+	 * 
+	 * @return byte[] Latest child version as byte array
+	 */
 	public byte [] getLatestVersionChildNameComponent() {
 		ContentName latestVersionName = getLatestVersionChildName();
 		if (null == latestVersionName)
@@ -589,10 +610,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @param handle CCNHandle to use for enumeration
 	 * @return ContentName The name supplied to the call with the latest version added.
 	 * @throws IOException
-	 * 
-	 * Deprecated - see #getNewData(long)
 	 */
-	@Deprecated
 	public static ContentName getLatestVersionName(ContentName name, CCNHandle handle) throws IOException {
 		EnumeratedNameList enl = new EnumeratedNameList(name, handle);
 		enl.waitForNoUpdates(SystemConfiguration.MAX_TIMEOUT);
@@ -628,10 +646,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * if one is found.  Returns null if the child is not found.
 	 * 
 	 * @throws IOException
-	 * 
-	 * Deprecated - see #getNewData(long)
 	 */
-	@Deprecated
 	public static EnumeratedNameList exists(ContentName childName, ContentName prefixKnownToExist, CCNHandle handle) throws IOException {
 		Log.info("EnumeratedNameList.exists: the prefix known to exist is {0} and we are looking for childName {1}", prefixKnownToExist, childName);
 		if ((null == prefixKnownToExist) || (null == childName) || (!prefixKnownToExist.isPrefixOf(childName))) {
