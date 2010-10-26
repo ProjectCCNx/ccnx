@@ -308,8 +308,21 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 	}
 	
 	public void registerPrefix(String uri, PublisherPublicKeyDigest publisher, Integer faceID, Integer flags, 
+			Integer lifetime) throws CCNDaemonException {
+		try {
+			this.registerPrefix(ContentName.fromURI(uri), null, faceID, flags, Integer.MAX_VALUE);
+		} catch (MalformedContentNameStringException e) {
+			String reason = e.getMessage();
+			Log.fine("MalformedContentName (" + uri + ") , reason: " + reason + "\n");
+			Log.warningStackTrace(e);
+			String msg = ("MalformedContentName (" + uri + ") , reason: " + reason);
+			throw new CCNDaemonException(msg);
+		}
+	}
+	
+	public void registerPrefix(ContentName prefixToRegister, PublisherPublicKeyDigest publisher, Integer faceID, Integer flags, 
 							Integer lifetime) throws CCNDaemonException {
-		if (null == publisher)
+		if (null == publisher) {
 			try {
 				publisher = _manager.getCCNDId();
 			} catch (IOException e1) {
@@ -317,16 +330,6 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 				e1.printStackTrace();
 				throw new CCNDaemonException(e1.getMessage());
 			}
-		
-		ContentName prefixToRegister;
-		try {
-			prefixToRegister = ContentName.fromURI(uri);
-		} catch (MalformedContentNameStringException e) {
-			String reason = e.getMessage();
-			Log.fine("MalformedContentName (" + uri + ") , reason: " + reason + "\n");
-			Log.warningStackTrace(e);
-			String msg = ("MalformedContentName (" + uri + ") , reason: " + reason);
-			throw new CCNDaemonException(msg);
 		}
 		
 		ForwardingEntry forward = new ForwardingEntry(ActionType.Register, prefixToRegister, publisher, faceID, flags, lifetime);
