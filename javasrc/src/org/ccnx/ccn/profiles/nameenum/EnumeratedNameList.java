@@ -57,6 +57,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	protected Object _childLock = new Object();
 	protected CCNTime _lastUpdate = null;
 	protected boolean _enumerating = false;
+	protected boolean _shutdown = false;
 	
 	private class NewChildrenByThread implements Comparable<NewChildrenByThread> {
 		private Long _id;		// If 0 this is in thread pool mode
@@ -139,6 +140,16 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	}
 	
 	/**
+	 * Shutdown anybody waiting for children on this list
+	 */
+	public void shutdown() {
+		_shutdown = true;
+		synchronized (_childLock) {
+			_childLock.notifyAll();
+		}
+	}
+	
+	/**
 	 * Starts enumeration, if we're not enumerating already.
 	 * @throws IOException
 	 */
@@ -204,8 +215,12 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		return getNewData(false, SystemConfiguration.NO_TIMEOUT);
 	}
 	
-	public SortedSet<ContentName> getNewDataThreadPool() {
-		return getNewData(true, SystemConfiguration.NO_TIMEOUT);
+	public SortedSet<ContentName> getNewData(long timeout) {
+		return getNewData(false, timeout);
+	}
+	
+	public SortedSet<ContentName> getNewDataThreadPool(long timeout) {
+		return getNewData(true, timeout);
 	}
 	
 	/**
@@ -296,6 +311,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			long startTime = System.currentTimeMillis();
 			while (((null == _lastUpdate) || ((null != lastUpdate) && !_lastUpdate.after(lastUpdate))) && 
 				   ((timeout == SystemConfiguration.NO_TIMEOUT) || (timeRemaining > 0))) {
+				if (_shutdown)
+					break;
 				try {
 					_childLock.wait((timeout != SystemConfiguration.NO_TIMEOUT) ? Math.min(timeRemaining, SystemConfiguration.CHILD_WAIT_INTERVAL) : SystemConfiguration.CHILD_WAIT_INTERVAL);
 					if (timeout != SystemConfiguration.NO_TIMEOUT) {
