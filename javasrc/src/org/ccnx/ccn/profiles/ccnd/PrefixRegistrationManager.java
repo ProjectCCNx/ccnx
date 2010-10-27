@@ -302,6 +302,10 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 
 	public PrefixRegistrationManager() {
 	}
+	
+	public void registerPrefix(ContentName prefix, Integer faceID, Integer flags) throws CCNDaemonException {
+		this.registerPrefix(prefix, null, faceID, flags, Integer.MAX_VALUE);
+	}
 
 	public void registerPrefix(String uri, Integer faceID, Integer flags) throws CCNDaemonException {
 		this.registerPrefix(uri, null, faceID, flags, Integer.MAX_VALUE);
