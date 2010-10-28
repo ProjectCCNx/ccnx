@@ -773,6 +773,42 @@ int query_srv(const unsigned char *domain, int domain_size,
     return (0);
 }
 
+void
+process_prefix_face_list_item(struct ccn *h,
+                              struct ccn_keystore *keystore,
+                              struct prefix_face_list_item *pfl) 
+{
+    struct ccn_face_instance *nfi;
+    struct ccn_charbuf *temp;
+    int op;
+    int res;
+    
+    pfl->fi->ccnd_id = ccndid;
+    pfl->fi->ccnd_id_size = ccndid_size;
+    nfi = create_face(h, keystore, pfl->fi);
+    if (nfi == NULL) {
+        temp = ccn_charbuf_create();
+        ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
+        ccndc_warn(__LINE__, "Unable to create face for prefix %s\n", ccn_charbuf_as_string(temp));
+        ccn_charbuf_destroy(&temp);
+        return;
+    }
+
+    op = (pfl->fi->lifetime > 0) ? OP_REG : OP_UNREG;
+    res = register_unregister_prefix(h, keystore, op, pfl->prefix, nfi, pfl->flags);
+    if (res < 0) {
+        temp = ccn_charbuf_create();
+        ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
+        ccndc_warn(__LINE__, "Unable to %sregister prefix %s on face %d\n",
+                   (op == OP_UNREG) ? "un" : "", ccn_charbuf_as_string(temp),
+                   nfi->faceid);
+        ccn_charbuf_destroy(&temp);
+    }
+
+    ccn_face_instance_destroy(&nfi);
+    return;
+}
+
 enum ccn_upcall_res
 incoming_interest(
                   struct ccn_closure *selfp,
@@ -786,7 +822,6 @@ incoming_interest(
     size_t comp0_size = 0;
     struct prefix_face_list_item pfl_storage = {0};
     struct prefix_face_list_item *pflhead = &pfl_storage;
-    struct prefix_face_list_item *pfl;
     struct ccn_charbuf *uri;
     int port;
     char portstring[10];
@@ -833,26 +868,8 @@ incoming_interest(
                                  NULL, NULL, NULL);
     if (res < 0)
         return (CCN_UPCALL_RESULT_ERR);
-    
-    for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
-        struct ccn_face_instance *nfi;
-        pfl->fi->ccnd_id = ccndid;
-        pfl->fi->ccnd_id_size = ccndid_size;
-        nfi = create_face(info->h, keystore, pfl->fi);
-        if (nfi == NULL) {
-            ccndc_warn(__LINE__, "Unable to create face\n");
-            continue;
-        }
-        if (pfl->fi->lifetime > 0) {
-            res = register_unregister_prefix(info->h, keystore, OP_REG, pfl->prefix, nfi, pfl->flags);
-        } else {
-            res = register_unregister_prefix(info->h, keystore, OP_UNREG, pfl->prefix, nfi, pfl->flags);
-        }
-        ccn_face_instance_destroy(&nfi);
-        if (res < 0) {
-            ccndc_warn(__LINE__, "Unable to register prefix %s\n", pfl->prefix);
-        }
-    }
+
+    process_prefix_face_list_item(info->h, keystore, pflhead->next);
     prefix_face_list_destroy(&pflhead->next);
     return(CCN_UPCALL_RESULT_OK);
 }
@@ -940,24 +957,7 @@ main(int argc, char **argv)
     
     ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
     for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
-        struct ccn_face_instance *nfi;
-        pfl->fi->ccnd_id = ccndid;
-        pfl->fi->ccnd_id_size = ccndid_size;
-        nfi = create_face(h, keystore, pfl->fi);
-        if (nfi == NULL) {
-            ccndc_warn(__LINE__, "Unable to create face\n");
-            continue;
-        }
-        if (pfl->fi->lifetime > 0) {
-            res = register_unregister_prefix(h, keystore, OP_REG, pfl->prefix, nfi, pfl->flags);
-        } else {
-            res = register_unregister_prefix(h, keystore, OP_UNREG, pfl->prefix, nfi, pfl->flags);
-        }
-        ccn_face_instance_destroy(&nfi);
-        
-        if (res < 0) {
-            ccndc_warn(__LINE__, "Unable to (un)register prefix %s\n", pfl->prefix);
-        }
+        process_prefix_face_list_item(h, keystore, pfl);
     }
     prefix_face_list_destroy(&pflhead->next);
     if (dynamic) {
