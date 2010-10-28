@@ -783,25 +783,33 @@ process_prefix_face_list_item(struct ccn *h,
     int op;
     int res;
     
+    op = (pfl->fi->lifetime > 0) ? OP_REG : OP_UNREG;
     pfl->fi->ccnd_id = ccndid;
     pfl->fi->ccnd_id_size = ccndid_size;
     nfi = create_face(h, keystore, pfl->fi);
     if (nfi == NULL) {
         temp = ccn_charbuf_create();
         ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
-        ccndc_warn(__LINE__, "Unable to create face for prefix %s\n", ccn_charbuf_as_string(temp));
+        ccndc_warn(__LINE__, "Unable to create face for %s %s %s %s %s\n",
+                   (op == OP_REG) ? "add" : "del", ccn_charbuf_as_string(temp),
+                   (pfl->fi->descr.ipproto == IPPROTO_UDP) ? "udp" : "tcp",
+                   pfl->fi->descr.address,
+                   pfl->fi->descr.port);
         ccn_charbuf_destroy(&temp);
         return;
     }
 
-    op = (pfl->fi->lifetime > 0) ? OP_REG : OP_UNREG;
     res = register_unregister_prefix(h, keystore, op, pfl->prefix, nfi, pfl->flags);
     if (res < 0) {
         temp = ccn_charbuf_create();
         ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
-        ccndc_warn(__LINE__, "Unable to %sregister prefix %s on face %d\n",
-                   (op == OP_UNREG) ? "un" : "", ccn_charbuf_as_string(temp),
-                   nfi->faceid);
+        ccndc_warn(__LINE__, "Unable to %sregister prefix on face %d for %s %s %s %s %s\n",
+                   (op == OP_UNREG) ? "un" : "", nfi->faceid,
+                   (op == OP_REG) ? "add" : "del",
+                   ccn_charbuf_as_string(temp),
+                   (pfl->fi->descr.ipproto == IPPROTO_UDP) ? "udp" : "tcp",
+                   pfl->fi->descr.address,
+                   pfl->fi->descr.port);
         ccn_charbuf_destroy(&temp);
     }
 
