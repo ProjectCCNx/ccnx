@@ -3650,6 +3650,7 @@ process_input_message(struct ccnd_handle *h, struct face *face,
         face->flags &= ~CCN_FACE_UNDECIDED;
         if ((face->flags & CCN_FACE_LOOPBACK) != 0)
             face->flags |= CCN_FACE_GG;
+        /* YYY This is the first place that we know that an inbound stream face is speaking CCNx protocol. */
         register_new_face(h, face);
     }
     d->state |= CCN_DSTATE_PAUSE;
@@ -3751,6 +3752,13 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
     return(source);
 }
 
+/**
+ * Break up data in a face's input buffer buffer into individual messages,
+ * and call process_input_message on each one.
+ *
+ * This is used to handle things originating from the internal client - 
+ * its output is input for face 0.
+ */
 static void
 process_input_buffer(struct ccnd_handle *h, struct face *face)
 {
@@ -3773,12 +3781,20 @@ process_input_buffer(struct ccnd_handle *h, struct face *face)
     if (d->index != size) {
         ccnd_msg(h, "protocol error on face %u (state %d), discarding %d bytes",
                      face->faceid, d->state, (int)(size - d->index));
-        
+        // XXX - perhaps this should be a fatal error.
     }
     face->inbuf->length = 0;
     memset(d, 0, sizeof(*d));
 }
 
+/**
+ * Process the input from a socket.
+ *
+ * The socket has been found ready for input by the poll call.
+ * Decide what face it corresponds to, and after checking for exceptional
+ * cases, receive data, parse it into ccnb-encoded messages, and call
+ * process_input_message for each one.
+ */
 static void
 process_input(struct ccnd_handle *h, int fd)
 {
@@ -3828,8 +3844,9 @@ process_input(struct ccnd_handle *h, int fd)
     else {
         source = get_dgram_source(h, face, addr, addrlen, (res == 1) ? 1 : 2);
         source->recvcount++;
-        source->surplus = 0;
+        source->surplus = 0; // XXX - we don't actually use this, except for some obscure messages.
         if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
+            // XXX - If the initial heartbeat gets missed, we don't realize the locality of the face.
             if (h->debug & 128)
                 ccnd_msg(h, "%d-byte heartbeat on %d", (int)res, source->faceid);
             return;
@@ -3854,13 +3871,13 @@ process_input(struct ccnd_handle *h, int fd)
                 return;
             }
             dres = ccn_skeleton_decode(d,
-                    face->inbuf->buf + d->index,
-                    res = face->inbuf->length - d->index);
+                    face->inbuf->buf + d->index, // XXX - msgstart and d->index are the same here - use msgstart
+                    res = face->inbuf->length - d->index);  // XXX - why is res set here?
         }
         if ((face->flags & CCN_FACE_DGRAM) != 0) {
             ccnd_msg(h, "protocol error on face %u, discarding %u bytes",
                 source->faceid,
-                (unsigned)(face->inbuf->length));
+                (unsigned)(face->inbuf->length));  // XXX - Should be face->inbuf->length - d->index (or msgstart)
             face->inbuf->length = 0;
             /* XXX - should probably ignore this source for a while */
             return;
