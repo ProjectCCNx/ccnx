@@ -4,6 +4,7 @@ The ccnchat executable is in the bin subdirectory
 
 The arguments to ccnchat include a chat room name (or chat room channel) (for eg: ccnx:/test_room or  ccnx:/ccnx.org/test_room). The chat room name (or channel name) must be preceded by ccnx:/
 
+You can run ccnChat in a text mode by making the first commandline argument "-text".
 
 To run ccnchat, you first need to start ccnd (if it is not already running). 
 
