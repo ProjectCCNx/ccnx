@@ -52,7 +52,7 @@ public class Log {
 	 * Allow override on command line or from configuration file.
 	 */
 	public static final String DEFAULT_APPLICATION_CLASS =
-		"org.ccnx.ccn.CCNHandle";
+		"ccnx";
 
 	public static final String DEFAULT_LOG_FILE = "ccn_";
 	public static final String DEFAULT_LOG_SUFFIX = ".log";
@@ -68,6 +68,7 @@ public class Log {
 	public static final String LOG_DIR_ENV = "CCN_LOG_DIR";
 
 	protected static Logger _systemLogger = null;
+	protected static Logger[] _facilityLoggers = null;
 
 	//static int _level;
 	//static boolean useDefaultLevel = true; // reset if an external override of the default level was specified
@@ -112,6 +113,37 @@ public class Log {
 	public static final int FAC_USER14		= 27;
 	public static final int FAC_USER15		= 28;
 
+	protected static final String [] FAC_NAME = {
+		"ccnx.All", 		// should never show up
+		"ccnx.Default",
+		"ccnx.Pipeline",
+		"ccnx.NetManager",
+		"ccnx.User0",
+		"ccnx.User1",
+		"ccnx.User2",
+		"ccnx.User3",
+		"ccnx.AccessControl",
+		"ccnx.Repo",
+		"ccnx.Timing",
+		"ccnx.Trust",
+		"ccnx.Keys",
+		"ccnx.Encoding",
+		"ccnx.IO",
+		"ccnx.Signing",
+		"ccnx.Verify",
+		"ccnx.User4",
+		"ccnx.User5",
+		"ccnx.User6",
+		"ccnx.User7",
+		"ccnx.User8",
+		"ccnx.User9",
+		"ccnx.User10",
+		"ccnx.User11",
+		"ccnx.User12",
+		"ccnx.User13",
+		"ccnx.User14",
+		"ccnx.User15",
+	};
 
 
 	// The System property name for each Facility
@@ -223,9 +255,14 @@ public class Log {
 		// Can add an append=true argument to generate appending behavior.
 		Handler theHandler = null;
 		_systemLogger = Logger.getLogger(DEFAULT_APPLICATION_CLASS);
+		_facilityLoggers = new Logger[FAC_NAME.length];
 
 		// We restrict logging based on our _fac_level, not on the system logger
-		_systemLogger.setLevel(Level.ALL);		
+		_systemLogger.setLevel(Level.ALL);
+		for (int i=FAC_DEFAULT; i < FAC_NAME.length; i++) {
+			_facilityLoggers[i] = Logger.getLogger(FAC_NAME[i]);
+			_facilityLoggers[i].setLevel(Level.ALL);
+		}
 		//		_systemLogger.info("Initializing CCNX Logging");
 
 		String logdir = System.getProperty(LOG_DIR_PROPERTY);
@@ -301,18 +338,23 @@ public class Log {
 		setLogLevels();
 	}
 
+	// deprecated
 	public static String getApplicationClass() {
 		return DEFAULT_APPLICATION_CLASS;
 	}
 
+	public static String getApplicationClass(int facility) {
+		return FAC_NAME[facility];
+	}
+
 	public static void exitApplication() {
 		// Clean up and get out, we've had an unrecovereable error.
-		_systemLogger.severe("Exiting application.");
+		_facilityLoggers[FAC_DEFAULT].severe("Exiting application.");
 		System.exit(-1);
 	}
 
 	public static void abort() {
-		_systemLogger.warning("Unrecoverable error. Exiting data collection.");
+		_facilityLoggers[FAC_DEFAULT].warning("Unrecoverable error. Exiting data collection.");
 		exitApplication(); // save partial results?
 	}
 
@@ -625,11 +667,11 @@ public class Log {
 			}
 		}
 		
-		_systemLogger.logp(l, c.getCanonicalName(), ste.getMethodName(), msg);
+		_facilityLoggers[facility].logp(l, c.getCanonicalName(), ste.getMethodName(), msg);
 	}
 
 	public static void flush() {
-		Handler [] handlers = _systemLogger.getHandlers();
+		Handler [] handlers = _facilityLoggers[FAC_DEFAULT].getHandlers();
 		for (int i=0; i < handlers.length; ++i) {
 			handlers[i].flush();
 		}
@@ -646,12 +688,12 @@ public class Log {
 	public static void logStackTrace(Level level, Throwable t) {
 		StringWriter sw = new StringWriter();
 		t.printStackTrace(new PrintWriter(sw));
-		_systemLogger.log(level, sw.toString());
+		_facilityLoggers[FAC_DEFAULT].log(level, sw.toString());
 	}
 
 	public static void logException(String message, 
 			Exception e) {
-		_systemLogger.warning(message);
+		_facilityLoggers[FAC_DEFAULT].warning(message);
 		Log.warningStackTrace(e);
 	}
 }
