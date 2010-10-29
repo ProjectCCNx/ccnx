@@ -5,7 +5,7 @@
  *
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -23,6 +23,11 @@
 #define CCN_URI_DEFINED
 
 #include <ccn/charbuf.h>
+
+/* Conversion from ccnb name component to percent-escaped uri component */
+void
+ccn_uri_append_percentescaped(struct ccn_charbuf *c,
+                              const unsigned char *data, size_t size);
 
 /* Conversion from ccnb to uri */
 int
