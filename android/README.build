@@ -1,0 +1,69 @@
+Android Build System Notes
+===========================
+
+The build system is centered on gnu Make.  For Android projects, the
+Makefile wraps the ant commands.
+
+The android code depends on ccn.jar, so you must have run make in
+the top level directory before buildin here.
+
+Ccnd and the c-client library require OpenSSL library, which we need
+to include build ourselves, as there is no apparant way to use the
+included Android library.  As a result, we can use the latest 1.0.0a
+library!
+
+You must set the environment variables ANDROID_SDK and ANDROID_NDK.
+These must point to the root of the SDK Tools R7 and NDK R4 (or later)
+directories.  
+
+For example:
+
+	export ANDROID_SDK=~/android-sdk_r07-mac_x86
+	export ANDROID_NDK=~/android-ndk-r4b
+
+Android is not build as part of the top-level make.  You must run
+make in this directory.
+
+What happens
+============
+
+When you run "make" in the android directory, the build process takes
+these steps:
+
+- Build "external".
+  This downloads the Openssl source, configures it for armv5, and
+  does a patch.  It them puts Android.mk files in to the openssl
+  source directories.  There is no actual compiling done.
+
+  IF YOU DO NOT HAVE AN INTERNET CONNECTION
+  You will need to download openssl-1.0.0a.tar.gz from 
+	http://www.openssl.org/source/openssl-1.0.0a.tar.gz
+  and put it in the directory external/downloads.
+
+- Build CCNx-Android-Services
+  This wraps the ccnd and repo services.  Because ccnd is C code,
+  it is included as JNI code, along with openssl.
+
+  Doing a "make clean" will not erase the C object code.  Only
+  a "make distclean" will get rid of it.
+
+  The CCNx csrc/ folder now has Android.mk files in it already, so
+  the CCNx-Android-Services/jni folder has a link to csrc/.  We have
+  also include csrc/ccnd/android_{main,msg}.c.  android_main.c replaces
+  ccnd_main.c in Android.mk and is used to startup ccnd procedurally
+  rather than from a main() method.  android_msg.c replaces ccnd_msg.c
+  in Android.mk and sends ccnd log messages to the Android log.
+
+  Take a look in jni/controller/ctl_ccnd.c for the JNI bindings to
+  the ccnd code.
+
+- Build the apps/ directory
+
+Installing
+===========
+
+"make install" will install the Services and Chat applications.  You
+might need to "make unistall" before "make install" if the applications
+were previously installed with a different signing key (i.e. you use
+the phone with builds from multiple computers).
+

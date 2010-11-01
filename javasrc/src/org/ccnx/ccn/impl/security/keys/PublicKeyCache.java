@@ -24,6 +24,7 @@ import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.TrustManager;
@@ -272,7 +273,10 @@ public class PublicKeyCache {
 					// go around again
 				}
 				if (null != retrievedContent) {
-					Log.info("Retrieved key {0} using locator {1}.", desiredKeyID, locator);
+					if( Log.isLoggable(Level.INFO)) {
+						Log.info("Retrieved key {0} using locator {1}.", desiredKeyID, locator);
+						Log.info("Retrieved key {0} using locator {1} - got {2}", desiredKeyID, locator, retrievedContent.name());
+					}
 					break;
 				}
 				timeoutCount++;

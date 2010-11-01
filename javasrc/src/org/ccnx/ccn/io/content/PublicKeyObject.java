@@ -191,7 +191,8 @@ public class PublicKeyObject extends CCNNetworkObject<PublicKey> {
 			byte [] contentBytes = DataUtils.getBytesFromStream(input);
 			return CryptoUtil.getPublicKey(contentBytes);
 		} catch (CertificateEncodingException e) {
-			Log.warning("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
+			Log.severe("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
+			Log.severe("Blockname : " + ((CCNInputStream)input).currentSegmentName());
 			throw new IOException("Cannot decode public key " + e.getClass().getName() + ": " + e.getMessage());
 		} catch (InvalidKeySpecException e) {
 			Log.warning("Cannot decode public key from block: " + ((CCNInputStream)input).currentSegmentName() + "  " + e.getClass().getName() + ": " + e.getMessage());

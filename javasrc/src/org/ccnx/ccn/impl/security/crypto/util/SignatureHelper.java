@@ -36,6 +36,7 @@ import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DERTags;
 import org.bouncycastle.asn1.DERUnknownTag;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.ccnx.ccn.impl.security.crypto.SignatureLocks;
 import org.ccnx.ccn.impl.support.Log;
 
 
@@ -74,9 +75,15 @@ public class SignatureHelper {
 		// DKS TODO if we switch to SHA256, this fails.
 		Signature sig = Signature.getInstance(sigAlgName);
 
-		sig.initSign(signingKey);
-		sig.update(toBeSigned);
-		return sig.sign();
+		// Protect against GC on platforms that don't do JNI for crypto properly
+		SignatureLocks.signingLock();
+		try {
+			sig.initSign(signingKey);
+			sig.update(toBeSigned);
+			return sig.sign();
+		} finally {
+			SignatureLocks.signingUnock();
+		}
 	}
 	
 	/**
@@ -110,11 +117,17 @@ public class SignatureHelper {
 
 		Signature sig = Signature.getInstance(sigAlgName);
 
-		sig.initSign(signingKey);
-		for (int i=0; i < toBeSigneds.length; ++i) {
-			sig.update(toBeSigneds[i]);
+		// Protect against GC on platforms that don't do JNI for crypto properly
+		SignatureLocks.signingLock();
+		try {
+			sig.initSign(signingKey);
+			for (int i=0; i < toBeSigneds.length; ++i) {
+				sig.update(toBeSigneds[i]);
+			}
+			return sig.sign();
+		} finally {
+			SignatureLocks.signingUnock();
 		}
-		return sig.sign();
 	}
 	
 	/**
@@ -148,14 +161,20 @@ public class SignatureHelper {
 		
 		Signature sig = Signature.getInstance(sigAlgName);
 
-		sig.initVerify(verificationKey);
-		if (null != data) {
-			for (int i=0; i < data.length; ++i) {
-				if (data[i] != null)
-					sig.update(data[i]);
+		// Protect against GC on platforms that don't do JNI for crypto properly
+		SignatureLocks.signingLock();
+		try {
+			sig.initVerify(verificationKey);
+			if (null != data) {
+				for (int i=0; i < data.length; ++i) {
+					if (data[i] != null)
+						sig.update(data[i]);
+				}
 			}
+			return sig.verify(signature);
+		} finally {
+			SignatureLocks.signingUnock();
 		}
-		return sig.verify(signature);
 	}
 	
 	/**

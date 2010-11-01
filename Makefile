@@ -38,6 +38,7 @@ clean depend test check shared documentation dist-docs testinstall install unins
 clean-documentation: _always
 	rm -rf doc/ccode
 	rm -rf doc/javacode
+	rm -rf doc/android
 	(cd doc/manpages && pwd && $(MAKE) clean-documentation)
 	(cd doc/technical && pwd && $(MAKE) clean-documentation)
 

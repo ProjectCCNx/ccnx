@@ -32,6 +32,12 @@ then
     fi
 fi
 
+GUI_OPTION=
+if [ "$1" = "-text" ]; then
+	GUI_OPTION=text
+   shift 1
+fi
+
 DEBUG_OPTION=
 if [ "$1" = "-debug" ]; then
    DEBUG_OPTION="-Xrunjdwp:transport=dt_socket,address=$2,server=y,suspend=n"
@@ -53,10 +59,13 @@ fi
 
 if [ $# = 0 ]
 then
-  echo "usage: $0 <ccn URI>"
+  echo "usage: $0 [-text] [-debug] <ccn URI>"
   exit 1
 fi
 
-$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION org.ccnx.ccn.apps.ccnchat.CCNChat $*
-
+if [[ "$GUI_OPTION" == "text" ]]; then
+	$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION org.ccnx.ccn.apps.ccnchat.CCNChatText $*
+else
+	$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION org.ccnx.ccn.apps.ccnchat.CCNChat $*
+fi
 

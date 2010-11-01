@@ -92,6 +92,13 @@ public class CryptoUtil {
 			dobj = dis.readObject();
 			dis.close();
 		} catch (IOException ex) {
+			StringBuffer sb = new StringBuffer();
+			sb.append("decode error - length "+decodable.length);
+			for(byte b : decodable)
+				sb.append(" "+Integer.toHexString((int) b));
+			Log.severe(sb.toString());
+			for(StackTraceElement ste : ex.getStackTrace())
+				Log.severe(ste.toString());
 			throw new CertificateEncodingException("Cannot encode: " + ex.toString());
 		}
 		return dobj;

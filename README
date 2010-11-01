@@ -56,6 +56,9 @@ E) Minimal sample file proxy (ccnFileProxy) to demonstrate basic
    communication on local LAN.
 F) Experimental plugins for vlc (media transport) and wireshark
    (packet dissector)
+G) An Android implementation for smartphones.  The Android implementation
+   has a service wrapper for ccnd and the repository.  It also has
+   a CCN Chat implementation.
 
 Documentation is built from source files of various kinds (using a
 combination of doxygen and asciidoc) BUT the distribution includes pre-built
@@ -101,6 +104,12 @@ apps/vlc - vlc plugin for media transport experiments
 apps/wireshark - wireshark plugin dissector for decoding CCNx packets
 experiments/multicast - scripts for running multi-machine experiments in content
        distribution performance over local multicast group.
+android/ - The Android implementaiton
+android/external - External libraries needed for ARM
+android/CCNx-Android-Lib - A common Android Library for working with CCNx
+android/CCNx-Android-Services - Wrappers for ccnd and repository
+android/apps - Android applications that use CCNx
+android/apps/CCNx-Android-Chat - The CCNx Chat application for Android
 
 After building, the following notable directories will appear:
 
@@ -125,6 +134,11 @@ Only Unix-like platforms are currently supported.  CCNx code is tested
 on Ubuntu Linux, MacOS, Solaris, and FreeBSD.  Some packaging for
 Cygwin is currently provided but is not fully supported and there is
 no other support for Windows platforms yet.
+
+Android is supported in the android/ tree.  It only introduces minimal
+new code specific to the Android platform and otherwise re-uses the
+existing CCNx C and Java code.
+
 
 C LANGUAGE REQUIREMENTS AND TOOLS
 
@@ -193,13 +207,25 @@ using JDK1.6 on Fedora.
 
 You will need to use gmake rather than make.
 
+[Android]
+
+We require the Android SDK r7 or later, because of its support for
+Android Libraries.  Earlier releases will not compile correctly.
+
+We have tested with:
+   Android SDK Tools, revision 7
+   SDK Platform Android 2.1-update1, API 7, revision 2
+
+
+
 ==================================================
 3. Build and install instructions
 ==================================================
 
 Note that the overall build handles both the C and Java code, 
 so you will need to have requirements for both met in order 
-to avoid errors.  See the section above.
+to avoid errors.  See the section above. See android/README.build
+for information on building for Android.
 
 BUILDING
 
@@ -208,9 +234,9 @@ In the root directory:
   ./configure
   make
 
-The top-level build will compile both C and Java code.  The above is
-sufficient to run programs locally out of bin/ and build apps
-referencing lib/ and include/.
+The top-level build will compile both C and Java code, but
+not Android code.  The above is sufficient to run programs
+locally out of bin/ and build apps referencing lib/ and include/.
  
 TESTING
 
