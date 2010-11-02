@@ -15,7 +15,8 @@
 # The order here determines the order in the generated index.
 PAGE_NAMES = 			\
 	ccn_ccnbtoxml		\
-	ccnacl			\
+	ccn_xmltoccnb		\
+        ccnacl			\
 	ccngroup		\
 	ccnd			\
 	ccndc			\
