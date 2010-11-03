@@ -1,0 +1,76 @@
+CCNDSMOKETEST(1)
+================
+
+NAME
+----
+ccndsmoketest - Simple program for smoke-test of ccnd.
+
+SYNOPSIS
+--------
+*ccndsmoketest* [-b] [-t 'msec'] [ (-T | -u) 'hostname' ] ( send 'filename' | 'sendfilename'.ccnb | recv | kill | status | timeo 'msec' ) '...'
+
+DESCRIPTION
+-----------
+The *ccndsmoketest* is a simple program for sending and receiving data on sockets, for the purpose of testing ccnd.
+
+Most of what this program does could be done with *nc*(1) (aka netcat).
+It intentionally understands almost nothing about CCNx protocols.
+
+
+OPTIONS
+-------
+*-b*::
+	Binary output on stdout instead of the default hex.
+
+*-t* 'milliseconds'::
+	Set the timeout for recv commands (default is 1000, or 1 second).
+
+*-T* 'hostname'::
+	Contact the ccnd on the named host via TCP instead of the default unix-domain socket.
+
+*-u* 'hostname'::
+	Contact the ccnd on the named host via UDP instead of the default unix-domain socket.
+
+ARGUMENTS
+---------
+The remaining arguments are processed in order.
+
+*send* 'filename'::
+	Send the contents of the named file.
+	Use '-' to read from stdin.
+
+*sendfilename*.ccnb::
+	If the file extension is *.ccnb*, the *send* verb may be omitted.
+
+*recv*::
+	Recv one chunk (packet) and write the result to stdout (hex by default, but see -b).
+	Times out with a message to stderr if nothing is received.
+
+*kill*::
+	Shuts down ccnd cleanly.
+
+*status*::
+	Used to implement *ccndstatus*(1).
+
+*timeo* 'milliseconds'::
+	Set the timeout for subsequent recv commands.
+
+OUTPUT
+------
+Hex by default, but binary output may be requested with -b.
+
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*nonzero*::
+     Failure (syntax or usage error, file not found)
+
+SEE ALSO
+--------
+*ccndstop*(1), *ccndstatus*(1)
+
+Michael Plass <plass@parc.com>
+
