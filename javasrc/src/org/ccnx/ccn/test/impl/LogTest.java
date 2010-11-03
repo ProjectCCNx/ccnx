@@ -56,15 +56,15 @@ public class LogTest {
 		
 		// set level off and make sure no logging
 		Log.setLevel(facility, Level.OFF);
-		Assert.assertEquals(0, writeLog(facility, level, "test me"));
+		Assert.assertEquals(0, writeLog(facility, level, "test me off"));
 
 		// set to ALL and make sure it does log
 		Log.setLevel(facility, Level.ALL);
-		Assert.assertTrue(writeLog(facility, level, "test me") > 0);
+		Assert.assertTrue(writeLog(facility, level, "test me all") > 0);
 		
 		// set to level and make sure it does log
 		Log.setLevel(facility, level);
-		Assert.assertTrue(writeLog(facility, level, "test me") > 0);
+		Assert.assertTrue(writeLog(facility, level, "test me level") > 0);
 	}
 	
 	@Test

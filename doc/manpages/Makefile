@@ -14,13 +14,15 @@
 
 # The order here determines the order in the generated index.
 PAGE_NAMES = 			\
-	ccnacl			\
+	ccn_ccnbtoxml		\
+	ccn_xmltoccnb		\
+        ccnacl			\
 	ccngroup		\
 	ccnd			\
 	ccndc			\
-	ccndlogging             \
+	ccndlogging		\
 	ccndstart		\
-        ccndstatus		\
+	ccndstatus		\
 	ccndstop		\
 	ccnexplore		\
 	ccnls			\
@@ -32,7 +34,8 @@ PAGE_NAMES = 			\
 	ccnrm			\
 	ccn_repo		\
 
-PROJECT_NUMBER = 0.3.0
+
+PROJECT_NUMBER = 0.3.0-beta
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
