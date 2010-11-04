@@ -1,0 +1,7 @@
+This is an Android UI to the CCNChatNet chat core.
+The UI will automatically open a multicast socket, so please
+make sure you have something like:
+
+	./ccndc add ccnx:/ udp 224.0.23.170
+
+on any non-Android systems you want to chat with.
