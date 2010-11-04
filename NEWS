@@ -236,7 +236,7 @@ failed verification and advancing the pipeline (100221)
     * Bug #100240 Java library missing some forwarding flag definitions
     * Bug #100244 CCNNetworkManager code should log using FAC_NETMANAGER 
                   facility
-
+    * Bug #100252 Reduce number of writing threads in network manager
 
 Changes between 0.1.2 and 0.2.0:
 --------------------------------
