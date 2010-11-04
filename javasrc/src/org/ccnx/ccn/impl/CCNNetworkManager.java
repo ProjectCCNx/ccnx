@@ -181,7 +181,6 @@ public class CCNNetworkManager implements Runnable {
 			// - heartbeats
 
 			boolean refreshError = false;
-			long ourTime = System.currentTimeMillis();
 			if (!_connected) {
 				//we are not connected.  reconnect attempt is in the heartbeat function...
 				heartbeat();
@@ -196,6 +195,7 @@ public class CCNNetworkManager implements Runnable {
 				return;
 			}
 
+			long ourTime = System.currentTimeMillis();
 			long minInterestRefreshTime = PERIOD + ourTime;
 			// Library.finest("Refreshing interests (size " + _myInterests.size() + ")");
 
@@ -204,16 +204,14 @@ public class CCNNetworkManager implements Runnable {
 				synchronized (_myInterests) {
 					for (Entry<InterestRegistration> entry : _myInterests.values()) {
 						InterestRegistration reg = entry.value();
-						if (ourTime > reg.nextRefresh) {
+						// allow some slop for scheduling
+						if (ourTime + 20 > reg.nextRefresh) {
 							if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 								Log.finer(Log.FAC_NETMANAGER, "Refresh interest: {0}", reg.interest);
-							// Temporarily back out refresh period decay
-							//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
-							//: reg.nextRefreshPeriod * 2;
-							reg.nextRefresh += reg.nextRefreshPeriod;
+							_lastHeartbeat = ourTime;
+							reg.nextRefresh = ourTime + reg.nextRefreshPeriod;
 							try {
 								write(reg.interest);
-								_lastHeartbeat = System.currentTimeMillis();
 							} catch (NotYetConnectedException nyce) {
 								refreshError = true;
 							}
@@ -228,12 +226,14 @@ public class CCNNetworkManager implements Runnable {
 				refreshError = true;
 			}
 
+
 			// Re-express prefix registrations that need to be re-expressed
 			// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
 			// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
 			// prefix we use Integer.MAX_VALUE as the requested lifetime.
+			// FIXME: so lets not go around the loop doing nothing... for now.
 			long minFilterRefreshTime = PERIOD + ourTime;
-			if (_usePrefixReg) {
+			if (false && _usePrefixReg) {
 				synchronized (_registeredPrefixes) {
 					for (ContentName prefix : _registeredPrefixes.keySet()) {
 						RegisteredPrefix rp = _registeredPrefixes.get(prefix);
@@ -303,9 +303,8 @@ public class CCNNetworkManager implements Runnable {
 			if (useMe > timeToHeartbeat)
 				useMe = timeToHeartbeat;
 
-			if (useMe < 1) {
-				Log.warning(Log.FAC_NETMANAGER, "PeriodicWriter delay too small {0} ms", useMe);
-				useMe = 10;
+			if (useMe < 20) {
+				useMe = 20;
 			}
 			if (_run)
 				_periodicTimer.schedule(new PeriodicWriter(), useMe);
