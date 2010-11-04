@@ -29,8 +29,14 @@ default all: _always
 	(cd apps/ccnChat && $(MAKE) install INSTALL_BASE=`pwd`/../..)
 	(cd apps/ccnFileProxy && $(MAKE) install INSTALL_BASE=`pwd`/../..)
 
-clean depend test check shared documentation dist-docs testinstall install uninstall: _always
+clean depend test check shared testinstall install uninstall: _always
 	for i in $(TOPSUBDIRS); do         \
+	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
+	done
+	@rm -f _always
+
+documentation dist-docs: _always
+	for i in $(TOPSUBDIRS) android; do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always
