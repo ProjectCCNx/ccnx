@@ -35,7 +35,7 @@ PAGE_NAMES =        \
 	ccnrm			\
 	ccn_repo		\
 
-PROJECT_NUMBER = 0.3.0-beta
+PROJECT_NUMBER = 0.3.0
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
