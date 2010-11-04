@@ -5,6 +5,7 @@ ccngroup.1.html: ccngroup.1.txt
 ccnd.1.html: ccnd.1.txt
 ccndc.1.html: ccndc.1.txt
 ccndlogging.1.html: ccndlogging.1.txt
+ccndsmoketest.1.html: ccndsmoketest.1.txt
 ccndstart.1.html: ccndstart.1.txt
 ccndstatus.1.html: ccndstatus.1.txt
 ccndstop.1.html: ccndstop.1.txt
@@ -24,6 +25,7 @@ ccngroup.1.pdf: ccngroup.1.txt
 ccnd.1.pdf: ccnd.1.txt
 ccndc.1.pdf: ccndc.1.txt
 ccndlogging.1.pdf: ccndlogging.1.txt
+ccndsmoketest.1.pdf: ccndsmoketest.1.txt
 ccndstart.1.pdf: ccndstart.1.txt
 ccndstatus.1.pdf: ccndstatus.1.txt
 ccndstop.1.pdf: ccndstop.1.txt
@@ -43,6 +45,7 @@ ccngroup.1: ccngroup.1.txt
 ccnd.1: ccnd.1.txt
 ccndc.1: ccndc.1.txt
 ccndlogging.1: ccndlogging.1.txt
+ccndsmoketest.1: ccndsmoketest.1.txt
 ccndstart.1: ccndstart.1.txt
 ccndstatus.1: ccndstatus.1.txt
 ccndstop.1: ccndstop.1.txt
