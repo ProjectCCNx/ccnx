@@ -47,7 +47,7 @@ public final class CcndService extends CCNxService {
 	private final static char [] KEYSTORE_PASS = "\010\043\103\375\327\237\152\351\155".toCharArray();
 	
 	private final static String OPTION_CCND_CAP_DEFAULT = "500";
-	private final static String OPTION_CCN_PORT_DEFAULT = "9695";
+	private final static String OPTION_CCN_PORT_DEFAULT = "59695";
 	
 	protected static final String [] libs = { "controller" };
 	
