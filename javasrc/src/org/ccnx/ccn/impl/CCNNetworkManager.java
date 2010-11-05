@@ -161,12 +161,16 @@ public class CCNNetworkManager implements Runnable {
 		// TODO Interest refresh time is supposed to "decay" over time but there are currently
 		// unresolved problems with this.
 		public void run() {	
+			long ourTime = System.currentTimeMillis();
+			long minInterestRefreshTime = PERIOD + ourTime;
+			long useMe = PERIOD;
 			
-            //this method needs to do a few things
-            // - reopen connection to ccnd if down
-            // - refresh interests
-            // - refresh prefix registrations
-            // - heartbeats
+			if (_protocol == NetworkProtocol.UDP) {
+				if ((ourTime - _lastHeartbeat) > CCNNetworkChannel.HEARTBEAT_PERIOD) {
+					_lastHeartbeat = ourTime;
+					_channel.heartbeat();
+				}
+			}
 
 			boolean refreshError = false;	
 			if (_protocol == NetworkProtocol.UDP) {

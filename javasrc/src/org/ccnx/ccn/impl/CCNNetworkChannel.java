@@ -111,8 +111,6 @@ public class CCNNetworkChannel extends InputStream {
 					test.flip();
 					_ncDGrmChannel.write(test);
 				}
-				if (_ncStarted)
-					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
 			} catch (IOException ioe) {
 				return;
 			}
@@ -250,15 +248,6 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException 
 	 */
 	public void init() throws IOException {
-		if (_ncProto == NetworkProtocol.UDP) {
-			if (! _ncStarted) {
-				if (heartbeat()) {
-					_ncHeartBeatTimer = new Timer(true);
-					_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
-				}
-				_ncStarted = true;
-			}
-		}
 	}
 	
 	private void initStream() {
@@ -399,7 +388,7 @@ public class CCNNetworkChannel extends InputStream {
 	/**
 	 * @return true if heartbeat sent
 	 */
-	private boolean heartbeat() {
+	public boolean heartbeat() {
 		try {
 			ByteBuffer heartbeat = ByteBuffer.allocate(1);
 			_ncDGrmChannel.write(heartbeat);
@@ -414,14 +403,4 @@ public class CCNNetworkChannel extends InputStream {
 		}
 		return false;
 	}
-			
-	/**
-	 * Do scheduled writes of heartbeats on UDP connections.
-	 */
-	private class HeartBeatTimer extends TimerTask {
-		public void run() {
-			if (heartbeat())
-			_ncHeartBeatTimer.schedule(new HeartBeatTimer(), HEARTBEAT_PERIOD);
-		} /* run() */	
-	} /* private class HeartBeatTimer extends TimerTask */
 } /* NetworkChannel */
