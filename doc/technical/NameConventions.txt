@@ -46,7 +46,7 @@ protocol connectivity between sites.
 It is not necessary to use globally-meaningful names exclusively.  In
 some situations a local and context sensitive name prefix is appropriate.
 The specification of such contextual name prefixes is a matter of
-convention for particular applications.  It is also unneccessary to
+convention for particular applications.  It is also unnecessary to
 use IP tunnels or other large-scale routing to communicate locally using
 globally-meaningful names.
 
@@ -153,7 +153,7 @@ is ccnb-encoded data is prefixed by the byte 0xC1.
 Note that early versions of the command marker syntax did not use a
 separator character between the operation and/or final UTF-8 argument
 and the last binary argument (previously treated as a data
-field). This lead to an ambiguous encoding parseable only by elements
+field). This lead to an ambiguous encoding parsable only by elements
 that knew the specific argument structure of a particular command. It
 is possible to encounter legacy data of this form stored in older
 repositories.
@@ -224,7 +224,7 @@ accidental collisions with application names.
 Marker namespaces in common use:
 
 === Guid name components:
-Thes are used to specify fixed random binary name components, which are used
+These are used to specify fixed random binary name components, which are used
 repeatedly over time, rather than nonces.
 ............................
 %C1.M.G%00<guid value>
