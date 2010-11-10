@@ -366,7 +366,6 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
 					wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
 			Log.info("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(wrappingKeyIdentifier(unwrapKey)));
-			Log.info("Is BC provider OK? " + KeyManager.checkDefaultProvider());
 		}
 		if (((null != wrapAlgorithm()) && (wrapAlgorithm().equalsIgnoreCase("AESWrapWithPad"))) || 
 							wrapAlgorithmForKey(unwrapKey.getAlgorithm()).equalsIgnoreCase("AESWrapWithPad")) {
