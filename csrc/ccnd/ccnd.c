@@ -1,5 +1,5 @@
-/**
- * @file ccnd.c
+/*
+ * ccnd/ccnd.c
  * 
  * Main program of ccnd - the CCNx Daemon
  *
@@ -16,7 +16,11 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
- 
+
+/**
+ * Main program of ccnd - the CCNx Daemon
+ */
+
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
