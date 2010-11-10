@@ -240,6 +240,8 @@ use_i:
     a[i] = face;
     h->face_rover = i + 1;
     face->faceid = i | h->face_gen;
+    face->pktin = ccnd_meter_create(h, "PKTI");
+    face->pktout = ccnd_meter_create(h, "PKTO");
     register_new_face(h, face);
     return (face->faceid);
 }
@@ -365,6 +367,8 @@ finalize_face(struct hashtb_enumerator *e)
     }
     else if (face->faceid != CCN_NOFACEID)
         ccnd_msg(h, "orphaned face %u", face->faceid);
+    ccnd_meter_destroy(&face->pktin);
+    ccnd_meter_destroy(&face->pktout);
     ccn_charbuf_destroy(&face->inbuf);
     ccn_charbuf_destroy(&face->outbuf);
 }
@@ -3843,6 +3847,7 @@ process_input(struct ccnd_handle *h, int fd)
         shutdown_client_fd(h, fd);
     else {
         source = get_dgram_source(h, face, addr, addrlen, (res == 1) ? 1 : 2);
+        ccnd_meter_bump(h, source->pktin, 1);
         source->recvcount++;
         source->surplus = 0; // XXX - we don't actually use this, except for some obscure messages.
         if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
@@ -3992,6 +3997,7 @@ ccnd_send(struct ccnd_handle *h,
     else
         res = sendto(sending_fd(h, face), data, size, 0,
                      face->addr, face->addrlen);
+    ccnd_meter_bump(h, face->pktout, 1);
     if (res == size)
         return;
     if (res == -1) {

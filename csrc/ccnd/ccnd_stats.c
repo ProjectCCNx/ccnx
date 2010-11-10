@@ -227,6 +227,9 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
             if (face->recvcount != 0)
                 ccn_charbuf_putf(b, " <b>activity:</b> %d",
                                  face->recvcount);
+            ccn_charbuf_putf(b, " <b>pps:</b> %u/%u",
+                                 ccnd_meter_rate(h, face->pktin),
+                                 ccnd_meter_rate(h, face->pktout));
             nodebuf->length = 0;
             port = ccn_charbuf_append_sockaddr(nodebuf, face->addr);
             if (port > 0) {
@@ -498,4 +501,96 @@ collect_stats_xml(struct ccnd_handle *h)
     collect_forwarding_xml(h, b);
     ccn_charbuf_putf(b, "</ccnd>" NL);
     return(b);
+}
+
+/**
+ * create and initialize separately allocated meter.
+ */
+struct ccnd_meter *
+ccnd_meter_create(struct ccnd_handle *h, const char *what)
+{
+    struct ccnd_meter *m;
+    m = calloc(1, sizeof(*m));
+    if (m == NULL)
+        return(NULL);
+    ccnd_meter_init(h, m, what);
+    return(m);
+}
+
+/**
+ * Destroy a separately allocated meter.
+ */
+void
+ccnd_meter_destroy(struct ccnd_meter **pm)
+{
+    if (*pm) {
+        free(*pm);
+        *pm = NULL;
+    }
+}
+
+/**
+ * Initialize a meter.
+ */
+void
+ccnd_meter_init(struct ccnd_handle *h, struct ccnd_meter *m, const char *what)
+{
+    if (m == NULL)
+        return;
+    memset(m, 0, sizeof(m));
+    if (what != NULL)
+        snprintf(m->what, sizeof(m->what), "%s", what);
+    ccnd_meter_bump(h, m, 0);
+}
+
+/**
+ * Count something (messages, packets, bytes), and roll up some kind of
+ * statistics on it.
+ */
+void
+ccnd_meter_bump(struct ccnd_handle *h, struct ccnd_meter *m, unsigned amt)
+{
+    unsigned now;
+    unsigned t;
+    unsigned r;
+    if (m == NULL)
+        return;
+    now = (((unsigned)(h->sec)) << 1) + (h->usec > 499999); /* 0.5 sec tick, wrap OK */
+    t = m->lastupdate;
+    m->total += amt;
+    if (now - t > 120U)
+        m->rate = amt;
+    else {
+        for (r = m->rate; t != now && r != 0; t++)
+            r = 5 * r / 6;
+        m->rate = r + amt;
+    }
+    m->lastupdate = now;
+}
+
+/**
+ * Return the average rate (units per second) of a metered quantity.
+ *
+ * m may be NULL.
+ */
+unsigned
+ccnd_meter_rate(struct ccnd_handle *h, struct ccnd_meter *m)
+{
+    if (m == NULL)
+        return(0);
+    ccnd_meter_bump(h, m, 0);
+    return ((m->rate + 3) / 6);
+}
+
+/**
+ * Return the grand total for a metered quantity.
+ *
+ * m may be NULL.
+ */
+uintmax_t
+ccnd_meter_total(struct ccnd_meter *m)
+{
+    if (m == NULL)
+        return(0);
+    return (m->total);
 }

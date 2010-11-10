@@ -55,6 +55,7 @@ struct nameprefix_entry;
 struct propagating_entry;
 struct content_tree_node;
 struct ccn_forwarding;
+struct ccn_meter;
 
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
@@ -186,6 +187,8 @@ struct face {
     const struct sockaddr *addr;
     socklen_t addrlen;
     int pending_interests;
+    struct ccnd_meter *pktin;
+    struct ccnd_meter *pktout;
 };
 
 /** face flags */
@@ -305,6 +308,30 @@ struct ccn_forwarding {
     int expires;                 /**< time remaining, in seconds */
     struct ccn_forwarding *next;
 };
+
+/**
+ * Provide a way to monitor rates. These are exposed for debugging, etc,
+ * but access should be procedural.
+ */
+struct ccnd_meter {
+    uintmax_t total;
+    char what[4];
+    unsigned rate; /** a scale factor applies */
+    unsigned lastupdate;
+};
+
+/* create and destroy procs for separately allocated meters */
+struct ccnd_meter *ccnd_meter_create(struct ccnd_handle *h, const char *what);
+void ccnd_meter_destroy(struct ccnd_meter **);
+
+/* for meters kept within other structures */
+void ccnd_meter_init(struct ccnd_handle *h, struct ccnd_meter *m, const char *what);
+
+/* count something (messages, packets, bytes), getting time info from h */
+void ccnd_meter_bump(struct ccnd_handle *h, struct ccnd_meter *m, unsigned amt);
+
+unsigned ccnd_meter_rate(struct ccnd_handle *h, struct ccnd_meter *m);
+uintmax_t ccnd_meter_total(struct ccnd_meter *m);
 
 /**
  * @def CCN_FORW_ACTIVE         1
