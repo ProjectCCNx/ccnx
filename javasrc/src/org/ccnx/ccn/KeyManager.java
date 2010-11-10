@@ -64,12 +64,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  */
 public abstract class KeyManager {
 	
-	static {
-		// This needs to be done once. Do it here to be sure it happens before 
-		// any work that needs it.
-		KeyManager.initializeProvider();
-	}
-	
 	/**
 	 * Canary value, indicates we want to override any other key locator available.
 	 */
@@ -86,6 +80,15 @@ public abstract class KeyManager {
 	public static final String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
 	protected static Provider BC_PROVIDER = null;
 	
+	static {
+		// This needs to be done once. Do it here to be sure it happens before
+		// any work that needs it.
+
+		// Note - this block must be below the declaration of BC_PROVIDER, or it will
+		// be initialized to zero after this code is run.
+		KeyManager.initializeProvider();
+	}
+
 	/**
 	 * The default KeyManager for this user/VM pair. The KeyManager will eventually have access
 	 * to significant cached state, and so a single one should be shared by as many processes
