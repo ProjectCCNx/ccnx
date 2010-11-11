@@ -237,9 +237,15 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
             if (face->recvcount != 0)
                 ccn_charbuf_putf(b, " <b>activity:</b> %d",
                                  face->recvcount);
-            ccn_charbuf_putf(b, " <b>pps:</b> %u/%u",
-                                 ccnd_meter_rate(h, face->meter[FM_PKTI]),
-                                 ccnd_meter_rate(h, face->meter[FM_PKTO]));
+            ccn_charbuf_putf(b, " <b>Bps:</b> %u/%u",
+                                 ccnd_meter_rate(h, face->meter[FM_BYTI]),
+                                 ccnd_meter_rate(h, face->meter[FM_BYTO]));
+            ccn_charbuf_putf(b, " <b>foo:</b> %u/%u",
+                                 ccnd_meter_rate(h, face->meter[FM_DATI]),
+                                 ccnd_meter_rate(h, face->meter[FM_INTO]));
+            ccn_charbuf_putf(b, " <b>bar:</b> %u/%u",
+                                 ccnd_meter_rate(h, face->meter[FM_DATO]),
+                                 ccnd_meter_rate(h, face->meter[FM_INTI]));
             nodebuf->length = 0;
             port = ccn_charbuf_append_sockaddr(nodebuf, face->addr);
             if (port > 0) {

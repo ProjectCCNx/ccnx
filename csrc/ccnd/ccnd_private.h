@@ -174,8 +174,12 @@ enum cq_delay_class {
  * Face meter index
  */
 enum ccnd_face_meter_index {
-    FM_PKTI,
-    FM_PKTO,
+    FM_BYTI,
+    FM_BYTO,
+    FM_INTI,
+    FM_INTO,
+    FM_DATI,
+    FM_DATO,
     CCND_FACE_METER_N
 };
 

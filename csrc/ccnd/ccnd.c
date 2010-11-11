@@ -244,8 +244,12 @@ use_i:
     a[i] = face;
     h->face_rover = i + 1;
     face->faceid = i | h->face_gen;
-    face->meter[FM_PKTI] = ccnd_meter_create(h, "PKTI");
-    face->meter[FM_PKTO] = ccnd_meter_create(h, "PKTO");
+    face->meter[FM_BYTI] = ccnd_meter_create(h, "BYTI");
+    face->meter[FM_BYTO] = ccnd_meter_create(h, "BYTO");
+    face->meter[FM_INTI] = ccnd_meter_create(h, "INTI");
+    face->meter[FM_INTO] = ccnd_meter_create(h, "INTO");
+    face->meter[FM_DATI] = ccnd_meter_create(h, "DATI");
+    face->meter[FM_DATO] = ccnd_meter_create(h, "DATO");
     register_new_face(h, face);
     return (face->faceid);
 }
@@ -3850,7 +3854,7 @@ process_input(struct ccnd_handle *h, int fd)
         shutdown_client_fd(h, fd);
     else {
         source = get_dgram_source(h, face, addr, addrlen, (res == 1) ? 1 : 2);
-        ccnd_meter_bump(h, source->meter[FM_PKTI], 1);
+        ccnd_meter_bump(h, source->meter[FM_BYTI], res);
         source->recvcount++;
         source->surplus = 0; // XXX - we don't actually use this, except for some obscure messages.
         if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
@@ -4000,7 +4004,8 @@ ccnd_send(struct ccnd_handle *h,
     else
         res = sendto(sending_fd(h, face), data, size, 0,
                      face->addr, face->addrlen);
-    ccnd_meter_bump(h, face->meter[FM_PKTO], 1);
+    if (res > 0)
+        ccnd_meter_bump(h, face->meter[FM_BYTO], res);
     if (res == size)
         return;
     if (res == -1) {
