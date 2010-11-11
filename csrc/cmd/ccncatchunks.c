@@ -152,12 +152,12 @@ main(int argc, char **argv)
     struct ccn_closure *incoming = NULL;
     const char *arg = NULL;
     int res;
-    char ch;
+    int opt;
     struct mydata *mydata;
     int allow_stale = 0;
     
-    while ((ch = getopt(argc, argv, "ha")) != -1) {
-        switch (ch) {
+    while ((opt = getopt(argc, argv, "ha")) != -1) {
+        switch (opt) {
             case 'a':
                 allow_stale = 1;
                 break;

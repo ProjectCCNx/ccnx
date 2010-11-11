@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -98,11 +98,11 @@ main(int argc, char **argv)
     struct ccn_charbuf *templ = NULL;
     int i;
     int res;
-    int ch;
+    int opt;
     FILE* closethis = NULL;
     
-    while ((ch = getopt(argc, argv, "ho:")) != -1) {
-        switch (ch) {
+    while ((opt = getopt(argc, argv, "ho:")) != -1) {
+        switch (opt) {
             case 'o':
                 if (strcmp(optarg, "-") == 0)
                     mydata.output = stdout;

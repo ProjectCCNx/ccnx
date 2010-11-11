@@ -767,7 +767,7 @@ main(int argc, char **argv)
 {
     extern char *optarg;
     extern int optind, optopt;
-    int c;
+    int opt;
     int tflag = 0, formatting_flags = 0, errflag = 0;
     char *sarg = NULL;
     int res = 0;
@@ -775,8 +775,8 @@ main(int argc, char **argv)
     struct ccn_decoder *d;
     struct ccn_dict *dtags = (struct ccn_dict *)&ccn_dtag_dict;
 
-    while ((c = getopt(argc, argv, ":hbd:s:tvx")) != -1) {
-        switch (c) {
+    while ((opt = getopt(argc, argv, ":hbd:s:tvx")) != -1) {
+        switch (opt) {
             case 'h':
                 usage(argv[0]);
                 break;

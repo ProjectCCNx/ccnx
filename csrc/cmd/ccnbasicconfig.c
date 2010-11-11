@@ -88,11 +88,11 @@ main(int argc, char **argv)
     const unsigned char *ccndid = NULL;
     size_t ccndid_size = 0;
     int res;
-    char ch;
+    int opt;
     
     progname = argv[0];
-    while ((ch = getopt(argc, argv, "h")) != -1) {
-        switch (ch) {
+    while ((opt = getopt(argc, argv, "h")) != -1) {
+        switch (opt) {
             case 'h':
             default:
                 usage(progname);

@@ -5,7 +5,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -63,7 +63,7 @@ dtag_lookup(const char *key)
 }
 
 static int
-ccnbx(const char *path, const char *selector, int opt) {
+ccnbx(const char *path, const char *selector, int options) {
     struct ccn_skeleton_decoder skel_decoder = {0};
     struct ccn_skeleton_decoder *d = &skel_decoder;
     struct ccn_charbuf *c = NULL;
@@ -75,7 +75,7 @@ ccnbx(const char *path, const char *selector, int opt) {
     size_t offset = 0;
     size_t start = 0;
     size_t end = ~0U;
-    int verbose = (opt & CCNBX_OPT_VERBOSE) != 0;
+    int verbose = (options & CCNBX_OPT_VERBOSE) != 0;
         
     if (0 != strcmp(path, "-")) {
         fd = open(path, O_RDONLY);
@@ -123,7 +123,7 @@ ccnbx(const char *path, const char *selector, int opt) {
                             (int)d->nest);
                 start = d->token_index;
                 d->nest = 1;
-                if ((opt & CCNBX_OPT_UNADORNED) == 0)
+                if ((options & CCNBX_OPT_UNADORNED) == 0)
                     d->state &= ~CCN_DSTATE_PAUSE; /* full speed to the end */                   
                 else
                     start = end = d->index; /* in case of no data */
@@ -154,17 +154,17 @@ Finish:
 int
 main(int argc, char **argv)
 {
-    int c;
+    int opt;
     int status = 0;
-    int opt = 0;
+    int options = 0;
 
-    while ((c = getopt(argc, argv, "dhv")) != -1) {
-        switch (c) {
+    while ((opt = getopt(argc, argv, "dhv")) != -1) {
+        switch (opt) {
         case 'd':
-            opt |= CCNBX_OPT_UNADORNED;
+            options |= CCNBX_OPT_UNADORNED;
             break;
         case 'v':
-            opt |= CCNBX_OPT_VERBOSE;
+            options |= CCNBX_OPT_VERBOSE;
             break;
         case 'h':
         default:
@@ -180,7 +180,7 @@ main(int argc, char **argv)
         fprintf(stderr, "Too many arguments\n");
         usage(argv[0]);
     }
-    status = ccnbx(argv[optind], argv[optind + 1], opt);
+    status = ccnbx(argv[optind], argv[optind + 1], options);
     return(status);
 }
 
