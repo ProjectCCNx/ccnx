@@ -589,7 +589,7 @@ ccnd_meter_rate(struct ccnd_handle *h, struct ccnd_meter *m)
     if (m == NULL)
         return(0);
     ccnd_meter_bump(h, m, 0);
-    return ((m->rate + 3) / 6);
+    return ((m->rate + 2) / 3);
 }
 
 /**
