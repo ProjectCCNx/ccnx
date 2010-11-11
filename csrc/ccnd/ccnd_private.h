@@ -169,6 +169,16 @@ enum cq_delay_class {
     CCN_CQ_N
 };
 
+
+/**
+ * Face meter index
+ */
+enum ccnd_face_meter_index {
+    FM_PKTI,
+    FM_PKTO,
+    CCND_FACE_METER_N
+};
+
 /**
  * One of our active faces
  */
@@ -187,8 +197,7 @@ struct face {
     const struct sockaddr *addr;
     socklen_t addrlen;
     int pending_interests;
-    struct ccnd_meter *pktin;
-    struct ccnd_meter *pktout;
+    struct ccnd_meter *meter[CCND_FACE_METER_N];
 };
 
 /** face flags */

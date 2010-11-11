@@ -238,8 +238,8 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
                 ccn_charbuf_putf(b, " <b>activity:</b> %d",
                                  face->recvcount);
             ccn_charbuf_putf(b, " <b>pps:</b> %u/%u",
-                                 ccnd_meter_rate(h, face->pktin),
-                                 ccnd_meter_rate(h, face->pktout));
+                                 ccnd_meter_rate(h, face->meter[FM_PKTI]),
+                                 ccnd_meter_rate(h, face->meter[FM_PKTO]));
             nodebuf->length = 0;
             port = ccn_charbuf_append_sockaddr(nodebuf, face->addr);
             if (port > 0) {
@@ -533,7 +533,7 @@ ccnd_meter_create(struct ccnd_handle *h, const char *what)
 void
 ccnd_meter_destroy(struct ccnd_meter **pm)
 {
-    if (*pm) {
+    if (*pm != NULL) {
         free(*pm);
         *pm = NULL;
     }

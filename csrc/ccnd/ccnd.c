@@ -244,8 +244,8 @@ use_i:
     a[i] = face;
     h->face_rover = i + 1;
     face->faceid = i | h->face_gen;
-    face->pktin = ccnd_meter_create(h, "PKTI");
-    face->pktout = ccnd_meter_create(h, "PKTO");
+    face->meter[FM_PKTI] = ccnd_meter_create(h, "PKTI");
+    face->meter[FM_PKTO] = ccnd_meter_create(h, "PKTO");
     register_new_face(h, face);
     return (face->faceid);
 }
@@ -349,6 +349,7 @@ finalize_face(struct hashtb_enumerator *e)
     unsigned i = face->faceid & MAXFACES;
     enum cq_delay_class c;
     int recycle = 0;
+    int m;
     
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
         if ((face->flags & CCN_FACE_UNDECIDED) == 0)
@@ -371,10 +372,8 @@ finalize_face(struct hashtb_enumerator *e)
     }
     else if (face->faceid != CCN_NOFACEID)
         ccnd_msg(h, "orphaned face %u", face->faceid);
-    ccnd_meter_destroy(&face->pktin);
-    ccnd_meter_destroy(&face->pktout);
-    ccn_charbuf_destroy(&face->inbuf);
-    ccn_charbuf_destroy(&face->outbuf);
+    for (m = 0; m < CCND_FACE_METER_N; m++)
+        ccnd_meter_destroy(&face->meter[m]);
 }
 
 static struct content_entry *
@@ -3851,7 +3850,7 @@ process_input(struct ccnd_handle *h, int fd)
         shutdown_client_fd(h, fd);
     else {
         source = get_dgram_source(h, face, addr, addrlen, (res == 1) ? 1 : 2);
-        ccnd_meter_bump(h, source->pktin, 1);
+        ccnd_meter_bump(h, source->meter[FM_PKTI], 1);
         source->recvcount++;
         source->surplus = 0; // XXX - we don't actually use this, except for some obscure messages.
         if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
@@ -4001,7 +4000,7 @@ ccnd_send(struct ccnd_handle *h,
     else
         res = sendto(sending_fd(h, face), data, size, 0,
                      face->addr, face->addrlen);
-    ccnd_meter_bump(h, face->pktout, 1);
+    ccnd_meter_bump(h, face->meter[FM_PKTO], 1);
     if (res == size)
         return;
     if (res == -1) {
