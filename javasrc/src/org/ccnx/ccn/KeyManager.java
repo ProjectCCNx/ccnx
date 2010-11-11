@@ -78,17 +78,8 @@ public abstract class KeyManager {
 	 * We expect the protocol default digest algorithm to move to SHA3 when defined.
 	 */
 	public static final String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
-	protected static Provider BC_PROVIDER = null;
+	public static final Provider PROVIDER = getBcProvider();
 	
-	static {
-		// This needs to be done once. Do it here to be sure it happens before
-		// any work that needs it.
-
-		// Note - this block must be below the declaration of BC_PROVIDER, or it will
-		// be initialized to zero after this code is run.
-		KeyManager.initializeProvider();
-	}
-
 	/**
 	 * The default KeyManager for this user/VM pair. The KeyManager will eventually have access
 	 * to significant cached state, and so a single one should be shared by as many processes
@@ -183,28 +174,16 @@ public abstract class KeyManager {
 	 * Load the BouncyCastle and other necessary providers, should be called once for initialization. 
 	 * Currently this is done by CCNHandle.
 	 */
-	public static synchronized void initializeProvider() {
-		if (BC_PROVIDER == null) {
-			// first try and get it, in case some other code has already created it.
-			BC_PROVIDER = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME);
-			
-			// it's not yet known to the Security class, so create it.
-			if (BC_PROVIDER == null) {
-				BC_PROVIDER = new BouncyCastleProvider();
-				Security.addProvider(BC_PROVIDER);
-			}
+	private static Provider getBcProvider() {
+		// first try and get it, in case some other code has already created it.
+		Provider p = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME);
+		
+		// it's not yet known to the Security class, so create it.
+		if (p == null) {
+			p = new BouncyCastleProvider();
+			Security.addProvider(p);
 		}
-	}
-	
-	/**
-	 * Retrieve our default BouncyCastle provider.
-	 * @return the BouncyCastle provider instance
-	 */
-	public static Provider getDefaultProvider() {
-		if (null == BC_PROVIDER) {
-			initializeProvider();
-		}
-		return BC_PROVIDER;
+		return p;
 	}
 	
 	/**

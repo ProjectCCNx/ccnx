@@ -180,7 +180,7 @@ public abstract class ContentKeys implements Cloneable {
 	
 	private ContentKeys(String encryptionAlgorithm) throws NoSuchAlgorithmException, NoSuchPaddingException {
 		if (null != encryptionAlgorithm) {
-			Cipher.getInstance(encryptionAlgorithm, KeyManager.getDefaultProvider());
+			Cipher.getInstance(encryptionAlgorithm, KeyManager.PROVIDER);
 			_encryptionAlgorithm = encryptionAlgorithm;
 		} else {
 			_encryptionAlgorithm = DEFAULT_CIPHER_ALGORITHM;
@@ -223,7 +223,7 @@ public abstract class ContentKeys implements Cloneable {
 		if (null != _random)
 			return _random;
 		try {
-			_random = SecureRandom.getInstance("SHA1PRNG", KeyManager.getDefaultProvider());
+			_random = SecureRandom.getInstance("SHA1PRNG", KeyManager.PROVIDER);
 		} catch (NoSuchAlgorithmException e) {
 			Log.warning("Cannot find random number generation algorithm SHA1PRNG: " + e.getMessage());
 			_random = new SecureRandom();
@@ -272,7 +272,7 @@ public abstract class ContentKeys implements Cloneable {
 		// We have tried a dummy call to Cipher.getInstance on construction of this ContentKeys - so
 		// further "NoSuch" exceptions should not happen here.
 		try {
-			return Cipher.getInstance(_encryptionAlgorithm, KeyManager.getDefaultProvider());
+			return Cipher.getInstance(_encryptionAlgorithm, KeyManager.PROVIDER);
 		} catch (NoSuchAlgorithmException e) {
 			String err = "Unexpected NoSuchAlgorithmException for an algorithm we have already used!";
 			Log.severe(err);
