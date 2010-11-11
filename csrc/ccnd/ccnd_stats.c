@@ -553,6 +553,8 @@ ccnd_meter_init(struct ccnd_handle *h, struct ccnd_meter *m, const char *what)
     ccnd_meter_bump(h, m, 0);
 }
 
+static const unsigned meterHz = 7; /* 1/ln(8/7) would give RC const of 1 sec */
+
 /**
  * Count something (messages, packets, bytes), and roll up some kind of
  * statistics on it.
@@ -560,19 +562,20 @@ ccnd_meter_init(struct ccnd_handle *h, struct ccnd_meter *m, const char *what)
 void
 ccnd_meter_bump(struct ccnd_handle *h, struct ccnd_meter *m, unsigned amt)
 {
-    unsigned now;
+    unsigned now; /* my ticks, wrap OK */
     unsigned t;
     unsigned r;
     if (m == NULL)
         return;
-    now = (((unsigned)(h->sec)) << 1) + (h->usec > 499999); /* 0.5 sec tick, wrap OK */
+    now = (((unsigned)(h->sec)) * meterHz) + (h->usec * meterHz / 1000000U);
     t = m->lastupdate;
     m->total += amt;
-    if (now - t > 120U)
-        m->rate = amt;
+    if (now - t > 166U)
+        m->rate = amt; /* history has decayed away */
     else {
+        /* Decay the old rate exponentially based on time since last sample. */
         for (r = m->rate; t != now && r != 0; t++)
-            r = 5 * r / 6;
+            r = r - ((r + 7U) / 8U); /* multiply by 7/8, truncating */
         m->rate = r + amt;
     }
     m->lastupdate = now;
@@ -586,10 +589,13 @@ ccnd_meter_bump(struct ccnd_handle *h, struct ccnd_meter *m, unsigned amt)
 unsigned
 ccnd_meter_rate(struct ccnd_handle *h, struct ccnd_meter *m)
 {
+    unsigned denom = 8;
     if (m == NULL)
         return(0);
     ccnd_meter_bump(h, m, 0);
-    return ((m->rate + 2) / 3);
+    if (m->rate > 0x0FFFFFFF)
+        return(m->rate / denom * meterHz);
+    return ((m->rate * meterHz + (denom - 1)) / denom);
 }
 
 /**
