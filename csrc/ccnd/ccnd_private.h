@@ -44,6 +44,7 @@
 struct ccn_charbuf;
 struct ccn_indexbuf;
 struct hashtb;
+struct ccnd_meter;
 
 /*
  * These are defined in this header.
@@ -55,7 +56,6 @@ struct nameprefix_entry;
 struct propagating_entry;
 struct content_tree_node;
 struct ccn_forwarding;
-struct ccn_meter;
 
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
@@ -307,17 +307,6 @@ struct ccn_forwarding {
     unsigned flags;              /**< CCN_FORW_* - c.f. <ccn/reg_mgnt.h> */
     int expires;                 /**< time remaining, in seconds */
     struct ccn_forwarding *next;
-};
-
-/**
- * Provide a way to monitor rates. These are exposed for debugging, etc,
- * but access should be procedural.
- */
-struct ccnd_meter {
-    uintmax_t total;
-    char what[4];
-    unsigned rate; /** a scale factor applies */
-    unsigned lastupdate;
 };
 
 /* create and destroy procs for separately allocated meters */

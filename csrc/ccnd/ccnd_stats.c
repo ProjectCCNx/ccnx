@@ -46,6 +46,16 @@
 #define CRLF "\r\n"
 #define NL   "\n"
 
+/**
+ * Provide a way to monitor rates.
+ */
+struct ccnd_meter {
+    uintmax_t total;
+    char what[4];
+    unsigned rate; /** a scale factor applies */
+    unsigned lastupdate;
+};
+
 struct ccnd_stats {
     long total_interest_counts;
     long total_flood_control;      /* done propagating, still recorded */
