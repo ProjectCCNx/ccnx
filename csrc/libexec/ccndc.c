@@ -86,7 +86,7 @@ static struct ccn_charbuf *local_scope_template = NULL;
 static struct ccn_charbuf *no_name = NULL;
 static unsigned char ccndid_storage[32] = {0};
 static const unsigned char *ccndid = ccndid_storage;
-static size_t ccndid_size;
+static size_t ccndid_size = 0;
 
 /*
  * Global data
@@ -965,12 +965,15 @@ main(int argc, char **argv)
                             "Th1s1sn0t8g00dp8ssw0rd.");
     ON_ERROR_EXIT(res, "Unable to open keystore ($HOME/.ccnx/.ccnx_keystore)");
     
-    ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
-    for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
-        process_prefix_face_list_item(h, keystore, pfl);
+    if (pflhead->next) {        
+        ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
+        for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
+            process_prefix_face_list_item(h, keystore, pfl);
+        }
+        prefix_face_list_destroy(&pflhead->next);
     }
-    prefix_face_list_destroy(&pflhead->next);
     if (dynamic) {
+        if (ccndid_size == 0) ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
         /* Set up a handler for interests */
         interest_closure.data = keystore;
         ccn_name_init(temp);
