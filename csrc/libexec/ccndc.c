@@ -898,13 +898,13 @@ main(int argc, char **argv)
     int dynamic = 0;
     struct ccn_closure interest_closure = {.p=&incoming_interest};
     int res;
-    char ch;
+    int opt;
     
     initialize_global_data();
     
     progname = argv[0];
-    while ((ch = getopt(argc, argv, "hf:dv")) != -1) {
-        switch (ch) {
+    while ((opt = getopt(argc, argv, "hf:dv")) != -1) {
+        switch (opt) {
             case 'f':
                 configfile = optarg;
                 break;

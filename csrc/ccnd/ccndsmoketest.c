@@ -2,7 +2,7 @@
  * @file ccndsmoketest.c
  * Simple program for smoke-test of ccnd.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -213,7 +213,7 @@ int
 main(int argc, char **argv)
 {
     struct sockaddr_un addr = {0};
-    int c;
+    int opt;
     struct pollfd fds[1];
     int res;
     ssize_t rawlen;
@@ -232,8 +232,8 @@ main(int argc, char **argv)
     const char *host = "localhost";
     const char *cmd = NULL;
     
-    while ((c = getopt(argc, argv, "bht:T:u:")) != -1) {
-        switch (c) {
+    while ((opt = getopt(argc, argv, "bht:T:u:")) != -1) {
+        switch (opt) {
             case 'b':
                 outstream = stdout;
                 msgs = stderr;
