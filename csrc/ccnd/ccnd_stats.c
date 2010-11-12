@@ -237,15 +237,6 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
             if (face->recvcount != 0)
                 ccn_charbuf_putf(b, " <b>activity:</b> %d",
                                  face->recvcount);
-            ccn_charbuf_putf(b, " <b>Bps:</b> %u/%u",
-                                 ccnd_meter_rate(h, face->meter[FM_BYTI]),
-                                 ccnd_meter_rate(h, face->meter[FM_BYTO]));
-            ccn_charbuf_putf(b, " <b>foo:</b> %u/%u",
-                                 ccnd_meter_rate(h, face->meter[FM_DATI]),
-                                 ccnd_meter_rate(h, face->meter[FM_INTO]));
-            ccn_charbuf_putf(b, " <b>bar:</b> %u/%u",
-                                 ccnd_meter_rate(h, face->meter[FM_DATO]),
-                                 ccnd_meter_rate(h, face->meter[FM_INTI]));
             nodebuf->length = 0;
             port = ccn_charbuf_append_sockaddr(nodebuf, face->addr);
             if (port > 0) {
@@ -274,6 +265,33 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
     }
     ccn_charbuf_putf(b, "</ul>");
     ccn_charbuf_destroy(&nodebuf);
+}
+
+static void
+collect_face_meter_html(struct ccnd_handle *h, struct ccn_charbuf *b)
+{
+    int i;
+    ccn_charbuf_putf(b, "<h4>Face Activity Rates</h4>" NL);
+    ccn_charbuf_putf(b, "<ul>");
+    for (i = 0; i < h->face_limit; i++) {
+        struct face *face = h->faces_by_faceid[i];
+        if (face != NULL && (face->flags & (CCN_FACE_UNDECIDED|CCN_FACE_PASSIVE)) == 0) {
+            ccn_charbuf_putf(b, " <li>");
+            ccn_charbuf_putf(b, "<b>face:</b> %u ",
+                             face->faceid);
+            ccn_charbuf_putf(b, " <b>BpsI/O:</b> %6u / %u\t",
+                                 ccnd_meter_rate(h, face->meter[FM_BYTI]),
+                                 ccnd_meter_rate(h, face->meter[FM_BYTO]));
+            ccn_charbuf_putf(b, " <b>rc/is:</b> %6u / %u\t",
+                                 ccnd_meter_rate(h, face->meter[FM_DATI]),
+                                 ccnd_meter_rate(h, face->meter[FM_INTO]));
+            ccn_charbuf_putf(b, " <b>sc/ir:</b> %6u / %u",
+                                 ccnd_meter_rate(h, face->meter[FM_DATO]),
+                                 ccnd_meter_rate(h, face->meter[FM_INTI]));
+            ccn_charbuf_putf(b, "</li>" NL);
+        }
+    }
+    ccn_charbuf_putf(b, "</ul>");
 }
 
 static void
@@ -386,6 +404,7 @@ collect_stats_html(struct ccnd_handle *h)
                          "<div><b>Active faces and listeners:</b> %d</div>" NL,
                          hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
     collect_faces_html(h, b);
+    collect_face_meter_html(h, b);
     collect_forwarding_html(h, b);
     ccn_charbuf_putf(b,
         "</body>"
