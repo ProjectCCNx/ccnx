@@ -1132,6 +1132,7 @@ send_content(struct ccnd_handle *h, struct face *face, struct content_entry *con
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_closer(c);
     ccnd_send(h, face, c->buf, c->length);
+    ccnd_meter_bump(h, face->meter[FM_DATO], 1);
     h->content_items_sent += 1;
     charbuf_release(h, c);
 }
@@ -1566,6 +1567,7 @@ ccn_stuff_interest(struct ccnd_handle *h,
                 p->sent++;
                 n_stuffed++;
                 ccn_charbuf_append(c, p->interest_msg, p->size);
+                ccnd_meter_bump(h, face->meter[FM_INTO], 1);
                 h->interests_stuffed++;
                 if (h->debug & 2)
                     ccnd_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
@@ -2752,6 +2754,7 @@ do_propagate(struct ccn_schedule *sched,
                 next_delay = special_delay = ev->evint;
             }
             stuff_and_send(h, face, pe->interest_msg, pe->size);
+            ccnd_meter_bump(h, face->meter[FM_INTO], 1);
         }
         else
             ccn_indexbuf_remove_first_match(pe->outbound, faceid);
@@ -3259,8 +3262,11 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         res = ccn_parse_interest(msg, size, pi, comps);
     if (res < 0) {
         ccnd_msg(h, "error parsing Interest - code %d", res);
+        ccn_indexbuf_destroy(&comps);
+        return;
     }
-    else if (pi->scope >= 0 && pi->scope < 2 &&
+    ccnd_meter_bump(h, face->meter[FM_INTI], 1);
+    if (pi->scope >= 0 && pi->scope < 2 &&
              (face->flags & CCN_FACE_GG) == 0) {
         ccnd_debug_ccnb(h, __LINE__, "interest_outofscope", face, msg, size);
         h->interests_dropped += 1;
@@ -3517,6 +3523,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         ccnd_msg(h, "error parsing ContentObject - code %d", res);
         goto Bail;
     }
+    ccnd_meter_bump(h, face->meter[FM_DATI], 1);
     if (comps->n < 1 ||
         (keysize = comps->buf[comps->n - 1]) > 65535 - 36) {
         ccnd_msg(h, "ContentObject with keysize %lu discarded",
@@ -3918,6 +3925,7 @@ process_internal_client_buffer(struct ccnd_handle *h)
     face->inbuf = ccn_grab_buffered_output(h->internal_client);
     if (face->inbuf == NULL)
         return;
+    ccnd_meter_bump(h, face->meter[FM_BYTI], face->inbuf->length);
     process_input_buffer(h, face);
     ccn_charbuf_destroy(&(face->inbuf));
 }
@@ -3995,6 +4003,7 @@ ccnd_send(struct ccnd_handle *h,
         return;
     }
     if (face == h->face0) {
+        ccnd_meter_bump(h, face->meter[FM_BYTO], size);
         ccn_dispatch_message(h->internal_client, (void *)data, size);
         process_internal_client_buffer(h);
         return;

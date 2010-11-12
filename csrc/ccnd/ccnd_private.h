@@ -169,7 +169,6 @@ enum cq_delay_class {
     CCN_CQ_N
 };
 
-
 /**
  * Face meter index
  */
