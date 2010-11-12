@@ -108,7 +108,7 @@ usage(const char *progname)
 }
 
 void
-ccndc_warn(int lineno, char *format, ...)
+ccndc_warn(int lineno, const char *format, ...)
 {
     struct timeval t;
     va_list ap;
@@ -120,7 +120,7 @@ ccndc_warn(int lineno, char *format, ...)
 }
 
 void
-ccndc_fatal(int line, char *format, ...)
+ccndc_fatal(int line, const char *format, ...)
 {
     struct timeval t;
     va_list ap;
@@ -132,14 +132,14 @@ ccndc_fatal(int line, char *format, ...)
     exit(1);
 }
 
-#define ON_ERROR_EXIT(resval) on_error_exit((resval), __LINE__)
+#define ON_ERROR_EXIT(resval, msg) on_error_exit((resval), __LINE__, msg)
 
 static void
-on_error_exit(int res, int lineno)
+on_error_exit(int res, int lineno, const char *msg)
 {
     if (res >= 0)
         return;
-    ccndc_fatal(lineno, "fatal error, res = %d\n", res);
+    ccndc_fatal(lineno, "fatal error, res = %d, %s\n", res, msg);
 }
 
 #define ON_ERROR_CLEANUP(resval) \
@@ -160,24 +160,25 @@ goto Cleanup; \
 
 static void
 initialize_global_data(void) {
+    const char *msg = "Unable to initialize global data.";
     /* Set up an Interest template to indicate scope 1 (Local) */
     local_scope_template = ccn_charbuf_create();
     if (local_scope_template == NULL) {
-        ON_ERROR_EXIT(-1);
+        ON_ERROR_EXIT(-1, msg);
     }
     
-    ON_ERROR_EXIT(ccn_charbuf_append_tt(local_scope_template, CCN_DTAG_Interest, CCN_DTAG));
-    ON_ERROR_EXIT(ccn_charbuf_append_tt(local_scope_template, CCN_DTAG_Name, CCN_DTAG));
-    ON_ERROR_EXIT(ccn_charbuf_append_closer(local_scope_template));	/* </Name> */
-    ON_ERROR_EXIT(ccnb_tagged_putf(local_scope_template, CCN_DTAG_Scope, "1"));
-    ON_ERROR_EXIT(ccn_charbuf_append_closer(local_scope_template));	/* </Interest> */
+    ON_ERROR_EXIT(ccn_charbuf_append_tt(local_scope_template, CCN_DTAG_Interest, CCN_DTAG), msg);
+    ON_ERROR_EXIT(ccn_charbuf_append_tt(local_scope_template, CCN_DTAG_Name, CCN_DTAG), msg);
+    ON_ERROR_EXIT(ccn_charbuf_append_closer(local_scope_template), msg);	/* </Name> */
+    ON_ERROR_EXIT(ccnb_tagged_putf(local_scope_template, CCN_DTAG_Scope, "1"), msg);
+    ON_ERROR_EXIT(ccn_charbuf_append_closer(local_scope_template), msg);	/* </Interest> */
     
     /* Create a null name */
     no_name = ccn_charbuf_create();
     if (no_name == NULL) {
-        ON_ERROR_EXIT(-1);
+        ON_ERROR_EXIT(-1, msg);
     }
-    ON_ERROR_EXIT(ccn_name_init(no_name));
+    ON_ERROR_EXIT(ccn_name_init(no_name), msg);
 }
 
 /*
@@ -200,26 +201,26 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_storage_siz
     
     name = ccn_charbuf_create();
     if (name == NULL) {
-        ON_ERROR_EXIT(-1);
+        ON_ERROR_EXIT(-1, "Unable to allocate storage for ping name charbuf");
     }
     
     resultbuf = ccn_charbuf_create();
     if (resultbuf == NULL) {
-        ON_ERROR_EXIT(-1);
+        ON_ERROR_EXIT(-1, "Unable to allocate storage for result charbuf");
     }
     
     
-    ON_ERROR_EXIT(ccn_name_from_uri(name, ping_uri));
-    ON_ERROR_EXIT(ccn_name_append_nonce(name));
-    ON_ERROR_EXIT(ccn_get(h, name, local_scope_template, 4500, resultbuf, &pcobuf, NULL, 0));
+    ON_ERROR_EXIT(ccn_name_from_uri(name, ping_uri), "Unable to parse base ping URI");
+    ON_ERROR_EXIT(ccn_name_append_nonce(name), "Unable to append ping URI nonce");
+    ON_ERROR_EXIT(ccn_get(h, name, local_scope_template, 4500, resultbuf, &pcobuf, NULL, 0), "Unable to get ping response from ccnd");
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
                               resultbuf->buf,
                               pcobuf.offset[CCN_PCO_B_PublisherPublicKeyDigest],
                               pcobuf.offset[CCN_PCO_E_PublisherPublicKeyDigest],
                               &ccndid_result, &ccndid_result_size);
-    ON_ERROR_EXIT(res);
+    ON_ERROR_EXIT(res, "Unable to parse ccnd response for ccnd id");
     if (ccndid_result_size > ccndid_storage_size)
-        ON_ERROR_EXIT(-1);
+        ON_ERROR_EXIT(-1, "Incorrect size for ccnd id in response");
     memcpy((void *)ccndid, ccndid_result, ccndid_result_size);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&resultbuf);
@@ -958,11 +959,11 @@ main(int argc, char **argv)
     
     temp = ccn_charbuf_create();
     keystore = ccn_keystore_create();
-    ON_ERROR_EXIT(ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", getenv("HOME")));
+    ON_ERROR_EXIT(ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", getenv("HOME")), "Unable to construct keystore name");
     res = ccn_keystore_init(keystore,
                             ccn_charbuf_as_string(temp),
                             "Th1s1sn0t8g00dp8ssw0rd.");
-    ON_ERROR_EXIT(res);
+    ON_ERROR_EXIT(res, "Unable to open keystore ($HOME/.ccnx/.ccnx_keystore)");
     
     ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
     for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
