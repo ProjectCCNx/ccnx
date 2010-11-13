@@ -64,12 +64,6 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  */
 public abstract class KeyManager {
 	
-	static {
-		// This needs to be done once. Do it here to be sure it happens before 
-		// any work that needs it.
-		KeyManager.initializeProvider();
-	}
-	
 	/**
 	 * Canary value, indicates we want to override any other key locator available.
 	 */
@@ -84,7 +78,7 @@ public abstract class KeyManager {
 	 * We expect the protocol default digest algorithm to move to SHA3 when defined.
 	 */
 	public static final String DEFAULT_DIGEST_ALGORITHM = "SHA-256";
-	protected static Provider BC_PROVIDER = null;
+	public static final Provider PROVIDER = getBcProvider();
 	
 	/**
 	 * The default KeyManager for this user/VM pair. The KeyManager will eventually have access
@@ -180,65 +174,16 @@ public abstract class KeyManager {
 	 * Load the BouncyCastle and other necessary providers, should be called once for initialization. 
 	 * Currently this is done by CCNHandle.
 	 */
-	public static void initializeProvider() {
-		synchronized(KeyManager.class) {
-			if (null == BC_PROVIDER) {
-				BC_PROVIDER = Security.getProvider("BC");
-				if (null == BC_PROVIDER) {
-					Provider bc = new BouncyCastleProvider();
-					int result = Security.addProvider(bc);
-					BC_PROVIDER = bc;
-					if (null != BC_PROVIDER) {
-						if (result > 0) {
-							if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
-								Log.info(Log.FAC_KEYS, "KeyManager: Successfully initialized BouncyCastle provider at position " + result);
-							}
-						} else {
-							if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
-								Log.info(Log.FAC_KEYS, "KeyManager: BouncyCastle provider already installed.");
-							}
-						}
-					} else {
-						Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle! Result of addProvider: " + result);
-					}
-				} else {
-					if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
-						Log.info(Log.FAC_KEYS, "KeyManager: BouncyCastle provider installed by default.");
-					}
-				}
-				Provider checkProvider = Security.getProvider("BC");
-				if (null == checkProvider) {
-					Log.severe("Could not load BouncyCastle provider back in!");
-				}
-			}
+	private static Provider getBcProvider() {
+		// first try and get it, in case some other code has already created it.
+		Provider p = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME);
+		
+		// it's not yet known to the Security class, so create it.
+		if (p == null) {
+			p = new BouncyCastleProvider();
+			Security.addProvider(p);
 		}
-	}
-	
-	/**
-	 * Retrieve our default BouncyCastle provider.
-	 * @return the BouncyCastle provider instance
-	 */
-	public static Provider getDefaultProvider() {
-		if (null == BC_PROVIDER) {
-			initializeProvider();
-		}
-		if (null == BC_PROVIDER) {
-			Log.severe("ERROR: NULL default provider! Cannot load BouncyCastle!");
-		}
-		return BC_PROVIDER;
-	}
-	
-	public static boolean checkDefaultProvider() {
-		boolean test = true;
-		if (null == BC_PROVIDER) {
-			test = false;
-			Log.warning("checkDefaultProvider: initialization of BouncyCastle provider did not proceed properly, no BC_PROVIDER.");
-		}
-		if (null == Security.getProvider("BC")) {
-			test = false;
-			Log.warning("checkDefaultProvider: cannot load BouncyCastle provider!");
-		}
-		return test;
+		return p;
 	}
 	
 	/**
