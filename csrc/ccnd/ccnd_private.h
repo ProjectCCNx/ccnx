@@ -90,6 +90,7 @@ struct ccnd_handle {
     struct ccn_gettime ticktock;    /**< our time generator */
     long sec;                       /**< cached gettime seconds */
     unsigned usec;                  /**< cached gettime microseconds */
+    long starttime;                 /**< ccnd start time, in seconds */
     struct ccn_schedule *sched;     /**< our schedule */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */

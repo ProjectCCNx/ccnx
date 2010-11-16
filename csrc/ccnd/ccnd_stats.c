@@ -390,7 +390,7 @@ collect_stats_html(struct ccnd_handle *h)
         "</style>"
         "</head>" NL
         "<body bgcolor='#%06X'>"
-        "<p class='header'>%s ccnd[%d] local port %s</p>" NL
+        "<p class='header'>%s ccnd[%d] local port %s api %d start %ld now %ld.%06u</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
         " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
@@ -403,6 +403,10 @@ collect_stats_html(struct ccnd_handle *h)
         un.nodename,
         pid,
         portstr,
+        (int)CCN_API_VERSION,
+        h->starttime,
+        h->sec,
+        h->usec,
         (unsigned long long)h->accession,
         hashtb_n(h->content_tab),
         h->n_stale,
