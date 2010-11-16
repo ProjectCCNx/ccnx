@@ -271,27 +271,33 @@ static void
 collect_face_meter_html(struct ccnd_handle *h, struct ccn_charbuf *b)
 {
     int i;
-    ccn_charbuf_putf(b, "<h4>Face Activity Rates</h4>" NL);
-    ccn_charbuf_putf(b, "<ul>");
+    ccn_charbuf_putf(b, "<h4>Face Activity Rates</h4>");
+    ccn_charbuf_putf(b, "<table cellspacing='0' cellpadding='0' class='tbl' summary='face activity rates'>");
+    ccn_charbuf_putf(b, "<tbody>" NL);
+    ccn_charbuf_putf(b, " <tr><td>        </td>\t"
+                        " <td>Bytes/sec In/Out</td>\t"
+                        " <td>recv data/intr sent</td>\t"
+                        " <td>sent data/intr recv</td></tr>" NL);
     for (i = 0; i < h->face_limit; i++) {
         struct face *face = h->faces_by_faceid[i];
         if (face != NULL && (face->flags & (CCN_FACE_UNDECIDED|CCN_FACE_PASSIVE)) == 0) {
-            ccn_charbuf_putf(b, " <li>");
-            ccn_charbuf_putf(b, "<b>face:</b> %u ",
+            ccn_charbuf_putf(b, " <tr>");
+            ccn_charbuf_putf(b, "<td><b>face:</b> %u</td>\t",
                              face->faceid);
-            ccn_charbuf_putf(b, " <b>BpsI/O:</b> %6u / %u\t",
+            ccn_charbuf_putf(b, "<td>%6u / %u</td>\t\t",
                                  ccnd_meter_rate(h, face->meter[FM_BYTI]),
                                  ccnd_meter_rate(h, face->meter[FM_BYTO]));
-            ccn_charbuf_putf(b, " <b>rc/is:</b> %6u / %u\t",
+            ccn_charbuf_putf(b, "<td>%9u / %u</td>\t\t",
                                  ccnd_meter_rate(h, face->meter[FM_DATI]),
                                  ccnd_meter_rate(h, face->meter[FM_INTO]));
-            ccn_charbuf_putf(b, " <b>sc/ir:</b> %6u / %u",
+            ccn_charbuf_putf(b, "<td>%9u / %u</td>",
                                  ccnd_meter_rate(h, face->meter[FM_DATO]),
                                  ccnd_meter_rate(h, face->meter[FM_INTI]));
-            ccn_charbuf_putf(b, "</li>" NL);
+            ccn_charbuf_putf(b, "</tr>" NL);
         }
     }
-    ccn_charbuf_putf(b, "</ul>");
+    ccn_charbuf_putf(b, "</tbody>");
+    ccn_charbuf_putf(b, "</table>");
 }
 
 static void
@@ -370,7 +376,16 @@ collect_stats_html(struct ccnd_handle *h)
         //"<meta http-equiv='refresh' content='3'>"
         "<style type='text/css'>"
         "/*<![CDATA[*/"
-        "p.header {color: white; background-color: blue; width: 100%%}"
+        "p.header {color: white; background-color: blue; width: 100%%} "
+        "table.tbl {border-style: solid; border-width: 1.0px 1.0px 1.0px 1.0px; border-color: black} "
+        "td {border-style: solid; "
+            "border-width: 1.0px 1.0px 1.0px 1.0px; "
+            "border-color: #808080 #808080 #808080 #808080; "
+            "padding: 6px 6px 6px 6px; "
+            "margin-left: auto; margin-right: auto; "
+            "text-align: center"
+            "} "
+        "td.left {text-align: left} "
         "/*]]>*/"
         "</style>"
         "</head>" NL
