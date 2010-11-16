@@ -518,10 +518,25 @@ collect_stats_xml(struct ccnd_handle *h)
 {
     struct ccnd_stats stats = {0};
     struct ccn_charbuf *b = ccn_charbuf_create();
+    int i;
         
     ccnd_collect_stats(h, &stats);
     ccn_charbuf_putf(b,
         "<ccnd>"
+        "<identity>"
+        "<ccndid>");
+    for (i = 0; i < sizeof(h->ccnd_id); i++)
+        ccn_charbuf_putf(b, "%02X", h->ccnd_id[i]);
+    ccn_charbuf_putf(b, "</ccndid>"
+        "<apiversion>%d</apiversion>"
+        "<starttime>%ld</starttime>"
+        "<now>%ld.%06u</now>"
+        "</identity>",
+        (int)CCN_API_VERSION,
+        h->starttime,
+        h->sec,
+        h->usec);
+    ccn_charbuf_putf(b,
         "<cobs>"
         "<accessioned>%llu</accessioned>"
         "<stored>%d</stored>"
