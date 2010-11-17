@@ -244,12 +244,12 @@ use_i:
     a[i] = face;
     h->face_rover = i + 1;
     face->faceid = i | h->face_gen;
-    face->meter[FM_BYTI] = ccnd_meter_create(h, "BYTI");
-    face->meter[FM_BYTO] = ccnd_meter_create(h, "BYTO");
-    face->meter[FM_INTI] = ccnd_meter_create(h, "INTI");
-    face->meter[FM_INTO] = ccnd_meter_create(h, "INTO");
-    face->meter[FM_DATI] = ccnd_meter_create(h, "DATI");
-    face->meter[FM_DATO] = ccnd_meter_create(h, "DATO");
+    face->meter[FM_BYTI] = ccnd_meter_create(h, "bytein");
+    face->meter[FM_BYTO] = ccnd_meter_create(h, "byteout");
+    face->meter[FM_INTI] = ccnd_meter_create(h, "intrin");
+    face->meter[FM_INTO] = ccnd_meter_create(h, "introut");
+    face->meter[FM_DATI] = ccnd_meter_create(h, "datain");
+    face->meter[FM_DATO] = ccnd_meter_create(h, "dataout");
     register_new_face(h, face);
     return (face->faceid);
 }

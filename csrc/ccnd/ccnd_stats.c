@@ -51,7 +51,7 @@
  */
 struct ccnd_meter {
     uintmax_t total;
-    char what[4];
+    char what[8];
     unsigned rate; /** a scale factor applies */
     unsigned lastupdate;
 };
@@ -434,11 +434,26 @@ collect_stats_html(struct ccnd_handle *h)
 /* XML formatting */
 
 static void
+collect_meter_xml(struct ccnd_handle *h, struct ccn_charbuf *b, struct ccnd_meter *m)
+{
+    uintmax_t total;
+    unsigned rate;
+    
+    if (m == NULL)
+        return;
+    total = ccnd_meter_total(m);
+    rate = ccnd_meter_rate(h, m);
+    ccn_charbuf_putf(b, "<%s><total>%ju</total><persec>%u</persec></%s>",
+        m->what, total, rate, m->what);
+}
+
+static void
 collect_faces_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
 {
     int i;
-    struct ccn_charbuf *nodebuf;
+    int m;
     int port;
+    struct ccn_charbuf *nodebuf;
     
     nodebuf = ccn_charbuf_create();
     ccn_charbuf_putf(b, "<faces>");
@@ -463,6 +478,10 @@ collect_faces_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
             if (face->sendface != face->faceid &&
                 face->sendface != CCN_NOFACEID)
                 ccn_charbuf_putf(b, "<via>%u</via>", face->sendface);
+            ccn_charbuf_putf(b, "<meters>");
+            for (m = 0; m < CCND_FACE_METER_N; m++)
+                collect_meter_xml(h, b, face->meter[m]);
+            ccn_charbuf_putf(b, "</meters>");
             ccn_charbuf_putf(b, "</face>" NL);
         }
     }
@@ -608,7 +627,7 @@ ccnd_meter_init(struct ccnd_handle *h, struct ccnd_meter *m, const char *what)
         return;
     memset(m, 0, sizeof(m));
     if (what != NULL)
-        snprintf(m->what, sizeof(m->what), "%s", what);
+        strncpy(m->what, what, sizeof(m->what)-1);
     ccnd_meter_bump(h, m, 0);
 }
 
