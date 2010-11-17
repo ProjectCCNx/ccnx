@@ -1,5 +1,5 @@
-/**
- * @file ccnd.c
+/*
+ * ccnd/ccnd.c
  * 
  * Main program of ccnd - the CCNx Daemon
  *
@@ -16,7 +16,11 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
- 
+
+/**
+ * Main program of ccnd - the CCNx Daemon
+ */
+
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -240,6 +244,12 @@ use_i:
     a[i] = face;
     h->face_rover = i + 1;
     face->faceid = i | h->face_gen;
+    face->meter[FM_BYTI] = ccnd_meter_create(h, "bytein");
+    face->meter[FM_BYTO] = ccnd_meter_create(h, "byteout");
+    face->meter[FM_INTI] = ccnd_meter_create(h, "intrin");
+    face->meter[FM_INTO] = ccnd_meter_create(h, "introut");
+    face->meter[FM_DATI] = ccnd_meter_create(h, "datain");
+    face->meter[FM_DATO] = ccnd_meter_create(h, "dataout");
     register_new_face(h, face);
     return (face->faceid);
 }
@@ -343,6 +353,7 @@ finalize_face(struct hashtb_enumerator *e)
     unsigned i = face->faceid & MAXFACES;
     enum cq_delay_class c;
     int recycle = 0;
+    int m;
     
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
         if ((face->flags & CCN_FACE_UNDECIDED) == 0)
@@ -365,8 +376,8 @@ finalize_face(struct hashtb_enumerator *e)
     }
     else if (face->faceid != CCN_NOFACEID)
         ccnd_msg(h, "orphaned face %u", face->faceid);
-    ccn_charbuf_destroy(&face->inbuf);
-    ccn_charbuf_destroy(&face->outbuf);
+    for (m = 0; m < CCND_FACE_METER_N; m++)
+        ccnd_meter_destroy(&face->meter[m]);
 }
 
 static struct content_entry *
@@ -1121,6 +1132,7 @@ send_content(struct ccnd_handle *h, struct face *face, struct content_entry *con
     if ((face->flags & CCN_FACE_LINK) != 0)
         ccn_charbuf_append_closer(c);
     ccnd_send(h, face, c->buf, c->length);
+    ccnd_meter_bump(h, face->meter[FM_DATO], 1);
     h->content_items_sent += 1;
     charbuf_release(h, c);
 }
@@ -1555,6 +1567,7 @@ ccn_stuff_interest(struct ccnd_handle *h,
                 p->sent++;
                 n_stuffed++;
                 ccn_charbuf_append(c, p->interest_msg, p->size);
+                ccnd_meter_bump(h, face->meter[FM_INTO], 1);
                 h->interests_stuffed++;
                 if (h->debug & 2)
                     ccnd_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
@@ -2741,6 +2754,7 @@ do_propagate(struct ccn_schedule *sched,
                 next_delay = special_delay = ev->evint;
             }
             stuff_and_send(h, face, pe->interest_msg, pe->size);
+            ccnd_meter_bump(h, face->meter[FM_INTO], 1);
         }
         else
             ccn_indexbuf_remove_first_match(pe->outbound, faceid);
@@ -3248,8 +3262,11 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         res = ccn_parse_interest(msg, size, pi, comps);
     if (res < 0) {
         ccnd_msg(h, "error parsing Interest - code %d", res);
+        ccn_indexbuf_destroy(&comps);
+        return;
     }
-    else if (pi->scope >= 0 && pi->scope < 2 &&
+    ccnd_meter_bump(h, face->meter[FM_INTI], 1);
+    if (pi->scope >= 0 && pi->scope < 2 &&
              (face->flags & CCN_FACE_GG) == 0) {
         ccnd_debug_ccnb(h, __LINE__, "interest_outofscope", face, msg, size);
         h->interests_dropped += 1;
@@ -3506,6 +3523,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         ccnd_msg(h, "error parsing ContentObject - code %d", res);
         goto Bail;
     }
+    ccnd_meter_bump(h, face->meter[FM_DATI], 1);
     if (comps->n < 1 ||
         (keysize = comps->buf[comps->n - 1]) > 65535 - 36) {
         ccnd_msg(h, "ContentObject with keysize %lu discarded",
@@ -3650,6 +3668,7 @@ process_input_message(struct ccnd_handle *h, struct face *face,
         face->flags &= ~CCN_FACE_UNDECIDED;
         if ((face->flags & CCN_FACE_LOOPBACK) != 0)
             face->flags |= CCN_FACE_GG;
+        /* YYY This is the first place that we know that an inbound stream face is speaking CCNx protocol. */
         register_new_face(h, face);
     }
     d->state |= CCN_DSTATE_PAUSE;
@@ -3751,6 +3770,13 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
     return(source);
 }
 
+/**
+ * Break up data in a face's input buffer buffer into individual messages,
+ * and call process_input_message on each one.
+ *
+ * This is used to handle things originating from the internal client - 
+ * its output is input for face 0.
+ */
 static void
 process_input_buffer(struct ccnd_handle *h, struct face *face)
 {
@@ -3773,12 +3799,20 @@ process_input_buffer(struct ccnd_handle *h, struct face *face)
     if (d->index != size) {
         ccnd_msg(h, "protocol error on face %u (state %d), discarding %d bytes",
                      face->faceid, d->state, (int)(size - d->index));
-        
+        // XXX - perhaps this should be a fatal error.
     }
     face->inbuf->length = 0;
     memset(d, 0, sizeof(*d));
 }
 
+/**
+ * Process the input from a socket.
+ *
+ * The socket has been found ready for input by the poll call.
+ * Decide what face it corresponds to, and after checking for exceptional
+ * cases, receive data, parse it into ccnb-encoded messages, and call
+ * process_input_message for each one.
+ */
 static void
 process_input(struct ccnd_handle *h, int fd)
 {
@@ -3827,9 +3861,11 @@ process_input(struct ccnd_handle *h, int fd)
         shutdown_client_fd(h, fd);
     else {
         source = get_dgram_source(h, face, addr, addrlen, (res == 1) ? 1 : 2);
+        ccnd_meter_bump(h, source->meter[FM_BYTI], res);
         source->recvcount++;
-        source->surplus = 0;
+        source->surplus = 0; // XXX - we don't actually use this, except for some obscure messages.
         if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
+            // XXX - If the initial heartbeat gets missed, we don't realize the locality of the face.
             if (h->debug & 128)
                 ccnd_msg(h, "%d-byte heartbeat on %d", (int)res, source->faceid);
             return;
@@ -3854,13 +3890,13 @@ process_input(struct ccnd_handle *h, int fd)
                 return;
             }
             dres = ccn_skeleton_decode(d,
-                    face->inbuf->buf + d->index,
-                    res = face->inbuf->length - d->index);
+                    face->inbuf->buf + d->index, // XXX - msgstart and d->index are the same here - use msgstart
+                    res = face->inbuf->length - d->index);  // XXX - why is res set here?
         }
         if ((face->flags & CCN_FACE_DGRAM) != 0) {
             ccnd_msg(h, "protocol error on face %u, discarding %u bytes",
                 source->faceid,
-                (unsigned)(face->inbuf->length));
+                (unsigned)(face->inbuf->length));  // XXX - Should be face->inbuf->length - d->index (or msgstart)
             face->inbuf->length = 0;
             /* XXX - should probably ignore this source for a while */
             return;
@@ -3889,6 +3925,7 @@ process_internal_client_buffer(struct ccnd_handle *h)
     face->inbuf = ccn_grab_buffered_output(h->internal_client);
     if (face->inbuf == NULL)
         return;
+    ccnd_meter_bump(h, face->meter[FM_BYTI], face->inbuf->length);
     process_input_buffer(h, face);
     ccn_charbuf_destroy(&(face->inbuf));
 }
@@ -3966,6 +4003,7 @@ ccnd_send(struct ccnd_handle *h,
         return;
     }
     if (face == h->face0) {
+        ccnd_meter_bump(h, face->meter[FM_BYTO], size);
         ccn_dispatch_message(h->internal_client, (void *)data, size);
         process_internal_client_buffer(h);
         return;
@@ -3975,6 +4013,8 @@ ccnd_send(struct ccnd_handle *h,
     else
         res = sendto(sending_fd(h, face), data, size, 0,
                      face->addr, face->addrlen);
+    if (res > 0)
+        ccnd_meter_bump(h, face->meter[FM_BYTO], res);
     if (res == size)
         return;
     if (res == -1) {
@@ -4473,6 +4513,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->ticktock.gettime = &ccnd_gettime;
     h->ticktock.data = h;
     h->sched = ccn_schedule_create(h, &h->ticktock);
+    h->starttime = h->sec;
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
     h->data_pause_microsec = 10000;

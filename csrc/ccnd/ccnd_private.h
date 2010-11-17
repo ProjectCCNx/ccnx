@@ -44,6 +44,7 @@
 struct ccn_charbuf;
 struct ccn_indexbuf;
 struct hashtb;
+struct ccnd_meter;
 
 /*
  * These are defined in this header.
@@ -89,6 +90,7 @@ struct ccnd_handle {
     struct ccn_gettime ticktock;    /**< our time generator */
     long sec;                       /**< cached gettime seconds */
     unsigned usec;                  /**< cached gettime microseconds */
+    long starttime;                 /**< ccnd start time, in seconds */
     struct ccn_schedule *sched;     /**< our schedule */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
@@ -169,6 +171,19 @@ enum cq_delay_class {
 };
 
 /**
+ * Face meter index
+ */
+enum ccnd_face_meter_index {
+    FM_BYTI,
+    FM_BYTO,
+    FM_DATI,
+    FM_INTO,
+    FM_DATO,
+    FM_INTI,
+    CCND_FACE_METER_N
+};
+
+/**
  * One of our active faces
  */
 struct face {
@@ -186,6 +201,7 @@ struct face {
     const struct sockaddr *addr;
     socklen_t addrlen;
     int pending_interests;
+    struct ccnd_meter *meter[CCND_FACE_METER_N];
 };
 
 /** face flags */
@@ -305,6 +321,19 @@ struct ccn_forwarding {
     int expires;                 /**< time remaining, in seconds */
     struct ccn_forwarding *next;
 };
+
+/* create and destroy procs for separately allocated meters */
+struct ccnd_meter *ccnd_meter_create(struct ccnd_handle *h, const char *what);
+void ccnd_meter_destroy(struct ccnd_meter **);
+
+/* for meters kept within other structures */
+void ccnd_meter_init(struct ccnd_handle *h, struct ccnd_meter *m, const char *what);
+
+/* count something (messages, packets, bytes), getting time info from h */
+void ccnd_meter_bump(struct ccnd_handle *h, struct ccnd_meter *m, unsigned amt);
+
+unsigned ccnd_meter_rate(struct ccnd_handle *h, struct ccnd_meter *m);
+uintmax_t ccnd_meter_total(struct ccnd_meter *m);
 
 /**
  * @def CCN_FORW_ACTIVE         1
