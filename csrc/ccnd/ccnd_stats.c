@@ -478,10 +478,12 @@ collect_faces_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
             if (face->sendface != face->faceid &&
                 face->sendface != CCN_NOFACEID)
                 ccn_charbuf_putf(b, "<via>%u</via>", face->sendface);
-            ccn_charbuf_putf(b, "<meters>");
-            for (m = 0; m < CCND_FACE_METER_N; m++)
-                collect_meter_xml(h, b, face->meter[m]);
-            ccn_charbuf_putf(b, "</meters>");
+            if (face != NULL && (face->flags & CCN_FACE_PASSIVE) == 0) {
+                ccn_charbuf_putf(b, "<meters>");
+                for (m = 0; m < CCND_FACE_METER_N; m++)
+                    collect_meter_xml(h, b, face->meter[m]);
+                ccn_charbuf_putf(b, "</meters>");
+            }
             ccn_charbuf_putf(b, "</face>" NL);
         }
     }
