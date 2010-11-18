@@ -61,7 +61,7 @@ build.xml: build.xml.in local.properties
 CCNXOBJDIRS = bin/ndk/local/armeabi/objs/ccnd
 
 checkccnxdeps:
-	touch -r `find ../../../ccnx/csrc -name \*.h | xargs ls -t | head -n 1` ccnxheader.date
+	touch -r `find ../../csrc -name \*.h | xargs ls -t | head -n 1` ccnxheader.date
 	-if [ -d bin/ndk/local/armeabi/objs ]; then \
 		find $(CCNXOBJDIRS) \! -newer ccnxheader.date -name \*.o -print -exec rm {} \; ; fi
 	rm ccnxheader.date
