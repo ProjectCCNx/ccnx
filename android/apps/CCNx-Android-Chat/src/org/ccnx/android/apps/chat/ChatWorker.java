@@ -70,9 +70,11 @@ public class ChatWorker implements Runnable, CCNxServiceCallback, CCNChatCallbac
 	 * @param namespace The chat ccnx:/ namespace
 	 * @throws MalformedContentNameStringException 
 	 */
-	public synchronized void start(String username, String namespace) {
+	public synchronized void start(String username, String namespace, String remotehost, String remoteport) {
 		if( false == _running ) {
 			try {
+				_remotehost = remotehost;
+				_remoteport = remoteport;
 				_chat = new CCNChatNet(this, namespace);
 				_running = true;
 				_finished = false;
@@ -153,6 +155,9 @@ public class ChatWorker implements Runnable, CCNxServiceCallback, CCNChatCallbac
 	protected final Thread _thd;
 	protected boolean _running = false;
 	protected boolean _finished = true;
+	
+	protected String _remotehost = null;
+	protected String _remoteport = "9695";
 
 	/*********************************************/
 	// These are all run in the CCN thread
@@ -207,7 +212,12 @@ public class ChatWorker implements Runnable, CCNxServiceCallback, CCNChatCallbac
 			switch(st) {
 			case START_ALL_DONE:
 				try {
-					SimpleFaceControl.getInstance().openMulicastInterface();
+					// If we specified a remote host, use it not multicast
+					if( null != _remotehost && _remotehost.length() > 0 ) {
+						SimpleFaceControl.getInstance().connectTcp(_remotehost, Integer.parseInt(_remoteport));
+					} else {
+						SimpleFaceControl.getInstance().openMulicastInterface();
+					}
 					_chatCallback.ccnxServices(true);
 				} catch (CCNDaemonException e) {
 					// TODO Auto-generated catch block
