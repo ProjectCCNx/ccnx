@@ -31,7 +31,7 @@ done
 if [ ! -z "$host" ]; then
 	set -- -T "$host"
 else
-	shift
+	shift $#
 fi
 
 ccndsmoketest "$@" status
