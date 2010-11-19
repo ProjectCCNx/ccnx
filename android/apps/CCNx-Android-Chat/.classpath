@@ -5,7 +5,7 @@
 	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/CCNx-Java"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/CCNx-Android-Lib"/>
-	<classpathentry kind="src" path="CCNx-Android-Lib_src"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ccnChat"/>
+	<classpathentry kind="src" path="CCNx-Android-Lib_src"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

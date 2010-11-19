@@ -35,6 +35,7 @@ import org.ccnx.ccn.impl.support.Log;
 public class SimpleFaceControl {
 	public final static String CCN_MULTICAST_IP = "224.0.23.170";
 	public final static int CCN_PORT = 9695;
+	public final static int CCN_MULTICAST_PORT = 59695;
 
 	public static SimpleFaceControl getInstance() throws CCNDaemonException {
 		return getInstance(CCNHandle.getHandle());
@@ -60,7 +61,7 @@ public class SimpleFaceControl {
 	 * @throws CCNDaemonException 
 	 */
 	public int openMulicastInterface() throws CCNDaemonException {
-		return createFaceAndRegistration(NetworkProtocol.UDP, CCN_MULTICAST_IP, CCN_PORT, "ccnx:/");
+		return createFaceAndRegistration(NetworkProtocol.UDP, CCN_MULTICAST_IP, CCN_MULTICAST_PORT, "ccnx:/");
 	}
 
 	/**
