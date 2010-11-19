@@ -75,11 +75,13 @@ public class ChatScreen extends Activity implements OnKeyListener, ChatCallback 
 		ScreenOutput("Starting the CCN listen thread\n");
 
 		Intent i = this.getIntent();
-		String namespace = i.getStringExtra("namespace");
-		String username = i.getStringExtra("handle");
+		String namespace = i.getStringExtra(CcnxChatMain.PREF_NAMESPACE);
+		String username = i.getStringExtra(CcnxChatMain.PREF_HANDLE);
+		String remotehost = i.getStringExtra(CcnxChatMain.PREF_REMOTEHOST);
+		String remoteport = i.getStringExtra(CcnxChatMain.PREF_REMOTEPORT);
 
 		_worker = new ChatWorker(this, this);
-		_worker.start(username, namespace);
+		_worker.start(username, namespace, remotehost, remoteport);
 
 		// Do these CCNx operations after we created ChatWorker
 		ScreenOutput("User name = " + UserConfiguration.userName() + "\n");
@@ -217,7 +219,7 @@ public class ChatScreen extends Activity implements OnKeyListener, ChatCallback 
 	@Override
 	public void ccnxServices(boolean ok) {
 		if ( ok ) {
-			recv("CCN Services now ready -- let's chat!");
+			recv("CCN Services now ready -- let's chat!\n");
 			
 			// activate the edit text by sending a Runnable to
 			// the UI handler.
@@ -231,7 +233,7 @@ public class ChatScreen extends Activity implements OnKeyListener, ChatCallback 
 					}
 			);
 		} else {
-			recv("CCN Service error, cannot chat!");
+			recv("CCN Service error, cannot chat!\n");
 		}
 	}
 }

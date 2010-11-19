@@ -23,6 +23,7 @@ import org.ccnx.ccn.config.UserConfiguration;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -48,8 +49,6 @@ public final class CcnxChatMain extends Activity implements OnClickListener{
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.ccnchat_settings);
 		
-		String devid = "Android";
-		
 		Log.i(TAG, "onCreate()");
 		
 		Button button = (Button) findViewById(R.id.btnConnect);
@@ -57,20 +56,33 @@ public final class CcnxChatMain extends Activity implements OnClickListener{
 			button.setOnClickListener(this);
 		else
 			Log.e(TAG, "Could not find btnConect!");
+
+		_etNamespace = (EditText) findViewById(R.id.etNamespace);
+		_etHandle = (EditText) findViewById(R.id.etHandle);
+		_etRemoteHost = (EditText) findViewById(R.id.etRemoteHost);
+		_etRemotePort = (EditText) findViewById(R.id.etRemotePort);
 		
+
+
 		try {
 			TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
 			String s = tm.getLine1Number();
 			if ( null != s && s.length() > 0 )
-				devid = s;
+				DEFAULT_HANDLE = s;
 			
 		} catch(Exception e) {
 			Log.e(TAG, "TelephoneManager error", e);
 			e.printStackTrace();
 		}
+
 		
-		EditText etHandle = (EditText) findViewById(R.id.etHandle);
-		etHandle.setText(devid);		
+		restorePreferences();
+	}
+	
+	@Override
+	public void onStop() {
+		super.onStop();
+		savePreferences();
 	}
 
 	public void onClick(View v) {
@@ -92,27 +104,42 @@ public final class CcnxChatMain extends Activity implements OnClickListener{
 	
 	
 	// ==========================================================
+	// Internal stuff
+	private static final String PREFS_NAME="ccnChatPrefs";
+	
+	private static final String DEFAULT_NAMESPACE="/ccnchat";
+	private String DEFAULT_HANDLE="Android";
+	private static final String DEFAULT_REMOTEHOST="";
+	private static final String DEFAULT_REMOTEPORT="9695";
+	
+	protected static final String PREF_NAMESPACE="namespace";
+	protected static final String PREF_HANDLE="handle";
+	protected static final String PREF_REMOTEHOST="remotehost";
+	protected static final String PREF_REMOTEPORT="remoteport";
+	
+	private EditText _etNamespace;
+	private EditText _etHandle;
+	private EditText _etRemoteHost;
+	private EditText _etRemotePort;
 
 	/**
 	 * Start the ChatScreen passing our settings
 	 */
 	private void connect() {
 		try {
-			
 			File ff = getDir("storage", Context.MODE_WORLD_READABLE);
 			Log.i(TAG,"getDir = " + ff.getAbsolutePath());
 			
 			UserConfiguration.setUserConfigurationDirectory( ff.getAbsolutePath() );
 			
-			EditText etNamespace = (EditText) findViewById(R.id.etNamespace);
-			EditText etHandle = (EditText) findViewById(R.id.etHandle);
-
-			String handle = etHandle.getText().toString();
+			String handle = _etHandle.getText().toString();
 			UserConfiguration.setUserName( handle );
 
 			Intent i = new Intent(this, ChatScreen.class);
-			i.putExtra("namespace", etNamespace.getText().toString());
-			i.putExtra("handle", handle);
+			i.putExtra(PREF_NAMESPACE, _etNamespace.getText().toString());
+			i.putExtra(PREF_HANDLE, handle);
+			i.putExtra(PREF_REMOTEHOST, _etRemoteHost.getText().toString());
+			i.putExtra(PREF_REMOTEPORT, _etRemotePort.getText().toString());
 			this.startActivity(i);
 
 		} catch(Exception e) {
@@ -121,5 +148,29 @@ public final class CcnxChatMain extends Activity implements OnClickListener{
 		}
 		
 	}
+	
+	private void restorePreferences() {
+		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+		String namespace = settings.getString(PREF_NAMESPACE, DEFAULT_NAMESPACE);
+		String handle = settings.getString(PREF_HANDLE, DEFAULT_HANDLE);
+		String remotehost = settings.getString(PREF_REMOTEHOST, DEFAULT_REMOTEHOST);
+		String remoteport = settings.getString(PREF_REMOTEPORT, DEFAULT_REMOTEPORT);
+		
+		_etHandle.setText(handle);
+		_etNamespace.setText(namespace);
+		_etRemoteHost.setText(remotehost);
+		_etRemotePort.setText(remoteport);
+		
+	}
     
+	private void savePreferences() {
+		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+		SharedPreferences.Editor editor = settings.edit();
+		
+		editor.putString(PREF_NAMESPACE, _etNamespace.getText().toString());
+		editor.putString(PREF_HANDLE, _etHandle.getText().toString());
+		editor.putString(PREF_REMOTEHOST, _etRemoteHost.getText().toString());
+		editor.putString(PREF_REMOTEPORT, _etRemotePort.getText().toString());
+		editor.commit();
+	}
 }

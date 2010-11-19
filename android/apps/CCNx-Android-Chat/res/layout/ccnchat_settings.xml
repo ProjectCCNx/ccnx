@@ -28,5 +28,57 @@
 			android:layout_width="wrap_content" 
 			android:id="@+id/btnConnect">
 	</Button>
+	
+	<LinearLayout android:id="@+id/LinearLayout03"
+		android:layout_height="wrap_content" 
+		android:layout_width="fill_parent"
+		android:layout_marginTop="20px"
+		android:layout_marginLeft="10px"
+		android:layout_marginRight="10px"
+		android:orientation="vertical"
+		android:background="#aaaaaa"
+		android:padding="5px">
+	
+		<TextView android:id="@+id/tvFaceInstrctions" android:layout_height="wrap_content"
+			android:text="@string/faceInstructions" 
+			android:gravity="center"
+			android:padding="2px" 
+			android:layout_width="wrap_content" 
+			android:textSize="6pt" 
+			android:textColor="#000000" />
+
+		<LinearLayout android:id="@+id/LinearLayout031"
+			android:layout_height="wrap_content" 
+			android:layout_width="fill_parent"
+			android:orientation="horizontal">
+		
+			<TextView android:id="@+id/tvRemoteHost" android:layout_height="wrap_content"
+				android:text="Remote host" android:layout_width="90px" 
+				android:textSize="6pt" 
+				android:textColor="#000000" 
+				android:gravity="center" />
+				
+			<EditText android:layout_height="wrap_content"
+				android:layout_width="fill_parent" android:id="@+id/etRemoteHost" android:textSize="6pt"
+				android:text="" android:inputType="text"/>
+		</LinearLayout>
+		
+		<LinearLayout android:id="@+id/LinearLayout031"
+			android:layout_height="wrap_content" 
+			android:layout_width="fill_parent"
+			android:orientation="horizontal">
+		
+			<TextView android:id="@+id/tvRemotePort" android:layout_height="wrap_content"
+				android:text="Remote port" android:layout_width="90px" 
+				android:textSize="6pt" 
+				android:textColor="#000000" 
+				android:gravity="center" />
+				
+			<EditText android:layout_height="wrap_content"
+				android:layout_width="fill_parent" android:id="@+id/etRemotePort" android:textSize="6pt"
+				android:text="9695" android:inputType="number"/>
+		</LinearLayout>
+		
+	</LinearLayout>
 		
 </LinearLayout>

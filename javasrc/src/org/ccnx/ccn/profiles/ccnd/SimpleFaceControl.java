@@ -83,7 +83,19 @@ public class SimpleFaceControl {
 	 * @throws CCNDaemonException 
 	 */
 	public int connectTcp(String host) throws CCNDaemonException {
-		return createFaceAndRegistration(NetworkProtocol.TCP, host, CCN_PORT, "ccnx:/");		
+		return connectTcp(host, CCN_PORT);		
+	}
+	
+	/**
+	 * Open a unicast connection to the given host.
+	 * prefix = /
+	 * @param port the ccnd port on the remote system
+	 * @return faceId
+	 * @throws CCNDaemonException 
+	 * @throws CCNDaemonException 
+	 */
+	public int connectTcp(String host, int port) throws CCNDaemonException {
+		return createFaceAndRegistration(NetworkProtocol.TCP, host, port, "ccnx:/");		
 	}
 
 	/**
