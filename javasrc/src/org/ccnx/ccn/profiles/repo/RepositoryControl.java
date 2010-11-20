@@ -281,7 +281,8 @@ public class RepositoryControl {
 		if (syncedObjects.contains(fullName)) {
 			if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
 				Log.info(Log.FAC_IO, "Sync: skipping already-synced object {0}", fullName);
-			}			
+			}
+			return true;
 		}
 		
 		// INCORRECT: the protocol is using a nonce.
