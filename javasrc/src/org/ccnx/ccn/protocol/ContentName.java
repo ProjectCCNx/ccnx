@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -48,28 +48,28 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Official CCN URI scheme.
 	 */
 	public static final String SCHEME = "ccnx:";
-	
+
 	/**
 	 * This scheme has been deprecated, but we still want to accept it.
 	 */
 	public static final String ORIGINAL_SCHEME = "ccn:";
-	
+
 	public static final String SEPARATOR = "/";
 	public static final ContentName ROOT = new ContentName(0, (ArrayList<byte []>)null);
-	
+
 	protected ArrayList<byte []>  _components;
 	public static class DotDotComponent extends Exception { // Need to strip off a component
 		private static final long serialVersionUID = 4667513234636853164L;
 	}; 
-    private static final char HEX_DIGITS[] = {
-    	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-    };
-    
-    // Constructors
+	private static final char HEX_DIGITS[] = {
+		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+	};
+
+	// Constructors
 	public ContentName() {
 		this(0, (ArrayList<byte[]>)null);
 	}
-		
+
 	public ContentName(byte components[][]) {
 		if (null == components) {
 			_components = null;
@@ -80,7 +80,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			}
 		}
 	}
-		
+
 	/**
 	 * Constructor given another ContentName, appends an extra component.
 	 * @param parent used for the base of the name, if null, no prefix
@@ -89,15 +89,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public ContentName(ContentName parent, byte [] name) {
 		this(((parent != null) ? parent.count() : 0) +
-						    ((null != name) ? 1 : 0),
-			 ((parent != null) ? parent.components() : null));
+				((null != name) ? 1 : 0),
+				((parent != null) ? parent.components() : null));
 		if (null != name) {
 			byte [] c = new byte[name.length];
 			System.arraycopy(name,0,c,0,name.length);
 			_components.add(c);
 		}
 	}
-	
+
 	/**
 	 * Constructor given another ContentName, appends extra components.
 	 * @param parent used for the base of the name.
@@ -116,7 +116,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			}
 		}
 	}
-	
+
 	/**
 	 * Now that components() returns an ArrayList<byte []>, make a constructor that takes that
 	 * as input.
@@ -124,8 +124,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param childComponents the additional name components to add at the end of parent
 	 */
 	public ContentName(ContentName parent, ArrayList<byte []> childComponents) {
-		this(parent.count() + 
-				((null != childComponents) ? childComponents.size() : 0), parent.components());
+		this(parent.count() + ((null != childComponents) ? childComponents.size() : 0), parent.components());
 		if (null != childComponents) {
 			for (byte [] b : childComponents) {
 				if (null == b)
@@ -146,20 +145,18 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public ContentName(ContentName parent, int start, ArrayList<byte []> childComponents) {
 		// shallow copy
-		this(parent.count(), parent.components());
-		
+		this(parent.count() + ((null != childComponents) ? childComponents.size() : 0) - start, parent.components());
 		if (null != childComponents) {
 			for( int i = start; i < childComponents.size(); i++ ) {
 				byte [] b = childComponents.get(i);
 				if (null == b)
 					continue;
-				
 				// shallow copy
 				_components.add(childComponents.get(i));
 			}
 		}
 	}
-	
+
 	public ContentName(ContentName parent, byte[] name1, byte[] name2) {
 		this (parent.count() +
 				((null != name1) ? 1 : 0) +
@@ -179,6 +176,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	/**
 	 * Constructor for extending or contracting names.
 	 * @param count only this number of name components are taken from components.
+	 * If count exceeds the number of components passed all components will be
+	 * included and additional space will be preallocated in the representation
+	 * for subsequent addition of components.
 	 * @param components
 	 */
 	public ContentName(int count, byte components[][]) {
@@ -186,9 +186,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			_components = new ArrayList<byte []>(0);
 		} else {
 			int max = (null == components) ? 0 : 
-				  		((count > components.length) ? 
-				  				components.length : count);
-			_components = new ArrayList<byte []>(max);
+				((count > components.length) ? 
+						components.length : count);
+			_components = new ArrayList<byte []>(count);
 			for (int i=0; i < max; ++i) {
 				byte [] c = new byte[components[i].length];
 				System.arraycopy(components[i],0,c,0,components[i].length);
@@ -209,15 +209,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			_components = new ArrayList<byte[]>(0);
 		} else {
 			int max = (null == components) ? 0 : 
-				  		((count > components.size()) ? 
-				  				components.size() : count);
-			_components = new ArrayList<byte []>(max);
+				((count > components.size()) ? 
+						components.size() : count);
+			_components = new ArrayList<byte []>(count);
 			for (int i=0; i < max; ++i) {
 				_components.add(components.get(i));
 			}
 		}
 	}
-	
+
 	/**
 	 * Subname constructor for extending or contracting names, extracts particular
 	 * subcomponents from an existing set.
@@ -233,8 +233,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			_components = new ArrayList<byte[]>(0);
 		} else {
 			int max = (null == components) ? 0 : 
-				  		((count > (components.size()-start)) ? 
-				  				(components.size()-start) : count);
+				((count > (components.size()-start)) ? 
+						(components.size()-start) : count);
 			_components = new ArrayList<byte []>(max);
 			for (int i=start; i < max+start; ++i) {
 				_components.add(components.get(i));
@@ -250,7 +250,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public ContentName(ContentName otherName) {
 		this(((null == otherName) ? 0 : otherName.count()), ((null == otherName) ? null : otherName.components()));
 	}
-	
+
 	/**
 	 * Return the <code>ContentName</code> represented by the given URI.
 	 * A CCN <code>ContentName</code> consists of a sequence of binary components
@@ -319,9 +319,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public static ContentName fromURI(String name) throws MalformedContentNameStringException {
 		try {
-			ContentName result = new ContentName();
-			if((name == null) || (name.length() == 0)) {
-				result._components = null;
+			ContentName result;
+			if ((name == null) || (name.length() == 0)) {
+				result = new ContentName(0, (ArrayList<byte[]>)null);
 			} else {
 				String[] parts;
 				String justname = name;
@@ -338,9 +338,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				parts = justname.split(SEPARATOR);
 				if (parts.length == 0) {
 					// We've been asked to parse the root name.
-					result._components = new ArrayList<byte []>(0);
+					result = new ContentName(0, (ArrayList<byte[]>)null);
 				} else {
-					result._components = new ArrayList<byte []>(parts.length - 1);
+					result = new ContentName(parts.length - 1, (ArrayList<byte[]>)null);
 				}
 				// Leave off initial empty component
 				for (int i=1; i < parts.length; ++i) {
@@ -364,7 +364,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			throw new MalformedContentNameStringException(e.getMessage());
 		}
 	}
-	
+
 	/**
 	 * Given an array of strings, apply URI decoding and create a ContentName
 	 * @see fromURI(String)
@@ -372,11 +372,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public static ContentName fromURI(String parts[]) throws MalformedContentNameStringException {
 		try {
-			ContentName result = new ContentName();
+			ContentName result;
 			if ((parts == null) || (parts.length == 0)) {
-				result._components = null;
+				result = new ContentName(0, (ArrayList<byte[]>)null);
 			} else {
-				result._components = new ArrayList<byte []>(parts.length);
+				result = new ContentName(parts.length, (ArrayList<byte[]>)null);
 				for (int i=0; i < parts.length; ++i) {
 					try {
 						byte[] component = componentParseURI(parts[i]);
@@ -410,7 +410,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public static ContentName fromURI(ContentName parent, String name) throws MalformedContentNameStringException {
 		try {
-			ContentName result = new ContentName(parent.count(), parent.components());
+			ContentName result = new ContentName(parent.count() + ((null != name) ? 1 : 0), parent.components());
 			if (null != name) {
 				try {
 					byte[] decodedName = componentParseURI(name);
@@ -431,7 +431,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			throw new MalformedContentNameStringException(e.getMessage());
 		}
 	}
-	
+
 	/**
 	 * Return the <code>ContentName</code> created from a native Java String.
 	 * In native strings only "/" is special, interpreted as component delimiter,
@@ -443,20 +443,20 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @throws MalformedContentNameStringException if name does not start with "/"
 	 */
 	public static ContentName fromNative(String name) throws MalformedContentNameStringException {
-		ContentName result = new ContentName();
+		ContentName result;
 		if (!name.startsWith(SEPARATOR)){
 			throw new MalformedContentNameStringException("ContentName native strings must begin with " + SEPARATOR);
 		}
 		if ((name == null) || (name.length() == 0)) {
-			result._components = null;
+			result = new ContentName(0, (ArrayList<byte[]>)null);
 		} else {
 			String[] parts;
 			parts = name.split(SEPARATOR);
 			if (parts.length == 0) {
 				// We've been asked to parse the root name.
-				result._components = new ArrayList<byte []>(0);
+				result = new ContentName(0, (ArrayList<byte[]>)null);
 			} else {
-				result._components = new ArrayList<byte []>(parts.length - 1);
+				result = new ContentName(parts.length - 1, (ArrayList<byte[]>)null);
 			}
 			// Leave off initial empty component
 			for (int i=1; i < parts.length; ++i) {
@@ -479,7 +479,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * <code>ContentName</code>
 	 */
 	public static ContentName fromNative(ContentName parent, String name) {
-		ContentName result = new ContentName(parent.count(), parent.components());
+		ContentName result = new ContentName(parent.count() + ((null != name) ? 1 : 0), parent.components());
 		if (null != name) {
 			byte[] decodedName = componentParseNative(name);
 			if (null != decodedName) {
@@ -488,23 +488,25 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		} 
 		return result;
 	}
-	
+
 	public static ContentName fromNative(ContentName parent, byte [] name) {
-		ContentName result = new ContentName(parent.count(), parent.components());
+		ContentName result = new ContentName(parent.count() + 1, parent.components());
 		result._components.add(name);
 		return result;
 	}
-	
+
 	public static ContentName fromNative(ContentName parent, String name1, String name2) {
 		return fromNative(parent, new String[]{name1, name2});
 	}
-	
+
 	public static ContentName fromNative(String [] parts) {
-		return fromNative(new ContentName(), parts);
+		return fromNative(null, parts);
 	}
 
 	public static ContentName fromNative(ContentName parent, String [] parts) {
-		ContentName result = new ContentName(parent.count(), parent._components);
+		int extra = (null != parts) ? parts.length : 0;
+		int parentCount = (null != parent) ? parent.count() : 0;
+		ContentName result = new ContentName(parentCount + extra, (null != parent) ? parent.components() : null);
 		if ((null != parts) && (parts.length > 0)) {
 			for (int i=0; i < parts.length; ++i) {
 				byte[] component = componentParseNative(parts[i]);
@@ -526,7 +528,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public ContentName parent() {
 		return new ContentName(count()-1, components());
 	}
-	
+
 	public String toString() {
 		if (null == _components) return null;
 		// toString of root name is "/"
@@ -538,7 +540,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 		return nameBuf.toString();
 	} 
-	
+
 	/**
 	 * Print as string with scheme in front. toString already
 	 * prints in URI format with leading /, just add scheme.
@@ -546,7 +548,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public String toURIString() {
 		return SCHEME + toString();
 	}
-	
+
 	/**
 	 * Print bytes in the URI Generic Syntax of RFC 3986 
 	 * including byte sequences that are not legal character
@@ -585,9 +587,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		// except that this is almost certainly less efficient and some versions of Java 
 		// have bugs that prevent flagging illegal overlong UTF-8 encodings (CVE-2008-2938).
 		// Also, it is much easier to verify what this is doing and compare to the C library implementation.
-        //
-        // Initial allocation is based on the documented behavior of StringBuilder's buffer
-        // expansion algorithm being 2+2*length if expansion is required.
+		//
+		// Initial allocation is based on the documented behavior of StringBuilder's buffer
+		// expansion algorithm being 2+2*length if expansion is required.
 		StringBuilder result = new StringBuilder((1 + 3 * bs.length) / 2);
 		for (i = 0; i < bs.length && bs[i] == '.'; i++) {
 			continue;
@@ -604,18 +606,18 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 					ch == '-' || ch == '.' || ch == '_' || ch == '~')
 				result.append(ch);
 			else {
-                result.append('%');
-                result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
-                result.append(HEX_DIGITS[ch & 0xF]);
-            }
+				result.append('%');
+				result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
+				result.append(HEX_DIGITS[ch & 0xF]);
+			}
 		}
 		return result.toString();
 	}
-	
+
 	public static String componentPrintURI(byte [] bs) {
 		return componentPrintURI(bs, 0, bs.length);
 	}
-	
+
 	public static String componentPrintNative(byte[] bs) {
 		// Native string print is the one place where we can just use
 		// Java native platform decoding.  Note that this is not 
@@ -624,67 +626,67 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		// that may be converted to e.g. Unicode "Replacement Character" U+FFFD.
 		return new String(bs);
 	}
-	
+
 	// UrlEncoded in case we want variant compatible with java.net.URLEncoder
 	// again in future
-//	protected static String componentPrintUrlEncoded(byte[] bs) {
-//		// NHB: Van is expecting the URI encoding rules
-//		if (null == bs || bs.length == 0) {
-//			// Empty component represented by three '.'
-//			return "...";
-//		}
-//		try {
-//			// Note that this would probably be more efficient as simple loop:
-//			// In order to use the URLEncoder class to handle the 
-//			// parts that are UTF-8 already, we decode the bytes into Java String
-//			// as though they were UTF-8.  Wherever that fails
-//			// (i.e. where byte sub-sequences are NOT legal UTF-8)
-//			// we directly convert those bytes to the %xy output format.
-//			// To get enough control over the decoding, we must use 
-//			// the charset decoder and NOT simply new String(bs) because
-//			// the String constructor will decode illegal UTF-8 sub-sequences
-//			// with Unicode "Replacement Character" U+FFFD.
-//			StringBuffer result = new StringBuffer();
-//			Charset charset = Charset.forName("UTF-8");
-//			CharsetDecoder decoder = charset.newDecoder();
-//			// Leave nothing to defaults: we want to be notified on anything illegal
-//			decoder.onMalformedInput(CodingErrorAction.REPORT);
-//			decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
-//			ByteBuffer input = ByteBuffer.wrap(bs);
-//			CharBuffer output = CharBuffer.allocate(((int)decoder.maxCharsPerByte()*bs.length)+1);
-//			while (input.remaining() > 0) {
-//				CoderResult cr = decoder.decode(input, output, true);
-//				assert(!cr.isOverflow());
-//				// URLEncode whatever was successfully decoded from UTF-8
-//				output.flip();
-//				result.append(URLEncoder.encode(output.toString(), "UTF-8"));
-//				output.clear();
-//				if (cr.isError()) {
-//					for (int i=0; i<cr.length(); i++) {
-//						result.append(String.format("%%%02X", input.get()));
-//					}
-//				}
-//			}
-//			int i = 0;
-//			for (i = 0; i < result.length() && result.charAt(i) == '.'; i++) {
-//				continue;
-//			}
-//			if (i == result.length()) {
-//				// all dots
-//				result.append("...");
-//			}
-//			return result.toString();
-//		} catch (UnsupportedCharsetException e) {
-//			throw new RuntimeException("UTF-8 not supported charset", e);
-//		} catch (UnsupportedEncodingException e) {
-//			throw new RuntimeException("UTF-8 not supported", e);
-//		}
-//	}
+	//	protected static String componentPrintUrlEncoded(byte[] bs) {
+	//		// NHB: Van is expecting the URI encoding rules
+	//		if (null == bs || bs.length == 0) {
+	//			// Empty component represented by three '.'
+	//			return "...";
+	//		}
+	//		try {
+	//			// Note that this would probably be more efficient as simple loop:
+	//			// In order to use the URLEncoder class to handle the 
+	//			// parts that are UTF-8 already, we decode the bytes into Java String
+	//			// as though they were UTF-8.  Wherever that fails
+	//			// (i.e. where byte sub-sequences are NOT legal UTF-8)
+	//			// we directly convert those bytes to the %xy output format.
+	//			// To get enough control over the decoding, we must use 
+	//			// the charset decoder and NOT simply new String(bs) because
+	//			// the String constructor will decode illegal UTF-8 sub-sequences
+	//			// with Unicode "Replacement Character" U+FFFD.
+	//			StringBuffer result = new StringBuffer();
+	//			Charset charset = Charset.forName("UTF-8");
+	//			CharsetDecoder decoder = charset.newDecoder();
+	//			// Leave nothing to defaults: we want to be notified on anything illegal
+	//			decoder.onMalformedInput(CodingErrorAction.REPORT);
+	//			decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
+	//			ByteBuffer input = ByteBuffer.wrap(bs);
+	//			CharBuffer output = CharBuffer.allocate(((int)decoder.maxCharsPerByte()*bs.length)+1);
+	//			while (input.remaining() > 0) {
+	//				CoderResult cr = decoder.decode(input, output, true);
+	//				assert(!cr.isOverflow());
+	//				// URLEncode whatever was successfully decoded from UTF-8
+	//				output.flip();
+	//				result.append(URLEncoder.encode(output.toString(), "UTF-8"));
+	//				output.clear();
+	//				if (cr.isError()) {
+	//					for (int i=0; i<cr.length(); i++) {
+	//						result.append(String.format("%%%02X", input.get()));
+	//					}
+	//				}
+	//			}
+	//			int i = 0;
+	//			for (i = 0; i < result.length() && result.charAt(i) == '.'; i++) {
+	//				continue;
+	//			}
+	//			if (i == result.length()) {
+	//				// all dots
+	//				result.append("...");
+	//			}
+	//			return result.toString();
+	//		} catch (UnsupportedCharsetException e) {
+	//			throw new RuntimeException("UTF-8 not supported charset", e);
+	//		} catch (UnsupportedEncodingException e) {
+	//			throw new RuntimeException("UTF-8 not supported", e);
+	//		}
+	//	}
 
 	public static String hexPrint(byte [] bs) {
 		if (null == bs)
 			return new String();
-		
+
 		BigInteger bi = new BigInteger(1,bs);
 		return bi.toString(16);
 	}
@@ -705,7 +707,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * the value obtained by removing three dots.
 	 * @param name a single component of a name, URI encoded
 	 * @return a name component
-     */
+	 */
 	public static byte[] componentParseURI(String name) throws DotDotComponent, URISyntaxException {
 		byte[] decodedName = null;
 		boolean alldots = true; // does this component contain only dots after unescaping?
@@ -792,64 +794,64 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		// Handle exception s around missing UTF-8
 		return DataUtils.getBytesFromUTF8String(name);
 	}
-	
+
 	// UrlEncoded in case we want to enable it again 
-//	protected static byte[] componentParseUrlEncoded(String name) throws DotDotComponent {
-//		byte[] decodedName = null;
-//		boolean alldots = true; // does this component contain only dots after unescaping?
-//		try {
-//			ByteBuffer result = ByteBuffer.allocate(name.length());
-//			for (int i = 0; i < name.length(); i++) {
-//				if (name.charAt(i) == '%') {
-//					// This is a byte string %xy where xy are hex digits
-//					// Since the input string must be compatible with the output
-//					// of componentPrint(), we may convert the byte values directly.
-//					// There is no need to go through a character representation.
-//					if (name.length()-1 < i+2) {
-//						throw new IllegalArgumentException("malformed %xy byte representation: too short");
-//					}
-//					if (name.charAt(i+1) == '-') {
-//						throw new IllegalArgumentException("malformed %xy byte representation: negative value not permitted");
-//					}
-//					try {
-//						result.put(new Integer(Integer.parseInt(name.substring(i+1, i+3),16)).byteValue());
-//					} catch (NumberFormatException e) {
-//						throw new IllegalArgumentException("malformed %xy byte representation: not legal hex number",e);
-//					}
-//					i+=2; // for loop will increment by one more to get net +3 so past byte string
-//				} else if (name.charAt(i) == '+') {
-//					// This is the one character translated to a different one
-//					result.put(" ".getBytes("UTF-8"));
-//				} else {
-//					// This character remains the same
-//					result.put(name.substring(i, i+1).getBytes("UTF-8"));
-//				}
-//				if (result.get(result.position()-1) != '.') {
-//					alldots = false;
-//				}
-//			}
-//			result.flip();
-//			if (alldots) {
-//				if (result.limit() <= 1) {
-//					return null;
-//				} else if (result.limit() == 2) {
-//					throw new DotDotComponent();
-//				} else {
-//					// Remove the three '.' extra
-//					result.limit(result.limit()-3);
-//				}
-//			}
-//			decodedName = new byte[result.limit()];
-//			System.arraycopy(result.array(), 0, decodedName, 0, result.limit());
-//		} catch (UnsupportedEncodingException e) {
-//			Library.severe("UTF-8 not supported.");
-//			throw new RuntimeException("UTF-8 not supported", e);
-//		}
-//		return decodedName;
-//	}
+	//	protected static byte[] componentParseUrlEncoded(String name) throws DotDotComponent {
+	//		byte[] decodedName = null;
+	//		boolean alldots = true; // does this component contain only dots after unescaping?
+	//		try {
+	//			ByteBuffer result = ByteBuffer.allocate(name.length());
+	//			for (int i = 0; i < name.length(); i++) {
+	//				if (name.charAt(i) == '%') {
+	//					// This is a byte string %xy where xy are hex digits
+	//					// Since the input string must be compatible with the output
+	//					// of componentPrint(), we may convert the byte values directly.
+	//					// There is no need to go through a character representation.
+	//					if (name.length()-1 < i+2) {
+	//						throw new IllegalArgumentException("malformed %xy byte representation: too short");
+	//					}
+	//					if (name.charAt(i+1) == '-') {
+	//						throw new IllegalArgumentException("malformed %xy byte representation: negative value not permitted");
+	//					}
+	//					try {
+	//						result.put(new Integer(Integer.parseInt(name.substring(i+1, i+3),16)).byteValue());
+	//					} catch (NumberFormatException e) {
+	//						throw new IllegalArgumentException("malformed %xy byte representation: not legal hex number",e);
+	//					}
+	//					i+=2; // for loop will increment by one more to get net +3 so past byte string
+	//				} else if (name.charAt(i) == '+') {
+	//					// This is the one character translated to a different one
+	//					result.put(" ".getBytes("UTF-8"));
+	//				} else {
+	//					// This character remains the same
+	//					result.put(name.substring(i, i+1).getBytes("UTF-8"));
+	//				}
+	//				if (result.get(result.position()-1) != '.') {
+	//					alldots = false;
+	//				}
+	//			}
+	//			result.flip();
+	//			if (alldots) {
+	//				if (result.limit() <= 1) {
+	//					return null;
+	//				} else if (result.limit() == 2) {
+	//					throw new DotDotComponent();
+	//				} else {
+	//					// Remove the three '.' extra
+	//					result.limit(result.limit()-3);
+	//				}
+	//			}
+	//			decodedName = new byte[result.limit()];
+	//			System.arraycopy(result.array(), 0, decodedName, 0, result.limit());
+	//		} catch (UnsupportedEncodingException e) {
+	//			Library.severe("UTF-8 not supported.");
+	//			throw new RuntimeException("UTF-8 not supported", e);
+	//		}
+	//		return decodedName;
+	//	}
 
 	public ArrayList<byte[]> components() { return _components; }
-	
+
 	/**
 	 * @return The number of components in the name.
 	 */
@@ -857,14 +859,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (null == _components) return 0;
 		return _components.size(); 
 	}
-	
+
 	/**
 	 * Append a segmented name to this name.
 	 */
 	public ContentName append(ContentName other) {
 		return new ContentName(this, other.components());
 	}
-	
+
 	/**
 	 * Append a name to this one, where the child name might have more than one
 	 * path component -- e.g. foo/bar/bash. Will add leading / to postfix for
@@ -888,13 +890,13 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if ((null == _components) || (i >= _components.size())) return null;
 		return _components.get(i);
 	}
-	
+
 	public final byte [] lastComponent() {
 		if (null == _components || _components.size() == 0)
 			return null;
 		return _components.get(_components.size()-1);
 	}
-	
+
 	/**
 	 * @return The i'th component, converted using URI encoding.
 	 */
@@ -902,23 +904,23 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if ((null == _components) || (i >= _components.size())) return null;
 		return componentPrintURI(_components.get(i));
 	}
-	
+
 	/**
 	 * Used by NetworkObject to decode the object from a network stream.
 	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
 	 */
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
-		
+
 		_components = new ArrayList<byte []>();
-		
+
 		while (decoder.peekStartElement(CCNProtocolDTags.Component)) {
 			_components.add(decoder.readBinaryElement(CCNProtocolDTags.Component));
 		}
-		
+
 		decoder.readEndElement();
 	}
-	
+
 	/**
 	 * Test if this name is a prefix of another name - i.e. do all components in this name exist in the
 	 * name being compared with. Note there do not need to be any more components in the name
@@ -928,7 +930,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public boolean isPrefixOf(ContentName name) {
 		return isPrefixOf(name, count());
 	}
-	
+
 	/**
 	 * Tests if the first n components are a prefix of name
 	 * @param name
@@ -941,11 +943,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return false;
 		for (int i=0; i < count; ++i) {
 			if (!Arrays.equals(name.component(i), component(i)))
-					return false;
+				return false;
 		}
 		return true;
 	}
-	
+
 	/**
 	 * Compare our name to the name of the ContentObject.
 	 * If our name is 1 component longer than the ContentObject
@@ -960,7 +962,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public boolean isPrefixOf(ContentObject other) {
 		return isPrefixOf(other, count());
 	}
-	
+
 	public boolean isPrefixOf(ContentObject other, int count) {
 		boolean match = isPrefixOf(other.name(), count);
 		if (match || count() != count)
@@ -987,18 +989,20 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		final ContentName other = (ContentName)obj;
 		if (other.count() != this.count())
 			return false;
-		for (int i=0; i < count(); ++i) {
+		int count = count();
+		for (int i=0; i < count; ++i) {
 			if (!Arrays.equals(other.component(i), this.component(i)))
-					return false;
+				return false;
 		}
 		return true;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		for (int i=0; i < count(); ++i) {
+		int count = count();
+		for (int i=0; i < count; ++i) {
 			result = prime * result + Arrays.hashCode(component(i));			
 		}
 		return result;
@@ -1015,7 +1019,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if(str.length() == 0) return ROOT;
 		return fromURI(str);
 	}
-	
+
 	/**
 	 * Uses the canonical URI representation
 	 * @param str
@@ -1033,11 +1037,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return false;
 		}
 	}
-	
+
 	public boolean contains(byte [] component) {
 		return (containsWhere(component) >= 0);
 	}
-	
+
 	/**
 	 * Looks for a component.
 	 * @param str Component to search for, encoded using URI encoding.
@@ -1075,7 +1079,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return -1;
 		}
 	}
-	
+
 	/**
 	 * Return component index of the first matching component if it exists.
 	 * @param component Component to search for.
@@ -1094,7 +1098,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return i;
 		return -1;		
 	}
-	
+
 	/**
 	 * Return component index of the last matching component if it exists.
 	 * @param component Component to search for.
@@ -1134,16 +1138,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public ContentName cut(byte [] component) {
 		int offset = this.containsWhere(component);
-		
+
 		if (offset < 0) {
 			// unfragmented
 			return this;
 		}
-		
+
 		// else need to cut it
 		return new ContentName(offset, this.components());
 	}
-	
+
 	/**
 	 * Slice the name off right before the given component
 	 * @param component In URI encoded form.
@@ -1160,7 +1164,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return this;
 		}
 	}
-	
+
 	/**
 	 * Return a subname of this name as a new name.
 	 * @param start the starting component index (0-based)
@@ -1170,7 +1174,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public ContentName subname(int start, int componentCount) {
 		return new ContentName(start, componentCount, components());
 	}
-	
+
 	/**
 	 * Return the remainder of this name after the prefix, if the prefix
 	 * is a prefix of this name. Otherwise return null. If the prefix is
@@ -1179,14 +1183,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public ContentName postfix(ContentName prefix) {
 		if (!prefix.isPrefixOf(this))
 			return null;
-		
+
 		if (prefix.count() == count()) {
 			return ROOT;
 		}
-		
+
 		return subname(prefix.count(), count()-prefix.count());
 	}
-	
+
 	/**
 	 * Used by NetworkObject to encode the object to a network stream.
 	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
@@ -1197,18 +1201,18 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 
 		encoder.writeStartElement(getElementLabel());
-		
-		for (int i=0; i < count(); ++i) {
+		int count = count();
+		for (int i=0; i < count; ++i) {
 			encoder.writeElement(CCNProtocolDTags.Component, _components.get(i));
 		}
 		encoder.writeEndElement();
 	}
-	
+
 	@Override
 	public boolean validate() { 
 		return (null != _components);
 	}
-	
+
 	@Override
 	public long getElementLabel() { 
 		return CCNProtocolDTags.Name;
@@ -1221,19 +1225,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public int compareTo(ContentName o) {
 		if (this == o)
 			return 0;
-        int thisCount = this.count();
-        int oCount = o.count();
+		int thisCount = this.count();
+		int oCount = o.count();
 		int len = (thisCount > oCount) ? thisCount : oCount;
-		int componentResult = 0;
+		int componentResult;
 		for (int i=0; i < len; ++i) {
 			componentResult = DataUtils.compare(this.component(i), o.component(i));
 			if (0 != componentResult)
 				return componentResult;
 		}
-		if (thisCount < oCount)
-			return -1;
-		else if (thisCount > oCount)
-			return 1;
 		return 0;
 	}
 }
