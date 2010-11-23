@@ -50,7 +50,6 @@
 #endif
 
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
-static void ccnd_internal_client_reschedule(struct ccnd_handle *ccnd);
 
 static void
 ccnd_init_service_ccnb(struct ccnd_handle *ccnd)
@@ -604,18 +603,6 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                          ccnd_internal_client_refresh,
                          NULL, CCN_INTEREST_LIFETIME_MICROSEC);
     return(0);
-}
-
-static void
-ccnd_internal_client_reschedule(struct ccnd_handle *ccnd)
-{
-    if (ccnd->internal_client_refresh == NULL)
-        return;
-    ccn_schedule_cancel(ccnd->sched, ccnd->internal_client_refresh);
-    ccnd->internal_client_refresh \
-    = ccn_schedule_event(ccnd->sched, 0,
-                         ccnd_internal_client_refresh,
-                         NULL, CCN_INTEREST_LIFETIME_MICROSEC);
 }
 
 void
