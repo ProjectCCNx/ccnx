@@ -67,7 +67,7 @@ public class InterestTable<V> {
 		 */
 		public T value();
 	}
-	
+
 	/**
 	 * We need names in longest first order, not canonical order.
 	 */
@@ -77,16 +77,19 @@ public class InterestTable<V> {
 		public LongestFirstContentName(ContentName name) {
 			super(name);
 		}
-		
+
 		@Override
 		public int compareTo(ContentName o) {
 			if (this == o)
 				return 0;
-			if (count() < o.count())
+			int thisCount = count();
+			int oCount = o.count();
+			if (thisCount == oCount)
+				return super.compareTo(o);
+			if (thisCount < oCount)
 				return -1;
-			else if (count() > o.count())
+			else 
 				return 1;
-			return super.compareTo(o);
 		}	
 	}
 
@@ -137,7 +140,7 @@ public class InterestTable<V> {
 			return interest;
 		}
 	}
-	
+
 	/**
 	 * Set capacity for LRU size control. Defaults to
 	 * no size control
@@ -147,7 +150,7 @@ public class InterestTable<V> {
 	public void setCapacity(int capacity) {
 		_capacity = capacity;
 	}
-	
+
 	/**
 	 * Gets the current capacity for LRU size control
 	 * @return	the capacity. null if not set
@@ -155,7 +158,7 @@ public class InterestTable<V> {
 	public Integer getCapacity() {
 		return _capacity;
 	}
-	
+
 	/**
 	 * Add a value associated with an interest to the table
 	 * 
@@ -173,7 +176,7 @@ public class InterestTable<V> {
 		Holder<V> holder = new InterestHolder<V>(interest, value);
 		add(holder);
 	}
-	
+
 	/**
 	 * Add a value associated with content to the table
 	 * 
@@ -188,7 +191,7 @@ public class InterestTable<V> {
 		Holder<V> holder = new NameHolder<V>(name, value);
 		add(holder);
 	}
-	
+
 	/**
 	 * Add a value holder - could be interest or content
 	 * 
@@ -208,7 +211,7 @@ public class InterestTable<V> {
 		} else {
 			ArrayList<Holder<V>> list = new ArrayList<Holder<V>>(1);
 			list.add(holder);
-			
+
 			// We assume that the "oldest" entry is the first one.
 			// In cases we know about currently this should be true
 			// XXX - should we care about whether the key has multiple
@@ -220,12 +223,12 @@ public class InterestTable<V> {
 			}
 		}
 	}
-	
+
 	protected Holder<V> getMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
 		//Log.finest("name: " + name + " target: " + target.name() + " possible matches: " + ((null == list) ? 0 : list.size()));
 		if (Log.isLoggable(Level.FINEST));
-			Log.finest("name: {0} target: {1} possible matches: {2}", name, target.name(), ((null == list) ? 0 : list.size()));
+		Log.finest("name: {0} target: {1} possible matches: {2}", name, target.name(), ((null == list) ? 0 : list.size()));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -238,7 +241,7 @@ public class InterestTable<V> {
 		}
 		return null;
 	}
-	
+
 	/** 
 	 * Internal: return all the entries having exactly the specified name,
 	 * useful once you have found the matching names to collect entries from them
@@ -298,7 +301,7 @@ public class InterestTable<V> {
 	 */
 	public Entry<V> remove(ContentName name, V value) {
 		Holder<V> result = null;
-			List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
+		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -322,7 +325,7 @@ public class InterestTable<V> {
 		}
 		return result;
 	}
-	
+
 	/**
 	 * Remove first exact match entry (both interest and value match)
 	 * 
@@ -341,7 +344,7 @@ public class InterestTable<V> {
 						if (null == value) {
 							holdIt.remove();
 							result = holder;
-			
+
 						}
 					} else {
 						if (holder.value().equals(value)) {
@@ -359,7 +362,7 @@ public class InterestTable<V> {
 		}
 		return result;
 	}
-	
+
 	protected List<Holder<V>> removeAllMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
 		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
@@ -416,7 +419,7 @@ public class InterestTable<V> {
 			Entry<V> found = getMatchByName(name, target);
 			if (null != found)
 				match = found;
-	    }
+		}
 		return match;
 	}
 
@@ -441,7 +444,7 @@ public class InterestTable<V> {
 		}
 		return result;
 	}
-	
+
 	/**
 	 * Get all matching Interests for a ContentObject.
 	 * Any ContentName entries in the table will be 
@@ -466,7 +469,7 @@ public class InterestTable<V> {
 		}
 		return matches;
 	}
-		
+
 	/**
 	 * Get value of longest matching Interest for a ContentName, where longest is defined
 	 * as longest ContentName.  If there are multiple matches, first is returned.  
@@ -503,10 +506,10 @@ public class InterestTable<V> {
 			if (name.isPrefixOf(target)) {
 				match = _contents.get(name).get(0);
 			}
-	    }
+		}
 		return match;
 	}
-	
+
 	/**
 	 * Get values matching a target ContentName
 	 * 
@@ -525,7 +528,7 @@ public class InterestTable<V> {
 		}
 		return result;
 	}
-	
+
 	/**
 	 * Get all matching entries for a ContentName.
 	 * This will return a mix of ContentName and Interest entries if they exist
@@ -542,9 +545,9 @@ public class InterestTable<V> {
 			if (name.isPrefixOf(target)) {
 				matches.addAll(_contents.get(name));
 			}
-	    }
-	    Collections.reverse(matches);
-	    return matches;
+		}
+		Collections.reverse(matches);
+		return matches;
 	}
 
 	/**
@@ -564,7 +567,7 @@ public class InterestTable<V> {
 		}
 		return results;
 	}
-	
+
 	/**
 	 * Remove and return value of the longest matching Interest for a ContentObject, where best is defined
 	 * as longest ContentName.  Any ContentName entries in the table will be 
@@ -581,7 +584,7 @@ public class InterestTable<V> {
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Remove and return the longest matching Interest for a ContentObject, where best is defined
 	 * as longest ContentName.  Any ContentName entries in the table will be 
@@ -631,7 +634,7 @@ public class InterestTable<V> {
 		}
 		return result;
 	}
-	
+
 	/**
 	 * Remove and return all matching Interests for a ContentObject.
 	 * Any ContentName entries in the table will be 
@@ -650,16 +653,16 @@ public class InterestTable<V> {
 				matches.addAll(getAllMatchByName(name, target));
 				names.add(name);
 			}
-	    }
-	    if (matches.size() != 0) {
-	    	for (ContentName contentName : names) {
-		    	removeAllMatchByName(contentName, target);				
+		}
+		if (matches.size() != 0) {
+			for (ContentName contentName : names) {
+				removeAllMatchByName(contentName, target);				
 			}
-	    }
-	    Collections.reverse(matches);
-	    return matches;
+		}
+		Collections.reverse(matches);
+		return matches;
 	}
-	
+
 	/**
 	 * Get the number of distinct entries in the table.  Note that duplicate entries
 	 * are fully supported, so the number of entries may be much larger than the 
@@ -670,15 +673,15 @@ public class InterestTable<V> {
 	public int size() {
 		int result = 0;
 		synchronized (_contents) {
-		    for (Iterator<LongestFirstContentName> nameIt = _contents.keySet().iterator(); nameIt.hasNext();) {
+			for (Iterator<LongestFirstContentName> nameIt = _contents.keySet().iterator(); nameIt.hasNext();) {
 				LongestFirstContentName name = nameIt.next();
 				List<Holder<V>> list = _contents.get(name);
 				result += list.size();
-		    }
+			}
 		}
-	    return result;
+		return result;
 	}
-	
+
 	/**
 	 * Get the number of distinct ContentNames in the table.  Note that duplicate
 	 * entries are fully supported, so the number of ContentNames may be much smaller
@@ -689,7 +692,7 @@ public class InterestTable<V> {
 	public int sizeNames() {
 		return _contents.size();
 	}
-	
+
 	/**
 	 * Clear the table
 	 */
