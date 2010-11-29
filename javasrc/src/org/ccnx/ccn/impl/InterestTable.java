@@ -226,9 +226,8 @@ public class InterestTable<V> {
 
 	protected Holder<V> getMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
-		//Log.finest("name: " + name + " target: " + target.name() + " possible matches: " + ((null == list) ? 0 : list.size()));
-		if (Log.isLoggable(Level.FINEST));
-		Log.finest("name: {0} target: {1} possible matches: {2}", name, target.name(), ((null == list) ? 0 : list.size()));
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("name: {0} target: {1} possible matches: {2}", name, target.name(), ((null == list) ? 0 : list.size()));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
