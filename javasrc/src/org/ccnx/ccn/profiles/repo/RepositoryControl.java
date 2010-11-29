@@ -281,7 +281,8 @@ public class RepositoryControl {
 		if (syncedObjects.contains(fullName)) {
 			if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
 				Log.info(Log.FAC_IO, "Sync: skipping already-synced object {0}", fullName);
-			}			
+			}
+			return true;
 		}
 		
 		// INCORRECT: the protocol is using a nonce.
@@ -325,16 +326,18 @@ public class RepositoryControl {
 		try {
 			repoInfo.decode(co.content());
 			
-			// At this point, a repo has responded and will deal with our data. Don't need to
-			// sync it again.
-			syncedObjects.add(fullName);
-			
-			if (repoInfo.getType() == RepoInfoType.DATA) {			
+			if (repoInfo.getType() == RepoInfoType.DATA) {	
 				// This type from checked write is confirmation that content already held
 				// TODO improve result handling. Currently we get true if repo has content already,
 				// false if error or repo is storing content but didn't have it already. We don't care
 				// whether repo had it already, all we care is whether it is already or will be synced --
 				// want to separate errors, repo non-response from "repo will take care of it" responses.
+				
+				// At this point, a repo has responded and will deal with our data. Don't need to
+				// sync it again. I don't understand all the issues above, but until they are resolved,
+				// we don't want to declare the object "already synced" until we are actually going to
+				// return true here.
+				syncedObjects.add(fullName);
 				return true;
 			}
 		} catch (ContentDecodingException e) {
