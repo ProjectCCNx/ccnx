@@ -127,7 +127,7 @@ public class MetadataProfile implements CCNProfile {
 	 * @return
 	 * @throws IOException
 	 */
-	protected static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ArrayList<byte[]> metaName,
+	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ArrayList<byte[]> metaName,
 			 long timeout, CCNHandle handle) throws IOException {
 		ContentName baseVersion = baseName;
 		//removing the stream instance:  1 - we are not actually attempting to get the stream, we just want to discover the latest version
