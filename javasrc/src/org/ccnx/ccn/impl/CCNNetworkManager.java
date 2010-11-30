@@ -160,129 +160,141 @@ public class CCNNetworkManager implements Runnable {
 	private class PeriodicWriter extends TimerTask {
 		// TODO Interest refresh time is supposed to "decay" over time but there are currently
 		// unresolved problems with this.
-<<<<<<< HEAD
 		public void run() {	
-			long ourTime = System.currentTimeMillis();
-			long minInterestRefreshTime = PERIOD + ourTime;
-			long useMe = PERIOD;
+			
+            //this method needs to do a few things
+            // - reopen connection to ccnd if down
+            // - refresh interests
+            // - refresh prefix registrations
+            // - heartbeats
 
-			if (_channel.isConnected()) {
-				
-				// Re-express interests that need to be re-expressed
-				try {
-					synchronized (_myInterests) {
-						for (Entry<InterestRegistration> entry : _myInterests.values()) {
-							InterestRegistration reg = entry.value();
-							if (ourTime > reg.nextRefresh) {
-								if( Log.isLoggable(Level.FINER) )
-									Log.finer("Refresh interest: {0}", reg.interest);
-								// Temporarily back out refresh period decay
-								//reg.nextRefreshPeriod = (reg.nextRefreshPeriod * 2) > MAX_PERIOD ? MAX_PERIOD
-								//: reg.nextRefreshPeriod * 2;
-								reg.nextRefresh += reg.nextRefreshPeriod;
-								try {
-									write(reg.interest);
-								} catch (NotYetConnectedException nyce) {}
-							}
-							if (minInterestRefreshTime > reg.nextRefresh)
-								minInterestRefreshTime = reg.nextRefresh;
-						}
-					}
-					// Re-express prefix registrations that need to be re-expressed
-					// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
-					// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
-					// prefix we use Integer.MAX_VALUE as the requested lifetime.
-					long minFilterRefreshTime = PERIOD + ourTime;
-					if (_usePrefixReg) {
-						synchronized (_registeredPrefixes) {
-							if( Log.isLoggable(Level.FINE) )
-								Log.fine("Refresh registration.  size: " + _registeredPrefixes.size() + " sizeNames: " + _myFilters.sizeNames());
-							for (ContentName prefix : _registeredPrefixes.keySet()) {
-								RegisteredPrefix rp = _registeredPrefixes.get(prefix);
-								if (null != rp._forwarding && rp._lifetime != -1 && rp._nextRefresh != -1) {
-									if (ourTime > rp._nextRefresh) {
-										if( Log.isLoggable(Level.FINER) )
-											Log.finer("Refresh registration: {0}", prefix);
-										rp._nextRefresh = -1;
-										try {
-											ForwardingEntry forwarding = _prefixMgr.selfRegisterPrefix(prefix);
-											if (null != forwarding) {
-												rp._lifetime = forwarding.getLifetime();
-		//										filter.nextRefresh = new Date().getTime() + (filter.lifetime / 2);
-												rp._nextRefresh = System.currentTimeMillis() + (rp._lifetime / 2);
-											}
-											rp._forwarding = forwarding;
-		
-										} catch (CCNDaemonException e) {
-											Log.warning(e.getMessage());
-											// XXX - don't think this is right
-											rp._forwarding = null;
-											rp._lifetime = -1;
-											rp._nextRefresh = -1;
-
-										}
-									}
-=======
-								}
-								if (minFilterRefreshTime > rp._nextRefresh)
-									minFilterRefreshTime = rp._nextRefresh;
-							}
-						}
-					}
-					long currentTime = System.currentTimeMillis();
-					long checkInterestDelay = minInterestRefreshTime - currentTime;
-					if (checkInterestDelay < 0)
-						checkInterestDelay = 0;
-					if (checkInterestDelay > PERIOD)
-						checkInterestDelay = PERIOD;
-		
-					long checkPrefixDelay = minFilterRefreshTime - currentTime;
-					if (checkPrefixDelay < 0)
-						checkPrefixDelay = 0;
-					if (checkPrefixDelay > PERIOD)
-						checkPrefixDelay = PERIOD;
-					
-					if (checkInterestDelay < checkPrefixDelay) {
-						useMe = checkInterestDelay;
-					} else {
-						useMe = checkPrefixDelay;
-					}
-				} catch (ContentEncodingException xmlex) {
-					Log.severe("PeriodicWriter interest refresh thread failure (Malformed datagram): {0}", xmlex.getMessage()); 
-					Log.warningStackTrace(xmlex);
-				}
-			} else {
-				// We have lost our connection to ccnd.
-				//
-				// The attempt to reconnect is done from here rather than in the main run loop
-				// because the prefix reregistration requires data passing through the main run loop
-				// to get processed.  Also reregisterPrefixes will delay to do gets (thus in theory
-				// throwing off our timing here) but that's OK because we are restarting so the timing
-				// code doesn't matter until the reconnect is completed.
-				useMe = SystemConfiguration.MEDIUM_TIMEOUT;
-				try {
-					_ccndId = null;
-					_channel.open();
-					if (_channel.isConnected()) {
-						_faceID = null;
-						reregisterPrefixes();
-					}
-				} catch (Exception e) { // ccnd is still not available
-					try {
-						_channel.close();
-					} catch (Exception e1) {}
+			boolean refreshError = false;	
+			if (_protocol == NetworkProtocol.UDP) {
+				if (!_channel.isConnected()) {
+                    //we are not connected.  reconnect attempt is in the heartbeat function...
+                    _channel.heartbeat();
 				}
 			}
-			//we haven't sent anything...  maybe need to send a heartbeat
-			if ((currentTime - _lastHeartbeat) >= HEARTBEAT_PERIOD) {
-				_lastHeartbeat = currentTime;
-				heartbeat();
-			}				
+				
+			if (!_channel.isConnected()) {
+                //we tried to reconnect and failed, try again next loop
+                Log.fine(Log.FAC_NETMANAGER, "Not Connected to ccnd, try again in {0}ms", CCNNetworkChannel.SOCKET_TIMEOUT);
+                _lastHeartbeat = 0;
+                if (_run)
+                        _periodicTimer.schedule(new PeriodicWriter(), CCNNetworkChannel.SOCKET_TIMEOUT);
+                return;
+            }
 
-			//now factor in heartbeat time
-			long timeToHeartbeat = HEARTBEAT_PERIOD - (currentTime - _lastHeartbeat);
-			if (useMe > timeToHeartbeat)
-				useMe = timeToHeartbeat;
+            long ourTime = System.currentTimeMillis();
+            long minInterestRefreshTime = PERIOD + ourTime;
+            // Library.finest("Refreshing interests (size " + _myInterests.size() + ")");
+				
+			// Re-express interests that need to be re-expressed
+			try {
+				synchronized (_myInterests) {
+					for (Entry<InterestRegistration> entry : _myInterests.values()) {
+						InterestRegistration reg = entry.value();
+						 // allow some slop for scheduling
+                        if (ourTime + 20 > reg.nextRefresh) {
+                                if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
+                                        Log.finer(Log.FAC_NETMANAGER, "Refresh interest: {0}", reg.interest);
+                                _lastHeartbeat = ourTime;
+                                reg.nextRefresh = ourTime + reg.nextRefreshPeriod;
+                                try {
+                                    write(reg.interest);
+                            } catch (NotYetConnectedException nyce) {
+                                    refreshError = true;
+                            }
+                        }
+						if (minInterestRefreshTime > reg.nextRefresh)
+							minInterestRefreshTime = reg.nextRefresh;
+					}
+				}
+				
+			} catch (ContentEncodingException xmlex) {
+                Log.severe(Log.FAC_NETMANAGER, "PeriodicWriter interest refresh thread failure (Malformed datagram): {0}", xmlex.getMessage());
+                Log.warningStackTrace(xmlex);
+                refreshError = true;
+			}
+
+			// Re-express prefix registrations that need to be re-expressed
+            // FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+            // to understand this.  This isn't a problem for now because the lifetime we request when we register a
+            // prefix we use Integer.MAX_VALUE as the requested lifetime.
+            // FIXME: so lets not go around the loop doing nothing... for now.
+            long minFilterRefreshTime = PERIOD + ourTime;
+            if (false && _usePrefixReg) {
+            	synchronized (_registeredPrefixes) {
+                    for (ContentName prefix : _registeredPrefixes.keySet()) {
+                    	RegisteredPrefix rp = _registeredPrefixes.get(prefix);
+						if (null != rp._forwarding && rp._lifetime != -1 && rp._nextRefresh != -1) {
+							if (ourTime > rp._nextRefresh) {
+								if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
+									Log.finer(Log.FAC_NETMANAGER, "Refresh registration: {0}", prefix);
+								rp._nextRefresh = -1;
+								try {
+									ForwardingEntry forwarding = _prefixMgr.selfRegisterPrefix(prefix);
+									if (null != forwarding) {
+										rp._lifetime = forwarding.getLifetime();
+//										filter.nextRefresh = new Date().getTime() + (filter.lifetime / 2);
+										_lastHeartbeat = System.currentTimeMillis();
+										rp._nextRefresh = _lastHeartbeat + (rp._lifetime / 2);
+									}
+									rp._forwarding = forwarding;
+
+								} catch (CCNDaemonException e) {
+									Log.warning(e.getMessage());
+									// XXX - don't think this is right
+									rp._forwarding = null;
+									rp._lifetime = -1;
+									rp._nextRefresh = -1;
+									refreshError = true;
+								}
+							}
+							if (minFilterRefreshTime > rp._nextRefresh)
+								minFilterRefreshTime = rp._nextRefresh;
+						}
+						}	// for (Entry<Filter> entry: _myFilters.values())
+				}	// synchronized (_myFilters)
+			} // _usePrefixReg
+        	
+        	if (refreshError) {
+                Log.warning(Log.FAC_NETMANAGER, "we have had an error when refreshing an interest or prefix registration...  do we need to reconnect to ccnd?");
+        	}
+
+			long currentTime = System.currentTimeMillis();
+			long checkInterestDelay = minInterestRefreshTime - currentTime;
+			if (checkInterestDelay < 0)
+				checkInterestDelay = 0;
+			if (checkInterestDelay > PERIOD)
+				checkInterestDelay = PERIOD;
+
+			long checkPrefixDelay = minFilterRefreshTime - currentTime;
+			if (checkPrefixDelay < 0)
+				checkPrefixDelay = 0;
+			if (checkPrefixDelay > PERIOD)
+				checkPrefixDelay = PERIOD;
+			
+			long useMe;
+			if (checkInterestDelay < checkPrefixDelay) {
+				useMe = checkInterestDelay;
+			} else {
+				useMe = checkPrefixDelay;
+			}
+
+			if (_protocol == NetworkProtocol.UDP) {
+
+					//we haven't sent anything...  maybe need to send a heartbeat
+				if ((currentTime - _lastHeartbeat) >= CCNNetworkChannel.HEARTBEAT_PERIOD) {
+					_lastHeartbeat = currentTime;
+					_channel.heartbeat();
+				}				
+	
+				//now factor in heartbeat time
+				long timeToHeartbeat = CCNNetworkChannel.HEARTBEAT_PERIOD - (currentTime - _lastHeartbeat);
+				if (useMe > timeToHeartbeat)
+					useMe = timeToHeartbeat;
+			}
 
 			if (useMe < 20) {
 				useMe = 20;
@@ -300,7 +312,11 @@ public class CCNNetworkManager implements Runnable {
 	private void setupTimers() throws IOException {
 		if (!_timersSetup) {
 			_timersSetup = true;
-			_channel.init();		// Starts UDP heartbeat (if using UDP)
+			_channel.init();
+			if (_protocol == NetworkProtocol.UDP) {
+				_channel.heartbeat();
+				_lastHeartbeat = System.currentTimeMillis();
+			}
 			
 			// Create timer for periodic behavior
 			_periodicTimer = new Timer(true);
@@ -485,10 +501,10 @@ public class CCNNetworkManager implements Runnable {
 						}
 					}
 					// Call into client code without holding any library locks
-					if (null != pending && null != listener) {
-						if( Log.isLoggable(Level.FINER) )
-							Log.finer("Interest callback (" + pending + " data) for: {0}", this.interest.name());
-						
+					if (null != pending) {
+						if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
+							Log.finer(Log.FAC_NETMANAGER, "Interest callback (" + pending + " data) for: {0}", this.interest.name());
+
 						synchronized (this) {
 							// DKS -- dynamic interests, unregister the interest here and express new one if we have one
 							// previous interest is final, can't update it
@@ -762,7 +778,6 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 
-<<<<<<< HEAD
 	/**
 	 * Get the protocol this network manager is using
 	 * @return the protocol
@@ -771,8 +786,6 @@ public class CCNNetworkManager implements Runnable {
 		return _protocol;
 	}
 	
-=======
->>>>>>> master
 	/**
 	 * Turns on writing of all packets to a file for test/debug
 	 * Overrides any previous setTap or environment/property setting.
@@ -1194,6 +1207,7 @@ public class CCNNetworkManager implements Runnable {
 					ContentObject co = (ContentObject)packet;
 					if( Log.isLoggable(Level.FINER) )
 						Log.finer("Data from net for port: " + _localPort + " {0}", co.name());
+
 					//	SystemConfiguration.logObject("Data from net:", co);
 
 					deliverData(co);
@@ -1208,7 +1222,7 @@ public class CCNNetworkManager implements Runnable {
 					// External interests never go back to network
 				} // for interests
 			} catch (Exception ex) {
-				Log.severe("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
+				Log.severe(Log.FAC_NETMANAGER, "Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
                 Log.warningStackTrace(ex);
 			}
 		}
@@ -1251,42 +1265,42 @@ public class CCNNetworkManager implements Runnable {
 
 	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) throws IOException {
 		try {
-			try {
-				Interest interested = new Interest(new ContentName(CCNDaemonProfile.ping, Interest.generateNonce()));
-				interested.scope(1);
-				ContentObject contented = mgr.get(interested, SystemConfiguration.PING_TIMEOUT);
-				if (null == contented) {
-					String msg = ("fetchCCNDId: Fetch of content from ping uri failed due to timeout.");
 
-					Log.warning(msg);
+			Interest interested = new Interest(new ContentName(CCNDaemonProfile.ping, Interest.generateNonce()));
+			interested.scope(1);
+			ContentObject contented = mgr.get(interested, SystemConfiguration.PING_TIMEOUT);
+			if (null == contented) {
+				String msg = ("fetchCCNDId: Fetch of content from ping uri failed due to timeout.");
+				Log.severe(Log.FAC_NETMANAGER, msg);
+				throw new IOException(msg);
+			}
+			PublisherPublicKeyDigest sentID = contented.signedInfo().getPublisherKeyID();
+
+			// TODO: This needs to be fixed once the KeyRepository is fixed to provide a KeyManager
+			if (null != keyManager) {
+				ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, keyManager);
+				if (!verifyer.verify(contented)) {
+					String msg = ("fetchCCNDId: Fetch of content reply from ping failed to verify.");
+					Log.severe(Log.FAC_NETMANAGER, msg);
 					throw new IOException(msg);
 				}
-				PublisherPublicKeyDigest sentID = contented.signedInfo().getPublisherKeyID();
-				
-					// TODO: This needs to be fixed once the KeyRepository is fixed to provide a KeyManager
-				if (null != keyManager) {
-					ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, keyManager);
-					if (!verifyer.verify(contented)) {
-						String msg = ("fetchCCNDId: Fetch of content reply from ping failed to verify.");
-						Log.warning(msg);
-						throw new IOException(msg);
-					}
-				} else {
-					Log.warning("fetchCCNDId: do not have a KeyManager. Cannot verify ccndID.");
-					return null;
-				}
-				return sentID;
-			} catch (InterruptedException e) {
-				throw new IOException(e.getMessage());
+			} else {
+				Log.severe(Log.FAC_NETMANAGER, "fetchCCNDId: do not have a KeyManager. Cannot verify ccndID.");
+				return null;
 			}
+			return sentID;
+		} catch (InterruptedException e) {
+			Log.warningStackTrace(e);
+			throw new IOException(e.getMessage());
 		} catch (IOException e) {
 			String reason = e.getMessage();
+			Log.warningStackTrace(e);
 			String msg = ("fetchCCNDId: Unexpected IOException in call getting ping Interest reason: " + reason);
-			Log.warning(msg);
+			Log.severe(Log.FAC_NETMANAGER, msg);
 			throw new IOException(msg);
 		}
 	} /* PublisherPublicKeyDigest fetchCCNDId() */
-	
+
 	/**
 	 * Reregister all current prefixes with ccnd after ccnd goes down and then comes back up
 	 * @throws IOException 
@@ -1294,16 +1308,16 @@ public class CCNNetworkManager implements Runnable {
 	private void reregisterPrefixes() throws IOException {
 		TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
 		try {
-		synchronized (_registeredPrefixes) {
-			for (ContentName prefix : _registeredPrefixes.keySet()) {
-				ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
-				RegisteredPrefix newPrefixEntry = new RegisteredPrefix(entry);
-				newPrefixEntry._refCount = _registeredPrefixes.get(prefix)._refCount;
-				newPrefixes.put(prefix, newPrefixEntry);
+			synchronized (_registeredPrefixes) {
+				for (ContentName prefix : _registeredPrefixes.keySet()) {
+					ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
+					RegisteredPrefix newPrefixEntry = new RegisteredPrefix(entry);
+					newPrefixEntry._refCount = _registeredPrefixes.get(prefix)._refCount;
+					newPrefixes.put(prefix, newPrefixEntry);
+				}
+				_registeredPrefixes.clear();
+				_registeredPrefixes.putAll(newPrefixes);
 			}
-			_registeredPrefixes.clear();
-			_registeredPrefixes.putAll(newPrefixes);
-		}
 		} catch (CCNDaemonException cde) {
 			_channel.close();
 		}
