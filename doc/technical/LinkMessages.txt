@@ -1,0 +1,24 @@
+CCNx Link Messages
+==================
+
+In some cases it may be advantageous for adjacent nodes to exchange
+some extra information beyond the Interest and ContentObject messages
+themselves, for the purpose of making the overall operation more efficient.
+We call these *link messages*, and describe them here.
+
+== SequenceNumber
+.......................................................
+SequenceNumber ::= BLOB
+.......................................................
+
+The *SequenceNumber* message may be included in a series of messages.
+The primary use of this message is when unreliable datagrams are being used as a transport.
+Typically, one SequenceNumber message would be included in each datagram,
+with the value (intrpreted as a binary number in network byte order) being
+advanced by one.
+This allows the receiving side to detect gaps in the sequence, an indication
+of missing or reordered packets.
+
+The starting value and BLOB size are chosen by the sending side.
+The value should to wrap back to zero after the maximum value for the chosen
+BLOB size has been reached.
