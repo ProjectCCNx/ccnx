@@ -101,7 +101,7 @@ public class MetadataProfile implements CCNProfile {
 	}
 	
 	/**
-	 * Internal version of getLatestVersion.  This call requires the calling function to check for a terminal version before
+	 * This call requires the calling function to check for a terminal version before
 	 * attempting to retrieve the metadata content.
 	 * 
 	 * If the
