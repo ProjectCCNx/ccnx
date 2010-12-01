@@ -41,7 +41,6 @@
 #include <ccn/reg_mgmt.h>
 #include <ccn/sockcreate.h>
 #include <ccn/signing.h>
-#include <ccn/keystore.h>
 
 #if defined(NEED_GETADDRINFO_COMPAT)
 #include "getaddrinfo.h"
@@ -294,50 +293,15 @@ static void prefix_face_list_destroy(struct prefix_face_list_item **pflpp)
     *pflpp = NULL;
 }
 
-static struct ccn_charbuf *
-signed_info_create(struct ccn_keystore *keystore)
-{
-    struct ccn_charbuf *keylocator;
-    struct ccn_charbuf *signed_info;
-    int res;
-    
-    /* Construct a key locator containing the key itself */
-    keylocator = ccn_charbuf_create();
-    ON_ERROR_CLEANUP(ccn_charbuf_append_tt(keylocator, CCN_DTAG_KeyLocator, CCN_DTAG));
-    ON_ERROR_CLEANUP(ccn_charbuf_append_tt(keylocator, CCN_DTAG_Key, CCN_DTAG));
-    ON_ERROR_CLEANUP(ccn_append_pubkey_blob(keylocator, ccn_keystore_public_key(keystore)));
-    ON_ERROR_CLEANUP(ccn_charbuf_append_closer(keylocator));	/* </Key> */
-    ON_ERROR_CLEANUP(ccn_charbuf_append_closer(keylocator));	/* </KeyLocator> */
-    
-    signed_info = ccn_charbuf_create();
-    res = ccn_signed_info_create(signed_info,
-                                 /* pubkeyid */ ccn_keystore_public_key_digest(keystore),
-                                 /* publisher_key_id_size */ ccn_keystore_public_key_digest_length(keystore),
-                                 /* datetime */ NULL,
-                                 /* type */ CCN_CONTENT_DATA,
-                                 /* freshness */ -1L,
-                                 /* finalblockid */ NULL,
-                                 keylocator);
-    ON_ERROR_CLEANUP(res);
-    ccn_charbuf_destroy(&keylocator);
-    return (signed_info);
-    
-Cleanup:
-    ccn_charbuf_destroy(&keylocator);
-    ccn_charbuf_destroy(&signed_info);
-    return (NULL);
-}
 /**
  *  @brief Create a face based on the face attributes
  *  @param h  the ccnd handle
- *  @param keystore  a ccn keystore containing the keys used to authenticate this operation
  *  @param face_instance  the parameters of the face to be created
  *  @param flags
  *  @result returns new face_instance representing the face created
  */
 static struct ccn_face_instance *
-create_face(struct ccn *h, struct ccn_keystore *keystore,
-            struct ccn_face_instance *face_instance)
+create_face(struct ccn *h, struct ccn_face_instance *face_instance)
 {
     struct ccn_charbuf *newface = NULL;
     struct ccn_charbuf *signed_info = NULL;
@@ -354,22 +318,11 @@ create_face(struct ccn *h, struct ccn_keystore *keystore,
     newface = ccn_charbuf_create();
     ON_NULL_CLEANUP(newface);
     ON_ERROR_CLEANUP(ccnb_append_face_instance(newface, face_instance));
-    
-    signed_info = signed_info_create(keystore);
-    ON_NULL_CLEANUP(signed_info);
-    
+
     temp = ccn_charbuf_create();
     ON_NULL_CLEANUP(temp);
-    
-    res = ccn_encode_ContentObject(temp,
-                                   no_name,
-                                   signed_info,
-                                   newface->buf,
-                                   newface->length,
-                                   NULL,
-                                   ccn_keystore_private_key(keystore));
+    res = ccn_sign_content(h, temp, no_name, NULL, newface->buf, newface->length);
     ON_ERROR_CLEANUP(res);
-    
     resultbuf = ccn_charbuf_create();
     ON_NULL_CLEANUP(resultbuf);
     
@@ -406,7 +359,6 @@ Cleanup:
 /**
  *  @brief Register an interest prefix as being routed to a given face
  *  @param h  the ccnd handle
- *  @param keystore  a ccn keystore containing the keys used to authenticate this operation
  *  @param name_prefix  the prefix to be registered
  *  @param face_instance  the face to which the interests with the prefix should be routed
  *  @param flags
@@ -414,7 +366,6 @@ Cleanup:
  */
 static int
 register_unregister_prefix(struct ccn *h,
-                           struct ccn_keystore *keystore,
                            int operation,
                            struct ccn_charbuf *name_prefix,
                            struct ccn_face_instance *face_instance,
@@ -447,16 +398,8 @@ register_unregister_prefix(struct ccn *h,
     ON_ERROR_CLEANUP(ccnb_append_forwarding_entry(prefixreg, forwarding_entry));
     temp = ccn_charbuf_create();
     ON_NULL_CLEANUP(temp);
-    signed_info = signed_info_create(keystore);
-    ON_NULL_CLEANUP(signed_info);
-    res = ccn_encode_ContentObject(temp,
-                                   no_name,
-                                   signed_info,
-                                   prefixreg->buf,
-                                   prefixreg->length,
-                                   NULL,
-                                   ccn_keystore_private_key(keystore));
-    ON_ERROR_CLEANUP(res);
+    res = ccn_sign_content(h, temp, no_name, NULL, prefixreg->buf, prefixreg->length);
+    ON_ERROR_CLEANUP(res);    
     resultbuf = ccn_charbuf_create();
     ON_NULL_CLEANUP(resultbuf);
     name = ccn_charbuf_create();
@@ -777,7 +720,6 @@ int query_srv(const unsigned char *domain, int domain_size,
 
 void
 process_prefix_face_list_item(struct ccn *h,
-                              struct ccn_keystore *keystore,
                               struct prefix_face_list_item *pfl) 
 {
     struct ccn_face_instance *nfi;
@@ -788,7 +730,7 @@ process_prefix_face_list_item(struct ccn *h,
     op = (pfl->fi->lifetime > 0) ? OP_REG : OP_UNREG;
     pfl->fi->ccnd_id = ccndid;
     pfl->fi->ccnd_id_size = ccndid_size;
-    nfi = create_face(h, keystore, pfl->fi);
+    nfi = create_face(h, pfl->fi);
     if (nfi == NULL) {
         temp = ccn_charbuf_create();
         ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
@@ -801,7 +743,7 @@ process_prefix_face_list_item(struct ccn *h,
         return;
     }
 
-    res = register_unregister_prefix(h, keystore, op, pfl->prefix, nfi, pfl->flags);
+    res = register_unregister_prefix(h, op, pfl->prefix, nfi, pfl->flags);
     if (res < 0) {
         temp = ccn_charbuf_create();
         ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
@@ -827,7 +769,6 @@ incoming_interest(
 {
     const unsigned char *ccnb = info->interest_ccnb;
     struct ccn_indexbuf *comps = info->interest_comps;
-    struct ccn_keystore *keystore = selfp->data;
     const unsigned char *comp0 = NULL;
     size_t comp0_size = 0;
     struct prefix_face_list_item pfl_storage = {0};
@@ -879,7 +820,7 @@ incoming_interest(
     if (res < 0)
         return (CCN_UPCALL_RESULT_ERR);
 
-    process_prefix_face_list_item(info->h, keystore, pflhead->next);
+    process_prefix_face_list_item(info->h, pflhead->next);
     prefix_face_list_destroy(&pflhead->next);
     return(CCN_UPCALL_RESULT_OK);
 }
@@ -895,7 +836,6 @@ main(int argc, char **argv)
     struct prefix_face_list_item pfl_storage = {0};
     struct prefix_face_list_item *pflhead = &pfl_storage;
     struct prefix_face_list_item *pfl;
-    struct ccn_keystore *keystore = NULL;
     int dynamic = 0;
     struct ccn_closure interest_closure = {.p=&incoming_interest};
     int res;
@@ -955,27 +895,17 @@ main(int argc, char **argv)
         exit(1);
     }
     
-    
-    
-    temp = ccn_charbuf_create();
-    keystore = ccn_keystore_create();
-    ON_ERROR_EXIT(ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", getenv("HOME")), "Unable to construct keystore name");
-    res = ccn_keystore_init(keystore,
-                            ccn_charbuf_as_string(temp),
-                            "Th1s1sn0t8g00dp8ssw0rd.");
-    ON_ERROR_EXIT(res, "Unable to open keystore ($HOME/.ccnx/.ccnx_keystore)");
-    
     if (pflhead->next) {        
         ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
         for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
-            process_prefix_face_list_item(h, keystore, pfl);
+            process_prefix_face_list_item(h, pfl);
         }
         prefix_face_list_destroy(&pflhead->next);
     }
     if (dynamic) {
+        temp = ccn_charbuf_create();
         if (ccndid_size == 0) ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
         /* Set up a handler for interests */
-        interest_closure.data = keystore;
         ccn_name_init(temp);
         ccn_set_interest_filter_with_flags(h, temp, &interest_closure,
                                            CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_LAST);
