@@ -200,7 +200,7 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_storage_siz
     
     name = ccn_charbuf_create();
     if (name == NULL) {
-        ON_ERROR_EXIT(-1, "Unable to allocate storage for ping name charbuf");
+        ON_ERROR_EXIT(-1, "Unable to allocate storage for service locator name charbuf");
     }
     
     resultbuf = ccn_charbuf_create();
