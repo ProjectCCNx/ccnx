@@ -193,7 +193,7 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_storage_siz
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *resultbuf = NULL;
     struct ccn_parsed_ContentObject pcobuf = {0};
-    char ping_uri[] = "ccnx:/ccnx/ping";
+    char ccndid_uri[] = "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY";
     const unsigned char *ccndid_result;
     static size_t ccndid_result_size;
     int res;
@@ -209,9 +209,8 @@ get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_storage_siz
     }
     
     
-    ON_ERROR_EXIT(ccn_name_from_uri(name, ping_uri), "Unable to parse base ping URI");
-    ON_ERROR_EXIT(ccn_name_append_nonce(name), "Unable to append ping URI nonce");
-    ON_ERROR_EXIT(ccn_get(h, name, local_scope_template, 4500, resultbuf, &pcobuf, NULL, 0), "Unable to get ping response from ccnd");
+    ON_ERROR_EXIT(ccn_name_from_uri(name, ccndid_uri), "Unable to parse service locator URI for ccnd key");
+    ON_ERROR_EXIT(ccn_get(h, name, local_scope_template, 4500, resultbuf, &pcobuf, NULL, 0), "Unable to get key from ccnd");
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
                               resultbuf->buf,
                               pcobuf.offset[CCN_PCO_B_PublisherPublicKeyDigest],
