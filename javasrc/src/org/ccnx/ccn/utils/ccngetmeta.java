@@ -27,6 +27,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -110,6 +111,20 @@ public class ccngetmeta {
 			ContentName fileName = MetadataProfile.getLatestVersion(ContentName.fromURI(args[startArg]), 
 					ContentName.fromNative(metaArg), CommonParameters.timeout, handle);
 		
+			if (fileName == null) {
+				//This base content does not exist...  cannot get metadata associated with the base name.
+				System.out.println("File " + args[startArg] + " does not exist");
+				System.exit(1);
+			}
+			
+			if (VersioningProfile.hasTerminalVersion(fileName)) {
+				//MetadataProfile has found a terminal version...  we have something to get!
+			} else {
+				//MetadataProfile could not find a terminal version...  nothing to get
+				System.out.println("File " + fileName + " does not exist...  exiting");
+				System.exit(1);
+			}
+			
 			File theFile = new File(args[startArg + 2]);
 			if (theFile.exists()) {
 				System.out.println("Overwriting file: " + args[startArg + 1]);

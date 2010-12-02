@@ -78,6 +78,14 @@ Options for *ccnd* are set via environment variables.
       connectivity to a particular set of configured addresses.
       The most useful non-default setting is probably "localhost".
       Note that outgoing tcp connections may still be made.
+    CCND_AUTOREG=
+      List of prefixes to auto-register on new faces initiated by peers.
+      The prefixes are represented as ccnx URIs, and
+      are separated by whitespace, commas, or semicolons.
+      If this is specified, the ccnd can be used as a "hub" to forward
+      interests matching these prefixes to any peer that talks to it.
+      example: CCND_AUTOREG=ccnx:/ccnx.org/Users,ccnx:/ccnx.org/Chat
+
 
 EXIT STATUS
 -----------

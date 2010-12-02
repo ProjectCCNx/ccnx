@@ -3,7 +3,7 @@
  * 
  * CCNx input module for vlc.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -138,7 +138,7 @@ static int CCNOpen(vlc_object_t *p_this)
     p_sys = p_access->p_sys;
     if (p_sys == NULL)
         return VLC_ENOMEM;
-#ifdef VLCPLUGINVER099
+#if (VLCPLUGINVER == 99)
     p_access->info.b_prebuffered = true;
 #endif
     p_access->info.i_size = LLONG_MAX;	/* we don't know, but bigger is better */
@@ -157,8 +157,13 @@ static int CCNOpen(vlc_object_t *p_this)
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
+#if (VLCPLUGINVER >= 110)
+    msg_Dbg(p_access, "CCN.Open %s, closure %p",
+            p_access->psz_location, p_sys->incoming);
+#else
     msg_Dbg(p_access, "CCN.Open %s, closure %p",
             p_access->psz_path, p_sys->incoming);
+#endif
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
 
@@ -171,7 +176,11 @@ static int CCNOpen(vlc_object_t *p_this)
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
+#if (VLCPLUGINVER >= 110)
+    i_ret = ccn_name_from_uri(p_name, p_access->psz_location);
+#else
     i_ret = ccn_name_from_uri(p_name, p_access->psz_path);
+#endif
     if (i_ret < 0) {
         goto exit_error;
     }
@@ -206,11 +215,10 @@ static int CCNOpen(vlc_object_t *p_this)
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
-#ifdef VLCPLUGINVER099
+#if (VLCPLUGINVER <= 99)
     i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
                               VLC_THREAD_PRIORITY_INPUT, false);
 #else
-
     i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
                               VLC_THREAD_PRIORITY_INPUT);
 #endif
@@ -389,7 +397,7 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
             *pb_bool = true;
             break;
 
-#ifdef VLCPLUGINVER099
+#if (VLCPLUGINVER <= 99)
         case ACCESS_GET_MTU:
             pi_int = (int*)va_arg(args, int *);
             *pi_int = 0;
@@ -429,7 +437,7 @@ static void *ccn_event_thread(vlc_object_t *p_this)
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn *ccn = p_sys->ccn;
     int res = 0;
-#ifndef VLCPLUGINVER099
+#if (VLCPLUGINVER > 99)
     int cancel = vlc_savecancel();
 #endif
 
@@ -445,7 +453,7 @@ static void *ccn_event_thread(vlc_object_t *p_this)
         vlc_object_kill(p_access);
         block_FifoWake(p_sys->p_fifo);
     }
-#ifndef VLCPLUGINVER099
+#if (VLCPLUGINVER > 99)
     vlc_restorecancel(cancel);
 #endif
 }

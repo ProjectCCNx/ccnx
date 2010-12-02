@@ -2057,6 +2057,7 @@ ccn_chk_signing_params(struct ccn *h,
     struct ccn_charbuf *default_pubid = NULL;
     struct ccn_charbuf *temp = NULL;
     const char *home = NULL;
+    const char *ccnx_dir = NULL;
     int res = 0;
     int i;
     int conflicting;
@@ -2086,10 +2087,15 @@ ccn_chk_signing_params(struct ccn *h,
             temp = ccn_charbuf_create();
             if (default_pubid == NULL || temp == NULL)
                 return(NOTE_ERRNO(h));
-            home = getenv("HOME");
-            if (home == NULL)
-                home = "";
-            ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", home);
+            ccnx_dir = getenv("CCNX_DIR");
+            if (ccnx_dir == NULL || ccnx_dir[0] == 0) {
+                home = getenv("HOME");
+                if (home == NULL)
+                    home = "";
+                ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", home);
+            }
+            else
+                ccn_charbuf_putf(temp, "%s/.ccnx_keystore", ccnx_dir);
             res = ccn_load_private_key(h,
                                        ccn_charbuf_as_string(temp),
                                        "Th1s1sn0t8g00dp8ssw0rd.",

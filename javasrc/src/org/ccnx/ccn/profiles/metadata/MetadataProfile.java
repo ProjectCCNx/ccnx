@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -72,7 +71,20 @@ public class MetadataProfile implements CCNProfile {
 	
 	/**
 	 * Get the latest version of a metadata file which is associated with a base file. Before
-	 * searching for the metadata version, we find the latest version of the base file
+	 * searching for the metadata version, we find the latest version of the base file.  This
+	 * call requires the calling function to check for a terminal version before attempting to
+	 * retrieve the metadata content.  If the base file name does not have a version, this
+	 * function will return null.  If the metadata file for the latest version of the base file
+	 * does not exist, this function will return a content name without a terminal version.
+	 * 
+	 * Example where both versions are found:
+	 * baseName/version/metadataMarkers/version
+	 * 
+	 * Example where only the base file name version is found:
+	 * baseName/version/metadataMarkers
+	 * 
+	 * Example where no base file version is found:
+	 * null
 	 * 
 	 * @param baseName the base file
 	 * @param metaName the meta file. This should be a ContentName containing only the relative path
@@ -89,7 +101,24 @@ public class MetadataProfile implements CCNProfile {
 	}
 	
 	/**
-	 * Internal version of getLatestVersion
+	 * Internal version of getLatestVersion.  This call requires the calling function to check for a terminal version before
+	 * attempting to retrieve the metadata content.
+	 * 
+	 * If the
+	 * base file name does not have a version, this function will return null.  If the metadata
+	 * file for the latest version of the base file does not exist, this function will return a
+	 * content name without a terminal version.
+	 * 
+	 * Example where both versions are found:
+	 * baseName/version/metadataMarkers/version
+	 * 
+	 * Example where only the base file name version is found:
+	 * baseName/version/metadataMarkers
+	 * 
+	 * Example where no base file version is found:
+	 * null
+	 * 
+	 * 
 	 * @param baseName
 	 * @param namer
 	 * @param metaName
@@ -101,20 +130,28 @@ public class MetadataProfile implements CCNProfile {
 	protected static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ArrayList<byte[]> metaName,
 			 long timeout, CCNHandle handle) throws IOException {
 		ContentName baseVersion = baseName;
-		CCNInputStream checker = new CCNInputStream(baseName, handle);
-		if (null == checker)
-			return null;
+		//removing the stream instance:  1 - we are not actually attempting to get the stream, we just want to discover the latest version
+		//CCNInputStream checker = new CCNInputStream(baseName, handle);
+		//if (null == checker)
+		//	return null;
 		if (!VersioningProfile.containsVersion(baseVersion)) {
-			ContentObject co = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, checker.publisher(), timeout, checker, handle);
+			//ContentObject co = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, checker.publisher(), timeout, checker, handle);
+			ContentObject co = VersioningProfile.getFirstBlockOfLatestVersion(baseName, null, null, timeout, null, handle);
 			if (null == co)
 				return null;
 			baseVersion = co.name();
 			baseVersion = SegmentationProfile.segmentRoot(baseVersion);
 		}
 		ContentName unversionedName = namer.getMetaName(baseVersion, metaName);
-		ContentObject meta = VersioningProfile.getFirstBlockOfLatestVersion(unversionedName, null, checker.publisher(), timeout, checker, handle);
-		if (null == meta)
-			return VersioningProfile.addVersion(unversionedName);
+		//ContentObject meta = VersioningProfile.getFirstBlockOfLatestVersion(unversionedName, null, checker.publisher(), timeout, checker, handle);
+		ContentObject meta = VersioningProfile.getFirstBlockOfLatestVersion(unversionedName, null, null, timeout, null, handle);
+		if (null == meta) {
+			//we did not find a version of the metadata content...  do not append the current time. This can be
+			//misleading to the calling application because it cannot discern between metadata that exists and metadata that
+			//is not available.
+			//return VersioningProfile.addVersion(unversionedName);
+			return unversionedName;
+		}
 		return meta.name();
 	}
 

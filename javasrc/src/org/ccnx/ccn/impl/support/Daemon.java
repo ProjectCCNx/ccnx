@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -64,6 +64,7 @@ public class Daemon {
 
 	protected enum Mode {MODE_UNKNOWN, MODE_START, MODE_STOP, MODE_INTERACTIVE, MODE_DAEMON, MODE_SIGNAL};
 
+	protected static Daemon _daemon;
 	protected String _daemonName = null;
 	protected static DaemonListenerClass _daemonListener = null;
 	protected boolean _interactive = false;
@@ -107,8 +108,18 @@ public class Daemon {
 		}
 		
 	}
-
-
+	
+	/**
+	 * Stop ccnd on exit from daemon
+	 */
+	protected class ShutdownHook extends Thread {
+		public void run() {
+			try {
+				_daemon.rmRMIFile();
+			} catch (IOException e) {}
+		}
+	}
+	
 	/**
 	 * The thread that runs inside the daemon, doing work
 	 */
@@ -307,6 +318,8 @@ public class Daemon {
 		// does limit the spawn rate
 		// this is atomic
 		tempFile.renameTo(getRMIFile(daemon.daemonName(), null));
+		
+		Runtime.getRuntime().addShutdownHook(daemon.new ShutdownHook());
 	}
 
 	private static void startDaemon(String daemonName, String daemonClass, String args[]) throws IOException, ClassNotFoundException {
@@ -554,9 +567,14 @@ public class Daemon {
 
 		return File.createTempFile(prefix, null, new File(System.getProperty("user.home")));
 	}
+	
+	protected void rmRMIFile() throws IOException {
+		getRMIFile(_daemonName, SystemConfiguration.getPID()).delete();
+	}
 
 	protected static void runDaemon(Daemon daemon, String args[]) throws IOException {
 		
+		_daemon = daemon;
 		Mode mode = Mode.MODE_UNKNOWN;
 		String sigName = null;
 		String targetPID = null;

@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -525,5 +525,22 @@ public class CCNFileInputStream extends CCNVersionedInputStream implements Updat
 			_header.cancelInterest();			
 		}
 		
+	}
+	
+	@Override
+	public void close() throws IOException{
+		Log.info(Log.FAC_IO, "CCNFileInputStream: close {0}.  closing header objects and will make call to shut down pipelining", _baseName);
+
+		//need to close the header object to cancel any outstanding interests
+		if (_header != null) {
+			_header.close();
+		}
+		
+		if (_oldHeader!=null) {
+			_oldHeader.close();
+		}
+		
+		//then make sure any pipelining state is also cleaned up...
+		super.close();
 	}
 }
