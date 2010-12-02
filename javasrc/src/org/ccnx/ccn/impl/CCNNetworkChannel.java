@@ -29,7 +29,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Timer;
-import java.util.TimerTask;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
