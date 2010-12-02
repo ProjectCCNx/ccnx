@@ -161,13 +161,28 @@ public class CCNNetworkManager implements Runnable {
 		// TODO Interest refresh time is supposed to "decay" over time but there are currently
 		// unresolved problems with this.
 		public void run() {	
-			
+            //this method needs to do a few things
+            // - reopen connection to ccnd if down
+            // - refresh interests
+            // - refresh prefix registrations
+            // - heartbeats
+
+			boolean refreshError = false;			
 			if (_protocol == NetworkProtocol.UDP) {
-				if ((ourTime - _lastHeartbeat) > CCNNetworkChannel.HEARTBEAT_PERIOD) {
-					_lastHeartbeat = ourTime;
+				if (!_channel.isConnected()) {
+                    //we are not connected.  reconnect attempt is in the heartbeat function...
 					_channel.heartbeat();
 				}
 			}
+
+			if (!_channel.isConnected()) {
+                //we tried to reconnect and failed, try again next loop
+                Log.fine(Log.FAC_NETMANAGER, "Not Connected to ccnd, try again in {0}ms", CCNNetworkChannel.SOCKET_TIMEOUT);
+                _lastHeartbeat = 0;
+                if (_run)
+                        _periodicTimer.schedule(new PeriodicWriter(), CCNNetworkChannel.SOCKET_TIMEOUT);
+                return;
+            }
 
             long ourTime = System.currentTimeMillis();
             long minInterestRefreshTime = PERIOD + ourTime;
