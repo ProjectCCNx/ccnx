@@ -113,7 +113,7 @@ Wire representation: the AnswerOriginKind element holds a nonNegativeInteger wit
 ...........................................................
 Scope ::= nonNegativeInteger
 ...........................................................
-This limits where the Interest may propagate. Scope 0 prevents propagation beyond the local ccnd (even to other applications on the same host).  Scope 1 limits propagation to the appications on the originating host. Scope 2 limits propagation to no further than the next host. Other values are not currently defined, and will cause the Interest message to be dropped.
+This limits where the Interest may propagate. Scope 0 prevents propagation beyond the local ccnd (even to other applications on the same host).  Scope 1 limits propagation to the applications on the originating host. Scope 2 limits propagation to no further than the next host. Other values are not currently defined, and will cause the Interest message to be dropped.
 
 Note that this is not a hop count - the value is not decremented as the interest is forwarded.
 

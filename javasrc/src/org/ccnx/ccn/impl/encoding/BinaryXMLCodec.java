@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -270,15 +270,8 @@ public class BinaryXMLCodec implements XMLCodec {
 	 * @throws IOException if there is an error reading or decoding the type and value pair
 	 */
 	public static TypeAndVal peekTypeAndVal(InputStream istream) throws IOException {
-		if (!istream.markSupported()) {
-			Log.info("Cannot peek -- stream without marking ability!");
-			throw new IOException("No lookahead in stream!");
-		}
-
-		istream.mark(LONG_BYTES*2);
-		
 		TypeAndVal tv = null;
-		
+		istream.mark(LONG_BYTES*2);		
 		try {
 			tv = decodeTypeAndVal(istream);
 		} finally {
@@ -300,9 +293,18 @@ public class BinaryXMLCodec implements XMLCodec {
 			return 0;
 		return (LONG_BITS - Long.numberOfLeadingZeros(x)); 
 	}
-			
+
+	final static int ENCODING_LIMIT_1_BYTE = ((1 << (XML_TT_VAL_BITS)) - 1);
+	final static int ENCODING_LIMIT_2_BYTES = ((1 << (XML_TT_VAL_BITS + XML_REG_VAL_BITS)) - 1);
+	final static int ENCODING_LIMIT_3_BYTES = ((1 << (XML_TT_VAL_BITS + 2 * XML_REG_VAL_BITS)) - 1);
+	
 	public static int numEncodingBytes(long x) {
+		if (x <= ENCODING_LIMIT_1_BYTE) return (1);
+		if (x <= ENCODING_LIMIT_2_BYTES) return (2);
+		if (x <= ENCODING_LIMIT_3_BYTES) return (3);
+		
 		int numbytes = 1;
+		
 		// Last byte gives you XML_TT_VAL_BITS
 		// Remainder each give you XML_REG_VAL_BITS
 		x = x >>> XML_TT_VAL_BITS;
@@ -322,11 +324,6 @@ public class BinaryXMLCodec implements XMLCodec {
 	 * @throws IOException if stream cannot be read, decoded or reset
 	 */
 	public static byte [] decodeBlob(InputStream istream) throws IOException {
-		if (!istream.markSupported()) {
-			Log.info("Cannot peek -- stream without marking ability!");
-			throw new IOException("No lookahead in stream!");
-		}
-
 		istream.mark(LONG_BYTES*2);
 		
 		TypeAndVal tv = decodeTypeAndVal(istream);
@@ -410,11 +407,6 @@ public class BinaryXMLCodec implements XMLCodec {
 	 * @throws IOException if stream cannot be read, decoded or reset
 	 */
 	public static String decodeUString(InputStream istream) throws IOException {
-		if (!istream.markSupported()) {
-			Log.info("Cannot peek -- stream without marking ability!");
-			throw new IOException("No lookahead in stream!");
-		}
-
 		istream.mark(LONG_BYTES*2);
 		
 		TypeAndVal tv = decodeTypeAndVal(istream);

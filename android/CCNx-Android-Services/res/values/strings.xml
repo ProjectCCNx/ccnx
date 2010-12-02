@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    
+    <string name="app_name">CCNx Service Control</string>
+
+
+
+
+<string name="controllerTitle">CCNx Service Controller</string>
+<string name="allStartButton">Start All</string>
+
+<string name="repoStatusLabel">Repo Status:</string>
+
+<string name="ccndStatusLabel">CCNd status:</string>
+<string name="allStopButton">Stop All</string>
+</resources>

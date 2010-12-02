@@ -4,7 +4,7 @@
  * 
  * A CCNx program.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -40,7 +40,7 @@ Moan(int line) {
 int
 main(int argc, char **argv)
 {
-    int ch;
+    int opt;
     int res;
     int argi;
     int fd;
@@ -82,8 +82,8 @@ main(int argc, char **argv)
     }
     verification_pubkey = ccn_keystore_public_key(keystore);
 
-    while ((ch = getopt(argc, argv, "h")) != -1) {
-        switch (ch) {
+    while ((opt = getopt(argc, argv, "h")) != -1) {
+        switch (opt) {
         default:
         case 'h':
             fprintf(stderr, "provide names of files containing ccnb format content\n");

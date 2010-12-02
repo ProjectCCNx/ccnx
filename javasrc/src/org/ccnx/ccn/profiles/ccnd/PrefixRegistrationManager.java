@@ -45,10 +45,28 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		public String value() { return st; }
 	}
 	
+	// Forwarding flags
 	public static final int CCN_FORW_ACTIVE = 1;
-	public static final int CCN_FORW_CHILD_INHERIT = 2;
-	public static final int CCN_FORW_ADVERTISE = 4;
-	public static final int CCN_FORW_LAST = 8;
+	public static final int CCN_FORW_CHILD_INHERIT = 2;	// This entry may be used even if there is a longer
+														// match available
+	public static final int CCN_FORW_ADVERTISE = 4;		// Prefix may be advertised to other nodes	
+	public static final int CCN_FORW_LAST = 8;			// Entry should be used last if nothing else worked
+	public static final int CCN_FORW_CAPTURE = 16;		// No shorter prefix may be used, overriding any
+														// child-inherit bits that would otherwise make the
+														// shorter entries usable. Ignored when used with
+														// CCN_FORW_LAST
+	public static final int CCN_FORW_LOCAL = 32;		// Restricts namespace to use by applications on the
+														// local machine
+	public static final int CCN_FORW_TAP = 64;			// Causes the entry to be used right away - intended
+														// for debugging and monitoring purposes.
+	public static final int CCN_FORW_PUBMASK = 	CCN_FORW_ACTIVE |
+            									CCN_FORW_CHILD_INHERIT |
+            									CCN_FORW_ADVERTISE     |
+            									CCN_FORW_LAST          |
+            									CCN_FORW_CAPTURE       |
+            									CCN_FORW_LOCAL         |
+            									CCN_FORW_TAP;
+
 	
 	public static final Integer DEFAULT_SELF_REG_FLAGS = new Integer(CCN_FORW_ACTIVE + CCN_FORW_CHILD_INHERIT);
 
@@ -111,7 +129,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 				decoder.endDecoding();	
 			} catch (ContentDecodingException e) {
 				String reason = e.getMessage();
-				Log.fine("Unexpected error decoding ForwardingEntry from bytes.  reason: " + reason + "\n");
+				Log.warning(Log.FAC_NETMANAGER, "Unexpected error decoding ForwardingEntry from bytes.  reason: " + reason + "\n");
 				Log.warningStackTrace(e);
 				throw new IllegalArgumentException("Unexpected error decoding ForwardingEntry from bytes.  reason: " + reason);
 			}
@@ -302,31 +320,38 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 
 	public PrefixRegistrationManager() {
 	}
+	
+	public void registerPrefix(ContentName prefix, Integer faceID, Integer flags) throws CCNDaemonException {
+		this.registerPrefix(prefix, null, faceID, flags, Integer.MAX_VALUE);
+	}
 
 	public void registerPrefix(String uri, Integer faceID, Integer flags) throws CCNDaemonException {
 		this.registerPrefix(uri, null, faceID, flags, Integer.MAX_VALUE);
 	}
 	
 	public void registerPrefix(String uri, PublisherPublicKeyDigest publisher, Integer faceID, Integer flags, 
+			Integer lifetime) throws CCNDaemonException {
+		try {
+			this.registerPrefix(ContentName.fromURI(uri), null, faceID, flags, Integer.MAX_VALUE);
+		} catch (MalformedContentNameStringException e) {
+			String reason = e.getMessage();
+			String msg = ("MalformedContentName (" + uri + ") , reason: " + reason);
+			Log.warning(Log.FAC_NETMANAGER, msg);
+			Log.warningStackTrace(e);
+			throw new CCNDaemonException(msg);
+		}
+	}
+	
+	public void registerPrefix(ContentName prefixToRegister, PublisherPublicKeyDigest publisher, Integer faceID, Integer flags, 
 							Integer lifetime) throws CCNDaemonException {
-		if (null == publisher)
+		if (null == publisher) {
 			try {
 				publisher = _manager.getCCNDId();
 			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+				Log.warning(Log.FAC_NETMANAGER, "Unable to get ccnd id");
+				Log.warningStackTrace(e1);
 				throw new CCNDaemonException(e1.getMessage());
 			}
-		
-		ContentName prefixToRegister;
-		try {
-			prefixToRegister = ContentName.fromURI(uri);
-		} catch (MalformedContentNameStringException e) {
-			String reason = e.getMessage();
-			Log.fine("MalformedContentName (" + uri + ") , reason: " + reason + "\n");
-			Log.warningStackTrace(e);
-			String msg = ("MalformedContentName (" + uri + ") , reason: " + reason);
-			throw new CCNDaemonException(msg);
 		}
 		
 		ForwardingEntry forward = new ForwardingEntry(ActionType.Register, prefixToRegister, publisher, faceID, flags, lifetime);
@@ -343,9 +368,9 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			interestName = ContentName.fromNative(interestName, ActionType.Register.value());
 		} catch (MalformedContentNameStringException e) {
 			String reason = e.getMessage();
-			Log.fine("Call to create ContentName failed: " + reason + "\n");
+			String msg = ("MalformedContentNameStringException in call creating ContentName for Interest, reason: " + reason);
+			Log.warning(Log.FAC_NETMANAGER, msg);
 			Log.warningStackTrace(e);
-			String msg = ("Unexpected MalformedContentNameStringException in call creating ContentName for Interest, reason: " + reason);
 			throw new CCNDaemonException(msg);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -362,9 +387,9 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			prefixToRegister = ContentName.fromURI(uri);
 		} catch (MalformedContentNameStringException e) {
 			String reason = e.getMessage();
+			String msg = ("MalformedContentNameStringException for prefix to register (" + uri + ") , reason: " + reason);
+			Log.warning(Log.FAC_NETMANAGER, msg);
 			Log.warningStackTrace(e);
-			String msg = ("MalformedContentName for prefix to register (" + uri + ") , reason: " + reason);
-			Log.fine(msg);
 			throw new CCNDaemonException(msg);
 		}
 		return selfRegisterPrefix(prefixToRegister, null, DEFAULT_SELF_REG_FLAGS, Integer.MAX_VALUE);
@@ -400,7 +425,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		} catch (MalformedContentNameStringException e) {
 			String reason = e.getMessage();
 			String msg = ("Unexpected MalformedContentNameStringException in call creating ContentName " + startURI + ", reason: " + reason);
-			Log.fine(msg);
+			Log.warning(Log.FAC_NETMANAGER, msg);
 			Log.warningStackTrace(e);
 			throw new CCNDaemonException(msg);
 		}
@@ -408,7 +433,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 
 		byte[] payloadBack = super.sendIt(interestName, forward, true);
 		ForwardingEntry entryBack = new ForwardingEntry(payloadBack);
-		Log.finest("registerPrefix: returned {0}", entryBack);
+		Log.fine(Log.FAC_NETMANAGER, "registerPrefix: returned {0}", entryBack);
 		return entryBack; 
 	}
 	
@@ -430,7 +455,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		} catch (MalformedContentNameStringException e) {
 			String reason = e.getMessage();
 			String msg = ("Unexpected MalformedContentNameStringException in call creating ContentName " + startURI + ", reason: " + reason);
-			Log.fine(msg);
+			Log.warning(Log.FAC_NETMANAGER, msg);
 			Log.warningStackTrace(e);
 			throw new CCNDaemonException(msg);
 		}

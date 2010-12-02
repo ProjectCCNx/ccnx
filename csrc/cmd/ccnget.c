@@ -51,7 +51,7 @@ main(int argc, char **argv)
     const char *arg = NULL;
     struct ccn_parsed_ContentObject pcobuf = { 0 };
     int res;
-    char ch;
+    int opt;
     int allow_stale = 0;
     int content_only = 0;
     const unsigned char *ptr;
@@ -60,8 +60,8 @@ main(int argc, char **argv)
     const char *env_timeout = getenv("CCN_LINGER");
     int timeout_ms = 3000;
     
-    while ((ch = getopt(argc, argv, "hacv")) != -1) {
-        switch (ch) {
+    while ((opt = getopt(argc, argv, "hacv")) != -1) {
+        switch (opt) {
             case 'a':
                 allow_stale = 1;
                 break;

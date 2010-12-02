@@ -1356,9 +1356,12 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 			// dereference will check for link cycles
 			newSegment = _dereferencedLink.dereference(_timeout);
-			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
 				Log.info(Log.FAC_IO, "CCNAbstractInputStream: dereferencing link {0} to {1}, resulting data {2}", theLink.getVersionedName(),
 						theLink.link(), ((null == newSegment) ? "null" : newSegment.name()));
+				Log.info(Log.FAC_SIGNING, "CCNAbstractInputStream: dereferencing link {0} to {1}, resulting data {2}", theLink.getVersionedName(), theLink.link(), ((null == newSegment) ? "null" : newSegment.name()));
+			}
+
 			if (newSegment == null) {
 				// TODO -- catch error states. Do we throw exception or return null?
 				// Set error states -- when do we find link cycle and set the error on the link?

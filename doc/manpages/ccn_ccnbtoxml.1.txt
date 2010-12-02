@@ -1,0 +1,67 @@
+CCN_CCNBTOXML(1)
+================
+
+NAME
+----
+ccn_ccnbtoxml - convert ccn binary encoded data into XML form
+
+SYNOPSIS
+--------
+*ccn_ccnbtoxml* [-bvx] [-d 'dict'] [-s 'pat'] 'file' '...'
+
+DESCRIPTION
+-----------
+The *ccn_ccnbtoxml* converts ccn binary encoded data into XML form.
+
+OPTIONS
+-------
+*-b*::
+	Force base64Binary (or hexBinary if used with -x) instead of preferring text where possible.
+
+*-d* 'dict'::
+	Augment the built-in DTAG dictionary with the named file (format like tagname.csvdict).
+	May be repeated.
+
+*-v*::
+	Verbose - add comments with alternative encodings.
+
+*-x*::
+	Prefer hexBinary over the default of base64Binary.
+
+*-s* 'pat'::
+	Split concatenated ccnb blocks into separate output files, using 'pat' to generate output files named 'pat00000.xml', 'pat00001.xml', ...
+
+ARGUMENTS
+---------
+The named files should contain ccnb-encoded data.
+Use *-* to specify standard input.
+
+OUTPUT
+------
+The XML form appears on standard output, unless the *-s* switch is used; status and diagnostic messages appear on standard error.
+
+The output is produced in a compact form.
+For more human-readable, it is often useful to pipe the output through *xmllint --format -*.
+
+By default, BLOB fields are turned into base64Binary if they are not expressible in a safe subset of ascii printable characters.
+If hexBinary is preferred, use the *-x* switch.
+In any case, a ccnbencoding attribute is added to the enclosing element to indicate which display encoding is being used for the BLOB.
+
+If you want to check the XML to make sure it conforms to a schema, use the *-b* switch to force base64Binary (because the schemas current assume that).
+
+The output may be converted back into ccnb form using the *ccn_xmltoccnb* utility.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*nonzero*::
+     Failure (syntax or usage error, file not found)
+
+SEE ALSO
+--------
+*ccn_xmltoccnb*(1)
+
+Michael Plass <plass@parc.com>
+

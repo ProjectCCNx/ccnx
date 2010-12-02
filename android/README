@@ -1,0 +1,42 @@
+October 27, 2010
+
+Android Apps for CCNx
+=====================
+
+CCNx-Android-Lib
+  This is an Android library.  It has helpers for the ccnd and 
+  repo services, among other things.  No build is done here, as
+  Android libraries are included in source form.
+
+Before you use any CCNx library calls:
+- Call CCNxConfiguration.config(Context)
+- Call CCNxServiceControl.startAll() or startAllBackround()
+
+Once you have configured your environment (config()) and started
+ccnd and the repo (startAll()), you can then use the
+CCNx library.
+
+You application needs these permissions:
+	# Always need this:
+    android.permission.INTERNET
+
+	# If your keystore is on /sdcard
+    android.permission.WRITE_EXTERNAL_STORAGE
+
+Important Notes
+===============
+- User keys are stored in /sdcard/ccnx/user
+  Because this is on the SD card, it may become unavailable if you
+  plug in your usb and use the SD card for storage.  
+
+  The user keysore is on the sdcard so multiple apps from different packages
+  can share the same identity.
+
+  If your app wants to use a private keystore, call
+
+- Repo directory is /sdcard/ccnx/repo
+  See User note about /sdcard
+
+- Ccnd directory is under the apk:
+  /data/data/org.ccnx.android.services/app_ccnd
+

@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -277,15 +277,15 @@ main(int argc, char **argv)
     struct ccn_closure *incoming = NULL;
     const char *arg = NULL;
     int res;
-    char ch;
+    int opt;
     struct mydata *mydata;
     int allow_stale = 0;
     int lg_n = 3;
     unsigned n = 8;
     int i;
     
-    while ((ch = getopt(argc, argv, "han:")) != -1) {
-        switch (ch) {
+    while ((opt = getopt(argc, argv, "han:")) != -1) {
+        switch (opt) {
             case 'a':
                 allow_stale = 1;
                 break;

@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -28,7 +28,6 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.CCNTime;
 
-
 /**
  * An implementation of XMLDecoder for the Binary (ccnb) codec.
  * 
@@ -48,6 +47,12 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 		super(dictionary);
 	}
 	
+	public void initializeDecoding() {
+		if (!_istream.markSupported()) {
+			throw new IllegalArgumentException(this.getClass().getName() + ": input stream must support marking!");
+		}
+	}
+
 	public void readStartDocument() throws ContentDecodingException {
 		// Currently no start document in binary encoding.
 	}
@@ -174,11 +179,6 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	}
 	
 	public String peekStartElementAsString() throws ContentDecodingException {
-		if (!_istream.markSupported()) {
-			Log.info("Cannot peek -- stream without marking ability!");
-			throw new ContentDecodingException("No lookahead in stream!");
-		}
-
 		_istream.mark(MARK_LEN);
 
 		String decodedTag = null;
@@ -245,13 +245,6 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	}
 	
 	public Long peekStartElementAsLong() throws ContentDecodingException {
-		if (!_istream.markSupported()) {
-			if (Log.isLoggable(Level.INFO)) {
-				Log.info("Cannot peek -- stream without marking ability!");
-			}
-			throw new ContentDecodingException("No lookahead in stream!");
-		}
-
 		_istream.mark(MARK_LEN);
 
 		Long decodedTag = null;

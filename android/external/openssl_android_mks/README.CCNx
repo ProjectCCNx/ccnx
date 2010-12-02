@@ -1,0 +1,9 @@
+October 5, 2010
+
+This directory contains the Android build files for openssl. 
+They will be copied in to the openssl source directory by the
+build process.
+
+dlfcn_patch unsets HAVE_DLINFO for Android.  It is incorrectly
+set for that platform.
+

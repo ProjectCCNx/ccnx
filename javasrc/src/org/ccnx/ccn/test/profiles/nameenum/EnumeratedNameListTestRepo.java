@@ -48,21 +48,36 @@ import org.junit.Test;
  */
 public class EnumeratedNameListTestRepo { 
 	
-	protected static final int N_WAIT_ATTEMPTS = 100;
-	
 	EnumeratedNameList testList; //the enumeratednamelist object used to test the class
 	
 	static Random rand = new Random();
 	
 	static final String directoryString = "/test/parc" + "/directory-";
+	static final String directoryString2 = "/test/parc" + "/directory2-";
+	static final String directoryString3 = "/test/parc" + "/directory3-";
 	static ContentName directory;
+	static ContentName directory2;
+	static ContentName directory3;
+
 	static String nameString = "name-";
 	static String name1String;
 	static String name2String;
 	static String name3String;
+	static String name4String;
+	static String name5String;
+	static String name6String;
+
 	static ContentName name1;
 	static ContentName name2;
 	static ContentName name3;
+	
+	// For thread test
+	static ContentName name4;
+	static ContentName name5;
+	static ContentName name6;
+	static ContentName name7;
+	static ContentName name8;
+	static ContentName name9;
 	static CCNHandle putHandle;
 		
 	static String prefix1StringError = "/park.com/csl/ccn/repositories";
@@ -70,6 +85,9 @@ public class EnumeratedNameListTestRepo {
 	static ContentName brokenPrefix;
 	ContentName c1;
 	ContentName c2;
+	
+	static int contentSeenNoPool = 0;
+	static int contentSeenPool = 0;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -77,13 +95,22 @@ public class EnumeratedNameListTestRepo {
 		
 		// randomize names to minimize stateful effects of ccnd/repo caches.
 		directory = ContentName.fromNative(directoryString + Integer.toString(rand.nextInt(10000)));
+		directory2 = ContentName.fromNative(directoryString2 + Integer.toString(rand.nextInt(10000)));
+		directory3 = ContentName.fromNative(directoryString3 + Integer.toString(rand.nextInt(10000)));
 		name1String = nameString + Integer.toString(rand.nextInt(10000));
 		name2String = nameString + Integer.toString(rand.nextInt(10000));
 		name3String = nameString + Integer.toString(rand.nextInt(10000));
+		name4String = nameString + Integer.toString(rand.nextInt(10000));
 
 		name1 = ContentName.fromNative(directory, name1String);
 		name2 = ContentName.fromNative(directory, name2String);
 		name3 = ContentName.fromNative(directory, name3String);
+		name4 = ContentName.fromNative(directory2, name1String);
+		name5 = ContentName.fromNative(directory2, name2String);
+		name6 = ContentName.fromNative(directory2, name3String);
+		name7 = ContentName.fromNative(directory2, name4String);
+		name8 = ContentName.fromNative(directory3, name1String);
+		name9 = ContentName.fromNative(directory3, name2String);
 		brokenPrefix = ContentName.fromNative(prefix1StringError);
 		putHandle = CCNHandle.open();
 	}
@@ -136,17 +163,25 @@ public class EnumeratedNameListTestRepo {
 
 			// adding content to repo
 			ContentName latestName = addContentToRepo(name1, handle);
-			waitForChildren(1);
+			testList.waitForChildren();
 			Log.info("Added data to repo: " + latestName);
 
 			//testing that the enumerator has new data
-			Assert.assertTrue(testList.hasChildren());
+			Assert.assertTrue(testList.hasNewData());
+
+			//Testing that hasNewData returns true
+			Assert.assertTrue(testList.hasNewData());
 
 			//gets new data
-			SortedSet<ContentName> returnedBytes = testList.getChildren();
+			SortedSet<ContentName> returnedBytes = testList.getNewData();
 
 			Assert.assertNotNull(returnedBytes);
 			Assert.assertFalse(returnedBytes.isEmpty());
+			
+			// getNewData gets *new* data -- you got the last new data, there won't be any more
+			// until you add something else to the repo. i.e. this next call would block
+			// until there was new data for getNewData to return, and it *wouldn't* match the previous set.
+			// Assert.assertEquals(testList.getNewData(), returnedBytes.size());
 			System.out.println("Got " + returnedBytes.size() + " children: " + returnedBytes);
 			//only one thing has been added, so we can only expect one name
 			//System.out.println("Predicted strings " + name1String + ", " + name2String + ", " + name3String);
@@ -165,11 +200,20 @@ public class EnumeratedNameListTestRepo {
 				System.out.print(" "+n);
 			System.out.println();
 			
+			//testing that children exist
+			// DKS -- if you're testing a boolean, use assertTrue, not assertNotNull
+			Assert.assertTrue(testList.hasChildren());
+
 			//Testing that Name1 Exists
 			// only true if run on clean repo -- if not clean repo and clean ccnd cache, might be in second response
 			Assert.assertTrue(testList.hasChild(name1String));
 			
-			// Now add some more data	
+			// Only definite if run on fresh repo
+			//as long as the EnumeratedNameList object isn't starting a new interest, this is correct.  a repo
+			//  wouldn't return old names after the last response
+			Assert.assertFalse(testList.hasNewData());
+			// Now add some more data
+			
 			System.out.println("adding name2: "+name2);
 			addContentToRepo(name2, handle);
 			System.out.println("adding name3: "+name3);
@@ -183,8 +227,8 @@ public class EnumeratedNameListTestRepo {
 			//4 - same thing happens for the second object as 2
 			//5 - after both things are added an interest.last arrives from the CCNNameEnumerator.
 			
-			waitForChildren(2);
-			SortedSet<ContentName> returnedBytes2 = testList.getChildren();
+			
+			SortedSet<ContentName> returnedBytes2 = testList.getNewData(); // will block for new data
 			Assert.assertNotNull(returnedBytes2);
 			
 			System.out.print("names in list after adding name2 and name3:");
@@ -192,21 +236,37 @@ public class EnumeratedNameListTestRepo {
 				System.out.print(" "+n);
 			System.out.println();
 			
+			System.out.print("names in testlist after adding name2 and name3:");
+			for(ContentName n: testList.getChildren())
+				System.out.print(" "+n);
+			System.out.println();
+			
+			
+			// Might have older stuff from previous runs, so don't insist we get back only what we put in.
 			System.out.println("Got new data, second round size: " + returnedBytes2.size() + " first round " + returnedBytes.size());
+			//this is new data...  so comparing new data from one save to another doesn't really make sense
+			Assert.assertTrue(returnedBytes2.size() >= 1);
+			//since we have a new response, the first name has to be in there...
 			Assert.assertTrue(testList.hasChild(name2String));
 			//we might not have a response since the second name...  need to check again if it isn't in there yet 
 			if(!testList.hasChild(name3String)){
-				waitForChildren(3);
-				returnedBytes2 = testList.getChildren();
+				returnedBytes2 = testList.getNewData(); // will block for new data
+			//now we have the third response...
 
-				System.out.print("names in list after waiting for more data:");
+				System.out.print("names in list after asking for new data again:");
 				for(ContentName n: returnedBytes2)
 					System.out.print(" "+n);
 				System.out.println();
 			}
 			
+			System.out.print("names in testlist after adding name2 and name3:");
+			for(ContentName n: testList.getChildren())
+				System.out.print(" "+n);
+			System.out.println();
+			
 			Assert.assertTrue(testList.hasChild(name3String));
-	
+
+			
 			// This will add new versions
 			for (int i=0; i < 5; ++i) {
 				latestName = addContentToRepo(name1, handle);
@@ -214,7 +274,8 @@ public class EnumeratedNameListTestRepo {
 			}
 			
 			EnumeratedNameList versionList = new EnumeratedNameList(name1, handle);
-			waitForChildren(4);
+			versionList.waitForChildren();
+			Assert.assertTrue(versionList.hasNewData());
 			// Even though the addition of versions above is blocking and the new EnumeratedNameList
 			// is not created to start enumerating names until after the versions have been written,
 			// we don't have a guarantee that the repository will have fully processed the writes 
@@ -222,9 +283,15 @@ public class EnumeratedNameListTestRepo {
 			// commitment is obtained before returning from write this may change).  There is a timing 
 			// race with the last content written and the first name enumeration result.  For this reason
 			// we must be prepared to wait a second time.
+			// It could be possible that only waiting one more time is not sufficient...  if the writes are very slow,
+			// the timing could work out that there is a response per object.  adding loop to account for that
 			
-			waitForChildren(6);
-			
+			for(int attempts = 1; attempts < 5; attempts++){
+				// 5 versions written just above plus 1 earlier addition under name1
+				versionList.getNewData(); // ignore result, we want to look at entire set once available
+				if(versionList.getChildren().size() >= 6)
+					attempts = 5;
+			}
 			// Now we should have everything
 			ContentName latestReturnName = versionList.getLatestVersionChildName();
 			System.out.println("Got children: " + versionList.getChildren());
@@ -235,6 +302,77 @@ public class EnumeratedNameListTestRepo {
 			Log.logException("Failed test with exception " + e.getMessage(), e);
 			Assert.fail("Failed test with exception " + e.getMessage());
 		}			
+	}
+	
+	@Test
+	public void testEnumeratedNameListWithThreads() throws Exception {
+		Log.info("*****************Starting Enumerated Name Test for multiple threads");
+		EnumeratedNameList poolList = new EnumeratedNameList(directory3, putHandle);
+		Thread poolThread = new Thread(new WaiterThreadForPool(poolList));
+		poolThread.start();
+		addContentToRepo(name8, putHandle);
+		addContentToRepo(name9, putHandle);
+		poolOps(poolList);
+		Assert.assertEquals(2, contentSeenPool);
+		EnumeratedNameList noPoolList = new EnumeratedNameList(directory2, putHandle);
+		Thread noPoolThread = new Thread(new WaiterThread(noPoolList));
+		noPoolThread.start();
+		addContentToRepo(name4, putHandle);
+		addContentToRepo(name5, putHandle);
+		addContentToRepo(name6, putHandle);
+		addContentToRepo(name7, putHandle);
+		noPoolOps(poolList);
+		Assert.assertEquals(4, contentSeenNoPool);
+	}
+	
+	private class WaiterThreadForPool implements Runnable {
+		private EnumeratedNameList myList = null;
+		
+		private WaiterThreadForPool(EnumeratedNameList list) {
+			this.myList = list;
+		}
+		public void run() {
+			poolOps(myList);
+		}
+	}
+	
+	public class WaiterThread implements Runnable {
+		private EnumeratedNameList myList = null;
+		
+		private WaiterThread(EnumeratedNameList list) {
+			this.myList = list;
+		}
+		public void run() {
+			noPoolOps(myList);
+		}
+	}
+	
+	private static void poolOps(EnumeratedNameList list) {
+		long currentTime = System.currentTimeMillis();
+		long lastTime = currentTime + (2 * SystemConfiguration.MAX_TIMEOUT);
+		while (contentSeenPool < 2 && currentTime < lastTime) {
+			synchronized (list) {
+				SortedSet<ContentName> names = list.getNewDataThreadPool(SystemConfiguration.MAX_TIMEOUT);
+				if (null != names)
+					contentSeenPool += names.size();
+			}
+			currentTime = System.currentTimeMillis();
+		}
+		list.shutdown();
+	}
+	
+	private static void noPoolOps(EnumeratedNameList list) {
+		long currentTime = System.currentTimeMillis();
+		long lastTime = currentTime + (4 * SystemConfiguration.MAX_TIMEOUT);
+		while (contentSeenNoPool < 4 && currentTime < lastTime) {
+			synchronized (list) {
+				SortedSet<ContentName> names = list.getNewData(SystemConfiguration.MAX_TIMEOUT);
+				if (null != names)
+					contentSeenNoPool += names.size();
+			}
+			currentTime = System.currentTimeMillis();
+		}
+		list.shutdown();
 	}
 	
 	/*
@@ -248,21 +386,6 @@ public class EnumeratedNameListTestRepo {
 		System.out.println("Saved new object: " + cso.getVersionedName());
 		return cso.getVersionedName();
 		
-	}
-	
-	private void waitForChildren(int n) {
-		for (int i = 0; i < N_WAIT_ATTEMPTS; i++) {
-			if (testList.hasChildren()) {
-				if (testList.getChildren().size() >= n)
-				return;
-			}
-			try {
-				Thread.sleep(SystemConfiguration.SETTABLE_SHORT_TIMEOUT);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
 	}
 	
 }

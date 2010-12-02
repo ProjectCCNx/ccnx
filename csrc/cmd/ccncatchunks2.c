@@ -518,7 +518,7 @@ main(int argc, char **argv)
     const char *arg = NULL;
     int res;
     int micros;
-    char ch;
+    int opt;
     struct mydata *mydata;
     int allow_stale = 0;
     int use_decimal = 1;
@@ -528,8 +528,8 @@ main(int argc, char **argv)
     if (maxwindow > 31)
         maxwindow = 31;
     
-    while ((ch = getopt(argc, argv, "hap:s")) != -1) {
-        switch (ch) {
+    while ((opt = getopt(argc, argv, "hap:s")) != -1) {
+        switch (opt) {
             case 'a':
                 allow_stale = 1;
                 break;

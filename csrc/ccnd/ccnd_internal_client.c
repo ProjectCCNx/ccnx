@@ -50,7 +50,6 @@
 #endif
 
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
-static void ccnd_internal_client_reschedule(struct ccnd_handle *ccnd);
 
 static void
 ccnd_init_service_ccnb(struct ccnd_handle *ccnd)
@@ -171,7 +170,6 @@ ccnd_answer_req(struct ccn_closure *selfp,
         if (res < 0)
             goto Bail;
     }
-GOT_HERE    
     if ((selfp->intdata & MUST_VERIFY) != 0) {
         struct ccn_parsed_ContentObject pco = {0};
         // XXX - probably should check for message origin BEFORE verify
@@ -471,8 +469,8 @@ post_face_notice(struct ccnd_handle *ccnd, unsigned faceid)
         }
         ccn_charbuf_putf(msg, ");\n", faceid);
     }
-    GOT_HERE res = ccn_seqw_write(ccnd->notice, msg->buf, msg->length);
-    GOT_HERE ccn_charbuf_destroy(&msg);
+    res = ccn_seqw_write(ccnd->notice, msg->buf, msg->length);
+    ccn_charbuf_destroy(&msg);
     return(res);
 }
 
@@ -493,18 +491,16 @@ ccnd_notice_push(struct ccn_schedule *sched,
             ccnd->notice != NULL &&
             ccnd->notice_push == ev &&
             ccnd->chface != NULL) {
-        GOT_HERE chface = ccnd->chface;
+        chface = ccnd->chface;
         ccn_seqw_batch_start(ccnd->notice);
         for (i = 0; i < chface->n && res != -1; i++)
             res = post_face_notice(ccnd, chface->buf[i]);
         ccn_seqw_batch_end(ccnd->notice);
-GOT_HERE
         for (j = 0; i < chface->n; i++, j++)
             chface->buf[j] = chface->buf[i];
         chface->n = j;
         if (res == -1)
             microsec = 3000;
-        GOT_HERE if (0) ccnd_internal_client_reschedule(ccnd);
     }
     if (microsec <= 0)
         ccnd->notice_push = NULL;
@@ -515,7 +511,7 @@ GOT_HERE
  * Called by ccnd when a face undergoes a substantive status change that
  * should be reported to interested parties.
  * 
- * In the destroy case, this is called frome the hash table finalizer,
+ * In the destroy case, this is called from the hash table finalizer,
  * so it shouldn't do much directly.  Inspecting the face is OK, though.
  */
 void
@@ -523,7 +519,6 @@ ccnd_face_status_change(struct ccnd_handle *ccnd, unsigned faceid)
 {
     struct ccn_indexbuf *chface = ccnd->chface;
     if (chface != NULL) {
-GOT_HERE
         ccn_indexbuf_set_insert(chface, faceid);
         if (ccnd->notice_push == NULL)
             ccnd->notice_push = ccn_schedule_event(ccnd->sched, 2000,
@@ -549,7 +544,6 @@ ccnd_start_notice(struct ccnd_handle *ccnd)
         ccnd_msg(ccnd, "ccnd_internal_client.c:%d Huh?", __LINE__);
         ccn_indexbuf_destroy(&ccnd->chface);
     }
-GOT_HERE
     name = ccn_charbuf_create();
     ccn_name_from_uri(name, "ccnx:/ccnx");
     ccn_name_append(name, ccnd->ccnd_id, 32);
@@ -609,18 +603,6 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
                          ccnd_internal_client_refresh,
                          NULL, CCN_INTEREST_LIFETIME_MICROSEC);
     return(0);
-}
-
-static void
-ccnd_internal_client_reschedule(struct ccnd_handle *ccnd)
-{
-    if (ccnd->internal_client_refresh == NULL)
-        return;
-    ccn_schedule_cancel(ccnd->sched, ccnd->internal_client_refresh);
-    ccnd->internal_client_refresh \
-    = ccn_schedule_event(ccnd->sched, 0,
-                         ccnd_internal_client_refresh,
-                         NULL, CCN_INTEREST_LIFETIME_MICROSEC);
 }
 
 void

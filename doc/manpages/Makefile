@@ -13,14 +13,17 @@
 #
 
 # The order here determines the order in the generated index.
-PAGE_NAMES = 			\
+PAGE_NAMES =        \
+	ccn_ccnbtoxml		\
+	ccn_xmltoccnb		\
 	ccnacl			\
 	ccngroup		\
 	ccnd			\
 	ccndc			\
-	ccndlogging             \
+	ccndlogging		\
+	ccndsmoketest		\
 	ccndstart		\
-        ccndstatus		\
+	ccndstatus		\
 	ccndstop		\
 	ccnexplore		\
 	ccnls			\

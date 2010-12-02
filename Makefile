@@ -15,7 +15,7 @@
 # Subdirectories we build in
 TOPSUBDIRS = doc/manpages doc/technical csrc schema javasrc apps/ccnChat apps/ccnFileProxy
 # Packing list for packaging
-PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt $(TOPSUBDIRS) apps experiments
+PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt $(TOPSUBDIRS) apps android experiments
 
 default all: _always
 	for i in $(TOPSUBDIRS); do         \
@@ -29,8 +29,14 @@ default all: _always
 	(cd apps/ccnChat && $(MAKE) install INSTALL_BASE=`pwd`/../..)
 	(cd apps/ccnFileProxy && $(MAKE) install INSTALL_BASE=`pwd`/../..)
 
-clean depend test check shared documentation dist-docs testinstall install uninstall: _always
+clean depend test check shared testinstall install uninstall: _always
 	for i in $(TOPSUBDIRS); do         \
+	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
+	done
+	@rm -f _always
+
+documentation dist-docs: _always
+	for i in $(TOPSUBDIRS) android; do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always
@@ -38,6 +44,7 @@ clean depend test check shared documentation dist-docs testinstall install unins
 clean-documentation: _always
 	rm -rf doc/ccode
 	rm -rf doc/javacode
+	rm -rf doc/android
 	(cd doc/manpages && pwd && $(MAKE) clean-documentation)
 	(cd doc/technical && pwd && $(MAKE) clean-documentation)
 
@@ -82,13 +89,14 @@ distfile: tar
 	ls -l ccnx-$(VERSION).tar.gz
 
 fixupversions: _always
-	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 csrc/Doxyfile.dist && Fix1 javasrc/Doxyfile && Fix1 javasrc/Doxyfile.dist && Fix1 doc/manpages/Makefile
+	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 csrc/Doxyfile.dist && Fix1 javasrc/Doxyfile && Fix1 javasrc/Doxyfile.dist && Fix1 doc/manpages/Makefile && Fix1 android/Doxyfile && Fix1 android/Doxyfile.dist
 
+IGNORELINKS = -e android/CCNx-Android-Services/jni/csrc -e android/CCNx-Android-Services/jni/openssl/openssl-armv5
 MD5: _always
-	xargs openssl dgst < MANIFEST > MD5
+	grep -v $(IGNORELINKS) MANIFEST | xargs openssl dgst > MD5
 
 SHA1: _always
-	xargs openssl dgst -sha1 < MANIFEST > SHA1
+	grep -v $(IGNORELINKS) MANIFEST | xargs openssl dgst -sha1 > SHA1
 
 _always:
 .PHONY: _always

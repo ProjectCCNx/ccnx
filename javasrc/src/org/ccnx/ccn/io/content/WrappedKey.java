@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -34,6 +34,7 @@ import javax.crypto.NoSuchPaddingException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.PlatformConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -41,6 +42,7 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.security.crypto.SignatureLocks;
 import org.ccnx.ccn.impl.security.crypto.jce.AESWrapWithPad;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -364,7 +366,6 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 			Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
 					wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
 			Log.info("unwrapKey: unwrapping {0} with {1}", this, DataUtils.printHexBytes(wrappingKeyIdentifier(unwrapKey)));
-			Log.info("Is BC provider OK? " + KeyManager.checkDefaultProvider());
 		}
 		if (((null != wrapAlgorithm()) && (wrapAlgorithm().equalsIgnoreCase("AESWrapWithPad"))) || 
 							wrapAlgorithmForKey(unwrapKey.getAlgorithm()).equalsIgnoreCase("AESWrapWithPad")) {
@@ -390,8 +391,16 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 
 			if (null != encryptedNonceKey()) {
 				try {
-					Key nonceKey = unwrapCipher.unwrap(encryptedNonceKey(), NONCE_KEY_ALGORITHM, Cipher.SECRET_KEY);
-
+					Key nonceKey = null;
+					
+					// Cope with GC memory corruption
+					SignatureLocks.unwrapLock();
+					try {
+						nonceKey = unwrapCipher.unwrap(encryptedNonceKey(), NONCE_KEY_ALGORITHM, Cipher.SECRET_KEY);
+					} finally {
+						SignatureLocks.unwrapUnock();
+					}
+					
 					//Cipher nonceKeyCipher = Cipher.getInstance(wrapAlgorithmForKey(NONCE_KEY_ALGORITHM));
 					//nonceKeyCipher.init(Cipher.UNWRAP_MODE, nonceKey);
 					//unwrappedKey = nonceKeyCipher.unwrap(encryptedKey(), wrappedKeyAlgorithm, keyType);
@@ -403,7 +412,13 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 					throw new RuntimeException("Configuration error: Unknown default nonce key algorithm: " + NONCE_KEY_ALGORITHM);	    		
 				}
 			} else {
-				unwrappedKey = unwrapCipher.unwrap(encryptedKey(), wrappedKeyAlgorithm, keyType);
+				// Cope with GC memory corruption
+				SignatureLocks.unwrapLock();
+				try {
+					unwrappedKey = unwrapCipher.unwrap(encryptedKey(), wrappedKeyAlgorithm, keyType);
+				} finally {
+					SignatureLocks.unwrapUnock();
+				}
 			}
 		}
 	    return unwrappedKey;

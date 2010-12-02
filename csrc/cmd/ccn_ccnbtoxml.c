@@ -229,13 +229,13 @@ print_percent_escaped(const unsigned char *data, size_t size)
     }
 }
 
-ssize_t
+size_t
 ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
 {
     int state = d->state;
     int tagstate = 0;
     size_t numval = d->numval;
-    ssize_t i = 0;
+    size_t i = 0;
     unsigned char c;
     size_t chunk;
     struct ccn_decoder_stack_item *s;
@@ -364,6 +364,10 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                             state = 0;
                             break;
                         case CCN_BLOB:
+                            if (numval > n - i) {
+                                state = -__LINE__;
+                                break;
+                            }                                                        
                             if (tagstate == 1) {
                                 tagstate = 0;
                                 if ((d->formatting_flags & FORCE_BINARY) == 0 && is_text_encodable(p, i, numval)) {
@@ -419,6 +423,10 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                                 state = -__LINE__;
                                 break;
                             }
+                            if (numval >= n - i) {
+                                state = -__LINE__;
+                                break;
+                            }                            
                             numval += 1; /* encoded as length-1 */
                             s = ccn_decoder_push(d);
                             ccn_charbuf_reserve(d->stringstack, numval + 1);
@@ -430,6 +438,10 @@ ccn_decoder_decode(struct ccn_decoder *d, unsigned char p[], size_t n)
                                 tagstate = 0;
                                 printf(">");
                             }
+                            if (numval >= n - i) {
+                                state = -__LINE__;
+                                break;
+                            }                                                        
                             numval += 1; /* encoded as length-1 */
                             s = ccn_decoder_push(d);
                             ccn_charbuf_reserve(d->stringstack, numval + 1);
@@ -767,7 +779,7 @@ main(int argc, char **argv)
 {
     extern char *optarg;
     extern int optind, optopt;
-    int c;
+    int opt;
     int tflag = 0, formatting_flags = 0, errflag = 0;
     char *sarg = NULL;
     int res = 0;
@@ -775,8 +787,8 @@ main(int argc, char **argv)
     struct ccn_decoder *d;
     struct ccn_dict *dtags = (struct ccn_dict *)&ccn_dtag_dict;
 
-    while ((c = getopt(argc, argv, ":hbd:s:tvx")) != -1) {
-        switch (c) {
+    while ((opt = getopt(argc, argv, ":hbd:s:tvx")) != -1) {
+        switch (opt) {
             case 'h':
                 usage(argv[0]);
                 break;

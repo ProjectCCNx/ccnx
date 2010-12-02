@@ -4,7 +4,7 @@
  * 
  * A CCNx program.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -101,7 +101,7 @@ static struct ccn_closure interest_filter = {
 int
 main(int argc, char **argv)
 {
-    int ch;
+    int opt;
     int res;
     char *filename = NULL;
     int rep = 1;
@@ -111,8 +111,8 @@ main(int argc, char **argv)
     struct ccn_charbuf *c = ccn_charbuf_create();
     struct ccn_charbuf *templ = ccn_charbuf_create();
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
-    while ((ch = getopt(argc, argv, "hf:n:")) != -1) {
-        switch (ch) {
+    while ((opt = getopt(argc, argv, "hf:n:")) != -1) {
+        switch (opt) {
             default:
             case 'h':
                 fprintf(stderr, "provide names of files containing ccnb format interests and content\n");

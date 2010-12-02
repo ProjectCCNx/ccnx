@@ -46,6 +46,16 @@
 #define CRLF "\r\n"
 #define NL   "\n"
 
+/**
+ * Provide a way to monitor rates.
+ */
+struct ccnd_meter {
+    uintmax_t total;
+    char what[8];
+    unsigned rate; /** a scale factor applies */
+    unsigned lastupdate;
+};
+
 struct ccnd_stats {
     long total_interest_counts;
     long total_flood_control;      /* done propagating, still recorded */
@@ -258,6 +268,39 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
 }
 
 static void
+collect_face_meter_html(struct ccnd_handle *h, struct ccn_charbuf *b)
+{
+    int i;
+    ccn_charbuf_putf(b, "<h4>Face Activity Rates</h4>");
+    ccn_charbuf_putf(b, "<table cellspacing='0' cellpadding='0' class='tbl' summary='face activity rates'>");
+    ccn_charbuf_putf(b, "<tbody>" NL);
+    ccn_charbuf_putf(b, " <tr><td>        </td>\t"
+                        " <td>Bytes/sec In/Out</td>\t"
+                        " <td>recv data/intr sent</td>\t"
+                        " <td>sent data/intr recv</td></tr>" NL);
+    for (i = 0; i < h->face_limit; i++) {
+        struct face *face = h->faces_by_faceid[i];
+        if (face != NULL && (face->flags & (CCN_FACE_UNDECIDED|CCN_FACE_PASSIVE)) == 0) {
+            ccn_charbuf_putf(b, " <tr>");
+            ccn_charbuf_putf(b, "<td><b>face:</b> %u</td>\t",
+                             face->faceid);
+            ccn_charbuf_putf(b, "<td>%6u / %u</td>\t\t",
+                                 ccnd_meter_rate(h, face->meter[FM_BYTI]),
+                                 ccnd_meter_rate(h, face->meter[FM_BYTO]));
+            ccn_charbuf_putf(b, "<td>%9u / %u</td>\t\t",
+                                 ccnd_meter_rate(h, face->meter[FM_DATI]),
+                                 ccnd_meter_rate(h, face->meter[FM_INTO]));
+            ccn_charbuf_putf(b, "<td>%9u / %u</td>",
+                                 ccnd_meter_rate(h, face->meter[FM_DATO]),
+                                 ccnd_meter_rate(h, face->meter[FM_INTI]));
+            ccn_charbuf_putf(b, "</tr>" NL);
+        }
+    }
+    ccn_charbuf_putf(b, "</tbody>");
+    ccn_charbuf_putf(b, "</table>");
+}
+
+static void
 collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
 {
     struct hashtb_enumerator ee;
@@ -333,12 +376,21 @@ collect_stats_html(struct ccnd_handle *h)
         //"<meta http-equiv='refresh' content='3'>"
         "<style type='text/css'>"
         "/*<![CDATA[*/"
-        "p.header {color: white; background-color: blue; width: 100%%}"
+        "p.header {color: white; background-color: blue; width: 100%%} "
+        "table.tbl {border-style: solid; border-width: 1.0px 1.0px 1.0px 1.0px; border-color: black} "
+        "td {border-style: solid; "
+            "border-width: 1.0px 1.0px 1.0px 1.0px; "
+            "border-color: #808080 #808080 #808080 #808080; "
+            "padding: 6px 6px 6px 6px; "
+            "margin-left: auto; margin-right: auto; "
+            "text-align: center"
+            "} "
+        "td.left {text-align: left} "
         "/*]]>*/"
         "</style>"
         "</head>" NL
         "<body bgcolor='#%06X'>"
-        "<p class='header'>%s ccnd[%d] local port %s</p>" NL
+        "<p class='header'>%s ccnd[%d] local port %s api %d start %ld now %ld.%06u</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
         " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
@@ -351,6 +403,10 @@ collect_stats_html(struct ccnd_handle *h)
         un.nodename,
         pid,
         portstr,
+        (int)CCN_API_VERSION,
+        h->starttime,
+        h->sec,
+        h->usec,
         (unsigned long long)h->accession,
         hashtb_n(h->content_tab),
         h->n_stale,
@@ -367,6 +423,7 @@ collect_stats_html(struct ccnd_handle *h)
                          "<div><b>Active faces and listeners:</b> %d</div>" NL,
                          hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
     collect_faces_html(h, b);
+    collect_face_meter_html(h, b);
     collect_forwarding_html(h, b);
     ccn_charbuf_putf(b,
         "</body>"
@@ -377,11 +434,26 @@ collect_stats_html(struct ccnd_handle *h)
 /* XML formatting */
 
 static void
+collect_meter_xml(struct ccnd_handle *h, struct ccn_charbuf *b, struct ccnd_meter *m)
+{
+    uintmax_t total;
+    unsigned rate;
+    
+    if (m == NULL)
+        return;
+    total = ccnd_meter_total(m);
+    rate = ccnd_meter_rate(h, m);
+    ccn_charbuf_putf(b, "<%s><total>%ju</total><persec>%u</persec></%s>",
+        m->what, total, rate, m->what);
+}
+
+static void
 collect_faces_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
 {
     int i;
-    struct ccn_charbuf *nodebuf;
+    int m;
     int port;
+    struct ccn_charbuf *nodebuf;
     
     nodebuf = ccn_charbuf_create();
     ccn_charbuf_putf(b, "<faces>");
@@ -406,6 +478,12 @@ collect_faces_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
             if (face->sendface != face->faceid &&
                 face->sendface != CCN_NOFACEID)
                 ccn_charbuf_putf(b, "<via>%u</via>", face->sendface);
+            if (face != NULL && (face->flags & CCN_FACE_PASSIVE) == 0) {
+                ccn_charbuf_putf(b, "<meters>");
+                for (m = 0; m < CCND_FACE_METER_N; m++)
+                    collect_meter_xml(h, b, face->meter[m]);
+                ccn_charbuf_putf(b, "</meters>");
+            }
             ccn_charbuf_putf(b, "</face>" NL);
         }
     }
@@ -461,10 +539,25 @@ collect_stats_xml(struct ccnd_handle *h)
 {
     struct ccnd_stats stats = {0};
     struct ccn_charbuf *b = ccn_charbuf_create();
+    int i;
         
     ccnd_collect_stats(h, &stats);
     ccn_charbuf_putf(b,
         "<ccnd>"
+        "<identity>"
+        "<ccndid>");
+    for (i = 0; i < sizeof(h->ccnd_id); i++)
+        ccn_charbuf_putf(b, "%02X", h->ccnd_id[i]);
+    ccn_charbuf_putf(b, "</ccndid>"
+        "<apiversion>%d</apiversion>"
+        "<starttime>%ld</starttime>"
+        "<now>%ld.%06u</now>"
+        "</identity>",
+        (int)CCN_API_VERSION,
+        h->starttime,
+        h->sec,
+        h->usec);
+    ccn_charbuf_putf(b,
         "<cobs>"
         "<accessioned>%llu</accessioned>"
         "<stored>%d</stored>"
@@ -498,4 +591,102 @@ collect_stats_xml(struct ccnd_handle *h)
     collect_forwarding_xml(h, b);
     ccn_charbuf_putf(b, "</ccnd>" NL);
     return(b);
+}
+
+/**
+ * create and initialize separately allocated meter.
+ */
+struct ccnd_meter *
+ccnd_meter_create(struct ccnd_handle *h, const char *what)
+{
+    struct ccnd_meter *m;
+    m = calloc(1, sizeof(*m));
+    if (m == NULL)
+        return(NULL);
+    ccnd_meter_init(h, m, what);
+    return(m);
+}
+
+/**
+ * Destroy a separately allocated meter.
+ */
+void
+ccnd_meter_destroy(struct ccnd_meter **pm)
+{
+    if (*pm != NULL) {
+        free(*pm);
+        *pm = NULL;
+    }
+}
+
+/**
+ * Initialize a meter.
+ */
+void
+ccnd_meter_init(struct ccnd_handle *h, struct ccnd_meter *m, const char *what)
+{
+    if (m == NULL)
+        return;
+    memset(m, 0, sizeof(m));
+    if (what != NULL)
+        strncpy(m->what, what, sizeof(m->what)-1);
+    ccnd_meter_bump(h, m, 0);
+}
+
+static const unsigned meterHz = 7; /* 1/ln(8/7) would give RC const of 1 sec */
+
+/**
+ * Count something (messages, packets, bytes), and roll up some kind of
+ * statistics on it.
+ */
+void
+ccnd_meter_bump(struct ccnd_handle *h, struct ccnd_meter *m, unsigned amt)
+{
+    unsigned now; /* my ticks, wrap OK */
+    unsigned t;
+    unsigned r;
+    if (m == NULL)
+        return;
+    now = (((unsigned)(h->sec)) * meterHz) + (h->usec * meterHz / 1000000U);
+    t = m->lastupdate;
+    m->total += amt;
+    if (now - t > 166U)
+        m->rate = amt; /* history has decayed away */
+    else {
+        /* Decay the old rate exponentially based on time since last sample. */
+        for (r = m->rate; t != now && r != 0; t++)
+            r = r - ((r + 7U) / 8U); /* multiply by 7/8, truncating */
+        m->rate = r + amt;
+    }
+    m->lastupdate = now;
+}
+
+/**
+ * Return the average rate (units per second) of a metered quantity.
+ *
+ * m may be NULL.
+ */
+unsigned
+ccnd_meter_rate(struct ccnd_handle *h, struct ccnd_meter *m)
+{
+    unsigned denom = 8;
+    if (m == NULL)
+        return(0);
+    ccnd_meter_bump(h, m, 0);
+    if (m->rate > 0x0FFFFFFF)
+        return(m->rate / denom * meterHz);
+    return ((m->rate * meterHz + (denom - 1)) / denom);
+}
+
+/**
+ * Return the grand total for a metered quantity.
+ *
+ * m may be NULL.
+ */
+uintmax_t
+ccnd_meter_total(struct ccnd_meter *m)
+{
+    if (m == NULL)
+        return(0);
+    return (m->total);
 }
