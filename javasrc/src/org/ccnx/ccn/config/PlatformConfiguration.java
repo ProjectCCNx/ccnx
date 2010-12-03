@@ -19,6 +19,7 @@ package org.ccnx.ccn.config;
 
 import java.security.Provider;
 import java.security.Security;
+import java.util.logging.Level;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -43,15 +44,14 @@ public final class PlatformConfiguration {
 		// Default is not to lock signature operations unless we're using
 		// BC 1.34 (as seen on Android)
 		boolean needLock = false;
-		
+
 		try {
 			Log.info("BC provider: " + BouncyCastleProvider.PROVIDER_NAME);
 
 			Security.addProvider(new BouncyCastleProvider());
 
 			Provider prov = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME);
-			Log.severe("Provider info: " + prov.getInfo());
-			Log.severe("Provider ver : " + prov.getVersion());
+			Log.info("Provider info: {0} version: {1}", prov.getInfo(), prov.getVersion());
 
 			// The unix/mac code uses "BouncyCastle Security Provider v1.43"
 			// The Android code uses "BouncyCastle Security Provider v1.34"
