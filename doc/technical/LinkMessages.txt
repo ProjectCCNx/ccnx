@@ -13,12 +13,32 @@ SequenceNumber ::= BLOB
 
 The *SequenceNumber* message may be included in a series of messages.
 The primary use of this message is when unreliable datagrams are being used as a transport.
+The BLOB is interpreted as a binary number in network byte order (i.e., big endian).
 Typically, one SequenceNumber message would be included in each datagram,
-with the value (intrpreted as a binary number in network byte order) being
-advanced by one.
+with the value being advanced by one.
 This allows the receiving side to detect gaps in the sequence, an indication
 of missing or reordered packets.
 
 The starting value and BLOB size are chosen by the sending side.
 The value should to wrap back to zero after the maximum value for the chosen
 BLOB size has been reached.
+The BLOB size should remain consistent on a given link, except that it may
+change when the value wraps to zero.
+The minimum BLOB size is one byte, and the maximum is 8 bytes.
+
+== SequenceAcknowledgement
+.......................................................
+SequenceAcknowledgement ::= BLOB
+.......................................................
+The *SequenceAcknowledgement* acknowledges the receipt of a consecutive series of SequenceNumber messages.
+
+The first byte of the BLOB is a count, indicating how many items are in the series.
+The remaining bytes of the BLOB encode the highest sequence number in the series,
+using the same number of bytes as in the received SequenceNumber message.
+The acknowledged range should not span the wrap back to zero.
+
+The SequenceAcknowledgement message should only be sent when SequenceNumber messages have been received.
+
+A SequenceAcknowledgement is not sent unless there is something else to be transmitted, so except for a few extra bytes they do not cause additional network traffic.
+
+It is allowed for a given sequence number to be acknowledged multiple times (using overlapping ranges), which adds robustness if an acknowledgement is lost in transit.
