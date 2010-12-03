@@ -57,7 +57,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * below). In practice most flushing to the segmenter will result in in creating BLOCK_BUF_COUNT - 1
 	 * ContentObjects in the segmenter.
 	 */
-	public static final int BLOCK_BUF_COUNT = 3;	// Must be at least 2
+	public static final int BLOCK_BUF_COUNT = 128;	// Must be at least 2
     
 	/**
 	 * elapsed length written
