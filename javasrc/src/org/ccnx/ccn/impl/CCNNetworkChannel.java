@@ -352,6 +352,8 @@ public class CCNNetworkChannel extends InputStream {
 		int ret = 0;
 		clearSelectedKeys();
 		if (select(SOCKET_TIMEOUT) != 0) {
+			if (! _ncConnected)
+				return -1;
 			// Note that we must set limit first before setting position because setting
 			// position larger than limit causes an exception.
 			_datagram.limit(_datagram.capacity());
