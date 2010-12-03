@@ -125,8 +125,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	public CCNFlowControl(ContentName name, CCNHandle handle) throws IOException {
 		this(handle);
 		if (name != null) {
-			if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
-				Log.finest(Log.FAC_IO, "adding namespace: " + name);
+			if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "adding namespace: " + name);
 			// don't call full addNameSpace, in order to allow subclasses to 
 			// override. just do minimal part
 			_filteredNames.add(name);
