@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -108,6 +108,15 @@ public interface RepositoryStore {
 	public boolean hasContent(ContentName name) throws RepositoryException;
 	
 	/**
+	 * Bulk import of data from a file. Data must be in a format compatible with the
+	 * repository store.  This would normally mean wire format
+	 * @param fileName the name of the file to import data from.
+	 * @return false if reexpression for import in progress
+	 * @throws RepositoryException
+	 */
+	public boolean bulkImport(String name) throws RepositoryException;
+	
+	/**
 	 * Get namespace interest
 	 * @return
 	 */
@@ -129,11 +138,12 @@ public interface RepositoryStore {
 	 * Get information about repository to return to write
 	 * requestor, possibly with confirmation filename for sync
 	 * @param name ContentName of netobject to write back out
+	 * @param info arbitrary String info to be returned
 	 * @param names Names of acked data for Ack protocol (currently unused)
 	 * 
 	 * @return
 	 */
-	RepositoryInfoObject getRepoInfo(ContentName name, ArrayList<ContentName> names);
+	RepositoryInfoObject getRepoInfo(ContentName name, String info, ArrayList<ContentName> names);
 		
 	/**
 	 * Get names to respond to name enumeration requests.  Returns null if there

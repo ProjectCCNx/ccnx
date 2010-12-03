@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -11,8 +11,16 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-# Sample ccnd.conf for use with ccndc that will route all CCN URIs with
-# an example.com prefix to a link-local multicast on an ephemeral port.
+
+#
+# Sample ccnd.conf for use with ccndc that will route all CCNx URIs with
+# a /ccnx.org prefix using local multicast.
+#
+# The multicast address 224.0.23.170 is assigned by IANA for use with CCNx.
+# Here we use a port that is different from the assigned port of 9695
+# to reduce confusion, in case some hosts on the local network are using the
+# latter for unicast traffic.  The port value 59695 is in the range for 
+# ephermeral and private use.
 # 
-# add ccnx:/example.com/ udp 224.0.0.204 52428
+# add ccnx:/ccnx.org udp 224.0.23.170 59695
 #

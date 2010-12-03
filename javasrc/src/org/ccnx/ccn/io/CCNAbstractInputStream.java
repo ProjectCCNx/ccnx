@@ -160,7 +160,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	private long _holes = 0;
 	private long _totalReceived = 0;
 	private long _pipelineStartTime;
-	private String readerReady = "-1";
+	private Long readerReady = -1L;
 
 	private double avgResponseTime = -1;
 
@@ -346,7 +346,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		//is there a reader ready?
 		long rr;
 		synchronized(readerReady) {
-			rr = Long.parseLong(readerReady);
+			rr = readerReady;
 		}
 		//while(rr > -1) {
 		if(rr > -1) {
@@ -365,7 +365,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 						inOrderSegments.wait();
 						//readerReady.wait();
 						synchronized(readerReady) {
-							rr = Long.parseLong(readerReady);
+							rr = readerReady;
 						}
 					} catch (InterruptedException e) {
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: we can go back to processing");
@@ -537,6 +537,19 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: _lastSegmentNumber = {0}", _lastSegmentNumber);
+				
+				//if we haven't gotten a valid base segment, we do not want to advance the pipeline.
+				if (_lastRequestedPipelineSegment == SegmentationProfile.baseSegment()) {
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: the last segment number is the base segment, need to make sure we have received the base segment before we press on");
+					//the last thing we asked for was the base segment...  have we gotten it yet?
+					if (_lastInOrderSegment == -1) {
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: _lastInOrderSegment == -1, we have not received the base segment, do not advance the pipeline");
+						return;
+					} else {
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: _lastInOrderSegment == {0}, we have received the base segment, we can advance the pipeline!", _lastInOrderSegment);
+					}
+				}
+				
 				if (_lastSegmentNumber == -1) {
 					//we don't have the last segment already...
 					i = SegmentationProfile.segmentInterest(_basePipelineName, _lastRequestedPipelineSegment + 1, _publisher);
@@ -1011,7 +1024,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			//is there a reader ready?
 			long rr;
 			synchronized(readerReady) {
-				rr = Long.parseLong(readerReady);
+				rr = readerReady;
 			}
 			if(rr > -1) {
 				//there is a reader waiting
@@ -1343,9 +1356,12 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 			// dereference will check for link cycles
 			newSegment = _dereferencedLink.dereference(_timeout);
-			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
 				Log.info(Log.FAC_IO, "CCNAbstractInputStream: dereferencing link {0} to {1}, resulting data {2}", theLink.getVersionedName(),
 						theLink.link(), ((null == newSegment) ? "null" : newSegment.name()));
+				Log.info(Log.FAC_SIGNING, "CCNAbstractInputStream: dereferencing link {0} to {1}, resulting data {2}", theLink.getVersionedName(), theLink.link(), ((null == newSegment) ? "null" : newSegment.name()));
+			}
+
 			if (newSegment == null) {
 				// TODO -- catch error states. Do we throw exception or return null?
 				// Set error states -- when do we find link cycle and set the error on the link?
@@ -1516,7 +1532,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		long ttgl = System.currentTimeMillis();
 
 		synchronized(readerReady){
-			readerReady = Long.toString(number);
+			readerReady = number;
 		}
 
 		synchronized (inOrderSegments) {
@@ -1549,7 +1565,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				advancePipeline(false);
 				synchronized(readerReady) {
 					//readerReady.notifyAll();
-					readerReady = "-1";
+					readerReady = -1L;
 					inOrderSegments.notifyAll();
 				}
 				return co;
@@ -1609,7 +1625,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 				synchronized(readerReady) {
 					//readerReady.notifyAll();
-					readerReady = "-1";
+					readerReady = -1L;
 					inOrderSegments.notifyAll();
 				}
 			}
@@ -1989,8 +2005,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 	@Override
 	public void close() throws IOException {
-		// don't have to do anything.
-		Log.info(Log.FAC_IO, "CCNAbstractInputStream: close {0}", _baseName);
+		Log.info(Log.FAC_IO, "CCNAbstractInputStream: close {0}:  shutting down pipelining", _baseName);
+		
+		//now that we have pipelining, we need to cancel our interests and clean up
+
+		//cancel our outstanding interests
+		cancelInterests();
+		resetPipelineState();
 	}
 
 	@Override

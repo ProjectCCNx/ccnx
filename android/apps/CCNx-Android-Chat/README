@@ -1,0 +1,58 @@
+This is an Android UI to the CCNChatNet chat core.
+The UI will automatically open a multicast socket, so please
+make sure you have done something like:
+
+	./ccndc add ccnx:/ udp 224.0.23.170 59695
+
+on any non-Android systems you want to chat with.
+
+RUNNING ON EMULATOR
+===================
+
+The emulator will not forward multicast to the host.  So, we need to use
+point-to-point connections with port forwarding.
+
+If you are running two or more devices/emulators at the same time, it is handy
+to open one shell for each one and use "export ANDROID_SERIAL=..."  in each one
+so you can "make install" and "adb logcat" easily.  You can see the available
+serial numbers with "adb devices".
+
+To run multiple emulators at the same time, you need to create multiple AVDs.
+Be sure to add SD Card support to each one.
+
+If you start an emulator from the commandline, you can use the option
+"-qemu -redir tcp:x:9695" instead of the telnet commands below.
+
+	emulator -avd avd1 -qemu -redir tcp:9696::9695
+
+EXAMPLE:  Host ccnd as hub
+=============================
+- Host IP 13.2.116.104 
+- Emulator #1 is on port 5554 running Avd "avd1"
+- Emulator #2 is on port 5556 running Avd "avd2"
+
+1) Start both emulators
+2) Use the "CCNx Service Control" app to start the services on both
+3) Start ccnd & a repo on your local host
+4) redirect tcp/9996 to avd1
+	telnet localhost 5554
+	redir add tcp:9696:9695
+	exit
+5) redirect tcp/9997 to avd2
+	telnet localhost 5556
+	redir add tcp:9697:9695
+	exit
+6) Setup hub routes
+	ccndc add ccnx:/ tcp 127.0.0.1 9696
+	ccndc add ccnx:/ tcp 127.0.0.1 9697
+7) Start chat app on avd1
+	Handle "avd1"
+	Remote host: 13.2.116.104 
+	Remote port: 9695
+8) Start chat app on avd1
+	Handle "avd2"
+	Remote host: 13.2.116.104 
+	Remote port: 9695
+9) Run chat on host too, everyone should be happy!
+
+

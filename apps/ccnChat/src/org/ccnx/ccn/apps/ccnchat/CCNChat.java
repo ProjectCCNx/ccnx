@@ -1,7 +1,7 @@
 /*
  * A CCNx chat program.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -25,60 +25,42 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
-import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.apps.ccnchat.CCNChatNet.CCNChatCallback;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.config.UserConfiguration;
-import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.io.content.CCNStringObject;
-import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
+
 
 /**
  * Based on a client/server chat example in Robert Sedgewick's Algorithms
  * in Java.
- * @author smetters
- *
+ * 
+ * Refactored to be just the JFrame UI.
  */
-public class CCNChat extends JFrame implements ActionListener {
-
+public class CCNChat extends JFrame implements ActionListener, CCNChatCallback {
 	private static final long serialVersionUID = -8779269133035264361L;
-
-	protected ContentName _namespace;
-	// Separate read and write libraries so we will read our own updates,
-	// and don't have to treat our inputs differently than others.
-	protected CCNStringObject _readString;
-	protected CCNStringObject _writeString;
-	protected Timestamp _lastUpdate;
-	boolean _finished = false;
-	
-	protected static final long CYCLE_TIME = 1000;
-	protected static final String SYSTEM = "System";
-	protected static SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("HH:mm");
 
     // Chat window
     protected JTextArea  _messagePane = new JTextArea(10, 32);
     private JTextField _typedText   = new JTextField(32);
 
+    private final CCNChatNet _chat;
+    
     public CCNChat(String namespace) throws MalformedContentNameStringException {
 
-    	this._namespace = ContentName.fromURI(namespace);
-
-        // close output stream  - this will cause listen() to stop and exit
+    	_chat = new CCNChatNet(this, namespace);
+    	
+    	// close output stream  - this will cause listen() to stop and exit
         addWindowListener(
             new WindowAdapter() {
                 public void windowClosing(WindowEvent e) {
                     try {
-						shutdown();
+						stop();
 					} catch (IOException e1) {
 						System.out.println("IOException shutting down listener: " + e1);
 						e1.printStackTrace();
@@ -99,24 +81,12 @@ public class CCNChat extends JFrame implements ActionListener {
         content.add(_typedText, BorderLayout.SOUTH);
         
         // display the window, with focus on typing box
-        setTitle("CCNChat 1.0: [" + _namespace + "]");
+        setTitle("CCNChat 1.2: [" + namespace + "]");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         pack();
         _typedText.requestFocusInWindow();
         setVisible(true);
     }
-
-    /**
-     * Turn off everything.
-     * @throws IOException 
-     */
-	public void shutdown() throws IOException {
-		_finished = true;
-		if (null != _readString) {
-			_readString.cancelInterest();
-			showMessage(SYSTEM, now(), "Shutting down " + _namespace + "...");
-		}
-	}
 	
 	/**
 	 * Process input to TextField after user hits enter.
@@ -127,58 +97,27 @@ public class CCNChat extends JFrame implements ActionListener {
 		try {
 			String newText = _typedText.getText();
 			if ((null != newText) && (newText.length() > 0)) {
-				_writeString.save(newText);
+				_chat.sendMessage(newText);
 			}
 
 		} catch (Exception e1) {
 			System.err.println("Exception saving our input: " + e1.getClass().getName() + ": " + e1.getMessage());
 			e1.printStackTrace();
-			showMessage("System", now(), "Exception saving our input: " + e1.getClass().getName() + ": " + e1.getMessage());
+			recvMessage("Exception saving our input: " + e1.getClass().getName() + ": " + e1.getMessage());
 		}
         _typedText.setText("");
         _typedText.requestFocusInWindow();
 	}
-	
-	public void listen() throws ConfigurationException, IOException {
-		_readString = new CCNStringObject(_namespace, (String)null, SaveType.RAW, CCNHandle.open());
-		_readString.updateInBackground(true);
-		
-		String introduction = UserConfiguration.userName() + " has entered " + _namespace;
-		_writeString = new CCNStringObject(_namespace, introduction, SaveType.RAW, CCNHandle.open());
-		_writeString.save();
-		
-		// Need to do synchronization for updates that come in while we're processing last one.
-		while (!_finished) {
-			try {
-				synchronized(_readString) {
-					_readString.wait(CYCLE_TIME);
-				}
-			} catch (InterruptedException e) {
-			}
-			if (_readString.isSaved()) {
-				Timestamp thisUpdate = _readString.getVersion();
-				if ((null == _lastUpdate) || thisUpdate.after(_lastUpdate)) {
-					System.out.println("Got an update: " + _readString.getVersion());
-					_lastUpdate = thisUpdate;
-					showMessage(_readString.getContentPublisher(), _readString.getPublisherKeyLocator(), thisUpdate, _readString.string());
-				} else {
-				}
-			}
-		}
-	}
+
 	
 	/**
 	 * Add a message to the output.
 	 * @param message
 	 */
-	protected void showMessage(String sender, Timestamp time, String message) {
-		_messagePane.insert("[" + sender + " " + DATE_FORMAT.format(time) + "]: " + message + "\n", _messagePane.getText().length());
+	@Override
+	public void recvMessage(String message) {
+		_messagePane.insert(message, _messagePane.getText().length());
         _messagePane.setCaretPosition(_messagePane.getText().length());
-	}
-	
-	protected void showMessage(PublisherPublicKeyDigest publisher, KeyLocator keyLocator, Timestamp time, String message) {
-		// Start with key fingerprints. Move up to user names.
-		showMessage(publisher.shortFingerprint().substring(0, 8), time, message);
 	}
 	
     public static void usage() {
@@ -196,7 +135,7 @@ public class CCNChat extends JFrame implements ActionListener {
 		CCNChat client;
 		try {
 			client = new CCNChat(args[0]);
-			client.listen();
+			client.start();
 		} catch (MalformedContentNameStringException e) {
 			System.err.println("Not a valid ccn URI: " + args[0] + ": " + e.getMessage());
 			e.printStackTrace();
@@ -209,5 +148,23 @@ public class CCNChat extends JFrame implements ActionListener {
 		}
 	}
 	
-	public static Timestamp now() { return new Timestamp(System.currentTimeMillis()); }
+	// =========================================================
+	// Internal methods
+	
+	/**
+	 * Called by window thread when when window closes
+	 */
+	protected void stop() throws IOException {
+		_chat.shutdown();
+	}
+	
+	/**
+	 * This blocks until _chat.shutdown() called
+	 * @throws IOException 
+	 * @throws MalformedContentNameStringException 
+	 * @throws ConfigurationException 
+	 */
+	protected void start() throws ConfigurationException, MalformedContentNameStringException, IOException {
+		_chat.listen();
+	}
 }

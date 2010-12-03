@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -66,8 +66,9 @@ public class StreamTest extends BlockReadWriteTest {
 					InvalidKeyException, SignatureException {
 		ContentName thisName = VersioningProfile.addVersion(ContentName.fromNative(baseName, fileName), count);
 		sema.acquire(); // Block until puts started
+
 		CCNInputStream istream = new CCNInputStream(thisName, handle);
-		istream.setTimeout(8000);
+		istream.setTimeout(120000);
 		Log.info("StreamTest: Opened descriptor for reading: " + thisName);
 
 		FileOutputStream os = new FileOutputStream(_testDir + fileName + "_testout.txt");

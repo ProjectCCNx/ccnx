@@ -94,11 +94,15 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * Gets current repository information to be used as content in a ContentObject
 	 * @param names intended for nonimplemented repository ACK protocol - currently unused
 	 */
-	public RepositoryInfoObject getRepoInfo(ContentName name, ArrayList<ContentName> names) {
+	public RepositoryInfoObject getRepoInfo(ContentName name, String info, ArrayList<ContentName> names) {
 		try {
 			RepositoryInfo rri = _info;
-			if (names != null)
-				rri = new RepositoryInfo(getVersion(), _info.getGlobalPrefix(), _info.getLocalName(), names);	
+			if (names != null || info != null) {
+				if (names != null)
+					rri = new RepositoryInfo(getVersion(), _info.getGlobalPrefix(), _info.getLocalName(), names);
+				else
+					rri = new RepositoryInfo(getVersion(), _info.getGlobalPrefix(), _info.getLocalName(), info);
+			}
 			RepositoryInfoObject rio = new RepositoryInfoObject(name, rri, SaveType.RAW, _handle);
 			rio.setFreshnessSeconds(12); // Same time as repo will express interest
 			return rio;

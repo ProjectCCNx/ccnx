@@ -11,6 +11,7 @@ CCNx Documentation Index
 == Documentation derived from the code
  - link:ccode/html/index.html[Content-Centric Networking in C]
  - link:javacode/html/index.html[Content-Centric Networking in Java]
+ - link:android/html/index.html[Content-Centric Networking for Android]
 
 == Distribution Docs
 .README
@@ -21,4 +22,9 @@ include::../README[tabsize=8]
 .LICENSE
 ------------------------------------
 include::../LICENSE[tabsize=8]
+------------------------------------
+
+.NOTICES
+------------------------------------
+include::../NOTICES[tabsize=8]
 ------------------------------------

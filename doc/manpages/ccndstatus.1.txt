@@ -1,28 +1,28 @@
-CCNDLOGGING(1)
-==============
+CCNDSTATUS(1)
+=============
 
 NAME
 ----
-ccndlogging - change the log level of a running ccnd
+ccndstatus - display the status a running ccnd
 
 SYNOPSIS
 --------
-*ccndlogging [-T host] ( none | low | co | med | high )*
+*ccndstatus [-T host]
 
 DESCRIPTION
 -----------
-The *ccndlogging* utility changes the effective log level of a running *ccnd*.
+The *ccndstatus* displays the status of a running *ccnd*.
+
+This is the same display that is available via a browser at (for example)
+http://localhost:9695
+
+It fact, the implementation simply does the http fetch and strips out the html markup.
 
 OPTIONS
 -------
 *-T host*::
      Control the *ccnd* instance running on the specified host, instead of the current host.
-
-ARGUMENT
---------
-The command takes one argument, the desired level.
-This maps into an appropriate setting of the effective *CCND_DEBUG* setting.
-
+     To use this option, host must be accessible via tcp.
 
 ENVIRONMENT
 -----------

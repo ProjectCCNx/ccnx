@@ -34,7 +34,7 @@ StuffPreload () {
 # Provide defaults
 : ${CCND_CAP:=50000}
 : ${CCND_DEBUG:=''}
-export CCN_LOCAL_PORT CCND_CAP CCND_DEBUG
+export CCN_LOCAL_PORT CCND_CAP CCND_DEBUG CCND_AUTOREG
 
 # If a ccnd is already running, try to shut it down cleanly.
 ccndsmoketest kill 2>/dev/null

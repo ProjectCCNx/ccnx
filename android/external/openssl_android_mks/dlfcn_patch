@@ -1,0 +1,12 @@
+--- bad/crypto/dso/dso_dlfcn.c	2010-03-29 02:50:33.000000000 -0700
++++ good/crypto/dso/dso_dlfcn.c	2010-07-29 13:52:03.000000000 -0700
+@@ -85,7 +85,8 @@
+ # define HAVE_DLINFO 1
+ # if defined(_AIX) || defined(__CYGWIN__) || \
+      defined(__SCO_VERSION__) || defined(_SCO_ELF) || \
+-     (defined(__OpenBSD__) && !defined(RTLD_SELF))
++     (defined(__OpenBSD__) && !defined(RTLD_SELF)) || \
++     defined(HAVE_ANDROID_OS)
+ #  undef HAVE_DLINFO
+ # endif
+ #endif

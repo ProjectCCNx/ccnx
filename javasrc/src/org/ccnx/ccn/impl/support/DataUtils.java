@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -35,7 +35,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
  * Miscellaneous utility routines for CCN, mostly data comparison and conversion.
  */
 public class DataUtils {
-	
+
 	public static final int BITS_PER_BYTE = 8;
 	public static final String EMPTY = "";	
 	public static final String LINE_SEPARATOR = System.getProperty("line.separator");
@@ -44,7 +44,7 @@ public class DataUtils {
 	 * Useful when we move over to 1.6, and can avoid UnsupportedCharsetExceptions this way.
 	 */
 	public static Charset UTF8_CHARSET;
-	
+
 	static {
 		try {
 			UTF8_CHARSET = Charset.forName("UTF-8");
@@ -57,7 +57,7 @@ public class DataUtils {
 			throw new RuntimeException("Cannot find UTF-8 encoding. Significant configuration error");
 		}
 	}
-		
+
 	public static <T extends Comparable<T>> int compare(T left, T right) {
 		int result = 0;
 		if (null != left) {
@@ -73,7 +73,7 @@ public class DataUtils {
 		}
 		return result;
 	}
-	
+
 	/**
 	 * Perform a shortlex comparison of byte arrays in canonical CCN ordering.
 	 * Shortlex ordering is ordering by cardinality, then by lexigraphic.
@@ -86,43 +86,40 @@ public class DataUtils {
 	 * @return < 0 if left comes before right, 0 if they are equal, > 0 if left comes after right
 	 */
 	public static int compare(byte [] left, byte [] right) {
-		int result = 0;
 		if (null != left) {
 			if (null == right) {
-				result = 1;
+				return (1);
 			} else {
-                int leftLength = left.length;
-                int rightLength = right.length;
+				int leftLength = left.length;
+				int rightLength = right.length;
 				// If a is shorter than b then a comes before b
 				if (leftLength < rightLength) {
-					result = -1;
+					return (-1);
 				} else if (leftLength > rightLength) {
-					result = 1;
+					return (1);
 				} else {
 					// They have equal lengths - compare byte by byte
 					for (int i=0; i < leftLength; ++i) {
-                        short leftSubI = (short)(left[i] & 0xff);
-                        short rightSubI = (short)(right[i] & 0xff);
+						short leftSubI = (short)(left[i] & 0xff);
+						short rightSubI = (short)(right[i] & 0xff);
 						if (leftSubI < rightSubI) {
-							result = -1;
-							break;
+							return (-1);
 						} else if (leftSubI > rightSubI) {
-							result = 1;
-							break;
+							return (1);
 						}
 					}
 				}
 			}
 		} else {
 			if (null != right)
-				result = -1; // sort nothing before something
+				return (-1); // sort nothing before something
 			// else fall through and compare publishers
 			else
-				result = 0; // null == null
+				return (0); // null == null
 		}
-		return result;
+		return (0);
 	}
-	
+
 	/**
 	 * This is not like compare(byte[], byte[]).  That is shortlex.  This
 	 * is an actual lexigraphic ordering based on the shortlex compare
@@ -137,16 +134,18 @@ public class DataUtils {
 				result = 1;
 			} else {
 				// here we have the comparison.
-				int minlen = (left.size() < right.size()) ? left.size() : right.size();
+				int leftSize = left.size();
+				int rightSize = right.size();
+				int minlen = (leftSize < rightSize) ? leftSize : rightSize;
 				for (int i=0; i < minlen; ++i) {
 					result = compare(left.get(i), right.get(i));
 					if (0 != result) break;
 				}
 				if (result == 0) {
 					// ok, they're equal up to the minimum length
-					if (left.size() < right.size()) {
+					if (leftSize < rightSize) {
 						result = -1;
-					} else if (left.size() > right.size()) {
+					} else if (leftSize > rightSize) {
 						result = 1;
 					}
 					// else they're equal, result = 0
@@ -175,7 +174,7 @@ public class DataUtils {
 		BigInteger bi = new BigInteger(1, bytes);
 		return bi.toString(SystemConfiguration.DEBUG_RADIX);
 	}
-	
+
 	/**
 	 * Used to print components to be interpreted as hexadecimal such as segments
 	 * @param bytes
@@ -188,27 +187,27 @@ public class DataUtils {
 		BigInteger bi = new BigInteger(1, bytes);
 		return bi.toString(16);
 	}
-	
+
 	/**
 	 * A place to centralize interfaces to base64 encoding/decoding, as the classes
 	 * we use change depending on what ships with Java.
 	 */
-	
+
 	public static byte [] base64Decode(byte [] input) throws IOException {
 		return Base64.decode(input);
 	}
-	
+
 	public static byte [] base64Encode(byte [] input) {
 		return Base64.encode(input);
 	}
-	
+
 	public static final int LINELEN = 64;
 
 	public static String base64Encode(byte [] input, Integer lineLength) {
 		byte [] encodedBytes = base64Encode(input);
 		return lineWrap(DataUtils.getUTF8StringFromBytes(encodedBytes), LINELEN);
 	}
-	
+
 	public static byte [] lineWrapBase64(byte [] input, int lineLength) {
 		int finalLen = input.length + 2*(input.length/lineLength) + 3;
 		byte output[] = new byte[finalLen];
@@ -228,7 +227,7 @@ public class DataUtils {
 		return (output);
 
 	}
-	
+
 	/**
 	 * @param inputString
 	 * @param lineLength
@@ -238,9 +237,9 @@ public class DataUtils {
 		if ((null == inputString) || (inputString.length() <= lineLength)) {
 			return inputString;
 		}
-		
+
 		StringBuffer line = new StringBuffer(inputString);
-		
+
 		int length = inputString.length();
 		int sepLen = LINE_SEPARATOR.length();
 		int index = lineLength - sepLen;
@@ -251,7 +250,7 @@ public class DataUtils {
 		}
 		return line.toString();
 	}
- 
+
 	/**
 	 * byte array compare
 	 * @param left
@@ -273,7 +272,7 @@ public class DataUtils {
 		}
 		return true;
 	}
-	
+
 	/**
 	 * byte array compare
 	 * @param left
@@ -288,23 +287,23 @@ public class DataUtils {
 		if (right == null) {
 			return ((left == null) ? true : false);
 		}
-		
+
 		// If one of left or right is shorter than length, arrays
 		// must be same length to be equal.
 		if( left.length < length || right.length < length )
 			if( left.length != right.length )
 				return false;
-		
+
 		int minarray = (left.length < right.length) ? left.length : right.length;
 		int minlen   = (length < minarray) ? length : minarray;
-		
+
 		for (int i = 0; i < minlen; i++) {
 			if (left[i] != right[i])
 				return false;
 		}
 		return true;
 	}
-	
+
 	/**
 	 * Check if a byte array starts with a certain prefix.
 	 * 
@@ -314,8 +313,7 @@ public class DataUtils {
 	 * @param data data to inspect. If null this method always returns false.
 	 * @return true if data starts with prefix.
 	 */
-	public static boolean isBinaryPrefix(byte [] prefix,
-										 byte [] data) {
+	public static boolean isBinaryPrefix(byte [] prefix, byte [] data) {
 		if ((null == prefix) || (prefix.length == 0))
 			return true;
 		if ((null == data) || (data.length < prefix.length))
@@ -360,36 +358,36 @@ public class DataUtils {
 	 * @throws IOException
 	 */
 	public static byte[] getBytesFromFile(File file) throws IOException {
-	    InputStream is = new FileInputStream(file);
-	
-	    // Get the size of the file
-	    long length = file.length();
-	
-	    if (length > Integer.MAX_VALUE) {
-	        // File is too large
-	    }
-	
-	    // Create the byte array to hold the data
-	    byte[] bytes = new byte[(int)length];
-	
-	    // Read in the bytes
-	    int offset = 0;
-	    int numRead = 0;
-	    while (offset < bytes.length
-	           && (numRead=is.read(bytes, offset, bytes.length-offset)) >= 0) {
-	        offset += numRead;
-	    }
-	
-	    // Ensure all the bytes have been read in
-	    if (offset < bytes.length) {
-	        throw new IOException("Could not completely read file "+file.getName());
-	    }
-	
-	    // Close the input stream and return bytes
-	    is.close();
-	    return bytes;
+		InputStream is = new FileInputStream(file);
+
+		// Get the size of the file
+		long length = file.length();
+
+		if (length > Integer.MAX_VALUE) {
+			// File is too large
+		}
+
+		// Create the byte array to hold the data
+		byte[] bytes = new byte[(int)length];
+
+		// Read in the bytes
+		int offset = 0;
+		int numRead = 0;
+		while (offset < bytes.length
+				&& (numRead=is.read(bytes, offset, bytes.length-offset)) >= 0) {
+			offset += numRead;
+		}
+
+		// Ensure all the bytes have been read in
+		if (offset < bytes.length) {
+			throw new IOException("Could not completely read file "+file.getName());
+		}
+
+		// Close the input stream and return bytes
+		is.close();
+		return bytes;
 	}
-	
+
 	/**
 	 * Read a stream (usually small) completely in to a byte array. Used to get all of the
 	 * bytes out of one or more content objects for decoding or other processing, where the
@@ -406,7 +404,7 @@ public class DataUtils {
 		}
 		return baos.toByteArray();
 	}
-	
+
 	/**
 	 * Wrap up handling of UTF-8 encoding in one place (as much as possible), because
 	 * an UnsupportedEncodingException in response to a request for UTF-8 signals
@@ -422,7 +420,7 @@ public class DataUtils {
 			throw new RuntimeException("Unknown encoding UTF-8! This is a significant configuration problem.");
 		}
 	}
-	
+
 	/**
 	 * Wrap up handling of UTF-8 encoding in one place (as much as possible), because
 	 * an UnsupportedEncodingException in response to a request for UTF-8 signals
@@ -438,7 +436,7 @@ public class DataUtils {
 			throw new RuntimeException("Unknown encoding UTF-8! This is a significant configuration problem.");
 		}
 	}
-	
+
 	/**
 	 * Lexicographically compare two byte arrays, looking at a limited number of bytes.
 	 * @param arr1
@@ -454,7 +452,7 @@ public class DataUtils {
 		}
 		if (null == arr2)
 			return -1;
-		
+
 		int cmpcount = Math.min(Math.min(count, (arr1.length-offset1)), (arr2.length-offset2));
 		for (int i=offset1, j=offset2; i < cmpcount; ++i, ++j) {
 			if (arr1[i] < arr2[j])
@@ -472,11 +470,11 @@ public class DataUtils {
 			return -1;
 		return 0;
 	}
-	
+
 	public static int bytencmp(byte [] arr1, byte [] arr2, int count) {
 		return bytencmp(arr1, 0, arr2, 0, count);
 	}
-	
+
 	/**
 	 * Finds the index of the first occurrence of byteToFind in array starting at given
 	 * offset, returns 01 if not found.
@@ -493,7 +491,7 @@ public class DataUtils {
 		}
 		return (byteindex == array.length) ? -1 : byteindex;
 	}
-	
+
 	/**
 	 * Finds the index of the first occurrence of byteToFind in array, returns -1 if not found.
 	 * @param array array to search
@@ -503,7 +501,7 @@ public class DataUtils {
 	public static int byteindex(byte [] array, byte byteToFind) {
 		return byteindex(array, 0, byteToFind);
 	}
-	
+
 	/**
 	 * Finds the index of the last occurrence of byteToFind in array starting at given
 	 * offset, returns -1 if not found.
@@ -520,7 +518,7 @@ public class DataUtils {
 		}
 		return byteindex;
 	}
-	
+
 	/**
 	 * Finds the last of the first occurrence of byteToFind in array, returns -1 if not found.
 	 * @param array array to search
@@ -530,7 +528,7 @@ public class DataUtils {
 	public static int byterindex(byte [] array, byte byteToFind) {
 		return byterindex(array, (array != null) ? array.length : 0, byteToFind);
 	}
-	
+
 
 	/**
 	 * Count how may times a given byte occurs in an array.
@@ -539,7 +537,7 @@ public class DataUtils {
 		int count = 0;
 		if (array == null) 
 			return 0;
-		
+
 		for (int i=startingOffset; i < length; ++i) {
 			if (array[i] == byteToFind) {
 				count++;
@@ -547,7 +545,7 @@ public class DataUtils {
 		}
 		return count;
 	}
-	
+
 	public static int occurcount(byte [] array, int length, byte byteToFind) {
 		return occurcount(array, 0, (null != array) ? array.length : -1, byteToFind);
 	}
@@ -582,11 +580,11 @@ public class DataUtils {
 		}
 		return components;
 	}
-	
+
 	public static byte [][] binarySplit(byte [] array, byte splitValue) {
 		return binarySplit(array, 0, splitValue);
 	}
-	
+
 	public static byte [] subarray(byte [] array, int offset, int len) {
 		byte [] newarray = new byte [len];
 		System.arraycopy(array, offset, newarray, 0, len);

@@ -1,0 +1,57 @@
+CCN_XMLTOCCNB(1)
+================
+
+NAME
+----
+ccn_xmltoccnb - convert XML into ccn binary encoded data (ccnb)
+
+SYNOPSIS
+--------
+*ccn_xmltoccnb* [-hw] [-d 'dict'] 'file' '...'
+
+DESCRIPTION
+-----------
+The *ccn_xmltoccnb* converts standard text-based XML into ccn binary encoded (ccnb) form.
+
+OPTIONS
+-------
+*-h*::
+	Print usage and exit.
+
+*-d* 'dict'::
+	Augment the built-in DTAG dictionary with the named file (format like tagname.csvdict).
+	May be repeated.
+	Use this if you have defined some ccnb formats of your own.
+
+*-w*::
+	Toss UDATA content consisting of only whitespace.
+	This is useful if there has been white space added for display purposes (newlines and indentation, for example).
+	For CCNx data (e.g. Interest and ContentObject) you probably always want this.
+
+ARGUMENTS
+---------
+The named files should contain xml data.
+Use *-* to specify filter mode (read standard input, write standard output).
+
+OUTPUT
+------
+If not using filter mode (*-* for the file name), the output file names are generated from the input file names,
+using the extension *.ccnb*.
+Status and diagnostic messages appear on standard error.
+
+The output may be converted back into regular XML by using the *ccn_ccnbtoxml* utility.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*nonzero*::
+     Failure (syntax or usage error, file not found)
+
+SEE ALSO
+--------
+*ccn_ccnbtoxml*(1)
+
+Michael Plass <plass@parc.com>
+

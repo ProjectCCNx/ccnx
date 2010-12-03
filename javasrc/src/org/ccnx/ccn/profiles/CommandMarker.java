@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -136,6 +136,8 @@ public class CommandMarker {
 	public static final CommandMarker COMMAND_MARKER_REPO_CHECKED_START_WRITE = 
 		commandMarker(REPOSITORY_NAMESPACE, "sw-c");
 
+	public static final CommandMarker COMMAND_MARKER_REPO_ADD_FILE = 
+		commandMarker(REPOSITORY_NAMESPACE, "af");
 	
 	/**
 	 * Some very simple markers that need no other support. See KeyProfile and
@@ -360,7 +362,8 @@ public class CommandMarker {
 	 * @return
 	 */
 	public int findMarker(ContentName name) {
-		for (int i = 0; i < name.count(); i++) {
+        int nameCount = name.count();
+		for (int i = 0; i < nameCount; i++) {
 			if (isMarker(name.component(i)))
 				return i;
 		}
@@ -391,11 +394,7 @@ public class CommandMarker {
 	}
 
 	public static int binaryArgumentStart(byte [] nameComponent) {
-		
 		int idx = DataUtils.byteindex(nameComponent, COMMAND_PREFIX.length, BINARY_ARGUMENT_SEPARATOR);			
-		if (idx < 0) {
-			idx = DataUtils.byteindex(nameComponent, COMMAND_PREFIX.length, BINARY_ARGUMENT_SEPARATOR);
-		}
 		return idx;
 	}
 	
@@ -426,6 +425,11 @@ public class CommandMarker {
 		}
 		
 		int argumentEnd = binaryArgumentStart(nameComponent);
+		if (argumentEnd >= 0) {
+			if (argumentEnd <= argumentStart+1)
+				return null;	// no Argument or other malformed data
+		} else
+			argumentEnd = nameComponent.length;
 		
 		String argString = new String(nameComponent, argumentStart+1, argumentEnd-argumentStart-1);
 		return argString.split(UTF8_ARGUMENT_SEPARATOR);

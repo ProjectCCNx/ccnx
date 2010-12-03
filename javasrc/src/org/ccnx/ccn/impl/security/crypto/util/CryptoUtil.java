@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -92,6 +92,13 @@ public class CryptoUtil {
 			dobj = dis.readObject();
 			dis.close();
 		} catch (IOException ex) {
+			StringBuffer sb = new StringBuffer();
+			sb.append("decode error - length "+decodable.length);
+			for(byte b : decodable)
+				sb.append(" "+Integer.toHexString((int) b));
+			Log.severe(sb.toString());
+			for(StackTraceElement ste : ex.getStackTrace())
+				Log.severe(ste.toString());
 			throw new CertificateEncodingException("Cannot encode: " + ex.toString());
 		}
 		return dobj;

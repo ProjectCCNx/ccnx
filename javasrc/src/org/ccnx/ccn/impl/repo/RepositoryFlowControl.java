@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -27,6 +27,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -67,6 +68,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	protected int _ackInterval = ACK_INTERVAL;
 	protected CCNNameEnumerator _ackne;
 	protected RepoAckHandler _ackHandler;
+	protected boolean localRepo = false;
 	
 	// Queue of current clients of this RepositoryFlowController
 	// Implemented as a queue so we can decide which one to close on calls to beforeClose/afterClose
@@ -142,7 +144,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		public ContentName name() { return _name; }
 		public Shape shape() { return _shape; }
 	}
-
+	
 	/**
 	 * @param handle a CCNHandle - if null one is created
 	 * @throws IOException if library is null and a new CCNHandle can't be created
@@ -150,7 +152,20 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	public RepositoryFlowControl(CCNHandle handle) throws IOException {
 		super(handle);
 	}
-
+	
+	/**
+	 * constructor to allow the repo flow controller to set the scope for the start write interest
+	 * 
+	 * @param handle a CCNHandle - if null, one is created
+	 * @param local boolean to determine if a general start write, or one with the scope set to one.
+	 * 			A scope set to one will limit the write to a repo on the local device
+	 * @throws IOException
+	 */
+	public RepositoryFlowControl(CCNHandle handle, boolean local) throws IOException {
+		super(handle);
+		localRepo = local;
+	}
+	
 	/**
 	 * @param name		an initial namespace for this stream
 	 * @param handle	a CCNHandle - if null one is created
@@ -158,6 +173,18 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 */
 	public RepositoryFlowControl(ContentName name, CCNHandle handle) throws IOException {
 		super(name, handle);
+	}
+	
+	/**
+	 * @param name		an initial namespace for this stream
+	 * @param handle	a CCNHandle - if null one is created
+	 * @param local boolean to determine if a general start write, or one with the scope set to one.
+	 * 			A scope set to one will limit the write to a repo on the local device
+	 * @throws IOException if handle is null and a new CCNHandle can't be created
+	 */
+	public RepositoryFlowControl(ContentName name, CCNHandle handle, boolean local) throws IOException {
+		super(name, handle);
+		localRepo = local;
 	}
 	
 	/**
@@ -172,6 +199,21 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		super(name, handle);
 	}
 
+	/**
+	 * @param name		an intial namespace for this stream
+	 * @param handle	a CCNHandle - if null one is created
+	 * @param shape		shapes are not currently implemented and may be deprecated. The only currently defined
+	 * 					shape is "Shape.STREAM"
+	 * @param local boolean to determine if a general start write, or one with the scope set to one.
+	 * 			A scope set to one will limit the write to a repo on the local device
+	 * @throws IOException	if handle is null and a new CCNHandle can't be created
+	 * @see	CCNFlowControl
+	 */
+	public RepositoryFlowControl(ContentName name, CCNHandle handle, Shape shape, boolean local) throws IOException {
+		super(name, handle);
+		localRepo = local;
+	}
+	
 	@Override
 	/**
 	 * Send out a start write request to any listening repositories and wait for a response.
@@ -192,6 +234,10 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		ContentName repoWriteName = 
 			new ContentName(name, CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes(), Interest.generateNonce());
 		Interest writeInterest = new Interest(repoWriteName);
+		if (localRepo || SystemConfiguration.FC_LOCALREPOSITORY) {
+			//this is meant to be written to a local repository, not any/multiple connected repos
+			writeInterest.scope(1);
+		}
 
 		synchronized (this) {
 			_handle.expressInterest(writeInterest, this);
@@ -317,5 +363,15 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	/**
 	 * Help users determine what type of flow controller this is.
 	 */
-	public SaveType saveType() { return SaveType.REPOSITORY; }
+	public SaveType saveType() {
+		//if the library is overridden with the property or environment variable
+		//for writing to a local repo, need to return LocalRepo save type
+		if (SystemConfiguration.FC_LOCALREPOSITORY)
+			return SaveType.LOCALREPOSITORY;
+		
+		if (localRepo)
+			return SaveType.LOCALREPOSITORY;
+		else
+			return SaveType.REPOSITORY;
+	}
 }

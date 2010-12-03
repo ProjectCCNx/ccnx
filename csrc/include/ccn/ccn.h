@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 2008
+#define CCN_API_VERSION 3000
 
 /**
  * Interest lifetime default.
@@ -693,6 +693,9 @@ int ccn_content_get_value(const unsigned char *data, size_t data_size,
  * If the pubid is all zero, the user's default key pair is used for
  * signing.  Otherwise the corresponding private key must have already
  * been supplied to the handle using ccn_load_private_key() or equivalent.
+ *
+ * The default signing key is obtained from ~/.ccnx/.ccnx_keystore unless
+ * the CCNX_DIR is used to override the directory location.
  */
  
 struct ccn_signing_params {

@@ -76,7 +76,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	public enum SaveType {
-		RAW ("RAW"), REPOSITORY ("REPOSITORY");
+		RAW ("RAW"), REPOSITORY ("REPOSITORY"), LOCALREPOSITORY("LOCALREPOSITORY");
 
 		SaveType(String str) { this._str = str; }
 		public String value() { return _str; }
@@ -427,7 +427,7 @@ public class CCNFlowControl implements CCNFilterListener {
 						for (ContentName name : _filteredNames) {
 							names += name + ",";
 						}
-						Log.warning("Flow control buffer full for: " + names);
+						Log.warning(Log.FAC_IO, "Flow control buffer full for: " + names);
 						throw new IOException("Flow control buffer full and not draining");
 					}
 				}
@@ -439,7 +439,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				Entry<UnmatchedInterest> match = null;
 				match = _unmatchedInterests.removeMatch(co);
 				if (match != null) {
-					Log.finest("Found pending matching interest for " + co.name() + ", putting to network.");
+					Log.finest(Log.FAC_IO, "Found pending matching interest for " + co.name() + ", putting to network.");
 					_handle.put(co);
 					// afterPutAction may immediately remove the object from _holdingArea or retain it 
 					// depending upon the buffer drain policy being implemented.
@@ -514,7 +514,7 @@ public class CCNFlowControl implements CCNFilterListener {
 					_handle.put(co);
 					afterPutAction(co);
 				} catch (IOException e) {
-					Log.warning("IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
+					Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
 					Log.warningStackTrace(e);
 				}
 			} else {
@@ -523,7 +523,7 @@ public class CCNFlowControl implements CCNFilterListener {
 				if (_unmatchedInterests.size() > 0)
 					removeUnmatchedInterests(System.currentTimeMillis());
 				
-				Log.finest("No content matching pending interest: {0}, holding.", i);
+				Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
 				_unmatchedInterests.add(i, new UnmatchedInterest());
 			}
 				
@@ -616,7 +616,7 @@ public class CCNFlowControl implements CCNFilterListener {
 					}
 					throw new IOException("Put(s) with no matching interests - size is " + _holdingArea.size());
 				}
-				startSize = _holdingArea.size();
+				startSize = _nOut;
 			}
 		}
 	}

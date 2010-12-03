@@ -5,7 +5,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -51,11 +51,11 @@ main(int argc, char **argv)
     struct ccn *ccn = NULL;
     struct ccn_charbuf *c = NULL;
     int allow_stale = 0;
-    int ch;
+    int opt;
     int res;
     
-    while ((ch = getopt(argc, argv, "ha")) != -1) {
-        switch (ch) {
+    while ((opt = getopt(argc, argv, "ha")) != -1) {
+        switch (opt) {
             case 'a':
                 allow_stale = 1;
                 break;

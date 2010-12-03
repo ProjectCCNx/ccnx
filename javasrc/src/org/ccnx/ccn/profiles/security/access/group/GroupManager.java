@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -305,12 +305,13 @@ public class GroupManager {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 				Log.finer(Log.FAC_ACCESSCONTROL, "amCurrentGroupMember: {0} is a member of group {1}", lr.targetName(), group.groupName());
 			}
-			if (isGroup(lr)) {
+			GroupManager gm = _accessManager.groupManager(lr.targetName().parent());
+			if (gm != null && gm.isGroup(lr)) {
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 					Log.finer(Log.FAC_ACCESSCONTROL, "amCurrentGroupMember: {0} is itself a group.", lr.targetName());
 				}
 				String groupFriendlyName = GroupAccessControlProfile.groupNameToFriendlyName(lr.targetName());
-				if (amCurrentGroupMember(groupFriendlyName)) {
+				if (gm.amCurrentGroupMember(groupFriendlyName)) {
 					_myGroupMemberships.add(groupFriendlyName);
 					return true;
 				} else {

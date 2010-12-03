@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -495,6 +495,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		}
 		PublicKeyObject pko = new PublicKeyObject(identity, myPublicKey, SaveType.REPOSITORY, handle());
 		pko.save();
+		Log.finer(Log.FAC_ACCESSCONTROL, "Published identity {0}", identity);
 		_myIdentities.add(identity);
 	}
 
@@ -503,6 +504,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 * Add an identity to my set. Assume the key is already published.
 	 */
 	public void addMyIdentity(ContentName identity) {
+		Log.finer(Log.FAC_ACCESSCONTROL, "Adding identity {0}", identity);
 		_myIdentities.add(identity);
 	}
 

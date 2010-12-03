@@ -50,8 +50,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 										// may be expressed to satisfy the current pipelining window
 	protected RepositoryServer _server;
 	private CCNHandle _handle;
-	private long _currentBlock = 0; 	// latest block we're looking for
-	private long _finalBlockID = -1; 	// expected last block of the stream
+	private long _largestSegmentNumberReceived = -1;
+	private long _finalSegmentNumber = -1; 	// expected last block of the stream
 	
 	/**
 	 * @param origInterest	interest to be used to identify this listener to filter out subsequent duplicate or overlapping
@@ -79,14 +79,14 @@ public class RepositoryDataListener implements CCNInterestListener {
 		_timer = System.currentTimeMillis();
 
 
-		boolean isFinalBlock = false;
+		boolean isFinalSegment = false;
 
 		if (SegmentationProfile.isSegment(co.name())) {
-			long thisBlock = SegmentationProfile.getSegmentNumber(co.name());
-			if (thisBlock >= _currentBlock)
-				_currentBlock = thisBlock;
+			long thisSegmentNumber = SegmentationProfile.getSegmentNumber(co.name());
+			if (thisSegmentNumber >= _largestSegmentNumberReceived)
+				_largestSegmentNumberReceived = thisSegmentNumber;
 
-			// For now, only set _finalBlockID when we *know* we have the correct final
+			// For now, only set _finalSegmentNumber when we *know* we have the correct final
 			// block number -- i.e. we get a block whose segment number matches the encoded
 			// final block. A pipelining stream may help us by setting the finalBlockID in several
 			// blocks prior to the last one, to let us know when to slow down -- but it's allowed
@@ -105,48 +105,44 @@ public class RepositoryDataListener implements CCNInterestListener {
 				// the stream. So just update our notion of finalBlockID.
 				// So in other words, the only time we use this value to actually cancel outstanding
 				// interests is when we have hit the end of the stream.
-				_finalBlockID = SegmentationProfile.getSegmentNumber(co.signedInfo().getFinalBlockID());
-				if (_finalBlockID == thisBlock) {
-					isFinalBlock = true; // we only know for sure what the final block is when this is true
+				_finalSegmentNumber = SegmentationProfile.getSegmentNumber(co.signedInfo().getFinalBlockID());
+				if (_finalSegmentNumber == thisSegmentNumber) {
+					isFinalSegment = true; // we only know for sure what the final block is when this is true
 				}
 			}
 		}
-		synchronized (_interests) {
+    calculateInterests: synchronized (_interests) {
+			long largestSegmentNumberRequested = getLargestSegmentNumber();
 			_interests.remove(interest, null);
 
 			// Compute next interests to ask for and ask for them
 			// Note that this should only ask for 1 interest except for the first time through this code when it
 			// should ask for "windowSize" interests.
-			long firstInterestToRequest = getNextBlockID();
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINEST)) {
-				Log.finest(Log.FAC_REPO, "First interest to request is {0}", firstInterestToRequest);
+				Log.finest(Log.FAC_REPO, "Largest segment number requested is {0}", largestSegmentNumberRequested);
 			}
-			if (_currentBlock > firstInterestToRequest) // Can happen if last requested interest precedes all others
-				// out of order
-				firstInterestToRequest = _currentBlock;
 
-			int nOutput = _interests.size() >= _server.getWindowSize() ? 0 : _server.getWindowSize() - _interests.size();
-
+			int remainingWindow = _server.getWindowSize() - _interests.size();
+			
 			// Make sure we don't go past prospective last block.
-			if (_finalBlockID >= 0 && _finalBlockID < (firstInterestToRequest + nOutput)) {
-				// want max to be _finalBlockID or firstInterestToRequest, whichever is larger,
-				// unless isFinalBlock is true, in which case max is _finalBlockID (i.e. no more interests)
-				nOutput = (int)(_finalBlockID - firstInterestToRequest + 1);
-				if (nOutput < 0)
-					nOutput = 0;
+			if (_finalSegmentNumber >= 0 && _finalSegmentNumber < (largestSegmentNumberRequested + remainingWindow)) {
+				// want max to be _finalSegmentNumber or largestSegmentNumberRequested, whichever is larger,
+				// unless isFinalSegment is true, in which case max is _finalSegmentNumber (i.e. no more interests)
+				remainingWindow = (int)(_finalSegmentNumber - largestSegmentNumberRequested + 1);
 				// If we're confident about the final block ID, cancel previous extra interests
-				if (isFinalBlock) {
-					cancelHigherInterests(_finalBlockID);
-					handleData(co);
-					return null;
+				if (isFinalSegment) {
+					cancelHigherInterests(_finalSegmentNumber);
+                    break calculateInterests; // exit the synchronized block and process the data
 				}
 			}
+			if (remainingWindow < 0)
+				remainingWindow = 0;
 
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINEST)) {
-				Log.finest(Log.FAC_REPO, "REPO: Got block: {0} expressing {1} more interests, current block {2} final block {3} last block? {4}", co.name(), nOutput, _currentBlock, _finalBlockID, isFinalBlock);
+				Log.finest(Log.FAC_REPO, "REPO: Got block: {0} expressing {1} more interests, largest block {2} final block {3} last block? {4}", co.name(), remainingWindow, _largestSegmentNumberReceived, _finalSegmentNumber, isFinalSegment);
 			}
-			for (int i = 0; i < nOutput; i++) {
-				ContentName name = SegmentationProfile.segmentName(co.name(), firstInterestToRequest + 1 + i);
+			for (int i = 1; i <= remainingWindow; i++) {
+				ContentName name = SegmentationProfile.segmentName(co.name(), largestSegmentNumberRequested + i);
 				// DKS - should use better interest generation to only get segments (TBD, in SegmentationProfile)
 				Interest newInterest = new Interest(name);
 				try {
@@ -179,7 +175,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	/**
 	 * Must match implementation of nextSegmentNumber in input streams, segmenters.
 	 */
-	private class GetNextBlockIDAction extends InterestActionClass {
+	private class GetLargestSegmentNumberAction extends InterestActionClass {
 		@Override
 		protected void action(long value, Entry<?> entry, Iterator<Entry<Object>> it) {
 			if (value >= _value)
@@ -191,10 +187,10 @@ public class RepositoryDataListener implements CCNInterestListener {
 		}
 		
 	}
-	private long getNextBlockID() {
-		GetNextBlockIDAction gnbia = new GetNextBlockIDAction();
-		interestsAction(gnbia);
-		return gnbia.getValue();
+	private long getLargestSegmentNumber() {
+		GetLargestSegmentNumberAction glsna = new GetLargestSegmentNumberAction();
+		interestsAction(glsna);
+		return glsna.getValue();
 	}
 	
 	/**

@@ -13,7 +13,25 @@
 #
 # This script should be installed in the same place as ccnd, ccndc, ccndsmoketest, ...
 # adjust the path to get consistency.
+Usage () {
+	echo $0 [-T host] - display the status of a running ccnd >&2
+	exit 1
+}
+
 D=`dirname "$0"`
 export PATH="$D:$PATH"
+host=
+while getopts T: name; do
+	case $name in
+	T) host="$OPTARG";;
+	?) Usage;;
+	esac
+done
 
-ccndsmoketest status
+if [ ! -z "$host" ]; then
+	set -- -T "$host"
+else
+	shift $#
+fi
+
+ccndsmoketest "$@" status

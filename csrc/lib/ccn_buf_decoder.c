@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -580,6 +580,10 @@ ccn_parse_interest(const unsigned char *msg, size_t size,
         interest->offset[CCN_PI_B_Name] = d->decoder.element_index;
         interest->offset[CCN_PI_B_Component0] = d->decoder.index;
         ncomp = ccn_parse_Name(d, components);
+        if (d->decoder.state < 0) {
+            memset(interest->offset, 0, sizeof(interest->offset));
+            return(d->decoder.state);
+        }
         interest->offset[CCN_PI_E_ComponentLast] = d->decoder.token_index - 1;
         interest->offset[CCN_PI_E_Name] = d->decoder.token_index;
         interest->prefix_comps = ncomp;

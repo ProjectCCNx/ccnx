@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -167,6 +167,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 			e1.printStackTrace();
 			fail("ContentName.fromURI(prefixToUse) Failed.  Reason: " + e1.getMessage());
 		}
+		
 		try {
 			manager = new PrefixRegistrationManager(putHandle);
 			ForwardingEntry entry = manager.selfRegisterPrefix(testCN);
@@ -188,6 +189,25 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 			fail("Failed to delete prefix.  Reason: " + e.getMessage());
 		}
 		System.out.println();
+		
+		try {
+			manager.registerPrefix(testCN, faceID, null);
+			System.out.println("Created prefix: " + testCN + " on face " + faceID);
+		} catch (CCNDaemonException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			System.out.println("Failed to self register prefix.");
+			e.printStackTrace();
+			fail("Failed to self register prefix.  Reason: " + e.getMessage());
+		}
+		assertNotNull(prm);
+		try {
+			manager.unRegisterPrefix(testCN, faceID);
+		}catch (CCNDaemonException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			System.out.println("Failed to delete prefix.");
+			e.printStackTrace();
+			fail("Failed to delete prefix.  Reason: " + e.getMessage());
+		}
 	}
 
 }

@@ -1,0 +1,88 @@
+'\" t
+.\"     Title: ccn_ccnbtoxml
+.\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCN_CCNBTOXML" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccn_ccnbtoxml \- convert ccn binary encoded data into XML form
+.SH "SYNOPSIS"
+.sp
+\fBccn_ccnbtoxml\fR [\-bvx] [\-d \fIdict\fR] [\-s \fIpat\fR] \fIfile\fR \fI\&...\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccn_ccnbtoxml\fR converts ccn binary encoded data into XML form\&.
+.SH "OPTIONS"
+.PP
+\fB\-b\fR
+.RS 4
+Force base64Binary (or hexBinary if used with \-x) instead of preferring text where possible\&.
+.RE
+.PP
+\fB\-d\fR \fIdict\fR
+.RS 4
+Augment the built\-in DTAG dictionary with the named file (format like tagname\&.csvdict)\&. May be repeated\&.
+.RE
+.PP
+\fB\-v\fR
+.RS 4
+Verbose \- add comments with alternative encodings\&.
+.RE
+.PP
+\fB\-x\fR
+.RS 4
+Prefer hexBinary over the default of base64Binary\&.
+.RE
+.PP
+\fB\-s\fR \fIpat\fR
+.RS 4
+Split concatenated ccnb blocks into separate output files, using
+\fIpat\fR
+to generate output files named
+\fIpat00000\&.xml\fR,
+\fIpat00001\&.xml\fR, \&...
+.RE
+.SH "ARGUMENTS"
+.sp
+The named files should contain ccnb\-encoded data\&. Use \fB\-\fR to specify standard input\&.
+.SH "OUTPUT"
+.sp
+The XML form appears on standard output, unless the \fB\-s\fR switch is used; status and diagnostic messages appear on standard error\&.
+.sp
+The output is produced in a compact form\&. For more human\-readable, it is often useful to pipe the output through \fBxmllint \-\-format \-\fR\&.
+.sp
+By default, BLOB fields are turned into base64Binary if they are not expressible in a safe subset of ascii printable characters\&. If hexBinary is preferred, use the \fB\-x\fR switch\&. In any case, a ccnbencoding attribute is added to the enclosing element to indicate which display encoding is being used for the BLOB\&.
+.sp
+If you want to check the XML to make sure it conforms to a schema, use the \fB\-b\fR switch to force base64Binary (because the schemas current assume that)\&.
+.sp
+The output may be converted back into ccnb form using the \fBccn_xmltoccnb\fR utility\&.
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fBnonzero\fR
+.RS 4
+Failure (syntax or usage error, file not found)
+.RE
+.SH "SEE ALSO"
+.sp
+\fBccn_xmltoccnb\fR(1)
+.sp
+Michael Plass <plass@parc\&.com>

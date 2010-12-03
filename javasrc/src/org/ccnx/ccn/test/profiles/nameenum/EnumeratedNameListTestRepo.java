@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -27,6 +27,7 @@ import junit.framework.Assert;
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
@@ -52,14 +53,31 @@ public class EnumeratedNameListTestRepo {
 	static Random rand = new Random();
 	
 	static final String directoryString = "/test/parc" + "/directory-";
+	static final String directoryString2 = "/test/parc" + "/directory2-";
+	static final String directoryString3 = "/test/parc" + "/directory3-";
 	static ContentName directory;
+	static ContentName directory2;
+	static ContentName directory3;
+
 	static String nameString = "name-";
 	static String name1String;
 	static String name2String;
 	static String name3String;
+	static String name4String;
+	static String name5String;
+	static String name6String;
+
 	static ContentName name1;
 	static ContentName name2;
 	static ContentName name3;
+	
+	// For thread test
+	static ContentName name4;
+	static ContentName name5;
+	static ContentName name6;
+	static ContentName name7;
+	static ContentName name8;
+	static ContentName name9;
 	static CCNHandle putHandle;
 		
 	static String prefix1StringError = "/park.com/csl/ccn/repositories";
@@ -67,6 +85,9 @@ public class EnumeratedNameListTestRepo {
 	static ContentName brokenPrefix;
 	ContentName c1;
 	ContentName c2;
+	
+	static int contentSeenNoPool = 0;
+	static int contentSeenPool = 0;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -74,13 +95,22 @@ public class EnumeratedNameListTestRepo {
 		
 		// randomize names to minimize stateful effects of ccnd/repo caches.
 		directory = ContentName.fromNative(directoryString + Integer.toString(rand.nextInt(10000)));
+		directory2 = ContentName.fromNative(directoryString2 + Integer.toString(rand.nextInt(10000)));
+		directory3 = ContentName.fromNative(directoryString3 + Integer.toString(rand.nextInt(10000)));
 		name1String = nameString + Integer.toString(rand.nextInt(10000));
 		name2String = nameString + Integer.toString(rand.nextInt(10000));
 		name3String = nameString + Integer.toString(rand.nextInt(10000));
+		name4String = nameString + Integer.toString(rand.nextInt(10000));
 
 		name1 = ContentName.fromNative(directory, name1String);
 		name2 = ContentName.fromNative(directory, name2String);
 		name3 = ContentName.fromNative(directory, name3String);
+		name4 = ContentName.fromNative(directory2, name1String);
+		name5 = ContentName.fromNative(directory2, name2String);
+		name6 = ContentName.fromNative(directory2, name3String);
+		name7 = ContentName.fromNative(directory2, name4String);
+		name8 = ContentName.fromNative(directory3, name1String);
+		name9 = ContentName.fromNative(directory3, name2String);
 		brokenPrefix = ContentName.fromNative(prefix1StringError);
 		putHandle = CCNHandle.open();
 	}
@@ -272,6 +302,77 @@ public class EnumeratedNameListTestRepo {
 			Log.logException("Failed test with exception " + e.getMessage(), e);
 			Assert.fail("Failed test with exception " + e.getMessage());
 		}			
+	}
+	
+	@Test
+	public void testEnumeratedNameListWithThreads() throws Exception {
+		Log.info("*****************Starting Enumerated Name Test for multiple threads");
+		EnumeratedNameList poolList = new EnumeratedNameList(directory3, putHandle);
+		Thread poolThread = new Thread(new WaiterThreadForPool(poolList));
+		poolThread.start();
+		addContentToRepo(name8, putHandle);
+		addContentToRepo(name9, putHandle);
+		poolOps(poolList);
+		Assert.assertEquals(2, contentSeenPool);
+		EnumeratedNameList noPoolList = new EnumeratedNameList(directory2, putHandle);
+		Thread noPoolThread = new Thread(new WaiterThread(noPoolList));
+		noPoolThread.start();
+		addContentToRepo(name4, putHandle);
+		addContentToRepo(name5, putHandle);
+		addContentToRepo(name6, putHandle);
+		addContentToRepo(name7, putHandle);
+		noPoolOps(poolList);
+		Assert.assertEquals(4, contentSeenNoPool);
+	}
+	
+	private class WaiterThreadForPool implements Runnable {
+		private EnumeratedNameList myList = null;
+		
+		private WaiterThreadForPool(EnumeratedNameList list) {
+			this.myList = list;
+		}
+		public void run() {
+			poolOps(myList);
+		}
+	}
+	
+	public class WaiterThread implements Runnable {
+		private EnumeratedNameList myList = null;
+		
+		private WaiterThread(EnumeratedNameList list) {
+			this.myList = list;
+		}
+		public void run() {
+			noPoolOps(myList);
+		}
+	}
+	
+	private static void poolOps(EnumeratedNameList list) {
+		long currentTime = System.currentTimeMillis();
+		long lastTime = currentTime + (2 * SystemConfiguration.MAX_TIMEOUT);
+		while (contentSeenPool < 2 && currentTime < lastTime) {
+			synchronized (list) {
+				SortedSet<ContentName> names = list.getNewDataThreadPool(SystemConfiguration.MAX_TIMEOUT);
+				if (null != names)
+					contentSeenPool += names.size();
+			}
+			currentTime = System.currentTimeMillis();
+		}
+		list.shutdown();
+	}
+	
+	private static void noPoolOps(EnumeratedNameList list) {
+		long currentTime = System.currentTimeMillis();
+		long lastTime = currentTime + (4 * SystemConfiguration.MAX_TIMEOUT);
+		while (contentSeenNoPool < 4 && currentTime < lastTime) {
+			synchronized (list) {
+				SortedSet<ContentName> names = list.getNewData(SystemConfiguration.MAX_TIMEOUT);
+				if (null != names)
+					contentSeenNoPool += names.size();
+			}
+			currentTime = System.currentTimeMillis();
+		}
+		list.shutdown();
 	}
 	
 	/*

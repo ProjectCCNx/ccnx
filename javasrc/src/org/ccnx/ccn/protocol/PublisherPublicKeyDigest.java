@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -80,9 +80,13 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 			throw new IllegalArgumentException("This is not a valid publisher public key digest!");
 		}
 		_publisherPublicKeyDigest = new byte[PublisherID.PUBLISHER_ID_LEN];
-		
-		int len = Math.min(publisherPublicKeyDigest.length, PublisherID.PUBLISHER_ID_LEN); 
-		System.arraycopy(publisherPublicKeyDigest, 0, _publisherPublicKeyDigest, (PublisherID.PUBLISHER_ID_LEN-len), len);
+		int len = publisherPublicKeyDigest.length;
+		if (len > PublisherID.PUBLISHER_ID_LEN) {
+			len = PublisherID.PUBLISHER_ID_LEN;
+			Log.warning("Truncating PublisherPublicKeyDigest to {0} bytes", len);
+		}
+		System.arraycopy(publisherPublicKeyDigest, 0, _publisherPublicKeyDigest,
+						 (PublisherID.PUBLISHER_ID_LEN-len), len);
 	}	
 	
 	/**
@@ -91,7 +95,10 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 	 * @throws IOException 
 	 */
 	public PublisherPublicKeyDigest(String publisherPublicKeyDigest) throws IOException {
-		this(DataUtils.base64Decode(publisherPublicKeyDigest.getBytes()));
+		_publisherPublicKeyDigest = DataUtils.base64Decode(publisherPublicKeyDigest.getBytes());
+		if (_publisherPublicKeyDigest.length != PublisherID.PUBLISHER_ID_LEN) {
+			throw new IOException("Not a valid base64Binary encoding of a PublisherPublicKeyDigest" + publisherPublicKeyDigest);
+		}
 	}
 	
 	/**
@@ -160,21 +167,17 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 	}
 	
 	@Override
-	public void decode(XMLDecoder decoder) throws ContentDecodingException {
-		
-		// The format of a publisher ID is an octet string.
-
+	public void decode(XMLDecoder decoder) throws ContentDecodingException {		
+		// The format of a publisher ID is an octet string of the correct length.
 		_publisherPublicKeyDigest = decoder.readBinaryElement(getElementLabel());
 		if (null == _publisherPublicKeyDigest) {
 			throw new ContentDecodingException("Cannot parse publisher key digest.");
 		}
-		if (_publisherPublicKeyDigest.length > PublisherID.PUBLISHER_ID_LEN) {
+		if (_publisherPublicKeyDigest.length != PublisherID.PUBLISHER_ID_LEN) {
 			if (Log.isLoggable(Level.WARNING)) {
-				Log.warning("Truncating too-long PublisherPublicKeyDigest: {0}", CCNDigestHelper.printBytes(_publisherPublicKeyDigest, 32));
+				Log.warning("Wrong length for PublisherPublicKeyDigest: {0}", CCNDigestHelper.printBytes(_publisherPublicKeyDigest, 32));
 			}
-			byte [] digest = new byte[PublisherID.PUBLISHER_ID_LEN];
-			System.arraycopy(_publisherPublicKeyDigest, 0, digest, 0, PublisherID.PUBLISHER_ID_LEN);
-			_publisherPublicKeyDigest = digest;
+			_publisherPublicKeyDigest = new PublisherPublicKeyDigest(_publisherPublicKeyDigest).digest();
 		}
 	}
 
@@ -183,8 +186,6 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 		if (!validate()) {
 			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
 		}
-		// The format of a publisher ID is:
-		// <PublisherID type=<type> id_content />
 		encoder.writeElement(getElementLabel(), digest());
 	}
 	
@@ -207,6 +208,9 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 	}
 
 	@Override
+	/**
+	 * The string representation is base64Binary (RFC 2045, section 6.8).
+	 */
 	public String toString() {
 		return DataUtils.base64Encode(digest(), PublisherID.PUBLISHER_ID_LEN*2);
 	}

@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -224,7 +224,7 @@ public class LibraryTestBase extends CCNTestBase {
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+					((CCNHandle)handle).getNetworkManager().setTap(SystemConfiguration.DEBUG_DATA_DIRECTORY + "/LibraryTestDebug_" + Integer.toString(id) + "_get");
 				} catch (IOException ie) {
 				}
 			}
@@ -237,6 +237,8 @@ public class LibraryTestBase extends CCNTestBase {
 				System.out.println("Get thread finished");
 			} catch (Throwable ex) {
 				error = ex;
+				Log.warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.logStackTrace(Level.WARNING, ex);
 			}
 		}
 	}
@@ -251,7 +253,7 @@ public class LibraryTestBase extends CCNTestBase {
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+					((CCNHandle)handle).getNetworkManager().setTap(SystemConfiguration.DEBUG_DATA_DIRECTORY + "/LibraryTestDebug_" + Integer.toString(id) + "_put");
 				} catch (IOException ie) {
 				}
 			}
@@ -285,7 +287,7 @@ public class LibraryTestBase extends CCNTestBase {
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_get");
+					((CCNHandle)handle).getNetworkManager().setTap(SystemConfiguration.DEBUG_DATA_DIRECTORY + "/LibraryTestDebug_" + Integer.toString(id) + "_get");
 				} catch (IOException ie) {
 				}
 			}
@@ -308,6 +310,8 @@ public class LibraryTestBase extends CCNTestBase {
 
 			} catch (Throwable ex) {
 				error = ex;
+				Log.warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.logStackTrace(Level.WARNING, ex);
 			}
 		}
 		public synchronized Interest handleContent(ContentObject contentObject, Interest interest) {
@@ -349,7 +353,7 @@ public class LibraryTestBase extends CCNTestBase {
 			this.id = id;
 			if (DO_TAP) {
 				try {
-					((CCNHandle)handle).getNetworkManager().setTap("CCN_DEBUG_DATA/LibraryTestDebug_" + Integer.toString(id) + "_put");
+					((CCNHandle)handle).getNetworkManager().setTap(SystemConfiguration.DEBUG_DATA_DIRECTORY + "/LibraryTestDebug_" + Integer.toString(id) + "_put");
 				} catch (IOException ie) {
 				}
 			}
@@ -370,6 +374,8 @@ public class LibraryTestBase extends CCNTestBase {
 
 			} catch (Throwable ex) {
 				error = ex;
+				Log.warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.logStackTrace(Level.WARNING, ex);
 			}
 		}
 
@@ -395,6 +401,8 @@ public class LibraryTestBase extends CCNTestBase {
 				}
 			} catch (Throwable e) {
 				error = e;
+				Log.warning("Exception in run: " + e.getClass().getName() + " message: " + e.getMessage());
+				Log.logStackTrace(Level.WARNING, e);
 			}
 			return result;
 		}

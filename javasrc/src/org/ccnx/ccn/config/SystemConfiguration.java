@@ -106,7 +106,7 @@ public class SystemConfiguration {
 	 */
 	public static final String DEBUG_DATA_DIRECTORY_PROPERTY = "com.parc.ccn.DebugDataDirectory";
 	protected static final String DEFAULT_DEBUG_DATA_DIRECTORY = "./CCN_DEBUG_DATA";
-	protected static String DEBUG_DATA_DIRECTORY = null;
+	public static String DEBUG_DATA_DIRECTORY = null;
 	
 	/** 
 	 * Tunable timeouts as well as timeout defaults.
@@ -126,6 +126,14 @@ public class SystemConfiguration {
 	protected static final String FC_TIMEOUT_PROPERTY = "org.ccnx.fc.timeout";
 	public final static int FC_TIMEOUT_DEFAULT = MAX_TIMEOUT;
 	public static int FC_TIMEOUT = FC_TIMEOUT_DEFAULT;
+	
+	/**
+	 * Allow override to only save to a local repository
+	 */
+	protected static final String FC_LOCALREPOSITORY_PROPERTY = "org.ccnx.fc.localrepository";
+	protected final static String FC_LOCALREPOSITORY_ENV_VAR = "FC_LOCALREPOSITORY";
+	public final static boolean FC_LOCALREPOSITORY_DEFAULT = false;
+	public static boolean FC_LOCALREPOSITORY = FC_LOCALREPOSITORY_DEFAULT;
 	
 	/**
 	 * How long to wait for a ping timeout in CCNNetworkManager, in ms
@@ -205,7 +213,7 @@ public class SystemConfiguration {
 	 */
 	protected static final String GLV_ATTEMPT_TIMEOUT_PROPERTY = "org.ccnx.glv.attempt.timeout";
 	protected final static String GLV_ATTEMPT_TIMEOUT_ENV_VAR = "GLV_ATTEMPT_TIMEOUT";
-	public final static int GLV_ATTEMPT_TIMEOUT_DEFAULT = MEDIUM_TIMEOUT;
+	public final static int GLV_ATTEMPT_TIMEOUT_DEFAULT = SHORT_TIMEOUT;
 	public static int GLV_ATTEMPT_TIMEOUT = GLV_ATTEMPT_TIMEOUT_DEFAULT;
 	
 	/**
@@ -357,6 +365,14 @@ public class SystemConfiguration {
 //			Log.fine("FC_TIMEOUT = " + FC_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The default flow controller timeout must be an integer.");
+			throw e;
+		}
+		
+		// Allow override for local repository override 
+		try {
+			FC_LOCALREPOSITORY = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(FC_LOCALREPOSITORY_PROPERTY, FC_LOCALREPOSITORY_ENV_VAR, Boolean.toString(FC_LOCALREPOSITORY_DEFAULT)));
+		} catch (NumberFormatException e) {
+			System.err.println("The local repository flow controller override must be a boolean.");
 			throw e;
 		}
 		

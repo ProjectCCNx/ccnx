@@ -2,12 +2,12 @@
 .\"     Title: ccndstatus
 .\"    Author: [see the "AUTHOR" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
-.\"      Date: 05/04/2010
+.\"      Date: 11/03/2010
 .\"    Manual: \ \&
-.\"    Source: \ \& 0.3.0-prebeta
+.\"    Source: \ \& 0.3.0
 .\"  Language: English
 .\"
-.TH "CCNDSTATUS" "1" "05/04/2010" "\ \& 0\&.3\&.0\-prebeta" "\ \&"
+.TH "CCNDSTATUS" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -19,31 +19,28 @@
 .\" * MAIN CONTENT STARTS HERE *
 .\" -----------------------------------------------------------------
 .SH "NAME"
-ccndstatus \- print out the status of the running ccnd
+ccndstatus \- display the status a running ccnd
 .SH "SYNOPSIS"
 .sp
-\fBccndstatus\fR
+*ccndstatus [\-T host]
 .SH "DESCRIPTION"
 .sp
-The \fBccndstatus\fR utility prints out a plain\-text version of the status report of the running \fBccnd\fR\&.
-.SH "OPTIONS"
+The \fBccndstatus\fR displays the status of a running \fBccnd\fR\&.
 .sp
-This utility does have have flags or arguments\&.
+This is the same display that is available via a browser at (for example) http://localhost:9695
+.sp
+It fact, the implementation simply does the http fetch and strips out the html markup\&.
+.SH "OPTIONS"
+.PP
+\fB\-T host\fR
+.RS 4
+Control the
+\fBccnd\fR
+instance running on the specified host, instead of the current host\&. To use this option, host must be accessible via tcp\&.
+.RE
+.SH "ENVIRONMENT"
 .sp
 The \fICCN_LOCAL_PORT\fR environment variable may be used to identify the port that the \fBccnd\fR instance is using; if unset, the default port number (9695) is used\&.
-.SH "EXIT STATUS"
-.PP
-\fB0\fR
-.RS 4
-Success\&.
-.RE
-.PP
-\fB1\fR
-.RS 4
-Failure \- probably means that
-\fBccnd\fR
-was not running\&.
-.RE
 .SH "AUTHOR"
 .sp
 Michael Plass <plass@parc\&.com>
