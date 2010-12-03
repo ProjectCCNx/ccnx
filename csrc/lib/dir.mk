@@ -32,6 +32,7 @@ CSRC = ccn_bloom.c ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_sockcreate.c ccn_traverse.c ccn_uri.c \
        ccn_verifysig.c ccn_versioning.c \
        ccn_header.c \
+       ccn_fetch.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        matrixtest.c signbenchtest.c skel_decode_test.c \
        smoketestclientlib.c basicparsetest.c \
@@ -45,7 +46,7 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_sockcreate.o ccn_traverse.o \
        ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
        ccn_sockaddrutil.o ccn_setup_sockaddr_un.o \
-       ccn_bulkdata.o ccn_versioning.o ccn_header.o
+       ccn_bulkdata.o ccn_versioning.o ccn_header.o ccn_fetch.o
 
 default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
@@ -137,6 +138,9 @@ ccn_merkle_path_asn1.o:
 
 ccn_header.o:
 	$(CC) $(CFLAGS) -c ccn_header.c
+
+ccn_fetch.o:
+	$(CC) $(CFLAGS) -std=c99 -c ccn_fetch.c
 
 ccn_verifysig.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_verifysig.c

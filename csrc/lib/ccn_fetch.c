@@ -27,8 +27,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "LowUtil.h"
-#include "ccn_fetch.h"
+#include <ccn/ccn_fetch.h>
 
 #include <sys/types.h>
 #include <stdio.h>
@@ -50,6 +49,8 @@
 #define CCN_INTEREST_TIMEOUT 15.0
 #define MaxSuffixDefault 4
 
+#define LowUtil_Alloc(NNN, TTT) (TTT *) calloc(NNN, sizeof(TTT))
+#define LowUtil_StructAlloc(NNN, TTT) (struct TTT *) calloc(NNN, sizeof(struct TTT))
 
 typedef unsigned char *ustring;
 
@@ -57,6 +58,22 @@ typedef struct ccn_closure *callback;
 typedef struct ccn_charbuf *charbuf;
 
 typedef intmax_t seg_t;
+
+typedef uint64_t TimeMarker;
+
+extern TimeMarker
+GetCurrentTime(void) {
+	const TimeMarker M = 1000*1000;
+	struct timeval now = {0};
+    gettimeofday(&now, 0);
+	return now.tv_sec*M+now.tv_usec;
+}
+
+extern double
+DeltaTime(TimeMarker mt1, TimeMarker mt2) {
+	int64_t dmt = mt2-mt1;
+	return dmt*1.0e-6;
+}
 
 ///////////////////////////////////////////////////////
 
@@ -127,7 +144,7 @@ newStringCopy(char *src) {
 }
 
 static char *
-freeString(string s) {
+freeString(char * s) {
 	if (s != NULL && s != globalNullString)
 		free(s);
 	return NULL;
