@@ -23,6 +23,7 @@ import java.io.InvalidObjectException;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
 import org.ccnx.ccn.impl.support.Log;
@@ -541,8 +542,11 @@ public class CCNNetworkObjectTestRepo {
 			}
 			Assert.assertEquals(true, record.callback);
 		}
-		// Should be in the repo by now
-		Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+		if (!RepositoryControl.localRepoSync(handle, so))  {
+			Thread.sleep(SystemConfiguration.MEDIUM_TIMEOUT);
+			// Should be in the repo by now
+			Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+		}
 		thandle.close();
 	}
 	
@@ -597,8 +601,11 @@ public class CCNNetworkObjectTestRepo {
 			}
 			Assert.assertEquals(true, record.callback);
 		}
-		// Should be in the repo by now
-		Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+		if (!RepositoryControl.localRepoSync(handle, so))  {
+			Thread.sleep(SystemConfiguration.MEDIUM_TIMEOUT);
+			// Should be in the repo by now
+			Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+		}
 		thandle.close();
 	}
 
