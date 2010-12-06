@@ -42,11 +42,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifdef USE_MACH_TIME
-#include <mach/mach_time.h>
-#else
 #include <sys/time.h>
-#endif
 
 // TBD: the following constants should be more principled
 #define CCN_CHUNK_SIZE 4096
