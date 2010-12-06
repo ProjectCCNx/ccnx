@@ -3676,7 +3676,9 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     }
     d->state |= CCN_DSTATE_PAUSE;
     dres = ccn_skeleton_decode(d, msg, size);
-    if (!(d->state >= 0 && CCN_GET_TT_FROM_DSTATE(d->state) == CCN_DTAG)) {
+    if (d->state < 0)
+        abort(); /* cannot happen because of checks in caller */
+    if (CCN_GET_TT_FROM_DSTATE(d->state) != CCN_DTAG) {
         ccnd_msg(h, "discarding unknown message; size = %lu", (unsigned long)size);
         // XXX - keep a count?
         return;
@@ -3695,7 +3697,7 @@ process_input_message(struct ccnd_handle *h, struct face *face,
             while (d->index < size) {
                 dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
                 if (d->state != 0)
-                    break;
+                    abort(); /* cannot happen because of checks in caller */
                 /* The pdu_ok parameter limits the recursion depth */
                 process_input_message(h, face, msg + d->index - dres, dres, 0);
             }
