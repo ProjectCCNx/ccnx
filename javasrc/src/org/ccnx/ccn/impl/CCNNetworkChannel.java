@@ -58,7 +58,8 @@ public class CCNNetworkChannel extends InputStream {
 	protected int _ncLocalPort;
 	protected DatagramChannel _ncDGrmChannel = null;
 	protected SocketChannel _ncSockChannel = null;
-	protected Selector _ncSelector = null;
+	protected Selector _ncReadSelector = null;
+	protected Selector _ncWriteSelector = null;			 // Not needed for UDP
 	protected Boolean _ncConnected = new Boolean(false); // Actually asking the channel if its connected doesn't appear to be reliable
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
@@ -80,7 +81,7 @@ public class CCNNetworkChannel extends InputStream {
 		_ncPort = port;
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
-		_ncSelector = Selector.open();
+		_ncReadSelector = Selector.open();
 		Log.info("Starting up CCNNetworkChannel using {0}.", proto);
 	}
 	
@@ -104,7 +105,7 @@ public class CCNNetworkChannel extends InputStream {
 				if (_ncInitialized)
 					_ncDGrmChannel.write(test);
 				wakeup();
-				_ncDGrmChannel.register(_ncSelector, SelectionKey.OP_READ);
+				_ncDGrmChannel.register(_ncReadSelector, SelectionKey.OP_READ);
 				_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
 				if (_ncInitialized) {
 					test.flip();
@@ -117,13 +118,14 @@ public class CCNNetworkChannel extends InputStream {
 			_ncSockChannel = SocketChannel.open();
 			_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
 			_ncSockChannel.configureBlocking(false);
-			_ncSockChannel.register(_ncSelector, SelectionKey.OP_READ);			
+			_ncSockChannel.register(_ncReadSelector, SelectionKey.OP_READ);
+			_ncWriteSelector = Selector.open();
+			_ncSockChannel.register(_ncWriteSelector, SelectionKey.OP_WRITE);
 		} else {
 			throw new IOException("NetworkChannel: invalid protocol specified");
 		}
 		String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
 		Log.info(connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
-		clearSelectedKeys();
 		initStream();
 		_ncInitialized = true;
 		_ncConnected = true;
@@ -205,7 +207,17 @@ public class CCNNetworkChannel extends InputStream {
 			if (_ncProto == NetworkProtocol.UDP) {
 				return (_ncDGrmChannel.write(src));
 			} else if (_ncProto == NetworkProtocol.TCP) {
-				return (_ncSockChannel.write(src));
+				// Need to handle partial writes
+				int written = 0;
+				do {
+					_ncWriteSelector.selectedKeys().clear();
+					if (_ncWriteSelector.select(SOCKET_TIMEOUT) != 0) {
+						if (! _ncConnected)
+							return -1;
+						written += _ncSockChannel.write(src);
+					}
+				} while (src.hasRemaining());
+				return written;
 			} else {
 				throw new IOException("NetworkChannel: invalid protocol specified");
 			}
@@ -216,29 +228,11 @@ public class CCNNetworkChannel extends InputStream {
 	}
 	
 	/**
-	 * Need to do this after a successful select to allow the next select to happen
-	 */
-	private void clearSelectedKeys() {
-		_ncSelector.selectedKeys().clear();
-	}
-
-	/**
-	 * Perform a select based on incoming ccnd data
-	 * @param timeout in ms
-	 * @return number of channels selected - in practice this will always be 0 or 1
-	 * @throws IOException
-	 */
-	public int select(long timeout) throws IOException {
-		int selectVal = (_ncSelector.select(timeout));
-		return selectVal;
-	}
-	
-	/**
 	 * Force wakeup from a select
 	 * @return the selector
 	 */
 	public Selector wakeup() {
-		return (_ncSelector.wakeup());
+		return (_ncReadSelector.wakeup());
 	}
 	
 	/**
@@ -350,8 +344,8 @@ public class CCNNetworkChannel extends InputStream {
 	 */
 	private int doReadIn(int position) throws IOException {
 		int ret = 0;
-		clearSelectedKeys();
-		if (select(SOCKET_TIMEOUT) != 0) {
+		_ncReadSelector.selectedKeys().clear();
+		if (_ncReadSelector.select(SOCKET_TIMEOUT) != 0) {
 			if (! _ncConnected)
 				return -1;
 			// Note that we must set limit first before setting position because setting
