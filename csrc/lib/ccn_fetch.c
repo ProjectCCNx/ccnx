@@ -1,17 +1,7 @@
-/**
- * @file ccn_fetch.c
- * @brief Implements ccn_fetch.h;
- * provides streaming access to fetching data from a CCN interest.
- * Supports multiple streams from a single connection and
- * seeking to an arbitrary position within the associated file.
- *
- * TBD: need to fix up the case where a segment cannot be fetched but we are
- * not really at the end of the stream data.  This case can occur if we express
- * an interest for a segment and the interest times out.  Current behavior is
- * to treat this as an end-of-stream (prematurely and silently)
- *
- * TBD: need to provide a more principled (or maybe just controlled) way to
- * handle interest timeouts.
+/*
+ * lib/ccn_fetch.c
+ * 
+ * Part of the CCNx C Library.
  *
  * Copyright (C) 2010 Palo Alto Research Center, Inc.
  *
@@ -25,6 +15,21 @@
  * a copy of the GNU Lesser General Public License along with this library;
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+ 
+/**
+ * Streaming access for fetching segmented CCNx data.
+ *
+ * Supports multiple streams from a single connection and
+ * seeking to an arbitrary position within the associated file.
+ *
+ * TBD: need to fix up the case where a segment cannot be fetched but we are
+ * not really at the end of the stream data.  This case can occur if we express
+ * an interest for a segment and the interest times out.  Current behavior is
+ * to treat this as an end-of-stream (prematurely and silently)
+ *
+ * TBD: need to provide a more principled (or maybe just controlled) way to
+ * handle interest timeouts.
  */
 
 #include <ccn/ccn_fetch.h>
@@ -734,7 +739,7 @@ ccn_fetch_open(ccn_fetch f,
 /**
  * Closes the stream and reclaims any resources used by the stream.
  * The stream object will be freed, so the client must not access it again.
- @returns NULL in all cases.
+ * @returns NULL in all cases.
  */
 extern ccn_fetch_stream
 ccn_fetch_close(ccn_fetch_stream fs) {
@@ -804,7 +809,7 @@ ccn_fetch_close(ccn_fetch_stream fs) {
  * Tests for available bytes in the stream.
  * Determines how many bytes can be read on the given stream
  * without waiting (via ccn_fetch_poll).
- @returns -1 if no bytes are immediately available,
+ * @returns -1 if no bytes are immediately available,
  *    0 if the stream is at the end,
  *    and N > 0 if N bytes can be read without performing a poll.
  */

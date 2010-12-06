@@ -1,9 +1,7 @@
-/**
- * @file ccn_fetch.h
- * @brief The ccn_fetch interface.
- * Provides streaming access to fetching data from a CCN interest.
- * Supports multiple streams from a single connection and
- * seeking to an arbitrary position within the associated file.
+/*
+ * ccn/fetch.h
+ * 
+ * Part of the CCNx C Library.
  *
  * Copyright (C) 2010 Palo Alto Research Center, Inc.
  *
@@ -17,6 +15,14 @@
  * a copy of the GNU Lesser General Public License along with this library;
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+ 
+/**
+ * @file ccn/fetch.h
+ * Streaming access for fetching segmented CCNx data.
+ *
+ * Supports multiple streams from a single connection and
+ * seeking to an arbitrary position within the associated file.
  */
 
 #ifndef ccn_fetchInclude
@@ -33,7 +39,7 @@ typedef struct ccn_fetch_stream_struct *ccn_fetch_stream;
  * Creates a new ccn_fetch object using the given ccn connection.
  * If h == NULL, attempts to create a new connection automatically.
  * @returns NULL if the creation was not successful
- * (only can happen for the h == NULL case).
+ *    (only can happen for the h == NULL case).
  */
 ccn_fetch
 ccn_fetch_new(struct ccn *h);
@@ -88,8 +94,6 @@ ccn_fetch_poll(ccn_fetch f);
  */
 ccn_fetch_stream
 ccn_fetch_next(ccn_fetch f, ccn_fetch_stream fs);
-// returns the next stream after the given stream
-// use fs == NULL to start the iteration
 
 /**
  * @returns the underlying ccn connection.
@@ -105,7 +109,7 @@ ccn_fetch_get_ccn(ccn_fetch f);
  * version.  If interestTemplate == NULL then a suitable default is used.
  * The number of buffers (nBufs) may be silently limited.
  * @returns NULL if the stream creation failed,
- * otherwise returns the new stream.
+ *    otherwise returns the new stream.
  */
 ccn_fetch_stream
 ccn_fetch_open(ccn_fetch f, struct ccn_charbuf *name,
@@ -116,7 +120,7 @@ ccn_fetch_open(ccn_fetch f, struct ccn_charbuf *name,
 /**
  * Closes the stream and reclaims any resources used by the stream.
  * The stream object will be freed, so the client must not access it again.
- @returns NULL in all cases.
+ * @returns NULL in all cases.
  */
 ccn_fetch_stream
 ccn_fetch_close(ccn_fetch_stream fs);
@@ -125,7 +129,7 @@ ccn_fetch_close(ccn_fetch_stream fs);
  * Tests for available bytes in the stream.
  * Determines how many bytes can be read on the given stream
  * without waiting (via ccn_fetch_poll).
- @returns -1 if no bytes are immediately available,
+ * @returns -1 if no bytes are immediately available,
  *    0 if the stream is at the end,
  *    and N > 0 if N bytes can be read without performing a poll.
  */
