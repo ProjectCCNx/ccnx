@@ -3676,8 +3676,15 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     }
     d->state |= CCN_DSTATE_PAUSE;
     dres = ccn_skeleton_decode(d, msg, size);
-    if (d->state >= 0 && CCN_GET_TT_FROM_DSTATE(d->state) == CCN_DTAG) {
-        if (pdu_ok && d->numval == CCN_DTAG_CCNProtocolDataUnit) {
+    if (!(d->state >= 0 && CCN_GET_TT_FROM_DSTATE(d->state) == CCN_DTAG)) {
+        ccnd_msg(h, "discarding unknown message; size = %lu", (unsigned long)size);
+        // XXX - keep a count?
+        return;
+    }
+    switch (d->numval) {
+        case CCN_DTAG_CCNProtocolDataUnit:
+            if (!pdu_ok)
+                break;
             size -= d->index;
             if (size > 0)
                 size--;
@@ -3693,17 +3700,18 @@ process_input_message(struct ccnd_handle *h, struct face *face,
                 process_input_message(h, face, msg + d->index - dres, dres, 0);
             }
             return;
-        }
-        else if (d->numval == CCN_DTAG_Interest) {
+        case CCN_DTAG_Interest:
             process_incoming_interest(h, face, msg, size);
             return;
-        }
-        else if (d->numval == CCN_DTAG_ContentObject) {
+        case CCN_DTAG_ContentObject:
             process_incoming_content(h, face, msg, size);
             return;
-        }
+        default:
+            break;
     }
-    ccnd_msg(h, "discarding unknown message; size = %lu", (unsigned long)size);
+    ccnd_msg(h, "discarding unknown message; numval=%lu, size = %lu",
+             (unsigned long)d->numval,
+             (unsigned long)size);
 }
 
 static void
