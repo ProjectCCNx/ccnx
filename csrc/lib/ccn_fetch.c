@@ -66,7 +66,7 @@ typedef intmax_t seg_t;
 
 typedef uint64_t TimeMarker;
 
-extern TimeMarker
+static TimeMarker
 GetCurrentTime(void) {
 	const TimeMarker M = 1000*1000;
 	struct timeval now = {0};
@@ -74,7 +74,7 @@ GetCurrentTime(void) {
 	return now.tv_sec*M+now.tv_usec;
 }
 
-extern double
+static double
 DeltaTime(TimeMarker mt1, TimeMarker mt2) {
 	int64_t dmt = mt2-mt1;
 	return dmt*1.0e-6;
@@ -105,7 +105,7 @@ struct localClosureStruct {
 	ccn_fetch_stream fs;
 	localClosure next;
 	seg_t reqSeg;
-	clock_t startClock;
+	TimeMarker startClock;
 };
 
 struct ccn_fetch_stream_struct {
