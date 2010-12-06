@@ -32,7 +32,7 @@
  * handle interest timeouts.
  */
 
-#include <ccn/ccn_fetch.h>
+#include <ccn/fetch.h>
 
 #include <sys/types.h>
 #include <stdio.h>
