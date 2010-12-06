@@ -201,6 +201,8 @@ struct face {
     const struct sockaddr *addr;
     socklen_t addrlen;
     int pending_interests;
+    unsigned rrun;
+    uintmax_t rseq;
     struct ccnd_meter *meter[CCND_FACE_METER_N];
 };
 

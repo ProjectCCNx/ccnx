@@ -104,6 +104,9 @@ static void update_forward_to(struct ccnd_handle *h,
 static void stuff_and_send(struct ccnd_handle *h, struct face *face,
                            const unsigned char *data1, size_t size1,
                            const unsigned char *data2, size_t size2);
+static int process_incoming_link_message(struct ccnd_handle *h,
+                                         struct face *face, enum ccn_dtag dtag,
+                                         unsigned char *msg, size_t size);
 
 static void
 cleanup_at_exit(void)
@@ -1585,6 +1588,65 @@ ccn_stuff_interest(struct ccnd_handle *h,
     }
     hashtb_end(e);
     return(n_stuffed);
+}
+
+static int
+process_incoming_link_message(struct ccnd_handle *h,
+                              struct face *face, enum ccn_dtag dtag,
+                              unsigned char *msg, size_t size)
+{
+    uintmax_t s;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, msg, size);
+
+    switch (dtag) {
+        case CCN_DTAG_SequenceNumber:
+            s = ccn_parse_required_tagged_binary_number(d, dtag, 1, 6);
+            if (d->decoder.state < 0)
+                return(d->decoder.state);
+            if (face->rrun == 0) {
+                face->rseq = s;
+                face->rrun = 1;
+                return(0);
+            }
+            if (s == face->rseq + 1) {
+                face->rseq = s;
+                if (face->rrun < 255)
+                    face->rrun++;
+                return(0);
+            }
+            if (s > face->rseq && s - face->rseq < 255) {
+                ccnd_msg(h, "seq_gap %u %ju to %ju", face->faceid, face->rseq, s);
+                face->rseq = s;
+                face->rrun = 1;
+                return(0);
+            }
+            if (s <= face->rseq) {
+                if (face->rseq - s < face->rrun) {
+                    ccnd_msg(h, "seq_dup %u %ju", face->faceid, s);
+                    return(0);
+                }
+                if (face->rseq - s < 255) {
+                    /* Received out of order */
+                    ccnd_msg(h, "seq_ooo %u %ju", face->faceid, s);
+                    if (s == face->rseq - face->rrun) {
+                        face->rrun++;
+                        return(0);
+                    }
+                }
+            }
+            face->rseq = s;
+            face->rrun = 1;
+            break;
+        case CCN_DTAG_SequenceAcknowledgement:
+            s = ccn_parse_required_tagged_binary_number(d, dtag, 1, 7);
+            if (d->decoder.state < 0)
+                return(d->decoder.state);
+            break;
+        default:
+            return(-1);
+    }
+    return(0);
 }
 
 /**
@@ -3666,6 +3728,7 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     struct ccn_skeleton_decoder decoder = {0};
     struct ccn_skeleton_decoder *d = &decoder;
     ssize_t dres;
+    enum ccn_dtag dtag;
     
     if ((face->flags & CCN_FACE_UNDECIDED) != 0) {
         face->flags &= ~CCN_FACE_UNDECIDED;
@@ -3683,7 +3746,8 @@ process_input_message(struct ccnd_handle *h, struct face *face,
         // XXX - keep a count?
         return;
     }
-    switch (d->numval) {
+    dtag = d->numval;
+    switch (dtag) {
         case CCN_DTAG_CCNProtocolDataUnit:
             if (!pdu_ok)
                 break;
@@ -3708,11 +3772,15 @@ process_input_message(struct ccnd_handle *h, struct face *face,
         case CCN_DTAG_ContentObject:
             process_incoming_content(h, face, msg, size);
             return;
+        case CCN_DTAG_SequenceNumber:
+        case CCN_DTAG_SequenceAcknowledgement:
+            process_incoming_link_message(h, face, dtag, msg, size);
+            return;
         default:
             break;
     }
-    ccnd_msg(h, "discarding unknown message; numval=%lu, size = %lu",
-             (unsigned long)d->numval,
+    ccnd_msg(h, "discarding unknown message; dtag=%u, size = %lu",
+             (unsigned)dtag,
              (unsigned long)size);
 }
 
