@@ -100,7 +100,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 		if (args.length < startArg + 2) {
 			usage();
 		}
-		
+				
 		long starttime = System.currentTimeMillis();
 		try {
 			// If we get one file name, put as the specific name given.
