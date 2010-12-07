@@ -583,7 +583,6 @@ public class CCNSegmenter {
 			locator = getFlowControl().getHandle().keyManager().getKeyLocator(publisher);
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
-		getFlowControl().addNameSpace(rootName);
 
 		if (null == type) {
 			type = ContentType.DATA;
