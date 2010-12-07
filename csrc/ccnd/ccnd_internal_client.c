@@ -191,21 +191,27 @@ ccnd_answer_req(struct ccn_closure *selfp,
         case OP_PING:
             reply_body = ccn_charbuf_create();
             sp.freshness = (info->pi->prefix_comps == info->matched_comps) ? 60 : 5;
+            res = 0;
             break;
         case OP_NEWFACE:
-            reply_body = ccnd_req_newface(ccnd, final_comp, final_size);
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_newface(ccnd, final_comp, final_size, reply_body);
             break;
         case OP_DESTROYFACE:
-            reply_body = ccnd_req_destroyface(ccnd, final_comp, final_size);
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_destroyface(ccnd, final_comp, final_size, reply_body);
             break;
         case OP_PREFIXREG:
-            reply_body = ccnd_req_prefixreg(ccnd, final_comp, final_size);
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_prefixreg(ccnd, final_comp, final_size, reply_body);
             break;
         case OP_SELFREG:
-            reply_body = ccnd_req_selfreg(ccnd, final_comp, final_size);
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_selfreg(ccnd, final_comp, final_size, reply_body);
             break;
         case OP_UNREG:
-            reply_body = ccnd_req_unreg(ccnd, final_comp, final_size);
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_unreg(ccnd, final_comp, final_size, reply_body);
             break;
         case OP_NOTICE:
             ccnd_start_notice(ccnd);
@@ -233,9 +239,10 @@ ccnd_answer_req(struct ccn_closure *selfp,
         default:
             goto Bail;
     }
-    if (reply_body == NULL)
+    if (res < 0)
         goto Bail;
-    
+    if (res == CCN_CONTENT_NACK)
+        sp.type = res;
     msg = ccn_charbuf_create();
     name = ccn_charbuf_create();
     start = info->pi->offset[CCN_PI_B_Name];
