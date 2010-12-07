@@ -435,6 +435,8 @@ public class CCNSegmenter {
 	/** 
 	 * Segments content, builds segment names and ContentObjects, signs
 	 * them, and writes them to the flow controller to go out to the network.
+	 * NOTE - ControlFlow.addNameSpace must be done before calling this
+	 * 
 	 * @param name name prefix to use for the segments
 	 * @param baseSegmentNumber the segment number to start this batch with
 	 * @param content content buffer containing content to put
@@ -494,11 +496,6 @@ public class CCNSegmenter {
 			locator = getFlowControl().getHandle().keyManager().getKeyLocator(publisher);
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
-		// DKS -- someone should have done this for us already, can we remove it?
-		if( Log.isLoggable(Level.INFO))
-			Log.info("Adding namespace in segmenter, probably redundantly. Namespace: {0}", rootName);
-		getFlowControl().addNameSpace(rootName);
-
 		if (null == type) {
 			type = ContentType.DATA;
 		}

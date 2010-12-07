@@ -92,6 +92,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected Integer _freshnessSeconds; // if null, use default
 	
 	protected CCNDigestHelper _dh;
+	protected boolean _nameSpaceAdded = false;
     
 	/**
 	 * Constructor for a simple CCN output stream.
@@ -364,6 +365,14 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			long contiguousBytesToWrite = ((len / getBlockSize()) - 1) * getBlockSize();
 			bytesToWrite -= contiguousBytesToWrite;
 			_dh.update(buf, (int) offset, (int)contiguousBytesToWrite); // add to running digest of data
+			
+			if (!_nameSpaceAdded) {
+				if( Log.isLoggable(Level.INFO))
+					Log.info("Adding namespace in writeToNetwork. Namespace: {0}", _baseName);
+				_segmenter.getFlowControl().addNameSpace(_baseName);
+				_nameSpaceAdded = true;
+			}
+
 			_baseNameIndex = _segmenter.fragmentedPut(_baseName, _baseNameIndex,
 					buf, (int)offset, (int)contiguousBytesToWrite, getBlockSize(), _type, null,
 					_freshnessSeconds, null, _locator, _publisher, _keys);
