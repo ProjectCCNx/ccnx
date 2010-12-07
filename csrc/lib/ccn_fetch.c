@@ -16,7 +16,7 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
- 
+
 /**
  * Streaming access for fetching segmented CCNx data.
  *
@@ -190,7 +190,8 @@ GetNumberFromInfo(const unsigned char *ccnb,
 		ccn_ref_tagged_BLOB(tt, ccnb, start, stop, &data, &len);
 		if (len > 0 && data != NULL) {
 			// parse big-endian encoded number
-			for (size_t i = 0; i < len; i++) {
+			size_t i;
+            for (i = 0; i < len; i++) {
 				n = n * 256 + data[i];
 			}
 			return n;
@@ -280,8 +281,9 @@ RemSegRequest(ccn_fetch_stream fs, localClosure req) {
 static ccn_fetch_buffer
 FindBufferForSeg(ccn_fetch_stream fs, seg_t seg) {
 	// finds the buffer object given the segmentnumber
-	if (seg >= 0)
-		for (int i = 0; i < fs->nBufs; i++) {
+	int i;
+    if (seg >= 0)
+		for (i = 0; i < fs->nBufs; i++) {
 			ccn_fetch_buffer fb = fs->bufs[i];
 			if (fb->seg == seg) return fb;
 		} 
@@ -358,6 +360,7 @@ CallMe(callback selfp,
 	   struct ccn_upcall_info *info) {
 	// CallMe is the callback routine invoked by ccn_run when a registered
 	// interest has something interesting happen.
+    int i;
     localClosure req = (localClosure) selfp->data;
 	seg_t thisSeg = req->reqSeg;
 	ccn_fetch_stream fs = (ccn_fetch_stream) req->fs;
@@ -439,7 +442,7 @@ CallMe(callback selfp,
 	if (fb == NULL) {
 		// we don't already have the data
 		int found = -1;
-		for (int i = 0; i < fs->nBufs; i++) {
+		for (i = 0; i < fs->nBufs; i++) {
 			ccn_fetch_buffer fb = fs->bufs[i];
 			seg_t bSeg = fb->seg;
 			if (bSeg < needSeg || bSeg > limSeg) {
@@ -582,9 +585,10 @@ ccn_fetch_destroy(ccn_fetch f) {
  */
 extern int
 ccn_fetch_poll(ccn_fetch f) {
-	int count = 0;
+	int i;
+    int count = 0;
 	int ns = f->nStreams;
-	for (int i = 0; i < ns; i++) {
+	for (i = 0; i < ns; i++) {
 		ccn_fetch_stream fs = f->streams[i];
 		if (fs != NULL) {
 			intmax_t avail = ccn_fetch_avail(fs);
@@ -605,9 +609,10 @@ ccn_fetch_poll(ccn_fetch f) {
  */
 extern ccn_fetch_stream
 ccn_fetch_next(ccn_fetch f, ccn_fetch_stream fs) {
-	int ns = f->nStreams;
+	int i;
+    int ns = f->nStreams;
 	ccn_fetch_stream lag = NULL;
-	for (int i = 0; i < ns; i++) {
+	for (i = 0; i < ns; i++) {
 		ccn_fetch_stream tfs = f->streams[i];
 		if (tfs != NULL) {
 			if (lag == fs) return tfs;
@@ -644,7 +649,8 @@ ccn_fetch_open(ccn_fetch f,
 			   int resolveVersion) {
 	// returns a new ccn_fetch_stream object based on the arguments
 	// returns NULL if not successful
-	if (nBufs <= 0) return NULL;
+	int i;
+    if (nBufs <= 0) return NULL;
 	if (nBufs > 64) nBufs = 64;
 	int res = 0;
 	FILE *debug = f->debug;
@@ -695,7 +701,7 @@ ccn_fetch_open(ccn_fetch f,
 	// allocate the buffers
 	fs->nBufs = nBufs;
 	fs->bufs = LowUtil_Alloc(nBufs+1, ccn_fetch_buffer);
-	for (int i = 0; i < nBufs; i++) {
+	for (i = 0; i < nBufs; i++) {
 		ccn_fetch_buffer fb = LowUtil_Alloc(1, struct ccn_fetch_buffer_struct);
 		fb->seg = -1;
 		fb->max = CCN_CHUNK_SIZE;
@@ -711,7 +717,7 @@ ccn_fetch_open(ccn_fetch f,
 		// extend the vector
 		int nMax = max+max/2+4;
 		ccn_fetch_stream *newVec = LowUtil_Alloc(nMax, ccn_fetch_stream);
-		for (int i = 0; i < ns; i++) newVec[i] = vec[i];
+		for (i = 0; i < ns; i++) newVec[i] = vec[i];
 		free(vec);
 		f->streams = newVec;
 		vec = newVec;
@@ -742,7 +748,8 @@ ccn_fetch_close(ccn_fetch_stream fs) {
 	// destroys a ccn_fetch_stream object
 	// implicit abort of any outstanding fetches
 	// always returns NULL
-	FILE *debug = fs->parent->debug;
+	int i;
+    FILE *debug = fs->parent->debug;
 	ccn_fetch_flags flags = fs->parent->debugFlags;
 
 	// make orphans of all outstanding requests
@@ -755,7 +762,7 @@ ccn_fetch_close(ccn_fetch_stream fs) {
 	}
 	// free up the buffers
 	int nBufs = fs->nBufs;
-	for (int i = 0; i < nBufs; i++) {
+	for (i = 0; i < nBufs; i++) {
 		ccn_fetch_buffer fb = fs->bufs[i];
 		fs->bufs[i] = NULL;
 		if (fb != NULL) {
@@ -773,7 +780,7 @@ ccn_fetch_close(ccn_fetch_stream fs) {
 	if (f != NULL) {
 		int ns = f->nStreams;
 		fs->parent = NULL;
-		for (int i = 0; i < ns; i++) {
+		for (i = 0; i < ns; i++) {
 			ccn_fetch_stream tfs = f->streams[i];
 			if (tfs == fs) {
 				// found it, so get rid of it

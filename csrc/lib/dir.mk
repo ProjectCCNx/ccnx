@@ -140,7 +140,7 @@ ccn_header.o:
 	$(CC) $(CFLAGS) -c ccn_header.c
 
 ccn_fetch.o:
-	$(CC) $(CFLAGS) -std=c99 -c ccn_fetch.c
+	$(CC) $(CFLAGS) -c ccn_fetch.c
 
 ccn_verifysig.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_verifysig.c
@@ -235,6 +235,9 @@ ccn_versioning.o: ccn_versioning.c ../include/ccn/bloom.h \
 ccn_header.o: ccn_header.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/header.h
+ccn_fetch.o: ccn_fetch.c ../include/ccn/fetch.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
 encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/bloom.h ../include/ccn/uri.h \
