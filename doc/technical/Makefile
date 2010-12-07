@@ -28,6 +28,7 @@ DERIVED_HTML =				\
 	Registration.html		\
 	SignatureGeneration.html	\
 	Staleness.html			\
+	LinkMessages.html		\
 	dtd.html			\
 	xsd.html			\
 	DTAG.html			\
@@ -104,6 +105,9 @@ BinaryEncoding.html: BinaryEncoding.txt
 
 CCNxProtocol.html: CCNxProtocol.txt
 	asciidoc CCNxProtocol.txt
+
+LinkMessages.html: LinkMessages.txt
+	asciidoc LinkMessages.txt
 
 ../index.html: ../index.txt ../../README ../../LICENSE
 	asciidoc --unsafe ../index.txt
