@@ -363,6 +363,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			}
 			long contiguousBytesToWrite = ((len / getBlockSize()) - 1) * getBlockSize();
 			bytesToWrite -= contiguousBytesToWrite;
+			_dh.update(buf, (int) offset, (int)contiguousBytesToWrite); // add to running digest of data
 			_baseNameIndex = _segmenter.fragmentedPut(_baseName, _baseNameIndex,
 					buf, (int)offset, (int)contiguousBytesToWrite, getBlockSize(), _type, null,
 					_freshnessSeconds, null, _locator, _publisher, _keys);
