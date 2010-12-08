@@ -4605,6 +4605,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->ticktock.data = h;
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->starttime = h->sec;
+    h->starttime_usec = h->usec;
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
     h->data_pause_microsec = 10000;
