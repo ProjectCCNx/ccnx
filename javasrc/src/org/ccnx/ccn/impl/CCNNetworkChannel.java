@@ -295,12 +295,17 @@ public class CCNNetworkChannel extends InputStream {
 	public void mark(int readlimit) {
 		_readLimit = readlimit;
 		_mark = _datagram.position();
+		Log.info("Mark called for {0}", _mark);
 	}
 	
 	@Override
 	public void reset() throws IOException {
+		Log.info("Reset called at position {0}", _datagram.position());
 		if (_mark < 0)
 			throw new IOException("Reset called with no mark set - readlimit is " + _readLimit);
+		if ((_datagram.position() - _mark) > _readLimit) {
+			throw new IOException("Invalid reset called past readlimit");
+		}
 		_datagram.position(_mark);
 	}
 	
@@ -319,7 +324,7 @@ public class CCNNetworkChannel extends InputStream {
 			byte[] b = null;
 			boolean doCopy = false;
 			int checkPosition = position - 1;
-			doCopy = _mark >= 0 && _mark + _readLimit >= checkPosition && _mark <= checkPosition;
+			doCopy = _mark >= 0 && _mark + _readLimit >= checkPosition;
 			if (doCopy) {
 				b = new byte[checkPosition - (_mark - 1)];
 				_datagram.position(_mark);
@@ -327,10 +332,13 @@ public class CCNNetworkChannel extends InputStream {
 			}
 			_datagram.clear();
 			if (doCopy) {
+				Log.info("Mark reset copy OK: {0}", _mark);
 				_datagram.put(b);
 				_mark = 0;
-			} else
+			} else {
+				Log.info("Mark force reset: {0}", _mark);
 				_mark = -1;
+			}
 			position = _datagram.position();
 		}
 		return doReadIn(position);
