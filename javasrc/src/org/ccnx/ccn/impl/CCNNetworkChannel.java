@@ -300,7 +300,7 @@ public class CCNNetworkChannel extends InputStream {
 	@Override
 	public void reset() throws IOException {
 		if (_mark < 0)
-			throw new IOException("Reset called with no mark set");
+			throw new IOException("Reset called with no mark set - readlimit is " + _readLimit);
 		_datagram.position(_mark);
 	}
 	
