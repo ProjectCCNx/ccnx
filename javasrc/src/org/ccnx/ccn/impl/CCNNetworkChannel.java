@@ -51,6 +51,7 @@ public class CCNNetworkChannel extends InputStream {
 	public static final int HEARTBEAT_PERIOD = 3500;
 	public static final int SOCKET_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT; // period to wait in ms.
 	public static final int DOWN_DELAY = SystemConfiguration.SHORT_TIMEOUT;	// Wait period for retry when ccnd is down
+	public static final int LINGER_TIME = 10;	// In seconds
 
 	protected String _ncHost;
 	protected int _ncPort;
@@ -75,6 +76,7 @@ public class CCNNetworkChannel extends InputStream {
 	//protected ByteBuffer _datagram = ByteBuffer.wrap(buffer);
 	private int _mark = -1;
 	private int _readLimit = 0;
+	private int _lastMark = 0;
 	
 	public CCNNetworkChannel(String host, int port, NetworkProtocol proto, FileOutputStream tapStreamIn) throws IOException {
 		_ncHost = host;
@@ -121,6 +123,7 @@ public class CCNNetworkChannel extends InputStream {
 			_ncSockChannel.register(_ncReadSelector, SelectionKey.OP_READ);
 			_ncWriteSelector = Selector.open();
 			_ncSockChannel.register(_ncWriteSelector, SelectionKey.OP_WRITE);
+			//_ncSockChannel.socket().setSoLinger(true, LINGER_TIME);
 		} else {
 			throw new IOException("NetworkChannel: invalid protocol specified");
 		}
@@ -295,14 +298,14 @@ public class CCNNetworkChannel extends InputStream {
 	public void mark(int readlimit) {
 		_readLimit = readlimit;
 		_mark = _datagram.position();
-		Log.info("Mark called for {0}", _mark);
+		//Log.info("Mark called for {0}", _mark);
 	}
 	
 	@Override
 	public void reset() throws IOException {
-		Log.info("Reset called at position {0}", _datagram.position());
+		//Log.info("Reset called at position {0}", _datagram.position());
 		if (_mark < 0)
-			throw new IOException("Reset called with no mark set - readlimit is " + _readLimit);
+			throw new IOException("Reset called with no mark set - readlimit: " + _readLimit + " lastMark: " + _lastMark);
 		if ((_datagram.position() - _mark) > _readLimit) {
 			throw new IOException("Invalid reset called past readlimit");
 		}
@@ -336,7 +339,8 @@ public class CCNNetworkChannel extends InputStream {
 				_datagram.put(b);
 				_mark = 0;
 			} else {
-				Log.info("Mark force reset: {0}", _mark);
+				//Log.info("Mark force reset: {0}", _mark);
+				_lastMark = _mark;
 				_mark = -1;
 			}
 			position = _datagram.position();
