@@ -122,7 +122,7 @@ public class CCNSegmenter {
 	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
-	protected ArrayList<ContentObject> _blocks = new ArrayList<ContentObject>(HOLD_COUNT);
+	protected ArrayList<ContentObject> _blocks = new ArrayList<ContentObject>(HOLD_COUNT + 1);
 
 	protected CCNHandle _handle;
 
@@ -517,10 +517,10 @@ public class CCNSegmenter {
 		long nextSegmentIndex = 
 			buildBlocks(rootName, baseSegmentNumber, 
 					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
-					content, offset, length, blockWidth, keys, signingKey);
+					content, offset, length, blockWidth, keys, signingKey, null != finalSegmentIndex);
 		
-		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
-			outputCurrentBlocks(signingKey);	
+		if (_blocks.size() >= HOLD_COUNT + 1 || null != finalSegmentIndex) {
+			outputCurrentBlocks(signingKey, null != finalSegmentIndex);	
 		}
 
 		return nextSegmentIndex;
@@ -611,12 +611,12 @@ public class CCNSegmenter {
 						new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
 								contentBlocks[i], 0, (i < firstBlockIndex + blockCount - 1)
 								?  contentBlocks[i].length : lastBlockLength, keys);
-			if (_blocks.size() >= HOLD_COUNT) {
-				outputCurrentBlocks(signingKey);	
+			if (_blocks.size() >= HOLD_COUNT + 1) {
+				outputCurrentBlocks(signingKey, false);	
 			}
 		}
-		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
-			outputCurrentBlocks(signingKey);	
+		if (null != finalSegmentIndex) {
+			outputCurrentBlocks(signingKey, true);	
 		}
 		
 		return nextIndex;
@@ -643,9 +643,15 @@ public class CCNSegmenter {
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException
 	 */
-	protected void outputCurrentBlocks(PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+	protected void outputCurrentBlocks(PrivateKey signingKey, boolean finalFlush) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		if (_blocks.size() == 0)
 			return;
+		ContentObject saveBlock = null;
+		if (!finalFlush || _blocks.size() > HOLD_COUNT) {
+			if (_blocks.size() == 1)
+				return;
+			saveBlock = _blocks.remove(_blocks.size() - 1);
+		}
 		
 		if (_blocks.size() == 1) {
 			
@@ -673,6 +679,15 @@ public class CCNSegmenter {
 			getFlowControl().put(blocks);
 		}
 		_blocks.clear();
+		if (null != saveBlock) {
+			if (finalFlush) {
+				saveBlock.sign(signingKey);
+				if( Log.isLoggable(Level.FINER))
+					Log.finer("CCNSegmenter: putting " + saveBlock.name() + " (timestamp: " + saveBlock.signedInfo().getTimestamp() + ", length: " + saveBlock.contentLength() + ")");
+				_flowControl.put(saveBlock);
+			} else
+				_blocks.add(saveBlock);
+		}
 	}
 
 	/**
@@ -741,8 +756,8 @@ public class CCNSegmenter {
 		
 		segmentNumber = newBlock(rootName, segmentNumber, 
 				signedInfo, content, offset, length, keys);
-		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex)
-			outputCurrentBlocks(signingKey);
+		if (_blocks.size() >= HOLD_COUNT + 1 || null != finalSegmentIndex)
+			outputCurrentBlocks(signingKey, null != finalSegmentIndex);
 			
 		return segmentNumber;
 	}
@@ -769,7 +784,7 @@ public class CCNSegmenter {
 	protected long buildBlocks(ContentName rootName,
 			long baseSegmentNumber, SignedInfo signedInfo, 
 			byte[] content, int offset, int length, int blockWidth,
-			ContentKeys keys, PrivateKey signingKey) 
+			ContentKeys keys, PrivateKey signingKey, boolean finalFlush) 
 	throws InvalidKeyException, InvalidAlgorithmParameterException, IOException, SignatureException, NoSuchAlgorithmException {
 
 		int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
@@ -807,8 +822,8 @@ public class CCNSegmenter {
 					co.contentLength());
 			offset += blockWidth;
 			length -= blockWidth;
-			if (_blocks.size() >= HOLD_COUNT) {
-				outputCurrentBlocks(signingKey);	
+			if (_blocks.size() >= HOLD_COUNT + 1 || finalFlush) {
+				outputCurrentBlocks(signingKey, finalFlush);	
 			}
 		}
 		return nextSegmentIndex;

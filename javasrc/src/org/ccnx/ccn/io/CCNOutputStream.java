@@ -348,12 +348,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
         
 		long bytesToWrite = len;
 		
-		// First see if we can do any writing without having to copy data
-		// We need to keep at least one block's worth of data around (see notes about withholding data in
-		// flushToNetwork).
-		if ((_blockOffset % getBlockSize() == 0) && (len >= (getBlockSize() * 2))) {
-			// Since we have more than one block of data after what's already there, we can flush
-			// everything we have to the segmenter now
+		// Flush all complete blocks we have to the segmenter
+		if (_blockOffset % getBlockSize() == 0) {
 			if (_blockIndex > 0 || _blockOffset > 0) {
 				_baseNameIndex = 
 			        _segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers, _blockIndex+1,
@@ -362,28 +358,31 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			                                 _locator, _publisher, _keys);
 				_blockOffset = _blockIndex = 0;			        
 			}
-			long contiguousBytesToWrite = ((len / getBlockSize()) - 1) * getBlockSize();
-			bytesToWrite -= contiguousBytesToWrite;
-			_dh.update(buf, (int) offset, (int)contiguousBytesToWrite); // add to running digest of data
-			
-			if (!_nameSpaceAdded) {
-				if( Log.isLoggable(Level.INFO))
-					Log.info("Adding namespace in writeToNetwork. Namespace: {0}", _baseName);
-				_segmenter.getFlowControl().addNameSpace(_baseName);
-				_nameSpaceAdded = true;
+			if (len >= getBlockSize()) {
+				long contiguousBytesToWrite = ((len / getBlockSize())) * getBlockSize();
+				bytesToWrite -= contiguousBytesToWrite;
+				_dh.update(buf, (int) offset, (int)contiguousBytesToWrite); // add to running digest of data
+				
+				if (!_nameSpaceAdded) {
+					if( Log.isLoggable(Level.INFO))
+						Log.info("Adding namespace in writeToNetwork. Namespace: {0}", _baseName);
+					_segmenter.getFlowControl().addNameSpace(_baseName);
+					_nameSpaceAdded = true;
+				}
+	
+				_baseNameIndex = _segmenter.fragmentedPut(_baseName, _baseNameIndex,
+						buf, (int)offset, (int)contiguousBytesToWrite, getBlockSize(), _type, null,
+						_freshnessSeconds, null, _locator, _publisher, _keys);
+				offset += contiguousBytesToWrite;
+				_totalLength += contiguousBytesToWrite;
 			}
-
-			_baseNameIndex = _segmenter.fragmentedPut(_baseName, _baseNameIndex,
-					buf, (int)offset, (int)contiguousBytesToWrite, getBlockSize(), _type, null,
-					_freshnessSeconds, null, _locator, _publisher, _keys);
-			offset += contiguousBytesToWrite;
 		}
         
 		// Here's an advantage of the old, complicated way -- with that, only had to allocate
 		// as many blocks as you were going to write. 
 		while (bytesToWrite > 0) {
 			if (null == _buffers[_blockIndex]) {
-				_buffers[_blockIndex] = new byte[_segmenter.getBlockSize()];
+				_buffers[_blockIndex] = new byte[getBlockSize()];
 			}
             
 			// Increment _blockIndex here, if do it at end of loop gets confusing
@@ -392,7 +391,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				_blockIndex++;
 				_blockOffset = 0;
 				if (null == _buffers[_blockIndex]) {
-					_buffers[_blockIndex] = new byte[_segmenter.getBlockSize()];
+					_buffers[_blockIndex] = new byte[getBlockSize()];
 				}
 			}
 			
@@ -469,15 +468,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		 * a Content element, but no contained BLOB).
 		 */
 		if (0 == _blockIndex) {
-			// None of this applicable if we're on a later block
-			if ((0 == _blockOffset) && ((!flushLastBlock) || (_totalLength > 0))) {
-				// nothing to write
-				// NOTE: slightly concerned about the _totalLength > 0 case - if we've written
-				// things, we don't flush and close even if flushLastBlock is set. But if _totalLength
-				// > 0, we should have saved a block or partial block, so we should never get here.
-				// More likely to be unused than error.
-				return;
-			} else if ((_blockOffset <= getBlockSize()) && (!flushLastBlock)) {
+			if ((_blockOffset < getBlockSize()) && (!flushLastBlock)) {
 				// We've written only a single block's worth of data (or less), 
 				// but we are not forcing a flush of the last block, so don't write anything.
 				// We don't put out partial blocks until
@@ -495,22 +486,11 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		if (null == _timestamp)
 			_timestamp = CCNTime.now();
         
-		// First, are we flushing dangling blocks (e.g. on close())? If not, we always
-		// keep at least a partial block behind. There are two reasons for this; first to
-		// ensure we always write full blocks until the end, and second, to allow us to
-		// mark the last block as such. So adjust the number of blocks to write
-		// accordingly. 
 		boolean preservePartial = false;
 		int saveBytes = 0;
 		
-		// Now, we have a partially or completely full buffer. Do we have a partial last block we want to preserve?
-		// If we're not flushing, we want to save a final block (whole or partial) and move
-		// it down.
 		if (!flushLastBlock) {
 			saveBytes = _blockOffset;
-			if (0 == saveBytes) {
-				saveBytes = getBlockSize(); // full last block, save it anyway so can mark as last.
-			}
 			preservePartial = true;
 		} // otherwise saveBytes = 0, so ok
 			
