@@ -187,8 +187,7 @@ main(int argc, char **argv)
 
     /* We need to figure out our local ccnd's CCIDID */
     name->length = 0;
-    CHKRES(res = ccn_name_from_uri(name, "ccnx:/ccnx/ping"));
-    CHKRES(res = ccn_name_append_nonce(name));
+    CHKRES(res = ccn_name_from_uri(name, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY"));
     CHKRES(res = ccn_get(h, name, templ, 200, resultbuf, &pcobuf, NULL, 0));
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
                         resultbuf->buf,
