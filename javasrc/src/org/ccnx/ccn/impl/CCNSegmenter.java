@@ -519,8 +519,8 @@ public class CCNSegmenter {
 					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
 					content, offset, length, blockWidth, keys, signingKey, null != finalSegmentIndex);
 		
-		if (_blocks.size() >= HOLD_COUNT + 1 || null != finalSegmentIndex) {
-			outputCurrentBlocks(signingKey, null != finalSegmentIndex);	
+		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
+			outputCurrentBlocks(signingKey);	
 		}
 
 		return nextSegmentIndex;
@@ -611,12 +611,12 @@ public class CCNSegmenter {
 						new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
 								contentBlocks[i], 0, (i < firstBlockIndex + blockCount - 1)
 								?  contentBlocks[i].length : lastBlockLength, keys);
-			if (_blocks.size() >= HOLD_COUNT + 1) {
-				outputCurrentBlocks(signingKey, false);	
+			if (_blocks.size() >= HOLD_COUNT) {
+				outputCurrentBlocks(signingKey);	
 			}
 		}
 		if (null != finalSegmentIndex) {
-			outputCurrentBlocks(signingKey, true);	
+			outputCurrentBlocks(signingKey);	
 		}
 		
 		return nextIndex;
@@ -638,20 +638,15 @@ public class CCNSegmenter {
 	 * after a bulk signing pass.
 	 * 
 	 * @param signingKey
+	 * @param finalFlush sign and dump everything if true
 	 * @throws InvalidKeyException
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
 	 * @throws IOException
 	 */
-	protected void outputCurrentBlocks(PrivateKey signingKey, boolean finalFlush) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+	protected void outputCurrentBlocks(PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		if (_blocks.size() == 0)
 			return;
-		ContentObject saveBlock = null;
-		if (!finalFlush || _blocks.size() > HOLD_COUNT) {
-			if (_blocks.size() == 1)
-				return;
-			saveBlock = _blocks.remove(_blocks.size() - 1);
-		}
 		
 		if (_blocks.size() == 1) {
 			
@@ -679,15 +674,6 @@ public class CCNSegmenter {
 			getFlowControl().put(blocks);
 		}
 		_blocks.clear();
-		if (null != saveBlock) {
-			if (finalFlush) {
-				saveBlock.sign(signingKey);
-				if( Log.isLoggable(Level.FINER))
-					Log.finer("CCNSegmenter: putting " + saveBlock.name() + " (timestamp: " + saveBlock.signedInfo().getTimestamp() + ", length: " + saveBlock.contentLength() + ")");
-				_flowControl.put(saveBlock);
-			} else
-				_blocks.add(saveBlock);
-		}
 	}
 
 	/**
@@ -757,7 +743,7 @@ public class CCNSegmenter {
 		segmentNumber = newBlock(rootName, segmentNumber, 
 				signedInfo, content, offset, length, keys);
 		if (_blocks.size() >= HOLD_COUNT + 1 || null != finalSegmentIndex)
-			outputCurrentBlocks(signingKey, null != finalSegmentIndex);
+			outputCurrentBlocks(signingKey);
 			
 		return segmentNumber;
 	}
@@ -823,7 +809,7 @@ public class CCNSegmenter {
 			offset += blockWidth;
 			length -= blockWidth;
 			if (_blocks.size() >= HOLD_COUNT + 1 || finalFlush) {
-				outputCurrentBlocks(signingKey, finalFlush);	
+				outputCurrentBlocks(signingKey);	
 			}
 		}
 		return nextSegmentIndex;

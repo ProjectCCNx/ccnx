@@ -93,6 +93,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	
 	protected CCNDigestHelper _dh;
 	protected boolean _nameSpaceAdded = false;
+	protected boolean _flushed = false;	// Used to avoid double writes of final block
+										// on redundant close calls
     
 	/**
 	 * Constructor for a simple CCN output stream.
@@ -450,7 +452,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	 * @throws IOException
 	 * @throws InvalidAlgorithmParameterException 
 	 */
-	protected synchronized void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException, InvalidAlgorithmParameterException {		
+	protected synchronized void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException, InvalidAlgorithmParameterException {
+		if (_flushed)
+			return;
         
 		/**
 		 * XXX - Can the blockbuffers have holes?
@@ -468,7 +472,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		 * a Content element, but no contained BLOB).
 		 */
 		if (0 == _blockIndex) {
-			if ((_blockOffset < getBlockSize()) && (!flushLastBlock)) {
+			if ((_blockOffset <= getBlockSize()) && (!flushLastBlock)) {
 				// We've written only a single block's worth of data (or less), 
 				// but we are not forcing a flush of the last block, so don't write anything.
 				// We don't put out partial blocks until
@@ -482,6 +486,9 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				return;
 			}
 		}
+		
+		if (flushLastBlock)
+			_flushed = true;
         
 		if (null == _timestamp)
 			_timestamp = CCNTime.now();
