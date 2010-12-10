@@ -349,6 +349,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			throw new IllegalArgumentException("Invalid argument!");
         
 		long bytesToWrite = len;
+		int blockSize = getBlockSize();
 		
 		// Flush all complete blocks we have to the segmenter
 		if (_blockOffset % getBlockSize() == 0) {
@@ -361,7 +362,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				_blockOffset = _blockIndex = 0;			        
 			}
 			if (len >= getBlockSize()) {
-				long contiguousBytesToWrite = ((len / getBlockSize())) * getBlockSize();
+				long contiguousBytesToWrite = ((len / blockSize)) * blockSize;
 				bytesToWrite -= contiguousBytesToWrite;
 				_dh.update(buf, (int) offset, (int)contiguousBytesToWrite); // add to running digest of data
 				
@@ -373,7 +374,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				}
 	
 				_baseNameIndex = _segmenter.fragmentedPut(_baseName, _baseNameIndex,
-						buf, (int)offset, (int)contiguousBytesToWrite, getBlockSize(), _type, null,
+						buf, (int)offset, (int)contiguousBytesToWrite, blockSize, _type, null,
 						_freshnessSeconds, null, _locator, _publisher, _keys);
 				offset += contiguousBytesToWrite;
 				_totalLength += contiguousBytesToWrite;
@@ -384,7 +385,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// as many blocks as you were going to write. 
 		while (bytesToWrite > 0) {
 			if (null == _buffers[_blockIndex]) {
-				_buffers[_blockIndex] = new byte[getBlockSize()];
+				_buffers[_blockIndex] = new byte[blockSize];
 			}
             
 			// Increment _blockIndex here, if do it at end of loop gets confusing
@@ -455,6 +456,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected synchronized void flushToNetwork(boolean flushLastBlock) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, InterruptedException, IOException, InvalidAlgorithmParameterException {
 		if (_flushed)
 			return;
+		int blockSize = getBlockSize();
         
 		/**
 		 * XXX - Can the blockbuffers have holes?
@@ -472,7 +474,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		 * a Content element, but no contained BLOB).
 		 */
 		if (0 == _blockIndex) {
-			if ((_blockOffset <= getBlockSize()) && (!flushLastBlock)) {
+			if ((_blockOffset <= blockSize) && (!flushLastBlock)) {
 				// We've written only a single block's worth of data (or less), 
 				// but we are not forcing a flush of the last block, so don't write anything.
 				// We don't put out partial blocks until
@@ -515,7 +517,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
         _segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers,
                                  (preservePartial && !flushLastBlock ? _blockIndex : _blockIndex+1),
                                  0, 
-                                 (preservePartial && !flushLastBlock ? getBlockSize() : _blockOffset),
+                                 (preservePartial && !flushLastBlock ? blockSize : _blockOffset),
                                  _type, _timestamp, _freshnessSeconds, 
                                  (flushLastBlock ? CCNSegmenter.LAST_SEGMENT : null), 
                                  _locator, _publisher, _keys);
