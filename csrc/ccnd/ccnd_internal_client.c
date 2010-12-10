@@ -599,10 +599,12 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
         ccn_destroy(&ccnd->internal_client);
         return(-1);
     }
+#if (CCND_PING+0)
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/ping",
                     &ccnd_answer_req, OP_PING);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/ping",
                     &ccnd_answer_req, OP_PING);
+#endif
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/newface",
                     &ccnd_answer_req, OP_NEWFACE + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/destroyface",
