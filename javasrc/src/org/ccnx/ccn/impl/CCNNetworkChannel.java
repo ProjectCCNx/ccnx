@@ -84,7 +84,8 @@ public class CCNNetworkChannel extends InputStream {
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
 		_ncReadSelector = Selector.open();
-		Log.info("Starting up CCNNetworkChannel using {0}.", proto);
+		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
+			Log.info(Log.FAC_NETMANAGER, "Starting up CCNNetworkChannel using {0}.", proto);
 	}
 	
 	/**
@@ -128,7 +129,8 @@ public class CCNNetworkChannel extends InputStream {
 			throw new IOException("NetworkChannel: invalid protocol specified");
 		}
 		String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
-		Log.info(connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
+		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
+			Log.info(Log.FAC_NETMANAGER, connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
 		initStream();
 		_ncInitialized = true;
 		_ncConnected = true;
@@ -204,8 +206,8 @@ public class CCNNetworkChannel extends InputStream {
 	public int write(ByteBuffer src) throws IOException {
 		if (! _ncConnected)
 			return -1;
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("NetworkChannel.write() on port " + _ncLocalPort);
+		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST))
+			Log.finest(Log.FAC_NETMANAGER, "NetworkChannel.write() on port " + _ncLocalPort);
 		try {
 			if (_ncProto == NetworkProtocol.UDP) {
 				return (_ncDGrmChannel.write(src));
@@ -298,12 +300,10 @@ public class CCNNetworkChannel extends InputStream {
 	public void mark(int readlimit) {
 		_readLimit = readlimit;
 		_mark = _datagram.position();
-		//Log.info("Mark called for {0}", _mark);
 	}
 	
 	@Override
 	public void reset() throws IOException {
-		//Log.info("Reset called at position {0}", _datagram.position());
 		if (_mark < 0)
 			throw new IOException("Reset called with no mark set - readlimit: " + _readLimit + " lastMark: " + _lastMark);
 		if ((_datagram.position() - _mark) > _readLimit) {
@@ -335,11 +335,9 @@ public class CCNNetworkChannel extends InputStream {
 			}
 			_datagram.clear();
 			if (doCopy) {
-				Log.info("Mark reset copy OK: {0}", _mark);
 				_datagram.put(b);
 				_mark = 0;
 			} else {
-				//Log.info("Mark force reset: {0}", _mark);
 				_lastMark = _mark;
 				_mark = -1;
 			}
@@ -403,7 +401,7 @@ public class CCNNetworkChannel extends InputStream {
 		} catch (IOException io) {
 			// We do not see errors on send typically even if 
 			// agent is gone, so log each but do not track
-			Log.warning("Error sending heartbeat packet: {0}", io.getMessage());
+			Log.warning(Log.FAC_NETMANAGER, "Error sending heartbeat packet: {0}", io.getMessage());
 			try {
 				close();
 			} catch (IOException e) {}
