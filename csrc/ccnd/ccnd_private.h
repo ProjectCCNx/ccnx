@@ -91,6 +91,7 @@ struct ccnd_handle {
     long sec;                       /**< cached gettime seconds */
     unsigned usec;                  /**< cached gettime microseconds */
     long starttime;                 /**< ccnd start time, in seconds */
+    unsigned starttime_usec;        /**< ccnd start time fractional part */
     struct ccn_schedule *sched;     /**< our schedule */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
@@ -134,6 +135,7 @@ struct ccnd_handle {
     struct ccn *internal_client;    /**< internal client */
     struct face *face0;             /**< special face for internal client */
     struct ccn_charbuf *service_ccnb; /**< for local service discovery */
+    struct ccn_charbuf *neighbor_ccnb; /**< for neighbor service discovery */
     struct ccn_seqwriter *notice;   /**< for notices of status changes */
     struct ccn_indexbuf *chface;    /**< faceids w/ recent status changes */
     struct ccn_scheduled_event *internal_client_refresh;
