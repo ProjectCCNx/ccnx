@@ -352,16 +352,17 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		int blockSize = getBlockSize();
 		
 		// Flush all complete blocks we have to the segmenter
-		if (_blockOffset % getBlockSize() == 0) {
+		if (_blockOffset % blockSize == 0) {
 			if (_blockIndex > 0 || _blockOffset > 0) {
 				_baseNameIndex = 
 			        _segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers, _blockIndex+1,
-			                                 0, getBlockSize(),
+			                                 0, blockSize,
 			                                 _type, _timestamp, _freshnessSeconds, null, 
 			                                 _locator, _publisher, _keys);
 				_blockOffset = _blockIndex = 0;			        
 			}
-			if (len >= getBlockSize()) {
+
+			if (len >= blockSize) {
 				long contiguousBytesToWrite = ((len / blockSize)) * blockSize;
 				bytesToWrite -= contiguousBytesToWrite;
 				_dh.update(buf, (int) offset, (int)contiguousBytesToWrite); // add to running digest of data
@@ -394,7 +395,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				_blockIndex++;
 				_blockOffset = 0;
 				if (null == _buffers[_blockIndex]) {
-					_buffers[_blockIndex] = new byte[getBlockSize()];
+					_buffers[_blockIndex] = new byte[blockSize];
 				}
 			}
 			
@@ -467,7 +468,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
         
 		/**
 		 * Partial last block handling. If we are in the middle of writing a file, we only
-		 * flush complete blocks; up to _blockOffset % getBlockSize(). The only time
+		 * flush complete blocks; up to _blockOffset % blockSize. The only time
 		 * we emit a 0-length block is if we've been told to flush the last block (i.e.
 		 * we're closing the file) without having written anything at all. So for
 		 * 0-length files we emit a single block with 0-length content (which has
