@@ -351,16 +351,19 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		//while(rr > -1) {
 		if(rr > -1) {
 			//there is a reader waiting
-			Log.info(Log.FAC_PIPELINE, "PIPELINE: there is a reader waiting, we should wait unless we have their segment");
+			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: there is a reader waiting, we should wait unless we have their segment");
 			if(returnedSegment == rr) {
 				//this is the segment they want, we should just finish
-				Log.info(Log.FAC_PIPELINE, "PIPELINE: we are working on their segment...  we should finish!");
+				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we are working on their segment...  we should finish!");
 				//break;
 			} else {
 				if (haveSegmentBuffered(rr)) {
 					//we have their segment
 					//this isn't their segment, but the one they want is here. we should defer
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: we are deferring until they are done");
+					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we are deferring until they are done");
 					try {
 						inOrderSegments.wait();
 						//readerReady.wait();
@@ -368,12 +371,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 							rr = readerReady;
 						}
 					} catch (InterruptedException e) {
-						Log.info(Log.FAC_PIPELINE, "PIPELINE: we can go back to processing");
+						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: we can go back to processing");
 						//break;
 					}
 				} else {
 					//we don't have their segment, we should keep going
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have their segment, keep processing this one.");
+					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have their segment, keep processing this one.");
 				}
 			}
 		}
