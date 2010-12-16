@@ -211,7 +211,7 @@ public class CCNNetworkChannel extends InputStream {
 		try {
 			if (_ncProto == NetworkProtocol.UDP) {
 				return (_ncDGrmChannel.write(src));
-			} else if (_ncProto == NetworkProtocol.TCP) {
+			} else {
 				// Need to handle partial writes
 				int written = 0;
 				do {
@@ -223,9 +223,7 @@ public class CCNNetworkChannel extends InputStream {
 					}
 				} while (src.hasRemaining());
 				return written;
-			} else {
-				throw new IOException("NetworkChannel: invalid protocol specified");
-			}
+			} 
 		} catch (PortUnreachableException pue) {}
 		  catch (ClosedChannelException cce) {}
 		close();
