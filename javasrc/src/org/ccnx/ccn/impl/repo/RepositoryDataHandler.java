@@ -22,9 +22,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.InterestTable;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
+import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Interest;
 
 /**
  * So the main listener can output interests sooner, we do the data store work
@@ -34,6 +37,7 @@ import org.ccnx.ccn.protocol.ContentObject;
 public class RepositoryDataHandler implements Runnable {
 	private RepositoryServer _server;
 	private Queue<ContentObject> _queue = new ConcurrentLinkedQueue<ContentObject>();
+	private InterestTable<ContentName> _pendingSyncs = new InterestTable<ContentName>();
 	private boolean _shutdown = false;
 	
 	public RepositoryDataHandler(RepositoryServer server) {
@@ -45,6 +49,10 @@ public class RepositoryDataHandler implements Runnable {
 			_queue.add(co);
 			_queue.notify();
 		}
+	}
+	
+	public void addSync(ContentName target) {
+		_pendingSyncs.add(target, target);
 	}
 
 	/**
@@ -78,6 +86,18 @@ public class RepositoryDataHandler implements Runnable {
 					NameEnumerationResponse ner = _server.getRepository().saveContent(co);
 					if (ner!=null && ner.hasNames()) {
 						_server.sendEnumerationResponse(ner);
+					}
+					
+					// When a sync is undone, we don't know yet whether we need to sync its
+					// keys.  Now we should.
+					if (_pendingSyncs.size() > 0) {
+						ContentName syncTarget = _pendingSyncs.removeValue(co);
+						if (null != syncTarget) {
+							ContentName newSyncTarget = _server.getKeyTarget(syncTarget);
+							if (null != newSyncTarget) {
+								_server.doSync(new Interest(newSyncTarget), newSyncTarget);
+							}
+						}
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
