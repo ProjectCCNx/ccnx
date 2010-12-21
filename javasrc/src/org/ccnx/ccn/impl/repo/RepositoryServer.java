@@ -403,8 +403,11 @@ public class RepositoryServer {
 	 * @return new target if we need to verify the target
 	 */
 	public ContentName getKeyTarget(ContentName target) {
+		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+			Log.finer(Log.FAC_REPO, "Checking for key locators for: {0}", target);
 		try {
-			ContentObject content = _repo.getContent(new Interest(target));
+			ContentName digestFreeTarget = new ContentName(target.count()-1, target.components());
+			ContentObject content = _repo.getContent(new Interest(digestFreeTarget));
 			SignedInfo si = content.signedInfo();
 			KeyLocator locator = si.getKeyLocator();
 			if (null == locator)
@@ -451,6 +454,7 @@ public class RepositoryServer {
 		listener = new RepositoryDataListener(interest, readInterest, this);
 		addListener(listener);
 		listener.getInterests().add(readInterest, null);
+		getDataHandler().addSync(target);
 		_handle.expressInterest(readInterest, listener);
 	}
 	

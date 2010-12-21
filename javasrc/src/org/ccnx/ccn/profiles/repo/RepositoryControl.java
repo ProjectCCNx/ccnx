@@ -31,14 +31,12 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNAbstractInputStream;
 import org.ccnx.ccn.io.content.CCNNetworkObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
-import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 /**
@@ -95,7 +93,7 @@ public class RepositoryControl {
 	 * @return boolean true iff confirmation received from repository
 	 * @throws IOException if no repository responds or another communication error occurs
 	 */
-	protected static boolean localRepoSync(CCNHandle handle, CCNAbstractInputStream stream) throws IOException {
+	public static boolean localRepoSync(CCNHandle handle, CCNAbstractInputStream stream) throws IOException {
 		boolean result;
 		
 		byte[] digest = stream.getFirstDigest(); // This forces reading if not done already
@@ -136,7 +134,7 @@ public class RepositoryControl {
 	 * @return
 	 * @throws IOException
 	 */
-	protected static boolean localRepoSync(CCNHandle handle, CCNNetworkObject<?> obj) throws IOException {
+	public static boolean localRepoSync(CCNHandle handle, CCNNetworkObject<?> obj) throws IOException {
 		boolean result;
 		
 		byte[] digest = obj.getFirstDigest(); // This forces reading if not done already
