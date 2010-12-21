@@ -430,8 +430,11 @@ public class RepositoryServer {
 			keyInterest.maxSuffixComponents(3);
 
 			ContentObject keyContent = _repo.getContent(keyInterest);
-			if (null == keyContent)
+			if (null == keyContent) {
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+					Log.finer(Log.FAC_REPO, "Found key to sync: {0}", locator.name().name());
 				return locator.name().name();
+			}
 			return getKeyTarget(keyContent.name());
 		} catch (RepositoryException e) {
 			return null;
