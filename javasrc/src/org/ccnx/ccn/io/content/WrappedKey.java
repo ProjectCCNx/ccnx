@@ -361,7 +361,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	public Key unwrapKey(Key unwrapKey, String wrappedKeyAlgorithm) 
 			throws InvalidKeyException, NoSuchAlgorithmException {
 
-		Key unwrappedKey = null;
+		Key unwrappedKey;
 		if (Log.isLoggable(Level.INFO)) {
 			Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
 					wrapAlgorithmForKey(unwrapKey.getAlgorithm()));
