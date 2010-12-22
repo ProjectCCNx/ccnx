@@ -70,7 +70,7 @@ public class GroupManager {
 	private CCNHandle _handle;
 
 	public GroupManager(GroupAccessControlManager accessManager,
-						ParameterizedName groupStorage, CCNHandle handle) throws IOException {
+						ParameterizedName groupStorage, CCNHandle handle) {
 		_handle = handle;
 		_accessManager = accessManager;
 		_groupStorage = groupStorage;
