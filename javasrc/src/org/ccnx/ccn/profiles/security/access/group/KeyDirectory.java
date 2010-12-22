@@ -916,6 +916,9 @@ public class KeyDirectory extends EnumeratedNameList {
 		return _handle.keyManager().getSecureKeyCache().containsKey(getPrivateKeyBlockName());
 	}
 
+	@SuppressWarnings("serial")
+	public static class NoPrivateKeyException extends IOException {}
+	
 	/**
 	 * Returns the private key stored in the KeyDirectory. 
 	 * The private key is wrapped in a wrapping key, which is itself wrapped.
@@ -952,7 +955,7 @@ public class KeyDirectory extends EnumeratedNameList {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info(Log.FAC_ACCESSCONTROL, "Cannot retrieve wrapped private key for {0}", getPrivateKeyBlockName());
 			}
-			return null;
+			throw new NoPrivateKeyException();
 		}
 		
 		// This will pull from the cache if it's in our cache, and otherwise
