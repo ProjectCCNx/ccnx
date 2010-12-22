@@ -228,7 +228,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	private ArrayList<ParameterizedName> _userStorage = new ArrayList<ParameterizedName>();
 	private TreeMap<byte[], ParameterizedName> _hashToUserStorageMap = new TreeMap<byte[], ParameterizedName>(byteArrayComparator);
 	private ArrayList<GroupManager> _groupManager = new ArrayList<GroupManager>();
-	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
+	protected static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 	private TreeMap<byte[], GroupManager> hashToGroupManagerMap = new TreeMap<byte[], GroupManager>(byteArrayComparator);
 	private HashMap<ContentName, GroupManager> prefixToGroupManagerMap = new HashMap<ContentName, GroupManager>();
 	private HashSet<ContentName> _myIdentities = new HashSet<ContentName>();
