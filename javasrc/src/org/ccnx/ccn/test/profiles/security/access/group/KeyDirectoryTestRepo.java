@@ -40,7 +40,7 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
-import org.ccnx.ccn.profiles.security.access.group.KeyDirectory;
+import org.ccnx.ccn.profiles.security.access.group.PrincipalKeyDirectory;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -64,7 +64,7 @@ public class KeyDirectoryTestRepo {
 	static KeyPair wrappingKeyPair;
 	static byte[] wrappingPKID;
 	static GroupAccessControlManager acm;
-	static KeyDirectory kd;
+	static PrincipalKeyDirectory kd;
 	
 	static int testCount = 0;
 	
@@ -115,7 +115,7 @@ public class KeyDirectoryTestRepo {
 	 */
 	public void testKeyDirectoryCreation() throws Exception {
 
-		kd = new KeyDirectory(acm, versionedDirectoryName, handle);
+		kd = new PrincipalKeyDirectory(acm, versionedDirectoryName, handle);
 		// verify that the keyDirectory is created
 		Assert.assertNotNull(kd);		
 	}
@@ -149,14 +149,14 @@ public class KeyDirectoryTestRepo {
 		newMembers.add(new Link(myIdentity));
 		Group myGroup = acm.groupManager().createGroup(randomGroupName, newMembers, 0);
 		Assert.assertTrue(acm.groupManager().haveKnownGroupMemberships());
-		KeyDirectory pkd = myGroup.privateKeyDirectory(acm);
+		PrincipalKeyDirectory pkd = myGroup.privateKeyDirectory(acm);
 		pkd.waitForChildren();
 		Assert.assertTrue(pkd.hasPrivateKeyBlock());
 		
 		// add to the KeyDirectory the secret key wrapped in the public key
 		ContentName versionDirectoryName2 = VersioningProfile.addVersion(
 				ContentName.fromNative(keyDirectoryBase + Integer.toString(rand.nextInt(10000)) ));
-		KeyDirectory kd2 = new KeyDirectory(acm, versionDirectoryName2, handle);
+		PrincipalKeyDirectory kd2 = new PrincipalKeyDirectory(acm, versionDirectoryName2, handle);
 		PublicKey groupPublicKey = myGroup.publicKey();
 		ContentName groupPublicKeyName = myGroup.publicKeyName();
 		kd2.addWrappedKeyBlock(AESSecretKey, groupPublicKeyName, groupPublicKey);		
@@ -210,7 +210,7 @@ public class KeyDirectoryTestRepo {
 	public void testGetWrappedKeyForKeyID() throws Exception {
 		CCNHandle handle = CCNHandle.open();
 		// Use unversioned constructor so KeyDirectory returns the latest version
-		KeyDirectory uvkd = new KeyDirectory(acm, keyDirectoryName, handle);
+		PrincipalKeyDirectory uvkd = new PrincipalKeyDirectory(acm, keyDirectoryName, handle);
 		while (!uvkd.hasChildren() || uvkd.getCopyOfWrappingKeyIDs().size() == 0) {
 			uvkd.waitForNewChildren();
 		}
@@ -276,7 +276,7 @@ public class KeyDirectoryTestRepo {
 		ContentName supersededKeyDirectoryName = ContentName.fromNative(keyDirectoryBase + rand.nextInt(10000) + "/superseded");
 		ContentName versionSupersededKeyDirectoryName = VersioningProfile.addVersion(supersededKeyDirectoryName);
 		CCNHandle handle = CCNHandle.open();
-		KeyDirectory skd = new KeyDirectory(acm, versionSupersededKeyDirectoryName, handle);
+		PrincipalKeyDirectory skd = new PrincipalKeyDirectory(acm, versionSupersededKeyDirectoryName, handle);
 
 		// generate a AES wrapping key
 		KeyGenerator kg = KeyGenerator.getInstance("AES");

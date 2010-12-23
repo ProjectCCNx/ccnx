@@ -357,7 +357,7 @@ public class GroupManager {
 		}
 		// Need to get the KeyDirectory for this version of the private key, or the 
 		// latest if no version given.
-		KeyDirectory privateKeyDirectory;
+		PrincipalKeyDirectory privateKeyDirectory;
 		PublicKey theGroupPublicKey = null;
 		if (null == privateKeyVersion) {
 			Group theGroup = getGroup(groupFriendlyName, SystemConfiguration.EXTRA_LONG_TIMEOUT); // will pull latest public key
@@ -371,7 +371,7 @@ public class GroupManager {
 						GroupAccessControlProfile.groupPublicKeyName(_groupStorage, groupFriendlyName),
 						privateKeyVersion);
 			privateKeyDirectory =
-				new KeyDirectory(_accessManager, 
+				new PrincipalKeyDirectory(_accessManager, 
 					GroupAccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _handle);
 			privateKeyDirectory.waitForNoUpdatesOrResult(SystemConfiguration.SHORT_TIMEOUT);
 			
@@ -432,7 +432,7 @@ public class GroupManager {
 		Key privateKey = null;
 		try {
 			privateKey = getGroupPrivateKey(principal, pi.versionTimestamp());
-		} catch (KeyDirectory.NoPrivateKeyException e) {
+		} catch (PrincipalKeyDirectory.NoPrivateKeyException e) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info(Log.FAC_ACCESSCONTROL, "Unexpected: we believe we are a member of group {0} but cannot retrieve private key version {1} our membership revoked?",
 						principal, pi);			

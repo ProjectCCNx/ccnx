@@ -102,7 +102,7 @@ import org.ccnx.ccn.protocol.PublisherID;
  * have access to this data somehow, rather than throwing
  * AccessDeniedException.
  */
-public class KeyDirectory extends EnumeratedNameList {
+public class PrincipalKeyDirectory extends EnumeratedNameList {
 
 	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 
@@ -138,7 +138,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @param handle
 	 * @throws IOException
 	 */
-	public KeyDirectory(GroupAccessControlManager manager, ContentName directoryName, CCNHandle handle) 
+	public PrincipalKeyDirectory(GroupAccessControlManager manager, ContentName directoryName, CCNHandle handle) 
 	throws IOException {
 		this(manager, directoryName, true, handle);
 	}
@@ -150,7 +150,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	 * @param handle
 	 * @throws IOException
 	 */
-	public KeyDirectory(GroupAccessControlManager manager, ContentName directoryName, boolean enumerate, CCNHandle handle) 
+	public PrincipalKeyDirectory(GroupAccessControlManager manager, ContentName directoryName, boolean enumerate, CCNHandle handle) 
 	throws IOException {
 		super(directoryName, false, handle);
 		_handle = handle;
@@ -762,9 +762,9 @@ public class KeyDirectory extends EnumeratedNameList {
 			}
 
 			Key unwrappedSupersedingKey = null;
-			KeyDirectory supersedingKeyDirectory = null;
+			PrincipalKeyDirectory supersedingKeyDirectory = null;
 			try {
-				supersedingKeyDirectory = new KeyDirectory(_manager, supersededKeyBlock.wrappedKey().wrappingKeyName(), _handle);
+				supersedingKeyDirectory = new PrincipalKeyDirectory(_manager, supersededKeyBlock.wrappedKey().wrappingKeyName(), _handle);
 				supersedingKeyDirectory.waitForNoUpdates(SystemConfiguration.SHORT_TIMEOUT);
 				// This wraps the key we actually want.
 				unwrappedSupersedingKey = supersedingKeyDirectory.getUnwrappedKey(supersededKeyBlock.wrappedKey().wrappingKeyIdentifier());

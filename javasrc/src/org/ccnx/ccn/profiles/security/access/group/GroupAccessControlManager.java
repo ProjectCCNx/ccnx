@@ -949,7 +949,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 		// need to mangl stored key name into superseded block name, need to wrap
 		// in ourEffNodeKeyFromParent, make sure stored key id points up to our ENKFP.storedKeyName()
-		KeyDirectory.addSupersededByBlock(nk.storedNodeKeyName(), nk.nodeKey(), 
+		PrincipalKeyDirectory.addSupersededByBlock(nk.storedNodeKeyName(), nk.nodeKey(), 
 				ourEffectiveNodeKeyFromParent.storedNodeKeyName(), 
 				ourEffectiveNodeKeyFromParent.storedNodeKeyID(),
 				effectiveParentNodeKey.nodeKey(), handle());
@@ -999,7 +999,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// is add key blocks for them, not update the node key. (And it means
 		// we have a node key for this node.)
 		// Wait to save the new ACL till we are sure we're allowed to do this.
-		KeyDirectory keyDirectory = null;
+		PrincipalKeyDirectory keyDirectory = null;
 		try {
 			// If we can't read the node key, we can't update. Get the effective node key.
 			// Better be a node key here... and we'd better be allowed to read it.
@@ -1011,7 +1011,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 				throw new AccessDeniedException("Cannot read the latest node key for " + nodeName);
 			}
 
-			keyDirectory = new KeyDirectory(this, latestNodeKey.storedNodeKeyName(), handle());
+			keyDirectory = new PrincipalKeyDirectory(this, latestNodeKey.storedNodeKeyName(), handle());
 
 			for (Link principal : newReaders) {
 				PublicKeyObject latestKey = getLatestKeyForPrincipal(principal);
@@ -1292,7 +1292,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	ContentDecodingException, IOException, NoSuchAlgorithmException {
 
 		NodeKey nk = null;
-		KeyDirectory keyDirectory = null;
+		PrincipalKeyDirectory keyDirectory = null;
 		try {
 			
 			// First thing to do -- try cache directly before we even consider enumerating.
@@ -1300,7 +1300,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 			if (null == targetKey) {
 				// start enumerating; if we get a cache hit don't need it, but just in case.
-				keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
+				keyDirectory = new PrincipalKeyDirectory(this, nodeKeyName, handle());
 
 				// this will handle the caching.
 				targetKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
@@ -1468,9 +1468,9 @@ public class GroupAccessControlManager extends AccessControlManager {
 			theNodeKeyName = GroupAccessControlProfile.nodeKeyName(theNodeKeyName);
 		}
 		// get the requested version of this node key; or if unversioned, get the latest.
-		KeyDirectory nodeKeyDirectory = null;
+		PrincipalKeyDirectory nodeKeyDirectory = null;
 		try {
-			nodeKeyDirectory = new KeyDirectory(this, theNodeKeyName, handle());
+			nodeKeyDirectory = new PrincipalKeyDirectory(this, theNodeKeyName, handle());
 			nodeKeyDirectory.waitForChildren();
 
 			if (null == nodeKeyDirectory) {
@@ -1709,7 +1709,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// Now, wrap it under the keys listed in its ACL.
 
 		// Make a key directory. If we give it a versioned name. Don't start enumerating; we don't need to.
-		KeyDirectory nodeKeyDirectory = new KeyDirectory(this, nodeKeyDirectoryName, false, handle());
+		PrincipalKeyDirectory nodeKeyDirectory = new PrincipalKeyDirectory(this, nodeKeyDirectoryName, false, handle());
 		NodeKey theNodeKey = new NodeKey(nodeKeyDirectoryName, nodeKey);
 
 		// Add a key block for every reader on the ACL. As managers and writers can read, they are all readers.
@@ -1787,7 +1787,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 					nodeKeyDirectory.waitForChildren();
 					nodeKeyDirectory.addPreviousKeyLink(oldEffectiveNodeKey.storedNodeKeyName(), null);
 					// OK, just add superseded-by block to the old directory.
-					KeyDirectory.addSupersededByBlock(
+					PrincipalKeyDirectory.addSupersededByBlock(
 							oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
 							theNodeKey.storedNodeKeyName(), theNodeKey.storedNodeKeyID(), theNodeKey.nodeKey(), handle());
 				}

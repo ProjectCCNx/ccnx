@@ -87,7 +87,7 @@ public class Group {
 	 * The <KeyDirectory> which stores the group private key wrapped
 	 * in the public keys of the members of the group. 
 	 */
-	private KeyDirectory _privKeyDirectory = null;
+	private PrincipalKeyDirectory _privKeyDirectory = null;
 	
 	/**
 	 * Group constructor
@@ -192,7 +192,7 @@ public class Group {
 	 * @return the key directory of the group
 	 * @throws IOException
 	 */
-	public KeyDirectory privateKeyDirectory(GroupAccessControlManager manager) throws IOException {
+	public PrincipalKeyDirectory privateKeyDirectory(GroupAccessControlManager manager) throws IOException {
 		if (_privKeyDirectory != null) {
 			// check that our version of KeyDirectory is not stale
 			if (_privKeyDirectory.getName().equals(GroupAccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()))) {
@@ -200,7 +200,7 @@ public class Group {
 			}
 		}
 		if (_groupPublicKey.available()) {
-			_privKeyDirectory = new KeyDirectory(manager, 
+			_privKeyDirectory = new PrincipalKeyDirectory(manager, 
 					GroupAccessControlProfile.groupPrivateKeyDirectory(_groupPublicKey.getVersionedName()), _handle);
 			return _privKeyDirectory;
 		}
@@ -383,7 +383,7 @@ public class Group {
 	 */
 	private void newGroupPublicKeyNonRecursive(MembershipListObject ml) 
 			throws ContentEncodingException, IOException, InvalidKeyException, NoSuchAlgorithmException{
-		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
+		PrincipalKeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForNoUpdates(SystemConfiguration.MEDIUM_TIMEOUT);
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
@@ -403,7 +403,7 @@ public class Group {
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), null, privateKeyWrappingKey);
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
-		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);
+		LinkObject precededByBlock = new LinkObject(PrincipalKeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);
 		precededByBlock.save();
 	}
 	
@@ -424,7 +424,7 @@ public class Group {
 	public void newGroupPublicKey(MembershipListObject ml) 
 			throws ContentEncodingException, IOException, InvalidKeyException, NoSuchAlgorithmException {
 
-		KeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
+		PrincipalKeyDirectory oldPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		oldPrivateKeyDirectory.waitForChildren();
 		Key oldPrivateKeyWrappingKey = oldPrivateKeyDirectory.getUnwrappedKey(null);
 		if (null == oldPrivateKeyWrappingKey) {
@@ -444,7 +444,7 @@ public class Group {
 		oldPrivateKeyDirectory.addSupersededByBlock(oldPrivateKeyWrappingKey, publicKeyName(), null, privateKeyWrappingKey);
 		// Write link back to previous key
 		Link lr = new Link(_groupPublicKey.getVersionedName(), new LinkAuthenticator(new PublisherID(_handle.keyManager().getDefaultKeyID())));
-		LinkObject precededByBlock = new LinkObject(KeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);
+		LinkObject precededByBlock = new LinkObject(PrincipalKeyDirectory.getPreviousKeyBlockName(publicKeyName()), lr, SaveType.REPOSITORY, _handle);
 		precededByBlock.save();
 		
 		// generate new public keys for ancestor groups
@@ -497,7 +497,7 @@ public class Group {
 		stopPrivateKeyDirectoryEnumeration();
 		_privKeyDirectory = null;
 		
-		KeyDirectory newPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager()); // takes from new public key
+		PrincipalKeyDirectory newPrivateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager()); // takes from new public key
 		
 		Key privateKeyWrappingKey = WrappedKey.generateNonceKey();
 		
@@ -535,7 +535,7 @@ public class Group {
 		if ((null == membersToAdd) || (membersToAdd.size() == 0))
 			return;
 		
-		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
+		PrincipalKeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		
 		PublicKeyObject latestPublicKey = null;
 		for (Link lr : membersToAdd) {
@@ -591,7 +591,7 @@ public class Group {
 	 */
 	public PrivateKey getPrivateKey() throws IOException, InvalidKeyException, NoSuchAlgorithmException {
 		// TODO might do a little unnecessary enumeration, but will pull from cache if in cache. 
-		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
+		PrincipalKeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		PrivateKey privateKey = privateKeyDirectory.getPrivateKey();
 		if (null != privateKey) {
 			// Will redundantly re-add to cache. TODO move caching into getPrivateKey; it needs
@@ -662,7 +662,7 @@ public class Group {
 		// You don't want to modify membership list if you dont have permission. 
 		// Assume no concurrent writer.  
 		
-		KeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
+		PrincipalKeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		Key privateKeyWrappingKey = privateKeyDirectory.getUnwrappedKey(null);
 		if (null == privateKeyWrappingKey) {
 			throw new AccessDeniedException("Cannot update group membership, do not have acces rights to private key for group " + friendlyName());
