@@ -397,7 +397,7 @@ public class RepositoryServer {
 	}
 	
 	/**
-	 * Recursively look for unverified keys
+	 * Look for unverified keys
 	 * 
 	 * @param target
 	 * @return new target if we need to verify the target
@@ -435,7 +435,7 @@ public class RepositoryServer {
 					Log.finer(Log.FAC_REPO, "Found key to sync: {0}", locator.name().name());
 				return locator.name().name();
 			}
-			return getKeyTarget(keyContent.name());
+			return null;	// Already have key
 		} catch (RepositoryException e) {
 			return null;
 		}
