@@ -110,10 +110,9 @@ public class RepoIOTest extends RepoTestBase {
 		
 		KeyLocator userLocator = 
 			userHandle.keyManager().getKeyLocator(userHandle.keyManager().getDefaultKeyID());
+		floss.handleNamespace(userLocator.name().name());
 		PublicKeyObject pko = userHandle.keyManager().publishSelfSignedKey(userLocator.name().name(), null,
 						false);
-		floss.handleNamespace(pko.getVersionedName());
-		pko.save();
 		pko.close();
 
 		_testNonRepo += "-" + rand.nextInt(10000);
