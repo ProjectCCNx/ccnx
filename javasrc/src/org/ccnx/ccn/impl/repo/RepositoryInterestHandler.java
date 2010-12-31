@@ -243,7 +243,24 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			rio.save(interest);
 
 			if (!verified) {
-				_server.doSync(interest, target);
+				Interest readInterest;
+				if (null != unverifiedKeyLocator) {
+					interest = Interest.constructInterest(target, _server.getExcludes(), null, 2, null, null);
+					readInterest = interest;
+				} else {
+					// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 0 
+					// because in this SPECIAL CASE we have the complete name of the first segment.
+					readInterest = Interest.constructInterest(target, _server.getExcludes(), null, 0, 0, null);
+					// SPECIAL CASE: this initial interest is more specific than the standard reading interests, so 
+					// it will not be recognized as requesting a specific segment (segment is not final component).
+					// However, until this initial interest is satisfied, there is no processing requiring standard
+					// segment format, and when the first (satisfying) data arrives this interest will be immediately 
+					// discarded.  The returned data (ContentObject) explicit name will never include the implicit 
+					// digest and so is processed correctly regardless of the interest that retrieved it.
+					ContentName digestFreeTarget = new ContentName(target.count()-1, target.components());
+					_server.getDataHandler().addSync(digestFreeTarget);
+				}
+				_server.doSync(interest, readInterest);
 			} else {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 					Log.finer(Log.FAC_REPO, "Repo checked write content verified for {0}", interest.name());

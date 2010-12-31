@@ -412,6 +412,8 @@ public class RepositoryServer {
 			KeyLocator locator = si.getKeyLocator();
 			if (null == locator)
 				return null;
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+				Log.finer(Log.FAC_REPO, "Sync: Locator is: {0}", locator);
 			if (locator.type() != KeyLocatorType.NAME)
 				return null;
 			if (PublicKeyObject.isSelfSigned(target, (PublicKey)null, locator))
@@ -441,23 +443,13 @@ public class RepositoryServer {
 		}
 	}
 	
-	public void doSync(Interest interest, ContentName target) throws IOException {
+	public void doSync(Interest interest, Interest readInterest) throws IOException {
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 			Log.finer(Log.FAC_REPO, "Repo checked write no content for {0}, starting read", interest.name());
-		// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 0 
-		// because in this SPECIAL CASE we have the complete name of the first segment.
-		Interest readInterest = Interest.constructInterest(target, getExcludes(), null, 0, 0, null);
 		RepositoryDataListener listener;
-		// SPECIAL CASE: this initial interest is more specific than the standard reading interests, so 
-		// it will not be recognized as requesting a specific segment (segment is not final component).
-		// However, until this initial interest is satisfied, there is no processing requiring standard
-		// segment format, and when the first (satisfying) data arrives this interest will be immediately 
-		// discarded.  The returned data (ContentObject) explicit name will never include the implicit 
-		// digest and so is processed correctly regardless of the interest that retrieved it.
 		listener = new RepositoryDataListener(interest, readInterest, this);
 		addListener(listener);
 		listener.getInterests().add(readInterest, null);
-		getDataHandler().addSync(target);
 		_handle.expressInterest(readInterest, listener);
 	}
 	

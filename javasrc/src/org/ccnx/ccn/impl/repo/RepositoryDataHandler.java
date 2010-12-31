@@ -23,6 +23,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable;
+import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
@@ -86,17 +87,18 @@ public class RepositoryDataHandler implements Runnable {
 					NameEnumerationResponse ner = _server.getRepository().saveContent(co);
 					if (ner!=null && ner.hasNames()) {
 						_server.sendEnumerationResponse(ner);
-					}
-					
-					// When a sync is undone, we don't know yet whether we need to sync its
-					// keys.  Now we should.
-					if (_pendingSyncs.size() > 0) {
-						ContentName syncTarget = _pendingSyncs.removeValue(co);
-						if (null != syncTarget) {
-							ContentName newSyncTarget = _server.getKeyTarget(syncTarget);
-							if (null != newSyncTarget) {
-								_server.doSync(new Interest(newSyncTarget), newSyncTarget);
+					}				
+					// When a sync is incomplete, we may not know yet whether it has keys that
+					// need syncing. Now we can find this out
+					Entry<ContentName> entry = _pendingSyncs.remove(co.name(), co.name());
+					if (null != entry) {
+						ContentName newSyncTarget = _server.getKeyTarget(entry.value());
+						if (null != newSyncTarget) {
+							if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
+								Log.finer(Log.FAC_REPO, "Fetching key from dataHandler: " + newSyncTarget);
 							}
+							Interest keyInterest = Interest.constructInterest(newSyncTarget, _server.getExcludes(), null, 2, null, null);
+							_server.doSync(keyInterest, keyInterest);
 						}
 					}
 				} catch (Exception e) {
