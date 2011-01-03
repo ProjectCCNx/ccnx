@@ -99,6 +99,9 @@ public class RepositoryControl {
 		byte[] digest = stream.getFirstDigest(); // This forces reading if not done already
 		ContentName name = stream.getBaseName();
 		Long segment = stream.firstSegmentNumber();
+		if (null == segment) {
+			throw new IOException("LocalRepoSync: Can't read stream: " + name);
+		}
 
 		Log.info("RepositoryControl.localRepoSync called for name {0}", name);
 
@@ -136,15 +139,19 @@ public class RepositoryControl {
 	 */
 	public static boolean localRepoSync(CCNHandle handle, CCNNetworkObject<?> obj) throws IOException {
 		boolean result;
-		
-		byte[] digest = obj.getFirstDigest(); // This forces reading if not done already
+	
+		byte[] digest = obj.getFirstDigest();
 		ContentName name = obj.getVersionedName();
-		Long segment = obj.firstSegmentNumber();
 		
 		if (Log.isLoggable(Level.INFO)) {
 			Log.info("RepositoryControl.localRepoSync called for net obj name {0}", name);
 		}
-
+		
+		Long segment = obj.firstSegmentNumber();  // This forces reading if not done already
+		if (null == segment) {
+			throw new IOException("LocalRepoSync: Can't read object: " + name);
+		}
+		
 		// Request preserving the dereferenced content of the stream first
 		result = internalRepoSync(handle, name, segment, digest, obj.getFirstSegment().fullName());
 		

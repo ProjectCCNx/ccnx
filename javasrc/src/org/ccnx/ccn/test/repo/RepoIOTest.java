@@ -20,6 +20,7 @@ package org.ccnx.ccn.test.repo;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -27,6 +28,7 @@ import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.impl.repo.PolicyXML;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -74,7 +76,7 @@ public class RepoIOTest extends RepoTestBase {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		//Library.setLevel(Level.FINEST);
+		//Log.setLevel(Level.FINEST);
 		_testPrefix += "-" + rand.nextInt(10000);
 		_testPrefixObj += "-" + rand.nextInt(10000);
 		RepoTestBase.setUpBeforeClass();
@@ -113,7 +115,6 @@ public class RepoIOTest extends RepoTestBase {
 		floss.handleNamespace(userLocator.name().name());
 		PublicKeyObject pko = userHandle.keyManager().publishSelfSignedKey(userLocator.name().name(), null,
 						false);
-		pko.close();
 
 		_testNonRepo += "-" + rand.nextInt(10000);
 		_testNonRepoObj += "-" + rand.nextInt(10000);
@@ -130,6 +131,7 @@ public class RepoIOTest extends RepoTestBase {
 		so = new CCNStringObject(name, "String value for non-repo obj", SaveType.RAW, userHandle);
 		so.save();
 		so.close();
+		pko.close();
 		floss.stop();
 	}
 	
