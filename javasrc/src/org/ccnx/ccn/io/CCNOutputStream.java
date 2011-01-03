@@ -493,12 +493,12 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			// forced flush/close in order to set finalBlockID).
             
 			// DKS TODO -- think about types, freshness, fix markers for impending last block/first block
-			if (Log.isLoggable(Log.FAC_IO, Level.FINE ))	
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO ))	
 				if (writeCount < getBlockSize()) {
-					Log.fine(Log.FAC_IO, "flush(): writing hanging partial last block of file: " + writeCount + " bytes, block total is " +
+					Log.info(Log.FAC_IO, "flush(): writing hanging partial last block of file: " + _baseName + ": " + writeCount + " bytes, block total is " +
                              getBlockSize() + ", holding back " + saveBytes + " bytes, called by close? " + flushLastBlock);
 				} else {
-					Log.fine(Log.FAC_IO, "flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
+					Log.info(Log.FAC_IO, "flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
 				}
 			_baseNameIndex = _segmenter.putFragment(_baseName, _baseNameIndex, 
                                                     _buffers[0], 0, writeCount, 
