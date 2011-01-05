@@ -90,7 +90,7 @@ public class SystemConfiguration {
 	
 	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";
 	
-	public static final String DEFAULT_PROTOCOL = "UDP";  // UDP or TCP allowed
+	public static final String DEFAULT_PROTOCOL = "TCP";  // UDP or TCP allowed
 	public static NetworkProtocol AGENT_PROTOCOL = null; // Set up below
 	public static final String AGENT_PROTOCOL_PROPERTY = "org.ccnx.agent.protocol";
 	public static final String AGENT_PROTOCOL_ENVIRONMENT_VARIABLE = "CCN_AGENT_PROTOCOL";
