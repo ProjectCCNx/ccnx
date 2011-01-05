@@ -17,14 +17,13 @@
 
 package org.ccnx.ccn.test;
 
-import java.util.Map;
-import java.util.Map.Entry;
-
 import org.ccnx.ccn.config.PlatformConfiguration;
 import org.junit.Test;
 
 /**
- * Test the automatic platform detection in PlatformConfiguration
+ * Test the automatic platform detection in PlatformConfiguration.
+ * 
+ * This is really a non-test.  Just an easy place to run the test for visual inspection.
  */
 public class PlatformTest {
 
@@ -33,12 +32,5 @@ public class PlatformTest {
 		System.out.println("need signatures: " + PlatformConfiguration.needSignatureLock());
 	}
 	
-//	@Test
-//	public void testEnvironment() throws Exception {
-//		Map<String, String> env = System.getenv();
-//		
-//		for( Entry<String, String> entry : env.entrySet() )
-//			System.out.println(String.format("%s = %s", entry.getKey(), entry.getValue()));
-//
-//	}
+
 }

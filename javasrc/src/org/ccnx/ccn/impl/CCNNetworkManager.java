@@ -42,9 +42,10 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
-import org.ccnx.ccn.profiles.ccnd.CCNDaemonProfile;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
+import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
+import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -1264,22 +1265,22 @@ public class CCNNetworkManager implements Runnable {
 
 	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) throws IOException {
 		try {
-
-			Interest interested = new Interest(new ContentName(CCNDaemonProfile.ping, Interest.generateNonce()));
-			interested.scope(1);
-			ContentObject contented = mgr.get(interested, SystemConfiguration.PING_TIMEOUT);
-			if (null == contented) {
-				String msg = ("fetchCCNDId: Fetch of content from ping uri failed due to timeout.");
+			ContentName serviceKeyName = new ContentName(ServiceDiscoveryProfile.localServiceName(ServiceDiscoveryProfile.CCND_SERVICE_NAME), KeyProfile.KEY_NAME_COMPONENT);
+			Interest i = new Interest(serviceKeyName);
+			i.scope(1);
+			ContentObject c = mgr.get(i, SystemConfiguration.CCNDID_DISCOVERY_TIMEOUT);
+			if (null == c) {
+				String msg = ("fetchCCNDId: ccndID discovery failed due to timeout.");
 				Log.severe(Log.FAC_NETMANAGER, msg);
 				throw new IOException(msg);
 			}
-			PublisherPublicKeyDigest sentID = contented.signedInfo().getPublisherKeyID();
+			PublisherPublicKeyDigest sentID = c.signedInfo().getPublisherKeyID();
 
 			// TODO: This needs to be fixed once the KeyRepository is fixed to provide a KeyManager
 			if (null != keyManager) {
-				ContentVerifier verifyer = new ContentObject.SimpleVerifier(sentID, keyManager);
-				if (!verifyer.verify(contented)) {
-					String msg = ("fetchCCNDId: Fetch of content reply from ping failed to verify.");
+				ContentVerifier v = new ContentObject.SimpleVerifier(sentID, keyManager);
+				if (!v.verify(c)) {
+					String msg = ("fetchCCNDId: ccndID discovery reply failed to verify.");
 					Log.severe(Log.FAC_NETMANAGER, msg);
 					throw new IOException(msg);
 				}
@@ -1294,7 +1295,7 @@ public class CCNNetworkManager implements Runnable {
 		} catch (IOException e) {
 			String reason = e.getMessage();
 			Log.warningStackTrace(e);
-			String msg = ("fetchCCNDId: Unexpected IOException in call getting ping Interest reason: " + reason);
+			String msg = ("fetchCCNDId: Unexpected IOException in ccndID discovery Interest reason: " + reason);
 			Log.severe(Log.FAC_NETMANAGER, msg);
 			throw new IOException(msg);
 		}

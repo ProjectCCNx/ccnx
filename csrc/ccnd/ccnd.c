@@ -101,6 +101,13 @@ static int nameprefix_seek(struct ccnd_handle *h,
 static void register_new_face(struct ccnd_handle *h, struct face *face);
 static void update_forward_to(struct ccnd_handle *h,
                               struct nameprefix_entry *npe);
+static void stuff_and_send(struct ccnd_handle *h, struct face *face,
+                           const unsigned char *data1, size_t size1,
+                           const unsigned char *data2, size_t size2);
+static int process_incoming_link_message(struct ccnd_handle *h,
+                                         struct face *face, enum ccn_dtag dtag,
+                                         unsigned char *msg, size_t size);
+
 static void
 cleanup_at_exit(void)
 {
@@ -1109,32 +1116,25 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
 static void
 send_content(struct ccnd_handle *h, struct face *face, struct content_entry *content)
 {
-    struct ccn_charbuf *c = charbuf_obtain(h);
     int n, a, b, size;
-    if ((face->flags & CCN_FACE_NOSEND) != 0)
+    if ((face->flags & CCN_FACE_NOSEND) != 0) {
+        // XXX - should count this.
         return;
+    }
     size = content->size;
     if (h->debug & 4)
         ccnd_debug_ccnb(h, __LINE__, "content_to", face,
                         content->key, size);
-    if ((face->flags & CCN_FACE_LINK) != 0)
-        ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
     /* Excise the message-digest name component */
     n = content->ncomps;
     if (n < 2) abort();
     a = content->comps[n - 2];
     b = content->comps[n - 1];
     if (b - a != 36)
-        ccnd_debug_ccnb(h, __LINE__, "strange_digest", face, content->key, size);
-    ccn_charbuf_append(c, content->key, a);
-    ccn_charbuf_append(c, content->key + b, size - b);
-    ccn_stuff_interest(h, face, c);
-    if ((face->flags & CCN_FACE_LINK) != 0)
-        ccn_charbuf_append_closer(c);
-    ccnd_send(h, face, c->buf, c->length);
+        abort(); /* strange digest length */
+    stuff_and_send(h, face, content->key, a, content->key + b, size - b);
     ccnd_meter_bump(h, face->meter[FM_DATO], 1);
     h->content_items_sent += 1;
-    charbuf_release(h, c);
 }
 
 static enum cq_delay_class
@@ -1500,28 +1500,34 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
 
 /**
  * Send a message in a PDU, possibly stuffing other interest messages into it.
+ * The message may be in two pieces.
  */
 static void
 stuff_and_send(struct ccnd_handle *h, struct face *face,
-             unsigned char *data, size_t size) {
+               const unsigned char *data1, size_t size1,
+               const unsigned char *data2, size_t size2) {
     struct ccn_charbuf *c = NULL;
     
     if ((face->flags & CCN_FACE_LINK) != 0) {
         c = charbuf_obtain(h);
-        ccn_charbuf_reserve(c, size + 5);
+        ccn_charbuf_reserve(c, size1 + size2 + 5);
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
-        ccn_charbuf_append(c, data, size);
+        ccn_charbuf_append(c, data1, size1);
+		if (size2 != 0)
+            ccn_charbuf_append(c, data2, size2);
         ccn_stuff_interest(h, face, c);
         ccn_charbuf_append_closer(c);
     }
-    else if (h->mtu > size) {
-         c = charbuf_obtain(h);
-         ccn_charbuf_append(c, data, size);
-         ccn_stuff_interest(h, face, c);
+    else if (size2 != 0 || h->mtu > size1 + size2) {
+        c = charbuf_obtain(h);
+        ccn_charbuf_append(c, data1, size1);
+		if (size2 != 0)
+            ccn_charbuf_append(c, data2, size2);
+        ccn_stuff_interest(h, face, c);
     }
     else {
         /* avoid a copy in this case */
-        ccnd_send(h, face, data, size);
+        ccnd_send(h, face, data1, size1);
         return;
     }
     ccnd_send(h, face, c->buf, c->length);
@@ -1582,6 +1588,65 @@ ccn_stuff_interest(struct ccnd_handle *h,
     }
     hashtb_end(e);
     return(n_stuffed);
+}
+
+static int
+process_incoming_link_message(struct ccnd_handle *h,
+                              struct face *face, enum ccn_dtag dtag,
+                              unsigned char *msg, size_t size)
+{
+    uintmax_t s;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, msg, size);
+
+    switch (dtag) {
+        case CCN_DTAG_SequenceNumber:
+            s = ccn_parse_required_tagged_binary_number(d, dtag, 1, 6);
+            if (d->decoder.state < 0)
+                return(d->decoder.state);
+            if (face->rrun == 0) {
+                face->rseq = s;
+                face->rrun = 1;
+                return(0);
+            }
+            if (s == face->rseq + 1) {
+                face->rseq = s;
+                if (face->rrun < 255)
+                    face->rrun++;
+                return(0);
+            }
+            if (s > face->rseq && s - face->rseq < 255) {
+                ccnd_msg(h, "seq_gap %u %ju to %ju", face->faceid, face->rseq, s);
+                face->rseq = s;
+                face->rrun = 1;
+                return(0);
+            }
+            if (s <= face->rseq) {
+                if (face->rseq - s < face->rrun) {
+                    ccnd_msg(h, "seq_dup %u %ju", face->faceid, s);
+                    return(0);
+                }
+                if (face->rseq - s < 255) {
+                    /* Received out of order */
+                    ccnd_msg(h, "seq_ooo %u %ju", face->faceid, s);
+                    if (s == face->rseq - face->rrun) {
+                        face->rrun++;
+                        return(0);
+                    }
+                }
+            }
+            face->rseq = s;
+            face->rrun = 1;
+            break;
+        case CCN_DTAG_SequenceAcknowledgement:
+            s = ccn_parse_required_tagged_binary_number(d, dtag, 1, 7);
+            if (d->decoder.state < 0)
+                return(d->decoder.state);
+            break;
+        default:
+            return(-1);
+    }
+    return(0);
 }
 
 /**
@@ -2160,22 +2225,24 @@ register_new_face(struct ccnd_handle *h, struct face *face)
  * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
             in its Content.
  * @param size is its size in bytes
- * @result on success the returned charbuf holds a new ccnd-encoded
- *         FaceInstance including faceid;
- *         returns NULL for any error.
+ * @param reply_body is a buffer to hold the Content of the reply, as a 
+ *         FaceInstance including faceid
+ * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
+ *         set the response type to NACK.
  *
  * Is is permitted for the face to already exist.
  * A newly created face will have no registered prefixes, and so will not
  * receive any traffic.
  */
-struct ccn_charbuf *
-ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+int
+ccnd_req_newface(struct ccnd_handle *h,
+                 const unsigned char *msg, size_t size,
+                 struct ccn_charbuf *reply_body)
 {
     struct ccn_parsed_ContentObject pco = {0};
     int res;
     const unsigned char *req;
     size_t req_size;
-    struct ccn_charbuf *result = NULL;
     struct ccn_face_instance *face_instance = NULL;
     struct addrinfo hints = {0};
     struct addrinfo *addrinfo = NULL;
@@ -2264,22 +2331,21 @@ ccnd_req_newface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     }
     if (newface != NULL) {
         newface->flags |= CCN_FACE_PERMANENT;
-        result = ccn_charbuf_create();
         face_instance->action = NULL;
         face_instance->ccnd_id = h->ccnd_id;
         face_instance->ccnd_id_size = sizeof(h->ccnd_id);
         face_instance->faceid = newface->faceid;
         face_instance->lifetime = 0x7FFFFFFF;
-        res = ccnb_append_face_instance(result, face_instance);
-        if (res < 0)
-            ccn_charbuf_destroy(&result);
+        if ((newface->flags & CCN_FACE_CONNECTING) != 0)
+            face_instance->lifetime = 1;
+        res = ccnb_append_face_instance(reply_body, face_instance);
     }    
 Finish:
     h->flood = save; /* restore saved flood flag */
     ccn_face_instance_destroy(&face_instance);
     if (addrinfo != NULL)
         freeaddrinfo(addrinfo);
-    return(result);
+    return(res);
 }
 
 /**
@@ -2288,21 +2354,23 @@ Finish:
  * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
             in its Content.
  * @param size is its size in bytes
- * @result on success the returned charbuf holds a new ccnd-encoded
- *         FaceInstance including faceid;
- *         returns NULL for any error.
+ * @param reply_body is a buffer to hold the Content of the reply, as a 
+ *         FaceInstance including faceid
+ * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
+ *         set the response type to NACK.
  *
  * Is is an error if the face does not exist.
  */
-struct ccn_charbuf *
-ccnd_req_destroyface(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+int
+ccnd_req_destroyface(struct ccnd_handle *h,
+                     const unsigned char *msg, size_t size,
+                     struct ccn_charbuf *reply_body)
 {
     struct ccn_parsed_ContentObject pco = {0};
     int res;
     int at = 0;
     const unsigned char *req;
     size_t req_size;
-    struct ccn_charbuf *result = NULL;
     struct ccn_face_instance *face_instance = NULL;
     struct face *reqface = NULL;
 
@@ -2327,35 +2395,33 @@ ccnd_req_destroyface(struct ccnd_handle *h, const unsigned char *msg, size_t siz
     if ((reqface->flags & CCN_FACE_GG) == 0) { at = __LINE__; goto Finish; }
     res = ccnd_destroy_face(h, face_instance->faceid);
     if (res < 0) { at = __LINE__; goto Finish; }
-    result = ccn_charbuf_create();
     face_instance->action = NULL;
     face_instance->ccnd_id = h->ccnd_id;
     face_instance->ccnd_id_size = sizeof(h->ccnd_id);
     face_instance->lifetime = 0;
-    res = ccnb_append_face_instance(result, face_instance);
+    res = ccnb_append_face_instance(reply_body, face_instance);
     if (res < 0) {
         at = __LINE__;
-        ccn_charbuf_destroy(&result);
     }
 Finish:
     if (at != 0)
         ccnd_msg(h, "ccnd_req_destroyface failed (line %d, res %d)", at, res);
     ccn_face_instance_destroy(&face_instance);
-    return(result);
+    return(res);
 }
 
 /**
  * Worker bee for two very similar public functions.
  */
-static struct ccn_charbuf *
+static int
 ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
-                   const unsigned char *msg, size_t size, int selfreg)
+                            const unsigned char *msg, size_t size, int selfreg,
+                            struct ccn_charbuf *reply_body)
 {
     struct ccn_parsed_ContentObject pco = {0};
     int res;
     const unsigned char *req;
     size_t req_size;
-    struct ccn_charbuf *result = NULL;
     struct ccn_forwarding_entry *forwarding_entry = NULL;
     struct face *face = NULL;
     struct face *reqface = NULL;
@@ -2417,17 +2483,16 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     if (res < 0)
         goto Finish;
     forwarding_entry->flags = res;
-    result = ccn_charbuf_create();
     forwarding_entry->action = NULL;
     forwarding_entry->ccnd_id = h->ccnd_id;
     forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
-    res = ccnb_append_forwarding_entry(result, forwarding_entry);
-    if (res < 0)
-        ccn_charbuf_destroy(&result);
+    res = ccnb_append_forwarding_entry(reply_body, forwarding_entry);
 Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
-    return(result);
+    if (res > 0)
+        res = 0;
+    return(res);
 }
 
 /**
@@ -2436,14 +2501,18 @@ Finish:
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @result on success the returned charbuf holds a new ccnd-encoded
- *         ForwardingEntry;
- *         returns NULL for any error.
+ * @param reply_body is a buffer to hold the Content of the reply, as a 
+ *         FaceInstance including faceid
+ * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
+ *         set the response type to NACK.
+ *
  */
-struct ccn_charbuf *
-ccnd_req_prefixreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+int
+ccnd_req_prefixreg(struct ccnd_handle *h,
+                   const unsigned char *msg, size_t size,
+                   struct ccn_charbuf *reply_body)
 {
-    return(ccnd_req_prefix_or_self_reg(h, msg, size, 0));
+    return(ccnd_req_prefix_or_self_reg(h, msg, size, 0, reply_body));
 }
 
 /**
@@ -2452,14 +2521,18 @@ ccnd_req_prefixreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @result on success the returned charbuf holds a new ccnd-encoded
- *         ForwardingEntry;
- *         returns NULL for any error.
+ * @param reply_body is a buffer to hold the Content of the reply, as a 
+ *         ccnb-encoded ForwardingEntry
+ * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
+ *         set the response type to NACK.
+ *
  */
-struct ccn_charbuf *
-ccnd_req_selfreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+int
+ccnd_req_selfreg(struct ccnd_handle *h,
+                 const unsigned char *msg, size_t size,
+                 struct ccn_charbuf *reply_body)
 {
-    return(ccnd_req_prefix_or_self_reg(h, msg, size, 1));
+    return(ccnd_req_prefix_or_self_reg(h, msg, size, 1, reply_body));
 }
 
 /**
@@ -2468,14 +2541,17 @@ ccnd_req_selfreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @result on success the returned charbuf holds a new ccnd-encoded
- *         ForwardingEntry;
- *         returns NULL for any error.
+ * @param reply_body is a buffer to hold the Content of the reply, as a 
+ *         ccnb-encoded ForwardingEntry
+ * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
+ *         set the response type to NACK.
+ *
  */
-struct ccn_charbuf *
-ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
+int
+ccnd_req_unreg(struct ccnd_handle *h,
+               const unsigned char *msg, size_t size,
+               struct ccn_charbuf *reply_body)
 {
-    struct ccn_charbuf *result = NULL;
     struct ccn_parsed_ContentObject pco = {0};
     int n_name_comp = 0;
     int res;
@@ -2554,17 +2630,14 @@ ccnd_req_unreg(struct ccnd_handle *h, const unsigned char *msg, size_t size)
     }
     if (!found) 
         goto Finish;    
-    result = ccn_charbuf_create();
     forwarding_entry->action = NULL;
     forwarding_entry->ccnd_id = h->ccnd_id;
     forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
-    res = ccnb_append_forwarding_entry(result, forwarding_entry);
-    if (res < 0)
-        ccn_charbuf_destroy(&result);
+    res = ccnb_append_forwarding_entry(reply_body, forwarding_entry);
 Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
-    return(result);
+    return(res);
 }
 
 /**
@@ -2753,7 +2826,7 @@ do_propagate(struct ccn_schedule *sched,
                 pe->flags |= CCN_PR_WAIT1;
                 next_delay = special_delay = ev->evint;
             }
-            stuff_and_send(h, face, pe->interest_msg, pe->size);
+            stuff_and_send(h, face, pe->interest_msg, pe->size, NULL, 0);
             ccnd_meter_bump(h, face->meter[FM_INTO], 1);
         }
         else
@@ -3663,6 +3736,7 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     struct ccn_skeleton_decoder decoder = {0};
     struct ccn_skeleton_decoder *d = &decoder;
     ssize_t dres;
+    enum ccn_dtag dtag;
     
     if ((face->flags & CCN_FACE_UNDECIDED) != 0) {
         face->flags &= ~CCN_FACE_UNDECIDED;
@@ -3673,8 +3747,18 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     }
     d->state |= CCN_DSTATE_PAUSE;
     dres = ccn_skeleton_decode(d, msg, size);
-    if (d->state >= 0 && CCN_GET_TT_FROM_DSTATE(d->state) == CCN_DTAG) {
-        if (pdu_ok && d->numval == CCN_DTAG_CCNProtocolDataUnit) {
+    if (d->state < 0)
+        abort(); /* cannot happen because of checks in caller */
+    if (CCN_GET_TT_FROM_DSTATE(d->state) != CCN_DTAG) {
+        ccnd_msg(h, "discarding unknown message; size = %lu", (unsigned long)size);
+        // XXX - keep a count?
+        return;
+    }
+    dtag = d->numval;
+    switch (dtag) {
+        case CCN_DTAG_CCNProtocolDataUnit:
+            if (!pdu_ok)
+                break;
             size -= d->index;
             if (size > 0)
                 size--;
@@ -3685,22 +3769,27 @@ process_input_message(struct ccnd_handle *h, struct face *face,
             while (d->index < size) {
                 dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
                 if (d->state != 0)
-                    break;
+                    abort(); /* cannot happen because of checks in caller */
                 /* The pdu_ok parameter limits the recursion depth */
                 process_input_message(h, face, msg + d->index - dres, dres, 0);
             }
             return;
-        }
-        else if (d->numval == CCN_DTAG_Interest) {
+        case CCN_DTAG_Interest:
             process_incoming_interest(h, face, msg, size);
             return;
-        }
-        else if (d->numval == CCN_DTAG_ContentObject) {
+        case CCN_DTAG_ContentObject:
             process_incoming_content(h, face, msg, size);
             return;
-        }
+        case CCN_DTAG_SequenceNumber:
+        case CCN_DTAG_SequenceAcknowledgement:
+            process_incoming_link_message(h, face, dtag, msg, size);
+            return;
+        default:
+            break;
     }
-    ccnd_msg(h, "discarding unknown message; size = %lu", (unsigned long)size);
+    ccnd_msg(h, "discarding unknown message; dtag=%u, size = %lu",
+             (unsigned)dtag,
+             (unsigned long)size);
 }
 
 static void
@@ -4074,8 +4163,10 @@ do_deferred_write(struct ccnd_handle *h, int fd)
     }
     if ((face->flags & CCN_FACE_CLOSING) != 0)
         shutdown_client_fd(h, fd);
-    else if ((face->flags & CCN_FACE_CONNECTING) != 0)
+    else if ((face->flags & CCN_FACE_CONNECTING) != 0) {
         face->flags &= ~CCN_FACE_CONNECTING;
+        ccnd_face_status_change(h, face->faceid);
+    }
     else
         ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
 }
@@ -4514,6 +4605,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->ticktock.data = h;
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->starttime = h->sec;
+    h->starttime_usec = h->usec;
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
     h->data_pause_microsec = 10000;

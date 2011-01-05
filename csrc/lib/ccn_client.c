@@ -1676,7 +1676,7 @@ ccn_get(struct ccn *h,
 }
 
 static enum ccn_upcall_res
-handle_ping_response(struct ccn_closure *selfp,
+handle_ccndid_response(struct ccn_closure *selfp,
                      enum ccn_upcall_kind kind,
                      struct ccn_upcall_info *info)
 {
@@ -1717,16 +1717,15 @@ handle_ping_response(struct ccn_closure *selfp,
 }
 
 static void
-ccn_initiate_ping(struct ccn *h)
+ccn_initiate_ccndid_fetch(struct ccn *h)
 {
     struct ccn_charbuf *name = NULL;
     struct ccn_closure *action = NULL;
     
     name = ccn_charbuf_create();
-    ccn_name_from_uri(name, "ccnx:/ccnx/ping");
-    ccn_name_append_nonce(name);
+    ccn_name_from_uri(name, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY");
     action = calloc(1, sizeof(*action));
-    action->p = &handle_ping_response;
+    action->p = &handle_ccndid_response;
     ccn_express_interest(h, name, action, NULL);
     ccn_charbuf_destroy(&name);
 }
@@ -1806,7 +1805,7 @@ ccn_initiate_prefix_reg(struct ccn *h,
         return;
     // fprintf(stderr, "GOT TO STUB ccn_initiate_prefix_reg()\n");
     if (h->ccndid == NULL) {
-        ccn_initiate_ping(h);
+        ccn_initiate_ccndid_fetch(h);
         i->flags |= CCN_FORW_WAITING_CCNDID;
         return;
     }

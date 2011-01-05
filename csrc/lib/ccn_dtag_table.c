@@ -112,6 +112,8 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_Root, "Root"},
     {CCN_DTAG_ProfileName, "ProfileName"},
     {CCN_DTAG_Parameters, "Parameters"},
+    {CCN_DTAG_SequenceNumber, "SequenceNumber"},
+    {CCN_DTAG_SequenceAcknowledgement, "SequenceAcknowledgement"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
     {0, 0}
 };

@@ -49,40 +49,40 @@ import org.ccnx.ccn.protocol.ContentObject;
  * for each module when necessary.
  */
 public class SystemConfiguration {
-	
+
 	/**
 	 * String constants, to define these in one place.
 	 */
 	public static final String STRING_FALSE = "false";
 	public static final String STRING_TRUE = "true";
-	
+
 	/**
 	 * System operation timeout. Very long timeout used to wait for system events
 	 * such as stopping Daemons.
 	 */
 	public final static int SYSTEM_STOP_TIMEOUT = 30000;
-	
+
 	/**
 	 * Very long timeout for network operations, in msec..
 	 */
 	public final static int MAX_TIMEOUT = 10000;
-	
+
 	/**
 	 * Extra-long timeout, e.g. to get around reexpression timing issues.
 	 */
 	public final static int EXTRA_LONG_TIMEOUT = 6000;
-	
+
 	/**
 	 * Longer timeout, for e.g. waiting for a latest version and being sure you
 	 * have anything available locally in msec.
 	 */
 	public final static int LONG_TIMEOUT = 3000;
-	
+
 	/**
 	 * Medium timeout, used as system default.
 	 */
 	public static final int MEDIUM_TIMEOUT = 1000;
-	
+
 	/**
 	 * Short timeout; for things you expect to exist or not exist locally.
 	 */
@@ -109,7 +109,7 @@ public class SystemConfiguration {
 	 * TODO - This is (currently) an architectual constant. Not all code has been changed to use it.
 	 */
 	public static final int INTEREST_REEXPRESSION_DEFAULT = 4000;
-		
+
 	public enum DEBUGGING_FLAGS {DEBUG_SIGN, DEBUG_VERIFY, DUMP_DAEMONCMD, REPO_EXITDUMP};
 	protected static HashMap<DEBUGGING_FLAGS,Boolean> DEBUG_FLAG_VALUES = new HashMap<DEBUGGING_FLAGS,Boolean>();
 
@@ -117,18 +117,18 @@ public class SystemConfiguration {
 	 * Property to set debug flags.
 	 */
 	public static final String DEBUG_FLAG_PROPERTY = "com.parc.ccn.DebugFlags";
-	
+
 	/**
 	 * Property to set directory to dump debug data.
 	 */
 	public static final String DEBUG_DATA_DIRECTORY_PROPERTY = "com.parc.ccn.DebugDataDirectory";
 	protected static final String DEFAULT_DEBUG_DATA_DIRECTORY = "./CCN_DEBUG_DATA";
 	public static String DEBUG_DATA_DIRECTORY = null;
-	
+
 	/** 
 	 * Tunable timeouts as well as timeout defaults.
 	 */
-	
+
 	/**
 	 * Enumerated Name List looping timeout in ms.
 	 * Default is 300ms
@@ -136,14 +136,14 @@ public class SystemConfiguration {
 	protected static final String CHILD_WAIT_INTERVAL_PROPERTY = "org.ccnx.EnumList.WaitInterval";
 	public final static int CHILD_WAIT_INTERVAL_DEFAULT = 300;
 	public static int CHILD_WAIT_INTERVAL = CHILD_WAIT_INTERVAL_DEFAULT;
-	
+
 	/**
 	 * Default timeout for the flow controller
 	 */
 	protected static final String FC_TIMEOUT_PROPERTY = "org.ccnx.fc.timeout";
 	public final static int FC_TIMEOUT_DEFAULT = MAX_TIMEOUT;
 	public static int FC_TIMEOUT = FC_TIMEOUT_DEFAULT;
-	
+
 	/**
 	 * Allow override to only save to a local repository
 	 */
@@ -151,16 +151,16 @@ public class SystemConfiguration {
 	protected final static String FC_LOCALREPOSITORY_ENV_VAR = "FC_LOCALREPOSITORY";
 	public final static boolean FC_LOCALREPOSITORY_DEFAULT = false;
 	public static boolean FC_LOCALREPOSITORY = FC_LOCALREPOSITORY_DEFAULT;
-	
+
 	/**
-	 * How long to wait for a ping timeout in CCNNetworkManager, in ms
+	 * How long to wait for a service discovery timeout in CCNNetworkManager, in ms
 	 *
 	 * This should be longer than the interest timeout to permit at least one re-expression.
 	 */
-	protected static final String PING_TIMEOUT_PROPERTY = "org.ccnx.ping.timeout";
-	public final static int PING_TIMEOUT_DEFAULT = 4200;
-	public static int PING_TIMEOUT = PING_TIMEOUT_DEFAULT;
-	
+	protected static final String CCNDID_DISCOVERY_TIMEOUT_PROPERTY = "org.ccnx.ccndid.timeout";
+	public final static int CCNDID_DISCOVERY_TIMEOUT_DEFAULT = 4200;
+	public static int CCNDID_DISCOVERY_TIMEOUT = CCNDID_DISCOVERY_TIMEOUT_DEFAULT;
+
 	/**
 	 * Pipeline size for pipeline in CCNAbstractInputStream
 	 * Default is 4
@@ -168,7 +168,7 @@ public class SystemConfiguration {
 	protected static final String PIPELINE_SIZE_PROPERTY = "org.ccnx.PipelineSize";
 	protected static final String PIPELINE_SIZE_ENV_VAR = "JAVA_PIPELINE_SIZE";
 	public static int PIPELINE_SIZE = 4;
-	
+
 	/**
 	 * Pipeline segment attempts for pipeline in CCNAbstractInputStream
 	 * Default is 5
@@ -176,7 +176,7 @@ public class SystemConfiguration {
 	protected static final String PIPELINE_ATTEMPTS_PROPERTY = "org.ccnx.PipelineAttempts";
 	protected static final String PIPELINE_ATTEMPTS_ENV_VAR = "JAVA_PIPELINE_ATTEMPTS";
 	public static int PIPELINE_SEGMENTATTEMPTS = 5;
-	
+
 	/**
 	 * Pipeline round trip time factor for pipeline in CCNAbstractInputStream
 	 * Default is 2
@@ -184,7 +184,7 @@ public class SystemConfiguration {
 	protected static final String PIPELINE_RTT_PROPERTY = "org.ccnx.PipelineRTTFactor";
 	protected static final String PIPELINE_RTT_ENV_VAR = "JAVA_PIPELINE_RTTFACTOR";
 	public static int PIPELINE_RTTFACTOR = 2;
-	
+
 	/**
 	 * Pipeline stat printouts in CCNAbstractInputStream
 	 * Default is off
@@ -192,7 +192,7 @@ public class SystemConfiguration {
 	protected static final String PIPELINE_STATS_PROPERTY = "org.ccnx.PipelineStats";
 	protected static final String PIPELINE_STATS_ENV_VAR = "JAVA_PIPELINE_STATS";
 	public static boolean PIPELINE_STATS = false;
-		
+
 	/**
 	 * Backwards-compatible handling of old header names. 
 	 * Current default is true; eventually will be false.
@@ -200,8 +200,8 @@ public class SystemConfiguration {
 	protected static final String OLD_HEADER_NAMES_PROPERTY = "org.ccnx.OldHeaderNames";
 	protected static final String OLD_HEADER_NAMES_ENV_VAR = "CCNX_OLD_HEADER_NAMES";
 	public static boolean OLD_HEADER_NAMES = true;
-	
-	
+
+
 	/**
 	 * Timeout used for communication with local 'ccnd' for control operations.
 	 *
@@ -213,14 +213,14 @@ public class SystemConfiguration {
 	protected final static String CCND_OP_TIMEOUT_ENV_VAR = "CCND_OP_TIMEOUT";
 	public final static int CCND_OP_TIMEOUT_DEFAULT = 4200;
 	public static int CCND_OP_TIMEOUT = CCND_OP_TIMEOUT_DEFAULT;
-	
+
 	/**
 	 * System default timeout
 	 */
 	protected static final String CCNX_TIMEOUT_PROPERTY = "org.ccnx.default.timeout";
 	protected final static String CCNX_TIMEOUT_ENV_VAR = "CCNX_TIMEOUT";
 	public final static int CCNX_TIMEOUT_DEFAULT = EXTRA_LONG_TIMEOUT;
-	
+
 	/**
 	 * GetLatestVersion attempt timeout.
 	 * TODO  This timeout is set to MEDIUM_TIMEOUT to work around the problem
@@ -232,65 +232,65 @@ public class SystemConfiguration {
 	protected final static String GLV_ATTEMPT_TIMEOUT_ENV_VAR = "GLV_ATTEMPT_TIMEOUT";
 	public final static int GLV_ATTEMPT_TIMEOUT_DEFAULT = SHORT_TIMEOUT;
 	public static int GLV_ATTEMPT_TIMEOUT = GLV_ATTEMPT_TIMEOUT_DEFAULT;
-	
+
 	/**
 	 * "Short timeout" that can be set
 	 */
 	protected static final String SETTABLE_SHORT_TIMEOUT_PROPERTY = "org.ccnx.short.timeout";
 	protected final static String SETTABLE_SHORT_TIMEOUT_ENV_VAR = "SETTABLE_SHORT_TIMEOUT";
 	public static int SETTABLE_SHORT_TIMEOUT = SHORT_TIMEOUT;
-	
+
 	/**
 	 * Settable system default timeout.
 	 */
 	protected static int _defaultTimeout = CCNX_TIMEOUT_DEFAULT;
-	
+
 	/**
 	 * Get system default timeout.
 	 * @return the default timeout.
 	 */
 	public static int getDefaultTimeout() { return _defaultTimeout; }
-	
+
 	/**
 	 * Set system default timeout.
 	 */
 	public static void setDefaultTimeout(int newTimeout) { _defaultTimeout = newTimeout; }
-	
+
 	/**
 	 * No timeout. Should be single value used in all places in the code where you
 	 * want to block forever.
 	 */
 	public final static int NO_TIMEOUT = -1;
-	
+
 	/**
 	 * Set the maximum number of attempts that VersioningProfile.getLatestVersion will
 	 * try to get a later version of an object.
 	 */
 	public static final int GET_LATEST_VERSION_ATTEMPTS = 10;
-	
-	
+
+
 	/**
 	 * Can set compile-time default encoding here. Choices are
 	 * currently "Text" and "Binary", or better yet
 	 * BinaryXMLCodec.codecName() or TextXMLCodec.codecName().
 	 */
 	protected static final String SYSTEM_DEFAULT_ENCODING = BinaryXMLCodec.codecName();
-	
+
 	/**
 	 * Run-time default. Set to command line property if given, if not,
 	 * the system default above.
 	 */
 	protected static String DEFAULT_ENCODING = null;
-	
+
 	/**
 	 * Command-line property to set default encoding
 	 * @return
 	 */
 	protected static final String DEFAULT_ENCODING_PROPERTY = 
 		"com.parc.ccn.data.DefaultEncoding";
-	
+
 	public static final int DEBUG_RADIX = 34;
-	
+
 	/**
 	 * Obtain the management bean for this runtime if it is available.
 	 * The class of the management bean is discovered at runtime and there
@@ -323,10 +323,10 @@ public class SystemConfiguration {
 				setDebugFlag(flags[i]);
 			}
 		}
-			
+
 		DEBUG_DATA_DIRECTORY = System.getProperty(DEBUG_DATA_DIRECTORY_PROPERTY, DEFAULT_DEBUG_DATA_DIRECTORY);
 	}
-	
+
 	static {
 		// Allow override of basic protocol
 		String proto = SystemConfiguration.retrievePropertyOrEnvironmentVariable(AGENT_PROTOCOL_PROPERTY, AGENT_PROTOCOL_ENVIRONMENT_VARIABLE, DEFAULT_PROTOCOL);
@@ -359,7 +359,7 @@ public class SystemConfiguration {
 		// Allow override of default enumerated name list child wait timeout.
 		try {
 			CHILD_WAIT_INTERVAL = Integer.parseInt(System.getProperty(CHILD_WAIT_INTERVAL_PROPERTY, Integer.toString(CHILD_WAIT_INTERVAL_DEFAULT)));
-//			Log.fine("CHILD_WAIT_INTERVAL = " + CHILD_WAIT_INTERVAL);
+			//			Log.fine("CHILD_WAIT_INTERVAL = " + CHILD_WAIT_INTERVAL);
 		} catch (NumberFormatException e) {
 			System.err.println("The ChildWaitInterval must be an integer.");
 			throw e;
@@ -373,7 +373,7 @@ public class SystemConfiguration {
 			System.err.println("The PipelineSize must be an integer.");
 			throw e;
 		}
-	
+
 		// Allow override of default pipeline size for CCNAbstractInputStream
 		try {
 			PIPELINE_SEGMENTATTEMPTS = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_ATTEMPTS_PROPERTY, PIPELINE_ATTEMPTS_ENV_VAR, "5"));
@@ -382,7 +382,7 @@ public class SystemConfiguration {
 			System.err.println("The PipelineAttempts must be an integer.");
 
 		}
-		
+
 		// Allow override of default pipeline rtt multiplication factor for CCNAbstractInputStream
 		try {
 			PIPELINE_RTTFACTOR = Integer.parseInt(retrievePropertyOrEnvironmentVariable(PIPELINE_RTT_PROPERTY, PIPELINE_RTT_ENV_VAR, "2"));
@@ -390,28 +390,28 @@ public class SystemConfiguration {
 			System.err.println("The PipelineRTTFactor must be an integer.");
 
 		}
-		
+
 		// Allow printing of pipeline stats in CCNAbstractInputStream
 		PIPELINE_STATS = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, STRING_FALSE));
-				
-			// Allow override of default ping timeout.
+
+		// Allow override of default ccndID discovery timeout.
 		try {
-			PING_TIMEOUT = Integer.parseInt(System.getProperty(PING_TIMEOUT_PROPERTY, Integer.toString(PING_TIMEOUT_DEFAULT)));
-//			Log.fine("PING_TIMEOUT = " + PING_TIMEOUT);
+			CCNDID_DISCOVERY_TIMEOUT = Integer.parseInt(System.getProperty(CCNDID_DISCOVERY_TIMEOUT_PROPERTY, Integer.toString(CCNDID_DISCOVERY_TIMEOUT_DEFAULT)));
+			//			Log.fine("CCNDID_DISCOVERY_TIMEOUT = " + CCNDID_DISCOVERY_TIMEOUT);
 		} catch (NumberFormatException e) {
-			System.err.println("The ping timeout must be an integer.");
+			System.err.println("The ccndID discovery timeout must be an integer.");
 			throw e;
 		}
-		
+
 		// Allow override of default flow controller timeout.
 		try {
 			FC_TIMEOUT = Integer.parseInt(System.getProperty(FC_TIMEOUT_PROPERTY, Integer.toString(FC_TIMEOUT_DEFAULT)));
-//			Log.fine("FC_TIMEOUT = " + FC_TIMEOUT);
+			//			Log.fine("FC_TIMEOUT = " + FC_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The default flow controller timeout must be an integer.");
 			throw e;
 		}
-		
+
 		// Allow override for local repository override 
 		try {
 			FC_LOCALREPOSITORY = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(FC_LOCALREPOSITORY_PROPERTY, FC_LOCALREPOSITORY_ENV_VAR, Boolean.toString(FC_LOCALREPOSITORY_DEFAULT)));
@@ -419,11 +419,11 @@ public class SystemConfiguration {
 			System.err.println("The local repository flow controller override must be a boolean.");
 			throw e;
 		}
-		
+
 		// Allow override of ccn default timeout.
 		try {
 			_defaultTimeout = Integer.parseInt(retrievePropertyOrEnvironmentVariable(CCNX_TIMEOUT_PROPERTY, CCNX_TIMEOUT_ENV_VAR, Integer.toString(CCNX_TIMEOUT_DEFAULT)));
-//			Log.fine("CCNX_TIMEOUT = " + CCNX_TIMEOUT);
+			//			Log.fine("CCNX_TIMEOUT = " + CCNX_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ccnd default timeout must be an integer.");
 			throw e;
@@ -432,31 +432,31 @@ public class SystemConfiguration {
 		// Allow override of ccnd op timeout.
 		try {
 			CCND_OP_TIMEOUT = Integer.parseInt(System.getProperty(CCND_OP_TIMEOUT_PROPERTY, Integer.toString(CCND_OP_TIMEOUT_DEFAULT)));
-//			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
+			//			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ccnd op timeout must be an integer.");
 			throw e;
 		}
-		
+
 		// Allow override of getLatestVersion attempt timeout.
 		try {
 			GLV_ATTEMPT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(GLV_ATTEMPT_TIMEOUT_PROPERTY, GLV_ATTEMPT_TIMEOUT_ENV_VAR, Integer.toString(GLV_ATTEMPT_TIMEOUT_DEFAULT)));
-//			Log.fine("GLV_ATTEMPT_TIMEOUT = " + GLV_ATTEMPT_TIMEOUT);
+			//			Log.fine("GLV_ATTEMPT_TIMEOUT = " + GLV_ATTEMPT_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The getlatestversion attempt timeout must be an integer.");
 			throw e;
 		}
-		
+
 		// Allow override of settable short timeout.
 		try {
 			SETTABLE_SHORT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(SETTABLE_SHORT_TIMEOUT_PROPERTY, SETTABLE_SHORT_TIMEOUT_ENV_VAR, Integer.toString(SHORT_TIMEOUT)));
-//			Log.fine("SETTABLE_SHORT_TIMEOUT = " + SETTABLE_SHORT_TIMEOUT);
+			//			Log.fine("SETTABLE_SHORT_TIMEOUT = " + SETTABLE_SHORT_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The settable short timeout must be an integer.");
 			throw e;
 		}
 
-		
+
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
 				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, STRING_TRUE));
@@ -464,10 +464,10 @@ public class SystemConfiguration {
 	}
 
 	public static String getLocalHost() {
-//		InetAddress.getLocalHost().toString(),
+		//		InetAddress.getLocalHost().toString(),
 		return "127.0.0.1"; // using InetAddress.getLocalHost gives bad results
 	}
-	
+
 	/**
 	 * Order of precedence (highest to lowest):
 	 * 
@@ -493,18 +493,18 @@ public class SystemConfiguration {
 		}
 		return DEFAULT_ENCODING;
 	}
-	
+
 	public static void setDefaultEncoding(String encoding) {
 		DEFAULT_ENCODING = encoding;
 	}
-	
+
 	public static boolean checkDebugFlag(DEBUGGING_FLAGS debugFlag) {
 		Boolean result = DEBUG_FLAG_VALUES.get(debugFlag);
 		if (null == result)
 			return false;
 		return result.booleanValue();
 	}
-	
+
 	/**
 	 * Management bean for this runtime, if available.  This is not dependent
 	 * upon availability of any particular class but discovered dynamically 
@@ -525,7 +525,7 @@ public class SystemConfiguration {
 			Log.info("Cannot set debugging flag, no known flag: " + debugFlag + ". Choices are: " + debugFlagList());
 		}
 	}
-	
+
 	public static String debugFlagList() {
 		DEBUGGING_FLAGS [] availableFlags = DEBUGGING_FLAGS.values();
 		StringBuffer flags = new StringBuffer();
@@ -536,15 +536,15 @@ public class SystemConfiguration {
 		}
 		return flags.toString();
 	}
-	
+
 	public static void setDebugFlag(String debugFlag) {
 		setDebugFlag(debugFlag, true);
 	}
-	
+
 	public static void setDebugDataDirectory(String dir) {
 		DEBUG_DATA_DIRECTORY=dir;
 	}
-	
+
 	public static void outputDebugData(ContentName name, XMLEncodable data) {
 		try {
 			byte [] encoded = data.encode();
@@ -553,7 +553,7 @@ public class SystemConfiguration {
 			Log.warning("Cannot encode object : " + name + " to output for debug.");
 		}
 	}
-	
+
 	public static void outputDebugData(ContentName name, byte [] data) {
 		// Output debug data under a given name.
 		try {	
@@ -570,13 +570,13 @@ public class SystemConfiguration {
 					Log.warning("outputDebugData: cannot create data parent directory: " + outputParent);
 				}
 			}
-			
+
 			byte [] contentDigest = CCNDigestHelper.digest(data);
 			String contentName = new BigInteger(1, contentDigest).toString(DEBUG_RADIX);
 			File outputFile = new File(outputParent, contentName);
-			
+
 			Log.finest("Attempting to output debug data for name " + name.toString() + " to file " + outputFile.getAbsolutePath());
-			
+
 			FileOutputStream fos = new FileOutputStream(outputFile);
 			fos.write(data);
 			fos.close();
@@ -584,7 +584,7 @@ public class SystemConfiguration {
 			Log.warning("Exception attempting to log debug data for name: " + name.toString() + " " + e.getClass().getName() + ": " + e.getMessage());
 		}
 	}
-	
+
 	public static void outputDebugObject(File dataDir, String postfix, ContentObject object) {
 		// Output debug data under a given name.
 		try {	
@@ -601,7 +601,7 @@ public class SystemConfiguration {
 					Log.warning("outputDebugData: cannot create data parent directory: " + outputParent);
 				}
 			}
-			*/
+			 */
 			byte [] objectDigest = object.digest();
 			StringBuffer contentName = new StringBuffer(new BigInteger(1, objectDigest).toString(DEBUG_RADIX));
 			if (null != postfix) {
@@ -609,9 +609,9 @@ public class SystemConfiguration {
 			}
 			contentName.append(".ccnb");
 			File outputFile = new File(dataDir, contentName.toString());
-			
+
 			Log.finest("Attempting to output debug data for name " + object.name().toString() + " to file " + outputFile.getAbsolutePath());
-			
+
 			FileOutputStream fos = new FileOutputStream(outputFile);
 			object.encode(fos);
 			fos.close();
@@ -619,12 +619,12 @@ public class SystemConfiguration {
 			Log.warning("Exception attempting to log debug data for name: " + object.name().toString() + " " + e.getClass().getName() + ": " + e.getMessage());
 		}
 	}
-	
+
 	public static void outputDebugObject(ContentObject object) {
 		outputDebugObject(new File(DEBUG_DATA_DIRECTORY), null, object);
 	}
 
-	
+
 	/**
 	 * Log information about an object at level Level.INFO. See logObject(Level, String, ContentObject) for details.
 	 * @param message String to prefix output with
@@ -634,7 +634,7 @@ public class SystemConfiguration {
 	public static void logObject(String message, ContentObject co) {
 		logObject(Level.INFO, message, co);
 	}
-	
+
 	/**
 	 * Log the gory details of an object, including debugging information relevant to object signing.
 	 * @param level log Level to control printing of log messages
@@ -651,9 +651,9 @@ public class SystemConfiguration {
 		} catch (ContentEncodingException xs) {
 			Log.log(level, "Cannot encode object for logging: {0}.", co.name());
 		}
-		
+
 	}
-	
+
 	protected static String _loggingConfiguration;
 	/**
 	 * TODO: Fix this incorrect comment
@@ -661,12 +661,12 @@ public class SystemConfiguration {
 	 * access control; used for testing.
 	 */
 	public static final String LOGGING_CONFIGURATION_PROPERTY = "com.parc.ccn.LoggingConfiguration";
-	
+
 	/**
 	 * Strings of interest to be set in the logging configuration
 	 */
 	public static final String DETAILED_LOGGER = "DetailedLogger";
-	
+
 	/**
 	 * Configure logging itself. This is a set of concatenated strings set as a 
 	 * command line property; it can be used to set transparent properties read 
@@ -675,11 +675,11 @@ public class SystemConfiguration {
 	public static String getLoggingConfiguration() {
 		if (null == _loggingConfiguration) {
 			_loggingConfiguration = System.getProperty(LOGGING_CONFIGURATION_PROPERTY, "");
-			
+
 		}
 		return _loggingConfiguration;
 	}
-	
+
 	public static boolean hasLoggingConfigurationProperty(String property) {
 		if (null == property)
 			return false;
@@ -707,7 +707,7 @@ public class SystemConfiguration {
 		if (null == getManagementBean()) {
 			return null;
 		}
-		
+
 		try {
 			String pid = null;
 			String vmname = null;
@@ -739,25 +739,25 @@ public class SystemConfiguration {
 			return null;
 		}
 	}
-	
+
 	protected static Boolean _accessControlDisabled;
 	/**
 	 * Property to turn off access control flags. Set it to any value and it will turn off
 	 * access control; used for testing.
 	 */
 	public static final String ACCESS_CONTROL_DISABLED_PROPERTY = "com.parc.ccn.DisableAccessControl";
-	
+
 	/**
 	 * Allow control of access control at the command line.
 	 */
 	public static boolean disableAccessControl() {
 		if (null == _accessControlDisabled) {
 			_accessControlDisabled = (null != System.getProperty(ACCESS_CONTROL_DISABLED_PROPERTY));
-			
+
 		}
 		return _accessControlDisabled;
 	}
-	
+
 	public static void setAccessControlDisabled(boolean accessControlDisabled) {
 		_accessControlDisabled = accessControlDisabled;
 	}

@@ -390,7 +390,7 @@ collect_stats_html(struct ccnd_handle *h)
         "</style>"
         "</head>" NL
         "<body bgcolor='#%06X'>"
-        "<p class='header'>%s ccnd[%d] local port %s api %d start %ld now %ld.%06u</p>" NL
+        "<p class='header'>%s ccnd[%d] local port %s api %d start %ld.%06u now %ld.%06u</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
         " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
@@ -404,7 +404,7 @@ collect_stats_html(struct ccnd_handle *h)
         pid,
         portstr,
         (int)CCN_API_VERSION,
-        h->starttime,
+        h->starttime, h->starttime_usec,
         h->sec,
         h->usec,
         (unsigned long long)h->accession,
@@ -550,11 +550,11 @@ collect_stats_xml(struct ccnd_handle *h)
         ccn_charbuf_putf(b, "%02X", h->ccnd_id[i]);
     ccn_charbuf_putf(b, "</ccndid>"
         "<apiversion>%d</apiversion>"
-        "<starttime>%ld</starttime>"
+        "<starttime>%ld.%06u</starttime>"
         "<now>%ld.%06u</now>"
         "</identity>",
         (int)CCN_API_VERSION,
-        h->starttime,
+        h->starttime, h->starttime_usec,
         h->sec,
         h->usec);
     ccn_charbuf_putf(b,

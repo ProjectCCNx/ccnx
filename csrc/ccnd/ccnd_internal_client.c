@@ -51,10 +51,12 @@
 
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
 
-static void
-ccnd_init_service_ccnb(struct ccnd_handle *ccnd)
+#define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY"
+#define CCNDID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/ccnd/KEY"
+
+static struct ccn_charbuf *
+ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshness)
 {
-    const char *baseuri = "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY";
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     struct ccn *h = ccnd->internal_client;
     struct ccn_charbuf *name = ccn_charbuf_create();
@@ -72,7 +74,7 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd)
     ccn_charbuf_append_value(keyid, 0, 1);
     ccn_charbuf_append_charbuf(keyid, pubid);
     ccn_name_append(name, keyid->buf, keyid->length);
-    ccn_create_version(h, name, CCN_V_NOW, 0, 0);
+    ccn_create_version(h, name, 0, ccnd->starttime, ccnd->starttime_usec * 1000);
     sp.template_ccnb = ccn_charbuf_create();
     ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_SignedInfo, CCN_DTAG);
     ccn_charbuf_append_tt(sp.template_ccnb, CCN_DTAG_KeyLocator, CCN_DTAG);
@@ -89,15 +91,15 @@ ccnd_init_service_ccnb(struct ccnd_handle *ccnd)
     ccn_name_from_uri(name, "%00");
     sp.sp_flags |= CCN_SP_FINAL_BLOCK;
     sp.type = CCN_CONTENT_KEY;
-    sp.freshness = 300;
+    sp.freshness = freshness;
     res = ccn_sign_content(h, cob, name, &sp, pubkey->buf, pubkey->length);
     if (res != 0) abort();
-    ccnd->service_ccnb = cob;
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&pubid);
     ccn_charbuf_destroy(&pubkey);
     ccn_charbuf_destroy(&keyid);
     ccn_charbuf_destroy(&sp.template_ccnb);
+    return(cob);
 }
 
 /**
@@ -191,21 +193,27 @@ ccnd_answer_req(struct ccn_closure *selfp,
         case OP_PING:
             reply_body = ccn_charbuf_create();
             sp.freshness = (info->pi->prefix_comps == info->matched_comps) ? 60 : 5;
+            res = 0;
             break;
         case OP_NEWFACE:
-            reply_body = ccnd_req_newface(ccnd, final_comp, final_size);
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_newface(ccnd, final_comp, final_size, reply_body);
             break;
         case OP_DESTROYFACE:
-            reply_body = ccnd_req_destroyface(ccnd, final_comp, final_size);
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_destroyface(ccnd, final_comp, final_size, reply_body);
             break;
         case OP_PREFIXREG:
-            reply_body = ccnd_req_prefixreg(ccnd, final_comp, final_size);
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_prefixreg(ccnd, final_comp, final_size, reply_body);
             break;
         case OP_SELFREG:
-            reply_body = ccnd_req_selfreg(ccnd, final_comp, final_size);
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_selfreg(ccnd, final_comp, final_size, reply_body);
             break;
         case OP_UNREG:
-            reply_body = ccnd_req_unreg(ccnd, final_comp, final_size);
+            reply_body = ccn_charbuf_create();
+            res = ccnd_req_unreg(ccnd, final_comp, final_size, reply_body);
             break;
         case OP_NOTICE:
             ccnd_start_notice(ccnd);
@@ -213,7 +221,7 @@ ccnd_answer_req(struct ccn_closure *selfp,
             break;
         case OP_SERVICE:
             if (ccnd->service_ccnb == NULL)
-                ccnd_init_service_ccnb(ccnd);
+                ccnd->service_ccnb = ccnd_init_service_ccnb(ccnd, CCNDID_LOCAL_URI, 600);
             if (ccn_content_matches_interest(
                     ccnd->service_ccnb->buf,
                     ccnd->service_ccnb->length,
@@ -228,14 +236,32 @@ ccnd_answer_req(struct ccn_closure *selfp,
                 res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
                 goto Finish;
             }
+            // XXX this needs refactoring.
+            if (ccnd->neighbor_ccnb == NULL)
+                ccnd->neighbor_ccnb = ccnd_init_service_ccnb(ccnd, CCNDID_NEIGHBOR_URI, 5);
+            if (ccn_content_matches_interest(
+                    ccnd->neighbor_ccnb->buf,
+                    ccnd->neighbor_ccnb->length,
+                    1,
+                    NULL,
+                    info->interest_ccnb,
+                    info->pi->offset[CCN_PI_E],
+                    info->pi
+                )) {
+                ccn_put(info->h, ccnd->neighbor_ccnb->buf,
+                                 ccnd->neighbor_ccnb->length);
+                res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+                goto Finish;
+            }
             goto Bail;
             break;
         default:
             goto Bail;
     }
-    if (reply_body == NULL)
+    if (res < 0)
         goto Bail;
-    
+    if (res == CCN_CONTENT_NACK)
+        sp.type = res;
     msg = ccn_charbuf_create();
     name = ccn_charbuf_create();
     start = info->pi->offset[CCN_PI_B_Name];
@@ -573,10 +599,12 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
         ccn_destroy(&ccnd->internal_client);
         return(-1);
     }
+#if (CCND_PING+0)
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/ping",
                     &ccnd_answer_req, OP_PING);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/ping",
                     &ccnd_answer_req, OP_PING);
+#endif
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/newface",
                     &ccnd_answer_req, OP_NEWFACE + MUST_VERIFY1);
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/destroyface",
@@ -590,6 +618,8 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
     ccnd_uri_listen(ccnd, "ccnx:/ccnx/" CCND_ID_TEMPL "/" CCND_NOTICE_NAME,
                     &ccnd_answer_req, OP_NOTICE);
     ccnd_uri_listen(ccnd, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd",
+                    &ccnd_answer_req, OP_SERVICE);
+    ccnd_uri_listen(ccnd, "ccnx:/%C1.M.S.neighborhood",
                     &ccnd_answer_req, OP_SERVICE);
     ccnd_reg_ccnx_ccndid(ccnd);
     ccnd_reg_uri(ccnd, "ccnx:/%C1.M.S.localhost",
@@ -614,6 +644,7 @@ ccnd_internal_client_stop(struct ccnd_handle *ccnd)
     ccn_indexbuf_destroy(&ccnd->chface);
     ccn_destroy(&ccnd->internal_client);
     ccn_charbuf_destroy(&ccnd->service_ccnb);
+    ccn_charbuf_destroy(&ccnd->neighbor_ccnb);
     if (ccnd->internal_client_refresh != NULL)
         ccn_schedule_cancel(ccnd->sched, ccnd->internal_client_refresh);
 }

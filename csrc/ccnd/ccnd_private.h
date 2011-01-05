@@ -91,6 +91,7 @@ struct ccnd_handle {
     long sec;                       /**< cached gettime seconds */
     unsigned usec;                  /**< cached gettime microseconds */
     long starttime;                 /**< ccnd start time, in seconds */
+    unsigned starttime_usec;        /**< ccnd start time fractional part */
     struct ccn_schedule *sched;     /**< our schedule */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
@@ -134,6 +135,7 @@ struct ccnd_handle {
     struct ccn *internal_client;    /**< internal client */
     struct face *face0;             /**< special face for internal client */
     struct ccn_charbuf *service_ccnb; /**< for local service discovery */
+    struct ccn_charbuf *neighbor_ccnb; /**< for neighbor service discovery */
     struct ccn_seqwriter *notice;   /**< for notices of status changes */
     struct ccn_indexbuf *chface;    /**< faceids w/ recent status changes */
     struct ccn_scheduled_event *internal_client_refresh;
@@ -201,6 +203,8 @@ struct face {
     const struct sockaddr *addr;
     socklen_t addrlen;
     int pending_interests;
+    unsigned rrun;
+    uintmax_t rseq;
     struct ccnd_meter *meter[CCND_FACE_METER_N];
 };
 
@@ -359,45 +363,45 @@ int ccnd_init_internal_keystore(struct ccnd_handle *);
 int ccnd_internal_client_start(struct ccnd_handle *);
 void ccnd_internal_client_stop(struct ccnd_handle *);
 
-/**
+/*
  * The internal client calls this with the argument portion ARG of
  * a face-creation request (/ccnx/CCNDID/newface/ARG)
- * The result, if not NULL, will be used as the Content of the reply.
  */
-struct ccn_charbuf *ccnd_req_newface(struct ccnd_handle *h,
-                                     const unsigned char *msg, size_t size);
+int ccnd_req_newface(struct ccnd_handle *h,
+                     const unsigned char *msg, size_t size,
+                     struct ccn_charbuf *reply_body);
 
-/**
+/*
  * The internal client calls this with the argument portion ARG of
  * a face-destroy request (/ccnx/CCNDID/destroyface/ARG)
- * The result, if not NULL, will be used as the Content of the reply.
  */
-struct ccn_charbuf *ccnd_req_destroyface(struct ccnd_handle *h,
-                                         const unsigned char *msg, size_t size);
+int ccnd_req_destroyface(struct ccnd_handle *h,
+                         const unsigned char *msg, size_t size,
+                         struct ccn_charbuf *reply_body);
 
-/**
+/*
  * The internal client calls this with the argument portion ARG of
  * a prefix-registration request (/ccnx/CCNDID/prefixreg/ARG)
- * The result, if not NULL, will be used as the Content of the reply.
  */
-struct ccn_charbuf *ccnd_req_prefixreg(struct ccnd_handle *h,
-                                       const unsigned char *msg, size_t size);
+int ccnd_req_prefixreg(struct ccnd_handle *h,
+                       const unsigned char *msg, size_t size,
+                       struct ccn_charbuf *reply_body);
 
-/**
+/*
  * The internal client calls this with the argument portion ARG of
  * a prefix-registration request for self (/ccnx/CCNDID/selfreg/ARG)
- * The result, if not NULL, will be used as the Content of the reply.
  */
-struct ccn_charbuf *ccnd_req_selfreg(struct ccnd_handle *h,
-                                     const unsigned char *msg, size_t size);
+int ccnd_req_selfreg(struct ccnd_handle *h,
+                     const unsigned char *msg, size_t size,
+                     struct ccn_charbuf *reply_body);
 
-/**
+/*
  * The internal client calls this with the argument portion ARG of
  * a prefix-unregistration request (/ccnx/CCNDID/unreg/ARG)
- * The result, if not NULL, will be used as the Content of the reply.
  */
-struct ccn_charbuf *ccnd_req_unreg(struct ccnd_handle *h,
-                                   const unsigned char *msg, size_t size);
+int ccnd_req_unreg(struct ccnd_handle *h,
+                   const unsigned char *msg, size_t size,
+                   struct ccn_charbuf *reply_body);
 
 int ccnd_reg_uri(struct ccnd_handle *h,
                  const char *uri,

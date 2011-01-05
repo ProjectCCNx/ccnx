@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -207,7 +207,13 @@ public class DataUtils {
 		byte [] encodedBytes = base64Encode(input);
 		return lineWrap(DataUtils.getUTF8StringFromBytes(encodedBytes), LINELEN);
 	}
-
+	/**
+	 * @deprecated not used in CCNx, candidate for removal in future release. 
+	 * @param input
+	 * @param lineLength
+	 * @return the byte array with added CRLF line-breaks and null termination.
+	 */
+	@Deprecated
 	public static byte [] lineWrapBase64(byte [] input, int lineLength) {
 		int finalLen = input.length + 2*(input.length/lineLength) + 3;
 		byte output[] = new byte[finalLen];

@@ -252,6 +252,13 @@ local machine.
 %C1.M.S.localhost
 ............................
 
+Similarly, `%C1.M.S.neighorhood' may be used as the first component of a namespace that is
+meant for our host and those directly connected.
+Note that, unlike `%C1.M.S.localhost', this not rigorously enforced at present.
+............................
+%C1.M.S.neighorhood
+............................
+
 === Service discovery:
 This is used to denote a portion of the name tree used for service discovery.
 ............................
