@@ -17,6 +17,7 @@ ccnputfile.1.html: ccnputfile.1.txt
 ccnputmeta.1.html: ccnputmeta.1.txt
 ccngetmeta.1.html: ccngetmeta.1.txt
 ccnrm.1.html: ccnrm.1.txt
+ccnseqwriter.1.html: ccnseqwriter.1.txt
 ccn_repo.1.html: ccn_repo.1.txt
 ccn_ccnbtoxml.1.pdf: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1.pdf: ccn_xmltoccnb.1.txt
@@ -37,6 +38,7 @@ ccnputfile.1.pdf: ccnputfile.1.txt
 ccnputmeta.1.pdf: ccnputmeta.1.txt
 ccngetmeta.1.pdf: ccngetmeta.1.txt
 ccnrm.1.pdf: ccnrm.1.txt
+ccnseqwriter.1.pdf: ccnseqwriter.1.txt
 ccn_repo.1.pdf: ccn_repo.1.txt
 ccn_ccnbtoxml.1: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1: ccn_xmltoccnb.1.txt
@@ -57,4 +59,5 @@ ccnputfile.1: ccnputfile.1.txt
 ccnputmeta.1: ccnputmeta.1.txt
 ccngetmeta.1: ccngetmeta.1.txt
 ccnrm.1: ccnrm.1.txt
+ccnseqwriter.1: ccnseqwriter.1.txt
 ccn_repo.1: ccn_repo.1.txt
