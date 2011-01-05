@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009, 2010, 2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -60,7 +60,7 @@ clean: _always
 
 test: test-alone
 test-alone: _always
-	netstat -a > test-alone
+	netstat -a -n > test-alone
 	grep '^..p.*[.]61999' test-alone || rm test-alone
 	test \! -f test-alone        # Fail here if conflicting tests are running
 
