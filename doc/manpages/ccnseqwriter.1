@@ -1,0 +1,58 @@
+'\" t
+.\"     Title: ccnseqwriter
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 01/06/2011
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCNSEQWRITER" "1" "01/06/2011" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnseqwriter \- Send data from stdin using ccn versioning and segmentation\&.
+.SH "SYNOPSIS"
+.sp
+\fBccnseqwriter\fR [\-h] [\-b \fIblocksize\fR] \fIccnx:/some/uri\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccnseqwriter\fR utility creates new ccn content using stdin as the source of data\&. The argument is a CCNx URI to be used for the newly signed data; appropriate versioning and segmentation will be added\&.
+.sp
+No attempt is made to save the data in a repository, so if nothing expresses interest in the data, \fBccnseqwriter\fR will simply wait forever\&.
+.SH "OPTIONS"
+.PP
+\fB\-h\fR
+.RS 4
+Print usage to stderr and exit\&.
+.RE
+.PP
+\fB\-b\fR \fIblocksize\fR
+.RS 4
+Use given blocksize instead of the default (1024 bytes)\&. The maximum size allowed is 4096 bytes\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (diagnostic error written on stderr)
+.RE
+.SH "SEE ALSO"
+.sp
+\fBccnputfile\fR(1)
+.SH "AUTHOR"
+.sp
+Michael Plass <plass@parc\&.com>
