@@ -20,6 +20,7 @@ package org.ccnx.ccn.test.profiles.versioning;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -27,8 +28,11 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.io.content.CCNStringObject;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.InterestData;
 import org.ccnx.ccn.profiles.versioning.VersioningInterestManager;
@@ -40,7 +44,7 @@ import org.junit.Assert;
 
 public class VersioningHelper {
 
-	public static void compareReceived(CCNHandle handle, ArrayList<CCNStringObject> sent, MyListener listener) throws Exception {
+	public static void compareReceived(CCNHandle handle, ArrayList<CCNStringObject> sent, TestListener listener) throws Exception {
 		Assert.assertEquals(sent.size(), listener.received.size());
 
 		// make a usable data structure from the ContentObjects
@@ -131,6 +135,17 @@ public class VersioningHelper {
 				lock.unlock();
 			}
 		}
+		
+		public long decrement() {
+			lock.lock();
+			try {
+				value--;
+				cond.signal();
+				return value;
+			} finally {
+				lock.unlock();
+			}
+		}
 
 		/**
 		 * @param value = to wait for
@@ -162,7 +177,7 @@ public class VersioningHelper {
 		}
 	}
 
-	public static class MyListener implements CCNInterestListener {
+	public static class TestListener implements CCNInterestListener {
 		public final ConditionLong cl = new ConditionLong(0);
 		public final ArrayList<ReceivedData> received = new ArrayList<ReceivedData>();
 		public InterestData id = null;
@@ -214,14 +229,108 @@ public class VersioningHelper {
 		}
 	}
 
-	public static class TestVIM extends VersioningInterestManager {
+	/**
+	 * Track interests
+	 */
+	public static class SinkHandle extends CCNHandle {
+		// The set of pending interests
+		public final ArrayList<Interest> interests = new ArrayList<Interest>();
+		public final ConditionLong count = new ConditionLong(0);
+		public final ConditionLong total_count = new ConditionLong(0);
+		
+		protected SinkHandle() throws ConfigurationException, IOException {
+			super();
+		}
+		
+		protected SinkHandle(KeyManager keyManager) throws IOException {
+			super(keyManager);
+		}
 
+		public static SinkHandle open(KeyManager keyManager) throws IOException { 
+			synchronized (CCNHandle.class) {
+				return new SinkHandle(keyManager);
+			}
+		}
+		
+		public static SinkHandle open(CCNHandle handle) throws IOException {
+			return open(handle.keyManager());
+		}
+		
+		@Override
+		public synchronized void expressInterest(
+				Interest interest,
+				CCNInterestListener listener) throws IOException {
+			
+			// ignore startwrites
+			if( !interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes()) ) {
+				interests.add(interest);
+//				System.out.println(String.format("expressInterest (%d): %s",
+//						interests.size(), interest.toString()));
+				count.increment();
+				total_count.increment();
+			}
+			super.expressInterest(interest, listener);
+		}
+
+		@Override
+		public synchronized void cancelInterest(Interest interest, CCNInterestListener listener) {
+			if( !interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes()) ) {
+				interests.remove(interest);
+//				System.out.println(String.format("cancelInterest  (%d): %s",
+//						interests.size(), interest.toString()));
+				
+				count.decrement();
+			}
+			super.cancelInterest(interest, listener);
+		}
+		
+	}
+	public static class TestVIM extends VersioningInterestManager {
+		protected boolean _sendInterests = false;
+		
 		public TestVIM(CCNHandle handle, ContentName name, int retrySeconds,
 				Set<CCNTime> exclusions, long startingVersion,
 				CCNInterestListener listener) {
 			super(handle, name, retrySeconds, exclusions, startingVersion, listener);
 		}
 
+		public Interest exposeReceive(ContentObject data, Interest interest) {
+			return receive(data, interest);
+		}
+		
+		public void setSendInterest(boolean enable) {
+			_sendInterests = enable;
+		}
+				
+		public TreeSet<InterestData> getInterestDataTree() {
+			return _interestData;
+		}
+		
+		public TreeSet<CCNTime> getExclusions() {
+			return _exclusions;
+		}
+		
+		/**
+		 * Don't actually send an interest
+		 */
+		@Override
+		protected void sendInterest(InterestData id) {
+			Interest old = id.getLastInterest();
+			Interest interest = id.buildInterest();
+			synchronized(_interestMap) {
+				// Remove the old interest so we never match more than one
+				// thing to an INterestData
+				if( null != old )
+					_interestMap.remove(old);
 
+				try {
+					if( _sendInterests )
+						_handle.expressInterest(interest, this);
+					_interestMap.put(interest, id);
+				} catch(IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 }

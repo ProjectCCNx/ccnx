@@ -72,6 +72,9 @@ public class VersioningProfile implements CCNProfile {
 	public static final byte [] FIRST_VERSION_MARKER = new byte []{VERSION_MARKER};
 	public static final byte FF = (byte) 0xFF;
 	public static final byte OO = (byte) 0x00;
+	public static final byte [] LAST_VERSION_MARKER = new byte [] {VERSION_MARKER, FF, FF, FF, FF, FF, FF };
+	public static final byte [] TOP_EXCLUDE_VERSION_MARKER = new byte [] {VERSION_MARKER+1, OO, OO, OO, OO, OO, OO };
+	
 
 	/**
 	 * Add a version field to a ContentName.
@@ -421,8 +424,7 @@ public class VersioningProfile implements CCNProfile {
 		ArrayList<Exclude.Element> ees = new ArrayList<Exclude.Element>();
 		ees.add(new ExcludeAny());
 		ees.add(new ExcludeComponent(start));
-		ees.add(new ExcludeComponent(new byte [] {
-				VERSION_MARKER+1, OO, OO, OO, OO, OO, OO } ));
+		ees.add(new ExcludeComponent(TOP_EXCLUDE_VERSION_MARKER));
 		ees.add(new ExcludeAny());
 		
 		return new Exclude(ees);

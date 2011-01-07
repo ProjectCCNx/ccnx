@@ -25,6 +25,7 @@ import java.util.Set;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -160,6 +161,16 @@ public class VersioningInterest {
 	public void finalize() {
 		removeAll();
 	}
+	
+	/**
+	 * Print a CCNTime as the version string and the long value
+	 * @param version
+	 * @return
+	 */
+	public static String versionDump(CCNTime version) {
+		return String.format("%s (%d)", VersioningProfile.printAsVersionComponent(version), version.getTime());
+	}
+	
 	// ==============================================================================
 	// Internal implementation
 	private final CCNHandle _handle;

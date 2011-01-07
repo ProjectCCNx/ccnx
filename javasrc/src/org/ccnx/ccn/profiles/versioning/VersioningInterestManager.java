@@ -22,15 +22,18 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.versioning.InterestData.TimeElement;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Interest;
 
 /**
@@ -43,12 +46,69 @@ import org.ccnx.ccn.protocol.Interest;
  *    to grow to MAX_FULL exclusions.    When MAX_FULL exclusions is reached,
  *    the starting times are re-arranged.
  * 
- * XXX We should do a quantized filling method so interests are
- *     more likely to be aggregated.
+ * This operates by maintaining a set of interests from [startingVersion, infinity).
+ * Initially, we issue one interest I_0[startingVersion, infinity).  When that
+ * interest fills, it is split in to two interests, and it is split to the left:
+ * I_-1[startingVersion, k], I_0[k+1, infinity), where "k" is picked to keep
+ * MIN_FILL in the right member (I_0).
+ * 
+ * "infinity" is really the maximum version component, so it is well-defined.
+ * 
+ * At some point, we will have a series of interests:
+ *   I0[startingVersion, k0], I1[k0+1, k1], I2[k1+1, k2], I3[k2+1, k3], I4[k3+1, infinity)
+ *   
+ * Algorithm:
+ *    - This algorithm is biased towards shifting to the left, because we fill from the right.
+ *      Based on usage experience, we may want to change this filling algorithm.
+ *    - The density of an InterestData is defined as (# exclusions) / (stop - start).  Seemed
+ *      like a good idea at the time, but might want to drop this concept and just use the
+ *      # of exclusions.
+ *    - We track the average density of all intervals and use that to decide if we should
+ *      rebalance by shifing or add a new interest.
+ *      
+ *    - When we receive an interest, find the corresponding InterestData that contains
+ *      the version number.
+ *    A) If that InterestData is not full (under MAX_FILL), then add the exclusion to that InterestData
+ *      and re-express an Interest from that InterestData via the handleContent return value. Done.
+ *    - The InterestData is full.
+ *    B) Pick the left or right neighbor that is least full, if such a neighbor exists, and is
+ *      under MID_FILL.  If equally filled, pick the left.
+ *         - If picked left, transfer exclusions from the head to the left neighbor and then
+ *           adjust the start & stop values.  Fill it up to MID_FILL.
+ *         - If picked right, transfer exclusions from the tail to the right neighbor and then
+ *           adjust the start & stop values.  Fill it up to MID_FILL.
+ *         - Issue a new interest for the picked neighbor, then the current InterestData returns
+ *           a new interest to handleContent.  These both replace the entries in _interestMap, so
+ *           if we receive content for an old outstanding interest, no match is found and no
+ *           "extra" interest will be generated from that.
+ *         - done
+ *   C) If the left or right neighbor does not exist, create it.  If both are missing, pick the left.
+ *        - Let the current InterestData be M[a, b].
+ *        - If left, create L[a, k] M[k, b] by transferring MIN_FILL elements
+ *        - If right, create M[a, k] R[k, b] by transferring MID_FILL elements
+ *        - Send a new interest for the new InterestData
+ *        - Return a new interest to handleContent for M.
+ *   D) If both the L and R neighbors are at MID_FILL or more, then we want to re-balance
+ *     the intervals.  
+ *        1) If the density of each of (L, M, R) is above average, insert a new interest.  Pick
+ *          L or R based on the higher density of the neighbor.  If equal, pick left.
+ *          Transfer MIN_FILL from M and the chosen side to the new interest.  Send a new
+ *          interest message from the new interest and from the chosen neighbor, then
+ *          return a new interest from M to handleContent
+ *        2) Otherwise, rebalance.  Pick the denser side, and recursively shift that
+ *          direction until the last node is under MID_FILL, or we are at the terminus
+ *          and create a new interest.  Then balance current node and neighbor. 
+ *          Issue a new interest message for each modified or created InterestData, 
+ *          then return interest to handleContent for current interestdata. 
+ *   
  */
 public class VersioningInterestManager implements CCNInterestListener {
-	public final static int MIN_FILL = 100;
+
+	// MIN_FILL should be less than MAX_FILL/2 due to how step D.1 works.
+	public final static int MIN_FILL = 50;
+	public final static int MID_FILL = 125;
 	public final static int MAX_FILL = 200;
+
 
 	/**
 	 * Create a VersioningInterestManager for a specific content name.  Send
@@ -96,23 +156,39 @@ public class VersioningInterestManager implements CCNInterestListener {
 	public synchronized Interest handleContent(ContentObject data, Interest interest) {
 		return receive(data, interest);
 	}
+	
+	/**
+	 * This is purely a debugging aid
+	 */
+	public String dumpExcluded() {
+		StringBuilder sb = new StringBuilder();
+		for( CCNTime version : _exclusions ) {
+			sb.append(VersioningProfile.printAsVersionComponent(version));
+			sb.append(", ");
+		}
+		return sb.toString();
+	}
 
 	// ==============================================
 	// Internal implementation
 	private boolean _running = false;
-	private final CCNHandle _handle;
+	protected final CCNHandle _handle;
 	private final ContentName _name;
-	private final TreeSet<CCNTime> _exclusions = new TreeSet<CCNTime>();
+	protected final TreeSet<CCNTime> _exclusions = new TreeSet<CCNTime>();
 	private final long _startingVersion;
 	private int _retrySeconds;
 	private final CCNInterestListener _listener; // our callback
 
+	// These are to track the average density
+	private double sum_density = 0.0;
+	private double average_density = 0.0;
+
 	// this will be sorted by the starttime of each InterestData
-	private final TreeSet<InterestData> _interestData = new TreeSet<InterestData>();
+	protected final TreeSet<InterestData> _interestData = new TreeSet<InterestData>();
 
 	// We need to store a map from an interest given to the network to the
 	// interestData that generated it so we can re-express interest
-	private final Map<Interest, InterestData> _interestMap = new HashMap<Interest, InterestData>();
+	protected final Map<Interest, InterestData> _interestMap = new HashMap<Interest, InterestData>();
 
 
 	// when we got the last CCN timeout and went in to a retry period
@@ -160,6 +236,8 @@ public class VersioningInterestManager implements CCNInterestListener {
 			}
 			// now save the last one
 			_interestData.add(id);
+
+			computeAverageDensity();
 		}
 
 		// we now have all the interests done, actually send them
@@ -168,6 +246,17 @@ public class VersioningInterestManager implements CCNInterestListener {
 				sendInterest(datum);
 			}
 		}
+	}
+
+	private void computeAverageDensity() {
+		// this should never happen, we always have at least 1
+		if( _interestData.size() == 0 )
+			average_density = 0.0;
+
+		for(InterestData datum : _interestData )
+			sum_density += datum.getDensity();
+
+		average_density = sum_density / _interestData.size();
 	}
 
 	/**
@@ -197,7 +286,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 	 * @param interest
 	 * @return
 	 */
-	private Interest receive(ContentObject data, Interest interest) {
+	protected Interest receive(ContentObject data, Interest interest) {
 		InterestData datum;
 		Interest newInterest = null;
 
@@ -218,39 +307,58 @@ public class VersioningInterestManager implements CCNInterestListener {
 			return datum.buildInterest();
 		}
 
+		// Is this something we should ignore?  This will avoid sending the
+		// object up to the user.
+		if( isLessThanUnsigned(version.getTime(),_startingVersion) || 
+			isLessThanUnsigned(InterestData.NO_STOP_TIME, version.getTime()) ) 
+		{
+			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
+				Log.fine(Log.FAC_ENCODING, "Ignorning version {0} because outside interval {1} to {2}",
+						VersioningInterest.versionDump(version),
+						VersioningInterest.versionDump(new CCNTime(_startingVersion)),
+						InterestData.NO_STOP_TIME);		
+
+			return null;
+		}
+
 		// store it in our global list of exclusions
 		synchronized(_exclusions) {
 			_exclusions.add(version);
 		}
-	
+
 		// if we did not match anything, then we are no longer interested in it.
 		// This most likely happens because of a re-build, in which case we do
 		// not need to re-express an interest as the re-build did that.
 		if( null != datum ) {
-			
+
 			// Figure out where to put the exclusion.  Because of re-building,
 			// an exclusion will not always go in the original datum.  But,
 			// that is usually a great first choice, so try it.  If that does
 			// not work, search for where to put it
 			InterestData excludeDatum = datum;
 			if( !excludeDatum.contains(version) ) {
-				// search for where to add the exclusion
+				// search for where to add the exclusion.  "x" is just to search the tree.
 				InterestData x = new InterestData(null, version.getTime(), InterestData.NO_STOP_TIME);
-				
+
 				// This is the InterestData that must contain version because
 				// it is the largest startTime that is less than version
 				InterestData floor = _interestData.floor(x);
-				
-				if( floor.contains(version) ) {
+
+				// floor shouldn't every be null
+				if( null == floor ) {
+					Log.warning(Log.FAC_ENCODING, "Warning: floor element is null for version {0}",
+							VersioningInterest.versionDump(version));	
+				}
+
+				if( null != floor && floor.contains(version) ) {
 					excludeDatum = floor;
 				} else {
 					excludeDatum = null;
 					Log.severe(Log.FAC_ENCODING, "Error: floor element {0} did not contain version {1}",
-							floor.toString(), version.getTime());
+							floor.toString(), VersioningInterest.versionDump(version));
 				}
 			}
-			
-			// Because of re-builds, we cannot 
+
 			if( (null != excludeDatum) && !excludeDatum.addExclude(version)) {
 				// we cannot put the new exclusion in there, so we need to rebuild
 				rebuild(version, excludeDatum);
@@ -282,47 +390,266 @@ public class VersioningInterestManager implements CCNInterestListener {
 	 * @param datum
 	 * @param version may be null for a rebuild w/o insert
 	 */
-	private void rebuild(CCNTime version, InterestData datum) {
-		
-		// Option 1:  If we do not have another interest to the left,
-		// create it and split this one on the MIN_FILL boundary.
-		
-		InterestData left = _interestData.lower(datum);
-		if( null == left ) {
-			left = datum.splitLeft();
-			
-			if( null != version ) {
-				if( left.contains(version) )
-					left.addExclude(version);
-				else
-					datum.addExclude(version);
-			}
-			
-			// send new interest for left.  datum will resend as the return to handleContent
-			sendInterest(left);
-		
+	protected void rebuild(CCNTime version, InterestData datum) {
+		InterestData left, right;
+
+
+		left = _interestData.lower(datum);
+		right = _interestData.higher(datum);
+		int left_size = MAX_FILL, right_size = MAX_FILL;
+		if( null != left ) 
+			left_size = left.size();
+
+		if( null != right )
+			right_size = right.size();
+
+		if( tryLeftOrRightShift(datum, left, left_size, right, right_size) )
 			return;
-		}
-		
-		
-		// Option 2: We have an interest to the left, and it is at MAX_FILL,
-		// so rebuild it.
-		
-		if( left.size() >= MAX_FILL ) {
-			// rebuild left recursively without an insert
-			rebuild(null, left);
-		}
-		
-		// Option 3: We have an interest to the left and it is under
-		// MAX_FILL, so just shift the boundaries between them (this
-		// is guaranteed because of Option 2)
-		
-		
+
+		if( tryCreatingMissingNeighbor(datum, left, left_size, right, right_size) )
+			return;
+
+		rebalance(datum, left, left_size, right, right_size);		
 	}
-	
-	private void sendInterest(InterestData id) {
+
+	/**
+	 *    - Pick the left or right neighbor that is least full, if such a neighbor exists, and is
+	 *      under MID_FILL.  If equally filled, pick the left.
+	 *         - If picked left, transfer exclusions from the head to the left neighbor and then
+	 *           adjust the start & stop values.  Fill it up to MID_FILL.
+	 *         - If picked right, transfer exclusions from the tail to the right neighbor and then
+	 *           adjust the start & stop values.  Fill it up to MID_FILL.
+	 *         - Issue a new interest for the picked neighbor, then the current InterestData returns
+	 *           a new interest to handleContent.  These both replace the entries in _interestMap, so
+	 *           if we receive content for an old outstanding interest, no match is found and no
+	 *           "extra" interest will be generated from that.
+	 *         - done
+	 *         
+	 * 
+	 */
+	private boolean tryLeftOrRightShift(InterestData middle, InterestData left, int left_size, InterestData right, int right_size) {
+		// doing this makes the conditions work below for nulls
+		if(null == left)
+			left_size = MAX_FILL;
+		if(null == right)
+			right_size = MAX_FILL;
+
+		if( null != left || null != right ) {
+
+			if( (left_size < right_size || left_size == right_size) && left_size < MID_FILL ) {
+				// so we can incrementally track density
+				sum_density -= middle.getDensity();
+				sum_density -= left.getDensity();
+
+				// use the left 
+
+				middle.transferLeft(left, MID_FILL - left_size);
+				sendInterest(left);
+
+				sum_density += middle.getDensity();
+				sum_density += left.getDensity();
+				average_density = sum_density / _interestData.size();
+				return true;				
+			} else
+				if( right_size < left_size && right_size < MID_FILL ) {
+					// so we can incrementally track density
+					sum_density -= middle.getDensity();
+					sum_density -= right.getDensity();
+
+					// use the left 
+
+					middle.transferRight(right, MID_FILL - right_size);
+					sendInterest(right);
+
+					sum_density += middle.getDensity();
+					sum_density += right.getDensity();
+					average_density = sum_density / _interestData.size();
+					return true;
+				}
+		}
+		return false;
+	}
+
+	/**
+	 *   - If the left or right neighbor does not exist, create it.  If both are missing, pick the left.
+	 *        - Let the current InterestData be M[a, b].
+	 *        - If left, create L[a, k] M[k, b] by transferring MIN_FILL elements
+	 *        - If right, create M[a, k] R[k, b] by transferring MID_FILL elements
+	 *        - Send a new interest for the new InterestData
+	 *        - Return a new interest to handleContent for M.
+	 */
+	private boolean tryCreatingMissingNeighbor(InterestData middle, InterestData left, int left_size, InterestData right, int right_size) {
+		if( null == left ) {
+			sum_density -= middle.getDensity();
+
+			left = middle.splitLeft(MIN_FILL);
+			_interestData.add(left);
+			sendInterest(left);
+
+			sum_density += middle.getDensity();
+			sum_density += left.getDensity();
+			average_density = sum_density / _interestData.size();			
+			return true;
+		}
+
+		if( null == right ) {
+			sum_density -= middle.getDensity();
+
+			right = middle.splitRight(MIN_FILL);
+			_interestData.add(right);
+			sendInterest(right);
+
+			sum_density += middle.getDensity();
+			sum_density += right.getDensity();
+			average_density = sum_density / _interestData.size();			
+			return true;
+		}
+
+		return false;
+	}
+
+	/**         
+	 *   - If both the L and R neighbors are at MID_FILL or more, then we want to re-balance
+	 *     the intervals.  
+	 *        - If the density of each of (L, M, R) is above average, insert a new interest.  Pick
+	 *          L or R based on the higher density of the neighbor.  If equal, pick left.
+	 *          Transfer MIN_FILL from M and the chosen side to the new interest.  Send a new
+	 *          interest message from the new interest and from the chosen neighbor, then
+	 *          return a new interest from M to handleContent
+	 *        - Otherwise, rebalance.  Pick the denser side, and recursively shift that
+	 *          direction until the last node is under MID_FILL, or we are at the terminus
+	 *          and create a new interest.  Then balance current node and neighbor. 
+	 *          Issue a new interest message for each modified or created InterestData, 
+	 *          then return interest to handleContent for current interestdata.
+	 *          
+	 *  left, middle, and right must not be null
+	 */
+	private void rebalance(InterestData middle, InterestData left, int left_size, InterestData right, int right_size) {
+		if( average_density < left.getDensity() && average_density < middle.getDensity() && average_density < right.getDensity() ) {
+			// insert a new element here
+			splitInterests(middle, left, left_size, right, right_size);
+		} else {
+			// rebalance to the left or right, spreading interests evenly
+			rollLeftOrRight(middle, left, left_size, right, right_size);
+		}
+
+		return;
+	}
+
+	private void splitInterests(InterestData middle, InterestData left, int left_size, InterestData right, int right_size) {
+		if( left.getDensity() >= right.getDensity() ) {
+			sum_density -= middle.getDensity();
+			sum_density -= left.getDensity();
+
+			// insert to the left
+			InterestData split = middle.splitLeft(MIN_FILL);
+			_interestData.add(split);
+			left.transferRight(split, MIN_FILL);
+			sendInterest(split);
+			sendInterest(left);
+
+			sum_density += middle.getDensity();
+			sum_density += left.getDensity();
+			sum_density += split.getDensity();
+			average_density = sum_density / _interestData.size();	
+		} else {
+			sum_density -= middle.getDensity();
+			sum_density -= right.getDensity();
+
+			// insert to the left
+			InterestData split = middle.splitRight(MIN_FILL);
+			_interestData.add(split);
+			right.transferLeft(split, MIN_FILL);
+			sendInterest(split);
+			sendInterest(left);
+
+			sum_density += middle.getDensity();
+			sum_density += right.getDensity();
+			sum_density += split.getDensity();
+			average_density = sum_density / _interestData.size();
+		}
+		return;
+	}
+
+	private void rollLeftOrRight(InterestData middle, InterestData left, int left_size, InterestData right, int right_size) {
+
+		if( left.getDensity() >= right.getDensity() ) {
+			// go left
+			InterestData node = middle;
+			InterestData next = null;
+
+			while( node.size() >= MID_FILL ) {
+				int count = node.size() - MID_FILL;
+				next = _interestData.lower(node);
+
+				if( null == next ) {
+					next = node.splitLeft(count);
+					_interestData.add(next);
+				} else {
+					// this might overflow next
+					node.transferLeft(next, count);
+				}
+
+				if( node != middle )
+					sendInterest(node);
+
+				node = next;
+			}
+
+			// At the every end, next will not have had an interest sent
+			// because it's size is < MID_FILL
+			if( null != next )
+				sendInterest(next);
+		} else {
+			// go right
+			InterestData node = middle;
+			InterestData next = null;
+
+			while( node.size() >= MID_FILL ) {
+				int count = node.size() - MID_FILL;
+				next = _interestData.higher(node);
+
+				if( null == next ) {
+					next = node.splitRight(count);
+					_interestData.add(next);
+				} else {
+					// this might overflow next
+					node.transferRight(next, count);
+				}
+
+				if( node != middle )
+					sendInterest(node);
+
+				node = next;
+			}
+
+			// At the every end, next will not have had an interest sent
+			// because it's size is < MID_FILL
+			if( null != next )
+				sendInterest(next);
+		}
+		computeAverageDensity();
+	}
+
+
+	/**
+	 * Send a new interest and manage the _interestMap.  If the
+	 * InterestData has an old interest, we remove it from the map, so
+	 * it will no longer cause a new interest to be sent and then add
+	 * the new interest to the map, so when we receive an object for
+	 * it, we'll issue a new interest.
+	 */
+	protected void sendInterest(InterestData id) {
+		Interest old = id.getLastInterest();
 		Interest interest = id.buildInterest();
 		synchronized(_interestMap) {
+			// Remove the old interest so we never match more than one
+			// thing to an INterestData
+			if( null != old ) {
+				_handle.cancelInterest(old, this);
+				_interestMap.remove(old);
+			}
+
 			try {
 				_handle.expressInterest(interest, this);
 				_interestMap.put(interest, id);
@@ -331,7 +658,18 @@ public class VersioningInterestManager implements CCNInterestListener {
 			}
 		}
 	}
-	
+
+	/**
+	 * To compare versions, we need unsigned math
+	 * @param n1
+	 * @param n2
+	 * @return true if n1 < n2 unsigned
+	 */
+	protected static boolean isLessThanUnsigned(long n1, long n2) {
+		// see http://www.javamex.com/java_equivalents/unsigned_arithmetic.shtml
+		return (n1 < n2) ^ ((n1 < 0) != (n2 < 0));
+	}
+
 	// ====================================================
 	// Inner Classes
 

@@ -37,7 +37,7 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.test.profiles.versioning.VersioningHelper.MyListener;
+import org.ccnx.ccn.test.profiles.versioning.VersioningHelper.TestListener;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -121,7 +121,7 @@ public class InterestDataTestRepo {
 	public void testInterestDataInterest() throws Exception {
 		CCNHandle handle = CCNHandle.getHandle();
 		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
-		MyListener listener = new MyListener();
+		TestListener listener = new TestListener();
 
 		InterestData id = new InterestData(basename, 0, InterestData.NO_STOP_TIME);
 
@@ -164,7 +164,7 @@ public class InterestDataTestRepo {
 		ArrayList<CCNStringObject> sent = VersioningHelper.sendEventStream(handle, basename, tosend);
 
 		// Now read them back
-		MyListener listener = new MyListener();
+		TestListener listener = new TestListener();
 		InterestData id = new InterestData(basename, 0, InterestData.NO_STOP_TIME);
 
 		listener.setInterestData(id);
@@ -194,7 +194,7 @@ public class InterestDataTestRepo {
 		ArrayList<CCNStringObject> sent2 = VersioningHelper.sendEventStream(handle, basename, tosend);
 
 		// Now read them back
-		MyListener listener = new MyListener();
+		TestListener listener = new TestListener();
 		InterestData id = new InterestData(basename, cutoff_version.getTime() + 1, InterestData.NO_STOP_TIME);
 
 		listener.setInterestData(id);
@@ -241,7 +241,7 @@ public class InterestDataTestRepo {
 				VersioningProfile.printAsVersionComponent(stop_version)));
 				
 		// Now read them back
-		MyListener listener = new MyListener();
+		TestListener listener = new TestListener();
 		InterestData id = new InterestData(basename, start_version.getTime(), stop_version.getTime());
 
 		listener.setInterestData(id);
@@ -277,7 +277,7 @@ public class InterestDataTestRepo {
 		}
 		
 		// now split it, so MIN_FILL will stay in data, and the rest will go to left
-		InterestData left = data.splitLeft();
+		InterestData left = data.splitLeft(data.size() - VersioningInterestManager.MIN_FILL);
 	
 		Assert.assertEquals(starttime, left.getStartTime());
 		Assert.assertEquals(stoptime, data.getStopTime());
