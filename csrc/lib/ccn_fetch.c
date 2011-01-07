@@ -652,7 +652,7 @@ ccn_fetch_open(struct ccn_fetch *f,
 	fs->id = newStringCopy((char *) id);
 	ccn_charbuf_append_charbuf(fs->name, name);
 	if (resolveVersion) {
-		int tm = 40;
+		int tm = 40; // TBD: need better strategy for version timeout
 		while (tm < CCN_VERSION_TIMEOUT) {
 			res = ccn_resolve_version(f->h, fs->name, resolveVersion, tm);
 			if (res >= 0) break;
@@ -690,7 +690,7 @@ ccn_fetch_open(struct ccn_fetch *f,
 	
 	// allocate the buffers
 	fs->nBufs = nBufs;
-	fs->bufs = calloc(nBufs+1, sizeof(*(fs->bufs)));
+	fs->bufs = calloc(nBufs, sizeof(*(fs->bufs)));
 	for (i = 0; i < nBufs; i++) {
 		struct ccn_fetch_buffer *fb = calloc(1, sizeof(*fb));
 		fb->seg = -1;
