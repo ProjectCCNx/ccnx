@@ -25,18 +25,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.CommandMarker;
-import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.InterestData;
+import org.ccnx.ccn.profiles.versioning.VersionNumber;
 import org.ccnx.ccn.profiles.versioning.VersioningInterestManager;
-import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -190,7 +191,7 @@ public class VersioningHelper {
 
 			if( null != id ) {
 				try {
-					CCNTime version = VersioningProfile.getLastVersionAsTimestamp(data.name());
+					VersionNumber version = new VersionNumber(data.name());
 					id.addExclude(version);
 				} catch(Exception e) {
 					e.printStackTrace();
@@ -264,8 +265,10 @@ public class VersioningHelper {
 			// ignore startwrites
 			if( !interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes()) ) {
 				interests.add(interest);
-//				System.out.println(String.format("expressInterest (%d): %s",
-//						interests.size(), interest.toString()));
+				
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
+					Log.finer(Log.FAC_ENCODING, String.format("expressInterest (%d): %s",
+						interests.size(), interest.toString()));
 				count.increment();
 				total_count.increment();
 			}
@@ -288,10 +291,10 @@ public class VersioningHelper {
 	public static class TestVIM extends VersioningInterestManager {
 		protected boolean _sendInterests = false;
 		
-		public TestVIM(CCNHandle handle, ContentName name, int retrySeconds,
-				Set<CCNTime> exclusions, long startingVersion,
+		public TestVIM(CCNHandle handle, ContentName name,
+				Set<VersionNumber> exclusions, VersionNumber startingVersion,
 				CCNInterestListener listener) {
-			super(handle, name, retrySeconds, exclusions, startingVersion, listener);
+			super(handle, name, exclusions, startingVersion, listener);
 		}
 
 		public Interest exposeReceive(ContentObject data, Interest interest) {
@@ -306,7 +309,7 @@ public class VersioningHelper {
 			return _interestData;
 		}
 		
-		public TreeSet<CCNTime> getExclusions() {
+		public TreeSet<VersionNumber> getExclusions() {
 			return _exclusions;
 		}
 		

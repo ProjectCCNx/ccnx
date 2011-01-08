@@ -30,8 +30,8 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.InterestData;
+import org.ccnx.ccn.profiles.versioning.VersionNumber;
 import org.ccnx.ccn.profiles.versioning.VersioningInterestManager;
-import org.ccnx.ccn.profiles.versioning.InterestData.TimeElement;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -47,6 +47,11 @@ public class InterestDataTestRepo {
 	protected final Random _rnd = new Random();
 	protected final static long TIMEOUT=30000;
 	protected final ContentName prefix;
+	
+	protected final VersionNumber vn_111000000000L = new VersionNumber(111000000000L);
+	protected final VersionNumber vn_111111000000L = new VersionNumber(111111000000L);
+	protected final VersionNumber vn_111222000000L = new VersionNumber(111222000000L);
+	protected final VersionNumber vn_111333000000L = new VersionNumber(111333000000L);
 
 	public InterestDataTestRepo() throws MalformedContentNameStringException {
 		prefix  = ContentName.fromNative(String.format("/test_%016X", _rnd.nextLong()));
@@ -59,36 +64,36 @@ public class InterestDataTestRepo {
 	}
 
 	@Test
-	public void testTimeElementInTree() throws Exception {
+	public void testVersionNumberInTree() throws Exception {
 		// make sure the sortable work
 		long [] values = new long [] {111111000000L, 111000000000L, 111333000000L, 111222000000L};
-		TimeElement [] tes = new TimeElement[values.length];
-		TreeSet<TimeElement> tree = new TreeSet<TimeElement>();
+		VersionNumber [] vns = new VersionNumber[values.length];
+		TreeSet<VersionNumber> tree = new TreeSet<VersionNumber>();
 
 		for(int i = 0; i < values.length; i++) {
-			tes[i] = new TimeElement(new CCNTime(values[i]));
-			tree.add(tes[i]);
+			vns[i] = new VersionNumber(values[i]);
+			tree.add(vns[i]);
 		}
 
 		// they should be in the same order as the sorted values
 		Arrays.sort(values);
-		Iterator<TimeElement> iter = tree.iterator();
+		Iterator<VersionNumber> iter = tree.iterator();
 		int index = 0;
 		while( iter.hasNext() ) {
-			TimeElement v = iter.next();
-			Assert.assertEquals(values[index], v.version.getTime());
+			VersionNumber v = iter.next();
+			Assert.assertEquals(values[index], v.getAsMillis());
 			index++;
 		}
 	}
 
 	@Test
-	public void testTimeElementCompare() throws Exception {
+	public void testVersionNumberCompare() throws Exception {
 		// make sure the sortable work
 
-		TimeElement a = new TimeElement(new CCNTime(111111000000L));
-		TimeElement aa = new TimeElement(new CCNTime(111111000000L));
-		TimeElement b = new TimeElement(new CCNTime(111222000000L));
-		TimeElement c = new TimeElement(new CCNTime(111333000000L));
+		VersionNumber a = new VersionNumber(new CCNTime(111111000000L));
+		VersionNumber aa = new VersionNumber(new CCNTime(111111000000L));
+		VersionNumber b = new VersionNumber(new CCNTime(111222000000L));
+		VersionNumber c = new VersionNumber(new CCNTime(111333000000L));
 
 		Assert.assertTrue(a.compareTo(b) < 0);
 		Assert.assertTrue(b.compareTo(a) > 0);
@@ -103,9 +108,9 @@ public class InterestDataTestRepo {
 	public void testInterestDataCompare() throws Exception {
 		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
 
-		InterestData id1 =  new InterestData(basename, 111000000000L, 111001000000L);
-		InterestData id1a = new InterestData(basename, 111000000000L, 111110000000L);
-		InterestData id2 =  new InterestData(basename, 111222000000L, 111330000000L);
+		InterestData id1 =  new InterestData(basename, vn_111000000000L, new VersionNumber(111001000000L));
+		InterestData id1a = new InterestData(basename, vn_111000000000L, new VersionNumber(111110000000L));
+		InterestData id2 =  new InterestData(basename, vn_111222000000L, new VersionNumber(111330000000L));
 
 		Assert.assertTrue(id1.compareTo(id1a) == 0);
 		Assert.assertTrue(id1a.compareTo(id1) == 0);
@@ -123,7 +128,7 @@ public class InterestDataTestRepo {
 		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
 		TestListener listener = new TestListener();
 
-		InterestData id = new InterestData(basename, 0, InterestData.NO_STOP_TIME);
+		InterestData id = new InterestData(basename);
 
 		// Save content
 		CCNStringObject so = new CCNStringObject(basename, "hello, world!", SaveType.LOCALREPOSITORY, handle);
@@ -165,7 +170,7 @@ public class InterestDataTestRepo {
 
 		// Now read them back
 		TestListener listener = new TestListener();
-		InterestData id = new InterestData(basename, 0, InterestData.NO_STOP_TIME);
+		InterestData id = new InterestData(basename);
 
 		listener.setInterestData(id);
 
@@ -188,14 +193,14 @@ public class InterestDataTestRepo {
 
 		// Send a stream of string objects
 		ArrayList<CCNStringObject> sent1 = VersioningHelper.sendEventStream(handle, basename, tosend);
-		CCNTime cutoff_version = sent1.get(sent1.size()-1).getVersion();
+		VersionNumber cutoff_version = new VersionNumber(sent1.get(sent1.size()-1).getVersion());
 		
 		// now send another stream
 		ArrayList<CCNStringObject> sent2 = VersioningHelper.sendEventStream(handle, basename, tosend);
 
 		// Now read them back
 		TestListener listener = new TestListener();
-		InterestData id = new InterestData(basename, cutoff_version.getTime() + 1, InterestData.NO_STOP_TIME);
+		InterestData id = new InterestData(basename, cutoff_version.addAndReturn(1), VersionNumber.getMaximumVersion());
 
 		listener.setInterestData(id);
 
@@ -219,13 +224,11 @@ public class InterestDataTestRepo {
 
 		// Send a stream of string objects
 		ArrayList<CCNStringObject> sent1 = VersioningHelper.sendEventStream(handle, basename, tosend);
-		CCNTime start_version = sent1.get(sent1.size()-1).getVersion();
-		start_version.increment(1);
+		VersionNumber start_version = new VersionNumber(sent1.get(sent1.size()-1).getVersion()).addAndReturn(1);
 		
 		// now send another stream
 		ArrayList<CCNStringObject> sent2 = VersioningHelper.sendEventStream(handle, basename, tosend);
-		CCNTime stop_version = sent2.get(sent2.size()-1).getVersion();
-		stop_version.increment(1);
+		VersionNumber stop_version = new VersionNumber(sent2.get(sent2.size()-1).getVersion()).addAndReturn(1);
 		
 		// Make sure everyting in sent2 is between the start and stop versios
 		for(CCNStringObject so : sent2) {
@@ -237,12 +240,12 @@ public class InterestDataTestRepo {
 		VersioningHelper.sendEventStream(handle, basename, tosend);
 
 		System.out.println(String.format("Start/stop versions %s to %s",
-				VersioningProfile.printAsVersionComponent(start_version),
-				VersioningProfile.printAsVersionComponent(stop_version)));
+				start_version.printAsVersionComponent(),
+				stop_version.printAsVersionComponent()));
 				
 		// Now read them back
 		TestListener listener = new TestListener();
-		InterestData id = new InterestData(basename, start_version.getTime(), stop_version.getTime());
+		InterestData id = new InterestData(basename, start_version, stop_version);
 
 		listener.setInterestData(id);
 
@@ -257,35 +260,35 @@ public class InterestDataTestRepo {
 		// put a bunch of exclusions in an INterestData, then split it and check results.
 		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
 
-		CCNTime now = CCNTime.now();
-		long starttime = now.getTime();
-		long stoptime = 0;
+		VersionNumber starttime = new VersionNumber();
+		VersionNumber stoptime = null;
 		
 		int count = VersioningInterestManager.MAX_FILL;
 		
-		InterestData data = new InterestData(basename, starttime, InterestData.NO_STOP_TIME);
+		InterestData data = new InterestData(basename, starttime, VersionNumber.getMaximumVersion());
 		
-		long t = starttime;
+		VersionNumber t = starttime;
 		for(int i = 0; i < count; i++) {
 			// walk up to 100 seconds, converted to nanos, with minimum 1 msec
 			long walk = _rnd.nextInt(100000) * 1000000L + 1000000L;
-			t += walk;
+			t = t.addAndReturn(walk);
 			
-			data.addExclude(new CCNTime(t));
-			stoptime = t+100;
+			data.addExclude(t);
+			stoptime = t.addAndReturn(100);
+			
 			data.setStopTime(stoptime);
 		}
 		
 		// now split it, so MIN_FILL will stay in data, and the rest will go to left
 		InterestData left = data.splitLeft(data.size() - VersioningInterestManager.MIN_FILL);
 	
-		Assert.assertEquals(starttime, left.getStartTime());
-		Assert.assertEquals(stoptime, data.getStopTime());
+		Assert.assertTrue(left.getStartVersion().equals(starttime));
+		Assert.assertTrue(data.getStopVersion().equals(stoptime));
 		
 		Assert.assertEquals(VersioningInterestManager.MIN_FILL, data.size());
 		Assert.assertEquals(count - VersioningInterestManager.MIN_FILL, left.size());	
 		
-		Assert.assertTrue(left.getStopTime() + 1 == data.getStartTime());
+		Assert.assertTrue(left.getStopVersion().addAndReturn(1).equals(data.getStartVersion()));
 		
 		// Ensure data consistency
 		Assert.assertTrue(left.validate());

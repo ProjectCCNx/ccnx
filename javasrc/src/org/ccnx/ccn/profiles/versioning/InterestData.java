@@ -1,3 +1,20 @@
+/*
+ * Part of the CCNx Java Library.
+ *
+ * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
 package org.ccnx.ccn.profiles.versioning;
 
 import java.security.InvalidParameterException;
@@ -7,8 +24,6 @@ import java.util.TreeSet;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.ExcludeAny;
@@ -24,18 +39,34 @@ import org.ccnx.ccn.protocol.Interest;
  */
 public class InterestData implements Comparable<InterestData> {
 	
-	// this is the inclusive top value to use
-	public final static long NO_STOP_TIME = VersioningProfile.getVersionComponentAsLong(VersioningProfile.LAST_VERSION_MARKER);
+	/**
+	 * An Interest with unbounded timespan
+	 * @param basename
+	 */
+	public InterestData(ContentName basename) {
+		this(basename, VersionNumber.getMinimumVersion(), VersionNumber.getMaximumVersion());
+	}
 	
 	/**
-	 * @param startTime minimum version to include (milliseconds)
-	 * @param stopTime maximum version to include (use NO_STOP_TIME for infinity) (milliseconds)
+	 * An Interest with only a lower bound
+	 * @param basename
+	 * @param startTime
 	 */
-	public InterestData(ContentName basename, long startTime, long stopTime) {
+	public InterestData(ContentName basename, VersionNumber startTime) {
+		this(basename, startTime, VersionNumber.getMaximumVersion());
+	}
+	
+	/**
+	 * @param startTime minimum version to include.
+	 * @param stopTime maximum version to include.
+	 */
+	public InterestData(ContentName basename, VersionNumber startTime, VersionNumber stopTime) {
 		_name = basename;
+		
 		setStartTime(startTime);
 		setStopTime(stopTime);
 	}
+
 
 	public synchronized int size() {
 		return _excludedVersions.size();
@@ -46,28 +77,36 @@ public class InterestData implements Comparable<InterestData> {
 	 */
 	@Override
 	public int compareTo(InterestData other) {
-		if( VersioningInterestManager.isLessThanUnsigned(_startTime, other._startTime) ) return -1;
-		if( VersioningInterestManager.isLessThanUnsigned(other._startTime, _startTime) ) return +1;
-		return 0;
+		return _startTime.compareTo(other._startTime);
 	}
 
 	/**
 	 * Dont do this while in a sorted set, as the sort order will break.
 	 * Start time is the minimum version to include.
 	 * in milliseconds (not binarytime)
+	 * 
+	 @param startTime minimum version to include (milliseconds).  The earliest time is NO_START_TIME.
+	 *                  if a startTime < NO_START_TIME is given (e.g. 0), NO_START_TIME is used.
 	 */
-	public synchronized void setStartTime(long time) {
-		_startTime = time;
+	public synchronized void setStartTime(VersionNumber startTime) {
+		if( VersionNumber.getMinimumVersion().after(startTime) )
+			startTime = VersionNumber.getMinimumVersion();
+
+		_startTime = startTime;
 		_dirty = true;
 	}
 
 	/**
 	 * stopTime is the maximum version to include.
-	 * use NO_STOP_TIME for infinity
+	 * use NO_STOP_TIME for infinity. If a greater value (unsigned comparison) is
+	 * given, NO_STOP_TIME is used.
 	 * in milliseconds (not binarytime)
 	 */
-	public synchronized void setStopTime(long time) {
-		_stopTime = time;
+	public synchronized void setStopTime(VersionNumber stopTime) {
+		if( VersionNumber.getMaximumVersion().before(stopTime) )
+			stopTime = VersionNumber.getMaximumVersion();
+
+		_stopTime = stopTime;
 		_dirty = true;
 	}
 
@@ -76,13 +115,13 @@ public class InterestData implements Comparable<InterestData> {
 	 * @param version
 	 * @return
 	 */
-	public synchronized boolean addExclude(CCNTime version) {
-		if( _excludedVersions.size() >= VersioningInterestManager.MAX_FILL )
+	public synchronized boolean addExclude(VersionNumber version) {
+		if( _excludedVersions.size() >= VersioningInterestManager.MAX_FILL ) {
+			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
+				Log.fine(Log.FAC_ENCODING, "addExclude full, not adding {0}", version);
 			return false;
-		
-		TimeElement te = new TimeElement(version);
-		_excludedVersions.add(te);
-		_dirty = true;
+		}
+		addExcludeUnbounded(version);
 		return true;
 	}
 
@@ -92,15 +131,15 @@ public class InterestData implements Comparable<InterestData> {
 
 		ArrayList<Exclude.Element> components = new ArrayList<Exclude.Element>();
 
-		if( _startTime > 0 ) {
-			CCNTime tmpTime = new CCNTime(_startTime - 1);
-			byte [] startTimeMinusOneComponent = VersioningProfile.timeToVersionComponent(tmpTime);
+		if( VersionNumber.getMinimumVersion().before(_startTime) ) {
+			VersionNumber startTimeMinusOne = _startTime.addAndReturn(-1);
+			byte [] startTimeMinusOneComponent = _startTime.getBytes();
 
 			components.add(new ExcludeAny());
 			components.add(new ExcludeComponent(startTimeMinusOneComponent));
 			
 			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINEST) )
-				Log.finest(Log.FAC_ENCODING, "Exclusion: start version {0}", VersioningProfile.printAsVersionComponent(tmpTime));
+				Log.finest(Log.FAC_ENCODING, "Exclusion: start version {0}", startTimeMinusOne);
 		}
 
 		// Now add the specific exclusions
@@ -108,24 +147,19 @@ public class InterestData implements Comparable<InterestData> {
 		ExcludeComponent lastComponentExcluded = null;
 		if( !_excludedVersions.isEmpty() ) {
 			// TreeSet is sorted, so this is in right order for the exclusion filter
-			Iterator<TimeElement> i = _excludedVersions.iterator();
+			Iterator<VersionNumber> i = _excludedVersions.iterator();
 			while( i.hasNext() ) {
-				TimeElement elem = i.next();
-				lastComponentExcluded = new ExcludeComponent(elem.versionComponent);
+				VersionNumber elem = i.next();
+				lastComponentExcluded = new ExcludeComponent(elem.getBytes());
 				components.add(lastComponentExcluded);
 			}
 		}
 
 		// Now exclude everything after stop time
 		ExcludeComponent exStop = null;
-		if( _stopTime != NO_STOP_TIME ) {
-			CCNTime tmpTime =  new CCNTime(_stopTime + 1);
-			byte [] stopTimePlusOneComponent = VersioningProfile.timeToVersionComponent(tmpTime);
-			exStop = new ExcludeComponent(stopTimePlusOneComponent);
-			
-		} else {
-			exStop = new ExcludeComponent(VersioningProfile.TOP_EXCLUDE_VERSION_MARKER);
-		}
+		VersionNumber stopTimePlusOne = _stopTime.addAndReturn(1);
+		byte [] stopTimePlusOneComponent = stopTimePlusOne.getBytes();
+		exStop = new ExcludeComponent(stopTimePlusOneComponent);
 		
 		// It could happen that our stop time is exactly equal to the version of an
 		// exclusion we already made.  if that's the case, don't add a duplicate
@@ -181,23 +215,21 @@ public class InterestData implements Comparable<InterestData> {
 	 * @param version
 	 * @return
 	 */
-	public synchronized boolean contains(CCNTime version) {
-		long t = version.getTime();
-		
-		if( VersioningInterestManager.isLessThanUnsigned(t, _startTime)  ||
-			VersioningInterestManager.isLessThanUnsigned(_stopTime, t) )
-			return false;
-		return true;
+	public synchronized boolean contains(VersionNumber version) {
+		if( _startTime.compareTo(version) <= 0 &&
+			_stopTime.compareTo(version) >= 0 )
+			return true;
+		return false;
 	}
 	
 	public String toString() {
-		return String.format("InterestData(%s, %d, %d)", _name, _startTime, _stopTime);
+		return String.format("InterestData(%s, %s, %s, %d)", _name, _startTime, _stopTime, _excludedVersions.size());
 	}
 	
 	public String dumpContents() {
 		StringBuilder sb = new StringBuilder();
-		for( TimeElement te : _excludedVersions ) {
-			sb.append(VersioningProfile.printAsVersionComponent(te.version));
+		for( VersionNumber vn : _excludedVersions ) {
+			sb.append(vn.printAsVersionComponent());
 			sb.append(", ");
 		}
 		return sb.toString();
@@ -238,25 +270,25 @@ public class InterestData implements Comparable<InterestData> {
 			return;
 		
 		// walk from the left
-		Iterator<TimeElement> iter = _excludedVersions.iterator();
+		Iterator<VersionNumber> iter = _excludedVersions.iterator();
 		
 		// this is a redundant condition
-		CCNTime lastversion = null;
+		VersionNumber lastversion = null;
 		while( count-- > 0 && iter.hasNext() ) {
-			TimeElement te = iter.next();
-			lastversion = te.version;
-			left.addExclude(lastversion);
+			VersionNumber vn = iter.next();
+			lastversion = vn;
+			left.addExcludeUnbounded(lastversion);
 			iter.remove();
 		}
 		
 		// now fixup the start and stop times
-		left.setStopTime(lastversion.getTime());
+		left.setStopTime(lastversion);
 		
-		// add 1 millisecond
-		this.setStartTime(lastversion.getTime() + 1);
+		// add 1 tick
+		this.setStartTime(lastversion.addAndReturn(1));
 		
-		if( Log.isLoggable(Log.FAC_ENCODING, Level.INFO) ) 
-			Log.info(Log.FAC_ENCODING, String.format("TransferLeft  %s and %s", left.toString(), this.toString()));
+		if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) ) 
+			Log.fine(Log.FAC_ENCODING, String.format("TransferLeft to %s from %s", left.toString(), this.toString()));
 	}
 	
 	/**
@@ -270,32 +302,32 @@ public class InterestData implements Comparable<InterestData> {
 			return;
 
 		// walk from the right
-		Iterator<TimeElement> iter = _excludedVersions.descendingIterator();
+		Iterator<VersionNumber> iter = _excludedVersions.descendingIterator();
 		
 		// this is a redundant condition
-		CCNTime lastversion = null;
+		VersionNumber lastversion = null;
 		while( count-- > 0 && iter.hasNext() ) {
-			TimeElement te = iter.next();
-			lastversion = te.version;
-			right.addExclude(lastversion);
+			VersionNumber vn = iter.next();
+			lastversion = vn;
+			right.addExcludeUnbounded(lastversion);
 			iter.remove();
 		}
 		
 		// now fixup the start and stop times
-		right.setStartTime(lastversion.getTime());
+		right.setStartTime(lastversion);
 		
-		// subtract 1 millisecond
-		this.setStopTime(lastversion.getTime() - 1);
+		// subtract 1 tick
+		this.setStopTime(lastversion.addAndReturn(-1));
 		
-		if( Log.isLoggable(Log.FAC_ENCODING, Level.INFO) ) 
-			Log.info(Log.FAC_ENCODING, String.format("TransferRight %s and %s", right.toString(), this.toString()));
+		if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) ) 
+			Log.fine(Log.FAC_ENCODING, String.format("TransferRight from %s to %s", this.toString(), right.toString()));
 	}
 	
-	public synchronized long getStartTime() {
+	public synchronized VersionNumber getStartVersion() {
 		return _startTime;
 	}
 	
-	public synchronized long getStopTime() {
+	public synchronized VersionNumber getStopVersion() {
 		return _stopTime;
 	}
 	
@@ -303,7 +335,7 @@ public class InterestData implements Comparable<InterestData> {
 	 * @return stopTime - startTime + 1
 	 */
 	public synchronized long getWidth() {
-		return _stopTime - _startTime + 1;
+		return _stopTime.getAsMillis() - _startTime.getAsMillis() + 1;
 	}
 	
 	public synchronized double getDensity() {
@@ -316,44 +348,55 @@ public class InterestData implements Comparable<InterestData> {
 	
 	/**
 	 * Sanity check that all the excluded versions fall between
-	 * [start, stop] inclusive
+	 * [start, stop] inclusive, using unsigned comparison.
 	 * @return
 	 */
 	public synchronized boolean validate() {
-		for(TimeElement te : _excludedVersions) {
-			long t = te.version.getTime();
-			if( t < _startTime || _stopTime < t)
+		for(VersionNumber vn : _excludedVersions) {
+			if( ! contains(vn) )
 				return false;
 		}
 		return true;
 	}
 	
 	// ===========================
-	private final TreeSet<TimeElement> _excludedVersions = new TreeSet<TimeElement>();
+	private final TreeSet<VersionNumber> _excludedVersions = new TreeSet<VersionNumber>();
 	private final ContentName _name;
-	private long _startTime;
-	private long _stopTime;
+	private VersionNumber _startTime;
+	private VersionNumber _stopTime;
 	private boolean _dirty = true;
 	private Interest _interest = null;
 	private double _density;
 	
+	/**
+	 * Used internally.  Sometimes we want to intentionally overflow
+	 * @param version
+	 */
+	private void addExcludeUnbounded(VersionNumber version) {
+		if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER) ) 
+			Log.finer(Log.FAC_ENCODING, String.format("addExcludeUnbounded %s", version.toString()));
+
+		_excludedVersions.add(version);
+		_dirty = true;
+	}
+	
 	// ===================================
 	// Inner classes
 	
-	// public for testing
-	public static class TimeElement implements Comparable<TimeElement> {
-		public final CCNTime version;
-		public final byte [] versionComponent;
-
-		public TimeElement(CCNTime version) {
-			this.version = version;
-			this.versionComponent = VersioningProfile.timeToVersionComponent(version);
-		}
-
-		// So it is sortable
-		@Override
-		public int compareTo(TimeElement other) {
-			return version.compareTo(other.version);
-		}	
-	}
+//	// public for testing
+//	public static class TimeElement implements Comparable<TimeElement> {
+//		public final CCNTime version;
+//		public final byte [] versionComponent;
+//
+//		public TimeElement(CCNTime version) {
+//			this.version = version;
+//			this.versionComponent = VersioningProfile.timeToVersionComponent(version);
+//		}
+//
+//		// So it is sortable
+//		@Override
+//		public int compareTo(TimeElement other) {
+//			return version.compareTo(other.version);
+//		}	
+//	}
 }

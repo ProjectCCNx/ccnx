@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.test.profiles.versioning;
 
+import java.io.IOException;
 import java.util.Random;
 import java.util.TreeSet;
 import java.util.logging.Level;
@@ -28,6 +29,7 @@ import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.versioning.InterestData;
+import org.ccnx.ccn.profiles.versioning.VersionNumber;
 import org.ccnx.ccn.profiles.versioning.VersioningInterestManager;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -49,6 +51,7 @@ public class VersioningInterestManagerTestRepo {
 
 	protected final Random _rnd = new Random();
 	protected final static long TIMEOUT=30000;
+	protected final static long SEND_PAUSE = 30;
 	protected final ContentName prefix;
 
 	protected CCNHandle realhandle = null;
@@ -61,7 +64,7 @@ public class VersioningInterestManagerTestRepo {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		Log.setLevel(Log.FAC_ALL, Level.WARNING);
-		Log.setLevel(Log.FAC_ENCODING, Level.FINE);
+		Log.setLevel(Log.FAC_ENCODING, Level.INFO);
 	}
 
 	@Before
@@ -81,12 +84,13 @@ public class VersioningInterestManagerTestRepo {
 	 */
 	@Test
 	public void testStreamFromRight() throws Exception {
-		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		System.out.println("********** testStreamFromRight");
 
-		
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+	
 		TestListener listener = new TestListener();
 
-		TestVIM vim = new TestVIM(sinkhandle, basename, 0, null, 0, listener);
+		TestVIM vim = new TestVIM(sinkhandle, basename, null, VersionNumber.getMinimumVersion(), listener);
 		vim.setSendInterest(true);
 		vim.start();
 
@@ -100,29 +104,34 @@ public class VersioningInterestManagerTestRepo {
 
 		int tosend = VersioningInterestManager.MAX_FILL;
 		
-		TreeSet<CCNTime> sent1 = sendStream(sinkhandle, vim, basename, t, tosend);
+		System.out.println("***** Sending stream 1 *****");
+		TreeSet<CCNTime> sent1 = sendStreamRight(sinkhandle, vim, basename, t, tosend);
 
+		// wait for them to be received
+		Assert.assertTrue( sinkhandle.total_count.waitForValue(tosend + 1, TIMEOUT));
+		
 		// we should see only the desired number of interests
-		Assert.assertEquals(tosend + 1, sinkhandle.total_count.getValue());
 		Assert.assertEquals(1, vim.getInterestDataTree().size());
 
 		Assert.assertEquals( sent1.size(), vim.getExclusions().size());
 
+//		System.out.println(String.format("data  (%d): %s", vim.getInterestDataTree().first().size(), vim.getInterestDataTree().first().dumpContents()));
+
+		System.out.println("***** Sending stream 2 *****");
 		// now send one more and we sould see the right sort of split
-		TreeSet<CCNTime> sent2 = sendStream(sinkhandle, vim, basename, t, 1);
+		TreeSet<CCNTime> sent2 = sendStreamRight(sinkhandle, vim, basename, t, 1);
 
 		sent1.addAll(sent2);
-		
-		// there should now be 2 extrea re-expressions because of extra interest
-		Assert.assertEquals(VersioningInterestManager.MAX_FILL + 3, sinkhandle.total_count.getValue());
-		Assert.assertEquals(2, vim.getInterestDataTree().size());
-		
+
+		// wait for them to be received
+		// it's 23 because: 20 to start with + 1 extra, then that one is replaced by 2 because
+		// the new interest is split.
+		boolean b = sinkhandle.total_count.waitForValue(tosend + 3, TIMEOUT);
+		Assert.assertTrue("sinkhandle incorrect count: " + sinkhandle.total_count.getValue(), b);
+
 		// make sure we have all the right versions
 		System.out.println("total sent    : " + sent1.size());
 		System.out.println("exclusion size: " + vim.getExclusions().size());
-		
-		Assert.assertEquals( sent1.size(), vim.getExclusions().size());
-		
 		
 		// the new left one should have MIN_FILL elements and the old (right) one should have the rest
 		InterestData left = vim.getInterestDataTree().first();
@@ -131,49 +140,307 @@ public class VersioningInterestManagerTestRepo {
 		int left_size = VersioningInterestManager.MIN_FILL;
 		int right_size = sent1.size() - left_size;
 		
-		Assert.assertEquals(sent1.size(), left_size + right_size);
-
 		if( left.size() != left_size || right.size() != right_size ) {
-			System.out.println("truth : " + vim.dumpExcluded());
-			System.out.println("left  : " + left.dumpContents());
-			System.out.println("right : " + right.dumpContents());
+			System.out.println(String.format("truth (%d): %s", vim.getExclusions().size(), vim.dumpExcluded()));
+			System.out.println(String.format("left  (%d): %s", left.size(), left.dumpContents()));
+			System.out.println(String.format("right (%d): %s", right.size(), right.dumpContents()));
 		}
+		
+		Assert.assertEquals(sent1.size(), left_size + right_size);
+		
+		// there should now be 2 extrea re-expressions because of extra interest
+		Assert.assertEquals(2, vim.getInterestDataTree().size());
+		
+		Assert.assertEquals( sent1.size(), vim.getExclusions().size());
+		
 		
 		Assert.assertEquals(left_size, left.size());
 		Assert.assertEquals(right_size, right.size());
 
 	}
 
+	/**
+	 * Send a very long stream from the right
+	 * @throws Exception
+	 */
+	@Test
+	public void testLongStreamFromRight() throws Exception {
+		System.out.println("********** testLongStreamFromRight");
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		
+		TestListener listener = new TestListener();
+
+		TestVIM vim = new TestVIM(sinkhandle, basename, null, VersionNumber.getMinimumVersion(), listener);
+		vim.setSendInterest(true);
+		vim.start();
+
+		// Verify that we have 1 interest pending
+		Assert.assertTrue( sinkhandle.count.waitForValue(1, TIMEOUT) );
+
+
+		// send MAX_FILL items, should only be one interest
+		CCNTime now = CCNTime.now();
+		long t = now.getTime();
+
+		int tosend = VersioningInterestManager.MAX_FILL * 30;
+		
+		// How many interets will this be?  Every time it fills an interest, it will
+		// leave MAX_FILL - MIN_FILL in that interest, then shift MIN_FILL to the left.
+		int packets = 1;
+		int occupancy = 0;
+		for(int i = 0; i < tosend; i++) {
+			if( occupancy >= VersioningInterestManager.MAX_FILL ) {
+				packets++;
+				occupancy = VersioningInterestManager.MIN_FILL;
+			}
+			occupancy++;
+		}
+		
+		System.out.println(String.format("Sending %d exclusions should result in %d interest packets", tosend, packets));
+		
+		System.out.println("***** Sending stream 1 *****");
+		TreeSet<CCNTime> sent1 = sendStreamRight(sinkhandle, vim, basename, t, tosend);
+
+		// There will be 1 interest per exclusion plus the number of outstanding packets
+		boolean b = sinkhandle.total_count.waitForValue(tosend + packets, TIMEOUT);
+		
+		Assert.assertTrue("sinkhandle incorrect count: " + sinkhandle.total_count.getValue(), b);
+		
+		// we should see only the desired number of interests
+		Assert.assertEquals(packets, vim.getInterestDataTree().size());
+
+		Assert.assertEquals(sent1.size(), vim.getExclusions().size());
+	}
+	
+	/**
+	 * Send a very long stream from the right
+	 * @throws Exception
+	 */
+	@Test
+	public void testLongStreamFromLeft() throws Exception {
+		System.out.println("********** testLongStreamFromLeft");
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		
+		TestListener listener = new TestListener();
+
+		TestVIM vim = new TestVIM(sinkhandle, basename, null, VersionNumber.getMinimumVersion(), listener);
+		vim.setSendInterest(true);
+		vim.start();
+
+		// Verify that we have 1 interest pending
+		Assert.assertTrue( sinkhandle.count.waitForValue(1, TIMEOUT) );
+
+
+		// send MAX_FILL items, should only be one interest
+		CCNTime now = CCNTime.now();
+		long t = now.getTime();
+
+		int tosend = VersioningInterestManager.MAX_FILL * 30;
+		
+		// How many interets will this be?  Every time it fills an interest, it will
+		// leave MAX_FILL - MIN_FILL in that interest, then shift MIN_FILL to the left.
+		int packets = 1;
+		int occupancy = 0;
+		for(int i = 0; i < tosend; i++) {
+			if( occupancy >= VersioningInterestManager.MAX_FILL ) {
+				packets++;
+				occupancy = VersioningInterestManager.MIN_FILL;
+			}
+			occupancy++;
+		}
+		
+		System.out.println(String.format("Sending %d exclusions should result in %d interest packets", tosend, packets));
+		
+		System.out.println("***** Sending stream 1 *****");
+		TreeSet<CCNTime> sent1 = sendStreamLeft(sinkhandle, vim, basename, t, tosend);
+
+		// There will be 1 interest per exclusion plus the number of outstanding packets
+		// This result is off by one for a FillFromLeft, because the algorithm will split
+		// the initial interest to the left, then shift some more to the left, then give up
+		// and start to split right.  So, we need to add one.
+		boolean b = sinkhandle.total_count.waitForValue(tosend + packets + 1, TIMEOUT);
+		
+		Assert.assertTrue("sinkhandle incorrect count: " + sinkhandle.total_count.getValue(), b);
+		
+		// we should see only the desired number of interests
+		Assert.assertEquals(packets, vim.getInterestDataTree().size());
+
+		Assert.assertEquals(sent1.size(), vim.getExclusions().size());
+	}
+	
+	/**
+	 * Send a very long stream with arrivals uniformly over some interval
+	 * @throws Exception
+	 */
+	@Test
+	public void testLongStreamUniform() throws Exception {
+		System.out.println("********** testLongStreamUniform");
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		
+		TestListener listener = new TestListener();
+
+		TestVIM vim = new TestVIM(sinkhandle, basename, null, VersionNumber.getMinimumVersion(), listener);
+		vim.setSendInterest(true);
+		vim.start();
+
+		int tosend = VersioningInterestManager.MAX_FILL * 30;
+		
+		// send MAX_FILL items, should only be one interest
+		CCNTime now = CCNTime.now();
+		int max_spacing = 20000;
+		long start_time = now.getTime();
+		long stop_time = start_time + tosend * max_spacing;
+		
+		System.out.println("***** Sending stream 1 *****");
+		TreeSet<CCNTime> sent1 = sendStreamUniform(sinkhandle, vim, basename, start_time, stop_time, tosend);
+
+		// wait a while
+		Thread.sleep(10000);
+
+		// we dont know how many interets this will take, but we can bound it
+		int min_interests = (int) Math.ceil((double) tosend / VersioningInterestManager.MAX_FILL);
+		int max_interests = (int) Math.floor((double) tosend / VersioningInterestManager.MIN_FILL);
+		
+		System.out.println("handle interests: " + sinkhandle.total_count.getValue());
+		System.out.println("exclusions      : " + vim.getExclusions().size());
+		System.out.println("vim interests   : " + vim.getInterestDataTree().size() + " (should be close to min interests)");
+		System.out.println("min interests   : " + min_interests);
+		System.out.println("max interests   : " + max_interests);
+		
+		Assert.assertTrue( min_interests <= vim.getInterestDataTree().size() );
+		Assert.assertTrue( vim.getInterestDataTree().size() <= max_interests );
+
+		
+		Assert.assertTrue( min_interests + tosend <= sinkhandle.total_count.getValue() );
+		Assert.assertTrue( sinkhandle.total_count.getValue() <= max_interests + tosend );
+	}
+	
+	/**
+	 * Send a very long stream with arrivals normally distributed around a spot
+	 * @throws Exception
+	 */
+	@Test
+	public void testLongStreamGaussian() throws Exception {
+		System.out.println("********** testLongStreamGaussian");
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		
+		TestListener listener = new TestListener();
+
+		TestVIM vim = new TestVIM(sinkhandle, basename, null, VersionNumber.getMinimumVersion(), listener);
+		vim.setSendInterest(true);
+		vim.start();
+
+		int tosend = VersioningInterestManager.MAX_FILL * 30;
+		
+		// send MAX_FILL items, should only be one interest
+		CCNTime now = CCNTime.now();
+		int max_spacing = 20000;
+		double mean_time = now.getTime();
+		double std_time = tosend * max_spacing;
+		
+		System.out.println("***** Sending stream 1 *****");
+		TreeSet<CCNTime> sent1 = sendStreamGaussian(sinkhandle, vim, basename, mean_time, std_time, tosend);
+
+		// wait a while
+		Thread.sleep(10000);
+
+		// we dont know how many interets this will take, but we can bound it
+		int min_interests = (int) Math.ceil((double) tosend / VersioningInterestManager.MAX_FILL);
+		int max_interests = (int) Math.floor((double) tosend / VersioningInterestManager.MIN_FILL);
+		
+		System.out.println("handle interests: " + sinkhandle.total_count.getValue());
+		System.out.println("exclusions      : " + vim.getExclusions().size());
+		System.out.println("vim interests   : " + vim.getInterestDataTree().size() + " (should be close to min interests)");
+		System.out.println("min interests   : " + min_interests);
+		System.out.println("max interests   : " + max_interests);
+		
+		Assert.assertTrue( min_interests <= vim.getInterestDataTree().size() );
+		Assert.assertTrue( vim.getInterestDataTree().size() <= max_interests );
+
+		
+		Assert.assertTrue( min_interests + tosend <= sinkhandle.total_count.getValue() );
+		Assert.assertTrue( sinkhandle.total_count.getValue() <= max_interests + tosend );
+	}
 
 	// ==============================
 
-	private TreeSet<CCNTime> sendStream(CCNHandle handle, TestVIM vim, ContentName name, long t, int count) throws Exception {
+	private TreeSet<CCNTime> sendStreamGaussian(CCNHandle handle, TestVIM vim, ContentName name, double mean_time, double std_time, int count) throws Exception {
+		TreeSet<CCNTime> sent = new TreeSet<CCNTime>();
+		
+		for(int i = 0; i < count; i++) {
+			CCNTime version;
+			// avoid sending duplicate version numbers
+			do {
+				double d = std_time * _rnd.nextGaussian() + mean_time;
+				
+				version = new CCNTime(Math.round(d));
+			} while( !sent.add(version));
+			
+			send(handle, vim, name, version);
+		}
+		return sent;
+	}
+	
+	private TreeSet<CCNTime> sendStreamUniform(CCNHandle handle, TestVIM vim, ContentName name, long start_time, long stop_time, int count) throws Exception {
+		TreeSet<CCNTime> sent = new TreeSet<CCNTime>();
+		
+		int width = (int) (stop_time - start_time + 1);
+		for(int i = 0; i < count; i++) {
+			CCNTime version;
+			
+			// avoid sending duplicate version numbers
+			do {
+				int delta = _rnd.nextInt(width);
+				version = new CCNTime(start_time + delta);
+			} while( !sent.add(version));
+			
+			send(handle, vim, name, version);
+		}
+		return sent;
+	}
+
+	private TreeSet<CCNTime> sendStreamRight(CCNHandle handle, TestVIM vim, ContentName name, long t, int count) throws Exception {
 		TreeSet<CCNTime> sent = new TreeSet<CCNTime>();
 		
 		for(int i = 0; i < count; i++) {
 			// walk backwares from 10 msec to 100 sec
 			t -= _rnd.nextInt(100000) + 10;
 			CCNTime version = new CCNTime(t);
-			sent.add(version);
-			
-			CCNStringObject so = new CCNStringObject(name, "Hello, World!", SaveType.LOCALREPOSITORY, handle);
-			so.save(version);
-			so.close();
-			Thread.sleep(10);
-
-			// We are satisfying the interest, so it is no longer pending
-			Interest interest = sinkhandle.interests.get(0);
-			sinkhandle.cancelInterest(interest, vim);
-
-			Assert.assertNotNull(interest);
-
-			Interest newInterest = vim.exposeReceive(so.getFirstSegment(), interest);
-
-			// this is normally done by handleContent
-			if( newInterest != null )
-				sinkhandle.expressInterest(newInterest, vim);
-
+			sent.add(version);		
+			send(handle, vim, name, version);
 		}
 		return sent;
+	}
+	
+	private TreeSet<CCNTime> sendStreamLeft(CCNHandle handle, TestVIM vim, ContentName name, long t, int count) throws Exception {
+		TreeSet<CCNTime> sent = new TreeSet<CCNTime>();
+		
+		for(int i = 0; i < count; i++) {
+			// walk backwares from 10 msec to 100 sec
+			t += _rnd.nextInt(100000) + 10;
+			CCNTime version = new CCNTime(t);
+			sent.add(version);		
+			send(handle, vim, name, version);
+		}
+		return sent;
+	}
+	
+	private void send(CCNHandle handle, TestVIM vim, ContentName name, CCNTime version) throws IOException, InterruptedException {
+		CCNStringObject so = new CCNStringObject(name, "Hello, World!", SaveType.LOCALREPOSITORY, handle);
+		so.save(version);
+		so.close();
+		Thread.sleep(SEND_PAUSE);
+
+		// We are satisfying the interest, so it is no longer pending
+		Interest interest = sinkhandle.interests.get(0);
+		sinkhandle.cancelInterest(interest, vim);
+
+		Assert.assertNotNull(interest);
+
+		Interest newInterest = vim.exposeReceive(so.getFirstSegment(), interest);
+
+		// this is normally done by handleContent
+		if( newInterest != null )
+			sinkhandle.expressInterest(newInterest, vim);
 	}
 }

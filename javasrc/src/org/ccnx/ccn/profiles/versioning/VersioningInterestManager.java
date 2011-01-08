@@ -29,11 +29,9 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.profiles.versioning.InterestData.TimeElement;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Interest;
 
 /**
@@ -109,6 +107,11 @@ public class VersioningInterestManager implements CCNInterestListener {
 	public final static int MID_FILL = 125;
 	public final static int MAX_FILL = 200;
 
+	// for testing
+//	public final static int MIN_FILL = 5;
+//	public final static int MID_FILL = 12;
+//	public final static int MAX_FILL = 20;
+
 
 	/**
 	 * Create a VersioningInterestManager for a specific content name.  Send
@@ -120,19 +123,13 @@ public class VersioningInterestManager implements CCNInterestListener {
 	 * @param startingVersion non-negative, use 0 for all versions
 	 * @param listener
 	 */
-	public VersioningInterestManager(CCNHandle handle, ContentName name, int retrySeconds, Set<CCNTime> exclusions, long startingVersion, CCNInterestListener listener) {
+	public VersioningInterestManager(CCNHandle handle, ContentName name, Set<VersionNumber> exclusions, VersionNumber startingVersion, CCNInterestListener listener) {
 		_handle = handle;
 		_name = name;
-		_retrySeconds = retrySeconds;
 		_startingVersion = startingVersion;
 		_listener = listener;
 		if( null != exclusions )
 			_exclusions.addAll(exclusions);
-	}
-
-	public void setRetrySeconds(int retrySeconds) {
-		_retrySeconds = retrySeconds;
-		updateRetry();
 	}
 
 	/**
@@ -156,14 +153,14 @@ public class VersioningInterestManager implements CCNInterestListener {
 	public synchronized Interest handleContent(ContentObject data, Interest interest) {
 		return receive(data, interest);
 	}
-	
+
 	/**
 	 * This is purely a debugging aid
 	 */
 	public String dumpExcluded() {
 		StringBuilder sb = new StringBuilder();
-		for( CCNTime version : _exclusions ) {
-			sb.append(VersioningProfile.printAsVersionComponent(version));
+		for( VersionNumber version : _exclusions ) {
+			sb.append(version.printAsVersionComponent());
 			sb.append(", ");
 		}
 		return sb.toString();
@@ -174,9 +171,8 @@ public class VersioningInterestManager implements CCNInterestListener {
 	private boolean _running = false;
 	protected final CCNHandle _handle;
 	private final ContentName _name;
-	protected final TreeSet<CCNTime> _exclusions = new TreeSet<CCNTime>();
-	private final long _startingVersion;
-	private int _retrySeconds;
+	protected final TreeSet<VersionNumber> _exclusions = new TreeSet<VersionNumber>();
+	private final VersionNumber _startingVersion;
 	private final CCNInterestListener _listener; // our callback
 
 	// These are to track the average density
@@ -190,41 +186,30 @@ public class VersioningInterestManager implements CCNInterestListener {
 	// interestData that generated it so we can re-express interest
 	protected final Map<Interest, InterestData> _interestMap = new HashMap<Interest, InterestData>();
 
-
-	// when we got the last CCN timeout and went in to a retry period
-	// we will retry when now <= _retryStartingTime + _retrySeconds
-	private int _retryStartingTime;
-
-
-	// the retry period was updated, so do the right thing
-	private void updateRetry() {
-		// XXX finish
-	}
-
 	/**
 	 * Called on start()
 	 */
 	private void generateInterests() {
 		synchronized(_exclusions) {
 			// we ask for content from right to left, so fill from right to left
-			Iterator<CCNTime> iter = _exclusions.descendingIterator();
+			Iterator<VersionNumber> iter = _exclusions.descendingIterator();
 
 			// The first interest (being right most) goes from 0 to infinity.  If it gets
 			// filled up, we will set the startTime and create a new one to the left.
-			InterestData id = new InterestData(_name, _startingVersion, InterestData.NO_STOP_TIME);
+			InterestData id = new InterestData(_name, _startingVersion, VersionNumber.getMaximumVersion());
 
 			// fill the current InterestData with exclusions until it is at MIN_FILL,
 			// then make a new InterestData with a range below the first one.
 			while( iter.hasNext() ) {
-				CCNTime version = iter.next();
+				VersionNumber version = iter.next();
 
 				// don't add stuff before the start time
-				if( version.getTime() < _startingVersion )
+				if( version.before(_startingVersion) )
 					break;
 
 				if( id.size() >= MIN_FILL ) {
-					long t = version.getTime();
-					id.setStartTime(t+1);
+					VersionNumber t = version.addAndReturn(1);
+					id.setStartTime(t);
 					// now that the start time is fixed, add to TreeSet
 					_interestData.add(id);
 
@@ -290,7 +275,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 		InterestData datum;
 		Interest newInterest = null;
 
-		CCNTime version;
+		VersionNumber version;
 
 		// Match the interest to our pending interests.  This removes it
 		// from the pending interest map.
@@ -300,30 +285,43 @@ public class VersioningInterestManager implements CCNInterestListener {
 
 		// if we cannot find a version component, just re-express the same interest
 		try {
-			version = VersioningProfile.getLastVersionAsTimestamp(data.name());
+			version = new VersionNumber(data.name());
 		} catch (VersionMissingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return datum.buildInterest();
-		}
+			
+			if( null != datum )
+				newInterest = datum.buildInterest();
 
+			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
+				Log.finer(Log.FAC_ENCODING, "Returning new interest {0}",
+						null == newInterest ? "NULL" : newInterest.toString());
+			return newInterest;
+		}
+		
+		if( null == datum && Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
+			Log.fine(Log.FAC_ENCODING, "Version {0} did not match a pending interest.",
+					version.toString());
+		
 		// Is this something we should ignore?  This will avoid sending the
 		// object up to the user.
-		if( isLessThanUnsigned(version.getTime(),_startingVersion) || 
-			isLessThanUnsigned(InterestData.NO_STOP_TIME, version.getTime()) ) 
+		if( version.before(_startingVersion) || VersionNumber.getMaximumVersion().before(version) ) 
 		{
 			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
 				Log.fine(Log.FAC_ENCODING, "Ignorning version {0} because outside interval {1} to {2}",
-						VersioningInterest.versionDump(version),
-						VersioningInterest.versionDump(new CCNTime(_startingVersion)),
-						InterestData.NO_STOP_TIME);		
+						version.toString(),
+						_startingVersion.toString(),
+						VersionNumber.getMaximumVersion().toString());		
 
 			return null;
 		}
 
 		// store it in our global list of exclusions
+		// If the version is already in the exclusion list, 
 		synchronized(_exclusions) {
-			_exclusions.add(version);
+			if( ! _exclusions.add(version) )
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
+					Log.fine(Log.FAC_ENCODING, "Receive duplicate version {0}",
+							version.toString());			
 		}
 
 		// if we did not match anything, then we are no longer interested in it.
@@ -331,6 +329,10 @@ public class VersioningInterestManager implements CCNInterestListener {
 		// not need to re-express an interest as the re-build did that.
 		if( null != datum ) {
 
+			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
+				Log.fine(Log.FAC_ENCODING, "Receive duplicate version {0}",
+						version.toString());			
+			
 			// Figure out where to put the exclusion.  Because of re-building,
 			// an exclusion will not always go in the original datum.  But,
 			// that is usually a great first choice, so try it.  If that does
@@ -338,7 +340,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 			InterestData excludeDatum = datum;
 			if( !excludeDatum.contains(version) ) {
 				// search for where to add the exclusion.  "x" is just to search the tree.
-				InterestData x = new InterestData(null, version.getTime(), InterestData.NO_STOP_TIME);
+				InterestData x = new InterestData(null, version);
 
 				// This is the InterestData that must contain version because
 				// it is the largest startTime that is less than version
@@ -347,7 +349,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 				// floor shouldn't every be null
 				if( null == floor ) {
 					Log.warning(Log.FAC_ENCODING, "Warning: floor element is null for version {0}",
-							VersioningInterest.versionDump(version));	
+							version.toString());	
 				}
 
 				if( null != floor && floor.contains(version) ) {
@@ -355,13 +357,25 @@ public class VersioningInterestManager implements CCNInterestListener {
 				} else {
 					excludeDatum = null;
 					Log.severe(Log.FAC_ENCODING, "Error: floor element {0} did not contain version {1}",
-							floor.toString(), VersioningInterest.versionDump(version));
+							floor.toString(), version.toString());
 				}
 			}
 
-			if( (null != excludeDatum) && !excludeDatum.addExclude(version)) {
-				// we cannot put the new exclusion in there, so we need to rebuild
-				rebuild(version, excludeDatum);
+			if( null != excludeDatum ) {
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
+					Log.fine(Log.FAC_ENCODING, "Excluding version {0} from InterestData {1}",
+							version.toString(),
+							excludeDatum);		
+				
+				if( !excludeDatum.addExclude(version)) {
+					// we cannot put the new exclusion in there, so we need to rebuild
+					rebuild(version, excludeDatum);
+				}
+			} else {
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.WARNING))
+					Log.warning(Log.FAC_ENCODING, "Warning: Version {0} did not match any excludes!",
+							version.toString(),
+							excludeDatum);	
 			}
 
 			newInterest = datum.buildInterest();
@@ -372,6 +386,10 @@ public class VersioningInterestManager implements CCNInterestListener {
 
 		// pass it off to the user
 		_listener.handleContent(data, interest);
+
+		if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
+			Log.finer(Log.FAC_ENCODING, "Returning new interest {0}",
+					null == newInterest ? "NULL" : newInterest.toString());
 
 		return newInterest;
 	}
@@ -390,10 +408,13 @@ public class VersioningInterestManager implements CCNInterestListener {
 	 * @param datum
 	 * @param version may be null for a rebuild w/o insert
 	 */
-	protected void rebuild(CCNTime version, InterestData datum) {
+	protected void rebuild(VersionNumber version, InterestData datum) {
 		InterestData left, right;
 
-
+		if( Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
+			Log.info(Log.FAC_ENCODING, "Rebuilding version {0} data {1}",
+					version.toString(), datum.toString());
+		
 		left = _interestData.lower(datum);
 		right = _interestData.higher(datum);
 		int left_size = MAX_FILL, right_size = MAX_FILL;
@@ -403,13 +424,29 @@ public class VersioningInterestManager implements CCNInterestListener {
 		if( null != right )
 			right_size = right.size();
 
-		if( tryLeftOrRightShift(datum, left, left_size, right, right_size) )
-			return;
-
-		if( tryCreatingMissingNeighbor(datum, left, left_size, right, right_size) )
-			return;
-
-		rebalance(datum, left, left_size, right, right_size);		
+		// There are the three stages of the algorithm.
+		// First, try shifting exclusions to the left or right
+		if( !tryLeftOrRightShift(datum, left, left_size, right, right_size) )
+			// if that does not work see if we are missing a neighbor, and if so
+			// create it.
+			if( !tryCreatingMissingNeighbor(datum, left, left_size, right, right_size) )
+				// that didn't work, so try rebalancing
+				rebalance(datum, left, left_size, right, right_size);	
+		
+		// Now insert "version" in to the right place
+		// this code is duplicated from receive, should refactor
+		InterestData x = new InterestData(null, version);
+		InterestData floor = _interestData.floor(x);
+		if( null != floor ) {
+			if( !floor.contains(version) )
+				Log.severe(Log.FAC_ENCODING, "Error: floor element {0} did not contain version {1}",
+						floor.toString(), version.toString());
+			else
+				floor.addExclude(version);
+		} else {
+			Log.warning(Log.FAC_ENCODING, "Warning: floor element is null for version {0}",
+					version.toString());	
+		}
 	}
 
 	/**
@@ -659,16 +696,6 @@ public class VersioningInterestManager implements CCNInterestListener {
 		}
 	}
 
-	/**
-	 * To compare versions, we need unsigned math
-	 * @param n1
-	 * @param n2
-	 * @return true if n1 < n2 unsigned
-	 */
-	protected static boolean isLessThanUnsigned(long n1, long n2) {
-		// see http://www.javamex.com/java_equivalents/unsigned_arithmetic.shtml
-		return (n1 < n2) ^ ((n1 < 0) != (n2 < 0));
-	}
 
 	// ====================================================
 	// Inner Classes
