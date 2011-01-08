@@ -480,7 +480,11 @@ public class VersioningInterestManager implements CCNInterestListener {
 
 				// use the left 
 
+				// this operation will change the start time of middle, so must
+				// remove from tree, then re-add it.
+				_interestData.remove(middle);
 				middle.transferLeft(left, MID_FILL - left_size);
+				_interestData.add(middle);
 				sendInterest(left);
 
 				sum_density += middle.getDensity();
@@ -495,7 +499,10 @@ public class VersioningInterestManager implements CCNInterestListener {
 
 					// use the left 
 
+					// this will change the starttime of right
+					_interestData.remove(right);
 					middle.transferRight(right, MID_FILL - right_size);
+					_interestData.add(right);
 					sendInterest(right);
 
 					sum_density += middle.getDensity();
@@ -519,7 +526,11 @@ public class VersioningInterestManager implements CCNInterestListener {
 		if( null == left ) {
 			sum_density -= middle.getDensity();
 
+			// this operation will change the startTime of middle, so it
+			// must be removed from the tree then re-added
+			_interestData.remove(middle);
 			left = middle.splitLeft(MIN_FILL);
+			_interestData.add(middle);
 			_interestData.add(left);
 			sendInterest(left);
 
@@ -532,9 +543,12 @@ public class VersioningInterestManager implements CCNInterestListener {
 		if( null == right ) {
 			sum_density -= middle.getDensity();
 
+			// this operation will change the startTime of middle, so it
+			// must be removed from the tree then re-added
+			_interestData.remove(middle);
 			right = middle.splitRight(MIN_FILL);
+			_interestData.add(middle);
 			_interestData.add(right);
-			sendInterest(right);
 
 			sum_density += middle.getDensity();
 			sum_density += right.getDensity();
@@ -579,9 +593,12 @@ public class VersioningInterestManager implements CCNInterestListener {
 			sum_density -= left.getDensity();
 
 			// insert to the left
+			_interestData.remove(middle);
 			InterestData split = middle.splitLeft(MIN_FILL);
-			_interestData.add(split);
+			// does not change startTime of left
 			left.transferRight(split, MIN_FILL);
+			_interestData.add(middle);
+			_interestData.add(split);
 			sendInterest(split);
 			sendInterest(left);
 
@@ -594,9 +611,15 @@ public class VersioningInterestManager implements CCNInterestListener {
 			sum_density -= right.getDensity();
 
 			// insert to the left
+			_interestData.remove(middle);
+			_interestData.remove(right);
+			
 			InterestData split = middle.splitRight(MIN_FILL);
-			_interestData.add(split);
 			right.transferLeft(split, MIN_FILL);
+			_interestData.add(middle);
+			_interestData.add(right);
+			_interestData.add(split);
+
 			sendInterest(split);
 			sendInterest(left);
 
@@ -620,11 +643,16 @@ public class VersioningInterestManager implements CCNInterestListener {
 				next = _interestData.lower(node);
 
 				if( null == next ) {
+					_interestData.remove(node);
 					next = node.splitLeft(count);
+					_interestData.add(node);
 					_interestData.add(next);
 				} else {
 					// this might overflow next
+					// does not change starttime of next
+					_interestData.remove(node);
 					node.transferLeft(next, count);
+					_interestData.add(node);
 				}
 
 				if( node != middle )
@@ -647,11 +675,15 @@ public class VersioningInterestManager implements CCNInterestListener {
 				next = _interestData.higher(node);
 
 				if( null == next ) {
+					// right split does not change starttime of node
 					next = node.splitRight(count);
 					_interestData.add(next);
 				} else {
 					// this might overflow next
+					// changes start time of next
+					_interestData.remove(next);
 					node.transferRight(next, count);
+					_interestData.add(next);
 				}
 
 				if( node != middle )
