@@ -78,6 +78,7 @@ public class VersioningProfile implements CCNProfile {
 
 	/**
 	 * Add a version field to a ContentName.
+	 * @version should be a CCNTime toBinaryTimeAsLong() not getTime()
 	 * @return ContentName with a version appended. Does not affect previous versions.
 	 */
 	public static ContentName addVersion(ContentName name, long version) {
