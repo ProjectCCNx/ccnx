@@ -64,7 +64,7 @@ public class VersioningHelper {
 			Assert.assertTrue(recv.contains(string_sent));
 		}
 	}
-	
+
 	public static ArrayList<CCNStringObject> sendEventStream(CCNHandle handle, ContentName basename, int tosend) throws Exception {
 
 		// Send a stream of string objects
@@ -79,22 +79,22 @@ public class VersioningHelper {
 				so.save();
 				so.close();
 				sent.add(so);
-				
-//				System.out.println("Sent version " + VersioningProfile.printAsVersionComponent(so.getVersion()));
-				
+
+				//				System.out.println("Sent version " + VersioningProfile.printAsVersionComponent(so.getVersion()));
+
 				// Flow controller just cannot go this fast, so need to slow it down.
 				Thread.sleep(10);
-				
+
 			} catch(Exception e) {
 				e.printStackTrace();
 				throw e;
 			}
-//			System.out.println(i);
+			//			System.out.println(i);
 		}
-		
+
 		return sent;
 	}
-	
+
 	public static class ConditionLong {
 		protected Lock lock = new ReentrantLock();
 		protected Condition cond  = lock.newCondition();
@@ -136,7 +136,7 @@ public class VersioningHelper {
 				lock.unlock();
 			}
 		}
-		
+
 		public long decrement() {
 			lock.lock();
 			try {
@@ -186,21 +186,28 @@ public class VersioningHelper {
 
 		@Override
 		public synchronized Interest handleContent(ContentObject data, Interest interest) {
+//			System.out.println("handleContent: " + data.name());
+			
 			received.add(new ReceivedData(data, interest));
-			cl.increment();
 
-			if( null != id ) {
-				try {
-					VersionNumber version = new VersionNumber(data.name());
-					id.addExclude(version);
-				} catch(Exception e) {
-					e.printStackTrace();
+			try {
+				if( null != id ) {
+					try {
+						VersionNumber version = new VersionNumber(data.name());
+						id.addExclude(version);
+					} catch(Exception e) {
+						e.printStackTrace();
+					}
+
+					if( cl.getValue() < runCount )
+						return id.buildInterest();
 				}
-
-				if( cl.getValue() < runCount )
-					return id.buildInterest();
+				return null;
+			} finally {
+				// want to do this at the very end, so anyting waiting on the
+				// value to be incremented will get it after this procedure is done.
+				cl.increment();
 			}
-			return null;
 		}
 
 		public void setInterestData(InterestData id) {
@@ -238,11 +245,11 @@ public class VersioningHelper {
 		public final ArrayList<Interest> interests = new ArrayList<Interest>();
 		public final ConditionLong count = new ConditionLong(0);
 		public final ConditionLong total_count = new ConditionLong(0);
-		
+
 		protected SinkHandle() throws ConfigurationException, IOException {
 			super();
 		}
-		
+
 		protected SinkHandle(KeyManager keyManager) throws IOException {
 			super(keyManager);
 		}
@@ -252,23 +259,23 @@ public class VersioningHelper {
 				return new SinkHandle(keyManager);
 			}
 		}
-		
+
 		public static SinkHandle open(CCNHandle handle) throws IOException {
 			return open(handle.keyManager());
 		}
-		
+
 		@Override
 		public synchronized void expressInterest(
 				Interest interest,
 				CCNInterestListener listener) throws IOException {
-			
+
 			// ignore startwrites
 			if( !interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes()) ) {
 				interests.add(interest);
-				
+
 				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
 					Log.finer(Log.FAC_ENCODING, String.format("expressInterest (%d): %s",
-						interests.size(), interest.toString()));
+							interests.size(), interest.toString()));
 				count.increment();
 				total_count.increment();
 			}
@@ -279,18 +286,18 @@ public class VersioningHelper {
 		public synchronized void cancelInterest(Interest interest, CCNInterestListener listener) {
 			if( !interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes()) ) {
 				interests.remove(interest);
-//				System.out.println(String.format("cancelInterest  (%d): %s",
-//						interests.size(), interest.toString()));
-				
+				//				System.out.println(String.format("cancelInterest  (%d): %s",
+				//						interests.size(), interest.toString()));
+
 				count.decrement();
 			}
 			super.cancelInterest(interest, listener);
 		}
-		
+
 	}
 	public static class TestVIM extends VersioningInterestManager {
 		protected boolean _sendInterests = false;
-		
+
 		public TestVIM(CCNHandle handle, ContentName name,
 				Set<VersionNumber> exclusions, VersionNumber startingVersion,
 				CCNInterestListener listener) {
@@ -300,19 +307,19 @@ public class VersioningHelper {
 		public Interest exposeReceive(ContentObject data, Interest interest) {
 			return receive(data, interest);
 		}
-		
+
 		public void setSendInterest(boolean enable) {
 			_sendInterests = enable;
 		}
-				
+
 		public TreeSet<InterestData> getInterestDataTree() {
 			return _interestData;
 		}
-		
+
 		public TreeSet<VersionNumber> getExclusions() {
 			return _exclusions;
 		}
-		
+
 		/**
 		 * Don't actually send an interest
 		 */

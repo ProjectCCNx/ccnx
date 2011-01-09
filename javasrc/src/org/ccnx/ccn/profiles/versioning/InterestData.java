@@ -163,7 +163,7 @@ public class InterestData implements Comparable<InterestData> {
 		
 		// It could happen that our stop time is exactly equal to the version of an
 		// exclusion we already made.  if that's the case, don't add a duplicate
-		if( null != lastComponentExcluded && ! lastComponentExcluded.equals(exStop) )
+		if( null == lastComponentExcluded || ! lastComponentExcluded.equals(exStop) )
 			components.add(exStop);
 
 		components.add(new ExcludeAny());
@@ -188,8 +188,8 @@ public class InterestData implements Comparable<InterestData> {
 				_name, 
 				exclude, 
 				(Integer) _name.count(), 
-				(Integer) 2, // dont want anything beyond version/segment
-				(Integer) 2, // version, segment
+				(Integer) 3, // dont want anything beyond version/segment
+				(Integer) 3, // version, segment
 				null // publisher
 		);
 

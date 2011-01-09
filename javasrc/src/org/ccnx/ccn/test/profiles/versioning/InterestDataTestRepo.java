@@ -48,10 +48,10 @@ public class InterestDataTestRepo {
 	protected final static long TIMEOUT=30000;
 	protected final ContentName prefix;
 	
-	protected final VersionNumber vn_111000000000L = new VersionNumber(111000000000L);
-	protected final VersionNumber vn_111111000000L = new VersionNumber(111111000000L);
-	protected final VersionNumber vn_111222000000L = new VersionNumber(111222000000L);
-	protected final VersionNumber vn_111333000000L = new VersionNumber(111333000000L);
+	protected final VersionNumber vn_11100000000L = new VersionNumber(11100000000L);
+	protected final VersionNumber vn_11111100000L = new VersionNumber(11111100000L);
+	protected final VersionNumber vn_11122200000L = new VersionNumber(11122200000L);
+	protected final VersionNumber vn_11133300000L = new VersionNumber(11133300000L);
 
 	public InterestDataTestRepo() throws MalformedContentNameStringException {
 		prefix  = ContentName.fromNative(String.format("/test_%016X", _rnd.nextLong()));
@@ -108,9 +108,9 @@ public class InterestDataTestRepo {
 	public void testInterestDataCompare() throws Exception {
 		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
 
-		InterestData id1 =  new InterestData(basename, vn_111000000000L, new VersionNumber(111001000000L));
-		InterestData id1a = new InterestData(basename, vn_111000000000L, new VersionNumber(111110000000L));
-		InterestData id2 =  new InterestData(basename, vn_111222000000L, new VersionNumber(111330000000L));
+		InterestData id1 =  new InterestData(basename, vn_11100000000L, new VersionNumber(11100100000L));
+		InterestData id1a = new InterestData(basename, vn_11100000000L, new VersionNumber(11111000000L));
+		InterestData id2 =  new InterestData(basename, vn_11122200000L, new VersionNumber(11133000000L));
 
 		Assert.assertTrue(id1.compareTo(id1a) == 0);
 		Assert.assertTrue(id1a.compareTo(id1) == 0);
@@ -125,7 +125,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testInterestDataInterest() throws Exception {
 		CCNHandle handle = CCNHandle.getHandle();
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 		TestListener listener = new TestListener();
 
 		InterestData id = new InterestData(basename);
@@ -139,9 +139,11 @@ public class InterestDataTestRepo {
 		// Now use the interest to retrive it
 		Interest interest = id.buildInterest();
 
+		System.out.println("Expressing interest " + interest);
+		
 		handle.expressInterest(interest, listener);
 
-		listener.cl.waitForValue(1L, TIMEOUT);
+		Assert.assertTrue( listener.cl.waitForValue(1L, TIMEOUT) );
 
 		// now make sure what we got is what we expected
 		ContentObject co = listener.received.get(0).object;
