@@ -213,11 +213,11 @@ public class VersionNumber implements Comparable<VersionNumber> {
 	
 	
 	public static VersionNumber getMaximumVersion() {
-		return minVersionNumber;
+		return maxVersionNumber;
 	}
 	
 	public static VersionNumber getMinimumVersion() {
-		return maxVersionNumber;
+		return minVersionNumber;
 	}
 
 
