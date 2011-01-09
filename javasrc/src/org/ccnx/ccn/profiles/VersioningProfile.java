@@ -70,14 +70,17 @@ public class VersioningProfile implements CCNProfile {
 
 	public static final byte VERSION_MARKER = (byte)0xFD;
 	public static final byte [] FIRST_VERSION_MARKER = new byte []{VERSION_MARKER};
+	
 	public static final byte FF = (byte) 0xFF;
 	public static final byte OO = (byte) 0x00;
+	
 	public static final byte [] MIN_VERSION_MARKER = new byte [] {VERSION_MARKER, OO, OO, OO, OO, OO, OO };
 
 	// java cannot handle times beyond 0x7FFFFFFFFF, they are negative.
 	public static final byte [] MAX_VERSION_MARKER = new byte [] {VERSION_MARKER, (byte) 0x7F, FF, FF, FF, FF, FF };
 
-	public static final byte [] TOP_EXCLUDE_VERSION_MARKER = new byte [] {VERSION_MARKER+1, OO, OO, OO, OO, OO, OO };
+	public static final byte [] BOTTOM_EXCLUDE_VERSION_MARKER = new byte [] {VERSION_MARKER-1, FF, FF, FF, FF, FF, FF };
+	public static final byte [] TOP_EXCLUDE_VERSION_MARKER    = new byte [] {VERSION_MARKER+1, OO, OO, OO, OO, OO, OO };
 	
 
 	/**

@@ -318,10 +318,15 @@ public class VersioningInterestManager implements CCNInterestListener {
 		// store it in our global list of exclusions
 		// If the version is already in the exclusion list, 
 		synchronized(_exclusions) {
-			if( ! _exclusions.add(version) )
+			if( ! _exclusions.add(version) ) {
 				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
 					Log.fine(Log.FAC_ENCODING, "Receive duplicate version {0}",
-							version.toString());			
+							version.toString());
+			} else {
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER) )
+					Log.finer(Log.FAC_ENCODING, "Receive version {0}",
+							version.toString());	
+			}
 		}
 
 		// if we did not match anything, then we are no longer interested in it.
@@ -329,9 +334,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 		// not need to re-express an interest as the re-build did that.
 		if( null != datum ) {
 
-			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
-				Log.fine(Log.FAC_ENCODING, "Receive duplicate version {0}",
-						version.toString());			
+		
 			
 			// Figure out where to put the exclusion.  Because of re-building,
 			// an exclusion will not always go in the original datum.  But,
@@ -424,6 +427,10 @@ public class VersioningInterestManager implements CCNInterestListener {
 		if( null != right )
 			right_size = right.size();
 
+		// Insert "version" into "datum", which will be an overflow condition in datum.
+		// this will get balanced out below
+		datum.addExcludeUnbounded(version);
+		
 		// There are the three stages of the algorithm.
 		// First, try shifting exclusions to the left or right
 		if( !tryLeftOrRightShift(datum, left, left_size, right, right_size) )
@@ -432,21 +439,6 @@ public class VersioningInterestManager implements CCNInterestListener {
 			if( !tryCreatingMissingNeighbor(datum, left, left_size, right, right_size) )
 				// that didn't work, so try rebalancing
 				rebalance(datum, left, left_size, right, right_size);	
-		
-		// Now insert "version" in to the right place
-		// this code is duplicated from receive, should refactor
-		InterestData x = new InterestData(null, version);
-		InterestData floor = _interestData.floor(x);
-		if( null != floor ) {
-			if( !floor.contains(version) )
-				Log.severe(Log.FAC_ENCODING, "Error: floor element {0} did not contain version {1}",
-						floor.toString(), version.toString());
-			else
-				floor.addExclude(version);
-		} else {
-			Log.warning(Log.FAC_ENCODING, "Warning: floor element is null for version {0}",
-					version.toString());	
-		}
 	}
 
 	/**
@@ -549,6 +541,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 			right = middle.splitRight(MIN_FILL);
 			_interestData.add(middle);
 			_interestData.add(right);
+			sendInterest(right);
 
 			sum_density += middle.getDensity();
 			sum_density += right.getDensity();

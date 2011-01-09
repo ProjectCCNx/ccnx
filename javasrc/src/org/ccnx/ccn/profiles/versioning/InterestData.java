@@ -24,6 +24,7 @@ import java.util.TreeSet;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.ExcludeAny;
@@ -36,6 +37,7 @@ import org.ccnx.ccn.protocol.Interest;
  * do any network transactions, it only stores state about a specific interest
  * and will generate a new Interest message based on its current start, stop,
  * and exclusion list.
+ * 
  */
 public class InterestData implements Comparable<InterestData> {
 	
@@ -131,28 +133,32 @@ public class InterestData implements Comparable<InterestData> {
 
 		ArrayList<Exclude.Element> components = new ArrayList<Exclude.Element>();
 
+		byte [] startTimeMinusOneComponent;
+		
 		if( VersionNumber.getMinimumVersion().before(_startTime) ) {
 			VersionNumber startTimeMinusOne = _startTime.addAndReturn(-1);
-			byte [] startTimeMinusOneComponent = _startTime.getVersionBytes();
-
-			components.add(new ExcludeAny());
-			components.add(new ExcludeComponent(startTimeMinusOneComponent));
-			
-			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINEST) )
-				Log.finest(Log.FAC_ENCODING, "Exclusion: start version {0}", startTimeMinusOne);
+			startTimeMinusOneComponent = startTimeMinusOne.getVersionBytes();
+		} else {
+			// if we're starring at 0, exclude below that.  We actually cannot
+			// express this as a CCNTime
+			startTimeMinusOneComponent = VersioningProfile.BOTTOM_EXCLUDE_VERSION_MARKER;
 		}
+
+		components.add(new ExcludeAny());
+		components.add(new ExcludeComponent(startTimeMinusOneComponent));
+		if( Log.isLoggable(Log.FAC_ENCODING, Level.FINEST) )
+			Log.finest(Log.FAC_ENCODING, "Exclusion: start version {0}", 
+					ContentName.componentPrintURI(startTimeMinusOneComponent));
 
 		// Now add the specific exclusions
 		
 		ExcludeComponent lastComponentExcluded = null;
-		if( !_excludedVersions.isEmpty() ) {
-			// TreeSet is sorted, so this is in right order for the exclusion filter
-			Iterator<VersionNumber> i = _excludedVersions.iterator();
-			while( i.hasNext() ) {
-				VersionNumber elem = i.next();
-				lastComponentExcluded = new ExcludeComponent(elem.getVersionBytes());
-				components.add(lastComponentExcluded);
-			}
+		// TreeSet is sorted, so this is in right order for the exclusion filter
+		Iterator<VersionNumber> i = _excludedVersions.iterator();
+		while( i.hasNext() ) {
+			VersionNumber elem = i.next();
+			lastComponentExcluded = new ExcludeComponent(elem.getVersionBytes());
+			components.add(lastComponentExcluded);
 		}
 
 		// Now exclude everything after stop time
@@ -176,7 +182,18 @@ public class InterestData implements Comparable<InterestData> {
 		try {
 			exclude = new Exclude(components);
 		} catch(InvalidParameterException ipe) {
+			// all of this verbosity was to catch a bug in the startTime component.
+			// That's fixed now, but if this ever comes up, its something serious.
 			ipe.printStackTrace();
+			Log.severe(Log.FAC_ENCODING, this.toString());
+			StringBuilder sb_asVersion = new StringBuilder();
+			StringBuilder sb_asLongs = new StringBuilder();
+			for(VersionNumber vn : _excludedVersions) {
+				sb_asVersion.append(String.format("%s, ", vn.printAsVersionComponent()));
+				sb_asLongs.append(  String.format("%d, ", vn.getAsMillis()));
+			}
+			Log.severe(Log.FAC_ENCODING, "Versions  : " + sb_asVersion.toString());
+			Log.severe(Log.FAC_ENCODING, "Longs     : " + sb_asLongs.toString());
 			Log.severe(Log.FAC_ENCODING, "Parameters: " + components.toString());
 			throw ipe;
 		}
@@ -372,7 +389,7 @@ public class InterestData implements Comparable<InterestData> {
 	 * Used internally.  Sometimes we want to intentionally overflow
 	 * @param version
 	 */
-	private void addExcludeUnbounded(VersionNumber version) {
+	protected void addExcludeUnbounded(VersionNumber version) {
 		if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER) ) 
 			Log.finer(Log.FAC_ENCODING, String.format("addExcludeUnbounded %s", version.toString()));
 
