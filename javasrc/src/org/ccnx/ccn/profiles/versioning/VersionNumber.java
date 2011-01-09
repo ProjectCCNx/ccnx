@@ -16,6 +16,7 @@
  */
 package org.ccnx.ccn.profiles.versioning;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 
 import org.ccnx.ccn.profiles.VersionMissingException;
@@ -94,10 +95,11 @@ public class VersionNumber implements Comparable<VersionNumber> {
 
 	/**
 	 * Return the byte array corresponding to this version, to
-	 * be used in the construction of a ContentName
+	 * be used in the construction of a ContentName.  Includes the version
+	 * marker %FD.
 	 * @return A copy of the internal byte array.
 	 */
-	public byte [] getBytes() {
+	public byte [] getVersionBytes() {
 		return Arrays.copyOf(_versionComponent, _versionComponent.length);
 	}
 	
@@ -206,8 +208,8 @@ public class VersionNumber implements Comparable<VersionNumber> {
 
 	// ========================================
 	// static methods
-	protected final static VersionNumber minVersionNumber = new VersionNumber(VersioningProfile.FIRST_VERSION_MARKER);
-	protected final static VersionNumber maxVersionNumber = new VersionNumber(VersioningProfile.LAST_VERSION_MARKER);
+	protected final static VersionNumber minVersionNumber = new VersionNumber(VersioningProfile.MIN_VERSION_MARKER);
+	protected final static VersionNumber maxVersionNumber = new VersionNumber(VersioningProfile.MAX_VERSION_MARKER);
 	
 	
 	public static VersionNumber getMaximumVersion() {

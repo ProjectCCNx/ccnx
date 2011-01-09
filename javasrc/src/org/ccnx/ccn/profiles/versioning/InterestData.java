@@ -133,7 +133,7 @@ public class InterestData implements Comparable<InterestData> {
 
 		if( VersionNumber.getMinimumVersion().before(_startTime) ) {
 			VersionNumber startTimeMinusOne = _startTime.addAndReturn(-1);
-			byte [] startTimeMinusOneComponent = _startTime.getBytes();
+			byte [] startTimeMinusOneComponent = _startTime.getVersionBytes();
 
 			components.add(new ExcludeAny());
 			components.add(new ExcludeComponent(startTimeMinusOneComponent));
@@ -150,7 +150,7 @@ public class InterestData implements Comparable<InterestData> {
 			Iterator<VersionNumber> i = _excludedVersions.iterator();
 			while( i.hasNext() ) {
 				VersionNumber elem = i.next();
-				lastComponentExcluded = new ExcludeComponent(elem.getBytes());
+				lastComponentExcluded = new ExcludeComponent(elem.getVersionBytes());
 				components.add(lastComponentExcluded);
 			}
 		}
@@ -158,7 +158,7 @@ public class InterestData implements Comparable<InterestData> {
 		// Now exclude everything after stop time
 		ExcludeComponent exStop = null;
 		VersionNumber stopTimePlusOne = _stopTime.addAndReturn(1);
-		byte [] stopTimePlusOneComponent = stopTimePlusOne.getBytes();
+		byte [] stopTimePlusOneComponent = stopTimePlusOne.getVersionBytes();
 		exStop = new ExcludeComponent(stopTimePlusOneComponent);
 		
 		// It could happen that our stop time is exactly equal to the version of an
