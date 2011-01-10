@@ -220,6 +220,7 @@ public class VersioningInterestTestRepo {
 				version = new CCNTime(start_time + delta);
 			} while( !sent.add(version));
 
+			System.out.println("Sending " + i);
 			send(handle, name, version);
 		}
 		
@@ -239,11 +240,12 @@ public class VersioningInterestTestRepo {
 			trycount--;
 			try {
 				boolean b = so.save(version);
-				if( b )
+				if( b ) {
 					so.close();
-				else
+					return;
+				} else {
 					throw new IOException("Not saved");
-				
+				}
 				// do this every time, not just on errors.  The FlowController seems
 				// to not like to receive a lot of objects all at once.
 //				Thread.sleep(SEND_PAUSE);

@@ -28,11 +28,13 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
+import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.InterestData;
 import org.ccnx.ccn.profiles.versioning.VersionNumber;
 import org.ccnx.ccn.profiles.versioning.VersioningInterestManager;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.profiles.versioning.VersioningHelper.SinkHandle;
@@ -52,7 +54,7 @@ public class VersioningInterestManagerTestRepo {
 	protected final Random _rnd = new Random();
 	protected final static long TIMEOUT=30000;
 	protected final static long SEND_PAUSE = 100;
-	protected final static int LONG_SEND_MULTIPLE = 5;
+	protected final static int LONG_SEND_MULTIPLE = 30;
 	protected final ContentName prefix;
 
 	protected CCNHandle realhandle = null;
@@ -65,7 +67,7 @@ public class VersioningInterestManagerTestRepo {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		Log.setLevel(Log.FAC_ALL, Level.WARNING);
-		Log.setLevel(Log.FAC_ENCODING, Level.FINER);
+		Log.setLevel(Log.FAC_ENCODING, Level.WARNING);
 	}
 
 	@Before
@@ -433,64 +435,21 @@ public class VersioningInterestManagerTestRepo {
 	}
 
 	private void send(CCNHandle handle, TestVIM vim, ContentName name, CCNTime version) throws IOException, InterruptedException {
-		CCNStringObject so = new CCNStringObject(name, "Hello, World!", SaveType.LOCALREPOSITORY, handle);
-		int trycount = 10;
-		IOException error = null;
-		final IOException noFirstSegment = new IOException("No first segment!");
 		
-		do {
-			error = null;
-			trycount--;
-			try {
-				so.save(version);
-				// do this every time, not just on errors.  The FlowController seems
-				// to not like to receive a lot of objects all at once.
-				Thread.sleep(SEND_PAUSE);
-			} catch(IOException e) {
-				error = e;
-				Thread.sleep(SEND_PAUSE);
-			} 
-			
-			int available_count = 0;
-			while(!so.available()) {
-				available_count++;
-				Thread.sleep(SEND_PAUSE * 3);
-			}
-			
-			if( available_count > 0 )
-				Log.warning(Log.FAC_ENCODING, "sleeps on so.available() count {0}", available_count);
+		String mystring = "Hello, World!";
 
-			int firstsegment_try = 2;
-			while(null == so.getFirstSegment() && firstsegment_try > 0) {
-				firstsegment_try--;
-				Thread.sleep(SEND_PAUSE * 3);
-			}
-			
-			if( firstsegment_try < 2 ) {
-				Log.warning(Log.FAC_ENCODING, "sleeps on so.getFirstSegment() count {0}", 2 - firstsegment_try);
-				dumpstate(vim);
-				throw noFirstSegment;
-			}
-			
-			if( null == so.getFirstSegment() )
-				error = noFirstSegment;
-
-		} while( trycount > 0 && null != error );
+		ContentName versionedNamed = VersioningProfile.addVersion(name, version);
+		ContentObject data = ContentObject.buildContentObject(versionedNamed, mystring.getBytes());
 		
-		if( null != error ) {
-			throw error;
-		}
-	
+
+
 		// We are satisfying the interest, so it is no longer pending
 		Interest interest = sinkhandle.interests.get(0);
 		sinkhandle.cancelInterest(interest, vim);
 
 		Assert.assertNotNull(interest);
-		Assert.assertNotNull("null first segment, trycount " + trycount, so.getFirstSegment());
-		
-		Interest newInterest = vim.exposeReceive(so.getFirstSegment(), interest);
 
-		so.close();
+		Interest newInterest = vim.exposeReceive(data, interest);
 
 		// this is normally done by handleContent
 		if( newInterest != null )
@@ -507,10 +466,10 @@ public class VersioningInterestManagerTestRepo {
 		System.out.println("TestVM InterestData");
 		for(InterestData data : vim.getInterestDataTree() )
 			System.out.println(data.toString());
-		
-//		System.out.println("=========================================");
-//		System.out.println("TestVM pending interests");
-//		for(InterestData data : vim.getInterestDataTree() )
-//			System.out.println(data.toString());
+
+		//		System.out.println("=========================================");
+		//		System.out.println("TestVM pending interests");
+		//		for(InterestData data : vim.getInterestDataTree() )
+		//			System.out.println(data.toString());
 	}
 }
