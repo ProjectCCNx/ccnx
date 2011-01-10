@@ -242,72 +242,73 @@ public class VersionNumberTest {
 		fail("Not yet implemented");
 	}
 
-	@Test
-	public void testBinaryTime() throws Exception {
-		CCNTime start = new CCNTime(1294600000000L);
-
-		long current = start.toBinaryTimeAsLong();	
-
-		for(int i = 0; i < 100000000; i++) {
-			current++;
-			CCNTime t_current = CCNTime.fromBinaryTimeAsLong(current);
-			Assert.assertEquals(current, t_current.toBinaryTimeAsLong());
-
-			for(int j = 1; j <= 4; j++) {
-				long next = current + j;
-				CCNTime t_next = CCNTime.fromBinaryTimeAsLong(next);
-
-				Assert.assertEquals(next, t_next.toBinaryTimeAsLong());
-				
-//				byte [] bytes_current = longToVersion(current);
-//				byte [] bytes_next    = longToVersion(next);
-				
-				byte [] bytes_current = VersioningProfile.timeToVersionComponent(t_current);
-				byte [] bytes_next    = VersioningProfile.timeToVersionComponent(t_next);
-				
-//				byte [] true_current = longToVersion(current);
-//				byte [] true_next    = longToVersion(next);
-				
-				if( Arrays.equals(bytes_current, bytes_next)) {
-
-					String s =
-						String.format("%s (%d) == %s (%d)",
-								ContentName.componentPrintURI(bytes_current),
-								current,
-								ContentName.componentPrintURI(bytes_next),
-								next);
-					System.out.println(s);
-
-					CCNTime verify_current = VersioningProfile.getVersionComponentAsTimestamp(bytes_current);
-					CCNTime verify_next = VersioningProfile.getVersionComponentAsTimestamp(bytes_next);
-					Assert.assertFalse(verify_current.equals(verify_next));
-				}
-			}
-		}
-	}
+//	@Test
+//	public void testBinaryTime() throws Exception {
+//		CCNTime start = new CCNTime(1294600000000L);
+//
+//		long current = start.toBinaryTimeAsLong();	
+//
+//		for(int i = 0; i < 100000000; i++) {
+//			current++;
+//			CCNTime t_current = CCNTime.fromBinaryTimeAsLong(current);
+//			Assert.assertEquals(current, t_current.toBinaryTimeAsLong());
+//
+//			for(int j = 1; j <= 4; j++) {
+//				long next = current + j;
+//				CCNTime t_next = CCNTime.fromBinaryTimeAsLong(next);
+//
+//				Assert.assertEquals(next, t_next.toBinaryTimeAsLong());
+//				
+////				byte [] bytes_current = longToVersion(current);
+////				byte [] bytes_next    = longToVersion(next);
+//				
+//				byte [] bytes_current = VersioningProfile.timeToVersionComponent(t_current);
+//				byte [] bytes_next    = VersioningProfile.timeToVersionComponent(t_next);
+//				
+////				byte [] true_current = longToVersion(current);
+////				byte [] true_next    = longToVersion(next);
+//				
+//				if( Arrays.equals(bytes_current, bytes_next)) {
+//
+//					String s =
+//						String.format("%s (%d) == %s (%d)",
+//								ContentName.componentPrintURI(bytes_current),
+//								current,
+//								ContentName.componentPrintURI(bytes_next),
+//								next);
+//					System.out.println(s);
+//
+//					CCNTime verify_current = VersioningProfile.getVersionComponentAsTimestamp(bytes_current);
+//					CCNTime verify_next = VersioningProfile.getVersionComponentAsTimestamp(bytes_next);
+//					Assert.assertFalse(verify_current.equals(verify_next));
+//				}
+//			}
+//		}
+//	}
 	
-	@Test
-	public void testSpecificVersion() throws Exception {
-		String uri = "/%FD%04%D2%A4S9%0E";
-		
-		ContentName component = ContentName.fromURI(uri);
-		
-		CCNTime t = VersioningProfile.getVersionComponentAsTimestamp(component.lastComponent());
-		
-		System.out.println(String.format("Componet %s (%s) msec %d binary %d", 
-				uri,
-				component.toURIString(),
-				t.getTime(),
-				t.toBinaryTimeAsLong()));
-		
-		VersionNumber vn = new VersionNumber(t);
-		System.out.println("VersionNumber " + vn.toString());
-		
-		VersionNumber minusone = vn.addAndReturn(-1);
-		System.out.println("Minusone      " + minusone.toString());
-		
-				
-	}
+	// this was to look at the behavior of CCNTime for a specific version
+//	@Test
+//	public void testSpecificVersion() throws Exception {
+//		String uri = "/%FD%04%D2%A4S9%0E";
+//		
+//		ContentName component = ContentName.fromURI(uri);
+//		
+//		CCNTime t = VersioningProfile.getVersionComponentAsTimestamp(component.lastComponent());
+//		
+//		System.out.println(String.format("Componet %s (%s) msec %d binary %d", 
+//				uri,
+//				component.toURIString(),
+//				t.getTime(),
+//				t.toBinaryTimeAsLong()));
+//		
+//		VersionNumber vn = new VersionNumber(t);
+//		System.out.println("VersionNumber " + vn.toString());
+//		
+//		VersionNumber minusone = vn.addAndReturn(-1);
+//		System.out.println("Minusone      " + minusone.toString());
+//		
+//				
+//	}
 
 	protected byte [] longToVersion(long v) {
 		byte [] varr = BigInteger.valueOf(v).toByteArray();

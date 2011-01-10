@@ -253,19 +253,12 @@ public class VersioningInterestManager implements CCNInterestListener {
 	 */
 	private void cancelInterests() {
 		synchronized(_interestMap){
-			for(InterestData datum : _interestData) {
-				Interest interest = datum.getLastInterest();
-				if( null != interest ) {
-					_interestMap.remove(interest);
-					_handle.cancelInterest(interest, this);
-				}
+			
+			for(Interest interest : _interestMap.keySet() ) {
+				_handle.cancelInterest(interest, this);
 			}
 
-			// interestmap should be empty now....
-			if( _interestMap.size() > 0 ) {
-				Log.warning(Log.FAC_ENCODING, "interestMap not empty after cancelInterests");
-				_interestMap.clear();
-			}
+			_interestMap.clear();
 		}
 	}
 

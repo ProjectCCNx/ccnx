@@ -53,7 +53,8 @@ import org.junit.Test;
 public class VersioningInterestTestRepo {
 	protected final Random _rnd = new Random();
 	protected final ContentName prefix;
-	protected CCNHandle realhandle = null;
+	protected CCNHandle recvhandle = null;
+	protected CCNHandle sendhandle = null;
 	
 	protected final static long TIMEOUT=30000;
 	protected final static long SEND_PAUSE = 50;
@@ -65,16 +66,18 @@ public class VersioningInterestTestRepo {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		Log.setLevel(Log.FAC_ALL, Level.WARNING);
-		Log.setLevel(Log.FAC_ENCODING, Level.INFO);
+		Log.setLevel(Log.FAC_ENCODING, Level.WARNING);
 	}
 
 	@Before
 	public void setUp() throws Exception {
-		realhandle = CCNHandle.getHandle();
+		recvhandle = CCNHandle.getHandle();
+		sendhandle = CCNHandle.open(recvhandle.keyManager());
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		sendhandle.close();
 	}
 
 	// ======================================================
@@ -84,6 +87,7 @@ public class VersioningInterestTestRepo {
 	 */
 	@Test
 	public void testTwoNamesOneListener() throws Exception {
+		System.out.println("****** testTwoNamesOneListener starting");
 		ContentName base1 = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 		ContentName base2 = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
@@ -92,7 +96,7 @@ public class VersioningInterestTestRepo {
 		
 		TestListener listener = new TestListener();
 		
-		VersioningInterest vi = new VersioningInterest(realhandle);
+		VersioningInterest vi = new VersioningInterest(recvhandle);
 		
 		vi.expressInterest(base1, listener);
 		vi.expressInterest(base2, listener);
@@ -103,7 +107,7 @@ public class VersioningInterestTestRepo {
 		long stop = start + 1000000L;
 		
 		int count = 100;
-		TreeSet<CCNTime> sent = sendStreamUniform(realhandle, names, start, stop, count);
+		TreeSet<CCNTime> sent = sendStreamUniform(sendhandle, names, start, stop, count);
 		
 		// now make sure we get them all
 		boolean b = listener.cl.waitForValue(count, TIMEOUT);
@@ -126,6 +130,7 @@ public class VersioningInterestTestRepo {
 			}
 		}
 		Assert.assertFalse(missing);
+		System.out.println("****** testThreeNamesFourListener done");
 	}
 	
 	/**
@@ -133,6 +138,7 @@ public class VersioningInterestTestRepo {
 	 */
 	@Test
 	public void testThreeNamesFourListener() throws Exception {
+		System.out.println("****** testThreeNamesFourListener starting");
 		ContentName base1 = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 		ContentName base2 = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 		ContentName base3 = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
@@ -144,7 +150,7 @@ public class VersioningInterestTestRepo {
 		TestListener listener3 = new TestListener();
 		TestListener listener4 = new TestListener();
 		
-		VersioningInterest vi = new VersioningInterest(realhandle);
+		VersioningInterest vi = new VersioningInterest(recvhandle);
 		
 		vi.expressInterest(base1, listener1);
 		vi.expressInterest(base2, listener2);
@@ -159,7 +165,7 @@ public class VersioningInterestTestRepo {
 		long stop = start + 1000000L;
 		
 		int count = 100;
-		TreeSet<CCNTime> sent = sendStreamUniform(realhandle, names, start, stop, count);
+		TreeSet<CCNTime> sent = sendStreamUniform(sendhandle, names, start, stop, count);
 		
 		// now make sure we get them all
 		boolean b = listener4.cl.waitForValue(count, TIMEOUT);
@@ -187,6 +193,7 @@ public class VersioningInterestTestRepo {
 		long sum = listener1.cl.getValue() + listener2.cl.getValue() + listener3.cl.getValue();
 		System.out.println("Other listeners got " + sum);
 		Assert.assertEquals(count, (int) sum);
+		System.out.println("****** testThreeNamesFourListener done");
 	}
 	
 	// ========================================================
@@ -226,13 +233,17 @@ public class VersioningInterestTestRepo {
 		CCNStringObject so = new CCNStringObject(name, "Hello, World " + version, SaveType.LOCALREPOSITORY, handle);
 		int trycount = 10;
 		IOException error = null;
-
+		
 		do {
 			error = null;
 			trycount--;
 			try {
-				so.save(version);
-				so.close();
+				boolean b = so.save(version);
+				if( b )
+					so.close();
+				else
+					throw new IOException("Not saved");
+				
 				// do this every time, not just on errors.  The FlowController seems
 				// to not like to receive a lot of objects all at once.
 //				Thread.sleep(SEND_PAUSE);
