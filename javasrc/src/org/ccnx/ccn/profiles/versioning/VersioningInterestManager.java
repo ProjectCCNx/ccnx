@@ -28,8 +28,6 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersionMissingException;
-import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -103,14 +101,14 @@ import org.ccnx.ccn.protocol.Interest;
 public class VersioningInterestManager implements CCNInterestListener {
 
 	// MIN_FILL should be less than MAX_FILL/2 due to how step D.1 works.
-	public final static int MIN_FILL = 50;
-	public final static int MID_FILL = 125;
-	public final static int MAX_FILL = 200;
+	//	public final static int MIN_FILL = 50;
+	//	public final static int MID_FILL = 125;
+	//	public final static int MAX_FILL = 200;
 
 	// for testing
-//	public final static int MIN_FILL = 5;
-//	public final static int MID_FILL = 12;
-//	public final static int MAX_FILL = 20;
+	public final static int MIN_FILL = 5;
+	public final static int MID_FILL = 12;
+	public final static int MAX_FILL = 20;
 
 
 	/**
@@ -137,7 +135,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 	 * @throws IOException 
 	 */
 	public synchronized void start() throws IOException {
-		_running = true;
+		//		_running = true;
 		generateInterests();
 	}
 
@@ -145,7 +143,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 	 * cancel all interests and stop operation
 	 */
 	public synchronized void stop() {
-		_running = false;
+		//		_running = false;
 		cancelInterests();
 	}
 
@@ -168,7 +166,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 
 	// ==============================================
 	// Internal implementation
-	private boolean _running = false;
+	//	private boolean _running = false;
 	protected final CCNHandle _handle;
 	private final ContentName _name;
 	protected final TreeSet<VersionNumber> _exclusions = new TreeSet<VersionNumber>();
@@ -184,7 +182,8 @@ public class VersioningInterestManager implements CCNInterestListener {
 
 	// We need to store a map from an interest given to the network to the
 	// interestData that generated it so we can re-express interest
-	protected final Map<Interest, InterestData> _interestMap = new HashMap<Interest, InterestData>();
+	// If InterestData is null, the interest is obsolete and should not be re-expressed.
+	protected final Map<Interest, InterestMapData> _interestMap = new HashMap<Interest, InterestMapData>();
 
 	/**
 	 * Called on start()
@@ -272,15 +271,22 @@ public class VersioningInterestManager implements CCNInterestListener {
 	 * @return
 	 */
 	protected Interest receive(ContentObject data, Interest interest) {
-		InterestData datum;
+		InterestData datum = null;
 		Interest newInterest = null;
+
+		// should we reexpress the interest?
+		boolean reexpress = false;
 
 		VersionNumber version;
 
 		// Match the interest to our pending interests.  This removes it
 		// from the pending interest map.
 		synchronized(_interestMap) {
-			datum = _interestMap.remove(interest);
+			InterestMapData imd = _interestMap.remove(interest);
+			if( null != imd ) {
+				datum = imd.getInterestData(); 
+				reexpress = imd.getReexpress();
+			}
 		}
 
 		// if we cannot find a version component, just re-express the same interest
@@ -288,7 +294,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 			version = new VersionNumber(data.name());
 		} catch (VersionMissingException e) {
 			e.printStackTrace();
-			
+
 			if( null != datum )
 				newInterest = datum.buildInterest();
 
@@ -297,11 +303,11 @@ public class VersioningInterestManager implements CCNInterestListener {
 						null == newInterest ? "NULL" : newInterest.toString());
 			return newInterest;
 		}
-		
-		if( null == datum && Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
-			Log.fine(Log.FAC_ENCODING, "Version {0} did not match a pending interest.",
-					version.toString());
-		
+
+		if( null == datum && Log.isLoggable(Log.FAC_ENCODING, Level.WARNING) )
+			Log.warning(Log.FAC_ENCODING, "Did not match a pending interest for version {0} interest {1}",
+					version.toString(), interest.toString());
+
 		// Is this something we should ignore?  This will avoid sending the
 		// object up to the user.
 		if( version.before(_startingVersion) || VersionNumber.getMaximumVersion().before(version) ) 
@@ -329,61 +335,28 @@ public class VersioningInterestManager implements CCNInterestListener {
 			}
 		}
 
-		// if we did not match anything, then we are no longer interested in it.
-		// This most likely happens because of a re-build, in which case we do
-		// not need to re-express an interest as the re-build did that.
-		if( null != datum ) {
+		InterestData excludeDatum = findInterestContainingVersion(version, datum);
 
-		
-			
-			// Figure out where to put the exclusion.  Because of re-building,
-			// an exclusion will not always go in the original datum.  But,
-			// that is usually a great first choice, so try it.  If that does
-			// not work, search for where to put it
-			InterestData excludeDatum = datum;
-			if( !excludeDatum.contains(version) ) {
-				// search for where to add the exclusion.  "x" is just to search the tree.
-				InterestData x = new InterestData(null, version);
+		if( null != excludeDatum ) {
+			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
+				Log.fine(Log.FAC_ENCODING, "Excluding version {0} from InterestData {1}",
+						version.toString(),
+						excludeDatum);		
 
-				// This is the InterestData that must contain version because
-				// it is the largest startTime that is less than version
-				InterestData floor = _interestData.floor(x);
-
-				// floor shouldn't every be null
-				if( null == floor ) {
-					Log.warning(Log.FAC_ENCODING, "Warning: floor element is null for version {0}",
-							version.toString());	
-				}
-
-				if( null != floor && floor.contains(version) ) {
-					excludeDatum = floor;
-				} else {
-					excludeDatum = null;
-					Log.severe(Log.FAC_ENCODING, "Error: floor element {0} did not contain version {1}",
-							floor.toString(), version.toString());
-				}
+			if( !excludeDatum.addExclude(version)) {
+				// we cannot put the new exclusion in there, so we need to rebuild
+				rebuild(version, excludeDatum);
 			}
 
-			if( null != excludeDatum ) {
-				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
-					Log.fine(Log.FAC_ENCODING, "Excluding version {0} from InterestData {1}",
-							version.toString(),
-							excludeDatum);		
-				
-				if( !excludeDatum.addExclude(version)) {
-					// we cannot put the new exclusion in there, so we need to rebuild
-					rebuild(version, excludeDatum);
+			if( reexpress ) {
+				newInterest = datum.buildInterest();
+				synchronized(_interestMap) {
+					_interestMap.put(newInterest, new InterestMapData(datum));
 				}
 			} else {
-				if( Log.isLoggable(Log.FAC_ENCODING, Level.WARNING))
-					Log.warning(Log.FAC_ENCODING, "Warning: Version {0} did not match any excludes!",
-							version.toString(),
-							excludeDatum);	
-			}
-
-			newInterest = datum.buildInterest();
-			synchronized(_interestMap) {
-				_interestMap.put(newInterest, datum);
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
+					Log.fine(Log.FAC_ENCODING, "Re-express false, so letting interest die: {0}",
+							interest.toString());
 			}
 		}
 
@@ -395,6 +368,54 @@ public class VersioningInterestManager implements CCNInterestListener {
 					null == newInterest ? "NULL" : newInterest.toString());
 
 		return newInterest;
+	}
+
+
+	/**
+	 * Find the InterestData that contains #version, using #hint as the
+	 * place to look first. 
+	 * @param version
+	 * @param hint may be null
+	 * @return the InterestData that contains version, may be null if none found.
+	 */
+	private InterestData findInterestContainingVersion(VersionNumber version,
+			InterestData hint) {
+		// if we did not match anything, then we are no longer interested in it.
+		// This most likely happens because of a re-build, in which case we do
+		// not need to re-express an interest as the re-build did that.
+		if( null != hint && hint.contains(version) )
+			return hint;
+
+		InterestData excludeDatum = null;
+
+		// Figure out where to put the exclusion.  Because of re-building,
+		// an exclusion will not always go in the original datum.  But,
+		// that is usually a great first choice, so try it.  If that does
+		// not work, search for where to put it
+
+		// search for where to add the exclusion.  "x" is just to search the tree.
+		InterestData x = new InterestData(null, version);
+
+		// This is the InterestData that must contain version because
+		// it is the largest startTime that is less than version
+		InterestData floor = _interestData.floor(x);
+
+		// floor shouldn't every be null
+		if( null == floor ) {
+			Log.warning(Log.FAC_ENCODING, "Warning: floor element is null for version {0}",
+					version.toString());	
+			return null;
+		}
+
+		if( floor.contains(version) ) {
+			excludeDatum = floor;
+		} else {
+			Log.severe(Log.FAC_ENCODING, "Error: floor element {0} did not contain version {1}",
+					floor.toString(), version.toString());
+			return null;
+		}
+
+		return excludeDatum;
 	}
 
 	/**
@@ -417,7 +438,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 		if( Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
 			Log.info(Log.FAC_ENCODING, "Rebuilding version {0} data {1}",
 					version.toString(), datum.toString());
-		
+
 		left = _interestData.lower(datum);
 		right = _interestData.higher(datum);
 		int left_size = MAX_FILL, right_size = MAX_FILL;
@@ -430,7 +451,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 		// Insert "version" into "datum", which will be an overflow condition in datum.
 		// this will get balanced out below
 		datum.addExcludeUnbounded(version);
-		
+
 		// There are the three stages of the algorithm.
 		// First, try shifting exclusions to the left or right
 		if( !tryLeftOrRightShift(datum, left, left_size, right, right_size) )
@@ -606,7 +627,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 			// insert to the left
 			_interestData.remove(middle);
 			_interestData.remove(right);
-			
+
 			InterestData split = middle.splitRight(MIN_FILL);
 			right.transferLeft(split, MIN_FILL);
 			_interestData.add(middle);
@@ -696,7 +717,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 
 	/**
 	 * Send a new interest and manage the _interestMap.  If the
-	 * InterestData has an old interest, we remove it from the map, so
+	 * InterestData has an old interest, we set the reexpress flag to false it in the map, so
 	 * it will no longer cause a new interest to be sent and then add
 	 * the new interest to the map, so when we receive an object for
 	 * it, we'll issue a new interest.
@@ -709,12 +730,19 @@ public class VersioningInterestManager implements CCNInterestListener {
 			// thing to an INterestData
 			if( null != old ) {
 				_handle.cancelInterest(old, this);
-				_interestMap.remove(old);
+				InterestMapData imd = _interestMap.get(old);
+				if( null != imd )
+					imd.setReexpress(false);
+
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER) )
+					Log.finer(Log.FAC_ENCODING, "sendInterest nulling _interestMap for {0}",old);
 			}
 
 			try {
 				_handle.expressInterest(interest, this);
-				_interestMap.put(interest, id);
+				_interestMap.put(interest, new InterestMapData(id));
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER) )
+					Log.finer(Log.FAC_ENCODING, "sendInterest setting  _interestMap for {0} to {1}", interest, id);
 			} catch(IOException e) {
 				e.printStackTrace();
 			}
@@ -725,6 +753,39 @@ public class VersioningInterestManager implements CCNInterestListener {
 	// ====================================================
 	// Inner Classes
 
+	// Each interest we send to the network is mapped back to the originating
+	// InterestData.  There is also a flag if this interest should be
+	// reexpressed.  On a rebuild(), a new interest is sent, so an
+	// old interest should be ignored.
+	protected static class InterestMapData implements Comparable<InterestMapData> {
+		public InterestMapData(InterestData data) {
+			_data = data;
+			_reexpress = true;
+		}
+
+		public InterestData getInterestData() { return _data; }
+		public boolean getReexpress() { return _reexpress; }
+		public void setReexpress(boolean reexpress) { _reexpress = reexpress; }
+
+		@Override
+		public int hashCode() { return _data.hashCode(); }
+
+		@Override
+		public int compareTo(InterestMapData arg0) {
+			return _data.compareTo(arg0._data);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if( !(obj instanceof InterestMapData) )
+				return false;
+			InterestMapData other = (InterestMapData) obj;
+			return _data.equals(other);
+		}
+
+		protected InterestData _data;
+		protected boolean _reexpress;
+	}
 
 
 }

@@ -336,7 +336,7 @@ public class VersioningHelper {
 				try {
 					if( _sendInterests )
 						_handle.expressInterest(interest, this);
-					_interestMap.put(interest, id);
+					_interestMap.put(interest, new InterestMapData(id));
 				} catch(IOException e) {
 					e.printStackTrace();
 				}

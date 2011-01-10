@@ -297,6 +297,7 @@ public class VersioningInterestManagerTestRepo {
 		long stop_time = start_time + tosend * max_spacing;
 
 		System.out.println("***** Sending stream 1 *****");
+		@SuppressWarnings("unused")
 		TreeSet<CCNTime> sent1 = sendStreamUniform(sinkhandle, vim, basename, start_time, stop_time, tosend);
 
 		// wait a while
@@ -344,6 +345,7 @@ public class VersioningInterestManagerTestRepo {
 		double std_time = tosend * max_spacing;
 
 		System.out.println("***** Sending stream 1 *****");
+		@SuppressWarnings("unused")
 		TreeSet<CCNTime> sent1 = sendStreamGaussian(sinkhandle, vim, basename, mean_time, std_time, tosend);
 
 		// wait a while
@@ -434,6 +436,8 @@ public class VersioningInterestManagerTestRepo {
 		CCNStringObject so = new CCNStringObject(name, "Hello, World!", SaveType.LOCALREPOSITORY, handle);
 		int trycount = 10;
 		IOException error = null;
+		final IOException noFirstSegment = new IOException("No first segment!");
+		
 		do {
 			error = null;
 			trycount--;
@@ -446,20 +450,37 @@ public class VersioningInterestManagerTestRepo {
 				error = e;
 				Thread.sleep(SEND_PAUSE);
 			} 
+			
+			int available_count = 0;
+			while(!so.available()) {
+				available_count++;
+				Thread.sleep(SEND_PAUSE * 3);
+			}
+			
+			if( available_count > 0 )
+				Log.warning(Log.FAC_ENCODING, "sleeps on so.available() count {0}", available_count);
+
+			int firstsegment_try = 2;
+			while(null == so.getFirstSegment() && firstsegment_try > 0) {
+				firstsegment_try--;
+				Thread.sleep(SEND_PAUSE * 3);
+			}
+			
+			if( firstsegment_try < 2 ) {
+				Log.warning(Log.FAC_ENCODING, "sleeps on so.getFirstSegment() count {0}", 2 - firstsegment_try);
+				dumpstate(vim);
+				throw noFirstSegment;
+			}
+			
+			if( null == so.getFirstSegment() )
+				error = noFirstSegment;
+
 		} while( trycount > 0 && null != error );
 		
 		if( null != error ) {
 			throw error;
 		}
-
-		int available_count = 0;
-		while(!so.available()) {
-			available_count++;
-			Thread.sleep(SEND_PAUSE * 3);
-		}
-		if( available_count > 0 )
-		Log.warning(Log.FAC_ENCODING, "sleeps on so.available() count {0}", available_count);
-
+	
 		// We are satisfying the interest, so it is no longer pending
 		Interest interest = sinkhandle.interests.get(0);
 		sinkhandle.cancelInterest(interest, vim);
@@ -474,5 +495,22 @@ public class VersioningInterestManagerTestRepo {
 		// this is normally done by handleContent
 		if( newInterest != null )
 			sinkhandle.expressInterest(newInterest, vim);
+	}
+
+	private void dumpstate(TestVIM vim) {
+		System.out.println("=========================================");
+		System.out.println("Sinkhandle state");
+		for(Interest interest : sinkhandle.interests )
+			System.out.println(interest.toString());
+
+		System.out.println("=========================================");
+		System.out.println("TestVM InterestData");
+		for(InterestData data : vim.getInterestDataTree() )
+			System.out.println(data.toString());
+		
+//		System.out.println("=========================================");
+//		System.out.println("TestVM pending interests");
+//		for(InterestData data : vim.getInterestDataTree() )
+//			System.out.println(data.toString());
 	}
 }
