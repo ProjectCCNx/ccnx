@@ -124,8 +124,13 @@ public class VersioningInterestManager implements CCNInterestListener {
 	public VersioningInterestManager(CCNHandle handle, ContentName name, Set<VersionNumber> exclusions, VersionNumber startingVersion, CCNInterestListener listener) {
 		_handle = handle;
 		_name = name;
-		_startingVersion = startingVersion;
 		_listener = listener;
+		
+		if( null == startingVersion )
+			_startingVersion = VersionNumber.getMinimumVersion();
+		else
+			_startingVersion = startingVersion;
+		
 		if( null != exclusions )
 			_exclusions.addAll(exclusions);
 	}

@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.profiles.versioning;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -25,8 +26,6 @@ import java.util.Set;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
-import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -36,6 +35,12 @@ import org.ccnx.ccn.protocol.Interest;
  * naming to CCNHandle (expressInterest, cancelInterest, close), except we take
  * a ContentName input instead of an Interest input.  A future extension might be to
  * take an Interest to make it more drop-in replacement for existing CCNHandle methods.
+ * 
+ * IMPORTANT: The CCNInterestListener that gets the data should not block for long
+ * and should not hijack the incoming thread.
+ * 
+ * NOTE: The retry is not implemented.  Interests are re-expressed every 4 seconds
+ * as per normal, and they continue to be expressed until canceled.
  * 
  * This object is meant to be private for one application, which provides the
  * CCNHandle to use.  It may be shared between multiple threads.  The way the
@@ -53,19 +58,11 @@ import org.ccnx.ccn.protocol.Interest;
  *   
  * Because the list of excluded version can be very long, this
  * class manages expressing multiple interests.
- * 
- * To make the interests aggregate at ccnd, the split boundaries
- * are quantized so two different nodes have a chance of getting
- * their interests identical when asking for identical things.
- *   
- * The re-expression time works like this:
- * 1) issue an Interest with normal timeout
- * 2) As long as we get data, keep re-expressing as normal
- * 3) When we get a timeout, use the custom timer to re-express (e.g. try
- *    again in an hour).  Repeat from step #1.
  *    
  * All the work is done down in the inner class BasenameState, which is the state
- * stored per basename and tracks the interests issued for that basename.
+ * stored per basename and tracks the interests issued for that basename.  It
+ * is really just a holder for VersioningInterestManager plus state about the
+ * set of listeners.
  */
 public class VersioningInterest {
 	
@@ -89,59 +86,54 @@ public class VersioningInterest {
 	 * 
 	 * If there is already an interest for the same (name, listener), no action is taken.
 	 * 
-	 * @param name
-	 * @param listener
-	 */
-	public void expressInterest(ContentName name, CCNInterestListener listener) {
-		expressInterest(name, listener, 0);
-	}
-	
-	/**
-	 * As above, but after we get a CCN timeout for an interest, we will sleep and
-	 * re-try the interest after #retrySeconds.
-	 * 
-	 * If there is already an interest for the same (name, listener), the retrySeconds is updated.
-	 * 
-	 * If retrySeconds is non-positive, no retry is done.
-	 * 
-	 * retrySeconds is global for #name, not specific per listener.  The last set will win.
+	 * The return value from #listener is ignored, the listener does not need to re-express
+	 * an interest.  Interests are re-expressed automatically until canceled.
 	 * 
 	 * @param name
 	 * @param listener
-	 * @param retrySeconds Must be positive, and should be longer than the CCN timeout.
+	 * @throws IOException 
 	 */
-	public void expressInterest(ContentName name, CCNInterestListener listener, int retrySeconds) {
-		addInterest(name, listener, retrySeconds, null, 0);
+	public void expressInterest(ContentName name, CCNInterestListener listener) throws IOException {
+		expressInterest(name, listener, null, null);
 	}
 
 	/**
 	 * As above, and provide a set of versions to exclude
+	 * The return value from #listener is ignored, the listener does not need to re-express
+	 * an interest.  Interests are re-expressed automatically until canceled.
+	 * 
 	 * @param name
 	 * @param listener
 	 * @param retrySeconds
 	 * @param exclusions
+	 * @throws IOException 
 	 */
-	public void expressInterest(ContentName name, CCNInterestListener listener, int retrySeconds, Set<Long> exclusions) {
-		addInterest(name, listener, retrySeconds, exclusions, 0);
+	public void expressInterest(ContentName name, CCNInterestListener listener, Set<VersionNumber> exclusions) throws IOException {
+		expressInterest(name, listener, exclusions, null);
 	}
 	
 	/**
 	 * As above, and provide a set of versions to exclude and a hard floor startingVersion, any version
 	 * before that will be ignored.
 	 * 
+	 * The return value from #listener is ignored, the listener does not need to re-express
+	 * an interest.  Interests are re-expressed automatically until canceled.
+	 * 
 	 * @param name
 	 * @param listener
 	 * @param retrySeconds
 	 * @param exclusions
 	 * @param startingVersion the minimum version to include
+	 * @throws IOException 
 	 */
-	public void expressInterest(ContentName name, CCNInterestListener listener, int retrySeconds, Set<Long> exclusions, long startingVeersion) {
-		addInterest(name, listener, retrySeconds, exclusions, startingVeersion);
+	public void expressInterest(ContentName name, CCNInterestListener listener, Set<VersionNumber> exclusions, VersionNumber startingVeersion) throws IOException {
+		addInterest(name, listener, exclusions, startingVeersion);
 	}
 	
 	/**
 	 * Kill off all interests.
 	 */
+	
 	public void close() {
 		removeAll();
 	}
@@ -162,30 +154,24 @@ public class VersioningInterest {
 		removeAll();
 	}
 	
-	/**
-	 * Print a CCNTime as the version string and the long value
-	 * @param version
-	 * @return
-	 */
-	public static String versionDump(CCNTime version) {
-		return String.format("%s (%d)", VersioningProfile.printAsVersionComponent(version), version.getTime());
-	}
-	
 	// ==============================================================================
 	// Internal implementation
 	private final CCNHandle _handle;
 	private final Map<ContentName, BasenameState> _map = new HashMap<ContentName, BasenameState>();
 
-	private void addInterest(ContentName name, CCNInterestListener listener, int retrySeconds, Set<Long> exclusions, long startingVersion) {
+	private void addInterest(ContentName name, CCNInterestListener listener, Set<VersionNumber> exclusions, VersionNumber startingVersion) throws IOException {
 		BasenameState data;
 		
 		synchronized(_map) {
 			data = _map.get(name);
 			if( null == data ) {
-				data = new BasenameState();
+				data = new BasenameState(_handle, name, exclusions, startingVersion);
 				_map.put(name, data);
+				data.addListener(listener);
+				data.start();
+			} else {
+				data.addListener(listener);
 			}
-			data.addListener(listener, retrySeconds);
 		}
 	}
 	
@@ -211,21 +197,31 @@ public class VersioningInterest {
 	}
 	
 	private void removeAll() {
-		// TODO Auto-generated method stub
+		synchronized(_map) {
+			Iterator<BasenameState> iter = _map.values().iterator();
+			while( iter.hasNext() ) {
+				BasenameState bns = iter.next();
+				bns.stop();
+				iter.remove();
+			}
+		}
 	}
 	
 	// ======================================================================
 	// This is the state stored per base name
 	
-	private static class BasenameState {
+	private static class BasenameState implements CCNInterestListener {
+		
+		public BasenameState(CCNHandle handle, ContentName basename, Set<VersionNumber> exclusions, VersionNumber startingVersion) {
+			_vim = new VersioningInterestManager(handle, basename, exclusions, startingVersion, this);
+		}
 		
 		/**
 		 * @param listener
-		 * @param retrySeconds
+		 * @param retrySeconds IGNORED, not implemented
 		 * @return true if added, false if existed or only retrySeconds updated
 		 */
-		public synchronized boolean addListener(CCNInterestListener listener, int retrySeconds) {
-			_retrySeconds = retrySeconds;
+		public synchronized boolean addListener(CCNInterestListener listener) {
 			return _listeners.add(listener);
 		}
 		
@@ -235,39 +231,55 @@ public class VersioningInterest {
 		public synchronized boolean removeListener(CCNInterestListener listener) {
 			return _listeners.remove(listener);
 		}
-		
-		/**
-		 * User is responsible for concurrent update exclusion using the iterator
-		 */
-		public Iterator<CCNInterestListener> listenerIterator() {
-			return _listeners.iterator();
-		}
-		
+				
 		public synchronized int size() {
 			return _listeners.size();
 		}
 
 		/**
-		 * start issuing interests
+		 * start issuing interests.  No data is passed to
+		 * any listener in the stopped state
+		 * @throws IOException 
 		 */
-		public void start() {
-			
+		public void start() throws IOException {
+			_running = true;
+			_vim.start();
 		}
 		
 		/**
 		 * Cancel all interests for the name
 		 */
 		public void stop() {
-			
+			_running = false;
+			_vim.stop();
 		}
 		
+		/**
+		 * Pass any received data up to the user.
+		 * @param data
+		 * @param interest
+		 * @return null
+		 */
+		@Override
+		public synchronized Interest handleContent(ContentObject data, Interest interest) {
+			// when we're stopped, we do not pass any data
+			if( ! _running )
+				return null;
+			
+			for(CCNInterestListener listener : _listeners)
+				try {
+					listener.handleContent(data, interest);
+				} catch(Exception e){
+					e.printStackTrace();
+				}
+				return null;
+		}
+
 		// =======
-		int _retrySeconds = 0;
-		long startingVersion = 0;
 		
-		private Set<CCNInterestListener> _listeners = new HashSet<CCNInterestListener>();
-
-
+		private final Set<CCNInterestListener> _listeners = new HashSet<CCNInterestListener>();
+		private final VersioningInterestManager _vim;
+		private boolean _running = false;
 	}
 
 }

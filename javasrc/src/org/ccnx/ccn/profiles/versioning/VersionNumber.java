@@ -16,7 +16,6 @@
  */
 package org.ccnx.ccn.profiles.versioning;
 
-import java.math.BigInteger;
 import java.util.Arrays;
 
 import org.ccnx.ccn.profiles.VersionMissingException;
