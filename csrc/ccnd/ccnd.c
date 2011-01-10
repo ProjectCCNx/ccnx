@@ -3,7 +3,7 @@
  * 
  * Main program of ccnd - the CCNx Daemon
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -1637,11 +1637,6 @@ process_incoming_link_message(struct ccnd_handle *h,
             }
             face->rseq = s;
             face->rrun = 1;
-            break;
-        case CCN_DTAG_SequenceAcknowledgement:
-            s = ccn_parse_required_tagged_binary_number(d, dtag, 1, 7);
-            if (d->decoder.state < 0)
-                return(d->decoder.state);
             break;
         default:
             return(-1);
@@ -3773,7 +3768,6 @@ process_input_message(struct ccnd_handle *h, struct face *face,
             process_incoming_content(h, face, msg, size);
             return;
         case CCN_DTAG_SequenceNumber:
-        case CCN_DTAG_SequenceAcknowledgement:
             process_incoming_link_message(h, face, dtag, msg, size);
             return;
         default:
