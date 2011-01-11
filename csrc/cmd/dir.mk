@@ -24,6 +24,7 @@ INSTALLED_PROGRAMS = \
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
     ccnbuzz  \
+    ccnsimplecat \
     dataresponsetest \
     ccnseqwriter \
     $(PCAP_PROGRAMS)
@@ -34,7 +35,7 @@ BROKEN_PROGRAMS =
 DEBRIS =
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
-       ccnbuzz.c ccnbx.c ccncat.c ccncatchunks.c ccncatchunks2.c \
+       ccnbuzz.c ccnbx.c ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
        ccndumpnames.c ccndumppcap.c ccnget.c ccnhexdumpdata.c \
        ccnls.c ccnput.c ccnrm.c ccnsendchunks.c ccnseqwriter.c \
        ccnslurp.c dataresponsetest.c 
@@ -91,6 +92,9 @@ ccnbx: ccnbx.o
 
 ccncat: ccncat.o
 	$(CC) $(CFLAGS) -o $@ ccncat.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnsimplecat: ccnsimplecat.o
+	$(CC) $(CFLAGS) -o $@ ccnsimplecat.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnsendchunks: ccnsendchunks.o
 	$(CC) $(CFLAGS) -o $@ ccnsendchunks.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -171,6 +175,8 @@ ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
 ccnbx.o: ccnbx.c ../include/ccn/charbuf.h ../include/ccn/coding.h \
   ../include/ccn/ccn.h ../include/ccn/indexbuf.h
 ccncat.o: ccncat.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnsimplecat.o: ccnsimplecat.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccncatchunks.o: ccncatchunks.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
