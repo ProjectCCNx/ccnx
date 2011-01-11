@@ -406,8 +406,7 @@ public class RepositoryServer {
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 			Log.finer(Log.FAC_REPO, "Checking for key locators for: {0}", target);
 		try {
-			ContentName digestFreeTarget = new ContentName(target.count()-1, target.components());
-			ContentObject content = _repo.getContent(new Interest(digestFreeTarget));
+			ContentObject content = _repo.getContent(new Interest(target));
 			SignedInfo si = content.signedInfo();
 			KeyLocator locator = si.getKeyLocator();
 			if (null == locator)

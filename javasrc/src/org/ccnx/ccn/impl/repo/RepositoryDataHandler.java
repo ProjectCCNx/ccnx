@@ -98,6 +98,7 @@ public class RepositoryDataHandler implements Runnable {
 								Log.finer(Log.FAC_REPO, "Fetching key from dataHandler: " + newSyncTarget);
 							}
 							Interest keyInterest = Interest.constructInterest(newSyncTarget, _server.getExcludes(), null, 2, null, null);
+							addSync(newSyncTarget);
 							_server.doSync(keyInterest, keyInterest);
 						}
 					}

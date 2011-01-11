@@ -213,8 +213,9 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			boolean verified = false;
 			RepositoryInfoObject rio = null;
 			ContentName unverifiedKeyLocator = null;
+			ContentName digestFreeTarget = new ContentName(target.count()-1, target.components());
 			if (_server.getRepository().hasContent(target)) {
-				unverifiedKeyLocator = _server.getKeyTarget(target);
+				unverifiedKeyLocator = _server.getKeyTarget(digestFreeTarget);
 				if (null == unverifiedKeyLocator) {
 					// First impl, no further checks, if we have first segment, assume we have (or are fetching) 
 					// the whole thing
@@ -257,9 +258,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					// segment format, and when the first (satisfying) data arrives this interest will be immediately 
 					// discarded.  The returned data (ContentObject) explicit name will never include the implicit 
 					// digest and so is processed correctly regardless of the interest that retrieved it.
-					ContentName digestFreeTarget = new ContentName(target.count()-1, target.components());
-					_server.getDataHandler().addSync(digestFreeTarget);
 				}
+				_server.getDataHandler().addSync(digestFreeTarget);
 				_server.doSync(interest, readInterest);
 			} else {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
