@@ -28,8 +28,13 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.encoding.TextXMLCodec;
+import org.ccnx.ccn.impl.encoding.XMLCodecFactory;
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
@@ -435,6 +440,20 @@ public class RepositoryServer {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 					Log.finer(Log.FAC_REPO, "Found key to sync: {0}", locator.name().name());
 				return locator.name().name();
+			}
+			
+			while (keyContent.isLink()) {
+				Link link = new Link();
+				try {
+					link.decode(keyContent.content());
+					Interest linkInterest = new Interest(link.targetName());
+					keyContent = _repo.getContent(linkInterest);
+					if (null == keyContent)
+						return link.targetName();
+				} catch (ContentDecodingException e) {
+					Log.warning(Log.FAC_REPO, "Couldn't decode link from key: {0}", keyContent);
+					return null;
+				}
 			}
 			return null;	// Already have key
 		} catch (RepositoryException e) {
