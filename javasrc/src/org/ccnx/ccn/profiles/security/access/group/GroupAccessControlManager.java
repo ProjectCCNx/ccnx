@@ -358,7 +358,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		registerGroupStorage(pName);
 	}
 	
-	public void registerGroupStorage(ParameterizedName pName) throws IOException {
+	public void registerGroupStorage(ParameterizedName pName) {
 		GroupManager gm = new GroupManager(this, pName, _handle);
 		_groupManager.add(gm);
 		byte[] distinguishingHash = GroupAccessControlProfile.PrincipalInfo.contentPrefixToDistinguishingHash(pName.prefix());
@@ -371,7 +371,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		registerUserStorage(pName);
 	}
 	
-	public void registerUserStorage(ParameterizedName userStorage) throws ContentEncodingException {
+	public void registerUserStorage(ParameterizedName userStorage) {
 		_userStorage.add(userStorage);
 		_hashToUserStorageMap.put(PrincipalInfo.contentPrefixToDistinguishingHash(userStorage.prefix()), userStorage);
 	}
