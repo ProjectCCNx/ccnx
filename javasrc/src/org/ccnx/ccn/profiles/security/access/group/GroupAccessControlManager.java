@@ -348,8 +348,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 		return true;
 	}
 
-	public GroupManager groupManager() throws Exception {
-		if (_groupManager.size() > 1) throw new Exception("A group manager can only be retrieved by name when there are more than one.");
+	public GroupManager groupManager() {
+		if (_groupManager.size() > 1) throw new RuntimeException("A group manager can only be retrieved by name when there are more than one.");
 		return _groupManager.get(0); 	
 	}
 	
