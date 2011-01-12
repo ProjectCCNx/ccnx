@@ -18,6 +18,7 @@
 package org.ccnx.ccn.test.profiles.security.access.group;
 
 
+import java.io.IOException;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -64,7 +65,27 @@ public class KeyDirectoryTestRepo {
 	static KeyPair wrappingKeyPair;
 	static byte[] wrappingPKID;
 	static GroupAccessControlManager acm;
-	static PrincipalKeyDirectory kd;
+	
+	class TestPrincipalKeyDirectory extends PrincipalKeyDirectory {
+		public TestPrincipalKeyDirectory() throws IOException {
+			super(acm, versionedDirectoryName, handle);
+		}
+		
+		/*	
+		 * Retrieve the wrapped key from the KD by principalName.
+		 * As above, the key is unwrapped and we check that the result is as expected.
+		 * 
+		 */
+		public void testGetWrappedKeyForPrincipal() throws Exception {		
+			// unwrap the key and check that the unwrapped secret key is correct
+			WrappedKeyObject wko = kd.getWrappedKeyForPrincipal(principalName);
+			Assert.assertNotNull(wko);
+			WrappedKey wk = wko.wrappedKey();
+			Key unwrappedSecretKey = wk.unwrapKey(wrappingKeyPair.getPrivate());
+			Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
+		}
+	}
+	static TestPrincipalKeyDirectory kd;
 	
 	static int testCount = 0;
 	
@@ -103,7 +124,7 @@ public class KeyDirectoryTestRepo {
 		testAddWrappedKey();
 		addWrappingKeyToACM();
 		testGetWrappedKeyForKeyID();
-		testGetWrappedKeyForPrincipal();
+		kd.testGetWrappedKeyForPrincipal();
 		testGetUnwrappedKey();
 		testGetPrivateKey();
 		testGetUnwrappedKeySuperseded();
@@ -115,7 +136,7 @@ public class KeyDirectoryTestRepo {
 	 */
 	public void testKeyDirectoryCreation() throws Exception {
 
-		kd = new PrincipalKeyDirectory(acm, versionedDirectoryName, handle);
+		kd = new TestPrincipalKeyDirectory();
 		// verify that the keyDirectory is created
 		Assert.assertNotNull(kd);		
 	}
@@ -233,20 +254,6 @@ public class KeyDirectoryTestRepo {
 		uvkd.stopEnumerating();
 	}
 
-	/*	
-	 * Retrieve the wrapped key from the KD by principalName.
-	 * As above, the key is unwrapped and we check that the result is as expected.
-	 * 
-	 */
-	public void testGetWrappedKeyForPrincipal() throws Exception {		
-		// unwrap the key and check that the unwrapped secret key is correct
-		WrappedKeyObject wko = kd.getWrappedKeyForPrincipal(principalName);
-		Assert.assertNotNull(wko);
-		WrappedKey wk = wko.wrappedKey();
-		Key unwrappedSecretKey = wk.unwrapKey(wrappingKeyPair.getPrivate());
-		Assert.assertEquals(AESSecretKey, unwrappedSecretKey);
-	}
-	
 	/*
 	 * 	Retrieve the wrapped key directly from the KD
 	 * 	and check that the result is as expected.
