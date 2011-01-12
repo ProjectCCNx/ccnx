@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -28,9 +28,6 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.impl.encoding.TextXMLCodec;
-import org.ccnx.ccn.impl.encoding.XMLCodecFactory;
-import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.io.content.ContentDecodingException;
