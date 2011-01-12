@@ -74,9 +74,9 @@ public class ParameterizedName extends GenericXMLEncodable {
 	
 	public String label() { return _label; }
 	
-	public ContentName prefix() { return _prefix; }
+	public ContentName prefix() { return new ContentName(_prefix); }
 	
-	public ContentName suffix() { return _suffix; }
+	public ContentName suffix() { return new ContentName(_suffix); }
 	
 	public boolean emptyLabel() { return (null == label()); }
 	
