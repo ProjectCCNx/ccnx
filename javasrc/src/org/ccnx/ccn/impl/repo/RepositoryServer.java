@@ -397,7 +397,8 @@ public class RepositoryServer {
 	}
 	
 	/**
-	 * Look for unverified keys
+	 * Look for unverified keys. Note that we must have already checked to see that the repo has
+	 * the content for this target before calling this.
 	 * 
 	 * @param target
 	 * @return new target if we need to verify the target
@@ -407,39 +408,51 @@ public class RepositoryServer {
 			Log.finer(Log.FAC_REPO, "Checking for key locators for: {0}", target);
 		try {
 			ContentObject content = _repo.getContent(new Interest(target));
-			SignedInfo si = content.signedInfo();
-			KeyLocator locator = si.getKeyLocator();
-			if (null == locator)
-				return null;
-			if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
-				Log.finer(Log.FAC_REPO, "Sync: Locator is: {0}", locator);
-			if (locator.type() != KeyLocatorType.NAME)
-				return null;
-			if (PublicKeyObject.isSelfSigned(target, (PublicKey)null, locator))
-				return null;
-			
-			// Here we are sort of mimicking code in PublicKeyCache. Should there be a routine to do
-			// this in PublicKeyCache? (it would need to have a generic getter to get the data since
-			// here we want to get it directly from the repo. Also I'm ignoring the "retry" code
-			// there that does exclusions since I think its wrong, it would be complicated to do it
-			// right and its unclear what kind of problem the code is concerned about...
-			
-			Interest keyInterest = new Interest(locator.name().name(), locator.name().publisher());
-			// we could have from 1 (content digest only) to 3 (version, segment, content digest) 
-			// additional name components.
-			keyInterest.minSuffixComponents(1);
-			keyInterest.maxSuffixComponents(3);
-
-			ContentObject keyContent = _repo.getContent(keyInterest);
-			if (null == keyContent) {
-				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
-					Log.finer(Log.FAC_REPO, "Found key to sync: {0}", locator.name().name());
-				return locator.name().name();
-			}
-			return null;	// Already have key
+			return getKeyTargetFromObject(content, target);
 		} catch (RepositoryException e) {
 			return null;
 		}
+	}
+	
+	/**
+	 * Look for unverified keys based on content object
+	 * 
+	 * @param content
+	 * @param target
+	 * @return
+	 * @throws RepositoryException
+	 */
+	public ContentName getKeyTargetFromObject(ContentObject content, ContentName target) throws RepositoryException {
+		SignedInfo si = content.signedInfo();
+		KeyLocator locator = si.getKeyLocator();
+		if (null == locator)
+			return null;
+		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+			Log.finer(Log.FAC_REPO, "Sync: Locator is: {0}", locator);
+		if (locator.type() != KeyLocatorType.NAME)
+			return null;
+		if (PublicKeyObject.isSelfSigned(target, (PublicKey)null, locator))
+			return null;
+		
+		// Here we are sort of mimicking code in PublicKeyCache. Should there be a routine to do
+		// this in PublicKeyCache? (it would need to have a generic getter to get the data since
+		// here we want to get it directly from the repo. Also I'm ignoring the "retry" code
+		// there that does exclusions since I think its wrong, it would be complicated to do it
+		// right and its unclear what kind of problem the code is concerned about...
+		
+		Interest keyInterest = new Interest(locator.name().name(), locator.name().publisher());
+		// we could have from 1 (content digest only) to 3 (version, segment, content digest) 
+		// additional name components.
+		keyInterest.minSuffixComponents(1);
+		keyInterest.maxSuffixComponents(3);
+
+		ContentObject keyContent = _repo.getContent(keyInterest);
+		if (null == keyContent) {
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+				Log.finer(Log.FAC_REPO, "Found key to sync: {0}", locator.name().name());
+			return locator.name().name();
+		}
+		return null;	// Already have key
 	}
 	
 	public void doSync(Interest interest, Interest readInterest) throws IOException {

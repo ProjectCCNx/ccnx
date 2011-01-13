@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.impl.repo;
 
+import java.io.IOException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
@@ -89,21 +90,27 @@ public class RepositoryDataHandler implements Runnable {
 					NameEnumerationResponse ner = _server.getRepository().saveContent(co);
 					if (ner!=null && ner.hasNames()) {
 						_server.sendEnumerationResponse(ner);
-					}				
+					}
+					
 					// When a sync is incomplete, we may not know yet whether it has keys that
-					// need syncing. Now we can find this out
+					// need syncing. Now we can find this out. Also the key locator that we hadn't
+					// synced yet could have been a link. We didn't know that either. If it was we
+					// have to sync the data it points to.
+					//
+					// Also we have to check for more unsynced locators associated with our new object 
+					// and the objects pointed to by the links.
 					Entry<ContentName> entry = _pendingSyncs.remove(co.name(), co.name());
 					if (null != entry) {
 						ContentName nameToCheck = entry.value();
-						ContentName newSyncTarget = null;
-						while (co.isLink()) {
+						ContentObject linkCheck = co;
+						while (linkCheck.isLink()) {
 							Link link = new Link();
 							try {
-								link.decode(co.content());
+								link.decode(linkCheck.content());
 								ContentName linkName = link.targetName();
 								Interest linkInterest = new Interest(linkName);
-								co = _server.getRepository().getContent(linkInterest);
-								if (null == co) {
+								linkCheck = _server.getRepository().getContent(linkInterest);
+								if (null == linkCheck) {
 									if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
 										Log.finer(Log.FAC_REPO, "Fetching link from dataHandler: " + linkName);
 									}
@@ -111,26 +118,31 @@ public class RepositoryDataHandler implements Runnable {
 									_server.doSync(linkInterest, linkInterest);
 									break;
 								}
+								syncKeysForObject(linkCheck, linkName);
 							} catch (ContentDecodingException e) {
-								Log.warning(Log.FAC_REPO, "Couldn't decode link from key: {0}", co.name());
+								Log.warning(Log.FAC_REPO, "Couldn't decode link that is chained to a key locator: {0}", co.name());
 								break;
 							}
 						}
-						newSyncTarget = _server.getKeyTarget(nameToCheck);
-						if (null != newSyncTarget) {
-							if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
-								Log.finer(Log.FAC_REPO, "Fetching key from dataHandler: " + newSyncTarget);
-							}
-							Interest keyInterest = Interest.constructInterest(newSyncTarget, _server.getExcludes(), 1, 3, null, null);
-							addSync(newSyncTarget);
-							_server.doSync(keyInterest, keyInterest);
-						}
+						syncKeysForObject(co, nameToCheck);
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
 					Log.logStackTrace(Level.WARNING, e);
 				}
 			}
+		}
+	}
+	
+	private void syncKeysForObject(ContentObject co, ContentName name) throws RepositoryException, IOException {
+		ContentName target = _server.getKeyTargetFromObject(co, name);
+		if (null != target) {
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
+				Log.finer(Log.FAC_REPO, "Fetching key from dataHandler: " + target);
+			}
+			Interest interest = Interest.constructInterest(target, _server.getExcludes(), 1, 3, null, null);
+			addSync(target);
+			_server.doSync(interest, interest);
 		}
 	}
 	

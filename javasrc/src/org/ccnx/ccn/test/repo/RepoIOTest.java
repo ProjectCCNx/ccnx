@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -109,8 +109,9 @@ public class RepoIOTest extends RepoTestBase {
 		// Floss content into ccnd for tests involving content not already in repo when we start
 		Flosser floss = new Flosser();
 		
-		// So we can test saving keys in the sync tests, build the sync objects with an alternate key
-		// locator
+		// So we can test saving keys in the sync tests we build our first sync object (a stream) with
+		// an alternate key and the second one (a CCNNetworkObject) with an alternate key locater that is
+		// accessed through a link.
 		CreateUserData testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), 2, true, null, putHandle);
 		String [] userNames = testUsers.friendlyNames().toArray(new String[2]);
 		CCNHandle userHandle = testUsers.getHandleForUser(userNames[0]);
@@ -121,6 +122,7 @@ public class RepoIOTest extends RepoTestBase {
 		PublicKeyObject pko = userHandle.keyManager().publishSelfSignedKey(userLocator.name().name(), null,
 						false);
 
+		// Build the link and the key it links to. Floss these into ccnd.
 		_testNonRepo += "-" + rand.nextInt(10000);
 		_testNonRepoObj += "-" + rand.nextInt(10000);
 		_testLinkToKey += "-" + rand.nextInt(10000);
