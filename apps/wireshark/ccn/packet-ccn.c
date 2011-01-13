@@ -142,19 +142,20 @@ proto_register_ccn(void)
          {"Component", "ccn.name.component", FT_STRING, BASE_NONE, NULL,
           0x0, "The individual components of the name", HFILL}},
         {&hf_ccn_signature,
-         {"Signature", "ccn.signature", FT_NONE, BASE_HEX, NULL,
+         {"Signature", "ccn.signature", FT_NONE, BASE_NONE, NULL,
           0x0, "The signature collection of the CCN packet", HFILL}},
         {&hf_ccn_signaturedigestalg,
-         {"Digest algorithm", "ccn.signature.digestalgorithm", FT_OID, BASE_DEC, NULL,
+         {"Digest algorithm", "ccn.signature.digestalgorithm", FT_OID, BASE_NONE, NULL,
           0x0, "The OID of the signature digest algorithm", HFILL}},
+        /* use BASE_NONE instead of ABSOLUTE_TIME_LOCAL for Wireshark 1.2.x */
         {&hf_ccn_timestamp,
-         {"Timestamp", "ccn.timestamp", FT_ABSOLUTE_TIME, BASE_NONE, NULL,
+         {"Timestamp", "ccn.timestamp", FT_ABSOLUTE_TIME, ABSOLUTE_TIME_LOCAL, NULL,
           0x0, "The time at creation of signed info", HFILL}},
         {&hf_ccn_signaturebits,
-         {"Bits", "ccn.signature.bits", FT_BYTES, BASE_HEX, NULL,
+         {"Bits", "ccn.signature.bits", FT_BYTES, BASE_NONE, NULL,
           0x0, "The signature over the name through end of the content of the CCN packet", HFILL}},
         {&hf_ccn_publisherpublickeydigest,
-         {"PublisherPublicKeyDigest", "ccn.publisherpublickeydigest", FT_BYTES, BASE_HEX, NULL,
+         {"PublisherPublicKeyDigest", "ccn.publisherpublickeydigest", FT_BYTES, BASE_NONE, NULL,
           0x0, "The digest of the publisher's public key", HFILL}},
         {&hf_ccn_contenttype,
          {"Content type", "ccn.contenttype", FT_INT32, BASE_DEC, &contenttype_vals,
@@ -166,7 +167,7 @@ proto_register_ccn(void)
          {"FinalBlockID", "ccn.finalblockid", FT_STRING, BASE_NONE, NULL,
           0x0, "Indicates the identifier of the final block in a sequence of fragments", HFILL}},
         {&hf_ccn_contentdata,
-         {"Data", "ccn.data", FT_BYTES, BASE_HEX, NULL,
+         {"Data", "ccn.data", FT_BYTES, BASE_NONE, NULL,
           0x0, "Raw data", HFILL}},
 
         {&hf_ccn_minsuffixcomponents,
@@ -185,13 +186,13 @@ proto_register_ccn(void)
          {"Scope", "ccn.scope", FT_UINT8, BASE_DEC, NULL,
           0x0, "Limit of interest propagation", HFILL}},
         {&hf_ccn_nonce,
-         {"Nonce", "ccn.nonce", FT_BYTES, BASE_HEX, NULL,
+         {"Nonce", "ccn.nonce", FT_BYTES, BASE_NONE, NULL,
           0x0, "The nonce to distinguish interests", HFILL}},
     };
 
     proto_ccn = proto_register_protocol("Content-centric Networking Protocol", /* name */
                                         "CCN",		/* short name */
-                                        "ccn");		/* abbrev */
+                                        "ccn");	/* abbrev */
     proto_register_subtree_array(ett, array_length(ett));
     hf[0].hfinfo.strings = ccn_dtag_dict.dict;
     proto_register_field_array(proto_ccn, hf, array_length(hf));
