@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -1778,8 +1778,10 @@ handle_prefix_reg_reply(
         lifetime = 0;
     else if (lifetime > 3600)
         lifetime = 3600;
-    md->interest_filter->expiry = h->now;
-    md->interest_filter->expiry.tv_sec += lifetime;
+    if (md->interest_filter != NULL) {
+        md->interest_filter->expiry = h->now;
+        md->interest_filter->expiry.tv_sec += lifetime;
+    }
     ccn_forwarding_entry_destroy(&fe);
     return(CCN_UPCALL_RESULT_OK);
 }
