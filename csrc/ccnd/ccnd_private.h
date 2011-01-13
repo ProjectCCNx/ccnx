@@ -7,7 +7,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -206,6 +206,7 @@ struct face {
     unsigned rrun;
     uintmax_t rseq;
     struct ccnd_meter *meter[CCND_FACE_METER_N];
+    unsigned short pktseq;     /**< sequence number for sent packets */
 };
 
 /** face flags */
@@ -226,6 +227,8 @@ struct face {
 #define CCN_FACE_PASSIVE (1 << 14) /**< a listener or a bound dgram socket */
 #define CCN_FACE_NORECV (1 << 15) /**< use for sending only */
 #define CCN_FACE_REGOK (1 << 16) /**< Allowed to do prefix registration */
+#define CCN_FACE_SEQOK (1 << 17) /** OK to send SequenceNumber link messages */
+#define CCN_FACE_SEQPROBE (1 << 18) /** SequenceNumber probe */
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
