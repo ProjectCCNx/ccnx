@@ -1597,7 +1597,6 @@ ccn_stuff_interest(struct ccnd_handle *h,
     return(n_stuffed);
 }
 
-
 static void
 ccn_link_state_init(struct ccnd_handle *h, struct face *face)
 {
@@ -1625,8 +1624,9 @@ ccn_append_link_stuff(struct ccnd_handle *h,
     ccn_charbuf_append_tt(c, 2, CCN_BLOB);
     ccn_charbuf_append_value(c, face->pktseq, 2);
     ccnb_element_end(c);
-    ccnd_msg(h, "debug.%d pkt_to %u seq %u",
-             __LINE__, face->faceid, (unsigned)face->pktseq);
+    if (0)
+        ccnd_msg(h, "debug.%d pkt_to %u seq %u",
+                 __LINE__, face->faceid, (unsigned)face->pktseq);
     face->pktseq++;
     face->flags &= ~CCN_FACE_SEQPROBE;
 }
@@ -1667,7 +1667,8 @@ process_incoming_link_message(struct ccnd_handle *h,
                 return(0);
             }
             if (s > face->rseq && s - face->rseq < 255) {
-                ccnd_msg(h, "seq_gap %u %ju to %ju", face->faceid, face->rseq, s);
+                ccnd_msg(h, "seq_gap %u %ju to %ju",
+                         face->faceid, face->rseq, s);
                 face->rseq = s;
                 face->rrun = 1;
                 return(0);
