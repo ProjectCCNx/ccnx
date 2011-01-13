@@ -820,12 +820,13 @@ public abstract class KeyManager {
 											signingKeyID, signingKeyLocator, handle);
 		}
 		
-		
+
 		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
 			Log.info(Log.FAC_KEYS, "publishKey: key not previously published, making new key object {0} with version {1} displayed as {2}", 
 				keyObject.getVersionedName(), keyVersion, 
 				((null != nameAndVersion.second()) ? ContentName.componentPrintURI(nameAndVersion.second()) : "<no version>"));
 		}
+
 		// Eventually may want to find something already published and link to it, but be simple here.
 
 		if (!keyObject.save(keyVersion)) {

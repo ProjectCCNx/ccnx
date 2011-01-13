@@ -65,14 +65,14 @@ public class RepositoryServer {
 	private Exclude _markerFilter;
 	private CCNWriter _writer;
 	private boolean _pendingNameSpaceChange = false;
-	private int _windowSize = WINDOW_SIZE;
+	private int _windowSize = SystemConfiguration.PIPELINE_SIZE;
 	private int _ephemeralFreshness = FRESHNESS;
 	private RepositoryDataHandler _dataHandler;
 	private ContentName _responseName = null;
 	
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
-	public static final int WINDOW_SIZE = 4;
+	//public static final int WINDOW_SIZE = 4;
 	public static final int FRESHNESS = 4;	// in seconds
 		
 	protected Timer _periodicTimer = null;

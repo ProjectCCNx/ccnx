@@ -17,7 +17,7 @@
 
 package org.ccnx.ccn.profiles;
 
-import java.io.IOException;
+import java.io.IOException; 
 import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -662,10 +662,10 @@ public class VersioningProfile implements CCNProfile {
 						}
 						
 						//try to send the interest with the response time the bad content object was returned with
-						if (timeout == 0)
+						//if (timeout == 0)
 							result = handle.get(retry, attemptTimeout);
-						else
-							result = handle.get(retry, respondTime);
+						//else
+						//	result = handle.get(retry, respondTime);
 						
 						if (result!=null) {
 							if (Log.isLoggable(Level.FINE))

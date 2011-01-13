@@ -58,6 +58,7 @@
         -->
 	<property name="TEST_PORT" value="61999"/>
 	<property name="PROTOCOL_KEY" value="ccn.agent.protocol"/>
+	<property name="EXIT_ON_ERROR" value="org.ccnx.ExitOnNetworkError"/>
 
         <!-- Classpaths are actually defined in a separate file so 
              that it can be included by ant files of apps so they 
@@ -130,20 +131,20 @@
     </target>
 	
 	<target name="ccnd">
-			<mkdir dir="${testout}"/>
-			<parallel failonany="true">
-				<daemons>
-					<echo message="Running test ccnd on port ${TEST_PORT}"/>
-					<exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
-						<env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
-						<env key="CCND_CAP" value="${CCND_CAP}"/>
-						<env key="CCND_DEBUG" value="${CCND_DEBUG}"/>
-					</exec>
-				</daemons>
-	                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
-	                        <sleep seconds="1"/>
-			</parallel>
-		</target>
+		<mkdir dir="${testout}"/>
+		<parallel failonany="true">
+			<daemons>
+				<echo message="Running test ccnd on port ${TEST_PORT}"/>
+				<exec executable="${ccnd}" dir="${testout}" output="${testout}/TEST-ccnd-baselib.txt">
+					<env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+					<env key="CCND_CAP" value="${CCND_CAP}"/>
+					<env key="CCND_DEBUG" value="${CCND_DEBUG}"/>
+				</exec>
+			</daemons>
+                        <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+                        <sleep seconds="1"/>
+		</parallel>
+	</target>
 
 	<target name="stoppable-ccnd" depends="jar">
 		<mkdir dir="${testout}"/>
@@ -214,6 +215,7 @@
 					</classpath>
 					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
 					<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+					<sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 
 					<!-- allow debugger attachment if repo loops <jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" /> -->
 					<arg value="-interactive" />
@@ -490,24 +492,24 @@
 	</target>
 	
 	<target name="test-enumerated-name-list" depends="jar, ccnd, repo">
-				<mkdir dir="${testout}"/>
-				<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
-					<classpath>
-						<path refid="classpath-run"/>
-					</classpath>
-					<formatter type="xml" usefile="true"/>
-					<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-					<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-					<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-					<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-					<batchtest todir="${testout}" >
-						<fileset dir="${build}">
-							<include name="org/ccnx/ccn/test/profiles/nameenum/*TestRepo.class"/>
-						</fileset>
-					</batchtest>
-				</junit>
-				<!-- <delete dir="${REPO_ROOT}"/> -->
-			</target>
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="org/ccnx/ccn/test/profiles/nameenum/*TestRepo.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
+	</target>
 	
 	<target name="test-repo-structure" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>

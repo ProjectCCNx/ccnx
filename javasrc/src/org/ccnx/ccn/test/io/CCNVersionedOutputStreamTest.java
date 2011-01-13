@@ -80,7 +80,6 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 			return _stream.firstSegmentNumber();
 		}
 
-
 		@Override
 		public void run() {
 			try {

@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -19,8 +19,8 @@ package org.ccnx.ccn.impl.encoding;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 
@@ -101,7 +101,7 @@ public interface XMLEncodable {
 	 * @param buf input stream to read from
 	 * @throws ContentDecodingException if there is an error decoding the content
 	 */
-	public void decode(ByteBuffer buf) throws ContentDecodingException;
+	//public void decode(ByteBuffer buf) throws ContentDecodingException;
 	
 	/**
 	 * Decode this object as the top-level item in a new XML document, 
@@ -112,7 +112,7 @@ public interface XMLEncodable {
 	 * 
 	 * @see XMLCodecFactory
 	 */
-	public void decode(ByteBuffer buf, String codec) throws ContentDecodingException;
+	//public void decode(ByteBuffer buf, String codec) throws ContentDecodingException;
 
 	/**
 	 * Decode this object during an ongoing decoding pass; this is what subclasses

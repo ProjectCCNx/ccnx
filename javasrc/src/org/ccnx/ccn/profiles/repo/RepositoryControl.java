@@ -196,7 +196,6 @@ public class RepositoryControl {
 		if (Log.isLoggable(Level.INFO)) {
 			Log.info("RepositoryControl.localRepoSync called for net obj name {0}", name);
 		}
-
 		// Request preserving the dereferenced content of the stream first
 		result = internalRepoSync(handle, name, segment, digest, obj.getFirstSegment().fullName());
 		

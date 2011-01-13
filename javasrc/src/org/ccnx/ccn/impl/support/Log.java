@@ -520,6 +520,7 @@ public class Log {
 				e.printStackTrace();
 			}
 		}
+		
 		// Then get the individual facility's log level from property/environment, or the default
 		for (int i = FAC_DEFAULT; i < FAC_LOG_LEVEL_PROPERTY.length; i++ ) {
 			logLevelName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(

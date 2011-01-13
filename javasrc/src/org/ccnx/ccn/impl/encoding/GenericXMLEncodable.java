@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -21,8 +21,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
 
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -77,25 +75,6 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
  		ByteArrayInputStream bais = new ByteArrayInputStream(content);
  		decode(bais, codec);
  	}
-	
-	public void decode(ByteBuffer buf) throws ContentDecodingException {
-		decode(buf, null);
-	}
-	
-	public void decode(ByteBuffer buf, String codec) throws ContentDecodingException {
-		if (!buf.hasArray()) {
-			throw new ContentDecodingException("Unusable ByteBuffer: has no array");
-		}
-		byte[] array = buf.array();
-		
-		byte[] tmp = new byte[8];
-		System.arraycopy(array, buf.position(), tmp, 0, (buf.remaining() > tmp.length) ? tmp.length : buf.remaining());
-		BigInteger tmpBuf = new BigInteger(1,tmp);
-		Log.finest("decode (buf.pos: " + buf.position() + " remaining: " + buf.remaining() + ") start: " + tmpBuf.toString(16));
-		
-		ByteArrayInputStream bais = new ByteArrayInputStream(array, buf.position(), buf.remaining());
-		decode(bais, codec);
-	}
 	
 	public void encode(OutputStream ostream) throws ContentEncodingException {
 		encode(ostream, null);
