@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -20,7 +20,9 @@ INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccndumpnames ccnrm \
     ccnls ccnslurp ccnbx ccncat ccnbasicconfig \
     ccnsendchunks ccncatchunks ccncatchunks2 \
-    ccnput ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
+    ccnput ccnget ccnhexdumpdata \
+	ccnseqwriter \
+	$(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
     ccnbuzz  \
