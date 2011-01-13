@@ -20,6 +20,7 @@ package org.ccnx.ccn.test.repo;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -27,6 +28,7 @@ import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.impl.repo.PolicyXML;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -78,7 +80,7 @@ public class RepoIOTest extends RepoTestBase {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		//Log.setLevel(Level.FINEST);
+		Log.setLevel(Level.FINEST);
 		_testPrefix += "-" + rand.nextInt(10000);
 		_testPrefixObj += "-" + rand.nextInt(10000);
 		RepoTestBase.setUpBeforeClass();
@@ -103,14 +105,15 @@ public class RepoIOTest extends RepoTestBase {
 		               putHandle.keyManager().getDefaultPublicKey(), null, 
 		               SystemConfiguration.getDefaultTimeout());
 		
-		// So we can test saving keys in the sync tests, build the sync objects with an alternate key
-		// locator
-		CreateUserData testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), 2, false, null, putHandle);
-		String [] userNames = testUsers.friendlyNames().toArray(new String[2]);
-		CCNHandle userHandle = testUsers.getHandleForUser(userNames[0]);
-		
+
 		// Floss content into ccnd for tests involving content not already in repo when we start
 		Flosser floss = new Flosser();
+		
+		// So we can test saving keys in the sync tests, build the sync objects with an alternate key
+		// locator
+		CreateUserData testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), 2, true, null, putHandle);
+		String [] userNames = testUsers.friendlyNames().toArray(new String[2]);
+		CCNHandle userHandle = testUsers.getHandleForUser(userNames[0]);
 		
 		KeyLocator userLocator = 
 			userHandle.keyManager().getKeyLocator(userHandle.keyManager().getDefaultKeyID());
@@ -133,14 +136,14 @@ public class RepoIOTest extends RepoTestBase {
 		ContentName linkToKeyName = ContentName.fromNative(_testLinkToKey);
 		Link link = new Link(linkToKeyName);
 		ContentName linkName = ContentName.fromNative(_testLink);
-		LinkObject lo = new LinkObject(linkName, link, null, null, null);
+		LinkObject lo = new LinkObject(linkName, link, SaveType.RAW, putHandle);
 		floss.handleNamespace(lo.getBaseName());
 		lo.save();
 		
 		KeyLocator linkLocator = new KeyLocator(linkName);
 		CCNHandle userHandle2 = testUsers.getHandleForUser(userNames[1]);
 		userHandle2.keyManager().setKeyLocator(null, linkLocator);
-		floss.handleNamespace(linkLocator.name().name());
+		floss.handleNamespace(linkToKeyName);
 		PublicKeyObject pko2 = userHandle2.keyManager().publishSelfSignedKey(linkToKeyName, null,
 						false);
 		
@@ -148,10 +151,10 @@ public class RepoIOTest extends RepoTestBase {
 		floss.handleNamespace(name);
 		so = new CCNStringObject(name, "String value for non-repo obj", SaveType.RAW, userHandle2);
 		so.save();
-		so.close();
 		lo.close();
 		pko.close();
 		pko2.close();
+		so.close();
 		floss.stop();
 	}
 	

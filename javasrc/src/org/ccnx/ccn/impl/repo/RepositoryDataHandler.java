@@ -25,6 +25,8 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -92,12 +94,34 @@ public class RepositoryDataHandler implements Runnable {
 					// need syncing. Now we can find this out
 					Entry<ContentName> entry = _pendingSyncs.remove(co.name(), co.name());
 					if (null != entry) {
-						ContentName newSyncTarget = _server.getKeyTarget(entry.value());
+						ContentName nameToCheck = entry.value();
+						ContentName newSyncTarget = null;
+						while (co.isLink()) {
+							Link link = new Link();
+							try {
+								link.decode(co.content());
+								ContentName linkName = link.targetName();
+								Interest linkInterest = new Interest(linkName);
+								co = _server.getRepository().getContent(linkInterest);
+								if (null == co) {
+									if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
+										Log.finer(Log.FAC_REPO, "Fetching link from dataHandler: " + linkName);
+									}
+									addSync(linkName);
+									_server.doSync(linkInterest, linkInterest);
+									break;
+								}
+							} catch (ContentDecodingException e) {
+								Log.warning(Log.FAC_REPO, "Couldn't decode link from key: {0}", co.name());
+								break;
+							}
+						}
+						newSyncTarget = _server.getKeyTarget(nameToCheck);
 						if (null != newSyncTarget) {
 							if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
 								Log.finer(Log.FAC_REPO, "Fetching key from dataHandler: " + newSyncTarget);
 							}
-							Interest keyInterest = Interest.constructInterest(newSyncTarget, _server.getExcludes(), null, 2, null, null);
+							Interest keyInterest = Interest.constructInterest(newSyncTarget, _server.getExcludes(), 1, 3, null, null);
 							addSync(newSyncTarget);
 							_server.doSync(keyInterest, keyInterest);
 						}
