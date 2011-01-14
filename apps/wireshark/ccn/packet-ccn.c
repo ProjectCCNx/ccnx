@@ -16,7 +16,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
- 
+
 /* Based on an example bearing this notice:
  *
  * Wireshark - Network traffic analyzer
@@ -96,6 +96,7 @@ static const value_string childselectordirection_vals[] = {
 
 static gint hf_ccn_answeroriginkind = -1;
 static gint hf_ccn_scope = -1;
+static gint hf_ccn_interestlifetime = -1;
 static gint hf_ccn_nonce = -1;
 
 static dissector_handle_t ccn_handle = NULL;
@@ -105,7 +106,7 @@ void
 proto_register_ccn(void)
 {
     module_t *ccn_module;
-
+    
     static const value_string contenttype_vals[] = {
         {CCN_CONTENT_DATA, "Data"},
         {CCN_CONTENT_ENCR, "Encrypted"},
@@ -115,7 +116,7 @@ proto_register_ccn(void)
         {CCN_CONTENT_NACK, "Nack"},
         {0, NULL}
     };
-
+    
     static gint *ett[] = {
         &ett_ccn,
         &ett_signature,
@@ -124,72 +125,74 @@ proto_register_ccn(void)
         &ett_content,
         &ett_exclude,
     };
-
-
+    
+    
     static hf_register_info hf[] = {
         /* { &hf_PROTOABBREV_FIELDABBREV,
-		{ "FIELDNAME",           "PROTOABBREV.FIELDABBREV",
-		FIELDTYPE, FIELDBASE, FIELDCONVERT, BITMASK,
-		"FIELDDESCR", HFILL }
-        */
+         { "FIELDNAME",           "PROTOABBREV.FIELDABBREV",
+         FIELDTYPE, FIELDBASE, FIELDCONVERT, BITMASK,
+         "FIELDDESCR", HFILL }
+         */
         {&hf_ccn_type,
-         {"Type", "ccn.type", FT_UINT32, BASE_DEC, NULL,
-          0x0, "The type of the CCN packet", HFILL}},
+            {"Type", "ccn.type", FT_UINT32, BASE_DEC, NULL,
+                0x0, "The type of the CCN packet", HFILL}},
         {&hf_ccn_name,
-         {"Name", "ccn.name", FT_STRING, BASE_NONE, NULL,
-          0x0, "The name of the content/interest in the CCN packet", HFILL}},
+            {"Name", "ccn.name", FT_STRING, BASE_NONE, NULL,
+                0x0, "The name of the content/interest in the CCN packet", HFILL}},
         {&hf_ccn_name_components,
-         {"Component", "ccn.name.component", FT_STRING, BASE_NONE, NULL,
-          0x0, "The individual components of the name", HFILL}},
+            {"Component", "ccn.name.component", FT_STRING, BASE_NONE, NULL,
+                0x0, "The individual components of the name", HFILL}},
         {&hf_ccn_signature,
-         {"Signature", "ccn.signature", FT_NONE, BASE_NONE, NULL,
-          0x0, "The signature collection of the CCN packet", HFILL}},
+            {"Signature", "ccn.signature", FT_NONE, BASE_NONE, NULL,
+                0x0, "The signature collection of the CCN packet", HFILL}},
         {&hf_ccn_signaturedigestalg,
-         {"Digest algorithm", "ccn.signature.digestalgorithm", FT_OID, BASE_NONE, NULL,
-          0x0, "The OID of the signature digest algorithm", HFILL}},
+            {"Digest algorithm", "ccn.signature.digestalgorithm", FT_OID, BASE_NONE, NULL,
+                0x0, "The OID of the signature digest algorithm", HFILL}},
         /* use BASE_NONE instead of ABSOLUTE_TIME_LOCAL for Wireshark 1.2.x */
         {&hf_ccn_timestamp,
-         {"Timestamp", "ccn.timestamp", FT_ABSOLUTE_TIME, ABSOLUTE_TIME_LOCAL, NULL,
-          0x0, "The time at creation of signed info", HFILL}},
+            {"Timestamp", "ccn.timestamp", FT_ABSOLUTE_TIME, ABSOLUTE_TIME_LOCAL, NULL,
+                0x0, "The time at creation of signed info", HFILL}},
         {&hf_ccn_signaturebits,
-         {"Bits", "ccn.signature.bits", FT_BYTES, BASE_NONE, NULL,
-          0x0, "The signature over the name through end of the content of the CCN packet", HFILL}},
+            {"Bits", "ccn.signature.bits", FT_BYTES, BASE_NONE, NULL,
+                0x0, "The signature over the name through end of the content of the CCN packet", HFILL}},
         {&hf_ccn_publisherpublickeydigest,
-         {"PublisherPublicKeyDigest", "ccn.publisherpublickeydigest", FT_BYTES, BASE_NONE, NULL,
-          0x0, "The digest of the publisher's public key", HFILL}},
+            {"PublisherPublicKeyDigest", "ccn.publisherpublickeydigest", FT_BYTES, BASE_NONE, NULL,
+                0x0, "The digest of the publisher's public key", HFILL}},
         {&hf_ccn_contenttype,
-         {"Content type", "ccn.contenttype", FT_INT32, BASE_DEC, &contenttype_vals,
-          0x0, "Type of content", HFILL}},
+            {"Content type", "ccn.contenttype", FT_INT32, BASE_DEC, &contenttype_vals,
+                0x0, "Type of content", HFILL}},
         {&hf_ccn_freshnessseconds,
-         {"Freshness seconds", "ccn.freshnessseconds", FT_UINT32, BASE_DEC, NULL,
-          0x0, "Seconds before data becomes stale", HFILL}},
+            {"Freshness seconds", "ccn.freshnessseconds", FT_UINT32, BASE_DEC, NULL,
+                0x0, "Seconds before data becomes stale", HFILL}},
         {&hf_ccn_finalblockid,
-         {"FinalBlockID", "ccn.finalblockid", FT_STRING, BASE_NONE, NULL,
-          0x0, "Indicates the identifier of the final block in a sequence of fragments", HFILL}},
+            {"FinalBlockID", "ccn.finalblockid", FT_STRING, BASE_NONE, NULL,
+                0x0, "Indicates the identifier of the final block in a sequence of fragments", HFILL}},
         {&hf_ccn_contentdata,
-         {"Data", "ccn.data", FT_BYTES, BASE_NONE, NULL,
-          0x0, "Raw data", HFILL}},
-
+            {"Data", "ccn.data", FT_BYTES, BASE_NONE, NULL,
+                0x0, "Raw data", HFILL}},
         {&hf_ccn_minsuffixcomponents,
-         {"MinSuffixComponents", "ccn.minsuffixcomponents", FT_UINT32, BASE_DEC, NULL,
-          0x0, "Minimum suffix components", HFILL}},
+            {"MinSuffixComponents", "ccn.minsuffixcomponents", FT_UINT32, BASE_DEC, NULL,
+                0x0, "Minimum suffix components", HFILL}},
         {&hf_ccn_maxsuffixcomponents,
-         {"MaxSuffixComponents", "ccn.maxsuffixcomponents", FT_UINT32, BASE_DEC, NULL,
-          0x0, "Maximum suffix components", HFILL}},
+            {"MaxSuffixComponents", "ccn.maxsuffixcomponents", FT_UINT32, BASE_DEC, NULL,
+                0x0, "Maximum suffix components", HFILL}},
         {&hf_ccn_childselector,
-         {"ChildSelector", "ccn.childselector", FT_UINT8, BASE_DEC, NULL,
-          0x0, "Preferred ordering of resulting content", HFILL}},
+            {"ChildSelector", "ccn.childselector", FT_UINT8, BASE_DEC, NULL,
+                0x0, "Preferred ordering of resulting content", HFILL}},
         {&hf_ccn_answeroriginkind,
-         {"AnswerOriginKind", "ccn.answeroriginkind", FT_UINT8, BASE_HEX, NULL,
-          0x0, "Acceptable sources of content (generated, stale)", HFILL}},
+            {"AnswerOriginKind", "ccn.answeroriginkind", FT_UINT8, BASE_HEX, NULL,
+                0x0, "Acceptable sources of content (generated, stale)", HFILL}},
         {&hf_ccn_scope,
-         {"Scope", "ccn.scope", FT_UINT8, BASE_DEC, NULL,
-          0x0, "Limit of interest propagation", HFILL}},
+            {"Scope", "ccn.scope", FT_UINT8, BASE_DEC, NULL,
+                0x0, "Limit of interest propagation", HFILL}},
+        {&hf_ccn_interestlifetime,
+            {"InterestLifetime", "ccn.interestlifetime", FT_DOUBLE, BASE_NONE, NULL,
+                0x0, "The relative lifetime of the interest, stored in 1/4096 seconds", HFILL}},
         {&hf_ccn_nonce,
-         {"Nonce", "ccn.nonce", FT_BYTES, BASE_NONE, NULL,
-          0x0, "The nonce to distinguish interests", HFILL}},
+            {"Nonce", "ccn.nonce", FT_BYTES, BASE_NONE, NULL,
+                0x0, "The nonce to distinguish interests", HFILL}},
     };
-
+    
     proto_ccn = proto_register_protocol("Content-centric Networking Protocol", /* name */
                                         "CCN",		/* short name */
                                         "ccn");	/* abbrev */
@@ -205,7 +208,7 @@ proto_reg_handoff_ccn(void)
     static gboolean initialized = FALSE;
     static int current_ccn_port = -1;
     int global_ccn_port = atoi(CCN_DEFAULT_UNICAST_PORT);
-
+    
     if (!initialized) {
         ccn_handle = new_create_dissector_handle(dissect_ccn, proto_ccn);
         heur_dissector_add("udp", dissect_ccn_heur, proto_ccn);
@@ -246,7 +249,7 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     tvb_size = tvb_length(tvb);
     if (tvb_size < CCN_MIN_PACKET_SIZE || tvb_get_guint8(tvb, 0) == 0)
         return (0);
-
+    
     sd = &skel_decoder;
     memset(sd, 0, sizeof(*sd));
     sd->state |= CCN_DSTATE_PAUSE;
@@ -267,32 +270,32 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         pinfo->desegment_len = DESEGMENT_ONE_MORE_SEGMENT;
         return (-1); /* what should this be? */
     }
-
+    
     /* Make it visible that we're taking this packet */
     if (check_col(pinfo->cinfo, COL_PROTOCOL)) {
         col_set_str(pinfo->cinfo, COL_PROTOCOL, "CCN");
     }
-
+    
     /* Clear out stuff in the info column */
     if (check_col(pinfo->cinfo, COL_INFO)) {
         col_clear(pinfo->cinfo, COL_INFO);
     }
-
+    
     c = ccn_charbuf_create();
     ccn_uri_append(c, ccnb, tvb_size, 1);
-
+    
     /* Add the packet type and CCN URI to the info column */
     if (check_col(pinfo->cinfo, COL_INFO)) {
         col_add_str(pinfo->cinfo, COL_INFO,
                     val_to_str(packet_type, VALS(ccn_dtag_dict.dict), "Unknown (0x%02x"));
         col_append_sep_str(pinfo->cinfo, COL_INFO, NULL, ccn_charbuf_as_string(c));
     }
-
+    
     if (tree == NULL) {
         ccn_charbuf_destroy(&c);
         return (sd->index);
     }
-
+    
     ti = proto_tree_add_protocol_format(tree, proto_ccn, tvb, 0, -1,
                                         "Content-centric Networking Protocol, %s, %s",
                                         val_to_str(packet_type, VALS(ccn_dtag_dict.dict), "Unknown (0x%02x"),
@@ -300,30 +303,30 @@ dissect_ccn(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
     ccn_tree = proto_item_add_subtree(ti, ett_ccn);
     ccn_charbuf_destroy(&c);
     ti = proto_tree_add_uint(ccn_tree, hf_ccn_type, tvb, 0, packet_type_length, packet_type);
-
+    
     switch (packet_type) {
-    case CCN_DTAG_ContentObject:
-        if (0 > dissect_ccn_contentobject(ccnb, sd->index, tvb, pinfo, ccn_tree))
-            return (0);
-        break;
-    case CCN_DTAG_Interest:
-        if (0 > dissect_ccn_interest(ccnb, sd->index, tvb, pinfo, ccn_tree))
-            return (0);
-        break;
+        case CCN_DTAG_ContentObject:
+            if (0 > dissect_ccn_contentobject(ccnb, sd->index, tvb, pinfo, ccn_tree))
+                return (0);
+            break;
+        case CCN_DTAG_Interest:
+            if (0 > dissect_ccn_interest(ccnb, sd->index, tvb, pinfo, ccn_tree))
+                return (0);
+            break;
     }
-
+    
     return (sd->index);
 }
 
 static gboolean
 dissect_ccn_heur(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
-
+    
     /* This is a heuristic dissector, which means we get all the UDP
      * traffic not sent to a known dissector and not claimed by
      * a heuristic dissector called before us!
      */
-
+    
     if (dissect_ccn(tvb, pinfo, tree) > 0)
         return (TRUE);
     else
@@ -346,47 +349,50 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
     size_t blob_size;
     ssize_t l;
     unsigned int i;
+    double lifetime;
     int res;
-
+    
     comps = ccn_indexbuf_create();
     res = ccn_parse_interest(ccnb, ccnb_size, pi, comps);
-
+    if (res < 0)
+        return (res);
+    
     /* Name */
     l = pi->offset[CCN_PI_E_Name] - pi->offset[CCN_PI_B_Name];
     c = ccn_charbuf_create();
     ccn_uri_append(c, ccnb, ccnb_size, 1);
     titem = proto_tree_add_string(tree, hf_ccn_name, tvb,
-                                      pi->offset[CCN_PI_B_Name], l,
-                                      ccn_charbuf_as_string(c));
+                                  pi->offset[CCN_PI_B_Name], l,
+                                  ccn_charbuf_as_string(c));
     name_tree = proto_item_add_subtree(titem, ett_name);
     ccn_charbuf_destroy(&c);
-
+    
     for (i = 0; i < comps->n - 1; i++) {
         res = ccn_name_comp_get(ccnb, comps, i, &comp, &comp_size);
         titem = proto_tree_add_item(name_tree, hf_ccn_name_components, tvb, comp - ccnb, comp_size, FALSE);
     }
-
+    
     /* MinSuffixComponents */
     l = pi->offset[CCN_PI_E_MinSuffixComponents] - pi->offset[CCN_PI_B_MinSuffixComponents];
     if (l > 0) {
         i = pi->min_suffix_comps;
         titem = proto_tree_add_uint(tree, hf_ccn_minsuffixcomponents, tvb, pi->offset[CCN_PI_B_MinSuffixComponents], l, i);
     }
-
+    
     /* MaxSuffixComponents */
     l = pi->offset[CCN_PI_E_MaxSuffixComponents] - pi->offset[CCN_PI_B_MaxSuffixComponents];
     if (l > 0) {
         i = pi->max_suffix_comps;
         titem = proto_tree_add_uint(tree, hf_ccn_maxsuffixcomponents, tvb, pi->offset[CCN_PI_B_MaxSuffixComponents], l, i);
     }
-
-    /* PublisherIDKeyDigest? */
+    
+    /* PublisherPublicKeyDigest */
     /* Exclude */
     l = pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude];
     if (l > 0) {
-            titem = proto_tree_add_text(tree, tvb, pi->offset[CCN_PI_B_Exclude], l,
-                                         "Exclude");
-            exclude_tree = proto_item_add_subtree(titem, ett_exclude);
+        titem = proto_tree_add_text(tree, tvb, pi->offset[CCN_PI_B_Exclude], l,
+                                    "Exclude");
+        exclude_tree = proto_item_add_subtree(titem, ett_exclude);
     }
     /* ChildSelector */
     l = pi->offset[CCN_PI_E_ChildSelector] - pi->offset[CCN_PI_B_ChildSelector];
@@ -394,24 +400,37 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
         i = pi->orderpref;
         titem = proto_tree_add_uint(tree, hf_ccn_childselector, tvb, pi->offset[CCN_PI_B_ChildSelector], l, i);
         proto_item_append_text(titem, ", %s", val_to_str(i & 1, VALS(childselectordirection_vals), ""));
-
+        
     }
-
+    
     /* AnswerOriginKind */
     l = pi->offset[CCN_PI_E_AnswerOriginKind] - pi->offset[CCN_PI_B_AnswerOriginKind];
     if (l > 0) {
         i = pi->answerfrom;
         titem = proto_tree_add_uint(tree, hf_ccn_answeroriginkind, tvb, pi->offset[CCN_PI_B_AnswerOriginKind], l, i);
     }
-
+    
     /* Scope */
     l = pi->offset[CCN_PI_E_Scope] - pi->offset[CCN_PI_B_Scope];
     if (l > 0) {
         i = pi->scope;
         titem = proto_tree_add_uint(tree, hf_ccn_scope, tvb, pi->offset[CCN_PI_B_Scope], l, i);
     }
-
-    /* Nonce */
+    
+    /* InterestLifetime */
+    l = pi->offset[CCN_PI_E_InterestLifetime] - pi->offset[CCN_PI_B_InterestLifetime];
+    if (l > 0) {
+        i = ccn_ref_tagged_BLOB(CCN_DTAG_InterestLifetime, ccnb,
+                                pi->offset[CCN_PI_B_InterestLifetime],
+                                pi->offset[CCN_PI_E_InterestLifetime],
+                                &blob, &blob_size);
+        lifetime = 0.0;
+        for (i = 0; i < blob_size; i++)
+            lifetime = lifetime * 256.0 + (double)blob[i];
+        lifetime /= 4096.0;
+        titem = proto_tree_add_double(tree, hf_ccn_interestlifetime, tvb, blob - ccnb, blob_size, lifetime);
+    }
+    
     /* Nonce */
     l = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
     if (l > 0) {
@@ -430,7 +449,7 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
     }
     
     return (1);
-
+    
 }
 
 static int
@@ -454,16 +473,16 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
     double dt;
     nstime_t timestamp;
     int res;
-
+    
     comps = ccn_indexbuf_create();
     res = ccn_parse_ContentObject(ccnb, ccnb_size, pco, comps);
     if (res < 0) return (-1);
-
+    
     /* Signature */
     l = pco->offset[CCN_PCO_E_Signature] - pco->offset[CCN_PCO_B_Signature];
     titem = proto_tree_add_item(tree, hf_ccn_signature, tvb, pco->offset[CCN_PCO_B_Signature], l, FALSE);
     signature_tree = proto_item_add_subtree(titem, ett_signature);
-
+    
     /* DigestAlgorithm */
     l = pco->offset[CCN_PCO_E_DigestAlgorithm] - pco->offset[CCN_PCO_B_DigestAlgorithm];
     if (l > 0) {
@@ -479,7 +498,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
     if (l > 0) {
         /* add the witness item to the signature tree */
     }
-
+    
     /* Signature bits */
     l = pco->offset[CCN_PCO_E_SignatureBits] - pco->offset[CCN_PCO_B_SignatureBits];
     if (l > 0) {
@@ -490,34 +509,34 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
         titem = proto_tree_add_bytes(signature_tree, hf_ccn_signaturebits, tvb,
                                      blob - ccnb, blob_size, blob);
     }
-
+    
     /* /Signature */
-
+    
     /* Name */
     l = pco->offset[CCN_PCO_E_Name] - pco->offset[CCN_PCO_B_Name];
     c = ccn_charbuf_create();
     ccn_uri_append(c, ccnb, ccnb_size, 1);
     titem = proto_tree_add_string(tree, hf_ccn_name, tvb,
-                                      pco->offset[CCN_PCO_B_Name], l,
-                                      ccn_charbuf_as_string(c));
+                                  pco->offset[CCN_PCO_B_Name], l,
+                                  ccn_charbuf_as_string(c));
     name_tree = proto_item_add_subtree(titem, ett_name);
     ccn_charbuf_destroy(&c);
-
+    
     /* Name Components */
     for (i = 0; i < comps->n - 1; i++) {
         res = ccn_name_comp_get(ccnb, comps, i, &comp, &comp_size);
         titem = proto_tree_add_item(name_tree, hf_ccn_name_components, tvb, comp - ccnb, comp_size, FALSE);
     }
-
+    
     /* /Name */
-
+    
     /* SignedInfo */
     l = pco->offset[CCN_PCO_E_SignedInfo] - pco->offset[CCN_PCO_B_SignedInfo];
     titem = proto_tree_add_text(tree, tvb,
-                                         pco->offset[CCN_PCO_B_SignedInfo], l,
-                                         "SignedInfo");
+                                pco->offset[CCN_PCO_B_SignedInfo], l,
+                                "SignedInfo");
     signedinfo_tree = proto_item_add_subtree(titem, ett_signedinfo);
-
+    
     /* PublisherPublicKeyDigest */
     l = pco->offset[CCN_PCO_E_PublisherPublicKeyDigest] - pco->offset[CCN_PCO_B_PublisherPublicKeyDigest];
     if (l > 0) {
@@ -527,7 +546,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   &blob, &blob_size);
         titem = proto_tree_add_bytes(signedinfo_tree, hf_ccn_publisherpublickeydigest, tvb, blob - ccnb, blob_size, blob);
     }
-
+    
     /* Timestamp */
     l = pco->offset[CCN_PCO_E_Timestamp] - pco->offset[CCN_PCO_B_Timestamp];
     if (l > 0) {
@@ -543,7 +562,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
         timestamp.nsecs = (dt - (double) timestamp.secs) *  1000000000.0;
         titem = proto_tree_add_time(signedinfo_tree, hf_ccn_timestamp, tvb, blob - ccnb, blob_size, &timestamp);
     }
-
+    
     /* Type */
     l = pco->offset[CCN_PCO_E_Type] - pco->offset[CCN_PCO_B_Type];
     if (l > 0) {
@@ -555,7 +574,7 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
     } else {
         titem = proto_tree_add_int(signedinfo_tree, hf_ccn_contenttype, NULL, 0, 0, pco->type);
     }
-
+    
     /* FreshnessSeconds */
     l = pco->offset[CCN_PCO_E_FreshnessSeconds] - pco->offset[CCN_PCO_B_FreshnessSeconds];
     if (l > 0) {
@@ -564,12 +583,12 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   pco->offset[CCN_PCO_E_FreshnessSeconds],
                                   &blob, &blob_size);
         i = ccn_fetch_tagged_nonNegativeInteger(CCN_DTAG_FreshnessSeconds, ccnb,
-                                                  pco->offset[CCN_PCO_B_FreshnessSeconds],
-                                                  pco->offset[CCN_PCO_E_FreshnessSeconds]);
-
+                                                pco->offset[CCN_PCO_B_FreshnessSeconds],
+                                                pco->offset[CCN_PCO_E_FreshnessSeconds]);
+        
         titem = proto_tree_add_uint(signedinfo_tree, hf_ccn_freshnessseconds, tvb, blob - ccnb, blob_size, i);
     }
-
+    
     /* FinalBlockID */
     l = pco->offset[CCN_PCO_E_FinalBlockID] - pco->offset[CCN_PCO_B_FinalBlockID];
     if (l > 0) {
@@ -577,25 +596,25 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   pco->offset[CCN_PCO_B_FinalBlockID],
                                   pco->offset[CCN_PCO_E_FinalBlockID],
                                   &blob, &blob_size);
-
+        
         titem = proto_tree_add_item(signedinfo_tree, hf_ccn_finalblockid, tvb, blob - ccnb, blob_size, FALSE);
     }
     /* TODO: KeyLocator */
     /* /SignedInfo */
-
+    
     /* Content */
     l = pco->offset[CCN_PCO_E_Content] - pco->offset[CCN_PCO_B_Content];
     res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, ccnb,
-                                  pco->offset[CCN_PCO_B_Content],
-                                  pco->offset[CCN_PCO_E_Content],
-                                  &blob, &blob_size);
+                              pco->offset[CCN_PCO_B_Content],
+                              pco->offset[CCN_PCO_E_Content],
+                              &blob, &blob_size);
     titem = proto_tree_add_text(tree, tvb,
-                                         pco->offset[CCN_PCO_B_Content], l,
-                                         "Content: %d bytes", blob_size);
+                                pco->offset[CCN_PCO_B_Content], l,
+                                "Content: %d bytes", blob_size);
     if (blob_size > 0) {
         content_tree = proto_item_add_subtree(titem, ett_content);
         titem = proto_tree_add_item(content_tree, hf_ccn_contentdata, tvb, blob - ccnb, blob_size, FALSE);
     }
-
+    
     return (ccnb_size);
 }
