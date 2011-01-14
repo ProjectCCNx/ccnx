@@ -49,6 +49,11 @@
 #define CCND_TEST_100137 0
 #endif
 
+#ifndef CCND_PING
+/* The ping responder is deprecated, but enable it by default for now */
+#define CCND_PING 1
+#endif
+
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
 
 #define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY"
