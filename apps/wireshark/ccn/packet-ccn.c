@@ -159,13 +159,13 @@ proto_register_ccn(void)
             {"PublisherPublicKeyDigest", "ccn.publisherpublickeydigest", FT_BYTES, BASE_NONE, NULL,
                 0x0, "The digest of the publisher's public key", HFILL}},
         {&hf_ccn_contenttype,
-            {"Content type", "ccn.contenttype", FT_INT32, BASE_DEC, &contenttype_vals,
+            {"Content type", "ccn.contenttype", FT_UINT32, BASE_HEX, &contenttype_vals,
                 0x0, "Type of content", HFILL}},
         {&hf_ccn_freshnessseconds,
             {"Freshness seconds", "ccn.freshnessseconds", FT_UINT32, BASE_DEC, NULL,
                 0x0, "Seconds before data becomes stale", HFILL}},
         {&hf_ccn_finalblockid,
-            {"FinalBlockID", "ccn.finalblockid", FT_STRING, BASE_NONE, NULL,
+            {"FinalBlockID", "ccn.finalblockid", FT_BYTES, BASE_NONE, NULL,
                 0x0, "Indicates the identifier of the final block in a sequence of fragments", HFILL}},
         {&hf_ccn_contentdata,
             {"Data", "ccn.data", FT_BYTES, BASE_NONE, NULL,
@@ -187,7 +187,7 @@ proto_register_ccn(void)
                 0x0, "Limit of interest propagation", HFILL}},
         {&hf_ccn_interestlifetime,
             {"InterestLifetime", "ccn.interestlifetime", FT_DOUBLE, BASE_NONE, NULL,
-                0x0, "The relative lifetime of the interest, stored in 1/4096 seconds", HFILL}},
+                0x0, "The relative lifetime of the interest, stored in units of 1/4096 seconds", HFILL}},
         {&hf_ccn_nonce,
             {"Nonce", "ccn.nonce", FT_BYTES, BASE_NONE, NULL,
                 0x0, "The nonce to distinguish interests", HFILL}},
@@ -570,9 +570,9 @@ dissect_ccn_contentobject(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t 
                                   pco->offset[CCN_PCO_B_Type],
                                   pco->offset[CCN_PCO_E_Type],
                                   &blob, &blob_size);
-        titem = proto_tree_add_int(signedinfo_tree, hf_ccn_contenttype, tvb, blob - ccnb, blob_size, pco->type);
+        titem = proto_tree_add_uint(signedinfo_tree, hf_ccn_contenttype, tvb, blob - ccnb, blob_size, pco->type);
     } else {
-        titem = proto_tree_add_int(signedinfo_tree, hf_ccn_contenttype, NULL, 0, 0, pco->type);
+        titem = proto_tree_add_uint(signedinfo_tree, hf_ccn_contenttype, NULL, 0, 0, pco->type);
     }
     
     /* FreshnessSeconds */
