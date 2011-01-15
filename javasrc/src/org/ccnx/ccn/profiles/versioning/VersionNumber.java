@@ -28,7 +28,8 @@ import org.ccnx.ccn.protocol.ContentName;
  * 
  * The core of this is based on a CCNTime, but CCNTime has two different
  * uses (getTime as long since epoch and binaryTime), which ends up being
- * confusing.
+ * confusing.  This class should eventually be updated to just operate on
+ * the raw byte array.
  * 
  * A version number is an immutable object.
  * 
@@ -90,6 +91,10 @@ public class VersionNumber implements Comparable<VersionNumber> {
 		_version = VersioningProfile.getVersionComponentAsTimestamp(versionComponent);
 		_versionComponent = Arrays.copyOf(versionComponent, versionComponent.length);
 		_binaryTime = _version.toBinaryTimeAsLong();
+	}
+
+	public VersionNumber(VersionNumber version1a) {
+		this(version1a.getAsTime());
 	}
 
 	/**
@@ -204,6 +209,9 @@ public class VersionNumber implements Comparable<VersionNumber> {
 		return VersioningProfile.printAsVersionComponent(_version);
 	}
 	
+	public static VersionNumber now() {
+		return new VersionNumber(CCNTime.now());
+	}
 
 	// ========================================
 	// static methods
