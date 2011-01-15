@@ -105,7 +105,7 @@ public class VersioningInterest {
 	 * @param name
 	 * @param listener
 	 * @param retrySeconds
-	 * @param exclusions
+	 * @param exclusions may be null
 	 * @throws IOException 
 	 */
 	public void expressInterest(ContentName name, CCNInterestListener listener, Set<VersionNumber> exclusions) throws IOException {
@@ -122,8 +122,8 @@ public class VersioningInterest {
 	 * @param name
 	 * @param listener
 	 * @param retrySeconds
-	 * @param exclusions
-	 * @param startingVersion the minimum version to include
+	 * @param exclusions may be null
+	 * @param startingVersion the minimum version to include (may be null)
 	 * @throws IOException 
 	 */
 	public void expressInterest(ContentName name, CCNInterestListener listener, Set<VersionNumber> exclusions, VersionNumber startingVeersion) throws IOException {
