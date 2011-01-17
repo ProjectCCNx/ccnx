@@ -101,14 +101,14 @@ import org.ccnx.ccn.protocol.Interest;
 public class VersioningInterestManager implements CCNInterestListener {
 
 	// MIN_FILL should be less than MAX_FILL/2 due to how step D.1 works.
-	//	public final static int MIN_FILL = 50;
-	//	public final static int MID_FILL = 125;
-	//	public final static int MAX_FILL = 200;
+		public final static int MIN_FILL = 50;
+		public final static int MID_FILL = 125;
+		public final static int MAX_FILL = 200;
 
 	// for testing
-	public final static int MIN_FILL = 5;
-	public final static int MID_FILL = 12;
-	public final static int MAX_FILL = 20;
+//	public final static int MIN_FILL = 5;
+//	public final static int MID_FILL = 12;
+//	public final static int MAX_FILL = 20;
 
 
 	/**
