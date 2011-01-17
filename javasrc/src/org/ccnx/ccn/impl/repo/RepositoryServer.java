@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -18,6 +18,7 @@
 package org.ccnx.ccn.impl.repo;
 
 import java.io.IOException;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Timer;
@@ -29,13 +30,19 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
+import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
 import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
+import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.KeyLocator;
+import org.ccnx.ccn.protocol.SignedInfo;
+import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 
 /**
  * High level implementation of repository protocol that
@@ -387,6 +394,75 @@ public class RepositoryServer {
 					Log.logException("error creating name enumeration response object for write out (prefix = "+ner.getPrefix()+")", e);
 			}
 		}
+	}
+	
+	/**
+	 * Look for unverified keys. Note that we must have already checked to see that the repo has
+	 * the content for this target before calling this.
+	 * 
+	 * @param target
+	 * @return new target if we need to verify the target
+	 */
+	public ContentName getKeyTarget(ContentName target) {
+		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+			Log.finer(Log.FAC_REPO, "Checking for key locators for: {0}", target);
+		try {
+			ContentObject content = _repo.getContent(new Interest(target));
+			return getKeyTargetFromObject(content, target);
+		} catch (RepositoryException e) {
+			return null;
+		}
+	}
+	
+	/**
+	 * Look for unverified keys based on content object
+	 * 
+	 * @param content
+	 * @param target
+	 * @return
+	 * @throws RepositoryException
+	 */
+	public ContentName getKeyTargetFromObject(ContentObject content, ContentName target) throws RepositoryException {
+		SignedInfo si = content.signedInfo();
+		KeyLocator locator = si.getKeyLocator();
+		if (null == locator)
+			return null;
+		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+			Log.finer(Log.FAC_REPO, "Sync: Locator is: {0}", locator);
+		if (locator.type() != KeyLocatorType.NAME)
+			return null;
+		if (PublicKeyObject.isSelfSigned(target, (PublicKey)null, locator))
+			return null;
+		
+		// Here we are sort of mimicking code in PublicKeyCache. Should there be a routine to do
+		// this in PublicKeyCache? (it would need to have a generic getter to get the data since
+		// here we want to get it directly from the repo. Also I'm ignoring the "retry" code
+		// there that does exclusions since I think its wrong, it would be complicated to do it
+		// right and its unclear what kind of problem the code is concerned about...
+		
+		Interest keyInterest = new Interest(locator.name().name(), locator.name().publisher());
+		// we could have from 1 (content digest only) to 3 (version, segment, content digest) 
+		// additional name components.
+		keyInterest.minSuffixComponents(1);
+		keyInterest.maxSuffixComponents(3);
+
+		ContentObject keyContent = _repo.getContent(keyInterest);
+		if (null == keyContent) {
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+				Log.finer(Log.FAC_REPO, "Found key to sync: {0}", locator.name().name());
+			return locator.name().name();
+		}
+		return null;	// Already have key
+	}
+	
+	public void doSync(Interest interest, Interest readInterest) throws IOException {
+		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+			Log.finer(Log.FAC_REPO, "Repo checked write no content for {0}, starting read", interest.name());
+		RepositoryDataListener listener;
+		listener = new RepositoryDataListener(interest, readInterest, this);
+		addListener(listener);
+		listener.getInterests().add(readInterest, null);
+		_handle.expressInterest(readInterest, listener);
 	}
 	
 	public Object getStatus(String type) {

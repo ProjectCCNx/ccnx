@@ -313,6 +313,10 @@ public class PublicKeyCache {
 				Log.info("Retrieved an object when looking for key " + locator.name().name() + " at " + retrievedContent.name() + ", but type is " + retrievedContent.signedInfo().getTypeName());
 			}
 			// TODO -- not sure this is exactly right, but a start...
+			
+			// It isn't right - this would only work for locators with no version or segment. And since I think most keys are
+			// PublicKeyObjects which would have segments and probably versions it would almost always be wrong...
+			// But is a little unclear what problem this code is concerned about anyway...
 			Exclude currentExclude = keyInterest.exclude();
 			if (null == currentExclude) {
 				currentExclude = new Exclude();

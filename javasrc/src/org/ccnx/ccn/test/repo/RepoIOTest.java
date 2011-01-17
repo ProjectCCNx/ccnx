@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -20,24 +20,32 @@ package org.ccnx.ccn.test.repo;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.impl.repo.PolicyXML;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.io.content.CCNStringObject;
+import org.ccnx.ccn.io.content.Link;
+import org.ccnx.ccn.io.content.PublicKeyObject;
+import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.test.CCNTestHelper;
 import org.ccnx.ccn.test.Flosser;
+import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -52,6 +60,10 @@ import org.junit.Test;
  */
 public class RepoIOTest extends RepoTestBase {
 	
+	// TODO - all the regular tests should probably use a namespace derived from this...
+	// (it didn't exist when these tests were developed)
+	protected static CCNTestHelper testHelper = new CCNTestHelper(RepoIOTest.class);
+	
 	protected static String _repoTestDir = "repotest";
 	protected static byte [] data = new byte[4000];
 	// Test stream and net object names for content written into repo before all test cases
@@ -61,11 +73,14 @@ public class RepoIOTest extends RepoTestBase {
 	// Test stream and net object names for content not in repo before test cases
 	protected static String _testNonRepo = "/testNameSpace/stream-nr";
 	protected static String _testNonRepoObj = "/testNameSpace/obj-nr";
-
+	protected static String _testLinkToKey = "/testNameSpace/link-to-key";
+	protected static String _testLink = "/testNameSpace/link";
+	
+	static String USER_NAMESPACE = "TestRepoUser";
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		//Library.setLevel(Level.FINEST);
+		Log.setLevel(Level.FINEST);
 		_testPrefix += "-" + rand.nextInt(10000);
 		_testPrefixObj += "-" + rand.nextInt(10000);
 		RepoTestBase.setUpBeforeClass();
@@ -81,7 +96,8 @@ public class RepoIOTest extends RepoTestBase {
 		so.save();
 		so.close();
 		
-		 // Need to save key also for first time sync test
+		// Need to save key also for first time sync test. Actually we need this for the policy
+		// test too since the repo needs to locate the key to verify the policy test file
 		KeyLocator locator = 
 			putHandle.keyManager().getKeyLocator(putHandle.keyManager().getDefaultKeyID()); 
 		putHandle.keyManager().publishSelfSignedKeyToRepository(
@@ -89,23 +105,57 @@ public class RepoIOTest extends RepoTestBase {
 		               putHandle.keyManager().getDefaultPublicKey(), null, 
 		               SystemConfiguration.getDefaultTimeout());
 		
+
 		// Floss content into ccnd for tests involving content not already in repo when we start
 		Flosser floss = new Flosser();
+		
+		// So we can test saving keys in the sync tests we build our first sync object (a stream) with
+		// an alternate key and the second one (a CCNNetworkObject) with an alternate key locater that is
+		// accessed through a link.
+		CreateUserData testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), 2, true, null, putHandle);
+		String [] userNames = testUsers.friendlyNames().toArray(new String[2]);
+		CCNHandle userHandle = testUsers.getHandleForUser(userNames[0]);
+		
+		KeyLocator userLocator = 
+			userHandle.keyManager().getKeyLocator(userHandle.keyManager().getDefaultKeyID());
+		floss.handleNamespace(userLocator.name().name());
+		PublicKeyObject pko = userHandle.keyManager().publishSelfSignedKey(userLocator.name().name(), null,
+						false);
 
+		// Build the link and the key it links to. Floss these into ccnd.
 		_testNonRepo += "-" + rand.nextInt(10000);
 		_testNonRepoObj += "-" + rand.nextInt(10000);
+		_testLinkToKey += "-" + rand.nextInt(10000);
+		_testLink += "-" + rand.nextInt(10000);
 		ContentName name = ContentName.fromNative(_testNonRepo);
 		floss.handleNamespace(name);
-		CCNOutputStream cos = new CCNOutputStream(name, putHandle);
+		CCNOutputStream cos = new CCNOutputStream(name, userHandle);
 		cos.setBlockSize(100);
 		cos.setTimeout(4000);
 		cos.write(data, 0, data.length);
 		cos.close();
 		
+		ContentName linkToKeyName = ContentName.fromNative(_testLinkToKey);
+		Link link = new Link(linkToKeyName);
+		ContentName linkName = ContentName.fromNative(_testLink);
+		LinkObject lo = new LinkObject(linkName, link, SaveType.RAW, putHandle);
+		floss.handleNamespace(lo.getBaseName());
+		lo.save();
+		
+		KeyLocator linkLocator = new KeyLocator(linkName);
+		CCNHandle userHandle2 = testUsers.getHandleForUser(userNames[1]);
+		userHandle2.keyManager().setKeyLocator(null, linkLocator);
+		floss.handleNamespace(linkToKeyName);
+		PublicKeyObject pko2 = userHandle2.keyManager().publishSelfSignedKey(linkToKeyName, null,
+						false);
+		
 		name = ContentName.fromNative(_testNonRepoObj);
 		floss.handleNamespace(name);
-		so = new CCNStringObject(name, "String value for non-repo obj", SaveType.RAW, putHandle);
+		so = new CCNStringObject(name, "String value for non-repo obj", SaveType.RAW, userHandle2);
 		so.save();
+		lo.close();
+		pko.close();
+		pko2.close();
 		so.close();
 		floss.stop();
 	}
