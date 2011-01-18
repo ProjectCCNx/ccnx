@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -60,6 +60,17 @@ public class CCNDaemonHandle {
 		return ContentName.componentPrintURI(digested);
 	}
 	
+	/**
+	 * Send the request for the prefix registration or deregistration to ccnd
+	 * 
+	 * @param interestNamePrefix
+	 * @param encodeMe
+	 * @param prefix contains callback for asynchronous requests
+	 * @param wait if true wait for return content from ccnd
+	 * @return data returned from ccnd in "no wait" case
+	 * 
+	 * @throws CCNDaemonException
+	 */
 	protected byte[] sendIt(ContentName interestNamePrefix, GenericXMLEncodable encodeMe, RegisteredPrefix prefix, boolean wait) throws CCNDaemonException {
 		byte[] encoded;
 		try {

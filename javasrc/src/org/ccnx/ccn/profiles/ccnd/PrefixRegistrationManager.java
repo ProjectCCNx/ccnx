@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -438,7 +438,15 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		return entryBack; 
 	}
 	
-	public void unRegisterPrefix(ContentName prefixToRegister, RegisteredPrefix prefix, Integer faceID) throws CCNDaemonException {
+	/**
+	 * Unregister a prefix with ccnd
+	 * 
+	 * @param prefixName ContentName of prefix
+	 * @param prefix has callback for completion
+	 * @param faceID faceId that has the prefix registered
+	 * @throws CCNDaemonException
+	 */
+	public void unRegisterPrefix(ContentName prefixName, RegisteredPrefix prefix, Integer faceID) throws CCNDaemonException {
 		final String startURI = "ccnx:/ccnx/";
 		PublisherPublicKeyDigest ccndId;
 		try {
@@ -460,7 +468,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			Log.warningStackTrace(e);
 			throw new CCNDaemonException(msg);
 		}
-		ForwardingEntry forward = new ForwardingEntry(ActionType.UnRegister, prefixToRegister, ccndId, faceID, null, null);
+		ForwardingEntry forward = new ForwardingEntry(ActionType.UnRegister, prefixName, ccndId, faceID, null, null);
 		// byte[] entryBits = super.getBinaryEncoding(forward);
 
 		super.sendIt(interestName, forward, prefix, false);

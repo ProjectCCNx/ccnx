@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -156,7 +156,9 @@ public class CCNNetworkManager implements Runnable {
 		}
 
 		/**
-		 * Waiter for interests being deregistered
+		 * Waiter for prefixes being deregistered. This is because we don't want to
+		 * wait for the prefix to be deregistered normally, but if we try to re-register
+		 * it we have to to avoid races.
 		 */
 		public Interest handleContent(ContentObject data, Interest interest) {
 			synchronized (this) {
