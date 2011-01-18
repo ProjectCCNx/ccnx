@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -351,8 +351,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		long bytesToWrite = len;
 		int blockSize = getBlockSize();
 		
-		// Flush all complete blocks we have to the segmenter
-		if (_blockOffset % blockSize == 0) {
+		if (_blockOffset % blockSize == 0 && bytesToWrite > 0) {
+			// Flush all complete blocks we have to the segmenter
 			if (_blockIndex > 0 || _blockOffset > 0) {
 				_baseNameIndex = 
 			        _segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers, _blockIndex+1,
@@ -361,9 +361,11 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			                                 _locator, _publisher, _keys);
 				_blockOffset = _blockIndex = 0;			        
 			}
-
+			
+			// Now if we have more than a blocksize worth of data, we can avoid copying by
+			// sending all full blocks we have directly to the sequencer
 			if (len >= blockSize) {
-				long contiguousBytesToWrite = ((len / blockSize)) * blockSize;
+				long contiguousBytesToWrite = (len / blockSize) * blockSize;
 				bytesToWrite -= contiguousBytesToWrite;
 				_dh.update(buf, (int) offset, (int)contiguousBytesToWrite); // add to running digest of data
 				
@@ -391,7 +393,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
             
 			// Increment _blockIndex here, if do it at end of loop gets confusing
 			// Already checked for need to flush and flush at end of last loop
-			if (_blockOffset >= _buffers[_blockIndex].length) {
+			if (_blockOffset >= blockSize) {
 				_blockIndex++;
 				_blockOffset = 0;
 				if (null == _buffers[_blockIndex]) {
@@ -399,7 +401,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 				}
 			}
 			
-			long thisBufAvail = _buffers[_blockIndex].length - _blockOffset;
+			long thisBufAvail = blockSize - _blockOffset;
 			long toWriteNow = (thisBufAvail > bytesToWrite) ? bytesToWrite : thisBufAvail;
             
 			System.arraycopy(buf, (int)offset, _buffers[_blockIndex], (int)_blockOffset, (int)toWriteNow);
@@ -412,7 +414,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			if (Log.isLoggable(Log.FAC_IO, Level.FINEST ))
 				Log.finest(Log.FAC_IO, "write: added " + toWriteNow + " bytes to buffer. blockOffset: " + _blockOffset + "( " + (thisBufAvail - toWriteNow) + " left in block), " + _totalLength + " written.");
             
-			if ((_blockOffset >= _buffers[_blockIndex].length) && ((_blockIndex+1) >= _buffers.length)) {
+			if ((_blockOffset >= blockSize) && ((_blockIndex+1) >= _buffers.length)) {
 				// We're out of buffers. Time to flush to the network.
 				Log.fine(Log.FAC_IO, "write: about to sync one tree's worth of blocks (" + BLOCK_BUF_COUNT +") to the network.");
 				flush(); // will reset _blockIndex and _blockOffset
@@ -514,8 +516,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		// Two cases:
 		// no partial, write all blocks including potentially short last block
 		// don't write last block (whole or partial), write n-1 full blocks
-		_baseNameIndex = 
-        _segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers,
+		_baseNameIndex = _segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers,
                                  (preservePartial && !flushLastBlock ? _blockIndex : _blockIndex+1),
                                  0, 
                                  (preservePartial && !flushLastBlock ? blockSize : _blockOffset),
