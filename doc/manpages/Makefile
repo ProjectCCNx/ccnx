@@ -34,6 +34,7 @@ PAGE_NAMES =        \
 	ccngetmeta		\
 	ccnrm			\
 	ccn_repo		\
+	ccncat			\
 
 PROJECT_NUMBER = 0.3.0
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
