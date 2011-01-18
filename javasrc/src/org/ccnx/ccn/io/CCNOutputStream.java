@@ -351,6 +351,15 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		long bytesToWrite = len;
 		int blockSize = getBlockSize();
 		
+		// Fill up to a buffer if we can to align the writes
+		if (_blockOffset % blockSize != 0 && (_blockOffset + bytesToWrite) > blockSize) {
+			int copySize = blockSize - _blockOffset;
+			System.arraycopy(buf, (int)offset, _buffers[_blockIndex], (int)_blockOffset, copySize);
+			offset += copySize;
+			_blockOffset = blockSize;
+			bytesToWrite -= copySize;
+		}
+		
 		if (_blockOffset % blockSize == 0 && bytesToWrite > 0) {
 			// Flush all complete blocks we have to the segmenter
 			if (_blockIndex > 0 || _blockOffset > 0) {
