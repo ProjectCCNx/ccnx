@@ -24,6 +24,7 @@ import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager;
+import org.ccnx.ccn.impl.CCNNetworkManager.RegisteredPrefix;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
@@ -59,7 +60,7 @@ public class CCNDaemonHandle {
 		return ContentName.componentPrintURI(digested);
 	}
 	
-	protected byte[] sendIt(ContentName interestNamePrefix, GenericXMLEncodable encodeMe, boolean wait) throws CCNDaemonException {
+	protected byte[] sendIt(ContentName interestNamePrefix, GenericXMLEncodable encodeMe, RegisteredPrefix prefix, boolean wait) throws CCNDaemonException {
 		byte[] encoded;
 		try {
 			encoded = encodeMe.encode(BinaryXMLCodec.CODEC_NAME);
@@ -92,10 +93,14 @@ public class CCNDaemonHandle {
 		ContentObject contentIn = null;
 
 		try {
-			if (wait)
+			if (wait) {
 				contentIn = _manager.get(interested, SystemConfiguration.CCND_OP_TIMEOUT);
-			else
-				_manager.write(interested);
+			} else {
+				if (null != prefix) {
+					_manager.expressInterest(this, interested, prefix);
+				} else
+					_manager.write(interested);
+			}
 		} catch (IOException e) {
 			String msg = ("Unexpected IOException in call getting CCNDaemonHandle.sendIt return value, reason: " + e.getMessage());
 			Log.info(msg);

@@ -22,6 +22,7 @@ import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNNetworkManager;
+import org.ccnx.ccn.impl.CCNNetworkManager.RegisteredPrefix;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -377,7 +378,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			e.printStackTrace();
 			throw new CCNDaemonException(e.getMessage());
 		}
-		super.sendIt(interestName, forward, true);
+		super.sendIt(interestName, forward, null, true);
 	}
 
 	
@@ -431,13 +432,13 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		}
 		ForwardingEntry forward = new ForwardingEntry(ActionType.SelfRegister, prefixToRegister, ccndId, faceID, flags, lifetime);
 
-		byte[] payloadBack = super.sendIt(interestName, forward, true);
+		byte[] payloadBack = super.sendIt(interestName, forward, null, true);
 		ForwardingEntry entryBack = new ForwardingEntry(payloadBack);
 		Log.fine(Log.FAC_NETMANAGER, "registerPrefix: returned {0}", entryBack);
 		return entryBack; 
 	}
 	
-	public void unRegisterPrefix(ContentName prefixToRegister, Integer faceID) throws CCNDaemonException {
+	public void unRegisterPrefix(ContentName prefixToRegister, RegisteredPrefix prefix, Integer faceID) throws CCNDaemonException {
 		final String startURI = "ccnx:/ccnx/";
 		PublisherPublicKeyDigest ccndId;
 		try {
@@ -462,6 +463,6 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		ForwardingEntry forward = new ForwardingEntry(ActionType.UnRegister, prefixToRegister, ccndId, faceID, null, null);
 		// byte[] entryBits = super.getBinaryEncoding(forward);
 
-		super.sendIt(interestName, forward, false);
+		super.sendIt(interestName, forward, prefix, false);
 	}
 }
