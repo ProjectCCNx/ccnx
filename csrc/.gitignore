@@ -34,6 +34,7 @@ cmd/ccnput
 cmd/ccnrm
 cmd/ccnsendchunks
 cmd/ccnseqwriter
+cmd/ccnsimplecat
 cmd/ccnslurp
 cmd/ccntimestamps
 cmd/dataresponsetest
