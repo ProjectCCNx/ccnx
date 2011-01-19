@@ -122,7 +122,7 @@ public class CCNSegmenter {
 	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
 	
-	protected ArrayList<ContentObject> _blocks = new ArrayList<ContentObject>(HOLD_COUNT);
+	protected ArrayList<ContentObject> _blocks = new ArrayList<ContentObject>(HOLD_COUNT + 1);
 
 	protected CCNHandle _handle;
 
@@ -414,7 +414,7 @@ public class CCNSegmenter {
 	 * @throws IOException 
 	 * @throws InvalidAlgorithmParameterException 
 	 */
-	protected long fragmentedPut(
+	public long fragmentedPut(
 			ContentName name, 
 			byte [] content, int offset, int length,
 			Long finalSegmentIndex,
@@ -435,6 +435,8 @@ public class CCNSegmenter {
 	/** 
 	 * Segments content, builds segment names and ContentObjects, signs
 	 * them, and writes them to the flow controller to go out to the network.
+	 * NOTE - ControlFlow.addNameSpace must be done before calling this
+	 * 
 	 * @param name name prefix to use for the segments
 	 * @param baseSegmentNumber the segment number to start this batch with
 	 * @param content content buffer containing content to put
@@ -494,11 +496,6 @@ public class CCNSegmenter {
 			locator = getFlowControl().getHandle().keyManager().getKeyLocator(publisher);
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
-		// DKS -- someone should have done this for us already, can we remove it?
-		if( Log.isLoggable(Level.INFO))
-			Log.info("Adding namespace in segmenter, probably redundantly. Namespace: {0}", rootName);
-		getFlowControl().addNameSpace(rootName);
-
 		if (null == type) {
 			type = ContentType.DATA;
 		}
@@ -517,26 +514,16 @@ public class CCNSegmenter {
 			}
 		}
 
-		ContentObject [] contentObjects = 
+		long nextSegmentIndex = 
 			buildBlocks(rootName, baseSegmentNumber, 
 					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
-					content, offset, length, blockWidth, keys);
-
-		// Digest of complete contents
-		// If we're going to unique-ify the block names
-		// (or just in general) we need to incorporate the names
-		// and signedInfos in the MerkleTree blocks. 
-		// For now, this generates the root signature too, so can
-		// ask for the signature for each block.
-		_bulkSigner.signBlocks(contentObjects, signingKey);
-		if (null == _firstSegment) {
-			_firstSegment = contentObjects[0];
+					content, offset, length, blockWidth, keys, signingKey, null != finalSegmentIndex);
+		
+		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
+			outputCurrentBlocks(signingKey);	
 		}
-		getFlowControl().put(contentObjects);
 
-		return nextSegmentIndex(
-				SegmentationProfile.getSegmentNumber(contentObjects[contentObjects.length - 1].name()), 
-				contentObjects[contentObjects.length - 1].contentLength());
+		return nextSegmentIndex;
 	}
 
 	/** 
@@ -596,7 +583,6 @@ public class CCNSegmenter {
 			locator = getFlowControl().getHandle().keyManager().getKeyLocator(publisher);
 
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
-		getFlowControl().addNameSpace(rootName);
 
 		if (null == type) {
 			type = ContentType.DATA;
@@ -629,8 +615,7 @@ public class CCNSegmenter {
 				outputCurrentBlocks(signingKey);	
 			}
 		}
-
-		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
+		if (null != finalSegmentIndex) {
 			outputCurrentBlocks(signingKey);	
 		}
 		
@@ -653,6 +638,7 @@ public class CCNSegmenter {
 	 * after a bulk signing pass.
 	 * 
 	 * @param signingKey
+	 * @param finalFlush sign and dump everything if true
 	 * @throws InvalidKeyException
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
@@ -686,9 +672,6 @@ public class CCNSegmenter {
 	                    + _blocks.size() + " blocks");
 			_bulkSigner.signBlocks(blocks, signingKey);
 			getFlowControl().put(blocks);
-		}
-		if (null == _firstSegment) {
-			_firstSegment = _blocks.get(0);
 		}
 		_blocks.clear();
 	}
@@ -759,7 +742,7 @@ public class CCNSegmenter {
 		
 		segmentNumber = newBlock(rootName, segmentNumber, 
 				signedInfo, content, offset, length, keys);
-		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex)
+		if (_blocks.size() >= HOLD_COUNT + 1 || null != finalSegmentIndex)
 			outputCurrentBlocks(signingKey);
 			
 		return segmentNumber;
@@ -776,20 +759,21 @@ public class CCNSegmenter {
 	 * @param blockWidth
 	 * @param keys the keys to use for encrypting this segment, or null if unencrypted. The
 	 *   specific Key/IV used for this segment will be obtained by calling keys.getSegmentEncryptionCipher().
+	 * @param signingKey
 	 * @return
 	 * @throws InvalidKeyException
 	 * @throws InvalidAlgorithmParameterException
 	 * @throws IOException
+	 * @throws NoSuchAlgorithmException 
+	 * @throws SignatureException 
 	 */
-	protected ContentObject[] buildBlocks(ContentName rootName,
+	protected long buildBlocks(ContentName rootName,
 			long baseSegmentNumber, SignedInfo signedInfo, 
 			byte[] content, int offset, int length, int blockWidth,
-			ContentKeys keys) 
-	throws InvalidKeyException, InvalidAlgorithmParameterException, IOException {
+			ContentKeys keys, PrivateKey signingKey, boolean finalFlush) 
+	throws InvalidKeyException, InvalidAlgorithmParameterException, IOException, SignatureException, NoSuchAlgorithmException {
 
 		int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
-		ContentObject [] blocks = new ContentObject[blockCount];
-
 		long nextSegmentIndex = baseSegmentNumber;
 
 		for (int i=0; i < blockCount; ++i) {
@@ -811,17 +795,24 @@ public class CCNSegmenter {
 
 				dataStream = new UnbufferedCipherInputStream(dataStream, thisCipher);
 			}
-			blocks[i] =  
+			ContentObject co =
 				new ContentObject(
 						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
 						signedInfo,
 						dataStream, blockWidth);
+			_blocks.add(co);
+			if (null == _firstSegment) {
+				_firstSegment = co;
+			}
 			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, 
-					blocks[i].contentLength());
+					co.contentLength());
 			offset += blockWidth;
 			length -= blockWidth;
+			if (_blocks.size() >= HOLD_COUNT + 1 || finalFlush) {
+				outputCurrentBlocks(signingKey);	
+			}
 		}
-		return blocks;
+		return nextSegmentIndex;
 	}
 
 	/**
@@ -875,6 +866,9 @@ public class CCNSegmenter {
 					SegmentationProfile.segmentName(rootName, segmentNumber),
 					signedInfo,contentBlock, offset, length,(Signature)null);
 		_blocks.add(co);
+		if (null == _firstSegment) {
+			_firstSegment = co;
+		}
 		int contentLength = co.contentLength();
 		long nextSegment = nextSegmentIndex(segmentNumber, contentLength);
 		return nextSegment;
