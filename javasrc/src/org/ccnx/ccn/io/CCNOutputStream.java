@@ -49,12 +49,15 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 public class CCNOutputStream extends CCNAbstractOutputStream {
     
 	/**
-	 * Amount of data we keep around prior to forced flush, in terms of segmenter
+	 * Amount of data we keep around prior to forced flush to segmenter, in terms of segmenter
 	 * blocks. We write to a limit lower than the maximum, to allow for expansion
-	 * due to encryption.
-	 * TODO calculate this dynamically based on the bulk signing method and overhead thereof
+	 * due to encryption. We believe we want a low number here to allow for effective interleaving
+	 * of threading in read/write/repo running within the same JVM. We have to have at least one
+	 * extra block to allow for holding back data for final block writing etc (see notes about this
+	 * below). In practice most flushing to the segmenter will result in in creating BLOCK_BUF_COUNT - 1
+	 * ContentObjects in the segmenter.
 	 */
-	public static final int BLOCK_BUF_COUNT = 128;
+	public static final int BLOCK_BUF_COUNT = 3;	// Must be at least 2
     
 	/**
 	 * elapsed length written
@@ -475,59 +478,31 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			}
 			preservePartial = true;
 		} // otherwise saveBytes = 0, so ok
-		
-		// Three cases -- 
-		// 1) we have nothing to flush (0 bytes or < a single block) (handled above)
-		// 2) we're flushing a single block and can put it out with a straight signature (includes
-	    //    0-length file case mentioned above)
-		// 3) we're flushing more than one block, and need to use a bulk signer.
-		// The reading/verification code will
-		// cope just fine with a single file written in a mix of bulk and straight signature
-		// verified blocks.
-		int writeCount = (_blockIndex * getBlockSize()) + _blockOffset - saveBytes;
-		if (writeCount <= getBlockSize()) {
-			// Two cases of single-block writes: we're on block 0, and (_blockOffset-saveBytes) > 0) --
-			// there are bytes to write; or we're on block 1 but are only writing block 0.
-			// Single block to write. If we get here, we are forcing a flush (see above
-			// discussion about holding back partial or even a single full block till
-			// forced flush/close in order to set finalBlockID).
-            
-			// DKS TODO -- think about types, freshness, fix markers for impending last block/first block
-			if (Log.isLoggable(Log.FAC_IO, Level.FINE ))	
-				if (writeCount < getBlockSize()) {
-					Log.fine(Log.FAC_IO, "flush(): writing hanging partial last block of file: " + writeCount + " bytes, block total is " +
-                             getBlockSize() + ", holding back " + saveBytes + " bytes, called by close? " + flushLastBlock);
-				} else {
-					Log.fine(Log.FAC_IO, "flush(): writing single full block of file: " + _baseName + ", holding back " + saveBytes + " bytes.");
-				}
-			_baseNameIndex = _segmenter.putFragment(_baseName, _baseNameIndex, 
-                                                    _buffers[0], 0, writeCount, 
-                                                    _type, _timestamp, _freshnessSeconds, (flushLastBlock ? _baseNameIndex : null), 
-                                                    _locator, _publisher, _keys);
-		} else {
-			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
-				Log.info(Log.FAC_IO, "flush: putting merkle tree to the network, baseName " + _baseName +
-                         " basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentNumberNameComponent(_baseNameIndex)) + "; " 
-                         + _blockOffset + 
-                         " bytes written, holding back " + saveBytes + " flushing final blocks? " + flushLastBlock + ".");
-			// Generate Merkle tree (or other auth structure) and signedInfos and put contents.
-			// We always flush all the blocks starting from 0, so the baseBlockIndex is always 0.
-			// Two cases:
-			// no partial, write all blocks including potentially short last block
-			// don't write last block (whole or partial), write n-1 full blocks
-			_baseNameIndex = 
-            _segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers,
-                                     (preservePartial ? _blockIndex : _blockIndex+1),
-                                     0, 
-                                     (preservePartial ? getBlockSize() : _blockOffset),
-                                     _type, _timestamp, _freshnessSeconds, 
-                                     (flushLastBlock ? CCNSegmenter.LAST_SEGMENT : null), 
-                                     _locator, _publisher, _keys);
 			
-		}
-        
+		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "flush: outputting to the segmenter, baseName " + _baseName +
+                     " basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentNumberNameComponent(_baseNameIndex)) + "; " 
+                     + _blockOffset + 
+                     " bytes written, holding back " + saveBytes + " flushing final blocks? " + flushLastBlock + ".");
+		// Flush to segmenter to generate ContentObjects, sign when appropriate, and output to flow controller
+		// We always flush all the blocks starting from 0, so the baseBlockIndex is always 0.
+		// Two cases:
+		// no partial, write all blocks including potentially short last block
+		// don't write last block (whole or partial), write n-1 full blocks
+		_baseNameIndex = 
+        _segmenter.fragmentedPut(_baseName, _baseNameIndex, _buffers,
+                                 (preservePartial && !flushLastBlock ? _blockIndex : _blockIndex+1),
+                                 0, 
+                                 (preservePartial && !flushLastBlock ? getBlockSize() : _blockOffset),
+                                 _type, _timestamp, _freshnessSeconds, 
+                                 (flushLastBlock ? CCNSegmenter.LAST_SEGMENT : null), 
+                                 _locator, _publisher, _keys);
+			        
 		if (preservePartial) {
-			System.arraycopy(_buffers[_blockIndex], _blockOffset-saveBytes, _buffers[0], 0, saveBytes);
+			//System.arraycopy(_buffers[_blockIndex], _blockOffset-saveBytes, _buffers[0], 0, saveBytes);
+			byte[] tmp = _buffers[_blockIndex];
+			_buffers[_blockIndex] = _buffers[0];
+			_buffers[0] = tmp;
 			_blockOffset = saveBytes;
 		} else {
 			_blockOffset = 0;

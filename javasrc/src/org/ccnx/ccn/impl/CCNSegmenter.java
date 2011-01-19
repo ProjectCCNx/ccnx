@@ -25,6 +25,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
+import java.util.ArrayList;
 import java.util.logging.Level;
 
 import javax.crypto.BadPaddingException;
@@ -106,10 +107,13 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * constructs, such as streams, may buffer it above.
  */
 public class CCNSegmenter {
-	// TODO: Provide functionality that let client stream
-	// classes limit copies (e.g. by partially creating data-filled content objects,
-	// and not signing them till flush()).
-
+	
+	/**
+	 * Number of content objects we keep around prior to signing and outputting to the flow controller
+	 * Note that the flow controller also uses this value to determine its default high water mark.
+	 */
+	public static final int HOLD_COUNT = 128;
+    
 	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
 	public static final long LAST_SEGMENT = Long.valueOf(-1);
 
@@ -117,6 +121,8 @@ public class CCNSegmenter {
 	protected int _blockIncrement = SegmentationProfile.DEFAULT_INCREMENT;
 	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
+	
+	protected ArrayList<ContentObject> _blocks = new ArrayList<ContentObject>(HOLD_COUNT);
 
 	protected CCNHandle _handle;
 
@@ -613,30 +619,86 @@ public class CCNSegmenter {
 			}
 		}
 
-		ContentObject [] contentObjects = 
-			buildBlocks(rootName, baseSegmentNumber, 
-					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
-					contentBlocks, false, blockCount, firstBlockIndex, lastBlockLength, keys);
-
-		// Digest of complete contents
-		// If we're going to unique-ify the block names
-		// (or just in general) we need to incorporate the names
-		// and signedInfos in the MerkleTree blocks. 
-		// For now, this generates the root signature too, so can
-		// ask for the signature for each block.
-		_bulkSigner.signBlocks(contentObjects, signingKey);
-		if (null == _firstSegment) {
-			_firstSegment = contentObjects[0];
+		long nextIndex = baseSegmentNumber;
+		for (int i = firstBlockIndex; i < firstBlockIndex + blockCount; i++) {
+			nextIndex = newBlock(rootName, nextIndex, 
+						new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
+								contentBlocks[i], 0, (i < firstBlockIndex + blockCount - 1)
+								?  contentBlocks[i].length : lastBlockLength, keys);
+			if (_blocks.size() >= HOLD_COUNT) {
+				outputCurrentBlocks(signingKey);	
+			}
 		}
-		getFlowControl().put(contentObjects);
 
-		return nextSegmentIndex(
-				SegmentationProfile.getSegmentNumber(contentObjects[firstBlockIndex + blockCount - 1].name()), 
-				contentObjects[firstBlockIndex + blockCount - 1].contentLength());
+		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
+			outputCurrentBlocks(signingKey);	
+		}
+		
+		return nextIndex;
+	}
+	
+	/**
+	 * Sign and output all outstanding blocks to the flow controller. This is done when the number of
+	 * blocks reaches HOLD_COUNT (see above) or we are doing a final flush of a file.
+	 * 
+	 * There are 2 cases:
+	 * 1) we're flushing a single block and can put it out with a straight signature (includes
+     *   0-length file case)
+	 * 2) we're flushing more than one block, and need to use a bulk signer.
+	 * 
+	 * All code is capable of handling any mix of these types of blocks but internal mixing should not
+	 * happen anymore unless we decide to add a higher level capability to allow an immediate flush all
+	 * the way to the flow controller. Normally we would see groups of bulk signatures followed by a
+	 * straight signature block in rare cases where only a single block is left over for the flush
+	 * after a bulk signing pass.
+	 * 
+	 * @param signingKey
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
+	 * @throws IOException
+	 */
+	protected void outputCurrentBlocks(PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
+		if (_blocks.size() == 0)
+			return;
+		
+		if (_blocks.size() == 1) {
+			
+			ContentObject co = _blocks.get(0);
+			co.sign(signingKey);
+			if( Log.isLoggable(Level.FINER))
+				Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + co.contentLength() + ")");
+			_flowControl.put(co);
+			
+		} else {
+		
+			// Digest of complete contents
+			// If we're going to unique-ify the block names
+			// (or just in general) we need to incorporate the names
+			// and signedInfos in the MerkleTree blocks. 
+			// For now, this generates the root signature too, so can
+			// ask for the signature for each block.
+			ContentObject[] blocks = new ContentObject[_blocks.size()];
+			_blocks.toArray(blocks);
+			
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "flush: putting merkle tree to the network, name starts with " + blocks[0].name() + "; " 
+	                    + _blocks.size() + " blocks");
+			_bulkSigner.signBlocks(blocks, signingKey);
+			getFlowControl().put(blocks);
+		}
+		if (null == _firstSegment) {
+			_firstSegment = _blocks.get(0);
+		}
+		_blocks.clear();
 	}
 
 	/**
-	 * Puts a single block of content of arbitrary length using a segment naming convention.
+	 * Puts a single block of content of arbitrary length using a segment naming convention. The only
+	 * current use of this is to allow a Segmenter.put of less than a blocksize. 
+	 * I'm not quite sure why that needs to use this and it would be nice to get rid of this since its
+	 * mostly superfluous and duplicating other code at this point but for now I'll leave it in.
+	 * 
 	 * @param name name prefix to use for the object, without the segment number
 	 * @param segmentNumber the segment number to use for this object
 	 * @param content content buffer containing content to put
@@ -692,52 +754,15 @@ public class CCNSegmenter {
 			((finalSegmentIndex.longValue() == LAST_SEGMENT) ? 
 					SegmentationProfile.getSegmentNumberNameComponent(segmentNumber) : 
 						SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex)));
-
-		if (null != keys) {
-			try {
-				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, publisher, segmentNumber);
-				content = thisCipher.doFinal(content, offset, length);
-				offset = 0;
-				length = content.length;
-				// Override content type to mark encryption.
-				// Note: we don't require that writers use our facilities for encryption, so
-				// content previously encrypted may not be marked as type ENCR. So on the decryption
-				// side we don't require that encrypted data be marked ENCR -- if you give us a
-				// decryption key, we'll try to decrypt it.
-				type = ContentType.ENCR; 
-
-			} catch (IllegalArgumentException e) {
-				Log.warning("Exception: " + e);
-				Log.warning("Exception: offset " + offset + " length " + length + " content length " +
-						((null == content) ? "null" : content.length));
-				Log.warningStackTrace(e);
-				throw e;
-			} catch (IllegalBlockSizeException e) {
-				Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
-				throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
-			} catch (BadPaddingException e) {
-				Log.warning("Unexpected BadPaddingException for an algorithm we have already used!");
-				throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
-			}
-		}
-
-		ContentObject co = 
-			new ContentObject(SegmentationProfile.segmentName(rootName, 
-					segmentNumber),
-					new SignedInfo(publisher, timestamp,
-							type, locator,
-							freshnessSeconds, 
-							finalBlockID), 
-							content, offset, length, signingKey);
-		if (null == _firstSegment) {
-			_firstSegment = co;
-		}
-		if( Log.isLoggable(Level.FINER))
-			Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + length + ")");
-		_flowControl.put(co);
-
-		return nextSegmentIndex(segmentNumber, co.contentLength());
+		
+		SignedInfo signedInfo = new SignedInfo(publisher, timestamp, type, locator,freshnessSeconds, finalBlockID);
+		
+		segmentNumber = newBlock(rootName, segmentNumber, 
+				signedInfo, content, offset, length, keys);
+		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex)
+			outputCurrentBlocks(signingKey);
+			
+		return segmentNumber;
 	}
 
 	/**
@@ -800,79 +825,41 @@ public class CCNSegmenter {
 	}
 
 	/**
-	 * Helper method to construct ContentObjects from pre-segmented blocks.
+	 * Create a ContentObject, encrypt it if requested, and add it to the list of ContentObjects 
+	 * awaiting signing and output to the flow controller. Also creates the segmented name for the CO.
+	 * 
 	 * @param rootName
-	 * @param baseSegmentNumber
+	 * @param segmentNumber
 	 * @param signedInfo
-	 * @param contentBlocks
-	 * @param isDigest
-	 * @param blockCount
-	 * @param firstBlockIndex
-	 * @param lastBlockLength
-	 * @param keys the keys to use for encrypting this segment, or null if unencrypted. The
-	 *   specific Key/IV used for this segment will be obtained by calling keys.getSegmentEncryptionCipher().
-	 * @return
+	 * @param contentBlock
+	 * @param offset
+	 * @param blockLength
+	 * @param keys
+	 * @return next segment number to use
 	 * @throws InvalidKeyException
 	 * @throws InvalidAlgorithmParameterException
-	 * @throws ContentEncodingException 
+	 * @throws ContentEncodingException
 	 */
-	protected ContentObject [] buildBlocks(ContentName rootName,
-			long baseSegmentNumber, SignedInfo signedInfo,
-			byte contentBlocks[][], boolean isDigest, int blockCount,
-			int firstBlockIndex, int lastBlockLength,
-			ContentKeys keys) 
-	throws InvalidKeyException, InvalidAlgorithmParameterException, ContentEncodingException {
-
-		ContentObject [] blocks = new ContentObject[blockCount];
-		if (blockCount == 0)
-			return blocks;
-
-		/**
-		 * Encryption handling much less efficient here. But we're not sure we
-		 * need this interface, so live with it till we need to improve it.
-		 */
-		long nextSegmentIndex = baseSegmentNumber;
-
-		byte [] blockContent;
-		int i;
-		for (i=firstBlockIndex; i < (firstBlockIndex + blockCount - 1); ++i) {
-			blockContent = contentBlocks[i];
-			if (null != keys) {
-				try {
-					// Make a separate cipher, so this segmenter can be used by multiple callers at once.
-					Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
-					// TODO -- incurs an extra copy
-					blockContent = thisCipher.doFinal(contentBlocks[i]);
-
-					// Override content type to mark encryption.
-					// Note: we don't require that writers use our facilities for encryption, so
-					// content previously encrypted may not be marked as type ENCR. So on the decryption
-					// side we don't require that encrypted data be marked ENCR -- if you give us a
-					// decryption key, we'll try to decrypt it.
-					signedInfo.setType(ContentType.ENCR);
-
-				} catch (IllegalBlockSizeException e) {
-					Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
-					throw new InvalidKeyException("Unexpected IllegalBlockSizeException for an algorithm we have already used!", e);
-				} catch (BadPaddingException e) {
-					Log.warning("Unexpected BadPaddingException for an algorithm we have already used!");
-					throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
-				}
-
-			}
-			blocks[i] =  
-				new ContentObject(
-						SegmentationProfile.segmentName(rootName, nextSegmentIndex),
-						signedInfo,
-						blockContent, (Signature)null);
-			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, blocks[i].contentLength());
-		}
-		blockContent = contentBlocks[i];
+	protected long newBlock(ContentName rootName,
+			long segmentNumber, SignedInfo signedInfo,
+			byte contentBlock[], int offset, int blockLength,
+			ContentKeys keys) throws InvalidKeyException, InvalidAlgorithmParameterException, ContentEncodingException {
+		int length = blockLength;
 		if (null != keys) {
 			try {
-				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), nextSegmentIndex);
-				blockContent = thisCipher.doFinal(contentBlocks[i], 0, lastBlockLength);
-				lastBlockLength = blockContent.length;
+				// Make a separate cipher, so this segmenter can be used by multiple callers at once.
+				Cipher thisCipher = keys.getSegmentEncryptionCipher(rootName, signedInfo.getPublisherKeyID(), segmentNumber);
+				// TODO -- incurs an extra copy
+				contentBlock = thisCipher.doFinal(contentBlock, offset, blockLength);
+				length = contentBlock.length;
+				offset = 0;
+
+				// Override content type to mark encryption.
+				// Note: we don't require that writers use our facilities for encryption, so
+				// content previously encrypted may not be marked as type ENCR. So on the decryption
+				// side we don't require that encrypted data be marked ENCR -- if you give us a
+				// decryption key, we'll try to decrypt it.
+				signedInfo.setType(ContentType.ENCR);
 
 			} catch (IllegalBlockSizeException e) {
 				Log.warning("Unexpected IllegalBlockSizeException for an algorithm we have already used!");
@@ -881,18 +868,17 @@ public class CCNSegmenter {
 				Log.warning("Unexpected BadPaddingException for an algorithm we have already used!");
 				throw new InvalidAlgorithmParameterException("Unexpected BadPaddingException for an algorithm we have already used!", e);
 			}
-		}
-		// ContentObject constructor copies the content blocks, so that the buffer here
-		// can be reused by caller.
-		blocks[i] =  
-			new ContentObject(
-					SegmentationProfile.segmentName(rootName, nextSegmentIndex),
-					signedInfo,
-					blockContent, 0, lastBlockLength,
-					(Signature)null);
-		return blocks;
-	}
 
+		}
+		ContentObject co =
+			new ContentObject(
+					SegmentationProfile.segmentName(rootName, segmentNumber),
+					signedInfo,contentBlock, offset, length,(Signature)null);
+		_blocks.add(co);
+		int contentLength = co.contentLength();
+		long nextSegment = nextSegmentIndex(segmentNumber, contentLength);
+		return nextSegment;
+	}
 
 	/**
 	 * Increment segment number according to the numbering profile in force.
