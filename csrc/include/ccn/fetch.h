@@ -3,7 +3,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -16,7 +16,7 @@
  * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
- 
+
 /**
  * @file ccn/fetch.h
  * Streaming access for fetching segmented CCNx data.
@@ -25,15 +25,12 @@
  * seeking to an arbitrary position within the associated file.
  */
 
-#ifndef ccn_fetchInclude
-#define ccn_fetchInclude 1
+#ifndef CCN_FETCH_DEFINED
+#define CCN_FETCH_DEFINED
 
 #include <stdio.h>
 #include <ccn/ccn.h>
 #include <ccn/uri.h>
-
-typedef struct ccn_fetch_struct *ccn_fetch;
-typedef struct ccn_fetch_stream_struct *ccn_fetch_stream;
 
 /**
  * Creates a new ccn_fetch object using the given ccn connection.
@@ -41,7 +38,7 @@ typedef struct ccn_fetch_stream_struct *ccn_fetch_stream;
  * @returns NULL if the creation was not successful
  *    (only can happen for the h == NULL case).
  */
-ccn_fetch
+struct ccn_fetch *
 ccn_fetch_new(struct ccn *h);
 
 typedef enum {
@@ -60,7 +57,7 @@ typedef enum {
  * Sets the destination for debug output.  NULL disables debug output.
  */
 void
-ccn_fetch_set_debug(ccn_fetch f, FILE *debug, ccn_fetch_flags flags);
+ccn_fetch_set_debug(struct ccn_fetch *f, FILE *debug, ccn_fetch_flags flags);
 
 /**
  * Destroys a ccn_fetch object.
@@ -68,8 +65,8 @@ ccn_fetch_set_debug(ccn_fetch f, FILE *debug, ccn_fetch_flags flags);
  * Forces all underlying streams to close immediately.
  * @returns NULL in all cases.
  */
-ccn_fetch
-ccn_fetch_destroy(ccn_fetch f);
+struct ccn_fetch *
+ccn_fetch_destroy(struct ccn_fetch *f);
 
 /**
  * Polls the underlying streams and attempts to make progress.
@@ -83,7 +80,7 @@ ccn_fetch_destroy(ccn_fetch f);
  * @returns the count of streams that have pending data or have ended.
  */
 int
-ccn_fetch_poll(ccn_fetch f);
+ccn_fetch_poll(struct ccn_fetch *f);
 
 /**
  * Provides an iterator through the underlying streams.
@@ -92,14 +89,14 @@ ccn_fetch_poll(ccn_fetch f);
  * @returns the next stream in the iteration, or NULL at the end.
  * Note that providing a stale (closed) stream handle will return NULL.
  */
-ccn_fetch_stream
-ccn_fetch_next(ccn_fetch f, ccn_fetch_stream fs);
+struct ccn_fetch_stream *
+ccn_fetch_next(struct ccn_fetch *f, struct ccn_fetch_stream *fs);
 
 /**
  * @returns the underlying ccn connection.
  */
 struct ccn *
-ccn_fetch_get_ccn(ccn_fetch f);
+ccn_fetch_get_ccn(struct ccn_fetch *f);
 
 /**
  * Creates a stream for a named interest.
@@ -111,8 +108,8 @@ ccn_fetch_get_ccn(ccn_fetch f);
  * @returns NULL if the stream creation failed,
  *    otherwise returns the new stream.
  */
-ccn_fetch_stream
-ccn_fetch_open(ccn_fetch f, struct ccn_charbuf *name,
+struct ccn_fetch_stream *
+ccn_fetch_open(struct ccn_fetch *f, struct ccn_charbuf *name,
 			   const char *id,
 			   struct ccn_charbuf *interestTemplate,
 			   int nBufs, int resolveVersion);
@@ -122,8 +119,8 @@ ccn_fetch_open(ccn_fetch f, struct ccn_charbuf *name,
  * The stream object will be freed, so the client must not access it again.
  * @returns NULL in all cases.
  */
-ccn_fetch_stream
-ccn_fetch_close(ccn_fetch_stream fs);
+struct ccn_fetch_stream *
+ccn_fetch_close(struct ccn_fetch_stream *fs);
 
 /**
  * Tests for available bytes in the stream.
@@ -134,7 +131,7 @@ ccn_fetch_close(ccn_fetch_stream fs);
  *    and N > 0 if N bytes can be read without performing a poll.
  */
 intmax_t
-ccn_fetch_avail(ccn_fetch_stream fs);
+ccn_fetch_avail(struct ccn_fetch_stream *fs);
 
 /**
  * Reads bytes from a stream.
@@ -147,7 +144,7 @@ ccn_fetch_avail(ccn_fetch_stream fs);
  *    and N > 0 if N bytes can be read without performing a poll.
  */
 intmax_t
-ccn_fetch_read(ccn_fetch_stream fs,
+ccn_fetch_read(struct ccn_fetch_stream *fs,
 			   void *buf,
 			   intmax_t len);
 
@@ -160,13 +157,13 @@ ccn_fetch_read(ccn_fetch_stream fs,
  * @returns -1 if the seek is to a bad position, otherwise returns 0.
  */
 int
-ccn_fetch_seek(ccn_fetch_stream fs,
+ccn_fetch_seek(struct ccn_fetch_stream *fs,
 			   intmax_t pos);
 
 /**
  * @returns the current read position.
  */
 intmax_t
-ccn_fetch_position(ccn_fetch_stream fs);
+ccn_fetch_position(struct ccn_fetch_stream *fs);
 
 #endif
