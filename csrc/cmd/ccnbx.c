@@ -5,7 +5,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -38,9 +38,10 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "usage: %s [-h] [-u] file selector\n"
+            "usage: %s [-h] [-d] [-v] file selector\n"
             " Utility to extract a field from ccn binary encoded data.\n"
             "  selector is an element name\n"
+            "  -h      print this message and exit\n"
             "  -d      data only - no element tags\n"
             "  -v      verbose\n"
             " use - for file to specify stdin\n"
