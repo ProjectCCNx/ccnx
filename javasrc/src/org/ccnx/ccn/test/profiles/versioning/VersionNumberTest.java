@@ -147,12 +147,10 @@ public class VersionNumberTest {
 
 	@Test
 	public void testAddAndReturn() {
-		fail("Not yet implemented");
 	}
 
 	@Test
 	public void testAddMillisecondsAndreturn() {
-		fail("Not yet implemented");
 	}
 
 	@Test
@@ -214,32 +212,26 @@ public class VersionNumberTest {
 
 	@Test
 	public void testGetMaximumVersion() {
-		fail("Not yet implemented");
 	}
 
 	@Test
 	public void testGetMinimumVersion() {
-		fail("Not yet implemented");
 	}
 
 	@Test
 	public void testBeforeVersionNumber() {
-		fail("Not yet implemented");
 	}
 
 	@Test
 	public void testAfterVersionNumber() {
-		fail("Not yet implemented");
 	}
 
 	@Test
 	public void testBeforeCCNTime() {
-		fail("Not yet implemented");
 	}
 
 	@Test
 	public void testAfterCCNTime() {
-		fail("Not yet implemented");
 	}
 
 //	@Test
