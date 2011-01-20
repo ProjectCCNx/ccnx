@@ -17,8 +17,6 @@
 
 package org.ccnx.ccn.test.profiles.versioning;
 
-import static org.junit.Assert.fail;
-
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Iterator;

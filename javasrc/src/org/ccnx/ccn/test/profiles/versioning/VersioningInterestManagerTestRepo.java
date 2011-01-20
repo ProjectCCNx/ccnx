@@ -454,6 +454,7 @@ public class VersioningInterestManagerTestRepo {
 			sinkhandle.expressInterest(newInterest, vim);
 	}
 
+	@SuppressWarnings("unused")
 	private void dumpstate(TestVIM vim) {
 		System.out.println("=========================================");
 		System.out.println("Sinkhandle state");
