@@ -145,6 +145,9 @@ main(int argc, char **argv)
         name->length = 0;
         res = ccn_name_from_uri(name, argv[i]);
         struct ccn_fetch_stream *stream = ccn_fetch_open(fetch, name, arg, templ, pipeline, CCN_V_HIGHEST);
+        if (NULL == stream) {
+            continue;
+        }
         while ((res = ccn_fetch_read(stream, buf, sizeof(buf))) != 0) {
             if (res > 0) {
                 fwrite(buf, res, 1, stdout);
