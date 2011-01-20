@@ -147,7 +147,7 @@ public class CCNNetworkManager implements Runnable {
 		private long _nextRefresh = -1;
 		private boolean _closing = false;
 
-		private RegisteredPrefix(ForwardingEntry forwarding) {
+		public RegisteredPrefix(ForwardingEntry forwarding) {
 			_forwarding = forwarding;
 			if (null != forwarding) {
 				_lifetime = forwarding.getLifetime();
@@ -1106,7 +1106,7 @@ public class CCNNetworkManager implements Runnable {
 				// Deregister it with ccnd only if the refCount would go to 0
 				synchronized (_registeredPrefixes) {
 					RegisteredPrefix prefix = getRegisteredPrefix(filter);
-					if (null == prefix || prefix._refCount <= 1) {
+					if (null != prefix && prefix._refCount <= 1) {
 						ForwardingEntry entry = prefix._forwarding;
 						if (!entry.getPrefixName().equals(filter)) {
 							Log.severe(Log.FAC_NETMANAGER, "cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
@@ -1121,7 +1121,8 @@ public class CCNNetworkManager implements Runnable {
 							Log.warning(Log.FAC_NETMANAGER, "cancelInterestFilter failed with CCNDaemonException: " + e.getMessage());
 						}
 					} else
-						prefix._refCount--;
+						if (null != prefix)
+							prefix._refCount--;
 				}
 			}
 		}

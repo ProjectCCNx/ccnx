@@ -438,6 +438,10 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		return entryBack; 
 	}
 	
+	public void unRegisterPrefix(ContentName prefixName, Integer faceID) throws CCNDaemonException {
+		unRegisterPrefix(prefixName, null, faceID);
+	}
+	
 	/**
 	 * Unregister a prefix with ccnd
 	 * 
