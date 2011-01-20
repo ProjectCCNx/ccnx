@@ -220,7 +220,7 @@ public class VersioningInterestTestRepo {
 				version = new CCNTime(start_time + delta);
 			} while( !sent.add(version));
 
-			System.out.println("Sending " + i);
+//			System.out.println("Sending " + i);
 			send(handle, name, version);
 		}
 		
@@ -239,6 +239,10 @@ public class VersioningInterestTestRepo {
 			error = null;
 			trycount--;
 			try {
+				// do this every time, not just on errors.  The FlowController seems
+				// to not like to receive a lot of objects all at once.
+				Thread.sleep(SEND_PAUSE);
+				
 				boolean b = so.save(version);
 				if( b ) {
 					so.close();
@@ -246,9 +250,6 @@ public class VersioningInterestTestRepo {
 				} else {
 					throw new IOException("Not saved");
 				}
-				// do this every time, not just on errors.  The FlowController seems
-				// to not like to receive a lot of objects all at once.
-//				Thread.sleep(SEND_PAUSE);
 			} catch(IOException e) {
 				error = e;
 				Thread.sleep(SEND_PAUSE);

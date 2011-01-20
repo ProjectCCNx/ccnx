@@ -25,9 +25,7 @@ import java.util.logging.Level;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.InterestData;
 import org.ccnx.ccn.profiles.versioning.VersionNumber;
@@ -260,18 +258,18 @@ public class VersioningInterestManagerTestRepo {
 		System.out.println("***** Sending stream 1 *****");
 		TreeSet<CCNTime> sent1 = sendStreamLeft(sinkhandle, vim, basename, t, tosend);
 
-		// There will be 1 interest per exclusion plus the number of outstanding packets
-		// This result is off by one for a FillFromLeft, because the algorithm will split
-		// the initial interest to the left, then shift some more to the left, then give up
-		// and start to split right.  So, we need to add one.
-		boolean b = sinkhandle.total_count.waitForValue(tosend + packets + 1, TIMEOUT);
+		int expected = tosend + packets;
+		boolean b = sinkhandle.total_count.waitForValue(expected, TIMEOUT);
 
 		// we should see only the desired number of interests
 		Assert.assertEquals(packets, vim.getInterestDataTree().size());
 
 		Assert.assertEquals(sent1.size(), vim.getExclusions().size());
 
-		Assert.assertTrue("sinkhandle incorrect count: " + sinkhandle.total_count.getValue(), b);
+		Assert.assertTrue(
+				String.format("sinkhandle incorrect count %d expected %d", 
+						sinkhandle.total_count.getValue(),
+						expected), b);
 
 	}
 
@@ -456,6 +454,7 @@ public class VersioningInterestManagerTestRepo {
 			sinkhandle.expressInterest(newInterest, vim);
 	}
 
+	@SuppressWarnings("unused")
 	private void dumpstate(TestVIM vim) {
 		System.out.println("=========================================");
 		System.out.println("Sinkhandle state");
