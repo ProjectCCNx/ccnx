@@ -147,7 +147,7 @@ public class CCNNetworkManager implements Runnable {
 		private long _nextRefresh = -1;
 		private boolean _closing = false;
 
-		private RegisteredPrefix(ForwardingEntry forwarding) {
+		public RegisteredPrefix(ForwardingEntry forwarding) {
 			_forwarding = forwarding;
 			if (null != forwarding) {
 				_lifetime = forwarding.getLifetime();
