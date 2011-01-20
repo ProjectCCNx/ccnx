@@ -355,6 +355,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 		if (_blockOffset % blockSize != 0 && (_blockOffset + bytesToWrite) > blockSize) {
 			int copySize = blockSize - _blockOffset;
 			System.arraycopy(buf, (int)offset, _buffers[_blockIndex], (int)_blockOffset, copySize);
+			_dh.update(buf, (int) offset, (int)copySize); // add to running digest of data
 			offset += copySize;
 			_blockOffset = blockSize;
 			bytesToWrite -= copySize;
@@ -373,8 +374,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			
 			// Now if we have more than a blocksize worth of data, we can avoid copying by
 			// sending all full blocks we have directly to the sequencer
-			if (len >= blockSize) {
-				long contiguousBytesToWrite = (len / blockSize) * blockSize;
+			if (bytesToWrite >= blockSize) {
+				long contiguousBytesToWrite = (bytesToWrite / blockSize) * blockSize;
 				bytesToWrite -= contiguousBytesToWrite;
 				_dh.update(buf, (int) offset, (int)contiguousBytesToWrite); // add to running digest of data
 				
