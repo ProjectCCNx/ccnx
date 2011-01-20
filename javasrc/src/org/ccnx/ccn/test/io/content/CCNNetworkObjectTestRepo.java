@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -23,6 +23,7 @@ import java.io.InvalidObjectException;
 
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
 import org.ccnx.ccn.impl.support.Log;
@@ -515,6 +516,7 @@ public class CCNNetworkObjectTestRepo {
 			public Listener(Record r) {
 				_rec = r;
 			}
+
 			public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
 				synchronized (_rec) {
 					_rec.callback = true;
@@ -540,8 +542,11 @@ public class CCNNetworkObjectTestRepo {
 			}
 			Assert.assertEquals(true, record.callback);
 		}
-		// Should be in the repo by now
-		Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+		if (!RepositoryControl.localRepoSync(handle, so))  {
+			Thread.sleep(SystemConfiguration.MEDIUM_TIMEOUT);
+			// Should be in the repo by now
+			Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+		}
 		thandle.close();
 	}
 	
@@ -596,11 +601,13 @@ public class CCNNetworkObjectTestRepo {
 			}
 			Assert.assertEquals(true, record.callback);
 		}
-		// Should be in the repo by now
-		Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+		if (!RepositoryControl.localRepoSync(handle, so))  {
+			Thread.sleep(SystemConfiguration.MEDIUM_TIMEOUT);
+			// Should be in the repo by now
+			Assert.assertTrue(RepositoryControl.localRepoSync(handle, so));
+		}
 		thandle.close();
 	}
-
 
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
 		CCNTime oldVersion = ecd.getVersion();

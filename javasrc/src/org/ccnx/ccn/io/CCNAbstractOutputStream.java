@@ -91,6 +91,9 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 
 		// If these are null, the handle defaults will be used.
 		_locator = locator;
+		if (null == locator)
+			_locator = _handle.keyManager().getKeyLocator(publisher);
+
 		_publisher = publisher;		
 		
 		// Initialize keys here now. 
@@ -204,7 +207,6 @@ public abstract class CCNAbstractOutputStream extends OutputStream {
 			return null;
 		}
 	}
-
 
 	/**
 	 * @return The CCNSegmenter responsible for segmenting and signing stream content. 

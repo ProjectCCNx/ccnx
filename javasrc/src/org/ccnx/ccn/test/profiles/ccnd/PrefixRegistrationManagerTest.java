@@ -181,7 +181,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		}
 		assertNotNull(prm);
 		try {
-			manager.unRegisterPrefix(testCN, faceID);
+			manager.unRegisterPrefix(testCN, null, faceID);
 		}catch (CCNDaemonException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			System.out.println("Failed to delete prefix.");
@@ -201,7 +201,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		}
 		assertNotNull(prm);
 		try {
-			manager.unRegisterPrefix(testCN, faceID);
+			manager.unRegisterPrefix(testCN, null, faceID);
 		}catch (CCNDaemonException e) {
 			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
 			System.out.println("Failed to delete prefix.");

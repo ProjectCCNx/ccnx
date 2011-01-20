@@ -29,6 +29,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Link.LinkObject;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
@@ -92,7 +93,7 @@ public class LinkObjectTestRepo {
 		LinkObject aLink = new LinkObject(linkName, lr, SaveType.REPOSITORY, putLibrary);
 		aLink.save();
 		
-		ContentObject linkData = getLibrary.get(aLink.getVersionedName(), 5000);
+		ContentObject linkData = getLibrary.get(SegmentationProfile.firstSegmentInterest(aLink.getVersionedName(), null), 5000);
 		if (null == linkData) {
 			Assert.fail("Cannot retrieve first block of saved link: " + aLink.getVersionedName());
 		}

@@ -26,6 +26,7 @@ import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
@@ -86,7 +87,23 @@ public class SystemConfiguration {
 	 * Short timeout; for things you expect to exist or not exist locally.
 	 */
 	public static final int SHORT_TIMEOUT = 300;
-
+	
+	protected static final String CCN_PROTOCOL_PROPERTY = "org.ccnx.protocol";
+	
+	public static final String DEFAULT_PROTOCOL = "TCP";  // UDP or TCP allowed
+	public static NetworkProtocol AGENT_PROTOCOL = null; // Set up below
+	public static final String AGENT_PROTOCOL_PROPERTY = "org.ccnx.agent.protocol";
+	public static final String AGENT_PROTOCOL_ENVIRONMENT_VARIABLE = "CCN_AGENT_PROTOCOL";
+	
+	/**
+	 * Controls whether we should exit on severe errors in the network manager. This should only be
+	 * set true in automated tests. In live running code, we hope to be able to recover instead.
+	 */
+	public static final boolean DEFAULT_EXIT_ON_NETWORK_ERROR = false;
+	public static boolean EXIT_ON_NETWORK_ERROR = DEFAULT_EXIT_ON_NETWORK_ERROR;
+	public static final String CCN_EXIT_ON_NETWORK_ERROR_PROPERTY = "org.ccnx.ExitOnNetworkError";
+	public static final String CCN_EXIT_ON_NETWORK_ERROR_ENVIRONMENT_VARIABLE = "CCN_EXIT_ON_NETERROR";
+	
 	/**
 	 * Interest reexpression period
 	 * TODO - This is (currently) an architectual constant. Not all code has been changed to use it.
@@ -311,6 +328,34 @@ public class SystemConfiguration {
 	}
 
 	static {
+		// Allow override of basic protocol
+		String proto = SystemConfiguration.retrievePropertyOrEnvironmentVariable(AGENT_PROTOCOL_PROPERTY, AGENT_PROTOCOL_ENVIRONMENT_VARIABLE, DEFAULT_PROTOCOL);
+
+		boolean found = false;
+		for (NetworkProtocol p : NetworkProtocol.values()) {
+			String pAsString = p.toString();
+			if (proto.equalsIgnoreCase(pAsString)) {
+				Log.warning("CCN agent protocol changed to " + pAsString + " per property");
+				AGENT_PROTOCOL = p;
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			System.err.println("The protocol must be UDP(17) or TCP (6)");
+			throw new IllegalArgumentException("Invalid protocol '" + proto + "' specified in " + AGENT_PROTOCOL_PROPERTY);
+		}
+		
+		// Allow override of exit on network error
+		try {
+			EXIT_ON_NETWORK_ERROR = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(CCN_EXIT_ON_NETWORK_ERROR_PROPERTY, CCN_EXIT_ON_NETWORK_ERROR_ENVIRONMENT_VARIABLE,
+					Boolean.toString(DEFAULT_EXIT_ON_NETWORK_ERROR)));
+//			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
+		} catch (NumberFormatException e) {
+			System.err.println("The exit on network error must be an boolean.");
+			throw e;
+		}
+		
 		// Allow override of default enumerated name list child wait timeout.
 		try {
 			CHILD_WAIT_INTERVAL = Integer.parseInt(System.getProperty(CHILD_WAIT_INTERVAL_PROPERTY, Integer.toString(CHILD_WAIT_INTERVAL_DEFAULT)));
@@ -348,7 +393,6 @@ public class SystemConfiguration {
 
 		// Allow printing of pipeline stats in CCNAbstractInputStream
 		PIPELINE_STATS = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(PIPELINE_STATS_PROPERTY, PIPELINE_STATS_ENV_VAR, STRING_FALSE));
-
 
 		// Allow override of default ccndID discovery timeout.
 		try {
@@ -722,7 +766,7 @@ public class SystemConfiguration {
 	 * Retrieve a string that might be stored as an environment variable, or
 	 * overridden on the command line. If the command line variable is set, return
 	 * its (String) value; if not, return the environment variable value if available;
-	 * if neither is set return the default value. Caller should synchronize as appropriate.
+	 * Caller should synchronize as appropriate.
 	 * @return The value in force for this variable, or null if unset.
 	 */
 	public static String retrievePropertyOrEnvironmentVariable(String javaPropertyName, String environmentVariableName, String defaultValue) { 
@@ -735,10 +779,8 @@ public class SystemConfiguration {
 			// Try for an environment variable.
 			value = System.getenv(environmentVariableName);
 		}
-		if (null == value) {
-			return defaultValue;
-		}
+		if (null == value)
+			value = defaultValue;
 		return value;
 	}
-
 }

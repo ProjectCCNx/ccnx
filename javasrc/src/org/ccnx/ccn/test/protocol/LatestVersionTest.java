@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -369,6 +369,13 @@ public class LatestVersionTest {
 			Assert.fail("failed to test with no timeout: "+e.getMessage());
 		}
 		
+		// Note by paul r. I'm not sure why we need to have a "responder" here in the first place - as opposed to just simply
+		// putting the test objects to ccnd. But once we have a verifier, there's a potential race between the verifier and responder i.e.
+		// we can call the verifier before the responder or vice-versa so we can't guarantee what's actually going to show up in the
+		// verifier because the objects we expect to see may not have been output by the responder yet. I've fixed this (I hope!) by
+		// doing an explicit get of the objects in question before we try the test so that the responder has definitely done a put
+		// of the objects we are trying to test
+		
 		ContentVerifier ver = new TestVerifier(); 
 		
 		//have the verifier fail the newest object make sure we get back the most recent verified version
@@ -376,6 +383,12 @@ public class LatestVersionTest {
 		versionToAdd.increment(1);
 		failVerify = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is failVerify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(failVerify);
+		
+		try {
+			getHandle.get(failVerify.fullName(), timeout);
+		} catch (IOException e1) {
+			Assert.fail("Failed get: "+e1.getMessage());
+		}
 		
 		//now put a unverifiable version
 		try {
@@ -412,6 +425,12 @@ public class LatestVersionTest {
 		versionToAdd.increment(1);
 		ContentObject verify = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is verify".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(verify);
+		
+		try {
+			getHandle.get(verify.fullName(), timeout);
+		} catch (IOException e1) {
+			Assert.fail("Failed get: "+e1.getMessage());
+		}
 		
 		//now put a verifiable version
 		try {
@@ -452,6 +471,14 @@ public class LatestVersionTest {
 		
 		ContentObject failVerify3 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is a third, but it should pass".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(failVerify3);
+		
+		try {
+			getHandle.get(failVerify1.fullName(), timeout);
+			getHandle.get(failVerify2.fullName(), timeout);
+			getHandle.get(failVerify3.fullName(), timeout);
+		} catch (IOException e1) {
+			Assert.fail("Failed get: "+e1.getMessage());
+		}
 	
 		System.out.println("failVerify1*: "+failVerify1.fullName());
 		System.out.println("failVerify2*: "+failVerify2.fullName());
@@ -495,6 +522,12 @@ public class LatestVersionTest {
 		versionToAdd.increment(1);
 		failVerify4 = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(baseName, versionToAdd), 0), "here is a fourth verify, it should fail".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 		responseObjects.add(failVerify4);
+		try {
+			getHandle.get(objSkip3.fullName(), timeout);
+			getHandle.get(failVerify4.fullName(), timeout);
+		} catch (IOException e1) {
+			Assert.fail("Failed get: "+e1.getMessage());
+		}
 	
 		System.out.println("objSkip3: "+ objSkip3.fullName());
 		System.out.println("failVerify4*: "+failVerify4.fullName());

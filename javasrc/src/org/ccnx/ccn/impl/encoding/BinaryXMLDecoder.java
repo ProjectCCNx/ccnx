@@ -173,6 +173,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 			}
 
 		} catch (IOException e) {
+			Log.logStackTrace(Level.INFO, e);
 			throw new ContentDecodingException("readStartElement", e);
 		}
 	}
@@ -223,17 +224,20 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 				
 			} catch (IOException ie) {
 				Log.info("IOException in BinaryXMLDecoder error handling: " + e.getMessage());
+				Log.logStackTrace(Level.INFO, ie);
 				throw new ContentDecodingException("peekStartElement", e);
 
 			}
 		} catch (IOException e) {
 			Log.info("IOException in BinaryXMLDecoder: " + e.getMessage());
+			Log.logStackTrace(Level.INFO, e);
 			throw new ContentDecodingException("peekStartElement", e);
 
 		} finally {
 			try {
 				_istream.reset();
 			} catch (IOException e) {
+				Log.logStackTrace(Level.INFO, e);
 				throw new ContentDecodingException("Cannot reset stream! " + e.getMessage(), e);
 			}
 		}
@@ -290,17 +294,20 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 				
 			} catch (IOException ie) {
 				Log.info("IOException in BinaryXMLDecoder error handling: " + e.getMessage());
+				Log.logStackTrace(Level.INFO, e);
 				throw new ContentDecodingException("peekStartElement", e);
 
 			}
 		} catch (IOException e) {
-			Log.info("IOException in BinaryXMLDecoder: " + e.getMessage());
+			Log.info("IOException in BinaryXMLDecoder peekStartElementAsLong: " + e.getMessage());
+			Log.logStackTrace(Level.INFO, e);
 			throw new ContentDecodingException("peekStartElement", e);
 
 		} finally {
 			try {
 				_istream.reset();
 			} catch (IOException e) {
+				Log.logStackTrace(Level.INFO, e);
 				throw new ContentDecodingException("Cannot reset stream! " + e.getMessage(), e);
 			}
 		}

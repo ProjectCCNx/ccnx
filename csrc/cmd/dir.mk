@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -20,10 +20,13 @@ INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccndumpnames ccnrm \
     ccnls ccnslurp ccnbx ccncat ccnbasicconfig \
     ccnsendchunks ccncatchunks ccncatchunks2 \
-    ccnput ccnget ccnhexdumpdata $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
+    ccnput ccnget ccnhexdumpdata \
+	ccnseqwriter \
+	$(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
     ccnbuzz  \
+    ccnsimplecat \
     dataresponsetest \
     ccnseqwriter \
     $(PCAP_PROGRAMS)
@@ -34,7 +37,7 @@ BROKEN_PROGRAMS =
 DEBRIS =
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
-       ccnbuzz.c ccnbx.c ccncat.c ccncatchunks.c ccncatchunks2.c \
+       ccnbuzz.c ccnbx.c ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
        ccndumpnames.c ccndumppcap.c ccnget.c ccnhexdumpdata.c \
        ccnls.c ccnput.c ccnrm.c ccnsendchunks.c ccnseqwriter.c \
        ccnslurp.c dataresponsetest.c 
@@ -91,6 +94,9 @@ ccnbx: ccnbx.o
 
 ccncat: ccncat.o
 	$(CC) $(CFLAGS) -o $@ ccncat.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnsimplecat: ccnsimplecat.o
+	$(CC) $(CFLAGS) -o $@ ccnsimplecat.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnsendchunks: ccnsendchunks.o
 	$(CC) $(CFLAGS) -o $@ ccnsendchunks.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -171,6 +177,8 @@ ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
 ccnbx.o: ccnbx.c ../include/ccn/charbuf.h ../include/ccn/coding.h \
   ../include/ccn/ccn.h ../include/ccn/indexbuf.h
 ccncat.o: ccncat.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnsimplecat.o: ccnsimplecat.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccncatchunks.o: ccncatchunks.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \

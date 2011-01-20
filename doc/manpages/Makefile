@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -13,7 +13,7 @@
 #
 
 # The order here determines the order in the generated index.
-PAGE_NAMES =        \
+PAGE_NAMES =        		\
 	ccn_ccnbtoxml		\
 	ccn_xmltoccnb		\
 	ccnacl			\
@@ -33,7 +33,9 @@ PAGE_NAMES =        \
 	ccnputmeta		\
 	ccngetmeta		\
 	ccnrm			\
+	ccnseqwriter		\
 	ccn_repo		\
+	ccncat			\
 
 PROJECT_NUMBER = 0.3.0
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)

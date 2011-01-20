@@ -3,10 +3,14 @@ Changes between 0.3.0 and HEAD:
 This highlights some important changes since the most recent numbered release.
 Refer to http://www.ccnx.org/redmine/ for more details.
 
-  * The 'ping' responder is no longer present by default in ccnd.  
+  * The 'ping' responder in ccnd is deprecated. For compatibility,
+    it still present by default, but further use should be phased out.
     The libraries have been changed to use local service discovery
-    instead.  The java option "org.ccnx.ping.timeout" is replaced by
+    instead. The java option "org.ccnx.ping.timeout" is replaced by
     "org.ccnx.ccndid.timeout". (100187, 100188, 100189)
+
+  * The java library now uses TCP to communicate with ccnd, rather
+    than UDP. (100078)
 
 Changes between 0.2.0 and 0.3.0:
 --------------------------------

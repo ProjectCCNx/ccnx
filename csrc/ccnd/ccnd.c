@@ -3,7 +3,7 @@
  * 
  * Main program of ccnd - the CCNx Daemon
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -104,6 +104,10 @@ static void update_forward_to(struct ccnd_handle *h,
 static void stuff_and_send(struct ccnd_handle *h, struct face *face,
                            const unsigned char *data1, size_t size1,
                            const unsigned char *data2, size_t size2);
+static void ccn_link_state_init(struct ccnd_handle *h, struct face *face);
+static void ccn_append_link_stuff(struct ccnd_handle *h,
+                                  struct face *face,
+                                  struct ccn_charbuf *c);
 static int process_incoming_link_message(struct ccnd_handle *h,
                                          struct face *face, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
@@ -1510,20 +1514,23 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
     
     if ((face->flags & CCN_FACE_LINK) != 0) {
         c = charbuf_obtain(h);
-        ccn_charbuf_reserve(c, size1 + size2 + 5);
+        ccn_charbuf_reserve(c, size1 + size2 + 5 + 8);
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
         ccn_charbuf_append(c, data1, size1);
 		if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
         ccn_stuff_interest(h, face, c);
+        ccn_append_link_stuff(h, face, c);
         ccn_charbuf_append_closer(c);
     }
-    else if (size2 != 0 || h->mtu > size1 + size2) {
+    else if (size2 != 0 || h->mtu > size1 + size2 ||
+             (face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0) {
         c = charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
 		if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
         ccn_stuff_interest(h, face, c);
+        ccn_append_link_stuff(h, face, c);
     }
     else {
         /* avoid a copy in this case */
@@ -1590,12 +1597,48 @@ ccn_stuff_interest(struct ccnd_handle *h,
     return(n_stuffed);
 }
 
+static void
+ccn_link_state_init(struct ccnd_handle *h, struct face *face)
+{
+    int checkflags;
+    int matchflags;
+    
+    matchflags = CCN_FACE_DGRAM;
+    checkflags = matchflags | CCN_FACE_MCAST | CCN_FACE_GG | CCN_FACE_SEQOK | \
+                 CCN_FACE_PASSIVE;
+    if ((face->flags & checkflags) != matchflags)
+        return;
+    /* Send one sequence number to see if the other side wants to play. */
+    face->pktseq = nrand48(h->seed);
+    face->flags |= CCN_FACE_SEQPROBE;
+}
+
+static void
+ccn_append_link_stuff(struct ccnd_handle *h,
+                      struct face *face,
+                      struct ccn_charbuf *c)
+{
+    if ((face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) == 0)
+        return;
+    ccn_charbuf_append_tt(c, CCN_DTAG_SequenceNumber, CCN_DTAG);
+    ccn_charbuf_append_tt(c, 2, CCN_BLOB);
+    ccn_charbuf_append_value(c, face->pktseq, 2);
+    ccnb_element_end(c);
+    if (0)
+        ccnd_msg(h, "debug.%d pkt_to %u seq %u",
+                 __LINE__, face->faceid, (unsigned)face->pktseq);
+    face->pktseq++;
+    face->flags &= ~CCN_FACE_SEQPROBE;
+}
+
 static int
 process_incoming_link_message(struct ccnd_handle *h,
                               struct face *face, enum ccn_dtag dtag,
                               unsigned char *msg, size_t size)
 {
     uintmax_t s;
+    int checkflags;
+    int matchflags;
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, msg, size);
 
@@ -1604,6 +1647,14 @@ process_incoming_link_message(struct ccnd_handle *h,
             s = ccn_parse_required_tagged_binary_number(d, dtag, 1, 6);
             if (d->decoder.state < 0)
                 return(d->decoder.state);
+            /*
+             * If the other side is unicast and sends sequence numbers,
+             * then it is OK for us to send numbers as well.
+             */
+            matchflags = CCN_FACE_DGRAM;
+            checkflags = matchflags | CCN_FACE_MCAST | CCN_FACE_SEQOK;
+            if ((face->flags & checkflags) == matchflags)
+                face->flags |= CCN_FACE_SEQOK;
             if (face->rrun == 0) {
                 face->rseq = s;
                 face->rrun = 1;
@@ -1616,7 +1667,8 @@ process_incoming_link_message(struct ccnd_handle *h,
                 return(0);
             }
             if (s > face->rseq && s - face->rseq < 255) {
-                ccnd_msg(h, "seq_gap %u %ju to %ju", face->faceid, face->rseq, s);
+                ccnd_msg(h, "seq_gap %u %ju to %ju",
+                         face->faceid, face->rseq, s);
                 face->rseq = s;
                 face->rrun = 1;
                 return(0);
@@ -1637,11 +1689,6 @@ process_incoming_link_message(struct ccnd_handle *h,
             }
             face->rseq = s;
             face->rrun = 1;
-            break;
-        case CCN_DTAG_SequenceAcknowledgement:
-            s = ccn_parse_required_tagged_binary_number(d, dtag, 1, 7);
-            if (d->decoder.state < 0)
-                return(d->decoder.state);
             break;
         default:
             return(-1);
@@ -2214,8 +2261,9 @@ register_new_face(struct ccnd_handle *h, struct face *face)
         ccnd_face_status_change(h, face->faceid);
         if (h->flood && h->autoreg != NULL && (face->flags & CCN_FACE_GG) == 0)
             ccnd_reg_uri_list(h, h->autoreg, face->faceid,
-                         CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
-                         0x7FFFFFFF);
+                              CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
+                              0x7FFFFFFF);
+        ccn_link_state_init(h, face);
     }
 }
 
@@ -3781,7 +3829,6 @@ process_input_message(struct ccnd_handle *h, struct face *face,
             process_incoming_content(h, face, msg, size);
             return;
         case CCN_DTAG_SequenceNumber:
-        case CCN_DTAG_SequenceAcknowledgement:
             process_incoming_link_message(h, face, dtag, msg, size);
             return;
         default:

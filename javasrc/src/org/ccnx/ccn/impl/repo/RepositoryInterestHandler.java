@@ -212,13 +212,20 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 
 			boolean verified = false;
 			RepositoryInfoObject rio = null;
+			ContentName unverifiedKeyLocator = null;
+			ContentName digestFreeTarget = new ContentName(target.count()-1, target.components());
 			if (_server.getRepository().hasContent(target)) {
-				// First impl, no further checks, if we have first segment, assume we have (or are fetching) 
-				// the whole thing
-				// TODO: add better verification:
-				// 		find highest segment in the store (probably a new internal interest seeking rightmost)
-				//      getContent(): need full object in this case, verify that last segment matches segment name => verified = true
-				verified = true;
+				unverifiedKeyLocator = _server.getKeyTarget(digestFreeTarget);
+				if (null == unverifiedKeyLocator) {
+					// First impl, no further checks, if we have first segment, assume we have (or are fetching) 
+					// the whole thing
+					// TODO: add better verification:
+					// 		find highest segment in the store (probably a new internal interest seeking rightmost)
+					//      getContent(): need full object in this case, verify that last segment matches segment name => verified = true
+					verified = true;
+				}		
+			}
+			if (verified) {
 				// Send back a RepositoryInfoObject that contains a confirmation that content is already in repo
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 					Log.finer(Log.FAC_REPO, "Checked write confirmed");
@@ -236,24 +243,24 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			// Hand the object the outstanding interest, so it can put its first block immediately.
 			rio.save(interest);
 
-
 			if (!verified) {
-				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
-					Log.finer(Log.FAC_REPO, "Repo checked write no content for {0}, starting read", interest.name());
-				// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 0 
-				// because in this SPECIAL CASE we have the complete name of the first segment.
-				Interest readInterest = Interest.constructInterest(target, _server.getExcludes(), null, 0, 0, null);
-				RepositoryDataListener listener;
-				// SPECIAL CASE: this initial interest is more specific than the standard reading interests, so 
-				// it will not be recognized as requesting a specific segment (segment is not final component).
-				// However, until this initial interest is satisfied, there is no processing requiring standard
-				// segment format, and when the first (satisfying) data arrives this interest will be immediately 
-				// discarded.  The returned data (ContentObject) explicit name will never include the implicit 
-				// digest and so is processed correctly regardless of the interest that retrieved it.
-				listener = new RepositoryDataListener(interest, readInterest, _server);
-				_server.addListener(listener);
-				listener.getInterests().add(readInterest, null);
-				_handle.expressInterest(readInterest, listener);
+				Interest readInterest;
+				if (null != unverifiedKeyLocator) {
+					interest = Interest.constructInterest(target, _server.getExcludes(), null, 2, null, null);
+					readInterest = interest;
+				} else {
+					// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 0 
+					// because in this SPECIAL CASE we have the complete name of the first segment.
+					readInterest = Interest.constructInterest(target, _server.getExcludes(), null, 0, 0, null);
+					// SPECIAL CASE: this initial interest is more specific than the standard reading interests, so 
+					// it will not be recognized as requesting a specific segment (segment is not final component).
+					// However, until this initial interest is satisfied, there is no processing requiring standard
+					// segment format, and when the first (satisfying) data arrives this interest will be immediately 
+					// discarded.  The returned data (ContentObject) explicit name will never include the implicit 
+					// digest and so is processed correctly regardless of the interest that retrieved it.
+				}
+				_server.getDataHandler().addSync(digestFreeTarget);
+				_server.doSync(interest, readInterest);
 			} else {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 					Log.finer(Log.FAC_REPO, "Repo checked write content verified for {0}", interest.name());

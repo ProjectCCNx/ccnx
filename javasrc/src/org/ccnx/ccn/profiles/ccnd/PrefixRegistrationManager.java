@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -22,6 +22,7 @@ import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNNetworkManager;
+import org.ccnx.ccn.impl.CCNNetworkManager.RegisteredPrefix;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -377,7 +378,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			e.printStackTrace();
 			throw new CCNDaemonException(e.getMessage());
 		}
-		super.sendIt(interestName, forward, true);
+		super.sendIt(interestName, forward, null, true);
 	}
 
 	
@@ -431,13 +432,21 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		}
 		ForwardingEntry forward = new ForwardingEntry(ActionType.SelfRegister, prefixToRegister, ccndId, faceID, flags, lifetime);
 
-		byte[] payloadBack = super.sendIt(interestName, forward, true);
+		byte[] payloadBack = super.sendIt(interestName, forward, null, true);
 		ForwardingEntry entryBack = new ForwardingEntry(payloadBack);
 		Log.fine(Log.FAC_NETMANAGER, "registerPrefix: returned {0}", entryBack);
 		return entryBack; 
 	}
 	
-	public void unRegisterPrefix(ContentName prefixToRegister, Integer faceID) throws CCNDaemonException {
+	/**
+	 * Unregister a prefix with ccnd
+	 * 
+	 * @param prefixName ContentName of prefix
+	 * @param prefix has callback for completion
+	 * @param faceID faceId that has the prefix registered
+	 * @throws CCNDaemonException
+	 */
+	public void unRegisterPrefix(ContentName prefixName, RegisteredPrefix prefix, Integer faceID) throws CCNDaemonException {
 		final String startURI = "ccnx:/ccnx/";
 		PublisherPublicKeyDigest ccndId;
 		try {
@@ -459,9 +468,9 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			Log.warningStackTrace(e);
 			throw new CCNDaemonException(msg);
 		}
-		ForwardingEntry forward = new ForwardingEntry(ActionType.UnRegister, prefixToRegister, ccndId, faceID, null, null);
+		ForwardingEntry forward = new ForwardingEntry(ActionType.UnRegister, prefixName, ccndId, faceID, null, null);
 		// byte[] entryBits = super.getBinaryEncoding(forward);
 
-		super.sendIt(interestName, forward, false);
+		super.sendIt(interestName, forward, prefix, false);
 	}
 }

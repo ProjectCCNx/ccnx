@@ -1,0 +1,53 @@
+CCNCAT(1)
+=========
+
+NAME
+----
+ccncat - Read streams of CCNx content and write to stdout
+
+SYNOPSIS
+--------
+*ccncat* [-h] [-d 'flags'] [-s 'scope'] [-a] 'ccnxnames'...
+
+DESCRIPTION
+-----------
+The *ccncat* utility retrieves content published under the
+'ccnxnames' and writes it to stdout. The content
+must be published as a collection of CCNx Data in accordance with the
+naming conventions for segmented streams or files, optionally
+unversioned. For the default case of versioned content, *ccncat*
+will retrieve the latest version available.
+
+The 'ccnxnames' must be specified using the CCNx URI encoding
+syntax. For simple cases of ASCII name components this is just
+pathname syntax with / delimiters.
+
+OPTIONS
+-------
+*-h*::
+     Generate the help message.
+
+*-d* 'flags'::
+     Specify the fetch debug flags which are the sum of the following:
+          NoteGlitch = 1,
+          NoteAddRem = 2,
+          NoteNeed = 4,
+          NoteFill = 8,
+          NoteFinal = 16,
+          NoteTimeout = 32,
+          NoteOpenClose = 64
+
+*-s* 'scope'::
+     Set the scope (integer) of the interests.
+
+*-a*::
+     Allow stale data to be retrieved.
+
+
+EXIT STATUS
+-----------
+*0*::
+     Success, approximately, since the fetch client code doesn't currently indicate failure on stream reads.
+
+*1*::
+     Failure (syntax or usage error)

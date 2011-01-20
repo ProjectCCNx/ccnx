@@ -172,7 +172,8 @@ public class InterestTable<V> {
 		if (null == interest.name()) {
 			throw new NullPointerException("InterestTable may not contain Interest with null name");
 		}
-		Log.finest("adding interest {0}", interest);
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("adding interest {0}", interest);
 		Holder<V> holder = new InterestHolder<V>(interest, value);
 		add(holder);
 	}
@@ -187,7 +188,8 @@ public class InterestTable<V> {
 		if (null == name) {
 			throw new NullPointerException("InterestTable may not contain null name");
 		}
-		Log.finest("adding name {0}", name);
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("adding name {0}", name);
 		Holder<V> holder = new NameHolder<V>(name, value);
 		add(holder);
 	}
@@ -479,7 +481,8 @@ public class InterestTable<V> {
 	 * @return Entry of longest match if any, null if no match
 	 */
 	public V getValue(ContentName target) {
-		Log.finest("target: {0}", target);
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("target: {0}", target);
 
 		Entry<V> match = getMatch(target);
 		if (null != match) {
@@ -498,7 +501,8 @@ public class InterestTable<V> {
 	 * @return			longest matching entry or null if none found
 	 */
 	public Entry<V> getMatch(ContentName target) {
-		Log.finest("target: {0}", target);
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("target: {0}", target);
 
 		Entry<V> match = null;
 		for (LongestFirstContentName name : _contents.keySet()) {
@@ -516,7 +520,8 @@ public class InterestTable<V> {
 	 * @return 			list of values associated with this ContentName
 	 */
 	public List<V> getValues(ContentName target) {
-		Log.finest("target: {0}", target);
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("target: {0}", target);
 
 		List<V> result = new ArrayList<V>();
 		List<Entry<V>> matches = getMatches(target);
@@ -537,7 +542,8 @@ public class InterestTable<V> {
 	 * @return List of matches ordered from longest match to shortest, empty if no match
 	 */
 	public List<Entry<V>> getMatches(ContentName target) {
-		Log.finest("target: {0}", target);
+		if (Log.isLoggable(Level.FINEST))
+			Log.finest("target: {0}", target);
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		for (LongestFirstContentName name : _contents.keySet()) {
