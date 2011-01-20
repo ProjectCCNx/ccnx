@@ -56,6 +56,10 @@ typedef enum {
 	ccn_fetch_flags_NoteAll = 0xffff
 } ccn_fetch_flags;
 
+#define ccn_fetch_read_timeout (-2)
+#define ccn_fetch_read_none (-1)
+#define ccn_fetch_read_end (0)
+
 /**
  * Sets the destination for debug output.  NULL disables debug output.
  */
@@ -129,8 +133,9 @@ ccn_fetch_close(ccn_fetch_stream fs);
  * Tests for available bytes in the stream.
  * Determines how many bytes can be read on the given stream
  * without waiting (via ccn_fetch_poll).
- * @returns -1 if no bytes are immediately available,
- *    0 if the stream is at the end,
+ * @returns ccn_fetch_read_timeout (-2) if a timeout occured,
+ *    ccn_fetch_read_none (-1) if no bytes are immediately available
+ *    ccn_fetch_read_end (0) if the stream is at the end,
  *    and N > 0 if N bytes can be read without performing a poll.
  */
 intmax_t
@@ -141,15 +146,24 @@ ccn_fetch_avail(ccn_fetch_stream fs);
  * Reads at most len bytes into buf from the given stream.
  * Will not wait for bytes to arrive.
  * Advances the read position on a successful read.
- * @returns -1 if no bytes are immediately available
- *    (includes len <= 0 or buf == NULL cases),
- *    0 if the stream is at the end,
- *    and N > 0 if N bytes can be read without performing a poll.
+ * @returns ccn_fetch_read_timeout (-2) if a timeout occured,
+ *    ccn_fetch_read_none (-1) if no bytes are immediately available
+ *        (includes len <= 0 or buf == NULL cases),
+ *    ccn_fetch_read_end (0) if the stream is at the end,
+ *    and N > 0 if N bytes were read.
  */
 intmax_t
 ccn_fetch_read(ccn_fetch_stream fs,
 			   void *buf,
 			   intmax_t len);
+
+/**
+ * Resets the timeout indicator, which will cause pending interests to be
+ * retried.  The client determines conditions for a timeout to be considered
+ * an unrecoverable error.
+ */
+void
+ccn_reset_timeout(ccn_fetch_stream fs);
 
 /**
  * Seeks to a position in a stream.
@@ -164,7 +178,7 @@ ccn_fetch_seek(ccn_fetch_stream fs,
 			   intmax_t pos);
 
 /**
- * @returns the current read position.
+ * @returns the current read position (initially 0)
  */
 intmax_t
 ccn_fetch_position(ccn_fetch_stream fs);

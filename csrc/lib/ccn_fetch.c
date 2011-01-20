@@ -47,7 +47,7 @@
 // TBD: the following constants should be more principled
 #define CCN_CHUNK_SIZE 4096
 #define CCN_VERSION_TIMEOUT 8000
-#define CCN_INTEREST_TIMEOUT 15.0
+#define CCN_INTEREST_TIMEOUT 4.0
 #define MaxSuffixDefault 4
 
 #define LowUtil_Alloc(NNN, TTT) (TTT *) calloc(NNN, sizeof(TTT))
@@ -365,9 +365,11 @@ CallMe(callback selfp,
 	seg_t thisSeg = req->reqSeg;
 	ccn_fetch_stream fs = (ccn_fetch_stream) req->fs;
 	if (fs == NULL) {
-		// orphaned, so just get rid of it
-		free(req);
-		free(selfp);
+		if (kind == CCN_UPCALL_FINAL) {
+			// orphaned, so just get rid of it
+			free(req);
+			free(selfp);
+		}
 		return(CCN_UPCALL_RESULT_OK);
 	}
 	FILE *debug = fs->parent->debug;
@@ -405,6 +407,13 @@ CallMe(callback selfp,
 				// timed out, too many retries
 				// assume that this interest will never produce
 				seg_t minBadSeg = fs->minBadSeg;
+				fs->timeoutsSeen++;
+				if (minBadSeg < 0 || thisSeg < minBadSeg) {
+					// we can infer a new minBadSeg
+					fs->minBadSeg = thisSeg;
+					if (thisSeg <= fs->maxGoodSeg)
+						fs->maxGoodSeg = thisSeg - 1;
+				}
 				if (debug != NULL && (flags & ccn_fetch_flags_NoteTimeout)) {
 					fprintf(debug, 
 							"** ccn_fetch timeout, %s, seg %jd",
@@ -414,11 +423,6 @@ CallMe(callback selfp,
 							dt, fs->timeoutSecs);
 					fflush(debug);
 				}
-				fs->timeoutsSeen++;
-				if (minBadSeg < 0 || thisSeg < minBadSeg) {
-					// we can infer a new minBadSeg
-					fs->minBadSeg = thisSeg;
-				}
 				return(CCN_UPCALL_RESULT_OK);
 			}
 			// TBD: may need to reseed bloom filter?  who to ask?
@@ -427,6 +431,9 @@ CallMe(callback selfp,
 		case CCN_UPCALL_CONTENT_UNVERIFIED:
 			return (CCN_UPCALL_RESULT_VERIFY);
 		case CCN_UPCALL_CONTENT:
+			if (fs->minBadSeg >= 0 && fs->minBadSeg <= thisSeg)
+				// we will ignore this, since we are blocked
+				return(CCN_UPCALL_RESULT_OK);
 			if (thisSeg > fs->maxGoodSeg)
 				fs->maxGoodSeg = thisSeg;
 			if (thisSeg < needSeg || thisSeg > limSeg)
@@ -435,6 +442,7 @@ CallMe(callback selfp,
 				return(CCN_UPCALL_RESULT_OK);
 			break;
 		default:
+			// SHOULD NOT HAPPEN
 			return(CCN_UPCALL_RESULT_ERR);
     }
 	
@@ -866,22 +874,23 @@ extern intmax_t
 ccn_fetch_read(ccn_fetch_stream fs,
 			   void *buf,
 			   intmax_t len) {
-	if (len < 0 || buf == NULL) return -1;
+	if (len < 0 || buf == NULL) {
+		return ccn_fetch_read_none;
+	}
 	intmax_t off = 0;
 	intmax_t pos = fs->readPosition;
 	if (fs->fileSize >= 0 && pos >= fs->fileSize) {
 		// file size known, and we are at the limit
-		return 0;
+		return ccn_fetch_read_end;
 	}
 	intmax_t nr = 0;
 	ustring dst = (ustring) buf;
 	seg_t finalSeg = fs->finalSeg;
-	
 	seg_t seg = pos / CCN_CHUNK_SIZE;
+	
 	if (fs->minBadSeg >= 0 && seg >= fs->minBadSeg)
 		// if we failed to get a segment and we needed it, assume EOF
-		// TBD: not a good assumption?
-		return 0;
+		return ccn_fetch_read_timeout;
 	seg_t limSeg = seg+fs->nBufs-1;
 	if (seg*2 < limSeg)
 		// don't start off too quickly, make this nice for short files
@@ -917,8 +926,15 @@ ccn_fetch_read(ccn_fetch_stream fs,
 		seg++;
 	}
 	NeedSegments(fs, limSeg);
-	if (nr == 0) nr = -1;
+	if (nr == 0) {
+		return ccn_fetch_read_none;
+	}
 	return nr;
+}
+
+extern void
+ccn_reset_timeout(ccn_fetch_stream fs) {
+	fs->minBadSeg = -1;
 }
 
 /**
