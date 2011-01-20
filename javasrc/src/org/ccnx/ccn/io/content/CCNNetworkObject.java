@@ -46,6 +46,7 @@ import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.versioning.VersionNumber;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -1230,6 +1231,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public synchronized CCNTime getVersion() throws IOException {
 		if (isSaved())
 			return VersioningProfile.getVersionComponentAsTimestamp(getVersionComponent());
+		return null;
+	}
+	
+	public synchronized VersionNumber getVersionNumber() throws IOException {
+		if (isSaved())
+			return new VersionNumber(getVersionComponent());
 		return null;
 	}
 
