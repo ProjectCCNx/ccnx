@@ -865,6 +865,30 @@
 			</batchtest>
 		</junit>
 	</target>
+
+	<!-- test versioning -->
+	<target name="test-versioning" depends="jar, ccnd, repo">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="no" dir="${testout}" showoutput="${showoutput}" maxmemory="1024m">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="SEVERE"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.FAC_ENCODING" value="INFO"/>
+			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="org/ccnx/ccn/test/profiles/versioning/**/*Test.class"/>
+					<include name="org/ccnx/ccn/test/profiles/versioning/**/*TestRepo.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
+	</target>
 	
     <target name="run-explorer" depends="jar"> 
 		<!-- Not a unit test, this is to run the utility -->
