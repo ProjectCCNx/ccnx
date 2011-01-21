@@ -154,8 +154,9 @@ public class RepoIOTest extends RepoTestBase {
 		so = new CCNStringObject(name, "String value for non-repo obj", SaveType.RAW, userHandle2);
 		so.save();
 		lo.close();
+		waitForPutDrain(pko);
 		pko.close();
-		pko2.close();
+		waitForPutDrain(pko2);
 		so.close();
 		floss.stop();
 	}
@@ -262,5 +263,21 @@ public class RepoIOTest extends RepoTestBase {
 		PolicyObject po = new PolicyObject(policyName, pxml, SaveType.REPOSITORY, putHandle);
 		po.save();
 		Thread.sleep(4000);
+	}
+	
+	/**
+	 * Normally when we close an object which has been written, we will wait until all the outstanding 
+	 * associated content objects have been output to ccnd. But the PublicKeyObjects use a special flow
+	 * controller that does not wait. This is normally fine (presumably) but in order to test sync correctly
+	 * we have to make sure that the objects are all written out before the close. So we fake waitForPutDrain
+	 * here.
+	 */
+	private static void waitForPutDrain(PublicKeyObject obj) {
+		long endTime = System.currentTimeMillis() + obj.getTimeout();
+		while (obj.getFlowControl().size() > 0 && System.currentTimeMillis() < endTime) {
+			try {
+				Thread.sleep(200);
+			} catch (InterruptedException e) {}
+		}
 	}
 }

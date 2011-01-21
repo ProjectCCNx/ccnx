@@ -465,6 +465,22 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				Log.info("Created " + _saveType + " flow controller, for prefix {0}, save type " + _flowControl.saveType(), _baseName);
 		}
 	}
+	
+	/**
+	 * Get the flow controller associated with this object
+	 * @return the flow controller or null if not assigned
+	 */
+	public CCNFlowControl getFlowControl() {
+		return _flowControl;
+	}
+	
+	/**
+	 * Get timeout associated with this object
+	 * @return
+	 */
+	public long getTimeout() {
+		return _flowControl.getTimeout();
+	}
 		
 	/**
 	 * Start listening to interests on our base name, if we aren't already.
