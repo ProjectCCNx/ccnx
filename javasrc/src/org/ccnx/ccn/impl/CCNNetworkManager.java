@@ -164,7 +164,9 @@ public class CCNNetworkManager implements Runnable {
 			synchronized (this) {
 				notifyAll();
 			}
-			_registeredPrefixes.remove(_forwarding.getPrefixName());
+			synchronized (_registeredPrefixes) {
+				_registeredPrefixes.remove(_forwarding.getPrefixName());
+			}
 			return null;
 		}
 	}
