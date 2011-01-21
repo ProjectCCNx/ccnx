@@ -53,9 +53,9 @@ typedef enum {
 	ccn_fetch_flags_NoteAll = 0xffff
 } ccn_fetch_flags;
 
-#define ccn_fetch_read_timeout (-2)
-#define ccn_fetch_read_none (-1)
-#define ccn_fetch_read_end (0)
+#define CCN_FETCH_READ_TIMEOUT (-2)
+#define CCN_FETCH_READ_NONE (-1)
+#define CCN_FETCH_READ_END (0)
 
 /**
  * Sets the destination for debug output.  NULL disables debug output.

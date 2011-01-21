@@ -858,13 +858,13 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 			   void *buf,
 			   intmax_t len) {
 	if (len < 0 || buf == NULL) {
-		return ccn_fetch_read_none;
+		return CCN_FETCH_READ_NONE;
 	}
 	intmax_t off = 0;
 	intmax_t pos = fs->readPosition;
 	if (fs->fileSize >= 0 && pos >= fs->fileSize) {
 		// file size known, and we are at the limit
-		return ccn_fetch_read_end;
+		return CCN_FETCH_READ_END;
 	}
 	intmax_t nr = 0;
 	unsigned char *dst = (unsigned char *) buf;
@@ -872,8 +872,8 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 	seg_t seg = pos / CCN_CHUNK_SIZE;
 	
 	if (fs->minBadSeg >= 0 && seg >= fs->minBadSeg)
-		// if we failed to get a segment and we needed it, assume EOF
-		return ccn_fetch_read_timeout;
+		// if a needed read timed out, then we say so
+		return CCN_FETCH_READ_TIMEOUT;
 	seg_t limSeg = seg+fs->nBufs-1;
 	if (seg*2 < limSeg)
 		// don't start off too quickly, make this nice for short files
@@ -910,7 +910,7 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 	}
 	NeedSegments(fs, limSeg);
 	if (nr == 0) {
-		return ccn_fetch_read_none;
+		return CCN_FETCH_READ_NONE;
 	}
 	return nr;
 }
