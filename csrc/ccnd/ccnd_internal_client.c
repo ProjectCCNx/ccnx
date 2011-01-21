@@ -7,7 +7,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -160,8 +160,9 @@ ccnd_answer_req(struct ccn_closure *selfp,
         ccnd_debug_ccnb(ccnd, __LINE__, "ccnd_answer_req", NULL,
                         info->interest_ccnb, info->pi->offset[CCN_PI_E]);
     morecomps = selfp->intdata & MORECOMPS_MASK;
-    if (selfp->intdata != OP_SERVICE &&
-          (info->pi->answerfrom & CCN_AOK_NEW) == 0)
+    if ((info->pi->answerfrom & CCN_AOK_NEW) == 0 &&
+        selfp->intdata != OP_SERVICE &&
+        selfp->intdata != OP_NOTICE)
         return(CCN_UPCALL_RESULT_OK);
     if (info->matched_comps >= info->interest_comps->n)
         goto Bail;
