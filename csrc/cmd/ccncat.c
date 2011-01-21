@@ -94,9 +94,9 @@ main(int argc, char **argv)
     int i;
     int res;
     int opt;
-	int assumeFixed = 1;
+	int assumeFixed = 0; // variable only for now
     
-    while ((opt = getopt(argc, argv, "had:p:s:v")) != -1) {
+    while ((opt = getopt(argc, argv, "had:p:s:")) != -1) {
         switch (opt) {
             case 'a':
                 allow_stale = 1;
@@ -109,9 +109,6 @@ main(int argc, char **argv)
                 break;
             case 's':
                 scope = atoi(optarg);
-                break;
-            case 'v':
-                assumeFixed = 0;
                 break;
             case 'h':
             default:
