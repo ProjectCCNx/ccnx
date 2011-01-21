@@ -53,6 +53,7 @@ typedef enum {
 	ccn_fetch_flags_NoteAll = 0xffff
 } ccn_fetch_flags;
 
+#define CCN_FETCH_READ_ZERO (-3)
 #define CCN_FETCH_READ_TIMEOUT (-2)
 #define CCN_FETCH_READ_NONE (-1)
 #define CCN_FETCH_READ_END (0)
@@ -108,7 +109,10 @@ ccn_fetch_get_ccn(struct ccn_fetch *f);
  * If resolveVersion, then we assume that the version is unresolved, 
  * and an attempt is made to determine the version number using the highest
  * version.  If interestTemplate == NULL then a suitable default is used.
- * The number of buffers (nBufs) may be silently limited.
+ * The max number of buffers (maxBufs) is a hint, and may be clamped to an
+ * implementation minimum or maximum.
+ * If assumeFixed, then assume that the segment size is given by the first
+ * segment fetched, otherwise segments may be of variable size. 
  * @returns NULL if the stream creation failed,
  *    otherwise returns the new stream.
  */
@@ -116,7 +120,9 @@ struct ccn_fetch_stream *
 ccn_fetch_open(struct ccn_fetch *f, struct ccn_charbuf *name,
 			   const char *id,
 			   struct ccn_charbuf *interestTemplate,
-			   int nBufs, int resolveVersion);
+			   int maxBufs,
+			   int resolveVersion,
+			   int assumeFixed);
 
 /**
  * Closes the stream and reclaims any resources used by the stream.
@@ -130,9 +136,11 @@ ccn_fetch_close(struct ccn_fetch_stream *fs);
  * Tests for available bytes in the stream.
  * Determines how many bytes can be read on the given stream
  * without waiting (via ccn_fetch_poll).
- * @returns ccn_fetch_read_timeout (-2) if a timeout occured,
- *    ccn_fetch_read_none (-1) if no bytes are immediately available
- *    ccn_fetch_read_end (0) if the stream is at the end,
+ * @returns
+ *    CCN_FETCH_READ_TIMEOUT if a timeout occured,
+ *    CCN_FETCH_READ_ZERO if a zero-length segment was found
+ *    CCN_FETCH_READ_NONE if no bytes are immediately available
+ *    CCN_FETCH_READ_END if the stream is at the end,
  *    and N > 0 if N bytes can be read without performing a poll.
  */
 intmax_t
@@ -143,10 +151,11 @@ ccn_fetch_avail(struct ccn_fetch_stream *fs);
  * Reads at most len bytes into buf from the given stream.
  * Will not wait for bytes to arrive.
  * Advances the read position on a successful read.
- * @returns ccn_fetch_read_timeout (-2) if a timeout occured,
- *    ccn_fetch_read_none (-1) if no bytes are immediately available
- *        (includes len <= 0 or buf == NULL cases),
- *    ccn_fetch_read_end (0) if the stream is at the end,
+ * @returns
+ *    CCN_FETCH_READ_TIMEOUT if a timeout occured,
+ *    CCN_FETCH_READ_ZERO if a zero-length segment was found
+ *    CCN_FETCH_READ_NONE if no bytes are immediately available
+ *    CCN_FETCH_READ_END if the stream is at the end,
  *    and N > 0 if N bytes were read.
  */
 intmax_t
@@ -168,7 +177,8 @@ ccn_reset_timeout(struct ccn_fetch_stream *fs);
  * It is strongly recommended that the seek is only done to a position that
  * is either 0 or has resulted from a successful read.  Otherwise
  * end of stream indicators may be returned for a seek beyond the end.
- * @returns -1 if the seek is to a bad position, otherwise returns 0.
+ * @returns -1 if the seek is to a bad position
+ * or if the segment size is variable, otherwise returns 0.
  */
 int
 ccn_fetch_seek(struct ccn_fetch_stream *fs,
