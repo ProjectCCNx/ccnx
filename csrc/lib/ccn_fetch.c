@@ -45,7 +45,6 @@
 #include <sys/time.h>
 
 // TBD: the following constants should be more principled
-#define CCN_CHUNK_SIZE 4096
 #define CCN_VERSION_TIMEOUT 8000
 #define CCN_INTEREST_TIMEOUT_USECS 15000000
 #define MaxSuffixDefault 4
@@ -80,7 +79,9 @@ struct ccn_fetch {
 };
 
 struct ccn_fetch_buffer {
+	struct ccn_fetch_buffer *next;
 	seg_t seg;			// the seg for this buffer (< 0 if unassigned)
+	intmax_t pos;		// the base byte position for this segment
 	int len;			// the number of valid bytes
 	int max;			// the buffer size
 	unsigned char *buf;	// where the bytes are
@@ -97,17 +98,20 @@ struct ccn_fetch_stream {
 	struct ccn_fetch *parent;
 	struct localClosure *requests;	// segment requests in process
 	int reqBusy;			// the number of requests busy
+	int maxBufs;			// max number of buffers allowed
 	int nBufs;				// the number of buffers allocated
-	struct ccn_fetch_buffer **bufs;	// the buffers
+	struct ccn_fetch_buffer *bufList;	// the buffer list
 	char *id;
 	struct ccn_charbuf *name;			// interest name (without seq#)
 	struct ccn_charbuf *interest;		// interest template
+	int segSize;			// the segment size (-1 if variable, 0 if unknown)
 	intmax_t fileSize;		// the file size (< 0 if unassigned)
 	intmax_t readPosition;	// the read position (always assigned)
-	seg_t maxGoodSeg;		// the highest good segment seen
-	seg_t minBadSeg;		// the lowest timeout segment seen
+	seg_t readSeg;			// the segment for the readPosition
+	seg_t timeoutSeg;		// the lowest timeout segment seen
+	seg_t zeroLenSeg;		// the lowest zero len segment seen
 	seg_t finalSeg;			// final segment number (< 0 if not known yet)
-	intmax_t timeoutUSecs;		// microseconds for interest timeout
+	intmax_t timeoutUSecs;	// microseconds for interest timeout
 	intmax_t timeoutsSeen;
 	seg_t segsRead;
 	seg_t segsRequested;
@@ -174,11 +178,11 @@ GetNumberFromInfo(const unsigned char *ccnb,
 	// must be called from inside of CallMe
 	if (start < stop) {
 		size_t len = 0;
-		seg_t n = 0;
 		const unsigned char *data = NULL;
 		ccn_ref_tagged_BLOB(tt, ccnb, start, stop, &data, &len);
 		if (len > 0 && data != NULL) {
 			// parse big-endian encoded number
+			seg_t n = 0;
 			size_t i;
             for (i = 0; i < len; i++) {
 				n = n * 256 + data[i];
@@ -269,23 +273,107 @@ RemSegRequest(struct ccn_fetch_stream *fs, struct localClosure *req) {
 
 static struct ccn_fetch_buffer *
 FindBufferForSeg(struct ccn_fetch_stream *fs, seg_t seg) {
-	// finds the buffer object given the segmentnumber
-	int i;
-    if (seg >= 0)
-		for (i = 0; i < fs->nBufs; i++) {
-			struct ccn_fetch_buffer *fb = fs->bufs[i];
-			if (fb->seg == seg) return fb;
-		} 
-	return NULL;
+	// finds the buffer object given the seg
+	struct ccn_fetch_buffer *fb = fs->bufList;
+	for (;;) {
+		if (fb == NULL) break;
+		if (fb->seg == seg) break;
+		fb = fb->next;
+	} 
+	return fb;
 }
 
-static int
+static struct ccn_fetch_buffer *
+FindBufferForPosition(struct ccn_fetch_stream *fs, intmax_t pos) {
+	// finds the buffer object given the seg
+	struct ccn_fetch_buffer *fb = fs->bufList;
+	for (;;) {
+		if (fb == NULL) break;
+		intmax_t fp = fb->pos;
+		if (fp >= 0 && pos >= fp && pos < fp+fb->len) break;
+		fb = fb->next;
+	} 
+	return fb;
+}
+
+static intmax_t InferPosition(struct ccn_fetch_stream *fs, seg_t seg) {
+	intmax_t pos = -1; // by default, size is unknown
+	if (seg == 0) {
+		// initial seg is easy, size regardless
+		pos = 0;
+	} else if (fs->segSize > 0) {
+		// fixed size is almost as easy
+		pos = seg*fs->segSize;
+	} else if (seg == fs->readSeg) {
+		// position is based on the current read position 
+		pos = fs->readPosition;
+	} else {
+		// try to get the position from the previous buffer
+		struct ccn_fetch_buffer *ofb = FindBufferForSeg(fs, seg-1);
+		if (ofb != NULL && ofb->pos >= 0)
+			pos = ofb->pos+ofb->len;
+	}
+	return pos;
+}
+
+static struct ccn_fetch_buffer *
+NewBufferForSeg(struct ccn_fetch_stream *fs, seg_t seg, size_t len) {
+	// makes a new buffer for the segment
+	struct ccn_fetch_buffer *fb = calloc(1, sizeof(*fb));
+	fb->buf = calloc(len, sizeof(unsigned char));
+	fb->seg = seg;
+	fb->pos = InferPosition(fs, seg);
+	fb->len = len;
+	fs->nBufs++;
+	fb->next = fs->bufList;
+	fs->bufList = fb;
+	return fb;
+}
+
+static void
+PruneSegments(struct ccn_fetch_stream *fs) {
+	intmax_t rPos = fs->readPosition;
+	struct ccn_fetch_buffer *lag = NULL;
+	struct ccn_fetch_buffer *fb = fs->bufList;
+	while (fb != NULL && fs->nBufs > fs->maxBufs) {
+		struct ccn_fetch_buffer *next = fb->next;
+		if (fs->maxBufs == 0 || fb->pos < 0 || rPos > (fb->pos + fb->len)) {
+			// this buffer is going away
+			// note: keep buffer immediately before readPosition if possible
+			if (lag == NULL) {
+				fs->bufList = next;
+			} else {
+				lag->next = next;
+			}
+			if (fb->buf != NULL) free(fb->buf);
+			free(fb);
+			fs->nBufs--;
+		} else {
+			// keep this buffer in play
+			lag = fb;
+		}
+		fb = next;
+	}
+}
+
+static void
 NeedSegment(struct ccn_fetch_stream *fs, seg_t seg) {
 	// requests that a specific segment interest be registered
 	// but ONLY if it the request not already in flight
 	// AND the segment is not already in a buffer
 	struct ccn_fetch_buffer *fb = FindBufferForSeg(fs, seg);
-	if (fb != NULL) return 0;
+	if (fb != NULL)
+		// no point in requesting what we have
+		return;
+	if (fs->finalSeg >= 0 && seg > fs->finalSeg)
+		// no point in requesting off the end, either
+		return;
+	if (fs->timeoutSeg > 0 && seg >= fs->timeoutSeg)
+		// don't request a timed-out segment
+		return;
+	if (fs->zeroLenSeg > 0 && seg >= fs->zeroLenSeg)
+		// don't request a zero-length segment
+		return;
 	struct localClosure *req = AddSegRequest(fs, seg);
 	if (req != NULL) {
 		FILE *debug = fs->parent->debug;
@@ -310,7 +398,7 @@ NeedSegment(struct ccn_fetch_stream *fs, seg_t seg) {
 				fprintf(debug, "\n");
 				fflush(debug);
 			}
-			return 1;
+			return;
 		}
 		// the request was not placed, so get rid of the evidence
 		// CallMe won't get a chance to free it
@@ -325,21 +413,34 @@ NeedSegment(struct ccn_fetch_stream *fs, seg_t seg) {
 		free(action);
         
 	}
-	return 0;
 }
 
 static void
-NeedSegments(struct ccn_fetch_stream *fs, seg_t limSeg) {
+NeedSegments(struct ccn_fetch_stream *fs) {
 	// determines which segments should be requested
 	// based on the current readPosition
-	seg_t loSeg = fs->readPosition / CCN_CHUNK_SIZE;
-	seg_t finalSeg = fs->finalSeg;
-	if (finalSeg >= 0 && limSeg > finalSeg) limSeg = finalSeg;
-	if (loSeg > limSeg) limSeg = loSeg;
-	while (loSeg <= limSeg) {
-		// try to request needed segments
-		NeedSegment(fs, loSeg);
-		loSeg++;
+	if (fs->segSize <= 0) {
+		// seg size is either variable or unknown
+		// TBD: allow for more than 1 extra segment?
+		seg_t seg = fs->readSeg;
+		struct ccn_fetch_buffer *fb = FindBufferForSeg(fs, seg);
+		if (fb == NULL) {
+			NeedSegment(fs, seg);
+		} else {
+			NeedSegment(fs, seg+1);
+		}
+	} else {
+		// seg size is fixed
+		seg_t loSeg = fs->readSeg;
+		seg_t hiSeg = loSeg+fs->maxBufs-1;
+		seg_t finalSeg = fs->finalSeg;
+		if (finalSeg >= 0 && hiSeg > finalSeg) hiSeg = finalSeg;
+		if (loSeg > hiSeg) hiSeg = loSeg;
+		while (loSeg <= hiSeg) {
+			// try to request needed segments
+			NeedSegment(fs, loSeg);
+			loSeg++;
+		}
 	}
 }
 
@@ -349,7 +450,6 @@ CallMe(struct ccn_closure *selfp,
 	   struct ccn_upcall_info *info) {
 	// CallMe is the callback routine invoked by ccn_run when a registered
 	// interest has something interesting happen.
-    int i;
     struct localClosure *req = (struct localClosure *)selfp->data;
 	seg_t thisSeg = req->reqSeg;
     struct ccn_fetch_stream *fs = (struct ccn_fetch_stream *) req->fs;
@@ -377,9 +477,6 @@ CallMe(struct ccn_closure *selfp,
 			}
 	}
     
-	seg_t needSeg = fs->readPosition / CCN_CHUNK_SIZE;
-	seg_t limSeg = needSeg+fs->nBufs-1;
-    
 	switch (kind) {
 		case CCN_UPCALL_FINAL:
 			// this is the cleanup for an expressed interest
@@ -395,13 +492,11 @@ CallMe(struct ccn_closure *selfp,
 			if (dt >= fs->timeoutUSecs) {
 				// timed out, too many retries
 				// assume that this interest will never produce
-				seg_t minBadSeg = fs->minBadSeg;
+				seg_t timeoutSeg = fs->timeoutSeg;
 				fs->timeoutsSeen++;
-				if (minBadSeg < 0 || thisSeg < minBadSeg) {
-					// we can infer a new minBadSeg
-					fs->minBadSeg = thisSeg;
-					if (thisSeg <= fs->maxGoodSeg)
-						fs->maxGoodSeg = thisSeg - 1;
+				if (timeoutSeg < 0 || thisSeg < timeoutSeg) {
+					// we can infer a new timeoutSeg
+					fs->timeoutSeg = thisSeg;
 				}
 				if (debug != NULL && (flags & ccn_fetch_flags_NoteTimeout)) {
 					fprintf(debug, 
@@ -420,14 +515,8 @@ CallMe(struct ccn_closure *selfp,
 		case CCN_UPCALL_CONTENT_UNVERIFIED:
 			return (CCN_UPCALL_RESULT_VERIFY);
 		case CCN_UPCALL_CONTENT:
-			if (fs->minBadSeg >= 0 && fs->minBadSeg <= thisSeg)
+			if (fs->timeoutSeg >= 0 && fs->timeoutSeg <= thisSeg)
 				// we will ignore this, since we are blocked
-				return(CCN_UPCALL_RESULT_OK);
-			if (thisSeg > fs->maxGoodSeg)
-				fs->maxGoodSeg = thisSeg;
-			if (thisSeg < needSeg || thisSeg > limSeg)
-				// no point in getting the contents
-				// since we don't really want them
 				return(CCN_UPCALL_RESULT_OK);
 			break;
 		default:
@@ -437,69 +526,73 @@ CallMe(struct ccn_closure *selfp,
 	
 	struct ccn_fetch_buffer *fb = FindBufferForSeg(fs, thisSeg);
 	if (fb == NULL) {
-		// we don't already have the data
-		int found = -1;
-		for (i = 0; i < fs->nBufs; i++) {
-			struct ccn_fetch_buffer *fb = fs->bufs[i];
-			seg_t bSeg = fb->seg;
-			if (bSeg < needSeg || bSeg > limSeg) {
-				// a very useful victim
-				found = i;
-				break;
-			}
-		}
-		if (found < 0) {
-			// no victim?  this is a bug!
-			// TBD: how to recover?
-			if (debug != NULL && (flags & ccn_fetch_flags_NoteGlitch)) {
+		// we don't already have the data yet
+		const unsigned char *data = NULL;
+		size_t dataLen = 0;
+		size_t ccnb_size = info->pco->offset[CCN_PCO_E];
+		const unsigned char *ccnb = info->content_ccnb;
+		int res = ccn_content_get_value(ccnb, ccnb_size, info->pco,
+										&data, &dataLen);
+		
+		if (res < 0 || dataLen < 0 || (thisSeg != finalSeg && dataLen == 0)) {
+			// we got a bogus result, no data in this content!
+			if (debug != NULL && (flags & ccn_fetch_flags_NoteAddRem)) {
 				fprintf(debug, 
-						"** ccn_fetch no victim, %s, seg %jd\n",
-						fs->id, thisSeg);
+						"-- ccn_fetch no data, %s, seg %jd, final %jd\n",
+						fs->id, thisSeg, finalSeg);
 				fflush(debug);
 			}
-		} else {
-			// we can finally transfer the data
-			const unsigned char *data = NULL;
-			size_t dataLen = 0;
-			size_t ccnb_size = info->pco->offset[CCN_PCO_E];
-			const unsigned char *ccnb = info->content_ccnb;
-			int res = ccn_content_get_value(ccnb, ccnb_size, info->pco,
-											&data, &dataLen);
-			
-			if (res < 0) {
-			} else if (dataLen == 0) {
-				if (debug != NULL && (flags & ccn_fetch_flags_NoteAddRem)) {
-					fprintf(debug, 
-							"-- ccn_fetch dataLen == 0, %s, seg %jd, final %jd\n",
-							fs->id, thisSeg, finalSeg);
-					fflush(debug);
-				}
-			} else {
-				// transfer the data
-				struct ccn_fetch_buffer *fb = fs->bufs[found];
-				if (dataLen > 0) memcpy(fb->buf, data, dataLen);
-				fb->seg = thisSeg;
-				fb->len = dataLen;
-				limSeg = thisSeg+1;
-				if (debug != NULL && (flags & ccn_fetch_flags_NoteFill)) {
-					fprintf(debug, 
-							"-- ccn_fetch FillSeg, %s, seg %jd, len %d\n",
-							fs->id, thisSeg, (int) dataLen);
-					fflush(debug);
-				}
-				if (thisSeg == finalSeg) {
-					// NOW we really know the file size
-					fs->fileSize = thisSeg * CCN_CHUNK_SIZE + dataLen;
-					limSeg = thisSeg;
-					if (debug != NULL && (flags & ccn_fetch_flags_NoteFinal)) {
-						fprintf(debug, 
-								"-- ccn_fetch file size, %s, fileSize %jd\n",
-								fs->id, fs->fileSize);
-						fflush(debug);
-					}
-				}
-				fs->segsRead++;
+			if (fs->zeroLenSeg < 0 || thisSeg < fs->zeroLenSeg)
+				// note this problem for future reporting
+				fs->zeroLenSeg = thisSeg;
+		} else if (thisSeg == finalSeg && dataLen == 0) {
+			// EOF
+			if (fs->fileSize < 0)
+				fs->fileSize = InferPosition(fs, thisSeg);
+			fs->finalSeg = finalSeg-1;
+			if (debug != NULL && (flags & ccn_fetch_flags_NoteAddRem)) {
+				fprintf(debug, 
+						"-- ccn_fetch EOF, dataLen == 0, %s, seg %jd, len %d\n",
+						fs->id, thisSeg, (int) dataLen);
+				fflush(debug);
 			}
+			
+		} else {
+			// alloc a buffer and transfer the data
+			
+			if (fs->segSize == 0) {
+				// assuming fixed size segments, so any should do
+				// EXCEPT for an incomplete final segment
+				if (thisSeg == 0 || thisSeg < finalSeg)
+					fs->segSize = dataLen;
+			}
+			struct ccn_fetch_buffer *fb = NewBufferForSeg(fs, thisSeg, dataLen);
+			memcpy(fb->buf, data, dataLen);
+			if (debug != NULL && (flags & ccn_fetch_flags_NoteFill)) {
+				fprintf(debug, 
+						"-- ccn_fetch FillSeg, %s, seg %jd, len %d\n",
+						fs->id, thisSeg, (int) dataLen);
+				fflush(debug);
+			}
+			if (thisSeg == finalSeg) {
+				// the file size is known in segments
+				if (fs->segSize <= 0) {
+					// variable or unknown segment size
+					if (thisSeg == fs->readSeg) {
+						fs->fileSize = fs->readPosition + dataLen;
+					}
+				} else {
+					// fixed segment size, so file size is now known
+					fs->fileSize = thisSeg * fs->segSize + dataLen;
+				}
+				if (debug != NULL && (flags & ccn_fetch_flags_NoteFinal)) {
+					fprintf(debug, 
+							"-- ccn_fetch file size, %s, fileSize %jd\n",
+							fs->id, fs->fileSize);
+					fflush(debug);
+				}
+			}
+			fs->segsRead++;
 		}
 	}
 	
@@ -642,19 +735,20 @@ ccn_fetch_open(struct ccn_fetch *f,
 			   struct ccn_charbuf *name,
 			   const char *id,
 			   struct ccn_charbuf *interestTemplate,
-			   int nBufs,
-			   int resolveVersion) {
+			   int maxBufs,
+			   int resolveVersion,
+			   int assumeFixed) {
 	// returns a new ccn_fetch_stream object based on the arguments
 	// returns NULL if not successful
-	int i;
-    if (nBufs <= 0) return NULL;
-	if (nBufs > 64) nBufs = 64;
+    if (maxBufs <= 0) return NULL;
+	if (maxBufs > 16) maxBufs = 16;
 	int res = 0;
 	FILE *debug = f->debug;
 	ccn_fetch_flags flags = f->debugFlags;
     
 	// first, resolve the version
 	struct ccn_fetch_stream *fs = calloc(1, sizeof(*fs));
+	fs->segSize = (assumeFixed ? 0 : -1);
 	fs->name = ccn_charbuf_create();
 	fs->id = newStringCopy((char *) id);
 	ccn_charbuf_append_charbuf(fs->name, name);
@@ -682,8 +776,8 @@ ccn_fetch_open(struct ccn_fetch *f,
 	}
 	fs->fileSize = -1;
 	fs->finalSeg = -1;
-	fs->maxGoodSeg = -1;
-	fs->minBadSeg = -1;
+	fs->timeoutSeg = -1;
+	fs->zeroLenSeg = -1;
 	fs->parent = f;
 	fs->timeoutUSecs = CCN_INTEREST_TIMEOUT_USECS;  // TBD: how to get better timeout?
 	
@@ -696,15 +790,7 @@ ccn_fetch_open(struct ccn_fetch *f,
 		fs->interest = make_data_template(MaxSuffixDefault);
 	
 	// allocate the buffers
-	fs->nBufs = nBufs;
-	fs->bufs = calloc(nBufs, sizeof(*(fs->bufs)));
-	for (i = 0; i < nBufs; i++) {
-		struct ccn_fetch_buffer *fb = calloc(1, sizeof(*fb));
-		fb->seg = -1;
-		fb->max = CCN_CHUNK_SIZE;
-		fb->buf = calloc(fb->max, sizeof(*(fb->buf)));
-		fs->bufs[i] = fb;
-	}
+	fs->maxBufs = maxBufs;
 	
 	// remember the stream in the parent
 	int ns = f->nStreams;
@@ -753,15 +839,8 @@ ccn_fetch_close(struct ccn_fetch_stream *fs) {
 		this = this->next;
 	}
 	// free up the buffers
-	int nBufs = fs->nBufs;
-	for (i = 0; i < nBufs; i++) {
-		struct ccn_fetch_buffer *fb = fs->bufs[i];
-		fs->bufs[i] = NULL;
-		if (fb != NULL) {
-			if (fb->buf != NULL) free(fb->buf);
-			free(fb);
-		}
-	}
+	fs->maxBufs = 0;
+	PruneSegments(fs);
 	
 	if (fs->name != NULL)
 		ccn_charbuf_destroy(&fs->name);
@@ -801,45 +880,44 @@ ccn_fetch_close(struct ccn_fetch_stream *fs) {
 
 /**
  * Tests for available bytes in the stream.
- * Determines how many bytes can be read on the given stream
- * without waiting (via ccn_fetch_poll).
- * @returns -1 if no bytes are immediately available,
- *    0 if the stream is at the end,
- *    and N > 0 if N bytes can be read without performing a poll.
  */
 extern intmax_t
 ccn_fetch_avail(struct ccn_fetch_stream *fs) {
 	intmax_t pos = fs->readPosition;
 	if (fs->fileSize >= 0 && pos >= fs->fileSize) {
 		// file size known, and we are at the limit
-		return 0;
+		return CCN_FETCH_READ_END;
 	}
 	intmax_t avail = 0;
-	seg_t loSeg = pos / CCN_CHUNK_SIZE;
-	if (fs->minBadSeg >= 0 && loSeg >= fs->minBadSeg)
-		// if we failed to get a segment and we needed it, assume EOF
-		// TBD: not a good assumption?
-		return -1;
-	seg_t hiSeg = loSeg + fs->nBufs - 1;
+	seg_t seg = fs->readSeg;
+	if (fs->timeoutSeg >= 0 && seg >= fs->timeoutSeg)
+		// timeout indication
+		return CCN_FETCH_READ_TIMEOUT;
+	if (fs->zeroLenSeg >= 0 && seg >= fs->zeroLenSeg)
+		// zero len indication
+		return CCN_FETCH_READ_ZERO;
 	seg_t finalSeg = fs->finalSeg;
-	if (finalSeg >= 0 && hiSeg > finalSeg) hiSeg = finalSeg;
-	if (loSeg > hiSeg) return -1; // seek beyond EOF may cause this
-	int mod = pos % CCN_CHUNK_SIZE;
+	if (seg > finalSeg && fs->finalSeg >= 0)
+		// seek beyond EOF may cause this
+		return CCN_FETCH_READ_NONE;
 	
-	seg_t seg = loSeg;
-	while (seg <= hiSeg) {
+	for (;;) {
 		struct ccn_fetch_buffer *fb = FindBufferForSeg(fs, seg);
 		if (fb == NULL) break;
+		if (fb->pos < 0) fb->pos = pos;
 		int len = fb->len;
-		avail = avail + len;
-		if (seg == loSeg && mod != 0) {
-			// correct for an offset into the block
-			if (mod > len) mod = len;  // really?
-			avail = avail - mod;
+		if (seg == fs->readSeg) {
+			// adjust for offset into the buffer
+			intmax_t off = pos - fb->pos;
+			if (off > 0) len = len - off;
 		}
+		avail = avail + len;
+		pos = pos + len;
 		seg++;
 	}
-	if (avail == 0) avail = -1;
+	if (avail == 0)
+		// nothing available at this time, but not at the end, we think
+		return CCN_FETCH_READ_NONE;
 	return avail;
 }
 
@@ -848,10 +926,12 @@ ccn_fetch_avail(struct ccn_fetch_stream *fs) {
  * Reads at most len bytes into buf from the given stream.
  * Will not wait for bytes to arrive.
  * Advances the read position on a successful read.
- * @returns -1 if no bytes are immediately available
- *    (includes len <= 0 or buf == NULL cases),
- *    0 if the stream is at the end,
- *    and N > 0 if N bytes can be read without performing a poll.
+ * @returns
+ *    CCN_FETCH_READ_TIMEOUT if a timeout occured,
+ *    CCN_FETCH_READ_ZERO if a zero-length segment was found
+ *    CCN_FETCH_READ_NONE if no bytes are immediately available
+ *    CCN_FETCH_READ_END if the stream is at the end,
+ *    and N > 0 if N bytes were read.
  */
 extern intmax_t
 ccn_fetch_read(struct ccn_fetch_stream *fs,
@@ -868,25 +948,25 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 	}
 	intmax_t nr = 0;
 	unsigned char *dst = (unsigned char *) buf;
-	seg_t finalSeg = fs->finalSeg;
-	seg_t seg = pos / CCN_CHUNK_SIZE;
+	seg_t seg = fs->readSeg;
 	
-	if (fs->minBadSeg >= 0 && seg >= fs->minBadSeg)
+	if (fs->timeoutSeg >= 0 && seg >= fs->timeoutSeg)
 		// if a needed read timed out, then we say so
 		return CCN_FETCH_READ_TIMEOUT;
-	seg_t limSeg = seg+fs->nBufs-1;
-	if (seg*2 < limSeg)
-		// don't start off too quickly, make this nice for short files
-		limSeg = seg*2;
-	if (finalSeg >= seg && finalSeg < limSeg)
-		// use finalSeg to limit the excess interests
-		limSeg = finalSeg;
-	while (seg <= limSeg && len > 0) {
+	if (fs->zeroLenSeg >= 0 && seg >= fs->zeroLenSeg)
+		// if we got a zero length segment, report it
+		return CCN_FETCH_READ_ZERO;
+	while (len > 0) {
 		struct ccn_fetch_buffer *fb = FindBufferForSeg(fs, seg);
 		if (fb == NULL) break;
 		unsigned char *src = fb->buf;
-		seg_t lo = seg * CCN_CHUNK_SIZE;
-		seg_t hi = lo + fb->len;
+		size_t lo = fb->pos;
+		if (lo < 0) {
+			// segments delivered at random might cause this
+			lo = pos;
+			fb->pos = pos;
+		}
+		size_t hi = lo + fb->len;
 		if (pos < lo || pos >= hi || seg != fb->seg) {
 			// this SHOULD NOT HAPPEN!
 			FILE *debug = fs->parent->debug;
@@ -906,9 +986,14 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 		off = off + d;
 		len = len - d;
 		fs->readPosition = pos;
-		seg++;
+		if (pos == hi) {
+			// finished the bytes in this segment
+			seg++;
+			fs->readSeg = seg;
+		}
 	}
-	NeedSegments(fs, limSeg);
+	NeedSegments(fs);
+	PruneSegments(fs);
 	if (nr == 0) {
 		return CCN_FETCH_READ_NONE;
 	}
@@ -920,7 +1005,7 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
  */
 extern void
 ccn_reset_timeout(struct ccn_fetch_stream *fs) {
-	fs->minBadSeg = -1;
+	fs->timeoutSeg = -1;
 }
 
 /**
@@ -934,35 +1019,41 @@ ccn_reset_timeout(struct ccn_fetch_stream *fs) {
 extern int
 ccn_fetch_seek(struct ccn_fetch_stream *fs, intmax_t pos) {
 	// seeks to the given position in the input stream
-	if (pos < 0) return -1;
-	intmax_t fileSize = fs->fileSize;
-	if (fileSize >= 0) {
-		// file is known exactly, so fast case
-		if (pos > fileSize) return -1;
-		fs->readPosition = pos;
+	seg_t seg = 0;
+	if (pos == 0) {
+		// seek to the start should always be OK
+		// (also resets bad segment indicators)
+		fs->readPosition = 0;
+		fs->readSeg = 0;
+		fs->timeoutSeg = -1;
+		fs->zeroLenSeg = -1;
+	} else if (pos == fs->readPosition) {
+		// no change
 		return 0;
-	}
-	// at this point we don't know the exact size
-	seg_t seg = pos / CCN_CHUNK_SIZE;
-	int mod = pos % CCN_CHUNK_SIZE;
-	if (fs->minBadSeg >= 0 && seg >= fs->minBadSeg) {
-		// be careful to not return bad seek indicator if we are seeking to
-		// the exact EOF and we don't know exactly where it is
-		if (mod > 0 || seg > fs->minBadSeg)
-			// failed to get segment, but we really need it
-			return -1;
-	}
-	struct ccn_fetch_buffer *fb = FindBufferForSeg(fs, seg);
-	if (fb != NULL) {
-		// fast case, already in a buffer
-		if (mod > fb->len) return -1; // beyond the end
-		fs->readPosition = pos;
 	} else {
-		// force the segment requests
-		fs->readPosition = pos;
-		NeedSegment(fs, seg);
-		if (mod == 0 && seg > 0) NeedSegment(fs, seg-1);
+		// seek elsewhere
+		struct ccn_fetch_buffer *fb = FindBufferForPosition(fs, pos);
+		if (fb != NULL) {
+			// an existing segment, so this is easy
+			seg = fb->seg;
+		} else {
+			if (pos < 0 || fs->segSize <= 0)
+				// segment size is not known, so indicate that seek fails
+				return -1;
+			intmax_t fileSize = fs->fileSize;
+			if (fileSize >= 0 && pos > fileSize) {
+				// file size is known exactly, and we have gone too far
+				return -1;
+			}
+			// at this point we can set the position (failure can occur later on the read)
+			seg = pos / fs->segSize;
+		}
 	}
+	fs->readPosition = pos;
+	fs->readSeg = seg;
+	NeedSegment(fs, seg);
+	PruneSegments(fs);
+	
 	return 0;
 }
 
@@ -971,7 +1062,6 @@ ccn_fetch_seek(struct ccn_fetch_stream *fs, intmax_t pos) {
  */
 extern intmax_t
 ccn_fetch_position(struct ccn_fetch_stream *fs) {
-	// returns the current read position
 	return fs->readPosition;
 }
 

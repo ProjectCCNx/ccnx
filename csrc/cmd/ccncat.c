@@ -94,6 +94,7 @@ main(int argc, char **argv)
     int i;
     int res;
     int opt;
+	int assumeFixed = 0; // variable only for now
     
     while ((opt = getopt(argc, argv, "had:p:s:")) != -1) {
         switch (opt) {
@@ -144,7 +145,7 @@ main(int argc, char **argv)
     for (i = optind; (arg = argv[i]) != NULL; i++) {
         name->length = 0;
         res = ccn_name_from_uri(name, argv[i]);
-        struct ccn_fetch_stream *stream = ccn_fetch_open(fetch, name, arg, templ, pipeline, CCN_V_HIGHEST);
+        struct ccn_fetch_stream *stream = ccn_fetch_open(fetch, name, arg, templ, pipeline, CCN_V_HIGHEST, assumeFixed);
         if (NULL == stream) {
             continue;
         }
