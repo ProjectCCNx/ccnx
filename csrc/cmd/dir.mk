@@ -217,7 +217,7 @@ ccnseqwriter.o: ccnseqwriter.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ../include/ccn/seqwriter.h
-ccn_fetch_test.o: ccn_fetch_test ../include/ccn/ccn.h \
+ccn_fetch_test.o: ccn_fetch_test.c ../include/ccn/ccn.h \
   ../include/ccn/fetch.h ../include/ccn/uri.h
 ccnslurp.o: ccnslurp.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
