@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -37,6 +37,9 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.CCNStats.CCNEnumStats;
+import org.ccnx.ccn.impl.CCNStats.CCNStatistics;
+import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
@@ -66,7 +69,7 @@ import org.ccnx.ccn.protocol.WirePacket;
  * 
  * Starts a separate thread to listen to, decode and handle incoming data from ccnd.
  */
-public class CCNNetworkManager implements Runnable {
+public class CCNNetworkManager implements Runnable, CCNStatistics {
 
 	public static final int DEFAULT_AGENT_PORT = 9695; // ccnx registered port
 	public static final String DEFAULT_AGENT_HOST = "localhost";
@@ -137,7 +140,7 @@ public class CCNNetworkManager implements Runnable {
 	 * Keep track of prefixes that are actually registered with ccnd (as opposed to Filters used
 	 * to dispatch interests). There may be several filters for each registered prefix.
 	 */
-	public class RegisteredPrefix implements CCNInterestListener {
+	private class RegisteredPrefix {
 		private int _refCount = 1;
 		private ForwardingEntry _forwarding = null;
 		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
@@ -145,7 +148,6 @@ public class CCNNetworkManager implements Runnable {
 		// prefix we use Integer.MAX_VALUE as the requested lifetime.
 		private long _lifetime = -1; // in seconds
 		private long _nextRefresh = -1;
-		private boolean _closing = false;
 
 		private RegisteredPrefix(ForwardingEntry forwarding) {
 			_forwarding = forwarding;
@@ -153,19 +155,6 @@ public class CCNNetworkManager implements Runnable {
 				_lifetime = forwarding.getLifetime();
 				_nextRefresh = System.currentTimeMillis() + (_lifetime / 2);
 			}
-		}
-
-		/**
-		 * Waiter for prefixes being deregistered. This is because we don't want to
-		 * wait for the prefix to be deregistered normally, but if we try to re-register
-		 * it we have to to avoid races.
-		 */
-		public Interest handleContent(ContentObject data, Interest interest) {
-			synchronized (this) {
-				notifyAll();
-			}
-			_registeredPrefixes.remove(_forwarding.getPrefixName());
-			return null;
 		}
 	}
 
@@ -779,6 +768,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public void shutdown() {
 		Log.info(Log.FAC_NETMANAGER, "Shutdown requested");
+		
 		_run = false;
 		if (_periodicTimer != null)
 			_periodicTimer.cancel();
@@ -889,6 +879,7 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws InterruptedException
 	 */
 	public ContentObject put(ContentObject co) throws IOException, InterruptedException {	
+		_stats.increment(StatsEnum.Puts);
 		try {
 			write(co);
 		} catch (ContentEncodingException e) {
@@ -911,6 +902,8 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws InterruptedException	if process is interrupted during wait
 	 */
 	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
+		_stats.increment(StatsEnum.Gets);
+
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, "get: {0} with timeout: {1}", interest, timeout);
 		InterestRegistration reg = new InterestRegistration(this, interest, null, null);
@@ -955,6 +948,8 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	private void expressInterest(InterestRegistration reg) throws IOException {
+		_stats.increment(StatsEnum.ExpressInterest);
+
 		try {
 			registerInterest(reg);
 			write(reg.interest);
@@ -978,6 +973,8 @@ public class CCNNetworkManager implements Runnable {
 			// serving any useful purpose.
 			throw new NullPointerException("cancelInterest: callbackListener cannot be null");
 		}
+
+		_stats.increment(StatsEnum.CancelInterest);
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, "cancelInterest: {0}", interest.name());
@@ -1025,6 +1022,7 @@ public class CCNNetworkManager implements Runnable {
 		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
 		// serving any useful purpose.
 		setupTimers();
+		ForwardingEntry entry = null;
 		if (_usePrefixReg) {
 			try {
 				if (null == _prefixMgr) {
@@ -1032,19 +1030,21 @@ public class CCNNetworkManager implements Runnable {
 				}
 				synchronized(_registeredPrefixes) {
 					RegisteredPrefix oldPrefix = getRegisteredPrefix(filter);
-					if (null != oldPrefix) {
-						if (oldPrefix._closing) {
-							synchronized (oldPrefix) {
-								try {
-									oldPrefix.wait();
-								} catch (InterruptedException e) {} // XXX do we need to worry about this?
-							}
-							_registeredPrefixes.remove(filter);		// Just in case
-							registerPrefix(filter, registrationFlags);
-						} else
-							oldPrefix._refCount++;
-					} else {
-						registerPrefix(filter, registrationFlags);
+					if (null != oldPrefix)
+						oldPrefix._refCount++;
+					else {
+						if (null == registrationFlags) {
+							entry = _prefixMgr.selfRegisterPrefix(filter);
+						} else {
+							entry = _prefixMgr.selfRegisterPrefix(filter, null, registrationFlags, Integer.MAX_VALUE);
+						}
+						RegisteredPrefix newPrefix = new RegisteredPrefix(entry);
+						_registeredPrefixes.put(filter, newPrefix);
+						// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+						// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+						// prefix we use Integer.MAX_VALUE as the requested lifetime.
+						if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
+							Log.fine(Log.FAC_NETMANAGER, "setInterestFilter: entry.lifetime: " + entry.getLifetime() + " entry.faceID: " + entry.getFaceID());
 					}
 				}
 			} catch (CCNDaemonException e) {
@@ -1058,29 +1058,6 @@ public class CCNNetworkManager implements Runnable {
 			_myFilters.add(filter, newOne);
 		}
 	}
-
-	/**
-	 * Must be called with _registeredPrefixes locked
-	 * 
-	 * @param filter
-	 * @param registrationFlags
-	 * @throws CCNDaemonException
-	 */
-    private void registerPrefix(ContentName filter, Integer registrationFlags) throws CCNDaemonException {
-    	ForwardingEntry entry;
-    	if (null == registrationFlags) {
-			entry = _prefixMgr.selfRegisterPrefix(filter);
-		} else {
-			entry = _prefixMgr.selfRegisterPrefix(filter, null, registrationFlags, Integer.MAX_VALUE);
-		}
-		RegisteredPrefix newPrefix = new RegisteredPrefix(entry);
-		_registeredPrefixes.put(filter, newPrefix);
-		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
-		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
-		// prefix we use Integer.MAX_VALUE as the requested lifetime.
-		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
-			Log.fine(Log.FAC_NETMANAGER, "setInterestFilter: entry.lifetime: " + entry.getLifetime() + " entry.faceID: " + entry.getFaceID());
-    }
 
 	/**
 	 * Unregister a standing interest filter
@@ -1107,6 +1084,7 @@ public class CCNNetworkManager implements Runnable {
 				synchronized (_registeredPrefixes) {
 					RegisteredPrefix prefix = getRegisteredPrefix(filter);
 					if (null == prefix || prefix._refCount <= 1) {
+						_registeredPrefixes.remove(filter);
 						ForwardingEntry entry = prefix._forwarding;
 						if (!entry.getPrefixName().equals(filter)) {
 							Log.severe(Log.FAC_NETMANAGER, "cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
@@ -1115,8 +1093,7 @@ public class CCNNetworkManager implements Runnable {
 							if (null == _prefixMgr) {
 								_prefixMgr = new PrefixRegistrationManager(this);
 							}
-							prefix._closing = true;
-							_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
+							_prefixMgr.unRegisterPrefix(filter, entry.getFaceID());
 						} catch (CCNDaemonException e) {
 							Log.warning(Log.FAC_NETMANAGER, "cancelInterestFilter failed with CCNDaemonException: " + e.getMessage());
 						}
@@ -1143,6 +1120,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	protected void write(ContentObject data) throws ContentEncodingException {
+		_stats.increment(StatsEnum.WriteObject);
 		WirePacket packet = new WirePacket(data);
 		writeInner(packet);
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
@@ -1155,6 +1133,7 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws ContentEncodingException
 	 */
 	public void write(Interest interest) throws ContentEncodingException {
+		_stats.increment(StatsEnum.WriteInterest);
 		WirePacket packet = new WirePacket(interest);
 		writeInner(packet);
 	}
@@ -1168,6 +1147,16 @@ public class CCNNetworkManager implements Runnable {
 				int result = _channel.write(datagram);
 				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 					Log.finest(Log.FAC_NETMANAGER, "Wrote datagram (" + datagram.position() + " bytes, result " + result + ")");
+				
+				if( result < bytes.length ) {
+					_stats.increment(StatsEnum.WriteUnderflows);
+					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO) )
+						Log.info(Log.FAC_NETMANAGER, 
+								"Wrote datagram {0} bytes to channel, but packet was {1} bytes",
+								result,
+								bytes.length);
+				}
+				
 				if (null != _tapStreamOut) {
 					try {
 						_tapStreamOut.write(bytes);
@@ -1180,6 +1169,7 @@ public class CCNNetworkManager implements Runnable {
 			// We do not see errors on send typically even if 
 			// agent is gone, so log each but do not track
 			Log.warning(Log.FAC_NETMANAGER, "Error sending packet: " + io.toString());
+			_stats.increment(StatsEnum.WriteErrors);
 		}
 	}
 
@@ -1270,6 +1260,8 @@ public class CCNNetworkManager implements Runnable {
 	 * @param ireg
 	 */
 	protected void deliverInterest(InterestRegistration ireg) {
+		_stats.increment(StatsEnum.DeliverInterest);
+
 		// Call any listeners with matching filters
 		synchronized (_myFilters) {
 			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
@@ -1288,6 +1280,8 @@ public class CCNNetworkManager implements Runnable {
 	 * @param co
 	 */
 	protected void deliverData(ContentObject co) {
+		_stats.increment(StatsEnum.DeliverContent);
+		
 		synchronized (_myInterests) {
 			for (InterestRegistration ireg : _myInterests.getValues(co)) {
 				if (ireg.add(co)) { // this is a copy of the data
@@ -1355,7 +1349,75 @@ public class CCNNetworkManager implements Runnable {
 		} catch (CCNDaemonException cde) {
 			_channel.close();
 		}
-	}	
+	}
+	
+	
+	// ==============================================================
+	// Statistics
+	
+	protected CCNEnumStats<StatsEnum> _stats = new CCNEnumStats<StatsEnum>(StatsEnum.Puts);
+
+	public CCNStats getStats() {
+		return _stats;
+	}
+	
+	public enum StatsEnum implements IStatsEnum {
+		// ====================================
+		// Just edit this list, dont need to change anything else
+		
+		Puts ("ContentObjects", "The number of put calls"),
+		Gets ("ContentObjects", "The number of get calls"),
+		WriteInterest ("calls", "The number of calls to write(Interest)"),
+		WriteObject ("calls", "The number of calls to write(ContentObject)"),
+		WriteErrors ("count", "Error count for writeInner()"),
+		WriteUnderflows ("count", "The count of times when the bytes written to the channel < buffer size"),
+		
+		ExpressInterest ("calls", "The number of calls to expressInterest"),
+		CancelInterest ("calls", "The number of calls to cancelInterest"),
+		DeliverInterest ("calls", "The number of calls to deliverInterest"),
+		DeliverContent ("calls", "The number of calls to cancelInterest");
+
+
+		// ====================================
+		// This is the same for every user of IStatsEnum
+		
+		protected final String _units;
+		protected final String _description;
+		protected final static String [] _names;
+
+		static {
+			_names = new String[StatsEnum.values().length];
+			for(StatsEnum stat : StatsEnum.values() )
+				_names[stat.ordinal()] = stat.toString();
+
+		}
+
+		StatsEnum(String units, String description) {
+			_units = units;
+			_description = description;
+		}
+
+		public String getDescription(int index) {
+			return StatsEnum.values()[index]._description;
+		}
+
+		public int getIndex(String name) {
+			StatsEnum x = StatsEnum.valueOf(name);
+			return x.ordinal();
+		}
+
+		public String getName(int index) {
+			return StatsEnum.values()[index].toString();
+		}
+
+		public String getUnits(int index) {
+			return StatsEnum.values()[index]._units;
+		}
+
+		public String [] getNames() {
+			return _names;
+		}
+	}
 }
 
 
