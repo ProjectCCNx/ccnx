@@ -43,11 +43,30 @@ import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;
  * counters they want to use, and pass that to CCNEnumStats.  The Enum must
  * implement IStatsEnum.  After that, the usage is very simple and automagically
  * gives the CCNStats object needed by the CCNStatistics interface.
+ * 
+ * The interface CCNCategoriezedStatistics is for modules that keep statistics
+ * in several cateogries (e.g. for each ContentName you express an interest for).
  */
 public abstract class CCNStats {
 
 	public interface CCNStatistics {
 		public CCNStats getStats();
+	}
+	
+	public interface CCNCategorizedStatistics {
+		/**
+		 * Get a list of the category keys.  The toString() method
+		 * of the key should be meaningful.
+		 */
+		public Object [] getCategoryNames();
+		
+		/**
+		 * Get the statistics associated with the key
+		 * @param name
+		 * @return May be null if #category is not found
+		 * @throws ClassCastException if #cateogry is not appropriate
+		 */
+		public CCNStats getStatsByName(Object category) throws ClassCastException;
 	}
 
 	// ===========================================================

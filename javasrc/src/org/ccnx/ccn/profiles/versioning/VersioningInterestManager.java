@@ -26,6 +26,10 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.impl.CCNStats;
+import org.ccnx.ccn.impl.CCNStats.CCNEnumStats;
+import org.ccnx.ccn.impl.CCNStats.CCNStatistics;
+import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.protocol.ContentName;
@@ -98,7 +102,7 @@ import org.ccnx.ccn.protocol.Interest;
  *          then return interest to handleContent for current interestdata. 
  *   
  */
-public class VersioningInterestManager implements CCNInterestListener {
+public class VersioningInterestManager implements CCNInterestListener, CCNStatistics {
 
 	// MIN_FILL should be less than MAX_FILL/2 due to how step D.1 works.
 		public final static int MIN_FILL = 50;
@@ -278,6 +282,8 @@ public class VersioningInterestManager implements CCNInterestListener {
 
 		VersionNumber version;
 
+		_stats.increment(StatsEnum.Receive);
+		
 		// Match the interest to our pending interests.  This removes it
 		// from the pending interest map.
 		synchronized(_interestMap) {
@@ -292,25 +298,35 @@ public class VersioningInterestManager implements CCNInterestListener {
 		try {
 			version = new VersionNumber(data.name());
 		} catch (VersionMissingException e) {
+			_stats.increment(StatsEnum.ReceiveVersionNumberError);
 			e.printStackTrace();
 
-			if( null != datum )
+			if( null != datum && reexpress )
 				newInterest = datum.buildInterest();
 
 			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
 				Log.finer(Log.FAC_ENCODING, "Returning new interest {0}",
 						null == newInterest ? "NULL" : newInterest.toString());
+
+			if( null != newInterest )
+				_stats.increment(StatsEnum.ReceiveReturnInterest);
+
 			return newInterest;
 		}
 
-		if( null == datum && Log.isLoggable(Log.FAC_ENCODING, Level.WARNING) )
-			Log.warning(Log.FAC_ENCODING, "Did not match a pending interest for version {0} interest {1}",
-					version.toString(), interest.toString());
+		if( null == datum ) {
+			_stats.increment(StatsEnum.ReceiveNoPendingInterest);
+			if( Log.isLoggable(Log.FAC_ENCODING, Level.WARNING) )
+				Log.warning(Log.FAC_ENCODING, "Did not match a pending interest for version {0} interest {1}",
+						version.toString(), interest.toString());
+		}
 
 		// Is this something we should ignore?  This will avoid sending the
 		// object up to the user.
 		if( version.before(_startingVersion) || VersionNumber.getMaximumVersion().before(version) ) 
 		{
+			_stats.increment(StatsEnum.ReceiveIgnored);
+
 			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
 				Log.fine(Log.FAC_ENCODING, "Ignorning version {0} because outside interval {1} to {2}",
 						version.toString(),
@@ -327,10 +343,13 @@ public class VersioningInterestManager implements CCNInterestListener {
 				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
 					Log.fine(Log.FAC_ENCODING, "Receive duplicate version {0}",
 							version.toString());
+				_stats.increment(StatsEnum.ReceiveDuplicates);
+
 			} else {
 				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER) )
 					Log.finer(Log.FAC_ENCODING, "Receive version {0}",
 							version.toString());	
+				_stats.increment(StatsEnum.ReceiveUnique);
 			}
 		}
 
@@ -365,6 +384,9 @@ public class VersioningInterestManager implements CCNInterestListener {
 		if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
 			Log.finer(Log.FAC_ENCODING, "Returning new interest {0}",
 					null == newInterest ? "NULL" : newInterest.toString());
+
+		if( null != newInterest )
+			_stats.increment(StatsEnum.ReceiveReturnInterest);
 
 		return newInterest;
 	}
@@ -434,6 +456,8 @@ public class VersioningInterestManager implements CCNInterestListener {
 	protected void rebuild(VersionNumber version, InterestData datum) {
 		InterestData left, right;
 
+		_stats.increment(StatsEnum.Rebuild);
+
 		if( Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
 			Log.info(Log.FAC_ENCODING, "Rebuilding version {0} data {1}",
 					version.toString(), datum.toString());
@@ -502,6 +526,9 @@ public class VersioningInterestManager implements CCNInterestListener {
 				sum_density += middle.getDensity();
 				sum_density += left.getDensity();
 				average_density = sum_density / _interestData.size();
+
+				_stats.increment(StatsEnum.RebuileShiftLeft);
+
 				return true;				
 			} else
 				if( right_size < left_size && right_size < MID_FILL ) {
@@ -520,6 +547,8 @@ public class VersioningInterestManager implements CCNInterestListener {
 					sum_density += middle.getDensity();
 					sum_density += right.getDensity();
 					average_density = sum_density / _interestData.size();
+					
+					_stats.increment(StatsEnum.RebuildShiftRight);
 					return true;
 				}
 		}
@@ -548,7 +577,9 @@ public class VersioningInterestManager implements CCNInterestListener {
 
 			sum_density += middle.getDensity();
 			sum_density += left.getDensity();
-			average_density = sum_density / _interestData.size();			
+			average_density = sum_density / _interestData.size();	
+			
+			_stats.increment(StatsEnum.RebuildCreateLeft);
 			return true;
 		}
 
@@ -566,6 +597,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 			sum_density += middle.getDensity();
 			sum_density += right.getDensity();
 			average_density = sum_density / _interestData.size();			
+			_stats.increment(StatsEnum.RebuildCreateRight);
 			return true;
 		}
 
@@ -619,6 +651,9 @@ public class VersioningInterestManager implements CCNInterestListener {
 			sum_density += left.getDensity();
 			sum_density += split.getDensity();
 			average_density = sum_density / _interestData.size();	
+			
+			_stats.increment(StatsEnum.RebuildInsertLeft);
+
 		} else {
 			sum_density -= middle.getDensity();
 			sum_density -= right.getDensity();
@@ -640,6 +675,8 @@ public class VersioningInterestManager implements CCNInterestListener {
 			sum_density += right.getDensity();
 			sum_density += split.getDensity();
 			average_density = sum_density / _interestData.size();
+			
+			_stats.increment(StatsEnum.RebuildInsertRight);
 		}
 		return;
 	}
@@ -678,6 +715,9 @@ public class VersioningInterestManager implements CCNInterestListener {
 			// because it's size is < MID_FILL
 			if( null != next )
 				sendInterest(next);
+			
+			_stats.increment(StatsEnum.RebuildRollLeft);
+
 		} else {
 			// go right
 			InterestData node = middle;
@@ -709,6 +749,9 @@ public class VersioningInterestManager implements CCNInterestListener {
 			// because it's size is < MID_FILL
 			if( null != next )
 				sendInterest(next);
+			
+			_stats.increment(StatsEnum.RebuildRollRight);
+
 		}
 		computeAverageDensity();
 	}
@@ -722,6 +765,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 	 * it, we'll issue a new interest.
 	 */
 	protected void sendInterest(InterestData id) {
+		
 		Interest old = id.getLastInterest();
 		Interest interest = id.buildInterest();
 		synchronized(_interestMap) {
@@ -729,6 +773,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 			// thing to an INterestData
 			if( null != old ) {
 				_handle.cancelInterest(old, this);
+				_stats.increment(StatsEnum.CancelInterest);
 				InterestMapData imd = _interestMap.get(old);
 				if( null != imd )
 					imd.setReexpress(false);
@@ -740,10 +785,14 @@ public class VersioningInterestManager implements CCNInterestListener {
 			try {
 				_handle.expressInterest(interest, this);
 				_interestMap.put(interest, new InterestMapData(id));
+				_stats.increment(StatsEnum.SendInterest);
 				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER) )
 					Log.finer(Log.FAC_ENCODING, "sendInterest setting  _interestMap for {0} to {1}", interest, id);
 			} catch(IOException e) {
+				_stats.increment(StatsEnum.SendInterestErrors);
 				e.printStackTrace();
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.SEVERE) )
+					Log.severe(Log.FAC_ENCODING, "Error expressing interest: {0}",e.getMessage());
 			}
 		}
 	}
@@ -786,5 +835,80 @@ public class VersioningInterestManager implements CCNInterestListener {
 		protected boolean _reexpress;
 	}
 
+	// ==============================================================
+	// Statistics
+	
+	protected CCNEnumStats<StatsEnum> _stats = new CCNEnumStats<StatsEnum>(StatsEnum.Receive);
 
+	public CCNStats getStats() {
+		return _stats;
+	}
+	
+	public enum StatsEnum implements IStatsEnum {
+		// ====================================
+		// Just edit this list, dont need to change anything else
+		
+		Receive ("ContentObjects", "The number of objects recieved in handleContent"),
+		ReceiveVersionNumberError ("Errors", "Errors parsing VersionNumber from content name"),
+		ReceiveReturnInterest ("interests", "Number of non-null interests returned from receive()"),
+		ReceiveIgnored ("count", "Count of objects ignored because version was out-of-bounds"),
+		ReceiveDuplicates ("count", "Count of duplicate version numbers received"),
+		ReceiveUnique ("count", "Count of objects with unique version numbers received"),
+		ReceiveNoPendingInterest ("Errors", "Received object did not match a pending interest in _interestMap"),
+		
+		Rebuild ("count", "Calls to rebuild()"),
+		RebuileShiftLeft ("count", "Number of left-shift rebuilds"),
+		RebuildShiftRight ("count", "Number of right-shift rebuilds"),
+		RebuildCreateLeft ("count", "Number of create left neighbor rebuilds"),
+		RebuildCreateRight ("count", "Number of create right neighbor rebuilds"),
+		RebuildInsertLeft ("count", "Number of inserts to left rebuilds"),
+		RebuildInsertRight ("count", "Number of inserts to right rebuilds"),
+		RebuildRollLeft ("count", "Number of roll left rebuilds"),
+		RebuildRollRight ("count", "Number of roll right rebuilds"),
+		
+		SendInterest ("count", "Interests sent (not counting ReceiveReturnInterest)"),
+		CancelInterest ("count", "Interests cancelled"),
+		SendInterestErrors ("errors", "Errors calling expressInterest()"),
+		;
+
+		// ====================================
+		// This is the same for every user of IStatsEnum
+		
+		protected final String _units;
+		protected final String _description;
+		protected final static String [] _names;
+
+		static {
+			_names = new String[StatsEnum.values().length];
+			for(StatsEnum stat : StatsEnum.values() )
+				_names[stat.ordinal()] = stat.toString();
+
+		}
+
+		StatsEnum(String units, String description) {
+			_units = units;
+			_description = description;
+		}
+
+		public String getDescription(int index) {
+			return StatsEnum.values()[index]._description;
+		}
+
+		public int getIndex(String name) {
+			StatsEnum x = StatsEnum.valueOf(name);
+			return x.ordinal();
+		}
+
+		public String getName(int index) {
+			return StatsEnum.values()[index].toString();
+		}
+
+		public String getUnits(int index) {
+			return StatsEnum.values()[index]._units;
+		}
+
+		public String [] getNames() {
+			return _names;
+		}
+	}
 }
