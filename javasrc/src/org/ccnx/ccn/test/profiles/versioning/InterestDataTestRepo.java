@@ -48,10 +48,10 @@ public class InterestDataTestRepo {
 	protected final static long TIMEOUT=30000;
 	protected final ContentName prefix;
 	
-	protected final VersionNumber vn_11100000000L = new VersionNumber(11100000000L);
-	protected final VersionNumber vn_11111100000L = new VersionNumber(11111100000L);
-	protected final VersionNumber vn_11122200000L = new VersionNumber(11122200000L);
-	protected final VersionNumber vn_11133300000L = new VersionNumber(11133300000L);
+	protected final VersionNumber vn_411000000000L = new VersionNumber(411000000000L);
+	protected final VersionNumber vn_411111000000L = new VersionNumber(411111000000L);
+	protected final VersionNumber vn_411222000000L = new VersionNumber(411222000000L);
+	protected final VersionNumber vn_411333000000L = new VersionNumber(411333000000L);
 
 	public InterestDataTestRepo() throws MalformedContentNameStringException {
 		prefix  = ContentName.fromNative(String.format("/test_%016X", _rnd.nextLong()));
@@ -66,7 +66,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testVersionNumberInTree() throws Exception {
 		// make sure the sortable work
-		long [] values = new long [] {111111000000L, 111000000000L, 111333000000L, 111222000000L};
+		long [] values = new long [] {1111110000000L, 1110000000000L, 1113330000000L, 1112220000000L};
 		VersionNumber [] vns = new VersionNumber[values.length];
 		TreeSet<VersionNumber> tree = new TreeSet<VersionNumber>();
 
@@ -108,9 +108,9 @@ public class InterestDataTestRepo {
 	public void testInterestDataCompare() throws Exception {
 		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
 
-		InterestData id1 =  new InterestData(basename, vn_11100000000L, new VersionNumber(11100100000L));
-		InterestData id1a = new InterestData(basename, vn_11100000000L, new VersionNumber(11111000000L));
-		InterestData id2 =  new InterestData(basename, vn_11122200000L, new VersionNumber(11133000000L));
+		InterestData id1 =  new InterestData(basename, vn_411000000000L, new VersionNumber(411110000010L));
+		InterestData id1a = new InterestData(basename, vn_411000000000L, new VersionNumber(411110000020L));
+		InterestData id2 =  new InterestData(basename, vn_411222000000L, new VersionNumber(411330000000L));
 
 		Assert.assertTrue(id1.compareTo(id1a) == 0);
 		Assert.assertTrue(id1a.compareTo(id1) == 0);

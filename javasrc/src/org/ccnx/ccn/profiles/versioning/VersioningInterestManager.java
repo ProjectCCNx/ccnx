@@ -233,6 +233,7 @@ public class VersioningInterestManager implements CCNInterestListener {
 		synchronized(_interestMap) {
 			for(InterestData datum : _interestData) {
 				sendInterest(datum);
+				Log.info(Log.FAC_ENCODING, "Sent initial interest {0}", datum.getLastInterest());
 			}
 		}
 	}
