@@ -171,6 +171,16 @@ public abstract class CCNStats {
 
 		@Override
 		public String toString() {
+			// figure out a width
+			int width = 1;
+			for(int i = 0; i < _counters.length; i++) {
+				String key = _resolver.getName(i);
+				if( key.length() > width )
+					width = key.length();
+			}
+			
+			String format = String.format("%%-%ds", width);
+			
 			// we should cache this and use a dirty flag
 			StringBuilder sb = new StringBuilder();
 			for(int i = 0; i < _counters.length; i++) {
@@ -178,7 +188,9 @@ public abstract class CCNStats {
 				long value = _counters[i].get();
 				String units = _resolver.getUnits(i);
 				String description = _resolver.getDescription(i);
-				sb.append(String.format("%-20s", key));
+				
+				sb.append(String.format(format, key));
+
 				sb.append(": ");
 				sb.append(value);
 				sb.append(" (");

@@ -58,22 +58,29 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 * the repository and the request is sent to the RepositoryStore to be processed.
 	 */
 	public boolean handleInterest(Interest interest) {
+		_server._stats.increment(RepositoryServer.StatsEnum.HandleInterest);
+		
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 			Log.finer(Log.FAC_REPO, "Saw interest: {0}", interest.name());
 		try {
 			if (RepositoryOperations.isStartWriteOperation(interest)) {
+				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWrite);
 				if (!allowGenerated(interest)) return true;
 				startWrite(interest);
 			} else if (RepositoryOperations.isNameEnumerationOperation(interest)) {
+				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestNameEnum);
 				if (!allowGenerated(interest)) return true;
 				nameEnumeratorResponse(interest);
 			} else if (RepositoryOperations.isCheckedWriteOperation(interest)) {
+				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCheckedWrite);
 				if (!allowGenerated(interest)) return true;
 				startWriteChecked(interest);				
 			} else if (RepositoryOperations.isBulkImportOperation(interest)) {
+				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestBulkImport);
 				if (!allowGenerated(interest)) return true;
 				addBulkDataToRepo(interest);				
 			} else {
+				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestUncategorized);
 				ContentObject content = _server.getRepository().getContent(interest);
 				if (content != null) {
 					if (Log.isLoggable(Log.FAC_REPO, Level.FINEST))
@@ -85,6 +92,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				}
 			}
 		} catch (Exception e) {
+			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestErrors);
 			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
@@ -108,6 +116,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		synchronized (_server.getDataListeners()) {
 			for (RepositoryDataListener listener : _server.getDataListeners()) {
 				if (listener.getOrigInterest().equals(interest)) {
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestDuplicateRequests);
 					if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 						Log.info(Log.FAC_REPO, "Request {0} is a duplicate, ignoring", interest.name());
 					return true;
@@ -131,6 +140,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		 // to allow new sessions that are within the new namespace to start but figuring out all
 		 // the locking/startup issues surrounding this is complex so for now we just don't allow it.
 		if (_server.getPendingNameSpaceState()) {
+			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestWriteSuspended);
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 				Log.info(Log.FAC_REPO, "Discarding write request {0} due to pending namespace change", interest.name());
 			return true;
@@ -173,6 +183,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			ContentName globalPrefix = _server.getRepository().getGlobalPrefix();
 			String localName = _server.getRepository().getLocalName();
 			if (BasicPolicy.getPolicyName(globalPrefix, localName).isPrefixOf(listeningName)) {
+				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWritePolicyHandlers);
 				new RepositoryPolicyHandler(interest, readInterest, _server);
 				return;
 			}
@@ -181,7 +192,10 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			_server.addListener(listener);
 			listener.getInterests().add(readInterest, null);
 			_handle.expressInterest(readInterest, listener);
+			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteExpressInterest);
+			
 		} catch (Exception e) {
+			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteErrors);
 			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
@@ -309,6 +323,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 
 		if (ner!=null && ner.hasNames()) {
 			_server.sendEnumerationResponse(ner);
+			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestNameEnumResponses);
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
 				Log.fine(Log.FAC_REPO, "sending back name enumeration response {0}", ner.getPrefix());
 		} else {

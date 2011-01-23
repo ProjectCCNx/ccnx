@@ -18,6 +18,8 @@
 package org.ccnx.ccn.impl.repo;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
 import java.security.InvalidParameterException;
 import java.util.logging.Level;
 
@@ -31,6 +33,11 @@ import org.ccnx.ccn.test.BitBucketRepository;
 public class RepositoryDaemon extends Daemon {
 	RepositoryServer _server;
 	RepositoryStore _repo;
+	String _repositoryRoot;
+	
+	public final static String REPO_STATS = "stats";
+	public final static String REPO_CLEAR_STATS = "clearstats";
+	public final static String DEBUG_STATS_FILE = "stats.txt";
 	
 	protected class RepositoryWorkerThread extends Daemon.WorkerThread {
 
@@ -66,6 +73,14 @@ public class RepositoryDaemon extends Daemon {
 		}
 		
 		public boolean signal(String name) {
+			if( REPO_STATS.equalsIgnoreCase(name) ) {
+				dumpStats();
+				return true;
+			}
+			if( REPO_CLEAR_STATS.equalsIgnoreCase(name) ) {
+				_server.getStats().clearCounters();
+				return true;
+			}
 			return _repo.diagnostic(name);
 		}
 		
@@ -166,6 +181,7 @@ public class RepositoryDaemon extends Daemon {
 			if (_repo == null)	// default lower half
 				_repo = new LogStructRepoStore();
 			
+			_repositoryRoot = repositoryRoot;
 			_repo.initialize(repositoryRoot, policyFile, localName, globalPrefix, nameSpace, null);
 			_server = new RepositoryServer(_repo);
 			
@@ -216,4 +232,23 @@ public class RepositoryDaemon extends Daemon {
 			Log.warningStackTrace(e);
 		}
 	}
+	
+	protected void dumpStats() {
+		// Debug: dump names tree to file
+		File statsFile = new File(_repositoryRoot, DEBUG_STATS_FILE);
+		PrintStream statsOut = null;
+		try {
+			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+				Log.info(Log.FAC_REPO, "Dumping stats to " + statsFile.getAbsolutePath());
+			}
+			statsOut = new PrintStream(statsFile);
+			statsOut.println(_server.getStats().toString());
+		} catch (FileNotFoundException ex) {
+			Log.warning(Log.FAC_REPO, "Unable to dump stats to " + statsFile.getAbsolutePath());
+		} finally {
+			if( null != statsOut )
+				statsOut.close();
+		}
+	}
+
 }

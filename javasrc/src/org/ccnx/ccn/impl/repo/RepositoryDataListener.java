@@ -76,6 +76,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 	public Interest handleContent(ContentObject co,
 			Interest interest) {
 		
+		_server._stats.increment(RepositoryServer.StatsEnum.HandleContent);
+
 		_timer = System.currentTimeMillis();
 
 
@@ -148,7 +150,10 @@ public class RepositoryDataListener implements CCNInterestListener {
 				try {
 					_handle.expressInterest(newInterest, this);
 					_interests.add(newInterest, null);
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleContentExpressInterest);
+
 				} catch (IOException e) {
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleContentExpressInterestErrors);
 					Log.logStackTrace(Level.WARNING, e);
 					e.printStackTrace();
 				}
@@ -163,6 +168,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 	 * @param co
 	 */
 	public void handleData(ContentObject co) {
+		_server._stats.increment(RepositoryServer.StatsEnum.HandleContentHandleData);
 		_server.getDataHandler().add(co);
 	}
 	
@@ -208,6 +214,7 @@ public class RepositoryDataListener implements CCNInterestListener {
 		@Override
 		protected void action(long value, Entry<?> entry, Iterator<Entry<Object>> it) {
 			if (value > _value) {
+				_server._stats.increment(RepositoryServer.StatsEnum.HandleContentCancelInterest);
 				_handle.cancelInterest(entry.interest(), _listener);
 				it.remove();
 			}
@@ -243,8 +250,10 @@ public class RepositoryDataListener implements CCNInterestListener {
 	 * Called on listener teardown.
 	 */
 	public void cancelInterests() {
-		for (Entry<Object> entry : _interests.values())
+		for (Entry<Object> entry : _interests.values()) {
+			_server._stats.increment(RepositoryServer.StatsEnum.HandleContentCancelInterest);
 			_handle.cancelInterest(entry.interest(), this);
+		}
 	}
 	
 	/**
