@@ -134,7 +134,14 @@ public class CCNTime extends Timestamp {
 	 * @return the binary representation we use for encoding
 	 */
 	public byte [] toBinaryTime() {
-		return BigInteger.valueOf(toBinaryTimeAsLong()).toByteArray();
+		// We need to get this in a signum representation that's not 2's complement
+		byte [] b = BigInteger.valueOf(toBinaryTimeAsLong()).toByteArray();
+		if( 0 == b[0] && b.length > 1 ) {
+			byte [] bb = new byte[b.length - 1];
+			System.arraycopy(b, 1, bb, 0, bb.length);
+			b = bb;
+		}
+		return b;
 	}
 	
 	/**

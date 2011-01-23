@@ -94,10 +94,22 @@ public class VersioningProfile implements CCNProfile {
 		if (0 == version) {
 			vcomp = FIRST_VERSION_MARKER;
 		} else {
-			byte [] varr = BigInteger.valueOf(version).toByteArray();
-			vcomp = new byte[varr.length + 1];
+			BigInteger bi = BigInteger.valueOf(version);
+			byte [] varr = bi.toByteArray();
+			
+			// assume that bi is not zero paded 2's comp
+			int start = 0;
+			int length = varr.length;
+			
+			// If BigInteger added a zero pad, remove it
+			if( 0 == varr[0] && varr.length > 1) {
+				start = 1;
+				length--;
+			}
+			
+			vcomp = new byte[length + 1];
 			vcomp[0] = VERSION_MARKER;
-			System.arraycopy(varr, 0, vcomp, 1, varr.length);
+			System.arraycopy(varr, start, vcomp, 1, length);
 		}
 		return new ContentName(name, vcomp);
 	}
@@ -264,7 +276,9 @@ public class VersioningProfile implements CCNProfile {
 		System.arraycopy(versionComponent, 1, versionData, 0, versionComponent.length - 1);
 		if (versionData.length == 0)
 			return 0;
-		return new BigInteger(versionData).longValue();
+		
+		// Use the sign-magnitude representation, not 2's complement
+		return new BigInteger(1, versionData).longValue();
 	}
 
 	public static CCNTime getVersionComponentAsTimestamp(byte [] versionComponent) {

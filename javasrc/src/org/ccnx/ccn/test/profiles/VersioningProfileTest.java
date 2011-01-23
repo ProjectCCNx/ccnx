@@ -20,6 +20,7 @@ package org.ccnx.ccn.test.profiles;
 import static org.junit.Assert.fail;
 import junit.framework.Assert;
 
+import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -225,6 +226,43 @@ public class VersioningProfileTest {
 		if (!name.equals(abvName))
 			fail();
 	}
-
-
+	
+	@Test
+	public void testUnpaddedVersions() throws Exception {
+		ContentName name = ContentName.fromNative("/testme");
+		long v0 = 0x7FFFFF;
+		byte [] b0 = {VersioningProfile.VERSION_MARKER, (byte) 0x7F, (byte) 0xFF, (byte) 0xFF};
+		
+		ContentName vn0 = VersioningProfile.addVersion(name, v0);
+		byte [] x0 = VersioningProfile.getLastVersionComponent(vn0);
+		System.out.println("From long name   : " + vn0.toString());
+		Assert.assertTrue(Arrays.areEqual(b0, x0));	
+		
+		// now do it as ccntime
+		CCNTime t0 = CCNTime.fromBinaryTimeAsLong(v0);
+		vn0 = VersioningProfile.addVersion(name, t0);
+		x0 = VersioningProfile.getLastVersionComponent(vn0);
+		System.out.println("From ccntime name: " + vn0.toString());
+		Assert.assertTrue(Arrays.areEqual(b0, x0));	
+	}
+	
+	@Test
+	public void testPaddedVersions() throws Exception {
+		ContentName name = ContentName.fromNative("/testme");
+		long v0 = 0x80FFFF;
+		byte [] b0 = {VersioningProfile.VERSION_MARKER, (byte) 0x80, (byte) 0xFF, (byte) 0xFF};
+		
+		ContentName vn0 = VersioningProfile.addVersion(name, v0);
+		byte [] x0 = VersioningProfile.getLastVersionComponent(vn0);
+		System.out.println("From long name   : " + vn0.toString());
+		Assert.assertTrue(Arrays.areEqual(b0, x0));	
+		
+		// now do it as ccntime
+		CCNTime t0 = CCNTime.fromBinaryTimeAsLong(v0);
+		vn0 = VersioningProfile.addVersion(name, t0);
+		x0 = VersioningProfile.getLastVersionComponent(vn0);
+		System.out.println("From ccntime name: " + vn0.toString());
+		Assert.assertTrue(Arrays.areEqual(b0, x0));	
+	}
+	
 }
