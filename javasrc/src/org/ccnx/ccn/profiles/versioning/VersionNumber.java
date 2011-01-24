@@ -16,14 +16,10 @@
  */
 package org.ccnx.ccn.profiles.versioning;
 
-import java.util.Arrays;
-
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
-
-import com.parc.senp.vpclib.profiles.vpc.indexer.EventData;
 
 /**
  * Represent the version used in a CCNx name.
