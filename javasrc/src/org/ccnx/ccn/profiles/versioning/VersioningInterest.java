@@ -184,8 +184,6 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 		}
 	}
 	
-
-	@Override
 	public Object[] getCategoryNames() {
 		synchronized(_map) {
 			return _map.keySet().toArray();
@@ -298,7 +296,6 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 		 * @param interest
 		 * @return null
 		 */
-		@Override
 		public synchronized Interest handleContent(ContentObject data, Interest interest) {
 			// when we're stopped, we do not pass any data
 			if( ! _running )
@@ -313,7 +310,6 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 				return null;
 		}
 		
-		@Override
 		public CCNStats getStats() {
 			return _vim.getStats();
 		}

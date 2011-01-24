@@ -77,7 +77,6 @@ public class InterestData implements Comparable<InterestData> {
 	/**
 	 * Order by startTime using UNSIGNED COMPARISON
 	 */
-	@Override
 	public int compareTo(InterestData other) {
 		return _startTime.compareTo(other._startTime);
 	}

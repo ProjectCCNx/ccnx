@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.test.profiles.versioning;
 
+import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -45,6 +46,14 @@ public class VersionNumberTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		String javaVersion = System.getProperty("java.version");
+		System.out.println("Java version: " + javaVersion);
+		
+		Class<?> c = TreeSet.class;
+		Method [] methods = c.getMethods();
+		for( Method m : methods ) {
+			System.out.println(m.toString());
+		}
 	}
 
 	@Before

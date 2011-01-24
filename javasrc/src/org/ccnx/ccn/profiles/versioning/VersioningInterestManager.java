@@ -156,7 +156,6 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 		cancelInterests();
 	}
 
-	@Override
 	public synchronized Interest handleContent(ContentObject data, Interest interest) {
 		return receive(data, interest);
 	}
@@ -818,7 +817,6 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 		@Override
 		public int hashCode() { return _data.hashCode(); }
 
-		@Override
 		public int compareTo(InterestMapData arg0) {
 			return _data.compareTo(arg0._data);
 		}

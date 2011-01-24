@@ -184,7 +184,6 @@ public class VersioningHelper {
 		public InterestData id = null;
 		public int runCount = 0;
 
-		@Override
 		public synchronized Interest handleContent(ContentObject data, Interest interest) {
 //			System.out.println("handleContent: " + data.name());
 			
