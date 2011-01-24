@@ -23,6 +23,8 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 
+import com.parc.senp.vpclib.profiles.vpc.indexer.EventData;
+
 /**
  * Represent the version used in a CCNx name.
  * 
@@ -89,7 +91,7 @@ public class VersionNumber implements Comparable<VersionNumber> {
 	 */
 	public VersionNumber(byte [] versionComponent) {
 		_version = VersioningProfile.getVersionComponentAsTimestamp(versionComponent);
-		_versionComponent = Arrays.copyOf(versionComponent, versionComponent.length);
+		_versionComponent = copyOf(versionComponent, versionComponent.length);
 		_binaryTime = _version.toBinaryTimeAsLong();
 	}
 
@@ -104,7 +106,7 @@ public class VersionNumber implements Comparable<VersionNumber> {
 	 * @return A copy of the internal byte array.
 	 */
 	public byte [] getVersionBytes() {
-		return Arrays.copyOf(_versionComponent, _versionComponent.length);
+		return copyOf(_versionComponent, _versionComponent.length);
 	}
 	
 	/**
@@ -277,5 +279,24 @@ public class VersionNumber implements Comparable<VersionNumber> {
 	protected final byte [] _versionComponent;
 	protected final long _binaryTime;
 	protected String _asString = null;
+	
+	/**
+	 * Copy #input to a new array of #length, padding with 0's as necessary
+	 * 
+	 * This is necesary because Java 1.5 does not support Arrays.copyof()
+	 * 
+	 * @param input
+	 * @param length
+	 * @return
+	 */
+	protected static byte [] copyOf(byte [] input, int length) {
+		byte [] output = new byte[length];
+		int min = (input.length < length) ? input.length : length;
+		for(int i = 0; i < min; i++)
+			output[i] = input[i];
+		for(int i = input.length; i < length; i++)
+			output[i] = (byte) 0;
+		return output;
+	}
 
 }
