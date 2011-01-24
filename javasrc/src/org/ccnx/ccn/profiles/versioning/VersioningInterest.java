@@ -26,9 +26,13 @@ import java.util.Set;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.impl.CCNStats;
+import org.ccnx.ccn.impl.CCNStats.CCNCategorizedStatistics;
+import org.ccnx.ccn.impl.CCNStats.CCNStatistics;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
  * Given a base name, retrieve all versions.  We have maintained a similar method
@@ -64,7 +68,7 @@ import org.ccnx.ccn.protocol.Interest;
  * is really just a holder for VersioningInterestManager plus state about the
  * set of listeners.
  */
-public class VersioningInterest {
+public class VersioningInterest implements CCNCategorizedStatistics {
 	
 	// ==============================================================================
 	// Public API
@@ -154,6 +158,40 @@ public class VersioningInterest {
 		removeAll();
 	}
 	
+	/**
+	 * return the statistics for the interests corresponding to name
+	 * @param name A ContentName or a URI-encoded string
+	 * @return May be null if no interest expressed for name
+	 */
+	public CCNStats getStatsByName(Object name) throws ClassCastException {
+		ContentName cn = null;
+		if( name instanceof ContentName )
+			cn = (ContentName) name;
+		else if( name instanceof String )
+			try {
+				cn = ContentName.fromURI((String) name);
+			} catch (MalformedContentNameStringException e) {
+			}
+	
+		if( null == cn )
+			throw new ClassCastException("Name must be a ContentName or a URI string");
+		
+		synchronized(_map) {
+			BasenameState data = _map.get(cn);
+			if( null != data )
+				return data.getStats();
+			return null;
+		}
+	}
+	
+
+	@Override
+	public Object[] getCategoryNames() {
+		synchronized(_map) {
+			return _map.keySet().toArray();
+		}
+	}
+	
 	// ==============================================================================
 	// Internal implementation
 	private final CCNHandle _handle;
@@ -210,7 +248,7 @@ public class VersioningInterest {
 	// ======================================================================
 	// This is the state stored per base name
 	
-	private static class BasenameState implements CCNInterestListener {
+	private static class BasenameState implements CCNInterestListener, CCNStatistics {
 		
 		public BasenameState(CCNHandle handle, ContentName basename, Set<VersionNumber> exclusions, VersionNumber startingVersion) {
 			_vim = new VersioningInterestManager(handle, basename, exclusions, startingVersion, this);
@@ -274,12 +312,18 @@ public class VersioningInterest {
 				}
 				return null;
 		}
-
+		
+		@Override
+		public CCNStats getStats() {
+			return _vim.getStats();
+		}
+		
 		// =======
 		
 		private final Set<CCNInterestListener> _listeners = new HashSet<CCNInterestListener>();
 		private final VersioningInterestManager _vim;
 		private boolean _running = false;
+
 	}
 
 }

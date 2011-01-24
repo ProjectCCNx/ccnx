@@ -28,6 +28,10 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.CCNStats;
+import org.ccnx.ccn.impl.CCNStats.CCNEnumStats;
+import org.ccnx.ccn.impl.CCNStats.CCNStatistics;
+import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.io.content.PublicKeyObject;
@@ -64,7 +68,7 @@ import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
  * after the initial block for this particular write.
  */
 
-public class RepositoryServer {
+public class RepositoryServer implements CCNStatistics {
 	private RepositoryStore _repo = null;
 	private CCNHandle _handle = null;
 	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
@@ -467,5 +471,83 @@ public class RepositoryServer {
 	
 	public Object getStatus(String type) {
 		return _repo.getStatus(type);
+	}
+	
+	// ==============================================================
+	// Statistics
+	
+	protected CCNEnumStats<StatsEnum> _stats = new CCNEnumStats<StatsEnum>(StatsEnum.HandleInterest);
+
+	public CCNStats getStats() {
+		return _stats;
+	}
+	
+	public enum StatsEnum implements IStatsEnum {
+		// ====================================
+		// Just edit this list, dont need to change anything else
+		
+		HandleInterest ("interests", "Number of calls to RepositoryInterestHandler.handleInterest()"),
+		HandleInterestErrors ("errors", "Errors in handleInterest()"),
+		
+		HandleInterestStartWrite ("interests", "Number of start writes to handleInterest()"),
+		HandleInterestStartWriteErrors ("errors", "Error count in startWrite()"),
+		
+		HandleInterestNameEnum ("interests", "Number of name enums to handleInterest()"),
+		HandleInterestCheckedWrite ("interests", "Number of checked write to handleInterest()"),
+		HandleInterestBulkImport ("interests", "Number of bulk imports to handleInterest()"),
+		HandleInterestUncategorized ("interests", "Number of uncategorized interersts to handleInterest()"),
+		HandleInterestDuplicateRequests ("interests", "Number of duplicate interersts to handleInterest()"),
+		HandleInterestWriteSuspended ("interests", "Number of write suspended interersts to handleInterest()"),
+		HandleInterestStartWritePolicyHandlers ("responses", "Number of RepositoryPolicyHandler created for StartWrite"),
+		HandleInterestStartWriteExpressInterest ("responses", "Number of expressInterests created for StartWrite"),
+		HandleInterestNameEnumResponses ("responses", "Number of responses sent for Name Enums"),
+		
+		HandleContent ("objects", "Calls to ResponsitoryDataListener.handleContent()"),
+		HandleContentHandleData ("objects", "Calls to handleData in RepositoryDataListener"),
+		HandleContentExpressInterest ("interests", "Number of interests expressed in handleContent()"),
+		HandleContentCancelInterest ("interests", "Number of interests cancelled"),
+		HandleContentExpressInterestErrors ("errors", "Number of errors expressing interests in handleContent()"),
+;
+
+
+		// ====================================
+		// This is the same for every user of IStatsEnum
+		
+		protected final String _units;
+		protected final String _description;
+		protected final static String [] _names;
+
+		static {
+			_names = new String[StatsEnum.values().length];
+			for(StatsEnum stat : StatsEnum.values() )
+				_names[stat.ordinal()] = stat.toString();
+
+		}
+
+		StatsEnum(String units, String description) {
+			_units = units;
+			_description = description;
+		}
+
+		public String getDescription(int index) {
+			return StatsEnum.values()[index]._description;
+		}
+
+		public int getIndex(String name) {
+			StatsEnum x = StatsEnum.valueOf(name);
+			return x.ordinal();
+		}
+
+		public String getName(int index) {
+			return StatsEnum.values()[index].toString();
+		}
+
+		public String getUnits(int index) {
+			return StatsEnum.values()[index]._units;
+		}
+
+		public String [] getNames() {
+			return _names;
+		}
 	}
 }

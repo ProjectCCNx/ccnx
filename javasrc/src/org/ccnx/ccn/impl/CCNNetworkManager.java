@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.NotYetConnectedException;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.SortedMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
@@ -37,6 +39,8 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.CCNStats.CCNEnumStats;
+import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
@@ -891,6 +895,8 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws InterruptedException
 	 */
 	public ContentObject put(ContentObject co) throws IOException, InterruptedException {	
+		_stats.increment(StatsEnum.Puts);
+
 		try {
 			write(co);
 		} catch (ContentEncodingException e) {
@@ -913,6 +919,8 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws InterruptedException	if process is interrupted during wait
 	 */
 	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
+		_stats.increment(StatsEnum.Gets);
+
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, "get: {0} with timeout: {1}", interest, timeout);
 		InterestRegistration reg = new InterestRegistration(this, interest, null, null);
@@ -957,6 +965,8 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	private void expressInterest(InterestRegistration reg) throws IOException {
+		_stats.increment(StatsEnum.ExpressInterest);
+
 		try {
 			registerInterest(reg);
 			write(reg.interest);
@@ -980,6 +990,7 @@ public class CCNNetworkManager implements Runnable {
 			// serving any useful purpose.
 			throw new NullPointerException("cancelInterest: callbackListener cannot be null");
 		}
+		_stats.increment(StatsEnum.CancelInterest);
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, "cancelInterest: {0}", interest.name());
@@ -1138,14 +1149,20 @@ public class CCNNetworkManager implements Runnable {
 	 * @return prefix that incorporates or matches this one or null if none found
 	 */
 	protected RegisteredPrefix getRegisteredPrefix(ContentName prefix) {
-		for (ContentName name: _registeredPrefixes.keySet()) {
-			if (name.equals(prefix) || name.isPrefixOf(prefix))
-				return _registeredPrefixes.get(name);		
+		synchronized(_registeredPrefixes) {		
+			// MM: This is a dumb way to search a TreeMap for a prefix.
+			// TreeMap is sorted and should exploit that.
+			for (ContentName name: _registeredPrefixes.keySet()) {
+				if (name.equals(prefix) || name.isPrefixOf(prefix))
+					return _registeredPrefixes.get(name);		
+			}
 		}
 		return null;
 	}
 
 	protected void write(ContentObject data) throws ContentEncodingException {
+		_stats.increment(StatsEnum.WriteObject);
+
 		WirePacket packet = new WirePacket(data);
 		writeInner(packet);
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
@@ -1158,6 +1175,7 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws ContentEncodingException
 	 */
 	public void write(Interest interest) throws ContentEncodingException {
+		_stats.increment(StatsEnum.WriteInterest);
 		WirePacket packet = new WirePacket(interest);
 		writeInner(packet);
 	}
@@ -1171,6 +1189,16 @@ public class CCNNetworkManager implements Runnable {
 				int result = _channel.write(datagram);
 				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 					Log.finest(Log.FAC_NETMANAGER, "Wrote datagram (" + datagram.position() + " bytes, result " + result + ")");
+				
+				if( result < bytes.length ) {
+					_stats.increment(StatsEnum.WriteUnderflows);
+					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO) )
+						Log.info(Log.FAC_NETMANAGER, 
+								"Wrote datagram {0} bytes to channel, but packet was {1} bytes",
+								result,
+								bytes.length);
+				}
+
 				if (null != _tapStreamOut) {
 					try {
 						_tapStreamOut.write(bytes);
@@ -1180,6 +1208,8 @@ public class CCNNetworkManager implements Runnable {
 				}
 			}
 		} catch (IOException io) {
+			_stats.increment(StatsEnum.WriteErrors);
+
 			// We do not see errors on send typically even if 
 			// agent is gone, so log each but do not track
 			Log.warning(Log.FAC_NETMANAGER, "Error sending packet: " + io.toString());
@@ -1241,6 +1271,7 @@ public class CCNNetworkManager implements Runnable {
 				}
 				
 				if (packet instanceof ContentObject) {
+					_stats.increment(StatsEnum.ReceiveObject);
 					ContentObject co = (ContentObject)packet;
 					if( Log.isLoggable(Level.FINER) )
 						Log.finer("Data from net for port: " + _localPort + " {0}", co.name());
@@ -1251,6 +1282,7 @@ public class CCNNetworkManager implements Runnable {
 					// External data never goes back to network, never held onto here
 					// External data never has a thread waiting, so no need to release sema
 				} else if (packet instanceof Interest) {
+					_stats.increment(StatsEnum.ReceiveInterest);
 					Interest interest = (Interest)	packet;
 					if( Log.isLoggable(Level.FINEST) )
 						Log.finest("Interest from net for port: " + _localPort + " {0}", interest);
@@ -1259,6 +1291,7 @@ public class CCNNetworkManager implements Runnable {
 					// External interests never go back to network
 				} // for interests
 			} catch (Exception ex) {
+				_stats.increment(StatsEnum.ReceiveUnknown);
 				Log.severe(Log.FAC_NETMANAGER, "Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
                 Log.warningStackTrace(ex);
 			}
@@ -1273,6 +1306,8 @@ public class CCNNetworkManager implements Runnable {
 	 * @param ireg
 	 */
 	protected void deliverInterest(InterestRegistration ireg) {
+		_stats.increment(StatsEnum.DeliverInterest);
+
 		// Call any listeners with matching filters
 		synchronized (_myFilters) {
 			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
@@ -1291,9 +1326,12 @@ public class CCNNetworkManager implements Runnable {
 	 * @param co
 	 */
 	protected void deliverData(ContentObject co) {
+		_stats.increment(StatsEnum.DeliverContent);
+
 		synchronized (_myInterests) {
 			for (InterestRegistration ireg : _myInterests.getValues(co)) {
 				if (ireg.add(co)) { // this is a copy of the data
+					_stats.increment(StatsEnum.DeliverContentMatchingInterests);
 					_threadpool.execute(ireg);
 				}
 			}
@@ -1359,6 +1397,78 @@ public class CCNNetworkManager implements Runnable {
 			_channel.close();
 		}
 	}	
+	
+	// ==============================================================
+	// Statistics
+	
+	protected CCNEnumStats<StatsEnum> _stats = new CCNEnumStats<StatsEnum>(StatsEnum.Puts);
+
+	public CCNStats getStats() {
+		return _stats;
+	}
+	
+	public enum StatsEnum implements IStatsEnum {
+		// ====================================
+		// Just edit this list, dont need to change anything else
+		
+		Puts ("ContentObjects", "The number of put calls"),
+		Gets ("ContentObjects", "The number of get calls"),
+		WriteInterest ("calls", "The number of calls to write(Interest)"),
+		WriteObject ("calls", "The number of calls to write(ContentObject)"),
+		WriteErrors ("count", "Error count for writeInner()"),
+		WriteUnderflows ("count", "The count of times when the bytes written to the channel < buffer size"),
+		
+		ExpressInterest ("calls", "The number of calls to expressInterest"),
+		CancelInterest ("calls", "The number of calls to cancelInterest"),
+		DeliverInterest ("calls", "The number of calls to deliverInterest"),
+		DeliverContent ("calls", "The number of calls to cancelInterest"),
+		DeliverContentMatchingInterests ("calls", "Count of the calls to threadpool.execute in handleData()"),
+
+		ReceiveObject ("objects", "Receive count of ContentObjects from channel"),
+		ReceiveInterest ("interests", "Receive count of Interests from channel"),
+		ReceiveUnknown ("calls", "Receive count of unknown type from channel"),
+		;
+
+		// ====================================
+		// This is the same for every user of IStatsEnum
+		
+		protected final String _units;
+		protected final String _description;
+		protected final static String [] _names;
+
+		static {
+			_names = new String[StatsEnum.values().length];
+			for(StatsEnum stat : StatsEnum.values() )
+				_names[stat.ordinal()] = stat.toString();
+
+		}
+
+		StatsEnum(String units, String description) {
+			_units = units;
+			_description = description;
+		}
+
+		public String getDescription(int index) {
+			return StatsEnum.values()[index]._description;
+		}
+
+		public int getIndex(String name) {
+			StatsEnum x = StatsEnum.valueOf(name);
+			return x.ordinal();
+		}
+
+		public String getName(int index) {
+			return StatsEnum.values()[index].toString();
+		}
+
+		public String getUnits(int index) {
+			return StatsEnum.values()[index]._units;
+		}
+
+		public String [] getNames() {
+			return _names;
+		}
+	}
 }
 
 

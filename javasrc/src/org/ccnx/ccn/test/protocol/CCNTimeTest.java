@@ -257,6 +257,22 @@ public class CCNTimeTest {
 			testTimestamp(now, tn);
 		}
 	}
+	
+	@Test
+	public void testBinaryArray() throws Exception {
+		long v0 = 0x7FFFFF;
+		byte [] b0 = new byte [] {(byte) 0x7F, (byte) 0xFF, (byte) 0xFF};
+		CCNTime t0 = CCNTime.fromBinaryTimeAsLong(v0);
+		byte [] x0 = t0.toBinaryTime();
+		Assert.assertTrue(java.util.Arrays.equals(b0, x0));
+		
+		long v1 = 0x80FFFF;
+		byte [] b1 = new byte [] {(byte) 0x80, (byte) 0xFF, (byte) 0xFF};
+		CCNTime t1 = CCNTime.fromBinaryTimeAsLong(v1);
+		byte [] x1 = t1.toBinaryTime();
+		Assert.assertTrue(java.util.Arrays.equals(b1, x1));
+		
+	}
 
 	public void testTimestamp(CCNTime ccnTime, Timestamp compareTS) {
 

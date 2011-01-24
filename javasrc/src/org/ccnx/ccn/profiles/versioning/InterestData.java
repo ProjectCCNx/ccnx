@@ -163,8 +163,13 @@ public class InterestData implements Comparable<InterestData> {
 
 		// Now exclude everything after stop time
 		ExcludeComponent exStop = null;
-		VersionNumber stopTimePlusOne = _stopTime.addAndReturn(1);
-		byte [] stopTimePlusOneComponent = stopTimePlusOne.getVersionBytes();
+		byte [] stopTimePlusOneComponent;
+		 
+		if( VersionNumber.getMaximumVersion().after(_stopTime))
+			stopTimePlusOneComponent = _stopTime.addAndReturn(1).getVersionBytes();
+		else
+			stopTimePlusOneComponent = VersioningProfile.TOP_EXCLUDE_VERSION_MARKER;
+		
 		exStop = new ExcludeComponent(stopTimePlusOneComponent);
 		
 		// It could happen that our stop time is exactly equal to the version of an
@@ -206,7 +211,7 @@ public class InterestData implements Comparable<InterestData> {
 				exclude, 
 				(Integer) _name.count(), 
 				(Integer) 3, // dont want anything beyond version/segment
-				(Integer) 3, // version, segment
+				(Integer) 2, // version, segment
 				null // publisher
 		);
 

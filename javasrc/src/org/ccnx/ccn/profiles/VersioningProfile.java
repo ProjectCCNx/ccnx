@@ -65,22 +65,27 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * should try to avoid using a stamp earlier than (or the same as) any 
  * version of the file, to the extent that it knows about it. It should 
  * also avoid generating stamps that are unreasonably far in the future.
+ * 
+ * Get latest version is going to exclude [B, 0xFD00FFFFFFFFFF, 0xFE000000000000,B],
+ * so you need to be sure to use version numbers in those bounds.
  */
 public class VersioningProfile implements CCNProfile {
 
 	public static final byte VERSION_MARKER = (byte)0xFD;
-	public static final byte [] FIRST_VERSION_MARKER = new byte []{VERSION_MARKER};
-	
 	public static final byte FF = (byte) 0xFF;
+	public static final byte O1 = (byte) 0x01;
 	public static final byte OO = (byte) 0x00;
+
+	public static final byte [] FIRST_VERSION_MARKER = new byte []{VERSION_MARKER};
+	public static final byte [] LAST_VERSION_MARKER  = new byte [] {VERSION_MARKER+1, OO, OO, OO, OO, OO, OO };
 	
-	public static final byte [] MIN_VERSION_MARKER = new byte [] {VERSION_MARKER};
+	// Due to shortlex comparison, need to have something 7 bytes long
+	public static final byte [] MIN_VERSION_MARKER = new byte [] {VERSION_MARKER, O1, OO, OO, OO, OO, OO};
 
-	// java cannot handle times beyond 0x7FFFFFFFFF, they are negative.
-	public static final byte [] MAX_VERSION_MARKER = new byte [] {VERSION_MARKER, (byte) 0x7F, FF, FF, FF, FF, FF };
+	public static final byte [] MAX_VERSION_MARKER = new byte [] {VERSION_MARKER, FF, FF, FF, FF, FF, FF };
 
-	public static final byte [] BOTTOM_EXCLUDE_VERSION_MARKER = new byte [] {VERSION_MARKER-1, FF, FF, FF, FF, FF, FF };
-	public static final byte [] TOP_EXCLUDE_VERSION_MARKER    = new byte [] {VERSION_MARKER+1, OO, OO, OO, OO, OO, OO };
+	public static final byte [] BOTTOM_EXCLUDE_VERSION_MARKER = MIN_VERSION_MARKER;
+	public static final byte [] TOP_EXCLUDE_VERSION_MARKER    = LAST_VERSION_MARKER;
 	
 
 	/**
@@ -94,10 +99,22 @@ public class VersioningProfile implements CCNProfile {
 		if (0 == version) {
 			vcomp = FIRST_VERSION_MARKER;
 		} else {
-			byte [] varr = BigInteger.valueOf(version).toByteArray();
-			vcomp = new byte[varr.length + 1];
+			BigInteger bi = BigInteger.valueOf(version);
+			byte [] varr = bi.toByteArray();
+			
+			// assume that bi is not zero paded 2's comp
+			int start = 0;
+			int length = varr.length;
+			
+			// If BigInteger added a zero pad, remove it
+			if( 0 == varr[0] && varr.length > 1) {
+				start = 1;
+				length--;
+			}
+			
+			vcomp = new byte[length + 1];
 			vcomp[0] = VERSION_MARKER;
-			System.arraycopy(varr, 0, vcomp, 1, varr.length);
+			System.arraycopy(varr, start, vcomp, 1, length);
 		}
 		return new ContentName(name, vcomp);
 	}
@@ -108,6 +125,10 @@ public class VersioningProfile implements CCNProfile {
 	 * to the nearest value in the fixed point representation.
 	 * <p>
 	 * This allows versions to be recorded as a timestamp with a 1/4096 second accuracy.
+	 * <p>
+	 * Get latest version is going to exclude [B, 0xFD00FFFFFFFFFF, 0xFE000000000000,B],
+	 * so you need to be sure to use version numbers in those bounds.
+	 * <p>
 	 * @see #addVersion(ContentName, long)
 	 */
 	public static ContentName addVersion(ContentName name, CCNTime version) {
@@ -119,6 +140,10 @@ public class VersioningProfile implements CCNProfile {
 	
 	/**
 	 * Add a version field based on the current time, accurate to 1/4096 second.
+	 * <p>
+	 * Get latest version is going to exclude [B, 0xFD00FFFFFFFFFF, 0xFE000000000000,B],
+	 * so you need to be sure to use version numbers in those bounds.
+	 * <p>
 	 * @see #addVersion(ContentName, CCNTime)
 	 */
 	public static ContentName addVersion(ContentName name) {
@@ -264,7 +289,9 @@ public class VersioningProfile implements CCNProfile {
 		System.arraycopy(versionComponent, 1, versionData, 0, versionComponent.length - 1);
 		if (versionData.length == 0)
 			return 0;
-		return new BigInteger(versionData).longValue();
+		
+		// Use the sign-magnitude representation, not 2's complement
+		return new BigInteger(1, versionData).longValue();
 	}
 
 	public static CCNTime getVersionComponentAsTimestamp(byte [] versionComponent) {
@@ -432,7 +459,7 @@ public class VersioningProfile implements CCNProfile {
 		ArrayList<Exclude.Element> ees = new ArrayList<Exclude.Element>();
 		ees.add(new ExcludeAny());
 		ees.add(new ExcludeComponent(start));
-		ees.add(new ExcludeComponent(TOP_EXCLUDE_VERSION_MARKER));
+		ees.add(new ExcludeComponent(LAST_VERSION_MARKER));
 		ees.add(new ExcludeAny());
 		
 		return new Exclude(ees);
