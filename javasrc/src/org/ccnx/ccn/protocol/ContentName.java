@@ -1117,7 +1117,43 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return i;
 		return -1;		
 	}
-
+	
+	/**
+	 * Does a component of the ContentName startWith value?
+	 * 
+	 * @param value
+	 * @return
+	 */
+	public boolean startsWith(byte [] value) {
+		return (startsWithWhere(value) >= 0);
+	}
+	
+	/**
+	 * Return component index of first component that starts with argument value
+	 * 
+	 * @param value
+	 * @return
+	 */
+	public int startsWithWhere(byte [] value) {
+		int i=0;
+		int size = value.length;
+		for (i=0; i < _components.size(); ++i) {
+			byte [] component = _components.get(i);
+			if (size <= component.length) {
+				boolean result = true;
+				for (int j = 0; j < size; j++) {
+					if (component[j] != value[j]) {
+						result = false;
+						break;
+					}
+				}
+				if (result)
+					return i;
+			}
+		}
+		return -1;		
+	}
+	
 	/**
 	 * Return the first componentNumber components of this name as a new name.
 	 * @param componentNumber

@@ -63,33 +63,38 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 			Log.finer(Log.FAC_REPO, "Saw interest: {0}", interest.name());
 		try {
-			if (RepositoryOperations.isStartWriteOperation(interest)) {
-				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWrite);
-				if (!allowGenerated(interest)) return true;
-				startWrite(interest);
-			} else if (RepositoryOperations.isNameEnumerationOperation(interest)) {
-				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestNameEnum);
-				if (!allowGenerated(interest)) return true;
-				nameEnumeratorResponse(interest);
-			} else if (RepositoryOperations.isCheckedWriteOperation(interest)) {
-				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCheckedWrite);
-				if (!allowGenerated(interest)) return true;
-				startWriteChecked(interest);				
-			} else if (RepositoryOperations.isBulkImportOperation(interest)) {
-				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestBulkImport);
-				if (!allowGenerated(interest)) return true;
-				addBulkDataToRepo(interest);				
-			} else {
-				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestUncategorized);
-				ContentObject content = _server.getRepository().getContent(interest);
-				if (content != null) {
-					if (Log.isLoggable(Log.FAC_REPO, Level.FINEST))
-						Log.finest(Log.FAC_REPO, "Satisfying interest: {0} with content {1}", interest, content.name());
-					_handle.put(content);
-				} else {
-					if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
-						Log.fine(Log.FAC_REPO, "Unsatisfied interest: {0}", interest);
+			if (interest.name().startsWith(CommandMarker.COMMAND_PREFIX)) {
+				if (RepositoryOperations.isStartWriteOperation(interest)) {
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWrite);
+					if (allowGenerated(interest))
+						startWrite(interest);
+					return true;
+				} else if (RepositoryOperations.isNameEnumerationOperation(interest)) {
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestNameEnum);
+					if (allowGenerated(interest))
+						nameEnumeratorResponse(interest);
+					return true;
+				} else if (RepositoryOperations.isCheckedWriteOperation(interest)) {
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCheckedWrite);
+					if (allowGenerated(interest))
+						startWriteChecked(interest);
+					return true;
+				} else if (RepositoryOperations.isBulkImportOperation(interest)) {
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestBulkImport);
+					if (allowGenerated(interest))
+						addBulkDataToRepo(interest);
+					return true;
 				}
+			}
+			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestUncategorized);
+			ContentObject content = _server.getRepository().getContent(interest);
+			if (content != null) {
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINEST))
+					Log.finest(Log.FAC_REPO, "Satisfying interest: {0} with content {1}", interest, content.name());
+				_handle.put(content);
+			} else {
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
+					Log.fine(Log.FAC_REPO, "Unsatisfied interest: {0}", interest);
 			}
 		} catch (Exception e) {
 			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestErrors);
