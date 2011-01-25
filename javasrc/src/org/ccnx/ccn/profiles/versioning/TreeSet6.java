@@ -58,10 +58,13 @@ public class TreeSet6<E> extends TreeSet<E> {
 				return (E) floor.invoke(this, (Object) key);
 			} catch (IllegalArgumentException e) {
 				e.printStackTrace();
+				throw e;
 			} catch (IllegalAccessException e) {
 				e.printStackTrace();
+				throw new IllegalArgumentException(e.getMessage());
 			} catch (InvocationTargetException e) {
 				e.printStackTrace();
+				throw new IllegalArgumentException(e.getMessage());
 			}
 		return internalFloor(key);
 	}
@@ -80,11 +83,14 @@ public class TreeSet6<E> extends TreeSet<E> {
 				return (E) ceiling.invoke(this, (Object) key);
 			} catch (IllegalArgumentException e) {
 				e.printStackTrace();
+				throw e;
 			} catch (IllegalAccessException e) {
 				e.printStackTrace();
+				throw new IllegalArgumentException(e.getMessage());
 			} catch (InvocationTargetException e) {
 				e.printStackTrace();
-			}		
+				throw new IllegalArgumentException(e.getMessage());
+			}	
 		return internalCeiling(key);
 	}
 	
@@ -101,10 +107,13 @@ public class TreeSet6<E> extends TreeSet<E> {
 				return (E) lower.invoke(this, (Object) key);
 			} catch (IllegalArgumentException e) {
 				e.printStackTrace();
+				throw e;
 			} catch (IllegalAccessException e) {
 				e.printStackTrace();
+				throw new IllegalArgumentException(e.getMessage());
 			} catch (InvocationTargetException e) {
 				e.printStackTrace();
+				throw new IllegalArgumentException(e.getMessage());
 			}		
 		return internalLower(key);
 	}
@@ -122,10 +131,13 @@ public class TreeSet6<E> extends TreeSet<E> {
 				return (E) higher.invoke(this, (Object) key);
 			} catch (IllegalArgumentException e) {
 				e.printStackTrace();
+				throw e;
 			} catch (IllegalAccessException e) {
 				e.printStackTrace();
+				throw new IllegalArgumentException(e.getMessage());
 			} catch (InvocationTargetException e) {
 				e.printStackTrace();
+				throw new IllegalArgumentException(e.getMessage());
 			}		
 		return internalHigher(key);
 	}
@@ -141,10 +153,13 @@ public class TreeSet6<E> extends TreeSet<E> {
 				return (Iterator<E>) descendingIterator.invoke(this);
 			} catch (IllegalArgumentException e) {
 				e.printStackTrace();
+				throw e;
 			} catch (IllegalAccessException e) {
 				e.printStackTrace();
+				throw new IllegalArgumentException(e.getMessage());
 			} catch (InvocationTargetException e) {
 				e.printStackTrace();
+				throw new IllegalArgumentException(e.getMessage());
 			}		
 		return internalDescendingIterator();
 	}
