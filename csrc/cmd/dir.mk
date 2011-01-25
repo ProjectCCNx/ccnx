@@ -181,9 +181,11 @@ ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
 ccnbx.o: ccnbx.c ../include/ccn/charbuf.h ../include/ccn/coding.h \
   ../include/ccn/ccn.h ../include/ccn/indexbuf.h
 ccncat.o: ccncat.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnsimplecat.o: ccnsimplecat.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ../include/ccn/fetch.h
+ccnsimplecat.o: ccnsimplecat.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccncatchunks.o: ccncatchunks.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
@@ -217,8 +219,9 @@ ccnseqwriter.o: ccnseqwriter.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ../include/ccn/seqwriter.h
-ccn_fetch_test.o: ccn_fetch_test.c ../include/ccn/ccn.h \
-  ../include/ccn/fetch.h ../include/ccn/uri.h
+ccn_fetch_test.o: ccn_fetch_test.c ../include/ccn/fetch.h \
+  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnslurp.o: ccnslurp.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
