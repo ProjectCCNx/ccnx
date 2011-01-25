@@ -27,11 +27,11 @@ public class TreeSet6Test {
 		set.add("ccc");
 		
 		String s;
-		s = set.xfloor("ccc");
+		s = set.floorCompatible("ccc");
 		System.out.println("floor of ccc is : " + s);
 		Assert.assertTrue("ccc".equals(s));	
 		
-		s = set.xfloor("b");
+		s = set.floorCompatible("b");
 		System.out.println("floor of b is : " + s);
 		Assert.assertTrue("aaa".equals(s));	
 		
@@ -46,10 +46,10 @@ public class TreeSet6Test {
 		set.add("ccc");
 		
 		String s;
-		s = set.xlower("ccc");
+		s = set.lowerCompatible("ccc");
 		System.out.println("lower of ccc is : " + s);
 		Assert.assertTrue("bbb".equals(s));		
-		s = set.xlower("b");
+		s = set.lowerCompatible("b");
 		System.out.println("lower of b is : " + s);
 		Assert.assertTrue("aaa".equals(s));	
 	}
@@ -63,10 +63,10 @@ public class TreeSet6Test {
 		set.add("ccc");
 		
 		String s;
-		s = set.xceiling("bbb");
+		s = set.ceilingCompatible("bbb");
 		System.out.println("ceiling of bbb is : " + s);
 		Assert.assertTrue("bbb".equals(s));		
-		s = set.xceiling("b");
+		s = set.ceilingCompatible("b");
 		System.out.println("ceiling of b is : " + s);
 		Assert.assertTrue("bbb".equals(s));	
 	}
@@ -80,11 +80,11 @@ public class TreeSet6Test {
 		set.add("ccc");
 		
 		String s;
-		s = set.xhigher("bbb");
+		s = set.higherCompatible("bbb");
 		System.out.println("higher of bbb is : " + s);
 		Assert.assertTrue("ccc".equals(s));	
 
-		s = set.xhigher("b");
+		s = set.higherCompatible("b");
 		System.out.println("higher of b is : " + s);
 		Assert.assertTrue("bbb".equals(s));	
 	
@@ -187,7 +187,7 @@ public class TreeSet6Test {
 		
 		// verify descending iterator
 		index = count;
-		iter = set.xdescendingIterator();
+		iter = set.descendingIteratorCompatible();
 		while(iter.hasNext()) {
 			index--;
 			Integer test = iter.next();
@@ -211,7 +211,7 @@ public class TreeSet6Test {
 		Arrays.sort(truth);
 		// verify descending iterator
 		int index = count;
-		Iterator<Integer> iter = set.xdescendingIterator();
+		Iterator<Integer> iter = set.descendingIteratorCompatible();
 		while(iter.hasNext()) {
 			index--;
 			Integer test = iter.next();
@@ -224,7 +224,7 @@ public class TreeSet6Test {
 		// do it again and verify missing.  Start at top -1 and
 		// got down to 0
 		index = count - 1;
-		iter = set.xdescendingIterator();
+		iter = set.descendingIteratorCompatible();
 		while(iter.hasNext()) {
 			index--;
 			Integer test = iter.next();
@@ -248,7 +248,7 @@ public class TreeSet6Test {
 		Arrays.sort(truth);
 		// verify descending iterator
 		int index = count;
-		Iterator<Integer> iter = set.xdescendingIterator();
+		Iterator<Integer> iter = set.descendingIteratorCompatible();
 		while(iter.hasNext()) {
 			index--;
 			Integer test = iter.next();
@@ -261,7 +261,7 @@ public class TreeSet6Test {
 		// do it again and verify missing.  Start at top and
 		// should go down to index 1
 		index = count;
-		iter = set.xdescendingIterator();
+		iter = set.descendingIteratorCompatible();
 		while(iter.hasNext()) {
 			index--;
 			Integer test = iter.next();
@@ -288,7 +288,7 @@ public class TreeSet6Test {
 		Arrays.sort(truth);
 		// verify descending iterator
 		int index = count;
-		Iterator<Integer> iter = set.xdescendingIterator();
+		Iterator<Integer> iter = set.descendingIteratorCompatible();
 		while(iter.hasNext()) {
 			index--;
 			Integer test = iter.next();
@@ -304,7 +304,7 @@ public class TreeSet6Test {
 		// afterremove is in descending order already, so
 		// walk up the indexes from 0.
 		index = 0;
-		iter = set.xdescendingIterator();
+		iter = set.descendingIteratorCompatible();
 		while(iter.hasNext()) {
 			Integer test = iter.next();
 			Assert.assertEquals(afterremove.get(index).intValue(), test.intValue());

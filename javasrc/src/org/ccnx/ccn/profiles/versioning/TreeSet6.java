@@ -41,7 +41,7 @@ public class TreeSet6<E> extends TreeSet<E> {
 	 * Use this method, not floor().
 	 */
 	@SuppressWarnings("unchecked")
-	public E xfloor(E key) {
+	public E floorCompatible(E key) {
 		if( null != floor )
 			try {
 				return (E) floor.invoke(this, (Object) key);
@@ -63,7 +63,7 @@ public class TreeSet6<E> extends TreeSet<E> {
 	 * Use this method, not ceiling().
 	 */
 	@SuppressWarnings("unchecked")
-	public E xceiling(E key) {
+	public E ceilingCompatible(E key) {
 		if( null != ceiling )
 			try {
 				return (E) ceiling.invoke(this, (Object) key);
@@ -84,7 +84,7 @@ public class TreeSet6<E> extends TreeSet<E> {
 	 * Use this method, not lower().
 	 */
 	@SuppressWarnings("unchecked")
-	public E xlower(E key) {
+	public E lowerCompatible(E key) {
 		if( null != lower )
 			try {
 				return (E) lower.invoke(this, (Object) key);
@@ -105,7 +105,7 @@ public class TreeSet6<E> extends TreeSet<E> {
 	 * Use this method, not higher().
 	 */
 	@SuppressWarnings("unchecked")
-	public E xhigher(E key) {
+	public E higherCompatible(E key) {
 		if( null != higher )
 			try {
 				return (E) higher.invoke(this, (Object) key);
@@ -124,7 +124,7 @@ public class TreeSet6<E> extends TreeSet<E> {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public Iterator<E> xdescendingIterator() {
+	public Iterator<E> descendingIteratorCompatible() {
 		if( null != higher )
 			try {
 				return (Iterator<E>) descendingIterator.invoke(this);
