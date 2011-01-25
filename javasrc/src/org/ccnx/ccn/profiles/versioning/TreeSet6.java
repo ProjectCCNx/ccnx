@@ -340,18 +340,15 @@ public class TreeSet6<E> extends TreeSet<E> {
 			_listIterator = _list.listIterator();
 		}
 		
-		@Override
 		public boolean hasNext() {
 			return _listIterator.hasPrevious();
 		}
 
-		@Override
 		public T next() {
 			_lastReturnedValue = _listIterator.previous();
 			return _lastReturnedValue;
 		}
 
-		@Override
 		public void remove() {
 			if( null == _lastReturnedValue )
 				throw new IllegalStateException("Remove has already been called or no value has been returned");
