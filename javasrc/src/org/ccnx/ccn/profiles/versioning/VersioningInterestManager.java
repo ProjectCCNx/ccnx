@@ -186,7 +186,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	private double average_density = 0.0;
 
 	// this will be sorted by the starttime of each InterestData
-	protected final TreeSet<InterestData> _interestData = new TreeSet<InterestData>();
+	protected final TreeSet6<InterestData> _interestData = new TreeSet6<InterestData>();
 
 	// We need to store a map from an interest given to the network to the
 	// interestData that generated it so we can re-express interest
@@ -418,7 +418,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 
 		// This is the InterestData that must contain version because
 		// it is the largest startTime that is less than version
-		InterestData floor = _interestData.floor(x);
+		InterestData floor = _interestData.floorCompatible(x);
 
 		// floor shouldn't every be null
 		if( null == floor ) {
@@ -461,8 +461,8 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 			Log.info(Log.FAC_ENCODING, "Rebuilding version {0} data {1}",
 					version.toString(), datum.toString());
 
-		left = _interestData.lower(datum);
-		right = _interestData.higher(datum);
+		left = _interestData.lowerCompatible(datum);
+		right = _interestData.higherCompatible(datum);
 		int left_size = MAX_FILL, right_size = MAX_FILL;
 		if( null != left ) 
 			left_size = left.size();
@@ -689,7 +689,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 
 			while( node.size() >= MID_FILL ) {
 				int count = node.size() - MID_FILL;
-				next = _interestData.lower(node);
+				next = _interestData.lowerCompatible(node);
 
 				if( null == next ) {
 					_interestData.remove(node);
@@ -724,7 +724,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 
 			while( node.size() >= MID_FILL ) {
 				int count = node.size() - MID_FILL;
-				next = _interestData.higher(node);
+				next = _interestData.higherCompatible(node);
 
 				if( null == next ) {
 					// right split does not change starttime of node

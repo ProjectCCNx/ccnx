@@ -12,7 +12,18 @@ import java.util.TreeSet;
 /**
  * Add some missing features from the JDK 5 TreeSet.  If
  * running on JDK 6, use them as they will be way more efficient.
- * @param <E>
+ * This class is to provide JDK compatibility for the versioning
+ * package and only implements the needed functionality.
+ * 
+ * The user should call the *Compatible methods (floorCompatible, etc.)
+ * instead of the Java 6 methods (e.g. floor).
+ * 
+ * When used in a JDK 5 environment, the implementations of the
+ * provided algorithms is going to be O(N), not O(log N).  There is no
+ * fast-fail detection for concurrent modifications.  The descendingIterator
+ * works fine for iteration and calling remove(), but if you mix in
+ * other calls, like to add() while iterating, you will not see those
+ * values.
  */
 public class TreeSet6<E> extends TreeSet<E> {
 
