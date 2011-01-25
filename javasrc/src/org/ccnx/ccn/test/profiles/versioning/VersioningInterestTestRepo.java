@@ -130,7 +130,7 @@ public class VersioningInterestTestRepo {
 			}
 		}
 		Assert.assertFalse(missing);
-		System.out.println("****** testThreeNamesFourListener done");
+		System.out.println("****** testTwoNamesOneListener done");
 	}
 	
 	/**
