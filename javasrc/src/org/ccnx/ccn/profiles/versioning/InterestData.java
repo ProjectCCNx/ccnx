@@ -20,7 +20,6 @@ package org.ccnx.ccn.profiles.versioning;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.TreeSet;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Log;
@@ -77,7 +76,6 @@ public class InterestData implements Comparable<InterestData> {
 	/**
 	 * Order by startTime using UNSIGNED COMPARISON
 	 */
-	@Override
 	public int compareTo(InterestData other) {
 		return _startTime.compareTo(other._startTime);
 	}
@@ -324,7 +322,7 @@ public class InterestData implements Comparable<InterestData> {
 			return;
 
 		// walk from the right
-		Iterator<VersionNumber> iter = _excludedVersions.descendingIterator();
+		Iterator<VersionNumber> iter = _excludedVersions.descendingIteratorCompatible();
 		
 		// this is a redundant condition
 		VersionNumber lastversion = null;
@@ -382,7 +380,7 @@ public class InterestData implements Comparable<InterestData> {
 	}
 	
 	// ===========================
-	private final TreeSet<VersionNumber> _excludedVersions = new TreeSet<VersionNumber>();
+	private final TreeSet6<VersionNumber> _excludedVersions = new TreeSet6<VersionNumber>();
 	private final ContentName _name;
 	private VersionNumber _startTime;
 	private VersionNumber _stopTime;

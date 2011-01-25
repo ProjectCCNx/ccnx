@@ -156,7 +156,6 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 		cancelInterests();
 	}
 
-	@Override
 	public synchronized Interest handleContent(ContentObject data, Interest interest) {
 		return receive(data, interest);
 	}
@@ -178,7 +177,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	//	private boolean _running = false;
 	protected final CCNHandle _handle;
 	private final ContentName _name;
-	protected final TreeSet<VersionNumber> _exclusions = new TreeSet<VersionNumber>();
+	protected final TreeSet6<VersionNumber> _exclusions = new TreeSet6<VersionNumber>();
 	private final VersionNumber _startingVersion;
 	private final CCNInterestListener _listener; // our callback
 
@@ -187,7 +186,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	private double average_density = 0.0;
 
 	// this will be sorted by the starttime of each InterestData
-	protected final TreeSet<InterestData> _interestData = new TreeSet<InterestData>();
+	protected final TreeSet6<InterestData> _interestData = new TreeSet6<InterestData>();
 
 	// We need to store a map from an interest given to the network to the
 	// interestData that generated it so we can re-express interest
@@ -200,7 +199,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	private void generateInterests() {
 		synchronized(_exclusions) {
 			// we ask for content from right to left, so fill from right to left
-			Iterator<VersionNumber> iter = _exclusions.descendingIterator();
+			Iterator<VersionNumber> iter = _exclusions.descendingIteratorCompatible();
 
 			// The first interest (being right most) goes from 0 to infinity.  If it gets
 			// filled up, we will set the startTime and create a new one to the left.
@@ -419,7 +418,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 
 		// This is the InterestData that must contain version because
 		// it is the largest startTime that is less than version
-		InterestData floor = _interestData.floor(x);
+		InterestData floor = _interestData.floorCompatible(x);
 
 		// floor shouldn't every be null
 		if( null == floor ) {
@@ -462,8 +461,8 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 			Log.info(Log.FAC_ENCODING, "Rebuilding version {0} data {1}",
 					version.toString(), datum.toString());
 
-		left = _interestData.lower(datum);
-		right = _interestData.higher(datum);
+		left = _interestData.lowerCompatible(datum);
+		right = _interestData.higherCompatible(datum);
 		int left_size = MAX_FILL, right_size = MAX_FILL;
 		if( null != left ) 
 			left_size = left.size();
@@ -690,7 +689,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 
 			while( node.size() >= MID_FILL ) {
 				int count = node.size() - MID_FILL;
-				next = _interestData.lower(node);
+				next = _interestData.lowerCompatible(node);
 
 				if( null == next ) {
 					_interestData.remove(node);
@@ -725,7 +724,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 
 			while( node.size() >= MID_FILL ) {
 				int count = node.size() - MID_FILL;
-				next = _interestData.higher(node);
+				next = _interestData.higherCompatible(node);
 
 				if( null == next ) {
 					// right split does not change starttime of node
@@ -818,7 +817,6 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 		@Override
 		public int hashCode() { return _data.hashCode(); }
 
-		@Override
 		public int compareTo(InterestMapData arg0) {
 			return _data.compareTo(arg0._data);
 		}

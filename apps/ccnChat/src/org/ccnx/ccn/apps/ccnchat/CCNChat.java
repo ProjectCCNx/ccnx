@@ -114,7 +114,6 @@ public class CCNChat extends JFrame implements ActionListener, CCNChatCallback {
 	 * Add a message to the output.
 	 * @param message
 	 */
-	@Override
 	public void recvMessage(String message) {
 		_messagePane.insert(message, _messagePane.getText().length());
         _messagePane.setCaretPosition(_messagePane.getText().length());

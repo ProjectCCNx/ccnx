@@ -154,7 +154,6 @@ public class VersionNumber implements Comparable<VersionNumber> {
 		return new VersionNumber(result);
 	}
 	
-	@Override
 	public int compareTo(VersionNumber other) throws ClassCastException {
 		if( null == other )
 			throw new ClassCastException("Null value");
