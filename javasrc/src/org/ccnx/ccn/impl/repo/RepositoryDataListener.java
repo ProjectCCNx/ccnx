@@ -53,6 +53,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private long _largestSegmentNumberReceived = -1;
 	private long _finalSegmentNumber = -1; 	// expected last block of the stream
 	
+	private GetLargestSegmentNumberAction _glsna = new GetLargestSegmentNumberAction();
+	
 	/**
 	 * @param origInterest	interest to be used to identify this listener to filter out subsequent duplicate or overlapping
 	 * 		requests
@@ -194,9 +196,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 		
 	}
 	private long getLargestSegmentNumber() {
-		GetLargestSegmentNumberAction glsna = new GetLargestSegmentNumberAction();
-		interestsAction(glsna);
-		return glsna.getValue();
+		interestsAction(_glsna);
+		return _glsna.getValue();
 	}
 	
 	/**
