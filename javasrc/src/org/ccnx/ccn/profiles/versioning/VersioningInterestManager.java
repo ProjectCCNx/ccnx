@@ -177,7 +177,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	//	private boolean _running = false;
 	protected final CCNHandle _handle;
 	private final ContentName _name;
-	protected final TreeSet<VersionNumber> _exclusions = new TreeSet<VersionNumber>();
+	protected final TreeSet6<VersionNumber> _exclusions = new TreeSet6<VersionNumber>();
 	private final VersionNumber _startingVersion;
 	private final CCNInterestListener _listener; // our callback
 
@@ -199,7 +199,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	private void generateInterests() {
 		synchronized(_exclusions) {
 			// we ask for content from right to left, so fill from right to left
-			Iterator<VersionNumber> iter = _exclusions.descendingIterator();
+			Iterator<VersionNumber> iter = _exclusions.descendingIteratorCompatible();
 
 			// The first interest (being right most) goes from 0 to infinity.  If it gets
 			// filled up, we will set the startTime and create a new one to the left.
