@@ -1,5 +1,10 @@
 package org.ccnx.ccn.test.profiles.versioning;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Random;
+
 import org.ccnx.ccn.profiles.versioning.TreeSet6;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -11,7 +16,6 @@ public class TreeSet6Test {
 	public static void setUpBeforeClass() throws Exception {
 		String javaVersion = System.getProperty("java.version");
 		System.out.println("Java version: " + javaVersion);
-	
 	}
 	
 	@Test
@@ -157,8 +161,163 @@ public class TreeSet6Test {
 		Assert.assertTrue("bbb".equals(s));	
 	}
 	
+	@Test
+	public void testDescendingIterator() throws Exception {
+		TreeSet6<Integer> set = new TreeSet6<Integer>();
+		int count = 1000;
+		int [] truth = new int [count];
+		Random rnd = new Random();
+
+		for(int i = 0; i < count; i++) {
+			truth[i] = rnd.nextInt();
+			set.add(truth[i]);
+		}
+		
+		Arrays.sort(truth);
+		
+		// verify ascending iterator
+		int index = 0;
+		Iterator<Integer> iter = set.iterator();
+		while(iter.hasNext()) {
+			Integer test = iter.next();
+			Assert.assertEquals(truth[index], test.intValue());
+			index++;
+		}
+		Assert.assertEquals(count, index);
+		
+		// verify descending iterator
+		index = count;
+		iter = set.xdescendingIterator();
+		while(iter.hasNext()) {
+			index--;
+			Integer test = iter.next();
+			Assert.assertEquals(truth[index], test.intValue());
+		}
+		Assert.assertEquals(0, index);
+	}
+	
+	@Test
+	public void testDescendingIteratorRemoveFirst() throws Exception {
+		TreeSet6<Integer> set = new TreeSet6<Integer>();
+		int count = 1000;
+		int [] truth = new int [count];
+		Random rnd = new Random();
+
+		for(int i = 0; i < count; i++) {
+			truth[i] = rnd.nextInt();
+			set.add(truth[i]);
+		}
+		
+		Arrays.sort(truth);
+		// verify descending iterator
+		int index = count;
+		Iterator<Integer> iter = set.xdescendingIterator();
+		while(iter.hasNext()) {
+			index--;
+			Integer test = iter.next();
+			Assert.assertEquals(truth[index], test.intValue());
+			if( index == count - 1 )
+				iter.remove();
+		}
+		Assert.assertEquals(0, index);
+		
+		// do it again and verify missing.  Start at top -1 and
+		// got down to 0
+		index = count - 1;
+		iter = set.xdescendingIterator();
+		while(iter.hasNext()) {
+			index--;
+			Integer test = iter.next();
+			Assert.assertEquals(truth[index], test.intValue());
+		}
+		Assert.assertEquals(0, index);
+	}
+	
+	@Test
+	public void testDescendingIteratorRemoveLast() throws Exception {
+		TreeSet6<Integer> set = new TreeSet6<Integer>();
+		int count = 1000;
+		int [] truth = new int [count];
+		Random rnd = new Random();
+
+		for(int i = 0; i < count; i++) {
+			truth[i] = rnd.nextInt();
+			set.add(truth[i]);
+		}
+		
+		Arrays.sort(truth);
+		// verify descending iterator
+		int index = count;
+		Iterator<Integer> iter = set.xdescendingIterator();
+		while(iter.hasNext()) {
+			index--;
+			Integer test = iter.next();
+			Assert.assertEquals(truth[index], test.intValue());
+			if( index == 0 )
+				iter.remove();
+		}
+		Assert.assertEquals(0, index);
+		
+		// do it again and verify missing.  Start at top and
+		// should go down to index 1
+		index = count;
+		iter = set.xdescendingIterator();
+		while(iter.hasNext()) {
+			index--;
+			Integer test = iter.next();
+			Assert.assertEquals(truth[index], test.intValue());
+		}
+		Assert.assertEquals(1, index);
+
+	}
+
+	@Test
+	public void testDescendingIteratorRemoveRandom() throws Exception {
+		TreeSet6<Integer> set = new TreeSet6<Integer>();
+		int count = 1000;
+		int [] truth = new int [count];
+		Random rnd = new Random();
+		ArrayList<Integer> afterremove = new ArrayList<Integer>();
+		
+
+		for(int i = 0; i < count; i++) {
+			truth[i] = rnd.nextInt();
+			set.add(truth[i]);
+		}
+		
+		Arrays.sort(truth);
+		// verify descending iterator
+		int index = count;
+		Iterator<Integer> iter = set.xdescendingIterator();
+		while(iter.hasNext()) {
+			index--;
+			Integer test = iter.next();
+			Assert.assertEquals(truth[index], test.intValue());
+
+			if( rnd.nextDouble() < 0.5 )
+				iter.remove();
+			else
+				afterremove.add(test);
+		}
+		Assert.assertEquals(0, index);
+		
+		// afterremove is in descending order already, so
+		// walk up the indexes from 0.
+		index = 0;
+		iter = set.xdescendingIterator();
+		while(iter.hasNext()) {
+			Integer test = iter.next();
+			Assert.assertEquals(afterremove.get(index).intValue(), test.intValue());
+			index++;
+		}
+		Assert.assertEquals(afterremove.size(), index);
+
+	}
+	
 	// =========================
 	private static class TestTreeSet6<E> extends TreeSet6<E> {
+		private static final long serialVersionUID = -1063824568410275527L;
+		
 		public E exposeInternalFloor(E key) {
 			return internalFloor(key);
 		}

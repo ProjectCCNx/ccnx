@@ -2,8 +2,11 @@ package org.ccnx.ccn.profiles.versioning;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.ListIterator;
 import java.util.TreeSet;
 
 /**
@@ -13,20 +16,6 @@ import java.util.TreeSet;
  */
 public class TreeSet6<E> extends TreeSet<E> {
 
-	private static final long serialVersionUID = 7840825335033077895L;
-	
-	private Method floor = null;
-	private Method ceiling = null;
-	private Method lower = null;
-	private Method higher = null;
-	private Method descendingIterator = null;
-
-	// Determine if we're on 1.6 or later
-	static {
-		String javaVersion = System.getProperty("java.version");
-		System.out.println("Java version: " + javaVersion);
-	}
-	
 	public TreeSet6() {
 		try {
 			Class<?>[] parameterTypes = new Class[] { Object.class };
@@ -150,8 +139,17 @@ public class TreeSet6<E> extends TreeSet<E> {
 	}
 	// =============================================
 	
+
+	private static final long serialVersionUID = 7840825335033077895L;
+	
+	private Method floor = null;
+	private Method ceiling = null;
+	private Method lower = null;
+	private Method higher = null;
+	private Method descendingIterator = null;
+	
 	private Iterator<E> internalDescendingIterator() {
-		return null;
+		return new DescendingIterator<E>();
 	}
 
 	
@@ -183,6 +181,7 @@ public class TreeSet6<E> extends TreeSet<E> {
 				return rtn;
 			
 			// else test < key, so keep looking
+			rtn = test;
 		}
 		return rtn;
 	}
@@ -279,6 +278,7 @@ public class TreeSet6<E> extends TreeSet<E> {
 				return rtn;
 			
 			// else test < key, so keep looking
+			rtn = test;
 		}
 		return rtn;
 	}	
@@ -299,6 +299,40 @@ public class TreeSet6<E> extends TreeSet<E> {
 			return(comparable.compareTo(b));
 		
 		throw new ClassCastException("not comparable");
+	}
+	
+	// ================================================
+	
+	protected class DescendingIterator<T> implements Iterator<T> {
+		private final LinkedList<T> _list;
+		private ListIterator<T> _listIterator;
+		private T _lastReturnedValue = null;
+
+		@SuppressWarnings("unchecked")
+		public DescendingIterator() {
+			_list = new LinkedList<T>((Collection<? extends T>) TreeSet6.this);
+			_listIterator = _list.listIterator();
+		}
+		
+		@Override
+		public boolean hasNext() {
+			return _listIterator.hasPrevious();
+		}
+
+		@Override
+		public T next() {
+			_lastReturnedValue = _listIterator.previous();
+			return _lastReturnedValue;
+		}
+
+		@Override
+		public void remove() {
+			if( null == _lastReturnedValue )
+				throw new IllegalStateException("Remove has already been called or no value has been returned");
+			_listIterator.remove();
+			TreeSet6.this.remove(_lastReturnedValue);
+			_lastReturnedValue = null;
+		}
 	}
 
 }
