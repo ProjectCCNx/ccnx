@@ -2,7 +2,7 @@
  * @file ccn_fetch_test.c
  * @brief Provides a test platform for ccn_fetch.
  *
- * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -40,14 +40,21 @@
 #include <sys/time.h>
 
 #define LOCAL_BUF_MAX 20000
+#define CCN_FETCH_BUFS 5
 
-struct Parms {
-	char *dst;
+typedef struct ccn_charbuf *MyCharbuf;
+typedef char *string;
+
+struct MyParms {
+	struct ccn_fetch *f;
+	int ccnFD;
+	string src;
+	string dst;
 	FILE *debug;
 	int resolveVersion;
-	int fixed;
 	int appendOut;
-	int maxBufs;
+	int assumeFixed;
+	int maxSegs;
 };
 
 static uint64_t
@@ -80,7 +87,7 @@ MilliSleep(uint64_t n) {
 #define MyAlloc(NNN, TTT) (TTT *) calloc(NNN, sizeof(TTT))
 
 static int
-retErr(char *msg) {
+retErr(string msg) {
 	fprintf(stderr, "** error: %s\n", msg);
 	fflush(stderr);
 	return -1;
@@ -89,9 +96,9 @@ retErr(char *msg) {
 typedef struct TestElemStruct *TestElem;
 struct TestElemStruct {
 	FILE *out;
-	char *fileName;
+	string fileName;
 	struct ccn_fetch_stream *fs;
-	char *buf;
+	string buf;
 	int bufMax;
 	int bufLen;
 	intmax_t accum;
@@ -99,28 +106,30 @@ struct TestElemStruct {
 };
 
 static TestElem
-NewElem(struct ccn_fetch *f, char *name, struct Parms *p) {
+NewElem(struct MyParms *p) {
+	string name = p->src;
 	int bufMax = LOCAL_BUF_MAX;
 	TestElem e = MyAlloc(1, struct TestElemStruct);
 	e->startTime = GetCurrentTime();
-	struct ccn_charbuf *cbName = ccn_charbuf_create();
+	MyCharbuf cbName = ccn_charbuf_create();
 	int res = ccn_name_from_uri(cbName, name);
 	if (res < 0) {
 		fprintf(stderr, "** open of %s failed!\n", name);
 	} else {
-		e->fs = ccn_fetch_open(f, cbName,
+		e->fs = ccn_fetch_open(p->f, cbName,
 							   name,
 							   NULL,
-							   p->maxBufs,
+							   p->maxSegs,
 							   p->resolveVersion,
-							   p->fixed);
+							   p->assumeFixed);
 		if (e->fs == NULL) {
 			fprintf(stderr, "** open of %s failed!\n", name);
 		} else {
 			fprintf(stderr, "-- opened %s\n", name);
 			if (p->dst != NULL) {
 				e->fileName = p->dst;
-				FILE *out = fopen(e->fileName, ((p->appendOut) ? "a" : "w"));
+				FILE *out = fopen(e->fileName,
+								  ((p->appendOut > 0) ? "a" : "w"));
 				e->out = out;
 			} else {
 				e->fileName = "stdout";
@@ -151,9 +160,9 @@ ElemDone(TestElem e) {
 }
 
 static int
-runTest(struct ccn_fetch *f, int ccnFD, char *name, struct Parms *p) {
+runTest(struct MyParms *p) {
 	int res = 0;
-	char *msg = NULL;
+	string msg = NULL;
 	struct SelectDataStruct {
 		int fdLen;
 		fd_set readFDS;
@@ -166,7 +175,7 @@ runTest(struct ccn_fetch *f, int ccnFD, char *name, struct Parms *p) {
 	sds.selectTimeout.tv_usec = (timeoutUsecs % 1000000);
 	
 	// initialize the test files
-	TestElem e = NewElem(f, name, p);
+	TestElem e = NewElem(p);
 	if (e->fs == NULL) {
 		// could not open the file
 		res = -1;
@@ -175,41 +184,28 @@ runTest(struct ccn_fetch *f, int ccnFD, char *name, struct Parms *p) {
 			FD_ZERO(&sds.readFDS);
 			FD_ZERO(&sds.writeFDS);
 			FD_ZERO(&sds.errorFDS);
-			sds.fdLen = ccnFD+1;
-			FD_SET(ccnFD, &sds.readFDS);
-			FD_SET(ccnFD, &sds.writeFDS);
-			FD_SET(ccnFD, &sds.errorFDS);
+			sds.fdLen = p->ccnFD+1;
+			FD_SET(p->ccnFD, &sds.readFDS);
+			FD_SET(p->ccnFD, &sds.writeFDS);
+			FD_SET(p->ccnFD, &sds.errorFDS);
 			int res = select(sds.fdLen,
 							 &sds.readFDS,
 							 &sds.writeFDS,
 							 &sds.errorFDS,
 							 &sds.selectTimeout
 							 );
-			if (res != 0)
-				ccn_fetch_poll(f);
+			if (res != 0) ccn_fetch_poll(p->f);
 			intmax_t nb = ccn_fetch_read(e->fs, e->buf, e->bufMax);
-			if (nb > 0) {
+			if (nb == 0) {
+				// end of this test
+				break;
+			} else if (nb > 0) {
 				// there is data to be written
 				fwrite(e->buf, sizeof(char), nb, e->out);
 				e->accum = e->accum + nb;
-			} else if (nb == CCN_FETCH_READ_END) {
-				// end of file
-				break;
-			} else if (nb == CCN_FETCH_READ_NONE) {
-				// nothing available right now
-				MilliSleep(5);
-			} else if (nb == CCN_FETCH_READ_ZERO) {
-				// zero length segment, broken stream
-				msg = "zero";
-				break;
-			} else if (nb == CCN_FETCH_READ_TIMEOUT) {
-				// timeout, broken stream
-				msg = "timeout";
-				break;
 			} else {
-				// BOGUS
-				msg = "bogus";
-				break;
+				// we just don't know enough right now
+				MilliSleep(5);
 			}
 		}
 		
@@ -225,9 +221,17 @@ runTest(struct ccn_fetch *f, int ccnFD, char *name, struct Parms *p) {
 
 }
 
+static char *help = "usage: ccn_fetch_test {switch | ccnName}*\n\
+    -help     help\n\
+    -out XXX  sets output file to XXX (default: stdout)\n\
+    -mb NNN   ses NNN as max number of buffers to use (default: 4)\n\
+    -d        enables debug output (default: none)\n\
+    -f        use fixed-size segments (default: variable)\n\
+    -nv       no resolve version (default: CCN_V_HIGH)\n";
+
 int
-main(int argc, char **argv) {
-	int i;
+main(int argc, string *argv) {
+	
 	struct ccn *h = ccn_create();
 	int connRes = ccn_connect(h, NULL);
 	if (connRes < 0) {
@@ -237,42 +241,43 @@ main(int argc, char **argv) {
 	int ccnFD = ccn_get_connection_fd(h);
 	int needHelp = ((argc < 2) ? 1 : 0);
 	
-	struct Parms parms = {NULL};
-	parms.resolveVersion = CCN_V_HIGH;
-	parms.maxBufs = 1;
+	struct MyParms p = {0};
 	
-	for (i = 1; i < argc; i++) {
-		char *arg = argv[i];
+	p.resolveVersion = CCN_V_HIGH;
+	p.f = f;
+	p.ccnFD = ccnFD;
+	p.maxSegs = 4;
+	
+	int i = 1;
+	while (i < argc) {
+		string arg = argv[i++];
 		if (arg[0] == '-') {
 			if (strcasecmp(arg, "-out") == 0) {
-				i++;
-				parms.dst = NULL;
-				if (i < argc) parms.dst = argv[i];
-				parms.appendOut = 0;
-			} else if ((strcasecmp(arg, "-maxBufs") == 0)
-					   || (strcasecmp(arg, "-mb") == 0)) {
-				i++;
-				if (i < argc) parms.maxBufs = atoi(argv[i]);
-			} else if ((strcasecmp(arg, "-d") == 0)
-					   || (strcasecmp(arg, "-debug") == 0)) {
-				parms.debug = stderr;
-			} else if ((strcasecmp(arg, "-h") == 0)
-					   || (strcasecmp(arg, "-help") == 0)) {
+				p.appendOut = 0;
+				p.dst = NULL;
+				if (i < argc) p.dst = argv[i++];
+			} else if (strcasecmp(arg, "-d") == 0) {
+				p.debug = stderr;
+			} else if (strcasecmp(arg, "-f") == 0) {
+				p.assumeFixed = 1;
+			} else if (strcasecmp(arg, "-help") == 0) {
 				needHelp++;
 				break;
-			} else if ((strcasecmp(arg, "-f") == 0)
-					   || (strcasecmp(arg, "-fixed") == 0)) {
-				parms.fixed = 1;
+			} else if (strcasecmp(arg, "-nv") == 0) {
+				p.resolveVersion = 0;
+			} else if (strcasecmp(arg, "-mb") == 0) {
+				if (i < argc) p.maxSegs = atoi(argv[i++]);
 			} else {
-				fprintf(stderr, "-- unsupported switch: %s\n", arg);
+				fprintf(stderr, "-- Unsupported switch: %s\n", arg);
 				needHelp++;
 				break;
 			}
 		} else {
-			if (parms.debug != NULL)
-				ccn_fetch_set_debug(f, parms.debug, ccn_fetch_flags_NoteAll);
-			runTest(f, ccnFD, argv[i], &parms);
-			parms.appendOut++;
+			if (p.debug != NULL)
+				ccn_fetch_set_debug(f, p.debug, ccn_fetch_flags_NoteAll);
+			p.src = arg;
+			runTest(&p);
+			p.appendOut = 1;
 		}
 	}
 
@@ -280,12 +285,7 @@ main(int argc, char **argv) {
 	ccn_disconnect(h);
 	ccn_destroy(&h);
 	if (needHelp) {
-		fprintf(stderr, "usage: ccn_fetch_test {switch | ccnName}*\n");
-		fprintf(stderr, "       -help       help\n" );
-		fprintf(stderr, "       -out XXX    sets output file to XXX (default stdout)\n" );
-		fprintf(stderr, "       -maxBufs N  uses N as max number of buffers to use\n" );
-		fprintf(stderr, "       -debug      enables debug output from ccn_fetch\n" );
-		fprintf(stderr, "       -fixed      use fixed-size segments (default: variable)\n");
+		fprintf(stderr, help, NULL);
 	}
 	return 0;
 }
