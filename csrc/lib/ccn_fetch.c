@@ -499,7 +499,7 @@ CallMe(struct ccn_closure *selfp,
 				// assume that this interest will never produce
 				seg_t timeoutSeg = fs->timeoutSeg;
 				fs->timeoutsSeen++;
-				fs->segsAhead = 1;
+				fs->segsAhead = 0;
 				if (timeoutSeg < 0 || thisSeg < timeoutSeg) {
 					// we can infer a new timeoutSeg
 					fs->timeoutSeg = thisSeg;
@@ -782,7 +782,7 @@ ccn_fetch_open(struct ccn_fetch *f,
 		}
 	}
 	fs->maxBufs = maxBufs;
-	fs->segsAhead = 1;
+	fs->segsAhead = 0;
 	fs->fileSize = -1;
 	fs->finalSeg = -1;
 	fs->timeoutSeg = -1;
@@ -1016,7 +1016,7 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 extern void
 ccn_reset_timeout(struct ccn_fetch_stream *fs) {
 	fs->timeoutSeg = -1;
-	fs->segsAhead = 1;
+	fs->segsAhead = 0;
 }
 
 /**
@@ -1037,7 +1037,7 @@ ccn_fetch_seek(struct ccn_fetch_stream *fs, intmax_t pos) {
 		// (also resets bad segment indicators)
 		fs->timeoutSeg = -1;
 		fs->zeroLenSeg = -1;
-		fs->segsAhead = 1;
+		fs->segsAhead = 0;
 	} else if (pos == fs->readPosition) {
 		// no change
 		return 0;

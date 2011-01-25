@@ -196,16 +196,23 @@ runTest(struct MyParms *p) {
 							 );
 			if (res != 0) ccn_fetch_poll(p->f);
 			intmax_t nb = ccn_fetch_read(e->fs, e->buf, e->bufMax);
-			if (nb == 0) {
+			if (nb == CCN_FETCH_READ_END) {
 				// end of this test
 				break;
 			} else if (nb > 0) {
 				// there is data to be written
 				fwrite(e->buf, sizeof(char), nb, e->out);
 				e->accum = e->accum + nb;
-			} else {
+			} else if (nb == CCN_FETCH_READ_NONE) {
 				// we just don't know enough right now
 				MilliSleep(5);
+			} else if (nb == CCN_FETCH_READ_TIMEOUT) {
+				// timeouts are treated as transient (maybe not true)
+				ccn_reset_timeout(e->fs);
+				MilliSleep(5);
+			} else {
+				// random failure
+				msg = "read failed";
 			}
 		}
 		
