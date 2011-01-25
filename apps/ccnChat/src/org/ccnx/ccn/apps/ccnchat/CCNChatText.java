@@ -73,7 +73,6 @@ public class CCNChatText implements Runnable, CCNChatCallback {
 	}
 
 
-	@Override
 	public void run() {
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 
@@ -178,7 +177,6 @@ public class CCNChatText implements Runnable, CCNChatCallback {
 	}
 
 
-	@Override
 	public void recvMessage(String message) {
 		_queue.add(message);
 	}
