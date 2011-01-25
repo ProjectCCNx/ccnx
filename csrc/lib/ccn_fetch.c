@@ -105,12 +105,15 @@ struct ccn_fetch_stream {
 	struct ccn_charbuf *name;			// interest name (without seq#)
 	struct ccn_charbuf *interest;		// interest template
 	int segSize;			// the segment size (-1 if variable, 0 if unknown)
+	int segsAhead;
 	intmax_t fileSize;		// the file size (< 0 if unassigned)
 	intmax_t readPosition;	// the read position (always assigned)
+	intmax_t readStart;		// the read position at segment start
 	seg_t readSeg;			// the segment for the readPosition
 	seg_t timeoutSeg;		// the lowest timeout segment seen
 	seg_t zeroLenSeg;		// the lowest zero len segment seen
 	seg_t finalSeg;			// final segment number (< 0 if not known yet)
+	int finalSegLen;		// final segment length
 	intmax_t timeoutUSecs;	// microseconds for interest timeout
 	intmax_t timeoutsSeen;
 	seg_t segsRead;
@@ -296,7 +299,8 @@ FindBufferForPosition(struct ccn_fetch_stream *fs, intmax_t pos) {
 	return fb;
 }
 
-static intmax_t InferPosition(struct ccn_fetch_stream *fs, seg_t seg) {
+static intmax_t
+InferPosition(struct ccn_fetch_stream *fs, seg_t seg) {
 	intmax_t pos = -1; // by default, size is unknown
 	if (seg == 0) {
 		// initial seg is easy, size regardless
@@ -306,7 +310,7 @@ static intmax_t InferPosition(struct ccn_fetch_stream *fs, seg_t seg) {
 		pos = seg*fs->segSize;
 	} else if (seg == fs->readSeg) {
 		// position is based on the current read position 
-		pos = fs->readPosition;
+		pos = fs->readStart;
 	} else {
 		// try to get the position from the previous buffer
 		struct ccn_fetch_buffer *ofb = FindBufferForSeg(fs, seg-1);
@@ -320,26 +324,47 @@ static struct ccn_fetch_buffer *
 NewBufferForSeg(struct ccn_fetch_stream *fs, seg_t seg, size_t len) {
 	// makes a new buffer for the segment
 	struct ccn_fetch_buffer *fb = calloc(1, sizeof(*fb));
-	fb->buf = calloc(len, sizeof(unsigned char));
+	if (len > 0) fb->buf = calloc(len, sizeof(unsigned char));
 	fb->seg = seg;
-	fb->pos = InferPosition(fs, seg);
+	intmax_t pos = InferPosition(fs, seg);
+	fb->pos = pos;
 	fb->len = len;
 	fs->nBufs++;
 	fb->next = fs->bufList;
 	fs->bufList = fb;
+	fs->segsAhead++;
+	if (fs->segsAhead >= fs->maxBufs) fs->segsAhead = fs->maxBufs-1;
+	if (fs->segSize <= 0 && pos >= 0) {
+		// segment size is variable or unknown
+		// position for buffer is known, so propagate forwards
+		for (;;) {
+			if (fs->fileSize < 0) {
+				// maybe we just found the file size
+				if (seg == fs->finalSeg
+					|| (seg+1 == fs->finalSeg && fs->finalSegLen == 0))
+					fs->fileSize = pos+len;
+			}
+			seg++;
+			struct ccn_fetch_buffer *ofb = FindBufferForSeg(fs, seg);
+			if (ofb == NULL || ofb->pos >= 0) break;
+			pos = pos + len;
+			ofb->pos = pos;
+			len = ofb->len;
+		}
+	}
 	return fb;
 }
 
 static void
 PruneSegments(struct ccn_fetch_stream *fs) {
-	intmax_t rPos = fs->readPosition;
+	intmax_t start = fs->readStart;
 	struct ccn_fetch_buffer *lag = NULL;
 	struct ccn_fetch_buffer *fb = fs->bufList;
 	while (fb != NULL && fs->nBufs > fs->maxBufs) {
 		struct ccn_fetch_buffer *next = fb->next;
-		if (fs->maxBufs == 0 || fb->pos < 0 || rPos > (fb->pos + fb->len)) {
+		if (fs->maxBufs == 0 || (fb->pos >= 0 && start > (fb->pos + fb->len))) {
 			// this buffer is going away
-			// note: keep buffer immediately before readPosition if possible
+			// note: keep buffer immediately before readStart if possible
 			if (lag == NULL) {
 				fs->bufList = next;
 			} else {
@@ -418,29 +443,16 @@ NeedSegment(struct ccn_fetch_stream *fs, seg_t seg) {
 static void
 NeedSegments(struct ccn_fetch_stream *fs) {
 	// determines which segments should be requested
-	// based on the current readPosition
-	if (fs->segSize <= 0) {
-		// seg size is either variable or unknown
-		// TBD: allow for more than 1 extra segment?
-		seg_t seg = fs->readSeg;
-		struct ccn_fetch_buffer *fb = FindBufferForSeg(fs, seg);
-		if (fb == NULL) {
-			NeedSegment(fs, seg);
-		} else {
-			NeedSegment(fs, seg+1);
-		}
-	} else {
-		// seg size is fixed
-		seg_t loSeg = fs->readSeg;
-		seg_t hiSeg = loSeg+fs->maxBufs-1;
-		seg_t finalSeg = fs->finalSeg;
-		if (finalSeg >= 0 && hiSeg > finalSeg) hiSeg = finalSeg;
-		if (loSeg > hiSeg) hiSeg = loSeg;
-		while (loSeg <= hiSeg) {
-			// try to request needed segments
-			NeedSegment(fs, loSeg);
-			loSeg++;
-		}
+	// based on the current readSeg and maxBufs 
+	seg_t loSeg = fs->readSeg;
+	seg_t hiSeg = loSeg+fs->segsAhead;
+	seg_t finalSeg = fs->finalSeg;
+	if (finalSeg >= 0 && hiSeg > finalSeg) hiSeg = finalSeg;
+	if (loSeg > hiSeg) hiSeg = loSeg;
+	while (loSeg <= hiSeg) {
+		// try to request needed segments
+		NeedSegment(fs, loSeg);
+		loSeg++;
 	}
 }
 
@@ -468,13 +480,6 @@ CallMe(struct ccn_closure *selfp,
 		// worth a try to find the last segment
 		finalSeg = GetFinalSegment(info);
 		fs->finalSeg = finalSeg;
-		if (finalSeg >= 0)
-			if (debug != NULL && (flags & ccn_fetch_flags_NoteFinal)) {
-				fprintf(debug, 
-						"-- ccn_fetch, %s, thisSeg %jd, finalSeg %jd\n",
-						fs->id, thisSeg, finalSeg);
-				fflush(debug);
-			}
 	}
     
 	switch (kind) {
@@ -494,6 +499,7 @@ CallMe(struct ccn_closure *selfp,
 				// assume that this interest will never produce
 				seg_t timeoutSeg = fs->timeoutSeg;
 				fs->timeoutsSeen++;
+				fs->segsAhead = 0;
 				if (timeoutSeg < 0 || thisSeg < timeoutSeg) {
 					// we can infer a new timeoutSeg
 					fs->timeoutSeg = thisSeg;
@@ -546,14 +552,14 @@ CallMe(struct ccn_closure *selfp,
 				// note this problem for future reporting
 				fs->zeroLenSeg = thisSeg;
 		} else if (thisSeg == finalSeg && dataLen == 0) {
-			// EOF
+			// EOF, but no buffer needed
 			if (fs->fileSize < 0)
 				fs->fileSize = InferPosition(fs, thisSeg);
 			fs->finalSeg = finalSeg-1;
-			if (debug != NULL && (flags & ccn_fetch_flags_NoteAddRem)) {
+			if (debug != NULL && (flags & ccn_fetch_flags_NoteFinal)) {
 				fprintf(debug, 
-						"-- ccn_fetch EOF, dataLen == 0, %s, seg %jd, len %d\n",
-						fs->id, thisSeg, (int) dataLen);
+						"-- ccn_fetch EOF, %s, seg %jd, len %d, fs %jd\n",
+						fs->id, thisSeg, (int) dataLen, fs->fileSize);
 				fflush(debug);
 			}
 			
@@ -566,20 +572,21 @@ CallMe(struct ccn_closure *selfp,
 				if (thisSeg == 0 || thisSeg < finalSeg)
 					fs->segSize = dataLen;
 			}
+			if (thisSeg == finalSeg) fs->finalSegLen = dataLen;
 			struct ccn_fetch_buffer *fb = NewBufferForSeg(fs, thisSeg, dataLen);
 			memcpy(fb->buf, data, dataLen);
 			if (debug != NULL && (flags & ccn_fetch_flags_NoteFill)) {
 				fprintf(debug, 
-						"-- ccn_fetch FillSeg, %s, seg %jd, len %d\n",
-						fs->id, thisSeg, (int) dataLen);
+						"-- ccn_fetch FillSeg, %s, seg %jd, len %d, nbuf %d\n",
+						fs->id, thisSeg, (int) dataLen, fs->nBufs);
 				fflush(debug);
 			}
 			if (thisSeg == finalSeg) {
 				// the file size is known in segments
 				if (fs->segSize <= 0) {
 					// variable or unknown segment size
-					if (thisSeg == fs->readSeg) {
-						fs->fileSize = fs->readPosition + dataLen;
+					if (fb->pos >= 0) {
+						fs->fileSize = fb->pos + dataLen;
 					}
 				} else {
 					// fixed segment size, so file size is now known
@@ -587,8 +594,8 @@ CallMe(struct ccn_closure *selfp,
 				}
 				if (debug != NULL && (flags & ccn_fetch_flags_NoteFinal)) {
 					fprintf(debug, 
-							"-- ccn_fetch file size, %s, fileSize %jd\n",
-							fs->id, fs->fileSize);
+							"-- ccn_fetch EOF, %s, seg %jd, len %d, fs %jd\n",
+							fs->id, thisSeg, (int) dataLen, fs->fileSize);
 					fflush(debug);
 				}
 			}
@@ -774,6 +781,8 @@ ccn_fetch_open(struct ccn_fetch *f,
 			return NULL;
 		}
 	}
+	fs->maxBufs = maxBufs;
+	fs->segsAhead = 0;
 	fs->fileSize = -1;
 	fs->finalSeg = -1;
 	fs->timeoutSeg = -1;
@@ -789,8 +798,6 @@ ccn_fetch_open(struct ccn_fetch *f,
 	} else
 		fs->interest = make_data_template(MaxSuffixDefault);
 	
-	// allocate the buffers
-	fs->maxBufs = maxBufs;
 	
 	// remember the stream in the parent
 	int ns = f->nStreams;
@@ -960,7 +967,8 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 		struct ccn_fetch_buffer *fb = FindBufferForSeg(fs, seg);
 		if (fb == NULL) break;
 		unsigned char *src = fb->buf;
-		size_t lo = fb->pos;
+		size_t start = fb->pos;
+		size_t lo = start;
 		if (lo < 0) {
 			// segments delivered at random might cause this
 			lo = pos;
@@ -986,10 +994,12 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 		off = off + d;
 		len = len - d;
 		fs->readPosition = pos;
+		fs->readStart = start;
 		if (pos == hi) {
 			// finished the bytes in this segment
 			seg++;
 			fs->readSeg = seg;
+			fs->readStart = pos;
 		}
 	}
 	NeedSegments(fs);
@@ -1006,6 +1016,7 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 extern void
 ccn_reset_timeout(struct ccn_fetch_stream *fs) {
 	fs->timeoutSeg = -1;
+	fs->segsAhead = 0;
 }
 
 /**
@@ -1020,13 +1031,13 @@ extern int
 ccn_fetch_seek(struct ccn_fetch_stream *fs, intmax_t pos) {
 	// seeks to the given position in the input stream
 	seg_t seg = 0;
+	intmax_t start = 0;
 	if (pos == 0) {
 		// seek to the start should always be OK
 		// (also resets bad segment indicators)
-		fs->readPosition = 0;
-		fs->readSeg = 0;
 		fs->timeoutSeg = -1;
 		fs->zeroLenSeg = -1;
+		fs->segsAhead = 0;
 	} else if (pos == fs->readPosition) {
 		// no change
 		return 0;
@@ -1036,8 +1047,10 @@ ccn_fetch_seek(struct ccn_fetch_stream *fs, intmax_t pos) {
 		if (fb != NULL) {
 			// an existing segment, so this is easy
 			seg = fb->seg;
+			start = fb->pos;
 		} else {
-			if (pos < 0 || fs->segSize <= 0)
+			int ss = fs->segSize;
+			if (pos < 0 || ss <= 0)
 				// segment size is not known, so indicate that seek fails
 				return -1;
 			intmax_t fileSize = fs->fileSize;
@@ -1046,10 +1059,12 @@ ccn_fetch_seek(struct ccn_fetch_stream *fs, intmax_t pos) {
 				return -1;
 			}
 			// at this point we can set the position (failure can occur later on the read)
-			seg = pos / fs->segSize;
+			seg = pos / ss;
+			start = seg * ss;
 		}
 	}
 	fs->readPosition = pos;
+	fs->readStart = start;
 	fs->readSeg = seg;
 	NeedSegment(fs, seg);
 	PruneSegments(fs);

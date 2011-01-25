@@ -152,11 +152,18 @@ main(int argc, char **argv)
         while ((res = ccn_fetch_read(stream, buf, sizeof(buf))) != 0) {
             if (res > 0) {
                 fwrite(buf, res, 1, stdout);
-            } else if (res == -1) {
+            } else if (res == CCN_FETCH_READ_NONE) {
+                ccn_run(ccn, 1000);
+            } else if (res == CCN_FETCH_READ_END) {
+                break;
+            } else if (res == CCN_FETCH_READ_TIMEOUT) {
+				/* eventually have a way to handle long timeout? */
+				ccn_reset_timeout(stream);
                 ccn_run(ccn, 1000);
             } else {
-                /* will need to handle timeout */
-                break;
+                /* fatal stream error; shuld report this! */
+				fprintf(stderr, "%s: fetch error: %s\n", argv[0], arg);
+				exit(1);
             }
         }
         stream = ccn_fetch_close(stream);

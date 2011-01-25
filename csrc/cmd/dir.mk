@@ -29,6 +29,7 @@ PROGRAMS = $(INSTALLED_PROGRAMS) \
     ccnsimplecat \
     dataresponsetest \
     ccnseqwriter \
+    ccn_fetch_test \
     $(PCAP_PROGRAMS)
 
 EXPAT_PROGRAMS = ccn_xmltoccnb
@@ -40,7 +41,7 @@ CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
        ccnbuzz.c ccnbx.c ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
        ccndumpnames.c ccndumppcap.c ccnget.c ccnhexdumpdata.c \
        ccnls.c ccnput.c ccnrm.c ccnsendchunks.c ccnseqwriter.c \
-       ccnslurp.c dataresponsetest.c 
+       ccn_fetch_test.c ccnslurp.c dataresponsetest.c 
 
 default all: $(PROGRAMS)
 # Don't try to build broken programs right now.
@@ -103,6 +104,9 @@ ccnsendchunks: ccnsendchunks.o
 
 ccnseqwriter: ccnseqwriter.o
 	$(CC) $(CFLAGS) -o $@ ccnseqwriter.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccn_fetch_test: ccn_fetch_test.o
+	$(CC) $(CFLAGS) -o $@ ccn_fetch_test.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccncatchunks: ccncatchunks.o
 	$(CC) $(CFLAGS) -o $@ ccncatchunks.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -213,6 +217,8 @@ ccnseqwriter.o: ccnseqwriter.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ../include/ccn/seqwriter.h
+ccn_fetch_test.o: ccn_fetch_test.c ../include/ccn/ccn.h \
+  ../include/ccn/fetch.h ../include/ccn/uri.h
 ccnslurp.o: ccnslurp.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
