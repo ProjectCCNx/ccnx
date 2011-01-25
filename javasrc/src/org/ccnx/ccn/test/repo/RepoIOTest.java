@@ -157,6 +157,7 @@ public class RepoIOTest extends RepoTestBase {
 		waitForPutDrain(pko);
 		pko.close();
 		waitForPutDrain(pko2);
+		pko2.close();
 		so.close();
 		floss.stop();
 	}
