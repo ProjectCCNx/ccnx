@@ -510,7 +510,7 @@ CallMe(struct ccn_closure *selfp,
 							fs->id, thisSeg);
 					fprintf(debug, 
 							", dt %lld us, timeoutUSecs %jd\n",
-							dt, fs->timeoutUSecs);
+							dt, (intmax_t)fs->timeoutUSecs);
 					fflush(debug);
 				}
 				return(CCN_UPCALL_RESULT_OK);
