@@ -16,10 +16,6 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200112L
-#endif
-
 #include <ccn/fetch.h>
 
 #include <ccn/ccn.h>
@@ -40,7 +36,6 @@
 #include <sys/time.h>
 
 #define LOCAL_BUF_MAX 20000
-#define CCN_FETCH_BUFS 5
 
 typedef struct ccn_charbuf *MyCharbuf;
 typedef char *string;
