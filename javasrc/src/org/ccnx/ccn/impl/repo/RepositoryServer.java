@@ -489,15 +489,28 @@ public class RepositoryServer implements CCNStatistics {
 		HandleInterest ("interests", "Number of calls to RepositoryInterestHandler.handleInterest()"),
 		HandleInterestErrors ("errors", "Errors in handleInterest()"),
 		
-		HandleInterestStartWrite ("interests", "Number of start writes to handleInterest()"),
+		HandleInterestCommands ("interests", "Number of command interests to handleInterest()"),
+		
+		HandleInterestStartWriteReceived ("interests", "Number of start writes to handleInterest()"),
+		HandleInterestStartWriteProcessed ("interests", "Number of start writes processed by handleInterest()"),
+		HandleInterestStartWriteIgnored ("interests", "Number of start writes ignored in handleInterest()"),
 		HandleInterestStartWriteErrors ("errors", "Error count in startWrite()"),
 		
-		HandleInterestNameEnum ("interests", "Number of name enums to handleInterest()"),
-		HandleInterestCheckedWrite ("interests", "Number of checked write to handleInterest()"),
-		HandleInterestBulkImport ("interests", "Number of bulk imports to handleInterest()"),
-		HandleInterestUncategorized ("interests", "Number of uncategorized interersts to handleInterest()"),
-		HandleInterestDuplicateRequests ("interests", "Number of duplicate interersts to handleInterest()"),
-		HandleInterestWriteSuspended ("interests", "Number of write suspended interersts to handleInterest()"),
+		HandleInterestNameEnumReceived ("interests", "Number of name enums to handleInterest()"),
+		HandleInterestNameEnumProcessed ("interests", "Number of name enums processed in handleInterest()"),
+		HandleInterestNameEnumIgnored ("interests", "Number of name enums ignored in handleInterest()"),
+
+		HandleInterestCheckedWriteReceived ("interests", "Number of checked write to handleInterest()"),
+		HandleInterestCheckedWriteProcessed ("interests", "Number of checked write processed in handleInterest()"),
+		HandleInterestCheckedWriteIgnored ("interests", "Number of checked write ignored in handleInterest()"),
+		
+		HandleInterestBulkImportReceived ("interests", "Number of bulk imports to handleInterest()"),
+		HandleInterestBulkImportProcessed ("interests", "Number of bulk imports processed in handleInterest()"),
+		HandleInterestBulkImportIgnored ("interests", "Number of bulk imports ignored in handleInterest()"),
+
+		HandleInterestUncategorized ("interests", "Number of uncategorized interests to handleInterest()"),
+		HandleInterestDuplicateRequests ("interests", "Number of duplicate interests to handleInterest()"),
+		HandleInterestWriteSuspended ("interests", "Number of write suspended interests to handleInterest()"),
 		HandleInterestStartWritePolicyHandlers ("responses", "Number of RepositoryPolicyHandler created for StartWrite"),
 		HandleInterestStartWriteExpressInterest ("responses", "Number of expressInterests created for StartWrite"),
 		HandleInterestNameEnumResponses ("responses", "Number of responses sent for Name Enums"),
