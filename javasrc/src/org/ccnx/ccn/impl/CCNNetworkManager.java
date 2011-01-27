@@ -1149,12 +1149,13 @@ public class CCNNetworkManager implements Runnable {
 	 * @return prefix that incorporates or matches this one or null if none found
 	 */
 	protected RegisteredPrefix getRegisteredPrefix(ContentName prefix) {
-		synchronized(_registeredPrefixes) {		
-			// MM: This is a dumb way to search a TreeMap for a prefix.
-			// TreeMap is sorted and should exploit that.
-			for (ContentName name: _registeredPrefixes.keySet()) {
-				if (name.equals(prefix) || name.isPrefixOf(prefix))
-					return _registeredPrefixes.get(name);		
+		synchronized(_registeredPrefixes) {
+			SortedMap<ContentName, RegisteredPrefix> map = _registeredPrefixes.tailMap(new ContentName(1, prefix.components()));
+			for (ContentName name : map.keySet()) {
+				if (name.isPrefixOf(prefix))
+					return _registeredPrefixes.get(name);
+				if (!prefix.isPrefixOf(name))
+					break;
 			}
 		}
 		return null;

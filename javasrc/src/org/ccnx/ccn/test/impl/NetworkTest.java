@@ -93,6 +93,10 @@ public class NetworkTest extends CCNTestBase {
 		ContentName testName3 = ContentName.fromNative(testName2, "blaz");
 		ContentName testName4 = ContentName.fromNative(testName2, "xxx");
 		Interest interest4 = new Interest(testName4);
+		ContentName testName5 = ContentName.fromNative(testPrefix, "zoo");
+		ContentName testName6 = ContentName.fromNative(testName1, "zoo");
+		ContentName testName7 = ContentName.fromNative(testName2, "spaz");
+		Interest interest6 = new Interest(testName6);
 		
 		// Test that we don't receive interests above what we registered
 		gotInterest = false;
@@ -109,15 +113,28 @@ public class NetworkTest extends CCNTestBase {
 		gotInterest = false;
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, testName3, tfl);
-		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
+		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, testName2, tfl);
+		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
+		
+		// The following is to make sure that a filter that is a prefix of a registered filter
+		// doesn't get registered separately. There's no good way to test this directly (I don't think)
+		// currently but we can see that it is done by checking out the log
+		putHandle.getNetworkManager().setInterestFilter(this, testName7, tfl);  
 		getHandle.expressInterest(interest4, tl);
 		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest4, tl);
+		gotInterest = false;
+		filterSema.drainPermits();
+		getHandle.expressInterest(interest6, tl);
+		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue(gotInterest);
+		getHandle.cancelInterest(interest6, tl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName1, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName3, tfl);
+		putHandle.getNetworkManager().cancelInterestFilter(this, testName5, tfl);
 	}
 
 	@Test
