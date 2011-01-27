@@ -16,6 +16,7 @@ conf.mk
 conf/local.mk
 cmd/Makefile
 cmd/ccn_ccnbtoxml
+cmd/ccn_fetch_test
 cmd/ccn_splitccnb
 cmd/ccn_xmltoccnb
 cmd/ccnbasicconfig
