@@ -1,290 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "http://www.w3.org/2001/XMLSchema">
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-<!--
-        targetNamespace="http://www.ccnx.org/content/schema/20090915"
-        xmlns="http://www.ccnx.org/content/schema/20090915" 
-        elementFormDefault="unqualified"
-        attributeFormDefault="unqualified">
--->
-
-<xs:include schemaLocation="ccnx.xsd"/>
-
-  <xs:annotation>
-    <xs:documentation xml:lang="en">
-      Content-Centric Networks example of extending ccnb encoding/decoding.
-    </xs:documentation>
-  </xs:annotation>
-
-<!-- Top-level objects that can appear in 
-     documents, messages, etc. -->
-
-
-  <!-- Example of 2 Integers -->
-  <xs:element name="Example2Integers" type="Example2IntegersType"> </xs:element>
-  <xs:complexType name="Example2IntegersType">
-    <xs:sequence>
-      <xs:element name="Integer1" type="xs:nonNegativeInteger"/>
-      <xs:element name="Integer2" type="xs:nonNegativeInteger"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <!-- C->E Table entry -->
-  <xs:element name="CustodianEndpoint" type="DescriptorType"> </xs:element>
-  <xs:complexType name="DescriptorType">
-    <xs:sequence>
-      <xs:element maxOccurs="unbounded" minOccurs="1" name="Entry" type="CustodianEndpointEntryType"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <!-- These types make up the C->E entry -->
-  <xs:complexType name="CustodianEndpointEntryType"> 
-    <xs:sequence>
-      <xs:element name="EndpointData">
-        <xs:complexType>
-          <xs:choice>
-            <xs:element name="SIPData" type="SIPType"/>
-            <xs:element name="DirectData" type="DirectType"/>
-          </xs:choice>
-        </xs:complexType>
-      </xs:element>
-      <xs:element maxOccurs="unbounded" minOccurs="1" name="EndpointAttribute"
-        type="EndpointAttributeType"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <xs:complexType name="SIPType">
-    <xs:sequence>
-      <xs:element name="Label" type="xs:string"/>
-      <xs:element name="Proxy" type="xs:string"/>
-      <xs:element name="User" type="xs:string"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <xs:simpleType name="InterfaceType">
-    <xs:restriction base="xs:base64Binary">
-      <xs:enumeration value="Ethernet"/>
-      <xs:enumeration value="WiFi"/>
-      <xs:enumeration value="Cell"/>
-    </xs:restriction>
-  </xs:simpleType>
-  
-  <xs:complexType name="DirectType">
-    <xs:sequence>
-      <xs:element name="Label" type="xs:string"/>
-      <xs:element name="Interface" type="InterfaceType"/>
-      <xs:element name="WiFiData" type="WiFiType" minOccurs="0" maxOccurs="1"/>
-      <xs:element name="LANData" type="LANType" minOccurs="0" maxOccurs="1"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <xs:complexType name="WiFiType">
-    <!-- This is defined in schema/vpc.xsd -->
-    <xs:sequence>
-      <xs:element name="Label" type="xs:string"/>
-      <xs:element name="SSID" type="xs:string"/>
-      <!-- The MAC address of the APs in this network, used to differentiate. Might want
-        to be restricted more than string. -->
-      <xs:element name="BSSID" type="xs:string"
-        minOccurs="0" maxOccurs="unbounded" /> 
-    </xs:sequence>
-  </xs:complexType>
-
-  <xs:complexType name="LANType">
-    <xs:sequence>
-      <xs:element name="Label" type="xs:string"/>
-      <xs:element name="DefaultRouterMAC" type="xs:base64Binary"/>
-    </xs:sequence>
-  </xs:complexType>
-    
-  <xs:complexType name="EndpointAttributeType">
-    <xs:sequence>
-      <xs:element name="RoutePrefix" type="NameType"/>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <!-- If there are 0 Membership restrictions, then anyone can use it.
-            If you want no one to use it, make a MembershipRestrictions with
-            a Component no one could match.  Though really, you want to have
-            0 restrictions and use a "0" preference -->
-        <xs:element name="MembershipRestriction" type="NameType"/>
-          <!-- Specify a VPC2 name.  The node must be a hub of the specified domain -->
-        <xs:element name="IsHubOf" type="NameType"/>
-      </xs:choice>
-      <xs:element name="Preference" type="xs:nonNegativeInteger"/>
-    </xs:sequence>
-  </xs:complexType>
-</xs:schema>
-
-
-
-
-<xs:element name="CustodianInfo" type="CustodianInfoType"/> 
-<xs:complexType name="CustodianInfoType">
-  <xs:sequence>
-    <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
-    <xs:element name="CustodianIsHub" type="xs:nonNegativeInteger"/>
-  </xs:sequence>
-</xs:complexType>
-
-<xs:element name="WiFiNetwork" type="WiFiNetworkType"/>
-<xs:complexType name="WiFiNetworkType">
-<!-- The parameters necessary to define a wifi network. -->
-  <xs:sequence>
-	<xs:element name="Label" type="xs:string"
-                                     minOccurs="0" maxOccurs="1" /> 
-	<xs:element name="SSID" type="xs:string"/>
-    <!-- should make this mandatory, but people do dangerous things... -->
-	<xs:element name="PSK" type="xs:string" 
-                                     minOccurs="0" maxOccurs="1" />
-    <!-- The MAC address of the APs in this network, used to differentiate. Might want
-         to be restricted more than string. -->
-	<xs:element name="BSSID" type="xs:string"
-                                     minOccurs="0" maxOccurs="unbounded" /> 
-  </xs:sequence>
-</xs:complexType>
-
-<xs:complexType name="ContextNameType">
-	<xs:sequence>
-		<xs:element name="Prefix" type="NameType" minOccurs="0" maxOccurs="1" />
-		<xs:element name="Type" type="xs:integer" minOccurs="0" maxOccurs="1" />
-		<xs:element name="RootFlag" type="xs:integer" minOccurs="0" maxOccurs="1" />
-		<xs:element name="ModifyTime" type="xs:integer" minOccurs="0" maxOccurs="1" />
-	</xs:sequence>
-</xs:complexType>
-
-<xs:complexType name="RuleStateStorageEntryType">
-	<xs:sequence>
-		<xs:element name="OrigPrefix" type="NameType" />
-		<xs:element name="TreePrefix" type="NameType" />
+	<!--
+	 targetNamespace="http://www.ccnx.org/content/schema/20090915"
+	 xmlns="http://www.ccnx.org/content/schema/20090915" 
+	 elementFormDefault="unqualified"
+	 attributeFormDefault="unqualified">
+	 -->
+	
+	<xs:include schemaLocation="ccnx.xsd"/>
+	
+	<xs:annotation>
+		<xs:documentation xml:lang="en">
+			Content-Centric Networks example of extending ccnb encoding/decoding.
+		</xs:documentation>
+	</xs:annotation>
+	
+	
+	<!-- Example of 2 Integers -->
+	<xs:element name="Example2Integers" type="Example2IntegersType"> </xs:element>
+	<xs:complexType name="Example2IntegersType">
+		<xs:sequence>
+			<xs:element name="Integer1" type="xs:nonNegativeInteger"/>
+			<xs:element name="Integer2" type="xs:nonNegativeInteger"/>
+		</xs:sequence>
+	</xs:complexType>
+	
+	
+	<!-- Example of a complex type -->
+	<xs:element name="ExampleComplicated" type="ComplicatedType"> </xs:element>
+	<xs:complexType name="ComplicatedType">
+		<xs:sequence>
+			<xs:element name="String2" type="xs:string"/>
+			<xs:element name="Enumeration1" type="EnumerationType"/>
+			<xs:element name="SBVData1" type="StringBinaryVectorType" minOccurs="1" maxOccurs="5"/>
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:simpleType name="EnumerationType">
+		<xs:restriction base="xs:base64Binary">
+			<xs:enumeration value="Enum0"/>
+			<xs:enumeration value="Enum1"/>
+			<xs:enumeration value="Enum2"/>
+		</xs:restriction>
+	</xs:simpleType>
 		
-		<!-- RuleDataType -->
-		<xs:element name="Data" type="NameType" />
-		<xs:element name="Version" type="xs:long" />
-		<xs:element name="Providence" type="xs:long" />
-	</xs:sequence>
-</xs:complexType>
-
-<xs:element name="DeviceState" type="DeviceStateType"/> 
-<xs:complexType name="DeviceStateType">
-	<xs:sequence>
-		<xs:element name="IsCommitted" type="xs:nonNegativeInteger" />
-		<xs:element name="IsShared" type="xs:nonNegativeInteger" />
-	</xs:sequence>
-</xs:complexType>
-
-<xs:element name="SIPIdentity" type="SIPIdentityType"/> 
-<xs:complexType name="SIPIdentityType">
-	<xs:sequence>
-		<xs:element name="SIPUser" type="xs:string" />
-		<xs:element name="SIPServer" type="xs:string" />
-		<xs:element name="SIPLoginUser" type="xs:string" />
-		<xs:element name="SIPLoginPassword" type="xs:string" />
-	</xs:sequence>
-</xs:complexType>
-
-<xs:element name="VCACallData" type="VCACallData"/> 
-<xs:complexType name="VCACallData">
-	<xs:sequence>
-		<xs:element name="VCAConnectionStatus" type="VCAConnectionStatusType" />
-	</xs:sequence>
-</xs:complexType>
-
-<xs:simpleType name="VCAConnectionStatusType">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="Succeeded"/>
-      <xs:enumeration value="Failed"/>
-    </xs:restriction>
-</xs:simpleType>
-
-  <!-- This is meta data about an EventReference -->
-  <xs:complexType name="EventMetadataType">
-    <xs:sequence>
-      <!-- The VPC1 name of the creator -->
-      <xs:element name="Creator" type="NameType" minOccurs="0" maxOccurs="1"/>
-      
-      <!-- The date/time of the object (not the event), as a CCNTime -->
-      <xs:element name="Date" type="TimestampType" minOccurs="0" maxOccurs="1"/>
-      
-      <!-- The lat/lon of the event in GPS coordinates, use Geo URL (ICBM) format.
-        See http://en.wikipedia.org/wiki/Geotagging#Geotagging_photos_using_GPS.
-        
-        Example: "50.167958, -97.133185"
-        OBSOLETE, see GeoPosition
-      -->
-      <xs:element name="ICBM" type="xs:string" minOccurs="0" maxOccurs="1"/>
-      
-      <!-- A user text field as a caption for the object -->
-      <xs:element name="Caption" type="xs:string" minOccurs="0" maxOccurs="1"/>
-      
-      <!-- A category used for indexing -->
-      <xs:element name="Category" type="xs:string" minOccurs="0" maxOccurs="1"/>
-
-	  <!--  GeoPosition and Placename as per GeoTag standard.
-	        Example: "50.167958;-97.133185"
-	        Example: "Rockwood Rural Municipality, Manitoba, Canada"
-	   -->
-      <xs:element name="GeoPosition" type="xs:string" minOccurs="0" maxOccurs="1"/>
-      <xs:element name="GeoPlacename" type="xs:string" minOccurs="0" maxOccurs="1"/>
-
-    </xs:sequence>
-  </xs:complexType>
-
-  <!-- These are included as a list in the EventObject -->
-  <xs:complexType name="EventReferenceType">
-    <xs:sequence>
-      <xs:element name="Link" type="LinkType" minOccurs="1" maxOccurs="1" />
-      <xs:element name="Metadata" type="EventMetadataType" minOccurs="0" maxOccurs="1" />
-    </xs:sequence>
-  </xs:complexType>
-  
-  <!-- Events have a type.  Right now, we only have one type. -->
-  <xs:simpleType name="EventTypeName">  
-    <xs:restriction base="xs:string">    
-      <!-- Some referenced object was published -->
-      <xs:enumeration value="ObjectPublished"/>   
-      </xs:restriction>   
-  </xs:simpleType>
-  
-  <!-- Events have a type.  Right now, we only have one type. -->
-  <xs:simpleType name="EventPriorityName">  
-    <xs:restriction base="xs:string">    
-      <xs:enumeration value="High"/>   
-      <xs:enumeration value="Normal"/>   
-      <xs:enumeration value="Low"/>   
-    </xs:restriction>   
-  </xs:simpleType>
-  
-  <xs:complexType name="EventObjectType">
-    <xs:sequence>
-      <!-- The DID of the device creating the event -->
-      <xs:element name="DID" type="DigestType" minOccurs="1" maxOccurs="1" />
-      
-      <!-- The Creator may include the last Version written to allow a node
-            to backtrace all previous events -->
-      <xs:element name="PreviousVersion" type="TimestampType" minOccurs="0" maxOccurs="1" />
-      
-      <xs:element name="EventType" type="EventTypeName" minOccurs="1" maxOccurs="1" />
-      
-      <!-- As a CCNTime -->
-      <xs:element name="EventTime" type="TimestampType" minOccurs="1" maxOccurs="1" />
-
-      <!-- The importance of the event -->
-      <xs:element name="EventPriority" type="EventPriorityName" minOccurs="1" maxOccurs="1" /> 
-
-      <!-- A user text field as a comment for the object -->
-      <xs:element name="Comment" type="xs:string" minOccurs="0" maxOccurs="1"/>
-
-      <!-- The VPC1 name of the creator -->
-      <xs:element name="Creator" type="NameType" minOccurs="0" maxOccurs="1"/>
-
-      <!-- finally, an unbounded list of (Link, Metadata) pairs -->
-      <xs:element name="Reference" type="EventReferenceType" minOccurs="0" maxOccurs="unbounded"/>
-      
-    </xs:sequence>
-  </xs:complexType>
-
-  <!-- Top-leve types -->
-  <xs:element name="EventMetadata" type="EventMetadataType" />
-  <xs:element name="EventObject" type="EventObjectType" />
-  
+    <xs:complexType name="StringBinaryVectorType">
+		<xs:sequence>
+			<xs:element name="String1" type="xs:string"/>
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element name="Name" type="NameType"/>
+				<xs:element name="Interest" type="InterestType"/>
+			</xs:choice>
+			<xs:element name="Binary1" type="xs:base64Binary"/>
+		</xs:sequence>
+	</xs:complexType>	
   
 </xs:schema>
