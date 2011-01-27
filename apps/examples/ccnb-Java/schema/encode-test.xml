@@ -1,3 +1,4 @@
-<WiFiNetwork>
-  <SSID>GetNear</SSID>
-</WiFiNetwork>
+<Example2Integers>
+  <Integer1>100</Integer1>
+  <Integer2>200</Integer2>
+</Example2Integers>

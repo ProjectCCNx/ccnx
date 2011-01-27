@@ -1,7 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "http://www.w3.org/2001/XMLSchema">
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-<!-- DKS: leave this out, following ccn.xsd; as things don't work right
-     if you put it in. We should fix this. -->
 <!--
         targetNamespace="http://www.ccnx.org/content/schema/20090915"
         xmlns="http://www.ccnx.org/content/schema/20090915" 
@@ -13,27 +12,114 @@
 
   <xs:annotation>
     <xs:documentation xml:lang="en">
-      Content-Centric Networks security-related data schema.
-      Copyright (c) 2010 Palo Alto Research Center, Inc. 
-          All rights reserved.
+      Content-Centric Networks example of extending ccnb encoding/decoding.
     </xs:documentation>
   </xs:annotation>
 
 <!-- Top-level objects that can appear in 
      documents, messages, etc. -->
 
-<xs:element name="AuthorizedCustodianList" type="AuthorizedCustodianListType"/> 
-<xs:complexType name="AuthorizedCustodianListType">
-  <xs:sequence>
-    <xs:element name="CustodianInfo" type="CustodianInfoType" minOccurs="1" maxOccurs="unbounded"/>
-  </xs:sequence>
-</xs:complexType>
+
+  <!-- Example of 2 Integers -->
+  <xs:element name="Example2Integers" type="Example2IntegersType"> </xs:element>
+  <xs:complexType name="Example2IntegersType">
+    <xs:sequence>
+      <xs:element name="Integer1" type="xs:nonNegativeInteger"/>
+      <xs:element name="Integer2" type="xs:nonNegativeInteger"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- C->E Table entry -->
+  <xs:element name="CustodianEndpoint" type="DescriptorType"> </xs:element>
+  <xs:complexType name="DescriptorType">
+    <xs:sequence>
+      <xs:element maxOccurs="unbounded" minOccurs="1" name="Entry" type="CustodianEndpointEntryType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- These types make up the C->E entry -->
+  <xs:complexType name="CustodianEndpointEntryType"> 
+    <xs:sequence>
+      <xs:element name="EndpointData">
+        <xs:complexType>
+          <xs:choice>
+            <xs:element name="SIPData" type="SIPType"/>
+            <xs:element name="DirectData" type="DirectType"/>
+          </xs:choice>
+        </xs:complexType>
+      </xs:element>
+      <xs:element maxOccurs="unbounded" minOccurs="1" name="EndpointAttribute"
+        type="EndpointAttributeType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="SIPType">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+      <xs:element name="Proxy" type="xs:string"/>
+      <xs:element name="User" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="InterfaceType">
+    <xs:restriction base="xs:base64Binary">
+      <xs:enumeration value="Ethernet"/>
+      <xs:enumeration value="WiFi"/>
+      <xs:enumeration value="Cell"/>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:complexType name="DirectType">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+      <xs:element name="Interface" type="InterfaceType"/>
+      <xs:element name="WiFiData" type="WiFiType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="LANData" type="LANType" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="WiFiType">
+    <!-- This is defined in schema/vpc.xsd -->
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+      <xs:element name="SSID" type="xs:string"/>
+      <!-- The MAC address of the APs in this network, used to differentiate. Might want
+        to be restricted more than string. -->
+      <xs:element name="BSSID" type="xs:string"
+        minOccurs="0" maxOccurs="unbounded" /> 
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="LANType">
+    <xs:sequence>
+      <xs:element name="Label" type="xs:string"/>
+      <xs:element name="DefaultRouterMAC" type="xs:base64Binary"/>
+    </xs:sequence>
+  </xs:complexType>
+    
+  <xs:complexType name="EndpointAttributeType">
+    <xs:sequence>
+      <xs:element name="RoutePrefix" type="NameType"/>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <!-- If there are 0 Membership restrictions, then anyone can use it.
+            If you want no one to use it, make a MembershipRestrictions with
+            a Component no one could match.  Though really, you want to have
+            0 restrictions and use a "0" preference -->
+        <xs:element name="MembershipRestriction" type="NameType"/>
+          <!-- Specify a VPC2 name.  The node must be a hub of the specified domain -->
+        <xs:element name="IsHubOf" type="NameType"/>
+      </xs:choice>
+      <xs:element name="Preference" type="xs:nonNegativeInteger"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>
+
+
+
 
 <xs:element name="CustodianInfo" type="CustodianInfoType"/> 
 <xs:complexType name="CustodianInfoType">
   <xs:sequence>
-    <!-- TODO: Create a DeviceID that is a PublisherPublicKeyDigest but with a more
-                meaningful name. -->
     <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
     <xs:element name="CustodianIsHub" type="xs:nonNegativeInteger"/>
   </xs:sequence>
