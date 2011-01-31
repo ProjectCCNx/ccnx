@@ -15,7 +15,7 @@
 #  Boston, MA 02110-1301, USA.
 
 SCHEMA=example.xsd
-XML_EXAMPLES="encode-test decode-test"
+XML_EXAMPLES="2-integers-test01 complicated-test01 complicated-test02"
 
 set -e
 CCNxDIR=`dirname $0`/../../../../

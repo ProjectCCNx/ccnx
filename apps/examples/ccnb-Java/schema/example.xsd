@@ -31,28 +31,39 @@
 	<xs:element name="ExampleComplicated" type="ComplicatedType"> </xs:element>
 	<xs:complexType name="ComplicatedType">
 		<xs:sequence>
-			<xs:element name="String2" type="xs:string"/>
-			<xs:element name="Enumeration1" type="EnumerationType"/>
-			<xs:element name="SBVData1" type="StringBinaryVectorType" minOccurs="1" maxOccurs="5"/>
+			<xs:element name="String" type="xs:string"/>
+			<xs:element name="Enum" type="EnumerationType"/>
+			<xs:element name="Data" type="StringBinaryVectorType" minOccurs="1" maxOccurs="5"/>
 		</xs:sequence>
 	</xs:complexType>
 	
-	<xs:simpleType name="EnumerationType">
+	
+	<xs:complexType name="EnumerationType">
+		<xs:simpleContent>
+			<xs:extension base="EnumerationTypeType">
+				<xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+
+
+	<xs:simpleType name="EnumerationTypeType">
 		<xs:restriction base="xs:base64Binary">
-			<xs:enumeration value="Enum0"/>
-			<xs:enumeration value="Enum1"/>
-			<xs:enumeration value="Enum2"/>
+		    <xs:length value="3" fixed="true"/>
+			<xs:enumeration value="Enu0"/>
+			<xs:enumeration value="Enu1"/>
+			<xs:enumeration value="Enu2"/>
 		</xs:restriction>
 	</xs:simpleType>
 		
     <xs:complexType name="StringBinaryVectorType">
 		<xs:sequence>
-			<xs:element name="String1" type="xs:string"/>
+			<xs:element name="String" type="xs:string"/>
 			<xs:choice minOccurs="0" maxOccurs="unbounded">
 				<xs:element name="Name" type="NameType"/>
 				<xs:element name="Interest" type="InterestType"/>
 			</xs:choice>
-			<xs:element name="Binary1" type="xs:base64Binary"/>
+			<xs:element name="Bin" type="Base64BinaryType"/>
 		</xs:sequence>
 	</xs:complexType>	
   
