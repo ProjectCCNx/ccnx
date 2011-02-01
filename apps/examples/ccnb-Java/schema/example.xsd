@@ -46,7 +46,6 @@
 		</xs:simpleContent>
 	</xs:complexType>
 
-
 	<xs:simpleType name="EnumerationTypeType">
 		<xs:restriction base="xs:string">
 			<xs:enumeration value="Enu0"/>

@@ -66,10 +66,17 @@
 			<Component ccnbencoding="base64Binary">dGVzdA==</Component>
 			<Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
 			<Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
-			<Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
-			<Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
-			<Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
 		</Name>
+		<Interest>
+			<Name>
+				<Component ccnbencoding="base64Binary">cmVwb1Rlc3Q=</Component>
+				<Component ccnbencoding="base64Binary">ZGF0YTI=</Component>
+				<Component ccnbencoding="base64Binary">+A==</Component>
+			</Name>
+			<Scope>0</Scope>
+			<InterestLifetime ccnbencoding="base64Binary">AAB10001</InterestLifetime>
+			<Nonce ccnbencoding="base64Binary">bguyKU4JG5m2</Nonce>
+		</Interest>
 		<Bin ccnbencoding="base64Binary">BId5E7bp</Bin>
 	</Data>
 </ExampleComplicated>
