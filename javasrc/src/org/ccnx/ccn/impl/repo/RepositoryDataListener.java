@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -52,6 +52,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 	private CCNHandle _handle;
 	private long _largestSegmentNumberReceived = -1;
 	private long _finalSegmentNumber = -1; 	// expected last block of the stream
+	
+	private GetLargestSegmentNumberAction _glsna = new GetLargestSegmentNumberAction();
 	
 	/**
 	 * @param origInterest	interest to be used to identify this listener to filter out subsequent duplicate or overlapping
@@ -194,9 +196,8 @@ public class RepositoryDataListener implements CCNInterestListener {
 		
 	}
 	private long getLargestSegmentNumber() {
-		GetLargestSegmentNumberAction glsna = new GetLargestSegmentNumberAction();
-		interestsAction(glsna);
-		return glsna.getValue();
+		interestsAction(_glsna);
+		return _glsna.getValue();
 	}
 	
 	/**
