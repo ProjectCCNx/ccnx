@@ -14,3 +14,5 @@
 
 # ignore the ccnb-Java build directory
 build/
+testout/
+

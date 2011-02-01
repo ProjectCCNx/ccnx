@@ -16,21 +16,22 @@ WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
                echo Skipping java build in $$(pwd -L) -    \
                     $(ANT) is not installed; "
 WARN_NO_INSTALL = echo Nothing installed from apps/examples/ccnb-Java/
+JAR = ccnb-Java.jar
 
 include ../../java.mk
 
-all: ccnb-Java.jar 
+all: ${JAR} 
 
 ccn.jar: 
 
-ccnb-Java.jar: ccn.jar compile 
+${JAR}: ccn.jar compile 
 
 compile:
 	$(ANT) > /dev/null && $(ANT) -k $@ || $(WHINE)
 
-clean:
-	$(ANT) clean
-	rm -f ccnb-Java.jar
+#clean:
+#	$(ANT) clean
+#	rm -f ccnb-Java.jar
 
 default all clean depend: _always
 
