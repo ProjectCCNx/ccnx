@@ -48,14 +48,13 @@
 
 
 	<xs:simpleType name="EnumerationTypeType">
-		<xs:restriction base="xs:base64Binary">
-		    <xs:length value="3" fixed="true"/>
+		<xs:restriction base="xs:string">
 			<xs:enumeration value="Enu0"/>
 			<xs:enumeration value="Enu1"/>
 			<xs:enumeration value="Enu2"/>
 		</xs:restriction>
 	</xs:simpleType>
-		
+	
     <xs:complexType name="StringBinaryVectorType">
 		<xs:sequence>
 			<xs:element name="String" type="xs:string"/>

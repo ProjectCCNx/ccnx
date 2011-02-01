@@ -12,6 +12,14 @@
 			<Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
 			<Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
 		</Name>
+		<Name>
+			<Component ccnbencoding="base64Binary">dGVzdA==</Component>
+			<Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
+			<Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
+			<Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+			<Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
+			<Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
+		</Name>
 		<Interest>
 			<Name>
 				<Component ccnbencoding="base64Binary">dGVzdA==</Component>
@@ -27,14 +35,6 @@
 			</Exclude>
 			<ChildSelector>1</ChildSelector>
 		</Interest>
-		<Name>
-			<Component ccnbencoding="base64Binary">dGVzdA==</Component>
-			<Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
-			<Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
-			<Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
-			<Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
-			<Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
-		</Name>
 		<Bin ccnbencoding="base64Binary">BId5E7bp</Bin>
 	</Data>
 	<Data>

@@ -30,38 +30,19 @@ public class ExampleDTags {
 	public static final int Example2Integers = 5678001;
 	public static final int Integer1 = 5678002;
 	public static final int Integer2 = 5678003;
+	public static final int ExampleComplicated = 5678004;
+	public static final int StringBinaryVector = 5678005;
 	
-	public static final int CustodianEndpointEntry = 3551004;
-	public static final int DescriptorType = 3551005;
-	public static final int CustodianEndpoint = 3551006;
-	public static final int EndpointData = 3551007;
-	public static final int SIPData = 3551008;
-	public static final int SIPType = 3551009;
-	public static final int Proxy = 3551010;
-	public static final int User = 3551011;
-	public static final int Password = 3551012;
-	public static final int StunServer = 3551013;
-	public static final int DirectData = 3551014;
-	public static final int InterfaceType = 3551015;
-	public static final int EndpointAttribute = 3551016;
-	public static final int RoutePrefix = 3551017;
-	public static final int MembershipRestriction = 3551018;
-	public static final int Preference = 3551019;
-	public static final int IsHub = 3551020;
-	public static final int VCAPolicy = 3551021;
-	public static final int WiFiData = 3551022;
-	public static final int SSID = 3551023;
-	public static final int BSSID = 3551024;
-	public static final int LANData = 3551025;
-	public static final int DefaultRouterMAC = 3551026;
-	public static final int IsHubOf = 3551027;
-
+	public static final int String = 5678006;
+	public static final int Binary = 5678007;
+	public static final int Enumeration = 5678008;
+	public static final int Data = 5678009;
+	
+	
 	protected static final String [] _tagToStringMap = new String[]{
-		"Example2Integers", "Integer1", "Integer2", "CustodianEndpoint", 
-		"DescriptorType", "CustodianEndpointEntry", "EndpointData", "SIPData", "SIPType",
-		"Proxy", "User", "Password", "StunServer", "DirectData", "InterfaceType",
-		"EndpointAttribute", "RoutePrefix", "MembershipRestriction", "Preference", "IsHub",
-		"VCAPolicy", "WiFiData", "SSID", "BSSID", "LANData", "DefaultRouterMAC", "IsHubOf"};
+		"Example2Integers", "Integer1", "Integer2", "ExampleComplicated", 
+		"StringBinaryVector", "String", "Binary", "Enumeration", "Data",
+	};
 	protected static final int TAG_MAP_LENGTH = _tagToStringMap.length;
 
 	/**

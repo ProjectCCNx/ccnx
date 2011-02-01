@@ -18,8 +18,8 @@
 
 package org.ccnx.ccn.apps.examples.ccnb.test;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -31,6 +31,7 @@ import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.Test;
 
@@ -120,4 +121,12 @@ public class ExampleEncodeDecodeTest {
 	}
 
 
+	public final static byte[] binary1 = "This Is Binary From A string".getBytes();
+	public final static ContentName contentName1 = ContentName.fromNative(new ContentName(), "ccnx:/a/b/c/d");
+	public final static ContentName contentName2 = ContentName.fromNative(new ContentName(), "ccnx:/b/c/d");
+	public final static ContentName contentName3 = ContentName.fromNative(new ContentName(), "ccnx:/c/d");
+	public final static ContentName contentName4 = ContentName.fromNative(new ContentName(), "ccnx:/d");
+	
+	
+	
 }
