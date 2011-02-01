@@ -1148,7 +1148,7 @@ public class CCNNetworkManager implements Runnable {
 	 * Must be called with _registeredPrefixes locked
 	 * 
 	 * We decided that if we are registering a prefix that already has another prefix that
-	 * is an decedent of it registered, we won't bother to now deregister that prefix because
+	 * is an descendant of it registered, we won't bother to now deregister that prefix because
 	 * it would be complicated to do that and doesn't hurt anything.
 	 * 
 	 * @param prefix
