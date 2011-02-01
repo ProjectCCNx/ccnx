@@ -36,6 +36,7 @@
 
 package org.ccnx.ccn.apps.examples.ccnb;
 
+import java.util.Arrays;
 import java.util.Vector;
 
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
@@ -166,13 +167,17 @@ public class StringBinaryVector extends GenericXMLEncodable {
 			throw new ContentEncodingException("StringBinaryVector failed to validate!");
 		encoder.writeStartElement(getElementLabel());
 		encoder.writeElement(ExampleDTags.String, string);
-		for (int i = 0; i < names.size(); i++) {
-			ContentName name = names.elementAt(i);
-			name.encode(encoder);
+		if (names.size() != 0) {
+			for (int i = 0; i < names.size(); i++) {
+				ContentName name = names.elementAt(i);
+				name.encode(encoder);
+			}
 		}
-		for (int i = 0; i < interests.size(); i++) {
-			Interest interest = interests.elementAt(i);
-			interest.encode(encoder);
+		if (interests.size() != 0) {
+			for (int i = 0; i < interests.size(); i++) {
+				Interest interest = interests.elementAt(i);
+				interest.encode(encoder);
+			}
 		}
 		encoder.writeElement(ExampleDTags.Binary, binary);
 		encoder.writeEndElement();   		
@@ -186,6 +191,72 @@ public class StringBinaryVector extends GenericXMLEncodable {
 	@Override
 	public boolean validate() {
 		return true;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + Arrays.hashCode(binary);
+		result = prime * result
+				+ ((interests == null) ? 0 : interests.hashCode());
+		result = prime * result + ((names == null) ? 0 : names.hashCode());
+		result = prime * result + ((string == null) ? 0 : string.hashCode());
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		StringBinaryVector other = (StringBinaryVector) obj;
+		if (!Arrays.equals(binary, other.binary)) {
+			return false;
+		}
+		if (interests == null) {
+			if (other.interests != null) {
+				return false;
+			}
+		} else if (!interests.equals(other.interests)) {
+			return false;
+		}
+		if (names == null) {
+			if (other.names != null) {
+				return false;
+			}
+		} else if (!names.equals(other.names)) {
+			return false;
+		}
+		if (string == null) {
+			if (other.string != null) {
+				return false;
+			}
+		} else if (!string.equals(other.string)) {
+			return false;
+		}
+		return true;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		return "StringBinaryVector [binary: " + binary + " interests: "
+				+ interests + " names: " + names + " string: " + string + "]";
 	}
 
 }

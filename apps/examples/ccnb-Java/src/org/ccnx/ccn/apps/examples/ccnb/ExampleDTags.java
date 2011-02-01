@@ -36,12 +36,11 @@ public class ExampleDTags {
 	public static final int String = 5678006;
 	public static final int Binary = 5678007;
 	public static final int Enumeration = 5678008;
-	public static final int Data = 5678009;
 	
 	
 	protected static final String [] _tagToStringMap = new String[]{
 		"Example2Integers", "Integer1", "Integer2", "ExampleComplicated", 
-		"StringBinaryVector", "String", "Binary", "Enumeration", "Data",
+		"StringBinaryVector", "String", "Binary", "Enumeration",
 	};
 	protected static final int TAG_MAP_LENGTH = _tagToStringMap.length;
 
