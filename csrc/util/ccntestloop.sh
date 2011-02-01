@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -120,6 +120,8 @@ RunCTest () {
 	LOG=javasrc/testout/TEST-csrc-testlog.txt
 	mkdir -p javasrc/testout
 	( cd csrc && $MAKE test 2>&1 ) > $LOG && return 0
+	tar cf javasrc/testout/csrc-tests.tar csrc/tests
+	gzip javasrc/testout/csrc-tests.tar
 	tail $LOG
 	Echo csrc tests failed
 	return 1
