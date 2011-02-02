@@ -487,10 +487,10 @@ public class KeyDirectory extends EnumeratedNameList {
 			ContentDecodingException, NoSuchAlgorithmException {
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 			if (expectedKeyID == null) {
-				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at {0} unwrapping key without expectedKeyID", this._namePrefix);
+				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory.findUnwrappedKey: at {0} unwrapping key without expectedKeyID", this._namePrefix);
 			}
 			else {
-				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory getUnwrappedKey: at {0} unwrapping key with expectedKeyID {1} ",
+				Log.finer(Log.FAC_ACCESSCONTROL, "KeyDirectory.findUnwrappedKey: at {0} unwrapping key with expectedKeyID {1} ",
 						this._namePrefix,
 						DataUtils.printHexBytes(expectedKeyID));			
 			}
