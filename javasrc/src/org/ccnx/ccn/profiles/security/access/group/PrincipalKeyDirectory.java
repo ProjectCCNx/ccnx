@@ -248,11 +248,11 @@ public class PrincipalKeyDirectory extends KeyDirectory {
 			// I'm not a member of but someone might have added me.
 			if (_manager.haveKnownGroupMemberships()) {
 				unwrappedKey = unwrapKeyViaKnownGroupMembership();
-				if (unwrappedKey == null) {
-					// OK, we don't have any groups we know we are a member of. Do the other ones.
-					// Slower, as we crawl the groups tree.
-					unwrappedKey = unwrapKeyViaNotKnownGroupMembership();
-				}
+			}
+			if (unwrappedKey == null) {
+				// OK, we don't have any groups we know we are a member of. Do the other ones.
+				// Slower, as we crawl the groups tree.
+				unwrappedKey = unwrapKeyViaNotKnownGroupMembership();
 			}
 			return unwrappedKey;
 		}
