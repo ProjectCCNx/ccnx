@@ -1473,9 +1473,6 @@ public class GroupAccessControlManager extends AccessControlManager {
 			nodeKeyDirectory = new PrincipalKeyDirectory(this, theNodeKeyName, handle());
 			nodeKeyDirectory.waitForChildren();
 
-			if (null == nodeKeyDirectory) {
-				throw new IOException("Cannot get node key directory for : " + theNodeKeyName);
-			}
 			if (nodeKeyDirectory.hasSupersededBlock()) {
 				return true;
 			}
