@@ -461,6 +461,9 @@ public class KeyDirectory extends EnumeratedNameList {
 	throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
 
 		byte[] retrievedKeyID;
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINEST)) {
+			Log.finest(Log.FAC_ACCESSCONTROL, "getUnwrappedKey({0})", DataUtils.printHexBytes(expectedKeyID));
+		}
 		Key unwrappedKey = findUnwrappedKey(expectedKeyID);
 
 		if (null != unwrappedKey) {

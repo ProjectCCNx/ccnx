@@ -30,6 +30,7 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -140,8 +141,8 @@ public class PrincipalKeyDirectory extends KeyDirectory {
 
 	/**
 	 * Store an additional link object pointing to the wrapped key object
-	 * in the KeyDirectory. The link object is named with the Principle's name
-	 * to allow searching the KeyDirectory by Principle name rather than KeyID.
+	 * in the KeyDirectory. The link object is named with the Principal's name
+	 * to allow searching the KeyDirectory by Principal name rather than KeyID.
 	 */
 	@Override
 	public WrappedKeyObject addWrappedKeyBlock(Key secretKeyToWrap,
@@ -229,6 +230,9 @@ public class PrincipalKeyDirectory extends KeyDirectory {
 			ContentNotReadyException, InvalidKeyException,
 			ContentDecodingException, NoSuchAlgorithmException {
 
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINEST)) {
+			Log.finest(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.getUnwrappedKey({0})", DataUtils.printHexBytes(expectedKeyID));
+		}
 		Key unwrappedKey = super.findUnwrappedKey(expectedKeyID);
 
 		if (unwrappedKey == null) {
