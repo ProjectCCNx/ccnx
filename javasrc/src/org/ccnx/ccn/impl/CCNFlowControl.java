@@ -515,10 +515,11 @@ public class CCNFlowControl implements CCNFilterListener {
 		if (Log.isLoggable(Log.FAC_IO, Level.FINE))
 			Log.fine(Log.FAC_IO, "Flow controller {0}: got interest: {1}", this, i);
 		Set<ContentName> set;
+		ContentObject co;
 		synchronized (_holdingArea) {
 			set = _holdingArea.keySet();
+			co = getBestMatch(i, set);
 		}
-		ContentObject co = getBestMatch(i, set);
 		if (co != null) {
 			if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
 				Log.finest(Log.FAC_IO, "Found content {0} matching interest: {1}",co.name(), i);
@@ -560,16 +561,18 @@ public class CCNFlowControl implements CCNFilterListener {
 		remove(co);
 	}
 	
-	
+	/**
+	 * Must be called with _holdingArea locked
+	 * @param interest
+	 * @param set
+	 * @return
+	 */
 	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
 		ContentObject bestMatch = null;
 		if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
 			Log.finest(Log.FAC_IO, "Looking for best match to " + interest + " among " + set.size() + " options.");
 		for (ContentName name : set) {
-			ContentObject result;
-			synchronized (_holdingArea) {
-				result = _holdingArea.get(name);
-			}
+			ContentObject result = _holdingArea.get(name);
 			
 			// We only have to do something unusual here if the caller is looking for CHILD_SELECTOR_RIGHT
 			if (null != interest.childSelector() && interest.childSelector() == Interest.CHILD_SELECTOR_RIGHT) {
