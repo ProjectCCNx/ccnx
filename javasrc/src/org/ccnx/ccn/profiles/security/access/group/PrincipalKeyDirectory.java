@@ -88,7 +88,7 @@ public class PrincipalKeyDirectory extends KeyDirectory {
 	 */
 	public PrincipalKeyDirectory(GroupAccessControlManager manager, ContentName directoryName, boolean enumerate, CCNHandle handle) 
 	throws IOException {
-		super(directoryName, false, handle);
+		super(directoryName, enumerate, handle);
 		_manager = manager;
 	}
 
