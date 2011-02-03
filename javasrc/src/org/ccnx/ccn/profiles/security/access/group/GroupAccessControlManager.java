@@ -40,6 +40,7 @@ import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import static org.ccnx.ccn.impl.support.Log.*;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -1402,6 +1403,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 	public NodeKey getFreshEffectiveNodeKey(ContentName nodeName) 
 	throws AccessDeniedException, InvalidKeyException, ContentDecodingException, 
 	ContentEncodingException, ContentNotReadyException, ContentGoneException, IOException, NoSuchAlgorithmException {
+		Log.finest(FAC_ACCESSCONTROL, "GACM.getFreshEffectiveNodeKey");
+
 		NodeKey nodeKey = findAncestorWithNodeKey(nodeName);
 		if (null == nodeKey) {
 			throw new AccessDeniedException("Cannot retrieve node key for node: " + nodeName + ".");
@@ -1459,7 +1462,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 */
 	public boolean nodeKeyIsDirty(ContentName theNodeKeyName) throws ContentDecodingException, IOException {
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINE)) {
-			Log.fine(Log.FAC_ACCESSCONTROL, "NodeKeyIsDirty called.");
+			Log.fine(Log.FAC_ACCESSCONTROL, "NodeKeyIsDirty({0}) called.", theNodeKeyName);
 		}
 
 		// first, is this a node key name?

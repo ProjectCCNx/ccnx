@@ -298,7 +298,7 @@ public class SecureKeyCache implements Serializable {
 		_keyMap.put(id, key);
 		if (null != name) {
 			_nameKeyMap.put(name, id);
-			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} with name {1} of type (2)",
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} with name {1} of type {2}",
 					DataUtils.printHexBytes(id), name, key.getClass().getName());
 		} else {
 			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} of type {1}",
