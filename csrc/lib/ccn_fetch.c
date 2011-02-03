@@ -61,7 +61,7 @@ GetCurrentTimeUSecs(void) {
 	return now.tv_sec*M+now.tv_usec;
 }
 
-static int64_t
+static intmax_t
 DeltaTime(TimeMarker mt1, TimeMarker mt2) {
 	return(mt2-mt1);
 }
@@ -493,7 +493,7 @@ CallMe(struct ccn_closure *selfp,
 			if (finalSeg >= 0 && thisSeg > finalSeg)
 				// ignore this timeout quickly
 				return(CCN_UPCALL_RESULT_OK);
-			int64_t dt = DeltaTime(req->startClock, GetCurrentTimeUSecs());
+			intmax_t dt = DeltaTime(req->startClock, GetCurrentTimeUSecs());
 			if (dt >= fs->timeoutUSecs) {
 				// timed out, too many retries
 				// assume that this interest will never produce
@@ -509,8 +509,8 @@ CallMe(struct ccn_closure *selfp,
 							"** ccn_fetch timeout, %s, seg %jd",
 							fs->id, thisSeg);
 					fprintf(debug, 
-							", dt %lld us, timeoutUSecs %jd\n",
-							dt, (intmax_t)fs->timeoutUSecs);
+							", dt %jd us, timeoutUSecs %jd\n",
+							dt, fs->timeoutUSecs);
 					fflush(debug);
 				}
 				return(CCN_UPCALL_RESULT_OK);
@@ -559,7 +559,9 @@ CallMe(struct ccn_closure *selfp,
 			if (debug != NULL && (flags & ccn_fetch_flags_NoteFinal)) {
 				fprintf(debug, 
 						"-- ccn_fetch EOF, %s, seg %jd, len %d, fs %jd\n",
-						fs->id, thisSeg, (int) dataLen, fs->fileSize);
+						fs->id, thisSeg,
+						(int) dataLen,
+						fs->fileSize);
 				fflush(debug);
 			}
 			
@@ -578,7 +580,7 @@ CallMe(struct ccn_closure *selfp,
 			if (debug != NULL && (flags & ccn_fetch_flags_NoteFill)) {
 				fprintf(debug, 
 						"-- ccn_fetch FillSeg, %s, seg %jd, len %d, nbuf %d\n",
-						fs->id, thisSeg, (int) dataLen, fs->nBufs);
+						fs->id, thisSeg, (int) dataLen, (int) fs->nBufs);
 				fflush(debug);
 			}
 			if (thisSeg == finalSeg) {
