@@ -1046,16 +1046,16 @@ public class CCNNetworkManager implements Runnable {
 				synchronized(_registeredPrefixes) {
 					RegisteredPrefix oldPrefix = getRegisteredPrefix(filter);
 					if (null != oldPrefix) {
-						if (oldPrefix._closing) {
-							synchronized (oldPrefix) {
+						synchronized (oldPrefix) {
+							if (oldPrefix._closing) {
 								try {
 									oldPrefix.wait();
 								} catch (InterruptedException e) {} // XXX do we need to worry about this?
-							}
-							_registeredPrefixes.remove(filter);		// Just in case
-							registerPrefix(filter, registrationFlags);
-						} else
-							oldPrefix._refCount++;
+								_registeredPrefixes.remove(filter);		// Just in case
+								registerPrefix(filter, registrationFlags);
+							} else
+								oldPrefix._refCount++;
+						}
 					} else {
 						registerPrefix(filter, registrationFlags);
 					}
@@ -1121,9 +1121,12 @@ public class CCNNetworkManager implements Runnable {
 					RegisteredPrefix prefix = getRegisteredPrefix(filter);
 					if (null != prefix && prefix._refCount <= 1) {
 						ForwardingEntry entry = prefix._forwarding;
-						if (!entry.getPrefixName().equals(filter)) {
-							Log.severe(Log.FAC_NETMANAGER, "cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
-						}
+						// Since we are piggybacking registration entries we can legitimately have a "last" registration entry on a prefix that had
+						// been piggybacked on a higher registration earlier so the entries name would not match the filter.
+						//
+						//if (!entry.getPrefixName().equals(filter)) {
+						//	Log.severe(Log.FAC_NETMANAGER, "cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
+						//}
 						try {
 							if (null == _prefixMgr) {
 								_prefixMgr = new PrefixRegistrationManager(this);
