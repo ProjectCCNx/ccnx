@@ -36,6 +36,7 @@ PAGE_NAMES =        		\
 	ccnseqwriter		\
 	ccn_repo		\
 	ccncat			\
+	ccnslurp		\
 
 PROJECT_NUMBER = 0.3.0
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
