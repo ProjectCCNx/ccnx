@@ -96,7 +96,7 @@ main(int argc, char **argv)
     int i;
     int res;
     int opt;
-	int assumeFixed = 0; // variable only for now
+    int assumeFixed = 0; // variable only for now
     
     while ((opt = getopt(argc, argv, "had:p:s:")) != -1) {
         switch (opt) {
@@ -162,16 +162,16 @@ main(int argc, char **argv)
             } else if (res == CCN_FETCH_READ_END) {
                 break;
             } else if (res == CCN_FETCH_READ_TIMEOUT) {
-				/* eventually have a way to handle long timeout? */
-				ccn_reset_timeout(stream);
+                /* eventually have a way to handle long timeout? */
+                ccn_reset_timeout(stream);
                 if (ccn_run(ccn, 1000) < 0) {
                     fprintf(stderr, "%s: error during ccn_run\n", argv[0]);
                     exit(1);
                 }
             } else {
                 /* fatal stream error; shuld report this! */
-				fprintf(stderr, "%s: fetch error: %s\n", argv[0], arg);
-				exit(1);
+                fprintf(stderr, "%s: fetch error: %s\n", argv[0], arg);
+                exit(1);
             }
         }
         stream = ccn_fetch_close(stream);
