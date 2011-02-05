@@ -45,7 +45,7 @@ usage(const char *progname)
             "    NoteFinal = 16,\n"
             "    NoteTimeout = 32,\n"
             "    NoteOpenClose = 64\n"
-            "  -p pipeline specifies the size of the pipeline\n",
+            "  -p pipeline specifies the size of the pipeline\n"
             "  -s scope specifies the scope for the interests\n"
             "  -a allow stale data\n",
             progname);
