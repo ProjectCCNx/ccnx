@@ -2951,7 +2951,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                      * but dropping it unconditionally would lose resiliency
                      * against dropped packets. Thus allow a few of them.
                      * Add some delay, though.
-                     * XXX c.f. bug #13
+                     * XXX c.f. bug #13 // XXX - old bugid
                      */
                     extra_delay += npe->usec + 20000;
                     if ((++k) < max_redundant)
@@ -2973,7 +2973,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                  * that we've seen an interest that one of the other parties
                  * is going to answer, and we'll see the answer, too.
                  */
-                otherface = face_from_faceid(h, p->faceid);
+                otherface = face_from_faceid(h, p->faceid); // XXX - move above logging
                 if (otherface == NULL)
                     continue;
                 /*
@@ -2983,6 +2983,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                 if (pi->scope == 2 &&
                     ((otherface->flags ^ face->flags) & CCN_FACE_GG) != 0)
                     continue;
+				// XXX end of stuff to move up
                 n = outbound->n;
                 outbound->n = 0;
                 for (i = 0; i < n; i++) {
@@ -2995,6 +2996,8 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                     }
                 }
                 p->flags |= CCN_PR_EQV; /* Don't add new faces */
+				// XXX - outbound->n == O means we should return -1 to get caller to actually drop the similar interest.
+				// XXX - How robust is setting of CCN_PR_EQV?
             }
         }
     }
