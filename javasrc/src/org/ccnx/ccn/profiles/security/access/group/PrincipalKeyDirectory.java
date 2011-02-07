@@ -231,14 +231,14 @@ public class PrincipalKeyDirectory extends KeyDirectory {
 			ContentDecodingException, NoSuchAlgorithmException {
 
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINEST)) {
-			Log.finest(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.getUnwrappedKey({0})", DataUtils.printHexBytes(expectedKeyID));
+			Log.finest(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.findUnwrappedKey({0})", DataUtils.printHexBytes(expectedKeyID));
 		}
 		Key unwrappedKey = super.findUnwrappedKey(expectedKeyID);
 
 		if (unwrappedKey == null) {
 			// This is the current key. Enumerate principals and see if we can get a key to unwrap.
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-				Log.info(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.getUnwrappedKey: at latest version of key {0}, attempting to unwrap.", getName());
+				Log.info(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.findUnwrappedKey: at latest version of key {0}, attempting to unwrap.", getName());
 			}
 			// Assumption: if this key was encrypted directly for me, I would have had a cache
 			// hit already. The assumption is that I pre-load my cache with my own private key(s).
@@ -265,7 +265,7 @@ public class PrincipalKeyDirectory extends KeyDirectory {
 		try{
 			_principalsLock.readLock().lock();
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-				Log.info(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.getUnwrappedKey: the directory has {0} principals.", _principals.size());
+				Log.info(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.unwrapKeyViaKnownGroupMembership: the directory has {0} principals.", _principals.size());
 			}
 			for (String principal : _principals.keySet()) {
 				PrincipalInfo pInfo = _principals.get(principal);
@@ -302,22 +302,22 @@ public class PrincipalKeyDirectory extends KeyDirectory {
 				String principal = pInfo.friendlyName();
 
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-					Log.info(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.getUnwrappedKey: the KD secret key is wrapped under the key of principal {0}", 
-							principal);
+					Log.info(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.unwrapKeyViaNotKnownGroupMembership: the KD secret key is wrapped under the key of principal {0}", 
+							pInfo);
 				}
 				GroupManager pgm = _manager.groupManager(pInfo.distinguishingHash());
 				if ((pgm == null) || (! pgm.isGroup(principal, SystemConfiguration.EXTRA_LONG_TIMEOUT)) || 
 						(pgm.amKnownGroupMember(principal))) {
 					// On this pass, only do groups that I don't think I'm a member of.
 					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-						Log.finer(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.getUnwrappedKey: skipping principal {0}.", principal);
+						Log.finer(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.unwrapKeyViaNotKnownGroupMembership: skipping principal {0}.", principal);
 					}
 					continue;
 				}
 
 				if (pgm.amCurrentGroupMember(principal)) {
 					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
-						Log.finer(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.getUnwrappedKey: I am a member of group {0} ", principal);
+						Log.finer(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.unwrapKeyViaNotKnownGroupMembership: I am a member of group {0} ", principal);
 					}
 					try {
 						Key principalKey = pgm.getVersionedPrivateKeyForGroup(pInfo);
@@ -337,7 +337,7 @@ public class PrincipalKeyDirectory extends KeyDirectory {
 				}
 				else {
 					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-						Log.info(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.getUnwrappedKey: I am not a member of group {0} ", principal);
+						Log.info(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.unwrapKeyViaNotKnownGroupMembership: I am not a member of group {0} ", principal);
 					}
 				}
 			}
