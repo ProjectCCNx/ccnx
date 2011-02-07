@@ -240,6 +240,11 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			}
 			return fullDigest;
 		}
+
+		@Override
+		public String toString() {
+			return String.format("%s : %s", _friendlyName, DataUtils.printHexBytes(_distinguishingHash));
+		}
 	}
 	
 	/**

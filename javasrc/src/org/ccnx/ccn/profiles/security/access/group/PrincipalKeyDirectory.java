@@ -298,12 +298,13 @@ public class PrincipalKeyDirectory extends KeyDirectory {
 		Key unwrappedKey = null;
 		try{
 			_principalsLock.readLock().lock();
-			for (String principal : _principals.keySet()) {
+			for (PrincipalInfo pInfo : _principals.values()) {
+				String principal = pInfo.friendlyName();
+
 				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 					Log.info(Log.FAC_ACCESSCONTROL, "PrincipalKeyDirectory.getUnwrappedKey: the KD secret key is wrapped under the key of principal {0}", 
 							principal);
 				}
-				PrincipalInfo pInfo = _principals.get(principal);
 				GroupManager pgm = _manager.groupManager(pInfo.distinguishingHash());
 				if ((pgm == null) || (! pgm.isGroup(principal, SystemConfiguration.EXTRA_LONG_TIMEOUT)) || 
 						(pgm.amKnownGroupMember(principal))) {
