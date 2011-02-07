@@ -1,0 +1,34 @@
+CCNSLURP(1)
+=========
+
+NAME
+----
+ccnslurp - Print names of all content in a specified part of the CCNx namespace
+
+SYNOPSIS
+--------
+*ccnslurp* [-h] 'URI'
+
+DESCRIPTION
+-----------
+The *ccnslurp* utility retrieves content published under 'URI'
+and writes the names in CCNX URI encoding to stdout.
+
+The 'URI' must be specified using the CCNx URI encoding
+syntax. For simple cases of ASCII name components this is just
+pathname syntax with / delimiters.
+
+*ccnslurp* will exit when there are no new responses during a 1-second interval.
+
+OPTIONS
+-------
+*-h*::
+     Generate the help message.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error)

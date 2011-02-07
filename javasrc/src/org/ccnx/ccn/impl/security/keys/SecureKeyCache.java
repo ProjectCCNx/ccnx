@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -412,7 +412,7 @@ public class SecureKeyCache implements Serializable {
 		}
 		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: {0} keys in _privateKeyMap ", _privateKeyMap.size());
 		for (ContentName cn: _nameKeyMap.keySet()) {
-			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: privateKeyMap contains a key with name {0} and hash {1}", 
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: _nameKeyMap contains a key with name {0} and hash {1}", 
 					cn, DataUtils.printHexBytes(_nameKeyMap.get(cn)));
 		}
 		

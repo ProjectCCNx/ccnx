@@ -20,6 +20,8 @@ ccnrm.1.html: ccnrm.1.txt
 ccnseqwriter.1.html: ccnseqwriter.1.txt
 ccn_repo.1.html: ccn_repo.1.txt
 ccncat.1.html: ccncat.1.txt
+ccnslurp.1.html: ccnslurp.1.txt
+ccnchat.1.html: ccnchat.1.txt
 ccn_ccnbtoxml.1.pdf: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1.pdf: ccn_xmltoccnb.1.txt
 ccnacl.1.pdf: ccnacl.1.txt
@@ -42,6 +44,8 @@ ccnrm.1.pdf: ccnrm.1.txt
 ccnseqwriter.1.pdf: ccnseqwriter.1.txt
 ccn_repo.1.pdf: ccn_repo.1.txt
 ccncat.1.pdf: ccncat.1.txt
+ccnslurp.1.pdf: ccnslurp.1.txt
+ccnchat.1.pdf: ccnchat.1.txt
 ccn_ccnbtoxml.1: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1: ccn_xmltoccnb.1.txt
 ccnacl.1: ccnacl.1.txt
@@ -64,3 +68,5 @@ ccnrm.1: ccnrm.1.txt
 ccnseqwriter.1: ccnseqwriter.1.txt
 ccn_repo.1: ccn_repo.1.txt
 ccncat.1: ccncat.1.txt
+ccnslurp.1: ccnslurp.1.txt
+ccnchat.1: ccnchat.1.txt

@@ -34,8 +34,9 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-d flags] [-s scope] [-a] ccnx:/a/b ...\n"
+            "%s [-h] [-d flags] [-p pipeline] [-s scope] [-a] ccnx:/a/b ...\n"
             "  Reads streams at the given ccn URIs and writes to stdout\n"
+            "  -h produces this message\n"
             "  -d flags specifies the fetch debug flags which are the sum of\n"
             "    NoteGlitch = 1,\n"
             "    NoteAddRem = 2,\n"
@@ -44,6 +45,7 @@ usage(const char *progname)
             "    NoteFinal = 16,\n"
             "    NoteTimeout = 32,\n"
             "    NoteOpenClose = 64\n"
+            "  -p pipeline specifies the size of the pipeline\n"
             "  -s scope specifies the scope for the interests\n"
             "  -a allow stale data\n",
             progname);
@@ -94,7 +96,7 @@ main(int argc, char **argv)
     int i;
     int res;
     int opt;
-	int assumeFixed = 0; // variable only for now
+    int assumeFixed = 0; // variable only for now
     
     while ((opt = getopt(argc, argv, "had:p:s:")) != -1) {
         switch (opt) {
@@ -153,17 +155,23 @@ main(int argc, char **argv)
             if (res > 0) {
                 fwrite(buf, res, 1, stdout);
             } else if (res == CCN_FETCH_READ_NONE) {
-                ccn_run(ccn, 1000);
+                if (ccn_run(ccn, 1000) < 0) {
+                    fprintf(stderr, "%s: error during ccn_run\n", argv[0]);
+                    exit(1);
+                }
             } else if (res == CCN_FETCH_READ_END) {
                 break;
             } else if (res == CCN_FETCH_READ_TIMEOUT) {
-				/* eventually have a way to handle long timeout? */
-				ccn_reset_timeout(stream);
-                ccn_run(ccn, 1000);
+                /* eventually have a way to handle long timeout? */
+                ccn_reset_timeout(stream);
+                if (ccn_run(ccn, 1000) < 0) {
+                    fprintf(stderr, "%s: error during ccn_run\n", argv[0]);
+                    exit(1);
+                }
             } else {
                 /* fatal stream error; shuld report this! */
-				fprintf(stderr, "%s: fetch error: %s\n", argv[0], arg);
-				exit(1);
+                fprintf(stderr, "%s: fetch error: %s\n", argv[0], arg);
+                exit(1);
             }
         }
         stream = ccn_fetch_close(stream);

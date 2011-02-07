@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
@@ -358,9 +359,10 @@ void
 usage(const char *prog)
 {
     fprintf(stderr,
-	    "%s URI\n"
-	    " Attempt to pull everything under given uri "
-	    " and print out names of found content to stdout\n", prog);
+	    "%s [-h] URI\n"
+	    " Attempt to pull everything under given URI\n"
+	    " and print out names of found content to stdout\n"
+            " -h Print this usage message.\n", prog);
     exit(1);
 }
 
@@ -371,20 +373,29 @@ main(int argc, char **argv)
     struct ccn *ccn = NULL;
     struct ccn_charbuf *c = NULL;
     struct upcalldata *data = NULL;
+    int opt;
     int i;
     long n;
     int res;
     long counter = 0;
     struct ccn_closure *cl = NULL;
     
-    if (argv[1] == NULL || argv[2] != NULL)
+    while ((opt = getopt(argc, argv, "h")) != -1) {
+        switch (opt) {
+            case 'h':
+            default:
+                usage(argv[0]);
+        }
+    }
+
+    if (argv[optind] == NULL || argv[optind + 1] != NULL)
         usage(argv[0]);
 
     passive_templ = create_passive_templ();
     c = ccn_charbuf_create();
-    res = ccn_name_from_uri(c, argv[1]);
+    res = ccn_name_from_uri(c, argv[optind]);
     if (res < 0) {
-        fprintf(stderr, "%s: bad ccn URI: %s\n", progname, argv[1]);
+        fprintf(stderr, "%s: bad ccn URI: %s\n", progname, argv[optind]);
         exit(1);
     }
         
