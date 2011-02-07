@@ -1131,7 +1131,7 @@ public class CCNNetworkManager implements Runnable {
 				// Deregister it with ccnd only if the refCount would go to 0
 				synchronized (_registeredPrefixes) {
 					RegisteredPrefix prefix = getRegisteredPrefix(filter);
-					if (null != prefix && prefix._refCount <= 1) {
+					if (null != prefix) {
 						synchronized (prefix) {
 							if (prefix._refCount <= 1) {
 								ForwardingEntry entry = prefix._forwarding;
