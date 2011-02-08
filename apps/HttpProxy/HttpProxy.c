@@ -656,6 +656,12 @@ InitSelectData(SelectData sd, uint64_t timeoutUsecs) {
 }
 
 static void
+SetSockFD(MainBase) {
+	mb->sockFD = sockFD;
+	mb->client = AlterSocketCount(mb, sockFD, 1);
+}
+
+static void
 SetSockEntryAddr(SockEntry se, struct sockaddr *sap) {
 	if (sap != NULL) {
 		MainBase mb = (MainBase) se->clientData;
@@ -2322,10 +2328,9 @@ RequestBaseStep(RequestBase rb) {
 }
 
 static MainBase
-NewMainBase(FILE *f, int sockFD, int maxBusy) {
+NewMainBase(FILE *f, int maxBusy) {
 	MainBase mb = ProxyUtil_StructAlloc(1, MainBaseStruct);
 	TimeMarker now = GetCurrentTime();
-	mb->sockFD = sockFD;
 	mb->startTime = now;
 	SockBase sb = SH_NewSockBase();
 	sb->debug = f;
@@ -2335,7 +2340,6 @@ NewMainBase(FILE *f, int sockFD, int maxBusy) {
 	if (maxBusy < 2) maxBusy = 2;
 	if (maxBusy > 20) maxBusy = 20;
 	mb->maxBusy = maxBusy;
-	mb->client = AlterSocketCount(mb, sockFD, 1);
 	mb->fetchBase = ccn_fetch_new(NULL);
 	mb->ccnFD = ccn_get_connection_fd(ccn_fetch_get_ccn(mb->fetchBase));
 	
@@ -2600,65 +2604,9 @@ DispatchLoop(MainBase mb) {
 int
 main(int argc, string *argv) {
 	
-	signal(SIGPIPE, SIG_IGN);
-	
-	struct sockaddr_in sa = {0};
-	struct sockaddr *sap = (struct sockaddr *) &sa;
-    int sockFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	
-    if (-1 == sockFD)
-		return retFail(NULL, "can not create socket");
-	
-    sa.sin_family = PF_INET;
-    sa.sin_port = htons(1100);
-    sa.sin_addr.s_addr = INADDR_ANY;
-	
-	FILE *f = stdout;
-	
-	int it = 0;
-	for (;;) {
-		int bindRes = bind(sockFD, sap, sizeof(struct sockaddr_in));
-		if (bindRes < 0) {
-			int e = errno;
-			if (e == EADDRINUSE && it <= 120) {
-				// may be useful to wait for timeout of the old bind
-				// we probably did not close it properly due to an error
-				if (it == 0) fprintf(f, "Waiting for proxy socket...\n");
-				flushLog(f);
-				MilliSleep(1000);
-			} else {
-				close(sockFD);
-				return retFail(NULL, "error bind failed");
-			}
-		} else break;
-		it++;
-	}
-	
-    if (-1 == listen(sockFD, 10)) {
-		close(sockFD);
-		return retFail(NULL, "error listen failed");
-    }
-	double bt = DeltaTime(0, GetCurrentTime());
-	fprintf(f, "Socket listening, fd %d, baseTime %7.6f\n", sockFD, bt);
-	flushLog(f);
-	
-	MainBase mb = NewMainBase(f, sockFD, 16);
-	
-	if (mb->fetchBase == NULL) {
-		// should not happen unless ccnd is not answering
-		return retErr(mb, "Init failed!  No ccnd?");
-	}
-	
-	SetSockEntryAddr(mb->client, sap);
-	mb->ccnRoot = "TestCCN";
-	mb->removeProxy = 0;
-	mb->removeHost = 1;
-	mb->defaultKeepAlive = 13;
-	mb->timeoutSecs = 30;
-	mb->maxConn = 2; // RFC 2616 (pg. 2)
-	mb->resolveFlags = CCN_V_HIGHEST;
-	
 	ccn_fetch_flags ccn_flags = (ccn_fetch_flags_NoteAll);
+	MainBase mb = NewMainBase(f, 16);
+	int usePort = 8080;
 	
 	int i = 1;
 	for (; i <= argc; i++) {
@@ -2705,6 +2653,15 @@ main(int argc, string *argv) {
 					return -1;
 				}
 				mb->timeoutSecs = n;
+			} else if (strcasecmp(arg, "-usePort") == 0) {
+				i++;
+				int n = 0;
+				if (i <= argc) n = atoi(argv[i]);
+				if (n < 1 || n >= 64*1024) {
+					fprintf(stdout, "** bad port: %d\n", n);
+					return -1;
+				}
+				usePort = n;
 			} else if (strcasecmp(arg, "-maxConn") == 0) {
 				i++;
 				int n = 0;
@@ -2720,6 +2677,63 @@ main(int argc, string *argv) {
 			}
 		}
     }
+
+	signal(SIGPIPE, SIG_IGN);
+	
+	struct sockaddr_in sa = {0};
+	struct sockaddr *sap = (struct sockaddr *) &sa;
+    int sockFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+	
+    if (-1 == sockFD)
+		return retFail(NULL, "can not create socket");
+	
+    sa.sin_family = PF_INET;
+    sa.sin_port = htons(usePort);
+    sa.sin_addr.s_addr = INADDR_ANY;
+	
+	FILE *f = stdout;
+	
+	int it = 0;
+	for (;;) {
+		int bindRes = bind(sockFD, sap, sizeof(struct sockaddr_in));
+		if (bindRes < 0) {
+			int e = errno;
+			if (e == EADDRINUSE && it <= 120) {
+				// may be useful to wait for timeout of the old bind
+				// we probably did not close it properly due to an error
+				if (it == 0) fprintf(f, "Waiting for proxy socket...\n");
+				flushLog(f);
+				MilliSleep(1000);
+			} else {
+				close(sockFD);
+				return retFail(NULL, "error bind failed");
+			}
+		} else break;
+		it++;
+	}
+	
+    if (-1 == listen(sockFD, 10)) {
+		close(sockFD);
+		return retFail(NULL, "error listen failed");
+    }
+	double bt = DeltaTime(0, GetCurrentTime());
+	fprintf(f, "Socket listening, fd %d, baseTime %7.6f\n", sockFD, bt);
+	flushLog(f);
+	
+	
+	if (mb->fetchBase == NULL) {
+		// should not happen unless ccnd is not answering
+		return retErr(mb, "Init failed!  No ccnd?");
+	}
+	SetSockFD(mb, sockFD);
+	SetSockEntryAddr(mb->client, sap);
+	mb->ccnRoot = "TestCCN";
+	mb->removeProxy = 0;
+	mb->removeHost = 1;
+	mb->defaultKeepAlive = 13;
+	mb->timeoutSecs = 30;
+	mb->maxConn = 2; // RFC 2616 (pg. 2)
+	mb->resolveFlags = CCN_V_HIGHEST;
 	
 	if (mb->debug != NULL && ccn_flags != ccn_fetch_flags_None)
 		ccn_fetch_set_debug(mb->fetchBase, mb->debug, ccn_flags);
