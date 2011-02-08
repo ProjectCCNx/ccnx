@@ -2941,6 +2941,16 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                 0 == memcmp(msg, p->interest_msg, presize) &&
                 0 == memcmp(post, p->interest_msg + p->size - postsize, postsize)) {
                 /* Matches everything but the Nonce */
+                otherface = face_from_faceid(h, p->faceid);
+                if (otherface == NULL)
+                    continue;
+                /*
+                 * If scope is 2, we can't treat these as similar if
+                 * they did not originate on the same host
+                 */
+                if (pi->scope == 2 &&
+                    ((otherface->flags ^ face->flags) & CCN_FACE_GG) != 0)
+                    continue;
                 if (h->debug & 32)
                     ccnd_debug_ccnb(h, __LINE__, "similar_interest",
                                     face_from_faceid(h, p->faceid),
@@ -2951,7 +2961,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                      * but dropping it unconditionally would lose resiliency
                      * against dropped packets. Thus allow a few of them.
                      * Add some delay, though.
-                     * XXX c.f. bug #13
+                     * XXX c.f. bug #13 // XXX - old bugid
                      */
                     extra_delay += npe->usec + 20000;
                     if ((++k) < max_redundant)
@@ -2973,16 +2983,6 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                  * that we've seen an interest that one of the other parties
                  * is going to answer, and we'll see the answer, too.
                  */
-                otherface = face_from_faceid(h, p->faceid);
-                if (otherface == NULL)
-                    continue;
-                /*
-                 * If scope is 2, we can't treat these as similar if
-                 * they did not originate on the same host
-                 */
-                if (pi->scope == 2 &&
-                    ((otherface->flags ^ face->flags) & CCN_FACE_GG) != 0)
-                    continue;
                 n = outbound->n;
                 outbound->n = 0;
                 for (i = 0; i < n; i++) {
@@ -2995,6 +2995,9 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                     }
                 }
                 p->flags |= CCN_PR_EQV; /* Don't add new faces */
+                if (outbound->n == 0)
+                    return(-1);
+				// XXX - How robust is setting of CCN_PR_EQV?
             }
         }
     }
