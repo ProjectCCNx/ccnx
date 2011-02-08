@@ -99,5 +99,23 @@ public class LogTest {
 		Log.setLevel(Log.FAC_NETMANAGER, Level.SEVERE);
 		Assert.assertEquals(Level.SEVERE.intValue(), Log.getLevel(Log.FAC_NETMANAGER).intValue());
 	}
+	
+	@Test
+	public void testGetSetLevels() {
+		Log.setLevel(Log.FAC_ALL, Level.WARNING);
+		Log.setLevel(Log.FAC_NETMANAGER, Level.INFO);
+		Log.setLevel(Log.FAC_IO, Level.FINE);
+		
+		Level [] save = Log.getLevels();
+		Log.setLevel(Log.FAC_ALL, Level.FINER);
+		Assert.assertEquals(Level.FINER, Log.getLevel(Log.FAC_PIPELINE));
+		Assert.assertEquals(Level.FINER, Log.getLevel(Log.FAC_NETMANAGER));
+		Assert.assertEquals(Level.FINER, Log.getLevel(Log.FAC_IO));
+		
+		Log.setLevels(save);
+		Assert.assertEquals(Level.WARNING, Log.getLevel(Log.FAC_PIPELINE));
+		Assert.assertEquals(Level.INFO, Log.getLevel(Log.FAC_NETMANAGER));
+		Assert.assertEquals(Level.FINE, Log.getLevel(Log.FAC_IO) );
+	}
 
 }
