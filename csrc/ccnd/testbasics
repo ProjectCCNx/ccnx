@@ -12,8 +12,7 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-: ${CCN_LOCAL_PORT:=62009}
-export CCN_LOCAL_PORT
+export CCN_LOCAL_PORT=62009
 : ${CCND_DEBUG:=0}
 export CCND_DEBUG
 
