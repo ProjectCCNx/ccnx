@@ -9,7 +9,6 @@
 # -single     must only use one socket at a time for the host
 # -fail       request will immediately fail (closes socket without reply)
 
-*.dr-placebo.net
 *.static.flickr.com -needDot
 *.creativecommons.org -needDot
 *.gsfc.nasa.gov -needDot
