@@ -149,7 +149,9 @@ public class CCNNetworkManager implements Runnable {
 		// prefix we use Integer.MAX_VALUE as the requested lifetime.
 		private long _lifetime = -1; // in seconds
 		private long _nextRefresh = -1;
-		private boolean _closing = false;
+		private boolean _closing = false;		// Flags in process of closing
+		private boolean _wasClosing = false;	// See below for reason for this
+		private boolean _doRemove = true;		// To avoid removing just registered prefixes
 
 		public RegisteredPrefix(ForwardingEntry forwarding) {
 			_forwarding = forwarding;
@@ -166,10 +168,16 @@ public class CCNNetworkManager implements Runnable {
 		 */
 		public Interest handleContent(ContentObject data, Interest interest) {
 			synchronized (this) {
+				_closing = false;	// We have to clear this, otherwise we could deadlock if setInterestFilter
+									// grabs us after this
 				notifyAll();
-			}
+			}		
+			// If setInterestFilter grabbed us right here, we would have cleared _closing (necessary to avoid
+			// deadlocks) but we would have actually deregistered so setInterestFilter needs to know that. It can
+			// because _wasClosing is still set.
 			synchronized (_registeredPrefixes) {
-				_registeredPrefixes.remove(_forwarding.getPrefixName());
+				if (_doRemove)	// Avoid removing a just registered prefix from the map
+					_registeredPrefixes.remove(_forwarding.getPrefixName());
 			}
 			return null;
 		}
@@ -1046,16 +1054,20 @@ public class CCNNetworkManager implements Runnable {
 				synchronized(_registeredPrefixes) {
 					RegisteredPrefix oldPrefix = getRegisteredPrefix(filter);
 					if (null != oldPrefix) {
-						if (oldPrefix._closing) {
-							synchronized (oldPrefix) {
+						synchronized (oldPrefix) {
+							if (oldPrefix._closing) {
 								try {
 									oldPrefix.wait();
 								} catch (InterruptedException e) {} // XXX do we need to worry about this?
 							}
-							_registeredPrefixes.remove(filter);		// Just in case
-							registerPrefix(filter, registrationFlags);
-						} else
-							oldPrefix._refCount++;
+							if (oldPrefix._wasClosing) {
+								_registeredPrefixes.remove(filter);
+								registerPrefix(filter, registrationFlags);
+								oldPrefix._doRemove = false;
+							} else {
+								oldPrefix._refCount++;
+							}
+						}
 					} else {
 						registerPrefix(filter, registrationFlags);
 					}
@@ -1120,22 +1132,29 @@ public class CCNNetworkManager implements Runnable {
 				synchronized (_registeredPrefixes) {
 					RegisteredPrefix prefix = getRegisteredPrefix(filter);
 					if (null != prefix && prefix._refCount <= 1) {
-						ForwardingEntry entry = prefix._forwarding;
-						if (!entry.getPrefixName().equals(filter)) {
-							Log.severe(Log.FAC_NETMANAGER, "cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
+						synchronized (prefix) {
+							if (prefix._refCount <= 1) {
+								ForwardingEntry entry = prefix._forwarding;
+								// Since we are piggybacking registration entries we can legitimately have a "last" registration entry on a prefix that had
+								// been piggybacked on a higher registration earlier so the entries name would not match the filter.
+								//
+								//if (!entry.getPrefixName().equals(filter)) {
+								//	Log.severe(Log.FAC_NETMANAGER, "cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
+								//}
+								try {
+									if (null == _prefixMgr) {
+										_prefixMgr = new PrefixRegistrationManager(this);
+									}
+									prefix._closing = true;
+									prefix._wasClosing = true;
+									_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
+								} catch (CCNDaemonException e) {
+									Log.warning(Log.FAC_NETMANAGER, "cancelInterestFilter failed with CCNDaemonException: " + e.getMessage());
+								}
+							} else
+								prefix._refCount--;
 						}
-						try {
-							if (null == _prefixMgr) {
-								_prefixMgr = new PrefixRegistrationManager(this);
-							}
-							prefix._closing = true;
-							_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
-						} catch (CCNDaemonException e) {
-							Log.warning(Log.FAC_NETMANAGER, "cancelInterestFilter failed with CCNDaemonException: " + e.getMessage());
-						}
-					} else
-						if (null != prefix)
-							prefix._refCount--;
+					}
 				}
 			}
 		}
