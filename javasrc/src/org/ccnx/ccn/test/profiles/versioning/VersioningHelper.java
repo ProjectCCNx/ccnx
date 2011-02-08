@@ -27,6 +27,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.KeyManager;
@@ -183,9 +184,14 @@ public class VersioningHelper {
 		public final ArrayList<ReceivedData> received = new ArrayList<ReceivedData>();
 		public InterestData id = null;
 		public int runCount = 0;
+		public boolean debugOutput = false;
+		// if true, run() method will send an intial interest, otherwise it will assume there
+		// is already an interest outstanding.
+		public boolean sendFirstInterest = true;
 
 		public synchronized Interest handleContent(ContentObject data, Interest interest) {
-//			System.out.println("handleContent: " + data.name());
+			if( debugOutput )
+				System.out.println("handleContent: " + data.name());
 			
 			received.add(new ReceivedData(data, interest));
 
@@ -198,9 +204,15 @@ public class VersioningHelper {
 						e.printStackTrace();
 					}
 
-					if( cl.getValue() < runCount )
-						return id.buildInterest();
+					if( cl.getValue() < runCount ) {
+						Interest newinterest = id.buildInterest();
+						if( debugOutput )
+							System.out.println("Return interest: " + newinterest);
+						return newinterest;
+					}
 				}
+				if( debugOutput )
+					System.out.println("Return interest: null");
 				return null;
 			} finally {
 				// want to do this at the very end, so anyting waiting on the
@@ -224,7 +236,7 @@ public class VersioningHelper {
 		 */
 		public boolean run(CCNHandle handle, int count, long timeout) throws IOException, InterruptedException {
 			runCount = count;
-			if( count > 0 ) {
+			if( count > 0 && sendFirstInterest ) {
 				Interest interest = id.buildInterest();
 				handle.expressInterest(interest, this);
 			}
@@ -236,6 +248,23 @@ public class VersioningHelper {
 		}
 	}
 
+	public static class TestFilterListener implements CCNFilterListener {
+		public final ConditionLong cl = new ConditionLong(0);
+		public final ArrayList<Interest> received = new ArrayList<Interest>();
+		public int runCount = 0;
+		public boolean debugOutput = false;
+
+		public synchronized boolean handleInterest(Interest interest) {
+			if( debugOutput )
+				System.out.println("handleInterest: " + interest.name());
+			
+			received.add(interest);
+			cl.increment();
+			
+			return false;
+		}
+	}
+	
 	/**
 	 * Track interests
 	 */
