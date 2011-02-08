@@ -47,8 +47,9 @@ Concat (string s1, string s2) {
 	int len1 = ((s1 != NULL) ? strlen(s1) : 0);
 	int len2 = ((s2 != NULL) ? strlen(s2) : 0);
 	char *s = (char *) calloc(len1+len2+1, sizeof(char));
-	for (int i = 0; i < len1; i++) s[i] = s1[i];
-	for (int i = 0; i < len2; i++) s[len1+i] = s2[i];
+	int i = 0;
+	for (i = 0; i < len1; i++) s[i] = s1[i];
+	for (i = 0; i < len2; i++) s[len1+i] = s2[i];
 	return s;
 }
 

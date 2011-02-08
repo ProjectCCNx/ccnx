@@ -16,7 +16,7 @@ LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn -lcrypto
 EXPATLIBS = -lexpat
 CCNLIBDIR = ../../lib
 INCLDIR = ../../include
-
+CFLAGS = -g -Wall -Wpointer-arith -Wreturn-type -Wstrict-prototypes -I../../include
 PROGRAMS = NetFetch HttpProxy
 
 CSRC = HttpProxy.c NetFetch.c ProxyUtil.c SockHop.c
@@ -29,9 +29,26 @@ clean:
 	rm -f *.o $(PROGRAMS)
 	rm -rf *.dSYM *% *~
 
+depend:
+	echo Not sure about this for HttpProxy.
+
+test:
+	echo Not sure about this for HttpProxy.
+
+check:
+	echo Not sure about this for HttpProxy.
+
+shared:
+	echo Not sure about this for HttpProxy.
+
+testinstall:
+	echo Not sure about this for HttpProxy.
+
 install: 
+	cp -p HttpProxy HttpProxy.list NetFetch ../../bin/
 
 uninstall: 
+	rm ../../bin/HttpProxy ../../bin/HttpProxy.list ../../bin/NetFetch
 
 HttpProxy: HttpProxy.o ProxyUtil.o SockHop.o
 	$(CC) $(CFLAGS) -o $@ HttpProxy.o ProxyUtil.o SockHop.o $(LDLIBS)
@@ -51,6 +68,8 @@ ProxyUtil.o:
 SockHop.o: 
 	$(CC) $(CFLAGS) -c SockHop.c
 
+_always:
+.PHONY: _always
 
 ###############################
 # Dependencies below here are checked by depend target

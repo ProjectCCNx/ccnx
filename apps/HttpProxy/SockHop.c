@@ -102,7 +102,8 @@ SH_PrintSockAddr(FILE *f, struct sockaddr *sap) {
 	} else if (fam == PF_INET6) {
 		struct sockaddr_in6 * sa6 = (struct sockaddr_in6 *) sap;
 		uint8_t * p = (uint8_t *) &sa6->sin6_addr;
-		for (int i = 0; i < 16; i++) {
+		int i = 0;
+		for (; i < 16; i++) {
 			uint8_t b = p[i];
 			if (i > 0) fprintf(f, ":");
 			if (b != 0) fprintf(f, "%x", b);
@@ -265,8 +266,10 @@ SH_NewSockEntryNoCheck(SockBase base, int sockFD) {
 extern SockEntry
 SH_FindSockEntry(SockBase base, int sockFD) {
 	if (sockFD < 0) return NULL;
-	for (SockEntry se = base->list; se != NULL; se=se->next) {
+	SockEntry se = base->list;
+	while (se != NULL) {
 		if (se->fd == sockFD) return se;
+		se = se->next;
 	}
 	return NULL;
 }
@@ -282,8 +285,10 @@ extern SockEntry
 SH_NewSockEntry(SockBase base, int sockFD) {
 	// initially check for invalid sockFD OR existing entry for the sockFD
 	if (sockFD < 0) return NULL;
-	for (SockEntry se = base->list; se != NULL; se=se->next) {
+	SockEntry se = base->list;
+	while (se != NULL) {
 		if (se->fd == sockFD) return NULL;
+		se = se->next;
 	}
 	SockEntry ret = SH_NewSockEntryNoCheck(base, sockFD);
 	return ret;
@@ -299,13 +304,15 @@ extern SockEntry
 SH_FindSockEntryForAddr(SockBase base, struct sockaddr *sap, int owned) {
 	// find an existing entry for an address
 	// never return an se where se->forceClose != 0
-	for (SockEntry se = base->list; se != NULL; se=se->next) {
+	SockEntry se = base->list;
+	while (se != NULL) {
 		struct sockaddr *sep = (struct sockaddr *) &se->addr;
 		if (((owned <= 0) ? se->owned <= 0 : se->owned > 0)
 			&& se->forceClose == 0
 			&& se->fd >= 0
 			&& SH_CmpSockAddr(base, sep, sap) == 0)
 			return se;
+		se = se->next;
 	}
 	return NULL;
 }
@@ -388,12 +395,14 @@ SH_CountSockEntryOwned(SockBase base,
 	int count = 0;
 	if (host == NULL) return 0;
 	if (kind == NULL) return 0;
-	for (SockEntry se = base->list; se != NULL; se=se->next) {
+	SockEntry se = base->list;
+	while (se != NULL) {
 		if ((se->owned > 0)
 			&& strcasecmp(host, se->host) == 0
 			&& strcasecmp(kind, se->kind) == 0
 			&& (port <= 0 || port == se->port))
 			count++;
+		se = se->next;
 	}
 	return count;
 }
@@ -444,7 +453,8 @@ SH_NewSockEntryForName(SockBase base, char *host, char *kind, int port) {
 		}
 		
 		// we have a list of possible addresses, try to open them in order
-		for (int i = 0; i < info->ai_addrlen; i++) {
+		int i = 0;
+		for (; i < info->ai_addrlen; i++) {
 			int gaRes = 0;
 			struct sockaddr *tap = &info->ai_addr[i];
 			if (tap->sa_family == PF_INET) {

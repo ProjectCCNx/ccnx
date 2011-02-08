@@ -2031,10 +2031,11 @@ RequestBaseStart(RequestBase rb) {
 		SetNameCCN(mb, cb, mb->ccnRoot, rb->host, rb->shortName);
 		
 		struct ccn_fetch_stream * fs = ccn_fetch_open(mb->fetchBase, cb,
-											 rb->shortName,
-											 NULL,
-											 FetchBuffers,
-											 mb->resolveFlags);
+													  rb->shortName,
+													  NULL,
+													  FetchBuffers,
+													  mb->resolveFlags,
+													  1);
 		ccn_charbuf_destroy(&cb);
 		
 		if (fs == NULL) {
