@@ -466,8 +466,9 @@ public class Log {
 			return;
 		}
 		
-		for( int i = 0; i < levels.length; i++ )
-			_fac_level[i] = levels[i];
+		// The 0 element (FAC_ALL) is always null
+		for( int i = 1; i < levels.length; i++ )
+			setLevel(i, levels[i]);
 	}
 
 	/**
@@ -563,10 +564,13 @@ public class Log {
 	}
 	
 	/**
-	 * Return array of all log levels
+	 * Returns a copy of the array of all log levels.  The 0 element (FAC_ALL) will be null.
 	 */
-	public static final Level [] getLevels() {
-		return _fac_level;
+	public static Level [] getLevels() {
+		Level [] copy = new Level[_fac_level.length];
+		for(int i = 0; i < _fac_level.length; i++)
+			copy[i] = _fac_level[i];
+		return copy;
 	}
 
 	/**
