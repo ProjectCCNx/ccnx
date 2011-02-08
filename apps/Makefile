@@ -15,7 +15,6 @@
 # SUBDIRS indicates the c subdirectories to be built by this makefile using
 # the machinery of the csrc subtree.
 SUBDIRS = HttpProxy
-OBJTREE = build
 MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk
 CFLAGS = -g
 CSRCDIR = ../csrc
@@ -25,26 +24,12 @@ default all clean depend test check shared install uninstall: conf.mk subr.mk ge
 	for i in $(SUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $(MAKEF) "COPT=$(CFLAGS)" CFLAGS='$$(REAL_CFLAGS)' SRCDIR=../$(SRCDIR)/$$i $@) || exit 1;	\
 	done
-	@test -d $(OBJTREE) && echo "+++ NOTE - $(OBJTREE) exists" ||:
 	@rm -f _always
 
 subr.mk generic.mk conf.mk:
 	test -f $(CSRCDIR)/$@ && ln -s $(CSRCDIR)/$@
 
 test check: default
-
-objtree: conf.mk _always
-	mkdir -p $(OBJTREE)
-	echo SRCDIR = ..  > $(OBJTREE)/Makefile
-	cat Makefile     >> $(OBJTREE)/Makefile
-	for i in $(SUBDIRS); do						\
-	  mkdir -p $(OBJTREE) &&					\
-	    (cd $$i && pwd &&						\
-		$(MAKE) $(MAKEF) OBJDIR=../$(OBJTREE)/$$i SRCDIR=. 	\
-			../$(OBJTREE)/$$i/dir.mk	 		\
-	     || exit 1);						\
-	done
-	cd $(OBJTREE) && ../configure
 
 documentation: _always
 	@: not yet
