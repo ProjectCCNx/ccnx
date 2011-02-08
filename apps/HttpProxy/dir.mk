@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -13,42 +13,17 @@
 #
 
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn -lcrypto
-EXPATLIBS = -lexpat
-CCNLIBDIR = ../../lib
-INCLDIR = ../../include
-CFLAGS = -g -Wall -Wpointer-arith -Wreturn-type -Wstrict-prototypes -I../../include
+CCNLIBDIR = ../../csrc/lib
+# Do not install these yet - we should choose names more appropriate for
+# a flat namespace in /usr/local/bin
+# INSTALLED_PROGRAMS = NetFetch HttpProxy
 PROGRAMS = NetFetch HttpProxy
 
 CSRC = HttpProxy.c NetFetch.c ProxyUtil.c SockHop.c
 
 default all: $(PROGRAMS)
 
-all: NetFetch HttpProxy
-
-clean:
-	rm -f *.o $(PROGRAMS)
-	rm -rf *.dSYM *% *~
-
-depend:
-	echo Not sure about this for HttpProxy.
-
-test:
-	echo Not sure about this for HttpProxy.
-
-check:
-	echo Not sure about this for HttpProxy.
-
-shared:
-	echo Not sure about this for HttpProxy.
-
-testinstall:
-	echo Not sure about this for HttpProxy.
-
-install: 
-	cp -p HttpProxy HttpProxy.list NetFetch ../../bin/
-
-uninstall: 
-	rm ../../bin/HttpProxy ../../bin/HttpProxy.list ../../bin/NetFetch
+$(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
 HttpProxy: HttpProxy.o ProxyUtil.o SockHop.o
 	$(CC) $(CFLAGS) -o $@ HttpProxy.o ProxyUtil.o SockHop.o $(LDLIBS)
@@ -56,31 +31,20 @@ HttpProxy: HttpProxy.o ProxyUtil.o SockHop.o
 NetFetch: NetFetch.o ProxyUtil.o SockHop.o
 	$(CC) $(CFLAGS) -o $@ NetFetch.o ProxyUtil.o SockHop.o $(LDLIBS)
 
-HttpProxy.o:
-	$(CC) $(CFLAGS) -c HttpProxy.c
-
-NetFetch.o:
-	$(CC) $(CFLAGS) -c NetFetch.c
-
-ProxyUtil.o:
-	$(CC) $(CFLAGS) -c ProxyUtil.c
-
-SockHop.o: 
-	$(CC) $(CFLAGS) -c SockHop.c
-
-_always:
-.PHONY: _always
+clean:
+	rm -f *.o $(PROGRAMS) depend
+	rm -rf *.dSYM $(DEBRIS) *% *~
 
 ###############################
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
-HttpProxy.o: HttpProxy.c ProxyUtil.h SockHop.h \
-  ../../include/ccn/fetch.h \
-  ../../include/ccn/ccn.h  ../../include/ccn/charbuf.h  ../../include/ccn/uri.h
-NetFetch.o: NetFetch.c ProxyUtil.h SockHop.h  \
-  ../../include/ccn/fetch.h \
-  ../../include/ccn/ccn.h  ../../include/ccn/charbuf.h  ../../include/ccn/uri.h \
-  ../../include/ccn/keystore.h  ../../include/ccn/signing.h
-ProxyUtil.o: ProxyUtil.c ProxyUtil.h 
-SockHop.o: SockHop.c SockHop.h
+HttpProxy.o: HttpProxy.c ProxyUtil.h SockHop.h ProxyUtil.h \
+  ../include/ccn/fetch.h ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+NetFetch.o: NetFetch.c ProxyUtil.h SockHop.h ProxyUtil.h \
+  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/uri.h \
+  ../include/ccn/keystore.h ../include/ccn/signing.h
+ProxyUtil.o: ProxyUtil.c ProxyUtil.h
+SockHop.o: SockHop.c SockHop.h ProxyUtil.h ProxyUtil.h
