@@ -540,7 +540,7 @@ CallMe(struct ccn_closure *selfp,
 		int res = ccn_content_get_value(ccnb, ccnb_size, info->pco,
 										&data, &dataLen);
 		
-		if (res < 0 || dataLen < 0 || (thisSeg != finalSeg && dataLen == 0)) {
+		if (res < 0 || (thisSeg != finalSeg && dataLen == 0)) {
 			// we got a bogus result, no data in this content!
 			if (debug != NULL && (flags & ccn_fetch_flags_NoteAddRem)) {
 				fprintf(debug, 
@@ -969,14 +969,14 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 		struct ccn_fetch_buffer *fb = FindBufferForSeg(fs, seg);
 		if (fb == NULL) break;
 		unsigned char *src = fb->buf;
-		size_t start = fb->pos;
-		size_t lo = start;
+		intmax_t start = fb->pos;
+		intmax_t lo = start;
 		if (lo < 0) {
 			// segments delivered at random might cause this
 			lo = pos;
 			fb->pos = pos;
 		}
-		size_t hi = lo + fb->len;
+		intmax_t hi = lo + fb->len;
 		if (pos < lo || pos >= hi || seg != fb->seg) {
 			// this SHOULD NOT HAPPEN!
 			FILE *debug = fs->parent->debug;
@@ -988,7 +988,7 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 			}
 			break;
 		}
-		int d = hi - pos;
+		intmax_t d = hi - pos;
 		if (d > len) d = len;
 		memcpy(dst+off, src+(pos-lo), d);
 		nr = nr + d;
