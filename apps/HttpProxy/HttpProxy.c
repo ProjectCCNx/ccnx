@@ -3,7 +3,7 @@
  * 
  * A CCNx program.
  *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -669,12 +669,6 @@ InitSelectData(SelectData sd, uint64_t timeoutUsecs) {
 }
 
 static void
-SetSockFD(MainBase) {
-	mb->sockFD = sockFD;
-	mb->client = AlterSocketCount(mb, sockFD, 1);
-}
-
-static void
 SetSockEntryAddr(SockEntry se, struct sockaddr *sap) {
 	if (sap != NULL) {
 		MainBase mb = (MainBase) se->clientData;
@@ -732,6 +726,12 @@ AlterSocketCount(MainBase mb, int fd, int delta) {
 		return NULL;
 	}
 	return se;
+}
+
+static void
+SetSockFD(MainBase mb, int sockFD) {
+	mb->sockFD = sockFD;
+	mb->client = AlterSocketCount(mb, sockFD, 1);
 }
 
 static string
@@ -1036,7 +1036,7 @@ MaybeNewRequestBase(MainBase mb) {
 	if (res < 0) {
 		return retFail(mb, "connFD fcntl failed");
 	}
-	struct sockaddr_storage sa = {0};
+	struct sockaddr_storage sa;
 	struct sockaddr *sap = (struct sockaddr *) &sa;
 	socklen_t slen = sizeof(sa);
 	int gsnRes = getsockname(connFD, sap, &slen);
@@ -1882,7 +1882,7 @@ RequestBaseStart(RequestBase rb) {
 	rb->msgLen = -1; // negative means unknown
 	mb->nChanges++;
 	
-	struct sockaddr_storage sa = {0};
+	struct sockaddr_storage sa;
 	struct sockaddr *sap = (struct sockaddr *) &sa;
 	socklen_t slen = sizeof(sa);
 	int gsnRes = getsockname(connFD, sap, &slen);
@@ -1983,7 +1983,7 @@ RequestBaseStart(RequestBase rb) {
 		// determine if this is an acceptable host for CCN
 		string effectiveHost = rb->host;
 		string effectiveName = rb->shortName;
-		struct ShortNameInfo info = {0, 0, 0};
+		struct ShortNameInfo info;
 		char tempHost[NameMax+4];
 		// first, remove any prefixes that are marked as proxies
 		for (;;) {
@@ -2618,6 +2618,8 @@ int
 main(int argc, string *argv) {
 	
 	ccn_fetch_flags ccn_flags = (ccn_fetch_flags_NoteAll);
+	FILE *f = stdout;
+	
 	MainBase mb = NewMainBase(f, 16);
 	int usePort = 8080;
 	
@@ -2693,7 +2695,7 @@ main(int argc, string *argv) {
 
 	signal(SIGPIPE, SIG_IGN);
 	
-	struct sockaddr_in sa = {0};
+	struct sockaddr_in sa;
 	struct sockaddr *sap = (struct sockaddr *) &sa;
     int sockFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	
@@ -2703,8 +2705,6 @@ main(int argc, string *argv) {
     sa.sin_family = PF_INET;
     sa.sin_port = htons(usePort);
     sa.sin_addr.s_addr = INADDR_ANY;
-	
-	FILE *f = stdout;
 	
 	int it = 0;
 	for (;;) {

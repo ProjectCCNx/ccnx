@@ -1260,7 +1260,7 @@ GetSegmentNumber(struct ccn_upcall_info *info) {
 				// TBD: where is this in the library?
 				if (data[0] != CCN_MARKER_SEQNUM) return -1;
 				seg_t n = 0;
-				int i = 1;
+				size_t i = 1;
 				for (; i < len; i++) {
 					n = n * 256 + data[i];
 				}
@@ -1316,7 +1316,7 @@ GetShortName(MainData md,
 		const unsigned char *data = NULL;
 		len = 0;
 		ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, start, stop, &data, &len);
-		int j = 0;
+		size_t j = 0;
 		for (; j < len; j++) {
 			char c = (char) data[j];
 			char cc = isNiceChar(c);
@@ -1612,7 +1612,7 @@ StartNetRequest(NetRequest nr) {
 }
 
 static NetRequest
-NewNetRequest(InterestData iData, char *shortName, seg_t seg) {
+NewNetRequest(InterestData iData, char *shortName) {
 	MainData md = iData->md;
 	int port = md->recentPort;
 	char *host = (char *) md->recentHost;
@@ -1955,7 +1955,7 @@ NoteInterest(struct ccn_closure *selfp,
 				// no file node yet
 				if (nr == NULL) {
 					// no file, no request, so start the HTTP request
-					nr = NewNetRequest(iData, shortName, seg);
+					nr = NewNetRequest(iData, shortName);
 				} else {
 					// there is a busy request, we assume that the file will
 					// show up in due course
