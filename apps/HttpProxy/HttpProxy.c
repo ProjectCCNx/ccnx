@@ -2341,7 +2341,7 @@ RequestBaseStep(RequestBase rb) {
 }
 
 static MainBase
-NewMainBase(FILE *f, int maxBusy) {
+NewMainBase(FILE *f, int maxBusy, struct ccn_fetch * fetchBase) {
 	MainBase mb = ProxyUtil_StructAlloc(1, MainBaseStruct);
 	TimeMarker now = GetCurrentTime();
 	mb->startTime = now;
@@ -2353,8 +2353,8 @@ NewMainBase(FILE *f, int maxBusy) {
 	if (maxBusy < 2) maxBusy = 2;
 	if (maxBusy > 20) maxBusy = 20;
 	mb->maxBusy = maxBusy;
-	mb->fetchBase = ccn_fetch_new(NULL);
-	mb->ccnFD = ccn_get_connection_fd(ccn_fetch_get_ccn(mb->fetchBase));
+	mb->fetchBase = fetchBase;
+	mb->ccnFD = ccn_get_connection_fd(ccn_fetch_get_ccn(fetchBase));
 	
 	mb->debug = f;
 	FILE *pf = fopen("./HttpProxy.list", "r");
@@ -2620,7 +2620,13 @@ main(int argc, string *argv) {
 	ccn_fetch_flags ccn_flags = (ccn_fetch_flags_NoteAll);
 	FILE *f = stdout;
 	
-	MainBase mb = NewMainBase(f, 16);
+	struct ccn_fetch * fetchBase = ccn_fetch_new(NULL);
+	if (fetchBase == NULL) {
+		fprintf(stdout, "** Can't connect to ccnd\n");
+		return -1;
+	}
+
+	MainBase mb = NewMainBase(f, 16, fetchBase);
 	int usePort = 8080;
 	
 	int i = 1;
