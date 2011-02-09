@@ -32,3 +32,4 @@ bs.serving-sys.com -fail
 *.admeld.com -fail
 *.adfusion.com -fail
 *.adsonar.com -fail
+*.dapper.net -fail
