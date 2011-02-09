@@ -534,7 +534,10 @@ public class Group {
 			throws InvalidKeyException, ContentDecodingException, AccessDeniedException, IOException {		
 		if ((null == membersToAdd) || (membersToAdd.size() == 0))
 			return;
-		
+
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINEST))
+			Log.finest(Log.FAC_ACCESSCONTROL, " {0} Group.updateGroupPublicKey()", _groupNamespace.prefix());
+
 		PrincipalKeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
 		
 		PublicKeyObject latestPublicKey = null;
@@ -651,7 +654,12 @@ public class Group {
 	public void modify(java.util.Collection<Link> membersToAdd,
 					   java.util.Collection<Link> membersToRemove) 
 			throws InvalidKeyException, ContentDecodingException, IOException, NoSuchAlgorithmException {
-		
+
+		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINEST))
+				Log.finest(Log.FAC_ACCESSCONTROL, "{0} Group.modify({1},{2})", _groupNamespace.prefix(),
+						(membersToAdd == null) ? "null" : membersToAdd.size(),
+						(membersToRemove == null) ? "null" : membersToRemove.size());
+
 		boolean addedMembers = false;
 		boolean removedMembers = false;
 		
