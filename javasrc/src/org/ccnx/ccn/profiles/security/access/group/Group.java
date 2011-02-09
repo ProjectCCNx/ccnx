@@ -517,6 +517,9 @@ public class Group {
 		return privateKeyWrappingKey;
 	}
 	
+	@SuppressWarnings("serial")
+	public static class CouldNotRetrievePublicKeyException extends IOException {} 
+	
 	/**
 	 * Adds members to an existing group.
 	 * The caller of this method must have access to the private key of the group.
@@ -539,48 +542,44 @@ public class Group {
 			Log.finest(Log.FAC_ACCESSCONTROL, " {0} Group.updateGroupPublicKey()", _groupNamespace.prefix());
 
 		PrincipalKeyDirectory privateKeyDirectory = privateKeyDirectory(_groupManager.getAccessManager());
-		
+
 		PublicKeyObject latestPublicKey = null;
 		for (Link lr : membersToAdd) {
-			try {
-				// DKS TODO verify target public key against publisher, etc in link
-				
-				ContentName mlName = lr.targetName();
-				ContentName pkName = null;
-				if (_groupManager.getAccessManager().isGroupName(mlName)){
-					// MLAC mods to make sure we fully parameterize key names
-					pkName = _groupManager.getAccessManager().groupPublicKeyName(mlName);
-					// write a back pointer from child group to parent group
-					// PG TODO check for existence of back pointer to avoid writing multiple copies of the same pointer
-					Link backPointer = new Link(groupName(), friendlyName(), null);
-					ContentName bpNamespace = GroupAccessControlProfile.groupPointerToParentGroupName(lr.targetName());
-					LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, SaveType.REPOSITORY, _handle);
-					bplo.save();
-				} else {
-					// MLAC mods to make sure we fully parameterize key names
-					pkName = _groupManager.getAccessManager().userPublicKeyName(mlName);
-				}
+			// DKS TODO verify target public key against publisher, etc in link
+			
+			ContentName mlName = lr.targetName();
+			ContentName pkName = null;
+			if (_groupManager.getAccessManager().isGroupName(mlName)){
+				// MLAC mods to make sure we fully parameterize key names
+				pkName = _groupManager.getAccessManager().groupPublicKeyName(mlName);
+				// write a back pointer from child group to parent group
+				// PG TODO check for existence of back pointer to avoid writing multiple copies of the same pointer
+				Link backPointer = new Link(groupName(), friendlyName(), null);
+				ContentName bpNamespace = GroupAccessControlProfile.groupPointerToParentGroupName(lr.targetName());
+				LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, SaveType.REPOSITORY, _handle);
+				bplo.save();
+			} else {
+				// MLAC mods to make sure we fully parameterize key names
+				pkName = _groupManager.getAccessManager().userPublicKeyName(mlName);
+			}
 
-				latestPublicKey = new PublicKeyObject(pkName, _handle);
-				if (!latestPublicKey.available()) {
-					if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-						Log.warning(Log.FAC_ACCESSCONTROL, "Could not retrieve public key for " + pkName);
-					}
-					continue;
+			latestPublicKey = new PublicKeyObject(pkName, _handle);
+			if (!latestPublicKey.available()) {
+				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
+					Log.warning(Log.FAC_ACCESSCONTROL, "Could not retrieve public key for " + pkName);
 				}
-				// Need to write wrapped key block and linking principal name.
+				throw new CouldNotRetrievePublicKeyException();
+			}
+			// Need to write wrapped key block and linking principal name.
+			try {
 				privateKeyDirectory.addWrappedKeyBlock(
 						privateKeyWrappingKey, 
 						latestPublicKey.getVersionedName(), 
 						latestPublicKey.publicKey());
-			} catch (IOException e) {
-				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-					Log.warning(Log.FAC_ACCESSCONTROL, "Could not retrieve public key for principal " + lr.targetName() + ", skipping.");
-				}
 			} catch (VersionMissingException e) {
-				if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.WARNING)) {
-					Log.warning(Log.FAC_ACCESSCONTROL, "Unexpected: public key name not versioned! " + latestPublicKey.getVersionedName() + ", unable to retrieve principal's public key. Skipping.");
-				}
+				// TODO make VersionMissingException a subclass of IOException, see case #100070
+				Log.warningStackTrace(e);
+				throw new IOException(e.toString());
 			}
 		}
 	}
