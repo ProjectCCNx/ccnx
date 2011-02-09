@@ -729,7 +729,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 					throw new URISyntaxException(name, "malformed %xy byte representation: negative value not permitted", i);
 				}
 				try {
-					result.put(new Integer(Integer.parseInt(name.substring(i+1, i+3),16)).byteValue());
+					result.put((byte)Integer.parseInt(name.substring(i+1, i+3),16));
 				} catch (NumberFormatException e) {
 					throw new URISyntaxException(name, "malformed %xy byte representation: not legal hex number: " + name.substring(i+1, i+3), i);
 				}
@@ -746,16 +746,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			case '!': case '$': case '&': case '\'': case '(': case ')':
 			case '*': case '+': case ',': case ';': case '=':
 				// Permit unescaped reserved characters
-				result.put(DataUtils.getBytesFromUTF8String(name.substring(i, i+1)));
+				result.put((byte)ch);
 				break;
 			default: 
 				if (('a' <= ch && ch <= 'z') ||
 						('A' <= ch && ch <= 'Z') ||
 						('0' <= ch && ch <= '9') ||
 						ch == '-' || ch == '.' || ch == '_' || ch == '~') {
-
 					// This character remains the same
-					result.put(DataUtils.getBytesFromUTF8String(name.substring(i, i+1)));
+					result.put((byte)ch);
 				} else {
 					throw new URISyntaxException(name, "Illegal characters in URI", i);
 				}
