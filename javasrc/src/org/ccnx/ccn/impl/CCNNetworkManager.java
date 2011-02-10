@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.NotYetConnectedException;
 import java.util.ArrayList;
-import java.util.Set;
-import java.util.SortedMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
@@ -589,6 +587,7 @@ public class CCNNetworkManager implements Runnable {
 					}
 				}
 			} catch (Exception ex) {
+				_stats.increment(StatsEnum.DeliverContentFailed);
 				Log.warning(Log.FAC_NETMANAGER, "failed to deliver data: {0}", ex);
 				Log.warningStackTrace(ex);
 			}
@@ -684,6 +683,7 @@ public class CCNNetworkManager implements Runnable {
 						Log.finer(Log.FAC_NETMANAGER, "Filter callback skipped (no interests) for: {0}", prefix);
 				}
 			} catch (RuntimeException ex) {
+				_stats.increment(StatsEnum.DeliverInterestFailed);
 				Log.warning(Log.FAC_NETMANAGER, "failed to deliver interest: {0}", ex);
 				Log.warningStackTrace(ex);
 			}
@@ -1442,6 +1442,8 @@ public class CCNNetworkManager implements Runnable {
 		DeliverInterest ("calls", "The number of calls to deliverInterest"),
 		DeliverContent ("calls", "The number of calls to cancelInterest"),
 		DeliverContentMatchingInterests ("calls", "Count of the calls to threadpool.execute in handleData()"),
+		DeliverContentFailed ("calls", "The number of content deliveries that failed"),
+		DeliverInterestFailed ("calls", "The number of interest deliveries that failed"),
 
 		ReceiveObject ("objects", "Receive count of ContentObjects from channel"),
 		ReceiveInterest ("interests", "Receive count of Interests from channel"),
