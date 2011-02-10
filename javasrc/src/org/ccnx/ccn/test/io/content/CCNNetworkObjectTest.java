@@ -466,7 +466,11 @@ public class CCNNetworkObjectTest {
 			
 			CCNTime t1 = saveAndLog("First string", c0, null, "Here is the first string.");
 			
-			c0.waitForData();
+			synchronized (c0) {
+				if (!c0.getVersion().equals(t1)) {
+					c0.wait(5000);
+				}
+			}
 			c1.waitForData();
 			CCNTime c1Version = c1.getVersion();
 			
@@ -504,6 +508,7 @@ public class CCNNetworkObjectTest {
 				if (!c0.getVersion().equals(t2)) {
 					c0.wait(5000);
 				}
+				Log.info("waited - t2 is {0}", t2);
 			}
 			Assert.assertEquals("c0 update", c0.getVersion(), c2.getVersion());
 			synchronized (c1) {
