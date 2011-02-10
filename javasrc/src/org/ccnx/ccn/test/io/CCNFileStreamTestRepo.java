@@ -28,6 +28,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNStats;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -127,7 +128,6 @@ public class CCNFileStreamTestRepo {
 		Assert.assertEquals(fileSize, fis2.header().length());		
 		Log.info("Read digest: " + DataUtils.printBytes(readDigest2.digest()) + " wrote digest: " + digest);
 		Assert.assertArrayEquals(digest, readDigest2.digest());
-
 	}
 
 	public static byte [] writeRandomFile(int bytes, OutputStream out) throws IOException {

@@ -131,7 +131,6 @@ public class CCNFlowControl implements CCNFilterListener {
 			_filteredNames.add(name);
 			_handle.registerFilter(name, this);
 		}
-		_unmatchedInterests.setCapacity(DEFAULT_INTEREST_CAPACITY);
 	}
 	
 	/**
@@ -410,7 +409,9 @@ public class CCNFlowControl implements CCNFilterListener {
 
 				// When we're going to be blocked waiting for a reader anyway, 
 				// purge old unmatched interests
-				removeUnmatchedInterests(ourTime);
+				synchronized (_unmatchedInterests) {
+					removeUnmatchedInterests(ourTime);
+				}
 				
 				// Now wait for space to be cleared or timeout
 				// Must guard against "spurious wakeup" so must check elapsed time directly
@@ -447,7 +448,9 @@ public class CCNFlowControl implements CCNFilterListener {
 
 			// Check for pending interest match to allow immediate transmit
 			Entry<UnmatchedInterest> match = null;
-			match = _unmatchedInterests.removeMatch(co);
+			synchronized (_unmatchedInterests) {
+				match = _unmatchedInterests.removeMatch(co);
+			}
 			if (match != null) {
 				Log.finest(Log.FAC_IO, "Found pending matching interest for " + co.name() + ", putting to network.");
 				_handle.put(co);
@@ -465,6 +468,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	/**
 	 * Function to remove expired interests from the flow controller.  This is called when a content
 	 * object is received and when an interest is added to the buffer.
+	 * 
+	 * Must be called with _unmatchedInterests locked
 	 * 
 	 * @param ourTime current time for checking if interests are expired
 	 */
@@ -534,12 +539,14 @@ public class CCNFlowControl implements CCNFilterListener {
 			}
 		} else {
 			
-			//only check if we are adding the interest, and check before we add so we don't check the new interest
-			if (_unmatchedInterests.size() > 0)
-				removeUnmatchedInterests(System.currentTimeMillis());
-			
-			Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
-			_unmatchedInterests.add(i, new UnmatchedInterest());
+			synchronized (_unmatchedInterests) {
+				//only check if we are adding the interest, and check before we add so we don't check the new interest
+				if (_unmatchedInterests.size() > 0)
+					removeUnmatchedInterests(System.currentTimeMillis());
+				
+				Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
+				_unmatchedInterests.add(i, new UnmatchedInterest());
+			}
 		}
 			
 		return true;
@@ -679,21 +686,25 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * Remove any currently buffered unmatched interests
 	 */
 	public void clearUnmatchedInterests() {
-		if( Log.isLoggable(Level.INFO))
-			Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
-		_unmatchedInterests.clear();
+		synchronized (_unmatchedInterests) {
+			if( Log.isLoggable(Level.INFO))
+				Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
+			_unmatchedInterests.clear();
+		}
 	}
 	
 	/**
 	 * Debugging function to log unmatched interests.
 	 */
 	public void logUnmatchedInterests(String logMessage) {
-		if( Log.isLoggable(Log.FAC_IO, Level.INFO))
-			Log.info(Log.FAC_IO, "{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
-		for (Entry<UnmatchedInterest> interestEntry : _unmatchedInterests.values()) {
-			if (null != interestEntry.interest())
-				if( Log.isLoggable(Log.FAC_IO, Level.INFO))
-					Log.info(Log.FAC_IO, "   Unmatched interest: {0}", interestEntry.interest());
+		synchronized (_unmatchedInterests) {
+			if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
+			for (Entry<UnmatchedInterest> interestEntry : _unmatchedInterests.values()) {
+				if (null != interestEntry.interest())
+					if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+						Log.info(Log.FAC_IO, "   Unmatched interest: {0}", interestEntry.interest());
+			}
 		}
 	}
 	
@@ -727,7 +738,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param value	number of interests
 	 */
 	public void setInterestCapacity(int value) {
-		_unmatchedInterests.setCapacity(value);
+		synchronized (_unmatchedInterests) {
+			_unmatchedInterests.setCapacity(value);
+		}
 	}
 	
 	/**
