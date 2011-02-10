@@ -323,7 +323,7 @@
 		</junit>
 	</target>
 
-	<target name="test-impl" depends="test-impl-without-repo, test-impl-with-repo, test-ccnd-controls">
+	<target name="test-impl" depends="test-impl-without-repo, test-impl-with-repo">
 	</target>
 	
 	<target name="test-impl-without-repo" depends="jar, ccnd">
@@ -829,41 +829,6 @@
 			</batchtest>
 		</junit>
 		<!-- <delete dir="${REPO_ROOT}"/> -->
-	</target>
-	
-	<!-- Tests to validate the interactions with ccnd.  Not yet added to list of tests yet -->
-	<target name="test-ccnd-controls" depends="jar, ccnd">
-		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
-			<classpath>
-				<path refid="classpath-run"/>
-			</classpath>
-			<formatter type="xml" usefile="true"/>
-			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-			<batchtest todir="${testout}" >
-				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/profiles/ccnd/FaceManagerTest.class"/>
-				</fileset>
-			</batchtest>
-		</junit>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
-			<classpath>
-				<path refid="classpath-run"/>
-			</classpath>
-			<formatter type="xml" usefile="true"/>
-			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
-			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-			<batchtest todir="${testout}" >
-				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/profiles/ccnd/PrefixRegistrationManagerTest.class"/>
-				</fileset>
-			</batchtest>
-		</junit>
 	</target>
 
 	<!-- test versioning -->

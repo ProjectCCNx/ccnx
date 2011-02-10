@@ -35,7 +35,7 @@ import org.junit.Test;
  * Requires a running ccnd
  *
  */
-public class InterestEndToEndTestUsingPrefix extends LibraryTestBase implements CCNFilterListener, CCNInterestListener {
+public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements CCNFilterListener, CCNInterestListener {
 	private Interest _interestSent;
 	private String _prefix = "/interestEtoETestUsingPrefix/test-" + rand.nextInt(10000);
 	private final static int TIMEOUT = 3000;
