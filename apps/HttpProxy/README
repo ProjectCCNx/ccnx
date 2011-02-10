@@ -1,26 +1,28 @@
 -- apps/HttpProxy/README
 
  * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
- *
- * This work is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation.
- * This work is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details. You should have received a copy of the GNU General Public
- * License along with this program; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
- * Boston, MA 02110-1301, USA.
 
 -------------------------------------------------------------------------
 This file describes the test conditions for running the CCN HttpProxy demo.
 
-First, we assume that there is a running ccnd program.  If that is not the case, then refer to the ccnx documentation.
+First, we assume that there is a running ccnd program.  If that is not the
+case, then refer to the ccnx documentation.
 
-HttpProxy is a specialized HTTP proxy that handles a subset of the HTTP GET requests by converting them into CCN interests.  Those interests are then satisfied through the ccnd.  HttpProxy listens for HTTP GET requests on a given port, and has sufficient logic to serve as a proxy for browsers with configurable proxies (Firefox and Safari have been tested).  The subset of GET requests that can be handled via CCN is given as a list of permitted host names or host name prefixes, plus a small set of additional restrictions.  Subrange requests are not honored.
+HttpProxy is a specialized HTTP proxy that handles a subset of the HTTP GET
+requests by converting them into CCN interests.  Those interests are then
+satisfied through the ccnd.  HttpProxy listens for HTTP GET requests on a
+given port, and has sufficient logic to serve as a proxy for browsers with
+configurable proxies (Firefox and Safari have been tested).  The subset of
+GET requests that can be handled via CCN is given as a list of permitted host
+names or host name prefixes, plus a small set of additional restrictions.
+Subrange requests are not honored.
 
-NetFetch listens for CCN interests of a particular form, and turns them into HTTP GET requests.  When the HTTP requests result in content, this content is segmented and stored into the local ccnd to satisfy the interests.  The NetFetch program stores whole files, and does not handle subrange requests.  Once a file is stored it remains until deleted by the client (NetFetch does not delete files).
+NetFetch listens for CCN interests of a particular form, and turns them into
+HTTP GET requests.  When the HTTP requests result in content, this content
+is segmented and stored into the local ccnd to satisfy the interests.  The
+NetFetch program stores whole files, and does not handle subrange requests.
+Once a file is stored it remains until deleted by the client (NetFetch does
+not delete files).
  
 -------------------------------------------------------------------------
 
@@ -60,7 +62,9 @@ Running tests.
 	-- if HHH is not NNN, route ccnd demon from HHH to NNN using
 		ccndc add ccnx:/ udp NNN
 
-2.  Any HTTP source programs should use port 8080 on HHH for HTTPProxy service (hint, for Firefox, use Preferences->Advanced and use Settings to set the HTTPProxy to localhost, port 8080, using the Manual proxy configuration). 
+2.  Any HTTP source programs should use port 8080 on HHH for HTTPProxy service
+    (hint, for Firefox, use Preferences->Advanced and use Settings to set the
+    HTTPProxy to localhost, port 8080, using the Manual proxy configuration).
 
 3.  On HHH, edit $ProxyHome/HttpProxy.list to include custom cacheable prefixes, or to exclude prefixes.
 
@@ -78,7 +82,7 @@ Running tests.
 
 Additional commands and information
 
-1.  To make a ccnd mark all interests as stale, use:
+1.  To make a ccnd mark all content as stale, use:
 	$CCNBin/ccnrm ccnx:/
 
 2.  To delete all files cached by NetFetch, use:
@@ -116,5 +120,9 @@ where
 	segmentsPut 1424	-- segments put via CCN
 	bytesPut 4762527	-- bytes put via CCN
 
-The interestsSeen number includes interests expressed beyond the EOF for the file, and are therefore ignored.  It sometimes includes duplicate interests that came about through race conditions.  The segmentsPut number is the number of segments put via CCN, and may include some duplicates.  Duplicate replies are suppressed by ccnd.
+The interestsSeen number includes interests expressed beyond the EOF for the
+file, and are therefore ignored.  It sometimes includes duplicate interests
+that came about through race conditions.  The segmentsPut number is the number
+of segments put via CCN, and may include some duplicates.  Duplicate replies
+are suppressed by ccnd.
 
