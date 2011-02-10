@@ -695,10 +695,26 @@ public class Log {
 		t.printStackTrace(new PrintWriter(sw));
 		_facilityLoggers[FAC_DEFAULT].log(level, sw.toString());
 	}
+	
+	public static void logStackTrace(int facility, Level level, Throwable t) {
+		if (!isLoggable(facility, level))
+			return;
+		
+		StringWriter sw = new StringWriter();
+		t.printStackTrace(new PrintWriter(sw));
+		_facilityLoggers[facility].log(level, sw.toString());
+	}
 
-	public static void logException(String message, 
-			Exception e) {
+	public static void logException(String message, Exception e) {
 		_facilityLoggers[FAC_DEFAULT].warning(message);
 		Log.warningStackTrace(e);
+	}
+	
+	public static void logException(int facility, Level level, String message, Exception e) {
+		if (!isLoggable(facility, level))
+			return;
+
+		_facilityLoggers[facility].log(level, message);
+		logStackTrace(facility, level, e);
 	}
 }
