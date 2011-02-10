@@ -858,6 +858,16 @@ init_face_flags(struct ccnd_handle *h, struct face *face, int setflags)
         face->flags |= CCN_FACE_INET;
         if (rawaddr[0] == 127)
             face->flags |= CCN_FACE_LOOPBACK;
+	else {
+            /* If our side and the peer have the same address, consider it loopback */
+            /* This is the situation inside of FreeBSD jail. */
+            struct sockaddr_in myaddr;
+            socklen_t myaddrlen = sizeof(myaddr);
+	    if (0 == getsockname(face->recv_fd, (struct sockaddr *)&myaddr, &myaddrlen)) {
+                if (addr4->sin_addr.s_addr == myaddr.sin_addr.s_addr)
+                    face->flags |= CCN_FACE_LOOPBACK;
+            }
+	}
     }
     else if (addr->sa_family == AF_UNIX)
         face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
