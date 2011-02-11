@@ -328,6 +328,7 @@
 	
 	<target name="test-impl-without-repo" depends="jar, ccnd">
 		<mkdir dir="${testout}"/>
+		<copy file="testBigFile" tofile="$testout}/testBigFile" />
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
@@ -348,6 +349,7 @@
 				</fileset>
 			</batchtest>
 		</junit>
+	    <delete file="$testout}/testBigFile" />
 	</target>
 	
 	<target name="test-impl-with-repo" depends="jar, ccnd, repo">
