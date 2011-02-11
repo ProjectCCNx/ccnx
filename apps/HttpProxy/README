@@ -66,11 +66,12 @@ Running tests.
     (hint, for Firefox, use Preferences->Advanced and use Settings to set the
     HTTPProxy to localhost, port 8080, using the Manual proxy configuration).
 
-3.  On HHH, edit $ProxyHome/HttpProxy.list to include custom cacheable prefixes, or to exclude prefixes.
+3.  On HHH, edit $ProxyHome/HttpProxy.list to include custom cacheable prefixes,
+    or to exclude prefixes.
 
 4.  on HHH, start HTTPProxy using
 	cd $ProxyHome
-	./HTTPProxy -resolveHigh >proxy.log
+	./HttpProxy -resolveHigh >proxy.log
 
 5.  on NNN, start NetFetch using
 	cd $ProxyHome
