@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -80,17 +80,17 @@ public class CCNFlowControlTest extends CCNTestBase {
 		fc = new CCNFlowControl(_handle);
 	}
 	
-	ContentObject obj1 = new ContentObject(name1, fakeSignedInfo, "test".getBytes(), fakeSignature);
+	ContentObject obj1 = ContentObject.buildContentObject(name1, "test".getBytes());
 	ContentName v1s1 = SegmentationProfile.segmentName(v1, 1);
-	ContentObject objv1s1 = new ContentObject(v1s1, fakeSignedInfo, "v1s1".getBytes(), fakeSignature);		
+	ContentObject objv1s1 = ContentObject.buildContentObject(v1s1, "v1s1".getBytes());		
 	ContentName v1s2 = SegmentationProfile.segmentName(v1, 2);
-	ContentObject objv1s2 = new ContentObject(v1s2, fakeSignedInfo, "v1s2".getBytes(), fakeSignature);	
+	ContentObject objv1s2 = ContentObject.buildContentObject(v1s2, "v1s2".getBytes());	
 	ContentName v1s3 = SegmentationProfile.segmentName(v1, 3);
-	ContentObject objv1s3 = new ContentObject(v1s3, fakeSignedInfo, "v1s3".getBytes(), fakeSignature);	
+	ContentObject objv1s3 = ContentObject.buildContentObject(v1s3, "v1s3".getBytes());	
 	ContentName v1s4 = SegmentationProfile.segmentName(v1, 4);
-	ContentObject objv1s4 = new ContentObject(v1s4, fakeSignedInfo, "v1s4".getBytes(), fakeSignature);
+	ContentObject objv1s4 = ContentObject.buildContentObject(v1s4, "v1s4".getBytes());
 	ContentName v1s5 = SegmentationProfile.segmentName(v1, 5);
-	ContentObject objv1s5 = new ContentObject(v1s5, fakeSignedInfo, "v1s5".getBytes(), fakeSignature);
+	ContentObject objv1s5 = ContentObject.buildContentObject(v1s5, "v1s5".getBytes());
 	Queue<ContentObject> queue = _handle.getOutputQueue();
 	ArrayList<Interest> interestList = new ArrayList<Interest>();
 	CCNFlowControl fc = null;
