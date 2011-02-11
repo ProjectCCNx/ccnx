@@ -984,8 +984,8 @@ CloseMainData(MainData md) {
  * to add integrity checking and defense against accidental misuse.
  * The file permissions serve for restricting access to the private keys.
  */
-#ifndef CCND_KEYSTORE_PASS
-#define CCND_KEYSTORE_PASS "\010\043\103\375\327\237\152\051\155\347"
+#ifndef CCNK_KEYSTORE_PASS
+#define CCNK_KEYSTORE_PASS "\010\103\043\375\327\237\051\152\155\347"
 #endif
 
 static int
@@ -1006,7 +1006,7 @@ init_internal_keystore(MainData md) {
     keystore = ccn_keystore_create();
     temp = ccn_charbuf_create();
     cmd = ccn_charbuf_create();
-    dir = getenv("CCND_KEYSTORE_DIRECTORY");
+    dir = getenv("CCNK_KEYSTORE_DIRECTORY");
     if (dir != NULL && dir[0] == '/')
         ccn_charbuf_putf(temp, "%s/", dir);
     else
@@ -1024,7 +1024,7 @@ init_internal_keystore(MainData md) {
 	char *kPrefix = "ccnk";
     ccn_charbuf_putf(temp, ".%s_keystore", kPrefix);
     keystore_path = Concat(ccn_charbuf_as_string(temp), "");
-    res = ccn_keystore_init(keystore, keystore_path, CCND_KEYSTORE_PASS);
+    res = ccn_keystore_init(keystore, keystore_path, CCNK_KEYSTORE_PASS);
     if (res == 0) {
         md->keystore = keystore;
         keystore = NULL;
@@ -1034,15 +1034,15 @@ init_internal_keystore(MainData md) {
     temp->length = save;
     ccn_charbuf_putf(temp, "p");
     passfile = fopen(ccn_charbuf_as_string(temp), "wb");
-    fprintf(passfile, "%s", CCND_KEYSTORE_PASS);
+    fprintf(passfile, "%s", CCNK_KEYSTORE_PASS);
     fclose(passfile);
-    ccn_charbuf_putf(cmd, "./%s-init-keystore-helper %s",
-                     kPrefix, keystore_path);
+    ccn_charbuf_putf(cmd, "ccnd-init-keystore-helper %s",
+                     keystore_path);
     res = system(ccn_charbuf_as_string(cmd));
     if (res != 0) {
         culprit = cmd;
     } else {
-		res = ccn_keystore_init(keystore, keystore_path, CCND_KEYSTORE_PASS);
+		res = ccn_keystore_init(keystore, keystore_path, CCNK_KEYSTORE_PASS);
 		if (res == 0) {
 			md->keystore = keystore;
 			keystore = NULL;
