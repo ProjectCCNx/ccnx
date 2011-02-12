@@ -1,0 +1,35 @@
+# HttpProxy.list
+# Lists the host names eligible for CCN usage.
+# Each line starts with a host name (the leading character may be *)
+# The trailing switches are:
+# -noCookie   GET request must have no Cookie: field
+# -noReferer  GET request must have no Referer: field
+# -needDot    full name must contain a "." character after the host name
+# -noQuery    full name must not contain a "?" character
+# -single     must only use one socket at a time for the host
+# -fail       request will immediately fail (closes socket without reply)
+
+*.static.flickr.com -needDot
+*.creativecommons.org -needDot
+*.gsfc.nasa.gov -needDot
+*.cdn.turner.com -noCookie -needDot
+*.yimg.com -noCookie -needDot
+*.ytimg.com -noCookie -needDot
+*.img-dpreview.com -needDot
+*.washingtonpost.com -single
+*.facebook.com -single
+images.tribe.net -needDot
+i.huffpost.com -needDot
+img.slate.com -needDot -noCookie
+*.doubleclick.net -fail
+*.scorecardresearch.com -fail
+ad.yieldmanager.com -fail
+bs.serving-sys.com -fail
+*.assoc-amazon.com -fail
+*.addthis.com -fail
+*.adadvisor.net -fail
+*.google-analytics.com -fail
+*.admeld.com -fail
+*.adfusion.com -fail
+*.adsonar.com -fail
+*.dapper.net -fail
