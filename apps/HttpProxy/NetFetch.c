@@ -23,8 +23,6 @@
  *
  */
 
-#define _XOPEN_SOURCE 500
-
 #include "./ProxyUtil.h"
 #include "./SockHop.h"
 
@@ -393,7 +391,7 @@ FillTempSegments(FileNode fn, void *buf, int n) {
 			memcpy(dst, src, rem);
 			if (fn->md->debug) {
 				fprintf(stdout,
-						"-- FillTempSegments, fd %d, n %d, rem %d, vic %d, seg %zd, off %d\n",
+						"-- FillTempSegments, fd %d, n %d, rem %d, vic %d, seg %jd, off %d\n",
 						fn->fd, n, rem, vic, seg, off);
 
 			}

@@ -818,13 +818,11 @@ NewRequestBase(MainBase mb,
 	}
 	rb->buffer = newString(BufferSize);
 	rb->bufferMax = BufferSize;
-	rb->msg.msg_name = NULL;
-	rb->msg.msg_namelen = 0;
+
+	memset(&rb->msg, 0, sizeof(struct msghdr));
 	rb->msg.msg_iovlen = 1;
 	rb->msg.msg_iov = &rb->iov;
-	rb->msg.msg_control = NULL;
-	rb->msg.msg_controllen = 0;
-	rb->msg.msg_flags = 0;
+
 	if (parent != NULL) {
 		// created in reply to the parent
 		rb->request = newStringCopy(parent->request);
