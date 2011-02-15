@@ -87,4 +87,7 @@
 108,ProfileName
 109,Parameters
 256,SequenceNumber
+336,StatusResponse
+337,StatusCode
+338,StatusText
 17702112,CCNProtocolDataUnit
