@@ -218,6 +218,29 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     return(res == 0 ? 0 : -1);
 }
 
+/***********************************
+ * Append a StatusResponse
+ * 
+ *  @param buf is the buffer to append to.
+ *  @param errcode is a 3-digit error code.
+ *            It should be documented in StatusResponse.txt.
+ *  @param errtext is human-readable text (may be NULL).
+ *  @returns 0 for success or -1 for error.
+ */
+int
+ccn_encode_StatusResponse(struct ccn_charbuf *buf,
+                          int errcode, const char *errtext)
+{
+    int res = 0;
+    if (errcode < 100 || errcode > 999)
+        return(-1);
+    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_StatusResponse, CCN_DTAG);
+    res |= ccnb_tagged_putf(buf, CCN_DTAG_StatusCode, "%d", errcode);
+    if (errtext != NULL && errtext[0] != 0)
+        res |= ccnb_tagged_putf(buf, CCN_DTAG_StatusText, "%s", errtext);
+    res |= ccn_charbuf_append_closer(buf);
+}
+
 /**
  * Append a ccnb start marker
  *

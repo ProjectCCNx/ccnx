@@ -786,6 +786,12 @@ int ccn_content_matches_interest(const unsigned char *content_object,
                                  const struct ccn_parsed_interest *pi);
 
 /***********************************
+ * StatusResponse
+ */
+int ccn_encode_StatusResponse(struct ccn_charbuf *buf,
+                              int errcode, const char *errtext);
+
+/***********************************
  * Debugging
  */
 
