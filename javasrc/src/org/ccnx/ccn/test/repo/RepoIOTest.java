@@ -20,15 +20,14 @@ package org.ccnx.ccn.test.repo;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.impl.repo.PolicyXML;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -80,7 +79,7 @@ public class RepoIOTest extends RepoTestBase {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(Level.FINEST);
+		//Log.setLevel(Level.FINEST);
 		_testPrefix += "-" + rand.nextInt(10000);
 		_testPrefixObj += "-" + rand.nextInt(10000);
 		RepoTestBase.setUpBeforeClass();
@@ -109,19 +108,19 @@ public class RepoIOTest extends RepoTestBase {
 		// Floss content into ccnd for tests involving content not already in repo when we start
 		Flosser floss = new Flosser();
 		
+		// Floss user based keys from CreateUserData
+		floss.handleNamespace(UserConfiguration.userNamespacePrefix().toString() + "/" + CreateUserData.USER_NAMES[0]);
+		floss.handleNamespace(UserConfiguration.userNamespacePrefix().toString() + "/" + CreateUserData.USER_NAMES[1]);
+		
 		// So we can test saving keys in the sync tests we build our first sync object (a stream) with
 		// an alternate key and the second one (a CCNNetworkObject) with an alternate key locater that is
 		// accessed through a link.
-		CreateUserData testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), 2, true, null, putHandle);
+		CreateUserData testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), 2, false, null, putHandle);
 		String [] userNames = testUsers.friendlyNames().toArray(new String[2]);
 		CCNHandle userHandle = testUsers.getHandleForUser(userNames[0]);
 		
-		KeyLocator userLocator = 
-			userHandle.keyManager().getKeyLocator(userHandle.keyManager().getDefaultKeyID());
-		floss.handleNamespace(userLocator.name().name());
-		PublicKeyObject pko = userHandle.keyManager().publishSelfSignedKey(userLocator.name().name(), null,
-						false);
-
+		CCNFlowControl fc1 = userHandle.keyManager();
+				
 		// Build the link and the key it links to. Floss these into ccnd.
 		_testNonRepo += "-" + rand.nextInt(10000);
 		_testNonRepoObj += "-" + rand.nextInt(10000);
@@ -146,18 +145,11 @@ public class RepoIOTest extends RepoTestBase {
 		CCNHandle userHandle2 = testUsers.getHandleForUser(userNames[1]);
 		userHandle2.keyManager().setKeyLocator(null, linkLocator);
 		floss.handleNamespace(linkToKeyName);
-		PublicKeyObject pko2 = userHandle2.keyManager().publishSelfSignedKey(linkToKeyName, null,
-						false);
-		
 		name = ContentName.fromNative(_testNonRepoObj);
 		floss.handleNamespace(name);
 		so = new CCNStringObject(name, "String value for non-repo obj", SaveType.RAW, userHandle2);
 		so.save();
 		lo.close();
-		waitForPutDrain(pko);
-		pko.close();
-		waitForPutDrain(pko2);
-		pko2.close();
 		so.close();
 		floss.stop();
 	}
