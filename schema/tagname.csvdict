@@ -86,6 +86,7 @@
 107,Root
 108,ProfileName
 109,Parameters
+110,InfoString
 256,SequenceNumber
 336,StatusResponse
 337,StatusCode
