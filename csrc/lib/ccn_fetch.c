@@ -456,6 +456,13 @@ NeedSegments(struct ccn_fetch_stream *fs) {
 	}
 }
 
+static void
+ShowDelta(FILE *f, TimeMarker from) {
+	intmax_t dt = DeltaTime(from, GetCurrentTimeUSecs());
+	fprintf(f, ", dt %jd.%06d\n", dt / 1000000, (int) (dt % 1000000));
+	fflush(f);
+}
+
 static enum ccn_upcall_res
 CallMe(struct ccn_closure *selfp,
 	   enum ccn_upcall_kind kind,
@@ -544,9 +551,9 @@ CallMe(struct ccn_closure *selfp,
 			// we got a bogus result, no data in this content!
 			if (debug != NULL && (flags & ccn_fetch_flags_NoteAddRem)) {
 				fprintf(debug, 
-						"-- ccn_fetch no data, %s, seg %jd, final %jd\n",
+						"-- ccn_fetch no data, %s, seg %jd, final %jd",
 						fs->id, thisSeg, finalSeg);
-				fflush(debug);
+				ShowDelta(debug, req->startClock);
 			}
 			if (fs->zeroLenSeg < 0 || thisSeg < fs->zeroLenSeg)
 				// note this problem for future reporting
@@ -558,11 +565,11 @@ CallMe(struct ccn_closure *selfp,
 			fs->finalSeg = finalSeg-1;
 			if (debug != NULL && (flags & ccn_fetch_flags_NoteFinal)) {
 				fprintf(debug, 
-						"-- ccn_fetch EOF, %s, seg %jd, len %d, fs %jd\n",
+						"-- ccn_fetch EOF, %s, seg %jd, len %d, fs %jd",
 						fs->id, thisSeg,
 						(int) dataLen,
 						fs->fileSize);
-				fflush(debug);
+				ShowDelta(debug, req->startClock);
 			}
 			
 		} else {
@@ -579,9 +586,9 @@ CallMe(struct ccn_closure *selfp,
 			memcpy(fb->buf, data, dataLen);
 			if (debug != NULL && (flags & ccn_fetch_flags_NoteFill)) {
 				fprintf(debug, 
-						"-- ccn_fetch FillSeg, %s, seg %jd, len %d, nbuf %d\n",
+						"-- ccn_fetch FillSeg, %s, seg %jd, len %d, nbuf %d",
 						fs->id, thisSeg, (int) dataLen, (int) fs->nBufs);
-				fflush(debug);
+				ShowDelta(debug, req->startClock);
 			}
 			if (thisSeg == finalSeg) {
 				// the file size is known in segments
@@ -596,9 +603,9 @@ CallMe(struct ccn_closure *selfp,
 				}
 				if (debug != NULL && (flags & ccn_fetch_flags_NoteFinal)) {
 					fprintf(debug, 
-							"-- ccn_fetch EOF, %s, seg %jd, len %d, fs %jd\n",
+							"-- ccn_fetch EOF, %s, seg %jd, len %d, fs %jd",
 							fs->id, thisSeg, (int) dataLen, fs->fileSize);
-					fflush(debug);
+					ShowDelta(debug, req->startClock);
 				}
 			}
 			fs->segsRead++;
