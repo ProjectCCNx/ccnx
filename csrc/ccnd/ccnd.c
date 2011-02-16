@@ -2267,6 +2267,17 @@ register_new_face(struct ccnd_handle *h, struct face *face)
     }
 }
 
+static int
+ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
+          int errcode, const char *errtext)
+{
+    int res;
+    res = ccn_encode_StatusResponse(reply_body, errcode, errtext);
+    if (res == 0)
+        res = CCN_CONTENT_NACK;
+    return(res);
+}
+
 /**
  * @brief Process a newface request for the ccnd internal client.
  * @param h is the ccnd handle
@@ -2312,26 +2323,32 @@ ccnd_req_newface(struct ccnd_handle *h,
     face_instance = ccn_face_instance_parse(req, req_size);
     if (face_instance == NULL || face_instance->action == NULL)
         goto Finish;
-
     if (strcmp(face_instance->action, "newface") != 0)
         goto Finish;
-    if (face_instance->ccnd_id_size == sizeof(h->ccnd_id)) {
-        if (memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0)
-            goto Finish;
+    if (face_instance->ccnd_id_size != sizeof(h->ccnd_id) ||
+        memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0) {
+        res = ccnd_nack(h, reply_body, 531, "missing or incorrect ccndid");
+        goto Finish;
     }
-    else if (face_instance->ccnd_id_size |= 0)
-        goto Finish;
     if (face_instance->descr.ipproto != IPPROTO_UDP &&
-        face_instance->descr.ipproto != IPPROTO_TCP)
+        face_instance->descr.ipproto != IPPROTO_TCP) {
+        res = ccnd_nack(h, reply_body, 504, "parameter error");
         goto Finish;
-    if (face_instance->descr.address == NULL)
+    }
+    if (face_instance->descr.address == NULL) {
+        res = ccnd_nack(h, reply_body, 504, "parameter error");
         goto Finish;
-    if (face_instance->descr.port == NULL)
+    }
+    if (face_instance->descr.port == NULL) {
+        res = ccnd_nack(h, reply_body, 504, "parameter error");
         goto Finish;
+    }
     /* consider the source ... */
     reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0) {
+        res = ccnd_nack(h, reply_body, 430, "client not local");
         goto Finish;
+    }
     hints.ai_flags |= AI_NUMERICHOST;
     hints.ai_protocol = face_instance->descr.ipproto;
     hints.ai_socktype = (hints.ai_protocol == IPPROTO_UDP) ? SOCK_DGRAM : SOCK_STREAM;
@@ -2345,8 +2362,10 @@ ccnd_req_newface(struct ccnd_handle *h,
                  face_instance->descr.address,
                  face_instance->descr.port,
                  res);
-    if (res != 0 || addrinfo == NULL)
+    if (res != 0 || addrinfo == NULL) {
+        res = ccnd_nack(h, reply_body, 501, "syntax error in address");
         goto Finish;
+    }
     if (addrinfo->ai_next != NULL)
         ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
     if (face_instance->descr.ipproto == IPPROTO_UDP) {
@@ -2364,8 +2383,10 @@ ccnd_req_newface(struct ccnd_handle *h,
             face = setup_multicast(h, face_instance,
                                    addrinfo->ai_addr,
                                    addrinfo->ai_addrlen);
-        if (face == NULL)
+        if (face == NULL) {
+            res = ccnd_nack(h, reply_body, 453, "could not setup multicast");
             goto Finish;
+        }
         newface = get_dgram_source(h, face,
                                    addrinfo->ai_addr,
                                    addrinfo->ai_addrlen,
@@ -2387,7 +2408,9 @@ ccnd_req_newface(struct ccnd_handle *h,
         if ((newface->flags & CCN_FACE_CONNECTING) != 0)
             face_instance->lifetime = 1;
         res = ccnb_append_face_instance(reply_body, face_instance);
-    }    
+    }
+    else
+        res = ccnd_nack(h, reply_body, 450, "could not create face");
 Finish:
     h->flood = save; /* restore saved flood flag */
     ccn_face_instance_destroy(&face_instance);
