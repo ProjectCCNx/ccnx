@@ -2475,8 +2475,10 @@ ccnd_req_destroyface(struct ccnd_handle *h,
         at = __LINE__;
     }
 Finish:
-    if (at != 0)
+    if (at != 0) {
         ccnd_msg(h, "ccnd_req_destroyface failed (line %d, res %d)", at, res);
+        res = ccnd_nack(h, reply_body, 450, "could not destroy face");
+    }
     ccn_face_instance_destroy(&face_instance);
     return(res);
 }
@@ -2563,6 +2565,8 @@ Finish:
     ccn_indexbuf_destroy(&comps);
     if (res > 0)
         res = 0;
+    if (res != 0)
+        res = ccnd_nack(h, reply_body, 450, "could not register prefix");
     return(res);
 }
 
@@ -2708,6 +2712,8 @@ ccnd_req_unreg(struct ccnd_handle *h,
 Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
+    if (res != 0)
+        res = ccnd_nack(h, reply_body, 450, "could not unregister prefix");
     return(res);
 }
 
