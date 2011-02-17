@@ -132,7 +132,7 @@ CallMe(struct ccn_closure *selfp,
 
 static char *globalNullString = "";
 static char *
-newStringCopy(char *src) {
+newStringCopy(const char *src) {
 	int n = ((src == NULL) ? 0 : strlen(src));
 	if (n <= 0 || src == globalNullString) return globalNullString;
 	char *s = calloc(n+1, sizeof(*s));
@@ -766,7 +766,7 @@ ccn_fetch_open(struct ccn_fetch *f,
 	struct ccn_fetch_stream *fs = calloc(1, sizeof(*fs));
 	fs->segSize = (assumeFixed ? 0 : -1);
 	fs->name = ccn_charbuf_create();
-	fs->id = newStringCopy((char *) id);
+	fs->id = newStringCopy(id);
 	ccn_charbuf_append_charbuf(fs->name, name);
 	if (resolveVersion) {
 		int tm = 40; // TBD: need better strategy for version timeout
