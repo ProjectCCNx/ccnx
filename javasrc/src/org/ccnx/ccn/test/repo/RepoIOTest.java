@@ -20,25 +20,28 @@ package org.ccnx.ccn.test.repo;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.TreeMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
-import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.impl.repo.PolicyXML;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.RepositoryOutputStream;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Link;
-import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -72,14 +75,61 @@ public class RepoIOTest extends RepoTestBase {
 	// Test stream and net object names for content not in repo before test cases
 	protected static String _testNonRepo = "/testNameSpace/stream-nr";
 	protected static String _testNonRepoObj = "/testNameSpace/obj-nr";
-	protected static String _testLinkToKey = "/testNameSpace/link-to-key";
 	protected static String _testLink = "/testNameSpace/link";
 	
 	static String USER_NAMESPACE = "TestRepoUser";
 	
+	private static class IOTestFlosser extends Flosser {
+		public static int KEY_INTEREST_TIMEOUT = SystemConfiguration.SHORT_TIMEOUT;
+		private TreeMap<ContentName, Long> keyCheck = new TreeMap<ContentName, Long>();
+
+		public IOTestFlosser() throws ConfigurationException, IOException {
+			super();
+		}
+		
+		public void handleKeyNamespace(String name) throws IOException {
+			Log.info("Called handleKeyNamespace for {0}", name);
+			try {
+				ContentName cn = ContentName.fromNative(name);
+				keyCheck.put(cn, System.currentTimeMillis());
+				super.handleNamespace(cn);
+			} catch (MalformedContentNameStringException e) {}
+		}
+		
+		protected void processContent(ContentObject result) {
+			super.processContent(result);
+			for (ContentName cn : keyCheck.keySet()) {
+				if (cn.isPrefixOf(result.name())) {
+					keyCheck.put(cn, System.currentTimeMillis());
+					Log.info("Saw key data for {0}", cn);
+					break;
+				}
+			}
+		}
+		
+		public void waitForKeys() {
+			long curTime = System.currentTimeMillis();
+			long maxTime = 0;
+			while (true) {
+				for (ContentName cn : keyCheck.keySet()) {
+					long t = keyCheck.get(cn);
+					if (t > maxTime)
+						maxTime = t;
+				}
+				long delta = curTime - maxTime;
+				if (delta > KEY_INTEREST_TIMEOUT)
+					return;
+				try {
+					Thread.sleep(delta);
+				} catch (InterruptedException e) {}
+			}
+		}
+	}
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		//Log.setLevel(Level.FINEST);
+		Log.setLevel(Log.FAC_NETMANAGER, Level.FINEST);
+		Log.setLevel(Log.FAC_IO, Level.FINEST);
 		_testPrefix += "-" + rand.nextInt(10000);
 		_testPrefixObj += "-" + rand.nextInt(10000);
 		RepoTestBase.setUpBeforeClass();
@@ -106,11 +156,12 @@ public class RepoIOTest extends RepoTestBase {
 		
 
 		// Floss content into ccnd for tests involving content not already in repo when we start
-		Flosser floss = new Flosser();
+		IOTestFlosser floss = new IOTestFlosser();
 		
 		// Floss user based keys from CreateUserData
-		floss.handleNamespace(UserConfiguration.userNamespacePrefix().toString() + "/" + CreateUserData.USER_NAMES[0]);
-		floss.handleNamespace(UserConfiguration.userNamespacePrefix().toString() + "/" + CreateUserData.USER_NAMES[1]);
+		floss.handleKeyNamespace(testHelper.getClassChildName(USER_NAMESPACE) + "/" + CreateUserData.USER_NAMES[0]);
+		String keyNameForObj = testHelper.getClassChildName(USER_NAMESPACE) + "/" + CreateUserData.USER_NAMES[1];
+		floss.handleKeyNamespace(keyNameForObj);
 		
 		// So we can test saving keys in the sync tests we build our first sync object (a stream) with
 		// an alternate key and the second one (a CCNNetworkObject) with an alternate key locater that is
@@ -118,13 +169,10 @@ public class RepoIOTest extends RepoTestBase {
 		CreateUserData testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), 2, false, null, putHandle);
 		String [] userNames = testUsers.friendlyNames().toArray(new String[2]);
 		CCNHandle userHandle = testUsers.getHandleForUser(userNames[0]);
-		
-		CCNFlowControl fc1 = userHandle.keyManager();
 				
 		// Build the link and the key it links to. Floss these into ccnd.
 		_testNonRepo += "-" + rand.nextInt(10000);
 		_testNonRepoObj += "-" + rand.nextInt(10000);
-		_testLinkToKey += "-" + rand.nextInt(10000);
 		_testLink += "-" + rand.nextInt(10000);
 		ContentName name = ContentName.fromNative(_testNonRepo);
 		floss.handleNamespace(name);
@@ -134,7 +182,7 @@ public class RepoIOTest extends RepoTestBase {
 		cos.write(data, 0, data.length);
 		cos.close();
 		
-		ContentName linkToKeyName = ContentName.fromNative(_testLinkToKey);
+		ContentName linkToKeyName = ContentName.fromNative(keyNameForObj);
 		Link link = new Link(linkToKeyName);
 		ContentName linkName = ContentName.fromNative(_testLink);
 		LinkObject lo = new LinkObject(linkName, link, SaveType.RAW, putHandle);
@@ -151,6 +199,7 @@ public class RepoIOTest extends RepoTestBase {
 		so.save();
 		lo.close();
 		so.close();
+		floss.waitForKeys();
 		floss.stop();
 	}
 	
@@ -256,21 +305,5 @@ public class RepoIOTest extends RepoTestBase {
 		PolicyObject po = new PolicyObject(policyName, pxml, SaveType.REPOSITORY, putHandle);
 		po.save();
 		Thread.sleep(4000);
-	}
-	
-	/**
-	 * Normally when we close an object which has been written, we will wait until all the outstanding 
-	 * associated content objects have been output to ccnd. But the PublicKeyObjects use a special flow
-	 * controller that does not wait. This is normally fine (presumably) but in order to test sync correctly
-	 * we have to make sure that the objects are all written out before the close. So we fake waitForPutDrain
-	 * here.
-	 */
-	private static void waitForPutDrain(PublicKeyObject obj) {
-		long endTime = System.currentTimeMillis() + obj.getTimeout();
-		while (obj.getFlowControl().size() > 0 && System.currentTimeMillis() < endTime) {
-			try {
-				Thread.sleep(200);
-			} catch (InterruptedException e) {}
-		}
 	}
 }
