@@ -2313,7 +2313,7 @@ ccnd_req_newface(struct ccnd_handle *h,
     int save;
 
     save = h->flood;
-    h->flood = 0; /* never auto-register ccnx:/ for these */
+    h->flood = 0; /* never auto-register for these */
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;        
@@ -2324,6 +2324,11 @@ ccnd_req_newface(struct ccnd_handle *h,
     if (face_instance == NULL || face_instance->action == NULL)
         goto Finish;
     if (strcmp(face_instance->action, "newface") != 0)
+        goto Finish;
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL ||
+        (reqface->flags & (CCN_FACE_LOOPBACK | CCN_FACE_LOCAL)) == 0)
         goto Finish;
     if (face_instance->ccnd_id_size != sizeof(h->ccnd_id) ||
         memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0) {
@@ -2343,10 +2348,8 @@ ccnd_req_newface(struct ccnd_handle *h,
         res = ccnd_nack(h, reply_body, 504, "parameter error");
         goto Finish;
     }
-    /* consider the source ... */
-    reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0) {
-        res = ccnd_nack(h, reply_body, 430, "client not local");
+    if ((reqface->flags & CCN_FACE_GG) == 0) {
+        res = ccnd_nack(h, reply_body, 430, "not authorized");
         goto Finish;
     }
     hints.ai_flags |= AI_NUMERICHOST;
@@ -2458,7 +2461,7 @@ ccnd_req_destroyface(struct ccnd_handle *h,
         if (memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0)
             { at = __LINE__; goto Finish; }
     }
-    else if (face_instance->ccnd_id_size |= 0) { at = __LINE__; goto Finish; }
+    else if (face_instance->ccnd_id_size != 0) { at = __LINE__; goto Finish; }
     if (face_instance->faceid == 0) { at = __LINE__; goto Finish; }
     /* consider the source ... */
     reqface = face_from_faceid(h, h->interest_faceid);
@@ -2477,7 +2480,10 @@ ccnd_req_destroyface(struct ccnd_handle *h,
 Finish:
     if (at != 0) {
         ccnd_msg(h, "ccnd_req_destroyface failed (line %d, res %d)", at, res);
-        res = ccnd_nack(h, reply_body, 450, "could not destroy face");
+        if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+            res = -1;
+        else
+            res = ccnd_nack(h, reply_body, 450, "could not destroy face");
     }
     ccn_face_instance_destroy(&face_instance);
     return(res);
@@ -2565,7 +2571,7 @@ Finish:
     ccn_indexbuf_destroy(&comps);
     if (res > 0)
         res = 0;
-    if (res != 0)
+    if (res < 0)
         res = ccnd_nack(h, reply_body, 450, "could not register prefix");
     return(res);
 }
