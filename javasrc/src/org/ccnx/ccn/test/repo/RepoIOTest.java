@@ -160,8 +160,7 @@ public class RepoIOTest extends RepoTestBase {
 		
 		// Floss user based keys from CreateUserData
 		floss.handleKeyNamespace(testHelper.getClassChildName(USER_NAMESPACE) + "/" + CreateUserData.USER_NAMES[0]);
-		String keyNameForObj = testHelper.getClassChildName(USER_NAMESPACE) + "/" + CreateUserData.USER_NAMES[1];
-		floss.handleKeyNamespace(keyNameForObj);
+		floss.handleKeyNamespace(testHelper.getClassChildName(USER_NAMESPACE) + "/" + CreateUserData.USER_NAMES[1]);
 		
 		// So we can test saving keys in the sync tests we build our first sync object (a stream) with
 		// an alternate key and the second one (a CCNNetworkObject) with an alternate key locater that is
@@ -182,17 +181,17 @@ public class RepoIOTest extends RepoTestBase {
 		cos.write(data, 0, data.length);
 		cos.close();
 		
-		ContentName linkToKeyName = ContentName.fromNative(keyNameForObj);
-		Link link = new Link(linkToKeyName);
+		CCNHandle userHandle2 = testUsers.getHandleForUser(userNames[1]);
+		KeyLocator userLocator = 
+			userHandle2.keyManager().getKeyLocator(userHandle2.keyManager().getDefaultKeyID());
+		Link link = new Link(userLocator.name().name());
 		ContentName linkName = ContentName.fromNative(_testLink);
 		LinkObject lo = new LinkObject(linkName, link, SaveType.RAW, putHandle);
 		floss.handleNamespace(lo.getBaseName());
 		lo.save();
 		
 		KeyLocator linkLocator = new KeyLocator(linkName);
-		CCNHandle userHandle2 = testUsers.getHandleForUser(userNames[1]);
 		userHandle2.keyManager().setKeyLocator(null, linkLocator);
-		floss.handleNamespace(linkToKeyName);
 		name = ContentName.fromNative(_testNonRepoObj);
 		floss.handleNamespace(name);
 		so = new CCNStringObject(name, "String value for non-repo obj", SaveType.RAW, userHandle2);
