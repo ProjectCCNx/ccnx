@@ -112,6 +112,37 @@ HasPrefix(string s, int sLen, string prefix) {
 }
 
 extern int
+HasPrefix2(string s, int sLen, string prefix1, string prefix2) {
+	int pos = 0;
+	// try to match the first string
+	for (;;) {
+		char cc = prefix1[pos];
+		if (cc == 0) break;
+		if (pos >= sLen) return 0;
+		char c = s[pos];
+		if (c != cc) return 0;
+		pos++;
+	}
+	// skip the blanks
+	for (;;) {
+		char c = s[pos];
+		if (c != ' ') break;
+		pos++;
+	}
+	int pos1 = pos;
+	// try to match the second string
+	for (;;) {
+		char cc = prefix2[pos-pos1];
+		if (cc == 0) break;
+		if (pos >= sLen) return 0;
+		char c = s[pos];
+		if (c != cc) return 0;
+		pos++;
+	}
+	return 1;
+}
+
+extern int
 HasSuffix(string s, int sLen, string suffix) {
 	int sPos = sLen;
 	int sufPos = strlen(suffix);

@@ -1399,8 +1399,8 @@ ParseReplyHeader(NetRequest nr) {
 	char *contentKey = "Content-Length: ";
 	int contentKeylen = strlen(contentKey);
 	
-	char *chunkedKey = "Transfer-Encoding: chunked";
-	char *closeKey = "Connection: close";
+	char *tfrKey = "Transfer-Encoding:";
+	char *connKey = "Connection:";
 	
 	h->contentLen = -1;
 	h->totalLen = -1;
@@ -1424,17 +1424,17 @@ ParseReplyHeader(NetRequest nr) {
 			// the content length is known
 			h->contentLen = EvalUint(lineStr, contentKeylen);
 			if (md->debug)
-			fprintf(stdout, "-- ParseReplyHeader, contentLen %d\n",
-					(int) h->contentLen);
-		} else if (HasPrefix(lineStr, lineLen, chunkedKey)) {
+				fprintf(stdout, "-- ParseReplyHeader, contentLen %d\n",
+						(int) h->contentLen);
+		} else if (HasPrefix2(lineStr, lineLen, tfrKey, "chunked")) {
 			// we appear to be chunking
 			h->chunked = 1;
 			if (md->debug)
-			fprintf(stdout, "-- ParseReplyHeader, chunked\n");
-		} else if (HasPrefix(lineStr, lineLen, closeKey)) {
+				fprintf(stdout, "-- ParseReplyHeader, chunked\n");
+		} else if (HasPrefix2(lineStr, lineLen, connKey, "close")) {
 			// we appear to be chunking
 			if (md->debug)
-			h->forceClose = 1;
+				h->forceClose = 1;
 			fprintf(stdout, "-- ParseReplyHeader, forceClose\n");
 		} else {
 			// TBD: more cases

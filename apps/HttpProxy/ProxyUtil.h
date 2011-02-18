@@ -59,6 +59,12 @@ extern int
 HasPrefix(string s, int sLen, string prefix);
 
 extern int
+HasPrefix2(string s, int sLen, string prefix1, string prefix2);
+// returns 1 if there is a match for prefix1 followed by any number of blanks
+// (including zero blanks), followed by prefix2
+// otherwise returns 0
+
+extern int
 HasSuffix(string s, int sLen, string suffix);
 
 extern int
