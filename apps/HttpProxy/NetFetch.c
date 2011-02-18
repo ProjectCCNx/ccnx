@@ -1936,7 +1936,8 @@ NoteInterest(struct ccn_closure *selfp,
 			md->stats.interestsSeen++;
 			
 			if (md->debug) {
-				fprintf(stdout, "-- interest, ");
+				double dt = DeltaTime(md->startTime, GetCurrentTime());
+				fprintf(stdout, "@%4.3f, interest, ", dt);
 				if (host != NULL)
 					fprintf(stdout, "%s:", host);
 				fprintf(stdout, "%s", us);
@@ -2181,6 +2182,9 @@ main(int argc, char **argv) {
 				md->ccnRoot = arg;
 			} else if (strcasecmp(arg, "-noDebug") == 0) {
 				md->debug = 0;
+			} else if (strcasecmp(arg, "-absTime") == 0) {
+				base->startTime = 0;
+				md->startTime = 0;
 			} else if (strcasecmp(arg, "-fanOut") == 0) {
 				i++;
 				int n = 0;
