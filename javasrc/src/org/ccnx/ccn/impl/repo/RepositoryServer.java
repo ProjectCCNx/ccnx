@@ -255,7 +255,7 @@ public class RepositoryServer implements CCNStatistics {
 				}
 				for (ContentName newName : unMatchedNew) {
 					RepositoryInterestHandler iHandler = new RepositoryInterestHandler(this);
-					_handle.getNetworkManager().setInterestFilter(this, newName, iHandler, REPO_PREFIX_FLAGS);
+					_handle.getNetworkManager().setInterestFilter(_handle, newName, iHandler, REPO_PREFIX_FLAGS);
 					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
 						Log.info(Log.FAC_REPO, "Adding namespace {0}", newName);
 					newIL.add(new NameAndListener(newName, iHandler));
