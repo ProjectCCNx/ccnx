@@ -46,6 +46,7 @@ import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
+import org.ccnx.ccn.io.content.KeyDirectory;
 import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
@@ -1652,7 +1653,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// But the data key is wrapped in the previous node key that was at this node prior to the ACL interposition.
 		// So we need to retrieve the previous node key, which was wrapped with KeyDirectory.addPreviousKeyBlock 
 		// at the time the ACL was interposed.
-		ContentName previousKeyName = ContentName.fromNative(currentNodeKey.storedNodeKeyName(), GroupAccessControlProfile.PREVIOUS_KEY_NAME);
+		ContentName previousKeyName = ContentName.fromNative(currentNodeKey.storedNodeKeyName(), KeyDirectory.PREVIOUS_KEY_NAME);
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 			Log.finer(Log.FAC_ACCESSCONTROL, "getNodeKeyUsingInterposedACL: retrieving previous key at {0}", previousKeyName);
 		}

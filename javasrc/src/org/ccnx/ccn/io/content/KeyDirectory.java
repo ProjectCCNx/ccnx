@@ -44,9 +44,7 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.KeyProfile;
-import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
-import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -87,6 +85,11 @@ import org.ccnx.ccn.protocol.PublisherID;
  * AccessDeniedException.
  */
 public class KeyDirectory extends EnumeratedNameList {
+
+	public static final byte[] SUPERSEDED_MARKER = "SupersededBy".getBytes();
+	public static final byte[] PREVIOUS_KEY_NAME = "PreviousKey".getBytes();
+	public static final byte[] GROUP_PUBLIC_KEY_NAME = "Key".getBytes();
+	public static final byte[] GROUP_PRIVATE_KEY_NAME = "PrivateKey".getBytes();
 
 	protected static final Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 
@@ -277,7 +280,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		boolean b = false;
 		try{
 			_otherNamesLock.readLock().lock();
-			b = _otherNames.contains(AccessControlProfile.SUPERSEDED_MARKER.getBytes());
+			b = _otherNames.contains(SUPERSEDED_MARKER);
 		} finally {
 			_otherNamesLock.readLock().unlock();
 		}
@@ -289,7 +292,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public static ContentName getSupersededBlockNameForKey(ContentName versionedKeyName) {
-		return ContentName.fromNative(versionedKeyName, GroupAccessControlProfile.SUPERSEDED_MARKER);
+		return ContentName.fromNative(versionedKeyName, SUPERSEDED_MARKER);
 	}
 
 	/**
@@ -359,7 +362,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
-			b = _otherNames.contains(AccessControlProfile.PREVIOUS_KEY_NAME.getBytes());
+			b = _otherNames.contains(PREVIOUS_KEY_NAME);
 		}finally{
 			_otherNamesLock.readLock().unlock();
 		}
@@ -371,7 +374,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public static ContentName getPreviousKeyBlockName(ContentName keyDirectoryName) {
-		return ContentName.fromNative(keyDirectoryName, AccessControlProfile.PREVIOUS_KEY_NAME);		
+		return ContentName.fromNative(keyDirectoryName, PREVIOUS_KEY_NAME);
 	}
 
 	/**
@@ -417,7 +420,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
-			b = _otherNames.contains(AccessControlProfile.GROUP_PRIVATE_KEY_NAME.getBytes());
+			b = _otherNames.contains(GROUP_PRIVATE_KEY_NAME);
 		}finally{
 			_otherNamesLock.readLock().unlock();
 		}
@@ -425,7 +428,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public ContentName getPrivateKeyBlockName() {
-		return ContentName.fromNative(_namePrefix, AccessControlProfile.GROUP_PRIVATE_KEY_NAME);
+		return ContentName.fromNative(_namePrefix, GROUP_PRIVATE_KEY_NAME);
 	}
 
 	/**
