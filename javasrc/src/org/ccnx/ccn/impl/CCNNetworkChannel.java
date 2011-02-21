@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -213,20 +213,20 @@ public class CCNNetworkChannel extends InputStream {
 			if (_ncProto == NetworkProtocol.UDP) {
 				return (_ncDGrmChannel.write(src));
 			} else {
-                                // Need to handle partial writes
-                                int written = 0;
-                                while (src.hasRemaining()) {
-                                        if (! _ncConnected)
-                        			return -1;
+				// Need to handle partial writes
+				int written = 0;
+				while (src.hasRemaining()) {
+					if (! _ncConnected)
+						return -1;
 					int b = _ncSockChannel.write(src);
-                                        if (b > 0) {
-                                                written += b;
-                                        } else {
-                                                _ncWriteSelector.selectedKeys().clear();
-                                                _ncWriteSelector.select();
-                                        }
-                                }
-                                return written;
+					if (b > 0) {
+						written += b;
+					} else {
+						_ncWriteSelector.selectedKeys().clear();
+						_ncWriteSelector.select();
+					}
+				}
+				return written;
 			} 
 		} catch (PortUnreachableException pue) {}
 		  catch (ClosedChannelException cce) {}
