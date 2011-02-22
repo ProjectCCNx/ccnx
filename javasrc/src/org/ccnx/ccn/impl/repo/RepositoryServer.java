@@ -34,6 +34,8 @@ import org.ccnx.ccn.impl.CCNStats.CCNStatistics;
 import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
@@ -456,7 +458,30 @@ public class RepositoryServer implements CCNStatistics {
 				Log.finer(Log.FAC_REPO, "Found key to sync: {0}", locator.name().name());
 			return locator.name().name();
 		}
-		return null;	// Already have key
+		
+		return getLinkedKeyTarget(keyContent);
+	}
+	
+	public ContentName getLinkedKeyTarget(ContentObject co) throws RepositoryException {
+		while (co.isLink()) {
+			Link link = new Link();
+			try {
+				link.decode(co.content());
+				ContentName linkName = link.targetName();
+				Interest linkInterest = new Interest(linkName);
+				co = _repo.getContent(linkInterest);
+				if (null == co) {
+					if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
+						Log.finer(Log.FAC_REPO, "Found linked key to sync: " + linkName);
+					}
+					return linkName;
+				}
+			} catch (ContentDecodingException e) {
+				Log.warning(Log.FAC_REPO, "Couldn't decode link that is chained to a key locator: {0}", co.name());
+				break;
+			}
+		}
+		return null;
 	}
 	
 	public void doSync(Interest interest, Interest readInterest) throws IOException {
