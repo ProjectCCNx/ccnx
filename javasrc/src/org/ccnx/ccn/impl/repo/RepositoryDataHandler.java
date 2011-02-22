@@ -102,6 +102,9 @@ public class RepositoryDataHandler implements Runnable {
 					Entry<ContentName> entry = _pendingSyncs.remove(co.name(), co.name());
 					if (null != entry) {
 						ContentName nameToCheck = entry.value();
+						if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
+							Log.finer(Log.FAC_REPO, "Processing sync entry: {0}", nameToCheck);
+						}
 						ContentObject linkCheck = co;
 						while (linkCheck.isLink()) {
 							Link link = new Link();
