@@ -1614,8 +1614,8 @@ ExtractHTTPInfo(RequestBase rb, HttpVerb httpVerb) {
 		SetMsgLen(rb, h->headerLen+contentLen);
 		if (rb->msgLen < len) {
 			if (f != NULL) {
-				fprintf(f, "-- truncating buffer, msgLen %lld len %d\n",
-					   rb->msgLen, len);
+				fprintf(f, "-- truncating buffer, msgLen %jd len %d\n",
+					   (intmax_t) rb->msgLen, len);
 				pos = len;
 				for (;;) {
 					int nPos = NextLine(buf, pos, len);
@@ -2106,10 +2106,10 @@ NoteDone(RequestBase rb) {
 	SetRequestState(rb, RB_Done);
 	if (f != NULL) {
 		double dt = DeltaTime(rb->startTime, GetCurrentTime());
-		int64_t accum = rb->accum;
+		intmax_t accum = rb->accum;
 		PutRequestMark(rb, "NoteDone");
 		ShowNameInfo(rb, ", ");
-		fprintf(f, ", %lld bytes", accum);
+		fprintf(f, ", %jd bytes", accum);
 		if (accum > 0 && dt > 0.0) {
 			fprintf(f, " in %4.3f secs (%4.3f MB/sec)",
 				   dt, accum*1.0e-6/dt);
@@ -2240,8 +2240,8 @@ RequestBaseStep(RequestBase rb) {
 					case Chunk_Done: {
 						SetMsgLen(rb, rb->accum + nb);
 						if (f != NULL) {
-							fprintf(f, "-- chunking done, msgLen %lld\n",
-								   rb->msgLen);
+							fprintf(f, "-- chunking done, msgLen %jd\n",
+								   (intmax_t) rb->msgLen);
 							flushLog(f);
 						}
 						break;
@@ -2249,8 +2249,8 @@ RequestBaseStep(RequestBase rb) {
 					case Chunk_Error: {
 						SetMsgLen(rb, rb->accum + nb);
 						if (f != NULL) {
-							fprintf(f, "-- chunking error, chunkRem %u, msgLen %lld\n",
-								   info->chunkRem, rb->msgLen);
+							fprintf(f, "-- chunking error, chunkRem %u, msgLen %jd\n",
+								   info->chunkRem, (intmax_t) rb->msgLen);
 							flushLog(f);
 						}
 						rb->httpInfo.forceClose = 1;
@@ -2321,8 +2321,8 @@ RequestBaseStep(RequestBase rb) {
 					PutRequestMark(rb, "wrote");
 					fprintf(f, " %d bytes on %d, dt %4.3f", nb, fd, dt);
 					if (rb->msgLen >= 0)
-						fprintf(f, ", msgLen %lld", rb->msgLen);
-					fprintf(f, ", accum %lld\n", rb->accum);
+						fprintf(f, ", msgLen %jd", (intmax_t) rb->msgLen);
+					fprintf(f, ", accum %jd\n", (intmax_t) rb->accum);
 					flushLog(f);
 				}
 				if ((rb->msgLen >= 0) && (rb->accum >= rb->msgLen)) {
@@ -2561,15 +2561,15 @@ ShowStats(MainBase mb) {
 	if (f == NULL) return;
 	PutTimeMark(mb);
 	fprintf(f, "stats, socks %d", mb->sockBase->nSocks);
-	fprintf(f, ", req %lld, rep %lld, reads %lld, bytes %lld",
-		   mb->stats.requests,
-		   mb->stats.replies,
-		   mb->stats.replyReads,
-		   mb->stats.replyBytes);
-	fprintf(f, ", repCCN %lld, readsCCN %lld, bytesCCN %lld",
-		   mb->stats.repliesCCN,
-		   mb->stats.replyReadsCCN,
-		   mb->stats.replyBytesCCN);
+	fprintf(f, ", req %jd, rep %jd, reads %jd, bytes %jd",
+		   (intmax_t) mb->stats.requests,
+		   (intmax_t) mb->stats.replies,
+		   (intmax_t) mb->stats.replyReads,
+		   (intmax_t) mb->stats.replyBytes);
+	fprintf(f, ", repCCN %jd, readsCCN %jd, bytesCCN %jd",
+		   (intmax_t) mb->stats.repliesCCN,
+		   (intmax_t) mb->stats.replyReadsCCN,
+		   (intmax_t) mb->stats.replyBytesCCN);
 	fprintf(f, "\n");
 	flushLog(f);
 }

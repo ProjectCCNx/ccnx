@@ -26,8 +26,6 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.ContentDecodingException;
-import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -56,7 +54,7 @@ public class RepositoryDataHandler implements Runnable {
 	}
 	
 	public void addSync(ContentName target) {
-		_pendingSyncs.add(target, target);
+		_pendingSyncs.add(new Interest(target), target);
 	}
 
 	/**
@@ -99,33 +97,20 @@ public class RepositoryDataHandler implements Runnable {
 					//
 					// Also we have to check for more unsynced locators associated with our new object 
 					// and the objects pointed to by the links.
-					Entry<ContentName> entry = _pendingSyncs.remove(co.name(), co.name());
+					Entry<ContentName> entry = _pendingSyncs.removeMatch(co);
 					if (null != entry) {
 						ContentName nameToCheck = entry.value();
 						if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
 							Log.finer(Log.FAC_REPO, "Processing sync entry: {0}", nameToCheck);
 						}
-						ContentObject linkCheck = co;
-						while (linkCheck.isLink()) {
-							Link link = new Link();
-							try {
-								link.decode(linkCheck.content());
-								ContentName linkName = link.targetName();
-								Interest linkInterest = new Interest(linkName);
-								linkCheck = _server.getRepository().getContent(linkInterest);
-								if (null == linkCheck) {
-									if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
-										Log.finer(Log.FAC_REPO, "Fetching link from dataHandler: " + linkName);
-									}
-									addSync(linkName);
-									_server.doSync(linkInterest, linkInterest);
-									break;
-								}
-								syncKeysForObject(linkCheck, linkName);
-							} catch (ContentDecodingException e) {
-								Log.warning(Log.FAC_REPO, "Couldn't decode link that is chained to a key locator: {0}", co.name());
-								break;
+						ContentName linkCheck = _server.getLinkedKeyTarget(co);
+						if (null != linkCheck) {
+							if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
+								Log.finer(Log.FAC_REPO, "Processing sync entry for link: {0}", linkCheck);
 							}
+							Interest linkInterest = new Interest(linkCheck);
+							_server.doSync(linkInterest, linkInterest);
+							syncKeysForObject(co, linkCheck);
 						}
 						syncKeysForObject(co, nameToCheck);
 					}

@@ -200,3 +200,7 @@
 <!ATTLIST ForwardingEntry %commonattrs;>
 
 <!ELEMENT ForwardingFlags (#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT StatusResponse (StatusCode, StatusText?)>
+<!ELEMENT StatusCode (#PCDATA)>	<!-- nonNegativeInteger -->
+<!ELEMENT StatusText (#PCDATA)>	<!-- textual description of error or other condition -->

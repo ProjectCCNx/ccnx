@@ -683,8 +683,8 @@ MapBig(FileNode fn, seg_t seg) {
 		fn->mapLen = d;
 		fn->mapAddr = addr;
 		md->mapped = md->mapped + d;
-		fprintf(stdout, "-- MapBig, seg %jd for %d bytes (mapped %lld)\n",
-				seg, (int) d, md->mapped);
+		fprintf(stdout, "-- MapBig, seg %jd for %d bytes (mapped %jd)\n",
+				seg, (int) d, (intmax_t) md->mapped);
 		fflush(stdout);
 		if (mseg != seg)
 			// the returned address should be for the initially requested seg
@@ -846,10 +846,11 @@ CloseFileNode(FileNode fn) {
 				if (md->debug) {
 					double dt = DeltaTime(md->startTime, GetCurrentTime());
 					fprintf(stdout,
-							"@%4.3f, CloseFile %s, mapped %lld, files %d\n",
+							"@%4.3f, CloseFile %s, mapped %jd, files %d\n",
 							dt,
 							fn->id,
-							md->mapped, md->nFiles);
+							(intmax_t) md->mapped,
+							md->nFiles);
 					fflush(stdout);
 				}
 				fn->root = Freestr(fn->root);

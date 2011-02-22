@@ -265,10 +265,12 @@ public class RepoIOTest extends RepoTestBase {
 		input.close();
 		
 		// Test case of content not already in repo
+		Log.info("About to do first sync for stream");
 		input = new CCNInputStream(ContentName.fromNative(_testNonRepo), getHandle);
 		Assert.assertFalse(RepositoryControl.localRepoSync(getHandle, input));
 		
 		Thread.sleep(2000);  // Give repo time to fetch TODO: replace with confirmation protocol
+		Log.info("About to do second sync for stream");
 		Assert.assertTrue(RepositoryControl.localRepoSync(getHandle, input));
 		
 		input.close();
@@ -288,9 +290,11 @@ public class RepoIOTest extends RepoTestBase {
 		
 		// Test case of content not already in repo
 		so = new CCNStringObject(ContentName.fromNative(_testNonRepoObj), getHandle);
+		Log.info("About to do first sync for object {0}", so.getBaseName());
 		Assert.assertFalse(RepositoryControl.localRepoSync(getHandle, so));
 
 		Thread.sleep(2000);  // Give repo time to fetch TODO: replace with confirmation protocol
+		Log.info("About to do second sync for object {0}", so.getBaseName());
 		Assert.assertTrue(RepositoryControl.localRepoSync(getHandle, so));
 		so.close();
 	}
