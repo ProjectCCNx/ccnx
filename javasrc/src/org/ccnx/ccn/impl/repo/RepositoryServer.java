@@ -36,6 +36,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.CommandMarker;
+import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
@@ -69,6 +70,8 @@ import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
  */
 
 public class RepositoryServer implements CCNStatistics {
+	private final int REPO_PREFIX_FLAGS = PrefixRegistrationManager.DEFAULT_SELF_REG_FLAGS 
+				+ PrefixRegistrationManager.CCN_FORW_TAP;
 	private RepositoryStore _repo = null;
 	private CCNHandle _handle = null;
 	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
@@ -252,7 +255,7 @@ public class RepositoryServer implements CCNStatistics {
 				}
 				for (ContentName newName : unMatchedNew) {
 					RepositoryInterestHandler iHandler = new RepositoryInterestHandler(this);
-					_handle.registerFilter(newName, iHandler);
+					_handle.getNetworkManager().setInterestFilter(_handle, newName, iHandler, REPO_PREFIX_FLAGS);
 					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
 						Log.info(Log.FAC_REPO, "Adding namespace {0}", newName);
 					newIL.add(new NameAndListener(newName, iHandler));
