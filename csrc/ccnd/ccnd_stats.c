@@ -324,7 +324,7 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
             ccn_charbuf_putf(b, "</li>" NL);
         }
         for (f = ipe->forwarding; f != NULL; f = f->next) {
-            if ((f->flags & CCN_FORW_ACTIVE) != 0) {
+            if ((f->flags & (CCN_FORW_ACTIVE | CCN_FORW_PFXO)) != 0) {
                 ccn_name_init(name);
                 res = ccn_name_append_components(name, e->key, 0, e->keysize);
                 ccn_charbuf_putf(b, " <li>");
@@ -333,7 +333,9 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
                                  " <b>face:</b> %u"
                                  " <b>flags:</b> 0x%x"
                                  " <b>expires:</b> %d",
-                                 f->faceid, f->flags, f->expires);
+                                 f->faceid,
+                                 f->flags & CCN_FORW_PUBMASK,
+                                 f->expires);
                 ccn_charbuf_putf(b, "</li>" NL);
             }
         }
@@ -505,7 +507,7 @@ collect_forwarding_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
     for (; e->data != NULL; hashtb_next(e)) {
         struct nameprefix_entry *ipe = e->data;
         for (f = ipe->forwarding, res = 0; f != NULL && !res; f = f->next) {
-            if ((f->flags & CCN_FORW_ACTIVE) != 0)
+            if ((f->flags & (CCN_FORW_ACTIVE | CCN_FORW_PFXO)) != 0)
                 res = 1;
         }
         if (res) {
@@ -516,14 +518,16 @@ collect_forwarding_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
             ccn_uri_append(b, name->buf, name->length, 1);
             ccn_charbuf_putf(b, "</prefix>");
             for (f = ipe->forwarding; f != NULL; f = f->next) {
-                if ((f->flags & CCN_FORW_ACTIVE) != 0) {
+                if ((f->flags & (CCN_FORW_ACTIVE | CCN_FORW_PFXO)) != 0) {
                     ccn_charbuf_putf(b,
                                      "<dest>"
                                      "<faceid>%u</faceid>"
                                      "<flags>%x</flags>"
                                      "<expires>%d</expires>"
                                      "</dest>",
-                                     f->faceid, f->flags, f->expires);
+                                     f->faceid,
+                                     f->flags & CCN_FORW_PUBMASK,
+                                     f->expires);
                 }
             }
             ccn_charbuf_putf(b, "</fentry>");
