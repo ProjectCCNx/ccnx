@@ -124,7 +124,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			throws RepositoryException {
 		ContentObject co =  _index.get(interest, this);
 		if( Log.isLoggable(Log.FAC_REPO, Level.FINE) )
-			Log.fine(Log.FAC_REPO, co == null ? "Didn't find it" : "Found it");
+			Log.fine(Log.FAC_REPO, "Looking for: " + interest.name() + (co == null ? ": Didn't find it" : ": Found it"));
 		return co;
 	}
 

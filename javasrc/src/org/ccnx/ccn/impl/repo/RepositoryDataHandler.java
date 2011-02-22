@@ -54,7 +54,7 @@ public class RepositoryDataHandler implements Runnable {
 	}
 	
 	public void addSync(ContentName target) {
-		_pendingSyncs.add(target, target);
+		_pendingSyncs.add(new Interest(target), target);
 	}
 
 	/**
@@ -97,7 +97,7 @@ public class RepositoryDataHandler implements Runnable {
 					//
 					// Also we have to check for more unsynced locators associated with our new object 
 					// and the objects pointed to by the links.
-					Entry<ContentName> entry = _pendingSyncs.remove(co.name(), co.name());
+					Entry<ContentName> entry = _pendingSyncs.removeMatch(co);
 					if (null != entry) {
 						ContentName nameToCheck = entry.value();
 						if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
