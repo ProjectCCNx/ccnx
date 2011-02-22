@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -13,9 +13,9 @@
 #
 
 # Subdirectories we build in
-TOPSUBDIRS = doc/manpages doc/technical csrc schema javasrc apps/ccnChat apps/ccnFileProxy
+TOPSUBDIRS = doc/manpages doc/technical csrc schema javasrc apps apps/ccnChat apps/ccnFileProxy
 # Packing list for packaging
-PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt $(TOPSUBDIRS) apps android experiments
+PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt $(TOPSUBDIRS) android experiments
 
 default all: _always
 	for i in $(TOPSUBDIRS); do         \
