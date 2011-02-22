@@ -30,6 +30,12 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+/*
+ * This test requires the file "testBigFile" to exist in the directory where the test is
+ * executed. The automated tests generate this file. The file should be quite large though
+ * its exact size is unimportant. The automated tests generate a 50m file
+ */
+
 public class CCNControlFlowTestRepo {
 	static final int N_BUFFERS = 10000;
 	static ContentName _nodeName;
