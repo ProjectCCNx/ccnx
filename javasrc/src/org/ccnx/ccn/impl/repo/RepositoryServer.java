@@ -462,6 +462,14 @@ public class RepositoryServer implements CCNStatistics {
 		return getLinkedKeyTarget(keyContent);
 	}
 	
+	/**
+	 * Check whether co is a link and if so find any unsynced link target which is
+	 * chained to it. 
+	 * 
+	 * @param co the ContentObject to test
+	 * @return null if no unresolved target, ContentName of unresolved target otherwise
+	 * @throws RepositoryException
+	 */
 	public ContentName getLinkedKeyTarget(ContentObject co) throws RepositoryException {
 		while (co.isLink()) {
 			Link link = new Link();
