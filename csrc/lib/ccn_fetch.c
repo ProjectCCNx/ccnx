@@ -769,11 +769,12 @@ ccn_fetch_open(struct ccn_fetch *f,
 	fs->id = newStringCopy(id);
 	ccn_charbuf_append_charbuf(fs->name, name);
 	if (resolveVersion) {
-		int tm = 40; // TBD: need better strategy for version timeout
+		int tmInc = 40; // TBD: need better strategy for version timeout
+		int tm = 0;
 		while (tm < CCN_VERSION_TIMEOUT) {
-			res = ccn_resolve_version(f->h, fs->name, resolveVersion, tm);
+			res = ccn_resolve_version(f->h, fs->name, resolveVersion, tmInc);
 			if (res >= 0) break;
-			tm = tm + tm;
+			tm = tm + tmInc;
 		}
 		if (res < 0) {
 			// could not resolve version for this name
