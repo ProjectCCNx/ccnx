@@ -177,7 +177,7 @@ However, the ability of the face to change prefix registrations is not affected.
 
 `CCN_FORW_CAPTURE` says that no shorter prefix may be used, overriding any
 child-inherit bits that would otherwise make the shorter entries usable.
-However, entries with `CCN_FORW_LAST` or `CCN_FORW_LAST` set are not subject to capture.
+However, entries with `CCN_FORW_LAST` or `CCN_FORW_TAP` set are not subject to capture.
 
 `CCN_FORW_LOCAL` restricts the namespace to use by applications on the local
 machine.
