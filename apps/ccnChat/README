@@ -16,7 +16,8 @@ You can run multiple instances of ccnchat on the same machine and if you specify
 
 If you would like to run any instance of ccnchat with a different "user name", you need to set the following environment variables.
 
-export CCNX_USER_NAME=your_new_usernameexport CCNX_DIR=/var/tmp/your_new_username/.ccnx
+export CCNX_USER_NAME=your_new_username
+export CCNX_DIR=/var/tmp/your_new_username/.ccnx
 ccnchat ccnx:/test_room
 
 Make sure to replace 'your_new_username' in the above export commands with the actual user name that you want to use for ccnchat.
