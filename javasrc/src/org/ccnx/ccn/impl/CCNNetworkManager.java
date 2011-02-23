@@ -1164,17 +1164,25 @@ public class CCNNetworkManager implements Runnable {
 	 * Merge prefixes so we only add a new one when it doesn't have a
 	 * common ancestor already registered.
 	 * 
+	 * Must be called with _registeredPrefixes locked
+	 * 
+	 * We decided that if we are registering a prefix that already has another prefix that
+	 * is an descendant of it registered, we won't bother to now deregister that prefix because
+	 * it would be complicated to do that and doesn't hurt anything.
+	 * 
 	 * @param prefix
 	 * @return prefix that incorporates or matches this one or null if none found
 	 */
 	protected RegisteredPrefix getRegisteredPrefix(ContentName prefix) {
-		synchronized(_registeredPrefixes) {		
-			// MM: This is a dumb way to search a TreeMap for a prefix.
-			// TreeMap is sorted and should exploit that.
-			for (ContentName name: _registeredPrefixes.keySet()) {
-				if (name.equals(prefix) || name.isPrefixOf(prefix))
-					return _registeredPrefixes.get(name);		
-			}
+		// We want our map to include all ancestors of us
+		SortedMap<ContentName, RegisteredPrefix> map = _registeredPrefixes.tailMap(new ContentName(1, prefix.components()));
+		for (ContentName name : map.keySet()) {
+			if (name.isPrefixOf(prefix))
+				return _registeredPrefixes.get(name);
+			// If our prefix isn't a prefix of this name at all, we are past all ancestors and
+			// can stop looking
+			if (!prefix.isPrefixOf(name))
+				break;
 		}
 		return null;
 	}

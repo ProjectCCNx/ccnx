@@ -2647,6 +2647,8 @@ main(int argc, string *argv) {
 			} else if (strcasecmp(arg, "-noDebug") == 0) {
 				mb->debug = NULL;
 				ccn_flags = ccn_fetch_flags_None;
+			} else if (strcasecmp(arg, "-absTime") == 0) {
+				mb->startTime = 0;
 			} else if (strcasecmp(arg, "-resolveHigh") == 0) {
 				mb->resolveFlags = CCN_V_HIGH;
 			} else if (strcasecmp(arg, "-resolveHighest") == 0) {

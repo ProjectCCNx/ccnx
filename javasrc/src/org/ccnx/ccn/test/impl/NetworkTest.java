@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -20,9 +20,12 @@ package org.ccnx.ccn.test.impl;
 import java.util.TreeSet;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -40,8 +43,7 @@ import org.junit.Test;
 /**
  * Test CCNNetworkManager.
  * 
- * This should eventually have more tests but for now at least we will
- * test the re-expression of interests
+ * This should eventually have more tests
  * 
  * Note - this test requires ccnd to be running
  *
@@ -52,7 +54,9 @@ public class NetworkTest extends CCNTestBase {
 	protected static final int FLOOD_ITERATIONS = 1000;
 	
 	private Semaphore sema = new Semaphore(0);
+	private Semaphore filterSema = new Semaphore(0);
 	private boolean gotData = false;
+	private boolean gotInterest = false;
 	Interest testInterest = null;
 	
 	// Fix test so it doesn't use static names.
@@ -71,6 +75,66 @@ public class NetworkTest extends CCNTestBase {
 
 	@Before
 	public void setUp() throws Exception {
+	}
+	
+	/**
+	 * Partially test prefix registration/deregistration
+	 * @throws Exception
+	 */
+	@Test
+	public void testRegisteredPrefix() throws Exception {
+		Log.setLevel(Log.FAC_NETMANAGER, Level.FINEST);
+		TestFilterListener tfl = new TestFilterListener();
+		TestListener tl = new TestListener();
+		ContentName testName1 = ContentName.fromNative(testPrefix, "foo");
+		Interest interest1 = new Interest(testName1);
+		ContentName testName2 = ContentName.fromNative(testName1, "bar");
+		Interest interest2 = new Interest(testName2);
+		ContentName testName3 = ContentName.fromNative(testName2, "blaz");
+		ContentName testName4 = ContentName.fromNative(testName2, "xxx");
+		Interest interest4 = new Interest(testName4);
+		ContentName testName5 = ContentName.fromNative(testPrefix, "zoo");
+		ContentName testName6 = ContentName.fromNative(testName1, "zoo");
+		ContentName testName7 = ContentName.fromNative(testName2, "spaz");
+		Interest interest6 = new Interest(testName6);
+		
+		// Test that we don't receive interests above what we registered
+		gotInterest = false;
+		putHandle.getNetworkManager().setInterestFilter(this, testName2, tfl);
+		Thread.sleep(1000);
+		Assert.assertFalse(gotInterest);
+		getHandle.cancelInterest(interest1, tl);
+		getHandle.expressInterest(interest2, tl);
+		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue(gotInterest);
+		getHandle.cancelInterest(interest2, tl);
+		
+		// Test that an "in-between" prefix gets registered properly
+		gotInterest = false;
+		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
+		putHandle.getNetworkManager().setInterestFilter(this, testName3, tfl);
+		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);
+		putHandle.getNetworkManager().setInterestFilter(this, testName2, tfl);
+		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
+		
+		// The following is to make sure that a filter that is a prefix of a registered filter
+		// doesn't get registered separately. There's no good way to test this directly (I don't think)
+		// currently but we can see that it is done by checking out the log
+		putHandle.getNetworkManager().setInterestFilter(this, testName7, tfl);  
+		getHandle.expressInterest(interest4, tl);
+		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue(gotInterest);
+		getHandle.cancelInterest(interest4, tl);
+		gotInterest = false;
+		filterSema.drainPermits();
+		getHandle.expressInterest(interest6, tl);
+		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue(gotInterest);
+		getHandle.cancelInterest(interest6, tl);
+		putHandle.getNetworkManager().cancelInterestFilter(this, testName1, tfl);
+		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
+		putHandle.getNetworkManager().cancelInterestFilter(this, testName3, tfl);
+		putHandle.getNetworkManager().cancelInterestFilter(this, testName5, tfl);
 	}
 
 	@Test
@@ -93,10 +157,6 @@ public class NetworkTest extends CCNTestBase {
 	
 	@Test
 	public void testNetworkManagerFixedPrefix() throws Exception {
-		
-		/*
-		 * Test re-expression of interest
-		 */
 		CCNWriter writer = new CCNWriter(putHandle);
 		ContentName testName = ContentName.fromNative(testPrefix, "ddd");
 		testInterest = new Interest(testName);
@@ -111,9 +171,6 @@ public class NetworkTest extends CCNTestBase {
 	@Test
 	public void testNetworkManagerBackwards() throws Exception {
 		
-		/*
-		 * Test re-expression of interest
-		 */
 		CCNWriter writer = new CCNWriter(testPrefix, putHandle);
 		// Shouldn't have to do this -- need to refactor test. Had to add it after
 		// fixing CCNWriter to do proper flow control.
@@ -183,6 +240,16 @@ public class NetworkTest extends CCNTestBase {
 				Assert.assertNotNull(co);
 			}
 		}
+	}
+	
+	class TestFilterListener implements CCNFilterListener {
+
+		public boolean handleInterest(Interest interest) {
+			gotInterest = true;
+			filterSema.release();
+			return true;
+		}
+		
 	}
 	
 	class TestListener implements CCNInterestListener {

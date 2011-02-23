@@ -543,14 +543,15 @@ public class ContentNameTest {
 		ContentName name = null;
 		long loops = 0;
 		long elapsed = 0;
-		while (elapsed < 10000) // run for about 10s elapsed
+		int i;
+		while (elapsed < 1000) // run for about 1s elapsed
 		try {
 			long time = System.currentTimeMillis();
-			for (int i = 0; i < 10000; i++) {
+			for (i = 0; i < 10000; i++) {
 				name = ContentName.fromURI(veryEscapedName);
 			}
 			elapsed += System.currentTimeMillis() - time;
-			loops += 10000;
+			loops += i;
 		}catch (MalformedContentNameStringException e) {
 			name = null;
 		}
@@ -564,25 +565,22 @@ public class ContentNameTest {
 		String nameString = null;
 		long loops = 0;
 		long elapsed = 0;
+		int i;
 		try {
 				name = ContentName.fromURI(veryEscapedName);
 		} catch (MalformedContentNameStringException e) {
 			name = null;
 		}
 		assertNotNull(name);
-		while (elapsed < 10000) { // run for about 10s elapsed
+		while (elapsed < 1000) { // run for about 1s elapsed
 			long time = System.currentTimeMillis();
-			for (int i = 0; i < 10000; i++) {
+			for (i = 0; i < 10000; i++) {
 				nameString = name.toString();
 			}
 			elapsed += System.currentTimeMillis() - time;
-			loops += 10000;
+			loops += i;
 		}
 		System.out.println("Testing with " + nameString);
 		System.out.println("Executed "+ loops + " ContentName.toString() in " + elapsed + " ms; " + ((loops * 1000) / elapsed) + "/s");
-	}
-	@Test
-	public void multitest() {
-		for (int i = 0; i < 11; i++) testContentNameParsePerformance();
 	}
 }

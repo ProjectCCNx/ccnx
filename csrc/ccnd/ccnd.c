@@ -2709,10 +2709,12 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     struct ccn_indexbuf *tap = NULL;
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *p = NULL;
+    unsigned tflags;
     unsigned wantflags;
     unsigned moreflags;
     unsigned lastfaceid;
     unsigned namespace_flags;
+    unsigned tap_or_last = (1 << 31); /* synthesized locally */
 
     x = npe->forward_to;
     if (x == NULL)
@@ -2725,9 +2727,12 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     for (p = npe; p != NULL; p = p->parent) {
         moreflags = CCN_FORW_CHILD_INHERIT;
         for (f = p->forwarding; f != NULL; f = f->next) {
-            if ((f->flags & wantflags) == wantflags &&
-                  face_from_faceid(h, f->faceid) != NULL) {
-                namespace_flags |= f->flags;
+            if (face_from_faceid(h, f->faceid) == NULL)
+                continue;
+            tflags = f->flags;
+            if (tflags & (CCN_FORW_TAP | CCN_FORW_LAST))
+                tflags |= tap_or_last;
+            if ((tflags & wantflags) == wantflags) {
                 if (h->debug & 32)
                     ccnd_msg(h, "fwd.%d adding %u", __LINE__, f->faceid);
                 ccn_indexbuf_set_insert(x, f->faceid);
@@ -2739,8 +2744,9 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
                 if ((f->flags & CCN_FORW_LAST) != 0)
                     lastfaceid = f->faceid;
             }
+            namespace_flags |= f->flags;
             if ((f->flags & CCN_FORW_CAPTURE) != 0)
-                moreflags |= CCN_FORW_LAST;
+                moreflags |= tap_or_last;
         }
         wantflags |= moreflags;
     }

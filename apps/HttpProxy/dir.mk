@@ -35,6 +35,8 @@ clean:
 	rm -f *.o $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS) *% *~
 
+test: default
+
 ###############################
 # Dependencies below here are checked by depend target
 # but must be updated manually.
