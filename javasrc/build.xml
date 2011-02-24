@@ -352,10 +352,7 @@
 	
 	<target name="test-impl-with-repo" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-	    <exec executable="mkfile">
-	    	<arg value="50m" />
-	    	<arg value="${testout}/testBigFile" />
-		</exec>
+	    <bunzip2 src="testBigFile.bz2" dest="${testout}/testBigFile" />
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
