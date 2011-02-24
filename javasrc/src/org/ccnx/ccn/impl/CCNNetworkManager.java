@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.NotYetConnectedException;
 import java.util.ArrayList;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -124,7 +123,6 @@ public class CCNNetworkManager implements Runnable {
 
 	// For handling protocol to speak to ccnd, must have keys
 	protected KeyManager _keyManager;
-	protected int _localPort = -1;
 
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
@@ -1289,7 +1287,7 @@ public class CCNNetworkManager implements Runnable {
 		}
 		//WirePacket packet = new WirePacket();
 		if( Log.isLoggable(Level.INFO) )
-			Log.info("CCNNetworkManager processing thread started for port: " + _localPort);
+			Log.info("CCNNetworkManager processing thread started for port: " + _port);
 		while (_run) {
 			try {
 				XMLEncodable packet = _channel.getPacket();
@@ -1301,7 +1299,7 @@ public class CCNNetworkManager implements Runnable {
 					_stats.increment(StatsEnum.ReceiveObject);
 					ContentObject co = (ContentObject)packet;
 					if( Log.isLoggable(Level.FINER) )
-						Log.finer("Data from net for port: " + _localPort + " {0}", co.name());
+						Log.finer("Data from net for port: " + _port + " {0}", co.name());
 
 					//	SystemConfiguration.logObject("Data from net:", co);
 
@@ -1312,20 +1310,20 @@ public class CCNNetworkManager implements Runnable {
 					_stats.increment(StatsEnum.ReceiveInterest);
 					Interest interest = (Interest)	packet;
 					if( Log.isLoggable(Level.FINEST) )
-						Log.finest("Interest from net for port: " + _localPort + " {0}", interest);
+						Log.finest("Interest from net for port: " + _port + " {0}", interest);
 					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
 				} // for interests
 			} catch (Exception ex) {
 				_stats.increment(StatsEnum.ReceiveUnknown);
-				Log.severe(Log.FAC_NETMANAGER, "Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
+				Log.severe(Log.FAC_NETMANAGER, "Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _port);
                 Log.warningStackTrace(ex);
 			}
 		}
 
 		_threadpool.shutdown();
-		Log.info(Log.FAC_NETMANAGER, "Shutdown complete for port: " + _localPort);
+		Log.info(Log.FAC_NETMANAGER, "Shutdown complete for port: " + _port);
 	}
 
 	/**
