@@ -17,10 +17,14 @@ BEFORE : test_single_ccnd_teardown
 rm newface*.ccnb
 ccndsmoketest || SkipTest no ccnd
 
+# We need to learn the CCNDID of our ccnd.
+. test_ccndid
+
 # Create the body of a face creation request.
 ccn_xmltoccnb -w - <<EOF >newface.ccnb
 <FaceInstance>
   <Action>newface</Action>
+  <PublisherPublicKeyDigest ccnbencoding="hexBinary">$CCNDID</PublisherPublicKeyDigest>
   <IPProto>17</IPProto>
   <Host>10.211.55.8</Host>
   <Port>9695</Port>
@@ -35,9 +39,6 @@ cat newface.ccnb | ccnput -f -x 30 /_this_name_ignored_$$
 NFBLOB="`ccnget /_this_name_ignored_$$ | openssl enc -base64`"
 
 echo NFBLOB is $NFBLOB >&2
-
-# We need to learn the CCNDID of our ccnd.
-. test_ccndid
 
 # Now construct the interest.
 
