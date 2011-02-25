@@ -2267,6 +2267,11 @@ register_new_face(struct ccnd_handle *h, struct face *face)
     }
 }
 
+/**
+ * Replaces contents of reply_body with a ccnb-encoded StatusResponse.
+ *
+ * @returns CCN_CONTENT_NACK, or -1 in case of error.
+ */
 static int
 ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
           int errcode, const char *errtext)
@@ -2279,13 +2284,32 @@ ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
     return(res);
 }
 
+/**
+ * Check that indicated ccndid matches ours.
+ *
+ * @returns 0 if OK, or CCN_CONTENT_NACK if not.
+ */
 static int
-check_ccndid(struct ccnd_handle *h, struct ccn_face_instance *face_instance, struct ccn_charbuf *reply_body)
+check_ccndid(struct ccnd_handle *h,
+             const void *p, size_t sz, struct ccn_charbuf *reply_body)
 {
-    if (face_instance->ccnd_id_size != sizeof(h->ccnd_id) ||
-        memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0)
+    if (sz != sizeof(h->ccnd_id) || memcmp(p, h->ccnd_id, sz) != 0)
         return(ccnd_nack(h, reply_body, 531, "missing or incorrect ccndid"));
     return(0);
+}
+
+static int
+check_face_instance_ccndid(struct ccnd_handle *h,
+    struct ccn_face_instance *f, struct ccn_charbuf *reply_body)
+{
+    return(check_ccndid(h, f->ccnd_id, f->ccnd_id_size, reply_body));
+}
+
+static int
+check_forwarding_entry_ccndid(struct ccnd_handle *h,
+    struct ccn_forwarding_entry *f, struct ccn_charbuf *reply_body)
+{
+    return(check_ccndid(h, f->ccnd_id, f->ccnd_id_size, reply_body));
 }
 
 /**
@@ -2344,7 +2368,7 @@ ccnd_req_newface(struct ccnd_handle *h,
         (reqface->flags & (CCN_FACE_LOOPBACK | CCN_FACE_LOCAL)) == 0)
         goto Finish;
     nackallowed = 1;
-    res = check_ccndid(h, face_instance, reply_body);
+    res = check_face_instance_ccndid(h, face_instance, reply_body);
     if (res != 0)
         goto Finish;
     if (face_instance->descr.ipproto != IPPROTO_UDP &&
@@ -2482,7 +2506,7 @@ ccnd_req_destroyface(struct ccnd_handle *h,
     nackallowed = 1;
     if (strcmp(face_instance->action, "destroyface") != 0)
         { at = __LINE__; goto Finish; }
-    res = check_ccndid(h, face_instance, reply_body);
+    res = check_face_instance_ccndid(h, face_instance, reply_body);
     if (res != 0)
         { at = __LINE__; goto Finish; }
     if (face_instance->faceid == 0) { at = __LINE__; goto Finish; }
@@ -2693,7 +2717,7 @@ ccnd_req_unreg(struct ccnd_handle *h,
         goto Finish;
     if (forwarding_entry->name_prefix == NULL)
         goto Finish;
-    res = check_ccndid(h, forwarding_entry, reply_body);
+    res = check_forwarding_entry_ccndid(h, forwarding_entry, reply_body);
     if (res != 0)
         goto Finish;
     res = -1;
