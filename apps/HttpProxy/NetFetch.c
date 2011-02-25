@@ -1464,9 +1464,6 @@ InitBuffer(NetRequest nr) {
 	nr->msg.msg_namelen = 0;
 	nr->msg.msg_iovlen = 1;
 	nr->msg.msg_iov = &nr->iov;
-	nr->msg.msg_control = NULL;
-	nr->msg.msg_controllen = 0;
-	nr->msg.msg_flags = 0;
 }
 
 static int
