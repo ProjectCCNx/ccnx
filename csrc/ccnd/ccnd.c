@@ -2279,6 +2279,15 @@ ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
     return(res);
 }
 
+static int
+check_ccndid(struct ccnd_handle *h, struct ccn_face_instance *face_instance, struct ccn_charbuf *reply_body)
+{
+    if (face_instance->ccnd_id_size != sizeof(h->ccnd_id) ||
+        memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0)
+        return(ccnd_nack(h, reply_body, 531, "missing or incorrect ccndid"));
+    return(0);
+}
+
 /**
  * Process a newface request for the ccnd internal client.
  *
@@ -2323,6 +2332,7 @@ ccnd_req_newface(struct ccnd_handle *h,
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
+    res = -1;
     face_instance = ccn_face_instance_parse(req, req_size);
     if (face_instance == NULL || face_instance->action == NULL)
         goto Finish;
@@ -2334,11 +2344,9 @@ ccnd_req_newface(struct ccnd_handle *h,
         (reqface->flags & (CCN_FACE_LOOPBACK | CCN_FACE_LOCAL)) == 0)
         goto Finish;
     nackallowed = 1;
-    if (face_instance->ccnd_id_size != sizeof(h->ccnd_id) ||
-        memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0) {
-        res = ccnd_nack(h, reply_body, 531, "missing or incorrect ccndid");
+    res = check_ccndid(h, face_instance, reply_body);
+    if (res != 0)
         goto Finish;
-    }
     if (face_instance->descr.ipproto != IPPROTO_UDP &&
         face_instance->descr.ipproto != IPPROTO_TCP) {
         res = ccnd_nack(h, reply_body, 504, "parameter error");
@@ -2419,6 +2427,8 @@ ccnd_req_newface(struct ccnd_handle *h,
         if ((newface->flags & CCN_FACE_CONNECTING) != 0)
             face_instance->lifetime = 1;
         res = ccnb_append_face_instance(reply_body, face_instance);
+        if (res > 0)
+            res = 0;
     }
     else
         res = ccnd_nack(h, reply_body, 450, "could not create face");
@@ -2461,6 +2471,7 @@ ccnd_req_destroyface(struct ccnd_handle *h,
     if (res < 0) { at = __LINE__; goto Finish; }
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0) { at = __LINE__; goto Finish; }
+    res = -1;
     face_instance = ccn_face_instance_parse(req, req_size);
     if (face_instance == NULL) { at = __LINE__; goto Finish; }
     if (face_instance->action == NULL) { at = __LINE__; goto Finish; }
@@ -2471,11 +2482,9 @@ ccnd_req_destroyface(struct ccnd_handle *h,
     nackallowed = 1;
     if (strcmp(face_instance->action, "destroyface") != 0)
         { at = __LINE__; goto Finish; }
-    if (face_instance->ccnd_id_size == sizeof(h->ccnd_id)) {
-        if (memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0)
-            { at = __LINE__; goto Finish; }
-    }
-    else if (face_instance->ccnd_id_size != 0) { at = __LINE__; goto Finish; }
+    res = check_ccndid(h, face_instance, reply_body);
+    if (res != 0)
+        { at = __LINE__; goto Finish; }
     if (face_instance->faceid == 0) { at = __LINE__; goto Finish; }
     res = ccnd_destroy_face(h, face_instance->faceid);
     if (res < 0) { at = __LINE__; goto Finish; }
@@ -2523,6 +2532,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
+    res = -1;
     forwarding_entry = ccn_forwarding_entry_parse(req, req_size);
     if (forwarding_entry == NULL || forwarding_entry->action == NULL)
         goto Finish;
@@ -2532,7 +2542,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
         goto Finish;
     if ((reqface->flags & (CCN_FACE_GG | CCN_FACE_REGOK)) == 0)
         goto Finish;
-    
+    nackallowed = 1;
     if (selfreg) {
         if (strcmp(forwarding_entry->action, "selfreg") != 0)
             goto Finish;
@@ -2578,12 +2588,12 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     forwarding_entry->ccnd_id = h->ccnd_id;
     forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
     res = ccnb_append_forwarding_entry(reply_body, forwarding_entry);
+    if (res > 0)
+        res = 0;
 Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
-    if (res > 0)
-        res = 0;
-    if (res < 0 && nackallowed)
+    if (nackallowed && res < 0)
         res = ccnd_nack(h, reply_body, 450, "could not register prefix");
     return((nackallowed || res <= 0) ? res : -1);
 }
@@ -2668,7 +2678,13 @@ ccnd_req_unreg(struct ccnd_handle *h,
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
+    res = -1;
     forwarding_entry = ccn_forwarding_entry_parse(req, req_size);
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+        goto Finish;
+    nackallowed = 1;
     if (forwarding_entry == NULL || forwarding_entry->action == NULL)
         goto Finish;
     if (strcmp(forwarding_entry->action, "unreg") != 0)
@@ -2677,19 +2693,10 @@ ccnd_req_unreg(struct ccnd_handle *h,
         goto Finish;
     if (forwarding_entry->name_prefix == NULL)
         goto Finish;
-    /* consider the source ... */
-    reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+    res = check_ccndid(h, forwarding_entry, reply_body);
+    if (res != 0)
         goto Finish;
-    nackallowed = 1;
-    // XXX - probably ccnd_id should be mandatory.
-    if (forwarding_entry->ccnd_id_size == sizeof(h->ccnd_id)) {
-        if (memcmp(forwarding_entry->ccnd_id,
-                   h->ccnd_id, sizeof(h->ccnd_id)) != 0)
-            goto Finish;
-    }
-    else if (forwarding_entry->ccnd_id_size != 0)
-        goto Finish;
+    res = -1;
     face = face_from_faceid(h, forwarding_entry->faceid);
     if (face == NULL)
         goto Finish;
@@ -2729,6 +2736,8 @@ ccnd_req_unreg(struct ccnd_handle *h,
     forwarding_entry->ccnd_id = h->ccnd_id;
     forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
     res = ccnb_append_forwarding_entry(reply_body, forwarding_entry);
+    if (res > 0)
+        res = 0;
 Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
