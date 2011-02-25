@@ -2272,6 +2272,7 @@ ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
           int errcode, const char *errtext)
 {
     int res;
+    reply_body->length = 0;
     res = ccn_encode_StatusResponse(reply_body, errcode, errtext);
     if (res == 0)
         res = CCN_CONTENT_NACK;
@@ -2279,10 +2280,11 @@ ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
 }
 
 /**
- * @brief Process a newface request for the ccnd internal client.
+ * Process a newface request for the ccnd internal client.
+ *
  * @param h is the ccnd handle
- * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
-            in its Content.
+ * @param msg points to a ccnd-encoded ContentObject containing a
+ *         FaceInstance in its Content.
  * @param size is its size in bytes
  * @param reply_body is a buffer to hold the Content of the reply, as a 
  *         FaceInstance including faceid
@@ -2311,6 +2313,7 @@ ccnd_req_newface(struct ccnd_handle *h,
     struct face *reqface = NULL;
     struct face *newface = NULL;
     int save;
+    int nackallowed = 0;
 
     save = h->flood;
     h->flood = 0; /* never auto-register for these */
@@ -2330,6 +2333,7 @@ ccnd_req_newface(struct ccnd_handle *h,
     if (reqface == NULL ||
         (reqface->flags & (CCN_FACE_LOOPBACK | CCN_FACE_LOCAL)) == 0)
         goto Finish;
+    nackallowed = 1;
     if (face_instance->ccnd_id_size != sizeof(h->ccnd_id) ||
         memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0) {
         res = ccnd_nack(h, reply_body, 531, "missing or incorrect ccndid");
@@ -2408,6 +2412,10 @@ ccnd_req_newface(struct ccnd_handle *h,
         face_instance->ccnd_id_size = sizeof(h->ccnd_id);
         face_instance->faceid = newface->faceid;
         face_instance->lifetime = 0x7FFFFFFF;
+        /*
+         * A short lifetime is a clue to the client that
+         * the connection has not been completed.
+         */
         if ((newface->flags & CCN_FACE_CONNECTING) != 0)
             face_instance->lifetime = 1;
         res = ccnb_append_face_instance(reply_body, face_instance);
@@ -2419,7 +2427,7 @@ Finish:
     ccn_face_instance_destroy(&face_instance);
     if (addrinfo != NULL)
         freeaddrinfo(addrinfo);
-    return(res);
+    return((nackallowed || res <= 0) ? res : -1);
 }
 
 /**
@@ -2447,6 +2455,7 @@ ccnd_req_destroyface(struct ccnd_handle *h,
     size_t req_size;
     struct ccn_face_instance *face_instance = NULL;
     struct face *reqface = NULL;
+    int nackallowed = 0;
 
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0) { at = __LINE__; goto Finish; }
@@ -2455,6 +2464,11 @@ ccnd_req_destroyface(struct ccnd_handle *h,
     face_instance = ccn_face_instance_parse(req, req_size);
     if (face_instance == NULL) { at = __LINE__; goto Finish; }
     if (face_instance->action == NULL) { at = __LINE__; goto Finish; }
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL) { at = __LINE__; goto Finish; }
+    if ((reqface->flags & CCN_FACE_GG) == 0) { at = __LINE__; goto Finish; }
+    nackallowed = 1;
     if (strcmp(face_instance->action, "destroyface") != 0)
         { at = __LINE__; goto Finish; }
     if (face_instance->ccnd_id_size == sizeof(h->ccnd_id)) {
@@ -2463,10 +2477,6 @@ ccnd_req_destroyface(struct ccnd_handle *h,
     }
     else if (face_instance->ccnd_id_size != 0) { at = __LINE__; goto Finish; }
     if (face_instance->faceid == 0) { at = __LINE__; goto Finish; }
-    /* consider the source ... */
-    reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL) { at = __LINE__; goto Finish; }
-    if ((reqface->flags & CCN_FACE_GG) == 0) { at = __LINE__; goto Finish; }
     res = ccnd_destroy_face(h, face_instance->faceid);
     if (res < 0) { at = __LINE__; goto Finish; }
     face_instance->action = NULL;
@@ -2486,7 +2496,7 @@ Finish:
             res = ccnd_nack(h, reply_body, 450, "could not destroy face");
     }
     ccn_face_instance_destroy(&face_instance);
-    return(res);
+    return((nackallowed || res <= 0) ? res : -1);
 }
 
 /**
@@ -2505,6 +2515,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     struct face *face = NULL;
     struct face *reqface = NULL;
     struct ccn_indexbuf *comps = NULL;
+    int nackallowed = 0;
 
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
@@ -2515,6 +2526,13 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     forwarding_entry = ccn_forwarding_entry_parse(req, req_size);
     if (forwarding_entry == NULL || forwarding_entry->action == NULL)
         goto Finish;
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL)
+        goto Finish;
+    if ((reqface->flags & (CCN_FACE_GG | CCN_FACE_REGOK)) == 0)
+        goto Finish;
+    
     if (selfreg) {
         if (strcmp(forwarding_entry->action, "selfreg") != 0)
             goto Finish;
@@ -2538,12 +2556,6 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
         goto Finish;
     face = face_from_faceid(h, forwarding_entry->faceid);
     if (face == NULL)
-        goto Finish;
-    /* consider the source ... */
-    reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL)
-        goto Finish;
-    if ((reqface->flags & (CCN_FACE_GG | CCN_FACE_REGOK)) == 0)
         goto Finish;
     if (forwarding_entry->lifetime < 0)
         forwarding_entry->lifetime = 60;
@@ -2571,9 +2583,9 @@ Finish:
     ccn_indexbuf_destroy(&comps);
     if (res > 0)
         res = 0;
-    if (res < 0)
+    if (res < 0 && nackallowed)
         res = ccnd_nack(h, reply_body, 450, "could not register prefix");
-    return(res);
+    return((nackallowed || res <= 0) ? res : -1);
 }
 
 /**
@@ -2648,6 +2660,7 @@ ccnd_req_unreg(struct ccnd_handle *h,
     struct ccn_forwarding **p = NULL;
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *npe = NULL;
+    int nackallowed = 0;
     
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
@@ -2664,6 +2677,11 @@ ccnd_req_unreg(struct ccnd_handle *h,
         goto Finish;
     if (forwarding_entry->name_prefix == NULL)
         goto Finish;
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+        goto Finish;
+    nackallowed = 1;
     // XXX - probably ccnd_id should be mandatory.
     if (forwarding_entry->ccnd_id_size == sizeof(h->ccnd_id)) {
         if (memcmp(forwarding_entry->ccnd_id,
@@ -2674,10 +2692,6 @@ ccnd_req_unreg(struct ccnd_handle *h,
         goto Finish;
     face = face_from_faceid(h, forwarding_entry->faceid);
     if (face == NULL)
-        goto Finish;
-    /* consider the source ... */
-    reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
         goto Finish;
     comps = ccn_indexbuf_create();
     n_name_comp = ccn_name_split(forwarding_entry->name_prefix, comps);
@@ -2718,9 +2732,9 @@ ccnd_req_unreg(struct ccnd_handle *h,
 Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
-    if (res != 0)
+    if (nackallowed && res < 0)
         res = ccnd_nack(h, reply_body, 450, "could not unregister prefix");
-    return(res);
+    return((nackallowed || res <= 0) ? res : -1);
 }
 
 /**
