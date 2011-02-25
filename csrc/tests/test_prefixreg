@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -70,9 +70,11 @@ CCNDStatus > prefixreg-pre.html
 ccndsmoketest -b send prefixreg-request.ccnb recv > prefixreg-response.ccnb
 
 cmp -s /dev/null prefixreg-response.ccnb && Fail did not get prefixreg response
-ccn_ccnbtoxml prefixreg-response.ccnb || Failed to parse prefixreg response
+ccn_ccnbtoxml -xv prefixreg-response.ccnb || Failed to parse prefixreg response
 
-ccnbx -d prefixreg-response.ccnb Content | ccn_ccnbtoxml -x -
+ccnbx -d prefixreg-response.ccnb Content | ccn_ccnbtoxml -x - > prefixreg-response.xml
+cat prefixreg-response.xml
+grep ForwardingEntry prefixreg-response.xml || Fail prefixreg response was not OK
 
 CCNDStatus > prefixreg-post.html
 
