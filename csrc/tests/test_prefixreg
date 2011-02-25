@@ -78,4 +78,4 @@ grep ForwardingEntry prefixreg-response.xml || Fail prefixreg response was not O
 
 CCNDStatus > prefixreg-post.html
 
-rm prefixreg-request.xml
+rm prefixreg-request.xml prefixreg-response.xml
