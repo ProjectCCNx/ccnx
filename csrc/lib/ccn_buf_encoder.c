@@ -239,6 +239,7 @@ ccn_encode_StatusResponse(struct ccn_charbuf *buf,
     if (errtext != NULL && errtext[0] != 0)
         res |= ccnb_tagged_putf(buf, CCN_DTAG_StatusText, "%s", errtext);
     res |= ccn_charbuf_append_closer(buf);
+    return(res);
 }
 
 /**
