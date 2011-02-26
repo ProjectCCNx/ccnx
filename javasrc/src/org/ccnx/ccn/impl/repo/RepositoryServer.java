@@ -25,7 +25,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNStats;
@@ -76,7 +75,7 @@ public class RepositoryServer implements CCNStatistics {
 				+ PrefixRegistrationManager.CCN_FORW_TAP;
 	private RepositoryStore _repo = null;
 	private CCNHandle _handle = null;
-	private ArrayList<NameAndListener> _repoFilters = new ArrayList<NameAndListener>();
+	private ArrayList<ContentName> _repoFilters = new ArrayList<ContentName>();
 	private ArrayList<RepositoryDataListener> _currentListeners = new ArrayList<RepositoryDataListener>();
 	private Exclude _markerFilter;
 	private CCNWriter _writer;
@@ -92,15 +91,7 @@ public class RepositoryServer implements CCNStatistics {
 	public static final int FRESHNESS = 4;	// in seconds
 		
 	protected Timer _periodicTimer = null;
-	
-	private class NameAndListener {
-		private ContentName name;
-		private CCNFilterListener listener;
-		private NameAndListener(ContentName name, CCNFilterListener listener) {
-			this.name = name;
-			this.listener = listener;
-		}
-	}
+	protected RepositoryInterestHandler _iHandler = null;
 	
 	private class InterestTimer extends TimerTask {
 
@@ -149,6 +140,7 @@ public class RepositoryServer implements CCNStatistics {
 			_repo = repo;
 			_handle = repo.getHandle();
 			_writer = new CCNWriter(_handle);
+			_iHandler = new RepositoryInterestHandler(this);
 			
 			_responseName = KeyProfile.keyName(null, _handle.keyManager().getDefaultKeyID());
 
@@ -242,25 +234,24 @@ public class RepositoryServer implements CCNStatistics {
 	
 	private void resetNameSpace() throws IOException {
 		synchronized (_repoFilters) {
-			ArrayList<NameAndListener> newIL = new ArrayList<NameAndListener>();
+			ArrayList<ContentName> newIL = new ArrayList<ContentName>();
 			synchronized (_repo.getPolicy()) {
 				ArrayList<ContentName> newNameSpace = _repo.getNamespace();
 				if (newNameSpace == null)
 					newNameSpace = new ArrayList<ContentName>();
-				ArrayList<NameAndListener> unMatchedOld = new ArrayList<NameAndListener>();
+				ArrayList<ContentName> unMatchedOld = new ArrayList<ContentName>();
 				ArrayList<ContentName> unMatchedNew = new ArrayList<ContentName>();
 				getUnMatched(_repoFilters, newNameSpace, unMatchedOld, unMatchedNew);
-				for (NameAndListener oldName : unMatchedOld) {
-					_handle.unregisterFilter(oldName.name, oldName.listener);
+				for (ContentName oldName : unMatchedOld) {
+					_handle.unregisterFilter(oldName, _iHandler);
 					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
-						Log.info(Log.FAC_REPO, "Dropping namespace {0}", oldName.name);
+						Log.info(Log.FAC_REPO, "Dropping namespace {0}", oldName);
 				}
 				for (ContentName newName : unMatchedNew) {
-					RepositoryInterestHandler iHandler = new RepositoryInterestHandler(this);
-					_handle.getNetworkManager().setInterestFilter(_handle, newName, iHandler, REPO_PREFIX_FLAGS);
+					_handle.getNetworkManager().setInterestFilter(_handle, newName, _iHandler, REPO_PREFIX_FLAGS);
 					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
 						Log.info(Log.FAC_REPO, "Adding namespace {0}", newName);
-					newIL.add(new NameAndListener(newName, iHandler));
+					newIL.add((newName));
 				}
 				_repoFilters = newIL;
 			}
@@ -279,13 +270,13 @@ public class RepositoryServer implements CCNStatistics {
 	 * @param newOut - new names which need to be registered
 	 */
 	@SuppressWarnings("unchecked")
-	private void getUnMatched(ArrayList<NameAndListener> oldIn, ArrayList<ContentName> newIn, 
-			ArrayList<NameAndListener> oldOut, ArrayList<ContentName>newOut) {
+	private void getUnMatched(ArrayList<ContentName> oldIn, ArrayList<ContentName> newIn, 
+			ArrayList<ContentName> oldOut, ArrayList<ContentName>newOut) {
 		newOut.addAll(newIn);
-		for (NameAndListener ial : oldIn) {
+		for (ContentName ial : oldIn) {
 			boolean matched = false;
 			for (ContentName name : newIn) {
-				if (ial.name.equals(name)) {
+				if (ial.equals(name)) {
 					newOut.remove(name);
 					matched = true;
 					break;
@@ -329,7 +320,7 @@ public class RepositoryServer implements CCNStatistics {
 		return _currentListeners;
 	}
 	
-	public ArrayList<NameAndListener> getFilters() {
+	public ArrayList<ContentName> getFilters() {
 		return _repoFilters;
 	}
 	
