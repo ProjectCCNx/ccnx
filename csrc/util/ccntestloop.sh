@@ -12,6 +12,23 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
+#
+# ccntestloop runs the ccnx unit tests repeatedly.
+#
+# This is intended to be run from the top level of the ccnx distribution.
+# Results of the test runs aro kept in the testdir subdirectory, which is
+# created if necessary.  However, testdir may be a symlink to another
+# directory (preferable on the same file system).  It is advisable to
+# link to some location outside of the workspace to avoid loss of test
+# results due to a "git clean" command.
+#
+# The testdir/config will be sourced as a sh script upon startup.  This allows
+# the environment variables to be set up for the next round.  Creative use
+# of this allows for such things as testing various combinations of parameters
+# on each run.
+
+test -f testdir/config && . testdir/config
+
 # Provide defaults for environment
 : ${CCN_LOG_LEVEL_ALL:=WARNING}
 : ${CCN_TEST_BRANCH:=HEAD}
@@ -32,8 +49,8 @@ Echo () {
 }
 
 Fail () {
-    Echo '***' Failed - "$*"
-    exit 1;
+	Echo '***' Failed - "$*"
+	exit 1;
 }
 
 CheckLogLevel () {
@@ -54,6 +71,7 @@ CheckLogLevel () {
 CheckDirectory () {
 	test -d javasrc || Fail $THIS is intended to be run at the top level of ccnx
 	test -d javasrc/testout && Fail javasrc/testout directory is present.
+	test -d testdir/. || mkdir testdir
 }
 
 PrintRelevantSettings () {
@@ -75,13 +93,13 @@ SaveLogs () {
 	test -d javasrc/testout || return 1
 	PrintDetails > javasrc/testout/TEST-details.txt
 	grep -e BUILD -e 'Total time.*minutes' javasrc/testout/TEST-javasrc-testlog.txt
-	mv javasrc/testout javasrc/testout.$1
+	mv javasrc/testout testdir/testout.$1
 }
 
 PruneOldLogs () {
 	Echo Pruning logs from older successful runs
 	# Leave 20 most recent successes
-	(cd javasrc; rm -rf `ls -dt testout.*[0123456789] | tail -n +20`; )
+	(cd testdir; rm -rf `ls -dt testout.*[0123456789] | tail -n +20`; )
 	true
 }
 
@@ -145,7 +163,7 @@ RunTest () {
 }
 
 LastRunNumber () {
-	ls -td javasrc/testout.* 2>/dev/null | head -n 1 | cut -d . -f 2
+	ls -td testdir/testout.* 2>/dev/null | head -n 1 | cut -d . -f 2
 }
 
 ThisRunNumber () {
@@ -179,6 +197,6 @@ fi
 
 RunTest $RUN || Fail RunTest - stopping
 Echo Run number $RUN was successful
-Echo BUILD Failure rate is `ls -d javasrc/testout*FAILED 2>/dev/null | wc -l` / $RUN
+Echo BUILD Failure rate is `ls -d testdir/testout*FAILED 2>/dev/null | wc -l` / $RUN
 sleep 2
 exec ./bin/ccntestloop || Fail exec
