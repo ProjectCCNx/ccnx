@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -200,8 +200,8 @@ public class InterestTable<V> {
 	 * @param holder
 	 */
 	protected void add(Holder<V> holder) {
-		if (_contents.containsKey(new LongestFirstContentName(holder.name()))) {
-			LongestFirstContentName name = new LongestFirstContentName(holder.name());
+		LongestFirstContentName name = new LongestFirstContentName(holder.name());
+		if (_contents.containsKey(name)) {
 			List<Holder<V>> list = _contents.get(name);
 			list.add(holder);
 			if (null != _capacity) {
@@ -221,7 +221,7 @@ public class InterestTable<V> {
 			synchronized (_contents) {
 				if (null != _capacity && _contents.size() >= _capacity)
 					_contents.remove(_contents.firstKey());
-				_contents.put(new LongestFirstContentName(holder.name()), list);
+				_contents.put(name, list);
 			}
 		}
 	}
@@ -272,7 +272,8 @@ public class InterestTable<V> {
 	protected Holder<V> removeMatchByName(ContentName name, ContentObject target) {
 		if(Log.isLoggable(Level.FINEST))
 			Log.finest("name: {0} target: {1}", name, target.name());
-		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
+		LongestFirstContentName lfcn = new LongestFirstContentName(name);
+		List<Holder<V>> list = _contents.get(lfcn);
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -281,7 +282,7 @@ public class InterestTable<V> {
 						holdIt.remove();
 						if (list.size() == 0) {
 							synchronized (_contents) {
-								_contents.remove(new LongestFirstContentName(name));
+								_contents.remove(lfcn);
 							}
 						}
 						return holder;
@@ -302,7 +303,8 @@ public class InterestTable<V> {
 	 */
 	public Entry<V> remove(ContentName name, V value) {
 		Holder<V> result = null;
-		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
+		LongestFirstContentName lfcn = new LongestFirstContentName(name);
+		List<Holder<V>> list = _contents.get(lfcn);
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -320,7 +322,7 @@ public class InterestTable<V> {
 			}
 			if (list.size() == 0) {
 				synchronized (_contents) {
-					_contents.remove(new LongestFirstContentName(name));
+					_contents.remove(lfcn);
 				}
 			}
 		}
@@ -336,7 +338,8 @@ public class InterestTable<V> {
 	 */
 	public Entry<V> remove(Interest interest, V value) {
 		Holder<V> result = null;
-		List<Holder<V>> list = _contents.get(new LongestFirstContentName(interest.name()));
+		LongestFirstContentName name = new LongestFirstContentName(interest.name());
+		List<Holder<V>> list = _contents.get(name);
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -357,7 +360,7 @@ public class InterestTable<V> {
 			}
 			if (list.size() == 0) {
 				synchronized (_contents) {
-					_contents.remove(new LongestFirstContentName(interest.name()));
+					_contents.remove(name);
 				}
 			}
 		}
@@ -366,7 +369,8 @@ public class InterestTable<V> {
 
 	protected List<Holder<V>> removeAllMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
-		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
+		LongestFirstContentName lfcn = new LongestFirstContentName(name);
+		List<Holder<V>> list = _contents.get(lfcn);
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -379,7 +383,7 @@ public class InterestTable<V> {
 			}
 			if (list.size() == 0) {
 				synchronized (_contents) {
-					_contents.remove(new LongestFirstContentName(name));
+					_contents.remove(lfcn);
 				}
 			}
 		}
