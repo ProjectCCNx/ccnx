@@ -74,8 +74,8 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 	
 	private void doTest() throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
-		putHandle.expressInterest(_interestSent, this);
 		synchronized (this) {
+			putHandle.expressInterest(_interestSent, this);
 			wait(TIMEOUT);
 		}
 		Assert.assertTrue((System.currentTimeMillis() - startTime) < TIMEOUT);
@@ -83,8 +83,8 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 
 	private void doTestFail() throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
-		putHandle.expressInterest(_interestSent, this);
 		synchronized (this) {
+			putHandle.expressInterest(_interestSent, this);
 			wait(TIMEOUT);
 		}
 		Assert.assertFalse((System.currentTimeMillis() - startTime) < TIMEOUT);

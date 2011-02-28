@@ -111,13 +111,9 @@ public class SecureKeyCache implements Serializable {
 						X509Certificate certificate = (X509Certificate)entry.getCertificate();
 						if (null != certificate) {
 							PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
-							if (null != ppkd) {
-								Log.info("KeyCache: loading signing key {0}, remembering public key in public key cache.", ppkd);
-								addMyPrivateKey(ppkd.digest(), pk);
-								publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
-							} else {
-								Log.warning("Certificate has null public key for alias " + alias + "!");
-							}
+							Log.info("KeyCache: loading signing key {0}, remembering public key in public key cache.", ppkd);
+							addMyPrivateKey(ppkd.digest(), pk);
+							publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
 						} else {
 							Log.warning("Private key for alias: " + alias + " has no certificate entry. No way to get public key. Not caching.");
 						}
@@ -302,7 +298,7 @@ public class SecureKeyCache implements Serializable {
 		_keyMap.put(id, key);
 		if (null != name) {
 			_nameKeyMap.put(name, id);
-			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} with name {1} of type (2)",
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} with name {1} of type {2}",
 					DataUtils.printHexBytes(id), name, key.getClass().getName());
 		} else {
 			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} of type {1}",

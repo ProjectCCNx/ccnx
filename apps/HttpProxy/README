@@ -1,0 +1,129 @@
+-- apps/HttpProxy/README
+
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+
+-------------------------------------------------------------------------
+This file describes the test conditions for running the CCN HttpProxy demo.
+
+First, we assume that there is a running ccnd program.  If that is not the
+case, then refer to the ccnx documentation.
+
+HttpProxy is a specialized HTTP proxy that handles a subset of the HTTP GET
+requests by converting them into CCN interests.  Those interests are then
+satisfied through the ccnd.  HttpProxy listens for HTTP GET requests on a
+given port, and has sufficient logic to serve as a proxy for browsers with
+configurable proxies (Firefox and Safari have been tested).  The subset of
+GET requests that can be handled via CCN is given as a list of permitted host
+names or host name prefixes, plus a small set of additional restrictions.
+Subrange requests are not honored.
+
+NetFetch listens for CCN interests of a particular form, and turns them into
+HTTP GET requests.  When the HTTP requests result in content, this content
+is segmented and stored into the local ccnd to satisfy the interests.  The
+NetFetch program stores whole files, and does not handle subrange requests.
+Once a file is stored it remains until deleted by the client (NetFetch does
+not delete files).
+ 
+-------------------------------------------------------------------------
+
+Ground rules.
+
+1.  Only Linux, Solaris, or Mac OS X platforms are supported.
+
+2.  There must be at least one HttpProxy server and one NetFetch server.
+    [OK for them to be on the same machine]
+
+3.  Each server running HTTPProxy or NetFetch must also run ccnd.
+
+4.  Full header (in request or reply) must be less than 16k bytes.
+
+5.  Only GET requests using HTTP will use CCN.
+
+6.  Only hosts in the HttpProxy.list file will use CCN.
+
+
+-------------------------------------------------------------------------
+
+Running tests.
+
+0.  We will use the following symbols:
+	HHH		-- the host machine running HttpProxy
+	NNN		-- the host machine running NetFetch
+	$CCNBin		-- the CCN tool binaries (such as ccnd)
+	$ProxyHome	-- the directory for HTTPProxy and NetFetch files
+	$FetchCache	-- the directory for storing files for NetFetch
+	$TestCCN	-- the CCN prefix for interests (default: TestCCN)
+
+1.  Starting ccnd
+	-- on HHH
+		$CCNBin/ccndstart
+	-- on NNN
+		$CCNBin/ccndstart
+	-- if HHH is not NNN, route ccnd demon from HHH to NNN using
+		ccndc add ccnx:/ udp NNN
+
+2.  Any HTTP source programs should use port 8080 on HHH for HTTPProxy service
+    (hint, for Firefox, use Preferences->Advanced and use Settings to set the
+    HTTPProxy to localhost, port 8080, using the Manual proxy configuration).
+
+3.  On HHH, edit $ProxyHome/HttpProxy.list to include custom cacheable prefixes,
+    or to exclude prefixes.
+
+4.  on HHH, start HTTPProxy using
+	cd $ProxyHome
+	./HttpProxy -resolveHigh >proxy.log
+
+5.  on NNN, start NetFetch using
+	cd $ProxyHome
+	./NetFetch -fsRoot $FetchCache/ >fetch.log
+
+6.  execute tests that send HTTP traffic to port 8080
+
+-------------------------------------------------------------------------
+
+Additional commands and information
+
+1.  To make a ccnd mark all content as stale, use:
+	$CCNBin/ccnrm ccnx:/
+
+2.  To delete all files cached by NetFetch, use:
+	rm -Rf $FetchCache/*
+
+-------------------------------------------------------------------------
+
+Statistics in the logs
+
+In HttpProxy, the lines of interest look like:
+
+	@25320.607, stats, req 1598, rep 1565, reads 3568, bytes 13803166, repCCN 345, readsCCN 713, bytesCCN 2078741
+
+where
+	@25320.607		-- seconds since the start of HttProxy
+	req 1598		-- HTTP requests handled
+	rep 1565		-- HTTP replies handled (incl. CCN)
+	reads 3568		-- read operations issued (incl. CCN)
+	bytes 13803166		-- bytes read (incl. CCN)
+	repCCN 345		-- HTTP replies handled via CCN
+	readsCCN 713		-- read operations via CCN
+	bytesCCN 2078741 	-- bytes read via CCN
+
+
+In NetFetch the lines of interest look like:
+
+@68197.748, changes 4082, filesCreated 438, interestsSeen 1527, segmentsPut 1424, bytesPut 4762527
+
+where
+
+	@68197.748		-- iseconds since the start of NetFetch
+	changes 4082		-- changes in state since start of NetFetch
+	filesCreated 438	-- files created
+	interestsSeen 1527	-- interests seen
+	segmentsPut 1424	-- segments put via CCN
+	bytesPut 4762527	-- bytes put via CCN
+
+The interestsSeen number includes interests expressed beyond the EOF for the
+file, and are therefore ignored.  It sometimes includes duplicate interests
+that came about through race conditions.  The segmentsPut number is the number
+of segments put via CCN, and may include some duplicates.  Duplicate replies
+are suppressed by ccnd.
+

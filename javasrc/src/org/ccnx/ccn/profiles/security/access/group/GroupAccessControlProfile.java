@@ -24,6 +24,7 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.io.content.KeyDirectory;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -215,8 +216,18 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		 * A first stab
 		 * @throws ContentEncodingException 
 		 */
-		public static byte [] contentPrefixToDistinguishingHash(ContentName name) throws ContentEncodingException {
-			byte [] fullDigest = CCNDigestHelper.digest(name.encode());
+		public static byte [] contentPrefixToDistinguishingHash(ContentName name) {
+			byte[] fullDigest;
+			byte[] encoded;
+
+			try {
+				encoded = name.encode();
+			} catch (ContentEncodingException e) {
+				// Should never happen
+				throw new RuntimeException(e);
+			}
+			fullDigest = CCNDigestHelper.digest(encoded);
+
 			// Ensure that the distinguishing hash is always exactly of length DISTINGUISHING_HASH_LENGTH
 			// to enable correct parsing of a byte[] representing a PrincipalInfo
 			if (fullDigest.length > DISTINGUISHING_HASH_LENGTH) {
@@ -229,6 +240,11 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 				return returnedDigest;
 			}
 			return fullDigest;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("%s : %s", _friendlyName, DataUtils.printHexBytes(_distinguishingHash));
 		}
 	}
 	
@@ -339,9 +355,9 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 */
 	public static ContentName groupPublicKeyName(ParameterizedName groupStorage, ContentName groupFullName) {
 		if (null != groupStorage.suffix()) {
-			return ContentName.fromNative(groupFullName.append(groupStorage.suffix()), AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+			return ContentName.fromNative(groupFullName.append(groupStorage.suffix()), KeyDirectory.GROUP_PUBLIC_KEY_NAME);
 		}
-		return ContentName.fromNative(groupFullName, AccessControlProfile.GROUP_PUBLIC_KEY_NAME);
+		return ContentName.fromNative(groupFullName, KeyDirectory.GROUP_PUBLIC_KEY_NAME);
 	}
 	
 	public static ContentName userPublicKeyName(ParameterizedName userStorage, ContentName userName) {
@@ -388,7 +404,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 */
 	public static ContentName groupPrivateKeyBlockName(ContentName groupPublicKeyNameAndVersion) {
 		return ContentName.fromNative(groupPrivateKeyDirectory(groupPublicKeyNameAndVersion), 
-				AccessControlProfile.GROUP_PRIVATE_KEY_NAME);
+				KeyDirectory.GROUP_PRIVATE_KEY_NAME);
 	}
 	
 	public static ContentName groupPointerToParentGroupName(ContentName groupFullName) {

@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -124,6 +124,7 @@ public class CCNNetworkChannel extends InputStream {
 			_ncSockChannel.register(_ncReadSelector, SelectionKey.OP_READ);
 			_ncWriteSelector = Selector.open();
 			_ncSockChannel.register(_ncWriteSelector, SelectionKey.OP_WRITE);
+			_ncLocalPort = _ncSockChannel.socket().getLocalPort();
 			//_ncSockChannel.socket().setSoLinger(true, LINGER_TIME);
 		} else {
 			throw new IOException("NetworkChannel: invalid protocol specified");
@@ -205,7 +206,7 @@ public class CCNNetworkChannel extends InputStream {
 	 */
 	public int write(ByteBuffer src) throws IOException {
 		if (! _ncConnected)
-			return -1;
+			return -1; // XXX - is this documented?
 		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST))
 			Log.finest(Log.FAC_NETMANAGER, "NetworkChannel.write() on port " + _ncLocalPort);
 		try {
@@ -214,14 +215,17 @@ public class CCNNetworkChannel extends InputStream {
 			} else {
 				// Need to handle partial writes
 				int written = 0;
-				do {
-					_ncWriteSelector.selectedKeys().clear();
-					if (_ncWriteSelector.select(SOCKET_TIMEOUT) != 0) {
-						if (! _ncConnected)
-							return -1;
-						written += _ncSockChannel.write(src);
+				while (src.hasRemaining()) {
+					if (! _ncConnected)
+						return -1;
+					int b = _ncSockChannel.write(src);
+					if (b > 0) {
+						written += b;
+					} else {
+						_ncWriteSelector.selectedKeys().clear();
+						_ncWriteSelector.select();
 					}
-				} while (src.hasRemaining());
+				}
 				return written;
 			} 
 		} catch (PortUnreachableException pue) {}
@@ -353,7 +357,7 @@ public class CCNNetworkChannel extends InputStream {
 	private int doReadIn(int position) throws IOException {
 		int ret = 0;
 		_ncReadSelector.selectedKeys().clear();
-		if (_ncReadSelector.select(SOCKET_TIMEOUT) != 0) {
+		if (_ncReadSelector.select() != 0) {
 			if (! _ncConnected)
 				return -1;
 			// Note that we must set limit first before setting position because setting

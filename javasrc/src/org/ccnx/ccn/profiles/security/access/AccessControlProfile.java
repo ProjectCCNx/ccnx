@@ -51,14 +51,6 @@ public class AccessControlProfile implements CCNProfile {
 	public static final byte [] ACCESS_CONTROL_POLICY_NAME_BYTES = ACCESS_CONTROL_POLICY_NAME.getBytes();
 	protected static final ContentName ACCESS_CONTROL_POLICY_CONTENTNAME = new ContentName(new byte [][] {ACCESS_CONTROL_POLICY_NAME_BYTES});
 
-	/**
-	 * Used by KeyDirectory
-	 */
-	public static final String SUPERSEDED_MARKER = "SupersededBy";
-	public static final String PREVIOUS_KEY_NAME = "PreviousKey";
-	public static final String GROUP_PUBLIC_KEY_NAME = "Key";
-	public static final String GROUP_PRIVATE_KEY_NAME = "PrivateKey";
-
 	protected static final ContentName ROOT_POSTFIX_NAME = new ContentName(new byte [][] {ACCESS_CONTROL_MARKER_BYTES, ROOT_NAME_BYTES});
 
 	/**
