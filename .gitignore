@@ -16,5 +16,6 @@ include
 lib/libccn.a
 Java_CCN/daemon_cmd.txt
 log
+testdir
 testdir/
 version
