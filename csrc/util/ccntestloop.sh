@@ -27,20 +27,32 @@
 # of this allows for such things as testing various combinations of parameters
 # on each run.
 
-test -f testdir/config && . testdir/config
-
-# Provide defaults for environment
-: ${CCN_LOG_LEVEL_ALL:=WARNING}
-: ${CCN_TEST_BRANCH:=HEAD}
-: ${CCN_TEST_GITCOMMAND:=`command -v git || echo :`}
-: ${MAKE:=make}
-test -d .git || CCN_TEST_GITCOMMAND=:
-export CCN_LOG_LEVEL_ALL
-export CCN_TEST_BRANCH
-export CCN_TEST_GITCOMMAND
-export MAKE
-
 THIS=$0
+
+Usage () {
+cat << EOM >&2
+usage: `basename $THIS` 
+(Must be run from the top level of a ccnx source tree.)
+EOM
+exit 1
+}
+
+GetConfiguration () {
+test -f testdir/config && . testdir/config
+}
+
+ProvideDefaults () {
+	# Provide defaults for environment
+	: ${CCN_LOG_LEVEL_ALL:=WARNING}
+	: ${CCN_TEST_BRANCH:=HEAD}
+	: ${CCN_TEST_GITCOMMAND:=`command -v git || echo :`}
+	: ${MAKE:=make}
+	test -d .git || CCN_TEST_GITCOMMAND=:
+	export CCN_LOG_LEVEL_ALL
+	export CCN_TEST_BRANCH
+	export CCN_TEST_GITCOMMAND
+	export MAKE
+}
 
 # Say things to both stdout and stderr so that output may be captured with tee.
 Echo () {
@@ -70,7 +82,10 @@ CheckLogLevel () {
 
 CheckDirectory () {
 	test -d javasrc || Fail $THIS is intended to be run at the top level of ccnx
-	test -d javasrc/testout && Fail javasrc/testout directory is present.
+	test -d javasrc/testout               && \
+	  rm -rf javasrc/testout~             && \
+	  mv javasrc/testout javasrc/testout~ && \
+	  Echo WARNING: existing javasrc/testout renamed to javasrc/testout~
 	test -d testdir/. || mkdir testdir
 }
 
@@ -83,6 +98,7 @@ PrintRelevantSettings () {
 
 PrintDetails () {
 	uname -a
+	set | grep ^CCN
 	$CCN_TEST_GITCOMMAND rev-list --max-count=1 HEAD
 	$CCN_TEST_GITCOMMAND status
 	$CCN_TEST_GITCOMMAND diff
@@ -126,7 +142,7 @@ Rebuild () {
 	Echo Building for run $1
 	LOG=javasrc/testout/TEST-buildlog.txt
 	mkdir -p javasrc/testout
-	(./configure && $MAKE; ) 2>&1 > $LOG && return 0
+	(./configure && $MAKE; ) > $LOG 2>&1 && return 0
 	tail $LOG
 	Echo build failed
 	return 1
@@ -134,22 +150,26 @@ Rebuild () {
 
 RunCTest () {
 	local LOG;
+	test "$CCN_CTESTS" = "NO" && return 0
 	Echo Running csrc tests...
 	LOG=javasrc/testout/TEST-csrc-testlog.txt
 	mkdir -p javasrc/testout
-	( cd csrc && $MAKE test 2>&1 ) > $LOG && return 0
+	( cd csrc && $MAKE test TESTS="$CCN_CTESTS" 2>&1 ) > $LOG && return 0
 	tar cf javasrc/testout/csrc-tests.tar csrc/tests
 	gzip javasrc/testout/csrc-tests.tar
-	tail $LOG
 	Echo csrc tests failed
 	return 1
 }
 
 RunJavaTest () {
 	local LOG;
+	test -z "${CCN_JAVATESTS}" && return 0
+	test "${CCN_JAVATESTS}" = "NO" && return 0
 	Echo Running javasrc tests...
 	LOG=javasrc/testout/TEST-javasrc-testlog.txt
-	(cd javasrc && ant -DCHATTY=${CCN_LOG_LEVEL_ALL} test; ) > $LOG && return 0
+	(cd javasrc && \
+	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL} "${CCN_JAVATESTS:-test}"; ) > $LOG \
+	  && return 0
 	tail $LOG
 	Echo javasrc tests failed
 	return 1
@@ -171,14 +191,17 @@ ThisRunNumber () {
 }
 
 # Finally, here's what we actually want to do
+GetConfiguration
 
-CheckLogLevel
+ProvideDefaults
 
 CheckDirectory
 
+CheckLogLevel
+
 RUN=`ThisRunNumber`
 
-PrintRelevantSettings
+# PrintRelevantSettings
 
 UpdateSources $RUN
 
