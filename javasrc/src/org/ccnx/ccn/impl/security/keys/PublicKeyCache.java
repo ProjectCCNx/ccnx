@@ -172,8 +172,11 @@ public class PublicKeyCache {
 
 		try {
 			FileOutputStream fos = new FileOutputStream(keyFile);
-			fos.write(keyObject.publicKey().getEncoded());
-			fos.close();
+			try {
+				fos.write(keyObject.publicKey().getEncoded());
+			} finally {
+				fos.close();
+			}
 		} catch (Exception e) {
 			Log.info("recordKeyToFile: cannot record key: " + id.toString() + " to file " + keyFile.getAbsolutePath() + " error: " + e.getClass().getName() + ": " + e.getMessage());
 			return;

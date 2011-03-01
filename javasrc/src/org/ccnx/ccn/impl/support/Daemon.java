@@ -306,11 +306,13 @@ public class Daemon {
 		File tempFile = getRMITempFile(daemon.daemonName());
 
 		ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(tempFile));
-
-		out.writeObject(stub);
-		out.flush();
-		out.close();
-
+		try {
+			out.writeObject(stub);
+			out.flush();
+		} finally {
+			out.close();
+		}
+		
 		// always use name without PID at first, will rename
 		// when startloop() message comes along.  This allows
 		// the controlling starter process to communicate
@@ -410,9 +412,12 @@ public class Daemon {
 		
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DUMP_DAEMONCMD)) {
 			FileOutputStream fos = new FileOutputStream("daemon_cmd.txt");
-			fos.write(cmd.getBytes());
-			fos.flush();
-			fos.close();
+			try {
+				fos.write(cmd.getBytes());
+				fos.flush();
+			} finally {
+				fos.close();
+			}
 		}
 		Log.info("Starting daemon with command line: " + cmd);
 		
@@ -437,19 +442,27 @@ public class Daemon {
 				
 				// this should throw an exception
 				try {
+					byte[] childMsgBytes;
+					String childOutput = null;
 					InputStream childMsgs = child.getErrorStream();
-					int exitValue = child.exitValue();
-					// if we get here, the child has exited
-					Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
-					System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
-					byte[] childMsgBytes = new byte[childMsgs.available()];
-					childMsgs.read(childMsgBytes);;
-					String childOutput = new String(childMsgBytes);
-					childMsgs = child.getInputStream();
-					childMsgBytes = new byte[childMsgs.available()];
-					childMsgs.read(childMsgBytes);
-					childOutput += new String(childMsgBytes);
-					System.err.println("Messages from the child were: \"" + childOutput + "\"");
+					try {
+						int exitValue = child.exitValue();
+						// if we get here, the child has exited
+						Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
+						System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
+						childMsgBytes = new byte[childMsgs.available()];
+						childMsgs.read(childMsgBytes);;
+						childOutput = new String(childMsgBytes);
+						childMsgs.close();
+
+						childMsgs = child.getInputStream();
+						childMsgBytes = new byte[childMsgs.available()];
+						childMsgs.read(childMsgBytes);
+						childOutput += new String(childMsgBytes);
+						System.err.println("Messages from the child were: \"" + childOutput + "\"");
+					} finally {
+						childMsgs.close();
+					}
 					return;
 				} catch (IllegalThreadStateException e) {
 				}
@@ -459,8 +472,14 @@ public class Daemon {
 		}
 
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, null)));
-		DaemonListener l = (DaemonListener)in.readObject();
-
+		DaemonListener l;
+		
+		try {
+			l = (DaemonListener)in.readObject();
+		} finally {
+			in.close();
+		}
+		
 		String childpid = null;
 		childpid = l.startLoop();
 		System.out.println("Started daemon " + daemonName + "." + (null == childpid ? "" : " PID " + childpid));
@@ -498,10 +517,14 @@ public class Daemon {
 
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, pid)));
 
-		DaemonListener l = (DaemonListener)in.readObject();		
-
-		in.close();
-
+		DaemonListener l;
+		
+		try {
+			l = (DaemonListener)in.readObject();		
+		} finally {
+			in.close();
+		}
+		
 		try {
 			l.shutDown();
 			System.out.println("Daemon " + daemonName + " is shut down.");
@@ -526,10 +549,12 @@ public class Daemon {
 		}
 
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, pid)));
-
-		DaemonListener l = (DaemonListener)in.readObject();		
-
-		in.close();
+		DaemonListener l;
+		try {
+			l = (DaemonListener)in.readObject();		
+		} finally {
+			in.close();
+		}
 
 		try {
 			if (l.signal(sigName)) {
@@ -730,10 +755,12 @@ public class Daemon {
 		}
 
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, _pid)));
-
-		DaemonListener l = (DaemonListener)in.readObject();		
-
-		in.close();
+		DaemonListener l;
+		try {
+			l = (DaemonListener)in.readObject();		
+		} finally {
+			in.close();
+		}
 		
 		return l.status(type);
 	}
