@@ -76,6 +76,8 @@ public class FileBinaryXMLDictionary extends BinaryXMLDictionary {
 			throw new IOException("BinaryXMLDictionary: getResourceAsStream cannot open resource file: " + dictionaryFile + ".");
 		}
 		loadDictionary(in);
+		
+		in.close();
 	}
 	
 	protected void loadDictionary(InputStream in) throws IOException {

@@ -212,12 +212,15 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 				long ms = System.currentTimeMillis();
 				File tempFile = new File("data_" + Long.toString(ms) + ".ccnb");
 				FileOutputStream fos = new FileOutputStream(tempFile);
-				byte buf[] = new byte[1024];
-				while (_istream.available() > 0) {
-					int count = _istream.read(buf);
-					fos.write(buf,0, count);
+				try {
+					byte buf[] = new byte[1024];
+					while (_istream.available() > 0) {
+						int count = _istream.read(buf);
+						fos.write(buf,0, count);
+					}
+				} finally {
+					fos.close();
 				}
-				fos.close();
 				_istream.reset();
 				Log.info("BinaryXMLDecoder: exception in peekStartElement, dumping offending object to file: " + tempFile.getAbsolutePath());
 				throw e;
@@ -282,12 +285,15 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 				long ms = System.currentTimeMillis();
 				File tempFile = new File("data_" + Long.toString(ms) + ".ccnb");
 				FileOutputStream fos = new FileOutputStream(tempFile);
-				byte buf[] = new byte[1024];
-				while (_istream.available() > 0) {
-					int count = _istream.read(buf);
-					fos.write(buf,0, count);
+				try {
+					byte buf[] = new byte[1024];
+					while (_istream.available() > 0) {
+						int count = _istream.read(buf);
+						fos.write(buf,0, count);
+					}
+				} finally {
+					fos.close();
 				}
-				fos.close();
 				_istream.reset();
 				Log.info("BinaryXMLDecoder: exception in peekStartElement, dumping offending object to file: " + tempFile.getAbsolutePath());
 				throw e;

@@ -20,6 +20,7 @@ package org.ccnx.ccn.impl.repo;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
@@ -140,7 +141,16 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 
 		if (null != policyFile) {
 			try {
-				_policy.updateFromInputStream(new FileInputStream(policyFile));
+				FileInputStream fis = new FileInputStream(policyFile);
+				try {
+					_policy.updateFromInputStream(fis);
+				} finally {
+					try {
+						fis.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
 			} catch (FileNotFoundException e) {
 				throw new RepositoryException(e.getMessage());
 			}
