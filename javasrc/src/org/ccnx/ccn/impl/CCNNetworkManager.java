@@ -1372,7 +1372,8 @@ public class CCNNetworkManager implements Runnable {
 					} catch (RejectedExecutionException ree) {
 						// TODO - we should probably do something smarter here
 						Log.severe("Dispatch thread overflow!!");
-					}				}
+					}				
+				}
 			}
 		}
 	}
