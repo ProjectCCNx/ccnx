@@ -493,6 +493,8 @@ public class CCNNetworkManager implements Runnable {
 				return true;
 			} else {
 				// Data is already pending, this interest is already consumed, cannot add obj
+				_stats.increment(StatsEnum.ContentObjectsIgnored);
+				Log.warning("{0} is not handled - data already pending", obj);
 				return false;
 			}
 		}
@@ -1452,6 +1454,8 @@ public class CCNNetworkManager implements Runnable {
 		ReceiveObject ("objects", "Receive count of ContentObjects from channel"),
 		ReceiveInterest ("interests", "Receive count of Interests from channel"),
 		ReceiveUnknown ("calls", "Receive count of unknown type from channel"),
+		
+		ContentObjectsIgnored ("ContentObjects", "The number of ContentObjects that are never handled"),
 		;
 
 		// ====================================
