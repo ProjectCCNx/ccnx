@@ -28,6 +28,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -131,7 +132,7 @@ public class CCNNetworkManager implements Runnable {
 	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
 	protected PrefixRegistrationManager _prefixMgr = null;
 	protected Timer _periodicTimer = null;
-	protected boolean _timersSetup = false;
+	protected Boolean _timersSetup = false;
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes 
 	= new TreeMap<ContentName, RegisteredPrefix>();
 
@@ -336,17 +337,19 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws IOException 
 	 */
 	private void setupTimers() throws IOException {
-		if (!_timersSetup) {
-			_timersSetup = true;
-			_channel.init();
-			if (_protocol == NetworkProtocol.UDP) {
-				_channel.heartbeat();
-				_lastHeartbeat = System.currentTimeMillis();
+		synchronized (_timersSetup) {
+			if (!_timersSetup) {
+				_timersSetup = true;
+				_channel.init();
+				if (_protocol == NetworkProtocol.UDP) {
+					_channel.heartbeat();
+					_lastHeartbeat = System.currentTimeMillis();
+				}
+				
+				// Create timer for periodic behavior
+				_periodicTimer = new Timer(true);
+				_periodicTimer.schedule(new PeriodicWriter(), PERIOD);
 			}
-			
-			// Create timer for periodic behavior
-			_periodicTimer = new Timer(true);
-			_periodicTimer.schedule(new PeriodicWriter(), PERIOD);
 		}
 	}
 
@@ -493,6 +496,8 @@ public class CCNNetworkManager implements Runnable {
 				return true;
 			} else {
 				// Data is already pending, this interest is already consumed, cannot add obj
+				_stats.increment(StatsEnum.ContentObjectsIgnored);
+				Log.warning("{0} is not handled - data already pending", obj);
 				return false;
 			}
 		}
@@ -782,6 +787,7 @@ public class CCNNetworkManager implements Runnable {
 		// Create callback threadpool and main processing thread
 		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
 		_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
+		_threadpool.setMaximumPoolSize(SystemConfiguration.MAX_DISPATCH_THREADS);
 		_thread = new Thread(this, "CCNNetworkManager");
 		_thread.start();
 	}
@@ -1339,8 +1345,14 @@ public class CCNNetworkManager implements Runnable {
 				if (filter.owner != ireg.owner) {
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 						Log.finer(Log.FAC_NETMANAGER, "Schedule delivery for interest: {0}", ireg.interest);
-					if (filter.add(ireg.interest))
-						_threadpool.execute(filter);
+					if (filter.add(ireg.interest)) {
+						try {
+							_threadpool.execute(filter);
+						} catch (RejectedExecutionException ree) {
+							// TODO - we should probably do something smarter here
+							Log.severe("Dispatch thread overflow!!");
+						}
+					}
 				}
 			}
 		}
@@ -1357,7 +1369,12 @@ public class CCNNetworkManager implements Runnable {
 			for (InterestRegistration ireg : _myInterests.getValues(co)) {
 				if (ireg.add(co)) { // this is a copy of the data
 					_stats.increment(StatsEnum.DeliverContentMatchingInterests);
-					_threadpool.execute(ireg);
+					try {
+						_threadpool.execute(ireg);
+					} catch (RejectedExecutionException ree) {
+						// TODO - we should probably do something smarter here
+						Log.severe("Dispatch thread overflow!!");
+					}				
 				}
 			}
 		}
@@ -1452,6 +1469,8 @@ public class CCNNetworkManager implements Runnable {
 		ReceiveObject ("objects", "Receive count of ContentObjects from channel"),
 		ReceiveInterest ("interests", "Receive count of Interests from channel"),
 		ReceiveUnknown ("calls", "Receive count of unknown type from channel"),
+		
+		ContentObjectsIgnored ("ContentObjects", "The number of ContentObjects that are never handled"),
 		;
 
 		// ====================================
