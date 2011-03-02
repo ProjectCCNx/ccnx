@@ -450,6 +450,11 @@ public class Daemon {
 					StringWriter sw = new StringWriter();
 					try {
 						InputStream childMsgs;
+						
+						// This code will never do anything.  we used pb.redirectErrorStream(true), so
+						// stderr goes to stdout and the above we redirect stdout to outputFile or to
+						// /dev/null.
+						// XXX DEAD CODE
 						childMsgs = child.getErrorStream();
 						try {
 							DataUtils.copyStreamToWriter(childMsgs, sw);
