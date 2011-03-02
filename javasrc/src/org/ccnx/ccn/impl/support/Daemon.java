@@ -29,6 +29,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.io.Serializable;
+import java.io.StringWriter;
 import java.rmi.NoSuchObjectException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
@@ -442,27 +443,28 @@ public class Daemon {
 				
 				// this should throw an exception
 				try {
-					byte[] childMsgBytes;
-					String childOutput = null;
-					InputStream childMsgs = child.getErrorStream();
-					try {
-						int exitValue = child.exitValue();
-						// if we get here, the child has exited
-						Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
-						System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
-						childMsgBytes = new byte[childMsgs.available()];
-						childMsgs.read(childMsgBytes);;
-						childOutput = new String(childMsgBytes);
-						childMsgs.close();
+					int exitValue = child.exitValue();
+					Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
+					System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 
-						childMsgs = child.getInputStream();
-						childMsgBytes = new byte[childMsgs.available()];
-						childMsgs.read(childMsgBytes);
-						childOutput += new String(childMsgBytes);
-						System.err.println("Messages from the child were: \"" + childOutput + "\"");
+					StringWriter sw = new StringWriter();
+					try {
+						InputStream childMsgs;
+						childMsgs = child.getErrorStream();
+						try {
+							DataUtils.copyStreamToWriter(childMsgs, sw);
+							childMsgs.close();
+							
+							childMsgs = child.getInputStream();
+							DataUtils.copyStreamToWriter(childMsgs, sw);
+						} finally {
+							childMsgs.close();
+						}
+						System.err.println("Messages from the child were: \"" + sw.getBuffer().toString() + "\"");
 					} finally {
-						childMsgs.close();
+						sw.close();
 					}
+					// This exits startDaemon
 					return;
 				} catch (IllegalThreadStateException e) {
 				}
