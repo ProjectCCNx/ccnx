@@ -1292,6 +1292,8 @@ public class CCNNetworkManager implements Runnable {
 			try {
 				XMLEncodable packet = _channel.getPacket();
 				if (null == packet) {
+					if (_channel.isConnected())
+						reregisterPrefixes();
 					continue;
 				}
 				
@@ -1418,9 +1420,7 @@ public class CCNNetworkManager implements Runnable {
 				_registeredPrefixes.clear();
 				_registeredPrefixes.putAll(newPrefixes);
 			}
-		} catch (CCNDaemonException cde) {
-			_channel.close();
-		}
+		} catch (CCNDaemonException cde) {}
 	}	
 	
 	// ==============================================================
