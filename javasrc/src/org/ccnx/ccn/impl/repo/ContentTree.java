@@ -652,7 +652,17 @@ public class ContentTree {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
 					Log.finer(Log.FAC_REPO, "the new version doesn't match, no response needed: interest = {0} would be collection name: {1}", interest, potentialCollectionName);
 				}
-				parent.interestFlag = true;
+				
+				//I am not supposed to respond...  is that because of the version or because I am specifically excluded?
+				 if (interest.exclude().match(responseName.components().get(0))) {
+					 Log.finer(Log.FAC_REPO, "my repo is explictly excluded!  not setting interestFlag to true");
+					 //do not set interest flag!  I wasn't supposed to respond
+				 } else {
+					 if (interest.exclude().match(new CCNTime(parent.timestamp).toBinaryTime())) {
+						 Log.finer(Log.FAC_REPO, "my version is just excluded, setting interestFlag to true");
+						 parent.interestFlag = true;
+					 }
+				 }
 				return null;
 			}
 
