@@ -637,8 +637,7 @@ public class ContentTree {
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
 			//first add the NE marker
-		    ContentName potentialCollectionName = 
-		    	new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+		    ContentName potentialCollectionName = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 		    //now add the response id
 		    potentialCollectionName = new ContentName(potentialCollectionName, responseName.components());
 		    //now finish up with version and segment
