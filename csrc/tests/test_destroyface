@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -42,9 +42,11 @@ cat destroyface.ccnb | ccnput -f -x 30 /$REQNAME
 ccnslurp /$REQNAME
 
 # Pull it out to use in the destroyface request.  Base-64 encode it for the benefit of the shell.
-DFBLOB="`ccnrm -o - /$REQNAME | openssl enc -base64`"
+DFBLOB="`ccnget /$REQNAME | openssl enc -base64`"
 
 echo DFBLOB is $DFBLOB >&2
+
+test -z "$DFBLOB" && Failed forming DFBLOB
 
 # Now construct the interest.
 
