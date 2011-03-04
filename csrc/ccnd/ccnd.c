@@ -2796,7 +2796,8 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     unsigned moreflags;
     unsigned lastfaceid;
     unsigned namespace_flags;
-    unsigned tap_or_last = (1 << 31); /* synthesized locally */
+    /* tap_or_last flag bit is used only in this procedure */
+    unsigned tap_or_last = (1U << 31);
 
     x = npe->forward_to;
     if (x == NULL)
