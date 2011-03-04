@@ -326,7 +326,10 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener, CCNI
 		
 		if (interest.exclude()!=null) {
 			Assert.assertFalse(firstResponse);
-			Assert.assertFalse(!data.name().contains(responseName.component(0)));
+			if (responseName == null)
+				Assert.fail("responseName is null, this is not the first response and it should not be null");
+			else
+				Assert.assertFalse(!data.name().contains(responseName.component(0)));
 		} else {
 			firstResponse = false;
 		}
