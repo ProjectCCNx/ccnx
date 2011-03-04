@@ -134,7 +134,6 @@ public class RepositoryDaemon extends Daemon {
 						Level level = Level.parse(args[i + 1]);
 						Log.setLevel(level);	// XXX should level mean this or just FAC_REPO?
 						Log.setLevel(Log.FAC_REPO, level);
-						Log.setLevel(Log.FAC_NETMANAGER, Level.FINEST);
 					} catch (IllegalArgumentException iae) {
 						usage();
 						return;
