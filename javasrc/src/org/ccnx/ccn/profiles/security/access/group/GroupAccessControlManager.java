@@ -40,11 +40,13 @@ import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import static org.ccnx.ccn.impl.support.Log.*;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
+import org.ccnx.ccn.io.content.KeyDirectory;
 import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
@@ -228,7 +230,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	private ArrayList<ParameterizedName> _userStorage = new ArrayList<ParameterizedName>();
 	private TreeMap<byte[], ParameterizedName> _hashToUserStorageMap = new TreeMap<byte[], ParameterizedName>(byteArrayComparator);
 	private ArrayList<GroupManager> _groupManager = new ArrayList<GroupManager>();
-	static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
+	protected static Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 	private TreeMap<byte[], GroupManager> hashToGroupManagerMap = new TreeMap<byte[], GroupManager>(byteArrayComparator);
 	private HashMap<ContentName, GroupManager> prefixToGroupManagerMap = new HashMap<ContentName, GroupManager>();
 	private HashSet<ContentName> _myIdentities = new HashSet<ContentName>();
@@ -348,8 +350,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 		return true;
 	}
 
-	public GroupManager groupManager() throws Exception {
-		if (_groupManager.size() > 1) throw new Exception("A group manager can only be retrieved by name when there are more than one.");
+	public GroupManager groupManager() {
+		if (_groupManager.size() > 1) throw new RuntimeException("A group manager can only be retrieved by name when there are more than one.");
 		return _groupManager.get(0); 	
 	}
 	
@@ -358,7 +360,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		registerGroupStorage(pName);
 	}
 	
-	public void registerGroupStorage(ParameterizedName pName) throws IOException {
+	public void registerGroupStorage(ParameterizedName pName) {
 		GroupManager gm = new GroupManager(this, pName, _handle);
 		_groupManager.add(gm);
 		byte[] distinguishingHash = GroupAccessControlProfile.PrincipalInfo.contentPrefixToDistinguishingHash(pName.prefix());
@@ -371,7 +373,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		registerUserStorage(pName);
 	}
 	
-	public void registerUserStorage(ParameterizedName userStorage) throws ContentEncodingException {
+	public void registerUserStorage(ParameterizedName userStorage) {
 		_userStorage.add(userStorage);
 		_hashToUserStorageMap.put(PrincipalInfo.contentPrefixToDistinguishingHash(userStorage.prefix()), userStorage);
 	}
@@ -949,7 +951,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 		// need to mangl stored key name into superseded block name, need to wrap
 		// in ourEffNodeKeyFromParent, make sure stored key id points up to our ENKFP.storedKeyName()
-		KeyDirectory.addSupersededByBlock(nk.storedNodeKeyName(), nk.nodeKey(), 
+		PrincipalKeyDirectory.addSupersededByBlock(nk.storedNodeKeyName(), nk.nodeKey(), 
 				ourEffectiveNodeKeyFromParent.storedNodeKeyName(), 
 				ourEffectiveNodeKeyFromParent.storedNodeKeyID(),
 				effectiveParentNodeKey.nodeKey(), handle());
@@ -999,7 +1001,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// is add key blocks for them, not update the node key. (And it means
 		// we have a node key for this node.)
 		// Wait to save the new ACL till we are sure we're allowed to do this.
-		KeyDirectory keyDirectory = null;
+		PrincipalKeyDirectory keyDirectory = null;
 		try {
 			// If we can't read the node key, we can't update. Get the effective node key.
 			// Better be a node key here... and we'd better be allowed to read it.
@@ -1011,7 +1013,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 				throw new AccessDeniedException("Cannot read the latest node key for " + nodeName);
 			}
 
-			keyDirectory = new KeyDirectory(this, latestNodeKey.storedNodeKeyName(), handle());
+			keyDirectory = new PrincipalKeyDirectory(this, latestNodeKey.storedNodeKeyName(), handle());
 
 			for (Link principal : newReaders) {
 				PublicKeyObject latestKey = getLatestKeyForPrincipal(principal);
@@ -1292,7 +1294,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	ContentDecodingException, IOException, NoSuchAlgorithmException {
 
 		NodeKey nk = null;
-		KeyDirectory keyDirectory = null;
+		PrincipalKeyDirectory keyDirectory = null;
 		try {
 			
 			// First thing to do -- try cache directly before we even consider enumerating.
@@ -1300,7 +1302,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 
 			if (null == targetKey) {
 				// start enumerating; if we get a cache hit don't need it, but just in case.
-				keyDirectory = new KeyDirectory(this, nodeKeyName, handle());
+				keyDirectory = new PrincipalKeyDirectory(this, nodeKeyName, handle());
 
 				// this will handle the caching.
 				targetKey = keyDirectory.getUnwrappedKey(nodeKeyIdentifier);
@@ -1402,6 +1404,8 @@ public class GroupAccessControlManager extends AccessControlManager {
 	public NodeKey getFreshEffectiveNodeKey(ContentName nodeName) 
 	throws AccessDeniedException, InvalidKeyException, ContentDecodingException, 
 	ContentEncodingException, ContentNotReadyException, ContentGoneException, IOException, NoSuchAlgorithmException {
+		Log.finest(FAC_ACCESSCONTROL, "GACM.getFreshEffectiveNodeKey");
+
 		NodeKey nodeKey = findAncestorWithNodeKey(nodeName);
 		if (null == nodeKey) {
 			throw new AccessDeniedException("Cannot retrieve node key for node: " + nodeName + ".");
@@ -1459,7 +1463,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 	 */
 	public boolean nodeKeyIsDirty(ContentName theNodeKeyName) throws ContentDecodingException, IOException {
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINE)) {
-			Log.fine(Log.FAC_ACCESSCONTROL, "NodeKeyIsDirty called.");
+			Log.fine(Log.FAC_ACCESSCONTROL, "NodeKeyIsDirty({0}) called.", theNodeKeyName);
 		}
 
 		// first, is this a node key name?
@@ -1468,14 +1472,11 @@ public class GroupAccessControlManager extends AccessControlManager {
 			theNodeKeyName = GroupAccessControlProfile.nodeKeyName(theNodeKeyName);
 		}
 		// get the requested version of this node key; or if unversioned, get the latest.
-		KeyDirectory nodeKeyDirectory = null;
+		PrincipalKeyDirectory nodeKeyDirectory = null;
 		try {
-			nodeKeyDirectory = new KeyDirectory(this, theNodeKeyName, handle());
+			nodeKeyDirectory = new PrincipalKeyDirectory(this, theNodeKeyName, handle());
 			nodeKeyDirectory.waitForChildren();
 
-			if (null == nodeKeyDirectory) {
-				throw new IOException("Cannot get node key directory for : " + theNodeKeyName);
-			}
 			if (nodeKeyDirectory.hasSupersededBlock()) {
 				return true;
 			}
@@ -1652,7 +1653,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// But the data key is wrapped in the previous node key that was at this node prior to the ACL interposition.
 		// So we need to retrieve the previous node key, which was wrapped with KeyDirectory.addPreviousKeyBlock 
 		// at the time the ACL was interposed.
-		ContentName previousKeyName = ContentName.fromNative(currentNodeKey.storedNodeKeyName(), GroupAccessControlProfile.PREVIOUS_KEY_NAME);
+		ContentName previousKeyName = ContentName.fromNative(currentNodeKey.storedNodeKeyName(), KeyDirectory.PREVIOUS_KEY_NAME);
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 			Log.finer(Log.FAC_ACCESSCONTROL, "getNodeKeyUsingInterposedACL: retrieving previous key at {0}", previousKeyName);
 		}
@@ -1709,7 +1710,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// Now, wrap it under the keys listed in its ACL.
 
 		// Make a key directory. If we give it a versioned name. Don't start enumerating; we don't need to.
-		KeyDirectory nodeKeyDirectory = new KeyDirectory(this, nodeKeyDirectoryName, false, handle());
+		PrincipalKeyDirectory nodeKeyDirectory = new PrincipalKeyDirectory(this, nodeKeyDirectoryName, false, handle());
 		NodeKey theNodeKey = new NodeKey(nodeKeyDirectoryName, nodeKey);
 
 		// Add a key block for every reader on the ACL. As managers and writers can read, they are all readers.
@@ -1787,7 +1788,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 					nodeKeyDirectory.waitForChildren();
 					nodeKeyDirectory.addPreviousKeyLink(oldEffectiveNodeKey.storedNodeKeyName(), null);
 					// OK, just add superseded-by block to the old directory.
-					KeyDirectory.addSupersededByBlock(
+					PrincipalKeyDirectory.addSupersededByBlock(
 							oldEffectiveNodeKey.storedNodeKeyName(), oldEffectiveNodeKey.nodeKey(), 
 							theNodeKey.storedNodeKeyName(), theNodeKey.storedNodeKeyID(), theNodeKey.nodeKey(), handle());
 				}

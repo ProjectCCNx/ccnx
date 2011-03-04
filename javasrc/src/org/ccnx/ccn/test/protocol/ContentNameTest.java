@@ -1,7 +1,7 @@
 /**
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -82,6 +82,7 @@ public class ContentNameTest {
 	public String withQuery = "/abc/def/q?foo=bar";
 	public String withFragment = "/abc/def/ghi#rst";
 	public String withQueryAndFragment = "/abc/def/qr?st=bat#notch";
+	public String veryEscapedName = "ccnx:/test/%C1.%77%00A%8C%B4B%8D%0A%AC%8E%14%8C%07%88%E4%E2%3Dn/%23%00%19/%C1.%76%00t%DF%F63/%FE%23/%C1.M.K%00%1E%90%EAh%E9%FB%AE%A3%9E%17F%20%CF%AB%A0%29%E9%DE%FAZ%DCA%FBZ%F5%DD%F5A%D2%D7%9F%D1/%FD%04%CB%F5qR%7B/%00";
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -536,5 +537,50 @@ public class ContentNameTest {
 		assertEquals(large.compareTo(middle), 1);
 		
 	}
-
+	
+	@Test
+	public void testContentNameParsePerformance() {
+		ContentName name = null;
+		long loops = 0;
+		long elapsed = 0;
+		int i;
+		while (elapsed < 1000) // run for about 1s elapsed
+		try {
+			long time = System.currentTimeMillis();
+			for (i = 0; i < 10000; i++) {
+				name = ContentName.fromURI(veryEscapedName);
+			}
+			elapsed += System.currentTimeMillis() - time;
+			loops += i;
+		}catch (MalformedContentNameStringException e) {
+			name = null;
+		}
+		System.out.println("Executed "+ loops + " ContentName.fromURI in " + elapsed + " ms; " + ((loops * 1000) / elapsed) + "/s");
+		assertNotNull(name);
+	}
+	
+	@Test
+	public void testContentNamePrintPerformance() {
+		ContentName name;
+		String nameString = null;
+		long loops = 0;
+		long elapsed = 0;
+		int i;
+		try {
+				name = ContentName.fromURI(veryEscapedName);
+		} catch (MalformedContentNameStringException e) {
+			name = null;
+		}
+		assertNotNull(name);
+		while (elapsed < 1000) { // run for about 1s elapsed
+			long time = System.currentTimeMillis();
+			for (i = 0; i < 10000; i++) {
+				nameString = name.toString();
+			}
+			elapsed += System.currentTimeMillis() - time;
+			loops += i;
+		}
+		System.out.println("Testing with " + nameString);
+		System.out.println("Executed "+ loops + " ContentName.toString() in " + elapsed + " ms; " + ((loops * 1000) / elapsed) + "/s");
+	}
 }

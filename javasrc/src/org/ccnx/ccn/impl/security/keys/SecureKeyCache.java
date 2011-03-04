@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -111,13 +111,9 @@ public class SecureKeyCache implements Serializable {
 						X509Certificate certificate = (X509Certificate)entry.getCertificate();
 						if (null != certificate) {
 							PublisherPublicKeyDigest ppkd = new PublisherPublicKeyDigest(certificate.getPublicKey());
-							if (null != ppkd) {
-								Log.info("KeyCache: loading signing key {0}, remembering public key in public key cache.", ppkd);
-								addMyPrivateKey(ppkd.digest(), pk);
-								publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
-							} else {
-								Log.warning("Certificate has null public key for alias " + alias + "!");
-							}
+							Log.info("KeyCache: loading signing key {0}, remembering public key in public key cache.", ppkd);
+							addMyPrivateKey(ppkd.digest(), pk);
+							publicKeyCache.remember(certificate, keyStoreInfo.getVersion());
 						} else {
 							Log.warning("Private key for alias: " + alias + " has no certificate entry. No way to get public key. Not caching.");
 						}
@@ -302,7 +298,7 @@ public class SecureKeyCache implements Serializable {
 		_keyMap.put(id, key);
 		if (null != name) {
 			_nameKeyMap.put(name, id);
-			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} with name {1} of type (2)",
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} with name {1} of type {2}",
 					DataUtils.printHexBytes(id), name, key.getClass().getName());
 		} else {
 			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: adding key {0} of type {1}",
@@ -412,7 +408,7 @@ public class SecureKeyCache implements Serializable {
 		}
 		Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: {0} keys in _privateKeyMap ", _privateKeyMap.size());
 		for (ContentName cn: _nameKeyMap.keySet()) {
-			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: privateKeyMap contains a key with name {0} and hash {1}", 
+			Log.info(Log.FAC_ACCESSCONTROL, "SecureKeyCache: _nameKeyMap contains a key with name {0} and hash {1}", 
 					cn, DataUtils.printHexBytes(_nameKeyMap.get(cn)));
 		}
 		

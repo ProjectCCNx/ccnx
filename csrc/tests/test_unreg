@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -19,6 +19,9 @@ test -f newface-response.ccnb || SkipTest missing newface-response.ccnb, need to
 
 FACEID=`ccnbx -d newface-response.ccnb Content | ccnbx -d - FaceID` || Fail
 echo FACEID=$FACEID
+i
+# We have the CCNDID of our ccnd in a file, left from test_ccndid
+CCNDID=`cat ccndid.out`
 
 # Create the body of a unreg request.
 ccn_xmltoccnb -w - <<EOF >unreg.ccnb
@@ -27,6 +30,7 @@ ccn_xmltoccnb -w - <<EOF >unreg.ccnb
   <Name>
      <Component ccnbencoding="text">Junk</Component>
   </Name>
+  <PublisherPublicKeyDigest ccnbencoding="hexBinary">$CCNDID</PublisherPublicKeyDigest>
   <FaceID>$FACEID</FaceID>  
 </ForwardingEntry>
 EOF
@@ -39,9 +43,6 @@ cat unreg.ccnb | ccnput -f -x 30 /$TNAME
 PRBLOB="`ccnget /$TNAME | openssl enc -base64`"
 
 echo PRBLOB is $PRBLOB >&2
-
-# We have the CCNDID of our ccnd in a file, left from test_ccndid
-CCNDID=`cat ccndid.out`
 
 # Now construct the interest.
 

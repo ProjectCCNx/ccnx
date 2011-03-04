@@ -33,8 +33,6 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.KeyManager;
-import org.ccnx.ccn.config.PlatformConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -361,7 +359,7 @@ public class WrappedKey extends GenericXMLEncodable implements XMLEncodable {
 	public Key unwrapKey(Key unwrapKey, String wrappedKeyAlgorithm) 
 			throws InvalidKeyException, NoSuchAlgorithmException {
 
-		Key unwrappedKey = null;
+		Key unwrappedKey;
 		if (Log.isLoggable(Level.INFO)) {
 			Log.info("wrap algorithm: " + wrapAlgorithm() + " wa for key " +
 					wrapAlgorithmForKey(unwrapKey.getAlgorithm()));

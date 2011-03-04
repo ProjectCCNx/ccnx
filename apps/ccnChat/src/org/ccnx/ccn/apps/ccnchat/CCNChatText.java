@@ -83,11 +83,11 @@ public class CCNChatText implements Runnable, CCNChatCallback {
 
 		while(true) {
 			String message = null;
+			String moreMessage = null;
 
 			// Check for a character input
 			try {
-				if( br.ready() ) {
-					System.out.println("Switching to INPUT");
+			    if( br.ready() ) {
 					_mode = Mode.MODE_INPUT;
 				}
 			} catch(Exception e) {
@@ -98,16 +98,23 @@ public class CCNChatText implements Runnable, CCNChatCallback {
 			case MODE_INPUT:
 				// Read in the current input and put it out there
 				try {
-					message = br.readLine();
-					
+				    if (null == (message = br.readLine())) {
+					System.out.println();
+					System.out.println("Bye");
+					System.exit(0);
+				    }
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
 				
 				System.out.print("INPUT: " + message);
 				try {
-					message += br.readLine();
-					_chat.sendMessage(message);
+				    if (null == (moreMessage = br.readLine())) {
+					System.out.println();
+					System.out.println("Bye");
+					System.exit(0);
+				    }
+					_chat.sendMessage(message + moreMessage);
 				} catch(Exception e) {
 					e.printStackTrace();
 				}

@@ -146,6 +146,10 @@ enum ccn_dtag {
     CCN_DTAG_Root = 107,
     CCN_DTAG_ProfileName = 108,
     CCN_DTAG_Parameters = 109,
+    CCN_DTAG_InfoString = 110,
+    CCN_DTAG_StatusResponse = 112,
+    CCN_DTAG_StatusCode = 113,
+    CCN_DTAG_StatusText = 114,
     CCN_DTAG_SequenceNumber = 256,
     CCN_DTAG_CCNProtocolDataUnit = 17702112
 };

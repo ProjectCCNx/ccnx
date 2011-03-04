@@ -23,12 +23,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.NotYetConnectedException;
 import java.util.ArrayList;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -124,7 +124,6 @@ public class CCNNetworkManager implements Runnable {
 
 	// For handling protocol to speak to ccnd, must have keys
 	protected KeyManager _keyManager;
-	protected int _localPort = -1;
 
 	// Tables of interests/filters: users must synchronize on collection
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
@@ -133,7 +132,7 @@ public class CCNNetworkManager implements Runnable {
 	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
 	protected PrefixRegistrationManager _prefixMgr = null;
 	protected Timer _periodicTimer = null;
-	protected boolean _timersSetup = false;
+	protected Boolean _timersSetup = false;
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes 
 	= new TreeMap<ContentName, RegisteredPrefix>();
 
@@ -149,7 +148,9 @@ public class CCNNetworkManager implements Runnable {
 		// prefix we use Integer.MAX_VALUE as the requested lifetime.
 		private long _lifetime = -1; // in seconds
 		private long _nextRefresh = -1;
-		private boolean _closing = false;
+		private boolean _closing = false;		// Flags in process of closing
+		private boolean _wasClosing = false;	// See below for reason for this
+		private boolean _doRemove = true;		// To avoid removing just registered prefixes
 
 		public RegisteredPrefix(ForwardingEntry forwarding) {
 			_forwarding = forwarding;
@@ -166,10 +167,16 @@ public class CCNNetworkManager implements Runnable {
 		 */
 		public Interest handleContent(ContentObject data, Interest interest) {
 			synchronized (this) {
+				_closing = false;	// We have to clear this, otherwise we could deadlock if setInterestFilter
+									// grabs us after this
 				notifyAll();
-			}
+			}		
+			// If setInterestFilter grabbed us right here, we would have cleared _closing (necessary to avoid
+			// deadlocks) but we would have actually deregistered so setInterestFilter needs to know that. It can
+			// because _wasClosing is still set.
 			synchronized (_registeredPrefixes) {
-				_registeredPrefixes.remove(_forwarding.getPrefixName());
+				if (_doRemove)	// Avoid removing a just registered prefix from the map
+					_registeredPrefixes.remove(_forwarding.getPrefixName());
 			}
 			return null;
 		}
@@ -330,17 +337,19 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws IOException 
 	 */
 	private void setupTimers() throws IOException {
-		if (!_timersSetup) {
-			_timersSetup = true;
-			_channel.init();
-			if (_protocol == NetworkProtocol.UDP) {
-				_channel.heartbeat();
-				_lastHeartbeat = System.currentTimeMillis();
+		synchronized (_timersSetup) {
+			if (!_timersSetup) {
+				_timersSetup = true;
+				_channel.init();
+				if (_protocol == NetworkProtocol.UDP) {
+					_channel.heartbeat();
+					_lastHeartbeat = System.currentTimeMillis();
+				}
+				
+				// Create timer for periodic behavior
+				_periodicTimer = new Timer(true);
+				_periodicTimer.schedule(new PeriodicWriter(), PERIOD);
 			}
-			
-			// Create timer for periodic behavior
-			_periodicTimer = new Timer(true);
-			_periodicTimer.schedule(new PeriodicWriter(), PERIOD);
 		}
 	}
 
@@ -487,6 +496,8 @@ public class CCNNetworkManager implements Runnable {
 				return true;
 			} else {
 				// Data is already pending, this interest is already consumed, cannot add obj
+				_stats.increment(StatsEnum.ContentObjectsIgnored);
+				Log.warning("{0} is not handled - data already pending", obj);
 				return false;
 			}
 		}
@@ -776,6 +787,7 @@ public class CCNNetworkManager implements Runnable {
 		// Create callback threadpool and main processing thread
 		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
 		_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
+		_threadpool.setMaximumPoolSize(SystemConfiguration.MAX_DISPATCH_THREADS);
 		_thread = new Thread(this, "CCNNetworkManager");
 		_thread.start();
 	}
@@ -1046,16 +1058,20 @@ public class CCNNetworkManager implements Runnable {
 				synchronized(_registeredPrefixes) {
 					RegisteredPrefix oldPrefix = getRegisteredPrefix(filter);
 					if (null != oldPrefix) {
-						if (oldPrefix._closing) {
-							synchronized (oldPrefix) {
+						synchronized (oldPrefix) {
+							if (oldPrefix._closing) {
 								try {
 									oldPrefix.wait();
 								} catch (InterruptedException e) {} // XXX do we need to worry about this?
 							}
-							_registeredPrefixes.remove(filter);		// Just in case
-							registerPrefix(filter, registrationFlags);
-						} else
-							oldPrefix._refCount++;
+							if (oldPrefix._wasClosing) {
+								_registeredPrefixes.remove(filter);
+								registerPrefix(filter, registrationFlags);
+								oldPrefix._doRemove = false;
+							} else {
+								oldPrefix._refCount++;
+							}
+						}
 					} else {
 						registerPrefix(filter, registrationFlags);
 					}
@@ -1119,23 +1135,30 @@ public class CCNNetworkManager implements Runnable {
 				// Deregister it with ccnd only if the refCount would go to 0
 				synchronized (_registeredPrefixes) {
 					RegisteredPrefix prefix = getRegisteredPrefix(filter);
-					if (null != prefix && prefix._refCount <= 1) {
-						ForwardingEntry entry = prefix._forwarding;
-						if (!entry.getPrefixName().equals(filter)) {
-							Log.severe(Log.FAC_NETMANAGER, "cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
+					if (null != prefix) {
+						synchronized (prefix) {
+							if (prefix._refCount <= 1) {
+								ForwardingEntry entry = prefix._forwarding;
+								// Since we are piggybacking registration entries we can legitimately have a "last" registration entry on a prefix that had
+								// been piggybacked on a higher registration earlier so the entries name would not match the filter.
+								//
+								//if (!entry.getPrefixName().equals(filter)) {
+								//	Log.severe(Log.FAC_NETMANAGER, "cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
+								//}
+								try {
+									if (null == _prefixMgr) {
+										_prefixMgr = new PrefixRegistrationManager(this);
+									}
+									prefix._closing = true;
+									prefix._wasClosing = true;
+									_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
+								} catch (CCNDaemonException e) {
+									Log.warning(Log.FAC_NETMANAGER, "cancelInterestFilter failed with CCNDaemonException: " + e.getMessage());
+								}
+							} else
+								prefix._refCount--;
 						}
-						try {
-							if (null == _prefixMgr) {
-								_prefixMgr = new PrefixRegistrationManager(this);
-							}
-							prefix._closing = true;
-							_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
-						} catch (CCNDaemonException e) {
-							Log.warning(Log.FAC_NETMANAGER, "cancelInterestFilter failed with CCNDaemonException: " + e.getMessage());
-						}
-					} else
-						if (null != prefix)
-							prefix._refCount--;
+					}
 				}
 			}
 		}
@@ -1145,17 +1168,25 @@ public class CCNNetworkManager implements Runnable {
 	 * Merge prefixes so we only add a new one when it doesn't have a
 	 * common ancestor already registered.
 	 * 
+	 * Must be called with _registeredPrefixes locked
+	 * 
+	 * We decided that if we are registering a prefix that already has another prefix that
+	 * is an descendant of it registered, we won't bother to now deregister that prefix because
+	 * it would be complicated to do that and doesn't hurt anything.
+	 * 
 	 * @param prefix
 	 * @return prefix that incorporates or matches this one or null if none found
 	 */
 	protected RegisteredPrefix getRegisteredPrefix(ContentName prefix) {
-		synchronized(_registeredPrefixes) {		
-			// MM: This is a dumb way to search a TreeMap for a prefix.
-			// TreeMap is sorted and should exploit that.
-			for (ContentName name: _registeredPrefixes.keySet()) {
-				if (name.equals(prefix) || name.isPrefixOf(prefix))
-					return _registeredPrefixes.get(name);		
-			}
+		// We want our map to include all ancestors of us
+		SortedMap<ContentName, RegisteredPrefix> map = _registeredPrefixes.tailMap(new ContentName(1, prefix.components()));
+		for (ContentName name : map.keySet()) {
+			if (name.isPrefixOf(prefix))
+				return _registeredPrefixes.get(name);
+			// If our prefix isn't a prefix of this name at all, we are past all ancestors and
+			// can stop looking
+			if (!prefix.isPrefixOf(name))
+				break;
 		}
 		return null;
 	}
@@ -1262,7 +1293,7 @@ public class CCNNetworkManager implements Runnable {
 		}
 		//WirePacket packet = new WirePacket();
 		if( Log.isLoggable(Level.INFO) )
-			Log.info("CCNNetworkManager processing thread started for port: " + _localPort);
+			Log.info("CCNNetworkManager processing thread started for port: " + _port);
 		while (_run) {
 			try {
 				XMLEncodable packet = _channel.getPacket();
@@ -1274,7 +1305,7 @@ public class CCNNetworkManager implements Runnable {
 					_stats.increment(StatsEnum.ReceiveObject);
 					ContentObject co = (ContentObject)packet;
 					if( Log.isLoggable(Level.FINER) )
-						Log.finer("Data from net for port: " + _localPort + " {0}", co.name());
+						Log.finer("Data from net for port: " + _port + " {0}", co.name());
 
 					//	SystemConfiguration.logObject("Data from net:", co);
 
@@ -1285,20 +1316,20 @@ public class CCNNetworkManager implements Runnable {
 					_stats.increment(StatsEnum.ReceiveInterest);
 					Interest interest = (Interest)	packet;
 					if( Log.isLoggable(Level.FINEST) )
-						Log.finest("Interest from net for port: " + _localPort + " {0}", interest);
+						Log.finest("Interest from net for port: " + _port + " {0}", interest);
 					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
 				} // for interests
 			} catch (Exception ex) {
 				_stats.increment(StatsEnum.ReceiveUnknown);
-				Log.severe(Log.FAC_NETMANAGER, "Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _localPort);
+				Log.severe(Log.FAC_NETMANAGER, "Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _port);
                 Log.warningStackTrace(ex);
 			}
 		}
 
 		_threadpool.shutdown();
-		Log.info(Log.FAC_NETMANAGER, "Shutdown complete for port: " + _localPort);
+		Log.info(Log.FAC_NETMANAGER, "Shutdown complete for port: " + _port);
 	}
 
 	/**
@@ -1314,8 +1345,14 @@ public class CCNNetworkManager implements Runnable {
 				if (filter.owner != ireg.owner) {
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 						Log.finer(Log.FAC_NETMANAGER, "Schedule delivery for interest: {0}", ireg.interest);
-					if (filter.add(ireg.interest))
-						_threadpool.execute(filter);
+					if (filter.add(ireg.interest)) {
+						try {
+							_threadpool.execute(filter);
+						} catch (RejectedExecutionException ree) {
+							// TODO - we should probably do something smarter here
+							Log.severe("Dispatch thread overflow!!");
+						}
+					}
 				}
 			}
 		}
@@ -1332,7 +1369,12 @@ public class CCNNetworkManager implements Runnable {
 			for (InterestRegistration ireg : _myInterests.getValues(co)) {
 				if (ireg.add(co)) { // this is a copy of the data
 					_stats.increment(StatsEnum.DeliverContentMatchingInterests);
-					_threadpool.execute(ireg);
+					try {
+						_threadpool.execute(ireg);
+					} catch (RejectedExecutionException ree) {
+						// TODO - we should probably do something smarter here
+						Log.severe("Dispatch thread overflow!!");
+					}				
 				}
 			}
 		}
@@ -1427,6 +1469,8 @@ public class CCNNetworkManager implements Runnable {
 		ReceiveObject ("objects", "Receive count of ContentObjects from channel"),
 		ReceiveInterest ("interests", "Receive count of Interests from channel"),
 		ReceiveUnknown ("calls", "Receive count of unknown type from channel"),
+		
+		ContentObjectsIgnored ("ContentObjects", "The number of ContentObjects that are never handled"),
 		;
 
 		// ====================================

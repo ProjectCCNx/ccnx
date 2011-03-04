@@ -32,7 +32,6 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.content.Collection;
@@ -71,7 +70,7 @@ public class GroupManager {
 	private CCNHandle _handle;
 
 	public GroupManager(GroupAccessControlManager accessManager,
-						ParameterizedName groupStorage, CCNHandle handle) throws IOException {
+						ParameterizedName groupStorage, CCNHandle handle) {
 		_handle = handle;
 		_accessManager = accessManager;
 		_groupStorage = groupStorage;
@@ -358,7 +357,7 @@ public class GroupManager {
 		}
 		// Need to get the KeyDirectory for this version of the private key, or the 
 		// latest if no version given.
-		KeyDirectory privateKeyDirectory = null;
+		PrincipalKeyDirectory privateKeyDirectory;
 		PublicKey theGroupPublicKey = null;
 		if (null == privateKeyVersion) {
 			Group theGroup = getGroup(groupFriendlyName, SystemConfiguration.EXTRA_LONG_TIMEOUT); // will pull latest public key
@@ -372,20 +371,13 @@ public class GroupManager {
 						GroupAccessControlProfile.groupPublicKeyName(_groupStorage, groupFriendlyName),
 						privateKeyVersion);
 			privateKeyDirectory =
-				new KeyDirectory(_accessManager, 
+				new PrincipalKeyDirectory(_accessManager, 
 					GroupAccessControlProfile.groupPrivateKeyDirectory(versionedPublicKeyName), _handle);
 			privateKeyDirectory.waitForNoUpdatesOrResult(SystemConfiguration.SHORT_TIMEOUT);
 			
 			PublicKeyObject thisPublicKey = new PublicKeyObject(versionedPublicKeyName, _handle);
 			thisPublicKey.waitForData();
 			theGroupPublicKey = thisPublicKey.publicKey();
-		}
-		if (null == privateKeyDirectory) {
-			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
-				Log.info(Log.FAC_ACCESSCONTROL, "Unexpected: null private key directory for group {0} version {1} as stamp {2}",
-						groupFriendlyName, privateKeyVersion, DataUtils.printHexBytes(privateKeyVersion.toBinaryTime()));
-			}
-			return null;
 		}
 		
 		PrivateKey privateKey = privateKeyDirectory.getPrivateKey();
@@ -437,9 +429,10 @@ public class GroupManager {
 			throws InvalidKeyException, ContentNotReadyException, ContentDecodingException, 
 					IOException, NoSuchAlgorithmException {
 		String principal = pi.friendlyName();
-		if (null == pi) return null;
-		Key privateKey = getGroupPrivateKey(principal, pi.versionTimestamp());
-		if (null == privateKey) {
+		Key privateKey = null;
+		try {
+			privateKey = getGroupPrivateKey(principal, pi.versionTimestamp());
+		} catch (PrincipalKeyDirectory.NoPrivateKeyException e) {
 			if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.INFO)) {
 				Log.info(Log.FAC_ACCESSCONTROL, "Unexpected: we believe we are a member of group {0} but cannot retrieve private key version {1} our membership revoked?",
 						principal, pi);			

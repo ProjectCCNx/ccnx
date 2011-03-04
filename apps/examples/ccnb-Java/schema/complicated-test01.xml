@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<ExampleComplicated>
+	<String>This is a test of example-complicated-test</String>
+	<Enum ccnbencoding="base64Binary">Enu0</Enum>
+	<Data>
+		<String>This is the string content in a Data</String>
+		<!-- This test doesn't have either the Name component or the Interest component. -->
+		<Bin ccnbencoding="base64Binary">BId5E7bp</Bin>
+	</Data>
+</ExampleComplicated>

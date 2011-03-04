@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -466,8 +466,9 @@ public class Log {
 			return;
 		}
 		
-		for( int i = 0; i < levels.length; i++ )
-			_fac_level[i] = levels[i];
+		// The 0 element (FAC_ALL) is always null
+		for( int i = 1; i < levels.length; i++ )
+			setLevel(i, levels[i]);
 	}
 
 	/**
@@ -563,10 +564,13 @@ public class Log {
 	}
 	
 	/**
-	 * Return array of all log levels
+	 * Returns a copy of the array of all log levels.  The 0 element (FAC_ALL) will be null.
 	 */
-	public static final Level [] getLevels() {
-		return _fac_level;
+	public static Level [] getLevels() {
+		Level [] copy = new Level[_fac_level.length];
+		for(int i = 0; i < _fac_level.length; i++)
+			copy[i] = _fac_level[i];
+		return copy;
 	}
 
 	/**
@@ -691,10 +695,26 @@ public class Log {
 		t.printStackTrace(new PrintWriter(sw));
 		_facilityLoggers[FAC_DEFAULT].log(level, sw.toString());
 	}
+	
+	public static void logStackTrace(int facility, Level level, Throwable t) {
+		if (!isLoggable(facility, level))
+			return;
+		
+		StringWriter sw = new StringWriter();
+		t.printStackTrace(new PrintWriter(sw));
+		_facilityLoggers[facility].log(level, sw.toString());
+	}
 
-	public static void logException(String message, 
-			Exception e) {
+	public static void logException(String message, Exception e) {
 		_facilityLoggers[FAC_DEFAULT].warning(message);
 		Log.warningStackTrace(e);
+	}
+	
+	public static void logException(int facility, Level level, String message, Exception e) {
+		if (!isLoggable(facility, level))
+			return;
+
+		_facilityLoggers[facility].log(level, message);
+		logStackTrace(facility, level, e);
 	}
 }

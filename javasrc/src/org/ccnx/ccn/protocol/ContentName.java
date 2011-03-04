@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -720,20 +720,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			case '%': 
 				// This is a byte string %xy where xy are hex digits
 				// Since the input string must be compatible with the output
-				// of componentPrint(), we may convert the byte values directly.
-				// There is no need to go through a character representation.
+				// of componentPrint(), we may convert the character values directly.
 				if (name.length()-1 < i+2) {
 					throw new URISyntaxException(name, "malformed %xy byte representation: too short", i);
 				}
-				if (name.charAt(i+1) == '-') {
-					throw new URISyntaxException(name, "malformed %xy byte representation: negative value not permitted", i);
-				}
-				try {
-					result.put(new Integer(Integer.parseInt(name.substring(i+1, i+3),16)).byteValue());
-				} catch (NumberFormatException e) {
-					throw new URISyntaxException(name, "malformed %xy byte representation: not legal hex number: " + name.substring(i+1, i+3), i);
-				}
-				i+=2; // for loop will increment by one more to get net +3 so past byte string
+				int b1 = Character.digit(name.charAt(++i), 16); // consume x
+				int b2 = Character.digit(name.charAt(++i), 16); // consume y
+				if (b1 < 0 || b2 < 0)
+					throw new URISyntaxException(name, "malformed %xy byte representation: not legal hex number: " + name.substring(i-2, i+1), i-2);
+				result.put((byte)((b1 * 16) + b2));
 				break;
 				// Note in C lib case 0 is handled like the two general delimiters below that terminate processing 
 				// but that case should never arise in Java which uses real unicode characters.
@@ -746,16 +741,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			case '!': case '$': case '&': case '\'': case '(': case ')':
 			case '*': case '+': case ',': case ';': case '=':
 				// Permit unescaped reserved characters
-				result.put(DataUtils.getBytesFromUTF8String(name.substring(i, i+1)));
+				result.put((byte)ch);
 				break;
 			default: 
 				if (('a' <= ch && ch <= 'z') ||
 						('A' <= ch && ch <= 'Z') ||
 						('0' <= ch && ch <= '9') ||
 						ch == '-' || ch == '.' || ch == '_' || ch == '~') {
-
 					// This character remains the same
-					result.put(DataUtils.getBytesFromUTF8String(name.substring(i, i+1)));
+					result.put((byte)ch);
 				} else {
 					throw new URISyntaxException(name, "Illegal characters in URI", i);
 				}
@@ -1117,7 +1111,43 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return i;
 		return -1;		
 	}
-
+	
+	/**
+	 * Does a component of the ContentName startWith value?
+	 * 
+	 * @param value
+	 * @return
+	 */
+	public boolean startsWith(byte [] value) {
+		return (startsWithWhere(value) >= 0);
+	}
+	
+	/**
+	 * Return component index of first component that starts with argument value
+	 * 
+	 * @param value
+	 * @return
+	 */
+	public int startsWithWhere(byte [] value) {
+		int i=0;
+		int size = value.length;
+		for (i=0; i < _components.size(); ++i) {
+			byte [] component = _components.get(i);
+			if (size <= component.length) {
+				boolean result = true;
+				for (int j = 0; j < size; j++) {
+					if (component[j] != value[j]) {
+						result = false;
+						break;
+					}
+				}
+				if (result)
+					return i;
+			}
+		}
+		return -1;		
+	}
+	
 	/**
 	 * Return the first componentNumber components of this name as a new name.
 	 * @param componentNumber

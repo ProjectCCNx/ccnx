@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -119,6 +119,11 @@ public class CCNProtocolDTags {
 	public static final int ProfileName = 108;
 	public static final int Parameters = 109;
 	public static final int InfoString = 110;
+	// 111 unallocated
+	public static final int StatusResponse = 112;
+	public static final int StatusCode = 113;
+	public static final int StatusText = 114;
+	// Remember to keep in sync with schema/tagnames.csvsdict 
 	public static final int CCNProtocolDataUnit = 17702112;
 	public static final String CCNPROTOCOL_DATA_UNIT = "CCNProtocolDataUnit";
 	
@@ -141,7 +146,9 @@ public class CCNProtocolDTags {
 		"Policy", "Namespace", "GlobalPrefixName", "PolicyVersion", "KeyValueSet", "KeyValuePair",
 		"IntegerValue", "DecimalValue", "StringValue", "BinaryValue", "NameValue", "Entry",
 		"ACL", "ParameterizedName", "Prefix", "Suffix", "Root", "ProfileName", "Parameters",
-		"InfoString"};
+		"InfoString", null,
+        
+        "StatusResponse", "StatusCode", "StatusText"};
 	protected static final int TAG_MAP_LENGTH = _tagToStringMap.length;
 
 	

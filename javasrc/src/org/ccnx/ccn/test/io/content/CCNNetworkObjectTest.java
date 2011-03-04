@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -436,9 +436,8 @@ public class CCNNetworkObjectTest {
 			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
 			
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
-
-			if (!c1.getVersion().equals(t2)) {
-				synchronized (c1) {
+			synchronized (c1) {
+				if (!c1.getVersion().equals(t2)) {
 					c1.wait(5000);
 				}
 			}
@@ -467,7 +466,11 @@ public class CCNNetworkObjectTest {
 			
 			CCNTime t1 = saveAndLog("First string", c0, null, "Here is the first string.");
 			
-			c0.waitForData();
+			synchronized (c0) {
+				if (!c0.getVersion().equals(t1)) {
+					c0.wait(5000);
+				}
+			}
 			c1.waitForData();
 			CCNTime c1Version = c1.getVersion();
 			
@@ -501,14 +504,15 @@ public class CCNNetworkObjectTest {
 			CCNStringObject c2 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
 			Log.info("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
-			if (!c0.getVersion().equals(t2)) {
-				synchronized (c0) {
+			synchronized (c0) {
+				if (!c0.getVersion().equals(t2)) {
 					c0.wait(5000);
 				}
+				Log.info("waited - t2 is {0}", t2);
 			}
 			Assert.assertEquals("c0 update", c0.getVersion(), c2.getVersion());
-			if (!c1.getVersion().equals(t2)) {
-				synchronized (c1) {
+			synchronized (c1) {
+				if (!c1.getVersion().equals(t2)) {
 					c1.wait(5000);
 				}
 			}

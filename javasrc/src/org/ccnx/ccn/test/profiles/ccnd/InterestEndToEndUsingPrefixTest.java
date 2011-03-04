@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -35,7 +35,7 @@ import org.junit.Test;
  * Requires a running ccnd
  *
  */
-public class InterestEndToEndTestUsingPrefix extends LibraryTestBase implements CCNFilterListener, CCNInterestListener {
+public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements CCNFilterListener, CCNInterestListener {
 	private Interest _interestSent;
 	private String _prefix = "/interestEtoETestUsingPrefix/test-" + rand.nextInt(10000);
 	private final static int TIMEOUT = 3000;
@@ -74,8 +74,8 @@ public class InterestEndToEndTestUsingPrefix extends LibraryTestBase implements 
 	
 	private void doTest() throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
-		putHandle.expressInterest(_interestSent, this);
 		synchronized (this) {
+			putHandle.expressInterest(_interestSent, this);
 			wait(TIMEOUT);
 		}
 		Assert.assertTrue((System.currentTimeMillis() - startTime) < TIMEOUT);
@@ -83,8 +83,8 @@ public class InterestEndToEndTestUsingPrefix extends LibraryTestBase implements 
 
 	private void doTestFail() throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
-		putHandle.expressInterest(_interestSent, this);
 		synchronized (this) {
+			putHandle.expressInterest(_interestSent, this);
 			wait(TIMEOUT);
 		}
 		Assert.assertFalse((System.currentTimeMillis() - startTime) < TIMEOUT);
