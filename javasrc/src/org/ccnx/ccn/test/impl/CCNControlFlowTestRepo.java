@@ -18,9 +18,11 @@ package org.ccnx.ccn.test.impl;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNStats;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.CCNTestHelper;
@@ -60,6 +62,7 @@ public class CCNControlFlowTestRepo {
 	 */
 	@Test
 	public void testLargePut() throws Throwable {
+		Log.setLevel(Log.FAC_IO, Level.FINEST);
 		int size = CommonParameters.BLOCK_SIZE;
 		InputStream is = new FileInputStream(_fileName);
 		RepositoryFileOutputStream ostream = new RepositoryFileOutputStream(_nodeName, _putHandle, CommonParameters.local);

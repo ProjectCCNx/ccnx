@@ -222,7 +222,7 @@
 					<arg value="-root" />
 					<arg value="${REPO_LOCAL_ROOT}" />
 					<arg value="-log" />
-					<arg value="400" />
+					<arg value="300" />
 					<arg value="-local" />
 					<arg value="${REPO_LOCAL}" />
 					<arg value="-global" />
@@ -353,7 +353,7 @@
 	<target name="test-impl-with-repo" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
 	    <bunzip2 src="testBigFile.bz2" dest="${testout}/testBigFile" />
-		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
