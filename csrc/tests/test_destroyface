@@ -43,9 +43,11 @@ cat destroyface.ccnb | ccnput -f -x 30 /$REQNAME
 ccnslurp /$REQNAME
 
 # Pull it out to use in the destroyface request.  Base-64 encode it for the benefit of the shell.
-DFBLOB="`ccnrm -o - /$REQNAME | openssl enc -base64`"
+DFBLOB="`ccnget /$REQNAME | openssl enc -base64`"
 
 echo DFBLOB is $DFBLOB >&2
+
+test -z "$DFBLOB" && Failed forming DFBLOB
 
 # Now construct the interest.
 

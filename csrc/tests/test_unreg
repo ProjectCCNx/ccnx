@@ -19,7 +19,7 @@ test -f newface-response.ccnb || SkipTest missing newface-response.ccnb, need to
 
 FACEID=`ccnbx -d newface-response.ccnb Content | ccnbx -d - FaceID` || Fail
 echo FACEID=$FACEID
-i
+
 # We have the CCNDID of our ccnd in a file, left from test_ccndid
 CCNDID=`cat ccndid.out`
 
