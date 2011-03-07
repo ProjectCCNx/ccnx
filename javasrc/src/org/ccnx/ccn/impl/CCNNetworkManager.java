@@ -1296,8 +1296,11 @@ public class CCNNetworkManager implements Runnable {
 			Log.info("CCNNetworkManager processing thread started for port: " + _port);
 		while (_run) {
 			try {
+				boolean wasConnected = _channel.isConnected();
 				XMLEncodable packet = _channel.getPacket();
 				if (null == packet) {
+					if (!wasConnected && _channel.isConnected())
+						reregisterPrefixes();
 					continue;
 				}
 				
@@ -1435,9 +1438,7 @@ public class CCNNetworkManager implements Runnable {
 				_registeredPrefixes.clear();
 				_registeredPrefixes.putAll(newPrefixes);
 			}
-		} catch (CCNDaemonException cde) {
-			_channel.close();
-		}
+		} catch (CCNDaemonException cde) {}
 	}	
 	
 	// ==============================================================
