@@ -442,27 +442,19 @@ public class Daemon {
 				
 				// this should throw an exception
 				try {
-					byte[] childMsgBytes;
-					String childOutput = null;
 					InputStream childMsgs = child.getErrorStream();
-					try {
-						int exitValue = child.exitValue();
-						// if we get here, the child has exited
-						Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
-						System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
-						childMsgBytes = new byte[childMsgs.available()];
-						childMsgs.read(childMsgBytes);;
-						childOutput = new String(childMsgBytes);
-						childMsgs.close();
-
-						childMsgs = child.getInputStream();
-						childMsgBytes = new byte[childMsgs.available()];
-						childMsgs.read(childMsgBytes);
-						childOutput += new String(childMsgBytes);
-						System.err.println("Messages from the child were: \"" + childOutput + "\"");
-					} finally {
-						childMsgs.close();
-					}
+					int exitValue = child.exitValue();
+					// if we get here, the child has exited
+					Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
+					System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
+					byte[] childMsgBytes = new byte[childMsgs.available()];
+					childMsgs.read(childMsgBytes);;
+					String childOutput = new String(childMsgBytes);
+					childMsgs = child.getInputStream();
+					childMsgBytes = new byte[childMsgs.available()];
+					childMsgs.read(childMsgBytes);
+					childOutput += new String(childMsgBytes);
+					System.err.println("Messages from the child were: \"" + childOutput + "\"");
 					return;
 				} catch (IllegalThreadStateException e) {
 				}
