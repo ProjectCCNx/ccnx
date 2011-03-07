@@ -1406,22 +1406,32 @@ public class CCNNetworkManager implements Runnable {
 
 	/**
 	 * Reregister all current prefixes with ccnd after ccnd goes down and then comes back up
+	 * Since this is called internally from the network manager run loop, but it needs to make use of
+	 * the network manager to correctly process the reregistration, we run the reregistration in a
+	 * separate thread
+	 * 
 	 * @throws IOException 
 	 */
-	private void reregisterPrefixes() throws IOException {
-		TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
-		try {
-			synchronized (_registeredPrefixes) {
-				for (ContentName prefix : _registeredPrefixes.keySet()) {
-					ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
-					RegisteredPrefix newPrefixEntry = new RegisteredPrefix(entry);
-					newPrefixEntry._refCount = _registeredPrefixes.get(prefix)._refCount;
-					newPrefixes.put(prefix, newPrefixEntry);
+	private void reregisterPrefixes() {
+		new ReRegisterThread().start();
+	}
+		
+	private class ReRegisterThread extends Thread {
+		public void run() {
+			TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
+			try {
+				synchronized (_registeredPrefixes) {
+					for (ContentName prefix : _registeredPrefixes.keySet()) {
+						ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
+						RegisteredPrefix newPrefixEntry = new RegisteredPrefix(entry);
+						newPrefixEntry._refCount = _registeredPrefixes.get(prefix)._refCount;
+						newPrefixes.put(prefix, newPrefixEntry);
+					}
+					_registeredPrefixes.clear();
+					_registeredPrefixes.putAll(newPrefixes);
 				}
-				_registeredPrefixes.clear();
-				_registeredPrefixes.putAll(newPrefixes);
-			}
-		} catch (CCNDaemonException cde) {}
+			} catch (CCNDaemonException cde) {}
+		}
 	}	
 	
 	// ==============================================================
