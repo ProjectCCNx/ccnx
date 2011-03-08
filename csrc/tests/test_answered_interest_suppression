@@ -65,7 +65,9 @@ HasEverybodyGotIt () {
 
 WithCCND 5 HasEverybodyGotIt
 
-COUNT=`grep -l "This is the answer" suppr-*.out | wc -l`
+for i in suppr-*.out; do strings -a $i > strings-$i; done
+COUNT=`grep -l "This is the answer" strings-suppr-*.out | wc -l`
+rm -f strings-suppr-*.out
 test "$COUNT" -eq 3 || Fail expecting 3 answers, but got $COUNT
 
 rm -rf answered.ccnb suppr-*.out
