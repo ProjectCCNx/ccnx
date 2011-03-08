@@ -66,6 +66,6 @@ HasEverybodyGotIt () {
 WithCCND 5 HasEverybodyGotIt
 
 COUNT=`grep -l "This is the answer" suppr-*.out | wc -l`
-test "$COUNT" -eq 3 || Fail expecting 3 client with answers, but only got $COUNT
+test "$COUNT" -eq 3 || Fail expecting 3 answers, but got $COUNT
 
 rm -rf answered.ccnb suppr-*.out
