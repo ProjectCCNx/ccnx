@@ -131,8 +131,8 @@ public class PrincipalKeyDirectory extends KeyDirectory {
 	 */
 	protected void addPrincipal(byte [] wkChildName) {
 		PrincipalInfo pi = new PrincipalInfo(wkChildName);
+		_principalsLock.writeLock().lock();
 		try{
-			_principalsLock.writeLock().lock();
 			_principals.put(pi.friendlyName(), pi);
 		}finally{
 			_principalsLock.writeLock().unlock();
