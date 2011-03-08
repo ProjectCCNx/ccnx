@@ -38,8 +38,11 @@ public class EncryptedObjectFileHelper {
 		// TODO -- actually encrypt -- put the data through a CipherOutputStream after the OOS
 		// write the key block to the real output stream before attaching the COS
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(outputFile));
-		oos.writeObject(objectToWrite);
-		oos.close();
+		try {
+			oos.writeObject(objectToWrite);
+		} finally {
+			oos.close();
+		}
 		return true;
 	}
 
@@ -48,8 +51,12 @@ public class EncryptedObjectFileHelper {
 		
 		// TODO actually decrypt -- put the data through a CipherInputStream before the OIS
 		// read the key block from the file before attaching the CIS
-		ObjectInputStream input = new ObjectInputStream(new FileInputStream(inputFile));
-		
-		return (T)readObject(input);
+		FileInputStream fis = new FileInputStream(inputFile);
+		ObjectInputStream input = new ObjectInputStream(fis);
+		try {
+			return (T)readObject(input);
+		} finally {
+			input.close();
+		}
 	}
 }

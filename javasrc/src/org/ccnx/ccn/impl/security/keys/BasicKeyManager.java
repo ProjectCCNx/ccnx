@@ -345,14 +345,17 @@ public class BasicKeyManager extends KeyManager {
 			try {
 				in.reset();
 				java.io.FileOutputStream bais = new java.io.FileOutputStream("KeyDump.p12");
-				byte [] tmp = new byte[2048];
-				int read = in.read(tmp);
-				while (read > 0) {
-					bais.write(tmp, 0, read);
-					read = in.read(tmp);
+				try {
+					byte [] tmp = new byte[2048];
+					int read = in.read(tmp);
+					while (read > 0) {
+						bais.write(tmp, 0, read);
+						read = in.read(tmp);
+					}
+					bais.flush();
+				} finally {
+					bais.close();
 				}
-				bais.flush();
-				bais.close();
 			} catch (IOException e1) {
 				Log.info(Log.FAC_KEYS, "Another exception: " + e1);
 			}
@@ -458,14 +461,18 @@ public class BasicKeyManager extends KeyManager {
 			try {
 				ObjectInputStream input = new ObjectInputStream(new FileInputStream(configurationFile));
 				
-				HashMap<PublisherPublicKeyDigest, KeyLocator> savedKeyLocators = readObject(input);
-				_currentKeyLocators.putAll(savedKeyLocators);
-				
-				keyStoreInfo.setConfigurationFileURI(configurationFile.toURI().toString());
-				
-				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
-					Log.info(Log.FAC_KEYS, "Loaded configuration data from file {0}, got {1} key locator values.", 
-							configurationFile.getAbsolutePath(), savedKeyLocators.size());
+				try {
+					HashMap<PublisherPublicKeyDigest, KeyLocator> savedKeyLocators = readObject(input);
+					_currentKeyLocators.putAll(savedKeyLocators);
+					
+					keyStoreInfo.setConfigurationFileURI(configurationFile.toURI().toString());
+					
+					if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+						Log.info(Log.FAC_KEYS, "Loaded configuration data from file {0}, got {1} key locator values.", 
+								configurationFile.getAbsolutePath(), savedKeyLocators.size());
+					}
+				} finally {
+					input.close();
 				}
 
 			} catch (FileNotFoundException e) {
@@ -592,8 +599,11 @@ public class BasicKeyManager extends KeyManager {
 		
 		// Update configuration data:
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(configurationFile));
-		oos.writeObject(_currentKeyLocators);
-		oos.close();
+		try {
+			oos.writeObject(_currentKeyLocators);
+		} finally {
+			oos.close();
+		}
 	}
 	
 	/**

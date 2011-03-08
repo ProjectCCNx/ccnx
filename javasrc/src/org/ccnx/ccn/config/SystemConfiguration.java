@@ -594,8 +594,11 @@ public class SystemConfiguration {
 			Log.finest("Attempting to output debug data for name " + name.toString() + " to file " + outputFile.getAbsolutePath());
 
 			FileOutputStream fos = new FileOutputStream(outputFile);
-			fos.write(data);
-			fos.close();
+			try {
+				fos.write(data);
+			} finally {
+				fos.close();
+			}
 		} catch (Exception e) {
 			Log.warning("Exception attempting to log debug data for name: " + name.toString() + " " + e.getClass().getName() + ": " + e.getMessage());
 		}
@@ -629,8 +632,11 @@ public class SystemConfiguration {
 			Log.finest("Attempting to output debug data for name " + object.name().toString() + " to file " + outputFile.getAbsolutePath());
 
 			FileOutputStream fos = new FileOutputStream(outputFile);
-			object.encode(fos);
-			fos.close();
+			try {
+				object.encode(fos);
+			} finally {
+				fos.close();
+			}
 		} catch (Exception e) {
 			Log.warning("Exception attempting to log debug data for name: " + object.name().toString() + " " + e.getClass().getName() + ": " + e.getMessage());
 		}

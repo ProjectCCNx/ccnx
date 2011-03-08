@@ -803,10 +803,16 @@ public class CCNNetworkManager implements Runnable {
 		if (null != _channel) {
 			try {
 				setTap(null);
+			} catch (IOException io) {
+				// Ignore since we're shutting down
+			}
+			
+			try {
 				_channel.close();
 			} catch (IOException io) {
 				// Ignore since we're shutting down
 			}
+
 		}
 	}
 
