@@ -497,7 +497,8 @@ public class CCNNetworkManager implements Runnable {
 			} else {
 				// Data is already pending, this interest is already consumed, cannot add obj
 				_stats.increment(StatsEnum.ContentObjectsIgnored);
-				Log.warning("{0} is not handled - data already pending", obj);
+				if (Log.isLoggable(Log.FAC_NETMANAGER, Level.WARNING))
+					Log.warning(Log.FAC_NETMANAGER, "{0} is not handled - data already pending", obj);
 				return false;
 			}
 		}
@@ -1292,8 +1293,8 @@ public class CCNNetworkManager implements Runnable {
 			return;
 		}
 		//WirePacket packet = new WirePacket();
-		if( Log.isLoggable(Level.INFO) )
-			Log.info("CCNNetworkManager processing thread started for port: " + _port);
+		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO) )
+			Log.info(Log.FAC_NETMANAGER, "CCNNetworkManager processing thread started for port: " + _port);
 		while (_run) {
 			try {
 				boolean wasConnected = _channel.isConnected();
@@ -1307,8 +1308,8 @@ public class CCNNetworkManager implements Runnable {
 				if (packet instanceof ContentObject) {
 					_stats.increment(StatsEnum.ReceiveObject);
 					ContentObject co = (ContentObject)packet;
-					if( Log.isLoggable(Level.FINER) )
-						Log.finer("Data from net for port: " + _port + " {0}", co.name());
+					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
+						Log.finer(Log.FAC_NETMANAGER, "Data from net for port: " + _port + " {0}", co.name());
 
 					//	SystemConfiguration.logObject("Data from net:", co);
 
@@ -1318,8 +1319,8 @@ public class CCNNetworkManager implements Runnable {
 				} else if (packet instanceof Interest) {
 					_stats.increment(StatsEnum.ReceiveInterest);
 					Interest interest = (Interest)	packet;
-					if( Log.isLoggable(Level.FINEST) )
-						Log.finest("Interest from net for port: " + _port + " {0}", interest);
+					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
+						Log.finest(Log.FAC_NETMANAGER, "Interest from net for port: " + _port + " {0}", interest);
 					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
@@ -1353,7 +1354,7 @@ public class CCNNetworkManager implements Runnable {
 							_threadpool.execute(filter);
 						} catch (RejectedExecutionException ree) {
 							// TODO - we should probably do something smarter here
-							Log.severe("Dispatch thread overflow!!");
+							Log.severe(Log.FAC_NETMANAGER, "Dispatch thread overflow!!");
 						}
 					}
 				}
@@ -1376,7 +1377,7 @@ public class CCNNetworkManager implements Runnable {
 						_threadpool.execute(ireg);
 					} catch (RejectedExecutionException ree) {
 						// TODO - we should probably do something smarter here
-						Log.severe("Dispatch thread overflow!!");
+						Log.severe(Log.FAC_NETMANAGER, "Dispatch thread overflow!!");
 					}				
 				}
 			}
