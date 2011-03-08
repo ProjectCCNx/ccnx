@@ -2976,7 +2976,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                  * interests from two other faces could conspire to cover
                  * this one completely as far as propagation is concerned,
                  * but it is still necessary to keep it around for the sake
-                 * or returning content.
+                 * of returning content.
                  * This assumes a unicast link.  If there are multiple
                  * parties on this face (broadcast or multicast), we
                  * do not want to send right away, because it is highly likely
@@ -2995,9 +2995,14 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                     }
                 }
                 p->flags |= CCN_PR_EQV; /* Don't add new faces */
-                if (outbound->n == 0)
-                    return(-1);
-				// XXX - How robust is setting of CCN_PR_EQV?
+                // XXX - How robust is setting of CCN_PR_EQV?
+                /*
+                 * XXX - We would like to avoid having to keep this
+                 * interest around if we get here with (outbound->n == 0).
+                 * However, we still need to remember to send the content
+                 * back to this face, and the data structures are not
+                 * there right now to represent this.  c.f. #100321.
+                 */
             }
         }
     }
