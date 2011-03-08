@@ -31,34 +31,37 @@ ccn_xmltoccnb -w - <<EOF >answered.ccnb
 </Interest>
 EOF
 
+rm -rf suppr-*.out
+
 #
 # Start up a private ccnd.
 #
-WithCCND 5 env CCND_DEBUG=-1 CCND_AUTOREG=/answered/test/$UNIQ ccnd 2>ccnd5.out &
+WithCCND 5 env CCND_DEBUG=-1 ccnd 2>ccnd5.out &
 WithCCND 5 ccndsmoketest        # Let forked ccnd get going
 trap "WithCCND 5 ccndstop" 0    # Tear it down at end of test
 
+
 # The heart of the the test
 HasEverybodyGotIt () {
-    (
+    # One client is just a sink for the interests.
+    ccnput -x 1 /answered < /dev/null &
+    
     #
     # Get 3 clients to be interested.
-    # 
+    #
     for i in 1 2 3;
-      do ccndsmoketest -t $((i * 50)) -b recv answered.ccnb timeo 4000 recv > suppr-$i.out &
+      do ccndsmoketest -t 100 -b recv answered.ccnb timeo 4000 recv > suppr-$i.out &
     done
 
     # Provide the answer.
     sleep 1
     ccndstatus
-    echo "This is the answer" | ccnput -x 1 /answered/test/$UNIQ
+    echo "This is the answer" | ccnput -f -x 1 /answered/test/$UNIQ
 
-    # Wait for the clients to complete.
-    wait
-    )
+    # The clients should finish quickly now - give them a second.
+    sleep 1
+    ccndstop
 }
-
-rm -rf suppr-*.out
 
 WithCCND 5 HasEverybodyGotIt
 
