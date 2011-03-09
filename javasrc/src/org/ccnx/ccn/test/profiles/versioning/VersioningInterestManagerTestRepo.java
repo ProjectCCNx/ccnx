@@ -292,13 +292,12 @@ public class VersioningInterestManagerTestRepo {
 
 		// send MAX_FILL items, should only be one interest
 		CCNTime now = CCNTime.now();
-		int max_spacing = 20000;
+		long max_spacing = 20000;
 		long start_time = now.getTime();
 		long stop_time = start_time + tosend * max_spacing;
 
 		System.out.println("***** Sending stream 1 *****");
-		@SuppressWarnings("unused")
-		TreeSet<CCNTime> sent1 = sendStreamUniform(sinkhandle, vim, basename, start_time, stop_time, tosend);
+		sendStreamUniform(sinkhandle, vim, basename, start_time, stop_time, tosend);
 
 		// wait a while
 		Thread.sleep(10000);
@@ -345,8 +344,7 @@ public class VersioningInterestManagerTestRepo {
 		double std_time = tosend * max_spacing;
 
 		System.out.println("***** Sending stream 1 *****");
-		@SuppressWarnings("unused")
-		TreeSet<CCNTime> sent1 = sendStreamGaussian(sinkhandle, vim, basename, mean_time, std_time, tosend);
+		sendStreamGaussian(sinkhandle, vim, basename, mean_time, std_time, tosend);
 
 		// wait a while
 		Thread.sleep(10000);
