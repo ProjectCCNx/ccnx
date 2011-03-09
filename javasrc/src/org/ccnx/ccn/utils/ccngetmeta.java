@@ -49,8 +49,8 @@ public class ccngetmeta implements Usage {
 				u.usage();
 				System.exit(1);
 			}
-			if (CommonParameters.startArg > i)
-				i = CommonParameters.startArg;
+			if (CommonParameters.startArg > i + 1)
+				i = CommonParameters.startArg - 1;
 		}
 		
 		if (args.length != CommonParameters.startArg + 3) {
@@ -111,14 +111,14 @@ public class ccngetmeta implements Usage {
 			}
 			if (CommonParameters.verbose)
 				System.out.println("ccngetfile took: "+(System.currentTimeMillis() - starttime)+"ms");
-			System.out.println("Retrieved content " + args[1] + " got " + readtotal + " bytes.");
+			System.out.println("Retrieved content " + args[CommonParameters.startArg + 1] + " got " + readtotal + " bytes.");
 			System.exit(0);
 
 		} catch (ConfigurationException e) {
 			System.out.println("Configuration exception in ccngetfile: " + e.getMessage());
 			e.printStackTrace();
 		} catch (MalformedContentNameStringException e) {
-			System.out.println("Malformed name: " + args[0] + " " + e.getMessage());
+			System.out.println("Malformed name: " + args[CommonParameters.startArg] + " " + e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
 			System.out.println("Cannot write file or read content. " + e.getMessage());
