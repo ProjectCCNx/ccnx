@@ -123,7 +123,7 @@ public class CCNNetworkChannel extends InputStream {
 				_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
 			} catch (IOException ioe) {
 				if (!_ncInitialized)
-					throw new IOException(ioe);
+					throw ioe;
 				return;
 			}
 			_ncSockChannel.configureBlocking(false);
