@@ -47,6 +47,8 @@ public abstract class CommonArguments {
 				u.usage();
 			}
 			Log.setLevel(Log.FAC_ALL, level);
+		} else if (args[i].equals("-v")) {
+			CommonParameters.verbose = true;
 		} else if (args[i].equals("-as")) {
 			if (args.length < (i + 2)) {
 				u.usage();
