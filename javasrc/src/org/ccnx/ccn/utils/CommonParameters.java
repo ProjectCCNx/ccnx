@@ -25,6 +25,7 @@ public class CommonParameters {
 	public static int BLOCK_SIZE = 8192;
 	public static boolean rawMode = false;
 	public static boolean unversioned = false;
+	public static int startArg = 0;
 	
 	public static boolean verbose = false;
 	

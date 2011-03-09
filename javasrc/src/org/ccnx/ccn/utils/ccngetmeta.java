@@ -20,11 +20,9 @@ package org.ccnx.ccn.utils;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -38,65 +36,24 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * the desired metadata only.
  * Note class name needs to match command name to work with ccn_run
  */
-public class ccngetmeta {
+public class ccngetmeta implements Usage {
 	
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		int startArg = 0;
+		Usage u = new ccngetmeta();
 		
 		for (int i = 0; i < args.length - 3; i++) {
-			if (args[i].equals("-unversioned")) {
-				if (startArg <= i)
-					startArg = i + 1;
-				CommonParameters.unversioned = true;
-			} else if (args[i].equals("-timeout")) {
-				if (args.length < (i + 2)) {
-					usage();
-					return;
-				}
-				try {
-					CommonParameters.timeout = Integer.parseInt(args[++i]);
-				} catch (NumberFormatException nfe) {
-					usage();
-					return;
-				}
-				if (startArg <= i)
-					startArg = i + 1;
-			} else if (args[i].equals("-log")) {
-				Level level = null;
-				if (args.length < (i + 2)) {
-					usage();
-				}
-				try {
-					level = Level.parse(args[++i]);
-				} catch (NumberFormatException nfe) {
-					usage();
-				}
-				Log.setLevel(level);
-				if (startArg <= i)
-					startArg = i + 1;
-			} else if (args[i].equals("-as")) {
-				if (args.length < (i + 2)) {
-					usage();
-				}
-				CommonSecurity.setUser(args[++i]);
-				if (startArg <= i)
-					startArg = i + 1;				
-			} else if (args[i].equals("-ac")) {
-				CommonSecurity.setAccessControl();
-				if (startArg <= i)
-					startArg = i + 1;				
-			}
-			else {
-				usage();
+			if (!CommonArguments.parseArguments(args, i, u)) {
+				u.usage();
 				System.exit(1);
 			}
 		}
 		
 		if (args.length != startArg + 3) {
-			usage();
+			u.usage();
 			System.exit(1);
 		}
 		
@@ -168,7 +125,7 @@ public class ccngetmeta {
 		System.exit(1);
 	}
 	
-	public static void usage() {
+	public void usage() {
 		System.out.println("usage: ccngetmeta [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <metaname> <filename>");
 	}
 	

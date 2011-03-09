@@ -875,7 +875,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					if (inOrderSegments.size() > 0 || segmentNumber == 1)
 						advancePipeline(false);
 					else
-						advancePipeline(true);
+						advancePipeline(true); 
 					return co;
 				}
 			}
