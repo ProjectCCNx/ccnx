@@ -1,7 +1,7 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -42,7 +42,6 @@ public class ccngetmeta implements Usage {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		int startArg = 0;
 		Usage u = new ccngetmeta();
 		
 		for (int i = 0; i < args.length - 3; i++) {
@@ -50,9 +49,11 @@ public class ccngetmeta implements Usage {
 				u.usage();
 				System.exit(1);
 			}
+			if (CommonParameters.startArg > i)
+				i = CommonParameters.startArg;
 		}
 		
-		if (args.length != startArg + 3) {
+		if (args.length != CommonParameters.startArg + 3) {
 			u.usage();
 			System.exit(1);
 		}
@@ -62,15 +63,15 @@ public class ccngetmeta implements Usage {
 			
 			CCNHandle handle = CCNHandle.open();
 
-			String metaArg = args[startArg + 1];
+			String metaArg = args[CommonParameters.startArg + 1];
 			if (!metaArg.startsWith("/"))
 				metaArg = "/" + metaArg;
-			ContentName fileName = MetadataProfile.getLatestVersion(ContentName.fromURI(args[startArg]), 
+			ContentName fileName = MetadataProfile.getLatestVersion(ContentName.fromURI(args[CommonParameters.startArg]), 
 					ContentName.fromNative(metaArg), CommonParameters.timeout, handle);
 		
 			if (fileName == null) {
 				//This base content does not exist...  cannot get metadata associated with the base name.
-				System.out.println("File " + args[startArg] + " does not exist");
+				System.out.println("File " + args[CommonParameters.startArg] + " does not exist");
 				System.exit(1);
 			}
 			
@@ -82,9 +83,9 @@ public class ccngetmeta implements Usage {
 				System.exit(1);
 			}
 			
-			File theFile = new File(args[startArg + 2]);
+			File theFile = new File(args[CommonParameters.startArg + 2]);
 			if (theFile.exists()) {
-				System.out.println("Overwriting file: " + args[startArg + 1]);
+				System.out.println("Overwriting file: " + args[CommonParameters.startArg + 1]);
 			}
 			FileOutputStream output = new FileOutputStream(theFile);
 			
@@ -108,7 +109,8 @@ public class ccngetmeta implements Usage {
 				output.write(buffer, 0, readcount);
 				output.flush();
 			}
-			System.out.println("ccngetfile took: "+(System.currentTimeMillis() - starttime)+"ms");
+			if (CommonParameters.verbose)
+				System.out.println("ccngetfile took: "+(System.currentTimeMillis() - starttime)+"ms");
 			System.out.println("Retrieved content " + args[1] + " got " + readtotal + " bytes.");
 			System.exit(0);
 
@@ -126,7 +128,7 @@ public class ccngetmeta implements Usage {
 	}
 	
 	public void usage() {
-		System.out.println("usage: ccngetmeta [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <metaname> <filename>");
+		System.out.println("usage: ccngetmeta [-v (verbose)] [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <metaname> <filename>");
 	}
 	
 }

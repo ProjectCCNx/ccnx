@@ -49,7 +49,9 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 				if (!CommonArguments.parseArguments(args, i, ccnputfile)) {
 					usage();
 				}
-			}	
+			}
+			if (CommonParameters.startArg > i)
+				i = CommonParameters.startArg;
 		}
 		
 		if (args.length < CommonParameters.startArg + 2) {

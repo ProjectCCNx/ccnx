@@ -1,7 +1,7 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -44,6 +44,8 @@ public class ccngetfile implements Usage {
 				u.usage();
 				System.exit(1);
 			}
+			if (CommonParameters.startArg > i)
+				i = CommonParameters.startArg;
 		}
 		
 		if (args.length < CommonParameters.startArg + 2) {

@@ -1,3 +1,20 @@
+/*
+ * A CCNx command line utility.
+ *
+ * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
 package org.ccnx.ccn.utils;
 
 import java.util.logging.Level;
@@ -7,23 +24,18 @@ import org.ccnx.ccn.impl.support.Log;
 public abstract class CommonArguments {
 	
 	public static boolean parseArguments(String[] args, int i, Usage u) {
+		boolean ret = true;
 		if (args[i].equals("-unversioned")) {
-			if (CommonParameters.startArg <= i)
-				CommonParameters.startArg = i + 1;
 			CommonParameters.unversioned = true;
-			return true;
 		} else if (args[i].equals("-timeout")) {
 			if (args.length < (i + 2)) {
 				u.usage();
 			}
 			try {
-				CommonParameters.timeout = Integer.parseInt(args[++i]);
+				CommonParameters.timeout = Integer.parseInt(args[i++]);
 			} catch (NumberFormatException nfe) {
 				u.usage();
 			}
-			if (CommonParameters.startArg <= i)
-				CommonParameters.startArg = i + 1;
-			return true;
 		} else if (args[i].equals("-log")) {
 			Level level = null;
 			if (args.length < (i + 2)) {
@@ -35,23 +47,18 @@ public abstract class CommonArguments {
 				u.usage();
 			}
 			Log.setLevel(Log.FAC_ALL, level);
-			if (CommonParameters.startArg <= i)
-				CommonParameters.startArg = i + 1;
-			return true;
 		} else if (args[i].equals("-as")) {
 			if (args.length < (i + 2)) {
 				u.usage();
 			}
 			CommonSecurity.setUser(args[++i]);
-			if (CommonParameters.startArg <= i)
-				CommonParameters.startArg = i + 1;
-			return true;
 		} else if (args[i].equals("-ac")) {
 			CommonSecurity.setAccessControl();
-			if (CommonParameters.startArg <= i)
-				CommonParameters.startArg = i + 1;
-			return true;
+		} else {
+			ret = false;
 		}
-		return false;
+		if (CommonParameters.startArg < i)
+			CommonParameters.startArg = 1;
+		return ret;
 	}
 }
