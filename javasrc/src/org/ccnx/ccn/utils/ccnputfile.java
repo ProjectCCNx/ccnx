@@ -43,15 +43,17 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 		for (int i = 0; i < args.length - 2; i++) {
 			if (args[i].equals("-local")) {
 				CommonParameters.local = true;
-				if (CommonParameters.startArg <= i)
-					CommonParameters.startArg = i + 1;
+			} else if (args[i].equals(("-raw"))) {
+				CommonParameters.rawMode = true;
 			} else {
 				if (!CommonArguments.parseArguments(args, i, ccnputfile)) {
 					usage();
 				}
+				if (CommonParameters.startArg > i)
+					i = CommonParameters.startArg;
 			}
-			if (CommonParameters.startArg > i)
-				i = CommonParameters.startArg;
+			if (CommonParameters.startArg <= i)
+				CommonParameters.startArg = i + 1;
 		}
 		
 		if (args.length < CommonParameters.startArg + 2) {
