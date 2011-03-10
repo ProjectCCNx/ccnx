@@ -59,6 +59,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final int ANSWER_GENERATED = 2;
 	public static final int ANSWER_STALE = 4;		// Stale answer OK
 	public static final int MARK_STALE = 16;		// Must have Scope 0.  Michael calls this a "hack"
+	
+	public static final int DEFAULT_ANSWER_ORIGIN_KIND = ANSWER_CONTENT_STORE | ANSWER_GENERATED;
 
 	/**
 	 * For nonce generation
@@ -73,7 +75,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected Exclude _exclude;
 	protected Integer _childSelector;
 	
-	protected static final int DEFAULT_ANSWER_ORIGIN_KIND = ANSWER_CONTENT_STORE | ANSWER_GENERATED;
 	protected Integer _answerOriginKind = null;
 	protected Integer _scope;
 	protected byte[] _nonce;
