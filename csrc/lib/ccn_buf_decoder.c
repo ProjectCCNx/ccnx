@@ -926,3 +926,111 @@ ccn_compare_names(const unsigned char *a, size_t asize,
     return (cmp);
 }
 
+int
+ccn_parse_LinkAuthenticator(struct ccn_buf_decoder *d, struct ccn_parsed_Link *pl)
+{
+    int res = -1;
+    
+    /* Implement with a single offset for the blob, CCN_PL_[BE]_PublisherDigest
+     * and remember the DTAG value to indicate which type of digest it is
+     */
+    if (ccn_buf_match_dtag(d, CCN_DTAG_LinkAuthenticator)) {
+        ccn_buf_advance(d);                         // advance over DTAG token
+        pl->offset[CCN_PL_B_LinkAuthenticator] = d->decoder.token_index;
+        pl->offset[CCN_PL_B_PublisherID] = d->decoder.token_index;
+        pl->offset[CCN_PL_B_PublisherDigest] = d->decoder.token_index;
+        pl->offset[CCN_PL_E_PublisherDigest] = d->decoder.token_index;
+        
+        if (ccn_buf_match_dtag(d, CCN_DTAG_PublisherPublicKeyDigest)      ||
+            ccn_buf_match_dtag(d, CCN_DTAG_PublisherCertificateDigest)    ||
+            ccn_buf_match_dtag(d, CCN_DTAG_PublisherIssuerKeyDigest)      ||
+            ccn_buf_match_dtag(d, CCN_DTAG_PublisherIssuerCertificateDigest)) {
+            // res = d->decoder.element_index;
+            ccn_buf_advance(d);                     // advance over the DTAG token
+            if (!ccn_buf_match_some_blob(d))
+                return (d->decoder.state = -__LINE__);
+            pl->offset[CCN_PL_B_PublisherDigest] = d->decoder.token_index;
+            ccn_buf_advance(d);                     // advance over the digest
+            pl->offset[CCN_PL_E_PublisherDigest] = d->decoder.token_index;
+            ccn_buf_check_close(d);                 // advance over the DTAG closer
+        }
+        if (d->decoder.state < 0)
+            return (d->decoder.state);
+        pl->offset[CCN_PL_E_PublisherID] = d->decoder.token_index;
+        
+        /* parse optional NameComponentCount nonNegativeInteger */
+        pl->offset[CCN_PL_B_NameComponentCount] = d->decoder.token_index;
+        pl->name_component_count = ccn_parse_optional_tagged_nonNegativeInteger(d, CCN_DTAG_NameComponentCount);
+        pl->offset[CCN_PL_E_NameComponentCount] = d->decoder.token_index;
+        
+        /* parse optional Timestamp TimestampType */
+        pl->offset[CCN_PL_B_Timestamp] = d->decoder.token_index;
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Timestamp))
+            ccn_parse_required_tagged_timestamp(d, CCN_DTAG_Timestamp);
+        pl->offset[CCN_PL_E_Timestamp] = d->decoder.token_index;
+        
+        /* parse optional Type ContentType */
+        pl->offset[CCN_PL_B_Type] = d->decoder.token_index;
+        pl->type = ccn_parse_optional_tagged_binary_number(d, CCN_DTAG_Type, 3, 3, CCN_CONTENT_DATA);
+        pl->offset[CCN_PL_E_Type] = d->decoder.token_index;
+        
+        /* parse optional ContentDigest Base64BinaryType */
+        pl->offset[CCN_PL_B_ContentDigest] = d->decoder.token_index;
+        ccn_parse_optional_tagged_BLOB(d, CCN_DTAG_ContentDigest, 32, 32);
+        pl->offset[CCN_PL_E_ContentDigest] = d->decoder.token_index;
+        ccn_buf_check_close(d);
+        pl->offset[CCN_PL_E_LinkAuthenticator] = d->decoder.token_index;
+	} else
+        d->decoder.state = -__LINE__;
+    if (!CCN_FINAL_DSTATE(d->decoder.state))
+        return (CCN_DSTATE_ERR_CODING);
+    return(0);
+}
+
+int
+ccn_parse_Link(const unsigned char *msg, size_t size,
+               struct ccn_parsed_Link *link,
+               struct ccn_indexbuf *components)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, msg, size);
+    int ncomp = 0;
+    int res;
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Link)) {
+        if (components == NULL) {
+            /* We need to have the component offsets. */
+            components = ccn_indexbuf_create();
+            if (components == NULL) return(-1);
+            res = ccn_parse_Link(msg, size, link, components);
+            ccn_indexbuf_destroy(&components);
+            return(res);
+        }
+        ccn_buf_advance(d);
+        link->offset[CCN_PL_B_Name] = d->decoder.element_index;
+        link->offset[CCN_PL_B_Component0] = d->decoder.index;
+        ncomp = ccn_parse_Name(d, components);
+        if (d->decoder.state < 0) {
+            memset(link->offset, 0, sizeof(link->offset));
+            return(d->decoder.state);
+        }
+        link->offset[CCN_PL_E_ComponentLast] = d->decoder.token_index - 1;
+        link->offset[CCN_PL_E_Name] = d->decoder.token_index;
+        link->name_comps = ncomp;
+        /* parse optional Label string */
+        link->offset[CCN_PL_B_Label] = d->decoder.token_index;
+        res = ccn_parse_optional_tagged_UDATA(d, CCN_DTAG_Label);
+        link->offset[CCN_PL_E_Label] = d->decoder.token_index;
+        /* parse optional LinkAuthenticator LinkAuthenticatorType */
+        if (ccn_buf_match_dtag(d, CCN_DTAG_LinkAuthenticator))
+            res = ccn_parse_LinkAuthenticator(d, link);
+    }
+    else
+        return (d->decoder.state = -__LINE__);
+    if (d->decoder.state < 0)
+        return (d->decoder.state);
+    if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state))
+        return (CCN_DSTATE_ERR_CODING);
+    return (ncomp);
+}
+
+
