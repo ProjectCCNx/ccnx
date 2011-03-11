@@ -928,9 +928,7 @@ ccn_compare_names(const unsigned char *a, size_t asize,
 
 int
 ccn_parse_LinkAuthenticator(struct ccn_buf_decoder *d, struct ccn_parsed_Link *pl)
-{
-    int res = -1;
-    
+{    
     /* Implement with a single offset for the blob, CCN_PL_[BE]_PublisherDigest
      * and remember the DTAG value to indicate which type of digest it is
      */
@@ -946,13 +944,13 @@ ccn_parse_LinkAuthenticator(struct ccn_buf_decoder *d, struct ccn_parsed_Link *p
             ccn_buf_match_dtag(d, CCN_DTAG_PublisherIssuerKeyDigest)      ||
             ccn_buf_match_dtag(d, CCN_DTAG_PublisherIssuerCertificateDigest)) {
             pl->publisher_digest_type = d->decoder.numval;  // remember the DTAG 
-            ccn_buf_advance(d);                     // advance over the DTAG token
+            ccn_buf_advance(d);                         // over the DTAG token
             if (!ccn_buf_match_some_blob(d))
                 return (d->decoder.state = -__LINE__);
             pl->offset[CCN_PL_B_PublisherDigest] = d->decoder.token_index;
-            ccn_buf_advance(d);                     // advance over the digest
+            ccn_buf_advance(d);                         // over the digest
             pl->offset[CCN_PL_E_PublisherDigest] = d->decoder.token_index;
-            ccn_buf_check_close(d);                 // advance over the DTAG closer
+            ccn_buf_check_close(d);                     // over the DTAG closer
         }
         if (d->decoder.state < 0)
             return (d->decoder.state);
@@ -1028,7 +1026,7 @@ ccn_parse_Link(const unsigned char *msg, size_t size,
         return (d->decoder.state = -__LINE__);
     if (d->decoder.state < 0)
         return (d->decoder.state);
-    if (d->decoder.index != size || !CCN_FINAL_DSTATE(d->decoder.state))
+    if (!CCN_FINAL_DSTATE(d->decoder.state))
         return (CCN_DSTATE_ERR_CODING);
     return (ncomp);
 }
