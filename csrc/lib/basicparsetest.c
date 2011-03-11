@@ -53,7 +53,7 @@ main (int argc, char **argv)
     struct ccn_parsed_interest parsed_interest = {0};
     struct ccn_parsed_interest *pi = &parsed_interest;
     struct ccn_parsed_Link parsed_link = {0};
-    struct ccn_parsed_link *pl = &parsed_link;
+    struct ccn_parsed_Link *pl = &parsed_link;
 
     size = read(0, buf, sizeof(buf));
     if (size < 0)

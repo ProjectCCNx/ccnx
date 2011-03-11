@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -945,7 +945,7 @@ ccn_parse_LinkAuthenticator(struct ccn_buf_decoder *d, struct ccn_parsed_Link *p
             ccn_buf_match_dtag(d, CCN_DTAG_PublisherCertificateDigest)    ||
             ccn_buf_match_dtag(d, CCN_DTAG_PublisherIssuerKeyDigest)      ||
             ccn_buf_match_dtag(d, CCN_DTAG_PublisherIssuerCertificateDigest)) {
-            // res = d->decoder.element_index;
+            pl->publisher_digest_type = d->decoder.numval;  // remember the DTAG 
             ccn_buf_advance(d);                     // advance over the DTAG token
             if (!ccn_buf_match_some_blob(d))
                 return (d->decoder.state = -__LINE__);

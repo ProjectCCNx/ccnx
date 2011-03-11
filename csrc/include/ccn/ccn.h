@@ -534,6 +534,7 @@ enum ccn_parsed_Link_offsetid {
 struct ccn_parsed_Link {
     int name_comps;
     int name_component_count;
+    int publisher_digest_type;
     int type;
     
     unsigned short offset[CCN_PL_E+1];
