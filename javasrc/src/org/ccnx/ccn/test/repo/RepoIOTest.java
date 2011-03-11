@@ -39,6 +39,7 @@ import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Link.LinkObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.profiles.ccnd.CCNDCacheManager;
 import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -76,6 +77,10 @@ public class RepoIOTest extends RepoTestBase {
 	protected static String _testNonRepo = "/testNameSpace/stream-nr";
 	protected static String _testNonRepoObj = "/testNameSpace/obj-nr";
 	protected static String _testLink = "/testNameSpace/link";
+	
+	protected static CCNDCacheManager _cacheManager = new CCNDCacheManager();
+	protected static ContentName _keyNameForStream;
+	protected static ContentName _keyNameForObj;
 	
 	static String USER_NAMESPACE = "TestRepoUser";
 	
@@ -179,6 +184,7 @@ public class RepoIOTest extends RepoTestBase {
 		cos.setBlockSize(100);
 		cos.setTimeout(4000);
 		cos.write(data, 0, data.length);
+		_keyNameForStream = cos.getFirstSegment().signedInfo().getKeyLocator().name().name();
 		cos.close();
 		
 		CCNHandle userHandle2 = testUsers.getHandleForUser(userNames[1]);
@@ -196,6 +202,7 @@ public class RepoIOTest extends RepoTestBase {
 		floss.handleNamespace(name);
 		so = new CCNStringObject(name, "String value for non-repo obj", SaveType.RAW, userHandle2);
 		so.save();
+		_keyNameForObj = so.getFirstSegment().signedInfo().getKeyLocator().name().name();
 		lo.close();
 		so.close();
 		floss.waitForKeys();
@@ -266,13 +273,21 @@ public class RepoIOTest extends RepoTestBase {
 		
 		// Test case of content not already in repo
 		Log.info("About to do first sync for stream");
-		input = new CCNInputStream(ContentName.fromNative(_testNonRepo), getHandle);
+		ContentName name = ContentName.fromNative(_testNonRepo);
+		input = new CCNInputStream(name, getHandle);
 		Assert.assertFalse(RepositoryControl.localRepoSync(getHandle, input));
 		
 		Thread.sleep(2000);  // Give repo time to fetch TODO: replace with confirmation protocol
 		Log.info("About to do second sync for stream");
-		Assert.assertTrue(RepositoryControl.localRepoSync(getHandle, input));
+		Assert.assertTrue(RepositoryControl.localRepoSync(getHandle, input));	
+		input.close();
 		
+		_cacheManager.clearCache(name, getHandle, 10000);
+		_cacheManager.clearCache(_keyNameForStream, getHandle, 1000);
+		byte[] testBytes = new byte[data.length];
+		input = new CCNInputStream(name, getHandle);
+		input.read(testBytes);
+		Assert.assertArrayEquals(data, testBytes);
 		input.close();
 	}
 	
@@ -289,7 +304,8 @@ public class RepoIOTest extends RepoTestBase {
 		so.close();
 		
 		// Test case of content not already in repo
-		so = new CCNStringObject(ContentName.fromNative(_testNonRepoObj), getHandle);
+		ContentName name = ContentName.fromNative(_testNonRepoObj);
+		so = new CCNStringObject(name, getHandle);
 		Log.info("About to do first sync for object {0}", so.getBaseName());
 		Assert.assertFalse(RepositoryControl.localRepoSync(getHandle, so));
 
@@ -297,6 +313,12 @@ public class RepoIOTest extends RepoTestBase {
 		Log.info("About to do second sync for object {0}", so.getBaseName());
 		Assert.assertTrue(RepositoryControl.localRepoSync(getHandle, so));
 		so.close();
+		
+		_cacheManager.clearCache(name, getHandle, 10000);
+		_cacheManager.clearCache(_keyNameForStream, getHandle, 1000);
+		_cacheManager.clearCache(ContentName.fromNative(_testLink), getHandle, 1000);
+		so = new CCNStringObject(name, getHandle);
+		assert(so.string().equals("String value for non-repo obj"));
 	}
 
 	private void changePolicy(String policyFile) throws Exception {
