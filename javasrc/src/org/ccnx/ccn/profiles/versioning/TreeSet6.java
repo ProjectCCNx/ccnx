@@ -51,11 +51,25 @@ public class TreeSet6<E> extends TreeSet<E> {
 			Class<?> c = this.getClass();
 			Class<?> cc = c.getSuperclass();
 			
-			floor = getMethod(cc, "floor", parameterTypes);
-			ceiling = getMethod(cc, "ceiling", parameterTypes);
-			lower = getMethod(cc, "lower", parameterTypes);
-			higher = getMethod(cc, "higher", parameterTypes);
-			descendingIterator = getMethod(cc, "descendingIterator");
+			try {
+				floor = cc.getMethod("floor", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+			
+			try {
+			ceiling = cc.getMethod("ceiling", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+
+			try {
+			lower = cc.getMethod("lower", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+			
+			try {
+			higher = cc.getMethod("higher", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+
+			try {
+			descendingIterator = cc.getMethod("descendingIterator");
+			} catch(NoSuchMethodException nsme) {}
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -372,6 +386,9 @@ public class TreeSet6<E> extends TreeSet<E> {
 		public DescendingIterator() {
 			_list = new LinkedList<T>((Collection<? extends T>) TreeSet6.this);
 			_listIterator = _list.listIterator();
+			// now move the iterator to the end
+			while(_listIterator.hasNext())
+				_listIterator.next();
 		}
 		
 		public boolean hasNext() {
