@@ -18,9 +18,11 @@
 package org.ccnx.ccn.utils;
 
 import java.util.logging.Level;
-
 import org.ccnx.ccn.impl.support.Log;
 
+/**
+ * Parse arguments that are used in all the I/O utilities
+ */
 public abstract class CommonArguments {
 	
 	public static boolean parseArguments(String[] args, int i, Usage u) {
