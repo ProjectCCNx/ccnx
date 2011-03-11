@@ -31,73 +31,32 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * Command-line utility to write a file to ccnd; requires a corresponding ccngetfile
  * to pull the data or it will not move (flow balance).
  **/
- public class ccnputfile extends CommonOutput {
+ public class ccnputfile extends CommonOutput implements Usage {
+	 static ccnputfile ccnputfile = new ccnputfile();
  
 	/**
 	 * @param args
 	 */
 	public void write(String[] args) {
 		Log.setDefaultLevel(Level.WARNING);
-		int startArg = 0;
 		
 		for (int i = 0; i < args.length - 2; i++) {
-			if (args[i].equals(("-raw"))) {
-				if (startArg <= i)
-					startArg = i + 1;
-				CommonParameters.rawMode = true;
-			} else if (args[i].equals("-unversioned")) {
-				if (startArg <= i)
-					startArg = i + 1;
-				CommonParameters.unversioned = true;
-			} else if (args[i].equals("-timeout")) {
-				if (args.length < (i + 2)) {
-					usage();
-				}
-				try {
-					CommonParameters.timeout = Integer.parseInt(args[++i]);
-				} catch (NumberFormatException nfe) {
-					usage();
-				}
-				if (startArg <= i)
-					startArg = i + 1;
-			} else if (args[i].equals("-log")) {
-				Level level = null;
-				if (args.length < (i + 2)) {
-					usage();
-				}
-				try {
-					level = Level.parse(args[++i]);
-				} catch (NumberFormatException nfe) {
-					usage();
-				}
-				Log.setLevel(level);
-				if (startArg <= i)
-					startArg = i + 1;
-			} else if (args[i].equals("-v")) {
-				CommonParameters.verbose = true;
-				if (startArg <= i)
-					startArg = i + 1;
-			} else if (args[i].equals("-as")) {
-				if (args.length < (i + 2)) {
-					usage();
-				}
-				CommonSecurity.setUser(args[++i]);
-				if (startArg <= i)
-					startArg = i + 1;				
-			} else if (args[i].equals("-ac")) {
-				CommonSecurity.setAccessControl();
-				if (startArg <= i)
-					startArg = i + 1;				
-			} else if (args[i].equals("-local")) {
+			if (args[i].equals("-local")) {
 				CommonParameters.local = true;
-				if (startArg <= i)
-					startArg = i + 1;
+			} else if (args[i].equals(("-raw"))) {
+				CommonParameters.rawMode = true;
 			} else {
-				usage();
-			}	
+				if (!CommonArguments.parseArguments(args, i, ccnputfile)) {
+					usage();
+				}
+				if (CommonParameters.startArg > i + 1)
+					i = CommonParameters.startArg - 1;
+			}
+			if (CommonParameters.startArg <= i)
+				CommonParameters.startArg = i + 1;
 		}
 		
-		if (args.length < startArg + 2) {
+		if (args.length < CommonParameters.startArg + 2) {
 			usage();
 		}
 				
@@ -107,21 +66,21 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			// If we get more than one, put underneath the first as parent.
 			// Ideally want to use newVersion to get latest version. Start
 			// with random version.
-			ContentName argName = ContentName.fromURI(args[startArg]);
+			ContentName argName = ContentName.fromURI(args[CommonParameters.startArg]);
 			
 			CCNHandle handle = CCNHandle.open();
 			
-			if (args.length == (startArg + 2)) {
+			if (args.length == (CommonParameters.startArg + 2)) {
 				if (CommonParameters.verbose)
-					Log.info("ccnputfile: putting file " + args[startArg + 1]);
+					Log.info("ccnputfile: putting file " + args[CommonParameters.startArg + 1]);
 				
-				doPut(handle, args[startArg + 1], argName);
-				System.out.println("Inserted file " + args[startArg + 1] + ".");
+				doPut(handle, args[CommonParameters.startArg + 1], argName);
+				System.out.println("Inserted file " + args[CommonParameters.startArg + 1] + ".");
 				if (CommonParameters.verbose)
 					System.out.println("ccnputfile took: "+(System.currentTimeMillis() - starttime)+" ms");
 				System.exit(0);
 			} else {
-				for (int i=startArg + 1; i < args.length; ++i) {
+				for (int i=CommonParameters.startArg + 1; i < args.length; ++i) {
 					
 					// put as child of name
 					ContentName nodeName = ContentName.fromURI(argName, args[i]);
@@ -138,7 +97,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			System.out.println("Configuration exception in put: " + e.getMessage());
 			e.printStackTrace();
 		} catch (MalformedContentNameStringException e) {
-			System.out.println("Malformed name: " + args[startArg] + " " + e.getMessage());
+			System.out.println("Malformed name: " + args[CommonParameters.startArg] + " " + e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
 			System.out.println("Cannot read file. " + e.getMessage());
@@ -156,8 +115,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 		System.exit(1);
 	}
 
-	
 	public static void main(String[] args) {
-		new ccnputfile().write(args);
+		ccnputfile.write(args);
 	}
 }

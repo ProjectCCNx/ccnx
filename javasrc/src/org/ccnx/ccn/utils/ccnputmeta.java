@@ -1,7 +1,7 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -35,71 +35,31 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * By default this writes to the repo. Otherwise there must be a corresponding ccngetfile to retrieve
  * the data.
  **/
- public class ccnputmeta extends CommonOutput {
+ public class ccnputmeta extends CommonOutput implements Usage {
+	 static ccnputmeta ccnputmeta = new ccnputmeta();
 
 	/**
 	 * @param args
 	 */
 	public void write(String[] args) {
 		Log.setDefaultLevel(Level.WARNING);
-		int startArg = 0;
-		
 		for (int i = 0; i < args.length - 3; i++) {
-			if (args[i].equals(("-raw"))) {
-				if (startArg <= i)
-					startArg = i + 1;
+			if (args[i].equals("-local")) {
+				CommonParameters.local = true;
+			} else if (args[i].equals(("-raw"))) {
 				CommonParameters.rawMode = true;
-			} else if (args[i].equals("-unversioned")) {
-				if (startArg <= i)
-					startArg = i + 1;
-				CommonParameters.unversioned = true;
-			} else if (args[i].equals("-timeout")) {
-				if (args.length < (i + 2)) {
+			} else {
+				if (!CommonArguments.parseArguments(args, i, ccnputmeta)) {
 					usage();
 				}
-				try {
-					CommonParameters.timeout = Integer.parseInt(args[++i]);
-				} catch (NumberFormatException nfe) {
-					usage();
-				}
-				if (startArg <= i)
-					startArg = i + 1;
-			} else if (args[i].equals("-log")) {
-				Level level = null;
-				if (args.length < (i + 2)) {
-					usage();
-				}
-				try {
-					level = Level.parse(args[++i]);
-				} catch (NumberFormatException nfe) {
-					usage();
-				}
-				Log.setLevel(level);
-				if (startArg <= i)
-					startArg = i + 1;
-			} else if (args[i].equals("-v")) {
-				CommonParameters.verbose = true;
-				if (startArg <= i)
-					startArg = i + 1;
-			} else if (args[i].equals("-as")) {
-				if (args.length < (i + 2)) {
-					usage();
-				}
-				CommonSecurity.setUser(args[++i]);
-				if (startArg <= i)
-					startArg = i + 1;				
-			} else if (args[i].equals("-ac")) {
-				CommonSecurity.setAccessControl();
-				if (startArg <= i)
-					startArg = i + 1;				
+				if (CommonParameters.startArg > i + 1)
+					i = CommonParameters.startArg - 1;
 			}
-			else {
-				usage();
-			}
-				
+			if (CommonParameters.startArg <= i)
+				CommonParameters.startArg = i + 1;
 		}
 		
-		if (args.length != startArg + 3) {
+		if (args.length != CommonParameters.startArg + 3) {
 			usage();
 		}
 		
@@ -110,8 +70,8 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			// Ideally want to use newVersion to get latest version. Start
 			// with random version.
 			
-			ContentName baseName = ContentName.fromURI(args[startArg]);
-			String metaArg = args[startArg + 1];
+			ContentName baseName = ContentName.fromURI(args[CommonParameters.startArg]);
+			String metaArg = args[CommonParameters.startArg + 1];
 			if (!metaArg.startsWith("/"))
 				metaArg = "/" + metaArg;
 			ContentName metaPath = ContentName.fromURI(metaArg);
@@ -123,10 +83,10 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			}
 			ContentName fileName = VersioningProfile.updateVersion(prevFileName);
 			if (CommonParameters.verbose)
-				Log.info("ccnputmeta: putting metadata file " + args[startArg + 1]);
+				Log.info("ccnputmeta: putting metadata file " + args[CommonParameters.startArg + 1]);
 			
-			doPut(handle, args[startArg + 2], fileName);
-			System.out.println("Inserted metadata file: " + args[startArg + 1] + " for file: " + args[startArg] + ".");
+			doPut(handle, args[CommonParameters.startArg + 2], fileName);
+			System.out.println("Inserted metadata file: " + args[CommonParameters.startArg + 1] + " for file: " + args[CommonParameters.startArg] + ".");
 			if (CommonParameters.verbose)
 				System.out.println("ccnputmeta took: "+(System.currentTimeMillis() - starttime)+" ms");
 			System.exit(0);
@@ -134,7 +94,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			System.out.println("Configuration exception in put: " + e.getMessage());
 			e.printStackTrace();
 		} catch (MalformedContentNameStringException e) {
-			System.out.println("Malformed name: " + args[startArg] + " " + e.getMessage());
+			System.out.println("Malformed name: " + args[CommonParameters.startArg] + " " + e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
 			System.out.println("Cannot read file. " + e.getMessage());
