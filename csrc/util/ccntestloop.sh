@@ -163,7 +163,6 @@ RunCTest () {
 
 RunJavaTest () {
 	local LOG;
-	test -z "${CCN_JAVATESTS}" && return 0
 	test "${CCN_JAVATESTS}" = "NO" && return 0
 	Echo Running javasrc tests...
 	LOG=javasrc/testout/TEST-javasrc-testlog.txt
