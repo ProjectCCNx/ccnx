@@ -2278,10 +2278,56 @@ register_new_face(struct ccnd_handle *h, struct face *face)
 }
 
 /**
- * @brief Process a newface request for the ccnd internal client.
+ * Replaces contents of reply_body with a ccnb-encoded StatusResponse.
+ *
+ * @returns CCN_CONTENT_NACK, or -1 in case of error.
+ */
+static int
+ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
+          int errcode, const char *errtext)
+{
+    int res;
+    reply_body->length = 0;
+    res = ccn_encode_StatusResponse(reply_body, errcode, errtext);
+    if (res == 0)
+        res = CCN_CONTENT_NACK;
+    return(res);
+}
+
+/**
+ * Check that indicated ccndid matches ours.
+ *
+ * @returns 0 if OK, or CCN_CONTENT_NACK if not.
+ */
+static int
+check_ccndid(struct ccnd_handle *h,
+             const void *p, size_t sz, struct ccn_charbuf *reply_body)
+{
+    if (sz != sizeof(h->ccnd_id) || memcmp(p, h->ccnd_id, sz) != 0)
+        return(ccnd_nack(h, reply_body, 531, "missing or incorrect ccndid"));
+    return(0);
+}
+
+static int
+check_face_instance_ccndid(struct ccnd_handle *h,
+    struct ccn_face_instance *f, struct ccn_charbuf *reply_body)
+{
+    return(check_ccndid(h, f->ccnd_id, f->ccnd_id_size, reply_body));
+}
+
+static int
+check_forwarding_entry_ccndid(struct ccnd_handle *h,
+    struct ccn_forwarding_entry *f, struct ccn_charbuf *reply_body)
+{
+    return(check_ccndid(h, f->ccnd_id, f->ccnd_id_size, reply_body));
+}
+
+/**
+ * Process a newface request for the ccnd internal client.
+ *
  * @param h is the ccnd handle
- * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
-            in its Content.
+ * @param msg points to a ccnd-encoded ContentObject containing a
+ *         FaceInstance in its Content.
  * @param size is its size in bytes
  * @param reply_body is a buffer to hold the Content of the reply, as a 
  *         FaceInstance including faceid
@@ -2310,38 +2356,48 @@ ccnd_req_newface(struct ccnd_handle *h,
     struct face *reqface = NULL;
     struct face *newface = NULL;
     int save;
+    int nackallowed = 0;
 
     save = h->flood;
-    h->flood = 0; /* never auto-register ccnx:/ for these */
+    h->flood = 0; /* never auto-register for these */
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
         goto Finish;        
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
+    res = -1;
     face_instance = ccn_face_instance_parse(req, req_size);
     if (face_instance == NULL || face_instance->action == NULL)
         goto Finish;
-
     if (strcmp(face_instance->action, "newface") != 0)
-        goto Finish;
-    if (face_instance->ccnd_id_size == sizeof(h->ccnd_id)) {
-        if (memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0)
-            goto Finish;
-    }
-    else if (face_instance->ccnd_id_size |= 0)
-        goto Finish;
-    if (face_instance->descr.ipproto != IPPROTO_UDP &&
-        face_instance->descr.ipproto != IPPROTO_TCP)
-        goto Finish;
-    if (face_instance->descr.address == NULL)
-        goto Finish;
-    if (face_instance->descr.port == NULL)
         goto Finish;
     /* consider the source ... */
     reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+    if (reqface == NULL ||
+        (reqface->flags & (CCN_FACE_LOOPBACK | CCN_FACE_LOCAL)) == 0)
         goto Finish;
+    nackallowed = 1;
+    res = check_face_instance_ccndid(h, face_instance, reply_body);
+    if (res != 0)
+        goto Finish;
+    if (face_instance->descr.ipproto != IPPROTO_UDP &&
+        face_instance->descr.ipproto != IPPROTO_TCP) {
+        res = ccnd_nack(h, reply_body, 504, "parameter error");
+        goto Finish;
+    }
+    if (face_instance->descr.address == NULL) {
+        res = ccnd_nack(h, reply_body, 504, "parameter error");
+        goto Finish;
+    }
+    if (face_instance->descr.port == NULL) {
+        res = ccnd_nack(h, reply_body, 504, "parameter error");
+        goto Finish;
+    }
+    if ((reqface->flags & CCN_FACE_GG) == 0) {
+        res = ccnd_nack(h, reply_body, 430, "not authorized");
+        goto Finish;
+    }
     hints.ai_flags |= AI_NUMERICHOST;
     hints.ai_protocol = face_instance->descr.ipproto;
     hints.ai_socktype = (hints.ai_protocol == IPPROTO_UDP) ? SOCK_DGRAM : SOCK_STREAM;
@@ -2355,8 +2411,10 @@ ccnd_req_newface(struct ccnd_handle *h,
                  face_instance->descr.address,
                  face_instance->descr.port,
                  res);
-    if (res != 0 || addrinfo == NULL)
+    if (res != 0 || addrinfo == NULL) {
+        res = ccnd_nack(h, reply_body, 501, "syntax error in address");
         goto Finish;
+    }
     if (addrinfo->ai_next != NULL)
         ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
     if (face_instance->descr.ipproto == IPPROTO_UDP) {
@@ -2374,8 +2432,10 @@ ccnd_req_newface(struct ccnd_handle *h,
             face = setup_multicast(h, face_instance,
                                    addrinfo->ai_addr,
                                    addrinfo->ai_addrlen);
-        if (face == NULL)
+        if (face == NULL) {
+            res = ccnd_nack(h, reply_body, 453, "could not setup multicast");
             goto Finish;
+        }
         newface = get_dgram_source(h, face,
                                    addrinfo->ai_addr,
                                    addrinfo->ai_addrlen,
@@ -2394,16 +2454,24 @@ ccnd_req_newface(struct ccnd_handle *h,
         face_instance->ccnd_id_size = sizeof(h->ccnd_id);
         face_instance->faceid = newface->faceid;
         face_instance->lifetime = 0x7FFFFFFF;
+        /*
+         * A short lifetime is a clue to the client that
+         * the connection has not been completed.
+         */
         if ((newface->flags & CCN_FACE_CONNECTING) != 0)
             face_instance->lifetime = 1;
         res = ccnb_append_face_instance(reply_body, face_instance);
-    }    
+        if (res > 0)
+            res = 0;
+    }
+    else
+        res = ccnd_nack(h, reply_body, 450, "could not create face");
 Finish:
     h->flood = save; /* restore saved flood flag */
     ccn_face_instance_destroy(&face_instance);
     if (addrinfo != NULL)
         freeaddrinfo(addrinfo);
-    return(res);
+    return((nackallowed || res <= 0) ? res : -1);
 }
 
 /**
@@ -2431,26 +2499,27 @@ ccnd_req_destroyface(struct ccnd_handle *h,
     size_t req_size;
     struct ccn_face_instance *face_instance = NULL;
     struct face *reqface = NULL;
+    int nackallowed = 0;
 
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0) { at = __LINE__; goto Finish; }
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0) { at = __LINE__; goto Finish; }
+    res = -1;
     face_instance = ccn_face_instance_parse(req, req_size);
     if (face_instance == NULL) { at = __LINE__; goto Finish; }
     if (face_instance->action == NULL) { at = __LINE__; goto Finish; }
-    if (strcmp(face_instance->action, "destroyface") != 0)
-        { at = __LINE__; goto Finish; }
-    if (face_instance->ccnd_id_size == sizeof(h->ccnd_id)) {
-        if (memcmp(face_instance->ccnd_id, h->ccnd_id, sizeof(h->ccnd_id)) != 0)
-            { at = __LINE__; goto Finish; }
-    }
-    else if (face_instance->ccnd_id_size |= 0) { at = __LINE__; goto Finish; }
-    if (face_instance->faceid == 0) { at = __LINE__; goto Finish; }
     /* consider the source ... */
     reqface = face_from_faceid(h, h->interest_faceid);
     if (reqface == NULL) { at = __LINE__; goto Finish; }
     if ((reqface->flags & CCN_FACE_GG) == 0) { at = __LINE__; goto Finish; }
+    nackallowed = 1;
+    if (strcmp(face_instance->action, "destroyface") != 0)
+        { at = __LINE__; goto Finish; }
+    res = check_face_instance_ccndid(h, face_instance, reply_body);
+    if (res != 0)
+        { at = __LINE__; goto Finish; }
+    if (face_instance->faceid == 0) { at = __LINE__; goto Finish; }
     res = ccnd_destroy_face(h, face_instance->faceid);
     if (res < 0) { at = __LINE__; goto Finish; }
     face_instance->action = NULL;
@@ -2462,10 +2531,15 @@ ccnd_req_destroyface(struct ccnd_handle *h,
         at = __LINE__;
     }
 Finish:
-    if (at != 0)
+    if (at != 0) {
         ccnd_msg(h, "ccnd_req_destroyface failed (line %d, res %d)", at, res);
+        if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+            res = -1;
+        else
+            res = ccnd_nack(h, reply_body, 450, "could not destroy face");
+    }
     ccn_face_instance_destroy(&face_instance);
-    return(res);
+    return((nackallowed || res <= 0) ? res : -1);
 }
 
 /**
@@ -2484,6 +2558,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     struct face *face = NULL;
     struct face *reqface = NULL;
     struct ccn_indexbuf *comps = NULL;
+    int nackallowed = 0;
 
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
@@ -2491,9 +2566,17 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
+    res = -1;
     forwarding_entry = ccn_forwarding_entry_parse(req, req_size);
     if (forwarding_entry == NULL || forwarding_entry->action == NULL)
         goto Finish;
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL)
+        goto Finish;
+    if ((reqface->flags & (CCN_FACE_GG | CCN_FACE_REGOK)) == 0)
+        goto Finish;
+    nackallowed = 1;
     if (selfreg) {
         if (strcmp(forwarding_entry->action, "selfreg") != 0)
             goto Finish;
@@ -2518,12 +2601,6 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     face = face_from_faceid(h, forwarding_entry->faceid);
     if (face == NULL)
         goto Finish;
-    /* consider the source ... */
-    reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL)
-        goto Finish;
-    if ((reqface->flags & (CCN_FACE_GG | CCN_FACE_REGOK)) == 0)
-        goto Finish;
     if (forwarding_entry->lifetime < 0)
         forwarding_entry->lifetime = 60;
     else if (forwarding_entry->lifetime > 3600 &&
@@ -2545,12 +2622,14 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     forwarding_entry->ccnd_id = h->ccnd_id;
     forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
     res = ccnb_append_forwarding_entry(reply_body, forwarding_entry);
+    if (res > 0)
+        res = 0;
 Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
-    if (res > 0)
-        res = 0;
-    return(res);
+    if (nackallowed && res < 0)
+        res = ccnd_nack(h, reply_body, 450, "could not register prefix");
+    return((nackallowed || res <= 0) ? res : -1);
 }
 
 /**
@@ -2625,6 +2704,7 @@ ccnd_req_unreg(struct ccnd_handle *h,
     struct ccn_forwarding **p = NULL;
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *npe = NULL;
+    int nackallowed = 0;
     
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
@@ -2632,7 +2712,13 @@ ccnd_req_unreg(struct ccnd_handle *h,
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
+    res = -1;
     forwarding_entry = ccn_forwarding_entry_parse(req, req_size);
+    /* consider the source ... */
+    reqface = face_from_faceid(h, h->interest_faceid);
+    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
+        goto Finish;
+    nackallowed = 1;
     if (forwarding_entry == NULL || forwarding_entry->action == NULL)
         goto Finish;
     if (strcmp(forwarding_entry->action, "unreg") != 0)
@@ -2641,20 +2727,12 @@ ccnd_req_unreg(struct ccnd_handle *h,
         goto Finish;
     if (forwarding_entry->name_prefix == NULL)
         goto Finish;
-    // XXX - probably ccnd_id should be mandatory.
-    if (forwarding_entry->ccnd_id_size == sizeof(h->ccnd_id)) {
-        if (memcmp(forwarding_entry->ccnd_id,
-                   h->ccnd_id, sizeof(h->ccnd_id)) != 0)
-            goto Finish;
-    }
-    else if (forwarding_entry->ccnd_id_size != 0)
+    res = check_forwarding_entry_ccndid(h, forwarding_entry, reply_body);
+    if (res != 0)
         goto Finish;
+    res = -1;
     face = face_from_faceid(h, forwarding_entry->faceid);
     if (face == NULL)
-        goto Finish;
-    /* consider the source ... */
-    reqface = face_from_faceid(h, h->interest_faceid);
-    if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
         goto Finish;
     comps = ccn_indexbuf_create();
     n_name_comp = ccn_name_split(forwarding_entry->name_prefix, comps);
@@ -2692,10 +2770,14 @@ ccnd_req_unreg(struct ccnd_handle *h,
     forwarding_entry->ccnd_id = h->ccnd_id;
     forwarding_entry->ccnd_id_size = sizeof(h->ccnd_id);
     res = ccnb_append_forwarding_entry(reply_body, forwarding_entry);
+    if (res > 0)
+        res = 0;
 Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
-    return(res);
+    if (nackallowed && res < 0)
+        res = ccnd_nack(h, reply_body, 450, "could not unregister prefix");
+    return((nackallowed || res <= 0) ? res : -1);
 }
 
 /**
@@ -2709,10 +2791,13 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     struct ccn_indexbuf *tap = NULL;
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *p = NULL;
+    unsigned tflags;
     unsigned wantflags;
     unsigned moreflags;
     unsigned lastfaceid;
     unsigned namespace_flags;
+    /* tap_or_last flag bit is used only in this procedure */
+    unsigned tap_or_last = (1U << 31);
 
     x = npe->forward_to;
     if (x == NULL)
@@ -2725,9 +2810,12 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     for (p = npe; p != NULL; p = p->parent) {
         moreflags = CCN_FORW_CHILD_INHERIT;
         for (f = p->forwarding; f != NULL; f = f->next) {
-            if ((f->flags & wantflags) == wantflags &&
-                  face_from_faceid(h, f->faceid) != NULL) {
-                namespace_flags |= f->flags;
+            if (face_from_faceid(h, f->faceid) == NULL)
+                continue;
+            tflags = f->flags;
+            if (tflags & (CCN_FORW_TAP | CCN_FORW_LAST))
+                tflags |= tap_or_last;
+            if ((tflags & wantflags) == wantflags) {
                 if (h->debug & 32)
                     ccnd_msg(h, "fwd.%d adding %u", __LINE__, f->faceid);
                 ccn_indexbuf_set_insert(x, f->faceid);
@@ -2739,8 +2827,9 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
                 if ((f->flags & CCN_FORW_LAST) != 0)
                     lastfaceid = f->faceid;
             }
+            namespace_flags |= f->flags;
             if ((f->flags & CCN_FORW_CAPTURE) != 0)
-                moreflags |= CCN_FORW_LAST;
+                moreflags |= tap_or_last;
         }
         wantflags |= moreflags;
     }
@@ -2986,7 +3075,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                  * interests from two other faces could conspire to cover
                  * this one completely as far as propagation is concerned,
                  * but it is still necessary to keep it around for the sake
-                 * or returning content.
+                 * of returning content.
                  * This assumes a unicast link.  If there are multiple
                  * parties on this face (broadcast or multicast), we
                  * do not want to send right away, because it is highly likely
@@ -3005,9 +3094,14 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                     }
                 }
                 p->flags |= CCN_PR_EQV; /* Don't add new faces */
-                if (outbound->n == 0)
-                    return(-1);
-				// XXX - How robust is setting of CCN_PR_EQV?
+                // XXX - How robust is setting of CCN_PR_EQV?
+                /*
+                 * XXX - We would like to avoid having to keep this
+                 * interest around if we get here with (outbound->n == 0).
+                 * However, we still need to remember to send the content
+                 * back to this face, and the data structures are not
+                 * there right now to represent this.  c.f. #100321.
+                 */
             }
         }
     }

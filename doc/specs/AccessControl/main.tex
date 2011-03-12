@@ -1,0 +1,214 @@
+\documentclass[11pt]{article}
+
+
+\newif\ifpdf
+\ifx\pdfoutput\undefined
+    \pdffalse          % we are not running PDFLaTeX
+\else
+    \pdfoutput=1       % we are running PDFLaTeX
+    \pdftrue
+\fi
+
+\usepackage{times}
+
+\ifpdf
+\usepackage[pdftex]{graphicx}
+\else
+\usepackage[dvips]{graphicx}
+\fi
+
+\usepackage{longtable}
+\usepackage{textcomp}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage{setspace}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{url}
+\usepackage[psamsfonts]{amsfonts}
+\usepackage{url}
+
+% Additional packages for AccessControl
+\usepackage{amssymb, mdwlist}
+
+%\usepackage{../../styles/fancyheadings}
+%\setlength{\headrulewidth}{0pt}
+%\setlength{\footrulewidth}{0pt}
+
+\usepackage{fancyhdr}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\usepackage{fullpage}
+\usepackage{color}
+\usepackage{floatsty}
+\usepackage{nameref}
+
+\definecolor{grey}{rgb}{0.5,0.5,0.5} % color values Red, Green, Blue
+\floatstyle{PARC}
+
+%\setlength{\textheight}{8.875in}
+%\setlength{\textwidth}{6.875in}
+%\setlength{\columnsep}{0.3125in}
+%\setlength{\topmargin}{0.0in}
+\setlength{\headheight}{14pt}
+%\setlength{\headsep}{0in}
+%\setlength{\parindent}{1pc}
+%\setlength{\oddsidemargin}{-.1875in}
+%\setlength{\evensidemargin}{-.1875in}
+
+\newcommand{\ie}{\emph{i.e.,\/} }
+\newcommand{\eg}{\emph{e.g.,\/} }
+\newcommand{\vs}{\emph{v.s.,\/} }
+\newcommand{\etc}{\emph{etc.} }
+\newcommand{\heading}[1]{{\vspace{5pt}\noindent\sc{#1}}}
+
+\newcommand{\highlight}[1]{#1}
+\newcommand{\ignore}[1]{}
+\newcommand{\maketight}[1]{\setlength{\itemsep}{#1}\setlength{\parskip}{0mm}}
+
+\newcounter{year}
+\newcounter{tasknum}
+\newcommand{\task}[2]{\addtocounter{tasknum}{1}\subsection{Task \thetasknum: #1}\label{#2}}
+
+\setlength\LTpre{.4mm}
+\setlength\LTpost{-.7mm}
+
+% These commands can be placed in the preamble (to be a global definition)
+% or locally inside the \begin{table}...\end{table} syntax.
+\newcommand\T{\rule{0pt}{2.6ex}}
+\newcommand\B{\rule[-1.2ex]{0pt}{0pt}}
+
+% Here it is: the code that adjusts justification and spacing around caption.
+\makeatletter
+% http://www.texnik.de/floats/caption.phtml
+% This does spacing around caption.
+\setlength{\abovecaptionskip}{6pt}   % 0.5cm as an example
+\setlength{\belowcaptionskip}{6pt}   % 0.5cm as an example
+% This does justification (left) of caption.
+\long\def\@makecaption#1#2{%
+  \vskip\abovecaptionskip
+  \sbox\@tempboxa{#1: #2}%
+  \ifdim \wd\@tempboxa >\hsize
+    #1: #2\par
+  \else
+    \global \@minipagefalse
+    \hb@xt@\hsize{\box\@tempboxa\hfil}%
+  \fi
+  \vskip\belowcaptionskip}
+\makeatother
+
+%\newcommand{\update}[1]{\begin{longtable}{@{\hspace{-2mm}}|@{\hspace{2mm}}p{\textwidth}}\hspace{0.235in}{}#1\end{longtable}}
+
+\newcommand{\update}[1]{#1}
+
+% NOTE: our \note for editing comments conflicts with mdwlist \note
+%\newcommand{\note}[1]{{\bf[[[#1]]]}}
+% Version to drop out notes:
+%\newcommand{\note}[1]{}
+
+
+\def\QED{\mbox{\rule[0pt]{1.0ex}{1.0ex}}}
+
+\newcounter{proccnt}
+
+\theoremstyle{definition}
+\newtheorem{procedure}{Procedure}
+%\newenvironment{procedure}[1][Procedure]{\begin{trivlist}
+%\item[\hskip \labelsep {\bfseries Procedure \refstepcounter{proccnt}\arabic{proccnt} (#1)}]}
+%%\item[\hskip \labelsep {\bfseries Procedure \@arabic\c@proccnt (#1)}]}
+%{\hspace*{\fill}~\QED\par\end{trivlist}\unskip}
+
+% \end{trivlist}
+% \hspace*{\fill}~\QED\par{\end{trivlist}}\unskip}
+%\def\endprocedure{\hspace*{\fill}~\QED\par{\end{trivlist}}\unskip}
+
+\newcommand{\remove}[1]{}
+
+%\voffset-0.25in
+\pagestyle{fancy}
+
+\setlength{\textheight}{8.8in}
+
+\lhead{\textcolor{grey}{\textsl{CCNx Access Control Specifications
+      }}} \chead{} \rhead{\textcolor{grey}{\thepage}}
+
+\begin{document}
+
+\input{coverpage}
+
+\restylefloat{figure}
+
+%\maketitle
+
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+
+%======================================
+\section*{Revision History}
+\begin{table}[ht]
+\caption{Revisions}
+\begin{tabular}{c c l}
+\hline\hline
+\T
+Date & Author & Description \\
+\hline
+\T
+Dec 3, 2009 & Philippe Golle & Created document \\
+\hline
+\T
+Jan 19, 2010 & Jim Thornton & Format changes \\
+\hline
+\T
+Feb 1, 2010 & Philippe Golle & Revision \\
+\hline
+\T
+Jul 28, 2010 & Diana Smetters & Changed cover page \\
+\hline
+\T
+Jul 29-30, 2010 & Diana Smetters & Added MLAC and namespace documentation \\
+\hline
+\end{tabular}
+\label{tab:revisions}
+\end{table}
+\cleardoublepage
+
+%======================================
+\pagenumbering{arabic}
+
+% - - - - - - - - - - - -
+% The introduction section should describe the purpose and organization of the document
+\input{AccessControlSpecs01}
+
+% - - - - - - - - - - - -
+% The description section should describe the overall purpose of the subsystem being documented
+%\input{description}
+
+% - - - - - - - - - - - -
+% The components section should describe the major components of the subsystem
+%\input{components}
+
+% - - - - - - - - - - - -
+% For each component, we want to describe
+% (a) the interface to the component
+% (b) where the component gets its configuration information
+% (c) why it is the way it is (design rationale)
+% (d) the interaction with other components, and flow/interaction diagrams for actions
+%\input{component1} 
+%\input{component2}
+% - - - - - - - - - - - -
+% The analysis section should describe any notable benefits of the design,
+% assumptions that have been made, risks, and known issues
+%\input{analysis}
+
+% - - - - - - - - - - - -
+% A bibliography is not anticipated in this document
+% but may be present to reference RFCs or other standards documents
+%\newpage
+%\renewcommand{\refname}{Bibliography}
+%
+%\bibliographystyle{plain} 
+%\bibliography{../sds}
+%
+\end{document}
+

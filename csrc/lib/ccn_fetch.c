@@ -132,7 +132,7 @@ CallMe(struct ccn_closure *selfp,
 
 static char *globalNullString = "";
 static char *
-newStringCopy(char *src) {
+newStringCopy(const char *src) {
 	int n = ((src == NULL) ? 0 : strlen(src));
 	if (n <= 0 || src == globalNullString) return globalNullString;
 	char *s = calloc(n+1, sizeof(*s));
@@ -456,6 +456,13 @@ NeedSegments(struct ccn_fetch_stream *fs) {
 	}
 }
 
+static void
+ShowDelta(FILE *f, TimeMarker from) {
+	intmax_t dt = DeltaTime(from, GetCurrentTimeUSecs());
+	fprintf(f, ", dt %jd.%06d\n", dt / 1000000, (int) (dt % 1000000));
+	fflush(f);
+}
+
 static enum ccn_upcall_res
 CallMe(struct ccn_closure *selfp,
 	   enum ccn_upcall_kind kind,
@@ -540,13 +547,13 @@ CallMe(struct ccn_closure *selfp,
 		int res = ccn_content_get_value(ccnb, ccnb_size, info->pco,
 										&data, &dataLen);
 		
-		if (res < 0 || dataLen < 0 || (thisSeg != finalSeg && dataLen == 0)) {
+		if (res < 0 || (thisSeg != finalSeg && dataLen == 0)) {
 			// we got a bogus result, no data in this content!
 			if (debug != NULL && (flags & ccn_fetch_flags_NoteAddRem)) {
 				fprintf(debug, 
-						"-- ccn_fetch no data, %s, seg %jd, final %jd\n",
+						"-- ccn_fetch no data, %s, seg %jd, final %jd",
 						fs->id, thisSeg, finalSeg);
-				fflush(debug);
+				ShowDelta(debug, req->startClock);
 			}
 			if (fs->zeroLenSeg < 0 || thisSeg < fs->zeroLenSeg)
 				// note this problem for future reporting
@@ -558,11 +565,11 @@ CallMe(struct ccn_closure *selfp,
 			fs->finalSeg = finalSeg-1;
 			if (debug != NULL && (flags & ccn_fetch_flags_NoteFinal)) {
 				fprintf(debug, 
-						"-- ccn_fetch EOF, %s, seg %jd, len %d, fs %jd\n",
+						"-- ccn_fetch EOF, %s, seg %jd, len %d, fs %jd",
 						fs->id, thisSeg,
 						(int) dataLen,
 						fs->fileSize);
-				fflush(debug);
+				ShowDelta(debug, req->startClock);
 			}
 			
 		} else {
@@ -579,9 +586,9 @@ CallMe(struct ccn_closure *selfp,
 			memcpy(fb->buf, data, dataLen);
 			if (debug != NULL && (flags & ccn_fetch_flags_NoteFill)) {
 				fprintf(debug, 
-						"-- ccn_fetch FillSeg, %s, seg %jd, len %d, nbuf %d\n",
+						"-- ccn_fetch FillSeg, %s, seg %jd, len %d, nbuf %d",
 						fs->id, thisSeg, (int) dataLen, (int) fs->nBufs);
-				fflush(debug);
+				ShowDelta(debug, req->startClock);
 			}
 			if (thisSeg == finalSeg) {
 				// the file size is known in segments
@@ -596,9 +603,9 @@ CallMe(struct ccn_closure *selfp,
 				}
 				if (debug != NULL && (flags & ccn_fetch_flags_NoteFinal)) {
 					fprintf(debug, 
-							"-- ccn_fetch EOF, %s, seg %jd, len %d, fs %jd\n",
+							"-- ccn_fetch EOF, %s, seg %jd, len %d, fs %jd",
 							fs->id, thisSeg, (int) dataLen, fs->fileSize);
-					fflush(debug);
+					ShowDelta(debug, req->startClock);
 				}
 			}
 			fs->segsRead++;
@@ -759,14 +766,15 @@ ccn_fetch_open(struct ccn_fetch *f,
 	struct ccn_fetch_stream *fs = calloc(1, sizeof(*fs));
 	fs->segSize = (assumeFixed ? 0 : -1);
 	fs->name = ccn_charbuf_create();
-	fs->id = newStringCopy((char *) id);
+	fs->id = newStringCopy(id);
 	ccn_charbuf_append_charbuf(fs->name, name);
 	if (resolveVersion) {
-		int tm = 40; // TBD: need better strategy for version timeout
+		int tmInc = 40; // TBD: need better strategy for version timeout
+		int tm = 0;
 		while (tm < CCN_VERSION_TIMEOUT) {
-			res = ccn_resolve_version(f->h, fs->name, resolveVersion, tm);
+			res = ccn_resolve_version(f->h, fs->name, resolveVersion, tmInc);
 			if (res >= 0) break;
-			tm = tm + tm;
+			tm = tm + tmInc;
 		}
 		if (res < 0) {
 			// could not resolve version for this name
@@ -969,14 +977,14 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 		struct ccn_fetch_buffer *fb = FindBufferForSeg(fs, seg);
 		if (fb == NULL) break;
 		unsigned char *src = fb->buf;
-		size_t start = fb->pos;
-		size_t lo = start;
+		intmax_t start = fb->pos;
+		intmax_t lo = start;
 		if (lo < 0) {
 			// segments delivered at random might cause this
 			lo = pos;
 			fb->pos = pos;
 		}
-		size_t hi = lo + fb->len;
+		intmax_t hi = lo + fb->len;
 		if (pos < lo || pos >= hi || seg != fb->seg) {
 			// this SHOULD NOT HAPPEN!
 			FILE *debug = fs->parent->debug;
@@ -988,7 +996,7 @@ ccn_fetch_read(struct ccn_fetch_stream *fs,
 			}
 			break;
 		}
-		int d = hi - pos;
+		intmax_t d = hi - pos;
 		if (d > len) d = len;
 		memcpy(dst+off, src+(pos-lo), d);
 		nr = nr + d;

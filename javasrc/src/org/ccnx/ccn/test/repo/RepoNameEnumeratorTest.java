@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -22,13 +22,18 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryOutputStream;
+import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
+import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Assert;
 import org.junit.Test;
@@ -37,7 +42,8 @@ import org.junit.Test;
 /**
  * Part of repository test infrastructure. Test repository side of name enumeration.
  */
-public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
+public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener, CCNInterestListener {
+
 	CCNHandle getLibrary;
 	CCNNameEnumerator getne;
 	
@@ -48,6 +54,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 	Random rand = new Random();
 	
 	CCNHandle putLibrary;
+	CCNHandle explicitExcludeHandle;
 	
 	ArrayList<ContentName> names1 = null;
 	ArrayList<ContentName> names2 = null;
@@ -250,4 +257,105 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener{
 				Log.info(s.toString());
 		}
 	}
+	
+	
+	int contentReceived = 0;
+	ContentName repoID = null;
+	
+	@Test
+	public void explicitExcludeFastResponseTest(){
+		ContentName prefixMarked = new ContentName(new ContentName(), CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+		
+		//we have minSuffixComponents to account for sig, version, seg and digest
+		Interest pi = Interest.constructInterest(prefixMarked, null, null, null, 4, null);
+
+		try {
+			explicitExcludeHandle = CCNHandle.open();
+			explicitExcludeHandle.expressInterest(pi, this);
+		} catch (IOException e) {
+			Assert.fail("Error expressing explicit interest: "+e.getMessage());
+		} catch (ConfigurationException e) {
+			Assert.fail("could not create handle for test");
+		}
+		
+		try {
+			int i = 0;
+			while (i < 500) {
+				Thread.sleep(rand.nextInt(50));
+				i++;
+				//break out early if possible
+				if ( contentReceived > 0)
+					break;
+			}
+			
+			//the names are registered...
+			System.out.println("received a response");
+		} catch (InterruptedException e) {
+			System.err.println("error waiting for explicit NE response.");
+			Assert.fail();
+		}
+		
+		//now express interest excluding the repo
+		//interest expressed in handleContent...
+		try {
+			int i = 0;
+			while (i < 500) {
+				Thread.sleep(rand.nextInt(50));
+				i++;
+				//break out early if possible
+				if ( contentReceived == 2)
+					Assert.fail("received a response from the repo!");
+			}
+			
+			//no response when I shouldn't have gotten one!
+		} catch (InterruptedException e) {
+			System.err.println("error waiting for explicit NE response.");
+			Assert.fail();
+		}
+		
+		explicitExcludeHandle.close();
+		
+	}
+
+	boolean firstResponse = true;
+	
+	public Interest handleContent(ContentObject data, Interest interest) {
+		
+		ContentName responseName = null;
+		ContentName name = data.name();
+		
+		if (interest.exclude()!=null) {
+			Assert.assertFalse(firstResponse);
+			if (responseName == null)
+				Assert.fail("responseName is null, this is not the first response and it should not be null");
+			else
+				Assert.assertFalse(!data.name().contains(responseName.component(0)));
+		} else {
+			firstResponse = false;
+		}
+		
+		//for now, this is copied from CCNNameEnumerator.getIDFromName  should be refactored so it isn't manually copied.
+		try {
+			int index = name.containsWhere(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+			ContentName prefix = name.subname(index+1, name.count());
+			if(VersioningProfile.hasTerminalVersion(prefix))
+				responseName = VersioningProfile.cutLastVersion(prefix);
+			else
+				responseName = prefix;
+			Log.finest("NameEnumeration response ID: {0}", responseName);
+		} catch(Exception e) {
+			Assert.fail("failed to get repo id from NE response: "+e.getMessage());
+		}
+		
+		Exclude excludes = interest.exclude();
+		if(excludes==null)
+			excludes = new Exclude();
+		excludes.add(new byte[][]{responseName.component(0)});
+		Interest newInterest = Interest.constructInterest(interest.name(), excludes, null, null, 4, null); 
+		
+		contentReceived++;
+		
+		return newInterest;
+	}
+	
 }

@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx command line utilities
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -25,6 +25,7 @@ public class CommonParameters {
 	public static int BLOCK_SIZE = 8192;
 	public static boolean rawMode = false;
 	public static boolean unversioned = false;
+	public static int startArg = 0;
 	
 	public static boolean verbose = false;
 	

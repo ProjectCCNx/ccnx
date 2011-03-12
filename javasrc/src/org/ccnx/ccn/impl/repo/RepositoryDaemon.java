@@ -132,7 +132,19 @@ public class RepositoryDaemon extends Daemon {
 					}
 					try {
 						Level level = Level.parse(args[i + 1]);
-						Log.setLevel(level);	// XXX should level mean this or just FAC_REPO?
+						Log.setLevel(Log.FAC_ALL, level);
+					} catch (IllegalArgumentException iae) {
+						usage();
+						return;
+					}
+					i++;
+				} else if (args[i].equals("-repoLog")) {
+					if (args.length < i + 2) {
+						usage();
+						return;
+					}
+					try {
+						Level level = Level.parse(args[i + 1]);
 						Log.setLevel(Log.FAC_REPO, level);
 					} catch (IllegalArgumentException iae) {
 						usage();
@@ -202,7 +214,7 @@ public class RepositoryDaemon extends Daemon {
 			// Without parsing args, we don't know which repo impl we will get, so show the default 
 			// impl usage and allow for differences 
 			String msg = "usage: " + this.getClass().getName() + " -start -root <repository_root> | -stop <pid> | -interactive | -signal <signal> <pid>" +
-			" [-log <level>] [-policy <policy_file>] [-local <local_name>] [-global <global_prefix>] [-bb]";
+			" [-log <level>] [-repoLog <level>] [-policy <policy_file>] [-local <local_name>] [-global <global_prefix>] [-bb]";
 			System.out.println(msg);
 			Log.severe(Log.FAC_REPO, msg);
 		} catch (Exception e) {

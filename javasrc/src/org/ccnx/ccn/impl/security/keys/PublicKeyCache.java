@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -172,8 +172,11 @@ public class PublicKeyCache {
 
 		try {
 			FileOutputStream fos = new FileOutputStream(keyFile);
-			fos.write(keyObject.publicKey().getEncoded());
-			fos.close();
+			try {
+				fos.write(keyObject.publicKey().getEncoded());
+			} finally {
+				fos.close();
+			}
 		} catch (Exception e) {
 			Log.info("recordKeyToFile: cannot record key: " + id.toString() + " to file " + keyFile.getAbsolutePath() + " error: " + e.getClass().getName() + ": " + e.getMessage());
 			return;

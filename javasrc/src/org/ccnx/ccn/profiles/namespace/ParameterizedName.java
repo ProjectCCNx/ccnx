@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -74,13 +74,13 @@ public class ParameterizedName extends GenericXMLEncodable {
 	
 	public String label() { return _label; }
 	
-	public ContentName prefix() { return _prefix; }
+	public ContentName prefix() { return new ContentName(_prefix); }
 	
-	public ContentName suffix() { return _suffix; }
+	public ContentName suffix() { return (null != _suffix) ? new ContentName(_suffix) : null; }
 	
 	public boolean emptyLabel() { return (null == label()); }
 	
-	public boolean emptySuffix() { return (null == suffix()); }
+	public boolean emptySuffix() { return (null == _suffix); }
 
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
@@ -111,10 +111,10 @@ public class ParameterizedName extends GenericXMLEncodable {
 			encoder.writeElement(CCNProtocolDTags.Label, label());
 		}
 		
-		prefix().encode(encoder);
+		_prefix.encode(encoder);
 
 		if (!emptySuffix()) {
-			suffix().encode(encoder);
+			_suffix.encode(encoder);
 		}
 
 		encoder.writeEndElement();   		

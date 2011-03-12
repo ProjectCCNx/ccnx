@@ -241,6 +241,13 @@ public class SystemConfiguration {
 	public static int SETTABLE_SHORT_TIMEOUT = SHORT_TIMEOUT;
 
 	/**
+	 * Dispatch thread limit for network manager
+	 */
+	protected static final String MAX_DISPATCH_THREADS_PROPERTY = "org.ccnx.max.dispatch.threads";
+	protected final static String MAX_DISPATCH_THREADS_ENV_VAR = "CCNX_MAX_DISPATCH_THREADS";
+	public static int MAX_DISPATCH_THREADS = 200;
+
+	/**
 	 * Settable system default timeout.
 	 */
 	protected static int _defaultTimeout = CCNX_TIMEOUT_DEFAULT;
@@ -455,6 +462,15 @@ public class SystemConfiguration {
 			System.err.println("The settable short timeout must be an integer.");
 			throw e;
 		}
+		
+		// Allow override of max dispatch threads
+		try {
+			MAX_DISPATCH_THREADS = Integer.parseInt(retrievePropertyOrEnvironmentVariable(MAX_DISPATCH_THREADS_PROPERTY, MAX_DISPATCH_THREADS_ENV_VAR, Integer.toString(MAX_DISPATCH_THREADS)));
+		} catch (NumberFormatException e) {
+			System.err.println("The settable short timeout must be an integer.");
+			throw e;
+		}
+
 
 
 		// Handle old-style header names
@@ -578,8 +594,11 @@ public class SystemConfiguration {
 			Log.finest("Attempting to output debug data for name " + name.toString() + " to file " + outputFile.getAbsolutePath());
 
 			FileOutputStream fos = new FileOutputStream(outputFile);
-			fos.write(data);
-			fos.close();
+			try {
+				fos.write(data);
+			} finally {
+				fos.close();
+			}
 		} catch (Exception e) {
 			Log.warning("Exception attempting to log debug data for name: " + name.toString() + " " + e.getClass().getName() + ": " + e.getMessage());
 		}
@@ -613,8 +632,11 @@ public class SystemConfiguration {
 			Log.finest("Attempting to output debug data for name " + object.name().toString() + " to file " + outputFile.getAbsolutePath());
 
 			FileOutputStream fos = new FileOutputStream(outputFile);
-			object.encode(fos);
-			fos.close();
+			try {
+				object.encode(fos);
+			} finally {
+				fos.close();
+			}
 		} catch (Exception e) {
 			Log.warning("Exception attempting to log debug data for name: " + object.name().toString() + " " + e.getClass().getName() + ": " + e.getMessage());
 		}

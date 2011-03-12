@@ -720,20 +720,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			case '%': 
 				// This is a byte string %xy where xy are hex digits
 				// Since the input string must be compatible with the output
-				// of componentPrint(), we may convert the byte values directly.
-				// There is no need to go through a character representation.
+				// of componentPrint(), we may convert the character values directly.
 				if (name.length()-1 < i+2) {
 					throw new URISyntaxException(name, "malformed %xy byte representation: too short", i);
 				}
-				if (name.charAt(i+1) == '-') {
-					throw new URISyntaxException(name, "malformed %xy byte representation: negative value not permitted", i);
-				}
-				try {
-					result.put((byte)Integer.parseInt(name.substring(i+1, i+3),16));
-				} catch (NumberFormatException e) {
-					throw new URISyntaxException(name, "malformed %xy byte representation: not legal hex number: " + name.substring(i+1, i+3), i);
-				}
-				i+=2; // for loop will increment by one more to get net +3 so past byte string
+				int b1 = Character.digit(name.charAt(++i), 16); // consume x
+				int b2 = Character.digit(name.charAt(++i), 16); // consume y
+				if (b1 < 0 || b2 < 0)
+					throw new URISyntaxException(name, "malformed %xy byte representation: not legal hex number: " + name.substring(i-2, i+1), i-2);
+				result.put((byte)((b1 * 16) + b2));
 				break;
 				// Note in C lib case 0 is handled like the two general delimiters below that terminate processing 
 				// but that case should never arise in Java which uses real unicode characters.

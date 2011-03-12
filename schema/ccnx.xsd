@@ -24,6 +24,7 @@
 <xs:element name="KeyValueSet" type="KeyValueSetType"/>
 <xs:element name="Header" type="HeaderType"/>
 <xs:element name="Interest" type="InterestType"/>
+<xs:element name="StatusResponse" type="StatusResponseType"/>
 
 <xs:complexType name="CollectionType">
   <xs:sequence>
@@ -383,6 +384,13 @@
       <xs:element name="FaceID" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
       <xs:element name="ForwardingFlags" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
       <xs:element name="FreshnessSeconds" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="StatusResponseType">
+  <xs:sequence>
+      <xs:element name="StatusCode" type="xs:nonNegativeInteger" minOccurs="1" maxOccurs="1"/>
+      <xs:element name="StatusText" type="xs:string" minOccurs="0" maxOccurs="1"/>
   </xs:sequence>
 </xs:complexType>
 

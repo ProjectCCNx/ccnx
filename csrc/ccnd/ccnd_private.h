@@ -350,7 +350,9 @@ uintmax_t ccnd_meter_total(struct ccnd_meter *m);
  * @def CCN_FORW_CAPTURE       16
  * @def CCN_FORW_LOCAL         32
  */
+#define CCN_FORW_PFXO (CCN_FORW_ADVERTISE | CCN_FORW_CAPTURE | CCN_FORW_LOCAL)
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
+
  
 /**
  * Determines how frequently we age our forwarding entries

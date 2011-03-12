@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -119,11 +119,18 @@ public class CCNNetworkChannel extends InputStream {
 			}
 		} else if (_ncProto == NetworkProtocol.TCP) {
 			_ncSockChannel = SocketChannel.open();
-			_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
+			try {
+				_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
+			} catch (IOException ioe) {
+				if (!_ncInitialized)
+					throw ioe;
+				return;
+			}
 			_ncSockChannel.configureBlocking(false);
 			_ncSockChannel.register(_ncReadSelector, SelectionKey.OP_READ);
 			_ncWriteSelector = Selector.open();
 			_ncSockChannel.register(_ncWriteSelector, SelectionKey.OP_WRITE);
+			_ncLocalPort = _ncSockChannel.socket().getLocalPort();
 			//_ncSockChannel.socket().setSoLinger(true, LINGER_TIME);
 		} else {
 			throw new IOException("NetworkChannel: invalid protocol specified");
@@ -133,7 +140,9 @@ public class CCNNetworkChannel extends InputStream {
 			Log.info(Log.FAC_NETMANAGER, connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
 		initStream();
 		_ncInitialized = true;
-		_ncConnected = true;
+		synchronized (_ncConnected) {
+			_ncConnected = true;
+		}
 	}
 	
 	/**
@@ -167,6 +176,7 @@ public class CCNNetworkChannel extends InputStream {
 		} else {
 			try {
 				Thread.sleep(DOWN_DELAY);
+				open();
 			} catch (InterruptedException e) {}
 		}
 		return null;
@@ -177,7 +187,9 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void close() throws IOException {
-		_ncConnected = false;
+		synchronized (_ncConnected) {
+			_ncConnected = false;
+		}
 		if (_ncProto == NetworkProtocol.UDP) {
 			wakeup();
 			_ncDGrmChannel.close();
@@ -194,7 +206,9 @@ public class CCNNetworkChannel extends InputStream {
 	 * @return true if connected
 	 */
 	public boolean isConnected() {
-		return _ncConnected;
+		synchronized (_ncConnected) {
+			return _ncConnected;
+		}
 	}
 	
 	/**
@@ -204,8 +218,8 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public int write(ByteBuffer src) throws IOException {
-		if (! _ncConnected)
-			return -1;
+		if (! isConnected())
+			return -1; // XXX - is this documented?
 		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST))
 			Log.finest(Log.FAC_NETMANAGER, "NetworkChannel.write() on port " + _ncLocalPort);
 		try {
@@ -214,14 +228,17 @@ public class CCNNetworkChannel extends InputStream {
 			} else {
 				// Need to handle partial writes
 				int written = 0;
-				do {
-					_ncWriteSelector.selectedKeys().clear();
-					if (_ncWriteSelector.select(SOCKET_TIMEOUT) != 0) {
-						if (! _ncConnected)
-							return -1;
-						written += _ncSockChannel.write(src);
+				while (src.hasRemaining()) {
+					if (! isConnected())
+						return -1;
+					int b = _ncSockChannel.write(src);
+					if (b > 0) {
+						written += b;
+					} else {
+						_ncWriteSelector.selectedKeys().clear();
+						_ncWriteSelector.select();
 					}
-				} while (src.hasRemaining());
+				}
 				return written;
 			} 
 		} catch (PortUnreachableException pue) {}
@@ -353,8 +370,8 @@ public class CCNNetworkChannel extends InputStream {
 	private int doReadIn(int position) throws IOException {
 		int ret = 0;
 		_ncReadSelector.selectedKeys().clear();
-		if (_ncReadSelector.select(SOCKET_TIMEOUT) != 0) {
-			if (! _ncConnected)
+		if (_ncReadSelector.select() != 0) {
+			if (! isConnected())
 				return -1;
 			// Note that we must set limit first before setting position because setting
 			// position larger than limit causes an exception.

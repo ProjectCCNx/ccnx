@@ -51,11 +51,25 @@ public class TreeSet6<E> extends TreeSet<E> {
 			Class<?> c = this.getClass();
 			Class<?> cc = c.getSuperclass();
 			
-			floor = cc.getMethod("floor", parameterTypes);
+			try {
+				floor = cc.getMethod("floor", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+			
+			try {
 			ceiling = cc.getMethod("ceiling", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+
+			try {
 			lower = cc.getMethod("lower", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+			
+			try {
 			higher = cc.getMethod("higher", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+
+			try {
 			descendingIterator = cc.getMethod("descendingIterator");
+			} catch(NoSuchMethodException nsme) {}
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -190,6 +204,23 @@ public class TreeSet6<E> extends TreeSet<E> {
 	private Method lower = null;
 	private Method higher = null;
 	private Method descendingIterator = null;
+	
+	/**
+	 * Our own wrapper for getMethod that returns null if the method is not found.
+	 * @param c class to search for method
+	 * @param name method name
+	 * @param parameterTypes
+	 * @return the method or null if not found
+	 */
+	protected Method getMethod(Class<?> c, String name, Class<?>... parameterTypes) {
+		Method m = null;
+		try {
+			m = c.getMethod(name, parameterTypes);
+		} catch (NoSuchMethodException nsme) {
+			// ignore this, we'll just return null
+		}
+		return m;
+	}
 	
 	private Iterator<E> internalDescendingIterator() {
 		return new DescendingIterator<E>();
@@ -355,6 +386,9 @@ public class TreeSet6<E> extends TreeSet<E> {
 		public DescendingIterator() {
 			_list = new LinkedList<T>((Collection<? extends T>) TreeSet6.this);
 			_listIterator = _list.listIterator();
+			// now move the iterator to the end
+			while(_listIterator.hasNext())
+				_listIterator.next();
 		}
 		
 		public boolean hasNext() {

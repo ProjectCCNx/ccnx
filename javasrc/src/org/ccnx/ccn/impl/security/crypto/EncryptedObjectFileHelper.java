@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -38,8 +38,11 @@ public class EncryptedObjectFileHelper {
 		// TODO -- actually encrypt -- put the data through a CipherOutputStream after the OOS
 		// write the key block to the real output stream before attaching the COS
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(outputFile));
-		oos.writeObject(objectToWrite);
-		oos.close();
+		try {
+			oos.writeObject(objectToWrite);
+		} finally {
+			oos.close();
+		}
 		return true;
 	}
 
@@ -48,8 +51,12 @@ public class EncryptedObjectFileHelper {
 		
 		// TODO actually decrypt -- put the data through a CipherInputStream before the OIS
 		// read the key block from the file before attaching the CIS
-		ObjectInputStream input = new ObjectInputStream(new FileInputStream(inputFile));
-		
-		return (T)readObject(input);
+		FileInputStream fis = new FileInputStream(inputFile);
+		ObjectInputStream input = new ObjectInputStream(fis);
+		try {
+			return (T)readObject(input);
+		} finally {
+			input.close();
+		}
 	}
 }
