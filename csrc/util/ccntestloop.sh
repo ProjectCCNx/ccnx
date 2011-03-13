@@ -118,8 +118,10 @@ PruneOldLogs () {
 
 UpdateSources () {
 	Echo Updating for run $1
-	$CCN_TEST_GITCOMMAND checkout $CCN_TEST_BRANCH
-	$CCN_TEST_GITCOMMAND pull --no-commit origin $CCN_TEST_BRANCH
+	$CCN_TEST_GITCOMMAND status | grep modified: && \
+		Echo Skipping update && return 1
+	$CCN_TEST_GITCOMMAND fetch origin $CCN_TEST_BRANCH
+	$CCN_TEST_GITCOMMAND checkout origin/$CCN_TEST_BRANCH
 }
 
 SourcesChanged () {
