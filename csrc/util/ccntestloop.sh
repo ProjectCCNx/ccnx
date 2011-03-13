@@ -121,8 +121,8 @@ UpdateSources () {
 	$CCN_TEST_GITCOMMAND status | grep modified:         && \
 		Echo Modifications present - skipping update && \
 		sleep 3 && return
-	$CCN_TEST_GITCOMMAND fetch origin $CCN_TEST_BRANCH
-	$CCN_TEST_GITCOMMAND checkout origin/$CCN_TEST_BRANCH
+	$CCN_TEST_GITCOMMAND checkout $CCN_TEST_BRANCH && \
+	$CCN_TEST_GITCOMMAND pull origin $CCN_TEST_BRANCH
 }
 
 SourcesChanged () {
