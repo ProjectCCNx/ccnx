@@ -38,7 +38,9 @@ exit 1
 }
 
 GetConfiguration () {
+	set -a
 	test -f testdir/config && . testdir/config
+	set +a
 }
 
 ProvideDefaults () {
