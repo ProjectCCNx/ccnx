@@ -39,7 +39,9 @@ exit 1
 
 GetConfiguration () {
 	set -a
-	test -f testdir/config && . testdir/config
+	rm -f testdir/config~
+	test -f testdir/config && . testdir/config && \
+		cp testdir/config testdir/config~
 	set +a
 }
 
@@ -99,7 +101,7 @@ PrintDetails () {
 	$CCN_TEST_GITCOMMAND rev-list --max-count=1 HEAD
 	$CCN_TEST_GITCOMMAND status
 	$CCN_TEST_GITCOMMAND diff | cat
-	head -999 csrc/conf.mk
+	head -999 csrc/conf.mk testdir/config~ 2>/dev/null
 }
 
 SaveLogs () {
