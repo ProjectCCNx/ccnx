@@ -38,7 +38,7 @@ exit 1
 }
 
 GetConfiguration () {
-test -f testdir/config && . testdir/config
+	test -f testdir/config && . testdir/config
 }
 
 ProvideDefaults () {
@@ -48,6 +48,8 @@ ProvideDefaults () {
 	: ${CCN_TEST_GITCOMMAND:=`command -v git || echo :`}
 	: ${MAKE:=make}
 	test -d .git || CCN_TEST_GITCOMMAND=:
+	export CCN_CTESTS
+	export CCN_JAVATESTS
 	export CCN_LOG_LEVEL_ALL
 	export CCN_TEST_BRANCH
 	export CCN_TEST_GITCOMMAND
@@ -89,19 +91,12 @@ CheckDirectory () {
 	test -d testdir/. || mkdir testdir
 }
 
-PrintRelevantSettings () {
-	uname -a
-	set | grep ^CCN
-	$CCN_TEST_GITCOMMAND rev-list --max-count=1 HEAD
-	$CCN_TEST_GITCOMMAND status
-}
-
 PrintDetails () {
 	uname -a
-	set | grep ^CCN
+	env | grep ^CCN
 	$CCN_TEST_GITCOMMAND rev-list --max-count=1 HEAD
 	$CCN_TEST_GITCOMMAND status
-	$CCN_TEST_GITCOMMAND diff
+	$CCN_TEST_GITCOMMAND diff | cat
 	head -999 csrc/conf.mk
 }
 
@@ -199,8 +194,6 @@ CheckDirectory
 CheckLogLevel
 
 RUN=`ThisRunNumber`
-
-# PrintRelevantSettings
 
 UpdateSources $RUN
 
