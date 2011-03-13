@@ -88,11 +88,29 @@ CheckLogLevel () {
 
 CheckDirectory () {
 	test -d javasrc || Fail $THIS is intended to be run at the top level of ccnx
-	test -d javasrc/testout               && \
-	  rm -rf javasrc/testout~             && \
-	  mv javasrc/testout javasrc/testout~ && \
-	  Echo WARNING: existing javasrc/testout renamed to javasrc/testout~
 	test -d testdir/. || mkdir testdir
+}
+
+CheckPIDFile () {
+	local PID;
+	if [ -f testdir/ccntestloop.pid ]; then
+		PID=`cat testdir/ccntestloop.pid`
+		test "$PID" = $$ && return 0
+		kill -0 "$PID" && Fail Already running as pid $PID
+		rm testdir/ccntestloop.pid || Fail could not remove old pid file
+	fi
+	echo $$ > testdir/ccntestloop.pid || Fail could not write pid file
+}
+
+RemovePIDFile () {
+	test "`cat testdir/ccntestloop.pid`" = $$ && rm -f testdir/ccntestloop.pid
+}
+
+CheckTestout () {
+        test -d javasrc/testout               && \
+          rm -rf javasrc/testout~             && \
+          mv javasrc/testout javasrc/testout~ && \
+          Echo WARNING: existing javasrc/testout renamed to javasrc/testout~
 }
 
 PrintDetails () {
@@ -106,6 +124,10 @@ PrintDetails () {
 
 SaveLogs () {
 	test -d javasrc/testout || return 1
+	if [ -f javasrc/testout/KILLED ]; then
+		rm -rf javasrc/testout
+		exit
+	fi
 	PrintDetails > javasrc/testout/TEST-details.txt
 	grep -e BUILD -e 'Total time.*minutes' javasrc/testout/TEST-javasrc-testlog.txt
 	mv javasrc/testout testdir/testout.$1
@@ -133,7 +155,6 @@ SourcesChanged () {
 }
 
 ScriptChanged () {
-	trap "rm .~ctloop~" 0
 	tail -n +2 $THIS > .~ctloop~
 	diff .~ctloop~ csrc/util/ccntestloop.sh && return 1
 	return 0 # Yes, it changed.
@@ -171,7 +192,7 @@ RunJavaTest () {
 	
 	(cd javasrc && \
 	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL}             \
-	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000}  \
+	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000} \
               "${CCN_JAVATESTS:-test}"; ) > $LOG        \
 	  && return 0
 	tail $LOG
@@ -202,6 +223,11 @@ ProvideDefaults
 CheckDirectory
 
 CheckLogLevel
+
+CheckPIDFile
+trap RemovePIDFile EXIT
+
+CheckTestout
 
 RUN=`ThisRunNumber`
 
