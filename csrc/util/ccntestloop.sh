@@ -168,8 +168,11 @@ RunJavaTest () {
 	test "${CCN_JAVATESTS}" = "NO" && return 0
 	Echo Running javasrc tests...
 	LOG=javasrc/testout/TEST-javasrc-testlog.txt
+	
 	(cd javasrc && \
-	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL} "${CCN_JAVATESTS:-test}"; ) > $LOG \
+	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL}             \
+	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000}  \
+              "${CCN_JAVATESTS:-test}"; ) > $LOG        \
 	  && return 0
 	tail $LOG
 	Echo javasrc tests failed
