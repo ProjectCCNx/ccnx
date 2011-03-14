@@ -127,7 +127,7 @@ SaveLogs () {
 		exit
 	fi
 	PrintDetails > javasrc/testout/TEST-details.txt
-	grep -e BUILD -e 'Total time.*minutes' javasrc/testout/TEST-javasrc-testlog.txt
+	# grep -e BUILD -e 'Total time.*minutes' javasrc/testout/TEST-javasrc-testlog.txt
 	mv javasrc/testout testdir/testout.$1
 }
 
@@ -178,6 +178,7 @@ RunCTest () {
 	( cd csrc && $MAKE test TESTS="$CCN_CTESTS" 2>&1 ) > $LOG && return 0
 	tar cf javasrc/testout/csrc-tests.tar csrc/tests
 	gzip javasrc/testout/csrc-tests.tar
+	grep ^FAILING: $LOG | tee -a javasrc/testout/TEST-failures.txt
 	Echo csrc tests failed
 	return 1
 }
@@ -193,7 +194,9 @@ RunJavaTest () {
 	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000} \
 	      "${CCN_JAVATESTS:-test}"; ) > $LOG        \
 	  && return 0
-	tail $LOG
+	grep -B1 -e 'junit. Tests .*Failures: [^0]' \
+	         -e 'junit. Tests .*Errors: [^0]'   \
+	     $LOG 2>/dev/null | tee -a javasrc/testout/TEST-failures.txt
 	Echo javasrc tests failed
 	return 1
 }
