@@ -23,7 +23,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -442,19 +441,14 @@ public class Daemon {
 				
 				// this should throw an exception
 				try {
-					InputStream childMsgs = child.getErrorStream();
 					int exitValue = child.exitValue();
-					// if we get here, the child has exited
 					Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
-					byte[] childMsgBytes = new byte[childMsgs.available()];
-					childMsgs.read(childMsgBytes);;
-					String childOutput = new String(childMsgBytes);
-					childMsgs = child.getInputStream();
-					childMsgBytes = new byte[childMsgs.available()];
-					childMsgs.read(childMsgBytes);
-					childOutput += new String(childMsgBytes);
-					System.err.println("Messages from the child were: \"" + childOutput + "\"");
+
+					// We cannot read stdout or stderr.  stderr is redirected to stdout
+					// and stdout is redirected to /dev/null or to the outputfile.
+					
+					// This exits startDaemon
 					return;
 				} catch (IllegalThreadStateException e) {
 				}
