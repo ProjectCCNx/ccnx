@@ -549,9 +549,26 @@ struct ccn_parsed_Link {
  * plus one additional value for the index of the end of the last component.
  */
 int
-ccn_parse_Link(const unsigned char *msg, size_t size,
+ccn_parse_Link(struct ccn_buf_decoder *d,
                    struct ccn_parsed_Link *link,
                    struct ccn_indexbuf *components);
+
+/*
+ * ccn_parse_Collection_start: TODO: fill in documentation
+ */
+
+int
+ccn_parse_Collection_start(struct ccn_buf_decoder *d);
+
+/*
+ * ccn_parse_Collection_next: TODO: fill in documentation
+ */
+
+int
+ccn_parse_Collection_next(struct ccn_buf_decoder *d,
+                          struct ccn_parsed_Link *link,
+                          struct ccn_indexbuf *components);
+
 /*
  * Bitmasks for AnswerOriginKind
  */

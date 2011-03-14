@@ -54,6 +54,9 @@ main (int argc, char **argv)
     struct ccn_parsed_interest *pi = &parsed_interest;
     struct ccn_parsed_Link parsed_link = {0};
     struct ccn_parsed_Link *pl = &parsed_link;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+
 
     size = read(0, buf, sizeof(buf));
     if (size < 0)
@@ -115,18 +118,29 @@ main (int argc, char **argv)
 
     i = ccn_parse_interest(buf, size, pi, NULL);
     if (i >= 0) {
-	res = 0;
+        res = 0;
         printf("interest OK lifetime %jd (%d seconds)\n",
                ccn_interest_lifetime(buf, pi),
                ccn_interest_lifetime_seconds(buf, pi));
     }
 
-    i = ccn_parse_Link(buf, size, pl, NULL);
+    d = ccn_buf_decoder_start(&decoder, buf, size);
+    i = ccn_parse_Link(d, pl, NULL);
     if (i >= 0) {
-	res = 0;
+        res = 0;
         printf("link OK\n");
     }
 
+    d = ccn_buf_decoder_start(&decoder, buf, size);
+    i = ccn_parse_Collection_start(d);
+    if (i >= 0) {
+        while ((i = ccn_parse_Collection_next(d, pl, NULL)) > 0) {
+        }
+        if (i == 0) {
+            res = 0;
+            printf("collection OK\n");
+        }
+    }
     if (res != 0) {
         printf("URP\n");
     }

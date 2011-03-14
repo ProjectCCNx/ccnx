@@ -986,12 +986,10 @@ ccn_parse_LinkAuthenticator(struct ccn_buf_decoder *d, struct ccn_parsed_Link *p
 }
 
 int
-ccn_parse_Link(const unsigned char *msg, size_t size,
+ccn_parse_Link(struct ccn_buf_decoder *d,
                struct ccn_parsed_Link *link,
                struct ccn_indexbuf *components)
 {
-    struct ccn_buf_decoder decoder;
-    struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, msg, size);
     int ncomp = 0;
     int res;
     if (ccn_buf_match_dtag(d, CCN_DTAG_Link)) {
@@ -999,7 +997,7 @@ ccn_parse_Link(const unsigned char *msg, size_t size,
             /* We need to have the component offsets. */
             components = ccn_indexbuf_create();
             if (components == NULL) return(-1);
-            res = ccn_parse_Link(msg, size, link, components);
+            res = ccn_parse_Link(d, link, components);
             ccn_indexbuf_destroy(&components);
             return(res);
         }
@@ -1021,14 +1019,41 @@ ccn_parse_Link(const unsigned char *msg, size_t size,
         /* parse optional LinkAuthenticator LinkAuthenticatorType */
         if (ccn_buf_match_dtag(d, CCN_DTAG_LinkAuthenticator))
             res = ccn_parse_LinkAuthenticator(d, link);
+        ccn_buf_check_close(d);
     }
     else
         return (d->decoder.state = -__LINE__);
     if (d->decoder.state < 0)
         return (d->decoder.state);
-    if (!CCN_FINAL_DSTATE(d->decoder.state))
-        return (CCN_DSTATE_ERR_CODING);
-    return (ncomp);
+    return(ncomp);
 }
 
+int
+ccn_parse_Collection_start(struct ccn_buf_decoder *d)
+{
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Collection)) {
+        ccn_buf_advance(d);
+    }
+    else
+        return (d->decoder.state = -__LINE__);
+    if (d->decoder.state < 0)
+        return (d->decoder.state);
+    return(0);    
 
+}
+
+int
+ccn_parse_Collection_next(struct ccn_buf_decoder *d,
+                          struct ccn_parsed_Link *link,
+                          struct ccn_indexbuf *components)
+{
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Link)) {
+        return(ccn_parse_Link(d, link, components));
+    } else
+        ccn_buf_check_close(d);
+    
+    if (d->decoder.state < 0)
+        return(d->decoder.state);
+    else
+        return(0);
+}
