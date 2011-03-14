@@ -212,11 +212,25 @@ public class TreeSet6<E> extends TreeSet<E> {
 			Class<?> c = this.getClass();
 			Class<?> cc = c.getSuperclass();
 			
-			floor = cc.getMethod("floor", parameterTypes);
-			ceiling = cc.getMethod("ceiling", parameterTypes);
-			lower = cc.getMethod("lower", parameterTypes);
-			higher = cc.getMethod("higher", parameterTypes);
-			descendingIterator = cc.getMethod("descendingIterator");
+			try {
+				floor = cc.getMethod("floor", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+			
+			try {
+				ceiling = cc.getMethod("ceiling", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+
+			try {
+				lower = cc.getMethod("lower", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+			
+			try {
+				higher = cc.getMethod("higher", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+
+			try {
+				descendingIterator = cc.getMethod("descendingIterator");
+			} catch(NoSuchMethodException nsme) {}
 
 		} catch (Exception e) {
 			e.printStackTrace();
