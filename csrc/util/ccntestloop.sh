@@ -236,9 +236,9 @@ RUN=`ThisRunNumber`
 UpdateSources $RUN
 
 if ScriptChanged; then
-	Echo "*** Script changed - will clean, rebuild and restart"
-	$MAKE clean || Fail make clean
-	$MAKE || Fail make
+	Echo "*** Script changed - will clean and restart"
+	$MAKE clean >.make.clean.log 2>&1|| Fail make clean - see .make.clean.log
+	rm -f .make.clean.log
 	echo Pausing for 10 seconds before restart...
 	sleep 10
 	ExecSelf
