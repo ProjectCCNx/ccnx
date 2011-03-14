@@ -50,7 +50,6 @@ public class InterestData {
 		/**
 		 * Order by startTime using UNSIGNED COMPARISON
 		 */
-		@Override
 		public int compare(InterestData arg0, InterestData arg1) {
 			synchronized(arg0) {
 				synchronized(arg1) {
