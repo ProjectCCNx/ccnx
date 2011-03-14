@@ -36,19 +36,28 @@ public class DaemonOutput extends Thread {
 	}
 	
 	public void run() {
+		byte [] buffer = new byte[8196];
 		while (true) {
 			try {
-				while (_is.available() > 0) {
-					int size = _is.available();
-					byte[] b = new byte[size];
-					_is.read(b, 0, size);
-					_os.write(b);
-					_os.flush();
+				if( _is.available() > 0 ) {
+					// this will block until somethings ready.
+					int size = _is.read(buffer);
+//					System.out.println("read bytes: " + size);
+					if( size > 0 ) {
+//						String x = new String(buffer);
+//						System.out.println("buffer: " + x);
+						_os.write(buffer, 0, size);
+						_os.flush();
+					}
+				} else {
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+					}
 				}
-				Thread.sleep(1000);
 			} catch (IOException e) {
 				return;
-			} catch (InterruptedException e) {}
+			}
 		}
 	}
 }

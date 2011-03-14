@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
@@ -186,7 +185,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	private double average_density = 0.0;
 
 	// this will be sorted by the starttime of each InterestData
-	protected final TreeSet6<InterestData> _interestData = new TreeSet6<InterestData>();
+	protected final TreeSet6<InterestData> _interestData = new TreeSet6<InterestData>(new InterestData.StartTimeComparator());
 
 	// We need to store a map from an interest given to the network to the
 	// interestData that generated it so we can re-express interest
@@ -804,7 +803,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	// InterestData.  There is also a flag if this interest should be
 	// reexpressed.  On a rebuild(), a new interest is sent, so an
 	// old interest should be ignored.
-	protected static class InterestMapData implements Comparable<InterestMapData> {
+	protected static class InterestMapData {
 		public InterestMapData(InterestData data) {
 			_data = data;
 			_reexpress = true;
@@ -817,16 +816,12 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 		@Override
 		public int hashCode() { return _data.hashCode(); }
 
-		public int compareTo(InterestMapData arg0) {
-			return _data.compareTo(arg0._data);
-		}
-
 		@Override
 		public boolean equals(Object obj) {
 			if( !(obj instanceof InterestMapData) )
 				return false;
 			InterestMapData other = (InterestMapData) obj;
-			return _data.equals(other);
+			return _data.equals(other._data);
 		}
 
 		protected InterestData _data;
