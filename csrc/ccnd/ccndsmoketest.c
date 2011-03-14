@@ -324,7 +324,7 @@ main(int argc, char **argv)
             if (res == 0) {
                 res = open_socket(host, portstr, SOCK_STREAM);
                 if (res != -1) {
-                    write(res, " ", 1);
+                    wlen = write(res, " ", 1);
                     close(res);
                 }
                 poll(fds, 1, 5000);
