@@ -4095,6 +4095,7 @@ process_input(struct ccnd_handle *h, int fd)
     if (face->inbuf->length == 0)
         memset(d, 0, sizeof(*d));
     buf = ccn_charbuf_reserve(face->inbuf, 8800);
+    memset(&sstor, 0, sizeof(sstor));
     res = recvfrom(face->recv_fd, buf, face->inbuf->limit - face->inbuf->length,
             /* flags */ 0, addr, &addrlen);
     if (res == -1)
