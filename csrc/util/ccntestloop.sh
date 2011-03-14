@@ -107,10 +107,10 @@ RemovePIDFile () {
 }
 
 CheckTestout () {
-        test -d javasrc/testout               && \
-          rm -rf javasrc/testout~             && \
-          mv javasrc/testout javasrc/testout~ && \
-          Echo WARNING: existing javasrc/testout renamed to javasrc/testout~
+	test -d javasrc/testout               && \
+	  rm -rf javasrc/testout~             && \
+	  mv javasrc/testout javasrc/testout~ && \
+	  Echo WARNING: existing javasrc/testout renamed to javasrc/testout~
 }
 
 PrintDetails () {
@@ -142,11 +142,11 @@ PruneOldLogs () {
 
 UpdateSources () {
 	Echo Updating for run $1
-	$CCN_TEST_GITCOMMAND status | grep modified:         && \
-		Echo Modifications present - skipping update && \
-		sleep 3 && return
-	$CCN_TEST_GITCOMMAND checkout $CCN_TEST_BRANCH && \
-	$CCN_TEST_GITCOMMAND pull origin $CCN_TEST_BRANCH
+	$CCN_TEST_GITCOMMAND status | grep modified:        && \
+	  Echo Modifications present - skipping update      && \
+	  sleep 3 && return
+	$CCN_TEST_GITCOMMAND checkout $CCN_TEST_BRANCH      && \
+	  $CCN_TEST_GITCOMMAND pull origin $CCN_TEST_BRANCH
 }
 
 SourcesChanged () {
@@ -193,7 +193,7 @@ RunJavaTest () {
 	(cd javasrc && \
 	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL}             \
 	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000} \
-              "${CCN_JAVATESTS:-test}"; ) > $LOG        \
+	      "${CCN_JAVATESTS:-test}"; ) > $LOG        \
 	  && return 0
 	tail $LOG
 	Echo javasrc tests failed
