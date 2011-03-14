@@ -17,16 +17,12 @@
 
 package org.ccnx.ccn.impl.support;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.io.UnsupportedEncodingException;
-import java.io.Writer;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
@@ -368,6 +364,8 @@ public class DataUtils {
 	 * @throws IOException
 	 */
 	public static byte[] getBytesFromFile(File file) throws IOException {
+		InputStream is = new FileInputStream(file);
+
 		// Get the size of the file
 		long length = file.length();
 
@@ -377,27 +375,22 @@ public class DataUtils {
 
 		// Create the byte array to hold the data
 		byte[] bytes = new byte[(int)length];
-		
-		InputStream is = new FileInputStream(file);
-		try {
-	
-			// Read in the bytes
-			int offset = 0;
-			int numRead = 0;
-			while (offset < bytes.length
-					&& (numRead=is.read(bytes, offset, bytes.length-offset)) >= 0) {
-				offset += numRead;
-			}
-	
-			// Ensure all the bytes have been read in
-			if (offset < bytes.length) {
-				throw new IOException("Could not completely read file "+file.getName());
-			}
-		} finally {
-			// Close the input stream and return bytes
-			is.close();
+
+		// Read in the bytes
+		int offset = 0;
+		int numRead = 0;
+		while (offset < bytes.length
+				&& (numRead=is.read(bytes, offset, bytes.length-offset)) >= 0) {
+			offset += numRead;
 		}
-		
+
+		// Ensure all the bytes have been read in
+		if (offset < bytes.length) {
+			throw new IOException("Could not completely read file "+file.getName());
+		}
+
+		// Close the input stream and return bytes
+		is.close();
 		return bytes;
 	}
 
@@ -602,22 +595,5 @@ public class DataUtils {
 		byte [] newarray = new byte [len];
 		System.arraycopy(array, offset, newarray, 0, len);
 		return newarray;
-	}
-	
-	/**
-	 * Copy the input stream to the output writer.  Does not close anything.
-	 * @throws IOException 
-	 */
-	public static void copyStreamToWriter(InputStream is, Writer wr) throws IOException {
-		char [] buffer = new char[1024];
-		Reader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-		try {
-			int bytes;
-			while((bytes = reader.read(buffer)) != -1 ) {
-				wr.write(buffer, 0, bytes);
-			}
-		} finally {
-			reader.close();
-		}
 	}
 }
