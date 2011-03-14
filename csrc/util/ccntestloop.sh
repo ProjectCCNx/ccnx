@@ -27,11 +27,9 @@
 # of this allows for such things as testing various combinations of parameters
 # on each run.
 
-THIS=$0
-
 Usage () {
 cat << EOM >&2
-usage: `basename $THIS` 
+usage: ccntestloop 
 (Must be run from the top level of a ccnx source tree.)
 EOM
 exit 1
@@ -87,7 +85,7 @@ CheckLogLevel () {
 }
 
 CheckDirectory () {
-	test -d javasrc || Fail $THIS is intended to be run at the top level of ccnx
+	test -d javasrc || Fail ccntestloop is intended to be run at the top level of ccnx
 	test -d testdir/. || mkdir testdir
 }
 
@@ -96,7 +94,7 @@ CheckPIDFile () {
 	if [ -f testdir/ccntestloop.pid ]; then
 		PID=`cat testdir/ccntestloop.pid`
 		test "$PID" = $$ && return 0
-		kill -0 "$PID" && Fail Already running as pid $PID
+		kill -0 "$PID" && Fail ccntestloop already running as pid $PID
 		rm testdir/ccntestloop.pid || Fail could not remove old pid file
 	fi
 	echo $$ > testdir/ccntestloop.pid || Fail could not write pid file
@@ -142,6 +140,7 @@ PruneOldLogs () {
 
 UpdateSources () {
 	Echo Updating for run $1
+	cp csrc/util/ccntestloop.sh testdir/.~ctloop~
 	$CCN_TEST_GITCOMMAND status | grep modified:        && \
 	  Echo Modifications present - skipping update      && \
 	  sleep 3 && return
@@ -155,8 +154,7 @@ SourcesChanged () {
 }
 
 ScriptChanged () {
-	tail -n +2 $THIS > .~ctloop~
-	diff .~ctloop~ csrc/util/ccntestloop.sh && return 1
+	diff testdir/.~ctloop~ csrc/util/ccntestloop.sh && return 1
 	return 0 # Yes, it changed.
 }
 
@@ -215,6 +213,10 @@ ThisRunNumber () {
 	echo $((`LastRunNumber` + 1))
 }
 
+ExecSelf () {
+	exec sh csrc/util/ccntestloop.sh || Fail exec
+}
+
 # Finally, here's what we actually want to do
 GetConfiguration
 
@@ -239,7 +241,7 @@ if ScriptChanged; then
 	$MAKE || Fail make
 	echo Pausing for 10 seconds before restart...
 	sleep 10
-	exec ./bin/ccntestloop || Fail exec
+	ExecSelf
 fi
 
 if SourcesChanged; then
@@ -250,4 +252,4 @@ RunTest $RUN || Fail RunTest - stopping
 Echo Run number $RUN was successful
 Echo BUILD Failure rate is `ls -d testdir/testout*FAILED 2>/dev/null | wc -l` / $RUN
 sleep 2
-exec ./bin/ccntestloop || Fail exec
+ExecSelf
