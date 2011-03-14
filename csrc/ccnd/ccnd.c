@@ -3988,10 +3988,22 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
     hashtb_start(h->dgram_faces, e);
     res = hashtb_seek(e, addr, addrlen, 0);
     if (res >= 0) {
-        source = e->data;
+		source = e->data;
         source->recvcount++;
         if (source->addr == NULL) {
-            source->addr = e->key;
+            {
+				int i;
+				const unsigned char *p;
+				struct ccn_charbuf *c = ccn_charbuf_create();
+				for (p = (void*)e->key, i = 0; i < e->keysize; i++) {
+					ccn_charbuf_putf(c, "%02X", p[i]);
+					if ((i % 4) == 3)
+						ccn_charbuf_putf(c, " ");
+				}
+				ccnd_msg(h, "sockaddr bits = %s", ccn_charbuf_as_string(c));
+				ccn_charbuf_destroy(&c);
+			}
+			source->addr = e->key;
             source->addrlen = e->keysize;
             source->recv_fd = face->recv_fd;
             source->sendface = face->faceid;
