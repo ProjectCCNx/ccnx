@@ -3973,6 +3973,21 @@ ccnd_new_face_msg(struct ccnd_handle *h, struct face *face)
              face->faceid, face->flags, peer, port);
 }
 
+static struct sockaddr *
+scrub_sockaddr(struct sockaddr *addr, socklen_t addrlen, struct sockaddr_in6 *space)
+{
+    struct sockaddr_in6 *src;
+    struct sockaddr_in6 *dst;
+    if (addr->sa_family != AF_INET6 || addrlen != sizeof(*space))
+        return(addr);
+    dst = space;
+	src = (void *)addr;
+    *dst = *src;
+    dst->sin6_scope_id = 0;
+    dst->sin6_flowinfo = 0;
+    return((struct sockaddr *)dst);
+}
+
 static struct face *
 get_dgram_source(struct ccnd_handle *h, struct face *face,
            struct sockaddr *addr, socklen_t addrlen, int why)
@@ -3980,15 +3995,16 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
     struct face *source = NULL;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
+    struct sockaddr_in6 space;
     int res;
     if ((face->flags & CCN_FACE_DGRAM) == 0)
         return(face);
     if ((face->flags & CCN_FACE_MCAST) != 0)
         return(face);
     hashtb_start(h->dgram_faces, e);
-    res = hashtb_seek(e, addr, addrlen, 0);
+    res = hashtb_seek(e, scrub_sockaddr(addr, addrlen, &space), addrlen, 0);
     if (res >= 0) {
-		source = e->data;
+        source = e->data;
         source->recvcount++;
         if (source->addr == NULL) {
             {
