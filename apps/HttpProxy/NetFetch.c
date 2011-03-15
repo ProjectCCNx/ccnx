@@ -26,14 +26,14 @@
 #include "./ProxyUtil.h"
 #include "./SockHop.h"
 
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <unistd.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
@@ -736,7 +736,7 @@ OpenFileNode(MainData md, char *root, char *dir, char *shortName,
 	}
 	if (fd < 0 && create) {
 		// no such file, so make one
-		fd = open(fileName, O_RDWR | O_CREAT);
+		fd = open(fileName, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 		if (fd < 0) {
 			// could not create, maybe because we need a mkdir?
 			int nd = MakePath(dirName, strlen(root));
@@ -746,7 +746,7 @@ OpenFileNode(MainData md, char *root, char *dir, char *shortName,
 				flushLog();
 				return NULL;
 			}
-			fd = open(fileName, O_RDWR | O_CREAT);
+			fd = open(fileName, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 			if (fd < 0) {
 				string sysErr = strerror(errno);
 				fprintf(stdout, "** %s - Could not create %s\n", sysErr, fileName);
