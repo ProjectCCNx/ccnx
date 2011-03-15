@@ -135,6 +135,7 @@ main (int argc, char **argv)
     i = ccn_parse_Collection_start(d);
     if (i >= 0) {
         while ((i = ccn_parse_Collection_next(d, pl, NULL)) > 0) {
+	  printf("collection link OK\n");
         }
         if (i == 0) {
             res = 0;
