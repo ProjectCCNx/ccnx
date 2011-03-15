@@ -12,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn -lcrypto
+LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) $(OPENSSL_LIBS) -lccn -lcrypto
 CCNLIBDIR = ../../csrc/lib
 # Do not install these yet - we should choose names more appropriate for
 # a flat namespace in /usr/local/bin
