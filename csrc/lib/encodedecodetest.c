@@ -271,7 +271,7 @@ main (int argc, char *argv[]) {
             fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
             if (fd == -1)
                 perror(outname);
-            (void)write(fd, buffer->buf, buffer->length);
+            res = write(fd, buffer->buf, buffer->length);
             close(fd);
 	}
         if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) != 0) {
