@@ -3973,24 +3973,41 @@ ccnd_new_face_msg(struct ccnd_handle *h, struct face *face)
              face->faceid, face->flags, peer, port);
 }
 
+/**
+ * Since struct sockaddr_in6 may contain fields that should not participate
+ * in comparison / hash, ensure the undesired fields are zero.
+ *
+ * Per RFC 3493, sin6_flowinfo is zeroed.
+ *
+ * @param addr is the sockaddr (any family)
+ * @param addrlen is its length
+ * @param space points to a buffer that may be used for the result.
+ * @returns either the original addr or a pointer to a scrubbed copy.
+ *
+ */
 static struct sockaddr *
-scrub_sockaddr(struct sockaddr *addr, socklen_t addrlen, struct sockaddr_in6 *space)
+scrub_sockaddr(struct sockaddr *addr, socklen_t addrlen,
+               struct sockaddr_in6 *space)
 {
     struct sockaddr_in6 *src;
     struct sockaddr_in6 *dst;
     if (addr->sa_family != AF_INET6 || addrlen != sizeof(*space))
         return(addr);
     dst = space;
-	src = (void *)addr;
-    *dst = *src;
-    dst->sin6_scope_id = 0;
-    dst->sin6_flowinfo = 0;
+    src = (void *)addr;
+    memset(dst, 0, addrlen);
+    /* Copy first byte case sin6_len is used. */
+    ((uint8_t *)dst)[0] = ((uint8_t *)src)[0];
+    dst->sin6_family   = src->sin6_family;
+    dst->sin6_port     = src->sin6_port;
+    dst->sin6_addr     = src->sin6_addr;
+    dst->sin6_scope_id = src->sin6_scope_id;
     return((struct sockaddr *)dst);
 }
 
 static struct face *
 get_dgram_source(struct ccnd_handle *h, struct face *face,
-           struct sockaddr *addr, socklen_t addrlen, int why)
+                 struct sockaddr *addr, socklen_t addrlen, int why)
 {
     struct face *source = NULL;
     struct hashtb_enumerator ee;
@@ -4019,7 +4036,7 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
 				ccnd_msg(h, "sockaddr bits = %s", ccn_charbuf_as_string(c));
 				ccn_charbuf_destroy(&c);
 			}
-			source->addr = e->key;
+            source->addr = e->key;
             source->addrlen = e->keysize;
             source->recv_fd = face->recv_fd;
             source->sendface = face->faceid;
