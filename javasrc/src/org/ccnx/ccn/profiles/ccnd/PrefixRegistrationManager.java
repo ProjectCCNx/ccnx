@@ -69,7 +69,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
             									CCN_FORW_TAP;
 
 	
-	public static final Integer DEFAULT_SELF_REG_FLAGS = new Integer(CCN_FORW_ACTIVE + CCN_FORW_CHILD_INHERIT);
+	public static final Integer DEFAULT_SELF_REG_FLAGS = Integer.valueOf(CCN_FORW_ACTIVE + CCN_FORW_CHILD_INHERIT);
 
 	/*
 	 * 	#define CCN_FORW_ACTIVE         1
@@ -78,7 +78,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 	 *	#define CCN_FORW_LAST           8
 	 */
 		
-	public class ForwardingEntry extends GenericXMLEncodable implements XMLEncodable {
+	public static class ForwardingEntry extends GenericXMLEncodable implements XMLEncodable {
 		/* extends CCNEncodableObject<PolicyXML>  */
 		
 		/**
@@ -153,7 +153,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		 * 
 		 * @return lifetime of registration in seconds
 		 */
-		public Integer getLifetime() { return new Integer(_lifetime.intValue()); }
+		public Integer getLifetime() { return Integer.valueOf(_lifetime.intValue()); }
 		
 
 		public String toFormattedString() {
@@ -298,7 +298,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 				if (other._faceID != null) return false;
 			} else if (!_faceID.equals(other._faceID)) return false;
 			if (_flags == null) {
-				if (_flags != null) return false;
+				if (other._flags != null) return false;
 			} else if (!_flags.equals(other._flags)) return false;
 			if (_lifetime == null) {
 				if (other._lifetime != null) return false;

@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -90,7 +90,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 	public void testEncodeOutputStream() {
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testEncodeOutputStream:");
-		ForwardingEntry entryToEncode = prm. new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
+		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 		assertNotNull("EncodeOutputStream", entryToEncode);
 		
@@ -110,7 +110,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 	public void testDecodeInputStream() {
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testDecodeInputStream:");
-		ForwardingEntry entryToEncode = prm. new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
+		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 		assertNotNull("DecodeOutputStream", entryToEncode);
 		
@@ -126,7 +126,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		
 		System.out.println("Decoding: ");
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		ForwardingEntry entryToDecodeTo = prm. new ForwardingEntry();  /* We need an empty one to decode into */
+		ForwardingEntry entryToDecodeTo = new ForwardingEntry();  /* We need an empty one to decode into */
 		try {
 			entryToDecodeTo.decode(bais);
 		} catch (ContentDecodingException e) {
@@ -142,12 +142,12 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 	public void testEncodingDecoding() {
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testEncodingDecoding:");
-		ForwardingEntry entryToEncode = prm. new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
+		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 
-		ForwardingEntry  textEntryToDecodeInto = prm. new ForwardingEntry();
+		ForwardingEntry  textEntryToDecodeInto = new ForwardingEntry();
 		assertNotNull("EncodeDecodeOutput", textEntryToDecodeInto);
-		ForwardingEntry  binaryEntryToDecodeInto = prm. new ForwardingEntry();
+		ForwardingEntry  binaryEntryToDecodeInto = new ForwardingEntry();
 		assertNotNull("EncodeDecodeOutput", binaryEntryToDecodeInto);
 		XMLEncodableTester.encodeDecodeTest("EncodeDecodeOutput", entryToEncode, textEntryToDecodeInto, binaryEntryToDecodeInto);
 		System.out.println();
