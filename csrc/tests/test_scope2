@@ -13,6 +13,11 @@
 #
 AFTER : test_twohop_ccnd
 BEFORE : test_twohop_ccnd_teardown
+# Turn up logging in case something goes awry
+WithCCND 1 ccndlogging med
+WithCCND 2 ccndlogging med
+WithCCND 3 ccndlogging med
+
 WithCCND 3 ccnput -f /test/scope2/stuff < /dev/null
 cat <<EOF >scope2interest.xml
 <Interest>
@@ -24,10 +29,6 @@ cat <<EOF >scope2interest.xml
 </Interest>
 EOF
 ccn_xmltoccnb -w scope2interest.xml || Fail botch constructing scope2interest.ccnb
-
-# Turn up logging in case something goes awry
-WithCCND 1 ccndlogging med
-WithCCND 2 ccndlogging med
 
 WithCCND 2 ccndsmoketest -t 500 -b scope2interest.ccnb recv > scope2reply.ccnb
 cmp scope2reply.ccnb /dev/null || Fail interest was sent too far
