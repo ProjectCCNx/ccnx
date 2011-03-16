@@ -98,7 +98,7 @@ BackgroundPID () {
 	local PID;
 	if [ -f testdir/ccntestloop.pid ]; then
 		PID=`cat testdir/ccntestloop.pid`
-		kill -0 "$PID" || return 1
+		kill -0 "$PID" 2>/dev/null || return 1
 		echo ${1:-''}$PID
 		return 0
 	fi
@@ -110,7 +110,7 @@ SetPIDFile () {
 	if [ -f testdir/ccntestloop.pid ]; then
 		PID=`cat testdir/ccntestloop.pid`
 		test "$PID" = $$ && return 0
-		kill -0 "$PID" && Fail ccntestloop already running as pid $PID
+		kill -0 "$PID" 2>/dev/null && Fail ccntestloop already running as pid $PID
 		rm testdir/ccntestloop.pid || Fail could not remove old pid file
 	fi
 	echo $$ > testdir/ccntestloop.pid || Fail could not write pid file
