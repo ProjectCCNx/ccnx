@@ -29,13 +29,20 @@
 
 Usage () {
 cat << EOM >&2
-usage: ccntestloop 
+usage: ccntestloop [ start | stop | restart | status ]
+With no argument test run in foreground
 (Must be run from the top level of a ccnx source tree.)
 EOM
 exit 1
 }
 
 GetConfiguration () {
+	unset CCN_CTESTS
+	unset CCN_JAVATESTS
+	unset CCN_LOG_LEVEL_ALL
+	unset CCN_TEST_BRANCH
+	unset CCN_TEST_GITCOMMAND
+	unset CCN_LOCAL_PORT_BASE
 	set -a
 	rm -f testdir/config~
 	test -f testdir/config && . testdir/config && \
@@ -58,10 +65,8 @@ ProvideDefaults () {
 	export MAKE
 }
 
-# Say things to both stdout and stderr so that output may be captured with tee.
 Echo () {
 	echo "$*" >&2
-	echo "$*"
 }
 
 Fail () {
@@ -89,7 +94,18 @@ CheckDirectory () {
 	test -d testdir/. || mkdir testdir
 }
 
-CheckPIDFile () {
+BackgroundPID () {
+	local PID;
+	if [ -f testdir/ccntestloop.pid ]; then
+		PID=`cat testdir/ccntestloop.pid`
+		kill -0 "$PID" || return 1
+		echo ${1:-''}$PID
+		return 0
+	fi
+	return 1
+}
+
+SetPIDFile () {
 	local PID;
 	if [ -f testdir/ccntestloop.pid ]; then
 		PID=`cat testdir/ccntestloop.pid`
@@ -132,7 +148,6 @@ SaveLogs () {
 }
 
 PruneOldLogs () {
-	Echo Pruning logs from older successful runs
 	# Leave 20 most recent successes
 	(cd testdir; rm -rf `ls -dt testout.*[0123456789] | tail -n +20`; )
 	true
@@ -171,7 +186,7 @@ Rebuild () {
 
 RunCTest () {
 	local LOG;
-	test "$CCN_CTESTS" = "NO" && return 0
+	test "${CCN_CTESTS:=}" = "NO" && return 0
 	Echo Running csrc tests...
 	LOG=javasrc/testout/TEST-csrc-testlog.txt
 	mkdir -p javasrc/testout
@@ -185,10 +200,9 @@ RunCTest () {
 
 RunJavaTest () {
 	local LOG;
-	test "${CCN_JAVATESTS}" = "NO" && return 0
+	test "${CCN_JAVATESTS:-}" = "NO" && return 0
 	Echo Running javasrc tests...
 	LOG=javasrc/testout/TEST-javasrc-testlog.txt
-	
 	(cd javasrc && \
 	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL}             \
 	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000} \
@@ -220,6 +234,26 @@ ExecSelf () {
 	exec sh csrc/util/ccntestloop.sh || Fail exec
 }
 
+StartBackground () {
+	BackgroundPID 'ccntestloop already running as pid ' && return 1
+	sh -c "sh csrc/util/ccntestloop.sh &" < /dev/null >> testdir/log 2>&1
+}
+
+StopBackground () {
+	local PID;
+	PID=`BackgroundPID` && kill -HUP $PID && sleep 1 && \
+	  echo STOPPED >> testdir/log
+}
+
+Status () {
+	local STATUS;
+	test -f testdir/log && tail -n 9 testdir/log
+	BackgroundPID 'ccntestloop running as pid '
+	STATUS=$?
+	test $STATUS = 0 || echo ccntestloop not running
+	return $STATUS
+}
+
 # Finally, here's what we actually want to do
 GetConfiguration
 
@@ -229,7 +263,21 @@ CheckDirectory
 
 CheckLogLevel
 
-CheckPIDFile
+if [ $# -gt 1 ]; then
+	Usage
+fi
+
+case "${1:---}" in
+	--)      ;;
+	-*)      Usage;;
+	start)   StartBackground; exit $?;;
+	stop)    StopBackground; exit 0;;
+	restart) StopBackground; StartBackground; exit $?;;
+	status)  Status; exit $?;;
+	*)       Usage;;
+esac
+
+SetPIDFile
 trap RemovePIDFile EXIT
 
 CheckTestout
