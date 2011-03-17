@@ -544,27 +544,40 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		File f = new File(_repositoryRoot, fileName);
 		if (!forceWrite) {
 			if (f.exists()) {
+				FileInputStream fis = null;
 				try {
-					FileInputStream fis = new FileInputStream(f);
+					fis = new FileInputStream(f);
 					byte[] buf = new byte[fis.available()];
 					fis.read(buf);
-					fis.close();
 					return new String(buf);
 				} catch (FileNotFoundException e) {} // Can't happen
 				  catch (IOException ioe) {
 					  throw new RepositoryException(ioe.getMessage());
 				  }
+				  finally {
+					  if (null != fis)
+						try {
+							fis.close();
+						} catch (IOException e) {}
+				  }
 			}
 		}
 		if (f.exists())
 			f.delete();
+			FileOutputStream fos = null;
 		try {
-			FileOutputStream fos = new FileOutputStream(f);
+			fos = new FileOutputStream(f);
 			fos.write(contents.getBytes());
 			fos.close();
 		} catch (FileNotFoundException e1) {}  // Can't happen
 		  catch (IOException ioe) {
 			  throw new RepositoryException(ioe.getMessage());
+		  }
+		  finally {
+			  if (null != fos)
+				try {
+					fos.close();
+				} catch (IOException e) {}
 		  }
 		return null;
 	}
