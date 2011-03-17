@@ -88,6 +88,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	}
 	
 	protected String _repositoryRoot = null;
+	protected String _repositoryMeta = null;
 	protected File _repositoryFile;
 
 	Map<Integer,RepoFile> _files;
@@ -311,6 +312,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
+		_repositoryMeta = _repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.META_DIR;
+		File metaDirFile = new File(_repositoryMeta);
+		metaDirFile.mkdirs();
 		if (Log.isLoggable(Log.FAC_REPO, Level.WARNING)){
 			Log.warning(Log.FAC_REPO, "Starting repository; repository root is: {0}", _repositoryFile.getAbsolutePath());
 		}
@@ -541,7 +545,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * @throws ConfigurationException 
 	 */
 	private String checkFile(String fileName, String contents, boolean forceWrite) throws RepositoryException {
-		File f = new File(_repositoryRoot, fileName);
+		File f = new File(_repositoryMeta, fileName);
 		if (!forceWrite) {
 			if (f.exists()) {
 				FileInputStream fis = null;
