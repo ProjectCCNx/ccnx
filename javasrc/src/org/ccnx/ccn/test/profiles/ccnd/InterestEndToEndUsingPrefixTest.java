@@ -50,16 +50,17 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 		_interestSent.maxSuffixComponents(4);
 		_interestSent.minSuffixComponents(3); 
 		doTest();
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
+		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest3"));
 		_interestSent.maxSuffixComponents(1);
 		doTest();
+		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest4"));
 		getHandle.unregisterFilter(ContentName.fromNative(_prefix), this);
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
 		doTestFail();
 	}
 
 	public boolean handleInterest(Interest interest) {
-		Assert.assertTrue(_interestSent.equals(interest));
+		if (! _interestSent.equals(interest))
+			return false;
 		synchronized(this) {
 			notify();
 		}
@@ -69,7 +70,6 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 	
 	public Interest handleContent(ContentObject data,
 			Interest interest) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 	
