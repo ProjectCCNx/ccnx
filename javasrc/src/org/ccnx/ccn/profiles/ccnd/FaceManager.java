@@ -127,28 +127,28 @@ public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 
 	
 	public String toFormattedString() {
-		String out = "";
+		StringBuilder out = new StringBuilder(128);
 		if (null != _action) {
-			out.concat("Action: "+ _action + "\n");
+			out.append("Action: "+ _action + "\n");
 		} else {
-			out.concat("Action: not present\n");
+			out.append("Action: not present\n");
 		}
 		if (null != _faceID) {
-			out.concat("FaceID: "+ _faceID.toString() + "\n");
+			out.append("FaceID: "+ _faceID.toString() + "\n");
 		} else {
-			out.concat("FaceID: not present\n");
+			out.append("FaceID: not present\n");
 		}
 		if (null != _host) {
-			out.concat("Host: "+ _host + "\n");
+			out.append("Host: "+ _host + "\n");
 		} else {
-			out.concat("Host: not present\n");
+			out.append("Host: not present\n");
 		}
 		if (null != _port) {
-			out.concat("Port: "+ _port.toString() + "\n");
+			out.append("Port: "+ _port.toString() + "\n");
 		} else {
-			out.concat("Port: not present\n");
+			out.append("Port: not present\n");
 		}
-		return out;
+		return out.toString();
 	}	
 
 	public boolean validateAction(String action) {
