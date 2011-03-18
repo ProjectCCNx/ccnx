@@ -450,15 +450,18 @@ public class Daemon {
 			try {
 				Thread.sleep(1000);
 				
-				// this should throw an IllegalThreadStateException in child.exitValue()
-				// If it doesn't then the startup failed
 				try {
 					if (null == outputFile) {
 						childMsgs = child.getInputStream();
 					} else
 						childMsgs = new FileInputStream(outputFile);
+					
+					// The following should throw an IllegalThreadStateException in child.exitValue()
+					// If it doesn't then the startup failed
 					int exitValue = child.exitValue();
+					
 					// if we get here, the child has exited
+					// Read and output to the console any messages from the child to help diagnose the problem
 					Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					byte[] childMsgBytes = new byte[childMsgs.available()];
@@ -474,6 +477,7 @@ public class Daemon {
 			} catch (InterruptedException e) {}
 		}
 
+		// The daemon has started running - now start its operation
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, null)));
 		DaemonListener l;
 		
@@ -488,9 +492,7 @@ public class Daemon {
 		System.out.println("Started daemon " + daemonName + "." + (null == childpid ? "" : " PID " + childpid));
 		Log.info("Started daemon " + daemonName + "." + (null == childpid ? "" : " PID " + childpid));
 		
-		/*
-		 * To log output at this level we have to keep running until the daemon exits
-		 */
+		// To log output at this level we have to keep running until the daemon exits
 		if (outputFile != null) {
 			boolean interrupted = false;
 			do {
