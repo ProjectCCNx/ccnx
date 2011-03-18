@@ -264,7 +264,7 @@ public class BasicKeyManager extends KeyManager {
 		_handle.close();
 		try {
 			saveSecureKeyCache();
-		} catch (IOException e) {
+		} catch (Exception e) {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
 				Log.warning("Exception saving secure key cache: {0}", e);
 			}
