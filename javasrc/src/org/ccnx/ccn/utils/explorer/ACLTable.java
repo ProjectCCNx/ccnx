@@ -1,7 +1,7 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -48,7 +48,7 @@ public class ACLTable extends AbstractTableModel {
 		aclTable = new Object[principals.length][ACL_LENGTH];
 		for (int c=0; c<ACL_LENGTH; c++) {
 			for (int r=0; r<principals.length; r++) {
-				aclTable[r][c] = new Boolean(false);
+				aclTable[r][c] = Boolean.FALSE;
 			}
 		}
 	
@@ -126,19 +126,19 @@ public class ACLTable extends AbstractTableModel {
 		int pos = getIndexOfPrincipal(principal);
 		if (pos > -1) {
 			if (role.equals(ACL.LABEL_READER)) {
-				aclTable[pos][0] = new Boolean(true);
-				aclTable[pos][1] = new Boolean(false);
-				aclTable[pos][2] = new Boolean(false);
+				aclTable[pos][0] = Boolean.TRUE;
+				aclTable[pos][1] = Boolean.FALSE;
+				aclTable[pos][2] = Boolean.FALSE;
 			}
 			if (role.equals(ACL.LABEL_WRITER)) {
-				aclTable[pos][0] = new Boolean (true);
-				aclTable[pos][1] = new Boolean(true);
-				aclTable[pos][2] = new Boolean(false);
+				aclTable[pos][0] = Boolean.TRUE;
+				aclTable[pos][1] = Boolean.TRUE;
+				aclTable[pos][2] = Boolean.FALSE;
 			}
 			if (role.equals(ACL.LABEL_MANAGER)) {
-				aclTable[pos][0] = new Boolean (true);
-				aclTable[pos][1] = new Boolean(true);
-				aclTable[pos][2] = new Boolean(true);
+				aclTable[pos][0] = Boolean.TRUE;
+				aclTable[pos][1] = Boolean.TRUE;
+				aclTable[pos][2] = Boolean.TRUE;
 			}
 		}
 	}

@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -153,12 +153,11 @@ public class CryptoUtil {
 		// any number of things. 
 		SubjectPublicKeyInfo keyInfo = 
 			new SubjectPublicKeyInfo((ASN1Sequence)genericObject);
-		
-		String keyType = OIDLookup.getCipherName(keyInfo.getAlgorithmId().getObjectId().toString());
+		String keyTypeOID = keyInfo.getAlgorithmId().getObjectId().toString();
+		String keyType = OIDLookup.getCipherName(keyTypeOID);
 		if (keyType == null) {
-			Log.info("Cannot find key type corresponding to OID: " + keyInfo.getAlgorithmId().getObjectId().toString());
-			Log.warning("Unknown key type " + keyType + " in stored key.");
-			throw new InvalidKeySpecException("Unknown key type " + keyType + " in stored key.");
+			Log.warning("Cannot find key type corresponding to OID: " + keyTypeOID);
+			throw new InvalidKeySpecException("Unknown key type OID " + keyTypeOID + " in stored key.");
 		}
 		
 		KeyFactory keyFactory = null;

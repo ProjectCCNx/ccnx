@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -123,17 +123,13 @@ public class ACPerformanceTestRepo {
 	}
 	
 	@Test
-	public void performanceTest() {
+	public void performanceTest() throws AccessDeniedException {
 		createBaseDirectoryACL();
 		writeContentInDirectory();
 
 		// Alice and Bob have permission to read the file
-		try {
-			readFileAs(userNames[0]);
-			readFileAs(userNames[1]);
-		} catch (AccessDeniedException ade) {
-			Assert.fail();
-		}
+		readFileAs(userNames[0]);
+		readFileAs(userNames[1]);
 
 		// Carol does not have permission to read the file
 		try {
@@ -145,12 +141,7 @@ public class ACPerformanceTestRepo {
 		updateACL();
 		
 		// Carol now has permission to read the file
-		try {
-			readFileAs(userNames[2]);
-		}
-		catch (AccessDeniedException ade) {
-			Assert.fail();
-		}
+		readFileAs(userNames[2]);
 	}
 	
 	/**
