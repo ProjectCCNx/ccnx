@@ -100,7 +100,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			System.out.println("Malformed name: " + args[CommonParameters.startArg] + " " + e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
-			System.out.println("Cannot read file. " + e.getMessage());
+			System.out.println("Cannot put file. " + e.getMessage());
 			e.printStackTrace();
 		} catch (InvalidKeyException e) {
 			System.out.println("Cannot publish invalid key: " + e.getMessage());
