@@ -17,17 +17,14 @@
 
 package org.ccnx.ccn.impl.support;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.PrintStream;
 import java.io.Serializable;
 import java.rmi.NoSuchObjectException;
 import java.rmi.Remote;
@@ -595,6 +592,10 @@ public class Daemon {
 		return File.createTempFile(prefix, null, new File(System.getProperty("user.home")));
 	}
 	
+	/**
+	 * Remove the RMIFile when you don't know the PID
+	 * @throws IOException
+	 */
 	protected void rmRMIFile() throws IOException {
 		getRMIFile(_daemonName, SystemConfiguration.getPID()).delete();
 	}
@@ -715,40 +716,6 @@ public class Daemon {
 		}
 	}
 
-
-	/**
-	 * Utility classes if your daemon requires a password.
-	 * @param target
-	 * @return
-	 */
-	protected static String getPassword(String target) {
-
-		System.out.print("Password for " + target);
-
-		String password = readOnePassword(); // in.readLine();
-
-		return password;
-	}
-
-
-	protected static class Eraser extends Thread {
-		PrintStream out;
-		boolean finish = false;
-		public Eraser(PrintStream out) {
-			this.out = out;
-		}
-		public void run() {
-			while (!finish) {
-				out.print("\010 ");
-				try {
-					sleep(10);
-				} catch (InterruptedException inte) {
-					finish = true;
-				}
-			}
-		}
-	}
-	
 	public Object getStatus(String daemonName, String type) throws FileNotFoundException, IOException, ClassNotFoundException {
 		if (!getRMIFile(daemonName, _pid).exists()) {
 			System.out.println("Daemon " + daemonName + " does not appear to be running.");
@@ -765,61 +732,5 @@ public class Daemon {
 		}
 		
 		return l.status(type);
-	}
-
-	/**
-	 * reads one password.
-	 */
-	public static String readOnePassword() {
-		// System.out.print("\033[00;40;30m");
-
-		Eraser eraser = new Eraser(System.out);
-		eraser.start();
-
-		BufferedReader in =
-			new BufferedReader(new InputStreamReader(System.in));
-		String password = "";
-
-		try {
-			password = in.readLine();
-		} catch (IOException ioe) {
-		}
-
-		eraser.interrupt();
-		try {
-			Thread.sleep(100);
-		} catch (InterruptedException inte) {
-		}
-
-		// System.out.print("\033[0m");
-
-		return password;
-	}
-
-	/**
-	 * reads a password, and then prompts to re-enter
-	 * password. makes sure both entered passwords are the same
-	 */
-	public static String readNewPassword() {
-
-		boolean newtry = false;
-		boolean done = false;
-		String password1, password2;
-
-		do {		
-			if(newtry) {
-				System.out.print("Oops. The passwords didn't match. Type your password again: ");
-			}
-			password1 = readOnePassword();
-			System.out.print("Reenter password: ");
-			password2 = readOnePassword();
-			if (password1.equals(password2)) {
-				done = true;
-			} else {
-				newtry = true;
-			}
-		} while(!done);
-
-		return password2;
 	}
 }
