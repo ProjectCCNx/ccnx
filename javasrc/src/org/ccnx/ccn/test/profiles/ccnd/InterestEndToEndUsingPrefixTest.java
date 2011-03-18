@@ -38,8 +38,8 @@ import org.junit.Test;
 public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements CCNFilterListener, CCNInterestListener {
 	private Interest _interestSent;
 	private String _prefix = "/interestEtoETestUsingPrefix/test-" + rand.nextInt(10000);
+	private boolean _interestSeen = false;
 	private final static int TIMEOUT = 3000;
-
 	
 	@Test
 	public void testInterestEndToEnd() throws MalformedContentNameStringException, IOException, InterruptedException {
@@ -48,46 +48,47 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 		doTest();
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
 		_interestSent.maxSuffixComponents(4);
-		_interestSent.minSuffixComponents(3);
+		_interestSent.minSuffixComponents(3); 
 		doTest();
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
+		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest3"));
 		_interestSent.maxSuffixComponents(1);
 		doTest();
+		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest4"));
 		getHandle.unregisterFilter(ContentName.fromNative(_prefix), this);
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
 		doTestFail();
 	}
 
 	public boolean handleInterest(Interest interest) {
-		Assert.assertTrue(_interestSent.equals(interest));
+		if (! _interestSent.equals(interest))
+			return false;
 		synchronized(this) {
 			notify();
 		}
+		_interestSeen = true;
 		return true;
 	}
 	
 	public Interest handleContent(ContentObject data,
 			Interest interest) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 	
 	private void doTest() throws IOException, InterruptedException {
-		long startTime = System.currentTimeMillis();
+		_interestSeen = false;
 		synchronized (this) {
 			putHandle.expressInterest(_interestSent, this);
 			wait(TIMEOUT);
 		}
-		Assert.assertTrue((System.currentTimeMillis() - startTime) < TIMEOUT);
+		Assert.assertTrue(_interestSeen);
 	}
 
 	private void doTestFail() throws IOException, InterruptedException {
-		long startTime = System.currentTimeMillis();
+		_interestSeen = false;
 		synchronized (this) {
 			putHandle.expressInterest(_interestSent, this);
 			wait(TIMEOUT);
 		}
-		Assert.assertFalse((System.currentTimeMillis() - startTime) < TIMEOUT);
+		Assert.assertFalse(_interestSeen);
 	}
 
 }
