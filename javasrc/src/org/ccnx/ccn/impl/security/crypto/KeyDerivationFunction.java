@@ -262,11 +262,12 @@ public class KeyDerivationFunction {
 		for (int j = 0; j < contextBytes.length; ++j) {
 			contextBytes[j] = contextObjects[j].encode();
 		}
-		int outputLengthInBytes = (int)Math.ceil(outputLengthInBits/(1.0 * DataUtils.BITS_PER_BYTE));
+		int outputLengthInBytes = (outputLengthInBits + DataUtils.BITS_PER_BYTE - 1) / DataUtils.BITS_PER_BYTE;
 		byte [] outputBytes = new byte[outputLengthInBytes];
 
 		// Number of rounds
-		int n = (int)Math.ceil(outputLengthInBytes/(1.0 * hmac.getMacLength()));
+		int macLength = hmac.getMacLength();
+		int n = (outputLengthInBytes + macLength - 1) / macLength;
 		if (n < 1) {
 			Log.warning("Unexpected: 0 block key derivation: want " + outputLengthInBits + 
 					" bits (" + outputLengthInBytes + " bytes).");
@@ -294,10 +295,10 @@ public class KeyDerivationFunction {
 				hmac.update(Lbytes);
 
 				if (i < n) {
-					hmac.doFinal(outputBytes, (i-1)*hmac.getMacLength());
+					hmac.doFinal(outputBytes, (i-1)*macLength);
 				} else {
 					byte [] finalBlock = hmac.doFinal();
-					System.arraycopy(finalBlock, 0, outputBytes, (i-1)*hmac.getMacLength(), outputBytes.length - (i-1)*hmac.getMacLength());
+					System.arraycopy(finalBlock, 0, outputBytes, (i-1)*macLength, outputBytes.length - (i-1)*macLength);
 				}
 			} catch (IllegalStateException ex) {
 				Log.severe("Unexpected IllegalStateException in DeriveKey: hmac should have been initialized!");
