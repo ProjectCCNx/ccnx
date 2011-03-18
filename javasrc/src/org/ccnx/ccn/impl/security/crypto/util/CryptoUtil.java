@@ -153,12 +153,11 @@ public class CryptoUtil {
 		// any number of things. 
 		SubjectPublicKeyInfo keyInfo = 
 			new SubjectPublicKeyInfo((ASN1Sequence)genericObject);
-		
-		String keyType = OIDLookup.getCipherName(keyInfo.getAlgorithmId().getObjectId().toString());
+		String keyTypeOID = keyInfo.getAlgorithmId().getObjectId().toString();
+		String keyType = OIDLookup.getCipherName(keyTypeOID);
 		if (keyType == null) {
-			Log.info("Cannot find key type corresponding to OID: " + keyInfo.getAlgorithmId().getObjectId().toString());
-			Log.warning("Unknown key type " + keyType + " in stored key.");
-			throw new InvalidKeySpecException("Unknown key type " + keyType + " in stored key.");
+			Log.warning("Cannot find key type corresponding to OID: " + keyTypeOID);
+			throw new InvalidKeySpecException("Unknown key type OID " + keyTypeOID + " in stored key.");
 		}
 		
 		KeyFactory keyFactory = null;
