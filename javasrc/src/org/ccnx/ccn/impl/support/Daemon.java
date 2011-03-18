@@ -422,8 +422,8 @@ public class Daemon {
 		
 		// Now actually start the daemon
 		String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
-		String fileToUse;
 		boolean doAppend = true;
+		DaemonOutput output = null;
 
 		Log.info("Starting daemon with command line: " + cmd);
 		
@@ -431,17 +431,13 @@ public class Daemon {
 		pb.redirectErrorStream(true);
 		if (null != outputFile) {
 			doAppend = false;
-			fileToUse = outputFile;
-		} else
-			// TODO Why would we want to create "DaemonOutput" when no output is requested?
-			// Leaving it this way for now.
-			fileToUse = DEFAULT_OUTPUT_STREAM;
+		}
 		
 		Process child = pb.start();
 		
 		if (null != outputFile) {
-			FileOutputStream fos = new FileOutputStream(fileToUse, doAppend);
-			DaemonOutput output = new DaemonOutput(child.getInputStream(), fos);
+			FileOutputStream fos = new FileOutputStream(outputFile, doAppend);
+			output = new DaemonOutput(child.getInputStream(), fos);
 		}
 		
 		// Initial RMI file never named with PID to permit
@@ -503,7 +499,8 @@ public class Daemon {
 				} catch (InterruptedException e) {interrupted = true;}
 			} while (!interrupted);
 		}
-		//output.close();
+		if (null != output)
+			output.close();
 	}
 
 	protected static void stopDaemon(Daemon daemon, String pid) throws FileNotFoundException, IOException, ClassNotFoundException {
