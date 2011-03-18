@@ -157,33 +157,33 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		
 
 		public String toFormattedString() {
-			String out = "";
+			StringBuilder out = new StringBuilder(256);
 			if (null != _action) {
-				out.concat("Action: "+ _action + "\n");
+				out.append("Action: "+ _action + "\n");
 			} else {
-				out.concat("Action: not present\n");
+				out.append("Action: not present\n");
 			}
 			if (null != _faceID) {
-				out.concat("FaceID: "+ _faceID.toString() + "\n");
+				out.append("FaceID: "+ _faceID.toString() + "\n");
 			} else {
-				out.concat("FaceID: not present\n");
+				out.append("FaceID: not present\n");
 			}
 			if (null != _prefixName) {
-				out.concat("Prefix Name: "+ _prefixName + "\n");
+				out.append("Prefix Name: "+ _prefixName + "\n");
 			} else {
-				out.concat("Prefix Name: not present\n");
+				out.append("Prefix Name: not present\n");
 			}
 			if (null != _flags) {
-				out.concat("Flags: "+ _flags.toString() + "\n");
+				out.append("Flags: "+ _flags.toString() + "\n");
 			} else {
-				out.concat("Flags: not present\n");
+				out.append("Flags: not present\n");
 			}
 			if (null != _lifetime) {
-				out.concat("Lifetime: "+ _lifetime.toString() + "\n");
+				out.append("Lifetime: "+ _lifetime.toString() + "\n");
 			} else {
-				out.concat("Lifetime: not present\n");
+				out.append("Lifetime: not present\n");
 			}
-			return out;
+			return out.toString();
 		}	
 
 		public boolean validateAction(String action) {
