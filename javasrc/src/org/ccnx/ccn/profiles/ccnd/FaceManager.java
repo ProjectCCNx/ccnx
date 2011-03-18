@@ -49,7 +49,7 @@ public class FaceManager extends CCNDaemonHandle /* extends GenericXMLEncodable 
 		public String value() { return st; }
 	}
 	
-public class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
+public static class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 	/* extends CCNEncodableObject<PolicyXML>  */
 	
 	/**
