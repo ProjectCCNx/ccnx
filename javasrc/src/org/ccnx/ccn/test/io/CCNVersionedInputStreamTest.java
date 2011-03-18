@@ -103,17 +103,20 @@ public class CCNVersionedInputStreamTest {
 		
 		firstVersionName = VersioningProfile.addVersion(defaultStreamName);
 		firstVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
-		firstVersionMaxSegment = (int)Math.ceil(firstVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
+		firstVersionMaxSegment = (firstVersionLength == 0) ? 0 :
+			((firstVersionLength + SegmentationProfile.DEFAULT_BLOCKSIZE - 1) / SegmentationProfile.DEFAULT_BLOCKSIZE) - 1;
 		firstVersionDigest = writeFileFloss(firstVersionName, firstVersionLength, randBytes);
 		
 		middleVersionName = VersioningProfile.addVersion(defaultStreamName);
 		middleVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
-		middleVersionMaxSegment = (int)Math.ceil(middleVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
+		middleVersionMaxSegment = (middleVersionLength == 0) ? 0 :
+			((middleVersionLength + SegmentationProfile.DEFAULT_BLOCKSIZE - 1) / SegmentationProfile.DEFAULT_BLOCKSIZE) - 1;
 		middleVersionDigest = writeFileFloss(middleVersionName, middleVersionLength, randBytes);
 
 		latestVersionName = VersioningProfile.addVersion(defaultStreamName);
 		latestVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
-		latestVersionMaxSegment = (int)Math.ceil(latestVersionLength/SegmentationProfile.DEFAULT_BLOCKSIZE);
+		latestVersionMaxSegment = (latestVersionLength == 0) ? 0 :
+			((latestVersionLength + SegmentationProfile.DEFAULT_BLOCKSIZE - 1) / SegmentationProfile.DEFAULT_BLOCKSIZE) - 1;
 		latestVersionDigest = writeFileFloss(latestVersionName, latestVersionLength, randBytes);
 		
 		for (int i=0; i < problematicLengths.length; ++i) {
@@ -305,9 +308,9 @@ public class CCNVersionedInputStreamTest {
 	public void testCCNVersionedInputStreamContentNameInt() throws Exception {
 		// we can make a new handle; as long as we don't use the outputHandle it should work
 		CCNVersionedInputStream vfirst = 
-			new CCNVersionedInputStream(firstVersionName, ((4 > firstVersionMaxSegment) ? firstVersionMaxSegment : 4L), null);
+			new CCNVersionedInputStream(firstVersionName, Math.min(4L, firstVersionMaxSegment), null);
 		CCNVersionedInputStream vlatest = 
-			new CCNVersionedInputStream(defaultStreamName, ((4 > latestVersionMaxSegment) ? latestVersionMaxSegment : 4L), null);
+			new CCNVersionedInputStream(defaultStreamName, Math.min(4L, latestVersionMaxSegment), null);
 		testArgumentRunner(vfirst, vlatest);
 	}
 
