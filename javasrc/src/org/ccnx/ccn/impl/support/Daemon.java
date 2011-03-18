@@ -419,30 +419,48 @@ public class Daemon {
 				fos.close();
 			}
 		}
+		
+		// Now actually start the daemon
+		String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
+		String fileToUse;
+		boolean doAppend = true;
+
 		Log.info("Starting daemon with command line: " + cmd);
 		
 		ProcessBuilder pb = new ProcessBuilder(argList);
 		pb.redirectErrorStream(true);
+		if (null != outputFile) {
+			doAppend = false;
+			fileToUse = outputFile;
+		} else
+			// TODO Why would we want to create "DaemonOutput" when no output is requested?
+			// Leaving it this way for now.
+			fileToUse = DEFAULT_OUTPUT_STREAM;
+		
 		Process child = pb.start();
 		
-		String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
-		if (outputFile != null) {
-			new DaemonOutput(child.getInputStream(), new FileOutputStream(outputFile, false));
-		} else {
-			new DaemonOutput(child.getInputStream(), new FileOutputStream(DEFAULT_OUTPUT_STREAM));
+		if (null != outputFile) {
+			FileOutputStream fos = new FileOutputStream(fileToUse, doAppend);
+			DaemonOutput output = new DaemonOutput(child.getInputStream(), fos);
 		}
 		
 		// Initial RMI file never named with PID to permit
 		// us to read it without knowing PID.  After 
 		// daemon operation is started below the file 
 		// will be renamed with PID if possible
+		// TODO - does this loop really make sense? Shouldn't the name change happen quickly or not at all?
 		while (!getRMIFile(daemonName, null).exists()) {
+			InputStream childMsgs = null;
 			try {
 				Thread.sleep(1000);
 				
-				// this should throw an exception
+				// this should throw an IllegalThreadStateException in child.exitValue()
+				// If it doesn't then the startup failed
 				try {
-					InputStream childMsgs = child.getErrorStream();
+					if (null == outputFile) {
+						childMsgs = child.getInputStream();
+					} else
+						childMsgs = new FileInputStream(outputFile);
 					int exitValue = child.exitValue();
 					// if we get here, the child has exited
 					Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
@@ -450,17 +468,14 @@ public class Daemon {
 					byte[] childMsgBytes = new byte[childMsgs.available()];
 					childMsgs.read(childMsgBytes);;
 					String childOutput = new String(childMsgBytes);
-					childMsgs = child.getInputStream();
-					childMsgBytes = new byte[childMsgs.available()];
-					childMsgs.read(childMsgBytes);
-					childOutput += new String(childMsgBytes);
 					System.err.println("Messages from the child were: \"" + childOutput + "\"");
 					return;
-				} catch (IllegalThreadStateException e) {
-				}
-
-			} catch (InterruptedException e) {
-			}
+				} catch (IllegalThreadStateException e) {}	// The daemon successfully started
+				  finally {
+					if (null != childMsgs)
+						childMsgs.close();
+				  }
+			} catch (InterruptedException e) {}
 		}
 
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, null)));
@@ -481,18 +496,14 @@ public class Daemon {
 		 * To log output at this level we have to keep running until the daemon exits
 		 */
 		if (outputFile != null) {
-			boolean running = true;
-			while (running) {
+			boolean interrupted = false;
+			do {
 				try {
-					Thread.sleep(1000);
-					child.exitValue();
-					running = false;
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IllegalThreadStateException e) {}
-			}
+					child.waitFor();
+				} catch (InterruptedException e) {interrupted = true;}
+			} while (!interrupted);
 		}
+		//output.close();
 	}
 
 	protected static void stopDaemon(Daemon daemon, String pid) throws FileNotFoundException, IOException, ClassNotFoundException {

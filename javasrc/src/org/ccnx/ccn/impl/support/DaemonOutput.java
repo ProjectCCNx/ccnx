@@ -51,4 +51,9 @@ public class DaemonOutput extends Thread {
 			} catch (InterruptedException e) {}
 		}
 	}
+	
+	public void close() throws IOException {
+		_os.close();
+		_is.close();
+	}
 }
