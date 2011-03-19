@@ -206,7 +206,7 @@ RunJavaTest () {
 	(cd javasrc && \
 	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL}             \
 	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000} \
-	      "${CCN_JAVATESTS:-test}"; ) > $LOG        \
+	      ${CCN_JAVATESTS:-test}; ) > $LOG        \
 	  && return 0
 	grep -B1 -e 'junit. Tests .*Failures: [^0]' \
 	         -e 'junit. Tests .*Errors: [^0]'   \
