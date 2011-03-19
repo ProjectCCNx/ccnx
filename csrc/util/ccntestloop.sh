@@ -16,9 +16,9 @@
 # ccntestloop runs the ccnx unit tests repeatedly.
 #
 # This is intended to be run from the top level of the ccnx distribution.
-# Results of the test runs aro kept in the testdir subdirectory, which is
+# Results of the test runs are kept in the testdir subdirectory, which is
 # created if necessary.  However, testdir may be a symlink to another
-# directory (preferable on the same file system).  It is advisable to
+# directory (preferably on the same file system).  It is advisable to
 # link to some location outside of the workspace to avoid loss of test
 # results due to a "git clean" command.
 #
@@ -26,6 +26,7 @@
 # the environment variables to be set up for the next round.  Creative use
 # of this allows for such things as testing various combinations of parameters
 # on each run.
+#
 
 Usage () {
 cat << EOM >&2
