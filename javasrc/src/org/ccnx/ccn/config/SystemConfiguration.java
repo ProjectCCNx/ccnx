@@ -342,7 +342,7 @@ public class SystemConfiguration {
 		for (NetworkProtocol p : NetworkProtocol.values()) {
 			String pAsString = p.toString();
 			if (proto.equalsIgnoreCase(pAsString)) {
-				if (!pAsString.equalsIgnoreCase(DEFAULT_PROTOCOL)) Log.fine("CCN agent protocol changed to " + pAsString + " per property");
+//				if (!pAsString.equalsIgnoreCase(DEFAULT_PROTOCOL)) Log.fine("CCN agent protocol changed to " + pAsString + " per property");
 				AGENT_PROTOCOL = p;
 				found = true;
 				break;
