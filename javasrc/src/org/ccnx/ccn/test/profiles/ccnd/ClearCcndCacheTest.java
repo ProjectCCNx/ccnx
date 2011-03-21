@@ -20,6 +20,7 @@ package org.ccnx.ccn.test.profiles.ccnd;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.profiles.ccnd.CCNDCacheManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -27,30 +28,36 @@ import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
 import org.junit.Test;
 
-public class ClearCacheTest extends CCNTestBase {
-	static CCNTestHelper testHelper = new CCNTestHelper(ClearCacheTest.class);
+public class ClearCcndCacheTest extends CCNTestBase {
+	static CCNTestHelper testHelper = new CCNTestHelper(ClearCcndCacheTest.class);
 	
 	@Test
 	public void testClearCache() throws Exception {
 		ContentName prefix = ContentName.fromNative(testHelper.getClassNamespace(), "AreaToClear");
+		CCNFlowControl fc = new CCNFlowControl(prefix, putHandle);
 		for (int i = 0; i < 10; i++) {
 			ContentName name = ContentName.fromNative(prefix, "head-" + i);
 			ContentObject obj = ContentObject.buildContentObject(name, "test".getBytes());
-			putHandle.put(obj);
+			fc.put(obj);
+			obj = getHandle.get(prefix, SystemConfiguration.MEDIUM_TIMEOUT);
+			Assert.assertNotNull(obj);
 			for (int j = 0; j < 10; j++) {
-				ContentName subName = ContentName.fromNative(name, "subObj-" + i);
+				ContentName subName = ContentName.fromNative(name, "subObj-" + j);
 				ContentObject subObj = ContentObject.buildContentObject(subName, "test".getBytes());
-				putHandle.put(subObj);
+				fc.put(subObj);
+				obj = getHandle.get(prefix, SystemConfiguration.MEDIUM_TIMEOUT);
+				Assert.assertNotNull(obj);
 			}
 		}
-		new CCNDCacheManager().clearCache(prefix, getHandle, 10000);
+		fc.close();
+		new CCNDCacheManager().clearCache(prefix, getHandle, 100 * SystemConfiguration.SHORT_TIMEOUT);
 		
 		for (int i = 0; i < 10; i++) {
 			ContentName name = ContentName.fromNative(prefix, "head-" + i);
 			ContentObject co = getHandle.get(name, SystemConfiguration.SHORT_TIMEOUT);
 			Assert.assertEquals(null, co);
 			for (int j = 0; j < 10; j++) {
-				ContentName subName = ContentName.fromNative(name, "subObj-" + i);
+				ContentName subName = ContentName.fromNative(name, "subObj-" + j);
 				co = getHandle.get(subName, SystemConfiguration.SHORT_TIMEOUT);
 				Assert.assertEquals(null, co);
 			}
