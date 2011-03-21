@@ -258,7 +258,7 @@ public class VersioningInterestManagerTestRepo {
 		System.out.println("***** Sending stream 1 *****");
 		TreeSet<CCNTime> sent1 = sendStreamLeft(sinkhandle, vim, basename, t, tosend);
 
-		int expected = tosend + packets;
+		int expected = tosend + packets + 1;
 		boolean b = sinkhandle.total_count.waitForValue(expected, TIMEOUT);
 
 		// we should see only the desired number of interests
