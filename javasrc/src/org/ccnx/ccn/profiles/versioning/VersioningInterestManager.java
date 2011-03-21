@@ -36,9 +36,8 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
 /**
- * Manage splitting interests and generating interests for a base name.
- * 
- * This class is used by VersioningInterest.
+ * Manage splitting interests and generating interests for a single base name.
+ * This class is used by VersioningInterest, and should not be used stand-alone.
  * 
  * Current interest filling algorithm:
  *    Interests are filled to MIN_FULL exclusions initially and allowed
@@ -155,7 +154,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 		cancelInterests();
 	}
 
-	public synchronized Interest handleContent(ContentObject data, Interest interest) {
+	public Interest handleContent(ContentObject data, Interest interest) {
 		return receive(data, interest);
 	}
 
@@ -176,13 +175,19 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	//	private boolean _running = false;
 	protected final CCNHandle _handle;
 	private final ContentName _name;
-	protected final TreeSet6<VersionNumber> _exclusions = new TreeSet6<VersionNumber>();
 	private final VersionNumber _startingVersion;
 	private final CCNInterestListener _listener; // our callback
 
+	// make sure receive() is single-threaded
+	private final Object _receiveLock = new Object();
+	
 	// These are to track the average density
 	private double sum_density = 0.0;
 	private double average_density = 0.0;
+
+	// used to protect _exclusions, _interestData, and _interestMap
+	protected final Object _dataLock = new Object();
+	protected final TreeSet6<VersionNumber> _exclusions = new TreeSet6<VersionNumber>();
 
 	// this will be sorted by the starttime of each InterestData
 	protected final TreeSet6<InterestData> _interestData = new TreeSet6<InterestData>(new InterestData.StartTimeComparator());
@@ -196,7 +201,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	 * Called on start()
 	 */
 	private void generateInterests() {
-		synchronized(_exclusions) {
+		synchronized(_dataLock) {
 			// we ask for content from right to left, so fill from right to left
 			Iterator<VersionNumber> iter = _exclusions.descendingIteratorCompatible();
 
@@ -217,7 +222,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 					VersionNumber t = version.addAndReturn(1);
 					id.setStartTime(t);
 					// now that the start time is fixed, add to TreeSet
-					_interestData.add(id);
+						_interestData.add(id);
 
 					// now make a new one, that ends at the current version
 					id = new InterestData(_name, _startingVersion, t);
@@ -227,12 +232,10 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 			}
 			// now save the last one
 			_interestData.add(id);
-
+			
 			computeAverageDensity();
-		}
 
-		// we now have all the interests done, actually send them
-		synchronized(_interestMap) {
+			// we now have all the interests done, actually send them
 			for(InterestData datum : _interestData) {
 				sendInterest(datum);
 				Log.info(Log.FAC_ENCODING, "Sent initial interest {0}", datum.getLastInterest());
@@ -255,7 +258,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	 * Called on stop()
 	 */
 	private void cancelInterests() {
-		synchronized(_interestMap){
+		synchronized(_dataLock){
 			
 			for(Interest interest : _interestMap.keySet() ) {
 				_handle.cancelInterest(interest, this);
@@ -282,99 +285,104 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 
 		_stats.increment(StatsEnum.Receive);
 		
-		// Match the interest to our pending interests.  This removes it
-		// from the pending interest map.
-		synchronized(_interestMap) {
-			InterestMapData imd = _interestMap.remove(interest);
-			if( null != imd ) {
-				datum = imd.getInterestData(); 
-				reexpress = imd.getReexpress();
-			}
-		}
-
-		// if we cannot find a version component, just re-express the same interest
-		try {
-			version = new VersionNumber(data.name());
-		} catch (VersionMissingException e) {
-			_stats.increment(StatsEnum.ReceiveVersionNumberError);
-			e.printStackTrace();
-
-			if( null != datum && reexpress )
-				newInterest = datum.buildInterest();
-
-			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
-				Log.finer(Log.FAC_ENCODING, "Returning new interest {0}",
-						null == newInterest ? "NULL" : newInterest.toString());
-
-			if( null != newInterest )
-				_stats.increment(StatsEnum.ReceiveReturnInterest);
-
-			return newInterest;
-		}
-
-		if( null == datum ) {
-			_stats.increment(StatsEnum.ReceiveNoPendingInterest);
-			if( Log.isLoggable(Log.FAC_ENCODING, Level.WARNING) )
-				Log.warning(Log.FAC_ENCODING, "Did not match a pending interest for version {0} interest {1}",
-						version.toString(), interest.toString());
-		}
-
-		// Is this something we should ignore?  This will avoid sending the
-		// object up to the user.
-		if( version.before(_startingVersion) || VersionNumber.getMaximumVersion().before(version) ) 
-		{
-			_stats.increment(StatsEnum.ReceiveIgnored);
-
-			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
-				Log.fine(Log.FAC_ENCODING, "Ignorning version {0} because outside interval {1} to {2}",
-						version.toString(),
-						_startingVersion.toString(),
-						VersionNumber.getMaximumVersion().toString());		
-
-			return null;
-		}
-
-		// store it in our global list of exclusions
-		// If the version is already in the exclusion list, 
-		synchronized(_exclusions) {
-			if( ! _exclusions.add(version) ) {
-				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
-					Log.fine(Log.FAC_ENCODING, "Receive duplicate version {0}",
-							version.toString());
-				_stats.increment(StatsEnum.ReceiveDuplicates);
-
-			} else {
-				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER) )
-					Log.finer(Log.FAC_ENCODING, "Receive version {0}",
-							version.toString());	
-				_stats.increment(StatsEnum.ReceiveUnique);
-			}
-		}
-
-		InterestData excludeDatum = findInterestContainingVersion(version, datum);
-
-		if( null != excludeDatum ) {
-			if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
-				Log.fine(Log.FAC_ENCODING, "Excluding version {0} from InterestData {1}",
-						version.toString(),
-						excludeDatum);		
-
-			if( !excludeDatum.addExclude(version)) {
-				// we cannot put the new exclusion in there, so we need to rebuild
-				rebuild(version, excludeDatum);
-			}
-
-			if( reexpress ) {
-				newInterest = datum.buildInterest();
-				synchronized(_interestMap) {
-					_interestMap.put(newInterest, new InterestMapData(datum));
+		// this is to single-thread the whole interest rebuilding process.
+		// Used to synchronized handleContent, but that could cause deadlock
+		// with the call to _listener.handleContent().
+		synchronized(_receiveLock) {
+			// Match the interest to our pending interests.  This removes it
+			// from the pending interest map.
+			synchronized(_dataLock) {
+				InterestMapData imd = _interestMap.remove(interest);
+				if( null != imd ) {
+					datum = imd.getInterestData(); 
+					reexpress = imd.getReexpress();
 				}
-			} else {
-				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
-					Log.fine(Log.FAC_ENCODING, "Re-express false, so letting interest die: {0}",
-							interest.toString());
 			}
-		}
+	
+			// if we cannot find a version component, just re-express the same interest
+			try {
+				version = new VersionNumber(data.name());
+			} catch (VersionMissingException e) {
+				_stats.increment(StatsEnum.ReceiveVersionNumberError);
+				e.printStackTrace();
+	
+				if( null != datum && reexpress )
+					newInterest = datum.buildInterest();
+	
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
+					Log.finer(Log.FAC_ENCODING, "Returning new interest {0}",
+							null == newInterest ? "NULL" : newInterest.toString());
+	
+				if( null != newInterest )
+					_stats.increment(StatsEnum.ReceiveReturnInterest);
+	
+				return newInterest;
+			}
+	
+			if( null == datum ) {
+				_stats.increment(StatsEnum.ReceiveNoPendingInterest);
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.WARNING) )
+					Log.warning(Log.FAC_ENCODING, "Did not match a pending interest for version {0} interest {1}",
+							version.toString(), interest.toString());
+			}
+	
+			// Is this something we should ignore?  This will avoid sending the
+			// object up to the user.
+			if( version.before(_startingVersion) || VersionNumber.getMaximumVersion().before(version) ) 
+			{
+				_stats.increment(StatsEnum.ReceiveIgnored);
+	
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
+					Log.fine(Log.FAC_ENCODING, "Ignorning version {0} because outside interval {1} to {2}",
+							version.toString(),
+							_startingVersion.toString(),
+							VersionNumber.getMaximumVersion().toString());		
+	
+				return null;
+			}
+	
+			// store it in our global list of exclusions
+			// If the version is already in the exclusion list, 
+			synchronized(_dataLock) {
+				if( ! _exclusions.add(version) ) {
+					if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE) )
+						Log.fine(Log.FAC_ENCODING, "Receive duplicate version {0}",
+								version.toString());
+					_stats.increment(StatsEnum.ReceiveDuplicates);
+	
+				} else {
+					if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER) )
+						Log.finer(Log.FAC_ENCODING, "Receive version {0}",
+								version.toString());	
+					_stats.increment(StatsEnum.ReceiveUnique);
+				}
+			}
+	
+			InterestData excludeDatum = findInterestContainingVersion(version, datum);
+	
+			if( null != excludeDatum ) {
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
+					Log.fine(Log.FAC_ENCODING, "Excluding version {0} from InterestData {1}",
+							version.toString(),
+							excludeDatum);		
+	
+				if( !excludeDatum.addExclude(version)) {
+					// we cannot put the new exclusion in there, so we need to rebuild
+					rebuild(version, excludeDatum);
+				}
+	
+				if( reexpress ) {
+					newInterest = excludeDatum.buildInterest();
+					synchronized(_dataLock) {
+						_interestMap.put(newInterest, new InterestMapData(excludeDatum));
+					}
+				} else {
+					if( Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
+						Log.fine(Log.FAC_ENCODING, "Re-express false, so letting interest die: {0}",
+								interest.toString());
+				}
+			}
+		} // synchronized(_receiveLock)
 
 		// pass it off to the user
 		_listener.handleContent(data, interest);
@@ -460,27 +468,29 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 			Log.info(Log.FAC_ENCODING, "Rebuilding version {0} data {1}",
 					version.toString(), datum.toString());
 
-		left = _interestData.lowerCompatible(datum);
-		right = _interestData.higherCompatible(datum);
-		int left_size = MAX_FILL, right_size = MAX_FILL;
-		if( null != left ) 
-			left_size = left.size();
-
-		if( null != right )
-			right_size = right.size();
-
-		// Insert "version" into "datum", which will be an overflow condition in datum.
-		// this will get balanced out below
-		datum.addExcludeUnbounded(version);
-
-		// There are the three stages of the algorithm.
-		// First, try shifting exclusions to the left or right
-		if( !tryLeftOrRightShift(datum, left, left_size, right, right_size) )
-			// if that does not work see if we are missing a neighbor, and if so
-			// create it.
-			if( !tryCreatingMissingNeighbor(datum, left, left_size, right, right_size) )
-				// that didn't work, so try rebalancing
-				rebalance(datum, left, left_size, right, right_size);	
+		synchronized(_dataLock) {
+			left = _interestData.lowerCompatible(datum);
+			right = _interestData.higherCompatible(datum);
+			int left_size = MAX_FILL, right_size = MAX_FILL;
+			if( null != left ) 
+				left_size = left.size();
+	
+			if( null != right )
+				right_size = right.size();
+	
+			// Insert "version" into "datum", which will be an overflow condition in datum.
+			// this will get balanced out below
+			datum.addExcludeUnbounded(version);
+	
+			// There are the three stages of the algorithm.
+			// First, try shifting exclusions to the left or right
+			if( !tryLeftOrRightShift(datum, left, left_size, right, right_size) )
+				// if that does not work see if we are missing a neighbor, and if so
+				// create it.
+				if( !tryCreatingMissingNeighbor(datum, left, left_size, right, right_size) )
+					// that didn't work, so try rebalancing
+					rebalance(datum, left, left_size, right, right_size);	
+		}
 	}
 
 	/**
