@@ -472,8 +472,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			}
 			return null;
 		}
-		if (null == _activeWriteFile)
+		if (null == _activeWriteFile) {
+			Log.warning(Log.FAC_REPO, "Tried to save: {0}, presumably after repo shutdown", content.name());
 			return null;
+		}
 		try {	
 			NameEnumerationResponse ner = new NameEnumerationResponse();
 			synchronized(_activeWriteFile) {
@@ -629,8 +631,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			_km.close();
 		if (null != _activeWriteFile && null != _activeWriteFile.openFile) {
 			try {
-				_activeWriteFile.openFile.close();
-				_activeWriteFile.openFile = null;
+				synchronized (_activeWriteFile) {
+					_activeWriteFile.openFile.close();
+					_activeWriteFile.openFile = null;
+				}
 			} catch (IOException e) {}
 		}
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.REPO_EXITDUMP)) {
@@ -644,7 +648,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
 
-	public boolean bulkImport(String name) throws RepositoryException {
+	synchronized public boolean bulkImport(String name) throws RepositoryException {
 		if (name.contains(UserConfiguration.FILE_SEP))
 			throw new RepositoryException("Bulk import data can not contain pathnames");
 		File file = new File(_repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR + UserConfiguration.FILE_SEP + name);
@@ -654,24 +658,23 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 					return false;		
 			throw new RepositoryException("File does not exist: " + file);
 		}
-		synchronized (_currentFileIndex) {
-			_bulkImportInProgress.put(name, name);
-			_currentFileIndex++;
-			File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
-			if (!file.renameTo(repoFile))
-				throw new RepositoryException("Can not rename file: " + file);
-			try {
-				createIndex(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex, _currentFileIndex, true);
-			} catch (RepositoryException re) {
-				// The seemingly logical thing to do would be to verify the data for errors first and then submit it if it
-				// was OK. But that would require 2 passes through the data in the mainline case in which the data is good
-				// so instead we rename the file back if its bad.
-				repoFile.renameTo(file);
-				_bulkImportInProgress.remove(name);
-				throw re;
-			}
+		
+		_bulkImportInProgress.put(name, name);
+		_currentFileIndex++;
+		File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
+		if (!file.renameTo(repoFile))
+			throw new RepositoryException("Can not rename file: " + file);
+		try {
+			createIndex(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex, _currentFileIndex, true);
+		} catch (RepositoryException re) {
+			// The seemingly logical thing to do would be to verify the data for errors first and then submit it if it
+			// was OK. But that would require 2 passes through the data in the mainline case in which the data is good
+			// so instead we rename the file back if its bad.
+			repoFile.renameTo(file);
 			_bulkImportInProgress.remove(name);
+			throw re;
 		}
+		_bulkImportInProgress.remove(name);
 		return true;
 	}
 }
