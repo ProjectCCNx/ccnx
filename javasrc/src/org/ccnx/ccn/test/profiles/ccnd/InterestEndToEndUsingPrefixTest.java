@@ -43,28 +43,29 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 	
 	@Test
 	public void testInterestEndToEnd() throws MalformedContentNameStringException, IOException, InterruptedException {
+		Interest i;
 		getHandle.registerFilter(ContentName.fromNative(_prefix), this);
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
-		doTest();
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
-		_interestSent.maxSuffixComponents(4);
-		_interestSent.minSuffixComponents(3); 
-		doTest();
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest3"));
-		_interestSent.maxSuffixComponents(1);
-		doTest();
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest4"));
+		i = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
+		doTest(i);
+		i = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
+		i.maxSuffixComponents(4);
+		i.minSuffixComponents(3); 
+		doTest(i);
+		i = new Interest(ContentName.fromNative(_prefix + "/simpleTest3"));
+		i.maxSuffixComponents(1);
+		doTest(i);
+		i = new Interest(ContentName.fromNative(_prefix + "/simpleTest4"));
 		getHandle.unregisterFilter(ContentName.fromNative(_prefix), this);
-		doTestFail();
+		doTestFail(i);
 	}
 
 	public boolean handleInterest(Interest interest) {
-		if (! _interestSent.equals(interest))
-			return false;
 		synchronized(this) {
+			if (! _interestSent.equals(interest))
+				return false;
+			_interestSeen = true;
 			notify();
 		}
-		_interestSeen = true;
 		return true;
 	}
 	
@@ -73,22 +74,24 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 		return null;
 	}
 	
-	private void doTest() throws IOException, InterruptedException {
-		_interestSeen = false;
+	private void doTest(Interest interest) throws IOException, InterruptedException {
 		synchronized (this) {
-			putHandle.expressInterest(_interestSent, this);
+			_interestSeen = false;
+			_interestSent = interest;
+			putHandle.expressInterest(interest, this);
 			wait(TIMEOUT);
+			Assert.assertTrue(_interestSeen);
 		}
-		Assert.assertTrue(_interestSeen);
 	}
 
-	private void doTestFail() throws IOException, InterruptedException {
-		_interestSeen = false;
+	private void doTestFail(Interest interest) throws IOException, InterruptedException {
 		synchronized (this) {
-			putHandle.expressInterest(_interestSent, this);
+			_interestSeen = false;
+			_interestSent = interest;
+			putHandle.expressInterest(interest, this);
 			wait(TIMEOUT);
+			Assert.assertFalse(_interestSeen);
 		}
-		Assert.assertFalse(_interestSeen);
 	}
 
 }
