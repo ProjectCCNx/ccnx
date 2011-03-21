@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
@@ -100,7 +101,11 @@ public class Daemon {
 		public void run() {
 			System.out.println("Attempt to contact daemon " + _daemonName + " timed out");
 			Log.info("Attempt to contact daemon " + _daemonName + " timed out");
-			cleanupDaemon(_daemonName, _pid);
+			try {
+				cleanupDaemon(_daemonName, _pid);
+			} catch (IOException e) {
+				Log.logStackTrace(Level.WARNING, e);
+			}
 			System.exit(1);
 		}
 		
@@ -112,7 +117,7 @@ public class Daemon {
 	protected class ShutdownHook extends Thread {
 		public void run() {
 			try {
-				_daemon.rmRMIFile();
+				_daemon.rmRMIFile(SystemConfiguration.getPID());
 			} catch (IOException e) {}
 		}
 	}
@@ -533,11 +538,11 @@ public class Daemon {
 		}
 	}
 	
-	protected static void cleanupDaemon(String daemonName, String pid) {
+	protected static void cleanupDaemon(String daemonName, String pid) throws IOException {
 		// looks like the RMI file is still here, but the daemon is gone. let's delete the file, then,
 		System.out.println("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
 		Log.info("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
-		getRMIFile(daemonName, pid).delete();
+		_daemon.rmRMIFile(pid);
 	}
 
 	protected static void signalDaemon(String daemonName, String sigName, String pid) throws FileNotFoundException, IOException, ClassNotFoundException {
@@ -596,8 +601,8 @@ public class Daemon {
 	 * Remove the RMIFile when you don't know the PID
 	 * @throws IOException
 	 */
-	protected void rmRMIFile() throws IOException {
-		getRMIFile(_daemonName, SystemConfiguration.getPID()).delete();
+	protected void rmRMIFile(String pid) throws IOException {
+		getRMIFile(_daemonName, pid).delete();
 	}
 
 	protected static void runDaemon(Daemon daemon, String args[]) throws IOException {
