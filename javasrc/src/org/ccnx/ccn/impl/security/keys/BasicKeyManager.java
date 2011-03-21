@@ -201,7 +201,7 @@ public class BasicKeyManager extends KeyManager {
 	public synchronized void initialize() throws ConfigurationException, IOException {
 		if (_initialized)
 			return;
-		_handle = CCNHandle.open(this);
+		if (null == _handle) _handle = CCNHandle.open(this);
 		_publicKeyCache = new PublicKeyCache();
 		_privateKeyCache = new SecureKeyCache();
 		_keyStoreInfo = loadKeyStore();// uses _keyRepository and _privateKeyCache
