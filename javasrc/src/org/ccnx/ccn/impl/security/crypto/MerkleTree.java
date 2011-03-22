@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -118,7 +118,7 @@ public class MerkleTree {
 	 * @param blockWidth the length of leaf blocks to create
 	 */
 	public MerkleTree(byte [] content, int offset, int length, int blockWidth) {
-		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, (int)Math.ceil((1.0*length)/blockWidth));		
+		this(CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM, blockCount(length, blockWidth));
 		try {
 			initializeTree(content, offset, length, blockWidth);
 		} catch (NoSuchAlgorithmException e) {
@@ -232,9 +232,7 @@ public class MerkleTree {
 	 * @return Returns 0 if this node has no parent (is the root), otherwise
 	 * 	the parent's index
 	 */
-	public static int parent(int nodeIndex) { 
-		return (int)Math.floor(nodeIndex/2.0); 
-	}
+	public static int parent(int nodeIndex) { return nodeIndex/2; }
 	
 	/**
 	 * Find the index of the left child of a given node.
@@ -695,7 +693,7 @@ public class MerkleTree {
 	}
 	
 	/**
-	 * The number of blocks of blockWidth length in a buffer of length bytes
+	 * The number of blocks of blockWidth (bytes) necessary to hold length (bytes)
 	 * @param length the buffer length
 	 * @param blockWidth the segment with
 	 * @return the number of blocks
