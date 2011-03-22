@@ -20,12 +20,15 @@ import java.util.Stack;
 
 /**
  * Encapsulates the mapping from textual XML element and attribute names to the ccnb binary encoding
- * of those elements and attributes.
+ * of those elements and attributes.  This class is now only used for the _globalDictionaries static
+ * member and the UnknownTag methods.  It does not actually performany any dictionary function 
+ * (as it does not implement XMLDictionary).
  * 
- * Remove auto-loading of text dictionary, as it was making encode/decode too slow.
- * Instead, to make a new dictionary, subclass this class and load it with your
- * constant tag/label data. If you want to use a text dictionary directly,
- * use FileBinaryXMLDictionary.
+ * If you want a user-defined dictionary, create a class that implements XMLDictionary.  See
+ * CCNProtocolDictionary (for an code-defined example) or FileBinaryXmlDictionary (for an
+ * external file defined example).
+ * 
+ * If you want to use a text dictionary directly, use FileBinaryXMLDictionary.
  *
  * @see BinaryXMLCodec
  */
