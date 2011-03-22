@@ -43,7 +43,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 		super();
 	}
 
-	public BinaryXMLDecoder(BinaryXMLDictionary dictionary) {
+	public BinaryXMLDecoder(Dictionary dictionary) {
 		super(dictionary);
 	}
 	

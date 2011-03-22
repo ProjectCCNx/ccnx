@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -49,7 +49,7 @@ public class TextXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	 * Create a BinaryXMLEncoder initialized with a specified dictionary.
 	 * @param dictionary the dictionary to use, if null the default dictionary is used.
 	 */
-	public TextXMLEncoder(BinaryXMLDictionary dictionary) {
+	public TextXMLEncoder(Dictionary dictionary) {
 		super(dictionary);
 	}
 

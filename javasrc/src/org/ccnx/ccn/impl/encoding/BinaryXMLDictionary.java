@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -34,19 +34,15 @@ public abstract class BinaryXMLDictionary {
 	// Have a static dictionary stack shared by all code running in the same JVM.
 	// This can be added to by programs. Can also add local dictionaries to decoders 
 	// and encoders using methods in GenericXMLHandler.
-	protected static Stack<BinaryXMLDictionary> _globalDictionaries = new Stack<BinaryXMLDictionary>();
+	protected static Stack<Dictionary> _globalDictionaries = new Stack<Dictionary>();
 	
 	public static final String UNKNOWN_TAG_MARKER = "UNKNOWN TAG: ";
-
-	public abstract Long stringToTag(String tag);
-	
-	public abstract String tagToString(long tagVal);
 	
 	static {
 		_globalDictionaries.push(getDefaultDictionary());
 	}
 	
-	public static BinaryXMLDictionary getDefaultDictionary() {
+	public static Dictionary getDefaultDictionary() {
 		return CCNProtocolDictionary.getDefaultInstance();
 	}
 
@@ -75,7 +71,7 @@ public abstract class BinaryXMLDictionary {
 	 * For local dictionaries, see GenericXMLHandler.pushXMLDictionary.
 	 * @return
 	 */
-	public static void pushGlobalXMLDictionary(BinaryXMLDictionary dictionary) {
+	public static void pushGlobalXMLDictionary(Dictionary dictionary) {
 		_globalDictionaries.push(dictionary);
 	}
 
@@ -85,13 +81,13 @@ public abstract class BinaryXMLDictionary {
 	 * For local dictionaries, see GenericXMLHandler.popXMLDictionary.
 	 * @return the dictionary it popped if it popped one, otherwise null.
 	 */
-	public static BinaryXMLDictionary popGlobalXMLDictionary() {
+	public static Dictionary popGlobalXMLDictionary() {
 		if (_globalDictionaries.size() > 1) {
 			return _globalDictionaries.pop();
 		}
 		return null;
 	}
 
-	public static Stack<BinaryXMLDictionary> getGlobalDictionaries() { return _globalDictionaries; }
+	public static Stack<Dictionary> getGlobalDictionaries() { return _globalDictionaries; }
 
 }

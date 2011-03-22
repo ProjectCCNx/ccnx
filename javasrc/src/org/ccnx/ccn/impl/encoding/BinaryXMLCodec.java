@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -413,7 +413,7 @@ public class BinaryXMLCodec implements XMLCodec {
 		if ((null == tv) || (XML_UDATA != tv.type())) { // if we just have closers left, will get back null
 			Log.finest("Expected UDATA, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
 			istream.reset();
-			return new String("");
+			return "";
 		}
 		return decodeUString(istream, (int)tv.val());
 	}
