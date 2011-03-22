@@ -1066,10 +1066,10 @@ public class CCNNetworkManager implements Runnable {
 					RegisteredPrefix oldPrefix = getRegisteredPrefix(filter);
 					if (null != oldPrefix) {
 						synchronized (oldPrefix) {
-							if (oldPrefix._closing) {
+							while (oldPrefix._closing) {
 								try {
 									oldPrefix.wait();
-								} catch (InterruptedException e) {} // XXX do we need to worry about this?
+								} catch (InterruptedException e) {}
 							}
 							if (oldPrefix._wasClosing) {
 								_registeredPrefixes.remove(filter);
