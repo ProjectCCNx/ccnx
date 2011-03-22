@@ -2153,7 +2153,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return -1;
 	}
 
-	private class IncomingSegment {
+	static private class IncomingSegment {
 		public ContentObject content;
 		public Interest interest;
 		public long segmentNumber;
