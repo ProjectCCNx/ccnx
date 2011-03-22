@@ -335,6 +335,8 @@ public class SystemConfiguration {
 	}
 
 	static {
+		// NOTE: do not call Log.* methods from the initializer as log depends on SystemConfiguration.
+		
 		// Allow override of basic protocol
 		String proto = SystemConfiguration.retrievePropertyOrEnvironmentVariable(AGENT_PROTOCOL_PROPERTY, AGENT_PROTOCOL_ENVIRONMENT_VARIABLE, DEFAULT_PROTOCOL);
 
@@ -342,7 +344,7 @@ public class SystemConfiguration {
 		for (NetworkProtocol p : NetworkProtocol.values()) {
 			String pAsString = p.toString();
 			if (proto.equalsIgnoreCase(pAsString)) {
-				if (!pAsString.equalsIgnoreCase(DEFAULT_PROTOCOL)) Log.fine("CCN agent protocol changed to " + pAsString + " per property");
+//				if (!pAsString.equalsIgnoreCase(DEFAULT_PROTOCOL)) System.err.println("CCN agent protocol changed to " + pAsString + " per property");
 				AGENT_PROTOCOL = p;
 				found = true;
 				break;
@@ -357,7 +359,7 @@ public class SystemConfiguration {
 		try {
 			EXIT_ON_NETWORK_ERROR = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(CCN_EXIT_ON_NETWORK_ERROR_PROPERTY, CCN_EXIT_ON_NETWORK_ERROR_ENVIRONMENT_VARIABLE,
 					Boolean.toString(DEFAULT_EXIT_ON_NETWORK_ERROR)));
-//			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
+//			System.err.println("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The exit on network error must be an boolean.");
 			throw e;
@@ -366,7 +368,7 @@ public class SystemConfiguration {
 		// Allow override of default enumerated name list child wait timeout.
 		try {
 			CHILD_WAIT_INTERVAL = Integer.parseInt(System.getProperty(CHILD_WAIT_INTERVAL_PROPERTY, Integer.toString(CHILD_WAIT_INTERVAL_DEFAULT)));
-			//			Log.fine("CHILD_WAIT_INTERVAL = " + CHILD_WAIT_INTERVAL);
+			//			System.err.println("CHILD_WAIT_INTERVAL = " + CHILD_WAIT_INTERVAL);
 		} catch (NumberFormatException e) {
 			System.err.println("The ChildWaitInterval must be an integer.");
 			throw e;
@@ -404,7 +406,7 @@ public class SystemConfiguration {
 		// Allow override of default ccndID discovery timeout.
 		try {
 			CCNDID_DISCOVERY_TIMEOUT = Integer.parseInt(System.getProperty(CCNDID_DISCOVERY_TIMEOUT_PROPERTY, Integer.toString(CCNDID_DISCOVERY_TIMEOUT_DEFAULT)));
-			//			Log.fine("CCNDID_DISCOVERY_TIMEOUT = " + CCNDID_DISCOVERY_TIMEOUT);
+			//			System.err.println("CCNDID_DISCOVERY_TIMEOUT = " + CCNDID_DISCOVERY_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ccndID discovery timeout must be an integer.");
 			throw e;
@@ -413,7 +415,7 @@ public class SystemConfiguration {
 		// Allow override of default flow controller timeout.
 		try {
 			FC_TIMEOUT = Integer.parseInt(System.getProperty(FC_TIMEOUT_PROPERTY, Integer.toString(FC_TIMEOUT_DEFAULT)));
-			//			Log.fine("FC_TIMEOUT = " + FC_TIMEOUT);
+			//			System.err.println("FC_TIMEOUT = " + FC_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The default flow controller timeout must be an integer.");
 			throw e;
@@ -430,7 +432,7 @@ public class SystemConfiguration {
 		// Allow override of ccn default timeout.
 		try {
 			_defaultTimeout = Integer.parseInt(retrievePropertyOrEnvironmentVariable(CCNX_TIMEOUT_PROPERTY, CCNX_TIMEOUT_ENV_VAR, Integer.toString(CCNX_TIMEOUT_DEFAULT)));
-			//			Log.fine("CCNX_TIMEOUT = " + CCNX_TIMEOUT);
+			//			System.err.println("CCNX_TIMEOUT = " + CCNX_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ccnd default timeout must be an integer.");
 			throw e;
@@ -439,7 +441,7 @@ public class SystemConfiguration {
 		// Allow override of ccnd op timeout.
 		try {
 			CCND_OP_TIMEOUT = Integer.parseInt(System.getProperty(CCND_OP_TIMEOUT_PROPERTY, Integer.toString(CCND_OP_TIMEOUT_DEFAULT)));
-			//			Log.fine("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
+			//			System.err.println("CCND_OP_TIMEOUT = " + CCND_OP_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The ccnd op timeout must be an integer.");
 			throw e;
@@ -448,7 +450,7 @@ public class SystemConfiguration {
 		// Allow override of getLatestVersion attempt timeout.
 		try {
 			GLV_ATTEMPT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(GLV_ATTEMPT_TIMEOUT_PROPERTY, GLV_ATTEMPT_TIMEOUT_ENV_VAR, Integer.toString(GLV_ATTEMPT_TIMEOUT_DEFAULT)));
-			//			Log.fine("GLV_ATTEMPT_TIMEOUT = " + GLV_ATTEMPT_TIMEOUT);
+			//			System.err.println("GLV_ATTEMPT_TIMEOUT = " + GLV_ATTEMPT_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The getlatestversion attempt timeout must be an integer.");
 			throw e;
@@ -457,7 +459,7 @@ public class SystemConfiguration {
 		// Allow override of settable short timeout.
 		try {
 			SETTABLE_SHORT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(SETTABLE_SHORT_TIMEOUT_PROPERTY, SETTABLE_SHORT_TIMEOUT_ENV_VAR, Integer.toString(SHORT_TIMEOUT)));
-			//			Log.fine("SETTABLE_SHORT_TIMEOUT = " + SETTABLE_SHORT_TIMEOUT);
+			//			System.err.println("SETTABLE_SHORT_TIMEOUT = " + SETTABLE_SHORT_TIMEOUT);
 		} catch (NumberFormatException e) {
 			System.err.println("The settable short timeout must be an integer.");
 			throw e;
@@ -470,8 +472,6 @@ public class SystemConfiguration {
 			System.err.println("The settable short timeout must be an integer.");
 			throw e;
 		}
-
-
 
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
