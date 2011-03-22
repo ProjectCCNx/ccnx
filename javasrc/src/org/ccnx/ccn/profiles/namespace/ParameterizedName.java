@@ -78,10 +78,6 @@ public class ParameterizedName extends GenericXMLEncodable {
 	
 	public ContentName suffix() { return (null != _suffix) ? new ContentName(_suffix) : null; }
 	
-	public boolean emptyLabel() { return (null == label()); }
-	
-	public boolean emptySuffix() { return (null == _suffix); }
-
 	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
@@ -107,13 +103,13 @@ public class ParameterizedName extends GenericXMLEncodable {
 		}
 		encoder.writeStartElement(getElementLabel());
 		
-		if (!emptyLabel()) {
-			encoder.writeElement(CCNProtocolDTags.Label, label());
+		if (_label != null) {
+			encoder.writeElement(CCNProtocolDTags.Label, _label);
 		}
 		
 		_prefix.encode(encoder);
 
-		if (!emptySuffix()) {
+		if (_suffix != null) {
 			_suffix.encode(encoder);
 		}
 
@@ -132,7 +128,7 @@ public class ParameterizedName extends GenericXMLEncodable {
 	
 	@Override
 	public String toString() {
-		return label() + ": prefix: " + prefix() + ", suffix: " + suffix();
+		return _label + ": prefix: " + _prefix + ", suffix: " + _suffix;
 	}
 
 }

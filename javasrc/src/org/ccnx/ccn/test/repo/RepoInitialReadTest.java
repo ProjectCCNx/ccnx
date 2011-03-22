@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -34,7 +34,19 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * Part of repository test infrastructure.
+ * Part of repository test infrastructure.  This test must be run after RFSTest and can be
+ * run only once correctly after running RFSTest.
+ * 
+ * This test tests reading of unusual objects which can't be written to a running repo
+ * via the current repo writing algorithms. The data needed for this test can only be created
+ * by something like RFSTest which creates and saves a repo file structure without a running
+ * repo by calling saveContent methods directly with different kinds of data.  
+ * 
+ * It is normally desirable that tests such as this can be run repeatedly and achieve the same 
+ * results. But since we can't write the data to be tested via the repo, and once we have read the 
+ * data once, it may be cached by ccnd, a correct running of the test after the first time can't be 
+ * guaranteed and is in fact unlikely with this test. Possibly this test should just be eliminated but 
+ * since it is part of the historic repo test suite I am leaving it in for the time being.
  */
 public class RepoInitialReadTest extends RepoTestBase {
 	
