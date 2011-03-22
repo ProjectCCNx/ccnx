@@ -12,28 +12,67 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-# Provide defaults for environment
-: ${CCN_LOG_LEVEL_ALL:=WARNING}
-: ${CCN_TEST_BRANCH:=HEAD}
-: ${CCN_TEST_GITCOMMAND:=`command -v git || echo :`}
-: ${MAKE:=make}
-test -d .git || CCN_TEST_GITCOMMAND=:
-export CCN_LOG_LEVEL_ALL
-export CCN_TEST_BRANCH
-export CCN_TEST_GITCOMMAND
-export MAKE
+#
+# ccntestloop runs the ccnx unit tests repeatedly.
+#
+# This is intended to be run from the top level of the ccnx distribution.
+# Results of the test runs are kept in the testdir subdirectory, which is
+# created if necessary.  However, testdir may be a symlink to another
+# directory (preferably on the same file system).  It is advisable to
+# link to some location outside of the workspace to avoid loss of test
+# results due to a "git clean" command.
+#
+# The testdir/config will be sourced as a sh script upon startup.  This allows
+# the environment variables to be set up for the next round.  Creative use
+# of this allows for such things as testing various combinations of parameters
+# on each run.
+#
 
-THIS=$0
+Usage () {
+cat << EOM >&2
+usage: ccntestloop [ start | stop | restart | status ]
+With no argument test run in foreground
+(Must be run from the top level of a ccnx source tree.)
+EOM
+exit 1
+}
 
-# Say things to both stdout and stderr so that output may be captured with tee.
+GetConfiguration () {
+	unset CCN_CTESTS
+	unset CCN_JAVATESTS
+	unset CCN_LOG_LEVEL_ALL
+	unset CCN_TEST_BRANCH
+	unset CCN_TEST_GITCOMMAND
+	unset CCN_LOCAL_PORT_BASE
+	set -a
+	rm -f testdir/config~
+	test -f testdir/config && . testdir/config && \
+		cp testdir/config testdir/config~
+	set +a
+}
+
+ProvideDefaults () {
+	# Provide defaults for environment
+	: ${CCN_LOG_LEVEL_ALL:=WARNING}
+	: ${CCN_TEST_BRANCH:=HEAD}
+	: ${CCN_TEST_GITCOMMAND:=`command -v git || echo :`}
+	: ${MAKE:=make}
+	test -d .git || CCN_TEST_GITCOMMAND=:
+	export CCN_CTESTS
+	export CCN_JAVATESTS
+	export CCN_LOG_LEVEL_ALL
+	export CCN_TEST_BRANCH
+	export CCN_TEST_GITCOMMAND
+	export MAKE
+}
+
 Echo () {
 	echo "$*" >&2
-	echo "$*"
 }
 
 Fail () {
-    Echo '***' Failed - "$*"
-    exit 1;
+	Echo '***' Failed - "$*"
+	exit 1;
 }
 
 CheckLogLevel () {
@@ -52,43 +91,77 @@ CheckLogLevel () {
 }
 
 CheckDirectory () {
-	test -d javasrc || Fail $THIS is intended to be run at the top level of ccnx
-	test -d javasrc/testout && Fail javasrc/testout directory is present.
+	test -d javasrc || Fail ccntestloop is intended to be run at the top level of ccnx
+	test -d testdir/. || mkdir testdir
 }
 
-PrintRelevantSettings () {
-	uname -a
-	set | grep ^CCN
-	$CCN_TEST_GITCOMMAND rev-list --max-count=1 HEAD
-	$CCN_TEST_GITCOMMAND status
+BackgroundPID () {
+	local PID;
+	if [ -f testdir/ccntestloop.pid ]; then
+		PID=`cat testdir/ccntestloop.pid`
+		kill -0 "$PID" 2>/dev/null || return 1
+		echo ${1:-''}$PID
+		return 0
+	fi
+	return 1
+}
+
+SetPIDFile () {
+	local PID;
+	if [ -f testdir/ccntestloop.pid ]; then
+		PID=`cat testdir/ccntestloop.pid`
+		test "$PID" = $$ && return 0
+		kill -0 "$PID" 2>/dev/null && Fail ccntestloop already running as pid $PID
+		rm testdir/ccntestloop.pid || Fail could not remove old pid file
+	fi
+	echo $$ > testdir/ccntestloop.pid || Fail could not write pid file
+}
+
+RemovePIDFile () {
+	test "`cat testdir/ccntestloop.pid`" = $$ && rm -f testdir/ccntestloop.pid
+}
+
+CheckTestout () {
+	test -d javasrc/testout               && \
+	  rm -rf javasrc/testout~             && \
+	  mv javasrc/testout javasrc/testout~ && \
+	  Echo WARNING: existing javasrc/testout renamed to javasrc/testout~
 }
 
 PrintDetails () {
 	uname -a
+	env | grep ^CCN
 	$CCN_TEST_GITCOMMAND rev-list --max-count=1 HEAD
 	$CCN_TEST_GITCOMMAND status
-	$CCN_TEST_GITCOMMAND diff
-	head -999 csrc/conf.mk
+	$CCN_TEST_GITCOMMAND diff | cat
+	head -999 csrc/conf.mk testdir/config~ 2>/dev/null
 }
 
 SaveLogs () {
 	test -d javasrc/testout || return 1
+	if [ -f javasrc/testout/KILLED ]; then
+		rm -rf javasrc/testout
+		exit
+	fi
 	PrintDetails > javasrc/testout/TEST-details.txt
-	grep -e BUILD -e 'Total time.*minutes' javasrc/testout/TEST-javasrc-testlog.txt
-	mv javasrc/testout javasrc/testout.$1
+	# grep -e BUILD -e 'Total time.*minutes' javasrc/testout/TEST-javasrc-testlog.txt
+	mv javasrc/testout testdir/testout.$1
 }
 
 PruneOldLogs () {
-	Echo Pruning logs from older successful runs
 	# Leave 20 most recent successes
-	(cd javasrc; rm -rf `ls -dt testout.*[0123456789] | tail -n +20`; )
+	(cd testdir; rm -rf `ls -dt testout.*[0123456789] | tail -n +20`; )
 	true
 }
 
 UpdateSources () {
 	Echo Updating for run $1
-	$CCN_TEST_GITCOMMAND checkout $CCN_TEST_BRANCH
-	$CCN_TEST_GITCOMMAND pull --no-commit origin $CCN_TEST_BRANCH
+	cp csrc/util/ccntestloop.sh testdir/.~ctloop~
+	$CCN_TEST_GITCOMMAND status | grep modified:        && \
+	  Echo Modifications present - skipping update      && \
+	  sleep 3 && return
+	$CCN_TEST_GITCOMMAND checkout $CCN_TEST_BRANCH      && \
+	  $CCN_TEST_GITCOMMAND pull origin $CCN_TEST_BRANCH
 }
 
 SourcesChanged () {
@@ -97,9 +170,7 @@ SourcesChanged () {
 }
 
 ScriptChanged () {
-	trap "rm .~ctloop~" 0
-	tail -n +2 $THIS > .~ctloop~
-	diff .~ctloop~ csrc/util/ccntestloop.sh && return 1
+	diff testdir/.~ctloop~ csrc/util/ccntestloop.sh && return 1
 	return 0 # Yes, it changed.
 }
 
@@ -108,7 +179,7 @@ Rebuild () {
 	Echo Building for run $1
 	LOG=javasrc/testout/TEST-buildlog.txt
 	mkdir -p javasrc/testout
-	(./configure && $MAKE; ) 2>&1 > $LOG && return 0
+	(./configure && $MAKE; ) > $LOG 2>&1 && return 0
 	tail $LOG
 	Echo build failed
 	return 1
@@ -116,23 +187,31 @@ Rebuild () {
 
 RunCTest () {
 	local LOG;
+	test "${CCN_CTESTS:=}" = "NO" && return 0
 	Echo Running csrc tests...
 	LOG=javasrc/testout/TEST-csrc-testlog.txt
 	mkdir -p javasrc/testout
-	( cd csrc && $MAKE test 2>&1 ) > $LOG && return 0
+	( cd csrc && $MAKE test TESTS="$CCN_CTESTS" 2>&1 ) > $LOG && return 0
 	tar cf javasrc/testout/csrc-tests.tar csrc/tests
 	gzip javasrc/testout/csrc-tests.tar
-	tail $LOG
+	grep ^FAILING: $LOG | tee -a javasrc/testout/TEST-failures.txt
 	Echo csrc tests failed
 	return 1
 }
 
 RunJavaTest () {
 	local LOG;
+	test "${CCN_JAVATESTS:-}" = "NO" && return 0
 	Echo Running javasrc tests...
 	LOG=javasrc/testout/TEST-javasrc-testlog.txt
-	(cd javasrc && ant -DCHATTY=${CCN_LOG_LEVEL_ALL} test; ) > $LOG && return 0
-	tail $LOG
+	(cd javasrc && \
+	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL}             \
+	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000} \
+	      ${CCN_JAVATESTS:-test}; ) > $LOG        \
+	  && return 0
+	grep -B1 -e 'junit. Tests .*Failures: [^0]' \
+	         -e 'junit. Tests .*Errors: [^0]'   \
+	     $LOG 2>/dev/null | tee -a javasrc/testout/TEST-failures.txt
 	Echo javasrc tests failed
 	return 1
 }
@@ -145,32 +224,76 @@ RunTest () {
 }
 
 LastRunNumber () {
-	ls -td javasrc/testout.* 2>/dev/null | head -n 1 | cut -d . -f 2
+	ls -td testdir/testout.* 2>/dev/null | head -n 1 | cut -d . -f 2
 }
 
 ThisRunNumber () {
 	echo $((`LastRunNumber` + 1))
 }
 
-# Finally, here's what we actually want to do
+ExecSelf () {
+	exec sh csrc/util/ccntestloop.sh || Fail exec
+}
 
-CheckLogLevel
+StartBackground () {
+	BackgroundPID 'ccntestloop already running as pid ' && return 1
+	sh -c "sh csrc/util/ccntestloop.sh &" < /dev/null >> testdir/log 2>&1
+}
+
+StopBackground () {
+	local PID;
+	PID=`BackgroundPID` && kill -HUP $PID && sleep 1 && \
+	  echo STOPPED >> testdir/log
+}
+
+Status () {
+	local STATUS;
+	test -f testdir/log && tail -n 9 testdir/log
+	BackgroundPID 'ccntestloop running as pid '
+	STATUS=$?
+	test $STATUS = 0 || echo ccntestloop not running
+	return $STATUS
+}
+
+# Finally, here's what we actually want to do
+GetConfiguration
+
+ProvideDefaults
 
 CheckDirectory
 
-RUN=`ThisRunNumber`
+CheckLogLevel
 
-PrintRelevantSettings
+if [ $# -gt 1 ]; then
+	Usage
+fi
+
+case "${1:---}" in
+	--)      ;;
+	-*)      Usage;;
+	start)   StartBackground; exit $?;;
+	stop)    StopBackground; exit 0;;
+	restart) StopBackground; StartBackground; exit $?;;
+	status)  Status; exit $?;;
+	*)       Usage;;
+esac
+
+SetPIDFile
+trap RemovePIDFile EXIT
+
+CheckTestout
+
+RUN=`ThisRunNumber`
 
 UpdateSources $RUN
 
 if ScriptChanged; then
-	Echo "*** Script changed - will clean, rebuild and restart"
-	$MAKE clean || Fail make clean
-	$MAKE || Fail make
+	Echo "*** Script changed - will clean and restart"
+	$MAKE clean >.make.clean.log 2>&1|| Fail make clean - see .make.clean.log
+	rm -f .make.clean.log
 	echo Pausing for 10 seconds before restart...
 	sleep 10
-	exec ./bin/ccntestloop || Fail exec
+	ExecSelf
 fi
 
 if SourcesChanged; then
@@ -179,6 +302,6 @@ fi
 
 RunTest $RUN || Fail RunTest - stopping
 Echo Run number $RUN was successful
-Echo BUILD Failure rate is `ls -d javasrc/testout*FAILED 2>/dev/null | wc -l` / $RUN
+Echo BUILD Failure rate is `ls -d testdir/testout*FAILED 2>/dev/null | wc -l` / $RUN
 sleep 2
-exec ./bin/ccntestloop || Fail exec
+ExecSelf

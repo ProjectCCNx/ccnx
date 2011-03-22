@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -31,9 +31,12 @@ cd $(dirname "$0")
 # might be installed.
 export PATH=.:../ccnd:../libexec:../cmd:../lib:../util:$PATH:./stubs
 
-# If there are any ccnds running on non-standard ports, wait a minute and retry.
-ls /tmp/.ccnd.sock.* 2>/dev/null && { echo There is something else happening, waiting one minute ... ; sleep 60; }
-ls /tmp/.ccnd.sock.* 2>/dev/null && exit 1
+# If there are any ccnds running on test ports, wait a minute and retry.
+TestBusy () {
+	(. settings; ls /tmp/.ccnd.sock.$((CCN_LOCAL_PORT_BASE/10))[01234] 2>/dev/null)
+}
+TestBusy && { echo There is something else happening, waiting one minute ... ; sleep 60; }
+TestBusy && exit 1
 
 # If we need to generate key pairs for the tests, make them smallish
 export RSA_KEYSIZE=512

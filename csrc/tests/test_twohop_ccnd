@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -19,7 +19,7 @@ rm -f ccnd1.out ccnd2.out ccnd3.out
 
 WithCCND 1 ccnd 2>ccnd1.out &
 WithCCND 2 ccnd 2>ccnd2.out &
-CCND_DEBUG=7 WithCCND 3 ccnd 2>ccnd3.out &
+WithCCND 3 env CCND_DEBUG=7 ccnd 2>ccnd3.out &
 
 # Make sure they've all started
 until CheckForCCND 0 && CheckForCCND 1 && CheckForCCND 2 && CheckForCCND 3; do
