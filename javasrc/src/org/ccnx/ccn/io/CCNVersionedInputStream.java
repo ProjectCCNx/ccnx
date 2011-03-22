@@ -242,7 +242,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		}
 		Log.info(Log.FAC_IO, "getFirstSegment: getting latest version of {0}", _baseName);
 		ContentObject result = 
-			VersioningProfile.getFirstBlockOfLatestVersion(_baseName, _startingSegmentNumber, _publisher, _timeout, this, _handle);
+			VersioningProfile.getFirstBlockOfLatestVersion(_baseName, _startingSegmentNumber, _publisher, _timeout, _handle.defaultVerifier(), _handle);
 		if (null != result){
             if (Log.isLoggable(Log.FAC_IO, Level.INFO))
                 Log.info(Log.FAC_IO, "getFirstSegment: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());

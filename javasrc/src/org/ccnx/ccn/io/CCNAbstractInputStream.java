@@ -33,7 +33,6 @@ import javax.crypto.IllegalBlockSizeException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
-import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -60,7 +59,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * 
  * @see SegmentationProfile for description of CCN segmentation
  */
-public abstract class CCNAbstractInputStream extends InputStream implements ContentVerifier, CCNInterestListener {
+public abstract class CCNAbstractInputStream extends InputStream implements CCNInterestListener {
 
 	/**
 	 * Flags:
@@ -1157,7 +1156,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				//}
 
 				//verify the content object
-				if (verify(result)) {
+				if (_handle.defaultVerifier().verify(result)) {
 					//this content verified
 				} else {
 					//content didn't verify, don't hand it up...
@@ -1801,74 +1800,6 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			dereferencedLink.pushDereferencedLink(_dereferencedLink);
 		}
 		setDereferencedLink(dereferencedLink);
-	}
-
-	/**
-	 * Verifies the signature on a segment using cached bulk signature data (from Merkle Hash Trees)
-	 * if it is available.
-	 * TODO -- check to see if it matches desired publisher.
-	 * @param segment the segment whose signature to verify in the context of this stream.
-	 */
-	public boolean verify(ContentObject segment) {
-
-		// First we verify. 
-		// Low-level verify just checks that signer actually signed.
-		// High-level verify checks trust.
-		try {
-
-			// We could have several options here. This segment could be simply signed.
-			// or this could be part of a Merkle Hash Tree. If the latter, we could
-			// already have its signing information.
-			if (null == segment.signature().witness()) {
-				return segment.verify(_handle.keyManager());
-			}
-
-			// Compare to see whether this segment matches the root signature we previously verified, if
-			// not, verify and store the current signature.
-			// We need to compute the proxy regardless.
-			byte [] proxy = segment.computeProxy();
-
-			// OK, if we have an existing verified signature, and it matches this segment's
-			// signature, the proxy ought to match as well.
-			if ((null != _verifiedRootSignature) && (Arrays.equals(_verifiedRootSignature, segment.signature().signature()))) {
-				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
-					if (Log.isLoggable(Log.FAC_VERIFY, Level.WARNING)) {
-						Log.warning(Log.FAC_VERIFY, "VERIFICATION FAILURE: Found segment of stream: " + segment.name() + " whose digest fails to verify; segment length: " + segment.contentLength());
-						Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
-                                 " proxy: " + DataUtils.printBytes(proxy) +
-                                 " expected proxy: " + DataUtils.printBytes(_verifiedProxy) +
-                                 " ephemeral digest: " + DataUtils.printBytes(segment.digest()));
-						SystemConfiguration.outputDebugObject(segment);
-					}
-					return false;
-				}
-			} else {
-				// Verifying a new segment. See if the signature verifies, otherwise store the signature
-				// and proxy.
-				if (!ContentObject.verify(proxy, segment.signature().signature(), segment.signedInfo(), segment.signature().digestAlgorithm(), _handle.keyManager())) {
-					if (Log.isLoggable(Log.FAC_VERIFY, Level.WARNING)) {
-						Log.warning(Log.FAC_VERIFY, "VERIFICATION FAILURE: Found segment of stream: " + segment.name().toString() + " whose signature fails to verify; segment length: " + segment.contentLength() + ".");
-						Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
-                                 " proxy: " + DataUtils.printBytes(proxy) +
-                                 " expected proxy: " + DataUtils.printBytes(_verifiedProxy) +
-                                 " ephemeral digest: " + DataUtils.printBytes(segment.digest()));
-						SystemConfiguration.outputDebugObject(segment);
-					}
-					return false;
-				} else {
-					// Remember current verifiers
-					_verifiedRootSignature = segment.signature().signature();
-					_verifiedProxy = proxy;
-				}
-			}
-			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
-				Log.info(Log.FAC_IO, "Got segment: {0}, verified.", segment.name());
-		} catch (Exception e) {
-			Log.warning(Log.FAC_IO, "Got an " + e.getClass().getName() + " exception attempting to verify segment: " + segment.name().toString() + ", treat as failure to verify.");
-			Log.warningStackTrace(e);
-			return false;
-		}
-		return true;
 	}
 
 	/**
