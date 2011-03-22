@@ -19,7 +19,7 @@ package org.ccnx.ccn.impl.encoding;
 /**
  * Uses the CCNProtocolDTags enum type to implement a dictionary.
  */
-public class CCNProtocolDictionary implements Dictionary {
+public class CCNProtocolDictionary implements XMLDictionary {
 	
 	private static CCNProtocolDictionary _defaultInstance = new CCNProtocolDictionary();
 	

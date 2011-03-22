@@ -294,7 +294,7 @@ public interface XMLDecoder {
 	 * decode.
 	 * @param dictionary a dictionary to add to the set used for decoding
 	 */
-	public void pushXMLDictionary(Dictionary dictionary);
+	public void pushXMLDictionary(XMLDictionary dictionary);
 	
 	/**
 	 * Some codecs use a dictionary to make encoding and decoding more efficient. Those
@@ -303,5 +303,5 @@ public interface XMLDecoder {
 	 * decode.
 	 * @return returns the removed dictionary
 	 */
-	public Dictionary popXMLDictionary();
+	public XMLDictionary popXMLDictionary();
 }

@@ -33,7 +33,7 @@ public abstract class GenericXMLEncoder extends GenericXMLHandler implements XML
 		super();
 	}
 
-	public GenericXMLEncoder(Dictionary dictionary) {
+	public GenericXMLEncoder(XMLDictionary dictionary) {
 		super(dictionary);
 	}
 

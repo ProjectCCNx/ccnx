@@ -41,7 +41,7 @@ public class TextXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 		super();
 	}
 
-	public TextXMLDecoder(Dictionary dictionary) {
+	public TextXMLDecoder(XMLDictionary dictionary) {
 		super(dictionary);
 	}
 		

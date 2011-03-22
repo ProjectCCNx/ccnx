@@ -19,7 +19,7 @@ package org.ccnx.ccn.impl.encoding;
 /**
  * Defines the API of an XML dictionary
  */
-public interface Dictionary {
+public interface XMLDictionary {
 	public Long stringToTag(String tag);
 	public String tagToString(long tagVal);
 }

@@ -20,13 +20,13 @@ import java.util.Stack;
 
 public abstract class GenericXMLHandler {
 
-	protected Stack<Dictionary> _dictionaryStack = null;
+	protected Stack<XMLDictionary> _dictionaryStack = null;
 
 	public GenericXMLHandler() {
 		this(null);
 	}
 
-	public GenericXMLHandler(Dictionary dictionary) {
+	public GenericXMLHandler(XMLDictionary dictionary) {
 		if (null != dictionary)
 			pushXMLDictionary(dictionary);
 	}
@@ -43,7 +43,7 @@ public abstract class GenericXMLHandler {
 		}
 		Long tagVal = null;
 		if (null != _dictionaryStack) {
-			for (Dictionary dictionary : _dictionaryStack) {
+			for (XMLDictionary dictionary : _dictionaryStack) {
 				tagVal = dictionary.stringToTag(tagName);
 				if (null != tagVal) {
 					return tagVal;
@@ -51,7 +51,7 @@ public abstract class GenericXMLHandler {
 			}
 		}
 		
-		for (Dictionary dictionary : BinaryXMLDictionary.getGlobalDictionaries()) {
+		for (XMLDictionary dictionary : BinaryXMLDictionary.getGlobalDictionaries()) {
 			tagVal = dictionary.stringToTag(tagName);
 			if (null != tagVal) {
 				return tagVal;
@@ -74,7 +74,7 @@ public abstract class GenericXMLHandler {
 		String tagName = null;
 		
 		if (null != _dictionaryStack) {
-			for (Dictionary dictionary : _dictionaryStack) {
+			for (XMLDictionary dictionary : _dictionaryStack) {
 				tagName = dictionary.tagToString(tagVal);
 				if (null != tagName) {
 					return tagName;
@@ -82,7 +82,7 @@ public abstract class GenericXMLHandler {
 			}
 		}
 
-		for (Dictionary dictionary : BinaryXMLDictionary.getGlobalDictionaries()) {
+		for (XMLDictionary dictionary : BinaryXMLDictionary.getGlobalDictionaries()) {
 			tagName = dictionary.tagToString(tagVal);
 			if (null != tagName) {
 				return tagName;
@@ -102,9 +102,9 @@ public abstract class GenericXMLHandler {
 	 * Pushes even if dictionary is on the stack, to make it easier to keep track of order.
 	 * @param dictionary
 	 */
-	public void pushXMLDictionary(Dictionary dictionary) {
+	public void pushXMLDictionary(XMLDictionary dictionary) {
 		if (null == _dictionaryStack) {
-			_dictionaryStack = new Stack<Dictionary>();
+			_dictionaryStack = new Stack<XMLDictionary>();
 		}
 		_dictionaryStack.push(dictionary);
 	}
@@ -113,7 +113,7 @@ public abstract class GenericXMLHandler {
 	 * Pop top XML dictionary from the stack used by this encoder or decoder instance only. 
 	 * @return the dictionary it popped if it popped one, otherwise null.
 	 */
-	public Dictionary popXMLDictionary() {
+	public XMLDictionary popXMLDictionary() {
 		if (null == _dictionaryStack) {
 			return null;
 		}

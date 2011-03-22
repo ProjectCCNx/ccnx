@@ -34,7 +34,7 @@ public abstract class BinaryXMLDictionary {
 	// Have a static dictionary stack shared by all code running in the same JVM.
 	// This can be added to by programs. Can also add local dictionaries to decoders 
 	// and encoders using methods in GenericXMLHandler.
-	protected static Stack<Dictionary> _globalDictionaries = new Stack<Dictionary>();
+	protected static Stack<XMLDictionary> _globalDictionaries = new Stack<XMLDictionary>();
 	
 	public static final String UNKNOWN_TAG_MARKER = "UNKNOWN TAG: ";
 	
@@ -42,7 +42,7 @@ public abstract class BinaryXMLDictionary {
 		_globalDictionaries.push(getDefaultDictionary());
 	}
 	
-	public static Dictionary getDefaultDictionary() {
+	public static XMLDictionary getDefaultDictionary() {
 		return CCNProtocolDictionary.getDefaultInstance();
 	}
 
@@ -71,7 +71,7 @@ public abstract class BinaryXMLDictionary {
 	 * For local dictionaries, see GenericXMLHandler.pushXMLDictionary.
 	 * @return
 	 */
-	public static void pushGlobalXMLDictionary(Dictionary dictionary) {
+	public static void pushGlobalXMLDictionary(XMLDictionary dictionary) {
 		_globalDictionaries.push(dictionary);
 	}
 
@@ -81,13 +81,13 @@ public abstract class BinaryXMLDictionary {
 	 * For local dictionaries, see GenericXMLHandler.popXMLDictionary.
 	 * @return the dictionary it popped if it popped one, otherwise null.
 	 */
-	public static Dictionary popGlobalXMLDictionary() {
+	public static XMLDictionary popGlobalXMLDictionary() {
 		if (_globalDictionaries.size() > 1) {
 			return _globalDictionaries.pop();
 		}
 		return null;
 	}
 
-	public static Stack<Dictionary> getGlobalDictionaries() { return _globalDictionaries; }
+	public static Stack<XMLDictionary> getGlobalDictionaries() { return _globalDictionaries; }
 
 }
