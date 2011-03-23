@@ -27,7 +27,21 @@
 # of this allows for such things as testing various combinations of parameters
 # on each run.
 #
-
+# If testdir/hooks/success is present and executable, it will be executed
+# after every successful run.  It should return a status of 0 to continue
+# on to the next run, or nonzero to stop.  The default is to continue.
+# If testdir/hooks/failure is present and executable, it will be executed
+# after every unsuccessful run.  The status checked in the same way, but
+# the default is to stop.
+# The run number is passed as a argument to these hooks. 
+#
+# One recommended strategy is to set up testdir/hooks/failure to notify
+# you of the failure and then stop.  Then set up a cron job to start the
+# test loop several times per day (and do nothing if it is running).
+# That way you end up with a bounded number of failures to look at each day,
+# but when all is well you test continuously. 
+#
+ 
 Usage () {
 cat << EOM >&2
 usage: ccntestloop [ start | stop | restart | status ]
@@ -174,24 +188,35 @@ ScriptChanged () {
 	return 0 # Yes, it changed.
 }
 
+NoteTimes () {
+	times > javasrc/testout/$1.times
+}
+
 Rebuild () {
 	local LOG;
 	Echo Building for run $1
 	LOG=javasrc/testout/TEST-buildlog.txt
 	mkdir -p javasrc/testout
-	(./configure && $MAKE; ) > $LOG 2>&1 && return 0
+	(./configure && $MAKE; ) > $LOG 2>&1
+	if [ $? -eq 0 ]; then
+		NoteTimes postb
+		return 0
+	fi
 	tail $LOG
 	Echo build failed
 	return 1
 }
 
 RunCTest () {
-	local LOG;
+	local LOG STATUS;
 	test "${CCN_CTESTS:=}" = "NO" && return 0
 	Echo Running csrc tests...
 	LOG=javasrc/testout/TEST-csrc-testlog.txt
 	mkdir -p javasrc/testout
-	( cd csrc && $MAKE test TESTS="$CCN_CTESTS" 2>&1 ) > $LOG && return 0
+	( cd csrc && $MAKE test TESTS="$CCN_CTESTS" 2>&1 ) > $LOG
+	STATUS=$?
+	NoteTimes postc
+	test $STATUS -eq 0 && return 0
 	tar cf javasrc/testout/csrc-tests.tar csrc/tests
 	gzip javasrc/testout/csrc-tests.tar
 	grep ^FAILING: $LOG | tee -a javasrc/testout/TEST-failures.txt
@@ -207,8 +232,10 @@ RunJavaTest () {
 	(cd javasrc && \
 	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL}             \
 	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000} \
-	      ${CCN_JAVATESTS:-test}; ) > $LOG        \
-	  && return 0
+	      ${CCN_JAVATESTS:-test}; ) > $LOG
+	STATUS=$?
+	NoteTimes postj
+	test $STATUS -eq 0 && return 0
 	grep -B1 -e 'junit. Tests .*Failures: [^0]' \
 	         -e 'junit. Tests .*Errors: [^0]'   \
 	     $LOG 2>/dev/null | tee -a javasrc/testout/TEST-failures.txt
@@ -253,6 +280,13 @@ Status () {
 	STATUS=$?
 	test $STATUS = 0 || echo ccntestloop not running
 	return $STATUS
+}
+
+FailHook () {
+	if [ -x testdir/hooks/failure ]; then
+		testdir/hooks/failure $1 && sleep 10 && ExecSelf
+	fi
+	Fail run $1 failed - stopping
 }
 
 # Finally, here's what we actually want to do
@@ -300,8 +334,11 @@ if SourcesChanged; then
 	Rebuild $RUN || Fail make
 fi
 
-RunTest $RUN || Fail RunTest - stopping
+RunTest $RUN || FailHook $RUN
 Echo Run number $RUN was successful
 Echo BUILD Failure rate is `ls -d testdir/testout*FAILED 2>/dev/null | wc -l` / $RUN
+if [ -x testdir/hooks/success ]; then
+	testdir/hooks/success $RUN || exit 0
+fi
 sleep 2
 ExecSelf
