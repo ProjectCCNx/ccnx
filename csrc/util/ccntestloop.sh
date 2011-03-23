@@ -188,24 +188,35 @@ ScriptChanged () {
 	return 0 # Yes, it changed.
 }
 
+NoteTimes () {
+	times > javasrc/testout/$1.times
+}
+
 Rebuild () {
 	local LOG;
 	Echo Building for run $1
 	LOG=javasrc/testout/TEST-buildlog.txt
 	mkdir -p javasrc/testout
-	(./configure && $MAKE; ) > $LOG 2>&1 && return 0
+	(./configure && $MAKE; ) > $LOG 2>&1
+	if [ $? -eq 0 ]; then
+		NoteTimes postb
+		return 0
+	fi
 	tail $LOG
 	Echo build failed
 	return 1
 }
 
 RunCTest () {
-	local LOG;
+	local LOG STATUS;
 	test "${CCN_CTESTS:=}" = "NO" && return 0
 	Echo Running csrc tests...
 	LOG=javasrc/testout/TEST-csrc-testlog.txt
 	mkdir -p javasrc/testout
-	( cd csrc && $MAKE test TESTS="$CCN_CTESTS" 2>&1 ) > $LOG && return 0
+	( cd csrc && $MAKE test TESTS="$CCN_CTESTS" 2>&1 ) > $LOG
+	STATUS=$?
+	NoteTimes postc
+	test $STATUS -eq 0 && return 0
 	tar cf javasrc/testout/csrc-tests.tar csrc/tests
 	gzip javasrc/testout/csrc-tests.tar
 	grep ^FAILING: $LOG | tee -a javasrc/testout/TEST-failures.txt
@@ -221,8 +232,10 @@ RunJavaTest () {
 	(cd javasrc && \
 	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL}             \
 	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000} \
-	      ${CCN_JAVATESTS:-test}; ) > $LOG        \
-	  && return 0
+	      ${CCN_JAVATESTS:-test}; ) > $LOG
+	STATUS=$?
+	NoteTimes postj
+	test $STATUS -eq 0 && return 0
 	grep -B1 -e 'junit. Tests .*Failures: [^0]' \
 	         -e 'junit. Tests .*Errors: [^0]'   \
 	     $LOG 2>/dev/null | tee -a javasrc/testout/TEST-failures.txt
