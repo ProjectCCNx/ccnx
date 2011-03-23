@@ -27,7 +27,21 @@
 # of this allows for such things as testing various combinations of parameters
 # on each run.
 #
-
+# If testdir/hooks/success is present and executable, it will be executed
+# after every successful run.  It should return a status of 0 to continue
+# on to the next run, or nonzero to stop.  The default is to continue.
+# If testdir/hooks/failure is present and executable, it will be executed
+# after every unsuccessful run.  The status checked in the same way, but
+# the default is to stop.
+# The run number is passed as a argument to these hooks. 
+#
+# One recommended strategy is to set up testdir/hooks/failure to notify
+# you of the failure and then stop.  Then set up a cron job to start the
+# test loop several times per day (and do nothing if it is running).
+# That way you end up with a bounded number of failures to look at each day,
+# but when all is well you test continuously. 
+#
+ 
 Usage () {
 cat << EOM >&2
 usage: ccntestloop [ start | stop | restart | status ]
@@ -255,6 +269,13 @@ Status () {
 	return $STATUS
 }
 
+FailHook () {
+	if [ -x testdir/hooks/failure ]; then
+		testdir/hooks/failure $1 && sleep 10 && ExecSelf
+	fi
+	Fail run $1 failed - stopping
+}
+
 # Finally, here's what we actually want to do
 GetConfiguration
 
@@ -300,8 +321,11 @@ if SourcesChanged; then
 	Rebuild $RUN || Fail make
 fi
 
-RunTest $RUN || Fail RunTest - stopping
+RunTest $RUN || FailHook $RUN
 Echo Run number $RUN was successful
 Echo BUILD Failure rate is `ls -d testdir/testout*FAILED 2>/dev/null | wc -l` / $RUN
+if [ -x testdir/hooks/success ]; then
+	testdir/hooks/success $RUN || exit 0
+fi
 sleep 2
 ExecSelf
