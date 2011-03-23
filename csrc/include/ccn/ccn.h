@@ -554,6 +554,16 @@ ccn_parse_Link(struct ccn_buf_decoder *d,
                    struct ccn_indexbuf *components);
 
 /*
+ * ccn_append_Link: TODO: fill in documentation
+ */
+int
+ccnb_append_Link(struct ccn_charbuf *buf,
+                 const struct ccn_charbuf *name,
+                 const char *label,
+                 const struct ccn_charbuf *linkAuthenticator
+                 );
+
+/*
  * ccn_parse_Collection_start: TODO: fill in documentation
  */
 
