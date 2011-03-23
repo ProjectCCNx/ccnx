@@ -1,7 +1,7 @@
 /*
  * CCNx Android Helper Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010,2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -53,7 +53,8 @@ public abstract class CCNxWrapper {
 	
 	protected ServiceConnection sConn;
 	
-	protected ICCNxService iService;
+	protected Object iServiceLock = new Object();
+	protected ICCNxService iService = null;
 	
 	protected String OPTION_LOG_LEVEL = "0";
 	
@@ -116,27 +117,33 @@ public abstract class CCNxWrapper {
 	 * @return true if we are bound, false if we are not
 	 */
 	public boolean isBound(){
-		return(iService != null);
+		synchronized(iServiceLock) {
+			return(iService != null);
+		}
 	}
 	
 	protected void bindService(){
 		sConn = new ServiceConnection(){
 			public void onServiceConnected(ComponentName name, IBinder binder) {
 				Log.d(TAG, " Service Connected");
-				iService = ICCNxService.Stub.asInterface(binder);
-				try {
-					iService.registerStatusCallback(_cb);
-					status = SERVICE_STATUS.fromOrdinal(iService.getStatus());
-					issueCallback();
-				} catch (RemoteException e) {
-					// Did the service crash?
-					e.printStackTrace();
+				synchronized(iServiceLock) {
+					iService = ICCNxService.Stub.asInterface(binder);
+					try {
+						iService.registerStatusCallback(_cb);
+						status = SERVICE_STATUS.fromOrdinal(iService.getStatus());
+					} catch (RemoteException e) {
+						// Did the service crash?
+						e.printStackTrace();
+					}
 				}
+				issueCallback();
 			}
 
 			public void onServiceDisconnected(ComponentName name) {
 				Log.d(TAG, " Service Disconnected");
-				iService = null;
+				synchronized(iServiceLock) {
+					iService = null;
+				}
 				
 			}	
 		};
@@ -144,19 +151,24 @@ public abstract class CCNxWrapper {
 	}
 	
 	protected void unbindService(){
-		if(isBound()){
-			_ctx.unbindService(sConn);
+		synchronized(iServiceLock) {
+			if(isBound()){
+				_ctx.unbindService(sConn);
+			}
+			iService = null;
 		}
-		iService = null;
 	}
 	
 	public void stopService(){
-		try {
-			iService.stop();
-		} catch (RemoteException e) {
-			e.printStackTrace();
+		synchronized(iServiceLock) {
+			try {
+				if( null != iService) 
+					iService.stop();
+			} catch (RemoteException e) {
+				e.printStackTrace();
+			}
+			unbindService();
 		}
-		unbindService();
 		_ctx.stopService(new Intent(serviceName));
 	}
 	
