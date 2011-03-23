@@ -13,16 +13,19 @@
 #
 AFTER : test_twohop_ccnd
 BEFORE : test_twohop_ccnd_teardown
+
+UNIQ=`GenSym test_scope2_`
+
 # Turn up logging in case something goes awry
 WithCCND 1 ccndlogging med
 WithCCND 2 ccndlogging med
 WithCCND 3 ccndlogging med
 
-WithCCND 3 ccnput -f /test/scope2/stuff < /dev/null
+WithCCND 3 ccnput -f /$UNIQ/scope2/stuff < /dev/null
 cat <<EOF >scope2interest.xml
 <Interest>
   <Name>
-    <Component ccnbencoding="text">test</Component>
+    <Component ccnbencoding="text">$UNIQ</Component>
     <Component ccnbencoding="text">scope2</Component>
   </Name>
   <Scope>2</Scope>
@@ -35,8 +38,8 @@ cmp scope2reply.ccnb /dev/null || Fail interest was sent too far
 WithCCND 1 ccndsmoketest -t 500 -b scope2interest.ccnb recv > scope2reply.ccnb
 cmp scope2reply.ccnb /dev/null && Fail interest was not sent to neighbor
 WithCCND 0 ccndsmoketest -t 333 recv  # just a bit of delay
-WithCCND 2 ccndumpnames /test/scope2/stuff > scope2stuff.out
-grep /test/scope2/stuff scope2stuff.out || Fail original interest was not answered
+WithCCND 2 ccndumpnames /$UNIQ/scope2/stuff > scope2stuff.out
+grep /$UNIQ/scope2/stuff scope2stuff.out || Fail original interest was not answered
 rm scope2interest.xml scope2interest.ccnb scope2reply.ccnb scope2stuff.out
 
 WithCCND 1 ccndlogging low
