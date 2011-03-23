@@ -507,9 +507,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	@Override
 	protected void finalize() throws Throwable {
-		close();
+		try {
+			close();        // close the object, canceling interests and listeners.
+		} finally {
+			super.finalize();
+		}
 	}
-	
+
 	/**
 	 * Close flow controller, remove listeners. Have to call setupSave to save with this object again,
 	 * re-add listeners.
