@@ -132,6 +132,7 @@ public class CCNNetworkManager implements Runnable {
 	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
 	protected PrefixRegistrationManager _prefixMgr = null;
 	protected Timer _periodicTimer = null;
+	protected Object _timersSetupLock = new Object();
 	protected Boolean _timersSetup = false;
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes 
 	= new TreeMap<ContentName, RegisteredPrefix>();
@@ -337,7 +338,7 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws IOException 
 	 */
 	private void setupTimers() throws IOException {
-		synchronized (_timersSetup) {
+		synchronized (_timersSetupLock) {
 			if (!_timersSetup) {
 				_timersSetup = true;
 				_channel.init();
