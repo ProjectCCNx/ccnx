@@ -1141,7 +1141,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 					is.interest = null;
 					for (int i = 0; i < _sentInterests.size(); i++) {
 						checkInterest = _sentInterests.get(i);
-						if (checkInterest.matches(result)) {
+						if (checkInterest.matches(is.content)) {
 							//we found a match!
 							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 								Log.info(Log.FAC_PIPELINE, "PIPELINE: the incoming packet's interest is gone, but it matches another interest, using that");
