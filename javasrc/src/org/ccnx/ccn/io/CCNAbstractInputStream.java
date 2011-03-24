@@ -159,7 +159,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 	private long _holes = 0;
 	private long _totalReceived = 0;
 	private long _pipelineStartTime;
-	private Long readerReady = -1L;
+	private Object readerReadyObj = new Object();
+	private long readerReadyVal = -1;
 
 	private double avgResponseTime = -1;
 
@@ -344,8 +345,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 		//is there a reader ready?
 		long rr;
-		synchronized(readerReady) {
-			rr = readerReady;
+		synchronized(readerReadyObj) {
+			rr = readerReadyVal;
 		}
 		//while(rr > -1) {
 		if(rr > -1) {
@@ -366,8 +367,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 					try {
 						inOrderSegments.wait();
 						//readerReady.wait();
-						synchronized(readerReady) {
-							rr = readerReady;
+						synchronized(readerReadyObj) {
+							rr = readerReadyVal;
 						}
 					} catch (InterruptedException e) {
 						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
@@ -1027,8 +1028,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 		synchronized(inOrderSegments) {
 			//is there a reader ready?
 			long rr;
-			synchronized(readerReady) {
-				rr = readerReady;
+			synchronized(readerReadyObj) {
+				rr = readerReadyVal;
 			}
 			if(rr > -1) {
 				//there is a reader waiting
@@ -1535,8 +1536,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 	protected ContentObject getSegment(long number) throws IOException {
 		long ttgl = System.currentTimeMillis();
 
-		synchronized(readerReady){
-			readerReady = number;
+		synchronized(readerReadyObj){
+			readerReadyVal = number;
 		}
 
 		synchronized (inOrderSegments) {
@@ -1567,9 +1568,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: we had segment {0} already!!", number);
 				advancePipeline(false);
-				synchronized(readerReady) {
+				synchronized(readerReadyObj) {
 					//readerReady.notifyAll();
-					readerReady = -1L;
+					readerReadyVal = -1;
 					inOrderSegments.notifyAll();
 				}
 				return co;
@@ -1627,9 +1628,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 				co = getPipelineSegment(number);
 				//}
 
-				synchronized(readerReady) {
+				synchronized(readerReadyObj) {
 					//readerReady.notifyAll();
-					readerReady = -1L;
+					readerReadyVal = -1;
 					inOrderSegments.notifyAll();
 				}
 			}
