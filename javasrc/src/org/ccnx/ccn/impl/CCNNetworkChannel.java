@@ -61,7 +61,10 @@ public class CCNNetworkChannel extends InputStream {
 	protected SocketChannel _ncSockChannel = null;
 	protected Selector _ncReadSelector = null;
 	protected Selector _ncWriteSelector = null;			 // Not needed for UDP
-	protected Boolean _ncConnected = new Boolean(false); // Actually asking the channel if its connected doesn't appear to be reliable
+	
+	protected Object _ncConnectedLock = new Object();
+	protected boolean _ncConnected = false; // Actually asking the channel if its connected doesn't appear to be reliable
+	
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
@@ -140,7 +143,7 @@ public class CCNNetworkChannel extends InputStream {
 			Log.info(Log.FAC_NETMANAGER, connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
 		initStream();
 		_ncInitialized = true;
-		synchronized (_ncConnected) {
+		synchronized (_ncConnectedLock) {
 			_ncConnected = true;
 		}
 	}
@@ -187,7 +190,7 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void close() throws IOException {
-		synchronized (_ncConnected) {
+		synchronized (_ncConnectedLock) {
 			_ncConnected = false;
 		}
 		if (_ncProto == NetworkProtocol.UDP) {
@@ -206,7 +209,7 @@ public class CCNNetworkChannel extends InputStream {
 	 * @return true if connected
 	 */
 	public boolean isConnected() {
-		synchronized (_ncConnected) {
+		synchronized (_ncConnectedLock) {
 			return _ncConnected;
 		}
 	}
