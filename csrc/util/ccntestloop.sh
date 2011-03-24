@@ -27,6 +27,12 @@
 # of this allows for such things as testing various combinations of parameters
 # on each run.
 #
+# There is provision for customization by means of executable hooks
+# called at various stages:
+# If testdir/hooks/update is present and executable, it will be executed
+# to update sources befor each run.  If it returns non-zero status, the
+# testing will be stopped.  The default behavior is to pull from a configurable
+# git branch unless modifed files are present.
 # If testdir/hooks/success is present and executable, it will be executed
 # after every successful run.  It should return a status of 0 to continue
 # on to the next run, or nonzero to stop.  The default is to continue.
@@ -171,6 +177,10 @@ PruneOldLogs () {
 UpdateSources () {
 	Echo Updating for run $1
 	cp csrc/util/ccntestloop.sh testdir/.~ctloop~
+	if [ -x testdir/hooks/update ]; then
+		testdir/hooks/update $1 || Fail testdir/hooks/update
+		return 0	
+	fi
 	$CCN_TEST_GITCOMMAND status | grep modified:        && \
 	  Echo Modifications present - skipping update      && \
 	  sleep 3 && return
