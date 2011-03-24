@@ -106,7 +106,7 @@ public class InterestDataTestRepo {
 
 	@Test
 	public void testInterestDataStartTimeCompare() throws Exception {
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		InterestData id1 =  new InterestData(basename, vn_411000000000L, new VersionNumber(411110000010L));
 		InterestData id1a = new InterestData(basename, vn_411000000000L, new VersionNumber(411110000020L));
@@ -165,7 +165,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testInterestDataInterestStream() throws Exception {
 		CCNHandle handle = CCNHandle.getHandle();
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		int tosend = 200;
 
@@ -191,7 +191,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testInterestDataInterestStreamWithStartTime() throws Exception {
 		CCNHandle handle = CCNHandle.getHandle();
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		int tosend = 100;
 
@@ -222,7 +222,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testInterestDataInterestStreamWithStartAndStopTime() throws Exception {
 		CCNHandle handle = CCNHandle.getHandle();
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		int tosend = 50;
 
@@ -262,7 +262,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testSplitLeft() throws Exception {
 		// put a bunch of exclusions in an INterestData, then split it and check results.
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		VersionNumber starttime = new VersionNumber();
 		VersionNumber stoptime = null;

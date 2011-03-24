@@ -222,7 +222,7 @@
 					<arg value="-root" />
 					<arg value="${REPO_LOCAL_ROOT}" />
 					<arg value="-log" />
-					<arg value="400" />
+					<arg value="INFO" />
 					<arg value="-local" />
 					<arg value="${REPO_LOCAL}" />
 					<arg value="-global" />
@@ -834,7 +834,7 @@
 	<!-- test versioning -->
 	<target name="test-versioning" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="no" dir="${testout}" showoutput="${showoutput}" maxmemory="1024m">
+		<junit printsummary="yes" fork="on" forkmode="perTest" haltonfailure="no" dir="${testout}" showoutput="${showoutput}" maxmemory="2048m">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -849,6 +849,7 @@
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/versioning/**/*Test.class"/>
 					<include name="org/ccnx/ccn/test/profiles/versioning/**/*TestRepo.class"/>
+					<include name="org/ccnx/ccn/test/profiles/versioning/**/XVersioningInterestTestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
