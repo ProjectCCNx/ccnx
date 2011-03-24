@@ -59,7 +59,7 @@ public class VersioningInterestManagerTestRepo {
 	protected SinkHandle sinkhandle = null;
 
 	public VersioningInterestManagerTestRepo() throws MalformedContentNameStringException {
-		prefix  = ContentName.fromNative(String.format("/test_%016X", _rnd.nextLong()));
+		prefix  = ContentName.fromNative(String.format("/repotest/test_%016X", _rnd.nextLong()));
 	}
 
 	@BeforeClass
@@ -70,12 +70,13 @@ public class VersioningInterestManagerTestRepo {
 
 	@Before
 	public void setUp() throws Exception {
-		realhandle = CCNHandle.getHandle();
+		realhandle = CCNHandle.open();
 		sinkhandle = SinkHandle.open(realhandle);		
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		realhandle.close();
 		sinkhandle.close();
 	}
 
@@ -150,6 +151,8 @@ public class VersioningInterestManagerTestRepo {
 			System.out.println(String.format("right (%d): %s", right.size(), right.dumpContents()));
 		}
 
+		vim.stop();
+		
 		Assert.assertEquals(sent1.size(), left_size + right_size);
 
 		// there should now be 2 extrea re-expressions because of extra interest
@@ -214,6 +217,8 @@ public class VersioningInterestManagerTestRepo {
 		Assert.assertEquals(packets, vim.getInterestDataTree().size());
 
 		Assert.assertEquals(sent1.size(), vim.getExclusions().size());
+		
+		vim.stop();
 	}
 
 	/**
@@ -270,6 +275,7 @@ public class VersioningInterestManagerTestRepo {
 				String.format("sinkhandle incorrect count %d expected %d", 
 						sinkhandle.total_count.getValue(),
 						expected), b);
+		vim.stop();
 
 	}
 
@@ -318,6 +324,7 @@ public class VersioningInterestManagerTestRepo {
 
 		Assert.assertTrue( min_interests + tosend <= sinkhandle.total_count.getValue() );
 		Assert.assertTrue( sinkhandle.total_count.getValue() <= max_interests + tosend );
+		vim.stop();
 	}
 
 	/**
@@ -365,6 +372,7 @@ public class VersioningInterestManagerTestRepo {
 
 		Assert.assertTrue( min_interests + tosend <= sinkhandle.total_count.getValue() );
 		Assert.assertTrue( sinkhandle.total_count.getValue() <= max_interests + tosend );
+		vim.stop();
 	}
 
 	// ==============================
