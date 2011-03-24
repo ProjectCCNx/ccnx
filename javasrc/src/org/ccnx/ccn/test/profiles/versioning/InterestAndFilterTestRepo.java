@@ -53,7 +53,7 @@ public class InterestAndFilterTestRepo {
 		
 		_defaultHandle = CCNHandle.open();
 		
-		_prefix = ContentName.fromNative(String.format("/InterestAndFilter_%016X", _rnd.nextLong()));
+		_prefix = ContentName.fromNative(String.format("/repotest/InterestAndFilter_%016X", _rnd.nextLong()));
 		_userHandle = CCNHandle.getHandle();
 		
 		ContentName users = ContentName.fromNative(_prefix, "Users");

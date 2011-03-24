@@ -54,7 +54,7 @@ public class InterestDataTestRepo {
 	protected final VersionNumber vn_411333000000L = new VersionNumber(411333000000L);
 
 	public InterestDataTestRepo() throws MalformedContentNameStringException {
-		prefix  = ContentName.fromNative(String.format("/test_%016X", _rnd.nextLong()));
+		prefix  = ContentName.fromNative(String.format("/repotest/test_%016X", _rnd.nextLong()));
 	}
 	
 	@BeforeClass

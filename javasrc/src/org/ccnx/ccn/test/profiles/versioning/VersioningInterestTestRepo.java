@@ -60,7 +60,7 @@ public class VersioningInterestTestRepo {
 	protected final static long SEND_PAUSE = 50;
 
 	public VersioningInterestTestRepo() throws MalformedContentNameStringException {
-		prefix  = ContentName.fromNative(String.format("/test_%016X", _rnd.nextLong()));
+		prefix  = ContentName.fromNative(String.format("/repotest/test_%016X", _rnd.nextLong()));
 	}
 
 	@BeforeClass

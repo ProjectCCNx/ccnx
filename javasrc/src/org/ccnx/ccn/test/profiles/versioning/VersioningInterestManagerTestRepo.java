@@ -59,7 +59,7 @@ public class VersioningInterestManagerTestRepo {
 	protected SinkHandle sinkhandle = null;
 
 	public VersioningInterestManagerTestRepo() throws MalformedContentNameStringException {
-		prefix  = ContentName.fromNative(String.format("/test_%016X", _rnd.nextLong()));
+		prefix  = ContentName.fromNative(String.format("/repotest/test_%016X", _rnd.nextLong()));
 	}
 
 	@BeforeClass
