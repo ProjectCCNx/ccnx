@@ -57,7 +57,7 @@ public class VersioningInterestTestRepo {
 	protected CCNHandle sendhandle = null;
 	
 	protected final static long TIMEOUT=30000;
-	protected final static long SEND_PAUSE = 50;
+	protected final static long SEND_PAUSE = 75;
 
 	public VersioningInterestTestRepo() throws MalformedContentNameStringException {
 		prefix  = ContentName.fromNative(String.format("/repotest/test_%016X", _rnd.nextLong()));
