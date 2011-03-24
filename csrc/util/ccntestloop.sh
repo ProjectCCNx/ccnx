@@ -25,7 +25,7 @@
 # The testdir/config will be sourced as a sh script upon startup.  This allows
 # the environment variables to be set up for the next round.  Creative use
 # of this allows for such things as testing various combinations of parameters
-# on each run.
+# on each run.  Look in testdir/config.defaults for examples.
 #
 # There is provision for customization by means of executable hooks
 # called at various stages:
@@ -57,33 +57,38 @@ EOM
 exit 1
 }
 
+Defaults () {
+CCN_TEST_GITCOMMAND=`command -v git || echo :`
+test -d .git || CCN_TEST_GITCOMMAND=:
+
+cat << EOF
+# EDIT config, NOT config.defaults
+# Control the overall log level of the java tests.
+CCN_LOG_LEVEL_ALL=WARNING
+
+# These may be used to contol which tests are run.
+# Leave empty for the default set. Say NO for none.
+CCN_CTESTS=
+CCN_JAVATESTS=
+
+# Occasionally a different make program is needed.
+MAKE=make
+
+# These are only used if hooks/update is not present
+CCN_TEST_BRANCH=HEAD
+CCN_TEST_GITCOMMAND=$CCN_TEST_GITCOMMAND
+EOF
+}
+
 GetConfiguration () {
-	unset CCN_CTESTS
-	unset CCN_JAVATESTS
-	unset CCN_LOG_LEVEL_ALL
-	unset CCN_TEST_BRANCH
-	unset CCN_TEST_GITCOMMAND
-	unset CCN_LOCAL_PORT_BASE
+	Defaults > testdir/config.defaults || Fail testdir/config.defaults
+	# Export all variables set while reading config
 	set -a
 	rm -f testdir/config~
+	. testdir/config.defaults
 	test -f testdir/config && . testdir/config && \
 		cp testdir/config testdir/config~
 	set +a
-}
-
-ProvideDefaults () {
-	# Provide defaults for environment
-	: ${CCN_LOG_LEVEL_ALL:=WARNING}
-	: ${CCN_TEST_BRANCH:=HEAD}
-	: ${CCN_TEST_GITCOMMAND:=`command -v git || echo :`}
-	: ${MAKE:=make}
-	test -d .git || CCN_TEST_GITCOMMAND=:
-	export CCN_CTESTS
-	export CCN_JAVATESTS
-	export CCN_LOG_LEVEL_ALL
-	export CCN_TEST_BRANCH
-	export CCN_TEST_GITCOMMAND
-	export MAKE
 }
 
 Echo () {
@@ -301,11 +306,9 @@ FailHook () {
 }
 
 # Finally, here's what we actually want to do
-GetConfiguration
-
-ProvideDefaults
-
 CheckDirectory
+
+GetConfiguration
 
 CheckLogLevel
 
