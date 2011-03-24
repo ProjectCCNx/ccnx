@@ -113,6 +113,7 @@ CheckLogLevel () {
 CheckDirectory () {
 	test -d javasrc || Fail ccntestloop is intended to be run at the top level of ccnx
 	test -d testdir/. || mkdir testdir
+	mkdir -p testdir/hooks
 }
 
 BackgroundPID () {
