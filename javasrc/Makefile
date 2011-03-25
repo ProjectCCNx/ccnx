@@ -60,7 +60,7 @@ clean: _always
 
 test: test-alone
 test-alone: _always
-	netstat -a -n > test-alone
+	netstat -a -n | grep -v TIME_WAIT > test-alone
 	grep '^..p.*[.]'$${CCN_LOCAL_PORT_BASE:-63000} test-alone || rm test-alone
 	test \! -f test-alone        # Fail here if conflicting tests are running
 
