@@ -52,7 +52,7 @@ uninstall:
 
 # Use ant to actually do the work for these targets
 jar test: _always
-	$(ANT) -k $@
+	$(ANT) -k -DTEST_PORT=$${CCN_LOCAL_PORT_BASE:-63000} $@
 
 clean: _always
 	$(ANT) -k clean
@@ -61,7 +61,7 @@ clean: _always
 test: test-alone
 test-alone: _always
 	netstat -a -n > test-alone
-	grep '^..p.*[.]61999' test-alone || rm test-alone
+	grep '^..p.*[.]'$${CCN_LOCAL_PORT_BASE:-63000} test-alone || rm test-alone
 	test \! -f test-alone        # Fail here if conflicting tests are running
 
 documentation: _always
