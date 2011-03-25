@@ -98,13 +98,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	
 	protected HashMap<String, String> _bulkImportInProgress = new HashMap<String, String>();
 	
-	public class RepoFile {
+	public static class RepoFile {
 		File file;
 		RandomAccessFile openFile;
 		long nextWritePos;
 	}
 	
-	protected class FileRef extends ContentRef {
+	protected static class FileRef extends ContentRef {
 		int id;
 		long offset;
 	}

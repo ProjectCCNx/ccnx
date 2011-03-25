@@ -133,7 +133,7 @@ public class ContentTree {
 	 * Currently we prescreen for matching the exclude filter if there is one
 	 * and that the candidate has the correct number of components.
 	 */
-	protected class InterestPreScreener {
+	protected static class InterestPreScreener {
 		protected int _minComponents = 0;
 		protected int _maxComponents = 32767;
 		protected Exclude _exclude;
@@ -300,7 +300,7 @@ public class ContentTree {
 	/**
 	 * Create an iterator that goes backwards through the candidates for right search
 	 */
-	protected class RightIterator implements Iterator<TreeNode> {
+	protected static class RightIterator implements Iterator<TreeNode> {
 		protected SortedMap<TreeNode, TreeNode> _map;
 		
 		protected RightIterator(SortedMap<TreeNode, TreeNode> map) {

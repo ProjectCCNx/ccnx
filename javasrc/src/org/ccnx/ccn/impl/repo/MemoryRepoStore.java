@@ -41,7 +41,7 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 	protected ContentName _namespace = null; // Prinmary/initial namespace
 
 	// For in-memory repo, we just hold onto each ContentObject directly in the ref
-	class MemRef extends ContentRef {
+	static class MemRef extends ContentRef {
 		ContentObject co;
 		public MemRef(ContentObject content) {
 			co = content;
