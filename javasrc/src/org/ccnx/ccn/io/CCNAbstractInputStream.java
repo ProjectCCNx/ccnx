@@ -1156,21 +1156,19 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 				//}
 
-				//verify the content object
-				if (_handle.defaultVerifier().verify(is.content)) {
-					//this content verified
-				} else {
-					//content didn't verify, don't hand it up...
-					//TODO content that fails verification needs to be handled better.  need to express a new interest
-					if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
-						Log.warning(Log.FAC_PIPELINE, "Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
-					_sentInterests.remove(is.interest);
-
-					is = null;
+				if (is != null) {
+					// verify the content object
+					if (_handle.defaultVerifier().verify(is.content)) {
+						// this content verified
+						receivePipelineContent(is.content);
+					} else {
+						// content didn't verify, don't hand it up...
+						// TODO content that fails verification needs to be handled better.  need to express a new interest
+						if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
+							Log.warning(Log.FAC_PIPELINE, "Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
+						_sentInterests.remove(is.interest);
+					}
 				}
-
-				if (is != null)
-					receivePipelineContent(is.content);
 
 				synchronized(incoming) {
 					if (incoming.size() == 0) {
