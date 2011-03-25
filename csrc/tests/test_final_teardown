@@ -16,7 +16,7 @@ AFTER : test_finished
 P=$((CCN_LOCAL_PORT_BASE / 10))
 ls /tmp/.ccnd.sock.$P[0123456789] 2>/dev/null | cut -d . -f 4  | \
     while read i; do CCN_LOCAL_PORT=$i ccndstop; done
-ls /tmp/.ccnd.sock.* 2>/dev/null && Fail not all gone
+ls /tmp/.ccnd.sock.$P[0123456789] 2>/dev/null && Fail not all gone
 sleep 1
 netstat -an | grep -e $P[0123456789]
 :
