@@ -88,14 +88,14 @@ public class NetworkTest extends CCNTestBase {
 		TestListener tl = new TestListener();
 		ContentName testName1 = ContentName.fromNative(testPrefix, "foo");
 		Interest interest1 = new Interest(testName1);
-		ContentName testName2 = ContentName.fromNative(testName1, "bar");
+		ContentName testName2 = ContentName.fromNative(testName1, "bar"); // /foo/bar
 		Interest interest2 = new Interest(testName2);
-		ContentName testName3 = ContentName.fromNative(testName2, "blaz");
-		ContentName testName4 = ContentName.fromNative(testName2, "xxx");
+		ContentName testName3 = ContentName.fromNative(testName2, "blaz"); // /foo/bar/blaz
+		ContentName testName4 = ContentName.fromNative(testName2, "xxx");  // /foo/bar/xxx
 		Interest interest4 = new Interest(testName4);
-		ContentName testName5 = ContentName.fromNative(testPrefix, "zoo");
-		ContentName testName6 = ContentName.fromNative(testName1, "zoo");
-		ContentName testName7 = ContentName.fromNative(testName2, "spaz");
+		ContentName testName5 = ContentName.fromNative(testPrefix, "zoo"); // /zoo
+		ContentName testName6 = ContentName.fromNative(testName1, "zoo");  // /foo/zoo
+		ContentName testName7 = ContentName.fromNative(testName2, "spaz"); // /foo/bar/spaz
 		Interest interest6 = new Interest(testName6);
 		
 		// Test that we don't receive interests above what we registered
@@ -113,6 +113,7 @@ public class NetworkTest extends CCNTestBase {
 		gotInterest = false;
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, testName3, tfl);
+		putHandle.getNetworkManager().setInterestFilter(this, testName4, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, testName2, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
@@ -135,6 +136,17 @@ public class NetworkTest extends CCNTestBase {
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName3, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName5, tfl);
+		
+		// Test that nothing after / is registered. Need to examine logs to ensure this is
+		// done correctly.
+		ContentName slashName = ContentName.fromNative("/");
+		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
+		putHandle.getNetworkManager().setInterestFilter(this, slashName, tfl);
+		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);	
+		putHandle.getNetworkManager().cancelInterestFilter(this, testName1, tfl);
+		putHandle.getNetworkManager().cancelInterestFilter(this, slashName, tfl);
+		putHandle.getNetworkManager().cancelInterestFilter(this, testName5, tfl);
+		
 	}
 
 	@Test

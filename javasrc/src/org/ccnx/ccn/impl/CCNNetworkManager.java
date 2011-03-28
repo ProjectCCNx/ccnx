@@ -1181,18 +1181,20 @@ public class CCNNetworkManager implements Runnable {
 	 * is an descendant of it registered, we won't bother to now deregister that prefix because
 	 * it would be complicated to do that and doesn't hurt anything.
 	 * 
+	 * Notes on efficiency: First of all I'm not sure how important efficiency is in this routine
+	 * because it may not be too common to have many different prefixes registered. Currently we search
+	 * all prefixes until we see one that is past the one we want to register before deciding there are
+	 * none that encapsulate it. There may be a more efficient way to code this that is still correct but
+	 * I haven't come up with it.
+	 * 
 	 * @param prefix
 	 * @return prefix that incorporates or matches this one or null if none found
 	 */
 	protected RegisteredPrefix getRegisteredPrefix(ContentName prefix) {
-		// We want our map to include all ancestors of us
-		SortedMap<ContentName, RegisteredPrefix> map = _registeredPrefixes.tailMap(new ContentName(1, prefix.components()));
-		for (ContentName name : map.keySet()) {
+		for (ContentName name : _registeredPrefixes.keySet()) {
 			if (name.isPrefixOf(prefix))
 				return _registeredPrefixes.get(name);
-			// If our prefix isn't a prefix of this name at all, we are past all ancestors and
-			// can stop looking
-			if (!prefix.isPrefixOf(name))
+			if (name.compareTo(prefix) > 0)
 				break;
 		}
 		return null;
