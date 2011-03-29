@@ -68,7 +68,11 @@
 static int  CCNOpen(vlc_object_t *);
 static void CCNClose(vlc_object_t *);
 static block_t *CCNBlock(access_t *);
+#if (VLCPLUGINVER >= 110)
+static int CCNSeek(access_t *, uint64_t);
+#else
 static int CCNSeek(access_t *, int64_t);
+#endif
 static int CCNControl(access_t *, int, va_list);
 
 static void *ccn_event_thread(vlc_object_t *p_this);
@@ -157,7 +161,7 @@ static int CCNOpen(vlc_object_t *p_this)
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
-#if (VLCPLUGINVER >= 110)
+#if (VLCPLUGINVER >= 120)
     msg_Dbg(p_access, "CCN.Open %s, closure %p",
             p_access->psz_location, p_sys->incoming);
 #else
@@ -176,7 +180,7 @@ static int CCNOpen(vlc_object_t *p_this)
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
-#if (VLCPLUGINVER >= 110)
+#if (VLCPLUGINVER >= 120)
     i_ret = ccn_name_from_uri(p_name, p_access->psz_location);
 #else
     i_ret = ccn_name_from_uri(p_name, p_access->psz_path);
@@ -345,17 +349,22 @@ static ssize_t CCNRead(access_t *p_access, uint8_t *buf, size_t size)
 /*****************************************************************************
  * CCNSeek:
  *****************************************************************************/
-
+#if (VLCPLUGINVER < 110)
 static int CCNSeek(access_t *p_access, int64_t i_pos)
+#else
+static int CCNSeek(access_t *p_access, uint64_t i_pos)
+#endif
 {
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn_charbuf *p_name;
     int i_ret;
 
+#if (VLCPLUGINVER < 110)
     if (i_pos < 0) {
         msg_Warn(p_access, "Attempting to seek before the beginning %"PRId64".", i_pos);
         i_pos = 0;
     }
+#endif
     /* flush the FIFO, restart from the specified point */
     block_FifoEmpty(p_sys->p_fifo);
     /* forget any data in the intermediate buffer */
@@ -590,7 +599,7 @@ incoming_content(struct ccn_closure *selfp,
         return (CCN_UPCALL_RESULT_OK);
     }
 
-#if 1
+#if (VLCPLUGINVER < 110)
     /* 0.9.9 did not include the block_FifoPace function */
     while (block_FifoCount(p_sys->p_fifo) > p_sys->i_fifo_max) {
         if (first == 0) {
@@ -603,7 +612,7 @@ incoming_content(struct ccn_closure *selfp,
     if (first > 0) msg_Dbg(p_access, "fifo spun %d", first);
 #else
     /* it was introduced, but not exported, and we're wating
-     * for it to appear sometime post 1.0.3
+     * for it to appear sometime post 1.0.3 -- version 1.1.0 is it.
      */
     block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
 #endif
