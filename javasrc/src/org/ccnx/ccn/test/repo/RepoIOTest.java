@@ -64,6 +64,8 @@ import org.junit.Test;
  * and RFSTest to have been run.
  */
 public class RepoIOTest extends RepoTestBase {
+	protected static final int CACHE_CLEAR_TIMEOUT = 10000;
+	
 	protected static CCNTestHelper testHelper = new CCNTestHelper(RepoIOTest.class);
 	
 	protected static String _repoTestDir = "repotest";
@@ -235,7 +237,7 @@ public class RepoIOTest extends RepoTestBase {
 	public void testReadFromRepo() throws Exception {
 		System.out.println("Testing reading a stream from the repo");
 		ContentName name = ContentName.fromNative(_testPrefix, _testStream);
-		_cacheManager.clearCache(name, getHandle, 10000);
+		_cacheManager.clearCache(name, getHandle, CACHE_CLEAR_TIMEOUT);
 		Thread.sleep(5000);
 		CCNInputStream input = new CCNInputStream(name, getHandle);
 		byte[] testBytes = new byte[data.length];
@@ -258,7 +260,7 @@ public class RepoIOTest extends RepoTestBase {
 			ostream.write(segmentContent.getBytes(), 0, 8);
 		}
 		ostream.close();
-		_cacheManager.clearCache(versionedNameNormal, getHandle, 10000);
+		_cacheManager.clearCache(versionedNameNormal, getHandle, CACHE_CLEAR_TIMEOUT);
 		CCNVersionedInputStream vstream = new CCNVersionedInputStream(versionedNameNormal);
 		InputStreamReader reader = new InputStreamReader(vstream);
 		for (long i=SegmentationProfile.baseSegment(); i<5; i++) {
@@ -295,8 +297,8 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertTrue(RepositoryControl.localRepoSync(getHandle, input));	
 		input.close();
 		
-		_cacheManager.clearCache(name, getHandle, 10000);
-		_cacheManager.clearCache(_keyNameForStream, getHandle, 1000);
+		_cacheManager.clearCache(name, getHandle, CACHE_CLEAR_TIMEOUT);
+		_cacheManager.clearCache(_keyNameForStream, getHandle, CACHE_CLEAR_TIMEOUT);
 		byte[] testBytes = new byte[data.length];
 		input = new CCNInputStream(name, getHandle);
 		input.read(testBytes);
@@ -327,9 +329,9 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertTrue(RepositoryControl.localRepoSync(getHandle, so));
 		so.close();
 		
-		_cacheManager.clearCache(name, getHandle, 10000);
-		_cacheManager.clearCache(_keyNameForStream, getHandle, 1000);
-		_cacheManager.clearCache(ContentName.fromNative(_testPrefix, _testLink), getHandle, 1000);
+		_cacheManager.clearCache(name, getHandle, CACHE_CLEAR_TIMEOUT);
+		_cacheManager.clearCache(_keyNameForStream, getHandle, CACHE_CLEAR_TIMEOUT);
+		_cacheManager.clearCache(ContentName.fromNative(_testPrefix, _testLink), getHandle, CACHE_CLEAR_TIMEOUT);
 		so = new CCNStringObject(name, getHandle);
 		assert(so.string().equals("String value for non-repo obj"));
 	}
