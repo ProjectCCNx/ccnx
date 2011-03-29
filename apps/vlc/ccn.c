@@ -68,7 +68,11 @@
 static int  CCNOpen(vlc_object_t *);
 static void CCNClose(vlc_object_t *);
 static block_t *CCNBlock(access_t *);
+#if (VLCPLUGINVER >= 110)
+static int CCNSeek(access_t *, uint64_t);
+#else
 static int CCNSeek(access_t *, int64_t);
+#endif
 static int CCNControl(access_t *, int, va_list);
 
 static void *ccn_event_thread(vlc_object_t *p_this);
@@ -345,17 +349,22 @@ static ssize_t CCNRead(access_t *p_access, uint8_t *buf, size_t size)
 /*****************************************************************************
  * CCNSeek:
  *****************************************************************************/
-
+#if (VLCPLUGINVER < 110)
 static int CCNSeek(access_t *p_access, int64_t i_pos)
+#else
+static int CCNSeek(access_t *p_access, uint64_t i_pos)
+#endif
 {
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn_charbuf *p_name;
     int i_ret;
 
+#if (VLCPLUGINVER < 110)
     if (i_pos < 0) {
         msg_Warn(p_access, "Attempting to seek before the beginning %"PRId64".", i_pos);
         i_pos = 0;
     }
+#endif
     /* flush the FIFO, restart from the specified point */
     block_FifoEmpty(p_sys->p_fifo);
     /* forget any data in the intermediate buffer */
