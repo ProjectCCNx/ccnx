@@ -1070,7 +1070,7 @@ public class BasicKeyManager extends KeyManager {
 			long timeout) throws IOException {
 		
 		if( Log.isLoggable(Log.FAC_KEYS, Level.FINER) )
-			Log.finer(Log.FAC_KEYS, "getPublicKey: retrieving key: " + desiredKeyID + " located at: " + locator);
+			Log.finer(Log.FAC_KEYS, "getPublicKeyObject: retrieving key: {0} located at: {1}", desiredKeyID, locator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether
