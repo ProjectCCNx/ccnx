@@ -590,7 +590,7 @@ incoming_content(struct ccn_closure *selfp,
         return (CCN_UPCALL_RESULT_OK);
     }
 
-#if 1
+#if (VLCPLUGINVER < 110)
     /* 0.9.9 did not include the block_FifoPace function */
     while (block_FifoCount(p_sys->p_fifo) > p_sys->i_fifo_max) {
         if (first == 0) {
@@ -603,7 +603,7 @@ incoming_content(struct ccn_closure *selfp,
     if (first > 0) msg_Dbg(p_access, "fifo spun %d", first);
 #else
     /* it was introduced, but not exported, and we're wating
-     * for it to appear sometime post 1.0.3
+     * for it to appear sometime post 1.0.3 -- version 1.1.0 is it.
      */
     block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
 #endif
