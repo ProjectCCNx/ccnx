@@ -49,7 +49,26 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 	PublisherPublicKeyDigest keyDigest;
 	PrefixRegistrationManager prm;
 	ContentName contentNameToUse;
+	NotReallyAContentName notReallyAContentNameToUse;
 	public final static String prefixToUse = "ccnx:/prefix/to/test/with/";
+		
+	 class NotReallyAContentName extends ContentName  {
+		private static final long serialVersionUID = 7618128398055066315L;
+		
+		public NotReallyAContentName() {
+			super();
+		}
+		
+		public NotReallyAContentName(ContentName name) {
+			super(name);
+		}
+		
+		@Override
+		public long getElementLabel() { 
+			return -42;
+		}
+	}
+
 
 
 	/**
@@ -74,6 +93,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		keyDigest = null; /* new PublisherPublicKeyDigest(); */
 		prm = new PrefixRegistrationManager();
 		contentNameToUse = ContentName.fromURI(prefixToUse);
+		notReallyAContentNameToUse = new NotReallyAContentName(contentNameToUse);
 	}
 
 	/**
@@ -143,6 +163,22 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testEncodingDecoding:");
 		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
+		System.out.println("Encoding: " + entryToEncode);
+
+		ForwardingEntry  textEntryToDecodeInto = new ForwardingEntry();
+		assertNotNull("EncodeDecodeOutput", textEntryToDecodeInto);
+		ForwardingEntry  binaryEntryToDecodeInto = new ForwardingEntry();
+		assertNotNull("EncodeDecodeOutput", binaryEntryToDecodeInto);
+		XMLEncodableTester.encodeDecodeTest("EncodeDecodeOutput", entryToEncode, textEntryToDecodeInto, binaryEntryToDecodeInto);
+		System.out.println();
+	}
+
+	
+	@Test
+	public void testEncodingDecodingSubclass() {
+		System.out.println();
+		System.out.println("PrefixRegistrationManagerTest.testEncodingDecodingSubclass:");
+		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, notReallyAContentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
 		System.out.println("Encoding: " + entryToEncode);
 
 		ForwardingEntry  textEntryToDecodeInto = new ForwardingEntry();

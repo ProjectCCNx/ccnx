@@ -106,7 +106,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 
 		public ForwardingEntry(ContentName prefixName, Integer faceID, Integer flags) {
 			_action = ActionType.Register.value();
-			_prefixName = prefixName;
+			_prefixName = new ContentName(prefixName); // in case ContentName gets subclassed
 			_faceID = faceID;
 			_flags = flags;
 		}
@@ -115,7 +115,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 								Integer faceID, Integer flags, Integer lifetime) {
 			_action = action.value();
 			_ccndId = ccndId;
-			_prefixName = prefixName;
+			_prefixName = new ContentName(prefixName); // in case ContentName gets subclassed
 			_faceID = faceID;
 			_flags = flags;
 			_lifetime = lifetime;
