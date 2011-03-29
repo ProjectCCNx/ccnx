@@ -157,7 +157,7 @@ static int CCNOpen(vlc_object_t *p_this)
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
-#if (VLCPLUGINVER >= 110)
+#if (VLCPLUGINVER >= 120)
     msg_Dbg(p_access, "CCN.Open %s, closure %p",
             p_access->psz_location, p_sys->incoming);
 #else
@@ -176,7 +176,7 @@ static int CCNOpen(vlc_object_t *p_this)
         i_err = VLC_ENOMEM;
         goto exit_error;
     }
-#if (VLCPLUGINVER >= 110)
+#if (VLCPLUGINVER >= 120)
     i_ret = ccn_name_from_uri(p_name, p_access->psz_location);
 #else
     i_ret = ccn_name_from_uri(p_name, p_access->psz_path);
