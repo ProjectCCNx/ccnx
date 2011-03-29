@@ -288,6 +288,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				} else {
 					// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 1 
 					// because in this SPECIAL CASE we have the complete name of the first segment.
+					// Note: We could in theory just request the digest too, since we have it, but that can
+					// confuse the DataHandler because in some cases it can confuse the digest with a segment ID.
 					readInterest = Interest.constructInterest(digestFreeTarget, _server.getExcludes(), null, 1, 1, null);
 				}
 				_server.getDataHandler().addSync(digestFreeTarget);
