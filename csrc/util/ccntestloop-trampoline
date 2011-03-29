@@ -1,0 +1,26 @@
+# ccntestloop trampoline
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+#
+# ccntestloop runs the ccnx unit tests repeatedly.
+#
+# This is intended to be run from the top level of the ccnx distribution.
+# Please refer to comments in csrc/util/ccntestloop.sh for more details.
+#
+
+if [ -f csrc/util/ccntestloop.sh ]; then
+	 exec sh csrc/util/ccntestloop.sh "$@"
+fi
+echo Error - ccntestloop is intended to be run at the top level of ccnx >&2
+exit 1

@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -13,14 +13,18 @@
 #
 
 SCRIPTSRC = shebang \
-	ccndstart.sh ccndstop.sh ccndstatus.sh ccntestloop.sh ccndlogging.sh
-PROGRAMS = $(INSTALLED_PROGRAMS)
-INSTALLED_PROGRAMS = ccndstart ccndstop ccndstatus ccntestloop ccndlogging
+	ccndstart.sh ccndstop.sh ccndstatus.sh ccndlogging.sh
+PROGRAMS = ccndstart ccndstop ccndstatus ccntestloop ccndlogging
+INSTALLED_PROGRAMS = $(PROGRAMS)
 
 default all: $(SCRIPTSRC) $(PROGRAMS)
 
-$(INSTALLED_PROGRAMS): $(SCRIPTSRC) shebang
+ccndstart ccndstop ccndstatus ccndlogging: $(SCRIPTSRC) shebang
 	./shebang $(SH) $(@:=.sh) > $@
+	chmod +x $@
+
+ccntestloop: ccntestloop-trampoline shebang
+	./shebang $(SH) ccntestloop-trampoline > $@
 	chmod +x $@
 
 clean:
