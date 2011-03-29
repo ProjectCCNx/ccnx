@@ -279,19 +279,16 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 
 			if (!verified) {
 				Interest readInterest;
+				// If we have an unverifiedKeyLocator here, we need to sync a key, but not the file itself
+				// Otherwise we have to start by syncing the file and we will check the keys later (in the
+				// DataHandler).
 				if (null != unverifiedKeyLocator) {
 					interest = Interest.constructInterest(target, _server.getExcludes(), null, 2, null, null);
 					readInterest = interest;
 				} else {
-					// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 0 
+					// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 1 
 					// because in this SPECIAL CASE we have the complete name of the first segment.
-					readInterest = Interest.constructInterest(target, _server.getExcludes(), null, 0, 0, null);
-					// SPECIAL CASE: this initial interest is more specific than the standard reading interests, so 
-					// it will not be recognized as requesting a specific segment (segment is not final component).
-					// However, until this initial interest is satisfied, there is no processing requiring standard
-					// segment format, and when the first (satisfying) data arrives this interest will be immediately 
-					// discarded.  The returned data (ContentObject) explicit name will never include the implicit 
-					// digest and so is processed correctly regardless of the interest that retrieved it.
+					readInterest = Interest.constructInterest(digestFreeTarget, _server.getExcludes(), null, 1, 1, null);
 				}
 				_server.getDataHandler().addSync(digestFreeTarget);
 				_server.doSync(interest, readInterest);
