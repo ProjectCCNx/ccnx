@@ -17,17 +17,14 @@
 
 package org.ccnx.ccn.impl.support;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.PrintStream;
 import java.io.Serializable;
 import java.rmi.NoSuchObjectException;
 import java.rmi.Remote;
@@ -38,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
@@ -103,7 +101,11 @@ public class Daemon {
 		public void run() {
 			System.out.println("Attempt to contact daemon " + _daemonName + " timed out");
 			Log.info("Attempt to contact daemon " + _daemonName + " timed out");
-			cleanupDaemon(_daemonName, _pid);
+			try {
+				cleanupDaemon(_daemonName, _pid);
+			} catch (IOException e) {
+				Log.logStackTrace(Level.WARNING, e);
+			}
 			System.exit(1);
 		}
 		
@@ -115,7 +117,7 @@ public class Daemon {
 	protected class ShutdownHook extends Thread {
 		public void run() {
 			try {
-				_daemon.rmRMIFile();
+				_daemon.rmRMIFile(SystemConfiguration.getPID());
 			} catch (IOException e) {}
 		}
 	}
@@ -419,50 +421,65 @@ public class Daemon {
 				fos.close();
 			}
 		}
+		
+		// Now actually start the daemon
+		String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
+		boolean doAppend = true;
+		DaemonOutput output = null;
+
 		Log.info("Starting daemon with command line: " + cmd);
 		
 		ProcessBuilder pb = new ProcessBuilder(argList);
 		pb.redirectErrorStream(true);
+		if (null != outputFile) {
+			doAppend = false;
+		}
+		
 		Process child = pb.start();
 		
-		String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
-		if (outputFile != null) {
-			new DaemonOutput(child.getInputStream(), new FileOutputStream(outputFile, false));
-		} else {
-			new DaemonOutput(child.getInputStream(), new FileOutputStream(DEFAULT_OUTPUT_STREAM));
+		if (null != outputFile) {
+			FileOutputStream fos = new FileOutputStream(outputFile, doAppend);
+			output = new DaemonOutput(child.getInputStream(), fos);
 		}
 		
 		// Initial RMI file never named with PID to permit
 		// us to read it without knowing PID.  After 
 		// daemon operation is started below the file 
 		// will be renamed with PID if possible
+		// TODO - does this loop really make sense? Shouldn't the name change happen quickly or not at all?
 		while (!getRMIFile(daemonName, null).exists()) {
+			InputStream childMsgs = null;
 			try {
 				Thread.sleep(1000);
 				
-				// this should throw an exception
 				try {
-					InputStream childMsgs = child.getErrorStream();
+					if (null == outputFile) {
+						childMsgs = child.getInputStream();
+					} else
+						childMsgs = new FileInputStream(outputFile);
+					
+					// The following should throw an IllegalThreadStateException in child.exitValue()
+					// If it doesn't then the startup failed
 					int exitValue = child.exitValue();
+					
 					// if we get here, the child has exited
+					// Read and output to the console any messages from the child to help diagnose the problem
 					Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					byte[] childMsgBytes = new byte[childMsgs.available()];
 					childMsgs.read(childMsgBytes);;
 					String childOutput = new String(childMsgBytes);
-					childMsgs = child.getInputStream();
-					childMsgBytes = new byte[childMsgs.available()];
-					childMsgs.read(childMsgBytes);
-					childOutput += new String(childMsgBytes);
 					System.err.println("Messages from the child were: \"" + childOutput + "\"");
 					return;
-				} catch (IllegalThreadStateException e) {
-				}
-
-			} catch (InterruptedException e) {
-			}
+				} catch (IllegalThreadStateException e) {}	// The daemon successfully started
+				  finally {
+					if (null != childMsgs)
+						childMsgs.close();
+				  }
+			} catch (InterruptedException e) {}
 		}
 
+		// The daemon has started running - now start its operation
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, null)));
 		DaemonListener l;
 		
@@ -477,22 +494,17 @@ public class Daemon {
 		System.out.println("Started daemon " + daemonName + "." + (null == childpid ? "" : " PID " + childpid));
 		Log.info("Started daemon " + daemonName + "." + (null == childpid ? "" : " PID " + childpid));
 		
-		/*
-		 * To log output at this level we have to keep running until the daemon exits
-		 */
+		// To log output at this level we have to keep running until the daemon exits
 		if (outputFile != null) {
-			boolean running = true;
-			while (running) {
+			boolean interrupted = false;
+			do {
 				try {
-					Thread.sleep(1000);
-					child.exitValue();
-					running = false;
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IllegalThreadStateException e) {}
-			}
+					child.waitFor();
+				} catch (InterruptedException e) {interrupted = true;}
+			} while (!interrupted);
 		}
+		if (null != output)
+			output.close();
 	}
 
 	protected static void stopDaemon(Daemon daemon, String pid) throws FileNotFoundException, IOException, ClassNotFoundException {
@@ -526,11 +538,11 @@ public class Daemon {
 		}
 	}
 	
-	protected static void cleanupDaemon(String daemonName, String pid) {
+	protected static void cleanupDaemon(String daemonName, String pid) throws IOException {
 		// looks like the RMI file is still here, but the daemon is gone. let's delete the file, then,
 		System.out.println("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
 		Log.info("Daemon " + daemonName + " seems to have died some other way, cleaning up state...");
-		getRMIFile(daemonName, pid).delete();
+		_daemon.rmRMIFile(pid);
 	}
 
 	protected static void signalDaemon(String daemonName, String sigName, String pid) throws FileNotFoundException, IOException, ClassNotFoundException {
@@ -585,8 +597,12 @@ public class Daemon {
 		return File.createTempFile(prefix, null, new File(System.getProperty("user.home")));
 	}
 	
-	protected void rmRMIFile() throws IOException {
-		getRMIFile(_daemonName, SystemConfiguration.getPID()).delete();
+	/**
+	 * Remove the RMIFile when you don't know the PID
+	 * @throws IOException
+	 */
+	protected void rmRMIFile(String pid) throws IOException {
+		getRMIFile(_daemonName, pid).delete();
 	}
 
 	protected static void runDaemon(Daemon daemon, String args[]) throws IOException {
@@ -705,40 +721,6 @@ public class Daemon {
 		}
 	}
 
-
-	/**
-	 * Utility classes if your daemon requires a password.
-	 * @param target
-	 * @return
-	 */
-	protected static String getPassword(String target) {
-
-		System.out.print("Password for " + target);
-
-		String password = readOnePassword(); // in.readLine();
-
-		return password;
-	}
-
-
-	protected static class Eraser extends Thread {
-		PrintStream out;
-		boolean finish = false;
-		public Eraser(PrintStream out) {
-			this.out = out;
-		}
-		public void run() {
-			while (!finish) {
-				out.print("\010 ");
-				try {
-					sleep(10);
-				} catch (InterruptedException inte) {
-					finish = true;
-				}
-			}
-		}
-	}
-	
 	public Object getStatus(String daemonName, String type) throws FileNotFoundException, IOException, ClassNotFoundException {
 		if (!getRMIFile(daemonName, _pid).exists()) {
 			System.out.println("Daemon " + daemonName + " does not appear to be running.");
@@ -755,61 +737,5 @@ public class Daemon {
 		}
 		
 		return l.status(type);
-	}
-
-	/**
-	 * reads one password.
-	 */
-	public static String readOnePassword() {
-		// System.out.print("\033[00;40;30m");
-
-		Eraser eraser = new Eraser(System.out);
-		eraser.start();
-
-		BufferedReader in =
-			new BufferedReader(new InputStreamReader(System.in));
-		String password = "";
-
-		try {
-			password = in.readLine();
-		} catch (IOException ioe) {
-		}
-
-		eraser.interrupt();
-		try {
-			Thread.sleep(100);
-		} catch (InterruptedException inte) {
-		}
-
-		// System.out.print("\033[0m");
-
-		return password;
-	}
-
-	/**
-	 * reads a password, and then prompts to re-enter
-	 * password. makes sure both entered passwords are the same
-	 */
-	public static String readNewPassword() {
-
-		boolean newtry = false;
-		boolean done = false;
-		String password1, password2;
-
-		do {		
-			if(newtry) {
-				System.out.print("Oops. The passwords didn't match. Type your password again: ");
-			}
-			password1 = readOnePassword();
-			System.out.print("Reenter password: ");
-			password2 = readOnePassword();
-			if (password1.equals(password2)) {
-				done = true;
-			} else {
-				newtry = true;
-			}
-		} while(!done);
-
-		return password2;
 	}
 }
