@@ -13,13 +13,13 @@
             </intent-filter>
         </activity>
         
-        <service android:name=".ccnd.CcndService" android:process="globalCCNxCcnd">
+        <service android:name=".ccnd.CcndService">
 	        <intent-filter>
 	        	<action android:name="org.ccnx.android.service.ccnd.SERVICE"></action>
 	        </intent-filter>    
 		</service>
 		
-		<service android:name=".repo.RepoService" android:process="globalCCNxRepo">
+		<service android:name=".repo.RepoService">
 	        <intent-filter>
 	        	<action android:name="org.ccnx.android.service.repo.SERVICE"></action>
 	        </intent-filter>    
