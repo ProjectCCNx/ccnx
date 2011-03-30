@@ -172,8 +172,8 @@ public class InterestTable<V> {
 		if (null == interest.name()) {
 			throw new NullPointerException("InterestTable may not contain Interest with null name");
 		}
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("adding interest {0}", interest);
+		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "adding interest {0}", interest);
 		Holder<V> holder = new InterestHolder<V>(interest, value);
 		add(holder);
 	}
@@ -188,8 +188,8 @@ public class InterestTable<V> {
 		if (null == name) {
 			throw new NullPointerException("InterestTable may not contain null name");
 		}
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("adding name {0}", name);
+		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "adding name {0}", name);
 		Holder<V> holder = new NameHolder<V>(name, value);
 		add(holder);
 	}
@@ -228,8 +228,8 @@ public class InterestTable<V> {
 
 	protected Holder<V> getMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("name: {0} target: {1} possible matches: {2}", name, target.name(), ((null == list) ? 0 : list.size()));
+		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "name: {0} target: {1} possible matches: {2}", name, target.name(), ((null == list) ? 0 : list.size()));
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -252,8 +252,8 @@ public class InterestTable<V> {
 	 * @return
 	 */
 	protected List<Holder<V>> getAllMatchByName(ContentName name, ContentObject target) {
-		if(Log.isLoggable(Level.FINEST))
-			Log.finest("name: {0} target: {1}", name, target.name());
+		if(Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "name: {0} target: {1}", name, target.name());
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
 		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
 		if (null != list) {
@@ -270,8 +270,8 @@ public class InterestTable<V> {
 	}
 
 	protected Holder<V> removeMatchByName(ContentName name, ContentObject target) {
-		if(Log.isLoggable(Level.FINEST))
-			Log.finest("name: {0} target: {1}", name, target.name());
+		if(Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "name: {0} target: {1}", name, target.name());
 		LongestFirstContentName lfcn = new LongestFirstContentName(name);
 		List<Holder<V>> list = _contents.get(lfcn);
 		if (null != list) {
@@ -417,8 +417,8 @@ public class InterestTable<V> {
 	 * @return Entry of longest match if any, null if no match
 	 */
 	public Entry<V> getMatch(ContentObject target) {
-		if(Log.isLoggable(Level.FINEST))
-			Log.finest("target: {0}", target.name());
+		if(Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "target: {0}", target.name());
 		Entry<V> match = null;
 		for (LongestFirstContentName name : _contents.keySet()) {
 			Entry<V> found = getMatchByName(name, target);
@@ -437,8 +437,8 @@ public class InterestTable<V> {
 	 * @return 			list of all matching values
 	 */
 	public List<V> getValues(ContentObject target) {
-		if(Log.isLoggable(Level.FINEST))
-			Log.finest("target: {0}", target.name());
+		if(Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "target: {0}", target.name());
 
 		List<V> result = new ArrayList<V>();
 		List<Entry<V>> matches = getMatches(target);
@@ -461,8 +461,8 @@ public class InterestTable<V> {
 	 * @return List of matches, empty if no match
 	 */
 	public List<Entry<V>> getMatches(ContentObject target) {
-		if(Log.isLoggable(Level.FINEST))
-			Log.finest("target object name: {0}", target.name());
+		if(Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "target object name: {0}", target.name());
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		if (null != target) {
@@ -485,8 +485,8 @@ public class InterestTable<V> {
 	 * @return Entry of longest match if any, null if no match
 	 */
 	public V getValue(ContentName target) {
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("target: {0}", target);
+		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "target: {0}", target);
 
 		Entry<V> match = getMatch(target);
 		if (null != match) {
@@ -505,8 +505,8 @@ public class InterestTable<V> {
 	 * @return			longest matching entry or null if none found
 	 */
 	public Entry<V> getMatch(ContentName target) {
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("target: {0}", target);
+		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "target: {0}", target);
 
 		Entry<V> match = null;
 		for (LongestFirstContentName name : _contents.keySet()) {
@@ -524,8 +524,8 @@ public class InterestTable<V> {
 	 * @return 			list of values associated with this ContentName
 	 */
 	public List<V> getValues(ContentName target) {
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("target: {0}", target);
+		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "target: {0}", target);
 
 		List<V> result = new ArrayList<V>();
 		List<Entry<V>> matches = getMatches(target);
@@ -546,8 +546,8 @@ public class InterestTable<V> {
 	 * @return List of matches ordered from longest match to shortest, empty if no match
 	 */
 	public List<Entry<V>> getMatches(ContentName target) {
-		if (Log.isLoggable(Level.FINEST))
-			Log.finest("target: {0}", target);
+		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "target: {0}", target);
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		for (LongestFirstContentName name : _contents.keySet()) {
@@ -607,8 +607,8 @@ public class InterestTable<V> {
 		Entry<V> match = null;
 		if (null != target) {
 			ContentName matchName = null;
-			if(Log.isLoggable(Level.FINEST))
-				Log.finest("removeMatch: looking for match to target {0} among {1} possibilities.", target.name(), _contents.keySet().size());				
+			if(Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+				Log.finest(Log.FAC_ENCODING, "removeMatch: looking for match to target {0} among {1} possibilities.", target.name(), _contents.keySet().size());				
 			for (LongestFirstContentName name : _contents.keySet()) {
 				Entry<V> found = getMatchByName(name, target);
 				if (null != found) {
