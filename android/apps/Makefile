@@ -15,7 +15,7 @@ export
 
 #
 
-SUBDIRS := CCNx-Android-Chat
+SUBDIRS := CCNx-Android-Chat CCNx-Android-StartExamples
 SUBDIRS_clean := $(addsuffix .clean,$(SUBDIRS))
 SUBDIRS_distclean := $(addsuffix .distclean,$(SUBDIRS))
 
