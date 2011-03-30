@@ -14,7 +14,7 @@
 ############
 # User-settable things
 
-APK_NAME := CCNx-Android-StartExamples-debug.apk
+APK_NAME := CCNx-Android-StartupExamples-debug.apk
 BIN := bin_ant
 GEN := gen_ant
 
