@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.NotYetConnectedException;
 import java.util.ArrayList;
-import java.util.SortedMap;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
@@ -499,7 +498,7 @@ public class CCNNetworkManager implements Runnable {
 				// Data is already pending, this interest is already consumed, cannot add obj
 				_stats.increment(StatsEnum.ContentObjectsIgnored);
 				if (Log.isLoggable(Log.FAC_NETMANAGER, Level.WARNING))
-					Log.warning(Log.FAC_NETMANAGER, "{0} is not handled - data already pending", obj);
+					Log.warning(Log.FAC_NETMANAGER, "{0} is not handled - data already pending", obj.name());
 				return false;
 			}
 		}
