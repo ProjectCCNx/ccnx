@@ -201,6 +201,8 @@ public class CCNNetworkChannel extends InputStream {
 		} else {
 			throw new IOException("NetworkChannel: invalid protocol specified");
 		}
+		
+		_ncReadSelector.close();
 	}
 	
 	/**
