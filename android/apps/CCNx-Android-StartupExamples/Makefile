@@ -85,7 +85,6 @@ clean: simpleclean
 simpleclean:
 	rm -rf $(BIN) $(GEN)
 	rm -rf libs/*
-	rm -f default.properties
 	rm -f local.properties
 
 distclean: environment simpleclean
