@@ -71,7 +71,7 @@ install:
 	adb install -r $(BIN)/$(APK_NAME)
 
 uninstall:
-	adb uninstall org.ccnx.android.apps.chat
+	adb uninstall org.ccnx.android.examples.startup
 
 environment:
 ifeq ($(ANDROID_SDK),)

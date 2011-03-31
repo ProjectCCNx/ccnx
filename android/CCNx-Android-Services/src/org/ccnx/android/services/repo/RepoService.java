@@ -38,7 +38,7 @@ import android.util.Log;
  * CCNxService specialization for the Repository.
  */
 public final class RepoService extends CCNxService {
-	public static final String CLASS_TAG = "CCNx Repo Service"; 
+	public static final String CLASS_TAG = "CCNxRepoService"; 
 	
 	private RepositoryServer _server=null;
 	private RepositoryStore _repo=null;

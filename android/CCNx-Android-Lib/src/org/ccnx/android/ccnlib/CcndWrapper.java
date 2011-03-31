@@ -25,7 +25,7 @@ import android.util.Log;
  * This is the "client side" interface to the ccnd service.
  */
 public final class CcndWrapper extends CCNxWrapper {
-	public static final String CLASS_TAG = "CCNx CCNd Wrapper";
+	public static final String CLASS_TAG = "CCNxCCNdWrapper";
 	
 	public static final String OPTION_LOG_LEVEL_DEFAULT = "1";
 	

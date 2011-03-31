@@ -16,9 +16,13 @@ public class StartScreen extends Activity implements OnClickListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         
-		Button button = (Button) findViewById(R.id.btnStartBlocking);
+		Button button;
+		
+		button = (Button) findViewById(R.id.btnStartBlocking);
 		button.setOnClickListener(this);
 
+		button = (Button) findViewById(R.id.btnStartNonBlocking);
+		button.setOnClickListener(this);
     }
     
 	public void onClick(View v) {

@@ -19,7 +19,7 @@ import android.util.Log;
 import android.widget.TextView;
 
 public class BlockingStartup extends StartupBase {
-	protected String TAG="ChatScreen";
+	protected String TAG="BlockingStartup";
 
 	// ===========================================================================
 	// Process control Methods
@@ -45,13 +45,22 @@ public class BlockingStartup extends StartupBase {
 	@Override
 	public void onResume() {
 		super.onResume();
+		Log.i(TAG,"onResume");
 	}
 
 	@Override
 	public void onPause() {
 		super.onPause();
+		Log.i(TAG,"onPause");
 	}
 
+	@Override
+	public void onStop() {
+		super.onPause();
+		Log.i(TAG,"onStop");
+		_worker.stop();
+	}
+	
 	@Override
 	public void onDestroy() {
 		Log.i(TAG, "onDestroy()");
@@ -81,7 +90,7 @@ public class BlockingStartup extends StartupBase {
 
 	// ===============================================
 	protected class BlockingWorker implements Runnable, CCNxServiceCallback {
-		protected final static String TAG="ChatWorker";
+		protected final static String TAG="BlockingWorker";
 
 		/**
 		 * Create a worker thread to handle all the CCNx calls.
@@ -100,6 +109,10 @@ public class BlockingStartup extends StartupBase {
 			Log.i(TAG,"getDir = " + ff.getAbsolutePath());
 			UserConfiguration.setUserConfigurationDirectory( ff.getAbsolutePath() );
 
+			// Do these CCNx operations after we created ChatWorker
+			ScreenOutput("User name = " + UserConfiguration.userName());
+			ScreenOutput("ccnDir    = " + UserConfiguration.userConfigurationDirectory());
+			ScreenOutput("Waiting for CCN Services to become ready");
 		}
 
 		/**
@@ -132,15 +145,15 @@ public class BlockingStartup extends StartupBase {
 		@Override
 		public void run() {
 			// Startup CCNx in a blocking call
+			postToUI("Starting CCNx in blocking mode");
+
 			if( !initializeCCNx() ) {
 				Log.e(TAG, "Could not start CCNx services!");
-			} else {
-				Log.i(TAG,"Starting ccnChatNet.listen() loop");
-
-
-			}
+			} 
 
 			// wait for shutdown
+			postToUI("Worker thread now blocking until exit");
+
 			while( _latch.getCount() > 0 ) {
 				try {
 					_latch.await();
@@ -182,6 +195,7 @@ public class BlockingStartup extends StartupBase {
 					postToUI("Calling SimpleFaceControl");
 					SimpleFaceControl.getInstance().openMulicastInterface();
 					postToUI("Finished SimpleFaceControl");
+					postToUI("Finished CCNx Initialization");
 
 				} catch (CCNDaemonException e) {
 					e.printStackTrace();

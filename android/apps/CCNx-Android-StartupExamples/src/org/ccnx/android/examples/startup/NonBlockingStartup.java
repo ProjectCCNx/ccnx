@@ -19,7 +19,7 @@ import android.util.Log;
 import android.widget.TextView;
 
 public class NonBlockingStartup extends StartupBase {
-	protected String TAG="ChatScreen";
+	protected String TAG="NonBlockingStartup";
 
 	// ===========================================================================
 	// Process control Methods
@@ -30,7 +30,7 @@ public class NonBlockingStartup extends StartupBase {
 		super.onCreate(savedInstanceState);
 
 		TextView title = (TextView) findViewById(R.id.tvTitle);
-		title.setText("NonBlockingStartup (not implemented yet)");
+		title.setText("NonBlockingStartup");
 	}
 
 	@Override
@@ -81,7 +81,7 @@ public class NonBlockingStartup extends StartupBase {
 
 	// ===============================================
 	protected class NonBlockingWorker implements Runnable, CCNxServiceCallback {
-		protected final static String TAG="ChatWorker";
+		protected final static String TAG="NonBlockingWorker";
 
 		/**
 		 * Create a worker thread to handle all the CCNx calls.
@@ -136,15 +136,13 @@ public class NonBlockingStartup extends StartupBase {
 		@Override
 		public void run() {
 			// Startup CCNx in a blocking call
-			if( !initializeCCNx() ) {
-				Log.e(TAG, "Could not start CCNx services!");
-			} else {
-				Log.i(TAG,"Starting ccnChatNet.listen() loop");
-
-
-			}
+			postToUI("Starting CCNx in non-blocking mode");
+			initializeNonBlockingCCNx();
+			
 
 			// wait for shutdown
+			postToUI("Worker thread now blocking until exit");
+
 			while( _latch.getCount() > 0 ) {
 				try {
 					_latch.await();
@@ -152,7 +150,8 @@ public class NonBlockingStartup extends StartupBase {
 				}
 			}
 			
-			Log.i(TAG, "service_run() exits");		}
+			Log.i(TAG, "run() exits");		
+		}
 
 		// ==============================================================================
 		// Internal implementation
@@ -163,13 +162,13 @@ public class NonBlockingStartup extends StartupBase {
 		/*********************************************/
 		// These are all run in the CCN thread
 
-		private boolean initializeCCNx() {
+		private void initializeNonBlockingCCNx() {
 			_ccnxService = new CCNxServiceControl(_context);
 			_ccnxService.registerCallback(this);
 			_ccnxService.setCcndOption(CCND_OPTIONS.CCND_DEBUG, "1");
 			_ccnxService.setRepoOption(REPO_OPTIONS.REPO_DEBUG, "WARNING");
-			postToUI("calling _ccnxService.startAll");
-			return _ccnxService.startAll();
+			postToUI("calling startAllInBackground");
+			_ccnxService.startAllInBackground();
 		}
 
 		/**
@@ -186,6 +185,7 @@ public class NonBlockingStartup extends StartupBase {
 					postToUI("Calling SimpleFaceControl");
 					SimpleFaceControl.getInstance().openMulicastInterface();
 					postToUI("Finished SimpleFaceControl");
+					postToUI("Finished CCNx Initialization");
 
 				} catch (CCNDaemonException e) {
 					e.printStackTrace();

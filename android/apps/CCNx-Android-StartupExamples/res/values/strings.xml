@@ -4,5 +4,5 @@
     This app shows the different ways of starting CCNx services and of working with the
     CCNx-Android-Lib and CCNx-Android-Services libraries.
     </string>
-    <string name="app_name">CCNx-Android-StartupExamples</string>
+    <string name="app_name">CCNx StartupExamples</string>
 </resources>

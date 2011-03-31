@@ -30,7 +30,7 @@ import android.util.Log;
  * as interact with them for configuration and monitoring.
  */
 public final class CCNxServiceControl {
-	private final static String TAG = "CCNx Service Control";
+	private final static String TAG = "CCNxServiceControl";
 	
 	CcndWrapper ccndInterface;
 	RepoWrapper repoInterface;
@@ -44,6 +44,7 @@ public final class CCNxServiceControl {
 	CCNxServiceCallback ccndCallback = new CCNxServiceCallback(){
 		@Override
 		public void newCCNxStatus(SERVICE_STATUS st) {
+			Log.i(TAG,"ccndCallback ccndStatus = " + st.toString());
 			ccndStatus = st;
 			switch(ccndStatus){
 			case SERVICE_OFF:
@@ -65,6 +66,7 @@ public final class CCNxServiceControl {
 	CCNxServiceCallback repoCallback = new CCNxServiceCallback(){
 		@Override
 		public void newCCNxStatus(SERVICE_STATUS st) {
+			Log.i(TAG,"repoCallback repoStatus = " + st.toString());
 			repoStatus = st;	
 			switch(repoStatus){
 			case SERVICE_OFF:
@@ -111,7 +113,9 @@ public final class CCNxServiceControl {
 	 */
 	public boolean startAll(){
 		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_INITIALIZING);
+		Log.i(TAG,"startAll waitng for startService");
 		ccndInterface.startService();
+		Log.i(TAG,"startAll waitng for waitForReady");
 		ccndInterface.waitForReady();
 		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_CCND_DONE);
 		if(!ccndInterface.isReady()){
@@ -191,6 +195,7 @@ public final class CCNxServiceControl {
 	}
 	
 	public void newCCNxAPIStatus(SERVICE_STATUS s){
+		Log.d(TAG,"newCCNxAPIStatus sending " + s.toString());
 		try {
 			if(_cb != null) {
 				_cb.newCCNxStatus(s);

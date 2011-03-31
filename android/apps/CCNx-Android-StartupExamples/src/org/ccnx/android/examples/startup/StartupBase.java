@@ -26,7 +26,6 @@ public abstract class StartupBase extends Activity {
 		setContentView(R.layout.starter);
 
 		tv = (TextView) findViewById(R.id.tvOutput);
-		tv.setText("");
 		sv = (ScrollView) findViewById(R.id.svOutput);
 
 		ScreenOutput("Starting the CCNx thread\n");
@@ -36,6 +35,9 @@ public abstract class StartupBase extends Activity {
 	@Override
 	public void onStart() {
 		super.onStart();	
+		tv.setText("");
+		_lastScreenOutput = System.currentTimeMillis();
+		_firstScreenOutput = _lastScreenOutput;
 	}
 
 	@Override
@@ -94,6 +96,7 @@ public abstract class StartupBase extends Activity {
 	protected ScrollView sv = null;
 	protected SimpleDateFormat _dateformat = new SimpleDateFormat("HH:mm:ss.S");
 	protected long _lastScreenOutput = -1;
+	protected long _firstScreenOutput = -1;
 	protected Object _outputLock = new Object();
 
 	/**
@@ -103,16 +106,22 @@ public abstract class StartupBase extends Activity {
 		synchronized(_outputLock) {
 			if( _lastScreenOutput < 0 )
 				_lastScreenOutput = System.currentTimeMillis();
+			if( _firstScreenOutput < 0 )
+				_firstScreenOutput = _lastScreenOutput;
 			
 			Date now = new Date();
 			long delta = now.getTime() - _lastScreenOutput;
 			double sec = delta / 1000.0;
 			
+			delta = now.getTime() - _firstScreenOutput;
+			double totalsec = delta / 1000.0;
+			
 			_lastScreenOutput = now.getTime();
 			
-			String text = String.format("%s (delta %.3f sec)\n%s\n\n",
+			String text = String.format("%s (delta %.3f, total %.3f sec)\n%s\n\n",
 					_dateformat.format(now),
 					sec,
+					totalsec,
 					s);
 			
 			tv.append(text);
