@@ -48,7 +48,7 @@ public class FileBinaryXMLDictionary extends BinaryXMLDictionary {
 		try {
 			loadDictionaryFile(DEFAULT_DICTIONARY_RESNAME);
 		} catch (IOException fe) {
-			Log.warning("Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_RESNAME + ":" + 
+			Log.warning(Log.FAC_ENCODING, "Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_RESNAME + ":" + 
 					fe.getMessage());
 		}
 	}
