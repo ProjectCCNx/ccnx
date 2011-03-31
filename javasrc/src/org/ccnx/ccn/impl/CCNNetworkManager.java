@@ -112,7 +112,7 @@ public class CCNNetworkManager implements Runnable {
 	protected ThreadPoolExecutor _threadpool = null; // pool service for callback threads
 
 	protected CCNNetworkChannel _channel = null; // for use by run thread only!
-	protected boolean _run = true;
+	protected volatile boolean _run = true;
 
 	// protected ContentObject _keepalive; 
 	protected FileOutputStream _tapStreamOut = null;
@@ -1333,9 +1333,11 @@ public class CCNNetworkManager implements Runnable {
 					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
-				} // for interests
+				}  else { // for interests
+					_stats.increment(StatsEnum.ReceiveUnknown);
+				}
 			} catch (Exception ex) {
-				_stats.increment(StatsEnum.ReceiveUnknown);
+				_stats.increment(StatsEnum.ReceiveErrors);
 				Log.severe(Log.FAC_NETMANAGER, "Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _port);
                 Log.warningStackTrace(ex);
 			}
@@ -1490,6 +1492,7 @@ public class CCNNetworkManager implements Runnable {
 		ReceiveObject ("objects", "Receive count of ContentObjects from channel"),
 		ReceiveInterest ("interests", "Receive count of Interests from channel"),
 		ReceiveUnknown ("calls", "Receive count of unknown type from channel"),
+		ReceiveErrors ("errors", "Number of errors from the channel in run() loop"),
 		
 		ContentObjectsIgnored ("ContentObjects", "The number of ContentObjects that are never handled"),
 		;
