@@ -664,7 +664,7 @@ public class Log {
 				o = "(null)";
 			}
 			int index = msg.indexOf("{" + i++ + "}");
-			if (index > 0) {
+			if (index >= 0) {
 				StringBuffer sb = new StringBuffer(msg.substring(0, index));
 				sb.append(o);
 				sb.append(msg.substring(index + 3));
