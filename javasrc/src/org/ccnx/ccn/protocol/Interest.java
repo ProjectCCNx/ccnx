@@ -241,7 +241,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (null != exclude()) {
 			if (exclude().match(name.component(name().count()))) {
 				if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
-				Log.finest(Log.FAC_ENCODING, "Interest match failed. {0} has been excluded", name);
+					Log.finest(Log.FAC_ENCODING, "Interest match failed. {0} has been excluded", name);
 				return false;
 			}
 		}
@@ -254,7 +254,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			// Should this be more general?
 			// TODO DKS handle issuer
 			if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
-			Log.finest(Log.FAC_ENCODING, "Interest match handed off to trust manager for name: {0}", name);
+				Log.finest(Log.FAC_ENCODING, "Interest match handed off to trust manager for name: {0}", name);
 			return TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID);
 		}
 		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
@@ -511,8 +511,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		try {
 			decoder.readEndElement();
 		} catch (ContentDecodingException e) {
-			if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
-				Log.info(Log.FAC_ENCODING, "Catching exception reading Interest end element, and moving on. Waiting for schema updates...");
+			Log.info(Log.FAC_ENCODING, "Catching exception reading Interest end element, and moving on. Waiting for schema updates...");
 		}
 	}
 

@@ -113,8 +113,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			Long dictionaryVal = stringToTag(tag);
 			
 			if (null == dictionaryVal) {
-				if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
-					Log.info(Log.FAC_ENCODING, "Unexpected: tag found that is not in our dictionary: " + tag);
+				Log.info(Log.FAC_ENCODING, "Unexpected: tag found that is not in our dictionary: " + tag);
 				// not in dictionary
 				// compressed format wants length of tag represented as length-1
 				// to save that extra bit, as tag cannot be 0 length.

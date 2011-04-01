@@ -73,8 +73,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 			String decodedTag = null;
 			
 			if (tv.type() == BinaryXMLCodec.XML_TAG) {
-				if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
-					Log.info(Log.FAC_ENCODING, "Unexpected: got tag in readStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
+				Log.info(Log.FAC_ENCODING, "Unexpected: got tag in readStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
 				// Tag value represents length-1 as tags can never be empty.
 				decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 				
@@ -110,8 +109,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 			Long decodedTag = null;
 
 			if (tv.type() == BinaryXMLCodec.XML_TAG) {
-				if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
-					Log.info(Log.FAC_ENCODING, "Unexpected: got tag in readStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
+				Log.info(Log.FAC_ENCODING, "Unexpected: got tag in readStartElement; looking for tag " + startTag + " got length: " + (int)tv.val()+1);
 				// Tag value represents length-1 as tags can never be empty.
 				String strTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 				
@@ -175,7 +173,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 			}
 
 		} catch (IOException e) {
-			Log.logStackTrace(Log.FAC_ENCODING, Level.INFO, e);
+			Log.logStackTrace(Log.FAC_ENCODING, Level.WARNING, e);
 			throw new ContentDecodingException("readStartElement", e);
 		}
 	}
@@ -199,8 +197,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 					// Tag value represents length-1 as tags can never be empty.
 					decodedTag = BinaryXMLCodec.decodeUString(_istream, (int)tv.val()+1);
 					
-					if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
-						Log.info(Log.FAC_ENCODING, "Unexpected: got text tag in peekStartElement; length: " + (int)tv.val()+1 + " decoded tag = " + decodedTag);
+					Log.info(Log.FAC_ENCODING, "Unexpected: got text tag in peekStartElement; length: " + (int)tv.val()+1 + " decoded tag = " + decodedTag);
 
 				} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
 					decodedTag = tagToString(tv.val());					
@@ -225,28 +222,25 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 					fos.close();
 				}
 				_istream.reset();
-				if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
-					Log.info(Log.FAC_ENCODING, "BinaryXMLDecoder: exception in peekStartElement, dumping offending object to file: " + tempFile.getAbsolutePath());
+				Log.info(Log.FAC_ENCODING, "BinaryXMLDecoder: exception in peekStartElement, dumping offending object to file: " + tempFile.getAbsolutePath());
 				throw e;
 				
 			} catch (IOException ie) {
-				if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO)) {
-					Log.info(Log.FAC_ENCODING, "IOException in BinaryXMLDecoder error handling: " + e.getMessage());
-					Log.logStackTrace(Log.FAC_ENCODING, Level.INFO, ie);
-				}
+				Log.warning(Log.FAC_ENCODING, "IOException in BinaryXMLDecoder error handling: " + e.getMessage());
+				Log.logStackTrace(Log.FAC_ENCODING, Level.WARNING, ie);
 				throw new ContentDecodingException("peekStartElement", e);
 
 			}
 		} catch (IOException e) {
-			Log.info(Log.FAC_ENCODING, "IOException in BinaryXMLDecoder: " + e.getMessage());
-			Log.logStackTrace(Log.FAC_ENCODING, Level.INFO, e);
+			Log.warning(Log.FAC_ENCODING, "IOException in BinaryXMLDecoder: " + e.getMessage());
+			Log.logStackTrace(Log.FAC_ENCODING, Level.WARNING, e);
 			throw new ContentDecodingException("peekStartElement", e);
 
 		} finally {
 			try {
 				_istream.reset();
 			} catch (IOException e) {
-				Log.logStackTrace(Log.FAC_ENCODING, Level.INFO, e);
+				Log.logStackTrace(Log.FAC_ENCODING, Level.WARNING, e);
 				throw new ContentDecodingException("Cannot reset stream! " + e.getMessage(), e);
 			}
 		}
@@ -274,9 +268,7 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 					
 					decodedTag = stringToTag(strTag);
 					
-					if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO)) {
-						Log.info(Log.FAC_ENCODING, "Unexpected: got text tag in peekStartElement; length: " + (int)tv.val()+1 + " decoded tag = " + decodedTag);
-					}
+					Log.info(Log.FAC_ENCODING, "Unexpected: got text tag in peekStartElement; length: " + (int)tv.val()+1 + " decoded tag = " + decodedTag);
 					
 				} else if (tv.type() == BinaryXMLCodec.XML_DTAG) {
 					decodedTag = tv.val();					
@@ -301,26 +293,25 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 					fos.close();
 				}
 				_istream.reset();
-				if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
-					Log.info(Log.FAC_ENCODING, "BinaryXMLDecoder: exception in peekStartElement, dumping offending object to file: " + tempFile.getAbsolutePath());
+				Log.info(Log.FAC_ENCODING, "BinaryXMLDecoder: exception in peekStartElement, dumping offending object to file: " + tempFile.getAbsolutePath());
 				throw e;
 				
 			} catch (IOException ie) {
-				Log.info(Log.FAC_ENCODING, "IOException in BinaryXMLDecoder error handling: " + e.getMessage());
-				Log.logStackTrace(Log.FAC_ENCODING, Level.INFO, e);
+				Log.warning(Log.FAC_ENCODING, "IOException in BinaryXMLDecoder error handling: " + e.getMessage());
+				Log.logStackTrace(Log.FAC_ENCODING, Level.WARNING, e);
 				throw new ContentDecodingException("peekStartElement", e);
 
 			}
 		} catch (IOException e) {
-			Log.info(Log.FAC_ENCODING, "IOException in BinaryXMLDecoder peekStartElementAsLong: " + e.getMessage());
-			Log.logStackTrace(Log.FAC_ENCODING, Level.INFO, e);
+			Log.warning(Log.FAC_ENCODING, "IOException in BinaryXMLDecoder peekStartElementAsLong: " + e.getMessage());
+			Log.logStackTrace(Log.FAC_ENCODING, Level.WARNING, e);
 			throw new ContentDecodingException("peekStartElement", e);
 
 		} finally {
 			try {
 				_istream.reset();
 			} catch (IOException e) {
-				Log.logStackTrace(Log.FAC_ENCODING, Level.INFO, e);
+				Log.logStackTrace(Log.FAC_ENCODING, Level.WARNING, e);
 				throw new ContentDecodingException("Cannot reset stream! " + e.getMessage(), e);
 			}
 		}

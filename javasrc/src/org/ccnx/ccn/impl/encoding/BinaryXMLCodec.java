@@ -182,8 +182,7 @@ public class BinaryXMLCodec implements XMLCodec {
 			--i;
 		}
 		if (val != 0) {
-			if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
-				Log.info(Log.FAC_ENCODING, "This should not happen: miscalculated encoding length, have " + val + " left.");
+			Log.warning(Log.FAC_ENCODING, "This should not happen: miscalculated encoding length, have " + val + " left.");
 		}
 		
 		return numEncodingBytes;
@@ -467,7 +466,8 @@ public class BinaryXMLCodec implements XMLCodec {
 		
 		// We elide the encoding of a 0-length UString
 		if ((null == ustring) || (ustring.length() == 0)) {
-			Log.finer("Eliding 0-length UString.");
+			if (Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
+				Log.finer(Log.FAC_ENCODING, "Eliding 0-length UString.");
 			return;
 		}
 		
