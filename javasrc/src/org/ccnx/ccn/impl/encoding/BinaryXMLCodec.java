@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -20,6 +20,7 @@ package org.ccnx.ccn.impl.encoding;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -181,7 +182,7 @@ public class BinaryXMLCodec implements XMLCodec {
 			--i;
 		}
 		if (val != 0) {
-			Log.info("This should not happen: miscalculated encoding length, have " + val + " left.");
+			Log.warning(Log.FAC_ENCODING, "This should not happen: miscalculated encoding length, have " + val + " left.");
 		}
 		
 		return numEncodingBytes;
@@ -328,7 +329,8 @@ public class BinaryXMLCodec implements XMLCodec {
 		
 		TypeAndVal tv = decodeTypeAndVal(istream);
 		if ((null == tv) || (XML_BLOB != tv.type())) { // if we just have closers left, will get back null
-			Log.finest("Expected BLOB, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
+			if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+				Log.finest(Log.FAC_ENCODING, "Expected BLOB, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
 			istream.reset();
 			return new byte[0];
 		}
@@ -386,7 +388,8 @@ public class BinaryXMLCodec implements XMLCodec {
 	public static void encodeBlob(OutputStream ostream, byte [] blob, int offset, int length) throws IOException {
 		// We elide the encoding of a 0-length blob
 		if ((null == blob) || (length == 0)) {
-			Log.finer("Eliding 0-length blob.");
+			if (Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
+				Log.finer(Log.FAC_ENCODING, "Eliding 0-length blob.");
 			return;
 		}
 		
@@ -411,7 +414,8 @@ public class BinaryXMLCodec implements XMLCodec {
 		
 		TypeAndVal tv = decodeTypeAndVal(istream);
 		if ((null == tv) || (XML_UDATA != tv.type())) { // if we just have closers left, will get back null
-			Log.finest("Expected UDATA, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
+			if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+				Log.finest(Log.FAC_ENCODING, "Expected UDATA, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
 			istream.reset();
 			return new String("");
 		}
@@ -462,7 +466,8 @@ public class BinaryXMLCodec implements XMLCodec {
 		
 		// We elide the encoding of a 0-length UString
 		if ((null == ustring) || (ustring.length() == 0)) {
-			Log.finer("Eliding 0-length UString.");
+			if (Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
+				Log.finer(Log.FAC_ENCODING, "Eliding 0-length UString.");
 			return;
 		}
 		
