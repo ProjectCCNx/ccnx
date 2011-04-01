@@ -182,14 +182,16 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 				Log.info(Log.FAC_REPO, "REPO: reading policy from network: {0}/{1}/{2}", REPO_NAMESPACE, localName, REPO_POLICY);
 			try {
 				riih = new RepositoryInternalInputHandler(this, km);
-				ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), localName);
-				PolicyObject policyObject = new PolicyObject(policyName, riih);
-				if (policyObject != null) {
-					_policy.update(policyObject.policyInfo(), false);
+				try {
+					ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), localName);
+					PolicyObject policyObject = new PolicyObject(policyName, riih);
+					if (policyObject != null) {
+						_policy.update(policyObject.policyInfo(), false);
+					}
+				} finally {
+					riih.close();
 				}
 			} catch (Exception e) {}	// presumably there is no currently stored policy file
-			if (null != riih)
-				riih.close();
 		}
 	}
 	
@@ -217,6 +219,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	}
 
 	public void shutDown() {
+		Log.info(Log.FAC_REPO, "RespositoryStoreBase.shutdown()");
 		if( null != _handle )
 			_handle.close();
 	}
