@@ -182,6 +182,9 @@ public class RepositoryServer implements CCNStatistics {
 	 * Stop serving requests
 	 */
 	public void shutDown() {
+		Log.info(Log.FAC_REPO, "Stopping service of repository requests");
+
+		// This closes our handle....
 		_repo.shutDown();
 		
 		if( _periodicTimer != null ) {

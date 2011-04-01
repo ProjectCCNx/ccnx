@@ -31,6 +31,9 @@ import org.ccnx.ccn.impl.support.Log;
  * 
  * A given keystore only has one of these, and it remembers what faces
  * you've created.
+ * 
+ * If you do not provide a handle, the default handle is used.  You will
+ * need to close that handle when your program exits.
  */
 public class SimpleFaceControl {
 	public final static String CCN_MULTICAST_IP = "224.0.23.170";

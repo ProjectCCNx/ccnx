@@ -3,6 +3,9 @@ package org.ccnx.android.examples.startup;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
+
 import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
@@ -52,6 +55,12 @@ public abstract class StartupBase extends Activity {
 
 	@Override
 	public void onDestroy() {
+		if( _handle != null ) {
+			// close the default handle, which was used by SimpleFaceControl
+			_handle.close();
+			KeyManager.closeDefaultKeyManager();
+			_handle = null;
+		}
 		super.onDestroy();
 	}
 
@@ -98,6 +107,7 @@ public abstract class StartupBase extends Activity {
 	protected long _lastScreenOutput = -1;
 	protected long _firstScreenOutput = -1;
 	protected Object _outputLock = new Object();
+	protected CCNHandle _handle;
 
 	/**
 	 * In the UI thread, post a message to the screen

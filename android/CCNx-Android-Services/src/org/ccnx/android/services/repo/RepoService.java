@@ -1,7 +1,7 @@
 /*
  * CCNx Android Services
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -136,7 +136,7 @@ public final class RepoService extends CCNxService {
 			Log.d(TAG,"Using repo debug     " + repo_debug);
 
 			// Set the log level for the Repo
-			Log.d(TAG, "Setting CCNx Logginf FAC_ALL to " + repo_debug);
+			Log.d(TAG, "Setting CCNx Logging FAC_ALL to " + repo_debug);
 			org.ccnx.ccn.impl.support.Log.setLevel(org.ccnx.ccn.impl.support.Log.FAC_ALL, Level.parse(repo_debug));
 			
 			synchronized(_lock) {
@@ -177,8 +177,11 @@ public final class RepoService extends CCNxService {
 	}
 	
 	protected void stopService(){
+		Log.i(TAG,"stopService() called");
+		
 		setStatus(SERVICE_STATUS.SERVICE_TEARING_DOWN);
 		if( _server != null ) {
+			Log.i(TAG,"calling _server.shutDown()");
 			_server.shutDown();
 			_server = null;
 		}
