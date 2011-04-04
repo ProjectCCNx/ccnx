@@ -197,6 +197,8 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		Integer faceID = null;
 		ContentName testCN = null;
 		PrefixRegistrationManager manager = null;
+		boolean failTest;
+		
 		try {
 			testCN = ContentName.fromURI(prefixToUse);
 		} catch (MalformedContentNameStringException e1) {
@@ -245,5 +247,36 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 			fail("Failed to delete prefix.  Reason: " + e.getMessage());
 		}
 	}
-
+	
+	@Test
+	public void testException() {
+		System.out.println();
+		System.out.println("PrefixRegistrationManagerTest.testException:");
+		ContentName testCN = null;
+		PrefixRegistrationManager manager = null;
+		boolean failTest;
+		
+		try {
+			testCN = ContentName.fromURI(prefixToUse);
+		} catch (MalformedContentNameStringException e1) {
+			e1.printStackTrace();
+			fail("ContentName.fromURI(prefixToUse) Failed.  Reason: " + e1.getMessage());
+		}
+		
+		try {
+			manager = new PrefixRegistrationManager(putHandle);
+		} catch (CCNDaemonException e) {
+			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			System.out.println("Failed to create PrefixRegistrationManager.");
+			e.printStackTrace();
+			fail("Failed to create PrefixRegistrationManager  Reason: " + e.getMessage());
+		}
+		try {
+			manager = new PrefixRegistrationManager(putHandle);
+			ForwardingEntry entry = manager.selfRegisterPrefix(testCN, new Integer(10024));
+			fail("Failed to receive exception CCNDaemonException on selfRegisterPrefix to non-existant faceID: " + entry.getFaceID());
+		} catch (CCNDaemonException e) {
+			System.out.println("Received expected exception " + e.getClass().getName() + ", message: " + e.getMessage());
+		}		
+	}
 }
