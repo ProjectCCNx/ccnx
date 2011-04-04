@@ -46,7 +46,7 @@ public class CCNHandle implements CCNBase {
 	protected KeyManager _keyManager = null;
 	
 	// To give each handle a unique ID so they can be debuged
-	protected final AtomicInteger _handleIdCount = new AtomicInteger(0);
+	protected final static AtomicInteger _handleIdCount = new AtomicInteger(0);
 	protected final int _handleId;
 	protected final String _handleIdString;
 	
