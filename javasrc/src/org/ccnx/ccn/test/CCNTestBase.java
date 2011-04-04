@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
@@ -48,7 +49,8 @@ public class CCNTestBase {
 	
 	protected static String _testDir;
 	
-	static {
+	@BeforeClass
+	public static void setUpBeforeClass() throws Exception {
 		try {
 			putHandle = CCNHandle.open();
 			getHandle = CCNHandle.open();
@@ -57,10 +59,7 @@ public class CCNTestBase {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
 
-	@BeforeClass
-	public static void setUpBeforeClass() throws Exception {
 		Random rnd = new Random();
 		byte [] fakeSigBytes = new byte[128];
 		byte [] publisher = new byte[32];
@@ -82,5 +81,6 @@ public class CCNTestBase {
 	public static void tearDownAfterClass() throws Exception {
 		putHandle.close();
 		getHandle.close();
+		KeyManager.closeDefaultKeyManager();
 	}
 }
