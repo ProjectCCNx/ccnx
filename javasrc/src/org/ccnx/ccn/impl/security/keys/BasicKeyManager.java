@@ -261,6 +261,9 @@ public class BasicKeyManager extends KeyManager {
 	 * reopen them when they are next needed.
 	 */
 	public synchronized void close() {
+		if( Log.isLoggable(Log.FAC_KEYS, Level.FINE) )
+			Log.fine(Log.FAC_KEYS, "BasicKeyManager.close()");
+		
 		_handle.close();
 		try {
 			saveSecureKeyCache();
