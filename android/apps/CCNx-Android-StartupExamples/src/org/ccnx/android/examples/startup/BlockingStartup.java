@@ -2,8 +2,8 @@ package org.ccnx.android.examples.startup;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.util.concurrent.CountDownLatch;
-import java.util.logging.Level;
 
 import org.ccnx.android.ccnlib.CCNxConfiguration;
 import org.ccnx.android.ccnlib.CCNxServiceCallback;
@@ -11,12 +11,9 @@ import org.ccnx.android.ccnlib.CCNxServiceControl;
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.CcndWrapper.CCND_OPTIONS;
 import org.ccnx.android.ccnlib.RepoWrapper.REPO_OPTIONS;
-import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
-import org.ccnx.ccn.profiles.ccnd.SimpleFaceControl;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -25,7 +22,6 @@ import android.widget.TextView;
 
 public class BlockingStartup extends StartupBase {
 	protected String TAG="BlockingStartup";
-	protected final static String LOG_LEVEL="INFO";
 
 	// ===========================================================================
 	// Process control Methods
@@ -93,8 +89,8 @@ public class BlockingStartup extends StartupBase {
 
 	protected BlockingWorker _worker = null;
 	protected Thread _thd = null;
-	protected CCNHandle _handle = null;
 
+	
 	// ===============================================
 	protected class BlockingWorker implements Runnable, CCNxServiceCallback {
 		protected final static String TAG="BlockingWorker";
@@ -199,15 +195,12 @@ public class BlockingStartup extends StartupBase {
 
 			case START_ALL_DONE:
 				try {
-					org.ccnx.ccn.impl.support.Log.setLevel(org.ccnx.ccn.impl.support.Log.FAC_ALL, Level.parse(LOG_LEVEL));
-
-					if( _handle == null )
-							_handle = CCNHandle.open();
+					postToUI("Opening CCN key manager/handle");
+					openCcn();
 					
-					postToUI("Calling SimpleFaceControl");
-					SimpleFaceControl.getInstance().openMulicastInterface();
-					postToUI("Finished SimpleFaceControl");
+					setupFace();
 					postToUI("Finished CCNx Initialization");
+
 					
 				} catch (CCNDaemonException e) {
 					e.printStackTrace();
@@ -216,6 +209,9 @@ public class BlockingStartup extends StartupBase {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (InvalidKeyException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}

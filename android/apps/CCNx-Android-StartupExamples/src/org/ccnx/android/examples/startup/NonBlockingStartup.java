@@ -2,8 +2,8 @@ package org.ccnx.android.examples.startup;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.util.concurrent.CountDownLatch;
-import java.util.logging.Level;
 
 import org.ccnx.android.ccnlib.CCNxConfiguration;
 import org.ccnx.android.ccnlib.CCNxServiceCallback;
@@ -11,12 +11,9 @@ import org.ccnx.android.ccnlib.CCNxServiceControl;
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.CcndWrapper.CCND_OPTIONS;
 import org.ccnx.android.ccnlib.RepoWrapper.REPO_OPTIONS;
-import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
-import org.ccnx.ccn.profiles.ccnd.SimpleFaceControl;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -25,7 +22,6 @@ import android.widget.TextView;
 
 public class NonBlockingStartup extends StartupBase {
 	protected String TAG="NonBlockingStartup";
-	protected final static String LOG_LEVEL="WARNING";
 	
 	// ===========================================================================
 	// Process control Methods
@@ -63,14 +59,7 @@ public class NonBlockingStartup extends StartupBase {
 		Log.i(TAG, "onDestroy()");
 
 		_worker.stop();
-		
-		if( _handle != null ) {
-			// close the default handle, which was used by SimpleFaceControl
-			_handle.close();
-			KeyManager.closeDefaultKeyManager();
-			_handle = null;
-		}
-		
+
 		super.onDestroy();
 	}
 
@@ -196,19 +185,12 @@ public class NonBlockingStartup extends StartupBase {
 
 			case START_ALL_DONE:
 				try {
-					org.ccnx.ccn.impl.support.Log.setLevel(org.ccnx.ccn.impl.support.Log.FAC_ALL, Level.parse(LOG_LEVEL));
+					postToUI("Opening CCN key manager/handle");
+					openCcn();
 					
-					_handle = CCNHandle.open();
-					
-					postToUI("Calling SimpleFaceControl");
-					SimpleFaceControl.getInstance().openMulicastInterface();
-					postToUI("Finished SimpleFaceControl");
+					setupFace();
 					postToUI("Finished CCNx Initialization");
 
-					// close the default handle, which was used by SimpleFaceControl
-					CCNHandle.getHandle().close();
-					KeyManager.closeDefaultKeyManager();
-					
 				} catch (CCNDaemonException e) {
 					e.printStackTrace();
 					postToUI("SimpleFaceControl error: " + e.getMessage());
@@ -216,6 +198,9 @@ public class NonBlockingStartup extends StartupBase {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (InvalidKeyException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}

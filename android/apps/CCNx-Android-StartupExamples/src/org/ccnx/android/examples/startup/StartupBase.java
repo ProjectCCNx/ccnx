@@ -1,10 +1,17 @@
 package org.ccnx.android.examples.startup;
 
+import java.io.IOException;
+import java.security.InvalidKeyException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
+import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
+import org.ccnx.ccn.profiles.ccnd.SimpleFaceControl;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -18,6 +25,7 @@ import android.widget.TextView;
 
 public abstract class StartupBase extends Activity {
 	protected String TAG="StartupBase";
+	protected final static String LOG_LEVEL="INFO";
 
 	// ===========================================================================
 	// Process control Methods
@@ -39,6 +47,8 @@ public abstract class StartupBase extends Activity {
 	public void onStart() {
 		super.onStart();	
 		tv.setText("");
+		tv.invalidate();
+		
 		_lastScreenOutput = System.currentTimeMillis();
 		_firstScreenOutput = _lastScreenOutput;
 	}
@@ -83,11 +93,13 @@ public abstract class StartupBase extends Activity {
 		switch (item.getItemId()) {
 		case EXIT_MENU:
 			doExit();
+			closeCcn();
 			finish();
 			return true;
 
 		case SHUTDOWN_MENU:
 			doShutdown();
+			closeCcn();
 			finish();
 			return true;
 		}
@@ -107,8 +119,37 @@ public abstract class StartupBase extends Activity {
 	protected long _lastScreenOutput = -1;
 	protected long _firstScreenOutput = -1;
 	protected Object _outputLock = new Object();
-	protected CCNHandle _handle;
+	
+	protected CCNHandle _handle = null;
+	protected KeyManager _km = null;
 
+	protected void openCcn() throws ConfigurationException, IOException, InvalidKeyException {
+		org.ccnx.ccn.impl.support.Log.setLevel(org.ccnx.ccn.impl.support.Log.FAC_ALL, Level.parse(LOG_LEVEL));
+		
+		_km = new BasicKeyManager();
+		_km.initialize();
+		KeyManager.setDefaultKeyManager(_km);
+		_handle = CCNHandle.open(_km);	
+	}
+	
+	protected void closeCcn() {
+		if( _handle != null ) {
+			_handle.close();
+			_handle = null;
+		}
+		
+		if( _km != null ) {
+			_km.close();
+			_km = null;
+		}
+	}
+	
+	protected void setupFace() throws CCNDaemonException {
+		postToUI("Calling SimpleFaceControl");
+		SimpleFaceControl.getInstance(_handle).openMulicastInterface();
+		postToUI("Finished SimpleFaceControl");
+	}
+	
 	/**
 	 * In the UI thread, post a message to the screen
 	 */
