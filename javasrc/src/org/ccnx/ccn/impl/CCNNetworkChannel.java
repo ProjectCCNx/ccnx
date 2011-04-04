@@ -29,6 +29,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Timer;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -53,9 +54,16 @@ public class CCNNetworkChannel extends InputStream {
 	public static final int DOWN_DELAY = SystemConfiguration.SHORT_TIMEOUT;	// Wait period for retry when ccnd is down
 	public static final int LINGER_TIME = 10;	// In seconds
 
-	protected String _ncHost;
-	protected int _ncPort;
-	protected NetworkProtocol _ncProto;
+	// This is to make log messages intelligable
+	protected final static AtomicInteger _channelIdCounter = new AtomicInteger(0);
+	protected final int _channelId;
+	
+	// These are set in the constructor
+	protected final String _ncHost;
+	protected final int _ncPort;
+	protected final NetworkProtocol _ncProto;
+	protected final FileOutputStream _ncTapStreamIn;
+	
 	protected int _ncLocalPort;
 	protected DatagramChannel _ncDGrmChannel = null;
 	protected SocketChannel _ncSockChannel = null;
@@ -68,7 +76,6 @@ public class CCNNetworkChannel extends InputStream {
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
-	protected FileOutputStream _ncTapStreamIn = null;
 	
 	// Allocate datagram buffer
 	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(CCNNetworkManager.MAX_PAYLOAD);
@@ -86,9 +93,11 @@ public class CCNNetworkChannel extends InputStream {
 		_ncPort = port;
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
+		_channelId = _channelIdCounter.incrementAndGet();
 		_ncReadSelector = Selector.open();
+		
 		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
-			Log.info(Log.FAC_NETMANAGER, "Starting up CCNNetworkChannel using {0}.", proto);
+			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: Starting up CCNNetworkChannel using {1}.",  _channelId, proto.toString());
 	}
 	
 	/**
@@ -98,6 +107,9 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void open() throws IOException {
+		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
+			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: open()",  _channelId);
+
 		if (_ncProto == NetworkProtocol.UDP) {
 			try {
 				_ncDGrmChannel = DatagramChannel.open();
@@ -117,7 +129,13 @@ public class CCNNetworkChannel extends InputStream {
 					test.flip();
 					_ncDGrmChannel.write(test);
 				}
+			} catch (NullPointerException npe) {
+				Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: UDP open exception {1}",  _channelId, npe.getMessage());
+				npe.printStackTrace();
+				return;
 			} catch (IOException ioe) {
+				Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: UDP open exception {1}",  _channelId, ioe.getMessage());
+				ioe.printStackTrace();
 				return;
 			}
 		} else if (_ncProto == NetworkProtocol.TCP) {
@@ -125,8 +143,11 @@ public class CCNNetworkChannel extends InputStream {
 			try {
 				_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
 			} catch (IOException ioe) {
-				if (!_ncInitialized)
+				Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: TCP open exception {1}",  _channelId, ioe.getMessage());
+				if (!_ncInitialized) {
 					throw ioe;
+				}
+				ioe.printStackTrace();
 				return;
 			}
 			_ncSockChannel.configureBlocking(false);
@@ -136,11 +157,19 @@ public class CCNNetworkChannel extends InputStream {
 			_ncLocalPort = _ncSockChannel.socket().getLocalPort();
 			//_ncSockChannel.socket().setSoLinger(true, LINGER_TIME);
 		} else {
-			throw new IOException("NetworkChannel: invalid protocol specified");
+			throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
 		}
-		String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
-		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
-			Log.info(Log.FAC_NETMANAGER, connecting + " CCN agent at " + _ncHost + ":" + _ncPort + " on local port " + _ncLocalPort);
+		
+		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO)) {
+			String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
+			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: {1} CCN agent at {2}:{3} on local port {4}", 
+					_channelId,
+					connecting,
+					_ncHost,
+					_ncPort,
+					_ncLocalPort
+					);
+		}
 		initStream();
 		_ncInitialized = true;
 		synchronized (_ncConnectedLock) {
@@ -190,6 +219,9 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void close() throws IOException {
+		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
+			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: close()",  _channelId);
+
 		synchronized (_ncConnectedLock) {
 			_ncConnected = false;
 		}
@@ -199,10 +231,8 @@ public class CCNNetworkChannel extends InputStream {
 		} else if (_ncProto == NetworkProtocol.TCP) {
 			_ncSockChannel.close();
 		} else {
-			throw new IOException("NetworkChannel: invalid protocol specified");
+			throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
 		}
-		
-		_ncReadSelector.close();
 	}
 	
 	/**
@@ -226,7 +256,9 @@ public class CCNNetworkChannel extends InputStream {
 		if (! isConnected())
 			return -1; // XXX - is this documented?
 		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST))
-			Log.finest(Log.FAC_NETMANAGER, "NetworkChannel.write() on port " + _ncLocalPort);
+			Log.finest(Log.FAC_NETMANAGER, 
+					"NetworkChannel {0}: write() on port {1}", _channelId, _ncLocalPort);
+		
 		try {
 			if (_ncProto == NetworkProtocol.UDP) {
 				return (_ncDGrmChannel.write(src));
@@ -421,7 +453,8 @@ public class CCNNetworkChannel extends InputStream {
 		} catch (IOException io) {
 			// We do not see errors on send typically even if 
 			// agent is gone, so log each but do not track
-			Log.warning(Log.FAC_NETMANAGER, "Error sending heartbeat packet: {0}", io.getMessage());
+			Log.warning(Log.FAC_NETMANAGER, 
+					"NetworkChannel {0}: Error sending heartbeat packet: {1}", _channelId, io.getMessage());
 			try {
 				close();
 			} catch (IOException e) {}
