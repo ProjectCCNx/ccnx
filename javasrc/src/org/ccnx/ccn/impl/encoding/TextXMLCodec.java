@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -24,6 +24,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
@@ -161,7 +162,8 @@ public class TextXMLCodec implements XMLCodec {
 															(nanostr);
 				nanos = Integer.valueOf(nanostr.toString());
 				ts.setNanos(nanos);
-				Log.finest("Nanostr: " + nanostr + " originally: " + dateParts[1] + " nanos: " + nanos + " pre-nano ts parse: " + ts);
+				if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+					Log.finest(Log.FAC_ENCODING, "Nanostr: " + nanostr + " originally: " + dateParts[1] + " nanos: " + nanos + " pre-nano ts parse: " + ts);
 			} catch (NumberFormatException nfe) {
 				Log.info("Exception in parsing nanoseconds from time: " + strDateTime);
 			}

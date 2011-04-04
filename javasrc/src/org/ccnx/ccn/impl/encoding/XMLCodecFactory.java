@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -64,7 +64,7 @@ public class XMLCodecFactory {
 
 	public static void setDefaultCodec(String name) {
 		if ((null == getEncoderClass(name)) || (null == getDecoderClass(name))) {
-			Log.warning("Cannot set unknown codec " + name + " as default XML codec.");
+			Log.warning(Log.FAC_ENCODING, "Cannot set unknown codec " + name + " as default XML codec.");
 			throw new IllegalArgumentException(name + " must be a registered codec!");
 		}
 		_defaultCodec = name;
