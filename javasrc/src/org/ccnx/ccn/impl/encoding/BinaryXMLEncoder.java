@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -112,7 +113,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 			Long dictionaryVal = stringToTag(tag);
 			
 			if (null == dictionaryVal) {
-				Log.info("Unexpected: tag found that is not in our dictionary: " + tag);
+				Log.info(Log.FAC_ENCODING, "Unexpected: tag found that is not in our dictionary: " + tag);
 				// not in dictionary
 				// compressed format wants length of tag represented as length-1
 				// to save that extra bit, as tag cannot be 0 length.

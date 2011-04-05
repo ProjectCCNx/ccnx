@@ -747,7 +747,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public CCNNetworkManager(KeyManager keyManager) throws IOException {
 		_managerId = _managerIdCount.incrementAndGet();
-		_managerIdString = "NetworkManger " + _managerId + ": ";
+		_managerIdString = "NetworkManager " + _managerId + ": ";
 		
 		if (null == keyManager) {
 			// Unless someone gives us one later, we won't be able to register filters. Log this.

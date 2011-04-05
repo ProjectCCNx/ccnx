@@ -168,6 +168,13 @@ public class FaceManagerTest extends LibraryTestBase {
 			e.printStackTrace();
 			fail("Failed to delete face.");
 		}
+		
+		try {
+			mgr.deleteFace(faceID);
+			fail("Failed to receive expected CCNDaemonException deleting already deleted face.");
+		}catch (CCNDaemonException e) {
+			System.out.println("Received expected exception " + e.getClass().getName() + ", message: " + e.getMessage());
+		}
 	}
 
 }
