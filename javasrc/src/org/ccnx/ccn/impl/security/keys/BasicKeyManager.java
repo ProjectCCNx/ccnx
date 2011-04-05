@@ -265,6 +265,7 @@ public class BasicKeyManager extends KeyManager {
 			Log.fine(Log.FAC_KEYS, "BasicKeyManager.close()");
 		
 		_handle.close();
+		_handle = null;
 		try {
 			saveSecureKeyCache();
 		} catch (Exception e) {
