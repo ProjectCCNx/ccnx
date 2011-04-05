@@ -153,8 +153,8 @@ public class CCNHandle implements CCNBase {
 			_isOpen = true;
 		}
 		
-		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
-			Log.fine(Log.FAC_NETMANAGER, formatMessage("Handle is now open"));
+		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO) )
+			Log.info(Log.FAC_NETMANAGER, formatMessage("Handle is now open"));
 	}
 
 	/**
@@ -176,6 +176,9 @@ public class CCNHandle implements CCNBase {
 		_handleIdString = String.format("CCNHandle %d: ", _handleId);
 		_networkManager = null;
 		_keyManager = null;
+		
+		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO) )
+			Log.info(Log.FAC_NETMANAGER, formatMessage("Handle is now open (testing only)"));
 	}
 	
 	/**
