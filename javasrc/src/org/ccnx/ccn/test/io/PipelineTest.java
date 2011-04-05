@@ -73,7 +73,7 @@ public class PipelineTest {
 	}
 	
 	@AfterClass
-	public void tearDownAfterClass() throws Exception {
+	public static void tearDownAfterClass() throws Exception {
 		readHandle.close();
 		writeHandle.close();
 		KeyManager.closeDefaultKeyManager();
