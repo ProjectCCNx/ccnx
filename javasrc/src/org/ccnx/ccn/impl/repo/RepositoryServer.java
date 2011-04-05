@@ -185,6 +185,7 @@ public class RepositoryServer implements CCNStatistics {
 		Log.info(Log.FAC_REPO, "Stopping service of repository requests");
 
 		// This closes our handle....
+		_handle = null;
 		_repo.shutDown();
 		
 		if( _periodicTimer != null ) {
@@ -212,8 +213,6 @@ public class RepositoryServer implements CCNStatistics {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-		_handle.close();
 		
 		
 	}
