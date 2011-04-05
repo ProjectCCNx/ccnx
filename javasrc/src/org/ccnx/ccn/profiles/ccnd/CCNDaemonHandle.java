@@ -136,7 +136,13 @@ public class CCNDaemonHandle {
 				Log.severe(msg);
 				throw new CCNDaemonException(msg);
 			}
-	
+			
+			if (contentIn.isNACK()) {
+				String msg = ("Received NACK in response to registration/unregistration request");
+				Log.fine(msg);
+				throw new CCNDaemonException(msg);  // FIX THIS TO GET THE CODE/MESSAGE from the StatusResponse
+			}
+
 			byte[] payloadOut = contentIn.content();
 			return payloadOut;
 		}
