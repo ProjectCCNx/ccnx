@@ -25,7 +25,7 @@ import android.widget.TextView;
 
 public abstract class StartupBase extends Activity {
 	protected String TAG="StartupBase";
-	protected final static String LOG_LEVEL="INFO";
+	protected final static String LOG_LEVEL="WARNING";
 
 	// ===========================================================================
 	// Process control Methods
@@ -139,7 +139,7 @@ public abstract class StartupBase extends Activity {
 		}
 		
 		if( _km != null ) {
-			_km.close();
+			KeyManager.closeDefaultKeyManager();
 			_km = null;
 		}
 	}
