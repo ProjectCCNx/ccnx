@@ -31,8 +31,7 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.test.CCNTestHelper;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -58,6 +57,8 @@ public class PipelineTest {
 	//need a responder with objects to pipeline
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		readHandle = CCNHandle.open();
+		writeHandle = CCNHandle.open();
 		
 		ContentName namespace = testHelper.getTestNamespace("pipelineTest");
 		testName = ContentName.fromNative(namespace, "PipelineSegments");
@@ -71,14 +72,8 @@ public class PipelineTest {
 		
 	}
 	
-	@Before
-	public void setUp() throws Exception {
-		readHandle = CCNHandle.open();
-		writeHandle = CCNHandle.open();
-	}
-	
-	@After
-	public void tearDown() throws Exception {
+	@AfterClass
+	public void tearDownAfterClass() throws Exception {
 		readHandle.close();
 		writeHandle.close();
 		KeyManager.closeDefaultKeyManager();
