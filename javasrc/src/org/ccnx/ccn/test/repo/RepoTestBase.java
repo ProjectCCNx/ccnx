@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -54,6 +54,8 @@ public class RepoTestBase extends LibraryTestBase {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		LibraryTestBase.setUpBeforeClass();
+		
 		// Let default logging level be set centrally so it can be overridden by property
 		_topdir = System.getProperty(TOP_DIR);
 		if (null == _topdir)

@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -51,25 +51,35 @@ public class CCNLibraryTestHarness extends CCNHandle {
 		return _outputQueue;
 	}
 	
+	@Override
 	public ContentObject put(ContentObject co) throws IOException {
 		_outputQueue.add(co);
 		return co;
 	}
 	
+	@Override
 	public void registerFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
 		_listeners.add(new Interest(filter), callbackListener);
 	}
 	
+	@Override
 	public void unregisterFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
 		_listeners.remove(new Interest(filter), callbackListener);		
 	}
 	
+	@Override
 	public ContentObject get(Interest interest, long timeout) throws IOException {
 		for (CCNFilterListener listener : _listeners.getValues(interest.name())) {
 			listener.handleInterest(interest);
 		}
 		return _outputQueue.remove();
+	}
+	
+	@Override
+	public ContentObject get(ContentName name, long timeout) throws IOException {
+		Interest interest = new Interest(name);
+		return get(interest, timeout);
 	}
 }

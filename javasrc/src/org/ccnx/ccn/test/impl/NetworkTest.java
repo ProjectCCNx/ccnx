@@ -65,12 +65,12 @@ public class NetworkTest extends CCNTestBase {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		CCNTestBase.setUpBeforeClass();
 	}
 	
 	@AfterClass
-	public static void tearDownAfterClass() {
-		putHandle.close();
-		getHandle.close();
+	public static void tearDownAfterClass() throws Exception {
+		CCNTestBase.tearDownAfterClass();
 	}
 
 	@Before
