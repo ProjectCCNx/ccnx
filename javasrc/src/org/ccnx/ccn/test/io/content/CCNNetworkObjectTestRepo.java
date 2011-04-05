@@ -525,33 +525,38 @@ public class CCNNetworkObjectTestRepo {
 		SaveType saveType = SaveType.REPOSITORY;
 		CCNHandle writeHandle = CCNHandle.open();
 		CCNHandle readHandle = CCNHandle.open();
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateListener"), 
-										stringObjName);
 		
-		CCNStringObject writeObject = 
-			new CCNStringObject(testName, "Something to listen to.", saveType, writeHandle);
-		writeObject.save();
-		
-		CounterListener ourListener = new CounterListener();
-		CCNStringObject readObject = 
-			new CCNStringObject(testName, null, null, readHandle);
-		readObject.addListener(ourListener);
-		boolean result = readObject.update();
-		
-		Assert.assertTrue(result);
-		Assert.assertTrue(ourListener.getCounter() == 1);
-		
-		readObject.updateInBackground();
-		
-		writeObject.save("New stuff! New stuff!");
-		synchronized(readObject) {
-			if (ourListener.getCounter() == 1)
-				readObject.wait();
+		try {
+			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateListener"), 
+											stringObjName);
+			
+			CCNStringObject writeObject = 
+				new CCNStringObject(testName, "Something to listen to.", saveType, writeHandle);
+			writeObject.save();
+			
+			CounterListener ourListener = new CounterListener();
+			CCNStringObject readObject = 
+				new CCNStringObject(testName, null, null, readHandle);
+			readObject.addListener(ourListener);
+			boolean result = readObject.update();
+			
+			Assert.assertTrue(result);
+			Assert.assertTrue(ourListener.getCounter() == 1);
+			
+			readObject.updateInBackground();
+			
+			writeObject.save("New stuff! New stuff!");
+			synchronized(readObject) {
+				if (ourListener.getCounter() == 1)
+					readObject.wait();
+			}
+			// For some reason, we're getting two updates on our updateInBackground...
+			Assert.assertTrue(ourListener.getCounter() > 1);
+		} finally {
+			writeHandle.close();
+			readHandle.close();
+			KeyManager.closeDefaultKeyManager();
 		}
-		// For some reason, we're getting two updates on our updateInBackground...
-		Assert.assertTrue(ourListener.getCounter() > 1);
-		writeHandle.close();
-		readHandle.close();
 	}
 
 	@Test
@@ -674,6 +679,7 @@ public class CCNNetworkObjectTestRepo {
 			}
 		} finally {
 			rhandle.close();
+			KeyManager.closeDefaultKeyManager();
 		}
 	}
 
