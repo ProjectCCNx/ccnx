@@ -76,4 +76,10 @@ public class CCNLibraryTestHarness extends CCNHandle {
 		}
 		return _outputQueue.remove();
 	}
+	
+	@Override
+	public ContentObject get(ContentName name, long timeout) throws IOException {
+		Interest interest = new Interest(name);
+		return get(interest, timeout);
+	}
 }
