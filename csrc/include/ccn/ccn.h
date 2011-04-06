@@ -532,11 +532,10 @@ enum ccn_parsed_Link_offsetid {
 };
 
 struct ccn_parsed_Link {
-    int name_comps;
+    int name_ncomps;
     int name_component_count;
     int publisher_digest_type;
     int type;
-    
     unsigned short offset[CCN_PL_E+1];
 };
 
@@ -562,6 +561,13 @@ ccnb_append_Link(struct ccn_charbuf *buf,
                  const char *label,
                  const struct ccn_charbuf *linkAuthenticator
                  );
+
+/*
+ * ccn_parse_LinkAuthenticator:
+ */
+int
+ccn_parse_LinkAuthenticator(struct ccn_buf_decoder *d,
+               struct ccn_parsed_Link *link);
 
 /*
  * ccn_parse_Collection_start: TODO: fill in documentation
