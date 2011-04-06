@@ -184,9 +184,17 @@ public class CCNHandle implements CCNBase {
 	/**
 	 * Retrieve this handle's network manager. Should only be called by low-level
 	 * methods seeking direct access to the network.
+	 * 
+	 * If the handle is closed, this will return null.
+	 * 
 	 * @return the CCN network manager
 	 */
 	public CCNNetworkManager getNetworkManager() { 
+		synchronized(_openLock) {
+			if( !_isOpen )
+				return null;
+		}
+
 		return _networkManager;
 	}
 
@@ -239,11 +247,6 @@ public class CCNHandle implements CCNBase {
 	 * @see CCNBase#get(Interest, long)
 	 */
 	public ContentObject get(ContentName name, PublisherPublicKeyDigest publisher, long timeout) throws IOException {
-		synchronized(_openLock) {
-			if( !_isOpen )
-				throw new IOException(formatMessage("Handle is closed"));
-		}
-		
 		Interest interest = new Interest(name, publisher);
 		return get(interest, timeout);
 	}
