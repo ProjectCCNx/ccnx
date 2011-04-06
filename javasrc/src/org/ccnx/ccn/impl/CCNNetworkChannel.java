@@ -67,18 +67,19 @@ public class CCNNetworkChannel extends InputStream {
 	protected int _ncLocalPort;
 	protected DatagramChannel _ncDGrmChannel = null;
 	protected SocketChannel _ncSockChannel = null;
+	
+	// This lock provides exclusion between calls to open() and close()
+	protected Object _opencloseLock = new Object();
 	protected Selector _ncReadSelector = null;
 	protected Selector _ncWriteSelector = null;			 // Not needed for UDP
 	
+	// This lock (maybe unnecessary now?), if used with _openCloseLock, should be contained inside it.
 	protected Object _ncConnectedLock = new Object();
 	protected boolean _ncConnected = false; // Actually asking the channel if its connected doesn't appear to be reliable
 	
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
-	
-	// Do not allow app to open and close at same time
-	protected Object _opencloseLock = new Object();
 	
 	// Allocate datagram buffer
 	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(CCNNetworkManager.MAX_PAYLOAD);
@@ -109,10 +110,15 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void open() throws IOException {
-		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
-			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: open()",  _channelId);
-
 		synchronized(_opencloseLock) {
+			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
+				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: open()",  _channelId);
+	
+			if( _ncConnected ) {
+				Log.severe(Log.FAC_NETMANAGER, "NetworkChannel {0}: Calling open on an already connected channel!", _channelId);
+				throw new IOException("NetworkChannel " + _channelId + ": channel already connected");
+			}
+			
 			_ncReadSelector = Selector.open();
 	
 			if (_ncProto == NetworkProtocol.UDP) {
@@ -225,13 +231,14 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void close() throws IOException {
-		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
-			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: close()",  _channelId);
-
-		synchronized(_opencloseLock) {
+	synchronized(_opencloseLock) {
+			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
+				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: close()",  _channelId);
+	
 			synchronized (_ncConnectedLock) {
 				_ncConnected = false;
 			}
+			
 			if (_ncProto == NetworkProtocol.UDP) {
 				wakeup();
 				_ncDGrmChannel.close();
