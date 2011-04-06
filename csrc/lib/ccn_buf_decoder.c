@@ -1011,7 +1011,7 @@ ccn_parse_Link(struct ccn_buf_decoder *d,
         }
         link->offset[CCN_PL_E_ComponentLast] = d->decoder.token_index - 1;
         link->offset[CCN_PL_E_Name] = d->decoder.token_index;
-        link->name_comps = ncomp;
+        link->name_ncomps = ncomp;
         /* parse optional Label string */
         link->offset[CCN_PL_B_Label] = d->decoder.token_index;
         res = ccn_parse_optional_tagged_UDATA(d, CCN_DTAG_Label);
