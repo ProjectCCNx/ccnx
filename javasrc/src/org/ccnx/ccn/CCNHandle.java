@@ -225,11 +225,6 @@ public class CCNHandle implements CCNBase {
 	 * @see CCNBase#get(Interest, long)
 	 */
 	public ContentObject get(ContentName name, long timeout) throws IOException {
-		synchronized(_openLock) {
-			if( !_isOpen )
-				throw new IOException(formatMessage("Handle is closed"));
-		}
-		
 		Interest interest = new Interest(name);
 		return get(interest, timeout);
 	}
