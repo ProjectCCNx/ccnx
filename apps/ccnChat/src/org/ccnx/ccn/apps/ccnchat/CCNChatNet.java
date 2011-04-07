@@ -77,7 +77,7 @@ public final class CCNChatNet {
     	_callback = callback;
     	_namespace = ContentName.fromURI(namespace);  	
     	_namespaceStr = namespace;
-      	_friendlyNameToDigestHash = new HashMap<PublisherPublicKeyDigest, String>();
+       	_friendlyNameToDigestHash = new HashMap<PublisherPublicKeyDigest, String>();
     }
 
 	
@@ -123,6 +123,13 @@ public final class CCNChatNet {
 	 * @throws MalformedContentNameStringException
 	 */
 	public void listen() throws ConfigurationException, IOException, MalformedContentNameStringException {
+		
+		//Also publish your keys under the chat "channel name" namespace
+		if (_namespaceStr.startsWith("ccnx:/")) {
+			UserConfiguration.setDefaultNamespacePrefix(_namespaceStr.substring(5));
+		} else {
+			UserConfiguration.setDefaultNamespacePrefix(_namespaceStr);
+		}
 		
 		CCNHandle tempReadHandle = CCNHandle.open();
 		CCNHandle tempWriteHandle = CCNHandle.open();
