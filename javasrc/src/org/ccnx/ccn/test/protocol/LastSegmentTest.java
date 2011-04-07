@@ -90,9 +90,9 @@ public class LastSegmentTest {
 	
 		Assert.assertNull(object);
 		
-		Assert.assertTrue(stoptime - starttime > timeout);
+		Assert.assertTrue("Returned too soon in : " + (stoptime - starttime) + " ms", stoptime - starttime >=  timeout);
 		
-		if (stoptime - starttime < 2*timeout) {
+		if (stoptime - starttime > 2*timeout) {
 			Log.warning("lastSegmentTimeoutTest was more than twice the timeout length");
 		}		
 	}
