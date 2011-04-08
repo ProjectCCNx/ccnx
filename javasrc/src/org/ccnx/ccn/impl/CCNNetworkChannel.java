@@ -67,9 +67,13 @@ public class CCNNetworkChannel extends InputStream {
 	protected int _ncLocalPort;
 	protected DatagramChannel _ncDGrmChannel = null;
 	protected SocketChannel _ncSockChannel = null;
+	
+	// This lock provides exclusion between calls to open() and close()
+	protected Object _opencloseLock = new Object();
 	protected Selector _ncReadSelector = null;
 	protected Selector _ncWriteSelector = null;			 // Not needed for UDP
 	
+	// This lock (maybe unnecessary now?), if used with _openCloseLock, should be contained inside it.
 	protected Object _ncConnectedLock = new Object();
 	protected boolean _ncConnected = false; // Actually asking the channel if its connected doesn't appear to be reliable
 	
@@ -94,7 +98,6 @@ public class CCNNetworkChannel extends InputStream {
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
 		_channelId = _channelIdCounter.incrementAndGet();
-		_ncReadSelector = Selector.open();
 		
 		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
 			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: Starting up CCNNetworkChannel using {1}.",  _channelId, proto.toString());
@@ -107,73 +110,82 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void open() throws IOException {
-		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
-			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: open()",  _channelId);
-
-		if (_ncProto == NetworkProtocol.UDP) {
-			try {
-				_ncDGrmChannel = DatagramChannel.open();
-				_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
-				_ncDGrmChannel.configureBlocking(false);
-				
-				// For some weird reason we seem to have to test writing twice when ccnd is down
-				// before the channel actually notices. There might be some kind of timing/locking
-				// problem responsible for this but I can't figure out what it is.
-				ByteBuffer test = ByteBuffer.allocate(1);
-				if (_ncInitialized)
-					_ncDGrmChannel.write(test);
-				wakeup();
-				_ncDGrmChannel.register(_ncReadSelector, SelectionKey.OP_READ);
-				_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
-				if (_ncInitialized) {
-					test.flip();
-					_ncDGrmChannel.write(test);
-				}
-			} catch (NullPointerException npe) {
-				Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: UDP open exception {1}",  _channelId, npe.getMessage());
-				npe.printStackTrace();
-				return;
-			} catch (IOException ioe) {
-				Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: UDP open exception {1}",  _channelId, ioe.getMessage());
-				ioe.printStackTrace();
-				return;
+		synchronized(_opencloseLock) {
+			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
+				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: open()",  _channelId);
+	
+			if( _ncConnected ) {
+				Log.severe(Log.FAC_NETMANAGER, "NetworkChannel {0}: Calling open on an already connected channel!", _channelId);
+				throw new IOException("NetworkChannel " + _channelId + ": channel already connected");
 			}
-		} else if (_ncProto == NetworkProtocol.TCP) {
-			_ncSockChannel = SocketChannel.open();
-			try {
-				_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
-			} catch (IOException ioe) {
-				Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: TCP open exception {1}",  _channelId, ioe.getMessage());
-				if (!_ncInitialized) {
-					throw ioe;
+			
+			_ncReadSelector = Selector.open();
+	
+			if (_ncProto == NetworkProtocol.UDP) {
+				try {
+					_ncDGrmChannel = DatagramChannel.open();
+					_ncDGrmChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
+					_ncDGrmChannel.configureBlocking(false);
+					
+					// For some weird reason we seem to have to test writing twice when ccnd is down
+					// before the channel actually notices. There might be some kind of timing/locking
+					// problem responsible for this but I can't figure out what it is.
+					ByteBuffer test = ByteBuffer.allocate(1);
+					if (_ncInitialized)
+						_ncDGrmChannel.write(test);
+					wakeup();
+					_ncDGrmChannel.register(_ncReadSelector, SelectionKey.OP_READ);
+					_ncLocalPort = _ncDGrmChannel.socket().getLocalPort();
+					if (_ncInitialized) {
+						test.flip();
+						_ncDGrmChannel.write(test);
+					}
+				} catch (NullPointerException npe) {
+					Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: UDP open exception {1}",  _channelId, npe.getMessage());
+					npe.printStackTrace();
+					return;
+				} catch (IOException ioe) {
+					Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: UDP open exception {1}",  _channelId, ioe.getMessage());
+					ioe.printStackTrace();
+					return;
 				}
-				ioe.printStackTrace();
-				return;
+			} else if (_ncProto == NetworkProtocol.TCP) {
+				_ncSockChannel = SocketChannel.open();
+				try {
+					_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
+				} catch (IOException ioe) {
+					Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: TCP open exception {1}",  _channelId, ioe.getMessage());
+					if (!_ncInitialized) {
+						throw ioe;
+					}
+					ioe.printStackTrace();
+					return;
+				}
+				_ncSockChannel.configureBlocking(false);
+				_ncSockChannel.register(_ncReadSelector, SelectionKey.OP_READ);
+				_ncWriteSelector = Selector.open();
+				_ncSockChannel.register(_ncWriteSelector, SelectionKey.OP_WRITE);
+				_ncLocalPort = _ncSockChannel.socket().getLocalPort();
+				//_ncSockChannel.socket().setSoLinger(true, LINGER_TIME);
+			} else {
+				throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
 			}
-			_ncSockChannel.configureBlocking(false);
-			_ncSockChannel.register(_ncReadSelector, SelectionKey.OP_READ);
-			_ncWriteSelector = Selector.open();
-			_ncSockChannel.register(_ncWriteSelector, SelectionKey.OP_WRITE);
-			_ncLocalPort = _ncSockChannel.socket().getLocalPort();
-			//_ncSockChannel.socket().setSoLinger(true, LINGER_TIME);
-		} else {
-			throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
-		}
-		
-		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO)) {
-			String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
-			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: {1} CCN agent at {2}:{3} on local port {4}", 
-					_channelId,
-					connecting,
-					_ncHost,
-					_ncPort,
-					_ncLocalPort
-					);
-		}
-		initStream();
-		_ncInitialized = true;
-		synchronized (_ncConnectedLock) {
-			_ncConnected = true;
+			
+			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO)) {
+				String connecting = (_ncInitialized ? "Reconnecting to" : "Contacting");
+				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: {1} CCN agent at {2}:{3} on local port {4}", 
+						_channelId,
+						connecting,
+						_ncHost,
+						_ncPort,
+						_ncLocalPort
+						);
+			}
+			initStream();
+			_ncInitialized = true;
+			synchronized (_ncConnectedLock) {
+				_ncConnected = true;
+			}
 		}
 	}
 	
@@ -219,19 +231,24 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void close() throws IOException {
-		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
-			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: close()",  _channelId);
-
-		synchronized (_ncConnectedLock) {
-			_ncConnected = false;
-		}
-		if (_ncProto == NetworkProtocol.UDP) {
-			wakeup();
-			_ncDGrmChannel.close();
-		} else if (_ncProto == NetworkProtocol.TCP) {
-			_ncSockChannel.close();
-		} else {
-			throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
+	synchronized(_opencloseLock) {
+			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
+				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: close()",  _channelId);
+	
+			synchronized (_ncConnectedLock) {
+				_ncConnected = false;
+			}
+			
+			if (_ncProto == NetworkProtocol.UDP) {
+				wakeup();
+				_ncDGrmChannel.close();
+			} else if (_ncProto == NetworkProtocol.TCP) {
+				_ncSockChannel.close();
+			} else {
+				throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
+			}
+			
+			_ncReadSelector.close();
 		}
 	}
 	

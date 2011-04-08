@@ -55,6 +55,7 @@ public class FaceManagerTest extends LibraryTestBase {
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		LibraryTestBase.setUpBeforeClass();
 	}
 
 	/**
@@ -62,6 +63,7 @@ public class FaceManagerTest extends LibraryTestBase {
 	 */
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
+		LibraryTestBase.tearDownAfterClass();
 	}
 
 	/**

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    >
+<TextView  
+    android:layout_width="fill_parent" 
+    android:layout_height="wrap_content" 
+    android:text="@string/introduction"
+    android:padding="10pt"
+    />
+    
+<Button 
+	android:id="@+id/btnStartBlocking" 
+	android:layout_marginTop="20px"
+	android:layout_width="wrap_content" 
+	android:layout_height="wrap_content"
+	android:text="Blocking Startup Example">
+</Button>
+	
+<Button 
+	android:id="@+id/btnStartNonBlocking" 
+	android:layout_marginTop="20px"
+	android:layout_width="wrap_content" 
+	android:layout_height="wrap_content"
+	android:text="Non-blocking Startup Example" >
+</Button>
+	
+</LinearLayout>

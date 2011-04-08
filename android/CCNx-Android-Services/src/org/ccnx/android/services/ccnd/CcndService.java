@@ -1,7 +1,7 @@
 /*
  * CCNx Android Services
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -41,7 +41,7 @@ import android.util.Log;
  * nothing using the unix domain socket on Android. 
  */
 public final class CcndService extends CCNxService {
-	public static final String CLASS_TAG = "CCNx CCNd Service";
+	public static final String CLASS_TAG = "CCNxCCNdService";
 	
 	private String KEYSTORE_NAME = ".ccnd_keystore_";
 	private final static char [] KEYSTORE_PASS = "\010\043\103\375\327\237\152\351\155".toCharArray();
@@ -120,12 +120,14 @@ public final class CcndService extends CCNxService {
 			
 			ccndCreate();
 			setStatus(SERVICE_STATUS.SERVICE_RUNNING);
-			ccndRun();
-			ccndDestroy();
+			try {
+				ccndRun();
+			} finally {
+				ccndDestroy();
+			}
 		} catch(Exception e) {
 			e.printStackTrace();
 			// returning will end the thread
-			return;
 		}
 		serviceStopped();
 	}

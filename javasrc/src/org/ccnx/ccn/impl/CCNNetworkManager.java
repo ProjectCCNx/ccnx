@@ -828,6 +828,15 @@ public class CCNNetworkManager implements Runnable {
 
 		}
 	}
+	
+	@Override
+	protected void finalize() throws Throwable {
+		try {
+			shutdown();
+		} finally {
+			super.finalize();
+		}
+	}
 
 	/**
 	 * Get the protocol this network manager is using

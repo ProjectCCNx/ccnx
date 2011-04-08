@@ -137,11 +137,15 @@ public class RepoIOTest extends RepoTestBase {
 	public static void setUpBeforeClass() throws Exception {
 		Log.setLevel(Log.FAC_NETMANAGER, Level.FINEST);
 		Log.setLevel(Log.FAC_IO, Level.FINEST);
+
+		RepoTestBase.setUpBeforeClass();
+
 		_testPrefix = testHelper.getTestNamespace("testRepoIO");
 
 		_testStream += "-" + rand.nextInt(10000);
 		_testObj += "-" + rand.nextInt(10000);
-		RepoTestBase.setUpBeforeClass();
+		
+		
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;

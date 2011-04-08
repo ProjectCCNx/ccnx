@@ -1,7 +1,7 @@
 /*
  * CCNx Android Helper Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -25,7 +25,7 @@ import android.util.Log;
  * This is the "client side" interface to the ccnd service.
  */
 public final class CcndWrapper extends CCNxWrapper {
-	public static final String CLASS_TAG = "CCNx CCNd Wrapper";
+	public static final String CLASS_TAG = "CCNxCCNdWrapper";
 	
 	public static final String OPTION_LOG_LEVEL_DEFAULT = "1";
 	

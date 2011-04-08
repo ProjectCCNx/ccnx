@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Palo Alto Research Center, Inc.  All Rights Reserved.
+# Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.  All Rights Reserved.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -15,7 +15,7 @@ export
 
 #
 
-SUBDIRS := CCNx-Android-Chat
+SUBDIRS := CCNx-Android-Chat CCNx-Android-StartupExamples
 SUBDIRS_clean := $(addsuffix .clean,$(SUBDIRS))
 SUBDIRS_distclean := $(addsuffix .distclean,$(SUBDIRS))
 

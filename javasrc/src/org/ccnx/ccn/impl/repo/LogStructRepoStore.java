@@ -295,6 +295,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 */
 	public void initialize(String repositoryRoot, File policyFile, String localName, String globalPrefix,
 				String namespace, CCNHandle handle) throws RepositoryException {
+		
+		Log.info(Log.FAC_REPO, "LogStructRepoStore.initialize()");
+		
 		PolicyXML pxml = null;
 		boolean nameFromArgs = (null != localName);
 		boolean globalFromArgs = (null != globalPrefix);
@@ -337,6 +340,11 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 							null, LogStructRepoStoreProfile.REPOSITORY_KEYSTORE_ALIAS, 
 							LogStructRepoStoreProfile.KEYSTORE_PASSWORD);
 				_km.initialize();
+
+				// Let's use our key manager as the default. That will make us less
+				// prone to accidentally loading the user's key manager. If we close it more than
+				// once, that's ok.
+				KeyManager.setDefaultKeyManager(_km);
 				
 				if( Log.isLoggable(Log.FAC_REPO, Level.FINEST))
 					Log.finest(Log.FAC_REPO, "Initialized repository key store.");
@@ -345,11 +353,6 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				
 				if( Log.isLoggable(Log.FAC_REPO, Level.FINEST))
 					Log.finest(Log.FAC_REPO, "Opened repository handle.");
-				
-				// Let's use our key manager as the default. That will make us less
-				// prone to accidentally loading the user's key manager. If we close it more than
-				// once, that's ok.
-				KeyManager.setDefaultKeyManager(_km);
 				
 				// Serve our key using the localhost key discovery protocol
 				ServiceDiscoveryProfile.publishLocalServiceKey(ServiceDiscoveryProfile.REPOSITORY_SERVICE_NAME,
@@ -626,9 +629,15 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 * Cleanup on shutdown
 	 */
 	public void shutDown() {
+		Log.info(Log.FAC_REPO, "LogStructRepoStore.shutdown()");
+		
+		// THis closes ResponsitoryStoreBase._handle
 		super.shutDown();
-		if (null != _km)
-			_km.close();
+		
+		if (null != _km) {
+			KeyManager.closeDefaultKeyManager();
+		}
+		
 		if (null != _activeWriteFile && null != _activeWriteFile.openFile) {
 			try {
 				synchronized (_activeWriteFile) {

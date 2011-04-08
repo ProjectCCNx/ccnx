@@ -1,0 +1,7 @@
+gen_ant/
+bin_ant/
+gen/
+bin/
+build.xml
+local.properties
+default.properties

@@ -1,7 +1,7 @@
 /*
  * CCNx Android Services
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -38,7 +38,7 @@ import android.util.Log;
  * CCNxService specialization for the Repository.
  */
 public final class RepoService extends CCNxService {
-	public static final String CLASS_TAG = "CCNx Repo Service"; 
+	public static final String CLASS_TAG = "CCNxRepoService"; 
 	
 	private RepositoryServer _server=null;
 	private RepositoryStore _repo=null;
@@ -86,21 +86,30 @@ public final class RepoService extends CCNxService {
 		if(intent.hasExtra(REPO_OPTIONS.REPO_DIRECTORY.name())){
 			repo_dir = intent.getStringExtra(REPO_OPTIONS.REPO_DIRECTORY.name());
 		}
+		
 		if(intent.hasExtra(REPO_OPTIONS.REPO_DEBUG.name())){
 			repo_debug = intent.getStringExtra(REPO_OPTIONS.REPO_DEBUG.name());
-		}
-		if(intent.hasExtra(REPO_OPTIONS.REPO_LOCAL.name())){
-			repo_local_name = intent.getStringExtra(REPO_OPTIONS.REPO_LOCAL.name());
-		}
-		if(intent.hasExtra(REPO_OPTIONS.REPO_GLOBAL.name())){
-			repo_global_name = intent.getStringExtra(REPO_OPTIONS.REPO_GLOBAL.name());
-		}
-		if(intent.hasExtra(REPO_OPTIONS.REPO_NAMESPACE.name())){
-			repo_namespace = intent.getStringExtra(REPO_OPTIONS.REPO_NAMESPACE.name());
+		} else {
+			repo_debug = DEFAULT_REPO_DEBUG;
 		}
 		
-		// Set the log level for the Repo
-		org.ccnx.ccn.impl.support.Log.setLevel(org.ccnx.ccn.impl.support.Log.FAC_REPO,Level.parse(repo_debug));
+		if(intent.hasExtra(REPO_OPTIONS.REPO_LOCAL.name())){
+			repo_local_name = intent.getStringExtra(REPO_OPTIONS.REPO_LOCAL.name());
+		} else {
+			repo_local_name = DEFAULT_REPO_LOCAL_NAME;
+		}
+		
+		if(intent.hasExtra(REPO_OPTIONS.REPO_GLOBAL.name())){
+			repo_global_name = intent.getStringExtra(REPO_OPTIONS.REPO_GLOBAL.name());
+		} else {
+			repo_global_name = DEFAULT_REPO_GLOBAL_NAME;
+		}
+		
+		if(intent.hasExtra(REPO_OPTIONS.REPO_NAMESPACE.name())){
+			repo_namespace = intent.getStringExtra(REPO_OPTIONS.REPO_NAMESPACE.name());
+		} else {
+			repo_namespace = DEFAULT_REPO_NAMESPACE;
+		}
 		
 		Load();	
 	}
@@ -124,7 +133,12 @@ public final class RepoService extends CCNxService {
 				repo_dir = f.getAbsolutePath();
 			}
 			Log.d(TAG,"Using repo directory " + repo_dir);
+			Log.d(TAG,"Using repo debug     " + repo_debug);
 
+			// Set the log level for the Repo
+			Log.d(TAG, "Setting CCNx Logging FAC_ALL to " + repo_debug);
+			org.ccnx.ccn.impl.support.Log.setLevel(org.ccnx.ccn.impl.support.Log.FAC_ALL, Level.parse(repo_debug));
+			
 			synchronized(_lock) {
 				if( null == _repo ) {
 					_repo = new LogStructRepoStore();
@@ -163,8 +177,11 @@ public final class RepoService extends CCNxService {
 	}
 	
 	protected void stopService(){
+		Log.i(TAG,"stopService() called");
+		
 		setStatus(SERVICE_STATUS.SERVICE_TEARING_DOWN);
 		if( _server != null ) {
+			Log.i(TAG,"calling _server.shutDown()");
 			_server.shutDown();
 			_server = null;
 		}
