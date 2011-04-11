@@ -352,7 +352,6 @@
 	
 	<target name="test-impl-with-repo" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-	    <bunzip2 src="testBigFile.bz2" dest="${testout}/testBigFile" />
 		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
 			<classpath>
 				<path refid="classpath-run"/>
@@ -372,8 +371,29 @@
 				</fileset>
 			</batchtest>
 		</junit>
-	    <delete file="${testout}/testBigFile" />
 	</target>
+	
+	<target name="test-impl-extra" depends="jar, ccnd, repo">
+	        <mkdir dir="${testout}"/>
+	        <bunzip2 src="testBigFile.bz2" dest="${testout}/testBigFile" />
+	        <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
+	            <classpath>
+	                <path refid="classpath-run"/>
+	            </classpath>
+	            <formatter type="xml" usefile="true"/>
+	            <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+	            <sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+	            <sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+
+	            <batchtest todir="${testout}">
+	                <fileset dir="${build}">
+	                    <include name="org/ccnx/ccn/test/impl/**/*Extra.class"/>
+	                </fileset>
+	            </batchtest>
+	        </junit>
+	        <delete file="${testout}/testBigFile" />
+	    </target>
+
 
 	<target name="test-io" depends="test-io-without-repo, test-io-with-repo">
 	</target>
