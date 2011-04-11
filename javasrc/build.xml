@@ -222,11 +222,7 @@
 					<arg value="-root" />
 					<arg value="${REPO_LOCAL_ROOT}" />
 					<arg value="-log" />
-<<<<<<< HEAD
-					<arg value="300" />
-=======
 					<arg value="INFO" />
->>>>>>> master
 					<arg value="-local" />
 					<arg value="${REPO_LOCAL}" />
 					<arg value="-global" />
