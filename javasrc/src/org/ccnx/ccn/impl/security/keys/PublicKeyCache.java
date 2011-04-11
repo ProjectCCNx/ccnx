@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -30,6 +30,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.TrustManager;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.support.Log;
+import static org.ccnx.ccn.impl.support.Log.FAC_KEYS;
 import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
@@ -157,7 +158,7 @@ public class PublicKeyCache {
 		File keyDir = new File(UserConfiguration.keyRepositoryDirectory());
 		if (!keyDir.exists()) {
 			if (!keyDir.mkdirs()) {
-				Log.warning("recordKeyToFile: Cannot create user CCN key repository directory: " + keyDir.getAbsolutePath());
+				Log.warning(FAC_KEYS, "recordKeyToFile: Cannot create user CCN key repository directory: {0}", keyDir.getAbsolutePath());
 				return;
 			}
 		}
@@ -166,19 +167,22 @@ public class PublicKeyCache {
 		File keyFile  = new File(keyDir, KeyProfile.keyIDToNameComponentAsString(keyObject.publicKeyDigest()));
 
 		if (keyFile.exists()) {
-			Log.info("Already stored key " + id.toString() + " to file.");
+			Log.info(FAC_KEYS, "Already stored key {0} to file.", id);
 			// return; // temporarily store it anyway, to overwrite old-format data.
 		}
 
 		try {
 			FileOutputStream fos = new FileOutputStream(keyFile);
-			fos.write(keyObject.publicKey().getEncoded());
-			fos.close();
+			try {
+				fos.write(keyObject.publicKey().getEncoded());
+			} finally {
+				fos.close();
+			}
 		} catch (Exception e) {
-			Log.info("recordKeyToFile: cannot record key: " + id.toString() + " to file " + keyFile.getAbsolutePath() + " error: " + e.getClass().getName() + ": " + e.getMessage());
+			Log.info(FAC_KEYS, "recordKeyToFile: cannot record key: {0} to file {1} error: {2}: {3}", id, keyFile.getAbsolutePath(), e.getClass().getName(), e.getMessage());
 			return;
 		}
-		Log.info("Logged key " + id.toString() + " to file: " + keyFile.getAbsolutePath());
+		Log.info(FAC_KEYS, "Logged key {0} to file: {1}", id, keyFile.getAbsolutePath());
 	}
 
 	/**
@@ -202,12 +206,12 @@ public class PublicKeyCache {
 		}
 		
 		if (null == locator) {
-			Log.warning("Cannot retrieve key -- no key locator for key {0}", desiredKeyID);
+			Log.warning(FAC_KEYS, "Cannot retrieve key -- no key locator for key {0}", desiredKeyID);
 			throw new IOException("Cannot retrieve key -- no key locator for key " + desiredKeyID + ".");
 		}
 
 		if (locator.type() != KeyLocator.KeyLocatorType.NAME) {
-			Log.info("Repository looking up a key that is contained in the locator...");
+			Log.info(FAC_KEYS, "Repository looking up a key that is contained in the locator...");
 			if (locator.type() == KeyLocator.KeyLocatorType.KEY) {
 				PublicKey key = locator.key();
 				remember(key, null);
@@ -221,9 +225,9 @@ public class PublicKeyCache {
 		} else {
 			PublicKeyObject publicKeyObject = getPublicKeyObject(desiredKeyID, locator, timeout, handle);
 			if (null == publicKeyObject) {
-				Log.info("Could not retrieve key " + desiredKeyID + " from network with locator " + locator + "!");
+				Log.info(FAC_KEYS, "Could not retrieve key {0} from network with locator {1}!", desiredKeyID, locator);
 			} else {
-				Log.info("Retrieved key " + desiredKeyID + " from network with locator " + locator + "!");
+				Log.info(FAC_KEYS, "Retrieved key {0} from network with locator {1}!", desiredKeyID, locator);
 				return publicKeyObject.publicKey();
 			}
 		}
@@ -233,11 +237,11 @@ public class PublicKeyCache {
 	public PublicKeyObject getPublicKeyObject(
 			PublisherPublicKeyDigest desiredKeyID, KeyLocator locator, 
 			long timeout, CCNHandle handle) throws IOException {
-		
+
 		// take code from #BasicKeyManager.getKey, to validate more complex publisher constraints
 		PublicKeyObject theKey = retrieve(locator.name().name(), locator.name().publisher());
 		if ((null != theKey) && (theKey.available())) {
-			Log.info("retrieved key {0} from cache.", locator.name().name());
+			Log.info(FAC_KEYS, "retrieved key {0} from cache.", locator.name().name());
 			return theKey;
 		}
 
@@ -263,26 +267,26 @@ public class PublicKeyCache {
 			//  it would be really good to know how many additional name components to expect...
 			while ((null == retrievedContent) && (timeoutCount < TIMEOUT_ITERATION_LIMIT)) {
 				try {
-					Log.fine("Trying network retrieval of key: " + keyInterest.name());
+					Log.fine(FAC_KEYS, "Trying network retrieval of key: {0} ", keyInterest.name());
 					// use more aggressive high-level get
 					retrievedContent = handle.get(keyInterest, timeout);
 				} catch (IOException e) {
-					Log.warning("IOException attempting to retrieve key: " + keyInterest.name() + ": " + e.getMessage());
+					Log.warning(FAC_KEYS, "IOException attempting to retrieve key: {0}: {1}", keyInterest.name(), e.getMessage());
 					Log.warningStackTrace(e);
 					lastException = e;
 					// go around again
 				}
 				if (null != retrievedContent) {
-					if( Log.isLoggable(Level.INFO)) {
-						Log.info("Retrieved key {0} using locator {1}.", desiredKeyID, locator);
-						Log.info("Retrieved key {0} using locator {1} - got {2}", desiredKeyID, locator, retrievedContent.name());
+					if( Log.isLoggable(FAC_KEYS, Level.INFO)) {
+						Log.info(FAC_KEYS, "Retrieved key {0} using locator {1}.", desiredKeyID, locator);
+						Log.info(FAC_KEYS, "Retrieved key {0} using locator {1} - got {2}", desiredKeyID, locator, retrievedContent.name());
 					}
 					break;
 				}
 				timeoutCount++;
 			}
 			if (null == retrievedContent) {
-				Log.info("No data returned when we attempted to retrieve key using interest {0}, timeout " + timeout + " exception : " + ((null == lastException) ? "none" : lastException.getMessage()), keyInterest);
+				Log.info(FAC_KEYS, "No data returned when we attempted to retrieve key using interest {0}, timeout {1} exception : {2}", keyInterest, timeout, ((null == lastException) ? "none" : lastException.getMessage()));
 				if (null != lastException) {
 					throw lastException;
 				}
@@ -293,24 +297,24 @@ public class PublicKeyCache {
 				theKey = new PublicKeyObject(retrievedContent, handle);
 				if ((null != theKey) && (theKey.available())) {
 					if ((null != desiredKeyID) && (!theKey.publicKeyDigest().equals(desiredKeyID))) {
-						Log.fine("Got key at expected name {0} from locator {1}, but it wasn't the right key, wanted {2}, got {3}", 
+						Log.fine(FAC_KEYS, "Got key at expected name {0} from locator {1}, but it wasn't the right key, wanted {2}, got {3}", 
 								retrievedContent.name(),
 								locator,
 								desiredKeyID, theKey.publicKeyDigest());
 					} else {
 						// either we don't have a preferred key ID, or we matched
-						Log.info("Retrieved public key using name: " + locator.name().name());
+						Log.info(FAC_KEYS, "Retrieved public key using name: {0}", locator.name().name());
 						// TODO make a key object instead of just retrieving
 						// content, use it to decode
 						remember(theKey);
 						return theKey;
 					}
 				} else {
-					Log.severe("Decoded key at name {0} without error, but result was null!", retrievedContent.name());
+					Log.severe(FAC_KEYS, "Decoded key at name {0} without error, but result was null!", retrievedContent.name());
 					throw new IOException("Decoded key at name " + retrievedContent.name() + " without error, but result was null!");
 				}
 			} else {
-				Log.info("Retrieved an object when looking for key " + locator.name().name() + " at " + retrievedContent.name() + ", but type is " + retrievedContent.signedInfo().getTypeName());
+				Log.info(FAC_KEYS, "Retrieved an object when looking for key {0} at {1}, but type is {2}", locator.name().name(), retrievedContent.name(), retrievedContent.signedInfo().getTypeName());
 			}
 			// TODO -- not sure this is exactly right, but a start...
 			

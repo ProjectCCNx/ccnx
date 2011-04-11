@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -59,6 +59,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public static final int ANSWER_GENERATED = 2;
 	public static final int ANSWER_STALE = 4;		// Stale answer OK
 	public static final int MARK_STALE = 16;		// Must have Scope 0.  Michael calls this a "hack"
+	
+	public static final int DEFAULT_ANSWER_ORIGIN_KIND = ANSWER_CONTENT_STORE | ANSWER_GENERATED;
 
 	/**
 	 * For nonce generation
@@ -73,7 +75,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	protected Exclude _exclude;
 	protected Integer _childSelector;
 	
-	protected static final int DEFAULT_ANSWER_ORIGIN_KIND = ANSWER_CONTENT_STORE | ANSWER_GENERATED;
 	protected Integer _answerOriginKind = null;
 	protected Integer _scope;
 	protected byte[] _nonce;
@@ -225,35 +226,39 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			if (null != maxSuffixComponents() && lengthDiff > maxSuffixComponents()) {
 				//Log.fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
 				//		name() + " and tested " + name);
-				if(Log.isLoggable(Level.FINE))
-					Log.fine("Interest match failed: {0} more than the {1} components between expected {2} and tested {3}",lengthDiff, maxSuffixComponents(), name(), name);
+				if(Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
+					Log.fine(Log.FAC_ENCODING, "Interest match failed: {0} more than the {1} components between expected {2} and tested {3}",lengthDiff, maxSuffixComponents(), name(), name);
 				return false;
 			}
 			if (null != minSuffixComponents() && lengthDiff < minSuffixComponents()) {
 				//Log.fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
 				//		name() + " and tested " + name);
-				if(Log.isLoggable(Level.FINE))
-					Log.fine("Interest match failed: {0} less than the {1} components between expected {2} and tested {3}",lengthDiff, minSuffixComponents(), name(), name);
+				if(Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
+					Log.fine(Log.FAC_ENCODING, "Interest match failed: {0} less than the {1} components between expected {2} and tested {3}",lengthDiff, minSuffixComponents(), name(), name);
 				return false;
 			}
 		}
 		if (null != exclude()) {
 			if (exclude().match(name.component(name().count()))) {
-				Log.finest("Interest match failed. {0} has been excluded", name);
+				if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+					Log.finest(Log.FAC_ENCODING, "Interest match failed. {0} has been excluded", name);
 				return false;
 			}
 		}
 		if (null != publisherID()) {
 			if (null == resultPublisherKeyID) {
-				Log.finest("Interest match failed, target {0} doesn't specify a publisherID and we require a particular one.", name);
+				if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+					Log.finest(Log.FAC_ENCODING, "Interest match failed, target {0} doesn't specify a publisherID and we require a particular one.", name);
 				return false; 
 			}
 			// Should this be more general?
 			// TODO DKS handle issuer
-			Log.finest("Interest match handed off to trust manager for name: {0}", name);
+			if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+				Log.finest(Log.FAC_ENCODING, "Interest match handed off to trust manager for name: {0}", name);
 			return TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID);
-		} 
-		Log.finest("Interest match succeeded to name: {0}", name);
+		}
+		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "Interest match succeeded to name: {0}", name);
 		return true;
 	}
 	
@@ -506,7 +511,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		try {
 			decoder.readEndElement();
 		} catch (ContentDecodingException e) {
-			Log.info("Catching exception reading Interest end element, and moving on. Waiting for schema updates...");
+			Log.info(Log.FAC_ENCODING, "Catching exception reading Interest end element, and moving on. Waiting for schema updates...");
 		}
 	}
 

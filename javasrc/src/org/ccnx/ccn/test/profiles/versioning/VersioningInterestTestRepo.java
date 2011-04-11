@@ -57,10 +57,10 @@ public class VersioningInterestTestRepo {
 	protected CCNHandle sendhandle = null;
 	
 	protected final static long TIMEOUT=30000;
-	protected final static long SEND_PAUSE = 50;
+	protected final static long SEND_PAUSE = 30;
 
 	public VersioningInterestTestRepo() throws MalformedContentNameStringException {
-		prefix  = ContentName.fromNative(String.format("/test_%016X", _rnd.nextLong()));
+		prefix  = ContentName.fromNative(String.format("/repotest/test_%016X", _rnd.nextLong()));
 	}
 
 	@BeforeClass
@@ -71,12 +71,13 @@ public class VersioningInterestTestRepo {
 
 	@Before
 	public void setUp() throws Exception {
-		recvhandle = CCNHandle.getHandle();
-		sendhandle = CCNHandle.open(recvhandle.keyManager());
+		recvhandle = CCNHandle.open();
+		sendhandle = CCNHandle.open();
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		recvhandle.close();
 		sendhandle.close();
 	}
 
@@ -130,6 +131,7 @@ public class VersioningInterestTestRepo {
 			}
 		}
 		Assert.assertFalse(missing);
+		vi.close();
 		System.out.println("****** testTwoNamesOneListener done");
 	}
 	
@@ -193,6 +195,9 @@ public class VersioningInterestTestRepo {
 		long sum = listener1.cl.getValue() + listener2.cl.getValue() + listener3.cl.getValue();
 		System.out.println("Other listeners got " + sum);
 		Assert.assertEquals(count, (int) sum);
+		
+		vi.close();
+		
 		System.out.println("****** testThreeNamesFourListener done");
 	}
 	
@@ -232,16 +237,17 @@ public class VersioningInterestTestRepo {
 	private void send(CCNHandle handle, ContentName name, CCNTime version) throws IOException, InterruptedException {
 		
 		CCNStringObject so = new CCNStringObject(name, "Hello, World " + version, SaveType.LOCALREPOSITORY, handle);
-		int trycount = 10;
+		int maxtry = 10;
+		int trycount = 0;
 		IOException error = null;
 		
 		do {
 			error = null;
-			trycount--;
 			try {
 				// do this every time, not just on errors.  The FlowController seems
 				// to not like to receive a lot of objects all at once.
-				Thread.sleep(SEND_PAUSE);
+				// With each error, sleep longer
+				Thread.sleep(SEND_PAUSE * (2 * trycount + 1));
 				
 				boolean b = so.save(version);
 				if( b ) {
@@ -252,10 +258,11 @@ public class VersioningInterestTestRepo {
 				}
 			} catch(IOException e) {
 				error = e;
-				Thread.sleep(SEND_PAUSE);
+				Thread.sleep(SEND_PAUSE * (2 * trycount + 1));
 			} 
 			
-		} while( trycount > 0 && null != error );
+			trycount++;
+		} while( trycount < maxtry && null != error );
 		
 		if( null != error ) {
 			throw error;

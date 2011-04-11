@@ -69,7 +69,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
             									CCN_FORW_TAP;
 
 	
-	public static final Integer DEFAULT_SELF_REG_FLAGS = new Integer(CCN_FORW_ACTIVE + CCN_FORW_CHILD_INHERIT);
+	public static final Integer DEFAULT_SELF_REG_FLAGS = Integer.valueOf(CCN_FORW_ACTIVE + CCN_FORW_CHILD_INHERIT);
 
 	/*
 	 * 	#define CCN_FORW_ACTIVE         1
@@ -78,7 +78,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 	 *	#define CCN_FORW_LAST           8
 	 */
 		
-	public class ForwardingEntry extends GenericXMLEncodable implements XMLEncodable {
+	public static class ForwardingEntry extends GenericXMLEncodable implements XMLEncodable {
 		/* extends CCNEncodableObject<PolicyXML>  */
 		
 		/**
@@ -106,7 +106,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 
 		public ForwardingEntry(ContentName prefixName, Integer faceID, Integer flags) {
 			_action = ActionType.Register.value();
-			_prefixName = prefixName;
+			_prefixName = new ContentName(prefixName); // in case ContentName gets subclassed
 			_faceID = faceID;
 			_flags = flags;
 		}
@@ -115,7 +115,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 								Integer faceID, Integer flags, Integer lifetime) {
 			_action = action.value();
 			_ccndId = ccndId;
-			_prefixName = prefixName;
+			_prefixName = new ContentName(prefixName); // in case ContentName gets subclassed
 			_faceID = faceID;
 			_flags = flags;
 			_lifetime = lifetime;
@@ -153,37 +153,37 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		 * 
 		 * @return lifetime of registration in seconds
 		 */
-		public Integer getLifetime() { return new Integer(_lifetime.intValue()); }
+		public Integer getLifetime() { return Integer.valueOf(_lifetime.intValue()); }
 		
 
 		public String toFormattedString() {
-			String out = "";
+			StringBuilder out = new StringBuilder(256);
 			if (null != _action) {
-				out.concat("Action: "+ _action + "\n");
+				out.append("Action: "+ _action + "\n");
 			} else {
-				out.concat("Action: not present\n");
+				out.append("Action: not present\n");
 			}
 			if (null != _faceID) {
-				out.concat("FaceID: "+ _faceID.toString() + "\n");
+				out.append("FaceID: "+ _faceID.toString() + "\n");
 			} else {
-				out.concat("FaceID: not present\n");
+				out.append("FaceID: not present\n");
 			}
 			if (null != _prefixName) {
-				out.concat("Prefix Name: "+ _prefixName + "\n");
+				out.append("Prefix Name: "+ _prefixName + "\n");
 			} else {
-				out.concat("Prefix Name: not present\n");
+				out.append("Prefix Name: not present\n");
 			}
 			if (null != _flags) {
-				out.concat("Flags: "+ _flags.toString() + "\n");
+				out.append("Flags: "+ _flags.toString() + "\n");
 			} else {
-				out.concat("Flags: not present\n");
+				out.append("Flags: not present\n");
 			}
 			if (null != _lifetime) {
-				out.concat("Lifetime: "+ _lifetime.toString() + "\n");
+				out.append("Lifetime: "+ _lifetime.toString() + "\n");
 			} else {
-				out.concat("Lifetime: not present\n");
+				out.append("Lifetime: not present\n");
 			}
-			return out;
+			return out.toString();
 		}	
 
 		public boolean validateAction(String action) {
@@ -298,7 +298,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 				if (other._faceID != null) return false;
 			} else if (!_faceID.equals(other._faceID)) return false;
 			if (_flags == null) {
-				if (_flags != null) return false;
+				if (other._flags != null) return false;
 			} else if (!_flags.equals(other._flags)) return false;
 			if (_lifetime == null) {
 				if (other._lifetime != null) return false;

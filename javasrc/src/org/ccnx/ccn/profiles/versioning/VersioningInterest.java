@@ -154,8 +154,12 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 	/**
 	 * in case we're GC'd without a close().  Don't rely on this.
 	 */
-	public void finalize() {
-		removeAll();
+	protected void finalize() throws Throwable {
+		try {
+			removeAll();
+		} finally {
+			super.finalize();
+		}
 	}
 	
 	/**
@@ -257,19 +261,27 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 		 * @param retrySeconds IGNORED, not implemented
 		 * @return true if added, false if existed or only retrySeconds updated
 		 */
-		public synchronized boolean addListener(CCNInterestListener listener) {
-			return _listeners.add(listener);
+		public boolean addListener(CCNInterestListener listener) {
+			if( listener == null) return false;
+			synchronized(_listeners) {
+				return _listeners.add(listener);
+			}
 		}
 		
 		/**
 		 * @return true if removed, false if not found
 		 */
-		public synchronized boolean removeListener(CCNInterestListener listener) {
-			return _listeners.remove(listener);
+		public boolean removeListener(CCNInterestListener listener) {
+			if( listener == null) return false;
+			synchronized(_listeners) {
+				return _listeners.remove(listener);
+			}
 		}
 				
-		public synchronized int size() {
-			return _listeners.size();
+		public int size() {
+			synchronized(_listeners) {
+				return _listeners.size();
+			}
 		}
 
 		/**
@@ -296,18 +308,21 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 		 * @param interest
 		 * @return null
 		 */
-		public synchronized Interest handleContent(ContentObject data, Interest interest) {
+		public Interest handleContent(ContentObject data, Interest interest) {
 			// when we're stopped, we do not pass any data
 			if( ! _running )
 				return null;
 			
-			for(CCNInterestListener listener : _listeners)
-				try {
-					listener.handleContent(data, interest);
-				} catch(Exception e){
-					e.printStackTrace();
+			synchronized(_listeners) {
+				for(CCNInterestListener listener : _listeners) {
+					try {
+						listener.handleContent(data, interest);
+					} catch(Exception e){
+						e.printStackTrace();
+					}
 				}
-				return null;
+			}
+			return null;
 		}
 		
 		public CCNStats getStats() {

@@ -54,7 +54,7 @@ public class InterestDataTestRepo {
 	protected final VersionNumber vn_411333000000L = new VersionNumber(411333000000L);
 
 	public InterestDataTestRepo() throws MalformedContentNameStringException {
-		prefix  = ContentName.fromNative(String.format("/test_%016X", _rnd.nextLong()));
+		prefix  = ContentName.fromNative(String.format("/repotest/test_%016X", _rnd.nextLong()));
 	}
 	
 	@BeforeClass
@@ -105,17 +105,19 @@ public class InterestDataTestRepo {
 	}
 
 	@Test
-	public void testInterestDataCompare() throws Exception {
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+	public void testInterestDataStartTimeCompare() throws Exception {
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		InterestData id1 =  new InterestData(basename, vn_411000000000L, new VersionNumber(411110000010L));
 		InterestData id1a = new InterestData(basename, vn_411000000000L, new VersionNumber(411110000020L));
 		InterestData id2 =  new InterestData(basename, vn_411222000000L, new VersionNumber(411330000000L));
 
-		Assert.assertTrue(id1.compareTo(id1a) == 0);
-		Assert.assertTrue(id1a.compareTo(id1) == 0);
-		Assert.assertTrue(id1.compareTo(id2) < 0);
-		Assert.assertTrue(id2.compareTo(id1) > 0);		
+		InterestData.StartTimeComparator stc = new InterestData.StartTimeComparator();
+		
+		Assert.assertTrue(stc.compare(id1, id1a) == 0);
+		Assert.assertTrue(stc.compare(id1a, id1) == 0);
+		Assert.assertTrue(stc.compare(id1, id2) < 0);
+		Assert.assertTrue(stc.compare(id2, id1) > 0);		
 	}
 
 	/**
@@ -163,7 +165,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testInterestDataInterestStream() throws Exception {
 		CCNHandle handle = CCNHandle.getHandle();
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		int tosend = 200;
 
@@ -189,7 +191,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testInterestDataInterestStreamWithStartTime() throws Exception {
 		CCNHandle handle = CCNHandle.getHandle();
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		int tosend = 100;
 
@@ -220,7 +222,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testInterestDataInterestStreamWithStartAndStopTime() throws Exception {
 		CCNHandle handle = CCNHandle.getHandle();
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		int tosend = 50;
 
@@ -260,7 +262,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testSplitLeft() throws Exception {
 		// put a bunch of exclusions in an INterestData, then split it and check results.
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		VersionNumber starttime = new VersionNumber();
 		VersionNumber stoptime = null;

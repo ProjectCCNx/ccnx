@@ -45,21 +45,12 @@ import java.util.TreeSet;
 public class TreeSet6<E> extends TreeSet<E> {
 
 	public TreeSet6() {
-		try {
-			Class<?>[] parameterTypes = new Class[] { Object.class };
-			
-			Class<?> c = this.getClass();
-			Class<?> cc = c.getSuperclass();
-			
-			floor = cc.getMethod("floor", parameterTypes);
-			ceiling = cc.getMethod("ceiling", parameterTypes);
-			lower = cc.getMethod("lower", parameterTypes);
-			higher = cc.getMethod("higher", parameterTypes);
-			descendingIterator = cc.getMethod("descendingIterator");
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		initialize();
+	}
+	
+	public TreeSet6(Comparator<? super E> c) {
+		super(c);
+		initialize();
 	}
 	
 	/**
@@ -185,16 +176,66 @@ public class TreeSet6<E> extends TreeSet<E> {
 
 	private static final long serialVersionUID = 7840825335033077895L;
 	
-	private Method floor = null;
-	private Method ceiling = null;
-	private Method lower = null;
-	private Method higher = null;
-	private Method descendingIterator = null;
+	// These are transient because they should not be considered part of the TreeSet's
+	// serializable state
+	private transient Method floor = null;
+	private transient Method ceiling = null;
+	private transient Method lower = null;
+	private transient Method higher = null;
+	private transient Method descendingIterator = null;
+	
+	/**
+	 * Our own wrapper for getMethod that returns null if the method is not found.
+	 * @param c class to search for method
+	 * @param name method name
+	 * @param parameterTypes
+	 * @return the method or null if not found
+	 */
+	protected Method getMethod(Class<?> c, String name, Class<?>... parameterTypes) {
+		Method m = null;
+		try {
+			m = c.getMethod(name, parameterTypes);
+		} catch (NoSuchMethodException nsme) {
+			// ignore this, we'll just return null
+		}
+		return m;
+	}
 	
 	private Iterator<E> internalDescendingIterator() {
 		return new DescendingIterator<E>();
 	}
 
+	private void initialize() {
+		try {
+			Class<?>[] parameterTypes = new Class[] { Object.class };
+			
+			Class<?> c = this.getClass();
+			Class<?> cc = c.getSuperclass();
+			
+			try {
+				floor = cc.getMethod("floor", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+			
+			try {
+				ceiling = cc.getMethod("ceiling", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+
+			try {
+				lower = cc.getMethod("lower", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+			
+			try {
+				higher = cc.getMethod("higher", parameterTypes);
+			} catch(NoSuchMethodException nsme) {}
+
+			try {
+				descendingIterator = cc.getMethod("descendingIterator");
+			} catch(NoSuchMethodException nsme) {}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 	
 	/**
 	 * Returns the greatest element in this set less than or equal to the 
@@ -355,6 +396,9 @@ public class TreeSet6<E> extends TreeSet<E> {
 		public DescendingIterator() {
 			_list = new LinkedList<T>((Collection<? extends T>) TreeSet6.this);
 			_listIterator = _list.listIterator();
+			// now move the iterator to the end
+			while(_listIterator.hasNext())
+				_listIterator.next();
 		}
 		
 		public boolean hasNext() {

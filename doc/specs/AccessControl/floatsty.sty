@@ -1,0 +1,120 @@
+% -*- LaTeX -*-
+%%% ====================================================================
+%%%  @LaTeX-style-file{
+%%%     author          = "Glenn Paulley",
+%%%     version         = "0.1",
+%%%     date            = "2002 April 15",
+%%%     time            = "17:18:41",
+%%%     filename        = "floatsty.sty",
+%%%     address         = "iAnywhere Solutions
+%%%                        415 Phillip Street
+%%%                        Waterloo, Ontario, Canada
+%%%                        N2L 3X2",
+%%%     telephone       = "(519) 883-6244",
+%%%     FAX             = "(519) 747-4971",
+%%%     checksum        = "",
+%%%     email           = "paulley@ianywhere.com",
+%%%     codetable       = "ISO/ASCII",
+%%%     keywords        = "",
+%%%     supported       = "yes",
+%%%     abstract        = "Contains the LaTeX style command definitions
+%%%                        for typesetting figures and tables using the FLOAT
+%%%                        package.",
+%%%     docstring       = "The checksum field above contains a CRC-16
+%%%                        checksum as the first value, followed by the
+%%%                        equivalent of the standard UNIX wc (word
+%%%                        count) utility output of lines, words, and
+%%%                        characters.  This is produced by Robert
+%%%                        Solovay's checksum utility.",
+%%%  }
+%%% ====================================================================
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{floatsty}
+         [2002/04/15 v0.1 Float styles (GNP)]
+\RequirePackage{float}
+%
+% Define a caption style like floatc@plain, except that the captions are
+% ragged-right and flush-left, not centered.
+%
+\def\floatc@thinruled#1#2{\setbox\@tempboxa\hbox{{\@fs@cfont #1:} #2}%
+  \ifdim\wd\@tempboxa>\hsize {\@fs@cfont #1:} #2\par
+    \else\hbox to\hsize{\box\@tempboxa}\fi}
+%
+% The thinruled style has two rules, one above and one below the figure.
+% The caption, flush-left, is underneath the last rule.
+%
+\def\fs@thinruled{\def\@fs@cfont{\rm}\let\@fs@capt\floatc@thinruled
+  \def\@fs@pre{\hrule\kern2pt}%
+  \def\@fs@post{\vskip7pt\relax}%
+  \def\@fs@mid{\kern2pt\hrule\kern2pt\vskip2pt}%
+  \let\@fs@iftopcapt\iffalse}
+%
+% Define thinruledc style, which includes the caption WITHIN the rules.
+% The heading is centered if short enough, overwise it's formatted as
+% a paragraph. The caption title and number are in cm small caps.
+%
+\def\floatc@thinruledc#1#2{\setbox\@tempboxa\hbox{{\@fs@cfont #1:} #2}%
+  \ifdim\wd\@tempboxa>\hsize {\@fs@cfont #1:} #2\par
+    \else\hbox to\hsize{\hfil\box\@tempboxa\hfil}\fi}
+%
+% The thinruledc style has two rules, one above and one below the figure.
+% The caption is positioned above the last rule.
+%
+\def\fs@thinruledc{\def\@fs@cfont{\sc}\let\@fs@capt\floatc@thinruledc
+  \def\@fs@pre{\hrule\kern2pt\vskip2pt}%
+  \def\@fs@mid{\vskip7pt\relax}%
+  \def\@fs@post{\vskip5pt\kern2pt\hrule\kern2pt\vskip6pt}%
+  \let\@fs@iftopcapt\iffalse}
+
+%
+% Define IEEE style, which includes a 10-pt sans-serif (eg. Helvetica) 
+% caption WITHIN the rules. The heading is centered if short enough, 
+% otherwise it's formatted as a paragraph. 
+%
+
+\newlength{\@fs@ieee@ctmp}%
+\newlength{\@fs@ieee@figindent}%
+\setlength{\@fs@ieee@figindent}{1pc}%
+\def\floatc@IEEE#1#2{\setbox\@tempboxa\hbox{{\@fs@cfont #1.~}{\sffamily\bfseries\normalsize #2}}%
+   \setlength{\@fs@ieee@ctmp}{\hsize}%
+   \addtolength{\@fs@ieee@ctmp}{-\@fs@ieee@figindent}%
+   \addtolength{\@fs@ieee@ctmp}{-\@fs@ieee@figindent}% 
+   \ifdim\wd\@tempboxa>\@fs@ieee@ctmp% 
+      % IF longer than one indented paragraph line
+      % THEN set as an indented paragraph
+      \begin{list}{}{\leftmargin\@fs@ieee@figindent \rightmargin\leftmargin}% 
+         \item[]{\@fs@cfont #1.~}{\sffamily\bfseries\normalsize #2}\par%
+      \end{list}%
+   \else%
+      \hbox to\hsize{\hfil\box\@tempboxa\hfil}%
+   \fi}%
+%
+% The IEEE style has two rules, one above and one below the figure.
+% The caption is positioned above the last rule.
+%
+\def\fs@IEEE{\def\@fs@cfont{\sffamily\bfseries\normalsize}\let\@fs@capt\floatc@IEEE
+  \def\@fs@pre{\vskip3pt\hrule\kern2pt\vskip2pt}%
+  \def\@fs@mid{\vskip7pt\relax}%
+  \def\@fs@post{\vskip5pt\kern2pt\hrule\kern2pt\vskip6pt}%
+  \let\@fs@iftopcapt\iffalse}
+
+\def\floatc@PARC#1#2{\setbox\@tempboxa\hbox{{\@fs@cfont #1.~}{\sffamily\bfseries\small #2}}%
+   \setlength{\@fs@ieee@ctmp}{\hsize}%
+   \addtolength{\@fs@ieee@ctmp}{-\@fs@ieee@figindent}%
+   \addtolength{\@fs@ieee@ctmp}{-\@fs@ieee@figindent}% 
+   \ifdim\wd\@tempboxa>\@fs@ieee@ctmp% 
+      % IF longer than one indented paragraph line
+      % THEN set as an indented paragraph
+      \begin{list}{}{\leftmargin\@fs@ieee@figindent \rightmargin\leftmargin}% 
+         \item[]{\@fs@cfont #1.~}{\sffamily\bfseries\small #2}\par%
+      \end{list}%
+   \else%
+      \hbox to\hsize{\hfil\box\@tempboxa\hfil}%
+   \fi}%
+
+
+\def\fs@PARC{\def\@fs@cfont{\sffamily\bfseries\small}\let\@fs@capt\floatc@PARC
+  \def\@fs@pre{\vskip3pt\hrule\kern2pt\vskip2pt}%
+  \def\@fs@mid{\vskip7pt\relax}%
+  \def\@fs@post{\vskip5pt\kern2pt\hrule\kern2pt\vskip6pt}%
+  \let\@fs@iftopcapt\iffalse}

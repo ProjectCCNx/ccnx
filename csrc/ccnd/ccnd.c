@@ -2796,7 +2796,8 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     unsigned moreflags;
     unsigned lastfaceid;
     unsigned namespace_flags;
-    unsigned tap_or_last = (1 << 31); /* synthesized locally */
+    /* tap_or_last flag bit is used only in this procedure */
+    unsigned tap_or_last = (1U << 31);
 
     x = npe->forward_to;
     if (x == NULL)
@@ -3074,7 +3075,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                  * interests from two other faces could conspire to cover
                  * this one completely as far as propagation is concerned,
                  * but it is still necessary to keep it around for the sake
-                 * or returning content.
+                 * of returning content.
                  * This assumes a unicast link.  If there are multiple
                  * parties on this face (broadcast or multicast), we
                  * do not want to send right away, because it is highly likely
@@ -3093,9 +3094,14 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                     }
                 }
                 p->flags |= CCN_PR_EQV; /* Don't add new faces */
-                if (outbound->n == 0)
-                    return(-1);
-				// XXX - How robust is setting of CCN_PR_EQV?
+                // XXX - How robust is setting of CCN_PR_EQV?
+                /*
+                 * XXX - We would like to avoid having to keep this
+                 * interest around if we get here with (outbound->n == 0).
+                 * However, we still need to remember to send the content
+                 * back to this face, and the data structures are not
+                 * there right now to represent this.  c.f. #100321.
+                 */
             }
         }
     }
@@ -3967,20 +3973,53 @@ ccnd_new_face_msg(struct ccnd_handle *h, struct face *face)
              face->faceid, face->flags, peer, port);
 }
 
+/**
+ * Since struct sockaddr_in6 may contain fields that should not participate
+ * in comparison / hash, ensure the undesired fields are zero.
+ *
+ * Per RFC 3493, sin6_flowinfo is zeroed.
+ *
+ * @param addr is the sockaddr (any family)
+ * @param addrlen is its length
+ * @param space points to a buffer that may be used for the result.
+ * @returns either the original addr or a pointer to a scrubbed copy.
+ *
+ */
+static struct sockaddr *
+scrub_sockaddr(struct sockaddr *addr, socklen_t addrlen,
+               struct sockaddr_in6 *space)
+{
+    struct sockaddr_in6 *src;
+    struct sockaddr_in6 *dst;
+    if (addr->sa_family != AF_INET6 || addrlen != sizeof(*space))
+        return(addr);
+    dst = space;
+    src = (void *)addr;
+    memset(dst, 0, addrlen);
+    /* Copy first byte case sin6_len is used. */
+    ((uint8_t *)dst)[0] = ((uint8_t *)src)[0];
+    dst->sin6_family   = src->sin6_family;
+    dst->sin6_port     = src->sin6_port;
+    dst->sin6_addr     = src->sin6_addr;
+    dst->sin6_scope_id = src->sin6_scope_id;
+    return((struct sockaddr *)dst);
+}
+
 static struct face *
 get_dgram_source(struct ccnd_handle *h, struct face *face,
-           struct sockaddr *addr, socklen_t addrlen, int why)
+                 struct sockaddr *addr, socklen_t addrlen, int why)
 {
     struct face *source = NULL;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
+    struct sockaddr_in6 space;
     int res;
     if ((face->flags & CCN_FACE_DGRAM) == 0)
         return(face);
     if ((face->flags & CCN_FACE_MCAST) != 0)
         return(face);
     hashtb_start(h->dgram_faces, e);
-    res = hashtb_seek(e, addr, addrlen, 0);
+    res = hashtb_seek(e, scrub_sockaddr(addr, addrlen, &space), addrlen, 0);
     if (res >= 0) {
         source = e->data;
         source->recvcount++;
@@ -4089,6 +4128,7 @@ process_input(struct ccnd_handle *h, int fd)
     if (face->inbuf->length == 0)
         memset(d, 0, sizeof(*d));
     buf = ccn_charbuf_reserve(face->inbuf, 8800);
+    memset(&sstor, 0, sizeof(sstor));
     res = recvfrom(face->recv_fd, buf, face->inbuf->limit - face->inbuf->length,
             /* flags */ 0, addr, &addrlen);
     if (res == -1)

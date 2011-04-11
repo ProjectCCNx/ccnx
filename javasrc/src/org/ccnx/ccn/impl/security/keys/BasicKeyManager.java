@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -264,7 +264,7 @@ public class BasicKeyManager extends KeyManager {
 		_handle.close();
 		try {
 			saveSecureKeyCache();
-		} catch (IOException e) {
+		} catch (Exception e) {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.WARNING)) {
 				Log.warning("Exception saving secure key cache: {0}", e);
 			}
@@ -345,14 +345,17 @@ public class BasicKeyManager extends KeyManager {
 			try {
 				in.reset();
 				java.io.FileOutputStream bais = new java.io.FileOutputStream("KeyDump.p12");
-				byte [] tmp = new byte[2048];
-				int read = in.read(tmp);
-				while (read > 0) {
-					bais.write(tmp, 0, read);
-					read = in.read(tmp);
+				try {
+					byte [] tmp = new byte[2048];
+					int read = in.read(tmp);
+					while (read > 0) {
+						bais.write(tmp, 0, read);
+						read = in.read(tmp);
+					}
+					bais.flush();
+				} finally {
+					bais.close();
 				}
-				bais.flush();
-				bais.close();
 			} catch (IOException e1) {
 				Log.info(Log.FAC_KEYS, "Another exception: " + e1);
 			}
@@ -458,14 +461,18 @@ public class BasicKeyManager extends KeyManager {
 			try {
 				ObjectInputStream input = new ObjectInputStream(new FileInputStream(configurationFile));
 				
-				HashMap<PublisherPublicKeyDigest, KeyLocator> savedKeyLocators = readObject(input);
-				_currentKeyLocators.putAll(savedKeyLocators);
-				
-				keyStoreInfo.setConfigurationFileURI(configurationFile.toURI().toString());
-				
-				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
-					Log.info(Log.FAC_KEYS, "Loaded configuration data from file {0}, got {1} key locator values.", 
-							configurationFile.getAbsolutePath(), savedKeyLocators.size());
+				try {
+					HashMap<PublisherPublicKeyDigest, KeyLocator> savedKeyLocators = readObject(input);
+					_currentKeyLocators.putAll(savedKeyLocators);
+					
+					keyStoreInfo.setConfigurationFileURI(configurationFile.toURI().toString());
+					
+					if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
+						Log.info(Log.FAC_KEYS, "Loaded configuration data from file {0}, got {1} key locator values.", 
+								configurationFile.getAbsolutePath(), savedKeyLocators.size());
+					}
+				} finally {
+					input.close();
 				}
 
 			} catch (FileNotFoundException e) {
@@ -592,8 +599,11 @@ public class BasicKeyManager extends KeyManager {
 		
 		// Update configuration data:
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(configurationFile));
-		oos.writeObject(_currentKeyLocators);
-		oos.close();
+		try {
+			oos.writeObject(_currentKeyLocators);
+		} finally {
+			oos.close();
+		}
 	}
 	
 	/**
@@ -1060,7 +1070,7 @@ public class BasicKeyManager extends KeyManager {
 			long timeout) throws IOException {
 		
 		if( Log.isLoggable(Log.FAC_KEYS, Level.FINER) )
-			Log.finer(Log.FAC_KEYS, "getPublicKey: retrieving key: " + desiredKeyID + " located at: " + locator);
+			Log.finer(Log.FAC_KEYS, "getPublicKeyObject: retrieving key: {0} located at: {1}", desiredKeyID, locator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether

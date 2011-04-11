@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -33,7 +33,6 @@ import javax.crypto.IllegalBlockSizeException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
-import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -60,7 +59,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * 
  * @see SegmentationProfile for description of CCN segmentation
  */
-public abstract class CCNAbstractInputStream extends InputStream implements ContentVerifier, CCNInterestListener {
+public abstract class CCNAbstractInputStream extends InputStream implements CCNInterestListener {
 
 	/**
 	 * Flags:
@@ -160,7 +159,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	private long _holes = 0;
 	private long _totalReceived = 0;
 	private long _pipelineStartTime;
-	private Long readerReady = -1L;
+	private Object readerReadyObj = new Object();
+	private long readerReadyVal = -1;
 
 	private double avgResponseTime = -1;
 
@@ -345,8 +345,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 		//is there a reader ready?
 		long rr;
-		synchronized(readerReady) {
-			rr = readerReady;
+		synchronized(readerReadyObj) {
+			rr = readerReadyVal;
 		}
 		//while(rr > -1) {
 		if(rr > -1) {
@@ -367,8 +367,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					try {
 						inOrderSegments.wait();
 						//readerReady.wait();
-						synchronized(readerReady) {
-							rr = readerReady;
+						synchronized(readerReadyObj) {
+							rr = readerReadyVal;
 						}
 					} catch (InterruptedException e) {
 						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
@@ -875,7 +875,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					if (inOrderSegments.size() > 0 || segmentNumber == 1)
 						advancePipeline(false);
 					else
-						advancePipeline(true);
+						advancePipeline(true); 
 					return co;
 				}
 			}
@@ -1028,8 +1028,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		synchronized(inOrderSegments) {
 			//is there a reader ready?
 			long rr;
-			synchronized(readerReady) {
-				rr = readerReady;
+			synchronized(readerReadyObj) {
+				rr = readerReadyVal;
 			}
 			if(rr > -1) {
 				//there is a reader waiting
@@ -1141,7 +1141,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 					is.interest = null;
 					for (int i = 0; i < _sentInterests.size(); i++) {
 						checkInterest = _sentInterests.get(i);
-						if (checkInterest.matches(result)) {
+						if (checkInterest.matches(is.content)) {
 							//we found a match!
 							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 								Log.info(Log.FAC_PIPELINE, "PIPELINE: the incoming packet's interest is gone, but it matches another interest, using that");
@@ -1156,21 +1156,19 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 
 				//}
 
-				//verify the content object
-				if (verify(result)) {
-					//this content verified
-				} else {
-					//content didn't verify, don't hand it up...
-					//TODO content that fails verification needs to be handled better.  need to express a new interest
-					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-						Log.info(Log.FAC_PIPELINE, "Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
-					_sentInterests.remove(is.interest);
-
-					is = null;
+				if (is != null) {
+					// verify the content object
+					if (_handle.defaultVerifier().verify(is.content)) {
+						// this content verified
+						receivePipelineContent(is.content);
+					} else {
+						// content didn't verify, don't hand it up...
+						// TODO content that fails verification needs to be handled better.  need to express a new interest
+						if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
+							Log.warning(Log.FAC_PIPELINE, "Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
+						_sentInterests.remove(is.interest);
+					}
 				}
-
-				if (is != null)
-					receivePipelineContent(is.content);
 
 				synchronized(incoming) {
 					if (incoming.size() == 0) {
@@ -1536,8 +1534,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 	protected ContentObject getSegment(long number) throws IOException {
 		long ttgl = System.currentTimeMillis();
 
-		synchronized(readerReady){
-			readerReady = number;
+		synchronized(readerReadyObj){
+			readerReadyVal = number;
 		}
 
 		synchronized (inOrderSegments) {
@@ -1568,9 +1566,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: we had segment {0} already!!", number);
 				advancePipeline(false);
-				synchronized(readerReady) {
+				synchronized(readerReadyObj) {
 					//readerReady.notifyAll();
-					readerReady = -1L;
+					readerReadyVal = -1;
 					inOrderSegments.notifyAll();
 				}
 				return co;
@@ -1628,9 +1626,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 				co = getPipelineSegment(number);
 				//}
 
-				synchronized(readerReady) {
+				synchronized(readerReadyObj) {
 					//readerReady.notifyAll();
-					readerReady = -1L;
+					readerReadyVal = -1;
 					inOrderSegments.notifyAll();
 				}
 			}
@@ -1801,74 +1799,6 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 			dereferencedLink.pushDereferencedLink(_dereferencedLink);
 		}
 		setDereferencedLink(dereferencedLink);
-	}
-
-	/**
-	 * Verifies the signature on a segment using cached bulk signature data (from Merkle Hash Trees)
-	 * if it is available.
-	 * TODO -- check to see if it matches desired publisher.
-	 * @param segment the segment whose signature to verify in the context of this stream.
-	 */
-	public boolean verify(ContentObject segment) {
-
-		// First we verify. 
-		// Low-level verify just checks that signer actually signed.
-		// High-level verify checks trust.
-		try {
-
-			// We could have several options here. This segment could be simply signed.
-			// or this could be part of a Merkle Hash Tree. If the latter, we could
-			// already have its signing information.
-			if (null == segment.signature().witness()) {
-				return segment.verify(_handle.keyManager());
-			}
-
-			// Compare to see whether this segment matches the root signature we previously verified, if
-			// not, verify and store the current signature.
-			// We need to compute the proxy regardless.
-			byte [] proxy = segment.computeProxy();
-
-			// OK, if we have an existing verified signature, and it matches this segment's
-			// signature, the proxy ought to match as well.
-			if ((null != _verifiedRootSignature) && (Arrays.equals(_verifiedRootSignature, segment.signature().signature()))) {
-				if ((null == proxy) || (null == _verifiedProxy) || (!Arrays.equals(_verifiedProxy, proxy))) {
-					if (Log.isLoggable(Log.FAC_VERIFY, Level.WARNING)) {
-						Log.warning(Log.FAC_VERIFY, "VERIFICATION FAILURE: Found segment of stream: " + segment.name() + " whose digest fails to verify; segment length: " + segment.contentLength());
-						Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
-                                 " proxy: " + DataUtils.printBytes(proxy) +
-                                 " expected proxy: " + DataUtils.printBytes(_verifiedProxy) +
-                                 " ephemeral digest: " + DataUtils.printBytes(segment.digest()));
-						SystemConfiguration.outputDebugObject(segment);
-					}
-					return false;
-				}
-			} else {
-				// Verifying a new segment. See if the signature verifies, otherwise store the signature
-				// and proxy.
-				if (!ContentObject.verify(proxy, segment.signature().signature(), segment.signedInfo(), segment.signature().digestAlgorithm(), _handle.keyManager())) {
-					if (Log.isLoggable(Log.FAC_VERIFY, Level.WARNING)) {
-						Log.warning(Log.FAC_VERIFY, "VERIFICATION FAILURE: Found segment of stream: " + segment.name().toString() + " whose signature fails to verify; segment length: " + segment.contentLength() + ".");
-						Log.info("Verification failure: " + segment.name() + " timestamp: " + segment.signedInfo().getTimestamp() + " content length: " + segment.contentLength() + 
-                                 " proxy: " + DataUtils.printBytes(proxy) +
-                                 " expected proxy: " + DataUtils.printBytes(_verifiedProxy) +
-                                 " ephemeral digest: " + DataUtils.printBytes(segment.digest()));
-						SystemConfiguration.outputDebugObject(segment);
-					}
-					return false;
-				} else {
-					// Remember current verifiers
-					_verifiedRootSignature = segment.signature().signature();
-					_verifiedProxy = proxy;
-				}
-			}
-			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
-				Log.info(Log.FAC_IO, "Got segment: {0}, verified.", segment.name());
-		} catch (Exception e) {
-			Log.warning(Log.FAC_IO, "Got an " + e.getClass().getName() + " exception attempting to verify segment: " + segment.name().toString() + ", treat as failure to verify.");
-			Log.warningStackTrace(e);
-			return false;
-		}
-		return true;
 	}
 
 	/**
@@ -2153,7 +2083,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements Cont
 		return -1;
 	}
 
-	private class IncomingSegment {
+	static private class IncomingSegment {
 		public ContentObject content;
 		public Interest interest;
 		public long segmentNumber;

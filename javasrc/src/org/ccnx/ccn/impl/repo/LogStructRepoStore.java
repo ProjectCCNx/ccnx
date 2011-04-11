@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -19,7 +19,9 @@ package org.ccnx.ccn.impl.repo;
 
 import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -27,7 +29,6 @@ import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.security.InvalidKeyException;
 import java.security.InvalidParameterException;
-import java.security.PrivateKey;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -41,7 +42,6 @@ import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.CCNProfile;
@@ -50,9 +50,7 @@ import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
@@ -72,7 +70,6 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 
 		private static String DEFAULT_LOCAL_NAME = "Repository";
 		private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
-		private static final String REPO_PRIVATE = "private";
 		private static final String VERSION = "version";
 		private static final String REPO_LOCALNAME = "local";
 		private static final String REPO_GLOBALPREFIX = "global";
@@ -88,12 +85,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 
 		private static String DIAG_NAMETREE = "nametree"; // Diagnostic/signal to dump name tree to debug file
 		private static String DIAG_NAMETREEWIDE = "nametreewide"; // Same as DIAG_NAMETREE but with wide names per node
-
-		private static ContentName PRIVATE_DATA_PREFIX = ContentName.fromNative(new String[]{META_DIR, REPO_PRIVATE});
-
 	}
 	
 	protected String _repositoryRoot = null;
+	protected String _repositoryMeta = null;
 	protected File _repositoryFile;
 
 	Map<Integer,RepoFile> _files;
@@ -103,13 +98,13 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	
 	protected HashMap<String, String> _bulkImportInProgress = new HashMap<String, String>();
 	
-	public class RepoFile {
+	public static class RepoFile {
 		File file;
 		RandomAccessFile openFile;
 		long nextWritePos;
 	}
 	
-	protected class FileRef extends ContentRef {
+	protected static class FileRef extends ContentRef {
 		int id;
 		long offset;
 	}
@@ -317,6 +312,9 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		
 		_repositoryFile = new File(_repositoryRoot);
 		_repositoryFile.mkdirs();
+		_repositoryMeta = _repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.META_DIR;
+		File metaDirFile = new File(_repositoryMeta);
+		metaDirFile.mkdirs();
 		if (Log.isLoggable(Log.FAC_REPO, Level.WARNING)){
 			Log.warning(Log.FAC_REPO, "Starting repository; repository root is: {0}", _repositoryFile.getAbsolutePath());
 		}
@@ -474,8 +472,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			}
 			return null;
 		}
-		if (null == _activeWriteFile)
+		if (null == _activeWriteFile) {
+			Log.warning(Log.FAC_REPO, "Tried to save: {0}, presumably after repo shutdown", content.name());
 			return null;
+		}
 		try {	
 			NameEnumerationResponse ner = new NameEnumerationResponse();
 			synchronized(_activeWriteFile) {
@@ -540,53 +540,51 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 	}
 	
-	private ContentName getPrivateContentName(String fileName) {
-		return ContentName.fromNative(LogStructRepoStoreProfile.PRIVATE_DATA_PREFIX, fileName);
-	}
-	
 	/**
-	 * Check data "file" - create new one if none exists or "forceWrite" is set.
-	 * Files are always versioned so we can find the latest one.
+	 * Check/write files that contain meta data for the repo
 	 * @throws RepositoryException
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 */
 	private String checkFile(String fileName, String contents, boolean forceWrite) throws RepositoryException {
-		ContentName name = getPrivateContentName(fileName);
-		RepositoryInternalInputHandler riih = null;
-		RepositoryInternalFlowControl rifc = null;
-		CCNStringObject so = null;
-		try {
-			riih = new RepositoryInternalInputHandler(this, _km);
-			rifc = new RepositoryInternalFlowControl(this, riih);	
-			if (!forceWrite) {
+		File f = new File(_repositoryMeta, fileName);
+		if (!forceWrite) {
+			if (f.exists()) {
+				FileInputStream fis = null;
 				try {
-					so = new CCNStringObject(name, riih);
-					if (null != so) {
-						String ret = so.string();
-						so.close();
-						return ret;
-					}
-				} catch (Exception ioe) {}
-				if (null != so)
-					so.close();
+					fis = new FileInputStream(f);
+					byte[] buf = new byte[fis.available()];
+					fis.read(buf);
+					return new String(buf);
+				} catch (FileNotFoundException e) {} // Can't happen
+				  catch (IOException ioe) {
+					  throw new RepositoryException(ioe.getMessage());
+				  }
+				  finally {
+					  if (null != fis)
+						try {
+							fis.close();
+						} catch (IOException e) {}
+				  }
 			}
-			
-			PublisherPublicKeyDigest publisher = _km.getDefaultKeyID();
-			PrivateKey signingKey = _km.getSigningKey(publisher);
-			KeyLocator locator = _km.getKeyLocator(signingKey);
-			so = new CCNStringObject(name, contents, publisher, locator, rifc);
-			so.update();
-		} catch (Exception e) {
-			Log.logStackTrace(Level.WARNING, e);
-			e.printStackTrace();
 		}
-		if (null != so)
-			so.close();
-		if (null != rifc)
-			rifc.close();
-		if (null != riih)
-			riih.close();
+		if (f.exists())
+			f.delete();
+			FileOutputStream fos = null;
+		try {
+			fos = new FileOutputStream(f);
+			fos.write(contents.getBytes());
+			fos.close();
+		} catch (FileNotFoundException e1) {}  // Can't happen
+		  catch (IOException ioe) {
+			  throw new RepositoryException(ioe.getMessage());
+		  }
+		  finally {
+			  if (null != fos)
+				try {
+					fos.close();
+				} catch (IOException e) {}
+		  }
 		return null;
 	}
 
@@ -633,8 +631,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			_km.close();
 		if (null != _activeWriteFile && null != _activeWriteFile.openFile) {
 			try {
-				_activeWriteFile.openFile.close();
-				_activeWriteFile.openFile = null;
+				synchronized (_activeWriteFile) {
+					_activeWriteFile.openFile.close();
+					_activeWriteFile.openFile = null;
+				}
 			} catch (IOException e) {}
 		}
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.REPO_EXITDUMP)) {
@@ -648,7 +648,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				? ((null == _activeWriteFile.openFile) ? null : "running") : null;
 	}
 
-	public boolean bulkImport(String name) throws RepositoryException {
+	synchronized public boolean bulkImport(String name) throws RepositoryException {
 		if (name.contains(UserConfiguration.FILE_SEP))
 			throw new RepositoryException("Bulk import data can not contain pathnames");
 		File file = new File(_repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR + UserConfiguration.FILE_SEP + name);
@@ -658,24 +658,23 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 					return false;		
 			throw new RepositoryException("File does not exist: " + file);
 		}
-		synchronized (_currentFileIndex) {
-			_bulkImportInProgress.put(name, name);
-			_currentFileIndex++;
-			File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
-			if (!file.renameTo(repoFile))
-				throw new RepositoryException("Can not rename file: " + file);
-			try {
-				createIndex(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex, _currentFileIndex, true);
-			} catch (RepositoryException re) {
-				// The seemingly logical thing to do would be to verify the data for errors first and then submit it if it
-				// was OK. But that would require 2 passes through the data in the mainline case in which the data is good
-				// so instead we rename the file back if its bad.
-				repoFile.renameTo(file);
-				_bulkImportInProgress.remove(name);
-				throw re;
-			}
+		
+		_bulkImportInProgress.put(name, name);
+		_currentFileIndex++;
+		File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
+		if (!file.renameTo(repoFile))
+			throw new RepositoryException("Can not rename file: " + file);
+		try {
+			createIndex(LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex, _currentFileIndex, true);
+		} catch (RepositoryException re) {
+			// The seemingly logical thing to do would be to verify the data for errors first and then submit it if it
+			// was OK. But that would require 2 passes through the data in the mainline case in which the data is good
+			// so instead we rename the file back if its bad.
+			repoFile.renameTo(file);
 			_bulkImportInProgress.remove(name);
+			throw re;
 		}
+		_bulkImportInProgress.remove(name);
 		return true;
 	}
 }

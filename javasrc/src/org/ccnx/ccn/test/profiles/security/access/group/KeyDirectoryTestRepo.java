@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -170,6 +170,10 @@ public class KeyDirectoryTestRepo {
 		newMembers.add(new Link(myIdentity));
 		Group myGroup = acm.groupManager().createGroup(randomGroupName, newMembers, 0);
 		Assert.assertTrue(acm.groupManager().haveKnownGroupMemberships());
+
+		Thread.sleep(2000); // FIXME: this delay is necessary for the repo-write to complete
+		// it should not be needed, as the data should be available locally.
+
 		PrincipalKeyDirectory pkd = myGroup.privateKeyDirectory(acm);
 		pkd.waitForChildren();
 		Assert.assertTrue(pkd.hasPrivateKeyBlock());

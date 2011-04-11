@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -85,7 +85,7 @@ public class FaceManagerTest extends LibraryTestBase {
 	 */
 	@Test
 	public void testEncodeOutputStream() {
-		FaceInstance face = fm. new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
+		FaceInstance face = new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
 				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
 		// ActionType.NewFace, _ccndId, ipProto, host, port,  multicastInterface, multicastTTL, freshnessSeconds
 		System.out.println("Encoding: " + face);
@@ -104,7 +104,7 @@ public class FaceManagerTest extends LibraryTestBase {
 
 	@Test
 	public void testDecodeInputStream() {
-		FaceInstance faceToEncode = fm. new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
+		FaceInstance faceToEncode = new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
 				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
 		System.out.println("Encoding: " + faceToEncode);
 		assertNotNull(faceToEncode);
@@ -121,7 +121,7 @@ public class FaceManagerTest extends LibraryTestBase {
 		
 		System.out.println("Decoding: ");
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-		FaceInstance faceToDecodeTo = fm. new FaceInstance();  /* We need an empty one to decode into */
+		FaceInstance faceToDecodeTo = new FaceInstance();  /* We need an empty one to decode into */
 		try {
 			faceToDecodeTo.decode(bais);
 		} catch (ContentDecodingException e) {
@@ -134,13 +134,13 @@ public class FaceManagerTest extends LibraryTestBase {
 	
 	@Test
 	public void testEncodingDecoding() {
-		FaceInstance faceToEncode = fm. new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
+		FaceInstance faceToEncode = new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
 				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
 		System.out.println("Encoding: " + faceToEncode);
 
-		FaceInstance  textFaceToDecodeInto = fm. new FaceInstance();
+		FaceInstance  textFaceToDecodeInto = new FaceInstance();
 		assertNotNull(textFaceToDecodeInto);
-		FaceInstance  binaryFaceToDecodeInto = fm. new FaceInstance();
+		FaceInstance  binaryFaceToDecodeInto = new FaceInstance();
 		assertNotNull(binaryFaceToDecodeInto);
 		XMLEncodableTester.encodeDecodeTest("FaceIntance", faceToEncode, textFaceToDecodeInto, binaryFaceToDecodeInto);
 	}
@@ -167,6 +167,13 @@ public class FaceManagerTest extends LibraryTestBase {
 			System.out.println("Failed to delete face.");
 			e.printStackTrace();
 			fail("Failed to delete face.");
+		}
+		
+		try {
+			mgr.deleteFace(faceID);
+			fail("Failed to receive expected CCNDaemonException deleting already deleted face.");
+		}catch (CCNDaemonException e) {
+			System.out.println("Received expected exception " + e.getClass().getName() + ", message: " + e.getMessage());
 		}
 	}
 

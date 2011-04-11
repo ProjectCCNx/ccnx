@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -133,7 +133,7 @@ public class ContentTree {
 	 * Currently we prescreen for matching the exclude filter if there is one
 	 * and that the candidate has the correct number of components.
 	 */
-	protected class InterestPreScreener {
+	protected static class InterestPreScreener {
 		protected int _minComponents = 0;
 		protected int _maxComponents = 32767;
 		protected Exclude _exclude;
@@ -300,7 +300,7 @@ public class ContentTree {
 	/**
 	 * Create an iterator that goes backwards through the candidates for right search
 	 */
-	protected class RightIterator implements Iterator<TreeNode> {
+	protected static class RightIterator implements Iterator<TreeNode> {
 		protected SortedMap<TreeNode, TreeNode> _map;
 		
 		protected RightIterator(SortedMap<TreeNode, TreeNode> map) {
@@ -637,8 +637,7 @@ public class ContentTree {
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
 			//first add the NE marker
-		    ContentName potentialCollectionName = 
-		    	new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+		    ContentName potentialCollectionName = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 		    //now add the response id
 		    potentialCollectionName = new ContentName(potentialCollectionName, responseName.components());
 		    //now finish up with version and segment
@@ -653,7 +652,17 @@ public class ContentTree {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
 					Log.finer(Log.FAC_REPO, "the new version doesn't match, no response needed: interest = {0} would be collection name: {1}", interest, potentialCollectionName);
 				}
-				parent.interestFlag = true;
+
+				//I am not supposed to respond...  is that because of the version or because I am specifically excluded?
+				 if (responseName.count() > 0 && interest.exclude().match(responseName.components().get(0))) {
+					 Log.finer(Log.FAC_REPO, "my repo is explictly excluded!  not setting interestFlag to true");
+					 //do not set interest flag!  I wasn't supposed to respond
+				 } else {
+					 if (interest.exclude().match(new CCNTime(parent.timestamp).toBinaryTime())) {
+						 Log.finer(Log.FAC_REPO, "my version is just excluded, setting interestFlag to true");
+						 parent.interestFlag = true;
+					 }
+				 }
 				return null;
 			}
 

@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -27,6 +27,7 @@ ALLTESTS = \
   test_finished \
   test_happy_face \
   test_interest_suppression \
+  test_answered_interest_suppression \
   test_key_fetch \
   test_late \
   test_long_consumer \

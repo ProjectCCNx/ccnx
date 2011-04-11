@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -20,6 +20,7 @@ package org.ccnx.ccn.impl.repo;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
@@ -140,7 +141,16 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 
 		if (null != policyFile) {
 			try {
-				_policy.updateFromInputStream(new FileInputStream(policyFile));
+				FileInputStream fis = new FileInputStream(policyFile);
+				try {
+					_policy.updateFromInputStream(fis);
+				} finally {
+					try {
+						fis.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
 			} catch (FileNotFoundException e) {
 				throw new RepositoryException(e.getMessage());
 			}

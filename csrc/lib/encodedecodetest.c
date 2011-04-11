@@ -4,7 +4,7 @@
  *
  * A CCNx program.
  *
- * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -271,7 +271,7 @@ main (int argc, char *argv[]) {
             fd = open(outname, O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
             if (fd == -1)
                 perror(outname);
-            (void)write(fd, buffer->buf, buffer->length);
+            res = write(fd, buffer->buf, buffer->length);
             close(fd);
 	}
         if (decode_message(buffer, cur_path, contents[0], strlen(contents[0]), ccn_keystore_public_key(keystore)) != 0) {

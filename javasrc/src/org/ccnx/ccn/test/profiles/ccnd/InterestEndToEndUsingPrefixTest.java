@@ -38,29 +38,32 @@ import org.junit.Test;
 public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements CCNFilterListener, CCNInterestListener {
 	private Interest _interestSent;
 	private String _prefix = "/interestEtoETestUsingPrefix/test-" + rand.nextInt(10000);
+	private boolean _interestSeen = false;
 	private final static int TIMEOUT = 3000;
-
 	
 	@Test
 	public void testInterestEndToEnd() throws MalformedContentNameStringException, IOException, InterruptedException {
+		Interest i;
 		getHandle.registerFilter(ContentName.fromNative(_prefix), this);
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
-		doTest();
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
-		_interestSent.maxSuffixComponents(4);
-		_interestSent.minSuffixComponents(3);
-		doTest();
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
-		_interestSent.maxSuffixComponents(1);
-		doTest();
+		i = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
+		doTest(i);
+		i = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
+		i.maxSuffixComponents(4);
+		i.minSuffixComponents(3); 
+		doTest(i);
+		i = new Interest(ContentName.fromNative(_prefix + "/simpleTest3"));
+		i.maxSuffixComponents(1);
+		doTest(i);
+		i = new Interest(ContentName.fromNative(_prefix + "/simpleTest4"));
 		getHandle.unregisterFilter(ContentName.fromNative(_prefix), this);
-		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
-		doTestFail();
+		doTestFail(i);
 	}
 
 	public boolean handleInterest(Interest interest) {
-		Assert.assertTrue(_interestSent.equals(interest));
 		synchronized(this) {
+			if (! _interestSent.equals(interest))
+				return false;
+			_interestSeen = true;
 			notify();
 		}
 		return true;
@@ -68,26 +71,27 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 	
 	public Interest handleContent(ContentObject data,
 			Interest interest) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 	
-	private void doTest() throws IOException, InterruptedException {
-		long startTime = System.currentTimeMillis();
+	private void doTest(Interest interest) throws IOException, InterruptedException {
 		synchronized (this) {
-			putHandle.expressInterest(_interestSent, this);
+			_interestSeen = false;
+			_interestSent = interest;
+			putHandle.expressInterest(interest, this);
 			wait(TIMEOUT);
+			Assert.assertTrue(_interestSeen);
 		}
-		Assert.assertTrue((System.currentTimeMillis() - startTime) < TIMEOUT);
 	}
 
-	private void doTestFail() throws IOException, InterruptedException {
-		long startTime = System.currentTimeMillis();
+	private void doTestFail(Interest interest) throws IOException, InterruptedException {
 		synchronized (this) {
-			putHandle.expressInterest(_interestSent, this);
+			_interestSeen = false;
+			_interestSent = interest;
+			putHandle.expressInterest(interest, this);
 			wait(TIMEOUT);
+			Assert.assertFalse(_interestSeen);
 		}
-		Assert.assertFalse((System.currentTimeMillis() - startTime) < TIMEOUT);
 	}
 
 }
