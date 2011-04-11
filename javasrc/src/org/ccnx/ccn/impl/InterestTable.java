@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.logging.Level;
@@ -201,24 +202,22 @@ public class InterestTable<V> {
 	 */
 	protected void add(Holder<V> holder) {
 		LongestFirstContentName name = new LongestFirstContentName(holder.name());
-		if (_contents.containsKey(name)) {
-			List<Holder<V>> list = _contents.get(name);
-			list.add(holder);
-			if (null != _capacity) {
-				synchronized (_contents) {
+		synchronized (_contents) {
+			if (_contents.containsKey(name)) {
+				List<Holder<V>> list = _contents.get(name);
+				list.add(holder);
+				if (null != _capacity) {
 					_contents.remove(name);
 					_contents.put(name, list);		// Put us last to avoid LRU removal
 				}
-			}
-		} else {
-			ArrayList<Holder<V>> list = new ArrayList<Holder<V>>(1);
-			list.add(holder);
-
-			// We assume that the "oldest" entry is the first one.
-			// In cases we know about currently this should be true
-			// XXX - should we care about whether the key has multiple
-			// interests attached?
-			synchronized (_contents) {
+			} else {
+				ArrayList<Holder<V>> list = new ArrayList<Holder<V>>(1);
+				list.add(holder);
+	
+				// We assume that the "oldest" entry is the first one.
+				// In cases we know about currently this should be true
+				// XXX - should we care about whether the key has multiple
+				// interests attached?
 				if (null != _capacity && _contents.size() >= _capacity)
 					_contents.remove(_contents.firstKey());
 				_contents.put(name, list);
@@ -227,7 +226,10 @@ public class InterestTable<V> {
 	}
 
 	protected Holder<V> getMatchByName(ContentName name, ContentObject target) {
-		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
+		List<Holder<V>> list;
+		synchronized (_contents) {
+			list = _contents.get(new LongestFirstContentName(name));
+		}
 		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
 			Log.finest(Log.FAC_ENCODING, "name: {0} target: {1} possible matches: {2}", name, target.name(), ((null == list) ? 0 : list.size()));
 		if (null != list) {
@@ -255,7 +257,10 @@ public class InterestTable<V> {
 		if(Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
 			Log.finest(Log.FAC_ENCODING, "name: {0} target: {1}", name, target.name());
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
-		List<Holder<V>> list = _contents.get(new LongestFirstContentName(name));
+		List<Holder<V>> list;
+		synchronized (_contents) {
+			list = _contents.get(new LongestFirstContentName(name));
+		}
 		if (null != list) {
 			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
 				Holder<V> holder = holdIt.next();
@@ -273,21 +278,21 @@ public class InterestTable<V> {
 		if(Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
 			Log.finest(Log.FAC_ENCODING, "name: {0} target: {1}", name, target.name());
 		LongestFirstContentName lfcn = new LongestFirstContentName(name);
-		List<Holder<V>> list = _contents.get(lfcn);
-		if (null != list) {
-			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
-				Holder<V> holder = holdIt.next();
-				if (null != holder.interest()) {
-					if (holder.interest().matches(target)) {
-						holdIt.remove();
-						if (list.size() == 0) {
-							synchronized (_contents) {
+		synchronized (_contents) {
+			List<Holder<V>> list = _contents.get(lfcn);
+			if (null != list) {
+				for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
+					Holder<V> holder = holdIt.next();
+					if (null != holder.interest()) {
+						if (holder.interest().matches(target)) {
+							holdIt.remove();
+							if (list.size() == 0) {
 								_contents.remove(lfcn);
 							}
+							return holder;
 						}
-						return holder;
-					}
-				}	
+					}	
+				}
 			}
 		}
 		return null;
@@ -304,25 +309,27 @@ public class InterestTable<V> {
 	public Entry<V> remove(ContentName name, V value) {
 		Holder<V> result = null;
 		LongestFirstContentName lfcn = new LongestFirstContentName(name);
-		List<Holder<V>> list = _contents.get(lfcn);
-		if (null != list) {
-			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
-				Holder<V> holder = holdIt.next();
-				if (null == holder.value()) {
-					if (null == value) {
-						holdIt.remove();
-						result = holder;
-					}
-				} else {
-					if (holder.value().equals(value)) {
-						holdIt.remove();
-						result = holder;
+		synchronized (_contents) {
+			List<Holder<V>> list = _contents.get(lfcn);
+			if (null != list) {
+				for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
+					Holder<V> holder = holdIt.next();
+					if (null == holder.value()) {
+						if (null == value) {
+							holdIt.remove();
+							result = holder;
+						}
+					} else {
+						if (holder.value().equals(value)) {
+							holdIt.remove();
+							result = holder;
+						}
 					}
 				}
-			}
-			if (list.size() == 0) {
-				synchronized (_contents) {
-					_contents.remove(lfcn);
+				if (list.size() == 0) {
+					synchronized (_contents) {
+						_contents.remove(lfcn);
+					}
 				}
 			}
 		}
@@ -339,27 +346,27 @@ public class InterestTable<V> {
 	public Entry<V> remove(Interest interest, V value) {
 		Holder<V> result = null;
 		LongestFirstContentName name = new LongestFirstContentName(interest.name());
-		List<Holder<V>> list = _contents.get(name);
-		if (null != list) {
-			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
-				Holder<V> holder = holdIt.next();
-				if (interest.equals(holder.interest())) {
-					if (null == holder.value()) {
-						if (null == value) {
-							holdIt.remove();
-							result = holder;
-
-						}
-					} else {
-						if (holder.value().equals(value)) {
-							holdIt.remove();
-							result = holder;
+		synchronized (_contents) {
+			List<Holder<V>> list = _contents.get(name);
+			if (null != list) {
+				for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
+					Holder<V> holder = holdIt.next();
+					if (interest.equals(holder.interest())) {
+						if (null == holder.value()) {
+							if (null == value) {
+								holdIt.remove();
+								result = holder;
+	
+							}
+						} else {
+							if (holder.value().equals(value)) {
+								holdIt.remove();
+								result = holder;
+							}
 						}
 					}
 				}
-			}
-			if (list.size() == 0) {
-				synchronized (_contents) {
+				if (list.size() == 0) {
 					_contents.remove(name);
 				}
 			}
@@ -370,19 +377,19 @@ public class InterestTable<V> {
 	protected List<Holder<V>> removeAllMatchByName(ContentName name, ContentObject target) {
 		List<Holder<V>> matches = new ArrayList<Holder<V>>();
 		LongestFirstContentName lfcn = new LongestFirstContentName(name);
-		List<Holder<V>> list = _contents.get(lfcn);
-		if (null != list) {
-			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
-				Holder<V> holder = holdIt.next();
-				if (null != holder.interest()) {
-					if (holder.interest().matches(target)) {
-						holdIt.remove();
-						matches.add(holder);
-					}
-				}	
-			}
-			if (list.size() == 0) {
-				synchronized (_contents) {
+		synchronized (_contents) {
+			List<Holder<V>> list = _contents.get(lfcn);
+			if (null != list) {
+				for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
+					Holder<V> holder = holdIt.next();
+					if (null != holder.interest()) {
+						if (holder.interest().matches(target)) {
+							holdIt.remove();
+							matches.add(holder);
+						}
+					}	
+				}
+				if (list.size() == 0) {
 					_contents.remove(lfcn);
 				}
 			}
@@ -420,7 +427,11 @@ public class InterestTable<V> {
 		if(Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
 			Log.finest(Log.FAC_ENCODING, "target: {0}", target.name());
 		Entry<V> match = null;
-		for (LongestFirstContentName name : _contents.keySet()) {
+		Set<LongestFirstContentName> names;
+		synchronized (_contents) {
+			names = _contents.keySet();
+		}
+		for (LongestFirstContentName name : names) {
 			Entry<V> found = getMatchByName(name, target);
 			if (null != found)
 				match = found;
@@ -509,9 +520,12 @@ public class InterestTable<V> {
 			Log.finest(Log.FAC_ENCODING, "target: {0}", target);
 
 		Entry<V> match = null;
-		for (LongestFirstContentName name : _contents.keySet()) {
-			if (name.isPrefixOf(target)) {
-				match = _contents.get(name).get(0);
+		synchronized (_contents) {
+			for (LongestFirstContentName name : _contents.keySet()) {
+				if (name.isPrefixOf(target)) {
+					match = _contents.get(name).get(0);
+					break;
+				}
 			}
 		}
 		return match;
@@ -550,9 +564,11 @@ public class InterestTable<V> {
 			Log.finest(Log.FAC_ENCODING, "target: {0}", target);
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
-		for (LongestFirstContentName name : _contents.keySet()) {
-			if (name.isPrefixOf(target)) {
-				matches.addAll(_contents.get(name));
+		synchronized (_contents) {
+			for (LongestFirstContentName name : _contents.keySet()) {
+				if (name.isPrefixOf(target)) {
+					matches.addAll(_contents.get(name));
+				}
 			}
 		}
 		Collections.reverse(matches);
@@ -608,8 +624,12 @@ public class InterestTable<V> {
 		if (null != target) {
 			ContentName matchName = null;
 			if(Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
-				Log.finest(Log.FAC_ENCODING, "removeMatch: looking for match to target {0} among {1} possibilities.", target.name(), _contents.keySet().size());				
-			for (LongestFirstContentName name : _contents.keySet()) {
+				Log.finest(Log.FAC_ENCODING, "removeMatch: looking for match to target {0} among {1} possibilities.", target.name(), _contents.keySet().size());
+			Set<LongestFirstContentName> names;
+			synchronized (_contents) {
+				names = _contents.keySet();
+			}
+			for (LongestFirstContentName name : names) {
 				Entry<V> found = getMatchByName(name, target);
 				if (null != found) {
 					match = found;
@@ -656,7 +676,11 @@ public class InterestTable<V> {
 	public List<Entry<V>> removeMatches(ContentObject target) {
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		List<ContentName> names = new ArrayList<ContentName>();
-		for (LongestFirstContentName name : _contents.keySet()) {
+		Set<LongestFirstContentName> LFCnames;
+		synchronized (_contents) {
+			LFCnames = _contents.keySet();
+		}
+		for (LongestFirstContentName name : LFCnames) {
 			if (name.isPrefixOf(target.name())) {
 				// Name match - is there an interest match here?
 				matches.addAll(getAllMatchByName(name, target));
@@ -699,7 +723,9 @@ public class InterestTable<V> {
 	 * @return	the number of ContentNames in the table
 	 */
 	public int sizeNames() {
-		return _contents.size();
+		synchronized (_contents) {
+			return _contents.size();
+		}
 	}
 
 	/**
