@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -90,9 +90,9 @@ public class LastSegmentTest {
 	
 		Assert.assertNull(object);
 		
-		Assert.assertTrue(stoptime - starttime > timeout);
+		Assert.assertTrue("Returned too soon in : " + (stoptime - starttime) + " ms", stoptime - starttime >=  timeout);
 		
-		if (stoptime - starttime < 2*timeout) {
+		if (stoptime - starttime > 2*timeout) {
 			Log.warning("lastSegmentTimeoutTest was more than twice the timeout length");
 		}		
 	}
