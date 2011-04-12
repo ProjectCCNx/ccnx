@@ -1149,8 +1149,12 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 							break;
 						}
 					}
-					if (is.interest == null)
+					if (is.interest == null) {
 						is = null;
+						synchronized(incoming) {
+							processingSegment = -1;
+						}
+					}
 				}
 
 
