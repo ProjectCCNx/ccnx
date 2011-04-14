@@ -484,7 +484,6 @@ public class InterestTable<V> {
 				// Name match - is there an interest match here?
 				matches.addAll(getAllMatchByName(name, target));
 			}
-			// Collections.reverse(matches);
 		}
 		return matches;
 	}
@@ -574,7 +573,6 @@ public class InterestTable<V> {
 				}
 			}
 		}
-		// Collections.reverse(matches);
 		return matches;
 	}
 
@@ -695,7 +693,6 @@ public class InterestTable<V> {
 				removeAllMatchByName(contentName, target);				
 			}
 		}
-		//Collections.reverse(matches);
 		return matches;
 	}
 
