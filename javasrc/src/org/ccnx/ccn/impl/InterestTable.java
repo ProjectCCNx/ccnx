@@ -19,7 +19,6 @@ package org.ccnx.ccn.impl;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -87,10 +86,7 @@ public class InterestTable<V> {
 			int oCount = o.count();
 			if (thisCount == oCount)
 				return super.compareTo(o);
-			if (thisCount < oCount)
-				return -1;
-			else 
-				return 1;
+			return (oCount - thisCount);
 		}	
 	}
 
@@ -104,6 +100,9 @@ public class InterestTable<V> {
 			return s.toString();
 		}
 	};
+	
+	protected ArrayList<LongestFirstContentName> _contentNamesLRU = new ArrayList<LongestFirstContentName>();
+	
 	protected Integer _capacity = null;	// For LRU size control - default is none
 
 	protected abstract class Holder<T> implements Entry<T> {
@@ -207,21 +206,25 @@ public class InterestTable<V> {
 				List<Holder<V>> list = _contents.get(name);
 				list.add(holder);
 				if (null != _capacity) {
-					_contents.remove(name);
-					_contents.put(name, list);		// Put us last to avoid LRU removal
+					// Have to update our LRUness
+					_contentNamesLRU.remove(name);
+					_contentNamesLRU.add(name);
 				}
 			} else {
 				ArrayList<Holder<V>> list = new ArrayList<Holder<V>>(1);
 				list.add(holder);
-	
-				// We assume that the "oldest" entry is the first one.
-				// In cases we know about currently this should be true
-				// XXX - should we care about whether the key has multiple
-				// interests attached?
-				if (null != _capacity && _contents.size() >= _capacity)
-					_contents.remove(_contents.firstKey());
+
+				if (null != _capacity && _contents.size() >= _capacity) {
+					// The LRU is the first key in the LRU list. So remove the contents
+					// corresponding to that one.
+					// XXX - should we care about whether the key has multiple
+					// interests attached?
+					_contents.remove(_contentNamesLRU.get(0));
+					_contentNamesLRU.remove(0);
+				}
 				_contents.put(name, list);
 			}
+			_contentNamesLRU.add(name);
 		}
 	}
 
@@ -432,9 +435,9 @@ public class InterestTable<V> {
 			names = _contents.keySet();
 		}
 		for (LongestFirstContentName name : names) {
-			Entry<V> found = getMatchByName(name, target);
-			if (null != found)
-				match = found;
+			match = getMatchByName(name, target);
+			if (null != match)
+				break;
 		}
 		return match;
 	}
@@ -481,7 +484,7 @@ public class InterestTable<V> {
 				// Name match - is there an interest match here?
 				matches.addAll(getAllMatchByName(name, target));
 			}
-			Collections.reverse(matches);
+			// Collections.reverse(matches);
 		}
 		return matches;
 	}
@@ -571,7 +574,7 @@ public class InterestTable<V> {
 				}
 			}
 		}
-		Collections.reverse(matches);
+		// Collections.reverse(matches);
 		return matches;
 	}
 
@@ -630,10 +633,10 @@ public class InterestTable<V> {
 				names = _contents.keySet();
 			}
 			for (LongestFirstContentName name : names) {
-				Entry<V> found = getMatchByName(name, target);
-				if (null != found) {
-					match = found;
+				match = getMatchByName(name, target);
+				if (null != match) {
 					matchName = name;
+					break;
 				}
 				// Do not remove here -- need to find best match and avoid disturbing iterator
 			}
@@ -692,7 +695,7 @@ public class InterestTable<V> {
 				removeAllMatchByName(contentName, target);				
 			}
 		}
-		Collections.reverse(matches);
+		//Collections.reverse(matches);
 		return matches;
 	}
 
