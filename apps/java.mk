@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -20,7 +20,6 @@ WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
 # Default, the top-level Makefile default target will
 # call the install target here but override INSTALL_BASE
 # with dir in the source tree
-INSTALL_BASE=/usr/local
 INSTALL_LIB = $(INSTALL_BASE)/lib
 INSTALL_BIN = $(INSTALL_BASE)/bin
 INSTALL = cp 

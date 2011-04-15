@@ -23,7 +23,6 @@ WARN_NO_INSTALL = echo Nothing installed from javasrc/
 # Default, the top-level Makefile default target will
 # call the install target here but override INSTALL_BASE
 # with dir in the source tree
-INSTALL_BASE=/usr/local
 INSTALL_LIB = $(INSTALL_BASE)/lib
 INSTALL_BIN = $(INSTALL_BASE)/bin
 INSTALL = cp 
