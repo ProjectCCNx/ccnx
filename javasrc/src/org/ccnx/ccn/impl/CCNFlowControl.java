@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -110,7 +110,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	// The namespaces served by this flow controller
 	protected HashSet<ContentName> _filteredNames = new HashSet<ContentName>();
 
-	private class UnmatchedInterest {
+	private static class UnmatchedInterest {
 		long timestamp = System.currentTimeMillis();
 	}
 	
