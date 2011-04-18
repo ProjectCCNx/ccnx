@@ -67,6 +67,8 @@ public class CCNNetworkObjectTest {
 	 * Handle naming for the test
 	 */
 	static CCNTestHelper testHelper = new CCNTestHelper(CCNNetworkObjectTest.class);
+	
+	static final int UPDATE_TIMEOUT = 5000;
 
 	static String stringObjName = "StringObject";
 	static String collectionObjName = "CollectionObject";
@@ -437,8 +439,18 @@ public class CCNNetworkObjectTest {
 			
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
 			synchronized (c1) {
-				if (!c1.getVersion().equals(t2)) {
-					c1.wait(5000);
+				boolean interrupted = false;
+				long timeout = UPDATE_TIMEOUT;
+				long startTime = System.currentTimeMillis();
+				while (!c1.getVersion().equals(t2) && timeout > 0) {
+					try {
+						c1.wait(timeout);
+					} catch (InterruptedException ie) {
+						interrupted = true;
+						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
+					}
+					if (!interrupted)
+						break;
 				}
 			}
 			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
@@ -467,8 +479,18 @@ public class CCNNetworkObjectTest {
 			CCNTime t1 = saveAndLog("First string", c0, null, "Here is the first string.");
 			
 			synchronized (c0) {
-				if (!c0.getVersion().equals(t1)) {
-					c0.wait(5000);
+				boolean interrupted = false;
+				long timeout = UPDATE_TIMEOUT;
+				long startTime = System.currentTimeMillis();
+				while (!c0.getVersion().equals(t1) && timeout > 0) {
+					try {
+						c0.wait(timeout);
+					} catch (InterruptedException ie) {
+						interrupted = true;
+						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
+					}
+					if (!interrupted)
+						break;
 				}
 			}
 			c1.waitForData();
@@ -505,15 +527,35 @@ public class CCNNetworkObjectTest {
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
 			Log.info("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
 			synchronized (c0) {
-				if (!c0.getVersion().equals(t2)) {
-					c0.wait(5000);
+				boolean interrupted = false;
+				long timeout = UPDATE_TIMEOUT;
+				long startTime = System.currentTimeMillis();
+				while (!c0.getVersion().equals(t2) && timeout > 0) {
+					try {
+						c0.wait(timeout);
+					} catch (InterruptedException ie) {
+						interrupted = true;
+						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
+					}
+					if (!interrupted)
+						break;
 				}
 				Log.info("waited - t2 is {0}", t2);
 			}
 			Assert.assertEquals("c0 update", c0.getVersion(), c2.getVersion());
 			synchronized (c1) {
-				if (!c1.getVersion().equals(t2)) {
-					c1.wait(5000);
+				boolean interrupted = false;
+				long timeout = UPDATE_TIMEOUT;
+				long startTime = System.currentTimeMillis();
+				while (!c1.getVersion().equals(t2) && timeout > 0) {
+					try {
+						c1.wait(timeout);
+					} catch (InterruptedException ie) {
+						interrupted = true;
+						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
+					}
+					if (!interrupted)
+						break;
 				}
 			}
 			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
