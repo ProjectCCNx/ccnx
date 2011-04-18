@@ -1,0 +1,101 @@
+/*
+ * A CCNx library test.
+ *
+ * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
+package org.ccnx.ccn.test.io.content;
+
+import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+
+import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
+import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.CCNStringObject;
+import org.ccnx.ccn.io.content.LocalCopyWrapper;
+import org.ccnx.ccn.protocol.ContentName;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+public class LocalCopyWrapperTestRepo {
+	
+	private CCNHandle readhandle;
+	private CCNHandle writehandle;
+	private BasicKeyManager bkm;
+	private Random _rnd = new Random();
+	
+	@Before
+	public void setUp() throws Exception {
+		Log.setLevel(Log.FAC_ALL, Level.WARNING);
+		bkm = new BasicKeyManager();
+		bkm.initialize();
+		readhandle = CCNHandle.open(bkm);
+		writehandle = CCNHandle.open(bkm);
+	}
+	
+	@After
+	public void tearDown() throws Exception {
+		readhandle.close();
+		writehandle.close();
+		bkm.close();
+	}
+	
+	@Test
+	public void testLCW() throws Exception {
+		final String prefix = String.format("/test_%016X", _rnd.nextLong());
+		final ContentName soname = ContentName.fromNative(prefix + "/obj");
+		final CCNStringObject so1 = new CCNStringObject(soname, "Hello", SaveType.LOCALREPOSITORY, writehandle);
+		LocalCopyWrapper lcw = new LocalCopyWrapper(so1);
+		final CountDownLatch latch = new CountDownLatch(1);
+		
+		
+		Runnable updater = new Runnable() {
+
+			@Override
+			public void run() {
+				for(int i = 0; i < 10000; i++) {
+					try {
+						Thread.sleep(_rnd.nextInt(20));
+						String x = Integer.toString(i);
+						so1.setData(x);
+						so1.save();
+					} catch(Exception e) {
+						e.printStackTrace();
+					}
+						
+					System.out.print(".");
+				}
+				System.out.println("\nupdater exits");
+				latch.countDown();
+			}
+		};
+		
+		Thread thd = new Thread(updater);
+		thd.start();
+		
+		while( latch.getCount() > 0 ) {	
+			Thread.sleep(_rnd.nextInt(20));
+			System.out.print("-");
+			lcw.isSaved();
+		}
+		
+		latch.await();
+		System.out.println("Finished");
+	}
+
+}
