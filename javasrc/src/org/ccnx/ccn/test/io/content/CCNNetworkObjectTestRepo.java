@@ -56,33 +56,12 @@ import org.junit.Test;
 /**
  * Test basic network object functionality, writing objects to a repository.
  **/
-public class CCNNetworkObjectTestRepo {
+public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 	
 	/**
 	 * Handle naming for the test
 	 */
 	static CCNTestHelper testHelper = new CCNTestHelper(CCNNetworkObjectTestRepo.class);
-
-	static String stringObjName = "StringObject";
-	static String collectionObjName = "CollectionObject";
-	static String prefix = "CollectionObject-";
-	static ContentName [] ns = null;
-	
-	static public byte [] contenthash1 = new byte[32];
-	static public byte [] contenthash2 = new byte[32];
-	static public byte [] publisherid1 = new byte[32];
-	static public byte [] publisherid2 = new byte[32];
-	static PublisherID pubID1 = null;	
-	static PublisherID pubID2 = null;
-	static int NUM_LINKS = 15;
-	static LinkAuthenticator [] las = new LinkAuthenticator[NUM_LINKS];
-	static Link [] lrs = null;
-	
-	static Collection small1;
-	static Collection small2;
-	static Collection empty;
-	static Collection big;
-	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
 	
 	static void setupNamespace(ContentName name) throws IOException {
 	}
@@ -372,9 +351,19 @@ public class CCNNetworkObjectTestRepo {
 			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
 	
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
-			if (!c1.getVersion().equals(t2)) {
-				synchronized (c1) {
-					c1.wait(5000);
+			synchronized (c1) {
+				boolean interrupted = false;
+				long timeout = UPDATE_TIMEOUT;
+				long startTime = System.currentTimeMillis();
+				while (!c1.getVersion().equals(t2) && timeout > 0) {
+					try {
+						c1.wait(timeout);
+					} catch (InterruptedException ie) {
+						interrupted = true;
+						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
+					}
+					if (!interrupted)
+						break;
 				}
 			}
 			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
@@ -389,9 +378,19 @@ public class CCNNetworkObjectTestRepo {
 			System.out.println("Slept " + elapsed/1000.0 + " seconds, should have been " + count + " interests.");
 			
 			CCNTime t3 = saveAndLog("Third string", c2, null, "Here is the third string.");
-			if (!c1.getVersion().equals(t3)) {
-				synchronized (c1) {
-					c1.wait(5000);
+			synchronized (c1) {
+				boolean interrupted = false;
+				long timeout = UPDATE_TIMEOUT;
+				long startTime = System.currentTimeMillis();
+				while (!c1.getVersion().equals(t3) && timeout > 0) {
+					try {
+						c1.wait(timeout);
+					} catch (InterruptedException ie) {
+						interrupted = true;
+						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
+					}
+					if (!interrupted)
+						break;
 				}
 			}
 			Assert.assertEquals("c1 update 3", c1.getVersion(), c2.getVersion());
@@ -599,8 +598,18 @@ public class CCNNetworkObjectTestRepo {
 			Assert.assertEquals(wo.getVersionedName(), sowrite.getVersionedName());
 			
 			synchronized (record) {
-				if (!record.callback) {
-					record.wait(5000);
+				boolean interrupted = false;
+				long timeout = UPDATE_TIMEOUT;
+				long startTime = System.currentTimeMillis();
+				while (!record.callback && timeout > 0) {
+					try {
+						record.wait(timeout);
+					} catch (InterruptedException ie) {
+						interrupted = true;
+						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
+					}
+					if (!interrupted)
+						break;
 				}
 				Assert.assertEquals(true, record.callback);
 			}
@@ -664,8 +673,18 @@ public class CCNNetworkObjectTestRepo {
 				Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
 				
 				synchronized (record) {
-					if (!record.callback) {
-						record.wait(5000);
+					boolean interrupted = false;
+					long timeout = UPDATE_TIMEOUT;
+					long startTime = System.currentTimeMillis();
+					while (!record.callback && timeout > 0) {
+						try {
+							record.wait(timeout);
+						} catch (InterruptedException ie) {
+							interrupted = true;
+							timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
+						}
+						if (!interrupted)
+							break;
 					}
 					Assert.assertEquals(true, record.callback);
 				}

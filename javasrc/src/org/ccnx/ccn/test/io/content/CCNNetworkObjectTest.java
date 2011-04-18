@@ -61,40 +61,12 @@ import org.junit.Test;
  * the same work.
  * TODO track down slowness
  */
-public class CCNNetworkObjectTest {
+public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 	
 	/**
 	 * Handle naming for the test
 	 */
 	static CCNTestHelper testHelper = new CCNTestHelper(CCNNetworkObjectTest.class);
-	
-	static final int UPDATE_TIMEOUT = 5000;
-
-	static String stringObjName = "StringObject";
-	static String collectionObjName = "CollectionObject";
-	static String prefix = "CollectionObject-";
-	static ContentName [] ns = null;
-	
-	static public byte [] contenthash1 = new byte[32];
-	static public byte [] contenthash2 = new byte[32];
-	static public byte [] publisherid1 = new byte[32];
-	static public byte [] publisherid2 = new byte[32];
-	static PublisherID pubID1 = null;	
-	static PublisherID pubID2 = null;
-	static int NUM_LINKS = 15;
-	static LinkAuthenticator [] las = new LinkAuthenticator[NUM_LINKS];
-	static Link [] lrs = null;
-	
-	static Collection small1;
-	static Collection small2;
-	static Collection empty;
-	static Collection big;
-	static CCNHandle handle;
-	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
-	
-	static Level oldLevel;
-	
-	static Flosser flosser = null;
 	
 	static void setupNamespace(ContentName name) throws IOException {
 		flosser.handleNamespace(name);
