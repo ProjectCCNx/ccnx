@@ -13,7 +13,7 @@
 #
 
 # Subdirectories we build in
-TOPSUBDIRS = doc/manpages doc/technical csrc schema javasrc apps `cat local.subdirs 2>/dev/null`
+TOPSUBDIRS = doc/manpages doc/technical csrc schema javasrc apps `cat local.subdirs 2>/dev/null || :`
 # Packing list for packaging
 PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt $(TOPSUBDIRS) android experiments
 BLDMSG = printf '=== %s ' 'Building $@ in' && pwd
