@@ -83,15 +83,24 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		return null;
 	}	
 	
-	private void doTest(int c) throws IOException, InterruptedException {
+	private void doTest(int c) throws IOException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
 		synchronized (this) {
-			try {
-				wait(TIMEOUT);
-			} catch (InterruptedException e) {
-				System.out.println("interrupted...  check the count and time");
-			}
+			boolean interrupted;
+			long timeout = TIMEOUT;
+			long startWaitTime = System.currentTimeMillis();
+			do {
+				interrupted = false;
+				try {
+					wait(timeout);
+				} catch (InterruptedException e) {
+					interrupted = true;
+					timeout -= (System.currentTimeMillis() - startWaitTime);
+				}
+				if (!interrupted)
+					break;
+			} while (timeout > 0);
 		}
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
@@ -100,11 +109,24 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		Assert.assertTrue(duration < TIMEOUT + (int)(TIMEOUT*0.1));
 	}
 
-	private void doTestFail(int c) throws IOException, InterruptedException {
+	private void doTestFail(int c) throws IOException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
 		synchronized (this) {
-			wait(TIMEOUT);
+			boolean interrupted;
+			long timeout = TIMEOUT;
+			long startWaitTime = System.currentTimeMillis();
+			do {
+				interrupted = false;
+				try {
+					wait(timeout);
+				} catch (InterruptedException e) {
+					interrupted = true;
+					timeout -= (System.currentTimeMillis() - startWaitTime);
+				}
+				if (!interrupted)
+					break;
+			} while (timeout > 0);
 		}
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;

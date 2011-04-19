@@ -351,21 +351,12 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
 	
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
-			synchronized (c1) {
-				boolean interrupted = false;
-				long timeout = UPDATE_TIMEOUT;
-				long startTime = System.currentTimeMillis();
-				while (!c1.getVersion().equals(t2) && timeout > 0) {
-					try {
-						c1.wait(timeout);
-					} catch (InterruptedException ie) {
-						interrupted = true;
-						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
-					}
-					if (!interrupted)
-						break;
+			new Waiter() {
+				@Override
+				protected boolean check(Object o, Object check) throws Exception {
+					return ((CCNStringObject)o).getVersion().equals(check);
 				}
-			}
+			}.wait(c1, t2);
 			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
 			
@@ -378,21 +369,12 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			System.out.println("Slept " + elapsed/1000.0 + " seconds, should have been " + count + " interests.");
 			
 			CCNTime t3 = saveAndLog("Third string", c2, null, "Here is the third string.");
-			synchronized (c1) {
-				boolean interrupted = false;
-				long timeout = UPDATE_TIMEOUT;
-				long startTime = System.currentTimeMillis();
-				while (!c1.getVersion().equals(t3) && timeout > 0) {
-					try {
-						c1.wait(timeout);
-					} catch (InterruptedException ie) {
-						interrupted = true;
-						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
-					}
-					if (!interrupted)
-						break;
+			new Waiter() {
+				@Override
+				protected boolean check(Object o, Object check) throws Exception {
+					return ((CCNStringObject)o).getVersion().equals(check);
 				}
-			}
+			}.wait(c1, t3);
 			Assert.assertEquals("c1 update 3", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
 			
@@ -597,22 +579,14 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			Assert.assertEquals(((CCNStringObject)wo.object()).string(), sowrite.string());
 			Assert.assertEquals(wo.getVersionedName(), sowrite.getVersionedName());
 			
-			synchronized (record) {
-				boolean interrupted = false;
-				long timeout = UPDATE_TIMEOUT;
-				long startTime = System.currentTimeMillis();
-				while (!record.callback && timeout > 0) {
-					try {
-						record.wait(timeout);
-					} catch (InterruptedException ie) {
-						interrupted = true;
-						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
-					}
-					if (!interrupted)
-						break;
+			new Waiter() {
+				@Override
+				protected boolean check(Object o, Object check) throws Exception {
+					return ((Record)o).callback;
 				}
-				Assert.assertEquals(true, record.callback);
-			}
+			}.wait(record, record);
+			Assert.assertEquals(true, record.callback);
+			
 			if (!RepositoryControl.localRepoSync(rhandle, so))  {
 				Thread.sleep(SystemConfiguration.MEDIUM_TIMEOUT);
 				// Should be in the repo by now
@@ -672,22 +646,13 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 				Assert.assertEquals(so.string(), sowrite.string());
 				Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
 				
-				synchronized (record) {
-					boolean interrupted = false;
-					long timeout = UPDATE_TIMEOUT;
-					long startTime = System.currentTimeMillis();
-					while (!record.callback && timeout > 0) {
-						try {
-							record.wait(timeout);
-						} catch (InterruptedException ie) {
-							interrupted = true;
-							timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
-						}
-						if (!interrupted)
-							break;
+				new Waiter() {
+					@Override
+					protected boolean check(Object o, Object check) throws Exception {
+						return ((Record)o).callback;
 					}
-					Assert.assertEquals(true, record.callback);
-				}
+				}.wait(record, record);
+				Assert.assertEquals(true, record.callback);
 				if (!RepositoryControl.localRepoSync(rhandle, so))  {
 					Thread.sleep(SystemConfiguration.MEDIUM_TIMEOUT);
 					// Should be in the repo by now

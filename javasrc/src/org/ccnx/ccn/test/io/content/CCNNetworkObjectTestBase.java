@@ -32,7 +32,7 @@ import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.test.Flosser;
 
 /**
- * Common code betweeen CCNObjectTests
+ * Common code between CCNObjectTests
  */
 public class CCNNetworkObjectTestBase {
 	static final int UPDATE_TIMEOUT = 5000;
@@ -62,6 +62,29 @@ public class CCNNetworkObjectTestBase {
 	static Level oldLevel;
 	
 	static Flosser flosser = null;
+	
+	protected static abstract class Waiter {
+		protected void wait(Object o, Object check) throws Exception {
+			synchronized (o) {
+				boolean interrupted;
+				long timeout = UPDATE_TIMEOUT;
+				long startTime = System.currentTimeMillis();
+				while (!check(o, check) && timeout > 0) {
+					interrupted = false;
+					try {
+						o.wait(timeout);
+					} catch (InterruptedException ie) {
+						interrupted = true;
+						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
+					}
+					if (!interrupted)
+						break;
+				}
+			}
+		}
+		
+		protected abstract boolean check(Object o, Object check) throws Exception;
+	}
 	
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
 		CCNTime oldVersion = ecd.getVersion();
