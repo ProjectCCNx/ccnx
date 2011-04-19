@@ -24,6 +24,23 @@ package org.ccnx.ccn.test;
  * Junit Assert.X method throw an AssertionError, which is a Throwable -> Error -> AssertionError.
  * So, we capture both an Error and an Exception.  Don't use Throwable, as those get
  * messy to handle in the caller.
+ * 
+ * How to use:
+ * 1) Create a Runnable class (could even be anonymous inner class), and wrap it in a
+ *    ThreadAssertionRunner:
+ *    
+ *    ThreadAssertionRunner tar = new ThreadAssertionRunner(new MyRunner(some_parameter));
+ * 
+ * 2) Start the Runner like a thread:
+ * 
+ *    tar.start();
+ *    
+ * 3) Do normal processing, then stop your runnable.  You must join the Runner to wait for exit.
+ *    THIS STEP IS REQUIRED (it's the join that reports any exceptions or errors from the run()
+ *    method of your runnable):
+ * 
+ *    tar.join();
+ * 			
  */
 public class ThreadAssertionRunner {
 	public ThreadAssertionRunner(final Runnable runner) {

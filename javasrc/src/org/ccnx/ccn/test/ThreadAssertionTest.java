@@ -32,35 +32,72 @@ public class ThreadAssertionTest {
 	
 	@Test
 	public void testNoError() throws Exception {
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.NoError));
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.NoError, false));
 		tar.start();
 		tar.join();
 	}
 	
 	@Test(expected=AssertionError.class)
 	public void testAssertFail() throws Exception {
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.AssertFail));
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.AssertFail, false));
 		tar.start();
 		tar.join();
 	}
 	
 	@Test(expected=AssertionError.class)
 	public void testAssertError() throws Exception {
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.AssertError));
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.AssertError, false));
 		tar.start();
 		tar.join();
 	}
 	
 	@Test(expected=NullPointerException.class)
 	public void testNullPointer() throws Exception {
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.NullPointer));
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.NullPointer, false));
 		tar.start();
 		tar.join();
 	}
 	
 	@Test(expected=RuntimeException.class)
 	public void testRuntimeException() throws Exception {
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.RuntimeException));
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.RuntimeException, false));
+		tar.start();
+		tar.join();
+	}
+	
+	// ===== immediates
+	
+	@Test
+	public void testNoErrorImmediate() throws Exception {
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.NoError, true));
+		tar.start();
+		tar.join();
+	}
+	
+	@Test(expected=AssertionError.class)
+	public void testAssertFailImmediate() throws Exception {
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.AssertFail, true));
+		tar.start();
+		tar.join();
+	}
+	
+	@Test(expected=AssertionError.class)
+	public void testAssertErrorImmediate() throws Exception {
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.AssertError, true));
+		tar.start();
+		tar.join();
+	}
+	
+	@Test(expected=NullPointerException.class)
+	public void testNullPointerImmediate() throws Exception {
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.NullPointer, true));
+		tar.start();
+		tar.join();
+	}
+	
+	@Test(expected=RuntimeException.class)
+	public void testRuntimeExceptionImmediate() throws Exception {
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new InnerRunner(TestType.RuntimeException, true));
 		tar.start();
 		tar.join();
 	}
@@ -75,8 +112,20 @@ public class ThreadAssertionTest {
 	}
 	
 	private static class InnerRunner implements Runnable {
-		InnerRunner(TestType type) {
+		/**
+		 * If the test type is immediate, the thing is done in the constructor of the RUnnable, not
+		 * in the run method.
+		 * 
+		 * @param type
+		 * @param immediate
+		 */
+		InnerRunner(TestType type, boolean immediate) {
 			_type = type;
+			_immediate = immediate;
+			
+			if( _immediate ) {
+				doTest();
+			}
 		}
 		
 		@Override
@@ -87,6 +136,11 @@ public class ThreadAssertionTest {
 				Thread.sleep(rnd.nextInt(200) + 1);
 			} catch (InterruptedException e) {}
 			
+			if( ! _immediate )
+				doTest();
+		}
+		
+		private void doTest() {
 			switch(_type) {
 			case AssertFail:
 				Assert.fail("assertion failure");
@@ -100,10 +154,11 @@ public class ThreadAssertionTest {
 				throw new RuntimeException("runtime exception");
 			case NoError:
 				break;
-			}	
+			}
 		}
 		
 		private final TestType _type;
+		private final boolean _immediate;
 	}
 
 }
