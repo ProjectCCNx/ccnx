@@ -106,6 +106,21 @@ public class CCNTestBase {
 		protected abstract boolean check(Object o, Object check) throws Exception;
 	}
 	
+	/**
+	 * Just wait for timeout ms handling interrupts
+	 * @param timeout ms
+	 */
+	public void doWait(int timeout) {
+		try {
+			new Waiter(timeout) {
+				@Override
+				protected boolean check(Object o, Object check) throws Exception {
+					return false;
+				}
+			}.wait(this, this);
+		} catch (Exception e) {} // Can't happen
+	}
+	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		putHandle.close();

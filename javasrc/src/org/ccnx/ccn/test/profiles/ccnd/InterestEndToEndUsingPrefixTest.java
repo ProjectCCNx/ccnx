@@ -79,7 +79,7 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 			_interestSeen = false;
 			_interestSent = interest;
 			putHandle.expressInterest(interest, this);
-			wait(TIMEOUT);
+			doWait(TIMEOUT);
 			Assert.assertTrue(_interestSeen);
 		}
 	}
@@ -89,7 +89,7 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 			_interestSeen = false;
 			_interestSent = interest;
 			putHandle.expressInterest(interest, this);
-			wait(TIMEOUT);
+			doWait(TIMEOUT);
 			Assert.assertFalse(_interestSeen);
 		}
 	}

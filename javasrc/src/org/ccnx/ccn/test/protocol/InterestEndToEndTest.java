@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -87,7 +87,7 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private void doTest(int c) throws IOException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		doWait();
+		doWait(TIMEOUT);
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
 		System.out.println("doTest time: "+duration+" and count:" +count +" should be "+c);
@@ -98,7 +98,7 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private void doTestFail(int c) throws IOException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		doWait();
+		doWait(TIMEOUT);
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
 		System.out.println("doTestFail time: "+duration+" and count:" +count +" should be "+c);
@@ -107,17 +107,4 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		//could be slightly less, no guarantees.  API says "more or less" after timeout
 		Assert.assertFalse(duration < TIMEOUT - (int)(TIMEOUT*0.01));
 	}
-	
-	private void doWait() {
-		try {
-			new Waiter(TIMEOUT) {
-				@Override
-				// Need to continue the first time
-				protected boolean check(Object o, Object check) throws Exception {
-					return false;
-				}
-			}.wait(this, this);
-		} catch (Exception e) {} // Can't happen
-	}
-
 }
