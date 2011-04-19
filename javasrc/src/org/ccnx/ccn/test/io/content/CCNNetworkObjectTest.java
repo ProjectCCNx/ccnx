@@ -705,33 +705,4 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		Thread.sleep(1000);
 		Log.info("CCNNetworkObjectTest: Leaving testVeryLast -- dummy test to help track down blowup. Prefix {0}", testHelper.getClassNamespace());	
 	}
-	
-	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
-		CCNTime oldVersion = ecd.getVersion();
-		ecd.save(version, data);
-		Log.info("SAL: Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
-	}
-	
-	public <T> CCNTime saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws IOException {
-		CCNTime oldVersion = ecd.getVersion();
-		ecd.saveAsGone();
-		Log.info("SAGAL Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
-	}
-	
-	public CCNTime waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws IOException {
-		ecd.waitForData();
-		Log.info("WFDAL: Initial read " + name + ", name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
-	}
-
-	public CCNTime updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws IOException {
-		if ((null == updateName) ? ecd.update() : ecd.update(updateName, null))
-			Log.info("Updated " + name + ", to name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		else 
-			Log.info("UAL: No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
-	}
-
 }
