@@ -109,17 +109,14 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	}
 	
 	private void doWait() {
-		Boolean val = true;
 		try {
 			new Waiter(TIMEOUT) {
 				@Override
 				// Need to continue the first time
 				protected boolean check(Object o, Object check) throws Exception {
-					boolean oldCheck = (Boolean)check;
-					check = false;
-					return oldCheck;
+					return false;
 				}
-			}.wait(this, val);
+			}.wait(this, this);
 		} catch (Exception e) {} // Can't happen
 	}
 
