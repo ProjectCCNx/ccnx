@@ -87,18 +87,12 @@ public class CCNTestBase {
 		}
 		public void wait(Object o, Object check) throws Exception {
 			synchronized (o) {
-				boolean interrupted;
 				long startTime = System.currentTimeMillis();
 				while (!check(o, check) && timeout > 0) {
-					interrupted = false;
 					try {
 						o.wait(timeout);
-					} catch (InterruptedException ie) {
-						interrupted = true;
-						timeout -= (System.currentTimeMillis() - startTime);
-					}
-					if (!interrupted)
-						break;
+					} catch (InterruptedException ie) {}
+					timeout -= (System.currentTimeMillis() - startTime);
 				}
 			}
 		}
