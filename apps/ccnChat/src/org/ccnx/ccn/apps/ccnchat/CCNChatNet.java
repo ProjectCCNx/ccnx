@@ -125,12 +125,12 @@ public final class CCNChatNet {
 	public void listen() throws ConfigurationException, IOException, MalformedContentNameStringException {
 		
 		//Also publish your keys under the chat "channel name" namespace
-		if (_namespaceStr.startsWith("ccnx:/")) {
-			UserConfiguration.setDefaultNamespacePrefix(_namespaceStr.substring(5));
+		if (_namespace.toString().startsWith("ccnx:/")) {
+			UserConfiguration.setDefaultNamespacePrefix(_namespace.toString().substring(5));		
 		} else {
-			UserConfiguration.setDefaultNamespacePrefix(_namespaceStr);
+			UserConfiguration.setDefaultNamespacePrefix(_namespace.toString());
 		}
-		
+				
 		CCNHandle tempReadHandle = CCNHandle.open();
 		CCNHandle tempWriteHandle = CCNHandle.open();
 		
