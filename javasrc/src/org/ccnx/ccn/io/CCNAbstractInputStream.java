@@ -413,17 +413,6 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 				Log.info(Log.FAC_PIPELINE, "PIPELINE: received pipeline segment: {0}", co.name());
 
-			/*
-			synchronized(readySegment) {
-				//can we help the reader with a shortcut
-				if (readySegment == null) {
-					//need to set the ready segment
-					if(inOrderSegments.size() > 0)
-						readySegment = inOrderSegments.get(0);
-				}
-			}
-			 */
-
 			if (returnedSegment == _nextPipelineSegment) {
 				_totalReceived++;
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
@@ -808,11 +797,12 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 	private long nextInOrderSegmentNeeded() {
 		synchronized(inOrderSegments) {
             if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
-                if (_currentSegment==null)
-                    Log.info(Log.FAC_PIPELINE, "PIPELINE: current segment: - lastInOrderSegment number {0} _startingSegmentNumber {1}", _lastInOrderSegment, _startingSegmentNumber);
-                else
-                    Log.info(Log.FAC_PIPELINE, "PIPELINE: current segment: "+SegmentationProfile.getSegmentNumber(_currentSegment.name()) + " lastInOrderSegment number "+_lastInOrderSegment	+ " _startingSegmentNumber "+_startingSegmentNumber);
-                
+                //removing all access to _currentSegment from the delivery thread
+            	//if (_currentSegment==null)
+                //    Log.info(Log.FAC_PIPELINE, "PIPELINE: current segment: - lastInOrderSegment number {0} _startingSegmentNumber {1}", _lastInOrderSegment, _startingSegmentNumber);
+                //else
+                //    Log.info(Log.FAC_PIPELINE, "PIPELINE: current segment: "+SegmentationProfile.getSegmentNumber(_currentSegment.name()) + " lastInOrderSegment number "+_lastInOrderSegment	+ " _startingSegmentNumber "+_startingSegmentNumber);
+            	Log.info(Log.FAC_PIPELINE, "PIPELINE: lastInOrderSegment number {0} _startingSegmentNumber {1}", _lastInOrderSegment, _startingSegmentNumber);
 				if (outOfOrderSegments.size() > 0) {
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: we have out of order segments...");
@@ -852,9 +842,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 					if(SegmentationProfile.getSegmentNumber(co.name()) > segmentNumber) {
 						//we have a hole to fill...
 						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-							Log.info(Log.FAC_PIPELINE, "PIPELINE: our out of order segments are past the requested segment...  we have a hole");
-						//attemptHoleFilling();
-						attemptHoleFilling(segmentNumber);
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: our out of order segments are past the requested segment...  we have a hole - not attempting to fill it at this time");
+						//attemptHoleFilling(segmentNumber);
 						break;
 					}
 				}

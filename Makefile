@@ -13,9 +13,10 @@
 #
 
 # Subdirectories we build in
-TOPSUBDIRS = doc/manpages doc/technical csrc schema javasrc apps apps/ccnChat apps/ccnFileProxy
+TOPSUBDIRS = doc/manpages doc/technical csrc schema javasrc apps `cat local.subdirs 2>/dev/null || :`
 # Packing list for packaging
 PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt $(TOPSUBDIRS) android experiments
+BLDMSG = printf '=== %s ' 'Building $@ in' && pwd
 
 default all: _always
 	for i in $(TOPSUBDIRS); do         \
@@ -26,12 +27,18 @@ default all: _always
 	test -d ./include || ln -s ./csrc/include
 	(cd csrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
 	(cd javasrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
-	(cd apps/ccnChat && $(MAKE) install INSTALL_BASE=`pwd`/../..)
-	(cd apps/ccnFileProxy && $(MAKE) install INSTALL_BASE=`pwd`/../..)
+	(cd apps && $(MAKE) install INSTALL_BASE=`pwd`/..)
 
-clean depend test check shared testinstall install uninstall: _always
+clean depend test check shared: _always
 	for i in $(TOPSUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
+	done
+	@rm -f _always
+
+testinstall install uninstall: _always
+	IB=`[ -z '$(INSTALL_BASE)' ] && grep ^INSTALL_BASE csrc/conf.mk 2>/dev/null | sed -e 's/ //g' || echo INSTALL_BASE=$(INSTALL_BASE)`; \
+	for i in $(TOPSUBDIRS); do         \
+	  (cd "$$i" && pwd && $(MAKE) $$IB $@) || exit 1;	\
 	done
 	@rm -f _always
 
