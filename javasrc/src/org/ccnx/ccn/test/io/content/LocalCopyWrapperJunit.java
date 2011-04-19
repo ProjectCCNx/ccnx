@@ -67,7 +67,7 @@ public class LocalCopyWrapperJunit {
 		final String prefix = String.format("/test_%016X", _rnd.nextLong());
 		final ContentName soname = ContentName.fromNative(prefix + "/obj");
 		final CCNStringObject so1 = new CCNStringObject(soname, "Hello", SaveType.LOCALREPOSITORY, writehandle);
-		LocalCopyWrapper lcw = new LocalCopyWrapper(so1);
+		final LocalCopyWrapper lcw = new LocalCopyWrapper(so1);
 		final CountDownLatch latch = new CountDownLatch(1);
 		
 		
@@ -80,7 +80,7 @@ public class LocalCopyWrapperJunit {
 						Thread.sleep(_rnd.nextInt(20));
 						String x = Integer.toString(i);
 						so1.setData(x);
-						so1.save();
+						lcw.save();
 					} catch(Exception e) {
 						e.printStackTrace();
 					}
