@@ -23,6 +23,7 @@ import java.util.Random;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.support.DataUtils.Waiter;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -75,29 +76,6 @@ public class CCNTestBase {
 		_testDir = System.getProperty(TEST_DIR);
 		if (null == _testDir)
 			_testDir = "./";
-	}
-	
-	/**
-	 * A generic waiter
-	 */
-	protected static abstract class Waiter {
-		protected long timeout;
-		protected Waiter(long timeout) {
-			this.timeout = timeout;
-		}
-		public void wait(Object o, Object check) throws Exception {
-			synchronized (o) {
-				long startTime = System.currentTimeMillis();
-				while (!check(o, check) && timeout > 0) {
-					try {
-						o.wait(timeout);
-					} catch (InterruptedException ie) {}
-					timeout -= (System.currentTimeMillis() - startTime);
-				}
-			}
-		}
-		
-		protected abstract boolean check(Object o, Object check) throws Exception;
 	}
 	
 	/**

@@ -596,4 +596,28 @@ public class DataUtils {
 		System.arraycopy(array, offset, newarray, 0, len);
 		return newarray;
 	}
+	
+	/**
+	 * A generic waiter
+	 */
+	public static abstract class Waiter {
+		protected long timeout;
+		protected Waiter(long timeout) {
+			this.timeout = timeout;
+		}
+		public void wait(Object o, Object check) throws Exception {
+			synchronized (o) {
+				long startTime = System.currentTimeMillis();
+				while (!check(o, check) && timeout > 0) {
+					try {
+						o.wait(timeout);
+					} catch (InterruptedException ie) {}
+					timeout -= (System.currentTimeMillis() - startTime);
+				}
+			}
+		}
+		
+		protected abstract boolean check(Object o, Object check) throws Exception;
+	}
+	
 }
