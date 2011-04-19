@@ -49,8 +49,8 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class LocalCopyWrapper implements UpdateListener {
 
-	CCNNetworkObject<?> _netobj;
-	CCNHandle _handle;
+	final CCNNetworkObject<?> _netobj;
+	final CCNHandle _handle;
 	final ConcurrentHashMap<UpdateListener, UpdateListener> _updateListeners  = new ConcurrentHashMap<UpdateListener, UpdateListener>(1);
 
 	public LocalCopyWrapper(CCNNetworkObject<?> obj) throws IOException {
