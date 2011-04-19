@@ -249,7 +249,7 @@ public class LocalCopyWrapper implements UpdateListener {
 		_netobj.waitForData(timeout);
 	}
 
-	public synchronized void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
+	public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
 		// We probably want to make a local copy regardless, as the save might have been raw,
 		// or not hit our local repository.
 		localCopy();
