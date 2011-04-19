@@ -351,12 +351,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
 	
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
-			new Waiter() {
-				@Override
-				protected boolean check(Object o, Object check) throws Exception {
-					return ((CCNStringObject)o).getVersion().equals(check);
-				}
-			}.wait(c1, t2);
+			doWait(c1, t2);
 			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
 			
@@ -369,12 +364,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			System.out.println("Slept " + elapsed/1000.0 + " seconds, should have been " + count + " interests.");
 			
 			CCNTime t3 = saveAndLog("Third string", c2, null, "Here is the third string.");
-			new Waiter() {
-				@Override
-				protected boolean check(Object o, Object check) throws Exception {
-					return ((CCNStringObject)o).getVersion().equals(check);
-				}
-			}.wait(c1, t3);
+			doWait(c1, t3);
 			Assert.assertEquals("c1 update 3", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
 			
@@ -579,7 +569,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			Assert.assertEquals(((CCNStringObject)wo.object()).string(), sowrite.string());
 			Assert.assertEquals(wo.getVersionedName(), sowrite.getVersionedName());
 			
-			new Waiter() {
+			new Waiter(UPDATE_TIMEOUT) {
 				@Override
 				protected boolean check(Object o, Object check) throws Exception {
 					return ((Record)o).callback;
@@ -646,7 +636,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 				Assert.assertEquals(so.string(), sowrite.string());
 				Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
 				
-				new Waiter() {
+				new Waiter(UPDATE_TIMEOUT) {
 					@Override
 					protected boolean check(Object o, Object check) throws Exception {
 						return ((Record)o).callback;

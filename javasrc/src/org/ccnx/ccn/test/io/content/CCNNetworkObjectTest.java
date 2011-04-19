@@ -411,12 +411,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 			
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
 			
-			new Waiter() {
-				@Override
-				protected boolean check(Object o, Object check) throws Exception {
-					return ((CCNStringObject)o).getVersion().equals(check);
-				}
-			}.wait(c1, t2);
+			doWait(c1, t2);
 			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
 			
@@ -442,12 +437,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 			
 			CCNTime t1 = saveAndLog("First string", c0, null, "Here is the first string.");
 			
-			new Waiter() {
-				@Override
-				protected boolean check(Object o, Object check) throws Exception {
-					return ((CCNStringObject)o).getVersion().equals(check);
-				}
-			}.wait(c0, t1);
+			doWait(c0, t1);
 			c1.waitForData();
 			CCNTime c1Version = c1.getVersion();
 			
@@ -481,19 +471,9 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 			CCNStringObject c2 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
 			Log.info("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
-			new Waiter() {
-				@Override
-				protected boolean check(Object o, Object check) throws Exception {
-					return ((CCNStringObject)o).getVersion().equals(check);
-				}
-			}.wait(c0, t2);
+			doWait(c0, t2);
 			Assert.assertEquals("c0 update", c0.getVersion(), c2.getVersion());
-			new Waiter() {
-				@Override
-				protected boolean check(Object o, Object check) throws Exception {
-					return ((CCNStringObject)o).getVersion().equals(check);
-				}
-			}.wait(c1, t2);
+			doWait(c1, t2);
 			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
 			Assert.assertFalse(c1Version.equals(c1.getVersion()));
 			

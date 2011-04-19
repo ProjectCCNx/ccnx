@@ -18,6 +18,7 @@
 package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
+
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.protocol.ContentName;
@@ -86,22 +87,7 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private void doTest(int c) throws IOException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		synchronized (this) {
-			boolean interrupted;
-			long timeout = TIMEOUT;
-			long startWaitTime = System.currentTimeMillis();
-			do {
-				interrupted = false;
-				try {
-					wait(timeout);
-				} catch (InterruptedException e) {
-					interrupted = true;
-					timeout -= (System.currentTimeMillis() - startWaitTime);
-				}
-				if (!interrupted)
-					break;
-			} while (timeout > 0);
-		}
+		doWait();
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
 		System.out.println("doTest time: "+duration+" and count:" +count +" should be "+c);
@@ -112,22 +98,7 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private void doTestFail(int c) throws IOException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		synchronized (this) {
-			boolean interrupted;
-			long timeout = TIMEOUT;
-			long startWaitTime = System.currentTimeMillis();
-			do {
-				interrupted = false;
-				try {
-					wait(timeout);
-				} catch (InterruptedException e) {
-					interrupted = true;
-					timeout -= (System.currentTimeMillis() - startWaitTime);
-				}
-				if (!interrupted)
-					break;
-			} while (timeout > 0);
-		}
+		doWait();
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
 		System.out.println("doTestFail time: "+duration+" and count:" +count +" should be "+c);
@@ -135,6 +106,21 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		Assert.assertTrue(count == c);
 		//could be slightly less, no guarantees.  API says "more or less" after timeout
 		Assert.assertFalse(duration < TIMEOUT - (int)(TIMEOUT*0.01));
+	}
+	
+	private void doWait() {
+		Boolean val = true;
+		try {
+			new Waiter(TIMEOUT) {
+				@Override
+				// Need to continue the first time
+				protected boolean check(Object o, Object check) throws Exception {
+					boolean oldCheck = (Boolean)check;
+					check = false;
+					return oldCheck;
+				}
+			}.wait(this, val);
+		} catch (Exception e) {} // Can't happen
 	}
 
 }

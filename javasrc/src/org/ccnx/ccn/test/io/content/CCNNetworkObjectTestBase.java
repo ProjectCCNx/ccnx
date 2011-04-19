@@ -23,18 +23,20 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNNetworkObject;
+import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherID;
+import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.Flosser;
 
 /**
  * Common code between CCNObjectTests
  */
-public class CCNNetworkObjectTestBase {
+public class CCNNetworkObjectTestBase extends CCNTestBase {
 	static final int UPDATE_TIMEOUT = 5000;
 
 	static String stringObjName = "StringObject";
@@ -63,29 +65,6 @@ public class CCNNetworkObjectTestBase {
 	
 	static Flosser flosser = null;
 	
-	protected static abstract class Waiter {
-		protected void wait(Object o, Object check) throws Exception {
-			synchronized (o) {
-				boolean interrupted;
-				long timeout = UPDATE_TIMEOUT;
-				long startTime = System.currentTimeMillis();
-				while (!check(o, check) && timeout > 0) {
-					interrupted = false;
-					try {
-						o.wait(timeout);
-					} catch (InterruptedException ie) {
-						interrupted = true;
-						timeout = UPDATE_TIMEOUT - (System.currentTimeMillis() - startTime);
-					}
-					if (!interrupted)
-						break;
-				}
-			}
-		}
-		
-		protected abstract boolean check(Object o, Object check) throws Exception;
-	}
-	
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
 		CCNTime oldVersion = ecd.getVersion();
 		ecd.save(version, data);
@@ -112,6 +91,15 @@ public class CCNNetworkObjectTestBase {
 		else 
 			Log.info("No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
 		return ecd.getVersion();
+	}
+	
+	public void doWait(CCNStringObject cso, CCNTime t) throws Exception {
+		new Waiter(UPDATE_TIMEOUT) {
+			@Override
+			protected boolean check(Object o, Object check) throws Exception {
+				return ((CCNStringObject)o).getVersion().equals(check);
+			}
+		}.wait(cso, t);
 	}
 	
 }
