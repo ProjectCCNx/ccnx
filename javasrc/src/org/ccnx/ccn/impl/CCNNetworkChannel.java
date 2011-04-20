@@ -154,11 +154,11 @@ public class CCNNetworkChannel extends InputStream {
 				try {
 					_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
 				} catch (IOException ioe) {
-					Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: TCP open exception {1}",  _channelId, ioe.getMessage());
 					if (!_ncInitialized) {
+						Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: TCP open exception {1}",  _channelId, ioe.getMessage());
 						throw ioe;
 					}
-					ioe.printStackTrace();
+					Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: TCP (re)open exception {1}",  _channelId, ioe.getMessage());
 					return;
 				}
 				_ncSockChannel.configureBlocking(false);
