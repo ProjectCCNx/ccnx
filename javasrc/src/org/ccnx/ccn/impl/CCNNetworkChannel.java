@@ -51,10 +51,10 @@ import org.ccnx.ccn.protocol.WirePacket;
 public class CCNNetworkChannel extends InputStream {
 	public static final int HEARTBEAT_PERIOD = 3500;
 	public static final int SOCKET_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT; // period to wait in ms.
-	public static final int DOWN_DELAY = SystemConfiguration.MEDIUM_TIMEOUT;	// Wait period for retry when ccnd is down
+//	public static final int DOWN_DELAY = SystemConfiguration.MEDIUM_TIMEOUT;	// Wait period for retry when ccnd is down
 	public static final int LINGER_TIME = 10;	// In seconds
 
-	// This is to make log messages intelligable
+	// This is to make log messages intelligible
 	protected final static AtomicInteger _channelIdCounter = new AtomicInteger(0);
 	protected final int _channelId;
 	
@@ -72,6 +72,7 @@ public class CCNNetworkChannel extends InputStream {
 	protected Object _opencloseLock = new Object();
 	protected Selector _ncReadSelector = null;
 	protected Selector _ncWriteSelector = null;			 // Not needed for UDP
+	protected int _downDelay = 250;
 	
 	// This lock (maybe unnecessary now?), if used with _openCloseLock, should be contained inside it.
 	protected Object _ncConnectedLock = new Object();
@@ -183,6 +184,7 @@ public class CCNNetworkChannel extends InputStream {
 			}
 			initStream();
 			_ncInitialized = true;
+			_downDelay = _ncPort % 203 + 100; // randomize a bit on backoff times
 			synchronized (_ncConnectedLock) {
 				_ncConnected = true;
 			}
@@ -220,8 +222,10 @@ public class CCNNetworkChannel extends InputStream {
 		} else {
 			try {
 				synchronized (_opencloseLock) {
-					_opencloseLock.wait(DOWN_DELAY);
+					_opencloseLock.wait(_downDelay);
 					if (! _ncConnected) {
+						if (_downDelay < HEARTBEAT_PERIOD)
+							_downDelay = _downDelay * 2 + 1;
 						open();
 					}
 				}
