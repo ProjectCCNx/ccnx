@@ -81,8 +81,9 @@ public class CCNTestBase {
 	/**
 	 * Just wait for timeout ms handling interrupts
 	 * @param timeout ms
+	 * @throws InterruptedException 
 	 */
-	public void doWait(int timeout) {
+	public void doWait(int timeout) throws InterruptedException {
 		try {
 			new Waiter(timeout) {
 				@Override
@@ -90,7 +91,8 @@ public class CCNTestBase {
 					return false;
 				}
 			}.wait(this, this);
-		} catch (Exception e) {} // Can't happen
+		} catch (InterruptedException ie) {throw ie;}
+		  catch (Exception e) {} // Others can't happen
 	}
 	
 	@AfterClass

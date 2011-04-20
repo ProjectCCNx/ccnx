@@ -609,9 +609,7 @@ public class DataUtils {
 			synchronized (o) {
 				long startTime = System.currentTimeMillis();
 				while (!check(o, check) && timeout > 0) {
-					try {
-						o.wait(timeout);
-					} catch (InterruptedException ie) {}
+					o.wait(timeout);
 					timeout -= (System.currentTimeMillis() - startTime);
 				}
 			}
