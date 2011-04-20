@@ -51,7 +51,7 @@ import org.ccnx.ccn.protocol.WirePacket;
 public class CCNNetworkChannel extends InputStream {
 	public static final int HEARTBEAT_PERIOD = 3500;
 	public static final int SOCKET_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT; // period to wait in ms.
-	public static final int DOWN_DELAY = SystemConfiguration.SHORT_TIMEOUT;	// Wait period for retry when ccnd is down
+	public static final int DOWN_DELAY = SystemConfiguration.MEDIUM_TIMEOUT;	// Wait period for retry when ccnd is down
 	public static final int LINGER_TIME = 10;	// In seconds
 
 	// This is to make log messages intelligable
@@ -219,8 +219,12 @@ public class CCNNetworkChannel extends InputStream {
 			return packet.getPacket();
 		} else {
 			try {
-				Thread.sleep(DOWN_DELAY);
-				open();
+				synchronized (_opencloseLock) {
+					_opencloseLock.wait(DOWN_DELAY);
+					if (! _ncConnected) {
+						open();
+					}
+				}
 			} catch (InterruptedException e) {}
 		}
 		return null;
