@@ -415,22 +415,20 @@ public class CCNFlowControl implements CCNFilterListener {
 				
 				// Now wait for space to be cleared or timeout
 				// Must guard against "spurious wakeup" so must check elapsed time directly
+				if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+					Log.finest(Log.FAC_IO, "Waiting for drain size is {0}", size);
 				long elapsed = 0;
-				do {
-					try {
-						if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
-							Log.finest(Log.FAC_IO, "Waiting for drain ({0}, {1})", size, elapsed);
-						synchronized (_holdingArea) {
+				synchronized (_holdingArea) {
+					do {
+						try {
 							_holdingArea.wait(_timeout-elapsed);
+						} catch (InterruptedException e) {
+							// intentional no-op
 						}
-					} catch (InterruptedException e) {
-						// intentional no-op
-					}
-					elapsed = System.currentTimeMillis() - ourTime;
-					synchronized (_holdingArea) {
+						elapsed = System.currentTimeMillis() - ourTime;
 						size = _holdingArea.size();
-					}
-				} while (size >= _capacity && elapsed < _timeout);						
+					} while (size >= _capacity && elapsed < _timeout);
+				}
 				if (size >= _capacity) {
 					String names = "";
 					for (ContentName name : _filteredNames) {

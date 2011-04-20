@@ -373,7 +373,7 @@
 		</junit>
 	</target>
 	
-	<target name="test-impl-extra" depends="jar, ccnd, repo">
+	<target name="test-flow-control-extra" depends="jar, ccnd, repo">
 	        <mkdir dir="${testout}"/>
 	        <bunzip2 src="testBigFile.bz2" dest="${testout}/testBigFile" />
 	        <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
@@ -387,7 +387,7 @@
 
 	            <batchtest todir="${testout}">
 	                <fileset dir="${build}">
-	                    <include name="org/ccnx/ccn/test/impl/**/*Extra.class"/>
+	                    <include name="org/ccnx/ccn/test/impl/**/CCNFlowControlTestExtra.class"/>
 	                </fileset>
 	            </batchtest>
 	        </junit>
