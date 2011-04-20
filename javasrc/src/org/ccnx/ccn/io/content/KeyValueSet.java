@@ -112,7 +112,7 @@ public class KeyValueSet extends GenericXMLEncodable implements XMLEncodable, Ma
 	}
 	
 	/**
-	 * Add a new key value pair to the set
+	 * Add a new key value pair to the set.  Key must be unique.
 	 * @param key key for the value
 	 * @param value the value - may be Integer, Float, String, byte[], or ContentName
 	 */
