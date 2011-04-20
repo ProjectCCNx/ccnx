@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -30,10 +30,10 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.DataUtils.Waiter;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
-import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -54,20 +54,11 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * @see RepositoryInterestHandler
  */
 public class RepositoryFlowControl extends CCNFlowControl implements CCNInterestListener {
-
-	protected boolean _bestEffort = true;	// Whether to use the ACK protocol (currently disabled)
 	
 	// Outstanding interests output by this FlowController. Currently includes only the original
 	// start write request.
 	protected HashSet<Interest> _writeInterests = new HashSet<Interest>();
 	
-	// The following values are used by the currently disabled ACK protocol
-	protected static final int ACK_BLOCK_SIZE = 20;
-	protected static final int ACK_INTERVAL = 128;
-	protected int _blocksSinceAck = 0;
-	protected int _ackInterval = ACK_INTERVAL;
-	protected CCNNameEnumerator _ackne;
-	protected RepoAckHandler _ackHandler;
 	protected boolean localRepo = false;
 	
 	// Queue of current clients of this RepositoryFlowController
@@ -95,12 +86,11 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 					if (client._name.isPrefixOf(co.name())) {
 						if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
 							Log.fine(Log.FAC_REPO, "Marked client {0} initialized", client._name);
-						client._initialized = true;
+						synchronized (this) {
+							client._initialized = true;
+							notifyAll();
+						}
 					}
-				}
-				//_writeInterest = null;
-				synchronized (this) {
-					notify();
 				}
 				break;
 			default:
@@ -238,30 +228,24 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 			//this is meant to be written to a local repository, not any/multiple connected repos
 			writeInterest.scope(1);
 		}
+		
+		_handle.expressInterest(writeInterest, this);
 
 		synchronized (this) {
-			_handle.expressInterest(writeInterest, this);
 			_writeInterests.add(writeInterest);
-			if (! _bestEffort) {
-				_ackHandler = new RepoAckHandler();
-				_ackne = new CCNNameEnumerator(_handle, _ackHandler);
-			}
-			
-			//Wait for information to be returned from a repo
-			boolean interrupted;
-			long startTime = System.currentTimeMillis();
-			do {
-				try {
-					interrupted = false;
-					long timeout = getTimeout() - (System.currentTimeMillis() - startTime);
-					if (timeout <= 0)
-						break;
-					wait(timeout);
-				} catch (InterruptedException e) {
-					interrupted = true;
+		}
+		
+		//Wait for information to be returned from a repo
+		try {
+			new Waiter(getTimeout()) {
+				@Override
+				protected boolean check(Object o, Object check) throws Exception {
+					return ((Client)check)._initialized;
 				}
-			} while (interrupted || (!client._initialized && ((getTimeout() + startTime) > System.currentTimeMillis())));
-			
+			}.wait(this, client);
+		} catch (Exception e) {} // Can't happen
+		
+		synchronized (this) {
 			if (!client._initialized) {
 				_clients.remove();
 				Log.warning(Log.FAC_REPO, "No response from a repository, cannot add name space : " + name);
@@ -290,42 +274,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	}
 
 	/**
-	 * BestEffort means the ACK protocol is not used. BestEffort should never be set false
-	 * within the current implementation.
-	 * @param flag
-	 */
-	public void setBestEffort(boolean flag) {
-		_bestEffort = flag;
-	}
-
-	public boolean flushComplete() {
-		return _bestEffort ? true : _holdingArea.size() == 0;
-	}
-
-	/**
-	 * Only used by unimplemented ACK protocol
-	 */
-	public void afterPutAction(ContentObject co) throws IOException {
-		if (! _bestEffort) {
-			if (_holdingArea.size() > _ackInterval) {
-				ContentName prefix = getNameSpace(co.name());
-				_ackne.cancelPrefix(prefix);
-				_ackne.registerPrefix(prefix);
-			}
-		} else {
-			super.afterPutAction(co);
-		}
-	}
-
-	/**
-	 * Called after close() is called but before close attempts to flush its output data
-	 */
-	@Override
-	public void beforeClose() throws IOException {
-		_ackInterval = 0;
-	}
-
-	/**
 	 * Called after close has completed a flush
 	 */
 	@Override
@@ -339,9 +287,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		// DKS don't actually want to cancel all the interests, only the
 		// ones relevant to the data we've finished writing.
 		cancelInterests();
-		if (!flushComplete()) {
-			throw new IOException("Unable to confirm writes are stable: timed out waiting ack for " + _holdingArea.firstKey());
-		}
 	}
 
 	/**
@@ -350,11 +295,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	 * what interests to cancel.
 	 */
 	public void cancelInterests() {
-		if (! _bestEffort) {
-			for (ContentName prefix : _filteredNames) {
-				_ackne.cancelPrefix(prefix);
-			}
-		}
 		for (Interest writeInterest : _writeInterests){
 			_handle.cancelInterest(writeInterest, this);
 		}
