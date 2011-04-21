@@ -184,7 +184,7 @@ public class CCNNetworkChannel extends InputStream {
 			}
 			initStream();
 			_ncInitialized = true;
-			_downDelay = _ncPort % 203 + 100; // randomize a bit on backoff times
+			_downDelay = _ncPort * 17 % 199 + 101; // randomize a bit on backoff times
 			synchronized (_ncConnectedLock) {
 				_ncConnected = true;
 			}
