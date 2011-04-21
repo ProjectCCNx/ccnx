@@ -229,7 +229,9 @@ public class CCNNetworkChannel extends InputStream {
 						open();
 					}
 				}
-			} catch (InterruptedException e) {}
+			} catch (InterruptedException e) {
+				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: interrupted",  _channelId);
+			}
 		}
 		return null;
 	}
@@ -290,6 +292,7 @@ public class CCNNetworkChannel extends InputStream {
 			if (_ncProto == NetworkProtocol.UDP) {
 				return (_ncDGrmChannel.write(src));
 			} else {
+				// XXX -this depends on synchronization in caller, which is less than ideal.
 				// Need to handle partial writes
 				int written = 0;
 				while (src.hasRemaining()) {
@@ -307,6 +310,7 @@ public class CCNNetworkChannel extends InputStream {
 			} 
 		} catch (PortUnreachableException pue) {}
 		  catch (ClosedChannelException cce) {}
+		Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: closing due to error on write", _channelId);
 		close();
 		return -1;
 	}
