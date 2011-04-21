@@ -77,6 +77,7 @@ public class CCNNetworkChannel extends InputStream {
 	// This lock (maybe unnecessary now?), if used with _openCloseLock, should be contained inside it.
 	protected Object _ncConnectedLock = new Object();
 	protected boolean _ncConnected = false; // Actually asking the channel if its connected doesn't appear to be reliable
+	protected boolean _retry = false; // Attempt to reconnect
 	
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
@@ -219,7 +220,7 @@ public class CCNNetworkChannel extends InputStream {
 			WirePacket packet = new WirePacket();
 			packet.decode(this);
 			return packet.getPacket();
-		} else {
+		} else if (_retry) {
 			try {
 				synchronized (_opencloseLock) {
 					_opencloseLock.wait(_downDelay);
@@ -241,14 +242,18 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void close() throws IOException {
-	synchronized(_opencloseLock) {
+		close(false);
+	}
+	private void close(boolean retry) throws IOException {
+		synchronized(_opencloseLock) {
 			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
-				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: close()",  _channelId);
-	
+				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: close({1})",  _channelId, retry);
+			_retry = retry;
+
 			synchronized (_ncConnectedLock) {
 				_ncConnected = false;
 			}
-			
+
 			if (_ncProto == NetworkProtocol.UDP) {
 				wakeup();
 				_ncDGrmChannel.close();
@@ -257,7 +262,7 @@ public class CCNNetworkChannel extends InputStream {
 			} else {
 				throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
 			}
-			
+
 			_ncReadSelector.close();
 			if (_ncWriteSelector != null)
 				_ncWriteSelector.close();
@@ -311,7 +316,7 @@ public class CCNNetworkChannel extends InputStream {
 		} catch (PortUnreachableException pue) {}
 		  catch (ClosedChannelException cce) {}
 		Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: closing due to error on write", _channelId);
-		close();
+		close(true);
 		return -1;
 	}
 	
@@ -468,7 +473,7 @@ public class CCNNetworkChannel extends InputStream {
 					_datagram.position(position);
 				}
 			} else
-				close();
+				close(true);
 		}
 		return ret;
 	}
@@ -487,7 +492,7 @@ public class CCNNetworkChannel extends InputStream {
 			Log.warning(Log.FAC_NETMANAGER, 
 					"NetworkChannel {0}: Error sending heartbeat packet: {1}", _channelId, io.getMessage());
 			try {
-				close();
+				close(true);
 			} catch (IOException e) {}
 		}
 		return false;
