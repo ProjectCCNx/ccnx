@@ -257,6 +257,8 @@ public class CCNNetworkChannel extends InputStream {
 			}
 			
 			_ncReadSelector.close();
+			if (_ncWriteSelector != null)
+				_ncWriteSelector.close();
 		}
 	}
 	
