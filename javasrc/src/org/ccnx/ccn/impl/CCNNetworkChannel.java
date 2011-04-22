@@ -265,7 +265,8 @@ public class CCNNetworkChannel extends InputStream {
 
 			if (_ncDGrmChannel != null) {
 				_ncDGrmChannel.close();
-			} else {
+			}
+			if (_ncSockChannel != null) {
 				_ncSockChannel.close();
 			}
 		}
