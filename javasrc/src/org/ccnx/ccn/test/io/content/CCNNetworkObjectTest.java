@@ -61,38 +61,12 @@ import org.junit.Test;
  * the same work.
  * TODO track down slowness
  */
-public class CCNNetworkObjectTest {
+public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 	
 	/**
 	 * Handle naming for the test
 	 */
 	static CCNTestHelper testHelper = new CCNTestHelper(CCNNetworkObjectTest.class);
-
-	static String stringObjName = "StringObject";
-	static String collectionObjName = "CollectionObject";
-	static String prefix = "CollectionObject-";
-	static ContentName [] ns = null;
-	
-	static public byte [] contenthash1 = new byte[32];
-	static public byte [] contenthash2 = new byte[32];
-	static public byte [] publisherid1 = new byte[32];
-	static public byte [] publisherid2 = new byte[32];
-	static PublisherID pubID1 = null;	
-	static PublisherID pubID2 = null;
-	static int NUM_LINKS = 15;
-	static LinkAuthenticator [] las = new LinkAuthenticator[NUM_LINKS];
-	static Link [] lrs = null;
-	
-	static Collection small1;
-	static Collection small2;
-	static Collection empty;
-	static Collection big;
-	static CCNHandle handle;
-	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
-	
-	static Level oldLevel;
-	
-	static Flosser flosser = null;
 	
 	static void setupNamespace(ContentName name) throws IOException {
 		flosser.handleNamespace(name);
@@ -436,11 +410,8 @@ public class CCNNetworkObjectTest {
 			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
 			
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
-			synchronized (c1) {
-				if (!c1.getVersion().equals(t2)) {
-					c1.wait(5000);
-				}
-			}
+			
+			doWait(c1, t2);
 			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
 			
@@ -466,11 +437,7 @@ public class CCNNetworkObjectTest {
 			
 			CCNTime t1 = saveAndLog("First string", c0, null, "Here is the first string.");
 			
-			synchronized (c0) {
-				if (!c0.getVersion().equals(t1)) {
-					c0.wait(5000);
-				}
-			}
+			doWait(c0, t1);
 			c1.waitForData();
 			CCNTime c1Version = c1.getVersion();
 			
@@ -504,18 +471,9 @@ public class CCNNetworkObjectTest {
 			CCNStringObject c2 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
 			Log.info("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
-			synchronized (c0) {
-				if (!c0.getVersion().equals(t2)) {
-					c0.wait(5000);
-				}
-				Log.info("waited - t2 is {0}", t2);
-			}
+			doWait(c0, t2);
 			Assert.assertEquals("c0 update", c0.getVersion(), c2.getVersion());
-			synchronized (c1) {
-				if (!c1.getVersion().equals(t2)) {
-					c1.wait(5000);
-				}
-			}
+			doWait(c1, t2);
 			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
 			Assert.assertFalse(c1Version.equals(c1.getVersion()));
 			
@@ -691,33 +649,4 @@ public class CCNNetworkObjectTest {
 		Thread.sleep(1000);
 		Log.info("CCNNetworkObjectTest: Leaving testVeryLast -- dummy test to help track down blowup. Prefix {0}", testHelper.getClassNamespace());	
 	}
-	
-	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
-		CCNTime oldVersion = ecd.getVersion();
-		ecd.save(version, data);
-		Log.info("SAL: Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
-	}
-	
-	public <T> CCNTime saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws IOException {
-		CCNTime oldVersion = ecd.getVersion();
-		ecd.saveAsGone();
-		Log.info("SAGAL Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
-	}
-	
-	public CCNTime waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws IOException {
-		ecd.waitForData();
-		Log.info("WFDAL: Initial read " + name + ", name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
-	}
-
-	public CCNTime updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws IOException {
-		if ((null == updateName) ? ecd.update() : ecd.update(updateName, null))
-			Log.info("Updated " + name + ", to name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		else 
-			Log.info("UAL: No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
-	}
-
 }

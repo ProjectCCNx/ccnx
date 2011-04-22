@@ -28,6 +28,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.crypto.util.DigestHelper;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.DataUtils.Waiter;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.content.CCNNetworkObject;
 import org.ccnx.ccn.io.content.CCNStringObject;
@@ -56,33 +57,12 @@ import org.junit.Test;
 /**
  * Test basic network object functionality, writing objects to a repository.
  **/
-public class CCNNetworkObjectTestRepo {
+public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 	
 	/**
 	 * Handle naming for the test
 	 */
 	static CCNTestHelper testHelper = new CCNTestHelper(CCNNetworkObjectTestRepo.class);
-
-	static String stringObjName = "StringObject";
-	static String collectionObjName = "CollectionObject";
-	static String prefix = "CollectionObject-";
-	static ContentName [] ns = null;
-	
-	static public byte [] contenthash1 = new byte[32];
-	static public byte [] contenthash2 = new byte[32];
-	static public byte [] publisherid1 = new byte[32];
-	static public byte [] publisherid2 = new byte[32];
-	static PublisherID pubID1 = null;	
-	static PublisherID pubID2 = null;
-	static int NUM_LINKS = 15;
-	static LinkAuthenticator [] las = new LinkAuthenticator[NUM_LINKS];
-	static Link [] lrs = null;
-	
-	static Collection small1;
-	static Collection small2;
-	static Collection empty;
-	static Collection big;
-	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
 	
 	static void setupNamespace(ContentName name) throws IOException {
 	}
@@ -372,11 +352,7 @@ public class CCNNetworkObjectTestRepo {
 			Assert.assertEquals("c1 update", c1.getVersion(), c2.getVersion());
 	
 			CCNTime t2 = saveAndLog("Second string", c2, null, "Here is the second string.");
-			if (!c1.getVersion().equals(t2)) {
-				synchronized (c1) {
-					c1.wait(5000);
-				}
-			}
+			doWait(c1, t2);
 			Assert.assertEquals("c1 update 2", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
 			
@@ -389,11 +365,7 @@ public class CCNNetworkObjectTestRepo {
 			System.out.println("Slept " + elapsed/1000.0 + " seconds, should have been " + count + " interests.");
 			
 			CCNTime t3 = saveAndLog("Third string", c2, null, "Here is the third string.");
-			if (!c1.getVersion().equals(t3)) {
-				synchronized (c1) {
-					c1.wait(5000);
-				}
-			}
+			doWait(c1, t3);
 			Assert.assertEquals("c1 update 3", c1.getVersion(), c2.getVersion());
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
 			
@@ -598,12 +570,14 @@ public class CCNNetworkObjectTestRepo {
 			Assert.assertEquals(((CCNStringObject)wo.object()).string(), sowrite.string());
 			Assert.assertEquals(wo.getVersionedName(), sowrite.getVersionedName());
 			
-			synchronized (record) {
-				if (!record.callback) {
-					record.wait(5000);
+			new Waiter(UPDATE_TIMEOUT) {
+				@Override
+				protected boolean check(Object o, Object check) throws Exception {
+					return ((Record)o).callback;
 				}
-				Assert.assertEquals(true, record.callback);
-			}
+			}.wait(record, record);
+			Assert.assertEquals(true, record.callback);
+			
 			if (!RepositoryControl.localRepoSync(rhandle, so))  {
 				Thread.sleep(SystemConfiguration.MEDIUM_TIMEOUT);
 				// Should be in the repo by now
@@ -663,12 +637,13 @@ public class CCNNetworkObjectTestRepo {
 				Assert.assertEquals(so.string(), sowrite.string());
 				Assert.assertEquals(so.getVersionedName(), sowrite.getVersionedName());
 				
-				synchronized (record) {
-					if (!record.callback) {
-						record.wait(5000);
+				new Waiter(UPDATE_TIMEOUT) {
+					@Override
+					protected boolean check(Object o, Object check) throws Exception {
+						return ((Record)o).callback;
 					}
-					Assert.assertEquals(true, record.callback);
-				}
+				}.wait(record, record);
+				Assert.assertEquals(true, record.callback);
 				if (!RepositoryControl.localRepoSync(rhandle, so))  {
 					Thread.sleep(SystemConfiguration.MEDIUM_TIMEOUT);
 					// Should be in the repo by now
@@ -681,33 +656,5 @@ public class CCNNetworkObjectTestRepo {
 			rhandle.close();
 			KeyManager.closeDefaultKeyManager();
 		}
-	}
-
-	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
-		CCNTime oldVersion = ecd.getVersion();
-		ecd.save(version, data);
-		Log.info(name + " Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
-	}
-	
-	public <T> CCNTime saveAsGoneAndLog(String name, CCNNetworkObject<T> ecd) throws IOException {
-		CCNTime oldVersion = ecd.getVersion();
-		ecd.saveAsGone();
-		Log.info("Saved " + name + ": " + ecd.getVersionedName() + " (" + ecd.getVersion() + ", updated from " + oldVersion + ")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
-	}
-	
-	public CCNTime waitForDataAndLog(String name, CCNNetworkObject<?> ecd) throws IOException {
-		ecd.waitForData();
-		Log.info("Initial read " + name + ", name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
-	}
-
-	public CCNTime updateAndLog(String name, CCNNetworkObject<?> ecd, ContentName updateName) throws IOException {
-		if ((null == updateName) ? ecd.update() : ecd.update(updateName, null))
-			Log.info("Updated " + name + ", to name: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		else 
-			Log.info("No update found for " + name + ((null != updateName) ? (" at name " + updateName) : "") + ", still: " + ecd.getVersionedName() + " (" + ecd.getVersion() +")" +  " gone? " + ecd.isGone() + " data: " + ecd);
-		return ecd.getVersion();
 	}
 }

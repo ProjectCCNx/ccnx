@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -18,6 +18,7 @@
 package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
+
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.protocol.ContentName;
@@ -86,13 +87,7 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private void doTest(int c) throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		synchronized (this) {
-			try {
-				wait(TIMEOUT);
-			} catch (InterruptedException e) {
-				System.out.println("interrupted...  check the count and time");
-			}
-		}
+		doWait(TIMEOUT);
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
 		System.out.println("doTest time: "+duration+" and count:" +count +" should be "+c);
@@ -103,9 +98,7 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private void doTestFail(int c) throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		synchronized (this) {
-			wait(TIMEOUT);
-		}
+		doWait(TIMEOUT);
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
 		System.out.println("doTestFail time: "+duration+" and count:" +count +" should be "+c);
@@ -114,5 +107,4 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		//could be slightly less, no guarantees.  API says "more or less" after timeout
 		Assert.assertFalse(duration < TIMEOUT - (int)(TIMEOUT*0.01));
 	}
-
 }

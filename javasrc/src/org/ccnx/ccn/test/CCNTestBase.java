@@ -23,6 +23,7 @@ import java.util.Random;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.support.DataUtils.Waiter;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -75,6 +76,23 @@ public class CCNTestBase {
 		_testDir = System.getProperty(TEST_DIR);
 		if (null == _testDir)
 			_testDir = "./";
+	}
+	
+	/**
+	 * Just wait for timeout ms handling interrupts
+	 * @param timeout ms
+	 * @throws InterruptedException 
+	 */
+	public void doWait(int timeout) throws InterruptedException {
+		try {
+			new Waiter(timeout) {
+				@Override
+				protected boolean check(Object o, Object check) throws Exception {
+					return false;
+				}
+			}.wait(this, this);
+		} catch (InterruptedException ie) {throw ie;}
+		  catch (Exception e) {} // Others can't happen
 	}
 	
 	@AfterClass
