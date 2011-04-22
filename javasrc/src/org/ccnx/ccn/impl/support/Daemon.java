@@ -68,6 +68,9 @@ public class Daemon {
 	protected boolean _interactive = false;
 	protected String _pid;
 	
+	// TODO maybe this doesn't belong here
+	public static final String PROP_JAVA_LIBRARY_PATH ="java.library.path";
+	
 	public static final String PROP_DAEMON_MEMORY = "ccn.daemon.memory";
 	public static final String PROP_DAEMON_DEBUG_PORT = "ccn.daemon.debug";
 	public static final String PROP_DAEMON_OUTPUT = "ccn.daemon.output";
@@ -367,6 +370,10 @@ public class Daemon {
 	     * TODO - we might want to add them all but for now these are
 	     * the critical ones
 	     */
+		String libPath = System.getProperty(PROP_JAVA_LIBRARY_PATH);
+		if (libPath != null) {
+			argList.add("-D" + PROP_JAVA_LIBRARY_PATH + "=" + libPath);
+		}
 		String portval = System.getProperty(CCNNetworkManager.PROP_AGENT_PORT);
 		if (portval != null) {
 			argList.add("-D" + CCNNetworkManager.PROP_AGENT_PORT + "=" + portval);
