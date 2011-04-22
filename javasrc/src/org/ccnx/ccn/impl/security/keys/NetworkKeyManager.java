@@ -48,7 +48,6 @@ public class NetworkKeyManager extends BasicKeyManager {
 		
 	ContentName _keystoreName;
 	PublisherPublicKeyDigest _publisher;
-	CCNHandle _handle;
 
 	/** Constructor
 	 * @param userName
