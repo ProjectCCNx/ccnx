@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -179,7 +179,7 @@ public class InterestTest extends CCNTestBase {
 	public void testMatchDigest() throws MalformedContentNameStringException {
 		ContentName name = ContentName.fromNative("/paul");
 		byte [] content = "hello".getBytes();
-		ContentObject co = new ContentObject(name,fakeSignedInfo,content,fakeSignature);
+		ContentObject co = ContentObject.buildContentObject(name, content);
 		byte [] digest = co.digest();
 		Interest interest = new Interest(ContentName.fromNative(name, digest));
 		Assert.assertTrue(interest.matches(co));

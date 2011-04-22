@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -110,7 +110,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	// The namespaces served by this flow controller
 	protected HashSet<ContentName> _filteredNames = new HashSet<ContentName>();
 
-	private class UnmatchedInterest {
+	private static class UnmatchedInterest {
 		long timestamp = System.currentTimeMillis();
 	}
 	
@@ -131,7 +131,6 @@ public class CCNFlowControl implements CCNFilterListener {
 			_filteredNames.add(name);
 			_handle.registerFilter(name, this);
 		}
-		_unmatchedInterests.setCapacity(DEFAULT_INTEREST_CAPACITY);
 	}
 	
 	/**
@@ -392,57 +391,70 @@ public class CCNFlowControl implements CCNFilterListener {
 	 */
 	private ContentObject waitForMatch(ContentObject co) throws IOException {
 		if (_flowControlEnabled) {
+			// Always place the object in the _holdingArea, even if it will be 
+			// transmitted immediately.  The reason for always holding objects
+			// is that there may be different buffer draining policies implemented by
+			// subclasses.  For example, a flow control may retain objects until it 
+			// has verified by separate communication that an intended recipient has 
+			// received them.
+			if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+				Log.finest(Log.FAC_IO, "Holding {0}", co.name());
+			// Must verify space in _holdingArea or block waiting for space
+			int size = 0;
 			synchronized (_holdingArea) {
-				// Always place the object in the _holdingArea, even if it will be 
-				// transmitted immediately.  The reason for always holding objects
-				// is that there may be different buffer draining policies implemented by
-				// subclasses.  For example, a flow control may retain objects until it 
-				// has verified by separate communication that an intended recipient has 
-				// received them.
-				if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
-					Log.finest(Log.FAC_IO, "Holding {0}", co.name());
-				// Must verify space in _holdingArea or block waiting for space
-				if (_holdingArea.size() >= _capacity) {
-					long ourTime = System.currentTimeMillis();
+				size = _holdingArea.size();
+			}
+			if (size >= _capacity) {
+				long ourTime = System.currentTimeMillis();
 
-					// When we're going to be blocked waiting for a reader anyway, 
-					// purge old unmatched interests
+				// When we're going to be blocked waiting for a reader anyway, 
+				// purge old unmatched interests
+				synchronized (_unmatchedInterests) {
 					removeUnmatchedInterests(ourTime);
-					
-					// Now wait for space to be cleared or timeout
-					// Must guard against "spurious wakeup" so must check elapsed time directly
-					long elapsed = 0;
+				}
+				
+				// Now wait for space to be cleared or timeout
+				// Must guard against "spurious wakeup" so must check elapsed time directly
+				if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+					Log.finest(Log.FAC_IO, "Waiting for drain size is {0}", size);
+				long elapsed = 0;
+				synchronized (_holdingArea) {
 					do {
 						try {
-							if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
-								Log.finest(Log.FAC_IO, "Waiting for drain ({0}, {1})", _holdingArea.size(), elapsed);
 							_holdingArea.wait(_timeout-elapsed);
 						} catch (InterruptedException e) {
 							// intentional no-op
 						}
 						elapsed = System.currentTimeMillis() - ourTime;
-					} while (_holdingArea.size() >= _capacity && elapsed < _timeout);						
-					if (_holdingArea.size() >= _capacity) {
-						String names = "";
-						for (ContentName name : _filteredNames) {
-							names += name + ",";
-						}
-						Log.warning(Log.FAC_IO, "Flow control buffer full for: " + names);
-						throw new IOException("Flow control buffer full and not draining");
-					}
+						size = _holdingArea.size();
+					} while (size >= _capacity && elapsed < _timeout);
 				}
-				assert(_holdingArea.size() < _capacity);
-				// Space verified so now can hold object. See note above for reason to always hold.
+				if (size >= _capacity) {
+					String names = "";
+					for (ContentName name : _filteredNames) {
+						names += name + ",";
+					}
+					Log.warning(Log.FAC_IO, "Flow control buffer full for: " + names);
+					throw new IOException("Flow control buffer full and not draining");
+				}
+			}
+			assert(size < _capacity);
+			// Space verified so now can hold object. See note above for reason to always hold.
+			synchronized (_holdingArea) {
 				_holdingArea.put(co.name(), co);
+			}
 
-				// Check for pending interest match to allow immediate transmit
-				Entry<UnmatchedInterest> match = null;
+			// Check for pending interest match to allow immediate transmit
+			Entry<UnmatchedInterest> match = null;
+			synchronized (_unmatchedInterests) {
 				match = _unmatchedInterests.removeMatch(co);
-				if (match != null) {
-					Log.finest(Log.FAC_IO, "Found pending matching interest for " + co.name() + ", putting to network.");
-					_handle.put(co);
-					// afterPutAction may immediately remove the object from _holdingArea or retain it 
-					// depending upon the buffer drain policy being implemented.
+			}
+			if (match != null) {
+				Log.finest(Log.FAC_IO, "Found pending matching interest for " + co.name() + ", putting to network.");
+				_handle.put(co);
+				// afterPutAction may immediately remove the object from _holdingArea or retain it 
+				// depending upon the buffer drain policy being implemented.
+				synchronized (_holdingArea) {
 					afterPutAction(co);
 				}
 			}
@@ -454,6 +466,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	/**
 	 * Function to remove expired interests from the flow controller.  This is called when a content
 	 * object is received and when an interest is added to the buffer.
+	 * 
+	 * Must be called with _unmatchedInterests locked
 	 * 
 	 * @param ourTime current time for checking if interests are expired
 	 */
@@ -487,10 +501,8 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * 
 	 */
 	public void handleInterests(ArrayList<Interest> interests) {
-		synchronized (_holdingArea) {
-			for (Interest interest : interests) {
-				handleInterest(interest);
-			}
+		for (Interest interest : interests) {
+			handleInterest(interest);
 		}
 	}
 	
@@ -503,22 +515,29 @@ public class CCNFlowControl implements CCNFilterListener {
 	public boolean handleInterest(Interest i) {
 		if (i == null)
 			return false;
+		if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+			Log.fine(Log.FAC_IO, "Flow controller {0}: got interest: {1}", this, i);
+		Set<ContentName> set;
+		ContentObject co;
 		synchronized (_holdingArea) {
-			if (Log.isLoggable(Log.FAC_IO, Level.FINE))
-				Log.fine(Log.FAC_IO, "Flow controller {0}: got interest: {1}", this, i);
-			ContentObject co = getBestMatch(i, _holdingArea.keySet());
-			if (co != null) {
-				if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
-					Log.finest(Log.FAC_IO, "Found content {0} matching interest: {1}",co.name(), i);
-				try {
-					_handle.put(co);
+			set = _holdingArea.keySet();
+			co = getBestMatch(i, set);
+		}
+		if (co != null) {
+			if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+				Log.finest(Log.FAC_IO, "Found content {0} matching interest: {1}",co.name(), i);
+			try {
+				_handle.put(co);
+				synchronized (_holdingArea) {
 					afterPutAction(co);
-				} catch (IOException e) {
-					Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
-					Log.warningStackTrace(e);
 				}
-			} else {
-				
+			} catch (IOException e) {
+				Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
+				Log.warningStackTrace(e);
+			}
+		} else {
+			
+			synchronized (_unmatchedInterests) {
 				//only check if we are adding the interest, and check before we add so we don't check the new interest
 				if (_unmatchedInterests.size() > 0)
 					removeUnmatchedInterests(System.currentTimeMillis());
@@ -526,9 +545,9 @@ public class CCNFlowControl implements CCNFilterListener {
 				Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
 				_unmatchedInterests.add(i, new UnmatchedInterest());
 			}
-				
-			return true;
 		}
+			
+		return true;
 	}
 	
 	
@@ -547,7 +566,12 @@ public class CCNFlowControl implements CCNFilterListener {
 		remove(co);
 	}
 	
-	
+	/**
+	 * Must be called with _holdingArea locked
+	 * @param interest
+	 * @param set
+	 * @return
+	 */
 	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
 		ContentObject bestMatch = null;
 		if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
@@ -660,21 +684,25 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * Remove any currently buffered unmatched interests
 	 */
 	public void clearUnmatchedInterests() {
-		if( Log.isLoggable(Level.INFO))
-			Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
-		_unmatchedInterests.clear();
+		synchronized (_unmatchedInterests) {
+			if( Log.isLoggable(Level.INFO))
+				Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
+			_unmatchedInterests.clear();
+		}
 	}
 	
 	/**
 	 * Debugging function to log unmatched interests.
 	 */
 	public void logUnmatchedInterests(String logMessage) {
-		if( Log.isLoggable(Log.FAC_IO, Level.INFO))
-			Log.info(Log.FAC_IO, "{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
-		for (Entry<UnmatchedInterest> interestEntry : _unmatchedInterests.values()) {
-			if (null != interestEntry.interest())
-				if( Log.isLoggable(Log.FAC_IO, Level.INFO))
-					Log.info(Log.FAC_IO, "   Unmatched interest: {0}", interestEntry.interest());
+		synchronized (_unmatchedInterests) {
+			if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
+			for (Entry<UnmatchedInterest> interestEntry : _unmatchedInterests.values()) {
+				if (null != interestEntry.interest())
+					if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+						Log.info(Log.FAC_IO, "   Unmatched interest: {0}", interestEntry.interest());
+			}
 		}
 	}
 	
@@ -708,7 +736,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param value	number of interests
 	 */
 	public void setInterestCapacity(int value) {
-		_unmatchedInterests.setCapacity(value);
+		synchronized (_unmatchedInterests) {
+			_unmatchedInterests.setCapacity(value);
+		}
 	}
 	
 	/**
