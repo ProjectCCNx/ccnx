@@ -177,19 +177,13 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 */
 	public void readPolicy(String localName, KeyManager km) throws RepositoryException, ContentDecodingException {
 		if (null != localName) {
-			RepositoryInternalInputHandler riih = null;
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 				Log.info(Log.FAC_REPO, "REPO: reading policy from network: {0}/{1}/{2}", REPO_NAMESPACE, localName, REPO_POLICY);
 			try {
-				riih = new RepositoryInternalInputHandler(this, km);
-				try {
-					ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), localName);
-					PolicyObject policyObject = new PolicyObject(policyName, riih);
-					if (policyObject != null) {
-						_policy.update(policyObject.policyInfo(), false);
-					}
-				} finally {
-					riih.close();
+				ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), localName);
+				PolicyObject policyObject = new PolicyObject(policyName, _handle);
+				if (policyObject != null) {
+					_policy.update(policyObject.policyInfo(), false);
 				}
 			} catch (Exception e) {}	// presumably there is no currently stored policy file
 		}
