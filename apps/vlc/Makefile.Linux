@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009, 2010, 2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -22,7 +22,7 @@ libaccess_ccn_plugin.so: libaccess_ccn_plugin.o
 	gcc -g -shared -std=gnu99 $< `pkg-config  --libs vlc-plugin`  -Wl,-soname -Wl,$@ -o $@ -L../../lib -L/usr/local/lib -lccn -lcrypto
 
 libaccess_ccn_plugin.o: ccn.c
-	gcc -c -g -O3 -std=gnu99  $< -I../../include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" $(VLCPLUGINVERDEF) -o $@  
+	gcc -c -fPIC -g -O3 -std=gnu99  $< -I../../include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" $(VLCPLUGINVERDEF) -o $@  
 
 clean:
 	rm -f libaccess_ccn_plugin.o libaccess_ccn_plugin.so
