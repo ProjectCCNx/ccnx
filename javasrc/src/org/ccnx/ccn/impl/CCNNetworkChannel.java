@@ -263,15 +263,12 @@ public class CCNNetworkChannel extends InputStream {
 			if (_ncWriteSelector != null)
 				_ncWriteSelector.close();
 
-			if (_ncProto == NetworkProtocol.UDP) {
+			if (_ncDGrmChannel != null) {
 				wakeup();
 				_ncDGrmChannel.close();
-			} else if (_ncProto == NetworkProtocol.TCP) {
-				_ncSockChannel.close();
 			} else {
-				throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
+				_ncSockChannel.close();
 			}
-
 		}
 	}
 	
@@ -300,7 +297,7 @@ public class CCNNetworkChannel extends InputStream {
 					"NetworkChannel {0}: write() on port {1}", _channelId, _ncLocalPort);
 		
 		try {
-			if (_ncProto == NetworkProtocol.UDP) {
+			if (_ncDGrmChannel != null) {
 				return (_ncDGrmChannel.write(src));
 			} else {
 				// XXX -this depends on synchronization in caller, which is less than ideal.
@@ -456,7 +453,7 @@ public class CCNNetworkChannel extends InputStream {
 			// position larger than limit causes an exception.
 			_datagram.limit(_datagram.capacity());
 			_datagram.position(position);
-			if (_ncProto == NetworkProtocol.UDP) {
+			if (_ncDGrmChannel != null) {
 				ret = _ncDGrmChannel.read(_datagram);
 			} else {
 				ret = _ncSockChannel.read(_datagram);
