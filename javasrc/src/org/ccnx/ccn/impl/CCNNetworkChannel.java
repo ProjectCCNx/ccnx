@@ -264,7 +264,6 @@ public class CCNNetworkChannel extends InputStream {
 				_ncWriteSelector.close();
 
 			if (_ncDGrmChannel != null) {
-				wakeup();
 				_ncDGrmChannel.close();
 			} else {
 				_ncSockChannel.close();
