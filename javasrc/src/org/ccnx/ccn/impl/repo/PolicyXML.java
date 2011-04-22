@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -75,12 +75,6 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		}
 		
 		public PolicyXML policyInfo() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
-		
-		public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws ContentDecodingException, IOException {
-			if (_handle instanceof RepositoryInternalInputHandler)
-				return true;
-			return super.update(name, publisher);
-		}
 	}
 	
 	/**
