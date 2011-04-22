@@ -364,12 +364,12 @@ public class InterestTableTest extends CCNTestBase {
 		
 		matches(names, _aa, new String[] {_aa}, new int[] {6});
 		matches(names, c, new String[] {c}, new int[] {3});
-		matches(names, "/a/b/c/d", new String[] {abc, ab, ab, a}, new int[] {7, 45, 2, 1});
-		matches(names, abc, new String[] {abc, ab, ab, a}, new int[] {7, 45, 2, 1});
-		matches(names, ab, new String[] {ab, ab, a}, new int[] {45, 2, 1});
+		matches(names, "/a/b/c/d", new String[] {abc, ab, ab, a}, new int[] {7, 2, 45, 1});
+		matches(names, abc, new String[] {abc, ab, ab, a}, new int[] {7, 2, 45, 1});
+		matches(names, ab, new String[] {ab, ab, a}, new int[] {2, 45, 1});
 		matches(names, a, new String[] {a}, new int[] {1});
 		matches(names, a_bb, new String[] {a_bb, a}, new int[] {5, 1});
-		matches(names, "/a/b/d", new String[] {ab, ab, a}, new int[] {45, 2, 1});
+		matches(names, "/a/b/d", new String[] {ab, ab, a}, new int[] {2, 45, 1});
 		matches(names, zero, new ContentName[] {zero}, new int[] {8});
 		matches(names, onethree, new ContentName[] {onethree, one}, new int[] {9, 10});
 		matches(names, one, new ContentName[] {one}, new int[] {10});
@@ -381,8 +381,8 @@ public class InterestTableTest extends CCNTestBase {
 		match(names, abc, 7);
 		match(names, "/a/b/c/d", 7);
 		
-		matches(names, "/a/b/c/d", new String[] {abc, ab, ab, a}, new int[] {7, 45, 2, 1});
-		matches(names, "/a/b/b/a", new String[] {abb, ab, ab, a}, new int[] {11, 45, 2, 1});
+		matches(names, "/a/b/c/d", new String[] {abc, ab, ab, a}, new int[] {7, 2, 45, 1});
+		matches(names, "/a/b/b/a", new String[] {abb, ab, ab, a}, new int[] {11, 2, 45, 1});
 
 		noMatch(names, "/q");
 		
@@ -457,7 +457,7 @@ public class InterestTableTest extends CCNTestBase {
 		
 		setID(-1);
 		match(names, a, 1);
-		matches(names, "/a/b/b/a", new String[] {abb, abb, ab, a}, new int[] {8, 4, 5, 1});
+		matches(names, "/a/b/b/a", new String[] {abb, abb, ab, a}, new int[] {4, 8, 5, 1});
 	}
 
 
@@ -485,7 +485,7 @@ public class InterestTableTest extends CCNTestBase {
 
 		noRemoveMatch(names, a_bb);
 
-		removeMatches(names, abc, new String[] {abc, ab, ab}, new int[] {7, 45, 2});
+		removeMatches(names, abc, new String[] {abc, ab, ab}, new int[] {7, 2, 45});
 		sizes(names, 6, 6);
 		noRemoveMatch(names, abc);
 
@@ -665,7 +665,7 @@ public class InterestTableTest extends CCNTestBase {
 		addEntry(table, one, new Integer(10));
 		
 		match(table, abc, 7);
-		matches(table, ab, new String[] {ab, ab}, new int[] {45, 2});
+		matches(table, ab, new String[] {ab, ab}, new int[] {2, 45});
 		noMatch(table, a);
 	}
 
