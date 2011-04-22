@@ -832,6 +832,9 @@ public class CCNNetworkManager implements Runnable {
 	@Override
 	protected void finalize() throws Throwable {
 		try {
+			if (_run) {
+				Log.warning(Log.FAC_NETMANAGER, formatMessage("Shutdown from finalize"));
+			}
 			shutdown();
 		} finally {
 			super.finalize();

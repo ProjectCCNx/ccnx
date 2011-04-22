@@ -51,10 +51,10 @@ import org.ccnx.ccn.protocol.WirePacket;
 public class CCNNetworkChannel extends InputStream {
 	public static final int HEARTBEAT_PERIOD = 3500;
 	public static final int SOCKET_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT; // period to wait in ms.
-	public static final int DOWN_DELAY = SystemConfiguration.SHORT_TIMEOUT;	// Wait period for retry when ccnd is down
+//	public static final int DOWN_DELAY = SystemConfiguration.MEDIUM_TIMEOUT;	// Wait period for retry when ccnd is down
 	public static final int LINGER_TIME = 10;	// In seconds
 
-	// This is to make log messages intelligable
+	// This is to make log messages intelligible
 	protected final static AtomicInteger _channelIdCounter = new AtomicInteger(0);
 	protected final int _channelId;
 	
@@ -72,10 +72,12 @@ public class CCNNetworkChannel extends InputStream {
 	protected Object _opencloseLock = new Object();
 	protected Selector _ncReadSelector = null;
 	protected Selector _ncWriteSelector = null;			 // Not needed for UDP
+	protected int _downDelay = 250;
 	
 	// This lock (maybe unnecessary now?), if used with _openCloseLock, should be contained inside it.
 	protected Object _ncConnectedLock = new Object();
 	protected boolean _ncConnected = false; // Actually asking the channel if its connected doesn't appear to be reliable
+	protected boolean _retry = true; // Attempt to reconnect
 	
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
@@ -154,11 +156,11 @@ public class CCNNetworkChannel extends InputStream {
 				try {
 					_ncSockChannel.connect(new InetSocketAddress(_ncHost, _ncPort));
 				} catch (IOException ioe) {
-					Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: TCP open exception {1}",  _channelId, ioe.getMessage());
 					if (!_ncInitialized) {
+						Log.warning(Log.FAC_NETMANAGER, "NetworkChannel {0}: TCP open exception {1}",  _channelId, ioe.getMessage());
 						throw ioe;
 					}
-					ioe.printStackTrace();
+					Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: TCP (re)open exception {1}",  _channelId, ioe.getMessage());
 					return;
 				}
 				_ncSockChannel.configureBlocking(false);
@@ -183,6 +185,7 @@ public class CCNNetworkChannel extends InputStream {
 			}
 			initStream();
 			_ncInitialized = true;
+			_downDelay = _ncPort * 17 % 199 + 101; // randomize a bit on backoff times
 			synchronized (_ncConnectedLock) {
 				_ncConnected = true;
 			}
@@ -217,11 +220,23 @@ public class CCNNetworkChannel extends InputStream {
 			WirePacket packet = new WirePacket();
 			packet.decode(this);
 			return packet.getPacket();
-		} else {
-			try {
-				Thread.sleep(DOWN_DELAY);
-				open();
-			} catch (InterruptedException e) {}
+		}
+		try {
+			if (_retry) {
+				synchronized (_opencloseLock) {
+					_opencloseLock.wait(_downDelay);
+					if (! _ncConnected) {
+						if (_downDelay < HEARTBEAT_PERIOD)
+							_downDelay = _downDelay * 2 + 1;
+						open();
+					}
+				}
+			} else {
+				// We do not want to spin without a delay
+				Thread.sleep(_downDelay);
+			}	
+		} catch (InterruptedException e) {
+			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: interrupted",  _channelId);
 		}
 		return null;
 	}
@@ -231,24 +246,29 @@ public class CCNNetworkChannel extends InputStream {
 	 * @throws IOException
 	 */
 	public void close() throws IOException {
-	synchronized(_opencloseLock) {
-			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
-				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: close()",  _channelId);
+		close(false);
+	}
 	
+	private void close(boolean retry) throws IOException {
+		synchronized(_opencloseLock) {
+			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
+				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: close({1})",  _channelId, retry);
+			_retry &= retry;
+
 			synchronized (_ncConnectedLock) {
 				_ncConnected = false;
 			}
-			
-			if (_ncProto == NetworkProtocol.UDP) {
-				wakeup();
-				_ncDGrmChannel.close();
-			} else if (_ncProto == NetworkProtocol.TCP) {
-				_ncSockChannel.close();
-			} else {
-				throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
-			}
-			
+
 			_ncReadSelector.close();
+			if (_ncWriteSelector != null)
+				_ncWriteSelector.close();
+
+			if (_ncDGrmChannel != null) {
+				_ncDGrmChannel.close();
+			}
+			if (_ncSockChannel != null) {
+				_ncSockChannel.close();
+			}
 		}
 	}
 	
@@ -277,9 +297,10 @@ public class CCNNetworkChannel extends InputStream {
 					"NetworkChannel {0}: write() on port {1}", _channelId, _ncLocalPort);
 		
 		try {
-			if (_ncProto == NetworkProtocol.UDP) {
+			if (_ncDGrmChannel != null) {
 				return (_ncDGrmChannel.write(src));
 			} else {
+				// XXX -this depends on synchronization in caller, which is less than ideal.
 				// Need to handle partial writes
 				int written = 0;
 				while (src.hasRemaining()) {
@@ -297,7 +318,8 @@ public class CCNNetworkChannel extends InputStream {
 			} 
 		} catch (PortUnreachableException pue) {}
 		  catch (ClosedChannelException cce) {}
-		close();
+		Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: closing due to error on write", _channelId);
+		close(true);
 		return -1;
 	}
 	
@@ -431,7 +453,7 @@ public class CCNNetworkChannel extends InputStream {
 			// position larger than limit causes an exception.
 			_datagram.limit(_datagram.capacity());
 			_datagram.position(position);
-			if (_ncProto == NetworkProtocol.UDP) {
+			if (_ncDGrmChannel != null) {
 				ret = _ncDGrmChannel.read(_datagram);
 			} else {
 				ret = _ncSockChannel.read(_datagram);
@@ -454,7 +476,7 @@ public class CCNNetworkChannel extends InputStream {
 					_datagram.position(position);
 				}
 			} else
-				close();
+				close(true);
 		}
 		return ret;
 	}
@@ -473,7 +495,7 @@ public class CCNNetworkChannel extends InputStream {
 			Log.warning(Log.FAC_NETMANAGER, 
 					"NetworkChannel {0}: Error sending heartbeat packet: {1}", _channelId, io.getMessage());
 			try {
-				close();
+				close(true);
 			} catch (IOException e) {}
 		}
 		return false;
