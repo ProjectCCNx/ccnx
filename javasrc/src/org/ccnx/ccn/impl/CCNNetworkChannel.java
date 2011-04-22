@@ -248,6 +248,7 @@ public class CCNNetworkChannel extends InputStream {
 	public void close() throws IOException {
 		close(false);
 	}
+	
 	private void close(boolean retry) throws IOException {
 		synchronized(_opencloseLock) {
 			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
@@ -258,6 +259,10 @@ public class CCNNetworkChannel extends InputStream {
 				_ncConnected = false;
 			}
 
+			_ncReadSelector.close();
+			if (_ncWriteSelector != null)
+				_ncWriteSelector.close();
+
 			if (_ncProto == NetworkProtocol.UDP) {
 				wakeup();
 				_ncDGrmChannel.close();
@@ -267,9 +272,6 @@ public class CCNNetworkChannel extends InputStream {
 				throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
 			}
 
-			_ncReadSelector.close();
-			if (_ncWriteSelector != null)
-				_ncWriteSelector.close();
 		}
 	}
 	
