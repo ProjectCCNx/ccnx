@@ -77,7 +77,7 @@ public class CCNNetworkChannel extends InputStream {
 	// This lock (maybe unnecessary now?), if used with _openCloseLock, should be contained inside it.
 	protected Object _ncConnectedLock = new Object();
 	protected boolean _ncConnected = false; // Actually asking the channel if its connected doesn't appear to be reliable
-	protected boolean _retry = false; // Attempt to reconnect
+	protected boolean _retry = true; // Attempt to reconnect
 	
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
@@ -220,8 +220,9 @@ public class CCNNetworkChannel extends InputStream {
 			WirePacket packet = new WirePacket();
 			packet.decode(this);
 			return packet.getPacket();
-		} else if (_retry) {
-			try {
+		}
+		try {
+			if (_retry) {
 				synchronized (_opencloseLock) {
 					_opencloseLock.wait(_downDelay);
 					if (! _ncConnected) {
@@ -230,9 +231,12 @@ public class CCNNetworkChannel extends InputStream {
 						open();
 					}
 				}
-			} catch (InterruptedException e) {
-				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: interrupted",  _channelId);
-			}
+			} else {
+				// We do not want to spin without a delay
+				Thread.sleep(_downDelay);
+			}	
+		} catch (InterruptedException e) {
+			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: interrupted",  _channelId);
 		}
 		return null;
 	}
@@ -248,7 +252,7 @@ public class CCNNetworkChannel extends InputStream {
 		synchronized(_opencloseLock) {
 			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
 				Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: close({1})",  _channelId, retry);
-			_retry = retry;
+			_retry &= retry;
 
 			synchronized (_ncConnectedLock) {
 				_ncConnected = false;
