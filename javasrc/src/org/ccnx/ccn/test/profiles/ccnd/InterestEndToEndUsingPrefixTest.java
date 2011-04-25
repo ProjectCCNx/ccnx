@@ -18,6 +18,7 @@
 package org.ccnx.ccn.test.profiles.ccnd;
 
 import java.io.IOException;
+
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.protocol.ContentName;
@@ -79,7 +80,7 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 			_interestSeen = false;
 			_interestSent = interest;
 			putHandle.expressInterest(interest, this);
-			doWait(TIMEOUT);
+			Thread.sleep(TIMEOUT);
 			Assert.assertTrue(_interestSeen);
 		}
 	}
@@ -89,7 +90,7 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 			_interestSeen = false;
 			_interestSent = interest;
 			putHandle.expressInterest(interest, this);
-			doWait(TIMEOUT);
+			Thread.sleep(TIMEOUT);
 			Assert.assertFalse(_interestSeen);
 		}
 	}
