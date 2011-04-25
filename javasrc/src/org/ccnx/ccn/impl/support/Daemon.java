@@ -77,6 +77,7 @@ public class Daemon {
 	public static final String PROP_DAEMON_PROFILE = "ccn.daemon.profile";
 	public static final String PROP_DAEMON_DEBUG_SUSPEND = "ccn.daemon.debug.suspend";
 	public static final String PROP_DAEMON_DEBUG_NOSHARE = "ccn.daemon.debug.noshare";
+	public static final String PROP_DAEMON_CHECK_JNI = "ccn.daemon.check.jni";
 	
 	public static final String DEFAULT_OUTPUT_STREAM = "/dev/null";
 	
@@ -399,6 +400,10 @@ public class Daemon {
 		String unshared = System.getProperty(PROP_DAEMON_DEBUG_NOSHARE);
 		if (null != unshared)
 			argList.add("-Xshare:off");
+		
+		String checkJNI = System.getProperty(PROP_DAEMON_CHECK_JNI);
+		if (null != checkJNI)
+			argList.add("-Xcheck:jni");
 		
 		String profileInfo = System.getProperty(PROP_DAEMON_PROFILE);
 		if (profileInfo != null) {
