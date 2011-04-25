@@ -30,7 +30,7 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.impl.support.DataUtils.Waiter;
+import org.ccnx.ccn.impl.support.ConcurrencyUtils.Waiter;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
