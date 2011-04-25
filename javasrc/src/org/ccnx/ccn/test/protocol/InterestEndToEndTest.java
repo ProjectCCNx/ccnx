@@ -87,7 +87,7 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private void doTest(int c) throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		doWait(TIMEOUT);
+		Thread.sleep(TIMEOUT);
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
 		System.out.println("doTest time: "+duration+" and count:" +count +" should be "+c);
@@ -98,7 +98,7 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private void doTestFail(int c) throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		doWait(TIMEOUT);
+		Thread.sleep(TIMEOUT);
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
 		System.out.println("doTestFail time: "+duration+" and count:" +count +" should be "+c);
