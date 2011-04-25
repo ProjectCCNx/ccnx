@@ -128,7 +128,6 @@ public class ThreadAssertionTest {
 			}
 		}
 		
-		@Override
 		public void run() {
 			// Add a little random delay to pretend to do something
 			Random rnd = new Random();

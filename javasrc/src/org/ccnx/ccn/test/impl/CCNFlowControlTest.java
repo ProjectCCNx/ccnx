@@ -38,6 +38,7 @@ import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.CCNLibraryTestHarness;
 import org.ccnx.ccn.test.CCNTestBase;
+import org.ccnx.ccn.test.ThreadAssertionRunner;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -275,10 +276,11 @@ public class CCNFlowControlTest extends CCNTestBase {
 		fc.put(objv1s2);
 		fc.put(objv1s3);
 
-		HighWaterHelper hwh = new HighWaterHelper();
-		hwh.start();
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new HighWaterHelper());
+		tar.start();
 		fc.put(objv1s4);
 		fc.put(objv1s5);
+		tar.join();
 	}
 	
 	public class HighWaterHelper extends Thread {
@@ -292,8 +294,7 @@ public class CCNFlowControlTest extends CCNTestBase {
 					Assert.fail("Caught exception: " + e.getMessage());
 				}
 			}
-		}
-		
+		}	
 	}
 	
 	private void normalReset(ContentName n) throws IOException {
