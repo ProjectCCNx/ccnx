@@ -420,6 +420,12 @@ public class CCNHandle implements CCNBase {
 				Thread.dumpStack();
 			}
 		}
+
+		synchronized (CCNHandle.class) {
+			if (_handle == this) {
+				_handle = null;
+			}
+		}
 	}
 
 	/**

@@ -199,13 +199,19 @@ public abstract class KeyManager {
 		}
 		return _verifier;
 	}
-	
+
 	/**
 	 * Close any connections we have to the network. Ideally prepare to
 	 * reopen them when they are next needed.
 	 */
-	public abstract void close();
-	
+	public void close() {
+		synchronized (KeyManager.class) {
+			if (_defaultKeyManager == this) {
+				_defaultKeyManager = null;
+			}
+		}
+	}
+
 	/**
 	 * Allows subclasses to specialize key manager initialization.
 	 * @throws ConfigurationException
