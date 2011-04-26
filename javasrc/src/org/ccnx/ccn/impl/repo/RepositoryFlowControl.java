@@ -18,7 +18,6 @@
 package org.ccnx.ccn.impl.repo;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -30,10 +29,9 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.impl.support.DataUtils.Waiter;
+import org.ccnx.ccn.impl.support.ConcurrencyUtils.Waiter;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.profiles.CommandMarker;
-import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -103,21 +101,6 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 		return interestToReturn;
 	}
 
-	/**
-	 * The names returned by NameEnumerator are only the 1 level names
-	 * without prefix, but the names we are holding contain the basename
-	 * so we reconstruct a full name here.
-	 */
-	private class RepoAckHandler implements BasicNameEnumeratorListener {
-
-		public int handleNameEnumerator(ContentName prefix, ArrayList<ContentName> names) {
-			Log.info(Log.FAC_REPO, "Enumeration response for {0} children of {1}.",  names.size(), prefix);
-			for (ContentName name : names)
-				ack(new ContentName(prefix, name.component(0)));
-			return names.size();
-		}
-	}
-	
 	/**
 	 * Preserves information about our clients
 	 */
