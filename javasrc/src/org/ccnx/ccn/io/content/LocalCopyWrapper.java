@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -18,7 +18,7 @@
 package org.ccnx.ccn.io.content;
 
 import java.io.IOException;
-import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
@@ -49,9 +49,9 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class LocalCopyWrapper implements UpdateListener {
 
-	CCNNetworkObject<?> _netobj;
-	CCNHandle _handle;
-	HashSet<UpdateListener> _updateListeners = null;
+	final CCNNetworkObject<?> _netobj;
+	final CCNHandle _handle;
+	final ConcurrentHashMap<UpdateListener, UpdateListener> _updateListeners  = new ConcurrentHashMap<UpdateListener, UpdateListener>(1);
 
 	public LocalCopyWrapper(CCNNetworkObject<?> obj) throws IOException {
 		_netobj = obj;
@@ -77,34 +77,23 @@ public class LocalCopyWrapper implements UpdateListener {
 		}
 	}
 
-	public synchronized void addListener(UpdateListener listener) {
-		if (null == _updateListeners) {
-			_updateListeners = new HashSet<UpdateListener>();
-		}
-		_updateListeners.add(listener);
+	public void addListener(UpdateListener listener) {
+		_updateListeners.put(listener, listener);
 	}
 	
 	public void removeListener(UpdateListener listener) {
-		if (null == _updateListeners)
-			return;
-		synchronized (this) {
-			_updateListeners.remove(listener);
-		}
+		_updateListeners.remove(listener);
 	}
 	
 	public void clearListeners() {
-		if (null == _updateListeners)
-			return;
-		synchronized(this) {
-			_updateListeners.clear();
-		}		
+		_updateListeners.clear();
 	}
 	
 	public boolean available() {
 		return _netobj.available(); 
 	}
 	
-	public synchronized boolean isSaved() throws IOException {
+	public boolean isSaved() throws IOException {
 		return _netobj.isSaved();
 	}
 	
@@ -133,7 +122,7 @@ public class LocalCopyWrapper implements UpdateListener {
 		_netobj.close();
 	}
 	
-	public synchronized void disableFlowControl() {
+	public void disableFlowControl() {
 		_netobj.disableFlowControl();
 	}
 	
@@ -143,6 +132,9 @@ public class LocalCopyWrapper implements UpdateListener {
 	}
 	
 	public boolean equals(Object obj) {
+		if( null == obj )
+			return false;
+		
 		if (obj.getClass() == _netobj.getClass()) {
 			return _netobj.equals(obj);
 		}
@@ -260,15 +252,16 @@ public class LocalCopyWrapper implements UpdateListener {
 		_netobj.waitForData(timeout);
 	}
 
-	public synchronized void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
+	public void newVersionAvailable(CCNNetworkObject<?> newVersion, boolean wasSave) {
 		// We probably want to make a local copy regardless, as the save might have been raw,
 		// or not hit our local repository.
 		localCopy();
+		
 		// any registered listeners
-		if (null != _updateListeners) {
-			for (UpdateListener listener : _updateListeners) {
-				listener.newVersionAvailable(newVersion, wasSave);
-			}
+		// keySet() is weakly consistent and will reflect the state of the ConcurerntHashMap
+		// at the time keySet is called.
+		for (UpdateListener listener : _updateListeners.keySet()) {
+			listener.newVersionAvailable(newVersion, wasSave);
 		}
 	}
 
