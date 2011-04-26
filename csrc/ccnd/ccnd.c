@@ -1728,7 +1728,12 @@ check_dgram_faces(struct ccnd_handle *h)
                 hashtb_delete(e);
                 continue;
             }
-            face->recvcount = (face->recvcount > 1); /* go around twice */
+            if (face->recvcount == 1) {
+                face->recvcount = 0;
+            }
+            else {
+                face->recvcount = 1; /* go around twice */
+            }
         }
         hashtb_next(e);
     }
