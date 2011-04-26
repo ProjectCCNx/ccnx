@@ -39,13 +39,21 @@ public class ConcurrencyUtils {
 	 *			return (Boolean)checkValue;
 	 *		}
 	 *	}.wait(lock, foo);
-	 * 
 	 */
 	public static abstract class Waiter {
 		protected long timeout;
 		protected Waiter(long timeout) {
 			this.timeout = timeout;
 		}
+		
+		/**
+		 * Wait until "check" returns true, or timeout is elapsed. Handles spurious wakeups
+		 * by calling check in a loop.
+		 * 
+		 * @param syncValue - wait under this lock, also passed to check routine
+		 * @param checkValue - value to pass to check to allow subclass to test condition
+		 * @throws Exception
+		 */
 		public void wait(Object syncValue, Object checkValue) throws Exception {
 			synchronized (syncValue) {
 				long startTime = System.currentTimeMillis();
@@ -56,6 +64,14 @@ public class ConcurrencyUtils {
 			}
 		}
 		
-		protected abstract boolean check(Object o, Object check) throws Exception;
+		/**
+		 * Check to see if condition is met
+		 * 
+		 * @param syncValue the lock object which could be part of the condition check
+		 * @param checkValue value to check for end condition
+		 * @return true if condition is met (and we should stop waiting)
+		 * @throws Exception
+		 */
+		protected abstract boolean check(Object syncValue, Object checkValue) throws Exception;
 	}
 }
