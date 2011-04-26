@@ -30,15 +30,17 @@ public class ConcurrencyUtils {
 	 * A convenient way to use the waiter is to instantiate the abstract method in an anonymous class.
 	 * So for example, if you wanted to wait 500 ms for a static Boolean foo to become true and 
 	 * synchronize on an Object named lock you could do it like this, instantiating "check" in the 
-	 * anonymous class to check the value of foo.
+	 * anonymous class to check the value of foo:
 	 * 
+	 * \verbatim
 	 * Object lock = new Object();
 	 * new Waiter(500) {
-	 *		@Override
+	 * 		@Override
 	 *		protected boolean check(Object syncValue, Object checkValue) throws Exception {
 	 *			return (Boolean)checkValue;
 	 *		}
 	 *	}.wait(lock, foo);
+	 * \endverbatim
 	 */
 	public static abstract class Waiter {
 		protected long timeout;
