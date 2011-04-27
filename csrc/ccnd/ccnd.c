@@ -1553,6 +1553,50 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
 }
 
 /**
+ * Append a link-check interest if appropriate.
+ *
+ * @returns the number of messages that were stuffed.
+ */
+static int
+stuff_link_check(struct ccnd_handle *h,
+                   struct face *face, struct ccn_charbuf *c)
+{
+    int checkflags = CCN_FACE_DGRAM | CCN_FACE_MCAST | CCN_FACE_GG;
+    int wantflags = CCN_FACE_DGRAM;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *ibuf = NULL;
+    int res;
+    int ans = 0;
+    if (face->recvcount > 0)
+        return(0);
+    if ((face->flags & checkflags) != wantflags)
+        return(0);
+    name = ccn_charbuf_create();
+    if (name == NULL) goto Bail;
+    ccn_name_init(name);
+    res = ccn_name_from_uri(name, CCNDID_NEIGHBOR_URI);
+    if (res < 0) goto Bail;
+    ibuf = ccn_charbuf_create();
+    if (ibuf == NULL) goto Bail;
+    ccn_charbuf_append_tt(ibuf, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append(ibuf, name->buf, name->length);
+    ccnb_tagged_putf(ibuf, CCN_DTAG_Scope, "2");
+    // XXX - ought to generate a nonce
+    ccn_charbuf_append_closer(ibuf);
+    ccn_charbuf_append(c, ibuf->buf, ibuf->length);
+    ccnd_meter_bump(h, face->meter[FM_INTO], 1);
+    h->interests_stuffed++;
+    if (h->debug & 2)
+        ccnd_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
+                        ibuf->buf, ibuf->length);
+    ans = 1;
+Bail:
+    ccn_charbuf_destroy(&ibuf);
+    ccn_charbuf_destroy(&name);
+    return(ans);
+}
+
+/**
  * Stuff a PDU with interest messages that will fit.
  *
  * Note by default stuffing does not happen due to the setting of h->mtu.
@@ -1565,7 +1609,10 @@ ccn_stuff_interest(struct ccnd_handle *h,
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int n_stuffed = 0;
-    int remaining_space = h->mtu - c->length;
+    int remaining_space;
+    if (stuff_link_check(h, face, c) > 0)
+        n_stuffed++;
+    remaining_space = h->mtu - c->length;
     if (remaining_space < 20 || face == h->face0)
         return(0);
     for (hashtb_start(h->nameprefix_tab, e);
@@ -1716,7 +1763,7 @@ check_dgram_faces(struct ccnd_handle *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int count = 0;
-    int checkflags = CCN_FACE_DGRAM | CCN_FACE_PERMANENT;
+    int checkflags = CCN_FACE_DGRAM;
     int wantflags = CCN_FACE_DGRAM;
     
     hashtb_start(h->dgram_faces, e);
@@ -1724,11 +1771,13 @@ check_dgram_faces(struct ccnd_handle *h)
         struct face *face = e->data;
         if (face->addr != NULL && (face->flags & checkflags) == wantflags) {
             if (face->recvcount == 0) {
-                count += 1;
-                hashtb_delete(e);
-                continue;
+                if ((face->flags & CCN_FACE_PERMANENT) == 0) {
+                    count += 1;
+                    hashtb_delete(e);
+                    continue;
+                }
             }
-            if (face->recvcount == 1) {
+            else if (face->recvcount == 1) {
                 face->recvcount = 0;
             }
             else {
