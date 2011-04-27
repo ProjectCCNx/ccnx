@@ -112,6 +112,7 @@ public class LocalCopyTestRepo {
 	
 	@Test
 	public void testRepositoryControlObject() throws Exception {
+		System.out.println(">>> Running testRepositoryControlObject");
 		MyListener listener = new MyListener();
 		
 		try {
@@ -141,6 +142,7 @@ public class LocalCopyTestRepo {
 
 	@Test
 	public void testLocalCopyWrapper() throws Exception {
+		System.out.println(">>> Running testLocalCopyWrapper");
 		MyListener listener = new MyListener();
 		
 		try {
@@ -177,6 +179,7 @@ public class LocalCopyTestRepo {
 	
 	@Test
 	public void testLocalCopyListener() throws Exception {
+		System.out.println(">>> Running testLocalCopyListener");
 		MyListener listener = new MyListener();
 		
 		try {
@@ -206,7 +209,8 @@ public class LocalCopyTestRepo {
 	}
 	
 	@Test
-	public void testLocalCopyWrapperWithSave() throws Exception {
+	public void testLocalCopyWrapperWithSaveAndLcwClose() throws Exception {
+		System.out.println(">>> Running testLocalCopyWrapperWithSaveAndLcwClose");
 		MyListener listener = new MyListener();
 		
 		try {
@@ -241,6 +245,53 @@ public class LocalCopyTestRepo {
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
 
 			lcw.close();
+			System.out.println("======= After LocalCopyWrapper close");
+			getfaces();
+			Assert.assertEquals(1, dumpreg(readFaceId));
+			Assert.assertEquals(2, dumpreg(listenerFaceId));
+			
+		} finally {
+			listener.close();
+		}
+	}
+	
+	@Test
+	public void testLocalCopyWrapperWithSaveAndObjectClose() throws Exception {
+		System.out.println(">>> Running testLocalCopyWrapperWithSaveAndObjectClose");
+		MyListener listener = new MyListener();
+		
+		try {
+			listener.open();
+			
+			String namestring = String.format("%s/obj_%016X", _prefix, _rnd.nextLong());
+			ContentName name = ContentName.fromNative(namestring);
+			
+			CCNStringObject so_in = new CCNStringObject(name, readhandle);
+			so_in.setupSave(SaveType.LOCALREPOSITORY);
+			
+			Thread.sleep(3000);
+			System.out.println("======= After reading string object");
+			getfaces();
+			Assert.assertEquals(2, dumpreg(readFaceId));
+			Assert.assertEquals(2, dumpreg(listenerFaceId));
+			
+			LocalCopyWrapper lcw = new LocalCopyWrapper(so_in);
+			Thread.sleep(3000);
+			System.out.println("======= After LocalCopyWrapper on string object");
+			getfaces();
+			Assert.assertEquals(2, dumpreg(readFaceId));
+			Assert.assertEquals(2, dumpreg(listenerFaceId));
+
+			// Now modify the string object and save again.
+			so_in.setData(String.format("%016X", _rnd.nextLong()));
+			lcw.save();
+			Thread.sleep(3000);
+			System.out.println("======= After LocalCopyWrapper save");
+			getfaces();
+			Assert.assertEquals(2, dumpreg(readFaceId));
+			Assert.assertEquals(2, dumpreg(listenerFaceId));
+
+			so_in.close();
 			System.out.println("======= After LocalCopyWrapper close");
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
