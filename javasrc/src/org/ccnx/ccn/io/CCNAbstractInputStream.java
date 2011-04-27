@@ -406,10 +406,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 			}
 			_sentInterests.removeAll(toRemove);
 			toRemove.clear();
-		}
 
-
-		synchronized(inOrderSegments) {
+		//no good reason to release the lock here...	
+		//}
+		//synchronized(inOrderSegments) {
 			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 				Log.info(Log.FAC_PIPELINE, "PIPELINE: received pipeline segment: {0}", co.name());
 
