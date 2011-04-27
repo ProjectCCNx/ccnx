@@ -75,6 +75,9 @@ public class LocalCopyTestRepo {
 	final static Random _rnd = new Random();
 	final static String _prefix = String.format("/test_%016X", _rnd.nextLong());
 	
+	final static int LONG_TIMEOUT = 3000;
+	final static int SHORT_TIMEOUT = 500;
+	
 	// by faceid
     final HashMap<Integer,TreeSet<ContentName>> fentries = new HashMap<Integer, TreeSet<ContentName>>();
 
@@ -121,7 +124,7 @@ public class LocalCopyTestRepo {
 			ContentName name = ContentName.fromNative(namestring);
 			
 			CCNStringObject so_in = new CCNStringObject(name, readhandle);
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After reading string object");
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
@@ -129,7 +132,7 @@ public class LocalCopyTestRepo {
 			
 			
 			RepositoryControl.localRepoSync(readhandle, so_in);
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After localRepoSync on string object");
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
@@ -153,20 +156,21 @@ public class LocalCopyTestRepo {
 			
 			CCNStringObject so_in = new CCNStringObject(name, readhandle);
 			
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After reading string object");
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
 			
 			LocalCopyWrapper lcw = new LocalCopyWrapper(so_in);
-			Thread.sleep(3000);
+			Thread.sleep(SHORT_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper on string object");
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
 			
 			lcw.close();
+			Thread.sleep(SHORT_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper close");
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
@@ -190,14 +194,14 @@ public class LocalCopyTestRepo {
 			
 			CCNStringObject so_in = new CCNStringObject(name, readhandle);
 			
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After reading string object");
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
 			
 			LocalCopyListener.startBackup(so_in);
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After LocalCopyListener.startBackup");
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
@@ -222,14 +226,14 @@ public class LocalCopyTestRepo {
 			CCNStringObject so_in = new CCNStringObject(name, readhandle);
 			so_in.setupSave(SaveType.LOCALREPOSITORY);
 			
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After reading string object");
 			getfaces();
 			Assert.assertEquals(2, dumpreg(readFaceId));
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
 			
 			LocalCopyWrapper lcw = new LocalCopyWrapper(so_in);
-			Thread.sleep(3000);
+			Thread.sleep(SHORT_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper on string object");
 			getfaces();
 			Assert.assertEquals(2, dumpreg(readFaceId));
@@ -238,13 +242,14 @@ public class LocalCopyTestRepo {
 			// Now modify the string object and save again.
 			so_in.setData(String.format("%016X", _rnd.nextLong()));
 			lcw.save();
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper save");
 			getfaces();
 			Assert.assertEquals(2, dumpreg(readFaceId));
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
 
 			lcw.close();
+			Thread.sleep(SHORT_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper close");
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
@@ -269,14 +274,14 @@ public class LocalCopyTestRepo {
 			CCNStringObject so_in = new CCNStringObject(name, readhandle);
 			so_in.setupSave(SaveType.LOCALREPOSITORY);
 			
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After reading string object");
 			getfaces();
 			Assert.assertEquals(2, dumpreg(readFaceId));
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
 			
 			LocalCopyWrapper lcw = new LocalCopyWrapper(so_in);
-			Thread.sleep(3000);
+			Thread.sleep(SHORT_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper on string object");
 			getfaces();
 			Assert.assertEquals(2, dumpreg(readFaceId));
@@ -285,15 +290,19 @@ public class LocalCopyTestRepo {
 			// Now modify the string object and save again.
 			so_in.setData(String.format("%016X", _rnd.nextLong()));
 			lcw.save();
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper save");
 			getfaces();
 			Assert.assertEquals(2, dumpreg(readFaceId));
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
 
+			// IMPORTANT: This in an incorrect usage, as we're closing the underlying
+			// object, not the localcopywrapper.
 			so_in.close();
+			Thread.sleep(SHORT_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper close");
 			getfaces();
+			// IMPORTANT: Notice that the readFaceId still has 2 registrations.
 			Assert.assertEquals(1, dumpreg(readFaceId));
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
 			
@@ -316,14 +325,14 @@ public class LocalCopyTestRepo {
 			CCNStringObject so_in = new CCNStringObject(name, readhandle);
 			so_in.setupSave(SaveType.LOCALREPOSITORY);
 			
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After reading string object");
 			getfaces();
 			Assert.assertEquals(2, dumpreg(readFaceId));
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
 			
 			LocalCopyListener.startBackup(so_in);
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper on string object");
 			getfaces();
 			Assert.assertEquals(2, dumpreg(readFaceId));
@@ -332,13 +341,14 @@ public class LocalCopyTestRepo {
 			// Now modify the string object and save again.
 			so_in.setData(String.format("%016X", _rnd.nextLong()));
 			so_in.save();
-			Thread.sleep(3000);
+			Thread.sleep(LONG_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper save");
 			getfaces();
 			Assert.assertEquals(2, dumpreg(readFaceId));
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
 
 			so_in.close();
+			Thread.sleep(SHORT_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper close");
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
@@ -389,6 +399,10 @@ public class LocalCopyTestRepo {
 					String s = interest.name().toString();
 					CCNStringObject so = new CCNStringObject(interest.name(), s, SaveType.RAW, listenerhandle);
 					so.save();
+					try {
+						Thread.sleep(50);
+					} catch (InterruptedException e) {
+					}
 					so.close();
 					replies.add(interest.name());
 					return true;
