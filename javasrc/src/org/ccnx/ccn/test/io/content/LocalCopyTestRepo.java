@@ -205,6 +205,52 @@ public class LocalCopyTestRepo {
 		}
 	}
 	
+	@Test
+	public void testLocalCopyWrapperWithSave() throws Exception {
+		MyListener listener = new MyListener();
+		
+		try {
+			listener.open();
+			
+			String namestring = String.format("%s/obj_%016X", _prefix, _rnd.nextLong());
+			ContentName name = ContentName.fromNative(namestring);
+			
+			CCNStringObject so_in = new CCNStringObject(name, readhandle);
+			so_in.setupSave(SaveType.LOCALREPOSITORY);
+			
+			Thread.sleep(3000);
+			System.out.println("======= After reading string object");
+			getfaces();
+			Assert.assertEquals(2, dumpreg(readFaceId));
+			Assert.assertEquals(2, dumpreg(listenerFaceId));
+			
+			LocalCopyWrapper lcw = new LocalCopyWrapper(so_in);
+			Thread.sleep(3000);
+			System.out.println("======= After LocalCopyWrapper on string object");
+			getfaces();
+			Assert.assertEquals(2, dumpreg(readFaceId));
+			Assert.assertEquals(2, dumpreg(listenerFaceId));
+
+			// Now modify the string object and save again.
+			so_in.setData(String.format("%016X", _rnd.nextLong()));
+			lcw.save();
+			Thread.sleep(3000);
+			System.out.println("======= After LocalCopyWrapper save");
+			getfaces();
+			Assert.assertEquals(2, dumpreg(readFaceId));
+			Assert.assertEquals(2, dumpreg(listenerFaceId));
+
+			lcw.close();
+			System.out.println("======= After LocalCopyWrapper close");
+			getfaces();
+			Assert.assertEquals(1, dumpreg(readFaceId));
+			Assert.assertEquals(2, dumpreg(listenerFaceId));
+			
+		} finally {
+			listener.close();
+		}
+	}
+	
 	// ==============================================================================================
 	/**
 	 * Interest listener to create random objects for the repo to sync
