@@ -77,7 +77,7 @@ public class LocalCopyTestRepo {
 	final static Random _rnd = new Random();
 	final static String _prefix = String.format("/test_%016X", _rnd.nextLong());
 	
-	final static int LONG_TIMEOUT = 3000;
+	final static int LONG_TIMEOUT = 1000;
 	final static int SHORT_TIMEOUT = 500;
 	
 	static int _port = CCNNetworkManager.DEFAULT_AGENT_PORT;
