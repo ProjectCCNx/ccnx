@@ -123,7 +123,7 @@ public class ACPerformanceTestRepo {
 	}
 	
 	@Test
-	public void performanceTest() throws AccessDeniedException {
+	public void performanceTest() throws Exception {
 		createBaseDirectoryACL();
 		writeContentInDirectory();
 
@@ -147,21 +147,15 @@ public class ACPerformanceTestRepo {
 	/**
 	 * Create a new ACL at baseDirectory with Alice as a manager and Bob as a reader
 	 */
-	public void createBaseDirectoryACL() {
+	public void createBaseDirectoryACL() throws Exception {
 		long startTime = System.currentTimeMillis();
 
-		try {
-			baseDirectory = domainPrefix.append(ContentName.fromNative("/Alice/documents/images/"));
-			ArrayList<Link> ACLcontents = new ArrayList<Link>();
-			ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[0]), ACL.LABEL_MANAGER, null));
-			ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[1]), ACL.LABEL_READER, null));		
-			ACL baseDirACL = new ACL(ACLcontents);
-			_AliceACM.setACL(baseDirectory, baseDirACL);
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-			Assert.fail();
-		}
+		baseDirectory = domainPrefix.append(ContentName.fromNative("/Alice/documents/images/"));
+		ArrayList<Link> ACLcontents = new ArrayList<Link>();
+		ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[0]), ACL.LABEL_MANAGER, null));
+		ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[1]), ACL.LABEL_READER, null));		
+		ACL baseDirACL = new ACL(ACLcontents);
+		_AliceACM.setACL(baseDirectory, baseDirACL);
 
 		System.out.println("createACL: " + (System.currentTimeMillis() - startTime));
 	}
