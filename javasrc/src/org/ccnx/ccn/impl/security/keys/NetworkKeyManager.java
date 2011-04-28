@@ -23,7 +23,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyStore;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
@@ -54,19 +53,17 @@ public class NetworkKeyManager extends BasicKeyManager {
 	 * @param keystoreName
 	 * @param publisher
 	 * @param password
-	 * @param handle
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
 	public NetworkKeyManager(String userName, 
 							ContentName keystoreName, 
 							PublisherPublicKeyDigest publisher,
-							char [] password, CCNHandle handle) throws ConfigurationException, IOException {
+							char [] password) throws ConfigurationException, IOException {
 		// key repository created by superclass constructor
 		super(userName, null, null, password);
 		_keystoreName = keystoreName;
 		_publisher = publisher;
-		_handle = handle;
 		// loading done by initialize()
 	}
 	

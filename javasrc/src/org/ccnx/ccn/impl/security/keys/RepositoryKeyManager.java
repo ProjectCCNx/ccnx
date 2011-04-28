@@ -20,7 +20,6 @@ package org.ccnx.ccn.impl.security.keys;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
@@ -45,14 +44,12 @@ public class RepositoryKeyManager extends NetworkKeyManager {
 	 * @param keystoreName
 	 * @param publisher
 	 * @param password
-	 * @param handle
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
 	public RepositoryKeyManager(String userName, ContentName keystoreName,
-			PublisherPublicKeyDigest publisher, char[] password,
-			CCNHandle handle) throws ConfigurationException, IOException {
-		super(userName, keystoreName, publisher, password, handle);
+			PublisherPublicKeyDigest publisher, char[] password) throws ConfigurationException, IOException {
+		super(userName, keystoreName, publisher, password);
 	}
 
 	/**

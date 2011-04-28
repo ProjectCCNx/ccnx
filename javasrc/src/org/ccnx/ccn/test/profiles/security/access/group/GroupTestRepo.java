@@ -94,7 +94,7 @@ public class GroupTestRepo {
 			
 			users = new CreateUserData(userKeyStorePrefix, NUM_USERS,
 					USE_REPO,
-					USER_PASSWORD, userHandle);
+					USER_PASSWORD);
 			users.publishUserKeysToRepository(userNamespace);
 			
 			_acm = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);

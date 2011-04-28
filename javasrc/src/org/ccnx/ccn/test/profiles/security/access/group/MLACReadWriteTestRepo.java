@@ -89,7 +89,7 @@ public class MLACReadWriteTestRepo {
 			userNamespace[d] = GroupAccessControlProfile.userNamespaceName(domainPrefix[d]);
 			userKeystore[d] = ContentName.fromNative(userNamespace[d], "_keystore_");
 			groupNamespace[d] = GroupAccessControlProfile.groupNamespaceName(domainPrefix[d]);
-			cua[d] = new CreateUserData(userKeystore[d], userNames, userNames.length, true, "password".toCharArray(), _handle);
+			cua[d] = new CreateUserData(userKeystore[d], userNames, userNames.length, true, "password".toCharArray());
 			cua[d].publishUserKeysToRepositorySetLocators(userNamespace[d]);
 		}
 		
