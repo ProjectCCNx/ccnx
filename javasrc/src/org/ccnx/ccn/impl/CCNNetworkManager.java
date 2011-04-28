@@ -815,6 +815,8 @@ public class CCNNetworkManager implements Runnable {
 		_run = false;
 		if (_periodicTimer != null)
 			_periodicTimer.cancel();
+		if (_thread != null)
+			_thread.interrupt();
 		if (null != _channel) {
 			try {
 				setTap(null);
