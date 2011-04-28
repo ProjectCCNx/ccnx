@@ -32,6 +32,7 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.support.Log;
@@ -48,6 +49,7 @@ import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Node;
@@ -78,11 +80,37 @@ public class LocalCopyTestRepo {
 	final static int LONG_TIMEOUT = 3000;
 	final static int SHORT_TIMEOUT = 500;
 	
+	static int _port = CCNNetworkManager.DEFAULT_AGENT_PORT;
+	static String _host = CCNNetworkManager.DEFAULT_AGENT_HOST;
+	static String _ccndurl;
+	
 	// by faceid
     final HashMap<Integer,TreeSet<ContentName>> fentries = new HashMap<Integer, TreeSet<ContentName>>();
 
-
-	@Before
+    @BeforeClass
+    public static void setUpBeforeClass() throws Exception {
+		// Determine port at which to contact agent
+		String portval = System.getProperty(CCNNetworkManager.PROP_AGENT_PORT);
+		if (null != portval) {
+			try {
+				_port = new Integer(portval);
+			} catch (Exception ex) {
+				throw new IOException("Invalid port '" + portval + "' specified in " + CCNNetworkManager.PROP_AGENT_PORT);
+			}
+			Log.warning(Log.FAC_NETMANAGER, "Non-standard CCN agent port " + _port + " per property " + CCNNetworkManager.PROP_AGENT_PORT);
+		}
+		
+		String hostval = System.getProperty(CCNNetworkManager.PROP_AGENT_HOST);
+		if (null != hostval && hostval.length() > 0) {
+			_host = hostval;
+			Log.warning(Log.FAC_NETMANAGER, "Non-standard CCN agent host " + _host + " per property " + CCNNetworkManager.PROP_AGENT_HOST);
+		}
+		
+		_ccndurl = String.format("http://%s:%d/?f=xml", _host, _port);
+		System.out.println("Using ccnd url: " + _ccndurl);
+    }
+    
+ 	@Before
 	public void setUp() throws Exception {
 		System.out.println("*****************************************************");
 		Log.setLevel(Log.FAC_ALL, Level.WARNING);
@@ -491,7 +519,7 @@ public class LocalCopyTestRepo {
         synchronized(fentries) {
         	fentries.clear();
         	
-	        document = parser.parse("http://localhost:9695/?f=xml");
+	        document = parser.parse(_ccndurl);
 	        NodeList nodes = document.getElementsByTagName("fentry");
 	        System.out.println("fentry count: " + nodes.getLength());
 	        
@@ -527,14 +555,15 @@ public class LocalCopyTestRepo {
 			NodeList children = node.getChildNodes();
 			for(int i = 0; i < children.getLength(); i++) {
 				Node child = children.item(i);
+				
 				if( child.getNodeName() == "faceid" ) 
-					faceid = Integer.parseInt(child.getTextContent());
+					faceid = Integer.parseInt(child.getFirstChild().getNodeValue());
 				
 				if( child.getNodeName() == "flags" )
-					flags = Integer.parseInt(child.getTextContent());
+					flags = Integer.parseInt(child.getFirstChild().getNodeValue());
 
 				if( child.getNodeName() == "expires" )
-					expires = Long.parseLong(child.getTextContent());
+					expires = Long.parseLong(child.getFirstChild().getNodeValue());
 
 			}
 		}
@@ -562,7 +591,7 @@ public class LocalCopyTestRepo {
 				}
 				
 				if( child.getNodeName() == "prefix" ) {
-					entryprefix = ContentName.fromURI(child.getTextContent());
+					entryprefix = ContentName.fromURI(child.getFirstChild().getNodeValue());
 //					System.out.println("prefix " + entryprefix.toURIString());
 				}
 			}
