@@ -49,7 +49,6 @@ public class GroupAccessControlTestRepo {
 		RepositoryFileOutputStream os = new RepositoryFileOutputStream(fileName, h);
 		os.write(content);
 		os.close();
-		h.close();
 	}
 
 	@Test

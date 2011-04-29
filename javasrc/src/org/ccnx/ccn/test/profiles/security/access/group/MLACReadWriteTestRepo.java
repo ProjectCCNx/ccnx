@@ -18,7 +18,6 @@
 
 package org.ccnx.ccn.test.profiles.security.access.group;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.logging.Level;
@@ -151,7 +150,7 @@ public class MLACReadWriteTestRepo {
 	}
 	
 	@Test
-	public void performanceTest() {
+	public void performanceTest() throws Exception {
 		// Create a new ACL for a subdirectory of baseDirectory.
 		// Set Alice (domain 0) as a manager and Bob and Carol (both domain 1) as readers
 		createSubDirectoryACL();
@@ -253,7 +252,7 @@ public class MLACReadWriteTestRepo {
 	 * @param userName the name of the user
 	 * @throws AccessDeniedException
 	 */
-	public void readFileAs(int domain, String userName) throws AccessDeniedException {
+	public void readFileAs(int domain, String userName) throws Exception {
 		long startTime = System.currentTimeMillis();
 		
 		CCNHandle handle = null;
@@ -276,12 +275,8 @@ public class MLACReadWriteTestRepo {
 					userName, domain, (System.currentTimeMillis() - startTime));
 			throw ade;
 		}
-		catch (IOException ioe) {
-			ioe.printStackTrace();
-			Assert.fail();
-		}
-		finally {
-			handle.close();
+		catch (Exception e) {
+			throw e;
 		}
 
 		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: reading content as {0} succeeded in {1} ms.",

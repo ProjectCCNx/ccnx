@@ -32,6 +32,7 @@ import java.util.TreeSet;
 import javax.crypto.KeyGenerator;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.io.content.Link;
@@ -95,7 +96,7 @@ public class KeyDirectoryTestRepo {
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		kd.stopEnumerating();
-		handle.close();
+		KeyManager.closeDefaultKeyManager();
 	}
 	
 	@BeforeClass
@@ -103,7 +104,7 @@ public class KeyDirectoryTestRepo {
 		// randomize names to minimize stateful effects of ccnd/repo caches.
 		keyDirectoryName = ContentName.fromNative(keyDirectoryBase + Integer.toString(rand.nextInt(10000)));
 		principalName = principalName + Integer.toString(rand.nextInt(10000));
-		handle = CCNHandle.open();
+		handle = CCNHandle.getHandle();
 		
 		ContentName cnDirectoryBase = ContentName.fromNative(directoryBase);
 		ContentName groupStore = GroupAccessControlProfile.groupNamespaceName(cnDirectoryBase);
