@@ -400,6 +400,12 @@ int ccnd_req_selfreg(struct ccnd_handle *h,
                      const unsigned char *msg, size_t size,
                      struct ccn_charbuf *reply_body);
 
+/**
+ * URIs for prefixes served by the internal client
+ */
+#define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY"
+#define CCNDID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/ccnd/KEY"
+
 /*
  * The internal client calls this with the argument portion ARG of
  * a prefix-unregistration request (/ccnx/CCNDID/unreg/ARG)

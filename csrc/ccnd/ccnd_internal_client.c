@@ -56,9 +56,6 @@
 
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
 
-#define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY"
-#define CCNDID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/ccnd/KEY"
-
 static struct ccn_charbuf *
 ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshness)
 {
