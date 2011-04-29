@@ -44,6 +44,7 @@ import org.ccnx.ccn.io.ErrorStateException;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -660,28 +661,10 @@ public abstract class KeyManager {
 		}
 		
 		if (null != availableContent) {
-			
-			// See if some repository has this key already
-			if (null != CCNReader.isContentInRepository(availableContent, timeToWaitForPreexisting, handle)) {
-				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
-					Log.info(Log.FAC_KEYS, "publishKeyToRepository: key {0} is already in a repository; not re-publishing. Content digest {1}.",
-							keyName, ContentName.componentPrintURI(availableContent.digest()));
-				}
-			} else {
-
-				// Otherwise, we just need to trick the repo into pulling it.
-				ContentName streamName = SegmentationProfile.segmentRoot(availableContent.name());
-				RepositoryFlowControl rfc = new RepositoryFlowControl(streamName, handle);
-				// This will throw an IOException if there is no repository there to read it.
-				rfc.startWrite(streamName, Shape.STREAM);
-				// OK, once we've emitted the interest, we don't actually need that flow controller anymore.
-				if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
-					Log.info(Log.FAC_KEYS, "Key {0} published to repository as content {1}.", keyName, 
-							ContentName.componentPrintURI(availableContent.digest()));
-				}
-				rfc.close();
-			}
-			return new PublicKeyObject(availableContent, handle);
+			// Make sure the key is in our repository
+			PublicKeyObject pko = new PublicKeyObject(availableContent, handle);
+			RepositoryControl.localRepoSync(handle, pko);
+			return pko;
 			
 		} else {		
 			// We need to write this content ourselves, nobody else has it. We know we really want to 
