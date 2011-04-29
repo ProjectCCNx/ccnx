@@ -263,6 +263,7 @@ public class BasicKeyManager extends KeyManager {
 	public synchronized void close() {
 		if( Log.isLoggable(Log.FAC_KEYS, Level.FINE) )
 			Log.fine(Log.FAC_KEYS, "BasicKeyManager.close()");
+		super.close();
 		
 		_handle.close();
 		_handle = null;

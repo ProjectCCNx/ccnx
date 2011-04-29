@@ -23,6 +23,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNNetworkManager;
+import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -122,7 +123,12 @@ public class CCNHandle implements CCNBase {
 	 */
 	protected static synchronized CCNHandle create() throws ConfigurationException, IOException {
 		if (null == _handle) {
-			_handle = new CCNHandle();
+			KeyManager km = KeyManager.getDefaultKeyManager();
+			if (km instanceof BasicKeyManager) {
+				_handle = ((BasicKeyManager) km).handle();
+			} else {
+				_handle = new CCNHandle();
+			}
 		}
 		return _handle;
 	}
@@ -412,6 +418,12 @@ public class CCNHandle implements CCNBase {
 			} else {
 				Log.warning(Log.FAC_NETMANAGER, formatMessage("Handle is already closed.  DIAGNOSTIC STACK DUMP."));
 				Thread.dumpStack();
+			}
+		}
+
+		synchronized (CCNHandle.class) {
+			if (_handle == this) {
+				_handle = null;
 			}
 		}
 	}
