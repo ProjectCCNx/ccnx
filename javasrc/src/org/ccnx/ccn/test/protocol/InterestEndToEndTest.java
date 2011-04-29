@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.impl.support.ConcurrencyUtils.Waiter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -41,7 +42,7 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private String _prefix = "/interestEtoETest/test-" + rand.nextInt(10000);
 	private final static int TIMEOUT = 3000;
 	
-	private int count = 0;
+	private int interestCount = 0;
 
 	
 	@Test
@@ -49,30 +50,30 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 		getHandle.registerFilter(ContentName.fromNative(_prefix), this);
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
 		doTest(1);
-		System.out.println("count: "+count);
+		System.out.println("count: "+interestCount);
 
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
 		_interestSent.maxSuffixComponents(4);
 		_interestSent.minSuffixComponents(3);
 		doTest(2);
-		System.out.println("count: "+count);
+		System.out.println("count: "+interestCount);
 
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
 		_interestSent.maxSuffixComponents(1);
 		doTest(3);
-		System.out.println("count: "+count);
+		System.out.println("count: "+interestCount);
 
 		getHandle.unregisterFilter(ContentName.fromNative(_prefix), this);
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
-		doTestFail(3);
-		System.out.println("count: "+count);
+		doTestFail(4);
+		System.out.println("count: "+interestCount);
 
 	}
 
 	public boolean handleInterest(Interest interest) {
 		Assert.assertTrue(_interestSent.equals(interest));
 		synchronized(this) {
-			count++;
+			interestCount++;
 			notify();
 		}
 		return true;
@@ -87,24 +88,35 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private void doTest(int c) throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		Thread.sleep(TIMEOUT);
+		doWait(c);
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
 		System.out.println("doTest time: "+duration+" and count:" +count +" should be "+c);
-		Assert.assertTrue(count == c);
+		Assert.assertTrue(interestCount == c);
 		Assert.assertTrue(duration < TIMEOUT + (int)(TIMEOUT*0.1));
 	}
 
 	private void doTestFail(int c) throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		Thread.sleep(TIMEOUT);
+		doWait(c);
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
 		System.out.println("doTestFail time: "+duration+" and count:" +count +" should be "+c);
 
-		Assert.assertTrue(count == c);
+		Assert.assertTrue(interestCount != c);
 		//could be slightly less, no guarantees.  API says "more or less" after timeout
 		Assert.assertFalse(duration < TIMEOUT - (int)(TIMEOUT*0.01));
+	}
+	
+	private void doWait(int c) {
+		try {
+			new Waiter(TIMEOUT) {
+				@Override
+				protected boolean check(Object o, Object check) throws Exception {
+					return (Integer)check == interestCount;
+				}
+			}.wait(this, c);
+		} catch (Exception e) {} // Can't happen
 	}
 }
