@@ -172,7 +172,7 @@ public class KeyDirectoryTestRepo {
 		Group myGroup = acm.groupManager().createGroup(randomGroupName, newMembers, 0);
 		Assert.assertTrue(acm.groupManager().haveKnownGroupMemberships());
 
-		Thread.sleep(2000); // FIXME: this delay is necessary for the repo-write to complete
+		Thread.sleep(5000); // FIXME: this delay is necessary for the repo-write to complete
 		// it should not be needed, as the data should be available locally.
 
 		PrincipalKeyDirectory pkd = myGroup.privateKeyDirectory(acm);
