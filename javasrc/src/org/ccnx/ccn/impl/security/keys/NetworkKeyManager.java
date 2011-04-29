@@ -23,6 +23,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyStore;
 
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
@@ -126,7 +127,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 	protected Tuple<KeyStoreInfo, OutputStream> createKeyStoreWriteStream() throws IOException {
 		// Pull the version after we write
 		return new Tuple<KeyStoreInfo, OutputStream>(new KeyStoreInfo(_keystoreName.toURIString(), null, null),
-											  new CCNVersionedOutputStream(_keystoreName, _handle));
+											  new CCNVersionedOutputStream(_keystoreName, CCNHandle.getHandle()));
 	}
 	
 	@Override

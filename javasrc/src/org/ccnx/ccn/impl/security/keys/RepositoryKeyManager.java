@@ -20,6 +20,7 @@ package org.ccnx.ccn.impl.security.keys;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.RepositoryVersionedOutputStream;
@@ -63,6 +64,6 @@ public class RepositoryKeyManager extends NetworkKeyManager {
 	protected Tuple<KeyStoreInfo,OutputStream> createKeyStoreWriteStream() throws IOException {
 		// Have to get the version after we write, unless we force it.
 		return new Tuple<KeyStoreInfo,OutputStream>(new KeyStoreInfo(_keystoreName.toURIString(), null, null), 
-											  new RepositoryVersionedOutputStream(_keystoreName, _handle));
+											  new RepositoryVersionedOutputStream(_keystoreName, CCNHandle.getHandle()));
 	}
 }
