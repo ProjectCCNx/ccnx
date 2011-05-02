@@ -61,7 +61,6 @@ public class GroupTestRepo {
 	 * @throws Exception
 	 */
 	static CreateUserData users = null;
-	static CCNHandle userHandle = null;
 	static GroupAccessControlManager _acm = null;
 	static GroupManager _gm = null;
 	static Random _random;
@@ -70,8 +69,7 @@ public class GroupTestRepo {
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		users.closeAll();
-		_handle.close();
-		userHandle.close();
+		KeyManager.closeDefaultKeyManager();
 	}
 	
 	@BeforeClass
@@ -88,13 +86,11 @@ public class GroupTestRepo {
 			System.out.println("group store: " + groupStore);
 			System.out.println("user store: " + userNamespace);
 
-			_handle = CCNHandle.open();
-			userHandle = _handle;
-	
+			_handle = CCNHandle.getHandle();
 			
 			users = new CreateUserData(userKeyStorePrefix, NUM_USERS,
 					USE_REPO,
-					USER_PASSWORD, userHandle);
+					USER_PASSWORD);
 			users.publishUserKeysToRepository(userNamespace);
 			
 			_acm = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);

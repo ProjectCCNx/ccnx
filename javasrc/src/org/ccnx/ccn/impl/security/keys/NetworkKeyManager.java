@@ -54,19 +54,17 @@ public class NetworkKeyManager extends BasicKeyManager {
 	 * @param keystoreName
 	 * @param publisher
 	 * @param password
-	 * @param handle
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
 	public NetworkKeyManager(String userName, 
 							ContentName keystoreName, 
 							PublisherPublicKeyDigest publisher,
-							char [] password, CCNHandle handle) throws ConfigurationException, IOException {
+							char [] password) throws ConfigurationException, IOException {
 		// key repository created by superclass constructor
 		super(userName, null, null, password);
 		_keystoreName = keystoreName;
 		_publisher = publisher;
-		_handle = handle;
 		// loading done by initialize()
 	}
 	
@@ -129,7 +127,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 	protected Tuple<KeyStoreInfo, OutputStream> createKeyStoreWriteStream() throws IOException {
 		// Pull the version after we write
 		return new Tuple<KeyStoreInfo, OutputStream>(new KeyStoreInfo(_keystoreName.toURIString(), null, null),
-											  new CCNVersionedOutputStream(_keystoreName, _handle));
+											  new CCNVersionedOutputStream(_keystoreName, CCNHandle.getHandle()));
 	}
 	
 	@Override

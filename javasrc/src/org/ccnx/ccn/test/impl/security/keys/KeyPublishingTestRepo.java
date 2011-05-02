@@ -59,7 +59,7 @@ public class KeyPublishingTestRepo {
 	public static void setUpBeforeClass() throws Exception {
 		myHandle = CCNHandle.open();
 		// Generate users to a repository
-		testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), NUM_USERS, true, PASSWORD, myHandle);
+		testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), NUM_USERS, true, PASSWORD);
 		userNames = testUsers.friendlyNames().toArray(new String[NUM_USERS]);
 		userHandles = new CCNHandle[NUM_USERS];
 		for (int i=0; i < NUM_USERS; ++i) {
