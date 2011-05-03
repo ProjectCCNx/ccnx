@@ -38,7 +38,8 @@ import org.ccnx.ccn.protocol.Interest;
  * duplicate entries and has operations for access based on CCN 
  * matching.  An InterestTable may be used to hold real Interests, or merely 
  * ContentNames only, though mixing the two in the same instance of InterestTable
- * is not recommended.
+ * is not recommended. InterestTables are synchronized using _contents as a synchronization
+ * object
  * 
  * Since interests can be reexpressed we could end up with duplicate
  * interests in the table. To avoid that an LRU algorithm is
@@ -148,7 +149,9 @@ public class InterestTable<V> {
 	 * @param capacity
 	 */
 	public void setCapacity(int capacity) {
-		_capacity = capacity;
+		synchronized (_contents) {
+			_capacity = capacity;
+		}
 	}
 
 	/**
@@ -156,7 +159,9 @@ public class InterestTable<V> {
 	 * @return	the capacity. null if not set
 	 */
 	public Integer getCapacity() {
-		return _capacity;
+		synchronized (_contents) {
+			return _capacity;
+		}
 	}
 
 	/**
