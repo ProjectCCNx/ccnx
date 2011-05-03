@@ -407,7 +407,6 @@ public class LocalCopyTestRepo {
 			listenerhandle.unregisterFilter(ContentName.fromNative(_prefix), this);
 		}
 		
-		@Override
 		public boolean handleInterest(Interest interest) {
 			// Ignore start write requests
 			
