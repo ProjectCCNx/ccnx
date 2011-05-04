@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -17,14 +17,11 @@
 
 package org.ccnx.ccn.test.profiles.search;
 
-import java.util.logging.Level;
-
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.search.Pathfinder;
 import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
@@ -48,7 +45,6 @@ public class PathfinderTestRepo {
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setDefaultLevel(Level.FINEST);
 		writeHandle = CCNHandle.open();
 		readHandle = CCNHandle.open();
 		TARGET_POSTFIX_NAME  = ContentName.fromNative(TARGET_POSTFIX);

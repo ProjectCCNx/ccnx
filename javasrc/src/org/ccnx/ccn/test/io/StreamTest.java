@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -50,8 +50,6 @@ public class StreamTest extends BlockReadWriteTest {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		//Library.setDefaultLevel(Level.FINEST);
 		BlockReadWriteTest.setUpBeforeClass();
 	}
 	

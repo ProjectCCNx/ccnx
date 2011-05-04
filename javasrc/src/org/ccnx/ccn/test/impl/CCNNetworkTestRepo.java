@@ -37,9 +37,6 @@ public class CCNNetworkTestRepo {
 	
 	@Test
 	public void testObjectIOLoop() throws Exception {
-	   //Log.setDefaultLevel(Level.FINEST);
-	   //Log.setLevel(Log.FAC_IO, Level.FINE);
-	   //Log.setLevel(Log.FAC_NETMANAGER, Level.FINER);
 	   CCNHandle handle = CCNHandle.getHandle();
 	   ContentName basename = testHelper.getTestNamespace("content_"  + _rnd.nextLong());
 

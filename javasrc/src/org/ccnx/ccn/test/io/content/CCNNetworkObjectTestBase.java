@@ -18,7 +18,6 @@
 package org.ccnx.ccn.test.io.content;
 
 import java.io.IOException;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
@@ -62,8 +61,6 @@ public class CCNNetworkObjectTestBase extends CCNTestBase {
 	static String [] numbers = new String[]{"ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN"};
 	static CCNHandle handle;
 		
-	static Level oldLevel;
-	
 	static Flosser flosser = null;
 	
 	public <T> CCNTime saveAndLog(String name, CCNNetworkObject<T> ecd, CCNTime version, T data) throws IOException {
