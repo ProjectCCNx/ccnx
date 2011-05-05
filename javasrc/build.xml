@@ -45,7 +45,7 @@
 	<property name="REPO_ROOT" value="${testout}/repotest"/>
 	<property name="REPO_LOCAL_ROOT" value="repotest"/>
 	<property name="REPO_LOCAL" value="TestRepository"/>
-	<property name="REPO_GLOBAL" value="parc.com/csl/ccn/repositories"/>
+	<property name="REPO_GLOBAL" value="parc.com/csl/ccn/repositories/TestRepository"/>
 	<property name="USE_KEY_CONFIG_KEY" value="org.ccnx.config.UseKeyConfiguration"/>
 	<property name="USE_KEY_CONFIG_VAL" value="false"/>
         <property name="CHATTY" value="FINER"/>
