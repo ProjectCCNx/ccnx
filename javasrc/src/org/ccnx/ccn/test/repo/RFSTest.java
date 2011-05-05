@@ -374,9 +374,13 @@ public class RFSTest extends RepoTestBase {
 		}
 	}
 	
+	/**
+	 * Just test that we can parse policy files and detect errors
+	 * 
+	 * @throws Exception
+	 */
 	@Test
 	public void testPolicy() throws Exception {
-		// Writes all this content signed with the repository's key
 		initRepoLog();
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
@@ -390,26 +394,6 @@ public class RFSTest extends RepoTestBase {
 		// Make repository using repo's keystore, not user's
 		repo.initialize(_fileTestDir,  
 					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
-		ContentName name = ContentName.fromNative("/testNameSpace/data1");
-		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
-		repo.saveContent(content);
-		checkData(repo, name, "Here's my data!");
-		ContentName outOfNameSpaceName = ContentName.fromNative("/anotherNameSpace/data1");
-		ContentObject oonsContent = ContentObject.buildContentObject(outOfNameSpaceName, "Shouldn't see this".getBytes());
-		repo.saveContent(oonsContent);
-		ContentObject testContent = repo.getContent(new Interest(outOfNameSpaceName));
-		Assert.assertTrue(testContent == null);
-		
-		// Test reading policy file from the repo
-		repolog.initialize(_fileTestDir, null, _repoName, _globalPrefix, null, null);
-		repo.saveContent(oonsContent);
-		ContentObject testContentAgain = repo.getContent(new Interest(outOfNameSpaceName));
-		Assert.assertTrue(testContentAgain == null);
-		
-		// Test setting prefix from the prefix parameter
-		repo.initialize(_fileTestDir, null, _repoName, _globalPrefix, "/", null);
-		repo.saveContent(oonsContent);
-		checkData(repo, outOfNameSpaceName, "Shouldn't see this");
 		repolog.shutDown();
 	}
 	

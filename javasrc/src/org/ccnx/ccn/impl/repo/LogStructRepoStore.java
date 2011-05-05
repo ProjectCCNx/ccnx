@@ -405,11 +405,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 
 		String checkName = checkFile(LogStructRepoStoreProfile.REPO_LOCALNAME, localName, nameFromArgs);
 		localName = checkName != null ? checkName : localName;
-		try {
-			_policy.setLocalName(localName);		
-		} catch (MalformedContentNameStringException e3) {
-			throw new RepositoryException(e3.getMessage());
-		}
+		pxml.setLocalName(localName);		
 		
 		checkName = checkFile(LogStructRepoStoreProfile.REPO_GLOBALPREFIX, globalPrefix, globalFromArgs);
 		globalPrefix = checkName != null ? checkName : globalPrefix;
@@ -417,7 +413,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			Log.info(Log.FAC_REPO, "REPO: initializing repository: global prefix {0}, local name {1}", globalPrefix, localName);
 		}
 		try {
-			_policy.setGlobalPrefix(globalPrefix);
+			pxml.setGlobalPrefix(globalPrefix);
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
 				Log.info(Log.FAC_REPO, "REPO: initializing policy location: {0} for global prefix {1} and local name {2}", localName, globalPrefix,  localName);
 			}
@@ -426,17 +422,20 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		}
 		
 		/**
-		 * Try to read policy from storage if we don't have full policy source yet
+		 * Try to read policy from storage
 		 */
-		if (null == pxml) {
-			try {
-				readPolicy(localName, _km);
-			} catch (ContentDecodingException e) {
-				throw new RepositoryException(e.getMessage());
-			}
-		} else { // If we didn't read in our policy from a previous saved policy file, save the policy now
-			pxml = _policy.getPolicyXML();
-			ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), _policy.getLocalName());
+		PolicyXML storedPxml = null;
+		try {
+			storedPxml = readPolicy(globalPrefix);
+		} catch (Exception e) {
+			throw new RepositoryException(e.getMessage());
+		}
+		
+		/**
+		 * If there are differences we need to write the updated version
+		 */
+		if (null == storedPxml || !pxml.equals(storedPxml)) {
+			ContentName policyName = BasicPolicy.getPolicyName(pxml.getGlobalPrefix());
 			try {
 				PolicyObject po = new PolicyObject(policyName, pxml, null, null, new RepositoryInternalFlowControl(this, handle));
 				po.save();
@@ -444,6 +443,8 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 				throw new RepositoryException(e.getMessage());
 			}
 		}
+		_policy = new BasicPolicy();
+		_policy.setPolicyXML(pxml);
 		try {
 			finishInitPolicy(globalPrefix, localName);
 		} catch (MalformedContentNameStringException e) {
@@ -460,21 +461,6 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	 */
 	public NameEnumerationResponse saveContent(ContentObject content) throws RepositoryException {
 		// Make sure content is within allowable nameSpace
-		boolean nameSpaceOK = false;
-		synchronized (_policy) {
-			for (ContentName name : _policy.getNamespace()) {
-				if (name.isPrefixOf(content.name())) {
-					nameSpaceOK = true;
-					break;
-				}
-			}
-		}
-		if (!nameSpaceOK) {
-			if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
-				Log.info(Log.FAC_REPO, "Repo rejecting content: {0}, not in registered namespace.", content.name());
-			}
-			return null;
-		}
 		if (null == _activeWriteFile) {
 			Log.warning(Log.FAC_REPO, "Tried to save: {0}, presumably after repo shutdown", content.name());
 			return null;

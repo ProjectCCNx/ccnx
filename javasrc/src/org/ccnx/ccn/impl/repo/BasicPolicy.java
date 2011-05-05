@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -66,6 +66,14 @@ public class BasicPolicy implements Policy {
 	
 	protected String _repoVersion = null;	// set from repo		
 	protected PolicyXML _pxml = null;
+	
+	/**
+	 * Constructor defaulting initial namespace to everything with no
+	 * localName
+	 */
+	public BasicPolicy() {
+		this(null);
+	}
 	
 	/**
 	 * Constructor defaulting the initial namespace to "everything"
@@ -172,8 +180,8 @@ public class BasicPolicy implements Policy {
 	 * @param localName local name as a / separated String
 	 * @return the name as a ContentName
 	 */
-	public static ContentName getPolicyName(ContentName globalPrefix, String localName) {
-		return ContentName.fromNative(globalPrefix, new String[]{localName, RepositoryStore.REPO_DATA, RepositoryStore.REPO_POLICY});
+	public static ContentName getPolicyName(ContentName globalPrefix) {
+		return ContentName.fromNative(globalPrefix, new String[]{RepositoryStore.REPO_DATA, RepositoryStore.REPO_POLICY});
 	}
 	
 	public static PolicyXML createPolicyXML(InputStream stream) throws ContentDecodingException {
@@ -191,7 +199,7 @@ public class BasicPolicy implements Policy {
 	 * Gets the policy path for this repository
 	 * @return the policy path as a ContentName
 	 */
-	public ContentName getPolicyName() { return getPolicyName(_pxml.getGlobalPrefix(), _pxml.getLocalName()); }
+	public ContentName getPolicyName() { return getPolicyName(_pxml.getGlobalPrefix()); }
 
 	/**
 	 * Sets the repository version to be used by this policy interpreter. After this call any
@@ -233,7 +241,11 @@ public class BasicPolicy implements Policy {
 		}
 	}
 	
-	public PolicyXML getPolicyXML() {
+	public synchronized PolicyXML getPolicyXML() {
 		return _pxml;
+	}
+	
+	public synchronized void setPolicyXML(PolicyXML pxml) {
+		_pxml = pxml;
 	}
 }

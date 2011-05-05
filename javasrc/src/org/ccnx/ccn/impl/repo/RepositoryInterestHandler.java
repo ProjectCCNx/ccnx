@@ -201,8 +201,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			
 			// Check for special case file written to repo
 			ContentName globalPrefix = _server.getRepository().getGlobalPrefix();
-			String localName = _server.getRepository().getLocalName();
-			if (BasicPolicy.getPolicyName(globalPrefix, localName).isPrefixOf(listeningName)) {
+			if (BasicPolicy.getPolicyName(globalPrefix).isPrefixOf(listeningName)) {
 				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWritePolicyHandlers);
 				new RepositoryPolicyHandler(interest, readInterest, _server);
 				return;
