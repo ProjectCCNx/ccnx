@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -82,6 +82,9 @@ public class RFSTest extends RepoTestBase {
 		repolog.initialize(_fileTestDir, null, _repoName, _globalPrefix, null, null);
 	}
 	
+	/**
+	 * This is the basic data test for the repo store without networking
+	 */
 	@Test
 	public void testRepo() throws Exception {
 		System.out.println("testing repo (log-structured implementation)");
@@ -114,6 +117,37 @@ public class RFSTest extends RepoTestBase {
 		repolog.shutDown();
 	}
 	
+	/**
+	 * Tests policy file parsing and that checking for already stored policies at startup works
+	 * correctly
+	 */
+	@Test
+	public void testPolicy() throws Exception {
+		initRepoLog();
+		RepositoryStore repo = new LogStructRepoStore();
+		try {	// Test no version
+			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
+			Assert.fail("Bad policy file succeeded");
+		} catch (RepositoryException re) {}
+		try {	// Test bad version
+			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null, null);
+			Assert.fail("Bad policy file succeeded");
+		} catch (RepositoryException re) {}
+		// Make repository using repo's keystore, not user's
+		repo.initialize(_fileTestDir,  
+					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
+		File repoFile = new File(_fileTestDir + "/" + LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1");
+		long fileSize = repoFile.length();
+		repo.initialize(_fileTestDir,  
+				new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
+		Assert.assertEquals("Same policy increased size", fileSize, repoFile.length());
+		repolog.shutDown();
+	}
+	
+	/**
+	 * Various tests for storing and retrieving data from the store. Called via testRepo
+	 * after repo is set up
+	 */
 	public void test(RepositoryStore repo) throws Exception{		
 		System.out.println("Repotest - Testing basic data");
 		ContentName name = ContentName.fromNative("/repoTest/data1");
@@ -372,29 +406,6 @@ public class RFSTest extends RepoTestBase {
 			String segmentContent = "segment"+ new Long(i).toString();
 			checkData(repo, segmented, segmentContent);
 		}
-	}
-	
-	/**
-	 * Just test that we can parse policy files and detect errors
-	 * 
-	 * @throws Exception
-	 */
-	@Test
-	public void testPolicy() throws Exception {
-		initRepoLog();
-		RepositoryStore repo = new LogStructRepoStore();
-		try {	// Test no version
-			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
-			Assert.fail("Bad policy file succeeded");
-		} catch (RepositoryException re) {}
-		try {	// Test bad version
-			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null, null);
-			Assert.fail("Bad policy file succeeded");
-		} catch (RepositoryException re) {}
-		// Make repository using repo's keystore, not user's
-		repo.initialize(_fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
-		repolog.shutDown();
 	}
 	
 	private void checkData(RepositoryStore repo, ContentName name, String data) throws RepositoryException {
