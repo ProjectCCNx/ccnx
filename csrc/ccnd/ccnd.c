@@ -2215,13 +2215,8 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     if (face == NULL)
         return(-1);
     /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
-    if (flags >= 0 && (flags & CCN_FORW_LAST) != 0) {
+    if (flags >= 0 && (flags & CCN_FORW_LAST) != 0) 
         face->flags |= CCN_FACE_DC;
-        if ((face->flags & CCN_FACE_GG) != 0) {
-            face->flags &= ~CCN_FACE_GG;
-            face->flags |= CCN_FACE_REGOK;
-        }
-    }
     hashtb_start(h->nameprefix_tab, e);
     res = nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
