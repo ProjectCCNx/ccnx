@@ -1,7 +1,7 @@
 /*
- * ccnd/ccnd.c
+ * ccnr/ccnr.c
  *
- * Main program of ccnd - the CCNx Daemon
+ * Main program of ccnr - the CCNx Daemon
  *
  * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
@@ -18,7 +18,7 @@
  */
 
 /**
- * Main program of ccnd - the CCNx Daemon
+ * Main program of ccnr - the CCNx Daemon
  */
 
 #include <errno.h>
@@ -59,56 +59,56 @@
 #include <ccn/reg_mgmt.h>
 #include <ccn/uri.h>
 
-#include "ccnd_private.h"
-#define GOT_HERE ccnd_msg(h, "at ccnd.c:%d", __LINE__);
+#include "ccnr_private.h"
+#define GOT_HERE ccnr_msg(h, "at ccnr.c:%d", __LINE__);
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
-static int create_local_listener(struct ccnd_handle *h, const char *sockname, int backlog);
-static struct face *record_connection(struct ccnd_handle *h,
+static int create_local_listener(struct ccnr_handle *h, const char *sockname, int backlog);
+static struct face *record_connection(struct ccnr_handle *h,
                                       int fd,
                                       struct sockaddr *who,
                                       socklen_t wholen,
                                       int setflags);
-static void process_input_message(struct ccnd_handle *h, struct face *face,
+static void process_input_message(struct ccnr_handle *h, struct face *face,
                                   unsigned char *msg, size_t size, int pdu_ok);
-static void process_input(struct ccnd_handle *h, int fd);
-static int ccn_stuff_interest(struct ccnd_handle *h,
+static void process_input(struct ccnr_handle *h, int fd);
+static int ccn_stuff_interest(struct ccnr_handle *h,
                               struct face *face, struct ccn_charbuf *c);
-static void do_deferred_write(struct ccnd_handle *h, int fd);
-static void clean_needed(struct ccnd_handle *h);
-static struct face *get_dgram_source(struct ccnd_handle *h, struct face *face,
+static void do_deferred_write(struct ccnr_handle *h, int fd);
+static void clean_needed(struct ccnr_handle *h);
+static struct face *get_dgram_source(struct ccnr_handle *h, struct face *face,
                                      struct sockaddr *addr, socklen_t addrlen,
                                      int why);
-static void content_skiplist_insert(struct ccnd_handle *h,
+static void content_skiplist_insert(struct ccnr_handle *h,
                                     struct content_entry *content);
-static void content_skiplist_remove(struct ccnd_handle *h,
+static void content_skiplist_remove(struct ccnr_handle *h,
                                     struct content_entry *content);
-static void mark_stale(struct ccnd_handle *h,
+static void mark_stale(struct ccnr_handle *h,
                        struct content_entry *content);
-static ccn_accession_t content_skiplist_next(struct ccnd_handle *h,
+static ccn_accession_t content_skiplist_next(struct ccnr_handle *h,
                                              struct content_entry *content);
-static void reap_needed(struct ccnd_handle *h, int init_delay_usec);
-static void check_comm_file(struct ccnd_handle *h);
+static void reap_needed(struct ccnr_handle *h, int init_delay_usec);
+static void check_comm_file(struct ccnr_handle *h);
 static const char *unlink_this_at_exit = NULL;
-static struct nameprefix_entry *nameprefix_for_pe(struct ccnd_handle *h,
+static struct nameprefix_entry *nameprefix_for_pe(struct ccnr_handle *h,
                                                   struct propagating_entry *pe);
-static int nameprefix_seek(struct ccnd_handle *h,
+static int nameprefix_seek(struct ccnr_handle *h,
                            struct hashtb_enumerator *e,
                            const unsigned char *msg,
                            struct ccn_indexbuf *comps,
                            int ncomps);
-static void register_new_face(struct ccnd_handle *h, struct face *face);
-static void update_forward_to(struct ccnd_handle *h,
+static void register_new_face(struct ccnr_handle *h, struct face *face);
+static void update_forward_to(struct ccnr_handle *h,
                               struct nameprefix_entry *npe);
-static void stuff_and_send(struct ccnd_handle *h, struct face *face,
+static void stuff_and_send(struct ccnr_handle *h, struct face *face,
                            const unsigned char *data1, size_t size1,
                            const unsigned char *data2, size_t size2);
-static void ccn_link_state_init(struct ccnd_handle *h, struct face *face);
-static void ccn_append_link_stuff(struct ccnd_handle *h,
+static void ccn_link_state_init(struct ccnr_handle *h, struct face *face);
+static void ccn_append_link_stuff(struct ccnr_handle *h,
                                   struct face *face,
                                   struct ccn_charbuf *c);
-static int process_incoming_link_message(struct ccnd_handle *h,
+static int process_incoming_link_message(struct ccnr_handle *h,
                                          struct face *face, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
 
@@ -156,7 +156,7 @@ comm_file_ok(void)
 }
 
 static struct ccn_charbuf *
-charbuf_obtain(struct ccnd_handle *h)
+charbuf_obtain(struct ccnr_handle *h)
 {
     struct ccn_charbuf *c = h->scratch_charbuf;
     if (c == NULL)
@@ -167,7 +167,7 @@ charbuf_obtain(struct ccnd_handle *h)
 }
 
 static void
-charbuf_release(struct ccnd_handle *h, struct ccn_charbuf *c)
+charbuf_release(struct ccnr_handle *h, struct ccn_charbuf *c)
 {
     c->length = 0;
     if (h->scratch_charbuf == NULL)
@@ -177,7 +177,7 @@ charbuf_release(struct ccnd_handle *h, struct ccn_charbuf *c)
 }
 
 static struct ccn_indexbuf *
-indexbuf_obtain(struct ccnd_handle *h)
+indexbuf_obtain(struct ccnr_handle *h)
 {
     struct ccn_indexbuf *c = h->scratch_indexbuf;
     if (c == NULL)
@@ -188,7 +188,7 @@ indexbuf_obtain(struct ccnd_handle *h)
 }
 
 static void
-indexbuf_release(struct ccnd_handle *h, struct ccn_indexbuf *c)
+indexbuf_release(struct ccnr_handle *h, struct ccn_indexbuf *c)
 {
     c->n = 0;
     if (h->scratch_indexbuf == NULL)
@@ -201,7 +201,7 @@ indexbuf_release(struct ccnd_handle *h, struct ccn_indexbuf *c)
  * Looks up a face based on its faceid (private).
  */
 static struct face *
-face_from_faceid(struct ccnd_handle *h, unsigned faceid)
+face_from_faceid(struct ccnr_handle *h, unsigned faceid)
 {
     unsigned slot = faceid & MAXFACES;
     struct face *face = NULL;
@@ -217,7 +217,7 @@ face_from_faceid(struct ccnd_handle *h, unsigned faceid)
  * Looks up a face based on its faceid.
  */
 struct face *
-ccnd_face_from_faceid(struct ccnd_handle *h, unsigned faceid)
+ccnr_face_from_faceid(struct ccnr_handle *h, unsigned faceid)
 {
     return(face_from_faceid(h, faceid));
 }
@@ -227,7 +227,7 @@ ccnd_face_from_faceid(struct ccnd_handle *h, unsigned faceid)
  * calls register_new_face() if successful.
  */
 static int
-enroll_face(struct ccnd_handle *h, struct face *face)
+enroll_face(struct ccnr_handle *h, struct face *face)
 {
     unsigned i;
     unsigned n = h->face_limit;
@@ -255,18 +255,18 @@ use_i:
     a[i] = face;
     h->face_rover = i + 1;
     face->faceid = i | h->face_gen;
-    face->meter[FM_BYTI] = ccnd_meter_create(h, "bytein");
-    face->meter[FM_BYTO] = ccnd_meter_create(h, "byteout");
-    face->meter[FM_INTI] = ccnd_meter_create(h, "intrin");
-    face->meter[FM_INTO] = ccnd_meter_create(h, "introut");
-    face->meter[FM_DATI] = ccnd_meter_create(h, "datain");
-    face->meter[FM_DATO] = ccnd_meter_create(h, "dataout");
+    face->meter[FM_BYTI] = ccnr_meter_create(h, "bytein");
+    face->meter[FM_BYTO] = ccnr_meter_create(h, "byteout");
+    face->meter[FM_INTI] = ccnr_meter_create(h, "intrin");
+    face->meter[FM_INTO] = ccnr_meter_create(h, "introut");
+    face->meter[FM_DATI] = ccnr_meter_create(h, "datain");
+    face->meter[FM_DATO] = ccnr_meter_create(h, "dataout");
     register_new_face(h, face);
     return (face->faceid);
 }
 
 static int
-choose_face_delay(struct ccnd_handle *h, struct face *face, enum cq_delay_class c)
+choose_face_delay(struct ccnr_handle *h, struct face *face, enum cq_delay_class c)
 {
     int shift = (c == CCN_CQ_SLOW) ? 2 : 0;
     if (c == CCN_CQ_ASAP)
@@ -285,7 +285,7 @@ choose_face_delay(struct ccnd_handle *h, struct face *face, enum cq_delay_class 
 }
 
 static struct content_queue *
-content_queue_create(struct ccnd_handle *h, struct face *face, enum cq_delay_class c)
+content_queue_create(struct ccnr_handle *h, struct face *face, enum cq_delay_class c)
 {
     struct content_queue *q;
     unsigned usec;
@@ -307,7 +307,7 @@ content_queue_create(struct ccnd_handle *h, struct face *face, enum cq_delay_cla
 }
 
 static void
-content_queue_destroy(struct ccnd_handle *h, struct content_queue **pq)
+content_queue_destroy(struct ccnr_handle *h, struct content_queue **pq)
 {
     struct content_queue *q;
     if (*pq != NULL) {
@@ -338,7 +338,7 @@ close_fd(int *pfd)
  * Close an open file descriptor, and grumble about it.
  */
 static void
-ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
+ccnr_close_fd(struct ccnr_handle *h, unsigned faceid, int *pfd)
 {
     int res;
     
@@ -348,10 +348,10 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
                    &linger, sizeof(linger));
         res = close(*pfd);
         if (res == -1)
-            ccnd_msg(h, "close failed for face %u fd=%d: %s (errno=%d)",
+            ccnr_msg(h, "close failed for face %u fd=%d: %s (errno=%d)",
                      faceid, *pfd, strerror(errno), errno);
         else
-            ccnd_msg(h, "closing fd %d while finalizing face %u", *pfd, faceid);
+            ccnr_msg(h, "closing fd %d while finalizing face %u", *pfd, faceid);
         *pfd = -1;
     }
 }
@@ -359,7 +359,7 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
 static void
 finalize_face(struct hashtb_enumerator *e)
 {
-    struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
+    struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
     struct face *face = e->data;
     unsigned i = face->faceid & MAXFACES;
     enum cq_delay_class c;
@@ -368,9 +368,9 @@ finalize_face(struct hashtb_enumerator *e)
     
     if (i < h->face_limit && h->faces_by_faceid[i] == face) {
         if ((face->flags & CCN_FACE_UNDECIDED) == 0)
-            ccnd_face_status_change(h, face->faceid);
+            ccnr_face_status_change(h, face->faceid);
         if (e->ht == h->faces_by_fd)
-            ccnd_close_fd(h, face->faceid, &face->recv_fd);
+            ccnr_close_fd(h, face->faceid, &face->recv_fd);
         h->faces_by_faceid[i] = NULL;
         if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
               face->faceid == ((h->face_rover - 1) | h->face_gen)) {
@@ -380,19 +380,19 @@ finalize_face(struct hashtb_enumerator *e)
         }
         for (c = 0; c < CCN_CQ_N; c++)
             content_queue_destroy(h, &(face->q[c]));
-        ccnd_msg(h, "%s face id %u (slot %u)",
+        ccnr_msg(h, "%s face id %u (slot %u)",
             recycle ? "recycling" : "releasing",
             face->faceid, face->faceid & MAXFACES);
         /* Don't free face->addr; storage is managed by hash table */
     }
     else if (face->faceid != CCN_NOFACEID)
-        ccnd_msg(h, "orphaned face %u", face->faceid);
+        ccnr_msg(h, "orphaned face %u", face->faceid);
     for (m = 0; m < CCND_FACE_METER_N; m++)
-        ccnd_meter_destroy(&face->meter[m]);
+        ccnr_meter_destroy(&face->meter[m]);
 }
 
 static struct content_entry *
-content_from_accession(struct ccnd_handle *h, ccn_accession_t accession)
+content_from_accession(struct ccnr_handle *h, ccn_accession_t accession)
 {
     struct content_entry *ans = NULL;
     if (accession < h->accession_base) {
@@ -411,7 +411,7 @@ content_from_accession(struct ccnd_handle *h, ccn_accession_t accession)
 }
 
 static void
-cleanout_stragglers(struct ccnd_handle *h)
+cleanout_stragglers(struct ccnr_handle *h)
 {
     ccn_accession_t accession;
     struct hashtb_enumerator ee;
@@ -451,7 +451,7 @@ cleanout_stragglers(struct ccnd_handle *h)
 }
 
 static int
-cleanout_empties(struct ccnd_handle *h)
+cleanout_empties(struct ccnr_handle *h)
 {
     unsigned i = 0;
     unsigned j = 0;
@@ -473,7 +473,7 @@ cleanout_empties(struct ccnd_handle *h)
 }
 
 static void
-enroll_content(struct ccnd_handle *h, struct content_entry *content)
+enroll_content(struct ccnr_handle *h, struct content_entry *content)
 {
     unsigned new_window;
     struct content_entry **new_array;
@@ -508,7 +508,7 @@ enroll_content(struct ccnd_handle *h, struct content_entry *content)
 static void
 finalize_content(struct hashtb_enumerator *content_enumerator)
 {
-    struct ccnd_handle *h = hashtb_get_param(content_enumerator->ht, NULL);
+    struct ccnr_handle *h = hashtb_get_param(content_enumerator->ht, NULL);
     struct content_entry *entry = content_enumerator->data;
     unsigned i = entry->accession - h->accession_base;
     if (i < h->content_by_accession_window &&
@@ -522,7 +522,7 @@ finalize_content(struct hashtb_enumerator *content_enumerator)
         hashtb_start(h->sparse_straggler_tab, e);
         if (hashtb_seek(e, &entry->accession, sizeof(entry->accession), 0) ==
               HT_NEW_ENTRY) {
-            ccnd_msg(h, "orphaned content %llu",
+            ccnr_msg(h, "orphaned content %llu",
                      (unsigned long long)(entry->accession));
             hashtb_delete(e);
             hashtb_end(e);
@@ -539,7 +539,7 @@ finalize_content(struct hashtb_enumerator *content_enumerator)
 }
 
 static int
-content_skiplist_findbefore(struct ccnd_handle *h,
+content_skiplist_findbefore(struct ccnr_handle *h,
                             const unsigned char *key,
                             size_t keysize,
                             struct content_entry *wanted_old,
@@ -580,7 +580,7 @@ content_skiplist_findbefore(struct ccnd_handle *h,
 
 #define CCN_SKIPLIST_MAX_DEPTH 30
 static void
-content_skiplist_insert(struct ccnd_handle *h, struct content_entry *content)
+content_skiplist_insert(struct ccnr_handle *h, struct content_entry *content)
 {
     int d;
     int i;
@@ -607,7 +607,7 @@ content_skiplist_insert(struct ccnd_handle *h, struct content_entry *content)
 }
 
 static void
-content_skiplist_remove(struct ccnd_handle *h, struct content_entry *content)
+content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
 {
     int i;
     int d;
@@ -629,7 +629,7 @@ content_skiplist_remove(struct ccnd_handle *h, struct content_entry *content)
 }
 
 static struct content_entry *
-find_first_match_candidate(struct ccnd_handle *h,
+find_first_match_candidate(struct ccnr_handle *h,
                            const unsigned char *interest_msg,
                            const struct ccn_parsed_interest *pi)
 {
@@ -667,7 +667,7 @@ find_first_match_candidate(struct ccnd_handle *h,
                                        ex1end - ex1start);
                     ccn_charbuf_append_closer(namebuf);
                     if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "fastex", NULL,
+                        ccnr_debug_ccnb(h, __LINE__, "fastex", NULL,
                                         namebuf->buf, namebuf->length);
                 }
             }
@@ -688,7 +688,7 @@ find_first_match_candidate(struct ccnd_handle *h,
 }
 
 static int
-content_matches_interest_prefix(struct ccnd_handle *h,
+content_matches_interest_prefix(struct ccnr_handle *h,
                                 struct content_entry *content,
                                 const unsigned char *interest_msg,
                                 struct ccn_indexbuf *comps,
@@ -711,7 +711,7 @@ content_matches_interest_prefix(struct ccnd_handle *h,
 }
 
 static ccn_accession_t
-content_skiplist_next(struct ccnd_handle *h, struct content_entry *content)
+content_skiplist_next(struct ccnr_handle *h, struct content_entry *content)
 {
     if (content == NULL)
         return(0);
@@ -721,7 +721,7 @@ content_skiplist_next(struct ccnd_handle *h, struct content_entry *content)
 }
 
 static void
-consume(struct ccnd_handle *h, struct propagating_entry *pe)
+consume(struct ccnr_handle *h, struct propagating_entry *pe)
 {
     struct face *face = NULL;
     ccn_indexbuf_destroy(&pe->outbound);
@@ -743,7 +743,7 @@ consume(struct ccnd_handle *h, struct propagating_entry *pe)
 static void
 finalize_nameprefix(struct hashtb_enumerator *e)
 {
-    struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
+    struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
     struct nameprefix_entry *npe = e->data;
     struct propagating_entry *head = &npe->pe_head;
     if (head->next != NULL) {
@@ -760,7 +760,7 @@ finalize_nameprefix(struct hashtb_enumerator *e)
 }
 
 static void
-link_propagating_interest_to_nameprefix(struct ccnd_handle *h,
+link_propagating_interest_to_nameprefix(struct ccnr_handle *h,
     struct propagating_entry *pe, struct nameprefix_entry *npe)
 {
     struct propagating_entry *head = &npe->pe_head;
@@ -772,12 +772,12 @@ link_propagating_interest_to_nameprefix(struct ccnd_handle *h,
 static void
 finalize_propagating(struct hashtb_enumerator *e)
 {
-    struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
+    struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
     consume(h, e->data);
 }
 
 static int
-create_local_listener(struct ccnd_handle *h, const char *sockname, int backlog)
+create_local_listener(struct ccnr_handle *h, const char *sockname, int backlog)
 {
     int res;
     int savedmask;
@@ -785,11 +785,11 @@ create_local_listener(struct ccnd_handle *h, const char *sockname, int backlog)
     struct sockaddr_un a = { 0 };
     res = unlink(sockname);
     if (res == 0) {
-        ccnd_msg(NULL, "unlinked old %s, please wait", sockname);
-        sleep(9); /* give old ccnd a chance to exit */
+        ccnr_msg(NULL, "unlinked old %s, please wait", sockname);
+        sleep(9); /* give old ccnr a chance to exit */
     }
     if (!(res == 0 || errno == ENOENT))
-        ccnd_msg(NULL, "failed to unlink %s", sockname);
+        ccnr_msg(NULL, "failed to unlink %s", sockname);
     a.sun_family = AF_UNIX;
     strncpy(a.sun_path, sockname, sizeof(a.sun_path));
     sock = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -814,7 +814,7 @@ create_local_listener(struct ccnd_handle *h, const char *sockname, int backlog)
 }
 
 static int
-establish_min_recv_bufsize(struct ccnd_handle *h, int fd, int minsize)
+establish_min_recv_bufsize(struct ccnr_handle *h, int fd, int minsize)
 {
     int res;
     int rcvbuf;
@@ -830,7 +830,7 @@ establish_min_recv_bufsize(struct ccnd_handle *h, int fd, int minsize)
         if (res == -1)
             return(res);
     }
-    ccnd_msg(h, "SO_RCVBUF for fd %d is %d", fd, rcvbuf);
+    ccnr_msg(h, "SO_RCVBUF for fd %d is %d", fd, rcvbuf);
     return(rcvbuf);
 }
 
@@ -839,7 +839,7 @@ establish_min_recv_bufsize(struct ccnd_handle *h, int fd, int minsize)
  * and the provided explicit setflags.
  */
 static void
-init_face_flags(struct ccnd_handle *h, struct face *face, int setflags)
+init_face_flags(struct ccnr_handle *h, struct face *face, int setflags)
 {
     const struct sockaddr *addr = face->addr;
     const unsigned char *rawaddr = NULL;
@@ -878,7 +878,7 @@ init_face_flags(struct ccnd_handle *h, struct face *face, int setflags)
  * Make a new face entered in the faces_by_fd table.
  */
 static struct face *
-record_connection(struct ccnd_handle *h, int fd,
+record_connection(struct ccnr_handle *h, int fd,
                   struct sockaddr *who, socklen_t wholen,
                   int setflags)
 {
@@ -890,7 +890,7 @@ record_connection(struct ccnd_handle *h, int fd,
     
     res = fcntl(fd, F_SETFL, O_NONBLOCK);
     if (res == -1)
-        ccnd_msg(h, "fcntl: %s", strerror(errno));
+        ccnr_msg(h, "fcntl: %s", strerror(errno));
     hashtb_start(h->faces_by_fd, e);
     if (hashtb_seek(e, &fd, sizeof(fd), wholen) == HT_NEW_ENTRY) {
         face = e->data;
@@ -916,7 +916,7 @@ record_connection(struct ccnd_handle *h, int fd,
  * @returns fd of new socket, or -1 for an error.
  */
 static int
-accept_connection(struct ccnd_handle *h, int listener_fd)
+accept_connection(struct ccnr_handle *h, int listener_fd)
 {
     struct sockaddr_storage who;
     socklen_t wholen = sizeof(who);
@@ -925,7 +925,7 @@ accept_connection(struct ccnd_handle *h, int listener_fd)
 
     fd = accept(listener_fd, (struct sockaddr *)&who, &wholen);
     if (fd == -1) {
-        ccnd_msg(h, "accept: %s", strerror(errno));
+        ccnr_msg(h, "accept: %s", strerror(errno));
         return(-1);
     }
     face = record_connection(h, fd,
@@ -934,7 +934,7 @@ accept_connection(struct ccnd_handle *h, int listener_fd)
     if (face == NULL)
         close_fd(&fd);
     else
-        ccnd_msg(h, "accepted client fd=%d id=%u", fd, face->faceid);
+        ccnr_msg(h, "accepted client fd=%d id=%u", fd, face->faceid);
     return(fd);
 }
 
@@ -942,7 +942,7 @@ accept_connection(struct ccnd_handle *h, int listener_fd)
  * Make an outbound stream connection.
  */
 static struct face *
-make_connection(struct ccnd_handle *h,
+make_connection(struct ccnr_handle *h,
                 struct sockaddr *who, socklen_t wholen,
                 int setflags)
 {
@@ -970,12 +970,12 @@ make_connection(struct ccnd_handle *h,
     /* No existing connection, try to make a new one. */
     fd = socket(who->sa_family, SOCK_STREAM, 0);
     if (fd == -1) {
-        ccnd_msg(h, "socket: %s", strerror(errno));
+        ccnr_msg(h, "socket: %s", strerror(errno));
         return(NULL);
     }
     res = fcntl(fd, F_SETFL, O_NONBLOCK);
     if (res == -1)
-        ccnd_msg(h, "connect fcntl: %s", strerror(errno));
+        ccnr_msg(h, "connect fcntl: %s", strerror(errno));
     setflags &= ~CCN_FACE_CONNECTING;
     res = connect(fd, who, wholen);
     if (res == -1 && errno == EINPROGRESS) {
@@ -983,7 +983,7 @@ make_connection(struct ccnd_handle *h,
         setflags |= CCN_FACE_CONNECTING;
     }
     if (res == -1) {
-        ccnd_msg(h, "connect failed: %s (errno = %d)", strerror(errno), errno);
+        ccnr_msg(h, "connect failed: %s (errno = %d)", strerror(errno), errno);
         close(fd);
         return(NULL);
     }
@@ -993,19 +993,19 @@ make_connection(struct ccnd_handle *h,
         return(NULL);
     }
     if ((face->flags & CCN_FACE_CONNECTING) != 0) {
-        ccnd_msg(h, "connecting to client fd=%d id=%u", fd, face->faceid);
+        ccnr_msg(h, "connecting to client fd=%d id=%u", fd, face->faceid);
         face->outbufindex = 0;
         face->outbuf = ccn_charbuf_create();
     }
     else
-        ccnd_msg(h, "connected client fd=%d id=%u", fd, face->faceid);
+        ccnr_msg(h, "connected client fd=%d id=%u", fd, face->faceid);
     return(face);
 }
 
 static int
-ccnd_getboundsocket(void *dat, struct sockaddr *who, socklen_t wholen)
+ccnr_getboundsocket(void *dat, struct sockaddr *who, socklen_t wholen)
 {
-    struct ccnd_handle *h = dat;
+    struct ccnr_handle *h = dat;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int yes = 1;
@@ -1030,7 +1030,7 @@ ccnd_getboundsocket(void *dat, struct sockaddr *who, socklen_t wholen)
     setsockopt(ans, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
     res = bind(ans, who, wholen);
     if (res == -1) {
-        ccnd_msg(h, "bind failed: %s (errno = %d)", strerror(errno), errno);
+        ccnr_msg(h, "bind failed: %s (errno = %d)", strerror(errno), errno);
         close(ans);
         return(-1);
     }
@@ -1040,7 +1040,7 @@ ccnd_getboundsocket(void *dat, struct sockaddr *who, socklen_t wholen)
 }
 
 static unsigned
-faceid_from_fd(struct ccnd_handle *h, int fd)
+faceid_from_fd(struct ccnr_handle *h, int fd)
 {
     struct face *face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
     if (face != NULL)
@@ -1050,7 +1050,7 @@ faceid_from_fd(struct ccnd_handle *h, int fd)
 
 typedef void (*loggerproc)(void *, const char *, ...);
 static struct face *
-setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
+setup_multicast(struct ccnr_handle *h, struct ccn_face_instance *face_instance,
                 struct sockaddr *who, socklen_t wholen)
 {
     struct hashtb_enumerator ee;
@@ -1077,8 +1077,8 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
     hashtb_end(e);
     
     res = ccn_setup_socket(&face_instance->descr,
-                           (loggerproc)&ccnd_msg, (void *)h,
-                           &ccnd_getboundsocket, (void *)h,
+                           (loggerproc)&ccnr_msg, (void *)h,
+                           &ccnr_getboundsocket, (void *)h,
                            &socks);
     if (res < 0)
         return(NULL);
@@ -1092,13 +1092,13 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
         return(NULL);
     }
     face->sendface = faceid_from_fd(h, socks.sending);
-    ccnd_msg(h, "multicast on fd=%d id=%u, sending on face %u",
+    ccnr_msg(h, "multicast on fd=%d id=%u, sending on face %u",
              face->recv_fd, face->faceid, face->sendface);
     return(face);
 }
 
 static void
-shutdown_client_fd(struct ccnd_handle *h, int fd)
+shutdown_client_fd(struct ccnr_handle *h, int fd)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1110,13 +1110,13 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
         if (face->recv_fd != fd) abort();
         faceid = face->faceid;
         if (faceid == CCN_NOFACEID) {
-            ccnd_msg(h, "error indication on fd %d ignored", fd);
+            ccnr_msg(h, "error indication on fd %d ignored", fd);
             hashtb_end(e);
             return;
         }
         close(fd);
         face->recv_fd = -1;
-        ccnd_msg(h, "shutdown client fd=%d id=%u", fd, faceid);
+        ccnr_msg(h, "shutdown client fd=%d id=%u", fd, faceid);
         ccn_charbuf_destroy(&face->inbuf);
         ccn_charbuf_destroy(&face->outbuf);
         face = NULL;
@@ -1128,7 +1128,7 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
 }
 
 static void
-send_content(struct ccnd_handle *h, struct face *face, struct content_entry *content)
+send_content(struct ccnr_handle *h, struct face *face, struct content_entry *content)
 {
     int n, a, b, size;
     if ((face->flags & CCN_FACE_NOSEND) != 0) {
@@ -1137,7 +1137,7 @@ send_content(struct ccnd_handle *h, struct face *face, struct content_entry *con
     }
     size = content->size;
     if (h->debug & 4)
-        ccnd_debug_ccnb(h, __LINE__, "content_to", face,
+        ccnr_debug_ccnb(h, __LINE__, "content_to", face,
                         content->key, size);
     /* Excise the message-digest name component */
     n = content->ncomps;
@@ -1147,12 +1147,12 @@ send_content(struct ccnd_handle *h, struct face *face, struct content_entry *con
     if (b - a != 36)
         abort(); /* strange digest length */
     stuff_and_send(h, face, content->key, a, content->key + b, size - b);
-    ccnd_meter_bump(h, face->meter[FM_DATO], 1);
+    ccnr_meter_bump(h, face->meter[FM_DATO], 1);
     h->content_items_sent += 1;
 }
 
 static enum cq_delay_class
-choose_content_delay_class(struct ccnd_handle *h, unsigned faceid, int content_flags)
+choose_content_delay_class(struct ccnr_handle *h, unsigned faceid, int content_flags)
 {
     struct face *face = face_from_faceid(h, faceid);
     if (face == NULL)
@@ -1167,7 +1167,7 @@ choose_content_delay_class(struct ccnd_handle *h, unsigned faceid, int content_f
 }
 
 static unsigned
-randomize_content_delay(struct ccnd_handle *h, struct content_queue *q)
+randomize_content_delay(struct ccnr_handle *h, struct content_queue *q)
 {
     unsigned usec;
     
@@ -1193,7 +1193,7 @@ content_sender(struct ccn_schedule *sched,
     int nsec;
     int burst_nsec;
     int burst_max;
-    struct ccnd_handle *h = clienth;
+    struct ccnr_handle *h = clienth;
     struct content_entry *content = NULL;
     unsigned faceid = ev->evint;
     struct face *face = NULL;
@@ -1243,7 +1243,7 @@ content_sender(struct ccn_schedule *sched,
     delay = (nsec + 499) / 1000 + 1;
     if (q->ready > 0) {
         if (h->debug & 8)
-            ccnd_msg(h, "face %u ready %u delay %i nrun %u",
+            ccnr_msg(h, "face %u ready %u delay %i nrun %u",
                      faceid, q->ready, delay, q->nrun, face->surplus);
         return(delay);
     }
@@ -1253,7 +1253,7 @@ content_sender(struct ccn_schedule *sched,
         if (j == 0)
             delay += burst_nsec / 50;
         if (h->debug & 8)
-            ccnd_msg(h, "face %u ready %u delay %i nrun %u surplus %u",
+            ccnr_msg(h, "face %u ready %u delay %i nrun %u surplus %u",
                     (unsigned)ev->evint, q->ready, delay, q->nrun, face->surplus);
         return(delay);
     }
@@ -1264,7 +1264,7 @@ content_sender(struct ccn_schedule *sched,
             q->nrun = 0;
             delay = randomize_content_delay(h, q);
             if (h->debug & 8)
-                ccnd_msg(h, "face %u queued %u delay %i",
+                ccnr_msg(h, "face %u queued %u delay %i",
                          (unsigned)ev->evint, q->ready, delay);
             return(delay);
         }
@@ -1276,7 +1276,7 @@ Bail:
 }
 
 static int
-face_send_queue_insert(struct ccnd_handle *h,
+face_send_queue_insert(struct ccnr_handle *h,
                        struct face *face, struct content_entry *content)
 {
     int ans;
@@ -1298,7 +1298,7 @@ face_send_queue_insert(struct ccnd_handle *h,
             ans = ccn_indexbuf_member(face->q[k]->send_queue, content->accession);
             if (ans >= 0) {
                 if (h->debug & 8)
-                    ccnd_debug_ccnb(h, __LINE__, "content_otherq", face,
+                    ccnr_debug_ccnb(h, __LINE__, "content_otherq", face,
                                     content->key, content->size);
                 return(ans);
             }
@@ -1311,7 +1311,7 @@ face_send_queue_insert(struct ccnd_handle *h,
         q->sender = ccn_schedule_event(h->sched, delay,
                                        content_sender, q, face->faceid);
         if (h->debug & 8)
-            ccnd_msg(h, "face %u q %d delay %d usec", face->faceid, c, delay);
+            ccnr_msg(h, "face %u q %d delay %d usec", face->faceid, c, delay);
     }
     return (ans);
 }
@@ -1351,7 +1351,7 @@ promote_outbound(struct propagating_entry *pe, unsigned faceid)
  * @returns number of matches found.
  */
 static int
-consume_matching_interests(struct ccnd_handle *h,
+consume_matching_interests(struct ccnr_handle *h,
                            struct nameprefix_entry *npe,
                            struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
@@ -1378,7 +1378,7 @@ consume_matching_interests(struct ccnd_handle *h,
                                              p->interest_msg, p->size, NULL)) {
                 face_send_queue_insert(h, f, content);
                 if (h->debug & (32 | 8))
-                    ccnd_debug_ccnb(h, __LINE__, "consume", f,
+                    ccnr_debug_ccnb(h, __LINE__, "consume", f,
                                     p->interest_msg, p->size);
                 matches += 1;
                 consume(h, p);
@@ -1389,7 +1389,7 @@ consume_matching_interests(struct ccnd_handle *h,
 }
 
 static void
-adjust_npe_predicted_response(struct ccnd_handle *h,
+adjust_npe_predicted_response(struct ccnr_handle *h,
                               struct nameprefix_entry *npe, int up)
 {
     unsigned t = npe->usec;
@@ -1405,7 +1405,7 @@ adjust_npe_predicted_response(struct ccnd_handle *h,
 }
 
 static void
-adjust_predicted_response(struct ccnd_handle *h,
+adjust_predicted_response(struct ccnr_handle *h,
                           struct propagating_entry *pe, int up)
 {
     struct nameprefix_entry *npe;
@@ -1422,7 +1422,7 @@ adjust_predicted_response(struct ccnd_handle *h,
  * Keep a little history about where matching content comes from.
  */
 static void
-note_content_from(struct ccnd_handle *h,
+note_content_from(struct ccnr_handle *h,
                   struct nameprefix_entry *npe,
                   unsigned from_faceid,
                   int prefix_comps)
@@ -1436,7 +1436,7 @@ note_content_from(struct ccnd_handle *h,
         npe->src = from_faceid;
     }
     if (h->debug & 8)
-        ccnd_msg(h, "sl.%d %u ci=%d osrc=%u src=%u usec=%d", __LINE__,
+        ccnr_msg(h, "sl.%d %u ci=%d osrc=%u src=%u usec=%d", __LINE__,
                  from_faceid, prefix_comps, npe->osrc, npe->src, npe->usec);
 }
 
@@ -1446,7 +1446,7 @@ note_content_from(struct ccnd_handle *h,
  * @returns number of tap faces that are present.
  */
 static int
-reorder_outbound_using_history(struct ccnd_handle *h,
+reorder_outbound_using_history(struct ccnr_handle *h,
                                struct nameprefix_entry *npe,
                                struct propagating_entry *pe)
 {
@@ -1478,7 +1478,7 @@ reorder_outbound_using_history(struct ccnd_handle *h,
  * @returns number of matches, or -1 if the new content should be dropped.
  */
 static int
-match_interests(struct ccnd_handle *h, struct content_entry *content,
+match_interests(struct ccnr_handle *h, struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
                            struct face *face, struct face *from_face)
 {
@@ -1517,7 +1517,7 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
  * The message may be in two pieces.
  */
 static void
-stuff_and_send(struct ccnd_handle *h, struct face *face,
+stuff_and_send(struct ccnr_handle *h, struct face *face,
                const unsigned char *data1, size_t size1,
                const unsigned char *data2, size_t size2) {
     struct ccn_charbuf *c = NULL;
@@ -1544,10 +1544,10 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
     }
     else {
         /* avoid a copy in this case */
-        ccnd_send(h, face, data1, size1);
+        ccnr_send(h, face, data1, size1);
         return;
     }
-    ccnd_send(h, face, c->buf, c->length);
+    ccnr_send(h, face, c->buf, c->length);
     charbuf_release(h, c);
     return;
 }
@@ -1558,7 +1558,7 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
  * @returns the number of messages that were stuffed.
  */
 static int
-stuff_link_check(struct ccnd_handle *h,
+stuff_link_check(struct ccnr_handle *h,
                    struct face *face, struct ccn_charbuf *c)
 {
     int checkflags = CCN_FACE_DGRAM | CCN_FACE_MCAST | CCN_FACE_GG;
@@ -1584,10 +1584,10 @@ stuff_link_check(struct ccnd_handle *h,
     // XXX - ought to generate a nonce
     ccn_charbuf_append_closer(ibuf);
     ccn_charbuf_append(c, ibuf->buf, ibuf->length);
-    ccnd_meter_bump(h, face->meter[FM_INTO], 1);
+    ccnr_meter_bump(h, face->meter[FM_INTO], 1);
     h->interests_stuffed++;
     if (h->debug & 2)
-        ccnd_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
+        ccnr_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
                         ibuf->buf, ibuf->length);
     ans = 1;
 Bail:
@@ -1603,7 +1603,7 @@ Bail:
  * @returns the number of messages that were stuffed.
  */
 static int
-ccn_stuff_interest(struct ccnd_handle *h,
+ccn_stuff_interest(struct ccnr_handle *h,
                    struct face *face, struct ccn_charbuf *c)
 {
     struct hashtb_enumerator ee;
@@ -1637,10 +1637,10 @@ ccn_stuff_interest(struct ccnd_handle *h,
                 p->sent++;
                 n_stuffed++;
                 ccn_charbuf_append(c, p->interest_msg, p->size);
-                ccnd_meter_bump(h, face->meter[FM_INTO], 1);
+                ccnr_meter_bump(h, face->meter[FM_INTO], 1);
                 h->interests_stuffed++;
                 if (h->debug & 2)
-                    ccnd_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
+                    ccnr_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
                                     p->interest_msg, p->size);
                 /*
                  * Don't stuff multiple interests with same prefix
@@ -1655,7 +1655,7 @@ ccn_stuff_interest(struct ccnd_handle *h,
 }
 
 static void
-ccn_link_state_init(struct ccnd_handle *h, struct face *face)
+ccn_link_state_init(struct ccnr_handle *h, struct face *face)
 {
     int checkflags;
     int matchflags;
@@ -1671,7 +1671,7 @@ ccn_link_state_init(struct ccnd_handle *h, struct face *face)
 }
 
 static void
-ccn_append_link_stuff(struct ccnd_handle *h,
+ccn_append_link_stuff(struct ccnr_handle *h,
                       struct face *face,
                       struct ccn_charbuf *c)
 {
@@ -1682,14 +1682,14 @@ ccn_append_link_stuff(struct ccnd_handle *h,
     ccn_charbuf_append_value(c, face->pktseq, 2);
     ccnb_element_end(c);
     if (0)
-        ccnd_msg(h, "debug.%d pkt_to %u seq %u",
+        ccnr_msg(h, "debug.%d pkt_to %u seq %u",
                  __LINE__, face->faceid, (unsigned)face->pktseq);
     face->pktseq++;
     face->flags &= ~CCN_FACE_SEQPROBE;
 }
 
 static int
-process_incoming_link_message(struct ccnd_handle *h,
+process_incoming_link_message(struct ccnr_handle *h,
                               struct face *face, enum ccn_dtag dtag,
                               unsigned char *msg, size_t size)
 {
@@ -1724,7 +1724,7 @@ process_incoming_link_message(struct ccnd_handle *h,
                 return(0);
             }
             if (s > face->rseq && s - face->rseq < 255) {
-                ccnd_msg(h, "seq_gap %u %ju to %ju",
+                ccnr_msg(h, "seq_gap %u %ju to %ju",
                          face->faceid, face->rseq, s);
                 face->rseq = s;
                 face->rrun = 1;
@@ -1732,12 +1732,12 @@ process_incoming_link_message(struct ccnd_handle *h,
             }
             if (s <= face->rseq) {
                 if (face->rseq - s < face->rrun) {
-                    ccnd_msg(h, "seq_dup %u %ju", face->faceid, s);
+                    ccnr_msg(h, "seq_dup %u %ju", face->faceid, s);
                     return(0);
                 }
                 if (face->rseq - s < 255) {
                     /* Received out of order */
-                    ccnd_msg(h, "seq_ooo %u %ju", face->faceid, s);
+                    ccnr_msg(h, "seq_ooo %u %ju", face->faceid, s);
                     if (s == face->rseq - face->rrun) {
                         face->rrun++;
                         return(0);
@@ -1758,7 +1758,7 @@ process_incoming_link_message(struct ccnd_handle *h,
  * @returns number of faces that have gone away.
  */
 static int
-check_dgram_faces(struct ccnd_handle *h)
+check_dgram_faces(struct ccnr_handle *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1795,7 +1795,7 @@ check_dgram_faces(struct ccnd_handle *h)
  * @returns 0 for success, -1 for failure.
  */
 int
-ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid)
+ccnr_destroy_face(struct ccnr_handle *h, unsigned faceid)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1825,7 +1825,7 @@ ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid)
  * Remove expired faces from npe->forward_to
  */
 static void
-check_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
+check_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
 {
     struct ccn_indexbuf *ft = npe->forward_to;
     int i;
@@ -1849,7 +1849,7 @@ check_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
  * @returns number that have gone away.
  */
 static int
-check_propagating(struct ccnd_handle *h)
+check_propagating(struct ccnr_handle *h)
 {
     int count = 0;
     struct hashtb_enumerator ee;
@@ -1878,7 +1878,7 @@ check_propagating(struct ccnd_handle *h)
  * @returns number that have gone away.
  */
 static int
-check_nameprefix_entries(struct ccnd_handle *h)
+check_nameprefix_entries(struct ccnr_handle *h)
 {
     int count = 0;
     struct hashtb_enumerator ee;
@@ -1913,10 +1913,10 @@ check_nameprefix_entries(struct ccnd_handle *h)
 }
 
 static void
-check_comm_file(struct ccnd_handle *h)
+check_comm_file(struct ccnr_handle *h)
 {
     if (!comm_file_ok()) {
-        ccnd_msg(h, "stopping (%s gone)", unlink_this_at_exit);
+        ccnr_msg(h, "stopping (%s gone)", unlink_this_at_exit);
         unlink_this_at_exit = NULL;
         h->running = 0;
     }
@@ -1932,7 +1932,7 @@ reap(
     struct ccn_scheduled_event *ev,
     int flags)
 {
-    struct ccnd_handle *h = clienth;
+    struct ccnr_handle *h = clienth;
     (void)(sched);
     (void)(ev);
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
@@ -1947,14 +1947,14 @@ reap(
 }
 
 static void
-reap_needed(struct ccnd_handle *h, int init_delay_usec)
+reap_needed(struct ccnr_handle *h, int init_delay_usec)
 {
     if (h->reaper == NULL)
         h->reaper = ccn_schedule_event(h->sched, init_delay_usec, reap, NULL, 0);
 }
 
 static int
-remove_content(struct ccnd_handle *h, struct content_entry *content)
+remove_content(struct ccnr_handle *h, struct content_entry *content)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1969,7 +1969,7 @@ remove_content(struct ccnd_handle *h, struct content_entry *content)
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         h->n_stale--;
     if (h->debug & 4)
-        ccnd_debug_ccnb(h, __LINE__, "remove", NULL,
+        ccnr_debug_ccnb(h, __LINE__, "remove", NULL,
                         content->key, content->size);
     hashtb_delete(e);
     hashtb_end(e);
@@ -1985,7 +1985,7 @@ clean_deamon(struct ccn_schedule *sched,
              struct ccn_scheduled_event *ev,
              int flags)
 {
-    struct ccnd_handle *h = clienth;
+    struct ccnr_handle *h = clienth;
     (void)(sched);
     (void)(ev);
     unsigned long n;
@@ -2086,7 +2086,7 @@ clean_deamon(struct ccn_schedule *sched,
 }
 
 static void
-clean_needed(struct ccnd_handle *h)
+clean_needed(struct ccnr_handle *h)
 {
     if (h->clean == NULL)
         h->clean = ccn_schedule_event(h->sched, 1000000, clean_deamon, NULL, 0);
@@ -2101,7 +2101,7 @@ age_forwarding(struct ccn_schedule *sched,
              struct ccn_scheduled_event *ev,
              int flags)
 {
-    struct ccnd_handle *h = clienth;
+    struct ccnr_handle *h = clienth;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct ccn_forwarding *f;
@@ -2126,7 +2126,7 @@ age_forwarding(struct ccn_schedule *sched,
                         struct ccn_charbuf *prefix = ccn_charbuf_create();
                         ccn_name_init(prefix);
                         ccn_name_append_components(prefix, e->key, 0, e->keysize);
-                        ccnd_debug_ccnb(h, __LINE__, "prefix_expiry", face,
+                        ccnr_debug_ccnb(h, __LINE__, "prefix_expiry", face,
                                 prefix->buf,
                                 prefix->length);
                         ccn_charbuf_destroy(&prefix);
@@ -2150,7 +2150,7 @@ age_forwarding(struct ccn_schedule *sched,
 }
 
 static void
-age_forwarding_needed(struct ccnd_handle *h)
+age_forwarding_needed(struct ccnr_handle *h)
 {
     if (h->age_forwarding == NULL)
         h->age_forwarding = ccn_schedule_event(h->sched,
@@ -2160,7 +2160,7 @@ age_forwarding_needed(struct ccnd_handle *h)
 }
 
 static struct ccn_forwarding *
-seek_forwarding(struct ccnd_handle *h,
+seek_forwarding(struct ccnr_handle *h,
                 struct nameprefix_entry *npe, unsigned faceid)
 {
     struct ccn_forwarding *f;
@@ -2182,7 +2182,7 @@ seek_forwarding(struct ccnd_handle *h,
 /**
  * Register or update a prefix in the forwarding table (FIB).
  *
- * @param h is the ccnd handle.
+ * @param h is the ccnr handle.
  * @param msg is a ccnb-encoded message containing the name prefix somewhere.
  * @param comps contains the delimiting offsets for the name components in msg.
  * @param ncomps is the number of relevant components.
@@ -2193,7 +2193,7 @@ seek_forwarding(struct ccnd_handle *h,
  *        CCN_FORW_REFRESHED indicates a previously existing entry.
  */
 static int
-ccnd_reg_prefix(struct ccnd_handle *h,
+ccnr_reg_prefix(struct ccnr_handle *h,
                 const unsigned char *msg,
                 struct ccn_indexbuf *comps,
                 int ncomps,
@@ -2240,7 +2240,7 @@ ccnd_reg_prefix(struct ccnd_handle *h,
                 ccn_name_init(prefix);
                 ccn_name_append_components(prefix, msg,
                                            comps->buf[0], comps->buf[ncomps]);
-                ccnd_debug_ccnb(h, __LINE__,
+                ccnr_debug_ccnb(h, __LINE__,
                                 ccn_charbuf_as_string(debugtag),
                                 face,
                                 prefix->buf,
@@ -2261,7 +2261,7 @@ ccnd_reg_prefix(struct ccnd_handle *h,
  * @returns negative value for error, or new face flags for success.
  */
 int
-ccnd_reg_uri(struct ccnd_handle *h,
+ccnr_reg_uri(struct ccnr_handle *h,
              const char *uri,
              unsigned faceid,
              int flags,
@@ -2283,7 +2283,7 @@ ccnd_reg_uri(struct ccnd_handle *h,
     res = ccn_parse_Name(d, comps);
     if (res < 0)
         goto Bail;
-    res = ccnd_reg_prefix(h, name->buf, comps, comps->n - 1,
+    res = ccnr_reg_prefix(h, name->buf, comps, comps->n - 1,
                           faceid, flags, expires);
 Bail:
     ccn_charbuf_destroy(&name);
@@ -2296,7 +2296,7 @@ Bail:
  * The URIs in the charbuf are each terminated by nul.
  */
 void
-ccnd_reg_uri_list(struct ccnd_handle *h,
+ccnr_reg_uri_list(struct ccnr_handle *h,
              struct ccn_charbuf *uris,
              unsigned faceid,
              int flags,
@@ -2306,7 +2306,7 @@ ccnd_reg_uri_list(struct ccnd_handle *h,
     const char *s;
     s = ccn_charbuf_as_string(uris);
     for (i = 0; i + 1 < uris->length; i += strlen(s + i) + 1)
-        ccnd_reg_uri(h, s + i, faceid, flags, expires);
+        ccnr_reg_uri(h, s + i, faceid, flags, expires);
 }
 
 /**
@@ -2314,12 +2314,12 @@ ccnd_reg_uri_list(struct ccnd_handle *h,
  * that a face transitions from the undecided state.
  */
 static void
-register_new_face(struct ccnd_handle *h, struct face *face)
+register_new_face(struct ccnr_handle *h, struct face *face)
 {
     if (face->faceid != 0 && (face->flags & (CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE)) == 0) {
-        ccnd_face_status_change(h, face->faceid);
+        ccnr_face_status_change(h, face->faceid);
         if (h->flood && h->autoreg != NULL && (face->flags & CCN_FACE_GG) == 0)
-            ccnd_reg_uri_list(h, h->autoreg, face->faceid,
+            ccnr_reg_uri_list(h, h->autoreg, face->faceid,
                               CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
                               0x7FFFFFFF);
         ccn_link_state_init(h, face);
@@ -2332,7 +2332,7 @@ register_new_face(struct ccnd_handle *h, struct face *face)
  * @returns CCN_CONTENT_NACK, or -1 in case of error.
  */
 static int
-ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
+ccnr_nack(struct ccnr_handle *h, struct ccn_charbuf *reply_body,
           int errcode, const char *errtext)
 {
     int res;
@@ -2344,38 +2344,38 @@ ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
 }
 
 /**
- * Check that indicated ccndid matches ours.
+ * Check that indicated ccnrid matches ours.
  *
  * @returns 0 if OK, or CCN_CONTENT_NACK if not.
  */
 static int
-check_ccndid(struct ccnd_handle *h,
+check_ccnrid(struct ccnr_handle *h,
              const void *p, size_t sz, struct ccn_charbuf *reply_body)
 {
     if (sz != sizeof(h->ccnd_id) || memcmp(p, h->ccnd_id, sz) != 0)
-        return(ccnd_nack(h, reply_body, 531, "missing or incorrect ccndid"));
+        return(ccnr_nack(h, reply_body, 531, "missing or incorrect ccnrid"));
     return(0);
 }
 
 static int
-check_face_instance_ccndid(struct ccnd_handle *h,
+check_face_instance_ccnrid(struct ccnr_handle *h,
     struct ccn_face_instance *f, struct ccn_charbuf *reply_body)
 {
-    return(check_ccndid(h, f->ccnd_id, f->ccnd_id_size, reply_body));
+    return(check_ccnrid(h, f->ccnd_id, f->ccnd_id_size, reply_body));
 }
 
 static int
-check_forwarding_entry_ccndid(struct ccnd_handle *h,
+check_forwarding_entry_ccnrid(struct ccnr_handle *h,
     struct ccn_forwarding_entry *f, struct ccn_charbuf *reply_body)
 {
-    return(check_ccndid(h, f->ccnd_id, f->ccnd_id_size, reply_body));
+    return(check_ccnrid(h, f->ccnd_id, f->ccnd_id_size, reply_body));
 }
 
 /**
- * Process a newface request for the ccnd internal client.
+ * Process a newface request for the ccnr internal client.
  *
- * @param h is the ccnd handle
- * @param msg points to a ccnd-encoded ContentObject containing a
+ * @param h is the ccnr handle
+ * @param msg points to a ccnr-encoded ContentObject containing a
  *         FaceInstance in its Content.
  * @param size is its size in bytes
  * @param reply_body is a buffer to hold the Content of the reply, as a
@@ -2388,7 +2388,7 @@ check_forwarding_entry_ccndid(struct ccnd_handle *h,
  * receive any traffic.
  */
 int
-ccnd_req_newface(struct ccnd_handle *h,
+ccnr_req_newface(struct ccnr_handle *h,
                  const unsigned char *msg, size_t size,
                  struct ccn_charbuf *reply_body)
 {
@@ -2427,24 +2427,24 @@ ccnd_req_newface(struct ccnd_handle *h,
         (reqface->flags & (CCN_FACE_LOOPBACK | CCN_FACE_LOCAL)) == 0)
         goto Finish;
     nackallowed = 1;
-    res = check_face_instance_ccndid(h, face_instance, reply_body);
+    res = check_face_instance_ccnrid(h, face_instance, reply_body);
     if (res != 0)
         goto Finish;
     if (face_instance->descr.ipproto != IPPROTO_UDP &&
         face_instance->descr.ipproto != IPPROTO_TCP) {
-        res = ccnd_nack(h, reply_body, 504, "parameter error");
+        res = ccnr_nack(h, reply_body, 504, "parameter error");
         goto Finish;
     }
     if (face_instance->descr.address == NULL) {
-        res = ccnd_nack(h, reply_body, 504, "parameter error");
+        res = ccnr_nack(h, reply_body, 504, "parameter error");
         goto Finish;
     }
     if (face_instance->descr.port == NULL) {
-        res = ccnd_nack(h, reply_body, 504, "parameter error");
+        res = ccnr_nack(h, reply_body, 504, "parameter error");
         goto Finish;
     }
     if ((reqface->flags & CCN_FACE_GG) == 0) {
-        res = ccnd_nack(h, reply_body, 430, "not authorized");
+        res = ccnr_nack(h, reply_body, 430, "not authorized");
         goto Finish;
     }
     hints.ai_flags |= AI_NUMERICHOST;
@@ -2455,17 +2455,17 @@ ccnd_req_newface(struct ccnd_handle *h,
                       &hints,
                       &addrinfo);
     if (res != 0 || (h->debug & 128) != 0)
-        ccnd_msg(h, "ccnd_req_newface from %u: getaddrinfo(%s, %s, ...) returned %d",
+        ccnr_msg(h, "ccnr_req_newface from %u: getaddrinfo(%s, %s, ...) returned %d",
                  h->interest_faceid,
                  face_instance->descr.address,
                  face_instance->descr.port,
                  res);
     if (res != 0 || addrinfo == NULL) {
-        res = ccnd_nack(h, reply_body, 501, "syntax error in address");
+        res = ccnr_nack(h, reply_body, 501, "syntax error in address");
         goto Finish;
     }
     if (addrinfo->ai_next != NULL)
-        ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
+        ccnr_msg(h, "ccnr_req_newface: (addrinfo->ai_next != NULL) ? ?");
     if (face_instance->descr.ipproto == IPPROTO_UDP) {
         fd = -1;
         mcast = 0;
@@ -2482,7 +2482,7 @@ ccnd_req_newface(struct ccnd_handle *h,
                                    addrinfo->ai_addr,
                                    addrinfo->ai_addrlen);
         if (face == NULL) {
-            res = ccnd_nack(h, reply_body, 453, "could not setup multicast");
+            res = ccnr_nack(h, reply_body, 453, "could not setup multicast");
             goto Finish;
         }
         newface = get_dgram_source(h, face,
@@ -2514,7 +2514,7 @@ ccnd_req_newface(struct ccnd_handle *h,
             res = 0;
     }
     else
-        res = ccnd_nack(h, reply_body, 450, "could not create face");
+        res = ccnr_nack(h, reply_body, 450, "could not create face");
 Finish:
     h->flood = save; /* restore saved flood flag */
     ccn_face_instance_destroy(&face_instance);
@@ -2524,9 +2524,9 @@ Finish:
 }
 
 /**
- * @brief Process a destroyface request for the ccnd internal client.
- * @param h is the ccnd handle
- * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
+ * @brief Process a destroyface request for the ccnr internal client.
+ * @param h is the ccnr handle
+ * @param msg points to a ccnr-encoded ContentObject containing a FaceInstance
             in its Content.
  * @param size is its size in bytes
  * @param reply_body is a buffer to hold the Content of the reply, as a
@@ -2537,7 +2537,7 @@ Finish:
  * Is is an error if the face does not exist.
  */
 int
-ccnd_req_destroyface(struct ccnd_handle *h,
+ccnr_req_destroyface(struct ccnr_handle *h,
                      const unsigned char *msg, size_t size,
                      struct ccn_charbuf *reply_body)
 {
@@ -2565,11 +2565,11 @@ ccnd_req_destroyface(struct ccnd_handle *h,
     nackallowed = 1;
     if (strcmp(face_instance->action, "destroyface") != 0)
         { at = __LINE__; goto Finish; }
-    res = check_face_instance_ccndid(h, face_instance, reply_body);
+    res = check_face_instance_ccnrid(h, face_instance, reply_body);
     if (res != 0)
         { at = __LINE__; goto Finish; }
     if (face_instance->faceid == 0) { at = __LINE__; goto Finish; }
-    res = ccnd_destroy_face(h, face_instance->faceid);
+    res = ccnr_destroy_face(h, face_instance->faceid);
     if (res < 0) { at = __LINE__; goto Finish; }
     face_instance->action = NULL;
     face_instance->ccnd_id = h->ccnd_id;
@@ -2581,11 +2581,11 @@ ccnd_req_destroyface(struct ccnd_handle *h,
     }
 Finish:
     if (at != 0) {
-        ccnd_msg(h, "ccnd_req_destroyface failed (line %d, res %d)", at, res);
+        ccnr_msg(h, "ccnr_req_destroyface failed (line %d, res %d)", at, res);
         if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
             res = -1;
         else
-            res = ccnd_nack(h, reply_body, 450, "could not destroy face");
+            res = ccnr_nack(h, reply_body, 450, "could not destroy face");
     }
     ccn_face_instance_destroy(&face_instance);
     return((nackallowed || res <= 0) ? res : -1);
@@ -2595,7 +2595,7 @@ Finish:
  * Worker bee for two very similar public functions.
  */
 static int
-ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
+ccnr_req_prefix_or_self_reg(struct ccnr_handle *h,
                             const unsigned char *msg, size_t size, int selfreg,
                             struct ccn_charbuf *reply_body)
 {
@@ -2659,7 +2659,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     res = ccn_name_split(forwarding_entry->name_prefix, comps);
     if (res < 0)
         goto Finish;
-    res = ccnd_reg_prefix(h,
+    res = ccnr_reg_prefix(h,
                           forwarding_entry->name_prefix->buf, comps, res,
                           face->faceid,
                           forwarding_entry->flags,
@@ -2677,14 +2677,14 @@ Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
     if (nackallowed && res < 0)
-        res = ccnd_nack(h, reply_body, 450, "could not register prefix");
+        res = ccnr_nack(h, reply_body, 450, "could not register prefix");
     return((nackallowed || res <= 0) ? res : -1);
 }
 
 /**
- * @brief Process a prefixreg request for the ccnd internal client.
- * @param h is the ccnd handle
- * @param msg points to a ccnd-encoded ContentObject containing a
+ * @brief Process a prefixreg request for the ccnr internal client.
+ * @param h is the ccnr handle
+ * @param msg points to a ccnr-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
  * @param reply_body is a buffer to hold the Content of the reply, as a
@@ -2694,17 +2694,17 @@ Finish:
  *
  */
 int
-ccnd_req_prefixreg(struct ccnd_handle *h,
+ccnr_req_prefixreg(struct ccnr_handle *h,
                    const unsigned char *msg, size_t size,
                    struct ccn_charbuf *reply_body)
 {
-    return(ccnd_req_prefix_or_self_reg(h, msg, size, 0, reply_body));
+    return(ccnr_req_prefix_or_self_reg(h, msg, size, 0, reply_body));
 }
 
 /**
- * @brief Process a selfreg request for the ccnd internal client.
- * @param h is the ccnd handle
- * @param msg points to a ccnd-encoded ContentObject containing a
+ * @brief Process a selfreg request for the ccnr internal client.
+ * @param h is the ccnr handle
+ * @param msg points to a ccnr-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
  * @param reply_body is a buffer to hold the Content of the reply, as a
@@ -2714,17 +2714,17 @@ ccnd_req_prefixreg(struct ccnd_handle *h,
  *
  */
 int
-ccnd_req_selfreg(struct ccnd_handle *h,
+ccnr_req_selfreg(struct ccnr_handle *h,
                  const unsigned char *msg, size_t size,
                  struct ccn_charbuf *reply_body)
 {
-    return(ccnd_req_prefix_or_self_reg(h, msg, size, 1, reply_body));
+    return(ccnr_req_prefix_or_self_reg(h, msg, size, 1, reply_body));
 }
 
 /**
- * @brief Process an unreg request for the ccnd internal client.
- * @param h is the ccnd handle
- * @param msg points to a ccnd-encoded ContentObject containing a
+ * @brief Process an unreg request for the ccnr internal client.
+ * @param h is the ccnr handle
+ * @param msg points to a ccnr-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
  * @param reply_body is a buffer to hold the Content of the reply, as a
@@ -2734,7 +2734,7 @@ ccnd_req_selfreg(struct ccnd_handle *h,
  *
  */
 int
-ccnd_req_unreg(struct ccnd_handle *h,
+ccnr_req_unreg(struct ccnr_handle *h,
                const unsigned char *msg, size_t size,
                struct ccn_charbuf *reply_body)
 {
@@ -2776,7 +2776,7 @@ ccnd_req_unreg(struct ccnd_handle *h,
         goto Finish;
     if (forwarding_entry->name_prefix == NULL)
         goto Finish;
-    res = check_forwarding_entry_ccndid(h, forwarding_entry, reply_body);
+    res = check_forwarding_entry_ccnrid(h, forwarding_entry, reply_body);
     if (res != 0)
         goto Finish;
     res = -1;
@@ -2802,7 +2802,7 @@ ccnd_req_unreg(struct ccnd_handle *h,
         if (f->faceid == forwarding_entry->faceid) {
             found = 1;
             if (h->debug & (2 | 4))
-                ccnd_debug_ccnb(h, __LINE__, "prefix_unreg", face,
+                ccnr_debug_ccnb(h, __LINE__, "prefix_unreg", face,
                                 forwarding_entry->name_prefix->buf,
                                 forwarding_entry->name_prefix->length);
             *p = f->next;
@@ -2825,7 +2825,7 @@ Finish:
     ccn_forwarding_entry_destroy(&forwarding_entry);
     ccn_indexbuf_destroy(&comps);
     if (nackallowed && res < 0)
-        res = ccnd_nack(h, reply_body, 450, "could not unregister prefix");
+        res = ccnr_nack(h, reply_body, 450, "could not unregister prefix");
     return((nackallowed || res <= 0) ? res : -1);
 }
 
@@ -2834,7 +2834,7 @@ Finish:
  * from forwarding lists of npe and all of its ancestors.
  */
 static void
-update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
+update_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
 {
     struct ccn_indexbuf *x = NULL;
     struct ccn_indexbuf *tap = NULL;
@@ -2866,7 +2866,7 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
                 tflags |= tap_or_last;
             if ((tflags & wantflags) == wantflags) {
                 if (h->debug & 32)
-                    ccnd_msg(h, "fwd.%d adding %u", __LINE__, f->faceid);
+                    ccnr_msg(h, "fwd.%d adding %u", __LINE__, f->faceid);
                 ccn_indexbuf_set_insert(x, f->faceid);
                 if ((f->flags & CCN_FORW_TAP) != 0) {
                     if (tap == NULL)
@@ -2894,7 +2894,7 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
 
 /**
  * This is where we consult the interest forwarding table.
- * @param h is the ccnd handle
+ * @param h is the ccnr handle
  * @param from is the handle for the originating face (may be NULL).
  * @param msg points to the ccnb-encoded interest message
  * @param pi must be the parse information for msg
@@ -2902,7 +2902,7 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
  * @result Newly allocated set of outgoing faceids (never NULL)
  */
 static struct ccn_indexbuf *
-get_outbound_faces(struct ccnd_handle *h,
+get_outbound_faces(struct ccnr_handle *h,
     struct face *from,
     unsigned char *msg,
     struct ccn_parsed_interest *pi,
@@ -2938,7 +2938,7 @@ get_outbound_faces(struct ccnd_handle *h,
         if (face != NULL && face != from &&
             ((face->flags & checkmask) == wantmask)) {
             if (h->debug & 32)
-                ccnd_msg(h, "outbound.%d adding %u", __LINE__, face->faceid);
+                ccnr_msg(h, "outbound.%d adding %u", __LINE__, face->faceid);
             ccn_indexbuf_append_element(x, face->faceid);
         }
     }
@@ -2946,7 +2946,7 @@ get_outbound_faces(struct ccnd_handle *h,
 }
 
 static int
-pe_next_usec(struct ccnd_handle *h,
+pe_next_usec(struct ccnr_handle *h,
              struct propagating_entry *pe, int next_delay, int lineno)
 {
     if (next_delay > pe->usec)
@@ -2960,7 +2960,7 @@ pe_next_usec(struct ccnd_handle *h,
                          pe->outbound ? pe->outbound->n : -1,
                          next_delay, pe->usec);
         if (pe->interest_msg != NULL) {
-            ccnd_debug_ccnb(h, lineno, ccn_charbuf_as_string(c),
+            ccnr_debug_ccnb(h, lineno, ccn_charbuf_as_string(c),
                             face_from_faceid(h, pe->faceid),
                             pe->interest_msg, pe->size);
         }
@@ -2969,7 +2969,7 @@ pe_next_usec(struct ccnd_handle *h,
     return(next_delay);
 }
 
-static void replan_propagation(struct ccnd_handle *, struct propagating_entry *);
+static void replan_propagation(struct ccnr_handle *, struct propagating_entry *);
 
 static int
 do_propagate(struct ccn_schedule *sched,
@@ -2977,7 +2977,7 @@ do_propagate(struct ccn_schedule *sched,
              struct ccn_scheduled_event *ev,
              int flags)
 {
-    struct ccnd_handle *h = clienth;
+    struct ccnr_handle *h = clienth;
     struct propagating_entry *pe = ev->evdata;
     (void)(sched);
     int next_delay = 1;
@@ -2994,7 +2994,7 @@ do_propagate(struct ccn_schedule *sched,
     }
     if (pe->usec <= 0) {
         if (h->debug & 2)
-            ccnd_debug_ccnb(h, __LINE__, "interest_expiry",
+            ccnr_debug_ccnb(h, __LINE__, "interest_expiry",
                             face_from_faceid(h, pe->faceid),
                             pe->interest_msg, pe->size);
         consume(h, pe);
@@ -3011,7 +3011,7 @@ do_propagate(struct ccn_schedule *sched,
         struct face *face = face_from_faceid(h, faceid);
         if (face != NULL && (face->flags & CCN_FACE_NOSEND) == 0) {
             if (h->debug & 2)
-                ccnd_debug_ccnb(h, __LINE__, "interest_to", face,
+                ccnr_debug_ccnb(h, __LINE__, "interest_to", face,
                                 pe->interest_msg, pe->size);
             pe->sent++;
             h->interests_sent += 1;
@@ -3027,7 +3027,7 @@ do_propagate(struct ccn_schedule *sched,
                 next_delay = special_delay = ev->evint;
             }
             stuff_and_send(h, face, pe->interest_msg, pe->size, NULL, 0);
-            ccnd_meter_bump(h, face->meter[FM_INTO], 1);
+            ccnr_meter_bump(h, face->meter[FM_INTO], 1);
         }
         else
             ccn_indexbuf_remove_first_match(pe->outbound, faceid);
@@ -3046,7 +3046,7 @@ do_propagate(struct ccn_schedule *sched,
     else {
         unsigned faceid = pe->outbound->buf[pe->sent];
         struct face *face = face_from_faceid(h, faceid);
-        /* Wait longer before sending interest to ccndc */
+        /* Wait longer before sending interest to ccnrc */
         if (face != NULL && (face->flags & CCN_FACE_DC) != 0)
             next_delay += 60000;
     }
@@ -3064,7 +3064,7 @@ do_propagate(struct ccn_schedule *sched,
 // XXX - rearrange to allow dummied-up "sent" entries.
 // XXX - subtle point - when similar interests are present in the PIT, and a new dest appears due to prefix registration, only one of the set should get sent to the new dest.
 static int
-adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
+adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct face *face,
                                        unsigned char *msg,
                                        struct ccn_parsed_interest *pi,
                                        struct nameprefix_entry *npe,
@@ -3104,7 +3104,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                     ((otherface->flags ^ face->flags) & CCN_FACE_GG) != 0)
                     continue;
                 if (h->debug & 32)
-                    ccnd_debug_ccnb(h, __LINE__, "similar_interest",
+                    ccnr_debug_ccnb(h, __LINE__, "similar_interest",
                                     face_from_faceid(h, p->faceid),
                                     p->interest_msg, p->size);
                 if (face->faceid == p->faceid) {
@@ -3162,7 +3162,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
 }
 
 static void
-ccnd_append_debug_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
+ccnr_append_debug_nonce(struct ccnr_handle *h, struct face *face, struct ccn_charbuf *cb) {
         unsigned char s[12];
         int i;
         
@@ -3180,7 +3180,7 @@ ccnd_append_debug_nonce(struct ccnd_handle *h, struct face *face, struct ccn_cha
 }
 
 static void
-ccnd_append_plain_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
+ccnr_append_plain_nonce(struct ccnr_handle *h, struct face *face, struct ccn_charbuf *cb) {
         int noncebytes = 6;
         unsigned char *s = NULL;
         int i;
@@ -3198,7 +3198,7 @@ ccnd_append_plain_nonce(struct ccnd_handle *h, struct face *face, struct ccn_cha
  * Schedules the propagation of an Interest message.
  */
 static int
-propagate_interest(struct ccnd_handle *h,
+propagate_interest(struct ccnr_handle *h,
                    struct face *face,
                    unsigned char *msg,
                    struct ccn_parsed_interest *pi,
@@ -3231,7 +3231,7 @@ propagate_interest(struct ccnd_handle *h,
              * does not have one yet.
              */
             if (h->debug & 16)
-                ccnd_debug_ccnb(h, __LINE__, "interest_subsumed", face,
+                ccnr_debug_ccnb(h, __LINE__, "interest_subsumed", face,
                                 msg_out, msg_out_size);
             h->interests_dropped += 1;
             ccn_indexbuf_destroy(&outbound);
@@ -3307,7 +3307,7 @@ propagate_interest(struct ccnd_handle *h,
         }
     }
     else {
-        ccnd_msg(h, "Interesting - this shouldn't happen much - ccnd.c:%d", __LINE__);
+        ccnr_msg(h, "Interesting - this shouldn't happen much - ccnr.c:%d", __LINE__);
         /* We must have duplicated an existing nonce, or ENOMEM. */
         res = -1;
     }
@@ -3319,7 +3319,7 @@ propagate_interest(struct ccnd_handle *h,
 }
 
 static struct nameprefix_entry *
-nameprefix_for_pe(struct ccnd_handle *h, struct propagating_entry *pe)
+nameprefix_for_pe(struct ccnr_handle *h, struct propagating_entry *pe)
 {
     struct nameprefix_entry *npe;
     struct propagating_entry *p;
@@ -3332,7 +3332,7 @@ nameprefix_for_pe(struct ccnd_handle *h, struct propagating_entry *pe)
 }
 
 static void
-replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
+replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
 {
     struct nameprefix_entry *npe = NULL;
     struct ccn_indexbuf *x = pe->outbound;
@@ -3375,7 +3375,7 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
             k = x->n;
             ccn_indexbuf_set_insert(x, faceid);
             if (x->n > k && (h->debug & 32) != 0)
-                ccnd_msg(h, "at %d adding %u", __LINE__, faceid);
+                ccnr_msg(h, "at %d adding %u", __LINE__, faceid);
         }
     }
     // XXX - should account for similar interests, history, etc.
@@ -3388,7 +3388,7 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
  * the duplicate arrived on from the outbound set of the original.
  */
 static int
-is_duplicate_flooded(struct ccnd_handle *h, unsigned char *msg,
+is_duplicate_flooded(struct ccnr_handle *h, unsigned char *msg,
                      struct ccn_parsed_interest *pi, unsigned faceid)
 {
     struct hashtb_enumerator ee;
@@ -3414,7 +3414,7 @@ is_duplicate_flooded(struct ccnd_handle *h, unsigned char *msg,
  * Finds the longest matching nameprefix, returns the component count or -1 for error.
  */
 /* UNUSED */ int
-nameprefix_longest_match(struct ccnd_handle *h, const unsigned char *msg,
+nameprefix_longest_match(struct ccnr_handle *h, const unsigned char *msg,
                          struct ccn_indexbuf *comps, int ncomps)
 {
     int i;
@@ -3433,7 +3433,7 @@ nameprefix_longest_match(struct ccnd_handle *h, const unsigned char *msg,
         if (npe->children == 0)
             break;
     }
-    ccnd_msg(h, "nameprefix_longest_match returning %d", answer);
+    ccnr_msg(h, "nameprefix_longest_match returning %d", answer);
     return(answer);
 }
 
@@ -3442,7 +3442,7 @@ nameprefix_longest_match(struct ccnd_handle *h, const unsigned char *msg,
  * with all of its parents.
  */
 static int
-nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
+nameprefix_seek(struct ccnr_handle *h, struct hashtb_enumerator *e,
                 const unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
 {
     int i;
@@ -3487,7 +3487,7 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
 }
 
 static struct content_entry *
-next_child_at_level(struct ccnd_handle *h,
+next_child_at_level(struct ccnr_handle *h,
                     struct content_entry *content, int level)
 {
     struct content_entry *next = NULL;
@@ -3509,7 +3509,7 @@ next_child_at_level(struct ccnd_handle *h,
     res = ccn_name_next_sibling(name);
     if (res < 0) abort();
     if (h->debug & 8)
-        ccnd_debug_ccnb(h, __LINE__, "child_successor", NULL,
+        ccnr_debug_ccnb(h, __LINE__, "child_successor", NULL,
                         name->buf, name->length);
     d = content_skiplist_findbefore(h, name->buf, name->length,
                                     NULL, pred);
@@ -3517,14 +3517,14 @@ next_child_at_level(struct ccnd_handle *h,
     if (next == content) {
         // XXX - I think this case should not occur, but just in case, avoid a loop.
         next = content_from_accession(h, content_skiplist_next(h, content));
-        ccnd_debug_ccnb(h, __LINE__, "bump", NULL, next->key, next->size);
+        ccnr_debug_ccnb(h, __LINE__, "bump", NULL, next->key, next->size);
     }
     ccn_charbuf_destroy(&name);
     return(next);
 }
 
 static void
-process_incoming_interest(struct ccnd_handle *h, struct face *face,
+process_incoming_interest(struct ccnr_handle *h, struct face *face,
                           unsigned char *msg, size_t size)
 {
     struct hashtb_enumerator ee;
@@ -3546,26 +3546,26 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     else
         res = ccn_parse_interest(msg, size, pi, comps);
     if (res < 0) {
-        ccnd_msg(h, "error parsing Interest - code %d", res);
+        ccnr_msg(h, "error parsing Interest - code %d", res);
         ccn_indexbuf_destroy(&comps);
         return;
     }
-    ccnd_meter_bump(h, face->meter[FM_INTI], 1);
+    ccnr_meter_bump(h, face->meter[FM_INTI], 1);
     if (pi->scope >= 0 && pi->scope < 2 &&
              (face->flags & CCN_FACE_GG) == 0) {
-        ccnd_debug_ccnb(h, __LINE__, "interest_outofscope", face, msg, size);
+        ccnr_debug_ccnb(h, __LINE__, "interest_outofscope", face, msg, size);
         h->interests_dropped += 1;
     }
     else if (is_duplicate_flooded(h, msg, pi, face->faceid)) {
         if (h->debug & 16)
-             ccnd_debug_ccnb(h, __LINE__, "interest_dup", face, msg, size);
+             ccnr_debug_ccnb(h, __LINE__, "interest_dup", face, msg, size);
         h->interests_dropped += 1;
     }
     else {
         if (h->debug & (16 | 8 | 2))
-            ccnd_debug_ccnb(h, __LINE__, "interest_from", face, msg, size);
+            ccnr_debug_ccnb(h, __LINE__, "interest_from", face, msg, size);
         if (h->debug & 16)
-            ccnd_msg(h,
+            ccnr_msg(h,
                      "version: %d, "
                      "prefix_comps: %d, "
                      "min_suffix_comps: %d, "
@@ -3588,7 +3588,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         if (pi->magic < 20090701) {
             if (++(h->oldformatinterests) == h->oldformatinterestgrumble) {
                 h->oldformatinterestgrumble *= 2;
-                ccnd_msg(h, "downrev interests received: %d (%d)",
+                ccnr_msg(h, "downrev interests received: %d (%d)",
                          h->oldformatinterests,
                          pi->magic);
             }
@@ -3604,7 +3604,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
             goto Bail;
         if ((npe->flags & CCN_FORW_LOCAL) != 0 &&
             (face->flags & CCN_FACE_GG) == 0) {
-            ccnd_debug_ccnb(h, __LINE__, "interest_nonlocal", face, msg, size);
+            ccnr_debug_ccnb(h, __LINE__, "interest_nonlocal", face, msg, size);
             h->interests_dropped += 1;
             goto Bail;
         }
@@ -3612,14 +3612,14 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
             last_match = NULL;
             content = find_first_match_candidate(h, msg, pi);
             if (content != NULL && (h->debug & 8))
-                ccnd_debug_ccnb(h, __LINE__, "first_candidate", NULL,
+                ccnr_debug_ccnb(h, __LINE__, "first_candidate", NULL,
                                 content->key,
                                 content->size);
             if (content != NULL &&
                 !content_matches_interest_prefix(h, content, msg, comps,
                                                  pi->prefix_comps)) {
                 if (h->debug & 8)
-                    ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
+                    ccnr_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
                                     msg, size);
                 content = NULL;
             }
@@ -3634,13 +3634,13 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                         content_matches_interest_prefix(h, content, msg,
                                                         comps, comps->n - 1)) {
                         if (h->debug & 8)
-                            ccnd_debug_ccnb(h, __LINE__, "skip_match", NULL,
+                            ccnr_debug_ccnb(h, __LINE__, "skip_match", NULL,
                                             content->key,
                                             content->size);
                         goto move_along;
                     }
                     if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "matches", NULL,
+                        ccnr_debug_ccnb(h, __LINE__, "matches", NULL,
                                         content->key,
                                         content->size);
                     if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
@@ -3656,7 +3656,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                     !content_matches_interest_prefix(h, content, msg,
                                                      comps, pi->prefix_comps)) {
                     if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
+                        ccnr_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
                                         content->key,
                                         content->size);
                     content = NULL;
@@ -3674,7 +3674,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                     k = face_send_queue_insert(h, face, content);
                     if (k >= 0) {
                         if (h->debug & (32 | 8))
-                            ccnd_debug_ccnb(h, __LINE__, "consume", face, msg, size);
+                            ccnr_debug_ccnb(h, __LINE__, "consume", face, msg, size);
                     }
                     /* Any other matched interests need to be consumed, too. */
                     match_interests(h, content, NULL, face, NULL);
@@ -3696,13 +3696,13 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
  * Mark content as stale
  */
 static void
-mark_stale(struct ccnd_handle *h, struct content_entry *content)
+mark_stale(struct ccnr_handle *h, struct content_entry *content)
 {
     ccn_accession_t accession = content->accession;
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         return;
     if (h->debug & 4)
-            ccnd_debug_ccnb(h, __LINE__, "stale", NULL,
+            ccnr_debug_ccnb(h, __LINE__, "stale", NULL,
                             content->key, content->size);
     content->flags |= CCN_CONTENT_ENTRY_STALE;
     h->n_stale++;
@@ -3724,7 +3724,7 @@ expire_content(struct ccn_schedule *sched,
                struct ccn_scheduled_event *ev,
                int flags)
 {
-    struct ccnd_handle *h = clienth;
+    struct ccnr_handle *h = clienth;
     ccn_accession_t accession = ev->evint;
     struct content_entry *content = NULL;
     int res;
@@ -3751,7 +3751,7 @@ expire_content(struct ccn_schedule *sched,
  *
  */
 static void
-set_content_timer(struct ccnd_handle *h, struct content_entry *content,
+set_content_timer(struct ccnr_handle *h, struct content_entry *content,
                   struct ccn_parsed_ContentObject *pco)
 {
     int seconds = 0;
@@ -3772,7 +3772,7 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
     if (seconds <= 0)
         return;
     if (seconds > ((1U<<31) / 1000000)) {
-        ccnd_debug_ccnb(h, __LINE__, "FreshnessSeconds_too_large", NULL,
+        ccnr_debug_ccnb(h, __LINE__, "FreshnessSeconds_too_large", NULL,
             content->key, pco->offset[CCN_PCO_E]);
         return;
     }
@@ -3783,7 +3783,7 @@ Finish:
 }
 
 static void
-process_incoming_content(struct ccnd_handle *h, struct face *face,
+process_incoming_content(struct ccnr_handle *h, struct face *face,
                          unsigned char *wire_msg, size_t wire_size)
 {
     unsigned char *msg;
@@ -3805,22 +3805,22 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     
     res = ccn_parse_ContentObject(msg, size, &obj, comps);
     if (res < 0) {
-        ccnd_msg(h, "error parsing ContentObject - code %d", res);
+        ccnr_msg(h, "error parsing ContentObject - code %d", res);
         goto Bail;
     }
-    ccnd_meter_bump(h, face->meter[FM_DATI], 1);
+    ccnr_meter_bump(h, face->meter[FM_DATI], 1);
     if (comps->n < 1 ||
         (keysize = comps->buf[comps->n - 1]) > 65535 - 36) {
-        ccnd_msg(h, "ContentObject with keysize %lu discarded",
+        ccnr_msg(h, "ContentObject with keysize %lu discarded",
                  (unsigned long)keysize);
-        ccnd_debug_ccnb(h, __LINE__, "oversize", face, msg, size);
+        ccnr_debug_ccnb(h, __LINE__, "oversize", face, msg, size);
         res = -__LINE__;
         goto Bail;
     }
     /* Make the ContentObject-digest name component explicit */
     ccn_digest_ContentObject(msg, &obj);
     if (obj.digest_bytes != 32) {
-        ccnd_debug_ccnb(h, __LINE__, "indigestible", face, msg, size);
+        ccnr_debug_ccnb(h, __LINE__, "indigestible", face, msg, size);
         goto Bail;
     }
     i = comps->buf[comps->n - 1];
@@ -3838,13 +3838,13 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     if (obj.magic != 20090415) {
         if (++(h->oldformatcontent) == h->oldformatcontentgrumble) {
             h->oldformatcontentgrumble *= 10;
-            ccnd_msg(h, "downrev content items received: %d (%d)",
+            ccnr_msg(h, "downrev content items received: %d (%d)",
                      h->oldformatcontent,
                      obj.magic);
         }
     }
     if (h->debug & 4)
-        ccnd_debug_ccnb(h, __LINE__, "content_from", face, msg, size);
+        ccnr_debug_ccnb(h, __LINE__, "content_from", face, msg, size);
     keysize = obj.offset[CCN_PCO_B_Content];
     tail = msg + keysize;
     tailsize = size - keysize;
@@ -3854,9 +3854,9 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
     if (res == HT_OLD_ENTRY) {
         if (tailsize != e->extsize ||
               0 != memcmp(tail, ((unsigned char *)e->key) + keysize, tailsize)) {
-            ccnd_msg(h, "ContentObject name collision!!!!!");
-            ccnd_debug_ccnb(h, __LINE__, "new", face, msg, size);
-            ccnd_debug_ccnb(h, __LINE__, "old", NULL, e->key, e->keysize + e->extsize);
+            ccnr_msg(h, "ContentObject name collision!!!!!");
+            ccnr_debug_ccnb(h, __LINE__, "new", face, msg, size);
+            ccnr_debug_ccnb(h, __LINE__, "old", NULL, e->key, e->keysize + e->extsize);
             content = NULL;
             hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
             res = -__LINE__;
@@ -3871,9 +3871,9 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         }
         else {
             h->content_dups_recvd++;
-            ccnd_msg(h, "received duplicate ContentObject from %u (accession %llu)",
+            ccnr_msg(h, "received duplicate ContentObject from %u (accession %llu)",
                      face->faceid, (unsigned long long)content->accession);
-            ccnd_debug_ccnb(h, __LINE__, "dup", face, msg, size);
+            ccnr_debug_ccnb(h, __LINE__, "dup", face, msg, size);
         }
     }
     else if (res == HT_NEW_ENTRY) {
@@ -3893,7 +3893,7 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
             set_content_timer(h, content, &obj);
         }
         else {
-            ccnd_msg(h, "could not enroll ContentObject (accession %llu)",
+            ccnr_msg(h, "could not enroll ContentObject (accession %llu)",
                 (unsigned long long)content->accession);
             hashtb_delete(e);
             res = -__LINE__;
@@ -3933,7 +3933,7 @@ Bail:
                      * don't send the content back
                      */
                     if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "content_nosend", face, msg, size);
+                        ccnr_debug_ccnb(h, __LINE__, "content_nosend", face, msg, size);
                     q->send_queue->buf[i] = 0;
                 }
             }
@@ -3942,7 +3942,7 @@ Bail:
 }
 
 static void
-process_input_message(struct ccnd_handle *h, struct face *face,
+process_input_message(struct ccnr_handle *h, struct face *face,
                       unsigned char *msg, size_t size, int pdu_ok)
 {
     struct ccn_skeleton_decoder decoder = {0};
@@ -3962,7 +3962,7 @@ process_input_message(struct ccnd_handle *h, struct face *face,
     if (d->state < 0)
         abort(); /* cannot happen because of checks in caller */
     if (CCN_GET_TT_FROM_DSTATE(d->state) != CCN_DTAG) {
-        ccnd_msg(h, "discarding unknown message; size = %lu", (unsigned long)size);
+        ccnr_msg(h, "discarding unknown message; size = %lu", (unsigned long)size);
         // XXX - keep a count?
         return;
     }
@@ -3998,13 +3998,13 @@ process_input_message(struct ccnd_handle *h, struct face *face,
         default:
             break;
     }
-    ccnd_msg(h, "discarding unknown message; dtag=%u, size = %lu",
+    ccnr_msg(h, "discarding unknown message; dtag=%u, size = %lu",
              (unsigned)dtag,
              (unsigned long)size);
 }
 
 static void
-ccnd_new_face_msg(struct ccnd_handle *h, struct face *face)
+ccnr_new_face_msg(struct ccnr_handle *h, struct face *face)
 {
     const struct sockaddr *addr = face->addr;
     int port = 0;
@@ -4025,7 +4025,7 @@ ccnd_new_face_msg(struct ccnd_handle *h, struct face *face)
         peer = inet_ntop(addr->sa_family, rawaddr, printable, sizeof(printable));
     if (peer == NULL)
         peer = "(unknown)";
-    ccnd_msg(h,
+    ccnr_msg(h,
              "accepted datagram client id=%d (flags=0x%x) %s port %d",
              face->faceid, face->flags, peer, port);
 }
@@ -4063,7 +4063,7 @@ scrub_sockaddr(struct sockaddr *addr, socklen_t addrlen,
 }
 
 static struct face *
-get_dgram_source(struct ccnd_handle *h, struct face *face,
+get_dgram_source(struct ccnr_handle *h, struct face *face,
                  struct sockaddr *addr, socklen_t addrlen, int why)
 {
     struct face *source = NULL;
@@ -4094,7 +4094,7 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
                 source = NULL;
             }
             else {
-                ccnd_new_face_msg(h, source);
+                ccnr_new_face_msg(h, source);
                 reap_needed(h, CCN_INTEREST_LIFETIME_MICROSEC);
             }
         }
@@ -4111,7 +4111,7 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
  * its output is input for face 0.
  */
 static void
-process_input_buffer(struct ccnd_handle *h, struct face *face)
+process_input_buffer(struct ccnr_handle *h, struct face *face)
 {
     unsigned char *msg;
     size_t size;
@@ -4130,7 +4130,7 @@ process_input_buffer(struct ccnd_handle *h, struct face *face)
         process_input_message(h, face, msg + d->index - dres, dres, 0);
     }
     if (d->index != size) {
-        ccnd_msg(h, "protocol error on face %u (state %d), discarding %d bytes",
+        ccnr_msg(h, "protocol error on face %u (state %d), discarding %d bytes",
                      face->faceid, d->state, (int)(size - d->index));
         // XXX - perhaps this should be a fatal error.
     }
@@ -4147,7 +4147,7 @@ process_input_buffer(struct ccnd_handle *h, struct face *face)
  * process_input_message for each one.
  */
 static void
-process_input(struct ccnd_handle *h, int fd)
+process_input(struct ccnr_handle *h, int fd)
 {
     struct face *face = NULL;
     struct face *source = NULL;
@@ -4173,7 +4173,7 @@ process_input(struct ccnd_handle *h, int fd)
     err_sz = sizeof(err);
     res = getsockopt(face->recv_fd, SOL_SOCKET, SO_ERROR, &err, &err_sz);
     if (res >= 0 && err != 0) {
-        ccnd_msg(h, "error on face %u: %s (%d)", face->faceid, strerror(err), err);
+        ccnr_msg(h, "error on face %u: %s (%d)", face->faceid, strerror(err), err);
         if (err == ETIMEDOUT && (face->flags & CCN_FACE_CONNECTING) != 0) {
             shutdown_client_fd(h, fd);
             return;
@@ -4189,19 +4189,19 @@ process_input(struct ccnd_handle *h, int fd)
     res = recvfrom(face->recv_fd, buf, face->inbuf->limit - face->inbuf->length,
             /* flags */ 0, addr, &addrlen);
     if (res == -1)
-        ccnd_msg(h, "recvfrom face %u :%s (errno = %d)",
+        ccnr_msg(h, "recvfrom face %u :%s (errno = %d)",
                     face->faceid, strerror(errno), errno);
     else if (res == 0 && (face->flags & CCN_FACE_DGRAM) == 0)
         shutdown_client_fd(h, fd);
     else {
         source = get_dgram_source(h, face, addr, addrlen, (res == 1) ? 1 : 2);
-        ccnd_meter_bump(h, source->meter[FM_BYTI], res);
+        ccnr_meter_bump(h, source->meter[FM_BYTI], res);
         source->recvcount++;
         source->surplus = 0; // XXX - we don't actually use this, except for some obscure messages.
         if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
             // XXX - If the initial heartbeat gets missed, we don't realize the locality of the face.
             if (h->debug & 128)
-                ccnd_msg(h, "%d-byte heartbeat on %d", (int)res, source->faceid);
+                ccnr_msg(h, "%d-byte heartbeat on %d", (int)res, source->faceid);
             return;
         }
         face->inbuf->length += res;
@@ -4209,7 +4209,7 @@ process_input(struct ccnd_handle *h, int fd)
         if (((face->flags & CCN_FACE_UNDECIDED) != 0 &&
              face->inbuf->length >= 6 &&
              0 == memcmp(face->inbuf->buf, "GET ", 4))) {
-            ccnd_stats_handle_http_connection(h, face);
+            ccnr_stats_handle_http_connection(h, face);
             return;
         }
         dres = ccn_skeleton_decode(d, buf, res);
@@ -4228,7 +4228,7 @@ process_input(struct ccnd_handle *h, int fd)
                     res = face->inbuf->length - d->index);  // XXX - why is res set here?
         }
         if ((face->flags & CCN_FACE_DGRAM) != 0) {
-            ccnd_msg(h, "protocol error on face %u, discarding %u bytes",
+            ccnr_msg(h, "protocol error on face %u, discarding %u bytes",
                 source->faceid,
                 (unsigned)(face->inbuf->length));  // XXX - Should be face->inbuf->length - d->index (or msgstart)
             face->inbuf->length = 0;
@@ -4236,7 +4236,7 @@ process_input(struct ccnd_handle *h, int fd)
             return;
         }
         else if (d->state < 0) {
-            ccnd_msg(h, "protocol error on face %u", source->faceid);
+            ccnr_msg(h, "protocol error on face %u", source->faceid);
             shutdown_client_fd(h, fd);
             return;
         }
@@ -4251,7 +4251,7 @@ process_input(struct ccnd_handle *h, int fd)
 }
 
 static void
-process_internal_client_buffer(struct ccnd_handle *h)
+process_internal_client_buffer(struct ccnr_handle *h)
 {
     struct face *face = h->face0;
     if (face == NULL)
@@ -4259,7 +4259,7 @@ process_internal_client_buffer(struct ccnd_handle *h)
     face->inbuf = ccn_grab_buffered_output(h->internal_client);
     if (face->inbuf == NULL)
         return;
-    ccnd_meter_bump(h, face->meter[FM_BYTI], face->inbuf->length);
+    ccnr_meter_bump(h, face->meter[FM_BYTI], face->inbuf->length);
     process_input_buffer(h, face);
     ccn_charbuf_destroy(&(face->inbuf));
 }
@@ -4269,7 +4269,7 @@ process_internal_client_buffer(struct ccnd_handle *h)
  * @returns -1 if error has been dealt with, or 0 to defer sending.
  */
 static int
-handle_send_error(struct ccnd_handle *h, int errnum, struct face *face,
+handle_send_error(struct ccnr_handle *h, int errnum, struct face *face,
                   const void *data, size_t size)
 {
     int res = -1;
@@ -4282,7 +4282,7 @@ handle_send_error(struct ccnd_handle *h, int errnum, struct face *face,
         ccn_charbuf_destroy(&face->outbuf);
     }
     else {
-        ccnd_msg(h, "send to face %u failed: %s (errno = %d)",
+        ccnr_msg(h, "send to face %u failed: %s (errno = %d)",
                  face->faceid, strerror(errnum), errnum);
         if (errnum == EISCONN)
             res = 0;
@@ -4291,7 +4291,7 @@ handle_send_error(struct ccnd_handle *h, int errnum, struct face *face,
 }
 
 static int
-sending_fd(struct ccnd_handle *h, struct face *face)
+sending_fd(struct ccnr_handle *h, struct face *face)
 {
     struct face *out = NULL;
     if (face->sendface == face->faceid)
@@ -4324,7 +4324,7 @@ sending_fd(struct ccnd_handle *h, struct face *face)
  * No direct error result is provided; the face state is updated as needed.
  */
 void
-ccnd_send(struct ccnd_handle *h,
+ccnr_send(struct ccnr_handle *h,
           struct face *face,
           const void *data, size_t size)
 {
@@ -4337,7 +4337,7 @@ ccnd_send(struct ccnd_handle *h,
         return;
     }
     if (face == h->face0) {
-        ccnd_meter_bump(h, face->meter[FM_BYTO], size);
+        ccnr_meter_bump(h, face->meter[FM_BYTO], size);
         ccn_dispatch_message(h->internal_client, (void *)data, size);
         process_internal_client_buffer(h);
         return;
@@ -4348,7 +4348,7 @@ ccnd_send(struct ccnd_handle *h,
         res = sendto(sending_fd(h, face), data, size, 0,
                      face->addr, face->addrlen);
     if (res > 0)
-        ccnd_meter_bump(h, face->meter[FM_BYTO], res);
+        ccnr_meter_bump(h, face->meter[FM_BYTO], res);
     if (res == size)
         return;
     if (res == -1) {
@@ -4357,13 +4357,13 @@ ccnd_send(struct ccnd_handle *h,
             return;
     }
     if ((face->flags & CCN_FACE_DGRAM) != 0) {
-        ccnd_msg(h, "sendto short");
+        ccnr_msg(h, "sendto short");
         return;
     }
     face->outbufindex = 0;
     face->outbuf = ccn_charbuf_create();
     if (face->outbuf == NULL) {
-        ccnd_msg(h, "do_write: %s", strerror(errno));
+        ccnr_msg(h, "do_write: %s", strerror(errno));
         return;
     }
     ccn_charbuf_append(face->outbuf,
@@ -4371,7 +4371,7 @@ ccnd_send(struct ccnd_handle *h,
 }
 
 static void
-do_deferred_write(struct ccnd_handle *h, int fd)
+do_deferred_write(struct ccnr_handle *h, int fd)
 {
     /* This only happens on connected sockets */
     ssize_t res;
@@ -4389,7 +4389,7 @@ do_deferred_write(struct ccnd_handle *h, int fd)
                     ccn_charbuf_destroy(&face->outbuf);
                     return;
                 }
-                ccnd_msg(h, "send: %s (errno = %d)", strerror(errno), errno);
+                ccnr_msg(h, "send: %s (errno = %d)", strerror(errno), errno);
                 shutdown_client_fd(h, fd);
                 return;
             }
@@ -4410,10 +4410,10 @@ do_deferred_write(struct ccnd_handle *h, int fd)
         shutdown_client_fd(h, fd);
     else if ((face->flags & CCN_FACE_CONNECTING) != 0) {
         face->flags &= ~CCN_FACE_CONNECTING;
-        ccnd_face_status_change(h, face->faceid);
+        ccnr_face_status_change(h, face->faceid);
     }
     else
-        ccnd_msg(h, "ccnd:do_deferred_write: something fishy on %d", fd);
+        ccnr_msg(h, "ccnr:do_deferred_write: something fishy on %d", fd);
 }
 
 /**
@@ -4424,7 +4424,7 @@ do_deferred_write(struct ccnd_handle *h, int fd)
  * normal socket, we will count is as multicast.
  */
 static void
-prepare_poll_fds(struct ccnd_handle *h)
+prepare_poll_fds(struct ccnr_handle *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -4452,10 +4452,10 @@ prepare_poll_fds(struct ccnd_handle *h)
 }
 
 /**
- * Run the main loop of the ccnd
+ * Run the main loop of the ccnr
  */
 void
-ccnd_run(struct ccnd_handle *h)
+ccnr_run(struct ccnr_handle *h)
 {
     int i;
     int res;
@@ -4470,11 +4470,11 @@ ccnd_run(struct ccnd_handle *h)
             timeout_ms = 1;
         process_internal_client_buffer(h);
         prepare_poll_fds(h);
-        if (0) ccnd_msg(h, "at ccnd.c:%d poll(h->fds, %d, %d)", __LINE__, h->nfds, timeout_ms);
+        if (0) ccnr_msg(h, "at ccnr.c:%d poll(h->fds, %d, %d)", __LINE__, h->nfds, timeout_ms);
         res = poll(h->fds, h->nfds, timeout_ms);
         prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
         if (-1 == res) {
-            ccnd_msg(h, "poll: %s (errno = %d)", strerror(errno), errno);
+            ccnr_msg(h, "poll: %s (errno = %d)", strerror(errno), errno);
             sleep(1);
             continue;
         }
@@ -4498,7 +4498,7 @@ ccnd_run(struct ccnd_handle *h)
 }
 
 static void
-ccnd_reseed(struct ccnd_handle *h)
+ccnr_reseed(struct ccnr_handle *h)
 {
     int fd;
     ssize_t res;
@@ -4521,7 +4521,7 @@ ccnd_reseed(struct ccnd_handle *h)
 }
 
 static char *
-ccnd_get_local_sockname(void)
+ccnr_get_local_sockname(void)
 {
     struct sockaddr_un sa;
     ccn_setup_sockaddr_un(NULL, &sa);
@@ -4529,9 +4529,9 @@ ccnd_get_local_sockname(void)
 }
 
 static void
-ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
+ccnr_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 {
-    struct ccnd_handle *h = self->data;
+    struct ccnr_handle *h = self->data;
     struct timeval now = {0};
     gettimeofday(&now, 0);
     result->s = now.tv_sec;
@@ -4541,7 +4541,7 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 }
 
 void
-ccnd_setsockopt_v6only(struct ccnd_handle *h, int fd)
+ccnr_setsockopt_v6only(struct ccnr_handle *h, int fd)
 {
     int yes = 1;
     int res = 0;
@@ -4549,7 +4549,7 @@ ccnd_setsockopt_v6only(struct ccnd_handle *h, int fd)
     res = setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof(yes));
 #endif
     if (res == -1)
-        ccnd_msg(h, "warning - could not set IPV6_V6ONLY on fd %d: %s",
+        ccnr_msg(h, "warning - could not set IPV6_V6ONLY on fd %d: %s",
                  fd, strerror(errno));
 }
 
@@ -4567,7 +4567,7 @@ af_name(int family)
 }
 
 static int
-ccnd_listen_on_wildcards(struct ccnd_handle *h)
+ccnr_listen_on_wildcards(struct ccnr_handle *h)
 {
     int fd;
     int res;
@@ -4593,7 +4593,7 @@ ccnd_listen_on_wildcards(struct ccnd_handle *h)
                     rcvbuf_sz = sizeof(rcvbuf);
                     getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
                     if (a->ai_family == AF_INET6)
-                        ccnd_setsockopt_v6only(h, fd);
+                        ccnr_setsockopt_v6only(h, fd);
                     res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);
@@ -4610,7 +4610,7 @@ ccnd_listen_on_wildcards(struct ccnd_handle *h)
                         h->ipv4_faceid = face->faceid;
                     else
                         h->ipv6_faceid = face->faceid;
-                    ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
+                    ccnr_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
                              af_name(a->ai_family), fd, rcvbuf);
                 }
             }
@@ -4620,7 +4620,7 @@ ccnd_listen_on_wildcards(struct ccnd_handle *h)
                     int yes = 1;
                     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                     if (a->ai_family == AF_INET6)
-                        ccnd_setsockopt_v6only(h, fd);
+                        ccnr_setsockopt_v6only(h, fd);
                     res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);
@@ -4634,7 +4634,7 @@ ccnd_listen_on_wildcards(struct ccnd_handle *h)
                     record_connection(h, fd,
                                       a->ai_addr, a->ai_addrlen,
                                       CCN_FACE_PASSIVE);
-                    ccnd_msg(h, "accepting %s connections on fd %d",
+                    ccnr_msg(h, "accepting %s connections on fd %d",
                              af_name(a->ai_family), fd);
                 }
             }
@@ -4645,7 +4645,7 @@ ccnd_listen_on_wildcards(struct ccnd_handle *h)
 }
 
 static int
-ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
+ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
 {
     int fd;
     int res;
@@ -4654,7 +4654,7 @@ ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
     struct addrinfo *a;
     int ok = 0;
     
-    ccnd_msg(h, "listen_on %s", addr);
+    ccnr_msg(h, "listen_on %s", addr);
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
     res = getaddrinfo(addr, h->portstr, &hints, &addrinfo);
@@ -4670,7 +4670,7 @@ ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
                 rcvbuf_sz = sizeof(rcvbuf);
                 getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
                 if (a->ai_family == AF_INET6)
-                    ccnd_setsockopt_v6only(h, fd);
+                    ccnr_setsockopt_v6only(h, fd);
                 res = bind(fd, a->ai_addr, a->ai_addrlen);
                 if (res != 0) {
                     close(fd);
@@ -4687,7 +4687,7 @@ ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
                     h->ipv4_faceid = face->faceid;
                 else
                     h->ipv6_faceid = face->faceid;
-                ccnd_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
+                ccnr_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
                              af_name(a->ai_family), fd, rcvbuf);
                 ok++;
             }
@@ -4698,7 +4698,7 @@ ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
                 int yes = 1;
                 setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                 if (a->ai_family == AF_INET6)
-                    ccnd_setsockopt_v6only(h, fd);
+                    ccnr_setsockopt_v6only(h, fd);
                 res = bind(fd, a->ai_addr, a->ai_addrlen);
                 if (res != 0) {
                     close(fd);
@@ -4712,7 +4712,7 @@ ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
                 record_connection(h, fd,
                                   a->ai_addr, a->ai_addrlen,
                                   CCN_FACE_PASSIVE);
-                ccnd_msg(h, "accepting %s connections on fd %d",
+                ccnr_msg(h, "accepting %s connections on fd %d",
                          af_name(a->ai_family), fd);
                 ok++;
             }
@@ -4723,7 +4723,7 @@ ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
 }
 
 static int
-ccnd_listen_on(struct ccnd_handle *h, const char *addrs)
+ccnr_listen_on(struct ccnr_handle *h, const char *addrs)
 {
     unsigned char ch;
     unsigned char dlm;
@@ -4732,7 +4732,7 @@ ccnd_listen_on(struct ccnd_handle *h, const char *addrs)
     struct ccn_charbuf *addr = NULL;
     
     if (addrs == NULL || !*addrs || 0 == strcmp(addrs, "*"))
-        return(ccnd_listen_on_wildcards(h));
+        return(ccnr_listen_on_wildcards(h));
     addr = ccn_charbuf_create();
     for (i = 0, ch = addrs[i]; addrs[i] != 0;) {
         addr->length = 0;
@@ -4746,7 +4746,7 @@ ccnd_listen_on(struct ccnd_handle *h, const char *addrs)
         if (ch && ch == dlm)
             ch = addrs[++i];
         if (addr->length > 0) {
-            res |= ccnd_listen_on_address(h, ccn_charbuf_as_string(addr));
+            res |= ccnr_listen_on_address(h, ccn_charbuf_as_string(addr));
         }
         while ((0 < ch && ch <= ' ') || ch == ',' || ch == ';')
             ch = addrs[++i];
@@ -4756,7 +4756,7 @@ ccnd_listen_on(struct ccnd_handle *h, const char *addrs)
 }
 
 static struct ccn_charbuf *
-ccnd_parse_uri_list(struct ccnd_handle *h, const char *what, const char *uris)
+ccnr_parse_uri_list(struct ccnr_handle *h, const char *what, const char *uris)
 {
     struct ccn_charbuf *ans;
     struct ccn_charbuf *name;
@@ -4784,7 +4784,7 @@ ccnd_parse_uri_list(struct ccnd_handle *h, const char *what, const char *uris)
             name->length = 0;
             res = ccn_name_from_uri(name, uri);
             if (res < 0) {
-                ccnd_msg(h, "%s: invalid ccnx URI: %s", what, uri);
+                ccnr_msg(h, "%s: invalid ccnx URI: %s", what, uri);
                 ans->length = j;
             }
         }
@@ -4796,13 +4796,13 @@ ccnd_parse_uri_list(struct ccnd_handle *h, const char *what, const char *uris)
 }
 
 /**
- * Start a new ccnd instance
+ * Start a new ccnr instance
  * @param progname - name of program binary, used for locating helpers
  * @param logger - logger function
  * @param loggerdata - data to pass to logger function
  */
-struct ccnd_handle *
-ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
+struct ccnr_handle *
+ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
 {
     char *sockname;
     const char *portstr;
@@ -4813,16 +4813,16 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     const char *autoreg;
     const char *listen_on;
     int fd;
-    struct ccnd_handle *h;
+    struct ccnr_handle *h;
     struct hashtb_param param = {0};
     
-    sockname = ccnd_get_local_sockname();
+    sockname = ccnr_get_local_sockname();
     h = calloc(1, sizeof(*h));
     if (h == NULL)
         return(h);
     h->logger = logger;
     h->loggerdata = loggerdata;
-    h->appnonce = &ccnd_append_plain_nonce;
+    h->appnonce = &ccnr_append_plain_nonce;
     h->logpid = (int)getpid();
     h->progname = progname;
     h->debug = -1;
@@ -4846,7 +4846,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->unsol = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
     h->ticktock.micros_per_base = 1000000;
-    h->ticktock.gettime = &ccnd_gettime;
+    h->ticktock.gettime = &ccnr_gettime;
     h->ticktock.data = h;
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->starttime = h->sec;
@@ -4894,19 +4894,19 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     }
     listen_on = getenv("CCND_LISTEN_ON");
     autoreg = getenv("CCND_AUTOREG");
-    ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
+    ccnr_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
     if (autoreg != NULL && autoreg[0] != 0) {
-        h->autoreg = ccnd_parse_uri_list(h, "CCND_AUTOREG", autoreg);
+        h->autoreg = ccnr_parse_uri_list(h, "CCND_AUTOREG", autoreg);
         if (h->autoreg != NULL)
-            ccnd_msg(h, "CCND_AUTOREG=%s", autoreg);
+            ccnr_msg(h, "CCND_AUTOREG=%s", autoreg);
     }
     if (listen_on != NULL && listen_on[0] != 0)
-        ccnd_msg(h, "CCND_LISTEN_ON=%s", listen_on);
+        ccnr_msg(h, "CCND_LISTEN_ON=%s", listen_on);
     // if (h->debug & 256)
-        h->appnonce = &ccnd_append_debug_nonce;
+        h->appnonce = &ccnr_append_debug_nonce;
     /* Do keystore setup early, it takes a while the first time */
-    ccnd_init_internal_keystore(h);
-    ccnd_reseed(h);
+    ccnr_init_internal_keystore(h);
+    ccnr_reseed(h);
     if (h->face0 == NULL) {
         struct face *face;
         face = calloc(1, sizeof(*face));
@@ -4918,15 +4918,15 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     enroll_face(h, h->face0);
     fd = create_local_listener(h, sockname, 42);
     if (fd == -1)
-        ccnd_msg(h, "%s: %s", sockname, strerror(errno));
+        ccnr_msg(h, "%s: %s", sockname, strerror(errno));
     else
-        ccnd_msg(h, "listening on %s", sockname);
+        ccnr_msg(h, "listening on %s", sockname);
     h->flood = (h->autoreg != NULL);
     h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
-    ccnd_listen_on(h, listen_on);
+    ccnr_listen_on(h, listen_on);
     clean_needed(h);
     age_forwarding_needed(h);
-    ccnd_internal_client_start(h);
+    ccnr_internal_client_start(h);
     free(sockname);
     sockname = NULL;
     return(h);
@@ -4936,7 +4936,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
  * Shutdown listeners and bound datagram sockets, leaving connected streams.
  */
 static void
-ccnd_shutdown_listeners(struct ccnd_handle *h)
+ccnr_shutdown_listeners(struct ccnr_handle *h)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -4951,16 +4951,16 @@ ccnd_shutdown_listeners(struct ccnd_handle *h)
 }
 
 /**
- * Destroy the ccnd instance, releasing all associated resources.
+ * Destroy the ccnr instance, releasing all associated resources.
  */
 void
-ccnd_destroy(struct ccnd_handle **pccnd)
+ccnr_destroy(struct ccnr_handle **pccnr)
 {
-    struct ccnd_handle *h = *pccnd;
+    struct ccnr_handle *h = *pccnr;
     if (h == NULL)
         return;
-    ccnd_shutdown_listeners(h);
-    ccnd_internal_client_stop(h);
+    ccnr_shutdown_listeners(h);
+    ccnr_internal_client_stop(h);
     ccn_schedule_destroy(&h->sched);
     hashtb_destroy(&h->dgram_faces);
     hashtb_destroy(&h->faces_by_fd);
@@ -4995,5 +4995,5 @@ ccnd_destroy(struct ccnd_handle **pccnd)
         h->face0 = NULL;
     }
     free(h);
-    *pccnd = NULL;
+    *pccnr = NULL;
 }

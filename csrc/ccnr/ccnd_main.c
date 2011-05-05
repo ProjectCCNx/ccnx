@@ -1,5 +1,5 @@
 /**
- * @file ccnd_main.c
+ * @file ccnr_main.c
  *
  * A CCNx program.
  *
@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "ccnd_private.h"
+#include "ccnr_private.h"
 
 static int
 stdiologger(void *loggerdata, const char *format, va_list ap)
@@ -35,18 +35,18 @@ stdiologger(void *loggerdata, const char *format, va_list ap)
 int
 main(int argc, char **argv)
 {
-    struct ccnd_handle *h;
+    struct ccnr_handle *h;
     
     if (argc > 1) {
-        fprintf(stderr, "%s", ccnd_usage_message);
+        fprintf(stderr, "%s", ccnr_usage_message);
         exit(1);
     }
     signal(SIGPIPE, SIG_IGN);
-    h = ccnd_create(argv[0], stdiologger, stderr);
+    h = ccnr_create(argv[0], stdiologger, stderr);
     if (h == NULL)
         exit(1);
-    ccnd_run(h);
-    ccnd_msg(h, "exiting.");
-    ccnd_destroy(&h);
+    ccnr_run(h);
+    ccnr_msg(h, "exiting.");
+    ccnr_destroy(&h);
     exit(0);
 }

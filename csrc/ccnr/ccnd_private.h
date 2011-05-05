@@ -1,11 +1,11 @@
 /**
- * @file ccnd_private.h
+ * @file ccnr_private.h
  *
- * Private definitions for ccnd - the CCNx daemon.
+ * Private definitions for ccnr - the CCNx daemon.
  * Data structures are described here so that logging and status
  * routines can be compiled separately.
  *
- * Part of ccnd - the CCNx Daemon.
+ * Part of ccnr - the CCNx Daemon.
  *
  * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
@@ -44,12 +44,12 @@
 struct ccn_charbuf;
 struct ccn_indexbuf;
 struct hashtb;
-struct ccnd_meter;
+struct ccnr_meter;
 
 /*
  * These are defined in this header.
  */
-struct ccnd_handle;
+struct ccnr_handle;
 struct face;
 struct content_entry;
 struct nameprefix_entry;
@@ -60,12 +60,12 @@ struct ccn_forwarding;
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
 
-typedef int (*ccnd_logger)(void *loggerdata, const char *format, va_list ap);
+typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 
 /**
- * We pass this handle almost everywhere within ccnd
+ * We pass this handle almost everywhere within ccnr
  */
-struct ccnd_handle {
+struct ccnr_handle {
     unsigned char ccnd_id[32];      /**< sha256 digest of our public key */
     struct hashtb *faces_by_fd;     /**< keyed by fd */
     struct hashtb *dgram_faces;     /**< keyed by sockaddr */
@@ -90,8 +90,8 @@ struct ccnd_handle {
     struct ccn_gettime ticktock;    /**< our time generator */
     long sec;                       /**< cached gettime seconds */
     unsigned usec;                  /**< cached gettime microseconds */
-    long starttime;                 /**< ccnd start time, in seconds */
-    unsigned starttime_usec;        /**< ccnd start time fractional part */
+    long starttime;                 /**< ccnr start time, in seconds */
+    unsigned starttime_usec;        /**< ccnr start time fractional part */
     struct ccn_schedule *sched;     /**< our schedule */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
@@ -121,7 +121,7 @@ struct ccnd_handle {
     unsigned short seed[3];         /**< for PRNG */
     int running;                    /**< true while should be running */
     int debug;                      /**< For controlling debug output */
-    ccnd_logger logger;             /**< For debug output */
+    ccnr_logger logger;             /**< For debug output */
     void *loggerdata;               /**< Passed to logger */
     int logbreak;                   /**< see ccn_msg() */
     unsigned long logtime;          /**< see ccn_msg() */
@@ -141,14 +141,14 @@ struct ccnd_handle {
     struct ccn_scheduled_event *internal_client_refresh;
     struct ccn_scheduled_event *notice_push;
     unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
-    void (*appnonce)(struct ccnd_handle *, struct face *, struct ccn_charbuf *);
+    void (*appnonce)(struct ccnr_handle *, struct face *, struct ccn_charbuf *);
                                     /**< pluggable nonce generation */
 };
 
 /**
  * Each face is referenced by a number, the faceid.  The low-order
  * bits (under the MAXFACES) constitute a slot number that is
- * unique (for this ccnd) among the faces that are alive at a given time.
+ * unique (for this ccnr) among the faces that are alive at a given time.
  * The rest of the bits form a generation number that make the
  * entire faceid unique over time, even for faces that are defunct.
  */
@@ -175,7 +175,7 @@ enum cq_delay_class {
 /**
  * Face meter index
  */
-enum ccnd_face_meter_index {
+enum ccnr_face_meter_index {
     FM_BYTI,
     FM_BYTO,
     FM_DATI,
@@ -205,7 +205,7 @@ struct face {
     int pending_interests;
     unsigned rrun;
     uintmax_t rseq;
-    struct ccnd_meter *meter[CCND_FACE_METER_N];
+    struct ccnr_meter *meter[CCND_FACE_METER_N];
     unsigned short pktseq;     /**< sequence number for sent packets */
 };
 
@@ -330,17 +330,17 @@ struct ccn_forwarding {
 };
 
 /* create and destroy procs for separately allocated meters */
-struct ccnd_meter *ccnd_meter_create(struct ccnd_handle *h, const char *what);
-void ccnd_meter_destroy(struct ccnd_meter **);
+struct ccnr_meter *ccnr_meter_create(struct ccnr_handle *h, const char *what);
+void ccnr_meter_destroy(struct ccnr_meter **);
 
 /* for meters kept within other structures */
-void ccnd_meter_init(struct ccnd_handle *h, struct ccnd_meter *m, const char *what);
+void ccnr_meter_init(struct ccnr_handle *h, struct ccnr_meter *m, const char *what);
 
 /* count something (messages, packets, bytes), getting time info from h */
-void ccnd_meter_bump(struct ccnd_handle *h, struct ccnd_meter *m, unsigned amt);
+void ccnr_meter_bump(struct ccnr_handle *h, struct ccnr_meter *m, unsigned amt);
 
-unsigned ccnd_meter_rate(struct ccnd_handle *h, struct ccnd_meter *m);
-uintmax_t ccnd_meter_total(struct ccnd_meter *m);
+unsigned ccnr_meter_rate(struct ccnr_handle *h, struct ccnr_meter *m);
+uintmax_t ccnr_meter_total(struct ccnr_meter *m);
 
 /**
  * @def CCN_FORW_ACTIVE         1
@@ -351,7 +351,7 @@ uintmax_t ccnd_meter_total(struct ccnd_meter *m);
  * @def CCN_FORW_LOCAL         32
  */
 #define CCN_FORW_PFXO (CCN_FORW_ADVERTISE | CCN_FORW_CAPTURE | CCN_FORW_LOCAL)
-#define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
+#define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnr */
 
  
 /**
@@ -361,18 +361,18 @@ uintmax_t ccnd_meter_total(struct ccnd_meter *m);
 
 /*
  * Internal client
- * The internal client is for communication between the ccnd and other
+ * The internal client is for communication between the ccnr and other
  * components, using (of course) ccn protocols.
  */
-int ccnd_init_internal_keystore(struct ccnd_handle *);
-int ccnd_internal_client_start(struct ccnd_handle *);
-void ccnd_internal_client_stop(struct ccnd_handle *);
+int ccnr_init_internal_keystore(struct ccnr_handle *);
+int ccnr_internal_client_start(struct ccnr_handle *);
+void ccnr_internal_client_stop(struct ccnr_handle *);
 
 /*
  * The internal client calls this with the argument portion ARG of
  * a face-creation request (/ccnx/CCNDID/newface/ARG)
  */
-int ccnd_req_newface(struct ccnd_handle *h,
+int ccnr_req_newface(struct ccnr_handle *h,
                      const unsigned char *msg, size_t size,
                      struct ccn_charbuf *reply_body);
 
@@ -380,7 +380,7 @@ int ccnd_req_newface(struct ccnd_handle *h,
  * The internal client calls this with the argument portion ARG of
  * a face-destroy request (/ccnx/CCNDID/destroyface/ARG)
  */
-int ccnd_req_destroyface(struct ccnd_handle *h,
+int ccnr_req_destroyface(struct ccnr_handle *h,
                          const unsigned char *msg, size_t size,
                          struct ccn_charbuf *reply_body);
 
@@ -388,7 +388,7 @@ int ccnd_req_destroyface(struct ccnd_handle *h,
  * The internal client calls this with the argument portion ARG of
  * a prefix-registration request (/ccnx/CCNDID/prefixreg/ARG)
  */
-int ccnd_req_prefixreg(struct ccnd_handle *h,
+int ccnr_req_prefixreg(struct ccnr_handle *h,
                        const unsigned char *msg, size_t size,
                        struct ccn_charbuf *reply_body);
 
@@ -396,49 +396,49 @@ int ccnd_req_prefixreg(struct ccnd_handle *h,
  * The internal client calls this with the argument portion ARG of
  * a prefix-registration request for self (/ccnx/CCNDID/selfreg/ARG)
  */
-int ccnd_req_selfreg(struct ccnd_handle *h,
+int ccnr_req_selfreg(struct ccnr_handle *h,
                      const unsigned char *msg, size_t size,
                      struct ccn_charbuf *reply_body);
 
 /**
  * URIs for prefixes served by the internal client
  */
-#define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY"
-#define CCNDID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/ccnd/KEY"
+#define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnr/KEY"
+#define CCNDID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/ccnr/KEY"
 
 /*
  * The internal client calls this with the argument portion ARG of
  * a prefix-unregistration request (/ccnx/CCNDID/unreg/ARG)
  */
-int ccnd_req_unreg(struct ccnd_handle *h,
+int ccnr_req_unreg(struct ccnr_handle *h,
                    const unsigned char *msg, size_t size,
                    struct ccn_charbuf *reply_body);
 
-int ccnd_reg_uri(struct ccnd_handle *h,
+int ccnr_reg_uri(struct ccnr_handle *h,
                  const char *uri,
                  unsigned faceid,
                  int flags,
                  int expires);
 
-struct face *ccnd_face_from_faceid(struct ccnd_handle *, unsigned);
-void ccnd_face_status_change(struct ccnd_handle *, unsigned);
-int ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid);
-void ccnd_send(struct ccnd_handle *h, struct face *face,
+struct face *ccnr_face_from_faceid(struct ccnr_handle *, unsigned);
+void ccnr_face_status_change(struct ccnr_handle *, unsigned);
+int ccnr_destroy_face(struct ccnr_handle *h, unsigned faceid);
+void ccnr_send(struct ccnr_handle *h, struct face *face,
                const void *data, size_t size);
 
 /* Consider a separate header for these */
-int ccnd_stats_handle_http_connection(struct ccnd_handle *, struct face *);
-void ccnd_msg(struct ccnd_handle *, const char *, ...);
-void ccnd_debug_ccnb(struct ccnd_handle *h,
+int ccnr_stats_handle_http_connection(struct ccnr_handle *, struct face *);
+void ccnr_msg(struct ccnr_handle *, const char *, ...);
+void ccnr_debug_ccnb(struct ccnr_handle *h,
                      int lineno,
                      const char *msg,
                      struct face *face,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
 
-struct ccnd_handle *ccnd_create(const char *, ccnd_logger, void *);
-void ccnd_run(struct ccnd_handle *h);
-void ccnd_destroy(struct ccnd_handle **);
-extern const char *ccnd_usage_message;
+struct ccnr_handle *ccnr_create(const char *, ccnr_logger, void *);
+void ccnr_run(struct ccnr_handle *h);
+void ccnr_destroy(struct ccnr_handle **);
+extern const char *ccnr_usage_message;
 
 #endif

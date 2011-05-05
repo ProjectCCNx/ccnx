@@ -1,9 +1,9 @@
 /**
- * @file ccnd_stats.c
+ * @file ccnr_stats.c
  *
- * Statistics presentation for ccnd.
+ * Statistics presentation for ccnr.
  *
- * Part of ccnd - the CCNx Daemon.
+ * Part of ccnr - the CCNx Daemon.
  *
  * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
@@ -41,7 +41,7 @@
 #include <ccn/hashtb.h>
 #include <ccn/uri.h>
 
-#include "ccnd_private.h"
+#include "ccnr_private.h"
 
 #define CRLF "\r\n"
 #define NL   "\n"
@@ -49,25 +49,25 @@
 /**
  * Provide a way to monitor rates.
  */
-struct ccnd_meter {
+struct ccnr_meter {
     uintmax_t total;
     char what[8];
     unsigned rate; /** a scale factor applies */
     unsigned lastupdate;
 };
 
-struct ccnd_stats {
+struct ccnr_stats {
     long total_interest_counts;
     long total_flood_control;      /* done propagating, still recorded */
 };
 
-static int ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans);
-static struct ccn_charbuf *collect_stats_html(struct ccnd_handle *h);
-static void send_http_response(struct ccnd_handle *h, struct face *face,
+static int ccnr_collect_stats(struct ccnr_handle *h, struct ccnr_stats *ans);
+static struct ccn_charbuf *collect_stats_html(struct ccnr_handle *h);
+static void send_http_response(struct ccnr_handle *h, struct face *face,
                                const char *mime_type,
                                struct ccn_charbuf *response);
-static struct ccn_charbuf *collect_stats_html(struct ccnd_handle *h);
-static struct ccn_charbuf *collect_stats_xml(struct ccnd_handle *h);
+static struct ccn_charbuf *collect_stats_html(struct ccnr_handle *h);
+static struct ccn_charbuf *collect_stats_xml(struct ccnr_handle *h);
 
 /* HTTP */
 
@@ -80,12 +80,12 @@ static const char *resp405 =
     "Connection: close" CRLF CRLF;
 
 static void
-ccnd_stats_http_set_debug(struct ccnd_handle *h, struct face *face, int level)
+ccnr_stats_http_set_debug(struct ccnr_handle *h, struct face *face, int level)
 {
     struct ccn_charbuf *response = ccn_charbuf_create();
     
     h->debug = 1;
-    ccnd_msg(h, "CCND_DEBUG=%d", level);
+    ccnr_msg(h, "CCND_DEBUG=%d", level);
     h->debug = level;
     ccn_charbuf_putf(response, "<title>CCND_DEBUG=%d</title><tt>CCND_DEBUG=%d</tt>" CRLF, level, level);
     send_http_response(h, face, "text/html", response);
@@ -93,7 +93,7 @@ ccnd_stats_http_set_debug(struct ccnd_handle *h, struct face *face, int level)
 }
 
 int
-ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
+ccnr_stats_handle_http_connection(struct ccnr_handle *h, struct face *face)
 {
     struct ccn_charbuf *response = NULL;
     char rbuf[16];
@@ -104,7 +104,7 @@ ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
     if (face->inbuf->length < 4)
         return(-1);
     if ((face->flags & CCN_FACE_NOSEND) != 0) {
-        ccnd_destroy_face(h, face->faceid);
+        ccnr_destroy_face(h, face->faceid);
         return(-1);
     }
     n = sizeof(rbuf) - 1;
@@ -124,35 +124,35 @@ ccnd_stats_handle_http_connection(struct ccnd_handle *h, struct face *face)
         send_http_response(h, face, "text/html", response);
     }
     else if (0 == strcmp(rbuf, "GET /?l=none ")) {
-        ccnd_stats_http_set_debug(h, face, 0);
+        ccnr_stats_http_set_debug(h, face, 0);
     }
     else if (0 == strcmp(rbuf, "GET /?l=low ")) {
-        ccnd_stats_http_set_debug(h, face, 1);
+        ccnr_stats_http_set_debug(h, face, 1);
     }
     else if (0 == strcmp(rbuf, "GET /?l=co ")) {
-        ccnd_stats_http_set_debug(h, face, 4);
+        ccnr_stats_http_set_debug(h, face, 4);
     }
     else if (0 == strcmp(rbuf, "GET /?l=med ")) {
-        ccnd_stats_http_set_debug(h, face, 71);
+        ccnr_stats_http_set_debug(h, face, 71);
     }
     else if (0 == strcmp(rbuf, "GET /?l=high ")) {
-        ccnd_stats_http_set_debug(h, face, -1);
+        ccnr_stats_http_set_debug(h, face, -1);
     }
     else if (0 == strcmp(rbuf, "GET /?f=xml ")) {
         response = collect_stats_xml(h);
         send_http_response(h, face, "text/xml", response);
     }
     else if (0 == strcmp(rbuf, "GET "))
-        ccnd_send(h, face, resp404, strlen(resp404));
+        ccnr_send(h, face, resp404, strlen(resp404));
     else
-        ccnd_send(h, face, resp405, strlen(resp405));
+        ccnr_send(h, face, resp405, strlen(resp405));
     face->flags |= (CCN_FACE_NOSEND | CCN_FACE_CLOSING);
     ccn_charbuf_destroy(&response);
     return(0);
 }
 
 static void
-send_http_response(struct ccnd_handle *h, struct face *face,
+send_http_response(struct ccnr_handle *h, struct face *face,
                    const char *mime_type, struct ccn_charbuf *response)
 {
     struct linger linger = { .l_onoff = 1, .l_linger = 1 };
@@ -168,14 +168,14 @@ send_http_response(struct ccnd_handle *h, struct face *face,
                       "Content-Length: %jd" CRLF CRLF,
                       mime_type,
                       (intmax_t)response->length);
-    ccnd_send(h, face, buf, hdrlen);
-    ccnd_send(h, face, response->buf, response->length);
+    ccnr_send(h, face, buf, hdrlen);
+    ccnr_send(h, face, response->buf, response->length);
 }
 
 /* Common statistics collection */
 
 static int
-ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
+ccnr_collect_stats(struct ccnr_handle *h, struct ccnr_stats *ans)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -187,7 +187,7 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
         struct propagating_entry *head = &npe->pe_head;
         struct propagating_entry *p;
         for (p = head->next; p != head; p = p->next) {
-            if (ccnd_face_from_faceid(h, p->faceid) != NULL)
+            if (ccnr_face_from_faceid(h, p->faceid) != NULL)
                 sum += 1;
         }
     }
@@ -208,7 +208,7 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
             sum += face->pending_interests;
     }
     if (sum != ans->total_interest_counts)
-        ccnd_msg(h, "ccnd_collect_stats found inconsistency %ld != %ld\n",
+        ccnr_msg(h, "ccnr_collect_stats found inconsistency %ld != %ld\n",
                  (long)sum, (long)ans->total_interest_counts);
     ans->total_interest_counts = sum;
     return(0);
@@ -217,7 +217,7 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
 /* HTML formatting */
 
 static void
-collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
+collect_faces_html(struct ccnr_handle *h, struct ccn_charbuf *b)
 {
     int i;
     struct ccn_charbuf *nodebuf;
@@ -268,7 +268,7 @@ collect_faces_html(struct ccnd_handle *h, struct ccn_charbuf *b)
 }
 
 static void
-collect_face_meter_html(struct ccnd_handle *h, struct ccn_charbuf *b)
+collect_face_meter_html(struct ccnr_handle *h, struct ccn_charbuf *b)
 {
     int i;
     ccn_charbuf_putf(b, "<h4>Face Activity Rates</h4>");
@@ -285,14 +285,14 @@ collect_face_meter_html(struct ccnd_handle *h, struct ccn_charbuf *b)
             ccn_charbuf_putf(b, "<td><b>face:</b> %u</td>\t",
                              face->faceid);
             ccn_charbuf_putf(b, "<td>%6u / %u</td>\t\t",
-                                 ccnd_meter_rate(h, face->meter[FM_BYTI]),
-                                 ccnd_meter_rate(h, face->meter[FM_BYTO]));
+                                 ccnr_meter_rate(h, face->meter[FM_BYTI]),
+                                 ccnr_meter_rate(h, face->meter[FM_BYTO]));
             ccn_charbuf_putf(b, "<td>%9u / %u</td>\t\t",
-                                 ccnd_meter_rate(h, face->meter[FM_DATI]),
-                                 ccnd_meter_rate(h, face->meter[FM_INTO]));
+                                 ccnr_meter_rate(h, face->meter[FM_DATI]),
+                                 ccnr_meter_rate(h, face->meter[FM_INTO]));
             ccn_charbuf_putf(b, "<td>%9u / %u</td>",
-                                 ccnd_meter_rate(h, face->meter[FM_DATO]),
-                                 ccnd_meter_rate(h, face->meter[FM_INTI]));
+                                 ccnr_meter_rate(h, face->meter[FM_DATO]),
+                                 ccnr_meter_rate(h, face->meter[FM_INTI]));
             ccn_charbuf_putf(b, "</tr>" NL);
         }
     }
@@ -301,7 +301,7 @@ collect_face_meter_html(struct ccnd_handle *h, struct ccn_charbuf *b)
 }
 
 static void
-collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
+collect_forwarding_html(struct ccnr_handle *h, struct ccn_charbuf *b)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -346,7 +346,7 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
 }
 
 static unsigned
-ccnd_colorhash(struct ccnd_handle *h)
+ccnr_colorhash(struct ccnr_handle *h)
 {
     unsigned const char *a = h->ccnd_id;
     unsigned v;
@@ -356,9 +356,9 @@ ccnd_colorhash(struct ccnd_handle *h)
 }
 
 static struct ccn_charbuf *
-collect_stats_html(struct ccnd_handle *h)
+collect_stats_html(struct ccnr_handle *h)
 {
-    struct ccnd_stats stats = {0};
+    struct ccnr_stats stats = {0};
     struct ccn_charbuf *b = ccn_charbuf_create();
     int pid;
     struct utsname un;
@@ -370,11 +370,11 @@ collect_stats_html(struct ccnd_handle *h)
     uname(&un);
     pid = getpid();
     
-    ccnd_collect_stats(h, &stats);
+    ccnr_collect_stats(h, &stats);
     ccn_charbuf_putf(b,
         "<html xmlns='http://www.w3.org/1999/xhtml'>"
         "<head>"
-        "<title>%s ccnd[%d]</title>"
+        "<title>%s ccnr[%d]</title>"
         //"<meta http-equiv='refresh' content='3'>"
         "<style type='text/css'>"
         "/*<![CDATA[*/"
@@ -392,7 +392,7 @@ collect_stats_html(struct ccnd_handle *h)
         "</style>"
         "</head>" NL
         "<body bgcolor='#%06X'>"
-        "<p class='header'>%s ccnd[%d] local port %s api %d start %ld.%06u now %ld.%06u</p>" NL
+        "<p class='header'>%s ccnr[%d] local port %s api %d start %ld.%06u now %ld.%06u</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
         " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
@@ -401,7 +401,7 @@ collect_stats_html(struct ccnd_handle *h)
         " %lu dropped, %lu sent, %lu stuffed</div>" NL,
         un.nodename,
         pid,
-        ccnd_colorhash(h),
+        ccnr_colorhash(h),
         un.nodename,
         pid,
         portstr,
@@ -436,21 +436,21 @@ collect_stats_html(struct ccnd_handle *h)
 /* XML formatting */
 
 static void
-collect_meter_xml(struct ccnd_handle *h, struct ccn_charbuf *b, struct ccnd_meter *m)
+collect_meter_xml(struct ccnr_handle *h, struct ccn_charbuf *b, struct ccnr_meter *m)
 {
     uintmax_t total;
     unsigned rate;
     
     if (m == NULL)
         return;
-    total = ccnd_meter_total(m);
-    rate = ccnd_meter_rate(h, m);
+    total = ccnr_meter_total(m);
+    rate = ccnr_meter_rate(h, m);
     ccn_charbuf_putf(b, "<%s><total>%ju</total><persec>%u</persec></%s>",
         m->what, total, rate, m->what);
 }
 
 static void
-collect_faces_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
+collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
 {
     int i;
     int m;
@@ -494,7 +494,7 @@ collect_faces_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
 }
 
 static void
-collect_forwarding_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
+collect_forwarding_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -539,20 +539,20 @@ collect_forwarding_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
 }
 
 static struct ccn_charbuf *
-collect_stats_xml(struct ccnd_handle *h)
+collect_stats_xml(struct ccnr_handle *h)
 {
-    struct ccnd_stats stats = {0};
+    struct ccnr_stats stats = {0};
     struct ccn_charbuf *b = ccn_charbuf_create();
     int i;
         
-    ccnd_collect_stats(h, &stats);
+    ccnr_collect_stats(h, &stats);
     ccn_charbuf_putf(b,
-        "<ccnd>"
+        "<ccnr>"
         "<identity>"
-        "<ccndid>");
+        "<ccnrid>");
     for (i = 0; i < sizeof(h->ccnd_id); i++)
         ccn_charbuf_putf(b, "%02X", h->ccnd_id[i]);
-    ccn_charbuf_putf(b, "</ccndid>"
+    ccn_charbuf_putf(b, "</ccnrid>"
         "<apiversion>%d</apiversion>"
         "<starttime>%ld.%06u</starttime>"
         "<now>%ld.%06u</now>"
@@ -593,21 +593,21 @@ collect_stats_xml(struct ccnd_handle *h)
         h->interests_sent, h->interests_stuffed);
     collect_faces_xml(h, b);
     collect_forwarding_xml(h, b);
-    ccn_charbuf_putf(b, "</ccnd>" NL);
+    ccn_charbuf_putf(b, "</ccnr>" NL);
     return(b);
 }
 
 /**
  * create and initialize separately allocated meter.
  */
-struct ccnd_meter *
-ccnd_meter_create(struct ccnd_handle *h, const char *what)
+struct ccnr_meter *
+ccnr_meter_create(struct ccnr_handle *h, const char *what)
 {
-    struct ccnd_meter *m;
+    struct ccnr_meter *m;
     m = calloc(1, sizeof(*m));
     if (m == NULL)
         return(NULL);
-    ccnd_meter_init(h, m, what);
+    ccnr_meter_init(h, m, what);
     return(m);
 }
 
@@ -615,7 +615,7 @@ ccnd_meter_create(struct ccnd_handle *h, const char *what)
  * Destroy a separately allocated meter.
  */
 void
-ccnd_meter_destroy(struct ccnd_meter **pm)
+ccnr_meter_destroy(struct ccnr_meter **pm)
 {
     if (*pm != NULL) {
         free(*pm);
@@ -627,14 +627,14 @@ ccnd_meter_destroy(struct ccnd_meter **pm)
  * Initialize a meter.
  */
 void
-ccnd_meter_init(struct ccnd_handle *h, struct ccnd_meter *m, const char *what)
+ccnr_meter_init(struct ccnr_handle *h, struct ccnr_meter *m, const char *what)
 {
     if (m == NULL)
         return;
     memset(m, 0, sizeof(m));
     if (what != NULL)
         strncpy(m->what, what, sizeof(m->what)-1);
-    ccnd_meter_bump(h, m, 0);
+    ccnr_meter_bump(h, m, 0);
 }
 
 static const unsigned meterHz = 7; /* 1/ln(8/7) would give RC const of 1 sec */
@@ -644,7 +644,7 @@ static const unsigned meterHz = 7; /* 1/ln(8/7) would give RC const of 1 sec */
  * statistics on it.
  */
 void
-ccnd_meter_bump(struct ccnd_handle *h, struct ccnd_meter *m, unsigned amt)
+ccnr_meter_bump(struct ccnr_handle *h, struct ccnr_meter *m, unsigned amt)
 {
     unsigned now; /* my ticks, wrap OK */
     unsigned t;
@@ -671,12 +671,12 @@ ccnd_meter_bump(struct ccnd_handle *h, struct ccnd_meter *m, unsigned amt)
  * m may be NULL.
  */
 unsigned
-ccnd_meter_rate(struct ccnd_handle *h, struct ccnd_meter *m)
+ccnr_meter_rate(struct ccnr_handle *h, struct ccnr_meter *m)
 {
     unsigned denom = 8;
     if (m == NULL)
         return(0);
-    ccnd_meter_bump(h, m, 0);
+    ccnr_meter_bump(h, m, 0);
     if (m->rate > 0x0FFFFFFF)
         return(m->rate / denom * meterHz);
     return ((m->rate * meterHz + (denom - 1)) / denom);
@@ -688,7 +688,7 @@ ccnd_meter_rate(struct ccnd_handle *h, struct ccnd_meter *m)
  * m may be NULL.
  */
 uintmax_t
-ccnd_meter_total(struct ccnd_meter *m)
+ccnr_meter_total(struct ccnr_meter *m)
 {
     if (m == NULL)
         return(0);

@@ -1,9 +1,9 @@
 /**
- * @file ccnd_msg.c
+ * @file ccnr_msg.c
  *
- * Logging support for ccnd.
+ * Logging support for ccnr.
  *
- * Part of ccnd - the CCNx Daemon.
+ * Part of ccnr - the CCNx Daemon.
  *
  * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
  *
@@ -30,18 +30,18 @@
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 
-#include "ccnd_private.h"
+#include "ccnr_private.h"
 
 /**
- *  Produce ccnd debug output.
+ *  Produce ccnr debug output.
  *  Output is produced via h->logger under the control of h->debug;
  *  prepends decimal timestamp and process identification.
  *  Caller should not supply newlines.
- *  @param      h  the ccnd handle
+ *  @param      h  the ccnr handle
  *  @param      fmt  printf-like format string
  */
 void
-ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
+ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
 {
     struct timeval t;
     va_list ap;
@@ -58,12 +58,12 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
         portstr = h->portstr;
         if (portstr == NULL)
             portstr = "";
-        ccn_charbuf_putf(b, "%ld.000000 ccnd[%d]: %s ____________________ %s",
+        ccn_charbuf_putf(b, "%ld.000000 ccnr[%d]: %s ____________________ %s",
                          (long)t.tv_sec, h->logpid, h->portstr, ctime(&t.tv_sec));
         h->logtime = t.tv_sec;
         h->logbreak = 30;
     }
-    ccn_charbuf_putf(b, "%ld.%06u ccnd[%d]: %s\n",
+    ccn_charbuf_putf(b, "%ld.%06u ccnr[%d]: %s\n",
         (long)t.tv_sec, (unsigned)t.tv_usec, h->logpid, fmt);
     va_start(ap, fmt);
     res = (*h->logger)(h->loggerdata, (const char *)b->buf, ap);
@@ -75,9 +75,9 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
 }
 
 /**
- *  Produce a ccnd debug trace entry.
- *  Output is produced by calling ccnd_msg.
- *  @param      h  the ccnd handle
+ *  Produce a ccnr debug trace entry.
+ *  Output is produced by calling ccnr_msg.
+ *  @param      h  the ccnr handle
  *  @param      lineno  caller's source line number (usually __LINE__)
  *  @param      msg  a short text tag to identify the entry
  *  @param      face    handle of associated face; may be NULL
@@ -85,7 +85,7 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
  *  @param      ccnb_size   is in bytes
  */
 void
-ccnd_debug_ccnb(struct ccnd_handle *h,
+ccnr_debug_ccnb(struct ccnr_handle *h,
                 int lineno,
                 const char *msg,
                 struct face *face,
@@ -122,15 +122,15 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
                 ccn_charbuf_putf(c, "%s%02X", (*p) && (*p++)=='-' ? "-" : "", nonce[i]);
         }
     }
-    ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
+    ccnr_msg(h, "%s", ccn_charbuf_as_string(c));
     ccn_charbuf_destroy(&c);
 }
 
 /**
  * CCND Usage message
  */
-const char *ccnd_usage_message =
-    "ccnd - CCNx Daemon\n"
+const char *ccnr_usage_message =
+    "ccnr - CCNx Daemon\n"
     "  options: none\n"
     "  arguments: none\n"
     "  environment variables:\n"
@@ -161,7 +161,7 @@ const char *ccnd_usage_message =
     "    CCND_DATA_PAUSE_MICROSEC=\n"
     "      Adjusts content-send delay time for multicast and udplink faces\n"
     "    CCND_KEYSTORE_DIRECTORY=\n"
-    "      Directory readable only by ccnd where its keystores are kept\n"
+    "      Directory readable only by ccnr where its keystores are kept\n"
     "      Defaults to a private subdirectory of /var/tmp\n"
     "    CCND_LISTEN_ON=\n"
     "      List of ip addresses to listen on; defaults to wildcard\n"
