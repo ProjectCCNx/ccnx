@@ -1,6 +1,6 @@
 /*
  * ccnd/ccnd.c
- * 
+ *
  * Main program of ccnd - the CCNx Daemon
  *
  * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
@@ -2215,7 +2215,7 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     if (face == NULL)
         return(-1);
     /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
-    if (flags >= 0 && (flags & CCN_FORW_LAST) != 0) 
+    if (flags >= 0 && (flags & CCN_FORW_LAST) != 0)
         face->flags |= CCN_FACE_DC;
     hashtb_start(h->nameprefix_tab, e);
     res = nameprefix_seek(h, e, msg, comps, ncomps);
@@ -2378,7 +2378,7 @@ check_forwarding_entry_ccndid(struct ccnd_handle *h,
  * @param msg points to a ccnd-encoded ContentObject containing a
  *         FaceInstance in its Content.
  * @param size is its size in bytes
- * @param reply_body is a buffer to hold the Content of the reply, as a 
+ * @param reply_body is a buffer to hold the Content of the reply, as a
  *         FaceInstance including faceid
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
@@ -2411,7 +2411,7 @@ ccnd_req_newface(struct ccnd_handle *h,
     h->flood = 0; /* never auto-register for these */
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
-        goto Finish;        
+        goto Finish;
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
@@ -2529,7 +2529,7 @@ Finish:
  * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
             in its Content.
  * @param size is its size in bytes
- * @param reply_body is a buffer to hold the Content of the reply, as a 
+ * @param reply_body is a buffer to hold the Content of the reply, as a
  *         FaceInstance including faceid
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
@@ -2611,7 +2611,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
 
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
-        goto Finish;        
+        goto Finish;
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
@@ -2687,7 +2687,7 @@ Finish:
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @param reply_body is a buffer to hold the Content of the reply, as a 
+ * @param reply_body is a buffer to hold the Content of the reply, as a
  *         FaceInstance including faceid
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
@@ -2707,7 +2707,7 @@ ccnd_req_prefixreg(struct ccnd_handle *h,
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @param reply_body is a buffer to hold the Content of the reply, as a 
+ * @param reply_body is a buffer to hold the Content of the reply, as a
  *         ccnb-encoded ForwardingEntry
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
@@ -2727,7 +2727,7 @@ ccnd_req_selfreg(struct ccnd_handle *h,
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @param reply_body is a buffer to hold the Content of the reply, as a 
+ * @param reply_body is a buffer to hold the Content of the reply, as a
  *         ccnb-encoded ForwardingEntry
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
@@ -2813,7 +2813,7 @@ ccnd_req_unreg(struct ccnd_handle *h,
         }
         p = &(f->next);
     }
-    if (!found) 
+    if (!found)
         goto Finish;    
     forwarding_entry->action = NULL;
     forwarding_entry->ccnd_id = h->ccnd_id;
@@ -3055,7 +3055,7 @@ do_propagate(struct ccn_schedule *sched,
 }
 
 /**
- * Adjust the outbound face list for a new Interest, based upon 
+ * Adjust the outbound face list for a new Interest, based upon
  * existing similar interests.
  * @result besides possibly updating the outbound set, returns
  *         an extra delay time before propagation.  A negative return value
@@ -3229,7 +3229,7 @@ propagate_interest(struct ccnd_handle *h,
              * Completely subsumed by other interests.
              * We do not have to worry about generating a nonce if it
              * does not have one yet.
-             */ 
+             */
             if (h->debug & 16)
                 ccnd_debug_ccnb(h, __LINE__, "interest_subsumed", face,
                                 msg_out, msg_out_size);
@@ -3616,7 +3616,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                                 content->key,
                                 content->size);
             if (content != NULL &&
-                !content_matches_interest_prefix(h, content, msg, comps, 
+                !content_matches_interest_prefix(h, content, msg, comps,
                                                  pi->prefix_comps)) {
                 if (h->debug & 8)
                     ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
@@ -3640,7 +3640,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                         goto move_along;
                     }
                     if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "matches", NULL, 
+                        ccnd_debug_ccnb(h, __LINE__, "matches", NULL,
                                         content->key,
                                         content->size);
                     if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
@@ -3653,11 +3653,11 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 content = content_from_accession(h, content_skiplist_next(h, content));
             check_next_prefix:
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg, 
+                    !content_matches_interest_prefix(h, content, msg,
                                                      comps, pi->prefix_comps)) {
                     if (h->debug & 8)
                         ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
-                                        content->key, 
+                                        content->key,
                                         content->size);
                     content = NULL;
                 }
@@ -4107,7 +4107,7 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
  * Break up data in a face's input buffer buffer into individual messages,
  * and call process_input_message on each one.
  *
- * This is used to handle things originating from the internal client - 
+ * This is used to handle things originating from the internal client -
  * its output is input for face 0.
  */
 static void
@@ -4215,7 +4215,7 @@ process_input(struct ccnd_handle *h, int fd)
         dres = ccn_skeleton_decode(d, buf, res);
         while (d->state == 0) {
             process_input_message(h, source,
-                                  face->inbuf->buf + msgstart, 
+                                  face->inbuf->buf + msgstart,
                                   d->index - msgstart,
                                   (face->flags & CCN_FACE_LOCAL) != 0);
             msgstart = d->index;
@@ -4420,7 +4420,7 @@ do_deferred_write(struct ccnd_handle *h, int fd)
  * Set up the array of fd descriptors for the poll(2) call.
  *
  * Arrange the array so that multicast receivers are early, so that
- * if the same packet arrives on both a multicast socket and a 
+ * if the same packet arrives on both a multicast socket and a
  * normal socket, we will count is as multicast.
  */
 static void
