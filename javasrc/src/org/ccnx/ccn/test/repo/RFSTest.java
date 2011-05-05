@@ -118,12 +118,10 @@ public class RFSTest extends RepoTestBase {
 	}
 	
 	/**
-	 * Tests policy file parsing and that checking for already stored policies at startup works
-	 * correctly
+	 * Tests policy file parsing
 	 */
 	@Test
 	public void testPolicy() throws Exception {
-		initRepoLog();
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
 			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
@@ -136,12 +134,7 @@ public class RFSTest extends RepoTestBase {
 		// Make repository using repo's keystore, not user's
 		repo.initialize(_fileTestDir,  
 					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
-		File repoFile = new File(_fileTestDir + "/" + LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + "1");
-		long fileSize = repoFile.length();
-		repo.initialize(_fileTestDir,  
-				new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
-		Assert.assertEquals("Same policy increased size", fileSize, repoFile.length());
-		repolog.shutDown();
+		repo.shutDown();
 	}
 	
 	/**
