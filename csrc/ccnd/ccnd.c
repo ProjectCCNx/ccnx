@@ -2909,6 +2909,7 @@ get_outbound_faces(struct ccnd_handle *h,
     struct nameprefix_entry *npe)
 {
     int checkmask = 0;
+    int wantmask = 0;
     struct ccn_indexbuf *x;
     struct face *face;
     int i;
@@ -2928,11 +2929,14 @@ get_outbound_faces(struct ccnd_handle *h,
         checkmask = CCN_FACE_GG;
     else if (pi->scope == 2)
         checkmask = from ? (CCN_FACE_GG & ~(from->flags)) : ~0;
+    wantmask = checkmask;
+    if (wantmask == CCN_FACE_GG)
+        checkmask |= CCN_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         faceid = npe->forward_to->buf[i];
         face = face_from_faceid(h, faceid);
         if (face != NULL && face != from &&
-            ((face->flags & checkmask) == checkmask)) {
+            ((face->flags & checkmask) == wantmask)) {
             if (h->debug & 32)
                 ccnd_msg(h, "outbound.%d adding %u", __LINE__, face->faceid);
             ccn_indexbuf_append_element(x, face->faceid);
@@ -3339,6 +3343,7 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
     int n;
     unsigned faceid;
     unsigned checkmask = 0;
+    unsigned wantmask = 0;
     
     pe->fgen = h->forward_to_gen;
     if ((pe->flags & (CCN_PR_SCOPE0 | CCN_PR_EQV)) != 0)
@@ -3359,11 +3364,14 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
         checkmask = CCN_FACE_GG & ~(from->flags);
     if ((npe->flags & CCN_FORW_LOCAL) != 0)
         checkmask = ((from->flags & CCN_FACE_GG) != 0) ? CCN_FACE_GG : (~0);
+    wantmask = checkmask;
+    if (wantmask == CCN_FACE_GG)
+        checkmask |= CCN_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         faceid = npe->forward_to->buf[i];
         face = face_from_faceid(h, faceid);
         if (face != NULL && faceid != pe->faceid &&
-            ((face->flags & checkmask) == checkmask)) {
+            ((face->flags & checkmask) == wantmask)) {
             k = x->n;
             ccn_indexbuf_set_insert(x, faceid);
             if (x->n > k && (h->debug & 32) != 0)
