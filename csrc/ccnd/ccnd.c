@@ -2320,7 +2320,7 @@ register_new_face(struct ccnd_handle *h, struct face *face)
         ccnd_face_status_change(h, face->faceid);
         if (h->flood && h->autoreg != NULL && (face->flags & CCN_FACE_GG) == 0)
             ccnd_reg_uri_list(h, h->autoreg, face->faceid,
-                              CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
+                              CCN_FORW_CAPTURE_OK | CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
                               0x7FFFFFFF);
         ccn_link_state_init(h, face);
     }
