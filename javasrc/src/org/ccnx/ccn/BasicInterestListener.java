@@ -1,26 +1,26 @@
-/
- * Part of the CCNx Java Library
- 
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc
- 
- * This library is free software; you can redistribute it and/or modify i
- * under the terms of the GNU Lesser General Public License version 2.
- * as published by the Free Software Foundation.
- * This library is distributed in the hope that it will be useful
- * but WITHOUT ANY WARRANTY; without even the implied warranty o
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GN
- * Lesser General Public License for more details. You should have receive
- * a copy of the GNU Lesser General Public License along with this library
- * if not, write to the Free Software Foundation, Inc., 51 Franklin Street
- * Fifth Floor, Boston, MA 02110-1301 USA
+/*
+ * Part of the CCNx Java Library.
  *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 package org.ccnx.ccn;
 
 import java.io.IOException;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.logging.Level
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.Interest;
@@ -51,7 +51,7 @@ public abstract class BasicInterestListener implements CCNInterestListener {
 	}
 	
 	public void cancelInterest(Interest interest) throws IOException {
-		if( Log.isLoggable(Level.INFO) 
+		if( Log.isLoggable(Level.INFO) )
 			Log.info("Interest cancelled: " + interest.name());
 		// What happens if we do this in the middle of cancel interests?
 		_interestProvider.cancelInterest(interest, this);

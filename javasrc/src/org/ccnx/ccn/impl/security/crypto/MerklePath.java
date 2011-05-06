@@ -1,19 +1,19 @@
-/
- * Part of the CCNx Java Library
- 
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc
- 
- * This library is free software; you can redistribute it and/or modify i
- * under the terms of the GNU Lesser General Public License version 2.
- * as published by the Free Software Foundation.
- * This library is distributed in the hope that it will be useful
- * but WITHOUT ANY WARRANTY; without even the implied warranty o
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GN
- * Lesser General Public License for more details. You should have receive
- * a copy of the GNU Lesser General Public License along with this library
- * if not, write to the Free Software Foundation, Inc., 51 Franklin Street
- * Fifth Floor, Boston, MA 02110-1301 USA
+/*
+ * Part of the CCNx Java Library.
  *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 package org.ccnx.ccn.impl.security.crypto;
 
@@ -33,8 +33,8 @@ import org.ccnx.ccn.impl.security.crypto.util.CryptoUtil;
 import org.ccnx.ccn.impl.security.crypto.util.OIDLookup;
 
 
-/*
- * A representation of a path through a MerkleTree
+/**
+ * A representation of a path through a MerkleTree.
  */
 public class MerklePath {
 	
@@ -44,21 +44,21 @@ public class MerklePath {
 	// DKS TODO: implement lookup mechanism to get MHT
 	// OID from component digest OID. Right now just pull
 	// from CCNMerkleTree.
-
-	/*
-	 * Create a MerklePath for a given lea
-	 * @param leafNodeIndex the leaf inde
-	 * @param path the node digests necessary to verify that lea
+	
+	/**
+	 * Create a MerklePath for a given leaf
+	 * @param leafNodeIndex the leaf index
+	 * @param path the node digests necessary to verify that leaf
 	 */
 	public MerklePath(int leafNodeIndex, DEROctetString [] path) {
 		_leafNodeIndex = leafNodeIndex;
 		_path = path;
 	}
-
-	/*
-	 * Decode a DER encoded MerklePat
-	 * @param derEncodedPath the encoded pat
-	 * @throws CertificateEncodingException if there is a decoding erro
+	
+	/**
+	 * Decode a DER encoded MerklePath
+	 * @param derEncodedPath the encoded path
+	 * @throws CertificateEncodingException if there is a decoding error
 	 */
 	public MerklePath(byte [] derEncodedPath) throws CertificateEncodingException {
 		DERObject decoded = CryptoUtil.decode(derEncodedPath);
@@ -73,13 +73,13 @@ public class MerklePath {
 			_path[i++] = (DEROctetString)en.nextElement();
 		}
 	}
-
-	/*
-	 * Compute the parent digest of the current nod
-	 * @param node the current nod
-	 * @param length the length of the path at this poin
-	 * @param pathDigest the previously computed digest along this pat
-	 * @return the parent diges
+	
+	/**
+	 * Compute the parent digest of the current node
+	 * @param node the current node
+	 * @param length the length of the path at this point
+	 * @param pathDigest the previously computed digest along this path
+	 * @return the parent digest
 	 */
 	protected byte [] computeParent(int node, int length, byte [] pathDigest) {
 		byte [] parentDigest = null;
@@ -94,11 +94,11 @@ public class MerklePath {
 	/**
 	 * Take the content block for which this is the MerklePath,
 	 * and compute the root digest for verification. The caller then needs
-	 * to check whether it matches the root, and
+	 * to check whether it matches the root, and 
 	 * the root is authentic (signed by a trusted key).
 	 * @param nodeContent either the content of the block or its
 	 * 	digest. If a subclass of MerkleTree overrides computeBlockDigest,
-	 *  a caller must hand in the digest, as this uses the MerkleTree default
+	 *  a caller must hand in the digest, as this uses the MerkleTree default.
 	 * @param isDigest was this node already digested, or do we need to digest it
 	 * @return the computed root digest
 	 */
@@ -139,10 +139,10 @@ public class MerklePath {
 			return null;
 		return _path[i];
 	}
-
-	/*
-	 * Return the leaf node this path is fo
-	 * @return the leaf node inde
+	
+	/**
+	 * Return the leaf node this path is for
+	 * @return the leaf node index
 	 */
 	public int leafNodeIndex() { return _leafNodeIndex; }
 		
@@ -154,7 +154,7 @@ public class MerklePath {
 	
 	/**
 	 * DER-encode the path. Embed it in a DigestInfo
-	 * with the appropriate algorithm identifier
+	 * with the appropriate algorithm identifier.
 	 * @return the DER-encoded path
 	 */
 	public byte [] derEncodedPath() {
@@ -174,11 +174,11 @@ public class MerklePath {
 		// Wrap it up in a DigestInfo
 		return CCNDigestHelper.digestEncoder(CCNMerkleTree.DEFAULT_MHT_ALGORITHM, encodedPath);
 	}
-
-	/*
-	 * Determine whether a given DigestInfo contains a MerklePat
-	 * @param info the DigestInf
-	 * @return true if this is a MerklePath, false otherwis
+	
+	/**
+	 * Determine whether a given DigestInfo contains a MerklePath
+	 * @param info the DigestInfo
+	 * @return true if this is a MerklePath, false otherwise
 	 */
 	public static boolean isMerklePath(DigestInfo info) {
 		AlgorithmIdentifier digestAlg = 

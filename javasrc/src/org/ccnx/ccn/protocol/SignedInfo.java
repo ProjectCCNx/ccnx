@@ -1,19 +1,19 @@
-/
- * Part of the CCNx Java Library
- 
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc
- 
- * This library is free software; you can redistribute it and/or modify i
- * under the terms of the GNU Lesser General Public License version 2.
- * as published by the Free Software Foundation.
- * This library is distributed in the hope that it will be useful
- * but WITHOUT ANY WARRANTY; without even the implied warranty o
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GN
- * Lesser General Public License for more details. You should have receive
- * a copy of the GNU Lesser General Public License along with this library
- * if not, write to the Free Software Foundation, Inc., 51 Franklin Street
- * Fifth Floor, Boston, MA 02110-1301 USA
+/*
+ * Part of the CCNx Java Library.
  *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 package org.ccnx.ccn.protocol;
 
@@ -21,20 +21,20 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
-import org.ccnx.ccn.impl.encoding.CCNProtocolDTags
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.content.ContentDecodingException
-import org.ccnx.ccn.io.content.ContentEncodingException
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
 
 /**
  * SignedInfo is the metadata portion of a ContentObject that contains information about that
- * object which is signed by the publisher. It incluedes a timestamp, which doesn'
+ * object which is signed by the publisher. It incluedes a timestamp, which doesn't
  * imply a certified notion of time -- it requires loose consistency within that publisher
  * only. It lets you order things with the same name, or signed by the same publisher. From the security
  * point of view it acts primarily as a nonce, and we use a timestamp for it to make it slightly
@@ -54,8 +54,8 @@ import org.ccnx.ccn.io.content.ContentEncodingException
  */
 public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 
-	/
-	 * The binary encodings for the types are chosen to print well as they go by in packet dumps
+	/*
+	 * The binary encodings for the types are chosen to print well as they go by in packet dumps.
 	 */
 	public enum ContentType {DATA, ENCR, GONE, KEY, LINK, NACK};
     public static final byte [] DATA_VAL = new byte[]{(byte)0x0c, (byte)0x04, (byte)0xc0};
@@ -108,38 +108,38 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
     protected Integer 		_freshnessSeconds;
     protected byte []		_finalBlockID; 
 
-    /*
-     * Constructo
-     * @param publishe
-     * @param locato
-     *
-    public SignedInfo
-    		PublisherPublicKeyDigest publisher,
-			KeyLocator locato
-			) 
-    	this(publisher, null, null, locator)
-    
+    /**
+     * Constructor
+     * @param publisher
+     * @param locator
+     */
+    public SignedInfo(
+    		PublisherPublicKeyDigest publisher, 
+			KeyLocator locator
+			) {
+    	this(publisher, null, null, locator);
+    }
+ 
+    /**
+     * Constructor
+     * @param publisher
+     * @param type
+     * @param locator
+     */
+    public SignedInfo(
+    		PublisherPublicKeyDigest publisher, 
+			ContentType type,
+			KeyLocator locator
+			) {
+    	this(publisher, null, type, locator);
+    }
 
-    /*
-     * Constructo
-     * @param publishe
-     * @param typ
-     * @param locato
-     *
-    public SignedInfo
-    		PublisherPublicKeyDigest publisher,
-			ContentType type
-			KeyLocator locato
-			) 
-    	this(publisher, null, type, locator)
-    
-
-    /*
-     * Constructo
-     * @param publishe
-     * @param timestam
-     * @param typ
-     * @param locato
+    /**
+     * Constructor
+     * @param publisher
+     * @param timestamp
+     * @param type
+     * @param locator
      */
     public SignedInfo(
     		PublisherPublicKeyDigest publisher, 
@@ -148,14 +148,14 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			KeyLocator locator) {
     	this(publisher, timestamp, type, locator, null, null);
     }
-
-     /*
-     * Constructo
-     * @param publishe
-     * @param typ
-     * @param locato
-     * @param freshnessSecond
-     * @param finalBlockI
+ 
+     /**
+     * Constructor
+     * @param publisher
+     * @param type
+     * @param locator
+     * @param freshnessSeconds
+     * @param finalBlockID
      */
     public SignedInfo(
     		PublisherPublicKeyDigest publisher, 
@@ -165,42 +165,42 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			byte [] finalBlockID
 			) {
     	this(publisher, null, type, locator, freshnessSeconds, finalBlockID);
+    }
     
-   
-    /*
-     * Constructo
-     * @param publishe
-     * @param timestam
-     * @param typ
-     * @param locato
-     * @param freshnessSecond
-     * @param finalBlockI
-     *
-    public SignedInfo
-    		PublisherPublicKeyDigest publisher,
-    		CCNTime timestamp,
-			ContentType type
-			KeyLocator locator
-			Integer freshnessSeconds
-			byte [] finalBlockI
-			) 
-    	super()
-    	this._publisher = publisher
-    	if (null == timestamp) 
-    		this._timestamp = CCNTime.now(); // msec onl
-    	} else 
-    		this._timestamp = timestamp
+    /**
+     * Constructor
+     * @param publisher
+     * @param timestamp
+     * @param type
+     * @param locator
+     * @param freshnessSeconds
+     * @param finalBlockID
+     */
+    public SignedInfo(
+    		PublisherPublicKeyDigest publisher, 
+    		CCNTime timestamp, 
+			ContentType type,
+			KeyLocator locator,
+			Integer freshnessSeconds,
+			byte [] finalBlockID
+			) {
+    	super();
+    	this._publisher = publisher;
+    	if (null == timestamp) {
+    		this._timestamp = CCNTime.now(); // msec only
+    	} else {
+    		this._timestamp = timestamp;
+    	}
     	
-    
-    	this._type = (null == type) ? ContentType.DATA : type
-    	this._locator = locator
-    	this._freshnessSeconds = freshnessSeconds
-    	this._finalBlockID = finalBlockID
-     
+    	this._type = (null == type) ? ContentType.DATA : type;
+    	this._locator = locator;
+    	this._freshnessSeconds = freshnessSeconds;
+    	this._finalBlockID = finalBlockID;
+     }
 
-    /*
-     * Copy constructo
-     * @param othe
+    /**
+     * Copy constructor
+     * @param other
      */
     public SignedInfo(SignedInfo other) {
     	this(other.getPublisherKeyID(), 
@@ -211,13 +211,13 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
        		 other.getFinalBlockID());
     }
 
-    /*
-     * For decoder
+    /**
+     * For decoders
      */
     public SignedInfo() {}
-       
-    /*
-     * Implement Cloneabl
+        
+    /**
+     * Implement Cloneable
      */
 	public SignedInfo clone() {
 		// more clonage needed
@@ -226,98 +226,98 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 								null == kl ? null : kl.clone(),
 								getFreshnessSeconds(), getFinalBlockID());
 	}
-   
-	/*
-	 * Do we have a publisher
-	 * @return True if the publisher is empt
+    
+	/**
+	 * Do we have a publisher?
+	 * @return True if the publisher is empty
 	 */
     public boolean emptyPublisher() {
     	if ((null != getPublisherKeyID()) && (0 != getPublisher().length))
     		return false;
     	return true;
     }
-      
-    /*
-     * True if we're using the default content typ
-     * @return true if we're using the default content typ
+       
+    /**
+     * True if we're using the default content type
+     * @return true if we're using the default content type
      */
     public boolean defaultContentType() { 
     	return ((null == _type) || (ContentType.DATA == _type));
     }
-   
-    /*
-     * Do we have a timestamp
-     * @return true if timestamp is empty, false if we have on
+    
+    /**
+     * Do we have a timestamp?
+     * @return true if timestamp is empty, false if we have one
      */
     public boolean emptyTimestamp() {
     	return (null == _timestamp);
     }
-   
-    /*
-     * Do we have a key locato
-     * @return true if KeyLocator is empty, false if we have on
+    
+    /**
+     * Do we have a key locator
+     * @return true if KeyLocator is empty, false if we have one
      */
     public boolean emptyKeyLocator() { 
     	return (null == _locator); 
     }
     
     /**
-     * Return the publishe
+     * Return the publisher
      * @return the publisher
      */
  	public final byte[] getPublisher() { return _publisher.digest(); }
  	
 	public final PublisherPublicKeyDigest getPublisherKeyID() { return _publisher; }
 
-	/*
-	 * Get the timestam
-	 * @return the timestam
+	/**
+	 * Get the timestamp
+	 * @return the timestamp
 	 */
 	public final CCNTime getTimestamp() { return _timestamp; }
-
-	/*
-	 * Get the KeyLocator. This is optional in encoding, and can be nul
-	 * @return the KeyLocato
+	
+	/**
+	 * Get the KeyLocator. This is optional in encoding, and can be null
+	 * @return the KeyLocator
 	 */
 	public final KeyLocator getKeyLocator() { return _locator; }
-
-	/*
-	 * Get the freshness second
-	 * @return the freshnessSecond
+	
+	/**
+	 * Get the freshness seconds
+	 * @return the freshnessSeconds
 	 */
 	public final int getFreshnessSeconds() { return _freshnessSeconds; }
-
-	/*
-	 * Do we have a value for freshnessSeconds
-	 * @return true if the freshnessSeconds is emtpy, false if it is se
+	
+	/**
+	 * Do we have a value for freshnessSeconds?
+	 * @return true if the freshnessSeconds is emtpy, false if it is set
 	 */
 	public boolean emptyFreshnessSeconds() {
 		return (null == _freshnessSeconds);
 	}
-
-	/*
-	 * Get the finalBlockID as binar
-	 * @return the finalBlockI
+	
+	/**
+	 * Get the finalBlockID as binary
+	 * @return the finalBlockID
 	 */
 	public final byte [] getFinalBlockID() { return _finalBlockID; }
-
-	/*
-	 * Do we have a finalBlockID set
-	 * @return true if the finalBlockID is empty, false if we have one se
+	
+	/**
+	 * Do we have a finalBlockID set?
+	 * @return true if the finalBlockID is empty, false if we have one set
 	 */
 	public boolean emptyFinalBlockID() {
 		return (null == _finalBlockID);
 	}
 	
-	/*
-	 * Set the finalBlockID for this set of content segment
-	 * @param finalBlockID the new finalBlockID as binar
-	 *
+	/**
+	 * Set the finalBlockID for this set of content segments
+	 * @param finalBlockID the new finalBlockID as binary
+	 */
 	public void setFinalBlockID(byte [] finalBlockID) { _finalBlockID = finalBlockID; }
 
-	/*
-	 * Set the content type for this content objec
-	 * @param typ
+	/**
+	 * Set the content type for this content object
+	 * @param type
 	 */
 	public void setType(ContentType type) {
 		if (null == type) {
@@ -326,10 +326,10 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 			_type = type;
 		}
 	}
-
-	/*
-	 * Get our content type
-	 * @retur
+	
+	/**
+	 * Get our content type.
+	 * @return
 	 */
 	public final ContentType getType() { 
 		if (null == _type)
@@ -337,16 +337,16 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		return _type; 
 	}
 
-	/*
-	 * Get the String representation of our content type
-	 * @retur
+	/**
+	 * Get the String representation of our content type.
+	 * @return
 	 */
 	public String getTypeName() { return typeToName(getType()); }
-
-	/*
-	 * String/enum conversions, unnecessary, will be remove
-	 * @param typ
-	 * @retur
+	
+	/**
+	 * String/enum conversions, unnecessary, will be removed
+	 * @param type
+	 * @return
 	 */
 	public static final String typeToName(ContentType type) {
 		if (ContentTypeNames.get(type) == null) {
@@ -355,29 +355,29 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		return ContentTypeNames.get(type);
 	}
 
-	/*
-	 * String/enum conversions, unnecessary, will be remove
-	 * @param nam
-	 * @retur
-	 *
+	/**
+	 * String/enum conversions, unnecessary, will be removed
+	 * @param name
+	 * @return
+	 */
 	public static final ContentType nameToType(String name) {
 		return ContentNameTypes.get(name);
 	}
-
-	/*
-	 * Get our type as a binary valu
-	 * @return the binary value of our typ
+	
+	/**
+	 * Get our type as a binary value
+	 * @return the binary value of our type
 	 */
 	public byte [] getTypeValue() { return typeToValue(getType()); }
 	
-	/*
-	 * Convert between ContentType and its binary representation
-	 * Unfortunately, straight hash table lookup doesn't work right on byte arra
-	 * keys. Have to do straight comparison. Could speed it up from linea
-	 * search, but for 5 types, might not matter
-	 * @param typ
-	 * @return the binary valu
-	 *
+	/**
+	 * Convert between ContentType and its binary representation.
+	 * Unfortunately, straight hash table lookup doesn't work right on byte array
+	 * keys. Have to do straight comparison. Could speed it up from linear
+	 * search, but for 5 types, might not matter.
+	 * @param type
+	 * @return the binary value
+	 */
 	public static final byte [] typeToValue(ContentType type) {
 		if (ContentTypeValues.get(type) == null) {
 			Log.warning("Cannot find name for type: " + type);
@@ -385,7 +385,7 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		return ContentTypeValues.get(type);
 	}
 
-	/*
+	/**
 	 * Convert between ContentType and its binary representation.
 	 * Unfortunately, straight hash table lookup doesn't work right on byte array
 	 * keys. Have to do straight comparison. Could speed it up from linear
@@ -545,13 +545,13 @@ public class SignedInfo extends GenericXMLEncodable implements XMLEncodable {
 		return true;
 	}	
 
-	public String toString() 
-		StringBuffer s = new StringBuffer()
-		if (_type != null) s.append(String.format("si: type=%s", typeToName(_type)))
-		s.append(String.format("si: timestamp=%s", _timestamp))
-		s.append(String.format("si: pub=%s", _publisher))
-		if (_locator != null) s.append(String.format("si: loc=%s", _locator))
-		if (_freshnessSeconds != null) s.append(String.format("si: type=%s", _freshnessSeconds))
-		return s.toString()
-	
+	public String toString() {
+		StringBuffer s = new StringBuffer();
+		if (_type != null) s.append(String.format("si: type=%s", typeToName(_type)));
+		s.append(String.format("si: timestamp=%s", _timestamp));
+		s.append(String.format("si: pub=%s", _publisher));
+		if (_locator != null) s.append(String.format("si: loc=%s", _locator));
+		if (_freshnessSeconds != null) s.append(String.format("si: type=%s", _freshnessSeconds));
+		return s.toString();
+	}
 }

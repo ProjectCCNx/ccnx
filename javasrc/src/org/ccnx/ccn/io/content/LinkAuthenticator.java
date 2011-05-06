@@ -1,25 +1,25 @@
-/
- * Part of the CCNx Java Library
- 
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc
- 
- * This library is free software; you can redistribute it and/or modify i
- * under the terms of the GNU Lesser General Public License version 2.
- * as published by the Free Software Foundation.
- * This library is distributed in the hope that it will be useful
- * but WITHOUT ANY WARRANTY; without even the implied warranty o
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GN
- * Lesser General Public License for more details. You should have receive
- * a copy of the GNU Lesser General Public License along with this library
- * if not, write to the Free Software Foundation, Inc., 51 Franklin Street
- * Fifth Floor, Boston, MA 02110-1301 USA
+/*
+ * Part of the CCNx Java Library.
  *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 package org.ccnx.ccn.io.content;
 
 import java.util.Arrays;
 
-import org.ccnx.ccn.impl.encoding.CCNProtocolDTags
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
@@ -30,8 +30,8 @@ import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.SignedInfo;
 
-/*
- * A specifier for the information that can be used to authenticate the target of a Link
+/**
+ * A specifier for the information that can be used to authenticate the target of a Link.
  */
 public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodable, Comparable<LinkAuthenticator> {
 
@@ -57,10 +57,10 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
     public LinkAuthenticator(PublisherID publisher) {
     	super();
     	this._publisher = publisher;
+    }
     
-   
-    public LinkAuthenticator(PublisherPublicKeyDigest publisher) 
-    	this(new PublisherID(publisher))
+    public LinkAuthenticator(PublisherPublicKeyDigest publisher) {
+    	this(new PublisherID(publisher));
     }
 
     public LinkAuthenticator() {}
@@ -230,43 +230,43 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 				+ ((_timestamp == null) ? 0 : _timestamp.hashCode());
 		result = prime * result + ((_type == null) ? 0 : _type.hashCode());
 		return result;
+	}
 	
-
-	/*
-	 * Approximately equals -- matches on each field of target that is non-nul
-	 *
-	public boolean approximates(LinkAuthenticator target) 
-		if (null != target._contentDigest) 
-			if (null == _contentDigest
-				return false
-			if (!Arrays.equals(target._contentDigest, _contentDigest)
-				return false
-		
-		if (null != target._nameComponentCount) 
-			if (null == _nameComponentCount
-				return false
-			if (!target._nameComponentCount.equals(_nameComponentCount)
-				return false
-		
-		if (null != target._publisher) 
-			if (null == _publisher
-				return false
-			if (!target._publisher.equals(_publisher)
-				return false
-		
-		if (null != target._timestamp) 
-			if (null == _timestamp
-				return false
-			if (!target._timestamp.equals(_timestamp)
-				return false
-		
-		if (null != target._type) 
-			if (null == _type
-				return false
-			if (!target._type.equals(_type)
-				return false
-		
-		return true
+	/**
+	 * Approximately equals -- matches on each field of target that is non-null
+	 */
+	public boolean approximates(LinkAuthenticator target) {
+		if (null != target._contentDigest) {
+			if (null == _contentDigest)
+				return false;
+			if (!Arrays.equals(target._contentDigest, _contentDigest))
+				return false;
+		}
+		if (null != target._nameComponentCount) {
+			if (null == _nameComponentCount)
+				return false;
+			if (!target._nameComponentCount.equals(_nameComponentCount))
+				return false;
+		}
+		if (null != target._publisher) {
+			if (null == _publisher)
+				return false;
+			if (!target._publisher.equals(_publisher))
+				return false;
+		}
+		if (null != target._timestamp) {
+			if (null == _timestamp)
+				return false;
+			if (!target._timestamp.equals(_timestamp))
+				return false;
+		}
+		if (null != target._type) {
+			if (null == _type)
+				return false;
+			if (!target._type.equals(_type))
+				return false;
+		}
+		return true;
 	}
 
 	@Override
@@ -345,13 +345,13 @@ public class LinkAuthenticator extends GenericXMLEncodable implements XMLEncodab
 				return result;
 		}
 		return 0;
-	
+	}
 
-	@Overrid
-	public String toString() 
-		return "LinkAuthenticator [contentDigest=
-				+ DataUtils.printBytes(_contentDigest) + ", nameComponentCount=
-				+ _nameComponentCount + ", publisher=" + _publishe
-				+ ", timestamp=" + _timestamp + ", type=" + _type + "]"
+	@Override
+	public String toString() {
+		return "LinkAuthenticator [contentDigest="
+				+ DataUtils.printBytes(_contentDigest) + ", nameComponentCount="
+				+ _nameComponentCount + ", publisher=" + _publisher
+				+ ", timestamp=" + _timestamp + ", type=" + _type + "]";
 	}
 }

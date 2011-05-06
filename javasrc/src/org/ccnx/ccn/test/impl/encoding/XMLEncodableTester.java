@@ -1,19 +1,19 @@
-/
- * A CCNx library test
- 
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc
- 
- * This work is free software; you can redistribute it and/or modify it unde
- * the terms of the GNU General Public License version 2 as published by th
- * Free Software Foundation.
- * This work is distributed in the hope that it will be useful, but WITHOUT AN
- * WARRANTY; without even the implied warranty of MERCHANTABILITY o
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public Licens
- * for more details. You should have received a copy of the GNU General Publi
- * License along with this program; if not, write to th
- * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor
- * Boston, MA 02110-1301, USA
+/*
+ * A CCNx library test.
  *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
 
 package org.ccnx.ccn.test.impl.encoding;
 
@@ -25,13 +25,13 @@ import java.io.ByteArrayOutputStream;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.TextXMLCodec;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
-import org.ccnx.ccn.io.content.ContentDecodingException
-import org.ccnx.ccn.io.content.ContentEncodingException
+import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentEncodingException;
 
-/*
- * Helper class for writing tests for classes implementing XMLEncodable
- * Provides a basic test harness for testing encoding and decoding unde
- * both binary and text codecs; would be easy to make it test all registered codecs
+/**
+ * Helper class for writing tests for classes implementing XMLEncodable.
+ * Provides a basic test harness for testing encoding and decoding under
+ * both binary and text codecs; would be easy to make it test all registered codecs.
  */
 public class XMLEncodableTester {
 

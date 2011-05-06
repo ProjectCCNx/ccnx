@@ -1,61 +1,61 @@
-/
- * Part of the CCNx Java Library
- 
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc
- 
- * This library is free software; you can redistribute it and/or modify i
- * under the terms of the GNU Lesser General Public License version 2.
- * as published by the Free Software Foundation.
- * This library is distributed in the hope that it will be useful
- * but WITHOUT ANY WARRANTY; without even the implied warranty o
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GN
- * Lesser General Public License for more details. You should have receive
- * a copy of the GNU Lesser General Public License along with this library
- * if not, write to the Free Software Foundation, Inc., 51 Franklin Street
- * Fifth Floor, Boston, MA 02110-1301 USA
+/*
+ * Part of the CCNx Java Library.
  *
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 package org.ccnx.ccn.impl.support;
 
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileNotFoundException
-import java.io.FileOutputStream
-import java.io.IOException
-import java.io.InputStream
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
-import java.io.Serializable
-import java.rmi.NoSuchObjectException
-import java.rmi.Remote
-import java.rmi.RemoteException
-import java.rmi.server.RemoteObject
-import java.rmi.server.UnicastRemoteObject
-import java.util.ArrayList
-import java.util.Date
-import java.util.Timer
-import java.util.TimerTask
-import java.util.logging.Level
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.rmi.NoSuchObjectException;
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+import java.rmi.server.RemoteObject;
+import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.logging.Level;
 
-import org.ccnx.ccn.config.SystemConfiguration
-import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS
-import org.ccnx.ccn.impl.CCNNetworkManager
+import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.config.SystemConfiguration.DEBUGGING_FLAGS;
+import org.ccnx.ccn.impl.CCNNetworkManager;
 
 
 /**
- * Implements command line daemon functionality. In the normal case a daemon is started up and then runs i
- * the background after the starting process exits. An RMI file is created to allow outside processes t
- * communicate with the daemon to "signal" it or stop it.<p
- *
- * Daemons have several modes as seen below
- *
- * <pre
- * MODE_START - used to start a daemon which will be run in the backgroun
- * MODE_STOP  - used to stop a daemon currently running in the backgroun
- * MODE_INTERACTIVE - used to run a daemon interactively rather than in the backgroun
- * MODE_DAEMON - a daemon started up by a "starter" is started in MODE_DAEMON
- * MODE_SIGNAL - used to signal a daemon from outside to get the daemon to perform implementation define
- * 			     service
+ * Implements command line daemon functionality. In the normal case a daemon is started up and then runs in
+ * the background after the starting process exits. An RMI file is created to allow outside processes to
+ * communicate with the daemon to "signal" it or stop it.<p>
+ * 
+ * Daemons have several modes as seen below:
+ * 
+ * <pre>
+ * MODE_START - used to start a daemon which will be run in the background
+ * MODE_STOP  - used to stop a daemon currently running in the background
+ * MODE_INTERACTIVE - used to run a daemon interactively rather than in the background
+ * MODE_DAEMON - a daemon started up by a "starter" is started in MODE_DAEMON.
+ * MODE_SIGNAL - used to signal a daemon from outside to get the daemon to perform implementation defined
+ * 			     services
  * </pre>
  */
 public class Daemon {
@@ -65,20 +65,20 @@ public class Daemon {
 	protected static Daemon _daemon;
 	protected String _daemonName = null;
 	protected static DaemonListenerClass _daemonListener = null;
-	protected boolean _interactive = false
-	protected String _pid
-
-	// TODO maybe this doesn't belong her
-	public static final String PROP_JAVA_LIBRARY_PATH ="java.library.path"
+	protected boolean _interactive = false;
+	protected String _pid;
+	
+	// TODO maybe this doesn't belong here
+	public static final String PROP_JAVA_LIBRARY_PATH ="java.library.path";
 	
 	public static final String PROP_DAEMON_MEMORY = "ccn.daemon.memory";
 	public static final String PROP_DAEMON_DEBUG_PORT = "ccn.daemon.debug";
 	public static final String PROP_DAEMON_OUTPUT = "ccn.daemon.output";
-	public static final String PROP_DAEMON_PROFILE = "ccn.daemon.profile"
-	public static final String PROP_DAEMON_DEBUG_SUSPEND = "ccn.daemon.debug.suspend"
-	public static final String PROP_DAEMON_DEBUG_NOSHARE = "ccn.daemon.debug.noshare"
-	public static final String PROP_DAEMON_CHECK_JNI = "ccn.daemon.check.jni"
-
+	public static final String PROP_DAEMON_PROFILE = "ccn.daemon.profile";
+	public static final String PROP_DAEMON_DEBUG_SUSPEND = "ccn.daemon.debug.suspend";
+	public static final String PROP_DAEMON_DEBUG_NOSHARE = "ccn.daemon.debug.noshare";
+	public static final String PROP_DAEMON_CHECK_JNI = "ccn.daemon.check.jni";
+	
 	public static final String DEFAULT_OUTPUT_STREAM = "/dev/null";
 	
 	/**
@@ -88,7 +88,7 @@ public class Daemon {
 	public interface DaemonListener extends Remote {
 		public String startLoop() throws RemoteException; // returns pid
 		public void shutDown() throws RemoteException;
-		public boolean signal(String name) throws RemoteException
+		public boolean signal(String name) throws RemoteException;
 		public Object status(String name) throws RemoteException;
 	}
 	
@@ -105,26 +105,26 @@ public class Daemon {
 		public void run() {
 			System.out.println("Attempt to contact daemon " + _daemonName + " timed out");
 			Log.info("Attempt to contact daemon " + _daemonName + " timed out");
-			try 
-				cleanupDaemon(_daemonName, _pid)
-			} catch (IOException e) 
-				Log.logStackTrace(Level.WARNING, e)
+			try {
+				cleanupDaemon(_daemonName, _pid);
+			} catch (IOException e) {
+				Log.logStackTrace(Level.WARNING, e);
 			}
 			System.exit(1);
 		}
 		
+	}
 	
-
-	/*
-	 * Stop ccnd on exit from daemo
-	 *
-	protected class ShutdownHook extends Thread 
-		public void run() 
-			try 
-				_daemon.rmRMIFile(SystemConfiguration.getPID())
-			} catch (IOException e) {
-		
-	
+	/**
+	 * Stop ccnd on exit from daemon
+	 */
+	protected class ShutdownHook extends Thread {
+		public void run() {
+			try {
+				_daemon.rmRMIFile(SystemConfiguration.getPID());
+			} catch (IOException e) {}
+		}
+	}
 	
 	/**
 	 * The thread that runs inside the daemon, doing work
@@ -201,9 +201,9 @@ public class Daemon {
 		public boolean signal(String name) {
 			Log.info("Should not be here, in WorkerThread.signal().");
 			return false;			
-		
-		public Object status(String name) 
-			return null;		// We don't require implementers to implement thi
+		}
+		public Object status(String name) {
+			return null;		// We don't require implementers to implement this
 		}
 
 	}
@@ -249,28 +249,28 @@ public class Daemon {
 			} catch (Exception e) {
 				throw new RemoteException(e.getMessage(), e);
 			}
-		
+		}
 
-		public Object status(String name) throws RemoteException 
-			Log.info("Status " + name)
-			try 
-				return _daemonThread.status(name)
-			} catch (Exception e) 
-				throw new RemoteException(e.getMessage(), e)
-			
+		public Object status(String name) throws RemoteException {
+			Log.info("Status " + name);
+			try {
+				return _daemonThread.status(name);
+			} catch (Exception e) {
+				throw new RemoteException(e.getMessage(), e);
+			}
 		}
 	}
 	
 	public Daemon() {_daemonName = "namelessDaemon";}
 	
-	public String daemonName() { return _daemonName; 
-
-	public void setPid(String pid) 
-		_pid = pid
+	public String daemonName() { return _daemonName; }
 	
-
-	public String getPid() 
-		return _pid
+	public void setPid(String pid) {
+		_pid = pid;
+	}
+	
+	public String getPid() {
+		return _pid;
 	}
 	
 	/**
@@ -314,10 +314,10 @@ public class Daemon {
 		ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(tempFile));
 		try {
 			out.writeObject(stub);
-			out.flush()
+			out.flush();
 		} finally {
 			out.close();
-		
+		}
 		
 		// always use name without PID at first, will rename
 		// when startloop() message comes along.  This allows
@@ -325,8 +325,8 @@ public class Daemon {
 		// without needing the pid of the child, though it
 		// does limit the spawn rate
 		// this is atomic
-		tempFile.renameTo(getRMIFile(daemon.daemonName(), null))
-	
+		tempFile.renameTo(getRMIFile(daemon.daemonName(), null));
+		
 		Runtime.getRuntime().addShutdownHook(daemon.new ShutdownHook());
 	}
 
@@ -370,10 +370,10 @@ public class Daemon {
 	     * Add properties
 	     * TODO - we might want to add them all but for now these are
 	     * the critical ones
-	     *
-		String libPath = System.getProperty(PROP_JAVA_LIBRARY_PATH)
-		if (libPath != null) 
-			argList.add("-D" + PROP_JAVA_LIBRARY_PATH + "=" + libPath)
+	     */
+		String libPath = System.getProperty(PROP_JAVA_LIBRARY_PATH);
+		if (libPath != null) {
+			argList.add("-D" + PROP_JAVA_LIBRARY_PATH + "=" + libPath);
 		}
 		String portval = System.getProperty(CCNNetworkManager.PROP_AGENT_PORT);
 		if (portval != null) {
@@ -382,27 +382,27 @@ public class Daemon {
 		String memval = System.getProperty(PROP_DAEMON_MEMORY);
 		if (memval != null)
 			argList.add("-Xmx" + memval);
-		String debugFlagVal = System.getProperty(SystemConfiguration.DEBUG_FLAG_PROPERTY)
-		if (debugFlagVal != null
-			argList.add("-D" + SystemConfiguration.DEBUG_FLAG_PROPERTY + "=" + debugFlagVal)
-		String debugDirVal = System.getProperty(SystemConfiguration.DEBUG_DATA_DIRECTORY_PROPERTY)
-		if (debugDirVal != null)
-			argList.add("-D" + SystemConfiguration.DEBUG_DATA_DIRECTORY_PROPERTY + "=" + debugDirVal)
-	
-		String suspend = System.getProperty(PROP_DAEMON_DEBUG_SUSPEND)
+		String debugFlagVal = System.getProperty(SystemConfiguration.DEBUG_FLAG_PROPERTY);
+		if (debugFlagVal != null)
+			argList.add("-D" + SystemConfiguration.DEBUG_FLAG_PROPERTY + "=" + debugFlagVal);
+		String debugDirVal = System.getProperty(SystemConfiguration.DEBUG_DATA_DIRECTORY_PROPERTY);
+		if (debugDirVal != null) 
+			argList.add("-D" + SystemConfiguration.DEBUG_DATA_DIRECTORY_PROPERTY + "=" + debugDirVal);
+		
+		String suspend = System.getProperty(PROP_DAEMON_DEBUG_SUSPEND);
 		String doSuspend = suspend == null ? "n" : "y";
 		String debugPort = System.getProperty(PROP_DAEMON_DEBUG_PORT);
 		if (debugPort != null) {
 			argList.add("-Xrunjdwp:transport=dt_socket,address=" + debugPort + ",server=y,suspend=" + doSuspend);
-		} else if (doSuspend.equals("y")
-			Log.info("Suspend requested without debug attach")
-	
-		String unshared = System.getProperty(PROP_DAEMON_DEBUG_NOSHARE)
-		if (null != unshared
-			argList.add("-Xshare:off")
-	
-		String checkJNI = System.getProperty(PROP_DAEMON_CHECK_JNI)
-		if (null != checkJNI
+		} else if (doSuspend.equals("y"))
+			Log.info("Suspend requested without debug attach");
+		
+		String unshared = System.getProperty(PROP_DAEMON_DEBUG_NOSHARE);
+		if (null != unshared)
+			argList.add("-Xshare:off");
+		
+		String checkJNI = System.getProperty(PROP_DAEMON_CHECK_JNI);
+		if (null != checkJNI)
 			argList.add("-Xcheck:jni");
 		
 		String profileInfo = System.getProperty(PROP_DAEMON_PROFILE);
@@ -425,81 +425,81 @@ public class Daemon {
 		}
 		
 		if (SystemConfiguration.checkDebugFlag(DEBUGGING_FLAGS.DUMP_DAEMONCMD)) {
-			FileOutputStream fos = new FileOutputStream("daemon_cmd.txt")
+			FileOutputStream fos = new FileOutputStream("daemon_cmd.txt");
 			try {
 				fos.write(cmd.getBytes());
-				fos.flush()
+				fos.flush();
 			} finally {
-				fos.close()
+				fos.close();
 			}
+		}
 		
-	
-		// Now actually start the daemo
-		String outputFile = System.getProperty(PROP_DAEMON_OUTPUT)
-		boolean doAppend = true
-		DaemonOutput output = null
+		// Now actually start the daemon
+		String outputFile = System.getProperty(PROP_DAEMON_OUTPUT);
+		boolean doAppend = true;
+		DaemonOutput output = null;
 
 		Log.info("Starting daemon with command line: " + cmd);
 		
-		ProcessBuilder pb = new ProcessBuilder(argList)
-		pb.redirectErrorStream(true)
+		ProcessBuilder pb = new ProcessBuilder(argList);
+		pb.redirectErrorStream(true);
 		if (null != outputFile) {
-			doAppend = false
-		
+			doAppend = false;
+		}
 		
 		Process child = pb.start();
-	
+		
 		if (null != outputFile) {
 			FileOutputStream fos = new FileOutputStream(outputFile, doAppend);
-			output = new DaemonOutput(child.getInputStream(), fos)
+			output = new DaemonOutput(child.getInputStream(), fos);
 		}
 		
 		// Initial RMI file never named with PID to permit
 		// us to read it without knowing PID.  After 
 		// daemon operation is started below the file 
-		// will be renamed with PID if possibl
+		// will be renamed with PID if possible
 		// TODO - does this loop really make sense? Shouldn't the name change happen quickly or not at all?
-		while (!getRMIFile(daemonName, null).exists()) 
+		while (!getRMIFile(daemonName, null).exists()) {
 			InputStream childMsgs = null;
 			try {
 				Thread.sleep(1000);
 				
-				try 
+				try {
 					if (null == outputFile) {
-						childMsgs = child.getInputStream()
-					} els
-						childMsgs = new FileInputStream(outputFile)
-				
-					// The following should throw an IllegalThreadStateException in child.exitValue(
-					// If it doesn't then the startup failed
-					int exitValue = child.exitValue()
+						childMsgs = child.getInputStream();
+					} else
+						childMsgs = new FileInputStream(outputFile);
 					
-					// if we get here, the child has exite
+					// The following should throw an IllegalThreadStateException in child.exitValue()
+					// If it doesn't then the startup failed
+					int exitValue = child.exitValue();
+					
+					// if we get here, the child has exited
 					// Read and output to the console any messages from the child to help diagnose the problem
 					Log.warning("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					System.err.println("Could not launch daemon " + daemonName + ". Daemon exit value is " + exitValue + ".");
 					byte[] childMsgBytes = new byte[childMsgs.available()];
 					childMsgs.read(childMsgBytes);;
-					String childOutput = new String(childMsgBytes)
+					String childOutput = new String(childMsgBytes);
 					System.err.println("Messages from the child were: \"" + childOutput + "\"");
 					return;
 				} catch (IllegalThreadStateException e) {}	// The daemon successfully started
-				  finally 
-					if (null != childMsgs
-						childMsgs.close()
+				  finally {
+					if (null != childMsgs)
+						childMsgs.close();
 				  }
 			} catch (InterruptedException e) {}
 		}
 
 		// The daemon has started running - now start its operation
-		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, null)))
-		DaemonListener l
-	
+		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, null)));
+		DaemonListener l;
+		
 		try {
 			l = (DaemonListener)in.readObject();
-		} finally 
-			in.close()
-		
+		} finally {
+			in.close();
+		}
 		
 		String childpid = null;
 		childpid = l.startLoop();
@@ -507,15 +507,15 @@ public class Daemon {
 		Log.info("Started daemon " + daemonName + "." + (null == childpid ? "" : " PID " + childpid));
 		
 		// To log output at this level we have to keep running until the daemon exits
-		if (outputFile != null) 
-			boolean interrupted = false
+		if (outputFile != null) {
+			boolean interrupted = false;
 			do {
-				try 
-					child.waitFor()
-				} catch (InterruptedException e) {interrupted = true;
+				try {
+					child.waitFor();
+				} catch (InterruptedException e) {interrupted = true;}
 			} while (!interrupted);
-		
-		if (null != output
+		}
+		if (null != output)
 			output.close();
 	}
 
@@ -533,13 +533,13 @@ public class Daemon {
 
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, pid)));
 
-		DaemonListener l
-	
-		try 
-			l = (DaemonListener)in.readObject();	
+		DaemonListener l;
+		
+		try {
+			l = (DaemonListener)in.readObject();		
 		} finally {
 			in.close();
-		
+		}
 		
 		try {
 			l.shutDown();
@@ -565,14 +565,14 @@ public class Daemon {
 		}
 
 		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, pid)));
-		DaemonListener l
+		DaemonListener l;
 		try {
 			l = (DaemonListener)in.readObject();		
 		} finally {
-			in.close()
+			in.close();
 		}
 
-		try 
+		try {
 			if (l.signal(sigName)) {
 				System.out.println("Signal " + sigName + " delivered.");
 				Log.info("Signal " + sigName + " delivered.");
@@ -607,18 +607,18 @@ public class Daemon {
 		String prefix = ".rmi-server-" + daemonName;
 
 		return File.createTempFile(prefix, null, new File(System.getProperty("user.home")));
+	}
 	
-
-	/*
-	 * Remove the RMIFile when you don't know the PI
-	 * @throws IOExceptio
-	 *
-	protected void rmRMIFile(String pid) throws IOException 
-		getRMIFile(_daemonName, pid).delete()
+	/**
+	 * Remove the RMIFile when you don't know the PID
+	 * @throws IOException
+	 */
+	protected void rmRMIFile(String pid) throws IOException {
+		getRMIFile(_daemonName, pid).delete();
 	}
 
 	protected static void runDaemon(Daemon daemon, String args[]) throws IOException {
-	
+		
 		_daemon = daemon;
 		Mode mode = Mode.MODE_UNKNOWN;
 		String sigName = null;
@@ -657,7 +657,7 @@ public class Daemon {
 		try {
 			switch (mode) {
 			  case MODE_INTERACTIVE:
-				String pid = SystemConfiguration.getPID()
+				String pid = SystemConfiguration.getPID();
 				daemon.setPid(pid);
 				daemon.initialize(args, daemon);
 				Log.info("Running " + daemon.daemonName() + " in the foreground." + (null == pid ? "" : " PID " + pid));
@@ -715,9 +715,9 @@ public class Daemon {
 		_interactive = true;
 	}
 
-	/*
-	 * Main entry point for command line invocation
-	 * @param args Arguments passed in from command line
+	/**
+	 * Main entry point for command line invocation.
+	 * @param args Arguments passed in from command line.
 	 */
 	public static void main(String[] args) {
 		
@@ -733,21 +733,21 @@ public class Daemon {
 		}
 	}
 
-	public Object getStatus(String daemonName, String type) throws FileNotFoundException, IOException, ClassNotFoundException 
-		if (!getRMIFile(daemonName, _pid).exists()) 
-			System.out.println("Daemon " + daemonName + " does not appear to be running.")
-			Log.info("Daemon " + daemonName + " does not appear to be running.")
-			return null
-		
+	public Object getStatus(String daemonName, String type) throws FileNotFoundException, IOException, ClassNotFoundException {
+		if (!getRMIFile(daemonName, _pid).exists()) {
+			System.out.println("Daemon " + daemonName + " does not appear to be running.");
+			Log.info("Daemon " + daemonName + " does not appear to be running.");
+			return null;
+		}
 
-		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, _pid)))
-		DaemonListener l
-		try 
-			l = (DaemonListener)in.readObject();	
-		} finally 
-			in.close()
+		ObjectInputStream in = new ObjectInputStream(new FileInputStream(getRMIFile(daemonName, _pid)));
+		DaemonListener l;
+		try {
+			l = (DaemonListener)in.readObject();		
+		} finally {
+			in.close();
+		}
 		
-	
-		return l.status(type)
+		return l.status(type);
 	}
 }

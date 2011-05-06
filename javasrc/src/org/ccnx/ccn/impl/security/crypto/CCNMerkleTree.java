@@ -1,36 +1,36 @@
-/
- * Part of the CCNx Java Library
- 
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc
- 
- * This library is free software; you can redistribute it and/or modify i
- * under the terms of the GNU Lesser General Public License version 2.
- * as published by the Free Software Foundation.
- * This library is distributed in the hope that it will be useful
- * but WITHOUT ANY WARRANTY; without even the implied warranty o
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GN
- * Lesser General Public License for more details. You should have receive
- * a copy of the GNU Lesser General Public License along with this library
- * if not, write to the Free Software Foundation, Inc., 51 Franklin Street
- * Fifth Floor, Boston, MA 02110-1301 USA
+/*
+ * Part of the CCNx Java Library.
  *
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation. 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 package org.ccnx.ccn.impl.security.crypto;
 
-import java.security.InvalidKeyException
-import java.security.NoSuchAlgorithmException
-import java.security.PrivateKey
-import java.security.SignatureException
-import java.util.logging.Level
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.SignatureException;
+import java.util.logging.Level;
 
-import org.bouncycastle.asn1.DEROctetString
-import org.ccnx.ccn.impl.support.DataUtils
-import org.ccnx.ccn.impl.support.Log
-import org.ccnx.ccn.io.content.ContentEncodingException
-import org.ccnx.ccn.protocol.ContentName
-import org.ccnx.ccn.protocol.ContentObject
-import org.ccnx.ccn.protocol.Signature
-import org.ccnx.ccn.protocol.SignedInfo
+import org.bouncycastle.asn1.DEROctetString;
+import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Signature;
+import org.ccnx.ccn.protocol.SignedInfo;
 
 
 /**
@@ -50,8 +50,8 @@ import org.ccnx.ccn.protocol.SignedInfo
  * - the name for the block (which, for segmented content, includes the segmented
  * 	   number. If we're buffering content and building trees per buffer, the
  * 	   fragment numbers may carry across buffers (e.g. leaf 0 of this tree might
- *     be fragment 37 of the content as a whole
- *    
+ *     be fragment 37 of the content as a whole)
+ *     
  * - the authentication metadata. In the case of fragmented content, this is
  *     likely to be the same for all blocks. In the case of other content, the
  *     publisher is likely to be the same, but the timestamp and even maybe the
@@ -59,15 +59,15 @@ import org.ccnx.ccn.protocol.SignedInfo
  *     signature costs over any collection of data, not just a set of fragments.
  *     
  * So, we either need to hand in all the names, or have a function to call to get
- * the name for each block
+ * the name for each block.
  * 
- * Note: There is no requirement that a CCNMerkleTree be built only from the segment
- *     of a single piece of content, although that is the most common use. On
- *     can build and verify a CCNMerkleTree built out of an arbitrary set o
- *     ContentObjects; this may be a useful way of limiting the number o
- *     signatures generated on constrained platforms. Eventually the CCNSegmente
- *     will be extended to handle such collections of arbitrary objects
- *    
+ * Note: There is no requirement that a CCNMerkleTree be built only from the segments
+ *     of a single piece of content, although that is the most common use. One
+ *     can build and verify a CCNMerkleTree built out of an arbitrary set of
+ *     ContentObjects; this may be a useful way of limiting the number of
+ *     signatures generated on constrained platforms. Eventually the CCNSegmenter
+ *     will be extended to handle such collections of arbitrary objects.
+ *     
  */
 public class CCNMerkleTree extends MerkleTree {
 	
@@ -102,9 +102,9 @@ public class CCNMerkleTree extends MerkleTree {
 		Log.info("CCNMerkleTree: built a tree of " + contentObjects.length + " objects.");
 	}
 
-	/*
-	 * Returns the root signature on the tree
-	 * @return the root signatur
+	/**
+	 * Returns the root signature on the tree.
+	 * @return the root signature
 	 */
 	public byte [] rootSignature() { return _rootSignature; }
 	
@@ -122,11 +122,11 @@ public class CCNMerkleTree extends MerkleTree {
 			return _segmentObjects[leafIndex].name();
 		return null;
 	}
-
-	/*
-	 * Return the SignedInfo for a given segment
-	 * @param leafIndex the index of the leaf whose SignedInfo we wan
-	 * @return the SignedInf
+	
+	/**
+	 * Return the SignedInfo for a given segment.
+	 * @param leafIndex the index of the leaf whose SignedInfo we want
+	 * @return the SignedInfo
 	 */
 	public SignedInfo segmentSignedInfo(int leafIndex) {
 		if ((leafIndex < 0) || (leafIndex > _segmentObjects.length))
@@ -137,11 +137,11 @@ public class CCNMerkleTree extends MerkleTree {
 		}
 		return null;
 	}
-
-	/*
-	 * Set the signature for a particular segment
-	 * @param leafIndex the leaf segment to set the signature fo
-	 * @return the Signatur
+	
+	/**
+	 * Set the signature for a particular segment.
+	 * @param leafIndex the leaf segment to set the signature for
+	 * @return the Signature
 	 */
 	public Signature segmentSignature(int leafIndex) {
 		if ((leafIndex < 0) || (leafIndex > _segmentObjects.length))
@@ -165,11 +165,11 @@ public class CCNMerkleTree extends MerkleTree {
 			segmentSignature(i); // DKS TODO refactor, sets signature as a side effect
 		}
 	}
-		
-	/*
-	 * A version of initializeTree to go with the CCNMerkleTree(ContentObject []) constructor
-	 * @param contentObjects objects to build into the tre
-	 * @throws NoSuchAlgorithmException if the default digest algorithm unknow
+			
+	/**
+	 * A version of initializeTree to go with the CCNMerkleTree(ContentObject []) constructor.
+	 * @param contentObjects objects to build into the tree
+	 * @throws NoSuchAlgorithmException if the default digest algorithm unknown
 	 */
 	protected void initializeTree(ContentObject [] contentObjects) throws NoSuchAlgorithmException {
 		if (contentObjects.length < numLeaves())
@@ -179,39 +179,39 @@ public class CCNMerkleTree extends MerkleTree {
 		computeNodeValues();		
 	}
 
-	/*
-	 * Construct the Signature for a given leaf. This is composed of the rootSignature()
-	 * which is the same for all nodes, and the DER encoded MerklePath for this leaf as th
-	 * witness
-	 * @param leafIndex the leaf to compute the signature fo
-	 * @return the signatur
+	/**
+	 * Construct the Signature for a given leaf. This is composed of the rootSignature(),
+	 * which is the same for all nodes, and the DER encoded MerklePath for this leaf as the
+	 * witness.
+	 * @param leafIndex the leaf to compute the signature for
+	 * @return the signature
 	 */
 	protected Signature computeSignature(int leafIndex) {
 		MerklePath path = path(leafIndex);
 		return new Signature(path.derEncodedPath(), rootSignature());		
 	}
-
-	/*
-	 * Compute the signature on the root node. It's already a digest, so i
-	 * theory we could just wrap it up in some PKCS#1 padding, encrypt i
-	 * with our private key, and voila! A signature. But there are basicall
-	 * no crypto software packages that provide signature primitives that tak
-	 * already-digested data and just do the padding and encryption, and so we'
-	 * be asking anyone attempting to implement CCN MHT signing (including ourselves
-	 * to re-implement a very complicated wheel, across a number of signature algorithms
-	 * We might also want to sign with a key that does not support the digest algorith
-	 * we used to compute the root (for example, DSA)
-	 * So take the computationally very slightly more expensive, but vastly simple
-	 * (implementation-wise) approach of taking our digest and signing it wit
-	 * a standard signing API -- which means digesting it one more time for th
-	 * signature. So we sign (digest + encrypt) the root digest.
-	 *
-	 * @param root the root digest to sig
-	 * @param signingKey the key to sign wit
-	 * @return the bytes of the signatur
-	 * @throws InvalidKeyExceptio
-	 * @throws SignatureExceptio
-	 * @throws NoSuchAlgorithmExceptio
+	
+	/**
+	 * Compute the signature on the root node. It's already a digest, so in
+	 * theory we could just wrap it up in some PKCS#1 padding, encrypt it
+	 * with our private key, and voila! A signature. But there are basically
+	 * no crypto software packages that provide signature primitives that take
+	 * already-digested data and just do the padding and encryption, and so we'd
+	 * be asking anyone attempting to implement CCN MHT signing (including ourselves)
+	 * to re-implement a very complicated wheel, across a number of signature algorithms.
+	 * We might also want to sign with a key that does not support the digest algorithm
+	 * we used to compute the root (for example, DSA).
+	 * So take the computationally very slightly more expensive, but vastly simpler
+	 * (implementation-wise) approach of taking our digest and signing it with
+	 * a standard signing API -- which means digesting it one more time for the
+	 * signature. So we sign (digest + encrypt) the root digest. 
+	 * 
+	 * @param root the root digest to sign
+	 * @param signingKey the key to sign with
+	 * @return the bytes of the signature
+	 * @throws InvalidKeyException
+	 * @throws SignatureException
+	 * @throws NoSuchAlgorithmException
 	 */
 	protected static byte [] computeRootSignature(byte [] root, PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException {
 		// Given the root of the authentication tree, compute a signature over it
@@ -220,11 +220,11 @@ public class CCNMerkleTree extends MerkleTree {
 		// the sig alg used.
 		return CCNSignatureHelper.sign(null, root, signingKey);
 	}
-
-	/*
-	 * Compute the leaf values of the ContentObjects in this tre
-	 * @param contentObjects the conten
-	 * @throws NoSuchAlgorithmException if the digestAlgorithm unknow
+	
+	/**
+	 * Compute the leaf values of the ContentObjects in this tree
+	 * @param contentObjects the content
+	 * @throws NoSuchAlgorithmException if the digestAlgorithm unknown
 	 */
 	protected void computeLeafValues(ContentObject [] contentObjects) throws NoSuchAlgorithmException {
 		// Hash the leaves
@@ -242,8 +242,8 @@ public class CCNMerkleTree extends MerkleTree {
 	 * Essentially, we want the leaf digest to be the same thing
 	 * we would use for signing a stand-alone ContentObject.
 	 * @param leafIndex the index of the leaf to sign
-	 * @param content the content array containing the leaf conten
-	 * @param offset the offset into content where the leaf star
+	 * @param content the content array containing the leaf content
+	 * @param offset the offset into content where the leaf start
 	 * @param length the length of content for this leaf
 	 * @return the block digest
 	 */
