@@ -92,6 +92,8 @@ public class RepositoryServer implements CCNStatistics {
 		
 	protected Timer _periodicTimer = null;
 	protected RepositoryInterestHandler _iHandler = null;
+	protected boolean _started = false;
+	protected Object _startedLock = new Object();
 	
 	private class InterestTimer extends TimerTask {
 
@@ -175,17 +177,46 @@ public class RepositoryServer implements CCNStatistics {
 		
 		_periodicTimer = new Timer(true);
 		_periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
-
+		
+		// We can't read or write the policy file until now because we need the repo infrastructure
+		// to read it out of the repo. So now we can read it and/or write it. Since reading the file
+		// from the repo might cause us to change namespaces that are supported we need to reset the
+		// namespace again.
+		try {
+			_repo.policyUpdate();
+			resetNameSpace();
+		} catch (RepositoryException e) {
+			Log.warning(Log.FAC_REPO, e.getMessage());
+		} catch (IOException e) {
+			Log.logStackTrace(Level.WARNING, e);
+			e.printStackTrace();
+		}
+		
+		synchronized (_startedLock) {
+			_started = true;
+			_startedLock.notifyAll();
+		}
+	}
+	
+	public void waitForStart() {
+		synchronized (_startedLock) {
+			while (!_started) {
+				try {
+					_startedLock.wait();
+				} catch (InterruptedException e) {
+					break;
+				}
+			}
+		}
 	}
 	
 	/**
 	 * Stop serving requests
 	 */
 	public void shutDown() {
+		waitForStart();
 		Log.info(Log.FAC_REPO, "Stopping service of repository requests");
 
-		// This closes our handle....
-		_handle = null;
 		_repo.shutDown();
 		
 		if( _periodicTimer != null ) {
@@ -207,6 +238,9 @@ public class RepositoryServer implements CCNStatistics {
 		}
 		
 		_dataHandler.shutdown();
+		
+		// This closes our handle....
+		_handle = null;
 		
 		try {
 			_writer.close();

@@ -90,6 +90,7 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	protected String _repositoryRoot = null;
 	protected String _repositoryMeta = null;
 	protected File _repositoryFile;
+	protected boolean _useStoredPolicy = true;
 
 	Map<Integer,RepoFile> _files;
 	RepoFile _activeWriteFile = null;
@@ -298,6 +299,10 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		
 		Log.info(Log.FAC_REPO, "LogStructRepoStore.initialize()");
 		
+		// If a new policy file or namespace was requested from the command line, we don't use policy
+		// that was already stored in the repo if there was any
+		if (null != policyFile || null != namespace)
+			_useStoredPolicy = false;
 		PolicyXML pxml = null;
 		boolean nameFromArgs = (null != localName);
 		boolean globalFromArgs = (null != globalPrefix);
@@ -421,12 +426,25 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 			throw new RepositoryException(e2.getMessage());
 		}
 		
-		/**
-		 * Try to read policy from storage
-		 */
+		_policy = new BasicPolicy();
+		_policy.setPolicyXML(pxml);
+		try {
+			finishInitPolicy(globalPrefix, localName);
+		} catch (MalformedContentNameStringException e) {
+			throw new RepositoryException(e.getMessage());
+		}
+	}
+	
+	/**
+	 * Write/rewrite the policy file if different from what we have now
+	 * @throws RepositoryException 
+	 */
+	public void policyUpdate() throws RepositoryException {
 		PolicyXML storedPxml = null;
 		try {
-			storedPxml = readPolicy(globalPrefix);
+			storedPxml = readPolicy(_policy.getGlobalPrefix());
+			if (null != storedPxml && _useStoredPolicy)
+				_policy.setPolicyXML(storedPxml);
 		} catch (Exception e) {
 			throw new RepositoryException(e.getMessage());
 		}
@@ -434,21 +452,15 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 		/**
 		 * If there are differences we need to write the updated version
 		 */
+		PolicyXML pxml = _policy.getPolicyXML();
 		if (null == storedPxml || !pxml.equals(storedPxml)) {
 			ContentName policyName = BasicPolicy.getPolicyName(pxml.getGlobalPrefix());
 			try {
-				PolicyObject po = new PolicyObject(policyName, pxml, null, null, new RepositoryInternalFlowControl(this, handle));
+				PolicyObject po = new PolicyObject(policyName, pxml, null, null, new RepositoryInternalFlowControl(this, _handle));
 				po.save();
 			} catch (IOException e) {
 				throw new RepositoryException(e.getMessage());
 			}
-		}
-		_policy = new BasicPolicy();
-		_policy.setPolicyXML(pxml);
-		try {
-			finishInitPolicy(globalPrefix, localName);
-		} catch (MalformedContentNameStringException e) {
-			throw new RepositoryException(e.getMessage());
 		}
 	}
 

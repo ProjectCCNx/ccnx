@@ -26,6 +26,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
@@ -176,14 +177,21 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * @throws MalformedContentNameStringException 
 	 * @throws IOException 
 	 */
-	public PolicyXML readPolicy(String globalPrefix) throws MalformedContentNameStringException, IOException {
+	public PolicyXML readPolicy(ContentName globalPrefix) throws MalformedContentNameStringException, IOException {
 		if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 			Log.info(Log.FAC_REPO, "REPO: reading policy from network: {0}/{1}/{2}", REPO_NAMESPACE, globalPrefix, REPO_POLICY);
-		ContentName policyName = BasicPolicy.getPolicyName(ContentName.fromNative(globalPrefix));
-		PolicyObject policyObject = new PolicyObject(policyName, _handle);
+		ContentName policyName = BasicPolicy.getPolicyName(globalPrefix);
+		
+		// We can't use the regular repo handle for this because we need ccnd to communicate across the faces
+		CCNHandle readHandle;
+		try {
+			readHandle = CCNHandle.open();
+		} catch (ConfigurationException e) {return null;}  // Don't think this can happen
+		PolicyObject policyObject = new PolicyObject(policyName, readHandle);
 		try {
 			return policyObject.policyInfo();
 		} catch (ContentNotReadyException cge) {}
+		  finally {readHandle.close();}
 		return null;
 	}
 	
