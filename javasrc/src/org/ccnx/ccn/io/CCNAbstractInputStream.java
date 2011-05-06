@@ -167,6 +167,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 	private Thread processor = null;
 	private long processingSegment = -1;
 	private ArrayList<IncomingSegment> incoming = new ArrayList<IncomingSegment>();
+	
+	private int processingDefer = 0;
 
 	/**
 	 * Set up an input stream to read segmented CCN content under a given name. 
@@ -286,7 +288,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 			_pipelineStartTime = System.currentTimeMillis();
 			if (SystemConfiguration.PIPELINE_STATS)
-				System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1"+ " toProcess "+incoming.size());		
+				System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1"+ " toProcess "+incoming.size()+" avgResponseTime "+avgResponseTime);		
 
 			long segmentToGet = -1;
 			Interest interest = null;
@@ -365,6 +367,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: we are deferring until they are done");
 					try {
+						processingDefer = 1;
 						inOrderSegments.wait();
 						//readerReady.wait();
 						synchronized(readerReadyObj) {
@@ -375,6 +378,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 							Log.info(Log.FAC_PIPELINE, "PIPELINE: we can go back to processing");
 						//break;
 					}
+					processingDefer = 0;
 				} else {
 					//we don't have their segment, we should keep going
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
@@ -390,6 +394,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: we just got the last segment...");
 				_lastSegmentNumber = returnedSegment;
+				_lastRequestedPipelineSegment = returnedSegment;
 			}
 			//}
 			long segNum;
@@ -406,6 +411,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 			}
 			_sentInterests.removeAll(toRemove);
 			toRemove.clear();
+			//_lastRequestedPipelineSegment = returnedSegment;
 
 		//no good reason to release the lock here...	
 		//}
@@ -525,7 +531,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 			Interest i = null;
 
-			while (_sentInterests.size() + inOrderSegments.size() + outOfOrderSegments.size()  < SystemConfiguration.PIPELINE_SIZE && !doneAdvancing) {
+			while (_sentInterests.size() + inOrderSegments.size() + outOfOrderSegments.size() + processingDefer < SystemConfiguration.PIPELINE_SIZE && !doneAdvancing) {
+				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: _sentInterests.size() = {0} inOrderSegments.size() = {1} outOfOrderSegments.size()  = {2} processingDefer = {3} total = {4}", _sentInterests.size(), inOrderSegments.size(), outOfOrderSegments.size(), processingDefer, (_sentInterests.size() + inOrderSegments.size() + outOfOrderSegments.size() + processingDefer) );
+				
 				//we have tokens to use
 				i = null;
 
@@ -544,9 +553,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 					}
 				}
 				
-				if (_lastSegmentNumber == -1) {
+				if (_lastSegmentNumber == -1 || _lastRequestedPipelineSegment < _lastSegmentNumber) {
 					//we don't have the last segment already...
 					i = SegmentationProfile.segmentInterest(_basePipelineName, _lastRequestedPipelineSegment + 1, _publisher);
+					//have we already expressed this interest?
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: in advancePipeline _lastRequestedPipelineSegment {0}", _lastRequestedPipelineSegment);
 					try {
 						i.userTime = System.currentTimeMillis();
 						_handle.expressInterest(i, this);
@@ -605,7 +616,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 		}
 
 		Interest i = SegmentationProfile.segmentInterest(_basePipelineName, hole, _publisher);
-
+		boolean notRequested = true;
 
 		int index = -1;
 		int index2 = -1;
@@ -613,6 +624,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 		long elapsed1 = -1;
 		long elapsed2 = -1;
 
+		long newUserTime = -1;
+		
 		Interest expressed;
 		try {
 			synchronized (inOrderSegments) {
@@ -621,6 +634,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 				if (index > -1) {
 					expressed = _sentInterests.get(index);
 					elapsed1 = System.currentTimeMillis() - expressed.userTime;
+					newUserTime = expressed.userTime;
 
 					if(elapsed1 == -1) {
 						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
@@ -629,7 +643,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 					}
 
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-						Log.info(Log.FAC_PIPELINE, "PIPELINE: base interest is already there, try adding excludes elapsed time = {0} interest: {1}", elapsed1, expressed);					
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: base interest is already there, try adding excludes elapsed time = {0} interest: {1}", elapsed1, expressed);
+					notRequested = false;
 				} else {
 					// base interest isn't there, the the exclude could be.
 				}
@@ -654,6 +669,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 					if (tempseg == hole) {
 						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 							Log.info(Log.FAC_PIPELINE, "PIPELINE: this is a match!  does it have excludes?");
+						notRequested = false;
 						//this is the interest we want to look at
 						if(expInt.exclude()!=null) {
 							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
@@ -674,6 +690,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 								i.exclude(ex);
 								if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 									Log.info(Log.FAC_PIPELINE, "PIPELINE: going to express the next attempt: {0}", i);
+								newUserTime = expInt.userTime;
 							} else {
 								if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 									Log.info(Log.FAC_PIPELINE, "PIPELINE: we have tried as many times as we can...  break here");
@@ -693,6 +710,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 					index2++;
 				}
 
+				
 				if(toDelete!=null) {
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: we can try again to fill the hole!");
@@ -707,8 +725,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 							Log.info(Log.FAC_PIPELINE, "PIPELINE: elapsed2 time {0}", elapsed2);
 						if(elapsed2 > avgResponseTime * SystemConfiguration.PIPELINE_RTTFACTOR && avgResponseTime > -1) {
 							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-								Log.info(Log.FAC_PIPELINE, "PIPELINE: expressing the next interest! {0}", i);
-							i.userTime = System.currentTimeMillis();
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: expressing the next interest! {0} old express time {1} new express time {2}", i, expressed.userTime, newUserTime);
+							//i.userTime = System.currentTimeMillis();
+							i.userTime = newUserTime;
 							_handle.expressInterest(i, this);
 							_sentInterests.add(index2, i);
 
@@ -736,20 +755,29 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have any holefilling attempts... for {0}", hole);
 					if (index == -1) {
-						// the base interest wasn't even there (neither was the
-						// hole filling one)
+						// the base interest wasn't even there (neither was the hole filling one)
 						i.exclude(null);
 					}
 				}
 
-				if((elapsed1 > avgResponseTime * 2 && avgResponseTime > -1) || (avgResponseTime == -1 && elapsed1 > SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT)) {
+				if((elapsed1 > avgResponseTime * 2 && avgResponseTime > -1) || (avgResponseTime == -1 && elapsed1 > SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT) || notRequested) {
+					//long userTime = System.currentTimeMillis();
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
+						if (notRequested)
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have any holefilling interests pending for {0}, need to express one.  might need to reset pipeline state", hole);
 						if(i.exclude() == null)
 							Log.info(Log.FAC_PIPELINE, "PIPELINE: adding the base interest or the first holefilling attempt!!! {0}", i);
-						else
+						else {
 							Log.info(Log.FAC_PIPELINE, "PIPELINE: adding the first holefilling attempt! {0}",  i);
+							//need to use the previous user time for this expression
+							//userTime = userTime - elapsed1;
+							
+						}
 					}
-					i.userTime = System.currentTimeMillis();
+					//i.userTime = System.currentTimeMillis();
+					if (newUserTime == -1)
+						newUserTime = System.currentTimeMillis();
+					i.userTime = newUserTime;
 					_handle.expressInterest(i, this);
 					if (index != -1)
 						_sentInterests.add(index, i);
@@ -779,7 +807,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 	private void adjustAvgResponseTimeForHole() {
 		synchronized(incoming) {
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: before adjusting avgResponseTime for hole. avgResponseTime = {0}", avgResponseTime);
 			avgResponseTime = 0.9 * avgResponseTime + 0.1 * (SystemConfiguration.PIPELINE_RTTFACTOR * avgResponseTime);
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: after adjusting avgResponseTime for hole. avgResponseTime = {0}", avgResponseTime);
 		}
 	}
 
@@ -910,17 +940,128 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 				attemptHoleFilling(segmentNumber);
 			} else {
 				//we haven't requested it...  send request and ditch what we have
+				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)){
+
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: detected a pipeline jump!!!!");
+				
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump adjustment conditions");
+					printSegments();
+					String s = "pre-pipeline jump interests: [";
+					for(Interest i: _sentInterests)
+						s += " "+SegmentationProfile.getSegmentNumber(i.name());
+					s += "]";
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: "+s);
+				}
+				
 				Interest interest = SegmentationProfile.segmentInterest(_basePipelineName, segmentNumber, _publisher);
 				try {
+					//probably could just clear out some pipeline state instead of clearing all of it...
 					interest.userTime = System.currentTimeMillis();
 					_handle.expressInterest(interest, this);
-					cancelInterests();
-					_sentInterests.add(interest);
-					resetPipelineState();
-					_lastRequestedPipelineSegment = segmentNumber;
+					ArrayList<Object> toRemove = new ArrayList<Object>();
+					long maxExpress = segmentNumber + SystemConfiguration.PIPELINE_SIZE-1;
+					long lastExpressed = segmentNumber;
+					long segNum;
+					for (Interest i: _sentInterests) {
+						segNum = SegmentationProfile.getSegmentNumber(i.name());
+						if (segNum > maxExpress) {
+							_handle.cancelInterest(i, this);
+							toRemove.add(i);
+							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: canceling interest: {0}", i);
+						} else {
+							lastExpressed = segNum;
+						}
+					}
+					//cancelInterests();
+					_sentInterests.removeAll(toRemove);
+					_sentInterests.add(0, interest);
+					//resetPipelineState();
+					//_lastRequestedPipelineSegment = segmentNumber;
 					_nextPipelineSegment = segmentNumber;
-					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+					
+					//now check our received segments
+					for (ContentObject segment : inOrderSegments) {
+						segNum = SegmentationProfile.getSegmentNumber(segment.name());
+						if (segNum > maxExpress) {
+							toRemove.add(segment);
+							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: removing segment past buffer limit after pipeline jump in inOrderSegments: {0}", segment);
+						} else if (segNum < segmentNumber) {
+							toRemove.add(segment);
+							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: removing segment before requested segment pipeline jump in inOrderSegments: {0}", segment);
+						} else {
+							if (lastExpressed < segNum) {
+								lastExpressed = segNum;
+							}
+							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump - will move segment in inOrderSegments: {0} to outOfOrderSegments", segment);
+						}
+					}
+					inOrderSegments.removeAll(toRemove);
+					
+					toRemove.clear();
+					for (ContentObject segment : outOfOrderSegments) {
+						segNum = SegmentationProfile.getSegmentNumber(segment.name());
+						if (segNum > maxExpress) {
+							toRemove.add(segment);
+							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: removing segment past buffer limit after pipeline jump in outOfOrderSegments: {0}", segment);
+						} else if (segNum < segmentNumber) {
+							toRemove.add(segment);
+							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: removing segment before requested segment pipeline jump in outOfOrderSegments: {0}", segment);
+						} else if (lastExpressed < segNum) {
+							lastExpressed = segNum;
+						}
+					}
+					outOfOrderSegments.removeAll(toRemove);
+					
+					long segNum2;
+					//now move segments from in order to out of order...
+					if (outOfOrderSegments.size() == 0) {
+						outOfOrderSegments.addAll(inOrderSegments);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump - moving segments from inOrderSegments to outOfOrderSegments");
+					} else {
+						ContentObject segX;
+						for (int x = 0 ; x < inOrderSegments.size(); x++) {
+							segX = (ContentObject)inOrderSegments.get(x);
+							segNum = SegmentationProfile.getSegmentNumber(segX.name());
+							for (int y = 0 ; y < inOrderSegments.size(); y++) {
+								segNum2 = SegmentationProfile.getSegmentNumber(((ContentObject)outOfOrderSegments.get(y)).name());
+								if (segNum < segNum2) {
+									Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump - moving segment {0} to position {1} in outOfOrderSegments", segNum, y);
+									outOfOrderSegments.add(y, segX);
+								}
+							}
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump - check buffered segments");
+							printSegments();
+						}
+					}
+					inOrderSegments.clear();
+					
+					
+					//resetting some of the state...
+					_lastRequestedPipelineSegment = lastExpressed;
+					_lastInOrderSegment = segmentNumber - 1;
+					
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump - we have now reset the state...  now we can try asking for the next segments - advance pipeline with holefilling");
+					advancePipeline(true);
+					
+					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: we hadn't asked for segment {0} asking now... {1}", segmentNumber, interest);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump _lastRequestedPipelineSegment {0} _lastInOrderSegment {1}", _lastRequestedPipelineSegment, _lastInOrderSegment);
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump adjustment results");
+						printSegments();
+						String s = "post-pipeline jump interests: [";
+						for(Interest i: _sentInterests)
+							s += " "+SegmentationProfile.getSegmentNumber(i.name());
+						s += "]";
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: "+s);
+					}
+					
+					
 				} catch (IOException e) {
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
 						Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline");
@@ -1058,6 +1199,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 		IncomingSegment is;
 
 		synchronized(incoming) {
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: before adjusting avgResponseTime after reception. avgResponseTime = {0} elapsed time {1}", avgResponseTime, (starttime - interest.userTime));
 			if(avgResponseTime == -1) {
 				avgResponseTime = starttime - interest.userTime;
 			} else {
@@ -1065,6 +1207,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 				//if (interest.exclude()==null)
 				avgResponseTime = 0.9 * avgResponseTime + 0.1 * (starttime - interest.userTime);
 			}
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: after adjusting avgResponseTime after reception. avgResponseTime = {0}", avgResponseTime);
 
 			interest.userTime = -1;
 
@@ -1073,6 +1216,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 			is = new IncomingSegment(result, interest);
 			int index = 0;
 			for (IncomingSegment i: incoming) {
+				if (i.segmentNumber == is.segmentNumber){
+					//this segment is already here to be processed...  return
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: attempting to deliver segment {0}, but it is already here to be processed, returning", is.segmentNumber);
+					return null;
+				}
 				if (i.segmentNumber > is.segmentNumber)
 					break;
 				index++;
@@ -1114,7 +1262,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 				//synchronized(inOrderSegments) {
 
 				if (SystemConfiguration.PIPELINE_STATS)
-					System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].2"+ " toProcess "+incoming.size());
+					System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].2"+ " toProcess "+incoming.size()+" avgResponseTime "+avgResponseTime);
 
 				if (_sentInterests.remove(is.interest)) {
 					//we had this interest outstanding...
@@ -1533,25 +1681,30 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 		synchronized (inOrderSegments) {
 			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-				Log.info(Log.FAC_PIPELINE, "PIPELINE: time to get lock in getSegment (number) "+(System.currentTimeMillis() - ttgl));
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: time to get lock in getSegment {0} for segment {1}",(System.currentTimeMillis() - ttgl), number);
 			// check if the base name was updated (in case we didn't have the version) for pipelining
 
 			if (_baseName.equals(_basePipelineName)) {
 				// we already have the base name...
 				if (SystemConfiguration.PIPELINE_STATS)
-					System.out.println("plot " + (System.currentTimeMillis() - _pipelineStartTime) + " inOrder: " + inOrderSegments.size() + " outOfOrder: " + outOfOrderSegments.size() + " interests: " + _sentInterests.size() + " holes: " + _holes + " received: " + _totalReceived + " [" + _baseName + "].3"+ " toProcess "+incoming.size());
+					System.out.println("plot " + (System.currentTimeMillis() - _pipelineStartTime) + " inOrder: " + inOrderSegments.size() + " outOfOrder: " + outOfOrderSegments.size() + " interests: " + _sentInterests.size() + " holes: " + _holes + " received: " + _totalReceived + " [" + _baseName + "].3"+ " toProcess "+incoming.size()+" avgResponseTime "+avgResponseTime);
 			} else {
 				// we don't have the base name... set for pipelining.
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: in getSegment and we detected a name change.  _baseName: {0} _basePipelineName: {1}", _baseName, _basePipelineName);
 				setPipelineName(_baseName);
 				startPipeline();
 			}
 
 			if (_currentSegment != null) {
 				// what segment do we have right now? maybe we already have it
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: getSegment checking if currentSegment ({0}) is the one we want {1}", currentSegmentNumber(), number);
 				if (currentSegmentNumber() == number) {
 					// we already have this segment... just use it
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: currentSegment was the one we wanted, returning it!");
 					return _currentSegment;
 				}
+			} else {
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: getSegment currentSegment was null");
 			}
 
 			ContentObject co = getPipelineSegment(number);
@@ -1568,6 +1721,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 			} else {
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have segment {0} pipelined... blocking", number);
+				
+				//we don't have the segment...  might just be that it isn't here yet, but this might be an out of order request
+				if (number < _lastInOrderSegment)
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we do not have segment {0} and the last in order segment was {1}, we must have had a skip/seek");
 			}
 
 			// the segment was not available... we need to wait until the
@@ -1944,7 +2101,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 	@Override
 	public synchronized void mark(int readlimit) {
-
+		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: in mark({0}) currentSegment {1}", readlimit, currentSegmentNumber());
+		
 		// Shouldn't have a problem if we are GONE, and don't want to
 		// deal with exceptions raised by a call to isGone.
 		_readlimit = readlimit;
@@ -1972,7 +2131,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 	@Override
 	public synchronized void reset() throws IOException {
-
+		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: in reset() currentSegment {0}", currentSegmentNumber());
 		if (isGone())
 			return;
 
@@ -2008,6 +2168,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 	@Override
 	public long skip(long n) throws IOException {
 
+		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: in skip({0}) currentSegment {1}", n, currentSegmentNumber());
+		
 		if (isGone())
 			return 0;
 		if (Log.isLoggable(Log.FAC_IO, Level.FINER))
@@ -2035,6 +2198,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 	 * @throws IOException
 	 */
 	public void seek(long position) throws IOException {
+		
+		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: in seek({0}) currentSegment {1}", position, currentSegmentNumber());
+		
 		if (isGone())
 			return; // can't seek gone stream
 
@@ -2063,6 +2230,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 	 * @throws IOException
 	 */
 	public long tell() throws IOException {
+		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+			Log.info(Log.FAC_PIPELINE, "PIPELINE: in tell() currentSegment {0}", currentSegmentNumber());
 		if (isGone())
 			return 0;
 		return _currentSegment.contentLength() - _segmentReadStream.available();
