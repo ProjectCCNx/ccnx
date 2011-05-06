@@ -1,19 +1,19 @@
-/*
- * A CCNx library test.
+/
+ * A CCNx library test
+ 
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc
+ 
+ * This work is free software; you can redistribute it and/or modify it unde
+ * the terms of the GNU General Public License version 2 as published by th
+ * Free Software Foundation.
+ * This work is distributed in the hope that it will be useful, but WITHOUT AN
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY o
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public Licens
+ * for more details. You should have received a copy of the GNU General Publi
+ * License along with this program; if not, write to th
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor
+ * Boston, MA 02110-1301, USA
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
- *
- * This work is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
- * This work is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details. You should have received a copy of the GNU General Public
- * License along with this program; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
- * Boston, MA 02110-1301, USA.
- */
 
 package org.ccnx.ccn.test.io.content;
 
@@ -30,9 +30,9 @@ import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-/**
- * Test encoding and decoding Links.
- */
+/*
+ * Test encoding and decoding Links
+ *
 public class LinkTest {
 
 	static final  String baseName = "test";

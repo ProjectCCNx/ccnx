@@ -1,123 +1,123 @@
-/*
- * Part of the CCNx Java Library.
+/
+ * Part of the CCNx Java Library
+ 
+ * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc
+ 
+ * This library is free software; you can redistribute it and/or modify i
+ * under the terms of the GNU Lesser General Public License version 2.
+ * as published by the Free Software Foundation.
+ * This library is distributed in the hope that it will be useful
+ * but WITHOUT ANY WARRANTY; without even the implied warranty o
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GN
+ * Lesser General Public License for more details. You should have receive
+ * a copy of the GNU Lesser General Public License along with this library
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street
+ * Fifth Floor, Boston, MA 02110-1301 USA
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
- *
- * This library is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details. You should have received
- * a copy of the GNU Lesser General Public License along with this library;
- * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
- * Fifth Floor, Boston, MA 02110-1301 USA.
- */
 
 package org.ccnx.ccn.io.content;
 
-import java.io.IOException;
-import java.util.EnumSet;
+import java.io.IOException
+import java.util.EnumSet
 
-import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.impl.CCNFlowControl;
-import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
-import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
-import org.ccnx.ccn.impl.encoding.XMLDecoder;
-import org.ccnx.ccn.impl.encoding.XMLEncodable;
-import org.ccnx.ccn.impl.encoding.XMLEncoder;
-import org.ccnx.ccn.io.ErrorStateException;
-import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes;
-import org.ccnx.ccn.profiles.SegmentationProfile;
-import org.ccnx.ccn.profiles.VersioningProfile;
-import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.protocol.KeyLocator;
-import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.SignedInfo.ContentType;
+import org.ccnx.ccn.CCNHandle
+import org.ccnx.ccn.impl.CCNFlowControl
+import org.ccnx.ccn.impl.CCNFlowControl.SaveType
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags
+import org.ccnx.ccn.impl.encoding.GenericXMLEncodable
+import org.ccnx.ccn.impl.encoding.XMLDecoder
+import org.ccnx.ccn.impl.encoding.XMLEncodable
+import org.ccnx.ccn.impl.encoding.XMLEncoder
+import org.ccnx.ccn.io.ErrorStateException
+import org.ccnx.ccn.io.CCNAbstractInputStream.FlagTypes
+import org.ccnx.ccn.profiles.SegmentationProfile
+import org.ccnx.ccn.profiles.VersioningProfile
+import org.ccnx.ccn.protocol.ContentName
+import org.ccnx.ccn.protocol.ContentObject
+import org.ccnx.ccn.protocol.Interest
+import org.ccnx.ccn.protocol.KeyLocator
+import org.ccnx.ccn.protocol.PublisherPublicKeyDigest
+import org.ccnx.ccn.protocol.SignedInfo.ContentType
 
 
 /**
- * Represents a secure, authenticatable link from one part of the CCN namespace to another.
- * 
- * CCN links are very flexible and can be used to represent a wide variety of application-level
- * structures. A link can point to a specific content object (an individual block of content),
- * the collection of "segments" making up a specific version of a stream or document, an aggregated
- * "document" object consisting of multiple versions and their associated metadata, or to an arbitrary
- * point in the name tree -- essentially saying "treat the children of this node as if they
- * were my children".
- * 
- * CCN links have authentication information associated with them, and can be made highly secure --
- * by specifying who should have published (signed) the target of a given link, one can say effectively
- * "what I mean by name N is whatever Tom means by name N'". The authentication information
- * associated with a Link is called a LinkAuthenticator; its form and capabilities are still
- * evolving, but it will at least have the ability to offer indirection -- "trust anyone whose
- * key is signed by key K to have signed a valid target for this link".
- * 
- * Links also play an important role in making up Collections, the CCN notion of a container full
+ * Represents a secure, authenticatable link from one part of the CCN namespace to another
+ *
+ * CCN links are very flexible and can be used to represent a wide variety of application-leve
+ * structures. A link can point to a specific content object (an individual block of content)
+ * the collection of "segments" making up a specific version of a stream or document, an aggregate
+ * "document" object consisting of multiple versions and their associated metadata, or to an arbitrar
+ * point in the name tree -- essentially saying "treat the children of this node as if the
+ * were my children"
+ *
+ * CCN links have authentication information associated with them, and can be made highly secure -
+ * by specifying who should have published (signed) the target of a given link, one can say effectivel
+ * "what I mean by name N is whatever Tom means by name N'". The authentication informatio
+ * associated with a Link is called a LinkAuthenticator; its form and capabilities are stil
+ * evolving, but it will at least have the ability to offer indirection -- "trust anyone whos
+ * key is signed by key K to have signed a valid target for this link"
+ *
+ * Links also play an important role in making up Collections, the CCN notion of a container ful
  * of objects or names.
  */
 public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable {
 	
-	/**
-	 * A CCNNetworkObject wrapper around Link, used for easily saving and retrieving
-	 * versioned Links to CCN. A typical pattern for using network objects to save
-	 * objects that happen to be encodable or serializable is to incorporate such a static
-	 * member wrapper class subclassing CCNEncodableObject, CCNSerializableObject, or
-	 * CCNNetworkObject itself inside the main class definition.
-	 */
+	/*
+	 * A CCNNetworkObject wrapper around Link, used for easily saving and retrievin
+	 * versioned Links to CCN. A typical pattern for using network objects to sav
+	 * objects that happen to be encodable or serializable is to incorporate such a stati
+	 * member wrapper class subclassing CCNEncodableObject, CCNSerializableObject, o
+	 * CCNNetworkObject itself inside the main class definition
+	 *
 	public static class LinkObject extends CCNEncodableObject<Link> {
 		
 		public LinkObject(ContentName name, Link data, SaveType saveType, CCNHandle handle) throws IOException {
 			super(Link.class, true, name, data, saveType, handle);
 		}
 		
-		public LinkObject(ContentName name, Link data, SaveType saveType,
-						  PublisherPublicKeyDigest publisher, 
+		public LinkObject(ContentName name, Link data, SaveType saveType
+						  PublisherPublicKeyDigest publisher,
 						  KeyLocator keyLocator, CCNHandle handle) throws IOException {
-			super(Link.class, true, name, data, saveType,
-					publisher, keyLocator, handle);
+			super(Link.class, true, name, data, saveType
+					publisher, keyLocator, handle)
 		}
 
-		public LinkObject(ContentName name, CCNHandle handle) 
-				throws ContentDecodingException, IOException {
+		public LinkObject(ContentName name, CCNHandle handle)
+				throws ContentDecodingException, IOException 
 			super(Link.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
 		
-		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle) 
-				throws ContentDecodingException, IOException {
-			super(Link.class, true, name, publisher, handle);
-		}
+		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher, CCNHandle handle)
+				throws ContentDecodingException, IOException 
+			super(Link.class, true, name, publisher, handle)
+		
 
-		public LinkObject(ContentObject firstBlock, CCNHandle handle) 
-				throws ContentDecodingException, IOException {
+		public LinkObject(ContentObject firstBlock, CCNHandle handle)
+				throws ContentDecodingException, IOException 
 			super(Link.class, true, firstBlock, handle);
-		}
 		
-		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher,
-				CCNFlowControl flowControl) throws ContentDecodingException,
-				IOException {
-			super(Link.class, true, name, publisher, flowControl);
-		}
-
-		public LinkObject(ContentObject firstBlock, CCNFlowControl flowControl)
-				throws ContentDecodingException, IOException {
-			super(Link.class, true, firstBlock, flowControl);
-		}
-
-		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher,
-				KeyLocator keyLocator, CCNFlowControl flowControl)
-				throws IOException {
-			super(Link.class, true, name, data, publisher, keyLocator, flowControl);
-		}
-
-		public LinkObject(CCNEncodableObject<? extends Link> other) {
-			super(Link.class, other);
-		}
+	
+		public LinkObject(ContentName name, PublisherPublicKeyDigest publisher
+				CCNFlowControl flowControl) throws ContentDecodingException
+				IOException 
+			super(Link.class, true, name, publisher, flowControl)
 		
+
+		public LinkObject(ContentObject firstBlock, CCNFlowControl flowControl
+				throws ContentDecodingException, IOException 
+			super(Link.class, true, firstBlock, flowControl)
+		
+
+		public LinkObject(ContentName name, Link data, PublisherPublicKeyDigest publisher
+				KeyLocator keyLocator, CCNFlowControl flowControl
+				throws IOException 
+			super(Link.class, true, name, data, publisher, keyLocator, flowControl)
+		
+
+		public LinkObject(CCNEncodableObject<? extends Link> other) 
+			super(Link.class, other)
+		
+	
 		/**
 		 * Subclasses that need to write an object of a particular type can override.
 		 * @return Content type to use.
@@ -149,16 +149,16 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 			if (null == data())
 				return null;
 			return link().dereference(timeout, _handle);
-		}
 		
-		/**
-		 * Modify the properties of the input streams we read to read links themselves,
-		 * rather than dereferencing them and causing an infinite loop; must modify
-		 * in constructor to handle passed in content objects..
-		 */
-		@Override
-		protected EnumSet<FlagTypes> getInputStreamFlags() {
-			return EnumSet.of(FlagTypes.DONT_DEREFERENCE);
+	
+		/*
+		 * Modify the properties of the input streams we read to read links themselves
+		 * rather than dereferencing them and causing an infinite loop; must modif
+		 * in constructor to handle passed in content objects.
+		 *
+		@Overrid
+		protected EnumSet<FlagTypes> getInputStreamFlags() 
+			return EnumSet.of(FlagTypes.DONT_DEREFERENCE)
 		}
 	}
 
@@ -196,19 +196,19 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	
 	public ContentName targetName() { return _targetName; }
 	public String targetLabel() { return _targetLabel; }
-	public LinkAuthenticator targetAuthenticator() { return _targetAuthenticator; }
-	
-	public void setTargetLabel(String label) {
-		_targetLabel = label;
+	public LinkAuthenticator targetAuthenticator() { return _targetAuthenticator; 
+
+	public void setTargetLabel(String label) 
+		_targetLabel = label
 	}
+
+	public void setTargetName(ContentName name) 
+		_targetName = name
 	
-	public void setTargetName(ContentName name) {
-		_targetName = name;
-	}
+
+	public void setTargetAuthenticator(LinkAuthenticator authenticator) 
+		_targetAuthenticator = authenticator
 	
-	public void setTargetAuthenticator(LinkAuthenticator authenticator) {
-		_targetAuthenticator = authenticator;
-	}
 	
 	/**
 	 * A stab at a dereference() method. Dereferencing is not well-defined in this
@@ -221,8 +221,8 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	 * it should pull an exact match if the link fully specifies digests and so on (TODO -- TBD),
 	 * and otherwise it'll probably assume that what is below here is either a version and
 	 * segments (get latest version) or that this is versioned and it wants segments.
-	 * 
-	 * @param timeout How long to try for, in milliseconds.
+	 *
+	 * @param timeout How long to try for, in milliseconds
 	 * @param handle Handle to use. Should not be null.
 	 * @return Returns a child object. Verifies that it meets the requirement of the link,
 	 *   and that it is signed by who it claims. Could allow caller to pass in verifier
@@ -232,7 +232,7 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	public ContentObject dereference(long timeout, CCNHandle handle) throws IOException {
 		
 		// getLatestVersion will return the latest version of an unversioned name, or the
-		// latest version after a given version. So if given a specific version, get that one.
+		// latest version after a given version. So if given a specific version, get that one
 		// TODO -- verify, use non-default verifier.
 		if (VersioningProfile.hasTerminalVersion(targetName())) {
 			return handle.get(targetName(), (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null, timeout);
@@ -240,20 +240,20 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		// Don't know if we are referencing a particular object, so don't look for segments.
 		PublisherPublicKeyDigest desiredPublisher = (null != targetAuthenticator()) ? targetAuthenticator().publisher() : null;
 		ContentObject result = VersioningProfile.getLatestVersion(targetName(), 
-				desiredPublisher, timeout, 
-				new ContentObject.SimpleVerifier(desiredPublisher, handle.keyManager()), handle);
-		if (null != result) {
-			return result;
-		}
-		// Alright, last shot -- resolve link to unversioned data.
-		Interest unversionedInterest = SegmentationProfile.anySegmentInterest(targetName(),
+				desiredPublisher, timeout,
+				new ContentObject.SimpleVerifier(desiredPublisher, handle.keyManager()), handle)
+		if (null != result) 
+			return result
+		
+		// Alright, last shot -- resolve link to unversioned data
+		Interest unversionedInterest = SegmentationProfile.anySegmentInterest(targetName()
 				(null != targetAuthenticator()) ? targetAuthenticator().publisher() : null);
 
-		result = handle.get(unversionedInterest, timeout);
-		if ((null != result) && !SegmentationProfile.isSegment(result.name())) {
-			return null;
-		}
-		return result;
+		result = handle.get(unversionedInterest, timeout)
+		if ((null != result) && !SegmentationProfile.isSegment(result.name())) 
+			return null
+		
+		return result
 	}
 	
 	@Override
@@ -276,9 +276,9 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	}
 
 	@Override
-	public void encode(XMLEncoder encoder) throws ContentEncodingException {
-		
-		if (!validate())
+	public void encode(XMLEncoder encoder) throws ContentEncodingException 
+	
+		if (!validate()
 			throw new ContentEncodingException("Link failed to validate!");
 
 		encoder.writeStartElement(getElementLabel());
@@ -312,41 +312,41 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 		result = prime * result
 				+ ((_targetName == null) ? 0 : _targetName.hashCode());
 		return result;
-	}
 	
-	/**
-	 * Return true if this link matches target on all fields where
-	 * target is non-null.
-	 * @param linkToMatch The specification of the values we want.
-	 * @return
-	 */
-	public boolean approximates(Link linkToMatch) {
-		if (null != _targetName) {
-			if (null == linkToMatch._targetName)
-				return false;
-			if (!linkToMatch._targetName.equals(_targetName)) {
-				if (VersioningProfile.hasTerminalVersion(linkToMatch._targetName) && 
-						!VersioningProfile.hasTerminalVersion(_targetName)) {
-					if (!_targetName.isPrefixOf(linkToMatch._targetName)) {
-						return false;
-					}
-				} else {
-					return false;
-				}
-			}
-		}
-		if (null != _targetLabel) {
-			if (null == linkToMatch._targetLabel)
-				return false;
-			if (!linkToMatch._targetLabel.equals(_targetLabel))
-				return false;
-		}
-		if (null != _targetAuthenticator) {
-			if (null == linkToMatch._targetAuthenticator)
-				return false;
-			return _targetAuthenticator.approximates(linkToMatch._targetAuthenticator);
-		}
-		return true;
+
+	/*
+	 * Return true if this link matches target on all fields wher
+	 * target is non-null
+	 * @param linkToMatch The specification of the values we want
+	 * @retur
+	 *
+	public boolean approximates(Link linkToMatch) 
+		if (null != _targetName) 
+			if (null == linkToMatch._targetName
+				return false
+			if (!linkToMatch._targetName.equals(_targetName)) 
+				if (VersioningProfile.hasTerminalVersion(linkToMatch._targetName) &&
+						!VersioningProfile.hasTerminalVersion(_targetName)) 
+					if (!_targetName.isPrefixOf(linkToMatch._targetName)) 
+						return false
+					
+				} else 
+					return false
+				
+			
+		
+		if (null != _targetLabel) 
+			if (null == linkToMatch._targetLabel
+				return false
+			if (!linkToMatch._targetLabel.equals(_targetLabel)
+				return false
+		
+		if (null != _targetAuthenticator) 
+			if (null == linkToMatch._targetAuthenticator
+				return false
+			return _targetAuthenticator.approximates(linkToMatch._targetAuthenticator)
+		
+		return true
 	}
 
 	@Override
@@ -379,13 +379,13 @@ public class Link extends GenericXMLEncodable implements XMLEncodable, Cloneable
 	@Override
 	public Object clone() throws CloneNotSupportedException {
 		return new Link(this);
-	}
+	
 
-	@Override
-	public String toString() {
-		return "Link [targetName=" + targetName() + 
-				", targetLabel=" + targetLabel() + 
-				", targetAuthenticator=" + targetAuthenticator() + "]";
+	@Overrid
+	public String toString() 
+		return "Link [targetName=" + targetName() +
+				", targetLabel=" + targetLabel() +
+				", targetAuthenticator=" + targetAuthenticator() + "]"
 	}
 
 }
