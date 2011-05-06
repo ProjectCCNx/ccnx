@@ -46,27 +46,29 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		public String value() { return st; }
 	}
 	
-	// Forwarding flags
+	// Forwarding flags - refer to doc/technical/Registration.txt for the meaning of these
 	public static final int CCN_FORW_ACTIVE = 1;
 	public static final int CCN_FORW_CHILD_INHERIT = 2;	// This entry may be used even if there is a longer
 														// match available
 	public static final int CCN_FORW_ADVERTISE = 4;		// Prefix may be advertised to other nodes	
 	public static final int CCN_FORW_LAST = 8;			// Entry should be used last if nothing else worked
-	public static final int CCN_FORW_CAPTURE = 16;		// No shorter prefix may be used, overriding any
+	public static final int CCN_FORW_CAPTURE = 16;		// No shorter prefix may be used, overriding
 														// child-inherit bits that would otherwise make the
-														// shorter entries usable. Ignored when used with
-														// CCN_FORW_LAST
+														// shorter entries usable.
+
 	public static final int CCN_FORW_LOCAL = 32;		// Restricts namespace to use by applications on the
 														// local machine
 	public static final int CCN_FORW_TAP = 64;			// Causes the entry to be used right away - intended
 														// for debugging and monitoring purposes.
+	public static final int CCN_FORW_CAPTURE_OK = 128;	// Use this with CCN_FORW_CHILD_INHERIT to make it eligible for capture.
 	public static final int CCN_FORW_PUBMASK = 	CCN_FORW_ACTIVE |
             									CCN_FORW_CHILD_INHERIT |
             									CCN_FORW_ADVERTISE     |
             									CCN_FORW_LAST          |
             									CCN_FORW_CAPTURE       |
             									CCN_FORW_LOCAL         |
-            									CCN_FORW_TAP;
+            									CCN_FORW_TAP           |
+										CCN_FORW_CAPTURE_OK;
 
 	
 	public static final Integer DEFAULT_SELF_REG_FLAGS = Integer.valueOf(CCN_FORW_ACTIVE + CCN_FORW_CHILD_INHERIT);
