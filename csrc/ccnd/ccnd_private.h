@@ -1,6 +1,6 @@
 /**
  * @file ccnd_private.h
- * 
+ *
  * Private definitions for ccnd - the CCNx daemon.
  * Data structures are described here so that logging and status
  * routines can be compiled separately.

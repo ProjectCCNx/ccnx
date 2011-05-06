@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 3002
+#define CCN_API_VERSION 4000
 
 /**
  * Interest lifetime default.

@@ -365,8 +365,8 @@ ccnd_uri_listen(struct ccnd_handle *ccnd, const char *uri,
 
 /**
  * Make a forwarding table entry for ccnx:/ccnx/CCNDID
- * 
- * This one entry handles most of the namespace served by the 
+ *
+ * This one entry handles most of the namespace served by the
  * ccnd internal client.
  */
 static void
@@ -382,7 +382,7 @@ ccnd_reg_ccnx_ccndid(struct ccnd_handle *ccnd)
     ccn_uri_append(uri, name->buf, name->length, 1);
     ccnd_reg_uri(ccnd, ccn_charbuf_as_string(uri),
                  0, /* special faceid for internal client */
-                 (CCN_FORW_CHILD_INHERIT | 
+                 (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |
                   CCN_FORW_CAPTURE       |
                   CCN_FORW_ADVERTISE     ),
@@ -539,7 +539,7 @@ ccnd_notice_push(struct ccn_schedule *sched,
 /**
  * Called by ccnd when a face undergoes a substantive status change that
  * should be reported to interested parties.
- * 
+ *
  * In the destroy case, this is called from the hash table finalizer,
  * so it shouldn't do much directly.  Inspecting the face is OK, though.
  */
@@ -627,7 +627,7 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
     ccnd_reg_ccnx_ccndid(ccnd);
     ccnd_reg_uri(ccnd, "ccnx:/%C1.M.S.localhost",
                  0, /* special faceid for internal client */
-                 (CCN_FORW_CHILD_INHERIT | 
+                 (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |
                   CCN_FORW_LOCAL         ),
                  0x7FFFFFFF);
