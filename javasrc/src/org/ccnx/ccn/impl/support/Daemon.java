@@ -176,7 +176,6 @@ public class Daemon {
 			}
 
 			getRMIFile(_daemonName, SystemConfiguration.getPID()).delete();		
-			//System.exit(0);
 		}			
 
 		public void shutDown() {
