@@ -26,7 +26,6 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
-import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
@@ -184,9 +183,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 		
 		// We can't use the regular repo handle for this because we need ccnd to communicate across the faces
 		CCNHandle readHandle;
-		try {
-			readHandle = CCNHandle.open();
-		} catch (ConfigurationException e) {return null;}  // Don't think this can happen
+		readHandle = CCNHandle.open(_km);
 		PolicyObject policyObject = new PolicyObject(policyName, readHandle);
 		try {
 			return policyObject.policyInfo();
