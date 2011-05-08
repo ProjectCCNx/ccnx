@@ -8,7 +8,7 @@ The android code depends on ccn.jar, so you must have run make in
 the top level directory before buildin here.
 
 Ccnd and the c-client library require OpenSSL library, which we need
-to include build ourselves, as there is no apparant way to use the
+to include build ourselves, as there is no apparent way to use the
 included Android library.  As a result, we can use the latest 1.0.0a
 library!
 

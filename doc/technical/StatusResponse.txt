@@ -4,7 +4,7 @@ CCNx StatusResponse
 
 == StatusResponse
 The StatusResponse is used to indicate an exceptional condition or
-addtional information in response to a request.
+additional information in response to a request.
 Protocol descriptions should indicate the circumstances under which a 
 StatusResponse may be returned instead of a normal response.
 .......................................................

@@ -94,7 +94,7 @@ public abstract class CCNxWrapper {
 	/**
 	 * Start the service.  If the service is running we will not try to start it
 	 * we will only try to bind to it
-	 * @return true if we are bound, false if we are not, some error occured
+	 * @return true if we are bound, false if we are not, some error occurred
 	 */
 	public boolean startService(){
 		Log.d(TAG,"startService()");

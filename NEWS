@@ -271,7 +271,7 @@ Changes between 0.1.2 and 0.2.0:
     key. This will enable policy-related communication with the repo and more
     sophisticated, multi-repository name enumeration protocols.
   * Implementation of the registration protocol, which allows clients to register
-    with ccnd the prefixes for Interests they wish to recieve, is well under way
+    with ccnd the prefixes for Interests they wish to receive, is well under way
     (see issues #100071, #100072, #100073). Until this code is stable, we will
     retain the default Interest flooding behavior. 
   * Initial version of Java-based registration control client, ccndcontrol, analogous
