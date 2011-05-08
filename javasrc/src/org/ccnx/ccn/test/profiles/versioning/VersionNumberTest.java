@@ -105,7 +105,7 @@ public class VersionNumberTest {
 
 			VersionNumber vn = new VersionNumber(v);
 
-			// tests on the value "v" will not always work, becasue CCNTime has
+			// tests on the value "v" will not always work, because CCNTime has
 			// rounding errors converting to its internal binaryTime.  But it
 			// shouldn't be off by much.
 

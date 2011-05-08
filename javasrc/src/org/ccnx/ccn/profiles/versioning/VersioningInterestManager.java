@@ -851,7 +851,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 		// ====================================
 		// Just edit this list, dont need to change anything else
 		
-		Receive ("ContentObjects", "The number of objects recieved in handleContent"),
+		Receive ("ContentObjects", "The number of objects received in handleContent"),
 		ReceiveVersionNumberError ("Errors", "Errors parsing VersionNumber from content name"),
 		ReceiveReturnInterest ("interests", "Number of non-null interests returned from receive()"),
 		ReceiveIgnored ("count", "Count of objects ignored because version was out-of-bounds"),

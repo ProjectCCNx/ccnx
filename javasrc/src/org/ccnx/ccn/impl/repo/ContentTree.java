@@ -574,7 +574,7 @@ public class ContentTree {
 	/**
 	 * Return content at this level if there is matching content
 	 * 
-	 * @param interest - interest to match agains
+	 * @param interest - interest to match against
 	 * @param node	   - the node
 	 * @param nodeName - name of node as a ContentName
 	 * @param getter   - getter to get actual data for final match and return if matches
@@ -655,7 +655,7 @@ public class ContentTree {
 
 				//I am not supposed to respond...  is that because of the version or because I am specifically excluded?
 				 if (responseName.count() > 0 && interest.exclude().match(responseName.components().get(0))) {
-					 Log.finer(Log.FAC_REPO, "my repo is explictly excluded!  not setting interestFlag to true");
+					 Log.finer(Log.FAC_REPO, "my repo is explicitly excluded!  not setting interestFlag to true");
 					 //do not set interest flag!  I wasn't supposed to respond
 				 } else {
 					 if (interest.exclude().match(new CCNTime(parent.timestamp).toBinaryTime())) {

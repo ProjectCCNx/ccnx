@@ -311,7 +311,7 @@ public class InterestData {
 	}
 
 	/**
-	 * Split this object to the left, transfering #count elements
+	 * Split this object to the left, transferring #count elements
 	 */
 	public synchronized InterestData splitLeft(int count) {
 		// create a pristine object
@@ -322,7 +322,7 @@ public class InterestData {
 	}
 
 	/**
-	 * Split this object to the right, transfering #count elements
+	 * Split this object to the right, transferring #count elements
 	 */
 	public synchronized InterestData splitRight(int count) {
 		// create a pristine object

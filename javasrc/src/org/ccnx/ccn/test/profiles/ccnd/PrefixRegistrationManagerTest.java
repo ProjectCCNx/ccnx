@@ -276,7 +276,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		try {
 			manager = new PrefixRegistrationManager(putHandle);
 			ForwardingEntry entry = manager.selfRegisterPrefix(testCN, new Integer(10024));
-			fail("Failed to receive exception CCNDaemonException on selfRegisterPrefix to non-existant faceID: " + entry.getFaceID());
+			fail("Failed to receive exception CCNDaemonException on selfRegisterPrefix to non-existent faceID: " + entry.getFaceID());
 		} catch (CCNDaemonException e) {
 			System.out.println("Received expected exception " + e.getClass().getName() + ", message: " + e.getMessage());
 		}		

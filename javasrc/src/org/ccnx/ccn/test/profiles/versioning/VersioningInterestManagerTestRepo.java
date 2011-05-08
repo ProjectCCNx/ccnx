@@ -123,7 +123,7 @@ public class VersioningInterestManagerTestRepo {
 		//		System.out.println(String.format("data  (%d): %s", vim.getInterestDataTree().first().size(), vim.getInterestDataTree().first().dumpContents()));
 
 		System.out.println("***** Sending stream 2 *****");
-		// now send one more and we sould see the right sort of split
+		// now send one more and we should see the right sort of split
 		TreeSet<CCNTime> sent2 = sendStreamRight(sinkhandle, vim, basename, t, 1);
 
 		sent1.addAll(sent2);

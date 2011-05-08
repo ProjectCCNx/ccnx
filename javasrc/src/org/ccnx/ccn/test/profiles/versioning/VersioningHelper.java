@@ -185,7 +185,7 @@ public class VersioningHelper {
 		public InterestData id = null;
 		public int runCount = 0;
 		public boolean debugOutput = false;
-		// if true, run() method will send an intial interest, otherwise it will assume there
+		// if true, run() method will send an initial interest, otherwise it will assume there
 		// is already an interest outstanding.
 		public boolean sendFirstInterest = true;
 

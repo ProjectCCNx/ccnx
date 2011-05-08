@@ -73,7 +73,7 @@ public class KeyServer {
 	 * if someone asks (we really want to be the server of last resort, so we should answer
 	 * late, but don't know how to do that). So we could make an interest handler and then
 	 * publish the key on first interest (and assume it's cached thereafter?). If the cost
-	 * of signing is negligable, we can be cheezier. Just publish to our key server, and
+	 * of signing is negligible, we can be cheezier. Just publish to our key server, and
 	 * if someone comes looking, they'll get it. If not....
 	 * 
 	 * @param keyName the key's content name. Will add a version when saving if it doesn't
