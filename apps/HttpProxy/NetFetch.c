@@ -451,7 +451,7 @@ AdvanceChunks(string buf, int pos, int len, ChunkInfo info) {
 					} else {
 						int h = HexDigit(c);
 						if (h < 0) {
-							// not hex, but apparantly blanks are OK?
+							// not hex, but apparently blanks are OK?
 							// not hex, not blank, only legal terminator is CR
 							if (c != '\r' || info->accumLen == 0) {
 								info->state = Chunk_Error;

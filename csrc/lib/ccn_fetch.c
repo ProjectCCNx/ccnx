@@ -944,7 +944,7 @@ ccn_fetch_avail(struct ccn_fetch_stream *fs) {
  * Will not wait for bytes to arrive.
  * Advances the read position on a successful read.
  * @returns
- *    CCN_FETCH_READ_TIMEOUT if a timeout occured,
+ *    CCN_FETCH_READ_TIMEOUT if a timeout occurred,
  *    CCN_FETCH_READ_ZERO if a zero-length segment was found
  *    CCN_FETCH_READ_NONE if no bytes are immediately available
  *    CCN_FETCH_READ_END if the stream is at the end,
