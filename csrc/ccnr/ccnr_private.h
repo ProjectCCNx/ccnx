@@ -368,43 +368,11 @@ int ccnr_init_internal_keystore(struct ccnr_handle *);
 int ccnr_internal_client_start(struct ccnr_handle *);
 void ccnr_internal_client_stop(struct ccnr_handle *);
 
-/*
- * The internal client calls this with the argument portion ARG of
- * a fdholder-creation request (/ccnx/CCNDID/newface/ARG)
- */
-int ccnr_req_newface(struct ccnr_handle *h,
-                     const unsigned char *msg, size_t size,
-                     struct ccn_charbuf *reply_body);
-
-/*
- * The internal client calls this with the argument portion ARG of
- * a fdholder-destroy request (/ccnx/CCNDID/destroyface/ARG)
- */
-int ccnr_req_destroyface(struct ccnr_handle *h,
-                         const unsigned char *msg, size_t size,
-                         struct ccn_charbuf *reply_body);
-
-/*
- * The internal client calls this with the argument portion ARG of
- * a prefix-registration request (/ccnx/CCNDID/prefixreg/ARG)
- */
-int ccnr_req_prefixreg(struct ccnr_handle *h,
-                       const unsigned char *msg, size_t size,
-                       struct ccn_charbuf *reply_body);
-
-/*
- * The internal client calls this with the argument portion ARG of
- * a prefix-registration request for self (/ccnx/CCNDID/selfreg/ARG)
- */
-int ccnr_req_selfreg(struct ccnr_handle *h,
-                     const unsigned char *msg, size_t size,
-                     struct ccn_charbuf *reply_body);
-
 /**
  * URIs for prefixes served by the internal client
  */
-#define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnr/KEY"
-#define CCNDID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/ccnr/KEY"
+#define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/KEY"
+#define CCNDID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository/KEY"
 
 /*
  * The internal client calls this with the argument portion ARG of

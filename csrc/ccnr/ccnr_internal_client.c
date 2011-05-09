@@ -193,35 +193,6 @@ ccnr_answer_req(struct ccn_closure *selfp,
     }
     sp.freshness = 10;
     switch (selfp->intdata & OPER_MASK) {
-        case OP_PING:
-            reply_body = ccn_charbuf_create();
-            sp.freshness = (info->pi->prefix_comps == info->matched_comps) ? 60 : 5;
-            res = 0;
-            break;
-        case OP_NEWFACE:
-            reply_body = ccn_charbuf_create();
-            res = ccnr_req_newface(ccnr, final_comp, final_size, reply_body);
-            break;
-        case OP_DESTROYFACE:
-            reply_body = ccn_charbuf_create();
-            res = ccnr_req_destroyface(ccnr, final_comp, final_size, reply_body);
-            break;
-        case OP_PREFIXREG:
-            reply_body = ccn_charbuf_create();
-            res = ccnr_req_prefixreg(ccnr, final_comp, final_size, reply_body);
-            break;
-        case OP_SELFREG:
-            reply_body = ccn_charbuf_create();
-            res = ccnr_req_selfreg(ccnr, final_comp, final_size, reply_body);
-            break;
-        case OP_UNREG:
-            reply_body = ccn_charbuf_create();
-            res = ccnr_req_unreg(ccnr, final_comp, final_size, reply_body);
-            break;
-        case OP_NOTICE:
-            ccnr_start_notice(ccnr);
-            goto Bail;
-            break;
         case OP_SERVICE:
             if (ccnr->service_ccnb == NULL)
                 ccnr->service_ccnb = ccnr_init_service_ccnb(ccnr, CCNDID_LOCAL_URI, 600);
