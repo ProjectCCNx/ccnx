@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -37,10 +37,6 @@ ccnr: $(CCND_OBJ) ccnr_built.sh
 
 ccnr_built.sh:
 	touch ccnr_built.sh
-
-ccnr-init-keystore-helper: ccnr-init-keystore-helper.sh
-	sed -e 's@/bin/sh@'`which sh`'@g' ccnr-init-keystore-helper.sh > $@
-	chmod +x $@
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
@@ -84,5 +80,3 @@ ccnr_internal_client.o: ccnr_internal_client.c ../include/ccn/ccn.h \
   ../include/ccn/schedule.h ../include/ccn/sockaddrutil.h \
   ../include/ccn/uri.h ccnr_private.h ../include/ccn/reg_mgmt.h \
   ../include/ccn/seqwriter.h
-ccnrsmoketest.o: ccnrsmoketest.c ../include/ccn/ccnd.h \
-  ../include/ccn/ccn_private.h
