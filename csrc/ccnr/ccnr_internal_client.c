@@ -354,7 +354,7 @@ ccnr_uri_listen(struct ccnr_handle *ccnr, const char *uri,
     /* Register explicitly if needed or requested */
     if (reg_wanted)
         ccnr_reg_uri(ccnr, uri,
-                     0, /* special faceid for internal client */
+                     0, /* special filedesc for internal client */
                      CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
                      0x7FFFFFFF);
     ccn_set_interest_filter(ccnr->internal_client, name, closure);
@@ -381,7 +381,7 @@ ccnr_reg_ccnx_ccnrid(struct ccnr_handle *ccnr)
     uri = ccn_charbuf_create();
     ccn_uri_append(uri, name->buf, name->length, 1);
     ccnr_reg_uri(ccnr, ccn_charbuf_as_string(uri),
-                 0, /* special faceid for internal client */
+                 0, /* special filedesc for internal client */
                  (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |
                   CCN_FORW_CAPTURE       |
@@ -477,18 +477,18 @@ Bail:
 }
 
 static int
-post_face_notice(struct ccnr_handle *ccnr, unsigned faceid)
+post_face_notice(struct ccnr_handle *ccnr, unsigned filedesc)
 {
-    struct fdholder *fdholder = ccnr_face_from_faceid(ccnr, faceid);
+    struct fdholder *fdholder = ccnr_fdholder_from_fd(ccnr, filedesc);
     struct ccn_charbuf *msg = ccn_charbuf_create();
     int res = -1;
     int port;
     
     // XXX - text version for trying out stream stuff - replace with ccnb
     if (fdholder == NULL)
-        ccn_charbuf_putf(msg, "destroyface(%u);\n", faceid);
+        ccn_charbuf_putf(msg, "destroyface(%u);\n", filedesc);
     else {
-        ccn_charbuf_putf(msg, "newface(%u, 0x%x", faceid, fdholder->flags);
+        ccn_charbuf_putf(msg, "newface(%u, 0x%x", filedesc, fdholder->flags);
         if (fdholder->addr != NULL &&
             (fdholder->flags & (CCN_FACE_INET | CCN_FACE_INET6)) != 0) {
             ccn_charbuf_putf(msg, ", ");
@@ -498,7 +498,7 @@ post_face_notice(struct ccnr_handle *ccnr, unsigned faceid)
             else if (port > 0)
                 ccn_charbuf_putf(msg, ":%d", port);
         }
-        ccn_charbuf_putf(msg, ");\n", faceid);
+        ccn_charbuf_putf(msg, ");\n", filedesc);
     }
     res = ccn_seqw_write(ccnr->notice, msg->buf, msg->length);
     ccn_charbuf_destroy(&msg);
@@ -546,11 +546,11 @@ ccnr_notice_push(struct ccn_schedule *sched,
  * so it shouldn't do much directly.  Inspecting the fdholder is OK, though.
  */
 void
-ccnr_face_status_change(struct ccnr_handle *ccnr, unsigned faceid)
+ccnr_face_status_change(struct ccnr_handle *ccnr, unsigned filedesc)
 {
     struct ccn_indexbuf *chface = ccnr->chface;
     if (chface != NULL) {
-        ccn_indexbuf_set_insert(chface, faceid);
+        ccn_indexbuf_set_insert(chface, filedesc);
         if (ccnr->notice_push == NULL)
             ccnr->notice_push = ccn_schedule_event(ccnr->sched, 2000,
                                                    ccnr_notice_push,
@@ -584,7 +584,7 @@ ccnr_start_notice(struct ccnr_handle *ccnr)
     for (i = 0; i < ccnr->face_limit; i++) {
         fdholder = ccnr->faces_by_faceid[i];
         if (fdholder != NULL)
-            ccn_indexbuf_set_insert(ccnr->chface, fdholder->faceid);
+            ccn_indexbuf_set_insert(ccnr->chface, fdholder->filedesc);
     }
     if (ccnr->chface->n > 0)
         ccnr_face_status_change(ccnr, ccnr->chface->buf[0]);
@@ -610,7 +610,7 @@ ccnr_internal_client_start(struct ccnr_handle *ccnr)
                     &ccnr_answer_req, OP_SERVICE);
     ccnr_reg_ccnx_ccnrid(ccnr);
     ccnr_reg_uri(ccnr, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository",
-                 0, /* special faceid for internal client */
+                 0, /* special filedesc for internal client */
                  (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |
                   CCN_FORW_LOCAL         ),

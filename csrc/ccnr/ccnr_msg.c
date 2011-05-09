@@ -104,7 +104,7 @@ ccnr_debug_ccnb(struct ccnr_handle *h,
     c = ccn_charbuf_create();
     ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
     if (fdholder != NULL)
-        ccn_charbuf_putf(c, "%u ", fdholder->faceid);
+        ccn_charbuf_putf(c, "%u ", fdholder->filedesc);
     ccn_uri_append(c, ccnb, ccnb_size, 1);
     ccn_charbuf_putf(c, " (%u bytes)", (unsigned)ccnb_size);
     if (ccn_parse_interest(ccnb, ccnb_size, &pi, NULL) >= 0) {

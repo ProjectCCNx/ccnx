@@ -104,7 +104,7 @@ ccnr_stats_handle_http_connection(struct ccnr_handle *h, struct fdholder *fdhold
     if (fdholder->inbuf->length < 4)
         return(-1);
     if ((fdholder->flags & CCN_FACE_NOSEND) != 0) {
-        ccnr_destroy_face(h, fdholder->faceid);
+        ccnr_destroy_face(h, fdholder->filedesc);
         return(-1);
     }
     n = sizeof(rbuf) - 1;
@@ -187,7 +187,7 @@ ccnr_collect_stats(struct ccnr_handle *h, struct ccnr_stats *ans)
         struct propagating_entry *head = &npe->pe_head;
         struct propagating_entry *p;
         for (p = head->next; p != head; p = p->next) {
-            if (ccnr_face_from_faceid(h, p->faceid) != NULL)
+            if (ccnr_fdholder_from_fd(h, p->filedesc) != NULL)
                 sum += 1;
         }
     }
@@ -231,7 +231,7 @@ collect_faces_html(struct ccnr_handle *h, struct ccn_charbuf *b)
         if (fdholder != NULL && (fdholder->flags & CCN_FACE_UNDECIDED) == 0) {
             ccn_charbuf_putf(b, " <li>");
             ccn_charbuf_putf(b, "<b>fdholder:</b> %u <b>flags:</b> 0x%x",
-                             fdholder->faceid, fdholder->flags);
+                             fdholder->filedesc, fdholder->flags);
             ccn_charbuf_putf(b, " <b>pending:</b> %d",
                              fdholder->pending_interests);
             if (fdholder->recvcount != 0)
@@ -256,7 +256,7 @@ collect_faces_html(struct ccnr_handle *h, struct ccn_charbuf *b)
                 else
                     ccn_charbuf_putf(b, " <b>local:</b> %s:%d",
                                      node, port);
-                if (fdholder->sendface != fdholder->faceid &&
+                if (fdholder->sendface != fdholder->filedesc &&
                     fdholder->sendface != CCN_NOFACEID)
                     ccn_charbuf_putf(b, " <b>via:</b> %u", fdholder->sendface);
             }
@@ -283,7 +283,7 @@ collect_face_meter_html(struct ccnr_handle *h, struct ccn_charbuf *b)
         if (fdholder != NULL && (fdholder->flags & (CCN_FACE_UNDECIDED|CCN_FACE_PASSIVE)) == 0) {
             ccn_charbuf_putf(b, " <tr>");
             ccn_charbuf_putf(b, "<td><b>fdholder:</b> %u</td>\t",
-                             fdholder->faceid);
+                             fdholder->filedesc);
             ccn_charbuf_putf(b, "<td>%6u / %u</td>\t\t",
                                  ccnr_meter_rate(h, fdholder->meter[FM_BYTI]),
                                  ccnr_meter_rate(h, fdholder->meter[FM_BYTO]));
@@ -333,7 +333,7 @@ collect_forwarding_html(struct ccnr_handle *h, struct ccn_charbuf *b)
                                  " <b>fdholder:</b> %u"
                                  " <b>flags:</b> 0x%x"
                                  " <b>expires:</b> %d",
-                                 f->faceid,
+                                 f->filedesc,
                                  f->flags & CCN_FORW_PUBMASK,
                                  f->expires);
                 ccn_charbuf_putf(b, "</li>" NL);
@@ -464,9 +464,9 @@ collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
         if (fdholder != NULL && (fdholder->flags & CCN_FACE_UNDECIDED) == 0) {
             ccn_charbuf_putf(b, "<fdholder>");
             ccn_charbuf_putf(b,
-                             "<faceid>%u</faceid>"
+                             "<filedesc>%u</filedesc>"
                              "<faceflags>%04x</faceflags>",
-                             fdholder->faceid, fdholder->flags);
+                             fdholder->filedesc, fdholder->flags);
             ccn_charbuf_putf(b, "<pending>%d</pending>",
                              fdholder->pending_interests);
             ccn_charbuf_putf(b, "<recvcount>%d</recvcount>",
@@ -477,7 +477,7 @@ collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
                 const char *node = ccn_charbuf_as_string(nodebuf);
                 ccn_charbuf_putf(b, "<ip>%s:%d</ip>", node, port);
             }
-            if (fdholder->sendface != fdholder->faceid &&
+            if (fdholder->sendface != fdholder->filedesc &&
                 fdholder->sendface != CCN_NOFACEID)
                 ccn_charbuf_putf(b, "<via>%u</via>", fdholder->sendface);
             if (fdholder != NULL && (fdholder->flags & CCN_FACE_PASSIVE) == 0) {
@@ -521,11 +521,11 @@ collect_forwarding_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
                 if ((f->flags & (CCN_FORW_ACTIVE | CCN_FORW_PFXO)) != 0) {
                     ccn_charbuf_putf(b,
                                      "<dest>"
-                                     "<faceid>%u</faceid>"
+                                     "<filedesc>%u</filedesc>"
                                      "<flags>%x</flags>"
                                      "<expires>%d</expires>"
                                      "</dest>",
-                                     f->faceid,
+                                     f->filedesc,
                                      f->flags & CCN_FORW_PUBMASK,
                                      f->expires);
                 }

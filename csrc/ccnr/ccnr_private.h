@@ -74,8 +74,8 @@ struct ccnr_handle {
     struct hashtb *propagating_tab; /**< keyed by nonce */
     struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
     unsigned forward_to_gen;        /**< for forward_to updates */
-    unsigned face_gen;              /**< faceid generation number */
-    unsigned face_rover;            /**< for faceid allocation */
+    unsigned face_gen;              /**< filedesc generation number */
+    unsigned face_rover;            /**< for filedesc allocation */
     unsigned face_limit;            /**< current number of fdholder slots */
     struct fdholder **faces_by_faceid;  /**< array with face_limit elements */
     struct ccn_scheduled_event *reaper;
@@ -146,11 +146,11 @@ struct ccnr_handle {
 };
 
 /**
- * Each fdholder is referenced by a number, the faceid.  The low-order
+ * Each fdholder is referenced by a number, the filedesc.  The low-order
  * bits (under the MAXFACES) constitute a slot number that is
  * unique (for this ccnr) among the faces that are alive at a given time.
  * The rest of the bits form a generation number that make the
- * entire faceid unique over time, even for faces that are defunct.
+ * entire filedesc unique over time, even for faces that are defunct.
  */
 #define FACESLOTBITS 18
 #define MAXFACES ((1U << FACESLOTBITS) - 1)
@@ -190,10 +190,10 @@ enum ccnr_face_meter_index {
  */
 struct fdholder {
     int recv_fd;                /**< socket for receiving */
-    unsigned sendface;          /**< faceid for sending (maybe == faceid) */
+    unsigned sendface;          /**< filedesc for sending (maybe == filedesc) */
     int flags;                  /**< CCN_FACE_* fdholder flags */
     int surplus;                /**< sends since last successful recv */
-    unsigned faceid;            /**< internal fdholder id */
+    unsigned filedesc;            /**< internal fdholder id */
     unsigned recvcount;         /**< for activity level monitoring */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
     struct ccn_charbuf *inbuf;
@@ -282,7 +282,7 @@ struct propagating_entry {
     struct propagating_entry *next;
     struct propagating_entry *prev;
     unsigned flags;             /**< CCN_PR_xxx */
-    unsigned faceid;            /**< origin of the interest, dest for matches */
+    unsigned filedesc;            /**< origin of the interest, dest for matches */
     int usec;                   /**< usec until timeout */
     int sent;                   /**< leading faceids of outbound processed */
     struct ccn_indexbuf *outbound; /**< in order of use */
@@ -313,7 +313,7 @@ struct nameprefix_entry {
     int children;                /**< number of children */
     unsigned flags;              /**< CCN_FORW_* flags about namespace */
     int fgen;                    /**< used to decide when forward_to is stale */
-    unsigned src;                /**< faceid of recent content source */
+    unsigned src;                /**< filedesc of recent content source */
     unsigned osrc;               /**< and of older matching content */
     unsigned usec;               /**< response-time prediction */
 };
@@ -323,7 +323,7 @@ struct nameprefix_entry {
  * forwarded to.
  */
 struct ccn_forwarding {
-    unsigned faceid;             /**< locally unique number identifying fdholder */
+    unsigned filedesc;             /**< locally unique number identifying fdholder */
     unsigned flags;              /**< CCN_FORW_* - c.f. <ccn/reg_mgnt.h> */
     int expires;                 /**< time remaining, in seconds */
     struct ccn_forwarding *next;
@@ -416,13 +416,13 @@ int ccnr_req_unreg(struct ccnr_handle *h,
 
 int ccnr_reg_uri(struct ccnr_handle *h,
                  const char *uri,
-                 unsigned faceid,
+                 unsigned filedesc,
                  int flags,
                  int expires);
 
-struct fdholder *ccnr_face_from_faceid(struct ccnr_handle *, unsigned);
+struct fdholder *ccnr_fdholder_from_fd(struct ccnr_handle *, unsigned);
 void ccnr_face_status_change(struct ccnr_handle *, unsigned);
-int ccnr_destroy_face(struct ccnr_handle *h, unsigned faceid);
+int ccnr_destroy_face(struct ccnr_handle *h, unsigned filedesc);
 void ccnr_send(struct ccnr_handle *h, struct fdholder *fdholder,
                const void *data, size_t size);
 
