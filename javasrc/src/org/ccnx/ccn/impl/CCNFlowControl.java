@@ -401,10 +401,12 @@ public class CCNFlowControl implements CCNFilterListener {
 				Log.finest(Log.FAC_IO, "Holding {0}", co.name());
 			// Must verify space in _holdingArea or block waiting for space
 			int size = 0;
+			int capacity = 0;
 			synchronized (_holdingArea) {
 				size = _holdingArea.size();
+				capacity = _capacity;
 			}
-			if (size >= _capacity) {
+			if (size >= capacity) {
 				long ourTime = System.currentTimeMillis();
 
 				// When we're going to be blocked waiting for a reader anyway, 
@@ -427,9 +429,9 @@ public class CCNFlowControl implements CCNFilterListener {
 						}
 						elapsed = System.currentTimeMillis() - ourTime;
 						size = _holdingArea.size();
-					} while (size >= _capacity && elapsed < _timeout);
+					} while (size >= capacity && elapsed < _timeout);
 				}
-				if (size >= _capacity) {
+				if (size >= capacity) {
 					String names = "";
 					for (ContentName name : _filteredNames) {
 						names += name + ",";
@@ -438,7 +440,7 @@ public class CCNFlowControl implements CCNFilterListener {
 					throw new IOException("Flow control buffer full and not draining");
 				}
 			}
-			assert(size < _capacity);
+			assert(size < capacity);
 			// Space verified so now can hold object. See note above for reason to always hold.
 			synchronized (_holdingArea) {
 				_holdingArea.put(co.name(), co);
@@ -472,24 +474,22 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param ourTime current time for checking if interests are expired
 	 */
 	private void removeUnmatchedInterests(long ourTime) {
-		synchronized (_holdingArea) {
-			Entry<UnmatchedInterest> removeIt;
-			do {
-				removeIt = null;
-				for (Entry<UnmatchedInterest> uie : _unmatchedInterests.values()) {
-					//TODO need to normalize this with refresh time in CCNNetworkManager and put in SystemConfiguration
-					if ((ourTime - uie.value().timestamp) > PURGE) {
-						removeIt = uie;
-						break;
-					} else {
-						//we add interests at the end...  so older interests are at the top
-						break;
-					}
+		Entry<UnmatchedInterest> removeIt;
+		do {
+			removeIt = null;
+			for (Entry<UnmatchedInterest> uie : _unmatchedInterests.values()) {
+				//TODO need to normalize this with refresh time in CCNNetworkManager and put in SystemConfiguration
+				if ((ourTime - uie.value().timestamp) > PURGE) {
+					removeIt = uie;
+					break;
+				} else {
+					//we add interests at the end...  so older interests are at the top
+					break;
 				}
-				if (removeIt != null)
-					_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
-			} while (removeIt != null);
-		}
+			}
+			if (removeIt != null)
+				_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
+		} while (removeIt != null);
 	}
 	
 	
@@ -537,14 +537,12 @@ public class CCNFlowControl implements CCNFilterListener {
 			}
 		} else {
 			
-			synchronized (_unmatchedInterests) {
-				//only check if we are adding the interest, and check before we add so we don't check the new interest
-				if (_unmatchedInterests.size() > 0)
-					removeUnmatchedInterests(System.currentTimeMillis());
-				
-				Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
-				_unmatchedInterests.add(i, new UnmatchedInterest());
-			}
+			//only check if we are adding the interest, and check before we add so we don't check the new interest
+			if (_unmatchedInterests.size() > 0)
+				removeUnmatchedInterests(System.currentTimeMillis());
+			
+			Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
+			_unmatchedInterests.add(i, new UnmatchedInterest());
 		}
 			
 		return true;
@@ -684,25 +682,21 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * Remove any currently buffered unmatched interests
 	 */
 	public void clearUnmatchedInterests() {
-		synchronized (_unmatchedInterests) {
-			if( Log.isLoggable(Level.INFO))
-				Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
-			_unmatchedInterests.clear();
-		}
+		if( Log.isLoggable(Level.INFO))
+			Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
+		_unmatchedInterests.clear();
 	}
 	
 	/**
 	 * Debugging function to log unmatched interests.
 	 */
 	public void logUnmatchedInterests(String logMessage) {
-		synchronized (_unmatchedInterests) {
-			if( Log.isLoggable(Log.FAC_IO, Level.INFO))
-				Log.info(Log.FAC_IO, "{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
-			for (Entry<UnmatchedInterest> interestEntry : _unmatchedInterests.values()) {
-				if (null != interestEntry.interest())
-					if( Log.isLoggable(Log.FAC_IO, Level.INFO))
-						Log.info(Log.FAC_IO, "   Unmatched interest: {0}", interestEntry.interest());
-			}
+		if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "{0}: {1} unmatched interest entries.", logMessage, _unmatchedInterests.size());
+		for (Entry<UnmatchedInterest> interestEntry : _unmatchedInterests.values()) {
+			if (null != interestEntry.interest())
+				if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "   Unmatched interest: {0}", interestEntry.interest());
 		}
 	}
 	
@@ -721,14 +715,18 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param value number of content objects.
 	 */
 	public void setCapacity(int value) {
-		_capacity = value;
+		synchronized (_holdingArea) {
+			_capacity = value;
+		}
 	}
 	
 	/**
 	 * Set the capacity to the maximum possible value, Integer.MAX_VALUE.
 	 */
 	public void setMaximumCapacity() {
-		_capacity = Integer.MAX_VALUE;
+		synchronized (_holdingArea) {
+			_capacity = Integer.MAX_VALUE;
+		}
 	}
 	
 	/**
@@ -736,9 +734,7 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param value	number of interests
 	 */
 	public void setInterestCapacity(int value) {
-		synchronized (_unmatchedInterests) {
-			_unmatchedInterests.setCapacity(value);
-		}
+		_unmatchedInterests.setCapacity(value);
 	}
 	
 	/**
@@ -747,7 +743,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	 *   number of segments that can be written to it before writes will block
 	 */
 	public int getCapacity() {
-		return _capacity;
+		synchronized (_holdingArea) {
+			return _capacity;
+		}
 	}
 	
 	/**
@@ -755,7 +753,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @return the number of objects (segments) in the buffer
 	 */
 	public int size() {
-		return _holdingArea.size();
+		synchronized (_holdingArea) {
+			return _holdingArea.size();
+		}
 	}
 	
 	/**
@@ -763,7 +763,9 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @return the number of additional objects that can currently be written to this controller
 	 */
 	public int availableCapacity() {
-		return getCapacity() - size(); // off by 1? synchronization?
+		synchronized (_holdingArea) {
+			return _capacity - _holdingArea.size(); // off by 1?
+		}
 	}
 	
 	/**
