@@ -1,7 +1,7 @@
 /*
  * ccnr/ccnr.c
  *
- * Main program of ccnr - the CCNx Daemon
+ * Main program of ccnr - the CCNx Repository Daemon
  *
  * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *

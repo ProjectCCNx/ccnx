@@ -1,7 +1,7 @@
 /**
  * @file ccnr_main.c
  *
- * A CCNx program.
+ * Part of ccnr -  CCNx Repository Daemon.
  *
  * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
  *

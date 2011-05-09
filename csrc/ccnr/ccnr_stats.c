@@ -3,7 +3,7 @@
  *
  * Statistics presentation for ccnr.
  *
- * Part of ccnr - the CCNx Daemon.
+ * Part of ccnr -  CCNx Repository Daemon.
  *
  * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *

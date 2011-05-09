@@ -5,7 +5,7 @@
  * Data structures are described here so that logging and status
  * routines can be compiled separately.
  *
- * Part of ccnr - the CCNx Daemon.
+ * Part of ccnr - the CCNx Repository Daemon.
  *
  * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
@@ -21,8 +21,8 @@
  * Boston, MA 02110-1301, USA.
  */
  
-#ifndef CCND_PRIVATE_DEFINED
-#define CCND_PRIVATE_DEFINED
+#ifndef CCNR_PRIVATE_DEFINED
+#define CCNR_PRIVATE_DEFINED
 
 #include <poll.h>
 #include <stdarg.h>
