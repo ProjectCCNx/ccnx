@@ -57,7 +57,7 @@ public class InterestAndFilterTestRepo {
 		_userHandle = CCNHandle.getHandle();
 		
 		ContentName users = ContentName.fromNative(_prefix, "Users");
-		_cud = new CreateUserData(users, _users, _users.length, true, _password, _defaultHandle);
+		_cud = new CreateUserData(users, _users, _users.length, true, _password);
 		_userHandle = _cud.getHandleForUser(_users[0]);
 		
 		Log.setLevels(levels);

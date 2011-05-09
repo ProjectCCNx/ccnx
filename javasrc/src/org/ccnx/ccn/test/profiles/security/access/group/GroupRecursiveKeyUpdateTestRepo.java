@@ -72,7 +72,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
 		
 		// create user identities with TestUserData		
-		td = new CreateUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
+		td = new CreateUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray());
 		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);				
 		

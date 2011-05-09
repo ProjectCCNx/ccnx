@@ -71,8 +71,7 @@ public class CreateUserData {
 	
 	protected HashMap<String, ContentName> _userContentNames = new HashMap<String,ContentName>();
 	protected HashMap<String, File> _userKeystoreDirectories = new HashMap<String,File>();
-	protected HashMap<String,KeyManager> _userKeyManagers = new HashMap<String, KeyManager>();
-	protected HashMap<String,CCNHandle> _userHandles = new HashMap<String, CCNHandle>();
+	protected HashMap<String, BasicKeyManager> _userKeyManagers = new HashMap<String, BasicKeyManager>();
 	
 		
 	/**
@@ -86,17 +85,16 @@ public class CreateUserData {
 	 * @param userCount
 	 * @param storeInRepo
 	 * @param password
-	 * @param handle
 	 * @throws IOException 
 	 * @throws ConfigurationException 
 	 * @throws InvalidKeyException 
 	 */
 	public CreateUserData(ContentName userKeyStorePrefix, String [] userNames,
-			int userCount, boolean storeInRepo, char [] password, CCNHandle handle) throws ConfigurationException, IOException, InvalidKeyException {
+			int userCount, boolean storeInRepo, char [] password) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		ContentName childName = null;
 		String friendlyName = null;
-		KeyManager userKeyManager = null;
+		BasicKeyManager userKeyManager = null;
 		if (null == userNames) {
 			userNames = USER_NAMES;
 		}
@@ -113,9 +111,9 @@ public class CreateUserData {
 			if (storeInRepo) {
 				// This only matters the first time through, when we save the user's data.
 				// but it makes no difference in other cases anyway.
-				userKeyManager = new RepositoryKeyManager(friendlyName, childName, null, password, handle);
+				userKeyManager = new RepositoryKeyManager(friendlyName, childName, null, password);
 			} else {
-				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, handle);
+				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password);
 			}
 			userKeyManager.initialize();
 			_userContentNames.put(friendlyName, childName);
@@ -128,8 +126,8 @@ public class CreateUserData {
 	 * Backwards compatibility constructor
 	 */
 	public CreateUserData(ContentName userKeyStorePrefix, 
-			int userCount, boolean storeInRepo, char [] password, CCNHandle handle) throws ConfigurationException, IOException, InvalidKeyException {
-		this(userKeyStorePrefix, null, userCount, storeInRepo, password, handle);
+			int userCount, boolean storeInRepo, char [] password) throws ConfigurationException, IOException, InvalidKeyException {
+		this(userKeyStorePrefix, null, userCount, storeInRepo, password);
 	}
 	
 	/**
@@ -151,7 +149,7 @@ public class CreateUserData {
 		}
 		String friendlyName;
 		ContentName childName;
-		KeyManager userKeyManager;
+		BasicKeyManager userKeyManager;
 		while (null != availableChildren) {
 			for (ContentName child : availableChildren) {
 				friendlyName = ContentName.componentPrintNative(child.lastComponent());
@@ -161,7 +159,7 @@ public class CreateUserData {
 				}
 				childName = new ContentName(userKeystoreDataPrefix, child.lastComponent());
 				Log.info("Loading user: " + friendlyName + " from " + childName);
-				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password, handle);
+				userKeyManager = new NetworkKeyManager(friendlyName, childName, null, password);
 				userKeyManager.initialize();
 				_userContentNames.put(friendlyName, childName);
 				_userKeyManagers.put(friendlyName, userKeyManager);
@@ -200,7 +198,7 @@ public class CreateUserData {
 						boolean clearSavedState) throws ConfigurationException, IOException, InvalidKeyException {
 	
 		String friendlyName = null;
-		KeyManager userKeyManager = null;
+		BasicKeyManager userKeyManager = null;
 		File userDirectory = null;
 		File userKeystoreFile = null;
 		
@@ -308,12 +306,7 @@ public class CreateUserData {
 	}
 	
 	public void closeAll() {
-		for (String user : _userKeyManagers.keySet()) {
-			CCNHandle handle = _userHandles.get(user);
-			if (null != handle) {
-				handle.close();
-			}
-			KeyManager km = _userKeyManagers.get(user);
+		for (BasicKeyManager km : _userKeyManagers.values()) {
 			if (null != km) {
 				km.close();
 			}
@@ -372,7 +365,7 @@ public class CreateUserData {
 		return _userKeyManagers.containsKey(friendlyName);
 	}
 	
-	public KeyManager getUser(String friendlyName) {
+	public BasicKeyManager getUser(String friendlyName) {
 		return _userKeyManagers.get(friendlyName);
 	}
 	
@@ -381,17 +374,10 @@ public class CreateUserData {
 	}
 	
 	public CCNHandle getHandleForUser(String friendlyName) throws IOException {
-		synchronized (_userHandles) {
-			CCNHandle userHandle = _userHandles.get(friendlyName);
-			if (null == userHandle) {
-				KeyManager km = getUser(friendlyName);
-				if (null == km)
-					return null;
-				userHandle = CCNHandle.open(km);
-				_userHandles.put(friendlyName, userHandle);
-			}
-			return userHandle;
-		}
+		BasicKeyManager km = getUser(friendlyName);
+		if (null == km)
+			return null;
+		return km.handle();
 	}
 
 	public Set<String> friendlyNames() {
@@ -564,7 +550,7 @@ public class CreateUserData {
 			} else {
 				td = new CreateUserData(userNamespace, userNames, count,
 						useRepo,
-						password.toCharArray(), CCNHandle.open());
+						password.toCharArray());
 				if (publishKeysToRepo) {
 					td.publishUserKeysToRepository();
 				}

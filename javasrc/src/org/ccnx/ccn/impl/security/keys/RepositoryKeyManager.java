@@ -45,14 +45,12 @@ public class RepositoryKeyManager extends NetworkKeyManager {
 	 * @param keystoreName
 	 * @param publisher
 	 * @param password
-	 * @param handle
 	 * @throws ConfigurationException
 	 * @throws IOException
 	 */
 	public RepositoryKeyManager(String userName, ContentName keystoreName,
-			PublisherPublicKeyDigest publisher, char[] password,
-			CCNHandle handle) throws ConfigurationException, IOException {
-		super(userName, keystoreName, publisher, password, handle);
+			PublisherPublicKeyDigest publisher, char[] password) throws ConfigurationException, IOException {
+		super(userName, keystoreName, publisher, password);
 	}
 
 	/**
@@ -66,6 +64,6 @@ public class RepositoryKeyManager extends NetworkKeyManager {
 	protected Tuple<KeyStoreInfo,OutputStream> createKeyStoreWriteStream() throws IOException {
 		// Have to get the version after we write, unless we force it.
 		return new Tuple<KeyStoreInfo,OutputStream>(new KeyStoreInfo(_keystoreName.toURIString(), null, null), 
-											  new RepositoryVersionedOutputStream(_keystoreName, _handle));
+											  new RepositoryVersionedOutputStream(_keystoreName, CCNHandle.getHandle()));
 	}
 }

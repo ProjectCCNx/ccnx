@@ -75,7 +75,7 @@ public class GACMNodeKeyDirtyTestRepo {
 
 		// create user identities with TestUserData		
 		Log.info("Creating {0} test users, if they do not already exist.", numberOfusers);
-		td = new CreateUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
+		td = new CreateUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray());
 		Log.info("Created {0} test users, or retrieved them from repository.", numberOfusers);
 		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);				
