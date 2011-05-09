@@ -50,7 +50,7 @@ struct ccnr_meter;
  * These are defined in this header.
  */
 struct ccnr_handle;
-struct face;
+struct fdholder;
 struct content_entry;
 struct nameprefix_entry;
 struct propagating_entry;
@@ -76,8 +76,8 @@ struct ccnr_handle {
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< faceid generation number */
     unsigned face_rover;            /**< for faceid allocation */
-    unsigned face_limit;            /**< current number of face slots */
-    struct face **faces_by_faceid;  /**< array with face_limit elements */
+    unsigned face_limit;            /**< current number of fdholder slots */
+    struct fdholder **faces_by_faceid;  /**< array with face_limit elements */
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
@@ -133,7 +133,7 @@ struct ccnr_handle {
     unsigned interest_faceid;       /**< for self_reg internal client */
     const char *progname;           /**< our name, for locating helpers */
     struct ccn *internal_client;    /**< internal client */
-    struct face *face0;             /**< special face for internal client */
+    struct fdholder *face0;             /**< special fdholder for internal client */
     struct ccn_charbuf *service_ccnb; /**< for local service discovery */
     struct ccn_charbuf *neighbor_ccnb; /**< for neighbor service discovery */
     struct ccn_seqwriter *notice;   /**< for notices of status changes */
@@ -141,12 +141,12 @@ struct ccnr_handle {
     struct ccn_scheduled_event *internal_client_refresh;
     struct ccn_scheduled_event *notice_push;
     unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
-    void (*appnonce)(struct ccnr_handle *, struct face *, struct ccn_charbuf *);
+    void (*appnonce)(struct ccnr_handle *, struct fdholder *, struct ccn_charbuf *);
                                     /**< pluggable nonce generation */
 };
 
 /**
- * Each face is referenced by a number, the faceid.  The low-order
+ * Each fdholder is referenced by a number, the faceid.  The low-order
  * bits (under the MAXFACES) constitute a slot number that is
  * unique (for this ccnr) among the faces that are alive at a given time.
  * The rest of the bits form a generation number that make the
@@ -173,7 +173,7 @@ enum cq_delay_class {
 };
 
 /**
- * Face meter index
+ * fdholder meter index
  */
 enum ccnr_face_meter_index {
     FM_BYTI,
@@ -188,12 +188,12 @@ enum ccnr_face_meter_index {
 /**
  * One of our active faces
  */
-struct face {
+struct fdholder {
     int recv_fd;                /**< socket for receiving */
     unsigned sendface;          /**< faceid for sending (maybe == faceid) */
-    int flags;                  /**< CCN_FACE_* face flags */
+    int flags;                  /**< CCN_FACE_* fdholder flags */
     int surplus;                /**< sends since last successful recv */
-    unsigned faceid;            /**< internal face id */
+    unsigned faceid;            /**< internal fdholder id */
     unsigned recvcount;         /**< for activity level monitoring */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
     struct ccn_charbuf *inbuf;
@@ -209,7 +209,7 @@ struct face {
     unsigned short pktseq;     /**< sequence number for sent packets */
 };
 
-/** face flags */
+/** fdholder flags */
 #define CCN_FACE_LINK   (1 << 0) /**< Elements wrapped by CCNProtocolDataUnit */
 #define CCN_FACE_DGRAM  (1 << 1) /**< Datagram interface, respect packets */
 #define CCN_FACE_GG     (1 << 2) /**< Considered friendly */
@@ -217,7 +217,7 @@ struct face {
 #define CCN_FACE_INET   (1 << 4) /**< IPv4 */
 #define CCN_FACE_MCAST  (1 << 5) /**< a party line (e.g. multicast) */
 #define CCN_FACE_INET6  (1 << 6) /**< IPv6 */
-#define CCN_FACE_DC     (1 << 7) /**< Direct control face */
+#define CCN_FACE_DC     (1 << 7) /**< Direct control fdholder */
 #define CCN_FACE_NOSEND (1 << 8) /**< Don't send anymore */
 #define CCN_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
 #define CCN_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */
@@ -229,7 +229,7 @@ struct face {
 #define CCN_FACE_REGOK (1 << 16) /**< Allowed to do prefix registration */
 #define CCN_FACE_SEQOK (1 << 17) /** OK to send SequenceNumber link messages */
 #define CCN_FACE_SEQPROBE (1 << 18) /** SequenceNumber probe */
-#define CCN_NOFACEID    (~0U)    /** denotes no face */
+#define CCN_NOFACEID    (~0U)    /** denotes no fdholder */
 
 /**
  *  The content hash table is keyed by the initial portion of the ContentObject
@@ -294,7 +294,7 @@ struct propagating_entry {
 #define CCN_PR_UNSENT   0x01 /**< interest has not been sent anywhere yet */
 #define CCN_PR_WAIT1    0x02 /**< interest has been sent to one place */
 #define CCN_PR_STUFFED1 0x04 /**< was stuffed before sent anywhere else */
-#define CCN_PR_TAP      0x08 /**< at least one tap face is present */
+#define CCN_PR_TAP      0x08 /**< at least one tap fdholder is present */
 #define CCN_PR_EQV      0x10 /**< a younger similar interest exists */
 #define CCN_PR_SCOPE0   0x20 /**< interest scope is 0 */
 #define CCN_PR_SCOPE1   0x40 /**< interest scope is 1 (this host) */
@@ -323,7 +323,7 @@ struct nameprefix_entry {
  * forwarded to.
  */
 struct ccn_forwarding {
-    unsigned faceid;             /**< locally unique number identifying face */
+    unsigned faceid;             /**< locally unique number identifying fdholder */
     unsigned flags;              /**< CCN_FORW_* - c.f. <ccn/reg_mgnt.h> */
     int expires;                 /**< time remaining, in seconds */
     struct ccn_forwarding *next;
@@ -370,7 +370,7 @@ void ccnr_internal_client_stop(struct ccnr_handle *);
 
 /*
  * The internal client calls this with the argument portion ARG of
- * a face-creation request (/ccnx/CCNDID/newface/ARG)
+ * a fdholder-creation request (/ccnx/CCNDID/newface/ARG)
  */
 int ccnr_req_newface(struct ccnr_handle *h,
                      const unsigned char *msg, size_t size,
@@ -378,7 +378,7 @@ int ccnr_req_newface(struct ccnr_handle *h,
 
 /*
  * The internal client calls this with the argument portion ARG of
- * a face-destroy request (/ccnx/CCNDID/destroyface/ARG)
+ * a fdholder-destroy request (/ccnx/CCNDID/destroyface/ARG)
  */
 int ccnr_req_destroyface(struct ccnr_handle *h,
                          const unsigned char *msg, size_t size,
@@ -420,19 +420,19 @@ int ccnr_reg_uri(struct ccnr_handle *h,
                  int flags,
                  int expires);
 
-struct face *ccnr_face_from_faceid(struct ccnr_handle *, unsigned);
+struct fdholder *ccnr_face_from_faceid(struct ccnr_handle *, unsigned);
 void ccnr_face_status_change(struct ccnr_handle *, unsigned);
 int ccnr_destroy_face(struct ccnr_handle *h, unsigned faceid);
-void ccnr_send(struct ccnr_handle *h, struct face *face,
+void ccnr_send(struct ccnr_handle *h, struct fdholder *fdholder,
                const void *data, size_t size);
 
 /* Consider a separate header for these */
-int ccnr_stats_handle_http_connection(struct ccnr_handle *, struct face *);
+int ccnr_stats_handle_http_connection(struct ccnr_handle *, struct fdholder *);
 void ccnr_msg(struct ccnr_handle *, const char *, ...);
 void ccnr_debug_ccnb(struct ccnr_handle *h,
                      int lineno,
                      const char *msg,
-                     struct face *face,
+                     struct fdholder *fdholder,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
 

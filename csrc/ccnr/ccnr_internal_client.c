@@ -479,20 +479,20 @@ Bail:
 static int
 post_face_notice(struct ccnr_handle *ccnr, unsigned faceid)
 {
-    struct face *face = ccnr_face_from_faceid(ccnr, faceid);
+    struct fdholder *fdholder = ccnr_face_from_faceid(ccnr, faceid);
     struct ccn_charbuf *msg = ccn_charbuf_create();
     int res = -1;
     int port;
     
     // XXX - text version for trying out stream stuff - replace with ccnb
-    if (face == NULL)
+    if (fdholder == NULL)
         ccn_charbuf_putf(msg, "destroyface(%u);\n", faceid);
     else {
-        ccn_charbuf_putf(msg, "newface(%u, 0x%x", faceid, face->flags);
-        if (face->addr != NULL &&
-            (face->flags & (CCN_FACE_INET | CCN_FACE_INET6)) != 0) {
+        ccn_charbuf_putf(msg, "newface(%u, 0x%x", faceid, fdholder->flags);
+        if (fdholder->addr != NULL &&
+            (fdholder->flags & (CCN_FACE_INET | CCN_FACE_INET6)) != 0) {
             ccn_charbuf_putf(msg, ", ");
-            port = ccn_charbuf_append_sockaddr(msg, face->addr);
+            port = ccn_charbuf_append_sockaddr(msg, fdholder->addr);
             if (port < 0)
                 msg->length--;
             else if (port > 0)
@@ -539,11 +539,11 @@ ccnr_notice_push(struct ccn_schedule *sched,
 }
 
 /**
- * Called by ccnr when a face undergoes a substantive status change that
+ * Called by ccnr when a fdholder undergoes a substantive status change that
  * should be reported to interested parties.
  *
  * In the destroy case, this is called from the hash table finalizer,
- * so it shouldn't do much directly.  Inspecting the face is OK, though.
+ * so it shouldn't do much directly.  Inspecting the fdholder is OK, though.
  */
 void
 ccnr_face_status_change(struct ccnr_handle *ccnr, unsigned faceid)
@@ -563,7 +563,7 @@ ccnr_start_notice(struct ccnr_handle *ccnr)
 {
     struct ccn *h = ccnr->internal_client;
     struct ccn_charbuf *name = NULL;
-    struct face *face = NULL;
+    struct fdholder *fdholder = NULL;
     int i;
     
     if (h == NULL)
@@ -582,9 +582,9 @@ ccnr_start_notice(struct ccnr_handle *ccnr)
     ccnr->notice = ccn_seqw_create(h, name);
     ccnr->chface = ccn_indexbuf_create();
     for (i = 0; i < ccnr->face_limit; i++) {
-        face = ccnr->faces_by_faceid[i];
-        if (face != NULL)
-            ccn_indexbuf_set_insert(ccnr->chface, face->faceid);
+        fdholder = ccnr->faces_by_faceid[i];
+        if (fdholder != NULL)
+            ccn_indexbuf_set_insert(ccnr->chface, fdholder->faceid);
     }
     if (ccnr->chface->n > 0)
         ccnr_face_status_change(ccnr, ccnr->chface->buf[0]);

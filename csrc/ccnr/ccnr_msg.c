@@ -80,7 +80,7 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
  *  @param      h  the ccnr handle
  *  @param      lineno  caller's source line number (usually __LINE__)
  *  @param      msg  a short text tag to identify the entry
- *  @param      face    handle of associated face; may be NULL
+ *  @param      fdholder    handle of associated fdholder; may be NULL
  *  @param      ccnb    points to ccnb-encoded Interest or ContentObject
  *  @param      ccnb_size   is in bytes
  */
@@ -88,7 +88,7 @@ void
 ccnr_debug_ccnb(struct ccnr_handle *h,
                 int lineno,
                 const char *msg,
-                struct face *face,
+                struct fdholder *fdholder,
                 const unsigned char *ccnb,
                 size_t ccnb_size)
 {
@@ -103,8 +103,8 @@ ccnr_debug_ccnb(struct ccnr_handle *h,
         return;
     c = ccn_charbuf_create();
     ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
-    if (face != NULL)
-        ccn_charbuf_putf(c, "%u ", face->faceid);
+    if (fdholder != NULL)
+        ccn_charbuf_putf(c, "%u ", fdholder->faceid);
     ccn_uri_append(c, ccnb, ccnb_size, 1);
     ccn_charbuf_putf(c, " (%u bytes)", (unsigned)ccnb_size);
     if (ccn_parse_interest(ccnb, ccnb_size, &pi, NULL) >= 0) {
@@ -143,7 +143,7 @@ const char *ccnr_usage_message =
     "      16 - interest details\n"
     "      32 - gory interest details\n"
     "      64 - log occasional human-readable timestamps\n"
-    "      128 - face registration debugging\n"
+    "      128 - fdholder registration debugging\n"
     "      bitwise OR these together for combinations; -1 gets max logging\n"
     "    CCN_LOCAL_PORT=\n"
     "      UDP port for unicast clients (default "CCN_DEFAULT_UNICAST_PORT").\n"

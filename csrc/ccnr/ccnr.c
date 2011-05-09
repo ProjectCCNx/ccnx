@@ -65,19 +65,19 @@
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
 static int create_local_listener(struct ccnr_handle *h, const char *sockname, int backlog);
-static struct face *record_connection(struct ccnr_handle *h,
+static struct fdholder *record_connection(struct ccnr_handle *h,
                                       int fd,
                                       struct sockaddr *who,
                                       socklen_t wholen,
                                       int setflags);
-static void process_input_message(struct ccnr_handle *h, struct face *face,
+static void process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
                                   unsigned char *msg, size_t size, int pdu_ok);
 static void process_input(struct ccnr_handle *h, int fd);
 static int ccn_stuff_interest(struct ccnr_handle *h,
-                              struct face *face, struct ccn_charbuf *c);
+                              struct fdholder *fdholder, struct ccn_charbuf *c);
 static void do_deferred_write(struct ccnr_handle *h, int fd);
 static void clean_needed(struct ccnr_handle *h);
-static struct face *get_dgram_source(struct ccnr_handle *h, struct face *face,
+static struct fdholder *get_dgram_source(struct ccnr_handle *h, struct fdholder *fdholder,
                                      struct sockaddr *addr, socklen_t addrlen,
                                      int why);
 static void content_skiplist_insert(struct ccnr_handle *h,
@@ -98,18 +98,18 @@ static int nameprefix_seek(struct ccnr_handle *h,
                            const unsigned char *msg,
                            struct ccn_indexbuf *comps,
                            int ncomps);
-static void register_new_face(struct ccnr_handle *h, struct face *face);
+static void register_new_face(struct ccnr_handle *h, struct fdholder *fdholder);
 static void update_forward_to(struct ccnr_handle *h,
                               struct nameprefix_entry *npe);
-static void stuff_and_send(struct ccnr_handle *h, struct face *face,
+static void stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
                            const unsigned char *data1, size_t size1,
                            const unsigned char *data2, size_t size2);
-static void ccn_link_state_init(struct ccnr_handle *h, struct face *face);
+static void ccn_link_state_init(struct ccnr_handle *h, struct fdholder *fdholder);
 static void ccn_append_link_stuff(struct ccnr_handle *h,
-                                  struct face *face,
+                                  struct fdholder *fdholder,
                                   struct ccn_charbuf *c);
 static int process_incoming_link_message(struct ccnr_handle *h,
-                                         struct face *face, enum ccn_dtag dtag,
+                                         struct fdholder *fdholder, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
 
 static void
@@ -198,40 +198,40 @@ indexbuf_release(struct ccnr_handle *h, struct ccn_indexbuf *c)
 }
 
 /**
- * Looks up a face based on its faceid (private).
+ * Looks up a fdholder based on its faceid (private).
  */
-static struct face *
+static struct fdholder *
 face_from_faceid(struct ccnr_handle *h, unsigned faceid)
 {
     unsigned slot = faceid & MAXFACES;
-    struct face *face = NULL;
+    struct fdholder *fdholder = NULL;
     if (slot < h->face_limit) {
-        face = h->faces_by_faceid[slot];
-        if (face != NULL && face->faceid != faceid)
-            face = NULL;
+        fdholder = h->faces_by_faceid[slot];
+        if (fdholder != NULL && fdholder->faceid != faceid)
+            fdholder = NULL;
     }
-    return(face);
+    return(fdholder);
 }
 
 /**
- * Looks up a face based on its faceid.
+ * Looks up a fdholder based on its faceid.
  */
-struct face *
+struct fdholder *
 ccnr_face_from_faceid(struct ccnr_handle *h, unsigned faceid)
 {
     return(face_from_faceid(h, faceid));
 }
 
 /**
- * Assigns the faceid for a nacent face,
+ * Assigns the faceid for a nacent fdholder,
  * calls register_new_face() if successful.
  */
 static int
-enroll_face(struct ccnr_handle *h, struct face *face)
+enroll_face(struct ccnr_handle *h, struct fdholder *fdholder)
 {
     unsigned i;
     unsigned n = h->face_limit;
-    struct face **a = h->faces_by_faceid;
+    struct fdholder **a = h->faces_by_faceid;
     for (i = h->face_rover; i < n; i++)
         if (a[i] == NULL) goto use_i;
     for (i = 0; i < n; i++)
@@ -244,7 +244,7 @@ enroll_face(struct ccnr_handle *h, struct face *face)
     if (i > MAXFACES) i = MAXFACES;
     if (i <= n)
         return(-1); /* overflow */
-    a = realloc(a, i * sizeof(struct face *));
+    a = realloc(a, i * sizeof(struct fdholder *));
     if (a == NULL)
         return(-1); /* ENOMEM */
     h->face_limit = i;
@@ -252,46 +252,46 @@ enroll_face(struct ccnr_handle *h, struct face *face)
         a[i] = NULL;
     h->faces_by_faceid = a;
 use_i:
-    a[i] = face;
+    a[i] = fdholder;
     h->face_rover = i + 1;
-    face->faceid = i | h->face_gen;
-    face->meter[FM_BYTI] = ccnr_meter_create(h, "bytein");
-    face->meter[FM_BYTO] = ccnr_meter_create(h, "byteout");
-    face->meter[FM_INTI] = ccnr_meter_create(h, "intrin");
-    face->meter[FM_INTO] = ccnr_meter_create(h, "introut");
-    face->meter[FM_DATI] = ccnr_meter_create(h, "datain");
-    face->meter[FM_DATO] = ccnr_meter_create(h, "dataout");
-    register_new_face(h, face);
-    return (face->faceid);
+    fdholder->faceid = i | h->face_gen;
+    fdholder->meter[FM_BYTI] = ccnr_meter_create(h, "bytein");
+    fdholder->meter[FM_BYTO] = ccnr_meter_create(h, "byteout");
+    fdholder->meter[FM_INTI] = ccnr_meter_create(h, "intrin");
+    fdholder->meter[FM_INTO] = ccnr_meter_create(h, "introut");
+    fdholder->meter[FM_DATI] = ccnr_meter_create(h, "datain");
+    fdholder->meter[FM_DATO] = ccnr_meter_create(h, "dataout");
+    register_new_face(h, fdholder);
+    return (fdholder->faceid);
 }
 
 static int
-choose_face_delay(struct ccnr_handle *h, struct face *face, enum cq_delay_class c)
+choose_face_delay(struct ccnr_handle *h, struct fdholder *fdholder, enum cq_delay_class c)
 {
     int shift = (c == CCN_CQ_SLOW) ? 2 : 0;
     if (c == CCN_CQ_ASAP)
         return(1);
-    if ((face->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
+    if ((fdholder->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
         return((h->data_pause_microsec) << shift);
-    if ((face->flags & CCN_FACE_LOCAL) != 0)
+    if ((fdholder->flags & CCN_FACE_LOCAL) != 0)
         return(5); /* local stream, answer quickly */
-    if ((face->flags & CCN_FACE_MCAST) != 0)
+    if ((fdholder->flags & CCN_FACE_MCAST) != 0)
         return((h->data_pause_microsec) << shift); /* multicast, delay more */
-    if ((face->flags & CCN_FACE_GG) != 0)
+    if ((fdholder->flags & CCN_FACE_GG) != 0)
         return(100 << shift); /* localhost, delay just a little */
-    if ((face->flags & CCN_FACE_DGRAM) != 0)
+    if ((fdholder->flags & CCN_FACE_DGRAM) != 0)
         return(500 << shift); /* udp, delay just a little */
     return(100); /* probably tcp to a different machine */
 }
 
 static struct content_queue *
-content_queue_create(struct ccnr_handle *h, struct face *face, enum cq_delay_class c)
+content_queue_create(struct ccnr_handle *h, struct fdholder *fdholder, enum cq_delay_class c)
 {
     struct content_queue *q;
     unsigned usec;
     q = calloc(1, sizeof(*q));
     if (q != NULL) {
-        usec = choose_face_delay(h, face, c);
+        usec = choose_face_delay(h, fdholder, c);
         q->burst_nsec = (usec <= 500 ? 500 : 150000); // XXX - needs a knob
         q->min_usec = usec;
         q->rand_usec = 2 * usec;
@@ -348,10 +348,10 @@ ccnr_close_fd(struct ccnr_handle *h, unsigned faceid, int *pfd)
                    &linger, sizeof(linger));
         res = close(*pfd);
         if (res == -1)
-            ccnr_msg(h, "close failed for face %u fd=%d: %s (errno=%d)",
+            ccnr_msg(h, "close failed for fdholder %u fd=%d: %s (errno=%d)",
                      faceid, *pfd, strerror(errno), errno);
         else
-            ccnr_msg(h, "closing fd %d while finalizing face %u", *pfd, faceid);
+            ccnr_msg(h, "closing fd %d while finalizing fdholder %u", *pfd, faceid);
         *pfd = -1;
     }
 }
@@ -360,35 +360,35 @@ static void
 finalize_face(struct hashtb_enumerator *e)
 {
     struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
-    struct face *face = e->data;
-    unsigned i = face->faceid & MAXFACES;
+    struct fdholder *fdholder = e->data;
+    unsigned i = fdholder->faceid & MAXFACES;
     enum cq_delay_class c;
     int recycle = 0;
     int m;
     
-    if (i < h->face_limit && h->faces_by_faceid[i] == face) {
-        if ((face->flags & CCN_FACE_UNDECIDED) == 0)
-            ccnr_face_status_change(h, face->faceid);
+    if (i < h->face_limit && h->faces_by_faceid[i] == fdholder) {
+        if ((fdholder->flags & CCN_FACE_UNDECIDED) == 0)
+            ccnr_face_status_change(h, fdholder->faceid);
         if (e->ht == h->faces_by_fd)
-            ccnr_close_fd(h, face->faceid, &face->recv_fd);
+            ccnr_close_fd(h, fdholder->faceid, &fdholder->recv_fd);
         h->faces_by_faceid[i] = NULL;
-        if ((face->flags & CCN_FACE_UNDECIDED) != 0 &&
-              face->faceid == ((h->face_rover - 1) | h->face_gen)) {
+        if ((fdholder->flags & CCN_FACE_UNDECIDED) != 0 &&
+              fdholder->faceid == ((h->face_rover - 1) | h->face_gen)) {
             /* stream connection with no ccn traffic - safe to reuse */
             recycle = 1;
             h->face_rover--;
         }
         for (c = 0; c < CCN_CQ_N; c++)
-            content_queue_destroy(h, &(face->q[c]));
-        ccnr_msg(h, "%s face id %u (slot %u)",
+            content_queue_destroy(h, &(fdholder->q[c]));
+        ccnr_msg(h, "%s fdholder id %u (slot %u)",
             recycle ? "recycling" : "releasing",
-            face->faceid, face->faceid & MAXFACES);
-        /* Don't free face->addr; storage is managed by hash table */
+            fdholder->faceid, fdholder->faceid & MAXFACES);
+        /* Don't free fdholder->addr; storage is managed by hash table */
     }
-    else if (face->faceid != CCN_NOFACEID)
-        ccnr_msg(h, "orphaned face %u", face->faceid);
+    else if (fdholder->faceid != CCN_NOFACEID)
+        ccnr_msg(h, "orphaned fdholder %u", fdholder->faceid);
     for (m = 0; m < CCND_FACE_METER_N; m++)
-        ccnr_meter_destroy(&face->meter[m]);
+        ccnr_meter_destroy(&fdholder->meter[m]);
 }
 
 static struct content_entry *
@@ -723,14 +723,14 @@ content_skiplist_next(struct ccnr_handle *h, struct content_entry *content)
 static void
 consume(struct ccnr_handle *h, struct propagating_entry *pe)
 {
-    struct face *face = NULL;
+    struct fdholder *fdholder = NULL;
     ccn_indexbuf_destroy(&pe->outbound);
     if (pe->interest_msg != NULL) {
         free(pe->interest_msg);
         pe->interest_msg = NULL;
-        face = face_from_faceid(h, pe->faceid);
-        if (face != NULL)
-            face->pending_interests -= 1;
+        fdholder = face_from_faceid(h, pe->faceid);
+        if (fdholder != NULL)
+            fdholder->pending_interests -= 1;
     }
     if (pe->next != NULL) {
         pe->next->prev = pe->prev;
@@ -835,49 +835,49 @@ establish_min_recv_bufsize(struct ccnr_handle *h, int fd, int minsize)
 }
 
 /**
- * Initialize the face flags based upon the addr information
+ * Initialize the fdholder flags based upon the addr information
  * and the provided explicit setflags.
  */
 static void
-init_face_flags(struct ccnr_handle *h, struct face *face, int setflags)
+init_face_flags(struct ccnr_handle *h, struct fdholder *fdholder, int setflags)
 {
-    const struct sockaddr *addr = face->addr;
+    const struct sockaddr *addr = fdholder->addr;
     const unsigned char *rawaddr = NULL;
     
     if (addr->sa_family == AF_INET6) {
         const struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)addr;
-        face->flags |= CCN_FACE_INET6;
+        fdholder->flags |= CCN_FACE_INET6;
 #ifdef IN6_IS_ADDR_LOOPBACK
         if (IN6_IS_ADDR_LOOPBACK(&addr6->sin6_addr))
-            face->flags |= CCN_FACE_LOOPBACK;
+            fdholder->flags |= CCN_FACE_LOOPBACK;
 #endif
     }
     else if (addr->sa_family == AF_INET) {
         const struct sockaddr_in *addr4 = (struct sockaddr_in *)addr;
         rawaddr = (const unsigned char *)&addr4->sin_addr.s_addr;
-        face->flags |= CCN_FACE_INET;
+        fdholder->flags |= CCN_FACE_INET;
         if (rawaddr[0] == 127)
-            face->flags |= CCN_FACE_LOOPBACK;
+            fdholder->flags |= CCN_FACE_LOOPBACK;
         else {
             /* If our side and the peer have the same address, consider it loopback */
             /* This is the situation inside of FreeBSD jail. */
             struct sockaddr_in myaddr;
             socklen_t myaddrlen = sizeof(myaddr);
-            if (0 == getsockname(face->recv_fd, (struct sockaddr *)&myaddr, &myaddrlen)) {
+            if (0 == getsockname(fdholder->recv_fd, (struct sockaddr *)&myaddr, &myaddrlen)) {
                 if (addr4->sin_addr.s_addr == myaddr.sin_addr.s_addr)
-                    face->flags |= CCN_FACE_LOOPBACK;
+                    fdholder->flags |= CCN_FACE_LOOPBACK;
             }
         }
     }
     else if (addr->sa_family == AF_UNIX)
-        face->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
-    face->flags |= setflags;
+        fdholder->flags |= (CCN_FACE_GG | CCN_FACE_LOCAL);
+    fdholder->flags |= setflags;
 }
 
 /**
- * Make a new face entered in the faces_by_fd table.
+ * Make a new fdholder entered in the faces_by_fd table.
  */
-static struct face *
+static struct fdholder *
 record_connection(struct ccnr_handle *h, int fd,
                   struct sockaddr *who, socklen_t wholen,
                   int setflags)
@@ -885,7 +885,7 @@ record_connection(struct ccnr_handle *h, int fd,
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int res;
-    struct face *face = NULL;
+    struct fdholder *fdholder = NULL;
     unsigned char *addrspace;
     
     res = fcntl(fd, F_SETFL, O_NONBLOCK);
@@ -893,26 +893,26 @@ record_connection(struct ccnr_handle *h, int fd,
         ccnr_msg(h, "fcntl: %s", strerror(errno));
     hashtb_start(h->faces_by_fd, e);
     if (hashtb_seek(e, &fd, sizeof(fd), wholen) == HT_NEW_ENTRY) {
-        face = e->data;
-        face->recv_fd = fd;
-        face->sendface = CCN_NOFACEID;
-        face->addrlen = e->extsize;
+        fdholder = e->data;
+        fdholder->recv_fd = fd;
+        fdholder->sendface = CCN_NOFACEID;
+        fdholder->addrlen = e->extsize;
         addrspace = ((unsigned char *)e->key) + e->keysize;
-        face->addr = (struct sockaddr *)addrspace;
+        fdholder->addr = (struct sockaddr *)addrspace;
         memcpy(addrspace, who, e->extsize);
-        init_face_flags(h, face, setflags);
-        res = enroll_face(h, face);
+        init_face_flags(h, fdholder, setflags);
+        res = enroll_face(h, fdholder);
         if (res == -1) {
             hashtb_delete(e);
-            face = NULL;
+            fdholder = NULL;
         }
     }
     hashtb_end(e);
-    return(face);
+    return(fdholder);
 }
 
 /**
- * Accept an incoming DGRAM_STREAM connection, creating a new face.
+ * Accept an incoming DGRAM_STREAM connection, creating a new fdholder.
  * @returns fd of new socket, or -1 for an error.
  */
 static int
@@ -921,27 +921,27 @@ accept_connection(struct ccnr_handle *h, int listener_fd)
     struct sockaddr_storage who;
     socklen_t wholen = sizeof(who);
     int fd;
-    struct face *face;
+    struct fdholder *fdholder;
 
     fd = accept(listener_fd, (struct sockaddr *)&who, &wholen);
     if (fd == -1) {
         ccnr_msg(h, "accept: %s", strerror(errno));
         return(-1);
     }
-    face = record_connection(h, fd,
+    fdholder = record_connection(h, fd,
                             (struct sockaddr *)&who, wholen,
                             CCN_FACE_UNDECIDED);
-    if (face == NULL)
+    if (fdholder == NULL)
         close_fd(&fd);
     else
-        ccnr_msg(h, "accepted client fd=%d id=%u", fd, face->faceid);
+        ccnr_msg(h, "accepted client fd=%d id=%u", fd, fdholder->faceid);
     return(fd);
 }
 
 /**
  * Make an outbound stream connection.
  */
-static struct face *
+static struct fdholder *
 make_connection(struct ccnr_handle *h,
                 struct sockaddr *who, socklen_t wholen,
                 int setflags)
@@ -950,22 +950,22 @@ make_connection(struct ccnr_handle *h,
     struct hashtb_enumerator *e = &ee;
     int fd;
     int res;
-    struct face *face;
+    struct fdholder *fdholder;
     const int checkflags = CCN_FACE_LINK | CCN_FACE_DGRAM | CCN_FACE_LOCAL |
                            CCN_FACE_NOSEND | CCN_FACE_UNDECIDED;
     const int wantflags = 0;
     
     /* Check for an existing usable connection */
     for (hashtb_start(h->faces_by_fd, e); e->data != NULL; hashtb_next(e)) {
-        face = e->data;
-        if (face->addr != NULL && face->addrlen == wholen &&
-            ((face->flags & checkflags) == wantflags) &&
-            0 == memcmp(face->addr, who, wholen)) {
+        fdholder = e->data;
+        if (fdholder->addr != NULL && fdholder->addrlen == wholen &&
+            ((fdholder->flags & checkflags) == wantflags) &&
+            0 == memcmp(fdholder->addr, who, wholen)) {
             hashtb_end(e);
-            return(face);
+            return(fdholder);
         }
     }
-    face = NULL;
+    fdholder = NULL;
     hashtb_end(e);
     /* No existing connection, try to make a new one. */
     fd = socket(who->sa_family, SOCK_STREAM, 0);
@@ -987,19 +987,19 @@ make_connection(struct ccnr_handle *h,
         close(fd);
         return(NULL);
     }
-    face = record_connection(h, fd, who, wholen, setflags);
-    if (face == NULL) {
+    fdholder = record_connection(h, fd, who, wholen, setflags);
+    if (fdholder == NULL) {
         close(fd);
         return(NULL);
     }
-    if ((face->flags & CCN_FACE_CONNECTING) != 0) {
-        ccnr_msg(h, "connecting to client fd=%d id=%u", fd, face->faceid);
-        face->outbufindex = 0;
-        face->outbuf = ccn_charbuf_create();
+    if ((fdholder->flags & CCN_FACE_CONNECTING) != 0) {
+        ccnr_msg(h, "connecting to client fd=%d id=%u", fd, fdholder->faceid);
+        fdholder->outbufindex = 0;
+        fdholder->outbuf = ccn_charbuf_create();
     }
     else
-        ccnr_msg(h, "connected client fd=%d id=%u", fd, face->faceid);
-    return(face);
+        ccnr_msg(h, "connected client fd=%d id=%u", fd, fdholder->faceid);
+    return(fdholder);
 }
 
 static int
@@ -1013,11 +1013,11 @@ ccnr_getboundsocket(void *dat, struct sockaddr *who, socklen_t wholen)
     int ans = -1;
     int wantflags = (CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
     for (hashtb_start(h->faces_by_fd, e); e->data != NULL; hashtb_next(e)) {
-        struct face *face = e->data;
-        if ((face->flags & wantflags) == wantflags &&
-              wholen == face->addrlen &&
-              0 == memcmp(who, face->addr, wholen)) {
-            ans = face->recv_fd;
+        struct fdholder *fdholder = e->data;
+        if ((fdholder->flags & wantflags) == wantflags &&
+              wholen == fdholder->addrlen &&
+              0 == memcmp(who, fdholder->addr, wholen)) {
+            ans = fdholder->recv_fd;
             break;
         }
     }
@@ -1042,14 +1042,14 @@ ccnr_getboundsocket(void *dat, struct sockaddr *who, socklen_t wholen)
 static unsigned
 faceid_from_fd(struct ccnr_handle *h, int fd)
 {
-    struct face *face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
-    if (face != NULL)
-        return(face->faceid);
+    struct fdholder *fdholder = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
+    if (fdholder != NULL)
+        return(fdholder->faceid);
     return(CCN_NOFACEID);
 }
 
 typedef void (*loggerproc)(void *, const char *, ...);
-static struct face *
+static struct fdholder *
 setup_multicast(struct ccnr_handle *h, struct ccn_face_instance *face_instance,
                 struct sockaddr *who, socklen_t wholen)
 {
@@ -1057,7 +1057,7 @@ setup_multicast(struct ccnr_handle *h, struct ccn_face_instance *face_instance,
     struct hashtb_enumerator *e = &ee;
     struct ccn_sockets socks = { -1, -1 };
     int res;
-    struct face *face = NULL;
+    struct fdholder *fdholder = NULL;
     const int checkflags = CCN_FACE_LINK | CCN_FACE_DGRAM | CCN_FACE_MCAST |
                            CCN_FACE_LOCAL | CCN_FACE_NOSEND;
     const int wantflags = CCN_FACE_DGRAM | CCN_FACE_MCAST;
@@ -1065,15 +1065,15 @@ setup_multicast(struct ccnr_handle *h, struct ccn_face_instance *face_instance,
     /* See if one is already active */
     // XXX - should also compare and record additional mcast props.
     for (hashtb_start(h->faces_by_fd, e); e->data != NULL; hashtb_next(e)) {
-        face = e->data;
-        if (face->addr != NULL && face->addrlen == wholen &&
-            ((face->flags & checkflags) == wantflags) &&
-            0 == memcmp(face->addr, who, wholen)) {
+        fdholder = e->data;
+        if (fdholder->addr != NULL && fdholder->addrlen == wholen &&
+            ((fdholder->flags & checkflags) == wantflags) &&
+            0 == memcmp(fdholder->addr, who, wholen)) {
             hashtb_end(e);
-            return(face);
+            return(fdholder);
         }
     }
-    face = NULL;
+    fdholder = NULL;
     hashtb_end(e);
     
     res = ccn_setup_socket(&face_instance->descr,
@@ -1083,18 +1083,18 @@ setup_multicast(struct ccnr_handle *h, struct ccn_face_instance *face_instance,
     if (res < 0)
         return(NULL);
     establish_min_recv_bufsize(h, socks.recving, 128*1024);
-    face = record_connection(h, socks.recving, who, wholen,
+    fdholder = record_connection(h, socks.recving, who, wholen,
                              (CCN_FACE_MCAST | CCN_FACE_DGRAM));
-    if (face == NULL) {
+    if (fdholder == NULL) {
         close(socks.recving);
         if (socks.sending != socks.recving)
             close(socks.sending); // XXX - could be problematic, but record_connection is unlikely to fail for other than ENOMEM
         return(NULL);
     }
-    face->sendface = faceid_from_fd(h, socks.sending);
-    ccnr_msg(h, "multicast on fd=%d id=%u, sending on face %u",
-             face->recv_fd, face->faceid, face->sendface);
-    return(face);
+    fdholder->sendface = faceid_from_fd(h, socks.sending);
+    ccnr_msg(h, "multicast on fd=%d id=%u, sending on fdholder %u",
+             fdholder->recv_fd, fdholder->faceid, fdholder->sendface);
+    return(fdholder);
 }
 
 static void
@@ -1102,24 +1102,24 @@ shutdown_client_fd(struct ccnr_handle *h, int fd)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct face *face = NULL;
+    struct fdholder *fdholder = NULL;
     unsigned faceid = CCN_NOFACEID;
     hashtb_start(h->faces_by_fd, e);
     if (hashtb_seek(e, &fd, sizeof(fd), 0) == HT_OLD_ENTRY) {
-        face = e->data;
-        if (face->recv_fd != fd) abort();
-        faceid = face->faceid;
+        fdholder = e->data;
+        if (fdholder->recv_fd != fd) abort();
+        faceid = fdholder->faceid;
         if (faceid == CCN_NOFACEID) {
             ccnr_msg(h, "error indication on fd %d ignored", fd);
             hashtb_end(e);
             return;
         }
         close(fd);
-        face->recv_fd = -1;
+        fdholder->recv_fd = -1;
         ccnr_msg(h, "shutdown client fd=%d id=%u", fd, faceid);
-        ccn_charbuf_destroy(&face->inbuf);
-        ccn_charbuf_destroy(&face->outbuf);
-        face = NULL;
+        ccn_charbuf_destroy(&fdholder->inbuf);
+        ccn_charbuf_destroy(&fdholder->outbuf);
+        fdholder = NULL;
     }
     hashtb_delete(e);
     hashtb_end(e);
@@ -1128,16 +1128,16 @@ shutdown_client_fd(struct ccnr_handle *h, int fd)
 }
 
 static void
-send_content(struct ccnr_handle *h, struct face *face, struct content_entry *content)
+send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
 {
     int n, a, b, size;
-    if ((face->flags & CCN_FACE_NOSEND) != 0) {
+    if ((fdholder->flags & CCN_FACE_NOSEND) != 0) {
         // XXX - should count this.
         return;
     }
     size = content->size;
     if (h->debug & 4)
-        ccnr_debug_ccnb(h, __LINE__, "content_to", face,
+        ccnr_debug_ccnb(h, __LINE__, "content_to", fdholder,
                         content->key, size);
     /* Excise the message-digest name component */
     n = content->ncomps;
@@ -1146,22 +1146,22 @@ send_content(struct ccnr_handle *h, struct face *face, struct content_entry *con
     b = content->comps[n - 1];
     if (b - a != 36)
         abort(); /* strange digest length */
-    stuff_and_send(h, face, content->key, a, content->key + b, size - b);
-    ccnr_meter_bump(h, face->meter[FM_DATO], 1);
+    stuff_and_send(h, fdholder, content->key, a, content->key + b, size - b);
+    ccnr_meter_bump(h, fdholder->meter[FM_DATO], 1);
     h->content_items_sent += 1;
 }
 
 static enum cq_delay_class
 choose_content_delay_class(struct ccnr_handle *h, unsigned faceid, int content_flags)
 {
-    struct face *face = face_from_faceid(h, faceid);
-    if (face == NULL)
+    struct fdholder *fdholder = face_from_faceid(h, faceid);
+    if (fdholder == NULL)
         return(CCN_CQ_ASAP); /* Going nowhere, get it over with */
-    if ((face->flags & (CCN_FACE_LINK | CCN_FACE_MCAST)) != 0) /* udplink or such, delay more */
+    if ((fdholder->flags & (CCN_FACE_LINK | CCN_FACE_MCAST)) != 0) /* udplink or such, delay more */
         return((content_flags & CCN_CONTENT_ENTRY_SLOWSEND) ? CCN_CQ_SLOW : CCN_CQ_NORMAL);
-    if ((face->flags & CCN_FACE_DGRAM) != 0)
+    if ((fdholder->flags & CCN_FACE_DGRAM) != 0)
         return(CCN_CQ_NORMAL); /* udp, delay just a little */
-    if ((face->flags & (CCN_FACE_GG | CCN_FACE_LOCAL)) != 0)
+    if ((fdholder->flags & (CCN_FACE_GG | CCN_FACE_LOCAL)) != 0)
         return(CCN_CQ_ASAP); /* localhost, answer quickly */
     return(CCN_CQ_NORMAL); /* default */
 }
@@ -1196,18 +1196,18 @@ content_sender(struct ccn_schedule *sched,
     struct ccnr_handle *h = clienth;
     struct content_entry *content = NULL;
     unsigned faceid = ev->evint;
-    struct face *face = NULL;
+    struct fdholder *fdholder = NULL;
     struct content_queue *q = ev->evdata;
     (void)sched;
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         goto Bail;
-    face = face_from_faceid(h, faceid);
-    if (face == NULL)
+    fdholder = face_from_faceid(h, faceid);
+    if (fdholder == NULL)
         goto Bail;
     if (q->send_queue == NULL)
         goto Bail;
-    if ((face->flags & CCN_FACE_NOSEND) != 0)
+    if ((fdholder->flags & CCN_FACE_NOSEND) != 0)
         goto Bail;
     /* Send the content at the head of the queue */
     if (q->ready > q->send_queue->n ||
@@ -1225,8 +1225,8 @@ content_sender(struct ccn_schedule *sched,
         if (content == NULL)
             q->nrun = 0;
         else {
-            send_content(h, face, content);
-            /* face may have vanished, bail out if it did */
+            send_content(h, fdholder, content);
+            /* fdholder may have vanished, bail out if it did */
             if (face_from_faceid(h, faceid) == NULL)
                 goto Bail;
             nsec += burst_nsec * (unsigned)((content->size + 1023) / 1024);
@@ -1243,8 +1243,8 @@ content_sender(struct ccn_schedule *sched,
     delay = (nsec + 499) / 1000 + 1;
     if (q->ready > 0) {
         if (h->debug & 8)
-            ccnr_msg(h, "face %u ready %u delay %i nrun %u",
-                     faceid, q->ready, delay, q->nrun, face->surplus);
+            ccnr_msg(h, "fdholder %u ready %u delay %i nrun %u",
+                     faceid, q->ready, delay, q->nrun, fdholder->surplus);
         return(delay);
     }
     q->ready = j;
@@ -1253,8 +1253,8 @@ content_sender(struct ccn_schedule *sched,
         if (j == 0)
             delay += burst_nsec / 50;
         if (h->debug & 8)
-            ccnr_msg(h, "face %u ready %u delay %i nrun %u surplus %u",
-                    (unsigned)ev->evint, q->ready, delay, q->nrun, face->surplus);
+            ccnr_msg(h, "fdholder %u ready %u delay %i nrun %u surplus %u",
+                    (unsigned)ev->evint, q->ready, delay, q->nrun, fdholder->surplus);
         return(delay);
     }
     /* Determine when to run again */
@@ -1264,7 +1264,7 @@ content_sender(struct ccn_schedule *sched,
             q->nrun = 0;
             delay = randomize_content_delay(h, q);
             if (h->debug & 8)
-                ccnr_msg(h, "face %u queued %u delay %i",
+                ccnr_msg(h, "fdholder %u queued %u delay %i",
                          (unsigned)ev->evint, q->ready, delay);
             return(delay);
         }
@@ -1277,28 +1277,28 @@ Bail:
 
 static int
 face_send_queue_insert(struct ccnr_handle *h,
-                       struct face *face, struct content_entry *content)
+                       struct fdholder *fdholder, struct content_entry *content)
 {
     int ans;
     int delay;
     enum cq_delay_class c;
     enum cq_delay_class k;
     struct content_queue *q;
-    if (face == NULL || content == NULL || (face->flags & CCN_FACE_NOSEND) != 0)
+    if (fdholder == NULL || content == NULL || (fdholder->flags & CCN_FACE_NOSEND) != 0)
         return(-1);
-    c = choose_content_delay_class(h, face->faceid, content->flags);
-    if (face->q[c] == NULL)
-        face->q[c] = content_queue_create(h, face, c);
-    q = face->q[c];
+    c = choose_content_delay_class(h, fdholder->faceid, content->flags);
+    if (fdholder->q[c] == NULL)
+        fdholder->q[c] = content_queue_create(h, fdholder, c);
+    q = fdholder->q[c];
     if (q == NULL)
         return(-1);
     /* Check the other queues first, it might be in one of them */
     for (k = 0; k < CCN_CQ_N; k++) {
-        if (k != c && face->q[k] != NULL) {
-            ans = ccn_indexbuf_member(face->q[k]->send_queue, content->accession);
+        if (k != c && fdholder->q[k] != NULL) {
+            ans = ccn_indexbuf_member(fdholder->q[k]->send_queue, content->accession);
             if (ans >= 0) {
                 if (h->debug & 8)
-                    ccnr_debug_ccnb(h, __LINE__, "content_otherq", face,
+                    ccnr_debug_ccnb(h, __LINE__, "content_otherq", fdholder,
                                     content->key, content->size);
                 return(ans);
             }
@@ -1309,9 +1309,9 @@ face_send_queue_insert(struct ccnr_handle *h,
         delay = randomize_content_delay(h, q);
         q->ready = q->send_queue->n;
         q->sender = ccn_schedule_event(h->sched, delay,
-                                       content_sender, q, face->faceid);
+                                       content_sender, q, fdholder->faceid);
         if (h->debug & 8)
-            ccnr_msg(h, "face %u q %d delay %d usec", face->faceid, c, delay);
+            ccnr_msg(h, "fdholder %u q %d delay %d usec", fdholder->faceid, c, delay);
     }
     return (ans);
 }
@@ -1345,7 +1345,7 @@ promote_outbound(struct propagating_entry *pe, unsigned faceid)
  * Consume matching interests
  * given a nameprefix_entry and a piece of content.
  *
- * If face is not NULL, pay attention only to interests from that face.
+ * If fdholder is not NULL, pay attention only to interests from that fdholder.
  * It is allowed to pass NULL for pc, but if you have a (valid) one it
  * will avoid a re-parse.
  * @returns number of matches found.
@@ -1355,7 +1355,7 @@ consume_matching_interests(struct ccnr_handle *h,
                            struct nameprefix_entry *npe,
                            struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
-                           struct face *face)
+                           struct fdholder *fdholder)
 {
     int matches = 0;
     struct propagating_entry *head;
@@ -1363,17 +1363,17 @@ consume_matching_interests(struct ccnr_handle *h,
     struct propagating_entry *p;
     const unsigned char *content_msg;
     size_t content_size;
-    struct face *f;
+    struct fdholder *f;
     
     head = &npe->pe_head;
     content_msg = content->key;
     content_size = content->size;
-    f = face;
+    f = fdholder;
     for (p = head->next; p != head; p = next) {
         next = p->next;
         if (p->interest_msg != NULL &&
-            ((face == NULL && (f = face_from_faceid(h, p->faceid)) != NULL) ||
-             (face != NULL && p->faceid == face->faceid))) {
+            ((fdholder == NULL && (f = face_from_faceid(h, p->faceid)) != NULL) ||
+             (fdholder != NULL && p->faceid == fdholder->faceid))) {
             if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
                                              p->interest_msg, p->size, NULL)) {
                 face_send_queue_insert(h, f, content);
@@ -1471,7 +1471,7 @@ reorder_outbound_using_history(struct ccnr_handle *h,
  * Find and consume interests that match given content.
  *
  * Schedules the sending of the content.
- * If face is not NULL, pay attention only to interests from that face.
+ * If fdholder is not NULL, pay attention only to interests from that fdholder.
  * It is allowed to pass NULL for pc, but if you have a (valid) one it
  * will avoid a re-parse.
  * For new content, from_face is the source; for old content, from_face is NULL.
@@ -1480,7 +1480,7 @@ reorder_outbound_using_history(struct ccnr_handle *h,
 static int
 match_interests(struct ccnr_handle *h, struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
-                           struct face *face, struct face *from_face)
+                           struct fdholder *fdholder, struct fdholder *from_face)
 {
     int n_matched = 0;
     int new_matches;
@@ -1501,7 +1501,7 @@ match_interests(struct ccnr_handle *h, struct content_entry *content,
         if (from_face != NULL && (npe->flags & CCN_FORW_LOCAL) != 0 &&
             (from_face->flags & CCN_FACE_GG) == 0)
             return(-1);
-        new_matches = consume_matching_interests(h, npe, content, pc, face);
+        new_matches = consume_matching_interests(h, npe, content, pc, fdholder);
         if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
             note_content_from(h, npe, from_face->faceid, ci);
         if (new_matches != 0) {
@@ -1517,37 +1517,37 @@ match_interests(struct ccnr_handle *h, struct content_entry *content,
  * The message may be in two pieces.
  */
 static void
-stuff_and_send(struct ccnr_handle *h, struct face *face,
+stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
                const unsigned char *data1, size_t size1,
                const unsigned char *data2, size_t size2) {
     struct ccn_charbuf *c = NULL;
     
-    if ((face->flags & CCN_FACE_LINK) != 0) {
+    if ((fdholder->flags & CCN_FACE_LINK) != 0) {
         c = charbuf_obtain(h);
         ccn_charbuf_reserve(c, size1 + size2 + 5 + 8);
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
         ccn_charbuf_append(c, data1, size1);
 		if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
-        ccn_stuff_interest(h, face, c);
-        ccn_append_link_stuff(h, face, c);
+        ccn_stuff_interest(h, fdholder, c);
+        ccn_append_link_stuff(h, fdholder, c);
         ccn_charbuf_append_closer(c);
     }
     else if (size2 != 0 || h->mtu > size1 + size2 ||
-             (face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0) {
+             (fdholder->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0) {
         c = charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
 		if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
-        ccn_stuff_interest(h, face, c);
-        ccn_append_link_stuff(h, face, c);
+        ccn_stuff_interest(h, fdholder, c);
+        ccn_append_link_stuff(h, fdholder, c);
     }
     else {
         /* avoid a copy in this case */
-        ccnr_send(h, face, data1, size1);
+        ccnr_send(h, fdholder, data1, size1);
         return;
     }
-    ccnr_send(h, face, c->buf, c->length);
+    ccnr_send(h, fdholder, c->buf, c->length);
     charbuf_release(h, c);
     return;
 }
@@ -1559,7 +1559,7 @@ stuff_and_send(struct ccnr_handle *h, struct face *face,
  */
 static int
 stuff_link_check(struct ccnr_handle *h,
-                   struct face *face, struct ccn_charbuf *c)
+                   struct fdholder *fdholder, struct ccn_charbuf *c)
 {
     int checkflags = CCN_FACE_DGRAM | CCN_FACE_MCAST | CCN_FACE_GG;
     int wantflags = CCN_FACE_DGRAM;
@@ -1567,9 +1567,9 @@ stuff_link_check(struct ccnr_handle *h,
     struct ccn_charbuf *ibuf = NULL;
     int res;
     int ans = 0;
-    if (face->recvcount > 0)
+    if (fdholder->recvcount > 0)
         return(0);
-    if ((face->flags & checkflags) != wantflags)
+    if ((fdholder->flags & checkflags) != wantflags)
         return(0);
     name = ccn_charbuf_create();
     if (name == NULL) goto Bail;
@@ -1584,10 +1584,10 @@ stuff_link_check(struct ccnr_handle *h,
     // XXX - ought to generate a nonce
     ccn_charbuf_append_closer(ibuf);
     ccn_charbuf_append(c, ibuf->buf, ibuf->length);
-    ccnr_meter_bump(h, face->meter[FM_INTO], 1);
+    ccnr_meter_bump(h, fdholder->meter[FM_INTO], 1);
     h->interests_stuffed++;
     if (h->debug & 2)
-        ccnr_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
+        ccnr_debug_ccnb(h, __LINE__, "stuff_interest_to", fdholder,
                         ibuf->buf, ibuf->length);
     ans = 1;
 Bail:
@@ -1604,16 +1604,16 @@ Bail:
  */
 static int
 ccn_stuff_interest(struct ccnr_handle *h,
-                   struct face *face, struct ccn_charbuf *c)
+                   struct fdholder *fdholder, struct ccn_charbuf *c)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int n_stuffed = 0;
     int remaining_space;
-    if (stuff_link_check(h, face, c) > 0)
+    if (stuff_link_check(h, fdholder, c) > 0)
         n_stuffed++;
     remaining_space = h->mtu - c->length;
-    if (remaining_space < 20 || face == h->face0)
+    if (remaining_space < 20 || fdholder == h->face0)
         return(0);
     for (hashtb_start(h->nameprefix_tab, e);
          remaining_space >= 20 && e->data != NULL; hashtb_next(e)) {
@@ -1627,8 +1627,8 @@ ccn_stuff_interest(struct ccnr_handle *h,
                 p->interest_msg != NULL &&
                 ((p->flags & (CCN_PR_STUFFED1 | CCN_PR_WAIT1)) == 0) &&
                 ((p->flags & CCN_PR_UNSENT) == 0 ||
-                 p->outbound->buf[p->sent] == face->faceid) &&
-                promote_outbound(p, face->faceid) != -1) {
+                 p->outbound->buf[p->sent] == fdholder->faceid) &&
+                promote_outbound(p, fdholder->faceid) != -1) {
                 remaining_space -= p->size;
                 if ((p->flags & CCN_PR_UNSENT) != 0) {
                     p->flags &= ~CCN_PR_UNSENT;
@@ -1637,10 +1637,10 @@ ccn_stuff_interest(struct ccnr_handle *h,
                 p->sent++;
                 n_stuffed++;
                 ccn_charbuf_append(c, p->interest_msg, p->size);
-                ccnr_meter_bump(h, face->meter[FM_INTO], 1);
+                ccnr_meter_bump(h, fdholder->meter[FM_INTO], 1);
                 h->interests_stuffed++;
                 if (h->debug & 2)
-                    ccnr_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
+                    ccnr_debug_ccnb(h, __LINE__, "stuff_interest_to", fdholder,
                                     p->interest_msg, p->size);
                 /*
                  * Don't stuff multiple interests with same prefix
@@ -1655,7 +1655,7 @@ ccn_stuff_interest(struct ccnr_handle *h,
 }
 
 static void
-ccn_link_state_init(struct ccnr_handle *h, struct face *face)
+ccn_link_state_init(struct ccnr_handle *h, struct fdholder *fdholder)
 {
     int checkflags;
     int matchflags;
@@ -1663,34 +1663,34 @@ ccn_link_state_init(struct ccnr_handle *h, struct face *face)
     matchflags = CCN_FACE_DGRAM;
     checkflags = matchflags | CCN_FACE_MCAST | CCN_FACE_GG | CCN_FACE_SEQOK | \
                  CCN_FACE_PASSIVE;
-    if ((face->flags & checkflags) != matchflags)
+    if ((fdholder->flags & checkflags) != matchflags)
         return;
     /* Send one sequence number to see if the other side wants to play. */
-    face->pktseq = nrand48(h->seed);
-    face->flags |= CCN_FACE_SEQPROBE;
+    fdholder->pktseq = nrand48(h->seed);
+    fdholder->flags |= CCN_FACE_SEQPROBE;
 }
 
 static void
 ccn_append_link_stuff(struct ccnr_handle *h,
-                      struct face *face,
+                      struct fdholder *fdholder,
                       struct ccn_charbuf *c)
 {
-    if ((face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) == 0)
+    if ((fdholder->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) == 0)
         return;
     ccn_charbuf_append_tt(c, CCN_DTAG_SequenceNumber, CCN_DTAG);
     ccn_charbuf_append_tt(c, 2, CCN_BLOB);
-    ccn_charbuf_append_value(c, face->pktseq, 2);
+    ccn_charbuf_append_value(c, fdholder->pktseq, 2);
     ccnb_element_end(c);
     if (0)
         ccnr_msg(h, "debug.%d pkt_to %u seq %u",
-                 __LINE__, face->faceid, (unsigned)face->pktseq);
-    face->pktseq++;
-    face->flags &= ~CCN_FACE_SEQPROBE;
+                 __LINE__, fdholder->faceid, (unsigned)fdholder->pktseq);
+    fdholder->pktseq++;
+    fdholder->flags &= ~CCN_FACE_SEQPROBE;
 }
 
 static int
 process_incoming_link_message(struct ccnr_handle *h,
-                              struct face *face, enum ccn_dtag dtag,
+                              struct fdholder *fdholder, enum ccn_dtag dtag,
                               unsigned char *msg, size_t size)
 {
     uintmax_t s;
@@ -1710,42 +1710,42 @@ process_incoming_link_message(struct ccnr_handle *h,
              */
             matchflags = CCN_FACE_DGRAM;
             checkflags = matchflags | CCN_FACE_MCAST | CCN_FACE_SEQOK;
-            if ((face->flags & checkflags) == matchflags)
-                face->flags |= CCN_FACE_SEQOK;
-            if (face->rrun == 0) {
-                face->rseq = s;
-                face->rrun = 1;
+            if ((fdholder->flags & checkflags) == matchflags)
+                fdholder->flags |= CCN_FACE_SEQOK;
+            if (fdholder->rrun == 0) {
+                fdholder->rseq = s;
+                fdholder->rrun = 1;
                 return(0);
             }
-            if (s == face->rseq + 1) {
-                face->rseq = s;
-                if (face->rrun < 255)
-                    face->rrun++;
+            if (s == fdholder->rseq + 1) {
+                fdholder->rseq = s;
+                if (fdholder->rrun < 255)
+                    fdholder->rrun++;
                 return(0);
             }
-            if (s > face->rseq && s - face->rseq < 255) {
+            if (s > fdholder->rseq && s - fdholder->rseq < 255) {
                 ccnr_msg(h, "seq_gap %u %ju to %ju",
-                         face->faceid, face->rseq, s);
-                face->rseq = s;
-                face->rrun = 1;
+                         fdholder->faceid, fdholder->rseq, s);
+                fdholder->rseq = s;
+                fdholder->rrun = 1;
                 return(0);
             }
-            if (s <= face->rseq) {
-                if (face->rseq - s < face->rrun) {
-                    ccnr_msg(h, "seq_dup %u %ju", face->faceid, s);
+            if (s <= fdholder->rseq) {
+                if (fdholder->rseq - s < fdholder->rrun) {
+                    ccnr_msg(h, "seq_dup %u %ju", fdholder->faceid, s);
                     return(0);
                 }
-                if (face->rseq - s < 255) {
+                if (fdholder->rseq - s < 255) {
                     /* Received out of order */
-                    ccnr_msg(h, "seq_ooo %u %ju", face->faceid, s);
-                    if (s == face->rseq - face->rrun) {
-                        face->rrun++;
+                    ccnr_msg(h, "seq_ooo %u %ju", fdholder->faceid, s);
+                    if (s == fdholder->rseq - fdholder->rrun) {
+                        fdholder->rrun++;
                         return(0);
                     }
                 }
             }
-            face->rseq = s;
-            face->rrun = 1;
+            fdholder->rseq = s;
+            fdholder->rrun = 1;
             break;
         default:
             return(-1);
@@ -1768,20 +1768,20 @@ check_dgram_faces(struct ccnr_handle *h)
     
     hashtb_start(h->dgram_faces, e);
     while (e->data != NULL) {
-        struct face *face = e->data;
-        if (face->addr != NULL && (face->flags & checkflags) == wantflags) {
-            if (face->recvcount == 0) {
-                if ((face->flags & CCN_FACE_PERMANENT) == 0) {
+        struct fdholder *fdholder = e->data;
+        if (fdholder->addr != NULL && (fdholder->flags & checkflags) == wantflags) {
+            if (fdholder->recvcount == 0) {
+                if ((fdholder->flags & CCN_FACE_PERMANENT) == 0) {
                     count += 1;
                     hashtb_delete(e);
                     continue;
                 }
             }
-            else if (face->recvcount == 1) {
-                face->recvcount = 0;
+            else if (fdholder->recvcount == 1) {
+                fdholder->recvcount = 0;
             }
             else {
-                face->recvcount = 1; /* go around twice */
+                fdholder->recvcount = 1; /* go around twice */
             }
         }
         hashtb_next(e);
@@ -1791,7 +1791,7 @@ check_dgram_faces(struct ccnr_handle *h)
 }
 
 /**
- * Destroys the face identified by faceid.
+ * Destroys the fdholder identified by faceid.
  * @returns 0 for success, -1 for failure.
  */
 int
@@ -1799,25 +1799,25 @@ ccnr_destroy_face(struct ccnr_handle *h, unsigned faceid)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct face *face;
+    struct fdholder *fdholder;
     int dgram_chk = CCN_FACE_DGRAM | CCN_FACE_MCAST;
     int dgram_want = CCN_FACE_DGRAM;
     
-    face = face_from_faceid(h, faceid);
-    if (face == NULL)
+    fdholder = face_from_faceid(h, faceid);
+    if (fdholder == NULL)
         return(-1);
-    if ((face->flags & dgram_chk) == dgram_want) {
+    if ((fdholder->flags & dgram_chk) == dgram_want) {
         hashtb_start(h->dgram_faces, e);
-        hashtb_seek(e, face->addr, face->addrlen, 0);
-        if (e->data == face)
-            face = NULL;
+        hashtb_seek(e, fdholder->addr, fdholder->addrlen, 0);
+        if (e->data == fdholder)
+            fdholder = NULL;
         hashtb_delete(e);
         hashtb_end(e);
-        if (face == NULL)
+        if (fdholder == NULL)
             return(0);
     }
-    shutdown_client_fd(h, face->recv_fd);
-    face = NULL;
+    shutdown_client_fd(h, fdholder->recv_fd);
+    fdholder = NULL;
     return(0);
 }
 
@@ -2121,12 +2121,12 @@ age_forwarding(struct ccn_schedule *sched,
             if ((f->flags & CCN_FORW_REFRESHED) == 0 ||
                   face_from_faceid(h, f->faceid) == NULL) {
                 if (h->debug & 2) {
-                    struct face *face = face_from_faceid(h, f->faceid);
-                    if (face != NULL) {
+                    struct fdholder *fdholder = face_from_faceid(h, f->faceid);
+                    if (fdholder != NULL) {
                         struct ccn_charbuf *prefix = ccn_charbuf_create();
                         ccn_name_init(prefix);
                         ccn_name_append_components(prefix, e->key, 0, e->keysize);
-                        ccnr_debug_ccnb(h, __LINE__, "prefix_expiry", face,
+                        ccnr_debug_ccnb(h, __LINE__, "prefix_expiry", fdholder,
                                 prefix->buf,
                                 prefix->length);
                         ccn_charbuf_destroy(&prefix);
@@ -2186,7 +2186,7 @@ seek_forwarding(struct ccnr_handle *h,
  * @param msg is a ccnb-encoded message containing the name prefix somewhere.
  * @param comps contains the delimiting offsets for the name components in msg.
  * @param ncomps is the number of relevant components.
- * @param faceid indicates which face to forward to.
+ * @param faceid indicates which fdholder to forward to.
  * @param flags are the forwarding entry flags (CCN_FORW_...), -1 for defaults.
  * @param expires tells the remaining lifetime, in seconds.
  * @returns -1 for error, or new flags upon success; the private flag
@@ -2206,17 +2206,17 @@ ccnr_reg_prefix(struct ccnr_handle *h,
     struct ccn_forwarding *f = NULL;
     struct nameprefix_entry *npe = NULL;
     int res;
-    struct face *face = NULL;
+    struct fdholder *fdholder = NULL;
     
     if (flags >= 0 &&
         (flags & CCN_FORW_PUBMASK) != flags)
         return(-1);
-    face = face_from_faceid(h, faceid);
-    if (face == NULL)
+    fdholder = face_from_faceid(h, faceid);
+    if (fdholder == NULL)
         return(-1);
     /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
     if (flags >= 0 && (flags & CCN_FORW_LAST) != 0)
-        face->flags |= CCN_FACE_DC;
+        fdholder->flags |= CCN_FACE_DC;
     hashtb_start(h->nameprefix_tab, e);
     res = nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
@@ -2242,7 +2242,7 @@ ccnr_reg_prefix(struct ccnr_handle *h,
                                            comps->buf[0], comps->buf[ncomps]);
                 ccnr_debug_ccnb(h, __LINE__,
                                 ccn_charbuf_as_string(debugtag),
-                                face,
+                                fdholder,
                                 prefix->buf,
                                 prefix->length);
                 ccn_charbuf_destroy(&prefix);
@@ -2258,7 +2258,7 @@ ccnr_reg_prefix(struct ccnr_handle *h,
 
 /**
  * Register a prefix, expressed in the form of a URI.
- * @returns negative value for error, or new face flags for success.
+ * @returns negative value for error, or new fdholder flags for success.
  */
 int
 ccnr_reg_uri(struct ccnr_handle *h,
@@ -2310,19 +2310,19 @@ ccnr_reg_uri_list(struct ccnr_handle *h,
 }
 
 /**
- * Called when a face is first created, and (perhaps) a second time in the case
- * that a face transitions from the undecided state.
+ * Called when a fdholder is first created, and (perhaps) a second time in the case
+ * that a fdholder transitions from the undecided state.
  */
 static void
-register_new_face(struct ccnr_handle *h, struct face *face)
+register_new_face(struct ccnr_handle *h, struct fdholder *fdholder)
 {
-    if (face->faceid != 0 && (face->flags & (CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE)) == 0) {
-        ccnr_face_status_change(h, face->faceid);
-        if (h->flood && h->autoreg != NULL && (face->flags & CCN_FACE_GG) == 0)
-            ccnr_reg_uri_list(h, h->autoreg, face->faceid,
+    if (fdholder->faceid != 0 && (fdholder->flags & (CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE)) == 0) {
+        ccnr_face_status_change(h, fdholder->faceid);
+        if (h->flood && h->autoreg != NULL && (fdholder->flags & CCN_FACE_GG) == 0)
+            ccnr_reg_uri_list(h, h->autoreg, fdholder->faceid,
                               CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
                               0x7FFFFFFF);
-        ccn_link_state_init(h, face);
+        ccn_link_state_init(h, fdholder);
     }
 }
 
@@ -2383,8 +2383,8 @@ check_forwarding_entry_ccnrid(struct ccnr_handle *h,
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
  *
- * Is is permitted for the face to already exist.
- * A newly created face will have no registered prefixes, and so will not
+ * Is is permitted for the fdholder to already exist.
+ * A newly created fdholder will have no registered prefixes, and so will not
  * receive any traffic.
  */
 int
@@ -2401,9 +2401,9 @@ ccnr_req_newface(struct ccnr_handle *h,
     struct addrinfo *addrinfo = NULL;
     int fd = -1;
     int mcast;
-    struct face *face = NULL;
-    struct face *reqface = NULL;
-    struct face *newface = NULL;
+    struct fdholder *fdholder = NULL;
+    struct fdholder *reqface = NULL;
+    struct fdholder *newface = NULL;
     int save;
     int nackallowed = 0;
 
@@ -2470,22 +2470,22 @@ ccnr_req_newface(struct ccnr_handle *h,
         fd = -1;
         mcast = 0;
         if (addrinfo->ai_family == AF_INET) {
-            face = face_from_faceid(h, h->ipv4_faceid);
+            fdholder = face_from_faceid(h, h->ipv4_faceid);
             mcast = IN_MULTICAST(ntohl(((struct sockaddr_in *)(addrinfo->ai_addr))->sin_addr.s_addr));
         }
         else if (addrinfo->ai_family == AF_INET6) {
-            face = face_from_faceid(h, h->ipv6_faceid);
+            fdholder = face_from_faceid(h, h->ipv6_faceid);
             mcast = IN6_IS_ADDR_MULTICAST(&((struct sockaddr_in6 *)addrinfo->ai_addr)->sin6_addr);
         }
         if (mcast)
-            face = setup_multicast(h, face_instance,
+            fdholder = setup_multicast(h, face_instance,
                                    addrinfo->ai_addr,
                                    addrinfo->ai_addrlen);
-        if (face == NULL) {
+        if (fdholder == NULL) {
             res = ccnr_nack(h, reply_body, 453, "could not setup multicast");
             goto Finish;
         }
-        newface = get_dgram_source(h, face,
+        newface = get_dgram_source(h, fdholder,
                                    addrinfo->ai_addr,
                                    addrinfo->ai_addrlen,
                                    0);
@@ -2514,7 +2514,7 @@ ccnr_req_newface(struct ccnr_handle *h,
             res = 0;
     }
     else
-        res = ccnr_nack(h, reply_body, 450, "could not create face");
+        res = ccnr_nack(h, reply_body, 450, "could not create fdholder");
 Finish:
     h->flood = save; /* restore saved flood flag */
     ccn_face_instance_destroy(&face_instance);
@@ -2534,7 +2534,7 @@ Finish:
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
  *
- * Is is an error if the face does not exist.
+ * Is is an error if the fdholder does not exist.
  */
 int
 ccnr_req_destroyface(struct ccnr_handle *h,
@@ -2547,7 +2547,7 @@ ccnr_req_destroyface(struct ccnr_handle *h,
     const unsigned char *req;
     size_t req_size;
     struct ccn_face_instance *face_instance = NULL;
-    struct face *reqface = NULL;
+    struct fdholder *reqface = NULL;
     int nackallowed = 0;
 
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
@@ -2585,7 +2585,7 @@ Finish:
         if (reqface == NULL || (reqface->flags & CCN_FACE_GG) == 0)
             res = -1;
         else
-            res = ccnr_nack(h, reply_body, 450, "could not destroy face");
+            res = ccnr_nack(h, reply_body, 450, "could not destroy fdholder");
     }
     ccn_face_instance_destroy(&face_instance);
     return((nackallowed || res <= 0) ? res : -1);
@@ -2604,8 +2604,8 @@ ccnr_req_prefix_or_self_reg(struct ccnr_handle *h,
     const unsigned char *req;
     size_t req_size;
     struct ccn_forwarding_entry *forwarding_entry = NULL;
-    struct face *face = NULL;
-    struct face *reqface = NULL;
+    struct fdholder *fdholder = NULL;
+    struct fdholder *reqface = NULL;
     struct ccn_indexbuf *comps = NULL;
     int nackallowed = 0;
 
@@ -2647,8 +2647,8 @@ ccnr_req_prefix_or_self_reg(struct ccnr_handle *h,
     }
     else if (forwarding_entry->ccnd_id_size != 0)
         goto Finish;
-    face = face_from_faceid(h, forwarding_entry->faceid);
-    if (face == NULL)
+    fdholder = face_from_faceid(h, forwarding_entry->faceid);
+    if (fdholder == NULL)
         goto Finish;
     if (forwarding_entry->lifetime < 0)
         forwarding_entry->lifetime = 60;
@@ -2661,7 +2661,7 @@ ccnr_req_prefix_or_self_reg(struct ccnr_handle *h,
         goto Finish;
     res = ccnr_reg_prefix(h,
                           forwarding_entry->name_prefix->buf, comps, res,
-                          face->faceid,
+                          fdholder->faceid,
                           forwarding_entry->flags,
                           forwarding_entry->lifetime);
     if (res < 0)
@@ -2747,8 +2747,8 @@ ccnr_req_unreg(struct ccnr_handle *h,
     size_t stop;
     int found;
     struct ccn_forwarding_entry *forwarding_entry = NULL;
-    struct face *face = NULL;
-    struct face *reqface = NULL;
+    struct fdholder *fdholder = NULL;
+    struct fdholder *reqface = NULL;
     struct ccn_indexbuf *comps = NULL;
     struct ccn_forwarding **p = NULL;
     struct ccn_forwarding *f = NULL;
@@ -2780,8 +2780,8 @@ ccnr_req_unreg(struct ccnr_handle *h,
     if (res != 0)
         goto Finish;
     res = -1;
-    face = face_from_faceid(h, forwarding_entry->faceid);
-    if (face == NULL)
+    fdholder = face_from_faceid(h, forwarding_entry->faceid);
+    if (fdholder == NULL)
         goto Finish;
     comps = ccn_indexbuf_create();
     n_name_comp = ccn_name_split(forwarding_entry->name_prefix, comps);
@@ -2802,7 +2802,7 @@ ccnr_req_unreg(struct ccnr_handle *h,
         if (f->faceid == forwarding_entry->faceid) {
             found = 1;
             if (h->debug & (2 | 4))
-                ccnr_debug_ccnb(h, __LINE__, "prefix_unreg", face,
+                ccnr_debug_ccnb(h, __LINE__, "prefix_unreg", fdholder,
                                 forwarding_entry->name_prefix->buf,
                                 forwarding_entry->name_prefix->length);
             *p = f->next;
@@ -2895,7 +2895,7 @@ update_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
 /**
  * This is where we consult the interest forwarding table.
  * @param h is the ccnr handle
- * @param from is the handle for the originating face (may be NULL).
+ * @param from is the handle for the originating fdholder (may be NULL).
  * @param msg points to the ccnb-encoded interest message
  * @param pi must be the parse information for msg
  * @param npe should be the result of the prefix lookup
@@ -2903,7 +2903,7 @@ update_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
  */
 static struct ccn_indexbuf *
 get_outbound_faces(struct ccnr_handle *h,
-    struct face *from,
+    struct fdholder *from,
     unsigned char *msg,
     struct ccn_parsed_interest *pi,
     struct nameprefix_entry *npe)
@@ -2911,7 +2911,7 @@ get_outbound_faces(struct ccnr_handle *h,
     int checkmask = 0;
     int wantmask = 0;
     struct ccn_indexbuf *x;
-    struct face *face;
+    struct fdholder *fdholder;
     int i;
     int n;
     unsigned faceid;
@@ -2934,12 +2934,12 @@ get_outbound_faces(struct ccnr_handle *h,
         checkmask |= CCN_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         faceid = npe->forward_to->buf[i];
-        face = face_from_faceid(h, faceid);
-        if (face != NULL && face != from &&
-            ((face->flags & checkmask) == wantmask)) {
+        fdholder = face_from_faceid(h, faceid);
+        if (fdholder != NULL && fdholder != from &&
+            ((fdholder->flags & checkmask) == wantmask)) {
             if (h->debug & 32)
-                ccnr_msg(h, "outbound.%d adding %u", __LINE__, face->faceid);
-            ccn_indexbuf_append_element(x, face->faceid);
+                ccnr_msg(h, "outbound.%d adding %u", __LINE__, fdholder->faceid);
+            ccn_indexbuf_append_element(x, fdholder->faceid);
         }
     }
     return(x);
@@ -3008,10 +3008,10 @@ do_propagate(struct ccn_schedule *sched,
     }
     else if (pe->outbound != NULL && pe->sent < pe->outbound->n) {
         unsigned faceid = pe->outbound->buf[pe->sent];
-        struct face *face = face_from_faceid(h, faceid);
-        if (face != NULL && (face->flags & CCN_FACE_NOSEND) == 0) {
+        struct fdholder *fdholder = face_from_faceid(h, faceid);
+        if (fdholder != NULL && (fdholder->flags & CCN_FACE_NOSEND) == 0) {
             if (h->debug & 2)
-                ccnr_debug_ccnb(h, __LINE__, "interest_to", face,
+                ccnr_debug_ccnb(h, __LINE__, "interest_to", fdholder,
                                 pe->interest_msg, pe->size);
             pe->sent++;
             h->interests_sent += 1;
@@ -3026,8 +3026,8 @@ do_propagate(struct ccn_schedule *sched,
                 pe->flags |= CCN_PR_WAIT1;
                 next_delay = special_delay = ev->evint;
             }
-            stuff_and_send(h, face, pe->interest_msg, pe->size, NULL, 0);
-            ccnr_meter_bump(h, face->meter[FM_INTO], 1);
+            stuff_and_send(h, fdholder, pe->interest_msg, pe->size, NULL, 0);
+            ccnr_meter_bump(h, fdholder->meter[FM_INTO], 1);
         }
         else
             ccn_indexbuf_remove_first_match(pe->outbound, faceid);
@@ -3045,9 +3045,9 @@ do_propagate(struct ccn_schedule *sched,
     }
     else {
         unsigned faceid = pe->outbound->buf[pe->sent];
-        struct face *face = face_from_faceid(h, faceid);
+        struct fdholder *fdholder = face_from_faceid(h, faceid);
         /* Wait longer before sending interest to ccnrc */
-        if (face != NULL && (face->flags & CCN_FACE_DC) != 0)
+        if (fdholder != NULL && (fdholder->flags & CCN_FACE_DC) != 0)
             next_delay += 60000;
     }
     next_delay = pe_next_usec(h, pe, next_delay, __LINE__);
@@ -3055,7 +3055,7 @@ do_propagate(struct ccn_schedule *sched,
 }
 
 /**
- * Adjust the outbound face list for a new Interest, based upon
+ * Adjust the outbound fdholder list for a new Interest, based upon
  * existing similar interests.
  * @result besides possibly updating the outbound set, returns
  *         an extra delay time before propagation.  A negative return value
@@ -3064,7 +3064,7 @@ do_propagate(struct ccn_schedule *sched,
 // XXX - rearrange to allow dummied-up "sent" entries.
 // XXX - subtle point - when similar interests are present in the PIT, and a new dest appears due to prefix registration, only one of the set should get sent to the new dest.
 static int
-adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct face *face,
+adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *fdholder,
                                        unsigned char *msg,
                                        struct ccn_parsed_interest *pi,
                                        struct nameprefix_entry *npe,
@@ -3077,13 +3077,13 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct face *face,
     size_t minsize = presize + postsize;
     unsigned char *post = msg + pi->offset[CCN_PI_E_Nonce];
     int k = 0;
-    int max_redundant = 3; /* Allow this many dups from same face */
+    int max_redundant = 3; /* Allow this many dups from same fdholder */
     int i;
     int n;
-    struct face *otherface;
+    struct fdholder *otherface;
     int extra_delay = 0;
 
-    if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
+    if ((fdholder->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
         max_redundant = 0;
     if (outbound != NULL) {
         for (p = head->next; p != head && outbound->n > 0; p = p->next) {
@@ -3101,15 +3101,15 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct face *face,
                  * they did not originate on the same host
                  */
                 if (pi->scope == 2 &&
-                    ((otherface->flags ^ face->flags) & CCN_FACE_GG) != 0)
+                    ((otherface->flags ^ fdholder->flags) & CCN_FACE_GG) != 0)
                     continue;
                 if (h->debug & 32)
                     ccnr_debug_ccnb(h, __LINE__, "similar_interest",
                                     face_from_faceid(h, p->faceid),
                                     p->interest_msg, p->size);
-                if (face->faceid == p->faceid) {
+                if (fdholder->faceid == p->faceid) {
                     /*
-                     * This is one we've already seen before from the same face,
+                     * This is one we've already seen before from the same fdholder,
                      * but dropping it unconditionally would lose resiliency
                      * against dropped packets. Thus allow a few of them.
                      * Add some delay, though.
@@ -3122,7 +3122,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct face *face,
                     return(-1);
                 }
                 /*
-                 * The existing interest from another face will serve for us,
+                 * The existing interest from another fdholder will serve for us,
                  * but we still need to send this interest there or we
                  * could miss an answer from that direction. Note that
                  * interests from two other faces could conspire to cover
@@ -3130,7 +3130,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct face *face,
                  * but it is still necessary to keep it around for the sake
                  * of returning content.
                  * This assumes a unicast link.  If there are multiple
-                 * parties on this face (broadcast or multicast), we
+                 * parties on this fdholder (broadcast or multicast), we
                  * do not want to send right away, because it is highly likely
                  * that we've seen an interest that one of the other parties
                  * is going to answer, and we'll see the answer, too.
@@ -3152,7 +3152,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct face *face,
                  * XXX - We would like to avoid having to keep this
                  * interest around if we get here with (outbound->n == 0).
                  * However, we still need to remember to send the content
-                 * back to this face, and the data structures are not
+                 * back to this fdholder, and the data structures are not
                  * there right now to represent this.  c.f. #100321.
                  */
             }
@@ -3162,7 +3162,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct face *face,
 }
 
 static void
-ccnr_append_debug_nonce(struct ccnr_handle *h, struct face *face, struct ccn_charbuf *cb) {
+ccnr_append_debug_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct ccn_charbuf *cb) {
         unsigned char s[12];
         int i;
         
@@ -3170,8 +3170,8 @@ ccnr_append_debug_nonce(struct ccnr_handle *h, struct face *face, struct ccn_cha
             s[i] = h->ccnd_id[i];
         s[i++] = h->logpid >> 8;
         s[i++] = h->logpid;
-        s[i++] = face->faceid >> 8;
-        s[i++] = face->faceid;
+        s[i++] = fdholder->faceid >> 8;
+        s[i++] = fdholder->faceid;
         s[i++] = h->sec;
         s[i++] = h->usec * 256 / 1000000;
         for (; i < sizeof(s); i++)
@@ -3180,7 +3180,7 @@ ccnr_append_debug_nonce(struct ccnr_handle *h, struct face *face, struct ccn_cha
 }
 
 static void
-ccnr_append_plain_nonce(struct ccnr_handle *h, struct face *face, struct ccn_charbuf *cb) {
+ccnr_append_plain_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct ccn_charbuf *cb) {
         int noncebytes = 6;
         unsigned char *s = NULL;
         int i;
@@ -3199,7 +3199,7 @@ ccnr_append_plain_nonce(struct ccnr_handle *h, struct face *face, struct ccn_cha
  */
 static int
 propagate_interest(struct ccnr_handle *h,
-                   struct face *face,
+                   struct fdholder *fdholder,
                    unsigned char *msg,
                    struct ccn_parsed_interest *pi,
                    struct nameprefix_entry *npe)
@@ -3221,9 +3221,9 @@ propagate_interest(struct ccnr_handle *h,
     intmax_t lifetime;
     
     lifetime = ccn_interest_lifetime(msg, pi);
-    outbound = get_outbound_faces(h, face, msg, pi, npe);
+    outbound = get_outbound_faces(h, fdholder, msg, pi, npe);
     if (outbound->n != 0) {
-        extra_delay = adjust_outbound_for_existing_interests(h, face, msg, pi, npe, outbound);
+        extra_delay = adjust_outbound_for_existing_interests(h, fdholder, msg, pi, npe, outbound);
         if (extra_delay < 0) {
             /*
              * Completely subsumed by other interests.
@@ -3231,7 +3231,7 @@ propagate_interest(struct ccnr_handle *h,
              * does not have one yet.
              */
             if (h->debug & 16)
-                ccnr_debug_ccnb(h, __LINE__, "interest_subsumed", face,
+                ccnr_debug_ccnb(h, __LINE__, "interest_subsumed", fdholder,
                                 msg_out, msg_out_size);
             h->interests_dropped += 1;
             ccn_indexbuf_destroy(&outbound);
@@ -3244,7 +3244,7 @@ propagate_interest(struct ccnr_handle *h,
         cb = charbuf_obtain(h);
         ccn_charbuf_append(cb, msg, pi->offset[CCN_PI_B_Nonce]);
         nonce_start = cb->length;
-        (h->appnonce)(h, face, cb);
+        (h->appnonce)(h, fdholder, cb);
         noncesize = cb->length - nonce_start;
         ccn_charbuf_append(cb, msg + pi->offset[CCN_PI_B_OTHER],
                                pi->offset[CCN_PI_E] - pi->offset[CCN_PI_B_OTHER]);
@@ -3271,8 +3271,8 @@ propagate_interest(struct ccnr_handle *h,
             memcpy(m, msg_out, msg_out_size);
             pe->interest_msg = m;
             pe->size = msg_out_size;
-            pe->faceid = face->faceid;
-            face->pending_interests += 1;
+            pe->faceid = fdholder->faceid;
+            fdholder->pending_interests += 1;
             if (lifetime < INT_MAX / (1000000 >> 6) * (4096 >> 6))
                 pe->usec = lifetime * (1000000 >> 6) / (4096 >> 6);
             else
@@ -3336,8 +3336,8 @@ replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
 {
     struct nameprefix_entry *npe = NULL;
     struct ccn_indexbuf *x = pe->outbound;
-    struct face *face = NULL;
-    struct face *from = NULL;
+    struct fdholder *fdholder = NULL;
+    struct fdholder *from = NULL;
     int i;
     int k;
     int n;
@@ -3369,9 +3369,9 @@ replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
         checkmask |= CCN_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         faceid = npe->forward_to->buf[i];
-        face = face_from_faceid(h, faceid);
-        if (face != NULL && faceid != pe->faceid &&
-            ((face->flags & checkmask) == wantmask)) {
+        fdholder = face_from_faceid(h, faceid);
+        if (fdholder != NULL && faceid != pe->faceid &&
+            ((fdholder->flags & checkmask) == wantmask)) {
             k = x->n;
             ccn_indexbuf_set_insert(x, faceid);
             if (x->n > k && (h->debug & 32) != 0)
@@ -3384,7 +3384,7 @@ replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
 /**
  * Checks whether this Interest message has been seen before by using
  * its Nonce, recording it in the process.  Also, if it has been
- * seen and the original is still propagating, remove the face that
+ * seen and the original is still propagating, remove the fdholder that
  * the duplicate arrived on from the outbound set of the original.
  */
 static int
@@ -3524,7 +3524,7 @@ next_child_at_level(struct ccnr_handle *h,
 }
 
 static void
-process_incoming_interest(struct ccnr_handle *h, struct face *face,
+process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                           unsigned char *msg, size_t size)
 {
     struct hashtb_enumerator ee;
@@ -3550,20 +3550,20 @@ process_incoming_interest(struct ccnr_handle *h, struct face *face,
         ccn_indexbuf_destroy(&comps);
         return;
     }
-    ccnr_meter_bump(h, face->meter[FM_INTI], 1);
+    ccnr_meter_bump(h, fdholder->meter[FM_INTI], 1);
     if (pi->scope >= 0 && pi->scope < 2 &&
-             (face->flags & CCN_FACE_GG) == 0) {
-        ccnr_debug_ccnb(h, __LINE__, "interest_outofscope", face, msg, size);
+             (fdholder->flags & CCN_FACE_GG) == 0) {
+        ccnr_debug_ccnb(h, __LINE__, "interest_outofscope", fdholder, msg, size);
         h->interests_dropped += 1;
     }
-    else if (is_duplicate_flooded(h, msg, pi, face->faceid)) {
+    else if (is_duplicate_flooded(h, msg, pi, fdholder->faceid)) {
         if (h->debug & 16)
-             ccnr_debug_ccnb(h, __LINE__, "interest_dup", face, msg, size);
+             ccnr_debug_ccnb(h, __LINE__, "interest_dup", fdholder, msg, size);
         h->interests_dropped += 1;
     }
     else {
         if (h->debug & (16 | 8 | 2))
-            ccnr_debug_ccnb(h, __LINE__, "interest_from", face, msg, size);
+            ccnr_debug_ccnb(h, __LINE__, "interest_from", fdholder, msg, size);
         if (h->debug & 16)
             ccnr_msg(h,
                      "version: %d, "
@@ -3603,8 +3603,8 @@ process_incoming_interest(struct ccnr_handle *h, struct face *face,
         if (npe == NULL)
             goto Bail;
         if ((npe->flags & CCN_FORW_LOCAL) != 0 &&
-            (face->flags & CCN_FACE_GG) == 0) {
-            ccnr_debug_ccnb(h, __LINE__, "interest_nonlocal", face, msg, size);
+            (fdholder->flags & CCN_FACE_GG) == 0) {
+            ccnr_debug_ccnb(h, __LINE__, "interest_nonlocal", fdholder, msg, size);
             h->interests_dropped += 1;
             goto Bail;
         }
@@ -3668,16 +3668,16 @@ process_incoming_interest(struct ccnr_handle *h, struct face *face,
                 /* Check to see if we are planning to send already */
                 enum cq_delay_class c;
                 for (c = 0, k = -1; c < CCN_CQ_N && k == -1; c++)
-                    if (face->q[c] != NULL)
-                        k = ccn_indexbuf_member(face->q[c]->send_queue, content->accession);
+                    if (fdholder->q[c] != NULL)
+                        k = ccn_indexbuf_member(fdholder->q[c]->send_queue, content->accession);
                 if (k == -1) {
-                    k = face_send_queue_insert(h, face, content);
+                    k = face_send_queue_insert(h, fdholder, content);
                     if (k >= 0) {
                         if (h->debug & (32 | 8))
-                            ccnr_debug_ccnb(h, __LINE__, "consume", face, msg, size);
+                            ccnr_debug_ccnb(h, __LINE__, "consume", fdholder, msg, size);
                     }
                     /* Any other matched interests need to be consumed, too. */
-                    match_interests(h, content, NULL, face, NULL);
+                    match_interests(h, content, NULL, fdholder, NULL);
                 }
                 if ((pi->answerfrom & CCN_AOK_EXPIRE) != 0)
                     mark_stale(h, content);
@@ -3685,7 +3685,7 @@ process_incoming_interest(struct ccnr_handle *h, struct face *face,
             }
         }
         if (!matched && pi->scope != 0 && npe != NULL)
-            propagate_interest(h, face, msg, pi, npe);
+            propagate_interest(h, fdholder, msg, pi, npe);
     Bail:
         hashtb_end(e);
     }
@@ -3783,7 +3783,7 @@ Finish:
 }
 
 static void
-process_incoming_content(struct ccnr_handle *h, struct face *face,
+process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
                          unsigned char *wire_msg, size_t wire_size)
 {
     unsigned char *msg;
@@ -3808,19 +3808,19 @@ process_incoming_content(struct ccnr_handle *h, struct face *face,
         ccnr_msg(h, "error parsing ContentObject - code %d", res);
         goto Bail;
     }
-    ccnr_meter_bump(h, face->meter[FM_DATI], 1);
+    ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
     if (comps->n < 1 ||
         (keysize = comps->buf[comps->n - 1]) > 65535 - 36) {
         ccnr_msg(h, "ContentObject with keysize %lu discarded",
                  (unsigned long)keysize);
-        ccnr_debug_ccnb(h, __LINE__, "oversize", face, msg, size);
+        ccnr_debug_ccnb(h, __LINE__, "oversize", fdholder, msg, size);
         res = -__LINE__;
         goto Bail;
     }
     /* Make the ContentObject-digest name component explicit */
     ccn_digest_ContentObject(msg, &obj);
     if (obj.digest_bytes != 32) {
-        ccnr_debug_ccnb(h, __LINE__, "indigestible", face, msg, size);
+        ccnr_debug_ccnb(h, __LINE__, "indigestible", fdholder, msg, size);
         goto Bail;
     }
     i = comps->buf[comps->n - 1];
@@ -3844,7 +3844,7 @@ process_incoming_content(struct ccnr_handle *h, struct face *face,
         }
     }
     if (h->debug & 4)
-        ccnr_debug_ccnb(h, __LINE__, "content_from", face, msg, size);
+        ccnr_debug_ccnb(h, __LINE__, "content_from", fdholder, msg, size);
     keysize = obj.offset[CCN_PCO_B_Content];
     tail = msg + keysize;
     tailsize = size - keysize;
@@ -3855,7 +3855,7 @@ process_incoming_content(struct ccnr_handle *h, struct face *face,
         if (tailsize != e->extsize ||
               0 != memcmp(tail, ((unsigned char *)e->key) + keysize, tailsize)) {
             ccnr_msg(h, "ContentObject name collision!!!!!");
-            ccnr_debug_ccnb(h, __LINE__, "new", face, msg, size);
+            ccnr_debug_ccnb(h, __LINE__, "new", fdholder, msg, size);
             ccnr_debug_ccnb(h, __LINE__, "old", NULL, e->key, e->keysize + e->extsize);
             content = NULL;
             hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
@@ -3872,8 +3872,8 @@ process_incoming_content(struct ccnr_handle *h, struct face *face,
         else {
             h->content_dups_recvd++;
             ccnr_msg(h, "received duplicate ContentObject from %u (accession %llu)",
-                     face->faceid, (unsigned long long)content->accession);
-            ccnr_debug_ccnb(h, __LINE__, "dup", face, msg, size);
+                     fdholder->faceid, (unsigned long long)content->accession);
+            ccnr_debug_ccnb(h, __LINE__, "dup", fdholder, msg, size);
         }
     }
     else if (res == HT_NEW_ENTRY) {
@@ -3912,19 +3912,19 @@ Bail:
         int n_matches;
         enum cq_delay_class c;
         struct content_queue *q;
-        n_matches = match_interests(h, content, &obj, NULL, face);
+        n_matches = match_interests(h, content, &obj, NULL, fdholder);
         if (res == HT_NEW_ENTRY) {
             if (n_matches < 0) {
                 remove_content(h, content);
                 return;
             }
-            if (n_matches == 0 && (face->flags & CCN_FACE_GG) == 0) {
+            if (n_matches == 0 && (fdholder->flags & CCN_FACE_GG) == 0) {
                 content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
                 ccn_indexbuf_append_element(h->unsol, content->accession);
             }
         }
         for (c = 0; c < CCN_CQ_N; c++) {
-            q = face->q[c];
+            q = fdholder->q[c];
             if (q != NULL) {
                 i = ccn_indexbuf_member(q->send_queue, content->accession);
                 if (i >= 0) {
@@ -3933,7 +3933,7 @@ Bail:
                      * don't send the content back
                      */
                     if (h->debug & 8)
-                        ccnr_debug_ccnb(h, __LINE__, "content_nosend", face, msg, size);
+                        ccnr_debug_ccnb(h, __LINE__, "content_nosend", fdholder, msg, size);
                     q->send_queue->buf[i] = 0;
                 }
             }
@@ -3942,7 +3942,7 @@ Bail:
 }
 
 static void
-process_input_message(struct ccnr_handle *h, struct face *face,
+process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
                       unsigned char *msg, size_t size, int pdu_ok)
 {
     struct ccn_skeleton_decoder decoder = {0};
@@ -3950,12 +3950,12 @@ process_input_message(struct ccnr_handle *h, struct face *face,
     ssize_t dres;
     enum ccn_dtag dtag;
     
-    if ((face->flags & CCN_FACE_UNDECIDED) != 0) {
-        face->flags &= ~CCN_FACE_UNDECIDED;
-        if ((face->flags & CCN_FACE_LOOPBACK) != 0)
-            face->flags |= CCN_FACE_GG;
-        /* YYY This is the first place that we know that an inbound stream face is speaking CCNx protocol. */
-        register_new_face(h, face);
+    if ((fdholder->flags & CCN_FACE_UNDECIDED) != 0) {
+        fdholder->flags &= ~CCN_FACE_UNDECIDED;
+        if ((fdholder->flags & CCN_FACE_LOOPBACK) != 0)
+            fdholder->flags |= CCN_FACE_GG;
+        /* YYY This is the first place that we know that an inbound stream fdholder is speaking CCNx protocol. */
+        register_new_face(h, fdholder);
     }
     d->state |= CCN_DSTATE_PAUSE;
     dres = ccn_skeleton_decode(d, msg, size);
@@ -3975,25 +3975,25 @@ process_input_message(struct ccnr_handle *h, struct face *face,
             if (size > 0)
                 size--;
             msg += d->index;
-            face->flags |= CCN_FACE_LINK;
-            face->flags &= ~CCN_FACE_GG;
+            fdholder->flags |= CCN_FACE_LINK;
+            fdholder->flags &= ~CCN_FACE_GG;
             memset(d, 0, sizeof(*d));
             while (d->index < size) {
                 dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
                 if (d->state != 0)
                     abort(); /* cannot happen because of checks in caller */
                 /* The pdu_ok parameter limits the recursion depth */
-                process_input_message(h, face, msg + d->index - dres, dres, 0);
+                process_input_message(h, fdholder, msg + d->index - dres, dres, 0);
             }
             return;
         case CCN_DTAG_Interest:
-            process_incoming_interest(h, face, msg, size);
+            process_incoming_interest(h, fdholder, msg, size);
             return;
         case CCN_DTAG_ContentObject:
-            process_incoming_content(h, face, msg, size);
+            process_incoming_content(h, fdholder, msg, size);
             return;
         case CCN_DTAG_SequenceNumber:
-            process_incoming_link_message(h, face, dtag, msg, size);
+            process_incoming_link_message(h, fdholder, dtag, msg, size);
             return;
         default:
             break;
@@ -4004,9 +4004,9 @@ process_input_message(struct ccnr_handle *h, struct face *face,
 }
 
 static void
-ccnr_new_face_msg(struct ccnr_handle *h, struct face *face)
+ccnr_new_face_msg(struct ccnr_handle *h, struct fdholder *fdholder)
 {
-    const struct sockaddr *addr = face->addr;
+    const struct sockaddr *addr = fdholder->addr;
     int port = 0;
     const unsigned char *rawaddr = NULL;
     char printable[80];
@@ -4027,7 +4027,7 @@ ccnr_new_face_msg(struct ccnr_handle *h, struct face *face)
         peer = "(unknown)";
     ccnr_msg(h,
              "accepted datagram client id=%d (flags=0x%x) %s port %d",
-             face->faceid, face->flags, peer, port);
+             fdholder->faceid, fdholder->flags, peer, port);
 }
 
 /**
@@ -4062,19 +4062,19 @@ scrub_sockaddr(struct sockaddr *addr, socklen_t addrlen,
     return((struct sockaddr *)dst);
 }
 
-static struct face *
-get_dgram_source(struct ccnr_handle *h, struct face *face,
+static struct fdholder *
+get_dgram_source(struct ccnr_handle *h, struct fdholder *fdholder,
                  struct sockaddr *addr, socklen_t addrlen, int why)
 {
-    struct face *source = NULL;
+    struct fdholder *source = NULL;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct sockaddr_in6 space;
     int res;
-    if ((face->flags & CCN_FACE_DGRAM) == 0)
-        return(face);
-    if ((face->flags & CCN_FACE_MCAST) != 0)
-        return(face);
+    if ((fdholder->flags & CCN_FACE_DGRAM) == 0)
+        return(fdholder);
+    if ((fdholder->flags & CCN_FACE_MCAST) != 0)
+        return(fdholder);
     hashtb_start(h->dgram_faces, e);
     res = hashtb_seek(e, scrub_sockaddr(addr, addrlen, &space), addrlen, 0);
     if (res >= 0) {
@@ -4083,8 +4083,8 @@ get_dgram_source(struct ccnr_handle *h, struct face *face,
         if (source->addr == NULL) {
             source->addr = e->key;
             source->addrlen = e->keysize;
-            source->recv_fd = face->recv_fd;
-            source->sendface = face->faceid;
+            source->recv_fd = fdholder->recv_fd;
+            source->sendface = fdholder->faceid;
             init_face_flags(h, source, CCN_FACE_DGRAM);
             if (why == 1 && (source->flags & CCN_FACE_LOOPBACK) != 0)
                 source->flags |= CCN_FACE_GG;
@@ -4108,33 +4108,33 @@ get_dgram_source(struct ccnr_handle *h, struct face *face,
  * and call process_input_message on each one.
  *
  * This is used to handle things originating from the internal client -
- * its output is input for face 0.
+ * its output is input for fdholder 0.
  */
 static void
-process_input_buffer(struct ccnr_handle *h, struct face *face)
+process_input_buffer(struct ccnr_handle *h, struct fdholder *fdholder)
 {
     unsigned char *msg;
     size_t size;
     ssize_t dres;
     struct ccn_skeleton_decoder *d;
 
-    if (face == NULL || face->inbuf == NULL)
+    if (fdholder == NULL || fdholder->inbuf == NULL)
         return;
-    d = &face->decoder;
-    msg = face->inbuf->buf;
-    size = face->inbuf->length;
+    d = &fdholder->decoder;
+    msg = fdholder->inbuf->buf;
+    size = fdholder->inbuf->length;
     while (d->index < size) {
         dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
         if (d->state != 0)
             break;
-        process_input_message(h, face, msg + d->index - dres, dres, 0);
+        process_input_message(h, fdholder, msg + d->index - dres, dres, 0);
     }
     if (d->index != size) {
-        ccnr_msg(h, "protocol error on face %u (state %d), discarding %d bytes",
-                     face->faceid, d->state, (int)(size - d->index));
+        ccnr_msg(h, "protocol error on fdholder %u (state %d), discarding %d bytes",
+                     fdholder->faceid, d->state, (int)(size - d->index));
         // XXX - perhaps this should be a fatal error.
     }
-    face->inbuf->length = 0;
+    fdholder->inbuf->length = 0;
     memset(d, 0, sizeof(*d));
 }
 
@@ -4142,15 +4142,15 @@ process_input_buffer(struct ccnr_handle *h, struct face *face)
  * Process the input from a socket.
  *
  * The socket has been found ready for input by the poll call.
- * Decide what face it corresponds to, and after checking for exceptional
+ * Decide what fdholder it corresponds to, and after checking for exceptional
  * cases, receive data, parse it into ccnb-encoded messages, and call
  * process_input_message for each one.
  */
 static void
 process_input(struct ccnr_handle *h, int fd)
 {
-    struct face *face = NULL;
-    struct face *source = NULL;
+    struct fdholder *fdholder = NULL;
+    struct fdholder *source = NULL;
     ssize_t res;
     ssize_t dres;
     ssize_t msgstart;
@@ -4162,89 +4162,89 @@ process_input(struct ccnr_handle *h, int fd)
     int err = 0;
     socklen_t err_sz;
     
-    face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
-    if (face == NULL)
+    fdholder = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
+    if (fdholder == NULL)
         return;
-    if ((face->flags & (CCN_FACE_DGRAM | CCN_FACE_PASSIVE)) == CCN_FACE_PASSIVE) {
+    if ((fdholder->flags & (CCN_FACE_DGRAM | CCN_FACE_PASSIVE)) == CCN_FACE_PASSIVE) {
         accept_connection(h, fd);
         check_comm_file(h);
         return;
     }
     err_sz = sizeof(err);
-    res = getsockopt(face->recv_fd, SOL_SOCKET, SO_ERROR, &err, &err_sz);
+    res = getsockopt(fdholder->recv_fd, SOL_SOCKET, SO_ERROR, &err, &err_sz);
     if (res >= 0 && err != 0) {
-        ccnr_msg(h, "error on face %u: %s (%d)", face->faceid, strerror(err), err);
-        if (err == ETIMEDOUT && (face->flags & CCN_FACE_CONNECTING) != 0) {
+        ccnr_msg(h, "error on fdholder %u: %s (%d)", fdholder->faceid, strerror(err), err);
+        if (err == ETIMEDOUT && (fdholder->flags & CCN_FACE_CONNECTING) != 0) {
             shutdown_client_fd(h, fd);
             return;
         }
     }
-    d = &face->decoder;
-    if (face->inbuf == NULL)
-        face->inbuf = ccn_charbuf_create();
-    if (face->inbuf->length == 0)
+    d = &fdholder->decoder;
+    if (fdholder->inbuf == NULL)
+        fdholder->inbuf = ccn_charbuf_create();
+    if (fdholder->inbuf->length == 0)
         memset(d, 0, sizeof(*d));
-    buf = ccn_charbuf_reserve(face->inbuf, 8800);
+    buf = ccn_charbuf_reserve(fdholder->inbuf, 8800);
     memset(&sstor, 0, sizeof(sstor));
-    res = recvfrom(face->recv_fd, buf, face->inbuf->limit - face->inbuf->length,
+    res = recvfrom(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length,
             /* flags */ 0, addr, &addrlen);
     if (res == -1)
-        ccnr_msg(h, "recvfrom face %u :%s (errno = %d)",
-                    face->faceid, strerror(errno), errno);
-    else if (res == 0 && (face->flags & CCN_FACE_DGRAM) == 0)
+        ccnr_msg(h, "recvfrom fdholder %u :%s (errno = %d)",
+                    fdholder->faceid, strerror(errno), errno);
+    else if (res == 0 && (fdholder->flags & CCN_FACE_DGRAM) == 0)
         shutdown_client_fd(h, fd);
     else {
-        source = get_dgram_source(h, face, addr, addrlen, (res == 1) ? 1 : 2);
+        source = get_dgram_source(h, fdholder, addr, addrlen, (res == 1) ? 1 : 2);
         ccnr_meter_bump(h, source->meter[FM_BYTI], res);
         source->recvcount++;
         source->surplus = 0; // XXX - we don't actually use this, except for some obscure messages.
         if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
-            // XXX - If the initial heartbeat gets missed, we don't realize the locality of the face.
+            // XXX - If the initial heartbeat gets missed, we don't realize the locality of the fdholder.
             if (h->debug & 128)
                 ccnr_msg(h, "%d-byte heartbeat on %d", (int)res, source->faceid);
             return;
         }
-        face->inbuf->length += res;
+        fdholder->inbuf->length += res;
         msgstart = 0;
-        if (((face->flags & CCN_FACE_UNDECIDED) != 0 &&
-             face->inbuf->length >= 6 &&
-             0 == memcmp(face->inbuf->buf, "GET ", 4))) {
-            ccnr_stats_handle_http_connection(h, face);
+        if (((fdholder->flags & CCN_FACE_UNDECIDED) != 0 &&
+             fdholder->inbuf->length >= 6 &&
+             0 == memcmp(fdholder->inbuf->buf, "GET ", 4))) {
+            ccnr_stats_handle_http_connection(h, fdholder);
             return;
         }
         dres = ccn_skeleton_decode(d, buf, res);
         while (d->state == 0) {
             process_input_message(h, source,
-                                  face->inbuf->buf + msgstart,
+                                  fdholder->inbuf->buf + msgstart,
                                   d->index - msgstart,
-                                  (face->flags & CCN_FACE_LOCAL) != 0);
+                                  (fdholder->flags & CCN_FACE_LOCAL) != 0);
             msgstart = d->index;
-            if (msgstart == face->inbuf->length) {
-                face->inbuf->length = 0;
+            if (msgstart == fdholder->inbuf->length) {
+                fdholder->inbuf->length = 0;
                 return;
             }
             dres = ccn_skeleton_decode(d,
-                    face->inbuf->buf + d->index, // XXX - msgstart and d->index are the same here - use msgstart
-                    res = face->inbuf->length - d->index);  // XXX - why is res set here?
+                    fdholder->inbuf->buf + d->index, // XXX - msgstart and d->index are the same here - use msgstart
+                    res = fdholder->inbuf->length - d->index);  // XXX - why is res set here?
         }
-        if ((face->flags & CCN_FACE_DGRAM) != 0) {
-            ccnr_msg(h, "protocol error on face %u, discarding %u bytes",
+        if ((fdholder->flags & CCN_FACE_DGRAM) != 0) {
+            ccnr_msg(h, "protocol error on fdholder %u, discarding %u bytes",
                 source->faceid,
-                (unsigned)(face->inbuf->length));  // XXX - Should be face->inbuf->length - d->index (or msgstart)
-            face->inbuf->length = 0;
+                (unsigned)(fdholder->inbuf->length));  // XXX - Should be fdholder->inbuf->length - d->index (or msgstart)
+            fdholder->inbuf->length = 0;
             /* XXX - should probably ignore this source for a while */
             return;
         }
         else if (d->state < 0) {
-            ccnr_msg(h, "protocol error on face %u", source->faceid);
+            ccnr_msg(h, "protocol error on fdholder %u", source->faceid);
             shutdown_client_fd(h, fd);
             return;
         }
-        if (msgstart < face->inbuf->length && msgstart > 0) {
+        if (msgstart < fdholder->inbuf->length && msgstart > 0) {
             /* move partial message to start of buffer */
-            memmove(face->inbuf->buf, face->inbuf->buf + msgstart,
-                face->inbuf->length - msgstart);
-            face->inbuf->length -= msgstart;
+            memmove(fdholder->inbuf->buf, fdholder->inbuf->buf + msgstart,
+                fdholder->inbuf->length - msgstart);
+            fdholder->inbuf->length -= msgstart;
             d->index -= msgstart;
         }
     }
@@ -4253,15 +4253,15 @@ process_input(struct ccnr_handle *h, int fd)
 static void
 process_internal_client_buffer(struct ccnr_handle *h)
 {
-    struct face *face = h->face0;
-    if (face == NULL)
+    struct fdholder *fdholder = h->face0;
+    if (fdholder == NULL)
         return;
-    face->inbuf = ccn_grab_buffered_output(h->internal_client);
-    if (face->inbuf == NULL)
+    fdholder->inbuf = ccn_grab_buffered_output(h->internal_client);
+    if (fdholder->inbuf == NULL)
         return;
-    ccnr_meter_bump(h, face->meter[FM_BYTI], face->inbuf->length);
-    process_input_buffer(h, face);
-    ccn_charbuf_destroy(&(face->inbuf));
+    ccnr_meter_bump(h, fdholder->meter[FM_BYTI], fdholder->inbuf->length);
+    process_input_buffer(h, fdholder);
+    ccn_charbuf_destroy(&(fdholder->inbuf));
 }
 
 /**
@@ -4269,7 +4269,7 @@ process_internal_client_buffer(struct ccnr_handle *h)
  * @returns -1 if error has been dealt with, or 0 to defer sending.
  */
 static int
-handle_send_error(struct ccnr_handle *h, int errnum, struct face *face,
+handle_send_error(struct ccnr_handle *h, int errnum, struct fdholder *fdholder,
                   const void *data, size_t size)
 {
     int res = -1;
@@ -4277,13 +4277,13 @@ handle_send_error(struct ccnr_handle *h, int errnum, struct face *face,
         res = 0;
     }
     else if (errnum == EPIPE) {
-        face->flags |= CCN_FACE_NOSEND;
-        face->outbufindex = 0;
-        ccn_charbuf_destroy(&face->outbuf);
+        fdholder->flags |= CCN_FACE_NOSEND;
+        fdholder->outbufindex = 0;
+        ccn_charbuf_destroy(&fdholder->outbuf);
     }
     else {
-        ccnr_msg(h, "send to face %u failed: %s (errno = %d)",
-                 face->faceid, strerror(errnum), errnum);
+        ccnr_msg(h, "send to fdholder %u failed: %s (errno = %d)",
+                 fdholder->faceid, strerror(errnum), errnum);
         if (errnum == EISCONN)
             res = 0;
     }
@@ -4291,82 +4291,82 @@ handle_send_error(struct ccnr_handle *h, int errnum, struct face *face,
 }
 
 static int
-sending_fd(struct ccnr_handle *h, struct face *face)
+sending_fd(struct ccnr_handle *h, struct fdholder *fdholder)
 {
-    struct face *out = NULL;
-    if (face->sendface == face->faceid)
-        return(face->recv_fd);
-    out = face_from_faceid(h, face->sendface);
+    struct fdholder *out = NULL;
+    if (fdholder->sendface == fdholder->faceid)
+        return(fdholder->recv_fd);
+    out = face_from_faceid(h, fdholder->sendface);
     if (out != NULL)
         return(out->recv_fd);
-    face->sendface = CCN_NOFACEID;
-    if (face->addr != NULL) {
-        switch (face->addr->sa_family) {
+    fdholder->sendface = CCN_NOFACEID;
+    if (fdholder->addr != NULL) {
+        switch (fdholder->addr->sa_family) {
             case AF_INET:
-                face->sendface = h->ipv4_faceid;
+                fdholder->sendface = h->ipv4_faceid;
                 break;
             case AF_INET6:
-                face->sendface = h->ipv6_faceid;
+                fdholder->sendface = h->ipv6_faceid;
                 break;
             default:
                 break;
         }
     }
-    out = face_from_faceid(h, face->sendface);
+    out = face_from_faceid(h, fdholder->sendface);
     if (out != NULL)
         return(out->recv_fd);
     return(-1);
 }
 
 /**
- * Send data to the face.
+ * Send data to the fdholder.
  *
- * No direct error result is provided; the face state is updated as needed.
+ * No direct error result is provided; the fdholder state is updated as needed.
  */
 void
 ccnr_send(struct ccnr_handle *h,
-          struct face *face,
+          struct fdholder *fdholder,
           const void *data, size_t size)
 {
     ssize_t res;
-    if ((face->flags & CCN_FACE_NOSEND) != 0)
+    if ((fdholder->flags & CCN_FACE_NOSEND) != 0)
         return;
-    face->surplus++;
-    if (face->outbuf != NULL) {
-        ccn_charbuf_append(face->outbuf, data, size);
+    fdholder->surplus++;
+    if (fdholder->outbuf != NULL) {
+        ccn_charbuf_append(fdholder->outbuf, data, size);
         return;
     }
-    if (face == h->face0) {
-        ccnr_meter_bump(h, face->meter[FM_BYTO], size);
+    if (fdholder == h->face0) {
+        ccnr_meter_bump(h, fdholder->meter[FM_BYTO], size);
         ccn_dispatch_message(h->internal_client, (void *)data, size);
         process_internal_client_buffer(h);
         return;
     }
-    if ((face->flags & CCN_FACE_DGRAM) == 0)
-        res = send(face->recv_fd, data, size, 0);
+    if ((fdholder->flags & CCN_FACE_DGRAM) == 0)
+        res = send(fdholder->recv_fd, data, size, 0);
     else
-        res = sendto(sending_fd(h, face), data, size, 0,
-                     face->addr, face->addrlen);
+        res = sendto(sending_fd(h, fdholder), data, size, 0,
+                     fdholder->addr, fdholder->addrlen);
     if (res > 0)
-        ccnr_meter_bump(h, face->meter[FM_BYTO], res);
+        ccnr_meter_bump(h, fdholder->meter[FM_BYTO], res);
     if (res == size)
         return;
     if (res == -1) {
-        res = handle_send_error(h, errno, face, data, size);
+        res = handle_send_error(h, errno, fdholder, data, size);
         if (res == -1)
             return;
     }
-    if ((face->flags & CCN_FACE_DGRAM) != 0) {
+    if ((fdholder->flags & CCN_FACE_DGRAM) != 0) {
         ccnr_msg(h, "sendto short");
         return;
     }
-    face->outbufindex = 0;
-    face->outbuf = ccn_charbuf_create();
-    if (face->outbuf == NULL) {
+    fdholder->outbufindex = 0;
+    fdholder->outbuf = ccn_charbuf_create();
+    if (fdholder->outbuf == NULL) {
         ccnr_msg(h, "do_write: %s", strerror(errno));
         return;
     }
-    ccn_charbuf_append(face->outbuf,
+    ccn_charbuf_append(fdholder->outbuf,
                        ((const unsigned char *)data) + res, size - res);
 }
 
@@ -4375,18 +4375,18 @@ do_deferred_write(struct ccnr_handle *h, int fd)
 {
     /* This only happens on connected sockets */
     ssize_t res;
-    struct face *face = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
-    if (face == NULL)
+    struct fdholder *fdholder = hashtb_lookup(h->faces_by_fd, &fd, sizeof(fd));
+    if (fdholder == NULL)
         return;
-    if (face->outbuf != NULL) {
-        ssize_t sendlen = face->outbuf->length - face->outbufindex;
+    if (fdholder->outbuf != NULL) {
+        ssize_t sendlen = fdholder->outbuf->length - fdholder->outbufindex;
         if (sendlen > 0) {
-            res = send(fd, face->outbuf->buf + face->outbufindex, sendlen, 0);
+            res = send(fd, fdholder->outbuf->buf + fdholder->outbufindex, sendlen, 0);
             if (res == -1) {
                 if (errno == EPIPE) {
-                    face->flags |= CCN_FACE_NOSEND;
-                    face->outbufindex = 0;
-                    ccn_charbuf_destroy(&face->outbuf);
+                    fdholder->flags |= CCN_FACE_NOSEND;
+                    fdholder->outbufindex = 0;
+                    ccn_charbuf_destroy(&fdholder->outbuf);
                     return;
                 }
                 ccnr_msg(h, "send: %s (errno = %d)", strerror(errno), errno);
@@ -4394,23 +4394,23 @@ do_deferred_write(struct ccnr_handle *h, int fd)
                 return;
             }
             if (res == sendlen) {
-                face->outbufindex = 0;
-                ccn_charbuf_destroy(&face->outbuf);
-                if ((face->flags & CCN_FACE_CLOSING) != 0)
+                fdholder->outbufindex = 0;
+                ccn_charbuf_destroy(&fdholder->outbuf);
+                if ((fdholder->flags & CCN_FACE_CLOSING) != 0)
                     shutdown_client_fd(h, fd);
                 return;
             }
-            face->outbufindex += res;
+            fdholder->outbufindex += res;
             return;
         }
-        face->outbufindex = 0;
-        ccn_charbuf_destroy(&face->outbuf);
+        fdholder->outbufindex = 0;
+        ccn_charbuf_destroy(&fdholder->outbuf);
     }
-    if ((face->flags & CCN_FACE_CLOSING) != 0)
+    if ((fdholder->flags & CCN_FACE_CLOSING) != 0)
         shutdown_client_fd(h, fd);
-    else if ((face->flags & CCN_FACE_CONNECTING) != 0) {
-        face->flags &= ~CCN_FACE_CONNECTING;
-        ccnr_face_status_change(h, face->faceid);
+    else if ((fdholder->flags & CCN_FACE_CONNECTING) != 0) {
+        fdholder->flags &= ~CCN_FACE_CONNECTING;
+        ccnr_face_status_change(h, fdholder->faceid);
     }
     else
         ccnr_msg(h, "ccnr:do_deferred_write: something fishy on %d", fd);
@@ -4436,14 +4436,14 @@ prepare_poll_fds(struct ccnr_handle *h)
     }
     for (i = 0, k = h->nfds, hashtb_start(h->faces_by_fd, e);
          i < k && e->data != NULL; hashtb_next(e)) {
-        struct face *face = e->data;
-        if (face->flags & CCN_FACE_MCAST)
+        struct fdholder *fdholder = e->data;
+        if (fdholder->flags & CCN_FACE_MCAST)
             j = i++;
         else
             j = --k;
-        h->fds[j].fd = face->recv_fd;
-        h->fds[j].events = ((face->flags & CCN_FACE_NORECV) == 0) ? POLLIN : 0;
-        if ((face->outbuf != NULL || (face->flags & CCN_FACE_CLOSING) != 0))
+        h->fds[j].fd = fdholder->recv_fd;
+        h->fds[j].events = ((fdholder->flags & CCN_FACE_NORECV) == 0) ? POLLIN : 0;
+        if ((fdholder->outbuf != NULL || (fdholder->flags & CCN_FACE_CLOSING) != 0))
             h->fds[j].events |= POLLOUT;
     }
     hashtb_end(e);
@@ -4585,7 +4585,7 @@ ccnr_listen_on_wildcards(struct ccnr_handle *h)
             for (a = addrinfo; a != NULL; a = a->ai_next) {
                 fd = socket(a->ai_family, SOCK_DGRAM, 0);
                 if (fd != -1) {
-                    struct face *face = NULL;
+                    struct fdholder *fdholder = NULL;
                     int yes = 1;
                     int rcvbuf = 0;
                     socklen_t rcvbuf_sz;
@@ -4599,17 +4599,17 @@ ccnr_listen_on_wildcards(struct ccnr_handle *h)
                         close(fd);
                         continue;
                     }
-                    face = record_connection(h, fd,
+                    fdholder = record_connection(h, fd,
                                              a->ai_addr, a->ai_addrlen,
                                              CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
-                    if (face == NULL) {
+                    if (fdholder == NULL) {
                         close(fd);
                         continue;
                     }
                     if (a->ai_family == AF_INET)
-                        h->ipv4_faceid = face->faceid;
+                        h->ipv4_faceid = fdholder->faceid;
                     else
-                        h->ipv6_faceid = face->faceid;
+                        h->ipv6_faceid = fdholder->faceid;
                     ccnr_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
                              af_name(a->ai_family), fd, rcvbuf);
                 }
@@ -4662,7 +4662,7 @@ ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
         for (a = addrinfo; a != NULL; a = a->ai_next) {
             fd = socket(a->ai_family, SOCK_DGRAM, 0);
             if (fd != -1) {
-                struct face *face = NULL;
+                struct fdholder *fdholder = NULL;
                 int yes = 1;
                 int rcvbuf = 0;
                 socklen_t rcvbuf_sz;
@@ -4676,17 +4676,17 @@ ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
                     close(fd);
                     continue;
                 }
-                face = record_connection(h, fd,
+                fdholder = record_connection(h, fd,
                                          a->ai_addr, a->ai_addrlen,
                                          CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
-                if (face == NULL) {
+                if (fdholder == NULL) {
                     close(fd);
                     continue;
                 }
                 if (a->ai_family == AF_INET)
-                    h->ipv4_faceid = face->faceid;
+                    h->ipv4_faceid = fdholder->faceid;
                 else
-                    h->ipv6_faceid = face->faceid;
+                    h->ipv6_faceid = fdholder->faceid;
                 ccnr_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
                              af_name(a->ai_family), fd, rcvbuf);
                 ok++;
@@ -4831,8 +4831,8 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->face_limit = 1024; /* soft limit */
     h->faces_by_faceid = calloc(h->face_limit, sizeof(h->faces_by_faceid[0]));
     param.finalize = &finalize_face;
-    h->faces_by_fd = hashtb_create(sizeof(struct face), &param);
-    h->dgram_faces = hashtb_create(sizeof(struct face), &param);
+    h->faces_by_fd = hashtb_create(sizeof(struct fdholder), &param);
+    h->dgram_faces = hashtb_create(sizeof(struct fdholder), &param);
     param.finalize = &finalize_content;
     h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     param.finalize = &finalize_nameprefix;
@@ -4909,12 +4909,12 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     /* XXX - need to bail if keystore is not OK. */
     ccnr_reseed(h);
     if (h->face0 == NULL) {
-        struct face *face;
-        face = calloc(1, sizeof(*face));
-        face->recv_fd = -1;
-        face->sendface = 0;
-        face->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
-        h->face0 = face;
+        struct fdholder *fdholder;
+        fdholder = calloc(1, sizeof(*fdholder));
+        fdholder->recv_fd = -1;
+        fdholder->sendface = 0;
+        fdholder->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
+        h->face0 = fdholder;
     }
     enroll_face(h, h->face0);
     fd = create_local_listener(h, sockname, 42);
@@ -4942,8 +4942,8 @@ ccnr_shutdown_listeners(struct ccnr_handle *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     for (hashtb_start(h->faces_by_fd, e); e->data != NULL;) {
-        struct face *face = e->data;
-        if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_PASSIVE)) != 0)
+        struct fdholder *fdholder = e->data;
+        if ((fdholder->flags & (CCN_FACE_MCAST | CCN_FACE_PASSIVE)) != 0)
             hashtb_delete(e);
         else
             hashtb_next(e);
