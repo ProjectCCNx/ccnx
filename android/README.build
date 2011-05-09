@@ -9,7 +9,7 @@ the top level directory before buildin here.
 
 Ccnd and the c-client library require OpenSSL library, which we need
 to include build ourselves, as there is no apparant way to use the
-included Android library.  As a result, we can use the latest 1.0.0a
+included Android library.  As a result, we can use the latest 1.0.0d
 library!
 
 You must set the environment variables ANDROID_SDK and ANDROID_NDK.
@@ -36,8 +36,8 @@ these steps:
   source directories.  There is no actual compiling done.
 
   IF YOU DO NOT HAVE AN INTERNET CONNECTION
-  You will need to download openssl-1.0.0a.tar.gz from 
-	http://www.openssl.org/source/openssl-1.0.0a.tar.gz
+  You will need to download openssl-1.0.0d.tar.gz from 
+	http://www.openssl.org/source/openssl-1.0.0d.tar.gz
   and put it in the directory external/downloads.
 
 - Build CCNx-Android-Services
