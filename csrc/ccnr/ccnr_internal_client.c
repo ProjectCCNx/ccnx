@@ -5,7 +5,7 @@
  * inspecting and controlling operation of the ccnr;
  * requests and responses themselves use ccn protocols.
  *
- * Part of ccnr - the CCNx Daemon.
+ * Part of ccnr -  CCNx Repository Daemon.
  *
  * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
  *
@@ -316,7 +316,7 @@ ccnr_internal_client_refresh(struct ccn_schedule *sched,
     return(microsec);
 }
 
-#define CCND_ID_TEMPL "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+#define CCNR_ID_TEMPL "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 static void
 ccnr_uri_listen(struct ccnr_handle *ccnr, const char *uri,
@@ -337,7 +337,7 @@ ccnr_uri_listen(struct ccnr_handle *ccnr, const char *uri,
     if (ccn_name_split(name, comps) < 0)
         abort();
     if (ccn_name_comp_get(name->buf, comps, 1, &comp, &comp_size) >= 0) {
-        if (comp_size == 32 && 0 == memcmp(comp, CCND_ID_TEMPL, 32)) {
+        if (comp_size == 32 && 0 == memcmp(comp, CCNR_ID_TEMPL, 32)) {
             /* Replace placeholder with our ccnd_id */
             offset = comp - name->buf;
             memcpy(name->buf + offset, ccnr->ccnd_id, 32);
@@ -391,17 +391,13 @@ ccnr_reg_ccnx_ccnrid(struct ccnr_handle *ccnr)
     ccn_charbuf_destroy(&uri);
 }
 
-#ifndef CCN_PATH_VAR_TMP
-#define CCN_PATH_VAR_TMP "/var/tmp"
-#endif
-
 /*
  * This is used to shroud the contents of the keystore, which mainly serves
  * to add integrity checking and defense against accidental misuse.
  * The file permissions serve for restricting access to the private keys.
  */
-#ifndef CCND_KEYSTORE_PASS
-#define CCND_KEYSTORE_PASS "\010\043\103\375\327\237\152\351\155"
+#ifndef CCNR_KEYSTORE_PASS
+#define CCNR_KEYSTORE_PASS "Th1s 1s n0t 8 g00d R3p0s1t0ry p8ssw0rd!"
 #endif
 
 int
@@ -422,42 +418,47 @@ ccnr_init_internal_keystore(struct ccnr_handle *ccnr)
         return(-1);
     temp = ccn_charbuf_create();
     cmd = ccn_charbuf_create();
-    dir = getenv("CCND_KEYSTORE_DIRECTORY");
-    if (dir != NULL && dir[0] == '/')
+    dir = getenv("CCNR_DIRECTORY");
+    if (dir != NULL && dir[0] != 0)
         ccn_charbuf_putf(temp, "%s/", dir);
     else
-        ccn_charbuf_putf(temp, CCN_PATH_VAR_TMP "/.ccnx-user%d/", (int)geteuid());
+        ccn_charbuf_putf(temp, "./");
     res = stat(ccn_charbuf_as_string(temp), &statbuf);
     if (res == -1) {
-        if (errno == ENOENT)
-            res = mkdir(ccn_charbuf_as_string(temp), 0700);
         if (res != 0) {
             culprit = temp;
             goto Finish;
         }
     }
     save = temp->length;
-    ccn_charbuf_putf(temp, ".ccnd_keystore_%s", ccnr->portstr);
+    ccn_charbuf_putf(temp, "ccnx_repository_keystore");
     keystore_path = strdup(ccn_charbuf_as_string(temp));
     res = stat(keystore_path, &statbuf);
     if (res == 0)
-        res = ccn_load_default_key(ccnr->internal_client, keystore_path, CCND_KEYSTORE_PASS);
+        res = ccn_load_default_key(ccnr->internal_client, keystore_path,
+                                   CCNR_KEYSTORE_PASS);
     if (res >= 0)
         goto Finish;
-    /* No stored keystore that we can access; create one. */
+    if (1) {
+        /* skip trying to create keystore right now */
+        ccnr_msg(ccnr, "Repo not initialized");
+        res = -1;
+        goto Bail;
+    }
+    /* No stored keystore that we can access. Create one if we can.*/
     temp->length = save;
     ccn_charbuf_putf(temp, "p");
     passfile = fopen(ccn_charbuf_as_string(temp), "wb");
-    fprintf(passfile, "%s", CCND_KEYSTORE_PASS);
+    fprintf(passfile, "%s", CCNR_KEYSTORE_PASS);
     fclose(passfile);
-    ccn_charbuf_putf(cmd, "%s-init-keystore-helper %s",
+    ccn_charbuf_putf(cmd, "ccnd-init-keystore-helper %s",
                      ccnr->progname, keystore_path);
     res = system(ccn_charbuf_as_string(cmd));
     if (res != 0) {
         culprit = cmd;
         goto Finish;
     }
-    res = ccn_load_default_key(ccnr->internal_client, keystore_path, CCND_KEYSTORE_PASS);
+    res = ccn_load_default_key(ccnr->internal_client, keystore_path, CCNR_KEYSTORE_PASS);
 Finish:
     if (culprit != NULL) {
         ccnr_msg(ccnr, "%s: %s:\n", ccn_charbuf_as_string(culprit), strerror(errno));
@@ -467,6 +468,7 @@ Finish:
     if (res != 0)
         abort();
     memcpy(ccnr->ccnd_id, sp.pubid, sizeof(ccnr->ccnd_id));
+Bail:
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&cmd);
     if (keystore_path != NULL)
@@ -602,30 +604,12 @@ ccnr_internal_client_start(struct ccnr_handle *ccnr)
         ccn_destroy(&ccnr->internal_client);
         return(-1);
     }
-#if (CCND_PING+0)
-    ccnr_uri_listen(ccnr, "ccnx:/ccnx/ping",
-                    &ccnr_answer_req, OP_PING);
-    ccnr_uri_listen(ccnr, "ccnx:/ccnx/" CCND_ID_TEMPL "/ping",
-                    &ccnr_answer_req, OP_PING);
-#endif
-    ccnr_uri_listen(ccnr, "ccnx:/ccnx/" CCND_ID_TEMPL "/newface",
-                    &ccnr_answer_req, OP_NEWFACE + MUST_VERIFY1);
-    ccnr_uri_listen(ccnr, "ccnx:/ccnx/" CCND_ID_TEMPL "/destroyface",
-                    &ccnr_answer_req, OP_DESTROYFACE + MUST_VERIFY1);
-    ccnr_uri_listen(ccnr, "ccnx:/ccnx/" CCND_ID_TEMPL "/prefixreg",
-                    &ccnr_answer_req, OP_PREFIXREG + MUST_VERIFY1);
-    ccnr_uri_listen(ccnr, "ccnx:/ccnx/" CCND_ID_TEMPL "/selfreg",
-                    &ccnr_answer_req, OP_SELFREG + MUST_VERIFY1);
-    ccnr_uri_listen(ccnr, "ccnx:/ccnx/" CCND_ID_TEMPL "/unreg",
-                    &ccnr_answer_req, OP_UNREG + MUST_VERIFY1);
-    ccnr_uri_listen(ccnr, "ccnx:/ccnx/" CCND_ID_TEMPL "/" CCND_NOTICE_NAME,
-                    &ccnr_answer_req, OP_NOTICE);
-    ccnr_uri_listen(ccnr, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnr",
+    ccnr_uri_listen(ccnr, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository",
                     &ccnr_answer_req, OP_SERVICE);
-    ccnr_uri_listen(ccnr, "ccnx:/%C1.M.S.neighborhood",
+    ccnr_uri_listen(ccnr, "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository",
                     &ccnr_answer_req, OP_SERVICE);
     ccnr_reg_ccnx_ccnrid(ccnr);
-    ccnr_reg_uri(ccnr, "ccnx:/%C1.M.S.localhost",
+    ccnr_reg_uri(ccnr, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository",
                  0, /* special faceid for internal client */
                  (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |

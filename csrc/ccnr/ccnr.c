@@ -4906,6 +4906,7 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
         h->appnonce = &ccnr_append_debug_nonce;
     /* Do keystore setup early, it takes a while the first time */
     ccnr_init_internal_keystore(h);
+    /* XXX - need to bail if keystore is not OK. */
     ccnr_reseed(h);
     if (h->face0 == NULL) {
         struct face *face;
