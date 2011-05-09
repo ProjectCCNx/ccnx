@@ -83,7 +83,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 			keystoreObject = 
 				VersioningProfile.getFirstBlockOfLatestVersion(_keystoreName, null, _publisher, 
 																SystemConfiguration.getDefaultTimeout(), 
-																new ContentObject.SimpleVerifier(_publisher, this),  _handle);
+																new ContentObject.SimpleVerifier(_publisher, this),  handle());
 			if (null == keystoreObject) {
 				Log.info("Creating new CCN key store..." + _keystoreName);
 				keyStoreInfo = createKeyStore();	
@@ -96,7 +96,7 @@ public class NetworkKeyManager extends BasicKeyManager {
 			CCNVersionedInputStream in = null;
 			Log.info("Loading CCN key store from " + _keystoreName + "...");
 			try {
-				in = new CCNVersionedInputStream(keystoreObject, null, _handle);
+				in = new CCNVersionedInputStream(keystoreObject, null, handle());
 				KeyStore keyStore = readKeyStore(in);
 				keyStoreInfo = new KeyStoreInfo(_keystoreName.toURIString(), keyStore, in.getVersion());
 			} catch (IOException e) {
