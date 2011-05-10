@@ -2320,7 +2320,7 @@ register_new_face(struct ccnd_handle *h, struct face *face)
         ccnd_face_status_change(h, face->faceid);
         if (h->flood && h->autoreg != NULL && (face->flags & CCN_FACE_GG) == 0)
             ccnd_reg_uri_list(h, h->autoreg, face->faceid,
-                              CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
+                              CCN_FORW_CAPTURE_OK | CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
                               0x7FFFFFFF);
         ccn_link_state_init(h, face);
     }
@@ -2845,8 +2845,6 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     unsigned moreflags;
     unsigned lastfaceid;
     unsigned namespace_flags;
-    /* tap_or_last flag bit is used only in this procedure */
-    unsigned tap_or_last = (1U << 31);
 
     x = npe->forward_to;
     if (x == NULL)
@@ -2861,9 +2859,8 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
         for (f = p->forwarding; f != NULL; f = f->next) {
             if (face_from_faceid(h, f->faceid) == NULL)
                 continue;
-            tflags = f->flags;
-            if (tflags & (CCN_FORW_TAP | CCN_FORW_LAST))
-                tflags |= tap_or_last;
+            /* The sense of this flag needs to be inverted for this test */
+            tflags = f->flags ^ CCN_FORW_CAPTURE_OK;
             if ((tflags & wantflags) == wantflags) {
                 if (h->debug & 32)
                     ccnd_msg(h, "fwd.%d adding %u", __LINE__, f->faceid);
@@ -2878,7 +2875,7 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
             }
             namespace_flags |= f->flags;
             if ((f->flags & CCN_FORW_CAPTURE) != 0)
-                moreflags |= tap_or_last;
+                moreflags |= CCN_FORW_CAPTURE_OK;
         }
         wantflags |= moreflags;
     }
