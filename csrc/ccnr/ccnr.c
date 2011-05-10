@@ -77,9 +77,6 @@ static int ccn_stuff_interest(struct ccnr_handle *h,
                               struct fdholder *fdholder, struct ccn_charbuf *c);
 static void do_deferred_write(struct ccnr_handle *h, int fd);
 static void clean_needed(struct ccnr_handle *h);
-static struct fdholder *get_dgram_source(struct ccnr_handle *h, struct fdholder *fdholder,
-                                     struct sockaddr *addr, socklen_t addrlen,
-                                     int why);
 static void content_skiplist_insert(struct ccnr_handle *h,
                                     struct content_entry *content);
 static void content_skiplist_remove(struct ccnr_handle *h,
@@ -203,10 +200,10 @@ indexbuf_release(struct ccnr_handle *h, struct ccn_indexbuf *c)
 static struct fdholder *
 fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
 {
-    unsigned slot = filedesc & MAXFACES;
+    unsigned slot = filedesc;
     struct fdholder *fdholder = NULL;
     if (slot < h->face_limit) {
-        fdholder = h->faces_by_faceid[slot];
+        fdholder = h->fdholder_by_fd[slot];
         if (fdholder != NULL && fdholder->filedesc != filedesc)
             fdholder = NULL;
     }
@@ -229,32 +226,26 @@ ccnr_fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
 static int
 enroll_face(struct ccnr_handle *h, struct fdholder *fdholder)
 {
-    unsigned i;
+    unsigned i = fdholder->filedesc;
     unsigned n = h->face_limit;
-    struct fdholder **a = h->faces_by_faceid;
-    for (i = h->face_rover; i < n; i++)
-        if (a[i] == NULL) goto use_i;
-    for (i = 0; i < n; i++)
-        if (a[i] == NULL) {
-            /* bump gen only if second pass succeeds */
-            h->face_gen += MAXFACES + 1;
-            goto use_i;
-        }
-    i = (n + 1) * 3 / 2;
-    if (i > MAXFACES) i = MAXFACES;
-    if (i <= n)
-        return(-1); /* overflow */
-    a = realloc(a, i * sizeof(struct fdholder *));
+    struct fdholder **a = h->fdholder_by_fd;
+	if (i < n && a[i] == NULL) {
+		if (a[i] == NULL)
+			goto use_i;
+		abort();
+	}
+	if (i > 65535)
+		abort();
+    a = realloc(a, (i + 1) * sizeof(struct fdholder *));
     if (a == NULL)
         return(-1); /* ENOMEM */
-    h->face_limit = i;
-    while (--i > n)
-        a[i] = NULL;
-    h->faces_by_faceid = a;
+    h->face_limit = i + 1;
+    while (n < h->face_limit)
+        a[n++] = NULL;
+    h->fdholder_by_fd = a;
 use_i:
     a[i] = fdholder;
-    h->face_rover = i + 1;
-    fdholder->filedesc = i | h->face_gen;
+    fdholder->filedesc = i;
     fdholder->meter[FM_BYTI] = ccnr_meter_create(h, "bytein");
     fdholder->meter[FM_BYTO] = ccnr_meter_create(h, "byteout");
     fdholder->meter[FM_INTI] = ccnr_meter_create(h, "intrin");
@@ -361,32 +352,23 @@ finalize_face(struct hashtb_enumerator *e)
 {
     struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
     struct fdholder *fdholder = e->data;
-    unsigned i = fdholder->filedesc & MAXFACES;
+    unsigned i = fdholder->filedesc;
     enum cq_delay_class c;
-    int recycle = 0;
     int m;
     
-    if (i < h->face_limit && h->faces_by_faceid[i] == fdholder) {
+    if (i < h->face_limit && h->fdholder_by_fd[i] == fdholder) {
         if ((fdholder->flags & CCN_FACE_UNDECIDED) == 0)
             ccnr_face_status_change(h, fdholder->filedesc);
         if (e->ht == h->faces_by_fd)
             ccnr_close_fd(h, fdholder->filedesc, &fdholder->recv_fd);
-        h->faces_by_faceid[i] = NULL;
-        if ((fdholder->flags & CCN_FACE_UNDECIDED) != 0 &&
-              fdholder->filedesc == ((h->face_rover - 1) | h->face_gen)) {
-            /* stream connection with no ccn traffic - safe to reuse */
-            recycle = 1;
-            h->face_rover--;
-        }
+        h->fdholder_by_fd[i] = NULL;
         for (c = 0; c < CCN_CQ_N; c++)
             content_queue_destroy(h, &(fdholder->q[c]));
-        ccnr_msg(h, "%s fdholder id %u (slot %u)",
-            recycle ? "recycling" : "releasing",
-            fdholder->filedesc, fdholder->filedesc & MAXFACES);
+        ccnr_msg(h, "Closing fd %u", fdholder->filedesc);
         /* Don't free fdholder->addr; storage is managed by hash table */
     }
     else if (fdholder->filedesc != CCN_NOFACEID)
-        ccnr_msg(h, "orphaned fdholder %u", fdholder->filedesc);
+        ccnr_msg(h, "orphaned fd %u", fdholder->filedesc);
     for (m = 0; m < CCND_FACE_METER_N; m++)
         ccnr_meter_destroy(&fdholder->meter[m]);
 }
@@ -895,6 +877,7 @@ record_connection(struct ccnr_handle *h, int fd,
     if (hashtb_seek(e, &fd, sizeof(fd), wholen) == HT_NEW_ENTRY) {
         fdholder = e->data;
         fdholder->recv_fd = fd;
+		fdholder->filedesc = fd;
         fdholder->sendface = CCN_NOFACEID;
         fdholder->addrlen = e->extsize;
         addrspace = ((unsigned char *)e->key) + e->keysize;
@@ -3555,47 +3538,6 @@ scrub_sockaddr(struct sockaddr *addr, socklen_t addrlen,
     return((struct sockaddr *)dst);
 }
 
-static struct fdholder *
-get_dgram_source(struct ccnr_handle *h, struct fdholder *fdholder,
-                 struct sockaddr *addr, socklen_t addrlen, int why)
-{
-    struct fdholder *source = NULL;
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    struct sockaddr_in6 space;
-    int res;
-    if ((fdholder->flags & CCN_FACE_DGRAM) == 0)
-        return(fdholder);
-    if ((fdholder->flags & CCN_FACE_MCAST) != 0)
-        return(fdholder);
-    hashtb_start(h->dgram_faces, e);
-    res = hashtb_seek(e, scrub_sockaddr(addr, addrlen, &space), addrlen, 0);
-    if (res >= 0) {
-        source = e->data;
-        source->recvcount++;
-        if (source->addr == NULL) {
-            source->addr = e->key;
-            source->addrlen = e->keysize;
-            source->recv_fd = fdholder->recv_fd;
-            source->sendface = fdholder->filedesc;
-            init_face_flags(h, source, CCN_FACE_DGRAM);
-            if (why == 1 && (source->flags & CCN_FACE_LOOPBACK) != 0)
-                source->flags |= CCN_FACE_GG;
-            res = enroll_face(h, source);
-            if (res == -1) {
-                hashtb_delete(e);
-                source = NULL;
-            }
-            else {
-                ccnr_new_face_msg(h, source);
-                reap_needed(h, CCN_INTEREST_LIFETIME_MICROSEC);
-            }
-        }
-    }
-    hashtb_end(e);
-    return(source);
-}
-
 /**
  * Break up data in a face's input buffer buffer into individual messages,
  * and call process_input_message on each one.
@@ -3687,7 +3629,7 @@ process_input(struct ccnr_handle *h, int fd)
     else if (res == 0 && (fdholder->flags & CCN_FACE_DGRAM) == 0)
         shutdown_client_fd(h, fd);
     else {
-        source = get_dgram_source(h, fdholder, addr, addrlen, (res == 1) ? 1 : 2);
+        source = fdholder;
         ccnr_meter_bump(h, source->meter[FM_BYTI], res);
         source->recvcount++;
         source->surplus = 0; // XXX - we don't actually use this, except for some obscure messages.
@@ -3775,7 +3717,7 @@ handle_send_error(struct ccnr_handle *h, int errnum, struct fdholder *fdholder,
         ccn_charbuf_destroy(&fdholder->outbuf);
     }
     else {
-        ccnr_msg(h, "send to fdholder %u failed: %s (errno = %d)",
+        ccnr_msg(h, "send to fd %u failed: %s (errno = %d)",
                  fdholder->filedesc, strerror(errnum), errnum);
         if (errnum == EISCONN)
             res = 0;
@@ -3786,29 +3728,7 @@ handle_send_error(struct ccnr_handle *h, int errnum, struct fdholder *fdholder,
 static int
 sending_fd(struct ccnr_handle *h, struct fdholder *fdholder)
 {
-    struct fdholder *out = NULL;
-    if (fdholder->sendface == fdholder->filedesc)
-        return(fdholder->recv_fd);
-    out = fdholder_from_fd(h, fdholder->sendface);
-    if (out != NULL)
-        return(out->recv_fd);
-    fdholder->sendface = CCN_NOFACEID;
-    if (fdholder->addr != NULL) {
-        switch (fdholder->addr->sa_family) {
-            case AF_INET:
-                fdholder->sendface = h->ipv4_faceid;
-                break;
-            case AF_INET6:
-                fdholder->sendface = h->ipv6_faceid;
-                break;
-            default:
-                break;
-        }
-    }
-    out = fdholder_from_fd(h, fdholder->sendface);
-    if (out != NULL)
-        return(out->recv_fd);
-    return(-1);
+	return(fdholder->filedesc);
 }
 
 /**
@@ -4069,44 +3989,12 @@ ccnr_listen_on_wildcards(struct ccnr_handle *h)
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *a;
     
-    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
     for (whichpf = 0; whichpf < 2; whichpf++) {
         hints.ai_family = whichpf ? PF_INET6 : PF_INET;
         res = getaddrinfo(NULL, h->portstr, &hints, &addrinfo);
         if (res == 0) {
-            for (a = addrinfo; a != NULL; a = a->ai_next) {
-                fd = socket(a->ai_family, SOCK_DGRAM, 0);
-                if (fd != -1) {
-                    struct fdholder *fdholder = NULL;
-                    int yes = 1;
-                    int rcvbuf = 0;
-                    socklen_t rcvbuf_sz;
-                    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-                    rcvbuf_sz = sizeof(rcvbuf);
-                    getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
-                    if (a->ai_family == AF_INET6)
-                        ccnr_setsockopt_v6only(h, fd);
-                    res = bind(fd, a->ai_addr, a->ai_addrlen);
-                    if (res != 0) {
-                        close(fd);
-                        continue;
-                    }
-                    fdholder = record_connection(h, fd,
-                                             a->ai_addr, a->ai_addrlen,
-                                             CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
-                    if (fdholder == NULL) {
-                        close(fd);
-                        continue;
-                    }
-                    if (a->ai_family == AF_INET)
-                        h->ipv4_faceid = fdholder->filedesc;
-                    else
-                        h->ipv6_faceid = fdholder->filedesc;
-                    ccnr_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
-                             af_name(a->ai_family), fd, rcvbuf);
-                }
-            }
             for (a = addrinfo; a != NULL; a = a->ai_next) {
                 fd = socket(a->ai_family, SOCK_STREAM, 0);
                 if (fd != -1) {
@@ -4152,39 +4040,6 @@ ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
     hints.ai_flags = AI_PASSIVE;
     res = getaddrinfo(addr, h->portstr, &hints, &addrinfo);
     if (res == 0) {
-        for (a = addrinfo; a != NULL; a = a->ai_next) {
-            fd = socket(a->ai_family, SOCK_DGRAM, 0);
-            if (fd != -1) {
-                struct fdholder *fdholder = NULL;
-                int yes = 1;
-                int rcvbuf = 0;
-                socklen_t rcvbuf_sz;
-                setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-                rcvbuf_sz = sizeof(rcvbuf);
-                getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &rcvbuf_sz);
-                if (a->ai_family == AF_INET6)
-                    ccnr_setsockopt_v6only(h, fd);
-                res = bind(fd, a->ai_addr, a->ai_addrlen);
-                if (res != 0) {
-                    close(fd);
-                    continue;
-                }
-                fdholder = record_connection(h, fd,
-                                         a->ai_addr, a->ai_addrlen,
-                                         CCN_FACE_DGRAM | CCN_FACE_PASSIVE);
-                if (fdholder == NULL) {
-                    close(fd);
-                    continue;
-                }
-                if (a->ai_family == AF_INET)
-                    h->ipv4_faceid = fdholder->filedesc;
-                else
-                    h->ipv6_faceid = fdholder->filedesc;
-                ccnr_msg(h, "accepting %s datagrams on fd %d rcvbuf %d",
-                             af_name(a->ai_family), fd, rcvbuf);
-                ok++;
-            }
-        }
         for (a = addrinfo; a != NULL; a = a->ai_next) {
             fd = socket(a->ai_family, SOCK_STREAM, 0);
             if (fd != -1) {
@@ -4322,7 +4177,7 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->skiplinks = ccn_indexbuf_create();
     param.finalize_data = h;
     h->face_limit = 1024; /* soft limit */
-    h->faces_by_faceid = calloc(h->face_limit, sizeof(h->faces_by_faceid[0]));
+    h->fdholder_by_fd = calloc(h->face_limit, sizeof(h->fdholder_by_fd[0]));
     param.finalize = &finalize_face;
     h->faces_by_fd = hashtb_create(sizeof(struct fdholder), &param);
     h->dgram_faces = hashtb_create(sizeof(struct fdholder), &param);
@@ -4355,10 +4210,10 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     }
     else
         h->debug = 1;
-    portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
-    if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
-        portstr = CCN_DEFAULT_UNICAST_PORT;
-    h->portstr = portstr;
+    // portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
+    // if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
+        // portstr = CCN_DEFAULT_UNICAST_PORT;
+    h->portstr = "8008"; // XXX - make configurable.
     entrylimit = getenv("CCND_CAP");
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
@@ -4397,7 +4252,6 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
         ccnr_msg(h, "CCND_LISTEN_ON=%s", listen_on);
     // if (h->debug & 256)
         h->appnonce = &ccnr_append_debug_nonce;
-    /* Do keystore setup early, it takes a while the first time */
     ccnr_init_internal_keystore(h);
     /* XXX - need to bail if keystore is not OK. */
     ccnr_reseed(h);
@@ -4410,13 +4264,6 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
         h->face0 = fdholder;
     }
     enroll_face(h, h->face0);
-    fd = create_local_listener(h, sockname, 42);
-    if (fd == -1)
-        ccnr_msg(h, "%s: %s", sockname, strerror(errno));
-    else
-        ccnr_msg(h, "listening on %s", sockname);
-    h->flood = (h->autoreg != NULL);
-    h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
     ccnr_listen_on(h, listen_on);
     clean_needed(h);
     age_forwarding_needed(h);
@@ -4467,9 +4314,9 @@ ccnr_destroy(struct ccnr_handle **pccnr)
         h->fds = NULL;
         h->nfds = 0;
     }
-    if (h->faces_by_faceid != NULL) {
-        free(h->faces_by_faceid);
-        h->faces_by_faceid = NULL;
+    if (h->fdholder_by_fd != NULL) {
+        free(h->fdholder_by_fd);
+        h->fdholder_by_fd = NULL;
         h->face_limit = h->face_gen = 0;
     }
     if (h->content_by_accession != NULL) {

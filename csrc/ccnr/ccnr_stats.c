@@ -203,7 +203,7 @@ ccnr_collect_stats(struct ccnr_handle *h, struct ccnr_stats *ans)
     hashtb_end(e);
     /* Do a consistency check on pending interest counts */
     for (sum = 0, i = 0; i < h->face_limit; i++) {
-        struct fdholder *fdholder = h->faces_by_faceid[i];
+        struct fdholder *fdholder = h->fdholder_by_fd[i];
         if (fdholder != NULL)
             sum += fdholder->pending_interests;
     }
@@ -227,7 +227,7 @@ collect_faces_html(struct ccnr_handle *h, struct ccn_charbuf *b)
     ccn_charbuf_putf(b, "<h4>Faces</h4>" NL);
     ccn_charbuf_putf(b, "<ul>");
     for (i = 0; i < h->face_limit; i++) {
-        struct fdholder *fdholder = h->faces_by_faceid[i];
+        struct fdholder *fdholder = h->fdholder_by_fd[i];
         if (fdholder != NULL && (fdholder->flags & CCN_FACE_UNDECIDED) == 0) {
             ccn_charbuf_putf(b, " <li>");
             ccn_charbuf_putf(b, "<b>fdholder:</b> %u <b>flags:</b> 0x%x",
@@ -279,7 +279,7 @@ collect_face_meter_html(struct ccnr_handle *h, struct ccn_charbuf *b)
                         " <td>recv data/intr sent</td>\t"
                         " <td>sent data/intr recv</td></tr>" NL);
     for (i = 0; i < h->face_limit; i++) {
-        struct fdholder *fdholder = h->faces_by_faceid[i];
+        struct fdholder *fdholder = h->fdholder_by_fd[i];
         if (fdholder != NULL && (fdholder->flags & (CCN_FACE_UNDECIDED|CCN_FACE_PASSIVE)) == 0) {
             ccn_charbuf_putf(b, " <tr>");
             ccn_charbuf_putf(b, "<td><b>fdholder:</b> %u</td>\t",
@@ -460,7 +460,7 @@ collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
     nodebuf = ccn_charbuf_create();
     ccn_charbuf_putf(b, "<faces>");
     for (i = 0; i < h->face_limit; i++) {
-        struct fdholder *fdholder = h->faces_by_faceid[i];
+        struct fdholder *fdholder = h->fdholder_by_fd[i];
         if (fdholder != NULL && (fdholder->flags & CCN_FACE_UNDECIDED) == 0) {
             ccn_charbuf_putf(b, "<fdholder>");
             ccn_charbuf_putf(b,

@@ -77,14 +77,12 @@ struct ccnr_handle {
     unsigned face_gen;              /**< filedesc generation number */
     unsigned face_rover;            /**< for filedesc allocation */
     unsigned face_limit;            /**< current number of fdholder slots */
-    struct fdholder **faces_by_faceid;  /**< array with face_limit elements */
+    struct fdholder **fdholder_by_fd;  /**< array with face_limit elements */
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
     struct ccn_scheduled_event *age_forwarding;
     const char *portstr;            /**< "main" port number */
-    unsigned ipv4_faceid;           /**< wildcard IPv4, bound to port */
-    unsigned ipv6_faceid;           /**< wildcard IPv6, bound to port */
     nfds_t nfds;                    /**< number of entries in fds array */
     struct pollfd *fds;             /**< used for poll system call */
     struct ccn_gettime ticktock;    /**< our time generator */
@@ -145,16 +143,6 @@ struct ccnr_handle {
                                     /**< pluggable nonce generation */
 };
 
-/**
- * Each fdholder is referenced by a number, the filedesc.  The low-order
- * bits (under the MAXFACES) constitute a slot number that is
- * unique (for this ccnr) among the faces that are alive at a given time.
- * The rest of the bits form a generation number that make the
- * entire filedesc unique over time, even for faces that are defunct.
- */
-#define FACESLOTBITS 18
-#define MAXFACES ((1U << FACESLOTBITS) - 1)
-
 struct content_queue {
     unsigned burst_nsec;             /**< nsec per KByte, limits burst rate */
     unsigned min_usec;               /**< minimum delay for this queue */
@@ -186,7 +174,7 @@ enum ccnr_face_meter_index {
 };
 
 /**
- * One of our active faces
+ * Each fdholder is referenced by its file descriptor.
  */
 struct fdholder {
     int recv_fd;                /**< socket for receiving */
@@ -373,14 +361,6 @@ void ccnr_internal_client_stop(struct ccnr_handle *);
  */
 #define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/KEY"
 #define CCNDID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository/KEY"
-
-/*
- * The internal client calls this with the argument portion ARG of
- * a prefix-unregistration request (/ccnx/CCNDID/unreg/ARG)
- */
-int ccnr_req_unreg(struct ccnr_handle *h,
-                   const unsigned char *msg, size_t size,
-                   struct ccn_charbuf *reply_body);
 
 int ccnr_reg_uri(struct ccnr_handle *h,
                  const char *uri,

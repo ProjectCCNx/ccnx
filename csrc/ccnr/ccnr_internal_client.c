@@ -54,8 +54,6 @@
 #define CCND_PING 1
 #endif
 
-static void ccnr_start_notice(struct ccnr_handle *ccnr);
-
 static struct ccn_charbuf *
 ccnr_init_service_ccnb(struct ccnr_handle *ccnr, const char *baseuri, int freshness)
 {
@@ -527,39 +525,6 @@ ccnr_face_status_change(struct ccnr_handle *ccnr, unsigned filedesc)
                                                    ccnr_notice_push,
                                                    NULL, 0);
     }
-}
-
-static void
-ccnr_start_notice(struct ccnr_handle *ccnr)
-{
-    struct ccn *h = ccnr->internal_client;
-    struct ccn_charbuf *name = NULL;
-    struct fdholder *fdholder = NULL;
-    int i;
-    
-    if (h == NULL)
-        return;
-    if (ccnr->notice != NULL)
-        return;
-    if (ccnr->chface != NULL) {
-        /* Probably should not happen. */
-        ccnr_msg(ccnr, "ccnr_internal_client.c:%d Huh?", __LINE__);
-        ccn_indexbuf_destroy(&ccnr->chface);
-    }
-    name = ccn_charbuf_create();
-    ccn_name_from_uri(name, "ccnx:/ccnx");
-    ccn_name_append(name, ccnr->ccnd_id, 32);
-    ccn_name_append_str(name, CCND_NOTICE_NAME);
-    ccnr->notice = ccn_seqw_create(h, name);
-    ccnr->chface = ccn_indexbuf_create();
-    for (i = 0; i < ccnr->face_limit; i++) {
-        fdholder = ccnr->faces_by_faceid[i];
-        if (fdholder != NULL)
-            ccn_indexbuf_set_insert(ccnr->chface, fdholder->filedesc);
-    }
-    if (ccnr->chface->n > 0)
-        ccnr_face_status_change(ccnr, ccnr->chface->buf[0]);
-    ccn_charbuf_destroy(&name);
 }
 
 int
