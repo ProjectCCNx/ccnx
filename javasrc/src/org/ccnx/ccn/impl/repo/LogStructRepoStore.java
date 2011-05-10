@@ -658,15 +658,18 @@ public class LogStructRepoStore extends RepositoryStoreBase implements Repositor
 	synchronized public boolean bulkImport(String name) throws RepositoryException {
 		if (name.contains(UserConfiguration.FILE_SEP))
 			throw new RepositoryException("Bulk import data can not contain pathnames");
-		File file = new File(_repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR + UserConfiguration.FILE_SEP + name);
-		if (!file.exists()) {		
-			// Is this due to a reexpressed interest for bulk import already in progress?
-			if (_bulkImportInProgress.containsKey(name))
-					return false;		
-			throw new RepositoryException("File does not exist: " + file);
+		File file;
+		synchronized (_bulkImportInProgress) {
+			file = new File(_repositoryRoot + UserConfiguration.FILE_SEP + LogStructRepoStoreProfile.REPO_IMPORT_DIR + UserConfiguration.FILE_SEP + name);
+			if (!file.exists()) {		
+				// Is this due to a reexpressed interest for bulk import already in progress?
+				if (_bulkImportInProgress.containsKey(name))
+						return false;		
+				throw new RepositoryException("File does not exist: " + file);
+			}
+			
+			_bulkImportInProgress.put(name, name);
 		}
-		
-		_bulkImportInProgress.put(name, name);
 		_currentFileIndex++;
 		File repoFile = new File(_repositoryFile, LogStructRepoStoreProfile.CONTENT_FILE_PREFIX + _currentFileIndex);
 		if (!file.renameTo(repoFile))

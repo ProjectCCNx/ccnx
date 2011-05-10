@@ -62,7 +62,7 @@ public class RepositoryPolicyHandler {
 				ContentName.fromNative(RepositoryStore.REPO_NAMESPACE + "/" + pxml._localName + "/" + RepositoryStore.REPO_POLICY));
 		if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 			Log.info(Log.FAC_REPO, "REPO: got policy update, global name {0} local name {1}, saving to {2}", policy.getGlobalPrefix(), policy.getLocalName(), policyName);
-		server.resetNameSpaceFromHandler();
+		server.resetNamespaceFromHandler();
 		
 		// TODO need to update repository files from what we have (probably?)
 		//ContentObject policyCo = new ContentObject(policyName, co.signedInfo(), co.content(), co.signature());

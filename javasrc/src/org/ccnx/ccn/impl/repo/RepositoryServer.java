@@ -75,11 +75,12 @@ public class RepositoryServer implements CCNStatistics {
 				+ PrefixRegistrationManager.CCN_FORW_TAP;
 	private RepositoryStore _repo = null;
 	private CCNHandle _handle = null;
-	private ArrayList<ContentName> _repoFilters = new ArrayList<ContentName>();
+	private ArrayList<ContentName> _currentNamespace = new ArrayList<ContentName>();
 	private ArrayList<RepositoryDataListener> _currentListeners = new ArrayList<RepositoryDataListener>();
 	private Exclude _markerFilter;
 	private CCNWriter _writer;
-	private boolean _pendingNameSpaceChange = false;
+	private boolean _pendingNamespaceChange = false;
+	private Object _pendingNamespaceChangeLock = new Object();
 	private int _windowSize = SystemConfiguration.PIPELINE_SIZE;
 	private int _ephemeralFreshness = FRESHNESS;
 	private RepositoryDataHandler _dataHandler;
@@ -99,30 +100,45 @@ public class RepositoryServer implements CCNStatistics {
 
 		public void run() {
 			long currentTime = System.currentTimeMillis();
+			boolean changeNamespace = false;
 			synchronized (_currentListeners) {
 				if (_currentListeners.size() > 0) {
 					Iterator<RepositoryDataListener> iterator = _currentListeners.iterator();
 					while (iterator.hasNext()) {
 						RepositoryDataListener listener = iterator.next();
 						if ((currentTime - listener.getTimer()) > SystemConfiguration.MAX_TIMEOUT) {
-							synchronized(_repoFilters) {
-								listener.cancelInterests();
-								iterator.remove();
-							}
+							listener.cancelInterests();
+							iterator.remove();
 						}
 					}
 				}
 			
-				if (_currentListeners.size() == 0 && _pendingNameSpaceChange) {
-					if( Log.isLoggable(Log.FAC_REPO, Level.FINER) )
-						Log.finer(Log.FAC_REPO, "InterestTimer - resetting nameSpace");
-					try {
-						resetNameSpace();
-					} catch (IOException e) {
-						Log.logStackTrace(Level.WARNING, e);
-						e.printStackTrace();
+				synchronized (_pendingNamespaceChangeLock) {
+					if (_currentListeners.size() == 0 && _pendingNamespaceChange) {
+						changeNamespace = true;
 					}
-					_pendingNameSpaceChange = false;
+				}
+			}
+			
+			// WARNING - we can't reset the name space while holding _currentListeners because
+			// resetNamespace can cause us to do an unregisterFilter which waits for interest handlers
+			// to complete before continuing, but we can have an interest handler that arrives after we
+			// grab _currentListeners and which then stalls waiting to get _currentListeners and therefore
+			// causes deadlocks. This whole area should probably be examined for other potential similar
+			// deadlocks. Note that we don't need to hold _currentListeners here because nobody is allowed
+			// to add to it while we have a pendingNamespaceChange.
+			//
+			// The only reason that this code didn't deadlock before was because it was totally broken!!
+			if (changeNamespace) {
+				if( Log.isLoggable(Log.FAC_REPO, Level.FINER) )
+					Log.finer(Log.FAC_REPO, "InterestTimer - resetting nameSpace");
+				try {
+					resetNamespace();
+				} catch (IOException e) {
+					Log.logStackTrace(Level.WARNING, e);
+					e.printStackTrace();
+				}
+				synchronized (_currentListeners) {
 					_currentListeners.notify();
 				}
 			}
@@ -164,7 +180,10 @@ public class RepositoryServer implements CCNStatistics {
 	public void start() {
 		Log.info(Log.FAC_REPO, "Starting service of repository requests");
 		try {
-			resetNameSpace();
+			synchronized (_pendingNamespaceChangeLock) {
+				_pendingNamespaceChange = true;
+			}
+			resetNamespace();
 		} catch (Exception e) {
 			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
@@ -175,22 +194,25 @@ public class RepositoryServer implements CCNStatistics {
 		markerOmissions[1] = CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes();
 		_markerFilter = new Exclude(markerOmissions);
 		
-		_periodicTimer = new Timer(true);
-		_periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
-		
 		// We can't read or write the policy file until now because we need the repo infrastructure
 		// to read it out of the repo. So now we can read it and/or write it. Since reading the file
 		// from the repo might cause us to change namespaces that are supported we need to reset the
 		// namespace again.
 		try {
 			_repo.policyUpdate();
-			resetNameSpace();
+			synchronized (_pendingNamespaceChangeLock) {
+				_pendingNamespaceChange = true;
+			}
+			resetNamespace();
 		} catch (RepositoryException e) {
 			Log.warning(Log.FAC_REPO, e.getMessage());
 		} catch (IOException e) {
 			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
+		
+		_periodicTimer = new Timer(true);
+		_periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
 		
 		synchronized (_startedLock) {
 			_started = true;
@@ -216,13 +238,13 @@ public class RepositoryServer implements CCNStatistics {
 	public void shutDown() {
 		waitForStart();
 		Log.info(Log.FAC_REPO, "Stopping service of repository requests");
-
-		_repo.shutDown();
 		
 		if( _periodicTimer != null ) {
 			synchronized (_currentListeners) {
 				if (_currentListeners.size() != 0) {
-					_pendingNameSpaceChange = true; // Don't allow any more requests to come in
+					synchronized (_pendingNamespaceChangeLock) {
+						_pendingNamespaceChange = true; // Don't allow any more requests to come in
+					}
 					boolean interrupted;
 					do {
 						try {
@@ -237,6 +259,7 @@ public class RepositoryServer implements CCNStatistics {
 			}
 		}
 		
+		_repo.shutDown();
 		_dataHandler.shutdown();
 		
 		// This closes our handle....
@@ -257,83 +280,94 @@ public class RepositoryServer implements CCNStatistics {
 	 * could cut off current sessions in process
 	 * @throws IOException 
 	 */
-	public void resetNameSpaceFromHandler() throws IOException {
+	public void resetNamespaceFromHandler() throws IOException {
 		synchronized (_currentListeners) {
-			if (_currentListeners.size() == 0)
-				resetNameSpace();
-			else
-				_pendingNameSpaceChange = true;
-			if( Log.isLoggable(Log.FAC_REPO, Level.FINER) )
-				Log.finer(Log.FAC_REPO, "ResetNameSpaceFromHandler: pendingNameSpaceChange is {0}", _pendingNameSpaceChange);
+			synchronized (_pendingNamespaceChangeLock) {
+				_pendingNamespaceChange = true;
+			}
+			if (_currentListeners.size() == 0) {
+				resetNamespace();
+			}
+			if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
+				Log.info(Log.FAC_REPO, "ResetNameSpaceFromHandler: pendingNameSpaceChange is {0}", _pendingNamespaceChange);
 		}	
 	}
 	
-	private void resetNameSpace() throws IOException {
-		synchronized (_repoFilters) {
-			ArrayList<ContentName> newIL = new ArrayList<ContentName>();
-			synchronized (_repo.getPolicy()) {
-				ArrayList<ContentName> newNameSpace = _repo.getNamespace();
-				if (newNameSpace == null)
-					newNameSpace = new ArrayList<ContentName>();
-				ArrayList<ContentName> unMatchedOld = new ArrayList<ContentName>();
-				ArrayList<ContentName> unMatchedNew = new ArrayList<ContentName>();
-				getUnMatched(_repoFilters, newNameSpace, unMatchedOld, unMatchedNew);
+	private void resetNamespace() throws IOException {
+		synchronized (_pendingNamespaceChangeLock) {
+			if (_pendingNamespaceChange) {
+				ArrayList<ContentName> newIL = new ArrayList<ContentName>();
+				ArrayList<ContentName> newNamespace = _repo.getNamespace();
+				if (newNamespace == null)	// If this ever happened it would be bad!!
+					newNamespace = new ArrayList<ContentName>();
+				ArrayList<ContentName> unMatchedOld = getUnMatched(_currentNamespace, newNamespace);
 				for (ContentName oldName : unMatchedOld) {
 					_handle.unregisterFilter(oldName, _iHandler);
 					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
-						Log.info(Log.FAC_REPO, "Dropping namespace {0}", oldName);
+						Log.info(Log.FAC_REPO, "Dropping repo namespace {0}", oldName);
 				}
-				for (ContentName newName : unMatchedNew) {
+				
+				// Note that here we need to start with the whole list of the new names, not names that have
+				// had matching names between new and old filtered out, because a "matching name" might have
+				// had a prefix that was lost and therefore never got registered originally.
+				for (ContentName newName : removeDuplicates(newNamespace)) {
 					_handle.getNetworkManager().setInterestFilter(_handle, newName, _iHandler, REPO_PREFIX_FLAGS);
 					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
-						Log.info(Log.FAC_REPO, "Adding namespace {0}", newName);
+						Log.info(Log.FAC_REPO, "Adding repo namespace {0}", newName);
 					newIL.add((newName));
 				}
-				_repoFilters = newIL;
+				_currentNamespace = newNamespace;
+				_pendingNamespaceChange = false;
 			}
 		}
 	}
 	
 	/**
-	 * Determine changes in the namespace so we can decide what needs to be newly registered
-	 * and what should be unregistered. This also checks to see that no names duplicate each other
-	 * i.e. if we have /foo and /foo/bar only /foo should be registered for the repo to listen
-	 * to.
+	 * Determine changes in the namespace so we can decide what needs to be unregistered.
 	 * 
 	 * @param oldIn - previously registered names
 	 * @param newIn - new names to consider
 	 * @param oldOut - previously registered names to deregister
 	 * @param newOut - new names which need to be registered
 	 */
-	@SuppressWarnings("unchecked")
-	private void getUnMatched(ArrayList<ContentName> oldIn, ArrayList<ContentName> newIn, 
-			ArrayList<ContentName> oldOut, ArrayList<ContentName>newOut) {
-		newOut.addAll(newIn);
+	private ArrayList<ContentName> getUnMatched(ArrayList<ContentName> oldIn, ArrayList<ContentName> newIn) {
+		ArrayList<ContentName> toRemove = new ArrayList<ContentName>();
 		for (ContentName ial : oldIn) {
 			boolean matched = false;
 			for (ContentName name : newIn) {
 				if (ial.equals(name)) {
-					newOut.remove(name);
 					matched = true;
 					break;
 				}
 			}
 			if (!matched)
-				oldOut.add(ial);
+				toRemove.add(ial);
 		}
-		
-		// Make sure no name can be expressed a prefix of another name in the list
-		ArrayList<ContentName> tmpOut = (ArrayList<ContentName>)newOut.clone();
-		for (ContentName cn : tmpOut) {
-			for (ContentName tcn : tmpOut) {
+		return toRemove;
+	}
+	
+	/**
+	 * Remove "duplicates" (i.e. prefixes which are subprefixes of another prefix in the list).
+	 * This is already sort of done in setInterestFilter but because we know the whole list we will
+	 * submit, we can do a better job.
+	 * 
+	 * @param list
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	private ArrayList<ContentName> removeDuplicates(ArrayList<ContentName> list) {
+		ArrayList<ContentName> output = (ArrayList<ContentName>)list.clone();
+		for (ContentName cn : list) {
+			for (ContentName tcn : list) {
 				if (tcn.equals(cn))
 					continue;
 				if (tcn.isPrefixOf(cn))
-					newOut.remove(cn);
+					output.remove(cn);
 				if (cn.isPrefixOf(tcn))
-					newOut.remove(tcn);
+					output.remove(tcn);
 			}
 		}
+		return output;
 	}
 	
 	public CCNHandle getHandle() {
@@ -356,10 +390,6 @@ public class RepositoryServer implements CCNStatistics {
 		return _currentListeners;
 	}
 	
-	public ArrayList<ContentName> getFilters() {
-		return _repoFilters;
-	}
-	
 	public void addListener(RepositoryDataListener listener) {
 		synchronized(_currentListeners) {
 			_currentListeners.add(listener);
@@ -367,7 +397,9 @@ public class RepositoryServer implements CCNStatistics {
 	}
 	
 	public boolean getPendingNameSpaceState() {
-		return _pendingNameSpaceChange;
+		synchronized (_pendingNamespaceChangeLock) {
+			return _pendingNamespaceChange;
+		}
 	}
 	
 	public RepositoryDataHandler getDataHandler() {
