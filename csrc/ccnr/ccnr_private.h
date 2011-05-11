@@ -67,8 +67,6 @@ typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
  */
 struct ccnr_handle {
     unsigned char ccnd_id[32];      /**< sha256 digest of our public key */
-    struct hashtb *faces_by_fd;     /**< keyed by fd */
-    struct hashtb *dgram_faces;     /**< keyed by sockaddr */
     struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *propagating_tab; /**< keyed by nonce */
@@ -188,7 +186,7 @@ struct fdholder {
     struct ccn_skeleton_decoder decoder;
     size_t outbufindex;
     struct ccn_charbuf *outbuf;
-    const struct sockaddr *addr;
+    struct sockaddr *addr;
     socklen_t addrlen;
     int pending_interests;
     unsigned rrun;
