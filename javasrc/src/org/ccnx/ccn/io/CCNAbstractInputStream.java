@@ -1200,12 +1200,20 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 		synchronized(incoming) {
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: before adjusting avgResponseTime after reception. avgResponseTime = {0} elapsed time {1}", avgResponseTime, (starttime - interest.userTime));
-			if(avgResponseTime == -1) {
+			if (avgResponseTime == -1) {
 				avgResponseTime = starttime - interest.userTime;
 			} else {
 				//do not include hole filling responses, they will be extra fast
 				//if (interest.exclude()==null)
-				avgResponseTime = 0.9 * avgResponseTime + 0.1 * (starttime - interest.userTime);
+				
+				//TODO:  find true cause of this bug, temporary fix to get seek/skip fix merged
+				long newResponseTime = starttime - interest.userTime;
+				if (newResponseTime < 100 * avgResponseTime)
+					avgResponseTime = 0.9 * avgResponseTime + 0.1 * newResponseTime;
+				else {
+					//do not include this response time for now.  Will be fixed in bug 100478
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: did not use response time for calculation...  would have been incorrect.  will be fixed in a new branch for 100478 {0}", newResponseTime);
+				}
 			}
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: after adjusting avgResponseTime after reception. avgResponseTime = {0}", avgResponseTime);
 
