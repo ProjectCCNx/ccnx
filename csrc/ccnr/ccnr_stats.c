@@ -420,10 +420,6 @@ collect_stats_html(struct ccnr_handle *h)
         stats.total_flood_control,
         h->interests_accepted, h->interests_dropped,
         h->interests_sent, h->interests_stuffed);
-    if (0)
-        ccn_charbuf_putf(b,
-                         "<div><b>Active faces and listeners:</b> %d</div>" NL,
-                         hashtb_n(h->faces_by_fd) + hashtb_n(h->dgram_faces));
     collect_faces_html(h, b);
     collect_face_meter_html(h, b);
     collect_forwarding_html(h, b);
