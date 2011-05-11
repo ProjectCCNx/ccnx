@@ -237,17 +237,17 @@ public class InterestTable<V> {
 		List<Holder<V>> list;
 		synchronized (_contents) {
 			list = _contents.get(new LongestFirstContentName(name));
-		}
-		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
-			Log.finest(Log.FAC_ENCODING, "name: {0} target: {1} possible matches: {2}", name, target.name(), ((null == list) ? 0 : list.size()));
-		if (null != list) {
-			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
-				Holder<V> holder = holdIt.next();
-				if (null != holder.interest()) {
-					if (holder.interest().matches(target)) {
-						return holder;
-					}
-				}	
+			if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+				Log.finest(Log.FAC_ENCODING, "name: {0} target: {1} possible matches: {2}", name, target.name(), ((null == list) ? 0 : list.size()));
+			if (null != list) {
+				for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
+					Holder<V> holder = holdIt.next();
+					if (null != holder.interest()) {
+						if (holder.interest().matches(target)) {
+							return holder;
+						}
+					}	
+				}
 			}
 		}
 		return null;
@@ -268,15 +268,15 @@ public class InterestTable<V> {
 		List<Holder<V>> list;
 		synchronized (_contents) {
 			list = _contents.get(new LongestFirstContentName(name));
-		}
-		if (null != list) {
-			for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
-				Holder<V> holder = holdIt.next();
-				if (null != holder.interest()) {
-					if (holder.interest().matches(target)) {
-						matches.add(holder);
-					}
-				}	
+			if (null != list) {
+				for (Iterator<Holder<V>> holdIt = list.iterator(); holdIt.hasNext(); ) {
+					Holder<V> holder = holdIt.next();
+					if (null != holder.interest()) {
+						if (holder.interest().matches(target)) {
+							matches.add(holder);
+						}
+					}	
+				}
 			}
 		}
 		return matches;
@@ -438,11 +438,11 @@ public class InterestTable<V> {
 		Set<LongestFirstContentName> names;
 		synchronized (_contents) {
 			names = _contents.keySet();
-		}
-		for (LongestFirstContentName name : names) {
-			match = getMatchByName(name, target);
-			if (null != match)
-				break;
+			for (LongestFirstContentName name : names) {
+				match = getMatchByName(name, target);
+				if (null != match)
+					break;
+			}
 		}
 		return match;
 	}
@@ -634,17 +634,17 @@ public class InterestTable<V> {
 			Set<LongestFirstContentName> names;
 			synchronized (_contents) {
 				names = _contents.keySet();
-			}
-			for (LongestFirstContentName name : names) {
-				match = getMatchByName(name, target);
-				if (null != match) {
-					matchName = name;
-					break;
+				for (LongestFirstContentName name : names) {
+					match = getMatchByName(name, target);
+					if (null != match) {
+						matchName = name;
+						break;
+					}
+					// Do not remove here -- need to find best match and avoid disturbing iterator
 				}
-				// Do not remove here -- need to find best match and avoid disturbing iterator
-			}
-			if (null != match) {
-				return removeMatchByName(matchName, target);
+				if (null != match) {
+					return removeMatchByName(matchName, target);
+				}
 			}
 		}
 		return match;
@@ -685,17 +685,17 @@ public class InterestTable<V> {
 		Set<LongestFirstContentName> LFCnames;
 		synchronized (_contents) {
 			LFCnames = _contents.keySet();
-		}
-		for (LongestFirstContentName name : LFCnames) {
-			if (name.isPrefixOf(target.name())) {
-				// Name match - is there an interest match here?
-				matches.addAll(getAllMatchByName(name, target));
-				names.add(name);
+			for (LongestFirstContentName name : LFCnames) {
+				if (name.isPrefixOf(target.name())) {
+					// Name match - is there an interest match here?
+					matches.addAll(getAllMatchByName(name, target));
+					names.add(name);
+				}
 			}
-		}
-		if (matches.size() != 0) {
-			for (ContentName contentName : names) {
-				removeAllMatchByName(contentName, target);				
+			if (matches.size() != 0) {
+				for (ContentName contentName : names) {
+					removeAllMatchByName(contentName, target);				
+				}
 			}
 		}
 		return matches;
