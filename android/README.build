@@ -9,7 +9,7 @@ the top level directory before buildin here.
 
 Ccnd and the c-client library require OpenSSL library, which we need
 to include build ourselves, as there is no apparent way to use the
-included Android library.  As a result, we can use the latest 1.0.0a
+included Android library.  As a result, we can use the latest 1.0.0d
 library!
 
 You must set the environment variables ANDROID_SDK and ANDROID_NDK.

@@ -234,7 +234,7 @@ public class InterestDataTestRepo {
 		ArrayList<CCNStringObject> sent2 = VersioningHelper.sendEventStream(handle, basename, tosend);
 		VersionNumber stop_version = new VersionNumber(sent2.get(sent2.size()-1).getVersion()).addAndReturn(1);
 		
-		// Make sure everything in sent2 is between the start and stop versios
+		// Make sure everything in sent2 is between the start and stop versions
 		for(CCNStringObject so : sent2) {
 			Assert.assertTrue(start_version.before(so.getVersion()));
 			Assert.assertTrue(stop_version.after(so.getVersion()));
