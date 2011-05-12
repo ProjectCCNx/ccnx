@@ -3122,12 +3122,11 @@ do_deferred_write(struct ccnr_handle *h, int fd)
     else
         ccnr_msg(h, "ccnr:do_deferred_write: something fishy on %d", fd);
 }
-static void prepare_poll_fds(struct ccnr_handle *h) {} //STUB
 
 /**
  * Set up the array of fd descriptors for the poll(2) call.
  *
- *
+ */
 static void
 prepare_poll_fds(struct ccnr_handle *h)
 {
