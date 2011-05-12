@@ -293,29 +293,44 @@ public class RepositoryServer implements CCNStatistics {
 		}	
 	}
 	
+	/**
+	 * Change namespace by registering/unregistering filters based on what's registered currently.
+	 * We can't completely lock the register/unregister but we can (hopefully) prevent this from
+	 * being called by simultaneous threads by not setting _pendingNamespaceChange to false until we
+	 * are all done which will effectively prevent us from processing new namespace change requests.
+	 * @throws IOException
+	 */
 	private void resetNamespace() throws IOException {
+		ArrayList<ContentName> newNamespace = null;
+		ArrayList<ContentName> unMatchedOld = null;
 		synchronized (_pendingNamespaceChangeLock) {
 			if (_pendingNamespaceChange) {
-				ArrayList<ContentName> newIL = new ArrayList<ContentName>();
-				ArrayList<ContentName> newNamespace = _repo.getNamespace();
+				newNamespace = _repo.getNamespace();
 				if (newNamespace == null)	// If this ever happened it would be bad!!
 					newNamespace = new ArrayList<ContentName>();
-				ArrayList<ContentName> unMatchedOld = getUnMatched(_currentNamespace, newNamespace);
-				for (ContentName oldName : unMatchedOld) {
-					_handle.unregisterFilter(oldName, _iHandler);
-					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
-						Log.info(Log.FAC_REPO, "Dropping repo namespace {0}", oldName);
-				}
-				
-				// Note that here we need to start with the whole list of the new names, not names that have
-				// had matching names between new and old filtered out, because a "matching name" might have
-				// had a prefix that was lost and therefore never got registered originally.
-				for (ContentName newName : removeDuplicates(newNamespace)) {
-					_handle.getNetworkManager().setInterestFilter(_handle, newName, _iHandler, REPO_PREFIX_FLAGS);
-					if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
-						Log.info(Log.FAC_REPO, "Adding repo namespace {0}", newName);
-					newIL.add((newName));
-				}
+				unMatchedOld = getUnMatched(_currentNamespace, newNamespace);
+			}
+		}
+		
+		// Calling _handle.unregisteredFilter with locks held is dangerous
+		if (null != unMatchedOld) {
+			for (ContentName oldName : unMatchedOld) {
+				_handle.unregisterFilter(oldName, _iHandler);
+				if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
+					Log.info(Log.FAC_REPO, "Dropping repo namespace {0}", oldName);
+			}
+		}
+		
+		if (null != newNamespace) {
+			// Note that here we need to start with the whole list of the new names, not names that have
+			// had matching names between new and old filtered out, because a "matching name" might have
+			// had a prefix that was lost and therefore never got registered originally.
+			for (ContentName newName : removeDuplicates(newNamespace)) {
+				_handle.getNetworkManager().setInterestFilter(_handle, newName, _iHandler, REPO_PREFIX_FLAGS);
+				if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
+					Log.info(Log.FAC_REPO, "Adding repo namespace {0}", newName);
+			}
+			synchronized (_pendingNamespaceChangeLock) {
 				_currentNamespace = newNamespace;
 				_pendingNamespaceChange = false;
 			}
