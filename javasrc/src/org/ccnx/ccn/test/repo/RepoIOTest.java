@@ -157,18 +157,12 @@ public class RepoIOTest extends RepoTestBase {
 		ros.close();
 		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefix, _testObj), "Initial string value", SaveType.REPOSITORY, putHandle);
 		so.save();
+		
+		// We sync the file here mainly to be sure to save the default public key in the repository for the first time
+		// We'll need this (of course) for future tests.
+		RepositoryControl.localRepoSync(getHandle, so);
 		so.close();
 		
-		// Need to save key also for first time sync test. Actually we need this for the policy
-		// test too since the repo needs to locate the key to verify the policy test file
-		KeyLocator locator = 
-			putHandle.keyManager().getKeyLocator(putHandle.keyManager().getDefaultKeyID()); 
-		putHandle.keyManager().publishSelfSignedKeyToRepository(
-		               locator.name().name(), 
-		               putHandle.keyManager().getDefaultPublicKey(), null, 
-		               SystemConfiguration.getDefaultTimeout());
-		
-
 		// Floss content into ccnd for tests involving content not already in repo when we start
 		IOTestFlosser floss = new IOTestFlosser();
 		
