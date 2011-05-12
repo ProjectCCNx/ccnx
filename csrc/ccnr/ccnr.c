@@ -739,6 +739,7 @@ shutdown_client_fd(struct ccnr_handle *h, int fd)
     for (m = 0; m < CCNR_FACE_METER_N; m++)
         ccnr_meter_destroy(&fdholder->meter[m]);
     free(fdholder);
+    // XXX: need to remove the pointer to the fdholder from the array.
     reap_needed(h, 250000);
 }
 
@@ -3130,29 +3131,27 @@ static void prepare_poll_fds(struct ccnr_handle *h) {} //STUB
 static void
 prepare_poll_fds(struct ccnr_handle *h)
 {
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    int i, j, k;
-    if (hashtb_n(h->faces_by_fd) != h->nfds) {
-        h->nfds = hashtb_n(h->faces_by_fd);
+    int i, j, nfds;
+    
+    for (i = 0, nfds = 0; i < h->face_limit; i++)
+        if (fdholder_from_fd(h, i) != NULL)
+            nfds++;
+    
+    if (nfds != h->nfds) {
+        h->nfds = nfds;
         h->fds = realloc(h->fds, h->nfds * sizeof(h->fds[0]));
         memset(h->fds, 0, h->nfds * sizeof(h->fds[0]));
     }
-    for (i = 0, k = h->nfds, hashtb_start(h->faces_by_fd, e);
-         i < k && e->data != NULL; hashtb_next(e)) {
-        struct fdholder *fdholder = e->data;
-        if (fdholder->flags & CCN_FACE_MCAST)
-            j = i++;
-        else
-            j = --k;
-        h->fds[j].fd = fdholder->recv_fd;
-        h->fds[j].events = ((fdholder->flags & CCN_FACE_NORECV) == 0) ? POLLIN : 0;
-        if ((fdholder->outbuf != NULL || (fdholder->flags & CCN_FACE_CLOSING) != 0))
-            h->fds[j].events |= POLLOUT;
+    for (i = 0, j = 0; i < h->face_limit; i++) {
+        struct fdholder *fdholder = fdholder_from_fd(h, i);
+        if (fdholder != NULL) {
+            h->fds[j].fd = fdholder->filedesc;
+            h->fds[j].events = ((fdholder->flags & CCN_FACE_NORECV) == 0) ? POLLIN : 0;
+            if ((fdholder->outbuf != NULL || (fdholder->flags & CCN_FACE_CLOSING) != 0))
+                h->fds[j].events |= POLLOUT;
+            j++;
+        }
     }
-    hashtb_end(e);
-    if (i < k)
-        abort();
 }
 
 /**
