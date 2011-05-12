@@ -261,7 +261,7 @@ public class SegmentationProfile implements CCNProfile {
 		}
 		
 		interestName = segmentName(interestName, segmentNumber);
-		Log.info("segmentInterest: creating interest for {0} from ContentName {1} and segmentNumber {2}", interestName, name, segmentNumber);
+		Log.fine("segmentInterest: creating interest for {0} from ContentName {1} and segmentNumber {2}", interestName, name, segmentNumber);
 		Interest interest = Interest.lower(interestName, 1, publisher);
 		return interest;
 	}
