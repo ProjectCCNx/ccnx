@@ -74,7 +74,6 @@ static void process_input(struct ccnr_handle *h, int fd);
 static int ccn_stuff_interest(struct ccnr_handle *h,
                               struct fdholder *fdholder, struct ccn_charbuf *c);
 static void do_deferred_write(struct ccnr_handle *h, int fd);
-static void clean_needed(struct ccnr_handle *h);
 static void content_skiplist_insert(struct ccnr_handle *h,
                                     struct content_entry *content);
 static void content_skiplist_remove(struct ccnr_handle *h,
@@ -1526,122 +1525,6 @@ remove_content(struct ccnr_handle *h, struct content_entry *content)
     hashtb_delete(e);
     hashtb_end(e);
     return(0);
-}
-
-/**
- * Periodic content cleaning
- */
-static int
-clean_deamon(struct ccn_schedule *sched,
-             void *clienth,
-             struct ccn_scheduled_event *ev,
-             int flags)
-{
-    struct ccnr_handle *h = clienth;
-    (void)(sched);
-    (void)(ev);
-    unsigned long n;
-    ccn_accession_t limit;
-    ccn_accession_t a;
-    ccn_accession_t min_stale;
-    int check_limit = 500;  /* Do not run for too long at once */
-    struct content_entry *content = NULL;
-    int res = 0;
-    int ignore;
-    int i;
-    
-    /*
-     * If we ran into our processing limit (check_limit) last time,
-     * ev->evint tells us where to restart.
-     */
-    
-    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
-        h->clean = NULL;
-        return(0);
-    }
-    n = hashtb_n(h->content_tab);
-    if (n <= h->capacity)
-        return(15000000);
-    /* Toss unsolicited content first */
-    for (i = 0; i < h->unsol->n; i++) {
-        if (i == check_limit) {
-            for (i = check_limit; i < h->unsol->n; i++)
-                h->unsol->buf[i-check_limit] = h->unsol->buf[i];
-            h->unsol->n -= check_limit;
-            return(500);
-        }
-        a = h->unsol->buf[i];
-        content = content_from_accession(h, a);
-        if (content != NULL &&
-            (content->flags & CCN_CONTENT_ENTRY_PRECIOUS) == 0)
-            remove_content(h, content);
-    }
-    n = hashtb_n(h->content_tab);
-    h->unsol->n = 0;
-    if (h->min_stale <= h->max_stale) {
-        /* clean out stale content next */
-        limit = h->max_stale;
-        if (limit > h->accession)
-            limit = h->accession;
-        min_stale = ~0;
-        a = ev->evint;
-        if (a <= h->min_stale || a > h->max_stale)
-            a = h->min_stale;
-        else
-            min_stale = h->min_stale;
-        for (; a <= limit && n > h->capacity; a++) {
-            if (check_limit-- <= 0) {
-                ev->evint = a;
-                break;
-            }
-            content = content_from_accession(h, a);
-            if (content != NULL &&
-                  (content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
-                res = remove_content(h, content);
-                if (res < 0) {
-                    if (a < min_stale)
-                        min_stale = a;
-                }
-                else {
-                    content = NULL;
-                    n -= 1;
-                }
-            }
-        }
-        if (min_stale < a)
-            h->min_stale = min_stale;
-        else if (a > limit) {
-            h->min_stale = ~0;
-            h->max_stale = 0;
-        }
-        else
-            h->min_stale = a;
-        if (check_limit <= 0)
-            return(5000);
-    }
-    else {
-        /* Make oldish content stale, for cleanup on next round */
-        limit = h->accession;
-        ignore = CCN_CONTENT_ENTRY_STALE | CCN_CONTENT_ENTRY_PRECIOUS;
-        for (a = h->accession_base; a <= limit && n > h->capacity; a++) {
-            content = content_from_accession(h, a);
-            if (content != NULL && (content->flags & ignore) == 0) {
-                mark_stale(h, content);
-                n--;
-            }
-        }
-        ev->evint = 0;
-        return(1000000);
-    }
-    ev->evint = 0;
-    return(15000000);
-}
-
-static void
-clean_needed(struct ccnr_handle *h)
-{
-    if (h->clean == NULL)
-        h->clean = ccn_schedule_event(h->sched, 1000000, clean_deamon, NULL, 0);
 }
 
 /**
@@ -3769,7 +3652,6 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     }
     enroll_face(h, h->face0);
     ccnr_listen_on(h, listen_on);
-    clean_needed(h);
     age_forwarding_needed(h);
     ccnr_internal_client_start(h);
     free(sockname);
