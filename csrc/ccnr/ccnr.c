@@ -3392,46 +3392,6 @@ ccnr_listen_on(struct ccnr_handle *h, const char *addrs)
     return(res);
 }
 
-static struct ccn_charbuf *
-ccnr_parse_uri_list(struct ccnr_handle *h, const char *what, const char *uris)
-{
-    struct ccn_charbuf *ans;
-    struct ccn_charbuf *name;
-    int i;
-    size_t j;
-    int res;
-    unsigned char ch;
-    const char *uri;
-
-    if (uris == NULL)
-        return(NULL);
-    ans = ccn_charbuf_create();
-    name = ccn_charbuf_create();
-    for (i = 0, ch = uris[0]; ch != 0;) {
-        while ((0 < ch && ch <= ' ') || ch == ',' || ch == ';')
-            ch = uris[++i];
-        j = ans->length;
-        while (ch > ' ' && ch != ',' && ch != ';') {
-            ccn_charbuf_append_value(ans, ch, 1);
-            ch = uris[++i];
-        }
-        if (j < ans->length) {
-            ccn_charbuf_append_value(ans, 0, 1);
-            uri = (const char *)ans->buf + j;
-            name->length = 0;
-            res = ccn_name_from_uri(name, uri);
-            if (res < 0) {
-                ccnr_msg(h, "%s: invalid ccnx URI: %s", what, uri);
-                ans->length = j;
-            }
-        }
-    }
-    ccn_charbuf_destroy(&name);
-    if (ans->length == 0)
-        ccn_charbuf_destroy(&ans);
-    return(ans);
-}
-
 /**
  * Start a new ccnr instance
  * @param progname - name of program binary, used for locating helpers
