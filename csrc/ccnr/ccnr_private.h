@@ -66,7 +66,7 @@ typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
  * We pass this handle almost everywhere within ccnr
  */
 struct ccnr_handle {
-    unsigned char ccnd_id[32];      /**< sha256 digest of our public key */
+    unsigned char ccnr_id[32];      /**< sha256 digest of our public key */
     struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *propagating_tab; /**< keyed by nonce */
@@ -120,10 +120,7 @@ struct ccnr_handle {
     int logbreak;                   /**< see ccn_msg() */
     unsigned long logtime;          /**< see ccn_msg() */
     int logpid;                     /**< see ccn_msg() */
-    int mtu;                        /**< Target size for stuffing interests */
     int flood;                      /**< Internal control for auto-reg */
-    struct ccn_charbuf *autoreg;    /**< URIs to auto-register */
-    int force_zero_freshness;       /**< Simulate freshness=0 on all content */
     unsigned interest_faceid;       /**< for self_reg internal client */
     const char *progname;           /**< our name, for locating helpers */
     struct ccn *internal_client;    /**< internal client */
@@ -134,7 +131,6 @@ struct ccnr_handle {
     struct ccn_indexbuf *chface;    /**< faceids w/ recent status changes */
     struct ccn_scheduled_event *internal_client_refresh;
     struct ccn_scheduled_event *notice_push;
-    unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
     void (*appnonce)(struct ccnr_handle *, struct fdholder *, struct ccn_charbuf *);
                                     /**< pluggable nonce generation */
 };
@@ -340,8 +336,8 @@ void ccnr_internal_client_stop(struct ccnr_handle *);
 /**
  * URIs for prefixes served by the internal client
  */
-#define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/KEY"
-#define CCNDID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository/KEY"
+#define CCNRID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/KEY"
+#define CCNRID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository/KEY"
 
 int ccnr_reg_uri(struct ccnr_handle *h,
                  const char *uri,

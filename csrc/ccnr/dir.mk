@@ -30,9 +30,9 @@ all: default $(BROKEN_PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
-CCND_OBJ = ccnr_main.o ccnr.o ccnr_msg.o ccnr_stats.o ccnr_internal_client.o
-ccnr: $(CCND_OBJ) ccnr_built.sh
-	$(CC) $(CFLAGS) -o $@ $(CCND_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+CCNR_OBJ = ccnr_main.o ccnr.o ccnr_msg.o ccnr_stats.o ccnr_internal_client.o
+ccnr: $(CCNR_OBJ) ccnr_built.sh
+	$(CC) $(CFLAGS) -o $@ $(CCNR_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 	sh ./ccnr_built.sh
 
 ccnr_built.sh:

@@ -26,7 +26,6 @@
 #include <unistd.h>
 
 #include <ccn/ccn.h>
-#include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 
@@ -127,10 +126,10 @@ ccnr_debug_ccnb(struct ccnr_handle *h,
 }
 
 /**
- * CCND Usage message
+ * CCNR Usage message
  */
 const char *ccnr_usage_message =
-    "ccnr - CCNx Daemon\n"
+    "ccnr - CCNx Repository Daemon\n"
     "  options: none\n"
     "  arguments: none\n"
     "  environment variables:\n"
@@ -145,27 +144,12 @@ const char *ccnr_usage_message =
     "      64 - log occasional human-readable timestamps\n"
     "      128 - fdholder registration debugging\n"
     "      bitwise OR these together for combinations; -1 gets max logging\n"
-    "    CCN_LOCAL_PORT=\n"
-    "      UDP port for unicast clients (default "CCN_DEFAULT_UNICAST_PORT").\n"
-    "      Also listens on this TCP port for stream connections.\n"
-    "      Also affects name of unix-domain socket.\n"
-    "    CCN_LOCAL_SOCKNAME=\n"
-    "      Name stem of unix-domain socket (default "CCN_DEFAULT_LOCAL_SOCKNAME").\n"
     "    CCNR_CAP=\n"
     "      Capacity limit, in count of ContentObjects.\n"
     "      Not an absolute limit.\n"
-    "    CCND_MTU=\n"
-    "      Packet size in bytes.\n"
-    "      If set, interest stuffing is allowed within this budget.\n"
-    "      Single items larger than this are not precluded.\n"
-    "    CCND_DATA_PAUSE_MICROSEC=\n"
-    "      Adjusts content-send delay time for multicast and udplink faces\n"
     "    CCNR_DIRECTORY=\n"
     "      Directory where ccnr data is kept\n"
     "      Defaults to current directory\n"
     "    CCNR_LISTEN_ON=\n"
-    "      List of ip addresses to listen on; defaults to wildcard\n"
-    "    CCND_AUTOREG=\n"
-    "      List of prefixes to auto-register on new faces initiated by peers\n"
-    "      example: CCND_AUTOREG=ccnx:/like/this,ccnx:/and/this\n"
+    "      List of ip addresses to listen on for status; defaults to wildcard\n"
     ;

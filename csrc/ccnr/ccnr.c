@@ -50,7 +50,6 @@
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/ccn_private.h>
-#include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/face_mgmt.h>
 #include <ccn/hashtb.h>
@@ -224,12 +223,8 @@ choose_face_delay(struct ccnr_handle *h, struct fdholder *fdholder, enum cq_dela
     int shift = (c == CCN_CQ_SLOW) ? 2 : 0;
     if (c == CCN_CQ_ASAP)
         return(1);
-    if ((fdholder->flags & CCN_FACE_LINK) != 0) /* udplink or such, delay more */
-        return((h->data_pause_microsec) << shift);
     if ((fdholder->flags & CCN_FACE_LOCAL) != 0)
         return(5); /* local stream, answer quickly */
-    if ((fdholder->flags & CCN_FACE_MCAST) != 0)
-        return((h->data_pause_microsec) << shift); /* multicast, delay more */
     if ((fdholder->flags & CCN_FACE_GG) != 0)
         return(100 << shift); /* localhost, delay just a little */
     if ((fdholder->flags & CCN_FACE_DGRAM) != 0)
@@ -1153,7 +1148,7 @@ stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
         ccn_append_link_stuff(h, fdholder, c);
         ccn_charbuf_append_closer(c);
     }
-    else if (size2 != 0 || h->mtu > size1 + size2 ||
+    else if (size2 != 0 || 1 > size1 + size2 ||
              (fdholder->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0) {
         c = charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
@@ -1173,50 +1168,6 @@ stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
 }
 
 /**
- * Append a link-check interest if appropriate.
- *
- * @returns the number of messages that were stuffed.
- */
-static int
-stuff_link_check(struct ccnr_handle *h,
-                   struct fdholder *fdholder, struct ccn_charbuf *c)
-{
-    int checkflags = CCN_FACE_DGRAM | CCN_FACE_MCAST | CCN_FACE_GG;
-    int wantflags = CCN_FACE_DGRAM;
-    struct ccn_charbuf *name = NULL;
-    struct ccn_charbuf *ibuf = NULL;
-    int res;
-    int ans = 0;
-    if (fdholder->recvcount > 0)
-        return(0);
-    if ((fdholder->flags & checkflags) != wantflags)
-        return(0);
-    name = ccn_charbuf_create();
-    if (name == NULL) goto Bail;
-    ccn_name_init(name);
-    res = ccn_name_from_uri(name, CCNDID_NEIGHBOR_URI);
-    if (res < 0) goto Bail;
-    ibuf = ccn_charbuf_create();
-    if (ibuf == NULL) goto Bail;
-    ccn_charbuf_append_tt(ibuf, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append(ibuf, name->buf, name->length);
-    ccnb_tagged_putf(ibuf, CCN_DTAG_Scope, "2");
-    // XXX - ought to generate a nonce
-    ccn_charbuf_append_closer(ibuf);
-    ccn_charbuf_append(c, ibuf->buf, ibuf->length);
-    ccnr_meter_bump(h, fdholder->meter[FM_INTO], 1);
-    h->interests_stuffed++;
-    if (h->debug & 2)
-        ccnr_debug_ccnb(h, __LINE__, "stuff_interest_to", fdholder,
-                        ibuf->buf, ibuf->length);
-    ans = 1;
-Bail:
-    ccn_charbuf_destroy(&ibuf);
-    ccn_charbuf_destroy(&name);
-    return(ans);
-}
-
-/**
  * Stuff a PDU with interest messages that will fit.
  *
  * Note by default stuffing does not happen due to the setting of h->mtu.
@@ -1226,51 +1177,7 @@ static int
 ccn_stuff_interest(struct ccnr_handle *h,
                    struct fdholder *fdholder, struct ccn_charbuf *c)
 {
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
     int n_stuffed = 0;
-    int remaining_space;
-    if (stuff_link_check(h, fdholder, c) > 0)
-        n_stuffed++;
-    remaining_space = h->mtu - c->length;
-    if (remaining_space < 20 || fdholder == h->face0)
-        return(0);
-    for (hashtb_start(h->nameprefix_tab, e);
-         remaining_space >= 20 && e->data != NULL; hashtb_next(e)) {
-        struct nameprefix_entry *npe = e->data;
-        struct propagating_entry *head = &npe->pe_head;
-        struct propagating_entry *p;
-        for (p = head->prev; p != head; p = p->prev) {
-            if (p->outbound != NULL &&
-                p->outbound->n > p->sent &&
-                p->size <= remaining_space &&
-                p->interest_msg != NULL &&
-                ((p->flags & (CCN_PR_STUFFED1 | CCN_PR_WAIT1)) == 0) &&
-                ((p->flags & CCN_PR_UNSENT) == 0 ||
-                 p->outbound->buf[p->sent] == fdholder->filedesc) &&
-                promote_outbound(p, fdholder->filedesc) != -1) {
-                remaining_space -= p->size;
-                if ((p->flags & CCN_PR_UNSENT) != 0) {
-                    p->flags &= ~CCN_PR_UNSENT;
-                    p->flags |= CCN_PR_STUFFED1;
-                }
-                p->sent++;
-                n_stuffed++;
-                ccn_charbuf_append(c, p->interest_msg, p->size);
-                ccnr_meter_bump(h, fdholder->meter[FM_INTO], 1);
-                h->interests_stuffed++;
-                if (h->debug & 2)
-                    ccnr_debug_ccnb(h, __LINE__, "stuff_interest_to", fdholder,
-                                    p->interest_msg, p->size);
-                /*
-                 * Don't stuff multiple interests with same prefix
-                 * to avoid subverting attempts at redundancy.
-                 */
-                break;
-            }
-        }
-    }
-    hashtb_end(e);
     return(n_stuffed);
 }
 
@@ -1753,10 +1660,6 @@ register_new_face(struct ccnr_handle *h, struct fdholder *fdholder)
 {
     if (fdholder->filedesc != 0 && (fdholder->flags & (CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE)) == 0) {
         ccnr_face_status_change(h, fdholder->filedesc);
-        if (h->flood && h->autoreg != NULL && (fdholder->flags & CCN_FACE_GG) == 0)
-            ccnr_reg_uri_list(h, h->autoreg, fdholder->filedesc,
-                              CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
-                              0x7FFFFFFF);
         ccn_link_state_init(h, fdholder);
     }
 }
@@ -2099,7 +2002,7 @@ ccnr_append_debug_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct
         int i;
         
         for (i = 0; i < 3; i++)
-            s[i] = h->ccnd_id[i];
+            s[i] = h->ccnr_id[i];
         s[i++] = h->logpid >> 8;
         s[i++] = h->logpid;
         s[i++] = fdholder->filedesc >> 8;
@@ -2690,11 +2593,6 @@ set_content_timer(struct ccnr_handle *h, struct content_entry *content,
     int microseconds = 0;
     size_t start = pco->offset[CCN_PCO_B_FreshnessSeconds];
     size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
-    if (h->force_zero_freshness) {
-        /* Keep around for long enough to make it through the queues */
-        microseconds = 8 * h->data_pause_microsec + 10000;
-        goto Finish;
-    }
     if (start == stop)
         return;
     seconds = ccn_fetch_tagged_nonNegativeInteger(
@@ -2709,7 +2607,6 @@ set_content_timer(struct ccnr_handle *h, struct content_entry *content,
         return;
     }
     microseconds = seconds * 1000000;
-Finish:
     ccn_schedule_event(h->sched, microseconds,
                        &expire_content, NULL, content->accession);
 }
@@ -3550,9 +3447,6 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     // const char *portstr;
     const char *debugstr;
     const char *entrylimit;
-    const char *mtu;
-    const char *data_pause;
-    const char *autoreg;
     const char *listen_on;
     struct ccnr_handle *h;
     struct hashtb_param param = {0};
@@ -3588,7 +3482,6 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->starttime_usec = h->usec;
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
-    h->data_pause_microsec = 10000;
     debugstr = getenv("CCNR_DEBUG");
     if (debugstr != NULL && debugstr[0] != 0) {
         h->debug = atoi(debugstr);
@@ -3605,40 +3498,14 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
         h->capacity = atol(entrylimit);
-        if (h->capacity == 0)
-            h->force_zero_freshness = 1;
         if (h->capacity <= 0)
             h->capacity = 10;
     }
-    h->mtu = 0;
-    mtu = getenv("CCND_MTU");
-    if (mtu != NULL && mtu[0] != 0) {
-        h->mtu = atol(mtu);
-        if (h->mtu < 0)
-            h->mtu = 0;
-        if (h->mtu > 8800)
-            h->mtu = 8800;
-    }
-    data_pause = getenv("CCND_DATA_PAUSE_MICROSEC");
-    if (data_pause != NULL && data_pause[0] != 0) {
-        h->data_pause_microsec = atol(data_pause);
-        if (h->data_pause_microsec == 0)
-            h->data_pause_microsec = 1;
-        if (h->data_pause_microsec > 1000000)
-            h->data_pause_microsec = 1000000;
-    }
-    listen_on = getenv("CCNR_LISTEN_ON");
-    autoreg = getenv("CCND_AUTOREG");
     ccnr_msg(h, "CCNR_DEBUG=%d CCNR_CAP=%lu", h->debug, h->capacity);
-    if (autoreg != NULL && autoreg[0] != 0) {
-        h->autoreg = ccnr_parse_uri_list(h, "CCND_AUTOREG", autoreg);
-        if (h->autoreg != NULL)
-            ccnr_msg(h, "CCND_AUTOREG=%s", autoreg);
-    }
+    listen_on = getenv("CCNR_LISTEN_ON");
     if (listen_on != NULL && listen_on[0] != 0)
         ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
-    // if (h->debug & 256)
-        h->appnonce = &ccnr_append_debug_nonce;
+    h->appnonce = &ccnr_append_debug_nonce;
     ccnr_init_internal_keystore(h);
     /* XXX - need to bail if keystore is not OK. */
     ccnr_reseed(h);
@@ -3702,7 +3569,6 @@ ccnr_destroy(struct ccnr_handle **pccnr)
         h->content_by_accession_window = 0;
     }
     ccn_charbuf_destroy(&h->scratch_charbuf);
-    ccn_charbuf_destroy(&h->autoreg);
     ccn_indexbuf_destroy(&h->skiplinks);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
     ccn_indexbuf_destroy(&h->unsol);

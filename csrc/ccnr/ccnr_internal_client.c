@@ -43,16 +43,6 @@
 #else
 #define GOT_HERE
 #endif
-#define CCND_NOTICE_NAME "notice.txt"
-
-#ifndef CCND_TEST_100137
-#define CCND_TEST_100137 0
-#endif
-
-#ifndef CCND_PING
-/* The ping responder is deprecated, but enable it by default for now */
-#define CCND_PING 1
-#endif
 
 static struct ccn_charbuf *
 ccnr_init_service_ccnb(struct ccnr_handle *ccnr, const char *baseuri, int freshness)
@@ -193,7 +183,7 @@ ccnr_answer_req(struct ccn_closure *selfp,
     switch (selfp->intdata & OPER_MASK) {
         case OP_SERVICE:
             if (ccnr->service_ccnb == NULL)
-                ccnr->service_ccnb = ccnr_init_service_ccnb(ccnr, CCNDID_LOCAL_URI, 600);
+                ccnr->service_ccnb = ccnr_init_service_ccnb(ccnr, CCNRID_LOCAL_URI, 600);
             if (ccn_content_matches_interest(
                     ccnr->service_ccnb->buf,
                     ccnr->service_ccnb->length,
@@ -210,7 +200,7 @@ ccnr_answer_req(struct ccn_closure *selfp,
             }
             // XXX this needs refactoring.
             if (ccnr->neighbor_ccnb == NULL)
-                ccnr->neighbor_ccnb = ccnr_init_service_ccnb(ccnr, CCNDID_NEIGHBOR_URI, 5);
+                ccnr->neighbor_ccnb = ccnr_init_service_ccnb(ccnr, CCNRID_NEIGHBOR_URI, 5);
             if (ccn_content_matches_interest(
                     ccnr->neighbor_ccnb->buf,
                     ccnr->neighbor_ccnb->length,
@@ -250,8 +240,6 @@ ccnr_answer_req(struct ccn_closure *selfp,
     res = ccn_put(info->h, msg->buf, msg->length);
     if (res < 0)
         goto Bail;
-    if (CCND_TEST_100137)
-        ccn_put(info->h, msg->buf, msg->length);
     res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
     goto Finish;
 Bail:
@@ -307,9 +295,9 @@ ccnr_uri_listen(struct ccnr_handle *ccnr, const char *uri,
         abort();
     if (ccn_name_comp_get(name->buf, comps, 1, &comp, &comp_size) >= 0) {
         if (comp_size == 32 && 0 == memcmp(comp, CCNR_ID_TEMPL, 32)) {
-            /* Replace placeholder with our ccnd_id */
+            /* Replace placeholder with our ccnr_id */
             offset = comp - name->buf;
-            memcpy(name->buf + offset, ccnr->ccnd_id, 32);
+            memcpy(name->buf + offset, ccnr->ccnr_id, 32);
             uri_modified = ccn_charbuf_create();
             ccn_uri_append(uri_modified, name->buf, name->length, 1);
             uri = (char *)uri_modified->buf;
@@ -333,10 +321,9 @@ ccnr_uri_listen(struct ccnr_handle *ccnr, const char *uri,
 }
 
 /**
- * Make a forwarding table entry for ccnx:/ccnx/CCNDID
+ * Make a forwarding table entry for ccnx:/ccnx/CCNRID
  *
- * This one entry handles most of the namespace served by the
- * ccnr internal client.
+ * XXX - this should change of be removed.
  */
 static void
 ccnr_reg_ccnx_ccnrid(struct ccnr_handle *ccnr)
@@ -346,7 +333,7 @@ ccnr_reg_ccnx_ccnrid(struct ccnr_handle *ccnr)
     
     name = ccn_charbuf_create();
     ccn_name_from_uri(name, "ccnx:/ccnx");
-    ccn_name_append(name, ccnr->ccnd_id, 32);
+    ccn_name_append(name, ccnr->ccnr_id, 32);
     uri = ccn_charbuf_create();
     ccn_uri_append(uri, name->buf, name->length, 1);
     ccnr_reg_uri(ccnr, ccn_charbuf_as_string(uri),
@@ -436,7 +423,7 @@ Finish:
     res = ccn_chk_signing_params(ccnr->internal_client, NULL, &sp, NULL, NULL, NULL);
     if (res != 0)
         abort();
-    memcpy(ccnr->ccnd_id, sp.pubid, sizeof(ccnr->ccnd_id));
+    memcpy(ccnr->ccnr_id, sp.pubid, sizeof(ccnr->ccnr_id));
 Bail:
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&cmd);

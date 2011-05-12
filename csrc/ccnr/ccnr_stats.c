@@ -32,7 +32,6 @@
 #include <time.h>
 #include <unistd.h>
 #include <ccn/ccn.h>
-#include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
@@ -241,16 +240,7 @@ collect_faces_html(struct ccnr_handle *h, struct ccn_charbuf *b)
             port = ccn_charbuf_append_sockaddr(nodebuf, fdholder->addr);
             if (port > 0) {
                 const char *node = ccn_charbuf_as_string(nodebuf);
-                int chk = CCN_FACE_MCAST | CCN_FACE_UNDECIDED |
-                CCN_FACE_NOSEND | CCN_FACE_GG | CCN_FACE_PASSIVE;
-                if ((fdholder->flags & chk) == 0)
-                    ccn_charbuf_putf(b,
-                                     " <b>remote:</b> "
-                                     "<a href='http://%s:%s/'>"
-                                     "%s:%d</a>",
-                                     node, CCN_DEFAULT_UNICAST_PORT,
-                                     node, port);
-                else if ((fdholder->flags & CCN_FACE_PASSIVE) == 0)
+                if ((fdholder->flags & CCN_FACE_PASSIVE) == 0)
                     ccn_charbuf_putf(b, " <b>remote:</b> %s:%d",
                                      node, port);
                 else
@@ -348,7 +338,7 @@ collect_forwarding_html(struct ccnr_handle *h, struct ccn_charbuf *b)
 static unsigned
 ccnr_colorhash(struct ccnr_handle *h)
 {
-    unsigned const char *a = h->ccnd_id;
+    unsigned const char *a = h->ccnr_id;
     unsigned v;
     
     v = (a[0] << 16) + (a[1] << 8) + a[2];
@@ -364,9 +354,7 @@ collect_stats_html(struct ccnr_handle *h)
     struct utsname un;
     const char *portstr;
     
-    portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
-    if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
-        portstr = CCN_DEFAULT_UNICAST_PORT;
+    portstr = "8008"; // XXX
     uname(&un);
     pid = getpid();
     
@@ -545,8 +533,8 @@ collect_stats_xml(struct ccnr_handle *h)
         "<ccnr>"
         "<identity>"
         "<ccnrid>");
-    for (i = 0; i < sizeof(h->ccnd_id); i++)
-        ccn_charbuf_putf(b, "%02X", h->ccnd_id[i]);
+    for (i = 0; i < sizeof(h->ccnr_id); i++)
+        ccn_charbuf_putf(b, "%02X", h->ccnr_id[i]);
     ccn_charbuf_putf(b, "</ccnrid>"
         "<apiversion>%d</apiversion>"
         "<starttime>%ld.%06u</starttime>"
