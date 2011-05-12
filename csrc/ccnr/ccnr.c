@@ -741,7 +741,7 @@ shutdown_client_fd(struct ccnr_handle *h, int fd)
         content_queue_destroy(h, &(fdholder->q[c]));
     if (fdholder->addr != NULL)
         free(fdholder->addr);
-    for (m = 0; m < CCND_FACE_METER_N; m++)
+    for (m = 0; m < CCNR_FACE_METER_N; m++)
         ccnr_meter_destroy(&fdholder->meter[m]);
     free(fdholder);
     reap_needed(h, 250000);
@@ -3589,7 +3589,7 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
     h->data_pause_microsec = 10000;
-    debugstr = getenv("CCND_DEBUG");
+    debugstr = getenv("CCNR_DEBUG");
     if (debugstr != NULL && debugstr[0] != 0) {
         h->debug = atoi(debugstr);
         if (h->debug == 0 && debugstr[0] != '0')
@@ -3601,7 +3601,7 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     // if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         // portstr = CCN_DEFAULT_UNICAST_PORT;
     h->portstr = "8008"; // XXX - make configurable.
-    entrylimit = getenv("CCND_CAP");
+    entrylimit = getenv("CCNR_CAP");
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
         h->capacity = atol(entrylimit);
@@ -3627,16 +3627,16 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
         if (h->data_pause_microsec > 1000000)
             h->data_pause_microsec = 1000000;
     }
-    listen_on = getenv("CCND_LISTEN_ON");
+    listen_on = getenv("CCNR_LISTEN_ON");
     autoreg = getenv("CCND_AUTOREG");
-    ccnr_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
+    ccnr_msg(h, "CCNR_DEBUG=%d CCNR_CAP=%lu", h->debug, h->capacity);
     if (autoreg != NULL && autoreg[0] != 0) {
         h->autoreg = ccnr_parse_uri_list(h, "CCND_AUTOREG", autoreg);
         if (h->autoreg != NULL)
             ccnr_msg(h, "CCND_AUTOREG=%s", autoreg);
     }
     if (listen_on != NULL && listen_on[0] != 0)
-        ccnr_msg(h, "CCND_LISTEN_ON=%s", listen_on);
+        ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
     // if (h->debug & 256)
         h->appnonce = &ccnr_append_debug_nonce;
     ccnr_init_internal_keystore(h);

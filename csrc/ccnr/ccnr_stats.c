@@ -85,9 +85,9 @@ ccnr_stats_http_set_debug(struct ccnr_handle *h, struct fdholder *fdholder, int 
     struct ccn_charbuf *response = ccn_charbuf_create();
     
     h->debug = 1;
-    ccnr_msg(h, "CCND_DEBUG=%d", level);
+    ccnr_msg(h, "CCNR_DEBUG=%d", level);
     h->debug = level;
-    ccn_charbuf_putf(response, "<title>CCND_DEBUG=%d</title><tt>CCND_DEBUG=%d</tt>" CRLF, level, level);
+    ccn_charbuf_putf(response, "<title>CCNR_DEBUG=%d</title><tt>CCNR_DEBUG=%d</tt>" CRLF, level, level);
     send_http_response(h, fdholder, "text/html", response);
     ccn_charbuf_destroy(&response);
 }
@@ -477,7 +477,7 @@ collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
                 ccn_charbuf_putf(b, "<via>%u</via>", fdholder->sendface);
             if (fdholder != NULL && (fdholder->flags & CCN_FACE_PASSIVE) == 0) {
                 ccn_charbuf_putf(b, "<meters>");
-                for (m = 0; m < CCND_FACE_METER_N; m++)
+                for (m = 0; m < CCNR_FACE_METER_N; m++)
                     collect_meter_xml(h, b, fdholder->meter[m]);
                 ccn_charbuf_putf(b, "</meters>");
             }

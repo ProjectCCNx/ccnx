@@ -166,7 +166,7 @@ enum ccnr_face_meter_index {
     FM_INTO,
     FM_DATO,
     FM_INTI,
-    CCND_FACE_METER_N
+    CCNR_FACE_METER_N
 };
 
 /**
@@ -189,7 +189,7 @@ struct fdholder {
     int pending_interests;
     unsigned rrun;
     uintmax_t rseq;
-    struct ccnr_meter *meter[CCND_FACE_METER_N];
+    struct ccnr_meter *meter[CCNR_FACE_METER_N];
     unsigned short pktseq;     /**< sequence number for sent packets */
 };
 
