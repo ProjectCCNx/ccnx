@@ -394,7 +394,7 @@ collect_stats_html(struct ccnr_handle *h)
         "<body bgcolor='#%06X'>"
         "<p class='header'>%s ccnr[%d] local port %s api %d start %ld.%06u now %ld.%06u</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
-        " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
+        " %d stored, %lu stale, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
         " %ld pending, %ld propagating, %ld noted</div>" NL
         "<div><b>Interest totals:</b> %lu accepted,"
@@ -412,7 +412,6 @@ collect_stats_html(struct ccnr_handle *h)
         (unsigned long long)h->accession,
         hashtb_n(h->content_tab),
         h->n_stale,
-        hashtb_n(h->sparse_straggler_tab),
         h->content_dups_recvd,
         h->content_items_sent,
         hashtb_n(h->nameprefix_tab), stats.total_interest_counts,
@@ -562,7 +561,6 @@ collect_stats_xml(struct ccnr_handle *h)
         "<accessioned>%llu</accessioned>"
         "<stored>%d</stored>"
         "<stale>%lu</stale>"
-        "<sparse>%d</sparse>"
         "<duplicate>%lu</duplicate>"
         "<sent>%lu</sent>"
         "</cobs>"
@@ -579,7 +577,6 @@ collect_stats_xml(struct ccnr_handle *h)
         (unsigned long long)h->accession,
         hashtb_n(h->content_tab),
         h->n_stale,
-        hashtb_n(h->sparse_straggler_tab),
         h->content_dups_recvd,
         h->content_items_sent,
         hashtb_n(h->nameprefix_tab), stats.total_interest_counts,

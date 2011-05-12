@@ -95,8 +95,6 @@ struct ccnr_handle {
     ccn_accession_t accession_base;
     unsigned content_by_accession_window;
     struct content_entry **content_by_accession;
-    /** The following holds stragglers that would otherwise bloat the above */
-    struct hashtb *sparse_straggler_tab; /* keyed by accession */
     ccn_accession_t accession;      /**< newest used accession number */
     ccn_accession_t min_stale;      /**< smallest accession of stale content */
     ccn_accession_t max_stale;      /**< largest accession of stale content */
@@ -218,14 +216,7 @@ struct fdholder {
 #define CCN_NOFACEID    (~0U)    /** denotes no fdholder */
 
 /**
- *  The content hash table is keyed by the initial portion of the ContentObject
- *  that contains all the parts of the complete name.  The extdata of the hash
- *  table holds the rest of the object, so that the whole ContentObject is
- *  stored contiguously.  The internal form differs from the on-wire form in
- *  that the final content-digest name component is represented explicitly,
- *  which simplifies the matching logic.
- *  The original ContentObject may be reconstructed simply by excising this
- *  last name component, which is easily located via the comps array.
+ *  Entry that represents a content object
  */
 struct content_entry {
     ccn_accession_t accession;  /**< assigned in arrival order */
@@ -244,14 +235,6 @@ struct content_entry {
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
 #define CCN_CONTENT_ENTRY_STALE     2
 #define CCN_CONTENT_ENTRY_PRECIOUS  4
-
-/**
- * The sparse_straggler hash table, keyed by accession, holds scattered
- * entries that would otherwise bloat the direct content_by_accession table.
- */
-struct sparse_straggler_entry {
-    struct content_entry *content;
-};
 
 /**
  * The propagating interest hash table is keyed by Nonce.
