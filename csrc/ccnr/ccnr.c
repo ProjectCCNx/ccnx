@@ -354,7 +354,7 @@ enroll_content(struct ccnr_handle *h, struct content_entry *content)
     unsigned j = 0;
     unsigned window = h->content_by_accession_window;
     if ((content->accession - h->accession_base) >= window &&
-          cleanout_empties(h) < 0) {
+        cleanout_empties(h) < 0) {
         if (content->accession < h->accession_base)
             return;
         window = h->content_by_accession_window;
@@ -372,7 +372,7 @@ enroll_content(struct ccnr_handle *h, struct content_entry *content)
         while (i < h->content_by_accession_window)
             new_array[j++] = old_array[i++];
         h->content_by_accession_window = new_window;
-    free(old_array);
+        free(old_array);
     }
     h->content_by_accession[content->accession - h->accession_base] = content;
 }
