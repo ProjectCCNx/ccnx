@@ -88,7 +88,7 @@ new_keystore:
 	sleep 1 && sh ccn_initkeystore.sh && sleep 3 && mv .ccnx "$$HOME"
 
 libccn.a: $(LIB_OBJS)
-	ar cru $@ $(LIB_OBJS)
+	ar crus $@ $(LIB_OBJS)
 
 shared: $(SHLIBNAME)
 

@@ -212,12 +212,15 @@ proto_reg_handoff_ccn(void)
     if (!initialized) {
         ccn_handle = new_create_dissector_handle(dissect_ccn, proto_ccn);
         heur_dissector_add("udp", dissect_ccn_heur, proto_ccn);
+        heur_dissector_add("tcp", dissect_ccn_heur, proto_ccn);
         initialized = TRUE;
     }
     if (current_ccn_port != -1) {
         dissector_delete("udp.port", current_ccn_port, ccn_handle);
+        dissector_delete("tcp.port", current_ccn_port, ccn_handle);
     }
     dissector_add("udp.port", global_ccn_port, ccn_handle);
+    dissector_add("tcp.port", global_ccn_port, ccn_handle);
     current_ccn_port = global_ccn_port;
 }
 

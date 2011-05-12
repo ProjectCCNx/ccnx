@@ -388,7 +388,7 @@
 
 	            <batchtest todir="${testout}">
 	                <fileset dir="${build}">
-	                    <include name="org/ccnx/ccn/test/impl/**/CCNFlowControlTestExtra.class"/>
+	                    <include name="org/ccnx/ccn/test/impl/**/CCNFlowControlTestRepoExtra.class"/>
 	                </fileset>
 	            </batchtest>
 	        </junit>
