@@ -442,13 +442,12 @@ public class CCNFlowControl implements CCNFilterListener {
 			}
 			assert(size < capacity);
 			// Space verified so now can hold object. See note above for reason to always hold.
+			
+			Entry<UnmatchedInterest> match = null;
 			synchronized (_holdingArea) {
 				_holdingArea.put(co.name(), co);
-			}
 
-			// Check for pending interest match to allow immediate transmit
-			Entry<UnmatchedInterest> match = null;
-			synchronized (_unmatchedInterests) {
+				// Check for pending interest match to allow immediate transmit
 				match = _unmatchedInterests.removeMatch(co);
 			}
 			if (match != null) {
@@ -522,6 +521,14 @@ public class CCNFlowControl implements CCNFilterListener {
 		synchronized (_holdingArea) {
 			set = _holdingArea.keySet();
 			co = getBestMatch(i, set);
+			if (co == null) {
+				//only check if we are adding the interest, and check before we add so we don't check the new interest
+				if (_unmatchedInterests.size() > 0)
+					removeUnmatchedInterests(System.currentTimeMillis());
+				
+				Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
+				_unmatchedInterests.add(i, new UnmatchedInterest());
+			}
 		}
 		if (co != null) {
 			if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
@@ -535,14 +542,6 @@ public class CCNFlowControl implements CCNFilterListener {
 				Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
 				Log.warningStackTrace(e);
 			}
-		} else {
-			
-			//only check if we are adding the interest, and check before we add so we don't check the new interest
-			if (_unmatchedInterests.size() > 0)
-				removeUnmatchedInterests(System.currentTimeMillis());
-			
-			Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
-			_unmatchedInterests.add(i, new UnmatchedInterest());
 		}
 			
 		return true;
