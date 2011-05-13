@@ -570,17 +570,63 @@ public class RepositoryServer implements CCNStatistics {
 	}
 	
 	public void doSync(Interest interest, Interest readInterest) throws IOException {
-		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
-			Log.finer(Log.FAC_REPO, "Repo checked write no content for {0}, starting read", interest.name());
-		RepositoryDataListener listener;
-		listener = new RepositoryDataListener(interest, readInterest, this);
-		addListener(listener);
-		listener.getInterests().add(readInterest, null);
+		RepositoryDataListener listener = null;
+		synchronized (_currentListeners) {
+			if (isDuplicateRequest(interest)) return;
+			
+			if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+				Log.finer(Log.FAC_REPO, "Repo checked write no content for {0}, starting read", interest.name());
+			listener = new RepositoryDataListener(interest, readInterest, this);
+			addListener(listener);
+			listener.getInterests().add(readInterest, null);
+		}
 		_handle.expressInterest(readInterest, listener);
 	}
 	
 	public Object getStatus(String type) {
 		return _repo.getStatus(type);
+	}
+	
+	/**
+	 * Check for duplicate request, i.e. request already in process
+	 * Logs the request if found to be a duplicate.
+	 * @param interest the incoming interest containing the request command
+	 * @return true if request is duplicate
+	 */
+	public boolean isDuplicateRequest(Interest interest) {
+		synchronized (_currentListeners) {
+			for (RepositoryDataListener listener : _currentListeners) {
+				if (listener.getOrigInterest().equals(interest)) {
+					_stats.increment(RepositoryServer.StatsEnum.HandleInterestDuplicateRequests);
+					if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
+						Log.info(Log.FAC_REPO, "Request {0} is a duplicate, ignoring", interest.name());
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Check whether new writes are allowed now
+	 * Logs the discarded request if it cannot be processed
+	 * @param interest the incoming interest containing the command
+	 * @return true if writes are presently suspended
+	 */
+	public boolean isWriteSuspended(Interest interest) {
+		// For now we need to wait until all current sessions are complete before a namespace
+		 // change which will reset the filters is allowed. So for now, we just don't allow any
+		 // new sessions to start until a pending namespace change is complete to allow there to
+		 // be space for this to actually happen. In theory we should probably figure out a way
+		 // to allow new sessions that are within the new namespace to start but figuring out all
+		 // the locking/startup issues surrounding this is complex so for now we just don't allow it.
+		if (getPendingNameSpaceState()) {
+			_stats.increment(RepositoryServer.StatsEnum.HandleInterestWriteSuspended);
+			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
+				Log.info(Log.FAC_REPO, "Discarding write request {0} due to pending namespace change", interest.name());
+			return true;
+		}
+		return false;
 	}
 	
 	// ==============================================================
