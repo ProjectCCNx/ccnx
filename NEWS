@@ -247,7 +247,7 @@ Refer to http://www.ccnx.org/redmine/ for more details.
     * Bug 100455 CCNFlowControlTest should use ThreadAssertionRunner
     * Bug 100458 Remove dead code from RepositoryFlowControl
     * Bug 100460 Cleanup of Waiter
-    * Bug 100463 CCNFlowControl shouldnt sync on unmatchedInterests
+    * Bug 100463 CCNFlowControl shouldn't sync on unmatchedInterests
     * Bug 100465 Access control tests fail with handle problems
     * Bug 100466 BasicKeyManager should recreate its handle when needed
     * Bug 100468 Preserve real git status in gitwrap
@@ -516,7 +516,7 @@ Changes between 0.1.2 and 0.2.0:
     key. This will enable policy-related communication with the repo and more
     sophisticated, multi-repository name enumeration protocols.
   * Implementation of the registration protocol, which allows clients to register
-    with ccnd the prefixes for Interests they wish to recieve, is well under way
+    with ccnd the prefixes for Interests they wish to receive, is well under way
     (see issues #100071, #100072, #100073). Until this code is stable, we will
     retain the default Interest flooding behavior. 
   * Initial version of Java-based registration control client, ccndcontrol, analogous
