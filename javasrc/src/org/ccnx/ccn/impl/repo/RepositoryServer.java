@@ -303,12 +303,14 @@ public class RepositoryServer implements CCNStatistics {
 	private void resetNamespace() throws IOException {
 		ArrayList<ContentName> newNamespace = null;
 		ArrayList<ContentName> unMatchedOld = null;
+		ArrayList<ContentName> stillValid = null;
 		synchronized (_pendingNamespaceChangeLock) {
 			if (_pendingNamespaceChange) {
 				newNamespace = _repo.getNamespace();
 				if (newNamespace == null)	// If this ever happened it would be bad!!
 					newNamespace = new ArrayList<ContentName>();
 				unMatchedOld = getUnMatched(_currentNamespace, newNamespace);
+				stillValid = getUnMatched(_currentNamespace, unMatchedOld);
 			}
 		}
 		
@@ -325,7 +327,16 @@ public class RepositoryServer implements CCNStatistics {
 			// Note that here we need to start with the whole list of the new names, not names that have
 			// had matching names between new and old filtered out, because a "matching name" might have
 			// had a prefix that was lost and therefore never got registered originally.
-			for (ContentName newName : removeDuplicates(newNamespace)) {
+			ArrayList<ContentName> needToAdd = getUnMatched(newNamespace, stillValid);
+			for (ContentName name : stillValid) {
+				for (ContentName check : unMatchedOld) {
+					if (check.isPrefixOf(name)) {
+						needToAdd.add(name);
+						break;
+					}
+				}
+			}
+			for (ContentName newName : removeDuplicates(needToAdd)) {
 				_handle.getNetworkManager().setInterestFilter(_handle, newName, _iHandler, REPO_PREFIX_FLAGS);
 				if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
 					Log.info(Log.FAC_REPO, "Adding repo namespace {0}", newName);
@@ -342,8 +353,6 @@ public class RepositoryServer implements CCNStatistics {
 	 * 
 	 * @param oldIn - previously registered names
 	 * @param newIn - new names to consider
-	 * @param oldOut - previously registered names to deregister
-	 * @param newOut - new names which need to be registered
 	 */
 	private ArrayList<ContentName> getUnMatched(ArrayList<ContentName> oldIn, ArrayList<ContentName> newIn) {
 		ArrayList<ContentName> toRemove = new ArrayList<ContentName>();
