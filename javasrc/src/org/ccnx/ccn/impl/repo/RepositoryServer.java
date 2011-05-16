@@ -298,6 +298,12 @@ public class RepositoryServer implements CCNStatistics {
 	 * We can't completely lock the register/unregister but we can (hopefully) prevent this from
 	 * being called by simultaneous threads by not setting _pendingNamespaceChange to false until we
 	 * are all done which will effectively prevent us from processing new namespace change requests.
+	 * 
+	 * Note that it is very important not to double register the same prefix which would be quite easy
+	 * to do here. If we do that, we end up with multiple handlers for each interest with the result that
+	 * on gets (the most common case) the second handler sends a redundant duplicate answer back to ccnd
+	 * which has a quite dramatic negative affect on performance.
+	 * 
 	 * @throws IOException
 	 */
 	private void resetNamespace() throws IOException {
@@ -324,9 +330,11 @@ public class RepositoryServer implements CCNStatistics {
 		}
 		
 		if (null != newNamespace) {
-			// Note that here we need to start with the whole list of the new names, not names that have
-			// had matching names between new and old filtered out, because a "matching name" might have
-			// had a prefix that was lost and therefore never got registered originally.
+			// TODO The following code is an attempted temporary workaround for bug 100486
+			// to try to properly take care of the unregisters above inadvertently deregistering
+			// a prefix that should be retained. I think this code doesn't handle all cases and
+			// in any case, it should be reviewed after bug 100486 is fixed because it could
+			// easily lead to improper double registration after that.
 			ArrayList<ContentName> needToAdd = getUnMatched(newNamespace, stillValid);
 			for (ContentName name : stillValid) {
 				for (ContentName check : unMatchedOld) {
