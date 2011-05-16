@@ -31,6 +31,10 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
+/*
+ * Deprecated. We don't believe there are many (if any) old repositories with old style headers at this point.
+ */
+@Deprecated
 public class updateheader {
 
 	public static void usage() {
