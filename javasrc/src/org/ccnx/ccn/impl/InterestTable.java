@@ -219,17 +219,19 @@ public class InterestTable<V> {
 				ArrayList<Holder<V>> list = new ArrayList<Holder<V>>(1);
 				list.add(holder);
 
-				if (null != _capacity && _contents.size() >= _capacity) {
-					// The LRU is the first key in the LRU list. So remove the contents
-					// corresponding to that one.
-					// XXX - should we care about whether the key has multiple
-					// interests attached?
-					_contents.remove(_contentNamesLRU.get(0));
-					_contentNamesLRU.remove(0);
+				if (null != _capacity) {
+					if ( _contents.size() >= _capacity) {
+						// The LRU is the first key in the LRU list. So remove the contents
+						// corresponding to that one.
+						// XXX - should we care about whether the key has multiple
+						// interests attached?
+						_contents.remove(_contentNamesLRU.get(0));
+						_contentNamesLRU.remove(0);
+					}
+					_contentNamesLRU.add(name);
 				}
 				_contents.put(name, list);
 			}
-			_contentNamesLRU.add(name);
 		}
 	}
 
