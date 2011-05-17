@@ -17,6 +17,6 @@
 <Policy>
 	<PolicyVersion> 1.5 </PolicyVersion>
 	<LocalName> TestRepository </LocalName>
-	<GlobalPrefix> parc.com/csl/ccn/repositories </GlobalPrefix>
+	<GlobalPrefix> parc.com/csl/ccn/repositories/TestRepository </GlobalPrefix>
 	<Namespace> / </Namespace>
 </Policy>

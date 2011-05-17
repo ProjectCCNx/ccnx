@@ -338,7 +338,7 @@ public class RepoIOTest extends RepoTestBase {
 		FileInputStream fis = new FileInputStream(_topdir + policyFile);
 		PolicyXML pxml = BasicPolicy.createPolicyXML(fis);
 		fis.close();
-		ContentName basePolicy = BasicPolicy.getPolicyName(ContentName.fromNative(_globalPrefix), _repoName);
+		ContentName basePolicy = BasicPolicy.getPolicyName(ContentName.fromNative(_globalPrefix));
 		ContentName policyName = new ContentName(basePolicy, Interest.generateNonce());
 		PolicyObject po = new PolicyObject(policyName, pxml, SaveType.REPOSITORY, putHandle);
 		po.save();

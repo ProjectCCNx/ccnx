@@ -189,4 +189,10 @@ public interface RepositoryStore {
      * Get implementation defined status
      */
     public Object getStatus(String type);
+    
+    /**
+     * We can't read/write policy files until after we have started the server so this is a
+     * hook to do it at the right time.
+     */
+    public void policyUpdate() throws RepositoryException;
 }

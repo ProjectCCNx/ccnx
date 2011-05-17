@@ -176,7 +176,6 @@ public class Daemon {
 			}
 
 			getRMIFile(_daemonName, SystemConfiguration.getPID()).delete();		
-			System.exit(0);
 		}			
 
 		public void shutDown() {
@@ -197,6 +196,9 @@ public class Daemon {
 		}
 		public void finish() {
 			Log.info("Should not be here, in WorkerThread.finish().");
+		}
+		public void waitForStart() {
+			Log.info("Should not be here, in waitForStart().");
 		}
 		public boolean signal(String name) {
 			Log.info("Should not be here, in WorkerThread.signal().");

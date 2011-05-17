@@ -127,56 +127,13 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	}
 
 	/**
-	 * Check for duplicate request, i.e. request already in process
-	 * Logs the request if found to be a duplicate.
-	 * @param interest the incoming interest containing the request command
-	 * @return true if request is duplicate
-	 */
-	protected boolean isDuplicateRequest(Interest interest) {
-		synchronized (_server.getDataListeners()) {
-			for (RepositoryDataListener listener : _server.getDataListeners()) {
-				if (listener.getOrigInterest().equals(interest)) {
-					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestDuplicateRequests);
-					if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
-						Log.info(Log.FAC_REPO, "Request {0} is a duplicate, ignoring", interest.name());
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Check whether new writes are allowed now
-	 * Logs the discarded request if it cannot be processed
-	 * @param interest the incoming interest containing the command
-	 * @return true if writes are presently suspended
-	 */
-	protected boolean isWriteSuspended(Interest interest) {
-		// For now we need to wait until all current sessions are complete before a namespace
-		 // change which will reset the filters is allowed. So for now, we just don't allow any
-		 // new sessions to start until a pending namespace change is complete to allow there to
-		 // be space for this to actually happen. In theory we should probably figure out a way
-		 // to allow new sessions that are within the new namespace to start but figuring out all
-		 // the locking/startup issues surrounding this is complex so for now we just don't allow it.
-		if (_server.getPendingNameSpaceState()) {
-			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestWriteSuspended);
-			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
-				Log.info(Log.FAC_REPO, "Discarding write request {0} due to pending namespace change", interest.name());
-			return true;
-		}
-		return false;
-	}
-
-	/**
 	 * Handle start write requests
 	 * 
 	 * @param interest
 	 */
 	private void startWrite(Interest interest) {
-		if (isDuplicateRequest(interest)) return;
 			
-		if (isWriteSuspended(interest)) return;
+		if (_server.isWriteSuspended(interest)) return;
 		
 		// Create the name for the initial interest to retrieve content from the client that it desires to 
 		// write.  Strip from the write request name (in the incoming Interest) the start write command component
@@ -191,7 +148,6 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			// a specific segment initially so as to support arbitrary starting segment numbers.
 			// TODO use better exclude filters to ensure we're only getting segments.
 			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null, 2, null, null);
-			RepositoryDataListener listener;
 			
 			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null, null);
 			if (null == rio)
@@ -201,18 +157,23 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 			
 			// Check for special case file written to repo
 			ContentName globalPrefix = _server.getRepository().getGlobalPrefix();
-			String localName = _server.getRepository().getLocalName();
-			if (BasicPolicy.getPolicyName(globalPrefix, localName).isPrefixOf(listeningName)) {
+			if (BasicPolicy.getPolicyName(globalPrefix).isPrefixOf(listeningName)) {
 				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWritePolicyHandlers);
 				new RepositoryPolicyHandler(interest, readInterest, _server);
 				return;
 			}
 			
-			listener = new RepositoryDataListener(interest, readInterest, _server);
-			_server.addListener(listener);
-			listener.getInterests().add(readInterest, null);
+			RepositoryDataListener listener = null;
+			
+			synchronized (_server.getDataListeners()) {
+				if (_server.isDuplicateRequest(interest)) return;
+				
+				listener = new RepositoryDataListener(interest, readInterest, _server);
+				_server.addListener(listener);
+				listener.getInterests().add(readInterest, null);
+				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteExpressInterest);
+			}
 			_handle.expressInterest(readInterest, listener);
-			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteExpressInterest);
 			
 		} catch (Exception e) {
 			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteErrors);
@@ -230,9 +191,9 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 	 * @throws IOException
 	 */
 	private void startWriteChecked(Interest interest) {
-		if (isDuplicateRequest(interest)) return;
+		if (_server.isDuplicateRequest(interest)) return;
 		
-		if (isWriteSuspended(interest)) return;
+		if (_server.isWriteSuspended(interest)) return;
 
 		try {
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
