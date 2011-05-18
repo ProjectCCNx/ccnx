@@ -90,6 +90,19 @@ public class PrincipalKeyDirectory extends KeyDirectory {
 	throws IOException {
 		super(directoryName, enumerate, handle);
 		_manager = manager;
+		
+		// now that our class's variables are set up we can call the superclass's initialize method.
+		super.initialize(enumerate);
+	}
+
+	/**
+	 * Defer initialization until the end of our constructor since this
+	 * class's variables are not set up yet, so we're not ready for callbacks.
+	 * @see PrincipalKeyDirectory#PrincipalKeyDirectory(GroupAccessControlManager, ContentName, boolean, CCNHandle)
+	 * @see KeyDirectory#KeyDirectory(ContentName, boolean, CCNHandle)
+	 */
+	@Override
+	protected void initialize(boolean startEnumerating) throws IOException {
 	}
 
 	/**
