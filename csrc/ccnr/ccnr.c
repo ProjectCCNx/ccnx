@@ -1,3 +1,4 @@
+///usr/bin/true << //EOF
 /*
  * ccnr/ccnr.c
  *
@@ -21,6 +22,9 @@
  * Main program of ccnr - the CCNx Daemon
  */
 
+//EOF
+///bin/cat << //EOF >> common.h
+
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -42,11 +46,6 @@
 #include <sys/un.h>
 #include <netinet/in.h>
 
-#if defined(NEED_GETADDRINFO_COMPAT)
-    #include "getaddrinfo.h"
-    #include "dummyin6.h"
-#endif
-
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/ccn_private.h>
@@ -59,8 +58,9 @@
 #include <ccn/uri.h>
 
 #include "ccnr_private.h"
-#define GOT_HERE ccnr_msg(h, "at ccnr.c:%d", __LINE__);
 
+//for now...
+#define static
 
 static void
 cleanup_at_exit(void);
@@ -325,6 +325,9 @@ static int
 ccnr_listen_on(struct ccnr_handle * h, const char *addrs);
 static void
 ccnr_shutdown_all(struct ccnr_handle * h);
+
+//EOF
+///bin/cat << //EOF >> File1.c
 
 /* Our one global */
 static const char *unlink_this_at_exit = NULL;
@@ -3765,3 +3768,4 @@ ccnr_destroy(struct ccnr_handle **pccnr)
     *pccnr = NULL;
     cleanup_at_exit();
 }
+//EOF
