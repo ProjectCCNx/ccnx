@@ -25,3 +25,6 @@
 //EOF
 ///bin/cat << //EOF >> ccnr_util.c
 
+//EOF
+///bin/cat << //EOF >> ccnr_other.c
+
