@@ -325,8 +325,7 @@ static void
 ccnr_shutdown_all(struct ccnr_handle * h);
 
 //EOF
-///bin/cat << //EOF >> File1.c
-
+///bin/cat << //EOF >> ccnr_util.c
 static struct ccn_charbuf *
 charbuf_obtain(struct ccnr_handle *h)
 {
@@ -368,6 +367,9 @@ indexbuf_release(struct ccnr_handle *h, struct ccn_indexbuf *c)
     else
         ccn_indexbuf_destroy(&c);
 }
+
+//EOF
+///bin/cat << //EOF >> ccnr_io.c
 
 /**
  * Looks up a fdholder based on its filedesc (private).
@@ -431,6 +433,8 @@ use_i:
     return (fdholder->filedesc);
 }
 
+//EOF
+///bin/cat << //EOF >> ccnr_sendq.c
 static int
 choose_face_delay(struct ccnr_handle *h, struct fdholder *fdholder, enum cq_delay_class c)
 {
@@ -484,6 +488,8 @@ content_queue_destroy(struct ccnr_handle *h, struct content_queue **pq)
     }
 }
 
+//EOF
+///bin/cat << //EOF >> ccnr_io.c
 /**
  * Close an open file descriptor quietly.
  */
@@ -518,6 +524,8 @@ ccnr_close_fd(struct ccnr_handle *h, unsigned filedesc, int *pfd)
     }
 }
 
+//EOF
+///bin/cat << //EOF >> ccnr_store.c
 static struct content_entry *
 content_from_accession(struct ccnr_handle *h, ccn_accession_t accession)
 {
