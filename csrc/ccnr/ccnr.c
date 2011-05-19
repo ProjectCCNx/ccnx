@@ -23,7 +23,7 @@
  */
 
 //EOF
-///usr/bin/env for i in ccnr_dispatch.c ccnr_forwarding.c ccnr_init.c ccnr_io.c ccnr_link.c ccnr_match.c ccnr_net.c ccnr_sendq.c ccnr_store.c ccnr_util.c ; do echo '#include "common.h"'  >$i; done
+///bin/sh -c 'for i in ccnr_dispatch.c ccnr_forwarding.c ccnr_init.c ccnr_io.c ccnr_link.c ccnr_match.c ccnr_net.c ccnr_sendq.c ccnr_store.c ccnr_util.c ; do echo "#include \"common.h\""  >$i; done'
 ///bin/cat << //EOF >> common.h
 #include <errno.h>
 #include <fcntl.h>
