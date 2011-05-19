@@ -26,5 +26,5 @@
 ///bin/cat << //EOF >> ccnr_util.c
 
 //EOF
-///bin/cat << //EOF >> ccnr_other.c
+///bin/cat << //EOF >> ccnr_init.c
 
