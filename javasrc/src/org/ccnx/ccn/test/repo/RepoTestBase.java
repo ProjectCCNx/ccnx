@@ -56,7 +56,6 @@ public class RepoTestBase extends LibraryTestBase {
 	public static void setUpBeforeClass() throws Exception {
 		LibraryTestBase.setUpBeforeClass();
 		
-		// Let default logging level be set centrally so it can be overridden by property
 		_topdir = System.getProperty(TOP_DIR);
 		if (null == _topdir)
 			_topdir = "src";

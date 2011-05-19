@@ -36,6 +36,7 @@
 	<property name="testout" location="testout"/>
 	<property name="testoutlog" location="testout/log"/>
 	<property name="LOGDIR_KEY" value="org.ccnx.ccn.LogDir"/>
+	<property name="JAVA_MEMORY" value="1g" />
 	<property name="ccnd" location="../csrc/ccnd/ccnd"/>
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
@@ -763,7 +764,7 @@
 	<target name="test-security-without-repo" depends="jar, ccnd">
 		<!-- Security tests that don't need a repo running -->
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" maxmemory="${JAVA_MEMORY}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>

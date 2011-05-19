@@ -21,7 +21,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.TreeMap;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
@@ -135,8 +134,6 @@ public class RepoIOTest extends RepoTestBase {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(Log.FAC_NETMANAGER, Level.FINEST);
-		Log.setLevel(Log.FAC_IO, Level.FINEST);
 
 		RepoTestBase.setUpBeforeClass();
 
