@@ -386,7 +386,7 @@ fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
 /**
  * Looks up a fdholder based on its filedesc.
  */
-struct fdholder *
+PUBLIC struct fdholder *
 ccnr_fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
 {
     return(fdholder_from_fd(h, filedesc));
@@ -1536,7 +1536,7 @@ process_incoming_link_message(struct ccnr_handle *h,
  * Destroys the fdholder identified by filedesc.
  * @returns 0 for success, -1 for failure.
  */
-int
+PUBLIC int
 ccnr_destroy_face(struct ccnr_handle *h, unsigned filedesc)
 {
     shutdown_client_fd(h, filedesc);
@@ -1859,7 +1859,7 @@ ccnr_reg_prefix(struct ccnr_handle *h,
  * Register a prefix, expressed in the form of a URI.
  * @returns negative value for error, or new fdholder flags for success.
  */
-int
+PUBLIC int
 ccnr_reg_uri(struct ccnr_handle *h,
              const char *uri,
              unsigned filedesc,
@@ -1894,7 +1894,7 @@ Bail:
  * Register prefixes, expressed in the form of a list of URIs.
  * The URIs in the charbuf are each terminated by nul.
  */
-void
+PUBLIC void
 ccnr_reg_uri_list(struct ccnr_handle *h,
              struct ccn_charbuf *uris,
              unsigned filedesc,
@@ -2507,7 +2507,8 @@ is_duplicate_flooded(struct ccnr_handle *h, unsigned char *msg,
 /**
  * Finds the longest matching nameprefix, returns the component count or -1 for error.
  */
-/* UNUSED */ int
+/* UNUSED */
+PUBLIC int
 nameprefix_longest_match(struct ccnr_handle *h, const unsigned char *msg,
                          struct ccn_indexbuf *comps, int ncomps)
 {
@@ -3298,7 +3299,7 @@ sending_fd(struct ccnr_handle *h, struct fdholder *fdholder)
  *
  * No direct error result is provided; the fdholder state is updated as needed.
  */
-void
+PUBLIC void
 ccnr_send(struct ccnr_handle *h,
           struct fdholder *fdholder,
           const void *data, size_t size)
@@ -3427,7 +3428,7 @@ prepare_poll_fds(struct ccnr_handle *h)
 /**
  * Run the main loop of the ccnr
  */
-void
+PUBLIC void
 ccnr_run(struct ccnr_handle *h)
 {
     int i;
@@ -3521,7 +3522,7 @@ ccnr_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 //EOF
 ///bin/cat << //EOF >> ccnr_net.c
 
-void
+PUBLIC void
 ccnr_setsockopt_v6only(struct ccnr_handle *h, int fd)
 {
     int yes = 1;
@@ -3679,7 +3680,7 @@ ccnr_listen_on(struct ccnr_handle *h, const char *addrs)
  * @param logger - logger function
  * @param loggerdata - data to pass to logger function
  */
-struct ccnr_handle *
+PUBLIC struct ccnr_handle *
 ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
 {
     char *sockname;
@@ -3784,7 +3785,7 @@ ccnr_shutdown_all(struct ccnr_handle *h)
 /**
  * Destroy the ccnr instance, releasing all associated resources.
  */
-void
+PUBLIC void
 ccnr_destroy(struct ccnr_handle **pccnr)
 {
     struct ccnr_handle *h = *pccnr;
