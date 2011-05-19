@@ -1,0 +1,27 @@
+//EOF
+///bin/cat << //EOF >> ccnr_sendq.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_store.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_dispatch.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_forwarding.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_link.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_match.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_io.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_net.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_util.c
+

@@ -62,8 +62,6 @@
 //for now...
 #define static
 
-static void
-cleanup_at_exit(void);
 static struct ccn_charbuf *
 charbuf_obtain(struct ccnr_handle * h);
 static void
@@ -328,18 +326,6 @@ ccnr_shutdown_all(struct ccnr_handle * h);
 
 //EOF
 ///bin/cat << //EOF >> File1.c
-
-/* Our one global */
-static const char *unlink_this_at_exit = NULL;
-
-static void
-cleanup_at_exit(void)
-{
-    if (unlink_this_at_exit != NULL) {
-        unlink(unlink_this_at_exit);
-        unlink_this_at_exit = NULL;
-    }
-}
 
 static struct ccn_charbuf *
 charbuf_obtain(struct ccnr_handle *h)
@@ -3766,6 +3752,5 @@ ccnr_destroy(struct ccnr_handle **pccnr)
     }
     free(h);
     *pccnr = NULL;
-    cleanup_at_exit();
 }
 //EOF
