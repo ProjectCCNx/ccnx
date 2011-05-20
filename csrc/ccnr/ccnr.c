@@ -741,8 +741,7 @@ find_first_match_candidate(struct ccnr_handle *h,
     return(content_from_accession(h, pred[0]->buf[0]));
 }
 //EOF
-///bin/cat << //EOF >> ccnr_match.c
-
+///bin/cat << //EOF >> ccnr_store.c
 
 PUBLIC int
 content_matches_interest_prefix(struct ccnr_handle *h,
