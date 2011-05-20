@@ -6,14 +6,14 @@ static void
 replan_propagation(struct ccnr_handle * h, struct propagating_entry * pe);
 
 PUBLIC void
-finalize_nameprefix(struct hashtb_enumerator *e)
+r_fwd_finalize_nameprefix(struct hashtb_enumerator *e)
 {
     struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
     struct nameprefix_entry *npe = e->data;
     struct propagating_entry *head = &npe->pe_head;
     if (head->next != NULL) {
         while (head->next != head)
-            consume(h, head->next);
+            r_match_consume_interest(h, head->next);
     }
     ccn_indexbuf_destroy(&npe->forward_to);
     ccn_indexbuf_destroy(&npe->tap);
@@ -35,10 +35,10 @@ link_propagating_interest_to_nameprefix(struct ccnr_handle *h,
 }
 
 PUBLIC void
-finalize_propagating(struct hashtb_enumerator *e)
+r_fwd_finalize_propagating(struct hashtb_enumerator *e)
 {
     struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
-    consume(h, e->data);
+    r_match_consume_interest(h, e->data);
 }
 
 /**
@@ -67,7 +67,7 @@ promote_outbound(struct propagating_entry *pe, unsigned filedesc)
 }
 
 PUBLIC void
-adjust_npe_predicted_response(struct ccnr_handle *h,
+r_fwd_adjust_npe_predicted_response(struct ccnr_handle *h,
                               struct nameprefix_entry *npe, int up)
 {
     unsigned t = npe->usec;
@@ -91,9 +91,9 @@ adjust_predicted_response(struct ccnr_handle *h,
     npe = nameprefix_for_pe(h, pe);
     if (npe == NULL)
         return;
-    adjust_npe_predicted_response(h, npe, up);
+    r_fwd_adjust_npe_predicted_response(h, npe, up);
     if (npe->parent != NULL)
-        adjust_npe_predicted_response(h, npe->parent, up);
+        r_fwd_adjust_npe_predicted_response(h, npe->parent, up);
 }
 
 /**
@@ -135,10 +135,10 @@ check_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
     if (ft == NULL)
         return;
     for (i = 0; i < ft->n; i++)
-        if (fdholder_from_fd(h, ft->buf[i]) == NULL)
+        if (r_io_fdholder_from_fd(h, ft->buf[i]) == NULL)
             break;
     for (j = i + 1; j < ft->n; j++)
-        if (fdholder_from_fd(h, ft->buf[j]) != NULL)
+        if (r_io_fdholder_from_fd(h, ft->buf[j]) != NULL)
             ft->buf[i++] = ft->buf[j];
     if (i == 0)
         ccn_indexbuf_destroy(&npe->forward_to);
@@ -236,7 +236,7 @@ reap(struct ccn_schedule *sched,
 }
 
 PUBLIC void
-reap_needed(struct ccnr_handle *h, int init_delay_usec)
+r_fwd_reap_needed(struct ccnr_handle *h, int init_delay_usec)
 {
     if (h->reaper == NULL)
         h->reaper = ccn_schedule_event(h->sched, init_delay_usec, reap, NULL, 0);
@@ -269,9 +269,9 @@ age_forwarding(struct ccn_schedule *sched,
         for (f = npe->forwarding; f != NULL; f = next) {
             next = f->next;
             if ((f->flags & CCN_FORW_REFRESHED) == 0 ||
-                  fdholder_from_fd(h, f->filedesc) == NULL) {
+                  r_io_fdholder_from_fd(h, f->filedesc) == NULL) {
                 if (h->debug & 2) {
-                    struct fdholder *fdholder = fdholder_from_fd(h, f->filedesc);
+                    struct fdholder *fdholder = r_io_fdholder_from_fd(h, f->filedesc);
                     if (fdholder != NULL) {
                         struct ccn_charbuf *prefix = ccn_charbuf_create();
                         ccn_name_init(prefix);
@@ -300,7 +300,7 @@ age_forwarding(struct ccn_schedule *sched,
 }
 
 PUBLIC void
-age_forwarding_needed(struct ccnr_handle *h)
+r_fwd_age_forwarding_needed(struct ccnr_handle *h)
 {
     if (h->age_forwarding == NULL)
         h->age_forwarding = ccn_schedule_event(h->sched,
@@ -361,14 +361,14 @@ ccnr_reg_prefix(struct ccnr_handle *h,
     if (flags >= 0 &&
         (flags & CCN_FORW_PUBMASK) != flags)
         return(-1);
-    fdholder = fdholder_from_fd(h, filedesc);
+    fdholder = r_io_fdholder_from_fd(h, filedesc);
     if (fdholder == NULL)
         return(-1);
     /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
     if (flags >= 0 && (flags & CCN_FORW_LAST) != 0)
         fdholder->flags |= CCN_FACE_DC;
     hashtb_start(h->nameprefix_tab, e);
-    res = nameprefix_seek(h, e, msg, comps, ncomps);
+    res = r_fwd_nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
         res = (res == HT_OLD_ENTRY) ? CCN_FORW_REFRESHED : 0;
         npe = e->data;
@@ -411,7 +411,7 @@ ccnr_reg_prefix(struct ccnr_handle *h,
  * @returns negative value for error, or new fdholder flags for success.
  */
 PUBLIC int
-ccnr_reg_uri(struct ccnr_handle *h,
+r_fwd_reg_uri(struct ccnr_handle *h,
              const char *uri,
              unsigned filedesc,
              int flags,
@@ -446,7 +446,7 @@ Bail:
  * The URIs in the charbuf are each terminated by nul.
  */
 PUBLIC void
-ccnr_reg_uri_list(struct ccnr_handle *h,
+r_fwd_reg_uri_list(struct ccnr_handle *h,
              struct ccn_charbuf *uris,
              unsigned filedesc,
              int flags,
@@ -456,7 +456,7 @@ ccnr_reg_uri_list(struct ccnr_handle *h,
     const char *s;
     s = ccn_charbuf_as_string(uris);
     for (i = 0; i + 1 < uris->length; i += strlen(s + i) + 1)
-        ccnr_reg_uri(h, s + i, filedesc, flags, expires);
+        r_fwd_reg_uri(h, s + i, filedesc, flags, expires);
 }
 
 /**
@@ -464,7 +464,7 @@ ccnr_reg_uri_list(struct ccnr_handle *h,
  * from forwarding lists of npe and all of its ancestors.
  */
 PUBLIC void
-update_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
+r_fwd_update_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
 {
     struct ccn_indexbuf *x = NULL;
     struct ccn_indexbuf *tap = NULL;
@@ -489,7 +489,7 @@ update_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
     for (p = npe; p != NULL; p = p->parent) {
         moreflags = CCN_FORW_CHILD_INHERIT;
         for (f = p->forwarding; f != NULL; f = f->next) {
-            if (fdholder_from_fd(h, f->filedesc) == NULL)
+            if (r_io_fdholder_from_fd(h, f->filedesc) == NULL)
                 continue;
             tflags = f->flags;
             if (tflags & (CCN_FORW_TAP | CCN_FORW_LAST))
@@ -549,7 +549,7 @@ get_outbound_faces(struct ccnr_handle *h,
     while (npe->parent != NULL && npe->forwarding == NULL)
         npe = npe->parent;
     if (npe->fgen != h->forward_to_gen)
-        update_forward_to(h, npe);
+        r_fwd_update_forward_to(h, npe);
     x = ccn_indexbuf_create();
     if (pi->scope == 0 || npe->forward_to == NULL || npe->forward_to->n == 0)
         return(x);
@@ -564,7 +564,7 @@ get_outbound_faces(struct ccnr_handle *h,
         checkmask |= CCN_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         filedesc = npe->forward_to->buf[i];
-        fdholder = fdholder_from_fd(h, filedesc);
+        fdholder = r_io_fdholder_from_fd(h, filedesc);
         if (fdholder != NULL && fdholder != from &&
             ((fdholder->flags & checkmask) == wantmask)) {
             if (h->debug & 32)
@@ -591,7 +591,7 @@ pe_next_usec(struct ccnr_handle *h,
                          next_delay, pe->usec);
         if (pe->interest_msg != NULL) {
             ccnr_debug_ccnb(h, lineno, ccn_charbuf_as_string(c),
-                            fdholder_from_fd(h, pe->filedesc),
+                            r_io_fdholder_from_fd(h, pe->filedesc),
                             pe->interest_msg, pe->size);
         }
         ccn_charbuf_destroy(&c);
@@ -613,7 +613,7 @@ do_propagate(struct ccn_schedule *sched,
     if (pe->interest_msg == NULL)
         return(0);
     if (flags & CCN_SCHEDULE_CANCEL) {
-        consume(h, pe);
+        r_match_consume_interest(h, pe);
         return(0);
     }
     if ((pe->flags & CCN_PR_WAIT1) != 0) {
@@ -623,10 +623,10 @@ do_propagate(struct ccn_schedule *sched,
     if (pe->usec <= 0) {
         if (h->debug & 2)
             ccnr_debug_ccnb(h, __LINE__, "interest_expiry",
-                            fdholder_from_fd(h, pe->filedesc),
+                            r_io_fdholder_from_fd(h, pe->filedesc),
                             pe->interest_msg, pe->size);
-        consume(h, pe);
-        reap_needed(h, 0);
+        r_match_consume_interest(h, pe);
+        r_fwd_reap_needed(h, 0);
         return(0);        
     }
     if ((pe->flags & CCN_PR_STUFFED1) != 0) {
@@ -636,7 +636,7 @@ do_propagate(struct ccn_schedule *sched,
     }
     else if (pe->outbound != NULL && pe->sent < pe->outbound->n) {
         unsigned filedesc = pe->outbound->buf[pe->sent];
-        struct fdholder *fdholder = fdholder_from_fd(h, filedesc);
+        struct fdholder *fdholder = r_io_fdholder_from_fd(h, filedesc);
         if (fdholder != NULL && (fdholder->flags & CCN_FACE_NOSEND) == 0) {
             if (h->debug & 2)
                 ccnr_debug_ccnb(h, __LINE__, "interest_to", fdholder,
@@ -654,7 +654,7 @@ do_propagate(struct ccn_schedule *sched,
                 pe->flags |= CCN_PR_WAIT1;
                 next_delay = special_delay = ev->evint;
             }
-            stuff_and_send(h, fdholder, pe->interest_msg, pe->size, NULL, 0);
+            r_link_stuff_and_send(h, fdholder, pe->interest_msg, pe->size, NULL, 0);
             ccnr_meter_bump(h, fdholder->meter[FM_INTO], 1);
         }
         else
@@ -673,7 +673,7 @@ do_propagate(struct ccn_schedule *sched,
     }
     else {
         unsigned filedesc = pe->outbound->buf[pe->sent];
-        struct fdholder *fdholder = fdholder_from_fd(h, filedesc);
+        struct fdholder *fdholder = r_io_fdholder_from_fd(h, filedesc);
         /* Wait longer before sending interest to ccnrc */
         if (fdholder != NULL && (fdholder->flags & CCN_FACE_DC) != 0)
             next_delay += 60000;
@@ -721,7 +721,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
                 0 == memcmp(msg, p->interest_msg, presize) &&
                 0 == memcmp(post, p->interest_msg + p->size - postsize, postsize)) {
                 /* Matches everything but the Nonce */
-                otherface = fdholder_from_fd(h, p->filedesc);
+                otherface = r_io_fdholder_from_fd(h, p->filedesc);
                 if (otherface == NULL)
                     continue;
                 /*
@@ -733,7 +733,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
                     continue;
                 if (h->debug & 32)
                     ccnr_debug_ccnb(h, __LINE__, "similar_interest",
-                                    fdholder_from_fd(h, p->filedesc),
+                                    r_io_fdholder_from_fd(h, p->filedesc),
                                     p->interest_msg, p->size);
                 if (fdholder->filedesc == p->filedesc) {
                     /*
@@ -790,7 +790,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
 }
 
 PUBLIC void
-ccnr_append_debug_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct ccn_charbuf *cb) {
+r_fwd_append_debug_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct ccn_charbuf *cb) {
         unsigned char s[12];
         int i;
         
@@ -808,7 +808,7 @@ ccnr_append_debug_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct
 }
 
 PUBLIC void
-ccnr_append_plain_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct ccn_charbuf *cb) {
+r_fwd_append_plain_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct ccn_charbuf *cb) {
         int noncebytes = 6;
         unsigned char *s = NULL;
         int i;
@@ -826,7 +826,7 @@ ccnr_append_plain_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct
  * Schedules the propagation of an Interest message.
  */
 PUBLIC int
-propagate_interest(struct ccnr_handle *h,
+r_fwd_propagate_interest(struct ccnr_handle *h,
                    struct fdholder *fdholder,
                    unsigned char *msg,
                    struct ccn_parsed_interest *pi,
@@ -869,7 +869,7 @@ propagate_interest(struct ccnr_handle *h,
     if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
         /* This interest has no nonce; add one before going on */
         size_t nonce_start = 0;
-        cb = charbuf_obtain(h);
+        cb = r_util_charbuf_obtain(h);
         ccn_charbuf_append(cb, msg, pi->offset[CCN_PI_B_Nonce]);
         nonce_start = cb->length;
         (h->appnonce)(h, fdholder, cb);
@@ -941,7 +941,7 @@ propagate_interest(struct ccnr_handle *h,
     }
     hashtb_end(e);
     if (cb != NULL)
-        charbuf_release(h, cb);
+        r_util_charbuf_release(h, cb);
     ccn_indexbuf_destroy(&outbound);
     return(res);
 }
@@ -976,14 +976,14 @@ replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
     pe->fgen = h->forward_to_gen;
     if ((pe->flags & (CCN_PR_SCOPE0 | CCN_PR_EQV)) != 0)
         return;
-    from = fdholder_from_fd(h, pe->filedesc);
+    from = r_io_fdholder_from_fd(h, pe->filedesc);
     if (from == NULL)
         return;
     npe = nameprefix_for_pe(h, pe);
     while (npe->parent != NULL && npe->forwarding == NULL)
         npe = npe->parent;
     if (npe->fgen != h->forward_to_gen)
-        update_forward_to(h, npe);
+        r_fwd_update_forward_to(h, npe);
     if (npe->forward_to == NULL || npe->forward_to->n == 0)
         return;
     if ((pe->flags & CCN_PR_SCOPE1) != 0)
@@ -997,7 +997,7 @@ replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
         checkmask |= CCN_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         filedesc = npe->forward_to->buf[i];
-        fdholder = fdholder_from_fd(h, filedesc);
+        fdholder = r_io_fdholder_from_fd(h, filedesc);
         if (fdholder != NULL && filedesc != pe->filedesc &&
             ((fdholder->flags & checkmask) == wantmask)) {
             k = x->n;
@@ -1016,7 +1016,7 @@ replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
  * the duplicate arrived on from the outbound set of the original.
  */
 PUBLIC int
-is_duplicate_flooded(struct ccnr_handle *h, unsigned char *msg,
+r_fwd_is_duplicate_flooded(struct ccnr_handle *h, unsigned char *msg,
                      struct ccn_parsed_interest *pi, unsigned filedesc)
 {
     struct hashtb_enumerator ee;
@@ -1043,7 +1043,7 @@ is_duplicate_flooded(struct ccnr_handle *h, unsigned char *msg,
  */
 /* UNUSED */
 PUBLIC int
-nameprefix_longest_match(struct ccnr_handle *h, const unsigned char *msg,
+r_fwd_nameprefix_longest_match(struct ccnr_handle *h, const unsigned char *msg,
                          struct ccn_indexbuf *comps, int ncomps)
 {
     int i;
@@ -1062,7 +1062,7 @@ nameprefix_longest_match(struct ccnr_handle *h, const unsigned char *msg,
         if (npe->children == 0)
             break;
     }
-    ccnr_msg(h, "nameprefix_longest_match returning %d", answer);
+    ccnr_msg(h, "r_fwd_nameprefix_longest_match returning %d", answer);
     return(answer);
 }
 
@@ -1071,7 +1071,7 @@ nameprefix_longest_match(struct ccnr_handle *h, const unsigned char *msg,
  * with all of its parents.
  */
 PUBLIC int
-nameprefix_seek(struct ccnr_handle *h, struct hashtb_enumerator *e,
+r_fwd_nameprefix_seek(struct ccnr_handle *h, struct hashtb_enumerator *e,
                 const unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
 {
     int i;

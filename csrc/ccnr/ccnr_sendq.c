@@ -38,7 +38,7 @@ content_queue_create(struct ccnr_handle *h, struct fdholder *fdholder, enum cq_d
 }
 
 PUBLIC void
-content_queue_destroy(struct ccnr_handle *h, struct content_queue **pq)
+r_sendq_content_queue_destroy(struct ccnr_handle *h, struct content_queue **pq)
 {
     struct content_queue *q;
     if (*pq != NULL) {
@@ -56,7 +56,7 @@ content_queue_destroy(struct ccnr_handle *h, struct content_queue **pq)
 static enum cq_delay_class
 choose_content_delay_class(struct ccnr_handle *h, unsigned filedesc, int content_flags)
 {
-    struct fdholder *fdholder = fdholder_from_fd(h, filedesc);
+    struct fdholder *fdholder = r_io_fdholder_from_fd(h, filedesc);
     if (fdholder == NULL)
         return(CCN_CQ_ASAP); /* Going nowhere, get it over with */
     if ((fdholder->flags & (CCN_FACE_LINK | CCN_FACE_MCAST)) != 0) /* udplink or such, delay more */
@@ -104,7 +104,7 @@ content_sender(struct ccn_schedule *sched,
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         goto Bail;
-    fdholder = fdholder_from_fd(h, filedesc);
+    fdholder = r_io_fdholder_from_fd(h, filedesc);
     if (fdholder == NULL)
         goto Bail;
     if (q->send_queue == NULL)
@@ -123,13 +123,13 @@ content_sender(struct ccn_schedule *sched,
     if (burst_max == 0)
         q->nrun = 0;
     for (i = 0; i < burst_max && nsec < 1000000; i++) {
-        content = content_from_accession(h, q->send_queue->buf[i]);
+        content = r_store_content_from_accession(h, q->send_queue->buf[i]);
         if (content == NULL)
             q->nrun = 0;
         else {
-            send_content(h, fdholder, content);
+            r_link_send_content(h, fdholder, content);
             /* fdholder may have vanished, bail out if it did */
-            if (fdholder_from_fd(h, filedesc) == NULL)
+            if (r_io_fdholder_from_fd(h, filedesc) == NULL)
                 goto Bail;
             nsec += burst_nsec * (unsigned)((content->size + 1023) / 1024);
             q->nrun++;
@@ -161,7 +161,7 @@ content_sender(struct ccn_schedule *sched,
     }
     /* Determine when to run again */
     for (i = 0; i < q->send_queue->n; i++) {
-        content = content_from_accession(h, q->send_queue->buf[i]);
+        content = r_store_content_from_accession(h, q->send_queue->buf[i]);
         if (content != NULL) {
             q->nrun = 0;
             delay = randomize_content_delay(h, q);
@@ -178,7 +178,7 @@ Bail:
 }
 
 PUBLIC int
-face_send_queue_insert(struct ccnr_handle *h,
+r_sendq_face_send_queue_insert(struct ccnr_handle *h,
                        struct fdholder *fdholder, struct content_entry *content)
 {
     int ans;

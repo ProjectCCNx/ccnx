@@ -10,7 +10,7 @@ ccn_append_link_stuff(struct ccnr_handle * h,
 
 
 PUBLIC void
-send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
+r_link_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
 {
     int n, a, b, size;
     if ((fdholder->flags & CCN_FACE_NOSEND) != 0) {
@@ -28,7 +28,7 @@ send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_en
     b = content->comps[n - 1];
     if (b - a != 36)
         abort(); /* strange digest length */
-    stuff_and_send(h, fdholder, content->key, a, content->key + b, size - b);
+    r_link_stuff_and_send(h, fdholder, content->key, a, content->key + b, size - b);
     ccnr_meter_bump(h, fdholder->meter[FM_DATO], 1);
     h->content_items_sent += 1;
 }
@@ -38,13 +38,13 @@ send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_en
  * The message may be in two pieces.
  */
 PUBLIC void
-stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
+r_link_stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
                const unsigned char *data1, size_t size1,
                const unsigned char *data2, size_t size2) {
     struct ccn_charbuf *c = NULL;
     
     if ((fdholder->flags & CCN_FACE_LINK) != 0) {
-        c = charbuf_obtain(h);
+        c = r_util_charbuf_obtain(h);
         ccn_charbuf_reserve(c, size1 + size2 + 5 + 8);
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
         ccn_charbuf_append(c, data1, size1);
@@ -56,7 +56,7 @@ stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     else if (size2 != 0 || 1 > size1 + size2 ||
              (fdholder->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0) {
-        c = charbuf_obtain(h);
+        c = r_util_charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
         if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
@@ -65,11 +65,11 @@ stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     else {
         /* avoid a copy in this case */
-        ccnr_send(h, fdholder, data1, size1);
+        r_io_send(h, fdholder, data1, size1);
         return;
     }
-    ccnr_send(h, fdholder, c->buf, c->length);
-    charbuf_release(h, c);
+    r_io_send(h, fdholder, c->buf, c->length);
+    r_util_charbuf_release(h, c);
     return;
 }
 
@@ -88,7 +88,7 @@ ccn_stuff_interest(struct ccnr_handle *h,
 }
 
 PUBLIC void
-ccn_link_state_init(struct ccnr_handle *h, struct fdholder *fdholder)
+r_link_ccn_link_state_init(struct ccnr_handle *h, struct fdholder *fdholder)
 {
     int checkflags;
     int matchflags;
@@ -121,7 +121,7 @@ ccn_append_link_stuff(struct ccnr_handle *h,
 }
 
 PUBLIC int
-process_incoming_link_message(struct ccnr_handle *h,
+r_link_process_incoming_link_message(struct ccnr_handle *h,
                               struct fdholder *fdholder, enum ccn_dtag dtag,
                               unsigned char *msg, size_t size)
 {
@@ -185,11 +185,11 @@ process_incoming_link_message(struct ccnr_handle *h,
     return(0);
 }
 PUBLIC void
-do_deferred_write(struct ccnr_handle *h, int fd)
+r_link_do_deferred_write(struct ccnr_handle *h, int fd)
 {
     /* This only happens on connected sockets */
     ssize_t res;
-    struct fdholder *fdholder = fdholder_from_fd(h, fd);
+    struct fdholder *fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL)
         return;
     if (fdholder->outbuf != NULL) {
@@ -204,14 +204,14 @@ do_deferred_write(struct ccnr_handle *h, int fd)
                     return;
                 }
                 ccnr_msg(h, "send: %s (errno = %d)", strerror(errno), errno);
-                shutdown_client_fd(h, fd);
+                r_io_shutdown_client_fd(h, fd);
                 return;
             }
             if (res == sendlen) {
                 fdholder->outbufindex = 0;
                 ccn_charbuf_destroy(&fdholder->outbuf);
                 if ((fdholder->flags & CCN_FACE_CLOSING) != 0)
-                    shutdown_client_fd(h, fd);
+                    r_io_shutdown_client_fd(h, fd);
                 return;
             }
             fdholder->outbufindex += res;
@@ -221,11 +221,11 @@ do_deferred_write(struct ccnr_handle *h, int fd)
         ccn_charbuf_destroy(&fdholder->outbuf);
     }
     if ((fdholder->flags & CCN_FACE_CLOSING) != 0)
-        shutdown_client_fd(h, fd);
+        r_io_shutdown_client_fd(h, fd);
     else if ((fdholder->flags & CCN_FACE_CONNECTING) != 0) {
         fdholder->flags &= ~CCN_FACE_CONNECTING;
         ccnr_face_status_change(h, fdholder->filedesc);
     }
     else
-        ccnr_msg(h, "ccnr:do_deferred_write: something fishy on %d", fd);
+        ccnr_msg(h, "ccnr:r_link_do_deferred_write: something fishy on %d", fd);
 }

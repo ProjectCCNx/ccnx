@@ -42,11 +42,11 @@ main(int argc, char **argv)
         exit(1);
     }
     signal(SIGPIPE, SIG_IGN);
-    h = ccnr_create(argv[0], stdiologger, stderr);
+    h = r_init_create(argv[0], stdiologger, stderr);
     if (h == NULL)
         exit(1);
-    ccnr_run(h);
+    r_dispatch_run(h);
     ccnr_msg(h, "exiting.");
-    ccnr_destroy(&h);
+    r_init_destroy(&h);
     exit(0);
 }

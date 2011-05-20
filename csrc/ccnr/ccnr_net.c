@@ -1,7 +1,7 @@
 #include "common.h"
 
 PUBLIC char *
-ccnr_get_local_sockname(void)
+r_net_get_local_sockname(void)
 {
     struct sockaddr_un sa;
     ccn_setup_sockaddr_un(NULL, &sa);
@@ -9,7 +9,7 @@ ccnr_get_local_sockname(void)
 }
 
 PUBLIC void
-ccnr_setsockopt_v6only(struct ccnr_handle *h, int fd)
+r_net_setsockopt_v6only(struct ccnr_handle *h, int fd)
 {
     int yes = 1;
     int res = 0;
@@ -35,7 +35,7 @@ af_name(int family)
 }
 
 PUBLIC int
-ccnr_listen_on_wildcards(struct ccnr_handle *h)
+r_net_listen_on_wildcards(struct ccnr_handle *h)
 {
     int fd;
     int res;
@@ -56,7 +56,7 @@ ccnr_listen_on_wildcards(struct ccnr_handle *h)
                     int yes = 1;
                     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                     if (a->ai_family == AF_INET6)
-                        ccnr_setsockopt_v6only(h, fd);
+                        r_net_setsockopt_v6only(h, fd);
                     res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);
@@ -67,7 +67,7 @@ ccnr_listen_on_wildcards(struct ccnr_handle *h)
                         close(fd);
                         continue;
                     }
-                    record_connection(h, fd,
+                    r_io_record_connection(h, fd,
                                       a->ai_addr, a->ai_addrlen,
                                       CCN_FACE_PASSIVE);
                     ccnr_msg(h, "accepting %s connections on fd %d",
@@ -81,7 +81,7 @@ ccnr_listen_on_wildcards(struct ccnr_handle *h)
 }
 
 PUBLIC int
-ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
+r_net_listen_on_address(struct ccnr_handle *h, const char *addr)
 {
     int fd;
     int res;
@@ -101,7 +101,7 @@ ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
                 int yes = 1;
                 setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                 if (a->ai_family == AF_INET6)
-                    ccnr_setsockopt_v6only(h, fd);
+                    r_net_setsockopt_v6only(h, fd);
                 res = bind(fd, a->ai_addr, a->ai_addrlen);
                 if (res != 0) {
                     close(fd);
@@ -112,7 +112,7 @@ ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
                     close(fd);
                     continue;
                 }
-                record_connection(h, fd,
+                r_io_record_connection(h, fd,
                                   a->ai_addr, a->ai_addrlen,
                                   CCN_FACE_PASSIVE);
                 ccnr_msg(h, "accepting %s connections on fd %d",
@@ -126,7 +126,7 @@ ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
 }
 
 PUBLIC int
-ccnr_listen_on(struct ccnr_handle *h, const char *addrs)
+r_net_listen_on(struct ccnr_handle *h, const char *addrs)
 {
     unsigned char ch;
     unsigned char dlm;
@@ -135,7 +135,7 @@ ccnr_listen_on(struct ccnr_handle *h, const char *addrs)
     struct ccn_charbuf *addr = NULL;
     
     if (addrs == NULL || !*addrs || 0 == strcmp(addrs, "*"))
-        return(ccnr_listen_on_wildcards(h));
+        return(r_net_listen_on_wildcards(h));
     addr = ccn_charbuf_create();
     for (i = 0, ch = addrs[i]; addrs[i] != 0;) {
         addr->length = 0;
@@ -149,7 +149,7 @@ ccnr_listen_on(struct ccnr_handle *h, const char *addrs)
         if (ch && ch == dlm)
             ch = addrs[++i];
         if (addr->length > 0) {
-            res |= ccnr_listen_on_address(h, ccn_charbuf_as_string(addr));
+            res |= r_net_listen_on_address(h, ccn_charbuf_as_string(addr));
         }
         while ((0 < ch && ch <= ' ') || ch == ',' || ch == ';')
             ch = addrs[++i];

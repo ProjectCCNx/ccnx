@@ -103,7 +103,7 @@ ccnr_stats_handle_http_connection(struct ccnr_handle *h, struct fdholder *fdhold
     if (fdholder->inbuf->length < 4)
         return(-1);
     if ((fdholder->flags & CCN_FACE_NOSEND) != 0) {
-        ccnr_destroy_face(h, fdholder->filedesc);
+        r_io_destroy_face(h, fdholder->filedesc);
         return(-1);
     }
     n = sizeof(rbuf) - 1;
@@ -142,9 +142,9 @@ ccnr_stats_handle_http_connection(struct ccnr_handle *h, struct fdholder *fdhold
         send_http_response(h, fdholder, "text/xml", response);
     }
     else if (0 == strcmp(rbuf, "GET "))
-        ccnr_send(h, fdholder, resp404, strlen(resp404));
+        r_io_send(h, fdholder, resp404, strlen(resp404));
     else
-        ccnr_send(h, fdholder, resp405, strlen(resp405));
+        r_io_send(h, fdholder, resp405, strlen(resp405));
     fdholder->flags |= (CCN_FACE_NOSEND | CCN_FACE_CLOSING);
     ccn_charbuf_destroy(&response);
     return(0);
@@ -167,8 +167,8 @@ send_http_response(struct ccnr_handle *h, struct fdholder *fdholder,
                       "Content-Length: %jd" CRLF CRLF,
                       mime_type,
                       (intmax_t)response->length);
-    ccnr_send(h, fdholder, buf, hdrlen);
-    ccnr_send(h, fdholder, response->buf, response->length);
+    r_io_send(h, fdholder, buf, hdrlen);
+    r_io_send(h, fdholder, response->buf, response->length);
 }
 
 /* Common statistics collection */
@@ -186,7 +186,7 @@ ccnr_collect_stats(struct ccnr_handle *h, struct ccnr_stats *ans)
         struct propagating_entry *head = &npe->pe_head;
         struct propagating_entry *p;
         for (p = head->next; p != head; p = p->next) {
-            if (ccnr_fdholder_from_fd(h, p->filedesc) != NULL)
+            if (ccnr_r_io_fdholder_from_fd(h, p->filedesc) != NULL)
                 sum += 1;
         }
     }

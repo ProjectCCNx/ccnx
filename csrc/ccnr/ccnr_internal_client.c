@@ -310,7 +310,7 @@ ccnr_uri_listen(struct ccnr_handle *ccnr, const char *uri,
     closure->intdata = intdata;
     /* Register explicitly if needed or requested */
     if (reg_wanted)
-        ccnr_reg_uri(ccnr, uri,
+        r_fwd_reg_uri(ccnr, uri,
                      0, /* special filedesc for internal client */
                      CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
                      0x7FFFFFFF);
@@ -336,7 +336,7 @@ ccnr_reg_ccnx_ccnrid(struct ccnr_handle *ccnr)
     ccn_name_append(name, ccnr->ccnr_id, 32);
     uri = ccn_charbuf_create();
     ccn_uri_append(uri, name->buf, name->length, 1);
-    ccnr_reg_uri(ccnr, ccn_charbuf_as_string(uri),
+    r_fwd_reg_uri(ccnr, ccn_charbuf_as_string(uri),
                  0, /* special filedesc for internal client */
                  (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |
@@ -435,7 +435,7 @@ Bail:
 static int
 post_face_notice(struct ccnr_handle *ccnr, unsigned filedesc)
 {
-    struct fdholder *fdholder = ccnr_fdholder_from_fd(ccnr, filedesc);
+    struct fdholder *fdholder = ccnr_r_io_fdholder_from_fd(ccnr, filedesc);
     struct ccn_charbuf *msg = ccn_charbuf_create();
     int res = -1;
     int port;
@@ -532,7 +532,7 @@ ccnr_internal_client_start(struct ccnr_handle *ccnr)
     ccnr_uri_listen(ccnr, "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository",
                     &ccnr_answer_req, OP_SERVICE);
     ccnr_reg_ccnx_ccnrid(ccnr);
-    ccnr_reg_uri(ccnr, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository",
+    r_fwd_reg_uri(ccnr, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository",
                  0, /* special filedesc for internal client */
                  (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |

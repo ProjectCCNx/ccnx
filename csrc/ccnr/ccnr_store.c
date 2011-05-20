@@ -1,6 +1,6 @@
 #include "common.h"
 PUBLIC struct content_entry *
-content_from_accession(struct ccnr_handle *h, ccn_accession_t accession)
+r_store_content_from_accession(struct ccnr_handle *h, ccn_accession_t accession)
 {
     struct content_entry *ans = NULL;
     if (accession < h->accession_base) {
@@ -35,7 +35,7 @@ cleanout_empties(struct ccnr_handle *h)
 }
 
 PUBLIC void
-enroll_content(struct ccnr_handle *h, struct content_entry *content)
+r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
 {
     unsigned new_window;
     struct content_entry **new_array;
@@ -87,7 +87,7 @@ content_skiplist_findbefore(struct ccnr_handle *h,
         for (;;) {
             if (c->buf[i] == 0)
                 break;
-            content = content_from_accession(h, c->buf[i]);
+            content = r_store_content_from_accession(h, c->buf[i]);
             if (content == NULL)
                 abort();
             start = content->comps[0];
@@ -109,7 +109,7 @@ content_skiplist_findbefore(struct ccnr_handle *h,
 
 #define CCN_SKIPLIST_MAX_DEPTH 30
 PUBLIC void
-content_skiplist_insert(struct ccnr_handle *h, struct content_entry *content)
+r_store_content_skiplist_insert(struct ccnr_handle *h, struct content_entry *content)
 {
     int d;
     int i;
@@ -158,7 +158,7 @@ content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
 }
 
 PUBLIC struct content_entry *
-find_first_match_candidate(struct ccnr_handle *h,
+r_store_find_first_match_candidate(struct ccnr_handle *h,
                            const unsigned char *interest_msg,
                            const struct ccn_parsed_interest *pi)
 {
@@ -213,11 +213,11 @@ find_first_match_candidate(struct ccnr_handle *h,
     }
     if (res == 0)
         return(NULL);
-    return(content_from_accession(h, pred[0]->buf[0]));
+    return(r_store_content_from_accession(h, pred[0]->buf[0]));
 }
 
 PUBLIC int
-content_matches_interest_prefix(struct ccnr_handle *h,
+r_store_content_matches_interest_prefix(struct ccnr_handle *h,
                                 struct content_entry *content,
                                 const unsigned char *interest_msg,
                                 struct ccn_indexbuf *comps,
@@ -240,7 +240,7 @@ content_matches_interest_prefix(struct ccnr_handle *h,
 }
 
 PUBLIC ccn_accession_t
-content_skiplist_next(struct ccnr_handle *h, struct content_entry *content)
+r_store_content_skiplist_next(struct ccnr_handle *h, struct content_entry *content)
 {
     if (content == NULL)
         return(0);
@@ -250,7 +250,7 @@ content_skiplist_next(struct ccnr_handle *h, struct content_entry *content)
 }
 
 PUBLIC int
-remove_content(struct ccnr_handle *h, struct content_entry *content)
+r_store_remove_content(struct ccnr_handle *h, struct content_entry *content)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -273,7 +273,7 @@ remove_content(struct ccnr_handle *h, struct content_entry *content)
 }
 
 PUBLIC struct content_entry *
-next_child_at_level(struct ccnr_handle *h,
+r_store_next_child_at_level(struct ccnr_handle *h,
                     struct content_entry *content, int level)
 {
     struct content_entry *next = NULL;
@@ -299,10 +299,10 @@ next_child_at_level(struct ccnr_handle *h,
                         name->buf, name->length);
     d = content_skiplist_findbefore(h, name->buf, name->length,
                                     NULL, pred);
-    next = content_from_accession(h, pred[0]->buf[0]);
+    next = r_store_content_from_accession(h, pred[0]->buf[0]);
     if (next == content) {
         // XXX - I think this case should not occur, but just in case, avoid a loop.
-        next = content_from_accession(h, content_skiplist_next(h, content));
+        next = r_store_content_from_accession(h, r_store_content_skiplist_next(h, content));
         ccnr_debug_ccnb(h, __LINE__, "bump", NULL, next->key, next->size);
     }
     ccn_charbuf_destroy(&name);
@@ -313,7 +313,7 @@ next_child_at_level(struct ccnr_handle *h,
  * Mark content as stale
  */
 PUBLIC void
-mark_stale(struct ccnr_handle *h, struct content_entry *content)
+r_store_mark_stale(struct ccnr_handle *h, struct content_entry *content)
 {
     ccn_accession_t accession = content->accession;
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
@@ -348,17 +348,17 @@ expire_content(struct ccn_schedule *sched,
     unsigned n;
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         return(0);
-    content = content_from_accession(h, accession);
+    content = r_store_content_from_accession(h, accession);
     if (content != NULL) {
         n = hashtb_n(h->content_tab);
         /* The fancy test here lets existing stale content go away, too. */
         if ((n - (n >> 3)) > h->capacity ||
             (n > h->capacity && h->min_stale > h->max_stale)) {
-            res = remove_content(h, content);
+            res = r_store_remove_content(h, content);
             if (res == 0)
                 return(0);
         }
-        mark_stale(h, content);
+        r_store_mark_stale(h, content);
     }
     return(0);
 }
@@ -368,7 +368,7 @@ expire_content(struct ccn_schedule *sched,
  *
  */
 PUBLIC void
-set_content_timer(struct ccnr_handle *h, struct content_entry *content,
+r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
                   struct ccn_parsed_ContentObject *pco)
 {
     int seconds = 0;

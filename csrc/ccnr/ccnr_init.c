@@ -7,7 +7,7 @@
  * @param loggerdata - data to pass to logger function
  */
 PUBLIC struct ccnr_handle *
-ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
+r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
 {
     char *sockname;
     // const char *portstr;
@@ -17,13 +17,13 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     struct ccnr_handle *h;
     struct hashtb_param param = {0};
     
-    sockname = ccnr_get_local_sockname();
+    sockname = r_net_get_local_sockname();
     h = calloc(1, sizeof(*h));
     if (h == NULL)
         return(h);
     h->logger = logger;
     h->loggerdata = loggerdata;
-    h->appnonce = &ccnr_append_plain_nonce;
+    h->appnonce = &r_fwd_append_plain_nonce;
     h->logpid = (int)getpid();
     h->progname = progname;
     h->debug = -1;
@@ -31,9 +31,9 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     param.finalize_data = h;
     h->face_limit = 10; /* soft limit */
     h->fdholder_by_fd = calloc(h->face_limit, sizeof(h->fdholder_by_fd[0]));
-    param.finalize = &finalize_nameprefix;
+    param.finalize = &r_fwd_finalize_nameprefix;
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
-    param.finalize = &finalize_propagating;
+    param.finalize = &r_fwd_finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     param.finalize = 0;
     h->min_stale = ~0;
@@ -41,7 +41,7 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->unsol = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
     h->ticktock.micros_per_base = 1000000;
-    h->ticktock.gettime = &ccnr_gettime;
+    h->ticktock.gettime = &r_util_gettime;
     h->ticktock.data = h;
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->starttime = h->sec;
@@ -71,10 +71,10 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     listen_on = getenv("CCNR_LISTEN_ON");
     if (listen_on != NULL && listen_on[0] != 0)
         ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
-    h->appnonce = &ccnr_append_debug_nonce;
+    h->appnonce = &r_fwd_append_debug_nonce;
     ccnr_init_internal_keystore(h);
     /* XXX - need to bail if keystore is not OK. */
-    ccnr_reseed(h);
+    r_util_reseed(h);
     if (h->face0 == NULL) {
         struct fdholder *fdholder;
         fdholder = calloc(1, sizeof(*fdholder));
@@ -83,9 +83,9 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
         fdholder->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
         h->face0 = fdholder;
     }
-    enroll_face(h, h->face0);
-    ccnr_listen_on(h, listen_on);
-    age_forwarding_needed(h);
+    r_io_enroll_face(h, h->face0);
+    r_net_listen_on(h, listen_on);
+    r_fwd_age_forwarding_needed(h);
     ccnr_internal_client_start(h);
     free(sockname);
     sockname = NULL;
@@ -96,12 +96,12 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
  * Destroy the ccnr instance, releasing all associated resources.
  */
 PUBLIC void
-ccnr_destroy(struct ccnr_handle **pccnr)
+r_init_destroy(struct ccnr_handle **pccnr)
 {
     struct ccnr_handle *h = *pccnr;
     if (h == NULL)
         return;
-    ccnr_shutdown_all(h);
+    r_io_shutdown_all(h);
     ccnr_internal_client_stop(h);
     ccn_schedule_destroy(&h->sched);
     hashtb_destroy(&h->content_tab);

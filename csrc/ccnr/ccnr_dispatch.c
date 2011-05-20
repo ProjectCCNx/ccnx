@@ -17,7 +17,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
     struct nameprefix_entry *npe = NULL;
     struct content_entry *content = NULL;
     struct content_entry *last_match = NULL;
-    struct ccn_indexbuf *comps = indexbuf_obtain(h);
+    struct ccn_indexbuf *comps = r_util_indexbuf_obtain(h);
     if (size > 65535)
         res = -__LINE__;
     else
@@ -33,7 +33,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
         ccnr_debug_ccnb(h, __LINE__, "interest_outofscope", fdholder, msg, size);
         h->interests_dropped += 1;
     }
-    else if (is_duplicate_flooded(h, msg, pi, fdholder->filedesc)) {
+    else if (r_fwd_is_duplicate_flooded(h, msg, pi, fdholder->filedesc)) {
         if (h->debug & 16)
              ccnr_debug_ccnb(h, __LINE__, "interest_dup", fdholder, msg, size);
         h->interests_dropped += 1;
@@ -75,7 +75,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
         matched = 0;
         hashtb_start(h->nameprefix_tab, e);
-        res = nameprefix_seek(h, e, msg, comps, pi->prefix_comps);
+        res = r_fwd_nameprefix_seek(h, e, msg, comps, pi->prefix_comps);
         npe = e->data;
         if (npe == NULL)
             goto Bail;
@@ -87,13 +87,13 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
         }
         if ((pi->answerfrom & CCN_AOK_CS) != 0) {
             last_match = NULL;
-            content = find_first_match_candidate(h, msg, pi);
+            content = r_store_find_first_match_candidate(h, msg, pi);
             if (content != NULL && (h->debug & 8))
                 ccnr_debug_ccnb(h, __LINE__, "first_candidate", NULL,
                                 content->key,
                                 content->size);
             if (content != NULL &&
-                !content_matches_interest_prefix(h, content, msg, comps,
+                !r_store_content_matches_interest_prefix(h, content, msg, comps,
                                                  pi->prefix_comps)) {
                 if (h->debug & 8)
                     ccnr_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
@@ -108,7 +108,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                     if ((pi->orderpref & 1) == 0 && // XXX - should be symbolic
                         pi->prefix_comps != comps->n - 1 &&
                         comps->n == content->ncomps &&
-                        content_matches_interest_prefix(h, content, msg,
+                        r_store_content_matches_interest_prefix(h, content, msg,
                                                         comps, comps->n - 1)) {
                         if (h->debug & 8)
                             ccnr_debug_ccnb(h, __LINE__, "skip_match", NULL,
@@ -123,14 +123,14 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                     if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
                         break;
                     last_match = content;
-                    content = next_child_at_level(h, content, comps->n - 1);
+                    content = r_store_next_child_at_level(h, content, comps->n - 1);
                     goto check_next_prefix;
                 }
             move_along:
-                content = content_from_accession(h, content_skiplist_next(h, content));
+                content = r_store_content_from_accession(h, r_store_content_skiplist_next(h, content));
             check_next_prefix:
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg,
+                    !r_store_content_matches_interest_prefix(h, content, msg,
                                                      comps, pi->prefix_comps)) {
                     if (h->debug & 8)
                         ccnr_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
@@ -148,25 +148,25 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                     if (fdholder->q[c] != NULL)
                         k = ccn_indexbuf_member(fdholder->q[c]->send_queue, content->accession);
                 if (k == -1) {
-                    k = face_send_queue_insert(h, fdholder, content);
+                    k = r_sendq_face_send_queue_insert(h, fdholder, content);
                     if (k >= 0) {
                         if (h->debug & (32 | 8))
                             ccnr_debug_ccnb(h, __LINE__, "consume", fdholder, msg, size);
                     }
                     /* Any other matched interests need to be consumed, too. */
-                    match_interests(h, content, NULL, fdholder, NULL);
+                    r_match_match_interests(h, content, NULL, fdholder, NULL);
                 }
                 if ((pi->answerfrom & CCN_AOK_EXPIRE) != 0)
-                    mark_stale(h, content);
+                    r_store_mark_stale(h, content);
                 matched = 1;
             }
         }
         if (!matched && pi->scope != 0 && npe != NULL)
-            propagate_interest(h, fdholder, msg, pi, npe);
+            r_fwd_propagate_interest(h, fdholder, msg, pi, npe);
     Bail:
         hashtb_end(e);
     }
-    indexbuf_release(h, comps);
+    r_util_indexbuf_release(h, comps);
 }
 
 static void
@@ -184,8 +184,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     unsigned char *tail = NULL;
     struct content_entry *content = NULL;
     int i;
-    struct ccn_indexbuf *comps = indexbuf_obtain(h);
-    struct ccn_charbuf *cb = charbuf_obtain(h);
+    struct ccn_indexbuf *comps = r_util_indexbuf_obtain(h);
+    struct ccn_charbuf *cb = r_util_charbuf_obtain(h);
     
     msg = wire_msg;
     size = wire_size;
@@ -253,7 +253,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
             // XXX - ought to do mischief checks before this
             content->flags &= ~CCN_CONTENT_ENTRY_STALE;
             h->n_stale--;
-            set_content_timer(h, content, &obj);
+            r_store_set_content_timer(h, content, &obj);
             // XXX - no counter for this case
         }
         else {
@@ -265,8 +265,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     else if (res == HT_NEW_ENTRY) {
         content->accession = ++(h->accession);
-        enroll_content(h, content);
-        if (content == content_from_accession(h, content->accession)) {
+        r_store_enroll_content(h, content);
+        if (content == r_store_content_from_accession(h, content->accession)) {
             content->ncomps = comps->n;
             content->comps = calloc(comps->n, sizeof(comps[0]));
         }
@@ -276,8 +276,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         if (content->comps != NULL) {
             for (i = 0; i < comps->n; i++)
                 content->comps[i] = comps->buf[i];
-            content_skiplist_insert(h, content);
-            set_content_timer(h, content, &obj);
+            r_store_content_skiplist_insert(h, content);
+            r_store_set_content_timer(h, content, &obj);
         }
         else {
             ccnr_msg(h, "could not enroll ContentObject (accession %llu)",
@@ -292,17 +292,17 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     hashtb_end(e);
 Bail:
-    indexbuf_release(h, comps);
-    charbuf_release(h, cb);
+    r_util_indexbuf_release(h, comps);
+    r_util_charbuf_release(h, cb);
     cb = NULL;
     if (res >= 0 && content != NULL) {
         int n_matches;
         enum cq_delay_class c;
         struct content_queue *q;
-        n_matches = match_interests(h, content, &obj, NULL, fdholder);
+        n_matches = r_match_match_interests(h, content, &obj, NULL, fdholder);
         if (res == HT_NEW_ENTRY) {
             if (n_matches < 0) {
-                remove_content(h, content);
+                r_store_remove_content(h, content);
                 return;
             }
             if (n_matches == 0 && (fdholder->flags & CCN_FACE_GG) == 0) {
@@ -342,7 +342,7 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
         if ((fdholder->flags & CCN_FACE_LOOPBACK) != 0)
             fdholder->flags |= CCN_FACE_GG;
         /* YYY This is the first place that we know that an inbound stream fdholder is speaking CCNx protocol. */
-        register_new_face(h, fdholder);
+        r_io_register_new_face(h, fdholder);
     }
     d->state |= CCN_DSTATE_PAUSE;
     dres = ccn_skeleton_decode(d, msg, size);
@@ -380,7 +380,7 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
             process_incoming_content(h, fdholder, msg, size);
             return;
         case CCN_DTAG_SequenceNumber:
-            process_incoming_link_message(h, fdholder, dtag, msg, size);
+            r_link_process_incoming_link_message(h, fdholder, dtag, msg, size);
             return;
         default:
             break;
@@ -449,11 +449,11 @@ process_input(struct ccnr_handle *h, int fd)
     int err = 0;
     socklen_t err_sz;
     
-    fdholder = fdholder_from_fd(h, fd);
+    fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL)
         return;
     if ((fdholder->flags & (CCN_FACE_DGRAM | CCN_FACE_PASSIVE)) == CCN_FACE_PASSIVE) {
-        accept_connection(h, fd);
+        r_io_accept_connection(h, fd);
         return;
     }
     err_sz = sizeof(err);
@@ -461,7 +461,7 @@ process_input(struct ccnr_handle *h, int fd)
     if (res >= 0 && err != 0) {
         ccnr_msg(h, "error on fdholder %u: %s (%d)", fdholder->filedesc, strerror(err), err);
         if (err == ETIMEDOUT && (fdholder->flags & CCN_FACE_CONNECTING) != 0) {
-            shutdown_client_fd(h, fd);
+            r_io_shutdown_client_fd(h, fd);
             return;
         }
     }
@@ -478,7 +478,7 @@ process_input(struct ccnr_handle *h, int fd)
         ccnr_msg(h, "recvfrom fdholder %u :%s (errno = %d)",
                     fdholder->filedesc, strerror(errno), errno);
     else if (res == 0 && (fdholder->flags & CCN_FACE_DGRAM) == 0)
-        shutdown_client_fd(h, fd);
+        r_io_shutdown_client_fd(h, fd);
     else {
         source = fdholder;
         ccnr_meter_bump(h, source->meter[FM_BYTI], res);
@@ -523,7 +523,7 @@ process_input(struct ccnr_handle *h, int fd)
         }
         else if (d->state < 0) {
             ccnr_msg(h, "protocol error on fdholder %u", source->filedesc);
-            shutdown_client_fd(h, fd);
+            r_io_shutdown_client_fd(h, fd);
             return;
         }
         if (msgstart < fdholder->inbuf->length && msgstart > 0) {
@@ -537,7 +537,7 @@ process_input(struct ccnr_handle *h, int fd)
 }
 
 PUBLIC void
-process_internal_client_buffer(struct ccnr_handle *h)
+r_dispatch_process_internal_client_buffer(struct ccnr_handle *h)
 {
     struct fdholder *fdholder = h->face0;
     if (fdholder == NULL)
@@ -553,7 +553,7 @@ process_internal_client_buffer(struct ccnr_handle *h)
  * Run the main loop of the ccnr
  */
 PUBLIC void
-ccnr_run(struct ccnr_handle *h)
+r_dispatch_run(struct ccnr_handle *h)
 {
     int i;
     int res;
@@ -561,13 +561,13 @@ ccnr_run(struct ccnr_handle *h)
     int prev_timeout_ms = -1;
     int usec;
     for (h->running = 1; h->running;) {
-        process_internal_client_buffer(h);
+        r_dispatch_process_internal_client_buffer(h);
         usec = ccn_schedule_run(h->sched);
         timeout_ms = (usec < 0) ? -1 : ((usec + 960) / 1000);
         if (timeout_ms == 0 && prev_timeout_ms == 0)
             timeout_ms = 1;
-        process_internal_client_buffer(h);
-        prepare_poll_fds(h);
+        r_dispatch_process_internal_client_buffer(h);
+        r_io_prepare_poll_fds(h);
         if (0) ccnr_msg(h, "at ccnr.c:%d poll(h->fds, %d, %d)", __LINE__, h->nfds, timeout_ms);
         res = poll(h->fds, h->nfds, timeout_ms);
         prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
@@ -583,11 +583,11 @@ ccnr_run(struct ccnr_handle *h)
                     if (h->fds[i].revents & (POLLIN))
                         process_input(h, h->fds[i].fd);
                     else
-                        shutdown_client_fd(h, h->fds[i].fd);
+                        r_io_shutdown_client_fd(h, h->fds[i].fd);
                     continue;
                 }
                 if (h->fds[i].revents & (POLLOUT))
-                    do_deferred_write(h, h->fds[i].fd);
+                    r_link_do_deferred_write(h, h->fds[i].fd);
                 else if (h->fds[i].revents & (POLLIN))
                     process_input(h, h->fds[i].fd);
             }

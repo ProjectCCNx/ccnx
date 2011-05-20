@@ -339,16 +339,16 @@ void ccnr_internal_client_stop(struct ccnr_handle *);
 #define CCNRID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/KEY"
 #define CCNRID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository/KEY"
 
-int ccnr_reg_uri(struct ccnr_handle *h,
+int r_fwd_reg_uri(struct ccnr_handle *h,
                  const char *uri,
                  unsigned filedesc,
                  int flags,
                  int expires);
 
-struct fdholder *ccnr_fdholder_from_fd(struct ccnr_handle *, unsigned);
+struct fdholder *ccnr_r_io_fdholder_from_fd(struct ccnr_handle *, unsigned);
 void ccnr_face_status_change(struct ccnr_handle *, unsigned);
-int ccnr_destroy_face(struct ccnr_handle *h, unsigned filedesc);
-void ccnr_send(struct ccnr_handle *h, struct fdholder *fdholder,
+int r_io_destroy_face(struct ccnr_handle *h, unsigned filedesc);
+void r_io_send(struct ccnr_handle *h, struct fdholder *fdholder,
                const void *data, size_t size);
 
 /* Consider a separate header for these */
@@ -361,9 +361,9 @@ void ccnr_debug_ccnb(struct ccnr_handle *h,
                      const unsigned char *ccnb,
                      size_t ccnb_size);
 
-struct ccnr_handle *ccnr_create(const char *, ccnr_logger, void *);
-void ccnr_run(struct ccnr_handle *h);
-void ccnr_destroy(struct ccnr_handle **);
+struct ccnr_handle *r_init_create(const char *, ccnr_logger, void *);
+void r_dispatch_run(struct ccnr_handle *h);
+void r_init_destroy(struct ccnr_handle **);
 extern const char *ccnr_usage_message;
 
 #endif

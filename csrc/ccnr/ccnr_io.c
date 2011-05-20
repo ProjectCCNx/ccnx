@@ -4,7 +4,7 @@
  * Looks up a fdholder based on its filedesc (private).
  */
 PUBLIC struct fdholder *
-fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
+r_io_fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
 {
     unsigned slot = filedesc;
     struct fdholder *fdholder = NULL;
@@ -20,17 +20,17 @@ fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
  * Looks up a fdholder based on its filedesc.
  */
 PUBLIC struct fdholder *
-ccnr_fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
+ccnr_r_io_fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
 {
-    return(fdholder_from_fd(h, filedesc));
+    return(r_io_fdholder_from_fd(h, filedesc));
 }
 
 /**
  * Assigns the filedesc for a nacent fdholder,
- * calls register_new_face() if successful.
+ * calls r_io_register_new_face() if successful.
  */
 PUBLIC int
-enroll_face(struct ccnr_handle *h, struct fdholder *fdholder)
+r_io_enroll_face(struct ccnr_handle *h, struct fdholder *fdholder)
 {
     unsigned i = fdholder->filedesc;
     unsigned n = h->face_limit;
@@ -58,7 +58,7 @@ use_i:
     fdholder->meter[FM_INTO] = ccnr_meter_create(h, "introut");
     fdholder->meter[FM_DATI] = ccnr_meter_create(h, "datain");
     fdholder->meter[FM_DATO] = ccnr_meter_create(h, "dataout");
-    register_new_face(h, fdholder);
+    r_io_register_new_face(h, fdholder);
     return (fdholder->filedesc);
 }
 
@@ -141,7 +141,7 @@ init_face_flags(struct ccnr_handle *h, struct fdholder *fdholder, int setflags)
  * Make a new fdholder entered in the faces_by_fd table.
  */
 PUBLIC struct fdholder *
-record_connection(struct ccnr_handle *h, int fd,
+r_io_record_connection(struct ccnr_handle *h, int fd,
                   struct sockaddr *who, socklen_t wholen,
                   int setflags)
 {
@@ -165,7 +165,7 @@ record_connection(struct ccnr_handle *h, int fd,
     fdholder->filedesc = fd;
     fdholder->sendface = CCN_NOFACEID;
     init_face_flags(h, fdholder, setflags);
-    res = enroll_face(h, fdholder);
+    res = r_io_enroll_face(h, fdholder);
     if (res == -1) {
         if (addrspace != NULL)
             free(addrspace);
@@ -180,7 +180,7 @@ record_connection(struct ccnr_handle *h, int fd,
  * @returns fd of new socket, or -1 for an error.
  */
 PUBLIC int
-accept_connection(struct ccnr_handle *h, int listener_fd)
+r_io_accept_connection(struct ccnr_handle *h, int listener_fd)
 {
     struct sockaddr_storage who;
     socklen_t wholen = sizeof(who);
@@ -192,7 +192,7 @@ accept_connection(struct ccnr_handle *h, int listener_fd)
         ccnr_msg(h, "accept: %s", strerror(errno));
         return(-1);
     }
-    fdholder = record_connection(h, fd,
+    fdholder = r_io_record_connection(h, fd,
                             (struct sockaddr *)&who, wholen,
                             CCN_FACE_UNDECIDED);
     if (fdholder == NULL)
@@ -203,14 +203,14 @@ accept_connection(struct ccnr_handle *h, int listener_fd)
 }
 
 PUBLIC void
-shutdown_client_fd(struct ccnr_handle *h, int fd)
+r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
 {
     struct fdholder *fdholder = NULL;
     enum cq_delay_class c;
     int m;
     int res;
     
-    fdholder = fdholder_from_fd(h, fd);
+    fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL) {
         ccnr_msg(h, "no fd holder for fd %d", fd);
         abort();
@@ -220,7 +220,7 @@ shutdown_client_fd(struct ccnr_handle *h, int fd)
     ccn_charbuf_destroy(&fdholder->inbuf);
     ccn_charbuf_destroy(&fdholder->outbuf);
     for (c = 0; c < CCN_CQ_N; c++)
-        content_queue_destroy(h, &(fdholder->q[c]));
+        r_sendq_content_queue_destroy(h, &(fdholder->q[c]));
     if (fdholder->addr != NULL) {
         free(fdholder->addr);
 		fdholder->addr = NULL;
@@ -230,7 +230,7 @@ shutdown_client_fd(struct ccnr_handle *h, int fd)
 	if (h->fdholder_by_fd[fd] != fdholder) abort();
 	h->fdholder_by_fd[fd] = NULL;
     free(fdholder);
-    reap_needed(h, 250000);
+    r_fwd_reap_needed(h, 250000);
 }
 
 /**
@@ -238,9 +238,9 @@ shutdown_client_fd(struct ccnr_handle *h, int fd)
  * @returns 0 for success, -1 for failure.
  */
 PUBLIC int
-ccnr_destroy_face(struct ccnr_handle *h, unsigned filedesc)
+r_io_destroy_face(struct ccnr_handle *h, unsigned filedesc)
 {
-    shutdown_client_fd(h, filedesc);
+    r_io_shutdown_client_fd(h, filedesc);
     return(0);
 }
 
@@ -249,11 +249,11 @@ ccnr_destroy_face(struct ccnr_handle *h, unsigned filedesc)
  * that a fdholder transitions from the undecided state.
  */
 PUBLIC void
-register_new_face(struct ccnr_handle *h, struct fdholder *fdholder)
+r_io_register_new_face(struct ccnr_handle *h, struct fdholder *fdholder)
 {
     if (fdholder->filedesc != 0 && (fdholder->flags & (CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE)) == 0) {
         ccnr_face_status_change(h, fdholder->filedesc);
-        ccn_link_state_init(h, fdholder);
+        r_link_ccn_link_state_init(h, fdholder);
     }
 }
 
@@ -295,7 +295,7 @@ sending_fd(struct ccnr_handle *h, struct fdholder *fdholder)
  * No direct error result is provided; the fdholder state is updated as needed.
  */
 PUBLIC void
-ccnr_send(struct ccnr_handle *h,
+r_io_send(struct ccnr_handle *h,
           struct fdholder *fdholder,
           const void *data, size_t size)
 {
@@ -310,7 +310,7 @@ ccnr_send(struct ccnr_handle *h,
     if (fdholder == h->face0) {
         ccnr_meter_bump(h, fdholder->meter[FM_BYTO], size);
         ccn_dispatch_message(h->internal_client, (void *)data, size);
-        process_internal_client_buffer(h);
+        r_dispatch_process_internal_client_buffer(h);
         return;
     }
     if ((fdholder->flags & CCN_FACE_DGRAM) == 0)
@@ -345,12 +345,12 @@ ccnr_send(struct ccnr_handle *h,
  *
  */
 PUBLIC void
-prepare_poll_fds(struct ccnr_handle *h)
+r_io_prepare_poll_fds(struct ccnr_handle *h)
 {
     int i, j, nfds;
     
     for (i = 0, nfds = 0; i < h->face_limit; i++)
-        if (fdholder_from_fd(h, i) != NULL)
+        if (r_io_fdholder_from_fd(h, i) != NULL)
             nfds++;
     
     if (nfds != h->nfds) {
@@ -359,7 +359,7 @@ prepare_poll_fds(struct ccnr_handle *h)
         memset(h->fds, 0, h->nfds * sizeof(h->fds[0]));
     }
     for (i = 0, j = 0; i < h->face_limit; i++) {
-        struct fdholder *fdholder = fdholder_from_fd(h, i);
+        struct fdholder *fdholder = r_io_fdholder_from_fd(h, i);
         if (fdholder != NULL) {
             h->fds[j].fd = fdholder->filedesc;
             h->fds[j].events = ((fdholder->flags & CCN_FACE_NORECV) == 0) ? POLLIN : 0;
@@ -374,10 +374,10 @@ prepare_poll_fds(struct ccnr_handle *h)
  * Shutdown listeners and bound datagram sockets, leaving connected streams.
  */
 PUBLIC void
-ccnr_shutdown_all(struct ccnr_handle *h)
+r_io_shutdown_all(struct ccnr_handle *h)
 {
     int i;
     for (i = 1; i < h->face_limit; i++) {
-        shutdown_client_fd(h, i);
+        r_io_shutdown_client_fd(h, i);
     }
 }

@@ -1,14 +1,14 @@
 #include "common.h"
 
 PUBLIC void
-consume(struct ccnr_handle *h, struct propagating_entry *pe)
+r_match_consume_interest(struct ccnr_handle *h, struct propagating_entry *pe)
 {
     struct fdholder *fdholder = NULL;
     ccn_indexbuf_destroy(&pe->outbound);
     if (pe->interest_msg != NULL) {
         free(pe->interest_msg);
         pe->interest_msg = NULL;
-        fdholder = fdholder_from_fd(h, pe->filedesc);
+        fdholder = r_io_fdholder_from_fd(h, pe->filedesc);
         if (fdholder != NULL)
             fdholder->pending_interests -= 1;
     }
@@ -30,7 +30,7 @@ consume(struct ccnr_handle *h, struct propagating_entry *pe)
  * @returns number of matches found.
  */
 PUBLIC int
-consume_matching_interests(struct ccnr_handle *h,
+r_match_consume_matching_interests(struct ccnr_handle *h,
                            struct nameprefix_entry *npe,
                            struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
@@ -51,16 +51,16 @@ consume_matching_interests(struct ccnr_handle *h,
     for (p = head->next; p != head; p = next) {
         next = p->next;
         if (p->interest_msg != NULL &&
-            ((fdholder == NULL && (f = fdholder_from_fd(h, p->filedesc)) != NULL) ||
+            ((fdholder == NULL && (f = r_io_fdholder_from_fd(h, p->filedesc)) != NULL) ||
              (fdholder != NULL && p->filedesc == fdholder->filedesc))) {
             if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
                                              p->interest_msg, p->size, NULL)) {
-                face_send_queue_insert(h, f, content);
+                r_sendq_face_send_queue_insert(h, f, content);
                 if (h->debug & (32 | 8))
                     ccnr_debug_ccnb(h, __LINE__, "consume", f,
                                     p->interest_msg, p->size);
                 matches += 1;
-                consume(h, p);
+                r_match_consume_interest(h, p);
             }
         }
     }
@@ -77,7 +77,7 @@ note_content_from(struct ccnr_handle *h,
                   int prefix_comps)
 {
     if (npe->src == from_faceid)
-        adjust_npe_predicted_response(h, npe, 0);
+        r_fwd_adjust_npe_predicted_response(h, npe, 0);
     else if (npe->src == CCN_NOFACEID)
         npe->src = from_faceid;
     else {
@@ -100,7 +100,7 @@ note_content_from(struct ccnr_handle *h,
  * @returns number of matches, or -1 if the new content should be dropped.
  */
 PUBLIC int
-match_interests(struct ccnr_handle *h, struct content_entry *content,
+r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
                            struct fdholder *fdholder, struct fdholder *from_face)
 {
@@ -119,11 +119,11 @@ match_interests(struct ccnr_handle *h, struct content_entry *content,
     }
     for (; npe != NULL; npe = npe->parent, ci--) {
         if (npe->fgen != h->forward_to_gen)
-            update_forward_to(h, npe);
+            r_fwd_update_forward_to(h, npe);
         if (from_face != NULL && (npe->flags & CCN_FORW_LOCAL) != 0 &&
             (from_face->flags & CCN_FACE_GG) == 0)
             return(-1);
-        new_matches = consume_matching_interests(h, npe, content, pc, fdholder);
+        new_matches = r_match_consume_matching_interests(h, npe, content, pc, fdholder);
         if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
             note_content_from(h, npe, from_face->filedesc, ci);
         if (new_matches != 0) {

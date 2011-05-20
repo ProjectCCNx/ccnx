@@ -1,6 +1,6 @@
 #include "common.h"
 PUBLIC struct ccn_charbuf *
-charbuf_obtain(struct ccnr_handle *h)
+r_util_charbuf_obtain(struct ccnr_handle *h)
 {
     struct ccn_charbuf *c = h->scratch_charbuf;
     if (c == NULL)
@@ -11,7 +11,7 @@ charbuf_obtain(struct ccnr_handle *h)
 }
 
 PUBLIC void
-charbuf_release(struct ccnr_handle *h, struct ccn_charbuf *c)
+r_util_charbuf_release(struct ccnr_handle *h, struct ccn_charbuf *c)
 {
     c->length = 0;
     if (h->scratch_charbuf == NULL)
@@ -21,7 +21,7 @@ charbuf_release(struct ccnr_handle *h, struct ccn_charbuf *c)
 }
 
 PUBLIC struct ccn_indexbuf *
-indexbuf_obtain(struct ccnr_handle *h)
+r_util_indexbuf_obtain(struct ccnr_handle *h)
 {
     struct ccn_indexbuf *c = h->scratch_indexbuf;
     if (c == NULL)
@@ -32,7 +32,7 @@ indexbuf_obtain(struct ccnr_handle *h)
 }
 
 PUBLIC void
-indexbuf_release(struct ccnr_handle *h, struct ccn_indexbuf *c)
+r_util_indexbuf_release(struct ccnr_handle *h, struct ccn_indexbuf *c)
 {
     c->n = 0;
     if (h->scratch_indexbuf == NULL)
@@ -42,7 +42,7 @@ indexbuf_release(struct ccnr_handle *h, struct ccn_indexbuf *c)
 }
 
 PUBLIC void
-ccnr_reseed(struct ccnr_handle *h)
+r_util_reseed(struct ccnr_handle *h)
 {
     int fd;
     ssize_t res;
@@ -65,7 +65,7 @@ ccnr_reseed(struct ccnr_handle *h)
 }
 
 PUBLIC void
-ccnr_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
+r_util_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 {
     struct ccnr_handle *h = self->data;
     struct timeval now = {0};
