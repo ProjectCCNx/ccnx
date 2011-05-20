@@ -62,138 +62,138 @@
 #define PUBLIC
 
 PUBLIC struct ccn_charbuf *
-charbuf_obtain(struct ccnr_handle * h);
+r_util_charbuf_obtain(struct ccnr_handle * h);
 PUBLIC void
-charbuf_release(struct ccnr_handle * h, struct ccn_charbuf * c);
+r_util_charbuf_release(struct ccnr_handle * h, struct ccn_charbuf * c);
 PUBLIC struct ccn_indexbuf *
-indexbuf_obtain(struct ccnr_handle * h);
+r_util_indexbuf_obtain(struct ccnr_handle * h);
 PUBLIC void
-indexbuf_release(struct ccnr_handle * h, struct ccn_indexbuf * c);
+r_util_indexbuf_release(struct ccnr_handle * h, struct ccn_indexbuf * c);
 PUBLIC struct fdholder *
-fdholder_from_fd(struct ccnr_handle * h, unsigned filedesc);
+r_io_fdholder_from_fd(struct ccnr_handle * h, unsigned filedesc);
 PUBLIC int
-enroll_face(struct ccnr_handle * h, struct fdholder * fdholder);
+r_io_enroll_face(struct ccnr_handle * h, struct fdholder * fdholder);
 PUBLIC void
-content_queue_destroy(struct ccnr_handle * h, struct content_queue ** pq);
+r_sendq_content_queue_destroy(struct ccnr_handle * h, struct content_queue ** pq);
 PUBLIC struct content_entry *
-content_from_accession(struct ccnr_handle * h, ccn_accession_t accession);
+r_store_content_from_accession(struct ccnr_handle * h, ccn_accession_t accession);
 PUBLIC void
-enroll_content(struct ccnr_handle * h, struct content_entry * content);
+r_store_enroll_content(struct ccnr_handle * h, struct content_entry * content);
 PUBLIC void
-content_skiplist_insert(struct ccnr_handle * h, struct content_entry * content);
+r_store_content_skiplist_insert(struct ccnr_handle * h, struct content_entry * content);
 PUBLIC struct content_entry *
-find_first_match_candidate(struct ccnr_handle * h,
+r_store_find_first_match_candidate(struct ccnr_handle * h,
 						   const unsigned char *interest_msg,
 						   const struct ccn_parsed_interest * pi);
 PUBLIC int
-content_matches_interest_prefix(struct ccnr_handle * h,
+r_store_content_matches_interest_prefix(struct ccnr_handle * h,
 								struct content_entry * content,
 								const unsigned char *interest_msg,
 								struct ccn_indexbuf * comps,
 								int prefix_comps);
 PUBLIC          ccn_accession_t
-content_skiplist_next(struct ccnr_handle * h, struct content_entry * content);
+r_store_content_skiplist_next(struct ccnr_handle * h, struct content_entry * content);
 PUBLIC void
-consume(struct ccnr_handle * h, struct propagating_entry * pe);
+r_match_consume_interest(struct ccnr_handle * h, struct propagating_entry * pe);
 PUBLIC void
-finalize_nameprefix(struct hashtb_enumerator * e);
+r_fwd_finalize_nameprefix(struct hashtb_enumerator * e);
 PUBLIC void
-finalize_propagating(struct hashtb_enumerator * e);
+r_fwd_finalize_propagating(struct hashtb_enumerator * e);
 PUBLIC struct fdholder *
-record_connection(struct ccnr_handle * h, int fd,
+r_io_record_connection(struct ccnr_handle * h, int fd,
 				  struct sockaddr * who, socklen_t wholen,
 				  int setflags);
 PUBLIC int
-accept_connection(struct ccnr_handle * h, int listener_fd);
+r_io_accept_connection(struct ccnr_handle * h, int listener_fd);
 PUBLIC void
-shutdown_client_fd(struct ccnr_handle * h, int fd);
+r_io_shutdown_client_fd(struct ccnr_handle * h, int fd);
 PUBLIC void
-send_content(struct ccnr_handle * h, struct fdholder * fdholder, struct content_entry * content);
+r_link_send_content(struct ccnr_handle * h, struct fdholder * fdholder, struct content_entry * content);
 PUBLIC int
-face_send_queue_insert(struct ccnr_handle * h,
+r_sendq_face_send_queue_insert(struct ccnr_handle * h,
 					   struct fdholder * fdholder, struct content_entry * content);
 PUBLIC int
-consume_matching_interests(struct ccnr_handle * h,
+r_match_consume_matching_interests(struct ccnr_handle * h,
 						   struct nameprefix_entry * npe,
 						   struct content_entry * content,
 						   struct ccn_parsed_ContentObject * pc,
 						   struct fdholder * fdholder);
 PUBLIC void
-adjust_npe_predicted_response(struct ccnr_handle * h,
+r_fwd_adjust_npe_predicted_response(struct ccnr_handle * h,
 							  struct nameprefix_entry * npe, int up);
 PUBLIC int
-match_interests(struct ccnr_handle * h, struct content_entry * content,
+r_match_match_interests(struct ccnr_handle * h, struct content_entry * content,
 				struct ccn_parsed_ContentObject * pc,
 				struct fdholder * fdholder, struct fdholder * from_face);
 PUBLIC void
-stuff_and_send(struct ccnr_handle * h, struct fdholder * fdholder,
+r_link_stuff_and_send(struct ccnr_handle * h, struct fdholder * fdholder,
 			   const unsigned char *data1, size_t size1,
 			   const unsigned char *data2, size_t size2);
 PUBLIC void
-ccn_link_state_init(struct ccnr_handle * h, struct fdholder * fdholder);
+r_link_ccn_link_state_init(struct ccnr_handle * h, struct fdholder * fdholder);
 PUBLIC int
-process_incoming_link_message(struct ccnr_handle * h,
+r_link_process_incoming_link_message(struct ccnr_handle * h,
 							  struct fdholder * fdholder, enum ccn_dtag dtag,
 							  unsigned char *msg, size_t size);
 PUBLIC void
-reap_needed(struct ccnr_handle * h, int init_delay_usec);
+r_fwd_reap_needed(struct ccnr_handle * h, int init_delay_usec);
 PUBLIC int
-remove_content(struct ccnr_handle * h, struct content_entry * content);
+r_store_remove_content(struct ccnr_handle * h, struct content_entry * content);
 PUBLIC void
-age_forwarding_needed(struct ccnr_handle * h);
+r_fwd_age_forwarding_needed(struct ccnr_handle * h);
 PUBLIC void
-register_new_face(struct ccnr_handle * h, struct fdholder * fdholder);
+r_io_register_new_face(struct ccnr_handle * h, struct fdholder * fdholder);
 PUBLIC void
-update_forward_to(struct ccnr_handle * h, struct nameprefix_entry * npe);
+r_fwd_update_forward_to(struct ccnr_handle * h, struct nameprefix_entry * npe);
 PUBLIC void
-ccnr_append_debug_nonce(struct ccnr_handle * h, struct fdholder * fdholder, struct ccn_charbuf * cb);
+r_fwd_append_debug_nonce(struct ccnr_handle * h, struct fdholder * fdholder, struct ccn_charbuf * cb);
 PUBLIC void
-ccnr_append_plain_nonce(struct ccnr_handle * h, struct fdholder * fdholder, struct ccn_charbuf * cb);
+r_fwd_append_plain_nonce(struct ccnr_handle * h, struct fdholder * fdholder, struct ccn_charbuf * cb);
 PUBLIC int
-propagate_interest(struct ccnr_handle * h,
+r_fwd_propagate_interest(struct ccnr_handle * h,
 				   struct fdholder * fdholder,
 				   unsigned char *msg,
 				   struct ccn_parsed_interest * pi,
 				   struct nameprefix_entry * npe);
 PUBLIC int
-is_duplicate_flooded(struct ccnr_handle * h, unsigned char *msg,
+r_fwd_is_duplicate_flooded(struct ccnr_handle * h, unsigned char *msg,
 					 struct ccn_parsed_interest * pi, unsigned filedesc);
 PUBLIC int
-nameprefix_seek(struct ccnr_handle * h, struct hashtb_enumerator * e,
+r_fwd_nameprefix_seek(struct ccnr_handle * h, struct hashtb_enumerator * e,
 				const unsigned char *msg, struct ccn_indexbuf * comps, int ncomps);
 PUBLIC struct content_entry *
-next_child_at_level(struct ccnr_handle * h,
+r_store_next_child_at_level(struct ccnr_handle * h,
 					struct content_entry * content, int level);
 PUBLIC void
-mark_stale(struct ccnr_handle * h, struct content_entry * content);
+r_store_mark_stale(struct ccnr_handle * h, struct content_entry * content);
 PUBLIC void
-set_content_timer(struct ccnr_handle * h, struct content_entry * content,
+r_store_set_content_timer(struct ccnr_handle * h, struct content_entry * content,
 				  struct ccn_parsed_ContentObject * pco);
 PUBLIC void
-process_internal_client_buffer(struct ccnr_handle * h);
+r_dispatch_process_internal_client_buffer(struct ccnr_handle * h);
 PUBLIC void
-do_deferred_write(struct ccnr_handle * h, int fd);
+r_link_do_deferred_write(struct ccnr_handle * h, int fd);
 PUBLIC void
-prepare_poll_fds(struct ccnr_handle * h);
+r_io_prepare_poll_fds(struct ccnr_handle * h);
 PUBLIC void
-ccnr_reseed(struct ccnr_handle * h);
+r_util_reseed(struct ccnr_handle * h);
 PUBLIC char    *
-ccnr_get_local_sockname(void);
+r_net_get_local_sockname(void);
 PUBLIC void
-ccnr_gettime(const struct ccn_gettime * self, struct ccn_timeval * result);
+r_util_gettime(const struct ccn_gettime * self, struct ccn_timeval * result);
 PUBLIC int
-ccnr_listen_on_wildcards(struct ccnr_handle * h);
+r_net_listen_on_wildcards(struct ccnr_handle * h);
 PUBLIC int
-ccnr_listen_on_address(struct ccnr_handle * h, const char *addr);
+r_net_listen_on_address(struct ccnr_handle * h, const char *addr);
 PUBLIC int
-ccnr_listen_on(struct ccnr_handle * h, const char *addrs);
+r_net_listen_on(struct ccnr_handle * h, const char *addrs);
 PUBLIC void
-ccnr_shutdown_all(struct ccnr_handle * h);
+r_io_shutdown_all(struct ccnr_handle * h);
 
 //EOF
 ///bin/cat << //EOF >> ccnr_util.c
 PUBLIC struct ccn_charbuf *
-charbuf_obtain(struct ccnr_handle *h)
+r_util_charbuf_obtain(struct ccnr_handle *h)
 {
     struct ccn_charbuf *c = h->scratch_charbuf;
     if (c == NULL)
@@ -204,7 +204,7 @@ charbuf_obtain(struct ccnr_handle *h)
 }
 
 PUBLIC void
-charbuf_release(struct ccnr_handle *h, struct ccn_charbuf *c)
+r_util_charbuf_release(struct ccnr_handle *h, struct ccn_charbuf *c)
 {
     c->length = 0;
     if (h->scratch_charbuf == NULL)
@@ -214,7 +214,7 @@ charbuf_release(struct ccnr_handle *h, struct ccn_charbuf *c)
 }
 
 PUBLIC struct ccn_indexbuf *
-indexbuf_obtain(struct ccnr_handle *h)
+r_util_indexbuf_obtain(struct ccnr_handle *h)
 {
     struct ccn_indexbuf *c = h->scratch_indexbuf;
     if (c == NULL)
@@ -225,7 +225,7 @@ indexbuf_obtain(struct ccnr_handle *h)
 }
 
 PUBLIC void
-indexbuf_release(struct ccnr_handle *h, struct ccn_indexbuf *c)
+r_util_indexbuf_release(struct ccnr_handle *h, struct ccn_indexbuf *c)
 {
     c->n = 0;
     if (h->scratch_indexbuf == NULL)
@@ -240,7 +240,7 @@ indexbuf_release(struct ccnr_handle *h, struct ccn_indexbuf *c)
  * Looks up a fdholder based on its filedesc (private).
  */
 PUBLIC struct fdholder *
-fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
+r_io_fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
 {
     unsigned slot = filedesc;
     struct fdholder *fdholder = NULL;
@@ -256,17 +256,17 @@ fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
  * Looks up a fdholder based on its filedesc.
  */
 PUBLIC struct fdholder *
-ccnr_fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
+ccnr_r_io_fdholder_from_fd(struct ccnr_handle *h, unsigned filedesc)
 {
-    return(fdholder_from_fd(h, filedesc));
+    return(r_io_fdholder_from_fd(h, filedesc));
 }
 
 /**
  * Assigns the filedesc for a nacent fdholder,
- * calls register_new_face() if successful.
+ * calls r_io_register_new_face() if successful.
  */
 PUBLIC int
-enroll_face(struct ccnr_handle *h, struct fdholder *fdholder)
+r_io_enroll_face(struct ccnr_handle *h, struct fdholder *fdholder)
 {
     unsigned i = fdholder->filedesc;
     unsigned n = h->face_limit;
@@ -294,7 +294,7 @@ use_i:
     fdholder->meter[FM_INTO] = ccnr_meter_create(h, "introut");
     fdholder->meter[FM_DATI] = ccnr_meter_create(h, "datain");
     fdholder->meter[FM_DATO] = ccnr_meter_create(h, "dataout");
-    register_new_face(h, fdholder);
+    r_io_register_new_face(h, fdholder);
     return (fdholder->filedesc);
 }
 
@@ -339,7 +339,7 @@ content_queue_create(struct ccnr_handle *h, struct fdholder *fdholder, enum cq_d
 }
 
 PUBLIC void
-content_queue_destroy(struct ccnr_handle *h, struct content_queue **pq)
+r_sendq_content_queue_destroy(struct ccnr_handle *h, struct content_queue **pq)
 {
     struct content_queue *q;
     if (*pq != NULL) {
@@ -392,7 +392,7 @@ ccnr_close_fd(struct ccnr_handle *h, unsigned filedesc, int *pfd)
 //EOF
 ///bin/cat << //EOF >> ccnr_store.c
 PUBLIC struct content_entry *
-content_from_accession(struct ccnr_handle *h, ccn_accession_t accession)
+r_store_content_from_accession(struct ccnr_handle *h, ccn_accession_t accession)
 {
     struct content_entry *ans = NULL;
     if (accession < h->accession_base) {
@@ -427,7 +427,7 @@ cleanout_empties(struct ccnr_handle *h)
 }
 
 PUBLIC void
-enroll_content(struct ccnr_handle *h, struct content_entry *content)
+r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
 {
     unsigned new_window;
     struct content_entry **new_array;
@@ -479,7 +479,7 @@ content_skiplist_findbefore(struct ccnr_handle *h,
         for (;;) {
             if (c->buf[i] == 0)
                 break;
-            content = content_from_accession(h, c->buf[i]);
+            content = r_store_content_from_accession(h, c->buf[i]);
             if (content == NULL)
                 abort();
             start = content->comps[0];
@@ -501,7 +501,7 @@ content_skiplist_findbefore(struct ccnr_handle *h,
 
 #define CCN_SKIPLIST_MAX_DEPTH 30
 PUBLIC void
-content_skiplist_insert(struct ccnr_handle *h, struct content_entry *content)
+r_store_content_skiplist_insert(struct ccnr_handle *h, struct content_entry *content)
 {
     int d;
     int i;
@@ -552,7 +552,7 @@ content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
 ///bin/cat << //EOF >> ccnr_store.c
 
 PUBLIC struct content_entry *
-find_first_match_candidate(struct ccnr_handle *h,
+r_store_find_first_match_candidate(struct ccnr_handle *h,
                            const unsigned char *interest_msg,
                            const struct ccn_parsed_interest *pi)
 {
@@ -607,13 +607,13 @@ find_first_match_candidate(struct ccnr_handle *h,
     }
     if (res == 0)
         return(NULL);
-    return(content_from_accession(h, pred[0]->buf[0]));
+    return(r_store_content_from_accession(h, pred[0]->buf[0]));
 }
 //EOF
 ///bin/cat << //EOF >> ccnr_store.c
 
 PUBLIC int
-content_matches_interest_prefix(struct ccnr_handle *h,
+r_store_content_matches_interest_prefix(struct ccnr_handle *h,
                                 struct content_entry *content,
                                 const unsigned char *interest_msg,
                                 struct ccn_indexbuf *comps,
@@ -638,7 +638,7 @@ content_matches_interest_prefix(struct ccnr_handle *h,
 ///bin/cat << //EOF >> ccnr_store.c
 
 PUBLIC ccn_accession_t
-content_skiplist_next(struct ccnr_handle *h, struct content_entry *content)
+r_store_content_skiplist_next(struct ccnr_handle *h, struct content_entry *content)
 {
     if (content == NULL)
         return(0);
@@ -650,14 +650,14 @@ content_skiplist_next(struct ccnr_handle *h, struct content_entry *content)
 ///bin/cat << //EOF >> ccnr_match.c
 
 PUBLIC void
-consume(struct ccnr_handle *h, struct propagating_entry *pe)
+r_match_consume_interest(struct ccnr_handle *h, struct propagating_entry *pe)
 {
     struct fdholder *fdholder = NULL;
     ccn_indexbuf_destroy(&pe->outbound);
     if (pe->interest_msg != NULL) {
         free(pe->interest_msg);
         pe->interest_msg = NULL;
-        fdholder = fdholder_from_fd(h, pe->filedesc);
+        fdholder = r_io_fdholder_from_fd(h, pe->filedesc);
         if (fdholder != NULL)
             fdholder->pending_interests -= 1;
     }
@@ -677,14 +677,14 @@ static void
 replan_propagation(struct ccnr_handle * h, struct propagating_entry * pe);
 
 PUBLIC void
-finalize_nameprefix(struct hashtb_enumerator *e)
+r_fwd_finalize_nameprefix(struct hashtb_enumerator *e)
 {
     struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
     struct nameprefix_entry *npe = e->data;
     struct propagating_entry *head = &npe->pe_head;
     if (head->next != NULL) {
         while (head->next != head)
-            consume(h, head->next);
+            r_match_consume_interest(h, head->next);
     }
     ccn_indexbuf_destroy(&npe->forward_to);
     ccn_indexbuf_destroy(&npe->tap);
@@ -706,10 +706,10 @@ link_propagating_interest_to_nameprefix(struct ccnr_handle *h,
 }
 
 PUBLIC void
-finalize_propagating(struct hashtb_enumerator *e)
+r_fwd_finalize_propagating(struct hashtb_enumerator *e)
 {
     struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
-    consume(h, e->data);
+    r_match_consume_interest(h, e->data);
 }
 //EOF
 ///bin/cat << //EOF >> ccnr_io.c
@@ -758,7 +758,7 @@ init_face_flags(struct ccnr_handle *h, struct fdholder *fdholder, int setflags)
  * Make a new fdholder entered in the faces_by_fd table.
  */
 PUBLIC struct fdholder *
-record_connection(struct ccnr_handle *h, int fd,
+r_io_record_connection(struct ccnr_handle *h, int fd,
                   struct sockaddr *who, socklen_t wholen,
                   int setflags)
 {
@@ -782,7 +782,7 @@ record_connection(struct ccnr_handle *h, int fd,
     fdholder->filedesc = fd;
     fdholder->sendface = CCN_NOFACEID;
     init_face_flags(h, fdholder, setflags);
-    res = enroll_face(h, fdholder);
+    res = r_io_enroll_face(h, fdholder);
     if (res == -1) {
         if (addrspace != NULL)
             free(addrspace);
@@ -797,7 +797,7 @@ record_connection(struct ccnr_handle *h, int fd,
  * @returns fd of new socket, or -1 for an error.
  */
 PUBLIC int
-accept_connection(struct ccnr_handle *h, int listener_fd)
+r_io_accept_connection(struct ccnr_handle *h, int listener_fd)
 {
     struct sockaddr_storage who;
     socklen_t wholen = sizeof(who);
@@ -809,7 +809,7 @@ accept_connection(struct ccnr_handle *h, int listener_fd)
         ccnr_msg(h, "accept: %s", strerror(errno));
         return(-1);
     }
-    fdholder = record_connection(h, fd,
+    fdholder = r_io_record_connection(h, fd,
                             (struct sockaddr *)&who, wholen,
                             CCN_FACE_UNDECIDED);
     if (fdholder == NULL)
@@ -820,14 +820,14 @@ accept_connection(struct ccnr_handle *h, int listener_fd)
 }
 
 PUBLIC void
-shutdown_client_fd(struct ccnr_handle *h, int fd)
+r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
 {
     struct fdholder *fdholder = NULL;
     enum cq_delay_class c;
     int m;
     int res;
     
-    fdholder = fdholder_from_fd(h, fd);
+    fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL) {
         ccnr_msg(h, "no fd holder for fd %d", fd);
         abort();
@@ -837,7 +837,7 @@ shutdown_client_fd(struct ccnr_handle *h, int fd)
     ccn_charbuf_destroy(&fdholder->inbuf);
     ccn_charbuf_destroy(&fdholder->outbuf);
     for (c = 0; c < CCN_CQ_N; c++)
-        content_queue_destroy(h, &(fdholder->q[c]));
+        r_sendq_content_queue_destroy(h, &(fdholder->q[c]));
     if (fdholder->addr != NULL) {
         free(fdholder->addr);
 		fdholder->addr = NULL;
@@ -847,7 +847,7 @@ shutdown_client_fd(struct ccnr_handle *h, int fd)
 	if (h->fdholder_by_fd[fd] != fdholder) abort();
 	h->fdholder_by_fd[fd] = NULL;
     free(fdholder);
-    reap_needed(h, 250000);
+    r_fwd_reap_needed(h, 250000);
 }
 //EOF
 ///bin/cat << //EOF >> ccnr_link.c
@@ -862,7 +862,7 @@ ccn_append_link_stuff(struct ccnr_handle * h,
 
 
 PUBLIC void
-send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
+r_link_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
 {
     int n, a, b, size;
     if ((fdholder->flags & CCN_FACE_NOSEND) != 0) {
@@ -880,7 +880,7 @@ send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_en
     b = content->comps[n - 1];
     if (b - a != 36)
         abort(); /* strange digest length */
-    stuff_and_send(h, fdholder, content->key, a, content->key + b, size - b);
+    r_link_stuff_and_send(h, fdholder, content->key, a, content->key + b, size - b);
     ccnr_meter_bump(h, fdholder->meter[FM_DATO], 1);
     h->content_items_sent += 1;
 }
@@ -890,7 +890,7 @@ send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_en
 static enum cq_delay_class
 choose_content_delay_class(struct ccnr_handle *h, unsigned filedesc, int content_flags)
 {
-    struct fdholder *fdholder = fdholder_from_fd(h, filedesc);
+    struct fdholder *fdholder = r_io_fdholder_from_fd(h, filedesc);
     if (fdholder == NULL)
         return(CCN_CQ_ASAP); /* Going nowhere, get it over with */
     if ((fdholder->flags & (CCN_FACE_LINK | CCN_FACE_MCAST)) != 0) /* udplink or such, delay more */
@@ -938,7 +938,7 @@ content_sender(struct ccn_schedule *sched,
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         goto Bail;
-    fdholder = fdholder_from_fd(h, filedesc);
+    fdholder = r_io_fdholder_from_fd(h, filedesc);
     if (fdholder == NULL)
         goto Bail;
     if (q->send_queue == NULL)
@@ -957,13 +957,13 @@ content_sender(struct ccn_schedule *sched,
     if (burst_max == 0)
         q->nrun = 0;
     for (i = 0; i < burst_max && nsec < 1000000; i++) {
-        content = content_from_accession(h, q->send_queue->buf[i]);
+        content = r_store_content_from_accession(h, q->send_queue->buf[i]);
         if (content == NULL)
             q->nrun = 0;
         else {
-            send_content(h, fdholder, content);
+            r_link_send_content(h, fdholder, content);
             /* fdholder may have vanished, bail out if it did */
-            if (fdholder_from_fd(h, filedesc) == NULL)
+            if (r_io_fdholder_from_fd(h, filedesc) == NULL)
                 goto Bail;
             nsec += burst_nsec * (unsigned)((content->size + 1023) / 1024);
             q->nrun++;
@@ -995,7 +995,7 @@ content_sender(struct ccn_schedule *sched,
     }
     /* Determine when to run again */
     for (i = 0; i < q->send_queue->n; i++) {
-        content = content_from_accession(h, q->send_queue->buf[i]);
+        content = r_store_content_from_accession(h, q->send_queue->buf[i]);
         if (content != NULL) {
             q->nrun = 0;
             delay = randomize_content_delay(h, q);
@@ -1012,7 +1012,7 @@ Bail:
 }
 
 PUBLIC int
-face_send_queue_insert(struct ccnr_handle *h,
+r_sendq_face_send_queue_insert(struct ccnr_handle *h,
                        struct fdholder *fdholder, struct content_entry *content)
 {
     int ans;
@@ -1091,7 +1091,7 @@ promote_outbound(struct propagating_entry *pe, unsigned filedesc)
  * @returns number of matches found.
  */
 PUBLIC int
-consume_matching_interests(struct ccnr_handle *h,
+r_match_consume_matching_interests(struct ccnr_handle *h,
                            struct nameprefix_entry *npe,
                            struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
@@ -1112,16 +1112,16 @@ consume_matching_interests(struct ccnr_handle *h,
     for (p = head->next; p != head; p = next) {
         next = p->next;
         if (p->interest_msg != NULL &&
-            ((fdholder == NULL && (f = fdholder_from_fd(h, p->filedesc)) != NULL) ||
+            ((fdholder == NULL && (f = r_io_fdholder_from_fd(h, p->filedesc)) != NULL) ||
              (fdholder != NULL && p->filedesc == fdholder->filedesc))) {
             if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
                                              p->interest_msg, p->size, NULL)) {
-                face_send_queue_insert(h, f, content);
+                r_sendq_face_send_queue_insert(h, f, content);
                 if (h->debug & (32 | 8))
                     ccnr_debug_ccnb(h, __LINE__, "consume", f,
                                     p->interest_msg, p->size);
                 matches += 1;
-                consume(h, p);
+                r_match_consume_interest(h, p);
             }
         }
     }
@@ -1131,7 +1131,7 @@ consume_matching_interests(struct ccnr_handle *h,
 ///bin/cat << //EOF >> ccnr_forwarding.c
 
 PUBLIC void
-adjust_npe_predicted_response(struct ccnr_handle *h,
+r_fwd_adjust_npe_predicted_response(struct ccnr_handle *h,
                               struct nameprefix_entry *npe, int up)
 {
     unsigned t = npe->usec;
@@ -1155,9 +1155,9 @@ adjust_predicted_response(struct ccnr_handle *h,
     npe = nameprefix_for_pe(h, pe);
     if (npe == NULL)
         return;
-    adjust_npe_predicted_response(h, npe, up);
+    r_fwd_adjust_npe_predicted_response(h, npe, up);
     if (npe->parent != NULL)
-        adjust_npe_predicted_response(h, npe->parent, up);
+        r_fwd_adjust_npe_predicted_response(h, npe->parent, up);
 }
 //EOF
 ///bin/cat << //EOF >> ccnr_match.c
@@ -1172,7 +1172,7 @@ note_content_from(struct ccnr_handle *h,
                   int prefix_comps)
 {
     if (npe->src == from_faceid)
-        adjust_npe_predicted_response(h, npe, 0);
+        r_fwd_adjust_npe_predicted_response(h, npe, 0);
     else if (npe->src == CCN_NOFACEID)
         npe->src = from_faceid;
     else {
@@ -1226,7 +1226,7 @@ reorder_outbound_using_history(struct ccnr_handle *h,
  * @returns number of matches, or -1 if the new content should be dropped.
  */
 PUBLIC int
-match_interests(struct ccnr_handle *h, struct content_entry *content,
+r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
                            struct ccn_parsed_ContentObject *pc,
                            struct fdholder *fdholder, struct fdholder *from_face)
 {
@@ -1245,11 +1245,11 @@ match_interests(struct ccnr_handle *h, struct content_entry *content,
     }
     for (; npe != NULL; npe = npe->parent, ci--) {
         if (npe->fgen != h->forward_to_gen)
-            update_forward_to(h, npe);
+            r_fwd_update_forward_to(h, npe);
         if (from_face != NULL && (npe->flags & CCN_FORW_LOCAL) != 0 &&
             (from_face->flags & CCN_FACE_GG) == 0)
             return(-1);
-        new_matches = consume_matching_interests(h, npe, content, pc, fdholder);
+        new_matches = r_match_consume_matching_interests(h, npe, content, pc, fdholder);
         if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
             note_content_from(h, npe, from_face->filedesc, ci);
         if (new_matches != 0) {
@@ -1267,13 +1267,13 @@ match_interests(struct ccnr_handle *h, struct content_entry *content,
  * The message may be in two pieces.
  */
 PUBLIC void
-stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
+r_link_stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
                const unsigned char *data1, size_t size1,
                const unsigned char *data2, size_t size2) {
     struct ccn_charbuf *c = NULL;
     
     if ((fdholder->flags & CCN_FACE_LINK) != 0) {
-        c = charbuf_obtain(h);
+        c = r_util_charbuf_obtain(h);
         ccn_charbuf_reserve(c, size1 + size2 + 5 + 8);
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
         ccn_charbuf_append(c, data1, size1);
@@ -1285,7 +1285,7 @@ stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     else if (size2 != 0 || 1 > size1 + size2 ||
              (fdholder->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0) {
-        c = charbuf_obtain(h);
+        c = r_util_charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
         if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
@@ -1294,11 +1294,11 @@ stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     else {
         /* avoid a copy in this case */
-        ccnr_send(h, fdholder, data1, size1);
+        r_io_send(h, fdholder, data1, size1);
         return;
     }
-    ccnr_send(h, fdholder, c->buf, c->length);
-    charbuf_release(h, c);
+    r_io_send(h, fdholder, c->buf, c->length);
+    r_util_charbuf_release(h, c);
     return;
 }
 
@@ -1317,7 +1317,7 @@ ccn_stuff_interest(struct ccnr_handle *h,
 }
 
 PUBLIC void
-ccn_link_state_init(struct ccnr_handle *h, struct fdholder *fdholder)
+r_link_ccn_link_state_init(struct ccnr_handle *h, struct fdholder *fdholder)
 {
     int checkflags;
     int matchflags;
@@ -1351,7 +1351,7 @@ ccn_append_link_stuff(struct ccnr_handle *h,
 }
 
 PUBLIC int
-process_incoming_link_message(struct ccnr_handle *h,
+r_link_process_incoming_link_message(struct ccnr_handle *h,
                               struct fdholder *fdholder, enum ccn_dtag dtag,
                               unsigned char *msg, size_t size)
 {
@@ -1422,9 +1422,9 @@ process_incoming_link_message(struct ccnr_handle *h,
  * @returns 0 for success, -1 for failure.
  */
 PUBLIC int
-ccnr_destroy_face(struct ccnr_handle *h, unsigned filedesc)
+r_io_destroy_face(struct ccnr_handle *h, unsigned filedesc)
 {
-    shutdown_client_fd(h, filedesc);
+    r_io_shutdown_client_fd(h, filedesc);
     return(0);
 }
 //EOF
@@ -1442,10 +1442,10 @@ check_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
     if (ft == NULL)
         return;
     for (i = 0; i < ft->n; i++)
-        if (fdholder_from_fd(h, ft->buf[i]) == NULL)
+        if (r_io_fdholder_from_fd(h, ft->buf[i]) == NULL)
             break;
     for (j = i + 1; j < ft->n; j++)
-        if (fdholder_from_fd(h, ft->buf[j]) != NULL)
+        if (r_io_fdholder_from_fd(h, ft->buf[j]) != NULL)
             ft->buf[i++] = ft->buf[j];
     if (i == 0)
         ccn_indexbuf_destroy(&npe->forward_to);
@@ -1543,7 +1543,7 @@ reap(struct ccn_schedule *sched,
 }
 
 PUBLIC void
-reap_needed(struct ccnr_handle *h, int init_delay_usec)
+r_fwd_reap_needed(struct ccnr_handle *h, int init_delay_usec)
 {
     if (h->reaper == NULL)
         h->reaper = ccn_schedule_event(h->sched, init_delay_usec, reap, NULL, 0);
@@ -1552,7 +1552,7 @@ reap_needed(struct ccnr_handle *h, int init_delay_usec)
 ///bin/cat << //EOF >> ccnr_store.c
 
 PUBLIC int
-remove_content(struct ccnr_handle *h, struct content_entry *content)
+r_store_remove_content(struct ccnr_handle *h, struct content_entry *content)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1603,9 +1603,9 @@ age_forwarding(struct ccn_schedule *sched,
         for (f = npe->forwarding; f != NULL; f = next) {
             next = f->next;
             if ((f->flags & CCN_FORW_REFRESHED) == 0 ||
-                  fdholder_from_fd(h, f->filedesc) == NULL) {
+                  r_io_fdholder_from_fd(h, f->filedesc) == NULL) {
                 if (h->debug & 2) {
-                    struct fdholder *fdholder = fdholder_from_fd(h, f->filedesc);
+                    struct fdholder *fdholder = r_io_fdholder_from_fd(h, f->filedesc);
                     if (fdholder != NULL) {
                         struct ccn_charbuf *prefix = ccn_charbuf_create();
                         ccn_name_init(prefix);
@@ -1634,7 +1634,7 @@ age_forwarding(struct ccn_schedule *sched,
 }
 
 PUBLIC void
-age_forwarding_needed(struct ccnr_handle *h)
+r_fwd_age_forwarding_needed(struct ccnr_handle *h)
 {
     if (h->age_forwarding == NULL)
         h->age_forwarding = ccn_schedule_event(h->sched,
@@ -1695,14 +1695,14 @@ ccnr_reg_prefix(struct ccnr_handle *h,
     if (flags >= 0 &&
         (flags & CCN_FORW_PUBMASK) != flags)
         return(-1);
-    fdholder = fdholder_from_fd(h, filedesc);
+    fdholder = r_io_fdholder_from_fd(h, filedesc);
     if (fdholder == NULL)
         return(-1);
     /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
     if (flags >= 0 && (flags & CCN_FORW_LAST) != 0)
         fdholder->flags |= CCN_FACE_DC;
     hashtb_start(h->nameprefix_tab, e);
-    res = nameprefix_seek(h, e, msg, comps, ncomps);
+    res = r_fwd_nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
         res = (res == HT_OLD_ENTRY) ? CCN_FORW_REFRESHED : 0;
         npe = e->data;
@@ -1745,7 +1745,7 @@ ccnr_reg_prefix(struct ccnr_handle *h,
  * @returns negative value for error, or new fdholder flags for success.
  */
 PUBLIC int
-ccnr_reg_uri(struct ccnr_handle *h,
+r_fwd_reg_uri(struct ccnr_handle *h,
              const char *uri,
              unsigned filedesc,
              int flags,
@@ -1780,7 +1780,7 @@ Bail:
  * The URIs in the charbuf are each terminated by nul.
  */
 PUBLIC void
-ccnr_reg_uri_list(struct ccnr_handle *h,
+r_fwd_reg_uri_list(struct ccnr_handle *h,
              struct ccn_charbuf *uris,
              unsigned filedesc,
              int flags,
@@ -1790,7 +1790,7 @@ ccnr_reg_uri_list(struct ccnr_handle *h,
     const char *s;
     s = ccn_charbuf_as_string(uris);
     for (i = 0; i + 1 < uris->length; i += strlen(s + i) + 1)
-        ccnr_reg_uri(h, s + i, filedesc, flags, expires);
+        r_fwd_reg_uri(h, s + i, filedesc, flags, expires);
 }
 //EOF
 ///bin/cat << //EOF >> ccnr_io.c
@@ -1800,11 +1800,11 @@ ccnr_reg_uri_list(struct ccnr_handle *h,
  * that a fdholder transitions from the undecided state.
  */
 PUBLIC void
-register_new_face(struct ccnr_handle *h, struct fdholder *fdholder)
+r_io_register_new_face(struct ccnr_handle *h, struct fdholder *fdholder)
 {
     if (fdholder->filedesc != 0 && (fdholder->flags & (CCN_FACE_UNDECIDED | CCN_FACE_PASSIVE)) == 0) {
         ccnr_face_status_change(h, fdholder->filedesc);
-        ccn_link_state_init(h, fdholder);
+        r_link_ccn_link_state_init(h, fdholder);
     }
 }
 //EOF
@@ -1815,7 +1815,7 @@ register_new_face(struct ccnr_handle *h, struct fdholder *fdholder)
  * from forwarding lists of npe and all of its ancestors.
  */
 PUBLIC void
-update_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
+r_fwd_update_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
 {
     struct ccn_indexbuf *x = NULL;
     struct ccn_indexbuf *tap = NULL;
@@ -1840,7 +1840,7 @@ update_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
     for (p = npe; p != NULL; p = p->parent) {
         moreflags = CCN_FORW_CHILD_INHERIT;
         for (f = p->forwarding; f != NULL; f = f->next) {
-            if (fdholder_from_fd(h, f->filedesc) == NULL)
+            if (r_io_fdholder_from_fd(h, f->filedesc) == NULL)
                 continue;
             tflags = f->flags;
             if (tflags & (CCN_FORW_TAP | CCN_FORW_LAST))
@@ -1900,7 +1900,7 @@ get_outbound_faces(struct ccnr_handle *h,
     while (npe->parent != NULL && npe->forwarding == NULL)
         npe = npe->parent;
     if (npe->fgen != h->forward_to_gen)
-        update_forward_to(h, npe);
+        r_fwd_update_forward_to(h, npe);
     x = ccn_indexbuf_create();
     if (pi->scope == 0 || npe->forward_to == NULL || npe->forward_to->n == 0)
         return(x);
@@ -1915,7 +1915,7 @@ get_outbound_faces(struct ccnr_handle *h,
         checkmask |= CCN_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         filedesc = npe->forward_to->buf[i];
-        fdholder = fdholder_from_fd(h, filedesc);
+        fdholder = r_io_fdholder_from_fd(h, filedesc);
         if (fdholder != NULL && fdholder != from &&
             ((fdholder->flags & checkmask) == wantmask)) {
             if (h->debug & 32)
@@ -1942,7 +1942,7 @@ pe_next_usec(struct ccnr_handle *h,
                          next_delay, pe->usec);
         if (pe->interest_msg != NULL) {
             ccnr_debug_ccnb(h, lineno, ccn_charbuf_as_string(c),
-                            fdholder_from_fd(h, pe->filedesc),
+                            r_io_fdholder_from_fd(h, pe->filedesc),
                             pe->interest_msg, pe->size);
         }
         ccn_charbuf_destroy(&c);
@@ -1964,7 +1964,7 @@ do_propagate(struct ccn_schedule *sched,
     if (pe->interest_msg == NULL)
         return(0);
     if (flags & CCN_SCHEDULE_CANCEL) {
-        consume(h, pe);
+        r_match_consume_interest(h, pe);
         return(0);
     }
     if ((pe->flags & CCN_PR_WAIT1) != 0) {
@@ -1974,10 +1974,10 @@ do_propagate(struct ccn_schedule *sched,
     if (pe->usec <= 0) {
         if (h->debug & 2)
             ccnr_debug_ccnb(h, __LINE__, "interest_expiry",
-                            fdholder_from_fd(h, pe->filedesc),
+                            r_io_fdholder_from_fd(h, pe->filedesc),
                             pe->interest_msg, pe->size);
-        consume(h, pe);
-        reap_needed(h, 0);
+        r_match_consume_interest(h, pe);
+        r_fwd_reap_needed(h, 0);
         return(0);        
     }
     if ((pe->flags & CCN_PR_STUFFED1) != 0) {
@@ -1987,7 +1987,7 @@ do_propagate(struct ccn_schedule *sched,
     }
     else if (pe->outbound != NULL && pe->sent < pe->outbound->n) {
         unsigned filedesc = pe->outbound->buf[pe->sent];
-        struct fdholder *fdholder = fdholder_from_fd(h, filedesc);
+        struct fdholder *fdholder = r_io_fdholder_from_fd(h, filedesc);
         if (fdholder != NULL && (fdholder->flags & CCN_FACE_NOSEND) == 0) {
             if (h->debug & 2)
                 ccnr_debug_ccnb(h, __LINE__, "interest_to", fdholder,
@@ -2005,7 +2005,7 @@ do_propagate(struct ccn_schedule *sched,
                 pe->flags |= CCN_PR_WAIT1;
                 next_delay = special_delay = ev->evint;
             }
-            stuff_and_send(h, fdholder, pe->interest_msg, pe->size, NULL, 0);
+            r_link_stuff_and_send(h, fdholder, pe->interest_msg, pe->size, NULL, 0);
             ccnr_meter_bump(h, fdholder->meter[FM_INTO], 1);
         }
         else
@@ -2024,7 +2024,7 @@ do_propagate(struct ccn_schedule *sched,
     }
     else {
         unsigned filedesc = pe->outbound->buf[pe->sent];
-        struct fdholder *fdholder = fdholder_from_fd(h, filedesc);
+        struct fdholder *fdholder = r_io_fdholder_from_fd(h, filedesc);
         /* Wait longer before sending interest to ccnrc */
         if (fdholder != NULL && (fdholder->flags & CCN_FACE_DC) != 0)
             next_delay += 60000;
@@ -2072,7 +2072,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
                 0 == memcmp(msg, p->interest_msg, presize) &&
                 0 == memcmp(post, p->interest_msg + p->size - postsize, postsize)) {
                 /* Matches everything but the Nonce */
-                otherface = fdholder_from_fd(h, p->filedesc);
+                otherface = r_io_fdholder_from_fd(h, p->filedesc);
                 if (otherface == NULL)
                     continue;
                 /*
@@ -2084,7 +2084,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
                     continue;
                 if (h->debug & 32)
                     ccnr_debug_ccnb(h, __LINE__, "similar_interest",
-                                    fdholder_from_fd(h, p->filedesc),
+                                    r_io_fdholder_from_fd(h, p->filedesc),
                                     p->interest_msg, p->size);
                 if (fdholder->filedesc == p->filedesc) {
                     /*
@@ -2141,7 +2141,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
 }
 
 PUBLIC void
-ccnr_append_debug_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct ccn_charbuf *cb) {
+r_fwd_append_debug_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct ccn_charbuf *cb) {
         unsigned char s[12];
         int i;
         
@@ -2159,7 +2159,7 @@ ccnr_append_debug_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct
 }
 
 PUBLIC void
-ccnr_append_plain_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct ccn_charbuf *cb) {
+r_fwd_append_plain_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct ccn_charbuf *cb) {
         int noncebytes = 6;
         unsigned char *s = NULL;
         int i;
@@ -2177,7 +2177,7 @@ ccnr_append_plain_nonce(struct ccnr_handle *h, struct fdholder *fdholder, struct
  * Schedules the propagation of an Interest message.
  */
 PUBLIC int
-propagate_interest(struct ccnr_handle *h,
+r_fwd_propagate_interest(struct ccnr_handle *h,
                    struct fdholder *fdholder,
                    unsigned char *msg,
                    struct ccn_parsed_interest *pi,
@@ -2220,7 +2220,7 @@ propagate_interest(struct ccnr_handle *h,
     if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
         /* This interest has no nonce; add one before going on */
         size_t nonce_start = 0;
-        cb = charbuf_obtain(h);
+        cb = r_util_charbuf_obtain(h);
         ccn_charbuf_append(cb, msg, pi->offset[CCN_PI_B_Nonce]);
         nonce_start = cb->length;
         (h->appnonce)(h, fdholder, cb);
@@ -2292,7 +2292,7 @@ propagate_interest(struct ccnr_handle *h,
     }
     hashtb_end(e);
     if (cb != NULL)
-        charbuf_release(h, cb);
+        r_util_charbuf_release(h, cb);
     ccn_indexbuf_destroy(&outbound);
     return(res);
 }
@@ -2327,14 +2327,14 @@ replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
     pe->fgen = h->forward_to_gen;
     if ((pe->flags & (CCN_PR_SCOPE0 | CCN_PR_EQV)) != 0)
         return;
-    from = fdholder_from_fd(h, pe->filedesc);
+    from = r_io_fdholder_from_fd(h, pe->filedesc);
     if (from == NULL)
         return;
     npe = nameprefix_for_pe(h, pe);
     while (npe->parent != NULL && npe->forwarding == NULL)
         npe = npe->parent;
     if (npe->fgen != h->forward_to_gen)
-        update_forward_to(h, npe);
+        r_fwd_update_forward_to(h, npe);
     if (npe->forward_to == NULL || npe->forward_to->n == 0)
         return;
     if ((pe->flags & CCN_PR_SCOPE1) != 0)
@@ -2348,7 +2348,7 @@ replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
         checkmask |= CCN_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         filedesc = npe->forward_to->buf[i];
-        fdholder = fdholder_from_fd(h, filedesc);
+        fdholder = r_io_fdholder_from_fd(h, filedesc);
         if (fdholder != NULL && filedesc != pe->filedesc &&
             ((fdholder->flags & checkmask) == wantmask)) {
             k = x->n;
@@ -2367,7 +2367,7 @@ replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
  * the duplicate arrived on from the outbound set of the original.
  */
 PUBLIC int
-is_duplicate_flooded(struct ccnr_handle *h, unsigned char *msg,
+r_fwd_is_duplicate_flooded(struct ccnr_handle *h, unsigned char *msg,
                      struct ccn_parsed_interest *pi, unsigned filedesc)
 {
     struct hashtb_enumerator ee;
@@ -2394,7 +2394,7 @@ is_duplicate_flooded(struct ccnr_handle *h, unsigned char *msg,
  */
 /* UNUSED */
 PUBLIC int
-nameprefix_longest_match(struct ccnr_handle *h, const unsigned char *msg,
+r_fwd_nameprefix_longest_match(struct ccnr_handle *h, const unsigned char *msg,
                          struct ccn_indexbuf *comps, int ncomps)
 {
     int i;
@@ -2413,7 +2413,7 @@ nameprefix_longest_match(struct ccnr_handle *h, const unsigned char *msg,
         if (npe->children == 0)
             break;
     }
-    ccnr_msg(h, "nameprefix_longest_match returning %d", answer);
+    ccnr_msg(h, "r_fwd_nameprefix_longest_match returning %d", answer);
     return(answer);
 }
 
@@ -2422,7 +2422,7 @@ nameprefix_longest_match(struct ccnr_handle *h, const unsigned char *msg,
  * with all of its parents.
  */
 PUBLIC int
-nameprefix_seek(struct ccnr_handle *h, struct hashtb_enumerator *e,
+r_fwd_nameprefix_seek(struct ccnr_handle *h, struct hashtb_enumerator *e,
                 const unsigned char *msg, struct ccn_indexbuf *comps, int ncomps)
 {
     int i;
@@ -2469,7 +2469,7 @@ nameprefix_seek(struct ccnr_handle *h, struct hashtb_enumerator *e,
 ///bin/cat << //EOF >> ccnr_store.c
 
 PUBLIC struct content_entry *
-next_child_at_level(struct ccnr_handle *h,
+r_store_next_child_at_level(struct ccnr_handle *h,
                     struct content_entry *content, int level)
 {
     struct content_entry *next = NULL;
@@ -2495,10 +2495,10 @@ next_child_at_level(struct ccnr_handle *h,
                         name->buf, name->length);
     d = content_skiplist_findbefore(h, name->buf, name->length,
                                     NULL, pred);
-    next = content_from_accession(h, pred[0]->buf[0]);
+    next = r_store_content_from_accession(h, pred[0]->buf[0]);
     if (next == content) {
         // XXX - I think this case should not occur, but just in case, avoid a loop.
-        next = content_from_accession(h, content_skiplist_next(h, content));
+        next = r_store_content_from_accession(h, r_store_content_skiplist_next(h, content));
         ccnr_debug_ccnb(h, __LINE__, "bump", NULL, next->key, next->size);
     }
     ccn_charbuf_destroy(&name);
@@ -2524,7 +2524,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
     struct nameprefix_entry *npe = NULL;
     struct content_entry *content = NULL;
     struct content_entry *last_match = NULL;
-    struct ccn_indexbuf *comps = indexbuf_obtain(h);
+    struct ccn_indexbuf *comps = r_util_indexbuf_obtain(h);
     if (size > 65535)
         res = -__LINE__;
     else
@@ -2540,7 +2540,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
         ccnr_debug_ccnb(h, __LINE__, "interest_outofscope", fdholder, msg, size);
         h->interests_dropped += 1;
     }
-    else if (is_duplicate_flooded(h, msg, pi, fdholder->filedesc)) {
+    else if (r_fwd_is_duplicate_flooded(h, msg, pi, fdholder->filedesc)) {
         if (h->debug & 16)
              ccnr_debug_ccnb(h, __LINE__, "interest_dup", fdholder, msg, size);
         h->interests_dropped += 1;
@@ -2582,7 +2582,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
         matched = 0;
         hashtb_start(h->nameprefix_tab, e);
-        res = nameprefix_seek(h, e, msg, comps, pi->prefix_comps);
+        res = r_fwd_nameprefix_seek(h, e, msg, comps, pi->prefix_comps);
         npe = e->data;
         if (npe == NULL)
             goto Bail;
@@ -2594,13 +2594,13 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
         }
         if ((pi->answerfrom & CCN_AOK_CS) != 0) {
             last_match = NULL;
-            content = find_first_match_candidate(h, msg, pi);
+            content = r_store_find_first_match_candidate(h, msg, pi);
             if (content != NULL && (h->debug & 8))
                 ccnr_debug_ccnb(h, __LINE__, "first_candidate", NULL,
                                 content->key,
                                 content->size);
             if (content != NULL &&
-                !content_matches_interest_prefix(h, content, msg, comps,
+                !r_store_content_matches_interest_prefix(h, content, msg, comps,
                                                  pi->prefix_comps)) {
                 if (h->debug & 8)
                     ccnr_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
@@ -2615,7 +2615,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                     if ((pi->orderpref & 1) == 0 && // XXX - should be symbolic
                         pi->prefix_comps != comps->n - 1 &&
                         comps->n == content->ncomps &&
-                        content_matches_interest_prefix(h, content, msg,
+                        r_store_content_matches_interest_prefix(h, content, msg,
                                                         comps, comps->n - 1)) {
                         if (h->debug & 8)
                             ccnr_debug_ccnb(h, __LINE__, "skip_match", NULL,
@@ -2630,14 +2630,14 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                     if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
                         break;
                     last_match = content;
-                    content = next_child_at_level(h, content, comps->n - 1);
+                    content = r_store_next_child_at_level(h, content, comps->n - 1);
                     goto check_next_prefix;
                 }
             move_along:
-                content = content_from_accession(h, content_skiplist_next(h, content));
+                content = r_store_content_from_accession(h, r_store_content_skiplist_next(h, content));
             check_next_prefix:
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg,
+                    !r_store_content_matches_interest_prefix(h, content, msg,
                                                      comps, pi->prefix_comps)) {
                     if (h->debug & 8)
                         ccnr_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
@@ -2655,25 +2655,25 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                     if (fdholder->q[c] != NULL)
                         k = ccn_indexbuf_member(fdholder->q[c]->send_queue, content->accession);
                 if (k == -1) {
-                    k = face_send_queue_insert(h, fdholder, content);
+                    k = r_sendq_face_send_queue_insert(h, fdholder, content);
                     if (k >= 0) {
                         if (h->debug & (32 | 8))
                             ccnr_debug_ccnb(h, __LINE__, "consume", fdholder, msg, size);
                     }
                     /* Any other matched interests need to be consumed, too. */
-                    match_interests(h, content, NULL, fdholder, NULL);
+                    r_match_match_interests(h, content, NULL, fdholder, NULL);
                 }
                 if ((pi->answerfrom & CCN_AOK_EXPIRE) != 0)
-                    mark_stale(h, content);
+                    r_store_mark_stale(h, content);
                 matched = 1;
             }
         }
         if (!matched && pi->scope != 0 && npe != NULL)
-            propagate_interest(h, fdholder, msg, pi, npe);
+            r_fwd_propagate_interest(h, fdholder, msg, pi, npe);
     Bail:
         hashtb_end(e);
     }
-    indexbuf_release(h, comps);
+    r_util_indexbuf_release(h, comps);
 }
 //EOF
 ///bin/cat << //EOF >> ccnr_store.c
@@ -2682,7 +2682,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
  * Mark content as stale
  */
 PUBLIC void
-mark_stale(struct ccnr_handle *h, struct content_entry *content)
+r_store_mark_stale(struct ccnr_handle *h, struct content_entry *content)
 {
     ccn_accession_t accession = content->accession;
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
@@ -2717,17 +2717,17 @@ expire_content(struct ccn_schedule *sched,
     unsigned n;
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         return(0);
-    content = content_from_accession(h, accession);
+    content = r_store_content_from_accession(h, accession);
     if (content != NULL) {
         n = hashtb_n(h->content_tab);
         /* The fancy test here lets existing stale content go away, too. */
         if ((n - (n >> 3)) > h->capacity ||
             (n > h->capacity && h->min_stale > h->max_stale)) {
-            res = remove_content(h, content);
+            res = r_store_remove_content(h, content);
             if (res == 0)
                 return(0);
         }
-        mark_stale(h, content);
+        r_store_mark_stale(h, content);
     }
     return(0);
 }
@@ -2737,7 +2737,7 @@ expire_content(struct ccn_schedule *sched,
  *
  */
 PUBLIC void
-set_content_timer(struct ccnr_handle *h, struct content_entry *content,
+r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
                   struct ccn_parsed_ContentObject *pco)
 {
     int seconds = 0;
@@ -2779,8 +2779,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     unsigned char *tail = NULL;
     struct content_entry *content = NULL;
     int i;
-    struct ccn_indexbuf *comps = indexbuf_obtain(h);
-    struct ccn_charbuf *cb = charbuf_obtain(h);
+    struct ccn_indexbuf *comps = r_util_indexbuf_obtain(h);
+    struct ccn_charbuf *cb = r_util_charbuf_obtain(h);
     
     msg = wire_msg;
     size = wire_size;
@@ -2848,7 +2848,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
             // XXX - ought to do mischief checks before this
             content->flags &= ~CCN_CONTENT_ENTRY_STALE;
             h->n_stale--;
-            set_content_timer(h, content, &obj);
+            r_store_set_content_timer(h, content, &obj);
             // XXX - no counter for this case
         }
         else {
@@ -2860,8 +2860,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     else if (res == HT_NEW_ENTRY) {
         content->accession = ++(h->accession);
-        enroll_content(h, content);
-        if (content == content_from_accession(h, content->accession)) {
+        r_store_enroll_content(h, content);
+        if (content == r_store_content_from_accession(h, content->accession)) {
             content->ncomps = comps->n;
             content->comps = calloc(comps->n, sizeof(comps[0]));
         }
@@ -2871,8 +2871,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         if (content->comps != NULL) {
             for (i = 0; i < comps->n; i++)
                 content->comps[i] = comps->buf[i];
-            content_skiplist_insert(h, content);
-            set_content_timer(h, content, &obj);
+            r_store_content_skiplist_insert(h, content);
+            r_store_set_content_timer(h, content, &obj);
         }
         else {
             ccnr_msg(h, "could not enroll ContentObject (accession %llu)",
@@ -2887,17 +2887,17 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     hashtb_end(e);
 Bail:
-    indexbuf_release(h, comps);
-    charbuf_release(h, cb);
+    r_util_indexbuf_release(h, comps);
+    r_util_charbuf_release(h, cb);
     cb = NULL;
     if (res >= 0 && content != NULL) {
         int n_matches;
         enum cq_delay_class c;
         struct content_queue *q;
-        n_matches = match_interests(h, content, &obj, NULL, fdholder);
+        n_matches = r_match_match_interests(h, content, &obj, NULL, fdholder);
         if (res == HT_NEW_ENTRY) {
             if (n_matches < 0) {
-                remove_content(h, content);
+                r_store_remove_content(h, content);
                 return;
             }
             if (n_matches == 0 && (fdholder->flags & CCN_FACE_GG) == 0) {
@@ -2937,7 +2937,7 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
         if ((fdholder->flags & CCN_FACE_LOOPBACK) != 0)
             fdholder->flags |= CCN_FACE_GG;
         /* YYY This is the first place that we know that an inbound stream fdholder is speaking CCNx protocol. */
-        register_new_face(h, fdholder);
+        r_io_register_new_face(h, fdholder);
     }
     d->state |= CCN_DSTATE_PAUSE;
     dres = ccn_skeleton_decode(d, msg, size);
@@ -2975,7 +2975,7 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
             process_incoming_content(h, fdholder, msg, size);
             return;
         case CCN_DTAG_SequenceNumber:
-            process_incoming_link_message(h, fdholder, dtag, msg, size);
+            r_link_process_incoming_link_message(h, fdholder, dtag, msg, size);
             return;
         default:
             break;
@@ -3044,11 +3044,11 @@ process_input(struct ccnr_handle *h, int fd)
     int err = 0;
     socklen_t err_sz;
     
-    fdholder = fdholder_from_fd(h, fd);
+    fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL)
         return;
     if ((fdholder->flags & (CCN_FACE_DGRAM | CCN_FACE_PASSIVE)) == CCN_FACE_PASSIVE) {
-        accept_connection(h, fd);
+        r_io_accept_connection(h, fd);
         return;
     }
     err_sz = sizeof(err);
@@ -3056,7 +3056,7 @@ process_input(struct ccnr_handle *h, int fd)
     if (res >= 0 && err != 0) {
         ccnr_msg(h, "error on fdholder %u: %s (%d)", fdholder->filedesc, strerror(err), err);
         if (err == ETIMEDOUT && (fdholder->flags & CCN_FACE_CONNECTING) != 0) {
-            shutdown_client_fd(h, fd);
+            r_io_shutdown_client_fd(h, fd);
             return;
         }
     }
@@ -3073,7 +3073,7 @@ process_input(struct ccnr_handle *h, int fd)
         ccnr_msg(h, "recvfrom fdholder %u :%s (errno = %d)",
                     fdholder->filedesc, strerror(errno), errno);
     else if (res == 0 && (fdholder->flags & CCN_FACE_DGRAM) == 0)
-        shutdown_client_fd(h, fd);
+        r_io_shutdown_client_fd(h, fd);
     else {
         source = fdholder;
         ccnr_meter_bump(h, source->meter[FM_BYTI], res);
@@ -3118,7 +3118,7 @@ process_input(struct ccnr_handle *h, int fd)
         }
         else if (d->state < 0) {
             ccnr_msg(h, "protocol error on fdholder %u", source->filedesc);
-            shutdown_client_fd(h, fd);
+            r_io_shutdown_client_fd(h, fd);
             return;
         }
         if (msgstart < fdholder->inbuf->length && msgstart > 0) {
@@ -3132,7 +3132,7 @@ process_input(struct ccnr_handle *h, int fd)
 }
 
 PUBLIC void
-process_internal_client_buffer(struct ccnr_handle *h)
+r_dispatch_process_internal_client_buffer(struct ccnr_handle *h)
 {
     struct fdholder *fdholder = h->face0;
     if (fdholder == NULL)
@@ -3185,7 +3185,7 @@ sending_fd(struct ccnr_handle *h, struct fdholder *fdholder)
  * No direct error result is provided; the fdholder state is updated as needed.
  */
 PUBLIC void
-ccnr_send(struct ccnr_handle *h,
+r_io_send(struct ccnr_handle *h,
           struct fdholder *fdholder,
           const void *data, size_t size)
 {
@@ -3200,7 +3200,7 @@ ccnr_send(struct ccnr_handle *h,
     if (fdholder == h->face0) {
         ccnr_meter_bump(h, fdholder->meter[FM_BYTO], size);
         ccn_dispatch_message(h->internal_client, (void *)data, size);
-        process_internal_client_buffer(h);
+        r_dispatch_process_internal_client_buffer(h);
         return;
     }
     if ((fdholder->flags & CCN_FACE_DGRAM) == 0)
@@ -3233,11 +3233,11 @@ ccnr_send(struct ccnr_handle *h,
 //EOF
 ///bin/cat << //EOF >> ccnr_link.c
 PUBLIC void
-do_deferred_write(struct ccnr_handle *h, int fd)
+r_link_do_deferred_write(struct ccnr_handle *h, int fd)
 {
     /* This only happens on connected sockets */
     ssize_t res;
-    struct fdholder *fdholder = fdholder_from_fd(h, fd);
+    struct fdholder *fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL)
         return;
     if (fdholder->outbuf != NULL) {
@@ -3252,14 +3252,14 @@ do_deferred_write(struct ccnr_handle *h, int fd)
                     return;
                 }
                 ccnr_msg(h, "send: %s (errno = %d)", strerror(errno), errno);
-                shutdown_client_fd(h, fd);
+                r_io_shutdown_client_fd(h, fd);
                 return;
             }
             if (res == sendlen) {
                 fdholder->outbufindex = 0;
                 ccn_charbuf_destroy(&fdholder->outbuf);
                 if ((fdholder->flags & CCN_FACE_CLOSING) != 0)
-                    shutdown_client_fd(h, fd);
+                    r_io_shutdown_client_fd(h, fd);
                 return;
             }
             fdholder->outbufindex += res;
@@ -3269,13 +3269,13 @@ do_deferred_write(struct ccnr_handle *h, int fd)
         ccn_charbuf_destroy(&fdholder->outbuf);
     }
     if ((fdholder->flags & CCN_FACE_CLOSING) != 0)
-        shutdown_client_fd(h, fd);
+        r_io_shutdown_client_fd(h, fd);
     else if ((fdholder->flags & CCN_FACE_CONNECTING) != 0) {
         fdholder->flags &= ~CCN_FACE_CONNECTING;
         ccnr_face_status_change(h, fdholder->filedesc);
     }
     else
-        ccnr_msg(h, "ccnr:do_deferred_write: something fishy on %d", fd);
+        ccnr_msg(h, "ccnr:r_link_do_deferred_write: something fishy on %d", fd);
 }
 //EOF
 ///bin/cat << //EOF >> ccnr_io.c
@@ -3284,12 +3284,12 @@ do_deferred_write(struct ccnr_handle *h, int fd)
  *
  */
 PUBLIC void
-prepare_poll_fds(struct ccnr_handle *h)
+r_io_prepare_poll_fds(struct ccnr_handle *h)
 {
     int i, j, nfds;
     
     for (i = 0, nfds = 0; i < h->face_limit; i++)
-        if (fdholder_from_fd(h, i) != NULL)
+        if (r_io_fdholder_from_fd(h, i) != NULL)
             nfds++;
     
     if (nfds != h->nfds) {
@@ -3298,7 +3298,7 @@ prepare_poll_fds(struct ccnr_handle *h)
         memset(h->fds, 0, h->nfds * sizeof(h->fds[0]));
     }
     for (i = 0, j = 0; i < h->face_limit; i++) {
-        struct fdholder *fdholder = fdholder_from_fd(h, i);
+        struct fdholder *fdholder = r_io_fdholder_from_fd(h, i);
         if (fdholder != NULL) {
             h->fds[j].fd = fdholder->filedesc;
             h->fds[j].events = ((fdholder->flags & CCN_FACE_NORECV) == 0) ? POLLIN : 0;
@@ -3314,7 +3314,7 @@ prepare_poll_fds(struct ccnr_handle *h)
  * Run the main loop of the ccnr
  */
 PUBLIC void
-ccnr_run(struct ccnr_handle *h)
+r_dispatch_run(struct ccnr_handle *h)
 {
     int i;
     int res;
@@ -3322,13 +3322,13 @@ ccnr_run(struct ccnr_handle *h)
     int prev_timeout_ms = -1;
     int usec;
     for (h->running = 1; h->running;) {
-        process_internal_client_buffer(h);
+        r_dispatch_process_internal_client_buffer(h);
         usec = ccn_schedule_run(h->sched);
         timeout_ms = (usec < 0) ? -1 : ((usec + 960) / 1000);
         if (timeout_ms == 0 && prev_timeout_ms == 0)
             timeout_ms = 1;
-        process_internal_client_buffer(h);
-        prepare_poll_fds(h);
+        r_dispatch_process_internal_client_buffer(h);
+        r_io_prepare_poll_fds(h);
         if (0) ccnr_msg(h, "at ccnr.c:%d poll(h->fds, %d, %d)", __LINE__, h->nfds, timeout_ms);
         res = poll(h->fds, h->nfds, timeout_ms);
         prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
@@ -3344,11 +3344,11 @@ ccnr_run(struct ccnr_handle *h)
                     if (h->fds[i].revents & (POLLIN))
                         process_input(h, h->fds[i].fd);
                     else
-                        shutdown_client_fd(h, h->fds[i].fd);
+                        r_io_shutdown_client_fd(h, h->fds[i].fd);
                     continue;
                 }
                 if (h->fds[i].revents & (POLLOUT))
-                    do_deferred_write(h, h->fds[i].fd);
+                    r_link_do_deferred_write(h, h->fds[i].fd);
                 else if (h->fds[i].revents & (POLLIN))
                     process_input(h, h->fds[i].fd);
             }
@@ -3359,7 +3359,7 @@ ccnr_run(struct ccnr_handle *h)
 ///bin/cat << //EOF >> ccnr_util.c
 
 PUBLIC void
-ccnr_reseed(struct ccnr_handle *h)
+r_util_reseed(struct ccnr_handle *h)
 {
     int fd;
     ssize_t res;
@@ -3384,7 +3384,7 @@ ccnr_reseed(struct ccnr_handle *h)
 ///bin/cat << //EOF >> ccnr_net.c
 
 PUBLIC char *
-ccnr_get_local_sockname(void)
+r_net_get_local_sockname(void)
 {
     struct sockaddr_un sa;
     ccn_setup_sockaddr_un(NULL, &sa);
@@ -3394,7 +3394,7 @@ ccnr_get_local_sockname(void)
 ///bin/cat << //EOF >> ccnr_util.c
 
 PUBLIC void
-ccnr_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
+r_util_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 {
     struct ccnr_handle *h = self->data;
     struct timeval now = {0};
@@ -3408,7 +3408,7 @@ ccnr_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 ///bin/cat << //EOF >> ccnr_net.c
 
 PUBLIC void
-ccnr_setsockopt_v6only(struct ccnr_handle *h, int fd)
+r_net_setsockopt_v6only(struct ccnr_handle *h, int fd)
 {
     int yes = 1;
     int res = 0;
@@ -3434,7 +3434,7 @@ af_name(int family)
 }
 
 PUBLIC int
-ccnr_listen_on_wildcards(struct ccnr_handle *h)
+r_net_listen_on_wildcards(struct ccnr_handle *h)
 {
     int fd;
     int res;
@@ -3455,7 +3455,7 @@ ccnr_listen_on_wildcards(struct ccnr_handle *h)
                     int yes = 1;
                     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                     if (a->ai_family == AF_INET6)
-                        ccnr_setsockopt_v6only(h, fd);
+                        r_net_setsockopt_v6only(h, fd);
                     res = bind(fd, a->ai_addr, a->ai_addrlen);
                     if (res != 0) {
                         close(fd);
@@ -3466,7 +3466,7 @@ ccnr_listen_on_wildcards(struct ccnr_handle *h)
                         close(fd);
                         continue;
                     }
-                    record_connection(h, fd,
+                    r_io_record_connection(h, fd,
                                       a->ai_addr, a->ai_addrlen,
                                       CCN_FACE_PASSIVE);
                     ccnr_msg(h, "accepting %s connections on fd %d",
@@ -3480,7 +3480,7 @@ ccnr_listen_on_wildcards(struct ccnr_handle *h)
 }
 
 PUBLIC int
-ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
+r_net_listen_on_address(struct ccnr_handle *h, const char *addr)
 {
     int fd;
     int res;
@@ -3500,7 +3500,7 @@ ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
                 int yes = 1;
                 setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                 if (a->ai_family == AF_INET6)
-                    ccnr_setsockopt_v6only(h, fd);
+                    r_net_setsockopt_v6only(h, fd);
                 res = bind(fd, a->ai_addr, a->ai_addrlen);
                 if (res != 0) {
                     close(fd);
@@ -3511,7 +3511,7 @@ ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
                     close(fd);
                     continue;
                 }
-                record_connection(h, fd,
+                r_io_record_connection(h, fd,
                                   a->ai_addr, a->ai_addrlen,
                                   CCN_FACE_PASSIVE);
                 ccnr_msg(h, "accepting %s connections on fd %d",
@@ -3525,7 +3525,7 @@ ccnr_listen_on_address(struct ccnr_handle *h, const char *addr)
 }
 
 PUBLIC int
-ccnr_listen_on(struct ccnr_handle *h, const char *addrs)
+r_net_listen_on(struct ccnr_handle *h, const char *addrs)
 {
     unsigned char ch;
     unsigned char dlm;
@@ -3534,7 +3534,7 @@ ccnr_listen_on(struct ccnr_handle *h, const char *addrs)
     struct ccn_charbuf *addr = NULL;
     
     if (addrs == NULL || !*addrs || 0 == strcmp(addrs, "*"))
-        return(ccnr_listen_on_wildcards(h));
+        return(r_net_listen_on_wildcards(h));
     addr = ccn_charbuf_create();
     for (i = 0, ch = addrs[i]; addrs[i] != 0;) {
         addr->length = 0;
@@ -3548,7 +3548,7 @@ ccnr_listen_on(struct ccnr_handle *h, const char *addrs)
         if (ch && ch == dlm)
             ch = addrs[++i];
         if (addr->length > 0) {
-            res |= ccnr_listen_on_address(h, ccn_charbuf_as_string(addr));
+            res |= r_net_listen_on_address(h, ccn_charbuf_as_string(addr));
         }
         while ((0 < ch && ch <= ' ') || ch == ',' || ch == ';')
             ch = addrs[++i];
@@ -3566,7 +3566,7 @@ ccnr_listen_on(struct ccnr_handle *h, const char *addrs)
  * @param loggerdata - data to pass to logger function
  */
 PUBLIC struct ccnr_handle *
-ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
+r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
 {
     char *sockname;
     // const char *portstr;
@@ -3576,13 +3576,13 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     struct ccnr_handle *h;
     struct hashtb_param param = {0};
     
-    sockname = ccnr_get_local_sockname();
+    sockname = r_net_get_local_sockname();
     h = calloc(1, sizeof(*h));
     if (h == NULL)
         return(h);
     h->logger = logger;
     h->loggerdata = loggerdata;
-    h->appnonce = &ccnr_append_plain_nonce;
+    h->appnonce = &r_fwd_append_plain_nonce;
     h->logpid = (int)getpid();
     h->progname = progname;
     h->debug = -1;
@@ -3590,9 +3590,9 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     param.finalize_data = h;
     h->face_limit = 10; /* soft limit */
     h->fdholder_by_fd = calloc(h->face_limit, sizeof(h->fdholder_by_fd[0]));
-    param.finalize = &finalize_nameprefix;
+    param.finalize = &r_fwd_finalize_nameprefix;
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
-    param.finalize = &finalize_propagating;
+    param.finalize = &r_fwd_finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     param.finalize = 0;
     h->min_stale = ~0;
@@ -3600,7 +3600,7 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->unsol = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
     h->ticktock.micros_per_base = 1000000;
-    h->ticktock.gettime = &ccnr_gettime;
+    h->ticktock.gettime = &r_util_gettime;
     h->ticktock.data = h;
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->starttime = h->sec;
@@ -3630,10 +3630,10 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
     listen_on = getenv("CCNR_LISTEN_ON");
     if (listen_on != NULL && listen_on[0] != 0)
         ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
-    h->appnonce = &ccnr_append_debug_nonce;
+    h->appnonce = &r_fwd_append_debug_nonce;
     ccnr_init_internal_keystore(h);
     /* XXX - need to bail if keystore is not OK. */
-    ccnr_reseed(h);
+    r_util_reseed(h);
     if (h->face0 == NULL) {
         struct fdholder *fdholder;
         fdholder = calloc(1, sizeof(*fdholder));
@@ -3642,9 +3642,9 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
         fdholder->flags = (CCN_FACE_GG | CCN_FACE_LOCAL);
         h->face0 = fdholder;
     }
-    enroll_face(h, h->face0);
-    ccnr_listen_on(h, listen_on);
-    age_forwarding_needed(h);
+    r_io_enroll_face(h, h->face0);
+    r_net_listen_on(h, listen_on);
+    r_fwd_age_forwarding_needed(h);
     ccnr_internal_client_start(h);
     free(sockname);
     sockname = NULL;
@@ -3657,11 +3657,11 @@ ccnr_create(const char *progname, ccnr_logger logger, void *loggerdata)
  * Shutdown listeners and bound datagram sockets, leaving connected streams.
  */
 PUBLIC void
-ccnr_shutdown_all(struct ccnr_handle *h)
+r_io_shutdown_all(struct ccnr_handle *h)
 {
     int i;
     for (i = 1; i < h->face_limit; i++) {
-        shutdown_client_fd(h, i);
+        r_io_shutdown_client_fd(h, i);
     }
 }
 //EOF
@@ -3671,12 +3671,12 @@ ccnr_shutdown_all(struct ccnr_handle *h)
  * Destroy the ccnr instance, releasing all associated resources.
  */
 PUBLIC void
-ccnr_destroy(struct ccnr_handle **pccnr)
+r_init_destroy(struct ccnr_handle **pccnr)
 {
     struct ccnr_handle *h = *pccnr;
     if (h == NULL)
         return;
-    ccnr_shutdown_all(h);
+    r_io_shutdown_all(h);
     ccnr_internal_client_stop(h);
     ccn_schedule_destroy(&h->sched);
     hashtb_destroy(&h->content_tab);
