@@ -964,12 +964,15 @@ shutdown_client_fd(struct ccnr_handle *h, int fd)
     ccn_charbuf_destroy(&fdholder->outbuf);
     for (c = 0; c < CCN_CQ_N; c++)
         content_queue_destroy(h, &(fdholder->q[c]));
-    if (fdholder->addr != NULL)
+    if (fdholder->addr != NULL) {
         free(fdholder->addr);
-    for (m = 0; m < CCNR_FACE_METER_N; m++)
+		fdholder->addr = NULL;
+    }
+	for (m = 0; m < CCNR_FACE_METER_N; m++)
         ccnr_meter_destroy(&fdholder->meter[m]);
+	if (h->fdholder_by_fd[fd] != fdholder) abort();
+	h->fdholder_by_fd[fd] = NULL;
     free(fdholder);
-    // XXX: need to remove the pointer to the fdholder from the array.
     reap_needed(h, 250000);
 }
 //EOF
