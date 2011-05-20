@@ -28,3 +28,10 @@
 //EOF
 ///bin/cat << //EOF >> ccnr_init.c
 
+
+
+
+grep -A1 ^PUBLIC *.c | grep - | cut -d \( -f 1 | grep -v -e -- | sed -e 's/[.]c-/ /' -e s/^ccnr_// -e s/forwarding/fwd/ \
+| while read a b; do echo "s/$b/r_${a}_${b#ccnr_}/g"; done
+
+
