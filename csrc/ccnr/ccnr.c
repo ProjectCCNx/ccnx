@@ -24,7 +24,7 @@
 
 //EOF
 ///bin/sh -c 'for i in ccnr_dispatch.c ccnr_forwarding.c ccnr_init.c ccnr_io.c ccnr_link.c ccnr_match.c ccnr_net.c ccnr_sendq.c ccnr_store.c ccnr_util.c ; do echo "#include \"common.h\""  >$i; done'
-///bin/cat << //EOF >> common.h
+///bin/cat << //EOF > common.h
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -73,32 +73,14 @@ PUBLIC struct fdholder *
 fdholder_from_fd(struct ccnr_handle * h, unsigned filedesc);
 PUBLIC int
 enroll_face(struct ccnr_handle * h, struct fdholder * fdholder);
-static int
-choose_face_delay(struct ccnr_handle * h, struct fdholder * fdholder, enum cq_delay_class c);
-static struct content_queue *
-content_queue_create(struct ccnr_handle * h, struct fdholder * fdholder, enum cq_delay_class c);
 PUBLIC void
 content_queue_destroy(struct ccnr_handle * h, struct content_queue ** pq);
-static void
-close_fd(int *pfd);
-static void
-ccnr_close_fd(struct ccnr_handle * h, unsigned filedesc, int *pfd);
 PUBLIC struct content_entry *
 content_from_accession(struct ccnr_handle * h, ccn_accession_t accession);
-static int
-cleanout_empties(struct ccnr_handle * h);
 PUBLIC void
 enroll_content(struct ccnr_handle * h, struct content_entry * content);
-static int
-content_skiplist_findbefore(struct ccnr_handle * h,
-							const unsigned char *key,
-							size_t keysize,
-							struct content_entry * wanted_old,
-							struct ccn_indexbuf ** ans);
 PUBLIC void
 content_skiplist_insert(struct ccnr_handle * h, struct content_entry * content);
-static void
-content_skiplist_remove(struct ccnr_handle * h, struct content_entry * content);
 PUBLIC struct content_entry *
 find_first_match_candidate(struct ccnr_handle * h,
 						   const unsigned char *interest_msg,
@@ -115,13 +97,8 @@ PUBLIC void
 consume(struct ccnr_handle * h, struct propagating_entry * pe);
 PUBLIC void
 finalize_nameprefix(struct hashtb_enumerator * e);
-static void
-link_propagating_interest_to_nameprefix(struct ccnr_handle * h,
-										struct propagating_entry * pe, struct nameprefix_entry * npe);
 PUBLIC void
 finalize_propagating(struct hashtb_enumerator * e);
-static void
-init_face_flags(struct ccnr_handle * h, struct fdholder * fdholder, int setflags);
 PUBLIC struct fdholder *
 record_connection(struct ccnr_handle * h, int fd,
 				  struct sockaddr * who, socklen_t wholen,
@@ -132,20 +109,9 @@ PUBLIC void
 shutdown_client_fd(struct ccnr_handle * h, int fd);
 PUBLIC void
 send_content(struct ccnr_handle * h, struct fdholder * fdholder, struct content_entry * content);
-static enum cq_delay_class
-choose_content_delay_class(struct ccnr_handle * h, unsigned filedesc, int content_flags);
-static unsigned
-randomize_content_delay(struct ccnr_handle * h, struct content_queue * q);
-static int
-content_sender(struct ccn_schedule * sched,
-			   void *clienth,
-			   struct ccn_scheduled_event * ev,
-			   int flags);
 PUBLIC int
 face_send_queue_insert(struct ccnr_handle * h,
 					   struct fdholder * fdholder, struct content_entry * content);
-static int
-promote_outbound(struct propagating_entry * pe, unsigned filedesc);
 PUBLIC int
 consume_matching_interests(struct ccnr_handle * h,
 						   struct nameprefix_entry * npe,
@@ -155,18 +121,6 @@ consume_matching_interests(struct ccnr_handle * h,
 PUBLIC void
 adjust_npe_predicted_response(struct ccnr_handle * h,
 							  struct nameprefix_entry * npe, int up);
-static void
-adjust_predicted_response(struct ccnr_handle * h,
-						  struct propagating_entry * pe, int up);
-static void
-note_content_from(struct ccnr_handle * h,
-				  struct nameprefix_entry * npe,
-				  unsigned from_faceid,
-				  int prefix_comps);
-static int
-reorder_outbound_using_history(struct ccnr_handle * h,
-							   struct nameprefix_entry * npe,
-							   struct propagating_entry * pe);
 PUBLIC int
 match_interests(struct ccnr_handle * h, struct content_entry * content,
 				struct ccn_parsed_ContentObject * pc,
@@ -175,78 +129,22 @@ PUBLIC void
 stuff_and_send(struct ccnr_handle * h, struct fdholder * fdholder,
 			   const unsigned char *data1, size_t size1,
 			   const unsigned char *data2, size_t size2);
-static int
-ccn_stuff_interest(struct ccnr_handle * h,
-				   struct fdholder * fdholder, struct ccn_charbuf * c);
 PUBLIC void
 ccn_link_state_init(struct ccnr_handle * h, struct fdholder * fdholder);
-static void
-ccn_append_link_stuff(struct ccnr_handle * h,
-					  struct fdholder * fdholder,
-					  struct ccn_charbuf * c);
 PUBLIC int
 process_incoming_link_message(struct ccnr_handle * h,
 							  struct fdholder * fdholder, enum ccn_dtag dtag,
 							  unsigned char *msg, size_t size);
-static void
-check_forward_to(struct ccnr_handle * h, struct nameprefix_entry * npe);
-static int
-check_propagating(struct ccnr_handle * h);
-static int
-check_nameprefix_entries(struct ccnr_handle * h);
-static int
-reap(
-     struct ccn_schedule * sched,
-     void *clienth,
-     struct ccn_scheduled_event * ev,
-     int flags);
 PUBLIC void
 reap_needed(struct ccnr_handle * h, int init_delay_usec);
 PUBLIC int
 remove_content(struct ccnr_handle * h, struct content_entry * content);
-static int
-age_forwarding(struct ccn_schedule * sched,
-			   void *clienth,
-			   struct ccn_scheduled_event * ev,
-			   int flags);
 PUBLIC void
 age_forwarding_needed(struct ccnr_handle * h);
-static struct ccn_forwarding *
-seek_forwarding(struct ccnr_handle * h,
-				struct nameprefix_entry * npe, unsigned filedesc);
-
-static int
-ccnr_reg_prefix(struct ccnr_handle * h,
-				const unsigned char *msg,
-				struct ccn_indexbuf * comps,
-				int ncomps,
-				unsigned filedesc,
-				int flags,
-				int expires);
 PUBLIC void
 register_new_face(struct ccnr_handle * h, struct fdholder * fdholder);
 PUBLIC void
 update_forward_to(struct ccnr_handle * h, struct nameprefix_entry * npe);
-static struct ccn_indexbuf *
-get_outbound_faces(struct ccnr_handle * h,
-				   struct fdholder * from,
-				   unsigned char *msg,
-				   struct ccn_parsed_interest * pi,
-				   struct nameprefix_entry * npe);
-static int
-pe_next_usec(struct ccnr_handle * h,
-			 struct propagating_entry * pe, int next_delay, int lineno);
-static int
-do_propagate(struct ccn_schedule * sched,
-			 void *clienth,
-			 struct ccn_scheduled_event * ev,
-			 int flags);
-static int
-adjust_outbound_for_existing_interests(struct ccnr_handle * h, struct fdholder * fdholder,
-									   unsigned char *msg,
-									   struct ccn_parsed_interest * pi,
-									   struct nameprefix_entry * npe,
-									   struct ccn_indexbuf * outbound);
 PUBLIC void
 ccnr_append_debug_nonce(struct ccnr_handle * h, struct fdholder * fdholder, struct ccn_charbuf * cb);
 PUBLIC void
@@ -257,10 +155,6 @@ propagate_interest(struct ccnr_handle * h,
 				   unsigned char *msg,
 				   struct ccn_parsed_interest * pi,
 				   struct nameprefix_entry * npe);
-static struct nameprefix_entry *
-nameprefix_for_pe(struct ccnr_handle * h, struct propagating_entry * pe);
-static void
-replan_propagation(struct ccnr_handle * h, struct propagating_entry * pe);
 PUBLIC int
 is_duplicate_flooded(struct ccnr_handle * h, unsigned char *msg,
 					 struct ccn_parsed_interest * pi, unsigned filedesc);
@@ -270,36 +164,13 @@ nameprefix_seek(struct ccnr_handle * h, struct hashtb_enumerator * e,
 PUBLIC struct content_entry *
 next_child_at_level(struct ccnr_handle * h,
 					struct content_entry * content, int level);
-static void
-process_incoming_interest(struct ccnr_handle * h, struct fdholder * fdholder,
-						  unsigned char *msg, size_t size);
 PUBLIC void
 mark_stale(struct ccnr_handle * h, struct content_entry * content);
-static int
-expire_content(struct ccn_schedule * sched,
-			   void *clienth,
-			   struct ccn_scheduled_event * ev,
-			   int flags);
 PUBLIC void
 set_content_timer(struct ccnr_handle * h, struct content_entry * content,
 				  struct ccn_parsed_ContentObject * pco);
-static void
-process_incoming_content(struct ccnr_handle * h, struct fdholder * fdholder,
-						 unsigned char *wire_msg, size_t wire_size);
-static void
-process_input_message(struct ccnr_handle * h, struct fdholder * fdholder,
-					  unsigned char *msg, size_t size, int pdu_ok);
-static void
-process_input_buffer(struct ccnr_handle * h, struct fdholder * fdholder);
-static void
-process_input(struct ccnr_handle * h, int fd);
 PUBLIC void
 process_internal_client_buffer(struct ccnr_handle * h);
-static int
-handle_send_error(struct ccnr_handle * h, int errnum, struct fdholder * fdholder,
-				  const void *data, size_t size);
-static int
-sending_fd(struct ccnr_handle * h, struct fdholder * fdholder);
 PUBLIC void
 do_deferred_write(struct ccnr_handle * h, int fd);
 PUBLIC void
@@ -310,8 +181,6 @@ PUBLIC char    *
 ccnr_get_local_sockname(void);
 PUBLIC void
 ccnr_gettime(const struct ccn_gettime * self, struct ccn_timeval * result);
-static const char *
-af_name(int family);
 PUBLIC int
 ccnr_listen_on_wildcards(struct ccnr_handle * h);
 PUBLIC int
@@ -801,6 +670,11 @@ consume(struct ccnr_handle *h, struct propagating_entry *pe)
 }
 //EOF
 ///bin/cat << //EOF >> ccnr_forwarding.c
+static struct nameprefix_entry *
+nameprefix_for_pe(struct ccnr_handle * h, struct propagating_entry * pe);
+
+static void
+replan_propagation(struct ccnr_handle * h, struct propagating_entry * pe);
 
 PUBLIC void
 finalize_nameprefix(struct hashtb_enumerator *e)
@@ -977,6 +851,15 @@ shutdown_client_fd(struct ccnr_handle *h, int fd)
 }
 //EOF
 ///bin/cat << //EOF >> ccnr_link.c
+
+static int
+ccn_stuff_interest(struct ccnr_handle * h,
+				   struct fdholder * fdholder, struct ccn_charbuf * c);
+static void
+ccn_append_link_stuff(struct ccnr_handle * h,
+					  struct fdholder * fdholder,
+					  struct ccn_charbuf * c);
+
 
 PUBLIC void
 send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
