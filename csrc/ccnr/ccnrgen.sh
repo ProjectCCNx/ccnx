@@ -80,6 +80,8 @@ r_store_content_from_accession(struct ccnr_handle * h, ccn_accession_t accession
 PUBLIC void
 r_store_enroll_content(struct ccnr_handle * h, struct content_entry * content);
 PUBLIC void
+r_store_finalize_content(struct hashtb_enumerator *content_enumerator);
+PUBLIC void
 r_store_content_skiplist_insert(struct ccnr_handle * h, struct content_entry * content);
 PUBLIC struct content_entry *
 r_store_find_first_match_candidate(struct ccnr_handle * h,
@@ -505,39 +507,6 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
     h->content_by_accession[content->accession - h->accession_base] = content;
 }
 
-static void
-finalize_content(struct hashtb_enumerator *content_enumerator)
-{
-    struct ccnr_handle *h = hashtb_get_param(content_enumerator->ht, NULL);
-    struct content_entry *entry = content_enumerator->data;
-    unsigned i = entry->accession - h->accession_base;
-    if (i < h->content_by_accession_window &&
-          h->content_by_accession[i] == entry) {
-        content_skiplist_remove(h, entry);
-        h->content_by_accession[i] = NULL;
-    }
-    else {
-        struct hashtb_enumerator ee;
-        struct hashtb_enumerator *e = &ee;
-        hashtb_start(h->sparse_straggler_tab, e);
-        if (hashtb_seek(e, &entry->accession, sizeof(entry->accession), 0) ==
-              HT_NEW_ENTRY) {
-            ccnr_msg(h, "orphaned content %llu",
-                     (unsigned long long)(entry->accession));
-            hashtb_delete(e);
-            hashtb_end(e);
-            return;
-        }
-        content_skiplist_remove(h, entry);
-        hashtb_delete(e);
-        hashtb_end(e);
-    }
-    if (entry->comps != NULL) {
-        free(entry->comps);
-        entry->comps = NULL;
-    }
-}
-
 static int
 content_skiplist_findbefore(struct ccnr_handle *h,
                             const unsigned char *key,
@@ -627,6 +596,41 @@ content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
     }
     ccn_indexbuf_destroy(&content->skiplinks);
 }
+
+
+PUBLIC void
+r_store_finalize_content(struct hashtb_enumerator *content_enumerator)
+{
+    struct ccnr_handle *h = hashtb_get_param(content_enumerator->ht, NULL);
+    struct content_entry *entry = content_enumerator->data;
+    unsigned i = entry->accession - h->accession_base;
+    if (i < h->content_by_accession_window &&
+          h->content_by_accession[i] == entry) {
+        content_skiplist_remove(h, entry);
+        h->content_by_accession[i] = NULL;
+    }
+    else {
+        struct hashtb_enumerator ee;
+        struct hashtb_enumerator *e = &ee;
+        hashtb_start(h->sparse_straggler_tab, e);
+        if (hashtb_seek(e, &entry->accession, sizeof(entry->accession), 0) ==
+              HT_NEW_ENTRY) {
+            ccnr_msg(h, "orphaned content %llu",
+                     (unsigned long long)(entry->accession));
+            hashtb_delete(e);
+            hashtb_end(e);
+            return;
+        }
+        content_skiplist_remove(h, entry);
+        hashtb_delete(e);
+        hashtb_end(e);
+    }
+    if (entry->comps != NULL) {
+        free(entry->comps);
+        entry->comps = NULL;
+    }
+}
+
 //EOF
 ///bin/cat << //EOF >> ccnr_store.c
 
@@ -3669,7 +3673,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     param.finalize_data = h;
     h->face_limit = 10; /* soft limit */
     h->fdholder_by_fd = calloc(h->face_limit, sizeof(h->fdholder_by_fd[0]));
-    param.finalize = &finalize_content;
+    param.finalize = &r_store_finalize_content;
     h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     param.finalize = &r_fwd_finalize_nameprefix;
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);

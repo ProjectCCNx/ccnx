@@ -31,11 +31,14 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     param.finalize_data = h;
     h->face_limit = 10; /* soft limit */
     h->fdholder_by_fd = calloc(h->face_limit, sizeof(h->fdholder_by_fd[0]));
+    param.finalize = &r_store_finalize_content;
+    h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     param.finalize = &r_fwd_finalize_nameprefix;
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
     param.finalize = &r_fwd_finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     param.finalize = 0;
+    h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
     h->min_stale = ~0;
     h->max_stale = 0;
     h->unsol = ccn_indexbuf_create();
@@ -107,6 +110,7 @@ r_init_destroy(struct ccnr_handle **pccnr)
     hashtb_destroy(&h->content_tab);
     hashtb_destroy(&h->propagating_tab);
     hashtb_destroy(&h->nameprefix_tab);
+    hashtb_destroy(&h->sparse_straggler_tab);
     if (h->fds != NULL) {
         free(h->fds);
         h->fds = NULL;

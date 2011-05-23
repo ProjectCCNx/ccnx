@@ -53,6 +53,8 @@ r_store_content_from_accession(struct ccnr_handle * h, ccn_accession_t accession
 PUBLIC void
 r_store_enroll_content(struct ccnr_handle * h, struct content_entry * content);
 PUBLIC void
+r_store_finalize_content(struct hashtb_enumerator *content_enumerator);
+PUBLIC void
 r_store_content_skiplist_insert(struct ccnr_handle * h, struct content_entry * content);
 PUBLIC struct content_entry *
 r_store_find_first_match_candidate(struct ccnr_handle * h,

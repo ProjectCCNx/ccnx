@@ -4,6 +4,11 @@ r_store_content_from_accession(struct ccnr_handle *h, ccn_accession_t accession)
 {
     struct content_entry *ans = NULL;
     if (accession < h->accession_base) {
+        struct sparse_straggler_entry *entry;
+        entry = hashtb_lookup(h->sparse_straggler_tab,
+                              &accession, sizeof(accession));
+        if (entry != NULL)
+            ans = entry->content;
     }
     else if (accession < h->accession_base + h->content_by_accession_window) {
         ans = h->content_by_accession[accession - h->accession_base];
@@ -11,6 +16,46 @@ r_store_content_from_accession(struct ccnr_handle *h, ccn_accession_t accession)
             ans = NULL;
     }
     return(ans);
+}
+
+static void
+cleanout_stragglers(struct ccnr_handle *h)
+{
+    ccn_accession_t accession;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct sparse_straggler_entry *entry = NULL;
+    struct content_entry **a = h->content_by_accession;
+    unsigned n_direct;
+    unsigned n_occupied;
+    unsigned window;
+    unsigned i;
+    if (h->accession <= h->accession_base || a[0] == NULL)
+        return;
+    n_direct = h->accession - h->accession_base;
+    if (n_direct < 1000)
+        return;
+    n_occupied = hashtb_n(h->content_tab) - hashtb_n(h->sparse_straggler_tab);
+    if (n_occupied >= (n_direct / 8))
+        return;
+    /* The direct lookup table is too sparse, so sweep stragglers */
+    hashtb_start(h->sparse_straggler_tab, e);
+    window = h->content_by_accession_window;
+    for (i = 0; i < window; i++) {
+        if (a[i] != NULL) {
+            if (n_occupied >= ((window - i) / 8))
+                break;
+            accession = h->accession_base + i;
+            hashtb_seek(e, &accession, sizeof(accession), 0);
+            entry = e->data;
+            if (entry != NULL && entry->content == NULL) {
+                entry->content = a[i];
+                a[i] = NULL;
+                n_occupied -= 1;
+            }
+        }
+    }
+    hashtb_end(e);
 }
 
 static int
@@ -22,6 +67,7 @@ cleanout_empties(struct ccnr_handle *h)
     unsigned window = h->content_by_accession_window;
     if (a == NULL)
         return(-1);
+    cleanout_stragglers(h);
     while (i < window && a[i] == NULL)
         i++;
     if (i == 0)
@@ -156,6 +202,41 @@ content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
     }
     ccn_indexbuf_destroy(&content->skiplinks);
 }
+
+
+PUBLIC void
+r_store_finalize_content(struct hashtb_enumerator *content_enumerator)
+{
+    struct ccnr_handle *h = hashtb_get_param(content_enumerator->ht, NULL);
+    struct content_entry *entry = content_enumerator->data;
+    unsigned i = entry->accession - h->accession_base;
+    if (i < h->content_by_accession_window &&
+          h->content_by_accession[i] == entry) {
+        content_skiplist_remove(h, entry);
+        h->content_by_accession[i] = NULL;
+    }
+    else {
+        struct hashtb_enumerator ee;
+        struct hashtb_enumerator *e = &ee;
+        hashtb_start(h->sparse_straggler_tab, e);
+        if (hashtb_seek(e, &entry->accession, sizeof(entry->accession), 0) ==
+              HT_NEW_ENTRY) {
+            ccnr_msg(h, "orphaned content %llu",
+                     (unsigned long long)(entry->accession));
+            hashtb_delete(e);
+            hashtb_end(e);
+            return;
+        }
+        content_skiplist_remove(h, entry);
+        hashtb_delete(e);
+        hashtb_end(e);
+    }
+    if (entry->comps != NULL) {
+        free(entry->comps);
+        entry->comps = NULL;
+    }
+}
+
 
 PUBLIC struct content_entry *
 r_store_find_first_match_candidate(struct ccnr_handle *h,
