@@ -12,8 +12,8 @@
 # FOR A PARTICULAR PURPOSE.
 #
 libdir := $(shell pkg-config --variable=libdir vlc-plugin )
-vlclibdir := $(libdir)/vlc
-vlcplugindir := $(shell pkg-config --atleast-version=1.1.0 vlc-plugin && echo /modules)
+vlcplugindir := $(shell pkg-config --atleast-version=1.1.0 vlc-plugin && echo /plugins || echo /modules)
+vlcaccessdir := $(libdir)/vlc$(vlcplugindir)/access
 VLCPLUGINVERDEF := $(shell pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER=\1/;s/\.//g;s/=0/=/')
 
 all: libaccess_ccn_plugin.so
@@ -28,14 +28,14 @@ clean:
 	rm -f libaccess_ccn_plugin.o libaccess_ccn_plugin.so
 
 install: all
-	mkdir -p $(DESTDIR)$(vlclibdir)$(vlcplugindir)/access/
-	install -m 0755 libaccess_ccn_plugin.so $(DESTDIR)$(vlclibdir)$(vlcplugindir)/access/
+	mkdir -p $(DESTDIR)$(vlcaccessdir)
+	install -m 0755 libaccess_ccn_plugin.so $(DESTDIR)$(vlcaccessdir)
 
 install-strip: all
-	mkdir -p $(DESTDIR)$(vlclibdir)/access/
-	install -s -m 0755 libaccess_ccn_plugin.so $(DESTDIR)$(vlclibdir)/access/
+	mkdir -p $(DESTDIR)$(vlcaccessdir)
+	install -s -m 0755 libaccess_ccn_plugin.so $(DESTDIR)$(vlcaccessdir)
 
 uninstall:
-	rm -f -- $(DESTDIR)$(vlclibdir)/access/libaccess_ccn_plugin.so
+	rm -f -- $(DESTDIR)$(vlcaccessdir)/libaccess_ccn_plugin.so
 
 .PHONY: all clean install uninstall
