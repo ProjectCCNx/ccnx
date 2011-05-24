@@ -140,8 +140,10 @@ static int CCNOpen(vlc_object_t *p_this)
     ACCESS_SET_CALLBACKS(NULL, CCNBlock, CCNControl, CCNSeek);
     p_access->p_sys = calloc(1, sizeof(access_sys_t));
     p_sys = p_access->p_sys;
-    if (p_sys == NULL)
+    if (p_sys == NULL) {
+        msg_Err(p_access, "CCN.Open failed: no memory for p_sys");
         return VLC_ENOMEM;
+    }
 #if (VLCPLUGINVER == 99)
     p_access->info.b_prebuffered = true;
 #endif
@@ -153,12 +155,14 @@ static int CCNOpen(vlc_object_t *p_this)
     p_sys->buf = calloc(1, p_sys->i_bufsize);
     if (p_sys->buf == NULL) {
         i_err = VLC_ENOMEM;
+        msg_Err(p_access, "CCN.Open failed: no memory for buffer");
         goto exit_error;
     }
     p_sys->p_template = make_data_template();
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
     if (p_sys->incoming == NULL) {
         i_err = VLC_ENOMEM;
+        msg_Err(p_access, "CCN.Open failed: no memory for ccn_closure");
         goto exit_error;
     }
 #if (VLCPLUGINVER >= 120)
@@ -173,11 +177,13 @@ static int CCNOpen(vlc_object_t *p_this)
 
     p_sys->ccn = ccn_create();
     if (p_sys->ccn == NULL || ccn_connect(p_sys->ccn, NULL) == -1) {
+        msg_Err(p_access, "CCN.Open failed: unable to allocate handle and connect to ccnd");
         goto exit_error;
     }
     p_name = ccn_charbuf_create();
     if (p_name == NULL) {
         i_err = VLC_ENOMEM;
+        msg_Err(p_access, "CCN.Open failed: no memory for name charbuf");
         goto exit_error;
     }
 #if (VLCPLUGINVER >= 120)
@@ -186,11 +192,13 @@ static int CCNOpen(vlc_object_t *p_this)
     i_ret = ccn_name_from_uri(p_name, p_access->psz_path);
 #endif
     if (i_ret < 0) {
+        msg_Err(p_access, "CCN.Open failed: unable to parse CCN URI");
         goto exit_error;
     }
     p_sys->p_name = ccn_charbuf_create();
     if (p_sys->p_name == NULL) {
         i_err = VLC_ENOMEM;
+        msg_Err(p_access, "CCN.Open failed: no memory for global name charbuf");
         goto exit_error;
     }
     i_ret = ccn_resolve_version(p_sys->ccn, p_name, CCN_V_HIGHEST,
@@ -211,12 +219,14 @@ static int CCNOpen(vlc_object_t *p_this)
                                  p_sys->p_template);
     ccn_charbuf_destroy(&p_name);
     if (i_ret < 0) {
+        msg_Err(p_access, "CCN.Open failed: unable to express interest");
         goto exit_error;
     }
 
     p_sys->p_fifo = block_FifoNew();
     if (p_sys->p_fifo == NULL) {
         i_err = VLC_ENOMEM;
+        msg_Err(p_access, "CCN.Open failed: no memory for block FIFO");
         goto exit_error;
     }
 #if (VLCPLUGINVER <= 99)
@@ -228,9 +238,15 @@ static int CCNOpen(vlc_object_t *p_this)
 #endif
     if (i_ret == 0)
         return VLC_SUCCESS;
+    msg_Err(p_access, "CCN.Open failed: unable to start CCN run thread");
 
  exit_error:
-    msg_Err(p_access, "CCN.Open failed");
+    if (p_name) {
+        ccn_charbuf_destroy(&p_name);
+    }
+    if (p_sys->p_template) {
+        ccn_charbuf_destroy(&p_sys->p_template);
+    }
     if (p_sys->p_fifo) {
         block_FifoRelease(p_sys->p_fifo);
         p_sys->p_fifo = NULL;
