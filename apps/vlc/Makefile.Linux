@@ -12,8 +12,9 @@
 # FOR A PARTICULAR PURPOSE.
 #
 libdir := $(shell pkg-config --variable=libdir vlc-plugin )
-vlcplugindir := $(shell pkg-config --atleast-version=1.1.0 vlc-plugin && echo /plugins || echo /modules)
-vlcaccessdir := $(libdir)/vlc$(vlcplugindir)/access
+# in a future VLC release (1.2.0?) we expect to see a pkg-config variable for the plugin directory.
+vlcplugindir := $(shell pkg-config --atleast-version=1.1.0 vlc-plugin && echo $(libdir)/vlc/plugins || echo $(libdir)/vlc/modules)
+vlcaccessdir := $(vlcplugindir)/access
 VLCPLUGINVERDEF := $(shell pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER=\1/;s/\.//g;s/=0/=/')
 
 all: libaccess_ccn_plugin.so
