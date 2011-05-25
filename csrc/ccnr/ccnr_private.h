@@ -310,7 +310,7 @@ struct ccn_forwarding {
     int expires;                 /**< time remaining, in seconds */
     struct ccn_forwarding *next;
 };
-
+#if 0
 /* create and destroy procs for separately allocated meters */
 struct ccnr_meter *ccnr_meter_create(struct ccnr_handle *h, const char *what);
 void ccnr_meter_destroy(struct ccnr_meter **);
@@ -323,7 +323,7 @@ void ccnr_meter_bump(struct ccnr_handle *h, struct ccnr_meter *m, unsigned amt);
 
 unsigned ccnr_meter_rate(struct ccnr_handle *h, struct ccnr_meter *m);
 uintmax_t ccnr_meter_total(struct ccnr_meter *m);
-
+#endif
 /**
  * @def CCN_FORW_ACTIVE         1
  * @def CCN_FORW_CHILD_INHERIT  2
@@ -341,6 +341,7 @@ uintmax_t ccnr_meter_total(struct ccnr_meter *m);
  */
 #define CCN_FWU_SECS 5
 
+#if 0
 /*
  * Internal client
  * The internal client is for communication between the ccnr and other
@@ -349,6 +350,7 @@ uintmax_t ccnr_meter_total(struct ccnr_meter *m);
 int ccnr_init_internal_keystore(struct ccnr_handle *);
 int ccnr_internal_client_start(struct ccnr_handle *);
 void ccnr_internal_client_stop(struct ccnr_handle *);
+#endif
 
 /**
  * URIs for prefixes served by the internal client
@@ -356,6 +358,7 @@ void ccnr_internal_client_stop(struct ccnr_handle *);
 #define CCNRID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/KEY"
 #define CCNRID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository/KEY"
 
+#if 0
 int r_fwd_reg_uri(struct ccnr_handle *h,
                  const char *uri,
                  unsigned filedesc,
@@ -382,5 +385,7 @@ struct ccnr_handle *r_init_create(const char *, ccnr_logger, void *);
 void r_dispatch_run(struct ccnr_handle *h);
 void r_init_destroy(struct ccnr_handle **);
 extern const char *ccnr_usage_message;
+#endif
 
+#define PUBLIC
 #endif

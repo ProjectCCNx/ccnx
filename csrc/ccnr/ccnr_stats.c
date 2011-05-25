@@ -45,6 +45,11 @@
 
 #include "ccnr_private.h"
 
+#include "ccnr_stats.h"
+#include "ccnr_io.h"
+#include "ccnr_msg.h"
+
+
 #define CRLF "\r\n"
 #define NL   "\n"
 

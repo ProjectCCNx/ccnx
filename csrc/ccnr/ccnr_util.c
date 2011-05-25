@@ -20,7 +20,41 @@
  * Boston, MA 02110-1301, USA.
  */
  
-#include "common.h"
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <netdb.h>
+#include <poll.h>
+#include <signal.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <netinet/in.h>
+
+#include <ccn/bloom.h>
+#include <ccn/ccn.h>
+#include <ccn/ccn_private.h>
+#include <ccn/charbuf.h>
+#include <ccn/face_mgmt.h>
+#include <ccn/hashtb.h>
+#include <ccn/indexbuf.h>
+#include <ccn/schedule.h>
+#include <ccn/reg_mgmt.h>
+#include <ccn/uri.h>
+
+#include "ccnr_private.h"
+
+#include "ccnr_util.h"
 
 PUBLIC struct ccn_charbuf *
 r_util_charbuf_obtain(struct ccnr_handle *h)

@@ -28,6 +28,11 @@
 
 #include "ccnr_private.h"
 
+#include "ccnr_init.h"
+#include "ccnr_dispatch.h"
+#include "ccnr_msg.h"
+#include "ccnr_stats.h"
+
 static int
 stdiologger(void *loggerdata, const char *format, va_list ap)
 {

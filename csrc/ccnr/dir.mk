@@ -52,93 +52,102 @@ check test: ccnr $(SCRIPTSRC)
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
-ccnr_dispatch.o: ccnr_dispatch.c common.h ../include/ccn/bloom.h \
+ccnr_dispatch.o: ccnr_dispatch.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/hashtb.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
-  ../include/ccn/seqwriter.h
-ccnr_forwarding.o: ccnr_forwarding.c common.h ../include/ccn/bloom.h \
+  ../include/ccn/seqwriter.h ccnr_dispatch.h ccnr_forwarding.h ccnr_io.h \
+  ccnr_link.h ccnr_match.h ccnr_msg.h ccnr_sendq.h ccnr_stats.h \
+  ccnr_store.h ccnr_util.h
+ccnr_forwarding.o: ccnr_forwarding.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/hashtb.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
-  ../include/ccn/seqwriter.h
-ccnr_init.o: ccnr_init.c common.h ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/seqwriter.h ccnr_forwarding.h ccnr_io.h ccnr_link.h \
+  ccnr_match.h ccnr_msg.h ccnr_stats.h ccnr_util.h
+ccnr_init.o: ccnr_init.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/hashtb.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
-  ../include/ccn/seqwriter.h
+  ../include/ccn/seqwriter.h ccnr_init.h ccnr_forwarding.h \
+  ccnr_internal_client.h ccnr_io.h ccnr_msg.h ccnr_net.h ccnr_store.h \
+  ccnr_util.h
 ccnr_internal_client.o: ccnr_internal_client.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
   ../include/ccn/schedule.h ../include/ccn/sockaddrutil.h \
   ../include/ccn/uri.h ccnr_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/seqwriter.h
-ccnr_io.o: ccnr_io.c common.h ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/seqwriter.h ccnr_internal_client.h ccnr_forwarding.h \
+  ../include/ccn/hashtb.h ccnr_io.h ccnr_msg.h
+ccnr_io.o: ccnr_io.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/hashtb.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
-  ../include/ccn/seqwriter.h
-ccnr_link.o: ccnr_link.c common.h ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/seqwriter.h ccnr_io.h ccnr_forwarding.h \
+  ccnr_internal_client.h ccnr_link.h ccnr_msg.h ccnr_sendq.h ccnr_stats.h
+ccnr_link.o: ccnr_link.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/hashtb.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
-  ../include/ccn/seqwriter.h
+  ../include/ccn/seqwriter.h ccnr_link.h ccnr_forwarding.h \
+  ccnr_internal_client.h ccnr_io.h ccnr_match.h ccnr_msg.h ccnr_sendq.h \
+  ccnr_stats.h ccnr_store.h ccnr_util.h
 ccnr_main.o: ccnr_main.c ccnr_private.h ../include/ccn/ccn_private.h \
   ../include/ccn/coding.h ../include/ccn/reg_mgmt.h \
   ../include/ccn/charbuf.h ../include/ccn/schedule.h \
-  ../include/ccn/seqwriter.h
-ccnr_match.o: ccnr_match.c common.h ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/seqwriter.h ccnr_init.h ccnr_dispatch.h ccnr_msg.h \
+  ccnr_stats.h
+ccnr_match.o: ccnr_match.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/hashtb.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
-  ../include/ccn/seqwriter.h
+  ../include/ccn/seqwriter.h ccnr_match.h ccnr_forwarding.h ccnr_io.h \
+  ccnr_msg.h ccnr_sendq.h
 ccnr_msg.o: ccnr_msg.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ccnr_private.h ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/schedule.h ../include/ccn/seqwriter.h
-ccnr_net.o: ccnr_net.c common.h ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/schedule.h ../include/ccn/seqwriter.h ccnr_msg.h
+ccnr_net.o: ccnr_net.c ccnr_private.h ../include/ccn/ccn_private.h \
+  ../include/ccn/coding.h ../include/ccn/reg_mgmt.h \
+  ../include/ccn/charbuf.h ../include/ccn/schedule.h \
+  ../include/ccn/seqwriter.h ccnr_net.h ccnr_io.h ccnr_msg.h
+ccnr_sendq.o: ccnr_sendq.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/hashtb.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
-  ../include/ccn/seqwriter.h
-ccnr_sendq.o: ccnr_sendq.c common.h ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
-  ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
-  ../include/ccn/hashtb.h ../include/ccn/schedule.h \
-  ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
-  ../include/ccn/seqwriter.h
+  ../include/ccn/seqwriter.h ccnr_sendq.h ccnr_io.h ccnr_link.h \
+  ccnr_msg.h ccnr_store.h
 ccnr_stats.o: ccnr_stats.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/schedule.h ../include/ccn/sockaddrutil.h \
   ../include/ccn/hashtb.h ../include/ccn/uri.h ccnr_private.h \
   ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/seqwriter.h
-ccnr_store.o: ccnr_store.c common.h ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/seqwriter.h ccnr_stats.h ccnr_io.h ccnr_msg.h
+ccnr_store.o: ccnr_store.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/hashtb.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
-  ../include/ccn/seqwriter.h
-ccnr_util.o: ccnr_util.c common.h ../include/ccn/bloom.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/seqwriter.h ccnr_store.h ccnr_msg.h
+ccnr_util.o: ccnr_util.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/hashtb.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
-  ../include/ccn/seqwriter.h
+  ../include/ccn/seqwriter.h ccnr_util.h

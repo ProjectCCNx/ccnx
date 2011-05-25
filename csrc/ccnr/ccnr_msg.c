@@ -34,6 +34,8 @@
 
 #include "ccnr_private.h"
 
+#include "ccnr_msg.h"
+
 /**
  *  Produce ccnr debug output.
  *  Output is produced via h->logger under the control of h->debug;

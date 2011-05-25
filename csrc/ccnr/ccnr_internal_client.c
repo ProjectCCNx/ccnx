@@ -37,6 +37,12 @@
 #include <ccn/uri.h>
 #include "ccnr_private.h"
 
+#include "ccnr_internal_client.h"
+
+#include "ccnr_forwarding.h"
+#include "ccnr_io.h"
+#include "ccnr_msg.h"
+
 #if 0
 #define GOT_HERE ccnr_msg(ccnr, "at ccnr_internal_client.c:%d", __LINE__);
 #else
