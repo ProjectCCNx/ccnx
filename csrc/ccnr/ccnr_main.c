@@ -1,8 +1,11 @@
 /**
  * @file ccnr_main.c
- *
+ * 
  * Part of ccnr -  CCNx Repository Daemon.
  *
+ */
+
+/*
  * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
@@ -16,7 +19,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
-
+ 
 #include <signal.h>
 #include <stddef.h>
 #include <stdarg.h>

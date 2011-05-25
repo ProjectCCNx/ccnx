@@ -2,9 +2,12 @@
  * @file ccnr_msg.c
  *
  * Logging support for ccnr.
+ * 
+ * Part of ccnr -  CCNx Repository Daemon.
  *
- * Part of ccnr - CCNx Repository Daemon.
- *
+ */
+
+/*
  * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
@@ -18,7 +21,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
-
+ 
 #include <stdio.h>
 #include <sys/time.h>
 #include <stdarg.h>
