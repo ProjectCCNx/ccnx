@@ -27,8 +27,8 @@ Interest ::= Name
 The hierarchical *Name* is the only required element in an Interest message.
 The remaining elements fall into several categories:
 
-1. those that further qualify the ContentObjects that may match the Interest *MinSuffixComponents*, *MaxSuffixComponents*, *PublisherPublicKeyDigest*, *Exclude*)
-2. those that limit where the answer might come from (*AnswerOriginKind*, *Scope*)
+1. those that further qualify the ContentObjects that may match the Interest (*MinSuffixComponents*, *MaxSuffixComponents*, *PublisherPublicKeyDigest*, *Exclude*)
+2. those that limit where the answer might come from (*AnswerOriginKind*, *Scope*, *InterestLifetime*)
 3. those that advise the selection of what to send when there are multiple ContentObjects that match (*ChildSelector*)
 4. duplicate suppression (*Nonce*)
 
@@ -56,7 +56,7 @@ A client may need to say that the Name in the interest is either the full name i
 ...........................................................
 PublisherPublicKeyDigest ::= BLOB
 ...........................................................
-If the PublisherPublicKeyDigest element is present in the Interest, the associated value (a SHA-256 digest) must be equal to the value of the PublisherPublicKeyDigest of the ContentObject for there to be a match.
+If the *PublisherPublicKeyDigest* element is present in the Interest, the associated value (a SHA-256 digest) must be equal to the value of the *PublisherPublicKeyDigest* of the ContentObject for there to be a match.
 (The Interest schema admits some other possibilities, but only this form of publisher selection is currently implemented.)
 
 == Exclude
@@ -65,16 +65,22 @@ Exclude ::= (Any | Bloom)? ( Component (Any | Bloom)? )*
 Any ::= (empty)
 Bloom ::= BLOB
 ...........................................................
-The Exclude element embodies a description of name components that should not appear as a continuation of the Name prefix in the response to the interest.
-The Components in the exclusion list must occur in strictly increasing order according to the link:CanonicalOrder.html[canonical CCNx ordering].  Call the pieces in the exclude list B[0], C[1], B[1], C[2], B[2], ... C[m], B[m].  (Here the B[i] are the Bloom elements and the C[i] are the Component elements.  The omission of a Bloom element is equivalent to a bloom filter that describes the empty set.) Furthermore, take C[0] as negative infinity and C[m+1] as infinity. Then a component C is a member of the exclusion set iff C = C[k] for some k in [1..m] or if C[k] < C < C[k+1] for some k in [0..m] and C matches B[k].
+The *Exclude* element embodies a description of name components that should not appear as a continuation of the Name prefix in the response to the interest.
+The Components in the exclusion list must occur in strictly increasing order according to the link:CanonicalOrder.html[canonical CCNx ordering].
+Call the pieces in the exclude list B[0], C[1], B[1], C[2], B[2], ... C[m], B[m].
+(Here the B[i] are the *Bloom* (or *Any*) elements and the C[i] are the *Component* elements.
+An *Any* element is equivalent to a fully-saturated Bloom filter.
+The omission of a Bloom/Any element is equivalent to a Bloom filter that describes the empty set.)
+Furthermore, take C[0] as negative infinity and C[m+1] as infinity.
+Then a component C is a member of the exclusion set iff C = C[k] for some k in [1..m] or if C[k] < C < C[k+1] for some k in [0..m] and C matches B[k].
 
 A client could choose to simply enumerate the elements of the exclusion set if that is sufficiently compact (using no Bloom filters at all).  At the other extreme, it could simply supply a single Bloom filter to describe the exclusion set.
 
-A seed value is used for the hash functions of the bloom filters.  By using different seeds on different expressions of its interests, an application may minimize the impact of the false positives inherent with bloom filters.
+A seed value is used for the hash functions of the Bloom filters.  By using different seeds on different expressions of its interests, an application may minimize the impact of the false positives inherent with Bloom filters.
 ...........................................................
 Bloom ::= BLOB
 ...........................................................
-The Bloom's BLOB is of length 8 + ceiling(n/8) bytes, where n is the number of bits in the bloom filter.  We restrict n to be a power of two or zero.  The first 8 bytes of the BLOB contains a header:
+The *Bloom* element's BLOB is of length 8 + ceiling(n/8) bytes, where n is the number of bits in the Bloom filter.  We restrict n to be a power of two or zero.  The first 8 bytes of the BLOB contains a header:
 ...........................................................
     unsigned char lg_bits;  /* 13 maximum (8 kilobits), 3 minimum (one byte) */
     unsigned char n_hash;   /* number of hash functions to employ */
@@ -82,9 +88,11 @@ The Bloom's BLOB is of length 8 + ceiling(n/8) bytes, where n is the number of b
     unsigned char reserved; /* must be 0 for now */
     unsigned char seed[4];  /* can seed hashes differently */
 ...........................................................
-and the remaining bytes hold the bits of the bloom filter.  The bits in the filter itself are packed little-endian by byte.  Note that a Bloom filter with 0 hash functions is one way to match everything, and a filter with all ones is another.  But these are not very compact, so the *All* element is provided as a better way to encode this common case.
+and the remaining bytes hold the bits of the Bloom filter.  The bits in the filter itself are packed little-endian by byte.  Note that a Bloom filter with 0 hash functions is one way to match everything, and a filter with all ones is another.  But these are not very compact, so the *All* element is provided as a better way to encode this common case.
 
-**TODO - The the calculation of the hash functions must also be specified.  At present, referring to the c code is the best option; it should be quite easy to port to other languages.**
+**TODO - The the calculation of the hash functions must also be specified.  At present, referring to the c code or java code in the libraries is the best option.**
+
+**NOTE - New applications should avoid the use of the Bloom form of exclusion.  Support for this will be phased out in future revisions.**
 
 == ChildSelector
 ...........................................................
@@ -97,7 +105,7 @@ Often a given interest will match more than one ContentObject within a given con
 AnswerOriginKind ::= nonNegativeInteger
 ...........................................................
 *AnswerOriginKind* encodes several bitfields that alter the usual response to interest. There is a do-not-answer-from-content-store bit, which also implies a passive bit.  There will eventually need to be some security aspects to this, limiting it by scope and/or by interest signing, but we are choosing to ignore these for now. There is also utility in the passive bit alone - it means do not generate any newly-signed content in response to this interest.
-Wire representation: the AnswerOriginKind element holds a nonNegativeInteger with bitmasks having the following interpretation:
+Wire representation: the *AnswerOriginKind* element holds a nonNegativeInteger with bitmasks having the following interpretation:
 
 * 1 = Answer from existing content store
 * 2 = Answers may be generated
@@ -106,14 +114,14 @@ Wire representation: the AnswerOriginKind element holds a nonNegativeInteger wit
 * The default is 3, giving normal behavior.  The two low-order bits in combination mean:
 ** 0 = do-not-answer-from-content-store
 ** 1 = passive
-** 2 is disallowed
+** 2 = bypass intermediate caches, and inform applications that they may generate new content (currently this combination is disallowed, but later revisions of the protocol will allow it).
 ** 3 = normal
 
 == Scope
 ...........................................................
 Scope ::= nonNegativeInteger
 ...........................................................
-This limits where the Interest may propagate. Scope 0 prevents propagation beyond the local ccnd (even to other applications on the same host).  Scope 1 limits propagation to the applications on the originating host. Scope 2 limits propagation to no further than the next host. Other values are not currently defined, and will cause the Interest message to be dropped.
+This limits where the Interest may propagate. Scope 0 prevents propagation beyond the local ccnd (even to other applications on the same host).  Scope 1 limits propagation to the applications on the originating host. Scope 2 limits propagation to no further than the next host. Other values are not defined, and will cause the Interest message to be dropped.
 
 Note that this is not a hop count - the value is not decremented as the interest is forwarded.
 
@@ -121,15 +129,15 @@ Note that this is not a hop count - the value is not decremented as the interest
 ...........................................................
 InterestLifetime ::= BLOB
 ...........................................................
-InterestLifetime indicates the (approximate) time remaining before the interest times out.  The value is encoded as an unsigned big-endian binary number, and is allowed to have leading zero bytes. The time unit is the same as used for the Timestamp in ContentObject, 1/4096 second.  The timeout is relative to the arrival time of the interest at the current node.
+*InterestLifetime* indicates the (approximate) time remaining before the interest times out.  The value is encoded as an unsigned big-endian binary number, and is allowed to have leading zero bytes. The time unit is the same as used for the Timestamp in ContentObject, 1/4096 second.  The timeout is relative to the arrival time of the interest at the current node.
 
 Although this format allows for high precision, the values that appear on the wire should be quantized to a small set of possibilities so that the suppression of similar interests from various sources can be done effectively.  It is recommended that the value be either a positive integral number of seconds (low order 12 bits all 0), or a power of two (1/2 sec, 1/4 sec, etc.).
 
 Nodes that forward interests may decrease the lifetime to account for time spent in the node before forwarding, but are not required to do so.  It is recommended that these adjustments be done only for relatively large delays (measured in seconds).
 
-If the InterestLifetime element is omitted, the value of 4 seconds is used (0x4000).  The missing element may be added before forwarding.
+If the *InterestLifetime* element is omitted, the value of 4 seconds is used (0x4000).  The missing element may be added before forwarding.
 
-It is the application that chooses the value for InterestLifetime.
+It is the application that chooses the value for *InterestLifetime*.
 
 == Nonce
 ...........................................................
