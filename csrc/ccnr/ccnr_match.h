@@ -20,6 +20,8 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#include <ccn/ccn.h>
+
 #include "ccnr_private.h"
 
 void r_match_consume_interest(struct ccnr_handle *h,struct propagating_entry *pe);

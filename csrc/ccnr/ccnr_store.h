@@ -20,6 +20,8 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#include <ccn/ccn.h>
+
 #include "ccnr_private.h"
 
 void r_store_set_content_timer(struct ccnr_handle *h,struct content_entry *content,struct ccn_parsed_ContentObject *pco);

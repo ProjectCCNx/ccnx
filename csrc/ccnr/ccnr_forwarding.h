@@ -20,6 +20,7 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#include <ccn/ccn.h>
 #include <ccn/hashtb.h>
 
 #include "ccnr_private.h"
