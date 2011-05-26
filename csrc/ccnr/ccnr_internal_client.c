@@ -43,12 +43,6 @@
 #include "ccnr_io.h"
 #include "ccnr_msg.h"
 
-#if 0
-#define GOT_HERE ccnr_msg(ccnr, "at ccnr_internal_client.c:%d", __LINE__);
-#else
-#define GOT_HERE
-#endif
-
 static struct ccn_charbuf *
 ccnr_init_service_ccnb(struct ccnr_handle *ccnr, const char *baseuri, int freshness)
 {
@@ -543,8 +537,7 @@ ccnr_internal_client_start(struct ccnr_handle *ccnr)
                   CCN_FORW_ACTIVE        |
                   CCN_FORW_LOCAL         ),
                  0x7FFFFFFF);
-    ccnr->internal_client_refresh \
-    = ccn_schedule_event(ccnr->sched, 50000,
+    ccnr->internal_client_refresh = ccn_schedule_event(ccnr->sched, 50000,
                          ccnr_internal_client_refresh,
                          NULL, CCN_INTEREST_LIFETIME_MICROSEC);
     return(0);
