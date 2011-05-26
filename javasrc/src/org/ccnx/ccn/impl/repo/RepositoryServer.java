@@ -301,22 +301,22 @@ public class RepositoryServer implements CCNStatistics {
 	 * 
 	 * Note that it is very important not to double register the same prefix which would be quite easy
 	 * to do here. If we do that, we end up with multiple handlers for each interest with the result that
-	 * on gets (the most common case) the second handler sends a redundant duplicate answer back to ccnd
-	 * which has a quite dramatic negative affect on performance.
+	 * the second handler sends a redundant duplicate answer back to ccnd which has a quite dramatic negative 
+	 * affect on performance.
 	 * 
 	 * @throws IOException
 	 */
 	private void resetNamespace() throws IOException {
 		ArrayList<ContentName> newNamespace = null;
 		ArrayList<ContentName> unMatchedOld = null;
-		ArrayList<ContentName> stillValid = null;
+		ArrayList<ContentName> needToAdd = null;
 		synchronized (_pendingNamespaceChangeLock) {
 			if (_pendingNamespaceChange) {
 				newNamespace = _repo.getNamespace();
 				if (newNamespace == null)	// If this ever happened it would be bad!!
 					newNamespace = new ArrayList<ContentName>();
 				unMatchedOld = getUnMatched(_currentNamespace, newNamespace);
-				stillValid = getUnMatched(_currentNamespace, unMatchedOld);
+				needToAdd = getUnMatched(newNamespace, _currentNamespace);
 			}
 		}
 		
@@ -329,30 +329,16 @@ public class RepositoryServer implements CCNStatistics {
 			}
 		}
 		
-		if (null != newNamespace) {
-			// TODO The following code is an attempted temporary workaround for bug 100486
-			// to try to properly take care of the unregisters above inadvertently deregistering
-			// a prefix that should be retained. I think this code doesn't handle all cases and
-			// in any case, it should be reviewed after bug 100486 is fixed because it could
-			// easily lead to improper double registration after that.
-			ArrayList<ContentName> needToAdd = getUnMatched(newNamespace, stillValid);
-			for (ContentName name : stillValid) {
-				for (ContentName check : unMatchedOld) {
-					if (check.isPrefixOf(name)) {
-						needToAdd.add(name);
-						break;
-					}
-				}
-			}
-			for (ContentName newName : removeDuplicates(needToAdd)) {
+		if (null != needToAdd) {
+			for (ContentName newName : needToAdd) {
 				_handle.getNetworkManager().setInterestFilter(_handle, newName, _iHandler, REPO_PREFIX_FLAGS);
 				if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
 					Log.info(Log.FAC_REPO, "Adding repo namespace {0}", newName);
 			}
-			synchronized (_pendingNamespaceChangeLock) {
-				_currentNamespace = newNamespace;
-				_pendingNamespaceChange = false;
-			}
+		}
+		synchronized (_pendingNamespaceChangeLock) {
+			_currentNamespace = newNamespace;
+			_pendingNamespaceChange = false;
 		}
 	}
 	
