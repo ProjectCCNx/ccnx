@@ -509,6 +509,15 @@ process_input(struct ccnr_handle *h, int fd)
         r_io_accept_connection(h, fd);
         return;
     }
+    if ((fdholder->flags & CCNR_FACE_CCND) != 0) {
+        res = ccn_run(h->direct_client, 0);
+        if (res < 0) {
+            // Deal with it somehow.  Probably means ccnd went away.
+            // Should schedule reconnection.
+            r_io_shutdown_client_fd(h, fd);
+        }
+        return;
+    }
     d = &fdholder->decoder;
     if (fdholder->inbuf == NULL)
         fdholder->inbuf = ccn_charbuf_create();

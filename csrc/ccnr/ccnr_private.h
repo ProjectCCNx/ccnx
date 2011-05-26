@@ -133,6 +133,7 @@ struct ccnr_handle {
     struct ccn_seqwriter *notice;   /**< for notices of status changes */
     struct ccn_indexbuf *chface;    /**< faceids w/ recent status changes */
     struct ccn_scheduled_event *internal_client_refresh;
+    struct ccn_scheduled_event *direct_client_refresh;
     struct ccn_scheduled_event *notice_push;
     void (*appnonce)(struct ccnr_handle *, struct fdholder *, struct ccn_charbuf *);
                                     /**< pluggable nonce generation */
@@ -351,17 +352,6 @@ uintmax_t ccnr_meter_total(struct ccnr_meter *m);
  * Determines how frequently we age our forwarding entries
  */
 #define CCN_FWU_SECS 5
-
-#if 0
-/*
- * Internal client
- * The internal client is for communication between the ccnr and other
- * components, using (of course) ccn protocols.
- */
-int ccnr_init_internal_keystore(struct ccnr_handle *);
-int ccnr_internal_client_start(struct ccnr_handle *);
-void ccnr_internal_client_stop(struct ccnr_handle *);
-#endif
 
 /**
  * URIs for prefixes served by the internal client

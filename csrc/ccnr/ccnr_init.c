@@ -140,7 +140,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (listen_on != NULL && listen_on[0] != 0)
         ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
     h->appnonce = &r_fwd_append_debug_nonce;
-    ccnr_init_internal_keystore(h);
+    ccnr_init_repo_keystore(h, h->internal_client);
     /* XXX - need to bail if keystore is not OK. */
 	r_io_open_repo_data_file(h, "repoFile1");
     r_util_reseed(h);
@@ -153,11 +153,15 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
         h->face0 = fdholder;
     }
     r_io_enroll_face(h, h->face0);
-    h->direct_client = ccn_create();
+    ccnr_direct_client_start(h);
     if (ccn_connect(h->direct_client, NULL) != -1) {
         struct fdholder *fdholder;
         fdholder = r_io_record_fd(h, ccn_get_connection_fd(h->direct_client), "CCND", 5, CCNR_FACE_CCND | CCNR_FACE_LOCAL);
         if (fdholder == NULL) abort();
+        ccnr_uri_listen(h, h->direct_client, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository",
+                        &ccnr_answer_req, OP_SERVICE);
+        ccnr_uri_listen(h, h->direct_client, "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository",
+                        &ccnr_answer_req, OP_SERVICE);
     }
     r_net_listen_on(h, listen_on);
     r_fwd_age_forwarding_needed(h);
@@ -178,7 +182,7 @@ r_init_destroy(struct ccnr_handle **pccnr)
         return;
     r_io_shutdown_all(h);
     ccnr_internal_client_stop(h);
-    ccn_destroy(&h->direct_client);
+    ccnr_direct_client_stop(h);
     ccn_schedule_destroy(&h->sched);
     hashtb_destroy(&h->content_tab);
     hashtb_destroy(&h->propagating_tab);
