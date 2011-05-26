@@ -215,7 +215,6 @@ r_io_record_fd(struct ccnr_handle *h, int fd,
 {
     int res;
     struct fdholder *fdholder = NULL;
-    unsigned char *addrspace;
     
     res = fcntl(fd, F_SETFL, O_NONBLOCK);
     if (res == -1)
