@@ -313,7 +313,10 @@ r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
         ccnr_msg(h, "no fd holder for fd %d", fd);
         abort();
     }
-    res = close(fd);
+    if ((fdholder->flags & CCNR_FACE_CCND))
+        res = ccn_disconnect(h->direct_client);
+    else
+        res = close(fd);
     ccnr_msg(h, "shutdown client fd=%d", fd);
     ccn_charbuf_destroy(&fdholder->inbuf);
     ccn_charbuf_destroy(&fdholder->outbuf);

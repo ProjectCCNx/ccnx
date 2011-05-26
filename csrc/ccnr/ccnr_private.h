@@ -125,8 +125,9 @@ struct ccnr_handle {
     int flood;                      /**< Internal control for auto-reg */
     unsigned interest_faceid;       /**< for self_reg internal client */
     const char *progname;           /**< our name, for locating helpers */
+    struct ccn *direct_client;      /**< this talks directly with ccnd */
     struct ccn *internal_client;    /**< internal client */
-    struct fdholder *face0;             /**< special fdholder for internal client */
+    struct fdholder *face0;         /**< special fdholder for internal client */
     struct ccn_charbuf *service_ccnb; /**< for local service discovery */
     struct ccn_charbuf *neighbor_ccnb; /**< for neighbor service discovery */
     struct ccn_seqwriter *notice;   /**< for notices of status changes */
@@ -218,7 +219,7 @@ struct fdholder {
 // XXX - remove
 #define CCNR_FACE_SEQPROBE (1 << 18) /** SequenceNumber probe */
 #define CCNR_FACE_REPODATA (1 << 19) /** A repository log-structured data file */
-
+#define CCNR_FACE_CCND (1 << 20) /** A connection to our ccnd */
 #define CCNR_FACE_SOCKMASK (CCNR_FACE_DGRAM | CCNR_FACE_INET | CCNR_FACE_INET6 | CCNR_FACE_LOCAL)
 
 #define CCN_NOFACEID    (-1)    /** denotes no fdholder */
