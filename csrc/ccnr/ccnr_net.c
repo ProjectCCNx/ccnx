@@ -115,9 +115,9 @@ r_net_listen_on_wildcards(struct ccnr_handle *h)
                         close(fd);
                         continue;
                     }
-                    r_io_record_connection(h, fd,
+                    r_io_record_fd(h, fd,
                                       a->ai_addr, a->ai_addrlen,
-                                      CCN_FACE_PASSIVE);
+                                      CCNR_FACE_PASSIVE);
                     ccnr_msg(h, "accepting %s connections on fd %d",
                              af_name(a->ai_family), fd);
                 }
@@ -160,9 +160,9 @@ r_net_listen_on_address(struct ccnr_handle *h, const char *addr)
                     close(fd);
                     continue;
                 }
-                r_io_record_connection(h, fd,
+                r_io_record_fd(h, fd,
                                   a->ai_addr, a->ai_addrlen,
-                                  CCN_FACE_PASSIVE);
+                                  CCNR_FACE_PASSIVE);
                 ccnr_msg(h, "accepting %s connections on fd %d",
                          af_name(a->ai_family), fd);
                 ok++;

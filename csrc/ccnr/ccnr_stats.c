@@ -110,7 +110,7 @@ ccnr_stats_handle_http_connection(struct ccnr_handle *h, struct fdholder *fdhold
     
     if (fdholder->inbuf->length < 4)
         return(-1);
-    if ((fdholder->flags & CCN_FACE_NOSEND) != 0) {
+    if ((fdholder->flags & CCNR_FACE_NOSEND) != 0) {
         r_io_destroy_face(h, fdholder->filedesc);
         return(-1);
     }
@@ -153,7 +153,7 @@ ccnr_stats_handle_http_connection(struct ccnr_handle *h, struct fdholder *fdhold
         r_io_send(h, fdholder, resp404, strlen(resp404));
     else
         r_io_send(h, fdholder, resp405, strlen(resp405));
-    fdholder->flags |= (CCN_FACE_NOSEND | CCN_FACE_CLOSING);
+    fdholder->flags |= (CCNR_FACE_NOSEND | CCNR_FACE_CLOSING);
     ccn_charbuf_destroy(&response);
     return(0);
 }
@@ -235,7 +235,7 @@ collect_faces_html(struct ccnr_handle *h, struct ccn_charbuf *b)
     ccn_charbuf_putf(b, "<ul>");
     for (i = 0; i < h->face_limit; i++) {
         struct fdholder *fdholder = h->fdholder_by_fd[i];
-        if (fdholder != NULL && (fdholder->flags & CCN_FACE_UNDECIDED) == 0) {
+        if (fdholder != NULL && (fdholder->flags & CCNR_FACE_UNDECIDED) == 0) {
             ccn_charbuf_putf(b, " <li>");
             ccn_charbuf_putf(b, "<b>fdholder:</b> %u <b>flags:</b> 0x%x",
                              fdholder->filedesc, fdholder->flags);
@@ -245,10 +245,13 @@ collect_faces_html(struct ccnr_handle *h, struct ccn_charbuf *b)
                 ccn_charbuf_putf(b, " <b>activity:</b> %d",
                                  fdholder->recvcount);
             nodebuf->length = 0;
+			port = 0;
+#if 0
+// XXX - fix for fdholder->name
             port = ccn_charbuf_append_sockaddr(nodebuf, fdholder->addr);
             if (port > 0) {
                 const char *node = ccn_charbuf_as_string(nodebuf);
-                if ((fdholder->flags & CCN_FACE_PASSIVE) == 0)
+                if ((fdholder->flags & CCNR_FACE_PASSIVE) == 0)
                     ccn_charbuf_putf(b, " <b>remote:</b> %s:%d",
                                      node, port);
                 else
@@ -258,6 +261,7 @@ collect_faces_html(struct ccnr_handle *h, struct ccn_charbuf *b)
                     fdholder->sendface != CCN_NOFACEID)
                     ccn_charbuf_putf(b, " <b>via:</b> %u", fdholder->sendface);
             }
+#endif
             ccn_charbuf_putf(b, "</li>" NL);
         }
     }
@@ -278,7 +282,7 @@ collect_face_meter_html(struct ccnr_handle *h, struct ccn_charbuf *b)
                         " <td>sent data/intr recv</td></tr>" NL);
     for (i = 0; i < h->face_limit; i++) {
         struct fdholder *fdholder = h->fdholder_by_fd[i];
-        if (fdholder != NULL && (fdholder->flags & (CCN_FACE_UNDECIDED|CCN_FACE_PASSIVE)) == 0) {
+        if (fdholder != NULL && (fdholder->flags & (CCNR_FACE_UNDECIDED|CCNR_FACE_PASSIVE)) == 0) {
             ccn_charbuf_putf(b, " <tr>");
             ccn_charbuf_putf(b, "<td><b>fdholder:</b> %u</td>\t",
                              fdholder->filedesc);
@@ -453,7 +457,7 @@ collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
     ccn_charbuf_putf(b, "<faces>");
     for (i = 0; i < h->face_limit; i++) {
         struct fdholder *fdholder = h->fdholder_by_fd[i];
-        if (fdholder != NULL && (fdholder->flags & CCN_FACE_UNDECIDED) == 0) {
+        if (fdholder != NULL && (fdholder->flags & CCNR_FACE_UNDECIDED) == 0) {
             ccn_charbuf_putf(b, "<fdholder>");
             ccn_charbuf_putf(b,
                              "<filedesc>%u</filedesc>"
@@ -464,15 +468,19 @@ collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
             ccn_charbuf_putf(b, "<recvcount>%d</recvcount>",
                              fdholder->recvcount);
             nodebuf->length = 0;
+			port = 0;
+#if 0
+// XXX - fix this to know about fdholder->name
             port = ccn_charbuf_append_sockaddr(nodebuf, fdholder->addr);
             if (port > 0) {
                 const char *node = ccn_charbuf_as_string(nodebuf);
                 ccn_charbuf_putf(b, "<ip>%s:%d</ip>", node, port);
             }
+#endif
             if (fdholder->sendface != fdholder->filedesc &&
                 fdholder->sendface != CCN_NOFACEID)
                 ccn_charbuf_putf(b, "<via>%u</via>", fdholder->sendface);
-            if (fdholder != NULL && (fdholder->flags & CCN_FACE_PASSIVE) == 0) {
+            if (fdholder != NULL && (fdholder->flags & CCNR_FACE_PASSIVE) == 0) {
                 ccn_charbuf_putf(b, "<meters>");
                 for (m = 0; m < CCNR_FACE_METER_N; m++)
                     collect_meter_xml(h, b, fdholder->meter[m]);

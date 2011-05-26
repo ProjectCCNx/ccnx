@@ -95,7 +95,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     ccnr_meter_bump(h, fdholder->meter[FM_INTI], 1);
     if (pi->scope >= 0 && pi->scope < 2 &&
-             (fdholder->flags & CCN_FACE_GG) == 0) {
+             (fdholder->flags & CCNR_FACE_GG) == 0) {
         ccnr_debug_ccnb(h, __LINE__, "interest_outofscope", fdholder, msg, size);
         h->interests_dropped += 1;
     }
@@ -146,7 +146,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
         if (npe == NULL)
             goto Bail;
         if ((npe->flags & CCN_FORW_LOCAL) != 0 &&
-            (fdholder->flags & CCN_FACE_GG) == 0) {
+            (fdholder->flags & CCNR_FACE_GG) == 0) {
             ccnr_debug_ccnb(h, __LINE__, "interest_nonlocal", fdholder, msg, size);
             h->interests_dropped += 1;
             goto Bail;
@@ -371,7 +371,7 @@ Bail:
                 r_store_remove_content(h, content);
                 return;
             }
-            if (n_matches == 0 && (fdholder->flags & CCN_FACE_GG) == 0) {
+            if (n_matches == 0 && (fdholder->flags & CCNR_FACE_GG) == 0) {
                 content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
                 ccn_indexbuf_append_element(h->unsol, content->accession);
             }
@@ -403,10 +403,10 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
     ssize_t dres;
     enum ccn_dtag dtag;
     
-    if ((fdholder->flags & CCN_FACE_UNDECIDED) != 0) {
-        fdholder->flags &= ~CCN_FACE_UNDECIDED;
-        if ((fdholder->flags & CCN_FACE_LOOPBACK) != 0)
-            fdholder->flags |= CCN_FACE_GG;
+    if ((fdholder->flags & CCNR_FACE_UNDECIDED) != 0) {
+        fdholder->flags &= ~CCNR_FACE_UNDECIDED;
+        if ((fdholder->flags & CCNR_FACE_LOOPBACK) != 0)
+            fdholder->flags |= CCNR_FACE_GG;
         /* YYY This is the first place that we know that an inbound stream fdholder is speaking CCNx protocol. */
         r_io_register_new_face(h, fdholder);
     }
@@ -428,8 +428,8 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
             if (size > 0)
                 size--;
             msg += d->index;
-            fdholder->flags |= CCN_FACE_LINK;
-            fdholder->flags &= ~CCN_FACE_GG;
+            fdholder->flags |= CCNR_FACE_LINK;
+            fdholder->flags &= ~CCNR_FACE_GG;
             memset(d, 0, sizeof(*d));
             while (d->index < size) {
                 dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
@@ -492,9 +492,9 @@ process_input_buffer(struct ccnr_handle *h, struct fdholder *fdholder)
 }
 
 /**
- * Process the input from a socket.
+ * Process the input from a socket or file.
  *
- * The socket has been found ready for input by the poll call.
+ * The fd has been found ready for input by the poll call.
  * Decide what fdholder it corresponds to, and after checking for exceptional
  * cases, receive data, parse it into ccnb-encoded messages, and call
  * process_input_message for each one.
@@ -518,7 +518,7 @@ process_input(struct ccnr_handle *h, int fd)
     fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL)
         return;
-    if ((fdholder->flags & (CCN_FACE_DGRAM | CCN_FACE_PASSIVE)) == CCN_FACE_PASSIVE) {
+    if ((fdholder->flags & (CCNR_FACE_DGRAM | CCNR_FACE_PASSIVE)) == CCNR_FACE_PASSIVE) {
         r_io_accept_connection(h, fd);
         return;
     }
@@ -526,7 +526,7 @@ process_input(struct ccnr_handle *h, int fd)
     res = getsockopt(fdholder->recv_fd, SOL_SOCKET, SO_ERROR, &err, &err_sz);
     if (res >= 0 && err != 0) {
         ccnr_msg(h, "error on fdholder %u: %s (%d)", fdholder->filedesc, strerror(err), err);
-        if (err == ETIMEDOUT && (fdholder->flags & CCN_FACE_CONNECTING) != 0) {
+        if (err == ETIMEDOUT && (fdholder->flags & CCNR_FACE_CONNECTING) != 0) {
             r_io_shutdown_client_fd(h, fd);
             return;
         }
@@ -543,14 +543,14 @@ process_input(struct ccnr_handle *h, int fd)
     if (res == -1)
         ccnr_msg(h, "recvfrom fdholder %u :%s (errno = %d)",
                     fdholder->filedesc, strerror(errno), errno);
-    else if (res == 0 && (fdholder->flags & CCN_FACE_DGRAM) == 0)
+    else if (res == 0 && (fdholder->flags & CCNR_FACE_DGRAM) == 0)
         r_io_shutdown_client_fd(h, fd);
     else {
         source = fdholder;
         ccnr_meter_bump(h, source->meter[FM_BYTI], res);
         source->recvcount++;
         source->surplus = 0; // XXX - we don't actually use this, except for some obscure messages.
-        if (res <= 1 && (source->flags & CCN_FACE_DGRAM) != 0) {
+        if (res <= 1 && (source->flags & CCNR_FACE_DGRAM) != 0) {
             // XXX - If the initial heartbeat gets missed, we don't realize the locality of the fdholder.
             if (h->debug & 128)
                 ccnr_msg(h, "%d-byte heartbeat on %d", (int)res, source->filedesc);
@@ -558,7 +558,7 @@ process_input(struct ccnr_handle *h, int fd)
         }
         fdholder->inbuf->length += res;
         msgstart = 0;
-        if (((fdholder->flags & CCN_FACE_UNDECIDED) != 0 &&
+        if (((fdholder->flags & CCNR_FACE_UNDECIDED) != 0 &&
              fdholder->inbuf->length >= 6 &&
              0 == memcmp(fdholder->inbuf->buf, "GET ", 4))) {
             ccnr_stats_handle_http_connection(h, fdholder);
@@ -569,7 +569,7 @@ process_input(struct ccnr_handle *h, int fd)
             process_input_message(h, source,
                                   fdholder->inbuf->buf + msgstart,
                                   d->index - msgstart,
-                                  (fdholder->flags & CCN_FACE_LOCAL) != 0);
+                                  (fdholder->flags & CCNR_FACE_LOCAL) != 0);
             msgstart = d->index;
             if (msgstart == fdholder->inbuf->length) {
                 fdholder->inbuf->length = 0;
@@ -579,7 +579,7 @@ process_input(struct ccnr_handle *h, int fd)
                     fdholder->inbuf->buf + d->index, // XXX - msgstart and d->index are the same here - use msgstart
                     res = fdholder->inbuf->length - d->index);  // XXX - why is res set here?
         }
-        if ((fdholder->flags & CCN_FACE_DGRAM) != 0) {
+        if ((fdholder->flags & CCNR_FACE_DGRAM) != 0) {
             ccnr_msg(h, "protocol error on fdholder %u, discarding %u bytes",
                 source->filedesc,
                 (unsigned)(fdholder->inbuf->length));  // XXX - Should be fdholder->inbuf->length - d->index (or msgstart)
@@ -634,7 +634,6 @@ r_dispatch_run(struct ccnr_handle *h)
             timeout_ms = 1;
         r_dispatch_process_internal_client_buffer(h);
         r_io_prepare_poll_fds(h);
-        if (0) ccnr_msg(h, "at ccnr.c:%d poll(h->fds, %d, %d)", __LINE__, h->nfds, timeout_ms);
         res = poll(h->fds, h->nfds, timeout_ms);
         prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
         if (-1 == res) {

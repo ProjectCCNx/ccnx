@@ -184,7 +184,7 @@ r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
         if (npe->fgen != h->forward_to_gen)
             r_fwd_update_forward_to(h, npe);
         if (from_face != NULL && (npe->flags & CCN_FORW_LOCAL) != 0 &&
-            (from_face->flags & CCN_FACE_GG) == 0)
+            (from_face->flags & CCNR_FACE_GG) == 0)
             return(-1);
         new_matches = r_match_consume_matching_interests(h, npe, content, pc, fdholder);
         if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))

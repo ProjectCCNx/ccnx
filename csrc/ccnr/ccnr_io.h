@@ -32,7 +32,7 @@ void r_io_send(struct ccnr_handle *h,struct fdholder *fdholder,const void *data,
 int r_io_destroy_face(struct ccnr_handle *h,unsigned filedesc);
 void r_io_shutdown_client_fd(struct ccnr_handle *h,int fd);
 int r_io_accept_connection(struct ccnr_handle *h,int listener_fd);
-struct fdholder *r_io_record_connection(struct ccnr_handle *h,int fd,struct sockaddr *who,socklen_t wholen,int setflags);
+struct fdholder *r_io_record_fd(struct ccnr_handle *h,int fd,void *who,socklen_t wholen,int setflags);
 void r_io_register_new_face(struct ccnr_handle *h,struct fdholder *fdholder);
 int r_io_enroll_face(struct ccnr_handle *h,struct fdholder *fdholder);
 struct fdholder *ccnr_r_io_fdholder_from_fd(struct ccnr_handle *h,unsigned filedesc);

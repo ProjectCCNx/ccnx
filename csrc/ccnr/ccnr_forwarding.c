@@ -428,9 +428,9 @@ ccnr_reg_prefix(struct ccnr_handle *h,
     fdholder = r_io_fdholder_from_fd(h, filedesc);
     if (fdholder == NULL)
         return(-1);
-    /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
+    /* This is a bit hacky, but it gives us a way to set CCNR_FACE_DC */
     if (flags >= 0 && (flags & CCN_FORW_LAST) != 0)
-        fdholder->flags |= CCN_FACE_DC;
+        fdholder->flags |= CCNR_FACE_DC;
     hashtb_start(h->nameprefix_tab, e);
     res = r_fwd_nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
@@ -618,14 +618,14 @@ get_outbound_faces(struct ccnr_handle *h,
     if (pi->scope == 0 || npe->forward_to == NULL || npe->forward_to->n == 0)
         return(x);
     if ((npe->flags & CCN_FORW_LOCAL) != 0)
-        checkmask = (from != NULL && (from->flags & CCN_FACE_GG) != 0) ? CCN_FACE_GG : (~0);
+        checkmask = (from != NULL && (from->flags & CCNR_FACE_GG) != 0) ? CCNR_FACE_GG : (~0);
     else if (pi->scope == 1)
-        checkmask = CCN_FACE_GG;
+        checkmask = CCNR_FACE_GG;
     else if (pi->scope == 2)
-        checkmask = from ? (CCN_FACE_GG & ~(from->flags)) : ~0;
+        checkmask = from ? (CCNR_FACE_GG & ~(from->flags)) : ~0;
     wantmask = checkmask;
-    if (wantmask == CCN_FACE_GG)
-        checkmask |= CCN_FACE_DC;
+    if (wantmask == CCNR_FACE_GG)
+        checkmask |= CCNR_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         filedesc = npe->forward_to->buf[i];
         fdholder = r_io_fdholder_from_fd(h, filedesc);
@@ -701,7 +701,7 @@ do_propagate(struct ccn_schedule *sched,
     else if (pe->outbound != NULL && pe->sent < pe->outbound->n) {
         unsigned filedesc = pe->outbound->buf[pe->sent];
         struct fdholder *fdholder = r_io_fdholder_from_fd(h, filedesc);
-        if (fdholder != NULL && (fdholder->flags & CCN_FACE_NOSEND) == 0) {
+        if (fdholder != NULL && (fdholder->flags & CCNR_FACE_NOSEND) == 0) {
             if (h->debug & 2)
                 ccnr_debug_ccnb(h, __LINE__, "interest_to", fdholder,
                                 pe->interest_msg, pe->size);
@@ -739,7 +739,7 @@ do_propagate(struct ccn_schedule *sched,
         unsigned filedesc = pe->outbound->buf[pe->sent];
         struct fdholder *fdholder = r_io_fdholder_from_fd(h, filedesc);
         /* Wait longer before sending interest to ccnrc */
-        if (fdholder != NULL && (fdholder->flags & CCN_FACE_DC) != 0)
+        if (fdholder != NULL && (fdholder->flags & CCNR_FACE_DC) != 0)
             next_delay += 60000;
     }
     next_delay = pe_next_usec(h, pe, next_delay, __LINE__);
@@ -775,7 +775,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
     struct fdholder *otherface;
     int extra_delay = 0;
 
-    if ((fdholder->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
+    if ((fdholder->flags & (CCNR_FACE_MCAST | CCNR_FACE_LINK)) != 0)
         max_redundant = 0;
     if (outbound != NULL) {
         for (p = head->next; p != head && outbound->n > 0; p = p->next) {
@@ -793,7 +793,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
                  * they did not originate on the same host
                  */
                 if (pi->scope == 2 &&
-                    ((otherface->flags ^ fdholder->flags) & CCN_FACE_GG) != 0)
+                    ((otherface->flags ^ fdholder->flags) & CCNR_FACE_GG) != 0)
                     continue;
                 if (h->debug & 32)
                     ccnr_debug_ccnb(h, __LINE__, "similar_interest",
@@ -833,7 +833,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
                     if (p->filedesc == outbound->buf[i]) {
                         outbound->buf[0] = p->filedesc;
                         outbound->n = 1;
-                        if ((otherface->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
+                        if ((otherface->flags & (CCNR_FACE_MCAST | CCNR_FACE_LINK)) != 0)
                             extra_delay += npe->usec + 10000;
                         break;
                     }
@@ -1051,14 +1051,14 @@ replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
     if (npe->forward_to == NULL || npe->forward_to->n == 0)
         return;
     if ((pe->flags & CCN_PR_SCOPE1) != 0)
-        checkmask = CCN_FACE_GG;
+        checkmask = CCNR_FACE_GG;
     if ((pe->flags & CCN_PR_SCOPE2) != 0)
-        checkmask = CCN_FACE_GG & ~(from->flags);
+        checkmask = CCNR_FACE_GG & ~(from->flags);
     if ((npe->flags & CCN_FORW_LOCAL) != 0)
-        checkmask = ((from->flags & CCN_FACE_GG) != 0) ? CCN_FACE_GG : (~0);
+        checkmask = ((from->flags & CCNR_FACE_GG) != 0) ? CCNR_FACE_GG : (~0);
     wantmask = checkmask;
-    if (wantmask == CCN_FACE_GG)
-        checkmask |= CCN_FACE_DC;
+    if (wantmask == CCNR_FACE_GG)
+        checkmask |= CCNR_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         filedesc = npe->forward_to->buf[i];
         fdholder = r_io_fdholder_from_fd(h, filedesc);

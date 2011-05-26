@@ -444,10 +444,10 @@ post_face_notice(struct ccnr_handle *ccnr, unsigned filedesc)
         ccn_charbuf_putf(msg, "destroyface(%u);\n", filedesc);
     else {
         ccn_charbuf_putf(msg, "newface(%u, 0x%x", filedesc, fdholder->flags);
-        if (fdholder->addr != NULL &&
-            (fdholder->flags & (CCN_FACE_INET | CCN_FACE_INET6)) != 0) {
+        if (fdholder->name->length != 0 &&
+            (fdholder->flags & (CCNR_FACE_INET | CCNR_FACE_INET6)) != 0) {
             ccn_charbuf_putf(msg, ", ");
-            port = ccn_charbuf_append_sockaddr(msg, fdholder->addr);
+            port = ccn_charbuf_append_sockaddr(msg, (struct sockaddr *)fdholder->name->buf);
             if (port < 0)
                 msg->length--;
             else if (port > 0)

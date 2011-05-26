@@ -173,18 +173,17 @@ enum ccnr_face_meter_index {
 struct fdholder {
     int recv_fd;                /**< socket for receiving */
     unsigned sendface;          /**< filedesc for sending (maybe == filedesc) */
-    int flags;                  /**< CCN_FACE_* fdholder flags */
+    int flags;                  /**< CCNR_FACE_* fdholder flags */
     int surplus;                /**< sends since last successful recv */
     unsigned filedesc;            /**< internal fdholder id */
     unsigned recvcount;         /**< for activity level monitoring */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
-    struct ccn_charbuf *inbuf;
+    struct ccn_charbuf *inbuf;	/** Buffered input data */
     struct ccn_skeleton_decoder decoder;
-    size_t outbufindex;
+    size_t outbufindex;			/** Buffered output data */
     struct ccn_charbuf *outbuf;
-    struct sockaddr *addr;
-    socklen_t addrlen;
-    int pending_interests;
+    struct ccn_charbuf *name;	/** a sockaddr or file name, depending on flags */
+	int pending_interests;
     unsigned rrun;
     uintmax_t rseq;
     struct ccnr_meter *meter[CCNR_FACE_METER_N];
@@ -192,26 +191,36 @@ struct fdholder {
 };
 
 /** fdholder flags */
-#define CCN_FACE_LINK   (1 << 0) /**< Elements wrapped by CCNProtocolDataUnit */
-#define CCN_FACE_DGRAM  (1 << 1) /**< Datagram interface, respect packets */
-#define CCN_FACE_GG     (1 << 2) /**< Considered friendly */
-#define CCN_FACE_LOCAL  (1 << 3) /**< PF_UNIX socket */
-#define CCN_FACE_INET   (1 << 4) /**< IPv4 */
-#define CCN_FACE_MCAST  (1 << 5) /**< a party line (e.g. multicast) */
-#define CCN_FACE_INET6  (1 << 6) /**< IPv6 */
-#define CCN_FACE_DC     (1 << 7) /**< Direct control fdholder */
-#define CCN_FACE_NOSEND (1 << 8) /**< Don't send anymore */
-#define CCN_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
-#define CCN_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */
-#define CCN_FACE_CONNECTING (1 << 11) /**< Connect in progress */
-#define CCN_FACE_LOOPBACK (1 << 12) /**< v4 or v6 loopback address */
-#define CCN_FACE_CLOSING (1 << 13) /**< close stream when output is done */
-#define CCN_FACE_PASSIVE (1 << 14) /**< a listener or a bound dgram socket */
-#define CCN_FACE_NORECV (1 << 15) /**< use for sending only */
-#define CCN_FACE_REGOK (1 << 16) /**< Allowed to do prefix registration */
-#define CCN_FACE_SEQOK (1 << 17) /** OK to send SequenceNumber link messages */
-#define CCN_FACE_SEQPROBE (1 << 18) /** SequenceNumber probe */
-#define CCN_NOFACEID    (~0U)    /** denotes no fdholder */
+
+
+// XXX - remove
+#define CCNR_FACE_LINK   (1 << 0) /**< Elements wrapped by CCNProtocolDataUnit */
+#define CCNR_FACE_DGRAM  (1 << 1) /**< Datagram interface, respect packets */
+#define CCNR_FACE_GG     (1 << 2) /**< Considered friendly */
+#define CCNR_FACE_LOCAL  (1 << 3) /**< PF_UNIX socket */
+#define CCNR_FACE_INET   (1 << 4) /**< IPv4 */
+// XXX - remove
+#define CCNR_FACE_MCAST  (1 << 5) /**< a party line (e.g. multicast) */
+#define CCNR_FACE_INET6  (1 << 6) /**< IPv6 */
+// XXX - remove
+#define CCNR_FACE_DC     (1 << 7) /**< Direct control fdholder */
+#define CCNR_FACE_NOSEND (1 << 8) /**< Don't send anymore */
+#define CCNR_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
+#define CCNR_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */
+#define CCNR_FACE_CONNECTING (1 << 11) /**< Connect in progress */
+#define CCNR_FACE_LOOPBACK (1 << 12) /**< v4 or v6 loopback address */
+#define CCNR_FACE_CLOSING (1 << 13) /**< close stream when output is done */
+#define CCNR_FACE_PASSIVE (1 << 14) /**< a listener or a bound dgram socket */
+#define CCNR_FACE_NORECV (1 << 15) /**< use for sending only */
+// XXX - remove
+#define CCNR_FACE_REGOK (1 << 16) /**< Allowed to do prefix registration */
+// XXX - remove
+#define CCNR_FACE_SEQOK (1 << 17) /** OK to send SequenceNumber link messages */
+// XXX - remove
+#define CCNR_FACE_SEQPROBE (1 << 18) /** SequenceNumber probe */
+#define CCNR_FACE_REPODATA (1 << 19) /** A repository log-structured data file */
+
+#define CCN_NOFACEID    (-1)    /** denotes no fdholder */
 
 /**
  *  The content hash table is keyed by the initial portion of the ContentObject

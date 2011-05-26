@@ -82,7 +82,7 @@ PUBLIC void
 r_link_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
 {
     int n, a, b, size;
-    if ((fdholder->flags & CCN_FACE_NOSEND) != 0) {
+    if ((fdholder->flags & CCNR_FACE_NOSEND) != 0) {
         // XXX - should count this.
         return;
     }
@@ -112,7 +112,7 @@ r_link_stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
                const unsigned char *data2, size_t size2) {
     struct ccn_charbuf *c = NULL;
     
-    if ((fdholder->flags & CCN_FACE_LINK) != 0) {
+    if ((fdholder->flags & CCNR_FACE_LINK) != 0) {
         c = r_util_charbuf_obtain(h);
         ccn_charbuf_reserve(c, size1 + size2 + 5 + 8);
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
@@ -124,7 +124,7 @@ r_link_stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
         ccn_charbuf_append_closer(c);
     }
     else if (size2 != 0 || 1 > size1 + size2 ||
-             (fdholder->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0) {
+             (fdholder->flags & (CCNR_FACE_SEQOK | CCNR_FACE_SEQPROBE)) != 0) {
         c = r_util_charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
         if (size2 != 0)
@@ -162,13 +162,13 @@ r_link_ccn_link_state_init(struct ccnr_handle *h, struct fdholder *fdholder)
     int checkflags;
     int matchflags;
     
-    matchflags = CCN_FACE_DGRAM;
-    checkflags = matchflags | CCN_FACE_MCAST | CCN_FACE_GG | CCN_FACE_SEQOK |                  CCN_FACE_PASSIVE;
+    matchflags = CCNR_FACE_DGRAM;
+    checkflags = matchflags | CCNR_FACE_MCAST | CCNR_FACE_GG | CCNR_FACE_SEQOK |                  CCNR_FACE_PASSIVE;
     if ((fdholder->flags & checkflags) != matchflags)
         return;
     /* Send one sequence number to see if the other side wants to play. */
     fdholder->pktseq = nrand48(h->seed);
-    fdholder->flags |= CCN_FACE_SEQPROBE;
+    fdholder->flags |= CCNR_FACE_SEQPROBE;
 }
 
 static void
@@ -176,7 +176,7 @@ ccn_append_link_stuff(struct ccnr_handle *h,
                       struct fdholder *fdholder,
                       struct ccn_charbuf *c)
 {
-    if ((fdholder->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) == 0)
+    if ((fdholder->flags & (CCNR_FACE_SEQOK | CCNR_FACE_SEQPROBE)) == 0)
         return;
     ccn_charbuf_append_tt(c, CCN_DTAG_SequenceNumber, CCN_DTAG);
     ccn_charbuf_append_tt(c, 2, CCN_BLOB);
@@ -186,7 +186,7 @@ ccn_append_link_stuff(struct ccnr_handle *h,
         ccnr_msg(h, "debug.%d pkt_to %u seq %u",
                  __LINE__, fdholder->filedesc, (unsigned)fdholder->pktseq);
     fdholder->pktseq++;
-    fdholder->flags &= ~CCN_FACE_SEQPROBE;
+    fdholder->flags &= ~CCNR_FACE_SEQPROBE;
 }
 
 PUBLIC int
@@ -209,10 +209,10 @@ r_link_process_incoming_link_message(struct ccnr_handle *h,
              * If the other side is unicast and sends sequence numbers,
              * then it is OK for us to send numbers as well.
              */
-            matchflags = CCN_FACE_DGRAM;
-            checkflags = matchflags | CCN_FACE_MCAST | CCN_FACE_SEQOK;
+            matchflags = CCNR_FACE_DGRAM;
+            checkflags = matchflags | CCNR_FACE_MCAST | CCNR_FACE_SEQOK;
             if ((fdholder->flags & checkflags) == matchflags)
-                fdholder->flags |= CCN_FACE_SEQOK;
+                fdholder->flags |= CCNR_FACE_SEQOK;
             if (fdholder->rrun == 0) {
                 fdholder->rseq = s;
                 fdholder->rrun = 1;
@@ -267,7 +267,7 @@ r_link_do_deferred_write(struct ccnr_handle *h, int fd)
             res = send(fd, fdholder->outbuf->buf + fdholder->outbufindex, sendlen, 0);
             if (res == -1) {
                 if (errno == EPIPE) {
-                    fdholder->flags |= CCN_FACE_NOSEND;
+                    fdholder->flags |= CCNR_FACE_NOSEND;
                     fdholder->outbufindex = 0;
                     ccn_charbuf_destroy(&fdholder->outbuf);
                     return;
@@ -279,7 +279,7 @@ r_link_do_deferred_write(struct ccnr_handle *h, int fd)
             if (res == sendlen) {
                 fdholder->outbufindex = 0;
                 ccn_charbuf_destroy(&fdholder->outbuf);
-                if ((fdholder->flags & CCN_FACE_CLOSING) != 0)
+                if ((fdholder->flags & CCNR_FACE_CLOSING) != 0)
                     r_io_shutdown_client_fd(h, fd);
                 return;
             }
@@ -289,10 +289,10 @@ r_link_do_deferred_write(struct ccnr_handle *h, int fd)
         fdholder->outbufindex = 0;
         ccn_charbuf_destroy(&fdholder->outbuf);
     }
-    if ((fdholder->flags & CCN_FACE_CLOSING) != 0)
+    if ((fdholder->flags & CCNR_FACE_CLOSING) != 0)
         r_io_shutdown_client_fd(h, fd);
-    else if ((fdholder->flags & CCN_FACE_CONNECTING) != 0) {
-        fdholder->flags &= ~CCN_FACE_CONNECTING;
+    else if ((fdholder->flags & CCNR_FACE_CONNECTING) != 0) {
+        fdholder->flags &= ~CCNR_FACE_CONNECTING;
         ccnr_face_status_change(h, fdholder->filedesc);
     }
     else

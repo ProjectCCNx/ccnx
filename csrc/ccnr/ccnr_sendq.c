@@ -67,11 +67,11 @@ choose_face_delay(struct ccnr_handle *h, struct fdholder *fdholder, enum cq_dela
     int shift = (c == CCN_CQ_SLOW) ? 2 : 0;
     if (c == CCN_CQ_ASAP)
         return(1);
-    if ((fdholder->flags & CCN_FACE_LOCAL) != 0)
+    if ((fdholder->flags & CCNR_FACE_LOCAL) != 0)
         return(5); /* local stream, answer quickly */
-    if ((fdholder->flags & CCN_FACE_GG) != 0)
+    if ((fdholder->flags & CCNR_FACE_GG) != 0)
         return(100 << shift); /* localhost, delay just a little */
-    if ((fdholder->flags & CCN_FACE_DGRAM) != 0)
+    if ((fdholder->flags & CCNR_FACE_DGRAM) != 0)
         return(500 << shift); /* udp, delay just a little */
     return(100); /* probably tcp to a different machine */
 }
@@ -120,11 +120,11 @@ choose_content_delay_class(struct ccnr_handle *h, unsigned filedesc, int content
     struct fdholder *fdholder = r_io_fdholder_from_fd(h, filedesc);
     if (fdholder == NULL)
         return(CCN_CQ_ASAP); /* Going nowhere, get it over with */
-    if ((fdholder->flags & (CCN_FACE_LINK | CCN_FACE_MCAST)) != 0) /* udplink or such, delay more */
+    if ((fdholder->flags & (CCNR_FACE_LINK | CCNR_FACE_MCAST)) != 0) /* udplink or such, delay more */
         return((content_flags & CCN_CONTENT_ENTRY_SLOWSEND) ? CCN_CQ_SLOW : CCN_CQ_NORMAL);
-    if ((fdholder->flags & CCN_FACE_DGRAM) != 0)
+    if ((fdholder->flags & CCNR_FACE_DGRAM) != 0)
         return(CCN_CQ_NORMAL); /* udp, delay just a little */
-    if ((fdholder->flags & (CCN_FACE_GG | CCN_FACE_LOCAL)) != 0)
+    if ((fdholder->flags & (CCNR_FACE_GG | CCNR_FACE_LOCAL)) != 0)
         return(CCN_CQ_ASAP); /* localhost, answer quickly */
     return(CCN_CQ_NORMAL); /* default */
 }
@@ -170,7 +170,7 @@ content_sender(struct ccn_schedule *sched,
         goto Bail;
     if (q->send_queue == NULL)
         goto Bail;
-    if ((fdholder->flags & CCN_FACE_NOSEND) != 0)
+    if ((fdholder->flags & CCNR_FACE_NOSEND) != 0)
         goto Bail;
     /* Send the content at the head of the queue */
     if (q->ready > q->send_queue->n ||
@@ -247,7 +247,7 @@ r_sendq_face_send_queue_insert(struct ccnr_handle *h,
     enum cq_delay_class c;
     enum cq_delay_class k;
     struct content_queue *q;
-    if (fdholder == NULL || content == NULL || (fdholder->flags & CCN_FACE_NOSEND) != 0)
+    if (fdholder == NULL || content == NULL || (fdholder->flags & CCNR_FACE_NOSEND) != 0)
         return(-1);
     c = choose_content_delay_class(h, fdholder->filedesc, content->flags);
     if (fdholder->q[c] == NULL)
