@@ -397,7 +397,6 @@ r_io_send(struct ccnr_handle *h,
     ssize_t res;
     if ((fdholder->flags & CCNR_FACE_NOSEND) != 0)
         return;
-    fdholder->surplus++;
     if (fdholder->outbuf != NULL) {
         ccn_charbuf_append(fdholder->outbuf, data, size);
         return;

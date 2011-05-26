@@ -174,7 +174,6 @@ struct fdholder {
     int recv_fd;                /**< socket for receiving */
     unsigned sendface;          /**< filedesc for sending (maybe == filedesc) */
     int flags;                  /**< CCNR_FACE_* fdholder flags */
-    int surplus;                /**< sends since last successful recv */
     unsigned filedesc;            /**< internal fdholder id */
     unsigned recvcount;         /**< for activity level monitoring */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
@@ -219,6 +218,8 @@ struct fdholder {
 // XXX - remove
 #define CCNR_FACE_SEQPROBE (1 << 18) /** SequenceNumber probe */
 #define CCNR_FACE_REPODATA (1 << 19) /** A repository log-structured data file */
+
+#define CCNR_FACE_SOCKMASK (CCNR_FACE_DGRAM | CCNR_FACE_INET | CCNR_FACE_INET6 | CCNR_FACE_LOCAL)
 
 #define CCN_NOFACEID    (-1)    /** denotes no fdholder */
 

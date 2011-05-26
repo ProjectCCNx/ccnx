@@ -529,7 +529,6 @@ process_input(struct ccnr_handle *h, int fd)
         memset(d, 0, sizeof(*d));
     buf = ccn_charbuf_reserve(fdholder->inbuf, 8800);
     memset(&sstor, 0, sizeof(sstor));
-#define CCNR_FACE_SOCKMASK (CCNR_FACE_DGRAM | CCNR_FACE_INET | CCNR_FACE_INET6 | CCNR_FACE_LOCAL)
 	if ((fdholder->flags & CCNR_FACE_SOCKMASK) != 0) {
 		res = recvfrom(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length,
             /* flags */ 0, addr, &addrlen);
@@ -546,7 +545,6 @@ process_input(struct ccnr_handle *h, int fd)
         source = fdholder;
         ccnr_meter_bump(h, source->meter[FM_BYTI], res);
         source->recvcount++;
-        source->surplus = 0; // XXX - we don't actually use this, except for some obscure messages.
         if (res <= 1 && (source->flags & CCNR_FACE_DGRAM) != 0) {
             // XXX - If the initial heartbeat gets missed, we don't realize the locality of the fdholder.
             if (h->debug & 128)

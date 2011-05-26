@@ -205,9 +205,6 @@ content_sender(struct ccn_schedule *sched,
     /* Do a poll before going on to allow others to preempt send. */
     delay = (nsec + 499) / 1000 + 1;
     if (q->ready > 0) {
-        if (h->debug & 8)
-            ccnr_msg(h, "fdholder %u ready %u delay %i nrun %u",
-                     filedesc, q->ready, delay, q->nrun, fdholder->surplus);
         return(delay);
     }
     q->ready = j;
@@ -215,9 +212,6 @@ content_sender(struct ccn_schedule *sched,
         /* We seem to be a preferred provider, forgo the randomized delay */
         if (j == 0)
             delay += burst_nsec / 50;
-        if (h->debug & 8)
-            ccnr_msg(h, "fdholder %u ready %u delay %i nrun %u surplus %u",
-                    (unsigned)ev->evint, q->ready, delay, q->nrun, fdholder->surplus);
         return(delay);
     }
     /* Determine when to run again */
