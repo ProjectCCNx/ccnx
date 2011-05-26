@@ -269,6 +269,37 @@ r_io_accept_connection(struct ccnr_handle *h, int listener_fd)
     return(fd);
 }
 
+PUBLIC int
+r_io_open_repo_data_file(struct ccnr_handle *h, const char *name)
+{
+    struct ccn_charbuf *temp = NULL;
+    const char *dir = NULL;
+    int fd;
+    struct fdholder *fdholder;
+
+    temp = ccn_charbuf_create();
+    dir = getenv("CCNR_DIRECTORY");
+    if (dir != NULL && dir[0] != 0)
+        ccn_charbuf_putf(temp, "%s/%s", dir, name);
+    else
+        ccn_charbuf_putf(temp, "./%s", name);
+    fd = open(ccn_charbuf_as_string(temp), O_RDONLY, 0666);
+    if (fd == -1) {
+        ccnr_msg(h, "open(%s): %s",ccn_charbuf_as_string(temp), strerror(errno));
+        ccn_charbuf_destroy(&temp);
+		return(-1);
+    }
+    fdholder = r_io_record_fd(h, fd,
+                            temp->buf, temp->length,
+                            CCNR_FACE_REPODATA);
+    if (fdholder == NULL)
+        close_fd(&fd);
+    else
+        ccnr_msg(h, "opened fd=%d file=%s", fd, ccn_charbuf_as_string(temp));
+	ccn_charbuf_destroy(&temp);
+    return(fd);
+}
+
 PUBLIC void
 r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
 {

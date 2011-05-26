@@ -522,15 +522,6 @@ process_input(struct ccnr_handle *h, int fd)
         r_io_accept_connection(h, fd);
         return;
     }
-    err_sz = sizeof(err);
-    res = getsockopt(fdholder->recv_fd, SOL_SOCKET, SO_ERROR, &err, &err_sz);
-    if (res >= 0 && err != 0) {
-        ccnr_msg(h, "error on fdholder %u: %s (%d)", fdholder->filedesc, strerror(err), err);
-        if (err == ETIMEDOUT && (fdholder->flags & CCNR_FACE_CONNECTING) != 0) {
-            r_io_shutdown_client_fd(h, fd);
-            return;
-        }
-    }
     d = &fdholder->decoder;
     if (fdholder->inbuf == NULL)
         fdholder->inbuf = ccn_charbuf_create();
@@ -538,10 +529,16 @@ process_input(struct ccnr_handle *h, int fd)
         memset(d, 0, sizeof(*d));
     buf = ccn_charbuf_reserve(fdholder->inbuf, 8800);
     memset(&sstor, 0, sizeof(sstor));
-    res = recvfrom(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length,
+#define CCNR_FACE_SOCKMASK (CCNR_FACE_DGRAM | CCNR_FACE_INET | CCNR_FACE_INET6 | CCNR_FACE_LOCAL)
+	if ((fdholder->flags & CCNR_FACE_SOCKMASK) != 0) {
+		res = recvfrom(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length,
             /* flags */ 0, addr, &addrlen);
+	}
+	else {
+		res = read(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length);
+	}
     if (res == -1)
-        ccnr_msg(h, "recvfrom fdholder %u :%s (errno = %d)",
+        ccnr_msg(h, "read %u :%s (errno = %d)",
                     fdholder->filedesc, strerror(errno), errno);
     else if (res == 0 && (fdholder->flags & CCNR_FACE_DGRAM) == 0)
         r_io_shutdown_client_fd(h, fd);
