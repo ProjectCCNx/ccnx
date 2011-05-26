@@ -20,6 +20,9 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#ifndef CCNR_IO_DEFINED
+#define CCNR_IO_DEFINED
+
 #include "ccnr_private.h"
 
 void r_io_shutdown_all(struct ccnr_handle *h);
@@ -34,3 +37,5 @@ void r_io_register_new_face(struct ccnr_handle *h,struct fdholder *fdholder);
 int r_io_enroll_face(struct ccnr_handle *h,struct fdholder *fdholder);
 struct fdholder *ccnr_r_io_fdholder_from_fd(struct ccnr_handle *h,unsigned filedesc);
 struct fdholder *r_io_fdholder_from_fd(struct ccnr_handle *h,unsigned filedesc);
+
+#endif

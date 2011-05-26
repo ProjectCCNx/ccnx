@@ -20,6 +20,9 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#ifndef CCNR_STORE_DEFINED
+#define CCNR_STORE_DEFINED
+
 #include <ccn/ccn.h>
 
 #include "ccnr_private.h"
@@ -35,3 +38,5 @@ void r_store_finalize_content(struct hashtb_enumerator *content_enumerator);
 void r_store_content_skiplist_insert(struct ccnr_handle *h,struct content_entry *content);
 void r_store_enroll_content(struct ccnr_handle *h,struct content_entry *content);
 struct content_entry *r_store_content_from_accession(struct ccnr_handle *h,ccn_accession_t accession);
+
+#endif

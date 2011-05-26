@@ -20,7 +20,12 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#ifndef CCNR_INIT_DEFINED
+#define CCNR_INIT_DEFINED
+
 #include "ccnr_private.h"
 
 struct ccnr_handle *r_init_create(const char *progname,ccnr_logger logger,void *loggerdata);
 void r_init_destroy(struct ccnr_handle **pccnr);
+
+#endif

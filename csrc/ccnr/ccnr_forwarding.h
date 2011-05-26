@@ -20,6 +20,9 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#ifndef CCNR_FORWARDING_DEFINED
+#define CCNR_FORWARDING_DEFINED
+
 #include <ccn/ccn.h>
 #include <ccn/hashtb.h>
 
@@ -39,3 +42,5 @@ void r_fwd_reap_needed(struct ccnr_handle *h,int init_delay_usec);
 void r_fwd_adjust_npe_predicted_response(struct ccnr_handle *h,struct nameprefix_entry *npe,int up);
 void r_fwd_finalize_propagating(struct hashtb_enumerator *e);
 void r_fwd_finalize_nameprefix(struct hashtb_enumerator *e);
+
+#endif

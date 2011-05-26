@@ -19,6 +19,8 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+#ifndef CCNR_NET_DEFINED
+#define CCNR_NET_DEFINED
  
 #include "ccnr_private.h"
 
@@ -27,3 +29,5 @@ char *r_net_get_local_sockname(void);
 int r_net_listen_on(struct ccnr_handle *h,const char *addrs);
 int r_net_listen_on_address(struct ccnr_handle *h,const char *addr);
 int r_net_listen_on_wildcards(struct ccnr_handle *h);
+
+#endif

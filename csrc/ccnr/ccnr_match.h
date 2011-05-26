@@ -20,6 +20,9 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#ifndef CCNR_MATCH_DEFINED
+#define CCNR_MATCH_DEFINED
+
 #include <ccn/ccn.h>
 
 #include "ccnr_private.h"
@@ -28,3 +31,5 @@ void r_match_consume_interest(struct ccnr_handle *h,struct propagating_entry *pe
 
 int r_match_match_interests(struct ccnr_handle *h,struct content_entry *content,struct ccn_parsed_ContentObject *pc,struct fdholder *fdholder,struct fdholder *from_face);
 int r_match_consume_matching_interests(struct ccnr_handle *h,struct nameprefix_entry *npe,struct content_entry *content,struct ccn_parsed_ContentObject *pc,struct fdholder *fdholder);
+
+#endif

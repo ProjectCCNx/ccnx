@@ -20,6 +20,9 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#ifndef CCNR_STATS_DEFINED
+#define CCNR_STATS_DEFINED
+
 #include "ccnr_private.h"
 
 void ccnr_meter_bump(struct ccnr_handle *h,struct ccnr_meter *m,unsigned amt);
@@ -29,3 +32,5 @@ struct ccnr_meter *ccnr_meter_create(struct ccnr_handle *h,const char *what);
 uintmax_t ccnr_meter_total(struct ccnr_meter *m);
 unsigned ccnr_meter_rate(struct ccnr_handle *h,struct ccnr_meter *m);
 int ccnr_stats_handle_http_connection(struct ccnr_handle *h,struct fdholder *fdholder);
+
+#endif

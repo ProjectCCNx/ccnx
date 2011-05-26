@@ -20,6 +20,9 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#ifndef CCNR_UTIL_DEFINED
+#define CCNR_UTIL_DEFINED
+
 #include "ccnr_private.h"
 
 void r_util_gettime(const struct ccn_gettime *self,struct ccn_timeval *result);
@@ -28,3 +31,5 @@ void r_util_indexbuf_release(struct ccnr_handle *h,struct ccn_indexbuf *c);
 struct ccn_indexbuf *r_util_indexbuf_obtain(struct ccnr_handle *h);
 void r_util_charbuf_release(struct ccnr_handle *h,struct ccn_charbuf *c);
 struct ccn_charbuf *r_util_charbuf_obtain(struct ccnr_handle *h);
+
+#endif

@@ -20,9 +20,14 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#ifndef CCNR_INTERNAL_DEFINED
+#define CCNR_INTERNAL_DEFINED
+
 #include "ccnr_private.h"
 
 void ccnr_internal_client_stop(struct ccnr_handle *ccnr);
 int ccnr_internal_client_start(struct ccnr_handle *ccnr);
 void ccnr_face_status_change(struct ccnr_handle *ccnr,unsigned filedesc);
 int ccnr_init_internal_keystore(struct ccnr_handle *ccnr);
+
+#endif

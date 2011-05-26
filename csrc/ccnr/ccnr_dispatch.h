@@ -20,6 +20,12 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#ifndef CCNR_DISPATCH_DEFINED
+#define CCNR_DISPATCH_DEFINED
+
 #include "ccnr_private.h"
 void r_dispatch_run(struct ccnr_handle *h);
 void r_dispatch_process_internal_client_buffer(struct ccnr_handle *h);
+
+#endif
+

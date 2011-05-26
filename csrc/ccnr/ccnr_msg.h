@@ -20,8 +20,13 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#ifndef CCNR_MSG_DEFINED
+#define CCNR_MSG_DEFINED
+
 #include "ccnr_private.h"
 
 extern const char *ccnr_usage_message;
 void ccnr_debug_ccnb(struct ccnr_handle *h,int lineno,const char *msg,struct fdholder *fdholder,const unsigned char *ccnb,size_t ccnb_size);
 void ccnr_msg(struct ccnr_handle *h,const char *fmt,...);
+
+#endif
