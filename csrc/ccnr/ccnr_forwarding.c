@@ -932,7 +932,8 @@ r_fwd_propagate_interest(struct ccnr_handle *h,
     }
     if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
         /* This interest has no nonce; add one before going on */
-        size_t nonce_start = 0;
+        // XXX - This can be stripped out eventually, when the table is not keyed by nonces.
+		size_t nonce_start = 0;
         cb = r_util_charbuf_obtain(h);
         ccn_charbuf_append(cb, msg, pi->offset[CCN_PI_B_Nonce]);
         nonce_start = cb->length;

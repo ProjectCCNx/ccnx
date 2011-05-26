@@ -94,12 +94,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
         return;
     }
     ccnr_meter_bump(h, fdholder->meter[FM_INTI], 1);
-    if (pi->scope >= 0 && pi->scope < 2 &&
-             (fdholder->flags & CCNR_FACE_GG) == 0) {
-        ccnr_debug_ccnb(h, __LINE__, "interest_outofscope", fdholder, msg, size);
-        h->interests_dropped += 1;
-    }
-    else if (r_fwd_is_duplicate_flooded(h, msg, pi, fdholder->filedesc)) {
+    if (r_fwd_is_duplicate_flooded(h, msg, pi, fdholder->filedesc)) {
         if (h->debug & 16)
              ccnr_debug_ccnb(h, __LINE__, "interest_dup", fdholder, msg, size);
         h->interests_dropped += 1;
@@ -128,14 +123,6 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                      (int)(ccn_interest_lifetime(msg, pi) & 0xFFF) * 10000 / 4096,
                      pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
                      pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
-        if (pi->magic < 20090701) {
-            if (++(h->oldformatinterests) == h->oldformatinterestgrumble) {
-                h->oldformatinterestgrumble *= 2;
-                ccnr_msg(h, "downrev interests received: %d (%d)",
-                         h->oldformatinterests,
-                         pi->magic);
-            }
-        }
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
         h->interests_accepted += 1;
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
@@ -151,7 +138,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
             h->interests_dropped += 1;
             goto Bail;
         }
-        if ((pi->answerfrom & CCN_AOK_CS) != 0) {
+        if (1 || (pi->answerfrom & CCN_AOK_CS) != 0) {
             last_match = NULL;
             content = r_store_find_first_match_candidate(h, msg, pi);
             if (content != NULL && (h->debug & 8))
