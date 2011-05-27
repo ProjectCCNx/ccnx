@@ -290,4 +290,10 @@ public class CCNFlowControlTest extends CCNFlowControlTestBase {
 			}
 		}	
 	}
+	
+	protected void normalReset(ContentName n) throws IOException {
+		_handle.reset();
+		interestList.clear();
+		fc = new CCNFlowControl(n, _handle);
+	}
 }

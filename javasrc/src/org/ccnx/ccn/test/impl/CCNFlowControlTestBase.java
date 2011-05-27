@@ -104,12 +104,6 @@ public class CCNFlowControlTestBase extends CCNTestBase {
 		}
 	}
 	
-	protected void normalReset(ContentName n) throws IOException {
-		_handle.reset();
-		interestList.clear();
-		fc = new CCNFlowControl(n, _handle);
-	}
-	
 	protected ContentObject testNext(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
 		co = _reader.get(Interest.next(co.name(), 3, null), 0);
 		return testExpected(co, expected);

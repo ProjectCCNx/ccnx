@@ -24,6 +24,7 @@ import java.util.Queue;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.impl.CCNFlowServer;
+import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.junit.Before;
@@ -239,5 +240,12 @@ public class CCNFlowServerTest extends CCNFlowControlTestBase {
 			}
 		}
 		
+	}
+	
+	private void normalReset(ContentName n) throws IOException {
+		_handle.reset();
+		interestList.clear();
+		fc = new CCNFlowServer(n, _capacity, _persistent, _handle);
+		fc.setTimeout(100);
 	}
 }
