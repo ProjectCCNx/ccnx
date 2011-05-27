@@ -75,7 +75,7 @@ static int CCNSeek(access_t *, int64_t);
 #endif
 static int CCNControl(access_t *, int, va_list);
 
-static void *ccn_event_thread(vlc_object_t *p_this);
+static void *ccn_event_thread(void *p_this);
 
 vlc_module_begin();
 set_shortname(N_("CCNx"));
@@ -100,14 +100,14 @@ vlc_module_end();
  *****************************************************************************/
 struct access_sys_t
 {
-    vlc_url_t  url;
-    block_fifo_t *p_fifo;
-    unsigned char *buf;
+    int64_t i_pos;
+    vlc_thread_t thread;
     int i_bufsize;
     int i_bufoffset;
     int timeouts;
     int i_fifo_max;
-    int64_t i_pos;
+    block_fifo_t *p_fifo;
+    unsigned char *buf;
     struct ccn *ccn;
     struct ccn_closure *incoming;
     struct ccn_charbuf *p_name;
@@ -144,9 +144,6 @@ static int CCNOpen(vlc_object_t *p_this)
         msg_Err(p_access, "CCN.Open failed: no memory for p_sys");
         return VLC_ENOMEM;
     }
-#if (VLCPLUGINVER == 99)
-    p_access->info.b_prebuffered = true;
-#endif
     p_access->info.i_size = LLONG_MAX;	/* we don't know, but bigger is better */
     /* Update default_pts */
     var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
@@ -229,16 +226,16 @@ static int CCNOpen(vlc_object_t *p_this)
         msg_Err(p_access, "CCN.Open failed: no memory for block FIFO");
         goto exit_error;
     }
-#if (VLCPLUGINVER <= 99)
-    i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
-                              VLC_THREAD_PRIORITY_INPUT, false);
-#else
-    i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
-                              VLC_THREAD_PRIORITY_INPUT);
-#endif
-    if (i_ret == 0)
-        return VLC_SUCCESS;
-    msg_Err(p_access, "CCN.Open failed: unable to start CCN run thread");
+    //PRE 1.0: i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
+    //                          VLC_THREAD_PRIORITY_INPUT);
+    i_err = vlc_clone(&(p_sys->thread), ccn_event_thread, p_access, VLC_THREAD_PRIORITY_INPUT);
+    if (i_err != 0) {
+        msg_Err(p_access, "CCN.Open failed: unable to vlc_clone for CCN run thread");
+        goto exit_error;
+    }
+
+    return VLC_SUCCESS;
+    
 
  exit_error:
     if (p_name) {
@@ -275,16 +272,32 @@ static void CCNClose(vlc_object_t *p_this)
     access_sys_t *p_sys = p_access->p_sys;
 
     msg_Dbg(p_access, "CCN.Close called");
-    vlc_object_kill(p_access); 
     if (p_sys->p_fifo)
         block_FifoWake(p_sys->p_fifo);
-    vlc_thread_join(p_access);
+    vlc_cancel(p_sys->thread);
+    vlc_join(p_sys->thread, NULL);
+    
     if (p_sys->p_fifo) {
         block_FifoRelease(p_sys->p_fifo);
         p_sys->p_fifo = NULL;
     }
+    if (p_sys->p_template) {
+        ccn_charbuf_destroy(&p_sys->p_template);
+    }
+    if (p_sys->incoming) {
+        free(p_sys->incoming);
+        p_sys->incoming = NULL;
+    }
+    if (p_sys->p_name) {
+        ccn_charbuf_destroy(&p_sys->p_name);
+        p_sys->p_name = NULL;
+    }
     ccn_destroy(&(p_sys->ccn));
-    if (p_sys->buf != NULL) free(p_sys->buf);
+    if (p_sys->buf) {
+        free(p_sys->buf);
+        p_sys->buf = NULL;
+    }
+    
     free(p_sys);
 }
 
@@ -296,12 +309,12 @@ static block_t *CCNBlock(access_t *p_access)
     access_sys_t *p_sys = p_access->p_sys;
     block_t *p_block = NULL;
 
-    if( p_access->info.b_eof ) {
+    if (p_access->info.b_eof) {
         msg_Dbg(p_access, "CCN.Block eof");
         return NULL;
     }
 
-    if (!vlc_object_alive(p_access))
+    if (p_sys->p_fifo == NULL)
         return NULL;
 
     p_block = block_FifoGet(p_sys->p_fifo);
@@ -422,13 +435,6 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
             *pb_bool = true;
             break;
 
-#if (VLCPLUGINVER <= 99)
-        case ACCESS_GET_MTU:
-            pi_int = (int*)va_arg(args, int *);
-            *pi_int = 0;
-            break;
-#endif
-
         case ACCESS_GET_PTS_DELAY:
             pi_64 = (int64_t*)va_arg(args, int64_t *);
             *pi_64 = (int64_t)var_GetInteger(p_access, "ccn-caching") * INT64_C(1000);
@@ -439,7 +445,7 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
             break;
 
         case ACCESS_GET_TITLE_INFO:
-	case ACCESS_GET_META:
+        case ACCESS_GET_META:
         case ACCESS_SET_TITLE:
         case ACCESS_SET_SEEKPOINT:
         case ACCESS_SET_PRIVATE_ID_STATE:
@@ -456,17 +462,13 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
     return VLC_SUCCESS;
 }
 
-static void *ccn_event_thread(vlc_object_t *p_this)
+static void *ccn_event_thread(void *p_this)
 {
     access_t *p_access = (access_t *)p_this;
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn *ccn = p_sys->ccn;
     int res = 0;
-#if (VLCPLUGINVER > 99)
-    int cancel = vlc_savecancel();
-#endif
-
-    while (res >= 0 && vlc_object_alive(p_access)) {
+    while (res >= 0) {
         res = ccn_run(ccn, 1000);
         if (res < 0 && ccn_get_connection_fd(ccn) == -1) {
             /* Try reconnecting, after a bit of delay */
@@ -475,13 +477,28 @@ static void *ccn_event_thread(vlc_object_t *p_this)
         }
     }
     if (res < 0) {
-        vlc_object_kill(p_access);
         block_FifoWake(p_sys->p_fifo);
     }
-#if (VLCPLUGINVER > 99)
-    vlc_restorecancel(cancel);
-#endif
 }
+#if (VLCPLUGINVER < 110)
+/* block_FifoPace was defined early on, but not exported until 1.1.0, so we
+ * duplicate the code here if it is needed.
+ */
+static void
+s_block_FifoPace (block_fifo_t *fifo, size_t max_depth, size_t max_size)
+{
+    vlc_testcancel ();
+    
+    vlc_mutex_lock (&fifo->lock);
+    while ((fifo->i_depth > max_depth) || (fifo->i_size > max_size))
+    {
+        mutex_cleanup_push (&fifo->lock);
+        vlc_cond_wait (&fifo->wait_room, &fifo->lock);
+        vlc_cleanup_pop ();
+    }
+    vlc_mutex_unlock (&fifo->lock);
+}
+#endif
 
 enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
@@ -502,7 +519,6 @@ incoming_content(struct ccn_closure *selfp,
     size_t written;
     const unsigned char *ib = NULL; /* info->interest_ccnb */
     struct ccn_indexbuf *ic = NULL;
-    int first = 0;
     int res;
 
     switch (kind) {
@@ -616,20 +632,9 @@ incoming_content(struct ccn_closure *selfp,
     }
 
 #if (VLCPLUGINVER < 110)
-    /* 0.9.9 did not include the block_FifoPace function */
-    while (block_FifoCount(p_sys->p_fifo) > p_sys->i_fifo_max) {
-        if (first == 0) {
-            msg_Dbg(p_access, "fifo full");
-        }
-        first++;
-        msleep(100000);
-        if (!vlc_object_alive(p_access)) return(CCN_UPCALL_RESULT_OK);
-    }
-    if (first > 0) msg_Dbg(p_access, "fifo spun %d", first);
+    /* block_FifoPace was not exported until 1.1.0, use a copy of it... */
+    s_block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
 #else
-    /* it was introduced, but not exported, and we're wating
-     * for it to appear sometime post 1.0.3 -- version 1.1.0 is it.
-     */
     block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
 #endif
 
@@ -640,7 +645,6 @@ incoming_content(struct ccn_closure *selfp,
     ccn_charbuf_destroy(&name);
 
     if (res < 0) abort();
-    
     return(CCN_UPCALL_RESULT_OK);
 }
 
