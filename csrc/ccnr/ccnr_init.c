@@ -62,6 +62,7 @@
 #include "ccnr_io.h"
 #include "ccnr_msg.h"
 #include "ccnr_net.h"
+#include "ccnr_proto.h"
 #include "ccnr_store.h"
 #include "ccnr_util.h"
 
@@ -166,6 +167,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     r_net_listen_on(h, listen_on);
     r_fwd_age_forwarding_needed(h);
     ccnr_internal_client_start(h);
+    r_proto_init(h);
     free(sockname);
     sockname = NULL;
     return(h);
