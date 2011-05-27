@@ -18,7 +18,6 @@
 package org.ccnx.ccn.test.impl;
 
 import java.io.IOException;
-import java.security.InvalidParameterException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Queue;
@@ -37,18 +36,14 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.CCNLibraryTestHarness;
-import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.ThreadAssertionRunner;
 import org.junit.Before;
 import org.junit.Test;
 
-
 /**
  * Test flow controller functionality.
  */
-public class CCNFlowControlTest extends CCNTestBase {
-	static private CCNLibraryTestHarness _handle ;
-	static private CCNReader _reader;
+public class CCNFlowControlTest extends CCNFlowControlTestBase {
 	static ContentName name1;
 	static ContentName v1;
 	static ContentName v2;	
@@ -94,7 +89,6 @@ public class CCNFlowControlTest extends CCNTestBase {
 	ContentObject objv1s5 = ContentObject.buildContentObject(v1s5, "v1s5".getBytes());
 	Queue<ContentObject> queue = _handle.getOutputQueue();
 	ArrayList<Interest> interestList = new ArrayList<Interest>();
-	CCNFlowControl fc = null;
 
 	@Test
 	public void testBasicControlFlow() throws Throwable {	
@@ -295,27 +289,5 @@ public class CCNFlowControlTest extends CCNTestBase {
 				}
 			}
 		}	
-	}
-	
-	private void normalReset(ContentName n) throws IOException {
-		_handle.reset();
-		interestList.clear();
-		fc = new CCNFlowControl(n, _handle);
-	}
-	
-	private ContentObject testNext(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
-		co = _reader.get(Interest.next(co.name(), 3, null), 0);
-		return testExpected(co, expected);
-	}
-	
-	private void testLast(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
-		co = _reader.get(Interest.last(co.name(), 3, null), 0);
-		testExpected(co, expected);
-	}
-	
-	private ContentObject testExpected(ContentObject co, ContentObject expected) {
-		Assert.assertTrue(co != null);
-		Assert.assertEquals(co, expected);
-		return co;
 	}
 }
