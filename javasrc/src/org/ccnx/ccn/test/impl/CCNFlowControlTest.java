@@ -245,7 +245,7 @@ public class CCNFlowControlTest extends CCNFlowControlTestBase {
 	}
 	
 	@Test
-	public void testHighwaterWait() throws Throwable {
+	public void testHighwaterWait() throws Exception {
 		
 		// Test that put over highwater fails with nothing draining
 		// the buffer

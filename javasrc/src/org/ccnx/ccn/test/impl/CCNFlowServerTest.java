@@ -28,18 +28,11 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class CCNFlowServerTest extends CCNFlowControlTestBase {
 
 	Queue<ContentObject> queue = _handle.getOutputQueue();
-	CCNFlowServer fc = null;
-
-	@BeforeClass
-	public static void setUpBeforeClass() throws Exception {
-		CCNFlowControlTestBase.setUpBeforeClass();
-	}
 	
 	@Before
 	public void setUp() throws Exception {
@@ -194,58 +187,10 @@ public class CCNFlowServerTest extends CCNFlowControlTestBase {
 		}
 	}
 	
-	@Test
-	public void testHighwaterWait() throws Exception {
-		
-		// Test that put over highwater fails with nothing draining
-		// the buffer
-		normalReset(name1);
-		fc.setCapacity(4);
-		fc.put(segments[0]);
-		fc.put(segments[1]);
-		fc.put(segments[2]);
-		fc.put(segments[3]);
-		try {
-			fc.put(segments[4]);
-			Assert.fail("Put over highwater mark succeeded");
-		} catch (IOException ioe) {}
-		
-		// Test that put over highwater doesn't succeed when persistent buffer is
-		// drained
-		normalReset(name1);
-		fc.setCapacity(4);
-		fc.put(segments[0]);
-		fc.put(segments[1]);
-		fc.put(segments[2]);
-
-		HighWaterHelper hwh = new HighWaterHelper();
-		hwh.start();
-		try {
-			fc.put(segments[3]);
-			fc.put(segments[4]);
-			Assert.fail("Attempt to put over capacity in non-draining FC succeeded.");
-		} catch (IOException ioe) {}
-	}
-	
-	public class HighWaterHelper extends Thread {
-
-		public void run() {
-			synchronized (this) {
-				try {
-					Thread.sleep(500);
-					_handle.get(segments[0].name(), 0);
-				} catch (Exception e) {
-					Assert.fail("Caught exception: " + e.getMessage());
-				}
-			}
-		}
-		
-	}
-	
-	private void normalReset(ContentName n) throws IOException {
+	protected void normalReset(ContentName n) throws IOException {
 		_handle.reset();
 		interestList.clear();
-		fc = new CCNFlowServer(n, _capacity, _persistent, _handle);
+		fc = new CCNFlowServer(n, _capacity, true, _handle);
 		fc.setTimeout(100);
 	}
 }

@@ -40,11 +40,15 @@ import org.ccnx.ccn.protocol.Signature;
 import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.test.CCNLibraryTestHarness;
 import org.ccnx.ccn.test.CCNTestBase;
+import org.ccnx.ccn.test.ThreadAssertionRunner;
+import org.ccnx.ccn.test.impl.CCNFlowControlTest.HighWaterHelper;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 /**
  * Shared between the flow control tests
  */
-public class CCNFlowControlTestBase extends CCNTestBase {
+public abstract class CCNFlowControlTestBase extends CCNTestBase {
 	static protected CCNLibraryTestHarness _handle ;
 	static protected CCNReader _reader;
 	static protected int _capacity;
@@ -62,7 +66,9 @@ public class CCNFlowControlTestBase extends CCNTestBase {
 	protected ArrayList<Interest> interestList = new ArrayList<Interest>();
 	protected CCNFlowControl fc = null;
 	
+	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		CCNTestBase.setUpBeforeClass();
 		try {
 			Random rnd = new Random();
 			byte [] fakeSigBytes = new byte[128];
@@ -104,6 +110,55 @@ public class CCNFlowControlTestBase extends CCNTestBase {
 		}
 	}
 	
+	@Test
+	public void testHighwaterWait() throws Exception {
+		
+		// Test that put over highwater fails with nothing draining
+		// the buffer
+		normalReset(name1);
+		fc.setCapacity(4);
+		fc.put(segments[0]);
+		fc.put(segments[1]);
+		fc.put(segments[2]);
+		fc.put(segments[3]);
+		try {
+			fc.put(segments[4]);
+			Assert.fail("Put over highwater mark succeeded");
+		} catch (IOException ioe) {}
+		
+		// Test that put over highwater doesn't succeed when persistent buffer is
+		// drained
+		normalReset(name1);
+		fc.setCapacity(4);
+		fc.put(segments[0]);
+		fc.put(segments[1]);
+		fc.put(segments[2]);
+
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new HighWaterHelper());
+		tar.start();
+		try {
+			fc.put(segments[3]);
+			fc.put(segments[4]);
+			Assert.fail("Attempt to put over capacity in non-draining FC succeeded.");
+		} catch (IOException ioe) {}
+		tar.join();
+	}
+	
+	public class HighWaterHelper extends Thread {
+
+		public void run() {
+			synchronized (this) {
+				try {
+					Thread.sleep(500);
+					_handle.get(segments[0].name(), 0);
+				} catch (Exception e) {
+					Assert.fail("Caught exception: " + e.getMessage());
+				}
+			}
+		}
+		
+	}
+	
 	protected ContentObject testNext(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {
 		co = _reader.get(Interest.next(co.name(), 3, null), 0);
 		return testExpected(co, expected);
@@ -119,5 +174,6 @@ public class CCNFlowControlTestBase extends CCNTestBase {
 		Assert.assertEquals(co, expected);
 		return co;
 	}
-
+	
+	protected abstract void normalReset(ContentName n) throws IOException;
 }
