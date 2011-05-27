@@ -449,6 +449,76 @@ r_store_next_child_at_level(struct ccnr_handle *h,
     return(next);
 }
 
+PUBLIC struct content_entry *
+r_store_lookup(struct ccnr_handle *h,
+               const unsigned char *msg,
+               const struct ccn_parsed_interest *pi,
+               struct ccn_indexbuf *comps)
+{
+    struct content_entry *content = NULL;
+    struct content_entry *last_match = NULL;
+    int s_ok;
+    int try;
+    size_t size = pi->offset[CCN_PI_E];
+    
+    s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
+    content = r_store_find_first_match_candidate(h, msg, pi);
+    if (content != NULL && (h->debug & 8))
+        ccnr_debug_ccnb(h, __LINE__, "first_candidate", NULL,
+                        content->key,
+                        content->size);
+    if (content != NULL &&
+        !r_store_content_matches_interest_prefix(h, content, msg, comps,
+                                                 pi->prefix_comps)) {
+            if (h->debug & 8)
+                ccnr_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
+                                msg, size);
+            content = NULL;
+        }
+    for (try = 0; content != NULL; try++) {
+        if ((s_ok || (content->flags & CCN_CONTENT_ENTRY_STALE) == 0) &&
+            ccn_content_matches_interest(content->key,
+                                         content->size,
+                                         0, NULL, msg, size, pi)) {
+                if ((pi->orderpref & 1) == 0 && // XXX - should be symbolic
+                    pi->prefix_comps != comps->n - 1 &&
+                    comps->n == content->ncomps &&
+                    r_store_content_matches_interest_prefix(h, content, msg,
+                                                            comps, comps->n - 1)) {
+                        if (h->debug & 8)
+                            ccnr_debug_ccnb(h, __LINE__, "skip_match", NULL,
+                                            content->key,
+                                            content->size);
+                        goto move_along;
+                    }
+                if (h->debug & 8)
+                    ccnr_debug_ccnb(h, __LINE__, "matches", NULL,
+                                    content->key,
+                                    content->size);
+                if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
+                    break;
+                last_match = content;
+                content = r_store_next_child_at_level(h, content, comps->n - 1);
+                goto check_next_prefix;
+            }
+    move_along:
+        content = r_store_content_from_accession(h, r_store_content_skiplist_next(h, content));
+    check_next_prefix:
+        if (content != NULL &&
+            !r_store_content_matches_interest_prefix(h, content, msg,
+                                                     comps, pi->prefix_comps)) {
+                if (h->debug & 8)
+                    ccnr_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
+                                    content->key,
+                                    content->size);
+                content = NULL;
+            }
+    }
+    if (last_match != NULL)
+        content = last_match;
+    return(content);
+}
+
 /**
  * Mark content as stale
  */

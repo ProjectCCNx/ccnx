@@ -38,5 +38,6 @@ void r_store_finalize_content(struct hashtb_enumerator *content_enumerator);
 void r_store_content_skiplist_insert(struct ccnr_handle *h,struct content_entry *content);
 void r_store_enroll_content(struct ccnr_handle *h,struct content_entry *content);
 struct content_entry *r_store_content_from_accession(struct ccnr_handle *h,ccn_accession_t accession);
+struct content_entry *r_store_lookup(struct ccnr_handle *h, const unsigned char *msg, const struct ccn_parsed_interest *pi, struct ccn_indexbuf *comps);
 
 #endif

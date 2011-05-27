@@ -138,7 +138,9 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
             h->interests_dropped += 1;
             goto Bail;
         }
+////////////////////////////////////////////
         if (1 || (pi->answerfrom & CCN_AOK_CS) != 0) {
+/////
             last_match = NULL;
             content = r_store_find_first_match_candidate(h, msg, pi);
             if (content != NULL && (h->debug & 8))
@@ -194,6 +196,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
             }
             if (last_match != NULL)
                 content = last_match;
+////////
             if (content != NULL) {
                 /* Check to see if we are planning to send already */
                 enum cq_delay_class c;
