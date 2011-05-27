@@ -130,11 +130,13 @@ public final class CCNChatNet {
 		} else {
 			UserConfiguration.setDefaultNamespacePrefix(_namespace.toString());
 		}
-				
-		CCNHandle tempReadHandle = CCNHandle.open();
+
+		CCNHandle tempReadHandle = CCNHandle.getHandle();
+
+		// Writing must be on a different handle, to enable us to read back text we have
+		// written when nobody else is reading.
 		CCNHandle tempWriteHandle = CCNHandle.open();
-		
-		
+
 		_readString = new CCNStringObject(_namespace, (String)null, SaveType.RAW, tempReadHandle);
 		_readString.updateInBackground(true); 
 		
