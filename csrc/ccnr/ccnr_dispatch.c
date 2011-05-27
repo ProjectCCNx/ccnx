@@ -77,12 +77,10 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
     size_t namesize = 0;
     int k;
     int res;
-    int try;
     int matched;
     int s_ok;
     struct nameprefix_entry *npe = NULL;
     struct content_entry *content = NULL;
-    struct content_entry *last_match = NULL;
     struct ccn_indexbuf *comps = r_util_indexbuf_obtain(h);
     if (size > 65535)
         res = -__LINE__;
@@ -445,8 +443,6 @@ process_input(struct ccnr_handle *h, int fd)
     struct sockaddr_storage sstor;
     socklen_t addrlen = sizeof(sstor);
     struct sockaddr *addr = (struct sockaddr *)&sstor;
-    int err = 0;
-    socklen_t err_sz;
     
     fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL)

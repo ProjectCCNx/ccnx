@@ -58,12 +58,7 @@ r_proto_answer_req(struct ccn_closure *selfp,
     struct ccnr_handle *ccnr = NULL;
     struct content_entry *content = NULL;
     int res = 0;
-    int start = 0;
-    int end = 0;
-    int morecomps = 0;
-    const unsigned char *final_comp = NULL;
-    size_t final_size = 0;
-    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    // struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
     switch (kind) {
         case CCN_UPCALL_FINAL:
