@@ -158,7 +158,7 @@ public class CCNWriter {
 	 * both Data and Interest will be held pending later matches.
 	 * @param name name for content.
 	 * @param content content to publish; will be fragmented if necessary.
-	 * @param outstandingInterest an Interest, usually recieved by the handleInterests
+	 * @param outstandingInterest an Interest, usually received by the handleInterests
 	 * 	method of a CCNFilterListener. Only one responder should write data
 	 * 	in response to a given Interest. The Interest should ideally have been
 	 * 	received on the same CCNHandle used by this CCNWriter to write data.

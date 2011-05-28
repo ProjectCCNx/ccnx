@@ -61,7 +61,7 @@ public class CCNSignatureHelper extends SignatureHelper {
 	
 	/**
 	 * Helper method that encodes, concatenates and then signs a set of
-	 * XMLEncodable objects and auxilliary data
+	 * XMLEncodable objects and auxiliary data
 	 * @param digestAlgorithm the digest algorithm to use for the signature
 	 * @param toBeSigneds the objects to encode, concatenate and sign
 	 * @param additionalToBeSigneds additional data to be concatenated with the

@@ -260,7 +260,7 @@ public class PublicKeyCache {
 
 		ContentObject retrievedContent = null;
 		int iterationCount = 0;
-		int timeoutCount = 0; // be super-agressive about pulling keys for now.
+		int timeoutCount = 0; // be super-aggressive about pulling keys for now.
 		IOException lastException = null;
 
 		while ((null == publicKey) && (iterationCount < ITERATION_LIMIT)) {

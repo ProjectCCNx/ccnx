@@ -1113,7 +1113,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	/**
-	 * For use by CCNFilterListeners, saves a GONE object and emits an inital
+	 * For use by CCNFilterListeners, saves a GONE object and emits an initial
 	 * block in response to an already-received Interest.
 	 * Save this object as GONE. Intended to mark the latest version, rather
 	 * than a specific version as GONE. So for now, require that name handed in

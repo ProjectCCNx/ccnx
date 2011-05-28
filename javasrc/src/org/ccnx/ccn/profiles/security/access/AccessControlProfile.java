@@ -25,7 +25,7 @@ import org.ccnx.ccn.protocol.ContentName;
 
 /**
  * This is a Profile defining basic naming and data standards to apply access control on a particular
- * subtree and all the data contained below it. It is intended to be generic, and specialized by futher
+ * subtree and all the data contained below it. It is intended to be generic, and specialized by further
  * protocols (e.g. GroupAccessControlProfile), that would definte particular access control schemes.
  * It focuses primarily on the definition of names for namespace control data, policy data, and keys.
  * For descriptions of data, and how this access control system functions, see the separate CCNx Access

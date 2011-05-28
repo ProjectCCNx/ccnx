@@ -161,7 +161,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	}
 	
 	/**
-	 * @param name		an intial namespace for this stream
+	 * @param name		an initial namespace for this stream
 	 * @param handle	a CCNHandle - if null one is created
 	 * @param shape		shapes are not currently implemented and may be deprecated. The only currently defined
 	 * 					shape is "Shape.STREAM"
@@ -173,7 +173,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 	}
 
 	/**
-	 * @param name		an intial namespace for this stream
+	 * @param name		an initial namespace for this stream
 	 * @param handle	a CCNHandle - if null one is created
 	 * @param shape		shapes are not currently implemented and may be deprecated. The only currently defined
 	 * 					shape is "Shape.STREAM"

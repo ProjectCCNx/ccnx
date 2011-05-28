@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -37,7 +37,7 @@
  * that uses the same Bloom filter, but is restricted to content with a larger
  * sequence number than the content that just arrived.
  * The "real" consumer gets its content by explicitly using the sequence
- * numbers in its requests; almost all of these will get fullfilled out of a
+ * numbers in its requests; almost all of these will get fulfilled out of a
  * nearby cache and so few of the actual interests will need to propagate
  * out to the network.
  * Note that this scheme does not need to be aware of the sequence numbering

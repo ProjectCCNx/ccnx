@@ -40,7 +40,7 @@ X="$1"
 echo == Normalizing ${X}.xml to use base64Binary
 # Note for this purpose it does not matter that ccn_ccnbtoxml is ignorant of
 #  the project-specific DTAG values, since we're not trying to do anything
-#  with the intermediate ccmb exept to turn it right back into text.
+#  with the intermediate ccnb except to turn it right back into text.
 cat ${X}.xml | ccn_xmltoccnb -w - | ccn_ccnbtoxml -b - | xmllint --format - > ${X}-base64.xml
 echo == Validating ${X}
 xmllint --schema $SCHEMA --noout ${X}-base64.xml

@@ -278,7 +278,7 @@ public class VersionNumber implements Comparable<VersionNumber> {
 	/**
 	 * Copy #input to a new array of #length, padding with 0's as necessary
 	 * 
-	 * This is necesary because Java 1.5 does not support Arrays.copyof()
+	 * This is necessary because Java 1.5 does not support Arrays.copyof()
 	 * 
 	 * @param input
 	 * @param length

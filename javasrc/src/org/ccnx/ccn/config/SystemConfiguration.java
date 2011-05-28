@@ -106,7 +106,7 @@ public class SystemConfiguration {
 	
 	/**
 	 * Interest reexpression period
-	 * TODO - This is (currently) an architectual constant. Not all code has been changed to use it.
+	 * TODO - This is (currently) an architectural constant. Not all code has been changed to use it.
 	 */
 	public static final int INTEREST_REEXPRESSION_DEFAULT = 4000;
 
