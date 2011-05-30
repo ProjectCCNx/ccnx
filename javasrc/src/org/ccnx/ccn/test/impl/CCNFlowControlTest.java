@@ -72,14 +72,14 @@ public class CCNFlowControlTest extends CCNFlowControlTestBase {
 	public void testWaitForPutDrain() throws Throwable {	
 
 		normalReset(name1);
-		fc.put(segments[0]);
+		fc.put(segments[1]);
 		fc.put(segments[3]);
 		fc.put(segments[0]);
 		fc.put(segments[2]);
 		testLast(segments[0], segments[3]);
 		testLast(segments[0], segments[2]);
 		testLast(segments[0], segments[1]);
-		ContentObject lastOne = _handle.get(new Interest(segment_names[1]), 0);
+		ContentObject lastOne = _handle.get(new Interest(segment_names[0]), 0);
 		Log.info("Retrieved final object {0}, blocks still in fc: {1}", lastOne.name(), fc.getCapacity()-fc.availableCapacity());
 		
 		System.out.println("Testing \"waitForPutDrain\"");
