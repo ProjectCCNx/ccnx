@@ -476,6 +476,8 @@ r_io_shutdown_all(struct ccnr_handle *h)
 {
     int i;
     for (i = 1; i < h->face_limit; i++) {
-        r_io_shutdown_client_fd(h, i);
+        if (r_io_fdholder_from_fd(h, i) != NULL) {
+            r_io_shutdown_client_fd(h, i);
+        }
     }
 }
