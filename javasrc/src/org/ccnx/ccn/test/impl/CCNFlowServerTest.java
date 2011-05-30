@@ -19,7 +19,6 @@ package org.ccnx.ccn.test.impl;
 
 
 import java.io.IOException;
-import java.util.Queue;
 
 import junit.framework.Assert;
 
@@ -31,109 +30,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class CCNFlowServerTest extends CCNFlowControlTestBase {
-
-	Queue<ContentObject> queue = _handle.getOutputQueue();
 	
 	@Before
 	public void setUp() throws Exception {
 		_capacity = SEGMENT_COUNT*2;
 		fc = new CCNFlowServer(_capacity, true, _handle);
-	}
-	
-	@Test
-	public void testBasicControlFlow() throws Throwable {	
-		
-		System.out.println("Testing basic control flow functionality and errors");
-		_handle.reset();
-		try {
-			fc.put(obj1);
-			Assert.fail("Put with no namespace succeeded");
-		} catch (IOException e) {}
-		fc.addNameSpace("/bar");
-		try {
-			fc.put(obj1);
-			Assert.fail("Put with bad namespace succeeded");
-		} catch (IOException e) {}
-		fc.addNameSpace("/foo");
-		try {
-			fc.put(obj1);
-		} catch (IOException e) {
-			Assert.fail("Put with good namespace failed");
-		}
-		
-	}
-	
-	@Test
-	public void testInterestFirst() throws Throwable {	
-		
-		normalReset(name1);
-		System.out.println("Testing interest arrives before a put");
-		interestList.add(new Interest("/bar"));
-		fc.handleInterests(interestList);
-		fc.put(obj1);
-		Assert.assertTrue(queue.poll() == null);
-		interestList.add(new Interest("/foo"));
-		fc.handleInterests(interestList);
-		fc.put(obj1);
-		testExpected(queue.poll(), obj1);
-	}
-	
-	@Test
-	public void testNextBeforePut() throws Exception {	
-
-		System.out.println("Testing \"next\" interest arrives before a put");
-		normalReset(name1);
-		interestList.add(Interest.next(segment_names[1], null, null));
-		fc.handleInterests(interestList);
-		fc.put(segments[0]);
-		Assert.assertTrue(queue.poll() == null);
-		fc.put(segments[2]);
-		testExpected(queue.poll(), segments[2]);
-		
-	}
-	
-	@Test
-	public void testLastBeforePut() throws Exception {	
-
-		System.out.println("Testing \"last\" interest arrives before a put");
-		normalReset(name1);
-		interestList.add(Interest.last(segment_names[1], null, null));
-		fc.handleInterests(interestList);
-		fc.put(segments[0]);
-		Assert.assertTrue(queue.poll() == null);
-		fc.put(segments[2]);
-		testExpected(queue.poll(), segments[2]);
-		
-	}
-	
-	@Test
-	public void testPutsOrdered() throws Throwable {	
-
-		System.out.println("Testing puts output in correct order");
-		normalReset(name1);
-		interestList.add(new Interest("/foo"));
-		fc.handleInterests(interestList);
-		fc.put(obj1);
-		testExpected(queue.poll(), obj1);
-		
-	} 
-	
-	@Test
-	public void testRandomOrderPuts() throws Throwable {	
-
-		normalReset(name1);
-		
-		// Put these in slightly random order. It would be nice to truly randomize this but am
-		// not going to bother with that right now.
-		fc.put(segments[3]);
-		fc.put(segments[0]);
-		fc.put(segments[1]);
-		fc.put(segments[2]);
-		ContentObject co = testExpected(_handle.get(versions[0], 0), segments[0]);
-		co = testNext(co, segments[1]);
-		co = testNext(co, segments[2]);
-		co = testNext(co, segments[3]);
-		
 	}
 	
 	@Test

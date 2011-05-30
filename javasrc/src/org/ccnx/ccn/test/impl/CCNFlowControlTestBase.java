@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.security.InvalidParameterException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Queue;
 import java.util.Random;
 
 import junit.framework.Assert;
@@ -33,15 +34,10 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
-import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.Signature;
-import org.ccnx.ccn.protocol.SignedInfo;
 import org.ccnx.ccn.test.CCNLibraryTestHarness;
 import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.ThreadAssertionRunner;
-import org.ccnx.ccn.test.impl.CCNFlowControlTest.HighWaterHelper;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -60,11 +56,10 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 	static protected ContentName segment_names[] = new ContentName[SEGMENT_COUNT];
 	static protected ContentObject segments[] = new ContentObject[SEGMENT_COUNT];
 	static protected ContentObject obj1 = null;
-	static protected Signature fakeSignature = null;
-	static protected SignedInfo fakeSignedInfo = null;
 	
 	protected ArrayList<Interest> interestList = new ArrayList<Interest>();
 	protected CCNFlowControl fc = null;
+	protected Queue<ContentObject> queue = _handle.getOutputQueue();
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -75,11 +70,6 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 			byte [] publisher = new byte[32];
 			rnd.nextBytes(fakeSigBytes);
 			rnd.nextBytes(publisher);
-			PublisherPublicKeyDigest pub = new PublisherPublicKeyDigest(publisher);
-			fakeSignature = new Signature(fakeSigBytes);
-			CCNTime now = CCNTime.now();
-			KeyLocator locator = new KeyLocator(ContentName.fromNative("/key/" + pub.digest().toString()));
-			fakeSignedInfo = new SignedInfo(pub, now, SignedInfo.ContentType.DATA, locator);
 
 			_handle = new CCNLibraryTestHarness();
 			_reader = new CCNReader(_handle);
@@ -95,11 +85,11 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 				time = new CCNTime(afterTime);
 			}
 			
-			obj1 = new ContentObject(name1, fakeSignedInfo, "test".getBytes(), fakeSignature);
+			obj1 = ContentObject.buildContentObject(name1, "test".getBytes());
 			int version = 0;
 			for (int j=0; j < SEGMENT_COUNT; ++j) {
 				segment_names[j] = SegmentationProfile.segmentName(versions[version], j);
-				segments[j] = new ContentObject(segment_names[j], fakeSignedInfo, new String("v" + version + "s" + j).getBytes(), fakeSignature);
+				segments[j] = ContentObject.buildContentObject(segment_names[j], new String("v" + version + "s" + j).getBytes());
 			}
 		} catch (ConfigurationException e) {
 			e.printStackTrace();
@@ -108,6 +98,98 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 		} catch (MalformedContentNameStringException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	@Test
+	public void testBasicControlFlow() throws Throwable {	
+		
+		System.out.println("Testing basic control flow functionality and errors");
+		_handle.reset();
+		try {
+			fc.put(obj1);
+			Assert.fail("Put with no namespace succeeded");
+		} catch (IOException e) {}
+		fc.addNameSpace("/bar");
+		try {
+			fc.put(obj1);
+			Assert.fail("Put with bad namespace succeeded");
+		} catch (IOException e) {}
+		fc.addNameSpace("/foo");
+		try {
+			fc.put(obj1);
+		} catch (IOException e) {
+			Assert.fail("Put with good namespace failed");
+		}		
+	}
+	
+	@Test
+	public void testInterestFirst() throws Throwable {	
+		
+		normalReset(name1);
+		System.out.println("Testing interest arrives before a put");
+		interestList.add(new Interest("/bar"));
+		fc.handleInterests(interestList);
+		fc.put(obj1);
+		Assert.assertTrue(queue.poll() == null);
+		interestList.add(new Interest("/foo"));
+		fc.handleInterests(interestList);
+		fc.put(obj1);
+		testExpected(queue.poll(), obj1);
+	}
+	
+	@Test
+	public void testNextBeforePut() throws Exception {	
+
+		System.out.println("Testing \"next\" interest arrives before a put");
+		normalReset(name1);
+		interestList.add(Interest.next(segment_names[1], null, null));
+		fc.handleInterests(interestList);
+		fc.put(segments[0]);
+		Assert.assertTrue(queue.poll() == null);
+		fc.put(segments[2]);
+		testExpected(queue.poll(), segments[2]);
+	}
+	
+	@Test
+	public void testLastBeforePut() throws Exception {	
+
+		System.out.println("Testing \"last\" interest arrives before a put");
+		normalReset(name1);
+		interestList.add(Interest.last(segment_names[1], null, null));
+		fc.handleInterests(interestList);
+		fc.put(segments[0]);
+		Assert.assertTrue(queue.poll() == null);
+		fc.put(segments[2]);
+		testExpected(queue.poll(), segments[2]);
+		
+	}
+	
+	@Test
+	public void testPutsOrdered() throws Throwable {	
+
+		System.out.println("Testing puts output in correct order");
+		normalReset(name1);
+		interestList.add(new Interest("/foo"));
+		fc.handleInterests(interestList);
+		fc.put(obj1);
+		testExpected(queue.poll(), obj1);	
+	} 
+	
+	@Test
+	public void testRandomOrderPuts() throws Throwable {	
+
+		normalReset(name1);
+		
+		// Put these in slightly random order. It would be nice to truly randomize this but am
+		// not going to bother with that right now.
+		fc.put(segments[3]);
+		fc.put(segments[0]);
+		fc.put(segments[1]);
+		fc.put(segments[2]);
+		ContentObject co = testExpected(_handle.get(versions[0], 0), segments[0]);
+		co = testNext(co, segments[1]);
+		co = testNext(co, segments[2]);
+		co = testNext(co, segments[3]);	
 	}
 	
 	@Test
