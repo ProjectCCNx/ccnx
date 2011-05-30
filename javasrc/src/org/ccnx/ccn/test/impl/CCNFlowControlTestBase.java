@@ -37,7 +37,6 @@ import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.CCNLibraryTestHarness;
 import org.ccnx.ccn.test.CCNTestBase;
-import org.ccnx.ccn.test.ThreadAssertionRunner;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -192,40 +191,6 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 		co = testNext(co, segments[3]);	
 	}
 	
-	@Test
-	public void testHighwaterWait() throws Exception {
-		
-		// Test that put over highwater fails with nothing draining
-		// the buffer
-		normalReset(name1);
-		fc.setCapacity(4);
-		fc.put(segments[0]);
-		fc.put(segments[1]);
-		fc.put(segments[2]);
-		fc.put(segments[3]);
-		try {
-			fc.put(segments[4]);
-			Assert.fail("Put over highwater mark succeeded");
-		} catch (IOException ioe) {}
-		
-		// Test that put over highwater doesn't succeed when persistent buffer is
-		// drained
-		normalReset(name1);
-		fc.setCapacity(4);
-		fc.put(segments[0]);
-		fc.put(segments[1]);
-		fc.put(segments[2]);
-
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new HighWaterHelper());
-		tar.start();
-		try {
-			fc.put(segments[3]);
-			fc.put(segments[4]);
-			Assert.fail("Attempt to put over capacity in non-draining FC succeeded.");
-		} catch (IOException ioe) {}
-		tar.join();
-	}
-	
 	public class HighWaterHelper extends Thread {
 
 		public void run() {
@@ -238,7 +203,6 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 				}
 			}
 		}
-		
 	}
 	
 	protected ContentObject testNext(ContentObject co, ContentObject expected) throws InvalidParameterException, IOException {

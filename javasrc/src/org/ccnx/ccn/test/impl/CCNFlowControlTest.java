@@ -26,6 +26,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.test.ThreadAssertionRunner;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -95,6 +96,38 @@ public class CCNFlowControlTest extends CCNFlowControlTestBase {
 			fc.afterClose();
 			Assert.fail("WaitforPutDrain succeeded when it should have failed");
 		} catch (IOException ioe) {}
+	}
+	
+	@Test
+	public void testHighwaterWait() throws Throwable {
+		
+		// Test that put over highwater fails with nothing draining
+		// the buffer
+		System.out.println("Testing \"testHighwaterWait\"");
+		normalReset(name1);
+		fc.setCapacity(4);
+		fc.put(segments[0]);
+		fc.put(segments[1]);
+		fc.put(segments[2]);
+		fc.put(segments[3]);
+		try {
+			fc.put(segments[4]);
+			Assert.fail("Put over highwater mark succeeded");
+		} catch (IOException ioe) {}
+		
+		// Test that put over highwater succeeds when buffer is
+		// drained
+		normalReset(name1);
+		fc.setCapacity(4);
+		fc.put(segments[0]);
+		fc.put(segments[1]);
+		fc.put(segments[2]);
+
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new HighWaterHelper());
+		tar.start();
+		fc.put(segments[3]);
+		fc.put(segments[4]);
+		tar.join();
 	}
 	
 	protected void normalReset(ContentName n) throws IOException {
