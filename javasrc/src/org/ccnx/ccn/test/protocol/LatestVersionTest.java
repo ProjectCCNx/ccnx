@@ -73,7 +73,7 @@ public class LatestVersionTest {
 		Log.setDefaultLevel(Level.FINEST);
 		getHandle = CCNHandle.open();
 		baseName = ContentName.fromURI("/ccnx.org/test/latestVersionTest/"+(new CCNTime()).toShortString());
-		setUpResponder();
+		new Responder();
 	}
 	
 	@After
@@ -559,20 +559,6 @@ public class LatestVersionTest {
 		
 	}
 	
-	
-	/**
-	 * Method to set up a responder for the get latest version test.  Only responds to Interests
-	 * with a single ContentObject.
-	 * 
-	 * @param obj ContentObject to respond to Interests with.
-	 * @throws IOException 
-	 */
-	private void setUpResponder() throws IOException {
-		
-		Thread t = new Thread(new Responder());
-		t.run();
-	}
-
 	private void checkResponder() {
 		try {
 			ContentName test = ContentName.fromNative(baseName, "testResponder");
@@ -594,7 +580,7 @@ public class LatestVersionTest {
 	/**
 	 * Runnable class for the single ContentObject responder.
 	 */
-	class Responder implements Runnable, CCNFilterListener {
+	class Responder implements CCNFilterListener {
 		CCNHandle handle;
 
 		public Responder() throws IOException {
@@ -606,9 +592,6 @@ public class LatestVersionTest {
 			}
 
 			handle.registerFilter(baseName, this);
-		}
-
-		public void run() {
 		}
 
 		public boolean handleInterest(Interest interest) {
