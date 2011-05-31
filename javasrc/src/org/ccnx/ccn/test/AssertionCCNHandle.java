@@ -25,12 +25,8 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 
-/**
- * This class is similar in principle and operation to ThreadAssertionRunner but it handles
- * the possibility of missing assertions in a filter listener
- */
-
 public class AssertionCCNHandle extends CCNHandle {
+	protected Error _error = null;
 
 	protected AssertionCCNHandle() throws ConfigurationException, IOException {
 		super();
@@ -53,6 +49,11 @@ public class AssertionCCNHandle extends CCNHandle {
 		super.registerFilter(filter, new AssertionFilterListener(callbackListener));
 	}
 	
+	public void checkError() throws Error {
+		if (null != _error)
+			throw _error;
+	}
+	
 	protected class AssertionFilterListener implements CCNFilterListener {
 		
 		protected CCNFilterListener _listener;
@@ -62,7 +63,12 @@ public class AssertionCCNHandle extends CCNHandle {
 		}
 
 		public boolean handleInterest(Interest interest) {
-			return _listener.handleInterest(interest);
+			try {
+				return _listener.handleInterest(interest);
+			} catch (Error t) {
+				_error = t;
+				throw t;
+			}
 		}
 		
 	}
