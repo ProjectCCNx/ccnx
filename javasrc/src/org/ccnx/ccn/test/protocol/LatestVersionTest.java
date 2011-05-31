@@ -33,7 +33,7 @@ import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
-
+import org.ccnx.ccn.test.AssertionCCNHandle;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -581,11 +581,11 @@ public class LatestVersionTest {
 	 * Runnable class for the single ContentObject responder.
 	 */
 	class Responder implements CCNFilterListener {
-		CCNHandle handle;
+		AssertionCCNHandle handle;
 
 		public Responder() throws IOException {
 			try {
-				handle = CCNHandle.open();
+				handle = AssertionCCNHandle.open();
 				LatestVersionTest.responderHandle = handle;
 			} catch (Exception e) {
 				Assert.fail("could not create handle for responder: " + e.getMessage());
