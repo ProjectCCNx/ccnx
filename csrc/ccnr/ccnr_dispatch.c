@@ -166,7 +166,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
     r_util_indexbuf_release(h, comps);
 }
 
-static void
+PUBLIC void
 process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
                          unsigned char *wire_msg, size_t wire_size)
 {

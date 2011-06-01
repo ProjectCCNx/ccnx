@@ -40,6 +40,7 @@
 
 #include "ccnr_proto.h"
 
+#include "ccnr_dispatch.h"
 #include "ccnr_forwarding.h"
 #include "ccnr_io.h"
 #include "ccnr_msg.h"
@@ -49,6 +50,14 @@
 #define REPO_SW "\301.R.sw"
 #define REPO_SWC "\301.R.sw-c"
 #define NAME_BE "\301.E.be"
+
+#define CCNR_MAX_RETRY 5
+
+static enum ccn_upcall_res
+r_proto_start_write(struct ccn_closure *selfp,
+                 enum ccn_upcall_kind kind,
+                 struct ccn_upcall_info *info);
+                 
 PUBLIC enum ccn_upcall_res
 r_proto_answer_req(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -89,13 +98,14 @@ r_proto_answer_req(struct ccn_closure *selfp,
         res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
         goto Finish;
     }
-    // XXX - Here is where we should check for command markers
+    /* check for command markers */
     ncomps = info->interest_comps->n;
     if (ncomps >= 2 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 2, NAME_BE)) {
         ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         goto Finish;
     } else if (ncomps >= 3 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 3, REPO_SW)) {
         ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_start_write(selfp, kind, info);
         goto Finish;
     } else if (ncomps >= 5 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 5, REPO_SWC)) {
         ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write_checked", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
@@ -153,13 +163,14 @@ r_proto_init(struct ccnr_handle *ccnr) {
  *  </RepositoryInfo>
 */ 
 PUBLIC int
-r_proto_append_repo_info(struct ccn_charbuf *rinfo) {
+r_proto_append_repo_info(struct ccnr_handle *ccnr, struct ccn_charbuf *rinfo) {
+    // XXX - this is hardwired at present - should come from .meta/* in repo dir
     int res;
     struct ccn_charbuf *name = ccn_charbuf_create();
     if (name == NULL) return (-1);
     res = ccnb_element_begin(rinfo, CCN_DTAG_RepositoryInfo);
     res |= ccnb_tagged_putf(rinfo, CCN_DTAG_Version, "%s", "1.1");
-    res |= ccnb_tagged_putf(rinfo, CCN_DTAG_Type, "%s", "DATA");
+    res |= ccnb_tagged_putf(rinfo, CCN_DTAG_Type, "%s", "INFO");
     res |= ccnb_tagged_putf(rinfo, CCN_DTAG_RepositoryVersion, "%s", "2.0");
 
     res |= ccnb_element_begin(name, CCN_DTAG_GlobalPrefixName); // same structure as Name
@@ -170,13 +181,202 @@ r_proto_append_repo_info(struct ccn_charbuf *rinfo) {
     res |= ccn_name_append_str(name, "Repos");
     res |= ccn_charbuf_append_charbuf(rinfo, name);
     
-    name->length = 0;
-    res |= ccnb_element_begin(name, CCN_DTAG_LocalName);
-    res |= ccnb_element_end(name);
-    res |= ccn_name_append_str(name, "Repository");
-    res |= ccn_charbuf_append_charbuf(rinfo, name);
+    res |= ccnb_tagged_putf(rinfo, CCN_DTAG_LocalName, "%s", "Repository");
 
     res |= ccnb_element_end(rinfo); // CCN_DTAG_RepositoryInfo
     ccn_charbuf_destroy(&name);
     return (res);
 }
+
+struct expect_content {
+    struct ccnr_handle *ccnr;
+    int done;
+    int tries; /** counter so we can give up eventually */
+};
+
+static struct ccn_charbuf *
+make_template(struct expect_content *md, struct ccn_upcall_info *info)
+{
+    struct ccn_charbuf *templ = ccn_charbuf_create();
+    ccnb_element_begin(templ, CCN_DTAG_Interest); // same structure as Name
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
+    // XXX - use pubid if possible
+    // XXX - if start-write was scoped, use scope here
+    ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
+    ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 1);
+    ccnb_element_end(templ); /* </Interest> */
+    return(templ);
+}
+
+static enum ccn_upcall_res
+r_proto_expect_content(struct ccn_closure *selfp,
+                 enum ccn_upcall_kind kind,
+                 struct ccn_upcall_info *info)
+{
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *templ = NULL;
+    const unsigned char *ccnb = NULL;
+    size_t ccnb_size = 0;
+    const unsigned char *ib = NULL; /* info->interest_ccnb */
+    struct ccn_indexbuf *ic = NULL;
+    int res;
+    struct expect_content *md = selfp->data;
+    struct ccnr_handle *ccnr = NULL;
+
+    if (kind == CCN_UPCALL_FINAL) {
+        if (md != NULL) {
+            selfp->data = NULL;
+            free(md);
+            md = NULL;
+        }
+        return(CCN_UPCALL_RESULT_OK);
+    }
+    if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) {
+        if (md->tries > CCNR_MAX_RETRY) {
+            // XXX - log something here
+            return(CCN_UPCALL_RESULT_ERR);
+        }
+        md->tries++;
+        return(CCN_UPCALL_RESULT_REEXPRESS);
+    }
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
+        return(CCN_UPCALL_RESULT_VERIFY);
+    if (kind != CCN_UPCALL_CONTENT)
+        return(CCN_UPCALL_RESULT_ERR);
+    if (md == NULL)
+        return(CCN_UPCALL_RESULT_ERR);
+    
+    ccnr = md->ccnr;
+    ccnb = info->content_ccnb;
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    ib = info->interest_ccnb;
+    ic = info->interest_comps;
+    
+    // XXX - right now we do not get an indication whether it is new or not.
+    // XXX - This does not write it to the repo file
+    process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)), (void *)ccnb, ccnb_size);
+    md->tries = 0;
+    // XXX - need to save the keys
+
+    // XXX The test below should get refactored into the library
+    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
+        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
+        const unsigned char *finalid = NULL;
+        size_t finalid_size = 0;
+        const unsigned char *nameid = NULL;
+        size_t nameid_size = 0;
+        struct ccn_indexbuf *cc = info->content_comps;
+        ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
+                            info->pco->offset[CCN_PCO_B_FinalBlockID],
+                            info->pco->offset[CCN_PCO_E_FinalBlockID],
+                            &finalid,
+                            &finalid_size);
+        if (cc->n < 2) abort();
+        ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
+                            cc->buf[cc->n - 2],
+                            cc->buf[cc->n - 1],
+                            &nameid,
+                            &nameid_size);
+        if (finalid_size == nameid_size &&
+              0 == memcmp(finalid, nameid, nameid_size))
+            md->done = 1;
+    }
+    
+    if (md->done) {
+        // ccn_set_run_timeout(info->h, 0);
+        return(CCN_UPCALL_RESULT_OK);
+    }
+    
+    /* Ask for the next fragment */
+    name = ccn_charbuf_create();
+    ccn_name_init(name);
+    if (ic->n < 2) abort();
+    res = ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 2]);
+    if (res < 0) abort();
+    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, ++(selfp->intdata));
+    templ = make_template(md, info);
+    
+    res = ccn_express_interest(info->h, name, selfp, templ);
+    if (res < 0) abort();
+    
+    ccn_charbuf_destroy(&templ);
+    ccn_charbuf_destroy(&name);
+    
+    return(CCN_UPCALL_RESULT_OK);
+}
+
+static enum ccn_upcall_res
+r_proto_start_write(struct ccn_closure *selfp,
+                    enum ccn_upcall_kind kind,
+                    struct ccn_upcall_info *info)
+{
+    struct ccnr_handle *ccnr = NULL;
+    struct ccn_charbuf *templ = NULL;
+    struct ccn_closure *incoming = NULL;
+    struct expect_content *expect_content = NULL;
+    struct ccn_charbuf *reply_body = NULL;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_indexbuf *ic = NULL;
+    enum ccn_upcall_res ans = CCN_UPCALL_RESULT_OK;
+    struct ccn_charbuf *msg = NULL;
+    int res = 0;
+    int start = 0;
+    int end = 0;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    
+    // XXX - Check for valid nonce
+    // XXX - Check for pubid - if present and not ours, do not respond.
+    // Check for answer origin kind.
+    // If Exclude is there, there might be something fishy going on.
+    
+    ccnr = (struct ccnr_handle *)selfp->data;
+    
+    incoming = calloc(1, sizeof(*incoming));
+    incoming->p = &r_proto_expect_content;
+    expect_content = calloc(1, sizeof(*expect_content));
+    expect_content->ccnr = ccnr;
+    expect_content->done = 0;
+    incoming->data = expect_content;
+    /* Send an interest for segment 0 */
+    templ = make_template(expect_content, NULL);
+    name = ccn_charbuf_create();
+    ccn_name_init(name);
+    ic = info->interest_comps;
+    if (ic->n < 3) abort();
+    ccn_name_append_components(name, info->interest_ccnb, ic->buf[0], ic->buf[ic->n - 3]);
+    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
+    res = ccn_express_interest(info->h, name, incoming, templ);
+    if (res < 0) {
+        ans = CCN_UPCALL_RESULT_ERR;
+        goto Bail;
+    }
+    /* Generate our reply */
+    msg = ccn_charbuf_create();
+    reply_body = ccn_charbuf_create();
+    r_proto_append_repo_info(ccnr, reply_body);
+    start = info->pi->offset[CCN_PI_B_Name];
+    end = info->interest_comps->buf[info->pi->prefix_comps];
+    name->length = 0;
+    ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
+    ccn_charbuf_append_closer(name);
+    res = ccn_sign_content(info->h, msg, name, &sp,
+                           reply_body->buf, reply_body->length);
+    if (res < 0)
+        goto Bail;
+    if ((ccnr->debug & 128) != 0)
+        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write", NULL,
+                        msg->buf, msg->length);
+    res = ccn_put(info->h, msg->buf, msg->length);
+    if (res < 0) {
+        // note the error somehow.
+    }
+    
+Bail:
+    ccn_charbuf_destroy(&templ);
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&reply_body);
+    ccn_charbuf_destroy(&msg);
+    return(ans);
+}
+
