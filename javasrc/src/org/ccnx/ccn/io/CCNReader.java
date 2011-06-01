@@ -154,12 +154,17 @@ public class CCNReader {
 	/**
 	 * API to determine whether a piece of content exists in the repository. Currently uses
 	 * name enumeration. Will change to alternative protocol whenever repository supports one.
+	 * 
+	 * Deprecated - instead use RepositoryControl.localRepoSync which will sync data if its not in the
+	 * repository which is what we want to do if this returns false.
+	 * 
 	 * @param availableContent
 	 * @param timeout
 	 * @param handle
 	 * @return
 	 * @throws IOException
 	 */
+	@Deprecated
 	public static ContentObject isContentInRepository(ContentObject availableContent, 
 													 long timeout, CCNHandle handle) throws IOException {
 		
@@ -186,6 +191,10 @@ public class CCNReader {
 	/**
 	 * API to determine whether a piece of content exists in the repository. Currently uses
 	 * name enumeration. Will change to alternative protocol whenever repository supports one.
+	 * 
+	 * Deprecated - instead use RepositoryControl.localRepoSync which will sync data if its not in the
+	 * repository which is what we want to do if this returns false.
+	 * 
 	 * @param contentName
 	 * @param desiredType
 	 * @param desiredContentDigest
@@ -195,6 +204,7 @@ public class CCNReader {
 	 * @return
 	 * @throws IOException
 	 */
+	@Deprecated
 	public static ContentObject isContentInRepository(ContentName contentName, ContentType desiredType, 
 			byte [] desiredContentDigest, 
 			PublisherPublicKeyDigest desiredPublisher,

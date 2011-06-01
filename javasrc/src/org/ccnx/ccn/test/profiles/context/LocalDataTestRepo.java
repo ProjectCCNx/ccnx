@@ -25,6 +25,7 @@ import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
+import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.test.CCNTestHelper;
@@ -66,12 +67,10 @@ public class LocalDataTestRepo {
 		CCNStringObject readString = new CCNStringObject(localStringName, readHandle);
 		
 		Assert.assertTrue(readString.available());
-				
-		ContentObject inRepo = 
-			CCNReader.isContentInRepository(localString.getVersionedName(), null, null, null, null, 
-				SystemConfiguration.getDefaultTimeout(), readHandle);
+			
+		Boolean inRepo = RepositoryControl.localRepoSync(defaultHandle, localString);
 		
-		Assert.assertNotNull(inRepo);
+		Assert.assertTrue("Data is in the repo", inRepo);
 	}
 
 }
