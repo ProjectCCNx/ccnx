@@ -17,16 +17,21 @@
 package org.ccnx.ccn.test;
 
 import java.io.IOException;
+import java.util.TreeMap;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
 public class AssertionCCNHandle extends CCNHandle {
 	protected Error _error = null;
+	protected TreeMap<CCNInterestListener, CCNInterestListener> _interestListeners = new TreeMap<CCNInterestListener, CCNInterestListener>();
+	protected TreeMap<CCNFilterListener, CCNFilterListener> _filterListeners = new TreeMap<CCNFilterListener, CCNFilterListener>();
 
 	protected AssertionCCNHandle() throws ConfigurationException, IOException {
 		super();
@@ -44,9 +49,41 @@ public class AssertionCCNHandle extends CCNHandle {
 		}
 	}
 	
+	public void expressInterest(
+			Interest interest,
+			CCNInterestListener listener) throws IOException {
+		CCNInterestListener ail = new AssertionInterestListener(listener);
+		_interestListeners.put(ail, listener);
+		super.expressInterest(interest, listener);
+	}
+	
+	public void cancelInterest(Interest interest, CCNInterestListener listener) {
+		CCNInterestListener toCancel = null;
+		for (CCNInterestListener l : _interestListeners.keySet()) {
+			if (l == listener) {
+				toCancel = _interestListeners.get(l);
+				break;
+			}
+		}
+		super.cancelInterest(interest, toCancel);
+	}
+	
 	public void registerFilter(ContentName filter,
 			CCNFilterListener callbackListener) throws IOException {
-		super.registerFilter(filter, new AssertionFilterListener(callbackListener));
+		CCNFilterListener listener = new AssertionFilterListener(callbackListener);
+		_filterListeners.put(listener, callbackListener);
+		super.registerFilter(filter, listener);
+	}
+	
+	public void unregisterFilter(ContentName filter,CCNFilterListener callbackListener) {
+		CCNFilterListener toCancel = null;
+		for (CCNFilterListener l : _filterListeners.keySet()) {
+			if (l == callbackListener) {
+				toCancel = _filterListeners.get(l);
+				break;
+			}
+		}
+		super.unregisterFilter(filter, toCancel);
 	}
 	
 	public void checkError() throws Error {
@@ -69,8 +106,25 @@ public class AssertionCCNHandle extends CCNHandle {
 				_error = t;
 				throw t;
 			}
-		}
+		}	
+	}
+	
+	protected class AssertionInterestListener implements CCNInterestListener {
 		
+		protected CCNInterestListener _listener;
+		
+		public AssertionInterestListener(CCNInterestListener listener) {
+			_listener = listener;
+		}
+
+		public Interest handleContent(ContentObject data, Interest interest) {
+			try {
+				return _listener.handleContent(data, interest);
+			} catch (Error t) {
+				_error = t;
+				throw t;
+			}
+		}
 	}
 	
 }
