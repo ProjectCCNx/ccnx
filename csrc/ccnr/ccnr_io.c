@@ -270,7 +270,7 @@ r_io_accept_connection(struct ccnr_handle *h, int listener_fd)
 }
 
 PUBLIC int
-r_io_open_repo_data_file(struct ccnr_handle *h, const char *name)
+r_io_open_repo_data_file(struct ccnr_handle *h, const char *name, int output)
 {
     struct ccn_charbuf *temp = NULL;
     const char *dir = NULL;
@@ -283,15 +283,15 @@ r_io_open_repo_data_file(struct ccnr_handle *h, const char *name)
         ccn_charbuf_putf(temp, "%s/%s", dir, name);
     else
         ccn_charbuf_putf(temp, "./%s", name);
-    fd = open(ccn_charbuf_as_string(temp), O_RDONLY, 0666);
+    fd = open(ccn_charbuf_as_string(temp), output ? (O_WRONLY | O_APPEND) : O_RDONLY, 0666);
     if (fd == -1) {
-        ccnr_msg(h, "open(%s): %s",ccn_charbuf_as_string(temp), strerror(errno));
+        ccnr_msg(h, "open(%s): %s", ccn_charbuf_as_string(temp), strerror(errno));
         ccn_charbuf_destroy(&temp);
 		return(-1);
     }
     fdholder = r_io_record_fd(h, fd,
                             temp->buf, temp->length,
-                            CCNR_FACE_REPODATA);
+                            CCNR_FACE_REPODATA | (output ? CCNR_FACE_NORECV : CCNR_FACE_NOSEND));
     if (fdholder == NULL)
         close_fd(&fd);
     else
@@ -398,6 +398,7 @@ r_io_send(struct ccnr_handle *h,
           const void *data, size_t size)
 {
     ssize_t res;
+    off_t offset;
     if ((fdholder->flags & CCNR_FACE_NOSEND) != 0)
         return;
     if (fdholder->outbuf != NULL) {
@@ -410,8 +411,16 @@ r_io_send(struct ccnr_handle *h,
         r_dispatch_process_internal_client_buffer(h);
         return;
     }
+    if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
+        offset = lseek(fdholder->recv_fd, 0, SEEK_END);
+        if (offset == (off_t)-1) {
+            ccnr_msg(h, "lseek(%d): %s", fdholder->recv_fd, strerror(errno));
+            return;
+        }
+        ccnr_msg(h, "lseek(%d): %jd", fdholder->recv_fd, (intmax_t)(offset));
+    }
     if ((fdholder->flags & CCNR_FACE_DGRAM) == 0)
-        res = send(fdholder->recv_fd, data, size, 0);
+        res = write(fdholder->recv_fd, data, size);
     else
         res = sendto(sending_fd(h, fdholder), data, size, 0,
                      (struct sockaddr *)fdholder->name->buf,

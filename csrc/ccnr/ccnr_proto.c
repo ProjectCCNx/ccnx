@@ -223,6 +223,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
     int res;
     struct expect_content *md = selfp->data;
     struct ccnr_handle *ccnr = NULL;
+    struct content_entry *content = NULL;
 
     if (kind == CCN_UPCALL_FINAL) {
         if (md != NULL) {
@@ -255,7 +256,17 @@ r_proto_expect_content(struct ccn_closure *selfp,
     
     // XXX - right now we do not get an indication whether it is new or not.
     // XXX - This does not write it to the repo file
-    process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)), (void *)ccnb, ccnb_size);
+    content = process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)), (void *)ccnb, ccnb_size);
+    if (content == NULL) {
+        // something kinda bad must of happened
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    if ((content->flags & CCN_CONTENT_ENTRY_STABLE) == 0) {
+        // Need to actually append to the active repo data file
+        r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
+        // XXX - it would be better to do this after the write succeeds
+        content->flags |= CCN_CONTENT_ENTRY_STABLE;
+    }
     md->tries = 0;
     // XXX - need to save the keys
 

@@ -166,7 +166,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
     r_util_indexbuf_release(h, comps);
 }
 
-PUBLIC void
+PUBLIC struct content_entry *
 process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
                          unsigned char *wire_msg, size_t wire_size)
 {
@@ -255,9 +255,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         }
         else {
             h->content_dups_recvd++;
-            ccnr_msg(h, "received duplicate ContentObject from %u (accession %llu)",
-                     fdholder->filedesc, (unsigned long long)content->accession);
-            ccnr_debug_ccnb(h, __LINE__, "dup", fdholder, msg, size);
+            if (h->debug & 4)
+                ccnr_debug_ccnb(h, __LINE__, "dup", fdholder, msg, size);
         }
     }
     else if (res == HT_NEW_ENTRY) {
@@ -284,8 +283,12 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
             content = NULL;
         }
         /* Mark public keys supplied at startup as precious. */
-        if (obj.type == CCN_CONTENT_KEY && content->accession <= (h->capacity + 7)/8)
-            content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
+        if (content != NULL) {
+            if (obj.type == CCN_CONTENT_KEY && content->accession <= (h->capacity + 7)/8)
+                content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
+            if ((fdholder->flags & CCNR_FACE_REPODATA) != 0)
+                content->flags |= CCN_CONTENT_ENTRY_STABLE;
+        }
     }
     hashtb_end(e);
 Bail:
@@ -300,7 +303,7 @@ Bail:
         if (res == HT_NEW_ENTRY) {
             if (n_matches < 0) {
                 r_store_remove_content(h, content);
-                return;
+                return(NULL);
             }
             if (n_matches == 0 && (fdholder->flags & CCNR_FACE_GG) == 0) {
                 content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
@@ -323,6 +326,7 @@ Bail:
             }
         }
     }
+    return(content);
 }
 
 static void

@@ -30,7 +30,7 @@ void r_io_prepare_poll_fds(struct ccnr_handle *h);
 void r_dispatch_process_internal_client_buffer(struct ccnr_handle *h);
 void r_io_send(struct ccnr_handle *h,struct fdholder *fdholder,const void *data,size_t size);
 int r_io_destroy_face(struct ccnr_handle *h,unsigned filedesc);
-int r_io_open_repo_data_file(struct ccnr_handle *h, const char *name);
+int r_io_open_repo_data_file(struct ccnr_handle *h, const char *name, int output);
 void r_io_shutdown_client_fd(struct ccnr_handle *h,int fd);
 int r_io_accept_connection(struct ccnr_handle *h,int listener_fd);
 struct fdholder *r_io_record_fd(struct ccnr_handle *h,int fd,void *who,socklen_t wholen,int setflags);

@@ -143,7 +143,8 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->appnonce = &r_fwd_append_debug_nonce;
     ccnr_init_repo_keystore(h, h->internal_client);
     /* XXX - need to bail if keystore is not OK. */
-	r_io_open_repo_data_file(h, "repoFile1");
+	r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
+    h->active_out_fd = r_io_open_repo_data_file(h, "repoFile1", 1); /* output */
     r_util_reseed(h);
     if (h->face0 == NULL) {
         struct fdholder *fdholder;

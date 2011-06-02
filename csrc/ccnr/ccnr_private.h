@@ -76,6 +76,7 @@ struct ccnr_handle {
     unsigned face_rover;            /**< for filedesc allocation */
     unsigned face_limit;            /**< current number of fdholder slots */
     struct fdholder **fdholder_by_fd;  /**< array with face_limit elements */
+    int active_out_fd;
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
@@ -252,6 +253,7 @@ struct content_entry {
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
 #define CCN_CONTENT_ENTRY_STALE     2
 #define CCN_CONTENT_ENTRY_PRECIOUS  4
+#define CCN_CONTENT_ENTRY_STABLE    8 /**< Has been written to repository */
 
 /**
  * The sparse_straggler hash table, keyed by accession, holds scattered
