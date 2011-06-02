@@ -518,8 +518,13 @@ ccnr_direct_client_refresh(struct ccn_schedule *sched,
           ccnr->direct_client != NULL &&
           ccnr->direct_client_refresh == ev) {
         microsec = ccn_process_scheduled_operations(ccnr->direct_client);
+        // XXX - This is not really right, since an incoming request can cause us to need to reschedule this event.
+        ccnr_msg(ccnr, "direct_client_refresh %d in %d usec",
+                 ccn_get_connection_fd(ccnr->direct_client), microsec);
         if (microsec > ev->evint)
             microsec = ev->evint;
+        if (microsec == 0)
+            microsec = CCN_INTEREST_LIFETIME_MICROSEC;
     }
     if (microsec <= 0 && ccnr->direct_client_refresh == ev)
         ccnr->direct_client_refresh = NULL;

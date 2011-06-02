@@ -57,7 +57,31 @@ static enum ccn_upcall_res
 r_proto_start_write(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info);
-                 
+
+static enum ccn_upcall_res
+r_proto_start_write_checked(struct ccn_closure *selfp,
+                            enum ccn_upcall_kind kind,
+                            struct ccn_upcall_info *info);
+
+static enum ccn_upcall_res
+r_proto_begin_enumeration(struct ccn_closure *selfp,
+                          enum ccn_upcall_kind kind,
+                          struct ccn_upcall_info *info);
+
+static int
+r_proto_repo_keyid(struct ccnr_handle *ccnr, struct ccn_charbuf *name)
+{
+    struct ccn_charbuf *keyid = ccn_charbuf_create();
+    int ans;
+    ccn_charbuf_append_value(keyid, CCN_MARKER_CONTROL, 1);
+    ccn_charbuf_append_string(keyid, ".M.K");
+    ccn_charbuf_append_value(keyid, 0, 1);
+    ccn_charbuf_append(keyid, ccnr->ccnr_id, sizeof(ccnr->ccnr_id));
+    ans = ccn_name_append(name, keyid->buf, keyid->length);
+    ccn_charbuf_destroy(&keyid);
+    return(ans);
+}
+
 PUBLIC enum ccn_upcall_res
 r_proto_answer_req(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -285,7 +309,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
     if (md == NULL)
         return(CCN_UPCALL_RESULT_ERR);
     
-    ccnr = md->ccnr;
+    ccnr = (struct ccnr_handle *)md->ccnr;
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
     ib = info->interest_ccnb;
@@ -411,6 +435,8 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
 {
     struct ccnr_handle *ccnr = NULL;
     enum ccn_upcall_res ans = CCN_UPCALL_RESULT_OK;
+    
+    ans = CCN_UPCALL_RESULT_ERR;
 
     return(ans);
 }
@@ -421,8 +447,18 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
                           struct ccn_upcall_info *info)
 {
     struct ccnr_handle *ccnr = NULL;
-    enum ccn_upcall_res ans = CCN_UPCALL_RESULT_OK;
+    enum ccn_upcall_res ans = CCN_UPCALL_RESULT_ERR;
+    struct ccn_parsed_interest parsed_interest = {0};
+    struct ccn_parsed_interest *pi = &parsed_interest;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *interest = NULL;
+    struct ccn_charbuf *reply_body = NULL;
+    struct ccn_indexbuf *comps = NULL;
+    int res;
+    struct ccn_seqwriter *w = NULL;
+    struct content_entry *content = NULL;
     
+    ccnr = (struct ccnr_handle *)selfp->data;
     // looks like struct content_entry * r_store_find_first_match_candidate(struct ccnr_handle *h,
      //                                  const unsigned char *interest_msg,
       //                                 const struct ccn_parsed_interest *pi)
@@ -431,5 +467,73 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     // write it out using ccn_seqwriter calls?
     // How to capture state at time of begin-enumeration?  What should version be?
     
+    name = ccn_charbuf_create();
+    ccn_name_init(name);
+    if (info->interest_comps->n < 2)
+        abort();
+    ccn_name_append_components(name, info->interest_ccnb,
+                                info->interest_comps->buf[0],
+                                info->interest_comps->buf[info->interest_comps->n - 2]);
+    // Make an interest for the part of the nnamespace we are after
+    interest = ccn_charbuf_create();
+    ccnb_element_begin(interest, CCN_DTAG_Interest);
+    ccn_charbuf_append_charbuf(interest, name);
+    if (info->interest_comps->n < 2)
+        abort();
+    ccnb_element_end(interest); /* </Interest> */
+    
+    // Parse it
+    comps = ccn_indexbuf_create();
+    res = ccn_parse_interest(interest->buf, interest->length, pi, comps);
+    if (res < 0)
+        abort();
+    content = r_store_find_first_match_candidate(ccnr, interest->buf, pi);
+    if (content == NULL)
+        goto Bail;
+    if (!r_store_content_matches_interest_prefix(ccnr, content, interest->buf, comps, comps->n - 1))
+        goto Bail;
+    // This is really %C1.E.be
+    ccn_name_append_components(name, info->interest_ccnb,
+                                info->interest_comps->buf[info->interest_comps->n - 2],
+                                info->interest_comps->buf[info->interest_comps->n - 1]);
+    // Append the repository key id to distinguish our reply from that of other repos
+    r_proto_repo_keyid(ccnr, name);
+    reply_body = ccn_charbuf_create();
+    ccnb_element_begin(reply_body, CCN_DTAG_Collection);
+    w = ccn_seqw_create(info->h, name);
+    ccn_seqw_possible_interest(w);
+    while (content != NULL && r_store_content_matches_interest_prefix(ccnr, content, interest->buf, comps, comps->n - 1)) {
+        ccnb_element_begin(reply_body, CCN_DTAG_Link);
+        ccnb_element_begin(reply_body, CCN_DTAG_Name);
+        ccnb_element_end(reply_body);
+        ccn_name_append_components(reply_body, content->key,
+                                content->comps[comps->n - 1],
+                                content->comps[comps->n]);
+        ccnb_element_end(reply_body); /* </Link> */
+        content = r_store_next_child_at_level(ccnr, content, comps->n - 1);
+        while (reply_body->length >= 4096) {
+            res = ccn_seqw_write(w, reply_body->buf, 4096);
+            if (res <= 0) {
+                // Here is where we would need to package up our state.
+                abort();
+            }
+            memmove(reply_body->buf, reply_body->buf + res, reply_body->length - res);
+            reply_body->length -= res;
+        }
+    }
+    ccnb_element_end(reply_body); /* </Collection> */
+    res = ccn_seqw_write(w, reply_body->buf, reply_body->length);
+    if (res != reply_body->length) {
+        abort();
+    }
+    res = ccn_seqw_close(w);
+    if (res < 0) abort();
+    ans = CCN_UPCALL_RESULT_OK;
+    
+Bail:
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&interest);
+    ccn_charbuf_destroy(&reply_body);
+    ccn_indexbuf_destroy(&comps);
     return(ans);
 }
