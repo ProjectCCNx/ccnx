@@ -209,6 +209,41 @@ make_template(struct expect_content *md, struct ccn_upcall_info *info)
     return(templ);
 }
 
+static int
+is_final(struct ccn_upcall_info *info)
+{
+    // XXX The test below is refactored into the library with 100496 as ccn_is_final_block()
+    const unsigned char *ccnb;
+    size_t ccnb_size;
+    ccnb = info->content_ccnb;
+    if (ccnb == NULL || info->pco == NULL)
+        return(0);
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
+        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
+        const unsigned char *finalid = NULL;
+        size_t finalid_size = 0;
+        const unsigned char *nameid = NULL;
+        size_t nameid_size = 0;
+        struct ccn_indexbuf *cc = info->content_comps;
+        ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
+                            info->pco->offset[CCN_PCO_B_FinalBlockID],
+                            info->pco->offset[CCN_PCO_E_FinalBlockID],
+                            &finalid,
+                            &finalid_size);
+        if (cc->n < 2) return(-1);
+        ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
+                            cc->buf[cc->n - 2],
+                            cc->buf[cc->n - 1],
+                            &nameid,
+                            &nameid_size);
+        if (finalid_size == nameid_size &&
+            0 == memcmp(finalid, nameid, nameid_size))
+            return(1);
+    }
+    return(0);
+}
+
 static enum ccn_upcall_res
 r_proto_expect_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -254,8 +289,6 @@ r_proto_expect_content(struct ccn_closure *selfp,
     ib = info->interest_ccnb;
     ic = info->interest_comps;
     
-    // XXX - right now we do not get an indication whether it is new or not.
-    // XXX - This does not write it to the repo file
     content = process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)), (void *)ccnb, ccnb_size);
     if (content == NULL) {
         // something kinda bad must of happened
@@ -270,30 +303,8 @@ r_proto_expect_content(struct ccn_closure *selfp,
     md->tries = 0;
     // XXX - need to save the keys
 
-    // XXX The test below should get refactored into the library
-    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
-        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
-        const unsigned char *finalid = NULL;
-        size_t finalid_size = 0;
-        const unsigned char *nameid = NULL;
-        size_t nameid_size = 0;
-        struct ccn_indexbuf *cc = info->content_comps;
-        ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
-                            info->pco->offset[CCN_PCO_B_FinalBlockID],
-                            info->pco->offset[CCN_PCO_E_FinalBlockID],
-                            &finalid,
-                            &finalid_size);
-        if (cc->n < 2) abort();
-        ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
-                            cc->buf[cc->n - 2],
-                            cc->buf[cc->n - 1],
-                            &nameid,
-                            &nameid_size);
-        if (finalid_size == nameid_size &&
-              0 == memcmp(finalid, nameid, nameid_size))
-            md->done = 1;
-    }
-    
+    // XXX The test below should get replace by ccn_is_final_block() when it is available
+    if (is_final(info) == 1) md->done = 1;    
     if (md->done) {
         // ccn_set_run_timeout(info->h, 0);
         return(CCN_UPCALL_RESULT_OK);
