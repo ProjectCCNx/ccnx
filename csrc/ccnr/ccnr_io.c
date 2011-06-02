@@ -417,7 +417,7 @@ r_io_send(struct ccnr_handle *h,
             ccnr_msg(h, "lseek(%d): %s", fdholder->recv_fd, strerror(errno));
             return;
         }
-        ccnr_msg(h, "lseek(%d): %jd", fdholder->recv_fd, (intmax_t)(offset));
+        // ccnr_msg(h, "lseek(%d): %jd", fdholder->recv_fd, (intmax_t)(offset));
     }
     if ((fdholder->flags & CCNR_FACE_DGRAM) == 0)
         res = write(fdholder->recv_fd, data, size);
