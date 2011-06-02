@@ -86,7 +86,10 @@ public class AssertionCCNHandle extends CCNHandle {
 		super.unregisterFilter(filter, toCancel);
 	}
 	
-	public void checkError() throws Error {
+	public void checkError(long timeout) throws Error, InterruptedException {
+		synchronized (this) {
+			wait(timeout);
+		}
 		if (null != _error)
 			throw _error;
 	}
@@ -100,12 +103,16 @@ public class AssertionCCNHandle extends CCNHandle {
 		}
 
 		public boolean handleInterest(Interest interest) {
+			boolean result = false;
 			try {
-				return _listener.handleInterest(interest);
-			} catch (Error t) {
-				_error = t;
-				throw t;
+				result = _listener.handleInterest(interest);
+			} catch (Throwable t) {
+				_error = (Error)t;
 			}
+			synchronized (this) {
+				notifyAll();
+			}
+			return result;
 		}	
 	}
 	
@@ -118,13 +125,16 @@ public class AssertionCCNHandle extends CCNHandle {
 		}
 
 		public Interest handleContent(ContentObject data, Interest interest) {
+			Interest result = null;
 			try {
-				return _listener.handleContent(data, interest);
+				result = _listener.handleContent(data, interest);
 			} catch (Error t) {
 				_error = t;
-				throw t;
 			}
+			synchronized (this) {
+				notifyAll();
+			}
+			return result;
 		}
 	}
-	
 }

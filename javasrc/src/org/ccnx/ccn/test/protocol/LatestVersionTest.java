@@ -50,7 +50,7 @@ import org.junit.Test;
  * for newer version to avoid suffering timeouts when there is not an newer version available.
  */
 public class LatestVersionTest {
-
+	static final long WAIT_TIME = 500;
 	static CCNHandle getHandle;
 	static CCNHandle responderHandle;
 	ContentName baseName;
@@ -87,9 +87,11 @@ public class LatestVersionTest {
 	
 	/**
 	 * Test to check if the getLatestVersion method in VersioningProfile gets the latest version with a ccnd involved.
+	 * @throws Error 
+	 * @throws InterruptedException 
 	 */
 	@Test
-	public void getLatestVersion() {
+	public void getLatestVersion() throws InterruptedException, Error {
 		ContentName one = null;
 		ContentName two = null;
 		ContentName three = null;
@@ -592,7 +594,7 @@ public class LatestVersionTest {
 		
 	}
 	
-	private void checkResponder() {
+	private void checkResponder() throws InterruptedException, Error {
 		try {
 			ContentName test = ContentName.fromNative(baseName, "testResponder");
 			ContentObject co = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(test), 0), "test content responder".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
@@ -656,8 +658,8 @@ public class LatestVersionTest {
 			}
 		}
 		
-		public void checkError() throws Error {
-			handle.checkError();
+		public void checkError() throws Error, InterruptedException {
+			handle.checkError(WAIT_TIME);
 		}
 
 	}
