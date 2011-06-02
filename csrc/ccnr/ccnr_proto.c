@@ -102,6 +102,7 @@ r_proto_answer_req(struct ccn_closure *selfp,
     ncomps = info->interest_comps->n;
     if (ncomps >= 2 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 2, NAME_BE)) {
         ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_begin_enumeration(selfp, kind, info);
         goto Finish;
     } else if (ncomps >= 3 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 3, REPO_SW)) {
         ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
@@ -109,6 +110,7 @@ r_proto_answer_req(struct ccn_closure *selfp,
         goto Finish;
     } else if (ncomps >= 5 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 5, REPO_SWC)) {
         ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write_checked", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_start_write_checked(selfp, kind, info);
         goto Finish;
     }
     goto Finish;
@@ -402,3 +404,32 @@ Bail:
     return(ans);
 }
 
+static enum ccn_upcall_res
+r_proto_start_write_checked(struct ccn_closure *selfp,
+                    enum ccn_upcall_kind kind,
+                    struct ccn_upcall_info *info)
+{
+    struct ccnr_handle *ccnr = NULL;
+    enum ccn_upcall_res ans = CCN_UPCALL_RESULT_OK;
+
+    return(ans);
+}
+
+static enum ccn_upcall_res
+r_proto_begin_enumeration(struct ccn_closure *selfp,
+                          enum ccn_upcall_kind kind,
+                          struct ccn_upcall_info *info)
+{
+    struct ccnr_handle *ccnr = NULL;
+    enum ccn_upcall_res ans = CCN_UPCALL_RESULT_OK;
+    
+    // looks like struct content_entry * r_store_find_first_match_candidate(struct ccnr_handle *h,
+     //                                  const unsigned char *interest_msg,
+      //                                 const struct ccn_parsed_interest *pi)
+    // do we need to check r_store_content_matches_interest_prefix ?
+    // Then is it r_store_content_skiplist_next while it matches, or r_store_next_child_at_level ?
+    // write it out using ccn_seqwriter calls?
+    // How to capture state at time of begin-enumeration?  What should version be?
+    
+    return(ans);
+}
