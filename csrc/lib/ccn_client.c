@@ -2290,3 +2290,45 @@ ccn_sign_content(struct ccn *h,
     ccn_charbuf_destroy(&signed_info);
     return(res);
 }
+/**
+ * Check whether content described by info is final block.
+ *
+ * @param info - the ccn_upcall_info describing the ContentObject
+ * @returns 1 for final block, 0 for not final, -1 if an error occurs
+ */
+int
+ccn_is_final_block(struct ccn_upcall_info *info)
+{
+    const unsigned char *ccnb;
+    size_t ccnb_size;
+    int res;
+    ccnb = info->content_ccnb;
+    if (ccnb == NULL || info->pco == NULL)
+        return(0);
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
+        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
+        const unsigned char *finalid = NULL;
+        size_t finalid_size = 0;
+        const unsigned char *nameid = NULL;
+        size_t nameid_size = 0;
+        struct ccn_indexbuf *cc = info->content_comps;
+        if (cc->n < 2) return(-1);
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
+                            info->pco->offset[CCN_PCO_B_FinalBlockID],
+                            info->pco->offset[CCN_PCO_E_FinalBlockID],
+                            &finalid,
+                            &finalid_size);
+        if (res < 0) return(-1);
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
+                            cc->buf[cc->n - 2],
+                            cc->buf[cc->n - 1],
+                            &nameid,
+                            &nameid_size);
+        if (res < 0) return(-1);
+        if (finalid_size == nameid_size &&
+            0 == memcmp(finalid, nameid, nameid_size))
+            return(1);
+    }
+    return(0);
+}
