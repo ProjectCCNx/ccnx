@@ -380,6 +380,12 @@ Finish:
     if (res != 0)
         abort();
     memcpy(ccnr->ccnr_id, sp.pubid, sizeof(ccnr->ccnr_id));
+    ccnr->ccnr_keyid = ccn_charbuf_create();
+    ccn_charbuf_append_value(ccnr->ccnr_keyid, CCN_MARKER_CONTROL, 1);
+    ccn_charbuf_append_string(ccnr->ccnr_keyid, ".M.K");
+    ccn_charbuf_append_value(ccnr->ccnr_keyid, 0, 1);
+    ccn_charbuf_append(ccnr->ccnr_keyid, ccnr->ccnr_id, sizeof(ccnr->ccnr_id));
+    
 Bail:
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&cmd);

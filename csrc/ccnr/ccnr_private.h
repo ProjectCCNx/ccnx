@@ -67,6 +67,7 @@ typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
  */
 struct ccnr_handle {
     unsigned char ccnr_id[32];      /**< sha256 digest of our public key */
+    struct ccn_charbuf *ccnr_keyid; /**< public key digest in keyid format %C1.M.K.%00... */
     struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *propagating_tab; /**< keyed by nonce */
