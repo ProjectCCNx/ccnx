@@ -66,21 +66,8 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
 static enum ccn_upcall_res
 r_proto_begin_enumeration(struct ccn_closure *selfp,
                           enum ccn_upcall_kind kind,
-                          struct ccn_upcall_info *info);
-
-static int
-r_proto_repo_keyid(struct ccnr_handle *ccnr, struct ccn_charbuf *name)
-{
-    struct ccn_charbuf *keyid = ccn_charbuf_create();
-    int ans;
-    ccn_charbuf_append_value(keyid, CCN_MARKER_CONTROL, 1);
-    ccn_charbuf_append_string(keyid, ".M.K");
-    ccn_charbuf_append_value(keyid, 0, 1);
-    ccn_charbuf_append(keyid, ccnr->ccnr_id, sizeof(ccnr->ccnr_id));
-    ans = ccn_name_append(name, keyid->buf, keyid->length);
-    ccn_charbuf_destroy(&keyid);
-    return(ans);
-}
+                          struct ccn_upcall_info *info,
+                          int repo_specific);
 
 PUBLIC enum ccn_upcall_res
 r_proto_answer_req(struct ccn_closure *selfp,
@@ -122,11 +109,21 @@ r_proto_answer_req(struct ccn_closure *selfp,
         res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
         goto Finish;
     }
+    /* commands will potentially generate new content, test if new content is ok */
+    if ((info->pi->answerfrom & CCN_AOK_NEW) == 0) {
+        goto Bail;
+    }
+    
     /* check for command markers */
     ncomps = info->interest_comps->n;
     if (ncomps >= 2 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 2, NAME_BE)) {
         ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-        res = r_proto_begin_enumeration(selfp, kind, info);
+        res = r_proto_begin_enumeration(selfp, kind, info, 0);
+        goto Finish;
+    } else if (ncomps >= 3 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 3, NAME_BE) &&
+               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 2, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
+        ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_repoid", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_begin_enumeration(selfp, kind, info, 1);
         goto Finish;
     } else if (ncomps >= 3 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 3, REPO_SW)) {
         ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
@@ -137,7 +134,7 @@ r_proto_answer_req(struct ccn_closure *selfp,
         res = r_proto_start_write_checked(selfp, kind, info);
         goto Finish;
     }
-    goto Finish;
+    goto Bail;
 Bail:
     res = CCN_UPCALL_RESULT_ERR;
 Finish:
@@ -436,15 +433,63 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     struct ccnr_handle *ccnr = NULL;
     enum ccn_upcall_res ans = CCN_UPCALL_RESULT_OK;
     
+    ccnr = (struct ccnr_handle *)selfp->data;
     ans = CCN_UPCALL_RESULT_ERR;
 
     return(ans);
 }
 
+static int
+r_proto_check_exclude(struct ccnr_handle *ccnr,
+                      struct ccn_upcall_info *info,
+                      struct ccn_charbuf *ex)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    const unsigned char *comp;
+    size_t comp_size;
+    int res;
+    
+    if (info->pi->offset[CCN_PI_B_Exclude] < info->pi->offset[CCN_PI_E_Exclude]) {
+        d = ccn_buf_decoder_start(&decoder,
+                                  info->interest_ccnb + info->pi->offset[CCN_PI_B_Exclude],
+                                  info->pi->offset[CCN_PI_E_Exclude] -
+                                  info->pi->offset[CCN_PI_B_Exclude]);
+        
+        // handle easy case of <Exclude><Component>...</Exclude>
+        // XXX - this may need to be better, but not necessarily complete
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Exclude)) {
+            ccn_buf_advance(d);
+        } else {
+            return(0);
+        }
+        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+            ccnr_msg(ccnr, "r_proto_check_exclude: components");
+            ccn_buf_advance(d);
+            comp_size = 0;
+            if (ccn_buf_match_blob(d, &comp, &comp_size))
+                ccn_buf_advance(d);
+            ccn_buf_check_close(d);
+            if (comp_size == ex->length) {
+                res = memcmp(comp, ex->buf, comp_size);
+                if (res == 0) {
+                    ccnr_msg(ccnr, "r_proto_check_exclude: yes");
+                    return(1); /* One of the explicit excludes */
+                }
+                if (res > 0)
+                    break;
+            }
+        }
+    }
+    ccnr_msg(ccnr, "r_proto_check_exclude: no");
+    return(0);
+}
+
 static enum ccn_upcall_res
 r_proto_begin_enumeration(struct ccn_closure *selfp,
                           enum ccn_upcall_kind kind,
-                          struct ccn_upcall_info *info)
+                          struct ccn_upcall_info *info,
+                          int repo_specific)
 {
     struct ccnr_handle *ccnr = NULL;
     enum ccn_upcall_res ans = CCN_UPCALL_RESULT_ERR;
@@ -455,6 +500,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     struct ccn_charbuf *reply_body = NULL;
     struct ccn_indexbuf *comps = NULL;
     int res;
+    int be_comp;
     struct ccn_seqwriter *w = NULL;
     struct content_entry *content = NULL;
     
@@ -466,20 +512,27 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     // Then is it r_store_content_skiplist_next while it matches, or r_store_next_child_at_level ?
     // write it out using ccn_seqwriter calls?
     // How to capture state at time of begin-enumeration?  What should version be?
+    // repo_specific indicates that we found %C1.E.be/%C1.M.K%00<our id>
+    // if we get a non-specific request it may have an exclude of our repo id, so we shouldn't reply
+    // if we get a specific request it may have an exclude of the version we previously generated
+
+    be_comp = info->interest_comps->n - (2 + (repo_specific ? 1 : 0));
+    if (be_comp < 0)
+        abort();
     
+    if (repo_specific == 0 && 0 != r_proto_check_exclude(ccnr, info, ccnr->ccnr_keyid))
+        goto Bail;
+      
+    // Construct a name up to but not including the begin enumeration marker component
     name = ccn_charbuf_create();
     ccn_name_init(name);
-    if (info->interest_comps->n < 2)
-        abort();
     ccn_name_append_components(name, info->interest_ccnb,
-                                info->interest_comps->buf[0],
-                                info->interest_comps->buf[info->interest_comps->n - 2]);
-    // Make an interest for the part of the nnamespace we are after
+                               info->interest_comps->buf[0],
+                               info->interest_comps->buf[be_comp]);
+    // Make an interest for the part of the namespace we are after
     interest = ccn_charbuf_create();
     ccnb_element_begin(interest, CCN_DTAG_Interest);
     ccn_charbuf_append_charbuf(interest, name);
-    if (info->interest_comps->n < 2)
-        abort();
     ccnb_element_end(interest); /* </Interest> */
     
     // Parse it
@@ -494,10 +547,10 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         goto Bail;
     // This is really %C1.E.be
     ccn_name_append_components(name, info->interest_ccnb,
-                                info->interest_comps->buf[info->interest_comps->n - 2],
-                                info->interest_comps->buf[info->interest_comps->n - 1]);
+                                info->interest_comps->buf[be_comp],
+                                info->interest_comps->buf[be_comp + 1]);
     // Append the repository key id to distinguish our reply from that of other repos
-    r_proto_repo_keyid(ccnr, name);
+    ccn_name_append(name, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length);
     reply_body = ccn_charbuf_create();
     ccnb_element_begin(reply_body, CCN_DTAG_Collection);
     w = ccn_seqw_create(info->h, name);
