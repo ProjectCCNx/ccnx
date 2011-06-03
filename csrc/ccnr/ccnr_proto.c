@@ -512,6 +512,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         ccnb_element_end(reply_body); /* </Link> */
         content = r_store_next_child_at_level(ccnr, content, comps->n - 1);
         while (reply_body->length >= 4096) {
+            ccn_seqw_possible_interest(w); // Temporary hack to finish long responses.
             res = ccn_seqw_write(w, reply_body->buf, 4096);
             if (res <= 0) {
                 // Here is where we would need to package up our state.
@@ -522,6 +523,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         }
     }
     ccnb_element_end(reply_body); /* </Collection> */
+    ccn_seqw_possible_interest(w); // Temporary hack to finish long responses.
     res = ccn_seqw_write(w, reply_body->buf, reply_body->length);
     if (res != reply_body->length) {
         abort();
