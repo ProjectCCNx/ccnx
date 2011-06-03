@@ -106,12 +106,14 @@ public class AssertionCCNHandle extends CCNHandle {
 			boolean result = false;
 			try {
 				result = _listener.handleInterest(interest);
-			} catch (Throwable t) {
-				_error = (Error)t;
+			} catch (Error e) {
+				_error = e;
 			}
 			synchronized (this) {
 				notifyAll();
 			}
+			if (null != _error)
+				throw _error;
 			return result;
 		}	
 	}
@@ -128,12 +130,14 @@ public class AssertionCCNHandle extends CCNHandle {
 			Interest result = null;
 			try {
 				result = _listener.handleContent(data, interest);
-			} catch (Error t) {
-				_error = t;
+			} catch (Error e) {
+				_error = e;
 			}
 			synchronized (this) {
 				notifyAll();
 			}
+			if (null != _error)
+				throw _error;
 			return result;
 		}
 	}

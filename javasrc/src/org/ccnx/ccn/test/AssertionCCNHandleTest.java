@@ -17,6 +17,7 @@
 package org.ccnx.ccn.test;
 
 import junit.framework.Assert;
+import junit.framework.AssertionFailedError;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
@@ -57,7 +58,11 @@ public class AssertionCCNHandleTest {
 		getHandle.checkError(WAIT_TIME);
 		ContentName pastFilter = ContentName.fromNative(filter, "pastFilter");
 		putHandle.expressInterest(new Interest(pastFilter), new InterestListenerTester());
-		getHandle.checkError(WAIT_TIME);
+		try {
+			getHandle.checkError(WAIT_TIME);
+		} catch (AssertionFailedError afe) {
+			return;
+		}
 		Assert.fail("Missed an assertion error we should have seen");
 	}
 	
