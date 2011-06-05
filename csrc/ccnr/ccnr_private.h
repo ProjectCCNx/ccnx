@@ -45,7 +45,6 @@ struct ccn_charbuf;
 struct ccn_indexbuf;
 struct hashtb;
 struct ccnr_meter;
-
 /*
  * These are defined in this header.
  */
@@ -56,6 +55,7 @@ struct nameprefix_entry;
 struct propagating_entry;
 struct content_tree_node;
 struct ccn_forwarding;
+struct enum_state;
 
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
@@ -71,6 +71,8 @@ struct ccnr_handle {
     struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *propagating_tab; /**< keyed by nonce */
+    //XXX probably need an event for cleaning up the enum_state_tab
+    struct hashtb *enum_state_tab;  /**< keyed by enumeration interest */
     struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< filedesc generation number */
@@ -325,6 +327,23 @@ struct ccn_forwarding {
     int expires;                 /**< time remaining, in seconds */
     struct ccn_forwarding *next;
 };
+
+/**
+ * Keeps track of the state of running and recently completed enumerations
+ * The enum_state hash table is keyed by the interest up to the segment id
+ */
+struct enum_state {
+    struct ccn_seqwriter *w;
+    struct content_entry *content;
+    struct ccn_charbuf *reply_body;
+    struct ccn_charbuf *interest;
+    struct ccn_indexbuf *interest_comps;
+    uintmax_t next_segment;
+    ccn_accession_t starting_accession;
+    int active;
+};
+
+
 #if 0
 /* create and destroy procs for separately allocated meters */
 struct ccnr_meter *ccnr_meter_create(struct ccnr_handle *h, const char *what);
