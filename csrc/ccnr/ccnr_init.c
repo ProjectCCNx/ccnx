@@ -105,6 +105,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     param.finalize = 0;
     h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
+    h->enum_state_tab = hashtb_create(sizeof(struct enum_state), NULL); // XXX - do we need finalization? Perhaps
     h->min_stale = ~0;
     h->max_stale = 0;
     h->unsol = ccn_indexbuf_create();
@@ -191,6 +192,8 @@ r_init_destroy(struct ccnr_handle **pccnr)
     hashtb_destroy(&h->propagating_tab);
     hashtb_destroy(&h->nameprefix_tab);
     hashtb_destroy(&h->sparse_straggler_tab);
+    hashtb_destroy(&h->enum_state_tab);
+
     if (h->fds != NULL) {
         free(h->fds);
         h->fds = NULL;
