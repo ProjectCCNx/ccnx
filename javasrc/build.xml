@@ -37,6 +37,9 @@
 	<property name="testoutlog" location="testout/log"/>
 	<property name="LOGDIR_KEY" value="org.ccnx.ccn.LogDir"/>
 	<property name="ccnd" location="../csrc/ccnd/ccnd"/>
+	<property name="ccnr" location="../csrc/ccnr/ccnr"/>
+	<property name="run_ccnr" location="run_ccnr"/>
+	<property name="REPO_KEYSTORE" location="ccnx_repository_keystore"/>
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
 	<property name="CCND_CMD" value="../../csrc/ccnd/ccnd"/>
@@ -44,9 +47,6 @@
 	<property name="CCND_CAP" value="50000"/>
 	<property name="REPO_ROOT" value="${testout}/repotest"/>
 	<property name="REPO_ROOT2" value="${testout}/repotest2"/>
-	<property name="REPO_LOCAL" value="TestRepository"/>
-	<property name="REPO_LOCAL_ROOT" value="repotest"/>
-	<property name="REPO_GLOBAL" value="parc.com/csl/ccn/repositories/TestRepository"/>
 	<property name="USE_KEY_CONFIG_KEY" value="org.ccnx.config.UseKeyConfiguration"/>
 	<property name="USE_KEY_CONFIG_VAL" value="false"/>
         <property name="CHATTY" value="FINER"/>
@@ -210,25 +210,14 @@
 	<target name="repo-start" depends="jar">
 		<parallel>
 			<daemons>
-				<java classname="org.ccnx.ccn.impl.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
-					<classpath>
-						<path refid="classpath-run" />
-					</classpath>
-					<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
-					<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-					<sysproperty key="${EXIT_ON_ERROR}" value="true"/>
-
-					<!-- allow debugger attachment if repo loops <jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" /> -->
-					<arg value="-interactive" />
-					<arg value="-root" />
-					<arg value="${REPO_LOCAL_ROOT}" />
-					<arg value="-log" />
-					<arg value="INFO" />
-					<arg value="-local" />
-					<arg value="${REPO_LOCAL}" />
-					<arg value="-global" />
-					<arg value="${REPO_GLOBAL}" />
-				</java>
+                                <echo message="Running test ccnr"/>
+                                <exec executable="${run_ccnr}" dir="${REPO_ROOT}" output="${testout}/TEST-ccnr-baselib.txt">
+                                        <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+                                        <env key="CCNR_CAP" value="${CCNR_CAP}"/>
+                                        <env key="CCNR_DEBUG" value="${CCNR_DEBUG}"/>
+					<arg value="${ccnr}"/>
+					<arg value="${REPO_KEYSTORE}"/>
+                                </exec>
 			</daemons>
             <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
             <sleep seconds="1"/>
@@ -258,21 +247,13 @@
     <!-- target for running a test repo foreground so you can run a test
 	     against it in debugger -->
 	<target name="run-test-repo" depends="jar">
-		<java classname="org.ccnx.ccn.impl.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
-			<classpath>
-				<path refid="classpath-run" />
-			</classpath>
-			<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
-			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
-			<arg value="-interactive" />
-			<arg value="-root" />
-			<arg value="${REPO_ROOT}" />
-			<arg value="-local" />
-			<arg value="${REPO_LOCAL}" />
-			<arg value="-global" />
-			<arg value="${REPO_GLOBAL}" />
-		</java>
+                <exec executable="${run_ccnr}" dir="${REPO_ROOT}" output="${testout}/TEST-repo-daemon.txt" failonerror="true">
+                        <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+                        <env key="CCNR_CAP" value="${CCNR_CAP}"/>
+                        <env key="CCNR_DEBUG" value="${CCNR_DEBUG}"/>
+			<arg value="${ccnr}"/>
+			<arg value="${REPO_KEYSTORE}"/>
+                </exec>
         <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
         <sleep seconds="1"/>
 	</target>
