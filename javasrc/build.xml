@@ -37,8 +37,8 @@
 	<property name="testoutlog" location="testout/log"/>
 	<property name="LOGDIR_KEY" value="org.ccnx.ccn.LogDir"/>
 	<property name="ccnd" location="../csrc/ccnd/ccnd"/>
-	<property name="ccnr" location="../csrc/ccnr/ccnr"/>
-	<property name="run_ccnr" location="run_ccnr"/>
+	<property name="ccnr" location="../../ccnr/csrc/ccnr/ccnr"/>
+	<property name="run_ccnr" location="./run_ccnr"/>
 	<property name="REPO_KEYSTORE" location="ccnx_repository_keystore"/>
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
