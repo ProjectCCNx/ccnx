@@ -31,6 +31,7 @@ struct upcalldata {
     unsigned warn;
     unsigned option;
     int n_excl;
+    int scope;
     struct ccn_charbuf **excl; /* Array of n_excl items */
 };
 
@@ -146,8 +147,8 @@ incoming_content(
     }
     comp = NULL;
     ccn_charbuf_append_closer(templ); /* </Exclude> */
-    
-    
+    if (data->scope > -1)
+       ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", data->scope);
     ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
     ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
     ccn_charbuf_append(templ, "1", 1);
@@ -169,6 +170,7 @@ usage(const char *prog)
 {
     fprintf(stderr, "Usage: %s uri\n"
             "   Prints names with uri as prefix\n"
+            "     environment var CCN_SCOPE is scope for interests (0, 1 or 2, no default)\n"
             "     environment var CCN_LINGER is no-data timeout (seconds) default 0.5s\n"
             "     environment var CCN_VERIFY indicates signature verification is required (non-zero)\n", prog);
     exit(1);
@@ -188,6 +190,7 @@ main(int argc, char **argv)
     int timeout_ms = 500;
     const char *env_timeout = getenv("CCN_LINGER");
     const char *env_verify = getenv("CCN_VERIFY");
+    const char *env_scope = getenv("CCN_SCOPE");
 
     if (argv[1] == NULL || argv[2] != NULL)
         usage(argv[0]);
@@ -211,8 +214,12 @@ main(int argc, char **argv)
     data->warn = 1492;
     data->counter = &counter;
     data->option = 0;
+    data->scope = -1;
     if (env_verify && *env_verify)
         data->option |= MUST_VERIFY;
+    data->scope = 0;
+    if (env_scope != NULL && (i = atoi(env_scope)) >= 0)
+      data->scope = i;
     cl = calloc(1, sizeof(*cl));
     cl->p = &incoming_content;
     cl->data = data;
