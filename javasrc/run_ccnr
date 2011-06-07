@@ -1,4 +1,0 @@
-#! /bin/bash
-touch repoFile1
-cp $2 .
-exec $1

@@ -38,7 +38,6 @@
 	<property name="LOGDIR_KEY" value="org.ccnx.ccn.LogDir"/>
 	<property name="ccnd" location="../csrc/ccnd/ccnd"/>
 	<property name="ccnr" location="../../ccnr/csrc/ccnr/ccnr"/>
-	<property name="run_ccnr" location="./run_ccnr"/>
 	<property name="REPO_KEYSTORE" location="ccnx_repository_keystore"/>
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
@@ -208,15 +207,15 @@
 
 	<!-- Don't run this by itself - use target repo -->
 	<target name="repo-start" depends="jar">
+		<touch file="${REPO_ROOT}/repoFile1" mkdirs="true"/>
+		<copy file="${REPO_KEYSTORE}" todir="${REPO_ROOT}"/>
 		<parallel>
 			<daemons>
                                 <echo message="Running test ccnr"/>
-                                <exec executable="${run_ccnr}" dir="${REPO_ROOT}" output="${testout}/TEST-ccnr-baselib.txt">
+                                <exec executable="${ccnr}" dir="${REPO_ROOT}" output="${testout}/TEST-ccnr-baselib.txt">
                                         <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
                                         <env key="CCNR_CAP" value="${CCNR_CAP}"/>
                                         <env key="CCNR_DEBUG" value="${CCNR_DEBUG}"/>
-					<arg value="${ccnr}"/>
-					<arg value="${REPO_KEYSTORE}"/>
                                 </exec>
 			</daemons>
             <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
@@ -247,12 +246,11 @@
     <!-- target for running a test repo foreground so you can run a test
 	     against it in debugger -->
 	<target name="run-test-repo" depends="jar">
-                <exec executable="${run_ccnr}" dir="${REPO_ROOT}" output="${testout}/TEST-repo-daemon.txt" failonerror="true">
-                        <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+		<touch file="${REPO_ROOT}/repoFile1" mkdirs="true"/>
+		<copy file="${REPO_KEYSTORE}" todir="${REPO_ROOT}"/>
+                <exec executable="${ccnr}" dir="${REPO_ROOT}" output="${testout}/TEST-repo-daemon.txt" failonerror="true">
                         <env key="CCNR_CAP" value="${CCNR_CAP}"/>
                         <env key="CCNR_DEBUG" value="${CCNR_DEBUG}"/>
-			<arg value="${ccnr}"/>
-			<arg value="${REPO_KEYSTORE}"/>
                 </exec>
         <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
         <sleep seconds="1"/>
