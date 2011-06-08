@@ -26,7 +26,6 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.RepositoryInfo;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepoInfoType;
-import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNAbstractInputStream;
 import org.ccnx.ccn.io.content.CCNNetworkObject;
@@ -191,7 +190,31 @@ public class RepositoryControl {
 			}
 			return true;
 		}
-		
+
+		RepositoryInfo repoInfo = doLocalCheckedWrite(baseName,	startingSegmentNumber, firstDigest,
+				handle);
+
+		if (repoInfo.getType() == RepoInfoType.DATA) {	
+			// This type from checked write is confirmation that content already held
+			// TODO improve result handling. Currently we get true if repo has content already,
+			// false if error or repo is storing content but didn't have it already. We don't care
+			// whether repo had it already, all we care is whether it is already or will be synced --
+			// want to separate errors, repo non-response from "repo will take care of it" responses.
+			
+			// At this point, a repo has responded and will deal with our data. Don't need to
+			// sync it again. I don't understand all the issues above, but until they are resolved,
+			// we don't want to declare the object "already synced" until we are actually going to
+			// return true here.
+			syncedObjects.add(fullName);
+			return true;
+		}
+
+		return false;
+	}
+
+	public static RepositoryInfo doLocalCheckedWrite(ContentName baseName,
+			Long startingSegmentNumber, byte[] firstDigest, CCNHandle handle)
+			throws IOException, ContentDecodingException {
 		// INCORRECT: the protocol is using a nonce.
 		// We do not use a nonce in this protocol, because a cached confirmation is satisfactory,
 		// assuming verification of the repository that published it.
@@ -201,56 +224,31 @@ public class RepositoryControl {
 													Interest.generateNonce(),
 													SegmentationProfile.getSegmentNumberNameComponent(startingSegmentNumber), 
 													firstDigest});
-		Interest syncInterest = new Interest(repoCommandName);
-		syncInterest.scope(1); // local repositories only
-		
+		Interest interest = new Interest(repoCommandName);
+		interest.scope(1); // local repositories only
+
 		if (Log.isLoggable(Log.FAC_IO, Level.INFO)) {
-			Log.info(Log.FAC_IO, "Syncing to repository, interest: {0}", syncInterest);
+			Log.info(Log.FAC_IO, "Checked write to repository: {0}", baseName);
 		}
-		
+
 		// Send out Interest
-		ContentObject co = handle.get(syncInterest, SystemConfiguration.FC_TIMEOUT);
-		
+		ContentObject co = handle.get(interest, SystemConfiguration.FC_TIMEOUT);
+
 		if (null == co) {
-			if (Log.isLoggable(Log.FAC_IO, Level.INFO)){
-				Log.info(Log.FAC_IO, "No response from a repository for checked write of " + baseName + " segment " + startingSegmentNumber 
-									+ " digest " + DataUtils.printHexBytes(firstDigest));
-			}
-			throw new IOException("No response from a repository for checked write of " + baseName + " segment " + startingSegmentNumber 
-									+ " digest " + DataUtils.printHexBytes(firstDigest));
+			throw new Interest.NoResponseException(interest);
 		}
-		
+
 		// TODO verify object as published by local repository rather than just signed by anybody
 		if (!handle.defaultVerifier().verify(co)) {
 			// TODO need to bypass unacceptable data to see if something good is out there
-			return false;
-		}
-		
-		if (co.signedInfo().getType() != ContentType.DATA)
-			throw new IOException("Invalid repository response for checked write, type " + co.signedInfo().getType());
-		
-		RepositoryInfo repoInfo = new RepositoryInfo();
-		try {
-			repoInfo.decode(co.content());
-			
-			if (repoInfo.getType() == RepoInfoType.DATA) {	
-				// This type from checked write is confirmation that content already held
-				// TODO improve result handling. Currently we get true if repo has content already,
-				// false if error or repo is storing content but didn't have it already. We don't care
-				// whether repo had it already, all we care is whether it is already or will be synced --
-				// want to separate errors, repo non-response from "repo will take care of it" responses.
-				
-				// At this point, a repo has responded and will deal with our data. Don't need to
-				// sync it again. I don't understand all the issues above, but until they are resolved,
-				// we don't want to declare the object "already synced" until we are actually going to
-				// return true here.
-				syncedObjects.add(fullName);
-				return true;
-			}
-		} catch (ContentDecodingException e) {
-			Log.info("ContentDecodingException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
+			throw new IOException("verify failed on " + co.fullName());
 		}
 
-		return false;
+		if (co.signedInfo().getType() != ContentType.DATA)
+			throw new IOException("Invalid repository response for checked write, type " + co.signedInfo().getType());
+
+		RepositoryInfo repoInfo = new RepositoryInfo();
+		repoInfo.decode(co.content());
+		return repoInfo;
 	}
 }
