@@ -55,25 +55,27 @@
 
 static enum ccn_upcall_res
 r_proto_start_write(struct ccn_closure *selfp,
-                 enum ccn_upcall_kind kind,
-                 struct ccn_upcall_info *info);
+                    enum ccn_upcall_kind kind,
+                    struct ccn_upcall_info *info,
+                    int marker_comp);
 
 static enum ccn_upcall_res
 r_proto_start_write_checked(struct ccn_closure *selfp,
                             enum ccn_upcall_kind kind,
-                            struct ccn_upcall_info *info);
+                            struct ccn_upcall_info *info,
+                            int marker_comp);
 
 static enum ccn_upcall_res
 r_proto_begin_enumeration(struct ccn_closure *selfp,
                           enum ccn_upcall_kind kind,
                           struct ccn_upcall_info *info,
-                          int repo_specific);
+                          int marker_comp);
 
 static enum ccn_upcall_res
 r_proto_continue_enumeration(struct ccn_closure *selfp,
                              enum ccn_upcall_kind kind,
                              struct ccn_upcall_info *info,
-                             int be_trim);
+                             int marker_comp);
 
 PUBLIC enum ccn_upcall_res
 r_proto_answer_req(struct ccn_closure *selfp,
@@ -89,6 +91,7 @@ r_proto_answer_req(struct ccn_closure *selfp,
     struct content_entry *content = NULL;
     int res = 0;
     int ncomps;
+    int marker_comp;
     // struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
     switch (kind) {
@@ -122,32 +125,42 @@ r_proto_answer_req(struct ccn_closure *selfp,
     
     /* check for command markers */
     ncomps = info->interest_comps->n;
-    if (ncomps >= 2 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 2, NAME_BE)) {
+    if (((marker_comp = ncomps - 2) > 0) &&
+        0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE)) {
         if ((ccnr->debug & 8) != 0)
-            ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-        res = r_proto_begin_enumeration(selfp, kind, info, 1);
+            ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL,
+                            info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
-    } else if (ncomps >= 3 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 3, NAME_BE) &&
-               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 2, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
+    } else if (((marker_comp = ncomps - 3) > 0) &&
+               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE) &&
+               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
         if ((ccnr->debug & 8) != 0)
-            ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_repoid", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-        res = r_proto_begin_enumeration(selfp, kind, info, 2);
+            ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_repoid", NULL,
+                            info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
-    } else if (ncomps >= 5 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 5, NAME_BE) &&
-              0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 4, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
+    } else if (((marker_comp = ncomps - 5) > 0) &&
+               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE) &&
+               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
         if ((ccnr->debug & 8) != 0)
-            ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_continuation", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-        res = r_proto_continue_enumeration(selfp, kind, info, 4);
+            ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_continuation",
+                            NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_continue_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
-    } else if (ncomps >= 3 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 3, REPO_SW)) {
+    } else if (((marker_comp = ncomps - 3) > 0) &&
+               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SW)) {
         if ((ccnr->debug & 8) != 0)
-            ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-        res = r_proto_start_write(selfp, kind, info);
+            ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write", NULL,
+                            info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_start_write(selfp, kind, info, marker_comp);
         goto Finish;
-    } else if (ncomps >= 5 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 5, REPO_SWC)) {
+    } else if (((marker_comp = ncomps - 5) > 0) &&
+               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SWC)) {
         if ((ccnr->debug & 8) != 0)
-            ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write_checked", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-        res = r_proto_start_write_checked(selfp, kind, info);
+            ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write_checked",
+                            NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_start_write_checked(selfp, kind, info, marker_comp);
         goto Finish;
     }
     goto Bail;
@@ -211,7 +224,7 @@ r_proto_append_repo_info(struct ccnr_handle *ccnr,
     if (name == NULL) return (-1);
     res = ccnb_element_begin(rinfo, CCN_DTAG_RepositoryInfo);
     res |= ccnb_tagged_putf(rinfo, CCN_DTAG_Version, "%s", "1.1");
-    res |= ccnb_tagged_putf(rinfo, CCN_DTAG_Type, "%s", "INFO");
+    res |= ccnb_tagged_putf(rinfo, CCN_DTAG_Type, "%s", (names != NULL) ? "DATA" : "INFO");
     res |= ccnb_tagged_putf(rinfo, CCN_DTAG_RepositoryVersion, "%s", "2.0");
 
     res |= ccnb_element_begin(name, CCN_DTAG_GlobalPrefixName); // same structure as Name
@@ -225,6 +238,7 @@ r_proto_append_repo_info(struct ccnr_handle *ccnr,
     if (names != NULL) {
         res |= ccn_charbuf_append_charbuf(rinfo, names);
     }
+    // There is an optional CCN_DTAG_InfoString in the encoding here, like the LocalName
     res |= ccnb_element_end(rinfo); // CCN_DTAG_RepositoryInfo
     ccn_charbuf_destroy(&name);
     return (res);
@@ -310,9 +324,13 @@ r_proto_expect_content(struct ccn_closure *selfp,
         }
         return(CCN_UPCALL_RESULT_OK);
     }
+    if (md == NULL) {
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    ccnr = (struct ccnr_handle *)md->ccnr;
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) {
         if (md->tries > CCNR_MAX_RETRY) {
-            // XXX - log something here
+            ccnr_msg(ccnr, "r_proto_expect_content: retry count exceeded");
             return(CCN_UPCALL_RESULT_ERR);
         }
         md->tries++;
@@ -322,10 +340,9 @@ r_proto_expect_content(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_VERIFY);
     if (kind != CCN_UPCALL_CONTENT)
         return(CCN_UPCALL_RESULT_ERR);
-    if (md == NULL)
-        return(CCN_UPCALL_RESULT_ERR);
     
-    ccnr = (struct ccnr_handle *)md->ccnr;
+    if (selfp->intdata == 0)
+        ccnr_msg(ccnr, "r_proto_expect_content: received segment 0");
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
     ib = info->interest_ccnb;
@@ -333,7 +350,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
     
     content = process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)), (void *)ccnb, ccnb_size);
     if (content == NULL) {
-        // something kinda bad must of happened
+        ccnr_msg(ccnr, "r_proto_expect_content: failed to process incoming content");
         return(CCN_UPCALL_RESULT_ERR);
     }
     if ((content->flags & CCN_CONTENT_ENTRY_STABLE) == 0) {
@@ -373,7 +390,8 @@ r_proto_expect_content(struct ccn_closure *selfp,
 static enum ccn_upcall_res
 r_proto_start_write(struct ccn_closure *selfp,
                     enum ccn_upcall_kind kind,
-                    struct ccn_upcall_info *info)
+                    struct ccn_upcall_info *info,
+                    int marker_comp)
 {
     struct ccnr_handle *ccnr = NULL;
     struct ccn_charbuf *templ = NULL;
@@ -395,33 +413,14 @@ r_proto_start_write(struct ccn_closure *selfp,
     // If Exclude is there, there might be something fishy going on.
     
     ccnr = (struct ccnr_handle *)selfp->data;
-    
-    incoming = calloc(1, sizeof(*incoming));
-    incoming->p = &r_proto_expect_content;
-    expect_content = calloc(1, sizeof(*expect_content));
-    expect_content->ccnr = ccnr;
-    expect_content->done = 0;
-    incoming->data = expect_content;
-    /* Send an interest for segment 0 */
-    templ = make_template(expect_content, NULL);
     name = ccn_charbuf_create();
-    ccn_name_init(name);
-    ic = info->interest_comps;
-    if (ic->n < 3) abort();
-    ccn_name_append_components(name, info->interest_ccnb, ic->buf[0], ic->buf[ic->n - 3]);
-    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
-    res = ccn_express_interest(info->h, name, incoming, templ);
-    if (res < 0) {
-        ans = CCN_UPCALL_RESULT_ERR;
-        goto Bail;
-    }
+    
     /* Generate our reply */
     msg = ccn_charbuf_create();
     reply_body = ccn_charbuf_create();
     r_proto_append_repo_info(ccnr, reply_body, NULL);
     start = info->pi->offset[CCN_PI_B_Name];
     end = info->interest_comps->buf[info->pi->prefix_comps];
-    name->length = 0;
     ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
     ccn_charbuf_append_closer(name);
     res = ccn_sign_content(info->h, msg, name, &sp,
@@ -435,6 +434,24 @@ r_proto_start_write(struct ccn_closure *selfp,
     if (res < 0) {
         // note the error somehow.
     }
+
+    /* Send an interest for segment 0 */
+    incoming = calloc(1, sizeof(*incoming));
+    incoming->p = &r_proto_expect_content;
+    expect_content = calloc(1, sizeof(*expect_content));
+    expect_content->ccnr = ccnr;
+    expect_content->done = 0;
+    incoming->data = expect_content;
+    templ = make_template(expect_content, NULL);
+    ic = info->interest_comps;
+    ccn_name_init(name);
+    ccn_name_append_components(name, info->interest_ccnb, ic->buf[0], ic->buf[marker_comp]);
+    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
+    res = ccn_express_interest(info->h, name, incoming, templ);
+    if (res < 0) {
+        ans = CCN_UPCALL_RESULT_ERR;
+        goto Bail;
+    }
     
 Bail:
     ccn_charbuf_destroy(&templ);
@@ -446,8 +463,9 @@ Bail:
 
 static enum ccn_upcall_res
 r_proto_start_write_checked(struct ccn_closure *selfp,
-                    enum ccn_upcall_kind kind,
-                    struct ccn_upcall_info *info)
+                            enum ccn_upcall_kind kind,
+                            struct ccn_upcall_info *info,
+                            int marker_comp)
 {
     struct ccnr_handle *ccnr = NULL;
     enum ccn_upcall_res ans = CCN_UPCALL_RESULT_OK;
@@ -469,9 +487,8 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     name = ccn_charbuf_create();
     ccn_name_init(name);
     ic = info->interest_comps;
-    if (ic->n < 3) abort();
-    ccn_name_append_components(name, info->interest_ccnb, ic->buf[0], ic->buf[ic->n - 5]);
-    ccn_name_append_components(name, info->interest_ccnb, ic->buf[ic->n - 3], ic->buf[ic->n - 1]);
+    ccn_name_append_components(name, info->interest_ccnb, ic->buf[0], ic->buf[marker_comp]);
+    ccn_name_append_components(name, info->interest_ccnb, ic->buf[marker_comp + 2], ic->buf[ic->n - 1]);
     // Make an interest for the exact item we're checking
     interest = ccn_charbuf_create();
     ccnb_element_begin(interest, CCN_DTAG_Interest);
@@ -482,10 +499,12 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     res = ccn_parse_interest(interest->buf, interest->length, pi, comps);
     if (res < 0)
         abort();
+    ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_checked_start_write looking for", NULL,
+                    interest->buf, interest->length);
     content = r_store_lookup(ccnr, interest->buf, pi, comps);
     if (content == NULL) {
         ccnr_msg(ccnr, "r_proto_start_write_checked: NOT PRESENT");
-        return(r_proto_start_write(selfp, kind, info));
+        return(r_proto_start_write(selfp, kind, info, marker_comp));
     }
     // what's the return value if the item is in the repository already?
     // if it does have it -- getRepoInfo(interest.name(), null, target_names)
@@ -589,7 +608,7 @@ static enum ccn_upcall_res
 r_proto_begin_enumeration(struct ccn_closure *selfp,
                           enum ccn_upcall_kind kind,
                           struct ccn_upcall_info *info,
-                          int be_trim)
+                          int marker_comp)
 {
     struct ccnr_handle *ccnr = NULL;
     enum ccn_upcall_res ans = CCN_UPCALL_RESULT_ERR;
@@ -601,7 +620,6 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     struct ccn_charbuf *interest = NULL;
     struct ccn_indexbuf *comps = NULL;
     int res;
-    int be_comp;
     struct content_entry *content = NULL;
     struct enum_state *es = NULL;
     
@@ -616,16 +634,12 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     // if we get a non-specific request it may have an exclude of our repo id, so we shouldn't reply
     // if we get a specific request it may have an exclude of the version(s) we previously generated
     
-    be_comp = info->interest_comps->n - be_trim - 1;
-    if (be_comp < 0)
-        abort();
-
     // Construct a name up to but not including the begin enumeration marker component
     name = ccn_charbuf_create();
     ccn_name_init(name);
     ccn_name_append_components(name, info->interest_ccnb,
                                info->interest_comps->buf[0],
-                               info->interest_comps->buf[be_comp]);
+                               info->interest_comps->buf[marker_comp]);
     // Make an interest for the part of the namespace we are after, from the name
     interest = ccn_charbuf_create();
     ccnb_element_begin(interest, CCN_DTAG_Interest);
@@ -654,8 +668,8 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         goto Bail;
     // Continue to construct the name under which we will respond: %C1.E.be
     ccn_name_append_components(name, info->interest_ccnb,
-                               info->interest_comps->buf[be_comp],
-                               info->interest_comps->buf[be_comp + 1]);
+                               info->interest_comps->buf[marker_comp],
+                               info->interest_comps->buf[marker_comp + 1]);
     // Append the repository key id %C1.K.%00<repoid>
     ccn_name_append(name, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length);
     
@@ -689,7 +703,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     es->active = 1;
     
     hashtb_end(e);
-    ans = r_proto_continue_enumeration(selfp, kind, info, be_trim);
+    ans = r_proto_continue_enumeration(selfp, kind, info, marker_comp);
     return(ans);
     
 Bail:
@@ -703,7 +717,7 @@ static enum ccn_upcall_res
 r_proto_continue_enumeration(struct ccn_closure *selfp,
                              enum ccn_upcall_kind kind,
                              struct ccn_upcall_info *info,
-                             int be_trim) {
+                             int marker_comp) {
     // XXX - watch out for pipelined interests for the enumerations -- there
     // MUST be an active enumeration continuation before we do anything here.
     // Should chop 1 component off interest -- which will look like
@@ -721,7 +735,7 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
     ccn_name_init(hashkey);
     ccn_name_append_components(hashkey, info->interest_ccnb,
                                info->interest_comps->buf[0],
-                               info->interest_comps->buf[info->interest_comps->n - be_trim - 1]);
+                               info->interest_comps->buf[marker_comp]);
     hashtb_start(ccnr->enum_state_tab, e);
     res = hashtb_seek(e, hashkey->buf, hashkey->length, 0);
     ccn_charbuf_destroy(&hashkey);
