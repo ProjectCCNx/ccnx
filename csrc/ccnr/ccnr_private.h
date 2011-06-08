@@ -333,6 +333,7 @@ struct ccn_forwarding {
  * The enum_state hash table is keyed by the interest up to the segment id
  */
 struct enum_state {
+    struct ccn_charbuf *name;
     struct ccn_seqwriter *w;
     struct content_entry *content;
     struct ccn_charbuf *reply_body;

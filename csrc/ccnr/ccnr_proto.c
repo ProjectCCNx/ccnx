@@ -69,6 +69,12 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
                           struct ccn_upcall_info *info,
                           int repo_specific);
 
+static enum ccn_upcall_res
+r_proto_continue_enumeration(struct ccn_closure *selfp,
+                             enum ccn_upcall_kind kind,
+                             struct ccn_upcall_info *info,
+                             int be_trim);
+
 PUBLIC enum ccn_upcall_res
 r_proto_answer_req(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -117,20 +123,30 @@ r_proto_answer_req(struct ccn_closure *selfp,
     /* check for command markers */
     ncomps = info->interest_comps->n;
     if (ncomps >= 2 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 2, NAME_BE)) {
-        ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-        res = r_proto_begin_enumeration(selfp, kind, info, 0);
+        if ((ccnr->debug & 8) != 0)
+            ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_begin_enumeration(selfp, kind, info, 1);
         goto Finish;
     } else if (ncomps >= 3 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 3, NAME_BE) &&
                0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 2, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
-        ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_repoid", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-        res = r_proto_begin_enumeration(selfp, kind, info, 1);
+        if ((ccnr->debug & 8) != 0)
+            ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_repoid", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_begin_enumeration(selfp, kind, info, 2);
+        goto Finish;
+    } else if (ncomps >= 5 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 5, NAME_BE) &&
+              0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 4, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
+        if ((ccnr->debug & 8) != 0)
+            ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_continuation", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_continue_enumeration(selfp, kind, info, 4);
         goto Finish;
     } else if (ncomps >= 3 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 3, REPO_SW)) {
-        ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        if ((ccnr->debug & 8) != 0)
+            ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_start_write(selfp, kind, info);
         goto Finish;
     } else if (ncomps >= 5 && 0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, ncomps - 5, REPO_SWC)) {
-        ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write_checked", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        if ((ccnr->debug & 8) != 0)
+            ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write_checked", NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_start_write_checked(selfp, kind, info);
         goto Finish;
     }
@@ -186,7 +202,9 @@ r_proto_init(struct ccnr_handle *ccnr) {
  *  </RepositoryInfo>
 */ 
 PUBLIC int
-r_proto_append_repo_info(struct ccnr_handle *ccnr, struct ccn_charbuf *rinfo) {
+r_proto_append_repo_info(struct ccnr_handle *ccnr,
+                         struct ccn_charbuf *rinfo,
+                         struct ccn_charbuf *names) {
     // XXX - this is hardwired at present - should come from .meta/* in repo dir
     int res;
     struct ccn_charbuf *name = ccn_charbuf_create();
@@ -203,9 +221,10 @@ r_proto_append_repo_info(struct ccnr_handle *ccnr, struct ccn_charbuf *rinfo) {
     res |= ccn_name_append_str(name, "ccn");
     res |= ccn_name_append_str(name, "Repos");
     res |= ccn_charbuf_append_charbuf(rinfo, name);
-    
     res |= ccnb_tagged_putf(rinfo, CCN_DTAG_LocalName, "%s", "Repository");
-
+    if (names != NULL) {
+        res |= ccn_charbuf_append_charbuf(rinfo, names);
+    }
     res |= ccnb_element_end(rinfo); // CCN_DTAG_RepositoryInfo
     ccn_charbuf_destroy(&name);
     return (res);
@@ -399,7 +418,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     /* Generate our reply */
     msg = ccn_charbuf_create();
     reply_body = ccn_charbuf_create();
-    r_proto_append_repo_info(ccnr, reply_body);
+    r_proto_append_repo_info(ccnr, reply_body, NULL);
     start = info->pi->offset[CCN_PI_B_Name];
     end = info->interest_comps->buf[info->pi->prefix_comps];
     name->length = 0;
@@ -410,7 +429,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     if (res < 0)
         goto Bail;
     if ((ccnr->debug & 128) != 0)
-        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write", NULL,
+        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write response", NULL,
                         msg->buf, msg->length);
     res = ccn_put(info->h, msg->buf, msg->length);
     if (res < 0) {
@@ -432,23 +451,93 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
 {
     struct ccnr_handle *ccnr = NULL;
     enum ccn_upcall_res ans = CCN_UPCALL_RESULT_OK;
+    struct ccn_indexbuf *ic = NULL;
+    struct content_entry *content = NULL;
+    struct ccn_parsed_interest parsed_interest = {0};
+    struct ccn_parsed_interest *pi = &parsed_interest;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *interest = NULL;
+    struct ccn_indexbuf *comps = NULL;
+    struct ccn_charbuf *msg = NULL;
+    struct ccn_charbuf *reply_body = NULL;
+    int start = 0;
+    int end = 0;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    int res = 0;
     
     ccnr = (struct ccnr_handle *)selfp->data;
-    ans = CCN_UPCALL_RESULT_ERR;
-
+    name = ccn_charbuf_create();
+    ccn_name_init(name);
+    ic = info->interest_comps;
+    if (ic->n < 3) abort();
+    ccn_name_append_components(name, info->interest_ccnb, ic->buf[0], ic->buf[ic->n - 5]);
+    ccn_name_append_components(name, info->interest_ccnb, ic->buf[ic->n - 3], ic->buf[ic->n - 1]);
+    // Make an interest for the exact item we're checking
+    interest = ccn_charbuf_create();
+    ccnb_element_begin(interest, CCN_DTAG_Interest);
+    ccn_charbuf_append_charbuf(interest, name);
+    ccnb_element_end(interest); /* </Interest> */
+    // Parse it
+    comps = ccn_indexbuf_create();
+    res = ccn_parse_interest(interest->buf, interest->length, pi, comps);
+    if (res < 0)
+        abort();
+    content = r_store_lookup(ccnr, interest->buf, pi, comps);
+    if (content == NULL) {
+        ccnr_msg(ccnr, "r_proto_start_write_checked: NOT PRESENT");
+        return(r_proto_start_write(selfp, kind, info));
+    }
+    // what's the return value if the item is in the repository already?
+    // if it does have it -- getRepoInfo(interest.name(), null, target_names)
+    // response has local name as the full name of the thing we claim to have --
+    // take the command marker and nonce out of the middle of the incoming interest,
+    // which is what we have in the "name" of the interest we created to check the content.
+    ///// begin copied code
+    /* Generate our reply */
+    msg = ccn_charbuf_create();
+    reply_body = ccn_charbuf_create();
+    r_proto_append_repo_info(ccnr, reply_body, name);
+    start = info->pi->offset[CCN_PI_B_Name];
+    end = info->interest_comps->buf[info->pi->prefix_comps];
+    name->length = 0;
+    ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
+    ccn_charbuf_append_closer(name);
+    res = ccn_sign_content(info->h, msg, name, &sp,
+                           reply_body->buf, reply_body->length);
+    if (res < 0)
+        goto Bail;
+    if ((ccnr->debug & 128) != 0)
+        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_checked_start_write PRESENT", NULL,
+                        msg->buf, msg->length);
+    res = ccn_put(info->h, msg->buf, msg->length);
+    if (res < 0) {
+        // note the error somehow.
+    }
+    //// end of copied code
+Bail:
     return(ans);
 }
 
+/**
+ * Returns 1 if the Exclude in the interest described by the info parameter
+ * would exclude the full name in name.
+ */
 static int
 r_proto_check_exclude(struct ccnr_handle *ccnr,
                       struct ccn_upcall_info *info,
-                      struct ccn_charbuf *ex)
+                      struct ccn_charbuf *name)
 {
     struct ccn_buf_decoder decoder;
-    struct ccn_buf_decoder *d;
-    const unsigned char *comp;
+    struct ccn_buf_decoder *d = NULL;
+    const unsigned char *comp = NULL;
     size_t comp_size;
+    size_t name_comp_size;
+    struct ccn_indexbuf *name_comps = NULL;
+    const unsigned char *name_string = NULL;
+    int nc;
+    int ci;
     int res;
+    int ans = 0;
     
     if (info->pi->offset[CCN_PI_B_Exclude] < info->pi->offset[CCN_PI_E_Exclude]) {
         d = ccn_buf_decoder_start(&decoder,
@@ -463,73 +552,81 @@ r_proto_check_exclude(struct ccnr_handle *ccnr,
         } else {
             return(0);
         }
+        // there may be something to check, so get the components of the name
+        name_comps = ccn_indexbuf_create();
+        nc = ccn_name_split(name, name_comps);
+        // the component in the name we are matching is last plus one of the interest
+        // but ci includes an extra value for the end of the last component
+        ci = info->interest_comps->n;
+        res = ccn_name_comp_get(name->buf, name_comps, ci - 1, &name_string, &name_comp_size);
+        if (res < 0)
+            goto Bail;
         while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
-            ccnr_msg(ccnr, "r_proto_check_exclude: components");
             ccn_buf_advance(d);
             comp_size = 0;
             if (ccn_buf_match_blob(d, &comp, &comp_size))
                 ccn_buf_advance(d);
             ccn_buf_check_close(d);
-            if (comp_size == ex->length) {
-                res = memcmp(comp, ex->buf, comp_size);
+            if (comp_size == name_comp_size) {
+                res = memcmp(comp, name_string, comp_size);
                 if (res == 0) {
-                    ccnr_msg(ccnr, "r_proto_check_exclude: yes");
-                    return(1); /* One of the explicit excludes */
+                    ans = 1;
+                    goto Bail; /* One of the explicit excludes */
                 }
                 if (res > 0)
                     break;
             }
         }
     }
-    ccnr_msg(ccnr, "r_proto_check_exclude: no");
-    return(0);
+    
+Bail:
+    ccn_indexbuf_destroy(&name_comps);
+    ccnr_msg(ccnr, "r_proto_check_exclude: %d", ans);
+    return(ans);
 }
 
 static enum ccn_upcall_res
 r_proto_begin_enumeration(struct ccn_closure *selfp,
                           enum ccn_upcall_kind kind,
                           struct ccn_upcall_info *info,
-                          int repo_specific)
+                          int be_trim)
 {
     struct ccnr_handle *ccnr = NULL;
     enum ccn_upcall_res ans = CCN_UPCALL_RESULT_ERR;
     struct ccn_parsed_interest parsed_interest = {0};
     struct ccn_parsed_interest *pi = &parsed_interest;
+    struct hashtb_enumerator enumerator = {0};
+    struct hashtb_enumerator *e = &enumerator;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *interest = NULL;
-    struct ccn_charbuf *reply_body = NULL;
     struct ccn_indexbuf *comps = NULL;
     int res;
     int be_comp;
-    struct ccn_seqwriter *w = NULL;
     struct content_entry *content = NULL;
+    struct enum_state *es = NULL;
     
     ccnr = (struct ccnr_handle *)selfp->data;
     // looks like struct content_entry * r_store_find_first_match_candidate(struct ccnr_handle *h,
-     //                                  const unsigned char *interest_msg,
-      //                                 const struct ccn_parsed_interest *pi)
-    // do we need to check r_store_content_matches_interest_prefix ?
-    // Then is it r_store_content_skiplist_next while it matches, or r_store_next_child_at_level ?
-    // write it out using ccn_seqwriter calls?
-    // How to capture state at time of begin-enumeration?  What should version be?
-    // repo_specific indicates that we found %C1.E.be/%C1.M.K%00<our id>
+    //                                  const unsigned char *interest_msg,
+    //                                 const struct ccn_parsed_interest *pi)
+    // we need to check r_store_content_matches_interest_prefix
+    // Then it is r_store_next_child_at_level
+    // write it out using ccn_seqwriter calls, saving state
+    // be_trim == 2 indicates that we found %C1.E.be/%C1.M.K%00<our id>
     // if we get a non-specific request it may have an exclude of our repo id, so we shouldn't reply
-    // if we get a specific request it may have an exclude of the version we previously generated
-
-    be_comp = info->interest_comps->n - (2 + (repo_specific ? 1 : 0));
+    // if we get a specific request it may have an exclude of the version(s) we previously generated
+    
+    be_comp = info->interest_comps->n - be_trim - 1;
     if (be_comp < 0)
         abort();
-    
-    if (repo_specific == 0 && 0 != r_proto_check_exclude(ccnr, info, ccnr->ccnr_keyid))
-        goto Bail;
-      
+
     // Construct a name up to but not including the begin enumeration marker component
     name = ccn_charbuf_create();
     ccn_name_init(name);
     ccn_name_append_components(name, info->interest_ccnb,
                                info->interest_comps->buf[0],
                                info->interest_comps->buf[be_comp]);
-    // Make an interest for the part of the namespace we are after
+    // Make an interest for the part of the namespace we are after, from the name
     interest = ccn_charbuf_create();
     ccnb_element_begin(interest, CCN_DTAG_Interest);
     ccn_charbuf_append_charbuf(interest, name);
@@ -540,55 +637,145 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     res = ccn_parse_interest(interest->buf, interest->length, pi, comps);
     if (res < 0)
         abort();
+    // do we have anything that matches this enumeration request? If not, ignore the request
     content = r_store_find_first_match_candidate(ccnr, interest->buf, pi);
     if (content == NULL)
         goto Bail;
     if (!r_store_content_matches_interest_prefix(ccnr, content, interest->buf, comps, comps->n - 1))
         goto Bail;
-    // This is really %C1.E.be
+    // Look for a previous enumeration under this prefix
+    ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: hash name", NULL,
+                    name->buf, name->length);
+    hashtb_start(ccnr->enum_state_tab, e);
+    res = hashtb_seek(e, name->buf, name->length, 0);
+    es = e->data;
+    // Do not restart an active enumeration, it is probably a duplicate interest
+    if (es->active == 1)
+        goto Bail;
+    // Continue to construct the name under which we will respond: %C1.E.be
     ccn_name_append_components(name, info->interest_ccnb,
-                                info->interest_comps->buf[be_comp],
-                                info->interest_comps->buf[be_comp + 1]);
-    // Append the repository key id to distinguish our reply from that of other repos
+                               info->interest_comps->buf[be_comp],
+                               info->interest_comps->buf[be_comp + 1]);
+    // Append the repository key id %C1.K.%00<repoid>
     ccn_name_append(name, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length);
-    reply_body = ccn_charbuf_create();
-    ccnb_element_begin(reply_body, CCN_DTAG_Collection);
-    w = ccn_seqw_create(info->h, name);
-    ccn_seqw_possible_interest(w);
-    while (content != NULL && r_store_content_matches_interest_prefix(ccnr, content, interest->buf, comps, comps->n - 1)) {
-        ccnb_element_begin(reply_body, CCN_DTAG_Link);
-        ccnb_element_begin(reply_body, CCN_DTAG_Name);
-        ccnb_element_end(reply_body);
-        ccn_name_append_components(reply_body, content->key,
-                                content->comps[comps->n - 1],
-                                content->comps[comps->n]);
-        ccnb_element_end(reply_body); /* </Link> */
-        content = r_store_next_child_at_level(ccnr, content, comps->n - 1);
-        while (reply_body->length >= 4096) {
-            ccn_seqw_possible_interest(w); // Temporary hack to finish long responses.
-            res = ccn_seqw_write(w, reply_body->buf, 4096);
-            if (res <= 0) {
-                // Here is where we would need to package up our state.
-                abort();
-            }
-            memmove(reply_body->buf, reply_body->buf + res, reply_body->length - res);
-            reply_body->length -= res;
-        }
+    
+    if (res == HT_NEW_ENTRY || es->starting_accession != ccnr->accession) {
+        // this is a new enumeration, the time is now.
+        ccnr_msg(ccnr, "making entry with new version");
+        res = ccn_create_version(info->h, name, CCN_V_NOW, 0, 0);
+        if (es->name != NULL)
+            ccn_charbuf_destroy(&es->name);
+        es->name = ccn_charbuf_create();
+        ccn_charbuf_append_charbuf(es->name, name);
+        es->starting_accession = ccnr->accession; // XXX - a conservative indicator of change
     }
-    ccnb_element_end(reply_body); /* </Collection> */
-    ccn_seqw_possible_interest(w); // Temporary hack to finish long responses.
-    res = ccn_seqw_write(w, reply_body->buf, reply_body->length);
-    if (res != reply_body->length) {
-        abort();
-    }
-    res = ccn_seqw_close(w);
-    if (res < 0) abort();
-    ans = CCN_UPCALL_RESULT_OK;
+    
+    // check the exclude
+    ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: interest", NULL,
+                    info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+    ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: result name", NULL,
+                    es->name->buf, es->name->length);
+    
+    if (r_proto_check_exclude(ccnr, info, es->name) > 0)
+        goto Bail;
+    
+    es->reply_body = ccn_charbuf_create();
+    ccnb_element_begin(es->reply_body, CCN_DTAG_Collection);
+    es->w = ccn_seqw_create(info->h, es->name);
+    es->content = content;
+    es->interest = interest;
+    es->interest_comps = comps;
+    es->next_segment = 0;
+    es->active = 1;
+    
+    hashtb_end(e);
+    ans = r_proto_continue_enumeration(selfp, kind, info, be_trim);
+    return(ans);
     
 Bail:
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&interest);
-    ccn_charbuf_destroy(&reply_body);
     ccn_indexbuf_destroy(&comps);
     return(ans);
 }
+
+static enum ccn_upcall_res
+r_proto_continue_enumeration(struct ccn_closure *selfp,
+                             enum ccn_upcall_kind kind,
+                             struct ccn_upcall_info *info,
+                             int be_trim) {
+    // XXX - watch out for pipelined interests for the enumerations -- there
+    // MUST be an active enumeration continuation before we do anything here.
+    // Should chop 1 component off interest -- which will look like
+    // ccnx:/.../%C1.E.be/%C1.M.K%00.../%FD.../%00%02
+    struct ccn_charbuf *hashkey = NULL;
+    struct enum_state *es = NULL;
+    struct ccnr_handle *ccnr = NULL;
+    struct hashtb_enumerator enumerator = {0};
+    struct hashtb_enumerator *e = &enumerator;
+    int res = 0;
+    int ans = CCN_UPCALL_RESULT_ERR;
+
+    ccnr = (struct ccnr_handle *)selfp->data;
+    hashkey=ccn_charbuf_create();
+    ccn_name_init(hashkey);
+    ccn_name_append_components(hashkey, info->interest_ccnb,
+                               info->interest_comps->buf[0],
+                               info->interest_comps->buf[info->interest_comps->n - be_trim - 1]);
+    hashtb_start(ccnr->enum_state_tab, e);
+    res = hashtb_seek(e, hashkey->buf, hashkey->length, 0);
+    ccn_charbuf_destroy(&hashkey);
+    if (res != HT_OLD_ENTRY) {
+        goto Bail;
+    }
+    es = e->data;
+    if (es->active == 0) {
+        hashtb_end(e);
+        return(ans);
+    }
+    
+    ccnr_msg(ccnr, "processing an enumeration continuation for segment %jd", es->next_segment);
+    while (es->content != NULL && r_store_content_matches_interest_prefix(ccnr, es->content, es->interest->buf, es->interest_comps, es->interest_comps->n - 1)) {
+        ccnb_element_begin(es->reply_body, CCN_DTAG_Link);
+        ccnb_element_begin(es->reply_body, CCN_DTAG_Name);
+        ccnb_element_end(es->reply_body);
+        ccn_name_append_components(es->reply_body, es->content->key,
+                                   es->content->comps[es->interest_comps->n - 1],
+                                   es->content->comps[es->interest_comps->n]);
+        ccnb_element_end(es->reply_body); /* </Link> */
+        es->content = r_store_next_child_at_level(ccnr, es->content, es->interest_comps->n - 1);
+        if (es->reply_body->length >= 4096) {
+            res = ccn_seqw_write(es->w, es->reply_body->buf, 4096);
+            if (res <= 0) {
+                abort();
+            }
+            es->next_segment++;
+            memmove(es->reply_body->buf, es->reply_body->buf + res, es->reply_body->length - res);
+            es->reply_body->length -= res;
+            hashtb_end(e);
+            return (CCN_UPCALL_RESULT_OK);
+        }
+    }
+    // we will only get here if we are finishing an in-progress enumeration
+    ccnb_element_end(es->reply_body); /* </Collection> */
+    res = ccn_seqw_write(es->w, es->reply_body->buf, es->reply_body->length);
+    if (res != es->reply_body->length) {
+        abort();
+    }
+    es->active = 0;
+    ans = CCN_UPCALL_RESULT_OK;
+    
+Bail:
+    if (es != NULL) {
+        // leave the name 
+        ccn_charbuf_destroy(&es->interest);
+        ccn_charbuf_destroy(&es->reply_body);
+        ccn_indexbuf_destroy(&es->interest_comps);
+        res = ccn_seqw_close(es->w);
+        if (res < 0) abort();
+        es->w = NULL;
+    }
+    hashtb_end(e);
+    return(ans);
+}
+
