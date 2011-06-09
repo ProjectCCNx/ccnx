@@ -288,7 +288,6 @@
 			<classpath>
 				<path refid="classpath-run" />
 			</classpath>
-			<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
 			<arg value="-interactive" />
