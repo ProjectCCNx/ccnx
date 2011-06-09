@@ -655,6 +655,27 @@
 		<!-- <delete dir="${REPO_ROOT}"/> -->
 	</target>
 	
+	<target name="test-repo-simple-nameenumeration" depends="jar, repo">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="org/ccnx/ccn/test/repo/SimpleNameEnumerationTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
+	</target>
+	
 	<target name="test-repo-io" depends="jar, test-repo-structure, ccnd, repo">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
