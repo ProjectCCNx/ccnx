@@ -360,7 +360,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
     }
     md->tries = 0;
-    // XXX - need to save the keys
+    // XXX - need to save the keys (or do it when they arrive in the key snooper)
 
     // XXX The test below should get replace by ccn_is_final_block() when it is available
     if (is_final(info) == 1) md->done = 1;    
