@@ -53,6 +53,8 @@
 #include <ccn/reg_mgmt.h>
 #include <ccn/uri.h>
 
+#include <sync/SyncBase.h>
+
 #include "ccnr_private.h"
 
 #include "ccnr_init.h"
@@ -142,7 +144,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (listen_on != NULL && listen_on[0] != 0)
         ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
     h->appnonce = &r_fwd_append_debug_nonce;
-    h->sync_handle = SyncNewBase();
     ccnr_init_repo_keystore(h, h->internal_client);
     /* XXX - need to bail if keystore is not OK. */
 	r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
@@ -167,10 +168,13 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
         ccnr_uri_listen(h, h->direct_client, "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository",
                         &ccnr_answer_req, OP_SERVICE);
     }
+    h->sync_handle = SyncNewBase(h, h->direct_client);
+    
     r_net_listen_on(h, listen_on);
     r_fwd_age_forwarding_needed(h);
     ccnr_internal_client_start(h);
     r_proto_init(h);
+    SyncInit(h->sync_handle);
     free(sockname);
     sockname = NULL;
     return(h);
