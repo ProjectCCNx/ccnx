@@ -460,6 +460,7 @@ process_input(struct ccnr_handle *h, int fd)
         if (res < 0) {
             // Deal with it somehow.  Probably means ccnd went away.
             // Should schedule reconnection.
+            ccnr_msg(h, "ccn_run returned error, shutting down direct client");
             r_io_shutdown_client_fd(h, fd);
         }
         return;
@@ -563,9 +564,15 @@ r_dispatch_run(struct ccnr_handle *h)
     int timeout_ms = -1;
     int prev_timeout_ms = -1;
     int usec;
+    int usec_direct;
     for (h->running = 1; h->running;) {
         r_dispatch_process_internal_client_buffer(h);
         usec = ccn_schedule_run(h->sched);
+        /// XXX - this is likely not the correct way to deal with getting
+        ///   the proper timeout for the poll
+        usec_direct = ccn_process_scheduled_operations(h->direct_client);
+        usec = (usec < usec_direct) ? usec : usec_direct;
+        
         timeout_ms = (usec < 0) ? -1 : ((usec + 960) / 1000);
         if (timeout_ms == 0 && prev_timeout_ms == 0)
             timeout_ms = 1;
@@ -592,6 +599,8 @@ r_dispatch_run(struct ccnr_handle *h)
                     r_link_do_deferred_write(h, h->fds[i].fd);
                 else if (h->fds[i].revents & (POLLIN))
                     process_input(h, h->fds[i].fd);
+                else
+                    ccnr_msg(h, "poll: UNHANDLED");
             }
         }
     }
