@@ -142,6 +142,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (listen_on != NULL && listen_on[0] != 0)
         ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
     h->appnonce = &r_fwd_append_debug_nonce;
+    h->sync_handle = SyncNewBase();
     ccnr_init_repo_keystore(h, h->internal_client);
     /* XXX - need to bail if keystore is not OK. */
 	r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
@@ -193,6 +194,8 @@ r_init_destroy(struct ccnr_handle **pccnr)
     hashtb_destroy(&h->nameprefix_tab);
     hashtb_destroy(&h->sparse_straggler_tab);
     hashtb_destroy(&h->enum_state_tab);
+    
+    SyncFreeBase(&h->sync_handle);
 
     if (h->fds != NULL) {
         free(h->fds);

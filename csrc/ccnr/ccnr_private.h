@@ -45,6 +45,8 @@ struct ccn_charbuf;
 struct ccn_indexbuf;
 struct hashtb;
 struct ccnr_meter;
+
+struct SyncBaseStruct;
 /*
  * These are defined in this header.
  */
@@ -141,6 +143,8 @@ struct ccnr_handle {
     struct ccn_scheduled_event *notice_push;
     void (*appnonce)(struct ccnr_handle *, struct fdholder *, struct ccn_charbuf *);
                                     /**< pluggable nonce generation */
+    struct SyncBaseStruct *sync_handle;  /**< handle to pass to the sync code */
+    
 };
 
 struct content_queue {
