@@ -145,7 +145,7 @@ struct ccnr_handle {
                                     /**< pluggable nonce generation */
     /* items related to sync/repo integration */
     struct SyncBaseStruct *sync_handle;  /**< handle to pass to the sync code */
-    off_t notify_after;             /**< starting file offset for notifying sync */
+    ccn_accession_t notify_after;             /**< starting item number for notifying sync */
     
 };
 

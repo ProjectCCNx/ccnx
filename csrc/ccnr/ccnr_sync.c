@@ -38,9 +38,9 @@
 
 void
 r_sync_notify_after(struct ccnr_handle *ccnr,
-                    off_t repo_offset)
+                    ccn_accession_t item)
 {
-    ccnr->notify_after = repo_offset;
+    ccnr->notify_after = item;
 }
 
 int

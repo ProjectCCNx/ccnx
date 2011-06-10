@@ -27,7 +27,7 @@
  * Following a call to r_sync_notify_after, the repository will call
  *    SyncNotifyContent(struct SyncBaseStruct *,
  *                      int enumeration,
- *                      off_t repo_offset,
+ *                      ccn_accession_t item,
  *                      struct ccn_charbuf *content_ccnb,
  *                      struct ccn_indexbuf *content_comps);
  * periodically while there are no un-notified objects.
@@ -40,7 +40,7 @@
  */
 void
 r_sync_notify_after(struct ccnr_handle *ccnr,
-                    off_t repo_offset);
+                    ccn_accession_t item);
 
 /** Request that a syncNotifyContent call is made for each content object
  *  matching the interest.
