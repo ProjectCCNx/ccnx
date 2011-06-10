@@ -168,7 +168,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
         ccnr_uri_listen(h, h->direct_client, "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository",
                         &ccnr_answer_req, OP_SERVICE);
     }
-    h->sync_handle = SyncNewBase(h, h->direct_client);
+    h->sync_handle = SyncNewBase(h, h->direct_client, h->sched);
     
     r_net_listen_on(h, listen_on);
     r_fwd_age_forwarding_needed(h);
