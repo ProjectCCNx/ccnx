@@ -143,7 +143,9 @@ struct ccnr_handle {
     struct ccn_scheduled_event *notice_push;
     void (*appnonce)(struct ccnr_handle *, struct fdholder *, struct ccn_charbuf *);
                                     /**< pluggable nonce generation */
+    /* items related to sync/repo integration */
     struct SyncBaseStruct *sync_handle;  /**< handle to pass to the sync code */
+    off_t notify_after;             /**< starting file offset for notifying sync */
     
 };
 
