@@ -39,8 +39,7 @@
  * r_sync_notify_after() will be cancelled.
  */
 void
-r_sync_notify_after(struct ccnr_handle *ccnr,
-                    ccn_accession_t item);
+r_sync_notify_after(struct ccnr_handle *ccnr, ccn_accession_t item);
 
 /** Request that a syncNotifyContent call is made for each content object
  *  matching the interest.
@@ -48,8 +47,7 @@ r_sync_notify_after(struct ccnr_handle *ccnr,
  *      in the syncNotifyContent
  */
 int
-r_sync_enumerate(struct ccnr_handle *ccnr,
-                 struct ccn_charbuf *interest);
+r_sync_enumerate(struct ccnr_handle *ccnr, struct ccn_charbuf *interest);
 
 /** Look up a content object that is stored locally in the repository
  * based on the supplied interest.
@@ -57,17 +55,15 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
  * returns 0 for success, -1 for error.
  */
 int
-r_sync_lookup(struct ccnr_handle *ccnr,
-			  struct ccn_charbuf *interest,
-			  struct ccn_charbuf *content_ccnb);
+r_sync_lookup(struct ccnr_handle *ccnr, struct ccn_charbuf *interest,
+              struct ccn_charbuf *content_ccnb);
 
 /**
  * Called when a content object is received by sync and needs to be
  * committed to stable storage by the repo.
  */
 enum ccn_upcall_res
-r_sync_upcall_store(struct ccnr_handle *ccnr,
-                    enum ccn_upcall_kind kind,
+r_sync_upcall_store(struct ccnr_handle *ccnr, enum ccn_upcall_kind kind,
                     struct ccn_upcall_info *info);
 
 /**
@@ -77,7 +73,6 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
  */
 
 int
-r_sync_local_store(struct ccnr_handle *ccnr,
-				   struct ccn_charbuf *content);
+r_sync_local_store(struct ccnr_handle *ccnr, struct ccn_charbuf *content);
 
 #endif

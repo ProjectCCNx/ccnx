@@ -36,14 +36,14 @@
 
 #include "ccnr_sync.h"
 
-void
+PUBLIC void
 r_sync_notify_after(struct ccnr_handle *ccnr,
                     ccn_accession_t item)
 {
     ccnr->notify_after = item;
 }
 
-int
+PUBLIC int
 r_sync_enumerate(struct ccnr_handle *ccnr,
                  struct ccn_charbuf *interest)
 {
@@ -52,7 +52,7 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
 }
 
 
-int
+PUBLIC int
 r_sync_lookup(struct ccnr_handle *ccnr,
               struct ccn_charbuf *interest,
               struct ccn_charbuf *content_ccnb)
@@ -65,7 +65,7 @@ r_sync_lookup(struct ccnr_handle *ccnr,
  * Called when a content object is received by sync and needs to be
  * committed to stable storage by the repo.
  */
-enum ccn_upcall_res
+PUBLIC enum ccn_upcall_res
 r_sync_upcall_store(struct ccnr_handle *ccnr,
                     enum ccn_upcall_kind kind,
                     struct ccn_upcall_info *info)
@@ -80,7 +80,7 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
  * returns 0 for success, -1 for error.
  */
 
-int
+PUBLIC int
 r_sync_local_store(struct ccnr_handle *ccnr,
 				   struct ccn_charbuf *content)
 {
