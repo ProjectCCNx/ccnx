@@ -146,7 +146,6 @@ struct ccnr_handle {
     /* items related to sync/repo integration */
     struct SyncBaseStruct *sync_handle;  /**< handle to pass to the sync code */
     ccn_accession_t notify_after;             /**< starting item number for notifying sync */
-    
 };
 
 struct content_queue {

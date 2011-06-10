@@ -36,6 +36,7 @@
 #include <ccn/sockaddrutil.h>
 #include <ccn/uri.h>
 #include <ccn/coding.h>
+#include <sync/SyncBase.h>
 #include "ccnr_private.h"
 
 #include "ccnr_proto.h"
@@ -46,6 +47,7 @@
 #include "ccnr_msg.h"
 #include "ccnr_sendq.h"
 #include "ccnr_store.h"
+#include "ccnr_util.h"
 
 #define REPO_SW "\301.R.sw"
 #define REPO_SWC "\301.R.sw-c"
@@ -315,6 +317,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
     struct expect_content *md = selfp->data;
     struct ccnr_handle *ccnr = NULL;
     struct content_entry *content = NULL;
+    int i;
 
     if (kind == CCN_UPCALL_FINAL) {
         if (md != NULL) {
@@ -353,11 +356,25 @@ r_proto_expect_content(struct ccn_closure *selfp,
         ccnr_msg(ccnr, "r_proto_expect_content: failed to process incoming content");
         return(CCN_UPCALL_RESULT_ERR);
     }
+    // XXX - here we need to check if this is something we *should* be storing, according to our policy
     if ((content->flags & CCN_CONTENT_ENTRY_STABLE) == 0) {
         // Need to actually append to the active repo data file
         r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
+        if (content->accession >= ccnr->notify_after) {
+            // XXX - ugh, content_entry doesn't have the data in exactly the format we want.  Rethink this?
+            struct ccn_indexbuf *comps = r_util_indexbuf_obtain(ccnr);
+            struct ccn_charbuf *cb = r_util_charbuf_obtain(ccnr);
+            ccn_charbuf_append(cb, content->key, content->size);
+            ccn_indexbuf_reserve(comps, content->ncomps);
+            for (i = 0; i < content->ncomps; i++)
+                ccn_indexbuf_append_element(comps, content->comps[i]);
+            res = SyncNotifyContent(ccnr->sync_handle, 0, content->accession,
+                                    cb, comps);
+            r_util_indexbuf_release(ccnr, comps);
+            r_util_charbuf_release(ccnr, cb);
+        }
     }
     md->tries = 0;
     // XXX - need to save the keys (or do it when they arrive in the key snooper)

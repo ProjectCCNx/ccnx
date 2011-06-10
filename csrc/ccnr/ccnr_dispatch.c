@@ -52,6 +52,8 @@
 #include <ccn/reg_mgmt.h>
 #include <ccn/uri.h>
 
+#include <sync/SyncBase.h>
+
 #include "ccnr_private.h"
 
 #include "ccnr_dispatch.h"
@@ -286,8 +288,12 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         if (content != NULL) {
             if (obj.type == CCN_CONTENT_KEY && content->accession <= (h->capacity + 7)/8)
                 content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
-            if ((fdholder->flags & CCNR_FACE_REPODATA) != 0)
+            if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
                 content->flags |= CCN_CONTENT_ENTRY_STABLE;
+                if (content->accession >= h->notify_after)
+                res = SyncNotifyContent(h->sync_handle, 0, content->accession,
+                                        cb, comps);
+            }
         }
     }
     hashtb_end(e);
