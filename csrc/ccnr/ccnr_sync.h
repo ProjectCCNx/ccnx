@@ -3,9 +3,6 @@
  * 
  * Part of ccnr - CCNx Repository Daemon.
  *
- */
-
-/*
  * Copyright (C) 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
@@ -26,7 +23,6 @@
 #include "ccnr_private.h"
 
 /** Notify repo of starting point for new names to be passed to sync.
- * the <RepoID, repoOffset> specify the last received object
  * Use repo_offset = 0 as the initial value.
  * Following a call to r_sync_notify_after, the repository will call
  *    SyncNotifyContent(struct SyncBaseStruct *,
@@ -62,8 +58,8 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
  */
 int
 r_sync_lookup(struct ccnr_handle *ccnr,
-                   struct ccn_charbuf *interest,
-                   struct ccn_charbuf *content_ccnb);
+			  struct ccn_charbuf *interest,
+			  struct ccn_charbuf *content_ccnb);
 
 /**
  * Called when a content object is received by sync and needs to be
