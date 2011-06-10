@@ -27,7 +27,7 @@
 
 /** Notify repo of starting point for new names to be passed to sync.
  * the <RepoID, repoOffset> specify the last received object
- * Use <0, 0> as the initial value.
+ * Use repo_offset = 0 as the initial value.
  * Following a call to r_sync_notify_after, the repository will call
  *    SyncNotifyContent(struct SyncBaseStruct *,
  *                      int enumeration,
@@ -82,6 +82,6 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
 
 int
 r_sync_local_store(struct ccnr_handle *ccnr,
-                    struct ccn_charbuf *content)
+				   struct ccn_charbuf *content);
 
 #endif
