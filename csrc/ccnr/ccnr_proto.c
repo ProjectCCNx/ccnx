@@ -54,6 +54,7 @@
 #define NAME_BE "\301.E.be"
 
 #define CCNR_MAX_RETRY 5
+#define CCNR_PIPELINE 4
 
 static enum ccn_upcall_res
 r_proto_start_write(struct ccn_closure *selfp,
@@ -245,11 +246,12 @@ r_proto_append_repo_info(struct ccnr_handle *ccnr,
     ccn_charbuf_destroy(&name);
     return (res);
 }
-
 struct expect_content {
     struct ccnr_handle *ccnr;
-    int done;
     int tries; /** counter so we can give up eventually */
+    int done;
+    intmax_t outstanding[CCNR_PIPELINE];
+    intmax_t final;
 };
 
 static struct ccn_charbuf *
@@ -301,7 +303,28 @@ is_final(struct ccn_upcall_info *info)
     }
     return(0);
 }
+static intmax_t
+segment_from_component(const unsigned char *ccnb, size_t start, size_t stop)
+{
+    const unsigned char *data = NULL;
+    size_t len = 0;
+    intmax_t segment;
+    int i;
 
+    if (start < stop) {
+		ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, start, stop, &data, &len);
+		if (len > 0 && data != NULL) {
+			// parse big-endian encoded number
+			segment = 0;
+            for (i = 0; i < len; i++) {
+				segment = segment * 256 + data[i];
+			}
+			return(segment);
+		}
+	}
+	return(-1);
+    
+}
 static enum ccn_upcall_res
 r_proto_expect_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -318,6 +341,8 @@ r_proto_expect_content(struct ccn_closure *selfp,
     struct ccnr_handle *ccnr = NULL;
     struct content_entry *content = NULL;
     int i;
+    int empty_slots;
+    intmax_t segment;
 
     if (kind == CCN_UPCALL_FINAL) {
         if (md != NULL) {
@@ -330,6 +355,8 @@ r_proto_expect_content(struct ccn_closure *selfp,
     if (md == NULL) {
         return(CCN_UPCALL_RESULT_ERR);
     }
+    if (md->done)
+        return(CCN_UPCALL_RESULT_ERR);
     ccnr = (struct ccnr_handle *)md->ccnr;
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) {
         if (md->tries > CCNR_MAX_RETRY) {
@@ -344,8 +371,6 @@ r_proto_expect_content(struct ccn_closure *selfp,
     if (kind != CCN_UPCALL_CONTENT)
         return(CCN_UPCALL_RESULT_ERR);
     
-    if (selfp->intdata == 0)
-        ccnr_msg(ccnr, "r_proto_expect_content: received segment 0");
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
     ib = info->interest_ccnb;
@@ -377,27 +402,43 @@ r_proto_expect_content(struct ccn_closure *selfp,
         }
     }
     md->tries = 0;
-    // XXX - need to save the keys (or do it when they arrive in the key snooper)
+    segment = segment_from_component(ib, ic->buf[ic->n - 2], ic->buf[ic->n - 1]);
 
+    // XXX - need to save the keys (or do it when they arrive in the key snooper)
     // XXX The test below should get replace by ccn_is_final_block() when it is available
-    if (is_final(info) == 1) md->done = 1;    
-    if (md->done) {
-        // ccn_set_run_timeout(info->h, 0);
-        return(CCN_UPCALL_RESULT_OK);
+    if (is_final(info) == 1)
+        md->final = segment;
+    
+    /* retire the current segment and any segments beyond the final one */
+    empty_slots = 0;
+    for (i = 0; i < CCNR_PIPELINE; i++) {
+        if (md->outstanding[i] == segment || ((md->final > -1) && (md->outstanding[i] > md->final)))
+            md->outstanding[i] = -1;
+        if (md->outstanding[i] == -1)
+            empty_slots++;
+    
     }
+    md->done = (md->final > -1) && (empty_slots == CCNR_PIPELINE);
     
-    /* Ask for the next fragment */
+    if (md->final > -1) {
+        return (CCN_UPCALL_RESULT_OK);
+    }
+
     name = ccn_charbuf_create();
-    ccn_name_init(name);
-    if (ic->n < 2) abort();
-    res = ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 2]);
-    if (res < 0) abort();
-    ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, ++(selfp->intdata));
+    if (ic->n < 2) abort();    
     templ = make_template(md, info);
-    
-    res = ccn_express_interest(info->h, name, selfp, templ);
-    if (res < 0) abort();
-    
+    /* fill the pipeline with new requests */
+    for (i = 0; i < CCNR_PIPELINE; i++) {
+        if (md->outstanding[i] == -1) {
+            ccn_name_init(name);
+            res = ccn_name_append_components(name, ib, ic->buf[0], ic->buf[ic->n - 2]);
+            if (res < 0) abort();
+            ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, ++(selfp->intdata));
+            res = ccn_express_interest(info->h, name, selfp, templ);
+            if (res < 0) abort();
+            md->outstanding[i] = selfp->intdata;
+        }
+    }
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&name);
     
@@ -422,6 +463,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     int res = 0;
     int start = 0;
     int end = 0;
+    int i;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
     // XXX - Check for valid nonce
@@ -457,13 +499,16 @@ r_proto_start_write(struct ccn_closure *selfp,
     incoming->p = &r_proto_expect_content;
     expect_content = calloc(1, sizeof(*expect_content));
     expect_content->ccnr = ccnr;
-    expect_content->done = 0;
+    expect_content->final = -1;
+    for (i = 0; i < CCNR_PIPELINE; i++)
+        expect_content->outstanding[i] = -1;
     incoming->data = expect_content;
     templ = make_template(expect_content, NULL);
     ic = info->interest_comps;
     ccn_name_init(name);
     ccn_name_append_components(name, info->interest_ccnb, ic->buf[0], ic->buf[marker_comp]);
     ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
+    expect_content->outstanding[0] = 0;
     res = ccn_express_interest(info->h, name, incoming, templ);
     if (res < 0) {
         ans = CCN_UPCALL_RESULT_ERR;
