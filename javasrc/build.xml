@@ -211,7 +211,7 @@
 	<!-- Don't run this by itself - use target repo -->
 	<target name="repo-start" depends="jar, repo-start-crepo, repo-start-javarepo"/>
 
-	<target name="repo-start-javarepo" if="${java.repo}">
+	<target name="repo-start-javarepo" unless="${repo2}">
 		<parallel>
 			<echo message="Running Java repo"/>
 			<daemons>
@@ -240,7 +240,7 @@
 		</parallel>
 	</target>
 
-	<target name="repo-start-crepo" unless="${java.repo}">
+	<target name="repo-start-crepo" if="${repo2}">
 		<touch file="${REPO_ROOT}/repoFile1" mkdirs="true"/>
 		<copy file="${REPO_KEYSTORE}" todir="${REPO_ROOT}"/>
 		<parallel>
@@ -281,7 +281,7 @@
 	     against it in debugger -->
 	<target name="run-test-repo" depends="run-test-crepo, run-test-javarepo"/>
 
-	<target name="run-test-javarepo" depends="jar" if="${java.repo}">
+	<target name="run-test-javarepo" depends="jar" unless="${repo2}">
 		<echo message="Running Java repo"/>
 		<mkdir dir="${testout}"/>
 		<java classname="org.ccnx.ccn.impl.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
@@ -302,7 +302,7 @@
 		<sleep seconds="1"/>
 	</target>
 
-	<target name="run-test-crepo" unless="${java.repo}">
+	<target name="run-test-crepo" if="${repo2}">
 		<echo message="Running C repo"/>
 		<touch file="${REPO_ROOT}/repoFile1" mkdirs="true"/>
 		<copy file="${REPO_KEYSTORE}" todir="${REPO_ROOT}"/>
