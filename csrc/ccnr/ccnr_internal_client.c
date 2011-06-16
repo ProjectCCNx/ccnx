@@ -35,6 +35,7 @@
 #include <ccn/schedule.h>
 #include <ccn/sockaddrutil.h>
 #include <ccn/uri.h>
+#include <ccn/keystore.h>
 #include "ccnr_private.h"
 
 #include "ccnr_internal_client.h"
@@ -323,7 +324,6 @@ ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
     int res = -1;
     size_t save;
     char *keystore_path = NULL;
-    FILE *passfile;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
     if (h == NULL)
@@ -347,27 +347,13 @@ ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
     keystore_path = strdup(ccn_charbuf_as_string(temp));
     res = stat(keystore_path, &statbuf);
     if (res == 0)
-        res = ccn_load_default_key(h, keystore_path,
-                                   CCNR_KEYSTORE_PASS);
+        res = ccn_load_default_key(h, keystore_path, CCNR_KEYSTORE_PASS);
     if (res >= 0)
         goto Finish;
-    if (1) {
-        /* skip trying to create keystore right now */
-        ccnr_msg(ccnr, "Repo not initialized");
-        res = -1;
-        goto Bail;
-    }
     /* No stored keystore that we can access. Create one if we can.*/
-    temp->length = save;
-    ccn_charbuf_putf(temp, "p");
-    passfile = fopen(ccn_charbuf_as_string(temp), "wb");
-    fprintf(passfile, "%s", CCNR_KEYSTORE_PASS);
-    fclose(passfile);
-    ccn_charbuf_putf(cmd, "ccnd-init-keystore-helper %s",
-                     ccnr->progname, keystore_path);
-    res = system(ccn_charbuf_as_string(cmd));
+    res = ccn_keystore_file_init(keystore_path, CCNR_KEYSTORE_PASS, "Repository", 0, 0);
     if (res != 0) {
-        culprit = cmd;
+        culprit = temp;
         goto Finish;
     }
     res = ccn_load_default_key(h, keystore_path, CCNR_KEYSTORE_PASS);
@@ -385,8 +371,6 @@ Finish:
     ccn_charbuf_append_string(ccnr->ccnr_keyid, ".M.K");
     ccn_charbuf_append_value(ccnr->ccnr_keyid, 0, 1);
     ccn_charbuf_append(ccnr->ccnr_keyid, ccnr->ccnr_id, sizeof(ccnr->ccnr_id));
-    
-Bail:
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&cmd);
     if (keystore_path != NULL)
