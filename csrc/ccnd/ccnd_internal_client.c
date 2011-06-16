@@ -445,16 +445,9 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
     if (res >= 0)
         goto Finish;
     /* No stored keystore that we can access; create one. */
-    temp->length = save;
-    ccn_charbuf_putf(temp, "p");
-    passfile = fopen(ccn_charbuf_as_string(temp), "wb");
-    fprintf(passfile, "%s", CCND_KEYSTORE_PASS);
-    fclose(passfile);
-    ccn_charbuf_putf(cmd, "%s-init-keystore-helper %s",
-                     ccnd->progname, keystore_path);
-    res = system(ccn_charbuf_as_string(cmd));
+    res = ccn_keystore_file_init(keystore_path, CCND_KEYSTORE_PASS, "CCND-internal", 0, 0);
     if (res != 0) {
-        culprit = cmd;
+        culprit = temp;
         goto Finish;
     }
     res = ccn_load_default_key(ccnd->internal_client, keystore_path, CCND_KEYSTORE_PASS);
