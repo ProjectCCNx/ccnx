@@ -144,8 +144,9 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (listen_on != NULL && listen_on[0] != 0)
         ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
     h->appnonce = &r_fwd_append_debug_nonce;
-    ccnr_init_repo_keystore(h, h->internal_client);
-    /* XXX - need to bail if keystore is not OK. */
+    if (ccnr_init_repo_keystore(h, h->internal_client) < 0){
+        /* XXX - need to bail if keystore is not OK. */
+    }
 	r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
     h->active_out_fd = r_io_open_repo_data_file(h, "repoFile1", 1); /* output */
     r_util_reseed(h);
