@@ -50,5 +50,5 @@ const struct ccn_pkey *ccn_keystore_public_key(struct ccn_keystore *p);
 ssize_t ccn_keystore_public_key_digest_length(struct ccn_keystore *p);
 const unsigned char *ccn_keystore_public_key_digest(struct ccn_keystore *p);
 const struct ccn_certificate *ccn_keystore_certificate(struct ccn_keystore *p);
-
+int ccn_keystore_file_init(char *filename, char *password, char *subject, int keylength, int validity_days);
 #endif
