@@ -27,7 +27,6 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.util.Random;
-import java.util.logging.Level;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -241,8 +240,6 @@ public class CCNSecureInputStreamTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setDefaultLevel(Level.FINEST);
-		Log.setDefaultLevel(Log.FAC_SIGNING, Level.FINEST);
 		outputLibrary = CCNHandle.open();
 		inputLibrary = CCNHandle.open();
 				
@@ -380,7 +377,6 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void basicStreamEncryptDecrypt() throws IOException {
-		Log.setLevel(Log.FAC_PIPELINE, Level.INFO);
 		basic.streamEncryptDecrypt();
 	}
 	@Test

@@ -19,7 +19,6 @@ package org.ccnx.ccn.test.profiles.security.access.group;
 
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.logging.Level;
 
 import junit.framework.Assert;
 
@@ -27,7 +26,6 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
@@ -62,13 +60,9 @@ public class ACPerformanceTestRepo {
 
 	int readsize = 1024;
 	byte [] buffer = new byte[readsize];
-	
-	static Level [] logLevels;
-	
+		
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		logLevels = Log.getLevels();
-		Log.setDefaultLevel(Log.FAC_ALL, Level.WARNING);
 		rnd = new Random();
 		
 		CCNTestHelper testHelper = new CCNTestHelper(ACPerformanceTestRepo.class);
@@ -118,7 +112,6 @@ public class ACPerformanceTestRepo {
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		cua.closeAll();
-		Log.setLevels(logLevels);
 	}
 	
 	@Test

@@ -20,12 +20,10 @@ package org.ccnx.ccn.test.io.content;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.io.content.LocalCopyWrapper;
 import org.ccnx.ccn.protocol.ContentName;
@@ -48,7 +46,6 @@ public class LocalCopyWrapperJunit {
 	
 	@Before
 	public void setUp() throws Exception {
-		Log.setLevel(Log.FAC_ALL, Level.WARNING);
 		bkm = new BasicKeyManager();
 		bkm.initialize();
 		readhandle = CCNHandle.open(bkm);
