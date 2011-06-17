@@ -51,6 +51,7 @@
 
 #define REPO_SW "\301.R.sw"
 #define REPO_SWC "\301.R.sw-c"
+#define REPO_AF "\301.R.af"
 #define NAME_BE "\301.E.be"
 
 #define CCNR_MAX_RETRY 5
@@ -128,14 +129,14 @@ r_proto_answer_req(struct ccn_closure *selfp,
     
     /* check for command markers */
     ncomps = info->interest_comps->n;
-    if (((marker_comp = ncomps - 2) > 0) &&
+    if (((marker_comp = ncomps - 2) >= 0) &&
         0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE)) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
-    } else if (((marker_comp = ncomps - 3) > 0) &&
+    } else if (((marker_comp = ncomps - 3) >= 0) &&
                0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE) &&
                0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
         if ((ccnr->debug & 8) != 0)
@@ -143,7 +144,7 @@ r_proto_answer_req(struct ccn_closure *selfp,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
-    } else if (((marker_comp = ncomps - 5) > 0) &&
+    } else if (((marker_comp = ncomps - 5) >= 0) &&
                0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE) &&
                0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
         if ((ccnr->debug & 8) != 0)
