@@ -169,6 +169,22 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
 }
 
 /**
+ * Append to a charbuf the versioned ccnb-encoded Name that will be used for
+ * this stream.
+ *
+ * @param w the seqwriter for which the name is requested
+ * @param nv the charbuf to which the name will be appended
+ * @returns 0 for success, -1 for failure
+ */
+int
+ccn_seqw_get_name(struct ccn_seqwriter *w, struct ccn_charbuf *nv)
+{
+    if (nv == NULL || w == NULL)
+        return (-1);
+    return (ccn_charbuf_append_charbuf(nv, w->nv));
+}
+
+/**
  * Write some data to a seqwriter.
  *
  * This is roughly analogous to a write(2) call in non-blocking mode.
