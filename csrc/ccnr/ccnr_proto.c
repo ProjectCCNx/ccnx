@@ -81,6 +81,22 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
                              struct ccn_upcall_info *info,
                              int marker_comp);
 
+static enum ccn_upcall_res
+r_proto_bulk_import(struct ccn_closure *selfp,
+                             enum ccn_upcall_kind kind,
+                             struct ccn_upcall_info *info,
+                             int marker_comp);
+
+static int
+name_comp_strequal(const unsigned char *data,
+                   const struct ccn_indexbuf *indexbuf,
+                   unsigned int i, const char *val);
+
+static int
+name_comp_strnequal(const unsigned char *data,
+                    const struct ccn_indexbuf *indexbuf,
+                    unsigned int i, const char *val, unsigned int n);
+
 PUBLIC enum ccn_upcall_res
 r_proto_answer_req(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -130,41 +146,48 @@ r_proto_answer_req(struct ccn_closure *selfp,
     /* check for command markers */
     ncomps = info->interest_comps->n;
     if (((marker_comp = ncomps - 2) >= 0) &&
-        0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE)) {
+        0 == name_comp_strequal(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE)) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 3) >= 0) &&
-               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE) &&
-               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
+               0 == name_comp_strequal(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE) &&
+               0 == name_comp_strequal(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_repoid", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 5) >= 0) &&
-               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE) &&
-               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
+               0 == name_comp_strequal(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE) &&
+               0 == name_comp_strequal(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccn_charbuf_as_string(ccnr->ccnr_keyid))) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_continuation",
                             NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_continue_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 3) > 0) &&
-               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SW)) {
+               0 == name_comp_strequal(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SW)) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_start_write(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 5) > 0) &&
-               0 == ccn_name_comp_strcmp(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SWC)) {
+               0 == name_comp_strequal(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SWC)) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write_checked",
                             NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_start_write_checked(selfp, kind, info, marker_comp);
+        goto Finish;
+    } else if (((marker_comp = 0) == 0) &&
+               0 == name_comp_strnequal(info->interest_ccnb, info->interest_comps, marker_comp, REPO_AF, strlen(REPO_AF))) {
+        if ((ccnr->debug & 8) != 0)
+            ccnr_debug_ccnb(ccnr, __LINE__, "repo_bulk_import",
+                            NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+        res = r_proto_bulk_import(selfp, kind, info, marker_comp);
         goto Finish;
     }
     goto Bail;
@@ -177,6 +200,47 @@ Finish:
     ccn_charbuf_destroy(&reply_body);
     ccn_charbuf_destroy(&signed_info);
     return(res);
+}
+
+// XXX these should probably be rationalized and added to ccn_name_util.c
+// but we need to think about whether they should be strcmp or memcmp
+/**
+ * Compare a name component at index i to a string and return 0 if they are equal
+ */
+static int
+name_comp_strequal(const unsigned char *data,
+                   const struct ccn_indexbuf *indexbuf,
+                   unsigned int i, const char *val)
+{
+    const unsigned char *comp_ptr;
+    size_t comp_size;
+    
+    if ((ccn_name_comp_get(data, indexbuf, i, &comp_ptr, &comp_size) == 0) &&
+        (comp_size == strlen(val)) &&
+        0 == strncmp(val, (const char *)comp_ptr, comp_size))
+        return(0);
+    /* no such component, or they are not equal */
+    return(1);
+}
+
+/**
+ * Compare a name component at index i to a string and return 0 if they are equal
+ * in the first n characters.
+ */
+static int
+name_comp_strnequal(const unsigned char *data,
+                   const struct ccn_indexbuf *indexbuf,
+                   unsigned int i, const char *val, unsigned int n)
+{
+    const unsigned char *comp_ptr;
+    size_t comp_size;
+    
+    if ((ccn_name_comp_get(data, indexbuf, i, &comp_ptr, &comp_size) == 0) &&
+        (comp_size >= n) && (strlen(val) >= n) &&
+        0 == strncmp(val, (const char *)comp_ptr, n))
+        return(0);
+    /* no such component, or they are not equal to n characters */
+    return(1);
 }
 
 PUBLIC void
@@ -856,3 +920,11 @@ Bail:
     return(ans);
 }
 
+static enum ccn_upcall_res
+r_proto_bulk_import(struct ccn_closure *selfp,
+                          enum ccn_upcall_kind kind,
+                          struct ccn_upcall_info *info,
+                          int marker_comp)
+{
+    return(CCN_UPCALL_RESULT_ERR);
+}
