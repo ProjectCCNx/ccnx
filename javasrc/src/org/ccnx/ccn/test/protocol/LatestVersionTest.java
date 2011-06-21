@@ -244,17 +244,17 @@ public class LatestVersionTest {
 			long doneTime;
 			long checkTime = System.currentTimeMillis();
 			object = VersioningProfile.getFirstBlockOfLatestVersion(three, null, null, 5000, getHandle.defaultVerifier(), getHandle);
-			responder.checkError();
 			doneTime = System.currentTimeMillis();
 			System.out.println("took us "+(doneTime - checkTime)+"ms to get nothing back "+" check: "+checkTime+" done: "+doneTime);
+			responder.checkError();
 			Assert.assertNull(object);
 			Assert.assertTrue((doneTime - checkTime) < 5500 && (doneTime - checkTime) >= 5000);
 			System.out.println("passed test for waiting 5 seconds");
 			
 			checkTime = System.currentTimeMillis();
 			object = VersioningProfile.getFirstBlockOfLatestVersion(three, null, null, 200, getHandle.defaultVerifier(), getHandle);
-			responder.checkError();
 			checkTime = System.currentTimeMillis() - checkTime;
+			responder.checkError();
 			System.out.println("took us "+checkTime+"ms to get nothing back");
 			Assert.assertNull(object);
 			Assert.assertTrue(checkTime >= 200 && checkTime < 300);
