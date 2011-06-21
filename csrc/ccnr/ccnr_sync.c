@@ -34,7 +34,12 @@
 
 #include "ccnr_private.h"
 
+#include "ccnr_dispatch.h"
+#include "ccnr_io.h"
+#include "ccnr_msg.h"
+#include "ccnr_sendq.h"
 #include "ccnr_sync.h"
+
 
 PUBLIC void
 r_sync_notify_after(struct ccnr_handle *ccnr,
@@ -82,8 +87,23 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
 
 PUBLIC int
 r_sync_local_store(struct ccnr_handle *ccnr,
-				   struct ccn_charbuf *content)
+				   struct ccn_charbuf *content_cb)
 {
-    int ans = -1;
-    return(ans);
+    struct content_entry *content = NULL;
+    
+    // pretend it came from the internal client, for statistics gathering purposes
+    content = process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(ccnr->internal_client)),
+                                       (void *)content_cb->buf, content_cb->length);
+    if (content == NULL) {
+        ccnr_msg(ccnr, "r_sync_local_store: failed to process content");
+        return(-1);
+    }
+    // XXX - we assume we must store things from sync independent of policy
+    // XXX - sync may want notification, or not, at least for now.
+    if ((content->flags & CCN_CONTENT_ENTRY_STABLE) == 0) {
+        r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
+        // XXX - it would be better to do this after the write succeeds
+        content->flags |= CCN_CONTENT_ENTRY_STABLE;
+    }
+    return(0);
 }
