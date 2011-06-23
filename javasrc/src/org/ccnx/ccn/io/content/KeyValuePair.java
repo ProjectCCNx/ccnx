@@ -222,7 +222,6 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 	 * This can be used in a data structure to order KV pairs by their keys.
 	 */
 	public static class KeyOrderComparator implements Comparator<KeyValuePair> {
-		@Override
 		public int compare(KeyValuePair arg0, KeyValuePair arg1) {
 			return arg0._key.compareTo(arg1._key);
 		}
