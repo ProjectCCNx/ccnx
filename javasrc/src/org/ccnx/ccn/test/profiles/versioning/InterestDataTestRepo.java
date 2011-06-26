@@ -22,11 +22,9 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.TreeSet;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.InterestData;
@@ -39,7 +37,6 @@ import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.profiles.versioning.VersioningHelper.TestListener;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class InterestDataTestRepo {
@@ -57,12 +54,6 @@ public class InterestDataTestRepo {
 		prefix  = ContentName.fromNative(String.format("/repotest/test_%016X", _rnd.nextLong()));
 	}
 	
-	@BeforeClass
-	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(Log.FAC_ALL, Level.WARNING);
-		Log.setLevel(Log.FAC_ENCODING, Level.FINE);
-	}
-
 	@Test
 	public void testVersionNumberInTree() throws Exception {
 		// make sure the sortable work

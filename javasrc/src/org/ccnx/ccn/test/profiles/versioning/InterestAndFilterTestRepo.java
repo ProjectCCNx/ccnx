@@ -18,13 +18,11 @@
 package org.ccnx.ccn.test.profiles.versioning;
 
 import java.util.Random;
-import java.util.logging.Level;
 
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.versioning.InterestData;
 import org.ccnx.ccn.protocol.ContentName;
@@ -34,22 +32,13 @@ import org.ccnx.ccn.test.profiles.versioning.VersioningHelper.TestListener;
 import org.ccnx.ccn.utils.CreateUserData;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class InterestAndFilterTestRepo {
 	
-	@BeforeClass
-	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(Log.FAC_ALL, Level.WARNING);
-		Log.setLevel(Log.FAC_NETMANAGER, Level.FINER);
-	}
-
 	@Before
 	public void setUp() throws Exception {
 		System.out.println("********* Creating test user");
-		Level [] levels = Log.getLevels();
-		Log.setLevel(Log.FAC_ALL, Level.WARNING);
 		
 		_defaultHandle = CCNHandle.open();
 		
@@ -59,9 +48,7 @@ public class InterestAndFilterTestRepo {
 		ContentName users = ContentName.fromNative(_prefix, "Users");
 		_cud = new CreateUserData(users, _users, _users.length, true, _password);
 		_userHandle = _cud.getHandleForUser(_users[0]);
-		
-		Log.setLevels(levels);
-		
+				
 		// Now clear the stats
 		_userHandle.getNetworkManager().getStats().clearCounters();
 	}

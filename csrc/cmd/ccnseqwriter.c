@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -30,7 +30,7 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-b blocksize] ccnx:/some/uri\n"
+                "%s [-h] [-b blocksize] [-r] ccnx:/some/uri\n"
                 " Reads stdin, sending data under the given URI"
                 " using ccn versioning and segmentation.\n", progname);
         exit(1);
@@ -44,17 +44,21 @@ main(int argc, char **argv)
     struct ccn_charbuf *name = NULL;
     struct ccn_seqwriter *w = NULL;
     long blocksize = 1024;
+    int torepo = 0;
     int i;
     int status = 0;
     int res;
     ssize_t read_res;
     unsigned char *buf = NULL;
-    while ((res = getopt(argc, argv, "hb:")) != -1) {
+    while ((res = getopt(argc, argv, "hrb:")) != -1) {
         switch (res) {
-	    case 'b':
-	        blocksize = atol(optarg);
+            case 'b':
+                blocksize = atol(optarg);
                 if (blocksize <= 0 || blocksize > 4096)
                     usage(progname);
+                break;
+            case 'r':
+                torepo = 1;
                 break;
             default:
             case 'h':
@@ -87,6 +91,14 @@ main(int argc, char **argv)
     if (w == NULL) {
         fprintf(stderr, "ccn_seqw_create failed\n");
         exit(1);
+    }
+    if (torepo) {
+        struct ccn_charbuf *name_v = ccn_charbuf_create();
+        ccn_seqw_get_name(w, name_v);
+        ccn_name_from_uri(name_v, "%C1.R.sw");
+        ccn_name_append_nonce(name_v);
+        ccn_get(ccn, name_v, NULL, 2000, NULL, NULL, NULL, 0);
+        ccn_charbuf_destroy(&name_v);
     }
     for (i = 0;; i++) {
         ccn_run(ccn, 1);

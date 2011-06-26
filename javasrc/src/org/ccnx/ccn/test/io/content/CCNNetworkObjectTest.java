@@ -81,7 +81,6 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		try {
 			Log.info("Tearing down CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
 			Log.flush();
-			Log.setDefaultLevel(oldLevel);
 			if (flosser != null) {
 				flosser.stop();
 				flosser = null;
@@ -97,8 +96,6 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		Log.info("Setting up CCNNetworkObjectTest, prefix {0}", testHelper.getClassNamespace());
-		oldLevel = Log.getLevel();
-		Log.setDefaultLevel(Level.INFO);
 		
 		handle = CCNHandle.open();
 		

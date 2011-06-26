@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -23,7 +23,6 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PublicKey;
 import java.security.Security;
-import java.util.logging.Level;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.CCNHandle;
@@ -65,22 +64,13 @@ public class PublicKeyObjectTestRepo {
 	public static int NUM_ALGORITHMS = 3;
 	public static ContentName [][] storedKeyNames = new ContentName[2][NUM_ALGORITHMS];
 	public static ContentName namespace = null;
-	
-	static Level oldLevel;
-	
+		
 	static Flosser flosser = null;
 	public static CCNHandle handle = null;
 	
-	@AfterClass
-	public static void tearDownAfterClass() throws Exception {
-		Log.setDefaultLevel(oldLevel);
-	}
-
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
-		oldLevel = Log.getLevel();
-		//Log.setDefaultLevel(Level.FINEST);
 		Security.addProvider(new BouncyCastleProvider());
 		// generate key pair
 		KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");

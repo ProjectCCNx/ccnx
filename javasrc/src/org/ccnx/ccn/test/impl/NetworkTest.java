@@ -20,12 +20,10 @@ package org.ccnx.ccn.test.impl;
 import java.util.TreeSet;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -83,7 +81,6 @@ public class NetworkTest extends CCNTestBase {
 	 */
 	@Test
 	public void testRegisteredPrefix() throws Exception {
-		Log.setLevel(Log.FAC_NETMANAGER, Level.FINEST);
 		TestFilterListener tfl = new TestFilterListener();
 		TestListener tl = new TestListener();
 		ContentName testName1 = ContentName.fromNative(testPrefix, "foo");

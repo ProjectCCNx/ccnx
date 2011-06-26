@@ -36,6 +36,7 @@
 	<property name="testout" location="testout"/>
 	<property name="testoutlog" location="testout/log"/>
 	<property name="LOGDIR_KEY" value="org.ccnx.ccn.LogDir"/>
+	<property name="JAVA_MEMORY" value="1g" />
 	<property name="ccnd" location="../csrc/ccnd/ccnd"/>
 	<property name="ccnr" location="../../ccnr/csrc/ccnr/ccnr"/>
 	<property name="showoutput" value="no"/>
@@ -50,7 +51,7 @@
 	<property name="REPO_GLOBAL" value="parc.com/csl/ccn/repositories/TestRepository"/>
 	<property name="USE_KEY_CONFIG_KEY" value="org.ccnx.config.UseKeyConfiguration"/>
 	<property name="USE_KEY_CONFIG_VAL" value="false"/>
-        <property name="CHATTY" value="FINER"/>
+    <property name="CHATTY" value="INFO"/>
 	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
@@ -330,7 +331,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-
+            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/protocol/*Test.class"/>
@@ -350,6 +351,7 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINEST"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+	        <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/protocol/*TestRepo.class"/>
@@ -371,7 +373,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-
+	        <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*Test.class"/>
@@ -395,7 +397,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-
+            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*TestRepo.class"/>
@@ -419,7 +421,7 @@
 	            <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 	            <sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 	            <sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-
+	            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 	            <batchtest todir="${testout}">
 	                <fileset dir="${build}">
 	                    <include name="org/ccnx/ccn/test/impl/**/CCNFlowControlTestRepoExtra.class"/>
@@ -443,7 +445,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-
+            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/io/**/*Test.class"/>
@@ -463,7 +465,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-
+            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/io/**/*TestRepo.class"/>
@@ -620,7 +622,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -682,7 +684,7 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
@@ -705,7 +707,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -766,7 +768,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -848,7 +850,7 @@
 	<target name="test-security-without-repo" depends="jar, ccnd">
 		<!-- Security tests that don't need a repo running -->
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" maxmemory="${JAVA_MEMORY}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -856,7 +858,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -879,7 +881,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -905,7 +907,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -927,7 +929,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">

@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -17,9 +17,6 @@
 
 package org.ccnx.ccn.test;
 
-import java.util.logging.Level;
-
-import org.ccnx.ccn.impl.support.Log;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -31,7 +28,6 @@ public class BasePutGetTest extends LibraryTestBase {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		LibraryTestBase.setUpBeforeClass();
-		Log.setDefaultLevel(Log.FAC_SIGNING, Level.FINEST);
 	}
 	
 	@Test

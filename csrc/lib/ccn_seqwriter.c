@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -166,6 +166,22 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
         return(NULL);
     }
     return(w);
+}
+
+/**
+ * Append to a charbuf the versioned ccnb-encoded Name that will be used for
+ * this stream.
+ *
+ * @param w the seqwriter for which the name is requested
+ * @param nv the charbuf to which the name will be appended
+ * @returns 0 for success, -1 for failure
+ */
+int
+ccn_seqw_get_name(struct ccn_seqwriter *w, struct ccn_charbuf *nv)
+{
+    if (nv == NULL || w == NULL)
+        return (-1);
+    return (ccn_charbuf_append_charbuf(nv, w->nv));
 }
 
 /**
