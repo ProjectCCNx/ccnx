@@ -987,6 +987,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// CCNVersionedOutputStream will version an unversioned name. 
 			// If it gets a versioned name, will respect it. 
 			// This will call startWrite on the flow controller.
+			//
+			// Note that we must use the flow controller given to us as opposed to letting
+			// the OutputStream create its own. This is because there may be dependencies from the
+			// caller on the specific flow controller - the known case is the flow controller is a
+			// CCNFlowServer which requires that the flow controller retain its objects after writing
+			// them. A standard FC would cause the objects to be lost.
 			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _keys, _flowControl);
 			cos.setFreshnessSeconds(_freshnessSeconds);
 			if (null != outstandingInterest) {
@@ -1023,6 +1029,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_currentVersionName = name;
 		setDirty(false);
 		_available = true;
+		
+		// We have completed our save and don't know when or if another save may occur so don't keep
+		// ourselves registered with ccnd. That could cause interests to be unnecessarily or incorrectly
+		// forwarded to us during the dormant period.
+		_flowControl.removeNameSpace(_baseName);
 
 		newVersionAvailable(true);
 		if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
