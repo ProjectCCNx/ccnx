@@ -73,6 +73,6 @@ r_sync_upcall_store(struct ccnr_handle *ccnr, enum ccn_upcall_kind kind,
  */
 
 int
-r_sync_local_store(struct ccnr_handle *ccnr, struct ccn_charbuf *content);
+r_sync_local_store(struct ccnr_handle *ccnr, struct ccn_charbuf *content_cb);
 
 #endif

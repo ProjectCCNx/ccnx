@@ -283,7 +283,7 @@ r_io_open_repo_data_file(struct ccnr_handle *h, const char *name, int output)
         ccn_charbuf_putf(temp, "%s/%s", dir, name);
     else
         ccn_charbuf_putf(temp, "./%s", name);
-    fd = open(ccn_charbuf_as_string(temp), output ? (O_WRONLY | O_APPEND) : O_RDONLY, 0666);
+    fd = open(ccn_charbuf_as_string(temp), output ? (O_CREAT | O_WRONLY | O_APPEND) : O_RDONLY, 0666);
     if (fd == -1) {
         ccnr_msg(h, "open(%s): %s", ccn_charbuf_as_string(temp), strerror(errno));
         ccn_charbuf_destroy(&temp);
