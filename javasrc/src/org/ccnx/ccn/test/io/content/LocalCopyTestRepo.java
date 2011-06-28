@@ -22,7 +22,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.TreeSet;
-import java.util.logging.Level;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
