@@ -144,6 +144,7 @@ ccnr_policy_complete(struct ccn_closure *selfp,
     const unsigned char *policy;
     size_t policy_length;
     struct ccn_charbuf *new_gp;
+    struct ccn_charbuf *old_gp;
     struct ccn_indexbuf *ic = NULL;
     intmax_t segment;
     int fd;
@@ -172,10 +173,13 @@ ccnr_policy_complete(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_ERR);
     }
     new_gp = ccn_charbuf_create();
+    old_gp = ccn_charbuf_create();
     ccn_name_from_uri(new_gp, (char *)pp->store->buf + pp->global_prefix_offset);
+    ccn_name_from_uri(old_gp, (char *)ccnr->parsed_policy->store->buf + ccnr->parsed_policy->global_prefix_offset);
     res = ccn_compare_names(new_gp->buf, new_gp->length,
-                            ccnr->policy_name->buf, ccnr->policy_name->length);
+                            old_gp->buf, old_gp->length);
     ccn_charbuf_destroy(&new_gp);
+    ccn_charbuf_destroy(&old_gp);
     if (0 != res) {
         ccnr_msg(ccnr, "Policy global prefix mismatch");
         return(CCN_UPCALL_RESULT_ERR);
