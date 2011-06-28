@@ -31,5 +31,6 @@ void r_util_indexbuf_release(struct ccnr_handle *h,struct ccn_indexbuf *c);
 struct ccn_indexbuf *r_util_indexbuf_obtain(struct ccnr_handle *h);
 void r_util_charbuf_release(struct ccnr_handle *h,struct ccn_charbuf *c);
 struct ccn_charbuf *r_util_charbuf_obtain(struct ccnr_handle *h);
+intmax_t r_util_segment_from_component(const unsigned char *ccnb, size_t start, size_t stop);
 
 #endif

@@ -43,6 +43,7 @@
 #include "ccnr_forwarding.h"
 #include "ccnr_io.h"
 #include "ccnr_msg.h"
+#include "ccnr_proto.h"
 
 static struct ccn_charbuf *
 ccnr_init_service_ccnb(struct ccnr_handle *ccnr, struct ccn *h, const char *baseuri, int freshness)
@@ -90,6 +91,107 @@ ccnr_init_service_ccnb(struct ccnr_handle *ccnr, struct ccn *h, const char *base
     ccn_charbuf_destroy(&sp.template_ccnb);
     return(cob);
 }
+static struct ccn_charbuf *
+make_template(struct ccnr_expect_content *md, struct ccn_upcall_info *info)
+{
+    struct ccn_charbuf *templ = ccn_charbuf_create();
+    ccnb_element_begin(templ, CCN_DTAG_Interest); // same structure as Name
+    ccnb_element_begin(templ, CCN_DTAG_Name);
+    ccnb_element_end(templ); /* </Name> */
+    // XXX - use pubid if possible
+    // XXX - if start-write was scoped, use scope here
+    ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
+    ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 1);
+    ccnb_element_end(templ); /* </Interest> */
+    return(templ);
+}
+
+PUBLIC struct ccnr_parsed_policy *
+ccnr_parsed_policy_create(void)
+{
+    struct ccnr_parsed_policy *pp;
+    pp = calloc(1, sizeof(struct ccnr_parsed_policy));
+    pp->store = ccn_charbuf_create();
+    pp->namespaces = ccn_indexbuf_create();
+    return(pp);
+}
+
+PUBLIC void
+ccnr_parsed_policy_destroy(struct ccnr_parsed_policy **ppp)
+{
+    struct ccnr_parsed_policy *pp;
+
+    if (*ppp == NULL)
+        return;
+    pp = *ppp;
+    ccn_charbuf_destroy(&pp->store);
+    ccn_indexbuf_destroy(&pp->namespaces);
+    free(pp);
+    *ppp = NULL;
+}
+
+PUBLIC enum ccn_upcall_res
+ccnr_policy_complete(struct ccn_closure *selfp,
+                enum ccn_upcall_kind kind,
+                struct ccn_upcall_info *info)
+{
+    struct ccnr_expect_content *md = selfp->data;
+    struct ccnr_handle *ccnr = (struct ccnr_handle *)md->ccnr;
+    const unsigned char *ccnb = NULL;
+    size_t ccnb_size = 0;
+    struct ccnr_parsed_policy *pp;
+    const unsigned char *policy;
+    size_t policy_length;
+    const char *old_gp;
+    const char *new_gp;
+    struct ccn_indexbuf *ic = NULL;
+    intmax_t segment;
+    struct fdholder *fdholder;
+    int fd;
+    int res;
+
+    res = r_proto_expect_content(selfp, kind, info);
+    if (kind == CCN_UPCALL_FINAL || res != CCN_UPCALL_RESULT_OK)
+        return(res);
+    
+    ccnb = info->content_ccnb;
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    ic = info->interest_comps;
+
+    // XXX - ignore anything after segment 0, the policy needs to fit in one segment.
+    segment = r_util_segment_from_component(info->interest_ccnb, ic->buf[ic->n - 2], ic->buf[ic->n - 1]);
+    if (segment != 0)
+        return(res);
+    
+    ccn_ref_tagged_BLOB(CCN_DTAG_Content, ccnb,
+                        info->pco->offset[CCN_PCO_B_Content],
+                        info->pco->offset[CCN_PCO_E_Content],
+                        &policy, &policy_length);
+    pp = ccnr_parsed_policy_create();
+    if (r_proto_parse_policy(ccnr, policy, policy_length, pp) < 0) {
+        ccnr_msg(ccnr, "Malformed policy");
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    old_gp = (char *)ccnr->parsed_policy->store->buf + ccnr->parsed_policy->global_prefix_offset;
+    new_gp = (char *)pp->store->buf + pp->global_prefix_offset;
+    if ((strlen(new_gp) != strlen(old_gp)) || 0 != strcmp(new_gp, old_gp)) {
+        ccnr_msg(ccnr, "Policy global prefix mismatch");
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    r_proto_deactivate_policy(ccnr, ccnr->parsed_policy);
+    ccnr_parsed_policy_destroy(&ccnr->parsed_policy);
+    ccnr->parsed_policy = pp;
+    r_proto_activate_policy(ccnr, pp);
+    fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 1);
+    res = write(fd, ccnb, ccnb_size);
+    if (res == -1) {
+        ccnr_msg(ccnr, "write %u :%s (errno = %d)",
+                 fdholder->filedesc, strerror(errno), errno);
+        abort();
+    }
+    r_io_shutdown_client_fd(ccnr, fd);
+    return(CCN_UPCALL_RESULT_OK);
+}
 
 /**
  * Common interest handler
@@ -104,11 +206,15 @@ ccnr_answer_req(struct ccn_closure *selfp,
     struct ccn_charbuf *keylocator = NULL;
     struct ccn_charbuf *signed_info = NULL;
     struct ccn_charbuf *reply_body = NULL;
+    struct ccn_charbuf *templ = NULL;
     struct ccnr_handle *ccnr = NULL;
+    struct ccn_closure *incoming = NULL;
+    struct ccnr_expect_content *expect_content = NULL;
     int res = 0;
     int start = 0;
     int end = 0;
     int morecomps = 0;
+    int i;
     const unsigned char *final_comp = NULL;
     size_t final_size = 0;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
@@ -201,6 +307,10 @@ ccnr_answer_req(struct ccn_closure *selfp,
             }
             goto Bail;
             break;
+        case OP_POLICY:
+            reply_body = ccn_charbuf_create();
+            r_proto_append_repo_info(ccnr, reply_body, NULL);
+            break;
         default:
             goto Bail;
     }
@@ -225,6 +335,35 @@ ccnr_answer_req(struct ccn_closure *selfp,
     if (res < 0)
         goto Bail;
     res = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+
+    // perform any post-response work
+    switch (selfp->intdata & OPER_MASK) {
+        case OP_POLICY:
+            /* Send an interest for segment 0 */
+            incoming = calloc(1, sizeof(*incoming));
+            incoming->p = &ccnr_policy_complete;
+            expect_content = calloc(1, sizeof(*expect_content));
+            expect_content->ccnr = ccnr;
+            expect_content->final = -1;
+            for (i = 0; i < CCNR_PIPELINE; i++)
+                expect_content->outstanding[i] = -1;
+            expect_content->outstanding[0] = 0;
+            incoming->data = expect_content;
+            templ = make_template(expect_content, NULL);
+            ccn_name_init(name);
+            ccn_name_append_components(name, info->interest_ccnb,
+                                       info->interest_comps->buf[0],
+                                       info->interest_comps->buf[info->matched_comps + 1]);
+            ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
+            res = ccn_express_interest(info->h, name, incoming, templ);
+            if (res < 0) {
+                free(incoming);
+                free(expect_content);
+                goto Bail;
+            }
+        default:
+            break;
+    }
     goto Finish;
 Bail:
     res = CCN_UPCALL_RESULT_ERR;

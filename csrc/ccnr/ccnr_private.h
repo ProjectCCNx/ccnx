@@ -58,6 +58,7 @@ struct propagating_entry;
 struct content_tree_node;
 struct ccn_forwarding;
 struct enum_state;
+struct ccnr_parsed_policy;
 
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
@@ -136,6 +137,8 @@ struct ccnr_handle {
     struct fdholder *face0;         /**< special fdholder for internal client */
     struct ccn_charbuf *service_ccnb; /**< for local service discovery */
     struct ccn_charbuf *neighbor_ccnb; /**< for neighbor service discovery */
+    struct ccnr_parsed_policy *parsed_policy;  /**< offsets for parsed fields of policy */
+    struct ccn_charbuf *policy_name;
     struct ccn_seqwriter *notice;   /**< for notices of status changes */
     struct ccn_indexbuf *chface;    /**< faceids w/ recent status changes */
     struct ccn_scheduled_event *internal_client_refresh;

@@ -132,3 +132,26 @@ r_util_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
     h->sec = now.tv_sec;
     h->usec = now.tv_usec;
 }
+
+PUBLIC intmax_t
+r_util_segment_from_component(const unsigned char *ccnb, size_t start, size_t stop)
+{
+    const unsigned char *data = NULL;
+    size_t len = 0;
+    intmax_t segment;
+    int i;
+    
+    if (start < stop) {
+		ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, start, stop, &data, &len);
+		if (len > 0 && data != NULL) {
+			// parse big-endian encoded number
+			segment = 0;
+            for (i = 0; i < len; i++) {
+				segment = segment * 256 + data[i];
+			}
+			return(segment);
+		}
+	}
+	return(-1);
+    
+}

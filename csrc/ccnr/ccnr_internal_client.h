@@ -48,10 +48,14 @@ int ccnr_direct_client_start(struct ccnr_handle *ccnr);
 #define OP_UNREG       0x0600
 #define OP_NOTICE      0x0700
 #define OP_SERVICE     0x0800
+#define OP_POLICY      0x0900
 void ccnr_uri_listen(struct ccnr_handle *ccnr, struct ccn *ccn, const char *uri,
                 ccn_handler p, intptr_t intdata);
 enum ccn_upcall_res ccnr_answer_req(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info);
+
+struct ccnr_parsed_policy *ccnr_parsed_policy_create(void);
+void ccnr_parsed_policy_destroy(struct ccnr_parsed_policy **ppp);
 
 #endif
