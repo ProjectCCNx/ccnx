@@ -75,7 +75,31 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
                     enum ccn_upcall_kind kind,
                     struct ccn_upcall_info *info)
 {
-    enum ccn_upcall_res ans = CCN_UPCALL_RESULT_ERR;
+    enum ccn_upcall_res ans = CCN_UPCALL_RESULT_OK;
+    const unsigned char *ccnb = NULL;
+    size_t ccnb_size = 0;
+    struct content_entry *content;
+    
+    if (kind != CCN_UPCALL_CONTENT)
+        return(CCN_UPCALL_RESULT_ERR);
+    
+    ccnb = info->content_ccnb;
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    
+    content = process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)),
+                                       (void *)ccnb, ccnb_size);
+    if (content == NULL) {
+        ccnr_msg(ccnr, "r_proto_expect_content: failed to process incoming content");
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    // XXX - here we need to check if this is something we *should* be storing, according to our policy
+    if ((content->flags & CCN_CONTENT_ENTRY_STABLE) == 0) {
+        // Need to actually append to the active repo data file
+        r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
+        // XXX - it would be better to do this after the write succeeds
+        content->flags |= CCN_CONTENT_ENTRY_STABLE;
+    }
+    
     return(ans);
 }
 
