@@ -147,7 +147,6 @@ ccnr_policy_complete(struct ccn_closure *selfp,
     const char *new_gp;
     struct ccn_indexbuf *ic = NULL;
     intmax_t segment;
-    struct fdholder *fdholder;
     int fd;
     int res;
 
@@ -187,7 +186,7 @@ ccnr_policy_complete(struct ccn_closure *selfp,
     res = write(fd, ccnb, ccnb_size);
     if (res == -1) {
         ccnr_msg(ccnr, "write %u :%s (errno = %d)",
-                 fdholder->filedesc, strerror(errno), errno);
+                 fd, strerror(errno), errno);
         abort();
     }
     r_io_shutdown_client_fd(ccnr, fd);
