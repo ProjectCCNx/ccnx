@@ -44,6 +44,7 @@
 #include "ccnr_io.h"
 #include "ccnr_msg.h"
 #include "ccnr_proto.h"
+#include "ccnr_util.h"
 
 static struct ccn_charbuf *
 ccnr_init_service_ccnb(struct ccnr_handle *ccnr, struct ccn *h, const char *baseuri, int freshness)
