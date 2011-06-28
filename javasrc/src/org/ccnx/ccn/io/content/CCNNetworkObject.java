@@ -153,6 +153,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected KeyLocator _currentPublisherKeyLocator;
 	protected CCNHandle _handle;
 	protected CCNFlowControl _flowControl;
+	protected boolean _FCIsOurs = false;
 	protected boolean _disableFlowControlRequest = false;
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use handle defaults
 	protected KeyLocator _keyLocator; // locator to find publisher key
@@ -260,10 +261,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_handle = _flowControl.getHandle();
 		_saveType = _flowControl.saveType();
 		_verifier = _handle.defaultVerifier();
-		// Register interests for our base name, if we have one.
-		if (null != name) {
-			flowControl.addNameSpace(name);
-		}
 	}
 
 	/**
@@ -455,12 +452,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			default:
 				throw new IOException("Unknown save type: " + _saveType);
 			}
+			_FCIsOurs = true;
 
 			if (_disableFlowControlRequest)
 				_flowControl.disable();
 			// Have to register the version root. If we just register this specific version, we won't
 			// see any shorter interests -- i.e. for get latest version.
-			_flowControl.addNameSpace(_baseName);
+			//_flowControl.addNameSpace(_baseName);
 			if (Log.isLoggable(Level.INFO))
 				Log.info("Created " + _saveType + " flow controller, for prefix {0}, save type " + _flowControl.saveType(), _baseName);
 		}
@@ -493,9 +491,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	public synchronized void setupSave() throws IOException {
 		if (null != _flowControl) {
-			if (null != _baseName) {
-				_flowControl.addNameSpace(_baseName);
-			}
 			return;
 		}
 		createFlowController();
@@ -981,7 +976,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// DKS if we add the versioned name, we don't handle get latest version.
 		// We re-add the baseName here in case an update has changed it.
 		// TODO -- perhaps disallow updates for unrelated names.
-		_flowControl.addNameSpace(_baseName);
+		if (_FCIsOurs)
+			_flowControl.addNameSpace(_baseName);
 
 		if (!gone) {
 			// CCNVersionedOutputStream will version an unversioned name. 
@@ -1033,7 +1029,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// We have completed our save and don't know when or if another save may occur so don't keep
 		// ourselves registered with ccnd. That could cause interests to be unnecessarily or incorrectly
 		// forwarded to us during the dormant period.
-		_flowControl.removeNameSpace(_baseName);
+		if (_FCIsOurs)
+			_flowControl.removeNameSpace(_baseName);
 
 		newVersionAvailable(true);
 		if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
