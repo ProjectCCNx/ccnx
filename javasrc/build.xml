@@ -48,7 +48,7 @@
 	<property name="REPO_ROOT2" value="${testout}/repotest2"/>
 	<property name="REPO_LOCAL" value="TestRepository"/>
 	<property name="REPO_LOCAL_ROOT" value="repotest"/>
-	<property name="REPO_GLOBAL" value="parc.com/csl/ccn/repositories/TestRepository"/>
+	<property name="REPO_GLOBAL" value="/parc.com/csl/ccn/repositories/TestRepository"/>
 	<property name="USE_KEY_CONFIG_KEY" value="org.ccnx.config.UseKeyConfiguration"/>
 	<property name="USE_KEY_CONFIG_VAL" value="false"/>
     <property name="CHATTY" value="INFO"/>
@@ -249,6 +249,7 @@
                     <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
                     <env key="CCNR_CAP" value="${CCNR_CAP}"/>
                     <env key="CCNR_DEBUG" value="${CCNR_DEBUG}"/>
+                    <env key="CCNR_GLOBAL_PREFIX" value="${REPO_GLOBAL}"/>
                 </exec>
 			</daemons>
             <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
