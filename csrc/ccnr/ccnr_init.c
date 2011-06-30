@@ -307,8 +307,7 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
             ccn_charbuf_reserve(fdholder->inbuf, 8800);   // limits the size of the policy file
             res = read(fdholder->recv_fd, fdholder->inbuf->buf, fdholder->inbuf->limit - fdholder->inbuf->length);
             if (res == -1) {
-                ccnr_msg(ccnr, "read %u :%s (errno = %d)",
-                         fdholder->filedesc, strerror(errno), errno);
+                ccnr_msg(ccnr, "read policy: %s (errno = %d)", strerror(errno), errno);
                 abort();
             }
             content = process_incoming_content(ccnr, fdholder, fdholder->inbuf->buf, res);
@@ -342,10 +341,14 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
             policy_cob = ccnr_init_policy_cob(ccnr, ccnr->direct_client, basename,
                                               600, policy);
             fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 1);
+            if (fd < 0) {
+                ccnr_msg(ccnr, "open policy: %s (errno = %d)", strerror(errno), errno);
+                abort();
+            }
+            
             res = write(fd, policy_cob->buf, policy_cob->length);
             if (res == -1) {
-                ccnr_msg(ccnr, "write %u :%s (errno = %d)",
-                         fdholder->filedesc, strerror(errno), errno);
+                ccnr_msg(ccnr, "write policy: %s (errno = %d)", strerror(errno), errno);
                 abort();
             }
             ccn_charbuf_destroy(&policy_cob);
