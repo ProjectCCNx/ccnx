@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.protocol;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
@@ -706,4 +707,15 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		return clone;
 	}
 
+	@SuppressWarnings("serial")
+	public static class NoResponseException extends IOException {
+		protected Interest interest;
+		public NoResponseException(Interest i) {
+			super(i.toString());
+			interest = i;
+		}
+		public Interest getInterest() {
+			return interest;
+		}
+	}
 }
