@@ -907,6 +907,7 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
     }
     // we will only get here if we are finishing an in-progress enumeration
     ccnb_element_end(es->reply_body); /* </Collection> */
+    ccn_seqw_batch_start(es->w);  /* need to prevent sending short packet without final_block_id */
     res = ccn_seqw_write(es->w, es->reply_body->buf, es->reply_body->length);
     if (res != es->reply_body->length) {
         abort();
@@ -922,6 +923,7 @@ Bail:
         ccn_indexbuf_destroy(&es->interest_comps);
         res = ccn_seqw_close(es->w);
         if (res < 0) abort();
+        ccn_seqw_batch_end(es->w); /* not strictly necessary */
         es->w = NULL;
     }
     hashtb_end(e);
