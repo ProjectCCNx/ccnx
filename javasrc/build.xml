@@ -209,9 +209,9 @@
 	</target>
 
 	<!-- Don't run this by itself - use target repo -->
-	<target name="repo-start" depends="jar, repo-start-repo2, repo-start-repo1"/>
+	<target name="repo-start" depends="jar, repo-start-repov2, repo-start-repov1"/>
 
-	<target name="repo-start-repo1" unless="${repo2}">
+	<target name="repo-start-repov1" unless="${repo2}">
 		<parallel>
 			<echo message="Running repo version 1"/>
 			<daemons>
@@ -240,7 +240,7 @@
 		</parallel>
 	</target>
 
-	<target name="repo-start-repo2" if="${repo2}">
+	<target name="repo-start-repov2" if="${repo2}">
         <mkdir dir="${REPO_ROOT}"/>
 		<parallel>
             <echo message="Running repo version 2"/>
@@ -279,9 +279,9 @@
 
     <!-- target for running a test repo foreground so you can run a test
 	     against it in debugger -->
-	<target name="run-test-repo" depends="run-test-repo2, run-test-repo1"/>
+	<target name="run-test-repo" depends="run-test-repov2, run-test-repov1"/>
 
-	<target name="run-test-repo1" depends="jar" unless="${repo2}">
+	<target name="run-test-repov1" depends="jar" unless="${repo2}">
 		<echo message="Running repo version 1"/>
 		<mkdir dir="${testout}"/>
 		<java classname="org.ccnx.ccn.impl.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
@@ -302,7 +302,7 @@
 		<sleep seconds="1"/>
 	</target>
 
-	<target name="run-test-repo2" if="${repo2}">
+	<target name="run-test-repov2" if="${repo2}">
 		<echo message="Running repo version 2"/>
         		<mkdir dir="${REPO_ROOT}"/>
                 <exec executable="${ccnr}" dir="${REPO_ROOT}" output="${testout}/TEST-repo-daemon.txt" failonerror="true">
