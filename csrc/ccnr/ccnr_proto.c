@@ -793,8 +793,10 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     res = hashtb_seek(e, name->buf, name->length, 0);
     es = e->data;
     // Do not restart an active enumeration, it is probably a duplicate interest
-    if (es->active == 1)
+    if (es->active == 1) {
+        hashtb_end(e);
         goto Bail;
+    }
     // Continue to construct the name under which we will respond: %C1.E.be
     ccn_name_append_components(name, info->interest_ccnb,
                                info->interest_comps->buf[marker_comp],
@@ -819,8 +821,10 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: result name", NULL,
                     es->name->buf, es->name->length);
     
-    if (r_proto_check_exclude(ccnr, info, es->name) > 0)
+    if (r_proto_check_exclude(ccnr, info, es->name) > 0) {
+        hashtb_end(e);
         goto Bail;
+    }
     
     es->reply_body = ccn_charbuf_create();
     ccnb_element_begin(es->reply_body, CCN_DTAG_Collection);
