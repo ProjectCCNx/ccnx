@@ -152,9 +152,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected PublisherPublicKeyDigest _currentPublisher;
 	protected KeyLocator _currentPublisherKeyLocator;
 	protected CCNHandle _handle;
+	
+	/**
+	 * We are not allowed to register or deregister prefixes for flow controllers we didn't
+	 * create.
+	 */
 	protected CCNFlowControl _flowControl;
 	protected boolean _FCIsOurs = false;
 	protected boolean _disableFlowControlRequest = false;
+	
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use handle defaults
 	protected KeyLocator _keyLocator; // locator to find publisher key
 	protected SaveType _saveType = null; // what kind of flow controller to make if we don't have one
