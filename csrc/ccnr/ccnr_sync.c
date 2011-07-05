@@ -38,8 +38,9 @@
 #include "ccnr_io.h"
 #include "ccnr_msg.h"
 #include "ccnr_sendq.h"
+#include "ccnr_store.h"
 #include "ccnr_sync.h"
-
+#include "ccnr_util.h"
 
 PUBLIC void
 r_sync_notify_after(struct ccnr_handle *ccnr,
@@ -63,6 +64,22 @@ r_sync_lookup(struct ccnr_handle *ccnr,
               struct ccn_charbuf *content_ccnb)
 {
     int ans = -1;
+    struct ccn_indexbuf *comps = r_util_indexbuf_obtain(ccnr);
+    struct ccn_parsed_interest parsed_interest = {0};
+    struct ccn_parsed_interest *pi = &parsed_interest;
+    struct content_entry *content = NULL;
+
+    if (NULL == comps || (ccn_parse_interest(interest->buf, interest->length, pi, comps) < 0))
+        abort();
+    content = r_store_lookup(ccnr, interest->buf, pi, comps);
+    if (content != NULL) {
+        ans = 0;
+        if (content_ccnb != NULL) {
+            ccn_charbuf_append(content_ccnb, content->key, content->size);
+        }
+    }
+    r_util_indexbuf_release(ccnr, comps);
+
     return(ans);
 }
 
