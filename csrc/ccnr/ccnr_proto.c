@@ -930,6 +930,24 @@ Bail:
     return(ans);
 }
 
+void
+r_proto_dump_enums(struct ccnr_handle *ccnr)
+{
+    struct enum_state *es = NULL;
+    struct hashtb_enumerator enumerator = {0};
+    struct hashtb_enumerator *e = &enumerator;
+    
+    for (hashtb_start(ccnr->enum_state_tab, e); e->data != NULL; hashtb_next(e)) {
+        es = e->data;
+        ccnr_msg(ccnr, "Enumeration active: %d, next segment %d, accession %d",
+                 es->active, es->next_segment, es->starting_accession);
+        ccnr_debug_ccnb(ccnr, __LINE__, "     enum name", NULL,
+                        es->name->buf, es->name->length);
+        
+    }  
+    hashtb_end(e);
+}
+
 static enum ccn_upcall_res
 r_proto_bulk_import(struct ccn_closure *selfp,
                           enum ccn_upcall_kind kind,
