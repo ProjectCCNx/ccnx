@@ -33,6 +33,7 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/ccn_private.h>
+#include <ccn/keystore.h>
 #include <ccn/schedule.h>
 #include <ccn/sockaddrutil.h>
 #include <ccn/uri.h>
@@ -415,7 +416,6 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
     int res = -1;
     size_t save;
     char *keystore_path = NULL;
-    FILE *passfile;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
     if (ccnd->internal_client == NULL)
