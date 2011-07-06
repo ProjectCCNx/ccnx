@@ -24,6 +24,7 @@
 #define CCNR_STORE_DEFINED
 
 #include <ccn/ccn.h>
+#include <ccn/hashtb.h>
 
 #include "ccnr_private.h"
 
