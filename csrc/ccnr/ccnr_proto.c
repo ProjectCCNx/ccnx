@@ -794,6 +794,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     es = e->data;
     // Do not restart an active enumeration, it is probably a duplicate interest
     if (es->active == 1) {
+        // XXX - log here
         hashtb_end(e);
         goto Bail;
     }
