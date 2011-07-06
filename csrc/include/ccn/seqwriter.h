@@ -29,6 +29,7 @@ struct ccn_charbuf;
 struct ccn_seqwriter *ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name);
 int ccn_seqw_possible_interest(struct ccn_seqwriter *w);
 int ccn_seqw_batch_start(struct ccn_seqwriter *w);
+int ccn_seqw_get_name(struct ccn_seqwriter *w, struct ccn_charbuf *nv);
 int ccn_seqw_write(struct ccn_seqwriter *w, const void *buf, size_t size);
 int ccn_seqw_batch_end(struct ccn_seqwriter *w);
 int ccn_seqw_close(struct ccn_seqwriter *w);
