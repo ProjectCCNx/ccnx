@@ -16,6 +16,7 @@ ccngetfile.1.html
 ccnputfile.1.html
 ccnputmeta.1.html
 ccngetmeta.1.html
+ccnnamelist.1.html
 ccnrm.1.html
 ccnseqwriter.1.html
 ccn_repo.1.html
@@ -40,6 +41,7 @@ ccngetfile.1.pdf
 ccnputfile.1.pdf
 ccnputmeta.1.pdf
 ccngetmeta.1.pdf
+ccnnamelist.1.pdf
 ccnrm.1.pdf
 ccnseqwriter.1.pdf
 ccn_repo.1.pdf
@@ -66,6 +68,7 @@ ccngetfile.1.fo
 ccnputfile.1.fo
 ccnputmeta.1.fo
 ccngetmeta.1.fo
+ccnnamelist.1.fo
 ccnrm.1.fo
 ccnseqwriter.1.fo
 ccn_repo.1.fo
@@ -90,6 +93,7 @@ ccngetfile.1.xml
 ccnputfile.1.xml
 ccnputmeta.1.xml
 ccngetmeta.1.xml
+ccnnamelist.1.xml
 ccnrm.1.xml
 ccnseqwriter.1.xml
 ccn_repo.1.xml
