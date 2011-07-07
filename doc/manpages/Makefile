@@ -32,6 +32,7 @@ PAGE_NAMES =        		\
 	ccnputfile		\
 	ccnputmeta		\
 	ccngetmeta		\
+	ccnnamelist		\
 	ccnrm			\
 	ccnseqwriter		\
 	ccn_repo		\
