@@ -87,7 +87,7 @@ r_proto_bulk_import(struct ccn_closure *selfp,
                              int marker_comp);
 
 static int
-name_comp_equal(const unsigned char *data,
+name_comp_compare(const unsigned char *data,
                    const struct ccn_indexbuf *indexbuf,
                    unsigned int i, const void *val, size_t length);
 
@@ -145,44 +145,44 @@ r_proto_answer_req(struct ccn_closure *selfp,
     /* check for command markers */
     ncomps = info->interest_comps->n;
     if (((marker_comp = ncomps - 2) >= 0) &&
-        0 == name_comp_equal(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE))) {
+        0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE))) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 3) >= 0) &&
-               0 == name_comp_equal(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE)) &&
-               0 == name_comp_equal(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length)) {
+               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE)) &&
+               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length)) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_repoid", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 5) >= 0) &&
-               0 == name_comp_equal(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE)) &&
-               0 == name_comp_equal(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length)) {
+               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE)) &&
+               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length)) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_continuation",
                             NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_continue_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 3) > 0) &&
-               0 == name_comp_equal(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SW, strlen(REPO_SW))) {
+               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SW, strlen(REPO_SW))) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_start_write(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 5) > 0) &&
-               0 == name_comp_equal(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SWC, strlen(REPO_SWC))) {
+               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SWC, strlen(REPO_SWC))) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write_checked",
                             NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_start_write_checked(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = 0) == 0) &&
-               0 == name_comp_equal_prefix(info->interest_ccnb, info->interest_comps, marker_comp, REPO_AF, strlen(REPO_AF))) {
+               name_comp_equal_prefix(info->interest_ccnb, info->interest_comps, marker_comp, REPO_AF, strlen(REPO_AF))) {
         if ((ccnr->debug & 8) != 0)
             ccnr_debug_ccnb(ccnr, __LINE__, "repo_bulk_import",
                             NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
@@ -203,11 +203,13 @@ Finish:
 
 // XXX these should probably be rationalized and added to ccn_name_util.c
 /**
- * Compare a name component at index i to bytes in buf and return 0 if they are equal
- * length and equal value.
+ * Compare a name component at index i to bytes in buf and return 0
+ * if they are equal length and equal value.
+ * In the case of inequality, a negative or positive value is returned,
+ * according to the canonical ordering of names.
  */
 static int
-name_comp_equal(const unsigned char *data,
+name_comp_compare(const unsigned char *data,
                    const struct ccn_indexbuf *indexbuf,
                    unsigned int i, const void *buf, size_t length)
 {
@@ -215,17 +217,20 @@ name_comp_equal(const unsigned char *data,
     size_t comp_size;
     
     if (ccn_name_comp_get(data, indexbuf, i, &comp_ptr, &comp_size) != 0)
+        return(-1);
+    if (comp_size < length)
+        return(-1);
+    if (comp_size > length)
         return(1);
-    if ((comp_size != length) ||
-        memcmp(comp_ptr, buf, length) != 0)
-        return(1);
-    return(0);
+    return(memcmp(comp_ptr, buf, length));
 }
 
 /**
- * Compare a name component at index i to bytes in buf and return 0 if they are equal
- * in the first length bytes.  The name component must contain at least length bytes
- * for this comparison to return equality.
+ * Compare a name component at index i to bytes in buf and return 1
+ * if they are equal in the first length bytes.  The name component
+ * must contain at least length bytes for this comparison to return
+ * equality.
+ * @returns 1 for equality, 0 for inequality.
  */
 static int
 name_comp_equal_prefix(const unsigned char *data,
@@ -236,11 +241,10 @@ name_comp_equal_prefix(const unsigned char *data,
     size_t comp_size;
     
     if (ccn_name_comp_get(data, indexbuf, i, &comp_ptr, &comp_size) != 0)
-        return(1);
-    if (comp_size < length ||
-        memcmp(comp_ptr, buf, length) != 0)
-        return(1);
-    return(0);
+        return(0);
+    if (comp_size < length || memcmp(comp_ptr, buf, length) != 0)
+        return(0);
+    return(1);
 }
 
 PUBLIC void
