@@ -364,9 +364,7 @@ collect_stats_html(struct ccnr_handle *h)
     struct ccn_charbuf *b = ccn_charbuf_create();
     int pid;
     struct utsname un;
-    const char *portstr;
     
-    portstr = "8008"; // XXX
     uname(&un);
     pid = getpid();
     
@@ -404,7 +402,7 @@ collect_stats_html(struct ccnr_handle *h)
         ccnr_colorhash(h),
         un.nodename,
         pid,
-        portstr,
+        h->portstr,
         (int)CCN_API_VERSION,
         h->starttime, h->starttime_usec,
         h->sec,
