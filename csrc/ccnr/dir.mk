@@ -43,7 +43,7 @@ ccnr_built.sh:
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
-	rm -rf *.dSYM $(DEBRIS)
+	rm -rf *.dSYM *.gcov *.gcda *.gcno $(DEBRIS)
 
 check test: ccnr $(SCRIPTSRC)
 	false
