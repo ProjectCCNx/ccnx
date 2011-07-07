@@ -81,7 +81,7 @@ PUBLIC struct ccnr_handle *
 r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
 {
     char *sockname;
-    // const char *portstr;
+    const char *portstr;
     const char *debugstr;
     const char *entrylimit;
     const char *listen_on;
@@ -134,10 +134,10 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     }
     else
         h->debug = 1;
-    // portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
-    // if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
-        // portstr = CCN_DEFAULT_UNICAST_PORT;
-    h->portstr = "8008"; // XXX - make configurable.
+    portstr = getenv("CCNR_STATUS_PORT");
+    if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
+        portstr = "";
+    h->portstr = portstr;
     entrylimit = getenv("CCNR_CAP");
     h->capacity = ~0;
     if (entrylimit != NULL && entrylimit[0] != 0) {
@@ -145,12 +145,12 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
         if (h->capacity <= 0)
             h->capacity = 10;
     }
-    ccnr_msg(h, "CCNR_DEBUG=%d CCNR_CAP=%lu", h->debug, h->capacity);
+    ccnr_msg(h, "CCNR_DEBUG=%d CCNR_STATUS_PORT=%s", h->debug, h->portstr);
     listen_on = getenv("CCNR_LISTEN_ON");
     if (listen_on != NULL && listen_on[0] != 0)
         ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
     h->appnonce = &r_fwd_append_debug_nonce;
-    if (ccnr_init_repo_keystore(h, h->internal_client) < 0){
+    if (ccnr_init_repo_keystore(h, h->internal_client) < 0) {
         /* XXX - need to bail if keystore is not OK. */
     }
     r_io_open_repo_data_file(h, "repoFile1", 0); /* input */

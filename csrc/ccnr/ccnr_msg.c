@@ -155,6 +155,8 @@ const char *ccnr_usage_message =
     "    CCNR_DIRECTORY=\n"
     "      Directory where ccnr data is kept\n"
     "      Defaults to current directory\n"
+    "    CCNR_STATUS_PORT=\n"
+    "      Port to use for status server.  Default is to not serve status.\n"
     "    CCNR_LISTEN_ON=\n"
     "      List of ip addresses to listen on for status; defaults to wildcard\n"
     ;

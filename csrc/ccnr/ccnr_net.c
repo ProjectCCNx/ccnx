@@ -92,6 +92,8 @@ r_net_listen_on_wildcards(struct ccnr_handle *h)
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *a;
     
+    if (h->portstr == NULL || h->portstr[0] == NULL)
+        return(-1);
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
     for (whichpf = 0; whichpf < 2; whichpf++) {
@@ -102,6 +104,7 @@ r_net_listen_on_wildcards(struct ccnr_handle *h)
                 fd = socket(a->ai_family, SOCK_STREAM, 0);
                 if (fd != -1) {
                     int yes = 1;
+                    // XXX - perhaps we should not set reuseaddr
                     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
                     if (a->ai_family == AF_INET6)
                         r_net_setsockopt_v6only(h, fd);
@@ -118,7 +121,7 @@ r_net_listen_on_wildcards(struct ccnr_handle *h)
                     r_io_record_fd(h, fd,
                                       a->ai_addr, a->ai_addrlen,
                                       CCNR_FACE_PASSIVE);
-                    ccnr_msg(h, "accepting %s connections on fd %d",
+                    ccnr_msg(h, "accepting %s status connections on fd %d",
                              af_name(a->ai_family), fd);
                 }
             }
@@ -182,6 +185,8 @@ r_net_listen_on(struct ccnr_handle *h, const char *addrs)
     int i;
     struct ccn_charbuf *addr = NULL;
     
+    if (h->portstr == NULL || h->portstr[0] == NULL)
+        return(-1);
     if (addrs == NULL || !*addrs || 0 == strcmp(addrs, "*"))
         return(r_net_listen_on_wildcards(h));
     addr = ccn_charbuf_create();
