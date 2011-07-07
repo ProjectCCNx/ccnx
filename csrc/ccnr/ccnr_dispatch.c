@@ -502,9 +502,7 @@ process_input(struct ccnr_handle *h, int fd)
         }
         fdholder->inbuf->length += res;
         msgstart = 0;
-        if (((fdholder->flags & CCNR_FACE_UNDECIDED) != 0 &&
-             fdholder->inbuf->length >= 6 &&
-             0 == memcmp(fdholder->inbuf->buf, "GET ", 4))) {
+        if ((fdholder->flags & CCNR_FACE_UNDECIDED) != 0) {
             ccnr_stats_handle_http_connection(h, fdholder);
             return;
         }
