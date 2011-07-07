@@ -92,7 +92,7 @@ r_net_listen_on_wildcards(struct ccnr_handle *h)
     struct addrinfo *addrinfo = NULL;
     struct addrinfo *a;
     
-    if (h->portstr == NULL || h->portstr[0] == NULL)
+    if (h->portstr == NULL || h->portstr[0] == 0)
         return(-1);
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
@@ -166,7 +166,7 @@ r_net_listen_on_address(struct ccnr_handle *h, const char *addr)
                 r_io_record_fd(h, fd,
                                   a->ai_addr, a->ai_addrlen,
                                   CCNR_FACE_PASSIVE);
-                ccnr_msg(h, "accepting %s connections on fd %d",
+                ccnr_msg(h, "accepting %s status connections on fd %d",
                          af_name(a->ai_family), fd);
                 ok++;
             }
@@ -185,7 +185,7 @@ r_net_listen_on(struct ccnr_handle *h, const char *addrs)
     int i;
     struct ccn_charbuf *addr = NULL;
     
-    if (h->portstr == NULL || h->portstr[0] == NULL)
+    if (h->portstr == NULL || h->portstr[0] == 0)
         return(-1);
     if (addrs == NULL || !*addrs || 0 == strcmp(addrs, "*"))
         return(r_net_listen_on_wildcards(h));
