@@ -574,6 +574,13 @@ r_dispatch_run(struct ccnr_handle *h)
         /// XXX - this is likely not the correct way to deal with getting
         ///   the proper timeout for the poll
         usec_direct = ccn_process_scheduled_operations(h->direct_client);
+        if (h->debug & 256) {
+            /* If so requested, shut down when ccnd goes away. */
+            if (ccn_get_connection_fd(h->direct_client) == -1) {
+                h->running = 0;
+                break;
+            }
+        }
         usec = (usec < usec_direct) ? usec : usec_direct;
         
         timeout_ms = (usec < 0) ? -1 : ((usec + 960) / 1000);

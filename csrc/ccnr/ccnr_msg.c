@@ -148,6 +148,7 @@ const char *ccnr_usage_message =
     "      32 - gory interest details\n"
     "      64 - log occasional human-readable timestamps\n"
     "      128 - fdholder registration debugging\n"
+    "      256 - shut down if ccnd goes away\n"
     "      bitwise OR these together for combinations; -1 gets max logging\n"
     "    CCNR_DIRECTORY=\n"
     "      Directory where ccnr data is kept\n"
