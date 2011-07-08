@@ -83,7 +83,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     char *sockname;
     const char *portstr;
     const char *debugstr;
-    const char *entrylimit;
     const char *listen_on;
     struct ccnr_handle *h;
     struct hashtb_param param = {0};
@@ -138,13 +137,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "";
     h->portstr = portstr;
-    entrylimit = getenv("CCNR_CAP");
-    h->capacity = ~0;
-    if (entrylimit != NULL && entrylimit[0] != 0) {
-        h->capacity = atol(entrylimit);
-        if (h->capacity <= 0)
-            h->capacity = 10;
-    }
     ccnr_msg(h, "CCNR_DEBUG=%d CCNR_STATUS_PORT=%s", h->debug, h->portstr);
     listen_on = getenv("CCNR_LISTEN_ON");
     if (listen_on != NULL && listen_on[0] != 0)

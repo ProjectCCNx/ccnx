@@ -542,8 +542,6 @@ r_store_mark_stale(struct ccnr_handle *h, struct content_entry *content)
 /**
  * Scheduled event that makes content stale when its FreshnessSeconds
  * has exported.
- *
- * May actually remove the content if we are over quota.
  */
 static int
 expire_content(struct ccn_schedule *sched,
@@ -554,22 +552,11 @@ expire_content(struct ccn_schedule *sched,
     struct ccnr_handle *h = clienth;
     ccn_accession_t accession = ev->evint;
     struct content_entry *content = NULL;
-    int res;
-    unsigned n;
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         return(0);
     content = r_store_content_from_accession(h, accession);
-    if (content != NULL) {
-        n = hashtb_n(h->content_tab);
-        /* The fancy test here lets existing stale content go away, too. */
-        if ((n - (n >> 3)) > h->capacity ||
-            (n > h->capacity && h->min_stale > h->max_stale)) {
-            res = r_store_remove_content(h, content);
-            if (res == 0)
-                return(0);
-        }
+    if (content != NULL)
         r_store_mark_stale(h, content);
-    }
     return(0);
 }
 

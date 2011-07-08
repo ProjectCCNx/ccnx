@@ -284,9 +284,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
             res = -__LINE__;
             content = NULL;
         }
-        /* Mark public keys supplied at startup as precious. */
         if (content != NULL) {
-            if (obj.type == CCN_CONTENT_KEY && content->accession <= (h->capacity + 7)/8)
+            if (obj.type == CCN_CONTENT_KEY)
                 content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
             if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
                 content->flags |= CCN_CONTENT_ENTRY_STABLE;
