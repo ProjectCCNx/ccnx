@@ -571,9 +571,9 @@ r_dispatch_run(struct ccnr_handle *h)
     for (h->running = 1; h->running;) {
         r_dispatch_process_internal_client_buffer(h);
         usec = ccn_schedule_run(h->sched);
-        /// XXX - this is likely not the correct way to deal with getting
-        ///   the proper timeout for the poll
         usec_direct = ccn_process_scheduled_operations(h->direct_client);
+        if (usec_direct < usec)
+            usec = usec_direct;
         if (h->debug & 256) {
             /* If so requested, shut down when ccnd goes away. */
             if (ccn_get_connection_fd(h->direct_client) == -1) {
@@ -581,8 +581,6 @@ r_dispatch_run(struct ccnr_handle *h)
                 break;
             }
         }
-        usec = (usec < usec_direct) ? usec : usec_direct;
-        
         timeout_ms = (usec < 0) ? -1 : ((usec + 960) / 1000);
         if (timeout_ms == 0 && prev_timeout_ms == 0)
             timeout_ms = 1;
