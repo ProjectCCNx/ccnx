@@ -167,6 +167,8 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
         ccnr_uri_listen(h, h->direct_client, "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository",
                         &ccnr_answer_req, OP_SERVICE);
     }
+    else
+        ccn_disconnect(h->direct_client); // Apparently ccn_connect error case needs work.
     h->sync_handle = SyncNewBase(h, h->direct_client, h->sched);
     pp = ccnr_parsed_policy_create();
     load_policy(h, pp);
