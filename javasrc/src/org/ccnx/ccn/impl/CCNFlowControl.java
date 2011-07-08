@@ -284,6 +284,18 @@ public class CCNFlowControl implements CCNFilterListener {
 	}
 	
 	/**
+	 * Someone needs to do the deregistration if nobody else did
+	 */
+	@Override
+	protected void finalize() throws Throwable {
+		try {
+			close();        // Do the deregistration
+		} finally {
+			super.finalize();
+		}
+	}
+	
+	/**
 	 * Test if this flow controller is currently serving a particular namespace.
 	 * 
 	 * @param childName ContentName of test space
