@@ -564,6 +564,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     msg = ccn_charbuf_create();
     reply_body = ccn_charbuf_create();
     r_proto_append_repo_info(ccnr, reply_body, NULL);
+    sp.freshness = 12; /* seconds */
     res = ccn_sign_content(info->h, msg, name, &sp,
                            reply_body->buf, reply_body->length);
     if (res < 0)
@@ -666,6 +667,7 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     name->length = 0;
     ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
     ccn_charbuf_append_closer(name);
+    sp.freshness = 12; /* Seconds */
     res = ccn_sign_content(info->h, msg, name, &sp,
                            reply_body->buf, reply_body->length);
     if (res < 0)
