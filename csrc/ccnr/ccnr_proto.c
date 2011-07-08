@@ -340,15 +340,16 @@ r_proto_append_repo_info(struct ccnr_handle *ccnr,
     ccn_charbuf_destroy(&name);
     return (res);
 }
+
 static struct ccn_charbuf *
-make_template(struct ccnr_expect_content *md, struct ccn_upcall_info *info)
+r_proto_mktemplate(struct ccnr_expect_content *md, struct ccn_upcall_info *info)
 {
     struct ccn_charbuf *templ = ccn_charbuf_create();
     ccnb_element_begin(templ, CCN_DTAG_Interest); // same structure as Name
     ccnb_element_begin(templ, CCN_DTAG_Name);
     ccnb_element_end(templ); /* </Name> */
     // XXX - use pubid if possible
-    // XXX - if start-write was scoped, use scope here
+    // XXX - if start-write was scoped, use scope here?
     ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
     ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 1);
     ccnb_element_end(templ); /* </Interest> */
@@ -495,7 +496,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
 
     name = ccn_charbuf_create();
     if (ic->n < 2) abort();    
-    templ = make_template(md, info);
+    templ = r_proto_mktemplate(md, info);
     /* fill the pipeline with new requests */
     for (i = 0; i < CCNR_PIPELINE; i++) {
         if (md->outstanding[i] == -1) {
@@ -584,7 +585,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     for (i = 0; i < CCNR_PIPELINE; i++)
         expect_content->outstanding[i] = -1;
     incoming->data = expect_content;
-    templ = make_template(expect_content, NULL);
+    templ = r_proto_mktemplate(expect_content, NULL);
     ic = info->interest_comps;
     ccn_name_init(name);
     ccn_name_append_components(name, info->interest_ccnb, ic->buf[0], ic->buf[marker_comp]);
