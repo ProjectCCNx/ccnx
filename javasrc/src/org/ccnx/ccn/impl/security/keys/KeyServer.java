@@ -100,6 +100,7 @@ public class KeyServer {
 		
 		// Use the key publishing framework in KeyManager to format this key, but use our _keyServer
 		// as the flow controller to serve it.
+		_keyServer.addNameSpace(keyName);
 		return KeyManager.publishKey(keyName, keyToPublish, signingKeyID, signingKeyLocator, 
 				_keyServer, null, null, _handle.keyManager());
 	}
