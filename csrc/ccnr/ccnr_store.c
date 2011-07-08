@@ -457,11 +457,9 @@ r_store_lookup(struct ccnr_handle *h,
 {
     struct content_entry *content = NULL;
     struct content_entry *last_match = NULL;
-    int s_ok;
     int try;
     size_t size = pi->offset[CCN_PI_E];
     
-    s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
     content = r_store_find_first_match_candidate(h, msg, pi);
     if (content != NULL && (h->debug & 8))
         ccnr_debug_ccnb(h, __LINE__, "first_candidate", NULL,
@@ -476,8 +474,7 @@ r_store_lookup(struct ccnr_handle *h,
             content = NULL;
         }
     for (try = 0; content != NULL; try++) {
-        if ((s_ok || (content->flags & CCN_CONTENT_ENTRY_STALE) == 0) &&
-            ccn_content_matches_interest(content->key,
+        if (ccn_content_matches_interest(content->key,
                                          content->size,
                                          0, NULL, msg, size, pi)) {
                 if ((pi->orderpref & 1) == 0 && // XXX - should be symbolic
