@@ -299,26 +299,13 @@ r_proto_deactivate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *p
 }
 
 
-/* Construct a charbuf with an encoding of a RepositoryInfo
- *
- *  <RepositoryInfo>
- *  <Version>1.1</Version>
- *  <Type>INFO</Type>
- *  <RepositoryVersion>1.4</RepositoryVersion>
- *  <GlobalPrefixName>
- *  <Component ccnbencoding="text">parc.com</Component>
- *  <Component ccnbencoding="text">csl</Component>
- *  <Component ccnbencoding="text">ccn</Component>
- *  <Component ccnbencoding="text">Repos</Component>
- *  </GlobalPrefixName>
- *  <LocalName>Repository</LocalName>
- *  </RepositoryInfo>
-*/ 
+/**
+ * Construct a charbuf with an encoding of a RepositoryInfo
+ */ 
 PUBLIC int
 r_proto_append_repo_info(struct ccnr_handle *ccnr,
                          struct ccn_charbuf *rinfo,
                          struct ccn_charbuf *names) {
-    // XXX - this is hardwired at present - should come from .meta/* in repo dir
     int res;
     struct ccn_charbuf *name = ccn_charbuf_create();
     if (name == NULL) return (-1);
