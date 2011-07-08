@@ -3,47 +3,47 @@
 <!ENTITY % commonattrs
 	"xmlns %URI; #FIXED 'http://www.ccnx.org/content/schema/20090915'">
 
-<!ELEMENT BinaryValue	(#PCDATA)>	<!-- base64Binary -->
-<!ATTLIST BinaryValue   ccnbencoding CDATA #FIXED 'base64Binary'>
-<!ATTLIST BinaryValue	%commonattrs;>
 
-<!ELEMENT Name		(Component*)>
-<!ATTLIST Name		%commonattrs;>
+<!ELEMENT Binary             (#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST Binary             ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ATTLIST Binary             %commonattrs;>
 
-<!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
-<!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ELEMENT SyncVersion        (#PCDATA)>      <!-- nonNegativeInteger -->
+<!ELEMENT SyncLeafCount      (#PCDATA)>      <!-- nonNegativeInteger -->
+<!ELEMENT SyncTreeDepth      (#PCDATA)>      <!-- nonNegativeInteger -->
+<!ELEMENT SyncByteCount      (#PCDATA)>      <!-- nonNegativeInteger -->
 
+<!ELEMENT SyncContentHash    (#PCDATA)>
+<!ATTLIST SyncContentHash    ccnbencoding CDATA #FIXED 'base64Binary'>
 
-<!ELEMENT ContentHash	(#PCDATA)>
-<!ATTLIST ContentHash ccnbencoding CDATA #FIXED 'base64Binary'>
-
-<!ELEMENT SyncNode    (BinaryValue, BinaryValue, BinaryValue, ContentHash*, Name, Name, 
-				ContentHash, BinaryValue, BinaryValue)>
-<!ATTLIST SyncNode %commonattrs;>
+<!ELEMENT SyncNodeKind       (#PCDATA)>      <!-- values not yet assigned -->
+<!ATTLIST SyncNodeKind       ccnbencoding CDATA #FIXED 'string'>
 
 
+<!ELEMENT SyncNodeElement    (Name | ContentHash)>
+<!ATTLIST SyncNodeElement    %commonattrs;>
 
-<!ELEMENT Binary	(#PCDATA)>	<!-- base64Binary -->
-<!ATTLIST Binary   ccnbencoding CDATA #FIXED 'base64Binary'>
-<!ATTLIST Binary	%commonattrs;>
+<!ELEMENT SyncNodeElements   (SyncNodeElement*)>
+<!ATTLIST SyncNodeElements   %commonattrs;>
 
-<!ELEMENT SyncVersion       (#PCDATA)>      <!-- nonNegativeInteger -->
-<!ELEMENT LeafCount         (#PCDATA)>      <!-- nonNegativeInteger -->
-<!ELEMENT TreeDepth         (#PCDATA)>      <!-- nonNegativeInteger -->
-
-<!ELEMENT NodeContentHash	(#PCDATA)>
-<!ATTLIST NodeContentHash ccnbencoding CDATA #FIXED 'base64Binary'>
-
-<!ELEMENT NodeKind          (#PCDATA)>      <!-- DATA, ENCR, GONE, KEY/, LINK, NACK -->
-<!ATTLIST NodeKind          ccnbencoding CDATA #FIXED 'string'>
+<!ELEMENT SyncNode           (SyncVersion, SyncNodeKind, SyncNodeElements,
+                              Name, Name, SyncContentHash,
+                              SyncLeafCount, SyncTreeDepth, SyncByteCount)>
+<!ATTLIST SyncNode           %commonattrs;>
 
 
-<!ELEMENT SyncNodeElement        (NodeKind, (Name | ContentHash | Binary))>
-<!ATTLIST SyncNodeElement        %commonattrs;>
 
-<!ELEMENT NodeElements        (SyncNodeElement*)>
-<!ATTLIST NodeElements        %commonattrs;>
 
-<!ELEMENT NewSyncNode    (SyncVersion, NodeKind, NodeElements, Name, Name, NodeContentHash, LeafCount, TreeDepth)>
-<!ATTLIST NewSyncNode %commonattrs;>
+
+<!ELEMENT SyncConfigSliceOp       (#PCDATA)>      <!-- values not yet assigned -->
+<!ATTLIST SyncConfigSliceOp       %commonattrs;>
+
+<!ELEMENT SyncConfigSliceElem     (SyncConfigSliceOp, Name)>
+<!ATTLIST SyncConfigSliceElem     %commonattrs;>
+
+<!ELEMENT SyncConfigSliceList     (SyncConfigSliceElem*)>
+<!ATTLIST SyncConfigSliceList     %commonattrs;>
+
+<!ELEMENT SyncConfigSlice         (SyncVersion, Name, Name, SyncConfigSliceList)
+<!ATTLIST SyncConfigSlice         %commonattrs;>
 
