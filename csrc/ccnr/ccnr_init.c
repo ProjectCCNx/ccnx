@@ -285,7 +285,7 @@ static int
 load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
 {
     int fd;
-    int res;
+    ssize_t res;
     struct fdholder *fdholder = NULL;
     struct content_entry *content = NULL;
     const unsigned char *buf;
@@ -355,3 +355,4 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
     
     return(0);
 }
+
