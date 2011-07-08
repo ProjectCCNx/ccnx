@@ -44,6 +44,6 @@
 <!ELEMENT SyncConfigSliceList     (SyncConfigSliceElem*)>
 <!ATTLIST SyncConfigSliceList     %commonattrs;>
 
-<!ELEMENT SyncConfigSlice         (SyncVersion, Name, Name, SyncConfigSliceList)
+<!ELEMENT SyncConfigSlice         (SyncVersion, Name, Name, SyncConfigSliceList)>
 <!ATTLIST SyncConfigSlice         %commonattrs;>
 
