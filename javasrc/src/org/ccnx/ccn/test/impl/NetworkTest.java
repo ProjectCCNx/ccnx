@@ -165,6 +165,7 @@ public class NetworkTest extends CCNTestBase {
 		writer.put(testName, "aaa");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
+		writer.close();
 	}
 	
 	@Test
@@ -178,6 +179,7 @@ public class NetworkTest extends CCNTestBase {
 		writer.put(testName, "ddd");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
+		writer.close();
 	}
 	
 	@Test
@@ -197,6 +199,7 @@ public class NetworkTest extends CCNTestBase {
 		getHandle.expressInterest(testInterest, tl);
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
+		writer.close();
 	}
 	
 	@Test
@@ -212,6 +215,7 @@ public class NetworkTest extends CCNTestBase {
 		Thread.sleep(WAIT_MILLIS);
 		co = getHandle.get(testName, 1000);
 		Assert.assertTrue(co == null);
+		writer.close();
 	}
 
 	@Test
@@ -230,6 +234,7 @@ public class NetworkTest extends CCNTestBase {
 		writer.put(testName, "ccc");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
+		writer.close();
 	}
 	
 	/**
