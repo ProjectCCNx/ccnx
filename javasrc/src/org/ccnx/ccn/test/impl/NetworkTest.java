@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.test.impl;
 
+import java.util.ArrayList;
 import java.util.TreeSet;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -42,8 +43,6 @@ import org.junit.Test;
 
 /**
  * Test CCNNetworkManager.
- * 
- * This should eventually have more tests
  * 
  * Note - this test requires ccnd to be running
  *
@@ -117,11 +116,20 @@ public class NetworkTest extends CCNTestBase {
 		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, testName2, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
+		gotInterest = false;
+		filterSema.drainPermits();
+		getHandle.expressInterest(interest6, tl);
+		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		Assert.assertTrue(gotInterest);
+		getHandle.cancelInterest(interest6, tl);
 		
-		// The following is to make sure that a filter that is a prefix of a registered filter
-		// doesn't get registered separately. There's no good way to test this directly (I don't think)
-		// currently but we can see that it is done by checking out the log
-		putHandle.getNetworkManager().setInterestFilter(this, testName7, tfl);  
+		// Make sure that a filter that is a prefix of a registered filter
+		// doesn't get registered separately.
+		gotInterest = false;
+		filterSema.drainPermits();
+		putHandle.getNetworkManager().setInterestFilter(this, testName7, tfl);
+		ArrayList<ContentName> prefixes = putHandle.getNetworkManager().getRegisteredPrefixes();
+		Assert.assertFalse(prefixes.contains(testName7));
 		getHandle.expressInterest(interest4, tl);
 		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotInterest);
@@ -136,13 +144,16 @@ public class NetworkTest extends CCNTestBase {
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName3, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName5, tfl);
+		putHandle.getNetworkManager().cancelInterestFilter(this, testName7, tfl);
 		
-		// Test that nothing after / is registered. Need to examine logs to ensure this is
-		// done correctly.
+		// Make sure nothing is registered after a /
 		ContentName slashName = ContentName.fromNative("/");
 		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, slashName, tfl);
-		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);	
+		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);
+		prefixes = putHandle.getNetworkManager().getRegisteredPrefixes();
+		Assert.assertFalse(prefixes.contains(testName5));
+		
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName1, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, slashName, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName5, tfl);
