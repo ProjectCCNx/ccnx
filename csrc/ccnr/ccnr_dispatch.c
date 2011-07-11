@@ -290,8 +290,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
             if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
                 content->flags |= CCN_CONTENT_ENTRY_STABLE;
                 if (content->accession >= h->notify_after)
-                res = SyncNotifyContent(h->sync_handle, 0, content->accession,
-                                        cb, comps);
+                    res = SyncNotifyContent(h->sync_handle, 0,
+                                            content->accession, cb, comps);
             }
         }
     }

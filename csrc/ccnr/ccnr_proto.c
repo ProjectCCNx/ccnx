@@ -377,6 +377,7 @@ is_final(struct ccn_upcall_info *info)
     }
     return(0);
 }
+
 PUBLIC enum ccn_upcall_res
 r_proto_expect_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,

@@ -106,7 +106,7 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
     content = process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)),
                                        (void *)ccnb, ccnb_size);
     if (content == NULL) {
-        ccnr_msg(ccnr, "r_proto_expect_content: failed to process incoming content");
+        ccnr_msg(ccnr, "r_sync_upcall_store: failed to process incoming content");
         return(CCN_UPCALL_RESULT_ERR);
     }
     // XXX - here we need to check if this is something we *should* be storing, according to our policy
