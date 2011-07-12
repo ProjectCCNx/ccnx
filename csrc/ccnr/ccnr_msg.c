@@ -72,6 +72,7 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     ccn_charbuf_putf(b, "%ld.%06u ccnr[%d]: %s\n",
         (long)t.tv_sec, (unsigned)t.tv_usec, h->logpid, fmt);
     va_start(ap, fmt);
+    /* b should already have null termination, but use call for cleanliness */
     res = (*h->logger)(h->loggerdata, ccn_charbuf_as_string(b), ap);
     va_end(ap);
     ccn_charbuf_destroy(&b);
