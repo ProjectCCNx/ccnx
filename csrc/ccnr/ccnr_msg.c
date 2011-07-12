@@ -55,6 +55,8 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     if (h == NULL || h->debug == 0 || h->logger == 0)
         return;
     b = ccn_charbuf_create();
+    if (b == NULL)
+        return;
     gettimeofday(&t, NULL);
     if (((h->debug & 64) != 0) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
@@ -70,7 +72,8 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     ccn_charbuf_putf(b, "%ld.%06u ccnr[%d]: %s\n",
         (long)t.tv_sec, (unsigned)t.tv_usec, h->logpid, fmt);
     va_start(ap, fmt);
-    res = (*h->logger)(h->loggerdata, (const char *)b->buf, ap);
+    /* b should already have null termination, but use call for cleanliness */
+    res = (*h->logger)(h->loggerdata, ccn_charbuf_as_string(b), ap);
     va_end(ap);
     ccn_charbuf_destroy(&b);
     /* if there's no one to hear, don't make a sound */
