@@ -515,7 +515,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     struct ccn_charbuf *reply_body = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_indexbuf *ic = NULL;
-    enum ccn_upcall_res ans = CCN_UPCALL_RESULT_OK;
+    enum ccn_upcall_res ans = CCN_UPCALL_RESULT_ERR;
     struct ccn_charbuf *msg = NULL;
     int res = 0;
     int start = 0;
@@ -561,17 +561,23 @@ r_proto_start_write(struct ccn_closure *selfp,
                         msg->buf, msg->length);
     res = ccn_put(info->h, msg->buf, msg->length);
     if (res < 0) {
-        // note the error somehow.
+        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write ccn_put FAILED", NULL,
+                        msg->buf, msg->length);
+        goto Bail;
     }
 
     /* Send an interest for segment 0 */
-    incoming = calloc(1, sizeof(*incoming));
-    incoming->p = &r_proto_expect_content;
     expect_content = calloc(1, sizeof(*expect_content));
+    if (expect_content == NULL)
+        goto Bail;
     expect_content->ccnr = ccnr;
     expect_content->final = -1;
     for (i = 0; i < CCNR_PIPELINE; i++)
         expect_content->outstanding[i] = -1;
+    incoming = calloc(1, sizeof(*incoming));
+    if (incoming == NULL)
+        goto Bail;
+    incoming->p = &r_proto_expect_content;
     incoming->data = expect_content;
     templ = r_proto_mktemplate(expect_content, NULL);
     ic = info->interest_comps;
@@ -580,12 +586,23 @@ r_proto_start_write(struct ccn_closure *selfp,
     ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
     expect_content->outstanding[0] = 0;
     res = ccn_express_interest(info->h, name, incoming, templ);
-    if (res < 0) {
-        ans = CCN_UPCALL_RESULT_ERR;
+    if (res >= 0) {
+        /* upcall will free these when it is done. */
+        incoming = NULL;
+        expect_content = NULL;
+        ans = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+    }
+    else {
+        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write ccn_express_interest FAILED", NULL,
+                        name->buf, name->length);
         goto Bail;
     }
     
 Bail:
+    if (incoming != NULL)
+        free(incoming);
+    if (expect_content != NULL)
+        free(expect_content);
     ccn_charbuf_destroy(&templ);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&reply_body);
@@ -639,7 +656,6 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     ccn_indexbuf_destroy(&comps);
     if (content == NULL) {
         ccnr_msg(ccnr, "r_proto_start_write_checked: NOT PRESENT");
-        
         return(r_proto_start_write(selfp, kind, info, marker_comp));
     }
     // what's the return value if the item is in the repository already?
