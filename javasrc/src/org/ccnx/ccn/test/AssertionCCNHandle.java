@@ -17,7 +17,7 @@
 package org.ccnx.ccn.test;
 
 import java.io.IOException;
-import java.util.TreeMap;
+import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
@@ -28,10 +28,38 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
+/**
+ * This class is designed to handle actually erroring in assertions that fail within CCN handlers. Normally
+ * since the handler is called by a different thread than the test, an assertion failure within the handler
+ * would not actually cause the test to fail.
+ * 
+ * To use this test, replace CCNHandle with an AssertionCCNHandle. Then after each expressInterest or registerFilter
+ * call within your test you must call checkError to insure that the handler ran without error.
+ */
 public class AssertionCCNHandle extends CCNHandle {
 	protected Error _error = null;
-	protected TreeMap<CCNInterestListener, CCNInterestListener> _interestListeners = new TreeMap<CCNInterestListener, CCNInterestListener>();
-	protected TreeMap<CCNFilterListener, CCNFilterListener> _filterListeners = new TreeMap<CCNFilterListener, CCNFilterListener>();
+	protected ArrayList<RelatedInterestListener> _interestListeners = new ArrayList<RelatedInterestListener>();
+	protected ArrayList<RelatedFilterListener> _filterListeners = new ArrayList<RelatedFilterListener>();
+	
+	protected class RelatedInterestListener {
+		AssertionInterestListener _aListener;
+		CCNInterestListener _listener;
+		
+		protected RelatedInterestListener(AssertionInterestListener aListener, CCNInterestListener listener) {
+			_aListener = aListener;
+			_listener = listener;
+		}
+	}
+	
+	protected class RelatedFilterListener {
+		AssertionFilterListener _aListener;
+		CCNFilterListener _listener;
+		
+		protected RelatedFilterListener(AssertionFilterListener aListener, CCNFilterListener listener) {
+			_aListener = aListener;
+			_listener = listener;
+		}
+	}
 
 	protected AssertionCCNHandle() throws ConfigurationException, IOException {
 		super();
@@ -52,38 +80,49 @@ public class AssertionCCNHandle extends CCNHandle {
 	public void expressInterest(
 			Interest interest,
 			CCNInterestListener listener) throws IOException {
-		CCNInterestListener ail = new AssertionInterestListener(listener);
-		_interestListeners.put(ail, listener);
+		AssertionInterestListener ail = new AssertionInterestListener(listener);
+		_interestListeners.add(new RelatedInterestListener(ail, listener));
 		super.expressInterest(interest, listener);
 	}
 	
 	public void cancelInterest(Interest interest, CCNInterestListener listener) {
-		CCNInterestListener toCancel = null;
-		for (CCNInterestListener l : _interestListeners.keySet()) {
-			if (l == listener) {
-				toCancel = _interestListeners.get(l);
+		AssertionInterestListener toCancel = null;
+		for (RelatedInterestListener ril : _interestListeners) {
+			if (ril._listener == listener) {
+				toCancel = ril._aListener;
 				break;
 			}
 		}
+		if (null == toCancel) {
+			Log.warning("Questionable cancel of never expressed interest: %0", interest);
+			toCancel = new AssertionInterestListener(listener);
+			_interestListeners.add(new RelatedInterestListener(toCancel, listener));
+		}
 		super.cancelInterest(interest, toCancel);
+		_interestListeners.remove(toCancel);
 	}
 	
 	public void registerFilter(ContentName filter,
 			CCNFilterListener callbackListener) throws IOException {
-		CCNFilterListener listener = new AssertionFilterListener(callbackListener);
-		_filterListeners.put(listener, callbackListener);
+		AssertionFilterListener listener = new AssertionFilterListener(callbackListener);
+		_filterListeners.add(new RelatedFilterListener(listener, callbackListener));
 		super.registerFilter(filter, listener);
 	}
 	
-	public void unregisterFilter(ContentName filter,CCNFilterListener callbackListener) {
-		CCNFilterListener toCancel = null;
-		for (CCNFilterListener l : _filterListeners.keySet()) {
-			if (l == callbackListener) {
-				toCancel = _filterListeners.get(l);
+	public void unregisterFilter(ContentName filter, CCNFilterListener callbackListener) {
+		AssertionFilterListener toUnregister = null;
+		for (RelatedFilterListener rfl : _filterListeners) {
+			if (rfl._listener == callbackListener) {
+				toUnregister = rfl._aListener;
 				break;
 			}
 		}
-		super.unregisterFilter(filter, toCancel);
+		if (null == toUnregister) {
+			Log.warning("Questionable unregister of never registered filter: %0", filter);
+			toUnregister = new AssertionFilterListener(callbackListener);
+			_filterListeners.add(new RelatedFilterListener(toUnregister, callbackListener));
+		}
+		super.unregisterFilter(filter, toUnregister);
 	}
 	
 	public void checkError(long timeout) throws Error, InterruptedException {

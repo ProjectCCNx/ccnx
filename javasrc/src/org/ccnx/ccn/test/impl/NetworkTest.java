@@ -25,6 +25,7 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
@@ -51,6 +52,8 @@ public class NetworkTest extends CCNTestBase {
 	
 	protected static final int WAIT_MILLIS = 8000;
 	protected static final int FLOOD_ITERATIONS = 1000;
+	
+	protected static final int TEST_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT;
 	
 	private Semaphore sema = new Semaphore(0);
 	private Semaphore filterSema = new Semaphore(0);
@@ -100,11 +103,13 @@ public class NetworkTest extends CCNTestBase {
 		// Test that we don't receive interests above what we registered
 		gotInterest = false;
 		putHandle.getNetworkManager().setInterestFilter(this, testName2, tfl);
-		Thread.sleep(1000);
+		getHandle.expressInterest(interest1, tl);
+		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertFalse(gotInterest);
 		getHandle.cancelInterest(interest1, tl);
 		getHandle.expressInterest(interest2, tl);
 		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest2, tl);
 		
@@ -118,8 +123,9 @@ public class NetworkTest extends CCNTestBase {
 		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
 		gotInterest = false;
 		filterSema.drainPermits();
-		getHandle.expressInterest(interest6, tl);
+		getHandle.expressInterest(interest6, tl);		
 		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest6, tl);
 		
@@ -132,12 +138,14 @@ public class NetworkTest extends CCNTestBase {
 		Assert.assertFalse(prefixes.contains(testName7));
 		getHandle.expressInterest(interest4, tl);
 		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest4, tl);
 		gotInterest = false;
 		filterSema.drainPermits();
 		getHandle.expressInterest(interest6, tl);
 		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest6, tl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName1, tfl);
