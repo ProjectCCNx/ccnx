@@ -1130,8 +1130,10 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public ArrayList<ContentName> getRegisteredPrefixes() {
 		ArrayList<ContentName> prefixes = new ArrayList<ContentName>();
-		for (ContentName name : _registeredPrefixes.keySet()) {
-			prefixes.add(name);
+		synchronized (_registeredPrefixes) {
+			for (ContentName name : _registeredPrefixes.keySet()) {
+				prefixes.add(name);
+			}
 		}
 		return prefixes;
 	}

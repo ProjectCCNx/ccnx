@@ -77,54 +77,80 @@ public class AssertionCCNHandle extends CCNHandle {
 		}
 	}
 	
+	/**
+	 * Overrides of CCNHandle calls referencing the listener
+	 */
 	public void expressInterest(
 			Interest interest,
 			CCNInterestListener listener) throws IOException {
-		AssertionInterestListener ail = new AssertionInterestListener(listener);
-		_interestListeners.add(new RelatedInterestListener(ail, listener));
-		super.expressInterest(interest, listener);
+		AssertionInterestListener ail = null;
+		synchronized (_interestListeners) {
+			ail = getInterestListener(listener);
+			if (null == ail) {
+				ail = new AssertionInterestListener(listener);
+				_interestListeners.add(new RelatedInterestListener(ail, listener));
+			}
+			ail._references++;
+		}
+		super.expressInterest(interest, ail);
 	}
 	
 	public void cancelInterest(Interest interest, CCNInterestListener listener) {
 		AssertionInterestListener toCancel = null;
-		for (RelatedInterestListener ril : _interestListeners) {
-			if (ril._listener == listener) {
-				toCancel = ril._aListener;
-				break;
+		synchronized (_interestListeners) {
+			toCancel = getInterestListener(listener);
+			if (null == toCancel) {
+				Log.warning("Questionable cancel of never expressed interest: %0", interest);
+				toCancel = new AssertionInterestListener(listener);
+				_interestListeners.add(new RelatedInterestListener(toCancel, listener));
 			}
 		}
-		if (null == toCancel) {
-			Log.warning("Questionable cancel of never expressed interest: %0", interest);
-			toCancel = new AssertionInterestListener(listener);
-			_interestListeners.add(new RelatedInterestListener(toCancel, listener));
-		}
 		super.cancelInterest(interest, toCancel);
-		_interestListeners.remove(toCancel);
+
+		synchronized (_interestListeners) {
+			if (--toCancel._references <= 0)
+				_interestListeners.remove(toCancel);
+		}
 	}
 	
 	public void registerFilter(ContentName filter,
 			CCNFilterListener callbackListener) throws IOException {
-		AssertionFilterListener listener = new AssertionFilterListener(callbackListener);
-		_filterListeners.add(new RelatedFilterListener(listener, callbackListener));
+		AssertionFilterListener listener = null;
+		synchronized (_filterListeners) {
+			listener = new AssertionFilterListener(callbackListener);
+			if (null == listener) {
+				listener = new AssertionFilterListener(callbackListener);
+				_filterListeners.add(new RelatedFilterListener(listener, callbackListener));
+			}
+			listener._references++;
+		}
 		super.registerFilter(filter, listener);
 	}
 	
 	public void unregisterFilter(ContentName filter, CCNFilterListener callbackListener) {
 		AssertionFilterListener toUnregister = null;
-		for (RelatedFilterListener rfl : _filterListeners) {
-			if (rfl._listener == callbackListener) {
-				toUnregister = rfl._aListener;
-				break;
+		synchronized (_filterListeners) {
+			toUnregister = getFilterListener(callbackListener);
+			if (null == toUnregister) {
+				Log.warning("Questionable unregister of never registered filter: %0", filter);
+				toUnregister = new AssertionFilterListener(callbackListener);
+				_filterListeners.add(new RelatedFilterListener(toUnregister, callbackListener));
 			}
 		}
-		if (null == toUnregister) {
-			Log.warning("Questionable unregister of never registered filter: %0", filter);
-			toUnregister = new AssertionFilterListener(callbackListener);
-			_filterListeners.add(new RelatedFilterListener(toUnregister, callbackListener));
-		}
 		super.unregisterFilter(filter, toUnregister);
+		synchronized (_filterListeners) {
+			if (--toUnregister._references <= 0)
+				_filterListeners.remove(toUnregister);
+		}
 	}
 	
+	/**
+	 * Should be called after any callback has been triggered on the handle that would have
+	 * received the callback
+	 * @param timeout millis to wait for callback to occur
+	 * @throws Error
+	 * @throws InterruptedException
+	 */
 	public void checkError(long timeout) throws Error, InterruptedException {
 		synchronized (this) {
 			wait(timeout);
@@ -133,9 +159,28 @@ public class AssertionCCNHandle extends CCNHandle {
 			throw _error;
 	}
 	
+	private AssertionInterestListener getInterestListener(CCNInterestListener listener) {
+		for (RelatedInterestListener ril : _interestListeners) {
+			if (ril._listener == listener) {
+				return ril._aListener;
+			}
+		}
+		return null;
+	}
+	
+	private AssertionFilterListener getFilterListener(CCNFilterListener listener) {
+		for (RelatedFilterListener rfl : _filterListeners) {
+			if (rfl._listener == listener) {
+				return rfl._aListener;
+			}
+		}
+		return null;
+	}
+	
 	protected class AssertionFilterListener implements CCNFilterListener {
 		
 		protected CCNFilterListener _listener;
+		protected int _references = 0;
 		
 		public AssertionFilterListener(CCNFilterListener listener) {
 			_listener = listener;
@@ -160,6 +205,7 @@ public class AssertionCCNHandle extends CCNHandle {
 	protected class AssertionInterestListener implements CCNInterestListener {
 		
 		protected CCNInterestListener _listener;
+		protected int _references = 0;
 		
 		public AssertionInterestListener(CCNInterestListener listener) {
 			_listener = listener;
