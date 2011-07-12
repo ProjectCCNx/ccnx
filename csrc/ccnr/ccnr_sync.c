@@ -75,6 +75,7 @@ r_sync_lookup(struct ccnr_handle *ccnr,
     if (content != NULL) {
         ans = 0;
         if (content_ccnb != NULL) {
+            // XXX - the extra name component should be excised here.  This routine is not yet called, though.
             ccn_charbuf_append(content_ccnb, content->key, content->size);
         }
     }

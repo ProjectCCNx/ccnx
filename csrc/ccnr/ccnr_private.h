@@ -87,6 +87,7 @@ struct ccnr_handle {
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
     struct ccn_scheduled_event *age_forwarding;
+    struct ccn_scheduled_event *keyfetcher;
     const char *portstr;            /**< port number for status display */
     nfds_t nfds;                    /**< number of entries in fds array */
     struct pollfd *fds;             /**< used for poll system call */
@@ -109,6 +110,7 @@ struct ccnr_handle {
     ccn_accession_t max_stale;      /**< largest accession of stale content */
     unsigned long n_stale;          /**< Number of stale content objects */
     struct ccn_indexbuf *unsol;     /**< unsolicited content */
+    struct ccn_indexbuf *keyfetch; /**< these need key fetches */
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
     unsigned long oldformatinterests;

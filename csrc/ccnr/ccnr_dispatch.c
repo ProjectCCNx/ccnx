@@ -293,6 +293,11 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
                     res = SyncNotifyContent(h->sync_handle, 0,
                                             content->accession, cb, comps);
             }
+            else {
+                ccn_indexbuf_append_element(h->keyfetch, content->accession);
+                r_store_keyfetch_needed(h, 1000);
+            }
+
         }
     }
     hashtb_end(e);

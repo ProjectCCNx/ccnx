@@ -40,5 +40,6 @@ void r_store_content_skiplist_insert(struct ccnr_handle *h,struct content_entry 
 void r_store_enroll_content(struct ccnr_handle *h,struct content_entry *content);
 struct content_entry *r_store_content_from_accession(struct ccnr_handle *h,ccn_accession_t accession);
 struct content_entry *r_store_lookup(struct ccnr_handle *h, const unsigned char *msg, const struct ccn_parsed_interest *pi, struct ccn_indexbuf *comps);
+void r_store_keyfetch_needed(struct ccnr_handle *h, int init_delay_usec);
 
 #endif

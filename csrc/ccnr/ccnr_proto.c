@@ -419,9 +419,11 @@ r_proto_expect_content(struct ccn_closure *selfp,
         md->tries++;
         return(CCN_UPCALL_RESULT_REEXPRESS);
     }
-    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
-        return(CCN_UPCALL_RESULT_VERIFY);
-    if (kind != CCN_UPCALL_CONTENT)
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED) {
+        // XXX - Some forms of key locator can confuse libccn. Don't provoke it to fetch keys until that is hardened.
+        ccnr_debug_ccnb(ccnr, __LINE__, "key_needed", NULL, info->content_ccnb, info->pco->offset[CCN_PCO_E]);
+    }
+    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_ERR);
     
     ccnb = info->content_ccnb;
