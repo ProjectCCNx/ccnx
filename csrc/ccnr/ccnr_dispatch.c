@@ -63,6 +63,7 @@
 #include "ccnr_link.h"
 #include "ccnr_match.h"
 #include "ccnr_msg.h"
+#include "ccnr_proto.h"
 #include "ccnr_sendq.h"
 #include "ccnr_stats.h"
 #include "ccnr_store.h"
@@ -296,8 +297,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
             else {
                 ccn_indexbuf_append_element(h->keyfetch, content->accession);
                 r_store_keyfetch_needed(h, 1000);
+                r_proto_initiate_key_fetch(h, msg, &obj, content->accession);
             }
-
         }
     }
     hashtb_end(e);

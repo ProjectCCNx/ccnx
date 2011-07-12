@@ -587,7 +587,6 @@ r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
                        &expire_content, NULL, content->accession);
 }
 
-
 /**
  * Scheduled event for fetching keys.
  */

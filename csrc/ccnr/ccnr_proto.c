@@ -1042,3 +1042,69 @@ r_proto_parse_policy(struct ccnr_handle *ccnr, const unsigned char *buf, size_t 
     }
     return (res);
 }
+
+int
+r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
+                           unsigned char *msg,
+                           struct ccn_parsed_ContentObject *pco,
+                           ccn_accession_t a)
+{
+    /* 
+     * Create a new interest in the key name, set up a callback that will
+     * insert the key into repo.
+     */
+    int res;
+    int namelen;
+    struct ccn_charbuf *key_name = NULL;
+    struct ccn_closure *key_closure = NULL;
+    struct ccn_charbuf *templ = NULL;
+    struct ccnr_expect_content *expect_content = NULL;
+    int i;
+    
+    namelen = (pco->offset[CCN_PCO_E_KeyName_Name] -
+               pco->offset[CCN_PCO_B_KeyName_Name]);
+    /*
+     * If there is no KeyName provided, we can't ask, so do not bother.
+     */
+    if (namelen == 0 || a == 0)
+        return(-1);
+
+    expect_content = calloc(1, sizeof(*expect_content));
+    if (expect_content == NULL)
+        return (-1);
+    expect_content->ccnr = ccnr;
+    expect_content->final = -1;
+    for (i = 0; i < CCNR_PIPELINE; i++)
+        expect_content->outstanding[i] = -1;
+    expect_content->keyfetch = a;
+
+    key_closure = calloc(1, sizeof(*key_closure));
+    if (key_closure == NULL) {
+        free(expect_content);
+        return (-1);
+    }
+    key_closure->p = &r_proto_expect_content;
+    key_closure->data = expect_content;
+
+    key_name = ccn_charbuf_create();
+    res = ccn_charbuf_append(key_name,
+                             msg + pco->offset[CCN_PCO_B_KeyName_Name],
+                             namelen);
+    templ = ccn_charbuf_create();
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    if (pco->offset[CCN_PCO_B_KeyName_Pub] < pco->offset[CCN_PCO_E_KeyName_Pub]) {
+        ccn_charbuf_append(templ,
+                           msg + pco->offset[CCN_PCO_B_KeyName_Pub],
+                           (pco->offset[CCN_PCO_E_KeyName_Pub] - 
+                            pco->offset[CCN_PCO_B_KeyName_Pub]));
+    }
+    // XXX - should set max suffix.
+    ccn_charbuf_append_closer(templ); /* </Interest> */
+    res = ccn_express_interest(ccnr->direct_client, key_name, key_closure, templ);
+    ccn_charbuf_destroy(&key_name);
+    ccn_charbuf_destroy(&templ);
+    return(res);
+}
+

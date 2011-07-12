@@ -37,6 +37,7 @@ struct ccnr_expect_content {
     struct ccnr_handle *ccnr;
     int tries; /** counter so we can give up eventually */
     int done;
+    ccn_accession_t keyfetch;
     intmax_t outstanding[CCNR_PIPELINE];
     intmax_t final;
     ccn_handler expect_complete;
@@ -64,5 +65,8 @@ r_proto_parse_policy(struct ccnr_handle *ccnr, const unsigned char *buf, size_t 
                      struct ccnr_parsed_policy *pp);
 void r_proto_activate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp);
 void r_proto_deactivate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp);
-    
+int r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
+                               unsigned char *msg,
+                               struct ccn_parsed_ContentObject *pco,
+                               ccn_accession_t a);
 #endif
