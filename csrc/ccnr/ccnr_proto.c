@@ -632,11 +632,14 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     res = ccn_parse_interest(interest->buf, interest->length, pi, comps);
     if (res < 0)
         abort();
-    ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_checked_start_write looking for", NULL,
+    ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write_checked looking for", NULL,
                     interest->buf, interest->length);
     content = r_store_lookup(ccnr, interest->buf, pi, comps);
+    ccn_charbuf_destroy(&interest);
+    ccn_indexbuf_destroy(&comps);
     if (content == NULL) {
         ccnr_msg(ccnr, "r_proto_start_write_checked: NOT PRESENT");
+        
         return(r_proto_start_write(selfp, kind, info, marker_comp));
     }
     // what's the return value if the item is in the repository already?
@@ -660,14 +663,19 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     if (res < 0)
         goto Bail;
     if ((ccnr->debug & 128) != 0)
-        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_checked_start_write PRESENT", NULL,
+        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write_checked PRESENT", NULL,
                         msg->buf, msg->length);
     res = ccn_put(info->h, msg->buf, msg->length);
     if (res < 0) {
         // note the error somehow.
+        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write_checked ccn_put FAILED", NULL,
+                        msg->buf, msg->length);
     }
     //// end of copied code
 Bail:
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&reply_body);
+    ccn_charbuf_destroy(&msg);
     return(ans);
 }
 
