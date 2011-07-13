@@ -66,7 +66,7 @@ r_proto_parse_policy(struct ccnr_handle *ccnr, const unsigned char *buf, size_t 
 void r_proto_activate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp);
 void r_proto_deactivate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp);
 int r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
-                               unsigned char *msg,
+                               const unsigned char *msg,
                                struct ccn_parsed_ContentObject *pco,
                                int use_link,
                                ccn_accession_t a);

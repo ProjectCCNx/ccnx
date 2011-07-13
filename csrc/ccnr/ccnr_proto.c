@@ -462,10 +462,25 @@ r_proto_expect_content(struct ccn_closure *selfp,
     md->tries = 0;
     segment = r_util_segment_from_component(ib, ic->buf[ic->n - 2], ic->buf[ic->n - 1]);
 
-    // XXX - need to save the keys (or do it when they arrive in the key snooper)
     // XXX The test below should get replace by ccn_is_final_block() when it is available
     if (is_final(info) == 1)
         md->final = segment;
+    
+    if (md->keyfetch != 0 && segment == 0) {
+        /* This should either be a key, or a link to get to it. */
+        if (info->pco->type == CCN_CONTENT_LINK) {
+            r_proto_initiate_key_fetch(ccnr, ccnb, info->pco, 1, md->keyfetch);
+        }
+        else if (info->pco->type == CCN_CONTENT_KEY) {
+            ccnr_msg(ccnr, "key_arrived %lu", (unsigned long)(md->keyfetch));
+            // XXX - should check that we got the right key.
+        }
+        else {
+            // not a key or a link.  Log it so we have a clue.
+            ccnr_msg(ccnr, "ERROR - got something else when trying to fetch key for item %lu", (unsigned long)(md->keyfetch));
+        }
+
+    }
     
     /* retire the current segment and any segments beyond the final one */
     empty_slots = 0;
@@ -1052,7 +1067,7 @@ r_proto_parse_policy(struct ccnr_handle *ccnr, const unsigned char *buf, size_t 
  */
 int
 r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
-                           unsigned char *msg,
+                           const unsigned char *msg,
                            struct ccn_parsed_ContentObject *pco,
                            int use_link,
                            ccn_accession_t a)
