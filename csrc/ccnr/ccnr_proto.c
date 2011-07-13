@@ -1065,9 +1065,12 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
     struct ccn_charbuf *templ = NULL;
     struct ccnr_expect_content *expect_content = NULL;
     const unsigned char *namestart = NULL;
-    size_t namelen = 0;
+    int namelen = 0;
+    int keynamelen;
     int i;
     
+    keynamelen = (pco->offset[CCN_PCO_E_KeyName_Name] -
+                  pco->offset[CCN_PCO_B_KeyName_Name]);
     if (use_link) {
         /* Try to follow a link instead of using keyname */
         if (pco->type == CCN_CONTENT_LINK) {
@@ -1092,7 +1095,17 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
                 if (d->decoder.state < 0)
                     return(-1);
                 namestart = data + start;
-                namelen = end - start;       
+                namelen = end - start;
+                if (namelen == keynamelen &&
+                    0 == memcmp(namestart, msg + pco->offset[CCN_PCO_B_KeyName_Name], namelen)) {
+                    /*
+                     * The link matches the key locator. There is no point
+                     * in checking two times for the same thing.
+                     */
+                    ccnr_debug_ccnb(ccnr, __LINE__, "keyfetch_link_opt",
+                            NULL, namestart, namelen);
+                    return(-1);
+                }
             }
         }
     }
