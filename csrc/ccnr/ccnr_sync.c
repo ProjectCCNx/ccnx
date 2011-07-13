@@ -116,6 +116,9 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
         r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
+        ccnr_debug_ccnb(ccnr, __LINE__, "content_stored",
+                        r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
+                        content->key, content->size);
     }
     
     return(ans);
@@ -146,6 +149,9 @@ r_sync_local_store(struct ccnr_handle *ccnr,
         r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
+        ccnr_debug_ccnb(ccnr, __LINE__, "content_stored",
+                        r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
+                        content->key, content->size);
     }
     return(0);
 }

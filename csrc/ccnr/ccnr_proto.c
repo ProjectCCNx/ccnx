@@ -445,6 +445,9 @@ r_proto_expect_content(struct ccn_closure *selfp,
         r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
+        ccnr_debug_ccnb(ccnr, __LINE__, "content_stored",
+                        r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
+                        content->key, content->size);
         if (content->accession >= ccnr->notify_after) {
             // XXX - ugh, content_entry doesn't have the data in exactly the format we want.  Rethink this?
             struct ccn_indexbuf *comps = r_util_indexbuf_obtain(ccnr);
