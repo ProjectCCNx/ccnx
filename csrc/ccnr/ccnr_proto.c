@@ -1087,22 +1087,28 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
     key_closure->data = expect_content;
 
     key_name = ccn_charbuf_create();
-    res = ccn_charbuf_append(key_name,
-                             msg + pco->offset[CCN_PCO_B_KeyName_Name],
-                             namelen);
+    ccn_charbuf_append(key_name,
+                       msg + pco->offset[CCN_PCO_B_KeyName_Name],
+                       namelen);
     templ = ccn_charbuf_create();
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccn_charbuf_append(templ,
+                       msg + pco->offset[CCN_PCO_B_KeyName_Name],
+                       namelen);
+    ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
+    ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
     if (pco->offset[CCN_PCO_B_KeyName_Pub] < pco->offset[CCN_PCO_E_KeyName_Pub]) {
         ccn_charbuf_append(templ,
                            msg + pco->offset[CCN_PCO_B_KeyName_Pub],
                            (pco->offset[CCN_PCO_E_KeyName_Pub] - 
                             pco->offset[CCN_PCO_B_KeyName_Pub]));
     }
-    // XXX - should set max suffix.
     ccn_charbuf_append_closer(templ); /* </Interest> */
+    if (r_sync_lookup(ccnr, templ, NULL) == 0)
+        return(1);
     res = ccn_express_interest(ccnr->direct_client, key_name, key_closure, templ);
+    if (res >= 0)
+        ccnr_debug_ccnb(ccnr, __LINE__, "keyfetch_start", NULL, templ->buf, templ->length);
     ccn_charbuf_destroy(&key_name);
     ccn_charbuf_destroy(&templ);
     return(res);
