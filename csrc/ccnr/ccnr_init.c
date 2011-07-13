@@ -116,7 +116,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->min_stale = ~0;
     h->max_stale = 0;
     h->unsol = ccn_indexbuf_create();
-    h->keyfetch = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
     h->ticktock.micros_per_base = 1000000;
     h->ticktock.gettime = &r_util_gettime;
@@ -235,7 +234,6 @@ r_init_destroy(struct ccnr_handle **pccnr)
     ccn_indexbuf_destroy(&h->skiplinks);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
     ccn_indexbuf_destroy(&h->unsol);
-    ccn_indexbuf_destroy(&h->keyfetch);
     if (h->parsed_policy != NULL) {
         ccn_indexbuf_destroy(&h->parsed_policy->namespaces);
         ccn_charbuf_destroy(&h->parsed_policy->store);
