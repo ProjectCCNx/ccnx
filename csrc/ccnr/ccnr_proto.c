@@ -414,7 +414,8 @@ r_proto_expect_content(struct ccn_closure *selfp,
     ccnr = (struct ccnr_handle *)md->ccnr;
     if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) {
         if (md->tries > CCNR_MAX_RETRY) {
-            ccnr_msg(ccnr, "r_proto_expect_content: retry count exceeded");
+            ccnr_debug_ccnb(ccnr, __LINE__, "fetch_failed", NULL,
+                            info->interest_ccnb, info->pi->offset[CCN_PI_E]);
             return(CCN_UPCALL_RESULT_ERR);
         }
         md->tries++;
@@ -660,6 +661,7 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     ccn_indexbuf_destroy(&comps);
     if (content == NULL) {
         ccnr_msg(ccnr, "r_proto_start_write_checked: NOT PRESENT");
+        // XXX - dropping into the start_write case means we do not check the provided digest when fetching, so this is not completely right.
         return(r_proto_start_write(selfp, kind, info, marker_comp));
     }
     // what's the return value if the item is in the repository already?
