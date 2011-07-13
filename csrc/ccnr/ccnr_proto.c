@@ -47,6 +47,7 @@
 #include "ccnr_msg.h"
 #include "ccnr_sendq.h"
 #include "ccnr_store.h"
+#include "ccnr_sync.h"
 #include "ccnr_util.h"
 
 #define REPO_SW "\xC1.R.sw"
@@ -1059,17 +1060,18 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
      * insert the key into repo.
      */
     int res;
-    const unsigned char *namestart = NULL;
-    size_t namelen = 0;
     struct ccn_charbuf *key_name = NULL;
     struct ccn_closure *key_closure = NULL;
     struct ccn_charbuf *templ = NULL;
     struct ccnr_expect_content *expect_content = NULL;
+    const unsigned char *namestart = NULL;
+    size_t namelen = 0;
     int i;
     
     if (use_link) {
         /* Try to follow a link instead of using keyname */
         if (pco->type == CCN_CONTENT_LINK) {
+            /* For now we only pay attention to the Name in the Link. */
             const unsigned char *data = NULL;
             size_t data_size = 0;
             struct ccn_buf_decoder decoder;
@@ -1100,7 +1102,6 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
         namelen = (pco->offset[CCN_PCO_E_KeyName_Name] -
                    pco->offset[CCN_PCO_B_KeyName_Name]);
     }
-    
     /*
      * If there is no KeyName or link, provided, we can't ask, so do not bother.
      */
@@ -1108,7 +1109,7 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
         return(-1);
     key_name = ccn_charbuf_create();
     ccn_charbuf_append(key_name, namestart, namelen);
-    
+    /* Construct an interest complete with Name so we can do lookup */
     templ = ccn_charbuf_create();
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
     ccn_charbuf_append(templ, key_name->buf, key_name->length);
@@ -1121,9 +1122,12 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
                             pco->offset[CCN_PCO_B_KeyName_Pub]));
     }
     ccn_charbuf_append_closer(templ); /* </Interest> */
-    /* See if we already have it */
-    if (r_sync_lookup(ccnr, templ, NULL) == 0)
+    /* See if we already have it - if so we declare we are done. */
+    if (r_sync_lookup(ccnr, templ, NULL) == 0) {
         res = 1;
+        // Note - it might be that the thing we found is not really the thing
+        // we were after.  For now we don't check.
+    }
     else {
         /* We do not have it; need to ask */
         res = -1;
@@ -1143,7 +1147,8 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
         key_closure->data = expect_content;
         res = ccn_express_interest(ccnr->direct_client, key_name, key_closure, templ);
         if (res >= 0) {
-            ccnr_debug_ccnb(ccnr, __LINE__, "keyfetch_start", NULL, templ->buf, templ->length);
+            ccnr_debug_ccnb(ccnr, __LINE__, "keyfetch_start",
+                            NULL, templ->buf, templ->length);
             key_closure = NULL;
             expect_content = NULL;
             res = 0;
