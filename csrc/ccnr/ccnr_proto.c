@@ -1043,10 +1043,15 @@ r_proto_parse_policy(struct ccnr_handle *ccnr, const unsigned char *buf, size_t 
     return (res);
 }
 
+/**
+ * Initiate a key fetch if necessary.
+ * @returns -1 if error or no name, 0 if fetch was issued, 1 if already stored.
+ */
 int
 r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
                            unsigned char *msg,
                            struct ccn_parsed_ContentObject *pco,
+                           int use_link,
                            ccn_accession_t a)
 {
     /* 
@@ -1054,47 +1059,59 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
      * insert the key into repo.
      */
     int res;
-    int namelen;
+    const unsigned char *namestart = NULL;
+    size_t namelen = 0;
     struct ccn_charbuf *key_name = NULL;
     struct ccn_closure *key_closure = NULL;
     struct ccn_charbuf *templ = NULL;
     struct ccnr_expect_content *expect_content = NULL;
     int i;
     
-    namelen = (pco->offset[CCN_PCO_E_KeyName_Name] -
-               pco->offset[CCN_PCO_B_KeyName_Name]);
+    if (use_link) {
+        /* Try to follow a link instead of using keyname */
+        if (pco->type == CCN_CONTENT_LINK) {
+            const unsigned char *data = NULL;
+            size_t data_size = 0;
+            struct ccn_buf_decoder decoder;
+            struct ccn_buf_decoder *d;
+            res = ccn_content_get_value(msg, pco->offset[CCN_PCO_E], pco,
+                                        &data, &data_size);
+            if (res < 0)
+                return(-1);
+            d = ccn_buf_decoder_start(&decoder, data, data_size);
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Link)) {
+                int start = 0;
+                int end = 0;
+                ccn_buf_advance(d);
+                start = d->decoder.token_index;
+                ccn_parse_Name(d, NULL);
+                end = d->decoder.token_index;
+                ccn_buf_check_close(d);
+                if (d->decoder.state < 0)
+                    return(-1);
+                namestart = data + start;
+                namelen = end - start;       
+            }
+        }
+    }
+    else {
+        /* Use the KeyName if present */
+        namestart = msg + pco->offset[CCN_PCO_B_KeyName_Name];
+        namelen = (pco->offset[CCN_PCO_E_KeyName_Name] -
+                   pco->offset[CCN_PCO_B_KeyName_Name]);
+    }
+    
     /*
-     * If there is no KeyName provided, we can't ask, so do not bother.
+     * If there is no KeyName or link, provided, we can't ask, so do not bother.
      */
     if (namelen == 0 || a == 0)
         return(-1);
-
-    expect_content = calloc(1, sizeof(*expect_content));
-    if (expect_content == NULL)
-        return (-1);
-    expect_content->ccnr = ccnr;
-    expect_content->final = -1;
-    for (i = 0; i < CCNR_PIPELINE; i++)
-        expect_content->outstanding[i] = -1;
-    expect_content->keyfetch = a;
-
-    key_closure = calloc(1, sizeof(*key_closure));
-    if (key_closure == NULL) {
-        free(expect_content);
-        return (-1);
-    }
-    key_closure->p = &r_proto_expect_content;
-    key_closure->data = expect_content;
-
     key_name = ccn_charbuf_create();
-    ccn_charbuf_append(key_name,
-                       msg + pco->offset[CCN_PCO_B_KeyName_Name],
-                       namelen);
+    ccn_charbuf_append(key_name, namestart, namelen);
+    
     templ = ccn_charbuf_create();
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append(templ,
-                       msg + pco->offset[CCN_PCO_B_KeyName_Name],
-                       namelen);
+    ccn_charbuf_append(templ, key_name->buf, key_name->length);
     ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
     ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
     if (pco->offset[CCN_PCO_B_KeyName_Pub] < pco->offset[CCN_PCO_E_KeyName_Pub]) {
@@ -1104,11 +1121,39 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
                             pco->offset[CCN_PCO_B_KeyName_Pub]));
     }
     ccn_charbuf_append_closer(templ); /* </Interest> */
+    /* See if we already have it */
     if (r_sync_lookup(ccnr, templ, NULL) == 0)
-        return(1);
-    res = ccn_express_interest(ccnr->direct_client, key_name, key_closure, templ);
-    if (res >= 0)
-        ccnr_debug_ccnb(ccnr, __LINE__, "keyfetch_start", NULL, templ->buf, templ->length);
+        res = 1;
+    else {
+        /* We do not have it; need to ask */
+        res = -1;
+        expect_content = calloc(1, sizeof(*expect_content));
+        if (expect_content == NULL)
+            goto Bail;
+        expect_content->ccnr = ccnr;
+        expect_content->final = -1;
+        for (i = 0; i < CCNR_PIPELINE; i++)
+            expect_content->outstanding[i] = -1;
+        /* inform r_proto_expect_content we are looking for a key. */
+        expect_content->keyfetch = a;
+        key_closure = calloc(1, sizeof(*key_closure));
+        if (key_closure == NULL)
+            goto Bail;
+        key_closure->p = &r_proto_expect_content;
+        key_closure->data = expect_content;
+        res = ccn_express_interest(ccnr->direct_client, key_name, key_closure, templ);
+        if (res >= 0) {
+            ccnr_debug_ccnb(ccnr, __LINE__, "keyfetch_start", NULL, templ->buf, templ->length);
+            key_closure = NULL;
+            expect_content = NULL;
+            res = 0;
+        }
+    }
+Bail:
+    if (key_closure != NULL)
+        free(key_closure);
+    if (expect_content != NULL)
+        free(expect_content);
     ccn_charbuf_destroy(&key_name);
     ccn_charbuf_destroy(&templ);
     return(res);
