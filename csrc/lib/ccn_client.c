@@ -1008,7 +1008,10 @@ handle_key(struct ccn_closure *selfp,
                 return(CCN_UPCALL_RESULT_OK);
             if (type == CCN_CONTENT_LINK) {
                 /* resolve the link */
-                /* XXX - should limit how much we work at this */
+                /* Limit how much we work at this. */
+                if (selfp->intdata <= 0)
+                    return(NOTE_ERR(h, ELOOP));
+                selfp->intdata -= 1;
                 msg = info->content_ccnb;
                 size = info->pco->offset[CCN_PCO_E];
                 res = ccn_content_get_value(info->content_ccnb, size, info->pco,
@@ -1024,8 +1027,10 @@ handle_key(struct ccn_closure *selfp,
                 ccn_charbuf_append_closer(templ); /* </Interest> */
                 name = ccn_charbuf_create();
                 res = ccn_append_link_name(name, data, data_size);
-                if (res < 0)
+                if (res < 0) {
+                    NOTE_ERR(h, EINVAL);
                     res = CCN_UPCALL_RESULT_ERR;
+                }
                 else
                     res = ccn_express_interest(h, name, selfp, templ);
                 ccn_charbuf_destroy(&name);
@@ -1042,6 +1047,14 @@ handle_key(struct ccn_closure *selfp,
             return (CCN_UPCALL_RESULT_ERR);
     }
 }
+
+/**
+ * This is the maximum number of links in we are willing to traverse
+ * when resolving a key locator.
+ */
+#ifndef CCN_MAX_KEY_LINK_CHAIN
+#define CCN_MAX_KEY_LINK_CHAIN 7
+#endif
 
 static int
 ccn_initiate_key_fetch(struct ccn *h,
@@ -1089,22 +1102,25 @@ ccn_initiate_key_fetch(struct ccn *h,
     if (key_closure == NULL)
         return (NOTE_ERRNO(h));
     key_closure->p = &handle_key;
+    key_closure->intdata = CCN_MAX_KEY_LINK_CHAIN; /* to limit how many links we will resolve */
     
     key_name = ccn_charbuf_create();
     res = ccn_charbuf_append(key_name,
                              msg + pco->offset[CCN_PCO_B_KeyName_Name],
                              namelen);
+    templ = ccn_charbuf_create();
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
+    ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
     if (pco->offset[CCN_PCO_B_KeyName_Pub] < pco->offset[CCN_PCO_E_KeyName_Pub]) {
-        templ = ccn_charbuf_create();
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-        ccn_charbuf_append_closer(templ); /* </Name> */
         ccn_charbuf_append(templ,
                            msg + pco->offset[CCN_PCO_B_KeyName_Pub],
                            (pco->offset[CCN_PCO_E_KeyName_Pub] - 
                             pco->offset[CCN_PCO_B_KeyName_Pub]));
-        ccn_charbuf_append_closer(templ); /* </Interest> */
     }
+    ccn_charbuf_append_closer(templ); /* </Interest> */
     res = ccn_express_interest(h, key_name, key_closure, templ);
     ccn_charbuf_destroy(&key_name);
     ccn_charbuf_destroy(&templ);
