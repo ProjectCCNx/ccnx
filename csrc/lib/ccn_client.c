@@ -993,6 +993,7 @@ handle_key(struct ccn_closure *selfp,
     size_t data_size;
     int res;
     struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *templ = NULL;
     
     switch(kind) {
         case CCN_UPCALL_FINAL:
@@ -1014,13 +1015,21 @@ handle_key(struct ccn_closure *selfp,
                                             &data, &data_size);
                 if (res < 0)
                     return (CCN_UPCALL_RESULT_ERR);
+                templ = ccn_charbuf_create();
+                ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+                ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+                ccn_charbuf_append_closer(templ); /* </Name> */
+                ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
+                ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
+                ccn_charbuf_append_closer(templ); /* </Interest> */
                 name = ccn_charbuf_create();
                 res = ccn_append_link_name(name, data, data_size);
                 if (res < 0)
                     res = CCN_UPCALL_RESULT_ERR;
                 else
-                    res = ccn_express_interest(h, name, selfp, NULL);
+                    res = ccn_express_interest(h, name, selfp, templ);
                 ccn_charbuf_destroy(&name);
+                ccn_charbuf_destroy(&templ);
                 return(res);
             }
             return (CCN_UPCALL_RESULT_ERR);
