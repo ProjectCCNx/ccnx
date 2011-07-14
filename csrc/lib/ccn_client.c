@@ -1017,8 +1017,9 @@ handle_key(struct ccn_closure *selfp,
                 name = ccn_charbuf_create();
                 res = ccn_append_link_name(name, data, data_size);
                 if (res < 0)
-                    return (CCN_UPCALL_RESULT_ERR);
-                res = ccn_express_interest(h, name, selfp, NULL);
+                    res = CCN_UPCALL_RESULT_ERR;
+                else
+                    res = ccn_express_interest(h, name, selfp, NULL);
                 ccn_charbuf_destroy(&name);
                 return(res);
             }
