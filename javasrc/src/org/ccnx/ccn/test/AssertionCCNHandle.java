@@ -117,7 +117,7 @@ public class AssertionCCNHandle extends CCNHandle {
 			CCNFilterListener callbackListener) throws IOException {
 		AssertionFilterListener listener = null;
 		synchronized (_filterListeners) {
-			listener = new AssertionFilterListener(callbackListener);
+			listener = getFilterListener(callbackListener);
 			if (null == listener) {
 				listener = new AssertionFilterListener(callbackListener);
 				_filterListeners.add(new RelatedFilterListener(listener, callbackListener));
