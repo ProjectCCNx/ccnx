@@ -140,8 +140,7 @@ public class CCNNetworkManager implements Runnable {
 	protected Timer _periodicTimer = null;
 	protected Object _timersSetupLock = new Object();
 	protected Boolean _timersSetup = false;
-	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes 
-	= new TreeMap<ContentName, RegisteredPrefix>();
+	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
 
 	/**
 	 * Keep track of prefixes that are actually registered with ccnd (as opposed to Filters used
@@ -1121,6 +1120,22 @@ public class CCNNetworkManager implements Runnable {
 		synchronized (_myFilters) {
 			_myFilters.add(filter, newOne);
 		}
+	}
+	
+	/**
+	 * Get current list of prefixes that are actually registered on the face associated with this
+	 * netmanager
+	 * 
+	 * @return the list of prefixes as an ArrayList of ContentNames
+	 */
+	public ArrayList<ContentName> getRegisteredPrefixes() {
+		ArrayList<ContentName> prefixes = new ArrayList<ContentName>();
+		synchronized (_registeredPrefixes) {
+			for (ContentName name : _registeredPrefixes.keySet()) {
+				prefixes.add(name);
+			}
+		}
+		return prefixes;
 	}
 
 	/**

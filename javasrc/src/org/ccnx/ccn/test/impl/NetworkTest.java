@@ -17,12 +17,14 @@
 
 package org.ccnx.ccn.test.impl;
 
+import java.util.ArrayList;
 import java.util.TreeSet;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -41,8 +43,6 @@ import org.junit.Test;
 /**
  * Test CCNNetworkManager.
  * 
- * This should eventually have more tests
- * 
  * Note - this test requires ccnd to be running
  *
  */
@@ -50,6 +50,8 @@ public class NetworkTest extends CCNTestBase {
 	
 	protected static final int WAIT_MILLIS = 8000;
 	protected static final int FLOOD_ITERATIONS = 1000;
+	
+	protected static final int TEST_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT;
 	
 	private Semaphore sema = new Semaphore(0);
 	private Semaphore filterSema = new Semaphore(0);
@@ -98,11 +100,13 @@ public class NetworkTest extends CCNTestBase {
 		// Test that we don't receive interests above what we registered
 		gotInterest = false;
 		putHandle.getNetworkManager().setInterestFilter(this, testName2, tfl);
-		Thread.sleep(1000);
+		getHandle.expressInterest(interest1, tl);
+		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertFalse(gotInterest);
 		getHandle.cancelInterest(interest1, tl);
 		getHandle.expressInterest(interest2, tl);
 		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest2, tl);
 		
@@ -114,32 +118,47 @@ public class NetworkTest extends CCNTestBase {
 		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, testName2, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
+		gotInterest = false;
+		filterSema.drainPermits();
+		getHandle.expressInterest(interest6, tl);		
+		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		getHandle.checkError(TEST_TIMEOUT);
+		Assert.assertTrue(gotInterest);
+		getHandle.cancelInterest(interest6, tl);
 		
-		// The following is to make sure that a filter that is a prefix of a registered filter
-		// doesn't get registered separately. There's no good way to test this directly (I don't think)
-		// currently but we can see that it is done by checking out the log
-		putHandle.getNetworkManager().setInterestFilter(this, testName7, tfl);  
+		// Make sure that a filter that is a prefix of a registered filter
+		// doesn't get registered separately.
+		gotInterest = false;
+		filterSema.drainPermits();
+		putHandle.getNetworkManager().setInterestFilter(this, testName7, tfl);
+		ArrayList<ContentName> prefixes = putHandle.getNetworkManager().getRegisteredPrefixes();
+		Assert.assertFalse(prefixes.contains(testName7));
 		getHandle.expressInterest(interest4, tl);
 		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest4, tl);
 		gotInterest = false;
 		filterSema.drainPermits();
 		getHandle.expressInterest(interest6, tl);
 		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest6, tl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName1, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName3, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName5, tfl);
+		putHandle.getNetworkManager().cancelInterestFilter(this, testName7, tfl);
 		
-		// Test that nothing after / is registered. Need to examine logs to ensure this is
-		// done correctly.
+		// Make sure nothing is registered after a /
 		ContentName slashName = ContentName.fromNative("/");
 		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, slashName, tfl);
-		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);	
+		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);
+		prefixes = putHandle.getNetworkManager().getRegisteredPrefixes();
+		Assert.assertFalse(prefixes.contains(testName5));
+		
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName1, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, slashName, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName5, tfl);
@@ -162,6 +181,7 @@ public class NetworkTest extends CCNTestBase {
 		writer.put(testName, "aaa");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
+		writer.close();
 	}
 	
 	@Test
@@ -175,6 +195,7 @@ public class NetworkTest extends CCNTestBase {
 		writer.put(testName, "ddd");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
+		writer.close();
 	}
 	
 	@Test
@@ -194,6 +215,7 @@ public class NetworkTest extends CCNTestBase {
 		getHandle.expressInterest(testInterest, tl);
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
+		writer.close();
 	}
 	
 	@Test
@@ -209,6 +231,7 @@ public class NetworkTest extends CCNTestBase {
 		Thread.sleep(WAIT_MILLIS);
 		co = getHandle.get(testName, 1000);
 		Assert.assertTrue(co == null);
+		writer.close();
 	}
 
 	@Test
@@ -227,6 +250,7 @@ public class NetworkTest extends CCNTestBase {
 		writer.put(testName, "ccc");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
+		writer.close();
 	}
 	
 	/**
