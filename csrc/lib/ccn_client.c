@@ -1002,6 +1002,8 @@ handle_key(struct ccn_closure *selfp,
         case CCN_UPCALL_INTEREST_TIMED_OUT:
             /* Don't keep trying */
             return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_CONTENT_UNVERIFIED:
+            /* This is not exactly right, but trying to follow the KeyLocator could be worse trouble. */
         case CCN_UPCALL_CONTENT:
             type = ccn_get_content_type(msg, info->pco);
             if (type == CCN_CONTENT_KEY)
@@ -1038,11 +1040,6 @@ handle_key(struct ccn_closure *selfp,
                 return(res);
             }
             return (CCN_UPCALL_RESULT_ERR);
-        case CCN_UPCALL_CONTENT_UNVERIFIED:
-            type = ccn_get_content_type(msg, info->pco);
-            if (type == CCN_CONTENT_KEY)
-                return(CCN_UPCALL_RESULT_OK);
-            return(CCN_UPCALL_RESULT_VERIFY);
         default:
             return (CCN_UPCALL_RESULT_ERR);
     }
