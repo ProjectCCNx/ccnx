@@ -48,10 +48,11 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 	}
 	
 	/**
-	 * Make sure we are in sync before running the test
-	 * @throws IOException 
-	 * @throws MalformedContentNameStringException 
-	 * @throws SignatureException 
+	 * This does a simple sync with EndToEndTestSink so that we know its started up before we
+	 * start counting on it doing other things.
+	 * @throws MalformedContentNameStringException
+	 * @throws IOException
+	 * @throws SignatureException
 	 */
 	public void sync() throws IOException, MalformedContentNameStringException, SignatureException {
 		ContentName syncBaseName = ContentName.fromNative("/BaseLibraryTest/sync");
