@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.test.endtoend;
 
+import java.util.Random;
 import java.util.concurrent.Semaphore;
 
 import org.ccnx.ccn.CCNHandle;
@@ -35,10 +36,12 @@ public class BaseLibrarySink {
 	Semaphore sema = new Semaphore(0);
 	int next = 0;
 	protected static Throwable error = null; // for errors in callback
+	protected static Random rand;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
+		rand = new Random();
 	}
 	
 	@AfterClass
