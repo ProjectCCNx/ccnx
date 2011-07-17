@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -20,11 +20,16 @@ package org.ccnx.ccn.test.endtoend;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.security.SignatureException;
+
 import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Test;
 
 
@@ -37,8 +42,26 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 	
 	@Test
 	public void source() throws Throwable {
+		sync();
 		puts();
 		server();
+	}
+	
+	/**
+	 * This does a simple sync with EndToEndTestSink so that we know its started up before we
+	 * start counting on it doing other things.
+	 * @throws MalformedContentNameStringException
+	 * @throws IOException
+	 * @throws SignatureException
+	 */
+	public void sync() throws IOException, MalformedContentNameStringException, SignatureException {
+		ContentName syncBaseName = ContentName.fromNative("/BaseLibraryTest/sync");
+		ContentName syncReturnName = ContentName.fromNative("/BaseLibraryTest/sync/return");
+		CCNWriter writer = new CCNWriter(syncBaseName, handle);
+		writer.setTimeout(100000);
+		ContentName syncName = new ContentName(syncBaseName, new Integer(rand.nextInt(5000)).toString().getBytes());		
+		writer.put(syncName, "Hi Sink!");
+		handle.get(syncReturnName, SystemConfiguration.NO_TIMEOUT);
 	}
 
 	public void puts() throws Throwable {

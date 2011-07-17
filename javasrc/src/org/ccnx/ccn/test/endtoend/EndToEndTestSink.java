@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -19,14 +19,20 @@ package org.ccnx.ccn.test.endtoend;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+import java.security.SignatureException;
 import java.util.Random;
+
+import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.Test;
 
 
@@ -38,8 +44,21 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 	
 	@Test
 	public void sink() throws Throwable {
+		Log.info("EndtoEnd Sink started");
+		sync();
 		gets();
 		server();
+	}
+	
+	public void sync() throws MalformedContentNameStringException, IOException, SignatureException {
+		ContentName syncBaseName = ContentName.fromNative("/BaseLibraryTest/sync");
+		ContentName syncReturnName = ContentName.fromNative("/BaseLibraryTest/sync/return");
+		ContentName syncName = new ContentName(syncReturnName, new Integer(rand.nextInt(5000)).toString().getBytes());
+		ContentObject co = handle.get(syncBaseName, SystemConfiguration.NO_TIMEOUT);
+		Assert.assertNotNull("Sync get returned null", co);
+		CCNWriter writer = new CCNWriter(syncBaseName, handle);
+		writer.put(syncName, "Hi Source!");
+		writer.close();
 	}
 	
 	public void gets() throws Throwable {
