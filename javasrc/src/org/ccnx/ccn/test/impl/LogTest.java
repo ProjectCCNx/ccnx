@@ -53,6 +53,7 @@ public class LogTest {
 	 */
 	protected int writeLog(int facility, Level level, String msg) {
 		int start, finish;
+		_sh.flush();
 		start = _baos.toByteArray().length;
 		Log.log(facility, level, msg);
 		_sh.flush();
