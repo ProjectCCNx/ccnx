@@ -171,6 +171,9 @@ public class CCNNetworkManager implements Runnable {
 		 */
 		public Interest handleContent(ContentObject data, Interest interest) {		
 			synchronized (_registeredPrefixes) {
+				if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE))
+					Log.fine(Log.FAC_NETMANAGER, "Cancel registration completed for {0}", 
+							_forwarding.getPrefixName());
 				_closing = false;	
 				_registeredPrefixes.notifyAll();
 				if (_refCount <= 0)	// Avoid removing a just registered prefix from the map
@@ -1151,7 +1154,7 @@ public class CCNNetworkManager implements Runnable {
 		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
 		// prefix we use Integer.MAX_VALUE as the requested lifetime.
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
-			Log.fine(Log.FAC_NETMANAGER, formatMessage("setInterestFilter: entry.lifetime: " + entry.getLifetime() + " entry.faceID: " + entry.getFaceID()));
+			Log.fine(Log.FAC_NETMANAGER, "registerPrefix for {0}: entry.lifetime: {1} entry.faceID: {2}", filter, entry.getLifetime(), entry.getFaceID());
     }
 
 	/**
