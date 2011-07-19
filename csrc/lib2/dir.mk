@@ -12,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn -L$(SYNCLIBDIR) -lsync
+LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 CCNLIBDIR = ../lib
 SYNCLIBDIR = ../sync/
 # Override conf.mk or else we don't pick up all the includes
