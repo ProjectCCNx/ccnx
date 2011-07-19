@@ -147,7 +147,7 @@ public class CCNNetworkManager implements Runnable {
 	 * to dispatch interests). There may be several filters for each registered prefix.
 	 */
 	public class RegisteredPrefix implements CCNInterestListener {
-		private int _refCount = 1;
+		private int _refCount = 0;
 		private ForwardingEntry _forwarding = null;
 		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
 		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
@@ -1084,26 +1084,31 @@ public class CCNNetworkManager implements Runnable {
 					_prefixMgr = new PrefixRegistrationManager(this);
 				}
 				synchronized(_registeredPrefixes) {
-					RegisteredPrefix oldPrefix = getRegisteredPrefix(filter);
-					if (null != oldPrefix) {
-						boolean wasClosing = oldPrefix._closing;
-						while (oldPrefix._closing) {
+					// Determine whether we need to register our prefix with ccnd
+					// We do if either its not registered now, or the one registered now is being
+					// cancelled but its still in the process of getting deregistered. In the second
+					// case (closing) we need to wait until the prefix has been deregistered before
+					// we go ahead and register it. And of course, someone else could have registered it
+					// before we got to it so check for that also. If its already registered, just bump
+					// its use count.
+					RegisteredPrefix prefix = getRegisteredPrefix(filter);
+					if (null != prefix) {
+						boolean wasClosing = prefix._closing;
+						while (prefix._closing) {
 							try {
 								_registeredPrefixes.wait();
 							} catch (InterruptedException e) {}
 						}
 						if (wasClosing) {
-							oldPrefix = getRegisteredPrefix(filter);	// Need to recheck in case someone else already registered us
-							if (null == oldPrefix) {
-								_registeredPrefixes.remove(filter);
-								registerPrefix(filter, registrationFlags);
+							prefix = getRegisteredPrefix(filter);	// Need to recheck in case someone else already registered us
+							if (null == prefix) {
+								prefix = registerPrefix(filter, registrationFlags);
 							}
-						} else {
-							oldPrefix._refCount++;
 						}
 					} else {
-						registerPrefix(filter, registrationFlags);
+						prefix = registerPrefix(filter, registrationFlags);
 					}
+					prefix._refCount++;
 				}
 			} catch (CCNDaemonException e) {
 				Log.warning(Log.FAC_NETMANAGER, formatMessage("setInterestFilter: unexpected CCNDaemonException: " + e.getMessage()));
@@ -1140,7 +1145,7 @@ public class CCNNetworkManager implements Runnable {
 	 * @param registrationFlags
 	 * @throws CCNDaemonException
 	 */
-    private void registerPrefix(ContentName filter, Integer registrationFlags) throws CCNDaemonException {
+    private RegisteredPrefix registerPrefix(ContentName filter, Integer registrationFlags) throws CCNDaemonException {
     	ForwardingEntry entry;
     	if (null == registrationFlags) {
 			entry = _prefixMgr.selfRegisterPrefix(filter);
@@ -1154,6 +1159,7 @@ public class CCNNetworkManager implements Runnable {
 		// prefix we use Integer.MAX_VALUE as the requested lifetime.
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, "registerPrefix for {0}: entry.lifetime: {1} entry.faceID: {2}", filter, entry.getLifetime(), entry.getFaceID());
+		return newPrefix;
     }
 
 	/**
