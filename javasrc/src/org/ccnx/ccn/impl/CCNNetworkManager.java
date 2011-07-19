@@ -176,8 +176,7 @@ public class CCNNetworkManager implements Runnable {
 							_forwarding.getPrefixName());
 				_closing = false;	
 				_registeredPrefixes.notifyAll();
-				if (_refCount <= 0)	// Avoid removing a just registered prefix from the map
-					_registeredPrefixes.remove(_forwarding.getPrefixName());
+				_registeredPrefixes.remove(_forwarding.getPrefixName());
 			}
 			return null;
 		}
@@ -1088,17 +1087,17 @@ public class CCNNetworkManager implements Runnable {
 					RegisteredPrefix oldPrefix = getRegisteredPrefix(filter);
 					if (null != oldPrefix) {
 						boolean wasClosing = oldPrefix._closing;
-						if (oldPrefix._closing) {
-							oldPrefix._refCount = 1;
-						}
 						while (oldPrefix._closing) {
 							try {
 								_registeredPrefixes.wait();
 							} catch (InterruptedException e) {}
 						}
-						if (wasClosing && oldPrefix._refCount == 1) {
-							_registeredPrefixes.remove(filter);
-							registerPrefix(filter, registrationFlags);
+						if (wasClosing) {
+							oldPrefix = getRegisteredPrefix(filter);	// Need to recheck in case someone else already registered us
+							if (null == oldPrefix) {
+								_registeredPrefixes.remove(filter);
+								registerPrefix(filter, registrationFlags);
+							}
 						} else {
 							oldPrefix._refCount++;
 						}
