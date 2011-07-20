@@ -64,6 +64,7 @@ struct ccnr_parsed_policy;
 typedef unsigned ccn_accession_t;
 
 typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
+#define SHOULDLOG(h, mask) (((h)->debug & (mask)) != 0)
 
 /**
  * We pass this handle almost everywhere within ccnr
