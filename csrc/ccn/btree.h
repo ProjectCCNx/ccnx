@@ -68,7 +68,7 @@ typedef int (*ccn_btree_closefn)
     (struct ccn_btree_io *, struct ccn_btree_node *);
 
 /**
- * Holds the methods and the associated data.
+ * Holds the methods and the associated common data.
  */
 struct ccn_btree_io {
     ccn_btree_openfn btopen;
@@ -79,14 +79,15 @@ struct ccn_btree_io {
 };
 
 struct ccn_btree_node {
-    unsigned nodeid;
-    unsigned clean;
-    struct ccn_charbuf *buf;
-    void *iodata;
+    unsigned nodeid;            /**< Identity of node */
+    unsigned clean;             /**< Number of stable buffered bytes at front */
+    struct ccn_charbuf *buf;    /**< The internal buffer */
+    void *iodata;               /**< Private use by ccn_btree_io methods */
 };
 
 struct ccn_btree {
     unsigned magic;
+    
     struct ccn_btree_io *io;
 };
 
