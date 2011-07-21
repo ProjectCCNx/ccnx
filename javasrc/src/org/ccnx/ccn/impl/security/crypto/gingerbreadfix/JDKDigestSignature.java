@@ -184,13 +184,13 @@ public class JDKDigestSignature
                 }
             }
         }
-        else if (expected.length == sig.length - 2)  // NULL left out
+        else if (sig.length == expected.length - 2)  // NULL left out
         {
             int sigOffset = sig.length - hash.length - 2;
             int expectedOffset = expected.length - hash.length - 2;
 
-            sig[1] -= 2;      // adjust lengths
-            sig[3] -= 2;
+            expected[1] -= 2;      // adjust lengths
+            expected[3] -= 2;
 
             for (int i = 0; i < hash.length; i++)
             {
@@ -200,7 +200,7 @@ public class JDKDigestSignature
                 }
             }
 
-            for (int i = 0; i < expectedOffset; i++)
+            for (int i = 0; i < sigOffset; i++)
             {
                 if (sig[i] != expected[i])  // check header less NULL
                 {
