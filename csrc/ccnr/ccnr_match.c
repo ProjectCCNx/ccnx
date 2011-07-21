@@ -147,7 +147,7 @@ note_content_from(struct ccnr_handle *h,
         npe->osrc = npe->src;
         npe->src = from_faceid;
     }
-    if (SHOULDLOG(h, 8))
+    if (SHOULDLOG(h, LM_8))
         ccnr_msg(h, "sl.%d %u ci=%d osrc=%u src=%u usec=%d", __LINE__,
                  from_faceid, prefix_comps, npe->osrc, npe->src, npe->usec);
 }

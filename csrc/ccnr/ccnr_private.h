@@ -65,6 +65,13 @@ typedef unsigned ccn_accession_t;
 
 typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 #define SHOULDLOG(h, mask) (((h)->debug & (mask)) != 0)
+#define LM_2    2
+#define LM_4    4
+#define LM_8    8
+#define LM_16    16
+#define LM_32    32
+#define LM_64    64
+#define LM_128    128
 
 /**
  * We pass this handle almost everywhere within ccnr

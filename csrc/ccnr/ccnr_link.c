@@ -87,7 +87,7 @@ r_link_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct con
         return;
     }
     size = content->size;
-    if (SHOULDLOG(h, 4))
+    if (SHOULDLOG(h, LM_4))
         ccnr_debug_ccnb(h, __LINE__, "content_to", fdholder,
                         content->key, size);
     /* Excise the message-digest name component */

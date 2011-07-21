@@ -96,14 +96,14 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     ccnr_meter_bump(h, fdholder->meter[FM_INTI], 1);
     if (r_fwd_is_duplicate_flooded(h, msg, pi, fdholder->filedesc)) {
-        if (SHOULDLOG(h, 16))
+        if (SHOULDLOG(h, LM_16))
              ccnr_debug_ccnb(h, __LINE__, "interest_dup", fdholder, msg, size);
         h->interests_dropped += 1;
     }
     else {
         if (SHOULDLOG(h, (16 | 8 | 2)))
             ccnr_debug_ccnb(h, __LINE__, "interest_from", fdholder, msg, size);
-        if (SHOULDLOG(h, 16))
+        if (SHOULDLOG(h, LM_16))
             ccnr_msg(h,
                      "version: %d, "
                      "prefix_comps: %d, "
@@ -230,7 +230,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
                      obj.magic);
         }
     }
-    if (SHOULDLOG(h, 4))
+    if (SHOULDLOG(h, LM_4))
         ccnr_debug_ccnb(h, __LINE__, "content_from", fdholder, msg, size);
     keysize = obj.offset[CCN_PCO_B_Content];
     tail = msg + keysize;
@@ -258,7 +258,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         }
         else {
             h->content_dups_recvd++;
-            if (SHOULDLOG(h, 4))
+            if (SHOULDLOG(h, LM_4))
                 ccnr_debug_ccnb(h, __LINE__, "dup", fdholder, msg, size);
         }
     }
@@ -328,7 +328,7 @@ Bail:
                      * In the case this consumed any interests from this source,
                      * don't send the content back
                      */
-                    if (SHOULDLOG(h, 8))
+                    if (SHOULDLOG(h, LM_8))
                         ccnr_debug_ccnb(h, __LINE__, "content_nosend", fdholder, msg, size);
                     q->send_queue->buf[i] = 0;
                 }
@@ -499,7 +499,7 @@ process_input(struct ccnr_handle *h, int fd)
         source->recvcount++;
         if (res <= 1 && (source->flags & CCNR_FACE_DGRAM) != 0) {
             // XXX - If the initial heartbeat gets missed, we don't realize the locality of the fdholder.
-            if (SHOULDLOG(h, 128))
+            if (SHOULDLOG(h, LM_128))
                 ccnr_msg(h, "%d-byte heartbeat on %d", (int)res, source->filedesc);
             return;
         }

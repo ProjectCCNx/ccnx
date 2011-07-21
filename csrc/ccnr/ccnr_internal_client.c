@@ -237,7 +237,7 @@ ccnr_answer_req(struct ccn_closure *selfp,
             return(CCN_UPCALL_RESULT_ERR);
     }
     ccnr = (struct ccnr_handle *)selfp->data;
-    if (SHOULDLOG(ccnr, 128))
+    if (SHOULDLOG(ccnr, LM_128))
         ccnr_debug_ccnb(ccnr, __LINE__, "ccnr_answer_req", NULL,
                         info->interest_ccnb, info->pi->offset[CCN_PI_E]);
     morecomps = selfp->intdata & MORECOMPS_MASK;
@@ -334,7 +334,7 @@ ccnr_answer_req(struct ccn_closure *selfp,
                            reply_body->buf, reply_body->length);
     if (res < 0)
         goto Bail;
-    if (SHOULDLOG(ccnr, 128))
+    if (SHOULDLOG(ccnr, LM_128))
         ccnr_debug_ccnb(ccnr, __LINE__, "ccnr_answer_req_response", NULL,
                         msg->buf, msg->length);
     res = ccn_put(info->h, msg->buf, msg->length);

@@ -126,7 +126,7 @@ r_proto_answer_req(struct ccn_closure *selfp,
             return(CCN_UPCALL_RESULT_ERR);
     }
     ccnr = (struct ccnr_handle *)selfp->data;
-    if (SHOULDLOG(ccnr, 128))
+    if (SHOULDLOG(ccnr, LM_128))
         ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_answer_req", NULL,
                         info->interest_ccnb, info->pi->offset[CCN_PI_E]);
     
@@ -147,7 +147,7 @@ r_proto_answer_req(struct ccn_closure *selfp,
     ncomps = info->interest_comps->n;
     if (((marker_comp = ncomps - 2) >= 0) &&
         0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE))) {
-        if (SHOULDLOG(ccnr, 8))
+        if (SHOULDLOG(ccnr, LM_8))
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
@@ -155,7 +155,7 @@ r_proto_answer_req(struct ccn_closure *selfp,
     } else if (((marker_comp = ncomps - 3) >= 0) &&
                0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE)) &&
                0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length)) {
-        if (SHOULDLOG(ccnr, 8))
+        if (SHOULDLOG(ccnr, LM_8))
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_repoid", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
@@ -163,28 +163,28 @@ r_proto_answer_req(struct ccn_closure *selfp,
     } else if (((marker_comp = ncomps - 5) >= 0) &&
                0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE)) &&
                0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length)) {
-        if (SHOULDLOG(ccnr, 8))
+        if (SHOULDLOG(ccnr, LM_8))
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_continuation",
                             NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_continue_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 3) > 0) &&
                0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SW, strlen(REPO_SW))) {
-        if (SHOULDLOG(ccnr, 8))
+        if (SHOULDLOG(ccnr, LM_8))
             ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_start_write(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 5) > 0) &&
                0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SWC, strlen(REPO_SWC))) {
-        if (SHOULDLOG(ccnr, 8))
+        if (SHOULDLOG(ccnr, LM_8))
             ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write_checked",
                             NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_start_write_checked(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = 0) == 0) &&
                name_comp_equal_prefix(info->interest_ccnb, info->interest_comps, marker_comp, REPO_AF, strlen(REPO_AF))) {
-        if (SHOULDLOG(ccnr, 8))
+        if (SHOULDLOG(ccnr, LM_8))
             ccnr_debug_ccnb(ccnr, __LINE__, "repo_bulk_import",
                             NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_bulk_import(selfp, kind, info, marker_comp);
@@ -579,7 +579,7 @@ r_proto_start_write(struct ccn_closure *selfp,
                            reply_body->buf, reply_body->length);
     if (res < 0)
         goto Bail;
-    if (SHOULDLOG(ccnr, 128))
+    if (SHOULDLOG(ccnr, LM_128))
         ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write response", NULL,
                         msg->buf, msg->length);
     res = ccn_put(info->h, msg->buf, msg->length);
@@ -702,7 +702,7 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
                            reply_body->buf, reply_body->length);
     if (res < 0)
         goto Bail;
-    if (SHOULDLOG(ccnr, 128))
+    if (SHOULDLOG(ccnr, LM_128))
         ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write_checked PRESENT", NULL,
                         msg->buf, msg->length);
     res = ccn_put(info->h, msg->buf, msg->length);
