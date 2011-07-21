@@ -572,9 +572,11 @@ r_dispatch_run(struct ccnr_handle *h)
         usec_direct = ccn_process_scheduled_operations(h->direct_client);
         if (usec_direct < usec)
             usec = usec_direct;
-        if (SHOULDLOG(h, 256)) {
+        if (1) {
             /* If so requested, shut down when ccnd goes away. */
             if (ccn_get_connection_fd(h->direct_client) == -1) {
+                /* XXX - since we cannot reasonably recover, always go away. */
+                ccnr_msg(h, "lost connection to ccnd");
                 h->running = 0;
                 break;
             }
