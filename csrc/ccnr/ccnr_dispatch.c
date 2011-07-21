@@ -497,12 +497,6 @@ process_input(struct ccnr_handle *h, int fd)
         source = fdholder;
         ccnr_meter_bump(h, source->meter[FM_BYTI], res);
         source->recvcount++;
-        if (res <= 1 && (source->flags & CCNR_FACE_DGRAM) != 0) {
-            // XXX - If the initial heartbeat gets missed, we don't realize the locality of the fdholder.
-            if (SHOULDLOG(h, LM_128))
-                ccnr_msg(h, "%d-byte heartbeat on %d", (int)res, source->filedesc);
-            return;
-        }
         fdholder->inbuf->length += res;
         msgstart = 0;
         if ((fdholder->flags & CCNR_FACE_UNDECIDED) != 0) {
