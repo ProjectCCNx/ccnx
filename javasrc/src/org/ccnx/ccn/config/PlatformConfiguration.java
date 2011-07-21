@@ -35,6 +35,9 @@ public final class PlatformConfiguration {
 		return _needSignatureLock;
 	}
 
+	public final static boolean workaroundGingerbreadBug;
+
+
 	// ==============================================
 	// Internal methods
 	private final static boolean _needSignatureLock;
@@ -43,13 +46,15 @@ public final class PlatformConfiguration {
 		// Default is not to lock signature operations
 		boolean needLock = false;
 
+		double bcVersion = 0;
 		try {
 			Log.info("BC provider: " + BouncyCastleProvider.PROVIDER_NAME);
 
 			Security.addProvider(new BouncyCastleProvider());
 
 			Provider prov = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME);
-			Log.info("Provider info: {0} version: {1}", prov.getInfo(), prov.getVersion());
+			bcVersion = prov.getVersion();
+			Log.info("Provider info: {0} version: {1}", prov.getInfo(), bcVersion);
 
 			String vm = System.getProperty("java.vm.name");
 			Log.info("java.vm.name = {0}", vm);
@@ -62,9 +67,14 @@ public final class PlatformConfiguration {
 				needLock = true;
 			}
 		} catch(Exception e) {
-			e.printStackTrace();
+			Log.warningStackTrace(e);
+			Log.abort();
 		}
 
 		_needSignatureLock = needLock;
+		workaroundGingerbreadBug = needLock && bcVersion == 1.45;
+		
+		if (workaroundGingerbreadBug)
+			Log.info("Detected running on Android Gingerbread, working around signature verification bug");
 	}
 }
