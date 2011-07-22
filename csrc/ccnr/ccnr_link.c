@@ -261,7 +261,13 @@ r_link_do_deferred_write(struct ccnr_handle *h, int fd)
     struct fdholder *fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL)
         return;
-    if (fdholder->outbuf != NULL) {
+    if ((fdholder->flags & CCNR_FACE_CCND) != 0) {
+        /* The direct client has something to say. */
+        if (CCNSHOULDLOG(h, xxx, CCNL_WARNING))
+            ccnr_msg(h, "sending deferred output from direct client");
+        ccn_run(h->direct_client, 0);
+    }
+    else if (fdholder->outbuf != NULL) {
         ssize_t sendlen = fdholder->outbuf->length - fdholder->outbufindex;
         if (sendlen > 0) {
             res = send(fd, fdholder->outbuf->buf + fdholder->outbufindex, sendlen, 0);
