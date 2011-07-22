@@ -334,7 +334,7 @@ age_forwarding(struct ccn_schedule *sched,
             next = f->next;
             if ((f->flags & CCN_FORW_REFRESHED) == 0 ||
                   r_io_fdholder_from_fd(h, f->filedesc) == NULL) {
-                if (h->debug & 2) {
+                if (CCNSHOULDLOG(h, LM_2, CCNL_FINE)) {
                     struct fdholder *fdholder = r_io_fdholder_from_fd(h, f->filedesc);
                     if (fdholder != NULL) {
                         struct ccn_charbuf *prefix = ccn_charbuf_create();
@@ -444,7 +444,7 @@ ccnr_reg_prefix(struct ccnr_handle *h,
                 flags = f->flags & CCN_FORW_PUBMASK;
             f->flags = (CCN_FORW_REFRESHED | flags);
             res |= flags;
-            if (h->debug & (2 | 4)) {
+            if (CCNSHOULDLOG(h, (2 | 4), CCNL_FINE)) {
                 struct ccn_charbuf *prefix = ccn_charbuf_create();
                 struct ccn_charbuf *debugtag = ccn_charbuf_create();
                 ccn_charbuf_putf(debugtag, "prefix,ff=%s%x",
@@ -559,7 +559,7 @@ r_fwd_update_forward_to(struct ccnr_handle *h, struct nameprefix_entry *npe)
             if (tflags & (CCN_FORW_TAP | CCN_FORW_LAST))
                 tflags |= tap_or_last;
             if ((tflags & wantflags) == wantflags) {
-                if (h->debug & 32)
+                if (CCNSHOULDLOG(h, LM_32, CCNL_FINEST))
                     ccnr_msg(h, "fwd.%d adding %u", __LINE__, f->filedesc);
                 ccn_indexbuf_set_insert(x, f->filedesc);
                 if ((f->flags & CCN_FORW_TAP) != 0) {
@@ -631,7 +631,7 @@ get_outbound_faces(struct ccnr_handle *h,
         fdholder = r_io_fdholder_from_fd(h, filedesc);
         if (fdholder != NULL && fdholder != from &&
             ((fdholder->flags & checkmask) == wantmask)) {
-            if (h->debug & 32)
+            if (CCNSHOULDLOG(h, LM_32, CCNL_FINEST))
                 ccnr_msg(h, "outbound.%d adding %u", __LINE__, fdholder->filedesc);
             ccn_indexbuf_append_element(x, fdholder->filedesc);
         }
@@ -646,7 +646,7 @@ pe_next_usec(struct ccnr_handle *h,
     if (next_delay > pe->usec)
         next_delay = pe->usec;
     pe->usec -= next_delay;
-    if (h->debug & 32) {
+    if (CCNSHOULDLOG(h, LM_32, CCNL_FINEST)) {
         struct ccn_charbuf *c = ccn_charbuf_create();
         ccn_charbuf_putf(c, "%p.%dof%d,usec=%d+%d",
                          (void *)pe,
@@ -685,7 +685,7 @@ do_propagate(struct ccn_schedule *sched,
         adjust_predicted_response(h, pe, 1);
     }
     if (pe->usec <= 0) {
-        if (h->debug & 2)
+        if (CCNSHOULDLOG(h, LM_2, CCNL_FINE))
             ccnr_debug_ccnb(h, __LINE__, "interest_expiry",
                             r_io_fdholder_from_fd(h, pe->filedesc),
                             pe->interest_msg, pe->size);
@@ -702,7 +702,7 @@ do_propagate(struct ccn_schedule *sched,
         unsigned filedesc = pe->outbound->buf[pe->sent];
         struct fdholder *fdholder = r_io_fdholder_from_fd(h, filedesc);
         if (fdholder != NULL && (fdholder->flags & CCNR_FACE_NOSEND) == 0) {
-            if (h->debug & 2)
+            if (CCNSHOULDLOG(h, LM_2, CCNL_FINE))
                 ccnr_debug_ccnb(h, __LINE__, "interest_to", fdholder,
                                 pe->interest_msg, pe->size);
             pe->sent++;
@@ -795,7 +795,7 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
                 if (pi->scope == 2 &&
                     ((otherface->flags ^ fdholder->flags) & CCNR_FACE_GG) != 0)
                     continue;
-                if (h->debug & 32)
+                if (CCNSHOULDLOG(h, LM_32, CCNL_WARNING))
                     ccnr_debug_ccnb(h, __LINE__, "similar_interest",
                                     r_io_fdholder_from_fd(h, p->filedesc),
                                     p->interest_msg, p->size);
@@ -922,7 +922,7 @@ r_fwd_propagate_interest(struct ccnr_handle *h,
              * We do not have to worry about generating a nonce if it
              * does not have one yet.
              */
-            if (h->debug & 16)
+            if (CCNSHOULDLOG(h, LM_16, CCNL_FINE))
                 ccnr_debug_ccnb(h, __LINE__, "interest_subsumed", fdholder,
                                 msg_out, msg_out_size);
             h->interests_dropped += 1;
@@ -1067,7 +1067,7 @@ replan_propagation(struct ccnr_handle *h, struct propagating_entry *pe)
             ((fdholder->flags & checkmask) == wantmask)) {
             k = x->n;
             ccn_indexbuf_set_insert(x, filedesc);
-            if (x->n > k && (h->debug & 32) != 0)
+            if (x->n > k && CCNSHOULDLOG(h, LM_32, CCNL_FINEST))
                 ccnr_msg(h, "at %d adding %u", __LINE__, filedesc);
         }
     }

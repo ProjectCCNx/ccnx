@@ -96,14 +96,14 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     ccnr_meter_bump(h, fdholder->meter[FM_INTI], 1);
     if (r_fwd_is_duplicate_flooded(h, msg, pi, fdholder->filedesc)) {
-        if (h->debug & 16)
+        if (CCNSHOULDLOG(h, LM_16, CCNL_WARNING))
              ccnr_debug_ccnb(h, __LINE__, "interest_dup", fdholder, msg, size);
         h->interests_dropped += 1;
     }
     else {
-        if (h->debug & (16 | 8 | 2))
+        if (CCNSHOULDLOG(h, (16 | 8 | 2), CCNL_FINE))
             ccnr_debug_ccnb(h, __LINE__, "interest_from", fdholder, msg, size);
-        if (h->debug & 16)
+        if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
             ccnr_msg(h,
                      "version: %d, "
                      "prefix_comps: %d, "
@@ -150,7 +150,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                 if (k == -1) {
                     k = r_sendq_face_send_queue_insert(h, fdholder, content);
                     if (k >= 0) {
-                        if (h->debug & (32 | 8))
+                        if (CCNSHOULDLOG(h, (32 | 8), CCNL_FINE))
                             ccnr_debug_ccnb(h, __LINE__, "consume", fdholder, msg, size);
                     }
                     /* Any other matched interests need to be consumed, too. */
@@ -230,7 +230,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
                      obj.magic);
         }
     }
-    if (h->debug & 4)
+    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
         ccnr_debug_ccnb(h, __LINE__, "content_from", fdholder, msg, size);
     keysize = obj.offset[CCN_PCO_B_Content];
     tail = msg + keysize;
@@ -258,7 +258,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         }
         else {
             h->content_dups_recvd++;
-            if (h->debug & 4)
+            if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
                 ccnr_debug_ccnb(h, __LINE__, "dup", fdholder, msg, size);
         }
     }
@@ -328,7 +328,7 @@ Bail:
                      * In the case this consumed any interests from this source,
                      * don't send the content back
                      */
-                    if (h->debug & 8)
+                    if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
                         ccnr_debug_ccnb(h, __LINE__, "content_nosend", fdholder, msg, size);
                     q->send_queue->buf[i] = 0;
                 }
@@ -497,12 +497,6 @@ process_input(struct ccnr_handle *h, int fd)
         source = fdholder;
         ccnr_meter_bump(h, source->meter[FM_BYTI], res);
         source->recvcount++;
-        if (res <= 1 && (source->flags & CCNR_FACE_DGRAM) != 0) {
-            // XXX - If the initial heartbeat gets missed, we don't realize the locality of the fdholder.
-            if (h->debug & 128)
-                ccnr_msg(h, "%d-byte heartbeat on %d", (int)res, source->filedesc);
-            return;
-        }
         fdholder->inbuf->length += res;
         msgstart = 0;
         if ((fdholder->flags & CCNR_FACE_UNDECIDED) != 0) {
@@ -578,9 +572,11 @@ r_dispatch_run(struct ccnr_handle *h)
         usec_direct = ccn_process_scheduled_operations(h->direct_client);
         if (usec_direct < usec)
             usec = usec_direct;
-        if (h->debug & 256) {
+        if (1) {
             /* If so requested, shut down when ccnd goes away. */
             if (ccn_get_connection_fd(h->direct_client) == -1) {
+                /* XXX - since we cannot reasonably recover, always go away. */
+                ccnr_msg(h, "lost connection to ccnd");
                 h->running = 0;
                 break;
             }

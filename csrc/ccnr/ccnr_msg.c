@@ -58,7 +58,7 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     if (b == NULL)
         return;
     gettimeofday(&t, NULL);
-    if (((h->debug & 64) != 0) &&
+    if ((h->debug & 1) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
           t.tv_sec >= h->logtime + 30)) {
         portstr = h->portstr;
@@ -141,18 +141,12 @@ const char *ccnr_usage_message =
     "  options: none\n"
     "  arguments: none\n"
     "  environment variables:\n"
-    "    CCNR_DEBUG=\n"
+    "    CCNR_DEBUG=(debug logging level)\n"
     "      0 - no messages\n"
-    "      1 - basic messages (any non-zero value gets these)\n"
-    "      2 - interest messages\n"
-    "      4 - content messages\n"
-    "      8 - matching details\n"
-    "      16 - interest details\n"
-    "      32 - gory interest details\n"
-    "      64 - log occasional human-readable timestamps\n"
-    "      128 - fdholder registration debugging\n"
-    "      256 - shut down if ccnd goes away\n"
-    "      bitwise OR these together for combinations; -1 gets max logging\n"
+    "      3 - severe, probably fatal, errors\n"
+    "      5 - errors\n"
+    "      7 - warnings\n"
+    "      9 - debugging/tracing - get more with values up to 15\n"
     "    CCNR_DIRECTORY=\n"
     "      Directory where ccnr data is kept\n"
     "      Defaults to current directory\n"
