@@ -36,9 +36,10 @@ import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DERTags;
 import org.bouncycastle.asn1.DERUnknownTag;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.ccnx.ccn.config.PlatformConfiguration;
 import org.ccnx.ccn.impl.security.crypto.SignatureLocks;
+import org.ccnx.ccn.impl.security.crypto.gingerbreadfix.JDKDigestSignature;
 import org.ccnx.ccn.impl.support.Log;
-
 
 /** 
  * Helper class for generating signatures.
@@ -144,10 +145,10 @@ public class SignatureHelper {
 	 * @throws InvalidKeyException
 	 */
 	public static boolean verify(
-			byte[][] data,
-			byte [] signature,
+			final byte[][] data,
+			final byte [] signature,
 			String digestAlgorithm,
-			PublicKey verificationKey) throws SignatureException, 
+			final PublicKey verificationKey) throws SignatureException, 
 						NoSuchAlgorithmException, InvalidKeyException {
 		if (null == verificationKey) {
 			Log.info("verify: Verifying key cannot be null.");
@@ -159,21 +160,44 @@ public class SignatureHelper {
 					DigestHelper.DEFAULT_DIGEST_ALGORITHM : digestAlgorithm,
 					verificationKey);
 		
-		Signature sig = Signature.getInstance(sigAlgName);
-
-		// Protect against GC on platforms that don't do JNI for crypto properly
-		SignatureLocks.signingLock();
-		try {
-			sig.initVerify(verificationKey);
-			if (null != data) {
-				for (int i=0; i < data.length; ++i) {
-					if (data[i] != null)
-						sig.update(data[i]);
+		if (PlatformConfiguration.workaroundGingerbreadBug) {
+			// this clause is only used when running on Android Gingerbread. It is
+			// necessary to work around a bug in the Gingerbread version of
+			// Bouncycastle
+			return new JDKDigestSignature.SHA256WithRSAEncryption() {
+				boolean verify() throws InvalidKeyException, SignatureException {
+					SignatureLocks.signingLock();
+					try {
+						engineInitVerify(verificationKey);
+						if (null != data) {
+							for (int i=0; i < data.length; ++i) {
+								if (data[i] != null)
+									engineUpdate(data[i], 0, data[i].length);
+							}
+						}
+						return engineVerify(signature);
+					} finally {
+						SignatureLocks.signingUnock();
+					}
 				}
+			}.verify();
+		} else {
+			Signature sig = Signature.getInstance(sigAlgName);
+
+			// Protect against GC on platforms that don't do JNI for crypto properly
+			SignatureLocks.signingLock();
+			try {
+				sig.initVerify(verificationKey);
+				if (null != data) {
+					for (int i=0; i < data.length; ++i) {
+						if (data[i] != null)
+							sig.update(data[i]);
+					}
+				}
+				return sig.verify(signature);
+			} finally {
+				SignatureLocks.signingUnock();
 			}
-			return sig.verify(signature);
-		} finally {
-			SignatureLocks.signingUnock();
 		}
 	}
 	
