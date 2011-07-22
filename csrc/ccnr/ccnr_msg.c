@@ -158,4 +158,14 @@ const char *ccnr_usage_message =
     "      Port to use for status server.  Default is to not serve status.\n"
     "    CCNR_LISTEN_ON=\n"
     "      List of ip addresses to listen on for status; defaults to wildcard\n"
-    ;
+    "    SYNC_DEBUG=(debug logging level)\n"
+    "      Same values as for CCNR_DEBUG, default 7\n"
+    "    SYNC_ENABLE=\n"
+    "      Disable (0) or enable (1) Sync processing, default enabled\n"
+    "    SYNC_TOPO=\n"
+    "      Specify default topo prefix for Sync protocol\n"
+    "      (TEMPORARY - will not be in the final release)\n"
+    "    SYNC_AUTO_REGISTER=\n"
+    "      Disable (0) or enable (1) root auto-registration, default enabled\n"
+    "      (TEMPORARY - will not be in the final release)\n"
+;
