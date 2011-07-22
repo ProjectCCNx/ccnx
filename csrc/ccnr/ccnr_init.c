@@ -133,6 +133,11 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     }
     else
         h->debug = 1;
+    /* Treat 1 and negative specially, for some backward compatibility. */
+    if (h->debug == 1)
+        h->debug = CCNL_WARNING;
+    if (h->debug < 0)
+        h->debug = CCNL_FINEST;
     portstr = getenv("CCNR_STATUS_PORT");
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "";
