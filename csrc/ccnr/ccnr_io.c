@@ -482,6 +482,13 @@ r_io_prepare_poll_fds(struct ccnr_handle *h)
             h->fds[j].events = ((fdholder->flags & CCNR_FACE_NORECV) == 0) ? POLLIN : 0;
             if ((fdholder->outbuf != NULL || (fdholder->flags & CCNR_FACE_CLOSING) != 0))
                 h->fds[j].events |= POLLOUT;
+             if ((fdholder->flags & CCNR_FACE_CCND) != 0) {
+                 if (ccn_output_is_pending(h->direct_client)) {
+                     if (CCNSHOULDLOG(h, xxx, CCNL_FINEST))
+                        ccnr_msg(h, "including direct client in poll set");
+                     h->fds[j].events |= POLLOUT;
+                }
+             }
             j++;
         }
     }
