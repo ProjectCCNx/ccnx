@@ -58,7 +58,7 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     if (b == NULL)
         return;
     gettimeofday(&t, NULL);
-    if (SHOULDLOG(h, LM_64) &&
+    if ((h->debug & 1) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
           t.tv_sec >= h->logtime + 30)) {
         portstr = h->portstr;

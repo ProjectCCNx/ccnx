@@ -335,7 +335,7 @@ r_store_find_first_match_candidate(struct ccnr_handle *h,
                                        interest_msg + ex1start,
                                        ex1end - ex1start);
                     ccn_charbuf_append_closer(namebuf);
-                    if (SHOULDLOG(h, LM_8))
+                    if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
                         ccnr_debug_ccnb(h, __LINE__, "fastex", NULL,
                                         namebuf->buf, namebuf->length);
                 }
@@ -404,7 +404,7 @@ r_store_remove_content(struct ccnr_handle *h, struct content_entry *content)
         abort();
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         h->n_stale--;
-    if (SHOULDLOG(h, LM_4))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
         ccnr_debug_ccnb(h, __LINE__, "remove", NULL,
                         content->key, content->size);
     hashtb_delete(e);
@@ -434,7 +434,7 @@ r_store_next_child_at_level(struct ccnr_handle *h,
     if (res < 0) abort();
     res = ccn_name_next_sibling(name);
     if (res < 0) abort();
-    if (SHOULDLOG(h, LM_8))
+    if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
         ccnr_debug_ccnb(h, __LINE__, "child_successor", NULL,
                         name->buf, name->length);
     d = content_skiplist_findbefore(h, name->buf, name->length,
@@ -461,14 +461,14 @@ r_store_lookup(struct ccnr_handle *h,
     size_t size = pi->offset[CCN_PI_E];
     
     content = r_store_find_first_match_candidate(h, msg, pi);
-    if (content != NULL && SHOULDLOG(h, LM_8))
+    if (content != NULL && CCNSHOULDLOG(h, LM_8, CCNL_FINER))
         ccnr_debug_ccnb(h, __LINE__, "first_candidate", NULL,
                         content->key,
                         content->size);
     if (content != NULL &&
         !r_store_content_matches_interest_prefix(h, content, msg, comps,
                                                  pi->prefix_comps)) {
-            if (SHOULDLOG(h, LM_8))
+            if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
                 ccnr_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
                                 msg, size);
             content = NULL;
@@ -482,13 +482,13 @@ r_store_lookup(struct ccnr_handle *h,
                     comps->n == content->ncomps &&
                     r_store_content_matches_interest_prefix(h, content, msg,
                                                             comps, comps->n - 1)) {
-                        if (SHOULDLOG(h, LM_8))
+                        if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
                             ccnr_debug_ccnb(h, __LINE__, "skip_match", NULL,
                                             content->key,
                                             content->size);
                         goto move_along;
                     }
-                if (SHOULDLOG(h, LM_8))
+                if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
                     ccnr_debug_ccnb(h, __LINE__, "matches", NULL,
                                     content->key,
                                     content->size);
@@ -504,7 +504,7 @@ r_store_lookup(struct ccnr_handle *h,
         if (content != NULL &&
             !r_store_content_matches_interest_prefix(h, content, msg,
                                                      comps, pi->prefix_comps)) {
-                if (SHOULDLOG(h, LM_8))
+                if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
                     ccnr_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
                                     content->key,
                                     content->size);
@@ -525,7 +525,7 @@ r_store_mark_stale(struct ccnr_handle *h, struct content_entry *content)
     ccn_accession_t accession = content->accession;
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         return;
-    if (SHOULDLOG(h, LM_4))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
             ccnr_debug_ccnb(h, __LINE__, "stale", NULL,
                             content->key, content->size);
     content->flags |= CCN_CONTENT_ENTRY_STALE;

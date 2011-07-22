@@ -220,7 +220,7 @@ content_sender(struct ccn_schedule *sched,
         if (content != NULL) {
             q->nrun = 0;
             delay = randomize_content_delay(h, q);
-            if (SHOULDLOG(h, LM_8))
+            if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
                 ccnr_msg(h, "fdholder %u queued %u delay %i",
                          (unsigned)ev->evint, q->ready, delay);
             return(delay);
@@ -254,7 +254,7 @@ r_sendq_face_send_queue_insert(struct ccnr_handle *h,
         if (k != c && fdholder->q[k] != NULL) {
             ans = ccn_indexbuf_member(fdholder->q[k]->send_queue, content->accession);
             if (ans >= 0) {
-                if (SHOULDLOG(h, LM_8))
+                if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
                     ccnr_debug_ccnb(h, __LINE__, "content_otherq", fdholder,
                                     content->key, content->size);
                 return(ans);
@@ -267,7 +267,7 @@ r_sendq_face_send_queue_insert(struct ccnr_handle *h,
         q->ready = q->send_queue->n;
         q->sender = ccn_schedule_event(h->sched, delay,
                                        content_sender, q, fdholder->filedesc);
-        if (SHOULDLOG(h, LM_8))
+        if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
             ccnr_msg(h, "fdholder %u q %d delay %d usec", fdholder->filedesc, c, delay);
     }
     return (ans);

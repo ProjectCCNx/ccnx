@@ -96,14 +96,14 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     ccnr_meter_bump(h, fdholder->meter[FM_INTI], 1);
     if (r_fwd_is_duplicate_flooded(h, msg, pi, fdholder->filedesc)) {
-        if (SHOULDLOG(h, LM_16))
+        if (CCNSHOULDLOG(h, LM_16, CCNL_WARNING))
              ccnr_debug_ccnb(h, __LINE__, "interest_dup", fdholder, msg, size);
         h->interests_dropped += 1;
     }
     else {
-        if (SHOULDLOG(h, (16 | 8 | 2)))
+        if (CCNSHOULDLOG(h, (16 | 8 | 2), CCNL_FINE))
             ccnr_debug_ccnb(h, __LINE__, "interest_from", fdholder, msg, size);
-        if (SHOULDLOG(h, LM_16))
+        if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
             ccnr_msg(h,
                      "version: %d, "
                      "prefix_comps: %d, "
@@ -150,7 +150,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                 if (k == -1) {
                     k = r_sendq_face_send_queue_insert(h, fdholder, content);
                     if (k >= 0) {
-                        if (SHOULDLOG(h, (32 | 8)))
+                        if (CCNSHOULDLOG(h, (32 | 8), CCNL_FINE))
                             ccnr_debug_ccnb(h, __LINE__, "consume", fdholder, msg, size);
                     }
                     /* Any other matched interests need to be consumed, too. */
@@ -230,7 +230,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
                      obj.magic);
         }
     }
-    if (SHOULDLOG(h, LM_4))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
         ccnr_debug_ccnb(h, __LINE__, "content_from", fdholder, msg, size);
     keysize = obj.offset[CCN_PCO_B_Content];
     tail = msg + keysize;
@@ -258,7 +258,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         }
         else {
             h->content_dups_recvd++;
-            if (SHOULDLOG(h, LM_4))
+            if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
                 ccnr_debug_ccnb(h, __LINE__, "dup", fdholder, msg, size);
         }
     }
@@ -328,7 +328,7 @@ Bail:
                      * In the case this consumed any interests from this source,
                      * don't send the content back
                      */
-                    if (SHOULDLOG(h, LM_8))
+                    if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
                         ccnr_debug_ccnb(h, __LINE__, "content_nosend", fdholder, msg, size);
                     q->send_queue->buf[i] = 0;
                 }
