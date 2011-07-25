@@ -126,18 +126,14 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
     debugstr = getenv("CCNR_DEBUG");
-    if (debugstr != NULL && debugstr[0] != 0) {
-        h->debug = atoi(debugstr);
-        if (h->debug == 0 && debugstr[0] != '0')
-            h->debug = 1;
-    }
-    else
-        h->debug = 1;
+    h->debug = ccnr_msg_level_from_string(debugstr);
     /* Treat 1 and negative specially, for some backward compatibility. */
     if (h->debug == 1)
         h->debug = CCNL_WARNING;
-    if (h->debug < 0)
+    if (h->debug < 0) {
         h->debug = CCNL_FINEST;
+        ccnr_msg(h, "CCNR_DEBUG='%s' is not valid, using FINEST", debugstr);
+    }
     portstr = getenv("CCNR_STATUS_PORT");
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "";

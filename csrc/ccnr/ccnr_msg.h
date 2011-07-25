@@ -37,6 +37,8 @@
 #define CCNL_FINER     13   /**< More debugging */
 #define CCNL_FINEST    15   /**< MORE DEBUGGING YET */
 
+int ccnr_msg_level_from_string(const char *s);
+
 extern const char *ccnr_usage_message;
 void ccnr_debug_ccnb(struct ccnr_handle *h,
                      int lineno,
