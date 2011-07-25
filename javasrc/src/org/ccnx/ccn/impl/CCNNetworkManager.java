@@ -141,6 +141,7 @@ public class CCNNetworkManager implements Runnable {
 	protected Object _timersSetupLock = new Object();
 	protected Boolean _timersSetup = false;
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
+	protected Boolean _registering = false;		// To wait while someone else is in the process of registering
 
 	/**
 	 * Keep track of prefixes that are actually registered with ccnd (as opposed to Filters used
@@ -1147,6 +1148,12 @@ public class CCNNetworkManager implements Runnable {
 	 */
     private RegisteredPrefix registerPrefix(ContentName filter, Integer registrationFlags) throws CCNDaemonException {
     	ForwardingEntry entry;
+    	while (_registering) {
+    		try {
+				_registeredPrefixes.wait();
+			} catch (InterruptedException e) {}
+    	}
+    	_registering = true;
     	if (null == registrationFlags) {
 			entry = _prefixMgr.selfRegisterPrefix(filter);
 		} else {
@@ -1159,6 +1166,8 @@ public class CCNNetworkManager implements Runnable {
 		// prefix we use Integer.MAX_VALUE as the requested lifetime.
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, "registerPrefix for {0}: entry.lifetime: {1} entry.faceID: {2}", filter, entry.getLifetime(), entry.getFaceID());
+		_registering = false;
+		_registeredPrefixes.notifyAll();
 		return newPrefix;
     }
 
