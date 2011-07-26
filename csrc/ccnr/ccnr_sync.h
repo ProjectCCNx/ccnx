@@ -23,7 +23,7 @@
 #include "ccnr_private.h"
 
 /** Notify repo of starting point for new names to be passed to sync.
- * Use repo_offset = 0 as the initial value.
+ * Use item = 0 as the initial value.
  * Following a call to r_sync_notify_after, the repository will call
  *    SyncNotifyContent(struct SyncBaseStruct *,
  *                      int enumeration,
@@ -41,10 +41,10 @@
 void
 r_sync_notify_after(struct ccnr_handle *ccnr, ccn_accession_t item);
 
-/** Request that a syncNotifyContent call is made for each content object
+/** Request that a SyncNotifyContent call is made for each content object
  *  matching the interest.
  *  returns -1 for error, or an enumeration number which will also be passed
- *      in the syncNotifyContent
+ *      in the SyncNotifyContent
  */
 int
 r_sync_enumerate(struct ccnr_handle *ccnr, struct ccn_charbuf *interest);
