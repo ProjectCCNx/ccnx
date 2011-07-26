@@ -83,12 +83,14 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     char *sockname;
     const char *portstr;
     const char *debugstr;
+    int debugval;
     const char *listen_on;
     struct ccnr_handle *h;
     struct hashtb_param param = {0};
     struct ccn_charbuf *cb;
     struct ccn_charbuf *basename;
     struct ccnr_parsed_policy *pp = NULL;
+    char numbuf[12];
     
     sockname = r_net_get_local_sockname();
     h = calloc(1, sizeof(*h));
@@ -134,6 +136,15 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
         h->debug = CCNL_FINEST;
         ccnr_msg(h, "CCNR_DEBUG='%s' is not valid, using FINEST", debugstr);
     }
+    /* ugh. */
+    debugstr = getenv("SYNC_DEBUG");
+    debugval = ccnr_msg_level_from_string(debugstr);
+    if (debugval == 1)
+        debugval = CCNL_WARNING;
+    if (debugval < 0)
+        debugval = CCNL_FINEST;
+    snprintf(numbuf, sizeof(numbuf), "%d", debugval);
+    setenv("SYNC_DEBUG", numbuf, 1);
     portstr = getenv("CCNR_STATUS_PORT");
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "";

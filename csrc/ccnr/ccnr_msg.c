@@ -197,7 +197,7 @@ const char *ccnr_usage_message =
     "    CCNR_LISTEN_ON=\n"
     "      List of ip addresses to listen on for status; defaults to wildcard\n"
     "    SYNC_DEBUG=(debug logging level)\n"
-    "      Same values as for CCNR_DEBUG, default 7\n"
+    "      Same values as for CCNR_DEBUG, default WARNING\n"
     "    SYNC_ENABLE=\n"
     "      Disable (0) or enable (1) Sync processing, default enabled\n"
     "    SYNC_TOPO=\n"
