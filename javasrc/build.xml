@@ -227,8 +227,6 @@
 					<arg value="-interactive" />
 					<arg value="-root" />
 					<arg value="${REPO_LOCAL_ROOT}" />
-					<arg value="-log" />
-					<arg value="INFO" />
 					<arg value="-local" />
 					<arg value="${REPO_LOCAL}" />
 					<arg value="-global" />

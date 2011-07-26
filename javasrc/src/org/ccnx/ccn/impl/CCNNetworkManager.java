@@ -141,22 +141,21 @@ public class CCNNetworkManager implements Runnable {
 	protected Object _timersSetupLock = new Object();
 	protected Boolean _timersSetup = false;
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
+	protected Boolean _prefixDeregister = false;	// need to wait for complete of current deregistration before
+													// allowing more registrations or deregistrations.
 
 	/**
 	 * Keep track of prefixes that are actually registered with ccnd (as opposed to Filters used
 	 * to dispatch interests). There may be several filters for each registered prefix.
 	 */
 	public class RegisteredPrefix implements CCNInterestListener {
-		private int _refCount = 1;
+		private int _refCount = 0;
 		private ForwardingEntry _forwarding = null;
 		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
 		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
 		// prefix we use Integer.MAX_VALUE as the requested lifetime.
 		private long _lifetime = -1; // in seconds
 		private long _nextRefresh = -1;
-		private boolean _closing = false;		// Flags in process of closing
-		private boolean _wasClosing = false;	// See below for reason for this
-		private boolean _doRemove = true;		// To avoid removing just registered prefixes
 
 		public RegisteredPrefix(ForwardingEntry forwarding) {
 			_forwarding = forwarding;
@@ -171,18 +170,14 @@ public class CCNNetworkManager implements Runnable {
 		 * wait for the prefix to be deregistered normally, but if we try to re-register
 		 * it we have to to avoid races.
 		 */
-		public Interest handleContent(ContentObject data, Interest interest) {
-			synchronized (this) {
-				_closing = false;	// We have to clear this, otherwise we could deadlock if setInterestFilter
-									// grabs us after this
-				notifyAll();
-			}		
-			// If setInterestFilter grabbed us right here, we would have cleared _closing (necessary to avoid
-			// deadlocks) but we would have actually deregistered so setInterestFilter needs to know that. It can
-			// because _wasClosing is still set.
+		public Interest handleContent(ContentObject data, Interest interest) {		
 			synchronized (_registeredPrefixes) {
-				if (_doRemove)	// Avoid removing a just registered prefix from the map
-					_registeredPrefixes.remove(_forwarding.getPrefixName());
+				if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE))
+					Log.fine(Log.FAC_NETMANAGER, "Cancel registration completed for {0}", 
+							_forwarding.getPrefixName());
+				_prefixDeregister = false;	
+				_registeredPrefixes.notifyAll();
+				_registeredPrefixes.remove(_forwarding.getPrefixName());
 			}
 			return null;
 		}
@@ -1090,25 +1085,31 @@ public class CCNNetworkManager implements Runnable {
 					_prefixMgr = new PrefixRegistrationManager(this);
 				}
 				synchronized(_registeredPrefixes) {
-					RegisteredPrefix oldPrefix = getRegisteredPrefix(filter);
-					if (null != oldPrefix) {
-						synchronized (oldPrefix) {
-							while (oldPrefix._closing) {
-								try {
-									oldPrefix.wait();
-								} catch (InterruptedException e) {}
-							}
-							if (oldPrefix._wasClosing) {
-								_registeredPrefixes.remove(filter);
-								registerPrefix(filter, registrationFlags);
-								oldPrefix._doRemove = false;
-							} else {
-								oldPrefix._refCount++;
+					// Determine whether we need to register our prefix with ccnd
+					// We do if either its not registered now, or the one registered now is being
+					// cancelled but its still in the process of getting deregistered. In the second
+					// case (closing) we need to wait until the prefix has been deregistered before
+					// we go ahead and register it. And of course, someone else could have registered it
+					// before we got to it so check for that also. If its already registered, just bump
+					// its use count.
+					RegisteredPrefix prefix = getRegisteredPrefix(filter);
+					if (null != prefix) {
+						boolean wasClosing = _prefixDeregister;
+						while (_prefixDeregister) {
+							try {
+								_registeredPrefixes.wait();
+							} catch (InterruptedException e) {}
+						}
+						if (wasClosing) {
+							prefix = getRegisteredPrefix(filter);	// Need to recheck in case someone else already registered us
+							if (null == prefix) {
+								prefix = registerPrefix(filter, registrationFlags);
 							}
 						}
 					} else {
-						registerPrefix(filter, registrationFlags);
+						prefix = registerPrefix(filter, registrationFlags);
 					}
+					prefix._refCount++;
 				}
 			} catch (CCNDaemonException e) {
 				Log.warning(Log.FAC_NETMANAGER, formatMessage("setInterestFilter: unexpected CCNDaemonException: " + e.getMessage()));
@@ -1139,13 +1140,16 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/**
-	 * Must be called with _registeredPrefixes locked
+	 * Must be called with _registeredPrefixes locked.
+	 * 
+	 * Note that this is mismatched with deregistering prefixes. When registering, we wait for the
+	 * register to complete before continuing, but when deregistering we don't.
 	 * 
 	 * @param filter
 	 * @param registrationFlags
 	 * @throws CCNDaemonException
 	 */
-    private void registerPrefix(ContentName filter, Integer registrationFlags) throws CCNDaemonException {
+    private RegisteredPrefix registerPrefix(ContentName filter, Integer registrationFlags) throws CCNDaemonException {
     	ForwardingEntry entry;
     	if (null == registrationFlags) {
 			entry = _prefixMgr.selfRegisterPrefix(filter);
@@ -1158,7 +1162,9 @@ public class CCNNetworkManager implements Runnable {
 		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
 		// prefix we use Integer.MAX_VALUE as the requested lifetime.
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
-			Log.fine(Log.FAC_NETMANAGER, formatMessage("setInterestFilter: entry.lifetime: " + entry.getLifetime() + " entry.faceID: " + entry.getFaceID()));
+			Log.fine(Log.FAC_NETMANAGER, "registerPrefix for {0}: entry.lifetime: {1} entry.faceID: {2}", filter, entry.getLifetime(), entry.getFaceID());
+		_registeredPrefixes.notifyAll();
+		return newPrefix;
     }
 
 	/**
@@ -1199,8 +1205,7 @@ public class CCNNetworkManager implements Runnable {
 									if (null == _prefixMgr) {
 										_prefixMgr = new PrefixRegistrationManager(this);
 									}
-									prefix._closing = true;
-									prefix._wasClosing = true;
+									_prefixDeregister = true;
 									_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
 								} catch (CCNDaemonException e) {
 									Log.warning(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage()));
