@@ -142,7 +142,7 @@ public class CCNNetworkManager implements Runnable {
 	protected Boolean _timersSetup = false;
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
 	protected Boolean _prefixDeregister = false;	// need to wait for complete of current deregistration before
-												// allowing more registrations or deregistrations.
+													// allowing more registrations or deregistrations.
 
 	/**
 	 * Keep track of prefixes that are actually registered with ccnd (as opposed to Filters used
