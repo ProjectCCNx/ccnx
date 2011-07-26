@@ -156,12 +156,8 @@ public class NetworkTest extends CCNTestBase {
 		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, slashName, tfl);
 		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);
-		
-		// Temporarily disable this test until issues causing it to fail intermittently can be
-		// fixed.
-		
-		//prefixes = putHandle.getNetworkManager().getRegisteredPrefixes();
-		//Assert.assertFalse(prefixes.contains(testName5));
+		prefixes = putHandle.getNetworkManager().getRegisteredPrefixes();
+		Assert.assertFalse(prefixes.contains(testName5));
 		
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName1, tfl);
 		putHandle.getNetworkManager().cancelInterestFilter(this, slashName, tfl);
