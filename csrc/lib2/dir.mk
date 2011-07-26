@@ -40,6 +40,7 @@ ccnbtreetest: $(LIB2_OBJ) ccnbtreetest.c
 clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
 	rm -rf *.dSYM *.gcov *.gcda *.gcno $(DEBRIS)
+	rm -rf _bt_*
 
 check test: ccnbtreetest $(SCRIPTSRC)
 	./ccnbtreetest
@@ -51,5 +52,5 @@ check test: ccnbtreetest $(SCRIPTSRC)
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
-ccn_btree.o: ccn_btree.c ../ccn/btree.h
-ccnbtreetest.o: ccnbtreetest.c ../ccn/btree.h
+ccn_btree.o: ccn_btree.c ../ccn/btree.h ../include/ccn/charbuf.h
+ccnbtreetest.o: ccnbtreetest.c ../ccn/btree.h ../include/ccn/charbuf.h
