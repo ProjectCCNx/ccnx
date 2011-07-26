@@ -87,7 +87,7 @@ r_link_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct con
         return;
     }
     size = content->size;
-    if (h->debug & 4)
+    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
         ccnr_debug_ccnb(h, __LINE__, "content_to", fdholder,
                         content->key, size);
     /* Excise the message-digest name component */
@@ -261,6 +261,15 @@ r_link_do_deferred_write(struct ccnr_handle *h, int fd)
     struct fdholder *fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL)
         return;
+    if ((fdholder->flags & CCNR_FACE_CCND) != 0) {
+        /* The direct client has something to say. */
+        if (CCNSHOULDLOG(h, xxx, CCNL_WARNING))
+            ccnr_msg(h, "sending deferred output from direct client");
+        ccn_run(h->direct_client, 0);
+        if (fdholder->outbuf != NULL)
+            ccnr_msg(h, "URP r_link_do_deferred_write %d", __LINE__);
+        return;
+    }
     if (fdholder->outbuf != NULL) {
         ssize_t sendlen = fdholder->outbuf->length - fdholder->outbufindex;
         if (sendlen > 0) {

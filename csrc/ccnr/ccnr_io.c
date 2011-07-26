@@ -411,6 +411,16 @@ r_io_send(struct ccnr_handle *h,
         r_dispatch_process_internal_client_buffer(h);
         return;
     }
+    if ((fdholder->flags & CCNR_FACE_CCND) != 0) {
+        /* Writes here need to go via the direct client's handle. */
+        ccnr_meter_bump(h, fdholder->meter[FM_BYTO], size);
+        res = ccn_put(h->direct_client, data, size);
+        if (res < 0 && CCNSHOULDLOG(h, r_io_send, CCNL_WARNING))
+            ccnr_msg(h, "ccn_put failed");
+        if (res == 1 && CCNSHOULDLOG(h, r_io_send, CCNL_FINEST))
+            ccnr_msg(h, "ccn_put deferred output for later send");
+        return;
+    }
     if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
         offset = lseek(fdholder->recv_fd, 0, SEEK_END);
         if (offset == (off_t)-1) {
@@ -472,6 +482,13 @@ r_io_prepare_poll_fds(struct ccnr_handle *h)
             h->fds[j].events = ((fdholder->flags & CCNR_FACE_NORECV) == 0) ? POLLIN : 0;
             if ((fdholder->outbuf != NULL || (fdholder->flags & CCNR_FACE_CLOSING) != 0))
                 h->fds[j].events |= POLLOUT;
+             if ((fdholder->flags & CCNR_FACE_CCND) != 0) {
+                 if (ccn_output_is_pending(h->direct_client)) {
+                     if (CCNSHOULDLOG(h, xxx, CCNL_FINEST))
+                        ccnr_msg(h, "including direct client in poll set");
+                     h->fds[j].events |= POLLOUT;
+                }
+             }
             j++;
         }
     }

@@ -119,7 +119,7 @@ r_match_consume_matching_interests(struct ccnr_handle *h,
             if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
                                              p->interest_msg, p->size, NULL)) {
                 r_sendq_face_send_queue_insert(h, f, content);
-                if (h->debug & (32 | 8))
+                if (CCNSHOULDLOG(h, (32 | 8), CCNL_INFO))
                     ccnr_debug_ccnb(h, __LINE__, "consume", f,
                                     p->interest_msg, p->size);
                 matches += 1;
@@ -147,7 +147,7 @@ note_content_from(struct ccnr_handle *h,
         npe->osrc = npe->src;
         npe->src = from_faceid;
     }
-    if (h->debug & 8)
+    if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
         ccnr_msg(h, "sl.%d %u ci=%d osrc=%u src=%u usec=%d", __LINE__,
                  from_faceid, prefix_comps, npe->osrc, npe->src, npe->usec);
 }

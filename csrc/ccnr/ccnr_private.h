@@ -66,6 +66,21 @@ typedef unsigned ccn_accession_t;
 typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 
 /**
+ * This is true if we should log at the given level.
+ * 
+ */
+#define CCNSHOULDLOG(h, who, level) (((h)->debug >= level) != 0)
+
+/* XXX - these are the historical bitfields. */
+#define LM_2    2
+#define LM_4    4
+#define LM_8    8
+#define LM_16    16
+#define LM_32    32
+#define LM_64    64
+#define LM_128    128
+
+/**
  * We pass this handle almost everywhere within ccnr
  */
 struct ccnr_handle {
@@ -402,19 +417,10 @@ void r_io_send(struct ccnr_handle *h, struct fdholder *fdholder,
                const void *data, size_t size);
 
 /* Consider a separate header for these */
-int ccnr_stats_handle_http_connection(struct ccnr_handle *, struct fdholder *);
-void ccnr_msg(struct ccnr_handle *, const char *, ...);
-void ccnr_debug_ccnb(struct ccnr_handle *h,
-                     int lineno,
-                     const char *msg,
-                     struct fdholder *fdholder,
-                     const unsigned char *ccnb,
-                     size_t ccnb_size);
 
 struct ccnr_handle *r_init_create(const char *, ccnr_logger, void *);
 void r_dispatch_run(struct ccnr_handle *h);
 void r_init_destroy(struct ccnr_handle **);
-extern const char *ccnr_usage_message;
 #endif
 
 #define PUBLIC
