@@ -137,6 +137,7 @@ struct ccnr_handle {
     unsigned short seed[3];         /**< for PRNG */
     int running;                    /**< true while should be running */
     int debug;                      /**< For controlling debug output */
+    int syncdebug;                  /**< For controlling debug output from sync */
     ccnr_logger logger;             /**< For debug output */
     void *loggerdata;               /**< Passed to logger */
     int logbreak;                   /**< see ccn_msg() */

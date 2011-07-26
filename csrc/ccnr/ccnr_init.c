@@ -71,6 +71,25 @@
 
 static int load_policy(struct ccnr_handle *h, struct ccnr_parsed_policy *pp);
 
+static int
+r_init_debug_getenv(struct ccnr_handle *h, const char *envname)
+{
+    const char *debugstr;
+    int debugval;
+    
+    debugstr = getenv(envname);
+    debugval = ccnr_msg_level_from_string(debugstr);
+    /* Treat 1 and negative specially, for some backward compatibility. */
+    if (debugval == 1)
+        debugval = CCNL_WARNING;
+    if (debugval < 0) {
+        debugval = CCNL_FINEST;
+        if (h != NULL)
+            ccnr_msg(h, "%s='%s' is not valid, using FINEST", envname, debugstr);
+    }
+    return(debugval);
+}
+
 /**
  * Start a new ccnr instance
  * @param progname - name of program binary, used for locating helpers
@@ -82,15 +101,12 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
 {
     char *sockname;
     const char *portstr;
-    const char *debugstr;
-    int debugval;
     const char *listen_on;
     struct ccnr_handle *h;
     struct hashtb_param param = {0};
     struct ccn_charbuf *cb;
     struct ccn_charbuf *basename;
     struct ccnr_parsed_policy *pp = NULL;
-    char numbuf[12];
     
     sockname = r_net_get_local_sockname();
     h = calloc(1, sizeof(*h));
@@ -127,24 +143,9 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->starttime_usec = h->usec;
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
-    debugstr = getenv("CCNR_DEBUG");
-    h->debug = ccnr_msg_level_from_string(debugstr);
-    /* Treat 1 and negative specially, for some backward compatibility. */
-    if (h->debug == 1)
-        h->debug = CCNL_WARNING;
-    if (h->debug < 0) {
-        h->debug = CCNL_FINEST;
-        ccnr_msg(h, "CCNR_DEBUG='%s' is not valid, using FINEST", debugstr);
-    }
-    /* ugh. */
-    debugstr = getenv("SYNC_DEBUG");
-    debugval = ccnr_msg_level_from_string(debugstr);
-    if (debugval == 1)
-        debugval = CCNL_WARNING;
-    if (debugval < 0)
-        debugval = CCNL_FINEST;
-    snprintf(numbuf, sizeof(numbuf), "%d", debugval);
-    setenv("SYNC_DEBUG", numbuf, 1);
+    h->debug = 1; /* so that we see any complaints */
+    h->debug = r_init_debug_getenv(h, "CCNR_DEBUG");
+    h->syncdebug = r_init_debug_getenv(h, "SYNC_DEBUG");
     portstr = getenv("CCNR_STATUS_PORT");
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "";
