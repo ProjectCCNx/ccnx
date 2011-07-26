@@ -1192,27 +1192,33 @@ public class CCNNetworkManager implements Runnable {
 				synchronized (_registeredPrefixes) {
 					RegisteredPrefix prefix = getRegisteredPrefix(filter);
 					if (null != prefix) {
-						synchronized (prefix) {
-							if (prefix._refCount <= 1) {
-								ForwardingEntry entry = prefix._forwarding;
-								// Since we are piggybacking registration entries we can legitimately have a "last" registration entry on a prefix that had
-								// been piggybacked on a higher registration earlier so the entries name would not match the filter.
-								//
-								//if (!entry.getPrefixName().equals(filter)) {
-								//	Log.severe(Log.FAC_NETMANAGER, "cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
-								//}
-								try {
+						if (prefix._refCount <= 1) {
+							// Since we are piggybacking registration entries we can legitimately have a "last" registration entry on a prefix that had
+							// been piggybacked on a higher registration earlier so the entries name would not match the filter.
+							//
+							//if (!entry.getPrefixName().equals(filter)) {
+							//	Log.severe(Log.FAC_NETMANAGER, "cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
+							//}
+							try {
+								while (_prefixDeregister) {
+									try {
+										_registeredPrefixes.wait();
+									} catch (InterruptedException e) {}
+								}
+								prefix = getRegisteredPrefix(filter); // reget in case already deregistered
+								if (null != prefix) {
 									if (null == _prefixMgr) {
 										_prefixMgr = new PrefixRegistrationManager(this);
 									}
 									_prefixDeregister = true;
+									ForwardingEntry entry = prefix._forwarding;
 									_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
-								} catch (CCNDaemonException e) {
-									Log.warning(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage()));
 								}
-							} else
-								prefix._refCount--;
-						}
+							} catch (CCNDaemonException e) {
+								Log.warning(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage()));
+							}
+						} else
+							prefix._refCount--;
 					}
 				}
 			}
