@@ -364,30 +364,6 @@ public class RepositoryServer implements CCNStatistics {
 		return toRemove;
 	}
 	
-	/**
-	 * Remove "duplicates" (i.e. prefixes which are subprefixes of another prefix in the list).
-	 * This is already sort of done in setInterestFilter but because we know the whole list we will
-	 * submit, we can do a better job.
-	 * 
-	 * @param list
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	private ArrayList<ContentName> removeDuplicates(ArrayList<ContentName> list) {
-		ArrayList<ContentName> output = (ArrayList<ContentName>)list.clone();
-		for (ContentName cn : list) {
-			for (ContentName tcn : list) {
-				if (tcn.equals(cn))
-					continue;
-				if (tcn.isPrefixOf(cn))
-					output.remove(cn);
-				if (cn.isPrefixOf(tcn))
-					output.remove(tcn);
-			}
-		}
-		return output;
-	}
-	
 	public CCNHandle getHandle() {
 		return _handle;
 	}
