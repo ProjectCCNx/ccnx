@@ -49,14 +49,75 @@ r_sync_notify_after(struct ccnr_handle *ccnr,
     ccnr->notify_after = item;
 }
 
+/**
+ * Request that a SyncNotifyContent call be made for each content object
+ *  in the repository that matches the interest.
+ *
+ * If SyncNotifyContent returns -1 the active enumeration will be cancelled.
+ *
+ * When there are no more matching objects, SyncNotifyContent will be called
+ *  passing NULL for both content_ccnb and content_comps.
+ *
+ * Content objects that arrive during an enumeration may or may not be included
+ *  in that enumeration.
+ *
+ *  @returns -1 for error, or an enumeration number which will also be passed
+ *      in the SyncNotifyContent
+ */
 PUBLIC int
 r_sync_enumerate(struct ccnr_handle *ccnr,
                  struct ccn_charbuf *interest)
 {
     int ans = -1;
+    int i;
+    int res;
+    struct ccn_indexbuf *comps = NULL;
+    struct ccn_parsed_interest parsed_interest = {0};
+    struct ccn_parsed_interest *pi = &parsed_interest;
+    struct content_entry *content = NULL;
+    
+    if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINEST))
+        ccnr_debug_ccnb(ccnr, __LINE__, "sync_enum_start", NULL,
+                        interest->buf, interest->length);
+    comps = ccn_indexbuf_create();
+    res = ccn_parse_interest(interest->buf, interest->length, pi, comps);
+    if (res < 0) {
+        ccnr_debug_ccnb(ccnr, __LINE__, "bogus r_sync_enumerate request", NULL,
+                        interest->buf, interest->length);
+        goto Bail;
+    }
+    /* 0 is for notify_after - don't allocate it here. */
+    for (i = 1; i < CCNR_MAX_ENUM; i++) {
+        if (ccnr->active_enum[i] == 0) {
+            ans = i;
+            ccnr->active_enum[ans] = ~(ccn_accession_t)0; /* for no-match case */
+            break;
+        }
+    }
+    if (ans < 0) {
+        if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_WARNING))
+            ccnr_msg(ccnr, "sync_enum - Too many active enumerations!", ans);
+        goto Bail;
+    }
+    content = r_store_find_first_match_candidate(ccnr, interest->buf, pi);
+    if (content != NULL) {
+        if (!ccn_content_matches_interest(content->key, content->size,
+             0, NULL, interest->buf, interest->length, pi)) {
+            content = NULL;
+        }
+        else {
+            if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINEST))
+                ccnr_msg(ccnr, "sync_enum %ju", (uintmax_t)content->accession);
+            ccnr->active_enum[ans] = content->accession;
+        }
+    }
+    
+Bail:
+    ccn_indexbuf_destroy(&comps);
+    if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINEST))
+        ccnr_msg(ccnr, "sync_enum %d", ans);
     return(ans);
 }
-
 
 PUBLIC int
 r_sync_lookup(struct ccnr_handle *ccnr,

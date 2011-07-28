@@ -81,6 +81,11 @@ typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 #define LM_128    128
 
 /**
+ * Limit on how many active sync enumerations we are willing to have going.
+ */
+#define CCNR_MAX_ENUM 4
+
+/**
  * We pass this handle almost everywhere within ccnr
  */
 struct ccnr_handle {
@@ -162,7 +167,8 @@ struct ccnr_handle {
                                     /**< pluggable nonce generation */
     /* items related to sync/repo integration */
     struct SyncBaseStruct *sync_handle;  /**< handle to pass to the sync code */
-    ccn_accession_t notify_after;             /**< starting item number for notifying sync */
+    ccn_accession_t notify_after;  /**< starting item number for notifying sync */
+    ccn_accession_t active_enum[CCNR_MAX_ENUM]; /**< active sync eumerations */
 };
 
 struct content_queue {
