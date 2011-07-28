@@ -26,10 +26,8 @@ import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -55,7 +53,6 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.WirePacket;
-
 
 /**
  * The low level interface to ccnd. Connects to a ccnd. For UDP it must maintain the connection by 
@@ -115,8 +112,7 @@ public class CCNNetworkManager implements Runnable {
 	 * Static singleton.
 	 */
 	protected Thread _thread = null; // the main processing thread
-	protected ThreadPoolExecutor _threadpool = null; // pool service for callback threads
-
+	
 	protected CCNNetworkChannel _channel = null; // for use by run thread only!
 	protected boolean _run = true;
 
@@ -359,74 +355,24 @@ public class CCNNetworkManager implements Runnable {
 	 *	subclass to call listener callback without holding any library locks,
 	 *	yet avoid delivery to a cancelled listener.
 	 */
-	protected abstract class ListenerRegistration implements Runnable {
+	protected abstract class ListenerRegistration {
 		protected Object listener;
 		protected CCNNetworkManager manager;
 		public Semaphore sema = null;	//used to block thread waiting for data or null if none
 		public Object owner = null;
-		protected boolean deliveryPending = false;
-		protected long id;
 
 		public abstract void deliver();
-
-		/**
-		 * This is called when removing interest or content handlers. It's purpose
-		 * is to insure that once the remove call begins it completes atomically without more 
-		 * handlers being triggered. Note that there is still not full atomicity here
-		 * because a dispatch to handler might be in progress and we don't hold locks 
-		 * throughout the dispatch to avoid deadlocks.
-		 */
-		public void invalidate() {
-			// There may be a pending delivery in progress, and it doesn't 
-			// happen while holding this lock because that would give the 
-			// application callback code power to block library processing.
-			// Instead, we use a flag that is checked and set under this lock
-			// to be sure that on exit from invalidate() there will be.
-			// Back off to avoid livelock  
-			for (int i = 0; true; i = (2 * i + 1) & 63) {
-				synchronized (this) {
-					// Make invalid, this will prevent any new delivery that comes
-					// along from doing anything.
-					this.listener = null;
-					this.sema = null;
-					// Return only if no delivery is in progress now (or if we are
-					// called out of our own handler)
-					if (!deliveryPending || (Thread.currentThread().getId() == id)) {
-						return;
-					}
-				}
-				if (i == 0) {
-					Thread.yield();
-				} else {
-					if (i > 3) Log.finer(Log.FAC_NETMANAGER, "invalidate spin {0}", i);
-					try {
-						Thread.sleep(i);
-					} catch (InterruptedException e) {
-					}
-				}
-			}
-		}
 
 		/**
 		 * Calls the client handler
 		 */
 		public void run() {
-			id = Thread.currentThread().getId();
-			synchronized (this) {
-				// Mark us pending delivery, so that any invalidate() that comes 
-				// along will not return until delivery has finished
-				this.deliveryPending = true;
-			}
 			try {
 				// Delivery may synchronize on this object to access data structures
 				// but should hold no locks when calling the listener
 				deliver();
 			} catch (Exception ex) {
 				Log.warning(Log.FAC_NETMANAGER, "failed delivery: {0}", ex);
-			} finally {
-				synchronized(this) {
-					this.deliveryPending = false;
-				}
 			}
 		}
 
@@ -538,11 +484,6 @@ public class CCNNetworkManager implements Runnable {
 						if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 							Log.finer(Log.FAC_NETMANAGER, "Interest callback (" + pending + " data) for: {0}", this.interest.name());
 
-						synchronized (this) {
-							// DKS -- dynamic interests, unregister the interest here and express new one if we have one
-							// previous interest is final, can't update it
-							this.deliveryPending = false;
-						}
 						manager.unregisterInterest(this);
 
 						// paul r. note - contract says interest will be gone after the call into user's code.
@@ -600,18 +541,6 @@ public class CCNNetworkManager implements Runnable {
 			}
 		}
 
-		/**
-		 * Start a thread to deliver data to a registered handler
-		 */
-		public void run() {
-			synchronized (this) {
-				// For now only one piece of data may be delivered per InterestRegistration
-				// This might change when "pipelining" is implemented
-				if (deliveryPending)
-					return;
-			}
-			super.run();
-		}
 	} /* protected class InterestRegistration extends ListenerRegistration */
 
 	/**
@@ -791,10 +720,7 @@ public class CCNNetworkManager implements Runnable {
 		_ccndId = null;
 		_channel.open();
 		
-		// Create callback threadpool and main processing thread
-		_threadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
-		_threadpool.setKeepAliveTime(THREAD_LIFE, TimeUnit.SECONDS);
-		_threadpool.setMaximumPoolSize(SystemConfiguration.MAX_DISPATCH_THREADS);
+		// Create main processing thread
 		_thread = new Thread(this, "CCNNetworkManager " + _managerId);
 		_thread.start();
 	}
@@ -1185,8 +1111,6 @@ public class CCNNetworkManager implements Runnable {
 			found = _myFilters.remove(filter, newOne);
 		}
 		if (null != found) {
-			Filter thisOne = found.value();
-			thisOne.invalidate();
 			if (_usePrefixReg) {
 				// Deregister it with ccnd only if the refCount would go to 0
 				synchronized (_registeredPrefixes) {
@@ -1319,9 +1243,7 @@ public class CCNNetworkManager implements Runnable {
 		setupTimers();
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 			Log.finest(Log.FAC_NETMANAGER, formatMessage("registerInterest for {0}, and obj is " + _myInterests.hashCode()), reg.interest.name());
-		synchronized (_myInterests) {
-			_myInterests.add(reg.interest, reg);
-		}
+		_myInterests.add(reg.interest, reg);
 		return reg;
 	}
 
@@ -1337,12 +1259,7 @@ public class CCNNetworkManager implements Runnable {
 	 * "myInterests" held.  Therefore it can't be called when holding the lock for "reg".
 	 */
 	private void unregisterInterest(InterestRegistration reg) {
-		synchronized (_myInterests) {
-			Entry<InterestRegistration> found = _myInterests.remove(reg.interest, reg);
-			if (null != found) {
-				found.value().invalidate();
-			}
-		}		
+		_myInterests.remove(reg.interest, reg);
 	}
 
 	/**
@@ -1396,7 +1313,6 @@ public class CCNNetworkManager implements Runnable {
 			}
 		}
 
-		_threadpool.shutdown();
 		Log.info(Log.FAC_NETMANAGER, formatMessage("Shutdown complete for port: " + _port));
 	}
 
@@ -1415,7 +1331,7 @@ public class CCNNetworkManager implements Runnable {
 						Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), ireg.interest);
 					if (filter.add(ireg.interest)) {
 						try {
-							_threadpool.execute(filter);
+							filter.deliver();
 						} catch (RejectedExecutionException ree) {
 							// TODO - we should probably do something smarter here
 							Log.severe(Log.FAC_NETMANAGER, formatMessage("Dispatch thread overflow!!"));
@@ -1433,17 +1349,15 @@ public class CCNNetworkManager implements Runnable {
 	protected void deliverData(ContentObject co) {
 		_stats.increment(StatsEnum.DeliverContent);
 
-		synchronized (_myInterests) {
-			for (InterestRegistration ireg : _myInterests.getValues(co)) {
-				if (ireg.add(co)) { // this is a copy of the data
-					_stats.increment(StatsEnum.DeliverContentMatchingInterests);
-					try {
-						_threadpool.execute(ireg);
-					} catch (RejectedExecutionException ree) {
-						// TODO - we should probably do something smarter here
-						Log.severe(Log.FAC_NETMANAGER, formatMessage("Dispatch thread overflow!!"));
-					}				
-				}
+		for (InterestRegistration ireg : _myInterests.getValues(co)) {
+			if (ireg.add(co)) { // this is a copy of the data
+				_stats.increment(StatsEnum.DeliverContentMatchingInterests);
+				try {
+					ireg.deliver();
+				} catch (RejectedExecutionException ree) {
+					// TODO - we should probably do something smarter here
+					Log.severe(Log.FAC_NETMANAGER, formatMessage("Dispatch thread overflow!!"));
+				}				
 			}
 		}
 	}
