@@ -193,7 +193,7 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
 
 PUBLIC int
 r_sync_local_store(struct ccnr_handle *ccnr,
-				   struct ccn_charbuf *content_cb)
+                   struct ccn_charbuf *content_cb)
 {
     struct content_entry *content = NULL;
     

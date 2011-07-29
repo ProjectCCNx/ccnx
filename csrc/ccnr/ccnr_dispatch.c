@@ -481,13 +481,13 @@ process_input(struct ccnr_handle *h, int fd)
         memset(d, 0, sizeof(*d));
     buf = ccn_charbuf_reserve(fdholder->inbuf, 8800);
     memset(&sstor, 0, sizeof(sstor));
-	if ((fdholder->flags & CCNR_FACE_SOCKMASK) != 0) {
-		res = recvfrom(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length,
+    if ((fdholder->flags & CCNR_FACE_SOCKMASK) != 0) {
+        res = recvfrom(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length,
             /* flags */ 0, addr, &addrlen);
-	}
-	else {
-		res = read(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length);
-	}
+    }
+    else {
+        res = read(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length);
+    }
     if (res == -1)
         ccnr_msg(h, "read %u :%s (errno = %d)",
                     fdholder->filedesc, strerror(errno), errno);

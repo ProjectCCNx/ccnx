@@ -211,12 +211,12 @@ struct fdholder {
     unsigned filedesc;            /**< internal fdholder id */
     unsigned recvcount;         /**< for activity level monitoring */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
-    struct ccn_charbuf *inbuf;	/** Buffered input data */
+    struct ccn_charbuf *inbuf;  /** Buffered input data */
     struct ccn_skeleton_decoder decoder;
-    size_t outbufindex;			/** Buffered output data */
+    size_t outbufindex;         /** Buffered output data */
     struct ccn_charbuf *outbuf;
-    struct ccn_charbuf *name;	/** a sockaddr or file name, depending on flags */
-	int pending_interests;
+    struct ccn_charbuf *name;   /** a sockaddr or file name, depending on flags */
+    int pending_interests;
     unsigned rrun;
     uintmax_t rseq;
     struct ccnr_meter *meter[CCNR_FACE_METER_N];
