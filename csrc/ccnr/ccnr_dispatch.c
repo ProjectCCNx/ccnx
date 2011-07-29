@@ -291,8 +291,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
             if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
                 content->flags |= CCN_CONTENT_ENTRY_STABLE;
                 if (content->accession >= h->notify_after)
-                    res = SyncNotifyContent(h->sync_handle, 0,
-                                            content->accession, cb, comps);
+                    r_sync_notify_content(h, 0, content);
             }
             else {
                 r_proto_initiate_key_fetch(h, msg, &obj, 0, content->accession);

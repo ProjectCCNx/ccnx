@@ -112,6 +112,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h = calloc(1, sizeof(*h));
     if (h == NULL)
         return(h);
+    h->notify_after = CCNR_MAX_ACCESSION;
     h->logger = logger;
     h->loggerdata = loggerdata;
     h->appnonce = &r_fwd_append_plain_nonce;

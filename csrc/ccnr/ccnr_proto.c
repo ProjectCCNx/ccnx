@@ -448,19 +448,8 @@ r_proto_expect_content(struct ccn_closure *selfp,
         ccnr_debug_ccnb(ccnr, __LINE__, "content_stored",
                         r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
                         content->key, content->size);
-        if (content->accession >= ccnr->notify_after) {
-            // XXX - ugh, content_entry doesn't have the data in exactly the format we want.  Rethink this?
-            struct ccn_indexbuf *comps = r_util_indexbuf_obtain(ccnr);
-            struct ccn_charbuf *cb = r_util_charbuf_obtain(ccnr);
-            ccn_charbuf_append(cb, content->key, content->size);
-            ccn_indexbuf_reserve(comps, content->ncomps);
-            for (i = 0; i < content->ncomps; i++)
-                ccn_indexbuf_append_element(comps, content->comps[i]);
-            res = SyncNotifyContent(ccnr->sync_handle, 0, content->accession,
-                                    cb, comps);
-            r_util_indexbuf_release(ccnr, comps);
-            r_util_charbuf_release(ccnr, cb);
-        }
+        if (content->accession >= ccnr->notify_after)
+            res = r_sync_notify_content(ccnr, 0, content);
     }
     md->tries = 0;
     segment = r_util_segment_from_component(ib, ic->buf[ic->n - 2], ic->buf[ic->n - 1]);

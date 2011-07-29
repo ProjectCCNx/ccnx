@@ -62,6 +62,7 @@ struct ccnr_parsed_policy;
 
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
+#define CCNR_MAX_ACCESSION (~(ccn_accession_t)0)
 
 typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 
@@ -145,9 +146,9 @@ struct ccnr_handle {
     int syncdebug;                  /**< For controlling debug output from sync */
     ccnr_logger logger;             /**< For debug output */
     void *loggerdata;               /**< Passed to logger */
-    int logbreak;                   /**< see ccn_msg() */
-    unsigned long logtime;          /**< see ccn_msg() */
-    int logpid;                     /**< see ccn_msg() */
+    int logbreak;                   /**< see ccnr_msg() */
+    unsigned long logtime;          /**< see ccnr_msg() */
+    int logpid;                     /**< see ccnr_msg() */
     int flood;                      /**< Internal control for auto-reg */
     unsigned interest_faceid;       /**< for self_reg internal client */
     const char *progname;           /**< our name, for locating helpers */
