@@ -78,7 +78,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	protected Integer _answerOriginKind = null;
 	protected Integer _scope;
-	protected byte[] _interestLifetime;		// For now we don't have the ability to set an interest lifetime
+	protected byte[] _interestLifetime = null;		// For now we don't have the ability to set an interest lifetime
 	protected byte[] _nonce;
 
 	public long userTime;
@@ -135,6 +135,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public Integer childSelector() { return _childSelector;}
 	public void childSelector(int childSelector) { _childSelector = childSelector; }
+	
+	public byte[] interestLifetime() { return _interestLifetime;}
+	public void interestLifetime(byte[] interestLifetime) { _interestLifetime = interestLifetime; }
 	
 	public Integer answerOriginKind() { 
 		if (null == _answerOriginKind) {
@@ -619,6 +622,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		result = prime * result
 				+ ((_publisher == null) ? 0 : _publisher.hashCode());
 		result = prime * result + ((_scope == null) ? 0 : _scope.hashCode());
+		result = prime * result + Arrays.hashCode(_interestLifetime);
 		result = prime * result + Arrays.hashCode(_nonce);
 		return result;
 	}
@@ -708,7 +712,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (null != _answerOriginKind)
 			clone.answerOriginKind(answerOriginKind());
 		if (null != _interestLifetime)
-			clone.answerOriginKind(answerOriginKind());
+			clone.interestLifetime(interestLifetime());
 		if (null != _scope)
 			clone.scope(scope());
 		return clone;
