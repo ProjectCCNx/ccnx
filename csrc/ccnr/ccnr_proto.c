@@ -404,6 +404,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
             free(md);
             md = NULL;
         }
+        free(selfp);
         return(CCN_UPCALL_RESULT_OK);
     }
     if (md == NULL) {
