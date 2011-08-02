@@ -62,6 +62,7 @@ public class CCNProtocolDTags {
 	public static final int Bloom = 44;
 	public static final int BloomSeed = 45;
 	public static final int AnswerOriginKind = 47;
+	public static final int InterestLifetime = 48;
 	public static final int Witness = 53;
 	public static final int SignatureBits = 54;
 	public static final int DigestAlgorithm = 55;
@@ -123,7 +124,6 @@ public class CCNProtocolDTags {
 	public static final int StatusResponse = 112;
 	public static final int StatusCode = 113;
 	public static final int StatusText = 114;
-	public static final int InterestLifetime = 115;
 	// Remember to keep in sync with schema/tagnames.csvsdict 
 	public static final int CCNProtocolDataUnit = 17702112;
 	public static final String CCNPROTOCOL_DATA_UNIT = "CCNProtocolDataUnit";
@@ -136,7 +136,7 @@ public class CCNProtocolDTags {
 		"Interest", "Key", "KeyLocator", "KeyName", "Length", "Link", "LinkAuthenticator",
 		"NameComponentCount", null, null, "RootDigest", "Signature", "Start", "Timestamp", "Type",
 		"Nonce", "Scope", "Exclude", "Bloom", "BloomSeed", null, "AnswerOriginKind", 
-		null, null, null, null, null, "Witness", "SignatureBits", "DigestAlgorithm", "BlockSize",
+		"InterestLifetime", null, null, null, null, "Witness", "SignatureBits", "DigestAlgorithm", "BlockSize",
 		null, "FreshnessSeconds", "FinalBlockID", "PublisherPublicKeyDigest", "PublisherCertificateDigest",
 		"PublisherIssuerKeyDigest", "PublisherIssuerCertificateDigest", "ContentObject",
 		"WrappedKey", "WrappingKeyIdentifier", "WrapAlgorithm", "KeyAlgorithm", "Label",
@@ -149,7 +149,7 @@ public class CCNProtocolDTags {
 		"ACL", "ParameterizedName", "Prefix", "Suffix", "Root", "ProfileName", "Parameters",
 		"InfoString", null,
         
-        "StatusResponse", "StatusCode", "StatusText", "InterestLifetime"};
+        "StatusResponse", "StatusCode", "StatusText"};
 	protected static final int TAG_MAP_LENGTH = _tagToStringMap.length;
 
 	

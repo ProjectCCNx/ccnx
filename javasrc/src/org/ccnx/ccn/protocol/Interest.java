@@ -508,13 +508,13 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (decoder.peekStartElement(CCNProtocolDTags.Scope)) {
 			_scope = decoder.readIntegerElement(CCNProtocolDTags.Scope);
 		}
+
+		if (decoder.peekStartElement(CCNProtocolDTags.InterestLifetime)) {
+			_interestLifetime = decoder.readBinaryElement(CCNProtocolDTags.InterestLifetime);
+		}
 		
 		if (decoder.peekStartElement(CCNProtocolDTags.Nonce)) {
 			_nonce = decoder.readBinaryElement(CCNProtocolDTags.Nonce);
-		}
-		
-		if (decoder.peekStartElement(CCNProtocolDTags.InterestLifetime)) {
-			_interestLifetime = decoder.readBinaryElement(CCNProtocolDTags.InterestLifetime);
 		}
 		
 		try {

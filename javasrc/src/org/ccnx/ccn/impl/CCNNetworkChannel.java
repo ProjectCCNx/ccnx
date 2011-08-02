@@ -88,7 +88,7 @@ public class CCNNetworkChannel extends InputStream {
 	// The following lines can be uncommented to help with debugging (i.e. you can't easily look at
 	// what's in the buffer when an allocateDirect is done.
 	// TODO - this should be under the control of a debugging flag instead
-	//private byte[] buffer = new byte[MAX_PAYLOAD];
+	//private byte[] buffer = new byte[CCNNetworkManager.MAX_PAYLOAD];
 	//protected ByteBuffer _datagram = ByteBuffer.wrap(buffer);
 	private int _mark = -1;
 	private int _readLimit = 0;
