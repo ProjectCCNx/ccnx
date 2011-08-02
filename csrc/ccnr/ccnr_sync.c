@@ -206,6 +206,14 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
     if (res < 0) {
         ccnr_debug_ccnb(ccnr, __LINE__, "bogus r_sync_enumerate request", NULL,
                         interest->buf, interest->length);
+        if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINEST)) {
+            struct ccn_charbuf *temp = ccn_charbuf_create();
+            ccn_charbuf_putf(temp, "interest_dump ");
+            for (i = 0; i < interest->length; i++)
+                ccn_charbuf_putf(temp, "%02X", interest->buf[i]);
+            ccnr_msg(ccnr, ccn_charbuf_as_string(temp));
+            ccn_charbuf_destroy(&temp);
+        }
         goto Bail;
     }
     /* 0 is for notify_after - don't allocate it here. */
