@@ -59,29 +59,36 @@ PUBLIC int
 r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *content)
 {
     int res;
+    uintmax_t acc = 0;
     
     if (content == NULL) {
         res = SyncNotifyContent(ccnr->sync_handle, e, 0, NULL, NULL);
         if (res != -1)
             ccnr_msg(ccnr, "errrrrr - expected -1 result from SyncNotifyContent(..., %d, 0, NULL, NULL), but got %d",
-                    e, res);
+                     e, res);
     }
     else {
         // XXX - ugh, content_entry doesn't have the data in exactly the format we want.
         struct ccn_indexbuf *comps = r_util_indexbuf_obtain(ccnr);
         struct ccn_charbuf *cb = r_util_charbuf_obtain(ccnr);
         int i;
+        acc = content->accession;
         ccn_charbuf_append(cb, content->key, content->size);
         ccn_indexbuf_reserve(comps, content->ncomps);
         for (i = 0; i < content->ncomps; i++)
             ccn_indexbuf_append_element(comps, content->comps[i]);
         // XXX - SyncNotifyContent apparently depends on having the complete name.
         // this is what we have at the moment, but that will change.
+        if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
+            ccnr_debug_ccnb(ccnr, __LINE__, "r_sync_notify_content", NULL, cb->buf, cb->length);
         res = SyncNotifyContent(ccnr->sync_handle, e, content->accession,
                                 cb, comps);
         r_util_indexbuf_release(ccnr, comps);
         r_util_charbuf_release(ccnr, cb);
     }
+    if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
+        ccnr_msg(ccnr, "SyncNotifyContent(..., %d, %ju, ...) returned %d",
+                 e, acc, res);
     if (e == 0 && res == -1)
         r_sync_notify_after(ccnr, CCNR_MAX_ACCESSION);
     return(res);
@@ -103,7 +110,11 @@ static struct sync_enumeration_state *
 cleanup_se(struct ccnr_handle *ccnr, struct sync_enumeration_state *md)
 {
     if (md != NULL && md->magic == se_cookie) {
-        ccnr->active_enum[md->index] = 0;
+        int i = md->index;
+        if (CCNSHOULDLOG(ccnr, cleanup_se, CCNL_FINEST))
+            ccnr_msg(ccnr, "sync_enum_cleanup %d", i);
+        if (0 < i && i < CCNR_MAX_ENUM)
+            ccnr->active_enum[i] = 0;
         ccn_indexbuf_destroy(&md->comps);
         ccn_charbuf_destroy(&md->interest);
         free(md);
@@ -135,20 +146,21 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
     }
     
     pi = &md->parsed_interest;
+    interest = md->interest;
+    comps = md->comps;
     
     content = r_store_content_from_accession(ccnr, ccnr->active_enum[md->index]);
     for (try = 0, matches = 0; content != NULL; try++) {
         if (ccn_content_matches_interest(content->key,
                                          content->size,
                                          0, NULL, interest->buf, interest->length, pi)) {
-            if (CCNSHOULDLOG(ccnr, LM_8, CCNL_INFO))
-                ccnr_debug_ccnb(ccnr, __LINE__, "sync_enumerate_match", NULL,
-                                content->key,
-                                content->size);
-            
             res = r_sync_notify_content(ccnr, md->index, content);
             matches++;
             if (res == -1) {
+                if (CCNSHOULDLOG(ccnr, r_sync_enumerate_action, CCNL_FINEST))
+                    ccnr_debug_ccnb(ccnr, __LINE__, "r_sync_enumerate_action", NULL,
+                                    content->key,
+                                    content->size);
                 ev->evdata = cleanup_se(ccnr, md);
                 return(0);
             }
@@ -160,8 +172,8 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
             content = NULL;
         if (content != NULL) {
             ccnr->active_enum[md->index] = content->accession;
-            if (matches >= 8 || try > 100) { // XXX - this numbers need tuning
-                return(200);
+            if (matches >= 8 || try >= 200) { // XXX - these numbers need tuning
+                return(300);
             }
         }
     }
@@ -235,7 +247,8 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
                content, interest->buf, comps, comps->n - 1)) {
             ccnr->active_enum[ans] = content->accession;
             if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINEST))
-                ccnr_msg(ccnr, "sync_enum %ju", (uintmax_t)content->accession);
+                ccnr_msg(ccnr, "sync_enum id=%d starting accession=%ju",
+                         ans, (uintmax_t)content->accession);
         }
     }
     
@@ -243,6 +256,7 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
     md = calloc(1, sizeof(*md));
     if (md == NULL) { ccnr->active_enum[ans] = 0; ans = -1; goto Bail; }
     md->magic = se_cookie;
+    md->index = ans;
     md->interest = ccn_charbuf_create();
     if (md->interest == NULL) goto Bail;
     ccn_charbuf_append(md->interest, interest->buf, interest->length);
@@ -252,18 +266,13 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
 
     /* All the upcalls happen in r_sync_enumerate_action. */
     
-    ccn_schedule_event(ccnr->sched, 123, r_sync_enumerate_action, md, 0);
+    if (NULL != ccn_schedule_event(ccnr->sched, 123, r_sync_enumerate_action, md, 0))
+        md = NULL;
     
 Bail:
     if (md != NULL) {
-        if (0 < ans && ans < CCNR_MAX_ENUM) {
-            ccnr->active_enum[ans] = 0;
-            ans = -1;
-        }
-        ccn_indexbuf_destroy(&md->comps);
-        ccn_charbuf_destroy(&md->interest);
-        free(md);
-        md = NULL;
+        ans = -1;
+        md = cleanup_se(ccnr, md);
     }
     ccn_indexbuf_destroy(&comps);
     if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINEST))
