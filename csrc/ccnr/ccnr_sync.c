@@ -33,6 +33,8 @@
 #include <ccn/indexbuf.h>
 #include <ccn/schedule.h>
 
+#include <sync/SyncBase.h>
+
 #include "ccnr_private.h"
 
 #include "ccnr_dispatch.h"

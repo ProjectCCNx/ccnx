@@ -67,6 +67,7 @@
 #include "ccnr_sendq.h"
 #include "ccnr_stats.h"
 #include "ccnr_store.h"
+#include "ccnr_sync.h"
 #include "ccnr_util.h"
 
 static void
