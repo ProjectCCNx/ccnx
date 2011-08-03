@@ -71,11 +71,11 @@
 
 static int
 ccn_stuff_interest(struct ccnr_handle * h,
-				   struct fdholder * fdholder, struct ccn_charbuf * c);
+                   struct fdholder * fdholder, struct ccn_charbuf * c);
 static void
 ccn_append_link_stuff(struct ccnr_handle * h,
-					  struct fdholder * fdholder,
-					  struct ccn_charbuf * c);
+                      struct fdholder * fdholder,
+                      struct ccn_charbuf * c);
 
 
 PUBLIC void

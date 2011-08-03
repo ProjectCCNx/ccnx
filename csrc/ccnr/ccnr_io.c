@@ -170,11 +170,11 @@ init_face_flags(struct ccnr_handle *h, struct fdholder *fdholder, int setflags)
     const struct sockaddr *addr;
     
     if ((setflags & (CCNR_FACE_REPODATA)) != 0) {
-		fdholder->flags |= setflags;
-		return;
-	}
-	addr = (void *)fdholder->name->buf;
-	if (addr->sa_family == AF_INET6) {
+        fdholder->flags |= setflags;
+        return;
+    }
+    addr = (void *)fdholder->name->buf;
+    if (addr->sa_family == AF_INET6) {
         const struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)addr;
         fdholder->flags |= CCNR_FACE_INET6;
 #ifdef IN6_IS_ADDR_LOOPBACK
@@ -185,7 +185,7 @@ init_face_flags(struct ccnr_handle *h, struct fdholder *fdholder, int setflags)
     else if (addr->sa_family == AF_INET) {
         const struct sockaddr_in *addr4 = (struct sockaddr_in *)addr;
         const unsigned char *rawaddr;
-		rawaddr = (const unsigned char *)&addr4->sin_addr.s_addr;
+        rawaddr = (const unsigned char *)&addr4->sin_addr.s_addr;
         fdholder->flags |= CCNR_FACE_INET;
         if (rawaddr[0] == 127)
             fdholder->flags |= CCNR_FACE_LOOPBACK;
@@ -220,16 +220,16 @@ r_io_record_fd(struct ccnr_handle *h, int fd,
     if (res == -1)
         ccnr_msg(h, "fcntl: %s", strerror(errno));
     fdholder = calloc(1, sizeof(*fdholder));
-	
-	
-	if (fdholder == NULL)
+    
+    
+    if (fdholder == NULL)
         return(fdholder);
-	fdholder->name = ccn_charbuf_create();
-	if (fdholder->name == NULL)
+    fdholder->name = ccn_charbuf_create();
+    if (fdholder->name == NULL)
         abort();
-	if (who != NULL)
-		ccn_charbuf_append(fdholder->name, who, wholen);
-	fdholder->recv_fd = fd;
+    if (who != NULL)
+        ccn_charbuf_append(fdholder->name, who, wholen);
+    fdholder->recv_fd = fd;
     fdholder->filedesc = fd;
     fdholder->sendface = CCN_NOFACEID;
     init_face_flags(h, fdholder, setflags);
@@ -287,7 +287,7 @@ r_io_open_repo_data_file(struct ccnr_handle *h, const char *name, int output)
     if (fd == -1) {
         ccnr_msg(h, "open(%s): %s", ccn_charbuf_as_string(temp), strerror(errno));
         ccn_charbuf_destroy(&temp);
-		return(-1);
+        return(-1);
     }
     fdholder = r_io_record_fd(h, fd,
                             temp->buf, temp->length,
@@ -296,7 +296,7 @@ r_io_open_repo_data_file(struct ccnr_handle *h, const char *name, int output)
         close_fd(&fd);
     else
         ccnr_msg(h, "opened fd=%d file=%s", fd, ccn_charbuf_as_string(temp));
-	ccn_charbuf_destroy(&temp);
+    ccn_charbuf_destroy(&temp);
     return(fd);
 }
 
@@ -322,11 +322,11 @@ r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
     ccn_charbuf_destroy(&fdholder->outbuf);
     for (c = 0; c < CCN_CQ_N; c++)
         r_sendq_content_queue_destroy(h, &(fdholder->q[c]));
-	for (m = 0; m < CCNR_FACE_METER_N; m++)
+    for (m = 0; m < CCNR_FACE_METER_N; m++)
         ccnr_meter_destroy(&fdholder->meter[m]);
-	if (h->fdholder_by_fd[fd] != fdholder) abort();
-	h->fdholder_by_fd[fd] = NULL;
-	ccn_charbuf_destroy(&fdholder->name);
+    if (h->fdholder_by_fd[fd] != fdholder) abort();
+    h->fdholder_by_fd[fd] = NULL;
+    ccn_charbuf_destroy(&fdholder->name);
     free(fdholder);
     r_fwd_reap_needed(h, 250000);
 }
@@ -434,7 +434,7 @@ r_io_send(struct ccnr_handle *h,
     else
         res = sendto(sending_fd(h, fdholder), data, size, 0,
                      (struct sockaddr *)fdholder->name->buf,
-					 fdholder->name->length);
+                     fdholder->name->length);
     if (res > 0)
         ccnr_meter_bump(h, fdholder->meter[FM_BYTO], res);
     if (res == size)
