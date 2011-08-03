@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -31,10 +31,15 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 
-
 public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 	
-	protected GenericXMLEncodable _content = null; 
+	public interface ErrorCorrectionStrategy {
+		public void resync(XMLDecoder decoder);
+	}
+	
+	protected static ErrorCorrectionStrategy _strategy = null;
+	
+	protected GenericXMLEncodable _content = null;
 
 	public WirePacket() {
 	}; // for use by decoders
@@ -44,16 +49,23 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 	}
 	
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
-		if (decoder.peekStartElement(CCNProtocolDTags.Interest)) {
-			_content = new Interest();
-			_content.decode(decoder);
-		} else if (decoder.peekStartElement(CCNProtocolDTags.ContentObject)) {
-			_content = new ContentObject();
-			_content.decode(decoder);
-			if( Log.isLoggable(Level.FINEST) )
-				SystemConfiguration.logObject(Level.FINEST, "packetDecode", (ContentObject)_content);
+		try {
+			if (decoder.peekStartElement(CCNProtocolDTags.Interest)) {
+				_content = new Interest();
+				_content.decode(decoder);
+			} else if (decoder.peekStartElement(CCNProtocolDTags.ContentObject)) {
+				_content = new ContentObject();
+				_content.decode(decoder);
+				if( Log.isLoggable(Log.FAC_ENCODING, Level.FINEST) )
+					SystemConfiguration.logObject(Level.FINEST, "packetDecode", (ContentObject)_content);
+			}
+			Log.finest("Finished decoding wire packet.");
+		} catch (ContentDecodingException cde) {
+			Log.warning(Log.FAC_ENCODING, "Error decoding packet - attempting reset");
+			if (null != _strategy) {
+				_strategy.resync(decoder);
+			}
 		}
-		Log.finest("Finished decoding wire packet.");
 	}
 
 	@Override
@@ -96,5 +108,9 @@ public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 		if (_content instanceof ContentObject)
 			list.add((ContentObject)_content);
 		return list;
+	}
+	
+	public static void setErrorCorrectionStrategy(ErrorCorrectionStrategy strategy) {
+		_strategy = strategy;
 	}
 }

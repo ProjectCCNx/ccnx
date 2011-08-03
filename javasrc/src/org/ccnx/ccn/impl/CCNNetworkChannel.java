@@ -34,8 +34,11 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.WirePacket;
 
 /**
@@ -63,6 +66,30 @@ public class CCNNetworkChannel extends InputStream {
 	protected final int _ncPort;
 	protected final NetworkProtocol _ncProto;
 	protected final FileOutputStream _ncTapStreamIn;
+	
+	protected class TCPErrorCorrectionStrategy implements WirePacket.ErrorCorrectionStrategy {	
+		/**
+		 * Sync to next packet after an error
+		 * @throws IOException 
+		 */
+		public void resync(XMLDecoder decoder) {
+			while (true) {
+				try {
+					if (decoder.peekStartElement(CCNProtocolDTags.Interest) 
+							|| decoder.peekStartElement(CCNProtocolDTags.ContentObject)) {
+						return;
+					}
+				} catch (ContentDecodingException e) {}
+				try {
+					if (decoder.getInputStream().read() < 0)
+						return;	// EOF
+				} catch (IOException e) {
+					Log.logStackTrace(Log.FAC_NETMANAGER, Level.WARNING, e);
+					return;
+				}
+			}
+		}	
+	}
 	
 	protected int _ncLocalPort;
 	protected DatagramChannel _ncDGrmChannel = null;
@@ -169,6 +196,7 @@ public class CCNNetworkChannel extends InputStream {
 				_ncSockChannel.register(_ncWriteSelector, SelectionKey.OP_WRITE);
 				_ncLocalPort = _ncSockChannel.socket().getLocalPort();
 				//_ncSockChannel.socket().setSoLinger(true, LINGER_TIME);
+				WirePacket.setErrorCorrectionStrategy(new TCPErrorCorrectionStrategy());
 			} else {
 				throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
 			}

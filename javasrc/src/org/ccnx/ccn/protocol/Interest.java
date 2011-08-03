@@ -517,11 +517,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			_nonce = decoder.readBinaryElement(CCNProtocolDTags.Nonce);
 		}
 		
-		try {
-			decoder.readEndElement();
-		} catch (ContentDecodingException e) {
-			Log.info(Log.FAC_ENCODING, "Catching exception reading Interest end element, and moving on. Waiting for schema updates...");
-		}
+		decoder.readEndElement();
 	}
 
 	public void encode(XMLEncoder encoder) throws ContentEncodingException {
