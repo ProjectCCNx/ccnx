@@ -31,12 +31,21 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 
+/**
+ * Used to decode & encode raw packets after receiving them or before writing
+ * them to the network.
+ */
 public class WirePacket extends GenericXMLEncodable implements XMLEncodable {
 	
 	public interface ErrorCorrectionStrategy {
 		public void resync(XMLDecoder decoder);
 	}
 	
+	// Used to define protocol based recovery strategies from input errors.
+	// Note that this is a static field - it is that way to reduce overhead for the
+	// the very unlikely and unusual necessity to recover from receiving a packet 
+	// we can't handle. Currently there is only one protocol per JVM supported but if
+	// we were to support multiple protocols this would need to change.
 	protected static ErrorCorrectionStrategy _strategy = null;
 	
 	protected GenericXMLEncodable _content = null;

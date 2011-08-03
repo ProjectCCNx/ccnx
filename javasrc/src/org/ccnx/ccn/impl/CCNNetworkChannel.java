@@ -67,6 +67,12 @@ public class CCNNetworkChannel extends InputStream {
 	protected final NetworkProtocol _ncProto;
 	protected final FileOutputStream _ncTapStreamIn;
 	
+	/**
+	 * Error recover from receipt of a bad packet which can cause the read to error out in the
+	 * middle of reading the packet. For UDP we can just ignore this and skip to the next packet, but
+	 * for TCP where data is continuous we need to skip over the rest of the bad data so that we can
+	 * resync on the next good packet.
+	 */
 	protected class TCPErrorCorrectionStrategy implements WirePacket.ErrorCorrectionStrategy {	
 		/**
 		 * Sync to next packet after an error
@@ -113,7 +119,7 @@ public class CCNNetworkChannel extends InputStream {
 	// Allocate datagram buffer
 	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(CCNNetworkManager.MAX_PAYLOAD);
 	// The following lines can be uncommented to help with debugging (i.e. you can't easily look at
-	// what's in the buffer when an allocateDirect is done.
+	// what's in the buffer when an allocateDirect is done).
 	// TODO - this should be under the control of a debugging flag instead
 	//private byte[] buffer = new byte[CCNNetworkManager.MAX_PAYLOAD];
 	//protected ByteBuffer _datagram = ByteBuffer.wrap(buffer);
