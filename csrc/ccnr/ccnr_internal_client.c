@@ -511,7 +511,10 @@ Finish:
     if (res != 0)
         abort();
     memcpy(ccnr->ccnr_id, sp.pubid, sizeof(ccnr->ccnr_id));
-    ccnr->ccnr_keyid = ccn_charbuf_create();
+    if (ccnr->ccnr_keyid == NULL)
+        ccnr->ccnr_keyid = ccn_charbuf_create();
+    else
+        ccnr->ccnr_keyid->length = 0;
     ccn_charbuf_append_value(ccnr->ccnr_keyid, CCN_MARKER_CONTROL, 1);
     ccn_charbuf_append_string(ccnr->ccnr_keyid, ".M.K");
     ccn_charbuf_append_value(ccnr->ccnr_keyid, 0, 1);
