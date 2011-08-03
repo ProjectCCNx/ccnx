@@ -58,23 +58,27 @@ struct ccn_btree_node;
  *
  * Negative return values indicate errors.
  */
-typedef int (*ccn_btree_openfn)
+typedef int (*ccn_btree_io_openfn)
     (struct ccn_btree_io *, struct ccn_btree_node *);
-typedef int (*ccn_btree_readfn)
+typedef int (*ccn_btree_io_readfn)
     (struct ccn_btree_io *, struct ccn_btree_node *, unsigned);
-typedef int (*ccn_btree_writefn)
+typedef int (*ccn_btree_io_writefn)
     (struct ccn_btree_io *, struct ccn_btree_node *);
-typedef int (*ccn_btree_closefn)
+typedef int (*ccn_btree_io_closefn)
     (struct ccn_btree_io *, struct ccn_btree_node *);
+typedef int (*ccn_btree_io_destroyfn)
+    (struct ccn_btree_io **);
 
 /**
  * Holds the methods and the associated common data.
  */
 struct ccn_btree_io {
-    ccn_btree_openfn btopen;
-    ccn_btree_openfn btread;
-    ccn_btree_openfn bwrite;
-    ccn_btree_openfn btclose;
+    char clue[16]; /* unused except for debugging/logging */
+    ccn_btree_io_openfn btopen;
+    ccn_btree_io_readfn btread;
+    ccn_btree_io_writefn bwrite;
+    ccn_btree_io_closefn btclose;
+    ccn_btree_io_destroyfn btdestroy;
     void *data;
 };
 
@@ -90,5 +94,7 @@ struct ccn_btree {
     
     struct ccn_btree_io *io;
 };
+
+struct ccn_btree_io *ccn_btree_io_from_directory(const char *path);
 
 #endif

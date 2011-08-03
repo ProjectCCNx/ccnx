@@ -20,6 +20,7 @@
  * Boston, MA 02110-1301, USA.
  */
  
+#include <errno.h>
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,6 +62,7 @@ test_directory_creation(void)
     res = mkdir(ccn_charbuf_as_string(dirbuf), 0777);
     CHKSYS(res);
     printf("Created directory %s\n", ccn_charbuf_as_string(dirbuf));
+    setenv("TEST_DIRECTORY", ccn_charbuf_as_string(dirbuf), 1);
     ccn_charbuf_destroy(&dirbuf);
     return(res);
 }
@@ -69,8 +71,17 @@ int
 main(int argc, char **argv)
 {
     int res;
+    struct ccn_btree_io *io = NULL;
+    struct ccn_btree_io *io2 = NULL;
 
     res = test_directory_creation();
     CHKSYS(res);
+    io = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
+    CHKPTR(io);
+    /* Make sure the locking works */
+    io2 = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
+    FAILIF(io2 != NULL || errno != EEXIST);
+    res = io->btdestroy(&io);
+    //CHKSYS(res);
     return(0);
 }
