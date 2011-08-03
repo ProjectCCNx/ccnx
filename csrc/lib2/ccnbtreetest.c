@@ -82,6 +82,7 @@ main(int argc, char **argv)
     io2 = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
     FAILIF(io2 != NULL || errno != EEXIST);
     res = io->btdestroy(&io);
-    //CHKSYS(res);
+    CHKSYS(res);
+    FAILIF(io != NULL);
     return(0);
 }

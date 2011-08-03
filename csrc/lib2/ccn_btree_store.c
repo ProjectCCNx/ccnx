@@ -42,7 +42,7 @@ struct bts_data {
 /**
  * Create a btree storage layer from a directory.
  * 
- * In this implementationof the storage layer, each btree block is stored
+ * In this implementation of the storage layer, each btree block is stored
  * as a separate file.
  * The files are named using the decimal representation of the nodeid.
  *
@@ -101,6 +101,7 @@ ccn_btree_io_from_directory(const char *path)
         close(res);
         goto Bail;
     }
+    // XXX - is it better if we keep the lockfile open? Does it matter?
     close(res);
     /* Everything looks good. */
     ans = tans;
@@ -143,6 +144,46 @@ static int
 bts_close(struct ccn_btree_io *io, struct ccn_btree_node *node)
 {return -1;}
 
+/**
+ *  Remove the lock file, trusting that it is ours.
+ *  @returns -1 if there were errors (but it cleans up what it can).
+ */
+static int
+bts_remove_lockfile(struct ccn_btree_io *io)
+{
+    size_t sav;
+    int res;
+    struct bts_data *md = NULL;
+    
+    md = io->data;
+    sav = md->dirpath->length;
+    ccn_charbuf_putf(md->dirpath, "/.LCK");
+    res = unlink(ccn_charbuf_as_string(md->dirpath));
+    md->dirpath->length = sav;
+    return(res);
+}
+
+/**
+ *  Remove the lock file and free up resources.
+ *  @returns -1 if there were errors (but it cleans up what it can).
+ */
 static int
 bts_destroy(struct ccn_btree_io **pio)
-{return -1;}
+{
+    int res;
+    struct bts_data *md = NULL;
+
+    if (*pio == NULL)
+        return(0);
+    if ((*pio)->btdestroy != &bts_destroy)
+        abort(); /* serious caller bug */
+    res = bts_remove_lockfile(*pio);
+    md = (*pio)->data;
+    if (md->io != *pio) abort();
+    ccn_charbuf_destroy(&md->dirpath);
+    free(md);
+    (*pio)->data = NULL;
+    free(*pio);
+    *pio = NULL;
+    return(res);
+}
