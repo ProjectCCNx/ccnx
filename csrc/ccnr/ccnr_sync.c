@@ -76,9 +76,7 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
         /* This must get the full name, including digest. */
         ccn_name_init(cb);
         res = ccn_name_append_components(cb, content->key, start, end);
-        ccnr_msg(ccnr, "================= %zu %zu %d %zu",  start, end, res, cb->length);
         if (res < 0) abort();
-
         if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
             ccnr_debug_ccnb(ccnr, __LINE__, "r_sync_notify_content", NULL, cb->buf, cb->length);
         res = SyncNotifyContent(ccnr->sync_handle, e, content->accession,
