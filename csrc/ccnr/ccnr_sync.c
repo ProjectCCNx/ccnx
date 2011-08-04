@@ -62,28 +62,20 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
     uintmax_t acc = 0;
     
     if (content == NULL) {
-        res = SyncNotifyContent(ccnr->sync_handle, e, 0, NULL, NULL);
+        res = SyncNotifyContent(ccnr->sync_handle, e, 0, NULL);
         if (res != -1)
-            ccnr_msg(ccnr, "errrrrr - expected -1 result from SyncNotifyContent(..., %d, 0, NULL, NULL), but got %d",
+            ccnr_msg(ccnr, "errrrrr - expected -1 result from SyncNotifyContent(..., %d, 0, NULL), but got %d",
                      e, res);
     }
     else {
-        // XXX - ugh, content_entry doesn't have the data in exactly the format we want.
-        struct ccn_indexbuf *comps = r_util_indexbuf_obtain(ccnr);
         struct ccn_charbuf *cb = r_util_charbuf_obtain(ccnr);
-        int i;
         acc = content->accession;
+        /* This must get the full name, including digest. */
         ccn_charbuf_append(cb, content->key, content->size);
-        ccn_indexbuf_reserve(comps, content->ncomps);
-        for (i = 0; i < content->ncomps; i++)
-            ccn_indexbuf_append_element(comps, content->comps[i]);
-        // XXX - SyncNotifyContent apparently depends on having the complete name.
-        // this is what we have at the moment, but that will change.
         if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
             ccnr_debug_ccnb(ccnr, __LINE__, "r_sync_notify_content", NULL, cb->buf, cb->length);
         res = SyncNotifyContent(ccnr->sync_handle, e, content->accession,
-                                cb, comps);
-        r_util_indexbuf_release(ccnr, comps);
+                                cb);
         r_util_charbuf_release(ccnr, cb);
     }
     if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
@@ -189,7 +181,7 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
  * If SyncNotifyContent returns -1 the active enumeration will be cancelled.
  *
  * When there are no more matching objects, SyncNotifyContent will be called
- *  passing NULL for both content_ccnb and content_comps.
+ *  passing NULL for name.
  *
  * Content objects that arrive during an enumeration may or may not be included
  *  in that enumeration.
