@@ -28,13 +28,12 @@
  *    SyncNotifyContent(struct SyncBaseStruct *,
  *                      int enumeration,
  *                      ccn_accession_t item,
- *                      struct ccn_charbuf *content_ccnb,
- *                      struct ccn_indexbuf *content_comps);
+ *                      struct ccn_charbuf *name);
  * periodically while there are no un-notified objects.
  *     enumeration is 0 for "time-based" notifications, or the value passed
  *          in when the enumeration was started.   This may not end up an int.
  *     if the call is for an explicit enumeration, and there are no more
- *     objects, content_ccnb and content_comps will be NULL.
+ *     objects, name and content_comps will be NULL.
  * If SyncNotifyContent returns -1 then the active enumeration, or the
  * r_sync_notify_after() will be cancelled.
  */
