@@ -69,9 +69,16 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
     }
     else {
         struct ccn_charbuf *cb = r_util_charbuf_obtain(ccnr);
-        acc = content->accession;
+        size_t start = content->comps[0];
+        size_t end = content->comps[content->ncomps - 1];
+
+        acc = content->accession; /* for error reporting */
         /* This must get the full name, including digest. */
-        ccn_charbuf_append(cb, content->key, content->size);
+        ccn_name_init(cb);
+        res = ccn_name_append_components(cb, content->key, start, end);
+        ccnr_msg(ccnr, "================= %zu %zu %d %zu",  start, end, res, cb->length);
+        if (res < 0) abort();
+
         if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
             ccnr_debug_ccnb(ccnr, __LINE__, "r_sync_notify_content", NULL, cb->buf, cb->length);
         res = SyncNotifyContent(ccnr->sync_handle, e, content->accession,
