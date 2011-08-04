@@ -29,7 +29,13 @@ cd $(dirname "$0")
 
 # Set up PATH so the tested programs are used, rather than any that
 # might be installed.
-export PATH=.:../ccnd:../libexec:../cmd:../lib:../util:$PATH:./stubs
+X=../../../ccnx/csrc
+export PATH=.:../ccnr:../sync:$X/ccnd:$X/libexec:$X/cmd:$X/lib:$X/util:$PATH:./stubs
+type ccnd
+type ccnr
+type ccncat
+type jot
+type SyncTest
 
 # If there are any ccnds running on test ports, wait a minute and retry.
 TestBusy () {
