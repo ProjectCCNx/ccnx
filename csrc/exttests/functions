@@ -1,0 +1,74 @@
+# tests/functions
+#
+# Functions for supporting the test_* scripts
+#
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+BEFORE () {
+  : Used by testdriver for determining test order
+}
+
+AFTER () {
+  : Used by testdriver for determining test order
+}
+
+Fail () {
+  echo "***" Failing $TESTNAME - $*
+  exit 1
+}
+
+Failed () {
+  Fail Failed $*
+}
+
+SkipTest () {
+  echo "***" Skipping $TESTNAME - $*
+  exit 9
+}
+
+WithCCND () {
+  local port;
+  port=$((CCN_LOCAL_PORT_BASE+$1))
+  shift
+  CCN_LOCAL_PORT=$port "$@"
+}
+
+CheckForCCND () {
+  WithCCND $1 ccndsmoketest && return 0
+  echo "***" ccnd $1 is not ready yet ... >&2
+  return 1
+}
+
+CCNDStatus () {
+  echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv
+}
+
+ExpectLines () {
+  local file lines minimum maximum
+  lines=`wc -l < $1` || Fail
+  file=$1
+  minimum=$2
+  maximum=$3
+  shift 3
+  test $lines -ge $minimum || Fail Expecting at least $minimum lines in ${file}, got $lines $*
+  test $lines -le $maximum || Fail Expecting at most $maximum lines in ${file}, got $lines $*
+  return 0
+}
+
+GenSym () {
+  echo $1`openssl rand -base64 12 | tr '/+' '-_'`
+}
+
+RunTest () {
+  ( . settings; . functions; . $1 )
+}
