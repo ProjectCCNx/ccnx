@@ -25,7 +25,7 @@ DEBRIS =
 BROKEN_PROGRAMS = 
 CSRC = ccnr_dispatch.c ccnr_forwarding.c ccnr_init.c ccnr_internal_client.c ccnr_io.c ccnr_link.c ccnr_main.c ccnr_match.c ccnr_msg.c ccnr_net.c ccnr_proto.c ccnr_sendq.c ccnr_stats.c ccnr_store.c ccnr_sync.c ccnr_util.c
 HSRC = ccnr_private.h
-SCRIPTSRC = anttests.sh
+SCRIPTSRC = 
  
 default: $(PROGRAMS)
 
@@ -46,8 +46,6 @@ clean:
 	rm -rf *.dSYM *.gcov *.gcda *.gcno $(DEBRIS)
 
 check test: ccnr $(SCRIPTSRC)
-	@cmp ccnr ../../bin/ccnr 2>/dev/null || ( cd ../.. && make )
-	#sh anttests.sh
 	: ---------------------- :
 	:  ccnr unit tests pass  :
 	: ---------------------- :
