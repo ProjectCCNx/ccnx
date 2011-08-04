@@ -30,7 +30,7 @@ struct ccn_btree_io;
 struct ccn_btree_node;
 
 /**
- * Methods for external I/O
+ * Methods for external I/O of btree nodes.
  *
  * These are supplied by the client, and provide an abstraction
  * to hold the persistent representation of the btree.
@@ -40,21 +40,21 @@ struct ccn_btree_node;
  * system, or to some other abstraction as appropriate.
  *
  * Open should prepare for I/O to a node.  It may use the iodata slot to
- * keep track of its state.
+ * keep track of its state, and should set iodata to a non-NULL value.
  *
  * Read gets bytes from the file and places it into the buffer at the
- * corresponding position.  The parameter is a limit.  Bytes prior to
- * the clean mork do not need to be read.  The buffer should be extended,
- * if necessary, to hold the data.  Read is not responsible for updating
- * the clean mark.
+ * corresponding position.  The parameter is a limit for the max buffer size.
+ * Bytes prior to the clean mark do not need to be read.
+ * The buffer should be extended, if necessary, to hold the data.
+ * Read is not responsible for updating the clean mark.
  * 
  * Write puts bytes from the buffer into the file, and truncates the file
  * according to the buffer length.  Bytes prior to the clean mork do not
- * need to be written, since they should be the same in the bufer and the
- * file.  Read is not responsible for updating the clean mark.
+ * need to be written, since they should be the same in the buffer and the
+ * file.  Write is not responsible for updating the clean mark.
  *
- * Close is called at the obvious time.  It should free any node state and set
- * iodata to NULL.
+ * Close is called at the obvious time.  It should free any node io state and
+ * set iodata to NULL.  It should not change the other parts of the node.
  *
  * Negative return values indicate errors.
  */

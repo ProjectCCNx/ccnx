@@ -86,7 +86,7 @@ ccn_btree_io_from_directory(const char *path)
     if (res < 0) goto Bail; /* errno per calloc or snprintf */
     res = open(ccn_charbuf_as_string(temp),
                (O_RDWR | O_CREAT | O_EXCL),
-               0700);
+               0600);
     if (res == -1) {
         if (errno == EEXIST) {
             // XXX - we might be able to recover by breaking the lock if
@@ -128,13 +128,80 @@ Bail:
     return(ans);
 }
 
+struct bts_node_state {
+    struct ccn_btree_node *node;
+    int fd;
+};
+
 static int
 bts_open(struct ccn_btree_io *io, struct ccn_btree_node *node)
-{return -1;}
+{
+    struct bts_node_state *nd = NULL;
+    struct ccn_charbuf *temp = NULL;
+    struct bts_data *md = io->data;
+    int res;
+    
+    if (node->iodata != NULL || io != md->io) abort();
+    nd = calloc(1, sizeof(*nd));
+    if (nd == NULL)
+        return(-1);
+    temp = ccn_charbuf_create();
+    if (temp == NULL)
+        return(-1);
+    res = ccn_charbuf_append_charbuf(temp, md->dirpath);
+    res |= ccn_charbuf_putf(temp, "/%u", node->nodeid);
+    if (res < 0) {
+        ccn_charbuf_destroy(&temp);
+        free(nd);
+        return(-1);
+    }
+    nd->fd = open(ccn_charbuf_as_string(temp),
+               (O_RDWR | O_CREAT),
+               0640);
+    ccn_charbuf_destroy(&temp);
+    if (nd->fd == -1) {
+        free(nd);
+        return(-1);
+    }
+    nd->node = node;
+    node->iodata = nd;
+    return(nd->fd);
+}
 
 static int
 bts_read(struct ccn_btree_io *io, struct ccn_btree_node *node, unsigned limit)
-{return -1;}
+{
+    struct bts_node_state *nd = node->iodata;
+    ssize_t sres;
+    off_t offset;
+    off_t clean = 0;
+    
+    if (nd == NULL || nd->node != node || node->clean > node->buf->length) abort();
+    offset = lseek(nd->fd, 0, SEEK_END);
+    if (offset == (off_t)-1)
+        return(-1);
+    if (offset < limit)
+        limit = offset;
+    if (node->clean > 0 && node->clean <= node->buf->length)
+        clean = node->clean;
+    offset = lseek(nd->fd, clean, SEEK_SET);
+    if (offset == (off_t)-1)
+        return(-1);
+    if (offset != clean)
+        abort();
+    node->buf->length = clean;  /* we know clean <= node->buf->length */
+    sres = read(nd->fd, ccn_charbuf_reserve(node->buf, limit - clean), limit - clean);
+    if (sres < 0)
+        return(-1);
+    if (sres != limit - clean) {
+        abort(); // XXX - really should not happen unless someone else modified file
+    }
+    if (sres + node->buf->length > node->buf->limit) {
+        abort(); // oooops!
+    }
+    node->buf->length += sres;
+    return(0);
+}
 
 static int
 bts_write(struct ccn_btree_io *io, struct ccn_btree_node *node)
@@ -142,7 +209,20 @@ bts_write(struct ccn_btree_io *io, struct ccn_btree_node *node)
 
 static int
 bts_close(struct ccn_btree_io *io, struct ccn_btree_node *node)
-{return -1;}
+{
+    struct bts_node_state *nd = node->iodata;
+    int res = -1;
+    
+    if (nd != NULL && nd->node == node) {
+        res = close(nd->fd);
+        if (res == -1 && errno == EINTR)
+            return(res);
+        nd->node = NULL;
+        node->iodata = NULL;
+        free(nd);
+    }
+    return(res);
+}
 
 /**
  *  Remove the lock file, trusting that it is ours.
