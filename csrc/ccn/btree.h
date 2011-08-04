@@ -76,7 +76,7 @@ struct ccn_btree_io {
     char clue[16]; /* unused except for debugging/logging */
     ccn_btree_io_openfn btopen;
     ccn_btree_io_readfn btread;
-    ccn_btree_io_writefn bwrite;
+    ccn_btree_io_writefn btwrite;
     ccn_btree_io_closefn btclose;
     ccn_btree_io_destroyfn btdestroy;
     void *data;

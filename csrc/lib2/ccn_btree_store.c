@@ -112,7 +112,7 @@ ccn_btree_io_from_directory(const char *path)
     memcpy(ans->clue, md->dirpath->buf + md->dirpath->length - res, res);
     ans->btopen = &bts_open;
     ans->btread = &bts_read;
-    ans->bwrite = &bts_write;
+    ans->btwrite = &bts_write;
     ans->btclose = &bts_close;
     ans->btdestroy = &bts_destroy;
     ans->data = md;
@@ -176,7 +176,7 @@ bts_read(struct ccn_btree_io *io, struct ccn_btree_node *node, unsigned limit)
     off_t offset;
     off_t clean = 0;
     
-    if (nd == NULL || nd->node != node || node->clean > node->buf->length) abort();
+    if (nd == NULL || nd->node != node) abort();
     offset = lseek(nd->fd, 0, SEEK_END);
     if (offset == (off_t)-1)
         return(-1);
@@ -205,7 +205,27 @@ bts_read(struct ccn_btree_io *io, struct ccn_btree_node *node, unsigned limit)
 
 static int
 bts_write(struct ccn_btree_io *io, struct ccn_btree_node *node)
-{return -1;}
+{
+    struct bts_node_state *nd = node->iodata;
+    ssize_t sres;
+    off_t offset;
+    size_t clean = 0;
+    
+    if (nd == NULL || nd->node != node) abort();
+    if (node->clean > 0 && node->clean <= node->buf->length)
+        clean = node->clean;
+    offset = lseek(nd->fd, clean, SEEK_SET);
+    if (offset == (off_t)-1)
+        return(-1);
+    if (offset != clean)
+        abort();
+    sres = write(nd->fd, node->buf->buf + clean, node->buf->length - clean);
+    if (sres == -1)
+        return(-1);
+    if (sres + clean != node->buf->length)
+        abort();
+    return(ftruncate(nd->fd, node->buf->length));
+}
 
 static int
 bts_close(struct ccn_btree_io *io, struct ccn_btree_node *node)
