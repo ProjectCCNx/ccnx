@@ -1,0 +1,9 @@
+# This example test shows how to mark a test as long-running:
+LongTest
+# Tests like this are skipped if the user has asked for a shorter test run.
+# At present, you can get the abbreviated tests by invoking "make check" instead of "make test"
+
+# Here, we simply do a countdown:
+i=10
+while [ $i -gt 0 ]; do printf '%d ... ' $i >&2; sleep 1; i=$((i-1)); done
+echo BLAST OFF >&2

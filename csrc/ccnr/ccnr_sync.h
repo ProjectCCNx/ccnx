@@ -23,28 +23,27 @@
 #include "ccnr_private.h"
 
 /** Notify repo of starting point for new names to be passed to sync.
- * Use repo_offset = 0 as the initial value.
+ * Use item = 0 as the initial value.
  * Following a call to r_sync_notify_after, the repository will call
  *    SyncNotifyContent(struct SyncBaseStruct *,
  *                      int enumeration,
  *                      ccn_accession_t item,
- *                      struct ccn_charbuf *content_ccnb,
- *                      struct ccn_indexbuf *content_comps);
+ *                      struct ccn_charbuf *name);
  * periodically while there are no un-notified objects.
  *     enumeration is 0 for "time-based" notifications, or the value passed
  *          in when the enumeration was started.   This may not end up an int.
  *     if the call is for an explicit enumeration, and there are no more
- *     objects, content_ccnb and content_comps will be NULL.
+ *     objects, name and content_comps will be NULL.
  * If SyncNotifyContent returns -1 then the active enumeration, or the
  * r_sync_notify_after() will be cancelled.
  */
 void
 r_sync_notify_after(struct ccnr_handle *ccnr, ccn_accession_t item);
 
-/** Request that a syncNotifyContent call is made for each content object
+/** Request that a SyncNotifyContent call is made for each content object
  *  matching the interest.
  *  returns -1 for error, or an enumeration number which will also be passed
- *      in the syncNotifyContent
+ *      in the SyncNotifyContent
  */
 int
 r_sync_enumerate(struct ccnr_handle *ccnr, struct ccn_charbuf *interest);
@@ -74,5 +73,9 @@ r_sync_upcall_store(struct ccnr_handle *ccnr, enum ccn_upcall_kind kind,
 
 int
 r_sync_local_store(struct ccnr_handle *ccnr, struct ccn_charbuf *content_cb);
+
+int
+r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *content);
+
 
 #endif

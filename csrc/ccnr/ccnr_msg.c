@@ -25,6 +25,9 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -35,6 +38,41 @@
 #include "ccnr_private.h"
 
 #include "ccnr_msg.h"
+
+/*
+ * Translate a symbolic debug level into a numeric code.
+ * Also accepts valid decimal values.
+ * @returns CCNL_ code, or 1 to use built-in default, or -1 for error. 
+ */
+int
+ccnr_msg_level_from_string(const char *s)
+{
+    long v;
+    char *ep;
+    
+    if (s == NULL || s[0] == 0)
+        return(1);
+    if (0 == strcasecmp(s, "NONE"))
+        return(CCNL_NONE);
+    if (0 == strcasecmp(s, "SEVERE"))
+        return(CCNL_SEVERE);
+    if (0 == strcasecmp(s, "ERROR"))
+        return(CCNL_ERROR);
+    if (0 == strcasecmp(s, "WARNING"))
+        return(CCNL_WARNING);
+    if (0 == strcasecmp(s, "INFO"))
+        return(CCNL_INFO);
+    if (0 == strcasecmp(s, "FINE"))
+        return(CCNL_FINE);
+    if (0 == strcasecmp(s, "FINER"))
+        return(CCNL_FINER);
+    if (0 == strcasecmp(s, "FINEST"))
+        return(CCNL_FINEST);
+    v = strtol(s, &ep, 10);
+    if (v > CCNL_FINEST || v < 0 || ep[0] != 0)
+        return(-1);
+    return(v);
+}
 
 /**
  *  Produce ccnr debug output.
@@ -58,7 +96,7 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     if (b == NULL)
         return;
     gettimeofday(&t, NULL);
-    if ((h->debug & 1) &&
+    if ((h->debug >= CCNL_FINE) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
           t.tv_sec >= h->logtime + 30)) {
         portstr = h->portstr;
@@ -142,11 +180,11 @@ const char *ccnr_usage_message =
     "  arguments: none\n"
     "  environment variables:\n"
     "    CCNR_DEBUG=(debug logging level)\n"
-    "      0 - no messages\n"
-    "      3 - severe, probably fatal, errors\n"
-    "      5 - errors\n"
-    "      7 - warnings\n"
-    "      9 - debugging/tracing - get more with values up to 15\n"
+    "      NONE - no messages\n"
+    "      SEVERE - severe, probably fatal, errors\n"
+    "      ERROR - errors\n"
+    "      WARNING - warnings\n"
+    "      FINE, FINER, FINEST - debugging/tracing\n"
     "    CCNR_DIRECTORY=\n"
     "      Directory where ccnr data is kept\n"
     "      Defaults to current directory\n"
@@ -159,7 +197,7 @@ const char *ccnr_usage_message =
     "    CCNR_LISTEN_ON=\n"
     "      List of ip addresses to listen on for status; defaults to wildcard\n"
     "    SYNC_DEBUG=(debug logging level)\n"
-    "      Same values as for CCNR_DEBUG, default 7\n"
+    "      Same values as for CCNR_DEBUG, default WARNING\n"
     "    SYNC_ENABLE=\n"
     "      Disable (0) or enable (1) Sync processing, default enabled\n"
     "    SYNC_TOPO=\n"

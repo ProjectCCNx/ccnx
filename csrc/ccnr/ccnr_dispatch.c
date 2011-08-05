@@ -67,6 +67,7 @@
 #include "ccnr_sendq.h"
 #include "ccnr_stats.h"
 #include "ccnr_store.h"
+#include "ccnr_sync.h"
 #include "ccnr_util.h"
 
 static void
@@ -291,8 +292,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
             if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
                 content->flags |= CCN_CONTENT_ENTRY_STABLE;
                 if (content->accession >= h->notify_after)
-                    res = SyncNotifyContent(h->sync_handle, 0,
-                                            content->accession, cb, comps);
+                    r_sync_notify_content(h, 0, content);
             }
             else {
                 r_proto_initiate_key_fetch(h, msg, &obj, 0, content->accession);
@@ -481,13 +481,13 @@ process_input(struct ccnr_handle *h, int fd)
         memset(d, 0, sizeof(*d));
     buf = ccn_charbuf_reserve(fdholder->inbuf, 8800);
     memset(&sstor, 0, sizeof(sstor));
-	if ((fdholder->flags & CCNR_FACE_SOCKMASK) != 0) {
-		res = recvfrom(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length,
+    if ((fdholder->flags & CCNR_FACE_SOCKMASK) != 0) {
+        res = recvfrom(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length,
             /* flags */ 0, addr, &addrlen);
-	}
-	else {
-		res = read(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length);
-	}
+    }
+    else {
+        res = read(fdholder->recv_fd, buf, fdholder->inbuf->limit - fdholder->inbuf->length);
+    }
     if (res == -1)
         ccnr_msg(h, "read %u :%s (errno = %d)",
                     fdholder->filedesc, strerror(errno), errno);
@@ -566,6 +566,11 @@ r_dispatch_run(struct ccnr_handle *h)
     int prev_timeout_ms = -1;
     int usec;
     int usec_direct;
+    
+    if (h->running < 0) {
+        ccnr_msg(h, "Fatal error during initialization");
+        return;
+    }
     for (h->running = 1; h->running;) {
         r_dispatch_process_internal_client_buffer(h);
         usec = ccn_schedule_run(h->sched);

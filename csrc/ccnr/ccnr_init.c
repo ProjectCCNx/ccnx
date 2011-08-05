@@ -71,8 +71,27 @@
 
 static int load_policy(struct ccnr_handle *h, struct ccnr_parsed_policy *pp);
 
+static int
+r_init_debug_getenv(struct ccnr_handle *h, const char *envname)
+{
+    const char *debugstr;
+    int debugval;
+    
+    debugstr = getenv(envname);
+    debugval = ccnr_msg_level_from_string(debugstr);
+    /* Treat 1 and negative specially, for some backward compatibility. */
+    if (debugval == 1)
+        debugval = CCNL_WARNING;
+    if (debugval < 0) {
+        debugval = CCNL_FINEST;
+        if (h != NULL)
+            ccnr_msg(h, "%s='%s' is not valid, using FINEST", envname, debugstr);
+    }
+    return(debugval);
+}
+
 /**
- * Start a new ccnr instance
+ * Create a new ccnr instance
  * @param progname - name of program binary, used for locating helpers
  * @param logger - logger function
  * @param loggerdata - data to pass to logger function
@@ -82,7 +101,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
 {
     char *sockname;
     const char *portstr;
-    const char *debugstr;
     const char *listen_on;
     struct ccnr_handle *h;
     struct hashtb_param param = {0};
@@ -94,6 +112,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h = calloc(1, sizeof(*h));
     if (h == NULL)
         return(h);
+    h->notify_after = CCNR_MAX_ACCESSION;
     h->logger = logger;
     h->loggerdata = loggerdata;
     h->appnonce = &r_fwd_append_plain_nonce;
@@ -125,30 +144,25 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->starttime_usec = h->usec;
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
-    debugstr = getenv("CCNR_DEBUG");
-    if (debugstr != NULL && debugstr[0] != 0) {
-        h->debug = atoi(debugstr);
-        if (h->debug == 0 && debugstr[0] != '0')
-            h->debug = 1;
-    }
-    else
-        h->debug = 1;
-    /* Treat 1 and negative specially, for some backward compatibility. */
-    if (h->debug == 1)
-        h->debug = CCNL_WARNING;
-    if (h->debug < 0)
-        h->debug = CCNL_FINEST;
+    h->debug = 1; /* so that we see any complaints */
+    h->debug = r_init_debug_getenv(h, "CCNR_DEBUG");
+    h->syncdebug = r_init_debug_getenv(h, "SYNC_DEBUG");
+    h->directory = getenv("CCNR_DIRECTORY");
+    if (h->directory == NULL || h->directory[0] == 0)
+        h->directory = ".";
     portstr = getenv("CCNR_STATUS_PORT");
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "";
     h->portstr = portstr;
-    ccnr_msg(h, "CCNR_DEBUG=%d CCNR_STATUS_PORT=%s", h->debug, h->portstr);
+    ccnr_msg(h, "CCNR_DEBUG=%d CCNR_DIRECTORY=%s CCNR_STATUS_PORT=%s", h->debug, h->directory, h->portstr);
     listen_on = getenv("CCNR_LISTEN_ON");
     if (listen_on != NULL && listen_on[0] != 0)
         ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
     h->appnonce = &r_fwd_append_debug_nonce;
-    if (ccnr_init_repo_keystore(h, h->internal_client) < 0) {
-        /* XXX - need to bail if keystore is not OK. */
+     
+    if (ccnr_init_repo_keystore(h, NULL) < 0) {
+        h->running = -1;
+        goto Bail;
     }
     r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
     h->active_out_fd = r_io_open_repo_data_file(h, "repoFile1", 1); /* output */
@@ -194,6 +208,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     r_proto_init(h);
     r_proto_activate_policy(h, pp);
     SyncInit(h->sync_handle);
+Bail:
     free(sockname);
     sockname = NULL;
     return(h);
@@ -321,7 +336,8 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
                 ccnr_msg(ccnr, "Malformed policy");
                 abort();
             }
-        } else {
+        }
+        else {
             struct ccn_charbuf *policy = ccn_charbuf_create();
             struct ccn_charbuf *policy_cob;
             struct ccn_charbuf *basename = ccn_charbuf_create();

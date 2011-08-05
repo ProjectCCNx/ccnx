@@ -245,7 +245,7 @@ collect_faces_html(struct ccnr_handle *h, struct ccn_charbuf *b)
                 ccn_charbuf_putf(b, " <b>activity:</b> %d",
                                  fdholder->recvcount);
             nodebuf->length = 0;
-			port = 0;
+            port = 0;
 #if 0
 // XXX - fix for fdholder->name
             port = ccn_charbuf_append_sockaddr(nodebuf, fdholder->addr);
@@ -466,7 +466,7 @@ collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
             ccn_charbuf_putf(b, "<recvcount>%d</recvcount>",
                              fdholder->recvcount);
             nodebuf->length = 0;
-			port = 0;
+            port = 0;
 #if 0
 // XXX - fix this to know about fdholder->name
             port = ccn_charbuf_append_sockaddr(nodebuf, fdholder->addr);

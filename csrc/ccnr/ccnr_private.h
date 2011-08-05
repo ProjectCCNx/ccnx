@@ -62,6 +62,7 @@ struct ccnr_parsed_policy;
 
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
+#define CCNR_MAX_ACCESSION (~(ccn_accession_t)0)
 
 typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 
@@ -79,6 +80,11 @@ typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 #define LM_32    32
 #define LM_64    64
 #define LM_128    128
+
+/**
+ * Limit on how many active sync enumerations we are willing to have going.
+ */
+#define CCNR_MAX_ENUM 4
 
 /**
  * We pass this handle almost everywhere within ccnr
@@ -137,11 +143,12 @@ struct ccnr_handle {
     unsigned short seed[3];         /**< for PRNG */
     int running;                    /**< true while should be running */
     int debug;                      /**< For controlling debug output */
+    int syncdebug;                  /**< For controlling debug output from sync */
     ccnr_logger logger;             /**< For debug output */
     void *loggerdata;               /**< Passed to logger */
-    int logbreak;                   /**< see ccn_msg() */
-    unsigned long logtime;          /**< see ccn_msg() */
-    int logpid;                     /**< see ccn_msg() */
+    int logbreak;                   /**< see ccnr_msg() */
+    unsigned long logtime;          /**< see ccnr_msg() */
+    int logpid;                     /**< see ccnr_msg() */
     int flood;                      /**< Internal control for auto-reg */
     unsigned interest_faceid;       /**< for self_reg internal client */
     const char *progname;           /**< our name, for locating helpers */
@@ -161,7 +168,10 @@ struct ccnr_handle {
                                     /**< pluggable nonce generation */
     /* items related to sync/repo integration */
     struct SyncBaseStruct *sync_handle;  /**< handle to pass to the sync code */
-    ccn_accession_t notify_after;             /**< starting item number for notifying sync */
+    ccn_accession_t notify_after;  /**< starting item number for notifying sync */
+    ccn_accession_t active_enum[CCNR_MAX_ENUM]; /**< active sync enumerations */
+    
+    const char *directory;           /**< the repository directory */
 };
 
 struct content_queue {
@@ -204,12 +214,12 @@ struct fdholder {
     unsigned filedesc;            /**< internal fdholder id */
     unsigned recvcount;         /**< for activity level monitoring */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
-    struct ccn_charbuf *inbuf;	/** Buffered input data */
+    struct ccn_charbuf *inbuf;  /** Buffered input data */
     struct ccn_skeleton_decoder decoder;
-    size_t outbufindex;			/** Buffered output data */
+    size_t outbufindex;         /** Buffered output data */
     struct ccn_charbuf *outbuf;
-    struct ccn_charbuf *name;	/** a sockaddr or file name, depending on flags */
-	int pending_interests;
+    struct ccn_charbuf *name;   /** a sockaddr or file name, depending on flags */
+    int pending_interests;
     unsigned rrun;
     uintmax_t rseq;
     struct ccnr_meter *meter[CCNR_FACE_METER_N];
