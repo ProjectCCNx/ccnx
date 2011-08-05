@@ -34,8 +34,11 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
+import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.WirePacket;
 
 /**
@@ -64,6 +67,36 @@ public class CCNNetworkChannel extends InputStream {
 	protected final NetworkProtocol _ncProto;
 	protected final FileOutputStream _ncTapStreamIn;
 	
+	/**
+	 * Error recover from receipt of a bad packet which can cause the read to error out in the
+	 * middle of reading the packet. For UDP we can just ignore this and skip to the next packet, but
+	 * for TCP where data is continuous we need to skip over the rest of the bad data so that we can
+	 * resync on the next good packet.
+	 */
+	protected class TCPErrorCorrectionStrategy implements WirePacket.ErrorCorrectionStrategy {	
+		/**
+		 * Sync to next packet after an error
+		 * @throws IOException 
+		 */
+		public void resync(XMLDecoder decoder) {
+			while (true) {
+				try {
+					if (decoder.peekStartElement(CCNProtocolDTags.Interest) 
+							|| decoder.peekStartElement(CCNProtocolDTags.ContentObject)) {
+						return;
+					}
+				} catch (ContentDecodingException e) {}
+				try {
+					if (decoder.getInputStream().read() < 0)
+						return;	// EOF
+				} catch (IOException e) {
+					Log.logStackTrace(Log.FAC_NETMANAGER, Level.WARNING, e);
+					return;
+				}
+			}
+		}	
+	}
+	
 	protected int _ncLocalPort;
 	protected DatagramChannel _ncDGrmChannel = null;
 	protected SocketChannel _ncSockChannel = null;
@@ -86,9 +119,9 @@ public class CCNNetworkChannel extends InputStream {
 	// Allocate datagram buffer
 	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(CCNNetworkManager.MAX_PAYLOAD);
 	// The following lines can be uncommented to help with debugging (i.e. you can't easily look at
-	// what's in the buffer when an allocateDirect is done.
+	// what's in the buffer when an allocateDirect is done).
 	// TODO - this should be under the control of a debugging flag instead
-	//private byte[] buffer = new byte[MAX_PAYLOAD];
+	//private byte[] buffer = new byte[CCNNetworkManager.MAX_PAYLOAD];
 	//protected ByteBuffer _datagram = ByteBuffer.wrap(buffer);
 	private int _mark = -1;
 	private int _readLimit = 0;
@@ -169,6 +202,7 @@ public class CCNNetworkChannel extends InputStream {
 				_ncSockChannel.register(_ncWriteSelector, SelectionKey.OP_WRITE);
 				_ncLocalPort = _ncSockChannel.socket().getLocalPort();
 				//_ncSockChannel.socket().setSoLinger(true, LINGER_TIME);
+				WirePacket.setErrorCorrectionStrategy(new TCPErrorCorrectionStrategy());
 			} else {
 				throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
 			}
