@@ -36,6 +36,10 @@ SkipTest () {
   exit 9
 }
 
+LongTest () {
+  [ "$MAKE_TEST_TARGET" = "check" ] && SkipTest make target is \'check\'
+}
+
 WithCCND () {
   local port;
   port=$((CCN_LOCAL_PORT_BASE+$1))

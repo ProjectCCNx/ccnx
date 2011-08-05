@@ -22,6 +22,7 @@ ALLTESTS = \
   test_finished \
   test_happy_face \
   test_late \
+  test_long_example \
   test_single_ccnd \
   test_single_ccnd_teardown \
   test_single_done \
@@ -46,7 +47,7 @@ clean:
         *.out *.ccnb *pre.html *post.html *status*.html *.err
 
 check test: $(SCRIPTSRC) testdriver stubs
-	./testdriver $(TESTS)
+	MAKE_TEST_TARGET=$@ ./testdriver $(TESTS)
 	: ----------------------- :
 	:  SCRIPTED TESTS PASSED  :
 	: ----------------------- :
