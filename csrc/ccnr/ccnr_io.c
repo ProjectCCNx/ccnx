@@ -273,16 +273,11 @@ PUBLIC int
 r_io_open_repo_data_file(struct ccnr_handle *h, const char *name, int output)
 {
     struct ccn_charbuf *temp = NULL;
-    const char *dir = NULL;
     int fd;
     struct fdholder *fdholder;
 
     temp = ccn_charbuf_create();
-    dir = getenv("CCNR_DIRECTORY");
-    if (dir != NULL && dir[0] != 0)
-        ccn_charbuf_putf(temp, "%s/%s", dir, name);
-    else
-        ccn_charbuf_putf(temp, "./%s", name);
+    ccn_charbuf_putf(temp, "%s/%s", h->directory, name);
     fd = open(ccn_charbuf_as_string(temp), output ? (O_CREAT | O_WRONLY | O_APPEND) : O_RDONLY, 0666);
     if (fd == -1) {
         ccnr_msg(h, "open(%s): %s", ccn_charbuf_as_string(temp), strerror(errno));

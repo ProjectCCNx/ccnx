@@ -467,58 +467,52 @@ ccnr_uri_listen(struct ccnr_handle *ccnr, struct ccn *ccn, const char *uri,
  */
  
 int
-ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *hell)
+ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
 {
     struct ccn_charbuf *temp = NULL;
-    struct ccn_charbuf *cmd = NULL;
     struct ccn_charbuf *culprit = NULL;
     struct stat statbuf;
-    const char *dir = NULL;
     int res = -1;
     size_t save;
     char *keystore_path = NULL;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
     temp = ccn_charbuf_create();
-    cmd = ccn_charbuf_create();
-    dir = getenv("CCNR_DIRECTORY");
-    if (dir != NULL && dir[0] != 0)
-        ccn_charbuf_putf(temp, "%s/", dir);
-    else
-        ccn_charbuf_putf(temp, "./");
+    culprit = temp;
+    ccn_charbuf_putf(temp, "%s/", ccnr->directory);
     res = stat(ccn_charbuf_as_string(temp), &statbuf);
-    if (res == -1) {
-        if (res != 0) {
-            culprit = temp;
-            goto Finish;
-        }
+    if (res == -1)
+        goto Finish;
+    if ((statbuf.st_mode & S_IFDIR) == 0) {
+        res = -1;
+        errno = ENOTDIR;
+        goto Finish;
     }
     save = temp->length;
     ccn_charbuf_putf(temp, "ccnx_repository_keystore");
     keystore_path = strdup(ccn_charbuf_as_string(temp));
     res = stat(keystore_path, &statbuf);
-    if (res == 0 && hell != NULL)
-        res = ccn_load_default_key(hell, keystore_path, CCNR_KEYSTORE_PASS);
-    if (res >= 0)
+    
+    if (res == 0 && h != NULL)
+        res = ccn_load_default_key(h, keystore_path, CCNR_KEYSTORE_PASS);
+    if (res >= 0) {
+        culprit = NULL;
         goto Finish;
+    }
     /* No stored keystore that we can access. Create one if we can.*/
     res = ccn_keystore_file_init(keystore_path, CCNR_KEYSTORE_PASS, "Repository", 0, 0);
     if (res != 0) {
-        culprit = temp;
+        res = -1;
         goto Finish;
     }
-    if (CCNSHOULDLOG(ccnr, keystore, CCNL_INFO))
-        ccnr_msg(ccnr, "New repository private key stored in %s", keystore_path);
-    if (hell != NULL)
-        res = ccn_load_default_key(hell, keystore_path, CCNR_KEYSTORE_PASS);
+    if (CCNSHOULDLOG(ccnr, keystore, CCNL_WARNING))
+        ccnr_msg(ccnr, "New repository private key saved in %s", keystore_path);
+    if (h != NULL)
+        res = ccn_load_default_key(h, keystore_path, CCNR_KEYSTORE_PASS);
 Finish:
-    if (culprit != NULL) {
-        ccnr_msg(ccnr, "Error accessing keystore - %s: %s\n", strerror(errno), ccn_charbuf_as_string(culprit));
-        culprit = NULL;
-    }
-    if (hell != NULL)
-        res = ccn_chk_signing_params(hell, NULL, &sp, NULL, NULL, NULL);
-    if (res == 0) {
+    if (res >= 0 && h != NULL)
+        res = ccn_chk_signing_params(h, NULL, &sp, NULL, NULL, NULL);
+    if (res >= 0 && h != NULL) {
         memcpy(ccnr->ccnr_id, sp.pubid, sizeof(ccnr->ccnr_id));
         if (ccnr->ccnr_keyid == NULL)
             ccnr->ccnr_keyid = ccn_charbuf_create();
@@ -529,8 +523,13 @@ Finish:
         ccn_charbuf_append_value(ccnr->ccnr_keyid, 0, 1);
         ccn_charbuf_append(ccnr->ccnr_keyid, ccnr->ccnr_id, sizeof(ccnr->ccnr_id));
     }
+    if (res < 0) {
+        ccnr->running = -1; /* Make note of init failure */
+        if (culprit != NULL)
+            ccnr_msg(ccnr, "Error accessing keystore - %s: %s\n",
+                     strerror(errno), ccn_charbuf_as_string(temp));
+    }
     ccn_charbuf_destroy(&temp);
-    ccn_charbuf_destroy(&cmd);
     if (keystore_path != NULL)
         free(keystore_path);
     return(res);
