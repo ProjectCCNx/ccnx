@@ -566,6 +566,11 @@ r_dispatch_run(struct ccnr_handle *h)
     int prev_timeout_ms = -1;
     int usec;
     int usec_direct;
+    
+    if (h->running < 0) {
+        ccnr_msg(h, "Fatal error during initialization");
+        return;
+    }
     for (h->running = 1; h->running;) {
         r_dispatch_process_internal_client_buffer(h);
         usec = ccn_schedule_run(h->sched);

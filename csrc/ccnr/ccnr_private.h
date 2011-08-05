@@ -169,7 +169,9 @@ struct ccnr_handle {
     /* items related to sync/repo integration */
     struct SyncBaseStruct *sync_handle;  /**< handle to pass to the sync code */
     ccn_accession_t notify_after;  /**< starting item number for notifying sync */
-    ccn_accession_t active_enum[CCNR_MAX_ENUM]; /**< active sync eumerations */
+    ccn_accession_t active_enum[CCNR_MAX_ENUM]; /**< active sync enumerations */
+    
+    const char *directory;           /**< the repository directory */
 };
 
 struct content_queue {

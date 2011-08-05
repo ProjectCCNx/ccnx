@@ -44,6 +44,7 @@ int
 main(int argc, char **argv)
 {
     struct ccnr_handle *h;
+    int s;
     
     if (argc > 1) {
         fprintf(stderr, "%s", ccnr_usage_message);
@@ -54,7 +55,8 @@ main(int argc, char **argv)
     if (h == NULL)
         exit(1);
     r_dispatch_run(h);
+    s = (h->running != 0);
     ccnr_msg(h, "exiting.");
     r_init_destroy(&h);
-    exit(0);
+    exit(s);
 }

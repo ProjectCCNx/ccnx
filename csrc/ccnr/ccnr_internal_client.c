@@ -458,8 +458,16 @@ ccnr_uri_listen(struct ccnr_handle *ccnr, struct ccn *ccn, const char *uri,
 #define CCNR_KEYSTORE_PASS "Th1s 1s n0t 8 g00d R3p0s1t0ry p8ssw0rd!"
 #endif
 
+/**
+ *  Create the repository keystore if necessary,
+ *  and load it into the client handle h.
+ *
+ *  It is permitted for h to be NULL to skip the load.
+ *  @returns -1 if there were problems.
+ */
+ 
 int
-ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
+ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *hell)
 {
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *cmd = NULL;
@@ -471,8 +479,6 @@ ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
     char *keystore_path = NULL;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
-    if (h == NULL)
-        return(-1);
     temp = ccn_charbuf_create();
     cmd = ccn_charbuf_create();
     dir = getenv("CCNR_DIRECTORY");
@@ -491,8 +497,8 @@ ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
     ccn_charbuf_putf(temp, "ccnx_repository_keystore");
     keystore_path = strdup(ccn_charbuf_as_string(temp));
     res = stat(keystore_path, &statbuf);
-    if (res == 0)
-        res = ccn_load_default_key(h, keystore_path, CCNR_KEYSTORE_PASS);
+    if (res == 0 && hell != NULL)
+        res = ccn_load_default_key(hell, keystore_path, CCNR_KEYSTORE_PASS);
     if (res >= 0)
         goto Finish;
     /* No stored keystore that we can access. Create one if we can.*/
@@ -501,24 +507,28 @@ ccnr_init_repo_keystore(struct ccnr_handle *ccnr, struct ccn *h)
         culprit = temp;
         goto Finish;
     }
-    res = ccn_load_default_key(h, keystore_path, CCNR_KEYSTORE_PASS);
+    if (CCNSHOULDLOG(ccnr, keystore, CCNL_INFO))
+        ccnr_msg(ccnr, "New repository private key stored in %s", keystore_path);
+    if (hell != NULL)
+        res = ccn_load_default_key(hell, keystore_path, CCNR_KEYSTORE_PASS);
 Finish:
     if (culprit != NULL) {
-        ccnr_msg(ccnr, "%s: %s:\n", ccn_charbuf_as_string(culprit), strerror(errno));
+        ccnr_msg(ccnr, "Error accessing keystore - %s: %s\n", strerror(errno), ccn_charbuf_as_string(culprit));
         culprit = NULL;
     }
-    res = ccn_chk_signing_params(h, NULL, &sp, NULL, NULL, NULL);
-    if (res != 0)
-        abort();
-    memcpy(ccnr->ccnr_id, sp.pubid, sizeof(ccnr->ccnr_id));
-    if (ccnr->ccnr_keyid == NULL)
-        ccnr->ccnr_keyid = ccn_charbuf_create();
-    else
-        ccnr->ccnr_keyid->length = 0;
-    ccn_charbuf_append_value(ccnr->ccnr_keyid, CCN_MARKER_CONTROL, 1);
-    ccn_charbuf_append_string(ccnr->ccnr_keyid, ".M.K");
-    ccn_charbuf_append_value(ccnr->ccnr_keyid, 0, 1);
-    ccn_charbuf_append(ccnr->ccnr_keyid, ccnr->ccnr_id, sizeof(ccnr->ccnr_id));
+    if (hell != NULL)
+        res = ccn_chk_signing_params(hell, NULL, &sp, NULL, NULL, NULL);
+    if (res == 0) {
+        memcpy(ccnr->ccnr_id, sp.pubid, sizeof(ccnr->ccnr_id));
+        if (ccnr->ccnr_keyid == NULL)
+            ccnr->ccnr_keyid = ccn_charbuf_create();
+        else
+            ccnr->ccnr_keyid->length = 0;
+        ccn_charbuf_append_value(ccnr->ccnr_keyid, CCN_MARKER_CONTROL, 1);
+        ccn_charbuf_append_string(ccnr->ccnr_keyid, ".M.K");
+        ccn_charbuf_append_value(ccnr->ccnr_keyid, 0, 1);
+        ccn_charbuf_append(ccnr->ccnr_keyid, ccnr->ccnr_id, sizeof(ccnr->ccnr_id));
+    }
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&cmd);
     if (keystore_path != NULL)
