@@ -5,6 +5,7 @@ testdata.txt
 testdriver
 ephemeral*
 *.out
+*.err
 *face*.ccnb
 *reg*.ccnb
 heartbeat.ccnb

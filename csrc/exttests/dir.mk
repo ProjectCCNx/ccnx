@@ -25,6 +25,8 @@ ALLTESTS = \
   test_single_ccnd \
   test_single_ccnd_teardown \
   test_single_done \
+  test_sync_basic \
+  test_sync_read \
   test_twohop_ccnd \
   test_twohop_ccnd_teardown
 
@@ -41,7 +43,7 @@ testlist:
 
 clean:
 	rm -rf log logs seeds stems deps depend testdriver STATUS SKIPPED FAILING \
-        *.out *.ccnb *pre.html *post.html *status*.html
+        *.out *.ccnb *pre.html *post.html *status*.html *.err
 
 check test: $(SCRIPTSRC) testdriver stubs
 	./testdriver $(TESTS)
