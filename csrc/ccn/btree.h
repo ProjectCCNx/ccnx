@@ -23,8 +23,7 @@
 
 #include <sys/types.h>
 #include <ccn/charbuf.h>
-
-extern const int ccn_btree_stub;
+#include <ccn/hashtb.h>
 
 struct ccn_btree_io;
 struct ccn_btree_node;
@@ -87,14 +86,68 @@ struct ccn_btree_node {
     unsigned clean;             /**< Number of stable buffered bytes at front */
     struct ccn_charbuf *buf;    /**< The internal buffer */
     void *iodata;               /**< Private use by ccn_btree_io methods */
+    unsigned corrupt;           /**< structure is not to be trusted */
 };
 
 struct ccn_btree {
     unsigned magic;
-    
+    unsigned nodecount;
     struct ccn_btree_io *io;
 };
 
+/**
+ *  Structure of an entry inside of a node.
+ *  
+ *  These are as they appear on external storage, so we stick to 
+ *  single-byte types to keep it portable between machines.
+ *  Multi-byte numeric fields are always in big-endian format.
+ *
+ *  Within a node, the entries are fixed size.
+ *  The entries are packed together at the end of the node's storage,
+ *  so that by examining the last entry the location of the other entries
+ *  can be determined directly.  The entsz field includes the whole entry,
+ *  which consists of a payload followed by a trailer.
+ *
+ *  The keys are stored in the first portion of the node.  They may be
+ *  in multiple pieces, and the pieces may overlap arbitrarily.  This offers
+ *  a very simple form of compression, since the keys within a node are
+ *  very likely to have a lot in common with each other.
+ */
+struct ccn_btree_entry_trailer {
+    unsigned char koff0[4];     /**< offset of piece 0 of the key */
+    unsigned char ksiz0[2];     /**< size of piece 0 of the key */
+    unsigned char koff1[4];     /**< offset of piece 1 */
+    unsigned char ksiz1[2];     /**< size of piece 1 */
+    unsigned char index[2];     /**< index of this entry within the node */
+    unsigned char level[1];     /**< leaf nodes are at level 0 */
+    unsigned char entsz[1];     /**< size in CCN_BT_SIZE_UNITS of entry */
+};
+#define CCN_BT_SIZE_UNITS 8
+
+/**
+ *  Logical structure of the payload within an entry of an internal
+ *  (non-leaf) node.
+ */
+struct ccn_btree_internal_payload {
+    unsigned char magic[1];     /**< CCN_BT_INTERNAL_MAGIC */
+    unsigned char pad[3];       /**< must be zero */
+    unsigned char child[4];     /**< points to a child */
+};
+#define CCN_BT_INTERNAL_MAGIC 0xCC
+
+/*
+ * compare given key with the key in the indexed entry of the node,
+ * returning negative, zero, or positive to indicate less, equal, or greater.
+ *
+ * The comparison is a standard lexicographic one on unsigned bytes; that is,
+ * there is no assumption of what the bytes actually encode.
+ * 
+ */
+int ccn_btree_compare(const unsigned char *key, size_t size,
+                      struct ccn_btree_node *node,
+                      int index);
+
+/* For btree node storage in files. */
 struct ccn_btree_io *ccn_btree_io_from_directory(const char *path);
 
 #endif

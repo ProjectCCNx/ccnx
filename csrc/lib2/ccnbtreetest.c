@@ -68,25 +68,14 @@ test_directory_creation(void)
     return(res);
 }
 
-int
-main(int argc, char **argv)
+static int
+test_btree_io(void)
 {
     int res;
-    struct ccn_btree_io *io = NULL;
-    struct ccn_btree_io *io2 = NULL;
     struct ccn_btree_node nodespace = {0};
     struct ccn_btree_node *node = &nodespace;
+    struct ccn_btree_io *io = NULL;
 
-    res = test_directory_creation();
-    CHKSYS(res);
-    io = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
-    CHKPTR(io);
-    /* Make sure the locking works */
-    io2 = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
-    FAILIF(io2 != NULL || errno != EEXIST);
-    res = io->btdestroy(&io);
-    CHKSYS(res);
-    FAILIF(io != NULL);
     /* Open it up. */
     io = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
     CHKPTR(io);
@@ -129,5 +118,47 @@ main(int argc, char **argv)
     res = io->btdestroy(&io);
     CHKSYS(res);
     ccn_charbuf_destroy(&node->buf);
+    return(res);
+}
+
+static void
+check_structure_size(const char *what, int sz)
+{
+    printf("%s size is %d bytes\n", what, sz);
+    errno=EINVAL;
+    FAILIF(sz % CCN_BT_SIZE_UNITS != 0);
+}
+
+int
+test_structure_sizes(void)
+{
+    check_structure_size("ccn_btree_entry_trailer",
+            sizeof(struct ccn_btree_entry_trailer));
+    check_structure_size("ccn_btree_internal_payload",
+            sizeof(struct ccn_btree_internal_payload));
+    return(0);
+}
+
+int
+main(int argc, char **argv)
+{
+    int res;
+    struct ccn_btree_io *io = NULL;
+    struct ccn_btree_io *io2 = NULL;
+
+    res = test_directory_creation();
+    CHKSYS(res);
+    io = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
+    CHKPTR(io);
+    /* Make sure the locking works */
+    io2 = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
+    FAILIF(io2 != NULL || errno != EEXIST);
+    errno=EINVAL;
+    res = io->btdestroy(&io);
+    CHKSYS(res);
+    FAILIF(io != NULL);
+    res = test_btree_io();
+    CHKSYS(res);
+    res = test_structure_sizes();
     return(0);
 }
