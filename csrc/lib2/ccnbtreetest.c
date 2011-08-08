@@ -45,6 +45,11 @@ fatal(const char *fn, int lineno)
     return(0);
 }
 
+/**
+ * Use standard mkdtemp() to create a subdirectory of the
+ * current working directory, and set the TEST_DIRECTORY environment
+ * variable with its name.
+ */
 static int
 test_directory_creation(void)
 {
@@ -68,6 +73,11 @@ test_directory_creation(void)
     return(res);
 }
 
+/**
+ * Basic tests of ccn_btree_io_from_directory() and its methods.
+ *
+ * Assumes TEST_DIRECTORY has been set.
+ */
 static int
 test_btree_io(void)
 {
@@ -121,6 +131,11 @@ test_btree_io(void)
     return(res);
 }
 
+/**
+ * Helper for test_structure_sizes()
+ *
+ * Prints out the size of the struct
+ */
 static void
 check_structure_size(const char *what, int sz)
 {
@@ -129,6 +144,12 @@ check_structure_size(const char *what, int sz)
     FAILIF(sz % CCN_BT_SIZE_UNITS != 0);
 }
 
+/**
+ * Helper for test_structure_sizes()
+ *
+ * Prints the size of important structures, and make sure that
+ * they are mutiples of CCN_BT_SIZE_UNITS.
+ */
 int
 test_structure_sizes(void)
 {
@@ -139,15 +160,16 @@ test_structure_sizes(void)
     return(0);
 }
 
+/**
+ * Test that the lockfile works.
+ */
 int
-main(int argc, char **argv)
+test_btree_lockfile(void)
 {
     int res;
     struct ccn_btree_io *io = NULL;
     struct ccn_btree_io *io2 = NULL;
 
-    res = test_directory_creation();
-    CHKSYS(res);
     io = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
     CHKPTR(io);
     /* Make sure the locking works */
@@ -157,7 +179,19 @@ main(int argc, char **argv)
     res = io->btdestroy(&io);
     CHKSYS(res);
     FAILIF(io != NULL);
+    return(res);
+}
+
+int
+main(int argc, char **argv)
+{
+    int res;
+
+    res = test_directory_creation();
+    CHKSYS(res);
     res = test_btree_io();
+    CHKSYS(res);
+    res = test_btree_lockfile();
     CHKSYS(res);
     res = test_structure_sizes();
     return(0);
