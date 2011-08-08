@@ -163,6 +163,13 @@ int ccn_btree_compare(const unsigned char *key, size_t size,
                       struct ccn_btree_node *node,
                       int index);
 
+
+/* Search within the node for the key, or something near it.*/
+int ccn_btree_searchnode(const unsigned char *key,
+                         size_t size,
+                         struct ccn_btree_node *node,
+                         int i, int j);
+
 /* For btree node storage in files. */
 struct ccn_btree_io *ccn_btree_io_from_directory(const char *path);
 

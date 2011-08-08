@@ -170,3 +170,34 @@ ccn_btree_compare(const unsigned char *key,
         return(-1);
     return(size > ksiz);
 }
+
+#include <stdio.h>
+/**
+ * Search for the first entry in the range [i..j) that compares >= the
+ * given key.
+ *
+ * Assumes the keys in the node are distinct and in increasing order.
+ * Uses a binary search.
+ */
+int
+ccn_btree_searchnode(const unsigned char *key,
+                     size_t size,
+                     struct ccn_btree_node *node,
+                     int i, int j)
+{
+    int res;
+    int mid;
+    
+    while (i < j) {
+        mid = (i + j) >> 1;
+        res =  ccn_btree_compare(key, size, node, mid);
+        printf("mid = %d, res = %d\n", mid, res);
+        if (res == 0)
+            return(mid);
+        if (res < 0)
+            j = mid;
+        else
+            i = mid + 1;
+    }
+    return(i);
+}

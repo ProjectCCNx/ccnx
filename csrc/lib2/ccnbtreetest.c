@@ -41,7 +41,6 @@ fatal(const char *fn, int lineno)
     char buf[80] = {0};
     snprintf(buf, sizeof(buf)-1, "OOPS - function %s, line %d", fn, lineno);
     perror(buf);
-    abort();
     exit(1);
     return(0);
 }
@@ -287,6 +286,58 @@ test_btree_compare(void)
 }
 
 int
+test_btree_searchnode(void)
+{
+    int i;
+    int res;
+    struct ccn_btree_node *node = NULL;
+    struct {
+        unsigned char ss[CCN_BT_SIZE_UNITS * 2];
+        struct ccn_btree_entry_trailer e[3];
+    } ex = {
+        "goodstuff",
+        {
+            {.koff0={0,0,0,3}, .ksiz0={0,1}, .index={0,0}, .entsz={2}}, // "d"
+            {.koff0={0,0,0,0}, .ksiz0={0,9}, .index={0,1}, .entsz={2}}, // "goodstuff"
+            {.koff0={0,0,0,2}, .ksiz0={0,2}, .index={0,2}, .entsz={2},
+                .koff1={0,0,0,3}, .ksiz1={0,1}}, // "odd"
+        }
+    };
+    
+    struct {
+        const char *s;
+        int expect;
+    } testvec[] = {
+        {"", 0},
+        {"c", 0},
+        {"d", 0},
+        {"d1", 1},
+        {"goodstuff", 1},
+        {"goodstuff1", 2},
+        {"odc++++++", 2},
+        {"odd", 2},
+        {"odd1", 3},
+        {"ode", 3}
+    };
+    
+    node = calloc(1, sizeof(*node));
+    CHKPTR(node);
+    node->buf = ccn_charbuf_create();
+    CHKPTR(node->buf);
+    ccn_charbuf_append(node->buf, &ex, sizeof(ex));
+    
+    for (i = 0; i < sizeof(testvec)/sizeof(testvec[0]); i++) {
+        const char *s = testvec[i].s;
+        res = ccn_btree_searchnode((const void *)s, strlen(s), node, -3, 22);
+        printf("search %s => %d, expected %d\n", s, res, testvec[i].expect);
+        FAILIF(res != testvec[i].expect);
+    }
+    ccn_charbuf_destroy(&node->buf);
+    free(node);
+    return(0);
+}
+
+int
 main(int argc, char **argv)
 {
     int res;
@@ -302,6 +353,8 @@ main(int argc, char **argv)
     res = test_btree_key_fetch();
     CHKSYS(res);
     res = test_btree_compare();
+    CHKSYS(res);
+    res = test_btree_searchnode();
     CHKSYS(res);
     return(0);
 }
