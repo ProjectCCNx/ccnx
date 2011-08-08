@@ -183,6 +183,68 @@ test_btree_lockfile(void)
 }
 
 int
+test_btree_key_fetch(void)
+{
+    int i;
+    int res;
+    struct ccn_charbuf *cb = NULL;
+    struct ccn_btree_node *node = NULL;
+    struct {
+        unsigned char ss[CCN_BT_SIZE_UNITS * 2];
+        struct ccn_btree_entry_trailer e[3];
+    } ex = {
+        "goodstuff",
+        {
+            {.koff0={0,0,0,3}, .ksiz0={0,1}, .index={0,0}, .entsz={2}}, // "d"
+            {.koff0={0,0,0,0}, .ksiz0={0,9}, .index={0,1}, .entsz={2}}, // "goodstuff"
+            {.koff0={0,0,0,2}, .ksiz0={0,2}, .index={0,2}, .entsz={2},
+                .koff1={0,0,0,3}, .ksiz1={0,1}}, // "odd"
+        }
+    };
+    
+    const char *expect[3] = { "d", "goodstuff", "odd" };
+    
+    node = calloc(1, sizeof(*node));
+    printf("sssss\n");
+    CHKPTR(node);
+    node->buf = ccn_charbuf_create();
+    CHKPTR(node->buf);
+    ccn_charbuf_append(node->buf, &ex, sizeof(ex));
+    
+    cb = ccn_charbuf_create();
+    
+    for (i = 0; i < 3; i++) {
+        res = ccn_btree_key_fetch(cb, node, i);
+        CHKSYS(res);
+        FAILIF(cb->length != strlen(expect[i]));
+        FAILIF(0 != memcmp(cb->buf, expect[i], cb->length));
+    }
+    
+    res = ccn_btree_key_fetch(cb, node, i); /* fetch past end */
+    FAILIF(res != -1);
+    res = ccn_btree_key_fetch(cb, node, -1); /* fetch before start */
+    FAILIF(res != -1);
+    FAILIF(node->corrupt); /* Those should not have flagged corruption */
+    
+    ex.e[1].koff0[2] = 1; /* ding the offset in entry 1 */
+    node->buf->length = 0;
+    ccn_charbuf_append(node->buf, &ex, sizeof(ex));
+    
+    res = ccn_btree_key_append(cb, node, 0); /* Should still be OK */
+    CHKSYS(res);
+    
+    res = ccn_btree_key_append(cb, node, 1); /* Should fail */
+    FAILIF(res != -1);
+    FAILIF(!node->corrupt);
+    printf("line %d code = %d\n", __LINE__, node->corrupt);
+    
+    ccn_charbuf_destroy(&cb);
+    ccn_charbuf_destroy(&node->buf);
+    free(node);
+    return(sizeof(ex));
+}
+
+int
 main(int argc, char **argv)
 {
     int res;
@@ -194,5 +256,8 @@ main(int argc, char **argv)
     res = test_btree_lockfile();
     CHKSYS(res);
     res = test_structure_sizes();
+    CHKSYS(res);
+    res = test_btree_key_fetch();
+    CHKSYS(res);
     return(0);
 }

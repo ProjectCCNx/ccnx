@@ -136,6 +136,22 @@ struct ccn_btree_internal_payload {
 #define CCN_BT_INTERNAL_MAGIC 0xCC
 
 /*
+ * Fetch the indexed key to dst
+ * @returns -1 in case of error
+ */
+int ccn_btree_key_fetch(struct ccn_charbuf *dst,
+                        struct ccn_btree_node *node,
+                        int index);
+
+/*
+ * Append the indexed key to dst
+ * @returns -1 in case of error
+ */
+int ccn_btree_key_append(struct ccn_charbuf *dst,
+                         struct ccn_btree_node *node,
+                         int index);
+
+/*
  * compare given key with the key in the indexed entry of the node,
  * returning negative, zero, or positive to indicate less, equal, or greater.
  *

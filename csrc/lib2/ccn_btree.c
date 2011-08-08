@@ -50,10 +50,76 @@ fetchvall(const unsigned char *p, int size)
     return(v);
 }
 
+/**
+ * Find the entry trailer associated with entry i of the btree node.
+ *
+ * Sets node->corrupt if a problem with the node's structure is discovered.
+ * @returns entry trailer pointer, or NULL if there is a problem.
+ */
 static struct ccn_btree_entry_trailer *
-seek_trailer(struct ccn_btree_node *node, int index)
+seek_trailer(struct ccn_btree_node *node, int i)
 {
-    return(NULL); // XXX - STUB
+    struct ccn_btree_entry_trailer *t;
+    unsigned last;
+    unsigned ent;
+    
+    if (node->corrupt || node->buf->length < sizeof(struct ccn_btree_entry_trailer))
+        return(NULL);
+    if (node->buf->length < sizeof(struct ccn_btree_entry_trailer))
+        return(NULL);
+    t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
+        (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
+    last = MYFETCH(t, index);
+    ent = MYFETCH(t, entsz) * CCN_BT_SIZE_UNITS;
+    if (ent < sizeof(struct ccn_btree_entry_trailer))
+        return(node->corrupt = __LINE__, NULL);
+    if (ent * (last + 1) >= node->buf->length)
+        return(node->corrupt = __LINE__, NULL);
+    if ((unsigned)i > last)
+        return(NULL);
+    t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
+        node->buf->length - (ent * (last + 1 - i)));
+    if (MYFETCH(t, index) != i)
+        return(node->corrupt = __LINE__, NULL);
+    return(t);
+}
+
+int
+ccn_btree_key_fetch(struct ccn_charbuf *dst,
+                    struct ccn_btree_node *node,
+                    int index)
+{
+    dst->length = 0;
+    return(ccn_btree_key_append(dst, node, index));
+}
+
+int
+ccn_btree_key_append(struct ccn_charbuf *dst,
+                     struct ccn_btree_node *node,
+                     int index)
+{
+    struct ccn_btree_entry_trailer *p = NULL;
+    unsigned koff = 0;
+    unsigned ksiz = 0;
+
+    p = seek_trailer(node, index);
+    if (p == NULL)
+        return(-1);
+    koff = MYFETCH(p, koff0);
+    ksiz = MYFETCH(p, ksiz0);
+    if (koff > node->buf->length)
+        return(node->corrupt = __LINE__, -1);
+    if (ksiz > node->buf->length - koff)
+        return(node->corrupt = __LINE__, -1);
+    ccn_charbuf_append(dst, node->buf->buf + koff, ksiz);
+    koff = MYFETCH(p, koff1);
+    ksiz = MYFETCH(p, ksiz1);
+    if (koff > node->buf->length)
+        return(node->corrupt = __LINE__, -1);
+    if (ksiz > node->buf->length - koff)
+        return(node->corrupt = __LINE__, -1);
+    ccn_charbuf_append(dst, node->buf->buf + koff, ksiz);
+    return(0);
 }
 
 int
@@ -73,8 +139,10 @@ ccn_btree_compare(const unsigned char *key,
         return(index < 0 ? 999 : -999);
     koff = MYFETCH(p, koff0);
     ksiz = MYFETCH(p, ksiz0);
-    if (koff > node->buf->length) return(-(node->corrupt = __LINE__));
-    if (ksiz > node->buf->length - koff) return(-(node->corrupt = __LINE__));
+    if (koff > node->buf->length)
+        return(node->corrupt = __LINE__, -1);
+    if (ksiz > node->buf->length - koff)
+        return(node->corrupt = __LINE__, -1);
     cmplen = size;
     if (cmplen > ksiz)
         cmplen = ksiz;
