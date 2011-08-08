@@ -188,10 +188,12 @@ ccn_btree_searchnode(const unsigned char *key,
     int res;
     int mid;
     
+    if (node->corrupt)
+        return(-1);
     while (i < j) {
         mid = (i + j) >> 1;
         res =  ccn_btree_compare(key, size, node, mid);
-        printf("mid = %d, res = %d\n", mid, res);
+        printf("node = %u, mid = %d, res = %d\n", node->nodeid, mid, res);
         if (res == 0)
             return(mid);
         if (res < 0)
