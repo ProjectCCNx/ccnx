@@ -19,6 +19,7 @@
  
 #include <sys/types.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <ccn/charbuf.h>
@@ -252,4 +253,80 @@ ccn_btree_searchnode(const unsigned char *key,
             i = mid + 1;
     }
     return(i);
+}
+
+#define CCN_BTREE_MAGIC 0x53ade78
+
+static void
+finalize_node(struct hashtb_enumerator *e)
+{
+    struct ccn_btree *btree = hashtb_get_param(e->ht, NULL);
+    struct ccn_btree_node *node = e->data;
+    int res = 0;
+    
+    if (btree->magic != CCN_BTREE_MAGIC)
+        abort();
+    if (node->iodata != NULL && btree->io != NULL) {
+        struct ccn_btree_io *io = btree->io;
+        if (node->corrupt == 0)
+            res = io->btwrite(io, node);
+        else
+            res = -1;
+        node->clean = node->buf->length;
+        res |= io->btclose(io, node);
+        ccn_charbuf_destroy(&node->buf);
+        if (res < 0)
+            btree->errors += 1;
+    }
+}
+
+/**
+ * Create a new btree handle, not attached to any external files
+ * @returns new handle, or NULL in case of error.
+ */
+struct ccn_btree *
+ccn_btree_create(void)
+{
+    struct ccn_btree *ans;
+    struct hashtb_param param = {0};
+    
+    ans = calloc(1, sizeof(*ans));
+    if (ans != NULL) {
+        ans->magic = CCN_BTREE_MAGIC;
+        param.finalize_data = ans;
+        param.finalize = &finalize_node;
+        ans->resident = hashtb_create(sizeof(struct ccn_btree_node), &param);
+        if (ans->resident == NULL) {
+            free(ans);
+            return(NULL);
+        }
+        ans->errors = 0;
+        ans->io = NULL;
+        ans->nextnodeid = 0;
+    }
+    return(ans);
+}
+
+/**
+ * Destroys a btree handle, shutting things down cleanly.
+ * @returns a negative value in case of error.
+ */
+int
+ccn_btree_destroy(struct ccn_btree **pbt)
+{
+    struct ccn_btree *bt = *pbt;
+    int res = 0;
+    
+    if (bt == NULL)
+        return(0);
+    *pbt = NULL;
+    if (bt->magic != CCN_BTREE_MAGIC)
+        abort();
+    hashtb_destroy(&bt->resident);
+    if (bt->errors != 0)
+        res = -1;
+    if (bt->io != NULL)
+        res |= bt->io->btdestroy(&bt->io);
+    free(bt);
+    return(res);
 }

@@ -91,8 +91,10 @@ struct ccn_btree_node {
 
 struct ccn_btree {
     unsigned magic;
-    unsigned nodecount;
+    unsigned nextnodeid;
     struct ccn_btree_io *io;
+    struct hashtb *resident;
+    int errors;
 };
 
 /**
@@ -159,11 +161,15 @@ int ccn_btree_compare(const unsigned char *key, size_t size,
                       int index);
 
 
-/* Search within the node for the key, or something near it.*/
+/* Search within the node for the key, or something near it */
 int ccn_btree_searchnode(const unsigned char *key,
                          size_t size,
                          struct ccn_btree_node *node,
                          int i, int j);
+
+/* Handle creation and destruction */
+struct ccn_btree *ccn_btree_create(void);
+int ccn_btree_destroy(struct ccn_btree **);
 
 /* For btree node storage in files. */
 struct ccn_btree_io *ccn_btree_io_from_directory(const char *path);

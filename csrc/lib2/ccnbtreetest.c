@@ -341,6 +341,19 @@ test_btree_searchnode(void)
 }
 
 int
+test_btree_init(void)
+{
+    struct ccn_btree *btree = NULL;
+    int res;
+    
+    btree = ccn_btree_create();
+    CHKPTR(btree);
+    res = ccn_btree_destroy(&btree);
+    FAILIF(btree != NULL);
+    return(res);
+}
+
+int
 main(int argc, char **argv)
 {
     int res;
@@ -358,6 +371,8 @@ main(int argc, char **argv)
     res = test_btree_compare();
     CHKSYS(res);
     res = test_btree_searchnode();
+    CHKSYS(res);
+    res = test_btree_init();
     CHKSYS(res);
     return(0);
 }
