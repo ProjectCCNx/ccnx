@@ -326,6 +326,9 @@ test_btree_searchnode(void)
     CHKPTR(node->buf);
     ccn_charbuf_append(node->buf, &ex, sizeof(ex));
     
+    res = ccn_btree_node_nent(node);
+    FAILIF(res != 3);
+    
     for (i = 0; i < sizeof(testvec)/sizeof(testvec[0]); i++) {
         const char *s = testvec[i].s;
         res = ccn_btree_searchnode((const void *)s, strlen(s), node, -3, 22);

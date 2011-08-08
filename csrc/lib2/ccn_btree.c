@@ -84,6 +84,45 @@ seek_trailer(struct ccn_btree_node *node, int i)
     return(t);
 }
 
+/**
+ * Number of entries
+ * @returns number of entries within the node, or -1 for error
+ */
+int
+ccn_btree_node_nent(struct ccn_btree_node *node)
+{
+    struct ccn_btree_entry_trailer *t;
+
+    if (node->corrupt)
+        return(-1);
+    if (node->buf->length < sizeof(struct ccn_btree_entry_trailer))
+        return(0);
+    t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
+        (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
+    return(MYFETCH(t, index) + 1);
+}
+
+/** 
+ * Node level (leaves are at level 0)
+ * @returns the node level, or -1 for error
+ */
+int ccn_btree_node_level(struct ccn_btree_node *node)
+{
+    struct ccn_btree_entry_trailer *t;
+
+    if (node->corrupt)
+        return(-1);
+    if (node->buf->length < sizeof(struct ccn_btree_entry_trailer))
+        return(0);
+    t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
+        (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
+    return(MYFETCH(t, level));
+}
+
+/**
+ * Fetch the indexed key to dst
+ * @returns -1 in case of error
+ */
 int
 ccn_btree_key_fetch(struct ccn_charbuf *dst,
                     struct ccn_btree_node *node,
@@ -93,6 +132,10 @@ ccn_btree_key_fetch(struct ccn_charbuf *dst,
     return(ccn_btree_key_append(dst, node, index));
 }
 
+/**
+ * Append the indexed key to dst
+ * @returns -1 in case of error
+ */
 int
 ccn_btree_key_append(struct ccn_charbuf *dst,
                      struct ccn_btree_node *node,
@@ -122,6 +165,13 @@ ccn_btree_key_append(struct ccn_charbuf *dst,
     return(0);
 }
 
+/**
+ * Compare given key with the key in the indexed entry of the node
+ *
+ * The comparison is a standard lexicographic one on unsigned bytes; that is,
+ * there is no assumption of what the bytes actually encode.
+ * @returns negative, zero, or positive to indicate less, equal, or greater
+ */
 int
 ccn_btree_compare(const unsigned char *key,
                   size_t size,
@@ -171,7 +221,7 @@ ccn_btree_compare(const unsigned char *key,
     return(size > ksiz);
 }
 
-#include <stdio.h>
+// #include <stdio.h>
 /**
  * Search for the first entry in the range [i..j) that compares >= the
  * given key.
@@ -193,7 +243,7 @@ ccn_btree_searchnode(const unsigned char *key,
     while (i < j) {
         mid = (i + j) >> 1;
         res =  ccn_btree_compare(key, size, node, mid);
-        printf("node = %u, mid = %d, res = %d\n", node->nodeid, mid, res);
+        // printf("node = %u, mid = %d, res = %d\n", node->nodeid, mid, res);
         if (res == 0)
             return(mid);
         if (res < 0)

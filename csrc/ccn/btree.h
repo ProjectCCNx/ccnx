@@ -135,30 +135,25 @@ struct ccn_btree_internal_payload {
 };
 #define CCN_BT_INTERNAL_MAGIC 0xCC
 
-/*
- * Fetch the indexed key to dst
- * @returns -1 in case of error
- */
+/* More extensive descriptions are provided in the code. */
+
+/* Number of entries within the node */
+int ccn_btree_node_nent(struct ccn_btree_node *node);
+
+/* Node level (leaves are at level 0) */
+int ccn_btree_node_level(struct ccn_btree_node *node);
+
+/* Fetch the indexed key and place it into dst */
 int ccn_btree_key_fetch(struct ccn_charbuf *dst,
                         struct ccn_btree_node *node,
                         int index);
 
-/*
- * Append the indexed key to dst
- * @returns -1 in case of error
- */
+/* Append the indexed key to dst */
 int ccn_btree_key_append(struct ccn_charbuf *dst,
                          struct ccn_btree_node *node,
                          int index);
 
-/*
- * compare given key with the key in the indexed entry of the node,
- * returning negative, zero, or positive to indicate less, equal, or greater.
- *
- * The comparison is a standard lexicographic one on unsigned bytes; that is,
- * there is no assumption of what the bytes actually encode.
- * 
- */
+/* Compare given key with the key in the indexed entry of the node */
 int ccn_btree_compare(const unsigned char *key, size_t size,
                       struct ccn_btree_node *node,
                       int index);
