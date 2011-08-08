@@ -147,10 +147,26 @@ ccn_btree_compare(const unsigned char *key,
     if (cmplen > ksiz)
         cmplen = ksiz;
     res = memcmp(key, node->buf->buf + koff, cmplen);
+    if (res != 0 || size == ksiz)
+        return(res);
+    if (size < ksiz)
+        return(-1);
+    /* Compare the other part of the key */
+    key += cmplen;
+    size -= cmplen;
+    koff = MYFETCH(p, koff1);
+    ksiz = MYFETCH(p, ksiz1);
+    if (koff > node->buf->length)
+        return(node->corrupt = __LINE__, -1);
+    if (ksiz > node->buf->length - koff)
+        return(node->corrupt = __LINE__, -1);
+    cmplen = size;
+    if (cmplen > ksiz)
+        cmplen = ksiz;
+    res = memcmp(key, node->buf->buf + koff, cmplen);
     if (res != 0)
         return(res);
     if (size < ksiz)
         return(-1);
-    /* Need to do the other piece in this case, but for now assume it is empty.*/
     return(size > ksiz);
 }
