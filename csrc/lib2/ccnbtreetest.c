@@ -183,6 +183,22 @@ test_btree_lockfile(void)
     return(res);
 }
 
+struct node_example {
+    struct ccn_btree_node_header hdr;
+    unsigned char ss[CCN_BT_SIZE_UNITS * 2];
+    struct ccn_btree_entry_trailer e[3];
+} ex1 = {
+    {{0x05, 0x3a, 0xde, 0x78}, {1}},
+    "goodstuff",
+    {
+        {.koff0={0,0,0,3+8}, .ksiz0={0,1}, .index={0,0}, .entsz={2}}, // "d"
+        {.koff0={0,0,0,0+8}, .ksiz0={0,9}, .index={0,1}, .entsz={2}}, // "goodstuff"
+        {.koff0={0,0,0,2+8}, .ksiz0={0,2}, .index={0,2}, .entsz={2},
+            .koff1={0,0,0,3+8}, .ksiz1={0,1}}, // "odd"
+    }
+};
+
+
 int
 test_btree_key_fetch(void)
 {
@@ -190,18 +206,7 @@ test_btree_key_fetch(void)
     int res;
     struct ccn_charbuf *cb = NULL;
     struct ccn_btree_node *node = NULL;
-    struct {
-        unsigned char ss[CCN_BT_SIZE_UNITS * 2];
-        struct ccn_btree_entry_trailer e[3];
-    } ex = {
-        "goodstuff",
-        {
-            {.koff0={0,0,0,3}, .ksiz0={0,1}, .index={0,0}, .entsz={2}}, // "d"
-            {.koff0={0,0,0,0}, .ksiz0={0,9}, .index={0,1}, .entsz={2}}, // "goodstuff"
-            {.koff0={0,0,0,2}, .ksiz0={0,2}, .index={0,2}, .entsz={2},
-                .koff1={0,0,0,3}, .ksiz1={0,1}}, // "odd"
-        }
-    };
+    struct node_example ex = ex1;
     
     const char *expect[3] = { "d", "goodstuff", "odd" };
     
@@ -251,18 +256,7 @@ test_btree_compare(void)
     int i, j;
     int res;
     struct ccn_btree_node *node = NULL;
-    struct {
-        unsigned char ss[CCN_BT_SIZE_UNITS * 2];
-        struct ccn_btree_entry_trailer e[3];
-    } ex = {
-        "goodstuff",
-        {
-            {.koff0={0,0,0,3}, .ksiz0={0,1}, .index={0,0}, .entsz={2}}, // "d"
-            {.koff0={0,0,0,0}, .ksiz0={0,9}, .index={0,1}, .entsz={2}}, // "goodstuff"
-            {.koff0={0,0,0,2}, .ksiz0={0,2}, .index={0,2}, .entsz={2},
-                .koff1={0,0,0,3}, .ksiz1={0,1}}, // "odd"
-        }
-    };
+    struct node_example ex = ex1;
     
     const char *expect[3] = { "d", "goodstuff", "odd" };
     
@@ -292,18 +286,7 @@ test_btree_searchnode(void)
     int i;
     int res;
     struct ccn_btree_node *node = NULL;
-    struct {
-        unsigned char ss[CCN_BT_SIZE_UNITS * 2];
-        struct ccn_btree_entry_trailer e[3];
-    } ex = {
-        "goodstuff",
-        {
-            {.koff0={0,0,0,3}, .ksiz0={0,1}, .index={0,0}, .entsz={2}}, // "d"
-            {.koff0={0,0,0,0}, .ksiz0={0,9}, .index={0,1}, .entsz={2}}, // "goodstuff"
-            {.koff0={0,0,0,2}, .ksiz0={0,2}, .index={0,2}, .entsz={2},
-                .koff1={0,0,0,3}, .ksiz1={0,1}}, // "odd"
-        }
-    };
+    struct node_example ex = ex1;
     
     struct {
         const char *s;
@@ -346,15 +329,23 @@ test_btree_init(void)
 {
     struct ccn_btree *btree = NULL;
     int res;
+    struct ccn_btree_node *node = NULL;
     struct ccn_btree_node *node0 = NULL;
     struct ccn_btree_node *node1 = NULL;
     
     btree = ccn_btree_create();
     CHKPTR(btree);
     node0 = ccn_btree_getnode(btree, 0);
+    CHKPTR(node0);
     node1 = ccn_btree_getnode(btree, 1);
     FAILIF(node0 == node1);
     FAILIF(hashtb_n(btree->resident) != 2);
+    node = ccn_btree_rnode(btree, 0);
+    FAILIF(node != node0);
+    node = ccn_btree_rnode(btree, 1);
+    FAILIF(node != node1);
+    node = ccn_btree_rnode(btree, 2);
+    FAILIF(node != NULL);
     res = ccn_btree_destroy(&btree);
     FAILIF(btree != NULL);
     return(res);

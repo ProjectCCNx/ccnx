@@ -39,6 +39,16 @@ fetchval(const unsigned char *p, int size)
     return(v);
 }
 
+#define MYSTORE(p, f, v) storeval(&((p)->f[0]), sizeof((p)->f), (v))
+static void
+storeval(unsigned char *p, int size, unsigned v)
+{
+    int i;
+    
+    for (i = size; i > 0; i--, v >>= 8)
+        p[i-1] = v;
+}
+
 #define MYFETCHL(p, f) fetchvall(&((p)->f[0]), sizeof((p)->f))
 uintmax_t
 fetchvall(const unsigned char *p, int size)
@@ -50,6 +60,11 @@ fetchvall(const unsigned char *p, int size)
         v = (v << 8) + p[i];
     return(v);
 }
+
+/**
+ *  Minimum size of a non-empty node
+ */
+#define MIN_NODE_BYTES (sizeof(struct ccn_btree_node_header) + sizeof(struct ccn_btree_entry_trailer))
 
 /**
  * Find the entry trailer associated with entry i of the btree node.
@@ -64,9 +79,7 @@ seek_trailer(struct ccn_btree_node *node, int i)
     unsigned last;
     unsigned ent;
     
-    if (node->corrupt || node->buf->length < sizeof(struct ccn_btree_entry_trailer))
-        return(NULL);
-    if (node->buf->length < sizeof(struct ccn_btree_entry_trailer))
+    if (node->corrupt || node->buf->length < MIN_NODE_BYTES)
         return(NULL);
     t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
         (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
@@ -96,7 +109,7 @@ ccn_btree_node_nent(struct ccn_btree_node *node)
 
     if (node->corrupt)
         return(-1);
-    if (node->buf->length < sizeof(struct ccn_btree_entry_trailer))
+    if (node->buf->length < MIN_NODE_BYTES)
         return(0);
     t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
         (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
@@ -109,15 +122,12 @@ ccn_btree_node_nent(struct ccn_btree_node *node)
  */
 int ccn_btree_node_level(struct ccn_btree_node *node)
 {
-    struct ccn_btree_entry_trailer *t;
+    struct ccn_btree_node_header *hdr = NULL;
 
-    if (node->corrupt)
+    if (node->corrupt || node->buf->length < sizeof(struct ccn_btree_node_header))
         return(-1);
-    if (node->buf->length < sizeof(struct ccn_btree_entry_trailer))
-        return(0);
-    t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
-        (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
-    return(MYFETCH(t, level));
+    hdr = (struct ccn_btree_node_header *)(node->buf->buf);
+    return(MYFETCH(hdr, level));
 }
 
 /**
@@ -256,6 +266,7 @@ ccn_btree_searchnode(const unsigned char *key,
 }
 
 #define CCN_BTREE_MAGIC 0x53ade78
+#define CCN_BTREE_VERSION 1
 
 static void
 finalize_node(struct hashtb_enumerator *e)
@@ -331,8 +342,46 @@ ccn_btree_destroy(struct ccn_btree **pbt)
     return(res);
 }
 
+/**
+ *  Initialize the btree node
+ *
+ * It is the caller's responsibility to be sure that the node does not
+ * contain any useful information.
+ *
+ * @returns -1 for error, 0 for success
+ */
+int
+ccn_btree_init_node(struct ccn_btree_node *node,
+                    int level, int nodetype)
+{
+    struct ccn_btree_node_header *hdr = NULL;
+    
+    if (node->corrupt)
+        return(-1);
+    node->clean = 0;
+    node->buf->length = 0;
+    hdr = (struct ccn_btree_node_header *)ccn_charbuf_reserve(node->buf, sizeof(*hdr));
+    if (hdr == NULL) return(-1);
+    MYSTORE(hdr, magic, CCN_BTREE_MAGIC);
+    MYSTORE(hdr, version, CCN_BTREE_VERSION);
+    MYSTORE(hdr, nodetype, nodetype);
+    MYSTORE(hdr, level, level);
+    MYSTORE(hdr, extbytes, 0);
+    node->buf->length += sizeof(*hdr);
+    return(0);
+}
+
 #define CCN_BTREE_MAX_NODE_BYTES (1U<<20)
 
+/**
+ * Access a btree node, creating or reading it if necessary
+ *
+ * Care should be taken to not store the node handle in data structures,
+ * since it will become invalid when the node gets flushed from the
+ * resident cache.
+ *
+ * @returns node handle
+ */
 struct ccn_btree_node *
 ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid)
 {
@@ -349,6 +398,10 @@ ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid)
     if (res == HT_NEW_ENTRY) {
         node->nodeid = nodeid;
         node->buf = ccn_charbuf_create();
+        if (node->buf == NULL) {
+            bt->errors++;
+            node->corrupt = __LINE__;
+        }
         if (bt->io != NULL) {
             res = bt->io->btopen(bt->io, node);
             if (res < 0) {
@@ -366,5 +419,20 @@ ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid)
     }
     hashtb_end(e);
     return(node);
+}
+
+/**
+ * Access a btree node that is already resident
+ *
+ * Care should be taken to not store the node handle in data structures,
+ * since it will become invalid when the node gets flushed from the
+ * resident cache.
+ *
+ * @returns node handle, or NULL if the node is not currently resident.
+ */
+struct ccn_btree_node *
+ccn_btree_rnode(struct ccn_btree *bt, unsigned nodeid)
+{
+    return(hashtb_lookup(bt->resident, &nodeid, sizeof(nodeid)));
 }
 

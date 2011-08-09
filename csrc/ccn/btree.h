@@ -86,7 +86,8 @@ struct ccn_btree_node {
     unsigned clean;             /**< Number of stable buffered bytes at front */
     struct ccn_charbuf *buf;    /**< The internal buffer */
     void *iodata;               /**< Private use by ccn_btree_io methods */
-    unsigned corrupt;           /**< structure is not to be trusted */
+    unsigned corrupt;           /**< Structure is not to be trusted */
+    unsigned parent;            /**< Parent node id; 0 if unknown */
 };
 
 struct ccn_btree {
@@ -98,7 +99,7 @@ struct ccn_btree {
 };
 
 /**
- *  Structure of an entry inside of a node.
+ *  Structure of a node.
  *  
  *  These are as they appear on external storage, so we stick to 
  *  single-byte types to keep it portable between machines.
@@ -114,6 +115,32 @@ struct ccn_btree {
  *  in multiple pieces, and the pieces may overlap arbitrarily.  This offers
  *  a very simple form of compression, since the keys within a node are
  *  very likely to have a lot in common with each other.
+ *
+ *  A few bytes at the very beginning serve as a header.
+ *
+ * This is the overall structure of a node:
+ *
+ *  +---+-----------------------+--------------+---------+-- --+----+
+ *  |hdr|..string......space....| (free space) | E0 | E1 | ... | En |
+ *  +---+-----------------------+--------------+---------+-- --+----+
+ *
+ * It is designed so that new entries can be added without having to
+ * rewrite all of the string space.  Thus the header should not contain
+ * things that we expect to change often.
+ */
+struct ccn_btree_node_header {
+    unsigned char magic[4];     /**< File magic */
+    unsigned char version[1];   /**< Format version */
+    unsigned char nodetype[1];  /**< Indicates root node, backup root, etc. */
+    unsigned char level[1];     /**< Level within the tree */
+    unsigned char extbytes[1];  /**< Header extension bytes */
+};
+
+/**
+ *  Structure of a node entry trailer.
+ *
+ * This is how the last few bytes of each entry within a node are arranged.
+ *
  */
 struct ccn_btree_entry_trailer {
     unsigned char koff0[4];     /**< offset of piece 0 of the key */
@@ -122,7 +149,7 @@ struct ccn_btree_entry_trailer {
     unsigned char ksiz1[2];     /**< size of piece 1 */
     unsigned char index[2];     /**< index of this entry within the node */
     unsigned char level[1];     /**< leaf nodes are at level 0 */
-    unsigned char entsz[1];     /**< size in CCN_BT_SIZE_UNITS of entry */
+    unsigned char entsz[1];     /**< entry size in CCN_BT_SIZE_UNITS */
 };
 #define CCN_BT_SIZE_UNITS 8
 
@@ -137,7 +164,8 @@ struct ccn_btree_internal_payload {
 };
 #define CCN_BT_INTERNAL_MAGIC 0xCC
 
-/* More extensive descriptions are provided in the code. */
+
+/* More extensive function descriptions are provided in the code. */
 
 /* Number of entries within the node */
 int ccn_btree_node_nent(struct ccn_btree_node *node);
@@ -174,7 +202,12 @@ int ccn_btree_destroy(struct ccn_btree **);
 /* For btree node storage in files */
 struct ccn_btree_io *ccn_btree_io_from_directory(const char *path);
 
-/* Access a node */
+/* Access a node, creating or reading it if necessary */
 struct ccn_btree_node *ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid);
 
+/* Get a node handle if it is already resident */
+struct ccn_btree_node *ccn_btree_rnode(struct ccn_btree *bt, unsigned nodeid);
+
+/* Initialize the btree node */
+int ccn_btree_init_node(struct ccn_btree_node *node, int level, int nodetype);
 #endif
