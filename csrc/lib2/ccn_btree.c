@@ -436,3 +436,94 @@ ccn_btree_rnode(struct ccn_btree *bt, unsigned nodeid)
     return(hashtb_lookup(bt->resident, &nodeid, sizeof(nodeid)));
 }
 
+/**
+ * Check a node for internal consistency
+ *
+ * Sets or clears node->corrupt as appropriate.
+ * In case of success, sets the correct value for node->freelow
+ * If picky, checks the order of the keys within the node as well as the basics.
+ *
+ * @returns old value of node->corrupt if the node looks OK, otherwise -1
+ */
+int
+ccn_btree_chknode(struct ccn_btree_node *node, int picky)
+{
+    unsigned freelow = 0;
+    unsigned freemax = 0;
+    unsigned strbase = sizeof(struct ccn_btree_node_header);
+    struct ccn_btree_node_header *hdr = NULL;
+    unsigned lev = 0;
+    unsigned entsz = 0;
+    unsigned saved_corrupt;
+    struct ccn_btree_entry_trailer *p = NULL;
+    int i;
+    int nent;
+    unsigned koff;
+    unsigned ksiz;
+    
+    if (node == NULL)
+        return(-1);
+    saved_corrupt = node->corrupt;
+    node->corrupt = 0;
+    if (node->buf == NULL)
+        return(node->corrupt = __LINE__, -1);
+    if (node->buf->length == 0)
+        return(node->freelow = 0, node->corrupt = 0, 0);
+    if (node->buf->length < sizeof(struct ccn_btree_node_header))
+        return(node->corrupt = __LINE__, -1);
+    hdr = (struct ccn_btree_node_header *)node->buf->buf;
+    if (MYFETCH(hdr, magic) != CCN_BTREE_MAGIC)
+        return(node->corrupt = __LINE__, -1);
+    if (MYFETCH(hdr, version) != CCN_BTREE_VERSION)
+        return(node->corrupt = __LINE__, -1);
+    /* nodetype values are not checked at present */
+    lev = MYFETCH(hdr, level);
+    strbase += MYFETCH(hdr, extbytes);
+    if (strbase > node->buf->length)
+        return(node->corrupt = __LINE__, -1);
+    if (strbase == node->buf->length)
+        return(node->freelow = strbase, saved_corrupt); /* no entries */
+    nent = ccn_btree_node_nent(node);
+    for (i = 0; i < nent; i++) {
+        unsigned e;
+        p = seek_trailer(node, i);
+        if (p == NULL)
+            return(-1);
+        e = MYFETCH(p, entsz);
+        if (i == 0) {
+            freemax = ((unsigned char *)p) - node->buf->buf;
+            entsz = e;
+        }
+        if (e != entsz)
+            return(node->corrupt = __LINE__, -1);
+        if (MYFETCH(p, level) != lev)
+            return(node->corrupt = __LINE__, -1);
+        koff = MYFETCH(p, koff0);
+        ksiz = MYFETCH(p, ksiz0);
+        if (koff < strbase && ksiz != 0)
+            return(node->corrupt = __LINE__, -1);
+        if (koff > freemax)
+            return(node->corrupt = __LINE__, -1);
+        if (ksiz > freemax - koff)
+            return(node->corrupt = __LINE__, -1);
+        if (koff + ksiz > freelow)
+            freelow = koff + ksiz;
+        koff = MYFETCH(p, koff1);
+        ksiz = MYFETCH(p, ksiz1);
+        if (koff < strbase && ksiz != 0)
+            return(node->corrupt = __LINE__, -1);
+        if (koff > freemax)
+            return(node->corrupt = __LINE__, -1);
+        if (ksiz > freemax - koff)
+            return(node->corrupt = __LINE__, -1);
+        if (koff + ksiz > freelow)
+            freelow = koff + ksiz;
+    }
+    if (picky) {
+        abort(); // NYI
+    }
+    if (node->freelow != freelow)
+        node->freelow = freelow; /* set a break here to check for fixups */
+    return(saved_corrupt);
+}
+

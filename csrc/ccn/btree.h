@@ -88,6 +88,7 @@ struct ccn_btree_node {
     void *iodata;               /**< Private use by ccn_btree_io methods */
     unsigned corrupt;           /**< Structure is not to be trusted */
     unsigned parent;            /**< Parent node id; 0 if unknown */
+    unsigned freelow;           /**< Index of first unused byte of free space */
 };
 
 struct ccn_btree {
@@ -164,7 +165,6 @@ struct ccn_btree_internal_payload {
 };
 #define CCN_BT_INTERNAL_MAGIC 0xCC
 
-
 /* More extensive function descriptions are provided in the code. */
 
 /* Number of entries within the node */
@@ -210,4 +210,8 @@ struct ccn_btree_node *ccn_btree_rnode(struct ccn_btree *bt, unsigned nodeid);
 
 /* Initialize the btree node */
 int ccn_btree_init_node(struct ccn_btree_node *node, int level, int nodetype);
+
+/* Check a node for internal consistency */
+int ccn_btree_chknode(struct ccn_btree_node *node, int picky);
+
 #endif

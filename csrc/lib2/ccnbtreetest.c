@@ -189,7 +189,7 @@ struct node_example {
     struct ccn_btree_entry_trailer e[3];
 } ex1 = {
     {{0x05, 0x3a, 0xde, 0x78}, {1}},
-    "goodstuff",
+    "goodstuffed",
     {
         {.koff0={0,0,0,3+8}, .ksiz0={0,1}, .index={0,0}, .entsz={2}}, // "d"
         {.koff0={0,0,0,0+8}, .ksiz0={0,9}, .index={0,1}, .entsz={2}}, // "goodstuff"
@@ -198,6 +198,31 @@ struct node_example {
     }
 };
 
+int
+test_btree_chknode(void)
+{
+    int res;
+    struct ccn_btree_node *node = NULL;
+    struct node_example *ex = NULL;
+    
+    node = calloc(1, sizeof(*node));
+    CHKPTR(node);
+    node->buf = ccn_charbuf_create();
+    CHKPTR(node->buf);
+    ccn_charbuf_append(node->buf, &ex1, sizeof(ex1));
+    res = ccn_btree_chknode(node, 0);
+    CHKSYS(res);
+    FAILIF(node->corrupt != 0);
+    FAILIF(node->freelow != 8 + 9); // header plus goodstuff
+    ex = (void *)node->buf->buf;
+    ex->e[1].ksiz0[2] = 100; /* ding the size in entry 1 */
+    res = ccn_btree_chknode(node, 0);
+    FAILIF(res != -1);
+    FAILIF(node->corrupt == 0);
+    ccn_charbuf_destroy(&node->buf);
+    free(node);
+    return(0);
+}
 
 int
 test_btree_key_fetch(void)
@@ -211,7 +236,6 @@ test_btree_key_fetch(void)
     const char *expect[3] = { "d", "goodstuff", "odd" };
     
     node = calloc(1, sizeof(*node));
-    printf("sssss\n");
     CHKPTR(node);
     node->buf = ccn_charbuf_create();
     CHKPTR(node->buf);
@@ -363,6 +387,8 @@ main(int argc, char **argv)
     res = test_btree_lockfile();
     CHKSYS(res);
     res = test_structure_sizes();
+    CHKSYS(res);
+    res = test_btree_chknode();
     CHKSYS(res);
     res = test_btree_key_fetch();
     CHKSYS(res);
