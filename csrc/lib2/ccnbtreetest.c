@@ -30,6 +30,7 @@
 
 #include <ccn/btree.h>
 #include <ccn/charbuf.h>
+#include <ccn/hashtb.h>
 
 #define FAILIF(cond) do {} while ((cond) && fatal(__func__, __LINE__))
 #define CHKSYS(res) FAILIF((res) == -1)
@@ -345,9 +346,15 @@ test_btree_init(void)
 {
     struct ccn_btree *btree = NULL;
     int res;
+    struct ccn_btree_node *node0 = NULL;
+    struct ccn_btree_node *node1 = NULL;
     
     btree = ccn_btree_create();
     CHKPTR(btree);
+    node0 = ccn_btree_getnode(btree, 0);
+    node1 = ccn_btree_getnode(btree, 1);
+    FAILIF(node0 == node1);
+    FAILIF(hashtb_n(btree->resident) != 2);
     res = ccn_btree_destroy(&btree);
     FAILIF(btree != NULL);
     return(res);

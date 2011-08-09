@@ -330,3 +330,41 @@ ccn_btree_destroy(struct ccn_btree **pbt)
     free(bt);
     return(res);
 }
+
+#define CCN_BTREE_MAX_NODE_BYTES (1U<<20)
+
+struct ccn_btree_node *
+ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_btree_node *node = NULL;
+    int res;
+
+    if (bt->magic != CCN_BTREE_MAGIC)
+        abort();
+    hashtb_start(bt->resident, e);
+    res = hashtb_seek(e, &nodeid, sizeof(nodeid), 0);
+    node = e->data;
+    if (res == HT_NEW_ENTRY) {
+        node->nodeid = nodeid;
+        node->buf = ccn_charbuf_create();
+        if (bt->io != NULL) {
+            res = bt->io->btopen(bt->io, node);
+            if (res < 0) {
+                bt->errors++;
+                node->corrupt = __LINE__;
+            }
+            else {
+                res = bt->io->btread(bt->io, node, CCN_BTREE_MAX_NODE_BYTES);
+                if (res < 0)
+                    bt->errors++;
+                else
+                    node->clean = node->buf->length;
+            }
+        }
+    }
+    hashtb_end(e);
+    return(node);
+}
+

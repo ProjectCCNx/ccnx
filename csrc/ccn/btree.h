@@ -171,7 +171,10 @@ int ccn_btree_searchnode(const unsigned char *key,
 struct ccn_btree *ccn_btree_create(void);
 int ccn_btree_destroy(struct ccn_btree **);
 
-/* For btree node storage in files. */
+/* For btree node storage in files */
 struct ccn_btree_io *ccn_btree_io_from_directory(const char *path);
+
+/* Access a node */
+struct ccn_btree_node *ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid);
 
 #endif
