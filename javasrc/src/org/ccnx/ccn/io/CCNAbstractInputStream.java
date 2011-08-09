@@ -508,10 +508,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 				}
 			}
 		}
-
 	}
 
-	private void advancePipeline(boolean attemptHoleFilling) {
+	private void advancePipeline() {
 		synchronized(inOrderSegments) {
 			//first check if we have tokens to spend on interests...
 			boolean doneAdvancing = false;
@@ -566,8 +565,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 							Log.info(Log.FAC_PIPELINE, "PIPELINE: requested segment "+_lastRequestedPipelineSegment +" ("+(SystemConfiguration.PIPELINE_SIZE - _sentInterests.size())+" tokens)");
 					} catch (IOException e) {
+						// This could happen if the handle got closed underneath us - maybe that's OK?
+						// For now will leave it as a warning
 						if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
-							Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline");
+							Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline: {0}");
+						break;
 					}
 				} else {
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
@@ -892,9 +894,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: had segment {0} in iOS, setting current.", segmentNumber);
 					_currentSegment = co;
 					if (inOrderSegments.size() > 0 || segmentNumber == 1)
-						advancePipeline(false);
+						advancePipeline();
 					else
-						advancePipeline(true); 
+						advancePipeline(); 
 					return co;
 				}
 			}
@@ -1047,7 +1049,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 					_lastInOrderSegment = segmentNumber - 1;
 					
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump - we have now reset the state...  now we can try asking for the next segments - advance pipeline with holefilling");
-					advancePipeline(true);
+					advancePipeline();
 					
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: we hadn't asked for segment {0} asking now... {1}", segmentNumber, interest);
@@ -1064,7 +1066,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 					
 				} catch (IOException e) {
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
-						Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline");
+						Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline: {0}", e.getMessage());
 				}
 			}
 
@@ -1343,7 +1345,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 				}
 
-				advancePipeline(false);
+				advancePipeline();
 			}//try holding lock more consistently to control how notify is done
 		} //while loop for processing incoming segments
 		attemptHoleFilling();
@@ -1719,7 +1721,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 			if (co != null) {
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: we had segment {0} already!!", number);
-				advancePipeline(false);
+				advancePipeline();
 				synchronized(readerReadyObj) {
 					//readerReady.notifyAll();
 					readerReadyVal = -1;
