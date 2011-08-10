@@ -99,27 +99,44 @@ seek_trailer(struct ccn_btree_node *node, int i)
     return(t);
 }
 
-static struct ccn_btree_internal_entry *
-seek_internal_entry(struct ccn_btree_node *node, int i)
+/**
+ * Get the address of the indexed entry within the node.
+ *
+ * entry_bytes includes the size of the entry trailer, and must be divisible
+ * by CCN_BT_SIZE_UNITS.
+ *
+ * @returns NULL in case of error.
+ */
+void *
+ccn_btree_node_getentry(size_t entry_bytes, struct ccn_btree_node *node, int i)
 {
-    struct ccn_btree_internal_entry *ans = NULL;
     struct ccn_btree_entry_trailer *t;
     
     t = seek_trailer(node, i);
     if (t == NULL)
         return(NULL);
-    if (MYFETCH(t, entsz) * CCN_BT_SIZE_UNITS != sizeof(*ans))
+    if (MYFETCH(t, entsz) * CCN_BT_SIZE_UNITS != entry_bytes)
         return(node->corrupt = __LINE__, NULL);
-    /* awful pointer arithmetic ... */
-    ans = ((struct ccn_btree_internal_entry *)(t + 1)) - 1;
+    return(((unsigned char *)t) + sizeof(*t) - entry_bytes);    
+}
+
+static struct ccn_btree_internal_entry *
+seek_internal_entry(struct ccn_btree_node *node, int i)
+{
+    struct ccn_btree_internal_entry *ans;
+    
+    ans = ccn_btree_node_getentry(sizeof(*ans), node, i);
+    if (ans == NULL)
+        return(NULL);
     if (MYFETCH(ans, magic) != CCN_BT_INTERNAL_MAGIC)
         return(node->corrupt = __LINE__, NULL);
     return(ans);
 }
 
 /**
- * Number of entries
- * @returns number of entries within the node, or -1 for error
+ * Number of entries within the btree node
+ *
+ * @returns number of entries, or -1 for error
  */
 int
 ccn_btree_node_nent(struct ccn_btree_node *node)
@@ -133,6 +150,27 @@ ccn_btree_node_nent(struct ccn_btree_node *node)
     t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
         (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
     return(MYFETCH(t, entdx) + 1);
+}
+
+/**
+ * Size, in bytes, of entries within the node
+ *
+ * If there are no entries, returns 0.
+ *
+ * @returns size, or -1 for error
+ */
+int
+ccn_btree_node_getentrysize(struct ccn_btree_node *node)
+{
+    struct ccn_btree_entry_trailer *t;
+
+    if (node->corrupt)
+        return(-1);
+    if (node->buf->length < MIN_NODE_BYTES)
+        return(0);
+    t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
+        (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
+    return(MYFETCH(t, entsz) * CCN_BT_SIZE_UNITS);
 }
 
 /** 
@@ -257,12 +295,12 @@ ccn_btree_compare(const unsigned char *key,
 /**
  * Search the node for the given key
  *
- * The return value is encoded as 2 * index + success; that is, a successful
- * search returns an odd number and an unsuccessful search returns an even
- * number.  In the case of an unsuccessful search, the index indicates
- * the where the item would go if it were to be inserted.
+ * The return value is encoded as 2 * index + (found ? 1 : 0); that is, a
+ * successful search returns an odd number and an unsuccessful search returns
+ * an even number.  In the case of an unsuccessful search, the index indicates
+ * where the item would go if it were to be inserted.
  *
- * Uses a binary search, so the keys must be sorted and unique.
+ * Uses a binary search, so the keys in the node must be sorted and unique.
  *
  * @returns CCN_BT_ENCRES(index, success) indication, or -1 for an error.
  */
@@ -354,6 +392,8 @@ ccn_btree_lookup(struct ccn_btree *btree,
         *leafp = node;
     return(srchres);
 }
+
+
 
 #define CCN_BTREE_MAGIC 0x53ade78
 #define CCN_BTREE_VERSION 1

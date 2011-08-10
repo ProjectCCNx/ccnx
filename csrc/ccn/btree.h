@@ -173,6 +173,13 @@ int ccn_btree_node_nent(struct ccn_btree_node *node);
 /* Node level (leaves are at level 0) */
 int ccn_btree_node_level(struct ccn_btree_node *node);
 
+/* Node entry size */
+int ccn_btree_node_getentrysize(struct ccn_btree_node *node);
+
+/* Get address of the indexed entry within node */
+void *ccn_btree_node_getentry(size_t entry_bytes,
+                              struct ccn_btree_node *node, int i);
+
 /* Fetch the indexed key and place it into dst */
 int ccn_btree_key_fetch(struct ccn_charbuf *dst,
                         struct ccn_btree_node *node, int i);
