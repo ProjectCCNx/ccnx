@@ -83,7 +83,7 @@ seek_trailer(struct ccn_btree_node *node, int i)
         return(NULL);
     t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
         (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
-    last = MYFETCH(t, index);
+    last = MYFETCH(t, entdx);
     ent = MYFETCH(t, entsz) * CCN_BT_SIZE_UNITS;
     if (ent < sizeof(struct ccn_btree_entry_trailer))
         return(node->corrupt = __LINE__, NULL);
@@ -94,7 +94,7 @@ seek_trailer(struct ccn_btree_node *node, int i)
     t = (struct ccn_btree_entry_trailer *)(node->buf->buf + node->buf->length
         - (ent * (last - i))
         - sizeof(struct ccn_btree_entry_trailer));
-    if (MYFETCH(t, index) != i)
+    if (MYFETCH(t, entdx) != i)
         return(node->corrupt = __LINE__, NULL);
     return(t);
 }
@@ -132,7 +132,7 @@ ccn_btree_node_nent(struct ccn_btree_node *node)
         return(0);
     t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
         (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
-    return(MYFETCH(t, index) + 1);
+    return(MYFETCH(t, entdx) + 1);
 }
 
 /** 
@@ -156,10 +156,10 @@ int ccn_btree_node_level(struct ccn_btree_node *node)
 int
 ccn_btree_key_fetch(struct ccn_charbuf *dst,
                     struct ccn_btree_node *node,
-                    int index)
+                    int i)
 {
     dst->length = 0;
-    return(ccn_btree_key_append(dst, node, index));
+    return(ccn_btree_key_append(dst, node, i));
 }
 
 /**
@@ -169,13 +169,13 @@ ccn_btree_key_fetch(struct ccn_charbuf *dst,
 int
 ccn_btree_key_append(struct ccn_charbuf *dst,
                      struct ccn_btree_node *node,
-                     int index)
+                     int i)
 {
     struct ccn_btree_entry_trailer *p = NULL;
     unsigned koff = 0;
     unsigned ksiz = 0;
 
-    p = seek_trailer(node, index);
+    p = seek_trailer(node, i);
     if (p == NULL)
         return(-1);
     koff = MYFETCH(p, koff0);
@@ -207,7 +207,7 @@ int
 ccn_btree_compare(const unsigned char *key,
                   size_t size,
                   struct ccn_btree_node *node,
-                  int index)
+                  int i)
 {
     struct ccn_btree_entry_trailer *p = NULL;
     size_t cmplen;
@@ -215,9 +215,9 @@ ccn_btree_compare(const unsigned char *key,
     unsigned ksiz = 0;
     int res;
     
-    p = seek_trailer(node, index);
+    p = seek_trailer(node, i);
     if (p == NULL)
-        return(index < 0 ? 999 : -999);
+        return(i < 0 ? 999 : -999);
     koff = MYFETCH(p, koff0);
     ksiz = MYFETCH(p, ksiz0);
     if (koff > node->buf->length)
@@ -315,7 +315,7 @@ ccn_btree_lookup(struct ccn_btree *btree,
     struct ccn_btree_internal_entry *e = NULL;
     unsigned childid;
     unsigned parent;
-    int index;
+    int entdx;
     int level;
     int newlevel;
     int srchres;
@@ -329,10 +329,10 @@ ccn_btree_lookup(struct ccn_btree *btree,
     if (srchres < 0)
         return(-1);
     while (level > 0) {
-        index = CCN_BT_SRC_INDEX(srchres) - 1;
-        if (index < 0)
-            index = 0;
-        e = seek_internal_entry(node, index);
+        entdx = CCN_BT_SRC_INDEX(srchres) - 1;
+        if (entdx < 0)
+            entdx = 0;
+        e = seek_internal_entry(node, entdx);
         if (e == NULL)
             return(-1);
         childid = MYFETCH(e, child);

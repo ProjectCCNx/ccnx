@@ -191,9 +191,9 @@ struct node_example {
     {{0x05, 0x3a, 0xde, 0x78}, {1}},
     "goodstuffed",
     {
-        {.koff0={0,0,0,3+8}, .ksiz0={0,1}, .index={0,0}, .entsz={2}}, // "d"
-        {.koff0={0,0,0,0+8}, .ksiz0={0,9}, .index={0,1}, .entsz={2}}, // "goodstuff"
-        {.koff0={0,0,0,2+8}, .ksiz0={0,2}, .index={0,2}, .entsz={2},
+        {.koff0={0,0,0,3+8}, .ksiz0={0,1}, .entdx={0,0}, .entsz={2}}, // "d"
+        {.koff0={0,0,0,0+8}, .ksiz0={0,9}, .entdx={0,1}, .entsz={2}}, // "goodstuff"
+        {.koff0={0,0,0,2+8}, .ksiz0={0,2}, .entdx={0,2}, .entsz={2},
             .koff1={0,0,0,3+8}, .ksiz1={0,1}}, // "odd"
     }
 };
@@ -202,9 +202,9 @@ struct node_example ex2 = {
     {{0x05, 0x3a, 0xde, 0x78}, {1}},
     "struthiomimus",
     {
-        {.koff1={0,0,0,2+8}, .ksiz1={0,3}, .index={0,0}, .entsz={2}}, // "rut"
-        {.koff0={0,0,0,0+8}, .ksiz0={0,5}, .index={0,1}, .entsz={2}}, // "strut"
-        {.koff0={0,0,0,1+8}, .ksiz0={0,5}, .index={0,2}, .entsz={2}}, // "truth"
+        {.koff1={0,0,0,2+8}, .ksiz1={0,3}, .entdx={0,0}, .entsz={2}}, // "rut"
+        {.koff0={0,0,0,0+8}, .ksiz0={0,5}, .entdx={0,1}, .entsz={2}}, // "strut"
+        {.koff0={0,0,0,1+8}, .ksiz0={0,5}, .entdx={0,2}, .entsz={2}}, // "truth"
     }
 };
 
@@ -217,10 +217,10 @@ struct root_example {
     "ru",
     {
         {.magic={0xcc}, .child={0,0,0,2}, // ex1 at nodeid 2 as first child
-         .trailer={.index={0,0}, .level={1}, .entsz={3}}}, 
+         .trailer={.entdx={0,0}, .level={1}, .entsz={3}}}, 
         {.magic={0xcc}, .child={0,0,0,3}, // ex2 at nodeid 3 as second child
          .trailer={.koff1={0,0,0,0+8}, .ksiz1={0,2}, 
-                   .index={0,1}, .level={1}, .entsz={3}}},
+                   .entdx={0,1}, .level={1}, .entsz={3}}},
     }
 };
 
@@ -417,7 +417,7 @@ test_btree_lookup(void)
     struct {
         const char *s;
         int expectnode;
-        int expectindex;
+        int expectres;
     } testvec[] = {
         {"d", 2, CCN_BT_ENCRES(0, yes)},
         {"goodstuff", 2, CCN_BT_ENCRES(1, yes)},
@@ -449,8 +449,8 @@ test_btree_lookup(void)
         res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
         printf("lookup %s => %d, %d, expected %d, %d\n", s,
             leaf->nodeid,          res,
-            testvec[i].expectnode, testvec[i].expectindex);
-        FAILIF(res != testvec[i].expectindex);
+            testvec[i].expectnode, testvec[i].expectres);
+        FAILIF(res != testvec[i].expectres);
         FAILIF(leaf->nodeid != testvec[i].expectnode);
         FAILIF(leaf->parent != 1);
     }

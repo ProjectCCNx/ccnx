@@ -148,7 +148,7 @@ struct ccn_btree_entry_trailer {
     unsigned char ksiz0[2];     /**< size of piece 0 of the key */
     unsigned char koff1[4];     /**< offset of piece 1 */
     unsigned char ksiz1[2];     /**< size of piece 1 */
-    unsigned char index[2];     /**< index of this entry within the node */
+    unsigned char entdx[2];     /**< index of this entry within the node */
     unsigned char level[1];     /**< leaf nodes are at level 0 */
     unsigned char entsz[1];     /**< entry size in CCN_BT_SIZE_UNITS */
 };
@@ -175,25 +175,21 @@ int ccn_btree_node_level(struct ccn_btree_node *node);
 
 /* Fetch the indexed key and place it into dst */
 int ccn_btree_key_fetch(struct ccn_charbuf *dst,
-                        struct ccn_btree_node *node,
-                        int index);
+                        struct ccn_btree_node *node, int i);
 
 /* Append the indexed key to dst */
 int ccn_btree_key_append(struct ccn_charbuf *dst,
-                         struct ccn_btree_node *node,
-                         int index);
+                         struct ccn_btree_node *node, int i);
 
 /* Compare given key with the key in the indexed entry of the node */
 int ccn_btree_compare(const unsigned char *key, size_t size,
-                      struct ccn_btree_node *node,
-                      int index);
+                      struct ccn_btree_node *node, int i);
 
 #define CCN_BT_ENCRES(ndx, success) (2 * (ndx) + ((success) || 1))
 #define CCN_BT_SRC_FOUND(res) ((res) & 1)
 #define CCN_BT_SRC_INDEX(res) ((res) >> 1)
 /* Search within the node for the key, or something near it */
-int ccn_btree_searchnode(const unsigned char *key,
-                         size_t size,
+int ccn_btree_searchnode(const unsigned char *key, size_t size,
                          struct ccn_btree_node *node);
 
 /* Handle creation and destruction */
