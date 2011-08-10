@@ -150,7 +150,7 @@ int ccn_btree_node_level(struct ccn_btree_node *node)
 }
 
 /**
- * Fetch the indexed key to dst
+ * Fetch the key within the indexed entry of node
  * @returns -1 in case of error
  */
 int
@@ -163,7 +163,7 @@ ccn_btree_key_fetch(struct ccn_charbuf *dst,
 }
 
 /**
- * Append the indexed key to dst
+ * Append the key within the indexed entry of node to dst
  * @returns -1 in case of error
  */
 int
@@ -200,6 +200,7 @@ ccn_btree_key_append(struct ccn_charbuf *dst,
  *
  * The comparison is a standard lexicographic one on unsigned bytes; that is,
  * there is no assumption of what the bytes actually encode.
+ *
  * @returns negative, zero, or positive to indicate less, equal, or greater
  */
 int
@@ -295,11 +296,19 @@ ccn_btree_searchnode(const unsigned char *key,
 
 /**
  * Do a btree lookup, starting from the root.
+ *
+ * In the absence of errors, if *leafp is not NULL the handle for the
+ * appropriate leaf node will be stored.  See ccn_btree_getnode() for
+ * warning about lifetime of the resulting pointer.
+ *
+ * The return value is encoded as for ccn_btree_searchnode().
+ *
+ * @returns CCN_BT_ENCRES(index, success) indication, or -1 for an error.
  */
 int
 ccn_btree_lookup(struct ccn_btree *btree,
                  const unsigned char *key, size_t size,
-                 struct ccn_btree_node **nodep)
+                 struct ccn_btree_node **leafp)
 {
     struct ccn_btree_node *node = NULL;
     struct ccn_btree_node *child = NULL;
@@ -341,8 +350,8 @@ ccn_btree_lookup(struct ccn_btree *btree,
         level = newlevel;
         srchres = ccn_btree_searchnode(key, size, node);
     }
-    if (nodep != NULL)
-        *nodep = node;
+    if (leafp != NULL)
+        *leafp = node;
     return(srchres);
 }
 

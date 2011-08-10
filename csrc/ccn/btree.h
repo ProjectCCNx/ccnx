@@ -218,6 +218,6 @@ int ccn_btree_chknode(struct ccn_btree_node *node, int picky);
 /* Do a lookup, starting from the root */
 int ccn_btree_lookup(struct ccn_btree *btree,
                      const unsigned char *key, size_t size,
-                     struct ccn_btree_node **nodep);
+                     struct ccn_btree_node **leafp);
 
 #endif
