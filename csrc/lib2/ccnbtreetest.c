@@ -216,11 +216,11 @@ struct root_example {
     {{0x05, 0x3a, 0xde, 0x78}, {1}, {'R'}, {1}},
     "ru",
     {
-        {.magic={0xcc}, .child={0,0,0,2}, // ex1 at nodeid 2 as first child
-         .trailer={.entdx={0,0}, .level={1}, .entsz={3}}}, 
-        {.magic={0xcc}, .child={0,0,0,3}, // ex2 at nodeid 3 as second child
-         .trailer={.koff1={0,0,0,0+8}, .ksiz1={0,2}, 
-                   .entdx={0,1}, .level={1}, .entsz={3}}},
+        {   {.magic={0xcc}, .child={0,0,0,2}}, // ex1 at nodeid 2 as 1st child
+            {.entdx={0,0}, .level={1}, .entsz={3}}}, 
+        {   {.magic={0xcc}, .child={0,0,0,3}}, // ex2 at nodeid 3 as 2nd child
+            {.koff1={0,0,0,0+8}, .ksiz1={0,2}, 
+                .entdx={0,1}, .level={1}, .entsz={3}}},
     }
 };
 

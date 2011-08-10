@@ -90,16 +90,17 @@ seek_trailer(struct ccn_btree_node *node, int i)
 /**
  * Get the address of the indexed entry within the node.
  *
- * entry_bytes includes the size of the entry trailer, and must be divisible
- * by CCN_BT_SIZE_UNITS.
+ * payload_bytes must be divisible by CCN_BT_SIZE_UNITS.
  *
  * @returns NULL in case of error.
  */
 void *
-ccn_btree_node_getentry(size_t entry_bytes, struct ccn_btree_node *node, int i)
+ccn_btree_node_getentry(size_t payload_bytes, struct ccn_btree_node *node, int i)
 {
     struct ccn_btree_entry_trailer *t;
+    size_t entry_bytes;
     
+    entry_bytes = payload_bytes + sizeof(struct ccn_btree_entry_trailer);
     t = seek_trailer(node, i);
     if (t == NULL)
         return(NULL);
@@ -111,10 +112,10 @@ ccn_btree_node_getentry(size_t entry_bytes, struct ccn_btree_node *node, int i)
 /**
  * Get the address of entry within an internal (non-leaf) node.
  */
-static struct ccn_btree_internal_entry *
-seek_internal_entry(struct ccn_btree_node *node, int i)
+static struct ccn_btree_internal_payload *
+seek_internal(struct ccn_btree_node *node, int i)
 {
-    struct ccn_btree_internal_entry *ans;
+    struct ccn_btree_internal_payload *ans;
     
     ans = ccn_btree_node_getentry(sizeof(*ans), node, i);
     if (ans == NULL)
@@ -147,6 +148,7 @@ ccn_btree_node_nent(struct ccn_btree_node *node)
  * Size, in bytes, of entries within the node
  *
  * If there are no entries, returns 0.
+ * This size includes the entry trailer.
  *
  * @returns size, or -1 for error
  */
@@ -162,6 +164,26 @@ ccn_btree_node_getentrysize(struct ccn_btree_node *node)
     t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
         (node->buf->length - sizeof(struct ccn_btree_entry_trailer)));
     return(MYFETCH(t, entsz) * CCN_BT_SIZE_UNITS);
+}
+
+/**
+ * Size, in bytes, of payloads within the node
+ *
+ * If there are no entries, returns 0.
+ * This does not include the entry trailer, but will include padding
+ * to a multiple of CCN_BT_SIZE_UNITS.
+ *
+ * @returns size, or -1 for error
+ */
+int
+ccn_btree_node_payloadsize(struct ccn_btree_node *node)
+{
+    int ans;
+    
+    ans = ccn_btree_node_getentrysize(node);
+    if (ans >= CCN_BT_SIZE_UNITS)
+        ans -= CCN_BT_SIZE_UNITS;
+    return(ans);
 }
 
 /** 
@@ -341,7 +363,7 @@ ccn_btree_lookup(struct ccn_btree *btree,
 {
     struct ccn_btree_node *node = NULL;
     struct ccn_btree_node *child = NULL;
-    struct ccn_btree_internal_entry *e = NULL;
+    struct ccn_btree_internal_payload *e = NULL;
     unsigned childid;
     unsigned parent;
     int entdx;
@@ -361,7 +383,7 @@ ccn_btree_lookup(struct ccn_btree *btree,
         entdx = CCN_BT_SRC_INDEX(srchres) - 1;
         if (entdx < 0)
             entdx = 0;
-        e = seek_internal_entry(node, entdx);
+        e = seek_internal(node, entdx);
         if (e == NULL)
             return(-1);
         childid = MYFETCH(e, child);

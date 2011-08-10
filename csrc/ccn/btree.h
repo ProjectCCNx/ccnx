@@ -155,15 +155,21 @@ struct ccn_btree_entry_trailer {
 #define CCN_BT_SIZE_UNITS 8
 
 /**
- *  Logical structure of the entry within an internal (non-leaf) node.
+ *  Structure of the entry payload within an internal (non-leaf) node.
  */
-struct ccn_btree_internal_entry {
+struct ccn_btree_internal_payload {
     unsigned char magic[1];     /**< CCN_BT_INTERNAL_MAGIC */
     unsigned char pad[3];       /**< must be zero */
     unsigned char child[4];     /**< points to a child */
-    struct ccn_btree_entry_trailer trailer;
 };
 #define CCN_BT_INTERNAL_MAGIC 0xCC
+/**
+ *  Logical structure of the entry within an internal (non-leaf) node.
+ */
+struct ccn_btree_internal_entry {
+    struct ccn_btree_internal_payload ie;
+    struct ccn_btree_entry_trailer trailer;
+};
 
 /* More extensive function descriptions are provided in the code. */
 
@@ -176,8 +182,11 @@ int ccn_btree_node_level(struct ccn_btree_node *node);
 /* Node entry size */
 int ccn_btree_node_getentrysize(struct ccn_btree_node *node);
 
+/* Node payload size */
+int ccn_btree_node_payloadsize(struct ccn_btree_node *node);
+
 /* Get address of the indexed entry within node */
-void *ccn_btree_node_getentry(size_t entry_bytes,
+void *ccn_btree_node_getentry(size_t payload_bytes,
                               struct ccn_btree_node *node, int i);
 
 /* Fetch the indexed key and place it into dst */
