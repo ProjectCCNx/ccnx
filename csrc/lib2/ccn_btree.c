@@ -251,7 +251,7 @@ ccn_btree_compare(const unsigned char *key,
     return(size > ksiz);
 }
 
-#include <stdio.h>
+// #include <stdio.h>
 
 /**
  * Search the node for the given key
@@ -279,7 +279,7 @@ ccn_btree_searchnode(const unsigned char *key,
     while (i < j) {
         mid = (i + j) >> 1;
         res =  ccn_btree_compare(key, size, node, mid);
-        printf("node = %u, i = %d, j = %d, mid = %d, res = %d\n", node->nodeid, i, j, mid, res);
+        // printf("node = %u, i = %d, j = %d, mid = %d, res = %d\n", node->nodeid, i, j, mid, res);
         if (res == 0)
             return(CCN_BT_ENCRES(mid, 1));
         if (res < 0)
