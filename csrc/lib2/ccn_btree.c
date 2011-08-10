@@ -49,18 +49,6 @@ storeval(unsigned char *p, int size, unsigned v)
         p[i-1] = v;
 }
 
-#define MYFETCHL(p, f) fetchvall(&((p)->f[0]), sizeof((p)->f))
-uintmax_t
-fetchvall(const unsigned char *p, int size)
-{
-    int i;
-    uintmax_t v;
-    
-    for (v = 0, i = 0; i < size; i++)
-        v = (v << 8) + p[i];
-    return(v);
-}
-
 /**
  *  Minimum size of a non-empty node
  */
