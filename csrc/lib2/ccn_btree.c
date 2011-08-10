@@ -490,22 +490,24 @@ ccn_btree_destroy(struct ccn_btree **pbt)
  */
 int
 ccn_btree_init_node(struct ccn_btree_node *node,
-                    int level, int nodetype)
+                    int level, unsigned char nodetype, unsigned char extsz)
 {
     struct ccn_btree_node_header *hdr = NULL;
+    size_t bytes;
     
     if (node->corrupt)
         return(-1);
+    bytes = sizeof(*hdr) + extsz * CCN_BT_SIZE_UNITS;
     node->clean = 0;
     node->buf->length = 0;
-    hdr = (struct ccn_btree_node_header *)ccn_charbuf_reserve(node->buf, sizeof(*hdr));
+    hdr = (struct ccn_btree_node_header *)ccn_charbuf_reserve(node->buf, bytes);
     if (hdr == NULL) return(-1);
     MYSTORE(hdr, magic, CCN_BTREE_MAGIC);
     MYSTORE(hdr, version, CCN_BTREE_VERSION);
     MYSTORE(hdr, nodetype, nodetype);
     MYSTORE(hdr, level, level);
-    MYSTORE(hdr, extbytes, 0);
-    node->buf->length += sizeof(*hdr);
+    MYSTORE(hdr, extsz, extsz);
+    node->buf->length += bytes;
     return(0);
 }
 
@@ -621,7 +623,7 @@ ccn_btree_chknode(struct ccn_btree_node *node, int picky)
         return(node->corrupt = __LINE__, -1);
     /* nodetype values are not checked at present */
     lev = MYFETCH(hdr, level);
-    strbase += MYFETCH(hdr, extbytes);
+    strbase += MYFETCH(hdr, extsz) * CCN_BT_SIZE_UNITS;
     if (strbase > node->buf->length)
         return(node->corrupt = __LINE__, -1);
     if (strbase == node->buf->length)

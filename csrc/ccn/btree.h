@@ -134,7 +134,7 @@ struct ccn_btree_node_header {
     unsigned char version[1];   /**< Format version */
     unsigned char nodetype[1];  /**< Indicates root node, backup root, etc. */
     unsigned char level[1];     /**< Level within the tree */
-    unsigned char extbytes[1];  /**< Header extension bytes */
+    unsigned char extsz[1];     /**< Header extension size (CCN_BT_SIZE_UNITS)*/
 };
 
 /**
@@ -213,7 +213,8 @@ struct ccn_btree_node *ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid);
 struct ccn_btree_node *ccn_btree_rnode(struct ccn_btree *bt, unsigned nodeid);
 
 /* Initialize the btree node */
-int ccn_btree_init_node(struct ccn_btree_node *node, int level, int nodetype);
+int ccn_btree_init_node(struct ccn_btree_node *node,
+                        int level, unsigned char nodetype, unsigned char extsz);
 
 /* Check a node for internal consistency */
 int ccn_btree_chknode(struct ccn_btree_node *node, int picky);
