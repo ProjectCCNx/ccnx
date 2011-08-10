@@ -156,8 +156,8 @@ test_structure_sizes(void)
 {
     check_structure_size("ccn_btree_entry_trailer",
             sizeof(struct ccn_btree_entry_trailer));
-    check_structure_size("ccn_btree_internal_payload",
-            sizeof(struct ccn_btree_internal_payload));
+    check_structure_size("ccn_btree_internal_entry",
+            sizeof(struct ccn_btree_internal_entry));
     return(0);
 }
 
@@ -195,6 +195,32 @@ struct node_example {
         {.koff0={0,0,0,0+8}, .ksiz0={0,9}, .index={0,1}, .entsz={2}}, // "goodstuff"
         {.koff0={0,0,0,2+8}, .ksiz0={0,2}, .index={0,2}, .entsz={2},
             .koff1={0,0,0,3+8}, .ksiz1={0,1}}, // "odd"
+    }
+};
+
+struct node_example ex2 = {
+    {{0x05, 0x3a, 0xde, 0x78}, {1}},
+    "struthiomimus",
+    {
+        {.koff1={0,0,0,2+8}, .ksiz1={0,3}, .index={0,0}, .entsz={2}}, // "rut"
+        {.koff0={0,0,0,0+8}, .ksiz0={0,5}, .index={0,1}, .entsz={2}}, // "strut"
+        {.koff0={0,0,0,1+8}, .ksiz0={0,5}, .index={0,2}, .entsz={2}}, // "truth"
+    }
+};
+
+struct root_example {
+    struct ccn_btree_node_header hdr;
+    unsigned char ss[CCN_BT_SIZE_UNITS];
+    struct ccn_btree_internal_entry e[2];
+} rootex1 = {
+    {{0x05, 0x3a, 0xde, 0x78}, {1}, {'R'}, {1}},
+    "ru",
+    {
+        {.magic={0xcc}, .child={0,0,0,2}, // ex1 at nodeid 2 as first child
+         .trailer={.index={0,0}, .level={1}, .entsz={2}}}, 
+        {.magic={0xcc}, .child={0,0,0,3}, // ex2 at nodeid 3 as second child
+         .trailer={.koff1={0,0,0,0+8}, .ksiz1={0,2}, 
+                   .index={0,1}, .level={1}, .entsz={2}}},
     }
 };
 
@@ -375,6 +401,59 @@ test_btree_init(void)
     return(res);
 }
 
+
+int
+test_btree_lookup(void)
+{
+    struct ccn_btree *btree = NULL;
+    struct ccn_btree_node *root = NULL;
+    struct ccn_btree_node *leaf = NULL;
+    int i;
+    int res;
+    struct {
+        const char *s;
+        int expectnode;
+        int expectindex;
+    } testvec[] = {
+        {"d", 2, 0},
+        {"goodstuff", 2, 1},
+        {"odd", 2, 2},
+        {"truth", 3, 2},
+    };
+
+    btree = ccn_btree_create();
+    CHKPTR(btree);
+    leaf = ccn_btree_getnode(btree, 2);
+    CHKPTR(leaf);
+    ccn_charbuf_append(leaf->buf, &ex1, sizeof(ex1));
+    res = ccn_btree_chknode(leaf, 0);
+    CHKSYS(res);
+    leaf = ccn_btree_getnode(btree, 3);
+    CHKPTR(leaf);
+    ccn_charbuf_append(leaf->buf, &ex2, sizeof(ex2));
+    res = ccn_btree_chknode(leaf, 0);
+    CHKSYS(res);
+    root = ccn_btree_getnode(btree, 1);
+    CHKPTR(root);
+    ccn_charbuf_append(leaf->buf, &rootex1, sizeof(rootex1));
+    res = ccn_btree_chknode(root, 0);
+    CHKSYS(res);
+    /* Now we should have a 3-node btree, all resident. Do our lookups. */
+    for (i = 0; i < sizeof(testvec)/sizeof(testvec[0]); i++) {
+        const char *s = testvec[i].s;
+        res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
+        printf("lookup %s => %d, %d, expected %d, %d\n", s,
+            leaf->nodeid,          res,
+            testvec[i].expectnode, testvec[i].expectindex);
+        FAILIF(res != testvec[i].expectindex);
+        FAILIF(leaf->nodeid != testvec[i].expectnode);
+        FAILIF(leaf->parent != 1);
+    }
+    res = ccn_btree_destroy(&btree);
+    FAILIF(btree != NULL);
+    return(res);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -397,6 +476,8 @@ main(int argc, char **argv)
     res = test_btree_searchnode();
     CHKSYS(res);
     res = test_btree_init();
+    CHKSYS(res);
+    if (0) res = test_btree_lookup();
     CHKSYS(res);
     return(0);
 }

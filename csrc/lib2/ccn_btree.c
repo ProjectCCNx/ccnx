@@ -98,6 +98,23 @@ seek_trailer(struct ccn_btree_node *node, int i)
     return(t);
 }
 
+static struct ccn_btree_internal_entry *
+seek_internal_entry(struct ccn_btree_node *node, int i)
+{
+    struct ccn_btree_internal_entry *ans = NULL;
+    struct ccn_btree_entry_trailer *t;
+    
+    t = seek_trailer(node, i);
+    if (t == NULL)
+        return(NULL);
+    if (MYFETCH(t, entsz) * CCN_BT_SIZE_UNITS != sizeof(*ans))
+        return(node->corrupt = __LINE__, NULL);
+    ans = &((struct ccn_btree_internal_entry *)t)[-1];
+    if (MYFETCH(ans, magic) != CCN_BT_INTERNAL_MAGIC)
+        return(node->corrupt = __LINE__, NULL);
+    return(ans);
+}
+
 /**
  * Number of entries
  * @returns number of entries within the node, or -1 for error
@@ -263,6 +280,59 @@ ccn_btree_searchnode(const unsigned char *key,
             i = mid + 1;
     }
     return(i);
+}
+
+/**
+ * Do a btree lookup, starting from the root.
+ */
+int
+ccn_btree_lookup(struct ccn_btree *btree,
+                 const unsigned char *key, size_t size,
+                 struct ccn_btree_node **nodep)
+{
+    struct ccn_btree_node *node = NULL;
+    struct ccn_btree_node *child = NULL;
+    struct ccn_btree_internal_entry *e = NULL;
+    unsigned childid;
+    unsigned parent;
+    int index;
+    int level;
+    int newlevel;
+    int res;
+    
+    node = ccn_btree_getnode(btree, 1);
+    if (node == NULL || node->corrupt)
+        return(-1);
+    if (node->buf->length == 0) {
+        res = ccn_btree_init_node(node, 0, 'R');
+        if (res == -1)
+            return(-1);
+    }
+    parent = node->nodeid;
+    level = ccn_btree_node_level(node);
+    index = ccn_btree_searchnode(key, size, node, 0, ccn_btree_node_nent(node));
+    while (level > 0) {
+        e = seek_internal_entry(node, index);
+        if (e == NULL)
+            return(-1);
+        childid = MYFETCH(e, child);
+        child = ccn_btree_getnode(btree, childid);
+        if (child == NULL)
+            return(-1);
+        newlevel = ccn_btree_node_level(child);
+        if (newlevel != level - 1) {
+            btree->errors++;
+            node->corrupt = __LINE__;
+            return(-1);
+        }
+        child->parent = node->nodeid;
+        node = child;
+        level = newlevel;
+        index = ccn_btree_searchnode(key, size, node, 0, ccn_btree_node_nent(node));
+    }
+    if (nodep != NULL)
+        *nodep = node;
+    return(index);
 }
 
 #define CCN_BTREE_MAGIC 0x53ade78

@@ -155,13 +155,13 @@ struct ccn_btree_entry_trailer {
 #define CCN_BT_SIZE_UNITS 8
 
 /**
- *  Logical structure of the payload within an entry of an internal
- *  (non-leaf) node.
+ *  Logical structure of the entry within an internal (non-leaf) node.
  */
-struct ccn_btree_internal_payload {
+struct ccn_btree_internal_entry {
     unsigned char magic[1];     /**< CCN_BT_INTERNAL_MAGIC */
     unsigned char pad[3];       /**< must be zero */
     unsigned char child[4];     /**< points to a child */
+    struct ccn_btree_entry_trailer trailer;
 };
 #define CCN_BT_INTERNAL_MAGIC 0xCC
 
@@ -213,5 +213,10 @@ int ccn_btree_init_node(struct ccn_btree_node *node, int level, int nodetype);
 
 /* Check a node for internal consistency */
 int ccn_btree_chknode(struct ccn_btree_node *node, int picky);
+
+/* Do a lookup, starting from the root */
+int ccn_btree_lookup(struct ccn_btree *btree,
+                     const unsigned char *key, size_t size,
+                     struct ccn_btree_node **nodep);
 
 #endif
