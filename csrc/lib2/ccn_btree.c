@@ -108,6 +108,9 @@ ccn_btree_node_getentry(size_t entry_bytes, struct ccn_btree_node *node, int i)
     return(((unsigned char *)t) + sizeof(*t) - entry_bytes);    
 }
 
+/**
+ * Get the address of entry within an internal (non-leaf) node.
+ */
 static struct ccn_btree_internal_entry *
 seek_internal_entry(struct ccn_btree_node *node, int i)
 {
@@ -381,7 +384,24 @@ ccn_btree_lookup(struct ccn_btree *btree,
     return(srchres);
 }
 
-
+int
+ccn_btree_insert_entry(struct ccn_btree *btree,
+                       const unsigned char *key, size_t keysize,
+                       struct ccn_btree_node *leaf, int i,
+                       void *payload, size_t payload_bytes)
+{
+    size_t k, pb;
+    
+    pb = (payload_bytes + CCN_BT_SIZE_UNITS - 1)
+         / CCN_BT_SIZE_UNITS
+         * CCN_BT_SIZE_UNITS;
+    k = ccn_btree_node_getentrysize(leaf);
+    if (k == 0)
+        k = pb + sizeof(struct ccn_btree_entry_trailer);
+    if (k != pb + sizeof(struct ccn_btree_entry_trailer))
+        return(-1);
+    abort();
+}
 
 #define CCN_BTREE_MAGIC 0x53ade78
 #define CCN_BTREE_VERSION 1
@@ -530,8 +550,11 @@ ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid)
                 res = bt->io->btread(bt->io, node, CCN_BTREE_MAX_NODE_BYTES);
                 if (res < 0)
                     bt->errors++;
-                else
+                else {
                     node->clean = node->buf->length;
+                    if (-1 == ccn_btree_chknode(node, 0))
+                        bt->errors++;
+                }
             }
         }
     }
