@@ -91,8 +91,9 @@ seek_trailer(struct ccn_btree_node *node, int i)
         return(node->corrupt = __LINE__, NULL);
     if ((unsigned)i > last)
         return(NULL);
-    t = (struct ccn_btree_entry_trailer *)(node->buf->buf +
-        node->buf->length - (ent * (last + 1 - i)));
+    t = (struct ccn_btree_entry_trailer *)(node->buf->buf + node->buf->length
+        - (ent * (last - i))
+        - sizeof(struct ccn_btree_entry_trailer));
     if (MYFETCH(t, index) != i)
         return(node->corrupt = __LINE__, NULL);
     return(t);
@@ -109,7 +110,8 @@ seek_internal_entry(struct ccn_btree_node *node, int i)
         return(NULL);
     if (MYFETCH(t, entsz) * CCN_BT_SIZE_UNITS != sizeof(*ans))
         return(node->corrupt = __LINE__, NULL);
-    ans = &((struct ccn_btree_internal_entry *)t)[-1];
+    /* awful pointer arithmetic ... */
+    ans = ((struct ccn_btree_internal_entry *)(t + 1)) - 1;
     if (MYFETCH(ans, magic) != CCN_BT_INTERNAL_MAGIC)
         return(node->corrupt = __LINE__, NULL);
     return(ans);
@@ -249,37 +251,46 @@ ccn_btree_compare(const unsigned char *key,
     return(size > ksiz);
 }
 
-// #include <stdio.h>
+#include <stdio.h>
+
 /**
- * Search for the first entry in the range [i..j) that compares >= the
- * given key.
+ * Search the node for the given key
  *
- * Assumes the keys in the node are distinct and in increasing order.
- * Uses a binary search.
+ * The return value is encoded as 2 * index + success; that is, a successful
+ * search returns an odd number and an unsuccessful search returns an even
+ * number.  In the case of an unsuccessful search, the index indicates
+ * the where the item would go if it were to be inserted.
+ *
+ * Uses a binary search, so the keys must be sorted and unique.
+ *
+ * @returns CCN_BT_ENCRES(index, success) indication, or -1 for an error.
  */
 int
 ccn_btree_searchnode(const unsigned char *key,
                      size_t size,
-                     struct ccn_btree_node *node,
-                     int i, int j)
+                     struct ccn_btree_node *node)
 {
-    int res;
-    int mid;
+    int i, j, mid, res;
     
     if (node->corrupt)
         return(-1);
+    i = 0;
+    j = ccn_btree_node_nent(node);
     while (i < j) {
         mid = (i + j) >> 1;
         res =  ccn_btree_compare(key, size, node, mid);
-        // printf("node = %u, mid = %d, res = %d\n", node->nodeid, mid, res);
+        printf("node = %u, i = %d, j = %d, mid = %d, res = %d\n", node->nodeid, i, j, mid, res);
         if (res == 0)
-            return(mid);
+            return(CCN_BT_ENCRES(mid, 1));
         if (res < 0)
             j = mid;
         else
             i = mid + 1;
     }
-    return(i);
+    if (i != j) {
+        abort();
+    }
+    return(CCN_BT_ENCRES(i, 0));
 }
 
 /**
@@ -298,20 +309,20 @@ ccn_btree_lookup(struct ccn_btree *btree,
     int index;
     int level;
     int newlevel;
-    int res;
+    int srchres;
     
     node = ccn_btree_getnode(btree, 1);
     if (node == NULL || node->corrupt)
         return(-1);
-    if (node->buf->length == 0) {
-        res = ccn_btree_init_node(node, 0, 'R');
-        if (res == -1)
-            return(-1);
-    }
     parent = node->nodeid;
     level = ccn_btree_node_level(node);
-    index = ccn_btree_searchnode(key, size, node, 0, ccn_btree_node_nent(node));
+    srchres = ccn_btree_searchnode(key, size, node);
+    if (srchres < 0)
+        return(-1);
     while (level > 0) {
+        index = CCN_BT_SRC_INDEX(srchres) - 1;
+        if (index < 0)
+            index = 0;
         e = seek_internal_entry(node, index);
         if (e == NULL)
             return(-1);
@@ -328,11 +339,11 @@ ccn_btree_lookup(struct ccn_btree *btree,
         child->parent = node->nodeid;
         node = child;
         level = newlevel;
-        index = ccn_btree_searchnode(key, size, node, 0, ccn_btree_node_nent(node));
+        srchres = ccn_btree_searchnode(key, size, node);
     }
     if (nodep != NULL)
         *nodep = node;
-    return(index);
+    return(srchres);
 }
 
 #define CCN_BTREE_MAGIC 0x53ade78
@@ -487,6 +498,8 @@ ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid)
             }
         }
     }
+    if (node != NULL && node->nodeid != nodeid)
+        abort();
     hashtb_end(e);
     return(node);
 }

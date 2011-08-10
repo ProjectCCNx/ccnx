@@ -188,12 +188,13 @@ int ccn_btree_compare(const unsigned char *key, size_t size,
                       struct ccn_btree_node *node,
                       int index);
 
-
+#define CCN_BT_ENCRES(ndx, success) (2 * (ndx) + ((success) || 1))
+#define CCN_BT_SRC_FOUND(res) ((res) & 1)
+#define CCN_BT_SRC_INDEX(res) ((res) >> 1)
 /* Search within the node for the key, or something near it */
 int ccn_btree_searchnode(const unsigned char *key,
                          size_t size,
-                         struct ccn_btree_node *node,
-                         int i, int j);
+                         struct ccn_btree_node *node);
 
 /* Handle creation and destruction */
 struct ccn_btree *ccn_btree_create(void);
