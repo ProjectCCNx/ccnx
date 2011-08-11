@@ -183,18 +183,23 @@ test_btree_lockfile(void)
     return(res);
 }
 
+struct entry_example {
+    unsigned char p[CCN_BT_SIZE_UNITS];
+    struct ccn_btree_entry_trailer t;
+};
+
 struct node_example {
     struct ccn_btree_node_header hdr;
     unsigned char ss[CCN_BT_SIZE_UNITS * 2];
-    struct ccn_btree_entry_trailer e[3];
+    struct entry_example e[3];
 } ex1 = {
     {{0x05, 0x3a, 0xde, 0x78}, {1}},
     "goodstuffed",
     {
-        {.koff0={0,0,0,3+8}, .ksiz0={0,1}, .entdx={0,0}, .entsz={2}}, // "d"
-        {.koff0={0,0,0,0+8}, .ksiz0={0,9}, .entdx={0,1}, .entsz={2}}, // "goodstuff"
-        {.koff0={0,0,0,2+8}, .ksiz0={0,2}, .entdx={0,2}, .entsz={2},
-            .koff1={0,0,0,3+8}, .ksiz1={0,1}}, // "odd"
+        {.t={.koff0={0,0,0,3+8}, .ksiz0={0,1}, .entdx={0,0}, .entsz={3}}}, // "d"
+        {.t={.koff0={0,0,0,0+8}, .ksiz0={0,9}, .entdx={0,1}, .entsz={3}}}, // "goodstuff"
+        {.t={.koff0={0,0,0,2+8}, .ksiz0={0,2}, .entdx={0,2}, .entsz={3},
+            .koff1={0,0,0,3+8}, .ksiz1={0,1}}}, // "odd"
     }
 };
 
@@ -202,9 +207,9 @@ struct node_example ex2 = {
     {{0x05, 0x3a, 0xde, 0x78}, {1}},
     "struthiomimus",
     {
-        {.koff1={0,0,0,2+8}, .ksiz1={0,3}, .entdx={0,0}, .entsz={2}}, // "rut"
-        {.koff0={0,0,0,0+8}, .ksiz0={0,5}, .entdx={0,1}, .entsz={2}}, // "strut"
-        {.koff0={0,0,0,1+8}, .ksiz0={0,5}, .entdx={0,2}, .entsz={2}}, // "truth"
+        {.t={.koff1={0,0,0,2+8}, .ksiz1={0,3}, .entdx={0,0}, .entsz={3}}}, // "rut"
+        {.t={.koff0={0,0,0,0+8}, .ksiz0={0,5}, .entdx={0,1}, .entsz={3}}}, // "strut"
+        {.t={.koff0={0,0,0,1+8}, .ksiz0={0,5}, .entdx={0,2}, .entsz={3}}}, // "truth"
     }
 };
 
@@ -241,7 +246,7 @@ test_btree_chknode(void)
     FAILIF(node->corrupt != 0);
     FAILIF(node->freelow != 8 + 9); // header plus goodstuff
     ex = (void *)node->buf->buf;
-    ex->e[1].ksiz0[2] = 100; /* ding the size in entry 1 */
+    ex->e[1].t.ksiz0[2] = 100; /* ding the size in entry 1 */
     res = ccn_btree_chknode(node, 0);
     FAILIF(res != -1);
     FAILIF(node->corrupt == 0);
@@ -282,7 +287,7 @@ test_btree_key_fetch(void)
     FAILIF(res != -1);
     FAILIF(node->corrupt); /* Those should not have flagged corruption */
     
-    ex.e[1].koff0[2] = 1; /* ding the offset in entry 1 */
+    ex.e[1].t.koff0[2] = 1; /* ding the offset in entry 1 */
     node->buf->length = 0;
     ccn_charbuf_append(node->buf, &ex, sizeof(ex));
     
