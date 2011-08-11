@@ -201,7 +201,7 @@ int ccn_btree_key_append(struct ccn_charbuf *dst,
 int ccn_btree_compare(const unsigned char *key, size_t size,
                       struct ccn_btree_node *node, int i);
 
-#define CCN_BT_ENCRES(ndx, success) (2 * (ndx) + ((success) || 1))
+#define CCN_BT_ENCRES(ndx, success) (2 * (ndx) + ((success) || 0))
 #define CCN_BT_SRC_FOUND(res) ((res) & 1)
 #define CCN_BT_SRC_INDEX(res) ((res) >> 1)
 /* Search within the node for the key, or something near it */
