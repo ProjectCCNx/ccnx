@@ -52,7 +52,9 @@ check test: ccnbtreetest $(SCRIPTSRC)
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
-ccn_btree.o: ccn_btree.c ../ccn/btree.h ../include/ccn/charbuf.h
+ccn_btree.o: ccn_btree.c ../include/ccn/charbuf.h ../include/ccn/hashtb.h \
+  ../ccn/btree.h
 ccn_btree_store.o: ccn_btree_store.c ../ccn/btree.h \
-  ../include/ccn/charbuf.h
-ccnbtreetest.o: ccnbtreetest.c ../ccn/btree.h ../include/ccn/charbuf.h
+  ../include/ccn/charbuf.h ../include/ccn/hashtb.h
+ccnbtreetest.o: ccnbtreetest.c ../ccn/btree.h ../include/ccn/charbuf.h \
+  ../include/ccn/hashtb.h
