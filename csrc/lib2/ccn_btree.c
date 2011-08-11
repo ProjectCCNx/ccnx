@@ -406,23 +406,55 @@ ccn_btree_lookup(struct ccn_btree *btree,
     return(srchres);
 }
 
+/* See if we can reuse a leading portion of the key */
+static void
+scan_reusable(const unsigned char *key, size_t keysize,
+             struct ccn_btree_node *node, int ndx, unsigned reuse[2])
+{
+    /* this is an optimization - leave out for now */
+}
+
 int
 ccn_btree_insert_entry(struct ccn_btree *btree,
                        const unsigned char *key, size_t keysize,
-                       struct ccn_btree_node *leaf, int i,
+                       struct ccn_btree_node *node, int i,
                        void *payload, size_t payload_bytes)
 {
     size_t k, pb;
+    struct ccn_btree_entry_trailer space;
+    struct ccn_btree_entry_trailer *t = &space;
+    unsigned reuse[2] = {0, 0};
     
+    if (node->freelow == 0)
+        ccn_btree_chknode(node, 0);
+    if (node->corrupt)
+        return(-1);
     pb = (payload_bytes + CCN_BT_SIZE_UNITS - 1)
          / CCN_BT_SIZE_UNITS
          * CCN_BT_SIZE_UNITS;
-    k = ccn_btree_node_getentrysize(leaf);
+    k = ccn_btree_node_getentrysize(node);
     if (k == 0)
         k = pb + sizeof(struct ccn_btree_entry_trailer);
     if (k != pb + sizeof(struct ccn_btree_entry_trailer))
         return(-1);
-    abort();
+    scan_reusable(key, keysize, node, i, reuse);
+    if (reuse[1] != 0) {
+        MYSTORE(t, koff0, reuse[0]);
+        MYSTORE(t, ksiz0, reuse[1]);
+        MYSTORE(t, koff1, node->freelow);
+        MYSTORE(t, ksiz1, keysize - reuse[1]);
+    }
+    else {
+        MYSTORE(t, koff0, node->freelow);
+        MYSTORE(t, ksiz0, keysize);
+        MYSTORE(t, koff1, 0);
+        MYSTORE(t, ksiz1, 0);
+    }
+    MYSTORE(t, level, ccn_btree_node_level(node));
+    MYSTORE(t, entsz, k / CCN_BT_SIZE_UNITS);
+    if (keysize != reuse[1] && node->clean > node->freelow)
+        node->clean = node->freelow;
+    return(-1); // XXX not all coded yet
 }
 
 #define CCN_BTREE_MAGIC 0x53ade78
