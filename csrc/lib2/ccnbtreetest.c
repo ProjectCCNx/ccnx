@@ -408,28 +408,13 @@ test_btree_init(void)
     return(res);
 }
 
-
-int
-test_btree_lookup(void)
+struct ccn_btree *
+example_btree_small(void)
 {
-    const int yes = 1;
-    const int no = 0;
     struct ccn_btree *btree = NULL;
     struct ccn_btree_node *root = NULL;
     struct ccn_btree_node *leaf = NULL;
-    int i;
-    int res;
-    struct {
-        const char *s;
-        int expectnode;
-        int expectres;
-    } testvec[] = {
-        {"d", 2, CCN_BT_ENCRES(0, yes)},
-        {"goodstuff", 2, CCN_BT_ENCRES(1, yes)},
-        {"odd", 2, CCN_BT_ENCRES(2, yes)},
-        {"truth", 3, CCN_BT_ENCRES(2, yes)},
-        {"tooth", 3, CCN_BT_ENCRES(2, no)},
-    };
+    int res = 0;
 
     btree = ccn_btree_create();
     CHKPTR(btree);
@@ -448,6 +433,32 @@ test_btree_lookup(void)
     ccn_charbuf_append(root->buf, &rootex1, sizeof(rootex1));
     res = ccn_btree_chknode(root, 0);
     CHKSYS(res);
+    return(btree);
+}
+
+int
+test_btree_lookup(void)
+{
+    const int yes = 1;
+    const int no = 0;
+    struct ccn_btree *btree = NULL;
+    struct ccn_btree_node *leaf = NULL;
+    int i;
+    int res;
+    struct {
+        const char *s;
+        int expectnode;
+        int expectres;
+    } testvec[] = {
+        {"d", 2, CCN_BT_ENCRES(0, yes)},
+        {"goodstuff", 2, CCN_BT_ENCRES(1, yes)},
+        {"odd", 2, CCN_BT_ENCRES(2, yes)},
+        {"truth", 3, CCN_BT_ENCRES(2, yes)},
+        {"tooth", 3, CCN_BT_ENCRES(2, no)},
+    };
+
+    btree = example_btree_small();
+    CHKPTR(btree);
     /* Now we should have a 3-node btree, all resident. Do our lookups. */
     for (i = 0; i < sizeof(testvec)/sizeof(testvec[0]); i++) {
         const char *s = testvec[i].s;
@@ -458,6 +469,8 @@ test_btree_lookup(void)
         FAILIF(res != testvec[i].expectres);
         FAILIF(leaf->nodeid != testvec[i].expectnode);
         FAILIF(leaf->parent != 1);
+        res = ccn_btree_node_level(leaf);
+        FAILIF(res != 0);
     }
     res = ccn_btree_destroy(&btree);
     FAILIF(btree != NULL);
