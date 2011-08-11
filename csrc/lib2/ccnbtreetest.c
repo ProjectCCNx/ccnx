@@ -190,13 +190,14 @@ struct entry_example {
 
 struct node_example {
     struct ccn_btree_node_header hdr;
-    unsigned char ss[CCN_BT_SIZE_UNITS * 2];
+    unsigned char ss[64];
     struct entry_example e[3];
 } ex1 = {
     {{0x05, 0x3a, 0xde, 0x78}, {1}},
-    "goodstuffed",
+    "goodstuff<------ WASTE---------->d<----><-------------- free -->",
+    //                                 beauty
     {
-        {.t={.koff0={0,0,0,3+8}, .ksiz0={0,1}, .entdx={0,0}, .entsz={3}}}, // "d"
+        {.t={.koff0={0,0,0,33+8}, .ksiz0={0,1}, .entdx={0,0}, .entsz={3}}}, // "d"
         {.t={.koff0={0,0,0,0+8}, .ksiz0={0,9}, .entdx={0,1}, .entsz={3}}}, // "goodstuff"
         {.t={.koff0={0,0,0,2+8}, .ksiz0={0,2}, .entdx={0,2}, .entsz={3},
             .koff1={0,0,0,3+8}, .ksiz1={0,1}}}, // "odd"
@@ -244,7 +245,7 @@ test_btree_chknode(void)
     res = ccn_btree_chknode(node, 0);
     CHKSYS(res);
     FAILIF(node->corrupt != 0);
-    FAILIF(node->freelow != 8 + 9); // header plus goodstuff
+    FAILIF(node->freelow != 8 + 34); // header plus goodstuff<- ... ->d
     ex = (void *)node->buf->buf;
     ex->e[1].t.ksiz0[2] = 100; /* ding the size in entry 1 */
     res = ccn_btree_chknode(node, 0);
@@ -485,7 +486,7 @@ test_basic_btree_insert_entry(void)
     int res;
     int ndx;
     const char *s = "";
-    unsigned char payload[6] = " ";
+    unsigned char payload[6] = "@12345";
     unsigned char *c = NULL;
     unsigned char canary = 42;
     unsigned cage = 10000;
@@ -517,6 +518,22 @@ test_basic_btree_insert_entry(void)
     FAILIF(res != 1);
     res = ccn_btree_lookup(btree, (const void *)"d", 1, &leaf);
     FAILIF(res != 3);
+    s = "age";
+    payload[0] = 'A';
+    res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
+    FAILIF(res != 0);
+    res = ccn_btree_insert_entry(btree,
+                                 (const void *)s, strlen(s),
+                                 leaf, ndx,
+                                 payload, sizeof(payload));
+    CHKSYS(res);
+    res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
+    FAILIF(res != 1);
+    res = ccn_btree_lookup(btree, (const void *)"d", 1, &leaf);
+    FAILIF(res != 5);
+    c = &leaf->buf->buf[leaf->buf->length];
+    FAILIF(c[0] != canary);
+    FAILIF(0 != memcmp(c, c + 1, perch - 1));
     res = ccn_btree_destroy(&btree);
     FAILIF(btree != NULL);
     return(res);
