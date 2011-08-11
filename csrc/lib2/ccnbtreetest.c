@@ -478,6 +478,38 @@ test_btree_lookup(void)
 }
 
 int
+test_basic_btree_insert_entry(void)
+{
+    struct ccn_btree *btree = NULL;
+    struct ccn_btree_node *leaf = NULL;
+    int res;
+    int ndx;
+    const char *s = "";
+    unsigned char payload[6] = " ";
+    
+    btree = example_btree_small();
+    CHKPTR(btree);
+    s = "beauty";
+    res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
+    CHKSYS(res);
+    FAILIF(CCN_BT_SRC_FOUND(res));
+    ndx = CCN_BT_SRC_INDEX(res);
+    FAILIF(ndx != 0); // beauty before d
+    res = ccn_btree_chknode(leaf, 0);
+    CHKSYS(res);
+    res = ccn_btree_insert_entry(btree,
+                                 (const void *)s, strlen(s),
+                                 leaf, ndx,
+                                 payload, sizeof(payload));
+    CHKSYS(res);
+    res = ccn_btree_chknode(leaf, 0);
+    CHKSYS(res);
+    res = ccn_btree_destroy(&btree);
+    FAILIF(btree != NULL);
+    return(res);
+}
+
+int
 main(int argc, char **argv)
 {
     int res;
@@ -501,6 +533,8 @@ main(int argc, char **argv)
     res = test_btree_init();
     CHKSYS(res);
     res = test_btree_lookup();
+    CHKSYS(res);
+    test_basic_btree_insert_entry();
     CHKSYS(res);
     return(0);
 }
