@@ -78,6 +78,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	protected Integer _answerOriginKind = null;
 	protected Integer _scope;
+	protected byte[] _interestLifetime = null;		// For now we don't have the ability to set an interest lifetime
 	protected byte[] _nonce;
 
 	public long userTime;
@@ -134,6 +135,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public Integer childSelector() { return _childSelector;}
 	public void childSelector(int childSelector) { _childSelector = childSelector; }
+	
+	public byte[] interestLifetime() { return _interestLifetime;}
+	public void interestLifetime(byte[] interestLifetime) { _interestLifetime = interestLifetime; }
 	
 	public Integer answerOriginKind() { 
 		if (null == _answerOriginKind) {
@@ -504,16 +508,16 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (decoder.peekStartElement(CCNProtocolDTags.Scope)) {
 			_scope = decoder.readIntegerElement(CCNProtocolDTags.Scope);
 		}
+
+		if (decoder.peekStartElement(CCNProtocolDTags.InterestLifetime)) {
+			_interestLifetime = decoder.readBinaryElement(CCNProtocolDTags.InterestLifetime);
+		}
 		
 		if (decoder.peekStartElement(CCNProtocolDTags.Nonce)) {
 			_nonce = decoder.readBinaryElement(CCNProtocolDTags.Nonce);
 		}
 		
-		try {
-			decoder.readEndElement();
-		} catch (ContentDecodingException e) {
-			Log.info(Log.FAC_ENCODING, "Catching exception reading Interest end element, and moving on. Waiting for schema updates...");
-		}
+		decoder.readEndElement();
 	}
 
 	public void encode(XMLEncoder encoder) throws ContentEncodingException {
@@ -614,6 +618,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		result = prime * result
 				+ ((_publisher == null) ? 0 : _publisher.hashCode());
 		result = prime * result + ((_scope == null) ? 0 : _scope.hashCode());
+		result = prime * result + Arrays.hashCode(_interestLifetime);
 		result = prime * result + Arrays.hashCode(_nonce);
 		return result;
 	}
@@ -702,6 +707,8 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			clone.childSelector(childSelector());
 		if (null != _answerOriginKind)
 			clone.answerOriginKind(answerOriginKind());
+		if (null != _interestLifetime)
+			clone.interestLifetime(interestLifetime());
 		if (null != _scope)
 			clone.scope(scope());
 		return clone;

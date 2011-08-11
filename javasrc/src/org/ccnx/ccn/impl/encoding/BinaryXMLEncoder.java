@@ -22,7 +22,6 @@ import java.io.OutputStream;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;

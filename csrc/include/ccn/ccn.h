@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 4000
+#define CCN_API_VERSION 4001
 
 /**
  * Interest lifetime default.
@@ -668,6 +668,10 @@ int ccn_content_get_value(const unsigned char *data, size_t data_size,
                           const struct ccn_parsed_ContentObject *content,
                           const unsigned char **value, size_t *size);
 
+/* checking for final block */
+int
+ccn_is_final_block(struct ccn_upcall_info *info);
+
 /* content-object signing */
 
 /**
@@ -744,6 +748,7 @@ int ccn_chk_signing_params(struct ccn *h,
                            struct ccn_charbuf **ptimestamp,
                            struct ccn_charbuf **pfinalblockid,
                            struct ccn_charbuf **pkeylocator);
+
 /* low-level content-object signing */
 int ccn_signed_info_create(
     struct ccn_charbuf *c,              /* filled with result */
