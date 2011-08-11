@@ -486,6 +486,10 @@ test_basic_btree_insert_entry(void)
     int ndx;
     const char *s = "";
     unsigned char payload[6] = " ";
+    unsigned char *c = NULL;
+    unsigned char canary = 42;
+    unsigned cage = 10000;
+    unsigned perch = 1000;
     
     btree = example_btree_small();
     CHKPTR(btree);
@@ -495,6 +499,8 @@ test_basic_btree_insert_entry(void)
     FAILIF(CCN_BT_SRC_FOUND(res));
     ndx = CCN_BT_SRC_INDEX(res);
     FAILIF(ndx != 0); // beauty before d
+    
+    memset(ccn_charbuf_reserve(leaf->buf, cage), canary, cage);
     res = ccn_btree_chknode(leaf, 0);
     CHKSYS(res);
     res = ccn_btree_insert_entry(btree,
@@ -504,6 +510,13 @@ test_basic_btree_insert_entry(void)
     CHKSYS(res);
     res = ccn_btree_chknode(leaf, 0);
     CHKSYS(res);
+    c = &leaf->buf->buf[leaf->buf->length];
+    FAILIF(c[0] != canary);
+    FAILIF(0 != memcmp(c, c + 1, perch - 1));
+    res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
+    FAILIF(res != 1);
+    res = ccn_btree_lookup(btree, (const void *)"d", 1, &leaf);
+    FAILIF(res != 3);
     res = ccn_btree_destroy(&btree);
     FAILIF(btree != NULL);
     return(res);
