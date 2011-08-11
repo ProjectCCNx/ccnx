@@ -420,10 +420,13 @@ ccn_btree_insert_entry(struct ccn_btree *btree,
                        struct ccn_btree_node *node, int i,
                        void *payload, size_t payload_bytes)
 {
-    size_t k, pb;
-    struct ccn_btree_entry_trailer space;
+    size_t ej, k, grow, minnewsize, pb, pre, post, org;
+    unsigned char *to = NULL;
+    unsigned char *from = NULL;
+    struct ccn_btree_entry_trailer space = {};
     struct ccn_btree_entry_trailer *t = &space;
     unsigned reuse[2] = {0, 0};
+    int j, n;
     
     if (node->freelow == 0)
         ccn_btree_chknode(node, 0);
@@ -432,9 +435,18 @@ ccn_btree_insert_entry(struct ccn_btree *btree,
     pb = (payload_bytes + CCN_BT_SIZE_UNITS - 1)
          / CCN_BT_SIZE_UNITS
          * CCN_BT_SIZE_UNITS;
-    k = ccn_btree_node_getentrysize(node);
-    if (k == 0)
+    n = ccn_btree_node_nent(node);
+    if (i > n)
+        return(-1);
+    if (n == 0) {
+        org = node->buf->length;
         k = pb + sizeof(struct ccn_btree_entry_trailer);
+    }
+    else {
+        unsigned char *x = ccn_btree_node_getentry(pb, node, 0);
+        org = x - node->buf->buf;
+        k = ccn_btree_node_getentrysize(node);
+    }
     if (k != pb + sizeof(struct ccn_btree_entry_trailer))
         return(-1);
     scan_reusable(key, keysize, node, i, reuse);
@@ -447,14 +459,54 @@ ccn_btree_insert_entry(struct ccn_btree *btree,
     else {
         MYSTORE(t, koff0, node->freelow);
         MYSTORE(t, ksiz0, keysize);
-        MYSTORE(t, koff1, 0);
-        MYSTORE(t, ksiz1, 0);
     }
     MYSTORE(t, level, ccn_btree_node_level(node));
     MYSTORE(t, entsz, k / CCN_BT_SIZE_UNITS);
     if (keysize != reuse[1] && node->clean > node->freelow)
         node->clean = node->freelow;
-    return(-1); // XXX not all coded yet
+    minnewsize = (n + 1) * k + node->freelow + keysize - reuse[1];
+    minnewsize = (minnewsize + CCN_BT_SIZE_UNITS - 1)
+                 / CCN_BT_SIZE_UNITS
+                 * CCN_BT_SIZE_UNITS;
+    pre = i * k;
+    post = (n - i) * k;
+    if (minnewsize <= node->buf->length) {
+        /* no expansion needed */
+        to = node->buf->buf + org - k;
+        if (node->clean > org - k)
+            node->clean = org - k;
+        if (i != 0)
+            memmove(to, to + k, i * k);
+        to += i * k;
+        memmove(to, payload, payload_bytes);
+        memmove(to + pb, t, sizeof(*t));
+        ej = to + pb - node->buf->buf;
+    }
+    else {
+        /* Need to expand */
+        grow = minnewsize - node->buf->length;
+        if (NULL == ccn_charbuf_reserve(node->buf, grow))
+            return(-1);
+        to = node->buf->buf + minnewsize - (pre + k + post);
+        from = node->buf->buf + org;
+        if (node->clean > org)
+            node->clean = org;
+        memmove(to + pre + k, from + pre, post);
+        memmove(to + pre, payload, payload_bytes);
+        memmove(to + pre + pb, t, sizeof(*t));
+        memset(from, to - from, 0);
+        ej = pre + pb;
+        memmove(to, from, pre);
+        node->buf->length = minnewsize;
+    }
+    /* Fix up the entdx in the relocated entries */
+    for (j = i; j <= n; j++, ej += k) {
+        t = (void*)(node->buf->buf + ej);
+        MYSTORE(t, entdx, j);
+    }
+    memmove(to + node->freelow, key + reuse[0], keysize - reuse[1]);
+    node->freelow += keysize - reuse[1];
+    return(0);
 }
 
 #define CCN_BTREE_MAGIC 0x53ade78

@@ -160,7 +160,7 @@ struct ccn_btree_entry_trailer {
 struct ccn_btree_internal_payload {
     unsigned char magic[1];     /**< CCN_BT_INTERNAL_MAGIC */
     unsigned char pad[3];       /**< must be zero */
-    unsigned char child[4];     /**< points to a child */
+    unsigned char child[4];     /**< nodeid of a child */
 };
 #define CCN_BT_INTERNAL_MAGIC 0xCC
 /**
