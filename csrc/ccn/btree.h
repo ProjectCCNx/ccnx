@@ -239,4 +239,7 @@ int ccn_btree_insert_entry(struct ccn_btree *btree,
                            struct ccn_btree_node *node, int i,
                            void *payload, size_t payload_bytes);
 
+/* Split a node into two pieces */
+int ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node);
+
 #endif

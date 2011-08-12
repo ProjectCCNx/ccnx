@@ -181,8 +181,8 @@ ccn_btree_node_payloadsize(struct ccn_btree_node *node)
     int ans;
     
     ans = ccn_btree_node_getentrysize(node);
-    if (ans >= CCN_BT_SIZE_UNITS)
-        ans -= CCN_BT_SIZE_UNITS;
+    if (ans >= sizeof(struct ccn_btree_entry_trailer))
+        ans -= sizeof(struct ccn_btree_entry_trailer);
     return(ans);
 }
 
@@ -509,6 +509,54 @@ ccn_btree_insert_entry(struct ccn_btree *btree,
     memmove(to, key + reuse[0], keysize - reuse[1]);
     node->freelow += keysize - reuse[1];
     return(0);
+}
+
+#include <stdio.h>
+
+int
+ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
+{
+    int i, j, k, n, pb, res;
+    struct ccn_btree_node *a[2] = {NULL, NULL};
+    void *payload = NULL;
+    struct ccn_charbuf *key = NULL;
+    
+    n = ccn_btree_node_nent(node);
+    if (n < 2)
+        return(-1);
+    pb = ccn_btree_node_payloadsize(node);
+    /* Create two new nodes to hold the split-up content */
+    for (k = 0; k < 2; k++) {
+        a[k] = ccn_btree_getnode(btree, btree->nextnodeid++);
+        if (a[k] == NULL)
+            return(btree->errors++, -1);
+        if (ccn_btree_node_nent(a[k]) != 0)
+            return(btree->errors++, -1);
+        res = ccn_btree_init_node(a[k], ccn_btree_node_level(node), 0, 0);
+        if (res < 0)
+            return(btree->errors++, -1);
+        a[k]->parent = node->parent;
+    }
+    /* Distribute the entries into the two new nodes */
+    key = ccn_charbuf_create();
+    if (key == NULL)
+        return(-1);
+    for (i = 0, j = 0, k = 0, res = 0; i < n; i++) {
+        if (i == n / 2) {
+            k = 1; j = 0; /* switch to second half */
+        }
+        res |= ccn_btree_key_fetch(key, node, i);
+        payload = ccn_btree_node_getentry(pb, node, i);
+        if (payload == NULL) {
+            res = -1; break;
+        }
+        res |= ccn_btree_insert_entry(btree, key->buf, key->length, a[k], j, payload, pb);
+        printf("Splitting %s into node %u (res = %d)\n", ccn_charbuf_as_string(key), a[k]->nodeid, res);
+    }
+    ccn_charbuf_destroy(&key);
+    if (res < 0)
+        return(-1);
+    return(-1); // XXX - still need to hook things up in the parent.
 }
 
 #define CCN_BTREE_MAGIC 0x53ade78
