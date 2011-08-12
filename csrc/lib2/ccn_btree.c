@@ -657,7 +657,12 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     node->clean = 0;
     node->buf = newnode.buf;
     newnode.buf = NULL;
-    a[0] = node;
+    if (btree->nextsplit == node->nodeid)
+        btree->nextsplit = 0;
+    if (res > btree->full) {
+        btree->missedsplit = btree->nextsplit;
+        btree->nextsplit = parent->nodeid;
+    }
     ccn_charbuf_destroy(&key);
     return(0);
 Bail:
@@ -715,7 +720,8 @@ ccn_btree_create(void)
         }
         ans->errors = 0;
         ans->io = NULL;
-        ans->nextnodeid = 1;
+        ans->nextnodeid = 1;  /* This will be the root */
+        ans->full = 20;
     }
     return(ans);
 }

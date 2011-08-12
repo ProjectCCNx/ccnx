@@ -543,6 +543,49 @@ test_basic_btree_insert_entry(void)
 }
 
 int
+test_btree_inserts_from_stdin(void)
+{
+    struct ccn_charbuf *c;
+    char payload[8] = "TestTree";
+    int dups = 0;
+    int unique = 0;
+    struct ccn_btree_node *btree = NULL;
+    struct ccn_btree_node *node = NULL;
+    struct ccn_btree_node *leaf = NULL;
+    
+    btree = ccn_btree_create();
+    CHKPTR(btree);
+    c = ccn_charbuf_create();
+    CHKPTR(c);
+    CHKPTR(ccn_charbuf_reserve(8800));
+    while (fgets((char *)c->buf, c->buf->limit, stdin)) {
+        c->length = strlen((char *)c->buf) - 1;
+        res = ccn_btree_lookup(btree, c->buf, c->length, &leaf);
+        CHKSYS(res);
+        if (CCN_BT_SRCH_FOUND(res)) {
+            dups++;
+        }
+        else {
+            res = ccn_btree_insert_entry(leaf, CCN_BT_SRCH_INDEX(res),
+                                         c->buf, c->length,
+                                         payload, sizeof(payload));
+            if (res > 40) {
+                res = ccn_btree_split(btree, leaf);
+                CHKSYS(res);
+                while (btree->nextsplit != 0) {
+                    node = ccn_btree_rnode(btree, btree->nextsplit);
+                    CHKPTR(node);
+                    res = ccn_btree_split(btree, node);
+                    CHKSYS(res);
+                }
+                FAILIF(btree->missedsplit);
+            }
+        }
+    }
+    printf("%d unique, %d duplicate, %d errors\n", unique, dups, );
+}
+
+int
 main(int argc, char **argv)
 {
     int res;
@@ -567,7 +610,11 @@ main(int argc, char **argv)
     CHKSYS(res);
     res = test_btree_lookup();
     CHKSYS(res);
-    test_basic_btree_insert_entry();
+    res = test_basic_btree_insert_entry();
     CHKSYS(res);
+    if (argv[1] && 0 == strcmp(argv[1], '-')) {
+        res = test_btree_inserts_from_stdin();
+        CHKSYS(res);
+    }
     return(0);
 }

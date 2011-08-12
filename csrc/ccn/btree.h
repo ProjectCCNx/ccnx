@@ -99,14 +99,17 @@ struct ccn_btree_node {
 
 /**
  * State associated with a btree as a whole
- *
  */
 struct ccn_btree {
-    unsigned magic;             
-    unsigned nextnodeid;
-    struct ccn_btree_io *io;
+    unsigned magic;             /**< for making sure we point to a btree */
+    unsigned nextnodeid;        /**< for allocating new btree nodes */
+    struct ccn_btree_io *io;    /**< storage layer */
     struct hashtb *resident;    /**< of ccn_btree_node, by nodeid */
-    int errors;
+    unsigned nextsplit;         /**< oversize node that needs splitting */
+    unsigned missedsplit;       /**< should stay zero */
+    int errors;                 /**< counts detected errors */
+    /* tunables */
+    int full;                   /**< should split nodes bigger than this */
 };
 
 /**
