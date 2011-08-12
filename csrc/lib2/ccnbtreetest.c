@@ -434,6 +434,7 @@ example_btree_small(void)
     ccn_charbuf_append(root->buf, &rootex1, sizeof(rootex1));
     res = ccn_btree_chknode(root, 0);
     CHKSYS(res);
+    btree->nextnodeid = 4;
     return(btree);
 }
 
@@ -536,7 +537,8 @@ test_basic_btree_insert_entry(void)
     /* Try this out here while we have a handy leaf node. */
     btree->nextnodeid = 101;
     res = ccn_btree_split(btree, leaf);
-    // XXX
+    CHKSYS(res);
+    FAILIF(btree->errors != 0);
     res = ccn_btree_destroy(&btree);
     FAILIF(btree != NULL);
     return(res);

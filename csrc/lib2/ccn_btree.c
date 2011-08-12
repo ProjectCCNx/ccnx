@@ -415,7 +415,7 @@ scan_reusable(const unsigned char *key, size_t keysize,
 }
 
 int
-ccn_btree_insert_entry(struct ccn_btree *btree,
+ccn_btree_insert_entry(struct ccn_btree *btree_not_used,
                        const unsigned char *key, size_t keysize,
                        struct ccn_btree_node *node, int i,
                        void *payload, size_t payload_bytes)
@@ -517,46 +517,106 @@ int
 ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
 {
     int i, j, k, n, pb, res;
+    struct ccn_btree_node newnode = {};
     struct ccn_btree_node *a[2] = {NULL, NULL};
+    struct ccn_btree_node *parent = NULL;
     void *payload = NULL;
     struct ccn_charbuf *key = NULL;
+    struct ccn_btree_internal_payload link = {{CCN_BT_INTERNAL_MAGIC}};
+    struct ccn_btree_internal_payload *olink = NULL;
     
     n = ccn_btree_node_nent(node);
     if (n < 2)
         return(-1);
+    if (node->nodeid <= 1) {
+        printf("Oops, ccn_btree_split does not know how to split the root yet\n");
+        return(-1);
+    }
+    parent = ccn_btree_getnode(btree, node->parent);
+    if (parent == NULL || ccn_btree_node_nent(parent) < 1)
+        return(node->corrupt = __LINE__, -1); /* Must have a parent to split. */
+    if (ccn_btree_node_payloadsize(parent) != sizeof(link))
+        return(node->corrupt = __LINE__, -1);
     pb = ccn_btree_node_payloadsize(node);
     /* Create two new nodes to hold the split-up content */
+    /* One of these is temporary, and will get swapped in for original node */
+    newnode.buf = ccn_charbuf_create();
+    if (newnode.buf == NULL)
+        goto Bail;
+    newnode.nodeid = node->nodeid;
+    a[0] = &newnode;
+    /* The other new node is created anew */
+    a[1] = ccn_btree_getnode(btree, btree->nextnodeid++);
+    if (a[1] == NULL)
+        goto Bail;
     for (k = 0; k < 2; k++) {
-        a[k] = ccn_btree_getnode(btree, btree->nextnodeid++);
-        if (a[k] == NULL)
-            return(btree->errors++, -1);
         if (ccn_btree_node_nent(a[k]) != 0)
-            return(btree->errors++, -1);
+            goto Bail;
         res = ccn_btree_init_node(a[k], ccn_btree_node_level(node), 0, 0);
         if (res < 0)
-            return(btree->errors++, -1);
+            goto Bail;
         a[k]->parent = node->parent;
     }
     /* Distribute the entries into the two new nodes */
     key = ccn_charbuf_create();
-    if (key == NULL)
-        return(-1);
+    if (key == NULL) goto Bail;
     for (i = 0, j = 0, k = 0, res = 0; i < n; i++) {
         if (i == n / 2) {
             k = 1; j = 0; /* switch to second half */
         }
         res |= ccn_btree_key_fetch(key, node, i);
         payload = ccn_btree_node_getentry(pb, node, i);
-        if (payload == NULL) {
-            res = -1; break;
-        }
+        if (payload == NULL)
+            goto Bail;
         res |= ccn_btree_insert_entry(btree, key->buf, key->length, a[k], j, payload, pb);
         printf("Splitting %s into node %u (res = %d)\n", ccn_charbuf_as_string(key), a[k]->nodeid, res);
+        if (res)
+            goto Bail;
     }
-    ccn_charbuf_destroy(&key);
+    /* Link the new node into the parent */
+    res = ccn_btree_key_fetch(key, a[1], 0); /* Splitting key. */
     if (res < 0)
-        return(-1);
-    return(-1); // XXX - still need to hook things up in the parent.
+        goto Bail;
+    /*
+     * Note - we could abbreviate the splitting key to someting less than
+     * the first key of a[1] and greater than the last key of the
+     * subtree under a[0].  But we don't do that yet.
+     */
+    MYSTORE(&link, child, a[1]->nodeid);
+    res = ccn_btree_searchnode(key->buf, key->length, parent);
+    if (res < 0)
+        goto Bail;
+    if (CCN_BT_SRCH_FOUND(res)) {
+        printf("OOPS - probable bug\n");
+        goto Bail;
+    }
+    i = CCN_BT_SRCH_INDEX(res);
+    olink = ccn_btree_node_getentry(sizeof(link), parent, i - 1);
+    if (olink == NULL || MYFETCH(olink, child) != a[0]->nodeid) {
+        node->corrupt = __LINE__;
+        parent->corrupt = __LINE__;
+        goto Bail;
+    }
+    /* It look like we are good to commit the changes */
+    res = ccn_btree_insert_entry(btree,
+                           key->buf, key->length,
+                           parent, i,
+                           &link, sizeof(link));
+    if (res < 0) {
+        parent->corrupt = __LINE__;
+        goto Bail;
+    }
+    node->clean = 0;
+    node->buf = newnode.buf;
+    newnode.buf = NULL;
+    a[0] = node;
+    ccn_charbuf_destroy(&key);
+    return(0);
+Bail:
+    ccn_charbuf_destroy(&newnode.buf);
+    ccn_charbuf_destroy(&key);
+    btree->errors++;
+    return(-1);
 }
 
 #define CCN_BTREE_MAGIC 0x53ade78
