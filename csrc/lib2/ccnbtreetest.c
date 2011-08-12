@@ -504,9 +504,8 @@ test_basic_btree_insert_entry(void)
     memset(ccn_charbuf_reserve(leaf->buf, cage), canary, cage);
     res = ccn_btree_chknode(leaf, 0);
     CHKSYS(res);
-    res = ccn_btree_insert_entry(btree,
+    res = ccn_btree_insert_entry(leaf, ndx,
                                  (const void *)s, strlen(s),
-                                 leaf, ndx,
                                  payload, sizeof(payload));
     CHKSYS(res);
     res = ccn_btree_chknode(leaf, 0);
@@ -522,9 +521,8 @@ test_basic_btree_insert_entry(void)
     payload[0] = 'A';
     res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
     FAILIF(res != 0);
-    res = ccn_btree_insert_entry(btree,
+    res = ccn_btree_insert_entry(leaf, ndx,
                                  (const void *)s, strlen(s),
-                                 leaf, ndx,
                                  payload, sizeof(payload));
     CHKSYS(res);
     res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);

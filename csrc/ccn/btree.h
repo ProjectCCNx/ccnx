@@ -219,9 +219,8 @@ int ccn_btree_searchnode(const unsigned char *key, size_t size,
                          struct ccn_btree_node *node);
 
 /* Insert a new entry at slot i of node */
-int ccn_btree_insert_entry(struct ccn_btree *btree,
+int ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
                            const unsigned char *key, size_t keysize,
-                           struct ccn_btree_node *node, int i,
                            void *payload, size_t payload_bytes);
 
 /* Initialize a btree node */

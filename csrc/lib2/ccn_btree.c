@@ -414,10 +414,19 @@ scan_reusable(const unsigned char *key, size_t keysize,
     /* this is an optimization - leave out for now */
 }
 
+/**
+ *  Insert a new entry into a node
+ *
+ * The caller is responsible for providing the correct index i, which
+ * will become the index of the new entry.
+ *
+ * The caller is also responsible for triggering a split.
+ *
+ * @returns the new entry count, or -1 in case of error.
+ */
 int
-ccn_btree_insert_entry(struct ccn_btree *btree_not_used,
+ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
                        const unsigned char *key, size_t keysize,
-                       struct ccn_btree_node *node, int i,
                        void *payload, size_t payload_bytes)
 {
     size_t k, grow, minnewsize, pb, pre, post, org;
@@ -508,7 +517,7 @@ ccn_btree_insert_entry(struct ccn_btree *btree_not_used,
     to = node->buf->buf + node->freelow;
     memmove(to, key + reuse[0], keysize - reuse[1]);
     node->freelow += keysize - reuse[1];
-    return(0);
+    return(n + 1);
 }
 
 #include <stdio.h>
@@ -564,13 +573,13 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         if (i == n / 2) {
             k = 1; j = 0; /* switch to second half */
         }
-        res |= ccn_btree_key_fetch(key, node, i);
+        res = ccn_btree_key_fetch(key, node, i);
         payload = ccn_btree_node_getentry(pb, node, i);
-        if (payload == NULL)
+        if (res < 0 || payload == NULL)
             goto Bail;
-        res |= ccn_btree_insert_entry(btree, key->buf, key->length, a[k], j, payload, pb);
+        res = ccn_btree_insert_entry(a[k], j, key->buf, key->length, payload, pb);
         printf("Splitting %s into node %u (res = %d)\n", ccn_charbuf_as_string(key), a[k]->nodeid, res);
-        if (res)
+        if (res < 0)
             goto Bail;
     }
     /* Link the new node into the parent */
@@ -597,11 +606,10 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         parent->corrupt = __LINE__;
         goto Bail;
     }
-    /* It look like we are good to commit the changes */
-    res = ccn_btree_insert_entry(btree,
-                           key->buf, key->length,
-                           parent, i,
-                           &link, sizeof(link));
+    /* It look like we are in good shape to commit the changes */
+    res = ccn_btree_insert_entry(parent, i,
+                                 key->buf, key->length,
+                                 &link, sizeof(link));
     if (res < 0) {
         parent->corrupt = __LINE__;
         goto Bail;
