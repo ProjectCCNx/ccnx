@@ -218,12 +218,26 @@ int ccn_btree_compare(const unsigned char *key, size_t size,
 int ccn_btree_searchnode(const unsigned char *key, size_t size,
                          struct ccn_btree_node *node);
 
+/* Insert a new entry at slot i of node */
+int ccn_btree_insert_entry(struct ccn_btree *btree,
+                           const unsigned char *key, size_t keysize,
+                           struct ccn_btree_node *node, int i,
+                           void *payload, size_t payload_bytes);
+
+/* Initialize a btree node */
+int ccn_btree_init_node(struct ccn_btree_node *node,
+                        int level, unsigned char nodetype, unsigned char extsz);
+
+/* Check a node for internal consistency */
+int ccn_btree_chknode(struct ccn_btree_node *node, int picky);
+
+/*
+ * Overall btree operations
+ */
+
 /* Handle creation and destruction */
 struct ccn_btree *ccn_btree_create(void);
 int ccn_btree_destroy(struct ccn_btree **);
-
-/* For btree node storage in files */
-struct ccn_btree_io *ccn_btree_io_from_directory(const char *path);
 
 /* Access a node, creating or reading it if necessary */
 struct ccn_btree_node *ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid);
@@ -231,25 +245,19 @@ struct ccn_btree_node *ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid);
 /* Get a node handle if it is already resident */
 struct ccn_btree_node *ccn_btree_rnode(struct ccn_btree *bt, unsigned nodeid);
 
-/* Initialize the btree node */
-int ccn_btree_init_node(struct ccn_btree_node *node,
-                        int level, unsigned char nodetype, unsigned char extsz);
-
-/* Check a node for internal consistency */
-int ccn_btree_chknode(struct ccn_btree_node *node, int picky);
-
 /* Do a lookup, starting from the root */
 int ccn_btree_lookup(struct ccn_btree *btree,
                      const unsigned char *key, size_t size,
                      struct ccn_btree_node **leafp);
 
-/* Insert a new entry at slot i of node */
-int ccn_btree_insert_entry(struct ccn_btree *btree,
-                           const unsigned char *key, size_t keysize,
-                           struct ccn_btree_node *node, int i,
-                           void *payload, size_t payload_bytes);
-
 /* Split a node into two */
 int ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node);
+
+/*
+ * Storage layer - client can provide other options
+ */
+
+/* For btree node storage in files */
+struct ccn_btree_io *ccn_btree_io_from_directory(const char *path);
 
 #endif
