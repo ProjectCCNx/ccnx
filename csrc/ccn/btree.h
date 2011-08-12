@@ -34,7 +34,7 @@ struct ccn_btree_node;
  * These are supplied by the client, and provide an abstraction
  * to hold the persistent representation of the btree.
  *
- * Each node has a nodeid that serves as its filename.  These start as 0 and
+ * Each node has a nodeid that serves as its filename.  These start as 1 and
  * are assigned consecutively. The node may correspond to a file in a file
  * system, or to some other abstraction as appropriate.
  *
@@ -81,6 +81,12 @@ struct ccn_btree_io {
     void *data;
 };
 
+/**
+ * State associated with a btree node
+ *
+ * These usually live in the resident hashtb of a ccn_btree, but might be
+ * elsewhere (such as stack-allocated) in some cases.
+ */
 struct ccn_btree_node {
     unsigned nodeid;            /**< Identity of node */
     unsigned clean;             /**< Number of stable buffered bytes at front */
@@ -91,11 +97,15 @@ struct ccn_btree_node {
     unsigned freelow;           /**< Index of first unused byte of free space */
 };
 
+/**
+ * State associated with a btree as a whole
+ *
+ */
 struct ccn_btree {
-    unsigned magic;
+    unsigned magic;             
     unsigned nextnodeid;
     struct ccn_btree_io *io;
-    struct hashtb *resident;
+    struct hashtb *resident;    /**< of ccn_btree_node, by nodeid */
     int errors;
 };
 
@@ -202,8 +212,8 @@ int ccn_btree_compare(const unsigned char *key, size_t size,
                       struct ccn_btree_node *node, int i);
 
 #define CCN_BT_ENCRES(ndx, success) (2 * (ndx) + ((success) || 0))
-#define CCN_BT_SRC_FOUND(res) ((res) & 1)
-#define CCN_BT_SRC_INDEX(res) ((res) >> 1)
+#define CCN_BT_SRCH_FOUND(res) ((res) & 1)
+#define CCN_BT_SRCH_INDEX(res) ((res) >> 1)
 /* Search within the node for the key, or something near it */
 int ccn_btree_searchnode(const unsigned char *key, size_t size,
                          struct ccn_btree_node *node);

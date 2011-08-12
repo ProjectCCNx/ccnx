@@ -380,7 +380,7 @@ ccn_btree_lookup(struct ccn_btree *btree,
     if (srchres < 0)
         return(-1);
     while (level > 0) {
-        entdx = CCN_BT_SRC_INDEX(srchres) - 1;
+        entdx = CCN_BT_SRCH_INDEX(srchres) - 1;
         if (entdx < 0)
             entdx = 0;
         e = seek_internal(node, entdx);
@@ -607,7 +607,7 @@ ccn_btree_create(void)
         }
         ans->errors = 0;
         ans->io = NULL;
-        ans->nextnodeid = 0;
+        ans->nextnodeid = 1;
     }
     return(ans);
 }

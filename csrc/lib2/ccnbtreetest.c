@@ -497,8 +497,8 @@ test_basic_btree_insert_entry(void)
     s = "beauty";
     res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
     CHKSYS(res);
-    FAILIF(CCN_BT_SRC_FOUND(res));
-    ndx = CCN_BT_SRC_INDEX(res);
+    FAILIF(CCN_BT_SRCH_FOUND(res));
+    ndx = CCN_BT_SRCH_INDEX(res);
     FAILIF(ndx != 0); // beauty before d
     memset(ccn_charbuf_reserve(leaf->buf, cage), canary, cage);
     res = ccn_btree_chknode(leaf, 0);
