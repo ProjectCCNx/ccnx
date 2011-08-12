@@ -522,6 +522,44 @@ ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
 
 #include <stdio.h>
 
+/**
+ *  Given an old root, add a level to the tree to prepare for a split.
+ *
+ *  @returns node with a new nodeid, new singleton root, and the old contents.
+ */
+static struct ccn_btree_node *
+ccn_btree_grow_a_level(struct ccn_btree *btree, struct ccn_btree_node *node)
+{
+    struct ccn_btree_internal_payload link = {{CCN_BT_INTERNAL_MAGIC}};
+    struct ccn_btree_node *child = NULL;
+    struct ccn_charbuf *t = NULL;
+    int level;
+    int res;
+    
+    level = ccn_btree_node_level(node);
+    if (level < 0)
+        return(NULL);
+    child = ccn_btree_getnode(btree, btree->nextnodeid++);
+    if (child == NULL)
+        return(NULL);
+    child->clean = 0;
+    node->clean = 0;
+    t = child->buf;
+    child->buf = node->buf;
+    node->buf = t;
+    res = ccn_btree_init_node(node, level + 1, 'R', 5); // XXX - arbitrary extsz
+    if (res < 0)
+        btree->errors++;
+    MYSTORE(&link, child, child->nodeid);
+    res = ccn_btree_insert_entry(node, 0, NULL, 0, &link, sizeof(link));
+    if (res < 0)
+        btree->errors++;
+    child->parent = node->nodeid;
+    printf("New root at level %d over node %u (%d errors)\n",
+           level + 1, child->nodeid, btree->errors);
+    return(child);
+}
+
 int
 ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
 {
@@ -537,9 +575,11 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     n = ccn_btree_node_nent(node);
     if (n < 2)
         return(-1);
-    if (node->nodeid <= 1) {
-        printf("Oops, ccn_btree_split does not know how to split the root yet\n");
-        return(-1);
+    if (node->nodeid == 1) {
+        node = ccn_btree_grow_a_level(btree, node);
+        if (node == NULL)
+        if (node->nodeid == 1 || node->parent != 1 || ccn_btree_node_nent(node) != n)
+            abort();
     }
     parent = ccn_btree_getnode(btree, node->parent);
     if (parent == NULL || ccn_btree_node_nent(parent) < 1)
