@@ -943,3 +943,108 @@ ccn_btree_chknode(struct ccn_btree_node *node)
     return(saved_corrupt);
 }
 
+#define NL "\n"
+int
+ccn_btree_check(struct ccn_btree *btree) {
+    struct ccn_btree_node *node;
+    struct ccn_btree_node *child;
+    unsigned stack[40] = {};
+    int kstk[40] = {};
+    int sp = 0;
+    struct ccn_charbuf *buf[2];
+    int pp = 0;  /* for ping-pong buffers */
+    int res;
+    int i, k, l0, l1;
+    struct ccn_btree_internal_payload *e = NULL;
+    const char *indent = "                                ";
+    //unsigned long nodecount = 0;
+    
+    for (i = 0; i < 2; i++)
+        buf[i] = ccn_charbuf_create();
+    
+    printf("I start ccn_btree_check %d %u %u %d" NL,
+        hashtb_n(btree->resident),
+        btree->nextsplit,
+        btree->missedsplit,
+        btree->errors);
+    if (btree->missedsplit != 0 || btree->errors != 0) {
+        printf("W reset error indications" NL);
+        btree->missedsplit = btree->errors = 0;
+    }
+    node = ccn_btree_rnode(btree, 1);
+    if (node == NULL) {
+        printf("E no root node!" NL);
+        goto Bail;
+    }
+    k = 0;
+    res = 0;
+    while (node != NULL && res >= 0) {
+        int l = ccn_btree_node_level(node);
+        int n = ccn_btree_node_nent(node);
+        printf("I %sat %u.%d/%d L%d (%d)" NL,
+               indent + 32 - (sp * 4) % 32,
+               node->nodeid, k, n, l, node->corrupt);
+        if (k == 0) {
+            res = ccn_btree_chknode(node);
+            res |= ccn_btree_key_fetch(buf[pp], node, 0);
+            printf("(%s) ", ccn_charbuf_as_string(buf[pp]));
+            for (i = 1; i < n; i++) {
+                res |= ccn_btree_key_fetch(buf[pp ^ 1], node, i);
+                if (res < 0) goto Bail;
+                l0 = buf[pp]->length;
+                l1 = buf[pp ^ 1]->length;
+                res = memcmp(buf[pp]->buf, buf[pp ^ 1]->buf, l0 < l1 ? l0 : l1);
+                printf("{%d %d", l0 < l1 ? l0 : l1, res);
+                if (res == 0)
+                    res = (l0 - l1);
+                printf(" %d} ", res);
+                if (res >= 0) {
+                    printf("E Keys %d and %d are out of order!" NL, i - 1, i);
+                    btree->errors++;
+                }
+                printf("(%s) ", ccn_charbuf_as_string(buf[pp ^ 1]));
+                res = 0;
+                pp ^= 1;
+            }
+            printf(NL);
+        }
+        if (k == n) {
+            if (sp == 0) (k = 0, node = NULL);
+            else (sp--, k = kstk[sp], node = ccn_btree_rnode(btree, stack[sp]));
+        }
+        else if (l > 0) {
+            stack[sp] = node->nodeid;
+            kstk[sp] = k + 1;
+            sp++;
+            if (sp == 40) goto Bail;
+            e = ccn_btree_node_getentry(sizeof(*e), node, k);
+            if (e == NULL) goto Bail;
+            child = ccn_btree_rnode(btree, MYFETCH(e, child));
+            if (child == NULL) goto Bail;
+            if (child->parent != node->nodeid) {
+                printf("E child->parent != node->nodeid" NL);
+                btree->errors++;
+            }
+            node = child;
+            k = 0;            
+        }
+        else
+            k++;
+    }
+    if (res <= 0 && btree->errors == 0) {
+        for (i = 0; i < 2; i++)
+            ccn_charbuf_destroy(&buf[i]);
+        return(0);
+    }
+Bail:
+    btree->errors++;
+    printf("W finish ccn_btree_check %d %u %u %d" NL,
+        hashtb_n(btree->resident),
+        btree->nextsplit,
+        btree->missedsplit,
+        btree->errors);
+    for (i = 0; i < 2; i++)
+        ccn_charbuf_destroy(&buf[i]);
+    return(-1);
+}
+#undef NL

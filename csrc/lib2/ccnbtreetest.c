@@ -474,6 +474,7 @@ test_btree_lookup(void)
         res = ccn_btree_node_level(leaf);
         FAILIF(res != 0);
     }
+    res = ccn_btree_check(btree); // see how that works out
     res = ccn_btree_destroy(&btree);
     FAILIF(btree != NULL);
     return(res);
