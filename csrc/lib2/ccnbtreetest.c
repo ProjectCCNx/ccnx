@@ -587,15 +587,18 @@ test_btree_inserts_from_stdin(void)
                                          c->buf, c->length,
                                          payload, sizeof(payload));
             CHKSYS(res);
+            FAILIF(ccn_btree_check(btree) < 0);
             if (res > 6) {
                 int limit = 10;
                 res = ccn_btree_split(btree, leaf);
                 CHKSYS(res);
+                FAILIF(ccn_btree_check(btree) < 0);
                 while (btree->nextsplit != 0) {
                     node = ccn_btree_rnode(btree, btree->nextsplit);
                     CHKPTR(node);
                     res = ccn_btree_split(btree, node);
                     CHKSYS(res);
+                    FAILIF(ccn_btree_check(btree) < 0);
                     FAILIF(!--limit);
                 }
                 FAILIF(btree->missedsplit);
