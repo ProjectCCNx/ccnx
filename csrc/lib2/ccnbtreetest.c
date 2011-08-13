@@ -547,29 +547,47 @@ test_btree_inserts_from_stdin(void)
 {
     struct ccn_charbuf *c;
     char payload[8] = "TestTree";
+    int res;
+    int item = 0;
     int dups = 0;
     int unique = 0;
-    struct ccn_btree_node *btree = NULL;
+    struct ccn_btree *btree = NULL;
     struct ccn_btree_node *node = NULL;
     struct ccn_btree_node *leaf = NULL;
     
+    // XXX - need nice way to create a brand-new empty btree
     btree = ccn_btree_create();
     CHKPTR(btree);
+    FAILIF(btree->nextnodeid != 1);
+    node = ccn_btree_getnode(btree, btree->nextnodeid++);
+    CHKPTR(node);
+    res = ccn_btree_init_node(node, 0, 'R', 0);
+    CHKPTR(node);
+    FAILIF(btree->nextnodeid < 2);
+    res = ccn_btree_chknode(node, 0);
+    CHKSYS(res);
+    btree->full = 5;
+    
     c = ccn_charbuf_create();
     CHKPTR(c);
-    CHKPTR(ccn_charbuf_reserve(8800));
-    while (fgets((char *)c->buf, c->buf->limit, stdin)) {
+    CHKPTR(ccn_charbuf_reserve(c, 8800));
+    while (fgets((char *)c->buf, c->limit, stdin)) {
+        item++;
         c->length = strlen((char *)c->buf) - 1;
+        printf("%9d %s\n", item, ccn_charbuf_as_string(c));
         res = ccn_btree_lookup(btree, c->buf, c->length, &leaf);
         CHKSYS(res);
         if (CCN_BT_SRCH_FOUND(res)) {
             dups++;
         }
         else {
+            unique++;
             res = ccn_btree_insert_entry(leaf, CCN_BT_SRCH_INDEX(res),
                                          c->buf, c->length,
                                          payload, sizeof(payload));
-            if (res > 40) {
+            CHKSYS(res);
+            if (res > 6) {
+                int limit = 10;
                 res = ccn_btree_split(btree, leaf);
                 CHKSYS(res);
                 while (btree->nextsplit != 0) {
@@ -577,12 +595,17 @@ test_btree_inserts_from_stdin(void)
                     CHKPTR(node);
                     res = ccn_btree_split(btree, node);
                     CHKSYS(res);
+                    FAILIF(!--limit);
                 }
                 FAILIF(btree->missedsplit);
             }
         }
     }
-    printf("%d unique, %d duplicate, %d errors\n", unique, dups, );
+    printf("%d unique, %d duplicate, %d errors\n", unique, dups, btree->errors);
+    FAILIF(btree->errors != 0);
+    res = ccn_btree_destroy(&btree);
+    FAILIF(btree != NULL);
+    return(res);
 }
 
 int
@@ -612,7 +635,7 @@ main(int argc, char **argv)
     CHKSYS(res);
     res = test_basic_btree_insert_entry();
     CHKSYS(res);
-    if (argv[1] && 0 == strcmp(argv[1], '-')) {
+    if (argv[1] && 0 == strcmp(argv[1], "-")) {
         res = test_btree_inserts_from_stdin();
         CHKSYS(res);
     }
