@@ -256,9 +256,7 @@ int ccn_btree_lookup(struct ccn_btree *btree,
 int ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node);
 
 /* Check the whole btree carefully */
-int ccn_btree_check(struct ccn_btree *btree,
-                    void (*logger)(void *, const char *, ...),
-                    void *logdat);
+int ccn_btree_check(struct ccn_btree *btree);
 
 /*
  * Storage layer - client can provide other options
