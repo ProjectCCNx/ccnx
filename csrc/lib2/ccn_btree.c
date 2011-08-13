@@ -555,8 +555,8 @@ ccn_btree_grow_a_level(struct ccn_btree *btree, struct ccn_btree_node *node)
     if (res < 0)
         btree->errors++;
     child->parent = node->nodeid;
-    printf("New root at level %d over node %u (%d errors)\n",
-           level + 1, child->nodeid, btree->errors);
+    printf("New root %u at level %d over node %u (%d errors)\n",
+           node->nodeid, level + 1, child->nodeid, btree->errors);
     return(child);
 }
 
@@ -572,9 +572,14 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     struct ccn_btree_internal_payload link = {{CCN_BT_INTERNAL_MAGIC}};
     struct ccn_btree_internal_payload *olink = NULL;
     
+    if (btree->nextsplit == node->nodeid)
+        btree->nextsplit = 0;
     n = ccn_btree_node_nent(node);
     if (n < 2)
         return(-1);
+    if (n < 4) {
+        printf("Only %d entries here, why are we splitting? Oh, well...\n", n);
+    }
     if (node->nodeid == 1) {
         node = ccn_btree_grow_a_level(btree, node);
         if (node == NULL)
@@ -649,8 +654,6 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         goto Bail;
     }
     /* It look like we are in good shape to commit the changes */
-    if (btree->nextsplit == node->nodeid)
-        btree->nextsplit = 0;
     res = ccn_btree_insert_entry(parent, i,
                                  key->buf, key->length,
                                  &link, sizeof(link));
@@ -958,6 +961,7 @@ ccn_btree_check(struct ccn_btree *btree) {
     struct ccn_btree_internal_payload *e = NULL;
     const char *indent = "                                ";
     //unsigned long nodecount = 0;
+    if (0) return(0);
     
     for (i = 0; i < 2; i++)
         buf[i] = ccn_charbuf_create();
@@ -1022,8 +1026,9 @@ ccn_btree_check(struct ccn_btree *btree) {
             child = ccn_btree_rnode(btree, MYFETCH(e, child));
             if (child == NULL) goto Bail;
             if (child->parent != node->nodeid) {
-                printf("E child->parent != node->nodeid" NL);
-                btree->errors++;
+                /* Not really an error, since after a non-leaf split this pointer is not updated. */
+                printf("W child->parent != node->nodeid" NL);
+                child->parent = node->nodeid;
             }
             node = child;
             k = 0;            
