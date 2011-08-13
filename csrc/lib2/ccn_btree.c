@@ -547,7 +547,7 @@ ccn_btree_grow_a_level(struct ccn_btree *btree, struct ccn_btree_node *node)
     t = child->buf;
     child->buf = node->buf;
     node->buf = t;
-    res = ccn_btree_init_node(node, level + 1, 'R', 5); // XXX - arbitrary extsz
+    res = ccn_btree_init_node(node, level + 1, 'R', 0); // XXX - arbitrary extsz
     if (res < 0)
         btree->errors++;
     MYSTORE(&link, child, child->nodeid);
@@ -587,6 +587,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     if (ccn_btree_node_payloadsize(parent) != sizeof(link))
         return(node->corrupt = __LINE__, -1);
     pb = ccn_btree_node_payloadsize(node);
+    printf("Splitting %d entries of node %u, child of %u\n", n, node->nodeid, node->parent);
     /* Create two new nodes to hold the split-up content */
     /* One of these is temporary, and will get swapped in for original node */
     newnode.buf = ccn_charbuf_create();
@@ -618,7 +619,8 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         if (res < 0 || payload == NULL)
             goto Bail;
         res = ccn_btree_insert_entry(a[k], j, key->buf, key->length, payload, pb);
-        printf("Splitting %s into node %u (res = %d)\n", ccn_charbuf_as_string(key), a[k]->nodeid, res);
+        printf("Splitting %s into node %u (res = %d)\n",
+               ccn_charbuf_as_string(key), a[k]->nodeid, res);
         if (res < 0)
             goto Bail;
     }
@@ -647,9 +649,15 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         goto Bail;
     }
     /* It look like we are in good shape to commit the changes */
+    if (btree->nextsplit == node->nodeid)
+        btree->nextsplit = 0;
     res = ccn_btree_insert_entry(parent, i,
                                  key->buf, key->length,
                                  &link, sizeof(link));
+    if (res > btree->full) {
+        btree->missedsplit = btree->nextsplit;
+        btree->nextsplit = parent->nodeid;
+    }
     if (res < 0) {
         parent->corrupt = __LINE__;
         goto Bail;
@@ -657,12 +665,9 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     node->clean = 0;
     node->buf = newnode.buf;
     newnode.buf = NULL;
-    if (btree->nextsplit == node->nodeid)
-        btree->nextsplit = 0;
-    if (res > btree->full) {
-        btree->missedsplit = btree->nextsplit;
-        btree->nextsplit = parent->nodeid;
-    }
+    res = ccn_btree_chknode(node, 0); // Update freelow.
+    if (res < 0)
+        goto Bail;
     ccn_charbuf_destroy(&key);
     return(0);
 Bail:
