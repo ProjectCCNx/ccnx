@@ -438,7 +438,7 @@ ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
     int j, n;
     
     if (node->freelow == 0)
-        ccn_btree_chknode(node, 0);
+        ccn_btree_chknode(node);
     if (node->corrupt)
         return(-1);
     pb = (payload_bytes + CCN_BT_SIZE_UNITS - 1)
@@ -665,7 +665,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     node->clean = 0;
     node->buf = newnode.buf;
     newnode.buf = NULL;
-    res = ccn_btree_chknode(node, 0); // Update freelow.
+    res = ccn_btree_chknode(node); /* Update freelow */
     if (res < 0)
         goto Bail;
     ccn_charbuf_destroy(&key);
@@ -829,7 +829,7 @@ ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid)
                     bt->errors++;
                 else {
                     node->clean = node->buf->length;
-                    if (-1 == ccn_btree_chknode(node, 0))
+                    if (-1 == ccn_btree_chknode(node))
                         bt->errors++;
                 }
             }
@@ -861,12 +861,11 @@ ccn_btree_rnode(struct ccn_btree *bt, unsigned nodeid)
  *
  * Sets or clears node->corrupt as appropriate.
  * In case of success, sets the correct value for node->freelow
- * If picky, checks the order of the keys within the node as well as the basics.
  *
  * @returns old value of node->corrupt if the node looks OK, otherwise -1
  */
 int
-ccn_btree_chknode(struct ccn_btree_node *node, int picky)
+ccn_btree_chknode(struct ccn_btree_node *node)
 {
     unsigned freelow = 0;
     unsigned freemax = 0;
@@ -938,9 +937,6 @@ ccn_btree_chknode(struct ccn_btree_node *node, int picky)
             return(node->corrupt = __LINE__, -1);
         if (koff + ksiz > freelow)
             freelow = koff + ksiz;
-    }
-    if (picky) {
-        abort(); // NYI
     }
     if (node->freelow != freelow)
         node->freelow = freelow; /* set a break here to check for fixups */

@@ -231,7 +231,7 @@ int ccn_btree_init_node(struct ccn_btree_node *node,
                         int level, unsigned char nodetype, unsigned char extsz);
 
 /* Check a node for internal consistency */
-int ccn_btree_chknode(struct ccn_btree_node *node, int picky);
+int ccn_btree_chknode(struct ccn_btree_node *node);
 
 /*
  * Overall btree operations
@@ -254,6 +254,11 @@ int ccn_btree_lookup(struct ccn_btree *btree,
 
 /* Split a node into two */
 int ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node);
+
+/* Check the whole btree carefully */
+int ccn_btree_check(struct ccn_btree *btree,
+                    void (*logger)(void *, const char *, ...),
+                    void *logdat);
 
 /*
  * Storage layer - client can provide other options

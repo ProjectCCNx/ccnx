@@ -242,13 +242,13 @@ test_btree_chknode(void)
     node->buf = ccn_charbuf_create();
     CHKPTR(node->buf);
     ccn_charbuf_append(node->buf, &ex1, sizeof(ex1));
-    res = ccn_btree_chknode(node, 0);
+    res = ccn_btree_chknode(node);
     CHKSYS(res);
     FAILIF(node->corrupt != 0);
     FAILIF(node->freelow != 8 + 34); // header plus goodstuff<- ... ->d
     ex = (void *)node->buf->buf;
     ex->e[1].t.ksiz0[2] = 100; /* ding the size in entry 1 */
-    res = ccn_btree_chknode(node, 0);
+    res = ccn_btree_chknode(node);
     FAILIF(res != -1);
     FAILIF(node->corrupt == 0);
     ccn_charbuf_destroy(&node->buf);
@@ -422,17 +422,17 @@ example_btree_small(void)
     leaf = ccn_btree_getnode(btree, 2);
     CHKPTR(leaf);
     ccn_charbuf_append(leaf->buf, &ex1, sizeof(ex1));
-    res = ccn_btree_chknode(leaf, 0);
+    res = ccn_btree_chknode(leaf);
     CHKSYS(res);
     leaf = ccn_btree_getnode(btree, 3);
     CHKPTR(leaf);
     ccn_charbuf_append(leaf->buf, &ex2, sizeof(ex2));
-    res = ccn_btree_chknode(leaf, 0);
+    res = ccn_btree_chknode(leaf);
     CHKSYS(res);
     root = ccn_btree_getnode(btree, 1);
     CHKPTR(root);
     ccn_charbuf_append(root->buf, &rootex1, sizeof(rootex1));
-    res = ccn_btree_chknode(root, 0);
+    res = ccn_btree_chknode(root);
     CHKSYS(res);
     btree->nextnodeid = 4;
     return(btree);
@@ -502,13 +502,13 @@ test_basic_btree_insert_entry(void)
     ndx = CCN_BT_SRCH_INDEX(res);
     FAILIF(ndx != 0); // beauty before d
     memset(ccn_charbuf_reserve(leaf->buf, cage), canary, cage);
-    res = ccn_btree_chknode(leaf, 0);
+    res = ccn_btree_chknode(leaf);
     CHKSYS(res);
     res = ccn_btree_insert_entry(leaf, ndx,
                                  (const void *)s, strlen(s),
                                  payload, sizeof(payload));
     CHKSYS(res);
-    res = ccn_btree_chknode(leaf, 0);
+    res = ccn_btree_chknode(leaf);
     CHKSYS(res);
     c = &leaf->buf->buf[leaf->buf->length];
     FAILIF(c[0] != canary);
@@ -564,7 +564,7 @@ test_btree_inserts_from_stdin(void)
     res = ccn_btree_init_node(node, 0, 'R', 0);
     CHKPTR(node);
     FAILIF(btree->nextnodeid < 2);
-    res = ccn_btree_chknode(node, 0);
+    res = ccn_btree_chknode(node);
     CHKSYS(res);
     btree->full = 5;
     
