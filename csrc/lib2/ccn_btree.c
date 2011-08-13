@@ -610,7 +610,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     /* Distribute the entries into the two new nodes */
     key = ccn_charbuf_create();
     if (key == NULL) goto Bail;
-    for (i = 0, j = 0, k = 0, res = 0; i < n; i++) {
+    for (i = 0, j = 0, k = 0, res = 0; i < n; i++, j++) {
         if (i == n / 2) {
             k = 1; j = 0; /* switch to second half */
         }
@@ -619,8 +619,8 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         if (res < 0 || payload == NULL)
             goto Bail;
         res = ccn_btree_insert_entry(a[k], j, key->buf, key->length, payload, pb);
-        printf("Splitting %s into node %u (res = %d)\n",
-               ccn_charbuf_as_string(key), a[k]->nodeid, res);
+        printf("Splitting %s into node %u.%d (res = %d)\n",
+               ccn_charbuf_as_string(key), a[k]->nodeid, j, res);
         if (res < 0)
             goto Bail;
     }
