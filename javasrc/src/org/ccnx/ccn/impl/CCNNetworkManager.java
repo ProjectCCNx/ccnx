@@ -137,9 +137,8 @@ public class CCNNetworkManager implements Runnable {
 	protected Object _timersSetupLock = new Object();
 	protected Boolean _timersSetup = false;
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
-	protected Boolean _prefixDeregister = false;	// need to wait for complete of current deregistration before
-													// allowing more registrations or deregistrations.
-
+	protected Boolean _registrationChangeInProgress = false;
+	
 	/**
 	 * Keep track of prefixes that are actually registered with ccnd (as opposed to Filters used
 	 * to dispatch interests). There may be several filters for each registered prefix.
@@ -171,7 +170,7 @@ public class CCNNetworkManager implements Runnable {
 				if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE))
 					Log.fine(Log.FAC_NETMANAGER, "Cancel registration completed for {0}", 
 							_forwarding.getPrefixName());
-				_prefixDeregister = false;	
+				_registrationChangeInProgress = false;	
 				_registeredPrefixes.notifyAll();
 				_registeredPrefixes.remove(_forwarding.getPrefixName());
 			}
@@ -1006,41 +1005,41 @@ public class CCNNetworkManager implements Runnable {
 		// serving any useful purpose.
 		setupTimers();
 		if (_usePrefixReg) {
-			try {
-				if (null == _prefixMgr) {
-					_prefixMgr = new PrefixRegistrationManager(this);
+			RegisteredPrefix prefix = null;
+			synchronized(_registeredPrefixes) {
+				// Determine whether we need to register our prefix with ccnd
+				// We do if either its not registered now, or the one registered now is being
+				// cancelled but its still in the process of getting deregistered. In the second
+				// case (closing) we need to wait until the prefix has been deregistered before
+				// we go ahead and register it. And of course, someone else could have registered it
+				// before we got to it so check for that also. If its already registered, just bump
+				// its use count.
+				while (_registrationChangeInProgress) {
+					try {
+						_registeredPrefixes.wait();
+					} catch (InterruptedException e) {}
 				}
-				synchronized(_registeredPrefixes) {
-					// Determine whether we need to register our prefix with ccnd
-					// We do if either its not registered now, or the one registered now is being
-					// cancelled but its still in the process of getting deregistered. In the second
-					// case (closing) we need to wait until the prefix has been deregistered before
-					// we go ahead and register it. And of course, someone else could have registered it
-					// before we got to it so check for that also. If its already registered, just bump
-					// its use count.
-					RegisteredPrefix prefix = getRegisteredPrefix(filter);
-					if (null != prefix) {
-						boolean wasClosing = _prefixDeregister;
-						while (_prefixDeregister) {
-							try {
-								_registeredPrefixes.wait();
-							} catch (InterruptedException e) {}
-						}
-						if (wasClosing) {
-							prefix = getRegisteredPrefix(filter);	// Need to recheck in case someone else already registered us
-							if (null == prefix) {
-								prefix = registerPrefix(filter, registrationFlags);
-							}
-						}
-					} else {
-						prefix = registerPrefix(filter, registrationFlags);
-					}
-					prefix._refCount++;
+				prefix = getRegisteredPrefix(filter);
+				if (null == prefix) {
+					_registrationChangeInProgress = true;
 				}
-			} catch (CCNDaemonException e) {
-				Log.warning(Log.FAC_NETMANAGER, formatMessage("setInterestFilter: unexpected CCNDaemonException: " + e.getMessage()));
-				throw new IOException(e.getMessage());
 			}
+			if (null == prefix) {
+				try {
+					if (null == _prefixMgr) {
+						_prefixMgr = new PrefixRegistrationManager(this);
+					}
+					prefix = registerPrefix(filter, registrationFlags);
+				} catch (CCNDaemonException e) {
+					Log.warning(Log.FAC_NETMANAGER, formatMessage("setInterestFilter: unexpected CCNDaemonException: " + e.getMessage()));
+					throw new IOException(e.getMessage());
+				}
+				synchronized (_registeredPrefixes) {
+					_registrationChangeInProgress = false;
+					_registeredPrefixes.notifyAll();
+				}
+			}
+			prefix._refCount++;
 		}
 
 		Filter newOne = new Filter(this, filter, callbackListener, caller);
@@ -1066,8 +1065,6 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/**
-	 * Must be called with _registeredPrefixes locked.
-	 * 
 	 * Note that this is mismatched with deregistering prefixes. When registering, we wait for the
 	 * register to complete before continuing, but when deregistering we don't.
 	 * 
@@ -1082,14 +1079,18 @@ public class CCNNetworkManager implements Runnable {
 		} else {
 			entry = _prefixMgr.selfRegisterPrefix(filter, null, registrationFlags, Integer.MAX_VALUE);
 		}
-		RegisteredPrefix newPrefix = new RegisteredPrefix(entry);
-		_registeredPrefixes.put(filter, newPrefix);
-		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
-		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
-		// prefix we use Integer.MAX_VALUE as the requested lifetime.
-		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
-			Log.fine(Log.FAC_NETMANAGER, "registerPrefix for {0}: entry.lifetime: {1} entry.faceID: {2}", filter, entry.getLifetime(), entry.getFaceID());
-		_registeredPrefixes.notifyAll();
+    	RegisteredPrefix newPrefix = null;
+    	synchronized (_registeredPrefixes) {
+			newPrefix = new RegisteredPrefix(entry);
+			_registeredPrefixes.put(filter, newPrefix);
+			// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
+			// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+			// prefix we use Integer.MAX_VALUE as the requested lifetime.
+			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
+				Log.fine(Log.FAC_NETMANAGER, "registerPrefix for {0}: entry.lifetime: {1} entry.faceID: {2}", filter, entry.getLifetime(), entry.getFaceID());
+			_registrationChangeInProgress = false;
+			_registeredPrefixes.notifyAll();
+    	}
 		return newPrefix;
     }
 
@@ -1107,42 +1108,43 @@ public class CCNNetworkManager implements Runnable {
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter: {0}"), filter);
 		Filter newOne = new Filter(this, filter, callbackListener, caller);
 		Entry<Filter> found = null;
-		synchronized (_myFilters) {
-			found = _myFilters.remove(filter, newOne);
-		}
+		found = _myFilters.remove(filter, newOne);
 		if (null != found) {
 			if (_usePrefixReg) {
 				// Deregister it with ccnd only if the refCount would go to 0
+				RegisteredPrefix prefix = null;
+				boolean doCancel = false;
 				synchronized (_registeredPrefixes) {
-					RegisteredPrefix prefix = getRegisteredPrefix(filter);
+					prefix = getRegisteredPrefix(filter);
 					if (null != prefix) {
 						if (prefix._refCount <= 1) {
-							// Since we are piggybacking registration entries we can legitimately have a "last" registration entry on a prefix that had
-							// been piggybacked on a higher registration earlier so the entries name would not match the filter.
-							//
-							//if (!entry.getPrefixName().equals(filter)) {
-							//	Log.severe(Log.FAC_NETMANAGER, "cancelInterestFilter filter name {0} does not match recorded name {1}", filter, entry.getPrefixName());
-							//}
-							try {
-								while (_prefixDeregister) {
-									try {
-										_registeredPrefixes.wait();
-									} catch (InterruptedException e) {}
-								}
-								prefix = getRegisteredPrefix(filter); // reget in case already deregistered
-								if (null != prefix) {
-									if (null == _prefixMgr) {
-										_prefixMgr = new PrefixRegistrationManager(this);
-									}
-									_prefixDeregister = true;
-									ForwardingEntry entry = prefix._forwarding;
-									_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
-								}
-							} catch (CCNDaemonException e) {
-								Log.warning(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage()));
+							while (_registrationChangeInProgress) {
+								try {
+									_registeredPrefixes.wait();
+								} catch (InterruptedException e) {}
+							}
+							prefix = getRegisteredPrefix(filter); // reget in case already deregistered
+							if (null != prefix) {
+								_registrationChangeInProgress = true;
+								doCancel = true;
 							}
 						} else
 							prefix._refCount--;
+					}
+				}
+				if (doCancel) {
+					try {
+						if (null == _prefixMgr) {
+							_prefixMgr = new PrefixRegistrationManager(this);
+						}
+						ForwardingEntry entry = prefix._forwarding;
+						_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
+					} catch (CCNDaemonException e) {
+						Log.warning(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage()));
+					}
+					synchronized (_registeredPrefixes) {
+						_registrationChangeInProgress = false;
+						_registeredPrefixes.notifyAll();
 					}
 				}
 			}
