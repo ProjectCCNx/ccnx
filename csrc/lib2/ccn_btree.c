@@ -571,6 +571,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     struct ccn_charbuf *key = NULL;
     struct ccn_btree_internal_payload link = {{CCN_BT_INTERNAL_MAGIC}};
     struct ccn_btree_internal_payload *olink = NULL;
+    int level;
     
     if (btree->nextsplit == node->nodeid)
         btree->nextsplit = 0;
@@ -592,6 +593,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     if (ccn_btree_node_payloadsize(parent) != sizeof(link))
         return(node->corrupt = __LINE__, -1);
     pb = ccn_btree_node_payloadsize(node);
+    level = ccn_btree_node_level(node);
     printf("Splitting %d entries of node %u, child of %u\n", n, node->nodeid, node->parent);
     /* Create two new nodes to hold the split-up content */
     /* One of these is temporary, and will get swapped in for original node */
@@ -618,6 +620,8 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     for (i = 0, j = 0, k = 0, res = 0; i < n; i++, j++) {
         if (i == n / 2) {
             k = 1; j = 0; /* switch to second half */
+            if (level > 0)
+                 key->length = 0; /* internal nodes need one fewer key */
         }
         res = ccn_btree_key_fetch(key, node, i);
         payload = ccn_btree_node_getentry(pb, node, i);
@@ -630,13 +634,13 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
             goto Bail;
     }
     /* Link the new node into the parent */
-    res = ccn_btree_key_fetch(key, a[1], 0); /* Splitting key. */
+    res = ccn_btree_key_fetch(key, node, n / 2); /* Splitting key. */
     if (res < 0)
         goto Bail;
     /*
-     * Note - we could abbreviate the splitting key to someting less than
-     * the first key of a[1] and greater than the last key of the
-     * subtree under a[0].  But we don't do that yet.
+     * Note - we could abbreviate the splitting key to something less than
+     * the first key of the subtree under a[1] and greater than
+     * the last key of the subtree under a[0].  But we don't do that yet.
      */
     MYSTORE(&link, child, a[1]->nodeid);
     res = ccn_btree_searchnode(key->buf, key->length, parent);
