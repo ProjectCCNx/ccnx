@@ -1041,8 +1041,8 @@ ccn_btree_check(struct ccn_btree *btree) {
                     ccn_btree_key_fetch(q, node, k);
                     i = q->length;
                     ccn_charbuf_append_escaped(q, q);
-                    MSG("%%E Key of [%u 0] is not empty: (%s)",
-                        node->nodeid, ccn_charbuf_as_string(q) + i);
+                    MSG("%%E Key [%u 0] %d not empty: (%s)",
+                        node->nodeid, l, ccn_charbuf_as_string(q) + i);
                     btree->errors++;
                 }
             }
@@ -1060,7 +1060,8 @@ ccn_btree_check(struct ccn_btree *btree) {
                         res = 0;
                     }
                     else {
-                        MSG("%%E Keys are out of order! [%u %d]", node->nodeid, k);
+                        MSG("%%E Keys are out of order! [%u %d]",
+                            node->nodeid, k);
                         btree->errors++;
                         res = -(btree->errors > 10);
                     }
