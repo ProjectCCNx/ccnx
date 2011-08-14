@@ -380,9 +380,9 @@ ccn_btree_lookup(struct ccn_btree *btree,
     if (srchres < 0)
         return(-1);
     while (level > 0) {
-        entdx = CCN_BT_SRCH_INDEX(srchres) - 1;
+        entdx = CCN_BT_SRCH_INDEX(srchres) + CCN_BT_SRCH_FOUND(srchres) - 1;
         if (entdx < 0)
-            entdx = 0;
+            abort();
         e = seek_internal(node, entdx);
         if (e == NULL)
             return(-1);
@@ -646,7 +646,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     res = ccn_btree_searchnode(key->buf, key->length, parent);
     if (res < 0)
         goto Bail;
-    if (CCN_BT_SRCH_FOUND(res)) {
+    if (CCN_BT_SRCH_FOUND(res) && key->length != 0) {
         printf("OOPS - probable bug\n");
         goto Bail;
     }
