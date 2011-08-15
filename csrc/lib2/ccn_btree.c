@@ -412,6 +412,10 @@ scan_reusable(const unsigned char *key, size_t keysize,
              struct ccn_btree_node *node, int ndx, unsigned reuse[2])
 {
     /* this is an optimization - leave out for now */
+    /* but this is a good place to do this check... */
+    if (ndx == 0 && keysize > 0 && ccn_btree_node_level(node) != 0) {
+        abort();
+    }
 }
 
 /**
@@ -618,12 +622,12 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     key = ccn_charbuf_create();
     if (key == NULL) goto Bail;
     for (i = 0, j = 0, k = 0, res = 0; i < n; i++, j++) {
+        res = ccn_btree_key_fetch(key, node, i);
         if (i == n / 2) {
             k = 1; j = 0; /* switch to second half */
             if (level > 0)
                  key->length = 0; /* internal nodes need one fewer key */
         }
-        res = ccn_btree_key_fetch(key, node, i);
         payload = ccn_btree_node_getentry(pb, node, i);
         if (res < 0 || payload == NULL)
             goto Bail;
