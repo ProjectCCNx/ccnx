@@ -577,7 +577,7 @@ test_btree_inserts_from_stdin(void)
         c->length = strlen((char *)c->buf);
         if (c->length > 0 && c->buf[c->length - 1] == '\n')
             c->length--;
-        printf("%9d %s\n", item, ccn_charbuf_as_string(c));
+        // printf("%9d %s\n", item, ccn_charbuf_as_string(c));
         res = ccn_btree_lookup(btree, c->buf, c->length, &leaf);
         CHKSYS(res);
         if (CCN_BT_SRCH_FOUND(res)) {
@@ -589,8 +589,8 @@ test_btree_inserts_from_stdin(void)
                                          c->buf, c->length,
                                          payload, sizeof(payload));
             CHKSYS(res);
-            if (res > 6) {
-                int limit = 10;
+            if (res > 7) {
+                int limit = 20;
                 res = ccn_btree_split(btree, leaf);
                 CHKSYS(res);
                 while (btree->nextsplit != 0) {

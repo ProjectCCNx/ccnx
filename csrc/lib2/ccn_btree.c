@@ -586,8 +586,8 @@ ccn_btree_grow_a_level(struct ccn_btree *btree, struct ccn_btree_node *node)
     if (res < 0)
         btree->errors++;
     child->parent = node->nodeid;
-    printf("New root %u at level %d over node %u (%d errors)\n",
-           node->nodeid, level + 1, child->nodeid, btree->errors);
+    if (0) printf("New root %u at level %d over node %u (%d errors)\n",
+                  node->nodeid, level + 1, child->nodeid, btree->errors);
     return(child);
 }
 
@@ -607,11 +607,8 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     if (btree->nextsplit == node->nodeid)
         btree->nextsplit = 0;
     n = ccn_btree_node_nent(node);
-    if (n < 2)
+    if (n < 4)
         return(-1);
-    if (n < 4) {
-        printf("Only %d entries here, why are we splitting? Oh, well...\n", n);
-    }
     if (node->nodeid == 1) {
         node = ccn_btree_grow_a_level(btree, node);
         if (node == NULL)
@@ -625,7 +622,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         return(node->corrupt = __LINE__, -1);
     pb = ccn_btree_node_payloadsize(node);
     level = ccn_btree_node_level(node);
-    printf("Splitting %d entries of node %u, child of %u\n", n, node->nodeid, node->parent);
+    if (0) printf("Splitting %d entries of node %u, child of %u\n", n, node->nodeid, node->parent);
     /* Create two new nodes to hold the split-up content */
     /* One of these is temporary, and will get swapped in for original node */
     newnode.buf = ccn_charbuf_create();
@@ -659,8 +656,8 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         if (res < 0 || payload == NULL)
             goto Bail;
         res = ccn_btree_insert_entry(a[k], j, key->buf, key->length, payload, pb);
-        printf("Splitting %s into node %u.%d (res = %d)\n",
-               ccn_charbuf_as_string(key), a[k]->nodeid, j, res);
+        printf("Splitting [%u %d] into [%u %d] (res = %d)\n",
+               node->nodeid, i, a[k]->nodeid, j, res);
         if (res < 0)
             goto Bail;
     }
@@ -678,7 +675,6 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     if (res < 0)
         goto Bail;
     if (CCN_BT_SRCH_FOUND(res) && key->length != 0) {
-        printf("OOPS - probable bug\n");
         goto Bail;
     }
     i = CCN_BT_SRCH_INDEX(res);
