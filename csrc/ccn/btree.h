@@ -247,10 +247,16 @@ struct ccn_btree_node *ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid);
 /* Get a node handle if it is already resident */
 struct ccn_btree_node *ccn_btree_rnode(struct ccn_btree *bt, unsigned nodeid);
 
-/* Do a lookup, starting from the root */
+/* Do a lookup, starting from the default root */
 int ccn_btree_lookup(struct ccn_btree *btree,
                      const unsigned char *key, size_t size,
                      struct ccn_btree_node **leafp);
+
+/* Do a lookup, starting from the provided root and stopping at stoplevel */
+int ccn_btree_lookup_internal(struct ccn_btree *btree,
+                     struct ccn_btree_node *root, int stoplevel,
+                     const unsigned char *key, size_t size,
+                     struct ccn_btree_node **ansp);
 
 /* Split a node into two */
 int ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node);

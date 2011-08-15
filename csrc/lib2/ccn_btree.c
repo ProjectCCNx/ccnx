@@ -346,7 +346,7 @@ ccn_btree_searchnode(const unsigned char *key,
 }
 
 /**
- * Do a btree lookup, starting from the root.
+ * Do a btree lookup, starting from the default root.
  *
  * In the absence of errors, if *leafp is not NULL the handle for the
  * appropriate leaf node will be stored.  See ccn_btree_getnode() for
@@ -362,6 +362,31 @@ ccn_btree_lookup(struct ccn_btree *btree,
                  struct ccn_btree_node **leafp)
 {
     struct ccn_btree_node *node = NULL;
+    node = ccn_btree_getnode(btree, 1);
+    if (node == NULL || node->corrupt)
+        return(-1);
+    return(ccn_btree_lookup_internal(btree, node, 0, key, size, leafp));
+}
+
+/**
+ * Do a btree lookup, starting from the provided root and stopping
+ * at stoplevel.
+ *
+ * In the absence of errors, if *ansp is not NULL the handle for the
+ * appropriate node will be stored.  See ccn_btree_getnode() for
+ * warning about lifetime of the resulting pointer.
+ *
+ * The return value is encoded as for ccn_btree_searchnode().
+ *
+ * @returns CCN_BT_ENCRES(index, success) indication, or -1 for an error.
+ */
+int
+ccn_btree_lookup_internal(struct ccn_btree *btree,
+                          struct ccn_btree_node *root, int stoplevel,
+                          const unsigned char *key, size_t size,
+                          struct ccn_btree_node **ansp)
+{
+    struct ccn_btree_node *node = NULL;
     struct ccn_btree_node *child = NULL;
     struct ccn_btree_internal_payload *e = NULL;
     unsigned childid;
@@ -371,15 +396,17 @@ ccn_btree_lookup(struct ccn_btree *btree,
     int newlevel;
     int srchres;
     
-    node = ccn_btree_getnode(btree, 1);
+    node = root;
     if (node == NULL || node->corrupt)
         return(-1);
     parent = node->nodeid;
     level = ccn_btree_node_level(node);
+    if (level < stoplevel)
+        return(-1);
     srchres = ccn_btree_searchnode(key, size, node);
     if (srchres < 0)
         return(-1);
-    while (level > 0) {
+    while (level > stoplevel) {
         entdx = CCN_BT_SRCH_INDEX(srchres) + CCN_BT_SRCH_FOUND(srchres) - 1;
         if (entdx < 0)
             abort();
@@ -401,8 +428,8 @@ ccn_btree_lookup(struct ccn_btree *btree,
         level = newlevel;
         srchres = ccn_btree_searchnode(key, size, node);
     }
-    if (leafp != NULL)
-        *leafp = node;
+    if (ansp != NULL)
+        *ansp = node;
     return(srchres);
 }
 
