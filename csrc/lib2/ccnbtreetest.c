@@ -574,7 +574,9 @@ test_btree_inserts_from_stdin(void)
     CHKPTR(ccn_charbuf_reserve(c, 8800));
     while (fgets((char *)c->buf, c->limit, stdin)) {
         item++;
-        c->length = strlen((char *)c->buf) - 1;
+        c->length = strlen((char *)c->buf);
+        if (c->length > 0 && c->buf[c->length - 1] == '\n')
+            c->length--;
         printf("%9d %s\n", item, ccn_charbuf_as_string(c));
         res = ccn_btree_lookup(btree, c->buf, c->length, &leaf);
         CHKSYS(res);
