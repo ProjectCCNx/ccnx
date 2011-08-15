@@ -472,6 +472,8 @@ ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
         ccn_btree_chknode(node);
     if (node->corrupt)
         return(-1);
+    if (keysize > CCN_BT_MAX_KEY_SIZE)
+        return(-1);
     pb = (payload_bytes + CCN_BT_SIZE_UNITS - 1)
          / CCN_BT_SIZE_UNITS
          * CCN_BT_SIZE_UNITS;

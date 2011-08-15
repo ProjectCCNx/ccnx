@@ -166,6 +166,8 @@ struct ccn_btree_entry_trailer {
     unsigned char entsz[1];     /**< entry size in CCN_BT_SIZE_UNITS */
 };
 #define CCN_BT_SIZE_UNITS 8
+/** Maximum key size, dictated by size of above size fields */
+#define CCN_BT_MAX_KEY_SIZE 65535
 
 /**
  *  Structure of the entry payload within an internal (non-leaf) node.
