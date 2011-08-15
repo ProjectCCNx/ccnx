@@ -587,24 +587,23 @@ test_btree_inserts_from_stdin(void)
                                          c->buf, c->length,
                                          payload, sizeof(payload));
             CHKSYS(res);
-            FAILIF(ccn_btree_check(btree) < 0);
             if (res > 6) {
                 int limit = 10;
                 res = ccn_btree_split(btree, leaf);
                 CHKSYS(res);
-                FAILIF(ccn_btree_check(btree) < 0);
                 while (btree->nextsplit != 0) {
                     node = ccn_btree_rnode(btree, btree->nextsplit);
                     CHKPTR(node);
                     res = ccn_btree_split(btree, node);
                     CHKSYS(res);
-                    FAILIF(ccn_btree_check(btree) < 0);
                     FAILIF(!--limit);
                 }
                 FAILIF(btree->missedsplit);
             }
         }
     }
+    res = ccn_btree_check(btree);
+    CHKSYS(res);
     printf("%d unique, %d duplicate, %d errors\n", unique, dups, btree->errors);
     FAILIF(btree->errors != 0);
     res = ccn_btree_destroy(&btree);
@@ -617,6 +616,11 @@ main(int argc, char **argv)
 {
     int res;
 
+    if (argv[1] && 0 == strcmp(argv[1], "-")) {
+        res = test_btree_inserts_from_stdin();
+        CHKSYS(res);
+        exit(0);
+    }
     res = test_directory_creation();
     CHKSYS(res);
     res = test_btree_io();
@@ -639,9 +643,5 @@ main(int argc, char **argv)
     CHKSYS(res);
     res = test_basic_btree_insert_entry();
     CHKSYS(res);
-    if (argv[1] && 0 == strcmp(argv[1], "-")) {
-        res = test_btree_inserts_from_stdin();
-        CHKSYS(res);
-    }
     return(0);
 }
