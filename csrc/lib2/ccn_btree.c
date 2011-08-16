@@ -658,8 +658,8 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         if (res < 0 || payload == NULL)
             goto Bail;
         res = ccn_btree_insert_entry(a[k], j, key->buf, key->length, payload, pb);
-        printf("Splitting [%u %d] into [%u %d] (res = %d)\n",
-               node->nodeid, i, a[k]->nodeid, j, res);
+        if (0) printf("Splitting [%u %d] into [%u %d] (res = %d)\n",
+                      node->nodeid, i, a[k]->nodeid, j, res);
         if (res < 0)
             goto Bail;
     }
