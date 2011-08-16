@@ -124,6 +124,13 @@ public class CCNProtocolDTags {
 	public static final int StatusResponse = 112;
 	public static final int StatusCode = 113;
 	public static final int StatusText = 114;
+
+	// Sync protocol
+	public static final int SyncVersion = 118;
+	public static final int ConfigSlice = 124;
+	public static final int ConfigSliceList = 125;
+	public static final int ConfigSliceOp = 126;
+
 	// Remember to keep in sync with schema/tagnames.csvsdict 
 	public static final int CCNProtocolDataUnit = 17702112;
 	public static final String CCNPROTOCOL_DATA_UNIT = "CCNProtocolDataUnit";
@@ -149,7 +156,9 @@ public class CCNProtocolDTags {
 		"ACL", "ParameterizedName", "Prefix", "Suffix", "Root", "ProfileName", "Parameters",
 		"InfoString", null,
         
-        "StatusResponse", "StatusCode", "StatusText"};
+        "StatusResponse", "StatusCode", "StatusText", null, null, null,
+        "SyncVersion", null, null, null, null, null,
+        "ConfigSlice", "ConfigSliceList", "ConfigSliceOp" };
 	protected static final int TAG_MAP_LENGTH = _tagToStringMap.length;
 
 	
