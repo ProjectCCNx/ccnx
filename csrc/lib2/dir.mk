@@ -23,7 +23,7 @@ PROGRAMS = ccnbtreetest
 DEBRIS = 
 
 BROKEN_PROGRAMS = 
-CSRC = ccn_btree.c ccn_btree_store.c ccnbtreetest.c
+CSRC = ccn_btree.c ccn_btree_content.c ccn_btree_store.c ccnbtreetest.c
 HSRC = 
 SCRIPTSRC = 
  
@@ -33,7 +33,7 @@ all: default $(BROKEN_PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
-LIB2_OBJ = ccn_btree.o ccn_btree_store.o
+LIB2_OBJ = ccn_btree.o ccn_btree_store.o ccn_btree_content.o
 ccnbtreetest: $(LIB2_OBJ) ccnbtreetest.c
 	$(CC) $(CFLAGS) -o $@ ccnbtreetest.c $(LIB2_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
@@ -54,6 +54,8 @@ check test: ccnbtreetest $(SCRIPTSRC)
 ###############################
 ccn_btree.o: ccn_btree.c ../include/ccn/charbuf.h ../include/ccn/hashtb.h \
   ../ccn/btree.h
+ccn_btree_content.o: ccn_btree_content.c ../ccn/btree_content.h \
+  ../include/ccn/charbuf.h ../ccn/btree.h ../include/ccn/hashtb.h
 ccn_btree_store.o: ccn_btree_store.c ../ccn/btree.h \
   ../include/ccn/charbuf.h ../include/ccn/hashtb.h
 ccnbtreetest.o: ccnbtreetest.c ../ccn/btree.h ../include/ccn/charbuf.h \
