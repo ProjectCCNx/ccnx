@@ -14,7 +14,7 @@
 
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn -L$(SYNCLIBDIR) -lsync
 CCNLIBDIR = ../lib
-SYNCLIBDIR = ../sync/
+SYNCLIBDIR = ../sync
 # Override conf.mk or else we don't pick up all the includes
 CPREFLAGS = -I../include -I..
 
@@ -33,7 +33,7 @@ all: default $(BROKEN_PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
-CCNR_OBJ = ccnr_dispatch.o ccnr_forwarding.o ccnr_init.o ccnr_internal_client.o ccnr_io.o ccnr_link.o ccnr_main.o ccnr_match.o ccnr_msg.o ccnr_net.o ccnr_proto.o ccnr_sendq.o ccnr_stats.o ccnr_store.o ccnr_sync.o ccnr_util.o
+CCNR_OBJ = ccnr_dispatch.o ccnr_forwarding.o ccnr_init.o ccnr_internal_client.o ccnr_io.o ccnr_link.o ccnr_main.o ccnr_match.o ccnr_msg.o ccnr_net.o ccnr_proto.o ccnr_sendq.o ccnr_stats.o ccnr_store.o ccnr_sync.o ccnr_util.o ../lib2/ccn_btree.o ../lib2/ccn_btree_content.o ../lib2/ccn_btree_store.o
 ccnr: $(CCNR_OBJ) ccnr_built.sh
 	$(CC) $(CFLAGS) -o $@ $(CCNR_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 	sh ./ccnr_built.sh
@@ -60,10 +60,10 @@ ccnr_dispatch.o: ccnr_dispatch.c ../include/ccn/bloom.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/hashtb.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ../sync/SyncBase.h \
-  ../sync/SyncMacros.h ccnr_private.h ../include/ccn/seqwriter.h \
-  ccnr_dispatch.h ccnr_forwarding.h ccnr_io.h ccnr_link.h ccnr_match.h \
-  ccnr_msg.h ccnr_proto.h ccnr_sendq.h ccnr_stats.h ccnr_store.h \
-  ccnr_util.h
+  ../ccnr/ccnr_private.h ../include/ccn/seqwriter.h ../sync/SyncMacros.h \
+  ccnr_private.h ccnr_dispatch.h ccnr_forwarding.h ccnr_io.h ccnr_link.h \
+  ccnr_match.h ccnr_msg.h ccnr_proto.h ccnr_sendq.h ccnr_stats.h \
+  ccnr_store.h ccnr_sync.h ccnr_util.h
 ccnr_forwarding.o: ccnr_forwarding.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
@@ -78,9 +78,10 @@ ccnr_init.o: ccnr_init.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
   ../include/ccn/hashtb.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ../sync/SyncBase.h \
-  ../sync/SyncMacros.h ccnr_private.h ../include/ccn/seqwriter.h \
-  ccnr_init.h ccnr_dispatch.h ccnr_forwarding.h ccnr_internal_client.h \
-  ccnr_io.h ccnr_msg.h ccnr_net.h ccnr_proto.h ccnr_store.h ccnr_util.h
+  ../ccnr/ccnr_private.h ../include/ccn/seqwriter.h ../sync/SyncMacros.h \
+  ccnr_private.h ccnr_init.h ccnr_dispatch.h ccnr_forwarding.h \
+  ccnr_internal_client.h ccnr_io.h ccnr_msg.h ccnr_net.h ccnr_proto.h \
+  ccnr_store.h ccnr_util.h
 ccnr_internal_client.o: ccnr_internal_client.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
@@ -131,10 +132,10 @@ ccnr_proto.o: ccnr_proto.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccn_private.h ../include/ccn/schedule.h \
   ../include/ccn/sockaddrutil.h ../include/ccn/uri.h ../sync/SyncBase.h \
-  ../sync/SyncMacros.h ccnr_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/seqwriter.h ccnr_proto.h ccnr_dispatch.h \
-  ccnr_forwarding.h ../include/ccn/hashtb.h ccnr_io.h ccnr_msg.h \
-  ccnr_sendq.h ccnr_store.h ccnr_sync.h ccnr_util.h
+  ../ccnr/ccnr_private.h ../include/ccn/reg_mgmt.h \
+  ../include/ccn/seqwriter.h ../sync/SyncMacros.h ccnr_private.h \
+  ccnr_proto.h ccnr_dispatch.h ccnr_forwarding.h ../include/ccn/hashtb.h \
+  ccnr_io.h ccnr_msg.h ccnr_sendq.h ccnr_store.h ccnr_sync.h ccnr_util.h
 ccnr_sendq.o: ccnr_sendq.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
@@ -157,10 +158,12 @@ ccnr_store.o: ccnr_store.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
   ../include/ccn/seqwriter.h ccnr_store.h ccnr_msg.h
 ccnr_sync.o: ccnr_sync.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ccnr_private.h \
-  ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/schedule.h ../include/ccn/seqwriter.h ccnr_dispatch.h \
-  ccnr_io.h ccnr_msg.h ccnr_sendq.h ccnr_store.h ../include/ccn/hashtb.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/schedule.h ../sync/SyncBase.h ../include/ccn/uri.h \
+  ../ccnr/ccnr_private.h ../include/ccn/ccn_private.h \
+  ../include/ccn/reg_mgmt.h ../include/ccn/seqwriter.h \
+  ../sync/SyncMacros.h ccnr_private.h ccnr_dispatch.h ccnr_io.h \
+  ccnr_msg.h ccnr_sendq.h ccnr_store.h ../include/ccn/hashtb.h \
   ccnr_sync.h ccnr_util.h
 ccnr_util.o: ccnr_util.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
