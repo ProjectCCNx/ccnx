@@ -614,7 +614,7 @@ test_btree_inserts_from_stdin(void)
 }
 
 int
-main(int argc, char **argv)
+ccnbtreetest_main(int argc, char **argv)
 {
     int res;
 

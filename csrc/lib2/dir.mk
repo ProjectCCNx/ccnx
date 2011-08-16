@@ -35,7 +35,7 @@ $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
 LIB2_OBJ = ccn_btree.o ccn_btree_store.o ccn_btree_content.o
 ccnbtreetest: $(LIB2_OBJ) ccnbtreetest.c
-	$(CC) $(CFLAGS) -o $@ ccnbtreetest.c $(LIB2_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+	$(CC) $(CFLAGS) -o $@ -Dccnbtreetest_main=main ccnbtreetest.c $(LIB2_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
