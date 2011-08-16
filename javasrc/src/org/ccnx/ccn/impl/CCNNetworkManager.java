@@ -1014,6 +1014,9 @@ public class CCNNetworkManager implements Runnable {
 				// we go ahead and register it. And of course, someone else could have registered it
 				// before we got to it so check for that also. If its already registered, just bump
 				// its use count.
+				if (_registrationChangeInProgress && Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE)) {
+					Log.fine(Log.FAC_NETMANAGER, formatMessage("SetInterestFilter: Waiting for pending registration activity"));
+				}
 				while (_registrationChangeInProgress) {
 					try {
 						_registeredPrefixes.wait();
@@ -1118,6 +1121,9 @@ public class CCNNetworkManager implements Runnable {
 					prefix = getRegisteredPrefix(filter);
 					if (null != prefix) {
 						if (prefix._refCount <= 1) {
+							if (_registrationChangeInProgress && Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE)) {
+								Log.fine(Log.FAC_NETMANAGER, formatMessage("CancelInterestFilter: Waiting for pending registration activity"));
+							}
 							while (_registrationChangeInProgress) {
 								try {
 									_registeredPrefixes.wait();
@@ -1141,10 +1147,6 @@ public class CCNNetworkManager implements Runnable {
 						_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
 					} catch (CCNDaemonException e) {
 						Log.warning(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage()));
-					}
-					synchronized (_registeredPrefixes) {
-						_registrationChangeInProgress = false;
-						_registeredPrefixes.notifyAll();
 					}
 				}
 			}
@@ -1256,9 +1258,6 @@ public class CCNNetworkManager implements Runnable {
 
 	/**
 	 * @param reg - registration to unregister
-	 * 
-	 * Important Note: This can indirectly need to obtain the lock for "reg" with the lock on
-	 * "myInterests" held.  Therefore it can't be called when holding the lock for "reg".
 	 */
 	private void unregisterInterest(InterestRegistration reg) {
 		_myInterests.remove(reg.interest, reg);
