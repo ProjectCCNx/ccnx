@@ -108,12 +108,9 @@ public class CCNNetworkManager implements Runnable {
 	protected Integer _faceID = null;
 	protected CCNDIdGetter _getter = null;
 
-	/*
-	 * Static singleton.
-	 */
 	protected Thread _thread = null; // the main processing thread
 	
-	protected CCNNetworkChannel _channel = null; // for use by run thread only!
+	protected CCNNetworkChannel _channel = null;
 	protected boolean _run = true;
 
 	// protected ContentObject _keepalive; 
@@ -127,17 +124,26 @@ public class CCNNetworkManager implements Runnable {
 	// For handling protocol to speak to ccnd, must have keys
 	protected KeyManager _keyManager;
 
-	// Tables of interests/filters: users must synchronize on collection
+	// Tables of interests/filters
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
-	public static final boolean DEFAULT_PREFIX_REG = true;
+	
+	// Prefix registration handling. Only one registration change (add or remove a registration) with ccnd is
+	// allowed at once. Before attempting a registration change, users must check _registrationChangeInProgress and wait
+	// for it to clear before continuing.  _registeredPrefixes must be locked on access. It is also used to lock
+	// access to _registrationChangeInProgress.
+	public static final boolean DEFAULT_PREFIX_REG = true;  // Should we use prefix registration? (TODO - this is pretty much obsolete
+															// - it was used during the transition to prefix registration and
+															// should probably be removed)
 	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
 	protected PrefixRegistrationManager _prefixMgr = null;
+	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
+	protected Boolean _registrationChangeInProgress = false;
+	
+	// Periodic timer
 	protected Timer _periodicTimer = null;
 	protected Object _timersSetupLock = new Object();
 	protected Boolean _timersSetup = false;
-	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
-	protected Boolean _registrationChangeInProgress = false;
 	
 	/**
 	 * Keep track of prefixes that are actually registered with ccnd (as opposed to Filters used
@@ -179,18 +185,11 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/**
-	 * Do scheduled interest and registration refreshes
+	 * Do scheduled interest, registration refreshes, and UDP heartbeats.
+	 * Called periodically. Each instance calculates when it should next be called.
 	 */
 	private class PeriodicWriter extends TimerTask {
-		// TODO Interest refresh time is supposed to "decay" over time but there are currently
-		// unresolved problems with this.
 		public void run() {	
-            //this method needs to do a few things
-            // - reopen connection to ccnd if down
-            // - refresh interests
-            // - refresh prefix registrations
-            // - heartbeats
-
 			boolean refreshError = false;			
 			if (_protocol == NetworkProtocol.UDP) {
 				if (!_channel.isConnected()) {
@@ -210,9 +209,10 @@ public class CCNNetworkManager implements Runnable {
 
             long ourTime = System.currentTimeMillis();
             long minInterestRefreshTime = PERIOD + ourTime;
-            // Library.finest("Refreshing interests (size " + _myInterests.size() + ")");
 				
 			// Re-express interests that need to be re-expressed
+            // TODO Interest refresh time is supposed to "decay" over time but there are currently
+    		// unresolved problems with this.
 			try {
 				for (Entry<InterestRegistration> entry : _myInterests.values()) {
 					InterestRegistration reg = entry.value();
@@ -283,6 +283,7 @@ public class CCNNetworkManager implements Runnable {
                 Log.warning(Log.FAC_NETMANAGER, "we have had an error when refreshing an interest or prefix registration...  do we need to reconnect to ccnd?");
         	}
 
+        	// Calculate when we should next be run
 			long currentTime = System.currentTimeMillis();
 			long checkInterestDelay = minInterestRefreshTime - currentTime;
 			if (checkInterestDelay < 0)
@@ -326,7 +327,13 @@ public class CCNNetworkManager implements Runnable {
 	} /* private class PeriodicWriter extends TimerTask */
 	
 	/**
-	 * First time startup of timing stuff after first registration
+	 * First time startup of periodic timer after first registration. We do this after the first
+	 * registration rather than at startup, because in some cases network managers get created
+	 * (via a CCNHandle) that are never used. We don't want to burden the JVM with more processing
+	 * until we are sure we are going to be used (which can't happen until there is a registration,
+	 * either of an interest in which case we expect to receive matching data, or of a prefix in
+	 * which case we expect to receive interests).
+	 * 
 	 * We don't bother to "unstartup" if everything is deregistered
 	 * @throws IOException 
 	 */
@@ -348,59 +355,14 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/** Generic superclass for registration objects that may have a listener
-	 *	Handles invalidation and pending delivery consistently to enable 
-	 *	subclass to call listener callback without holding any library locks,
-	 *	yet avoid delivery to a cancelled listener.
 	 */
 	protected abstract class ListenerRegistration {
 		protected Object listener;
-		protected CCNNetworkManager manager;
 		public Semaphore sema = null;	//used to block thread waiting for data or null if none
 		public Object owner = null;
 
 		public abstract void deliver();
-
-		/**
-		 * Calls the client handler
-		 */
-		public void run() {
-			try {
-				// Delivery may synchronize on this object to access data structures
-				// but should hold no locks when calling the listener
-				deliver();
-			} catch (Exception ex) {
-				Log.warning(Log.FAC_NETMANAGER, "failed delivery: {0}", ex);
-			}
-		}
-
-		/** Equality based on listener if present, so multiple objects can 
-		 *  have the same interest registered without colliding
-		 */
-		public boolean equals(Object obj) {
-			if (obj instanceof ListenerRegistration) {
-				ListenerRegistration other = (ListenerRegistration)obj;
-				if (this.owner == other.owner) {
-					if (null == this.listener && null == other.listener){
-						return super.equals(obj);
-					} else if (null != this.listener && null != other.listener) {
-						return this.listener.equals(other.listener);
-					}
-				}
-			}
-			return false;
-		}
-		public int hashCode() {
-			if (null != this.listener) {
-				if (null != owner) {
-					return owner.hashCode() + this.listener.hashCode();
-				} else {
-					return this.listener.hashCode();
-				}
-			} else {
-				return super.hashCode();
-			}
-		}
-	} /* protected abstract class ListenerRegistration implements Runnable */
+	}
 
 	/**
 	 * Record of Interest
@@ -416,8 +378,7 @@ public class CCNNetworkManager implements Runnable {
 		protected long nextRefreshPeriod = SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT;	// period to wait before refresh
 
 		// All internal client interests must have an owner
-		public InterestRegistration(CCNNetworkManager mgr, Interest i, CCNInterestListener l, Object owner) {
-			manager = mgr;
+		public InterestRegistration(Interest i, CCNInterestListener l, Object owner) {
 			interest = i; 
 			listener = l;
 			this.owner = owner;
@@ -481,7 +442,7 @@ public class CCNNetworkManager implements Runnable {
 						if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 							Log.finer(Log.FAC_NETMANAGER, "Interest callback (" + pending + " data) for: {0}", this.interest.name());
 
-						manager.unregisterInterest(this);
+						unregisterInterest(this);
 
 						// paul r. note - contract says interest will be gone after the call into user's code.
 						// Eventually this may be modified for "pipelining".
@@ -505,7 +466,7 @@ public class CCNNetworkManager implements Runnable {
 							// luckily we saved the listener
 							// if we want to cancel this one before we get any data, we need to remember the
 							// updated interest in the listener
-							manager.expressInterest(this.owner, updatedInterest, listener);
+							expressInterest(this.owner, updatedInterest, listener);
 						}
 
 					} else {
@@ -551,9 +512,8 @@ public class CCNNetworkManager implements Runnable {
 		protected ArrayList<Interest> extra = new ArrayList<Interest>(1);
 		protected ContentName prefix = null;
 
-		public Filter(CCNNetworkManager mgr, ContentName n, CCNFilterListener l, Object o) {
+		public Filter(ContentName n, CCNFilterListener l, Object o) {
 			prefix = n; listener = l; owner = o;
-			manager = mgr;
 		}
 
 		public synchronized boolean add(Interest i) {
@@ -887,7 +847,7 @@ public class CCNNetworkManager implements Runnable {
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("get: {0} with timeout: {1}"), interest, timeout);
-		InterestRegistration reg = new InterestRegistration(this, interest, null, null);
+		InterestRegistration reg = new InterestRegistration(interest, null, null);
 		expressInterest(reg);
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 			Log.finest(Log.FAC_NETMANAGER, formatMessage("blocking for {0} on {1}"), interest.name(), reg.sema);
@@ -924,7 +884,7 @@ public class CCNNetworkManager implements Runnable {
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("expressInterest: {0}"), interest);
-		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller);
+		InterestRegistration reg = new InterestRegistration(interest, callbackListener, caller);
 		expressInterest(reg);
 	}
 
@@ -1043,7 +1003,7 @@ public class CCNNetworkManager implements Runnable {
 			prefix._refCount++;
 		}
 
-		Filter newOne = new Filter(this, filter, callbackListener, caller);
+		Filter newOne = new Filter(filter, callbackListener, caller);
 		_myFilters.add(filter, newOne);
 	}
 	
@@ -1105,7 +1065,7 @@ public class CCNNetworkManager implements Runnable {
 		// serving any useful purpose.
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter: {0}"), filter);
-		Filter newOne = new Filter(this, filter, callbackListener, caller);
+		Filter newOne = new Filter(filter, callbackListener, caller);
 		Entry<Filter> found = null;
 		found = _myFilters.remove(filter, newOne);
 		if (null != found) {
@@ -1248,7 +1208,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	private void unregisterInterest(Object caller, Interest interest, CCNInterestListener callbackListener) {
-		InterestRegistration reg = new InterestRegistration(this, interest, callbackListener, caller);
+		InterestRegistration reg = new InterestRegistration(interest, callbackListener, caller);
 		unregisterInterest(reg);
 	}
 
@@ -1297,7 +1257,7 @@ public class CCNNetworkManager implements Runnable {
 					Interest interest = (Interest)	packet;
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 						Log.finest(Log.FAC_NETMANAGER, formatMessage("Interest from net for port: " + _port + " {0}"), interest);
-					InterestRegistration oInterest = new InterestRegistration(this, interest, null, null);
+					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
 					deliverInterest(oInterest);
 					// External interests never go back to network
 				}  else { // for interests
@@ -1326,12 +1286,7 @@ public class CCNNetworkManager implements Runnable {
 				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 					Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), ireg.interest);
 				if (filter.add(ireg.interest)) {
-					try {
-						filter.deliver();
-					} catch (RejectedExecutionException ree) {
-						// TODO - we should probably do something smarter here
-						Log.severe(Log.FAC_NETMANAGER, formatMessage("Dispatch thread overflow!!"));
-					}
+					filter.deliver();
 				}
 			}
 		}
@@ -1347,12 +1302,7 @@ public class CCNNetworkManager implements Runnable {
 		for (InterestRegistration ireg : _myInterests.getValues(co)) {
 			if (ireg.add(co)) { // this is a copy of the data
 				_stats.increment(StatsEnum.DeliverContentMatchingInterests);
-				try {
-					ireg.deliver();
-				} catch (RejectedExecutionException ree) {
-					// TODO - we should probably do something smarter here
-					Log.severe(Log.FAC_NETMANAGER, formatMessage("Dispatch thread overflow!!"));
-				}				
+				ireg.deliver();		
 			}
 		}
 	}
