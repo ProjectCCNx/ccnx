@@ -214,24 +214,22 @@ public class CCNNetworkManager implements Runnable {
 				
 			// Re-express interests that need to be re-expressed
 			try {
-				synchronized (_myInterests) {
-					for (Entry<InterestRegistration> entry : _myInterests.values()) {
-						InterestRegistration reg = entry.value();
-						 // allow some slop for scheduling
-                        if (ourTime + 20 > reg.nextRefresh) {
-                                if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-                                        Log.finer(Log.FAC_NETMANAGER, "Refresh interest: {0}", reg.interest);
-                                _lastHeartbeat = ourTime;
-                                reg.nextRefresh = ourTime + reg.nextRefreshPeriod;
-                                try {
-                                    write(reg.interest);
-                            } catch (NotYetConnectedException nyce) {
-                                    refreshError = true;
-                            }
+				for (Entry<InterestRegistration> entry : _myInterests.values()) {
+					InterestRegistration reg = entry.value();
+					 // allow some slop for scheduling
+                    if (ourTime + 20 > reg.nextRefresh) {
+                            if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
+                                    Log.finer(Log.FAC_NETMANAGER, "Refresh interest: {0}", reg.interest);
+                            _lastHeartbeat = ourTime;
+                            reg.nextRefresh = ourTime + reg.nextRefreshPeriod;
+                            try {
+                                write(reg.interest);
+                        } catch (NotYetConnectedException nyce) {
+                                refreshError = true;
                         }
-						if (minInterestRefreshTime > reg.nextRefresh)
-							minInterestRefreshTime = reg.nextRefresh;
-					}
+                    }
+					if (minInterestRefreshTime > reg.nextRefresh)
+						minInterestRefreshTime = reg.nextRefresh;
 				}
 				
 			} catch (ContentEncodingException xmlex) {
@@ -1046,9 +1044,7 @@ public class CCNNetworkManager implements Runnable {
 		}
 
 		Filter newOne = new Filter(this, filter, callbackListener, caller);
-		synchronized (_myFilters) {
-			_myFilters.add(filter, newOne);
-		}
+		_myFilters.add(filter, newOne);
 	}
 	
 	/**
@@ -1325,18 +1321,16 @@ public class CCNNetworkManager implements Runnable {
 		_stats.increment(StatsEnum.DeliverInterest);
 
 		// Call any listeners with matching filters
-		synchronized (_myFilters) {
-			for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
-				if (filter.owner != ireg.owner) {
-					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-						Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), ireg.interest);
-					if (filter.add(ireg.interest)) {
-						try {
-							filter.deliver();
-						} catch (RejectedExecutionException ree) {
-							// TODO - we should probably do something smarter here
-							Log.severe(Log.FAC_NETMANAGER, formatMessage("Dispatch thread overflow!!"));
-						}
+		for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
+			if (filter.owner != ireg.owner) {
+				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
+					Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), ireg.interest);
+				if (filter.add(ireg.interest)) {
+					try {
+						filter.deliver();
+					} catch (RejectedExecutionException ree) {
+						// TODO - we should probably do something smarter here
+						Log.severe(Log.FAC_NETMANAGER, formatMessage("Dispatch thread overflow!!"));
 					}
 				}
 			}
