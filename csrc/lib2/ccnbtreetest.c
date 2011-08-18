@@ -29,6 +29,7 @@
 #include <unistd.h>
 
 #include <ccn/btree.h>
+#include <ccn/btree_content.h>
 #include <ccn/charbuf.h>
 #include <ccn/hashtb.h>
 
@@ -158,6 +159,8 @@ test_structure_sizes(void)
             sizeof(struct ccn_btree_entry_trailer));
     check_structure_size("ccn_btree_internal_entry",
             sizeof(struct ccn_btree_internal_entry));
+    check_structure_size("ccn_btree_content_entry",
+            sizeof(struct ccn_btree_content_entry));
     return(0);
 }
 
