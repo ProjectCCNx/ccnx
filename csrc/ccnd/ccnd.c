@@ -3290,7 +3290,7 @@ propagate_interest(struct ccnd_handle *h,
             if (outbound->n > ntap &&
                   outbound->buf[ntap] == npe->src &&
                   extra_delay == 0) {
-                pe->flags = CCN_PR_UNSENT;
+                pe->flags |= CCN_PR_UNSENT;
                 delaymask = 0xFF;
             }
             outbound = NULL;
