@@ -35,6 +35,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/mman.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -66,10 +67,12 @@
 #include "ccnr_msg.h"
 #include "ccnr_net.h"
 #include "ccnr_proto.h"
+#include "ccnr_sendq.h"
 #include "ccnr_store.h"
 #include "ccnr_util.h"
 
 static int load_policy(struct ccnr_handle *h, struct ccnr_parsed_policy *pp);
+static int merge_files(struct ccnr_handle *h);
 
 static int
 r_init_debug_getenv(struct ccnr_handle *h, const char *envname)
@@ -207,6 +210,10 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     ccnr_internal_client_start(h);
     r_proto_init(h);
     r_proto_activate_policy(h, pp);
+    if (merge_files(h) == -1) {
+        ccnr_msg(h, "Unable to merge additional repository data files.");
+        abort();
+    }
     SyncInit(h->sync_handle);
 Bail:
     free(sockname);
@@ -268,6 +275,81 @@ r_init_destroy(struct ccnr_handle **pccnr)
     }
     free(h);
     *pccnr = NULL;
+}
+
+static int
+merge_files(struct ccnr_handle *h)
+{
+    int res = 0;
+    int dres;
+    int i;
+    struct stat statbuf;
+    struct ccn_charbuf *filename = ccn_charbuf_create();
+    unsigned char *mapped_file;
+    unsigned char *msg;
+    size_t size;
+    int fd = -1;
+    struct fdholder *fdholder;
+    struct content_entry *content;
+    int do_unlink = 1; // Assume no errors will occur
+    struct ccn_skeleton_decoder *d;
+    enum ccn_dtag dtag;
+    
+    for (i = 2;; i++) {
+        filename->length = 0;
+        ccn_charbuf_putf(filename, "repoFile%d", i);
+        fd = r_io_open_repo_data_file(h, ccn_charbuf_as_string(filename), 0);
+        if (fd == -1)   // Normal exit
+            break;
+        res = fstat(fd, &statbuf);
+        if (res != 0) {
+            ccnr_msg(h, "stat failed for %s (fd=%d), %s (errno=%d)",
+                     ccn_charbuf_as_string(filename), fd, strerror(errno), errno);
+            goto Bail;
+        }
+        mapped_file = mmap(NULL, statbuf.st_size, PROT_READ, MAP_FILE | MAP_SHARED, fd, 0);
+        if (mapped_file == MAP_FAILED) {
+            ccnr_msg(h, "mmap failed for %s (fd=%d), %s (errno=%d)",
+                     ccn_charbuf_as_string(filename), fd, strerror(errno), errno);
+            res = errno;
+            goto Bail;
+        }
+        fdholder = r_io_fdholder_from_fd(h, fd);
+        fdholder->flags &= ~CCNR_FACE_REPODATA; // This file is NOT stable
+        d = &fdholder->decoder;
+        msg = mapped_file;
+        size = statbuf.st_size;
+        while (d->index < size) {
+            dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
+            if (d->state != 0)
+                break;
+            ccnr_msg(h, "processing content from %s", ccn_charbuf_as_string(filename));
+            content = process_incoming_content(h, fdholder, msg + d->index - dres, dres);
+            r_sendq_face_send_queue_insert(h, r_io_fdholder_from_fd(h, h->active_out_fd), content);
+        }
+        if (d->index != size) {
+            ccnr_msg(h, "protocol error on fdholder %u (state %d), discarding %d bytes",
+                     fdholder->filedesc, d->state, (int)(size - d->index));
+            res = -1;
+            goto Bail;
+        }
+        
+    Bail:
+        if (res != 0) do_unlink = 0;
+        if (mapped_file != MAP_FAILED)
+            munmap(mapped_file, statbuf.st_size);
+        r_io_shutdown_client_fd(h, fd);            
+    }
+    
+    if (do_unlink == 0)
+        return (-1);
+    for (--i; i > 1; --i) {
+        filename->length = 0;
+        ccn_charbuf_putf(filename, "%s/repoFile%d", h->directory, i);
+        ccnr_msg(h, "unlinking %s", ccn_charbuf_as_string(filename));   
+        unlink(ccn_charbuf_as_string(filename));
+    }
+    return (0);
 }
 
 static struct ccn_charbuf *
