@@ -83,35 +83,6 @@ ccn_flatname_next_comp(const unsigned char *flatname, size_t size)
 }
 
 /**
- * Worker bee for walking a flatname
- */
-int
-ccn_flatname_enumerate_comps(const unsigned char *flatname, size_t size,
-                             int (*func)(void *data, int i, const unsigned char *cp, size_t cs),
-                             void *data)
-{
-    int ans = 0;
-    int i;
-    int rnc;
-    size_t k = 0;
-    size_t l = 0;
-    
-    for (i = 0; i < size; i += k + l) {
-        rnc = ccn_flatname_next_comp(flatname + i, size - i);
-        if (rnc <= 0)
-            return(-1);
-        k = CCNFLATDELIMSZ(rnc);
-        l = CCNFLATDATASZ(rnc);
-        if (func(data, ans, flatname + i + k, l) < 0)
-            return(-1);
-        ans++;
-    }
-    if (i != size)
-        return(-1);
-    return(ans);
-}
-
-/**
  *  Append Components from a flatname to a ccnb-encoded Name
  *  @param dst is the destination, which should hold a ccnb-encoded Name
  *  @param flatname points to first byte of flatname
