@@ -36,14 +36,13 @@ struct ccn_btree_content_payload {
     unsigned char magic[1];     /**< CCN_BT_CONTENT_MAGIC */
     unsigned char ctype[3];     /**< Type */
     unsigned char cobsz[4];     /**< Size in bytes of ContentObject */
-    unsigned char ncomp[1];     /**< number of name components, or 0 if many */
+    unsigned char ncomp[2];     /**< number of name components */
+    unsigned char flags[1];     /**< CCN_RCFLAG_* */
     unsigned char ttpad[1];     /**< Reserved until 20 Aug 4147 07:32:16 GMT */
     unsigned char timex[6];     /**< Timestamp from content object */
-    unsigned char flags[1];     /**< CCN_RCFLAG_* */
-    unsigned char spare[1];     /**< In case of need */
     unsigned char actim[6];     /**< Accession time, Timestamp format */
-    unsigned char ppkdg[32];    /**< PublisherPublicKeyDigest */
     unsigned char where[8];     /**< Where the actual ContentObject is */
+    unsigned char ppkdg[32];    /**< PublisherPublicKeyDigest */
 };
 #define CCN_BT_CONTENT_MAGIC    0xC0
 #define CCN_RCFLAG_LASTBLOCK    0x80

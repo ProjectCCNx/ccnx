@@ -62,7 +62,6 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int i,
                          const struct ccn_parsed_interest *pi,
                          struct ccn_charbuf *scratch)
 {
-    int res;
     int ncomps;
     int pubidstart;
     int pubidbytes;
@@ -82,15 +81,6 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int i,
         return(-1);
     
     ncomps = MYFETCH(e, ncomp);
-    if (ncomps == 0) {
-        /* This should be unusual. */
-        res = ccn_btree_key_fetch(scratch, node, i);
-        if (res < 0)
-            return(-1);
-        ncomps = ccn_flatname_ncomps(scratch->buf, scratch->length);
-        if (ncomps < 0)
-            return(-1);
-    }
     if (ncomps < pi->prefix_comps + pi->min_suffix_comps)
         return(0);
     if (ncomps > pi->prefix_comps + pi->max_suffix_comps)
@@ -106,12 +96,13 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int i,
     }
     /* Do Exclude processing if necessary */
     if (pi->offset[CCN_PI_E_Exclude] > pi->offset[CCN_PI_B_Exclude]) {
-         unsigned char *flatname;
+        int res;
+        unsigned char *flatname;
         size_t size;
         int n;
         int i;
         int rnc;
-       res = ccn_btree_key_fetch(scratch, node, i);
+        res = ccn_btree_key_fetch(scratch, node, i);
         if (res < 0)
             return(-1);
         flatname = scratch->buf;
@@ -141,15 +132,15 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int i,
         bloom = NULL;
         bloom_size = 0;
         if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
-                ccn_buf_advance(d);
-                bloom = match_any;
-                ccn_buf_check_close(d);
+            ccn_buf_advance(d);
+            bloom = match_any;
+            ccn_buf_check_close(d);
         }
         else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+            ccn_buf_advance(d);
+            if (ccn_buf_match_blob(d, &bloom, &bloom_size))
                 ccn_buf_advance(d);
-                if (ccn_buf_match_blob(d, &bloom, &bloom_size))
-                    ccn_buf_advance(d);
-                ccn_buf_check_close(d);
+            ccn_buf_check_close(d);
         }
         while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
             ccn_buf_advance(d);
