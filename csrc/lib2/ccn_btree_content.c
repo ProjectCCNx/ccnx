@@ -85,7 +85,7 @@ ccn_flatname_next_comp(const unsigned char *flatname, size_t size)
 /**
  * Worker bee for walking a flatname
  */
-static int
+int
 ccn_flatname_enumerate_comps(const unsigned char *flatname, size_t size,
                              int (*func)(void *data, int i, const unsigned char *cp, size_t cs),
                              void *data)
@@ -183,13 +183,6 @@ Bail:
     return(res);
 }
 
-/** Helper for ccn_flatname_ncomps */
-static int
-nothing_to_to(void *data, int i, const unsigned char *cp, size_t cs)
-{
-    return(0);
-}
-
 /**
  * Get flatname component count
  * @returns the number of name components in the flatname, or -1 if the
@@ -198,5 +191,16 @@ nothing_to_to(void *data, int i, const unsigned char *cp, size_t cs)
 int
 ccn_flatname_ncomps(const unsigned char *flatname, size_t size)
 {
-    return(ccn_flatname_enumerate_comps(flatname, size, &nothing_to_to, NULL));
+    int ans;
+    int i;
+    int rnc;
+    
+    ans = 0;
+    for (i = 0; i < size; i += CCNFLATSKIP(rnc)) {
+        rnc = ccn_flatname_next_comp(flatname + i, size - i);
+        if (rnc <= 0)
+            return(-1);
+        ans++;
+    }
+    return(ans);
 }
