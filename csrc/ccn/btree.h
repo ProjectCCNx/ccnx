@@ -273,4 +273,8 @@ int ccn_btree_check(struct ccn_btree *btree);
 /* For btree node storage in files */
 struct ccn_btree_io *ccn_btree_io_from_directory(const char *path);
 
+/* Low-level field access */
+unsigned ccn_btree_fetchval(const unsigned char *p, int size);
+void ccn_btree_storeval(unsigned char *p, int size, unsigned v);
+
 #endif

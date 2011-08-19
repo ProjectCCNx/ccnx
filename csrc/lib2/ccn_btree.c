@@ -27,9 +27,11 @@
 
 #include <ccn/btree.h>
 
-#define MYFETCH(p, f) fetchval(&((p)->f[0]), sizeof((p)->f))
-static unsigned
-fetchval(const unsigned char *p, int size)
+#ifndef MYFETCH
+#define MYFETCH(p, f) ccn_btree_fetchval(&((p)->f[0]), sizeof((p)->f))
+#endif
+unsigned
+ccn_btree_fetchval(const unsigned char *p, int size)
 {
     int i;
     unsigned v;
@@ -39,9 +41,11 @@ fetchval(const unsigned char *p, int size)
     return(v);
 }
 
-#define MYSTORE(p, f, v) storeval(&((p)->f[0]), sizeof((p)->f), (v))
-static void
-storeval(unsigned char *p, int size, unsigned v)
+#ifndef MYSTORE
+#define MYSTORE(p, f, v) ccn_btree_storeval(&((p)->f[0]), sizeof((p)->f), (v))
+#endif
+void
+ccn_btree_storeval(unsigned char *p, int size, unsigned v)
 {
     int i;
     
