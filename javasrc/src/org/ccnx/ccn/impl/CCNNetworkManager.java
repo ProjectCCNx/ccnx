@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -156,7 +155,7 @@ public class CCNNetworkManager implements Runnable {
 		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
 		// prefix we use Integer.MAX_VALUE as the requested lifetime.
 		private long _lifetime = -1; // in seconds
-		private long _nextRefresh = -1;
+		protected long _nextRefresh = -1;
 
 		public RegisteredPrefix(ForwardingEntry forwarding) {
 			_forwarding = forwarding;
@@ -244,7 +243,7 @@ public class CCNNetworkManager implements Runnable {
             // prefix we use Integer.MAX_VALUE as the requested lifetime.
             // FIXME: so lets not go around the loop doing nothing... for now.
             long minFilterRefreshTime = PERIOD + ourTime;
-            if (false && _usePrefixReg) {
+            /* if (_usePrefixReg) {
             	synchronized (_registeredPrefixes) {
                     for (ContentName prefix : _registeredPrefixes.keySet()) {
                     	RegisteredPrefix rp = _registeredPrefixes.get(prefix);
@@ -277,7 +276,7 @@ public class CCNNetworkManager implements Runnable {
 						}
 						}	// for (Entry<Filter> entry: _myFilters.values())
 				}	// synchronized (_myFilters)
-			} // _usePrefixReg
+			} // _usePrefixReg */
         	
         	if (refreshError) {
                 Log.warning(Log.FAC_NETMANAGER, "we have had an error when refreshing an interest or prefix registration...  do we need to reconnect to ccnd?");
@@ -356,12 +355,39 @@ public class CCNNetworkManager implements Runnable {
 
 	/** Generic superclass for registration objects that may have a listener
 	 */
-	protected abstract class ListenerRegistration {
+	protected class ListenerRegistration {
 		protected Object listener;
 		public Semaphore sema = null;	//used to block thread waiting for data or null if none
 		public Object owner = null;
-
-		public abstract void deliver();
+		
+		/** Equality based on listener if present, so multiple objects can 
+		 *  have the same interest registered without colliding
+		 */
+		public boolean equals(Object obj) {
+			if (obj instanceof ListenerRegistration) {
+				ListenerRegistration other = (ListenerRegistration)obj;
+				if (this.owner == other.owner) {
+					if (null == this.listener && null == other.listener){
+						return super.equals(obj);
+					} else if (null != this.listener && null != other.listener) {
+						return this.listener.equals(other.listener);
+					}
+				}
+			}
+			return false;
+		}
+		
+		public int hashCode() {
+			if (null != this.listener) {
+				if (null != owner) {
+					return owner.hashCode() + this.listener.hashCode();
+				} else {
+					return this.listener.hashCode();
+				}
+			} else {
+				return super.hashCode();
+			}
+		}
 	}
 
 	/**
@@ -373,9 +399,9 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	protected class InterestRegistration extends ListenerRegistration {
 		public final Interest interest;
-		ContentObject data = null;
 		protected long nextRefresh;		// next time to refresh the interest
 		protected long nextRefreshPeriod = SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT;	// period to wait before refresh
+		protected ContentObject content;
 
 		// All internal client interests must have an owner
 		public InterestRegistration(Interest i, CCNInterestListener l, Object owner) {
@@ -389,91 +415,34 @@ public class CCNNetworkManager implements Runnable {
 		}
 
 		/**
-		 * Return true if data was added.
-		 * If data is already pending for delivery for this interest, the 
-		 * interest is already consumed and this new data cannot be delivered.
-		 * @throws NullPointerException If obj is null 
-		 */
-		public synchronized boolean add(ContentObject obj) {
-			if (null == data) {
-				// No data pending, this obj will consume interest
-				this.data = obj; // we let this raise exception if obj == null
-				return true;
-			} else {
-				// Data is already pending, this interest is already consumed, cannot add obj
-				_stats.increment(StatsEnum.ContentObjectsIgnored);
-				if (Log.isLoggable(Log.FAC_NETMANAGER, Level.WARNING))
-					Log.warning(Log.FAC_NETMANAGER, "{0} is not handled - data already pending", obj.name());
-				return false;
-			}
-		}
-
-		/**
-		 * This used to be called just data, but its similarity
-		 * to a simple accessor made the fact that it cleared the data
-		 * really confusing and error-prone...
-		 * Pull the available data out for processing.
-		 * @return
-		 */
-		public synchronized ContentObject popData() {
-			ContentObject result = this.data;
-			this.data = null;
-			return result;
-		}
-
-		/**
 		 * Deliver content to a registered handler
 		 */
-		public void deliver() {
+		public void deliver(ContentObject co) {
 			try {
 				if (null != this.listener) {
-					// Standing interest: call listener callback
-					ContentObject pending = null;
-					CCNInterestListener listener = null;
-					synchronized (this) {
-						if (null != this.data && null != this.listener) {
-							pending = this.data;
-							this.data = null;
-							listener = (CCNInterestListener)this.listener;
-						}
-					}
-					// Call into client code without holding any library locks
-					if (null != pending) {
+					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
+						Log.finer(Log.FAC_NETMANAGER, "Interest callback (" + co + " data) for: {0}", this.interest.name());
+
+					unregisterInterest(this);
+					CCNInterestListener handler = (CCNInterestListener)this.listener;
+
+					// Callback the client - we can't hold any locks here!
+					Interest updatedInterest = handler.handleContent(co, interest);
+
+					// Possibly we should optimize here for the case where the same interest is returned back
+					// (now we would unregister it, then reregister it) but need to be careful that the timing
+					// behavior is right if we do that
+					if (null != updatedInterest) {
 						if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-							Log.finer(Log.FAC_NETMANAGER, "Interest callback (" + pending + " data) for: {0}", this.interest.name());
-
-						unregisterInterest(this);
-
-						// paul r. note - contract says interest will be gone after the call into user's code.
-						// Eventually this may be modified for "pipelining".
-
-						// DKS TODO tension here -- what object does client use to cancel?
-						// Original implementation had expressInterest return a descriptor
-						// used to cancel it, perhaps we should go back to that. Otherwise
-						// we may need to remember at least the original interest for cancellation,
-						// or a fingerprint representation that doesn't include the exclude filter.
-						// DKS even more interesting -- how do we update our interest? Do we?
-						// it's final now to avoid contention, but need to change it or change
-						// the registration.
-						Interest updatedInterest = listener.handleContent(pending, interest);
-
-						// Possibly we should optimize here for the case where the same interest is returned back
-						// (now we would unregister it, then reregister it) but need to be careful that the timing
-						// behavior is right if we do that
-						if (null != updatedInterest) {
-							if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-								Log.finer(Log.FAC_NETMANAGER, "Interest callback: updated interest to express: {0}", updatedInterest.name());
-							// luckily we saved the listener
-							// if we want to cancel this one before we get any data, we need to remember the
-							// updated interest in the listener
-							expressInterest(this.owner, updatedInterest, listener);
-						}
-
-					} else {
-						if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-							Log.finer(Log.FAC_NETMANAGER, "Interest callback skipped (no data) for: {0}", this.interest.name());
+							Log.finer(Log.FAC_NETMANAGER, "Interest callback: updated interest to express: {0}", updatedInterest.name());
+						// luckily we saved the listener
+						// if we want to cancel this one before we get any data, we need to remember the
+						// updated interest in the listener
+						expressInterest(this.owner, updatedInterest, handler);
 					}
 				} else {
+					// This is the "get" case
+					content = co;
 					synchronized (this) {
 						if (null != this.sema) {
 							if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
@@ -507,74 +476,26 @@ public class CCNNetworkManager implements Runnable {
 	 * to registered interest handlers
 	 */
 	protected class Filter extends ListenerRegistration {
-		protected Interest interest; // interest to be delivered
+		protected Interest interest = null; // interest to be delivered
 		// extra interests to be delivered: separating these allows avoidance of ArrayList obj in many cases
-		protected ArrayList<Interest> extra = new ArrayList<Interest>(1);
 		protected ContentName prefix = null;
 
 		public Filter(ContentName n, CCNFilterListener l, Object o) {
 			prefix = n; listener = l; owner = o;
 		}
 
-		public synchronized boolean add(Interest i) {
-			if (null == interest) {
-				interest = i;
-				return true;
-			} else {
-				// Special case, more than 1 interest pending for delivery
-				// Only 1 interest gets added at a time, but more than 1 
-				// may arrive before a callback is dispatched
-				if (null == extra) {
-					extra = new ArrayList<Interest>(1);
-				}
-				extra.add(i);
-				return false;
-			}
-		}
-
 		/**
 		 * Deliver interest to a registered handler
 		 */
-		public void deliver() {
+		public void deliver(Interest interest) {
 			try {
-				Interest pending = null;
-				ArrayList<Interest> pendingExtra = null;
-				CCNFilterListener listener = null;
-				// Grab pending interest(s) under the lock
-				synchronized (this) {
-					if (null != this.interest && null != this.listener) {
-						pending = interest;
-						interest = null;
-						if (null != this.extra) { 
-							pendingExtra = extra;
-							extra = null;
-							// Don't create new ArrayList for extra here, will be done only as needed in add()
-						}
-					}
-					listener = (CCNFilterListener)this.listener;
-				}
+				CCNFilterListener handler = (CCNFilterListener)this.listener;
 
-				// pending signifies whether there is anything
-				if (null != pending) {	
-					// Call into client code without holding any library locks
-					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-						Log.finer(Log.FAC_NETMANAGER, "Filter callback for: {0}", prefix);
-					listener.handleInterest(pending);
-					// Now extra callbacks for additional interests
-					if (null != pendingExtra) {
-						int countExtra = 0;
-						for (Interest pi : pendingExtra) {
-							if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) ) {
-								countExtra++;
-								Log.finer(Log.FAC_NETMANAGER, "Filter callback (extra {0} of {1}) for: {2}", countExtra, pendingExtra.size(), prefix);
-							}
-							listener.handleInterest(pi);
-						}
-					}
-				} else {
-					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-						Log.finer(Log.FAC_NETMANAGER, "Filter callback skipped (no interests) for: {0}", prefix);
-				}
+				// Call into client code without holding any library locks
+				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
+					Log.finer(Log.FAC_NETMANAGER, "Filter callback for: {0}", prefix);
+				handler.handleInterest(interest);
+				// Now extra callbacks for additional interests
 			} catch (RuntimeException ex) {
 				_stats.increment(StatsEnum.DeliverInterestFailed);
 				Log.warning(Log.FAC_NETMANAGER, "failed to deliver interest: {0}", ex);
@@ -861,7 +782,7 @@ public class CCNNetworkManager implements Runnable {
 		// Typically the main processing thread will have registered the interest
 		// which must be undone here, but no harm if never registered
 		unregisterInterest(reg);
-		return reg.popData(); 
+		return reg.content; 
 	}
 
 	/**
@@ -1258,7 +1179,7 @@ public class CCNNetworkManager implements Runnable {
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 						Log.finest(Log.FAC_NETMANAGER, formatMessage("Interest from net for port: " + _port + " {0}"), interest);
 					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
-					deliverInterest(oInterest);
+					deliverInterest(oInterest, interest);
 					// External interests never go back to network
 				}  else { // for interests
 					_stats.increment(StatsEnum.ReceiveUnknown);
@@ -1277,17 +1198,15 @@ public class CCNNetworkManager implements Runnable {
 	 * Internal delivery of interests to pending filter listeners
 	 * @param ireg
 	 */
-	protected void deliverInterest(InterestRegistration ireg) {
+	protected void deliverInterest(InterestRegistration ireg, Interest interest) {
 		_stats.increment(StatsEnum.DeliverInterest);
 
 		// Call any listeners with matching filters
 		for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
 			if (filter.owner != ireg.owner) {
 				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-					Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), ireg.interest);
-				if (filter.add(ireg.interest)) {
-					filter.deliver();
-				}
+					Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), interest);
+				filter.deliver(interest);
 			}
 		}
 	}
@@ -1300,10 +1219,8 @@ public class CCNNetworkManager implements Runnable {
 		_stats.increment(StatsEnum.DeliverContent);
 
 		for (InterestRegistration ireg : _myInterests.getValues(co)) {
-			if (ireg.add(co)) { // this is a copy of the data
-				_stats.increment(StatsEnum.DeliverContentMatchingInterests);
-				ireg.deliver();		
-			}
+			_stats.increment(StatsEnum.DeliverContentMatchingInterests);
+			ireg.deliver(co);		
 		}
 	}
 
