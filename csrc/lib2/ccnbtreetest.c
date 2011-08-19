@@ -656,7 +656,7 @@ test_flatname(void)
         FAILIF(res != (i > 0));
         res = ccn_name_append_flatname(ccnb, flat->buf, flat->length, 0, -1);
         FAILIF(res < 0);
-        //res = ccn_flatname_from_ccnb(flatout, ccnb->buf, ccnb->length);
+        res = ccn_flatname_from_ccnb(flatout, ccnb->buf, ccnb->length);
         FAILIF(res < 0);
         uri->length = 0;
         res = ccn_uri_append(uri, ccnb->buf, ccnb->length, 1);

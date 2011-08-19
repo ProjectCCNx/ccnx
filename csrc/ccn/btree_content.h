@@ -79,7 +79,7 @@ struct ccn_btree_content_entry {
  * 0xff 0x3F 0x30 ...  => a component 16383 bytes long that starts with "0"
  *
  * Length indicators larger than this are possible in theory, but unlikely
- * to come up in practice.
+ * to come up in practice. Nontheless, we do allow 3-byte length indicators.
  */
 
 /* Name flattening */
@@ -87,14 +87,14 @@ int ccn_flatname_append_component(struct ccn_charbuf *dst,
                                   const unsigned char *ccnb, size_t size);
 int ccn_flatname_append_from_ccnb(struct ccn_charbuf *dst,
                                   const unsigned char *ccnb, size_t size,
-                                  int index, int count);
+                                  int skip, int count);
 int ccn_flatname_from_ccnb(struct ccn_charbuf *dst,
                            const unsigned char *ccnb, size_t size);
 
 /* Name unflattening */
 int ccn_name_append_flatname(struct ccn_charbuf *dst,
                              const unsigned char *flatname, size_t size,
-                             int index, int count);
+                             int skip, int count);
 int ccn_uri_append_flatname(struct ccn_charbuf *uri,
                              const unsigned char *flatname, size_t size,
                              int includescheme);

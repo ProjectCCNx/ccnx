@@ -21,21 +21,91 @@
 #include <ccn/ccn.h>
 #include <ccn/uri.h>
 
+int
+ccn_flatname_append_component(struct ccn_charbuf *dst,
+                              const unsigned char *comp, size_t size)
+{
+    int res;
+    int s;
+    size_t save;
+    
+    if (size >= (1 << 21))
+        return(-1);
+    save = dst->length;
+    res = 0;
+    for (s = 0; size >= (1 << (s + 7)); s += 7)
+        continue;
+    for (; s > 0; s -= 7)
+        res |= ccn_charbuf_append_value(dst, (((size >> s) & 0x7F) | 0x80), 1);
+    res |= ccn_charbuf_append_value(dst, (size & 0x7F), 1);
+    res |= ccn_charbuf_append(dst, comp, size);
+    if (res < 0)
+        dst->length = save;
+    return(res);
+}
+
 /**
- *  Append Components from a ccnb-encoded Name to a flatname 
+ *  Append Components from a ccnb-encoded Name to a flatname
+ *
+ *  The ccnb encoded input may be a ContentObject, Interest, Prefix,
+ *  or Component instead of simply a Name.
  *  @param dst is the destination, which should hold a ccnb-encoded Name
  *  @param ccnb points to first byte of Name
  *  @param size is the number of bytes in ccnb
- *  @param index is the number of components at the front of flatname to skip
+ *  @param skip is the number of components at the front of flatname to skip
  *  @param count is the maximum number of componebts to append, or -1 for all
  *  @returns number of appended components, or -1 if there is an error.
  */
 int
 ccn_flatname_append_from_ccnb(struct ccn_charbuf *dst,
-                                  const unsigned char *ccnb, size_t size,
-                                  int index, int count)
+                              const unsigned char *ccnb, size_t size,
+                              int skip, int count)
 {
-    return(-1);
+    int ans = 0;
+    int ncomp = 0;
+    const unsigned char *comp = NULL;
+    size_t compsize = 0;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, ccnb, size);
+    int checkclose = 0;
+    int res;
+    
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Interest)    ||
+        ccn_buf_match_dtag(d, CCN_DTAG_ContentObject)) {
+        ccn_buf_advance(d);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Signature))
+            ccn_buf_advance_past_element(d);
+    }
+    if ((ccn_buf_match_dtag(d, CCN_DTAG_Name) ||
+         ccn_buf_match_dtag(d, CCN_DTAG_Prefix))) {
+        checkclose = 1;
+        ccn_buf_advance(d);
+    }
+    else if (count != 0)
+        count = 1;
+    while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+        if (ans == count)
+            return(ans);
+        ccn_buf_advance(d);
+        compsize = 0;
+        if (ccn_buf_match_blob(d, &comp, &compsize))
+            ccn_buf_advance(d);
+        ccn_buf_check_close(d);
+        if (d->decoder.state < 0)
+            return(-1);
+        ncomp += 1;
+        if (ncomp > skip) {
+            res = ccn_flatname_append_component(dst, comp, compsize);
+            if (res < 0)
+                return(-1);
+            ans++;
+        }
+    }
+    if (checkclose)
+        ccn_buf_check_close(d);
+    if (d->decoder.state < 0)
+        return (-1);
+    return(ans);
 }
 
 /**
