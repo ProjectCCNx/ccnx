@@ -184,7 +184,6 @@ ccn_name_append_flatname(struct ccn_charbuf *dst,
             res = ccn_name_append(dst, cp, cs);
             if (res < 0)
                 return(-1);
-            count--;
             ans++;
         }
         compnum++;
