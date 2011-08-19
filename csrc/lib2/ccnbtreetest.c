@@ -30,8 +30,10 @@
 
 #include <ccn/btree.h>
 #include <ccn/btree_content.h>
+#include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/hashtb.h>
+#include <ccn/uri.h>
 
 #define FAILIF(cond) do {} while ((cond) && fatal(__func__, __LINE__))
 #define CHKSYS(res) FAILIF((res) == -1)
@@ -617,6 +619,57 @@ test_btree_inserts_from_stdin(void)
 }
 
 int
+test_flatname(void)
+{
+    unsigned char L0[1] = { 0x00 };
+    unsigned char A[2] = { 0x01, 'A' };
+    unsigned char C1[128] = { 0x7F, 0xC1, '.', 'x', '~'};
+    unsigned char XL[130] = { 0x81, 0x00, 0x39, ' ', 'e', 't', 'c' };
+    struct {unsigned char *x; size_t l;} ex[] = {
+        {L0, 0},
+        {L0, sizeof(L0)},
+        {A, sizeof(A)},
+        {C1, sizeof(C1)},
+        {XL, sizeof(XL)},
+        {0,0}
+    };
+    struct ccn_charbuf *flat;
+    struct ccn_charbuf *flatout;
+    struct ccn_charbuf *ccnb;
+    struct ccn_charbuf *uri;
+    int i;
+    int res;
+    
+    flat = ccn_charbuf_create();
+    flatout = ccn_charbuf_create();
+    ccnb = ccn_charbuf_create();
+    uri = ccn_charbuf_create();
+    
+    res = ccn_flatname_ncomps(flat->buf, flat->length);
+    FAILIF(res != 0);
+    for (i = 0; ex[i].x != NULL; i++) {
+        res = ccn_name_init(ccnb);
+        FAILIF(res < 0);
+        flat->length = 0;
+        ccn_charbuf_append(flat, ex[i].x, ex[i].l);
+        res = ccn_flatname_ncomps(flat->buf, flat->length);
+        FAILIF(res != (i > 0));
+        res = ccn_name_append_flatname(ccnb, flat->buf, flat->length, 0, -1);
+        FAILIF(res < 0);
+        //res = ccn_flatname_from_ccnb(flatout, ccnb->buf, ccnb->length);
+        FAILIF(res < 0);
+        uri->length = 0;
+        res = ccn_uri_append(uri, ccnb->buf, ccnb->length, 1);
+        printf("flatname %d: %s\n", i, ccn_charbuf_as_string(uri));
+    }
+    ccn_charbuf_destroy(&flat);
+    ccn_charbuf_destroy(&flatout);
+    ccn_charbuf_destroy(&ccnb);
+    ccn_charbuf_destroy(&uri);
+    return(0);
+}
+
+int
 ccnbtreetest_main(int argc, char **argv)
 {
     int res;
@@ -647,6 +700,8 @@ ccnbtreetest_main(int argc, char **argv)
     res = test_btree_lookup();
     CHKSYS(res);
     res = test_basic_btree_insert_entry();
+    CHKSYS(res);
+    res = test_flatname();
     CHKSYS(res);
     return(0);
 }

@@ -74,8 +74,8 @@ struct ccn_btree_content_entry {
  * For example:
  * 0x00                => the zero-length component
  * 0x01 0x41           => the component "A"
- * 0x3F 0xC1 ...       => a component 127 bytes long that starts with "%C1"
- * 0x11 0x00 0x39 ...  => a component 128 bytes long that starts with "9"
+ * 0x7F 0xC1 ...       => a component 127 bytes long that starts with "%C1"
+ * 0x81 0x00 0x39 ...  => a component 128 bytes long that starts with "9"
  * 0xff 0x3F 0x30 ...  => a component 16383 bytes long that starts with "0"
  *
  * Length indicators larger than this are possible in theory, but unlikely
@@ -83,6 +83,8 @@ struct ccn_btree_content_entry {
  */
 
 /* Name flattening */
+int ccn_flatname_append_component(struct ccn_charbuf *dst,
+                                  const unsigned char *ccnb, size_t size);
 int ccn_flatname_append_from_ccnb(struct ccn_charbuf *dst,
                                   const unsigned char *ccnb, size_t size,
                                   int index, int count);
@@ -96,7 +98,7 @@ int ccn_name_append_flatname(struct ccn_charbuf *dst,
 int ccn_uri_append_flatname(struct ccn_charbuf *uri,
                              const unsigned char *flatname, size_t size,
                              int includescheme);
-
+/* Flatname component count */
 int ccn_flatname_ncomps(const unsigned char *flatname, size_t size);
 
 #endif
