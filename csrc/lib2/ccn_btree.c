@@ -252,6 +252,9 @@ ccn_btree_key_append(struct ccn_charbuf *dst,
  * The comparison is a standard lexicographic one on unsigned bytes; that is,
  * there is no assumption of what the bytes actually encode.
  *
+ * The special return value -9999 indicates the key is a strict prefix.
+ * This does not matter to the btree lookup, but is useful for higher levels.
+ *
  * @returns negative, zero, or positive to indicate less, equal, or greater
  */
 int
@@ -279,10 +282,10 @@ ccn_btree_compare(const unsigned char *key,
     if (cmplen > ksiz)
         cmplen = ksiz;
     res = memcmp(key, node->buf->buf + koff, cmplen);
-    if (res != 0 || size == ksiz)
+    if (res != 0)
         return(res);
     if (size < ksiz)
-        return(-1);
+        return(-9999); /* key is a strict prefix */
     /* Compare the other part of the key */
     key += cmplen;
     size -= cmplen;
@@ -299,7 +302,7 @@ ccn_btree_compare(const unsigned char *key,
     if (res != 0)
         return(res);
     if (size < ksiz)
-        return(-1);
+        return(-9999); /* key is a strict prefix */
     return(size > ksiz);
 }
 
