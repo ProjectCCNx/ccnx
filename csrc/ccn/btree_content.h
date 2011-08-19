@@ -98,7 +98,19 @@ int ccn_name_append_flatname(struct ccn_charbuf *dst,
 int ccn_uri_append_flatname(struct ccn_charbuf *uri,
                              const unsigned char *flatname, size_t size,
                              int includescheme);
-/* Flatname component count */
+/* Flatname accessors */
 int ccn_flatname_ncomps(const unsigned char *flatname, size_t size);
+
+/*
+ * Parse the component delimiter from the start of a flatname
+ * Returns -1 for error, 0 nothing left, or compsize * 4 + delimsize
+ */
+int ccn_flatname_next_comp(const unsigned char *flatname, size_t size);
+/** Get delimiter size from return value of ccn_flatname_next_comp */
+#define CCNFLATDELIMSZ(rnc) ((rnc) & 3)
+/** Get data size from return value of ccn_flatname_next_comp */
+#define CCNFLATDATASZ(rnc) ((rnc) >> 2)
+/** Get total delimited size from return value of ccn_flatname_next_comp */
+#define CCNFLATSKIP(rnc) (CCNFLATDELIMSZ(rnc) + CCNFLATDATASZ(rnc))
 
 #endif

@@ -50,19 +50,13 @@ ccn_flatname_from_ccnb(struct ccn_charbuf *dst,
     return(ccn_flatname_append_from_ccnb(dst, ccnb, size, 0, -1));
 }
 
-/** Get delimiter size from return value of ccn_flatname_next_comp */
-#define CCNFLATDELIMSZ(rnc) ((rnc) & 3)
-/** Get data size from return value of ccn_flatname_next_comp */
-#define CCNFLATDATASZ(rnc) ((rnc) >> 2)
-/** Get total delimited size from return value of ccn_flatname_next_comp */
-#define CCNFLATSKIP(rnc) (CCNFLATDELIMSZ(rnc) + CCNFLATDATASZ(rnc))
 /**
  * Parse the component delimiter from the start of a flatname
  *
  * The delimiter size is limited to 3 bytes.
  * @returns -1 for error, 0 nothing left, or compsize * 4 + delimsize
  */
-static int
+int
 ccn_flatname_next_comp(const unsigned char *flatname, size_t size)
 {
     unsigned i, l, m;
