@@ -62,13 +62,19 @@ int ccn_btree_match_interest(struct ccn_btree_node *node, int i,
                              const struct ccn_parsed_interest *pi,
                              struct ccn_charbuf *scratch);
 
+/* Insert a ContentObject into btree node */
+int ccn_btree_insert_content(struct ccn_btree_node *node, int i,
+                             const unsigned char *content_object,
+                             struct ccn_parsed_ContentObject *pc,
+                             struct ccn_charbuf *flatname);
+
 /**
  * Flat name representation
  *
  * Within the btree-based index, the name is stored in a representation
  * different than the ccnb encoding that is used on the wire.
  * This encoding is designed so that simple lexical ordering on
- * flatname byte arrays corresponds precisly with ccn's CanonicalOrdering
+ * flatname byte arrays corresponds precisely with ccn's CanonicalOrdering
  * of Names.
  *
  * In the flatname representation, the bytes that constitute each
