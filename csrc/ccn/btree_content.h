@@ -84,7 +84,7 @@ struct ccn_btree_content_entry {
 
 /* Name flattening */
 int ccn_flatname_append_component(struct ccn_charbuf *dst,
-                                  const unsigned char *ccnb, size_t size);
+                                  const unsigned char *comp, size_t size);
 int ccn_flatname_append_from_ccnb(struct ccn_charbuf *dst,
                                   const unsigned char *ccnb, size_t size,
                                   int skip, int count);

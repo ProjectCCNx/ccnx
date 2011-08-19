@@ -639,6 +639,7 @@ test_flatname(void)
     struct ccn_charbuf *uri;
     int i;
     int res;
+    const char *expect = NULL;
     
     flat = ccn_charbuf_create();
     flatout = ccn_charbuf_create();
@@ -658,10 +659,38 @@ test_flatname(void)
         FAILIF(res < 0);
         res = ccn_flatname_from_ccnb(flatout, ccnb->buf, ccnb->length);
         FAILIF(res < 0);
+        FAILIF(flatout->length != flat->length);
+        FAILIF(0 != memcmp(flatout->buf, flat->buf,flat->length));
         uri->length = 0;
         res = ccn_uri_append(uri, ccnb->buf, ccnb->length, 1);
         printf("flatname %d: %s\n", i, ccn_charbuf_as_string(uri));
     }
+    ccnb->length = 0;
+    res = ccn_name_from_uri(ccnb, "ccnx:/10/9/8/7/6/5/4/3/2/1/...");
+    FAILIF(res < 0);
+    flat->length = 0;
+    for (i = 12; i >= 0; i--) {
+        res = ccn_flatname_append_from_ccnb(flat, ccnb->buf, ccnb->length, i, 1);
+        FAILIF(res != (i < 11));
+    }
+    res = ccn_flatname_append_from_ccnb(flat, ccnb->buf, ccnb->length, 1, 30);
+    FAILIF(res != 10);
+    uri->length = 0;
+    res = ccn_uri_append_flatname(uri, flat->buf, flat->length, 0);
+    printf("palindrome: %s\n", ccn_charbuf_as_string(uri));
+    FAILIF(res < 0);
+    expect = "/.../1/2/3/4/5/6/7/8/9/10/9/8/7/6/5/4/3/2/1/...";
+    FAILIF(0 != strcmp(ccn_charbuf_as_string(uri), expect));
+    res = ccn_flatname_ncomps(flat->buf, flat->length);
+    FAILIF(res != 21);
+    res = ccn_flatname_ncomps(flat->buf, flat->length - 2);
+    FAILIF(res != -1);
+    ccn_charbuf_reserve(flat, 1)[0] = 0x80;
+    res = ccn_flatname_ncomps(flat->buf, flat->length + 1);
+    FAILIF(res != -1);
+    ccn_charbuf_reserve(flat, 1)[0] = 1;
+    res = ccn_flatname_ncomps(flat->buf, flat->length + 1);
+    FAILIF(res != -1);
     ccn_charbuf_destroy(&flat);
     ccn_charbuf_destroy(&flatout);
     ccn_charbuf_destroy(&ccnb);
