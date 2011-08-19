@@ -25,8 +25,9 @@
 #define CCN_BTREE_CONTENT_DEFINED
 
 #include <sys/types.h>
-#include <ccn/charbuf.h>
 #include <ccn/btree.h>
+#include <ccn/ccn.h>
+#include <ccn/charbuf.h>
 
 /**
  *  Structure of the entry payload within a leaf node.
@@ -35,7 +36,8 @@ struct ccn_btree_content_payload {
     unsigned char magic[1];     /**< CCN_BT_CONTENT_MAGIC */
     unsigned char ctype[3];     /**< Type */
     unsigned char cobsz[4];     /**< Size in bytes of ContentObject */
-    unsigned char ttpad[2];     /**< Reserved until 20 Aug 4147 07:32:16 GMT */
+    unsigned char ncomp[1];     /**< number of name components, or 0 if many */
+    unsigned char ttpad[1];     /**< Reserved until 20 Aug 4147 07:32:16 GMT */
     unsigned char timex[6];     /**< Timestamp from content object */
     unsigned char flags[1];     /**< CCN_RCFLAG_* */
     unsigned char spare[1];     /**< In case of need */
@@ -54,6 +56,12 @@ struct ccn_btree_content_entry {
     struct ccn_btree_content_payload ce;
     struct ccn_btree_entry_trailer trailer;
 };
+
+/* Match an interest against a btree entry, assuming a prefix match. */
+int ccn_btree_match_interest(struct ccn_btree_node *node, int i,
+                             const unsigned char *interest_msg,
+                             const struct ccn_parsed_interest *pi,
+                             struct ccn_charbuf *scratch);
 
 /**
  * Flat name representation

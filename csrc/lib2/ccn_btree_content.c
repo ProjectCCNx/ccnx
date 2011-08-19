@@ -17,10 +17,195 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
  
+#include <string.h>
+#include <ccn/btree.h>
 #include <ccn/btree_content.h>
+#include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/uri.h>
 
+#ifndef MYFETCH
+#define MYFETCH(p, f) fetchval(&((p)->f[0]), sizeof((p)->f))
+static unsigned
+fetchval(const unsigned char *p, int size)
+{
+    int i;
+    unsigned v;
+    
+    for (v = 0, i = 0; i < size; i++)
+        v = (v << 8) + p[i];
+    return(v);
+}
+#endif
+
+#ifndef MYSTORE
+#define MYSTORE(p, f, v) storeval(&((p)->f[0]), sizeof((p)->f), (v))
+#endif
+
+/**
+ * Test for a match between the ContentObject described by a btree 
+ * index entry and an Interest, assuming that it is already known that
+ * there is a prefix match.
+ *
+ * This does not need access to the actual ContentObject, since the index
+ * entry contains everything that we know to know to do the match.
+ *
+ * @param interest_msg          ccnb-encoded Interest
+ * @param pi                    corresponding parsed interest
+ * @param scratch               for scratch use
+ *
+ * @result 1 for match, 0 for no match, -1 for error.
+ */
+int
+ccn_btree_match_interest(struct ccn_btree_node *node, int i,
+                         const unsigned char *interest_msg,
+                         const struct ccn_parsed_interest *pi,
+                         struct ccn_charbuf *scratch)
+{
+    int res;
+    int ncomps;
+    int pubidstart;
+    int pubidbytes;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    const unsigned char *nextcomp;
+    size_t nextcomp_size = 0;
+    const unsigned char *comp;
+    size_t comp_size = 0;
+    const unsigned char *bloom;
+    size_t bloom_size = 0;
+    unsigned char match_any[2] = "-";
+    struct ccn_btree_content_payload *e;
+    
+    e = ccn_btree_node_getentry(sizeof(*e), node, i);
+    if (e == NULL || e->magic[0] != CCN_BT_CONTENT_MAGIC)
+        return(-1);
+    
+    ncomps = MYFETCH(e, ncomp);
+    if (ncomps == 0) {
+        /* This should be unusual. */
+        res = ccn_btree_key_fetch(scratch, node, i);
+        if (res < 0)
+            return(-1);
+        ncomps = ccn_flatname_ncomps(scratch->buf, scratch->length);
+        if (ncomps < 0)
+            return(-1);
+    }
+    if (ncomps < pi->prefix_comps + pi->min_suffix_comps)
+        return(0);
+    if (ncomps > pi->prefix_comps + pi->max_suffix_comps)
+        return(0);
+    /* Check that the publisher id matches */
+    pubidstart = pi->offset[CCN_PI_B_PublisherIDKeyDigest];
+    pubidbytes = pi->offset[CCN_PI_E_PublisherIDKeyDigest] - pubidstart;
+    if (pubidbytes > 0) {
+        if (pubidbytes != sizeof(e->ppkdg))
+            return(-1);
+        if (0 != memcmp(interest_msg + pubidstart, e->ppkdg, pubidbytes))
+            return(0);
+    }
+    /* Do Exclude processing if necessary */
+    if (pi->offset[CCN_PI_E_Exclude] > pi->offset[CCN_PI_B_Exclude]) {
+         unsigned char *flatname;
+        size_t size;
+        int n;
+        int i;
+        int rnc;
+       res = ccn_btree_key_fetch(scratch, node, i);
+        if (res < 0)
+            return(-1);
+        flatname = scratch->buf;
+        size = scratch->length;
+        nextcomp = NULL;
+        nextcomp_size = 0;
+        for (i = 0, n = 0; i < size; i += CCNFLATSKIP(rnc), n++) {
+            rnc = ccn_flatname_next_comp(flatname + i, size - i);
+            if (rnc <= 0)
+                return(-1);
+            if (n == pi->prefix_comps) {
+                nextcomp = flatname + i + CCNFLATDELIMSZ(rnc);
+                nextcomp_size = CCNFLATDATASZ(rnc);
+                break;
+            }
+        }
+        if (nextcomp == NULL)
+            return(0);
+        /* XXX - Lots of code here that came from ccn_match.c - should refactor */
+        d = ccn_buf_decoder_start(&decoder,
+                                  interest_msg + pi->offset[CCN_PI_B_Exclude],
+                                  pi->offset[CCN_PI_E_Exclude] -
+                                  pi->offset[CCN_PI_B_Exclude]);
+        if (!ccn_buf_match_dtag(d, CCN_DTAG_Exclude))
+            return(-1);
+        ccn_buf_advance(d);
+        bloom = NULL;
+        bloom_size = 0;
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                ccn_buf_advance(d);
+                bloom = match_any;
+                ccn_buf_check_close(d);
+        }
+        else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+                ccn_buf_advance(d);
+                if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+                    ccn_buf_advance(d);
+                ccn_buf_check_close(d);
+        }
+        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+            ccn_buf_advance(d);
+            comp_size = 0;
+            if (ccn_buf_match_blob(d, &comp, &comp_size))
+                ccn_buf_advance(d);
+            ccn_buf_check_close(d);
+            if (comp_size > nextcomp_size)
+                break;
+            if (comp_size == nextcomp_size) {
+                res = memcmp(comp, nextcomp, comp_size);
+                if (res == 0)
+                    return(0); /* One of the explicit excludes */
+                if (res > 0)
+                    break;
+            }
+            bloom = NULL;
+            bloom_size = 0;
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                ccn_buf_advance(d);
+                bloom = match_any;
+                ccn_buf_check_close(d);
+            }
+            else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+                ccn_buf_advance(d);
+                if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+                    ccn_buf_advance(d);
+                ccn_buf_check_close(d);
+            }
+        }
+        /*
+         * Now we have isolated the applicable filter (Any or Bloom or none).
+         */
+        if (bloom == match_any)
+            return(0);
+        else if (bloom_size != 0) {
+            const struct ccn_bloom_wire *f = ccn_bloom_validate_wire(bloom, bloom_size);
+            /* If not a valid filter, treat like a false positive */
+            if (f == NULL)
+                return(0);
+            if (ccn_bloom_match_wire(f, nextcomp, nextcomp_size))
+                return(0);
+        }
+    }
+    /*
+     * At this point the prefix matches and exclude-by-next-component is done.
+     */
+    // test any other qualifiers here
+    return(1);
+}
+
+/**
+ *  Append one component to a flatname
+ *
+ *  @returns 0, or -1 if there is an error.
+ */
 int
 ccn_flatname_append_component(struct ccn_charbuf *dst,
                               const unsigned char *comp, size_t size)
