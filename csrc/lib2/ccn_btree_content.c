@@ -50,6 +50,38 @@ ccn_flatname_from_ccnb(struct ccn_charbuf *dst,
     return(ccn_flatname_append_from_ccnb(dst, ccnb, size, 0, -1));
 }
 
+/** Get delimiter size from return value of ccn_flatname_next_comp */
+#define CCNFLATDELIMSZ(res) ((res) & 3)
+/** Get data size from return value of ccn_flatname_next_comp */
+#define CCNFLATDATASZ(res) ((res) >> 2)
+/** Get total delimited size from return value of ccn_flatname_next_comp */
+#define CCNFLATSKIP(res) (CCNFLATDELIMSZ(res) + CCNFLATDATASZ(res))
+/**
+ * Parse the component delimiter from the start of a flatname
+ *
+ * The delimiter size is limited to 3 bytes.
+ * @returns -1 for error, 0 nothing left, or compsize * 4 + delimsize
+ */
+static int
+ccn_flatname_next_comp(const unsigned char *flatname, size_t size)
+{
+    unsigned i, l, m;
+    
+    if (size == 0)
+        return(0);
+    if (flatname[0] == 0x80)
+        return(-1); /* Must use min number of bytes. */
+    m = (size < 3) ? size : 3;
+    for (i = 0, l = 0; i < m && (flatname[i] & 0x80) != 0; i++)
+        l = (l | (flatname[i] & 0x7F)) << 7;
+    if (i >= m)
+        return(-1);
+    l |= flatname[i++];
+    if (i + l > size)
+        return(-1);
+    return(l * 4 + i);
+}
+
 /**
  * Worker bee for walking a flatname
  */
@@ -60,25 +92,17 @@ ccn_flatname_enumerate_comps(const unsigned char *flatname, size_t size,
 {
     int ans = 0;
     int i;
-    size_t k;
+    int res;
+    size_t k = 0;
     size_t l = 0;
     
-    for (i = 0; i < size; i += l) {
-        l = 0;
-        k = i + 3;
-        if (k > size)
-            k = size;
-        if (flatname[i] == 0x80)
-            return(-1); /* Must use min number of bytes. */
-        while ((flatname[i] & 0x80) != 0) {
-            l = (l | (flatname[i] & 0x7F)) << 7;
-            if (++i >= k)
-                return(-1); /* too long, or reached end */
-        }
-        l |= flatname[i++];
-        if (l > size - i)
+    for (i = 0; i < size; i += k + l) {
+        res = ccn_flatname_next_comp(flatname + i, size - i);
+        if (res <= 0)
             return(-1);
-        if (func(data, ans, flatname + i, l) < 0)
+        k = CCNFLATDELIMSZ(res);
+        l = CCNFLATDATASZ(res);
+        if (func(data, ans, flatname + i + k, l) < 0)
             return(-1);
         ans++;
     }
