@@ -34,7 +34,7 @@
 struct ccn_btree_content_payload {
     unsigned char magic[1];     /**< CCN_BT_CONTENT_MAGIC */
     unsigned char ctype[3];     /**< Type */
-    unsigned char align[4];     /**< Alignment */
+    unsigned char cobsz[4];     /**< Size in bytes of ContentObject */
     unsigned char ttpad[2];     /**< Reserved until 20 Aug 4147 07:32:16 GMT */
     unsigned char timex[6];     /**< Timestamp from content object */
     unsigned char flags[1];     /**< CCN_RCFLAG_* */
