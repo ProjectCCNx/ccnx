@@ -51,11 +51,11 @@ ccn_flatname_from_ccnb(struct ccn_charbuf *dst,
 }
 
 /** Get delimiter size from return value of ccn_flatname_next_comp */
-#define CCNFLATDELIMSZ(res) ((res) & 3)
+#define CCNFLATDELIMSZ(rnc) ((rnc) & 3)
 /** Get data size from return value of ccn_flatname_next_comp */
-#define CCNFLATDATASZ(res) ((res) >> 2)
+#define CCNFLATDATASZ(rnc) ((rnc) >> 2)
 /** Get total delimited size from return value of ccn_flatname_next_comp */
-#define CCNFLATSKIP(res) (CCNFLATDELIMSZ(res) + CCNFLATDATASZ(res))
+#define CCNFLATSKIP(rnc) (CCNFLATDELIMSZ(rnc) + CCNFLATDATASZ(rnc))
 /**
  * Parse the component delimiter from the start of a flatname
  *
@@ -92,16 +92,16 @@ ccn_flatname_enumerate_comps(const unsigned char *flatname, size_t size,
 {
     int ans = 0;
     int i;
-    int res;
+    int rnc;
     size_t k = 0;
     size_t l = 0;
     
     for (i = 0; i < size; i += k + l) {
-        res = ccn_flatname_next_comp(flatname + i, size - i);
-        if (res <= 0)
+        rnc = ccn_flatname_next_comp(flatname + i, size - i);
+        if (rnc <= 0)
             return(-1);
-        k = CCNFLATDELIMSZ(res);
-        l = CCNFLATDATASZ(res);
+        k = CCNFLATDELIMSZ(rnc);
+        l = CCNFLATDATASZ(rnc);
         if (func(data, ans, flatname + i + k, l) < 0)
             return(-1);
         ans++;
@@ -111,52 +111,50 @@ ccn_flatname_enumerate_comps(const unsigned char *flatname, size_t size,
     return(ans);
 }
 
-/** data for append_a_component */
-struct append_a_component_param {
-    struct ccn_charbuf *dst;
-    int index;
-    int count;
-};
-
-/** Helper for ccn_name_append_flatname */
-static int
-append_a_component(void *data, int i, const unsigned char *cp, size_t cs)
-{
-    struct append_a_component_param *p = data;
-    int res = 0;
-    if (i >= p->index && p->count != 0) {
-        res = ccn_name_append(p->dst, cp, cs);
-        p->count--;
-    }
-    return(res);
-}
-
 /**
  *  Append Components from a flatname to a ccnb-encoded Name
  *  @param dst is the destination, which should hold a ccnb-encoded Name
  *  @param flatname points to first byte of flatname
  *  @param size is the number of bytes in flatname
- *  @param index is the number of components at the front of flatname to skip
- *  @param count is the maximum number of componebts to append, or -1 for all
+ *  @param skip is the number of components at the front of flatname to skip
+ *  @param count is the maximum number of components to append, or -1 for all
  *  @returns number of appended components, or -1 if there is an error.
  */
 int
 ccn_name_append_flatname(struct ccn_charbuf *dst,
                          const unsigned char *flatname, size_t size,
-                         int index, int count)
+                         int skip, int count)
 {
+    int ans;
+    int compnum;
+    int i;
+    int rnc;
     int res;
-    struct append_a_component_param d;
-    
-    d.dst = dst;
-    d.index = index;
-    d.count = count;
-    if (index < 0)
+    const unsigned char *cp;
+    size_t cs;
+   
+    if (skip < 0)
         return(-1);
-    res = ccn_flatname_enumerate_comps(flatname, size, &append_a_component, &d);
-    if (res >= index)
-        return(res - index);
-    return(-1);
+    ans = 0;
+    compnum = 0;
+    for (i = 0; i < size; i += CCNFLATSKIP(rnc)) {
+        if (ans == count)
+            return(ans);
+        rnc = ccn_flatname_next_comp(flatname + i, size - i);
+        if (rnc <= 0)
+            return(-1);
+        cp = flatname + i + CCNFLATDELIMSZ(rnc);
+        cs = CCNFLATDATASZ(rnc);
+        if (compnum >= skip) {
+            res = ccn_name_append(dst, cp, cs);
+            if (res < 0)
+                return(-1);
+            count--;
+            ans++;
+        }
+        compnum++;
+    }
+    return(ans);
 }
 
 /**
