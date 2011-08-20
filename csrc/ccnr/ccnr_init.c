@@ -316,14 +316,15 @@ map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename, int ad
     size = statbuf.st_size;
     while (d->index < size) {
         dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
-        if (d->state != 0)
+        if (!CCN_FINAL_DSTATE(d->state))
             break;
         if (add_content) {
             content = process_incoming_content(h, fdholder, msg + d->index - dres, dres);
             r_sendq_face_send_queue_insert(h, r_io_fdholder_from_fd(h, h->active_out_fd), content);
         }
     }
-    if (d->index != size) {
+    
+    if (d->index != size || !CCN_FINAL_DSTATE(d->state)) {
         ccnr_msg(h, "protocol error on fdholder %u (state %d), discarding %d bytes",
                  fdholder->filedesc, d->state, (int)(size - d->index));
         res = -1;
