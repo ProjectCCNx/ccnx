@@ -17,6 +17,7 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
  
+#include <stdint.h>
 #include <string.h>
 #include <ccn/btree.h>
 #include <ccn/btree_content.h>
@@ -31,6 +32,82 @@
 #ifndef MYSTORE
 #define MYSTORE(p, f, v) ccn_btree_storeval(&((p)->f[0]), sizeof((p)->f), (v))
 #endif
+
+#ifndef MYSTORE64
+#define MYSTORE64(p, f, v) ccn_btree_storeval64(&((p)->f[0]), sizeof((p)->f), (v))
+#endif
+static void
+ccn_btree_storeval64(unsigned char *p, int size, uint_least64_t v)
+{
+    int i;
+    
+    for (i = size; i > 0; i--, v >>= 8)
+        p[i-1] = v;
+}
+
+/**
+ * Insert a ContentObject into a btree node
+ *
+ * The caller has presumably already done a lookup and found that the
+ * object is not there.
+ *
+ * The caller is responsible for provinding a valid content parse (pc).
+ *
+ * The flatname buffer should hold the correct full name, including the
+ * digest.
+ *
+ * @result is 0 for success, -1 for error.
+ */
+int
+ccn_btree_insert_content(struct ccn_btree_node *node, int i,
+                         uint_least64_t cobid,
+                         const unsigned char *content_object,
+                         struct ccn_parsed_ContentObject *pc,
+                         struct ccn_charbuf *flatname)
+{
+    struct ccn_btree_content_payload payload;
+    struct ccn_btree_content_payload *e = &payload;
+    int ncomp;
+    int res;
+    unsigned size;
+    unsigned flags = 0;
+    const unsigned char *blob = NULL;
+    size_t blob_size = 0;
+    
+    size = pc->offset[CCN_PCO_E];
+    ncomp = ccn_flatname_ncomps(flatname->buf, flatname->length);
+    if (ncomp != pc->name_ncomps)
+        return(-1);
+    memset(e, 'U', sizeof(*e));
+    MYSTORE(e, magic, CCN_BT_CONTENT_MAGIC);
+    MYSTORE(e, ctype, pc->type);
+    MYSTORE(e, cobsz, size);
+    MYSTORE(e, ncomp, ncomp);
+    MYSTORE(e, flags, flags); // XXX - need to set CCN_RCFLAG_LASTBLOCK
+    MYSTORE(e, ttpad, 0);
+    MYSTORE(e, timex, 0);
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp, content_object,
+                              pc->offset[CCN_PCO_B_Timestamp],
+                              pc->offset[CCN_PCO_E_Timestamp],
+                              &blob, &blob_size);
+    if (res < 0 || blob_size > sizeof(e->timex))
+        return(-1);
+    memcpy(e->timex + sizeof(e->timex) - blob_size, blob, blob_size);
+    // XXX - need to set accession time. Should we pass it in?
+    MYSTORE64(e, cobid, cobid);
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp, content_object,
+                              pc->offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                              pc->offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                              &blob, &blob_size);
+    if (res < 0 || blob_size != sizeof(e->ppkdg))
+        return(-1);
+    memcpy(e->ppkdg, blob, sizeof(e->ppkdg));
+    /* Now actually do the insert */
+    res = ccn_btree_insert_entry(node, i,
+                                 flatname->buf, flatname->length,
+                                 e, sizeof(*e));
+    return(res);
+}
 
 /**
  * Test for a match between the ContentObject described by a btree 

@@ -41,7 +41,7 @@ struct ccn_btree_content_payload {
     unsigned char ttpad[1];     /**< Reserved until 20 Aug 4147 07:32:16 GMT */
     unsigned char timex[6];     /**< Timestamp from content object */
     unsigned char actim[6];     /**< Accession time, Timestamp format */
-    unsigned char where[8];     /**< Where the actual ContentObject is */
+    unsigned char cobid[8];     /**< Where the actual ContentObject is */
     unsigned char ppkdg[32];    /**< PublisherPublicKeyDigest */
 };
 #define CCN_BT_CONTENT_MAGIC    0xC0
@@ -62,8 +62,9 @@ int ccn_btree_match_interest(struct ccn_btree_node *node, int i,
                              const struct ccn_parsed_interest *pi,
                              struct ccn_charbuf *scratch);
 
-/* Insert a ContentObject into btree node */
+/* Insert a ContentObject into a btree node */
 int ccn_btree_insert_content(struct ccn_btree_node *node, int i,
+                             uint_least64_t cobid,
                              const unsigned char *content_object,
                              struct ccn_parsed_ContentObject *pc,
                              struct ccn_charbuf *flatname);
