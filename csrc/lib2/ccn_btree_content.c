@@ -56,7 +56,7 @@ ccn_btree_storeval64(unsigned char *p, int size, uint_least64_t v)
  * The flatname buffer should hold the correct full name, including the
  * digest.
  *
- * @result is 0 for success, -1 for error.
+ * @returns the new entry count or, -1 for error.
  */
 int
 ccn_btree_insert_content(struct ccn_btree_node *node, int i,
