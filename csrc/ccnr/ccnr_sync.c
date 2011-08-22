@@ -356,7 +356,7 @@ r_sync_local_store(struct ccnr_handle *ccnr,
     struct content_entry *content = NULL;
     
     // pretend it came from the internal client, for statistics gathering purposes
-    content = process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(ccnr->internal_client)),
+    content = process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(ccnr->direct_client)),
                                        (void *)content_cb->buf, content_cb->length);
     if (content == NULL) {
         ccnr_msg(ccnr, "r_sync_local_store: failed to process content");
