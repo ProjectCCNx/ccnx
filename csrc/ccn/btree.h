@@ -260,6 +260,11 @@ int ccn_btree_lookup_internal(struct ccn_btree *btree,
                      const unsigned char *key, size_t size,
                      struct ccn_btree_node **ansp);
 
+/* Find the leaf that comes after the given node */
+int ccn_btree_next_leaf(struct ccn_btree *btree,
+                        struct ccn_btree_node *node,
+                        struct ccn_btree_node **ansp);
+
 /* Split a node into two */
 int ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node);
 

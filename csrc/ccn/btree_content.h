@@ -57,13 +57,13 @@ struct ccn_btree_content_entry {
 };
 
 /* Match an interest against a btree entry, assuming a prefix match. */
-int ccn_btree_match_interest(struct ccn_btree_node *node, int i,
+int ccn_btree_match_interest(struct ccn_btree_node *node, int ndx,
                              const unsigned char *interest_msg,
                              const struct ccn_parsed_interest *pi,
                              struct ccn_charbuf *scratch);
 
 /* Insert a ContentObject into a btree node */
-int ccn_btree_insert_content(struct ccn_btree_node *node, int i,
+int ccn_btree_insert_content(struct ccn_btree_node *node, int ndx,
                              uint_least64_t cobid,
                              const unsigned char *content_object,
                              struct ccn_parsed_ContentObject *pc,

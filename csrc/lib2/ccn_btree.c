@@ -720,6 +720,73 @@ Bail:
     return(-1);
 }
 
+/**
+ * Find the leaf that comes after the given node
+ *
+ * This may be used to walk though the leaf nodes in order.
+ * If success, sets *ansp to a leaf pointer or NULL
+ * @returns 0 if at end, 1 if *ansp is not NULL, -1 if error.
+ */
+int
+ccn_btree_next_leaf(struct ccn_btree *btree,
+                    struct ccn_btree_node *node,
+                    struct ccn_btree_node **ansp)
+{
+    struct ccn_btree_internal_payload *e = NULL;
+    struct ccn_btree_node *p = NULL;
+    struct ccn_btree_node *q = NULL;
+    struct ccn_btree_node *parent = NULL;
+    int i;
+    int n;
+    int ans;
+    int res;
+    struct ccn_charbuf *key = NULL;
+    
+    ans = -1;
+    key = ccn_charbuf_create();
+    p = node;
+    n = ccn_btree_node_nent(p);
+    if (n < 1)
+        goto Bail;
+    while (p->parent != 0) {
+        res = ccn_btree_key_fetch(key, p, n - 1);
+        if (res < 0)
+            goto Bail;
+        parent = ccn_btree_getnode(btree, p->parent);
+        if (parent == NULL)
+            goto Bail;
+        res = ccn_btree_searchnode(key->buf, key->length, parent);
+        if (res < 0)
+            goto Bail;
+        n = ccn_btree_node_nent(parent);
+        if (n < 1)
+            goto Bail;
+        i = CCN_BT_SRCH_INDEX(res);
+        if (i < n - 1) {
+            /* We have found the ancestor that has the leaf we are after. */
+            q = NULL;
+            e = ccn_btree_node_getentry(sizeof(*e), parent, i + 1);
+            q = ccn_btree_getnode(btree, MYFETCH(e, child));
+            if (q == NULL)
+                goto Bail;
+            res = ccn_btree_lookup_internal(btree, q, 0, key->buf, 0, ansp);
+            if (res < 0)
+                goto Bail;
+            ans = 1;
+            break;
+        }
+        p = parent;
+        /* n is aleady set to ccn_btree_node_nent(p) */
+    }
+    if (ans != 1) {
+        *ansp = NULL;
+        ans = 0;
+    }
+Bail:
+    ccn_charbuf_destroy(&key);
+    return(ans);
+}
+
 #define CCN_BTREE_MAGIC 0x53ade78
 #define CCN_BTREE_VERSION 1
 
