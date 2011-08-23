@@ -76,7 +76,7 @@ ccn_btree_insert_content(struct ccn_btree_node *node, int i,
     
     size = pc->offset[CCN_PCO_E];
     ncomp = ccn_flatname_ncomps(flatname->buf, flatname->length);
-    if (ncomp != pc->name_ncomps)
+    if (ncomp != pc->name_ncomps + 1)
         return(-1);
     memset(e, 'U', sizeof(*e));
     MYSTORE(e, magic, CCN_BT_CONTENT_MAGIC);
@@ -95,7 +95,7 @@ ccn_btree_insert_content(struct ccn_btree_node *node, int i,
     memcpy(e->timex + sizeof(e->timex) - blob_size, blob, blob_size);
     // XXX - need to set accession time. Should we pass it in?
     MYSTORE64(e, cobid, cobid);
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_Timestamp, content_object,
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest, content_object,
                               pc->offset[CCN_PCO_B_PublisherPublicKeyDigest],
                               pc->offset[CCN_PCO_E_PublisherPublicKeyDigest],
                               &blob, &blob_size);
