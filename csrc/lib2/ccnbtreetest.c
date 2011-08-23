@@ -21,17 +21,20 @@
  */
  
 #include <errno.h>
-#include <sys/types.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <ccn/btree.h>
 #include <ccn/btree_content.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
+#include <ccn/indexbuf.h>
 #include <ccn/hashtb.h>
 #include <ccn/uri.h>
 
@@ -699,6 +702,119 @@ test_flatname(void)
 }
 
 int
+test_insert_content(void)
+{
+    const char *filename = NULL;
+    unsigned char *cb = NULL;
+    unsigned char *cob = NULL;
+    struct stat statbuf;
+    int dres;
+    int fd;
+    int i;
+    int res;
+    size_t cob_offset;
+    size_t cob_size;
+    size_t size;
+    struct ccn_skeleton_decoder decoder = {0};
+    struct ccn_skeleton_decoder *d = &decoder;
+    struct ccn_parsed_ContentObject pcobject = {0};
+    struct ccn_parsed_ContentObject *pc = &pcobject;
+    struct ccn_charbuf *flatname = NULL;
+    struct ccn_charbuf *temp = NULL;
+    struct ccn_indexbuf *comps = NULL;
+    struct ccn_btree *btree = NULL;
+    struct ccn_btree_node *node = NULL;
+    struct ccn_btree_node *leaf = NULL;
+    
+    filename = getenv("TEST_CONTENT");
+    if (filename == NULL || filename[0] == 0)
+        return(1);
+    printf("Opening %s\n", filename);
+    fd = open(filename, O_RDONLY, 0);
+    CHKSYS(fd);
+    res = fstat(fd, &statbuf);
+    CHKSYS(res);
+    size = statbuf.st_size;
+    printf("Mapping %zd bytes from file %s\n", size, filename);
+    cb = mmap(NULL, size, PROT_READ, MAP_FILE | MAP_SHARED, fd, 0);
+    FAILIF(cb == MAP_FAILED && size != 0);
+
+    // XXX - need nice way to create a brand-new empty btree
+    btree = ccn_btree_create();
+    CHKPTR(btree);
+    FAILIF(btree->nextnodeid != 1);
+    node = ccn_btree_getnode(btree, btree->nextnodeid++);
+    CHKPTR(node);
+    res = ccn_btree_init_node(node, 0, 'R', 0);
+    CHKPTR(node);
+    FAILIF(btree->nextnodeid < 2);
+    res = ccn_btree_chknode(node);
+    CHKSYS(res);
+    btree->full = 50;
+
+    flatname = ccn_charbuf_create();
+    CHKPTR(flatname);
+    temp = ccn_charbuf_create();
+    CHKPTR(temp);
+    comps = ccn_indexbuf_create();
+    CHKPTR(comps);
+    while (d->index < size) {
+        dres = ccn_skeleton_decode(d, cb + d->index, size - d->index);
+        if (!CCN_FINAL_DSTATE(d->state))
+            break;
+        cob_offset = d->index - dres;
+        cob = cb + cob_offset;
+        cob_size = dres;
+        printf("offset %zd, size %zd\n", cob_offset, cob_size);
+        res = ccn_parse_ContentObject(cob, cob_size, pc, comps);
+        if (res < 0) {
+            printf("  . . . skipping non-ContentObject\n");
+        }
+        else {
+            res = ccn_flatname_from_ccnb(flatname, cob, cob_size);
+            FAILIF(res != comps->n - 1);
+            ccn_digest_ContentObject(cob, pc);
+            FAILIF(pc->digest_bytes != 32);
+            res = ccn_flatname_append_component(flatname,
+                                                pc->digest, pc->digest_bytes);
+            CHKSYS(res);
+            temp->length = 0;
+            ccn_uri_append_flatname(temp, flatname->buf, flatname->length, 1);
+            res = ccn_btree_lookup(btree, flatname->buf, flatname->length, &leaf);
+            CHKSYS(res);
+            if (CCN_BT_SRCH_FOUND(res)) {
+                printf("FOUND %s\n", ccn_charbuf_as_string(temp));
+            }
+            else {
+                i = CCN_BT_SRCH_INDEX(res);
+                res = ccn_btree_insert_content(leaf, i,
+                                               cob_offset + 1,
+                                               cob,
+                                               pc,
+                                               flatname);
+                CHKSYS(res);
+                printf("INSERTED %s\n", ccn_charbuf_as_string(temp));
+                // don't split yet, see how we cope
+            }
+        }
+    }
+    FAILIF(d->index != size);
+    FAILIF(!CCN_FINAL_DSTATE(d->state));
+    if (cb != MAP_FAILED) {
+        res = munmap(cb, size);
+        CHKSYS(res);
+        cb = NULL;
+        size = 0;
+    }
+    res = close(fd);
+    CHKSYS(res);
+    ccn_charbuf_destroy(&flatname);
+    ccn_charbuf_destroy(&temp);
+    ccn_indexbuf_destroy(&comps);
+    return(0);
+}
+
+int
 ccnbtreetest_main(int argc, char **argv)
 {
     int res;
@@ -732,5 +848,9 @@ ccnbtreetest_main(int argc, char **argv)
     CHKSYS(res);
     res = test_flatname();
     CHKSYS(res);
+    res = test_insert_content();
+    CHKSYS(res);
+    if (res != 0)
+        fprintf(stderr, "test_insert_content() => %d\n", res);
     return(0);
 }

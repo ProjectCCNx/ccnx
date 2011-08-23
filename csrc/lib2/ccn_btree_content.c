@@ -357,7 +357,7 @@ ccn_flatname_append_from_ccnb(struct ccn_charbuf *dst,
  */
 int
 ccn_flatname_from_ccnb(struct ccn_charbuf *dst,
-                           const unsigned char *ccnb, size_t size)
+                       const unsigned char *ccnb, size_t size)
 {
     dst->length = 0;
     return(ccn_flatname_append_from_ccnb(dst, ccnb, size, 0, -1));
