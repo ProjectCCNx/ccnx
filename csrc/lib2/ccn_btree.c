@@ -761,7 +761,7 @@ ccn_btree_next_leaf(struct ccn_btree *btree,
         n = ccn_btree_node_nent(parent);
         if (n < 1)
             goto Bail;
-        i = CCN_BT_SRCH_INDEX(res);
+        i = CCN_BT_SRCH_INDEX(res) + CCN_BT_SRCH_FOUND(res) - 1;
         if (i < n - 1) {
             /* We have found the ancestor that has the leaf we are after. */
             q = NULL;
