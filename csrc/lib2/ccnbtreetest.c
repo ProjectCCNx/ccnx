@@ -850,7 +850,6 @@ test_insert_content(void)
             else {
                 printf("  . . . interest processing res = %d\n", res);
             }
-            printf("  . . . skipping non-ContentObject\n");
         }
         else {
             res = ccn_flatname_from_ccnb(flatname, cob, cob_size);
