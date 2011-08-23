@@ -61,6 +61,19 @@ public class CCNHandle implements CCNBase {
 	protected final Object _openLock = new Object();
 	protected boolean _isOpen = false;
 	
+	/*
+	 * In order to have a handle automaticaly add a scope to every Interest, we provide a way to set
+	 * a default scope to use, and enable/disable machinery.  (The defines for the scope don't belong
+	 * here really, but it seems useful to have them specified.)
+	 */
+	protected boolean _enableScope = false;
+	protected int _defaultScope = 1;
+	public static final int ccndScope = 0;
+	public static final int localScope = 1;
+	public static final int neighborhood = 2;
+	public static final int world = 3;
+	
+	
 	/**
 	 * Create a new CCNHandle, opening a new connection to the CCN network
 	 * @return the CCNHandle
@@ -228,7 +241,20 @@ public class CCNHandle implements CCNBase {
 	 */
 	public PublisherPublicKeyDigest getDefaultPublisher() {
 		return keyManager().getDefaultKeyID();
-	}	
+	}
+	
+	
+	public boolean enableDefaultScope() {
+		boolean old = _enableScope;
+		_enableScope = true;
+		return old;
+	}
+	
+	public boolean disableDefaultScope() {
+		boolean old = _enableScope;
+		_enableScope = false;
+		return old;
+	}
 	
 	/**
 	 * Helper method wrapped around CCNBase#get(Interest, long)
