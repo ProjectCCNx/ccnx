@@ -59,7 +59,7 @@ ccn_btree_storeval64(unsigned char *p, int size, uint_least64_t v)
  * @returns the new entry count or, -1 for error.
  */
 int
-ccn_btree_insert_content(struct ccn_btree_node *node, int i,
+ccn_btree_insert_content(struct ccn_btree_node *node, int ndx,
                          uint_least64_t cobid,
                          const unsigned char *content_object,
                          struct ccn_parsed_ContentObject *pc,
@@ -103,7 +103,7 @@ ccn_btree_insert_content(struct ccn_btree_node *node, int i,
         return(-1);
     memcpy(e->ppkdg, blob, sizeof(e->ppkdg));
     /* Now actually do the insert */
-    res = ccn_btree_insert_entry(node, i,
+    res = ccn_btree_insert_entry(node, ndx,
                                  flatname->buf, flatname->length,
                                  e, sizeof(*e));
     return(res);
@@ -117,6 +117,8 @@ ccn_btree_insert_content(struct ccn_btree_node *node, int i,
  * This does not need access to the actual ContentObject, since the index
  * entry contains everything that we know to know to do the match.
  *
+ * @param node                  leaf node
+ * @param ndx                   index of entry within leaf node
  * @param interest_msg          ccnb-encoded Interest
  * @param pi                    corresponding parsed interest
  * @param scratch               for scratch use
@@ -124,14 +126,15 @@ ccn_btree_insert_content(struct ccn_btree_node *node, int i,
  * @result 1 for match, 0 for no match, -1 for error.
  */
 int
-ccn_btree_match_interest(struct ccn_btree_node *node, int i,
+ccn_btree_match_interest(struct ccn_btree_node *node, int ndx,
                          const unsigned char *interest_msg,
                          const struct ccn_parsed_interest *pi,
                          struct ccn_charbuf *scratch)
 {
     int ncomps;
     int pubidstart;
-    int pubidbytes;
+    int pubidend;
+    int res;
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
     const unsigned char *nextcomp;
@@ -142,8 +145,10 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int i,
     size_t bloom_size = 0;
     unsigned char match_any[2] = "-";
     struct ccn_btree_content_payload *e;
+    const unsigned char *blob = NULL;
+    size_t blob_size = 0;
     
-    e = ccn_btree_node_getentry(sizeof(*e), node, i);
+    e = ccn_btree_node_getentry(sizeof(*e), node, ndx);
     if (e == NULL || e->magic[0] != CCN_BT_CONTENT_MAGIC)
         return(-1);
     
@@ -153,23 +158,27 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int i,
     if (ncomps > pi->prefix_comps + pi->max_suffix_comps)
         return(0);
     /* Check that the publisher id matches */
-    pubidstart = pi->offset[CCN_PI_B_PublisherIDKeyDigest];
-    pubidbytes = pi->offset[CCN_PI_E_PublisherIDKeyDigest] - pubidstart;
-    if (pubidbytes > 0) {
-        if (pubidbytes != sizeof(e->ppkdg))
-            return(-1);
-        if (0 != memcmp(interest_msg + pubidstart, e->ppkdg, pubidbytes))
+    pubidstart = pi->offset[CCN_PI_B_PublisherID];
+    pubidend = pi->offset[CCN_PI_E_PublisherID];
+    if (pubidstart < pubidend) {
+        blob_size = 0;
+        ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
+                            interest_msg,
+                            pubidstart, pubidend,
+                            &blob, &blob_size);
+        if (blob_size != sizeof(e->ppkdg))
+            return(0);
+        if (0 != memcmp(blob, e->ppkdg, blob_size))
             return(0);
     }
     /* Do Exclude processing if necessary */
     if (pi->offset[CCN_PI_E_Exclude] > pi->offset[CCN_PI_B_Exclude]) {
-        int res;
         unsigned char *flatname;
         size_t size;
         int n;
         int i;
         int rnc;
-        res = ccn_btree_key_fetch(scratch, node, i);
+        res = ccn_btree_key_fetch(scratch, node, ndx);
         if (res < 0)
             return(-1);
         flatname = scratch->buf;
