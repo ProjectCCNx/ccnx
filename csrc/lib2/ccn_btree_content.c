@@ -131,22 +131,27 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int ndx,
                          const struct ccn_parsed_interest *pi,
                          struct ccn_charbuf *scratch)
 {
-    int ncomps;
-    int pubidstart;
-    int pubidend;
-    int res;
-    struct ccn_buf_decoder decoder;
-    struct ccn_buf_decoder *d;
-    const unsigned char *nextcomp;
-    size_t nextcomp_size = 0;
-    const unsigned char *comp;
-    size_t comp_size = 0;
-    const unsigned char *bloom;
-    size_t bloom_size = 0;
-    unsigned char match_any[2] = "-";
-    struct ccn_btree_content_payload *e;
     const unsigned char *blob = NULL;
+    const unsigned char *bloom = NULL;
+    const unsigned char *comp = NULL;
+    const unsigned char *nextcomp = NULL;
+    int i;
+    int n;
+    int ncomps;
+    int pubidend;
+    int pubidstart;
+    int res;
+    int rnc;
     size_t blob_size = 0;
+    size_t bloom_size = 0;
+    size_t comp_size = 0;
+    size_t nextcomp_size = 0;
+    size_t size;
+    struct ccn_btree_content_payload *e = NULL;
+    struct ccn_buf_decoder *d = NULL;
+    struct ccn_buf_decoder decoder;
+    unsigned char *flatname = NULL;
+    unsigned char match_any[2] = "-";
     
     e = ccn_btree_node_getentry(sizeof(*e), node, ndx);
     if (e == NULL || e->magic[0] != CCN_BT_CONTENT_MAGIC)
@@ -173,11 +178,6 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int ndx,
     }
     /* Do Exclude processing if necessary */
     if (pi->offset[CCN_PI_E_Exclude] > pi->offset[CCN_PI_B_Exclude]) {
-        unsigned char *flatname;
-        size_t size;
-        int n;
-        int i;
-        int rnc;
         res = ccn_btree_key_fetch(scratch, node, ndx);
         if (res < 0)
             return(-1);
