@@ -30,7 +30,7 @@ cd $(dirname "$0")
 # Set up PATH so the tested programs are used, rather than any that
 # might be installed.
 X=../../../ccnx/csrc
-export PATH=.:../ccnr:../sync:$X/ccnd:$X/libexec:$X/cmd:$X/lib:$X/util:$PATH:./stubs
+export PATH=.:../ccnr:../sync:../lib2:$X/ccnd:$X/libexec:$X/cmd:$X/lib:$X/util:$PATH:./stubs
 type ccnd
 type ccnr
 type ccncat
