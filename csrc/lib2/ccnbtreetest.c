@@ -701,6 +701,81 @@ test_flatname(void)
     return(0);
 }
 
+/**
+ * Given an Interest (or a Name), find the matching objects
+ *
+ * @returns count of matches, or -1 for an error.
+ */
+static int
+testhelp_count_matches(struct ccn_btree *btree,
+                       unsigned char *msg, size_t size)
+{
+    struct ccn_btree_node *leaf = NULL;
+    struct ccn_charbuf *flat = NULL;
+    struct ccn_charbuf *scratch = NULL;
+    struct ccn_parsed_interest parsed_interest = {0};
+    struct ccn_parsed_interest *pi = &parsed_interest;
+    int cmp;
+    int i;
+    int matches;
+    int n;
+    int res;
+    
+    flat = ccn_charbuf_create();
+    CHKPTR(flat);
+    res = ccn_flatname_from_ccnb(flat, msg, size);
+    if (res < 0)
+        goto Bail;
+    res = ccn_parse_interest(msg, size, pi, NULL);
+    if (res < 0) {
+        if (flat->length > 0)
+            pi = NULL; /* do prefix-only match */
+        else
+            goto Bail;
+    }
+    res = ccn_btree_lookup(btree, flat->buf, flat->length, &leaf);
+    CHKSYS(res);
+    matches = 0;
+    /* Here we only look inside one leaf. Real code has to look beyond. */
+    scratch = ccn_charbuf_create();
+    n = ccn_btree_node_nent(leaf);
+    for (i = CCN_BT_SRCH_INDEX(res); i < n; i++) {
+        cmp = ccn_btree_compare(flat->buf, flat->length, leaf, i);
+        if (cmp == 0 || cmp == -9999) {
+            /* The prefix matches; check the rest. */
+            if (pi == NULL)
+                res = 0;
+            else
+                res = ccn_btree_match_interest(leaf, i, msg, pi, scratch);
+            CHKSYS(res);
+            if (res == 1) {
+                /* We have a match */
+                matches++;
+            }
+        }
+        else if (cmp > 0) {
+            /* This should never happen; if it does there must be a bug. */
+            FAILIF(1);
+        }
+        else {
+            /* There is no longer a prefix match with the current object */
+            break;
+        }
+    }
+    res = matches;
+Bail:
+    ccn_charbuf_destroy(&flat);
+    return(res);
+}
+
+/**
+ * Make an index from a file filled ccnb-encoded content objects
+ *
+ * Intersprsed interests will be regarded as querys, and matches will be
+ * found.
+ *
+ * The file is named by the environment varible TEST_CONTENT.
+ */
 int
 test_insert_content(void)
 {
@@ -768,6 +843,13 @@ test_insert_content(void)
         printf("offset %zd, size %zd\n", cob_offset, cob_size);
         res = ccn_parse_ContentObject(cob, cob_size, pc, comps);
         if (res < 0) {
+            res = testhelp_count_matches(btree, cob, cob_size);
+            if (res < 0) {
+                printf("  . . . skipping non-ContentObject\n");
+            }
+            else {
+                printf("  . . . interest processing res = %d\n", res);
+            }
             printf("  . . . skipping non-ContentObject\n");
         }
         else {
