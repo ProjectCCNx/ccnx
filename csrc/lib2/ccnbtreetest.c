@@ -616,6 +616,15 @@ test_btree_inserts_from_stdin(void)
     CHKSYS(res);
     printf("%d unique, %d duplicate, %d errors\n", unique, dups, btree->errors);
     FAILIF(btree->errors != 0);
+    res = ccn_btree_lookup(btree, c->buf, 0, &leaf); /* Get the first leaf */
+    CHKSYS(res);
+    printf("Leaf nodes:");
+    while (leaf != NULL) {
+        printf(" %u", leaf->nodeid);
+        res = ccn_btree_next_leaf(btree, leaf, &leaf);
+        CHKSYS(res);
+    }
+    printf("\n");
     res = ccn_btree_destroy(&btree);
     FAILIF(btree != NULL);
     return(res);
