@@ -32,13 +32,13 @@ void r_store_set_content_timer(struct ccnr_handle *h,struct content_entry *conte
 void r_store_mark_stale(struct ccnr_handle *h,struct content_entry *content);
 struct content_entry *r_store_next_child_at_level(struct ccnr_handle *h,struct content_entry *content,int level);
 int r_store_remove_content(struct ccnr_handle *h,struct content_entry *content);
-ccn_accession_t r_store_content_skiplist_next(struct ccnr_handle *h,struct content_entry *content);
+ccnr_accession r_store_content_skiplist_next(struct ccnr_handle *h,struct content_entry *content);
 int r_store_content_matches_interest_prefix(struct ccnr_handle *h,struct content_entry *content,const unsigned char *interest_msg,struct ccn_indexbuf *comps,int prefix_comps);
 struct content_entry *r_store_find_first_match_candidate(struct ccnr_handle *h,const unsigned char *interest_msg,const struct ccn_parsed_interest *pi);
 void r_store_finalize_content(struct hashtb_enumerator *content_enumerator);
 void r_store_content_skiplist_insert(struct ccnr_handle *h,struct content_entry *content);
 void r_store_enroll_content(struct ccnr_handle *h,struct content_entry *content);
-struct content_entry *r_store_content_from_accession(struct ccnr_handle *h,ccn_accession_t accession);
+struct content_entry *r_store_content_from_accession(struct ccnr_handle *h,ccnr_accession accession);
 struct content_entry *r_store_lookup(struct ccnr_handle *h, const unsigned char *msg, const struct ccn_parsed_interest *pi, struct ccn_indexbuf *comps);
 
 #endif

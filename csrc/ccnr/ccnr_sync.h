@@ -27,7 +27,7 @@
  * Following a call to r_sync_notify_after, the repository will call
  *    SyncNotifyContent(struct SyncBaseStruct *,
  *                      int enumeration,
- *                      ccn_accession_t item,
+ *                      ccnr_accession item,
  *                      struct ccn_charbuf *name);
  * periodically while there are no un-notified objects.
  *     enumeration is 0 for "time-based" notifications, or the value passed
@@ -38,7 +38,7 @@
  * r_sync_notify_after() will be cancelled.
  */
 void
-r_sync_notify_after(struct ccnr_handle *ccnr, ccn_accession_t item);
+r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_accession item);
 
 /** Request that a SyncNotifyContent call is made for each content object
  *  matching the interest.

@@ -45,9 +45,37 @@
 #include "ccnr_sync.h"
 #include "ccnr_util.h"
 
+#ifndef CCNLINT
+/* Preliminary implementation - algorithm may change */
+int
+ccnr_acc_in_hwm(struct ccnr_handle *ccnr, ccnr_accession a, ccnr_hwm hwm)
+{
+    return(a <= hwm);
+}
+
+/* Produce a new high water mark that includes the given content */
+ccnr_hwm
+ccnr_hwm_update(struct ccnr_handle *ccnr, ccnr_hwm hwm, ccnr_accession a)
+{
+    return(a <= hwm ? hwm : a);
+}
+
+/* Encode a high water mark as a number */
+uintmax_t
+ccnr_hwm_encode(struct ccnr_handle *ccnr, ccnr_hwm hwm)
+{
+    return(hwm);
+}
+ccnr_hwm
+ccnr_hwm_decode(struct ccnr_handle *ccnr, uintmax_t encoded)
+{
+    return(encoded);
+}
+#endif CCNLINT
+
 PUBLIC void
 r_sync_notify_after(struct ccnr_handle *ccnr,
-                    ccn_accession_t item)
+                    ccnr_accession item)
 {
     ccnr->notify_after = item;
 }
@@ -72,7 +100,7 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
         size_t start = content->comps[0];
         size_t end = content->comps[content->ncomps - 1];
 
-        acc = content->accession; /* for error reporting */
+        acc = content->accession; /* for error reporting */ // XXXXXX
         /* This must get the full name, including digest. */
         ccn_name_init(cb);
         res = ccn_name_append_components(cb, content->key, start, end);
@@ -229,7 +257,7 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
     for (i = 1; i < CCNR_MAX_ENUM; i++) {
         if (ccnr->active_enum[i] == 0) {
             ans = i;
-            ccnr->active_enum[ans] = ~(ccn_accession_t)0; /* for no-match case */
+            ccnr->active_enum[ans] = CCNR_MAX_ACCESSION; /* for no-match case */
             break;
         }
     }

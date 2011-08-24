@@ -59,7 +59,7 @@
 #include "ccnr_msg.h"
 
 PUBLIC struct content_entry *
-r_store_content_from_accession(struct ccnr_handle *h, ccn_accession_t accession)
+r_store_content_from_accession(struct ccnr_handle *h, ccnr_accession accession)
 {
     struct content_entry *ans = NULL;
     if (accession < h->accession_base) {
@@ -69,8 +69,8 @@ r_store_content_from_accession(struct ccnr_handle *h, ccn_accession_t accession)
         if (entry != NULL)
             ans = entry->content;
     }
-    else if (accession < h->accession_base + h->content_by_accession_window) {
-        ans = h->content_by_accession[accession - h->accession_base];
+    else if (accession < h->accession_base + h->content_by_accession_window) { // XXXXXX
+        ans = h->content_by_accession[accession - h->accession_base]; // XXXXXX
         if (ans != NULL && ans->accession != accession)
             ans = NULL;
     }
@@ -80,7 +80,7 @@ r_store_content_from_accession(struct ccnr_handle *h, ccn_accession_t accession)
 static void
 cleanout_stragglers(struct ccnr_handle *h)
 {
-    ccn_accession_t accession;
+    ccnr_accession accession;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct sparse_straggler_entry *entry = NULL;
@@ -104,7 +104,7 @@ cleanout_stragglers(struct ccnr_handle *h)
         if (a[i] != NULL) {
             if (n_occupied >= ((window - i) / 8))
                 break;
-            accession = h->accession_base + i;
+            accession = h->accession_base + i; // XXXXXX
             hashtb_seek(e, &accession, sizeof(accession), 0);
             entry = e->data;
             if (entry != NULL && entry->content == NULL) {
@@ -131,7 +131,7 @@ cleanout_empties(struct ccnr_handle *h)
         i++;
     if (i == 0)
         return(-1);
-    h->accession_base += i;
+    h->accession_base += i; // XXXXXX
     while (i < window)
         a[j++] = a[i++];
     while (j < window)
@@ -148,7 +148,7 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
     unsigned i = 0;
     unsigned j = 0;
     unsigned window = h->content_by_accession_window;
-    if ((content->accession - h->accession_base) >= window &&
+    if ((content->accession - h->accession_base) >= window && // XXXXXX
         cleanout_empties(h) < 0) {
         if (content->accession < h->accession_base)
             return;
@@ -162,14 +162,14 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
             return;
         while (i < h->content_by_accession_window && old_array[i] == NULL)
             i++;
-        h->accession_base += i;
+        h->accession_base += i; // XXXXXX
         h->content_by_accession = new_array;
         while (i < h->content_by_accession_window)
             new_array[j++] = old_array[i++];
         h->content_by_accession_window = new_window;
         free(old_array);
     }
-    h->content_by_accession[content->accession - h->accession_base] = content;
+    h->content_by_accession[content->accession - h->accession_base] = content; // XXXXXX
 }
 
 static int
@@ -192,7 +192,7 @@ content_skiplist_findbefore(struct ccnr_handle *h,
         for (;;) {
             if (c->buf[i] == 0)
                 break;
-            content = r_store_content_from_accession(h, c->buf[i]);
+            content = r_store_content_from_accession(h, c->buf[i]); // XXXXXX
             if (content == NULL)
                 abort();
             start = content->comps[0];
@@ -236,7 +236,7 @@ r_store_content_skiplist_insert(struct ccnr_handle *h, struct content_entry *con
     content->skiplinks = ccn_indexbuf_create();
     for (i = 0; i < d; i++) {
         ccn_indexbuf_append_element(content->skiplinks, pred[i]->buf[i]);
-        pred[i]->buf[i] = content->accession;
+        pred[i]->buf[i] = content->accession; // XXXXXX
     }
 }
 
@@ -268,7 +268,7 @@ r_store_finalize_content(struct hashtb_enumerator *content_enumerator)
 {
     struct ccnr_handle *h = hashtb_get_param(content_enumerator->ht, NULL);
     struct content_entry *entry = content_enumerator->data;
-    unsigned i = entry->accession - h->accession_base;
+    unsigned i = entry->accession - h->accession_base; // XXXXXX
     if (i < h->content_by_accession_window &&
           h->content_by_accession[i] == entry) {
         content_skiplist_remove(h, entry);
@@ -353,7 +353,7 @@ r_store_find_first_match_candidate(struct ccnr_handle *h,
     }
     if (res == 0)
         return(NULL);
-    return(r_store_content_from_accession(h, pred[0]->buf[0]));
+    return(r_store_content_from_accession(h, pred[0]->buf[0])); // XXXXXX
 }
 
 PUBLIC int
@@ -379,14 +379,14 @@ r_store_content_matches_interest_prefix(struct ccnr_handle *h,
     return(1);
 }
 
-PUBLIC ccn_accession_t
+PUBLIC ccnr_accession
 r_store_content_skiplist_next(struct ccnr_handle *h, struct content_entry *content)
 {
     if (content == NULL)
         return(0);
     if (content->skiplinks == NULL || content->skiplinks->n < 1)
         return(0);
-    return(content->skiplinks->buf[0]);
+    return(content->skiplinks->buf[0]); // XXXXXX
 }
 
 PUBLIC int
@@ -439,7 +439,7 @@ r_store_next_child_at_level(struct ccnr_handle *h,
                         name->buf, name->length);
     d = content_skiplist_findbefore(h, name->buf, name->length,
                                     NULL, pred);
-    next = r_store_content_from_accession(h, pred[0]->buf[0]);
+    next = r_store_content_from_accession(h, pred[0]->buf[0]); // XXXXXX
     if (next == content) {
         // XXX - I think this case should not occur, but just in case, avoid a loop.
         next = r_store_content_from_accession(h, r_store_content_skiplist_next(h, content));
@@ -522,7 +522,7 @@ r_store_lookup(struct ccnr_handle *h,
 PUBLIC void
 r_store_mark_stale(struct ccnr_handle *h, struct content_entry *content)
 {
-    ccn_accession_t accession = content->accession;
+    ccnr_accession accession = content->accession;
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         return;
     if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
@@ -547,7 +547,7 @@ expire_content(struct ccn_schedule *sched,
                int flags)
 {
     struct ccnr_handle *h = clienth;
-    ccn_accession_t accession = ev->evint;
+    ccnr_accession accession = ev->evint; // XXXXXX
     struct content_entry *content = NULL;
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         return(0);
@@ -584,6 +584,6 @@ r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
     }
     microseconds = seconds * 1000000;
     ccn_schedule_event(h->sched, microseconds,
-                       &expire_content, NULL, content->accession);
+                       &expire_content, NULL, content->accession); // XXXXXX
 }
 

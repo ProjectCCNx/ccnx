@@ -1063,7 +1063,7 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
                            const unsigned char *msg,
                            struct ccn_parsed_ContentObject *pco,
                            int use_link,
-                           ccn_accession_t a)
+                           ccnr_accession a)
 {
     /* 
      * Create a new interest in the key name, set up a callback that will

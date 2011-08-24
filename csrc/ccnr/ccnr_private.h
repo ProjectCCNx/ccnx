@@ -60,9 +60,60 @@ struct ccn_forwarding;
 struct enum_state;
 struct ccnr_parsed_policy;
 
-//typedef uint_least64_t ccn_accession_t;
-typedef unsigned ccn_accession_t;
-#define CCNR_MAX_ACCESSION (~(ccn_accession_t)0)
+/* Repository-specific content identifiers */
+
+#if (defined(CCNLINT) && (CCNLINT == 1))
+/* This is where we probably want to end up for declaring this type */
+typedef uint_least64_t ccnr_accession;
+#define CCNR_NULL_ACCESSION ((ccnr_accession)(0))
+#define CCNR_MIN_ACCESSION ((ccnr_accession)(1))
+#define CCNR_MAX_ACCESSION ((ccnr_accession)(~CCNR_NULL_ACCESSION))
+#elif (defined(CCNLINT) && (CCNLINT == 2))
+#error "Not expected to work - this is for detecting illegitimate comparisons"
+struct intentionally_incomplete;
+typedef struct intentionally_incomplete *ccnr_accession;
+#define CCNR_NULL_ACCESSION ((ccnr_accession)(0))
+#define CCNR_MIN_ACCESSION ((ccnr_accession)(0x10000000))
+#define CCNR_MAX_ACCESSION ((ccnr_accession)(0x7fffffff))
+#elif (defined(CCNLINT) && (CCNLINT == 3))
+#error "Not expected to work - this is for detecting illegitimate casts"
+typedef struct ccnr_accession_rep {unsigned a; unsigned b;} ccnr_accession;
+struct ccnr_accession_rep ccnr_null_accession;
+struct ccnr_accession_rep ccnr_min_accession;
+struct ccnr_accession_rep ccnr_max_accession;
+#define CCNR_NULL_ACCESSION ccnr_null_accession;
+#define CCNR_MIN_ACCESSION ccnr_min_accession;
+#define CCNR_MAX_ACCESSION ccnr_max_accession;
+#else
+typedef unsigned ccnr_accession;
+#define CCNR_NULL_ACCESSION ((ccnr_accession)(0))
+#define CCNR_MIN_ACCESSION ((ccnr_accession)(1))
+#define CCNR_MAX_ACCESSION ((ccnr_accession)(~CCNR_NULL_ACCESSION))
+#endif
+
+/* Use this to treat a ccnr_accession as an unsigned number. */
+uintmax_t ccnr_accnum(ccnr_accession acc);
+
+/* Use this to turn a number back into a ccnr_accession. */
+ccnr_accession ccnr_accession_from_num(uintmax_t accnum);
+
+/* Returns 1 if a and b are in accession order, 0 if not, -1 if unknown */
+int ccnr_accession_order(ccnr_accession a, ccnr_accession b);
+
+/* Repository-specific high water marks */
+
+/* XXX - ccnr_hwm should be a distinct type */
+typedef uintmax_t ccnr_hwm;
+
+/* Return 1 if a is in the hwm set, 0 if not, -1 if unknown. */
+int ccnr_acc_in_hwm(struct ccnr_handle *, ccnr_accession a, ccnr_hwm hwm);
+
+/* Produce a new high water mark that includes the given content */
+ccnr_hwm ccnr_hwm_update(struct ccnr_handle *, ccnr_hwm, ccnr_accession);
+
+/* Encode a high water mark as a number */
+uintmax_t ccnr_hwm_encode(struct ccnr_handle *, ccnr_hwm);
+ccnr_hwm ccnr_hwm_decode(struct ccnr_handle *, uintmax_t);
 
 typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 
@@ -120,14 +171,14 @@ struct ccnr_handle {
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
     /** Next three fields are used for direct accession-to-content table */
-    ccn_accession_t accession_base;
+    ccnr_accession accession_base;
     unsigned content_by_accession_window;
     struct content_entry **content_by_accession;
     /** The following holds stragglers that would otherwise bloat the above */
     struct hashtb *sparse_straggler_tab; /* keyed by accession */
-    ccn_accession_t accession;      /**< newest used accession number */
-    ccn_accession_t min_stale;      /**< smallest accession of stale content */
-    ccn_accession_t max_stale;      /**< largest accession of stale content */
+    ccnr_accession accession;      /**< newest used accession number */
+    ccnr_accession min_stale;      /**< smallest accession of stale content */
+    ccnr_accession max_stale;      /**< largest accession of stale content */
     unsigned long n_stale;          /**< Number of stale content objects */
     struct ccn_indexbuf *unsol;     /**< unsolicited content */
     unsigned long oldformatcontent;
@@ -168,8 +219,8 @@ struct ccnr_handle {
                                     /**< pluggable nonce generation */
     /* items related to sync/repo integration */
     struct SyncBaseStruct *sync_handle;  /**< handle to pass to the sync code */
-    ccn_accession_t notify_after;  /**< starting item number for notifying sync */
-    ccn_accession_t active_enum[CCNR_MAX_ENUM]; /**< active sync enumerations */
+    ccnr_accession notify_after;  /**< starting item number for notifying sync */
+    ccnr_accession active_enum[CCNR_MAX_ENUM]; /**< active sync enumerations */
     
     const char *directory;           /**< the repository directory */
 };
@@ -271,7 +322,7 @@ struct fdholder {
  *  last name component, which is easily located via the comps array.
  */
 struct content_entry {
-    ccn_accession_t accession;  /**< assigned in arrival order */
+    ccnr_accession accession;  /**< assigned in arrival order */
     unsigned short *comps;      /**< Name Component byte boundary offsets */
     int ncomps;                 /**< Number of name components plus one */
     int flags;                  /**< see below */
@@ -371,7 +422,7 @@ struct enum_state {
     struct ccn_charbuf *interest;
     struct ccn_indexbuf *interest_comps;
     uintmax_t next_segment;
-    ccn_accession_t starting_accession;
+    ccnr_accession starting_accession;
     int active;
 };
 
