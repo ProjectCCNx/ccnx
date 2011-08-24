@@ -66,12 +66,11 @@ public class CCNHandle implements CCNBase {
 	 * a default scope to use, and enable/disable machinery.  (The defines for the scope don't belong
 	 * here really, but it seems useful to have them specified.)
 	 */
-	protected boolean _enableScope = false;
-	protected int _defaultScope = 1;
-	public static final int ccndScope = 0;
-	public static final int localScope = 1;
-	public static final int neighborhood = 2;
-	public static final int world = 3;
+	protected Integer _scope = disableScope;
+	public static final Integer disableScope = new Integer(-1);
+	public static final Integer ccndScope = new Integer(0);
+	public static final Integer localScope = new Integer(1);
+	public static final Integer neighborhood = new Integer(2);
 	
 	
 	/**
@@ -244,16 +243,36 @@ public class CCNHandle implements CCNBase {
 	}
 	
 	
-	public boolean enableDefaultScope() {
-		boolean old = _enableScope;
-		_enableScope = true;
-		return old;
+	/**
+	 * Sets the scope to be set if an Interest doesn't already have one set.
+	 * @param scope		Scope -1 disable or if in the range of [0..2]
+	 * @return
+	 */
+	public void setScope(Integer scope) throws IOException {
+		if (this == _handle) {
+			if (Log.isLoggable(Level.INFO)) Log.info(Log.FAC_NETMANAGER, formatMessage("setScope called on static handle"));
+			throw new IOException(formatMessage("setScope called on a shared handle."));
+		}
+		if (scope == disableScope) {
+
+		} else if (scope < 0 || scope > 2) {
+			if (Log.isLoggable(Level.INFO)) Log.info(Log.FAC_NETMANAGER, formatMessage("setScope scope out of range " + scope));
+			throw new IOException(formatMessage("setScope called with scope that is out of range [0..2] " + scope));
+		}
+		_scope = scope;
+		if (Log.isLoggable(Level.INFO)) Log.info(Log.FAC_NETMANAGER, formatMessage("setScope set " + scope));
 	}
 	
-	public boolean disableDefaultScope() {
-		boolean old = _enableScope;
-		_enableScope = false;
-		return old;
+	/**
+	 * Gets the current value of the default scope.
+	 * @return	The current default.
+	 */
+	public Integer getScope() throws IOException {
+		if (this == _handle) {
+			if (Log.isLoggable(Level.INFO)) Log.info(Log.FAC_NETMANAGER, formatMessage("getScope called on static handle"));
+			throw new IOException(formatMessage("getScope called on a shared handle."));
+		}
+		return _scope;
 	}
 	
 	/**
@@ -297,8 +316,12 @@ public class CCNHandle implements CCNBase {
 				if( !_isOpen )
 					throw new IOException(formatMessage("Handle is closed"));
 			}
-
 			try {
+				if (_scope != disableScope) {
+					if (interest.scope() == null) {
+						interest.scope(_scope);
+					}
+				}
 				return getNetworkManager().get(interest, timeout);
 			} catch (InterruptedException e) {}
 		}
@@ -397,7 +420,7 @@ public class CCNHandle implements CCNBase {
 	 */
 	public void expressInterest(
 			Interest interest,
-			CCNInterestListener listener) throws IOException {
+			final CCNInterestListener listener) throws IOException {
 		if( Log.isLoggable(Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("expressInterest " + interest.name().toString()));
 
@@ -406,8 +429,31 @@ public class CCNHandle implements CCNBase {
 				throw new IOException(formatMessage("Handle is closed"));
 		}
 
-		// Will add the interest to the listener.
-		getNetworkManager().expressInterest(this, interest, listener);
+		if (_scope != disableScope) {
+			if (interest.scope() == null) {
+				interest.scope(_scope);
+			}
+			CCNInterestListener myListener = new CCNInterestListener() {
+				@Override
+				public Interest handleContent(ContentObject data, Interest interest) {
+					Interest i = listener.handleContent(data, interest);
+					if (i != null) {
+						if (_scope != disableScope) {
+							if (i.scope() == null) {
+								i.scope(_scope);
+							}
+						}
+					}
+					return i;
+				}
+			};
+			getNetworkManager().expressInterest(this, interest, myListener);
+
+		} else {
+
+			// Will add the interest to the listener.
+			getNetworkManager().expressInterest(this, interest, listener);
+		}
 	}
 
 	/**
