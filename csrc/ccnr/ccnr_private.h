@@ -65,6 +65,7 @@ struct ccnr_parsed_policy;
 #if (defined(CCNLINT) && (CCNLINT == 1))
 /* This is where we probably want to end up for declaring this type */
 typedef uint_least64_t ccnr_accession;
+#define CCNR_NULL_HWM ((ccnr_hwm)(0))
 #define CCNR_NULL_ACCESSION ((ccnr_accession)(0))
 #define CCNR_MIN_ACCESSION ((ccnr_accession)(1))
 #define CCNR_MAX_ACCESSION ((ccnr_accession)(~CCNR_NULL_ACCESSION))
@@ -86,34 +87,43 @@ struct ccnr_accession_rep ccnr_max_accession;
 #define CCNR_MAX_ACCESSION ccnr_max_accession;
 #else
 typedef unsigned ccnr_accession;
+#define CCNR_NULL_HWM ((ccnr_hwm)(0))
 #define CCNR_NULL_ACCESSION ((ccnr_accession)(0))
 #define CCNR_MIN_ACCESSION ((ccnr_accession)(1))
 #define CCNR_MAX_ACCESSION ((ccnr_accession)(~CCNR_NULL_ACCESSION))
 #endif
 
-/* Use this to treat a ccnr_accession as an unsigned number. */
-uintmax_t ccnr_accnum(ccnr_accession acc);
+#define CCNR_NOT_COMPARABLE (-2)
 
-/* Use this to turn a number back into a ccnr_accession. */
-ccnr_accession ccnr_accession_from_num(uintmax_t accnum);
+/* Encode/decode a ccnr_accession as an unsigned number. */
+uintmax_t ccnr_accession_encode(struct ccnr_handle *, ccnr_accession);
+ccnr_accession ccnr_accession_decode(struct ccnr_handle *, uintmax_t);
 
-/* Returns 1 if a and b are in accession order, 0 if not, -1 if unknown */
-int ccnr_accession_order(ccnr_accession a, ccnr_accession b);
+/* Return 1 if x dominates y, 0 if x equals y, -1 if y dominates x,
+ * and CCNR_NOT_COMPARABLE if the ordering is not determined
+ */
+int ccnr_accession_compare(struct ccnr_handle *ccnr, ccnr_accession x, ccnr_accession y);
 
 /* Repository-specific high water marks */
 
 /* XXX - ccnr_hwm should be a distinct type */
 typedef uintmax_t ccnr_hwm;
 
+/* Encode a high water mark as an unsigned number */
+uintmax_t ccnr_hwm_encode(struct ccnr_handle *, ccnr_hwm);
+ccnr_hwm ccnr_hwm_decode(struct ccnr_handle *, uintmax_t);
+
 /* Return 1 if a is in the hwm set, 0 if not, -1 if unknown. */
 int ccnr_acc_in_hwm(struct ccnr_handle *, ccnr_accession a, ccnr_hwm hwm);
 
 /* Produce a new high water mark that includes the given content */
 ccnr_hwm ccnr_hwm_update(struct ccnr_handle *, ccnr_hwm, ccnr_accession);
+ccnr_hwm ccnr_hwm_merge(struct ccnr_handle *, ccnr_hwm, ccnr_hwm);
 
-/* Encode a high water mark as a number */
-uintmax_t ccnr_hwm_encode(struct ccnr_handle *, ccnr_hwm);
-ccnr_hwm ccnr_hwm_decode(struct ccnr_handle *, uintmax_t);
+/* Return 1 if x dominates y, 0 if x equals y, -1 if y dominates x,
+ * and CCNR_NOT_COMPARABLE if the ordering is not determined
+ */
+int ccnr_hwm_compare(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y);
 
 typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 
