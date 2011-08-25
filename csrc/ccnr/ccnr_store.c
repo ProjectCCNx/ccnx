@@ -55,8 +55,54 @@
 #include "ccnr_private.h"
 
 #include "ccnr_store.h"
-
+#include "ccnr_link.h"
+#include "ccnr_util.h"
+#include "ccnr_proto.h"
 #include "ccnr_msg.h"
+#include "ccnr_sync.h"
+#include "ccnr_match.h"
+#include "ccnr_sendq.h"
+#include "ccnr_io.h"
+
+/**
+ *  The content hash table is keyed by the initial portion of the ContentObject
+ *  that contains all the parts of the complete name.  The extdata of the hash
+ *  table holds the rest of the object, so that the whole ContentObject is
+ *  stored contiguously.  The internal form differs from the on-wire form in
+ *  that the final content-digest name component is represented explicitly,
+ *  which simplifies the matching logic.
+ *  The original ContentObject may be reconstructed simply by excising this
+ *  last name component, which is easily located via the comps array.
+ */
+struct content_entry;
+/* This is where the actual struct should be, but there is still some work to do. */
+
+PUBLIC int
+r_store_content_flags(struct content_entry *content)
+{
+    return(content->flags);
+}
+
+PUBLIC int
+r_store_content_change_flags(struct content_entry *content, int set, int clear)
+{
+    int old = content->flags;
+    content->flags |= set;
+    content->flags &= ~clear;
+    return(old);
+}
+
+
+PUBLIC void
+r_store_init(struct ccnr_handle *h)
+{
+    struct hashtb_param param = {0};
+    param.finalize_data = h;
+    param.finalize = &r_store_finalize_content;
+    h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
+    param.finalize = 0;
+    h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
+}
 
 PUBLIC struct content_entry *
 r_store_content_from_accession(struct ccnr_handle *h, ccnr_accession accession)
@@ -585,5 +631,226 @@ r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
     microseconds = seconds * 1000000;
     ccn_schedule_event(h->sched, microseconds,
                        &expire_content, NULL, content->accession); // XXXXXX
+}
+
+
+PUBLIC struct content_entry *
+process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
+                         unsigned char *wire_msg, size_t wire_size)
+{
+    unsigned char *msg;
+    size_t size;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_parsed_ContentObject obj = {0};
+    int res;
+    size_t keysize = 0;
+    size_t tailsize = 0;
+    unsigned char *tail = NULL;
+    struct content_entry *content = NULL;
+    int i;
+    struct ccn_indexbuf *comps = r_util_indexbuf_obtain(h);
+    struct ccn_charbuf *cb = r_util_charbuf_obtain(h);
+    
+    msg = wire_msg;
+    size = wire_size;
+    
+    res = ccn_parse_ContentObject(msg, size, &obj, comps);
+    if (res < 0) {
+        ccnr_msg(h, "error parsing ContentObject - code %d", res);
+        goto Bail;
+    }
+    ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
+    if (comps->n < 1 ||
+        (keysize = comps->buf[comps->n - 1]) > 65535 - 36) {
+        ccnr_msg(h, "ContentObject with keysize %lu discarded",
+                 (unsigned long)keysize);
+        ccnr_debug_ccnb(h, __LINE__, "oversize", fdholder, msg, size);
+        res = -__LINE__;
+        goto Bail;
+    }
+    /* Make the ContentObject-digest name component explicit */
+    ccn_digest_ContentObject(msg, &obj);
+    if (obj.digest_bytes != 32) {
+        ccnr_debug_ccnb(h, __LINE__, "indigestible", fdholder, msg, size);
+        goto Bail;
+    }
+    i = comps->buf[comps->n - 1];
+    ccn_charbuf_append(cb, msg, i);
+    ccn_charbuf_append_tt(cb, CCN_DTAG_Component, CCN_DTAG);
+    ccn_charbuf_append_tt(cb, obj.digest_bytes, CCN_BLOB);
+    ccn_charbuf_append(cb, obj.digest, obj.digest_bytes);
+    ccn_charbuf_append_closer(cb);
+    ccn_charbuf_append(cb, msg + i, size - i);
+    msg = cb->buf;
+    size = cb->length;
+    res = ccn_parse_ContentObject(msg, size, &obj, comps);
+    if (res < 0) abort(); /* must have just messed up */
+    
+    if (obj.magic != 20090415) {
+        if (++(h->oldformatcontent) == h->oldformatcontentgrumble) {
+            h->oldformatcontentgrumble *= 10;
+            ccnr_msg(h, "downrev content items received: %d (%d)",
+                     h->oldformatcontent,
+                     obj.magic);
+        }
+    }
+    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+        ccnr_debug_ccnb(h, __LINE__, "content_from", fdholder, msg, size);
+    keysize = obj.offset[CCN_PCO_B_Content];
+    tail = msg + keysize;
+    tailsize = size - keysize;
+    hashtb_start(h->content_tab, e);
+    res = hashtb_seek(e, msg, keysize, tailsize);
+    content = e->data;
+    if (res == HT_OLD_ENTRY) {
+        if (tailsize != e->extsize ||
+              0 != memcmp(tail, ((unsigned char *)e->key) + keysize, tailsize)) {
+            ccnr_msg(h, "ContentObject name collision!!!!!");
+            ccnr_debug_ccnb(h, __LINE__, "new", fdholder, msg, size);
+            ccnr_debug_ccnb(h, __LINE__, "old", NULL, e->key, e->keysize + e->extsize);
+            content = NULL;
+            hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
+            res = -__LINE__;
+        }
+        else if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
+            /* When old content arrives after it has gone stale, freshen it */
+            // XXX - ought to do mischief checks before this
+            content->flags &= ~CCN_CONTENT_ENTRY_STALE;
+            h->n_stale--;
+            r_store_set_content_timer(h, content, &obj);
+            // XXX - no counter for this case
+        }
+        else {
+            h->content_dups_recvd++;
+            if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+                ccnr_debug_ccnb(h, __LINE__, "dup", fdholder, msg, size);
+        }
+    }
+    else if (res == HT_NEW_ENTRY) {
+        content->accession = ++(h->accession); // XXXXXX
+        r_store_enroll_content(h, content);
+        if (content == r_store_content_from_accession(h, content->accession)) {
+            content->ncomps = comps->n;
+            content->comps = calloc(comps->n, sizeof(comps[0]));
+        }
+        content->key_size = e->keysize;
+        content->size = e->keysize + e->extsize;
+        content->key = e->key;
+        if (content->comps != NULL) {
+            for (i = 0; i < comps->n; i++)
+                content->comps[i] = comps->buf[i];
+            r_store_content_skiplist_insert(h, content);
+            r_store_set_content_timer(h, content, &obj);
+        }
+        else {
+            ccnr_msg(h, "could not enroll ContentObject (accession %llu)",
+                (unsigned long long)content->accession);
+            hashtb_delete(e);
+            res = -__LINE__;
+            content = NULL;
+        }
+        if (content != NULL) {
+            if (obj.type == CCN_CONTENT_KEY)
+                content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
+            if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
+                content->flags |= CCN_CONTENT_ENTRY_STABLE;
+                if (content->accession >= h->notify_after)
+                    r_sync_notify_content(h, 0, content);
+            }
+            else {
+                r_proto_initiate_key_fetch(h, msg, &obj, 0, content->accession);
+            }
+        }
+    }
+    hashtb_end(e);
+Bail:
+    r_util_indexbuf_release(h, comps);
+    r_util_charbuf_release(h, cb);
+    cb = NULL;
+    if (res >= 0 && content != NULL) {
+        int n_matches;
+        enum cq_delay_class c;
+        struct content_queue *q;
+        n_matches = r_match_match_interests(h, content, &obj, NULL, fdholder);
+        if (res == HT_NEW_ENTRY) {
+            if (n_matches < 0) {
+                r_store_remove_content(h, content);
+                return(NULL);
+            }
+            if (n_matches == 0 && (fdholder->flags & CCNR_FACE_GG) == 0) {
+                content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
+                ccn_indexbuf_append_element(h->unsol, content->accession); // XXXXXX
+            }
+        }
+        for (c = 0; c < CCN_CQ_N; c++) {
+            q = fdholder->q[c];
+            if (q != NULL) {
+                i = ccn_indexbuf_member(q->send_queue, content->accession); // XXXXXX
+                if (i >= 0) {
+                    /*
+                     * In the case this consumed any interests from this source,
+                     * don't send the content back
+                     */
+                    if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
+                        ccnr_debug_ccnb(h, __LINE__, "content_nosend", fdholder, msg, size);
+                    q->send_queue->buf[i] = 0;
+                }
+            }
+        }
+    }
+    return(content);
+}
+
+PUBLIC int
+r_store_content_field_access(struct ccnr_handle *h,
+                             struct content_entry *content,
+                             enum ccn_dtag dtag,
+                             const unsigned char **bufp, size_t *sizep)
+{
+	int res = -1;
+	if (dtag == CCN_DTAG_Content)
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, content->key,
+                                  content->key_size, content->size,
+                                  bufp, sizep);
+	return(res);
+}
+
+PUBLIC void
+r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
+{
+    int n, a, b, size;
+    size = content->size;
+    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+        ccnr_debug_ccnb(h, __LINE__, "content_to", fdholder,
+                        content->key, size);
+    /* Excise the message-digest name component */
+    n = content->ncomps;
+    if (n < 2) abort();
+    a = content->comps[n - 2];
+    b = content->comps[n - 1];
+    if (b - a != 36)
+        abort(); /* strange digest length */
+    r_link_stuff_and_send(h, fdholder, content->key, a, content->key + b, size - b);
+    
+}
+
+PUBLIC int
+r_store_commit_content(struct ccnr_handle *h, struct content_entry *content)
+{
+    int res;
+    // XXX - here we need to check if this is something we *should* be storing, according to our policy
+    if ((r_store_content_flags(content) & CCN_CONTENT_ENTRY_STABLE) == 0) {
+        // Need to actually append to the active repo data file
+        r_sendq_face_send_queue_insert(h, r_io_fdholder_from_fd(h, h->active_out_fd), content);
+        // XXX - it would be better to do this after the write succeeds
+        r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
+        ccnr_debug_ccnb(h, __LINE__, "content_stored",
+                        r_io_fdholder_from_fd(h, h->active_out_fd),
+                        content->key, content->size);
+        if (content->accession >= h->notify_after)
+            res = r_sync_notify_content(h, 0, content);
+    }
+    return(0);
 }
 

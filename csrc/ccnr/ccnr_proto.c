@@ -440,18 +440,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
         ccnr_msg(ccnr, "r_proto_expect_content: failed to process incoming content");
         return(CCN_UPCALL_RESULT_ERR);
     }
-    // XXX - here we need to check if this is something we *should* be storing, according to our policy
-    if ((content->flags & CCN_CONTENT_ENTRY_STABLE) == 0) {
-        // Need to actually append to the active repo data file
-        r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
-        // XXX - it would be better to do this after the write succeeds
-        content->flags |= CCN_CONTENT_ENTRY_STABLE;
-        ccnr_debug_ccnb(ccnr, __LINE__, "content_stored",
-                        r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
-                        content->key, content->size);
-        if (content->accession >= ccnr->notify_after)
-            res = r_sync_notify_content(ccnr, 0, content);
-    }
+    r_store_commit_content(ccnr, content);
     md->tries = 0;
     segment = r_util_segment_from_component(ib, ic->buf[ic->n - 2], ic->buf[ic->n - 1]);
 
@@ -921,6 +910,7 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
         ccnb_element_begin(es->reply_body, CCN_DTAG_Link);
         ccnb_element_begin(es->reply_body, CCN_DTAG_Name);
         ccnb_element_end(es->reply_body);
+// XXXXXX - uses content->
         ccn_name_append_components(es->reply_body, es->content->key,
                                    es->content->comps[es->interest_comps->n - 1],
                                    es->content->comps[es->interest_comps->n]);

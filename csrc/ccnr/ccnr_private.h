@@ -312,15 +312,11 @@ struct fdholder {
 #define CCN_NOFACEID    (-1)    /** denotes no fdholder */
 
 /**
- *  The content hash table is keyed by the initial portion of the ContentObject
- *  that contains all the parts of the complete name.  The extdata of the hash
- *  table holds the rest of the object, so that the whole ContentObject is
- *  stored contiguously.  The internal form differs from the on-wire form in
- *  that the final content-digest name component is represented explicitly,
- *  which simplifies the matching logic.
- *  The original ContentObject may be reconstructed simply by excising this
- *  last name component, which is easily located via the comps array.
+ *  A pointer to this is used as a handle for a content object that we
+ *  currently care about.  Most details are private to the implementation.
  */
+struct content_entry;
+
 struct content_entry {
     ccnr_accession accession;  /**< assigned in arrival order */
     unsigned short *comps;      /**< Name Component byte boundary offsets */
@@ -426,6 +422,9 @@ struct enum_state {
     int active;
 };
 
+/* count something (messages, packets, bytes), getting time info from h */
+void ccnr_meter_bump(struct ccnr_handle *h, struct ccnr_meter *m, unsigned amt);
+
 
 #if 0
 /* create and destroy procs for separately allocated meters */
@@ -434,9 +433,6 @@ void ccnr_meter_destroy(struct ccnr_meter **);
 
 /* for meters kept within other structures */
 void ccnr_meter_init(struct ccnr_handle *h, struct ccnr_meter *m, const char *what);
-
-/* count something (messages, packets, bytes), getting time info from h */
-void ccnr_meter_bump(struct ccnr_handle *h, struct ccnr_meter *m, unsigned amt);
 
 unsigned ccnr_meter_rate(struct ccnr_handle *h, struct ccnr_meter *m);
 uintmax_t ccnr_meter_total(struct ccnr_meter *m);

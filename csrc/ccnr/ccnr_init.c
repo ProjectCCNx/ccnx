@@ -120,17 +120,15 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->progname = progname;
     h->debug = -1;
     h->skiplinks = ccn_indexbuf_create();
-    param.finalize_data = h;
     h->face_limit = 10; /* soft limit */
     h->fdholder_by_fd = calloc(h->face_limit, sizeof(h->fdholder_by_fd[0]));
-    param.finalize = &r_store_finalize_content;
-    h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
+    r_store_init(h);
+    param.finalize_data = h;
     param.finalize = &r_fwd_finalize_nameprefix;
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
     param.finalize = &r_fwd_finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     param.finalize = 0;
-    h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
     h->enum_state_tab = hashtb_create(sizeof(struct enum_state), NULL); // XXX - do we need finalization? Perhaps
     h->min_stale = CCNR_MAX_ACCESSION;
     h->max_stale = CCNR_MIN_ACCESSION;
@@ -308,8 +306,8 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
     ssize_t res;
     struct fdholder *fdholder = NULL;
     struct content_entry *content = NULL;
-    const unsigned char *buf;
-    size_t length;
+    const unsigned char *buf = NULL;
+    size_t length = 0;
 
     while (content == NULL) {
         fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 0);
@@ -329,9 +327,7 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
                 ccnr_msg(ccnr, "Unable to process repository policy object");
                 abort();
             }
-            ccn_ref_tagged_BLOB(CCN_DTAG_Content, content->key,
-                                content->key_size, content->size,
-                                &buf, &length);
+            r_store_content_field_access(ccnr, content, CCN_DTAG_Content, &buf, &length);
             if (r_proto_parse_policy(ccnr, buf, length, pp) < 0) {
                 ccnr_msg(ccnr, "Malformed policy");
                 abort();
@@ -372,7 +368,7 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
         }
         r_io_shutdown_client_fd(ccnr, fd);
     }
-    content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
+    r_store_content_change_flags(content, CCN_CONTENT_ENTRY_PRECIOUS, 0);
     
     return(0);
 }

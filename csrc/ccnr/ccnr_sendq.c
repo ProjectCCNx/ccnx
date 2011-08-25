@@ -117,15 +117,6 @@ r_sendq_content_queue_destroy(struct ccnr_handle *h, struct content_queue **pq)
 static enum cq_delay_class
 choose_content_delay_class(struct ccnr_handle *h, unsigned filedesc, int content_flags)
 {
-    struct fdholder *fdholder = r_io_fdholder_from_fd(h, filedesc);
-    if (fdholder == NULL)
-        return(CCN_CQ_ASAP); /* Going nowhere, get it over with */
-    if ((fdholder->flags & (CCNR_FACE_LINK | CCNR_FACE_MCAST)) != 0) /* udplink or such, delay more */
-        return((content_flags & CCN_CONTENT_ENTRY_SLOWSEND) ? CCN_CQ_SLOW : CCN_CQ_NORMAL);
-    if ((fdholder->flags & CCNR_FACE_DGRAM) != 0)
-        return(CCN_CQ_NORMAL); /* udp, delay just a little */
-    if ((fdholder->flags & (CCNR_FACE_GG | CCNR_FACE_LOCAL)) != 0)
-        return(CCN_CQ_ASAP); /* localhost, answer quickly */
     return(CCN_CQ_NORMAL); /* default */
 }
 
@@ -192,7 +183,7 @@ content_sender(struct ccn_schedule *sched,
             /* fdholder may have vanished, bail out if it did */
             if (r_io_fdholder_from_fd(h, filedesc) == NULL)
                 goto Bail;
-            nsec += burst_nsec * (unsigned)((content->size + 1023) / 1024);
+            // nsec += burst_nsec * (unsigned)((content->size + 1023) / 1024);
             q->nrun++;
         }
     }
@@ -236,32 +227,19 @@ PUBLIC int
 r_sendq_face_send_queue_insert(struct ccnr_handle *h,
                        struct fdholder *fdholder, struct content_entry *content)
 {
-    int ans;
+    int ans = -1;
     int delay;
     enum cq_delay_class c;
-    enum cq_delay_class k;
     struct content_queue *q;
     if (fdholder == NULL || content == NULL || (fdholder->flags & CCNR_FACE_NOSEND) != 0)
         return(-1);
-    c = choose_content_delay_class(h, fdholder->filedesc, content->flags);
+    c = choose_content_delay_class(h, fdholder->filedesc, r_store_content_flags(content));
     if (fdholder->q[c] == NULL)
         fdholder->q[c] = content_queue_create(h, fdholder, c);
     q = fdholder->q[c];
     if (q == NULL)
         return(-1);
-    /* Check the other queues first, it might be in one of them */
-    for (k = 0; k < CCN_CQ_N; k++) {
-        if (k != c && fdholder->q[k] != NULL) {
-            ans = ccn_indexbuf_member(fdholder->q[k]->send_queue, content->accession);
-            if (ans >= 0) {
-                if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
-                    ccnr_debug_ccnb(h, __LINE__, "content_otherq", fdholder,
-                                    content->key, content->size);
-                return(ans);
-            }
-        }
-    }
-    ans = ccn_indexbuf_set_insert(q->send_queue, content->accession); // XXXXXX
+    ans = ccn_indexbuf_set_insert(q->send_queue, content->accession); // XXXXXX - uses content->
     if (q->sender == NULL) {
         delay = randomize_content_delay(h, q);
         q->ready = q->send_queue->n;

@@ -77,27 +77,14 @@ ccn_append_link_stuff(struct ccnr_handle * h,
                       struct fdholder * fdholder,
                       struct ccn_charbuf * c);
 
-
 PUBLIC void
 r_link_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
 {
-    int n, a, b, size;
     if ((fdholder->flags & CCNR_FACE_NOSEND) != 0) {
         // XXX - should count this.
         return;
     }
-    size = content->size;
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
-        ccnr_debug_ccnb(h, __LINE__, "content_to", fdholder,
-                        content->key, size);
-    /* Excise the message-digest name component */
-    n = content->ncomps;
-    if (n < 2) abort();
-    a = content->comps[n - 2];
-    b = content->comps[n - 1];
-    if (b - a != 36)
-        abort(); /* strange digest length */
-    r_link_stuff_and_send(h, fdholder, content->key, a, content->key + b, size - b);
+    r_store_send_content(h, fdholder, content);
     ccnr_meter_bump(h, fdholder->meter[FM_DATO], 1);
     h->content_items_sent += 1;
 }

@@ -358,11 +358,11 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
         return(CCN_UPCALL_RESULT_ERR);
     }
     // XXX - here we need to check if this is something we *should* be storing, according to our policy
-    if ((content->flags & CCN_CONTENT_ENTRY_STABLE) == 0) {
+    if ((r_store_content_flags(content) & CCN_CONTENT_ENTRY_STABLE) == 0) {
         // Need to actually append to the active repo data file
         r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
-        content->flags |= CCN_CONTENT_ENTRY_STABLE;
+        r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
         ccnr_debug_ccnb(ccnr, __LINE__, "content_stored",
                         r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
                         content->key, content->size);
@@ -392,10 +392,10 @@ r_sync_local_store(struct ccnr_handle *ccnr,
     }
     // XXX - we assume we must store things from sync independent of policy
     // XXX - sync may want notification, or not, at least for now.
-    if ((content->flags & CCN_CONTENT_ENTRY_STABLE) == 0) {
+    if ((r_store_content_flags(content) & CCN_CONTENT_ENTRY_STABLE) == 0) {
         r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
-        content->flags |= CCN_CONTENT_ENTRY_STABLE;
+        r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
         ccnr_debug_ccnb(ccnr, __LINE__, "content_stored",
                         r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
                         content->key, content->size);
