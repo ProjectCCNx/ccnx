@@ -46,38 +46,78 @@
 #include "ccnr_util.h"
 
 #ifndef CCNLINT
+
 /* Preliminary implementation - algorithm may change */
-int
+
+PUBLIC uintmax_t
+ccnr_accession_encode(struct ccnr_handle *ccnr, ccnr_accession a)
+{
+    return(a);
+}
+
+PUBLIC ccnr_accession
+ccnr_accession_decode(struct ccnr_handle *ccnr, uintmax_t encoded)
+{
+    return(encoded);
+}
+
+PUBLIC int
+ccnr_accession_compare(struct ccnr_handle *ccnr, ccnr_accession x, ccnr_accession y)
+{
+    if (x > y) return 1;
+    if (x == y) return 0;
+    if (x < y) return -1;
+    return CCNR_NOT_COMPARABLE;
+}
+
+PUBLIC uintmax_t
+ccnr_hwm_encode(struct ccnr_handle *ccnr, ccnr_hwm hwm)
+{
+    return(hwm);
+}
+
+PUBLIC ccnr_hwm
+ccnr_hwm_decode(struct ccnr_handle *ccnr, uintmax_t encoded)
+{
+    return(encoded);
+}
+
+PUBLIC int
 ccnr_acc_in_hwm(struct ccnr_handle *ccnr, ccnr_accession a, ccnr_hwm hwm)
 {
     return(a <= hwm);
 }
 
-/* Produce a new high water mark that includes the given content */
-ccnr_hwm
+PUBLIC ccnr_hwm
 ccnr_hwm_update(struct ccnr_handle *ccnr, ccnr_hwm hwm, ccnr_accession a)
 {
     return(a <= hwm ? hwm : a);
 }
 
-/* Encode a high water mark as a number */
-uintmax_t
-ccnr_hwm_encode(struct ccnr_handle *ccnr, ccnr_hwm hwm)
+PUBLIC ccnr_hwm
+ccnr_hwm_merge(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y)
 {
-    return(hwm);
+    return(x < y ? y : x);
 }
-ccnr_hwm
-ccnr_hwm_decode(struct ccnr_handle *ccnr, uintmax_t encoded)
+
+PUBLIC int
+ccnr_hwm_compare(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y)
 {
-    return(encoded);
+    if (x > y) return 1;
+    if (x == y) return 0;
+    if (x < y) return -1;
+    return CCNR_NOT_COMPARABLE;
 }
 #endif CCNLINT
 
 PUBLIC void
-r_sync_notify_after(struct ccnr_handle *ccnr,
-                    ccnr_accession item)
+r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_hwm item)
 {
-    ccnr->notify_after = item;
+    /* XXX - if ccnr_hwm becomes multi-dimensional then this code has to become
+     * more sophisticated about restarting the enumeration; we will even need
+     
+     */
+    ccnr->notify_after = (ccnr_accession) item;
 }
 
 /**

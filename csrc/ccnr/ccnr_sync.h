@@ -38,7 +38,7 @@
  * r_sync_notify_after() will be cancelled.
  */
 void
-r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_accession item);
+r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_hwm item);
 
 /** Request that a SyncNotifyContent call is made for each content object
  *  matching the interest.
