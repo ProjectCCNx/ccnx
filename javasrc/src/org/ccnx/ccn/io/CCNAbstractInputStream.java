@@ -1209,7 +1209,6 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 				Log.info(Log.FAC_PIPELINE, "PIPELINE: in handleContent after reading {0} avgResponseTime {1}", result.name(), avgResponseTime);
 			is = new IncomingSegment(result, interest);
-			int index = 0;
 			
 			processingSegment = SegmentationProfile.getSegmentNumber(is.content.name());
 		}
@@ -2178,12 +2177,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 	static private class IncomingSegment {
 		public ContentObject content;
 		public Interest interest;
-		public long segmentNumber;
 
 		private IncomingSegment(ContentObject co, Interest i) {
 			content = co;
 			interest = i;
-			segmentNumber = SegmentationProfile.getSegmentNumber(co.name());
 		}
 	}
 
