@@ -173,10 +173,10 @@ r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
     struct nameprefix_entry *npe = NULL;
     int ci = 0;
     int cm = 0;
-    unsigned c0 = content->comps[0];
+    unsigned c0 = content->namecomps->buf[0];
     const unsigned char *key = content->key + c0;
-    for (ci = content->ncomps - 1; ci >= 0; ci--) {
-        int size = content->comps[ci] - c0;
+    for (ci = content->namecomps->n - 1; ci >= 0; ci--) {
+        int size = content->namecomps->buf[ci] - c0;
         npe = hashtb_lookup(h->nameprefix_tab, key, size);
         if (npe != NULL)
             break;

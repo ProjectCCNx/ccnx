@@ -344,8 +344,7 @@ struct content_entry;
 struct content_entry {
     ccnr_accession accession;   /**< permanent repository id */
     ccnr_cookie cookie;         /**< For in-memory references */
-    unsigned short *comps;      /**< Name Component byte boundary offsets */
-    int ncomps;                 /**< Number of name components plus one */
+    struct ccn_indexbuf *namecomps; /**< Name Component byte boundary offsets */
     int flags;                  /**< see below */
     const unsigned char *key;   /**< ccnb-encoded ContentObject */
     int key_size;               /**< Size of fragment prior to Content */

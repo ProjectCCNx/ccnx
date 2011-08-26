@@ -136,8 +136,8 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
     }
     else {
         struct ccn_charbuf *cb = r_util_charbuf_obtain(ccnr);
-        size_t start = content->comps[0];
-        size_t end = content->comps[content->ncomps - 1];
+        size_t start = content->namecomps->buf[0];
+        size_t end = content->namecomps->buf[content->namecomps->n - 1];
 
         acc = content->accession;
         /* This must get the full name, including digest. */

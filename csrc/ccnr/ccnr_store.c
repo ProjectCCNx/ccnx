@@ -258,8 +258,8 @@ content_skiplist_findbefore(struct ccnr_handle *h,
             content = r_store_content_from_cookie(h, c->buf[i]);
             if (content == NULL)
                 abort();
-            start = content->comps[0];
-            end = content->comps[content->ncomps - 1];
+            start = content->namecomps->buf[0];
+            end = content->namecomps->buf[content->namecomps->n - 1];
             order = ccn_compare_names(content->key + start - 1, end - start + 2,
                                       key, keysize);
             if (order > 0)
@@ -289,8 +289,8 @@ r_store_content_skiplist_insert(struct ccnr_handle *h, struct content_entry *con
         if ((nrand48(h->seed) & 3) != 0) break;
     while (h->skiplinks->n < d)
         ccn_indexbuf_append_element(h->skiplinks, 0);
-    start = content->comps[0];
-    end = content->comps[content->ncomps - 1];
+    start = content->namecomps->buf[0];
+    end = content->namecomps->buf[content->namecomps->n - 1];
     i = content_skiplist_findbefore(h,
                                     content->key + start - 1,
                                     end - start + 2, NULL, pred);
@@ -312,8 +312,8 @@ content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
     size_t end;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     if (content->skiplinks == NULL) abort();
-    start = content->comps[0];
-    end = content->comps[content->ncomps - 1];
+    start = content->namecomps->buf[0];
+    end = content->namecomps->buf[content->namecomps->n - 1];
     d = content_skiplist_findbefore(h,
                                     content->key + start - 1,
                                     end - start + 2, content, pred);
@@ -370,10 +370,7 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
         entry->accession = CCNR_NULL_ACCESSION;
     }
     /* Clean up allocated subfields */
-    if (entry->comps != NULL) {
-        free(entry->comps);
-        entry->comps = NULL;
-    }
+    ccn_indexbuf_destroy(&entry->namecomps);
     /* Tell the entry to free itself, if it wants to */
     if (entry->destroy)
         (entry->destroy)(h, entry);
@@ -474,12 +471,12 @@ r_store_content_matches_interest_prefix(struct ccnr_handle *h,
     if (prefix_comps < 0 || prefix_comps >= comps->n)
         abort();
     /* First verify the prefix match. */
-    if (content->ncomps < prefix_comps + 1)
+    if (content->namecomps->n < prefix_comps + 1)
             return(0);
     prefixlen = comps->buf[prefix_comps] - comps->buf[0];
-    if (content->comps[prefix_comps] - content->comps[0] != prefixlen)
+    if (content->namecomps->buf[prefix_comps] - content->namecomps->buf[0] != prefixlen)
         return(0);
-    if (0 != memcmp(content->key + content->comps[0],
+    if (0 != memcmp(content->key + content->namecomps->buf[0],
                     interest_msg + comps->buf[0],
                     prefixlen))
         return(0);
@@ -508,13 +505,13 @@ r_store_next_child_at_level(struct ccnr_handle *h,
     
     if (content == NULL)
         return(NULL);
-    if (content->ncomps <= level + 1)
+    if (content->namecomps->n <= level + 1)
         return(NULL);
     name = ccn_charbuf_create();
     ccn_name_init(name);
     res = ccn_name_append_components(name, content->key,
-                                     content->comps[0],
-                                     content->comps[level + 1]);
+                                     content->namecomps->buf[0],
+                                     content->namecomps->buf[level + 1]);
     if (res < 0) abort();
     res = ccn_name_next_sibling(name);
     if (res < 0) abort();
@@ -563,7 +560,7 @@ r_store_lookup(struct ccnr_handle *h,
                                          0, NULL, msg, size, pi)) {
                 if ((pi->orderpref & 1) == 0 && // XXX - should be symbolic
                     pi->prefix_comps != comps->n - 1 &&
-                    comps->n == content->ncomps &&
+                    comps->n == content->namecomps->n &&
                     r_store_content_matches_interest_prefix(h, content, msg,
                                                             comps, comps->n - 1)) {
                         if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
@@ -687,7 +684,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     unsigned char *tail = NULL;
     struct content_entry *content = NULL;
     int i;
-    struct ccn_indexbuf *comps = r_util_indexbuf_obtain(h);
+    struct ccn_indexbuf *comps = ccn_indexbuf_create();
     struct ccn_charbuf *cb = r_util_charbuf_obtain(h);
     
     msg = wire_msg;
@@ -770,15 +767,13 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         content->accession = ++(h->accession); // XXXXXX - here we should have the repository cobid
         r_store_enroll_content(h, content);
         if (content == r_store_content_from_cookie(h, content->cookie)) {
-            content->ncomps = comps->n;
-            content->comps = calloc(comps->n, sizeof(comps[0]));
+            content->namecomps = comps;
+            comps = NULL;
         }
         content->key_size = e->keysize;
         content->size = e->keysize + e->extsize;
         content->key = e->key;
-        if (content->comps != NULL) {
-            for (i = 0; i < comps->n; i++)
-                content->comps[i] = comps->buf[i];
+        if (content->namecomps != NULL) {
             r_store_content_skiplist_insert(h, content);
             r_store_set_content_timer(h, content, &obj);
         }
@@ -804,7 +799,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     hashtb_end(e);
 Bail:
-    r_util_indexbuf_release(h, comps);
+    ccn_indexbuf_destroy(&comps);
     r_util_charbuf_release(h, cb);
     cb = NULL;
     if (res >= 0 && content != NULL) {
@@ -864,10 +859,10 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
         ccnr_debug_ccnb(h, __LINE__, "content_to", fdholder,
                         content->key, size);
     /* Excise the message-digest name component */
-    n = content->ncomps;
+    n = content->namecomps->n;
     if (n < 2) abort();
-    a = content->comps[n - 2];
-    b = content->comps[n - 1];
+    a = content->namecomps->buf[n - 2];
+    b = content->namecomps->buf[n - 1];
     if (b - a != 36)
         abort(); /* strange digest length */
     r_link_stuff_and_send(h, fdholder, content->key, a, content->key + b, size - b);
