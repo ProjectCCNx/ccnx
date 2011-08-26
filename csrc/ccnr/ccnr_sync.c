@@ -178,7 +178,7 @@ cleanup_se(struct ccnr_handle *ccnr, struct sync_enumeration_state *md)
         if (CCNSHOULDLOG(ccnr, cleanup_se, CCNL_FINEST))
             ccnr_msg(ccnr, "sync_enum_cleanup %d", i);
         if (0 < i && i < CCNR_MAX_ENUM)
-            ccnr->active_enum[i] = 0;
+            ccnr->active_enum[i] = CCNR_NULL_ACCESSION;
         ccn_indexbuf_destroy(&md->comps);
         ccn_charbuf_destroy(&md->interest);
         free(md);
@@ -229,7 +229,7 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
                 return(0);
             }
         }
-        content = r_store_content_from_accession(ccnr, r_store_content_skiplist_next(ccnr, content));
+        content = r_store_content_from_cookie(ccnr, r_store_content_skiplist_next(ccnr, content));
         if (content != NULL &&
             !r_store_content_matches_interest_prefix(ccnr, content, interest->buf,
                                                      comps, pi->prefix_comps))
@@ -294,7 +294,7 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
     }
     /* 0 is for notify_after - don't allocate it here. */
     for (i = 1; i < CCNR_MAX_ENUM; i++) {
-        if (ccnr->active_enum[i] == 0) {
+        if (ccnr->active_enum[i] == CCNR_NULL_ACCESSION) {
             ans = i;
             ccnr->active_enum[ans] = CCNR_MAX_ACCESSION; /* for no-match case */
             break;
@@ -318,7 +318,7 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
     
     /* Set up the state for r_sync_enumerate_action */
     md = calloc(1, sizeof(*md));
-    if (md == NULL) { ccnr->active_enum[ans] = 0; ans = -1; goto Bail; }
+    if (md == NULL) { ccnr->active_enum[ans] = CCNR_NULL_ACCESSION; ans = -1; goto Bail; }
     md->magic = se_cookie;
     md->index = ans;
     md->interest = ccn_charbuf_create();

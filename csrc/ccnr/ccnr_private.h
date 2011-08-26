@@ -81,9 +81,9 @@ typedef struct ccnr_accession_rep {unsigned a; unsigned b;} ccnr_accession;
 struct ccnr_accession_rep ccnr_null_accession;
 struct ccnr_accession_rep ccnr_min_accession;
 struct ccnr_accession_rep ccnr_max_accession;
-#define CCNR_NULL_ACCESSION ccnr_null_accession;
-#define CCNR_MIN_ACCESSION ccnr_min_accession;
-#define CCNR_MAX_ACCESSION ccnr_max_accession;
+#define CCNR_NULL_ACCESSION ccnr_null_accession
+#define CCNR_MIN_ACCESSION ccnr_min_accession
+#define CCNR_MAX_ACCESSION ccnr_max_accession
 #else
 typedef unsigned ccnr_accession;
 #define CCNR_NULL_ACCESSION ((ccnr_accession)(0))
