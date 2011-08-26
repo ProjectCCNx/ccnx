@@ -166,9 +166,14 @@ public class CCNNetworkManager implements Runnable {
 		}
 
 		/**
-		 * Waiter for prefixes being deregistered. This is because we don't want to
-		 * wait for the prefix to be deregistered normally, but if we try to re-register
-		 * it we have to to avoid races.
+		 * Catch results of prefix deregistration. We can then unlock registration to allow
+		 * new registrations or deregistrations. Note that we wait for prefix registration to
+		 * complete during the setInterestFilter call but we don't wait for deregistration to
+		 * complete during CancelInterestFilter. This is because we need to insure that we see
+		 * interests for our prefix after a registration, but we don't need to worry about spurious
+		 * interests arriving after a deregistration because they can't be delivered anyway. However 
+		 * to insure registrations are done correctly, we must wait for a pending deregistration 
+		 * to complete before starting another registration or deregistration.
 		 */
 		public Interest handleContent(ContentObject data, Interest interest) {		
 			synchronized (_registeredPrefixes) {
