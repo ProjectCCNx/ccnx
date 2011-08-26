@@ -114,8 +114,7 @@ PUBLIC void
 r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_hwm item)
 {
     /* XXX - if ccnr_hwm becomes multi-dimensional then this code has to become
-     * more sophisticated about restarting the enumeration; we will even need
-     
+     * more sophisticated about restarting the enumeration
      */
     ccnr->notify_after = (ccnr_accession) item;
 }
@@ -132,7 +131,7 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
     if (content == NULL) {
         res = SyncNotifyContent(ccnr->sync_handle, e, 0, NULL);
         if (res != -1)
-            ccnr_msg(ccnr, "errrrrr - expected -1 result from SyncNotifyContent(..., %d, 0, NULL), but got %d",
+            ccnr_msg(ccnr, "SyncNotifyContent returned %d, expected -1",
                      e, res);
     }
     else {

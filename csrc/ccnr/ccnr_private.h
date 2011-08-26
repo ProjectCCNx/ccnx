@@ -65,7 +65,6 @@ struct ccnr_parsed_policy;
 #if (defined(CCNLINT) && (CCNLINT == 1))
 /* This is where we probably want to end up for declaring this type */
 typedef uint_least64_t ccnr_accession;
-#define CCNR_NULL_HWM ((ccnr_hwm)(0))
 #define CCNR_NULL_ACCESSION ((ccnr_accession)(0))
 #define CCNR_MIN_ACCESSION ((ccnr_accession)(1))
 #define CCNR_MAX_ACCESSION ((ccnr_accession)(~CCNR_NULL_ACCESSION))
@@ -87,7 +86,6 @@ struct ccnr_accession_rep ccnr_max_accession;
 #define CCNR_MAX_ACCESSION ccnr_max_accession;
 #else
 typedef unsigned ccnr_accession;
-#define CCNR_NULL_HWM ((ccnr_hwm)(0))
 #define CCNR_NULL_ACCESSION ((ccnr_accession)(0))
 #define CCNR_MIN_ACCESSION ((ccnr_accession)(1))
 #define CCNR_MAX_ACCESSION ((ccnr_accession)(~CCNR_NULL_ACCESSION))
@@ -99,7 +97,7 @@ typedef unsigned ccnr_accession;
 uintmax_t ccnr_accession_encode(struct ccnr_handle *, ccnr_accession);
 ccnr_accession ccnr_accession_decode(struct ccnr_handle *, uintmax_t);
 
-/* Return 1 if x dominates y, 0 if x equals y, -1 if y dominates x,
+/* Return 1 if x dominates (is newer than) y, 0 if x equals y, -1 if y dominates x,
  * and CCNR_NOT_COMPARABLE if the ordering is not determined
  */
 int ccnr_accession_compare(struct ccnr_handle *ccnr, ccnr_accession x, ccnr_accession y);
@@ -108,6 +106,7 @@ int ccnr_accession_compare(struct ccnr_handle *ccnr, ccnr_accession x, ccnr_acce
 
 /* XXX - ccnr_hwm should be a distinct type */
 typedef uintmax_t ccnr_hwm;
+#define CCNR_NULL_HWM ((ccnr_hwm)(0))
 
 /* Encode a high water mark as an unsigned number */
 uintmax_t ccnr_hwm_encode(struct ccnr_handle *, ccnr_hwm);
@@ -124,6 +123,7 @@ ccnr_hwm ccnr_hwm_merge(struct ccnr_handle *, ccnr_hwm, ccnr_hwm);
  * and CCNR_NOT_COMPARABLE if the ordering is not determined
  */
 int ccnr_hwm_compare(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y);
+
 
 typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 
