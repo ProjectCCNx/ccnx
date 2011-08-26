@@ -198,8 +198,7 @@ struct ccnr_handle {
     ccnr_cookie cookie_base;
     unsigned content_by_cookie_window;
     struct content_entry **content_by_cookie;
-    /** The following holds stragglers that would otherwise bloat the above */
-    struct hashtb *sparse_straggler_tab; /* keyed by accession */
+    struct hashtb *content_by_accession_tab; /* keyed by accession */
     ccnr_accession accession; /**< newest used accession */
     ccnr_cookie cookie;      /**< newest used cookie number */
     ccnr_cookie min_stale;      /**< smallest cookie of stale content */
@@ -364,10 +363,10 @@ struct content_entry {
 #define CCN_CONTENT_ENTRY_STABLE    8 /**< Has been written to repository */
 
 /**
- * The sparse_straggler hash table, keyed by accession, holds scattered
- * entries that would otherwise bloat the direct content_by_cookie table.
+ * The content_by_accession hash table, keyed by accession, holds
+ * entries that have a known accession.
  */
-struct sparse_straggler_entry {
+struct content_by_accession_entry {
     struct content_entry *content;
 };
 

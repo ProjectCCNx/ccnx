@@ -48,5 +48,5 @@ void r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, stru
 int r_store_content_flags(struct content_entry *content);
 int r_store_content_change_flags(struct content_entry *content, int set, int clear);
 int r_store_commit_content(struct ccnr_handle *h, struct content_entry *content);
-void r_store_forget_content(struct ccnr_handle *h, struct content_entry *entry);
+void r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry);
 #endif

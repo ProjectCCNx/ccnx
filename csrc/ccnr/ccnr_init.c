@@ -228,7 +228,7 @@ r_init_destroy(struct ccnr_handle **pccnr)
     hashtb_destroy(&h->content_tab);
     hashtb_destroy(&h->propagating_tab);
     hashtb_destroy(&h->nameprefix_tab);
-    hashtb_destroy(&h->sparse_straggler_tab);
+    hashtb_destroy(&h->content_by_accession_tab);
     hashtb_destroy(&h->enum_state_tab);
     
     SyncFreeBase(&h->sync_handle);

@@ -101,16 +101,16 @@ r_store_init(struct ccnr_handle *h)
     param.finalize = &r_store_finalize_content;
     h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     param.finalize = 0;
-    h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
+    h->content_by_accession_tab = hashtb_create(sizeof(struct content_by_accession_entry), NULL);
 }
 
 PUBLIC struct content_entry *
 r_store_content_from_accession(struct ccnr_handle *h, ccnr_accession accession)
 {
     struct content_entry *ans = NULL;
-    struct sparse_straggler_entry *entry;
+    struct content_by_accession_entry *entry;
     
-    entry = hashtb_lookup(h->sparse_straggler_tab,
+    entry = hashtb_lookup(h->content_by_accession_tab,
                           &accession, sizeof(accession));
     if (entry != NULL)
         ans = entry->content;
@@ -137,44 +137,30 @@ r_store_content_from_cookie(struct ccnr_handle *h, ccnr_cookie cookie)
 static void
 cleanout_stragglers(struct ccnr_handle *h)
 {
-    ccnr_accession accession;
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    struct sparse_straggler_entry *entry = NULL;
     struct content_entry **a = h->content_by_cookie;
-    ccnr_cookie cookie;
     unsigned n_direct;
     unsigned n_occupied;
     unsigned window;
     unsigned i;
+    
     if (h->cookie <= h->cookie_base || a[0] == NULL)
         return;
     n_direct = h->cookie - h->cookie_base;
     if (n_direct < 1000)
         return;
-    n_occupied = hashtb_n(h->content_tab) - hashtb_n(h->sparse_straggler_tab);
+    n_occupied = hashtb_n(h->content_by_accession_tab);
     if (n_occupied >= (n_direct / 8))
         return;
     /* The direct lookup table is too sparse, so toss the stragglers */
-    hashtb_start(h->sparse_straggler_tab, e);
     window = h->content_by_cookie_window;
     for (i = 0; i < window; i++) {
         if (a[i] != NULL) {
             if (n_occupied >= ((window - i) / 8))
                 break;
-            cookie = h->cookie_base + i;
-            accession = a[i]->accession;
-            hashtb_seek(e, &accession, sizeof(accession), 0);
-            // XXXXXX - FIXME - not right anymore - we want to remove the entry now!
-            entry = e->data;
-            if (entry != NULL && entry->content == NULL) {
-                entry->content = a[i];
-                a[i] = NULL;
-                n_occupied -= 1;
-            }
+            r_store_forget_content(h, &(a[i]));
+            n_occupied -= 1;
         }
     }
-    hashtb_end(e);
 }
 
 static int
@@ -208,7 +194,6 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
     unsigned i = 0;
     unsigned j = 0;
     unsigned window;
-    // XXXXXX - insert into accession hash table here, assuming we have the accession number
     
     window = h->content_by_cookie_window;
     if ((content->cookie - h->cookie_base) >= window &&
@@ -233,7 +218,22 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
         free(old_array);
     }
     h->content_by_cookie[content->cookie - h->cookie_base] = content;
+    
+    if (content->accession != CCNR_NULL_ACCESSION) {
+        struct hashtb_enumerator ee;
+        struct hashtb_enumerator *e = &ee;
+        ccnr_accession accession = content->accession;
+        struct content_by_accession_entry *entry = NULL;
+        hashtb_start(h->content_by_accession_tab, e);
+        hashtb_seek(e, &accession, sizeof(accession), 0);
+        entry = e->data;
+        if (entry != NULL)
+            entry->content = content;
+        hashtb_end(e);
+    }
 }
+
+
 
 static int
 content_skiplist_findbefore(struct ccnr_handle *h,
@@ -333,14 +333,18 @@ r_store_finalize_content(struct hashtb_enumerator *content_enumerator)
     struct content_entry *entry = content_enumerator->data;
     
     entry->destroy = NULL;
-    r_store_forget_content(h, entry);
+    r_store_forget_content(h, &entry);
 }
 
 PUBLIC void
-r_store_forget_content(struct ccnr_handle *h, struct content_entry *entry)
+r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
 {
     unsigned i;
+    struct content_entry *entry = *pentry;
     
+    if (entry == NULL)
+        return;
+    *pentry = NULL;
     /* Unlink from skiplist, if it is there */
     content_skiplist_remove(h, entry);
     /* Remove the cookie reference */
@@ -352,7 +356,7 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry *entry)
     if (entry->accession != CCNR_NULL_ACCESSION) {
         struct hashtb_enumerator ee;
         struct hashtb_enumerator *e = &ee;
-        hashtb_start(h->sparse_straggler_tab, e);
+        hashtb_start(h->content_by_accession_tab, e);
         if (hashtb_seek(e, &entry->accession, sizeof(entry->accession), 0) ==
             HT_NEW_ENTRY) {
             ccnr_msg(h, "orphaned content %llu",
@@ -373,6 +377,30 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry *entry)
     /* Tell the entry to free itself, if it wants to */
     if (entry->destroy)
         (entry->destroy)(h, entry);
+}
+
+// XXXXXX - consolidation needed here
+PUBLIC int
+r_store_remove_content(struct ccnr_handle *h, struct content_entry *content)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int res;
+    if (content == NULL)
+        return(-1);
+    hashtb_start(h->content_tab, e);
+    res = hashtb_seek(e, content->key,
+                      content->key_size, content->size - content->key_size);
+    if (res != HT_OLD_ENTRY)
+        abort();
+    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
+        h->n_stale--;
+    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+        ccnr_debug_ccnb(h, __LINE__, "remove", NULL,
+                        content->key, content->size);
+    hashtb_delete(e);
+    hashtb_end(e);
+    return(0);
 }
 
 
@@ -466,29 +494,6 @@ r_store_content_skiplist_next(struct ccnr_handle *h, struct content_entry *conte
     if (content->skiplinks == NULL || content->skiplinks->n < 1)
         return(0);
     return(content->skiplinks->buf[0]);
-}
-
-PUBLIC int
-r_store_remove_content(struct ccnr_handle *h, struct content_entry *content)
-{
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    int res;
-    if (content == NULL)
-        return(-1);
-    hashtb_start(h->content_tab, e);
-    res = hashtb_seek(e, content->key,
-                      content->key_size, content->size - content->key_size);
-    if (res != HT_OLD_ENTRY)
-        abort();
-    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
-        h->n_stale--;
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
-        ccnr_debug_ccnb(h, __LINE__, "remove", NULL,
-                        content->key, content->size);
-    hashtb_delete(e);
-    hashtb_end(e);
-    return(0);
 }
 
 PUBLIC struct content_entry *
