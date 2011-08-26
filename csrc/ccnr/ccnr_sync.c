@@ -126,9 +126,10 @@ PUBLIC int
 r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *content)
 {
     int res;
+    ccnr_accession acc = CCNR_NULL_ACCESSION;
     
     if (content == NULL) {
-        res = SyncNotifyContent(ccnr->sync_handle, e, 0, NULL);
+        res = SyncNotifyContent(ccnr->sync_handle, e, CCNR_NULL_ACCESSION, NULL);
         if (res != -1)
             ccnr_msg(ccnr, "SyncNotifyContent returned %d, expected -1",
                      e, res);
@@ -138,6 +139,7 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
         size_t start = content->comps[0];
         size_t end = content->comps[content->ncomps - 1];
 
+        acc = content->accession;
         /* This must get the full name, including digest. */
         ccn_name_init(cb);
         res = ccn_name_append_components(cb, content->key, start, end);
@@ -145,14 +147,14 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
         if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
             ccnr_debug_ccnb(ccnr, __LINE__, "r_sync_notify_content", NULL,
                             cb->buf, cb->length);
-        res = SyncNotifyContent(ccnr->sync_handle, e, content->accession, cb);
+        res = SyncNotifyContent(ccnr->sync_handle, e, acc, cb);
         r_util_charbuf_release(ccnr, cb);
     }
     if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
         ccnr_msg(ccnr, "SyncNotifyContent(..., %d, %ju, ...) returned %d",
-                 e, ccnr_accession_encode(ccnr, content->accession), res);
+                 e, ccnr_accession_encode(ccnr, acc), res);
     if (e == 0 && res == -1)
-        r_sync_notify_after(ccnr, CCNR_MAX_ACCESSION);
+        r_sync_notify_after(ccnr, CCNR_MAX_ACCESSION); // XXXXXX should be hwm
     return(res);
 }
 

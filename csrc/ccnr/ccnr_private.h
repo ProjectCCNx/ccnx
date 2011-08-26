@@ -145,7 +145,7 @@ typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
  * This is true if we should log at the given level.
  * 
  */
-#define CCNSHOULDLOG(h, who, level) (((h)->debug >= level) != 0)
+#define CCNSHOULDLOG(h, who, level) (((h)->debug >= (level)) != 0)
 
 /* XXX - these are the historical bitfields. */
 #define LM_2    2

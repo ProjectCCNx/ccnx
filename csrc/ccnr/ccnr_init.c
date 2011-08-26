@@ -130,8 +130,8 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     param.finalize = 0;
     h->enum_state_tab = hashtb_create(sizeof(struct enum_state), NULL); // XXX - do we need finalization? Perhaps
-    h->min_stale = CCNR_MAX_ACCESSION;
-    h->max_stale = CCNR_MIN_ACCESSION;
+    h->min_stale = ~0;
+    h->max_stale = 0;
     h->unsol = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
     h->ticktock.micros_per_base = 1000000;
