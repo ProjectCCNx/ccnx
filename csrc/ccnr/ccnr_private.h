@@ -124,7 +124,21 @@ ccnr_hwm ccnr_hwm_merge(struct ccnr_handle *, ccnr_hwm, ccnr_hwm);
  */
 int ccnr_hwm_compare(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y);
 
+/**
+ * A cookie is used as a more ephemeral way of holding a reference to a
+ * content object, without the danger of an undetected dangling reference
+ * when the in-memory content handle is destroyed.  This is for internal
+ * data structures such as queues or enumeration states, but should not
+ * be stored in any long-term way.  Use a ccnr_accession, content name, or
+ * digest for that.
+ *
+ * Holding a cookie does not prevent the in-memory content handle from being
+ * destroyed, either explicitly or to conserve resources.
+ */
+typedef unsigned ccnr_cookie;
 
+
+/** Logger type (ccnr_logger) */
 typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 
 /**
@@ -180,15 +194,16 @@ struct ccnr_handle {
     struct ccn_schedule *sched;     /**< our schedule */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
-    /** Next three fields are used for direct accession-to-content table */
-    ccnr_accession accession_base;
-    unsigned content_by_accession_window;
-    struct content_entry **content_by_accession;
+    /** Next three fields are used for direct cookie-to-content table */
+    ccnr_cookie cookie_base;
+    unsigned content_by_cookie_window;
+    struct content_entry **content_by_cookie;
     /** The following holds stragglers that would otherwise bloat the above */
     struct hashtb *sparse_straggler_tab; /* keyed by accession */
-    ccnr_accession accession;      /**< newest used accession number */
-    ccnr_accession min_stale;      /**< smallest accession of stale content */
-    ccnr_accession max_stale;      /**< largest accession of stale content */
+    ccnr_accession accession; /**< newest used accession */
+    ccnr_cookie cookie;      /**< newest used cookie number */
+    ccnr_cookie min_stale;      /**< smallest cookie of stale content */
+    ccnr_cookie max_stale;      /**< largest cookie of stale content */
     unsigned long n_stale;          /**< Number of stale content objects */
     struct ccn_indexbuf *unsol;     /**< unsolicited content */
     unsigned long oldformatcontent;
@@ -241,7 +256,7 @@ struct content_queue {
     unsigned rand_usec;              /**< randomization range */
     unsigned ready;                  /**< # that have waited enough */
     unsigned nrun;                   /**< # sent since last randomized delay */
-    struct ccn_indexbuf *send_queue; /**< accession numbers of pending content */
+    struct ccn_indexbuf *send_queue; /**< cookie numbers of pending content */
     struct ccn_scheduled_event *sender;
 };
 
@@ -328,7 +343,8 @@ struct fdholder {
 struct content_entry;
 
 struct content_entry {
-    ccnr_accession accession;  /**< assigned in arrival order */
+    ccnr_accession accession;   /**< permanent repository id */
+    ccnr_cookie cookie;         /**< For in-memory references */
     unsigned short *comps;      /**< Name Component byte boundary offsets */
     int ncomps;                 /**< Number of name components plus one */
     int flags;                  /**< see below */
@@ -336,6 +352,7 @@ struct content_entry {
     int key_size;               /**< Size of fragment prior to Content */
     int size;                   /**< Size of ContentObject */
     struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
+    void (*destroy)(struct ccnr_handle *, struct content_entry *); /**< free */
 };
 
 /**
@@ -348,7 +365,7 @@ struct content_entry {
 
 /**
  * The sparse_straggler hash table, keyed by accession, holds scattered
- * entries that would otherwise bloat the direct content_by_accession table.
+ * entries that would otherwise bloat the direct content_by_cookie table.
  */
 struct sparse_straggler_entry {
     struct content_entry *content;

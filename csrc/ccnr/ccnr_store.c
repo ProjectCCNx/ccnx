@@ -108,16 +108,27 @@ PUBLIC struct content_entry *
 r_store_content_from_accession(struct ccnr_handle *h, ccnr_accession accession)
 {
     struct content_entry *ans = NULL;
-    if (accession < h->accession_base) {
-        struct sparse_straggler_entry *entry;
-        entry = hashtb_lookup(h->sparse_straggler_tab,
-                              &accession, sizeof(accession));
-        if (entry != NULL)
-            ans = entry->content;
-    }
-    else if (accession < h->accession_base + h->content_by_accession_window) { // XXXXXX
-        ans = h->content_by_accession[accession - h->accession_base]; // XXXXXX
-        if (ans != NULL && ans->accession != accession)
+    struct sparse_straggler_entry *entry;
+    
+    entry = hashtb_lookup(h->sparse_straggler_tab,
+                          &accession, sizeof(accession));
+    if (entry != NULL)
+        ans = entry->content;
+    
+    // XXXXXX - Here we have to read the content object from the correct repoFile.
+    return(ans);
+}
+
+PUBLIC struct content_entry *
+r_store_content_from_cookie(struct ccnr_handle *h, ccnr_cookie cookie)
+{
+    struct content_entry *ans = NULL;
+    
+    if (cookie < h->cookie_base)
+        ans = NULL;
+    else if (cookie < h->cookie_base + h->content_by_cookie_window) {
+        ans = h->content_by_cookie[cookie - h->cookie_base];
+        if (ans != NULL && ans->cookie != cookie)
             ans = NULL;
     }
     return(ans);
@@ -130,28 +141,31 @@ cleanout_stragglers(struct ccnr_handle *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct sparse_straggler_entry *entry = NULL;
-    struct content_entry **a = h->content_by_accession;
+    struct content_entry **a = h->content_by_cookie;
+    ccnr_cookie cookie;
     unsigned n_direct;
     unsigned n_occupied;
     unsigned window;
     unsigned i;
-    if (h->accession <= h->accession_base || a[0] == NULL)
+    if (h->cookie <= h->cookie_base || a[0] == NULL)
         return;
-    n_direct = h->accession - h->accession_base;
+    n_direct = h->cookie - h->cookie_base;
     if (n_direct < 1000)
         return;
     n_occupied = hashtb_n(h->content_tab) - hashtb_n(h->sparse_straggler_tab);
     if (n_occupied >= (n_direct / 8))
         return;
-    /* The direct lookup table is too sparse, so sweep stragglers */
+    /* The direct lookup table is too sparse, so toss the stragglers */
     hashtb_start(h->sparse_straggler_tab, e);
-    window = h->content_by_accession_window;
+    window = h->content_by_cookie_window;
     for (i = 0; i < window; i++) {
         if (a[i] != NULL) {
             if (n_occupied >= ((window - i) / 8))
                 break;
-            accession = h->accession_base + i; // XXXXXX
+            cookie = h->cookie_base + i;
+            accession = a[i]->accession;
             hashtb_seek(e, &accession, sizeof(accession), 0);
+            // XXXXXX - FIXME - not right anymore - we want to remove the entry now!
             entry = e->data;
             if (entry != NULL && entry->content == NULL) {
                 entry->content = a[i];
@@ -168,8 +182,8 @@ cleanout_empties(struct ccnr_handle *h)
 {
     unsigned i = 0;
     unsigned j = 0;
-    struct content_entry **a = h->content_by_accession;
-    unsigned window = h->content_by_accession_window;
+    struct content_entry **a = h->content_by_cookie;
+    unsigned window = h->content_by_cookie_window;
     if (a == NULL)
         return(-1);
     cleanout_stragglers(h);
@@ -177,7 +191,7 @@ cleanout_empties(struct ccnr_handle *h)
         i++;
     if (i == 0)
         return(-1);
-    h->accession_base += i; // XXXXXX
+    h->cookie_base += i;
     while (i < window)
         a[j++] = a[i++];
     while (j < window)
@@ -193,29 +207,32 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
     struct content_entry **old_array;
     unsigned i = 0;
     unsigned j = 0;
-    unsigned window = h->content_by_accession_window;
-    if ((content->accession - h->accession_base) >= window && // XXXXXX
+    unsigned window;
+    // XXXXXX - insert into accession hash table here, assuming we have the accession number
+    
+    window = h->content_by_cookie_window;
+    if ((content->cookie - h->cookie_base) >= window &&
         cleanout_empties(h) < 0) {
-        if (content->accession < h->accession_base)
+        if (content->cookie < h->cookie_base)
             return;
-        window = h->content_by_accession_window;
-        old_array = h->content_by_accession;
+        window = h->content_by_cookie_window;
+        old_array = h->content_by_cookie;
         new_window = ((window + 20) * 3 / 2);
         if (new_window < window)
             return;
         new_array = calloc(new_window, sizeof(new_array[0]));
         if (new_array == NULL)
             return;
-        while (i < h->content_by_accession_window && old_array[i] == NULL)
+        while (i < h->content_by_cookie_window && old_array[i] == NULL)
             i++;
-        h->accession_base += i; // XXXXXX
-        h->content_by_accession = new_array;
-        while (i < h->content_by_accession_window)
+        h->cookie_base += i;
+        h->content_by_cookie = new_array;
+        while (i < h->content_by_cookie_window)
             new_array[j++] = old_array[i++];
-        h->content_by_accession_window = new_window;
+        h->content_by_cookie_window = new_window;
         free(old_array);
     }
-    h->content_by_accession[content->accession - h->accession_base] = content; // XXXXXX
+    h->content_by_cookie[content->cookie - h->cookie_base] = content;
 }
 
 static int
@@ -238,7 +255,7 @@ content_skiplist_findbefore(struct ccnr_handle *h,
         for (;;) {
             if (c->buf[i] == 0)
                 break;
-            content = r_store_content_from_accession(h, c->buf[i]); // XXXXXX
+            content = r_store_content_from_cookie(h, c->buf[i]);
             if (content == NULL)
                 abort();
             start = content->comps[0];
@@ -282,7 +299,7 @@ r_store_content_skiplist_insert(struct ccnr_handle *h, struct content_entry *con
     content->skiplinks = ccn_indexbuf_create();
     for (i = 0; i < d; i++) {
         ccn_indexbuf_append_element(content->skiplinks, pred[i]->buf[i]);
-        pred[i]->buf[i] = content->accession; // XXXXXX
+        pred[i]->buf[i] = content->cookie;
     }
 }
 
@@ -314,32 +331,48 @@ r_store_finalize_content(struct hashtb_enumerator *content_enumerator)
 {
     struct ccnr_handle *h = hashtb_get_param(content_enumerator->ht, NULL);
     struct content_entry *entry = content_enumerator->data;
-    unsigned i = entry->accession - h->accession_base; // XXXXXX
-    if (i < h->content_by_accession_window &&
-          h->content_by_accession[i] == entry) {
-        content_skiplist_remove(h, entry);
-        h->content_by_accession[i] = NULL;
-    }
-    else {
+    
+    entry->destroy = NULL;
+    r_store_forget_content(h, entry);
+}
+
+PUBLIC void
+r_store_forget_content(struct ccnr_handle *h, struct content_entry *entry)
+{
+    unsigned i;
+    
+    /* Unlink from skiplist, if it is there */
+    content_skiplist_remove(h, entry);
+    /* Remove the cookie reference */
+    i = entry->cookie - h->cookie_base;
+    if (i < h->content_by_cookie_window && h->content_by_cookie[i] == entry)
+        h->content_by_cookie[i] = NULL;
+    entry->cookie = 0;
+    /* Remove the accession reference */
+    if (entry->accession != CCNR_NULL_ACCESSION) {
         struct hashtb_enumerator ee;
         struct hashtb_enumerator *e = &ee;
         hashtb_start(h->sparse_straggler_tab, e);
         if (hashtb_seek(e, &entry->accession, sizeof(entry->accession), 0) ==
-              HT_NEW_ENTRY) {
+            HT_NEW_ENTRY) {
             ccnr_msg(h, "orphaned content %llu",
                      (unsigned long long)(entry->accession));
             hashtb_delete(e);
             hashtb_end(e);
             return;
         }
-        content_skiplist_remove(h, entry);
         hashtb_delete(e);
         hashtb_end(e);
+        entry->accession = CCNR_NULL_ACCESSION;
     }
+    /* Clean up allocated subfields */
     if (entry->comps != NULL) {
         free(entry->comps);
         entry->comps = NULL;
     }
+    /* Tell the entry to free itself, if it wants to */
+    if (entry->destroy)
+        (entry->destroy)(h, entry);
 }
 
 
@@ -399,7 +432,7 @@ r_store_find_first_match_candidate(struct ccnr_handle *h,
     }
     if (res == 0)
         return(NULL);
-    return(r_store_content_from_accession(h, pred[0]->buf[0])); // XXXXXX
+    return(r_store_content_from_cookie(h, pred[0]->buf[0]));
 }
 
 PUBLIC int
@@ -425,14 +458,14 @@ r_store_content_matches_interest_prefix(struct ccnr_handle *h,
     return(1);
 }
 
-PUBLIC ccnr_accession
+PUBLIC ccnr_cookie
 r_store_content_skiplist_next(struct ccnr_handle *h, struct content_entry *content)
 {
     if (content == NULL)
         return(0);
     if (content->skiplinks == NULL || content->skiplinks->n < 1)
         return(0);
-    return(content->skiplinks->buf[0]); // XXXXXX
+    return(content->skiplinks->buf[0]);
 }
 
 PUBLIC int
@@ -485,10 +518,10 @@ r_store_next_child_at_level(struct ccnr_handle *h,
                         name->buf, name->length);
     d = content_skiplist_findbefore(h, name->buf, name->length,
                                     NULL, pred);
-    next = r_store_content_from_accession(h, pred[0]->buf[0]); // XXXXXX
+    next = r_store_content_from_cookie(h, pred[0]->buf[0]);
     if (next == content) {
         // XXX - I think this case should not occur, but just in case, avoid a loop.
-        next = r_store_content_from_accession(h, r_store_content_skiplist_next(h, content));
+        next = r_store_content_from_cookie(h, r_store_content_skiplist_next(h, content));
         ccnr_debug_ccnb(h, __LINE__, "bump", NULL, next->key, next->size);
     }
     ccn_charbuf_destroy(&name);
@@ -545,7 +578,7 @@ r_store_lookup(struct ccnr_handle *h,
                 goto check_next_prefix;
             }
     move_along:
-        content = r_store_content_from_accession(h, r_store_content_skiplist_next(h, content));
+        content = r_store_content_from_cookie(h, r_store_content_skiplist_next(h, content));
     check_next_prefix:
         if (content != NULL &&
             !r_store_content_matches_interest_prefix(h, content, msg,
@@ -568,7 +601,7 @@ r_store_lookup(struct ccnr_handle *h,
 PUBLIC void
 r_store_mark_stale(struct ccnr_handle *h, struct content_entry *content)
 {
-    ccnr_accession accession = content->accession;
+    ccnr_cookie cookie = content->cookie;
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         return;
     if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
@@ -576,15 +609,15 @@ r_store_mark_stale(struct ccnr_handle *h, struct content_entry *content)
                             content->key, content->size);
     content->flags |= CCN_CONTENT_ENTRY_STALE;
     h->n_stale++;
-    if (accession < h->min_stale)
-        h->min_stale = accession;
-    if (accession > h->max_stale)
-        h->max_stale = accession;
+    if (cookie < h->min_stale)
+        h->min_stale = cookie;
+    if (cookie > h->max_stale)
+        h->max_stale = cookie;
 }
 
 /**
  * Scheduled event that makes content stale when its FreshnessSeconds
- * has exported.
+ * has expired.
  */
 static int
 expire_content(struct ccn_schedule *sched,
@@ -593,11 +626,11 @@ expire_content(struct ccn_schedule *sched,
                int flags)
 {
     struct ccnr_handle *h = clienth;
-    ccnr_accession accession = ev->evint; // XXXXXX
+    ccnr_cookie cookie = ev->evint;
     struct content_entry *content = NULL;
     if ((flags & CCN_SCHEDULE_CANCEL) != 0)
         return(0);
-    content = r_store_content_from_accession(h, accession);
+    content = r_store_content_from_cookie(h, cookie);
     if (content != NULL)
         r_store_mark_stale(h, content);
     return(0);
@@ -630,7 +663,7 @@ r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
     }
     microseconds = seconds * 1000000;
     ccn_schedule_event(h->sched, microseconds,
-                       &expire_content, NULL, content->accession); // XXXXXX
+                       &expire_content, NULL, content->cookie);
 }
 
 
@@ -728,9 +761,10 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         }
     }
     else if (res == HT_NEW_ENTRY) {
-        content->accession = ++(h->accession); // XXXXXX
+        content->cookie = ++(h->cookie);
+        content->accession = ++(h->accession); // XXXXXX - here we should have the repository cobid
         r_store_enroll_content(h, content);
-        if (content == r_store_content_from_accession(h, content->accession)) {
+        if (content == r_store_content_from_cookie(h, content->cookie)) {
             content->ncomps = comps->n;
             content->comps = calloc(comps->n, sizeof(comps[0]));
         }
@@ -744,8 +778,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
             r_store_set_content_timer(h, content, &obj);
         }
         else {
-            ccnr_msg(h, "could not enroll ContentObject (accession %llu)",
-                (unsigned long long)content->accession);
+            ccnr_msg(h, "could not enroll ContentObject (accession %ju)",
+                ccnr_accession_encode(h, content->accession));
             hashtb_delete(e);
             res = -__LINE__;
             content = NULL;
@@ -755,7 +789,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
                 content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
             if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
                 content->flags |= CCN_CONTENT_ENTRY_STABLE;
-                if (content->accession >= h->notify_after)
+                if (content->accession >= h->notify_after) // XXXXXX
                     r_sync_notify_content(h, 0, content);
             }
             else {
@@ -780,13 +814,13 @@ Bail:
             }
             if (n_matches == 0 && (fdholder->flags & CCNR_FACE_GG) == 0) {
                 content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
-                ccn_indexbuf_append_element(h->unsol, content->accession); // XXXXXX
+                ccn_indexbuf_append_element(h->unsol, content->cookie); // XXXXXX
             }
         }
         for (c = 0; c < CCN_CQ_N; c++) {
             q = fdholder->q[c];
             if (q != NULL) {
-                i = ccn_indexbuf_member(q->send_queue, content->accession); // XXXXXX
+                i = ccn_indexbuf_member(q->send_queue, content->cookie);
                 if (i >= 0) {
                     /*
                      * In the case this consumed any interests from this source,
@@ -848,7 +882,7 @@ r_store_commit_content(struct ccnr_handle *h, struct content_entry *content)
         ccnr_debug_ccnb(h, __LINE__, "content_stored",
                         r_io_fdholder_from_fd(h, h->active_out_fd),
                         content->key, content->size);
-        if (content->accession >= h->notify_after)
+        if (content->accession >= h->notify_after) // XXXXXX 
             res = r_sync_notify_content(h, 0, content);
     }
     return(0);

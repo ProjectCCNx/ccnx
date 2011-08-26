@@ -147,7 +147,7 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                 enum cq_delay_class c;
                 for (c = 0, k = -1; c < CCN_CQ_N && k == -1; c++)
                     if (fdholder->q[c] != NULL)
-                        k = ccn_indexbuf_member(fdholder->q[c]->send_queue, content->accession); // XXXXXX - uses content->
+                        k = ccn_indexbuf_member(fdholder->q[c]->send_queue, content->cookie);
                 if (k == -1) {
                     k = r_sendq_face_send_queue_insert(h, fdholder, content);
                     if (k >= 0) {

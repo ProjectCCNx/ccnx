@@ -37,7 +37,7 @@ struct ccnr_expect_content {
     struct ccnr_handle *ccnr;
     int tries; /** counter so we can give up eventually */
     int done;
-    ccnr_accession keyfetch;
+    ccnr_accession keyfetch; // XXXXXX - should perhaps be a cookie
     intmax_t outstanding[CCNR_PIPELINE];
     intmax_t final;
     ccn_handler expect_complete;

@@ -108,7 +108,7 @@ r_match_consume_matching_interests(struct ccnr_handle *h,
     struct fdholder *f;
     
     head = &npe->pe_head;
-    // XXXXXX - i do not think this is called in practice
+    // XXX - i do not think this is called in practice
     content_msg = content->key;
     content_size = content->size;
     f = fdholder;
@@ -173,7 +173,6 @@ r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
     struct nameprefix_entry *npe = NULL;
     int ci = 0;
     int cm = 0;
-#if 1 // XXXXXX - uses content->
     unsigned c0 = content->comps[0];
     const unsigned char *key = content->key + c0;
     for (ci = content->ncomps - 1; ci >= 0; ci--) {
@@ -182,7 +181,6 @@ r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
         if (npe != NULL)
             break;
     }
-#endif
     for (; npe != NULL; npe = npe->parent, ci--) {
         if (npe->fgen != h->forward_to_gen)
             r_fwd_update_forward_to(h, npe);

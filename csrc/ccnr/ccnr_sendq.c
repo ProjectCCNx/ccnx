@@ -175,7 +175,7 @@ content_sender(struct ccn_schedule *sched,
     if (burst_max == 0)
         q->nrun = 0;
     for (i = 0; i < burst_max && nsec < 1000000; i++) {
-        content = r_store_content_from_accession(h, q->send_queue->buf[i]); // XXXXXX
+        content = r_store_content_from_cookie(h, q->send_queue->buf[i]);
         if (content == NULL)
             q->nrun = 0;
         else {
@@ -207,7 +207,7 @@ content_sender(struct ccn_schedule *sched,
     }
     /* Determine when to run again */
     for (i = 0; i < q->send_queue->n; i++) {
-        content = r_store_content_from_accession(h, q->send_queue->buf[i]); // XXXXXX
+        content = r_store_content_from_cookie(h, q->send_queue->buf[i]);
         if (content != NULL) {
             q->nrun = 0;
             delay = randomize_content_delay(h, q);
@@ -239,7 +239,7 @@ r_sendq_face_send_queue_insert(struct ccnr_handle *h,
     q = fdholder->q[c];
     if (q == NULL)
         return(-1);
-    ans = ccn_indexbuf_set_insert(q->send_queue, content->accession); // XXXXXX - uses content->
+    ans = ccn_indexbuf_set_insert(q->send_queue, content->cookie);
     if (q->sender == NULL) {
         delay = randomize_content_delay(h, q);
         q->ready = q->send_queue->n;
