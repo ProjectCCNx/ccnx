@@ -37,7 +37,7 @@ struct ccnr_expect_content {
     struct ccnr_handle *ccnr;
     int tries; /** counter so we can give up eventually */
     int done;
-    ccnr_accession keyfetch; // XXXXXX - should perhaps be a cookie
+    ccnr_cookie keyfetch;
     intmax_t outstanding[CCNR_PIPELINE];
     intmax_t final;
     ccn_handler expect_complete;
@@ -69,5 +69,5 @@ int r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
                                const unsigned char *msg,
                                struct ccn_parsed_ContentObject *pco,
                                int use_link,
-                               ccnr_accession a);
+                               ccnr_cookie a);
 #endif

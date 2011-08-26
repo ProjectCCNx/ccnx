@@ -798,7 +798,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
                     r_sync_notify_content(h, 0, content);
             }
             else {
-                r_proto_initiate_key_fetch(h, msg, &obj, 0, content->accession);
+                r_proto_initiate_key_fetch(h, msg, &obj, 0, content->cookie);
             }
         }
     }

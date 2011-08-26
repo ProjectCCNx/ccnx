@@ -454,12 +454,12 @@ r_proto_expect_content(struct ccn_closure *selfp,
             r_proto_initiate_key_fetch(ccnr, ccnb, info->pco, 1, md->keyfetch);
         }
         else if (info->pco->type == CCN_CONTENT_KEY) {
-            ccnr_msg(ccnr, "key_arrived %lu", (unsigned long)(md->keyfetch));
+            ccnr_msg(ccnr, "key_arrived %u", (unsigned)(md->keyfetch));
             // XXX - should check that we got the right key.
         }
         else {
             // not a key or a link.  Log it so we have a clue.
-            ccnr_msg(ccnr, "ERROR - got something else when trying to fetch key for item %lu", (unsigned long)(md->keyfetch));
+            ccnr_msg(ccnr, "ERROR - got something else when trying to fetch key for item %u", (unsigned)(md->keyfetch));
         }
 
     }
@@ -1053,7 +1053,7 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
                            const unsigned char *msg,
                            struct ccn_parsed_ContentObject *pco,
                            int use_link,
-                           ccnr_accession a)
+                           ccnr_cookie a)
 {
     /* 
      * Create a new interest in the key name, set up a callback that will
