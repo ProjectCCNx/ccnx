@@ -225,7 +225,7 @@ r_init_destroy(struct ccnr_handle **pccnr)
     ccnr_internal_client_stop(h);
     ccnr_direct_client_stop(h);
     ccn_schedule_destroy(&h->sched);
-    hashtb_destroy(&h->content_tab);
+    //hashtb_destroy(&h->content_tab);
     hashtb_destroy(&h->propagating_tab);
     hashtb_destroy(&h->nameprefix_tab);
     hashtb_destroy(&h->content_by_accession_tab);

@@ -98,8 +98,6 @@ r_store_init(struct ccnr_handle *h)
 {
     struct hashtb_param param = {0};
     param.finalize_data = h;
-    param.finalize = &r_store_finalize_content;
-    h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     param.finalize = 0;
     h->content_by_accession_tab = hashtb_create(sizeof(struct content_by_accession_entry), NULL);
 }
@@ -325,17 +323,6 @@ content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
     ccn_indexbuf_destroy(&content->skiplinks);
 }
 
-
-PUBLIC void
-r_store_finalize_content(struct hashtb_enumerator *content_enumerator)
-{
-    struct ccnr_handle *h = hashtb_get_param(content_enumerator->ht, NULL);
-    struct content_entry *entry = content_enumerator->data;
-    
-    entry->destroy = NULL;
-    r_store_forget_content(h, &entry);
-}
-
 PUBLIC void
 r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
 {
@@ -371,6 +358,7 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
     }
     /* Clean up allocated subfields */
     ccn_indexbuf_destroy(&entry->namecomps);
+    ccn_charbuf_destroy(&entry->cob);
     /* Tell the entry to free itself, if it wants to */
     if (entry->destroy)
         (entry->destroy)(h, entry);
@@ -380,6 +368,7 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
 PUBLIC int
 r_store_remove_content(struct ccnr_handle *h, struct content_entry *content)
 {
+#if 0
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int res;
@@ -397,6 +386,7 @@ r_store_remove_content(struct ccnr_handle *h, struct content_entry *content)
                         content->key, content->size);
     hashtb_delete(e);
     hashtb_end(e);
+#endif
     return(0);
 }
 
@@ -675,17 +665,13 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
 {
     unsigned char *msg;
     size_t size;
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
     struct ccn_parsed_ContentObject obj = {0};
     int res;
     size_t keysize = 0;
-    size_t tailsize = 0;
-    unsigned char *tail = NULL;
     struct content_entry *content = NULL;
     int i;
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
-    struct ccn_charbuf *cb = r_util_charbuf_obtain(h);
+    struct ccn_charbuf *cb = ccn_charbuf_create();
     
     msg = wire_msg;
     size = wire_size;
@@ -722,86 +708,38 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     res = ccn_parse_ContentObject(msg, size, &obj, comps);
     if (res < 0) abort(); /* must have just messed up */
     
-    if (obj.magic != 20090415) {
-        if (++(h->oldformatcontent) == h->oldformatcontentgrumble) {
-            h->oldformatcontentgrumble *= 10;
-            ccnr_msg(h, "downrev content items received: %d (%d)",
-                     h->oldformatcontent,
-                     obj.magic);
-        }
-    }
     if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
         ccnr_debug_ccnb(h, __LINE__, "content_from", fdholder, msg, size);
     keysize = obj.offset[CCN_PCO_B_Content];
-    tail = msg + keysize;
-    tailsize = size - keysize;
-    hashtb_start(h->content_tab, e);
-    res = hashtb_seek(e, msg, keysize, tailsize);
-    content = e->data;
-    if (res == HT_OLD_ENTRY) {
-        if (tailsize != e->extsize ||
-              0 != memcmp(tail, ((unsigned char *)e->key) + keysize, tailsize)) {
-            ccnr_msg(h, "ContentObject name collision!!!!!");
-            ccnr_debug_ccnb(h, __LINE__, "new", fdholder, msg, size);
-            ccnr_debug_ccnb(h, __LINE__, "old", NULL, e->key, e->keysize + e->extsize);
-            content = NULL;
-            hashtb_delete(e); /* XXX - Mercilessly throw away both of them. */
-            res = -__LINE__;
-        }
-        else if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0) {
-            /* When old content arrives after it has gone stale, freshen it */
-            // XXX - ought to do mischief checks before this
-            content->flags &= ~CCN_CONTENT_ENTRY_STALE;
-            h->n_stale--;
-            r_store_set_content_timer(h, content, &obj);
-            // XXX - no counter for this case
-        }
-        else {
-            h->content_dups_recvd++;
-            if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
-                ccnr_debug_ccnb(h, __LINE__, "dup", fdholder, msg, size);
-        }
-    }
-    else if (res == HT_NEW_ENTRY) {
+    content = calloc(1, sizeof(*content));
+    if (content != NULL) {
         content->cookie = ++(h->cookie);
         content->accession = ++(h->accession); // XXXXXX - here we should have the repository cobid
         r_store_enroll_content(h, content);
-        if (content == r_store_content_from_cookie(h, content->cookie)) {
-            content->namecomps = comps;
-            comps = NULL;
-        }
-        content->key_size = e->keysize;
-        content->size = e->keysize + e->extsize;
-        content->key = e->key;
-        if (content->namecomps != NULL) {
-            r_store_content_skiplist_insert(h, content);
-            r_store_set_content_timer(h, content, &obj);
+        content->namecomps = comps;
+        comps = NULL;
+        content->key_size = keysize;
+        content->size = size;
+        content->key = cb->buf;
+        content->cob = cb;
+        cb = NULL;
+        r_store_content_skiplist_insert(h, content);
+        // what if we get a dup
+        r_store_set_content_timer(h, content, &obj);
+        if (obj.type == CCN_CONTENT_KEY)
+            content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
+        if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
+            content->flags |= CCN_CONTENT_ENTRY_STABLE;
+            if (content->accession >= h->notify_after) // XXXXXX
+                r_sync_notify_content(h, 0, content);
         }
         else {
-            ccnr_msg(h, "could not enroll ContentObject (accession %ju)",
-                ccnr_accession_encode(h, content->accession));
-            hashtb_delete(e);
-            res = -__LINE__;
-            content = NULL;
-        }
-        if (content != NULL) {
-            if (obj.type == CCN_CONTENT_KEY)
-                content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
-            if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
-                content->flags |= CCN_CONTENT_ENTRY_STABLE;
-                if (content->accession >= h->notify_after) // XXXXXX
-                    r_sync_notify_content(h, 0, content);
-            }
-            else {
-                r_proto_initiate_key_fetch(h, msg, &obj, 0, content->cookie);
-            }
+            r_proto_initiate_key_fetch(h, msg, &obj, 0, content->cookie);
         }
     }
-    hashtb_end(e);
 Bail:
     ccn_indexbuf_destroy(&comps);
-    r_util_charbuf_release(h, cb);
-    cb = NULL;
+    ccn_charbuf_destroy(&cb);
     if (res >= 0 && content != NULL) {
         int n_matches;
         enum cq_delay_class c;

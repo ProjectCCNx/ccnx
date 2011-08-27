@@ -408,7 +408,7 @@ collect_stats_html(struct ccnr_handle *h)
         h->sec,
         h->usec,
         (unsigned long long)h->accession, // XXXXXX - 
-        hashtb_n(h->content_tab),
+        hashtb_n(h->content_by_accession_tab),
         h->n_stale,
         hashtb_n(h->content_by_accession_tab),
         h->content_dups_recvd,
@@ -579,7 +579,7 @@ collect_stats_xml(struct ccnr_handle *h)
         "<stuffed>%lu</stuffed>"
         "</interests>",
         (unsigned long long)h->accession, // XXXXXX -
-        hashtb_n(h->content_tab),
+        hashtb_n(h->content_by_accession_tab),
         h->n_stale,
         hashtb_n(h->content_by_accession_tab),
         h->content_dups_recvd,

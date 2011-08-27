@@ -167,7 +167,6 @@ typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 struct ccnr_handle {
     unsigned char ccnr_id[32];      /**< sha256 digest of our public key */
     struct ccn_charbuf *ccnr_keyid; /**< public key digest in keyid format %C1.M.K.%00... */
-    struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *propagating_tab; /**< keyed by nonce */
     //XXX probably need an event for cleaning up the enum_state_tab
@@ -350,6 +349,7 @@ struct content_entry {
     int key_size;               /**< Size of fragment prior to Content */
     int size;                   /**< Size of ContentObject */
     struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
+    struct ccn_charbuf *cob;
     void (*destroy)(struct ccnr_handle *, struct content_entry *); /**< free */
 };
 
