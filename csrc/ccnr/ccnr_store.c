@@ -732,7 +732,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     content = calloc(1, sizeof(*content));
     if (content != NULL) {
         content->cookie = ++(h->cookie);
-        content->accession = ++(h->accession); // XXXXXX - here we should have the repository cobid
+        h->accession += 1000000000; // XXXXXX - here we should have the repository cobid
+        content->accession = h->accession;
         r_store_enroll_content(h, content);
         content->namecomps = comps;
         comps = NULL;

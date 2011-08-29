@@ -85,7 +85,7 @@ struct ccnr_accession_rep ccnr_max_accession;
 #define CCNR_MIN_ACCESSION ccnr_min_accession
 #define CCNR_MAX_ACCESSION ccnr_max_accession
 #else
-typedef unsigned ccnr_accession;
+typedef uint_least64_t ccnr_accession;
 #define CCNR_NULL_ACCESSION ((ccnr_accession)(0))
 #define CCNR_MIN_ACCESSION ((ccnr_accession)(1))
 #define CCNR_MAX_ACCESSION ((ccnr_accession)(~CCNR_NULL_ACCESSION))
