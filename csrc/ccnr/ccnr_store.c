@@ -262,10 +262,9 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
         if (entry != NULL)
             entry->content = content;
         hashtb_end(e);
+        content->flags |= CCN_CONTENT_ENTRY_STABLE;
     }
 }
-
-
 
 static int
 content_skiplist_findbefore(struct ccnr_handle *h,
