@@ -79,7 +79,7 @@ r_store_content_base(struct ccnr_handle *h, struct content_entry *content)
 {
     if (content->cob != NULL && content->cob->length == content->size)
         return(content->cob->buf);
-    ccnr_msg(h, "Urp.%d - r_store_content_base returning NULL (%jx, %u)", __LINE__,
+    ccnr_msg(h, "Urp.%d - r_store_content_base returning NULL (0x%jx, %u)", __LINE__,
         ccnr_accession_encode(h, content->accession),
         (unsigned)content->cookie);
     return(NULL);

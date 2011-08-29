@@ -152,7 +152,7 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
         r_util_charbuf_release(ccnr, cb);
     }
     if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
-        ccnr_msg(ccnr, "SyncNotifyContent(..., %d, %jx, ...) returned %d",
+        ccnr_msg(ccnr, "SyncNotifyContent(..., %d, 0x%jx, ...) returned %d",
                  e, ccnr_accession_encode(ccnr, acc), res);
     if (e == 0 && res == -1)
         r_sync_notify_after(ccnr, CCNR_MAX_ACCESSION); // XXXXXX should be hwm
@@ -314,7 +314,7 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
                content, interest->buf, comps, comps->n - 1)) {
             ccnr->active_enum[ans] = content->accession;
             if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINEST))
-                ccnr_msg(ccnr, "sync_enum id=%d starting accession=%ju",
+                ccnr_msg(ccnr, "sync_enum id=%d starting accession=0x%jx",
                          ans, ccnr_accession_encode(ccnr, content->accession));
         }
     }
