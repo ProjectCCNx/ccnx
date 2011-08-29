@@ -268,6 +268,25 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int ndx,
     return(1);
 }
 
+int
+ccn_flatname_charbuf_compare(struct ccn_charbuf *a, struct ccn_charbuf *b)
+{
+    size_t al, bl, sz;
+    int res;
+    
+    al = a->length;
+    bl = b->length;
+    sz = al < bl ? al : bl;
+    res = memcmp(a->buf, b->buf, sz);
+    if (res != 0)
+        return(res);
+    if (al < bl)
+        return(-9999);
+    else
+        return(9999);
+}
+
+
 /**
  *  Append one component to a flatname
  *

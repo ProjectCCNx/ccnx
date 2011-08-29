@@ -220,7 +220,7 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
         content_msg = r_store_content_base(ccnr, content);
         if (ccn_content_matches_interest(content_msg,
                                          content->size,
-                                         0, NULL, interest->buf, interest->length, pi)) {
+                                         1, NULL, interest->buf, interest->length, pi)) {
             res = r_sync_notify_content(ccnr, md->index, content);
             matches++;
             if (res == -1) {
@@ -234,7 +234,7 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
         content = r_store_content_from_cookie(ccnr, r_store_content_skiplist_next(ccnr, content));
         if (content != NULL &&
             !r_store_content_matches_interest_prefix(ccnr, content, interest->buf,
-                                                     comps, pi->prefix_comps))
+                                                     interest->length))
             content = NULL;
         if (content != NULL) {
             ccnr->active_enum[md->index] = content->accession;
@@ -311,7 +311,7 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
     content = r_store_find_first_match_candidate(ccnr, interest->buf, pi);
     if (content != NULL) {
         if (r_store_content_matches_interest_prefix(ccnr,
-               content, interest->buf, comps, comps->n - 1)) {
+               content, interest->buf, interest->length)) {
             ccnr->active_enum[ans] = content->accession;
             if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINEST))
                 ccnr_msg(ccnr, "sync_enum id=%d starting accession=0x%jx",
@@ -364,7 +364,6 @@ r_sync_lookup(struct ccnr_handle *ccnr,
     if (content != NULL) {
         ans = 0;
         if (content_ccnb != NULL) {
-            // XXX - the extra name component should be excised here.
             ccn_charbuf_append(content_ccnb,
                                r_store_content_base(ccnr, content),
                                content->size);

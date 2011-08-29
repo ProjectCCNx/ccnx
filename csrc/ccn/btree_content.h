@@ -115,6 +115,9 @@ int ccn_uri_append_flatname(struct ccn_charbuf *uri,
 /* Flatname accessors */
 int ccn_flatname_ncomps(const unsigned char *flatname, size_t size);
 
+/* Flatname comparison */
+int ccn_flatname_charbuf_compare(struct ccn_charbuf *a, struct ccn_charbuf *b);
+
 /*
  * Parse the component delimiter from the start of a flatname
  * Returns -1 for error, 0 nothing left, or compsize * 4 + delimsize

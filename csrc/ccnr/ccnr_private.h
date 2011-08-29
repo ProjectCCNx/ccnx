@@ -347,6 +347,7 @@ struct content_entry {
     struct ccn_indexbuf *namecomps; /**< Name Component byte boundary offsets */
     int flags;                  /**< see below */
     int size;                   /**< Size of ContentObject */
+    struct ccn_charbuf *flatname; /**< for skiplist */
     struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
     struct ccn_charbuf *cob;
     const unsigned char * (*getbase)(struct ccnr_handle *, struct content_entry *);

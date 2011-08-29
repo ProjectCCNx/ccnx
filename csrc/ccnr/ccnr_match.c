@@ -117,7 +117,7 @@ r_match_consume_matching_interests(struct ccnr_handle *h,
         if (p->interest_msg != NULL &&
             ((fdholder == NULL && (f = r_io_fdholder_from_fd(h, p->filedesc)) != NULL) ||
              (fdholder != NULL && p->filedesc == fdholder->filedesc))) {
-            if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
+            if (ccn_content_matches_interest(content_msg, content_size, 1, pc,
                                              p->interest_msg, p->size, NULL)) {
                 r_sendq_face_send_queue_insert(h, f, content);
                 if (CCNSHOULDLOG(h, (32 | 8), CCNL_INFO))

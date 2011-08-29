@@ -805,7 +805,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     content = r_store_find_first_match_candidate(ccnr, interest->buf, pi);
     if (content == NULL)
         goto Bail;
-    if (!r_store_content_matches_interest_prefix(ccnr, content, interest->buf, comps, comps->n - 1))
+    if (!r_store_content_matches_interest_prefix(ccnr, content, interest->buf, interest->length))
         goto Bail;
     // Look for a previous enumeration under this prefix
     ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: hash name", NULL,
@@ -906,8 +906,9 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
     if (CCNSHOULDLOG(ccnr, blah, CCNL_FINE))
         ccnr_msg(ccnr, "processing an enumeration continuation for segment %jd", es->next_segment);
     while (es->content != NULL &&
-           r_store_content_matches_interest_prefix(ccnr, es->content, es->interest->buf,
-                                                   es->interest_comps, es->interest_comps->n - 1)) {
+           r_store_content_matches_interest_prefix(ccnr, es->content,
+                                                   es->interest->buf,
+                                                   es->interest->length)) {
         ccnb_element_begin(es->reply_body, CCN_DTAG_Link);
         ccnb_element_begin(es->reply_body, CCN_DTAG_Name);
         ccnb_element_end(es->reply_body);
