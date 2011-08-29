@@ -172,12 +172,14 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
 
 static void
 process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
-                      unsigned char *msg, size_t size, int pdu_ok)
+                      unsigned char *msg, size_t size, int pdu_ok,
+                      off_t *offsetp)
 {
     struct ccn_skeleton_decoder decoder = {0};
     struct ccn_skeleton_decoder *d = &decoder;
     ssize_t dres;
     enum ccn_dtag dtag;
+    struct content_entry *content = NULL;
     
     if ((fdholder->flags & CCNR_FACE_UNDECIDED) != 0) {
         fdholder->flags &= ~CCNR_FACE_UNDECIDED;
@@ -197,29 +199,13 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     dtag = d->numval;
     switch (dtag) {
-        case CCN_DTAG_CCNProtocolDataUnit:
-            if (!pdu_ok)
-                break;
-            size -= d->index;
-            if (size > 0)
-                size--;
-            msg += d->index;
-            fdholder->flags |= CCNR_FACE_LINK;
-            fdholder->flags &= ~CCNR_FACE_GG;
-            memset(d, 0, sizeof(*d));
-            while (d->index < size) {
-                dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
-                if (d->state != 0)
-                    abort(); /* cannot happen because of checks in caller */
-                /* The pdu_ok parameter limits the recursion depth */
-                process_input_message(h, fdholder, msg + d->index - dres, dres, 0);
-            }
-            return;
         case CCN_DTAG_Interest:
             process_incoming_interest(h, fdholder, msg, size);
             return;
         case CCN_DTAG_ContentObject:
-            process_incoming_content(h, fdholder, msg, size);
+            content = process_incoming_content(h, fdholder, msg, size);
+            if (content != NULL && offsetp != NULL)
+                r_store_set_accession_from_offset(h, content, fdholder, *offsetp);
             return;
         case CCN_DTAG_SequenceNumber:
             r_link_process_incoming_link_message(h, fdholder, dtag, msg, size);
@@ -256,7 +242,7 @@ process_input_buffer(struct ccnr_handle *h, struct fdholder *fdholder)
         dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
         if (d->state != 0)
             break;
-        process_input_message(h, fdholder, msg + d->index - dres, dres, 0);
+        process_input_message(h, fdholder, msg + d->index - dres, dres, 0, NULL);
     }
     if (d->index != size) {
         ccnr_msg(h, "protocol error on fdholder %u (state %d), discarding %d bytes",
@@ -307,8 +293,10 @@ process_input(struct ccnr_handle *h, int fd)
         return;
     }
     d = &fdholder->decoder;
-    if (fdholder->inbuf == NULL)
+    if (fdholder->inbuf == NULL) {
         fdholder->inbuf = ccn_charbuf_create();
+        fdholder->bufoffset = 0;
+    }
     if (fdholder->inbuf->length == 0)
         memset(d, 0, sizeof(*d));
     buf = ccn_charbuf_reserve(fdholder->inbuf, 8800);
@@ -326,6 +314,10 @@ process_input(struct ccnr_handle *h, int fd)
     else if (res == 0 && (fdholder->flags & CCNR_FACE_DGRAM) == 0)
         r_io_shutdown_client_fd(h, fd);
     else {
+        off_t offset = (off_t)-1;
+        off_t *offsetp = NULL;
+        if ((fdholder->flags & CCNR_FACE_REPODATA) != 0)
+            offsetp = &offset;
         source = fdholder;
         ccnr_meter_bump(h, source->meter[FM_BYTI], res);
         source->recvcount++;
@@ -337,23 +329,26 @@ process_input(struct ccnr_handle *h, int fd)
         }
         dres = ccn_skeleton_decode(d, buf, res);
         while (d->state == 0) {
+            if (offsetp != NULL)
+                *offsetp = fdholder->bufoffset + msgstart;
             process_input_message(h, source,
                                   fdholder->inbuf->buf + msgstart,
                                   d->index - msgstart,
-                                  (fdholder->flags & CCNR_FACE_LOCAL) != 0);
+                                  (fdholder->flags & CCNR_FACE_LOCAL) != 0,
+                                  offsetp);
             msgstart = d->index;
             if (msgstart == fdholder->inbuf->length) {
                 fdholder->inbuf->length = 0;
                 return;
             }
             dres = ccn_skeleton_decode(d,
-                    fdholder->inbuf->buf + d->index, // XXX - msgstart and d->index are the same here - use msgstart
-                    res = fdholder->inbuf->length - d->index);  // XXX - why is res set here?
+                    fdholder->inbuf->buf + msgstart,
+                    fdholder->inbuf->length - msgstart);
         }
         if ((fdholder->flags & CCNR_FACE_DGRAM) != 0) {
             ccnr_msg(h, "protocol error on fdholder %u, discarding %u bytes",
                 source->filedesc,
-                (unsigned)(fdholder->inbuf->length));  // XXX - Should be fdholder->inbuf->length - d->index (or msgstart)
+                (unsigned)(fdholder->inbuf->length - msgstart));
             fdholder->inbuf->length = 0;
             /* XXX - should probably ignore this source for a while */
             return;
@@ -370,6 +365,7 @@ process_input(struct ccnr_handle *h, int fd)
             fdholder->inbuf->length -= msgstart;
             d->index -= msgstart;
         }
+        fdholder->bufoffset += msgstart;
     }
 }
 

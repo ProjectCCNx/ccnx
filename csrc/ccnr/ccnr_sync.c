@@ -138,18 +138,21 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
         struct ccn_charbuf *cb = r_util_charbuf_obtain(ccnr);
 
         acc = content->accession;
+        if (acc == CCNR_NULL_ACCESSION) {
+            ccnr_debug_content(ccnr, __LINE__, "r_sync_notify_content - not yet stable", NULL, content);
+            return(0);
+        }
         /* This must get the full name, including digest. */
         ccn_name_init(cb);
         res = r_store_name_append_components(cb, ccnr, content, 0, -1);
         if (res < 0) abort();
         if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
-            ccnr_debug_ccnb(ccnr, __LINE__, "r_sync_notify_content", NULL,
-                            cb->buf, cb->length);
+            ccnr_debug_content(ccnr, __LINE__, "r_sync_notify_content", NULL, content);
         res = SyncNotifyContent(ccnr->sync_handle, e, acc, cb);
         r_util_charbuf_release(ccnr, cb);
     }
     if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
-        ccnr_msg(ccnr, "SyncNotifyContent(..., %d, %ju, ...) returned %d",
+        ccnr_msg(ccnr, "SyncNotifyContent(..., %d, %jx, ...) returned %d",
                  e, ccnr_accession_encode(ccnr, acc), res);
     if (e == 0 && res == -1)
         r_sync_notify_after(ccnr, CCNR_MAX_ACCESSION); // XXXXXX should be hwm
@@ -235,7 +238,8 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
             content = NULL;
         if (content != NULL) {
             ccnr->active_enum[md->index] = content->accession;
-            if (matches >= 8 || try >= 200) { // XXX - these numbers need tuning
+            if (content->accession != CCNR_NULL_ACCESSION && 
+                (matches >= 8 || try >= 200)) { // XXX - these numbers need tuning
                 return(300);
             }
         }
@@ -403,11 +407,7 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
         r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
         r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
-        ccnr_debug_content(ccnr, __LINE__, "content_stored",
-                           r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
-                           content);
-    }
-    
+    }    
     return(ans);
 }
 

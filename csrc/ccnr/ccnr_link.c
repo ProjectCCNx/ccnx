@@ -69,9 +69,6 @@
 #include "ccnr_store.h"
 #include "ccnr_util.h"
 
-static int
-ccn_stuff_interest(struct ccnr_handle * h,
-                   struct fdholder * fdholder, struct ccn_charbuf * c);
 static void
 ccn_append_link_stuff(struct ccnr_handle * h,
                       struct fdholder * fdholder,
@@ -96,7 +93,8 @@ r_link_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct con
 PUBLIC void
 r_link_stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
                const unsigned char *data1, size_t size1,
-               const unsigned char *data2, size_t size2) {
+               const unsigned char *data2, size_t size2,
+               off_t *offsetp) {
     struct ccn_charbuf *c = NULL;
     
     if ((fdholder->flags & CCNR_FACE_LINK) != 0) {
@@ -106,7 +104,6 @@ r_link_stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
         ccn_charbuf_append(c, data1, size1);
         if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
-        ccn_stuff_interest(h, fdholder, c);
         ccn_append_link_stuff(h, fdholder, c);
         ccn_charbuf_append_closer(c);
     }
@@ -116,31 +113,16 @@ r_link_stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
         ccn_charbuf_append(c, data1, size1);
         if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
-        ccn_stuff_interest(h, fdholder, c);
         ccn_append_link_stuff(h, fdholder, c);
     }
     else {
         /* avoid a copy in this case */
-        r_io_send(h, fdholder, data1, size1);
+        r_io_send(h, fdholder, data1, size1, offsetp);
         return;
     }
-    r_io_send(h, fdholder, c->buf, c->length);
+    r_io_send(h, fdholder, c->buf, c->length, offsetp);
     r_util_charbuf_release(h, c);
     return;
-}
-
-/**
- * Stuff a PDU with interest messages that will fit.
- *
- * Note by default stuffing does not happen due to the setting of h->mtu.
- * @returns the number of messages that were stuffed.
- */
-static int
-ccn_stuff_interest(struct ccnr_handle *h,
-                   struct fdholder *fdholder, struct ccn_charbuf *c)
-{
-    int n_stuffed = 0;
-    return(n_stuffed);
 }
 
 PUBLIC void

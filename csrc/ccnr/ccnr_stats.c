@@ -150,9 +150,9 @@ ccnr_stats_handle_http_connection(struct ccnr_handle *h, struct fdholder *fdhold
         send_http_response(h, fdholder, "text/xml", response);
     }
     else if (0 == strcmp(rbuf, "GET "))
-        r_io_send(h, fdholder, resp404, strlen(resp404));
+        r_io_send(h, fdholder, resp404, strlen(resp404), NULL);
     else
-        r_io_send(h, fdholder, resp405, strlen(resp405));
+        r_io_send(h, fdholder, resp405, strlen(resp405), NULL);
     fdholder->flags |= (CCNR_FACE_NOSEND | CCNR_FACE_CLOSING);
     ccn_charbuf_destroy(&response);
     return(0);
@@ -175,8 +175,8 @@ send_http_response(struct ccnr_handle *h, struct fdholder *fdholder,
                       "Content-Length: %jd" CRLF CRLF,
                       mime_type,
                       (intmax_t)response->length);
-    r_io_send(h, fdholder, buf, hdrlen);
-    r_io_send(h, fdholder, response->buf, response->length);
+    r_io_send(h, fdholder, buf, hdrlen, NULL);
+    r_io_send(h, fdholder, response->buf, response->length, NULL);
 }
 
 /* Common statistics collection */

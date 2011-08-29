@@ -732,8 +732,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     content = calloc(1, sizeof(*content));
     if (content != NULL) {
         content->cookie = ++(h->cookie);
-        h->accession += 1000000000; // XXXXXX - here we should have the repository cobid
-        content->accession = h->accession;
+        content->accession = CCNR_NULL_ACCESSION;
         r_store_enroll_content(h, content);
         content->namecomps = comps;
         comps = NULL;
@@ -743,14 +742,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         r_store_content_skiplist_insert(h, content);
         // what if we get a dup
         r_store_set_content_timer(h, content, &obj);
-        if (obj.type == CCN_CONTENT_KEY)
-            content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
-        if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
-            content->flags |= CCN_CONTENT_ENTRY_STABLE;
-            if (content->accession >= h->notify_after) // XXXXXX
-                r_sync_notify_content(h, 0, content);
-        }
-        else {
+        if ((fdholder->flags & CCNR_FACE_REPODATA) == 0) {
             r_proto_initiate_key_fetch(h, msg, &obj, 0, content->cookie);
         }
     }
@@ -815,11 +807,38 @@ r_store_content_field_access(struct ccnr_handle *h,
 	return(res);
 }
 
+const ccnr_accession r_store_mark_repoFile1 = ((ccnr_accession)1) << 48;
+
+PUBLIC int
+r_store_set_accession_from_offset(struct ccnr_handle *h,
+                                  struct content_entry *content,
+                                  struct fdholder *fdholder, off_t offset)
+{
+    if (offset != (off_t)-1 && content->accession == CCNR_NULL_ACCESSION) {
+        struct hashtb_enumerator ee;
+        struct hashtb_enumerator *e = &ee;
+        struct content_by_accession_entry *entry = NULL;
+        content->flags |= CCN_CONTENT_ENTRY_STABLE;
+        content->accession = ((ccnr_accession)offset) | r_store_mark_repoFile1;
+        hashtb_start(h->content_by_accession_tab, e);
+        hashtb_seek(e, &content->accession, sizeof(content->accession), 0);
+        entry = e->data;
+        if (entry != NULL)
+            entry->content = content;
+        hashtb_end(e);
+        if (content->accession >= h->notify_after) 
+            r_sync_notify_content(h, 0, content);
+        return(0);
+    }
+    return(-1);
+}
+
 PUBLIC void
 r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
 {
     int n, a, b, size;
     const unsigned char *content_msg = NULL;
+    off_t offset;
 
     size = content->size;
     if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
@@ -832,25 +851,26 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
     if (b - a != 36)
         abort(); /* strange digest length */
     content_msg = r_store_content_base(h, content);
-    r_link_stuff_and_send(h, fdholder, content_msg, a, content_msg + b, size - b);
-    
+    r_link_stuff_and_send(h, fdholder, content_msg, a, content_msg + b, size - b, &offset);
+    if (offset != (off_t)-1 && content->accession == CCNR_NULL_ACCESSION) {
+        int res;
+        res = r_store_set_accession_from_offset(h, content, fdholder, offset);
+        if (res == 0)
+            ccnr_debug_content(h, __LINE__, "content_stored",
+                               r_io_fdholder_from_fd(h, h->active_out_fd),
+                               content);
+    }
 }
 
 PUBLIC int
 r_store_commit_content(struct ccnr_handle *h, struct content_entry *content)
 {
-    int res;
     // XXX - here we need to check if this is something we *should* be storing, according to our policy
     if ((r_store_content_flags(content) & CCN_CONTENT_ENTRY_STABLE) == 0) {
         // Need to actually append to the active repo data file
         r_sendq_face_send_queue_insert(h, r_io_fdholder_from_fd(h, h->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
         r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
-        ccnr_debug_content(h, __LINE__, "content_stored",
-                        r_io_fdholder_from_fd(h, h->active_out_fd),
-                        content);
-        if (content->accession >= h->notify_after) // XXXXXX 
-            res = r_sync_notify_content(h, 0, content);
     }
     return(0);
 }

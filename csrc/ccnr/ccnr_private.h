@@ -288,6 +288,7 @@ struct fdholder {
     unsigned filedesc;            /**< internal fdholder id */
     unsigned recvcount;         /**< for activity level monitoring */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
+    off_t bufoffset;
     struct ccn_charbuf *inbuf;  /** Buffered input data */
     struct ccn_skeleton_decoder decoder;
     size_t outbufindex;         /** Buffered output data */
@@ -483,26 +484,6 @@ uintmax_t ccnr_meter_total(struct ccnr_meter *m);
  */
 #define CCNRID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/KEY"
 #define CCNRID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository/KEY"
-
-#if 0
-int r_fwd_reg_uri(struct ccnr_handle *h,
-                 const char *uri,
-                 unsigned filedesc,
-                 int flags,
-                 int expires);
-
-struct fdholder *ccnr_r_io_fdholder_from_fd(struct ccnr_handle *, unsigned);
-void ccnr_face_status_change(struct ccnr_handle *, unsigned);
-int r_io_destroy_face(struct ccnr_handle *h, unsigned filedesc);
-void r_io_send(struct ccnr_handle *h, struct fdholder *fdholder,
-               const void *data, size_t size);
-
-/* Consider a separate header for these */
-
-struct ccnr_handle *r_init_create(const char *, ccnr_logger, void *);
-void r_dispatch_run(struct ccnr_handle *h);
-void r_init_destroy(struct ccnr_handle **);
-#endif
 
 #define PUBLIC
 #endif

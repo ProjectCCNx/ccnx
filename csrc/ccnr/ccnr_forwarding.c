@@ -718,7 +718,7 @@ do_propagate(struct ccn_schedule *sched,
                 pe->flags |= CCN_PR_WAIT1;
                 next_delay = special_delay = ev->evint;
             }
-            r_link_stuff_and_send(h, fdholder, pe->interest_msg, pe->size, NULL, 0);
+            r_link_stuff_and_send(h, fdholder, pe->interest_msg, pe->size, NULL, 0, NULL);
             ccnr_meter_bump(h, fdholder->meter[FM_INTO], 1);
         }
         else

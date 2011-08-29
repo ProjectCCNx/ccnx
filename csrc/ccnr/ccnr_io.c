@@ -390,10 +390,14 @@ sending_fd(struct ccnr_handle *h, struct fdholder *fdholder)
 PUBLIC void
 r_io_send(struct ccnr_handle *h,
           struct fdholder *fdholder,
-          const void *data, size_t size)
+          const void *data, size_t size,
+          off_t *offsetp)
 {
     ssize_t res;
     off_t offset;
+    
+    if (offsetp != NULL)
+        *offsetp = (off_t)-1;
     if ((fdholder->flags & CCNR_FACE_NOSEND) != 0)
         return;
     if (fdholder->outbuf != NULL) {
@@ -422,7 +426,8 @@ r_io_send(struct ccnr_handle *h,
             ccnr_msg(h, "lseek(%d): %s", fdholder->recv_fd, strerror(errno));
             return;
         }
-        // ccnr_msg(h, "lseek(%d): %jd", fdholder->recv_fd, (intmax_t)(offset));
+        if (offsetp != NULL)
+            *offsetp = offset;
     }
     if ((fdholder->flags & CCNR_FACE_DGRAM) == 0)
         res = write(fdholder->recv_fd, data, size);

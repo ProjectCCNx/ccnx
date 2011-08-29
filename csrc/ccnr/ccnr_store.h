@@ -52,4 +52,5 @@ const unsigned char *r_store_content_base(struct ccnr_handle *h, struct content_
 void ccnr_debug_content(struct ccnr_handle *h, int lineno, const char *msg,
                         struct fdholder *fdholder,
                         struct content_entry *content);
+int r_store_set_accession_from_offset(struct ccnr_handle *h, struct content_entry *content, struct fdholder *fdholder, off_t offset);
 #endif
