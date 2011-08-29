@@ -61,7 +61,7 @@
 #include "ccnr_io.h"
 #include "ccnr_msg.h"
 #include "ccnr_sendq.h"
-
+#include "ccnr_store.h"
 
 PUBLIC void
 r_match_consume_interest(struct ccnr_handle *h, struct propagating_entry *pe)
@@ -109,7 +109,7 @@ r_match_consume_matching_interests(struct ccnr_handle *h,
     
     head = &npe->pe_head;
     // XXX - i do not think this is called in practice
-    content_msg = content->key;
+    content_msg = r_store_content_base(h, content);
     content_size = content->size;
     f = fdholder;
     for (p = head->next; p != head; p = next) {
@@ -174,10 +174,13 @@ r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
     int ci = 0;
     int cm = 0;
     unsigned c0 = content->namecomps->buf[0];
-    const unsigned char *key = content->key + c0;
+    const unsigned char *content_msg = r_store_content_base(h, content);
+
+    if (content_msg == NULL)
+        return(-1);
     for (ci = content->namecomps->n - 1; ci >= 0; ci--) {
         int size = content->namecomps->buf[ci] - c0;
-        npe = hashtb_lookup(h->nameprefix_tab, key, size);
+        npe = hashtb_lookup(h->nameprefix_tab, content_msg + c0, size);
         if (npe != NULL)
             break;
     }

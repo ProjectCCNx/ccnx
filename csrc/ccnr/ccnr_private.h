@@ -242,7 +242,7 @@ struct ccnr_handle {
                                     /**< pluggable nonce generation */
     /* items related to sync/repo integration */
     struct SyncBaseStruct *sync_handle;  /**< handle to pass to the sync code */
-    ccnr_accession notify_after;  /**< starting item number for notifying sync */
+    ccnr_accession notify_after;  /**< starting item for notifying sync */
     ccnr_accession active_enum[CCNR_MAX_ENUM]; /**< active sync enumerations */
     
     const char *directory;           /**< the repository directory */
@@ -345,11 +345,10 @@ struct content_entry {
     ccnr_cookie cookie;         /**< For in-memory references */
     struct ccn_indexbuf *namecomps; /**< Name Component byte boundary offsets */
     int flags;                  /**< see below */
-    const unsigned char *key;   /**< ccnb-encoded ContentObject */
-    int key_size;               /**< Size of fragment prior to Content */
     int size;                   /**< Size of ContentObject */
     struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
     struct ccn_charbuf *cob;
+    const unsigned char * (*getbase)(struct ccnr_handle *, struct content_entry *);
     void (*destroy)(struct ccnr_handle *, struct content_entry *); /**< free */
 };
 

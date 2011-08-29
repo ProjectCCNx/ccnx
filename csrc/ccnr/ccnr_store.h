@@ -32,7 +32,6 @@ void r_store_init(struct ccnr_handle *h);
 void r_store_set_content_timer(struct ccnr_handle *h,struct content_entry *content,struct ccn_parsed_ContentObject *pco);
 void r_store_mark_stale(struct ccnr_handle *h,struct content_entry *content);
 struct content_entry *r_store_next_child_at_level(struct ccnr_handle *h,struct content_entry *content,int level);
-int r_store_remove_content(struct ccnr_handle *h,struct content_entry *content);
 ccnr_cookie r_store_content_skiplist_next(struct ccnr_handle *h,struct content_entry *content);
 int r_store_content_matches_interest_prefix(struct ccnr_handle *h,struct content_entry *content,const unsigned char *interest_msg,struct ccn_indexbuf *comps,int prefix_comps);
 struct content_entry *r_store_find_first_match_candidate(struct ccnr_handle *h,const unsigned char *interest_msg,const struct ccn_parsed_interest *pi);
@@ -44,8 +43,13 @@ struct content_entry *r_store_content_from_cookie(struct ccnr_handle *h, ccnr_co
 struct content_entry *r_store_lookup(struct ccnr_handle *h, const unsigned char *msg, const struct ccn_parsed_interest *pi, struct ccn_indexbuf *comps);
 int r_store_content_field_access(struct ccnr_handle *h, struct content_entry *content, enum ccn_dtag dtag, const unsigned char **bufp, size_t *sizep);
 void r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content);
+int r_store_name_append_components(struct ccn_charbuf *dst, struct ccnr_handle *h, struct content_entry *content, int skip, int count);
 int r_store_content_flags(struct content_entry *content);
 int r_store_content_change_flags(struct content_entry *content, int set, int clear);
 int r_store_commit_content(struct ccnr_handle *h, struct content_entry *content);
 void r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry);
+const unsigned char *r_store_content_base(struct ccnr_handle *h, struct content_entry *content);
+void ccnr_debug_content(struct ccnr_handle *h, int lineno, const char *msg,
+                        struct fdholder *fdholder,
+                        struct content_entry *content);
 #endif

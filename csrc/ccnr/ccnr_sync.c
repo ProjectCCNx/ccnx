@@ -120,7 +120,7 @@ r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_hwm item)
 }
 
 /**
- * A wrapper for SyncNotifyContent that can work with a content_entry.
+ * A wrapper for SyncNotifyContent that takes a content entry.
  */
 PUBLIC int
 r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *content)
@@ -136,13 +136,11 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
     }
     else {
         struct ccn_charbuf *cb = r_util_charbuf_obtain(ccnr);
-        size_t start = content->namecomps->buf[0];
-        size_t end = content->namecomps->buf[content->namecomps->n - 1];
 
         acc = content->accession;
         /* This must get the full name, including digest. */
         ccn_name_init(cb);
-        res = ccn_name_append_components(cb, content->key, start, end);
+        res = r_store_name_append_components(cb, ccnr, content, 0, -1);
         if (res < 0) abort();
         if (CCNSHOULDLOG(ccnr, r_sync_notify_content, CCNL_FINEST))
             ccnr_debug_ccnb(ccnr, __LINE__, "r_sync_notify_content", NULL,
@@ -192,6 +190,7 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
     struct ccn_scheduled_event *ev,
     int flags)
 {
+    const unsigned char *content_msg = NULL;
     struct ccnr_handle *ccnr = clienth;
     struct sync_enumeration_state *md = NULL;
     struct content_entry *content = NULL;
@@ -215,16 +214,16 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
     
     content = r_store_content_from_accession(ccnr, ccnr->active_enum[md->index]);
     for (try = 0, matches = 0; content != NULL; try++) {
-        if (ccn_content_matches_interest(content->key,
+        content_msg = r_store_content_base(ccnr, content);
+        if (ccn_content_matches_interest(content_msg,
                                          content->size,
                                          0, NULL, interest->buf, interest->length, pi)) {
             res = r_sync_notify_content(ccnr, md->index, content);
             matches++;
             if (res == -1) {
                 if (CCNSHOULDLOG(ccnr, r_sync_enumerate_action, CCNL_FINEST))
-                    ccnr_debug_ccnb(ccnr, __LINE__, "r_sync_enumerate_action", NULL,
-                                    content->key,
-                                    content->size);
+                    ccnr_debug_content(ccnr, __LINE__, "r_sync_enumerate_action", NULL,
+                                       content);
                 ev->evdata = cleanup_se(ccnr, md);
                 return(0);
             }
@@ -362,7 +361,9 @@ r_sync_lookup(struct ccnr_handle *ccnr,
         ans = 0;
         if (content_ccnb != NULL) {
             // XXX - the extra name component should be excised here.
-            ccn_charbuf_append(content_ccnb, content->key, content->size);
+            ccn_charbuf_append(content_ccnb,
+                               r_store_content_base(ccnr, content),
+                               content->size);
         }
     }
     r_util_indexbuf_release(ccnr, comps);
@@ -402,9 +403,9 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
         r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
         r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
-        ccnr_debug_ccnb(ccnr, __LINE__, "content_stored",
-                        r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
-                        content->key, content->size);
+        ccnr_debug_content(ccnr, __LINE__, "content_stored",
+                           r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
+                           content);
     }
     
     return(ans);
@@ -435,9 +436,9 @@ r_sync_local_store(struct ccnr_handle *ccnr,
         r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
         r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
-        ccnr_debug_ccnb(ccnr, __LINE__, "content_stored",
-                        r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
-                        content->key, content->size);
+        ccnr_debug_content(ccnr, __LINE__, "content_stored",
+                           r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
+                           content);
     }
     return(0);
 }

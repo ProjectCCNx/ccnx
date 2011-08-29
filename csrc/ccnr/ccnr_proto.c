@@ -903,17 +903,20 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
         return(ans);
     }
     
-    ccnr_msg(ccnr, "processing an enumeration continuation for segment %jd", es->next_segment);
+    if (CCNSHOULDLOG(ccnr, blah, CCNL_FINE))
+        ccnr_msg(ccnr, "processing an enumeration continuation for segment %jd", es->next_segment);
     while (es->content != NULL &&
            r_store_content_matches_interest_prefix(ccnr, es->content, es->interest->buf,
                                                    es->interest_comps, es->interest_comps->n - 1)) {
         ccnb_element_begin(es->reply_body, CCN_DTAG_Link);
         ccnb_element_begin(es->reply_body, CCN_DTAG_Name);
         ccnb_element_end(es->reply_body);
-// XXXXXX - uses content->
-        ccn_name_append_components(es->reply_body, es->content->key,
-                                   es->content->namecomps->buf[es->interest_comps->n - 1],
-                                   es->content->namecomps->buf[es->interest_comps->n]);
+        res = r_store_name_append_components(es->reply_body, ccnr, es->content, es->interest_comps->n - 1, 1);
+        if (res != 1) {
+            ccnr_debug_ccnb(ccnr, __LINE__, "oops", NULL, es->interest->buf, es->interest->length);
+            ccnr_debug_content(ccnr, __LINE__, "oops", NULL, es->content);
+            abort();
+        }
         ccnb_element_end(es->reply_body); /* </Link> */
         es->content = r_store_next_child_at_level(ccnr, es->content, es->interest_comps->n - 1);
         if (es->reply_body->length >= 4096) {

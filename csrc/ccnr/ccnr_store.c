@@ -65,10 +65,7 @@
 #include "ccnr_io.h"
 
 /**
- *  The content hash table is keyed by the initial portion of the ContentObject
- *  that contains all the parts of the complete name.  The extdata of the hash
- *  table holds the rest of the object, so that the whole ContentObject is
- *  stored contiguously.  The internal form differs from the on-wire form in
+ *  The internal form differs from the on-wire form in
  *  that the final content-digest name component is represented explicitly,
  *  which simplifies the matching logic.
  *  The original ContentObject may be reconstructed simply by excising this
@@ -76,6 +73,42 @@
  */
 struct content_entry;
 /* This is where the actual struct should be, but there is still some work to do. */
+
+PUBLIC const unsigned char *
+r_store_content_base(struct ccnr_handle *h, struct content_entry *content)
+{
+    if (content->cob != NULL && content->cob->length == content->size)
+        return(content->cob->buf);
+    ccnr_msg(h, "Urp.%d - r_store_content_base returning NULL (%jx, %u)", __LINE__,
+        ccnr_accession_encode(h, content->accession),
+        (unsigned)content->cookie);
+    return(NULL);
+}
+
+PUBLIC int
+r_store_name_append_components(struct ccn_charbuf *dst,
+                               struct ccnr_handle *h,
+                               struct content_entry *content,
+                               int skip,
+                               int count)
+{
+    const unsigned char *content_msg = NULL;
+    int end;
+    int res;
+    
+    end = content->namecomps->n - 1;
+    if (skip < 0)
+        return(-1);
+    if (skip >= end)
+        return(0);
+    if (count >= 0 && skip + count < end)
+        end = skip + count;
+    content_msg = r_store_content_base(h, content);
+    res = ccn_name_append_components(dst, content_msg,
+                                     content->namecomps->buf[skip],
+                                     content->namecomps->buf[end]);
+    return(res < 0 ? -1 : end - skip);
+}
 
 PUBLIC int
 r_store_content_flags(struct content_entry *content)
@@ -244,6 +277,7 @@ content_skiplist_findbefore(struct ccnr_handle *h,
     int n = h->skiplinks->n;
     struct ccn_indexbuf *c;
     struct content_entry *content;
+    const unsigned char *content_msg;
     int order;
     size_t start;
     size_t end;
@@ -258,7 +292,8 @@ content_skiplist_findbefore(struct ccnr_handle *h,
                 abort();
             start = content->namecomps->buf[0];
             end = content->namecomps->buf[content->namecomps->n - 1];
-            order = ccn_compare_names(content->key + start - 1, end - start + 2,
+            content_msg = r_store_content_base(h, content);
+            order = ccn_compare_names(content_msg + start - 1, end - start + 2,
                                       key, keysize);
             if (order > 0)
                 break;
@@ -282,6 +317,7 @@ r_store_content_skiplist_insert(struct ccnr_handle *h, struct content_entry *con
     size_t start;
     size_t end;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+    const unsigned char *content_msg;
     if (content->skiplinks != NULL) abort();
     for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - 1; d++)
         if ((nrand48(h->seed) & 3) != 0) break;
@@ -289,8 +325,9 @@ r_store_content_skiplist_insert(struct ccnr_handle *h, struct content_entry *con
         ccn_indexbuf_append_element(h->skiplinks, 0);
     start = content->namecomps->buf[0];
     end = content->namecomps->buf[content->namecomps->n - 1];
+    content_msg = r_store_content_base(h, content);
     i = content_skiplist_findbefore(h,
-                                    content->key + start - 1,
+                                    content_msg + start - 1,
                                     end - start + 2, NULL, pred);
     if (i < d)
         d = i; /* just in case */
@@ -309,11 +346,14 @@ content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
     size_t start;
     size_t end;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
-    if (content->skiplinks == NULL) abort();
+    const unsigned char *content_msg;
+    if (content->skiplinks == NULL)
+        return;
     start = content->namecomps->buf[0];
     end = content->namecomps->buf[content->namecomps->n - 1];
+    content_msg = r_store_content_base(h, content);
     d = content_skiplist_findbefore(h,
-                                    content->key + start - 1,
+                                    content_msg + start - 1,
                                     end - start + 2, content, pred);
     if (d > content->skiplinks->n)
         d = content->skiplinks->n;
@@ -332,6 +372,10 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
     if (entry == NULL)
         return;
     *pentry = NULL;
+    if ((entry->flags & CCN_CONTENT_ENTRY_STALE) != 0)
+        h->n_stale--;
+    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+        ccnr_debug_content(h, __LINE__, "remove", NULL, entry);
     /* Unlink from skiplist, if it is there */
     content_skiplist_remove(h, entry);
     /* Remove the cookie reference */
@@ -363,33 +407,6 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
     if (entry->destroy)
         (entry->destroy)(h, entry);
 }
-
-// XXXXXX - consolidation needed here
-PUBLIC int
-r_store_remove_content(struct ccnr_handle *h, struct content_entry *content)
-{
-#if 0
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    int res;
-    if (content == NULL)
-        return(-1);
-    hashtb_start(h->content_tab, e);
-    res = hashtb_seek(e, content->key,
-                      content->key_size, content->size - content->key_size);
-    if (res != HT_OLD_ENTRY)
-        abort();
-    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
-        h->n_stale--;
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
-        ccnr_debug_ccnb(h, __LINE__, "remove", NULL,
-                        content->key, content->size);
-    hashtb_delete(e);
-    hashtb_end(e);
-#endif
-    return(0);
-}
-
 
 PUBLIC struct content_entry *
 r_store_find_first_match_candidate(struct ccnr_handle *h,
@@ -458,15 +475,16 @@ r_store_content_matches_interest_prefix(struct ccnr_handle *h,
                                 int prefix_comps)
 {
     size_t prefixlen;
+    const unsigned char *content_msg = NULL;
     if (prefix_comps < 0 || prefix_comps >= comps->n)
         abort();
-    /* First verify the prefix match. */
     if (content->namecomps->n < prefix_comps + 1)
             return(0);
     prefixlen = comps->buf[prefix_comps] - comps->buf[0];
     if (content->namecomps->buf[prefix_comps] - content->namecomps->buf[0] != prefixlen)
         return(0);
-    if (0 != memcmp(content->key + content->namecomps->buf[0],
+    content_msg = r_store_content_base(h, content);
+    if (0 != memcmp(content_msg + content->namecomps->buf[0],
                     interest_msg + comps->buf[0],
                     prefixlen))
         return(0);
@@ -492,6 +510,7 @@ r_store_next_child_at_level(struct ccnr_handle *h,
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     int d;
     int res;
+    const unsigned char *content_msg = NULL;
     
     if (content == NULL)
         return(NULL);
@@ -499,7 +518,8 @@ r_store_next_child_at_level(struct ccnr_handle *h,
         return(NULL);
     name = ccn_charbuf_create();
     ccn_name_init(name);
-    res = ccn_name_append_components(name, content->key,
+    content_msg = r_store_content_base(h, content);
+    res = ccn_name_append_components(name, content_msg,
                                      content->namecomps->buf[0],
                                      content->namecomps->buf[level + 1]);
     if (res < 0) abort();
@@ -514,7 +534,7 @@ r_store_next_child_at_level(struct ccnr_handle *h,
     if (next == content) {
         // XXX - I think this case should not occur, but just in case, avoid a loop.
         next = r_store_content_from_cookie(h, r_store_content_skiplist_next(h, content));
-        ccnr_debug_ccnb(h, __LINE__, "bump", NULL, next->key, next->size);
+        ccnr_debug_content(h, __LINE__, "bump", NULL, next);
     }
     ccn_charbuf_destroy(&name);
     return(next);
@@ -530,12 +550,12 @@ r_store_lookup(struct ccnr_handle *h,
     struct content_entry *last_match = NULL;
     int try;
     size_t size = pi->offset[CCN_PI_E];
+    const unsigned char *content_msg = NULL;
     
     content = r_store_find_first_match_candidate(h, msg, pi);
     if (content != NULL && CCNSHOULDLOG(h, LM_8, CCNL_FINER))
-        ccnr_debug_ccnb(h, __LINE__, "first_candidate", NULL,
-                        content->key,
-                        content->size);
+        ccnr_debug_content(h, __LINE__, "first_candidate", NULL,
+                           content);
     if (content != NULL &&
         !r_store_content_matches_interest_prefix(h, content, msg, comps,
                                                  pi->prefix_comps)) {
@@ -545,7 +565,8 @@ r_store_lookup(struct ccnr_handle *h,
             content = NULL;
         }
     for (try = 0; content != NULL; try++) {
-        if (ccn_content_matches_interest(content->key,
+        content_msg = r_store_content_base(h, content);
+        if (ccn_content_matches_interest(content_msg,
                                          content->size,
                                          0, NULL, msg, size, pi)) {
                 if ((pi->orderpref & 1) == 0 && // XXX - should be symbolic
@@ -554,15 +575,12 @@ r_store_lookup(struct ccnr_handle *h,
                     r_store_content_matches_interest_prefix(h, content, msg,
                                                             comps, comps->n - 1)) {
                         if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
-                            ccnr_debug_ccnb(h, __LINE__, "skip_match", NULL,
-                                            content->key,
-                                            content->size);
+                            ccnr_debug_content(h, __LINE__, "skip_match", NULL,
+                                               content);
                         goto move_along;
                     }
                 if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
-                    ccnr_debug_ccnb(h, __LINE__, "matches", NULL,
-                                    content->key,
-                                    content->size);
+                    ccnr_debug_content(h, __LINE__, "matches", NULL, content);
                 if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
                     break;
                 last_match = content;
@@ -576,9 +594,8 @@ r_store_lookup(struct ccnr_handle *h,
             !r_store_content_matches_interest_prefix(h, content, msg,
                                                      comps, pi->prefix_comps)) {
                 if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
-                    ccnr_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
-                                    content->key,
-                                    content->size);
+                    ccnr_debug_content(h, __LINE__, "prefix_mismatch", NULL,
+                                       content);
                 content = NULL;
             }
     }
@@ -597,8 +614,7 @@ r_store_mark_stale(struct ccnr_handle *h, struct content_entry *content)
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         return;
     if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
-            ccnr_debug_ccnb(h, __LINE__, "stale", NULL,
-                            content->key, content->size);
+            ccnr_debug_content(h, __LINE__, "stale", NULL, content);
     content->flags |= CCN_CONTENT_ENTRY_STALE;
     h->n_stale++;
     if (cookie < h->min_stale)
@@ -640,17 +656,19 @@ r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
     int microseconds = 0;
     size_t start = pco->offset[CCN_PCO_B_FreshnessSeconds];
     size_t stop  = pco->offset[CCN_PCO_E_FreshnessSeconds];
+    const unsigned char *content_msg = NULL;
     if (start == stop)
         return;
+    content_msg = r_store_content_base(h, content);
     seconds = ccn_fetch_tagged_nonNegativeInteger(
                 CCN_DTAG_FreshnessSeconds,
-                content->key,
+                content_msg,
                 start, stop);
     if (seconds <= 0)
         return;
     if (seconds > ((1U<<31) / 1000000)) {
-        ccnr_debug_ccnb(h, __LINE__, "FreshnessSeconds_too_large", NULL,
-            content->key, pco->offset[CCN_PCO_E]);
+        ccnr_debug_content(h, __LINE__, "FreshnessSeconds_too_large", NULL,
+                           content);
         return;
     }
     microseconds = seconds * 1000000;
@@ -718,9 +736,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         r_store_enroll_content(h, content);
         content->namecomps = comps;
         comps = NULL;
-        content->key_size = keysize;
         content->size = size;
-        content->key = cb->buf;
         content->cob = cb;
         cb = NULL;
         r_store_content_skiplist_insert(h, content);
@@ -747,7 +763,7 @@ Bail:
         n_matches = r_match_match_interests(h, content, &obj, NULL, fdholder);
         if (res == HT_NEW_ENTRY) {
             if (n_matches < 0) {
-                r_store_remove_content(h, content);
+                r_store_forget_content(h, &content);
                 return(NULL);
             }
             if (n_matches == 0 && (fdholder->flags & CCNR_FACE_GG) == 0) {
@@ -781,9 +797,19 @@ r_store_content_field_access(struct ccnr_handle *h,
                              const unsigned char **bufp, size_t *sizep)
 {
 	int res = -1;
-	if (dtag == CCN_DTAG_Content)
-        res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, content->key,
-                                  content->key_size, content->size,
+    const unsigned char *content_msg;
+    struct ccn_parsed_ContentObject pco = {0};
+    
+    content_msg = r_store_content_base(h, content);
+    if (content_msg == NULL)
+        return(-1);
+	res = ccn_parse_ContentObject(content_msg, content->size, &pco, NULL);
+    if (res < 0)
+        return(-1);
+    if (dtag == CCN_DTAG_Content)
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, content_msg,
+                                  pco.offset[CCN_PCO_B_Content],
+                                  pco.offset[CCN_PCO_E_Content],
                                   bufp, sizep);
 	return(res);
 }
@@ -792,10 +818,11 @@ PUBLIC void
 r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
 {
     int n, a, b, size;
+    const unsigned char *content_msg = NULL;
+
     size = content->size;
     if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
-        ccnr_debug_ccnb(h, __LINE__, "content_to", fdholder,
-                        content->key, size);
+        ccnr_debug_content(h, __LINE__, "content_to", fdholder, content);
     /* Excise the message-digest name component */
     n = content->namecomps->n;
     if (n < 2) abort();
@@ -803,7 +830,8 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
     b = content->namecomps->buf[n - 1];
     if (b - a != 36)
         abort(); /* strange digest length */
-    r_link_stuff_and_send(h, fdholder, content->key, a, content->key + b, size - b);
+    content_msg = r_store_content_base(h, content);
+    r_link_stuff_and_send(h, fdholder, content_msg, a, content_msg + b, size - b);
     
 }
 
@@ -817,12 +845,23 @@ r_store_commit_content(struct ccnr_handle *h, struct content_entry *content)
         r_sendq_face_send_queue_insert(h, r_io_fdholder_from_fd(h, h->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
         r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
-        ccnr_debug_ccnb(h, __LINE__, "content_stored",
+        ccnr_debug_content(h, __LINE__, "content_stored",
                         r_io_fdholder_from_fd(h, h->active_out_fd),
-                        content->key, content->size);
+                        content);
         if (content->accession >= h->notify_after) // XXXXXX 
             res = r_sync_notify_content(h, 0, content);
     }
     return(0);
+}
+
+PUBLIC void
+ccnr_debug_content(struct ccnr_handle *h,
+                   int lineno,
+                   const char *msg,
+                   struct fdholder *fdholder,
+                   struct content_entry *content)
+{
+    const unsigned char *content_msg = r_store_content_base(h, content);
+    ccnr_debug_ccnb(h, lineno, msg, fdholder, content_msg, content->size);
 }
 
