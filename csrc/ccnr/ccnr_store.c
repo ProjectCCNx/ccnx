@@ -93,22 +93,12 @@ r_store_name_append_components(struct ccn_charbuf *dst,
                                int skip,
                                int count)
 {
-    const unsigned char *content_msg = NULL;
-    int end;
     int res;
     
-    end = content->namecomps->n - 1;
-    if (skip < 0)
-        return(-1);
-    if (skip >= end)
-        return(0);
-    if (count >= 0 && skip + count < end)
-        end = skip + count;
-    content_msg = r_store_content_base(h, content);
-    res = ccn_name_append_components(dst, content_msg,
-                                     content->namecomps->buf[skip],
-                                     content->namecomps->buf[end]);
-    return(res < 0 ? -1 : end - skip);
+    res = ccn_name_append_flatname(dst,
+                                   content->flatname->buf,
+                                   content->flatname->length, skip, count);
+    return(res);
 }
 
 PUBLIC int
