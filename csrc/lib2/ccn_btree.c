@@ -621,6 +621,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     if (node->nodeid == 1) {
         node = ccn_btree_grow_a_level(btree, node);
         if (node == NULL)
+            abort();
         if (node->nodeid == 1 || node->parent != 1 || ccn_btree_node_nent(node) != n)
             abort();
     }
