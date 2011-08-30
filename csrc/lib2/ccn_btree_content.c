@@ -282,6 +282,8 @@ ccn_flatname_charbuf_compare(struct ccn_charbuf *a, struct ccn_charbuf *b)
         return(res);
     if (al < bl)
         return(-9999);
+    else if (al == bl)
+        return(0);
     else
         return(9999);
 }
