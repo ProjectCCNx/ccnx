@@ -65,25 +65,59 @@
 #include "ccnr_sendq.h"
 #include "ccnr_io.h"
 
-/**
- *  The internal form differs from the on-wire form in
- *  that the final content-digest name component is represented explicitly,
- *  which simplifies the matching logic.
- *  The original ContentObject may be reconstructed simply by excising this
- *  last name component, which is easily located via the comps array.
- */
-struct content_entry;
-/* This is where the actual struct should be, but there is still some work to do. */
+static const unsigned char *bogon = NULL;
 
+static const unsigned char *
+r_store_content_mapped(struct ccnr_handle *h, struct content_entry *content)
+{
+    return(NULL);
+}
+
+static const unsigned char *
+r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
+{
+    return(NULL);
+}
+
+/**
+ *  Get the base address of the content object
+ *
+ * This may involve reading the object in.  Caller should not assume that
+ * the address will stay valid after it relinquishes control, either by
+ * returning or by calling routines that might invalidate objects.
+ *
+ */
 PUBLIC const unsigned char *
 r_store_content_base(struct ccnr_handle *h, struct content_entry *content)
 {
-    if (content->cob != NULL && content->cob->length == content->size)
-        return(content->cob->buf);
-    ccnr_msg(h, "Urp.%d - r_store_content_base returning NULL (0x%jx, %u)", __LINE__,
-        ccnr_accession_encode(h, content->accession),
-        (unsigned)content->cookie);
-    return(NULL);
+    const unsigned char *ans = NULL;
+    
+    if (content->cob != NULL && content->cob->length == content->size) {
+        ans = content->cob->buf;
+        goto Finish;
+    }
+    if (content->accession == CCNR_NULL_ACCESSION)
+        goto Finish;
+    ans = r_store_content_mapped(h, content);
+    if (ans != NULL)
+        goto Finish;
+    ans = r_store_content_read(h, content);
+Finish:
+    if (ans != NULL) {
+        /* Sanity check - make sure first 2 and last 2 bytes are good */
+        if (content->size < 5 || ans[0] != 0x04 || ans[1] != 0x82 ||
+            ans[content->size - 1] != 0 || ans[content->size - 2] != 0) {
+            bogon = ans; /* for debugger */
+            ans = NULL;
+        }
+    }
+    if (ans == NULL || CCNSHOULDLOG(h, xxxx, CCNL_FINEST))
+        ccnr_msg(h, "r_store_content_base.%d returning %p (0x%jx, %u)",
+                 __LINE__,
+                 ans,
+                 ccnr_accession_encode(h, content->accession),
+                 (unsigned)content->cookie);
+    return(ans);
 }
 
 PUBLIC int
