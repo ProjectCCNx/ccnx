@@ -826,7 +826,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     // Append the repository key id %C1.K.%00<repoid>
     ccn_name_append(name, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length);
     
-    if (res == HT_NEW_ENTRY || es->starting_accession != ccnr->accession) {
+    if (res == HT_NEW_ENTRY || es->starting_cookie != ccnr->cookie) {
         // this is a new enumeration, the time is now.
         ccnr_msg(ccnr, "making entry with new version");
         res = ccn_create_version(info->h, name, CCN_V_NOW, 0, 0);
@@ -834,7 +834,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
             ccn_charbuf_destroy(&es->name);
         es->name = ccn_charbuf_create();
         ccn_charbuf_append_charbuf(es->name, name);
-        es->starting_accession = ccnr->accession; // XXX - a conservative indicator of change
+        es->starting_cookie = ccnr->cookie; // XXX - a conservative indicator of change
     }
     
     // check the exclude
@@ -966,8 +966,8 @@ r_proto_dump_enums(struct ccnr_handle *ccnr)
     
     for (hashtb_start(ccnr->enum_state_tab, e); e->data != NULL; hashtb_next(e)) {
         es = e->data;
-        ccnr_msg(ccnr, "Enumeration active: %d, next segment %d, accession %d",
-                 es->active, es->next_segment, es->starting_accession);
+        ccnr_msg(ccnr, "Enumeration active: %d, next segment %d, cookie %u",
+                 es->active, es->next_segment, es->starting_cookie);
         ccnr_debug_ccnb(ccnr, __LINE__, "     enum name", NULL,
                         es->name->buf, es->name->length);
         

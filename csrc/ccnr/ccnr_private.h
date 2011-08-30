@@ -198,7 +198,7 @@ struct ccnr_handle {
     unsigned content_by_cookie_window;
     struct content_entry **content_by_cookie;
     struct hashtb *content_by_accession_tab; /* keyed by accession */
-    ccnr_accession accession; /**< newest used accession */
+    // ccnr_accession accession; /**< newest used accession */
     ccnr_cookie cookie;      /**< newest used cookie number */
     ccnr_cookie min_stale;      /**< smallest cookie of stale content */
     ccnr_cookie max_stale;      /**< largest cookie of stale content */
@@ -444,7 +444,7 @@ struct enum_state {
     struct ccn_charbuf *interest;
     struct ccn_indexbuf *interest_comps;
     uintmax_t next_segment;
-    ccnr_accession starting_accession;
+    ccnr_cookie starting_cookie;
     int active;
 };
 

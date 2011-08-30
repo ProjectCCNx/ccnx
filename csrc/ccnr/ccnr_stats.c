@@ -407,7 +407,7 @@ collect_stats_html(struct ccnr_handle *h)
         h->starttime, h->starttime_usec,
         h->sec,
         h->usec,
-        (unsigned long long)h->accession, // XXXXXX - 
+        (unsigned long long)hashtb_n(h->content_by_accession_tab), // XXXXXX - 
         hashtb_n(h->content_by_accession_tab),
         h->n_stale,
         hashtb_n(h->content_by_accession_tab),
@@ -578,7 +578,7 @@ collect_stats_xml(struct ccnr_handle *h)
         "<sent>%lu</sent>"
         "<stuffed>%lu</stuffed>"
         "</interests>",
-        (unsigned long long)h->accession, // XXXXXX -
+        (unsigned long long)hashtb_n(h->content_by_accession_tab), // XXXXXX -
         hashtb_n(h->content_by_accession_tab),
         h->n_stale,
         hashtb_n(h->content_by_accession_tab),
