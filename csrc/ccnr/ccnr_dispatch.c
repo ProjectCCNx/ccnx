@@ -336,13 +336,14 @@ process_input(struct ccnr_handle *h, int fd)
             msgstart = d->index;
             if (msgstart == fdholder->inbuf->length) {
                 fdholder->inbuf->length = 0;
-                fdholder->bufoffset += msgstart; // XXXNHB - is this correct?
+                fdholder->bufoffset += msgstart;
                 return;
             }
             dres = ccn_skeleton_decode(d,
                     fdholder->inbuf->buf + msgstart,
                     fdholder->inbuf->length - msgstart);
         }
+        fdholder->bufoffset += msgstart;
         if ((fdholder->flags & CCNR_FACE_DGRAM) != 0) {
             ccnr_msg(h, "protocol error on fdholder %u, discarding %u bytes",
                 source->filedesc,
@@ -363,7 +364,6 @@ process_input(struct ccnr_handle *h, int fd)
             fdholder->inbuf->length -= msgstart;
             d->index -= msgstart;
         }
-        fdholder->bufoffset += msgstart;
     }
 }
 
