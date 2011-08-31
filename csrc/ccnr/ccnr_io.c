@@ -280,7 +280,8 @@ r_io_open_repo_data_file(struct ccnr_handle *h, const char *name, int output)
     ccn_charbuf_putf(temp, "%s/%s", h->directory, name);
     fd = open(ccn_charbuf_as_string(temp), output ? (O_CREAT | O_WRONLY | O_APPEND) : O_RDONLY, 0666);
     if (fd == -1) {
-        ccnr_msg(h, "open(%s): %s", ccn_charbuf_as_string(temp), strerror(errno));
+        if (CCNSHOULDLOG(h, sdf, CCNL_FINE))
+            ccnr_msg(h, "open(%s): %s", ccn_charbuf_as_string(temp), strerror(errno));
         ccn_charbuf_destroy(&temp);
         return(-1);
     }
@@ -289,8 +290,10 @@ r_io_open_repo_data_file(struct ccnr_handle *h, const char *name, int output)
                             CCNR_FACE_REPODATA | (output ? CCNR_FACE_NORECV : CCNR_FACE_NOSEND));
     if (fdholder == NULL)
         close_fd(&fd);
-    else
-        ccnr_msg(h, "opened fd=%d file=%s", fd, ccn_charbuf_as_string(temp));
+    else {
+        if (CCNSHOULDLOG(h, sdf, CCNL_INFO))
+            ccnr_msg(h, "opened fd=%d file=%s", fd, ccn_charbuf_as_string(temp));
+    }
     ccn_charbuf_destroy(&temp);
     return(fd);
 }

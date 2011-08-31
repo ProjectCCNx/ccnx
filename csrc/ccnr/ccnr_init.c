@@ -309,7 +309,6 @@ map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename, int ad
         goto Bail;
     }
     fdholder = r_io_fdholder_from_fd(h, fd);
-    fdholder->flags &= ~CCNR_FACE_REPODATA; // This file is NOT stable
     d = &fdholder->decoder;
     msg = mapped_file;
     size = statbuf.st_size;

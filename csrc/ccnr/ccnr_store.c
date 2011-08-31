@@ -804,7 +804,9 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         cb = NULL;
         res = r_store_content_skiplist_insert(h, content);
         if (res < 0) {
-            ccnr_debug_content(h, __LINE__, "content_duplicate", fdholder, content);
+            if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
+                ccnr_debug_content(h, __LINE__, "content_duplicate",
+                                   fdholder, content);
             h->content_dups_recvd++;
             r_store_forget_content(h, &content);
             goto Bail;
