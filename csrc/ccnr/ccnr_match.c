@@ -180,9 +180,7 @@ r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
     
     name = ccn_charbuf_create();
     ccn_name_init(name);
-    ccn_name_append_flatname(name,
-                             content->flatname->buf,
-                             content->flatname->length, 0, -1);
+    r_store_name_append_components(name, h, content, 0, -1);
     namecomps = ccn_indexbuf_create();
     ccn_name_split(name, namecomps);
     c0 = namecomps->buf[0];
