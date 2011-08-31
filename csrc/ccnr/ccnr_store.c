@@ -115,6 +115,7 @@ r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
     if (rres == content->size) {
         cob->length = content->size;
         content->cob = cob;
+        h->cob_count++;
         return(cob->buf);
     }
     if (rres == -1)
@@ -126,6 +127,22 @@ r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
 Bail:
     ccn_charbuf_destroy(&cob);
     return(NULL);
+}
+
+/**
+ *  If the content appears to be safely stored in the repository,
+ *  removes any buffered copy.
+ * @returns 0 if buffer was removed, -1 if not.
+ */
+PUBLIC int
+r_store_content_trim(struct ccnr_handle *h, struct content_entry *content)
+{
+    if (content->accession != CCNR_NULL_ACCESSION && content->cob != NULL) {
+        ccn_charbuf_destroy(&content->cob);
+        h->cob_count--;
+        return(0);
+    }
+    return(-1);
 }
 
 /**
@@ -339,14 +356,14 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
     }
 }
 
-static int
+static void
 content_skiplist_findbefore(struct ccnr_handle *h,
                             struct ccn_charbuf *flatname,
                             struct content_entry *wanted_old,
                             struct ccn_indexbuf **ans)
 {
     int i;
-    int n = h->skiplinks->n;
+    const int n = h->skiplinks->n;
     struct ccn_indexbuf *c;
     struct content_entry *content;
     int order;
@@ -370,11 +387,10 @@ content_skiplist_findbefore(struct ccnr_handle *h,
         }
         ans[i] = c;
     }
-    return(n);
 }
 
 #define CCN_SKIPLIST_MAX_DEPTH 30
-PUBLIC void
+PUBLIC int
 r_store_content_skiplist_insert(struct ccnr_handle *h,
                                 struct content_entry *content)
 {
@@ -386,14 +402,15 @@ r_store_content_skiplist_insert(struct ccnr_handle *h,
         if ((nrand48(h->seed) & 3) != 0) break;
     while (h->skiplinks->n < d)
         ccn_indexbuf_append_element(h->skiplinks, 0);
-    i = content_skiplist_findbefore(h, content->flatname, NULL, pred);
-    if (i < d)
-        d = i; /* just in case */
+    content_skiplist_findbefore(h, content->flatname, NULL, pred);
+    if (h->skiplinks->n < d) abort();
+    // XXXX - check for duplicate here
     content->skiplinks = ccn_indexbuf_create();
     for (i = 0; i < d; i++) {
         ccn_indexbuf_append_element(content->skiplinks, pred[i]->buf[i]);
         pred[i]->buf[i] = content->cookie;
     }
+    return(0);
 }
 
 static void
@@ -404,12 +421,11 @@ content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     if (content->skiplinks == NULL)
         return;
-    d = content_skiplist_findbefore(h, content->flatname, content, pred);
-    if (d > content->skiplinks->n)
-        d = content->skiplinks->n;
-    for (i = 0; i < d; i++) {
+    content_skiplist_findbefore(h, content->flatname, content, pred);
+    d = content->skiplinks->n;
+    if (h->skiplinks->n < d) abort();
+    for (i = 0; i < d; i++)
         pred[i]->buf[i] = content->skiplinks->buf[i];
-    }
     ccn_indexbuf_destroy(&content->skiplinks);
 }
 
@@ -449,6 +465,8 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
         hashtb_delete(e);
         hashtb_end(e);
         entry->accession = CCNR_NULL_ACCESSION;
+        if (entry->cob != NULL)
+            h->cob_count--;
     }
     /* Clean up allocated subfields */
     ccn_charbuf_destroy(&entry->flatname);
@@ -511,10 +529,10 @@ r_store_find_first_match_candidate(struct ccnr_handle *h,
             }
         }
     }
-    res = content_skiplist_findbefore(h, flatname, NULL, pred);
+    content_skiplist_findbefore(h, flatname, NULL, pred);
     ccn_charbuf_destroy(&namebuf);
     ccn_charbuf_destroy(&flatname);
-    if (res == 0)
+    if (h->skiplinks->n == 0)
         return(NULL);
     return(r_store_content_from_cookie(h, pred[0]->buf[0]));
 }
@@ -554,10 +572,9 @@ r_store_next_child_at_level(struct ccnr_handle *h,
     struct ccn_charbuf *name;
     struct ccn_charbuf *flatname = NULL;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
-    int d;
     int res;
     
-    if (content == NULL)
+    if (content == NULL || h->skiplinks->n == 0)
         return(NULL);
     name = ccn_charbuf_create();
     ccn_name_init(name);
@@ -577,7 +594,7 @@ r_store_next_child_at_level(struct ccnr_handle *h,
                         name->buf, name->length);
     flatname = ccn_charbuf_create();
     ccn_flatname_from_ccnb(flatname, name->buf, name->length);
-    d = content_skiplist_findbefore(h, flatname, NULL, pred);
+    content_skiplist_findbefore(h, flatname, NULL, pred);
     next = r_store_content_from_cookie(h, pred[0]->buf[0]);
     if (next == content) {
         // XXX - I think this case should not occur, but just in case, avoid a loop.
@@ -837,8 +854,11 @@ r_store_set_accession_from_offset(struct ccnr_handle *h,
         hashtb_start(h->content_by_accession_tab, e);
         hashtb_seek(e, &content->accession, sizeof(content->accession), 0);
         entry = e->data;
-        if (entry != NULL)
+        if (entry != NULL) {
             entry->content = content;
+            if (content->cob != NULL)
+                h->cob_count++;
+        }
         hashtb_end(e);
         if (content->accession >= h->notify_after) 
             r_sync_notify_content(h, 0, content);

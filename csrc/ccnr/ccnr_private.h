@@ -206,6 +206,7 @@ struct ccnr_handle {
     ccnr_cookie max_stale;      /**< largest cookie of stale content */
     unsigned long n_stale;          /**< Number of stale content objects */
     struct ccn_indexbuf *unsol;     /**< unsolicited content */
+    unsigned long cob_count;  /**< count of accessioned content objects in memory */
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
     unsigned long oldformatinterests;

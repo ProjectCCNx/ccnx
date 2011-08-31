@@ -392,7 +392,7 @@ collect_stats_html(struct ccnr_handle *h)
         "<body bgcolor='#%06X'>"
         "<p class='header'>%s ccnr[%d] local port %s api %d start %ld.%06u now %ld.%06u</p>" NL
         "<div><b>Content items:</b> %llu accessioned,"
-        " %d stored, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
+        " %llu cached, %lu stale, %d sparse, %lu duplicate, %lu sent</div>" NL
         "<div><b>Interests:</b> %d names,"
         " %ld pending, %ld propagating, %ld noted</div>" NL
         "<div><b>Interest totals:</b> %lu accepted,"
@@ -408,7 +408,7 @@ collect_stats_html(struct ccnr_handle *h)
         h->sec,
         h->usec,
         (unsigned long long)hashtb_n(h->content_by_accession_tab), // XXXXXX - 
-        hashtb_n(h->content_by_accession_tab),
+        (unsigned long long)(h->cob_count),
         h->n_stale,
         hashtb_n(h->content_by_accession_tab),
         h->content_dups_recvd,
@@ -562,7 +562,7 @@ collect_stats_xml(struct ccnr_handle *h)
     ccn_charbuf_putf(b,
         "<cobs>"
         "<accessioned>%llu</accessioned>"
-        "<stored>%d</stored>"
+        "<cached>%llu</cached>"
         "<stale>%lu</stale>"
         "<sparse>%d</sparse>"
         "<duplicate>%lu</duplicate>"
@@ -579,7 +579,7 @@ collect_stats_xml(struct ccnr_handle *h)
         "<stuffed>%lu</stuffed>"
         "</interests>",
         (unsigned long long)hashtb_n(h->content_by_accession_tab), // XXXXXX -
-        hashtb_n(h->content_by_accession_tab),
+        (unsigned long long)(h->cob_count),
         h->n_stale,
         hashtb_n(h->content_by_accession_tab),
         h->content_dups_recvd,
