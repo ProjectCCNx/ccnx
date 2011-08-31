@@ -177,9 +177,9 @@ struct ccnr_handle {
     unsigned face_rover;            /**< for filedesc allocation */
     unsigned face_limit;            /**< current number of fdholder slots */
     struct fdholder **fdholder_by_fd;  /**< array with face_limit elements */
-    int active_in_fd;
-    int active_out_fd;
-    int repofile1_fd;
+    int active_in_fd;               /**< data currently being indexed */
+    int active_out_fd;              /**< repo file we will write to */
+    int repofile1_fd;               /**< read-only access to repoFile1 */
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
@@ -436,21 +436,6 @@ struct enum_state {
     int active;
 };
 
-/* count something (messages, packets, bytes), getting time info from h */
-void ccnr_meter_bump(struct ccnr_handle *h, struct ccnr_meter *m, unsigned amt);
-
-
-#if 0
-/* create and destroy procs for separately allocated meters */
-struct ccnr_meter *ccnr_meter_create(struct ccnr_handle *h, const char *what);
-void ccnr_meter_destroy(struct ccnr_meter **);
-
-/* for meters kept within other structures */
-void ccnr_meter_init(struct ccnr_handle *h, struct ccnr_meter *m, const char *what);
-
-unsigned ccnr_meter_rate(struct ccnr_handle *h, struct ccnr_meter *m);
-uintmax_t ccnr_meter_total(struct ccnr_meter *m);
-#endif
 /**
  * @def CCN_FORW_ACTIVE         1
  * @def CCN_FORW_CHILD_INHERIT  2

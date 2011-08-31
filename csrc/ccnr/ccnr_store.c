@@ -55,6 +55,7 @@
 
 #include "ccnr_private.h"
 
+#include "ccnr_stats.h"
 #include "ccnr_store.h"
 #include "ccnr_link.h"
 #include "ccnr_util.h"
