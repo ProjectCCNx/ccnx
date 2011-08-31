@@ -536,14 +536,14 @@ r_store_content_matches_interest_prefix(struct ccnr_handle *h,
     return(ans);
 }
 
-PUBLIC ccnr_cookie
-r_store_content_skiplist_next(struct ccnr_handle *h, struct content_entry *content)
+PUBLIC struct content_entry *
+r_store_content_next(struct ccnr_handle *h, struct content_entry *content)
 {
     if (content == NULL)
         return(0);
     if (content->skiplinks == NULL || content->skiplinks->n < 1)
         return(0);
-    return(content->skiplinks->buf[0]);
+    return(r_store_content_from_cookie(h, content->skiplinks->buf[0]));
 }
 
 PUBLIC struct content_entry *
@@ -626,7 +626,7 @@ r_store_lookup(struct ccnr_handle *h,
                 content = r_store_next_child_at_level(h, content, comps->n - 1);
                 goto check_next_prefix;
             }
-        content = r_store_content_from_cookie(h, r_store_content_skiplist_next(h, content));
+        content = r_store_content_next(h, content);
     check_next_prefix:
         if (content != NULL &&
             !r_store_content_matches_interest_prefix(h, content, msg, size))

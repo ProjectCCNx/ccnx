@@ -337,7 +337,7 @@ struct content_entry {
     ccnr_cookie cookie;         /**< for in-memory references */
     int flags;                  /**< see below - use accessor functions */
     int size;                   /**< size of ContentObject */
-    struct ccn_charbuf *flatname; /**< for skiplist */
+    struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
     struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
     struct ccn_charbuf *cob;    /**< may contain ContentObject, or be NULL */
 };

@@ -231,7 +231,7 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
                 return(0);
             }
         }
-        content = r_store_content_from_cookie(ccnr, r_store_content_skiplist_next(ccnr, content));
+        content = r_store_content_next(ccnr, content);
         if (content != NULL &&
             !r_store_content_matches_interest_prefix(ccnr, content, interest->buf,
                                                      interest->length))
