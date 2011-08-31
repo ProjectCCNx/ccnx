@@ -54,10 +54,10 @@ check test: ccnbtreetest $(SCRIPTSRC)
 ###############################
 ccn_btree.o: ccn_btree.c ../include/ccn/charbuf.h ../include/ccn/hashtb.h \
   ../ccn/btree.h
-ccn_btree_content.o: ccn_btree_content.c ../ccn/btree_content.h \
-  ../include/ccn/charbuf.h ../ccn/btree.h ../include/ccn/hashtb.h \
+ccn_btree_content.o: ccn_btree_content.c ../ccn/btree.h \
+  ../include/ccn/charbuf.h ../include/ccn/hashtb.h ../ccn/btree_content.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/indexbuf.h \
-  ../include/ccn/uri.h
+  ../include/ccn/bloom.h ../include/ccn/uri.h
 ccn_btree_store.o: ccn_btree_store.c ../ccn/btree.h \
   ../include/ccn/charbuf.h ../include/ccn/hashtb.h
 ccnbtreetest.o: ccnbtreetest.c ../ccn/btree.h ../include/ccn/charbuf.h \

@@ -43,6 +43,7 @@
 #include <netinet/in.h>
 
 #include <ccn/bloom.h>
+#include <ccn/btree_content.h>
 #include <ccn/ccn.h>
 #include <ccn/ccn_private.h>
 #include <ccn/charbuf.h>
