@@ -207,9 +207,6 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
             if (content != NULL && offsetp != NULL)
                 r_store_set_accession_from_offset(h, content, fdholder, *offsetp);
             return;
-        case CCN_DTAG_SequenceNumber:
-            r_link_process_incoming_link_message(h, fdholder, dtag, msg, size);
-            return;
         default:
             break;
     }

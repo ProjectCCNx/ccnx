@@ -769,14 +769,12 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
     size_t minsize = presize + postsize;
     unsigned char *post = msg + pi->offset[CCN_PI_E_Nonce];
     int k = 0;
-    int max_redundant = 3; /* Allow this many dups from same fdholder */
+    int max_redundant = 0; /* Allow this many dups from same fdholder */
     int i;
     int n;
     struct fdholder *otherface;
     int extra_delay = 0;
 
-    if ((fdholder->flags & (CCNR_FACE_MCAST | CCNR_FACE_LINK)) != 0)
-        max_redundant = 0;
     if (outbound != NULL) {
         for (p = head->next; p != head && outbound->n > 0; p = p->next) {
             if (p->size > minsize &&
@@ -833,8 +831,6 @@ adjust_outbound_for_existing_interests(struct ccnr_handle *h, struct fdholder *f
                     if (p->filedesc == outbound->buf[i]) {
                         outbound->buf[0] = p->filedesc;
                         outbound->n = 1;
-                        if ((otherface->flags & (CCNR_FACE_MCAST | CCNR_FACE_LINK)) != 0)
-                            extra_delay += npe->usec + 10000;
                         break;
                     }
                 }

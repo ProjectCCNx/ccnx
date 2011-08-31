@@ -366,7 +366,6 @@ r_io_register_new_face(struct ccnr_handle *h, struct fdholder *fdholder)
 {
     if (fdholder->filedesc != 0 && (fdholder->flags & (CCNR_FACE_UNDECIDED | CCNR_FACE_PASSIVE)) == 0) {
         ccnr_face_status_change(h, fdholder->filedesc);
-        r_link_ccn_link_state_init(h, fdholder);
     }
 }
 

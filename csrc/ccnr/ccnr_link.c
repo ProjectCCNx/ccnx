@@ -69,11 +69,6 @@
 #include "ccnr_store.h"
 #include "ccnr_util.h"
 
-static void
-ccn_append_link_stuff(struct ccnr_handle * h,
-                      struct fdholder * fdholder,
-                      struct ccn_charbuf * c);
-
 PUBLIC void
 r_link_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content)
 {
@@ -87,8 +82,7 @@ r_link_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct con
 }
 
 /**
- * Send a message in a PDU, possibly stuffing other interest messages into it.
- * The message may be in two pieces.
+ * Send a message, which may be in two pieces.
  */
 PUBLIC void
 r_link_stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
@@ -97,23 +91,11 @@ r_link_stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
                off_t *offsetp) {
     struct ccn_charbuf *c = NULL;
     
-    if ((fdholder->flags & CCNR_FACE_LINK) != 0) {
-        c = r_util_charbuf_obtain(h);
-        ccn_charbuf_reserve(c, size1 + size2 + 5 + 8);
-        ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
-        ccn_charbuf_append(c, data1, size1);
-        if (size2 != 0)
-            ccn_charbuf_append(c, data2, size2);
-        ccn_append_link_stuff(h, fdholder, c);
-        ccn_charbuf_append_closer(c);
-    }
-    else if (size2 != 0 || 1 > size1 + size2 ||
-             (fdholder->flags & (CCNR_FACE_SEQOK | CCNR_FACE_SEQPROBE)) != 0) {
+    if (size2 != 0 || 1 > size1 + size2) {
         c = r_util_charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
         if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
-        ccn_append_link_stuff(h, fdholder, c);
     }
     else {
         /* avoid a copy in this case */
@@ -125,103 +107,6 @@ r_link_stuff_and_send(struct ccnr_handle *h, struct fdholder *fdholder,
     return;
 }
 
-PUBLIC void
-r_link_ccn_link_state_init(struct ccnr_handle *h, struct fdholder *fdholder)
-{
-    int checkflags;
-    int matchflags;
-    
-    matchflags = CCNR_FACE_DGRAM;
-    checkflags = matchflags | CCNR_FACE_MCAST | CCNR_FACE_GG | CCNR_FACE_SEQOK |                  CCNR_FACE_PASSIVE;
-    if ((fdholder->flags & checkflags) != matchflags)
-        return;
-    /* Send one sequence number to see if the other side wants to play. */
-    fdholder->pktseq = nrand48(h->seed);
-    fdholder->flags |= CCNR_FACE_SEQPROBE;
-}
-
-static void
-ccn_append_link_stuff(struct ccnr_handle *h,
-                      struct fdholder *fdholder,
-                      struct ccn_charbuf *c)
-{
-    if ((fdholder->flags & (CCNR_FACE_SEQOK | CCNR_FACE_SEQPROBE)) == 0)
-        return;
-    ccn_charbuf_append_tt(c, CCN_DTAG_SequenceNumber, CCN_DTAG);
-    ccn_charbuf_append_tt(c, 2, CCN_BLOB);
-    ccn_charbuf_append_value(c, fdholder->pktseq, 2);
-    ccnb_element_end(c);
-    if (0)
-        ccnr_msg(h, "debug.%d pkt_to %u seq %u",
-                 __LINE__, fdholder->filedesc, (unsigned)fdholder->pktseq);
-    fdholder->pktseq++;
-    fdholder->flags &= ~CCNR_FACE_SEQPROBE;
-}
-
-PUBLIC int
-r_link_process_incoming_link_message(struct ccnr_handle *h,
-                              struct fdholder *fdholder, enum ccn_dtag dtag,
-                              unsigned char *msg, size_t size)
-{
-    uintmax_t s;
-    int checkflags;
-    int matchflags;
-    struct ccn_buf_decoder decoder;
-    struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, msg, size);
-
-    switch (dtag) {
-        case CCN_DTAG_SequenceNumber:
-            s = ccn_parse_required_tagged_binary_number(d, dtag, 1, 6);
-            if (d->decoder.state < 0)
-                return(d->decoder.state);
-            /*
-             * If the other side is unicast and sends sequence numbers,
-             * then it is OK for us to send numbers as well.
-             */
-            matchflags = CCNR_FACE_DGRAM;
-            checkflags = matchflags | CCNR_FACE_MCAST | CCNR_FACE_SEQOK;
-            if ((fdholder->flags & checkflags) == matchflags)
-                fdholder->flags |= CCNR_FACE_SEQOK;
-            if (fdholder->rrun == 0) {
-                fdholder->rseq = s;
-                fdholder->rrun = 1;
-                return(0);
-            }
-            if (s == fdholder->rseq + 1) {
-                fdholder->rseq = s;
-                if (fdholder->rrun < 255)
-                    fdholder->rrun++;
-                return(0);
-            }
-            if (s > fdholder->rseq && s - fdholder->rseq < 255) {
-                ccnr_msg(h, "seq_gap %u %ju to %ju",
-                         fdholder->filedesc, fdholder->rseq, s);
-                fdholder->rseq = s;
-                fdholder->rrun = 1;
-                return(0);
-            }
-            if (s <= fdholder->rseq) {
-                if (fdholder->rseq - s < fdholder->rrun) {
-                    ccnr_msg(h, "seq_dup %u %ju", fdholder->filedesc, s);
-                    return(0);
-                }
-                if (fdholder->rseq - s < 255) {
-                    /* Received out of order */
-                    ccnr_msg(h, "seq_ooo %u %ju", fdholder->filedesc, s);
-                    if (s == fdholder->rseq - fdholder->rrun) {
-                        fdholder->rrun++;
-                        return(0);
-                    }
-                }
-            }
-            fdholder->rseq = s;
-            fdholder->rrun = 1;
-            break;
-        default:
-            return(-1);
-    }
-    return(0);
-}
 PUBLIC void
 r_link_do_deferred_write(struct ccnr_handle *h, int fd)
 {

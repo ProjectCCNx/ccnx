@@ -305,9 +305,6 @@ struct fdholder {
 
 /** fdholder flags */
 
-
-// XXX - remove
-#define CCNR_FACE_LINK   (1 << 0) /**< Elements wrapped by CCNProtocolDataUnit */
 #define CCNR_FACE_DGRAM  (1 << 1) /**< Datagram interface, respect packets */
 #define CCNR_FACE_GG     (1 << 2) /**< Considered friendly */
 #define CCNR_FACE_LOCAL  (1 << 3) /**< PF_UNIX socket */
@@ -325,12 +322,6 @@ struct fdholder {
 #define CCNR_FACE_CLOSING (1 << 13) /**< close stream when output is done */
 #define CCNR_FACE_PASSIVE (1 << 14) /**< a listener or a bound dgram socket */
 #define CCNR_FACE_NORECV (1 << 15) /**< use for sending only */
-// XXX - remove
-#define CCNR_FACE_REGOK (1 << 16) /**< Allowed to do prefix registration */
-// XXX - remove
-#define CCNR_FACE_SEQOK (1 << 17) /** OK to send SequenceNumber link messages */
-// XXX - remove
-#define CCNR_FACE_SEQPROBE (1 << 18) /** SequenceNumber probe */
 #define CCNR_FACE_REPODATA (1 << 19) /** A repository log-structured data file */
 #define CCNR_FACE_CCND (1 << 20) /** A connection to our ccnd */
 #define CCNR_FACE_SOCKMASK (CCNR_FACE_DGRAM | CCNR_FACE_INET | CCNR_FACE_INET6 | CCNR_FACE_LOCAL)

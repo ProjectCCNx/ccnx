@@ -26,9 +26,14 @@
 #include "ccnr_private.h"
 
 void r_link_do_deferred_write(struct ccnr_handle *h,int fd);
-int r_link_process_incoming_link_message(struct ccnr_handle *h,struct fdholder *fdholder,enum ccn_dtag dtag,unsigned char *msg,size_t size);
-void r_link_ccn_link_state_init(struct ccnr_handle *h,struct fdholder *fdholder);
-void r_link_stuff_and_send(struct ccnr_handle *h,struct fdholder *fdholder,const unsigned char *data1,size_t size1,const unsigned char *data2,size_t size2,off_t *offsetp);
-void r_link_send_content(struct ccnr_handle *h,struct fdholder *fdholder,struct content_entry *content);
-
+void r_link_stuff_and_send(struct ccnr_handle *h,
+                           struct fdholder *fdholder,
+                           const unsigned char *data1,
+                           size_t size1,
+                           const unsigned char *data2,
+                           size_t size2,
+                           off_t *offsetp);
+void r_link_send_content(struct ccnr_handle *h,
+                         struct fdholder *fdholder,
+                         struct content_entry *content);
 #endif
