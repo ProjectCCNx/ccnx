@@ -111,7 +111,7 @@ r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
         goto Bail;
     if (ccn_charbuf_reserve(cob, content->size) == NULL)
         goto Bail;
-    rres = read(fd, cob->buf, content->size);
+    rres = pread(fd, cob->buf, content->size, offset);
     if (rres == content->size) {
         cob->length = content->size;
         content->cob = cob;
