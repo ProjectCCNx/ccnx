@@ -162,7 +162,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
         h->running = -1;
         goto Bail;
     }
-    r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
+    h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
     h->active_out_fd = r_io_open_repo_data_file(h, "repoFile1", 1); /* output */
     r_util_reseed(h);
     if (h->face0 == NULL) {

@@ -295,6 +295,20 @@ r_io_open_repo_data_file(struct ccnr_handle *h, const char *name, int output)
     return(fd);
 }
 
+
+PUBLIC int
+r_io_repo_data_file_fd(struct ccnr_handle *h, unsigned repofile, int output)
+{
+    if (repofile != 1)
+        return(-1);
+    if (output)
+        return(-1);
+    if (h->repofile1_fd > 0)
+        return(h->repofile1_fd);
+    h->repofile1_fd = r_io_open_repo_data_file(h, "repoFile1", 0);
+    return(h->repofile1_fd);
+}
+
 PUBLIC void
 r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
 {
@@ -323,6 +337,12 @@ r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
     h->fdholder_by_fd[fd] = NULL;
     ccn_charbuf_destroy(&fdholder->name);
     free(fdholder);
+    if (h->active_in_fd == fd)
+        h->active_in_fd = -1;
+    if (h->active_out_fd == fd)
+        h->active_out_fd = -1;
+    if (h->repofile1_fd == fd)
+        h->repofile1_fd = -1;
     r_fwd_reap_needed(h, 250000);
 }
 
@@ -479,7 +499,11 @@ r_io_prepare_poll_fds(struct ccnr_handle *h)
         struct fdholder *fdholder = r_io_fdholder_from_fd(h, i);
         if (fdholder != NULL) {
             h->fds[j].fd = fdholder->filedesc;
-            h->fds[j].events = ((fdholder->flags & CCNR_FACE_NORECV) == 0) ? POLLIN : 0;
+            h->fds[j].events = 0;
+            if ((fdholder->flags & (CCNR_FACE_NORECV|CCNR_FACE_REPODATA)) == 0)
+                h->fds[j].events |= POLLIN;
+            if (fdholder->filedesc == h->active_in_fd)
+                h->fds[j].events |= POLLIN;
             if ((fdholder->outbuf != NULL || (fdholder->flags & CCNR_FACE_CLOSING) != 0))
                 h->fds[j].events |= POLLOUT;
              if ((fdholder->flags & CCNR_FACE_CCND) != 0) {

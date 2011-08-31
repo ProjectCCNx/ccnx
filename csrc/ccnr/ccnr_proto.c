@@ -909,10 +909,17 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
            r_store_content_matches_interest_prefix(ccnr, es->content,
                                                    es->interest->buf,
                                                    es->interest->length)) {
+        int save = es->reply_body->length;
         ccnb_element_begin(es->reply_body, CCN_DTAG_Link);
         ccnb_element_begin(es->reply_body, CCN_DTAG_Name);
         ccnb_element_end(es->reply_body);
         res = r_store_name_append_components(es->reply_body, ccnr, es->content, es->interest_comps->n - 1, 1);
+        if (res == 0) {
+            /* The name matched exactly, need to skip. */
+            es->reply_body->length = save;
+            es->content = r_store_next_child_at_level(ccnr, es->content, es->interest_comps->n - 1);
+            continue;
+        }
         if (res != 1) {
             ccnr_debug_ccnb(ccnr, __LINE__, "oops", NULL, es->interest->buf, es->interest->length);
             ccnr_debug_content(ccnr, __LINE__, "oops", NULL, es->content);

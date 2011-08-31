@@ -177,7 +177,9 @@ struct ccnr_handle {
     unsigned face_rover;            /**< for filedesc allocation */
     unsigned face_limit;            /**< current number of fdholder slots */
     struct fdholder **fdholder_by_fd;  /**< array with face_limit elements */
+    int active_in_fd;
     int active_out_fd;
+    int repofile1_fd;
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;

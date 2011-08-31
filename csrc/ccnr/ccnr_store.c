@@ -67,6 +67,20 @@
 
 static const unsigned char *bogon = NULL;
 
+static off_t
+r_store_offset_from_accession(struct ccnr_handle *h, ccnr_accession a)
+{
+    return(a & ((((ccnr_accession)1) << 48) - 1));
+}
+
+static unsigned
+r_store_repofile_from_accession(struct ccnr_handle *h, ccnr_accession a)
+{
+    /* Initially this should always be 1 */
+    return(a >> 48);
+}
+
+
 static const unsigned char *
 r_store_content_mapped(struct ccnr_handle *h, struct content_entry *content)
 {
@@ -76,6 +90,40 @@ r_store_content_mapped(struct ccnr_handle *h, struct content_entry *content)
 static const unsigned char *
 r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
 {
+    unsigned repofile;
+    off_t offset;
+    struct ccn_charbuf *cob = NULL;
+    ssize_t rres = 0;
+    int fd = -1;
+        
+    repofile = r_store_repofile_from_accession(h, content->accession);
+    offset = r_store_offset_from_accession(h, content->accession);
+    if (repofile != 1)
+        goto Bail;
+    if (content->cob != NULL)
+        goto Bail;
+    fd = r_io_repo_data_file_fd(h, repofile, 0);
+    if (fd == -1)
+        goto Bail;
+    cob = ccn_charbuf_create();
+    if (cob == NULL)
+        goto Bail;
+    if (ccn_charbuf_reserve(cob, content->size) == NULL)
+        goto Bail;
+    rres = read(fd, cob->buf, content->size);
+    if (rres == content->size) {
+        cob->length = content->size;
+        content->cob = cob;
+        return(cob->buf);
+    }
+    if (rres == -1)
+        ccnr_msg(h, "r_store_content_read %u :%s (errno = %d)",
+                    fd, strerror(errno), errno);
+    else
+        ccnr_msg(h, "r_store_content_read %u expected %d bytes, but got %d",
+                    fd, (int)content->size, (int)rres);
+Bail:
+    ccn_charbuf_destroy(&cob);
     return(NULL);
 }
 
@@ -505,39 +553,41 @@ r_store_next_child_at_level(struct ccnr_handle *h,
 {
     struct content_entry *next = NULL;
     struct ccn_charbuf *name;
-    struct ccn_charbuf *flatname;
+    struct ccn_charbuf *flatname = NULL;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     int d;
     int res;
-    const unsigned char *content_msg = NULL;
     
     if (content == NULL)
         return(NULL);
-    if (content->namecomps->n <= level + 1)
-        return(NULL);
     name = ccn_charbuf_create();
     ccn_name_init(name);
-    content_msg = r_store_content_base(h, content);
-    res = ccn_name_append_components(name, content_msg,
-                                     content->namecomps->buf[0],
-                                     content->namecomps->buf[level + 1]);
-    if (res < 0) abort();
-    res = ccn_name_next_sibling(name);
-    if (res < 0) abort();
+    res = ccn_name_append_flatname(name,
+                                   content->flatname->buf,
+                                   content->flatname->length, 0, level + 1);
+    if (res < level)
+        goto Bail;
+    if (res == level)
+        res = ccn_name_append(name, NULL, 0);
+    else if (res == level + 1)
+        res = ccn_name_next_sibling(name); // XXX - would be nice to have a flatname version of this
+    if (res < 0)
+        goto Bail;
     if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
         ccnr_debug_ccnb(h, __LINE__, "child_successor", NULL,
                         name->buf, name->length);
     flatname = ccn_charbuf_create();
     ccn_flatname_from_ccnb(flatname, name->buf, name->length);
     d = content_skiplist_findbefore(h, flatname, NULL, pred);
-    ccn_charbuf_destroy(&flatname);
     next = r_store_content_from_cookie(h, pred[0]->buf[0]);
     if (next == content) {
         // XXX - I think this case should not occur, but just in case, avoid a loop.
-        next = r_store_content_from_cookie(h, r_store_content_skiplist_next(h, content));
-        ccnr_debug_content(h, __LINE__, "bump", NULL, next);
+        ccnr_debug_content(h, __LINE__, "urp", NULL, next);
+        next = NULL;
     }
+Bail:
     ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&flatname);
     return(next);
 }
 
