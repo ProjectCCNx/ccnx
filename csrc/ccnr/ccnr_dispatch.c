@@ -339,6 +339,7 @@ process_input(struct ccnr_handle *h, int fd)
             msgstart = d->index;
             if (msgstart == fdholder->inbuf->length) {
                 fdholder->inbuf->length = 0;
+                fdholder->bufoffset += msgstart; // XXXNHB - is this correct?
                 return;
             }
             dres = ccn_skeleton_decode(d,
