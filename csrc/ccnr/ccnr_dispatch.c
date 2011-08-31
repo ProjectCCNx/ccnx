@@ -416,6 +416,7 @@ r_dispatch_run(struct ccnr_handle *h)
         if (timeout_ms == 0 && prev_timeout_ms == 0)
             timeout_ms = 1;
         r_dispatch_process_internal_client_buffer(h);
+        r_store_trim(h, h->cob_limit);
         r_io_prepare_poll_fds(h);
         res = poll(h->fds, h->nfds, timeout_ms);
         prev_timeout_ms = ((res == 0) ? timeout_ms : 1);

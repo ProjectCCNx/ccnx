@@ -204,9 +204,11 @@ struct ccnr_handle {
     ccnr_cookie cookie;      /**< newest used cookie number */
     ccnr_cookie min_stale;      /**< smallest cookie of stale content */
     ccnr_cookie max_stale;      /**< largest cookie of stale content */
+    ccnr_cookie trim_rover;     /**< where we left off trimming */
     unsigned long n_stale;          /**< Number of stale content objects */
     struct ccn_indexbuf *unsol;     /**< unsolicited content */
     unsigned long cob_count;  /**< count of accessioned content objects in memory */
+    unsigned long cob_limit;  /**< trim when we get beyond this */
     unsigned long oldformatcontent;
     unsigned long oldformatcontentgrumble;
     unsigned long oldformatinterests;

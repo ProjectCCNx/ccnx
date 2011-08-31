@@ -142,6 +142,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->starttime_usec = h->usec;
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
+    h->cob_limit = 4201;
     h->debug = 1; /* so that we see any complaints */
     h->debug = r_init_debug_getenv(h, "CCNR_DEBUG");
     h->syncdebug = r_init_debug_getenv(h, "SYNC_DEBUG");

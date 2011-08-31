@@ -146,6 +146,27 @@ r_store_content_trim(struct ccnr_handle *h, struct content_entry *content)
 }
 
 /**
+ *  Evict recoverable content from in-memory buffers
+ */
+PUBLIC void
+r_store_trim(struct ccnr_handle *h, unsigned long limit)
+{
+    struct content_entry *content = NULL;
+    int pass;
+    for (pass = 0; h->cob_count > limit && pass < 2;) {
+        content = r_store_content_from_cookie(h, ++h->trim_rover);
+        if (content == NULL) {
+            pass++;
+            h->trim_rover = h->cookie_base;
+            content = r_store_content_from_cookie(h, h->trim_rover);
+            if (content == NULL)
+                return;
+        }
+        r_store_content_trim(h, content);
+    }
+}
+
+/**
  *  Get the base address of the content object
  *
  * This may involve reading the object in.  Caller should not assume that

@@ -54,4 +54,5 @@ void ccnr_debug_content(struct ccnr_handle *h, int lineno, const char *msg,
                         struct content_entry *content);
 int r_store_set_accession_from_offset(struct ccnr_handle *h, struct content_entry *content, struct fdholder *fdholder, off_t offset);
 int r_store_content_trim(struct ccnr_handle *h, struct content_entry *content);
+void r_store_trim(struct ccnr_handle *h, unsigned long limit);
 #endif
