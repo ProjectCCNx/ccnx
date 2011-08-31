@@ -173,17 +173,28 @@ r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
     struct nameprefix_entry *npe = NULL;
     int ci = 0;
     int cm = 0;
-    unsigned c0 = content->namecomps->buf[0];
-    const unsigned char *content_msg = r_store_content_base(h, content);
-
-    if (content_msg == NULL)
-        return(-1);
-    for (ci = content->namecomps->n - 1; ci >= 0; ci--) {
-        int size = content->namecomps->buf[ci] - c0;
-        npe = hashtb_lookup(h->nameprefix_tab, content_msg + c0, size);
+    struct ccn_charbuf *name = NULL;
+    struct ccn_indexbuf *namecomps = NULL;
+    unsigned c0 = 0;
+    
+    name = ccn_charbuf_create();
+    ccn_name_init(name);
+    ccn_name_append_flatname(name,
+                             content->flatname->buf,
+                             content->flatname->length, 0, -1);
+    namecomps = ccn_indexbuf_create();
+    ccn_name_split(name, namecomps);
+    c0 = namecomps->buf[0];
+    
+    for (ci = namecomps->n - 1; ci >= 0; ci--) {
+        int size = namecomps->buf[ci] - c0;
+        npe = hashtb_lookup(h->nameprefix_tab, name->buf + c0, size);
         if (npe != NULL)
             break;
     }
+    
+    ccn_charbuf_destroy(&name);
+    ccn_indexbuf_destroy(&namecomps);
     for (; npe != NULL; npe = npe->parent, ci--) {
         if (npe->fgen != h->forward_to_gen)
             r_fwd_update_forward_to(h, npe);

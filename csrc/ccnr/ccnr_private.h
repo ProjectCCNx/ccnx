@@ -341,18 +341,14 @@ struct fdholder {
  *  A pointer to this is used as a handle for a content object that we
  *  currently care about.  Most details are private to the implementation.
  */
-struct content_entry;
-
 struct content_entry {
     ccnr_accession accession;   /**< permanent repository id */
-    ccnr_cookie cookie;         /**< For in-memory references */
-    struct ccn_indexbuf *namecomps; /**< Name Component byte boundary offsets */
-    int flags;                  /**< see below */
-    int size;                   /**< Size of ContentObject */
+    ccnr_cookie cookie;         /**< for in-memory references */
+    int flags;                  /**< see below - use accessor functions */
+    int size;                   /**< size of ContentObject */
     struct ccn_charbuf *flatname; /**< for skiplist */
     struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
-    struct ccn_charbuf *cob;
-    const unsigned char * (*getbase)(struct ccnr_handle *, struct content_entry *);
+    struct ccn_charbuf *cob;    /**< may contain ContentObject, or be NULL */
     void (*destroy)(struct ccnr_handle *, struct content_entry *); /**< free */
 };
 
@@ -362,7 +358,7 @@ struct content_entry {
 #define CCN_CONTENT_ENTRY_SLOWSEND  1
 #define CCN_CONTENT_ENTRY_STALE     2
 #define CCN_CONTENT_ENTRY_PRECIOUS  4
-#define CCN_CONTENT_ENTRY_STABLE    8 /**< Has been written to repository */
+#define CCN_CONTENT_ENTRY_STABLE    8 /**< Repository-backed */
 
 /**
  * The content_by_accession hash table, keyed by accession, holds

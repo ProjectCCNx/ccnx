@@ -450,7 +450,7 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
         entry->accession = CCNR_NULL_ACCESSION;
     }
     /* Clean up allocated subfields */
-    ccn_indexbuf_destroy(&entry->namecomps);
+    ccn_charbuf_destroy(&entry->flatname);
     ccn_charbuf_destroy(&entry->cob);
     /* Tell the entry to free itself, if it wants to */
     if (entry->destroy)
@@ -719,13 +719,12 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     int res;
     struct content_entry *content = NULL;
     int i;
-    struct ccn_indexbuf *comps = ccn_indexbuf_create();
     struct ccn_charbuf *cb = ccn_charbuf_create();
     struct ccn_charbuf *flatname = ccn_charbuf_create();
     
-    if (comps == NULL || cb == NULL || flatname == NULL)
+    if (cb == NULL || flatname == NULL)
         goto Bail;    
-    res = ccn_parse_ContentObject(msg, size, &obj, comps);
+    res = ccn_parse_ContentObject(msg, size, &obj, NULL);
     if (res < 0) {
         ccnr_msg(h, "error parsing ContentObject - code %d", res);
         goto Bail;
@@ -753,8 +752,6 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         content->flatname = flatname;
         flatname = NULL;
         r_store_enroll_content(h, content);
-        content->namecomps = comps;
-        comps = NULL;
         content->size = size;
         content->cob = cb;
         cb = NULL;
@@ -765,7 +762,6 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
             r_proto_initiate_key_fetch(h, msg, &obj, 0, content->cookie);
     }
 Bail:
-    ccn_indexbuf_destroy(&comps);
     ccn_charbuf_destroy(&cb);
     ccn_charbuf_destroy(&flatname);
     if (res >= 0 && content != NULL) {
