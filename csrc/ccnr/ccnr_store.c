@@ -356,20 +356,21 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
     }
 }
 
-static void
+/** @returns 1 if an exact match was found */
+static int
 content_skiplist_findbefore(struct ccnr_handle *h,
                             struct ccn_charbuf *flatname,
                             struct content_entry *wanted_old,
                             struct ccn_indexbuf **ans)
 {
     int i;
-    const int n = h->skiplinks->n;
     struct ccn_indexbuf *c;
     struct content_entry *content;
     int order;
+    int found = 0;
     
     c = h->skiplinks;
-    for (i = n - 1; i >= 0; i--) {
+    for (i = h->skiplinks->n - 1; i >= 0; i--) {
         for (;;) {
             if (c->buf[i] == 0)
                 break;
@@ -379,32 +380,38 @@ content_skiplist_findbefore(struct ccnr_handle *h,
             order = ccn_flatname_charbuf_compare(content->flatname, flatname);
             if (order > 0)
                 break;
-            if (order == 0 && (wanted_old == content || wanted_old == NULL))
+            if (order == 0 && (wanted_old == content || wanted_old == NULL)) {
+                found = 1;
                 break;
+            }
             if (content->skiplinks == NULL || i >= content->skiplinks->n)
                 abort();
             c = content->skiplinks;
         }
         ans[i] = c;
     }
+    return(found);
 }
 
 #define CCN_SKIPLIST_MAX_DEPTH 30
+/** @returns -1 and does not insert if an exact key match is found */
 PUBLIC int
 r_store_content_skiplist_insert(struct ccnr_handle *h,
                                 struct content_entry *content)
 {
     int d;
     int i;
+    int found = 0;
     struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     if (content->skiplinks != NULL) abort();
     for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - 1; d++)
         if ((nrand48(h->seed) & 3) != 0) break;
     while (h->skiplinks->n < d)
         ccn_indexbuf_append_element(h->skiplinks, 0);
-    content_skiplist_findbefore(h, content->flatname, NULL, pred);
+    found = content_skiplist_findbefore(h, content->flatname, NULL, pred);
+    if (found)
+        return(-1);
     if (h->skiplinks->n < d) abort();
-    // XXXX - check for duplicate here
     content->skiplinks = ccn_indexbuf_create();
     for (i = 0; i < d; i++) {
         ccn_indexbuf_append_element(content->skiplinks, pred[i]->buf[i]);
@@ -771,8 +778,13 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         content->size = size;
         content->cob = cb;
         cb = NULL;
-        r_store_content_skiplist_insert(h, content);
-        // what if we get a dup
+        res = r_store_content_skiplist_insert(h, content);
+        if (res < 0) {
+            ccnr_debug_content(h, __LINE__, "content_duplicate", fdholder, content);
+            h->content_dups_recvd++;
+            r_store_forget_content(h, &content);
+            goto Bail;
+        }
         r_store_set_content_timer(h, content, &obj);
         if ((fdholder->flags & CCNR_FACE_REPODATA) == 0)
             r_proto_initiate_key_fetch(h, msg, &obj, 0, content->cookie);
