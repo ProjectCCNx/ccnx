@@ -452,9 +452,7 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
     /* Clean up allocated subfields */
     ccn_charbuf_destroy(&entry->flatname);
     ccn_charbuf_destroy(&entry->cob);
-    /* Tell the entry to free itself, if it wants to */
-    if (entry->destroy)
-        (entry->destroy)(h, entry);
+    free(entry);
 }
 
 PUBLIC struct content_entry *
