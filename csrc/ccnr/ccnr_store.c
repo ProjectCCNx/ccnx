@@ -199,7 +199,7 @@ Finish:
         }
     }
     if (ans == NULL || CCNSHOULDLOG(h, xxxx, CCNL_FINEST))
-        ccnr_msg(h, "r_store_content_base.%d returning %p (0x%jx, %u)",
+        ccnr_msg(h, "r_store_content_base.%d returning %p (acc=0x%jx, cookie=%u)",
                  __LINE__,
                  ans,
                  ccnr_accession_encode(h, content->accession),
@@ -286,12 +286,16 @@ cleanout_stragglers(struct ccnr_handle *h)
     unsigned window;
     unsigned i;
     
+    if (1) {
+        /* do not use when skiplist-based */
+        return;
+    }
     if (h->cookie <= h->cookie_base || a[0] == NULL)
         return;
     n_direct = h->cookie - h->cookie_base;
     if (n_direct < 1000)
         return;
-    n_occupied = hashtb_n(h->content_by_accession_tab);
+    n_occupied = hashtb_n(h->content_by_accession_tab); // XXX - wrong
     if (n_occupied >= (n_direct / 8))
         return;
     /* The direct lookup table is too sparse, so toss the stragglers */
@@ -762,7 +766,6 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     struct ccn_parsed_ContentObject obj = {0};
     int res;
     struct content_entry *content = NULL;
-    int i;
     struct ccn_charbuf *cb = ccn_charbuf_create();
     struct ccn_charbuf *flatname = ccn_charbuf_create();
     
@@ -813,37 +816,8 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
 Bail:
     ccn_charbuf_destroy(&cb);
     ccn_charbuf_destroy(&flatname);
-    if (res >= 0 && content != NULL) {
-        int n_matches;
-        enum cq_delay_class c;
-        struct content_queue *q;
-        n_matches = r_match_match_interests(h, content, &obj, NULL, fdholder);
-        if (res == HT_NEW_ENTRY) {
-            if (n_matches < 0) {
-                r_store_forget_content(h, &content);
-                return(NULL);
-            }
-            if (n_matches == 0 && (fdholder->flags & CCNR_FACE_GG) == 0) {
-                content->flags |= CCN_CONTENT_ENTRY_SLOWSEND;
-                ccn_indexbuf_append_element(h->unsol, content->cookie); // XXXXXX
-            }
-        }
-        for (c = 0; c < CCN_CQ_N; c++) {
-            q = fdholder->q[c];
-            if (q != NULL) {
-                i = ccn_indexbuf_member(q->send_queue, content->cookie);
-                if (i >= 0) {
-                    /*
-                     * In the case this consumed any interests from this source,
-                     * don't send the content back
-                     */
-                    if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
-                        ccnr_debug_ccnb(h, __LINE__, "content_nosend", fdholder, msg, size);
-                    q->send_queue->buf[i] = 0;
-                }
-            }
-        }
-    }
+    if (res >= 0 && content != NULL)
+        r_match_match_interests(h, content, &obj, NULL, fdholder);
     return(content);
 }
 

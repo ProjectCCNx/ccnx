@@ -319,7 +319,8 @@ map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename, int ad
             break;
         if (add_content) {
             content = process_incoming_content(h, fdholder, msg + d->index - dres, dres);
-            r_sendq_face_send_queue_insert(h, r_io_fdholder_from_fd(h, h->active_out_fd), content);
+            if (content != NULL)
+                r_store_commit_content(h, content);
         }
     }
     
