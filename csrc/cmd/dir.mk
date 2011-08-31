@@ -21,14 +21,12 @@ INSTALLED_PROGRAMS = \
     ccnls ccnslurp ccnbx ccncat ccnbasicconfig \
     ccnsendchunks ccncatchunks ccncatchunks2 \
     ccnput ccnget ccnhexdumpdata \
-	ccnseqwriter \
+	ccnseqwriter ccnsimplecat \
 	$(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
     ccnbuzz  \
-    ccnsimplecat \
     dataresponsetest \
-    ccnseqwriter \
     ccn_fetch_test \
     $(PCAP_PROGRAMS)
 
