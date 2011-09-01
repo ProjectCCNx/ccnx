@@ -72,11 +72,27 @@ struct content_entry {
     int flags;                  /**< see below - use accessor functions */
     int size;                   /**< size of ContentObject */
     struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
-    struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
     struct ccn_charbuf *cob;    /**< may contain ContentObject, or be NULL */
 };
 
 static const unsigned char *bogon = NULL;
+
+#define FAILIF(cond) do {} while ((cond) && r_store_fatal(h, __func__, __LINE__))
+#define CHKSYS(res) FAILIF((res) == -1)
+#define CHKRES(res) FAILIF((res) < 0)
+#define CHKPTR(p)   FAILIF((p) == NULL)
+
+static int
+r_store_fatal(struct ccnr_handle *h, const char *fn, int lineno)
+{
+    if (h != NULL) {
+        ccnr_msg(h,
+                 "fatal error in %s, line %d, errno %d%s",
+                 fn, lineno, errno, strerr(errno));
+    }
+    abort();
+    return(0);
+}
 
 PUBLIC ccnr_accession
 r_store_content_accession(struct ccnr_handle *h, struct content_entry *content)
@@ -276,25 +292,66 @@ r_store_content_change_flags(struct content_entry *content, int set, int clear)
 PUBLIC void
 r_store_init(struct ccnr_handle *h)
 {
+    struct ccn_btree *btree = NULL;
+    struct ccn_btree_node *node = NULL;
     struct hashtb_param param = {0};
     param.finalize_data = h;
     param.finalize = 0;
     h->content_by_accession_tab = hashtb_create(sizeof(struct content_by_accession_entry), NULL);
+    CHKPTR(h->content_by_accession_tab);
+    h->btree = btree = ccn_btree_create();
+    CHKPTR(btree);
+    FAILIF(btree->nextnodeid != 1);
+    node = ccn_btree_getnode(btree, btree->nextnodeid++);
+    CHKPTR(node);
+    res = ccn_btree_init_node(node, 0, 'R', 0);
+    CHKSYS(res);
+    btree->full = 20;
 }
 
 PUBLIC struct content_entry *
 r_store_content_from_accession(struct ccnr_handle *h, ccnr_accession accession)
 {
-    struct content_entry *ans = NULL;
+    struct content_entry *content = NULL;
     struct content_by_accession_entry *entry;
     
+    if (accession == CCNR_NULL_ACCESSION)
+        return(NULL);
     entry = hashtb_lookup(h->content_by_accession_tab,
                           &accession, sizeof(accession));
-    if (entry != NULL)
-        ans = entry->content;
-    
-    // XXXXXX - Here we have to read the content object from the correct repoFile.
-    return(ans);
+    if (entry != NULL) {
+        h->content_from_accession_hits++;
+        return(entry->content);
+    }
+    h->content_from_accession_misses++;
+    content = calloc(1, sizeof(*content));
+    CHKPTR(content);
+    content->cookie = 0;
+    content->accession = accession;
+    content->cob = NULL;
+    content->size = 0;
+    content_base = r_store_content_base(h, content);
+    if (content_base == NULL) {
+        ccnr_msg(h, "r_store_content_from_accession.%d could not read 0x%jx",
+                 __LINE__, ccnr_accession_encode(h, accession));
+        goto Bail;
+    }
+    FAILIF(content->size == 0);
+    res = ccn_parse_ContentObject(content_base, content->size, &obj, NULL);
+    if (res < 0) {
+        ccnr_msg(h, "error parsing ContentObject - code %d", res);
+        goto Bail;
+    }
+    content->flatname = ccn_charbuf_create();
+    CHKPTR(content->flatname);
+    res = ccn_flatname_from_ccnb(flatname, content_base, content->size);
+    if (res < 0)
+        goto Bail;
+    content->cookie = ++(h->cookie);
+    return(content);
+Bail:
+    r_store_forget_content(h, &content);
+    return(content);
 }
 
 PUBLIC struct content_entry *
@@ -453,21 +510,15 @@ content_skiplist_findbefore(struct ccnr_handle *h,
     return(found);
 }
 
-#define CCN_SKIPLIST_MAX_DEPTH 30
 /** @returns -1 and does not insert if an exact key match is found */
-PUBLIC int
+static int
 r_store_content_skiplist_insert(struct ccnr_handle *h,
                                 struct content_entry *content)
 {
-    int d;
-    int i;
     int found = 0;
-    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
-    if (content->skiplinks != NULL) abort();
-    for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - 1; d++)
-        if ((nrand48(h->seed) & 3) != 0) break;
-    while (h->skiplinks->n < d)
-        ccn_indexbuf_append_element(h->skiplinks, 0);
+    if (content->accession == CCNR_NULL_ACCESSION)
+        return(-1);
+
     found = content_skiplist_findbefore(h, content->flatname, NULL, pred);
     if (found)
         return(-1);
@@ -955,3 +1006,7 @@ ccnr_debug_content(struct ccnr_handle *h,
     ccnr_debug_ccnb(h, lineno, msg, fdholder, content_msg, content->size);
 }
 
+#undef FAILIF
+#undef CHKSYS
+#undef CHKRES
+#undef CHKPTR
