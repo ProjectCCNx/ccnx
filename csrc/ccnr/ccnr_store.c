@@ -153,6 +153,11 @@ r_store_trim(struct ccnr_handle *h, unsigned long limit)
 {
     struct content_entry *content = NULL;
     int pass;
+    unsigned before;
+    
+    before = h->cob_count;
+    if (before <= limit)
+        return;
     for (pass = 0; h->cob_count > limit && pass < 2;) {
         content = r_store_content_from_cookie(h, ++h->trim_rover);
         if (content == NULL) {
@@ -160,10 +165,12 @@ r_store_trim(struct ccnr_handle *h, unsigned long limit)
             h->trim_rover = h->cookie_base;
             content = r_store_content_from_cookie(h, h->trim_rover);
             if (content == NULL)
-                return;
+                break;
         }
         r_store_content_trim(h, content);
     }
+    if (CCNSHOULDLOG(h, sdf, CCNL_FINEST))
+        ccnr_msg(h, "trimmed %u cobs", before - h->cob_count);
 }
 
 /**
