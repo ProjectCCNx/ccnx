@@ -300,6 +300,22 @@ ccn_btree_content_cobid(struct ccn_btree_node *node, int ndx)
 }
 
 /**
+ *  Get ContentObject size from btree entry.
+ *
+ * @returns the cobsz field of the indexed entry of node, or -1 if error.
+ */
+int
+ccn_btree_content_cobsz(struct ccn_btree_node *node, int ndx)
+{
+    struct ccn_btree_content_payload *e = NULL;
+    
+    e = ccn_btree_node_getentry(sizeof(*e), node, ndx);
+    if (e != NULL)
+        return(MYFETCH(e, cobsz));
+    return(-1);
+}
+
+/**
  *  Compare flatnames a and b
  *
  * @returns negative, 0, or positive if a < b, a == b, a > b, respectively.

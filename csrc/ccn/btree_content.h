@@ -72,6 +72,10 @@ int ccn_btree_insert_content(struct ccn_btree_node *node, int ndx,
 /* cobid accessor */
 uint_least64_t ccn_btree_content_cobid(struct ccn_btree_node *node, int ndx);
 
+/* cobsz accessor */
+int ccn_btree_content_cobsz(struct ccn_btree_node *node, int ndx);
+
+
 /**
  * Flat name representation
  *
