@@ -69,6 +69,9 @@ int ccn_btree_insert_content(struct ccn_btree_node *node, int ndx,
                              struct ccn_parsed_ContentObject *pc,
                              struct ccn_charbuf *flatname);
 
+/* cobid accessor */
+uint_least64_t ccn_btree_content_cobid(struct ccn_btree_node *node, int ndx);
+
 /**
  * Flat name representation
  *

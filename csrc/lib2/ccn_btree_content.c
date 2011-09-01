@@ -33,6 +33,20 @@
 #define MYSTORE(p, f, v) ccn_btree_storeval(&((p)->f[0]), sizeof((p)->f), (v))
 #endif
 
+#ifndef MYFETCH64
+#define MYFETCH64(p, f) ccn_btree_fetchval64(&((p)->f[0]), sizeof((p)->f))
+#endif
+static uint_least64_t
+ccn_btree_fetchval64(const unsigned char *p, int size)
+{
+    int i;
+    uint_least64_t v;
+    
+    for (v = 0, i = 0; i < size; i++)
+        v = (v << 8) + p[i];
+    return(v);
+}
+
 #ifndef MYSTORE64
 #define MYSTORE64(p, f, v) ccn_btree_storeval64(&((p)->f[0]), sizeof((p)->f), (v))
 #endif
@@ -268,6 +282,30 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int ndx,
     return(1);
 }
 
+/**
+ *  Get cobid from btree entry.
+ *
+ * @returns the cobid field of the indexed entry of node, or 0 if error.
+ */
+uint_least64_t
+ccn_btree_content_cobid(struct ccn_btree_node *node, int ndx)
+{
+    struct ccn_btree_content_payload *e = NULL;
+    uint_least64_t ans = 0;
+    
+    e = ccn_btree_node_getentry(sizeof(*e), node, ndx);
+    if (e != NULL)
+        ans = MYFETCH64(e, cobid);
+    return(ans);
+}
+
+/**
+ *  Compare flatnames a and b
+ *
+ * @returns negative, 0, or positive if a < b, a == b, a > b, respectively.
+ * The special return value -9999 means a < b and a is also a prefix of b.
+ * Similarly 9999 means b is a strict prefix of a.                              XXX should have defines for these values.
+ */
 int
 ccn_flatname_charbuf_compare(struct ccn_charbuf *a, struct ccn_charbuf *b)
 {
