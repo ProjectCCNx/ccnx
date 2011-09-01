@@ -124,7 +124,11 @@ r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
     struct ccn_charbuf *cob = NULL;
     ssize_t rres = 0;
     int fd = -1;
-        
+    unsigned char buf[8800];
+    struct ccn_skeleton_decoder decoder = {0};
+    struct ccn_skeleton_decoder *d = &decoder;
+    ssize_t dres;
+    
     repofile = r_store_repofile_from_accession(h, content->accession);
     offset = r_store_offset_from_accession(h, content->accession);
     if (repofile != 1)
@@ -137,21 +141,41 @@ r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
     cob = ccn_charbuf_create();
     if (cob == NULL)
         goto Bail;
-    if (ccn_charbuf_reserve(cob, content->size) == NULL)
-        goto Bail;
-    rres = pread(fd, cob->buf, content->size, offset);
-    if (rres == content->size) {
-        cob->length = content->size;
+    if (content->size > 0) {
+        if (ccn_charbuf_reserve(cob, content->size) == NULL)
+            goto Bail;
+        rres = pread(fd, cob->buf, content->size, offset);
+        if (rres == content->size) {
+            cob->length = content->size;
+            content->cob = cob;
+            h->cob_count++;
+            return(cob->buf);
+        }
+        if (rres == -1)
+            ccnr_msg(h, "r_store_content_read %u :%s (errno = %d)",
+                     fd, strerror(errno), errno);
+        else
+            ccnr_msg(h, "r_store_content_read %u expected %d bytes, but got %d",
+                     fd, (int)content->size, (int)rres);
+    } else {
+        rres = pread(fd, buf, 8800, offset); // XXX - should be symbolic
+        if (rres == -1) {
+            ccnr_msg(h, "r_store_content_read %u :%s (errno = %d)",
+                     fd, strerror(errno), errno);
+            goto Bail;
+        }
+        dres = ccn_skeleton_decode(d, buf, rres);
+        if (d->state != 0) {
+            ccnr_msg(h, "r_store_content_read %u : error parsing cob", fd);
+            goto Bail;
+        }
+        content->size = dres;
+        if (ccn_charbuf_append(cob, buf, dres) < 0)
+            goto Bail;
         content->cob = cob;
         h->cob_count++;
-        return(cob->buf);
+        return(cob->buf);        
     }
-    if (rres == -1)
-        ccnr_msg(h, "r_store_content_read %u :%s (errno = %d)",
-                    fd, strerror(errno), errno);
-    else
-        ccnr_msg(h, "r_store_content_read %u expected %d bytes, but got %d",
-                    fd, (int)content->size, (int)rres);
 Bail:
     ccn_charbuf_destroy(&cob);
     return(NULL);
@@ -864,14 +888,14 @@ r_store_content_field_access(struct ccnr_handle *h,
                              enum ccn_dtag dtag,
                              const unsigned char **bufp, size_t *sizep)
 {
-	int res = -1;
+    int res = -1;
     const unsigned char *content_msg;
     struct ccn_parsed_ContentObject pco = {0};
     
     content_msg = r_store_content_base(h, content);
     if (content_msg == NULL)
         return(-1);
-	res = ccn_parse_ContentObject(content_msg, content->size, &pco, NULL);
+    res = ccn_parse_ContentObject(content_msg, content->size, &pco, NULL);
     if (res < 0)
         return(-1);
     if (dtag == CCN_DTAG_Content)
@@ -879,7 +903,7 @@ r_store_content_field_access(struct ccnr_handle *h,
                                   pco.offset[CCN_PCO_B_Content],
                                   pco.offset[CCN_PCO_E_Content],
                                   bufp, sizep);
-	return(res);
+    return(res);
 }
 
 const ccnr_accession r_store_mark_repoFile1 = ((ccnr_accession)1) << 48;
