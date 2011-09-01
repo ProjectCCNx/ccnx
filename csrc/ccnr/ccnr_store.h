@@ -48,11 +48,15 @@ int r_store_content_flags(struct content_entry *content);
 int r_store_content_change_flags(struct content_entry *content, int set, int clear);
 int r_store_commit_content(struct ccnr_handle *h, struct content_entry *content);
 void r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry);
-const unsigned char *r_store_content_base(struct ccnr_handle *h, struct content_entry *content);
 void ccnr_debug_content(struct ccnr_handle *h, int lineno, const char *msg,
                         struct fdholder *fdholder,
                         struct content_entry *content);
 int r_store_set_accession_from_offset(struct ccnr_handle *h, struct content_entry *content, struct fdholder *fdholder, off_t offset);
 int r_store_content_trim(struct ccnr_handle *h, struct content_entry *content);
 void r_store_trim(struct ccnr_handle *h, unsigned long limit);
+ccnr_cookie r_store_content_cookie(struct ccnr_handle *h, struct content_entry *content);
+ccnr_accession r_store_content_accession(struct ccnr_handle *h, struct content_entry *content);
+const unsigned char *r_store_content_base(struct ccnr_handle *h, struct content_entry *content);
+size_t r_store_content_size(struct ccnr_handle *h, struct content_entry *content);
+
 #endif

@@ -200,7 +200,6 @@ struct ccnr_handle {
     unsigned content_by_cookie_window;
     struct content_entry **content_by_cookie;
     struct hashtb *content_by_accession_tab; /* keyed by accession */
-    // ccnr_accession accession; /**< newest used accession */
     ccnr_cookie cookie;      /**< newest used cookie number */
     ccnr_cookie min_stale;      /**< smallest cookie of stale content */
     ccnr_cookie max_stale;      /**< largest cookie of stale content */
@@ -335,15 +334,7 @@ struct fdholder {
  *  A pointer to this is used as a handle for a content object that we
  *  currently care about.  Most details are private to the implementation.
  */
-struct content_entry {
-    ccnr_accession accession;   /**< permanent repository id */
-    ccnr_cookie cookie;         /**< for in-memory references */
-    int flags;                  /**< see below - use accessor functions */
-    int size;                   /**< size of ContentObject */
-    struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
-    struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
-    struct ccn_charbuf *cob;    /**< may contain ContentObject, or be NULL */
-};
+struct content_entry;
 
 /**
  * content_entry flags

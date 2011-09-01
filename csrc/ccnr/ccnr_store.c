@@ -66,7 +66,35 @@
 #include "ccnr_sendq.h"
 #include "ccnr_io.h"
 
+struct content_entry {
+    ccnr_accession accession;   /**< permanent repository id */
+    ccnr_cookie cookie;         /**< for in-memory references */
+    int flags;                  /**< see below - use accessor functions */
+    int size;                   /**< size of ContentObject */
+    struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
+    struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
+    struct ccn_charbuf *cob;    /**< may contain ContentObject, or be NULL */
+};
+
 static const unsigned char *bogon = NULL;
+
+PUBLIC ccnr_accession
+r_store_content_accession(struct ccnr_handle *h, struct content_entry *content)
+{
+    return(content->accession);
+}
+
+PUBLIC ccnr_cookie
+r_store_content_cookie(struct ccnr_handle *h, struct content_entry *content)
+{
+    return(content->cookie);
+}
+
+PUBLIC size_t
+r_store_content_size(struct ccnr_handle *h, struct content_entry *content)
+{
+    return(content->size);
+}
 
 static off_t
 r_store_offset_from_accession(struct ccnr_handle *h, ccnr_accession a)
