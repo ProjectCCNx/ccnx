@@ -45,6 +45,7 @@ struct ccn_charbuf;
 struct ccn_indexbuf;
 struct hashtb;
 struct ccnr_meter;
+struct ccn_btree;
 
 struct SyncBaseStruct;
 /*
@@ -172,6 +173,7 @@ struct ccnr_handle {
     //XXX probably need an event for cleaning up the enum_state_tab
     struct hashtb *enum_state_tab;  /**< keyed by enumeration interest */
     struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
+    struct ccn_btree *btree;        /**< btree index of content */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< filedesc generation number */
     unsigned face_rover;            /**< for filedesc allocation */
@@ -218,6 +220,8 @@ struct ccnr_handle {
     unsigned long interests_dropped;
     unsigned long interests_sent;
     unsigned long interests_stuffed;
+    unsigned long content_from_accession_hits;
+    unsigned long content_from_accession_misses;
     unsigned short seed[3];         /**< for PRNG */
     int running;                    /**< true while should be running */
     int debug;                      /**< For controlling debug output */
