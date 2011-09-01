@@ -300,6 +300,24 @@ ccn_btree_content_cobid(struct ccn_btree_node *node, int ndx)
 }
 
 /**
+ *  Set cobid in a btree entry.
+ *
+ * @returns 0 for success, -1 for failure
+ */
+int
+ccn_btree_content_set_cobid(struct ccn_btree_node *node, int ndx,
+                            uint_least64_t cobid)
+{
+    struct ccn_btree_content_payload *e = NULL;
+    
+    e = ccn_btree_node_getentry(sizeof(*e), node, ndx);
+    if (e == NULL)
+        return(-1);
+    MYSTORE64(e, cobid, cobid);
+    return(0);
+}
+
+/**
  *  Get ContentObject size from btree entry.
  *
  * @returns the cobsz field of the indexed entry of node, or -1 if error.
