@@ -793,6 +793,44 @@ r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
                        &expire_content, NULL, content->cookie);
 }
 
+/**
+ * Parses content object and sets content->flatname
+ */
+static int
+r_store_set_flatname(struct ccnr_handle *h, struct content_entry *content,
+                     struct ccn_parsed_ContentObject *pco)
+{
+    int res;
+    struct ccn_charbuf *flatname = NULL;
+    const unsigned char *msg = NULL;
+    size_t size;
+    
+    msg = r_store_content_base(h, content);
+    size = content->size;
+    if (msg == NULL)
+        goto Bail;
+    flatname = ccn_charbuf_create();
+    if (flatname == NULL)
+        goto Bail;    
+    res = ccn_parse_ContentObject(msg, size, pco, NULL);
+    if (res < 0) {
+        ccnr_msg(h, "error parsing ContentObject - code %d", res);
+        goto Bail;
+    }
+    ccn_digest_ContentObject(msg, pco);
+    if (pco->digest_bytes != 32)
+        goto Bail;
+    res = ccn_flatname_from_ccnb(flatname, msg, size);
+    if (res < 0) goto Bail;
+    res = ccn_flatname_append_component(flatname, pco->digest, pco->digest_bytes);
+    if (res < 0) goto Bail;
+    content->flatname = flatname;
+    flatname = NULL;
+    return(0);
+Bail:
+    ccn_charbuf_destroy(&flatname);
+    return(-1);
+}
 
 PUBLIC struct content_entry *
 process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
@@ -801,60 +839,39 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     struct ccn_parsed_ContentObject obj = {0};
     int res;
     struct content_entry *content = NULL;
-    struct ccn_charbuf *cb = ccn_charbuf_create();
-    struct ccn_charbuf *flatname = ccn_charbuf_create();
     
-    if (cb == NULL || flatname == NULL)
-        goto Bail;    
-    res = ccn_parse_ContentObject(msg, size, &obj, NULL);
-    if (res < 0) {
-        ccnr_msg(h, "error parsing ContentObject - code %d", res);
-        goto Bail;
-    }
-    ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
-    /* Set up the flatname, including digest */
-    ccn_digest_ContentObject(msg, &obj);
-    if (obj.digest_bytes != 32) {
-        ccnr_debug_ccnb(h, __LINE__, "indigestible", fdholder, msg, size);
-        goto Bail;
-    }
-    res = ccn_flatname_from_ccnb(flatname, msg, size);
-    if (res < 0) goto Bail; /* must have just messed up */
-    res = ccn_flatname_append_component(flatname, obj.digest, obj.digest_bytes);
-    if (res < 0) goto Bail;
-    res = ccn_charbuf_append(cb, msg, size);
-    if (res < 0) goto Bail;
-    msg = cb->buf;
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
-        ccnr_debug_ccnb(h, __LINE__, "content_from", fdholder, msg, size);
     content = calloc(1, sizeof(*content));
-    if (content != NULL) {
-        content->cookie = ++(h->cookie);
-        content->accession = CCNR_NULL_ACCESSION;
-        content->flatname = flatname;
-        flatname = NULL;
-        r_store_enroll_content(h, content);
-        content->size = size;
-        content->cob = cb;
-        cb = NULL;
+    if (content == NULL)
+        goto Bail;    
+    content->cob = ccn_charbuf_create();
+    if (content->cob == NULL)
+        goto Bail;    
+    res = ccn_charbuf_append(content->cob, msg, size);
+    if (res < 0) goto Bail;
+    content->size = size;
+    res = r_store_set_flatname(h, content, &obj);
+    if (res < 0) goto Bail;
+    ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
+    content->cookie = ++(h->cookie);
+    content->accession = CCNR_NULL_ACCESSION;
+    r_store_enroll_content(h, content);
+    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+        ccnr_debug_content(h, __LINE__, "content_from", fdholder, content);
         res = r_store_content_skiplist_insert(h, content);
         if (res < 0) {
             if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
                 ccnr_debug_content(h, __LINE__, "content_duplicate",
                                    fdholder, content);
             h->content_dups_recvd++;
-            r_store_forget_content(h, &content);
             goto Bail;
         }
         r_store_set_content_timer(h, content, &obj);
         if ((fdholder->flags & CCNR_FACE_REPODATA) == 0)
             r_proto_initiate_key_fetch(h, msg, &obj, 0, content->cookie);
-    }
+    r_match_match_interests(h, content, &obj, NULL, fdholder);
+    return(content);
 Bail:
-    ccn_charbuf_destroy(&cb);
-    ccn_charbuf_destroy(&flatname);
-    if (res >= 0 && content != NULL)
-        r_match_match_interests(h, content, &obj, NULL, fdholder);
+    r_store_forget_content(h, &content);
     return(content);
 }
 
