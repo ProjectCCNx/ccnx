@@ -134,9 +134,9 @@ struct ccn_btree {
  *
  * This is the overall structure of a node:
  *
- *  +---+-----------------------+--------------+---------+-- --+----+
+ *  +---+-----------------------+--------------+----+----+-- --+----+
  *  |hdr|..string......space....| (free space) | E0 | E1 | ... | En |
- *  +---+-----------------------+--------------+---------+-- --+----+
+ *  +---+-----------------------+--------------+----+----+-- --+----+
  *
  * It is designed so that new entries can be added without having to
  * rewrite all of the string space.  Thus the header should not contain
