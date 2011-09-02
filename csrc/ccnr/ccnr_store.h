@@ -41,6 +41,7 @@ struct content_entry *r_store_content_from_accession(struct ccnr_handle *h, ccnr
 struct content_entry *r_store_content_from_cookie(struct ccnr_handle *h, ccnr_cookie cookie);
 
 struct content_entry *r_store_lookup(struct ccnr_handle *h, const unsigned char *msg, const struct ccn_parsed_interest *pi, struct ccn_indexbuf *comps);
+struct content_entry *r_store_lookup_ccnb(struct ccnr_handle *h, const unsigned char *namish, size_t size);
 int r_store_content_field_access(struct ccnr_handle *h, struct content_entry *content, enum ccn_dtag dtag, const unsigned char **bufp, size_t *sizep);
 void r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct content_entry *content);
 int r_store_name_append_components(struct ccn_charbuf *dst, struct ccnr_handle *h, struct content_entry *content, int skip, int count);

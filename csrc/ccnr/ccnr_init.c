@@ -441,7 +441,8 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
                 ccnr_msg(ccnr, "read policy: %s (errno = %d)", strerror(errno), errno);
                 abort();
             }
-            content = process_incoming_content(ccnr, fdholder, fdholder->inbuf->buf, res);
+            fdholder->inbuf->length = res;
+            content = process_incoming_content(ccnr, fdholder, fdholder->inbuf->buf, fdholder->inbuf->length);
             if (content == NULL) {
                 ccnr_msg(ccnr, "Unable to process repository policy object");
                 abort();
@@ -451,6 +452,7 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
                 ccnr_msg(ccnr, "Malformed policy");
                 abort();
             }
+            r_store_commit_content(ccnr, content);
         }
         else {
             struct ccn_charbuf *policy = ccn_charbuf_create();

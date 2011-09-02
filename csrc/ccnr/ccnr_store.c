@@ -350,7 +350,11 @@ r_store_init(struct ccnr_handle *h)
     }
     node = ccn_btree_getnode(btree, btree->nextnodeid++);
     CHKPTR(node);
-    res = ccn_btree_init_node(node, 0, 'R', 0);
+    if (node->buf->length == 0) {
+        res = ccn_btree_init_node(node, 0, 'R', 0);
+        CHKSYS(res);
+    }
+    res = ccn_btree_check(btree);
     CHKSYS(res);
     btree->full = 20;
     ccn_charbuf_destroy(&path);
@@ -534,7 +538,7 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
     return(content->cookie);
 }
 
-/** @returns 1 if content was added to index, 0 if it was already there, -1 for error */
+/** @returns 2 if content was added to index, 1 if it was there but had no accession, 0 if it was already there, -1 for error */
 static int
 r_store_content_btree_insert(struct ccnr_handle *h,
                              struct content_entry *content,
@@ -550,11 +554,14 @@ r_store_content_btree_insert(struct ccnr_handle *h,
     res = ccn_btree_lookup(h->btree, content->flatname->buf, content->flatname->length, &leaf);
     if (res < 0)
         return(-1);
-    if (!CCN_BT_SRCH_FOUND(res)) {
+    i = CCN_BT_SRCH_INDEX(res);
+    if (CCN_BT_SRCH_FOUND(res)) {
+        return(ccnr_accession_decode(h, ccn_btree_content_cobid(leaf, i)) == CCNR_NULL_ACCESSION);
+    }
+    else {
         content_base = r_store_content_base(h, content);
         if (content_base == NULL)
             return(-1);
-        i = CCN_BT_SRCH_INDEX(res);
         res = ccn_btree_insert_content(leaf, i,
                                        ccnr_accession_encode(h, content->accession),
                                        content_base,
@@ -562,9 +569,8 @@ r_store_content_btree_insert(struct ccnr_handle *h,
                                        content->flatname);
         if (res < 0)
             return(-1);
-        return(1);
+        return(2);
     }
-    return(0);
 }
 
 static void
@@ -856,6 +862,41 @@ r_store_lookup(struct ccnr_handle *h,
 }
 
 /**
+ * Find the first content handle that matches the prefix given by the namish,
+ * which may be a Name, Interest, ContentObject, ...
+ *
+ * Does not check the other parts of namish, in particular, does not generate
+ * the digest component of a ContentObject.
+ */
+PUBLIC struct content_entry *
+r_store_lookup_ccnb(struct ccnr_handle *h,
+                    const unsigned char *namish, size_t size)
+{
+    struct content_entry *content = NULL;
+    struct ccn_charbuf *flatname = NULL;
+    int res;
+    
+    flatname = ccn_charbuf_create();
+    if (flatname == NULL)
+        goto Bail;
+    res = ccn_flatname_from_ccnb(flatname, namish, size);
+    if (res < 0)
+        goto Bail;
+    content = r_store_look(h, flatname->buf, flatname->length);
+    if (content != NULL) {
+        res = ccn_flatname_charbuf_compare(flatname, content->flatname);
+        if (res == 0 || res == -9999) {
+            /* prefix matches */
+        }
+        else
+            content = NULL;
+    }
+Bail:
+    ccn_charbuf_destroy(&flatname);
+    return(content);
+}
+
+/**
  * Mark content as stale
  */
 PUBLIC void
@@ -993,6 +1034,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
         res = r_store_content_btree_insert(h, content, &obj);
         if (res < 0) goto Bail;
         if (res == 0) {
+            /* If the accession in the index is not set, we should go ahead and process this thing. */
             if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
                 ccnr_debug_content(h, __LINE__, "content_duplicate",
                                    fdholder, content);
