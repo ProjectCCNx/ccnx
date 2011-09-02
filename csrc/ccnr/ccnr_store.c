@@ -523,8 +523,6 @@ r_store_content_btree_insert(struct ccnr_handle *h,
     int i;
     int res;
     
-    if (content->accession == CCNR_NULL_ACCESSION)
-        return(-1);
     if (content->flatname == NULL)
         return(-1);
     res = ccn_btree_lookup(h->btree, content->flatname->buf, content->flatname->length, &leaf);
@@ -536,7 +534,7 @@ r_store_content_btree_insert(struct ccnr_handle *h,
             return(-1);
         i = CCN_BT_SRCH_INDEX(res);
         res = ccn_btree_insert_content(leaf, i,
-                                       content->accession,
+                                       ccnr_accession_encode(h, content->accession),
                                        content_base,
                                        pco,
                                        content->flatname);
@@ -1017,10 +1015,17 @@ r_store_set_accession_from_offset(struct ccnr_handle *h,
                                   struct content_entry *content,
                                   struct fdholder *fdholder, off_t offset)
 {
+    struct ccn_btree_node *leaf = NULL;
+    uint_least64_t cobid;
+    int ndx;
+    int res;
+    
     if (offset != (off_t)-1 && content->accession == CCNR_NULL_ACCESSION) {
         struct hashtb_enumerator ee;
         struct hashtb_enumerator *e = &ee;
         struct content_by_accession_entry *entry = NULL;
+        int res = -1;
+        
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
         content->accession = ((ccnr_accession)offset) | r_store_mark_repoFile1;
         hashtb_start(h->content_by_accession_tab, e);
@@ -1032,11 +1037,22 @@ r_store_set_accession_from_offset(struct ccnr_handle *h,
                 h->cob_count++;
         }
         hashtb_end(e);
-        if (content->accession >= h->notify_after) 
+        if (content->flatname != NULL) {
+            res = ccn_btree_lookup(h->btree,
+                                   content->flatname->buf,
+                                   content->flatname->length, &leaf);
+            if (res >= 0 && CCN_BT_SRCH_FOUND(res)) {
+                ndx = CCN_BT_SRCH_INDEX(res);
+                cobid = ccnr_accession_encode(h, content->accession);
+                res = ccn_btree_content_set_cobid(leaf, ndx, cobid);
+            }
+            else
+                res = -1;
+        }
+        if (res >= 0 && content->accession >= h->notify_after) 
             r_sync_notify_content(h, 0, content);
-        return(0);
     }
-    return(-1);
+    return(res);
 }
 
 PUBLIC void
