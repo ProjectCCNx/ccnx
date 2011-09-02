@@ -630,8 +630,11 @@ r_store_look(struct ccnr_handle *h, const unsigned char *key, size_t size)
         }
         accession = ccnr_accession_decode(h, ccn_btree_content_cobid(leaf, ndx));
         if (accession != CCNR_NULL_ACCESSION) {
-            content = hashtb_lookup(h->content_by_accession_tab,
+            struct content_by_accession_entry *entry;
+            entry = hashtb_lookup(h->content_by_accession_tab,
                                     &accession, sizeof(accession));
+            if (entry != NULL)
+                content = entry->content;
             if (content == NULL) {
                 /* Construct handle without actually reading the cob */
                 res = ccn_btree_content_cobsz(leaf, ndx);
