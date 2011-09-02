@@ -209,15 +209,21 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     ccnr_internal_client_start(h);
     r_proto_init(h);
     r_proto_activate_policy(h, pp);
-    if (merge_files(h) == -1) {
-        ccnr_msg(h, "Unable to merge additional repository data files.");
-        abort();
-    }
+    if (merge_files(h) == -1)
+        r_init_fail(h, __LINE__, "Unable to merge additional repository data files.");
+    if (h->running == -1) goto Bail;
     SyncInit(h->sync_handle);
 Bail:
     free(sockname);
     sockname = NULL;
     return(h);
+}
+
+void
+r_init_fail(struct ccnr_handle *ccnr, int line, const char *why)
+{
+    ccnr_msg(ccnr, "Startup failure %d %s", line, why);
+    ccnr->running = -1;
 }
 
 /**
@@ -233,7 +239,6 @@ r_init_destroy(struct ccnr_handle **pccnr)
     ccnr_internal_client_stop(h);
     ccnr_direct_client_stop(h);
     ccn_schedule_destroy(&h->sched);
-    //hashtb_destroy(&h->content_tab);
     hashtb_destroy(&h->propagating_tab);
     hashtb_destroy(&h->nameprefix_tab);
     hashtb_destroy(&h->content_by_accession_tab);
