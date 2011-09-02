@@ -40,10 +40,19 @@ stdiologger(void *loggerdata, const char *format, va_list ap)
     return(vfprintf(fp, format, ap));
 }
 
+static struct ccnr_handle *h = NULL;
+
+static void
+handle_signal(int sig)
+{
+    if (h != NULL)
+        h->running = 0;
+    signal(sig, SIG_DFL);
+}
+
 int
 main(int argc, char **argv)
 {
-    struct ccnr_handle *h;
     int s;
     
     if (argc > 1) {
@@ -51,6 +60,8 @@ main(int argc, char **argv)
         exit(1);
     }
     signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT, &handle_signal);
+    signal(SIGTERM, &handle_signal);
     h = r_init_create(argv[0], stdiologger, stderr);
     if (h == NULL)
         exit(1);

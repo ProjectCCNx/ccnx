@@ -57,6 +57,7 @@
 
 #include "ccnr_stats.h"
 #include "ccnr_store.h"
+#include "ccnr_init.h"
 #include "ccnr_link.h"
 #include "ccnr_util.h"
 #include "ccnr_proto.h"
@@ -328,7 +329,9 @@ r_store_init(struct ccnr_handle *h)
     struct ccn_btree_node *node = NULL;
     struct hashtb_param param = {0};
     int res;
+    struct ccn_charbuf *path = NULL;
     
+    path = ccn_charbuf_create();
     param.finalize_data = h;
     param.finalize = 0;
     h->content_by_accession_tab = hashtb_create(sizeof(struct content_by_accession_entry), NULL);
@@ -336,13 +339,32 @@ r_store_init(struct ccnr_handle *h)
     h->btree = btree = ccn_btree_create();
     CHKPTR(btree);
     FAILIF(btree->nextnodeid != 1);
+    ccn_charbuf_putf(path, "%s/index", h->directory);
+    res = mkdir(ccn_charbuf_as_string(path), 0700);
+    if (res != 0 && errno != EEXIST)
+        r_init_fail(h, __LINE__, ccn_charbuf_as_string(path), errno);
+    else {
+        btree->io = ccn_btree_io_from_directory(ccn_charbuf_as_string(path));
+        if (btree->io == NULL)
+            r_init_fail(h, __LINE__, ccn_charbuf_as_string(path), errno);
+    }
     node = ccn_btree_getnode(btree, btree->nextnodeid++);
     CHKPTR(node);
     res = ccn_btree_init_node(node, 0, 'R', 0);
     CHKSYS(res);
     btree->full = 20;
+    ccn_charbuf_destroy(&path);
 }
 
+PUBLIC int
+r_store_final(struct ccnr_handle *h) {
+    int res;
+    res = ccn_btree_destroy(&h->btree);
+    if (res < 0)
+        ccnr_msg(h, "r_store_final.%d Errors while closing index", __LINE__);
+    return(res);
+}
+    
 PUBLIC struct content_entry *
 r_store_content_from_accession(struct ccnr_handle *h, ccnr_accession accession)
 {

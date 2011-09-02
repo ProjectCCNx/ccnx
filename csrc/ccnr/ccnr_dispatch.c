@@ -412,6 +412,8 @@ r_dispatch_run(struct ccnr_handle *h)
         res = poll(h->fds, h->nfds, timeout_ms);
         prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
         if (-1 == res) {
+            if (errno == EINTR)
+                continue;
             ccnr_msg(h, "poll: %s (errno = %d)", strerror(errno), errno);
             sleep(1);
             continue;

@@ -125,7 +125,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->skiplinks = ccn_indexbuf_create();
     h->face_limit = 10; /* soft limit */
     h->fdholder_by_fd = calloc(h->face_limit, sizeof(h->fdholder_by_fd[0]));
-    r_store_init(h);
     param.finalize_data = h;
     param.finalize = &r_fwd_finalize_nameprefix;
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
@@ -166,6 +165,8 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
         h->running = -1;
         goto Bail;
     }
+    r_store_init(h);
+    if (h->running == -1) goto Bail;
     h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
     h->active_out_fd = r_io_open_repo_data_file(h, "repoFile1", 1); /* output */
     r_util_reseed(h);
@@ -210,7 +211,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     r_proto_init(h);
     r_proto_activate_policy(h, pp);
     if (merge_files(h) == -1)
-        r_init_fail(h, __LINE__, "Unable to merge additional repository data files.");
+        r_init_fail(h, __LINE__, "Unable to merge additional repository data files.", errno);
     if (h->running == -1) goto Bail;
     SyncInit(h->sync_handle);
 Bail:
@@ -220,9 +221,10 @@ Bail:
 }
 
 void
-r_init_fail(struct ccnr_handle *ccnr, int line, const char *why)
+r_init_fail(struct ccnr_handle *ccnr, int line, const char *culprit, int err)
 {
-    ccnr_msg(ccnr, "Startup failure %d %s", line, why);
+    ccnr_msg(ccnr, "Startup failure %d %s - %s", line, culprit,
+             (err > 0) ? strerror(err) : "");
     ccnr->running = -1;
 }
 
@@ -245,6 +247,8 @@ r_init_destroy(struct ccnr_handle **pccnr)
     hashtb_destroy(&h->enum_state_tab);
     
     SyncFreeBase(&h->sync_handle);
+    
+    r_store_final(h);
 
     if (h->fds != NULL) {
         free(h->fds);
@@ -379,6 +383,7 @@ merge_files(struct ccnr_handle *h)
         ccnr_msg(h, "unlinking %s", ccn_charbuf_as_string(filename));   
         unlink(ccn_charbuf_as_string(filename));
     }
+    ccn_charbuf_destroy(&filename);
     return (0);
 }
 
