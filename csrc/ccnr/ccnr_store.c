@@ -372,7 +372,6 @@ r_store_content_from_accession(struct ccnr_handle *h, ccnr_accession accession)
         goto Bail;
     res = r_store_set_flatname(h, content, &obj);
     if (res < 0) goto Bail;
-    content->cookie = ++(h->cookie);
     r_store_enroll_content(h, content);
     res = r_store_content_btree_insert(h, content, &obj);
     if (res < 0) goto Bail;
@@ -456,7 +455,11 @@ cleanout_empties(struct ccnr_handle *h)
     return(0);
 }
 
-PUBLIC void
+/**
+ * This makes a cookie for content, and, if it has an accession number already,
+ * enters it into the content_by_accession_tab.  Does not index by name.
+ */
+PUBLIC ccnr_cookie
 r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
 {
     unsigned new_window;
@@ -467,18 +470,21 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
     unsigned window;
     
     window = h->content_by_cookie_window;
+    content->cookie = ++(h->cookie);
     if ((content->cookie - h->cookie_base) >= window &&
         cleanout_empties(h) < 0) {
-        if (content->cookie < h->cookie_base)
-            return;
+        if (content->cookie < h->cookie_base) {
+            /* Did we wrap? */
+            return(0);
+        }
         window = h->content_by_cookie_window;
         old_array = h->content_by_cookie;
         new_window = ((window + 20) * 3 / 2);
         if (new_window < window)
-            return;
+            return(0);
         new_array = calloc(new_window, sizeof(new_array[0]));
         if (new_array == NULL)
-            return;
+            return(0);
         while (i < h->content_by_cookie_window && old_array[i] == NULL)
             i++;
         h->cookie_base += i;
@@ -503,6 +509,7 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
         hashtb_end(e);
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
     }
+    return(content->cookie);
 }
 
 /** @returns 1 if content was added to index, 0 if it was already there, -1 for error */
@@ -639,7 +646,6 @@ r_store_look(struct ccnr_handle *h, const unsigned char *key, size_t size)
                     CHKPTR(content->flatname);
                     res = ccn_btree_key_fetch(content->flatname, leaf, ndx);
                     CHKRES(res);
-                    content->cookie = ++(h->cookie);
                     r_store_enroll_content(h, content);
                 }
             }
@@ -957,7 +963,6 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     res = r_store_set_flatname(h, content, &obj);
     if (res < 0) goto Bail;
     ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
-    content->cookie = ++(h->cookie);
     content->accession = CCNR_NULL_ACCESSION;
     r_store_enroll_content(h, content);
     if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
