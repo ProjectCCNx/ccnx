@@ -624,7 +624,7 @@ r_store_look(struct ccnr_handle *h, const unsigned char *key, size_t size)
         ndx = CCN_BT_SRCH_INDEX(res);
         if (ndx == ccn_btree_node_nent(leaf)) {
             res = ccn_btree_next_leaf(h->btree, leaf, &leaf);
-            if (res < 0)
+            if (res <= 0)
                 return(NULL);
             ndx = 0;
         }
