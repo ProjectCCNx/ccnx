@@ -343,13 +343,18 @@ ccn_btree_content_cobsz(struct ccn_btree_node *node, int ndx)
 int
 ccn_flatname_charbuf_compare(struct ccn_charbuf *a, struct ccn_charbuf *b)
 {
-    size_t al, bl, sz;
+    return(ccn_flatname_compare(a->buf, a->length, b->buf, b->length));
+}
+
+/**
+ *  Compare flatnames a and b (raw version)
+ */
+int
+ccn_flatname_compare(const unsigned char *a, size_t al, const unsigned char *b, size_t bl)
+{
     int res;
-    
-    al = a->length;
-    bl = b->length;
-    sz = al < bl ? al : bl;
-    res = memcmp(a->buf, b->buf, sz);
+
+    res = memcmp(a, b, al < bl ? al : bl);
     if (res != 0)
         return(res);
     if (al < bl)
