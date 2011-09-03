@@ -1085,7 +1085,12 @@ ccn_charbuf_append_escaped(struct ccn_charbuf *dst, struct ccn_charbuf *src)
     }
 }
 
+#if 0
 #define MSG(fmt, ...) fprintf(stderr, fmt "\n", __VA_ARGS__)
+#else
+#define MSG(fmt, ...) if (0) fprintf(stderr, fmt "\n", __VA_ARGS__)
+#endif
+
 int
 ccn_btree_check(struct ccn_btree *btree) {
     struct ccn_btree_node *node;
@@ -1100,6 +1105,7 @@ ccn_btree_check(struct ccn_btree *btree) {
     int i, k;
     struct ccn_btree_internal_payload *e = NULL;
     const char *indent = "\t\t\t\t\t\t\t\t"; /* 8 tabs for indentation */
+    
     //unsigned long nodecount = 0;
     if (0) return(0);
     
@@ -1115,7 +1121,7 @@ ccn_btree_check(struct ccn_btree *btree) {
         MSG("%%W %s", "reset error indications");
         btree->missedsplit = btree->errors = 0;
     }
-    node = ccn_btree_rnode(btree, 1);
+    node = ccn_btree_getnode(btree, 1);
     if (node == NULL) {
         MSG("%%E %s", "no root node!");
         goto Bail;
@@ -1140,7 +1146,7 @@ ccn_btree_check(struct ccn_btree *btree) {
         if (k == n) {
             /* Pop our stack to continue proccessing our parent */
             if (sp == 0) (k = 0, node = NULL);
-            else (sp--, k = kstk[sp], node = ccn_btree_rnode(btree, stack[sp]));
+            else (sp--, k = kstk[sp], node = ccn_btree_getnode(btree, stack[sp]));
         }
         else {
             if (k == 0 && l > 0) {
@@ -1189,7 +1195,7 @@ ccn_btree_check(struct ccn_btree *btree) {
                 if (sp == 40) goto Bail;
                 e = ccn_btree_node_getentry(sizeof(*e), node, k);
                 if (e == NULL) goto Bail;
-                child = ccn_btree_rnode(btree, MYFETCH(e, child));
+                child = ccn_btree_getnode(btree, MYFETCH(e, child));
                 if (child == NULL) goto Bail;
                 if (child->parent != node->nodeid) {
                     /* Not really an error, since after a non-leaf split this pointer is not updated. */
