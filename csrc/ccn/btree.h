@@ -21,6 +21,7 @@
 #ifndef CCN_BTREE_DEFINED
 #define CCN_BTREE_DEFINED
 
+#include <stdio.h>
 #include <sys/types.h>
 #include <ccn/charbuf.h>
 #include <ccn/hashtb.h>
@@ -265,11 +266,16 @@ int ccn_btree_next_leaf(struct ccn_btree *btree,
                         struct ccn_btree_node *node,
                         struct ccn_btree_node **ansp);
 
+/* Find the leaf that comes before the given node */
+int ccn_btree_prev_leaf(struct ccn_btree *btree,
+                        struct ccn_btree_node *node,
+                        struct ccn_btree_node **ansp);
+
 /* Split a node into two */
 int ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node);
 
 /* Check the whole btree carefully */
-int ccn_btree_check(struct ccn_btree *btree);
+int ccn_btree_check(struct ccn_btree *btree, FILE *outfp);
 
 /*
  * Storage layer - client can provide other options

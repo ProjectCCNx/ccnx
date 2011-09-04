@@ -447,7 +447,7 @@ r_store_init(struct ccnr_handle *h)
         h->stable = 0;
         h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
     }
-    res = ccn_btree_check(btree);
+    res = ccn_btree_check(btree, NULL);
     CHKSYS(res);
 }
 

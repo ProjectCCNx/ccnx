@@ -788,6 +788,65 @@ Bail:
     return(ans);
 }
 
+/**
+ * Find the leaf that comes before the given node
+ *
+ * This may be used to walk though the leaf nodes in reverse order.
+ * If success, sets *ansp to a leaf pointer or NULL
+ * @returns 0 if at beginning, 1 if *ansp is not NULL, -1 if error.
+ */
+int
+ccn_btree_prev_leaf(struct ccn_btree *btree,
+                    struct ccn_btree_node *node,
+                    struct ccn_btree_node **ansp)
+{
+    struct ccn_btree_internal_payload *e = NULL;
+    struct ccn_btree_node *p = NULL;
+    struct ccn_btree_node *q = NULL;
+    struct ccn_btree_node *parent = NULL;
+    int i;
+    int ans;
+    int res;
+    struct ccn_charbuf *key = NULL;
+    
+    ans = -1;
+    key = ccn_charbuf_create();
+    p = node;
+    while (p->parent != 0) {
+        res = ccn_btree_key_fetch(key, p, ccn_btree_node_level(p) == 0 ? 0 : 1);
+        if (res < 0)
+            goto Bail;
+        parent = ccn_btree_getnode(btree, p->parent);
+        if (parent == NULL)
+            goto Bail;
+        res = ccn_btree_searchnode(key->buf, key->length, parent);
+        if (res < 0)
+            goto Bail;
+        i = CCN_BT_SRCH_INDEX(res) + CCN_BT_SRCH_FOUND(res) - 1;
+        if (i > 0) {
+            /* We have found the ancestor that has the leaf we are after. */
+            q = NULL;
+            e = ccn_btree_node_getentry(sizeof(*e), parent, i - 1);
+            q = ccn_btree_getnode(btree, MYFETCH(e, child));
+            if (q == NULL)
+                goto Bail;
+            res = ccn_btree_lookup_internal(btree, q, 0, key->buf, 0, ansp);
+            if (res < 0)
+                goto Bail;
+            ans = 1;
+            break;
+        }
+        p = parent;
+    }
+    if (ans != 1) {
+        *ansp = NULL;
+        ans = 0;
+    }
+Bail:
+    ccn_charbuf_destroy(&key);
+    return(ans);
+}
+
 #define CCN_BTREE_MAGIC 0x53ade78
 #define CCN_BTREE_VERSION 1
 
@@ -1085,14 +1144,16 @@ ccn_charbuf_append_escaped(struct ccn_charbuf *dst, struct ccn_charbuf *src)
     }
 }
 
-#if 0
-#define MSG(fmt, ...) fprintf(stderr, fmt "\n", __VA_ARGS__)
-#else
-#define MSG(fmt, ...) if (0) fprintf(stderr, fmt "\n", __VA_ARGS__)
-#endif
+#define MSG(fmt, ...) if (outfp != NULL) fprintf(stderr, fmt "\n", __VA_ARGS__)
 
+/**
+ *  Check the structure of the btree for consistency.
+ *
+ * If outfp is not NULL, information about structure will be written.
+ * @returns -1 if an error was found.
+ */
 int
-ccn_btree_check(struct ccn_btree *btree) {
+ccn_btree_check(struct ccn_btree *btree, FILE *outfp) {
     struct ccn_btree_node *node;
     struct ccn_btree_node *child;
     unsigned stack[40] = {};
@@ -1199,7 +1260,8 @@ ccn_btree_check(struct ccn_btree *btree) {
                 if (child == NULL) goto Bail;
                 if (child->parent != node->nodeid) {
                     /* Not really an error, since after a non-leaf split this pointer is not updated. */
-                    MSG("%%W child->parent != node->nodeid (%u!=%u)", child->parent, node->nodeid);
+                    MSG("%%W child->parent != node->nodeid (%u!=%u)",
+                        child->parent, node->nodeid);
                     child->parent = node->nodeid;
                 }
                 node = child;

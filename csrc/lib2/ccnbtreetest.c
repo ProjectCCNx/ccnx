@@ -482,7 +482,7 @@ test_btree_lookup(void)
         res = ccn_btree_node_level(leaf);
         FAILIF(res != 0);
     }
-    res = ccn_btree_check(btree); // see how that works out
+    res = ccn_btree_check(btree, stderr); // see how that works out
     res = ccn_btree_destroy(&btree);
     FAILIF(btree != NULL);
     return(res);
@@ -612,7 +612,7 @@ test_btree_inserts_from_stdin(void)
             }
         }
     }
-    res = ccn_btree_check(btree);
+    res = ccn_btree_check(btree, stderr);
     CHKSYS(res);
     printf("%d unique, %d duplicate, %d errors\n", unique, dups, btree->errors);
     FAILIF(btree->errors != 0);
@@ -621,7 +621,15 @@ test_btree_inserts_from_stdin(void)
     printf("Leaf nodes:");
     while (leaf != NULL) {
         printf(" %u", leaf->nodeid);
+        node = leaf;
         res = ccn_btree_next_leaf(btree, leaf, &leaf);
+        CHKSYS(res);
+    }
+    printf("\n");
+    printf("Reversed leaf nodes:");
+    for (leaf = node; leaf != NULL;) {
+        printf(" %u", leaf->nodeid);
+        res = ccn_btree_prev_leaf(btree, leaf, &leaf);
         CHKSYS(res);
     }
     printf("\n");
