@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <unistd.h>
 
 #include <ccn/btree.h>
@@ -57,7 +58,9 @@ ccn_btree_io_from_directory(const char *path)
     struct ccn_btree_io *ans = NULL;
     struct ccn_btree_io *tans = NULL;
     struct ccn_charbuf *temp = NULL;
-    int res;
+    char tpid[21];
+    int fd = -1;
+    int pid, res;
     
     /* Make sure we were handed a directory */
     d = opendir(path);
@@ -79,30 +82,38 @@ ccn_btree_io_from_directory(const char *path)
     
     /* Try to create a lock file */
     temp = ccn_charbuf_create();
-    if (temp == NULL) goto Bail; /* errno per calloc */
+    if (temp == NULL) goto Bail; /* errno per calloc */    
     res = ccn_charbuf_append_charbuf(temp, md->dirpath);
     if (res < 0) goto Bail; /* errno per calloc */
     res = ccn_charbuf_putf(temp, "/.LCK");
     if (res < 0) goto Bail; /* errno per calloc or snprintf */
-    res = open(ccn_charbuf_as_string(temp),
+    fd = open(ccn_charbuf_as_string(temp),
                (O_RDWR | O_CREAT | O_EXCL),
                0600);
-    if (res == -1) {
+    if (fd == -1) {
         if (errno == EEXIST) {
-            // XXX - we might be able to recover by breaking the lock if
-            // the pid it names no longer exists.  But this can be done upstairs.
+            // try to recover by checking if the pid the lock names exists
+            fd = open(ccn_charbuf_as_string(temp), (O_RDWR | O_EXCL));
+            if (fd == -1) goto Bail;
+            memset(tpid, 0, sizeof(tpid));
+            read(fd, tpid, sizeof(tpid) - 1);
+            pid = strtol(tpid, NULL, 10);
+            if (pid <= 0) goto Bail;    /* errno EINVAL or ERANGE */
+            res = kill((pid_t) pid, 0);
+            if (res == 0 ||             /* XXX - what errno? */
+                (res == -1 && errno != ESRCH))
+                goto Bail;
+            lseek(fd, 0, SEEK_SET);
+            ftruncate(fd, 0);
         }
-        goto Bail; /* errno per open, probably EACCES or EEXIST */
-    }
+        else
+            goto Bail; /* errno per open, probably EACCES */
+    }    
     /* Place our pid in the lockfile so we know who to blame */
     temp->length = 0;
     ccn_charbuf_putf(temp, "%d", (int)getpid());
-    if (write(res, temp->buf, temp->length) < 0) {
-        close(res);
+    if (write(fd, temp->buf, temp->length) < 0)
         goto Bail;
-    }
-    // XXX - is it better if we keep the lockfile open? Does it matter?
-    close(res);
     /* Everything looks good. */
     ans = tans;
     tans = NULL;
@@ -119,6 +130,7 @@ ccn_btree_io_from_directory(const char *path)
     md->io = ans;
     md = NULL;
 Bail:
+    if (fd != -1) close(fd);
     if (tans != NULL) free(tans);
     if (md != NULL) {
         ccn_charbuf_destroy(&md->dirpath);
