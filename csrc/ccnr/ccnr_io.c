@@ -451,7 +451,7 @@ r_io_send(struct ccnr_handle *h,
         if (offsetp != NULL)
             *offsetp = offset;
         if (fdholder->recv_fd == h->active_out_fd) {
-            if (offset != h->stable)
+            if (offset != h->stable && h->stable != 0)
                 ccnr_msg(h, "expected file size %ju, found %ju",
                     (uintmax_t)h->stable,
                     (uintmax_t)offset);

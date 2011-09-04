@@ -84,7 +84,8 @@ r_store_set_flatname(struct ccnr_handle *h, struct content_entry *content,
 static int
 r_store_content_btree_insert(struct ccnr_handle *h,
                              struct content_entry *content,
-                             struct ccn_parsed_ContentObject *pco);
+                             struct ccn_parsed_ContentObject *pco,
+                             ccnr_accession *accession);
 
 #define FAILIF(cond) do {} while ((cond) && r_store_fatal(h, __func__, __LINE__))
 #define CHKSYS(res) FAILIF((res) == -1)
@@ -321,6 +322,83 @@ r_store_content_change_flags(struct content_entry *content, int set, int clear)
     return(old);
 }
 
+/**
+ * Write a file named index/stable that contains the size of
+ * repoFile1 when the repository is shut down.
+ */
+static int
+r_store_write_stable_point(struct ccnr_handle *h)
+{
+    struct ccn_charbuf *path = NULL;
+    struct ccn_charbuf *cb = NULL;
+    int fd;
+    
+    path = ccn_charbuf_create();
+    cb = ccn_charbuf_create();
+    ccn_charbuf_putf(path, "%s/index/stable", h->directory);
+    fd = open(ccn_charbuf_as_string(path), O_CREAT | O_WRONLY | O_APPEND, 0666);
+    if (fd == -1) {
+        ccnr_msg(h, "cannot write stable mark %s: %s",
+                 ccn_charbuf_as_string(path), strerror(errno));
+        unlink(ccn_charbuf_as_string(path));
+    }
+    else {
+        ccn_charbuf_putf(cb, "%ju", (uintmax_t)(h->stable));
+        write(fd, cb->buf, cb->length);
+        close(fd);
+        if (CCNSHOULDLOG(h, dfsdf, CCNL_INFO))
+            ccnr_msg(h, "Index marked stable - %s", ccn_charbuf_as_string(cb));
+    }
+    ccn_charbuf_destroy(&path);
+    ccn_charbuf_destroy(&cb);
+    return(0);
+}
+
+/**
+ * Read the former size of repoFile1 from index/stable, and remove
+ * the latter.
+ */
+static void
+r_store_read_stable_point(struct ccnr_handle *h)
+{
+    struct ccn_charbuf *path = NULL;
+    struct ccn_charbuf *cb = NULL;
+    int fd;
+    int i;
+    ssize_t rres;
+    uintmax_t val;
+    unsigned char c;
+    
+    path = ccn_charbuf_create();
+    cb = ccn_charbuf_create();
+    ccn_charbuf_putf(path, "%s/index/stable", h->directory);
+    fd = open(ccn_charbuf_as_string(path), O_RDONLY, 0666);
+    if (fd != -1) {
+        rres = read(fd, ccn_charbuf_reserve(cb, 80), 80);
+        if (rres > 0)
+            cb->length = rres;
+        close(fd);
+        if (CCNSHOULDLOG(h, dfsdf, CCNL_INFO))
+            ccnr_msg(h, "Last stable at %s", ccn_charbuf_as_string(cb));
+    }
+    for (val = 0, i = 0; i < cb->length; i++) {
+        c = cb->buf[i];
+        if ('0' <= c && c <= '9')
+            val = val * 10 + (c - '0');
+        else
+            break;
+    }
+    if (i == 0 || i < cb->length) {
+        ccnr_msg(h, "Bad stable mark - %s", ccn_charbuf_as_string(cb));
+        h->stable = 0;
+    }
+    else {
+        h->stable = val;
+        unlink(ccn_charbuf_as_string(path));
+    }
+    ccn_charbuf_destroy(&path);
+    ccn_charbuf_destroy(&cb);
+}
 
 PUBLIC void
 r_store_init(struct ccnr_handle *h)
@@ -330,6 +408,7 @@ r_store_init(struct ccnr_handle *h)
     struct hashtb_param param = {0};
     int res;
     struct ccn_charbuf *path = NULL;
+    off_t offset;
     
     path = ccn_charbuf_create();
     param.finalize_data = h;
@@ -354,35 +433,22 @@ r_store_init(struct ccnr_handle *h)
         res = ccn_btree_init_node(node, 0, 'R', 0);
         CHKSYS(res);
     }
-    res = ccn_btree_check(btree);
-    CHKSYS(res);
     btree->full = 20;
     ccn_charbuf_destroy(&path);
-}
-
-static int
-r_store_write_stable_point(struct ccnr_handle *h)
-{
-    struct ccn_charbuf *path = NULL;
-    struct ccn_charbuf *cb = NULL;
-    int fd;
-    
-    path = ccn_charbuf_create();
-    cb = ccn_charbuf_create();
-    ccn_charbuf_putf(path, "%s/index/stable", h->directory);
-    fd = open(ccn_charbuf_as_string(path), O_CREAT | O_WRONLY | O_APPEND, 0666);
-    if (fd == -1)
-        unlink(ccn_charbuf_as_string(path));
-    else {
-        ccn_charbuf_putf(cb, "%ju", (uintmax_t)(h->stable));
-        write(fd, cb->buf, cb->length);
-        close(fd);
-        if (CCNSHOULDLOG(h, dfsdf, CCNL_INFO))
-            ccnr_msg(h, "Index marked stable - %s", ccn_charbuf_as_string(cb));
+    if (h->running == -1)
+        return;
+    r_store_read_stable_point(h);
+    h->active_in_fd = -1;
+    h->active_out_fd = r_io_open_repo_data_file(h, "repoFile1", 1); /* output */
+    offset = lseek(h->active_out_fd, 0, SEEK_END);
+    if (offset != h->stable) {
+        ccnr_msg(h, "Index not current - resetting");
+        ccn_btree_init_node(node, 0, 'R', 0);
+        h->stable = 0;
+        h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
     }
-    ccn_charbuf_destroy(&path);
-    ccn_charbuf_destroy(&cb);
-    return(0);
+    res = ccn_btree_check(btree);
+    CHKSYS(res);
 }
 
 PUBLIC int
@@ -405,6 +471,7 @@ r_store_content_from_accession(struct ccnr_handle *h, ccnr_accession accession)
     struct content_by_accession_entry *entry;
     const unsigned char *content_base = NULL;
     int res;
+    ccnr_accession acc;
     
     if (accession == CCNR_NULL_ACCESSION)
         return(NULL);
@@ -427,7 +494,7 @@ r_store_content_from_accession(struct ccnr_handle *h, ccnr_accession accession)
     res = r_store_set_flatname(h, content, &obj);
     if (res < 0) goto Bail;
     r_store_enroll_content(h, content);
-    res = r_store_content_btree_insert(h, content, &obj);
+    res = r_store_content_btree_insert(h, content, &obj, &acc);
     if (res < 0) goto Bail;
     if (res == 1 || CCNSHOULDLOG(h, sdf, CCNL_FINEST))
         ccnr_debug_content(h, __LINE__, "content/accession", NULL, content);
@@ -570,21 +637,25 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
 static int
 r_store_content_btree_insert(struct ccnr_handle *h,
                              struct content_entry *content,
-                             struct ccn_parsed_ContentObject *pco)
+                             struct ccn_parsed_ContentObject *pco,
+                             ccnr_accession *accp)
 {
     const unsigned char *content_base = NULL;
     struct ccn_btree_node *leaf = NULL;
+    struct ccn_charbuf *flat = NULL;
     int i;
     int res;
     
-    if (content->flatname == NULL)
+    flat = content->flatname;
+    if (flat == NULL)
         return(-1);
-    res = ccn_btree_lookup(h->btree, content->flatname->buf, content->flatname->length, &leaf);
+    res = ccn_btree_lookup(h->btree, flat->buf, flat->length, &leaf);
     if (res < 0)
         return(-1);
     i = CCN_BT_SRCH_INDEX(res);
     if (CCN_BT_SRCH_FOUND(res)) {
-        return(ccnr_accession_decode(h, ccn_btree_content_cobid(leaf, i)) == CCNR_NULL_ACCESSION);
+        *accp = ccnr_accession_decode(h, ccn_btree_content_cobid(leaf, i));
+        return(*accp == CCNR_NULL_ACCESSION);
     }
     else {
         content_base = r_store_content_base(h, content);
@@ -597,6 +668,7 @@ r_store_content_btree_insert(struct ccnr_handle *h,
                                        content->flatname);
         if (res < 0)
             return(-1);
+        *accp = content->accession;
         return(2);
     }
 }
@@ -1042,6 +1114,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     struct ccn_parsed_ContentObject obj = {0};
     int res;
     struct content_entry *content = NULL;
+    ccnr_accession accession = CCNR_NULL_ACCESSION;
     
     content = calloc(1, sizeof(*content));
     if (content == NULL)
@@ -1059,15 +1132,18 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     r_store_enroll_content(h, content);
     if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
         ccnr_debug_content(h, __LINE__, "content_from", fdholder, content);
-        res = r_store_content_btree_insert(h, content, &obj);
+        res = r_store_content_btree_insert(h, content, &obj, &accession);
         if (res < 0) goto Bail;
         if (res == 0) {
-            /* If the accession in the index is not set, we should go ahead and process this thing. */
+            /* Content was there, with an accession */
             if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
                 ccnr_debug_content(h, __LINE__, "content_duplicate",
                                    fdholder, content);
             h->content_dups_recvd++;
-            goto Bail;
+            r_store_forget_content(h, &content);
+            content = r_store_content_from_accession(h, accession);
+            if (content == NULL)
+                goto Bail;
         }
         r_store_set_content_timer(h, content, &obj);
         if ((fdholder->flags & CCNR_FACE_REPODATA) == 0)
