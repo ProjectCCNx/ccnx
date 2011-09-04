@@ -360,12 +360,40 @@ r_store_init(struct ccnr_handle *h)
     ccn_charbuf_destroy(&path);
 }
 
+static int
+r_store_write_stable_point(struct ccnr_handle *h)
+{
+    struct ccn_charbuf *path = NULL;
+    struct ccn_charbuf *cb = NULL;
+    int fd;
+    
+    path = ccn_charbuf_create();
+    cb = ccn_charbuf_create();
+    ccn_charbuf_putf(path, "%s/index/stable", h->directory);
+    fd = open(ccn_charbuf_as_string(path), O_CREAT | O_WRONLY | O_APPEND, 0666);
+    if (fd == -1)
+        unlink(ccn_charbuf_as_string(path));
+    else {
+        ccn_charbuf_putf(cb, "%ju", (uintmax_t)(h->stable));
+        write(fd, cb->buf, cb->length);
+        close(fd);
+        if (CCNSHOULDLOG(h, dfsdf, CCNL_INFO))
+            ccnr_msg(h, "Index marked stable - %s", ccn_charbuf_as_string(cb));
+    }
+    ccn_charbuf_destroy(&path);
+    ccn_charbuf_destroy(&cb);
+    return(0);
+}
+
 PUBLIC int
 r_store_final(struct ccnr_handle *h) {
     int res;
+    
     res = ccn_btree_destroy(&h->btree);
     if (res < 0)
         ccnr_msg(h, "r_store_final.%d Errors while closing index", __LINE__);
+    if (res >= 0)
+        res = r_store_write_stable_point(h);
     return(res);
 }
     
