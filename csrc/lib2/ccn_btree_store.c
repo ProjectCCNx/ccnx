@@ -149,7 +149,7 @@ bts_open(struct ccn_btree_io *io, struct ccn_btree_node *node)
     if (temp == NULL)
         return(-1);
     res = ccn_charbuf_append_charbuf(temp, md->dirpath);
-    res |= ccn_charbuf_putf(temp, "/%u", node->nodeid);
+    res |= ccn_charbuf_putf(temp, "/%u", (unsigned)node->nodeid);
     if (res < 0) {
         ccn_charbuf_destroy(&temp);
         free(nd);
