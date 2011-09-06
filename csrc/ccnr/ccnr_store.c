@@ -447,7 +447,7 @@ r_store_init(struct ccnr_handle *h)
         res = ccn_btree_init_node(node, 0, 'R', 0);
         CHKSYS(res);
     }
-    btree->full = 20;
+    btree->full = 199;
     ccn_charbuf_destroy(&path);
     if (h->running == -1)
         return;
@@ -667,11 +667,17 @@ r_store_content_btree_insert(struct ccnr_handle *h,
                              ccnr_accession *accp)
 {
     const unsigned char *content_base = NULL;
+    struct ccn_btree *btree = NULL;
     struct ccn_btree_node *leaf = NULL;
+    struct ccn_btree_node *node = NULL;
     struct ccn_charbuf *flat = NULL;
     int i;
+    int limit;
     int res;
-    
+
+    btree = h->btree;
+    if (btree == NULL)
+        return(-1);
     flat = content->flatname;
     if (flat == NULL)
         return(-1);
@@ -694,6 +700,17 @@ r_store_content_btree_insert(struct ccnr_handle *h,
                                        content->flatname);
         if (res < 0)
             return(-1);
+        if (res > btree->full) {
+            res = ccn_btree_split(btree, leaf);
+            for (limit = 100; res >= 0 && btree->nextsplit != 0; limit--) {
+                if (limit == 0) abort();
+                node = ccn_btree_getnode(btree, btree->nextsplit);
+                if (node == NULL)
+                    return(-1);
+                res = ccn_btree_split(btree, node);
+            }
+        }
+        
         *accp = content->accession;
         return(2);
     }
