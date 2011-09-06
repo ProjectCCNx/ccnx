@@ -94,7 +94,7 @@ test_btree_io(void)
     struct ccn_btree_io *io = NULL;
 
     /* Open it up. */
-    io = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
+    io = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"), NULL);
     CHKPTR(io);
     node->buf = ccn_charbuf_create();
     CHKPTR(node->buf);
@@ -179,10 +179,10 @@ test_btree_lockfile(void)
     struct ccn_btree_io *io = NULL;
     struct ccn_btree_io *io2 = NULL;
 
-    io = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
+    io = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"), NULL);
     CHKPTR(io);
     /* Make sure the locking works */
-    io2 = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"));
+    io2 = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"), NULL);
     FAILIF(io2 != NULL || errno != EEXIST);
     errno=EINVAL;
     res = io->btdestroy(&io);
