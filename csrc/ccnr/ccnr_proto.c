@@ -836,7 +836,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         ccn_charbuf_append_charbuf(es->name, name);
         es->starting_cookie = ccnr->cookie; // XXX - a conservative indicator of change
     }
-    
+    ccn_charbuf_destroy(&name);
     // check the exclude
     ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: interest", NULL,
                     info->interest_ccnb, info->pi->offset[CCN_PI_E]);
