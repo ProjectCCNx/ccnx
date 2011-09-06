@@ -1416,6 +1416,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_publisher = publisherIdentity;
 		_keyLocator = keyLocator;
 	}
+	
+	public void setTimeout(int timeout) {
+		try {
+			createFlowController();
+			getFlowControl().setTimeout(timeout);
+		} catch (IOException e) {}
+	}
 
 	public synchronized Interest handleContent(ContentObject co, Interest interest) {
 		try {
