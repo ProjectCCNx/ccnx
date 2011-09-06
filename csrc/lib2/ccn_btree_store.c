@@ -47,20 +47,23 @@ struct bts_data {
  * as a separate file.
  * The files are named using the decimal representation of the nodeid.
  *
+ * If msgs is not NULL, diagnostics may be recorded there.
+ *
  * @param path is the name of the directory, which must exist.
  * @returns the new ccn_btree_io handle, or sets errno and returns NULL.
  */
 struct ccn_btree_io *
-ccn_btree_io_from_directory(const char *path)
+ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
 {
     DIR *d = NULL;
     struct bts_data *md = NULL;
     struct ccn_btree_io *ans = NULL;
     struct ccn_btree_io *tans = NULL;
     struct ccn_charbuf *temp = NULL;
-    char tpid[21];
+    char tbuf[21];
     int fd = -1;
     int pid, res;
+    int maxnodeid = 0;
     
     /* Make sure we were handed a directory */
     d = opendir(path);
@@ -95,9 +98,9 @@ ccn_btree_io_from_directory(const char *path)
             // try to recover by checking if the pid the lock names exists
             fd = open(ccn_charbuf_as_string(temp), O_RDWR);
             if (fd == -1) goto Bail;
-            memset(tpid, 0, sizeof(tpid));
-            read(fd, tpid, sizeof(tpid) - 1);
-            pid = strtol(tpid, NULL, 10);
+            memset(tbuf, 0, sizeof(tbuf));
+            read(fd, tbuf, sizeof(tbuf) - 1);
+            pid = strtol(tbuf, NULL, 10);
             if (pid <= 0) goto Bail;    /* errno EINVAL or ERANGE */
             res = kill((pid_t) pid, 0);
             if (res == 0 ||             /* XXX - what errno? */
@@ -114,6 +117,21 @@ ccn_btree_io_from_directory(const char *path)
     ccn_charbuf_putf(temp, "%d", (int)getpid());
     if (write(fd, temp->buf, temp->length) < 0)
         goto Bail;
+    close(fd);
+    fd = -1;
+    /* Read maxnodeid */
+    temp->length = 0;
+    ccn_charbuf_append_charbuf(temp, md->dirpath);
+    ccn_charbuf_putf(temp, "/maxnodeid");
+    fd = open(ccn_charbuf_as_string(temp), O_RDWR);
+    if (fd != -1) {
+        memset(tbuf, 0, sizeof(tbuf));
+        read(fd, tbuf, sizeof(tbuf) - 1);
+        errno = EINVAL;
+        maxnodeid = strtoul(tbuf, NULL, 10);
+        if (maxnodeid == 0)
+            goto Bail;
+    }
     /* Everything looks good. */
     ans = tans;
     tans = NULL;
@@ -126,6 +144,7 @@ ccn_btree_io_from_directory(const char *path)
     ans->btwrite = &bts_write;
     ans->btclose = &bts_close;
     ans->btdestroy = &bts_destroy;
+    ans->maxnodeid = maxnodeid;
     ans->data = md;
     md->io = ans;
     md = NULL;
@@ -170,6 +189,22 @@ bts_open(struct ccn_btree_io *io, struct ccn_btree_node *node)
     nd->fd = open(ccn_charbuf_as_string(temp),
                (O_RDWR | O_CREAT),
                0640);
+    if (nd->fd != -1 && node->nodeid > io->maxnodeid) {
+        /* Record maxnodeid in a file */
+        io->maxnodeid = node->nodeid;
+        temp->length = 0;
+        ccn_charbuf_append_charbuf(temp, md->dirpath);
+        ccn_charbuf_putf(temp, "/maxnodeid");
+        res = open(ccn_charbuf_as_string(temp),
+               (O_RDWR | O_CREAT | O_TRUNC),
+               0640);
+        if (res >= 0) {
+            temp->length = 0;
+            ccn_charbuf_putf(temp, "%u", (unsigned)node->nodeid);
+            write(res, temp->buf, temp->length);
+            close(res);
+        }
+    }
     ccn_charbuf_destroy(&temp);
     if (nd->fd == -1) {
         free(nd);

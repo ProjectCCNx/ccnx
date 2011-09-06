@@ -69,6 +69,9 @@ typedef int (*ccn_btree_io_closefn)
 typedef int (*ccn_btree_io_destroyfn)
     (struct ccn_btree_io **);
 
+/* This serves as the external name of a btree node. */
+typedef unsigned ccn_btnodeid;
+
 /**
  * Holds the methods and the associated common data.
  */
@@ -79,12 +82,9 @@ struct ccn_btree_io {
     ccn_btree_io_writefn btwrite;
     ccn_btree_io_closefn btclose;
     ccn_btree_io_destroyfn btdestroy;
+    ccn_btnodeid maxnodeid;    /**< Largest assigned nodeid */
     void *data;
 };
-
-/* This serves as the external name of a btree node. */
-typedef unsigned ccn_btnodeid;
-
 /**
  * State associated with a btree node
  *
@@ -287,7 +287,8 @@ int ccn_btree_check(struct ccn_btree *btree, FILE *outfp);
  */
 
 /* For btree node storage in files */
-struct ccn_btree_io *ccn_btree_io_from_directory(const char *path);
+struct ccn_btree_io *ccn_btree_io_from_directory(const char *path,
+                                                 struct ccn_charbuf *msgs);
 
 /* Low-level field access */
 unsigned ccn_btree_fetchval(const unsigned char *p, int size);

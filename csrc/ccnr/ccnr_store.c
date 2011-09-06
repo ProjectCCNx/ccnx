@@ -336,7 +336,9 @@ r_store_write_stable_point(struct ccnr_handle *h)
     path = ccn_charbuf_create();
     cb = ccn_charbuf_create();
     ccn_charbuf_putf(path, "%s/index/stable", h->directory);
-    fd = open(ccn_charbuf_as_string(path), O_CREAT | O_WRONLY | O_APPEND, 0666);
+    unlink(ccn_charbuf_as_string(path)); /* Should not exist, but just in case. */
+    fd = open(ccn_charbuf_as_string(path),
+              O_CREAT | O_EXCL | O_WRONLY | O_TRUNC, 0666);
     if (fd == -1) {
         ccnr_msg(h, "cannot write stable mark %s: %s",
                  ccn_charbuf_as_string(path), strerror(errno));
@@ -408,6 +410,7 @@ r_store_init(struct ccnr_handle *h)
     struct hashtb_param param = {0};
     int res;
     struct ccn_charbuf *path = NULL;
+    struct ccn_charbuf *msgs = NULL;
     off_t offset;
     
     path = ccn_charbuf_create();
@@ -423,11 +426,22 @@ r_store_init(struct ccnr_handle *h)
     if (res != 0 && errno != EEXIST)
         r_init_fail(h, __LINE__, ccn_charbuf_as_string(path), errno);
     else {
-        btree->io = ccn_btree_io_from_directory(ccn_charbuf_as_string(path));
+        msgs = ccn_charbuf_create();
+        btree->io = ccn_btree_io_from_directory(ccn_charbuf_as_string(path), msgs);
         if (btree->io == NULL)
-            r_init_fail(h, __LINE__, ccn_charbuf_as_string(path), errno);
+            res = errno;
+        if (msgs->length != 0 && CCNSHOULDLOG(h, sffdsdf, CCNL_WARNING)) {
+            ccnr_msg(h, "while initializing %s - %s",
+                     ccn_charbuf_as_string(path),
+                     ccn_charbuf_as_string(msgs));
+        }
+        ccn_charbuf_destroy(&msgs);
+        if (btree->io == NULL)
+            r_init_fail(h, __LINE__, ccn_charbuf_as_string(path), res);
     }
-    node = ccn_btree_getnode(btree, btree->nextnodeid++);
+    node = ccn_btree_getnode(btree, 1);
+    if (btree->io != NULL)
+        btree->nextnodeid = btree->io->maxnodeid + 1;
     CHKPTR(node);
     if (node->buf->length == 0) {
         res = ccn_btree_init_node(node, 0, 'R', 0);
@@ -443,6 +457,18 @@ r_store_init(struct ccnr_handle *h)
     offset = lseek(h->active_out_fd, 0, SEEK_END);
     if (offset != h->stable) {
         ccnr_msg(h, "Index not current - resetting");
+        ccn_btree_init_node(node, 0, 'R', 0);
+        node = NULL;
+        ccn_btree_destroy(&h->btree);
+        h->btree = btree = ccn_btree_create();
+        path = ccn_charbuf_create();
+        ccn_charbuf_putf(path, "%s/index", h->directory);
+        btree->io = ccn_btree_io_from_directory(ccn_charbuf_as_string(path), msgs);
+        CHKPTR(btree->io);
+        btree->io->maxnodeid = 0;
+        btree->nextnodeid = 1;
+        node = ccn_btree_getnode(btree, 1);
+        btree->nextnodeid = btree->io->maxnodeid + 1;
         ccn_btree_init_node(node, 0, 'R', 0);
         h->stable = 0;
         h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
