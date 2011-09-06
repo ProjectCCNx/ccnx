@@ -541,7 +541,9 @@ ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
         node->buf->length = minnewsize;
         memmove(to + pre + k, from + pre, post);
         memmove(to, from, pre);
-        memset(from, 0x33, to - from);
+        /* Rarely, we move pre down and post up - skip this fill if so. */
+        if (to > from)
+            memset(from, 0x33, to - from);
         to = to + pre;
     }
     /* Copy in bits of new entry */
@@ -898,7 +900,7 @@ ccn_btree_create(void)
         ans->errors = 0;
         ans->io = NULL;
         ans->nextnodeid = 1;  /* This will be the root */
-        ans->full = 20;
+        ans->full = 19;
     }
     return(ans);
 }
