@@ -97,26 +97,45 @@ ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
         if (errno == EEXIST) {
             // try to recover by checking if the pid the lock names exists
             fd = open(ccn_charbuf_as_string(temp), O_RDWR);
-            if (fd == -1) goto Bail;
+            if (fd == -1) {
+                if (msgs != NULL)
+                    ccn_charbuf_append_string(msgs, "Unable to open pid file for update. ");
+                goto Bail;
+            }
             memset(tbuf, 0, sizeof(tbuf));
             read(fd, tbuf, sizeof(tbuf) - 1);
             pid = strtol(tbuf, NULL, 10);
-            if (pid <= 0) goto Bail;    /* errno EINVAL or ERANGE */
+            if (pid <= 0) {
+                if (msgs != NULL) {
+                    ccn_charbuf_append_string(msgs, "Illegal pid in pid file.");
+                }
+                goto Bail;    /* errno EINVAL or ERANGE */
+            }
             res = kill((pid_t) pid, 0);
             if (res == 0 ||             /* XXX - what errno? */
-                (res == -1 && errno != ESRCH))
+                (res == -1 && errno != ESRCH)) {
+                if (msgs != NULL)
+                    ccn_charbuf_putf(msgs, "Locked by process id %d.", pid);
                 goto Bail;
+            }
+            ccn_charbuf_putf(msgs, "Breaking stale lock by pid %d. ", pid);
             lseek(fd, 0, SEEK_SET);
             ftruncate(fd, 0);
         }
-        else
+        else {
+            if (msgs != NULL)
+                ccn_charbuf_append_string(msgs, "Unable to open pid file. ");
             goto Bail; /* errno per open, probably EACCES */
+        }
     }    
     /* Place our pid in the lockfile so we know who to blame */
     temp->length = 0;
     ccn_charbuf_putf(temp, "%d", (int)getpid());
-    if (write(fd, temp->buf, temp->length) < 0)
+    if (write(fd, temp->buf, temp->length) < 0) {
+        if (msgs != NULL)
+            ccn_charbuf_append_string(msgs, "Unable to write pid file.");
         goto Bail;
+    }
     close(fd);
     fd = -1;
     /* Read maxnodeid */
