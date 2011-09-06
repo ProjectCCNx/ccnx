@@ -908,7 +908,7 @@ r_store_next_child_at_level(struct ccnr_handle *h,
     struct ccn_charbuf *flatname = NULL;
     int res;
     
-    if (content == NULL || h->skiplinks->n == 0)
+    if (content == NULL)
         return(NULL);
     name = ccn_charbuf_create();
     ccn_name_init(name);
