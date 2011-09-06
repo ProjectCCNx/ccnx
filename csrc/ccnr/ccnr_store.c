@@ -447,7 +447,6 @@ r_store_init(struct ccnr_handle *h)
         res = ccn_btree_init_node(node, 0, 'R', 0);
         CHKSYS(res);
     }
-    btree->full = 199;
     ccn_charbuf_destroy(&path);
     if (h->running == -1)
         return;
@@ -475,6 +474,7 @@ r_store_init(struct ccnr_handle *h)
     }
     res = ccn_btree_check(btree, NULL);
     CHKSYS(res);
+    btree->full = 1999;
 }
 
 PUBLIC int
