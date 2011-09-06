@@ -26,6 +26,7 @@
 #include "ccnr_private.h"
 
 struct ccnr_handle *r_init_create(const char *progname,ccnr_logger logger,void *loggerdata);
+void r_init_fail(struct ccnr_handle *, int, const char *, int);
 void r_init_destroy(struct ccnr_handle **pccnr);
 
 #endif

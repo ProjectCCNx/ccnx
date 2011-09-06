@@ -450,6 +450,13 @@ r_io_send(struct ccnr_handle *h,
         }
         if (offsetp != NULL)
             *offsetp = offset;
+        if (fdholder->recv_fd == h->active_out_fd) {
+            if (offset != h->stable && h->stable != 0)
+                ccnr_msg(h, "expected file size %ju, found %ju",
+                    (uintmax_t)h->stable,
+                    (uintmax_t)offset);
+            h->stable = offset + size;
+        }
     }
     if ((fdholder->flags & CCNR_FACE_DGRAM) == 0)
         res = write(fdholder->recv_fd, data, size);

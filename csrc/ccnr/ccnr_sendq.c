@@ -239,7 +239,7 @@ r_sendq_face_send_queue_insert(struct ccnr_handle *h,
     q = fdholder->q[c];
     if (q == NULL)
         return(-1);
-    ans = ccn_indexbuf_set_insert(q->send_queue, content->cookie);
+    ans = ccn_indexbuf_set_insert(q->send_queue, r_store_content_cookie(h, content));
     if (q->sender == NULL) {
         delay = randomize_content_delay(h, q);
         q->ready = q->send_queue->n;

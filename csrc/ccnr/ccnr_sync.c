@@ -137,7 +137,7 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
     else {
         struct ccn_charbuf *cb = r_util_charbuf_obtain(ccnr);
 
-        acc = content->accession;
+        acc = r_store_content_accession(ccnr, content);
         if (acc == CCNR_NULL_ACCESSION) {
             ccnr_debug_content(ccnr, __LINE__, "r_sync_notify_content - not yet stable", NULL, content);
             return(0);
@@ -165,6 +165,7 @@ r_sync_notify_content(struct ccnr_handle *ccnr, int e, struct content_entry *con
 struct sync_enumeration_state {
     int magic; /**< for sanity check - should be se_cookie */
     int index; /**< Index into ccnr->active_enum */
+    ccnr_cookie cookie; /**< Resumption point */
     struct ccn_parsed_interest parsed_interest;
     struct ccn_charbuf *interest;
     struct ccn_indexbuf *comps;
@@ -215,11 +216,20 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
     interest = md->interest;
     comps = md->comps;
     
-    content = r_store_content_from_accession(ccnr, ccnr->active_enum[md->index]);
+    /*
+     * Recover starting point from either cookie or accession.
+     *
+     * The accession number might not be available yet (but we try to avoid
+     * suspending in such a case).
+     * The cookie might go away, but only if the content has been accessioned.
+     */
+    content = r_store_content_from_cookie(ccnr, md->cookie);
+    if (content == NULL)
+        content = r_store_content_from_accession(ccnr, ccnr->active_enum[md->index]);
     for (try = 0, matches = 0; content != NULL; try++) {
         content_msg = r_store_content_base(ccnr, content);
         if (ccn_content_matches_interest(content_msg,
-                                         content->size,
+                                         r_store_content_size(ccnr, content), // XXXXX 
                                          1, NULL, interest->buf, interest->length, pi)) {
             res = r_sync_notify_content(ccnr, md->index, content);
             matches++;
@@ -233,12 +243,14 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
         }
         content = r_store_content_next(ccnr, content);
         if (content != NULL &&
-            !r_store_content_matches_interest_prefix(ccnr, content, interest->buf,
+            !r_store_content_matches_interest_prefix(ccnr, content,
+                                                     interest->buf,
                                                      interest->length))
             content = NULL;
         if (content != NULL) {
-            ccnr->active_enum[md->index] = content->accession;
-            if (content->accession != CCNR_NULL_ACCESSION && 
+            md->cookie = r_store_content_cookie(ccnr, content);
+            ccnr->active_enum[md->index] = r_store_content_accession(ccnr, content);
+            if (ccnr->active_enum[md->index] != CCNR_NULL_ACCESSION && 
                 (matches >= 8 || try >= 200)) { // XXX - these numbers need tuning
                 return(300);
             }
@@ -309,20 +321,26 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
         goto Bail;
     }
     content = r_store_find_first_match_candidate(ccnr, interest->buf, pi);
-    if (content != NULL) {
-        if (r_store_content_matches_interest_prefix(ccnr,
-               content, interest->buf, interest->length)) {
-            ccnr->active_enum[ans] = content->accession;
-            if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINEST))
-                ccnr_msg(ccnr, "sync_enum id=%d starting accession=0x%jx",
-                         ans, ccnr_accession_encode(ccnr, content->accession));
-        }
+    if (content == NULL) {
+        if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINER))
+            ccnr_debug_ccnb(ccnr, __LINE__, "sync_enum_nomatch", NULL,
+                        interest->buf, interest->length);
+        ans = -1;
+        goto Bail;
+    }
+    if (r_store_content_matches_interest_prefix(ccnr,
+           content, interest->buf, interest->length)) {
+        ccnr->active_enum[ans] = r_store_content_accession(ccnr, content);
+        if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINEST))
+            ccnr_msg(ccnr, "sync_enum id=%d starting accession=0x%jx",
+                     ans, ccnr_accession_encode(ccnr, ccnr->active_enum[ans]));
     }
     
     /* Set up the state for r_sync_enumerate_action */
     md = calloc(1, sizeof(*md));
     if (md == NULL) { ccnr->active_enum[ans] = CCNR_NULL_ACCESSION; ans = -1; goto Bail; }
     md->magic = se_cookie;
+    md->cookie = r_store_content_cookie(ccnr, content);
     md->index = ans;
     md->interest = ccn_charbuf_create();
     if (md->interest == NULL) goto Bail;
@@ -366,7 +384,7 @@ r_sync_lookup(struct ccnr_handle *ccnr,
         if (content_ccnb != NULL) {
             ccn_charbuf_append(content_ccnb,
                                r_store_content_base(ccnr, content),
-                               content->size);
+                               r_store_content_size(ccnr, content));
         }
     }
     r_util_indexbuf_release(ccnr, comps);

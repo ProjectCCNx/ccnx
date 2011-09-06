@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <unistd.h>
 
 #include <ccn/btree.h>
@@ -46,18 +47,23 @@ struct bts_data {
  * as a separate file.
  * The files are named using the decimal representation of the nodeid.
  *
+ * If msgs is not NULL, diagnostics may be recorded there.
+ *
  * @param path is the name of the directory, which must exist.
  * @returns the new ccn_btree_io handle, or sets errno and returns NULL.
  */
 struct ccn_btree_io *
-ccn_btree_io_from_directory(const char *path)
+ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
 {
     DIR *d = NULL;
     struct bts_data *md = NULL;
     struct ccn_btree_io *ans = NULL;
     struct ccn_btree_io *tans = NULL;
     struct ccn_charbuf *temp = NULL;
-    int res;
+    char tbuf[21];
+    int fd = -1;
+    int pid, res;
+    int maxnodeid = 0;
     
     /* Make sure we were handed a directory */
     d = opendir(path);
@@ -79,30 +85,72 @@ ccn_btree_io_from_directory(const char *path)
     
     /* Try to create a lock file */
     temp = ccn_charbuf_create();
-    if (temp == NULL) goto Bail; /* errno per calloc */
+    if (temp == NULL) goto Bail; /* errno per calloc */    
     res = ccn_charbuf_append_charbuf(temp, md->dirpath);
     if (res < 0) goto Bail; /* errno per calloc */
     res = ccn_charbuf_putf(temp, "/.LCK");
     if (res < 0) goto Bail; /* errno per calloc or snprintf */
-    res = open(ccn_charbuf_as_string(temp),
+    fd = open(ccn_charbuf_as_string(temp),
                (O_RDWR | O_CREAT | O_EXCL),
                0600);
-    if (res == -1) {
+    if (fd == -1) {
         if (errno == EEXIST) {
-            // XXX - we might be able to recover by breaking the lock if
-            // the pid it names no longer exists.  But this can be done upstairs.
+            // try to recover by checking if the pid the lock names exists
+            fd = open(ccn_charbuf_as_string(temp), O_RDWR);
+            if (fd == -1) {
+                if (msgs != NULL)
+                    ccn_charbuf_append_string(msgs, "Unable to open pid file for update. ");
+                goto Bail;
+            }
+            memset(tbuf, 0, sizeof(tbuf));
+            read(fd, tbuf, sizeof(tbuf) - 1);
+            pid = strtol(tbuf, NULL, 10);
+            if (pid <= 0) {
+                if (msgs != NULL) {
+                    ccn_charbuf_append_string(msgs, "Illegal pid in pid file.");
+                }
+                goto Bail;    /* errno EINVAL or ERANGE */
+            }
+            res = kill((pid_t) pid, 0);
+            if (res == 0 ||             /* XXX - what errno? */
+                (res == -1 && errno != ESRCH)) {
+                if (msgs != NULL)
+                    ccn_charbuf_putf(msgs, "Locked by process id %d.", pid);
+                goto Bail;
+            }
+            ccn_charbuf_putf(msgs, "Breaking stale lock by pid %d. ", pid);
+            lseek(fd, 0, SEEK_SET);
+            ftruncate(fd, 0);
         }
-        goto Bail; /* errno per open, probably EACCES or EEXIST */
-    }
+        else {
+            if (msgs != NULL)
+                ccn_charbuf_append_string(msgs, "Unable to open pid file. ");
+            goto Bail; /* errno per open, probably EACCES */
+        }
+    }    
     /* Place our pid in the lockfile so we know who to blame */
     temp->length = 0;
     ccn_charbuf_putf(temp, "%d", (int)getpid());
-    if (write(res, temp->buf, temp->length) < 0) {
-        close(res);
+    if (write(fd, temp->buf, temp->length) < 0) {
+        if (msgs != NULL)
+            ccn_charbuf_append_string(msgs, "Unable to write pid file.");
         goto Bail;
     }
-    // XXX - is it better if we keep the lockfile open? Does it matter?
-    close(res);
+    close(fd);
+    fd = -1;
+    /* Read maxnodeid */
+    temp->length = 0;
+    ccn_charbuf_append_charbuf(temp, md->dirpath);
+    ccn_charbuf_putf(temp, "/maxnodeid");
+    fd = open(ccn_charbuf_as_string(temp), O_RDWR);
+    if (fd != -1) {
+        memset(tbuf, 0, sizeof(tbuf));
+        read(fd, tbuf, sizeof(tbuf) - 1);
+        errno = EINVAL;
+        maxnodeid = strtoul(tbuf, NULL, 10);
+        if (maxnodeid == 0)
+            goto Bail;
+    }
     /* Everything looks good. */
     ans = tans;
     tans = NULL;
@@ -115,10 +163,12 @@ ccn_btree_io_from_directory(const char *path)
     ans->btwrite = &bts_write;
     ans->btclose = &bts_close;
     ans->btdestroy = &bts_destroy;
+    ans->maxnodeid = maxnodeid;
     ans->data = md;
     md->io = ans;
     md = NULL;
 Bail:
+    if (fd != -1) close(fd);
     if (tans != NULL) free(tans);
     if (md != NULL) {
         ccn_charbuf_destroy(&md->dirpath);
@@ -149,7 +199,7 @@ bts_open(struct ccn_btree_io *io, struct ccn_btree_node *node)
     if (temp == NULL)
         return(-1);
     res = ccn_charbuf_append_charbuf(temp, md->dirpath);
-    res |= ccn_charbuf_putf(temp, "/%u", node->nodeid);
+    res |= ccn_charbuf_putf(temp, "/%u", (unsigned)node->nodeid);
     if (res < 0) {
         ccn_charbuf_destroy(&temp);
         free(nd);
@@ -158,6 +208,22 @@ bts_open(struct ccn_btree_io *io, struct ccn_btree_node *node)
     nd->fd = open(ccn_charbuf_as_string(temp),
                (O_RDWR | O_CREAT),
                0640);
+    if (nd->fd != -1 && node->nodeid > io->maxnodeid) {
+        /* Record maxnodeid in a file */
+        io->maxnodeid = node->nodeid;
+        temp->length = 0;
+        ccn_charbuf_append_charbuf(temp, md->dirpath);
+        ccn_charbuf_putf(temp, "/maxnodeid");
+        res = open(ccn_charbuf_as_string(temp),
+               (O_RDWR | O_CREAT | O_TRUNC),
+               0640);
+        if (res >= 0) {
+            temp->length = 0;
+            ccn_charbuf_putf(temp, "%u", (unsigned)node->nodeid);
+            write(res, temp->buf, temp->length);
+            close(res);
+        }
+    }
     ccn_charbuf_destroy(&temp);
     if (nd->fd == -1) {
         free(nd);

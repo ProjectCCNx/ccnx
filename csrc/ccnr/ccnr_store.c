@@ -57,6 +57,7 @@
 
 #include "ccnr_stats.h"
 #include "ccnr_store.h"
+#include "ccnr_init.h"
 #include "ccnr_link.h"
 #include "ccnr_util.h"
 #include "ccnr_proto.h"
@@ -66,7 +67,60 @@
 #include "ccnr_sendq.h"
 #include "ccnr_io.h"
 
+struct content_entry {
+    ccnr_accession accession;   /**< permanent repository id */
+    ccnr_cookie cookie;         /**< for in-memory references */
+    int flags;                  /**< see below - use accessor functions */
+    int size;                   /**< size of ContentObject */
+    struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
+    struct ccn_charbuf *cob;    /**< may contain ContentObject, or be NULL */
+};
+
 static const unsigned char *bogon = NULL;
+
+static int
+r_store_set_flatname(struct ccnr_handle *h, struct content_entry *content,
+                     struct ccn_parsed_ContentObject *pco);
+static int
+r_store_content_btree_insert(struct ccnr_handle *h,
+                             struct content_entry *content,
+                             struct ccn_parsed_ContentObject *pco,
+                             ccnr_accession *accession);
+
+#define FAILIF(cond) do {} while ((cond) && r_store_fatal(h, __func__, __LINE__))
+#define CHKSYS(res) FAILIF((res) == -1)
+#define CHKRES(res) FAILIF((res) < 0)
+#define CHKPTR(p)   FAILIF((p) == NULL)
+
+static int
+r_store_fatal(struct ccnr_handle *h, const char *fn, int lineno)
+{
+    if (h != NULL) {
+        ccnr_msg(h,
+                 "fatal error in %s, line %d, errno %d%s",
+                 fn, lineno, errno, strerror(errno));
+    }
+    abort();
+    return(0);
+}
+
+PUBLIC ccnr_accession
+r_store_content_accession(struct ccnr_handle *h, struct content_entry *content)
+{
+    return(content->accession);
+}
+
+PUBLIC ccnr_cookie
+r_store_content_cookie(struct ccnr_handle *h, struct content_entry *content)
+{
+    return(content->cookie);
+}
+
+PUBLIC size_t
+r_store_content_size(struct ccnr_handle *h, struct content_entry *content)
+{
+    return(content->size);
+}
 
 static off_t
 r_store_offset_from_accession(struct ccnr_handle *h, ccnr_accession a)
@@ -96,7 +150,11 @@ r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
     struct ccn_charbuf *cob = NULL;
     ssize_t rres = 0;
     int fd = -1;
-        
+    unsigned char buf[8800];
+    struct ccn_skeleton_decoder decoder = {0};
+    struct ccn_skeleton_decoder *d = &decoder;
+    ssize_t dres;
+    
     repofile = r_store_repofile_from_accession(h, content->accession);
     offset = r_store_offset_from_accession(h, content->accession);
     if (repofile != 1)
@@ -109,21 +167,41 @@ r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
     cob = ccn_charbuf_create();
     if (cob == NULL)
         goto Bail;
-    if (ccn_charbuf_reserve(cob, content->size) == NULL)
-        goto Bail;
-    rres = pread(fd, cob->buf, content->size, offset);
-    if (rres == content->size) {
-        cob->length = content->size;
+    if (content->size > 0) {
+        if (ccn_charbuf_reserve(cob, content->size) == NULL)
+            goto Bail;
+        rres = pread(fd, cob->buf, content->size, offset);
+        if (rres == content->size) {
+            cob->length = content->size;
+            content->cob = cob;
+            h->cob_count++;
+            return(cob->buf);
+        }
+        if (rres == -1)
+            ccnr_msg(h, "r_store_content_read %u :%s (errno = %d)",
+                     fd, strerror(errno), errno);
+        else
+            ccnr_msg(h, "r_store_content_read %u expected %d bytes, but got %d",
+                     fd, (int)content->size, (int)rres);
+    } else {
+        rres = pread(fd, buf, 8800, offset); // XXX - should be symbolic
+        if (rres == -1) {
+            ccnr_msg(h, "r_store_content_read %u :%s (errno = %d)",
+                     fd, strerror(errno), errno);
+            goto Bail;
+        }
+        dres = ccn_skeleton_decode(d, buf, rres);
+        if (d->state != 0) {
+            ccnr_msg(h, "r_store_content_read %u : error parsing cob", fd);
+            goto Bail;
+        }
+        content->size = dres;
+        if (ccn_charbuf_append(cob, buf, dres) < 0)
+            goto Bail;
         content->cob = cob;
         h->cob_count++;
-        return(cob->buf);
+        return(cob->buf);        
     }
-    if (rres == -1)
-        ccnr_msg(h, "r_store_content_read %u :%s (errno = %d)",
-                    fd, strerror(errno), errno);
-    else
-        ccnr_msg(h, "r_store_content_read %u expected %d bytes, but got %d",
-                    fd, (int)content->size, (int)rres);
 Bail:
     ccn_charbuf_destroy(&cob);
     return(NULL);
@@ -153,6 +231,11 @@ r_store_trim(struct ccnr_handle *h, unsigned long limit)
 {
     struct content_entry *content = NULL;
     int pass;
+    unsigned before;
+    
+    before = h->cob_count;
+    if (before <= limit)
+        return;
     for (pass = 0; h->cob_count > limit && pass < 2;) {
         content = r_store_content_from_cookie(h, ++h->trim_rover);
         if (content == NULL) {
@@ -160,10 +243,12 @@ r_store_trim(struct ccnr_handle *h, unsigned long limit)
             h->trim_rover = h->cookie_base;
             content = r_store_content_from_cookie(h, h->trim_rover);
             if (content == NULL)
-                return;
+                break;
         }
         r_store_content_trim(h, content);
     }
+    if (CCNSHOULDLOG(h, sdf, CCNL_FINEST))
+        ccnr_msg(h, "trimmed %u cobs", before - h->cob_count);
 }
 
 /**
@@ -237,29 +322,214 @@ r_store_content_change_flags(struct content_entry *content, int set, int clear)
     return(old);
 }
 
+/**
+ * Write a file named index/stable that contains the size of
+ * repoFile1 when the repository is shut down.
+ */
+static int
+r_store_write_stable_point(struct ccnr_handle *h)
+{
+    struct ccn_charbuf *path = NULL;
+    struct ccn_charbuf *cb = NULL;
+    int fd;
+    
+    path = ccn_charbuf_create();
+    cb = ccn_charbuf_create();
+    ccn_charbuf_putf(path, "%s/index/stable", h->directory);
+    unlink(ccn_charbuf_as_string(path)); /* Should not exist, but just in case. */
+    fd = open(ccn_charbuf_as_string(path),
+              O_CREAT | O_EXCL | O_WRONLY | O_TRUNC, 0666);
+    if (fd == -1) {
+        ccnr_msg(h, "cannot write stable mark %s: %s",
+                 ccn_charbuf_as_string(path), strerror(errno));
+        unlink(ccn_charbuf_as_string(path));
+    }
+    else {
+        ccn_charbuf_putf(cb, "%ju", (uintmax_t)(h->stable));
+        write(fd, cb->buf, cb->length);
+        close(fd);
+        if (CCNSHOULDLOG(h, dfsdf, CCNL_INFO))
+            ccnr_msg(h, "Index marked stable - %s", ccn_charbuf_as_string(cb));
+    }
+    ccn_charbuf_destroy(&path);
+    ccn_charbuf_destroy(&cb);
+    return(0);
+}
+
+/**
+ * Read the former size of repoFile1 from index/stable, and remove
+ * the latter.
+ */
+static void
+r_store_read_stable_point(struct ccnr_handle *h)
+{
+    struct ccn_charbuf *path = NULL;
+    struct ccn_charbuf *cb = NULL;
+    int fd;
+    int i;
+    ssize_t rres;
+    uintmax_t val;
+    unsigned char c;
+    
+    path = ccn_charbuf_create();
+    cb = ccn_charbuf_create();
+    ccn_charbuf_putf(path, "%s/index/stable", h->directory);
+    fd = open(ccn_charbuf_as_string(path), O_RDONLY, 0666);
+    if (fd != -1) {
+        rres = read(fd, ccn_charbuf_reserve(cb, 80), 80);
+        if (rres > 0)
+            cb->length = rres;
+        close(fd);
+        if (CCNSHOULDLOG(h, dfsdf, CCNL_INFO))
+            ccnr_msg(h, "Last stable at %s", ccn_charbuf_as_string(cb));
+    }
+    for (val = 0, i = 0; i < cb->length; i++) {
+        c = cb->buf[i];
+        if ('0' <= c && c <= '9')
+            val = val * 10 + (c - '0');
+        else
+            break;
+    }
+    if (i == 0 || i < cb->length) {
+        ccnr_msg(h, "Bad stable mark - %s", ccn_charbuf_as_string(cb));
+        h->stable = 0;
+    }
+    else {
+        h->stable = val;
+        unlink(ccn_charbuf_as_string(path));
+    }
+    ccn_charbuf_destroy(&path);
+    ccn_charbuf_destroy(&cb);
+}
 
 PUBLIC void
 r_store_init(struct ccnr_handle *h)
 {
+    struct ccn_btree *btree = NULL;
+    struct ccn_btree_node *node = NULL;
     struct hashtb_param param = {0};
+    int res;
+    struct ccn_charbuf *path = NULL;
+    struct ccn_charbuf *msgs = NULL;
+    off_t offset;
+    
+    path = ccn_charbuf_create();
     param.finalize_data = h;
     param.finalize = 0;
     h->content_by_accession_tab = hashtb_create(sizeof(struct content_by_accession_entry), NULL);
+    CHKPTR(h->content_by_accession_tab);
+    h->btree = btree = ccn_btree_create();
+    CHKPTR(btree);
+    FAILIF(btree->nextnodeid != 1);
+    ccn_charbuf_putf(path, "%s/index", h->directory);
+    res = mkdir(ccn_charbuf_as_string(path), 0700);
+    if (res != 0 && errno != EEXIST)
+        r_init_fail(h, __LINE__, ccn_charbuf_as_string(path), errno);
+    else {
+        msgs = ccn_charbuf_create();
+        btree->io = ccn_btree_io_from_directory(ccn_charbuf_as_string(path), msgs);
+        if (btree->io == NULL)
+            res = errno;
+        if (msgs->length != 0 && CCNSHOULDLOG(h, sffdsdf, CCNL_WARNING)) {
+            ccnr_msg(h, "while initializing %s - %s",
+                     ccn_charbuf_as_string(path),
+                     ccn_charbuf_as_string(msgs));
+        }
+        ccn_charbuf_destroy(&msgs);
+        if (btree->io == NULL)
+            r_init_fail(h, __LINE__, ccn_charbuf_as_string(path), res);
+    }
+    node = ccn_btree_getnode(btree, 1);
+    if (btree->io != NULL)
+        btree->nextnodeid = btree->io->maxnodeid + 1;
+    CHKPTR(node);
+    if (node->buf->length == 0) {
+        res = ccn_btree_init_node(node, 0, 'R', 0);
+        CHKSYS(res);
+    }
+    ccn_charbuf_destroy(&path);
+    if (h->running == -1)
+        return;
+    r_store_read_stable_point(h);
+    h->active_in_fd = -1;
+    h->active_out_fd = r_io_open_repo_data_file(h, "repoFile1", 1); /* output */
+    offset = lseek(h->active_out_fd, 0, SEEK_END);
+    if (offset != h->stable) {
+        ccnr_msg(h, "Index not current - resetting");
+        ccn_btree_init_node(node, 0, 'R', 0);
+        node = NULL;
+        ccn_btree_destroy(&h->btree);
+        h->btree = btree = ccn_btree_create();
+        path = ccn_charbuf_create();
+        ccn_charbuf_putf(path, "%s/index", h->directory);
+        btree->io = ccn_btree_io_from_directory(ccn_charbuf_as_string(path), msgs);
+        CHKPTR(btree->io);
+        btree->io->maxnodeid = 0;
+        btree->nextnodeid = 1;
+        node = ccn_btree_getnode(btree, 1);
+        btree->nextnodeid = btree->io->maxnodeid + 1;
+        ccn_btree_init_node(node, 0, 'R', 0);
+        h->stable = 0;
+        h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
+    }
+    res = ccn_btree_check(btree, NULL);
+    CHKSYS(res);
+    btree->full = 1999;
 }
 
+PUBLIC int
+r_store_final(struct ccnr_handle *h) {
+    int res;
+    
+    res = ccn_btree_destroy(&h->btree);
+    if (res < 0)
+        ccnr_msg(h, "r_store_final.%d Errors while closing index", __LINE__);
+    if (res >= 0)
+        res = r_store_write_stable_point(h);
+    return(res);
+}
+    
 PUBLIC struct content_entry *
 r_store_content_from_accession(struct ccnr_handle *h, ccnr_accession accession)
 {
-    struct content_entry *ans = NULL;
+    struct ccn_parsed_ContentObject obj = {0};
+    struct content_entry *content = NULL;
     struct content_by_accession_entry *entry;
+    const unsigned char *content_base = NULL;
+    int res;
+    ccnr_accession acc;
     
+    if (accession == CCNR_NULL_ACCESSION)
+        return(NULL);
     entry = hashtb_lookup(h->content_by_accession_tab,
                           &accession, sizeof(accession));
-    if (entry != NULL)
-        ans = entry->content;
-    
-    // XXXXXX - Here we have to read the content object from the correct repoFile.
-    return(ans);
+    if (entry != NULL) {
+        h->content_from_accession_hits++;
+        return(entry->content);
+    }
+    h->content_from_accession_misses++;
+    content = calloc(1, sizeof(*content));
+    CHKPTR(content);
+    content->cookie = 0;
+    content->accession = accession;
+    content->cob = NULL;
+    content->size = 0;
+    content_base = r_store_content_base(h, content);
+    if (content_base == NULL || content->size == 0)
+        goto Bail;
+    res = r_store_set_flatname(h, content, &obj);
+    if (res < 0) goto Bail;
+    r_store_enroll_content(h, content);
+    res = r_store_content_btree_insert(h, content, &obj, &acc);
+    if (res < 0) goto Bail;
+    if (res == 1 || CCNSHOULDLOG(h, sdf, CCNL_FINEST))
+        ccnr_debug_content(h, __LINE__, "content/accession", NULL, content);
+    return(content);
+Bail:
+    ccnr_msg(h, "r_store_content_from_accession.%d failed 0x%jx",
+             __LINE__, ccnr_accession_encode(h, accession));
+    r_store_forget_content(h, &content);
+    return(content);
 }
 
 PUBLIC struct content_entry *
@@ -332,7 +602,11 @@ cleanout_empties(struct ccnr_handle *h)
     return(0);
 }
 
-PUBLIC void
+/**
+ * This makes a cookie for content, and, if it has an accession number already,
+ * enters it into the content_by_accession_tab.  Does not index by name.
+ */
+PUBLIC ccnr_cookie
 r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
 {
     unsigned new_window;
@@ -343,18 +617,21 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
     unsigned window;
     
     window = h->content_by_cookie_window;
+    content->cookie = ++(h->cookie);
     if ((content->cookie - h->cookie_base) >= window &&
         cleanout_empties(h) < 0) {
-        if (content->cookie < h->cookie_base)
-            return;
+        if (content->cookie < h->cookie_base) {
+            /* Did we wrap? */
+            return(0);
+        }
         window = h->content_by_cookie_window;
         old_array = h->content_by_cookie;
         new_window = ((window + 20) * 3 / 2);
         if (new_window < window)
-            return;
+            return(0);
         new_array = calloc(new_window, sizeof(new_array[0]));
         if (new_array == NULL)
-            return;
+            return(0);
         while (i < h->content_by_cookie_window && old_array[i] == NULL)
             i++;
         h->cookie_base += i;
@@ -379,86 +656,80 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
         hashtb_end(e);
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
     }
+    return(content->cookie);
 }
 
-/** @returns 1 if an exact match was found */
+/** @returns 2 if content was added to index, 1 if it was there but had no accession, 0 if it was already there, -1 for error */
 static int
-content_skiplist_findbefore(struct ccnr_handle *h,
-                            struct ccn_charbuf *flatname,
-                            struct content_entry *wanted_old,
-                            struct ccn_indexbuf **ans)
+r_store_content_btree_insert(struct ccnr_handle *h,
+                             struct content_entry *content,
+                             struct ccn_parsed_ContentObject *pco,
+                             ccnr_accession *accp)
 {
+    const unsigned char *content_base = NULL;
+    struct ccn_btree *btree = NULL;
+    struct ccn_btree_node *leaf = NULL;
+    struct ccn_btree_node *node = NULL;
+    struct ccn_charbuf *flat = NULL;
     int i;
-    struct ccn_indexbuf *c;
-    struct content_entry *content;
-    int order;
-    int found = 0;
-    
-    c = h->skiplinks;
-    for (i = h->skiplinks->n - 1; i >= 0; i--) {
-        for (;;) {
-            if (c->buf[i] == 0)
-                break;
-            content = r_store_content_from_cookie(h, c->buf[i]);
-            if (content == NULL)
-                abort();            
-            order = ccn_flatname_charbuf_compare(content->flatname, flatname);
-            if (order > 0)
-                break;
-            if (order == 0 && (wanted_old == content || wanted_old == NULL)) {
-                found = 1;
-                break;
-            }
-            if (content->skiplinks == NULL || i >= content->skiplinks->n)
-                abort();
-            c = content->skiplinks;
-        }
-        ans[i] = c;
-    }
-    return(found);
-}
+    int limit;
+    int res;
 
-#define CCN_SKIPLIST_MAX_DEPTH 30
-/** @returns -1 and does not insert if an exact key match is found */
-PUBLIC int
-r_store_content_skiplist_insert(struct ccnr_handle *h,
-                                struct content_entry *content)
-{
-    int d;
-    int i;
-    int found = 0;
-    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
-    if (content->skiplinks != NULL) abort();
-    for (d = 1; d < CCN_SKIPLIST_MAX_DEPTH - 1; d++)
-        if ((nrand48(h->seed) & 3) != 0) break;
-    while (h->skiplinks->n < d)
-        ccn_indexbuf_append_element(h->skiplinks, 0);
-    found = content_skiplist_findbefore(h, content->flatname, NULL, pred);
-    if (found)
+    btree = h->btree;
+    if (btree == NULL)
         return(-1);
-    if (h->skiplinks->n < d) abort();
-    content->skiplinks = ccn_indexbuf_create();
-    for (i = 0; i < d; i++) {
-        ccn_indexbuf_append_element(content->skiplinks, pred[i]->buf[i]);
-        pred[i]->buf[i] = content->cookie;
+    flat = content->flatname;
+    if (flat == NULL)
+        return(-1);
+    res = ccn_btree_lookup(h->btree, flat->buf, flat->length, &leaf);
+    if (res < 0)
+        return(-1);
+    i = CCN_BT_SRCH_INDEX(res);
+    if (CCN_BT_SRCH_FOUND(res)) {
+        *accp = ccnr_accession_decode(h, ccn_btree_content_cobid(leaf, i));
+        return(*accp == CCNR_NULL_ACCESSION);
     }
-    return(0);
+    else {
+        content_base = r_store_content_base(h, content);
+        if (content_base == NULL)
+            return(-1);
+        res = ccn_btree_insert_content(leaf, i,
+                                       ccnr_accession_encode(h, content->accession),
+                                       content_base,
+                                       pco,
+                                       content->flatname);
+        if (res < 0)
+            return(-1);
+        if (res > btree->full) {
+            res = ccn_btree_split(btree, leaf);
+            for (limit = 100; res >= 0 && btree->nextsplit != 0; limit--) {
+                if (limit == 0) abort();
+                node = ccn_btree_getnode(btree, btree->nextsplit);
+                if (node == NULL)
+                    return(-1);
+                res = ccn_btree_split(btree, node);
+            }
+        }
+        
+        *accp = content->accession;
+        return(2);
+    }
 }
 
 static void
 content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
 {
-    int i;
-    int d;
-    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
-    if (content->skiplinks == NULL)
-        return;
-    content_skiplist_findbefore(h, content->flatname, content, pred);
-    d = content->skiplinks->n;
-    if (h->skiplinks->n < d) abort();
-    for (i = 0; i < d; i++)
-        pred[i]->buf[i] = content->skiplinks->buf[i];
-    ccn_indexbuf_destroy(&content->skiplinks);
+//    int i;
+//    int d;
+//    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
+//    if (content->skiplinks == NULL)
+//        return;
+//    content_skiplist_findbefore(h, content->flatname, content, pred);
+//    d = content->skiplinks->n;
+//    if (h->skiplinks->n < d) abort();
+//    for (i = 0; i < d; i++)
+//        pred[i]->buf[i] = content->skiplinks->buf[i];
+//    ccn_indexbuf_destroy(&content->skiplinks);
 }
 
 PUBLIC void
@@ -506,18 +777,68 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
     free(entry);
 }
 
+/**
+ *  Get a handle on the content object that matches key, or if there is
+ * no match, the one that would come just after it.
+ */
+static struct content_entry *    
+r_store_look(struct ccnr_handle *h, const unsigned char *key, size_t size)
+{
+    struct content_entry *content = NULL;
+    struct ccn_btree_node *leaf = NULL;
+    ccnr_accession accession;
+    int ndx;
+    int res;
+
+    res = ccn_btree_lookup(h->btree, key, size, &leaf);
+    if (res >= 0) {
+        ndx = CCN_BT_SRCH_INDEX(res);
+        if (ndx == ccn_btree_node_nent(leaf)) {
+            res = ccn_btree_next_leaf(h->btree, leaf, &leaf);
+            if (res <= 0)
+                return(NULL);
+            ndx = 0;
+        }
+        accession = ccnr_accession_decode(h, ccn_btree_content_cobid(leaf, ndx));
+        if (accession != CCNR_NULL_ACCESSION) {
+            struct content_by_accession_entry *entry;
+            entry = hashtb_lookup(h->content_by_accession_tab,
+                                    &accession, sizeof(accession));
+            if (entry != NULL)
+                content = entry->content;
+            if (content == NULL) {
+                /* Construct handle without actually reading the cob */
+                res = ccn_btree_content_cobsz(leaf, ndx);
+                content = calloc(1, sizeof(*content));
+                if (res > 0 && content != NULL) {
+                    content->accession = accession;
+                    content->cob = NULL;
+                    content->size = res;
+                    content->flatname = ccn_charbuf_create();
+                    CHKPTR(content->flatname);
+                    res = ccn_btree_key_fetch(content->flatname, leaf, ndx);
+                    CHKRES(res);
+                    r_store_enroll_content(h, content);
+                }
+            }
+        }
+    }
+    return(content);
+}
+
 PUBLIC struct content_entry *
 r_store_find_first_match_candidate(struct ccnr_handle *h,
-                           const unsigned char *interest_msg,
-                           const struct ccn_parsed_interest *pi)
+                                   const unsigned char *interest_msg,
+                                   const struct ccn_parsed_interest *pi)
 {
     int res;
-    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     size_t start = pi->offset[CCN_PI_B_Name];
     size_t end = pi->offset[CCN_PI_E_Name];
     struct ccn_charbuf *namebuf = NULL;
-    struct ccn_charbuf *flatname = ccn_charbuf_create();
+    struct ccn_charbuf *flatname = NULL;
+    struct content_entry *content = NULL;
     
+    flatname = ccn_charbuf_create();
     ccn_flatname_from_ccnb(flatname, interest_msg, pi->offset[CCN_PI_E]);
     if (pi->offset[CCN_PI_B_Exclude] < pi->offset[CCN_PI_E_Exclude]) {
         /* Check for <Exclude><Any/><Component>... fast case */
@@ -561,12 +882,10 @@ r_store_find_first_match_candidate(struct ccnr_handle *h,
             }
         }
     }
-    content_skiplist_findbefore(h, flatname, NULL, pred);
+    content = r_store_look(h, flatname->buf, flatname->length);
     ccn_charbuf_destroy(&namebuf);
     ccn_charbuf_destroy(&flatname);
-    if (h->skiplinks->n == 0)
-        return(NULL);
-    return(r_store_content_from_cookie(h, pred[0]->buf[0]));
+    return(content);
 }
 
 PUBLIC int
@@ -591,9 +910,10 @@ r_store_content_next(struct ccnr_handle *h, struct content_entry *content)
 {
     if (content == NULL)
         return(0);
-    if (content->skiplinks == NULL || content->skiplinks->n < 1)
-        return(0);
-    return(r_store_content_from_cookie(h, content->skiplinks->buf[0]));
+    /* We need to go past the current name, so make sure there is a 0 byte */
+    ccn_charbuf_as_string(content->flatname);
+    content = r_store_look(h, content->flatname->buf, content->flatname->length + 1);
+    return(content);
 }
 
 PUBLIC struct content_entry *
@@ -603,10 +923,9 @@ r_store_next_child_at_level(struct ccnr_handle *h,
     struct content_entry *next = NULL;
     struct ccn_charbuf *name;
     struct ccn_charbuf *flatname = NULL;
-    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
     int res;
     
-    if (content == NULL || h->skiplinks->n == 0)
+    if (content == NULL)
         return(NULL);
     name = ccn_charbuf_create();
     ccn_name_init(name);
@@ -626,8 +945,7 @@ r_store_next_child_at_level(struct ccnr_handle *h,
                         name->buf, name->length);
     flatname = ccn_charbuf_create();
     ccn_flatname_from_ccnb(flatname, name->buf, name->length);
-    content_skiplist_findbefore(h, flatname, NULL, pred);
-    next = r_store_content_from_cookie(h, pred[0]->buf[0]);
+    next = r_store_look(h, flatname->buf, flatname->length);
     if (next == content) {
         // XXX - I think this case should not occur, but just in case, avoid a loop.
         ccnr_debug_content(h, __LINE__, "urp", NULL, next);
@@ -683,6 +1001,41 @@ r_store_lookup(struct ccnr_handle *h,
     }
     if (last_match != NULL)
         content = last_match;
+    return(content);
+}
+
+/**
+ * Find the first content handle that matches the prefix given by the namish,
+ * which may be a Name, Interest, ContentObject, ...
+ *
+ * Does not check the other parts of namish, in particular, does not generate
+ * the digest component of a ContentObject.
+ */
+PUBLIC struct content_entry *
+r_store_lookup_ccnb(struct ccnr_handle *h,
+                    const unsigned char *namish, size_t size)
+{
+    struct content_entry *content = NULL;
+    struct ccn_charbuf *flatname = NULL;
+    int res;
+    
+    flatname = ccn_charbuf_create();
+    if (flatname == NULL)
+        goto Bail;
+    res = ccn_flatname_from_ccnb(flatname, namish, size);
+    if (res < 0)
+        goto Bail;
+    content = r_store_look(h, flatname->buf, flatname->length);
+    if (content != NULL) {
+        res = ccn_flatname_charbuf_compare(flatname, content->flatname);
+        if (res == 0 || res == -9999) {
+            /* prefix matches */
+        }
+        else
+            content = NULL;
+    }
+Bail:
+    ccn_charbuf_destroy(&flatname);
     return(content);
 }
 
@@ -758,6 +1111,44 @@ r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
                        &expire_content, NULL, content->cookie);
 }
 
+/**
+ * Parses content object and sets content->flatname
+ */
+static int
+r_store_set_flatname(struct ccnr_handle *h, struct content_entry *content,
+                     struct ccn_parsed_ContentObject *pco)
+{
+    int res;
+    struct ccn_charbuf *flatname = NULL;
+    const unsigned char *msg = NULL;
+    size_t size;
+    
+    msg = r_store_content_base(h, content);
+    size = content->size;
+    if (msg == NULL)
+        goto Bail;
+    flatname = ccn_charbuf_create();
+    if (flatname == NULL)
+        goto Bail;    
+    res = ccn_parse_ContentObject(msg, size, pco, NULL);
+    if (res < 0) {
+        ccnr_msg(h, "error parsing ContentObject - code %d", res);
+        goto Bail;
+    }
+    ccn_digest_ContentObject(msg, pco);
+    if (pco->digest_bytes != 32)
+        goto Bail;
+    res = ccn_flatname_from_ccnb(flatname, msg, size);
+    if (res < 0) goto Bail;
+    res = ccn_flatname_append_component(flatname, pco->digest, pco->digest_bytes);
+    if (res < 0) goto Bail;
+    content->flatname = flatname;
+    flatname = NULL;
+    return(0);
+Bail:
+    ccn_charbuf_destroy(&flatname);
+    return(-1);
+}
 
 PUBLIC struct content_entry *
 process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
@@ -766,60 +1157,44 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     struct ccn_parsed_ContentObject obj = {0};
     int res;
     struct content_entry *content = NULL;
-    struct ccn_charbuf *cb = ccn_charbuf_create();
-    struct ccn_charbuf *flatname = ccn_charbuf_create();
+    ccnr_accession accession = CCNR_NULL_ACCESSION;
     
-    if (cb == NULL || flatname == NULL)
-        goto Bail;    
-    res = ccn_parse_ContentObject(msg, size, &obj, NULL);
-    if (res < 0) {
-        ccnr_msg(h, "error parsing ContentObject - code %d", res);
-        goto Bail;
-    }
-    ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
-    /* Set up the flatname, including digest */
-    ccn_digest_ContentObject(msg, &obj);
-    if (obj.digest_bytes != 32) {
-        ccnr_debug_ccnb(h, __LINE__, "indigestible", fdholder, msg, size);
-        goto Bail;
-    }
-    res = ccn_flatname_from_ccnb(flatname, msg, size);
-    if (res < 0) goto Bail; /* must have just messed up */
-    res = ccn_flatname_append_component(flatname, obj.digest, obj.digest_bytes);
-    if (res < 0) goto Bail;
-    res = ccn_charbuf_append(cb, msg, size);
-    if (res < 0) goto Bail;
-    msg = cb->buf;
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
-        ccnr_debug_ccnb(h, __LINE__, "content_from", fdholder, msg, size);
     content = calloc(1, sizeof(*content));
-    if (content != NULL) {
-        content->cookie = ++(h->cookie);
-        content->accession = CCNR_NULL_ACCESSION;
-        content->flatname = flatname;
-        flatname = NULL;
-        r_store_enroll_content(h, content);
-        content->size = size;
-        content->cob = cb;
-        cb = NULL;
-        res = r_store_content_skiplist_insert(h, content);
-        if (res < 0) {
+    if (content == NULL)
+        goto Bail;    
+    content->cob = ccn_charbuf_create();
+    if (content->cob == NULL)
+        goto Bail;    
+    res = ccn_charbuf_append(content->cob, msg, size);
+    if (res < 0) goto Bail;
+    content->size = size;
+    res = r_store_set_flatname(h, content, &obj);
+    if (res < 0) goto Bail;
+    ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
+    content->accession = CCNR_NULL_ACCESSION;
+    r_store_enroll_content(h, content);
+    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+        ccnr_debug_content(h, __LINE__, "content_from", fdholder, content);
+        res = r_store_content_btree_insert(h, content, &obj, &accession);
+        if (res < 0) goto Bail;
+        if (res == 0) {
+            /* Content was there, with an accession */
             if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
                 ccnr_debug_content(h, __LINE__, "content_duplicate",
                                    fdholder, content);
             h->content_dups_recvd++;
             r_store_forget_content(h, &content);
-            goto Bail;
+            content = r_store_content_from_accession(h, accession);
+            if (content == NULL)
+                goto Bail;
         }
         r_store_set_content_timer(h, content, &obj);
         if ((fdholder->flags & CCNR_FACE_REPODATA) == 0)
             r_proto_initiate_key_fetch(h, msg, &obj, 0, content->cookie);
-    }
+    r_match_match_interests(h, content, &obj, NULL, fdholder);
+    return(content);
 Bail:
-    ccn_charbuf_destroy(&cb);
-    ccn_charbuf_destroy(&flatname);
-    if (res >= 0 && content != NULL)
-        r_match_match_interests(h, content, &obj, NULL, fdholder);
+    r_store_forget_content(h, &content);
     return(content);
 }
 
@@ -829,14 +1204,14 @@ r_store_content_field_access(struct ccnr_handle *h,
                              enum ccn_dtag dtag,
                              const unsigned char **bufp, size_t *sizep)
 {
-	int res = -1;
+    int res = -1;
     const unsigned char *content_msg;
     struct ccn_parsed_ContentObject pco = {0};
     
     content_msg = r_store_content_base(h, content);
     if (content_msg == NULL)
         return(-1);
-	res = ccn_parse_ContentObject(content_msg, content->size, &pco, NULL);
+    res = ccn_parse_ContentObject(content_msg, content->size, &pco, NULL);
     if (res < 0)
         return(-1);
     if (dtag == CCN_DTAG_Content)
@@ -844,7 +1219,7 @@ r_store_content_field_access(struct ccnr_handle *h,
                                   pco.offset[CCN_PCO_B_Content],
                                   pco.offset[CCN_PCO_E_Content],
                                   bufp, sizep);
-	return(res);
+    return(res);
 }
 
 const ccnr_accession r_store_mark_repoFile1 = ((ccnr_accession)1) << 48;
@@ -854,10 +1229,17 @@ r_store_set_accession_from_offset(struct ccnr_handle *h,
                                   struct content_entry *content,
                                   struct fdholder *fdholder, off_t offset)
 {
+    struct ccn_btree_node *leaf = NULL;
+    uint_least64_t cobid;
+    int ndx;
+    int res;
+    
     if (offset != (off_t)-1 && content->accession == CCNR_NULL_ACCESSION) {
         struct hashtb_enumerator ee;
         struct hashtb_enumerator *e = &ee;
         struct content_by_accession_entry *entry = NULL;
+        int res = -1;
+        
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
         content->accession = ((ccnr_accession)offset) | r_store_mark_repoFile1;
         hashtb_start(h->content_by_accession_tab, e);
@@ -869,11 +1251,22 @@ r_store_set_accession_from_offset(struct ccnr_handle *h,
                 h->cob_count++;
         }
         hashtb_end(e);
-        if (content->accession >= h->notify_after) 
+        if (content->flatname != NULL) {
+            res = ccn_btree_lookup(h->btree,
+                                   content->flatname->buf,
+                                   content->flatname->length, &leaf);
+            if (res >= 0 && CCN_BT_SRCH_FOUND(res)) {
+                ndx = CCN_BT_SRCH_INDEX(res);
+                cobid = ccnr_accession_encode(h, content->accession);
+                res = ccn_btree_content_set_cobid(leaf, ndx, cobid);
+            }
+            else
+                res = -1;
+        }
+        if (res >= 0 && content->accession >= h->notify_after) 
             r_sync_notify_content(h, 0, content);
-        return(0);
     }
-    return(-1);
+    return(res);
 }
 
 PUBLIC void
@@ -920,3 +1313,7 @@ ccnr_debug_content(struct ccnr_handle *h,
     ccnr_debug_ccnb(h, lineno, msg, fdholder, content_msg, content->size);
 }
 
+#undef FAILIF
+#undef CHKSYS
+#undef CHKRES
+#undef CHKPTR

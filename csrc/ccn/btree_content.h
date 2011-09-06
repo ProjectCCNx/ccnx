@@ -69,6 +69,14 @@ int ccn_btree_insert_content(struct ccn_btree_node *node, int ndx,
                              struct ccn_parsed_ContentObject *pc,
                              struct ccn_charbuf *flatname);
 
+/* cobid accessor */
+uint_least64_t ccn_btree_content_cobid(struct ccn_btree_node *node, int ndx);
+int ccn_btree_content_set_cobid(struct ccn_btree_node *node, int ndx,
+                                uint_least64_t cobid);
+/* cobsz accessor */
+int ccn_btree_content_cobsz(struct ccn_btree_node *node, int ndx);
+
+
 /**
  * Flat name representation
  *
@@ -117,6 +125,8 @@ int ccn_flatname_ncomps(const unsigned char *flatname, size_t size);
 
 /* Flatname comparison */
 int ccn_flatname_charbuf_compare(struct ccn_charbuf *a, struct ccn_charbuf *b);
+int ccn_flatname_compare(const unsigned char *a, size_t al,
+                         const unsigned char *b, size_t bl);
 
 /*
  * Parse the component delimiter from the start of a flatname

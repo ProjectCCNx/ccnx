@@ -45,6 +45,7 @@ struct ccn_charbuf;
 struct ccn_indexbuf;
 struct hashtb;
 struct ccnr_meter;
+struct ccn_btree;
 
 struct SyncBaseStruct;
 /*
@@ -172,6 +173,7 @@ struct ccnr_handle {
     //XXX probably need an event for cleaning up the enum_state_tab
     struct hashtb *enum_state_tab;  /**< keyed by enumeration interest */
     struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
+    struct ccn_btree *btree;        /**< btree index of content */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< filedesc generation number */
     unsigned face_rover;            /**< for filedesc allocation */
@@ -180,6 +182,7 @@ struct ccnr_handle {
     int active_in_fd;               /**< data currently being indexed */
     int active_out_fd;              /**< repo file we will write to */
     int repofile1_fd;               /**< read-only access to repoFile1 */
+    off_t stable;                   /**< repoFile1 size at shutdown */
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
@@ -200,7 +203,6 @@ struct ccnr_handle {
     unsigned content_by_cookie_window;
     struct content_entry **content_by_cookie;
     struct hashtb *content_by_accession_tab; /* keyed by accession */
-    // ccnr_accession accession; /**< newest used accession */
     ccnr_cookie cookie;      /**< newest used cookie number */
     ccnr_cookie min_stale;      /**< smallest cookie of stale content */
     ccnr_cookie max_stale;      /**< largest cookie of stale content */
@@ -219,6 +221,8 @@ struct ccnr_handle {
     unsigned long interests_dropped;
     unsigned long interests_sent;
     unsigned long interests_stuffed;
+    unsigned long content_from_accession_hits;
+    unsigned long content_from_accession_misses;
     unsigned short seed[3];         /**< for PRNG */
     int running;                    /**< true while should be running */
     int debug;                      /**< For controlling debug output */
@@ -335,15 +339,7 @@ struct fdholder {
  *  A pointer to this is used as a handle for a content object that we
  *  currently care about.  Most details are private to the implementation.
  */
-struct content_entry {
-    ccnr_accession accession;   /**< permanent repository id */
-    ccnr_cookie cookie;         /**< for in-memory references */
-    int flags;                  /**< see below - use accessor functions */
-    int size;                   /**< size of ContentObject */
-    struct ccn_charbuf *flatname; /**< for skiplist, et. al. */
-    struct ccn_indexbuf *skiplinks; /**< skiplist for name-ordered ops */
-    struct ccn_charbuf *cob;    /**< may contain ContentObject, or be NULL */
-};
+struct content_entry;
 
 /**
  * content_entry flags

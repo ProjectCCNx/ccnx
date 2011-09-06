@@ -82,7 +82,6 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
     int k;
     int res;
     int matched;
-    int s_ok;
     struct nameprefix_entry *npe = NULL;
     struct content_entry *content = NULL;
     struct ccn_indexbuf *comps = r_util_indexbuf_obtain(h);
@@ -127,7 +126,6 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
                      pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
         h->interests_accepted += 1;
-        s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
         matched = 0;
         hashtb_start(h->nameprefix_tab, e);
         res = r_fwd_nameprefix_seek(h, e, msg, comps, pi->prefix_comps);
@@ -143,20 +141,13 @@ process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
         if (1 || (pi->answerfrom & CCN_AOK_CS) != 0) {
             content = r_store_lookup(h, msg, pi, comps);
             if (content != NULL) {
-                /* Check to see if we are planning to send already */
-                enum cq_delay_class c;
-                for (c = 0, k = -1; c < CCN_CQ_N && k == -1; c++)
-                    if (fdholder->q[c] != NULL)
-                        k = ccn_indexbuf_member(fdholder->q[c]->send_queue, content->cookie);
-                if (k == -1) {
-                    k = r_sendq_face_send_queue_insert(h, fdholder, content);
-                    if (k >= 0) {
-                        if (CCNSHOULDLOG(h, (32 | 8), CCNL_FINE))
-                            ccnr_debug_ccnb(h, __LINE__, "consume", fdholder, msg, size);
-                    }
-                    /* Any other matched interests need to be consumed, too. */
-                    r_match_match_interests(h, content, NULL, fdholder, NULL);
+                k = r_sendq_face_send_queue_insert(h, fdholder, content);
+                if (k >= 0) {
+                    if (CCNSHOULDLOG(h, (32 | 8), CCNL_FINE))
+                        ccnr_debug_ccnb(h, __LINE__, "consume", fdholder, msg, size);
                 }
+                /* Any other matched interests need to be consumed, too. */
+                r_match_match_interests(h, content, NULL, fdholder, NULL);
                 if ((pi->answerfrom & CCN_AOK_EXPIRE) != 0)
                     r_store_mark_stale(h, content);
                 matched = 1;
@@ -421,6 +412,8 @@ r_dispatch_run(struct ccnr_handle *h)
         res = poll(h->fds, h->nfds, timeout_ms);
         prev_timeout_ms = ((res == 0) ? timeout_ms : 1);
         if (-1 == res) {
+            if (errno == EINTR)
+                continue;
             ccnr_msg(h, "poll: %s (errno = %d)", strerror(errno), errno);
             sleep(1);
             continue;

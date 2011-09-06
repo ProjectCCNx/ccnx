@@ -33,6 +33,20 @@
 #define MYSTORE(p, f, v) ccn_btree_storeval(&((p)->f[0]), sizeof((p)->f), (v))
 #endif
 
+#ifndef MYFETCH64
+#define MYFETCH64(p, f) ccn_btree_fetchval64(&((p)->f[0]), sizeof((p)->f))
+#endif
+static uint_least64_t
+ccn_btree_fetchval64(const unsigned char *p, int size)
+{
+    int i;
+    uint_least64_t v;
+    
+    for (v = 0, i = 0; i < size; i++)
+        v = (v << 8) + p[i];
+    return(v);
+}
+
 #ifndef MYSTORE64
 #define MYSTORE64(p, f, v) ccn_btree_storeval64(&((p)->f[0]), sizeof((p)->f), (v))
 #endif
@@ -268,16 +282,79 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int ndx,
     return(1);
 }
 
+/**
+ *  Get cobid from btree entry.
+ *
+ * @returns the cobid field of the indexed entry of node, or 0 if error.
+ */
+uint_least64_t
+ccn_btree_content_cobid(struct ccn_btree_node *node, int ndx)
+{
+    struct ccn_btree_content_payload *e = NULL;
+    uint_least64_t ans = 0;
+    
+    e = ccn_btree_node_getentry(sizeof(*e), node, ndx);
+    if (e != NULL)
+        ans = MYFETCH64(e, cobid);
+    return(ans);
+}
+
+/**
+ *  Set cobid in a btree entry.
+ *
+ * @returns 0 for success, -1 for failure
+ */
+int
+ccn_btree_content_set_cobid(struct ccn_btree_node *node, int ndx,
+                            uint_least64_t cobid)
+{
+    struct ccn_btree_content_payload *e = NULL;
+    
+    e = ccn_btree_node_getentry(sizeof(*e), node, ndx);
+    if (e == NULL)
+        return(-1);
+    MYSTORE64(e, cobid, cobid);
+    return(0);
+}
+
+/**
+ *  Get ContentObject size from btree entry.
+ *
+ * @returns the cobsz field of the indexed entry of node, or -1 if error.
+ */
+int
+ccn_btree_content_cobsz(struct ccn_btree_node *node, int ndx)
+{
+    struct ccn_btree_content_payload *e = NULL;
+    
+    e = ccn_btree_node_getentry(sizeof(*e), node, ndx);
+    if (e != NULL)
+        return(MYFETCH(e, cobsz));
+    return(-1);
+}
+
+/**
+ *  Compare flatnames a and b
+ *
+ * @returns negative, 0, or positive if a < b, a == b, a > b, respectively.
+ * The special return value -9999 means a < b and a is also a prefix of b.
+ * Similarly 9999 means b is a strict prefix of a.                              XXX should have defines for these values.
+ */
 int
 ccn_flatname_charbuf_compare(struct ccn_charbuf *a, struct ccn_charbuf *b)
 {
-    size_t al, bl, sz;
+    return(ccn_flatname_compare(a->buf, a->length, b->buf, b->length));
+}
+
+/**
+ *  Compare flatnames a and b (raw version)
+ */
+int
+ccn_flatname_compare(const unsigned char *a, size_t al, const unsigned char *b, size_t bl)
+{
     int res;
-    
-    al = a->length;
-    bl = b->length;
-    sz = al < bl ? al : bl;
-    res = memcmp(a->buf, b->buf, sz);
+
+    res = memcmp(a, b, al < bl ? al : bl);
     if (res != 0)
         return(res);
     if (al < bl)

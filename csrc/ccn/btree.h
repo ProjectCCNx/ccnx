@@ -21,6 +21,7 @@
 #ifndef CCN_BTREE_DEFINED
 #define CCN_BTREE_DEFINED
 
+#include <stdio.h>
 #include <sys/types.h>
 #include <ccn/charbuf.h>
 #include <ccn/hashtb.h>
@@ -68,6 +69,9 @@ typedef int (*ccn_btree_io_closefn)
 typedef int (*ccn_btree_io_destroyfn)
     (struct ccn_btree_io **);
 
+/* This serves as the external name of a btree node. */
+typedef unsigned ccn_btnodeid;
+
 /**
  * Holds the methods and the associated common data.
  */
@@ -78,9 +82,9 @@ struct ccn_btree_io {
     ccn_btree_io_writefn btwrite;
     ccn_btree_io_closefn btclose;
     ccn_btree_io_destroyfn btdestroy;
+    ccn_btnodeid maxnodeid;    /**< Largest assigned nodeid */
     void *data;
 };
-
 /**
  * State associated with a btree node
  *
@@ -88,13 +92,13 @@ struct ccn_btree_io {
  * elsewhere (such as stack-allocated) in some cases.
  */
 struct ccn_btree_node {
-    unsigned nodeid;            /**< Identity of node */
-    unsigned clean;             /**< Number of stable buffered bytes at front */
+    ccn_btnodeid nodeid;        /**< Identity of node */
     struct ccn_charbuf *buf;    /**< The internal buffer */
     void *iodata;               /**< Private use by ccn_btree_io methods */
-    unsigned corrupt;           /**< Structure is not to be trusted */
-    unsigned parent;            /**< Parent node id; 0 if unknown */
+    ccn_btnodeid parent;        /**< Parent node id; 0 if unknown */
+    unsigned clean;             /**< Number of stable buffered bytes at front */
     unsigned freelow;           /**< Index of first unused byte of free space */
+    unsigned corrupt;           /**< Structure is not to be trusted */
 };
 
 /**
@@ -102,14 +106,14 @@ struct ccn_btree_node {
  */
 struct ccn_btree {
     unsigned magic;             /**< for making sure we point to a btree */
-    unsigned nextnodeid;        /**< for allocating new btree nodes */
+    ccn_btnodeid nextnodeid;    /**< for allocating new btree nodes */
     struct ccn_btree_io *io;    /**< storage layer */
     struct hashtb *resident;    /**< of ccn_btree_node, by nodeid */
-    unsigned nextsplit;         /**< oversize node that needs splitting */
-    unsigned missedsplit;       /**< should stay zero */
+    ccn_btnodeid nextsplit;     /**< oversize node that needs splitting */
+    ccn_btnodeid missedsplit;   /**< should stay zero */
     int errors;                 /**< counts detected errors */
     /* tunables */
-    int full;                   /**< should split nodes bigger than this */
+    int full;                   /**< split internal nodes bigger than this */
 };
 
 /**
@@ -134,9 +138,9 @@ struct ccn_btree {
  *
  * This is the overall structure of a node:
  *
- *  +---+-----------------------+--------------+---------+-- --+----+
+ *  +---+-----------------------+--------------+----+----+-- --+----+
  *  |hdr|..string......space....| (free space) | E0 | E1 | ... | En |
- *  +---+-----------------------+--------------+---------+-- --+----+
+ *  +---+-----------------------+--------------+----+----+-- --+----+
  *
  * It is designed so that new entries can be added without having to
  * rewrite all of the string space.  Thus the header should not contain
@@ -244,10 +248,12 @@ struct ccn_btree *ccn_btree_create(void);
 int ccn_btree_destroy(struct ccn_btree **);
 
 /* Access a node, creating or reading it if necessary */
-struct ccn_btree_node *ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid);
+struct ccn_btree_node *ccn_btree_getnode(struct ccn_btree *bt,
+                                         ccn_btnodeid nodeid);
 
 /* Get a node handle if it is already resident */
-struct ccn_btree_node *ccn_btree_rnode(struct ccn_btree *bt, unsigned nodeid);
+struct ccn_btree_node *ccn_btree_rnode(struct ccn_btree *bt,
+                                       ccn_btnodeid nodeid);
 
 /* Do a lookup, starting from the default root */
 int ccn_btree_lookup(struct ccn_btree *btree,
@@ -265,18 +271,24 @@ int ccn_btree_next_leaf(struct ccn_btree *btree,
                         struct ccn_btree_node *node,
                         struct ccn_btree_node **ansp);
 
+/* Find the leaf that comes before the given node */
+int ccn_btree_prev_leaf(struct ccn_btree *btree,
+                        struct ccn_btree_node *node,
+                        struct ccn_btree_node **ansp);
+
 /* Split a node into two */
 int ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node);
 
 /* Check the whole btree carefully */
-int ccn_btree_check(struct ccn_btree *btree);
+int ccn_btree_check(struct ccn_btree *btree, FILE *outfp);
 
 /*
  * Storage layer - client can provide other options
  */
 
 /* For btree node storage in files */
-struct ccn_btree_io *ccn_btree_io_from_directory(const char *path);
+struct ccn_btree_io *ccn_btree_io_from_directory(const char *path,
+                                                 struct ccn_charbuf *msgs);
 
 /* Low-level field access */
 unsigned ccn_btree_fetchval(const unsigned char *p, int size);

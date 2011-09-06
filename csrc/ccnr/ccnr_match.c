@@ -111,7 +111,7 @@ r_match_consume_matching_interests(struct ccnr_handle *h,
     head = &npe->pe_head;
     // XXX - i do not think this is called in practice
     content_msg = r_store_content_base(h, content);
-    content_size = content->size;
+    content_size = r_store_content_size(h, content);
     f = fdholder;
     for (p = head->next; p != head; p = next) {
         next = p->next;

@@ -338,7 +338,7 @@ ccn_btree_searchnode(const unsigned char *key,
     while (i < j) {
         mid = (i + j) >> 1;
         res =  ccn_btree_compare(key, size, node, mid);
-        // printf("node = %u, i = %d, j = %d, mid = %d, res = %d\n", node->nodeid, i, j, mid, res);
+        // printf("node = %u, i = %d, j = %d, mid = %d, res = %d\n", (int)node->nodeid, i, j, mid, res);
         if (res == 0)
             return(CCN_BT_ENCRES(mid, 1));
         if (res < 0)
@@ -396,8 +396,8 @@ ccn_btree_lookup_internal(struct ccn_btree *btree,
     struct ccn_btree_node *node = NULL;
     struct ccn_btree_node *child = NULL;
     struct ccn_btree_internal_payload *e = NULL;
-    unsigned childid;
-    unsigned parent;
+    ccn_btnodeid childid;
+    ccn_btnodeid parent;
     int entdx;
     int level;
     int newlevel;
@@ -541,7 +541,9 @@ ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
         node->buf->length = minnewsize;
         memmove(to + pre + k, from + pre, post);
         memmove(to, from, pre);
-        memset(from, 0x33, to - from);
+        /* Rarely, we move pre down and post up - skip this fill if so. */
+        if (to > from)
+            memset(from, 0x33, to - from);
         to = to + pre;
     }
     /* Copy in bits of new entry */
@@ -596,7 +598,8 @@ ccn_btree_grow_a_level(struct ccn_btree *btree, struct ccn_btree_node *node)
         btree->errors++;
     child->parent = node->nodeid;
     if (0) printf("New root %u at level %d over node %u (%d errors)\n",
-                  node->nodeid, level + 1, child->nodeid, btree->errors);
+                  (unsigned)node->nodeid, level + 1,
+                  (unsigned)child->nodeid, btree->errors);
     return(child);
 }
 
@@ -632,7 +635,8 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         return(node->corrupt = __LINE__, -1);
     pb = ccn_btree_node_payloadsize(node);
     level = ccn_btree_node_level(node);
-    if (0) printf("Splitting %d entries of node %u, child of %u\n", n, node->nodeid, node->parent);
+    if (0) printf("Splitting %d entries of node %u, child of %u\n", n,
+                  (unsigned)node->nodeid, (unsigned)node->parent);
     /* Create two new nodes to hold the split-up content */
     /* One of these is temporary, and will get swapped in for original node */
     newnode.buf = ccn_charbuf_create();
@@ -667,7 +671,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
             goto Bail;
         res = ccn_btree_insert_entry(a[k], j, key->buf, key->length, payload, pb);
         if (0) printf("Splitting [%u %d] into [%u %d] (res = %d)\n",
-                      node->nodeid, i, a[k]->nodeid, j, res);
+                      (unsigned)node->nodeid, i, (unsigned)a[k]->nodeid, j, res);
         if (res < 0)
             goto Bail;
     }
@@ -788,6 +792,65 @@ Bail:
     return(ans);
 }
 
+/**
+ * Find the leaf that comes before the given node
+ *
+ * This may be used to walk though the leaf nodes in reverse order.
+ * If success, sets *ansp to a leaf pointer or NULL
+ * @returns 0 if at beginning, 1 if *ansp is not NULL, -1 if error.
+ */
+int
+ccn_btree_prev_leaf(struct ccn_btree *btree,
+                    struct ccn_btree_node *node,
+                    struct ccn_btree_node **ansp)
+{
+    struct ccn_btree_internal_payload *e = NULL;
+    struct ccn_btree_node *p = NULL;
+    struct ccn_btree_node *q = NULL;
+    struct ccn_btree_node *parent = NULL;
+    int i;
+    int ans;
+    int res;
+    struct ccn_charbuf *key = NULL;
+    
+    ans = -1;
+    key = ccn_charbuf_create();
+    p = node;
+    while (p->parent != 0) {
+        res = ccn_btree_key_fetch(key, p, ccn_btree_node_level(p) == 0 ? 0 : 1);
+        if (res < 0)
+            goto Bail;
+        parent = ccn_btree_getnode(btree, p->parent);
+        if (parent == NULL)
+            goto Bail;
+        res = ccn_btree_searchnode(key->buf, key->length, parent);
+        if (res < 0)
+            goto Bail;
+        i = CCN_BT_SRCH_INDEX(res) + CCN_BT_SRCH_FOUND(res) - 1;
+        if (i > 0) {
+            /* We have found the ancestor that has the leaf we are after. */
+            q = NULL;
+            e = ccn_btree_node_getentry(sizeof(*e), parent, i - 1);
+            q = ccn_btree_getnode(btree, MYFETCH(e, child));
+            if (q == NULL)
+                goto Bail;
+            res = ccn_btree_lookup_internal(btree, q, 0, key->buf, 0, ansp);
+            if (res < 0)
+                goto Bail;
+            ans = 1;
+            break;
+        }
+        p = parent;
+    }
+    if (ans != 1) {
+        *ansp = NULL;
+        ans = 0;
+    }
+Bail:
+    ccn_charbuf_destroy(&key);
+    return(ans);
+}
+
 #define CCN_BTREE_MAGIC 0x53ade78
 #define CCN_BTREE_VERSION 1
 
@@ -837,7 +900,7 @@ ccn_btree_create(void)
         ans->errors = 0;
         ans->io = NULL;
         ans->nextnodeid = 1;  /* This will be the root */
-        ans->full = 20;
+        ans->full = 19;
     }
     return(ans);
 }
@@ -909,7 +972,7 @@ ccn_btree_init_node(struct ccn_btree_node *node,
  * @returns node handle
  */
 struct ccn_btree_node *
-ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid)
+ccn_btree_getnode(struct ccn_btree *bt, ccn_btnodeid nodeid)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -962,7 +1025,7 @@ ccn_btree_getnode(struct ccn_btree *bt, unsigned nodeid)
  * @returns node handle, or NULL if the node is not currently resident.
  */
 struct ccn_btree_node *
-ccn_btree_rnode(struct ccn_btree *bt, unsigned nodeid)
+ccn_btree_rnode(struct ccn_btree *bt, ccn_btnodeid nodeid)
 {
     return(hashtb_lookup(bt->resident, &nodeid, sizeof(nodeid)));
 }
@@ -1085,12 +1148,19 @@ ccn_charbuf_append_escaped(struct ccn_charbuf *dst, struct ccn_charbuf *src)
     }
 }
 
-#define MSG(fmt, ...) fprintf(stderr, fmt "\n", __VA_ARGS__)
+#define MSG(fmt, ...) if (outfp != NULL) fprintf(stderr, fmt "\n", __VA_ARGS__)
+
+/**
+ *  Check the structure of the btree for consistency.
+ *
+ * If outfp is not NULL, information about structure will be written.
+ * @returns -1 if an error was found.
+ */
 int
-ccn_btree_check(struct ccn_btree *btree) {
+ccn_btree_check(struct ccn_btree *btree, FILE *outfp) {
     struct ccn_btree_node *node;
     struct ccn_btree_node *child;
-    unsigned stack[40] = {};
+    ccn_btnodeid stack[40] = {};
     int kstk[40] = {};
     int sp = 0;
     struct ccn_charbuf *buf[3];
@@ -1100,6 +1170,7 @@ ccn_btree_check(struct ccn_btree *btree) {
     int i, k;
     struct ccn_btree_internal_payload *e = NULL;
     const char *indent = "\t\t\t\t\t\t\t\t"; /* 8 tabs for indentation */
+    
     //unsigned long nodecount = 0;
     if (0) return(0);
     
@@ -1108,14 +1179,15 @@ ccn_btree_check(struct ccn_btree *btree) {
     q = buf[2]; /* Scratch buffer for quoting */
     MSG("%%I start ccn_btree_check %d %u %u %d",
         hashtb_n(btree->resident),
-        btree->nextsplit,
-        btree->missedsplit,
+        (unsigned)btree->nextsplit,
+        (unsigned)btree->missedsplit,
         btree->errors);
     if (btree->missedsplit != 0 || btree->errors != 0) {
         MSG("%%W %s", "reset error indications");
-        btree->missedsplit = btree->errors = 0;
+        btree->missedsplit = 0;
+        btree->errors = 0;
     }
-    node = ccn_btree_rnode(btree, 1);
+    node = ccn_btree_getnode(btree, 1);
     if (node == NULL) {
         MSG("%%E %s", "no root node!");
         goto Bail;
@@ -1129,18 +1201,18 @@ ccn_btree_check(struct ccn_btree *btree) {
             res = ccn_btree_chknode(node);
             if (res < 0) {
                 MSG("%%E ccn_btree_chknode(%u) error (%d)",
-                    node->nodeid, node->corrupt);
+                    (unsigned)node->nodeid, node->corrupt);
                 btree->errors++;
             }
             else if (res != 0) {
                 MSG("%%W ccn_btree_chknode(%u) returned %d",
-                    node->nodeid, node->corrupt);
+                    (unsigned)node->nodeid, node->corrupt);
             }
         }
         if (k == n) {
             /* Pop our stack to continue proccessing our parent */
             if (sp == 0) (k = 0, node = NULL);
-            else (sp--, k = kstk[sp], node = ccn_btree_rnode(btree, stack[sp]));
+            else (sp--, k = kstk[sp], node = ccn_btree_getnode(btree, stack[sp]));
         }
         else {
             if (k == 0 && l > 0) {
@@ -1150,7 +1222,7 @@ ccn_btree_check(struct ccn_btree *btree) {
                     i = q->length;
                     ccn_charbuf_append_escaped(q, q);
                     MSG("%%E Key [%u 0] %d not empty: (%s)",
-                        node->nodeid, l, ccn_charbuf_as_string(q) + i);
+                        (unsigned)node->nodeid, l, ccn_charbuf_as_string(q) + i);
                     btree->errors++;
                 }
             }
@@ -1159,7 +1231,7 @@ ccn_btree_check(struct ccn_btree *btree) {
                 res = ccn_btree_key_fetch(buf[pp], node, k);
                 if (res < 0) {
                     MSG("%%E could not fetch key %d of node %u",
-                        k, node->nodeid);
+                        k, (unsigned)node->nodeid);
                 }
                 else {
                     res = compare_lexical(buf[pp ^ 1], buf[pp]);
@@ -1169,14 +1241,14 @@ ccn_btree_check(struct ccn_btree *btree) {
                     }
                     else {
                         MSG("%%E Keys are out of order! [%u %d]",
-                            node->nodeid, k);
+                            (unsigned)node->nodeid, k);
                         btree->errors++;
                         res = -(btree->errors > 10);
                     }
                     q->length = 0;
                     ccn_charbuf_append_escaped(q, buf[pp]);
                     MSG("%s(%s) [%u %d] %d %s", indent + 8 - sp % 8,
-                        ccn_charbuf_as_string(q), node->nodeid, k, l,
+                        ccn_charbuf_as_string(q), (unsigned)node->nodeid, k, l,
                         l == 0 ? "leaf" : "node");
                 }
             }
@@ -1189,11 +1261,12 @@ ccn_btree_check(struct ccn_btree *btree) {
                 if (sp == 40) goto Bail;
                 e = ccn_btree_node_getentry(sizeof(*e), node, k);
                 if (e == NULL) goto Bail;
-                child = ccn_btree_rnode(btree, MYFETCH(e, child));
+                child = ccn_btree_getnode(btree, MYFETCH(e, child));
                 if (child == NULL) goto Bail;
                 if (child->parent != node->nodeid) {
                     /* Not really an error, since after a non-leaf split this pointer is not updated. */
-                    MSG("%%W child->parent != node->nodeid (%u!=%u)", child->parent, node->nodeid);
+                    MSG("%%W child->parent != node->nodeid (%u!=%u)",
+                        (unsigned)child->parent, (unsigned)node->nodeid);
                     child->parent = node->nodeid;
                 }
                 node = child;
@@ -1210,8 +1283,8 @@ Bail:
     btree->errors++;
     MSG("%%W finish ccn_btree_check %d %u %u %d",
         hashtb_n(btree->resident),
-        btree->nextsplit,
-        btree->missedsplit,
+        (unsigned)btree->nextsplit,
+        (unsigned)btree->missedsplit,
         btree->errors);
     for (i = 0; i < 3; i++)
         ccn_charbuf_destroy(&buf[i]);
