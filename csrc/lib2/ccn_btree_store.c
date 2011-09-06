@@ -93,7 +93,7 @@ ccn_btree_io_from_directory(const char *path)
     if (fd == -1) {
         if (errno == EEXIST) {
             // try to recover by checking if the pid the lock names exists
-            fd = open(ccn_charbuf_as_string(temp), (O_RDWR | O_EXCL));
+            fd = open(ccn_charbuf_as_string(temp), O_RDWR);
             if (fd == -1) goto Bail;
             memset(tpid, 0, sizeof(tpid));
             read(fd, tpid, sizeof(tpid) - 1);
