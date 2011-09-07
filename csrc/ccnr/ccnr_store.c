@@ -1353,7 +1353,7 @@ r_store_index_cleaner(struct ccn_schedule *sched,
             node = ccn_btree_rnode(h->btree, h->toclean->buf[--h->toclean->n]);
             if (node != NULL) {
                 res = ccn_btree_chknode(node); /* paranoia */
-                if (res < 0 || CCNSHOULDLOG(h, sdfsdffd, CCNL_FINEST))
+                if (res < 0 || CCNSHOULDLOG(h, sdfsdffd, CCNL_FINER))
                     ccnr_msg(h, "write index node %u (%d)",
                              (unsigned)node->nodeid, node->corrupt);
                 if (res >= 0) {
@@ -1387,7 +1387,7 @@ r_store_index_cleaner(struct ccn_schedule *sched,
     if (h->toclean == NULL || h->toclean->n == 0) {
         h->index_cleaner = NULL;
         ccn_indexbuf_destroy(&h->toclean);
-        if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINEST))
+        if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINE))
             ccnr_msg(h, "index btree nodes all clean");
         return(0);
     }
@@ -1401,7 +1401,7 @@ r_store_index_needs_cleaning(struct ccnr_handle *h)
         h->index_cleaner = ccn_schedule_event(h->sched,
                                               CCN_BT_CLEAN_TICK_MICROS,
                                               r_store_index_cleaner, NULL, 0);
-        if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINEST))
+        if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINER))
             ccnr_msg(h, "index cleaner started");
     }
 }
