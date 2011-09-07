@@ -112,7 +112,6 @@ public class CCNNetworkManager implements Runnable {
 	protected CCNNetworkChannel _channel = null;
 	protected boolean _run = true;
 
-	// protected ContentObject _keepalive; 
 	protected FileOutputStream _tapStreamOut = null;
 	protected FileOutputStream _tapStreamIn = null;
 	protected long _lastHeartbeat = 0;
@@ -143,6 +142,10 @@ public class CCNNetworkManager implements Runnable {
 	protected Timer _periodicTimer = null;
 	protected Object _timersSetupLock = new Object();
 	protected Boolean _timersSetup = false;
+	
+	// Attempt to break up non returning handlers
+	protected static final long NOT_IN_HANDLER = -1;
+	protected long _handlerCallTime = NOT_IN_HANDLER;				// Time handler was called
 	
 	/**
 	 * Keep track of prefixes that are actually registered with ccnd (as opposed to Filters used
@@ -285,6 +288,22 @@ public class CCNNetworkManager implements Runnable {
         	
         	if (refreshError) {
                 Log.warning(Log.FAC_NETMANAGER, "we have had an error when refreshing an interest or prefix registration...  do we need to reconnect to ccnd?");
+        	}
+        	
+        	// Try to bring back the run thread if its hung
+        	// TODO - do we want to keep this in permanently?
+        	if (_handlerCallTime != NOT_IN_HANDLER) {
+        		long delta = System.currentTimeMillis() - _handlerCallTime;
+        		if (delta > SystemConfiguration.MAX_TIMEOUT) {
+        			
+        			// Print out what the thread was doing first
+        			Throwable t = new Throwable("Handler took too long to return - stack trace follows");
+        			t.setStackTrace(_thread.getStackTrace());
+        			Log.logStackTrace(Log.FAC_NETMANAGER, Level.SEVERE, t);
+        			
+        			_thread.interrupt();
+        			_handlerCallTime = NOT_IN_HANDLER;
+        		}
         	}
 
         	// Calculate when we should next be run
@@ -1174,8 +1193,9 @@ public class CCNNetworkManager implements Runnable {
 						Log.finer(Log.FAC_NETMANAGER, formatMessage("Data from net for port: " + _port + " {0}"), co.name());
 
 					//	SystemConfiguration.logObject("Data from net:", co);
-
+					_handlerCallTime = System.currentTimeMillis();
 					deliverData(co);
+					_handlerCallTime = NOT_IN_HANDLER;
 					// External data never goes back to network, never held onto here
 					// External data never has a thread waiting, so no need to release sema
 				} else if (packet instanceof Interest) {
@@ -1184,7 +1204,9 @@ public class CCNNetworkManager implements Runnable {
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 						Log.finest(Log.FAC_NETMANAGER, formatMessage("Interest from net for port: " + _port + " {0}"), interest);
 					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
+					_handlerCallTime = System.currentTimeMillis();
 					deliverInterest(oInterest, interest);
+					_handlerCallTime = NOT_IN_HANDLER;
 					// External interests never go back to network
 				}  else { // for interests
 					_stats.increment(StatsEnum.ReceiveUnknown);
