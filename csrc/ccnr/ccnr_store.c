@@ -472,9 +472,14 @@ r_store_init(struct ccnr_handle *h)
         h->stable = 0;
         h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
     }
-    res = ccn_btree_check(btree, NULL);
-    CHKSYS(res);
+    if (CCNSHOULDLOG(h, weuyg, CCNL_FINEST)) {
+        res = ccn_btree_check(btree, NULL);
+        ccnr_msg(h, "ccn_btree_check returned %d", res);
+        CHKSYS(res);
+    }
     btree->full = 1999;
+    if (h->running != -1)
+        r_store_index_needs_cleaning(h);
 }
 
 PUBLIC int
@@ -700,6 +705,7 @@ r_store_content_btree_insert(struct ccnr_handle *h,
                                        content->flatname);
         if (res < 0)
             return(-1);
+        r_store_index_needs_cleaning(h);
         if (res > btree->full) {
             res = ccn_btree_split(btree, leaf);
             for (limit = 100; res >= 0 && btree->nextsplit != 0; limit--) {
@@ -732,6 +738,9 @@ content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
 //    ccn_indexbuf_destroy(&content->skiplinks);
 }
 
+/**
+ *  Remove internal representation of a content object
+ */
 PUBLIC void
 r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
 {
@@ -1311,6 +1320,90 @@ ccnr_debug_content(struct ccnr_handle *h,
 {
     const unsigned char *content_msg = r_store_content_base(h, content);
     ccnr_debug_ccnb(h, lineno, msg, fdholder, content_msg, content->size);
+}
+
+/** Number of btree index writes to do in a batch */
+#define CCN_BT_CLEAN_BATCH 3
+/** Approximate delay between batches of btree index writes */
+#define CCN_BT_CLEAN_TICK_MICROS 65536
+static int
+r_store_index_cleaner(struct ccn_schedule *sched,
+    void *clienth,
+    struct ccn_scheduled_event *ev,
+    int flags)
+{
+    struct ccnr_handle *h = clienth;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct ccn_btree_node *node = NULL;
+    int k;
+    int res;
+    
+    (void)(sched);
+    (void)(ev);
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0 ||
+         h->btree == NULL || h->btree->io == NULL) {
+        h->index_cleaner = NULL;
+        ccn_indexbuf_destroy(&h->toclean);
+        return(0);
+    }
+    /* First, work on cleaning the things we already know need cleaning */
+    if (h->toclean != NULL) {
+        for (k = 0; k < CCN_BT_CLEAN_BATCH && h->toclean->n > 0; k++) {
+            node = ccn_btree_rnode(h->btree, h->toclean->buf[--h->toclean->n]);
+            if (node != NULL) {
+                res = ccn_btree_chknode(node); /* paranoia */
+                if (res < 0 || CCNSHOULDLOG(h, sdfsdffd, CCNL_FINEST))
+                    ccnr_msg(h, "write index node %u (%d)",
+                             (unsigned)node->nodeid, node->corrupt);
+                if (res >= 0) {
+                    res = h->btree->io->btwrite(h->btree->io, node);
+                    if (res < 0)
+                        ccnr_msg(h, "failed to write index node %u",
+                                 (unsigned)node->nodeid);
+                    else
+                        node->clean = node->buf->length;
+                }
+            }
+        }
+        if (h->toclean->n > 0)
+            return(nrand48(h->seed) % (2U * CCN_BT_CLEAN_TICK_MICROS) + 500);
+    }
+    /* Sweep though and find the nodes that still need cleaning */
+    hashtb_start(h->btree->resident, e);
+    for (; e->data != NULL; hashtb_next(e)) {
+        node = e->data;
+        if (node->clean != node->buf->length) {
+            if (h->toclean == NULL) {
+                h->toclean = ccn_indexbuf_create();
+                if (h->toclean == NULL)
+                    break;
+                ccn_indexbuf_append_element(h->toclean, node->nodeid);
+            }
+        }
+    }
+    hashtb_end(e);
+    /* If nothing to do, shut down cleaner */
+    if (h->toclean == NULL || h->toclean->n == 0) {
+        h->index_cleaner = NULL;
+        ccn_indexbuf_destroy(&h->toclean);
+        if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINEST))
+            ccnr_msg(h, "index btree nodes all clean");
+        return(0);
+    }
+    return(nrand48(h->seed) % (2U * CCN_BT_CLEAN_TICK_MICROS) + 500);
+}
+
+PUBLIC void
+r_store_index_needs_cleaning(struct ccnr_handle *h)
+{
+    if (h->index_cleaner == NULL && h->btree != NULL && h->btree->io != NULL) {
+        h->index_cleaner = ccn_schedule_event(h->sched,
+                                              CCN_BT_CLEAN_TICK_MICROS,
+                                              r_store_index_cleaner, NULL, 0);
+        if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINEST))
+            ccnr_msg(h, "index cleaner started");
+    }
 }
 
 #undef FAILIF

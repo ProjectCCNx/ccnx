@@ -59,5 +59,6 @@ ccnr_cookie r_store_content_cookie(struct ccnr_handle *h, struct content_entry *
 ccnr_accession r_store_content_accession(struct ccnr_handle *h, struct content_entry *content);
 const unsigned char *r_store_content_base(struct ccnr_handle *h, struct content_entry *content);
 size_t r_store_content_size(struct ccnr_handle *h, struct content_entry *content);
+void r_store_index_needs_cleaning(struct ccnr_handle *h);
 
 #endif

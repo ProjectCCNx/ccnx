@@ -187,6 +187,8 @@ struct ccnr_handle {
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
     struct ccn_scheduled_event *age_forwarding;
+    struct ccn_scheduled_event *index_cleaner; /**< writes out btree nodes */
+    struct ccn_indexbuf *toclean;   /**< for index_cleaner use */
     const char *portstr;            /**< port number for status display */
     nfds_t nfds;                    /**< number of entries in fds array */
     struct pollfd *fds;             /**< used for poll system call */
