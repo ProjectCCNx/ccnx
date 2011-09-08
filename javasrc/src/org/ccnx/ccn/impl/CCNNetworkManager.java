@@ -511,19 +511,19 @@ public class CCNNetworkManager implements Runnable {
 		/**
 		 * Deliver interest to a registered handler
 		 */
-		public void deliver(Interest interest) {
+		public boolean deliver(Interest interest) {
 			try {
 				CCNFilterListener handler = (CCNFilterListener)this.listener;
 
 				// Call into client code without holding any library locks
 				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 					Log.finer(Log.FAC_NETMANAGER, "Filter callback for: {0}", prefix);
-				handler.handleInterest(interest);
-				// Now extra callbacks for additional interests
+				return handler.handleInterest(interest);
 			} catch (RuntimeException ex) {
 				_stats.increment(StatsEnum.DeliverInterestFailed);
 				Log.warning(Log.FAC_NETMANAGER, "failed to deliver interest: {0}", ex);
 				Log.warningStackTrace(ex);
+				return false;
 			}
 		}
 		@Override
@@ -1233,7 +1233,8 @@ public class CCNNetworkManager implements Runnable {
 			if (filter.owner != ireg.owner) {
 				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 					Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), interest);
-				filter.deliver(interest);
+				if (filter.deliver(interest))
+					break;		// Handled successfully
 			}
 		}
 	}
