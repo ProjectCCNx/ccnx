@@ -1,7 +1,69 @@
-Changes between 0.3.0 and 0.4.0:
+Changes between 0.4.0 and 0.4.1:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
 Refer to http://www.ccnx.org/redmine/ for more details.
+
+  * The ant features used to process properties, -D<property>=<value> do not work with
+    ant 1.7.1.  If you have not done so already, you need to
+    update to ant 1.8.2.  Update in supported Ant version is reflected in README.
+
+  * Issues Resolved:
+    * Feature 100203 Rename updateheader command line program
+    * Feature 100224 Deprecate backward-compatibility support for older header
+                 profile
+    * Bug 100250 InterestMessage.txt section on Exclude incomplete
+    * Feature 100261 Inline documentation for ThumbnailProfile should be improved
+    * Feature 100333 CCNReader.isContentInRepository should use repo sync protocol
+    * Support 100336 The ./README file needs updating
+    * Bug 100381 KeyValuePair used in HashSet without defining hashCode()
+    * Bug 100457 LatestVersionTest does not work as expected
+    * Feature 100459 Junit tests should not set log levels individually
+    * Bug 100471 CCNFlowServerTest should use AssertionThreadRunner
+    * Bug 100472 Repo namespace argument doesn't check old namespace
+    * Bug 100474 CCNNetworkObject logging should use FAC_IO
+    * Bug 100475 Spelling errors
+    * Bug 100482 Bad timing causes duplicate repo listeners
+    * Bug 100483 jot stub script should use seq if it exists
+    * Bug 100484 Timing window in flow control
+    * Bug 100485 InterestTable add without capacity set leaks memory
+    * Bug 100486 Java unregister prefix needs to reregister other prefixes
+                 sometimes
+    * Bug 100488 PrincipalKeyDirectory can access uninitialized method variables
+    * Bug 100489 Verification failures on recent versions of Android
+    * Bug 100493 ccnchat uses more handles than necessary
+    * Feature 100496 Need a (C library) routine to check whether a ccn_upcall_info
+                 describes the final block
+    * Bug 100497 ccnls could use option to set scope on generated interests
+    * Bug 100501 C library needs ability to create CCNx keystore
+    * Feature 100502 ccn_seqwriter needs method for getting filename
+    * Feature 100505 ccnget should have flag to allow retrieval of unverified
+                 content
+    * Bug 100506 Environment variable problems when running multiple tests
+    * Bug 100507 CCNOutputStream doesn't deregister prefixes on close
+    * Bug 100508 CCNNetworkObject does unneccessary prefix registration via flow
+                 controller
+    * Bug 100510 RepoIOTest adds extra nonce in policy change test
+    * Support 100511 Add runtime flag to change version of repo used in junit test
+                 framework
+    * Bug 100512 Problems with NetworkTest
+    * Bug 100513 Cleanup javasrc to match new handling of C library keystore
+                 creation
+    * Bug 100514 need utility to extract names from a file of ccnb encoded objects
+    * Bug 100515 EndToEndTest needs to wait for both programs to startup
+    * Bug 100518 Memory leak in libccn handle_key
+    * Bug 100520 Key-fetching in libccn needs hardening
+    * Bug 100521 java prefix registration waiting needs cleanup
+    * Bug 100522 Random log test errors on some platforms
+    * Bug 100523 verifications randomly fail running under Android Gingerbread
+    * Bug 100527 Infrequent Scope 2 Failures
+    * Bug 100529 Java interest handling needs to parse InterestLifetime
+    * Bug 100530 advancePipeline should not loop after closed handle
+    * Feature 100533 Show interest scope in ccnd log
+    * Bug 100538 Install ccnsimplecat program
+    * Feature 100535 Add the ability to set a default scope on a CCNHandle.
+    
+Changes between 0.3.0 and 0.4.0:
+--------------------------------
  
   * The 'ping' responder in ccnd is deprecated. For compatibility, it is still
     present by default, but further use should be phased out. The libraries
