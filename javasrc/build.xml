@@ -974,8 +974,8 @@
 	</target>
 	
 	<target name="init">
-		<echo message="Verifying Ant version is at least 1.8.2" />
-		<fail message="Ant version is less than version 1.8.2, exiting.  Please upgrade your version of Ant.">
+		<echo message="Verifying Ant version is at least 1.8.0" />
+		<fail message="Ant version is less than version 1.8.0, exiting.  Please upgrade your version of Ant.">
 			<condition>
   				<not>
     				<antversion property="antversion" atleast="1.8.0"/>
