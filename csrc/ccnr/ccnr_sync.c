@@ -108,7 +108,7 @@ ccnr_hwm_compare(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y)
     if (x < y) return -1;
     return CCNR_NOT_COMPARABLE;
 }
-#endif CCNLINT
+#endif
 
 PUBLIC void
 r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_hwm item)
