@@ -978,7 +978,7 @@
 		<fail message="Ant version is less than version 1.8.2, exiting.  Please upgrade your version of Ant.">
 			<condition>
   				<not>
-    				<antversion property="antversion" atleast="1.8.2"/>
+    				<antversion property="antversion" atleast="1.8.0"/>
   				</not>
 			</condition>
 		</fail>
