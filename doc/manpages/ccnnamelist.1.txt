@@ -7,7 +7,7 @@ ccnnamelist - extract names from a file of ccnb encoded data
 
 SYNOPSIS
 --------
-*ccnnamelist* 'file' '...'
+*ccnnamelist* [-h] ['file' '...']
 
 DESCRIPTION
 -----------
@@ -20,7 +20,8 @@ OPTIONS
 
 ARGUMENTS
 ---------
-The named files should contain ccnb-encoded data and must be accessible to mmap().
+The named files should contain ccnb-encoded data.  A "-" in the file list indicates input from stdin.
+If no arguments are given input will be read from stdin.
 
 OUTPUT
 ------
