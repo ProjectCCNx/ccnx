@@ -166,7 +166,7 @@ For parts of the system written in Java, CCNx code is tested with Sun
 Java JDK 1.5 and 1.6 only, with ant used as the canonical build tool.
 You will need:
 
-  ant (>= 1.7.0 tested)
+  ant (>= 1.8.2 tested, download latest verson from: http://ant.apache.org/bindownload.cgi )
   extra libraries for JDK1.5 only (see below)
 
 Eclipse .project and .classpath files are included in the distribution
