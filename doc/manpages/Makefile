@@ -40,7 +40,7 @@ PAGE_NAMES =        		\
 	ccnslurp		\
 	ccnchat			\
 
-PROJECT_NUMBER = 0.4.1rc3
+PROJECT_NUMBER = 0.4.1rc4
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
