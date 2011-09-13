@@ -33,79 +33,106 @@
 #include <ccn/coding.h>
 #include <ccn/uri.h>
 
-static int
-process_test(unsigned char *data, size_t n, struct ccn_charbuf *c)
+/* returns
+ *  res >= 0    res characters remaining to be processed from data
+ *  decoder state will be set appropriately   
+ */
+static size_t
+process_data(struct ccn_skeleton_decoder *d, unsigned char *data, size_t n, struct ccn_charbuf *c)
 {
-    struct ccn_skeleton_decoder skel_decoder = {0};
-    struct ccn_skeleton_decoder *d = &skel_decoder;
-    int res = 0;
     size_t s;
     
 retry:
     s = ccn_skeleton_decode(d, data, n);
-    if (d->state < 0) {
-        res = 1;
-        fprintf(stderr, "error state %d after %d of %d chars\n",
-                (int)d->state, (int)s, (int)n);
-    }
-    else if (s == 0) {
-        fprintf(stderr, "nothing to do\n");
-    }
-    else {
-        if (s < n) {
-            c->length = 0;
-            ccn_uri_append(c, data, s, 1);
-            printf("%s\n", ccn_charbuf_as_string(c));
-            data += s;
-            n -= s;
-            goto retry;
-        }
-    }
-    if (!CCN_FINAL_DSTATE(d->state)) {
-        res = 1;
-        fprintf(stderr, "incomplete state %d after %d of %d chars\n",
-                (int)d->state, (int)s, (int)n);
-    } else {
+    if (d->state < 0)
+        return (0);
+    if (CCN_FINAL_DSTATE(d->state)) {
         c->length = 0;
         ccn_uri_append(c, data, s, 1);
-        printf("%s\n", ccn_charbuf_as_string(c));               
+        printf("%s\n", ccn_charbuf_as_string(c));
+        data += s;
+        n -= s;
+        if (n > 0) goto retry;
     }
-    return(res);
+    return(n);
 }
 
 static int
 process_fd(int fd, struct ccn_charbuf *c)
 {
-    unsigned char *buf;
+    struct ccn_skeleton_decoder skel_decoder = {0};
+    struct ccn_skeleton_decoder *d = &skel_decoder;
+    unsigned char *bufp;
+    unsigned char buf[1024 * 1024];
     ssize_t len;
     struct stat s;
-    int res = 0;
+    size_t res = 0;
     
-    res = fstat(fd, &s);
-    len = s.st_size;
-    buf = (unsigned char *)mmap((void *)NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (buf == (void *)-1) return (1);
-    res |= process_test(buf, len, c);
-    munmap((void *)buf, len);
-    return(res);
+    if (0 != fstat(fd, &s)) {
+        perror("fstat");
+        return(1);
+    }
+    
+    if (S_ISREG(s.st_mode)) {
+        res = s.st_size;
+        bufp = (unsigned char *)mmap((void *)NULL, res,
+                                     PROT_READ, MAP_PRIVATE, fd, 0);
+        if (bufp != (void *)-1) {
+            res = process_data(d, bufp, res, c);
+            if (!CCN_FINAL_DSTATE(d->state)) {
+                fprintf(stderr, "%s state %d after %lu bytes\n",
+                        (d->state < 0) ? "error" : "incomplete",
+                        (int)d->state,
+                        (unsigned long)d->index);
+                return(1);
+            }
+            return(0);
+        }
+    }
+    
+    /* either not a regular file amenable to mapping, or the map failed */
+    bufp = &buf[0];
+    res = 0;
+    while ((len = read(fd, bufp + res, sizeof(buf) - res)) > 0) {
+        len += res;
+        res = process_data(d, bufp, len, c);
+        if (d->state < 0) {
+            fprintf(stderr, "error state %d\n", (int)d->state);
+            return(1);
+        }
+        /* move any remaining data back to the start, refresh the buffer,
+         * reset the decoder state so we can reparse
+         */
+        if (res != 0) 
+            memmove(bufp, bufp + (len - res), res);
+        memset(d, 0, sizeof(*d));
+    }
+    if (!CCN_FINAL_DSTATE(d->state)) {
+        fprintf(stderr, "%s state %d\n",
+                (d->state < 0) ? "error" : "incomplete", d->state);
+        return(1);
+    }  
+    return(0);
 }
 
 
 static int
 process_file(char *path, struct ccn_charbuf *c)
 {
-    int fd;
+    int fd = -1;
     int res = 0;
-    
-    fd = open(path, O_RDONLY);
-    if (-1 == fd) {
-        perror(path);
-        return(1);
+    if (strcmp(path, "-") == 0) {
+        fd = STDIN_FILENO;
+    } else {
+        fd = open(path, O_RDONLY);
+        if (-1 == fd) {
+            perror(path);
+            return(1);
+        }
+        
     }
-    
     res = process_fd(fd, c);
-    if (fd > 0)
-        close(fd);
+    close(fd);
     return(res);
 }
 
@@ -113,9 +140,9 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-h] file1 ...fileN\n"
+            "%s [-h] [file1 ... fileN]\n"
             "   Produces a list of names from the ccnb encoded"
-            " objects in the given file(s) which must be accessible to mmap\n",
+            " objects in the given file(s), or from stdin if no files or \"-\"\n",
             progname);
     exit(1);
 }
@@ -137,7 +164,7 @@ main(int argc, char *argv[])
     }
     
     if (argv[optind] == NULL)
-        usage(argv[0]);
+        return (process_fd(STDIN_FILENO, c));
     
     for (i = optind; argv[i] != 0; i++) {
         res |= process_file(argv[i], c);
