@@ -312,8 +312,22 @@ public class CCNHandle implements CCNBase {
 	 * Register a standing interest filter with callback to receive any 
 	 * matching interests seen
 	 * @param filter
-	 * @param callbackListener
+	 * @param callbackHandler
 	 */
+	public void registerFilter(ContentName filter,
+			CCNInterestHandler callbackHandler) throws IOException {
+		if( Log.isLoggable(Level.FINE) )
+			Log.fine(Log.FAC_NETMANAGER, formatMessage("registerFilter " + filter.toString()));
+
+		synchronized(_openLock) {
+			if( !_isOpen )
+				throw new IOException(formatMessage("Handle is closed"));
+		}
+
+		getNetworkManager().setInterestFilter(this, filter, callbackHandler);
+	}
+	
+	@Deprecated
 	public void registerFilter(ContentName filter,
 			CCNFilterListener callbackListener) throws IOException {
 		if( Log.isLoggable(Level.FINE) )
@@ -330,9 +344,25 @@ public class CCNHandle implements CCNBase {
 	/**
 	 * Unregister a standing interest filter
 	 * @param filter
-	 * @param callbackListener
+	 * @param callbackHandler
 	 * @throws IOException if handle is closed
 	 */	
+	public void unregisterFilter(ContentName filter,
+			CCNInterestHandler callbackHandler) {
+		if( Log.isLoggable(Level.FINE) )
+			Log.fine(Log.FAC_NETMANAGER, formatMessage("unregisterFilter " + filter.toString()));
+
+		synchronized(_openLock) {
+			if( !_isOpen ) {
+				Log.warning(formatMessage("Called unregisterFilter on a closed handle"));
+				return;
+			}
+		}
+
+		getNetworkManager().cancelInterestFilter(this, filter, callbackHandler);		
+	}
+	
+	@Deprecated
 	public void unregisterFilter(ContentName filter,
 			CCNFilterListener callbackListener) {
 		if( Log.isLoggable(Level.FINE) )
@@ -352,7 +382,7 @@ public class CCNHandle implements CCNBase {
 	 * Query, or express an interest in particular
 	 * content. This request is sent out over the
 	 * CCN to other nodes. On any results, the
-	 * callbackListener if given, is notified.
+	 * callbackHandler if given, is notified.
 	 * Results may also be cached in a local repository
 	 * for later retrieval by get().
 	 * Get and expressInterest could be implemented
@@ -367,8 +397,24 @@ public class CCNHandle implements CCNBase {
 	 * Each might generate their own CCNQueryDescriptor,
 	 * so we need to group them together.
 	 * @param interest
-	 * @param listener
+	 * @param handler
 	 */
+	public void expressInterest(
+			Interest interest,
+			CCNContentHandler handler) throws IOException {
+		if( Log.isLoggable(Level.FINE) )
+			Log.fine(Log.FAC_NETMANAGER, formatMessage("expressInterest " + interest.name().toString()));
+
+		synchronized(_openLock) {
+			if( !_isOpen )
+				throw new IOException(formatMessage("Handle is closed"));
+		}
+
+		// Will add the interest to the listener.
+		getNetworkManager().expressInterest(this, interest, handler);
+	}
+	
+	@Deprecated
 	public void expressInterest(
 			Interest interest,
 			CCNInterestListener listener) throws IOException {
@@ -387,9 +433,24 @@ public class CCNHandle implements CCNBase {
 	/**
 	 * Cancel this interest. 
 	 * @param interest
-	 * @param listener Used to distinguish the same interest
+	 * @param handler Used to distinguish the same interest
 	 * 	requested by more than one listener.
 	 */
+	public void cancelInterest(Interest interest, CCNContentHandler handler) {
+		if( Log.isLoggable(Level.FINE) )
+			Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterest " + interest.name().toString()));
+
+		synchronized(_openLock) {
+			if( !_isOpen ) {
+				Log.warning(Log.FAC_NETMANAGER, formatMessage("Called cancelInterest on a closed handle"));
+				return;
+			}
+		}
+
+		getNetworkManager().cancelInterest(this, interest, handler);
+	}
+	
+	@Deprecated
 	public void cancelInterest(Interest interest, CCNInterestListener listener) {
 		if( Log.isLoggable(Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterest " + interest.name().toString()));

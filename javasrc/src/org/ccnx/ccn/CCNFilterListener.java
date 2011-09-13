@@ -20,6 +20,8 @@ package org.ccnx.ccn;
 import org.ccnx.ccn.protocol.Interest;
 
 /**
+ * Deprecated - use CCNInterestListener instead
+ * 
  * A CCN filter is essentially an "interest in Interests" -- it allows a caller to register
  * to see Interest messages that come in from the network, and optionally generate (or
  * merely provide) data in response. Filters are registered using 
@@ -31,6 +33,7 @@ import org.ccnx.ccn.protocol.Interest;
  * @see CCNBase
  * @see CCNHandle
  */
+@Deprecated
 public interface CCNFilterListener {
 
 	/**
@@ -40,6 +43,4 @@ public interface CCNFilterListener {
 	 * 	(that is the handler returned data satisfying the interest).
 	 */
     public boolean handleInterest(Interest interest);
-    
-
 }
