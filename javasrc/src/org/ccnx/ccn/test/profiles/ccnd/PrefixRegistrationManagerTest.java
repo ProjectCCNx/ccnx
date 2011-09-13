@@ -199,7 +199,6 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		Integer faceID = null;
 		ContentName testCN = null;
 		PrefixRegistrationManager manager = null;
-		boolean failTest;
 		
 		try {
 			testCN = ContentName.fromURI(prefixToUse);
@@ -256,7 +255,6 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		System.out.println("PrefixRegistrationManagerTest.testException:");
 		ContentName testCN = null;
 		PrefixRegistrationManager manager = null;
-		boolean failTest;
 		
 		try {
 			testCN = ContentName.fromURI(prefixToUse);

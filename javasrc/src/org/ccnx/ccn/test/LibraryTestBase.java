@@ -30,9 +30,9 @@ import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
@@ -273,7 +273,7 @@ public class LibraryTestBase extends CCNTestBase {
 		}
 	}
 	
-	public class GetServer implements Runnable, CCNInterestListener {
+	public class GetServer implements Runnable, CCNContentHandler {
 		protected CCNHandle handle = null;
 		int count = 0;
 		int next = 0;
@@ -336,7 +336,7 @@ public class LibraryTestBase extends CCNTestBase {
 		}
 	}
 	
-	public class PutServer implements Runnable, CCNFilterListener {
+	public class PutServer implements Runnable, CCNInterestHandler {
 		protected CCNHandle handle = null;
 		int count = 0;
 		int next = 0;

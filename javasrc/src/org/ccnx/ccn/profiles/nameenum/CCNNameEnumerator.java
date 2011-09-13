@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -22,9 +22,9 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
@@ -63,7 +63,7 @@ import org.ccnx.ccn.protocol.Interest;
  *
  */
 
-public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener {
+public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler {
 
 	protected CCNHandle _handle = null;
 	//protected ArrayList<ContentName> _registeredPrefixes = new ArrayList<ContentName>();

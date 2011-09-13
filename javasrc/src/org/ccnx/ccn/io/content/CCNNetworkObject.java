@@ -24,8 +24,8 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -95,7 +95,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * freshness, and so on. Expect new constructors to deal with the latter deficiencies, and
  * a cleanup of the constructor architecture overall in the near term.
  */
-public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
+public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNContentHandler {
 
 	protected static final byte [] GONE_OUTPUT = "GONE".getBytes();
 	

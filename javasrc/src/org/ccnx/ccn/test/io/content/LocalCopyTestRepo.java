@@ -28,8 +28,8 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import junit.framework.Assert;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
@@ -142,7 +142,7 @@ public class LocalCopyTestRepo {
 	@Test
 	public void testRepositoryControlObject() throws Exception {
 		System.out.println(">>> Running testRepositoryControlObject");
-		MyListener listener = new MyListener();
+		MyHandler listener = new MyHandler();
 		
 		try {
 			listener.open();
@@ -172,7 +172,7 @@ public class LocalCopyTestRepo {
 	@Test
 	public void testLocalCopyWrapper() throws Exception {
 		System.out.println(">>> Running testLocalCopyWrapper");
-		MyListener listener = new MyListener();
+		MyHandler listener = new MyHandler();
 		
 		try {
 			listener.open();
@@ -210,7 +210,7 @@ public class LocalCopyTestRepo {
 	@Test
 	public void testLocalCopyListener() throws Exception {
 		System.out.println(">>> Running testLocalCopyListener");
-		MyListener listener = new MyListener();
+		MyHandler listener = new MyHandler();
 		
 		try {
 			listener.open();
@@ -241,7 +241,7 @@ public class LocalCopyTestRepo {
 	@Test
 	public void testLocalCopyWrapperWithSaveAndLcwClose() throws Exception {
 		System.out.println(">>> Running testLocalCopyWrapperWithSaveAndLcwClose");
-		MyListener listener = new MyListener();
+		MyHandler listener = new MyHandler();
 		
 		try {
 			listener.open();
@@ -289,7 +289,7 @@ public class LocalCopyTestRepo {
 	@Test
 	public void testLocalCopyWrapperWithSaveAndObjectClose() throws Exception {
 		System.out.println(">>> Running testLocalCopyWrapperWithSaveAndObjectClose");
-		MyListener listener = new MyListener();
+		MyHandler listener = new MyHandler();
 		
 		try {
 			listener.open();
@@ -340,7 +340,7 @@ public class LocalCopyTestRepo {
 	@Test
 	public void testLocalCopyListnerWithSaveAndObjectClose() throws Exception {
 		System.out.println(">>> Running testLocalCopyListnerWithSaveAndObjectClose");
-		MyListener listener = new MyListener();
+		MyHandler listener = new MyHandler();
 		
 		try {
 			listener.open();
@@ -391,7 +391,7 @@ public class LocalCopyTestRepo {
 	 * @author mmosko
 	 *
 	 */
-	private class MyListener implements CCNFilterListener {
+	private class MyHandler implements CCNInterestHandler {
 		// These are the replies we have sent
 //		public ConcurrentHashMap<ContentName, String> replies = new ConcurrentHashMap<ContentName, String>();
 		public HashSet<ContentName> replies = new HashSet<ContentName>();

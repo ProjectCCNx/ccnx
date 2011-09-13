@@ -16,7 +16,7 @@
  */
 package org.ccnx.ccn.test.impl;
 
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -28,7 +28,7 @@ import org.junit.Test;
  * This class contains tests that can be used for diagnosis or other purposes which should
  * not be run as part of the standard test suite
  */
-public class NetworkTestExtra extends CCNTestBase implements CCNInterestListener {
+public class NetworkTestExtra extends CCNTestBase implements CCNContentHandler {
 	
 	static CCNTestHelper testHelper = new CCNTestHelper(NetworkTestExtra.class);
 	

@@ -21,8 +21,8 @@ import java.io.IOException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.InterestTable;
 import org.ccnx.ccn.protocol.ContentName;
@@ -35,7 +35,7 @@ import org.ccnx.ccn.protocol.Interest;
 public class CCNLibraryTestHarness extends CCNHandle {
 	
 	private ConcurrentLinkedQueue<ContentObject> _outputQueue = new ConcurrentLinkedQueue<ContentObject>();
-	private InterestTable<CCNFilterListener> _listeners = new InterestTable<CCNFilterListener>();
+	private InterestTable<CCNInterestHandler> _handlers = new InterestTable<CCNInterestHandler>();
 
 	public CCNLibraryTestHarness() throws ConfigurationException,
 			IOException {
@@ -44,7 +44,7 @@ public class CCNLibraryTestHarness extends CCNHandle {
 	
 	public void reset() {
 		_outputQueue.clear();
-		_listeners.clear();
+		_handlers.clear();
 	}
 	
 	public Queue<ContentObject> getOutputQueue() {
@@ -59,20 +59,20 @@ public class CCNLibraryTestHarness extends CCNHandle {
 	
 	@Override
 	public void registerFilter(ContentName filter,
-			CCNFilterListener callbackListener) {
-		_listeners.add(new Interest(filter), callbackListener);
+			CCNInterestHandler handler) {
+		_handlers.add(new Interest(filter), handler);
 	}
 	
 	@Override
 	public void unregisterFilter(ContentName filter,
-			CCNFilterListener callbackListener) {
-		_listeners.remove(new Interest(filter), callbackListener);		
+			CCNInterestHandler handler) {
+		_handlers.remove(new Interest(filter), handler);		
 	}
 	
 	@Override
 	public ContentObject get(Interest interest, long timeout) throws IOException {
-		for (CCNFilterListener listener : _listeners.getValues(interest.name())) {
-			listener.handleInterest(interest);
+		for (CCNInterestHandler handler : _handlers.getValues(interest.name())) {
+			handler.handleInterest(interest);
 		}
 		return _outputQueue.remove();
 	}

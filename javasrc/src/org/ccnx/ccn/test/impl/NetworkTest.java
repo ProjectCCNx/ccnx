@@ -22,8 +22,8 @@ import java.util.TreeSet;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import org.ccnx.ccn.CCNFilterListener;
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNContentHandler;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.io.CCNWriter;
@@ -82,8 +82,8 @@ public class NetworkTest extends CCNTestBase {
 	 */
 	@Test
 	public void testRegisteredPrefix() throws Exception {
-		TestFilterListener tfl = new TestFilterListener();
-		TestListener tl = new TestListener();
+		TestInterestHandler tfl = new TestInterestHandler();
+		TestContentHandler tl = new TestContentHandler();
 		ContentName testName1 = ContentName.fromNative(testPrefix, "foo");
 		Interest interest1 = new Interest(testName1);
 		ContentName testName2 = ContentName.fromNative(testName1, "bar"); // /foo/bar
@@ -174,7 +174,7 @@ public class NetworkTest extends CCNTestBase {
 		ContentName testName = ContentName.fromNative(testPrefix, "aaa");
 		
 		testInterest = new Interest(testName);
-		TestListener tl = new TestListener();
+		TestContentHandler tl = new TestContentHandler();
 		getHandle.expressInterest(testInterest, tl);
 		Thread.sleep(80);  
 		writer.put(testName, "aaa");
@@ -188,7 +188,7 @@ public class NetworkTest extends CCNTestBase {
 		CCNWriter writer = new CCNWriter(putHandle);
 		ContentName testName = ContentName.fromNative(testPrefix, "ddd");
 		testInterest = new Interest(testName);
-		TestListener tl = new TestListener();
+		TestContentHandler tl = new TestContentHandler();
 		getHandle.expressInterest(testInterest, tl);
 		Thread.sleep(80);  
 		writer.put(testName, "ddd");
@@ -208,7 +208,7 @@ public class NetworkTest extends CCNTestBase {
 		ContentName testName = ContentName.fromNative(testPrefix, "bbb");
 
 		testInterest = new Interest(testName);
-		TestListener tl = new TestListener();
+		TestContentHandler tl = new TestContentHandler();
 		writer.put(testName, "bbb");
 		Thread.sleep(80);  
 		getHandle.expressInterest(testInterest, tl);
@@ -242,7 +242,7 @@ public class NetworkTest extends CCNTestBase {
 		CCNWriter writer = new CCNWriter(testPrefix, putHandle);
 		ContentName testName = ContentName.fromNative(testPrefix, "ccc");
 		testInterest = new Interest(testName);
-		TestListener tl = new TestListener();
+		TestContentHandler tl = new TestContentHandler();
 		getHandle.expressInterest(testInterest, tl);
 		// Sleep long enough that the interest must be re-expressed
 		Thread.sleep(WAIT_MILLIS);  
@@ -274,7 +274,7 @@ public class NetworkTest extends CCNTestBase {
 		}
 	}
 	
-	class TestFilterListener implements CCNFilterListener {
+	class TestInterestHandler implements CCNInterestHandler {
 
 		public boolean handleInterest(Interest interest) {
 			gotInterest = true;
@@ -283,7 +283,7 @@ public class NetworkTest extends CCNTestBase {
 		}
 	}
 	
-	class TestListener implements CCNInterestListener {
+	class TestContentHandler implements CCNContentHandler {
 
 		public Interest handleContent(ContentObject co,
 				Interest interest) {

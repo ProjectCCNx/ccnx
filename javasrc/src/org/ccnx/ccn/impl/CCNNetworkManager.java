@@ -68,6 +68,7 @@ import org.ccnx.ccn.protocol.WirePacket;
  * 
  * Starts a separate thread to listen to, decode and handle incoming data from ccnd.
  */
+@SuppressWarnings("deprecation")
 public class CCNNetworkManager implements Runnable {
 
 	public static final int DEFAULT_AGENT_PORT = 9695; // ccnx registered port
@@ -441,6 +442,7 @@ public class CCNNetworkManager implements Runnable {
 			nextRefresh = System.currentTimeMillis() + nextRefreshPeriod;
 		}
 		
+		@Deprecated
 		public InterestRegistration(Interest i, CCNInterestListener l, Object owner) {
 			this(i, (Object)l, owner);
 			this.deprecatedListener = l;
@@ -851,6 +853,7 @@ public class CCNNetworkManager implements Runnable {
 		expressInterest(reg);
 	}
 	
+	@Deprecated
 	public void expressInterest(
 			Object caller,
 			Interest interest,
@@ -1132,6 +1135,9 @@ public class CCNNetworkManager implements Runnable {
 					}
 				}
 			}
+		} else {
+			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
+				Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter: {0} not found"), filter);
 		}
 	}
 

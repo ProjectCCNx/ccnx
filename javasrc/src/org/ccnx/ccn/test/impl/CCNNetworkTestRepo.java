@@ -20,9 +20,9 @@ package org.ccnx.ccn.test.impl;
 import java.util.ArrayList;
 import java.util.Random;
 
-import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.io.content.CCNStringObject;
@@ -102,7 +102,7 @@ public class CCNNetworkTestRepo extends CCNTestBase {
 		putHandle.checkError(TEST_TIMEOUT);
 	}
 	
-	class TestListener implements CCNInterestListener {
+	class TestListener implements CCNContentHandler {
 
 		public Interest handleContent(ContentObject co,
 				Interest interest) {
@@ -110,7 +110,7 @@ public class CCNNetworkTestRepo extends CCNTestBase {
 			return null;
 		}
 	}
-	class BogusFilterListener implements CCNFilterListener {
+	class BogusFilterListener implements CCNInterestHandler {
 
 		public boolean handleInterest(Interest interest) {
 			try {
