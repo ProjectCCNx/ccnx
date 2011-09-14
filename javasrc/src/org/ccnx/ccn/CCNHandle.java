@@ -434,7 +434,6 @@ public class CCNHandle implements CCNBase {
 				interest.scope(_scope);
 			}
 			CCNInterestListener myListener = new CCNInterestListener() {
-				@Override
 				public Interest handleContent(ContentObject data, Interest interest) {
 					Interest i = listener.handleContent(data, interest);
 					if (i != null) {

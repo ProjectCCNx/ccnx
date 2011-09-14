@@ -316,9 +316,9 @@ this.
 It is sometimes very helpful to get a debug dump of the names of
 content held by a repository.  You can do this with the command:
 
-  bin/ccn_repo signal nametree
+  bin/ccn_repo signal nametree $PID
 OR
-  bin/ccn_repo signal nametreewide
+  bin/ccn_repo signal nametreewide $PID
 
 This will produce output in a file in the repository backing
 directory.  This file is overwritten every time you send such a
