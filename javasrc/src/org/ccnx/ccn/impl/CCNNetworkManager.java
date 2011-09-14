@@ -380,20 +380,19 @@ public class CCNNetworkManager implements Runnable {
 		}
 	}
 
-	/** Generic superclass for registration objects that may have a listener
+	/** Generic superclass for registration objects that may have a callback handler
 	 */
-	protected class ListenerRegistration {
+	protected class CallbackHandlerRegistration {
 		protected Object handler;
-		protected Object deprecatedListener;	// Support old style listeners
 		public Semaphore sema = null;	//used to block thread waiting for data or null if none
 		public Object owner = null;
 		
-		/** Equality based on listener if present, so multiple objects can 
+		/** Equality based on handler if present, so multiple objects can 
 		 *  have the same interest registered without colliding
 		 */
 		public boolean equals(Object obj) {
-			if (obj instanceof ListenerRegistration) {
-				ListenerRegistration other = (ListenerRegistration)obj;
+			if (obj instanceof CallbackHandlerRegistration) {
+				CallbackHandlerRegistration other = (CallbackHandlerRegistration)obj;
 				if (this.owner == other.owner) {
 					if (null == this.handler && null == other.handler){
 						return super.equals(obj);
@@ -420,12 +419,12 @@ public class CCNNetworkManager implements Runnable {
 
 	/**
 	 * Record of Interest
-	 * listener must be set (non-null) for cases of standing Interest that holds 
+	 * handler must be set (non-null) for cases of standing Interest that holds 
 	 * until canceled by the application.  The listener should be null when a 
 	 * thread is blocked waiting for data, in which case the thread will be 
 	 * blocked on semaphore.
 	 */
-	protected class InterestRegistration extends ListenerRegistration {
+	protected class InterestRegistration extends CallbackHandlerRegistration {
 		public final Interest interest;
 		protected long nextRefresh;		// next time to refresh the interest
 		protected long nextRefreshPeriod = SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT;	// period to wait before refresh
@@ -442,12 +441,6 @@ public class CCNNetworkManager implements Runnable {
 			nextRefresh = System.currentTimeMillis() + nextRefreshPeriod;
 		}
 		
-		@Deprecated
-		public InterestRegistration(Interest i, CCNInterestListener l, Object owner) {
-			this(i, (Object)l, owner);
-			this.deprecatedListener = l;
-		}
-
 		/**
 		 * Deliver content to a registered handler
 		 */
@@ -455,13 +448,13 @@ public class CCNNetworkManager implements Runnable {
 			try {
 				if (null != this.handler) {
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
-						Log.finer(Log.FAC_NETMANAGER, "Interest callback (" + co + " data) for: {0}", this.interest.name());
+						Log.finer(Log.FAC_NETMANAGER, "Content callback (" + co + " data) for: {0}", this.interest.name());
 
 					unregisterInterest(this);
 
 					// Callback the client - we can't hold any locks here!
 					Interest updatedInterest;
-					if (null != deprecatedListener)
+					if (handler instanceof CCNInterestListener)
 						updatedInterest = ((CCNInterestListener)handler).handleContent(co, interest);
 					else
 						updatedInterest = ((CCNContentHandler)handler).handleContent(co, interest);
@@ -472,13 +465,9 @@ public class CCNNetworkManager implements Runnable {
 					if (null != updatedInterest) {
 						if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 							Log.finer(Log.FAC_NETMANAGER, "Interest callback: updated interest to express: {0}", updatedInterest.name());
-						// luckily we saved the listener
 						// if we want to cancel this one before we get any data, we need to remember the
-						// updated interest in the listener
-						if (null != deprecatedListener)
-							expressInterest(this.owner, updatedInterest, (CCNInterestListener)handler);
-						else
-							expressInterest(this.owner, updatedInterest, (CCNContentHandler)handler);					
+						// updated interest in the handler
+						expressInterest(this.owner, updatedInterest, handler);					
 					}
 				} else {
 					// This is the "get" case
@@ -508,24 +497,20 @@ public class CCNNetworkManager implements Runnable {
 			}
 		}
 
-	} /* protected class InterestRegistration extends ListenerRegistration */
+	} /* protected class InterestRegistration extends CallbackHandlerRegistration */
 
 	/**
 	 * Record of a filter describing portion of namespace for which this 
 	 * application can respond to interests. Used to deliver incoming interests
 	 * to registered interest handlers
 	 */
-	protected class Filter extends ListenerRegistration {
+	protected class Filter extends CallbackHandlerRegistration {
 		protected Interest interest = null; // interest to be delivered
 		// extra interests to be delivered: separating these allows avoidance of ArrayList obj in many cases
 		protected ContentName prefix = null;
 		
 		public Filter(ContentName n, Object h, Object o) {
 			prefix = n; handler = h; owner = o;
-		}
-
-		public Filter(ContentName n, CCNFilterListener l, Object o) {
-			prefix = n; handler = l; deprecatedListener = l; owner = o;
 		}
 
 		/**
@@ -536,7 +521,7 @@ public class CCNNetworkManager implements Runnable {
 				// Call into client code without holding any library locks
 				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 					Log.finer(Log.FAC_NETMANAGER, "Filter callback for: {0}", prefix);
-				if (null != deprecatedListener)
+				if (handler instanceof CCNFilterListener)
 					return ((CCNFilterListener)handler).handleInterest(interest);
 				return ((CCNInterestHandler)handler).handleInterest(interest);
 			} catch (RuntimeException ex) {
@@ -550,7 +535,7 @@ public class CCNNetworkManager implements Runnable {
 		public String toString() {
 			return prefix.toString();
 		}
-	} /* protected class Filter extends ListenerRegistration */
+	} /* protected class Filter extends CallbackHandlerRegistration */
 
 	private class CCNDIdGetter implements Runnable {
 		CCNNetworkManager _networkManager;
@@ -840,28 +825,11 @@ public class CCNNetworkManager implements Runnable {
 	public void expressInterest(
 			Object caller,
 			Interest interest,
-			CCNContentHandler handler) throws IOException {
+			Object handler) throws IOException {
 		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
 		// serving any useful purpose.
 		if (null == handler) {
-			throw new NullPointerException(formatMessage("expressInterest: callbackListener cannot be null"));
-		}		
-
-		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
-			Log.fine(Log.FAC_NETMANAGER, formatMessage("expressInterest: {0}"), interest);
-		InterestRegistration reg = new InterestRegistration(interest, handler, caller);
-		expressInterest(reg);
-	}
-	
-	@Deprecated
-	public void expressInterest(
-			Object caller,
-			Interest interest,
-			CCNInterestListener handler) throws IOException {
-		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
-		// serving any useful purpose.
-		if (null == handler) {
-			throw new NullPointerException(formatMessage("expressInterest: callbackListener cannot be null"));
+			throw new NullPointerException(formatMessage("expressInterest: callbackHandler cannot be null"));
 		}		
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
@@ -872,6 +840,7 @@ public class CCNNetworkManager implements Runnable {
 
 	private void expressInterest(InterestRegistration reg) throws IOException {
 		_stats.increment(StatsEnum.ExpressInterest);
+Log.logStackTrace(Level.SEVERE, new Throwable("test"));
 
 		try {
 			registerInterest(reg);
@@ -888,9 +857,9 @@ public class CCNNetworkManager implements Runnable {
 	 * 
 	 * @param caller 	must not be null
 	 * @param interest
-	 * @param callbackListener
+	 * @param handler
 	 */
-	public void cancelInterest(Object caller, Interest interest, CCNContentHandler handler) {
+	public void cancelInterest(Object caller, Interest interest, Object handler) {
 		if (null == handler) {
 			// TODO - use of "caller" should be reviewed - don't believe this is currently serving
 			// serving any useful purpose.
@@ -903,26 +872,11 @@ public class CCNNetworkManager implements Runnable {
 		// Remove interest from repeated presentation to the network.
 		unregisterInterest(caller, interest, handler);
 	}
-	
-	@Deprecated
-	public void cancelInterest(Object caller, Interest interest, CCNInterestListener listener) {
-		if (null == listener) {
-			// TODO - use of "caller" should be reviewed - don't believe this is currently serving
-			// serving any useful purpose.
-			throw new NullPointerException(formatMessage("cancelInterest: callbackListener cannot be null"));
-		}
-		_stats.increment(StatsEnum.CancelInterest);
-
-		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
-			Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterest: {0}"), interest.name());
-		// Remove interest from repeated presentation to the network.
-		unregisterInterest(caller, interest, listener);
-	}
 
 	/**
 	 * Register a standing interest filter with callback to receive any 
 	 * matching interests seen. Any interests whose prefix completely matches "filter" will
-	 * be delivered to the listener. Also if this filter matches no currently registered
+	 * be delivered to the handler. Also if this filter matches no currently registered
 	 * prefixes, register its prefix with ccnd.
 	 *
 	 * @param caller 	must not be null
@@ -930,20 +884,14 @@ public class CCNNetworkManager implements Runnable {
 	 * @param handler 	a CCNInterestHandler
 	 * @throws IOException 
 	 */
-	public void setInterestFilter(Object caller, ContentName filter, CCNInterestHandler handler) throws IOException {
-		setInterestFilter(caller, filter, handler, null, false);
+	public void setInterestFilter(Object caller, ContentName filter, Object handler) throws IOException {
+		setInterestFilter(caller, filter, handler, null);
 	}
-	
-	@Deprecated
-	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener callbackListener) throws IOException {
-		setInterestFilter(caller, filter, callbackListener, null, true);
-	}
-
 
 	/**
 	 * Register a standing interest filter with callback to receive any 
 	 * matching interests seen. Any interests whose prefix completely matches "filter" will
-	 * be delivered to the listener. Also if this filter matches no currently registered
+	 * be delivered to the handler. Also if this filter matches no currently registered
 	 * prefixes, register its prefix with ccnd.
 	 *
 	 * @param caller 	must not be null
@@ -951,20 +899,9 @@ public class CCNNetworkManager implements Runnable {
 	 * @param callbackHandler a CCNInterestHandler
 	 * @param registrationFlags to use for this registration.
 	 * @throws IOException 
-	 */
-	public void setInterestFilter(Object caller, ContentName filter, CCNInterestHandler callbackHandler,
+	 */	
+	public void setInterestFilter(Object caller, ContentName filter, Object callbackHandler,
 			Integer registrationFlags) throws IOException {
-		setInterestFilter(caller, filter, callbackHandler, registrationFlags, false);
-	}
-	
-	@Deprecated
-	public void setInterestFilter(Object caller, ContentName filter, CCNFilterListener listener,
-			Integer registrationFlags) throws IOException {
-		setInterestFilter(caller, filter, listener, registrationFlags, true);
-	}
-	
-	private void setInterestFilter(Object caller, ContentName filter, Object callbackHandler,
-			Integer registrationFlags, boolean oldListener) throws IOException {
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("setInterestFilter: {0}"), filter);
@@ -1017,10 +954,7 @@ public class CCNNetworkManager implements Runnable {
 		}
 
 		Filter newOne;
-		if (!oldListener)
-			newOne = new Filter(filter, (CCNInterestHandler)callbackHandler, caller);
-		else
-			newOne = new Filter(filter, (CCNFilterListener)callbackHandler, caller);
+		newOne = new Filter(filter, callbackHandler, caller);
 		_myFilters.add(filter, newOne);
 	}
 	
@@ -1075,26 +1009,15 @@ public class CCNNetworkManager implements Runnable {
 	 *
 	 * @param caller 	must not be null
 	 * @param filter	currently registered filter
-	 * @param callbackListener	the CCNFilterListener registered to it
+	 * @param handler	the handler registered to it
 	 */
-    public void cancelInterestFilter(Object caller, ContentName filter, CCNInterestHandler handler) {
-    	cancelInterestFilter(caller, filter, handler, false);
-    }
-    
-    public void cancelInterestFilter(Object caller, ContentName filter, CCNFilterListener listener) {
-    	cancelInterestFilter(caller, filter, listener, true);
-    }
-    
-	private void cancelInterestFilter(Object caller, ContentName filter, Object handler, boolean oldListener) {
+	public void cancelInterestFilter(Object caller, ContentName filter, Object handler) {
 		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
 		// serving any useful purpose.
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter: {0}"), filter);
 		Filter newOne;
-		if (oldListener)
-			newOne = new Filter(filter, (CCNFilterListener)handler, caller);
-		else
-			newOne = new Filter(filter, handler, caller);
+		newOne = new Filter(filter, handler, caller);
 		Entry<Filter> found = null;
 		found = _myFilters.remove(filter, newOne);
 		if (null != found) {
@@ -1239,16 +1162,11 @@ public class CCNNetworkManager implements Runnable {
 		return reg;
 	}
 
-	private void unregisterInterest(Object caller, Interest interest, CCNContentHandler handler) {
+	private void unregisterInterest(Object caller, Interest interest, Object handler) {
 		InterestRegistration reg = new InterestRegistration(interest, handler, caller);
 		unregisterInterest(reg);
 	}
 	
-	private void unregisterInterest(Object caller, Interest interest, CCNInterestListener listener) {
-		InterestRegistration reg = new InterestRegistration(interest, listener, caller);
-		unregisterInterest(reg);
-	}
-
 	/**
 	 * @param reg - registration to unregister
 	 */
@@ -1314,13 +1232,13 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/**
-	 * Internal delivery of interests to pending filter listeners
+	 * Internal delivery of interests to pending filter handlers
 	 * @param ireg
 	 */
 	protected void deliverInterest(InterestRegistration ireg, Interest interest) {
 		_stats.increment(StatsEnum.DeliverInterest);
 
-		// Call any listeners with matching filters
+		// Call any handlers with matching filters
 		for (Filter filter : _myFilters.getValues(ireg.interest.name())) {
 			if (filter.owner != ireg.owner) {
 				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
