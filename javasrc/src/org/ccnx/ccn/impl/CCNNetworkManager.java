@@ -840,8 +840,6 @@ public class CCNNetworkManager implements Runnable {
 
 	private void expressInterest(InterestRegistration reg) throws IOException {
 		_stats.increment(StatsEnum.ExpressInterest);
-Log.logStackTrace(Level.SEVERE, new Throwable("test"));
-
 		try {
 			registerInterest(reg);
 			write(reg.interest);

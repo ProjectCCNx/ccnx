@@ -23,6 +23,7 @@ import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -152,8 +153,13 @@ public class AssertionCCNHandle extends CCNHandle {
 	 * @throws InterruptedException
 	 */
 	public void checkError(long timeout) throws Error, InterruptedException {
-		synchronized (this) {
-			wait(timeout);
+		if (timeout > 0 || timeout == SystemConfiguration.NO_TIMEOUT) {
+			synchronized (this) {
+				if (timeout == SystemConfiguration.NO_TIMEOUT)
+					wait();
+				else
+					wait(timeout);
+			}
 		}
 		if (null != _error)
 			throw _error;
