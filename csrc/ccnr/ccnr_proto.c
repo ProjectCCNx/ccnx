@@ -307,7 +307,8 @@ r_proto_deactivate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *p
 PUBLIC int
 r_proto_append_repo_info(struct ccnr_handle *ccnr,
                          struct ccn_charbuf *rinfo,
-                         struct ccn_charbuf *names) {
+                         struct ccn_charbuf *names,
+                         const char *info) {
     int res;
     struct ccn_charbuf *name = ccn_charbuf_create();
     if (name == NULL) return (-1);
@@ -321,9 +322,10 @@ r_proto_append_repo_info(struct ccnr_handle *ccnr,
     res |= ccn_name_from_uri(name, (char *)ccnr->parsed_policy->store->buf + ccnr->parsed_policy->global_prefix_offset);
     res |= ccn_name_append_components(rinfo, name->buf, 1, name->length - 1);
     res |= ccnb_tagged_putf(rinfo, CCN_DTAG_LocalName, "%s", "Repository");
-    if (names != NULL) {
+    if (names != NULL)
         res |= ccn_charbuf_append_charbuf(rinfo, names);
-    }
+    if (info != NULL)
+        res |= ccnb_tagged_putf(rinfo, CCN_DTAG_InfoString, "%s", info);
     // There is an optional CCN_DTAG_InfoString in the encoding here, like the LocalName
     res |= ccnb_element_end(rinfo); // CCN_DTAG_RepositoryInfo
     ccn_charbuf_destroy(&name);
@@ -553,7 +555,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     ccn_charbuf_append_closer(name);
     msg = ccn_charbuf_create();
     reply_body = ccn_charbuf_create();
-    r_proto_append_repo_info(ccnr, reply_body, NULL);
+    r_proto_append_repo_info(ccnr, reply_body, NULL, NULL);
     sp.freshness = 12; /* seconds */
     res = ccn_sign_content(info->h, msg, name, &sp,
                            reply_body->buf, reply_body->length);
@@ -671,7 +673,7 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     /* Generate our reply */
     msg = ccn_charbuf_create();
     reply_body = ccn_charbuf_create();
-    r_proto_append_repo_info(ccnr, reply_body, name);
+    r_proto_append_repo_info(ccnr, reply_body, name, NULL);
     start = info->pi->offset[CCN_PI_B_Name];
     end = info->interest_comps->buf[info->pi->prefix_comps];
     name->length = 0;
@@ -989,58 +991,105 @@ r_proto_bulk_import(struct ccn_closure *selfp,
                           struct ccn_upcall_info *info,
                           int marker_comp)
 {
+    enum ccn_upcall_res ans = CCN_UPCALL_RESULT_ERR;
     struct ccnr_handle *ccnr = NULL;
     struct ccn_charbuf *filename = NULL;
-    const unsigned char *start = NULL;
-    size_t length;
+    struct ccn_charbuf *filename2 = NULL;
+    const unsigned char *mstart = NULL;
+    size_t mlength;
+    struct ccn_indexbuf *ic = NULL;
+    struct ccn_charbuf *msg = NULL;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *reply_body = NULL;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    const char *infostring = "OK";
     int res;
     
     ccnr = (struct ccnr_handle *)selfp->data;
     ccn_name_comp_get(info->interest_ccnb, info->interest_comps, marker_comp,
-                      &start, &length);
-    if (length <= strlen(REPO_AF) + 1 || start[strlen(REPO_AF)] != '~') {
-        ccnr_msg(ccnr, "r_proto_bulk_import: missing or malformed name component");
-        goto Bail;
+                      &mstart, &mlength);
+    if (mlength <= strlen(REPO_AF) + 1 || mstart[strlen(REPO_AF)] != '~') {
+        infostring = "missing or malformed bulk import name component";
+        ccnr_msg(ccnr, "r_proto_bulk_import: %s", infostring);
+        goto Reply;
     }
-    start += strlen(REPO_AF) + 1;
-    length -= (strlen(REPO_AF) + 1);
-    if (memchr(start, '/', length) != NULL) {
-        ccnr_msg(ccnr, "r_proto_bulk_import: filename must not include directory");
-        goto Bail;
+    mstart += strlen(REPO_AF) + 1;
+    mlength -= (strlen(REPO_AF) + 1);
+    if (memchr(mstart, '/', mlength) != NULL) {
+        infostring = "bulk import filename must not include directory";
+        ccnr_msg(ccnr, "r_proto_bulk_import: %s", infostring);
+        goto Reply;
     }
     filename = ccn_charbuf_create();
     ccn_charbuf_append_string(filename, "import/");
-    ccn_charbuf_append(filename, start, length);
-    ccnr_msg(ccnr, "r_proto_bulk_import: file name is <%s>",
-             ccn_charbuf_as_string(filename));
-    
+    ccn_charbuf_append(filename, mstart, mlength);
     res = r_init_map_and_process_file(ccnr, filename, 0);
     if (res == 1) {
-        ccnr_msg(ccnr, "r_proto_bulk_import: unable to open %s",
-                 ccn_charbuf_as_string(filename));
-        goto Bail;
+        infostring = "unable to open bulk import file";
+        ccnr_msg(ccnr, "r_proto_bulk_import: %s", infostring);
+        goto Reply;
     }
     if (res < 0) {
-        ccnr_msg(ccnr, "Error parsing repository file %s", ccn_charbuf_as_string(filename));
-        goto Bail;
+        infostring = "error parsing bulk import file";
+        ccnr_msg(ccnr, "r_proto_bulk_import: %s", infostring);
+        goto Reply;
     }
-    res = r_init_map_and_process_file(ccnr, filename, 1);
-    if (res < 0) {
-        ccnr_msg(ccnr, "Error in phase 2 importing repository file %s", ccn_charbuf_as_string(filename));
-        goto Bail;
-    }
+    /* we think we can process it */
     filename->length = 0;
     ccn_charbuf_putf(filename, "%s/import/", ccnr->directory);
-    ccn_charbuf_append(filename, start, length);
-    ccnr_msg(ccnr, "unlinking %s", ccn_charbuf_as_string(filename));   
-    unlink(ccn_charbuf_as_string(filename));
-    
-    unlink(ccn_charbuf_as_string(filename));
-    return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
+    ccn_charbuf_append(filename, mstart, mlength);
+    filename2 = ccn_charbuf_create();
+    ccn_charbuf_putf(filename2, "%s/import/.", ccnr->directory);
+    ccn_charbuf_append(filename2, mstart, mlength);
+    res = rename(ccn_charbuf_as_string(filename),
+                 ccn_charbuf_as_string(filename2));
+    if (res < 0) {
+        infostring = "error renaming bulk import file";
+        ccnr_msg(ccnr, "r_proto_bulk_import: %s", infostring);
+        goto Reply;        
+    }
+    filename->length = 0;
+    ccn_charbuf_append_string(filename, "import/.");
+    ccn_charbuf_append(filename, mstart, mlength);
+    res = r_init_map_and_process_file(ccnr, filename, 1);
+    if (res < 0) {
+        infostring = "error merging bulk import file";
+        ccnr_msg(ccnr, "r_proto_bulk_import: %s", infostring);
+        // fall through and unlink anyway
+    }
+    ccnr_msg(ccnr, "unlinking %s", ccn_charbuf_as_string(filename2));   
+    unlink(ccn_charbuf_as_string(filename2));
+
+Reply:
+    /* Generate our reply */
+    name = ccn_charbuf_create();
+    ccn_name_init(name);
+    ic = info->interest_comps;
+    ccn_name_append_components(name, info->interest_ccnb, ic->buf[0], ic->buf[ic->n - 1]);
+
+    msg = ccn_charbuf_create();
+    reply_body = ccn_charbuf_create();
+    r_proto_append_repo_info(ccnr, reply_body, NULL, infostring);
+    sp.freshness = 12; /* Seconds */
+    res = ccn_sign_content(info->h, msg, name, &sp,
+                           reply_body->buf, reply_body->length);
+    if (res < 0)
+        goto Bail;
+    res = ccn_put(info->h, msg->buf, msg->length);
+    if (res < 0) {
+        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_bulk_import ccn_put FAILED", NULL,
+                        msg->buf, msg->length);
+        goto Bail;
+    }
+    ans = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
 
 Bail:
     if (filename != NULL) ccn_charbuf_destroy(&filename);
-    return(CCN_UPCALL_RESULT_ERR);
+    if (filename2 != NULL) ccn_charbuf_destroy(&filename2);
+    if (name != NULL) ccn_charbuf_destroy(&name);
+    if (msg != NULL) ccn_charbuf_destroy(&msg);
+    if (reply_body != NULL) ccn_charbuf_destroy(&reply_body);
+    return (ans);
 }
 
 /* Construct a charbuf with an encoding of a Policy object 

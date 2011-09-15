@@ -315,7 +315,7 @@ ccnr_answer_req(struct ccn_closure *selfp,
             break;
         case OP_POLICY:
             reply_body = ccn_charbuf_create();
-            r_proto_append_repo_info(ccnr, reply_body, NULL);
+            r_proto_append_repo_info(ccnr, reply_body, NULL, NULL);
             break;
         default:
             goto Bail;
