@@ -111,7 +111,7 @@ struct ccn_btree {
     struct hashtb *resident;    /**< of ccn_btree_node, by nodeid */
     ccn_btnodeid nextsplit;     /**< oversize node that needs splitting */
     ccn_btnodeid missedsplit;   /**< should stay zero */
-    int errors;                 /**< counts detected errors */
+    int errors;                 /**< counter for detected errors */
     /* tunables */
     int full;                   /**< split internal nodes bigger than this */
 };
@@ -247,9 +247,13 @@ int ccn_btree_chknode(struct ccn_btree_node *node);
 struct ccn_btree *ccn_btree_create(void);
 int ccn_btree_destroy(struct ccn_btree **);
 
+/* Record an error */
+void ccn_btree_note_error(struct ccn_btree *bt, int info);
+
 /* Access a node, creating or reading it if necessary */
 struct ccn_btree_node *ccn_btree_getnode(struct ccn_btree *bt,
-                                         ccn_btnodeid nodeid);
+                                         ccn_btnodeid nodeid,
+                                         ccn_btnodeid parentid);
 
 /* Get a node handle if it is already resident */
 struct ccn_btree_node *ccn_btree_rnode(struct ccn_btree *bt,

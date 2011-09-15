@@ -401,9 +401,9 @@ test_btree_init(void)
     
     btree = ccn_btree_create();
     CHKPTR(btree);
-    node0 = ccn_btree_getnode(btree, 0);
+    node0 = ccn_btree_getnode(btree, 0, 0);
     CHKPTR(node0);
-    node1 = ccn_btree_getnode(btree, 1);
+    node1 = ccn_btree_getnode(btree, 1, 0);
     FAILIF(node0 == node1);
     FAILIF(hashtb_n(btree->resident) != 2);
     node = ccn_btree_rnode(btree, 0);
@@ -427,17 +427,17 @@ example_btree_small(void)
 
     btree = ccn_btree_create();
     CHKPTR(btree);
-    leaf = ccn_btree_getnode(btree, 2);
+    leaf = ccn_btree_getnode(btree, 2, 0);
     CHKPTR(leaf);
     ccn_charbuf_append(leaf->buf, &ex1, sizeof(ex1));
     res = ccn_btree_chknode(leaf);
     CHKSYS(res);
-    leaf = ccn_btree_getnode(btree, 3);
+    leaf = ccn_btree_getnode(btree, 3, 0);
     CHKPTR(leaf);
     ccn_charbuf_append(leaf->buf, &ex2, sizeof(ex2));
     res = ccn_btree_chknode(leaf);
     CHKSYS(res);
-    root = ccn_btree_getnode(btree, 1);
+    root = ccn_btree_getnode(btree, 1, 0);
     CHKPTR(root);
     ccn_charbuf_append(root->buf, &rootex1, sizeof(rootex1));
     res = ccn_btree_chknode(root);
@@ -568,7 +568,7 @@ test_btree_inserts_from_stdin(void)
     btree = ccn_btree_create();
     CHKPTR(btree);
     FAILIF(btree->nextnodeid != 1);
-    node = ccn_btree_getnode(btree, btree->nextnodeid++);
+    node = ccn_btree_getnode(btree, btree->nextnodeid++, 0);
     CHKPTR(node);
     res = ccn_btree_init_node(node, 0, 'R', 0);
     CHKPTR(node);
@@ -835,7 +835,7 @@ test_insert_content(void)
     btree = ccn_btree_create();
     CHKPTR(btree);
     FAILIF(btree->nextnodeid != 1);
-    node = ccn_btree_getnode(btree, btree->nextnodeid++);
+    node = ccn_btree_getnode(btree, btree->nextnodeid++, 0);
     CHKPTR(node);
     res = ccn_btree_init_node(node, 0, 'R', 0);
     CHKPTR(node);

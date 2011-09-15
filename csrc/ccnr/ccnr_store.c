@@ -408,6 +408,8 @@ r_store_init(struct ccnr_handle *h)
     struct ccn_btree *btree = NULL;
     struct ccn_btree_node *node = NULL;
     struct hashtb_param param = {0};
+    int i;
+    int j;
     int res;
     struct ccn_charbuf *path = NULL;
     struct ccn_charbuf *msgs = NULL;
@@ -439,7 +441,7 @@ r_store_init(struct ccnr_handle *h)
         if (btree->io == NULL)
             r_init_fail(h, __LINE__, ccn_charbuf_as_string(path), res);
     }
-    node = ccn_btree_getnode(btree, 1);
+    node = ccn_btree_getnode(btree, 1, 0);
     if (btree->io != NULL)
         btree->nextnodeid = btree->io->maxnodeid + 1;
     CHKPTR(node);
@@ -459,21 +461,32 @@ r_store_init(struct ccnr_handle *h)
         ccn_btree_init_node(node, 0, 'R', 0);
         node = NULL;
         ccn_btree_destroy(&h->btree);
-        h->btree = btree = ccn_btree_create();
         path = ccn_charbuf_create();
+        /* Remove old index files to avoid confusion */
+        for (i = 1, j = 0; i > 0 && j < 3; i++) {
+            path->length = 0;
+            res = ccn_charbuf_putf(path, "%s/index/%d", h->directory, i);
+            if (res >= 0)
+                res = unlink(ccn_charbuf_as_string(path));
+            if (res < 0)
+                j++;
+        }
+        h->btree = btree = ccn_btree_create();
+        path->length = 0;
         ccn_charbuf_putf(path, "%s/index", h->directory);
         btree->io = ccn_btree_io_from_directory(ccn_charbuf_as_string(path), msgs);
         CHKPTR(btree->io);
         btree->io->maxnodeid = 0;
         btree->nextnodeid = 1;
-        node = ccn_btree_getnode(btree, 1);
+        node = ccn_btree_getnode(btree, 1, 0);
         btree->nextnodeid = btree->io->maxnodeid + 1;
         ccn_btree_init_node(node, 0, 'R', 0);
         h->stable = 0;
         h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
     }
     res = ccn_btree_check(btree, NULL);
-    CHKSYS(res);
+    if (res < 0)
+        r_init_fail(h, __LINE__, "index is corrupt", res);
     btree->full = 1999;
 }
 
@@ -483,7 +496,7 @@ r_store_final(struct ccnr_handle *h) {
     
     res = ccn_btree_destroy(&h->btree);
     if (res < 0)
-        ccnr_msg(h, "r_store_final.%d Errors while closing index", __LINE__);
+        ccnr_msg(h, "r_store_final.%d-%d Errors while closing index", __LINE__, res);
     if (res >= 0)
         res = r_store_write_stable_point(h);
     return(res);
@@ -704,7 +717,7 @@ r_store_content_btree_insert(struct ccnr_handle *h,
             res = ccn_btree_split(btree, leaf);
             for (limit = 100; res >= 0 && btree->nextsplit != 0; limit--) {
                 if (limit == 0) abort();
-                node = ccn_btree_getnode(btree, btree->nextsplit);
+                node = ccn_btree_getnode(btree, btree->nextsplit, 0);
                 if (node == NULL)
                     return(-1);
                 res = ccn_btree_split(btree, node);
