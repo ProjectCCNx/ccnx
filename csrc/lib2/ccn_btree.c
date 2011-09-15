@@ -18,6 +18,7 @@
  */
  
 #include <sys/types.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -310,8 +311,6 @@ ccn_btree_compare(const unsigned char *key,
     return(size > ksiz);
 }
 
-// #include <stdio.h>
-
 /**
  * Search the node for the given key
  *
@@ -562,7 +561,11 @@ ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
     return(n + 1);
 }
 
-#include <stdio.h>
+#if 0
+#define MSG(fmt, ...) fprintf(stderr, fmt "\n", __VA_ARGS__)
+#else
+#define MSG(fmt, ...) ((void)0)
+#endif
 
 /**
  *  Given an old root, add a level to the tree to prepare for a split.
@@ -597,9 +600,9 @@ ccn_btree_grow_a_level(struct ccn_btree *btree, struct ccn_btree_node *node)
     if (res < 0)
         btree->errors++;
     child->parent = node->nodeid;
-    if (0) printf("New root %u at level %d over node %u (%d errors)\n",
-                  (unsigned)node->nodeid, level + 1,
-                  (unsigned)child->nodeid, btree->errors);
+    MSG("New root %u at level %d over node %u (%d errors)",
+        (unsigned)node->nodeid, level + 1,
+        (unsigned)child->nodeid, btree->errors);
     return(child);
 }
 
@@ -609,6 +612,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     int i, j, k, n, pb, res;
     struct ccn_btree_node newnode = {};
     struct ccn_btree_node *a[2] = {NULL, NULL};
+    struct ccn_btree_node *chld = NULL;
     struct ccn_btree_node *parent = NULL;
     void *payload = NULL;
     struct ccn_charbuf *key = NULL;
@@ -635,8 +639,8 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         return(node->corrupt = __LINE__, -1);
     pb = ccn_btree_node_payloadsize(node);
     level = ccn_btree_node_level(node);
-    if (0) printf("Splitting %d entries of node %u, child of %u\n", n,
-                  (unsigned)node->nodeid, (unsigned)node->parent);
+    MSG("Splitting %d entries of node %u, child of %u", n,
+        (unsigned)node->nodeid, (unsigned)node->parent);
     /* Create two new nodes to hold the split-up content */
     /* One of these is temporary, and will get swapped in for original node */
     newnode.buf = ccn_charbuf_create();
@@ -664,16 +668,32 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         if (i == n / 2) {
             k = 1; j = 0; /* switch to second half */
             if (level > 0)
-                 key->length = 0; /* internal nodes need one fewer key */
+                key->length = 0; /* internal nodes need one fewer key */
         }
         payload = ccn_btree_node_getentry(pb, node, i);
         if (res < 0 || payload == NULL)
             goto Bail;
         res = ccn_btree_insert_entry(a[k], j, key->buf, key->length, payload, pb);
-        if (0) printf("Splitting [%u %d] into [%u %d] (res = %d)\n",
-                      (unsigned)node->nodeid, i, (unsigned)a[k]->nodeid, j, res);
+        MSG("Splitting [%u %d] into [%u %d] (res = %d)",
+            (unsigned)node->nodeid, i, (unsigned)a[k]->nodeid, j, res);
         if (res < 0)
             goto Bail;
+        if (level > 0) {
+            /* Fix up the cached parent pointer if necessary */
+            chld = NULL;
+            olink = payload;
+            if (MYFETCH(olink, magic) == CCN_BT_INTERNAL_MAGIC)
+                chld = ccn_btree_rnode(btree, MYFETCH(olink, child));
+            if (chld != NULL) {
+                if (chld->parent != a[k]->nodeid) {
+                    MSG("Parent of %u changed from %u to %u",
+                        (unsigned)chld->nodeid,
+                        (unsigned)chld->parent,
+                        (unsigned)a[k]->nodeid);
+                }
+                chld->parent = a[k]->nodeid;
+            }
+        }
     }
     /* Link the new node into the parent */
     res = ccn_btree_key_fetch(key, node, n / 2); /* Splitting key. */
@@ -688,9 +708,8 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     res = ccn_btree_searchnode(key->buf, key->length, parent);
     if (res < 0)
         goto Bail;
-    if (CCN_BT_SRCH_FOUND(res) && key->length != 0) {
+    if (CCN_BT_SRCH_FOUND(res) && key->length != 0)
         goto Bail;
-    }
     i = CCN_BT_SRCH_INDEX(res);
     olink = ccn_btree_node_getentry(sizeof(link), parent, i - 1);
     if (olink == NULL || MYFETCH(olink, child) != a[0]->nodeid) {
@@ -724,6 +743,7 @@ Bail:
     btree->errors++;
     return(-1);
 }
+#undef MSG
 
 /**
  * Find the leaf that comes after the given node
@@ -1148,7 +1168,7 @@ ccn_charbuf_append_escaped(struct ccn_charbuf *dst, struct ccn_charbuf *src)
     }
 }
 
-#define MSG(fmt, ...) if (outfp != NULL) fprintf(stderr, fmt "\n", __VA_ARGS__)
+#define MSG(fmt, ...) if (outfp != NULL) fprintf(outfp, fmt "\n", __VA_ARGS__)
 
 /**
  *  Check the structure of the btree for consistency.
@@ -1264,9 +1284,10 @@ ccn_btree_check(struct ccn_btree *btree, FILE *outfp) {
                 child = ccn_btree_getnode(btree, MYFETCH(e, child));
                 if (child == NULL) goto Bail;
                 if (child->parent != node->nodeid) {
-                    /* Not really an error, since after a non-leaf split this pointer is not updated. */
-                    MSG("%%W child->parent != node->nodeid (%u!=%u)",
+                    /* This is an error, but we can repair it */
+                    MSG("%%E child->parent != node->nodeid (%u!=%u)",
                         (unsigned)child->parent, (unsigned)node->nodeid);
+                    btree->errors++;
                     child->parent = node->nodeid;
                 }
                 node = child;
