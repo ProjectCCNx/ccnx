@@ -285,8 +285,8 @@ r_init_destroy(struct ccnr_handle **pccnr)
     *pccnr = NULL;
 }
 
-static int
-map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename, int add_content)
+int
+r_init_map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename, int add_content)
 {
     int res = 0;
     int dres;
@@ -357,7 +357,7 @@ merge_files(struct ccnr_handle *h)
     for (i = 2;; i++) {
         filename->length = 0;
         ccn_charbuf_putf(filename, "repoFile%d", i);
-        res = map_and_process_file(h, filename, 0);
+        res = r_init_map_and_process_file(h, filename, 0);
         if (res == 1)
             break;
         if (res < 0) {
@@ -370,7 +370,7 @@ merge_files(struct ccnr_handle *h)
     for (i = 2; i <= last_file; i++) {
         filename->length = 0;
         ccn_charbuf_putf(filename, "repoFile%d", i);
-        res = map_and_process_file(h, filename, 1);
+        res = r_init_map_and_process_file(h, filename, 1);
         if (res < 0) {
             ccnr_msg(h, "Error in phase 2 incorporating repository file %s", ccn_charbuf_as_string(filename));
              return (-1);

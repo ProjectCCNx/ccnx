@@ -43,6 +43,7 @@
 
 #include "ccnr_dispatch.h"
 #include "ccnr_forwarding.h"
+#include "ccnr_init.h"
 #include "ccnr_io.h"
 #include "ccnr_msg.h"
 #include "ccnr_sendq.h"
@@ -988,6 +989,57 @@ r_proto_bulk_import(struct ccn_closure *selfp,
                           struct ccn_upcall_info *info,
                           int marker_comp)
 {
+    struct ccnr_handle *ccnr = NULL;
+    struct ccn_charbuf *filename = NULL;
+    const unsigned char *start = NULL;
+    size_t length;
+    int res;
+    
+    ccnr = (struct ccnr_handle *)selfp->data;
+    ccn_name_comp_get(info->interest_ccnb, info->interest_comps, marker_comp,
+                      &start, &length);
+    if (length <= strlen(REPO_AF) + 1 || start[strlen(REPO_AF)] != '~') {
+        ccnr_msg(ccnr, "r_proto_bulk_import: missing or malformed name component");
+        goto Bail;
+    }
+    start += strlen(REPO_AF) + 1;
+    length -= (strlen(REPO_AF) + 1);
+    if (memchr(start, '/', length) != NULL) {
+        ccnr_msg(ccnr, "r_proto_bulk_import: filename must not include directory");
+        goto Bail;
+    }
+    filename = ccn_charbuf_create();
+    ccn_charbuf_append_string(filename, "import/");
+    ccn_charbuf_append(filename, start, length);
+    ccnr_msg(ccnr, "r_proto_bulk_import: file name is <%s>",
+             ccn_charbuf_as_string(filename));
+    
+    res = r_init_map_and_process_file(ccnr, filename, 0);
+    if (res == 1) {
+        ccnr_msg(ccnr, "r_proto_bulk_import: unable to open %s",
+                 ccn_charbuf_as_string(filename));
+        goto Bail;
+    }
+    if (res < 0) {
+        ccnr_msg(ccnr, "Error parsing repository file %s", ccn_charbuf_as_string(filename));
+        goto Bail;
+    }
+    res = r_init_map_and_process_file(ccnr, filename, 1);
+    if (res < 0) {
+        ccnr_msg(ccnr, "Error in phase 2 importing repository file %s", ccn_charbuf_as_string(filename));
+        goto Bail;
+    }
+    filename->length = 0;
+    ccn_charbuf_putf(filename, "%s/import/", ccnr->directory);
+    ccn_charbuf_append(filename, start, length);
+    ccnr_msg(ccnr, "unlinking %s", ccn_charbuf_as_string(filename));   
+    unlink(ccn_charbuf_as_string(filename));
+    
+    unlink(ccn_charbuf_as_string(filename));
+    return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
+
+Bail:
+    if (filename != NULL) ccn_charbuf_destroy(&filename);
     return(CCN_UPCALL_RESULT_ERR);
 }
 
