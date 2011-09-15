@@ -49,7 +49,8 @@ void r_proto_uri_listen(struct ccnr_handle *ccnr, struct ccn *ccn, const char *u
                         ccn_handler p, intptr_t intdata);
 int r_proto_append_repo_info(struct ccnr_handle *ccnr,
                              struct ccn_charbuf *rinfo,
-                             struct ccn_charbuf *names);
+                             struct ccn_charbuf *names,
+                             const char *info);
 int r_proto_policy_append_basic(struct ccnr_handle *ccnr,
                                 struct ccn_charbuf *policy,
                                 const char *version, const char *local_name,

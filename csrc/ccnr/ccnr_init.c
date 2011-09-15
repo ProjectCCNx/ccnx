@@ -291,7 +291,7 @@ r_init_map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename,
     int res = 0;
     int dres;
     struct stat statbuf;
-    unsigned char *mapped_file;
+    unsigned char *mapped_file = MAP_FAILED;
     unsigned char *msg;
     size_t size;
     int fd = -1;
@@ -310,6 +310,9 @@ r_init_map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename,
         res = -errno;
         goto Bail;
     }
+    if (statbuf.st_size == 0)
+        goto Bail;
+
     mapped_file = mmap(NULL, statbuf.st_size, PROT_READ, MAP_FILE | MAP_SHARED, fd, 0);
     if (mapped_file == MAP_FAILED) {
         ccnr_msg(h, "mmap failed for %s (fd=%d), %s (errno=%d)",
