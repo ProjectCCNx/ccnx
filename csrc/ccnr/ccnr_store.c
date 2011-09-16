@@ -456,7 +456,7 @@ r_store_init(struct ccnr_handle *h)
     h->active_in_fd = -1;
     h->active_out_fd = r_io_open_repo_data_file(h, "repoFile1", 1); /* output */
     offset = lseek(h->active_out_fd, 0, SEEK_END);
-    if (offset != h->stable) {
+    if (offset != h->stable || node->corrupt != 0) {
         ccnr_msg(h, "Index not current - resetting");
         ccn_btree_init_node(node, 0, 'R', 0);
         node = NULL;
@@ -484,9 +484,12 @@ r_store_init(struct ccnr_handle *h)
         h->stable = 0;
         h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
     }
-    res = ccn_btree_check(btree, NULL);
-    if (res < 0)
-        r_init_fail(h, __LINE__, "index is corrupt", res);
+    if (CCNSHOULDLOG(h, weuyg, CCNL_FINEST)) {
+        res = ccn_btree_check(btree, NULL);
+        ccnr_msg(h, "ccn_btree_check returned %d", res);
+        if (res < 0)
+            r_init_fail(h, __LINE__, "index is corrupt", res);
+    }
     btree->full = 1999;
 }
 
