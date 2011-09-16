@@ -81,7 +81,7 @@ ccnr_init.o: ccnr_init.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../ccnr/ccnr_private.h ../include/ccn/seqwriter.h ../sync/SyncMacros.h \
   ccnr_private.h ccnr_init.h ccnr_dispatch.h ccnr_forwarding.h \
   ccnr_internal_client.h ccnr_io.h ccnr_msg.h ccnr_net.h ccnr_proto.h \
-  ccnr_store.h ccnr_util.h
+  ccnr_sendq.h ccnr_store.h ccnr_util.h
 ccnr_internal_client.o: ccnr_internal_client.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
@@ -156,9 +156,9 @@ ccnr_store.o: ccnr_store.c ../include/ccn/bloom.h ../ccn/btree_content.h \
   ../include/ccn/ccn_private.h ../include/ccn/face_mgmt.h \
   ../include/ccn/sockcreate.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
-  ../include/ccn/seqwriter.h ccnr_stats.h ccnr_store.h ccnr_link.h \
-  ccnr_util.h ccnr_proto.h ccnr_msg.h ccnr_sync.h ccnr_match.h \
-  ccnr_sendq.h ccnr_io.h
+  ../include/ccn/seqwriter.h ccnr_stats.h ccnr_store.h ccnr_init.h \
+  ccnr_link.h ccnr_util.h ccnr_proto.h ccnr_msg.h ccnr_sync.h \
+  ccnr_match.h ccnr_sendq.h ccnr_io.h
 ccnr_sync.o: ccnr_sync.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/schedule.h ../sync/SyncBase.h ../include/ccn/uri.h \
