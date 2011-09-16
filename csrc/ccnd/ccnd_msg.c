@@ -5,7 +5,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -98,29 +98,33 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
     size_t nonce_size = 0;
     size_t i;
     
-    
     if (h != NULL && h->debug == 0)
         return;
-    c = ccn_charbuf_create();
-    ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
-    if (face != NULL)
-        ccn_charbuf_putf(c, "%u ", face->faceid);
-    ccn_uri_append(c, ccnb, ccnb_size, 1);
-    ccn_charbuf_putf(c, " (%u bytes)", (unsigned)ccnb_size);
     if (ccn_parse_interest(ccnb, ccnb_size, &pi, NULL) >= 0) {
-        const char *p = "";
         ccn_ref_tagged_BLOB(CCN_DTAG_Nonce, ccnb,
                   pi.offset[CCN_PI_B_Nonce],
                   pi.offset[CCN_PI_E_Nonce],
                   &nonce,
                   &nonce_size);
-        if (nonce_size > 0) {
-            ccn_charbuf_putf(c, " ");
-            if (nonce_size == 12)
-                p = "CCC-P-F-T-NN";
-            for (i = 0; i < nonce_size; i++)
-                ccn_charbuf_putf(c, "%s%02X", (*p) && (*p++)=='-' ? "-" : "", nonce[i]);
-        }
+    }
+    else
+        pi.scope = -1;
+    c = ccn_charbuf_create();
+    ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
+    if (face != NULL)
+        ccn_charbuf_putf(c, "%u ", face->faceid);
+    ccn_uri_append(c, ccnb, ccnb_size, 1);
+    ccn_charbuf_putf(c, " (%u bytes", (unsigned)ccnb_size);
+    if (pi.scope != -1)
+        ccn_charbuf_putf(c, ",scope=%d", pi.scope);
+    ccn_charbuf_putf(c, ")");
+    if (nonce_size > 0) {
+        const char *p = "";
+        ccn_charbuf_putf(c, " ");
+        if (nonce_size == 12)
+            p = "CCC-P-F-T-NN";
+        for (i = 0; i < nonce_size; i++)
+            ccn_charbuf_putf(c, "%s%02X", (*p) && (*p++)=='-' ? "-" : "", nonce[i]);
     }
     ccnd_msg(h, "%s", ccn_charbuf_as_string(c));
     ccn_charbuf_destroy(&c);

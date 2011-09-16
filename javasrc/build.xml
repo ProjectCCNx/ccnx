@@ -90,7 +90,7 @@
 		<doxygen configFilename="Doxyfile"/>
 	</target>
 
-	<target name="compile">
+	<target name="compile" depends="init">
 		<mkdir dir="${build}"/>
 		<depend srcdir="src" destdir="${build}" closure="yes"/>
 		<javac destdir="${build}"
@@ -300,7 +300,7 @@
 		<sleep seconds="1"/>
 	</target>
 
-	<target name="run-test-repov2" if="${repo2}">
+	<target name="run-test-repov2" depends="jar" if="${repo2}">
 		<echo message="Running repo version 2"/>
         		<mkdir dir="${REPO_ROOT}"/>
                 <exec executable="${ccnr}" dir="${REPO_ROOT}" output="${testout}/TEST-repo-daemon.txt" failonerror="true">
@@ -314,7 +314,7 @@
 	<!-- test is for running all current automated tests to validate code 
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
-	<target name="test" depends="test-repo, test-protocol, test-impl, test-io, test-endtoend">
+	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, test-endtoend">
 	</target>
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
@@ -971,6 +971,17 @@
                      <path refid="classpath-run"/>
                    </classpath>
         </java>
+	</target>
+	
+	<target name="init">
+		<echo message="Verifying Ant version is at least 1.8.0" />
+		<fail message="Ant version is less than version 1.8.0, exiting.  Please upgrade your version of Ant.">
+			<condition>
+  				<not>
+    				<antversion property="antversion" atleast="1.8.0"/>
+  				</not>
+			</condition>
+		</fail>
 	</target>
 </project>
 

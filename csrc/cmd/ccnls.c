@@ -147,12 +147,9 @@ incoming_content(
     }
     comp = NULL;
     ccn_charbuf_append_closer(templ); /* </Exclude> */
+    ccnb_tagged_putf(templ, CCN_DTAG_AnswerOriginKind, "%d", CCN_AOK_CS);
     if (data->scope > -1)
        ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", data->scope);
-    ccn_charbuf_append_tt(templ, CCN_DTAG_AnswerOriginKind, CCN_DTAG);
-    ccn_charbuf_append_tt(templ, 1, CCN_UDATA);
-    ccn_charbuf_append(templ, "1", 1);
-    ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
     ccn_charbuf_append_closer(templ); /* </Interest> */
     if (templ->length > data->warn) {
         fprintf(stderr, "*** Interest packet is %d bytes\n", (int)templ->length);
@@ -181,6 +178,7 @@ main(int argc, char **argv)
 {
     struct ccn *ccn = NULL;
     struct ccn_charbuf *c = NULL;
+    struct ccn_charbuf *templ = NULL;
     struct upcalldata *data = NULL;
     int i;
     int n;
@@ -214,16 +212,24 @@ main(int argc, char **argv)
     data->warn = 1492;
     data->counter = &counter;
     data->option = 0;
-    data->scope = -1;
     if (env_verify && *env_verify)
         data->option |= MUST_VERIFY;
-    data->scope = 0;
+    data->scope = -1;
     if (env_scope != NULL && (i = atoi(env_scope)) >= 0)
       data->scope = i;
     cl = calloc(1, sizeof(*cl));
     cl->p = &incoming_content;
     cl->data = data;
-    ccn_express_interest(ccn, c, cl, NULL);
+    if (data->scope > -1) {
+        templ = ccn_charbuf_create();
+        ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+        ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+        ccn_charbuf_append_closer(templ); /* </Name> */
+        ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", data->scope);
+        ccn_charbuf_append_closer(templ); /* </Interest> */
+    }
+    ccn_express_interest(ccn, c, cl, templ);
+    ccn_charbuf_destroy(&templ);
     cl = NULL;
     data = NULL;
     for (i = 0;; i++) {
