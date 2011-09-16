@@ -73,20 +73,25 @@ public class DeprecatedInterfaceTest extends CCNTestBase implements CCNFilterLis
 		Assert.assertTrue("Content never seen", sawContent);
 		
 		// Make sure that we don't get back content after we cancel the interest
+		Interest nextInterest = new Interest(ContentName.fromNative(prefix, 
+				Integer.toString(counter)));
+		getHandle.expressInterest(nextInterest, this);
 		sawContent = false;
 		putNow = true;
-		getHandle.cancelInterest(interest, this);
+		getHandle.cancelInterest(nextInterest, this);
 		contentSema.tryAcquire(MORE_THAN_RETRY_TIMEOUT, TimeUnit.MILLISECONDS);
 		getHandle.checkError(0);
 		Assert.assertFalse("Content seen when it should not have been", sawContent);
 
 		// Now check that we don't see an interest after we unregister its filter
 		sawInterest = false;
+		nextInterest = new Interest(ContentName.fromNative(prefix, 
+				Integer.toString(counter)));
 		putHandle.unregisterFilter(prefix, this);
-		getHandle.expressInterest(interest, this);
+		getHandle.expressInterest(nextInterest, this);
 		interestSema.tryAcquire(QUICK_TIMEOUT, TimeUnit.MILLISECONDS);
 		Assert.assertFalse("Interest seen after cancel", sawInterest);
-		getHandle.cancelInterest(interest, this);
+		getHandle.cancelInterest(nextInterest, this);
 	}
 
 	public boolean handleInterest(Interest interest) {
@@ -108,6 +113,6 @@ public class DeprecatedInterfaceTest extends CCNTestBase implements CCNFilterLis
 	public Interest handleContent(ContentObject data, Interest interest) {
 		sawContent = true;
 		contentSema.release();
-		return Interest.next(data.name(), null, null);
+		return null;
 	}
 }
