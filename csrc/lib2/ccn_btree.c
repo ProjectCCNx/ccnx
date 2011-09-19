@@ -882,6 +882,8 @@ Bail:
 /**
  *  Write out any pending changes, mark the node clean, and release node iodata
  *
+ * Retains the cached node data in memory.
+ *
  * @returns 0 for success or -1 for error.
  */
 int
@@ -1056,6 +1058,7 @@ ccn_btree_getnode(struct ccn_btree *bt, ccn_btnodeid nodeid, ccn_btnodeid parent
                     node->clean = node->buf->length;
                     if (-1 == ccn_btree_chknode(node))
                         ccn_btree_note_error(bt, __LINE__);
+                    node->activity = CCN_BT_ACTIVITY_READ_BUMP;
                 }
             }
         }
@@ -1065,6 +1068,7 @@ ccn_btree_getnode(struct ccn_btree *bt, ccn_btnodeid nodeid, ccn_btnodeid parent
     hashtb_end(e);
     if (node != NULL && node->parent == 0)
         node->parent = parentid;
+    node->activity += CCN_BT_ACTIVITY_REFERENCE_BUMP;
     return(node);
 }
 
@@ -1074,6 +1078,8 @@ ccn_btree_getnode(struct ccn_btree *bt, ccn_btnodeid nodeid, ccn_btnodeid parent
  * Care should be taken to not store the node handle in data structures,
  * since it will become invalid when the node gets flushed from the
  * resident cache.
+ *
+ * This call does not bump the activity counter.
  *
  * @returns node handle, or NULL if the node is not currently resident.
  */
@@ -1194,6 +1200,7 @@ ccn_btree_prepare_for_update(struct ccn_btree *bt, struct ccn_btree_node *node)
             node->corrupt = __LINE__;
         }
     }
+    node->activity += CCN_BT_ACTIVITY_UPDATE_BUMP;
     return(res);
 }
 

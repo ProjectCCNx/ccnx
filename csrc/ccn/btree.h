@@ -99,7 +99,15 @@ struct ccn_btree_node {
     unsigned clean;             /**< Number of stable buffered bytes at front */
     unsigned freelow;           /**< Index of first unused byte of free space */
     unsigned corrupt;           /**< Structure is not to be trusted */
+    unsigned activity;          /**< Meters use of the node */
 };
+
+/** Increment to node->activity when node is referenced but not changed */
+#define CCN_BT_ACTIVITY_REFERENCE_BUMP 1
+/** Increment to node->activity when node is read from disk */
+#define CCN_BT_ACTIVITY_READ_BUMP 8
+/** Increment to node->activity when node is modified */
+#define CCN_BT_ACTIVITY_UPDATE_BUMP 16
 
 /**
  * State associated with a btree as a whole
