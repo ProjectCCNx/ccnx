@@ -879,27 +879,42 @@ Bail:
 #define CCN_BTREE_MAGIC 0x53ade78
 #define CCN_BTREE_VERSION 1
 
+/**
+ *  Write out any pending changes, mark the node clean, and release node iodata
+ *
+ * @returns 0 for success or -1 for error.
+ */
+int
+ccn_btree_close_node(struct ccn_btree *btree, struct ccn_btree_node *node)
+{
+    int res = 0;
+    struct ccn_btree_io *io = btree->io;
+    
+    if (node->corrupt)
+        res = -1;
+    else if (node->iodata != NULL && io != NULL) {
+        res = io->btwrite(io, node);
+        if (res >= 0)
+            node->clean = node->buf->length;
+        res |= io->btclose(io, node);
+    }
+    else if (io != NULL && node->clean != node->buf->length)
+        res = -1;
+    if (res < 0)
+            btree->errors += 1;
+    return(res);
+}
+
 static void
 finalize_node(struct hashtb_enumerator *e)
 {
     struct ccn_btree *btree = hashtb_get_param(e->ht, NULL);
     struct ccn_btree_node *node = e->data;
-    int res = 0;
     
     if (btree->magic != CCN_BTREE_MAGIC)
         abort();
-    if (node->iodata != NULL && btree->io != NULL) {
-        struct ccn_btree_io *io = btree->io;
-        if (node->corrupt == 0)
-            res = io->btwrite(io, node);
-        else
-            res = -1;
-        node->clean = node->buf->length;
-        res |= io->btclose(io, node);
-        ccn_charbuf_destroy(&node->buf);
-        if (res < 0)
-            btree->errors += 1;
-    }
+    ccn_btree_close_node(btree, node);
+    ccn_charbuf_destroy(&node->buf);
 }
 
 /**

@@ -259,6 +259,9 @@ struct ccn_btree_node *ccn_btree_getnode(struct ccn_btree *bt,
 struct ccn_btree_node *ccn_btree_rnode(struct ccn_btree *bt,
                                        ccn_btnodeid nodeid);
 
+/* Clean a node and release io resources, retaining cached node in memory */
+int ccn_btree_close_node(struct ccn_btree *btree, struct ccn_btree_node *node);
+
 /* Do a lookup, starting from the default root */
 int ccn_btree_lookup(struct ccn_btree *btree,
                      const unsigned char *key, size_t size,
