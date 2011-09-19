@@ -56,17 +56,27 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.WirePacket;
 
 /**
- * The low level interface to ccnd. Connects to a ccnd. For UDP it must maintain the connection by 
- * sending heartbeats to it.  Other functions include reading and writing interests and content
- * to/from the ccnd, starting handler threads to feed interests and content to registered handlers,
- * and refreshing unsatisfied interests. 
+ * The low level interface to ccnd. This provides the main data API between the java library
+ * and ccnd. Access to ccnd can be either via TCP or UDP. This is controlled by the
+ * SystemConfiguration.AGENT_PROTOCOL property and currently defaults to TCP.
  * 
- * This class attempts to notice when a ccnd has died and to reconnect to a ccnd when it is restarted.
+ * The write API is implemented by methods of this class but users should typically access these via the
+ * CCNHandle API rather than directly.
+ *
+ * The read API is implemented in a thread that continuously reads from ccnd. Whenever the thread reads
+ * a complete packet, it calls back a handler or handlers that have been previously setup by users. Since 
+ * there is only one callback thread, users must take care to avoid slow or blocking processing directly 
+ * within the callback. This is similar to the restrictions on the event dispatching thread in Swing. The 
+ * setup of callback handlers should also normally be done via the CCNHandle API.
+ * 
+ * The class also has a separate timer process which is used to refresh unsatisfied interests and to
+ * keep UDP connections alive by sending a heartbeat packet at regular intervals.
+ * 
+ * The class attempts to notice when a ccnd has died and to reconnect to a ccnd when it is restarted.
  * 
  * It also handles the low level output "tap" functionality - this allows inspection or logging of
  * all the communications with ccnd.
  * 
- * Starts a separate thread to listen to, decode and handle incoming data from ccnd.
  */
 @SuppressWarnings("deprecation")
 public class CCNNetworkManager implements Runnable {
@@ -175,7 +185,7 @@ public class CCNNetworkManager implements Runnable {
 		 * Catch results of prefix deregistration. We can then unlock registration to allow
 		 * new registrations or deregistrations. Note that we wait for prefix registration to
 		 * complete during the setInterestFilter call but we don't wait for deregistration to
-		 * complete during CancelInterestFilter. This is because we need to insure that we see
+		 * complete during cancelInterestFilter. This is because we need to insure that we see
 		 * interests for our prefix after a registration, but we don't need to worry about spurious
 		 * interests arriving after a deregistration because they can't be delivered anyway. However 
 		 * to insure registrations are done correctly, we must wait for a pending deregistration 
@@ -197,6 +207,8 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * Do scheduled interest, registration refreshes, and UDP heartbeats.
 	 * Called periodically. Each instance calculates when it should next be called.
+	 * TODO - registrations are currently always set to never expire so we don't need to
+	 * refresh them here yet. At some point this should be fixed.
 	 */
 	private class PeriodicWriter extends TimerTask {
 		public void run() {	
@@ -419,6 +431,9 @@ public class CCNNetworkManager implements Runnable {
 
 	/**
 	 * Record of Interest
+	 * This is the mechanism that calls a user contentHandler when a ContentObject
+	 * that matches their interest is received by the network manager.
+	 * 
 	 * handler must be set (non-null) for cases of standing Interest that holds 
 	 * until canceled by the application.  The listener should be null when a 
 	 * thread is blocked waiting for data, in which case the thread will be 
@@ -514,7 +529,10 @@ public class CCNNetworkManager implements Runnable {
 		}
 
 		/**
-		 * Deliver interest to a registered handler
+		 * Call the user's interest handler callback
+		 * @param interest - the interest that triggered this
+		 * @return - whether we handled the interest. If true we won't call any more handlers
+		 *           matching this interest
 		 */
 		public boolean deliver(Interest interest) {
 			try {
@@ -850,8 +868,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/**
-	 * Cancel this query with all the repositories we sent
-	 * it to.
+	 * Cancel this query
 	 * 
 	 * @param caller 	must not be null
 	 * @param interest
@@ -891,6 +908,9 @@ public class CCNNetworkManager implements Runnable {
 	 * matching interests seen. Any interests whose prefix completely matches "filter" will
 	 * be delivered to the handler. Also if this filter matches no currently registered
 	 * prefixes, register its prefix with ccnd.
+	 * 
+	 * Note that this is mismatched with deregistering prefixes. When registering, we wait for the
+	 * registration to complete before continuing, but when deregistering we don't.
 	 *
 	 * @param caller 	must not be null
 	 * @param filter	ContentName containing prefix of interests to match
@@ -923,16 +943,19 @@ public class CCNNetworkManager implements Runnable {
 				if (_registrationChangeInProgress && Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE)) {
 					Log.fine(Log.FAC_NETMANAGER, formatMessage("SetInterestFilter: Waiting for pending registration activity"));
 				}
-				while (_registrationChangeInProgress) {
+				while (_registrationChangeInProgress) {  // Wait for anyone else messing around with prefixes
 					try {
 						_registeredPrefixes.wait();
 					} catch (InterruptedException e) {}
 				}
-				prefix = getRegisteredPrefix(filter);
-				if (null == prefix) {
+				prefix = getRegisteredPrefix(filter);  // Did someone else already register it?
+				if (null == prefix) {  // no
 					_registrationChangeInProgress = true;
 				}
 			}
+			
+			// We don't want to hold the _registeredPrefixes lock here, but we're safe to change things
+			// because we have set _registrationChangeInProgress to true
 			if (null == prefix) {
 				try {
 					if (null == _prefixMgr) {
@@ -951,6 +974,8 @@ public class CCNNetworkManager implements Runnable {
 			prefix._refCount++;
 		}
 
+		// Now we've dealt with what ccnd needs to know, register our callback so we can be called on
+		// receipt of a matching interest
 		Filter newOne;
 		newOne = new Filter(filter, callbackHandler, caller);
 		_myFilters.add(filter, newOne);
@@ -973,8 +998,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/**
-	 * Note that this is mismatched with deregistering prefixes. When registering, we wait for the
-	 * register to complete before continuing, but when deregistering we don't.
+	 * Register a prefix with ccnd.
 	 * 
 	 * @param filter
 	 * @param registrationFlags
@@ -1003,7 +1027,9 @@ public class CCNNetworkManager implements Runnable {
     }
 
 	/**
-	 * Unregister a standing interest filter
+	 * Unregister a standing interest filter.
+	 * If we are the last user of a filter registered with ccnd, we request a deregistration with
+	 * ccnd but we don't need to wait for it to complete.
 	 *
 	 * @param caller 	must not be null
 	 * @param filter	currently registered filter
@@ -1022,10 +1048,12 @@ public class CCNNetworkManager implements Runnable {
 			if (_usePrefixReg) {
 				// Deregister it with ccnd only if the refCount would go to 0
 				RegisteredPrefix prefix = null;
-				boolean doCancel = false;
+				boolean doRemove = false;
 				synchronized (_registeredPrefixes) {
 					prefix = getRegisteredPrefix(filter);
 					if (null != prefix) {
+						// We need to deregister it with ccnd. But first we need to make sure nobody else is messing around
+						// with the ccnd prefix registration.
 						if (prefix._refCount <= 1) {
 							if (_registrationChangeInProgress && Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE)) {
 								Log.fine(Log.FAC_NETMANAGER, formatMessage("CancelInterestFilter: Waiting for pending registration activity"));
@@ -1035,16 +1063,19 @@ public class CCNNetworkManager implements Runnable {
 									_registeredPrefixes.wait();
 								} catch (InterruptedException e) {}
 							}
-							prefix = getRegisteredPrefix(filter); // reget in case already deregistered
-							if (null != prefix) {
+							prefix = getRegisteredPrefix(filter); // Did some else already remove this prefix?
+							if (null != prefix) {  // no
 								_registrationChangeInProgress = true;
-								doCancel = true;
+								doRemove = true;
 							}
 						} else
 							prefix._refCount--;
 					}
 				}
-				if (doCancel) {
+				if (doRemove) {
+					// We are going to deregister the prefix with ccnd. We don't want to hold locks here but
+					// we don't have to worry about others changing the prefix registration underneath us because
+					// _registrationChangeInProgress is true.
 					try {
 						if (null == _prefixMgr) {
 							_prefixMgr = new PrefixRegistrationManager(this);
@@ -1101,7 +1132,10 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/**
-	 * Don't do this unless you know what you are doing!
+	 * Write an interest directly to ccnd
+	 * Don't do this unless you know what you are doing! See CCNHandle.expressInterest for the proper
+	 * way to output interests to the network.
+	 *  
 	 * @param interest
 	 * @throws ContentEncodingException
 	 */
@@ -1148,7 +1182,8 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/**
-	 * Pass things on to the network stack.
+	 * Internal registration of interest to callback for matching data relationship.
+	 * 
 	 * @throws IOException 
 	 */
 	private InterestRegistration registerInterest(InterestRegistration reg) throws IOException {
@@ -1173,8 +1208,8 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/**
-	 * Thread method: this thread will handle reading datagrams and 
-	 * starts threads to dispatch data to handlers registered for it.
+	 * Reader thread: this thread will handle reading datagrams and perform callbacks after reading
+	 * complete packets.
 	 */
 	public void run() {
 		if (! _run) {
@@ -1189,6 +1224,8 @@ public class CCNNetworkManager implements Runnable {
 				boolean wasConnected = _channel.isConnected();
 				XMLEncodable packet = _channel.getPacket();
 				if (null == packet) {
+					// If ccnd went up and down, we have to reregister all prefixes that used to be
+					// registered to restore normal operation
 					if (!wasConnected && _channel.isConnected())
 						reregisterPrefixes();
 					continue;
@@ -1204,8 +1241,6 @@ public class CCNNetworkManager implements Runnable {
 					_handlerCallTime = System.currentTimeMillis();
 					deliverData(co);
 					_handlerCallTime = NOT_IN_HANDLER;
-					// External data never goes back to network, never held onto here
-					// External data never has a thread waiting, so no need to release sema
 				} else if (packet instanceof Interest) {
 					_stats.increment(StatsEnum.ReceiveInterest);
 					Interest interest = (Interest)	packet;
@@ -1215,7 +1250,6 @@ public class CCNNetworkManager implements Runnable {
 					_handlerCallTime = System.currentTimeMillis();
 					deliverInterest(oInterest, interest);
 					_handlerCallTime = NOT_IN_HANDLER;
-					// External interests never go back to network
 				}  else { // for interests
 					_stats.increment(StatsEnum.ReceiveUnknown);
 				}
@@ -1248,7 +1282,7 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/**
-	 *  Deliver data to blocked getters and registered interests
+	 *  Deliver data to all blocked getters and registered interests
 	 * @param co
 	 */
 	protected void deliverData(ContentObject co) {
