@@ -711,6 +711,9 @@ r_store_content_btree_insert(struct ccnr_handle *h,
         content_base = r_store_content_base(h, content);
         if (content_base == NULL)
             return(-1);
+        res = ccn_btree_prepare_for_update(h->btree, leaf);
+        if (res < 0)
+            return(-1);
         res = ccn_btree_insert_content(leaf, i,
                                        ccnr_accession_encode(h, content->accession),
                                        content_base,

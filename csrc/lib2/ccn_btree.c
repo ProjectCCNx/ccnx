@@ -624,6 +624,9 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     n = ccn_btree_node_nent(node);
     if (n < 4)
         return(-1);
+    res = ccn_btree_prepare_for_update(btree, node);
+    if (res < 0)
+        return(-1);
     if (node->nodeid == 1) {
         node = ccn_btree_grow_a_level(btree, node);
         if (node == NULL)
@@ -636,6 +639,9 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         return(node->corrupt = __LINE__, -1); /* Must have a parent to split. */
     if (ccn_btree_node_payloadsize(parent) != sizeof(link))
         return(node->corrupt = __LINE__, -1);
+    res = ccn_btree_prepare_for_update(btree, parent);
+    if (res < 0)
+        return(-1);
     pb = ccn_btree_node_payloadsize(node);
     level = ccn_btree_node_level(node);
     MSG("Splitting %d entries of node %u, child of %u", n,
@@ -1147,6 +1153,33 @@ ccn_btree_chknode(struct ccn_btree_node *node)
     if (node->freelow != freelow)
         node->freelow = freelow; /* set a break here to check for fixups */
     return(saved_corrupt);
+}
+
+/**
+ *  Get ready to update a btree node
+ *
+ * If applicable, open the node so that it will be
+ * in a good state to write later on.
+ *
+ * @returns 0 if OK, -1 for error.
+ */
+int
+ccn_btree_prepare_for_update(struct ccn_btree *bt, struct ccn_btree_node *node)
+{
+    int res = 0;
+    
+    if (node->freelow == 0)
+        ccn_btree_chknode(node);
+    if (node->corrupt)
+        return(-1);
+    if (bt->io != NULL && node->iodata == NULL) {
+        res = bt->io->btopen(bt->io, node);
+        if (res < 0) {
+            ccn_btree_note_error(bt, __LINE__);
+            node->corrupt = __LINE__;
+        }
+    }
+    return(res);
 }
 
 static int

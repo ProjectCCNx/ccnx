@@ -283,6 +283,10 @@ int ccn_btree_prev_leaf(struct ccn_btree *btree,
 /* Split a node into two */
 int ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node);
 
+/* Prepare to update a node */
+int ccn_btree_prepare_for_update(struct ccn_btree *bt,
+                                 struct ccn_btree_node *node);
+
 /* Check the whole btree carefully */
 int ccn_btree_check(struct ccn_btree *btree, FILE *outfp);
 
