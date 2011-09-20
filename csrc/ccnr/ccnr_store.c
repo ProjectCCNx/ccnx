@@ -1414,7 +1414,7 @@ r_store_index_cleaner(struct ccn_schedule *sched,
     hashtb_end(e);
     /* If nothing to do, shut down cleaner */
     if ((h->toclean == NULL || h->toclean->n == 0) &&
-        opencount <= CNN_BT_OPEN_NODES) {
+        opencount <= CCN_BT_OPEN_NODES) {
         h->index_cleaner = NULL;
         ccn_indexbuf_destroy(&h->toclean);
         if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINE))
