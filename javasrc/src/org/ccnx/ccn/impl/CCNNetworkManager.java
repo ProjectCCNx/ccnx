@@ -655,7 +655,6 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public void shutdown() {
 		Log.info(Log.FAC_NETMANAGER, formatMessage("Shutdown requested"));
-//		Thread.dumpStack();
 		
 		_run = false;
 		if (_periodicTimer != null)
@@ -674,8 +673,10 @@ public class CCNNetworkManager implements Runnable {
 			} catch (IOException io) {
 				// Ignore since we're shutting down
 			}
-
 		}
+		
+		// Print the statistics for this network manager
+		System.out.println(getStats().toString());
 	}
 	
 	@Override
