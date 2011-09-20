@@ -17,25 +17,36 @@
 
 package org.ccnx.ccn.test.impl;
 
+import java.util.Random;
+
 import org.ccnx.ccn.impl.CCNStats;
 import org.ccnx.ccn.impl.CCNStats.ExampleClassWithStatistics;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class CCNStatTest {
-
+	final String obj = "Hello, world!";
+	final Random rnd = new Random();
+	
 	@Test
 	public void testExample() throws Exception {
 		ExampleClassWithStatistics ecws = new ExampleClassWithStatistics();
-
+		
 		int sends = 20;
 		int recvs = 15;
 
-		for(int i = 0; i < sends; i++ )
-			ecws.send(null);
+		for(int i = 0; i < sends; i++ ) {
+			ecws.send(obj);
+		
+			// add some arbitrary delay to simulate doing something
+			try {
+				Thread.sleep(rnd.nextInt(200) + 50);
+			} catch (InterruptedException e) {
+			}
+		}
 
 		for(int i = 0; i < recvs; i++ )
-			ecws.recv(null);
+			ecws.recv(obj);
 
 		System.out.println(ecws.getStats().toString());
 
@@ -67,7 +78,7 @@ public class CCNStatTest {
 			long t0_nanos = System.nanoTime();
 
 			for(int j = 0; j < sends; j++ )
-				ecws.send(null);
+				ecws.send(obj);
 
 			long t1_nanos = System.nanoTime();
 
@@ -93,5 +104,30 @@ public class CCNStatTest {
 
 	}
 
-
+	interface if1 {
+		public void a();
+	}
+	
+	interface if2 extends if1 {
+		public void a();
+	}
+	
+	interface if3 extends if1 {
+		public void a();
+	}
+	
+	class C implements if3, if2 {
+		public void b() {}
+		public void c() {}
+	}
+	
+	@Test
+	public void testif() throws Exception {
+		if1 c = new C();
+		
+		System.out.println(c instanceof if1);
+		System.out.println(c instanceof if2);
+		System.out.println(c instanceof if3);
+	}
+	
 }
