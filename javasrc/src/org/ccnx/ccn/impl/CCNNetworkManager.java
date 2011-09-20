@@ -1240,7 +1240,7 @@ public class CCNNetworkManager implements Runnable {
 
 					//	SystemConfiguration.logObject("Data from net:", co);
 					_handlerCallTime = System.currentTimeMillis();
-					deliverContant(co);
+					deliverContent(co);
 					_handlerCallTime = NOT_IN_HANDLER;
 				} else if (packet instanceof Interest) {
 					_stats.increment(StatsEnum.ReceiveInterest);
@@ -1277,9 +1277,9 @@ public class CCNNetworkManager implements Runnable {
 				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 					Log.finer(Log.FAC_NETMANAGER, formatMessage("Schedule delivery for interest: {0}"), interest);
 				_stats.increment(StatsEnum.DeliverInterestMatchingFilters);
-				long startTime = System.currentTimeMillis();
+				long startTime = System.nanoTime();
 				boolean succeeded = filter.deliver(interest);
-				_stats.increment(StatsEnum.InterestHandlerTime, (int)(System.currentTimeMillis() - startTime));
+				_stats.addSample(StatsEnum.InterestHandlerTime, System.nanoTime() - startTime);
 				if (succeeded)
 					break;	// We only run interest handlers until one succeeds
 			}
@@ -1290,14 +1290,14 @@ public class CCNNetworkManager implements Runnable {
 	 *  Deliver data to all blocked getters and registered interests
 	 * @param co
 	 */
-	protected void deliverContant(ContentObject co) {
+	protected void deliverContent(ContentObject co) {
 		_stats.increment(StatsEnum.DeliverContent);
 
 		for (InterestRegistration ireg : _myInterests.getValues(co)) {
 			_stats.increment(StatsEnum.DeliverContentMatchingInterests);
-			long startTime = System.currentTimeMillis();
+			long startTime = System.nanoTime();
 			ireg.deliver(co);
-			_stats.increment(StatsEnum.ContentHandlerTime, (int)(System.currentTimeMillis() - startTime));
+			_stats.addSample(StatsEnum.ContentHandlerTime, System.nanoTime() - startTime);
 		}
 	}
 
@@ -1396,8 +1396,8 @@ public class CCNNetworkManager implements Runnable {
 		DeliverContentFailed ("calls", "The number of content deliveries that failed"),
 		DeliverInterestFailed ("calls", "The number of interest deliveries that failed"),
 		
-		InterestHandlerTime("milliseconds", "The amount of time spent in interest handlers"),
-		ContentHandlerTime("milliseconds", "The amount of time spent in content handlers"),
+		InterestHandlerTime("nanos", "The average amount of time spent in interest handlers"),
+		ContentHandlerTime("nanos", "The average amount of time spent in content handlers"),
 
 		ReceiveObject ("objects", "Receive count of ContentObjects from channel"),
 		ReceiveInterest ("interests", "Receive count of Interests from channel"),
