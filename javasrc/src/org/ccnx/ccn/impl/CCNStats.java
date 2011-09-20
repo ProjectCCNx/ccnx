@@ -17,7 +17,6 @@
 
 package org.ccnx.ccn.impl;
 
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;

@@ -117,8 +117,9 @@ public class CCNStatTest {
 	}
 	
 	class C implements if3, if2 {
+		public void a() {}
 		public void b() {}
-		public void c() {}
+		public void c() {}	
 	}
 	
 	@Test
