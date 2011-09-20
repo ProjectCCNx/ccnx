@@ -1025,7 +1025,9 @@ ccn_btree_init_node(struct ccn_btree_node *node,
  * @returns node handle
  */
 struct ccn_btree_node *
-ccn_btree_getnode(struct ccn_btree *bt, ccn_btnodeid nodeid, ccn_btnodeid parentid)
+ccn_btree_getnode(struct ccn_btree *bt,
+                  ccn_btnodeid nodeid,
+                  ccn_btnodeid parentid)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -1297,7 +1299,11 @@ ccn_btree_check(struct ccn_btree *btree, FILE *outfp) {
             }
         }
         if (k == n) {
-            /* Pop our stack to continue proccessing our parent */
+            /* Done with this node, release scarce resources */
+            res = ccn_btree_close_node(btree, node);
+            if (res < 0)
+                MSG("%%W close of node %u failed", (unsigned)node->nodeid);
+            /* Pop our stack to continue processing our parent */
             if (sp == 0) (k = 0, node = NULL);
             else (sp--, k = kstk[sp], node = ccn_btree_getnode(btree, stack[sp], 0));
         }
