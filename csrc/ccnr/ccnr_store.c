@@ -1334,8 +1334,18 @@ ccnr_debug_content(struct ccnr_handle *h,
                    struct fdholder *fdholder,
                    struct content_entry *content)
 {
-    const unsigned char *content_msg = r_store_content_base(h, content);
-    ccnr_debug_ccnb(h, lineno, msg, fdholder, content_msg, content->size);
+    struct ccn_charbuf *c = ccn_charbuf_create();
+    struct ccn_charbuf *flat = content->flatname;
+    
+    if (c == NULL)
+        return;
+    ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
+    if (fdholder != NULL)
+        ccn_charbuf_putf(c, "%u ", fdholder->filedesc);
+    ccn_uri_append_flatname(c, flat->buf, flat->length, 1);
+    ccn_charbuf_putf(c, " (%d bytes)", content->size);
+    ccnr_msg(h, "%s", ccn_charbuf_as_string(c));
+    ccn_charbuf_destroy(&c);
 }
 
 /** Number of btree index writes to do in a batch */
