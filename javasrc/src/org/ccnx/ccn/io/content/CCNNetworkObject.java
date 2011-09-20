@@ -1068,16 +1068,39 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return save(version);
 	}
 	
-	/**
+	/*
 	 * Methods to save from handlers. We probably don't want to wait in general to do a save from a handler
-	 * but if the save is to a respository (and we really can't tell) we can't do that because we have to
-	 * wait for a response from the repo which only the handler can receive.
+	 * but if the save is to a respository (and we really can't tell) we definitely can't do that because we 
+	 * have to wait for a response from the repo which only the handler can receive.
 	 */
-	public void saveLaterWithClose() throws ContentEncodingException, IOException {
+
+	/**
+	 * Do a #save from a callback
+	 */
+	public void saveLater() {
+		new SaveThread(null, false, null, false);
+	}
+	
+	/**
+	 * Do a #save from a callback
+	 * @param outstandingInterest
+	 */
+	public void saveLater(Interest outstandingInterest) {
+		new SaveThread(null, false, null, false);
+	}
+	
+	/**
+	 * Do a #save followed by a close of the network object from a callback
+	 */
+	public void saveLaterWithClose() {
 		new SaveThread(null, false, null, true);
 	}
 	
-	public void saveLaterWithClose(Interest outstandingInterest) throws ContentEncodingException, IOException {
+	/**
+	 * Do a #save followed by a close of the network object from a callback
+	 * @param outstandingInterest
+	 */
+	public void saveLaterWithClose(Interest outstandingInterest) {
 		new SaveThread(null, false, outstandingInterest, true);
 	}
 
