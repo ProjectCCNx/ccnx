@@ -1353,6 +1353,7 @@ r_store_index_cleaner(struct ccn_schedule *sched,
     struct hashtb_enumerator *e = &ee;
     struct ccn_btree_node *node = NULL;
     int k;
+    int opencount;
     int res;
     
     (void)(sched);
@@ -1373,12 +1374,19 @@ r_store_index_cleaner(struct ccn_schedule *sched,
                     ccnr_msg(h, "write index node %u (%d)",
                              (unsigned)node->nodeid, node->corrupt);
                 if (res >= 0) {
-                    res = h->btree->io->btwrite(h->btree->io, node);
+                    if (node->clean != node->buf->length)
+                        res = h->btree->io->btwrite(h->btree->io, node);
                     if (res < 0)
                         ccnr_msg(h, "failed to write index node %u",
                                  (unsigned)node->nodeid);
                     else
                         node->clean = node->buf->length;
+                }
+                if (res >= 0 && node->iodata != NULL && node->activity == 0) {
+                    if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINER))
+                        ccnr_msg(h, "close index node %u",
+                                 (unsigned)node->nodeid);
+                    res = ccn_btree_close_node(h->btree, node);
                 }
             }
         }
@@ -1386,21 +1394,27 @@ r_store_index_cleaner(struct ccn_schedule *sched,
             return(nrand48(h->seed) % (2U * CCN_BT_CLEAN_TICK_MICROS) + 500);
     }
     /* Sweep though and find the nodes that still need cleaning */
+    opencount = 0;
     hashtb_start(h->btree->resident, e);
     for (; e->data != NULL; hashtb_next(e)) {
         node = e->data;
-        if (node->clean != node->buf->length) {
+        node->activity /= 2; /* Age the node's activity */
+        if (node->iodata != NULL)
+            opencount++;
+        if (node->clean != node->buf->length ||
+            (node->iodata != NULL && node->activity == 0)) {
             if (h->toclean == NULL) {
                 h->toclean = ccn_indexbuf_create();
                 if (h->toclean == NULL)
                     break;
-                ccn_indexbuf_append_element(h->toclean, node->nodeid);
             }
+            ccn_indexbuf_append_element(h->toclean, node->nodeid);
         }
     }
     hashtb_end(e);
     /* If nothing to do, shut down cleaner */
-    if (h->toclean == NULL || h->toclean->n == 0) {
+    if ((h->toclean == NULL || h->toclean->n == 0) &&
+        opencount <= CNN_BT_OPEN_NODES) {
         h->index_cleaner = NULL;
         ccn_indexbuf_destroy(&h->toclean);
         if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINE))

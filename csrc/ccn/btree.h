@@ -109,6 +109,9 @@ struct ccn_btree_node {
 /** Increment to node->activity when node is modified */
 #define CCN_BT_ACTIVITY_UPDATE_BUMP 16
 
+/** Limit to the number of btree nodes kept open when idle */
+#define CNN_BT_OPEN_NODES 13
+
 /**
  * State associated with a btree as a whole
  */
