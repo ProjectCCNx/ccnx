@@ -230,22 +230,21 @@ PUBLIC void
 r_store_trim(struct ccnr_handle *h, unsigned long limit)
 {
     struct content_entry *content = NULL;
-    int pass;
+    int checklimit;
     unsigned before;
     
     before = h->cob_count;
     if (before <= limit)
         return;
-    for (pass = 0; h->cob_count > limit && pass < 2;) {
-        content = r_store_content_from_cookie(h, ++h->trim_rover);
-        if (content == NULL) {
-            pass++;
+    checklimit = h->cookie + 1 - h->cookie_base;    
+    for (; checklimit > 0 && h->cob_count > limit; checklimit--) {
+        if (h->trim_rover >= h->cookie)
             h->trim_rover = h->cookie_base;
-            content = r_store_content_from_cookie(h, h->trim_rover);
-            if (content == NULL)
-                break;
-        }
-        r_store_content_trim(h, content);
+        else
+            h->trim_rover++;
+        content = r_store_content_from_cookie(h, h->trim_rover);
+        if (content != NULL)
+            r_store_content_trim(h, content);
     }
     if (CCNSHOULDLOG(h, sdf, CCNL_FINEST))
         ccnr_msg(h, "trimmed %u cobs", before - h->cob_count);
@@ -574,16 +573,12 @@ cleanout_stragglers(struct ccnr_handle *h)
     unsigned window;
     unsigned i;
     
-    if (1) {
-        /* do not use when skiplist-based */
-        return;
-    }
     if (h->cookie <= h->cookie_base || a[0] == NULL)
         return;
     n_direct = h->cookie - h->cookie_base;
     if (n_direct < 1000)
         return;
-    n_occupied = hashtb_n(h->content_by_accession_tab); // XXX - wrong
+    n_occupied = h->cob_count;
     if (n_occupied >= (n_direct / 8))
         return;
     /* The direct lookup table is too sparse, so toss the stragglers */
@@ -592,6 +587,8 @@ cleanout_stragglers(struct ccnr_handle *h)
         if (a[i] != NULL) {
             if (n_occupied >= ((window - i) / 8))
                 break;
+            if (a[i]->accession == CCNR_NULL_ACCESSION && a[i]->cob != NULL)
+                break; /* Do not clean this prematurely */
             r_store_forget_content(h, &(a[i]));
             n_occupied -= 1;
         }
@@ -738,22 +735,6 @@ r_store_content_btree_insert(struct ccnr_handle *h,
     }
 }
 
-static void
-content_skiplist_remove(struct ccnr_handle *h, struct content_entry *content)
-{
-//    int i;
-//    int d;
-//    struct ccn_indexbuf *pred[CCN_SKIPLIST_MAX_DEPTH] = {NULL};
-//    if (content->skiplinks == NULL)
-//        return;
-//    content_skiplist_findbefore(h, content->flatname, content, pred);
-//    d = content->skiplinks->n;
-//    if (h->skiplinks->n < d) abort();
-//    for (i = 0; i < d; i++)
-//        pred[i]->buf[i] = content->skiplinks->buf[i];
-//    ccn_indexbuf_destroy(&content->skiplinks);
-}
-
 /**
  *  Remove internal representation of a content object
  */
@@ -770,8 +751,6 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
         h->n_stale--;
     if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
         ccnr_debug_content(h, __LINE__, "remove", NULL, entry);
-    /* Unlink from skiplist, if it is there */
-    content_skiplist_remove(h, entry);
     /* Remove the cookie reference */
     i = entry->cookie - h->cookie_base;
     if (i < h->content_by_cookie_window && h->content_by_cookie[i] == entry)
