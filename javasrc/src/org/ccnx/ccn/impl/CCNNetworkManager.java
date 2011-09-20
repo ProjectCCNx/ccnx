@@ -365,9 +365,9 @@ public class CCNNetworkManager implements Runnable {
 	} /* private class PeriodicWriter extends TimerTask */
 	
 	/**
-	 * First time startup of periodic timer after first registration. We do this after the first
-	 * registration rather than at startup, because in some cases network managers get created
-	 * (via a CCNHandle) that are never used. We don't want to burden the JVM with more processing
+	 * First time startup of processing thread and periodic timer after first registration. We do this 
+	 * after the first registration rather than at startup, because in some cases network managers get 
+	 * created (via a CCNHandle) that are never used. We don't want to burden the JVM with more processing
 	 * until we are sure we are going to be used (which can't happen until there is a registration,
 	 * either of an interest in which case we expect to receive matching data, or of a prefix in
 	 * which case we expect to receive interests).
@@ -378,6 +378,10 @@ public class CCNNetworkManager implements Runnable {
 	private void setupTimers() throws IOException {
 		synchronized (_timersSetupLock) {
 			if (!_timersSetup) {
+				// Create main processing thread
+				_thread = new Thread(this, "CCNNetworkManager " + _managerId);
+				_thread.start();
+				
 				_timersSetup = true;
 				_channel.init();
 				if (_protocol == NetworkProtocol.UDP) {
@@ -644,10 +648,6 @@ public class CCNNetworkManager implements Runnable {
 		_channel = new CCNNetworkChannel(_host, _port, _protocol, _tapStreamIn);
 		_ccndId = null;
 		_channel.open();
-		
-		// Create main processing thread
-		_thread = new Thread(this, "CCNNetworkManager " + _managerId);
-		_thread.start();
 	}
 
 	/**
@@ -1341,25 +1341,23 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws IOException 
 	 */
 	private void reregisterPrefixes() {
-		new ReRegisterThread().start();
-	}
-		
-	private class ReRegisterThread extends Thread {
-		public void run() {
-			TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
-			try {
-				synchronized (_registeredPrefixes) {
-					for (ContentName prefix : _registeredPrefixes.keySet()) {
-						ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
-						RegisteredPrefix newPrefixEntry = new RegisteredPrefix(entry);
-						newPrefixEntry._refCount = _registeredPrefixes.get(prefix)._refCount;
-						newPrefixes.put(prefix, newPrefixEntry);
+		new Thread() {
+			public void run() {
+				TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
+				try {
+					synchronized (_registeredPrefixes) {
+						for (ContentName prefix : _registeredPrefixes.keySet()) {
+							ForwardingEntry entry = _prefixMgr.selfRegisterPrefix(prefix);
+							RegisteredPrefix newPrefixEntry = new RegisteredPrefix(entry);
+							newPrefixEntry._refCount = _registeredPrefixes.get(prefix)._refCount;
+							newPrefixes.put(prefix, newPrefixEntry);
+						}
+						_registeredPrefixes.clear();
+						_registeredPrefixes.putAll(newPrefixes);
 					}
-					_registeredPrefixes.clear();
-					_registeredPrefixes.putAll(newPrefixes);
-				}
-			} catch (CCNDaemonException cde) {}
-		}
+				} catch (CCNDaemonException cde) {}
+			}
+		}.start();
 	}	
 	
 	// ==============================================================

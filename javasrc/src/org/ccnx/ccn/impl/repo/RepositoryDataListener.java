@@ -113,6 +113,9 @@ public class RepositoryDataListener implements CCNContentHandler {
 				if (_finalSegmentNumber == thisSegmentNumber) {
 					isFinalSegment = true; // we only know for sure what the final block is when this is true
 				}
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINEST)) {
+					Log.finest(Log.FAC_REPO, "Found final segment number: {0}", _finalSegmentNumber);
+				}
 			}
 		}
     calculateInterests: synchronized (_interests) {
