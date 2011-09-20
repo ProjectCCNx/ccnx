@@ -767,6 +767,57 @@ Bail:
     return(ans);
 }
 
+#define ENUMERATION_STATE_TICK_MICROSEC 1000000
+/**
+ * Remove expired enumeration table entries
+ */
+static int
+reap_enumerations(struct ccn_schedule *sched,
+                  void *clienth,
+                  struct ccn_scheduled_event *ev,
+                  int flags)
+{
+    struct ccnr_handle *ccnr = clienth;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct enum_state *es = NULL;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
+        ccnr->reap_enumerations = NULL;
+        return(0);
+    }
+    hashtb_start(ccnr->enum_state_tab, e);
+    for (es = e->data; es != NULL; es = e->data) {
+        if (es->active != ES_ACTIVE &&
+            r_util_timecmp(es->lastuse_sec + es->lifetime, es->lastuse_usec,
+                            ccnr->sec, ccnr->usec) <= 0) {
+            if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
+                ccnr_debug_ccnb(ccnr, __LINE__, "reap enumeration state", NULL,
+                                es->name->buf, es->name->length);            
+            // everything but the name has already been destroyed
+            ccn_charbuf_destroy(&es->name);
+            // remove the entry from the hash table
+            hashtb_delete(e);
+        }
+        hashtb_next(e);
+    }
+    hashtb_end(e);
+    if (hashtb_n(ccnr->enum_state_tab) == 0) {
+        ccnr->reap_enumerations = NULL;
+        return(0);
+    }
+    return(ENUMERATION_STATE_TICK_MICROSEC);
+}
+static void
+reap_enumerations_needed(struct ccnr_handle *ccnr)
+{
+    if (ccnr->reap_enumerations == NULL)
+        ccnr->reap_enumerations = ccn_schedule_event(ccnr->sched,
+                                                     ENUMERATION_STATE_TICK_MICROSEC,
+                                                     reap_enumerations,
+                                                     NULL, 0);
+}
+
 static enum ccn_upcall_res
 r_proto_begin_enumeration(struct ccn_closure *selfp,
                           enum ccn_upcall_kind kind,
@@ -806,10 +857,9 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         abort();
     // do we have anything that matches this enumeration request? If not, ignore the request
     content = r_store_find_first_match_candidate(ccnr, interest->buf, pi);
-    if (content == NULL)
-        goto Bail;
-    if (!r_store_content_matches_interest_prefix(ccnr, content, interest->buf, interest->length))
-        goto Bail;
+    if (content != NULL &&
+        !r_store_content_matches_interest_prefix(ccnr, content, interest->buf, interest->length))
+        content = NULL;
     // Look for a previous enumeration under this prefix
     ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: hash name", NULL,
                     name->buf, name->length);
@@ -817,7 +867,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     res = hashtb_seek(e, name->buf, name->length, 0);
     es = e->data;
     // Do not restart an active enumeration, it is probably a duplicate interest
-    if (es->active == 1) {
+    if (es->active != ES_INACTIVE) {
         // XXX - log here
         hashtb_end(e);
         goto Bail;
@@ -858,10 +908,19 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     es->interest = interest;
     es->interest_comps = comps;
     es->next_segment = 0;
-    es->active = 1;
-    
+    if (content) {
+        es->lifetime = 3 * ccn_interest_lifetime_seconds(info->interest_ccnb, pi);
+        es->active = ES_ACTIVE;
+    } else {
+        es->lifetime = ccn_interest_lifetime_seconds(info->interest_ccnb, pi);
+        es->active = ES_PENDING;
+    }
     hashtb_end(e);
-    ans = r_proto_continue_enumeration(selfp, kind, info, marker_comp);
+    reap_enumerations_needed(ccnr);
+    if (content)
+        ans = r_proto_continue_enumeration(selfp, kind, info, marker_comp);
+    else
+        ans = CCN_UPCALL_RESULT_OK;
     return(ans);
     
 Bail:
@@ -901,13 +960,15 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
         goto Bail;
     }
     es = e->data;
-    if (es->active == 0) {
+    if (es->active != 1) {
         hashtb_end(e);
         return(ans);
     }
     
     if (CCNSHOULDLOG(ccnr, blah, CCNL_FINE))
         ccnr_msg(ccnr, "processing an enumeration continuation for segment %jd", es->next_segment);
+    es->lastuse_sec = ccnr->sec;
+    es->lastuse_usec = ccnr->usec;
     while (es->content != NULL &&
            r_store_content_matches_interest_prefix(ccnr, es->content,
                                                    es->interest->buf,
@@ -949,7 +1010,7 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
     if (res != es->reply_body->length) {
         abort();
     }
-    es->active = 0;
+    es->active = ES_INACTIVE;
     ans = CCN_UPCALL_RESULT_OK;
     
 Bail:
