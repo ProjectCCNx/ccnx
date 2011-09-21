@@ -483,10 +483,24 @@ r_store_init(struct ccnr_handle *h)
         ccn_btree_init_node(node, 0, 'R', 0);
         h->stable = 0;
         h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
+        ccn_charbuf_destroy(&path);
     }
     if (CCNSHOULDLOG(h, weuyg, CCNL_FINEST)) {
-        res = ccn_btree_check(btree, NULL);
-        ccnr_msg(h, "ccn_btree_check returned %d", res);
+        FILE *dumpfile = NULL;
+        
+        path = ccn_charbuf_create();
+        ccn_charbuf_putf(path, "%s/index/btree_check.out", h->directory);
+        dumpfile = fopen(ccn_charbuf_as_string(path), "w");
+        res = ccn_btree_check(btree, dumpfile);
+        if (dumpfile != NULL) {
+            fclose(dumpfile);
+            dumpfile = NULL;
+        }
+        else
+            path->length = 0;
+        ccnr_msg(h, "ccn_btree_check returned %d (%s)",
+                    res, ccn_charbuf_as_string(path));
+        ccn_charbuf_destroy(&path);
         if (res < 0)
             r_init_fail(h, __LINE__, "index is corrupt", res);
     }
