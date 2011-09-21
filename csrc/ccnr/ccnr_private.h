@@ -160,7 +160,7 @@ typedef int (*ccnr_logger)(void *loggerdata, const char *format, va_list ap);
 /**
  * Limit on how many active sync enumerations we are willing to have going.
  */
-#define CCNR_MAX_ENUM 4
+#define CCNR_MAX_ENUM 64
 
 /**
  * We pass this handle almost everywhere within ccnr
