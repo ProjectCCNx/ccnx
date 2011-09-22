@@ -923,7 +923,6 @@ Bail:
         ccn_indexbuf_destroy(&es->interest_comps);
         res = ccn_seqw_close(es->w);
         if (res < 0) abort();
-        ccn_seqw_batch_end(es->w); /* not strictly necessary */
         es->w = NULL;
     }
     hashtb_end(e);
