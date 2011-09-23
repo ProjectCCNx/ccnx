@@ -294,7 +294,6 @@ enum ccnr_face_meter_index {
  */
 struct fdholder {
     int recv_fd;                /**< socket for receiving */
-    unsigned sendface;          /**< filedesc for sending (maybe == filedesc) */
     int flags;                  /**< CCNR_FACE_* fdholder flags */
     unsigned filedesc;            /**< internal fdholder id */
     unsigned recvcount;         /**< for activity level monitoring */
@@ -306,10 +305,7 @@ struct fdholder {
     struct ccn_charbuf *outbuf;
     struct ccn_charbuf *name;   /** a sockaddr or file name, depending on flags */
     int pending_interests;
-    unsigned rrun;
-    uintmax_t rseq;
     struct ccnr_meter *meter[CCNR_FACE_METER_N];
-    unsigned short pktseq;     /**< sequence number for sent packets */
 };
 
 /** fdholder flags */

@@ -231,7 +231,6 @@ r_io_record_fd(struct ccnr_handle *h, int fd,
         ccn_charbuf_append(fdholder->name, who, wholen);
     fdholder->recv_fd = fd;
     fdholder->filedesc = fd;
-    fdholder->sendface = CCN_NOFACEID;
     init_face_flags(h, fdholder, setflags);
     res = r_io_enroll_face(h, fdholder);
     if (res == -1) {

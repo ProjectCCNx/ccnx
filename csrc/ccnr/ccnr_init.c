@@ -172,7 +172,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
         struct fdholder *fdholder;
         fdholder = calloc(1, sizeof(*fdholder));
         fdholder->recv_fd = -1;
-        fdholder->sendface = 0;
         fdholder->flags = (CCNR_FACE_GG | CCNR_FACE_NORECV);
         h->face0 = fdholder;
     }
