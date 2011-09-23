@@ -474,10 +474,10 @@ collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
                 const char *node = ccn_charbuf_as_string(nodebuf);
                 ccn_charbuf_putf(b, "<ip>%s:%d</ip>", node, port);
             }
-#endif
             if (fdholder->sendface != fdholder->filedesc &&
                 fdholder->sendface != CCN_NOFACEID)
                 ccn_charbuf_putf(b, "<via>%u</via>", fdholder->sendface);
+#endif
             if (fdholder != NULL && (fdholder->flags & CCNR_FACE_PASSIVE) == 0) {
                 ccn_charbuf_putf(b, "<meters>");
                 for (m = 0; m < CCNR_FACE_METER_N; m++)
