@@ -293,9 +293,8 @@ enum ccnr_face_meter_index {
  * Each fdholder is referenced by its file descriptor.
  */
 struct fdholder {
-    int recv_fd;                /**< socket for receiving */
+    unsigned filedesc;          /**< file descriptor */
     int flags;                  /**< CCNR_FACE_* fdholder flags */
-    unsigned filedesc;            /**< internal fdholder id */
     unsigned recvcount;         /**< for activity level monitoring */
     struct content_queue *q[CCN_CQ_N]; /**< outgoing content, per delay class */
     off_t bufoffset;

@@ -167,7 +167,7 @@ send_http_response(struct ccnr_handle *h, struct fdholder *fdholder,
     int hdrlen;
 
     /* Set linger to prevent quickly resetting the connection on close.*/
-    setsockopt(fdholder->recv_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    setsockopt(fdholder->filedesc, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
     hdrlen = snprintf(buf, sizeof(buf),
                       "HTTP/1.1 200 OK" CRLF
                       "Content-Type: %s; charset=utf-8" CRLF
