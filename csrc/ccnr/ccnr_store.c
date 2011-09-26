@@ -798,6 +798,8 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
 /**
  *  Get a handle on the content object that matches key, or if there is
  * no match, the one that would come just after it.
+ *
+ * The key is in flatname format.
  */
 static struct content_entry *    
 r_store_look(struct ccnr_handle *h, const unsigned char *key, size_t size)
@@ -982,10 +984,13 @@ r_store_lookup(struct ccnr_handle *h,
                struct ccn_indexbuf *comps)
 {
     struct content_entry *content = NULL;
+    struct ccn_btree_node *leaf = NULL;
     struct content_entry *last_match = NULL;
-    int try;
+    struct ccn_charbuf *scratch = NULL;
     size_t size = pi->offset[CCN_PI_E];
-    const unsigned char *content_msg = NULL;
+    int ndx;
+    int res;
+    int try;
     
     content = r_store_find_first_match_candidate(h, msg, pi);
     if (content != NULL && CCNSHOULDLOG(h, LM_8, CCNL_FINER))
@@ -998,27 +1003,37 @@ r_store_lookup(struct ccnr_handle *h,
                                 msg, size);
             content = NULL;
         }
+    scratch = ccn_charbuf_create();
     for (try = 0; content != NULL; try++) {
-        content_msg = r_store_content_base(h, content);
-        if (ccn_content_matches_interest(content_msg,
-                                         content->size,
-                                         1, NULL, msg, size, pi)) {
-                if (CCNSHOULDLOG(h, LM_8, CCNL_FINEST))
-                    ccnr_debug_content(h, __LINE__, "matches", NULL, content);
-                if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
-                    break;
-                last_match = content;
-                content = r_store_next_child_at_level(h, content, comps->n - 1);
-                goto check_next_prefix;
-            }
-        content = r_store_content_next(h, content);
-    check_next_prefix:
+        res = ccn_btree_lookup(h->btree,
+                               content->flatname->buf,
+                               content->flatname->length,
+                               &leaf);
+        if (CCN_BT_SRCH_FOUND(res) == 0) {
+            abort();
+        }
+        ndx = CCN_BT_SRCH_INDEX(res);
+        res = ccn_btree_match_interest(leaf, ndx, msg, pi, scratch);
+        if (res == -1) {
+            ccnr_debug_ccnb(h, __LINE__, "match_error", NULL, msg, size);
+            content = NULL;
+            break;
+        }
+        if (res == 1) {
+            if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
+                break;
+            last_match = content;
+            content = r_store_next_child_at_level(h, content, comps->n - 1);
+        }
+        else
+            content = r_store_content_next(h, content);
         if (content != NULL &&
             !r_store_content_matches_interest_prefix(h, content, msg, size))
                 content = NULL;
     }
     if (last_match != NULL)
         content = last_match;
+    ccn_charbuf_destroy(&scratch);
     return(content);
 }
 
