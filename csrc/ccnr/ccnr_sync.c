@@ -28,6 +28,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 
+#include <ccn/btree.h>
+#include <ccn/btree_content.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/indexbuf.h>
@@ -194,13 +196,16 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
     struct ccn_scheduled_event *ev,
     int flags)
 {
-    const unsigned char *content_msg = NULL;
     struct ccnr_handle *ccnr = clienth;
     struct sync_enumeration_state *md = NULL;
     struct content_entry *content = NULL;
+    struct ccn_btree_node *leaf = NULL;
     struct ccn_charbuf *interest = NULL;
     struct ccn_indexbuf *comps = NULL;
     struct ccn_parsed_interest *pi = NULL;
+    struct ccn_charbuf *scratch = NULL;
+    struct ccn_charbuf *flat = NULL;
+    int ndx;
     int res;
     int try;
     int matches;
@@ -211,11 +216,9 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
         ev->evdata = cleanup_se(ccnr, md);
         return(0);
     }
-    
     pi = &md->parsed_interest;
     interest = md->interest;
     comps = md->comps;
-    
     /*
      * Recover starting point from either cookie or accession.
      *
@@ -227,10 +230,21 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
     if (content == NULL)
         content = r_store_content_from_accession(ccnr, ccnr->active_enum[md->index]);
     for (try = 0, matches = 0; content != NULL; try++) {
-        content_msg = r_store_content_base(ccnr, content);
-        if (ccn_content_matches_interest(content_msg,
-                                         r_store_content_size(ccnr, content), // XXXXX 
-                                         1, NULL, interest->buf, interest->length, pi)) {
+        if (scratch == NULL)
+            scratch = ccn_charbuf_create();
+        flat = r_store_content_flatname(ccnr, content);
+        res = ccn_btree_lookup(ccnr->btree, flat->buf, flat->length, &leaf);
+        if (CCN_BT_SRCH_FOUND(res) == 0) {
+            ccnr_debug_content(ccnr, __LINE__, "impossible", NULL, content);
+            break;
+        }
+        ndx = CCN_BT_SRCH_INDEX(res);
+        res = ccn_btree_match_interest(leaf, ndx, interest->buf, pi, scratch);
+        if (res == -1) {
+            ccnr_debug_content(ccnr, __LINE__, "impossible", NULL, content);
+            break;
+        }
+        if (res == 1) {
             res = r_sync_notify_content(ccnr, md->index, content);
             matches++;
             if (res == -1) {
@@ -238,6 +252,7 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
                     ccnr_debug_content(ccnr, __LINE__, "r_sync_enumerate_action", NULL,
                                        content);
                 ev->evdata = cleanup_se(ccnr, md);
+                ccn_charbuf_destroy(&scratch);
                 return(0);
             }
         }
@@ -252,12 +267,14 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
             ccnr->active_enum[md->index] = r_store_content_accession(ccnr, content);
             if (ccnr->active_enum[md->index] != CCNR_NULL_ACCESSION && 
                 (matches >= 8 || try >= 200)) { // XXX - these numbers need tuning
+                ccn_charbuf_destroy(&scratch);
                 return(300);
             }
         }
     }
     r_sync_notify_content(ccnr, md->index, NULL);
     ev->evdata = cleanup_se(ccnr, md);
+    ccn_charbuf_destroy(&scratch);
     return(0);
 }
 

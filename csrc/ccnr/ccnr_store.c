@@ -1010,7 +1010,7 @@ r_store_lookup(struct ccnr_handle *h,
                                content->flatname->length,
                                &leaf);
         if (CCN_BT_SRCH_FOUND(res) == 0) {
-            abort();
+            abort(); // XXX - do something gentler
         }
         ndx = CCN_BT_SRCH_INDEX(res);
         res = ccn_btree_match_interest(leaf, ndx, msg, pi, scratch);
@@ -1181,6 +1181,17 @@ r_store_set_flatname(struct ccnr_handle *h, struct content_entry *content,
 Bail:
     ccn_charbuf_destroy(&flatname);
     return(-1);
+}
+
+/**
+ *  Get the flatname associated with content
+ *
+ * @returns flatname in a charbuf, which should be treated as read-only.
+ */
+PUBLIC struct ccn_charbuf *
+r_store_content_flatname(struct ccnr_handle *h, struct content_entry *content)
+{
+    return(content->flatname);
 }
 
 PUBLIC struct content_entry *
