@@ -269,7 +269,7 @@ public class NetworkTest extends CCNTestBase {
 				putHandle.put(co);
 			for (int i = 0; i < FLOOD_ITERATIONS; i++) {
 				ContentObject co = getHandle.get(ContentName.fromNative(testPrefix, new Integer(i).toString()), 2000);
-				Assert.assertNotNull(co);
+				Assert.assertNotNull("Failed in flood after " + i + " iterations", co);
 			}
 		}
 	}
