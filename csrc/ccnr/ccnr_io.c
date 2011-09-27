@@ -114,6 +114,8 @@ r_io_enroll_face(struct ccnr_handle *h, struct fdholder *fdholder)
     h->fdholder_by_fd = a;
 use_i:
     a[i] = fdholder;
+    if (i == 0)
+        h->face0 = fdholder; /* This one is special */
     fdholder->filedesc = i;
     fdholder->meter[FM_BYTI] = ccnr_meter_create(h, "bytein");
     fdholder->meter[FM_BYTO] = ccnr_meter_create(h, "byteout");
@@ -194,7 +196,7 @@ init_face_flags(struct ccnr_handle *h, struct fdholder *fdholder, int setflags)
             /* This is the situation inside of FreeBSD jail. */
             struct sockaddr_in myaddr;
             socklen_t myaddrlen = sizeof(myaddr);
-            if (0 == getsockname(fdholder->recv_fd, (struct sockaddr *)&myaddr, &myaddrlen)) {
+            if (0 == getsockname(fdholder->filedesc, (struct sockaddr *)&myaddr, &myaddrlen)) {
                 if (addr4->sin_addr.s_addr == myaddr.sin_addr.s_addr)
                     fdholder->flags |= CCNR_FACE_LOOPBACK;
             }
@@ -229,9 +231,7 @@ r_io_record_fd(struct ccnr_handle *h, int fd,
         abort();
     if (who != NULL)
         ccn_charbuf_append(fdholder->name, who, wholen);
-    fdholder->recv_fd = fd;
     fdholder->filedesc = fd;
-    fdholder->sendface = CCN_NOFACEID;
     init_face_flags(h, fdholder, setflags);
     res = r_io_enroll_face(h, fdholder);
     if (res == -1) {
@@ -273,8 +273,8 @@ PUBLIC int
 r_io_open_repo_data_file(struct ccnr_handle *h, const char *name, int output)
 {
     struct ccn_charbuf *temp = NULL;
-    int fd;
-    struct fdholder *fdholder;
+    int fd = -1;
+    struct fdholder *fdholder = NULL;
 
     temp = ccn_charbuf_create();
     ccn_charbuf_putf(temp, "%s/%s", h->directory, name);
@@ -321,15 +321,16 @@ r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
     int res;
     
     fdholder = r_io_fdholder_from_fd(h, fd);
-    if (fdholder == NULL) {
+    if (fdholder == NULL)
         ccnr_msg(h, "no fd holder for fd %d", fd);
-        abort();
-    }
-    if ((fdholder->flags & CCNR_FACE_CCND))
+    if (fdholder == h->face0)
+        (res = 0, h->face0 = NULL);
+    else if ((fdholder->flags & CCNR_FACE_CCND))
         res = ccn_disconnect(h->direct_client);
     else
         res = close(fd);
-    ccnr_msg(h, "shutdown client fd=%d", fd);
+    if (CCNSHOULDLOG(h, sdfdf, CCNL_INFO))
+        ccnr_msg(h, "shutdown client fd=%d", fd);
     ccn_charbuf_destroy(&fdholder->inbuf);
     ccn_charbuf_destroy(&fdholder->outbuf);
     for (c = 0; c < CCN_CQ_N; c++)
@@ -443,14 +444,14 @@ r_io_send(struct ccnr_handle *h,
         return;
     }
     if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
-        offset = lseek(fdholder->recv_fd, 0, SEEK_END);
+        offset = lseek(fdholder->filedesc, 0, SEEK_END);
         if (offset == (off_t)-1) {
-            ccnr_msg(h, "lseek(%d): %s", fdholder->recv_fd, strerror(errno));
+            ccnr_msg(h, "lseek(%d): %s", fdholder->filedesc, strerror(errno));
             return;
         }
         if (offsetp != NULL)
             *offsetp = offset;
-        if (fdholder->recv_fd == h->active_out_fd) {
+        if (fdholder->filedesc == h->active_out_fd) {
             if (offset != h->stable && h->stable != 0)
                 ccnr_msg(h, "expected file size %ju, found %ju",
                     (uintmax_t)h->stable,
@@ -459,7 +460,7 @@ r_io_send(struct ccnr_handle *h,
         }
     }
     if ((fdholder->flags & CCNR_FACE_DGRAM) == 0)
-        res = write(fdholder->recv_fd, data, size);
+        res = write(fdholder->filedesc, data, size);
     else
         res = sendto(sending_fd(h, fdholder), data, size, 0,
                      (struct sockaddr *)fdholder->name->buf,
@@ -495,7 +496,7 @@ r_io_prepare_poll_fds(struct ccnr_handle *h)
 {
     int i, j, nfds;
     
-    for (i = 0, nfds = 0; i < h->face_limit; i++)
+    for (i = 1, nfds = 0; i < h->face_limit; i++)
         if (r_io_fdholder_from_fd(h, i) != NULL)
             nfds++;
     
@@ -504,7 +505,7 @@ r_io_prepare_poll_fds(struct ccnr_handle *h)
         h->fds = realloc(h->fds, h->nfds * sizeof(h->fds[0]));
         memset(h->fds, 0, h->nfds * sizeof(h->fds[0]));
     }
-    for (i = 0, j = 0; i < h->face_limit; i++) {
+    for (i = 1, j = 0; i < h->face_limit; i++) {
         struct fdholder *fdholder = r_io_fdholder_from_fd(h, i);
         if (fdholder != NULL) {
             h->fds[j].fd = fdholder->filedesc;
@@ -528,15 +529,16 @@ r_io_prepare_poll_fds(struct ccnr_handle *h)
 }
 
 /**
- * Shutdown listeners and bound datagram sockets, leaving connected streams.
+ * Shutdown all open fds.
  */
 PUBLIC void
 r_io_shutdown_all(struct ccnr_handle *h)
 {
     int i;
     for (i = 1; i < h->face_limit; i++) {
-        if (r_io_fdholder_from_fd(h, i) != NULL) {
+        if (r_io_fdholder_from_fd(h, i) != NULL)
             r_io_shutdown_client_fd(h, i);
-        }
     }
+    ccnr_internal_client_stop(h);
+    r_io_shutdown_client_fd(h, 0);
 }

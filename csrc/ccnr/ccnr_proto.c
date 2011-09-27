@@ -279,7 +279,9 @@ r_proto_activate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
     int i;
     
     for (i = 0; i < pp->namespaces->n; i++) {
-        ccnr_msg(ccnr, "Adding listener for %s", (char *)pp->store->buf + pp->namespaces->buf[i]);
+        if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_INFO))
+            ccnr_msg(ccnr, "Adding listener for %s",
+                     (char *)pp->store->buf + pp->namespaces->buf[i]);
         r_proto_uri_listen(ccnr, ccnr->direct_client,
                            (char *)pp->store->buf + pp->namespaces->buf[i],
                            r_proto_answer_req, 0);
@@ -292,7 +294,9 @@ r_proto_deactivate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *p
     int i;
     
     for (i = 0; i < pp->namespaces->n; i++) {
-        ccnr_msg(ccnr, "Removing listener for %s", (char *)pp->store->buf + pp->namespaces->buf[i]);
+        if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_INFO))
+            ccnr_msg(ccnr, "Removing listener for %s",
+                     (char *)pp->store->buf + pp->namespaces->buf[i]);
         r_proto_uri_listen(ccnr, ccnr->direct_client,
                            (char *)pp->store->buf + pp->namespaces->buf[i],
                            NULL, 0);

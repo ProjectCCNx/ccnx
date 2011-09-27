@@ -171,12 +171,12 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (h->face0 == NULL) {
         struct fdholder *fdholder;
         fdholder = calloc(1, sizeof(*fdholder));
-        fdholder->recv_fd = -1;
-        fdholder->sendface = 0;
+        if (dup2(open("/dev/null", O_RDONLY), 0) == -1)
+            ccnr_msg(h, "stdin: %s", strerror(errno));
+        fdholder->filedesc = 0;
         fdholder->flags = (CCNR_FACE_GG | CCNR_FACE_NORECV);
-        h->face0 = fdholder;
+        r_io_enroll_face(h, fdholder);
     }
-    r_io_enroll_face(h, h->face0);
     ccnr_direct_client_start(h);
     if (ccn_connect(h->direct_client, NULL) != -1) {
         struct fdholder *fdholder;
@@ -238,7 +238,6 @@ r_init_destroy(struct ccnr_handle **pccnr)
     if (h == NULL)
         return;
     r_io_shutdown_all(h);
-    ccnr_internal_client_stop(h);
     ccnr_direct_client_stop(h);
     ccn_schedule_destroy(&h->sched);
     hashtb_destroy(&h->propagating_tab);
@@ -274,12 +273,6 @@ r_init_destroy(struct ccnr_handle **pccnr)
         ccn_charbuf_destroy(&h->parsed_policy->store);
         free(h->parsed_policy);
         h->parsed_policy = NULL;
-    }
-    if (h->face0 != NULL) {
-        ccn_charbuf_destroy(&h->face0->inbuf);
-        ccn_charbuf_destroy(&h->face0->outbuf);
-        free(h->face0);
-        h->face0 = NULL;
     }
     free(h);
     *pccnr = NULL;
@@ -439,7 +432,7 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
                 fdholder->inbuf = ccn_charbuf_create();
             fdholder->inbuf->length = 0;    // clear the buffer
             ccn_charbuf_reserve(fdholder->inbuf, 8800);   // limits the size of the policy file
-            res = read(fdholder->recv_fd, fdholder->inbuf->buf, fdholder->inbuf->limit - fdholder->inbuf->length);
+            res = read(fdholder->filedesc, fdholder->inbuf->buf, fdholder->inbuf->limit - fdholder->inbuf->length);
             if (res == -1) {
                 ccnr_msg(ccnr, "read policy: %s (errno = %d)", strerror(errno), errno);
                 abort();
