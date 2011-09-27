@@ -1242,7 +1242,6 @@ public class CCNNetworkManager implements Runnable {
 					//	SystemConfiguration.logObject("Data from net:", co);
 					_handlerCallTime = System.currentTimeMillis();
 					deliverContent(co);
-					_handlerCallTime = NOT_IN_HANDLER;
 				} else if (packet instanceof Interest) {
 					_stats.increment(StatsEnum.ReceiveInterest);
 					Interest interest = (Interest)	packet;
@@ -1251,7 +1250,6 @@ public class CCNNetworkManager implements Runnable {
 					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
 					_handlerCallTime = System.currentTimeMillis();
 					deliverInterest(oInterest, interest);
-					_handlerCallTime = NOT_IN_HANDLER;
 				}  else { // for interests
 					_stats.increment(StatsEnum.ReceiveUnknown);
 				}
@@ -1260,6 +1258,7 @@ public class CCNNetworkManager implements Runnable {
 				Log.severe(Log.FAC_NETMANAGER, formatMessage("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _port));
                 Log.warningStackTrace(ex);
 			}
+			_handlerCallTime = NOT_IN_HANDLER;
 		}
 
 		Log.info(Log.FAC_NETMANAGER, formatMessage("Shutdown complete for port: " + _port));
