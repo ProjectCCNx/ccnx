@@ -676,7 +676,8 @@ public class CCNNetworkManager implements Runnable {
 		}
 		
 		// Print the statistics for this network manager
-		System.out.println(getStats().toString());
+		if (SystemConfiguration.DUMP_NETMANAGER_STATS)
+			System.out.println(getStats().toString());
 	}
 	
 	@Override
