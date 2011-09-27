@@ -167,7 +167,7 @@ send_http_response(struct ccnr_handle *h, struct fdholder *fdholder,
     int hdrlen;
 
     /* Set linger to prevent quickly resetting the connection on close.*/
-    setsockopt(fdholder->recv_fd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
+    setsockopt(fdholder->filedesc, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger));
     hdrlen = snprintf(buf, sizeof(buf),
                       "HTTP/1.1 200 OK" CRLF
                       "Content-Type: %s; charset=utf-8" CRLF
@@ -474,10 +474,10 @@ collect_faces_xml(struct ccnr_handle *h, struct ccn_charbuf *b)
                 const char *node = ccn_charbuf_as_string(nodebuf);
                 ccn_charbuf_putf(b, "<ip>%s:%d</ip>", node, port);
             }
-#endif
             if (fdholder->sendface != fdholder->filedesc &&
                 fdholder->sendface != CCN_NOFACEID)
                 ccn_charbuf_putf(b, "<via>%u</via>", fdholder->sendface);
+#endif
             if (fdholder != NULL && (fdholder->flags & CCNR_FACE_PASSIVE) == 0) {
                 ccn_charbuf_putf(b, "<meters>");
                 for (m = 0; m < CCNR_FACE_METER_N; m++)
