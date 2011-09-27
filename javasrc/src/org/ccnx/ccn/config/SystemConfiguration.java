@@ -241,13 +241,6 @@ public class SystemConfiguration {
 	public static int SETTABLE_SHORT_TIMEOUT = SHORT_TIMEOUT;
 
 	/**
-	 * Dispatch thread limit for network manager
-	 */
-	protected static final String MAX_DISPATCH_THREADS_PROPERTY = "org.ccnx.max.dispatch.threads";
-	protected final static String MAX_DISPATCH_THREADS_ENV_VAR = "CCNX_MAX_DISPATCH_THREADS";
-	public static int MAX_DISPATCH_THREADS = 200;
-	
-	/**
 	 * Should we dump netmanager statistics on shutdown
 	 */
 	protected static final String DUMP_NETMANAGER_STATS_PROPERTY = "org.ccnx.dump.netmanager.stats";
@@ -468,14 +461,6 @@ public class SystemConfiguration {
 		try {
 			SETTABLE_SHORT_TIMEOUT = Integer.parseInt(retrievePropertyOrEnvironmentVariable(SETTABLE_SHORT_TIMEOUT_PROPERTY, SETTABLE_SHORT_TIMEOUT_ENV_VAR, Integer.toString(SHORT_TIMEOUT)));
 			//			System.err.println("SETTABLE_SHORT_TIMEOUT = " + SETTABLE_SHORT_TIMEOUT);
-		} catch (NumberFormatException e) {
-			System.err.println("The settable short timeout must be an integer.");
-			throw e;
-		}
-		
-		// Allow override of max dispatch threads
-		try {
-			MAX_DISPATCH_THREADS = Integer.parseInt(retrievePropertyOrEnvironmentVariable(MAX_DISPATCH_THREADS_PROPERTY, MAX_DISPATCH_THREADS_ENV_VAR, Integer.toString(MAX_DISPATCH_THREADS)));
 		} catch (NumberFormatException e) {
 			System.err.println("The settable short timeout must be an integer.");
 			throw e;
