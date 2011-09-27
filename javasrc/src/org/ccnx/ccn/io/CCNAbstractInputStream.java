@@ -468,6 +468,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 				if (_nextPipelineSegment > returnedSegment) {
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: this is a previous segment...  drop");
+					returnedSegment = -1;
 				} else {
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: this is a pipeline segment, add to outOfOrderSegment queue");
