@@ -30,7 +30,7 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-b blocksize] [-r] ccnx:/some/uri\n"
+                "%s [-h] [-b 0<blocksize<=4096] [-r] ccnx:/some/uri\n"
                 " Reads stdin, sending data under the given URI"
                 " using ccn versioning and segmentation.\n", progname);
         exit(1);
@@ -43,17 +43,19 @@ main(int argc, char **argv)
     struct ccn *ccn = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_seqwriter *w = NULL;
-    long blocksize = 1024;
+    int blocksize = 1024;
     int torepo = 0;
     int i;
     int status = 0;
     int res;
     ssize_t read_res;
+    size_t blockread;
     unsigned char *buf = NULL;
+    
     while ((res = getopt(argc, argv, "hrb:")) != -1) {
         switch (res) {
             case 'b':
-                blocksize = atol(optarg);
+                blocksize = atoi(optarg);
                 if (blocksize <= 0 || blocksize > 4096)
                     usage(progname);
                 break;
@@ -92,6 +94,7 @@ main(int argc, char **argv)
         fprintf(stderr, "ccn_seqw_create failed\n");
         exit(1);
     }
+    ccn_seqw_set_block_limits(w, blocksize, blocksize);
     if (torepo) {
         struct ccn_charbuf *name_v = ccn_charbuf_create();
         ccn_seqw_get_name(w, name_v);
@@ -100,28 +103,40 @@ main(int argc, char **argv)
         ccn_get(ccn, name_v, NULL, 2000, NULL, NULL, NULL, 0);
         ccn_charbuf_destroy(&name_v);
     }
+    blockread = 0;
     for (i = 0;; i++) {
-        ccn_run(ccn, 1);
-        read_res = read(0, buf, blocksize);
-        if (read_res < 0) {
-            perror("read");
-            read_res = 0;
-            status = 1;
+        while (blockread < blocksize) {
+            ccn_run(ccn, 1);
+            read_res = read(0, buf + blockread, blocksize - blockread);
+            if (read_res == 0)
+                goto cleanup;
+            if (read_res < 0) {
+                perror("read");
+                status = 1;
+                goto cleanup;
+            }
+            blockread += read_res;
         }
-        if (read_res == 0) {
-            ccn_seqw_close(w);
-            w = NULL;
-            status = 0;
-            break;
-        }
-        res = ccn_seqw_write(w, buf, read_res);
+        res = ccn_seqw_write(w, buf, blockread);
         while (res == -1) {
             ccn_run(ccn, 100);
-            res = ccn_seqw_write(w, buf, read_res);
+            res = ccn_seqw_write(w, buf, blockread);
         }
-        if (res != read_res)
+        if (res != blockread)
             abort(); /* hmm, ccn_seqw_write did a short write or something */
+        blockread = 0;
     }
+    
+cleanup:
+    // flush out any remaining data and close
+    if (blockread > 0) {
+        res = ccn_seqw_write(w, buf, blockread);
+        while (res == -1) {
+            ccn_run(ccn, 100);
+            res = ccn_seqw_write(w, buf, blockread);
+        }
+    }
+    ccn_seqw_close(w);
     ccn_run(ccn, 1);
     free(buf);
     buf = NULL;
