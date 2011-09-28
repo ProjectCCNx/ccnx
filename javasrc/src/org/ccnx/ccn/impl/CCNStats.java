@@ -451,10 +451,10 @@ public abstract class CCNStats {
 		// track the last time we sent a packet to get the packets/sec counter.
 		private long _lastsend = System.currentTimeMillis() / 1000;
 		private long _pktcount = 0;
-		public void send(Object o) {
+		public void send(Object o, int len) {
 			_stats.increment(MyStats.SendRequests);
 			// some example proxy for byte size
-			_stats.addSample(MyStats.BytesPerPacket, o.toString().length());
+			_stats.addSample(MyStats.BytesPerPacket, len);
 			
 			long now = System.currentTimeMillis() / 1000;
 			// how many seconds has it been?

@@ -36,7 +36,7 @@ public class CCNStatTest {
 		int recvs = 15;
 
 		for(int i = 0; i < sends; i++ ) {
-			ecws.send(obj);
+			ecws.send(obj, 10);
 		
 			// add some arbitrary delay to simulate doing something
 			try {
@@ -78,7 +78,7 @@ public class CCNStatTest {
 			long t0_nanos = System.nanoTime();
 
 			for(int j = 0; j < sends; j++ )
-				ecws.send(obj);
+				ecws.send(obj, 10);
 
 			long t1_nanos = System.nanoTime();
 
@@ -102,33 +102,5 @@ public class CCNStatTest {
 				String.format("average %f std %f nanos/increment",
 						avg_delta / sends, std_delta / sends));
 
-	}
-
-	interface if1 {
-		public void a();
-	}
-	
-	interface if2 extends if1 {
-		public void a();
-	}
-	
-	interface if3 extends if1 {
-		public void a();
-	}
-	
-	class C implements if3, if2 {
-		public void a() {}
-		public void b() {}
-		public void c() {}	
-	}
-	
-	@Test
-	public void testif() throws Exception {
-		if1 c = new C();
-		
-		System.out.println(c instanceof if1);
-		System.out.println(c instanceof if2);
-		System.out.println(c instanceof if3);
-	}
-	
+	}	
 }
