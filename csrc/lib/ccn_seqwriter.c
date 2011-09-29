@@ -36,6 +36,8 @@ struct ccn_seqwriter {
     struct ccn_charbuf *cob0;
     uintmax_t seqnum;
     int batching;
+    int blockminsize;
+    int blockmaxsize;
     unsigned char interests_possibly_pending;
     unsigned char closed;
 };
@@ -80,7 +82,7 @@ seqw_incoming_interest(
             free(w);
             break;
         case CCN_UPCALL_INTEREST:
-            if (w->closed || w->buffer->length > 0) {
+            if (w->closed || w->buffer->length > w->blockminsize) {
                 cob = seqw_next_cob(w);
                 if (cob == NULL)
                     return(CCN_UPCALL_RESULT_OK);
@@ -157,6 +159,8 @@ ccn_seqw_create(struct ccn *h, struct ccn_charbuf *name)
     w->h = h;
     w->seqnum = 0;
     w->interests_possibly_pending = 1;
+    w->blockminsize = 0;
+    w->blockmaxsize = MAX_DATA_SIZE;
     res = ccn_set_interest_filter(h, nb, &(w->cl));
     if (res < 0) {
         ccn_charbuf_destroy(&w->nb);
@@ -209,14 +213,15 @@ ccn_seqw_write(struct ccn_seqwriter *w, const void *buf, size_t size)
     
     if (w == NULL || w->cl.data != w)
         return(-1);
-    if (w->buffer == NULL || size > MAX_DATA_SIZE)
+    if (w->buffer == NULL || size > w->blockmaxsize)
         return(ccn_seterror(w->h, EINVAL));
     ans = size;
-    if (size + w->buffer->length > MAX_DATA_SIZE)
+    if (size + w->buffer->length > w->blockmaxsize)
         ans = ccn_seterror(w->h, EAGAIN);
     else if (size != 0)
         ccn_charbuf_append(w->buffer, buf, size);
     if (w->interests_possibly_pending &&
+        (w->closed || w->buffer->length >= w->blockminsize) &&
         (w->batching == 0 || ans == -1)) {
         cob = seqw_next_cob(w);
         if (cob != NULL) {
@@ -264,7 +269,17 @@ ccn_seqw_batch_end(struct ccn_seqwriter *w)
         ccn_seqw_write(w, NULL, 0);
     return(w->batching);
 }
-
+int
+ccn_seqw_set_block_limits(struct ccn_seqwriter *w, int l, int h)
+{
+    if (w == NULL || w->cl.data != w || w->closed)
+        return(-1);
+    if (l < 0 || l > MAX_DATA_SIZE || h < 0 || h > MAX_DATA_SIZE || l > h)
+        return(-1);
+    w->blockminsize = l;
+    w->blockmaxsize = h;
+    return(0);
+}
 /**
  * Assert that an interest has possibly been expressed that matches
  * the seqwriter's data.  This is useful, for example, if the seqwriter
