@@ -164,8 +164,9 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 	private double avgResponseTime = -1;
 
-	private Object processingSegmentLock = new Object();
+	private Thread processor = null;
 	private long processingSegment = -1;
+	private ArrayList<IncomingSegment> incoming = new ArrayList<IncomingSegment>();
 	
 	private int processingDefer = 0;
 
@@ -287,7 +288,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 			_pipelineStartTime = System.currentTimeMillis();
 			if (SystemConfiguration.PIPELINE_STATS)
-				System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1"+ "avgResponseTime "+avgResponseTime);		
+				System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1"+ " toProcess "+incoming.size()+" avgResponseTime "+avgResponseTime);
 
 			long segmentToGet = -1;
 			Interest interest = null;
@@ -492,7 +493,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 			_nextPipelineSegment = nextInOrderSegmentNeeded();
 			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 				Log.info(Log.FAC_PIPELINE, "PIPELINE: the next segment needed is {0}", _nextPipelineSegment);
-			synchronized(processingSegmentLock) {
+			synchronized(incoming) {
 				processingSegment = -1;
 			}
 
@@ -599,8 +600,15 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: checking for a hole at segment: {0}", hole);
 
-		//first check the incoming segment to see if it is here already
-		synchronized (processingSegmentLock) {
+		//first check the incoming segments to see if it is here already
+		synchronized (incoming) {
+			for (IncomingSegment i: incoming)
+				if(i.segmentNumber == hole) {
+					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: segment {0} is already here, just needs to be processed", hole);
+					return;
+				}
+
 			if(processingSegment != -1 && hole == processingSegment) {
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: the segment is being processed... not a hole.");
@@ -800,7 +808,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 	}
 
 	private void adjustAvgResponseTimeForHole() {
-		synchronized (processingSegmentLock) {
+		synchronized(incoming) {
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: before adjusting avgResponseTime for hole. avgResponseTime = {0}", avgResponseTime);
 			avgResponseTime = 0.9 * avgResponseTime + 0.1 * (SystemConfiguration.PIPELINE_RTTFACTOR * avgResponseTime);
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: after adjusting avgResponseTime for hole. avgResponseTime = {0}", avgResponseTime);
@@ -1100,7 +1108,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 
 
 	private boolean requestedSegment(long number) {
-		synchronized(processingSegmentLock) {
+		synchronized(incoming) {
+			for(IncomingSegment i: incoming)
+				if (i.segmentNumber == number) {
+					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we already asked for it and it is just waiting to be processed");
+					return true;
+				}
+
 			if (processingSegment!=-1 && processingSegment == number) {
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: someone is processing it right now!");
@@ -1185,7 +1200,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 		long starttime = System.currentTimeMillis();
 		IncomingSegment is;
 
-		synchronized(processingSegmentLock) {
+		synchronized(incoming) {
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: before adjusting avgResponseTime after reception. avgResponseTime = {0} elapsed time {1}", avgResponseTime, (starttime - interest.userTime));
 			if (avgResponseTime == -1) {
 				avgResponseTime = starttime - interest.userTime;
@@ -1209,64 +1224,130 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 				Log.info(Log.FAC_PIPELINE, "PIPELINE: in handleContent after reading {0} avgResponseTime {1}", result.name(), avgResponseTime);
 			is = new IncomingSegment(result, interest);
-			
-			processingSegment = SegmentationProfile.getSegmentNumber(is.content.name());
-		}
-		
-		synchronized(inOrderSegments){
+			int index = 0;
+			for (IncomingSegment i: incoming) {
+				if (i.segmentNumber == is.segmentNumber){
+					//this segment is already here to be processed...  return
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: attempting to deliver segment {0}, but it is already here to be processed, returning", is.segmentNumber);
+					return null;
+				}
+				if (i.segmentNumber > is.segmentNumber)
+					break;
+				index++;
+			}
+			incoming.add(index, is);
 
-			//was this a content object we were looking for?
-			//synchronized(inOrderSegments) {
+			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
+				String s = "segments to process: [";
+				for (IncomingSegment i: incoming)
+					s += " "+i.segmentNumber;
+				s += " ]";
+				Log.info(Log.FAC_PIPELINE, "PIPELINE: " + s);
+			}
 
-			if (SystemConfiguration.PIPELINE_STATS)
-				System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].2" + " avgResponseTime "+avgResponseTime);
-
-			if (_sentInterests.remove(is.interest)) {
-				//we had this interest outstanding...
+			if (processor == null) {
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: we were expecting this data! we had outstanding interests: {0}", is.interest);
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: processor was null, setting it to me.");
+				//no threads are actively processing content...  this one will
+				processor = Thread.currentThread();
+				//synchronized(inOrderSegments) {
+				is = incoming.remove(0);
+				//_sentInterests.add(is.interest);
+				processingSegment = SegmentationProfile.getSegmentNumber(is.content.name());
+				//}
 			} else {
-				//we must have canceled the interest...  drop content object
-				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: we must have canceled the interest, dropping ContentObject(s).  old interest: {0}", is.interest);
-
-				//does this match one of our other interests?
-				Interest checkInterest;
-				is.interest = null;
-				for (int i = 0; i < _sentInterests.size(); i++) {
-					checkInterest = _sentInterests.get(i);
-					if (checkInterest.matches(is.content)) {
-						//we found a match!
-						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-							Log.info(Log.FAC_PIPELINE, "PIPELINE: the incoming packet's interest is gone, but it matches another interest, using that");
-						is.interest = checkInterest;
-						break;
-					}
+				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: processor not null, returning");
+					//another thread is already processing...  just dump my content object and return
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: {0} done with handleContent after reading {1}", (System.currentTimeMillis() - starttime), result.name());
 				}
-				if (is.interest == null) {
-					is = null;
-					synchronized(processingSegmentLock) {
-						processingSegment = -1;
-					}
-				}
+				return null;
 			}
+		}
+		//this thread will continue processing the incoming content objects until they are empty
+		synchronized(inOrderSegments){
+			while (is != null) {
 
-			if (is != null) {
-				// verify the content object
-				if (_handle.defaultVerifier().verify(is.content)) {
-					// this content verified
-					receivePipelineContent(is.content);
+				//was this a content object we were looking for?
+				//synchronized(inOrderSegments) {
+
+				if (SystemConfiguration.PIPELINE_STATS)
+					System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].2"+ " toProcess "+incoming.size()+" avgResponseTime "+avgResponseTime);
+
+				if (_sentInterests.remove(is.interest)) {
+					//we had this interest outstanding...
+					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we were expecting this data! we had outstanding interests: {0}", is.interest);
 				} else {
-					// content didn't verify, don't hand it up...
-					// TODO content that fails verification needs to be handled better.  need to express a new interest
-					if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
-						Log.warning(Log.FAC_PIPELINE, "Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
-					_sentInterests.remove(is.interest);
-				}
-			}
+					//we must have canceled the interest...  drop content object
+					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: we must have canceled the interest, dropping ContentObject(s).  old interest: {0}", is.interest);
 
-			advancePipeline();
-		}//try holding lock more consistently to control how notify is done
+					//does this match one of our other interests?
+					Interest checkInterest;
+					is.interest = null;
+					for (int i = 0; i < _sentInterests.size(); i++) {
+						checkInterest = _sentInterests.get(i);
+						if (checkInterest.matches(is.content)) {
+							//we found a match!
+							if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+								Log.info(Log.FAC_PIPELINE, "PIPELINE: the incoming packet's interest is gone, but it matches another interest, using that");
+							is.interest = checkInterest;
+							break;
+						}
+					}
+					if (is.interest == null) {
+						is = null;
+						synchronized(incoming) {
+							processingSegment = -1;
+						}
+					}
+				}
+
+
+				//}
+
+				if (is != null) {
+					// verify the content object
+					if (_handle.defaultVerifier().verify(is.content)) {
+						// this content verified
+						receivePipelineContent(is.content);
+					} else {
+						// content didn't verify, don't hand it up...
+						// TODO content that fails verification needs to be handled better.  need to express a new interest
+						if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
+							Log.warning(Log.FAC_PIPELINE, "Dropping content object due to failed verification: {0} Need to add interest re-expression with exclude", is.content.name());
+						_sentInterests.remove(is.interest);
+					}
+				}
+
+				synchronized(incoming) {
+					if (incoming.size() == 0) {
+						processor = null;
+						is = null;
+						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: that was the last one, resetting processor to null");
+					} else {
+						is = incoming.remove(0);
+						//_sentInterests.add(is.interest);
+						processingSegment = SegmentationProfile.getSegmentNumber(is.content.name());
+						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
+							Log.info(Log.FAC_PIPELINE, "PIPELINE: processing first segment in incoming arraylist, segment {0}", is.segmentNumber);
+					}
+
+					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
+						String s = "segments to process: [";
+						for (IncomingSegment i: incoming)
+							s += " "+i.segmentNumber;
+						s += " ]";
+						Log.info(Log.FAC_PIPELINE, "PIPELINE: " + s);
+					}
+
+				}
+
+				advancePipeline();
+			}//try holding lock more consistently to control how notify is done
+		} //while loop for processing incoming segments
 		attemptHoleFilling();
 
 		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
@@ -1616,7 +1697,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 			if (_baseName.equals(_basePipelineName)) {
 				// we already have the base name...
 				if (SystemConfiguration.PIPELINE_STATS)
-					System.out.println("plot " + (System.currentTimeMillis() - _pipelineStartTime) + " inOrder: " + inOrderSegments.size() + " outOfOrder: " + outOfOrderSegments.size() + " interests: " + _sentInterests.size() + " holes: " + _holes + " received: " + _totalReceived + " [" + _baseName + "].3" +" avgResponseTime "+avgResponseTime);
+					System.out.println("plot " + (System.currentTimeMillis() - _pipelineStartTime) + " inOrder: " + inOrderSegments.size() + " outOfOrder: " + outOfOrderSegments.size() + " interests: " + _sentInterests.size() + " holes: " + _holes + " received: " + _totalReceived + " [" + _baseName + "].3"+ " toProcess "+incoming.size()+" avgResponseTime "+avgResponseTime);
 			} else {
 				// we don't have the base name... set for pipelining.
 				Log.info(Log.FAC_PIPELINE, "PIPELINE: in getSegment and we detected a name change.  _baseName: {0} _basePipelineName: {1}", _baseName, _basePipelineName);
@@ -2177,10 +2258,12 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 	static private class IncomingSegment {
 		public ContentObject content;
 		public Interest interest;
+		public long segmentNumber;
 
 		private IncomingSegment(ContentObject co, Interest i) {
 			content = co;
 			interest = i;
+			segmentNumber = SegmentationProfile.getSegmentNumber(co.name());
 		}
 	}
 

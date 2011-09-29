@@ -20,43 +20,21 @@ package org.ccnx.ccn.test.impl;
 import java.util.ArrayList;
 import java.util.Random;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.Interest;
-import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class CCNNetworkTestRepo extends CCNTestBase {
-	
-	protected static final int TEST_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT;
+/**
+ * This test once uncovered an error in the network manager due to prefix registration timing
+ */
+public class CCNNetworkTestRepo {
 	
 	protected static Random _rnd = new Random();
 	static CCNTestHelper testHelper = new CCNTestHelper(CCNNetworkTestRepo.class);
-	static ContentName testPrefix = testHelper.getClassChildName("networkTestRepo");
 	
-	@BeforeClass
-	public static void setUpBeforeClass() throws Exception {
-		CCNTestBase.setUpBeforeClass();
-	}
-	
-	@AfterClass
-	public static void tearDownAfterClass() throws Exception {
-		CCNTestBase.tearDownAfterClass();
-	}
-	
-	/**
-	 * This test once uncovered an error in the network manager due to prefix registration timing
-	 */
 	@Test
 	public void testObjectIOLoop() throws Exception {
 	   CCNHandle handle = CCNHandle.getHandle();
@@ -82,50 +60,5 @@ public class CCNNetworkTestRepo extends CCNTestBase {
 	       System.out.println(i);
 	   }
 	}
-	
-	@Test
-	public void testBadCallback() throws Exception {
-		BogusFilterListener bfl = new BogusFilterListener();
-		TestListener tl = new TestListener();
-		putHandle.registerFilter(testPrefix, bfl);
-		putHandle.checkError(TEST_TIMEOUT);
-		Interest interest = new Interest(testPrefix);
-		synchronized (bfl) {
-			getHandle.expressInterest(interest, tl);
-			putHandle.checkError(TEST_TIMEOUT);
-			long beforeTime = System.currentTimeMillis();
-			bfl.wait(SystemConfiguration.MAX_TIMEOUT * 2);
-			if (System.currentTimeMillis() - beforeTime >= (SystemConfiguration.MAX_TIMEOUT * 2))
-				Assert.fail("Network manager failed to interrupt hung handler");
-		}
-		getHandle.cancelInterest(interest, tl);
-		putHandle.checkError(TEST_TIMEOUT);
-	}
-	
-	class TestListener implements CCNInterestListener {
-
-		public Interest handleContent(ContentObject co,
-				Interest interest) {
-			Assert.assertFalse(co == null);
-			return null;
-		}
-	}
-	class BogusFilterListener implements CCNFilterListener {
-
-		public boolean handleInterest(Interest interest) {
-			try {
-				CCNStringObject cso = new CCNStringObject(ContentName.fromNative(testPrefix, "bogus"), "bogus",
-						SaveType.REPOSITORY, putHandle);
-				cso.setTimeout(SystemConfiguration.NO_TIMEOUT);
-				cso.save();		// This is bogus
-				Assert.fail("Unexpected return");
-			} catch (Exception e) {
-				synchronized (this) {
-					notifyAll();
-				}
-			}
-			return true;
-		}	
-	}	
 
 }

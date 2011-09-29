@@ -540,20 +540,20 @@ public class CCNFlowControl implements CCNFilterListener {
 				
 				Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
 				_unmatchedInterests.add(i, new UnmatchedInterest());
-				return false;		// XXX is this the right thing to do?
 			}
 		}
-		
-		if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
-			Log.finest(Log.FAC_IO, "Found content {0} matching interest: {1}",co.name(), i);
-		try {
-			_handle.put(co);
-			synchronized (_holdingArea) {
-				afterPutAction(co);
+		if (co != null) {
+			if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+				Log.finest(Log.FAC_IO, "Found content {0} matching interest: {1}",co.name(), i);
+			try {
+				_handle.put(co);
+				synchronized (_holdingArea) {
+					afterPutAction(co);
+				}
+			} catch (IOException e) {
+				Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
+				Log.warningStackTrace(e);
 			}
-		} catch (IOException e) {
-			Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
-			Log.warningStackTrace(e);
 		}
 			
 		return true;
