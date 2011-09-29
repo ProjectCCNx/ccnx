@@ -428,11 +428,11 @@ enum es_active_state {
 
 struct enum_state {
     struct ccn_charbuf *name;
-    struct ccn_seqwriter *w;
     struct content_entry *content;
     struct ccn_charbuf *reply_body;
     struct ccn_charbuf *interest;
     struct ccn_indexbuf *interest_comps;
+    struct ccn_charbuf *cob;
     uintmax_t next_segment;
     ccnr_cookie starting_cookie;
     enum es_active_state active;
