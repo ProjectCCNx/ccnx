@@ -155,6 +155,7 @@ main(int argc, char **argv)
             if (res > 0) {
                 fwrite(buf, res, 1, stdout);
             } else if (res == CCN_FETCH_READ_NONE) {
+                fflush(stdout);
                 if (ccn_run(ccn, 1000) < 0) {
                     fprintf(stderr, "%s: error during ccn_run\n", argv[0]);
                     exit(1);
@@ -164,6 +165,7 @@ main(int argc, char **argv)
             } else if (res == CCN_FETCH_READ_TIMEOUT) {
                 /* eventually have a way to handle long timeout? */
                 ccn_reset_timeout(stream);
+                fflush(stdout);
                 if (ccn_run(ccn, 1000) < 0) {
                     fprintf(stderr, "%s: error during ccn_run\n", argv[0]);
                     exit(1);
