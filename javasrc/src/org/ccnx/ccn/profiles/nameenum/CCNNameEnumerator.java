@@ -449,7 +449,7 @@ public class CCNNameEnumerator implements CCNFilterListener, CCNInterestListener
 					try {
 						ContentName responseNameWithId = KeyProfile.keyName(responseName, _handle.keyManager().getDefaultKeyID());
 						NameEnumerationResponseMessageObject nemobj = new NameEnumerationResponseMessageObject(responseNameWithId, nem, _handle);
-						nemobj.save(interest);
+						nemobj.saveLaterWithClose(interest);
 						result = true;
 
 						if (Log.isLoggable(Level.FINE)) {

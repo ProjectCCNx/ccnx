@@ -423,12 +423,7 @@ public class LocalCopyTestRepo {
 				try {
 					String s = interest.name().toString();
 					CCNStringObject so = new CCNStringObject(interest.name(), s, SaveType.RAW, listenerhandle);
-					so.save();
-					try {
-						Thread.sleep(50);
-					} catch (InterruptedException e) {
-					}
-					so.close();
+					so.saveLaterWithClose();
 					replies.add(interest.name());
 					return true;
 				} catch (IOException e) {

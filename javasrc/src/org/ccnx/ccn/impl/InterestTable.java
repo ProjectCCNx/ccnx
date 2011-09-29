@@ -337,9 +337,7 @@ public class InterestTable<V> {
 					}
 				}
 				if (list.size() == 0) {
-					synchronized (_contents) {
-						_contents.remove(lfcn);
-					}
+					_contents.remove(lfcn);
 				}
 			}
 		}
@@ -487,9 +485,11 @@ public class InterestTable<V> {
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		if (null != target) {
-			for (LongestFirstContentName name : _contents.keySet()) {
-				// Name match - is there an interest match here?
-				matches.addAll(getAllMatchByName(name, target));
+			synchronized (_contents) {
+				for (LongestFirstContentName name : _contents.keySet()) {
+					// Name match - is there an interest match here?
+					matches.addAll(getAllMatchByName(name, target));
+				}
 			}
 		}
 		return matches;

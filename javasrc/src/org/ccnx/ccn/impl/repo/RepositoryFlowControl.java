@@ -226,7 +226,9 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 					return ((Client)check)._initialized;
 				}
 			}.wait(this, client);
-		} catch (Exception e) {} // Can't happen
+		} catch (Exception e) {
+			Log.warning(Log.FAC_REPO, e.getClass() + " : " + e.getMessage());
+		}
 		
 		synchronized (this) {
 			if (!client._initialized) {

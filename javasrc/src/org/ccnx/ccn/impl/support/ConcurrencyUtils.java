@@ -16,6 +16,8 @@
  */
 package org.ccnx.ccn.impl.support;
 
+import org.ccnx.ccn.config.SystemConfiguration;
+
 public class ConcurrencyUtils {
 	
 	/**
@@ -58,9 +60,13 @@ public class ConcurrencyUtils {
 		 */
 		public void wait(Object syncValue, Object checkValue) throws Exception {
 			synchronized (syncValue) {
+				long origTimeout = timeout;		
 				long startTime = System.currentTimeMillis();
-				while (!check(syncValue, checkValue) && timeout > 0) {
-					syncValue.wait(timeout);
+				while (!check(syncValue, checkValue) && (timeout > 0 || origTimeout == SystemConfiguration.NO_TIMEOUT)) {
+					if (origTimeout == SystemConfiguration.NO_TIMEOUT)
+						syncValue.wait();
+					else
+						syncValue.wait(timeout);
 					timeout -= (System.currentTimeMillis() - startTime);
 				}
 			}

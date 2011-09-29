@@ -225,7 +225,7 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		}
 		vos.addOutstandingInterest(interest);
 		writer = new Writer(vos, FILE_SIZE);
-		writer.run();
+		writer.start();
 		return true;
 	}
 
