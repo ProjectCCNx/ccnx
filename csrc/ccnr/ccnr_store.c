@@ -496,13 +496,13 @@ r_store_init(struct ccnr_handle *h)
 }
 
 PUBLIC int
-r_store_final(struct ccnr_handle *h) {
+r_store_final(struct ccnr_handle *h, int stable) {
     int res;
     
     res = ccn_btree_destroy(&h->btree);
     if (res < 0)
         ccnr_msg(h, "r_store_final.%d-%d Errors while closing index", __LINE__, res);
-    if (res >= 0)
+    if (res >= 0 && stable)
         res = r_store_write_stable_point(h);
     return(res);
 }

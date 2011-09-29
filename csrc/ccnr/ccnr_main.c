@@ -40,13 +40,13 @@ stdiologger(void *loggerdata, const char *format, va_list ap)
     return(vfprintf(fp, format, ap));
 }
 
-static struct ccnr_handle *h = NULL;
+static struct ccnr_handle *global_h = NULL;
 
 static void
 handle_signal(int sig)
 {
-    if (h != NULL)
-        h->running = 0;
+    if (global_h != NULL)
+        global_h->running = 0;
     signal(sig, SIG_DFL);
 }
 
@@ -62,12 +62,12 @@ main(int argc, char **argv)
     signal(SIGPIPE, SIG_IGN);
     signal(SIGINT, &handle_signal);
     signal(SIGTERM, &handle_signal);
-    h = r_init_create(argv[0], stdiologger, stderr);
-    if (h == NULL)
+    global_h = r_init_create(argv[0], stdiologger, stderr);
+    if (global_h == NULL)
         exit(1);
-    r_dispatch_run(h);
-    s = (h->running != 0);
-    ccnr_msg(h, "exiting.");
-    r_init_destroy(&h);
+    r_dispatch_run(global_h);
+    s = (global_h->running != 0);
+    ccnr_msg(global_h, "exiting.");
+    r_init_destroy(&global_h);
     exit(s);
 }

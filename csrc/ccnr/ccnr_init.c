@@ -235,8 +235,10 @@ PUBLIC void
 r_init_destroy(struct ccnr_handle **pccnr)
 {
     struct ccnr_handle *h = *pccnr;
+    int stable;
     if (h == NULL)
         return;
+    stable = h->active_in_fd == -1 ? 1 : 0;
     r_io_shutdown_all(h);
     ccnr_direct_client_stop(h);
     ccn_schedule_destroy(&h->sched);
@@ -247,7 +249,7 @@ r_init_destroy(struct ccnr_handle **pccnr)
     
     SyncFreeBase(&h->sync_handle);
     
-    r_store_final(h);
+    r_store_final(h, stable);
 
     if (h->fds != NULL) {
         free(h->fds);

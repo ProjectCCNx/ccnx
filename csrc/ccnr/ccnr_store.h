@@ -29,7 +29,7 @@
 #include "ccnr_private.h"
 
 void r_store_init(struct ccnr_handle *h);
-int r_store_final(struct ccnr_handle *h);
+int r_store_final(struct ccnr_handle *h, int stable);
 void r_store_set_content_timer(struct ccnr_handle *h,struct content_entry *content,struct ccn_parsed_ContentObject *pco);
 void r_store_mark_stale(struct ccnr_handle *h,struct content_entry *content);
 struct content_entry *r_store_next_child_at_level(struct ccnr_handle *h,struct content_entry *content,int level);
