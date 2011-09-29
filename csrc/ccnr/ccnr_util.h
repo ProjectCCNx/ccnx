@@ -26,6 +26,7 @@
 #include "ccnr_private.h"
 
 void r_util_gettime(const struct ccn_gettime *self,struct ccn_timeval *result);
+int r_util_timecmp(long secA, unsigned usecA, long secB, unsigned usecB);
 void r_util_reseed(struct ccnr_handle *h);
 void r_util_indexbuf_release(struct ccnr_handle *h,struct ccn_indexbuf *c);
 struct ccn_indexbuf *r_util_indexbuf_obtain(struct ccnr_handle *h);
