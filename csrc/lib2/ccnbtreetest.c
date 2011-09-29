@@ -828,7 +828,7 @@ test_insert_content(void)
     CHKSYS(res);
     size = statbuf.st_size;
     printf("Mapping %zd bytes from file %s\n", size, filename);
-    cb = mmap(NULL, size, PROT_READ, MAP_FILE | MAP_SHARED, fd, 0);
+    cb = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
     FAILIF(cb == MAP_FAILED && size != 0);
 
     // XXX - need nice way to create a brand-new empty btree

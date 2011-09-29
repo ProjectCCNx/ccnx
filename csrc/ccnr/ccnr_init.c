@@ -308,7 +308,7 @@ r_init_map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename,
     if (statbuf.st_size == 0)
         goto Bail;
 
-    mapped_file = mmap(NULL, statbuf.st_size, PROT_READ, MAP_FILE | MAP_SHARED, fd, 0);
+    mapped_file = mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (mapped_file == MAP_FAILED) {
         ccnr_msg(h, "mmap failed for %s (fd=%d), %s (errno=%d)",
                  ccn_charbuf_as_string(filename), fd, strerror(errno), errno);
