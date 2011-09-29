@@ -235,8 +235,10 @@ PUBLIC void
 r_init_destroy(struct ccnr_handle **pccnr)
 {
     struct ccnr_handle *h = *pccnr;
+    int stable;
     if (h == NULL)
         return;
+    stable = h->active_in_fd == -1 ? 1 : 0;
     r_io_shutdown_all(h);
     ccnr_direct_client_stop(h);
     ccn_schedule_destroy(&h->sched);
@@ -247,7 +249,7 @@ r_init_destroy(struct ccnr_handle **pccnr)
     
     SyncFreeBase(&h->sync_handle);
     
-    r_store_final(h);
+    r_store_final(h, stable);
 
     if (h->fds != NULL) {
         free(h->fds);
@@ -306,7 +308,7 @@ r_init_map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename,
     if (statbuf.st_size == 0)
         goto Bail;
 
-    mapped_file = mmap(NULL, statbuf.st_size, PROT_READ, MAP_FILE | MAP_SHARED, fd, 0);
+    mapped_file = mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (mapped_file == MAP_FAILED) {
         ccnr_msg(h, "mmap failed for %s (fd=%d), %s (errno=%d)",
                  ccn_charbuf_as_string(filename), fd, strerror(errno), errno);

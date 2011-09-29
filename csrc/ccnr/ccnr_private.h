@@ -170,7 +170,6 @@ struct ccnr_handle {
     struct ccn_charbuf *ccnr_keyid; /**< public key digest in keyid format %C1.M.K.%00... */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *propagating_tab; /**< keyed by nonce */
-    //XXX probably need an event for cleaning up the enum_state_tab
     struct hashtb *enum_state_tab;  /**< keyed by enumeration interest */
     struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
     struct ccn_btree *btree;        /**< btree index of content */
@@ -187,6 +186,7 @@ struct ccnr_handle {
     struct ccn_scheduled_event *age;
     struct ccn_scheduled_event *clean;
     struct ccn_scheduled_event *age_forwarding;
+    struct ccn_scheduled_event *reap_enumerations; /**< cleans out old enumeration state */
     struct ccn_scheduled_event *index_cleaner; /**< writes out btree nodes */
     struct ccn_indexbuf *toclean;   /**< for index_cleaner use */
     const char *portstr;            /**< port number for status display */
@@ -420,6 +420,12 @@ struct ccn_forwarding {
  * Keeps track of the state of running and recently completed enumerations
  * The enum_state hash table is keyed by the interest up to the segment id
  */
+enum es_active_state {
+    ES_PENDING = -1,
+    ES_INACTIVE = 0,
+    ES_ACTIVE = 1
+};
+
 struct enum_state {
     struct ccn_charbuf *name;
     struct ccn_seqwriter *w;
@@ -429,7 +435,10 @@ struct enum_state {
     struct ccn_indexbuf *interest_comps;
     uintmax_t next_segment;
     ccnr_cookie starting_cookie;
-    int active;
+    enum es_active_state active;
+    long lifetime;
+    long lastuse_sec;
+    unsigned lastuse_usec;
 };
 
 /**

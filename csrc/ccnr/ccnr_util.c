@@ -133,6 +133,15 @@ r_util_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
     h->usec = now.tv_usec;
 }
 
+PUBLIC int
+r_util_timecmp(long secA, unsigned usecA, long secB, unsigned usecB)
+{
+    if (secA < secB) return (-1);
+    if (secA > secB) return (1);
+    if (usecA < usecB) return (-1);
+    if (usecA > usecB) return (1);
+    return (0);
+}
 PUBLIC intmax_t
 r_util_segment_from_component(const unsigned char *ccnb, size_t start, size_t stop)
 {
