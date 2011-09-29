@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.impl;
 
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;
@@ -46,6 +47,16 @@ import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;
  * 
  * The interface CCNCategoriezedStatistics is for modules that keep statistics
  * in several cateogries (e.g. for each ContentName you express an interest for).
+ * 
+ * Added support for an "averaging" counter.  This will track the sum, sum^2, and
+ * count so one can get an average and standard deviation.  Basically, there's 
+ * a simple "long" counter and an "averaging counter" for each Enum, so you could
+ * use the normal "increment(item)" or the new "addSample(item, value)" calls on any
+ * of the Enums.  If you call addSample(item, value), then the item "item" will be
+ * tagged as an averaging stat and the toString() method will format it as such.
+ * 
+ * Might want to add an EWMA type counter too.  I think we'll want to expand the
+ * IStatsEnum to make it take a counter type argument.
  */
 public abstract class CCNStats {
 
@@ -85,12 +96,30 @@ public abstract class CCNStats {
 	public abstract String [] getCounterNames();
 
 	/**
+	 * Is the counter an averaging counter?  This will only function
+	 * correctly after the system is run for a while and we see if
+	 * it is called with increment or addsample.
+	 */
+	public abstract boolean isAveragingCounter(String name) throws IllegalArgumentException;
+	
+	/**
 	 * Return the value of a counter
 	 * @param name
 	 * @return
 	 * @throws IllegalArgumentException if name unrecognized
 	 */
 	public abstract long getCounter(String name) throws IllegalArgumentException;
+
+	/**
+	 * Return the average and standard deviation of a counter.  You
+	 * need to have been accumulating samples with the addSample(item, value)
+	 * method.
+	 * 
+	 * @param name
+	 * @return [avg, stdev] array.  May be NaN.
+	 * @throws IllegalArgumentException if name unrecognized
+	 */
+	public abstract double[] getAverageAndStdev(String name) throws IllegalArgumentException;
 
 	/**
 	 * Return a text description of the units of the counter (e.g. packets, packets per second)
@@ -154,9 +183,12 @@ public abstract class CCNStats {
 		public CCNEnumStats(IStatsEnum stats) {
 			_resolver = stats;
 			int size = _resolver.getNames().length;
-			_counters = new AtomicLong[size];
+			_counters = new AtomicLong[size];		
+			_avgcounters = new AveragingCounter[size];
+			
 			for(int i = 0; i < size; i++) {
 				_counters[i] = new AtomicLong(0);
+				_avgcounters[i] = new AveragingCounter();
 			}
 		}
 
@@ -164,12 +196,27 @@ public abstract class CCNStats {
 		public void clearCounters() {
 			for(AtomicLong al : _counters)
 				al.set(0);
+			
+			for(AveragingCounter ac : _avgcounters)
+				ac.clear();
 		}
 
+		@Override
+		public boolean isAveragingCounter(String name) throws IllegalArgumentException {
+			int index = _resolver.getIndex(name);
+			return _avgcounters[index].getCount() > 0;
+		}
+		
 		@Override
 		public long getCounter(String name) throws IllegalArgumentException {
 			int index = _resolver.getIndex(name);
 			return _counters[index].get();
+		}
+		
+		@Override
+		public double[] getAverageAndStdev(String name) throws IllegalArgumentException {
+			int index = _resolver.getIndex(name);
+			return _avgcounters[index].getAverageAndDeviation();
 		}
 
 		@Override
@@ -204,14 +251,21 @@ public abstract class CCNStats {
 			StringBuilder sb = new StringBuilder();
 			for(int i = 0; i < _counters.length; i++) {
 				String key = _resolver.getName(i);
-				long value = _counters[i].get();
 				String units = _resolver.getUnits(i);
 				String description = _resolver.getDescription(i);
 				
 				sb.append(String.format(format, key));
 
 				sb.append(": ");
-				sb.append(value);
+				
+				// if we have been accumulating an avg/std, then return it
+				// as that, otherwise return it as a counter.
+				if( _avgcounters[i].getCount() > 0 ) {
+					sb.append(_avgcounters[i].toString());
+				} else {
+					sb.append(_counters[i].get());
+				}
+
 				sb.append(" (");
 				sb.append(units);
 				sb.append(") ");
@@ -230,12 +284,106 @@ public abstract class CCNStats {
 				_counters[key.ordinal()].addAndGet(value);
 			}
 		}
-
+		
+		/**
+		 * Add a sample to the averaging counter for the key.  This
+		 * make the key an averaging counter as reported by toString().
+		 */
+		public void addSample(K key, long value) {
+			if(_enabled) {
+				_avgcounters[key.ordinal()].addSample(value);
+			}
+		}
+		
 		// =======================
 		protected final AtomicLong [] _counters;
 		protected final IStatsEnum _resolver;
 		protected boolean _enabled = true;
+		protected final AveragingCounter [] _avgcounters;
+		
+		/**
+		 * This is used to track an averaging counter.
+		 * This is a thread-safe class, so will work like
+		 * the AtomicLong.
+		 * 
+		 * Returns the mean (sum/count) and sample standard
+		 * deviation.  The sample standard deviation is:
+		 * 
+		 * 1/(N-1) * Sum(x_i - mean)^2 = N/(N-1) * ( 1/N * sum^2 - mean^2)
+		 */
+		private static class AveragingCounter {
+			public AveragingCounter() {
+				clear();
+			}
+			
+			public synchronized void addSample(long sample) {
+				_sum += sample;
+				_sum2+= sample * sample;
+				_count++;
+				_dirty = true;
+			}
+			
+			public synchronized void clear() {
+				_sum = 0;
+				_sum2= 0;
+				_count=0;
+				_dirty = true;
+			}
+			
+			/**
+			 * returns the [average, stdev] pair.  Both may be NaN if there
+			 * are not enough samples (need 1 for avg, 2 for stdev).
+			 */
+			public synchronized double[] getAverageAndDeviation() {
+				if(_dirty) {
+					calculate();
+				}
+				
+				// return a copy so values inside the array cannot be modified
+				double[] out = new double[2];
+				out[0] = _avg;
+				out[1] = _std;
+				return out;
+			}
 
+			public synchronized long getCount() {
+				return _count;
+			}
+			
+			public synchronized String toString() {
+				if(_dirty) {
+					calculate();
+				}
+				
+				return _string;
+			}
+			
+			// ============================
+			private boolean _dirty = false;
+			private long _sum;
+			private long _sum2;
+			private long _count;
+			private double _avg, _std;
+			private String _string;
+			
+			// must be called in a synchronized method
+			private void calculate() {
+				_avg = Double.NaN;
+				_std = Double.NaN;
+				if( _count > 0 ) {
+					_avg = (double) _sum / _count;
+					
+					if( _count > 1 ) {
+						double inner = (double) _sum2 / _count - (_avg * _avg);
+						double var = _count/(_count-1) * inner ;
+						_std = Math.sqrt(var);
+					}
+				}
+				
+				_string = String.format("avg %.3g stdev %.3g", _avg, _std);
+				_dirty = false;
+			}
+		}
 	}
 
 	public static class ExampleClassWithStatistics implements CCNStatistics {
@@ -247,7 +395,8 @@ public abstract class CCNStats {
 			
 			SendRequests ("packets", "The number of packets sent"),
 			RecvMessages ("packets", "The number of packets received"),
-			SendRate ("packets per second", "The 5 minute moving average of packet/sec transmits");
+			SendRate ("packets per second", "The average of packet/sec transmits"),
+			BytesPerPacket ("bytes per packet", "The average of bytes per packet transmits");
 
 			// ============================================
 			// Everything below here is the internal implementation for the
@@ -300,8 +449,27 @@ public abstract class CCNStats {
 		CCNEnumStats<MyStats> _stats = new CCNEnumStats<MyStats>(MyStats.SendRequests);
 		
 		// These are example methods showing the typical calling conventions
-		public void send(Object o) {
+		// track the last time we sent a packet to get the packets/sec counter.
+		private long _lastsend = System.currentTimeMillis() / 1000;
+		private long _pktcount = 0;
+		public void send(Object o, int len) {
 			_stats.increment(MyStats.SendRequests);
+			// some example proxy for byte size
+			_stats.addSample(MyStats.BytesPerPacket, len);
+			
+			long now = System.currentTimeMillis() / 1000;
+			// how many seconds has it been?
+			long secs = now - _lastsend;
+			_lastsend = now;
+			
+			_pktcount ++;
+			if( secs > 0 ) {
+				// integer pps.
+				long value = _pktcount / secs;
+				_stats.addSample(MyStats.SendRate, value);
+				_pktcount = 0;
+			}
+
 		}
 
 		public void recv(Object o) {
