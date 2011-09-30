@@ -621,7 +621,8 @@ cleanout_empties(struct ccnr_handle *h)
     cleanout_stragglers(h);
     while (i < window && a[i] == NULL)
         i++;
-    if (i == 0)
+    /* Don't slide things down too often. */
+    if (i < 100)
         return(-1);
     h->cookie_base += i;
     while (i < window)
