@@ -135,7 +135,8 @@ ccnr_proto.o: ccnr_proto.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../ccnr/ccnr_private.h ../include/ccn/reg_mgmt.h \
   ../include/ccn/seqwriter.h ../sync/SyncMacros.h ccnr_private.h \
   ccnr_proto.h ccnr_dispatch.h ccnr_forwarding.h ../include/ccn/hashtb.h \
-  ccnr_io.h ccnr_msg.h ccnr_sendq.h ccnr_store.h ccnr_sync.h ccnr_util.h
+  ccnr_init.h ccnr_io.h ccnr_msg.h ccnr_sendq.h ccnr_store.h ccnr_sync.h \
+  ccnr_util.h
 ccnr_sendq.o: ccnr_sendq.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
@@ -159,14 +160,14 @@ ccnr_store.o: ccnr_store.c ../include/ccn/bloom.h ../ccn/btree_content.h \
   ../include/ccn/seqwriter.h ccnr_stats.h ccnr_store.h ccnr_init.h \
   ccnr_link.h ccnr_util.h ccnr_proto.h ccnr_msg.h ccnr_sync.h \
   ccnr_match.h ccnr_sendq.h ccnr_io.h
-ccnr_sync.o: ccnr_sync.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+ccnr_sync.o: ccnr_sync.c ../ccn/btree.h ../include/ccn/charbuf.h \
+  ../include/ccn/hashtb.h ../ccn/btree_content.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/indexbuf.h \
   ../include/ccn/schedule.h ../sync/SyncBase.h ../include/ccn/uri.h \
   ../ccnr/ccnr_private.h ../include/ccn/ccn_private.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/seqwriter.h \
   ../sync/SyncMacros.h ccnr_private.h ccnr_dispatch.h ccnr_io.h \
-  ccnr_msg.h ccnr_sendq.h ccnr_store.h ../include/ccn/hashtb.h \
-  ccnr_sync.h ccnr_util.h
+  ccnr_msg.h ccnr_sendq.h ccnr_store.h ccnr_sync.h ccnr_util.h
 ccnr_util.o: ccnr_util.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/ccn_private.h \
