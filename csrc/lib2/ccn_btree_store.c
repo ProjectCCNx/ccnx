@@ -164,6 +164,7 @@ ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
     ans->btclose = &bts_close;
     ans->btdestroy = &bts_destroy;
     ans->maxnodeid = maxnodeid;
+    ans->openfds = 0;
     ans->data = md;
     md->io = ans;
     md = NULL;
@@ -229,6 +230,7 @@ bts_open(struct ccn_btree_io *io, struct ccn_btree_node *node)
         free(nd);
         return(-1);
     }
+    io->openfds++;
     nd->node = node;
     node->iodata = nd;
     return(nd->fd);
@@ -303,6 +305,7 @@ bts_close(struct ccn_btree_io *io, struct ccn_btree_node *node)
         res = close(nd->fd);
         if (res == -1 && errno == EINTR)
             return(res);
+        io->openfds--;
         nd->node = NULL;
         node->iodata = NULL;
         free(nd);

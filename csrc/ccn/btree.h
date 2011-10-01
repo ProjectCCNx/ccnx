@@ -83,6 +83,7 @@ struct ccn_btree_io {
     ccn_btree_io_closefn btclose;
     ccn_btree_io_destroyfn btdestroy;
     ccn_btnodeid maxnodeid;    /**< Largest assigned nodeid */
+    unsigned openfds;
     void *data;
 };
 /**
