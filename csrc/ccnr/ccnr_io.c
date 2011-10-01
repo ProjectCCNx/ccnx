@@ -321,8 +321,10 @@ r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
     int res;
     
     fdholder = r_io_fdholder_from_fd(h, fd);
-    if (fdholder == NULL)
+    if (fdholder == NULL) {
         ccnr_msg(h, "no fd holder for fd %d", fd);
+        return;
+    }
     if (fdholder == h->face0)
         (res = 0, h->face0 = NULL);
     else if ((fdholder->flags & CCNR_FACE_CCND))
