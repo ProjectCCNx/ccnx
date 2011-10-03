@@ -27,7 +27,6 @@ import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.io.CCNWriter;
-import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -99,7 +98,7 @@ public class NetworkTest extends CCNTestBase {
 		
 		// Test that we don't receive interests above what we registered
 		gotInterest = false;
-		putHandle.getNetworkManager().setInterestFilter(this, testName2, tfl);
+		putHandle.registerFilter(testName2, tfl);
 		getHandle.expressInterest(interest1, tl);
 		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertFalse(gotInterest);
@@ -113,11 +112,11 @@ public class NetworkTest extends CCNTestBase {
 		// Test that an "in-between" prefix gets registered properly
 		gotInterest = false;
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
-		putHandle.getNetworkManager().setInterestFilter(this, testName3, tfl);
-		putHandle.getNetworkManager().setInterestFilter(this, testName4, tfl);
-		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);
-		putHandle.getNetworkManager().setInterestFilter(this, testName2, tfl);
-		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
+		putHandle.registerFilter(testName3, tfl);
+		putHandle.registerFilter(testName4, tfl);
+		putHandle.registerFilter(testName5, tfl);
+		putHandle.registerFilter(testName2, tfl);
+		putHandle.registerFilter(testName1, tfl);
 		gotInterest = false;
 		filterSema.drainPermits();
 		getHandle.expressInterest(interest6, tl);		
@@ -130,7 +129,7 @@ public class NetworkTest extends CCNTestBase {
 		// doesn't get registered separately.
 		gotInterest = false;
 		filterSema.drainPermits();
-		putHandle.getNetworkManager().setInterestFilter(this, testName7, tfl);
+		putHandle.registerFilter(testName7, tfl);
 		ArrayList<ContentName> prefixes = putHandle.getNetworkManager().getRegisteredPrefixes();
 		Assert.assertFalse(prefixes.contains(testName7));
 		getHandle.expressInterest(interest4, tl);
@@ -145,23 +144,23 @@ public class NetworkTest extends CCNTestBase {
 		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest6, tl);
-		putHandle.getNetworkManager().cancelInterestFilter(this, testName1, tfl);
-		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
-		putHandle.getNetworkManager().cancelInterestFilter(this, testName3, tfl);
-		putHandle.getNetworkManager().cancelInterestFilter(this, testName5, tfl);
-		putHandle.getNetworkManager().cancelInterestFilter(this, testName7, tfl);
+		putHandle.unregisterFilter(testName1, tfl);
+		putHandle.unregisterFilter(testName2, tfl);
+		putHandle.unregisterFilter(testName3, tfl);
+		putHandle.unregisterFilter(testName5, tfl);
+		putHandle.unregisterFilter(testName7, tfl);
 		
 		// Make sure nothing is registered after a /
 		ContentName slashName = ContentName.fromNative("/");
-		putHandle.getNetworkManager().setInterestFilter(this, testName1, tfl);
-		putHandle.getNetworkManager().setInterestFilter(this, slashName, tfl);
-		putHandle.getNetworkManager().setInterestFilter(this, testName5, tfl);
+		putHandle.registerFilter(testName1, tfl);
+		putHandle.registerFilter(slashName, tfl);
+		putHandle.registerFilter(testName5, tfl);
 		prefixes = putHandle.getNetworkManager().getRegisteredPrefixes();
 		Assert.assertFalse(prefixes.contains(testName5));
 		
-		putHandle.getNetworkManager().cancelInterestFilter(this, testName1, tfl);
-		putHandle.getNetworkManager().cancelInterestFilter(this, slashName, tfl);
-		putHandle.getNetworkManager().cancelInterestFilter(this, testName5, tfl);
+		putHandle.unregisterFilter(testName1, tfl);
+		putHandle.unregisterFilter(slashName, tfl);
+		putHandle.unregisterFilter(testName5, tfl);
 		
 	}
 
@@ -282,7 +281,6 @@ public class NetworkTest extends CCNTestBase {
 			filterSema.release();
 			return true;
 		}
-
 	}
 	
 	class TestListener implements CCNInterestListener {
@@ -290,17 +288,14 @@ public class NetworkTest extends CCNTestBase {
 		public Interest handleContent(ContentObject co,
 				Interest interest) {
 			Assert.assertFalse(co == null);
-			ContentName nameBase = SegmentationProfile.segmentRoot(co.name());
-			Assert.assertEquals(nameBase.stringComponent(nameBase.count()-1), new String(co.content()));
 			gotData = true;
 			sema.release();
 			
 			/*
 			 * Test call of cancel in handler doesn't hang
 			 */
-			getHandle.cancelInterest(testInterest, this);
+			getHandle.cancelInterest(interest, this);
 			return null;
 		}
 	}
-
 }

@@ -1067,6 +1067,19 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		setData(data);
 		return save(version);
 	}
+	
+	/**
+	 * Methods to save from handlers. We probably don't want to wait in general to do a save from a handler
+	 * but if the save is to a respository (and we really can't tell) we can't do that because we have to
+	 * wait for a response from the repo which only the handler can receive.
+	 */
+	public void saveLaterWithClose() throws ContentEncodingException, IOException {
+		new SaveThread(null, false, null, true);
+	}
+	
+	public void saveLaterWithClose(Interest outstandingInterest) throws ContentEncodingException, IOException {
+		new SaveThread(null, false, outstandingInterest, true);
+	}
 
 	/**
 	 * Deprecated; use either object defaults or setRepositorySave() to indicate writes
@@ -1403,6 +1416,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_publisher = publisherIdentity;
 		_keyLocator = keyLocator;
 	}
+	
+	public void setTimeout(int timeout) {
+		try {
+			createFlowController();
+			getFlowControl().setTimeout(timeout);
+		} catch (IOException e) {}
+	}
 
 	public synchronized Interest handleContent(ContentObject co, Interest interest) {
 		try {
@@ -1490,6 +1510,31 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 				Log.info(Log.FAC_IO, "updateInBackground: handleContent: Exception {0}: {1}  attempting to request further updates : {2}", ex.getClass().getName(), ex.getMessage(), _currentInterest);
 			return null;
+		}
+	}
+	
+	protected class SaveThread extends Thread {
+		protected boolean _gone = false;
+		protected CCNTime _version = null;
+		protected Interest _outstandingInterest = null;
+		protected boolean _doClose = false;
+		
+		public SaveThread(CCNTime version, boolean gone, Interest outstandingInterest, boolean doClose) {
+			_version = version;
+			_gone = gone;
+			_outstandingInterest = outstandingInterest;
+			_doClose = doClose;
+			start();
+		}
+
+		public void run() {
+			try {
+				saveInternal(_version, _gone, _outstandingInterest);
+				if (_doClose)
+					close();
+			} catch (Exception e) {
+				Log.logStackTrace(Log.FAC_IO, Level.WARNING, e);
+			}
 		}
 	}
 	
