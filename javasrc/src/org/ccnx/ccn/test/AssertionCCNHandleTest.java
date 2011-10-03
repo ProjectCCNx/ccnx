@@ -19,9 +19,9 @@ package org.ccnx.ccn.test;
 import junit.framework.Assert;
 import junit.framework.AssertionFailedError;
 
-import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -66,14 +66,14 @@ public class AssertionCCNHandleTest {
 		Assert.fail("Missed an assertion error we should have seen");
 	}
 	
-	private class InterestListenerTester implements CCNInterestListener {
+	private class InterestListenerTester implements CCNContentHandler {
 		public Interest handleContent(ContentObject data, Interest interest) {
 			// TODO Auto-generated method stub
 			return null;
 		}
 	}
 	
-	private class FilterListenerTester implements CCNFilterListener {
+	private class FilterListenerTester implements CCNInterestHandler {
 		private int _interestsSeen = 0;
 		public boolean handleInterest(Interest interest) {
 			Assert.assertTrue("Assertion in handleInterest", ++_interestsSeen < 2);

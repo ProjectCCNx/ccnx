@@ -19,10 +19,11 @@ package org.ccnx.ccn.test;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -38,26 +39,26 @@ import org.ccnx.ccn.protocol.Interest;
  */
 public class AssertionCCNHandle extends CCNHandle {
 	protected Error _error = null;
-	protected ArrayList<RelatedInterestListener> _interestListeners = new ArrayList<RelatedInterestListener>();
-	protected ArrayList<RelatedFilterListener> _filterListeners = new ArrayList<RelatedFilterListener>();
+	protected ArrayList<RelatedInterestHandler> _contentHandlers = new ArrayList<RelatedInterestHandler>();
+	protected ArrayList<RelatedFilterListener> _interestHandlers = new ArrayList<RelatedFilterListener>();
 	
-	protected class RelatedInterestListener {
-		AssertionInterestListener _aListener;
-		CCNInterestListener _listener;
+	protected class RelatedInterestHandler {
+		AssertionContentHandler _aHandler;
+		CCNContentHandler _handler;
 		
-		protected RelatedInterestListener(AssertionInterestListener aListener, CCNInterestListener listener) {
-			_aListener = aListener;
-			_listener = listener;
+		protected RelatedInterestHandler(AssertionContentHandler aListener, CCNContentHandler handler) {
+			_aHandler = aListener;
+			_handler = handler;
 		}
 	}
 	
 	protected class RelatedFilterListener {
-		AssertionFilterListener _aListener;
-		CCNFilterListener _listener;
+		AssertionInterestHandler _aHandler;
+		CCNInterestHandler _handler;
 		
-		protected RelatedFilterListener(AssertionFilterListener aListener, CCNFilterListener listener) {
-			_aListener = aListener;
-			_listener = listener;
+		protected RelatedFilterListener(AssertionInterestHandler aListener, CCNInterestHandler handler) {
+			_aHandler = aListener;
+			_handler = handler;
 		}
 	}
 
@@ -82,65 +83,65 @@ public class AssertionCCNHandle extends CCNHandle {
 	 */
 	public void expressInterest(
 			Interest interest,
-			CCNInterestListener listener) throws IOException {
-		AssertionInterestListener ail = null;
-		synchronized (_interestListeners) {
-			ail = getInterestListener(listener);
+			CCNContentHandler handler) throws IOException {
+		AssertionContentHandler ail = null;
+		synchronized (_contentHandlers) {
+			ail = getInterestListener(handler);
 			if (null == ail) {
-				ail = new AssertionInterestListener(listener);
-				_interestListeners.add(new RelatedInterestListener(ail, listener));
+				ail = new AssertionContentHandler(handler);
+				_contentHandlers.add(new RelatedInterestHandler(ail, handler));
 			}
 			ail._references++;
 		}
 		super.expressInterest(interest, ail);
 	}
 	
-	public void cancelInterest(Interest interest, CCNInterestListener listener) {
-		AssertionInterestListener toCancel = null;
-		synchronized (_interestListeners) {
-			toCancel = getInterestListener(listener);
+	public void cancelInterest(Interest interest, CCNContentHandler handler) {
+		AssertionContentHandler toCancel = null;
+		synchronized (_contentHandlers) {
+			toCancel = getInterestListener(handler);
 			if (null == toCancel) {
 				Log.warning("Questionable cancel of never expressed interest: %0", interest);
-				toCancel = new AssertionInterestListener(listener);
-				_interestListeners.add(new RelatedInterestListener(toCancel, listener));
+				toCancel = new AssertionContentHandler(handler);
+				_contentHandlers.add(new RelatedInterestHandler(toCancel, handler));
 			}
 		}
 		super.cancelInterest(interest, toCancel);
 
-		synchronized (_interestListeners) {
+		synchronized (_contentHandlers) {
 			if (--toCancel._references <= 0)
-				_interestListeners.remove(toCancel);
+				_contentHandlers.remove(toCancel);
 		}
 	}
 	
 	public void registerFilter(ContentName filter,
-			CCNFilterListener callbackListener) throws IOException {
-		AssertionFilterListener listener = null;
-		synchronized (_filterListeners) {
-			listener = getFilterListener(callbackListener);
-			if (null == listener) {
-				listener = new AssertionFilterListener(callbackListener);
-				_filterListeners.add(new RelatedFilterListener(listener, callbackListener));
+			CCNInterestHandler handler) throws IOException {
+		AssertionInterestHandler afh = null;
+		synchronized (_interestHandlers) {
+			afh = getInterestHandler(handler);
+			if (null == afh) {
+				afh = new AssertionInterestHandler(handler);
+				_interestHandlers.add(new RelatedFilterListener(afh, handler));
 			}
-			listener._references++;
+			afh._references++;
 		}
-		super.registerFilter(filter, listener);
+		super.registerFilter(filter, afh);
 	}
 	
-	public void unregisterFilter(ContentName filter, CCNFilterListener callbackListener) {
-		AssertionFilterListener toUnregister = null;
-		synchronized (_filterListeners) {
-			toUnregister = getFilterListener(callbackListener);
+	public void unregisterFilter(ContentName filter, CCNInterestHandler handler) {
+		AssertionInterestHandler toUnregister = null;
+		synchronized (_interestHandlers) {
+			toUnregister = getInterestHandler(handler);
 			if (null == toUnregister) {
 				Log.warning("Questionable unregister of never registered filter: %0", filter);
-				toUnregister = new AssertionFilterListener(callbackListener);
-				_filterListeners.add(new RelatedFilterListener(toUnregister, callbackListener));
+				toUnregister = new AssertionInterestHandler(handler);
+				_interestHandlers.add(new RelatedFilterListener(toUnregister, handler));
 			}
 		}
 		super.unregisterFilter(filter, toUnregister);
-		synchronized (_filterListeners) {
+		synchronized (_interestHandlers) {
 			if (--toUnregister._references <= 0)
-				_filterListeners.remove(toUnregister);
+				_interestHandlers.remove(toUnregister);
 		}
 	}
 	
@@ -152,44 +153,49 @@ public class AssertionCCNHandle extends CCNHandle {
 	 * @throws InterruptedException
 	 */
 	public void checkError(long timeout) throws Error, InterruptedException {
-		synchronized (this) {
-			wait(timeout);
+		if (timeout > 0 || timeout == SystemConfiguration.NO_TIMEOUT) {
+			synchronized (this) {
+				if (timeout == SystemConfiguration.NO_TIMEOUT)
+					wait();
+				else
+					wait(timeout);
+			}
 		}
 		if (null != _error)
 			throw _error;
 	}
 	
-	private AssertionInterestListener getInterestListener(CCNInterestListener listener) {
-		for (RelatedInterestListener ril : _interestListeners) {
-			if (ril._listener == listener) {
-				return ril._aListener;
+	private AssertionContentHandler getInterestListener(CCNContentHandler handler) {
+		for (RelatedInterestHandler ril : _contentHandlers) {
+			if (ril._handler == handler) {
+				return ril._aHandler;
 			}
 		}
 		return null;
 	}
 	
-	private AssertionFilterListener getFilterListener(CCNFilterListener listener) {
-		for (RelatedFilterListener rfl : _filterListeners) {
-			if (rfl._listener == listener) {
-				return rfl._aListener;
+	private AssertionInterestHandler getInterestHandler(CCNInterestHandler handler) {
+		for (RelatedFilterListener rfl : _interestHandlers) {
+			if (rfl._handler == handler) {
+				return rfl._aHandler;
 			}
 		}
 		return null;
 	}
 	
-	protected class AssertionFilterListener implements CCNFilterListener {
+	protected class AssertionInterestHandler implements CCNInterestHandler {
 		
-		protected CCNFilterListener _listener;
+		protected CCNInterestHandler _handler;
 		protected int _references = 0;
 		
-		public AssertionFilterListener(CCNFilterListener listener) {
-			_listener = listener;
+		public AssertionInterestHandler(CCNInterestHandler handler) {
+			_handler = handler;
 		}
 
 		public boolean handleInterest(Interest interest) {
 			boolean result = false;
 			try {
-				result = _listener.handleInterest(interest);
+				result = _handler.handleInterest(interest);
 			} catch (Error e) {
 				_error = e;
 			}
@@ -202,19 +208,19 @@ public class AssertionCCNHandle extends CCNHandle {
 		}	
 	}
 	
-	protected class AssertionInterestListener implements CCNInterestListener {
+	protected class AssertionContentHandler implements CCNContentHandler {
 		
-		protected CCNInterestListener _listener;
+		protected CCNContentHandler _handler;
 		protected int _references = 0;
 		
-		public AssertionInterestListener(CCNInterestListener listener) {
-			_listener = listener;
+		public AssertionContentHandler(CCNContentHandler handler) {
+			_handler = handler;
 		}
 
 		public Interest handleContent(ContentObject data, Interest interest) {
 			Interest result = null;
 			try {
-				result = _listener.handleContent(data, interest);
+				result = _handler.handleContent(data, interest);
 			} catch (Error e) {
 				_error = e;
 			}

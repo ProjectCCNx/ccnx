@@ -25,8 +25,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
@@ -64,7 +64,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * by the repo client to allow objects to remain in the buffer until they are 
  * acked.
  */
-public class CCNFlowControl implements CCNFilterListener {
+public class CCNFlowControl implements CCNInterestHandler {
 	
 	public enum Shape {
 		STREAM("STREAM");

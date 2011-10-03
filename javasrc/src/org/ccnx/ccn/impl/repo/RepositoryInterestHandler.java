@@ -23,8 +23,8 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
@@ -45,7 +45,7 @@ import org.ccnx.ccn.protocol.Interest;
  * @see RepositoryDataListener
  */
 
-public class RepositoryInterestHandler extends Thread implements CCNFilterListener {
+public class RepositoryInterestHandler extends Thread implements CCNInterestHandler {
 	private RepositoryServer _server;
 	private CCNHandle _handle;
 	private Queue<Interest> _queue = new ConcurrentLinkedQueue<Interest>();

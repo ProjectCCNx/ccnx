@@ -31,8 +31,8 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -59,7 +59,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * 
  * @see SegmentationProfile for description of CCN segmentation
  */
-public abstract class CCNAbstractInputStream extends InputStream implements CCNInterestListener {
+public abstract class CCNAbstractInputStream extends InputStream implements CCNContentHandler {
 
 	/**
 	 * Flags:
@@ -468,6 +468,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNI
 				if (_nextPipelineSegment > returnedSegment) {
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: this is a previous segment...  drop");
+					returnedSegment = -1;
 				} else {
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: this is a pipeline segment, add to outOfOrderSegment queue");

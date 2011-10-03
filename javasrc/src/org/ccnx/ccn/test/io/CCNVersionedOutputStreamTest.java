@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -27,8 +27,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNAbstractOutputStream;
@@ -42,7 +42,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class CCNVersionedOutputStreamTest implements CCNFilterListener {
+public class CCNVersionedOutputStreamTest implements CCNInterestHandler {
 	
 	static CCNTestHelper testHelper = new CCNTestHelper(CCNVersionedOutputStreamTest.class);
 	static CCNHandle readHandle;

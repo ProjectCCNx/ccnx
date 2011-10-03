@@ -24,8 +24,8 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -95,7 +95,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * freshness, and so on. Expect new constructors to deal with the latter deficiencies, and
  * a cleanup of the constructor architecture overall in the near term.
  */
-public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
+public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNContentHandler {
 
 	protected static final byte [] GONE_OUTPUT = "GONE".getBytes();
 	
@@ -1068,16 +1068,39 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		return save(version);
 	}
 	
-	/**
+	/*
 	 * Methods to save from handlers. We probably don't want to wait in general to do a save from a handler
-	 * but if the save is to a respository (and we really can't tell) we can't do that because we have to
-	 * wait for a response from the repo which only the handler can receive.
+	 * but if the save is to a respository (and we really can't tell) we definitely can't do that because we 
+	 * have to wait for a response from the repo which only the handler can receive.
 	 */
-	public void saveLaterWithClose() throws ContentEncodingException, IOException {
+
+	/**
+	 * Do a #save from a callback
+	 */
+	public void saveLater() {
+		new SaveThread(null, false, null, false);
+	}
+	
+	/**
+	 * Do a #save from a callback
+	 * @param outstandingInterest
+	 */
+	public void saveLater(Interest outstandingInterest) {
+		new SaveThread(null, false, null, false);
+	}
+	
+	/**
+	 * Do a #save followed by a close of the network object from a callback
+	 */
+	public void saveLaterWithClose() {
 		new SaveThread(null, false, null, true);
 	}
 	
-	public void saveLaterWithClose(Interest outstandingInterest) throws ContentEncodingException, IOException {
+	/**
+	 * Do a #save followed by a close of the network object from a callback
+	 * @param outstandingInterest
+	 */
+	public void saveLaterWithClose(Interest outstandingInterest) {
 		new SaveThread(null, false, outstandingInterest, true);
 	}
 

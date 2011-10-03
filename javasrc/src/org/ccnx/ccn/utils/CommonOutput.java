@@ -58,12 +58,6 @@ public abstract class CommonOutput {
 			is = new FileInputStream(theFile);
 		}
 
-		// If we are using a repository, make sure our key is available to
-		// repository clients. For now, write an unversioned form of key.
-		if (!CommonParameters.rawMode) {
-			handle.keyManager().publishKeyToRepository();
-		}
-
 		CCNOutputStream ostream;
 		
 		// Use file stream in both cases to match behavior. CCNOutputStream doesn't do

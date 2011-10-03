@@ -20,15 +20,15 @@ package org.ccnx.ccn.profiles.ccnd;
 import java.io.IOException;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
-public class CCNDCacheManager implements CCNInterestListener {
+public class CCNDCacheManager implements CCNContentHandler {
 	
 	public void clearCache(ContentName prefix, CCNHandle handle, long timeout) throws IOException {
 		Interest interest = new Interest(prefix);

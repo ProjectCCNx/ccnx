@@ -102,6 +102,5 @@ public class CCNStatTest {
 				String.format("average %f std %f nanos/increment",
 						avg_delta / sends, std_delta / sends));
 
-	}
-	
+	}	
 }

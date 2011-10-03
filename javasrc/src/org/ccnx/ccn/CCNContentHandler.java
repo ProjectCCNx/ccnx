@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -21,20 +21,17 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
 /**
- * Deprecated - use CCNContentHandler instead
- * 
- * A listener used to receive callbacks when data arrives matching one of our
- * asynchronously-expressed Interests (expressed with CCNBase#expressInterest(Interest, CCNInterestListener)).
- * Once the listener is called with matching data, the Interest is canceled. As a convenience,
- * the listener can return a new Interest, which will be expressed on its behalf, using
+ * A handler used to receive callbacks when data arrives matching one of our
+ * asynchronously-expressed Interests (expressed with CCNBase#expressInterest(Interest, CCNInterestHandler)).
+ * Once the handler is called with matching data, the Interest is canceled. As a convenience,
+ * the handler can return a new Interest, which will be expressed on its behalf, using
  * it as the callback listener when data is returned in response. This new Interest can be
  * the same as the previous Interest, derived from it, or completely unrelated. Since data
  * consumes Interest, there can only be a single response for one Interest expression.
  * 
  * @see CCNBase
  */
-@Deprecated
-public interface CCNInterestListener {
+public interface CCNContentHandler {
 	
 	/**
 	 * Callback called when we get new results for our query.

@@ -21,8 +21,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.RepositoryOutputStream;
@@ -42,7 +42,7 @@ import org.junit.Test;
 /**
  * Part of repository test infrastructure. Test repository side of name enumeration.
  */
-public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener, CCNInterestListener {
+public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener, CCNContentHandler {
 
 	CCNHandle getLibrary;
 	CCNNameEnumerator getne;

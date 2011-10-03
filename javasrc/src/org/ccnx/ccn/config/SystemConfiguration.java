@@ -241,11 +241,12 @@ public class SystemConfiguration {
 	public static int SETTABLE_SHORT_TIMEOUT = SHORT_TIMEOUT;
 
 	/**
-	 * Dispatch thread limit for network manager
+	 * Should we dump netmanager statistics on shutdown
 	 */
-	protected static final String MAX_DISPATCH_THREADS_PROPERTY = "org.ccnx.max.dispatch.threads";
-	protected final static String MAX_DISPATCH_THREADS_ENV_VAR = "CCNX_MAX_DISPATCH_THREADS";
-	public static int MAX_DISPATCH_THREADS = 200;
+	protected static final String DUMP_NETMANAGER_STATS_PROPERTY = "org.ccnx.dump.netmanager.stats";
+	protected final static String DUMP_NETMANAGER_STATS_ENV_VAR = "CCNX_DUMP_NETMANAGER_STATS";
+	public static boolean DUMP_NETMANAGER_STATS = false;
+
 
 	/**
 	 * Settable system default timeout.
@@ -465,13 +466,8 @@ public class SystemConfiguration {
 			throw e;
 		}
 		
-		// Allow override of max dispatch threads
-		try {
-			MAX_DISPATCH_THREADS = Integer.parseInt(retrievePropertyOrEnvironmentVariable(MAX_DISPATCH_THREADS_PROPERTY, MAX_DISPATCH_THREADS_ENV_VAR, Integer.toString(MAX_DISPATCH_THREADS)));
-		} catch (NumberFormatException e) {
-			System.err.println("The settable short timeout must be an integer.");
-			throw e;
-		}
+		// Dump netmanager statistics if requested
+		DUMP_NETMANAGER_STATS = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(DUMP_NETMANAGER_STATS_PROPERTY, DUMP_NETMANAGER_STATS_ENV_VAR, Boolean.toString(DUMP_NETMANAGER_STATS)));
 
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(

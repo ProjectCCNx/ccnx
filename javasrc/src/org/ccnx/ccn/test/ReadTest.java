@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -23,7 +23,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.CCNWriter;
@@ -42,7 +42,7 @@ import org.junit.Test;
  * 
  * A test of basic Interest mechanisms, using older test infrastructure.
  */
-public class ReadTest extends LibraryTestBase implements CCNInterestListener {
+public class ReadTest extends LibraryTestBase implements CCNContentHandler {
 	
 	private static ArrayList<Integer> currentSet;
 	
