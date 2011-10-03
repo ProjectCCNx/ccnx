@@ -1383,7 +1383,6 @@ r_store_index_cleaner(struct ccn_schedule *sched,
     struct hashtb_enumerator *e = &ee;
     struct ccn_btree_node *node = NULL;
     int k;
-    int opencount;
     int res;
     
     (void)(sched);
@@ -1424,13 +1423,10 @@ r_store_index_cleaner(struct ccn_schedule *sched,
             return(nrand48(h->seed) % (2U * CCN_BT_CLEAN_TICK_MICROS) + 500);
     }
     /* Sweep though and find the nodes that still need cleaning */
-    opencount = 0;
     hashtb_start(h->btree->resident, e);
     for (; e->data != NULL; hashtb_next(e)) {
         node = e->data;
         node->activity /= 2; /* Age the node's activity */
-        if (node->iodata != NULL)
-            opencount++;
         if (node->clean != node->buf->length ||
             (node->iodata != NULL && node->activity == 0)) {
             if (h->toclean == NULL) {
@@ -1444,7 +1440,7 @@ r_store_index_cleaner(struct ccn_schedule *sched,
     hashtb_end(e);
     /* If nothing to do, shut down cleaner */
     if ((h->toclean == NULL || h->toclean->n == 0) &&
-        opencount <= CCN_BT_OPEN_NODES) {
+        h->btree->io->openfds <= CCN_BT_OPEN_NODES) {
         h->index_cleaner = NULL;
         ccn_indexbuf_destroy(&h->toclean);
         if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINE))
