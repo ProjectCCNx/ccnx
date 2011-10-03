@@ -103,7 +103,7 @@ public class SegmentationProfile implements CCNProfile {
 				((potentialSegmentID.length > 1) && (NO_SEGMENT_POSTFIX == potentialSegmentID[1])));		
 	}
 	
-	public static boolean isSegmentMarker(byte [] potentialSegmentID) {
+	public final static boolean isSegmentMarker(byte [] potentialSegmentID) {
 		return (!isNotSegmentMarker(potentialSegmentID));
 	}
 
@@ -134,7 +134,7 @@ public class SegmentationProfile implements CCNProfile {
 		if (baseSegment() == segmentNumber) {
 			segmentNumberNameComponent = FIRST_SEGMENT_MARKER;
 		} else {
-			segmentNumberNameComponent = DataUtils.unsignedLongToByteArray(segmentNumber);
+			segmentNumberNameComponent = DataUtils.unsignedLongToByteArray(segmentNumber, SEGMENT_MARKER);
 		}
 		return segmentNumberNameComponent;
 	}
