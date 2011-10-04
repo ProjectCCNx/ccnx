@@ -93,6 +93,30 @@ r_init_debug_getenv(struct ccnr_handle *h, const char *envname)
     return(debugval);
 }
 
+static int
+establish_min_send_bufsize(struct ccnr_handle *h, int fd, int minsize)
+{
+    int res;
+    int bufsize;
+    int obufsize;
+    socklen_t bufsize_sz;
+
+    bufsize_sz = sizeof(bufsize);
+    res = getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &bufsize, &bufsize_sz);
+    if (res == -1)
+        return (res);
+    obufsize = bufsize;
+    if (bufsize < minsize) {
+        bufsize = minsize;
+        res = setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
+        if (res == -1)
+            return(res);
+    }
+    if (CCNSHOULDLOG(h, sdfdsf, CCNL_INFO))
+        ccnr_msg(h, "SO_SNDBUF for fd %d is %d (was %d)", fd, bufsize, obufsize);
+    return(bufsize);
+}
+
 /**
  * Create a new ccnr instance
  * @param progname - name of program binary, used for locating helpers
@@ -179,13 +203,16 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     }
     ccnr_direct_client_start(h);
     if (ccn_connect(h->direct_client, NULL) != -1) {
+        int fd;
         struct fdholder *fdholder;
-        fdholder = r_io_record_fd(h, ccn_get_connection_fd(h->direct_client), "CCND", 5, CCNR_FACE_CCND | CCNR_FACE_LOCAL);
+        fd = ccn_get_connection_fd(h->direct_client);
+        fdholder = r_io_record_fd(h, fd, "CCND", 5, CCNR_FACE_CCND | CCNR_FACE_LOCAL);
         if (fdholder == NULL) abort();
         ccnr_uri_listen(h, h->direct_client, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository",
                         &ccnr_answer_req, OP_SERVICE);
         ccnr_uri_listen(h, h->direct_client, "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository",
                         &ccnr_answer_req, OP_SERVICE);
+        establish_min_send_bufsize(h, fd, 16384);
     }
     else
         ccn_disconnect(h->direct_client); // Apparently ccn_connect error case needs work.
