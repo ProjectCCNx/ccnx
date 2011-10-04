@@ -733,7 +733,6 @@ r_store_content_btree_insert(struct ccnr_handle *h,
                                        content->flatname);
         if (res < 0)
             return(-1);
-        r_store_index_needs_cleaning(h);
         if (res > btree->full) {
             res = ccn_btree_split(btree, leaf);
             for (limit = 100; res >= 0 && btree->nextsplit != 0; limit--) {
@@ -744,6 +743,7 @@ r_store_content_btree_insert(struct ccnr_handle *h,
                 res = ccn_btree_split(btree, node);
             }
         }
+        r_store_index_needs_cleaning(h);
         
         *accp = content->accession;
         return(2);
@@ -1440,7 +1440,7 @@ r_store_index_cleaner(struct ccn_schedule *sched,
     hashtb_end(e);
     /* If nothing to do, shut down cleaner */
     if ((h->toclean == NULL || h->toclean->n == 0) &&
-        h->btree->io->openfds <= CCN_BT_OPEN_NODES) {
+        h->btree->io->openfds <= CCN_BT_OPEN_NODES_IDLE) {
         h->index_cleaner = NULL;
         ccn_indexbuf_destroy(&h->toclean);
         if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINE))
@@ -1453,12 +1453,22 @@ r_store_index_cleaner(struct ccn_schedule *sched,
 PUBLIC void
 r_store_index_needs_cleaning(struct ccnr_handle *h)
 {
-    if (h->index_cleaner == NULL && h->btree != NULL && h->btree->io != NULL) {
-        h->index_cleaner = ccn_schedule_event(h->sched,
-                                              CCN_BT_CLEAN_TICK_MICROS,
-                                              r_store_index_cleaner, NULL, 0);
-        if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINER))
-            ccnr_msg(h, "index cleaner started");
+    int k;
+    if (h->btree != NULL && h->btree->io != NULL) {
+        if (h->index_cleaner == NULL) {
+            h->index_cleaner = ccn_schedule_event(h->sched,
+                                                  CCN_BT_CLEAN_TICK_MICROS,
+                                                  r_store_index_cleaner, NULL, 0);
+            if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINER))
+                ccnr_msg(h, "index cleaner started");
+        }
+        /* If necessary, clean in a hurry. */
+        for (k = 30; /* Backstop to make sure we do not loop here */
+             k > 0 && h->index_cleaner != NULL &&
+             h->btree->io->openfds > CCN_BT_OPEN_NODES_LIMIT - 2; k--)
+            r_store_index_cleaner(h->sched, h, h->index_cleaner, 0);
+        if (k == 0)
+            ccnr_msg(h, "index cleaner is in trouble");
     }
 }
 

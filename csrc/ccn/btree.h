@@ -41,6 +41,7 @@ struct ccn_btree_node;
  *
  * Open should prepare for I/O to a node.  It may use the iodata slot to
  * keep track of its state, and should set iodata to a non-NULL value.
+ * It should update the count of openfds as appropriate.
  *
  * Read gets bytes from the file and places it into the buffer at the
  * corresponding position.  The parameter is a limit for the max buffer size.
@@ -54,7 +55,8 @@ struct ccn_btree_node;
  * file.  Write is not responsible for updating the clean mark.
  *
  * Close is called at the obvious time.  It should free any node io state and
- * set iodata to NULL.  It should not change the other parts of the node.
+ * set iodata to NULL, updating openfds as appropriate.  It should not change
+ * the other parts of the node.
  *
  * Negative return values indicate errors.
  */
@@ -83,7 +85,7 @@ struct ccn_btree_io {
     ccn_btree_io_closefn btclose;
     ccn_btree_io_destroyfn btdestroy;
     ccn_btnodeid maxnodeid;    /**< Largest assigned nodeid */
-    unsigned openfds;
+    int openfds;               /**< Number of open files */
     void *data;
 };
 /**
@@ -111,7 +113,10 @@ struct ccn_btree_node {
 #define CCN_BT_ACTIVITY_UPDATE_BUMP 16
 
 /** Limit to the number of btree nodes kept open when idle */
-#define CCN_BT_OPEN_NODES 13
+#define CCN_BT_OPEN_NODES_IDLE 5
+/** Limit to the number of file descriptors the btree should use at a time */
+#define CCN_BT_OPEN_NODES_LIMIT 13
+
 
 /**
  * State associated with a btree as a whole
