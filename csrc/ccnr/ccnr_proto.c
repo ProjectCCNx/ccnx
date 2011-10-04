@@ -273,7 +273,11 @@ PUBLIC void
 r_proto_init(struct ccnr_handle *ccnr) {
     // nothing to do
 }
-
+/**
+ * Install the listener for the namespaces that the parsed policy says to serve
+ * 
+ * Normal usage is to deactivate the old policy and then activate the new one
+ */
 PUBLIC void
 r_proto_activate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp) {
     int i;
@@ -288,7 +292,9 @@ r_proto_activate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
     }
     
 }
-
+/**
+ * Uninstall the listener for the namespaces that the parsed policy says to serve
+ */
 PUBLIC void
 r_proto_deactivate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp) {
     int i;
@@ -1196,6 +1202,10 @@ r_proto_policy_append_namespace(struct ccnr_handle *ccnr,
     return(res);
 }
 
+/**
+ * Parse a ccnb-encoded policy content object and fill in a ccn_parsed_policy
+ * structure as the result.
+ */
 PUBLIC int
 r_proto_parse_policy(struct ccnr_handle *ccnr, const unsigned char *buf, size_t length,
                      struct ccnr_parsed_policy *pp)
