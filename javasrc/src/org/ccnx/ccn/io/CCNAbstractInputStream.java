@@ -1654,7 +1654,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 				
 				//we don't have the segment...  might just be that it isn't here yet, but this might be an out of order request
 				if (number < _lastInOrderSegment)
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: we do not have segment {0} and the last in order segment was {1}, we must have had a skip/seek");
+					Log.info(Log.FAC_PIPELINE, "PIPELINE: we do not have segment {0} and the last in order segment was {1}, we must have had a skip/seek", number, _lastInOrderSegment);
 			}
 
 			// the segment was not available... we need to wait until the
