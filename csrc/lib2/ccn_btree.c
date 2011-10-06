@@ -896,14 +896,18 @@ ccn_btree_close_node(struct ccn_btree *btree, struct ccn_btree_node *node)
         res = -1;
     else if (node->iodata != NULL && io != NULL) {
         res = io->btwrite(io, node);
-        if (res >= 0)
+        if (res < 0)
+            ccn_btree_note_error(btree, __LINE__);
+        else
             node->clean = node->buf->length;
         res |= io->btclose(io, node);
+        if (res < 0)
+            ccn_btree_note_error(btree, __LINE__);
     }
-    else if (io != NULL && node->clean != node->buf->length)
+    else if (io != NULL && node->clean != node->buf->length) {
         res = -1;
-    if (res < 0)
-            btree->errors += 1;
+        ccn_btree_note_error(btree, __LINE__);
+    }
     return(res);
 }
 
@@ -1061,6 +1065,12 @@ ccn_btree_getnode(struct ccn_btree *bt,
                     if (-1 == ccn_btree_chknode(node))
                         ccn_btree_note_error(bt, __LINE__);
                     node->activity = CCN_BT_ACTIVITY_READ_BUMP;
+                    if (bt->io->openfds >= CCN_BT_OPEN_NODES_LIMIT) {
+                        /* having read in the node, it is safe to close it */
+                        res = bt->io->btclose(bt->io, node);
+                         if (res < 0)
+                            ccn_btree_note_error(bt, __LINE__);
+                    }
                 }
             }
         }
