@@ -599,5 +599,25 @@ main (int argc, char *argv[]) {
         ccn_charbuf_destroy(&co);
         ccn_destroy(&h);
     } while (0);
+    printf("link tests\n");
+    do {
+        struct ccn_charbuf *l = ccn_charbuf_create();
+        struct ccn_charbuf *name = ccn_charbuf_create();
+        struct ccn_charbuf *la = ccn_charbuf_create();
+        struct ccn_parsed_Link pl = {0};
+        struct ccn_buf_decoder decoder;
+        struct ccn_buf_decoder *d;
+        struct ccn_indexbuf *comps = ccn_indexbuf_create();
+        printf("Unit test case %d\n", i++);
+        ccn_name_from_uri(name, "ccnx:/test/link/name");
+        ccnb_append_Link(l, name, "label", NULL);
+        d = ccn_buf_decoder_start(&decoder, l->buf, l->length);
+        res = ccn_parse_Link(d, &pl, comps);
+        if (res != 3 /* components in name */) {
+            printf("Failed: ccn_parse_Link res == %d\n", (int)res);
+            result = 1;
+        }        
+    } while (0);
+    
     exit(result);
 }
