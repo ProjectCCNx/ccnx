@@ -57,6 +57,16 @@ CCNDStatus () {
   echo 'GET / ' | ccndsmoketest -b -T localhost send - recv recv
 }
 
+Linkup () {
+  local A B
+  A=$((CCN_LOCAL_PORT_BASE+$1))
+  B=$((CCN_LOCAL_PORT_BASE+$2))
+  shift 2
+  test $A -ne $B || Fail FIXME
+  env CCN_LOCAL_PORT=$A ccndc add / udp localhost $B
+  env CCN_LOCAL_PORT=$B ccndc add / udp localhost $A
+}
+
 ExpectLines () {
   local file lines minimum maximum
   lines=`wc -l < $1` || Fail

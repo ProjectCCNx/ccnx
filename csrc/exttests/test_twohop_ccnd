@@ -27,16 +27,6 @@ until CheckForCCND 0 && CheckForCCND 1 && CheckForCCND 2 && CheckForCCND 3; do
   sleep 1
 done
 
-Linkup () {
-  local A B
-  A=$((CCN_LOCAL_PORT_BASE+$1))
-  B=$((CCN_LOCAL_PORT_BASE+$2))
-  shift 2
-  test $A -ne $B || Fail FIXME
-  env CCN_LOCAL_PORT=$A ccndc add / udp localhost $B
-  env CCN_LOCAL_PORT=$B ccndc add / udp localhost $A
-}
-
 # 0 --- 1 --- 2
 #       |
 #       3

@@ -227,7 +227,7 @@ r_sync_enumerate_action(struct ccn_schedule *sched,
      * The cookie might go away, but only if the content has been accessioned.
      */
     content = r_store_content_from_cookie(ccnr, md->cookie);
-    if (content == NULL)
+    if (content == NULL && md->cookie != 0)
         content = r_store_content_from_accession(ccnr, ccnr->active_enum[md->index]);
     for (try = 0, matches = 0; content != NULL; try++) {
         if (scratch == NULL)
@@ -339,13 +339,11 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
     }
     content = r_store_find_first_match_candidate(ccnr, interest->buf, pi);
     if (content == NULL) {
-        if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINER))
+        if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINE))
             ccnr_debug_ccnb(ccnr, __LINE__, "sync_enum_nomatch", NULL,
                         interest->buf, interest->length);
-        ans = -1;
-        goto Bail;
     }
-    if (r_store_content_matches_interest_prefix(ccnr,
+    else if (r_store_content_matches_interest_prefix(ccnr,
            content, interest->buf, interest->length)) {
         ccnr->active_enum[ans] = r_store_content_accession(ccnr, content);
         if (CCNSHOULDLOG(ccnr, r_sync_enumerate, CCNL_FINEST))
@@ -357,7 +355,7 @@ r_sync_enumerate(struct ccnr_handle *ccnr,
     md = calloc(1, sizeof(*md));
     if (md == NULL) { ccnr->active_enum[ans] = CCNR_NULL_ACCESSION; ans = -1; goto Bail; }
     md->magic = se_cookie;
-    md->cookie = r_store_content_cookie(ccnr, content);
+    md->cookie = content == NULL ? 0 : r_store_content_cookie(ccnr, content);
     md->index = ans;
     md->interest = ccn_charbuf_create();
     if (md->interest == NULL) goto Bail;

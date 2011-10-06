@@ -217,9 +217,11 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     else
         ccn_disconnect(h->direct_client); // Apparently ccn_connect error case needs work.
     h->sync_handle = SyncNewBase(h, h->direct_client, h->sched);
+    // create a parsed_policy and load from the repoPolicy file (or env/defaults)
     pp = ccnr_parsed_policy_create();
     load_policy(h, pp);
     h->parsed_policy = pp;
+    // set up special listener for (global prefix)/data/policy.xml
     basename = ccn_charbuf_create();
     ccn_name_init(basename);
     ccn_name_from_uri(basename, (char *)pp->store->buf + pp->global_prefix_offset);
@@ -443,6 +445,14 @@ ccnr_init_policy_cob(struct ccnr_handle *ccnr, struct ccn *h,
     return(cob);
 }
 
+/**
+ * Load a repo policy from the repoPolicy file and incorporate the policy object
+ * in the cache through process_incoming_content.
+ * If a policy file does not exist a new one is created
+ * based either on the environment variable CCNR_GLOBAL_PREFIX or the system
+ * default value of ccnx:/parc.com/csl/ccn/Repos, plus the system defaults for
+ * other fields.
+ */
 static int
 load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
 {
