@@ -497,8 +497,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 				processingSegment = -1;
 			}
 
+			inOrderSegments.notifyAll();
 			if(waitingThread!=null && returnedSegment == waitingSegment) {
-				inOrderSegments.notifyAll();
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: notifyAll: min sleep {0}", (System.currentTimeMillis()-waitSleep));
 				try {
