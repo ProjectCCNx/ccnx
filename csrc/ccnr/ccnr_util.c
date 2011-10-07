@@ -162,5 +162,62 @@ r_util_segment_from_component(const unsigned char *ccnb, size_t start, size_t st
         }
     }
     return(-1);
-    
 }
+/**
+ * Compare a name component at index i to bytes in buf and return 0
+ * if they are equal length and equal value.
+ * In the case of inequality, a negative or positive value is returned,
+ * according to the canonical ordering of names.
+ */
+int
+r_util_name_comp_compare(const unsigned char *data,
+                         const struct ccn_indexbuf *indexbuf,
+                         unsigned int i, const void *buf, size_t length)
+{
+    const unsigned char *comp_ptr;
+    size_t comp_size;
+    
+    if (ccn_name_comp_get(data, indexbuf, i, &comp_ptr, &comp_size) != 0)
+        return(-1);
+    if (comp_size < length)
+        return(-1);
+    if (comp_size > length)
+        return(1);
+    return(memcmp(comp_ptr, buf, length));
+}
+/**
+ * Given a ccnb encoded content object, the parsed form, and name components
+ * report whether this is the last (FinalBlockID) segment of a stream.
+ * This is very similar to ccn_is_final_block()
+ */
+PUBLIC int
+r_util_is_final_pco(const unsigned char *ccnb,
+             struct ccn_parsed_ContentObject *pco,
+             struct ccn_indexbuf *comps)
+{
+    if (ccnb == NULL || pco == NULL)
+        return(0);
+    if (pco->offset[CCN_PCO_B_FinalBlockID] !=
+        pco->offset[CCN_PCO_E_FinalBlockID]) {
+        const unsigned char *finalid = NULL;
+        size_t finalid_size = 0;
+        const unsigned char *nameid = NULL;
+        size_t nameid_size = 0;
+        ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
+                            pco->offset[CCN_PCO_B_FinalBlockID],
+                            pco->offset[CCN_PCO_E_FinalBlockID],
+                            &finalid,
+                            &finalid_size);
+        if (comps->n < 2) return(-1);
+        ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
+                            comps->buf[comps->n - 2],
+                            comps->buf[comps->n - 1],
+                            &nameid,
+                            &nameid_size);
+        if (finalid_size == nameid_size &&
+            0 == memcmp(finalid, nameid, nameid_size))
+            return(1);
+    }
+    return(0);
+}
+

@@ -51,11 +51,6 @@
 #include "ccnr_sync.h"
 #include "ccnr_util.h"
 
-#define REPO_SW "\xC1.R.sw"
-#define REPO_SWC "\xC1.R.sw-c"
-#define REPO_AF "\xC1.R.af"
-#define NAME_BE "\xC1.E.be"
-
 #define CCNR_MAX_RETRY 5
 
 static enum ccn_upcall_res
@@ -87,12 +82,6 @@ r_proto_bulk_import(struct ccn_closure *selfp,
                              enum ccn_upcall_kind kind,
                              struct ccn_upcall_info *info,
                              int marker_comp);
-
-static int
-name_comp_compare(const unsigned char *data,
-                   const struct ccn_indexbuf *indexbuf,
-                   unsigned int i, const void *val, size_t length);
-
 static int
 name_comp_equal_prefix(const unsigned char *data,
                     const struct ccn_indexbuf *indexbuf,
@@ -147,37 +136,37 @@ r_proto_answer_req(struct ccn_closure *selfp,
     /* check for command markers */
     ncomps = info->interest_comps->n;
     if (((marker_comp = ncomps - 2) >= 0) &&
-        0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE))) {
+        0 == r_util_name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE))) {
         if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 3) >= 0) &&
-               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE)) &&
-               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length)) {
+               0 == r_util_name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE)) &&
+               0 == r_util_name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length)) {
         if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_repoid", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_begin_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 5) >= 0) &&
-               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE)) &&
-               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length)) {
+               0 == r_util_name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, NAME_BE, strlen(NAME_BE)) &&
+               0 == r_util_name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp + 1, ccnr->ccnr_keyid->buf, ccnr->ccnr_keyid->length)) {
         if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
             ccnr_debug_ccnb(ccnr, __LINE__, "name_enumeration_continuation",
                             NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_continue_enumeration(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 3) > 0) &&
-               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SW, strlen(REPO_SW))) {
+               0 == r_util_name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SW, strlen(REPO_SW))) {
         if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
             ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write", NULL,
                             info->interest_ccnb, info->pi->offset[CCN_PI_E]);
         res = r_proto_start_write(selfp, kind, info, marker_comp);
         goto Finish;
     } else if (((marker_comp = ncomps - 5) > 0) &&
-               0 == name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SWC, strlen(REPO_SWC))) {
+               0 == r_util_name_comp_compare(info->interest_ccnb, info->interest_comps, marker_comp, REPO_SWC, strlen(REPO_SWC))) {
         if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
             ccnr_debug_ccnb(ccnr, __LINE__, "repo_start_write_checked",
                             NULL, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
@@ -204,29 +193,6 @@ Finish:
 }
 
 // XXX these should probably be rationalized and added to ccn_name_util.c
-/**
- * Compare a name component at index i to bytes in buf and return 0
- * if they are equal length and equal value.
- * In the case of inequality, a negative or positive value is returned,
- * according to the canonical ordering of names.
- */
-static int
-name_comp_compare(const unsigned char *data,
-                   const struct ccn_indexbuf *indexbuf,
-                   unsigned int i, const void *buf, size_t length)
-{
-    const unsigned char *comp_ptr;
-    size_t comp_size;
-    
-    if (ccn_name_comp_get(data, indexbuf, i, &comp_ptr, &comp_size) != 0)
-        return(-1);
-    if (comp_size < length)
-        return(-1);
-    if (comp_size > length)
-        return(1);
-    return(memcmp(comp_ptr, buf, length));
-}
-
 /**
  * Compare a name component at index i to bytes in buf and return 1
  * if they are equal in the first length bytes.  The name component
@@ -517,6 +483,157 @@ r_proto_expect_content(struct ccn_closure *selfp,
     return(CCN_UPCALL_RESULT_OK);
 }
 
+static int
+r_proto_policy_complete(struct ccn_closure *selfp,
+                         enum ccn_upcall_kind kind,
+                         struct ccn_upcall_info *info)
+{
+    struct ccnr_expect_content *md = selfp->data;
+    struct ccnr_handle *ccnr = (struct ccnr_handle *)md->ccnr;
+    ccnr_msg(ccnr, "POLICY COMPLETE");
+    return (0);
+}    
+
+#if 0
+static enum ccn_upcall_res
+r_proto_expect_policy(struct ccn_closure *selfp,
+                     enum ccn_upcall_kind kind,
+                     struct ccn_upcall_info *info)
+{
+    struct ccnr_expect_content *md = selfp->data;
+    struct ccnr_handle *ccnr = (struct ccnr_handle *)md->ccnr;
+    struct content_entry *content = NULL;
+    const unsigned char *ccnb = NULL;
+    size_t ccnb_size = 0;
+    const unsigned char *vers = NULL;
+    size_t vers_size = 0;
+    struct ccnr_parsed_policy *pp;
+    const unsigned char *policy;
+    size_t policy_length;
+    struct ccn_charbuf *new_gp;
+    struct ccn_charbuf *old_gp;
+    struct ccn_indexbuf *cc = NULL;
+    intmax_t segment;
+    int fd = -1;
+    int res;
+    
+    if (kind == CCN_UPCALL_FINAL) {
+        if (md != NULL) {
+            selfp->data = NULL;
+            free(md);
+            md = NULL;
+        }
+        free(selfp);
+        return(CCN_UPCALL_RESULT_OK);
+    }
+    if (md == NULL) {
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    if (md->done)
+        return(CCN_UPCALL_RESULT_ERR);
+    ccnr = (struct ccnr_handle *)md->ccnr;
+    if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) {
+        if (md->tries > CCNR_MAX_RETRY) {
+            ccnr_debug_ccnb(ccnr, __LINE__, "fetch_failed", NULL,
+                            info->interest_ccnb, info->pi->offset[CCN_PI_E]);
+            return(CCN_UPCALL_RESULT_ERR);
+        }
+        md->tries++;
+        return(CCN_UPCALL_RESULT_REEXPRESS);
+    }
+    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED) {
+        // XXX - Some forms of key locator can confuse libccn. Don't provoke it to fetch keys until that is hardened.
+        ccnr_debug_ccnb(ccnr, __LINE__, "key_needed", NULL, info->content_ccnb, info->pco->offset[CCN_PCO_E]);
+    }
+    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
+        return(CCN_UPCALL_RESULT_ERR);
+    
+    
+    ccnb = info->content_ccnb;
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    cc = info->content_comps;
+    
+    // XXX - ignore anything after segment 0, the policy needs to fit in one segment.
+    segment = r_util_segment_from_component(ccnb, cc->buf[cc->n - 2], cc->buf[cc->n - 1]);
+    if (segment != 0)
+        return(CCN_UPCALL_RESULT_ERR);
+    
+    ccn_name_comp_get(ccnb, cc, cc->n - 3, &vers, &vers_size);
+    if (vers_size != 7 || vers[0] != CCN_MARKER_VERSION)
+        return(CCN_UPCALL_RESULT_ERR);
+    if (memcmp(vers, ccnr->parsed_policy->version, sizeof(ccnr->parsed_policy->version)) <= 0) {
+        if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
+            ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_expect_policy need newer version", NULL,
+                            ccnb, ccnb_size);        
+        return (CCN_UPCALL_RESULT_ERR);
+    }
+    ccn_ref_tagged_BLOB(CCN_DTAG_Content, ccnb,
+                        info->pco->offset[CCN_PCO_B_Content],
+                        info->pco->offset[CCN_PCO_E_Content],
+                        &policy, &policy_length);
+    pp = ccnr_parsed_policy_create();
+    if (pp == NULL) {
+        ccnr_msg(ccnr, "Parsed policy allocation error");
+        goto Bail;
+
+    }
+    memmove(pp->version, vers, vers_size);
+    if (r_proto_parse_policy(ccnr, policy, policy_length, pp) < 0) {
+        ccnr_msg(ccnr, "Malformed policy");
+        goto Bail;
+    }
+    new_gp = ccn_charbuf_create();
+    old_gp = ccn_charbuf_create();
+    ccn_name_from_uri(new_gp, (char *)pp->store->buf + pp->global_prefix_offset);
+    ccn_name_from_uri(old_gp, (char *)ccnr->parsed_policy->store->buf + ccnr->parsed_policy->global_prefix_offset);
+    res = ccn_compare_names(new_gp->buf, new_gp->length,
+                            old_gp->buf, old_gp->length);
+    ccn_charbuf_destroy(&new_gp);
+    ccn_charbuf_destroy(&old_gp);
+    if (0 != res) {
+        ccnr_msg(ccnr, "Policy global prefix mismatch");
+        goto Bail;
+    }
+    fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 1);
+    res = write(fd, ccnb, ccnb_size);
+    if (res == -1) {
+        ccnr_msg(ccnr, "Policy write %u :%s (errno = %d)",
+                 fd, strerror(errno), errno);
+        goto Bail;
+    }
+    res = ftruncate(fd, ccnb_size);
+    if (res == -1) {
+        ccnr_msg(ccnr, "Policy truncate %u :%s (errno = %d)",
+                 fd, strerror(errno), errno);
+        goto Bail;
+    }
+    r_io_shutdown_client_fd(ccnr, fd);
+    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
+        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_expect_policy stored policy", NULL,
+                        ccnb, ccnb_size);
+    r_proto_deactivate_policy(ccnr, ccnr->parsed_policy);
+    ccnr_parsed_policy_destroy(&ccnr->parsed_policy);
+    ccnr->parsed_policy = pp;
+    r_proto_activate_policy(ccnr, pp);
+    content = process_incoming_content(ccnr,
+                                       r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)),
+                                       (void *)ccnb, ccnb_size);
+    if (content == NULL) {
+        ccnr_msg(ccnr, "r_proto_expect_policy: failed to process incoming content");
+        return(CCN_UPCALL_RESULT_ERR);
+    }
+    r_store_commit_content(ccnr, content);
+    
+    return(CCN_UPCALL_RESULT_OK);
+Bail:
+    if (pp != NULL)
+        ccnr_parsed_policy_destroy(&pp);
+    if (fd != -1)
+        r_io_shutdown_client_fd(ccnr, fd);
+    return (CCN_UPCALL_RESULT_ERR);
+    
+}
+#endif
 static enum ccn_upcall_res
 r_proto_start_write(struct ccn_closure *selfp,
                     enum ccn_upcall_kind kind,
@@ -535,6 +652,7 @@ r_proto_start_write(struct ccn_closure *selfp,
     int res = 0;
     int start = 0;
     int end = 0;
+    int is_policy = 0;
     int i;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
@@ -550,12 +668,9 @@ r_proto_start_write(struct ccn_closure *selfp,
     name = ccn_charbuf_create();
     ccn_charbuf_append(name, info->interest_ccnb + start, end - start);
     ccn_charbuf_append_closer(name);
-    
     if (0 ==ccn_compare_names(name->buf, name->length,
-                              ccnr->policy_name->buf, ccnr->policy_name->length)) {
-        ans = CCN_UPCALL_RESULT_ERR;
-        goto Bail;
-    }
+                              ccnr->policy_name->buf, ccnr->policy_name->length))
+        is_policy = 1;
     
     /* Generate our reply */
     start = info->pi->offset[CCN_PI_B_Name];
@@ -589,6 +704,11 @@ r_proto_start_write(struct ccn_closure *selfp,
     expect_content->final = -1;
     for (i = 0; i < CCNR_PIPELINE; i++)
         expect_content->outstanding[i] = -1;
+    if (is_policy) {
+        expect_content->expect_complete = &r_proto_policy_complete;
+        if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
+            ccnr_msg(ccnr, "r_proto_start_write: is policy file");
+    }
     incoming = calloc(1, sizeof(*incoming));
     if (incoming == NULL)
         goto Bail;
