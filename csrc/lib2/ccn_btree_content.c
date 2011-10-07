@@ -309,11 +309,15 @@ ccn_btree_content_set_cobid(struct ccn_btree_node *node, int ndx,
                             uint_least64_t cobid)
 {
     struct ccn_btree_content_payload *e = NULL;
+    ptrdiff_t dirty;
     
     e = ccn_btree_node_getentry(sizeof(*e), node, ndx);
     if (e == NULL)
         return(-1);
     MYSTORE64(e, cobid, cobid);
+    dirty = (((unsigned char *)e) - node->buf->buf);
+    if (dirty >= 0 && dirty < node->clean)
+        node->clean = dirty;
     return(0);
 }
 

@@ -594,6 +594,9 @@ ccn_btree_grow_a_level(struct ccn_btree *btree, struct ccn_btree_node *node)
     res = ccn_btree_init_node(node, level + 1, 'R', 0); // XXX - arbitrary extsz
     if (res < 0)
         ccn_btree_note_error(btree, __LINE__);
+    res = ccn_btree_prepare_for_update(btree, node);
+    if (res < 0)
+        ccn_btree_note_error(btree, __LINE__);
     MYSTORE(&link, child, child->nodeid);
     res = ccn_btree_insert_entry(node, 0, NULL, 0, &link, sizeof(link));
     if (res < 0)

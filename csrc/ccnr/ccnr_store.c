@@ -246,7 +246,7 @@ r_store_trim(struct ccnr_handle *h, unsigned long limit)
         if (content != NULL)
             r_store_content_trim(h, content);
     }
-    if (CCNSHOULDLOG(h, sdf, CCNL_FINEST))
+    if (CCNSHOULDLOG(h, sdf, CCNL_FINER))
         ccnr_msg(h, "trimmed %u cobs", before - h->cob_count);
 }
 
@@ -1303,6 +1303,7 @@ r_store_set_accession_from_offset(struct ccnr_handle *h,
             if (res >= 0 && CCN_BT_SRCH_FOUND(res)) {
                 ndx = CCN_BT_SRCH_INDEX(res);
                 cobid = ccnr_accession_encode(h, content->accession);
+                ccn_btree_prepare_for_update(h->btree, leaf);
                 res = ccn_btree_content_set_cobid(leaf, ndx, cobid);
             }
             else
@@ -1397,10 +1398,10 @@ r_store_index_cleaner(struct ccn_schedule *sched,
     if (h->toclean != NULL) {
         for (k = 0; k < CCN_BT_CLEAN_BATCH && h->toclean->n > 0; k++) {
             node = ccn_btree_rnode(h->btree, h->toclean->buf[--h->toclean->n]);
-            if (node != NULL) {
+            if (node != NULL && node->iodata != NULL) {
                 res = ccn_btree_chknode(node); /* paranoia */
                 if (res < 0 || CCNSHOULDLOG(h, sdfsdffd, CCNL_FINER))
-                    ccnr_msg(h, "write index node %u (%d)",
+                    ccnr_msg(h, "write index node %u (err %d)",
                              (unsigned)node->nodeid, node->corrupt);
                 if (res >= 0) {
                     if (node->clean != node->buf->length)
