@@ -299,8 +299,13 @@ r_dispatch_process_input(struct ccnr_handle *h, int fd)
     if (res == -1)
         ccnr_msg(h, "read %u :%s (errno = %d)",
                     fdholder->filedesc, strerror(errno), errno);
-    else if (res == 0 && (fdholder->flags & CCNR_FACE_DGRAM) == 0)
+    else if (res == 0 && (fdholder->flags & CCNR_FACE_DGRAM) == 0) {
+        if (fd == h->active_in_fd && h->stable == 0) {
+            h->stable = lseek(fd, 0, SEEK_END);
+            ccnr_msg(h, "read %ju bytes", (uintmax_t)h->stable);
+        }
         r_io_shutdown_client_fd(h, fd);
+    }
     else {
         off_t offset = (off_t)-1;
         off_t *offsetp = NULL;
