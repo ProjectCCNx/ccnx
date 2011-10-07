@@ -1320,7 +1320,7 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
     const unsigned char *content_msg = NULL;
     off_t offset;
 
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
         ccnr_debug_content(h, __LINE__, "content_to", fdholder, content);
     content_msg = r_store_content_base(h, content);
     r_link_stuff_and_send(h, fdholder, content_msg, content->size, NULL, 0, &offset);
@@ -1328,9 +1328,10 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
         int res;
         res = r_store_set_accession_from_offset(h, content, fdholder, offset);
         if (res == 0)
-            ccnr_debug_content(h, __LINE__, "content_stored",
-                               r_io_fdholder_from_fd(h, h->active_out_fd),
-                               content);
+            if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
+                ccnr_debug_content(h, __LINE__, "content_stored",
+                                   r_io_fdholder_from_fd(h, h->active_out_fd),
+                                   content);
     }
 }
 
