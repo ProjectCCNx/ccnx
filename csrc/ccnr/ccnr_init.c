@@ -195,6 +195,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     while (h->active_in_fd >= 0) {
         int usec;
         r_dispatch_process_input(h, h->active_in_fd);
+        r_store_trim(h, h->cob_limit);
         usec = ccn_schedule_run(h->sched);
         ccnr_msg(h, "la la la %d", usec);
     }
