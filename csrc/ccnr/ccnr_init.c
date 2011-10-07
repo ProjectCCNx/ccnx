@@ -193,8 +193,10 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     r_store_init(h);
     if (h->running == -1) goto Bail;
     while (h->active_in_fd >= 0) {
-        ccnr_msg(h, "la la la");
+        int usec;
         r_dispatch_process_input(h, h->active_in_fd);
+        usec = ccn_schedule_run(h->sched);
+        ccnr_msg(h, "la la la %d", usec);
     }
     ccnr_msg(h, "YES!");
     if (h->face0 == NULL) {
