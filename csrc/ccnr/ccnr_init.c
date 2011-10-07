@@ -192,6 +192,11 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     r_util_reseed(h);
     r_store_init(h);
     if (h->running == -1) goto Bail;
+    while (h->active_in_fd >= 0) {
+        ccnr_msg(h, "la la la");
+        r_dispatch_process_input(h, h->active_in_fd);
+    }
+    ccnr_msg(h, "YES!");
     if (h->face0 == NULL) {
         struct fdholder *fdholder;
         fdholder = calloc(1, sizeof(*fdholder));
