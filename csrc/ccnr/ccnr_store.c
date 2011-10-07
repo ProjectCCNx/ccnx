@@ -1277,13 +1277,12 @@ r_store_set_accession_from_offset(struct ccnr_handle *h,
     struct ccn_btree_node *leaf = NULL;
     uint_least64_t cobid;
     int ndx;
-    int res;
+    int res = -1;
     
     if (offset != (off_t)-1 && content->accession == CCNR_NULL_ACCESSION) {
         struct hashtb_enumerator ee;
         struct hashtb_enumerator *e = &ee;
         struct content_by_accession_entry *entry = NULL;
-        int res = -1;
         
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
         content->accession = ((ccnr_accession)offset) | r_store_mark_repoFile1;
