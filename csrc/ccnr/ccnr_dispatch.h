@@ -28,5 +28,6 @@ void r_dispatch_run(struct ccnr_handle *h);
 void r_dispatch_process_internal_client_buffer(struct ccnr_handle *h);
 struct content_entry *process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
                               unsigned char *msg, size_t size);
+void r_dispatch_process_input(struct ccnr_handle *h, int fd);
 #endif
 
