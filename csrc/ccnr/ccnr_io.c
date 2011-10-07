@@ -291,6 +291,15 @@ r_io_open_repo_data_file(struct ccnr_handle *h, const char *name, int output)
     if (fdholder == NULL)
         close_fd(&fd);
     else {
+        if (!output) {
+            /* Use a larger buffer for indexing an existing repo file */
+            if (fdholder->inbuf == NULL) {
+                fdholder->inbuf = ccn_charbuf_create();
+                fdholder->bufoffset = 0;
+            }
+            if (fdholder->inbuf != NULL)
+                ccn_charbuf_reserve(fdholder->inbuf, 256 * 1024);
+        }
         if (CCNSHOULDLOG(h, sdf, CCNL_INFO))
             ccnr_msg(h, "opened fd=%d file=%s", fd, ccn_charbuf_as_string(temp));
     }
