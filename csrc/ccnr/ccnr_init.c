@@ -450,7 +450,7 @@ Leave:
  *    CCNRID_POLICY_URI("ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/POLICY)/%C1.M.K<pubid>/<version>/%00
  * should have key locator which is the key name of the repository
  */
-static struct ccn_charbuf *
+PUBLIC struct ccn_charbuf *
 ccnr_init_policy_link_cob(struct ccnr_handle *ccnr, struct ccn *h,
                           struct ccn_charbuf *targetname)
 {
@@ -550,7 +550,6 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
                            pl.offset[CCN_PL_E_Name] - pl.offset[CCN_PL_B_Name]);
         policy = ccn_charbuf_create();
         do {
-            int save_length = name->length;
             ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, ++segment);
             content = r_store_lookup_ccnb(ccnr, name->buf, name->length);
             if (content == NULL) {
@@ -558,7 +557,7 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
                                 name->buf, name->length);
                 break;
             }
-            name->length = save_length;
+            ccn_name_chop(name, NULL, -1);
             content_msg = r_store_content_base(ccnr, content);
             res = ccn_parse_ContentObject(content_msg, r_store_content_size(ccnr, content), &pco, nc);
             res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, content_msg,
