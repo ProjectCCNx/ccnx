@@ -181,6 +181,7 @@ struct ccnr_handle {
     int active_in_fd;               /**< data currently being indexed */
     int active_out_fd;              /**< repo file we will write to */
     int repofile1_fd;               /**< read-only access to repoFile1 */
+    off_t startupbytes;             /**< repoFile1 size at startup */
     off_t stable;                   /**< repoFile1 size at shutdown */
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;

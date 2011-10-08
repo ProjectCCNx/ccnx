@@ -401,6 +401,31 @@ r_store_read_stable_point(struct ccnr_handle *h)
     ccn_charbuf_destroy(&cb);
 }
 
+/**
+ * Log a bit if we are taking a while to re-index.
+ */
+static int
+r_store_reindexing(struct ccn_schedule *sched,
+                   void *clienth,
+                   struct ccn_scheduled_event *ev,
+                   int flags)
+{
+    struct ccnr_handle *h = clienth;
+    struct fdholder *in = NULL;
+    unsigned pct;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        return(0);
+    in = r_io_fdholder_from_fd(h, h->active_in_fd);
+    if (in == NULL)
+        return(0);
+    pct = ccnr_meter_total(in->meter[FM_BYTI]) / ((h->startupbytes / 100) + 1);
+    if (pct >= 100)
+        return(0);
+    ccnr_msg(h, "indexing %u%% complete", pct);
+    return(2000000);
+}
+
 PUBLIC void
 r_store_init(struct ccnr_handle *h)
 {
@@ -455,6 +480,7 @@ r_store_init(struct ccnr_handle *h)
     h->active_in_fd = -1;
     h->active_out_fd = r_io_open_repo_data_file(h, "repoFile1", 1); /* output */
     offset = lseek(h->active_out_fd, 0, SEEK_END);
+    h->startupbytes = offset;
     if (offset != h->stable || node->corrupt != 0) {
         ccnr_msg(h, "Index not current - resetting");
         ccn_btree_init_node(node, 0, 'R', 0);
@@ -483,6 +509,8 @@ r_store_init(struct ccnr_handle *h)
         h->stable = 0;
         h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
         ccn_charbuf_destroy(&path);
+        if (CCNSHOULDLOG(h, dfds, CCNL_INFO))
+            ccn_schedule_event(h->sched, 50000, r_store_reindexing, NULL, 0);
     }
     if (CCNSHOULDLOG(h, weuyg, CCNL_FINEST)) {
         FILE *dumpfile = NULL;
@@ -764,7 +792,7 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
     *pentry = NULL;
     if ((entry->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         h->n_stale--;
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
         ccnr_debug_content(h, __LINE__, "remove", NULL, entry);
     /* Remove the cookie reference */
     i = entry->cookie - h->cookie_base;
@@ -1218,7 +1246,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
     content->accession = CCNR_NULL_ACCESSION;
     r_store_enroll_content(h, content);
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
         ccnr_debug_content(h, __LINE__, "content_from", fdholder, content);
         res = r_store_content_btree_insert(h, content, &obj, &accession);
         if (res < 0) goto Bail;

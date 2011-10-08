@@ -193,13 +193,11 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     r_store_init(h);
     if (h->running == -1) goto Bail;
     while (h->active_in_fd >= 0) {
-        int usec;
         r_dispatch_process_input(h, h->active_in_fd);
         r_store_trim(h, h->cob_limit);
-        usec = ccn_schedule_run(h->sched);
-        ccnr_msg(h, "la la la %d", usec);
+        ccn_schedule_run(h->sched);
     }
-    ccnr_msg(h, "YES!");
+    ccnr_msg(h, "Repository file is indexed");
     if (h->face0 == NULL) {
         struct fdholder *fdholder;
         fdholder = calloc(1, sizeof(*fdholder));
