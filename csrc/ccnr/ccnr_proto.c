@@ -490,95 +490,77 @@ r_proto_policy_complete(struct ccn_closure *selfp,
 {
     struct ccnr_expect_content *md = selfp->data;
     struct ccnr_handle *ccnr = (struct ccnr_handle *)md->ccnr;
-    ccnr_msg(ccnr, "POLICY COMPLETE");
-    return (0);
-}    
-
-#if 0
-static enum ccn_upcall_res
-r_proto_expect_policy(struct ccn_closure *selfp,
-                     enum ccn_upcall_kind kind,
-                     struct ccn_upcall_info *info)
-{
-    struct ccnr_expect_content *md = selfp->data;
-    struct ccnr_handle *ccnr = (struct ccnr_handle *)md->ccnr;
     struct content_entry *content = NULL;
+    const unsigned char *content_msg = NULL;
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
     const unsigned char *vers = NULL;
     size_t vers_size = 0;
-    struct ccnr_parsed_policy *pp;
-    const unsigned char *policy;
-    size_t policy_length;
-    struct ccn_charbuf *new_gp;
-    struct ccn_charbuf *old_gp;
     struct ccn_indexbuf *cc = NULL;
-    intmax_t segment;
-    int fd = -1;
+    struct ccn_parsed_ContentObject pco = {0};
+    struct ccn_indexbuf *nc;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *policy = NULL;
+    struct ccn_charbuf *old_gp;
+    struct ccn_charbuf *new_gp;
+    struct ccn_charbuf *policy_link_cob = NULL;
+    const unsigned char *buf = NULL;
+    size_t length = 0;
+    struct ccnr_parsed_policy *pp;
+    int segment = -1;
+    int final = 0;
     int res;
-    
-    if (kind == CCN_UPCALL_FINAL) {
-        if (md != NULL) {
-            selfp->data = NULL;
-            free(md);
-            md = NULL;
-        }
-        free(selfp);
-        return(CCN_UPCALL_RESULT_OK);
-    }
-    if (md == NULL) {
-        return(CCN_UPCALL_RESULT_ERR);
-    }
-    if (md->done)
-        return(CCN_UPCALL_RESULT_ERR);
-    ccnr = (struct ccnr_handle *)md->ccnr;
-    if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) {
-        if (md->tries > CCNR_MAX_RETRY) {
-            ccnr_debug_ccnb(ccnr, __LINE__, "fetch_failed", NULL,
-                            info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-            return(CCN_UPCALL_RESULT_ERR);
-        }
-        md->tries++;
-        return(CCN_UPCALL_RESULT_REEXPRESS);
-    }
-    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED) {
-        // XXX - Some forms of key locator can confuse libccn. Don't provoke it to fetch keys until that is hardened.
-        ccnr_debug_ccnb(ccnr, __LINE__, "key_needed", NULL, info->content_ccnb, info->pco->offset[CCN_PCO_E]);
-    }
-    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
-        return(CCN_UPCALL_RESULT_ERR);
-    
+    int ans = -1;
+    int fd = -1;
     
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
     cc = info->content_comps;
     
-    // XXX - ignore anything after segment 0, the policy needs to fit in one segment.
-    segment = r_util_segment_from_component(ccnb, cc->buf[cc->n - 2], cc->buf[cc->n - 1]);
-    if (segment != 0)
-        return(CCN_UPCALL_RESULT_ERR);
-    
+    // the version of the new policy must be greater than the exist one
+    // or we will not activate it and update the link to point to it.
     ccn_name_comp_get(ccnb, cc, cc->n - 3, &vers, &vers_size);
     if (vers_size != 7 || vers[0] != CCN_MARKER_VERSION)
-        return(CCN_UPCALL_RESULT_ERR);
+        return(-1);
     if (memcmp(vers, ccnr->parsed_policy->version, sizeof(ccnr->parsed_policy->version)) <= 0) {
         if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
-            ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_expect_policy need newer version", NULL,
+            ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_policy_complete need newer version", NULL,
                             ccnb, ccnb_size);        
-        return (CCN_UPCALL_RESULT_ERR);
+        return (-1);
     }
-    ccn_ref_tagged_BLOB(CCN_DTAG_Content, ccnb,
-                        info->pco->offset[CCN_PCO_B_Content],
-                        info->pco->offset[CCN_PCO_E_Content],
-                        &policy, &policy_length);
+    
+    name = ccn_charbuf_create();
+    res = ccn_name_init(name);
+    // all components not including segment
+    ccn_name_append_components(name, ccnb, cc->buf[0], cc->buf[cc->n - 2]);
+    policy = ccn_charbuf_create();
+    nc = ccn_indexbuf_create();
+    do {
+        ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, ++segment);
+        content = r_store_lookup_ccnb(ccnr, name->buf, name->length);
+        if (content == NULL) {
+            ccnr_debug_ccnb(ccnr, __LINE__, "policy lookup failed for", NULL,
+                            name->buf, name->length);
+            goto Bail;
+        }
+        ccn_name_chop(name, NULL, -1);
+        content_msg = r_store_content_base(ccnr, content);
+        res = ccn_parse_ContentObject(content_msg, r_store_content_size(ccnr, content), &pco, nc);
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, content_msg,
+                                  pco.offset[CCN_PCO_B_Content],
+                                  pco.offset[CCN_PCO_E_Content],
+                                  &buf, &length);
+        ccn_charbuf_append(policy, buf, length);
+        final = r_util_is_final_pco(content_msg, &pco, nc);
+    } while (!final);
+    
     pp = ccnr_parsed_policy_create();
     if (pp == NULL) {
         ccnr_msg(ccnr, "Parsed policy allocation error");
         goto Bail;
-
     }
     memmove(pp->version, vers, vers_size);
-    if (r_proto_parse_policy(ccnr, policy, policy_length, pp) < 0) {
+    if (r_proto_parse_policy(ccnr, policy->buf, policy->length, pp) < 0) {
         ccnr_msg(ccnr, "Malformed policy");
         goto Bail;
     }
@@ -594,46 +576,43 @@ r_proto_expect_policy(struct ccn_closure *selfp,
         ccnr_msg(ccnr, "Policy global prefix mismatch");
         goto Bail;
     }
+    policy_link_cob = ccnr_init_policy_link_cob(ccnr, ccnr->direct_client, name);
+    if (policy_link_cob != NULL)
+        ccnr->policy_link_cob = policy_link_cob;
     fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 1);
-    res = write(fd, ccnb, ccnb_size);
-    if (res == -1) {
-        ccnr_msg(ccnr, "Policy write %u :%s (errno = %d)",
-                 fd, strerror(errno), errno);
+    if (fd < 0) {
+        ccnr_msg(ccnr, "open policy: %s (errno = %d)", strerror(errno), errno);
         goto Bail;
     }
-    res = ftruncate(fd, ccnb_size);
+    res = write(fd, ccnr->policy_link_cob->buf, ccnr->policy_link_cob->length);
+    if (res == -1) {
+        ccnr_msg(ccnr, "write policy: %s (errno = %d)", strerror(errno), errno);
+        goto Bail;
+    }
+    res = ftruncate(fd, ccnr->policy_link_cob->length);
     if (res == -1) {
         ccnr_msg(ccnr, "Policy truncate %u :%s (errno = %d)",
                  fd, strerror(errno), errno);
         goto Bail;
     }
     r_io_shutdown_client_fd(ccnr, fd);
-    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
-        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_expect_policy stored policy", NULL,
-                        ccnb, ccnb_size);
+    fd = -1;
     r_proto_deactivate_policy(ccnr, ccnr->parsed_policy);
     ccnr_parsed_policy_destroy(&ccnr->parsed_policy);
     ccnr->parsed_policy = pp;
     r_proto_activate_policy(ccnr, pp);
-    content = process_incoming_content(ccnr,
-                                       r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)),
-                                       (void *)ccnb, ccnb_size);
-    if (content == NULL) {
-        ccnr_msg(ccnr, "r_proto_expect_policy: failed to process incoming content");
-        return(CCN_UPCALL_RESULT_ERR);
-    }
-    r_store_commit_content(ccnr, content);
     
-    return(CCN_UPCALL_RESULT_OK);
+    ans = 0;
+    
 Bail:
-    if (pp != NULL)
-        ccnr_parsed_policy_destroy(&pp);
-    if (fd != -1)
-        r_io_shutdown_client_fd(ccnr, fd);
-    return (CCN_UPCALL_RESULT_ERR);
+    ccn_charbuf_destroy(&name);
+    ccn_indexbuf_destroy(&nc);
+    ccn_charbuf_destroy(&policy);
+    if (fd >= 0) r_io_shutdown_client_fd(ccnr, fd);
+    return (ans);
     
-}
-#endif
+}    
+
 static enum ccn_upcall_res
 r_proto_start_write(struct ccn_closure *selfp,
                     enum ccn_upcall_kind kind,
