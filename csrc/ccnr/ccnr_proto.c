@@ -484,25 +484,20 @@ r_proto_expect_content(struct ccn_closure *selfp,
 }
 
 static int
-r_proto_policy_complete(struct ccn_closure *selfp,
-                         enum ccn_upcall_kind kind,
-                         struct ccn_upcall_info *info)
+r_proto_policy_update(struct ccn_schedule *sched,
+                      void *clienth,
+                      struct ccn_scheduled_event *ev,
+                      int flags)
 {
-    struct ccnr_expect_content *md = selfp->data;
-    struct ccnr_handle *ccnr = (struct ccnr_handle *)md->ccnr;
+    struct ccnr_handle *ccnr = clienth;
+    struct ccn_charbuf *name = ev->evdata;
     struct content_entry *content = NULL;
     const unsigned char *content_msg = NULL;
-    const unsigned char *ccnb = NULL;
-    size_t ccnb_size = 0;
     const unsigned char *vers = NULL;
     size_t vers_size = 0;
-    struct ccn_indexbuf *cc = NULL;
     struct ccn_parsed_ContentObject pco = {0};
     struct ccn_indexbuf *nc;
-    struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *policy = NULL;
-    struct ccn_charbuf *old_gp;
-    struct ccn_charbuf *new_gp;
     struct ccn_charbuf *policy_link_cob = NULL;
     const unsigned char *buf = NULL;
     size_t length = 0;
@@ -513,26 +508,11 @@ r_proto_policy_complete(struct ccn_closure *selfp,
     int ans = -1;
     int fd = -1;
     
-    ccnb = info->content_ccnb;
-    ccnb_size = info->pco->offset[CCN_PCO_E];
-    cc = info->content_comps;
-    
-    // the version of the new policy must be greater than the exist one
-    // or we will not activate it and update the link to point to it.
-    ccn_name_comp_get(ccnb, cc, cc->n - 3, &vers, &vers_size);
-    if (vers_size != 7 || vers[0] != CCN_MARKER_VERSION)
-        return(-1);
-    if (memcmp(vers, ccnr->parsed_policy->version, sizeof(ccnr->parsed_policy->version)) <= 0) {
-        if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
-            ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_policy_complete need newer version", NULL,
-                            ccnb, ccnb_size);        
-        return (-1);
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
+        ans = 0;
+        goto Bail;
     }
     
-    name = ccn_charbuf_create();
-    res = ccn_name_init(name);
-    // all components not including segment
-    ccn_name_append_components(name, ccnb, cc->buf[0], cc->buf[cc->n - 2]);
     policy = ccn_charbuf_create();
     nc = ccn_indexbuf_create();
     do {
@@ -564,14 +544,8 @@ r_proto_policy_complete(struct ccn_closure *selfp,
         ccnr_msg(ccnr, "Malformed policy");
         goto Bail;
     }
-    new_gp = ccn_charbuf_create();
-    old_gp = ccn_charbuf_create();
-    ccn_name_from_uri(new_gp, (char *)pp->store->buf + pp->global_prefix_offset);
-    ccn_name_from_uri(old_gp, (char *)ccnr->parsed_policy->store->buf + ccnr->parsed_policy->global_prefix_offset);
-    res = ccn_compare_names(new_gp->buf, new_gp->length,
-                            old_gp->buf, old_gp->length);
-    ccn_charbuf_destroy(&new_gp);
-    ccn_charbuf_destroy(&old_gp);
+    res = strcmp((char *)pp->store->buf + pp->global_prefix_offset,
+                 (char *)ccnr->parsed_policy->store->buf + ccnr->parsed_policy->global_prefix_offset);
     if (0 != res) {
         ccnr_msg(ccnr, "Policy global prefix mismatch");
         goto Bail;
@@ -612,6 +586,47 @@ Bail:
     return (ans);
     
 }    
+
+static int
+r_proto_policy_complete(struct ccn_closure *selfp,
+                        enum ccn_upcall_kind kind,
+                        struct ccn_upcall_info *info)
+{
+    struct ccnr_expect_content *md = selfp->data;
+    struct ccnr_handle *ccnr = (struct ccnr_handle *)md->ccnr;
+    const unsigned char *ccnb;
+    size_t ccnb_size;
+    const unsigned char *vers = NULL;
+    size_t vers_size = 0;
+    struct ccn_indexbuf *cc;
+    struct ccn_charbuf *name;
+    int res;
+    
+    // the version of the new policy must be greater than the exist one
+    // or we will not activate it and update the link to point to it.
+    
+    ccnb = info->content_ccnb;
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    cc = info->content_comps;
+    ccn_name_comp_get(ccnb, cc, cc->n - 3, &vers, &vers_size);
+    if (vers_size != 7 || vers[0] != CCN_MARKER_VERSION)
+        return(-1);
+    if (memcmp(vers, ccnr->parsed_policy->version, sizeof(ccnr->parsed_policy->version)) <= 0) {
+        if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
+            ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_policy_complete older policy ignored", NULL,
+                            ccnb, ccnb_size);        
+        return (-1);
+    }
+    // all components not including segment
+    name = ccn_charbuf_create();
+    res = ccn_name_init(name);
+    ccn_name_append_components(name, ccnb, cc->buf[0], cc->buf[cc->n - 2]);
+    ccn_schedule_event(ccnr->sched, 500, r_proto_policy_update, name, 0);
+    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINEST))
+        ccnr_msg(ccnr,"r_proto_policy_complete update scheduled");        
+    
+    return (0);
+}
 
 static enum ccn_upcall_res
 r_proto_start_write(struct ccn_closure *selfp,
