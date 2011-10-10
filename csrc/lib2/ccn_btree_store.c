@@ -38,6 +38,7 @@ static int bts_destroy(struct ccn_btree_io **);
 struct bts_data {
     struct ccn_btree_io *io;
     struct ccn_charbuf *dirpath;
+    int lfd;
 };
 
 /**
@@ -62,6 +63,7 @@ ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
     struct ccn_charbuf *temp = NULL;
     char tbuf[21];
     int fd = -1;
+    struct flock flk = {0};
     int pid, res;
     int maxnodeid = 0;
     
@@ -76,6 +78,7 @@ ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
     md = calloc(1, sizeof(*md));
     if (md == NULL)
         goto Bail; /* errno per calloc */
+    md->lfd = -1;
     md->dirpath = ccn_charbuf_create();
     if (md->dirpath == NULL) goto Bail; /* errno per calloc */
     res = ccn_charbuf_putf(md->dirpath, "%s", path);
@@ -90,54 +93,58 @@ ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
     if (res < 0) goto Bail; /* errno per calloc */
     res = ccn_charbuf_putf(temp, "/.LCK");
     if (res < 0) goto Bail; /* errno per calloc or snprintf */
-    fd = open(ccn_charbuf_as_string(temp),
+    flk.l_type = F_WRLCK;
+    flk.l_whence = SEEK_SET;
+    md->lfd = open(ccn_charbuf_as_string(temp),
                (O_RDWR | O_CREAT | O_EXCL),
                0600);
-    if (fd == -1) {
+    if (md->lfd == -1) {
         if (errno == EEXIST) {
             // try to recover by checking if the pid the lock names exists
-            fd = open(ccn_charbuf_as_string(temp), O_RDWR);
-            if (fd == -1) {
+            md->lfd = open(ccn_charbuf_as_string(temp), O_RDWR);
+            if (md->lfd == -1) {
                 if (msgs != NULL)
                     ccn_charbuf_append_string(msgs, "Unable to open pid file for update. ");
                 goto Bail;
             }
             memset(tbuf, 0, sizeof(tbuf));
-            read(fd, tbuf, sizeof(tbuf) - 1);
+            read(md->lfd, tbuf, sizeof(tbuf) - 1);
             pid = strtol(tbuf, NULL, 10);
-            if (pid <= 0) {
-                if (msgs != NULL) {
-                    ccn_charbuf_append_string(msgs, "Illegal pid in pid file.");
-                }
-                goto Bail;    /* errno EINVAL or ERANGE */
-            }
-            res = kill((pid_t) pid, 0);
-            if (res == 0 ||             /* XXX - what errno? */
-                (res == -1 && errno != ESRCH)) {
-                if (msgs != NULL)
-                    ccn_charbuf_putf(msgs, "Locked by process id %d.", pid);
-                goto Bail;
+            if (fcntl(md->lfd, F_SETLK, &flk) == -1) {
+                if (errno == EACCES || errno == EAGAIN) { // it's locked
+                    fcntl(md->lfd, F_GETLK, &flk);
+                    if (msgs != NULL)
+                        ccn_charbuf_putf(msgs, "Locked by process id %d. ", flk.l_pid);
+                    goto Bail;
+                }            
             }
             ccn_charbuf_putf(msgs, "Breaking stale lock by pid %d. ", pid);
-            lseek(fd, 0, SEEK_SET);
-            ftruncate(fd, 0);
+            lseek(md->lfd, 0, SEEK_SET);
+            ftruncate(md->lfd, 0);
         }
         else {
             if (msgs != NULL)
                 ccn_charbuf_append_string(msgs, "Unable to open pid file. ");
             goto Bail; /* errno per open, probably EACCES */
         }
-    }    
-    /* Place our pid in the lockfile so we know who to blame */
+    }
+    else if (fcntl(md->lfd, F_SETLK, &flk) == -1) {
+        if (errno == EACCES || errno == EAGAIN) { // it's locked
+            fcntl(md->lfd, F_GETLK, &flk);
+            if (msgs != NULL)
+                ccn_charbuf_putf(msgs, "Locked by process id %d. ", flk.l_pid);
+            goto Bail;
+        }            
+    }
+    /* Locking succeeded - place our pid in the lockfile so humans can see it */
     temp->length = 0;
     ccn_charbuf_putf(temp, "%d", (int)getpid());
-    if (write(fd, temp->buf, temp->length) < 0) {
+    if (write(md->lfd, temp->buf, temp->length) < 0) {
         if (msgs != NULL)
             ccn_charbuf_append_string(msgs, "Unable to write pid file.");
         goto Bail;
     }
-    close(fd);
-    fd = -1;
+    /* leave the lock file descriptor open, otherwise the lock is released */
     /* Read maxnodeid */
     temp->length = 0;
     ccn_charbuf_append_charbuf(temp, md->dirpath);
@@ -319,6 +326,7 @@ bts_remove_lockfile(struct ccn_btree_io *io)
 {
     size_t sav;
     int res;
+    struct flock flk = {0};
     struct bts_data *md = NULL;
     
     md = io->data;
@@ -326,6 +334,12 @@ bts_remove_lockfile(struct ccn_btree_io *io)
     ccn_charbuf_putf(md->dirpath, "/.LCK");
     res = unlink(ccn_charbuf_as_string(md->dirpath));
     md->dirpath->length = sav;
+    if (md->lfd >= 0) {
+        flk.l_type = F_UNLCK;
+        flk.l_whence = SEEK_SET;
+        fcntl(md->lfd, F_SETLK, &flk);
+        md->lfd = -1;
+    }
     return(res);
 }
 
