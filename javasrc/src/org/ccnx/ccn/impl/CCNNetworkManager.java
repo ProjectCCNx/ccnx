@@ -157,8 +157,10 @@ public class CCNNetworkManager implements Runnable {
 	protected Boolean _timersSetup = false;
 	
 	// Attempt to break up non returning handlers
-	protected static final long NOT_IN_HANDLER = -1;
-	protected long _handlerCallTime = NOT_IN_HANDLER;				// Time handler was called
+	protected boolean _inHandler = false;
+	protected long _timeForThisHandler;
+	protected long _currentHandler = 0;
+	protected long _lastHandler = -1;
 	
 	/**
 	 * Keep track of prefixes that are actually registered with ccnd (as opposed to Filters used
@@ -305,24 +307,29 @@ public class CCNNetworkManager implements Runnable {
                 Log.warning(Log.FAC_NETMANAGER, "we have had an error when refreshing an interest or prefix registration...  do we need to reconnect to ccnd?");
         	}
         	
+			long currentTime = System.currentTimeMillis();
+        	
         	// Try to bring back the run thread if its hung
         	// TODO - do we want to keep this in permanently?
-        	if (_handlerCallTime != NOT_IN_HANDLER) {
-        		long delta = System.currentTimeMillis() - _handlerCallTime;
-        		if (delta > SystemConfiguration.MAX_TIMEOUT) {
-        			
-        			// Print out what the thread was doing first
-        			Throwable t = new Throwable("Handler took too long to return - stack trace follows");
-        			t.setStackTrace(_thread.getStackTrace());
-        			Log.logStackTrace(Log.FAC_NETMANAGER, Level.SEVERE, t);
-        			
-        			_thread.interrupt();
-        			_handlerCallTime = NOT_IN_HANDLER;
+        	if (_inHandler) {
+        		if (_currentHandler == _lastHandler) {
+	        		long delta = currentTime - _timeForThisHandler;
+	        		if (delta > SystemConfiguration.MAX_TIMEOUT) {
+	        			
+	        			// Print out what the thread was doing first
+	        			Throwable t = new Throwable("Handler took too long to return - stack trace follows");
+	        			t.setStackTrace(_thread.getStackTrace());
+	        			Log.logStackTrace(Log.FAC_NETMANAGER, Level.SEVERE, t);
+	        			
+	        			_thread.interrupt();
+	        		}
+        		} else {
+	        		_lastHandler = _currentHandler;
+	        		_timeForThisHandler = currentTime;
         		}
         	}
 
         	// Calculate when we should next be run
-			long currentTime = System.currentTimeMillis();
 			long checkInterestDelay = minInterestRefreshTime - currentTime;
 			if (checkInterestDelay < 0)
 				checkInterestDelay = 0;
@@ -1231,7 +1238,9 @@ public class CCNNetworkManager implements Runnable {
 					if (!wasConnected && _channel.isConnected())
 						reregisterPrefixes();
 					continue;
-				}
+				}			
+				_currentHandler++;
+				_inHandler = true;	// Do in this order
 				
 				if (packet instanceof ContentObject) {
 					_stats.increment(StatsEnum.ReceiveObject);
@@ -1240,7 +1249,7 @@ public class CCNNetworkManager implements Runnable {
 						Log.finer(Log.FAC_NETMANAGER, formatMessage("Data from net for port: " + _port + " {0}"), co.name());
 
 					//	SystemConfiguration.logObject("Data from net:", co);
-					_handlerCallTime = System.currentTimeMillis();
+					
 					deliverContent(co);
 				} else if (packet instanceof Interest) {
 					_stats.increment(StatsEnum.ReceiveInterest);
@@ -1248,7 +1257,6 @@ public class CCNNetworkManager implements Runnable {
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 						Log.finest(Log.FAC_NETMANAGER, formatMessage("Interest from net for port: " + _port + " {0}"), interest);
 					InterestRegistration oInterest = new InterestRegistration(interest, null, null);
-					_handlerCallTime = System.currentTimeMillis();
 					deliverInterest(oInterest, interest);
 				}  else { // for interests
 					_stats.increment(StatsEnum.ReceiveUnknown);
@@ -1258,7 +1266,7 @@ public class CCNNetworkManager implements Runnable {
 				Log.severe(Log.FAC_NETMANAGER, formatMessage("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _port));
                 Log.warningStackTrace(ex);
 			}
-			_handlerCallTime = NOT_IN_HANDLER;
+			_inHandler = false;
 		}
 
 		Log.info(Log.FAC_NETMANAGER, formatMessage("Shutdown complete for port: " + _port));
