@@ -117,7 +117,7 @@ r_link_do_deferred_write(struct ccnr_handle *h, int fd)
         return;
     if ((fdholder->flags & CCNR_FACE_CCND) != 0) {
         /* The direct client has something to say. */
-        if (CCNSHOULDLOG(h, xxx, CCNL_WARNING))
+        if (CCNSHOULDLOG(h, xxx, CCNL_FINE))
             ccnr_msg(h, "sending deferred output from direct client");
         ccn_run(h->direct_client, 0);
         if (fdholder->outbuf != NULL)

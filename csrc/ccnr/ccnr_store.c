@@ -764,7 +764,7 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
     *pentry = NULL;
     if ((entry->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         h->n_stale--;
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
         ccnr_debug_content(h, __LINE__, "remove", NULL, entry);
     /* Remove the cookie reference */
     i = entry->cookie - h->cookie_base;
@@ -1082,7 +1082,7 @@ r_store_mark_stale(struct ccnr_handle *h, struct content_entry *content)
     ccnr_cookie cookie = content->cookie;
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         return;
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
             ccnr_debug_content(h, __LINE__, "stale", NULL, content);
     content->flags |= CCN_CONTENT_ENTRY_STALE;
     h->n_stale++;
@@ -1218,24 +1218,24 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
     content->accession = CCNR_NULL_ACCESSION;
     r_store_enroll_content(h, content);
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
         ccnr_debug_content(h, __LINE__, "content_from", fdholder, content);
-        res = r_store_content_btree_insert(h, content, &obj, &accession);
-        if (res < 0) goto Bail;
-        if (res == 0) {
-            /* Content was there, with an accession */
-            if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
-                ccnr_debug_content(h, __LINE__, "content_duplicate",
-                                   fdholder, content);
-            h->content_dups_recvd++;
-            r_store_forget_content(h, &content);
-            content = r_store_content_from_accession(h, accession);
-            if (content == NULL)
-                goto Bail;
-        }
-        r_store_set_content_timer(h, content, &obj);
-        if ((fdholder->flags & CCNR_FACE_REPODATA) == 0)
-            r_proto_initiate_key_fetch(h, msg, &obj, 0, content->cookie);
+    res = r_store_content_btree_insert(h, content, &obj, &accession);
+    if (res < 0) goto Bail;
+    if (res == 0) {
+        /* Content was there, with an accession */
+        if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
+            ccnr_debug_content(h, __LINE__, "content_duplicate",
+                               fdholder, content);
+        h->content_dups_recvd++;
+        r_store_forget_content(h, &content);
+        content = r_store_content_from_accession(h, accession);
+        if (content == NULL)
+            goto Bail;
+    }
+    r_store_set_content_timer(h, content, &obj);
+    if ((fdholder->flags & CCNR_FACE_REPODATA) == 0)
+        r_proto_initiate_key_fetch(h, msg, &obj, 0, content->cookie);
     r_match_match_interests(h, content, &obj, NULL, fdholder);
     return(content);
 Bail:
@@ -1320,14 +1320,14 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
     const unsigned char *content_msg = NULL;
     off_t offset;
 
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
         ccnr_debug_content(h, __LINE__, "content_to", fdholder, content);
     content_msg = r_store_content_base(h, content);
     r_link_stuff_and_send(h, fdholder, content_msg, content->size, NULL, 0, &offset);
     if (offset != (off_t)-1 && content->accession == CCNR_NULL_ACCESSION) {
         int res;
         res = r_store_set_accession_from_offset(h, content, fdholder, offset);
-        if (res == 0)
+        if (res == 0 && CCNSHOULDLOG(h, LM_4, CCNL_FINE))
             ccnr_debug_content(h, __LINE__, "content_stored",
                                r_io_fdholder_from_fd(h, h->active_out_fd),
                                content);

@@ -121,7 +121,7 @@ r_match_consume_matching_interests(struct ccnr_handle *h,
             if (ccn_content_matches_interest(content_msg, content_size, 1, pc,
                                              p->interest_msg, p->size, NULL)) {
                 r_sendq_face_send_queue_insert(h, f, content);
-                if (CCNSHOULDLOG(h, (32 | 8), CCNL_INFO))
+                if (CCNSHOULDLOG(h, (32 | 8), CCNL_FINE))
                     ccnr_debug_ccnb(h, __LINE__, "consume", f,
                                     p->interest_msg, p->size);
                 matches += 1;

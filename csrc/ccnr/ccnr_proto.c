@@ -127,7 +127,7 @@ r_proto_answer_req(struct ccn_closure *selfp,
             return(CCN_UPCALL_RESULT_ERR);
     }
     ccnr = (struct ccnr_handle *)selfp->data;
-    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
+    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
         ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_answer_req", NULL,
                         info->interest_ccnb, info->pi->offset[CCN_PI_E]);
     
@@ -437,7 +437,8 @@ r_proto_expect_content(struct ccn_closure *selfp,
     }
     if (kind == CCN_UPCALL_CONTENT_UNVERIFIED) {
         // XXX - Some forms of key locator can confuse libccn. Don't provoke it to fetch keys until that is hardened.
-        ccnr_debug_ccnb(ccnr, __LINE__, "key_needed", NULL, info->content_ccnb, info->pco->offset[CCN_PCO_E]);
+        if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_FINE))
+            ccnr_debug_ccnb(ccnr, __LINE__, "key_needed", NULL, info->content_ccnb, info->pco->offset[CCN_PCO_E]);
     }
     if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_ERR);
@@ -467,7 +468,8 @@ r_proto_expect_content(struct ccn_closure *selfp,
             r_proto_initiate_key_fetch(ccnr, ccnb, info->pco, 1, md->keyfetch);
         }
         else if (info->pco->type == CCN_CONTENT_KEY) {
-            ccnr_msg(ccnr, "key_arrived %u", (unsigned)(md->keyfetch));
+            if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_FINE))
+                ccnr_msg(ccnr, "key_arrived %u", (unsigned)(md->keyfetch));
             // XXX - should check that we got the right key.
         }
         else {
@@ -571,7 +573,7 @@ r_proto_start_write(struct ccn_closure *selfp,
                            reply_body->buf, reply_body->length);
     if (res < 0)
         goto Bail;
-    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
+    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
         ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write response", NULL,
                         msg->buf, msg->length);
     res = ccn_put(info->h, msg->buf, msg->length);
@@ -664,13 +666,15 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     res = ccn_parse_interest(interest->buf, interest->length, pi, comps);
     if (res < 0)
         abort();
-    ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write_checked looking for", NULL,
-                    interest->buf, interest->length);
+    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
+        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write_checked looking for", NULL,
+                        interest->buf, interest->length);
     content = r_store_lookup(ccnr, interest->buf, pi, comps);
     ccn_charbuf_destroy(&interest);
     ccn_indexbuf_destroy(&comps);
     if (content == NULL) {
-        ccnr_msg(ccnr, "r_proto_start_write_checked: NOT PRESENT");
+        if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
+            ccnr_msg(ccnr, "r_proto_start_write_checked: NOT PRESENT");
         // XXX - dropping into the start_write case means we do not check the provided digest when fetching, so this is not completely right.
         return(r_proto_start_write(selfp, kind, info, marker_comp));
     }
@@ -694,9 +698,8 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
                            reply_body->buf, reply_body->length);
     if (res < 0)
         goto Bail;
-    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
-        ccnr_debug_ccnb(ccnr, __LINE__, "r_proto_start_write_checked PRESENT", NULL,
-                        msg->buf, msg->length);
+    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
+        ccnr_msg(ccnr, "r_proto_start_write_checked PRESENT");
     res = ccn_put(info->h, msg->buf, msg->length);
     if (res < 0) {
         // note the error somehow.
@@ -1137,7 +1140,8 @@ r_proto_bulk_import(struct ccn_closure *selfp,
         ccnr_msg(ccnr, "r_proto_bulk_import: %s", infostring);
         // fall through and unlink anyway
     }
-    ccnr_msg(ccnr, "unlinking %s", ccn_charbuf_as_string(filename2));   
+    if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_FINE))
+        ccnr_msg(ccnr, "unlinking bulk import file %s", ccn_charbuf_as_string(filename2));   
     unlink(ccn_charbuf_as_string(filename2));
 
 Reply:
@@ -1298,8 +1302,9 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
                      * The link matches the key locator. There is no point
                      * in checking two times for the same thing.
                      */
-                    ccnr_debug_ccnb(ccnr, __LINE__, "keyfetch_link_opt",
-                            NULL, namestart, namelen);
+                    if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_FINE))
+                        ccnr_debug_ccnb(ccnr, __LINE__, "keyfetch_link_opt",
+                                        NULL, namestart, namelen);
                     return(-1);
                 }
             }
@@ -1356,8 +1361,9 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
         key_closure->data = expect_content;
         res = ccn_express_interest(ccnr->direct_client, key_name, key_closure, templ);
         if (res >= 0) {
-            ccnr_debug_ccnb(ccnr, __LINE__, "keyfetch_start",
-                            NULL, templ->buf, templ->length);
+            if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_FINE))
+                ccnr_debug_ccnb(ccnr, __LINE__, "keyfetch_start",
+                                NULL, templ->buf, templ->length);
             key_closure = NULL;
             expect_content = NULL;
             res = 0;

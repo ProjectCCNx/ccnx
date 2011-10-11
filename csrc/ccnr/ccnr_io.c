@@ -155,7 +155,7 @@ ccnr_close_fd(struct ccnr_handle *h, unsigned filedesc, int *pfd)
         if (res == -1)
             ccnr_msg(h, "close failed for fdholder %u fd=%d: %s (errno=%d)",
                      filedesc, *pfd, strerror(errno), errno);
-        else
+        else if (CCNSHOULDLOG(h, io, CCNL_FINE))
             ccnr_msg(h, "closing fd %d while finalizing fdholder %u", *pfd, filedesc);
         *pfd = -1;
     }
@@ -264,7 +264,7 @@ r_io_accept_connection(struct ccnr_handle *h, int listener_fd)
                             CCNR_FACE_UNDECIDED);
     if (fdholder == NULL)
         close_fd(&fd);
-    else
+    else if (CCNSHOULDLOG(h, io, CCNL_INFO))
         ccnr_msg(h, "accepted client fd=%d id=%u", fd, fdholder->filedesc);
     return(fd);
 }

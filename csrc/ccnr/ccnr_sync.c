@@ -468,9 +468,10 @@ r_sync_local_store(struct ccnr_handle *ccnr,
         r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
         // XXX - it would be better to do this after the write succeeds
         r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
-        ccnr_debug_content(ccnr, __LINE__, "content_stored",
-                           r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
-                           content);
+        if (CCNSHOULDLOG(ccnr, r_sync_local_store, CCNL_FINE))
+            ccnr_debug_content(ccnr, __LINE__, "content_stored",
+                               r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
+                               content);
     }
     return(0);
 }
