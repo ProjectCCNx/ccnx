@@ -181,6 +181,7 @@ struct ccnr_handle {
     int active_in_fd;               /**< data currently being indexed */
     int active_out_fd;              /**< repo file we will write to */
     int repofile1_fd;               /**< read-only access to repoFile1 */
+    off_t startupbytes;             /**< repoFile1 size at startup */
     off_t stable;                   /**< repoFile1 size at shutdown */
     struct ccn_scheduled_event *reaper;
     struct ccn_scheduled_event *age;
@@ -428,11 +429,11 @@ enum es_active_state {
 
 struct enum_state {
     struct ccn_charbuf *name;
-    struct ccn_seqwriter *w;
     struct content_entry *content;
     struct ccn_charbuf *reply_body;
     struct ccn_charbuf *interest;
     struct ccn_indexbuf *interest_comps;
+    struct ccn_charbuf *cob;
     uintmax_t next_segment;
     ccnr_cookie starting_cookie;
     enum es_active_state active;

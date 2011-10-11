@@ -773,7 +773,8 @@ r_proto_check_exclude(struct ccnr_handle *ccnr,
     
 Bail:
     ccn_indexbuf_destroy(&name_comps);
-    ccnr_msg(ccnr, "r_proto_check_exclude: do %s exclude", (ans == 1) ? "" : "not");
+    if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINE))
+        ccnr_msg(ccnr, "r_proto_check_exclude: do%s exclude", (ans == 1) ? "" : " not");
     return(ans);
 }
 
@@ -871,13 +872,14 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         !r_store_content_matches_interest_prefix(ccnr, content, interest->buf, interest->length))
         content = NULL;
     // Look for a previous enumeration under this prefix
-    ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: hash name", NULL,
-                    name->buf, name->length);
     hashtb_start(ccnr->enum_state_tab, e);
     res = hashtb_seek(e, name->buf, name->length, 0);
     es = e->data;
+    if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINE))
+        ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: hash key", NULL,
+                        name->buf, name->length);
     // Do not restart an active enumeration, it is probably a duplicate interest
-    if (es->active != ES_INACTIVE) {
+    if (res == HT_OLD_ENTRY && es->active != ES_INACTIVE) {
         // XXX - log here
         hashtb_end(e);
         goto Bail;
@@ -891,7 +893,6 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     
     if (res == HT_NEW_ENTRY || es->starting_cookie != ccnr->cookie) {
         // this is a new enumeration, the time is now.
-        ccnr_msg(ccnr, "making entry with new version");
         res = ccn_create_version(info->h, name, CCN_V_NOW, 0, 0);
         if (es->name != NULL)
             ccn_charbuf_destroy(&es->name);
@@ -900,24 +901,25 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         es->starting_cookie = ccnr->cookie; // XXX - a conservative indicator of change
     }
     ccn_charbuf_destroy(&name);
-    // check the exclude
-    ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: interest", NULL,
-                    info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-    ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: result name", NULL,
-                    es->name->buf, es->name->length);
+    // check the exclude against the result name
+    if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINE))
+        ccnr_debug_ccnb(ccnr, __LINE__, "begin enum: result name", NULL,
+                        es->name->buf, es->name->length);
     
     if (r_proto_check_exclude(ccnr, info, es->name) > 0) {
         hashtb_end(e);
         goto Bail;
     }
-    
+
+    es->cob = ccn_charbuf_create();
     es->reply_body = ccn_charbuf_create();
     ccnb_element_begin(es->reply_body, CCN_DTAG_Collection);
-    es->w = ccn_seqw_create(info->h, es->name);
     es->content = content;
     es->interest = interest;
     es->interest_comps = comps;
     es->next_segment = 0;
+    es->lastuse_sec = ccnr->sec;
+    es->lastuse_usec = ccnr->usec;
     if (content) {
         es->lifetime = 3 * ccn_interest_lifetime_seconds(info->interest_ccnb, pi);
         es->active = ES_ACTIVE;
@@ -954,9 +956,11 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
     struct ccnr_handle *ccnr = NULL;
     struct hashtb_enumerator enumerator = {0};
     struct hashtb_enumerator *e = &enumerator;
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    size_t saved_length;
     int res = 0;
     int ans = CCN_UPCALL_RESULT_ERR;
-
+    
     ccnr = (struct ccnr_handle *)selfp->data;
     hashkey=ccn_charbuf_create();
     ccn_name_init(hashkey);
@@ -970,7 +974,7 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
         goto Bail;
     }
     es = e->data;
-    if (es->active != 1) {
+    if (es->active != ES_ACTIVE) {
         hashtb_end(e);
         return(ans);
     }
@@ -1002,24 +1006,32 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
         ccnb_element_end(es->reply_body); /* </Link> */
         es->content = r_store_next_child_at_level(ccnr, es->content, es->interest_comps->n - 1);
         if (es->reply_body->length >= 4096) {
-            res = ccn_seqw_write(es->w, es->reply_body->buf, 4096);
-            if (res <= 0) {
-                abort();
-            }
+            sp.freshness = 60;            
+            saved_length = es->name->length;
+            ccn_name_append_numeric(es->name, CCN_MARKER_SEQNUM, es->next_segment);
+            es->cob->length = 0;
+            res = ccn_sign_content(info->h, es->cob, es->name, &sp,
+                                   es->reply_body->buf, 4096);
+            ccn_put(info->h, es->cob->buf, es->cob->length);
+            es->name->length = saved_length;
             es->next_segment++;
-            memmove(es->reply_body->buf, es->reply_body->buf + res, es->reply_body->length - res);
-            es->reply_body->length -= res;
+            memmove(es->reply_body->buf, es->reply_body->buf + 4096, es->reply_body->length - 4096);
+            es->reply_body->length -= 4096;
             hashtb_end(e);
             return (CCN_UPCALL_RESULT_OK);
         }
     }
     // we will only get here if we are finishing an in-progress enumeration
     ccnb_element_end(es->reply_body); /* </Collection> */
-    ccn_seqw_batch_start(es->w);  /* need to prevent sending short packet without final_block_id */
-    res = ccn_seqw_write(es->w, es->reply_body->buf, es->reply_body->length);
-    if (res != es->reply_body->length) {
-        abort();
-    }
+    saved_length = es->name->length;
+    ccn_name_append_numeric(es->name, CCN_MARKER_SEQNUM, es->next_segment);
+    sp.freshness = 60;
+    sp.sp_flags |= CCN_SP_FINAL_BLOCK;
+    es->cob->length = 0;
+    res = ccn_sign_content(info->h, es->cob, es->name, &sp, es->reply_body->buf,
+                           es->reply_body->length);
+    ccn_put(info->h, es->cob->buf, es->cob->length);
+    es->name->length = saved_length;
     es->active = ES_INACTIVE;
     ans = CCN_UPCALL_RESULT_OK;
     
@@ -1028,10 +1040,8 @@ Bail:
         // leave the name 
         ccn_charbuf_destroy(&es->interest);
         ccn_charbuf_destroy(&es->reply_body);
+        ccn_charbuf_destroy(&es->cob);
         ccn_indexbuf_destroy(&es->interest_comps);
-        res = ccn_seqw_close(es->w);
-        if (res < 0) abort();
-        es->w = NULL;
     }
     hashtb_end(e);
     return(ans);

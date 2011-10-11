@@ -246,7 +246,7 @@ r_store_trim(struct ccnr_handle *h, unsigned long limit)
         if (content != NULL)
             r_store_content_trim(h, content);
     }
-    if (CCNSHOULDLOG(h, sdf, CCNL_FINEST))
+    if (CCNSHOULDLOG(h, sdf, CCNL_FINER))
         ccnr_msg(h, "trimmed %u cobs", before - h->cob_count);
 }
 
@@ -401,6 +401,31 @@ r_store_read_stable_point(struct ccnr_handle *h)
     ccn_charbuf_destroy(&cb);
 }
 
+/**
+ * Log a bit if we are taking a while to re-index.
+ */
+static int
+r_store_reindexing(struct ccn_schedule *sched,
+                   void *clienth,
+                   struct ccn_scheduled_event *ev,
+                   int flags)
+{
+    struct ccnr_handle *h = clienth;
+    struct fdholder *in = NULL;
+    unsigned pct;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        return(0);
+    in = r_io_fdholder_from_fd(h, h->active_in_fd);
+    if (in == NULL)
+        return(0);
+    pct = ccnr_meter_total(in->meter[FM_BYTI]) / ((h->startupbytes / 100) + 1);
+    if (pct >= 100)
+        return(0);
+    ccnr_msg(h, "indexing %u%% complete", pct);
+    return(2000000);
+}
+
 PUBLIC void
 r_store_init(struct ccnr_handle *h)
 {
@@ -455,6 +480,7 @@ r_store_init(struct ccnr_handle *h)
     h->active_in_fd = -1;
     h->active_out_fd = r_io_open_repo_data_file(h, "repoFile1", 1); /* output */
     offset = lseek(h->active_out_fd, 0, SEEK_END);
+    h->startupbytes = offset;
     if (offset != h->stable || node->corrupt != 0) {
         ccnr_msg(h, "Index not current - resetting");
         ccn_btree_init_node(node, 0, 'R', 0);
@@ -483,6 +509,8 @@ r_store_init(struct ccnr_handle *h)
         h->stable = 0;
         h->active_in_fd = r_io_open_repo_data_file(h, "repoFile1", 0); /* input */
         ccn_charbuf_destroy(&path);
+        if (CCNSHOULDLOG(h, dfds, CCNL_INFO))
+            ccn_schedule_event(h->sched, 50000, r_store_reindexing, NULL, 0);
     }
     if (CCNSHOULDLOG(h, weuyg, CCNL_FINEST)) {
         FILE *dumpfile = NULL;
@@ -733,7 +761,6 @@ r_store_content_btree_insert(struct ccnr_handle *h,
                                        content->flatname);
         if (res < 0)
             return(-1);
-        r_store_index_needs_cleaning(h);
         if (res > btree->full) {
             res = ccn_btree_split(btree, leaf);
             for (limit = 100; res >= 0 && btree->nextsplit != 0; limit--) {
@@ -744,6 +771,7 @@ r_store_content_btree_insert(struct ccnr_handle *h,
                 res = ccn_btree_split(btree, node);
             }
         }
+        r_store_index_needs_cleaning(h);
         
         *accp = content->accession;
         return(2);
@@ -764,7 +792,7 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
     *pentry = NULL;
     if ((entry->flags & CCN_CONTENT_ENTRY_STALE) != 0)
         h->n_stale--;
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
         ccnr_debug_content(h, __LINE__, "remove", NULL, entry);
     /* Remove the cookie reference */
     i = entry->cookie - h->cookie_base;
@@ -1218,7 +1246,7 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
     content->accession = CCNR_NULL_ACCESSION;
     r_store_enroll_content(h, content);
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
         ccnr_debug_content(h, __LINE__, "content_from", fdholder, content);
         res = r_store_content_btree_insert(h, content, &obj, &accession);
         if (res < 0) goto Bail;
@@ -1277,13 +1305,12 @@ r_store_set_accession_from_offset(struct ccnr_handle *h,
     struct ccn_btree_node *leaf = NULL;
     uint_least64_t cobid;
     int ndx;
-    int res;
+    int res = -1;
     
     if (offset != (off_t)-1 && content->accession == CCNR_NULL_ACCESSION) {
         struct hashtb_enumerator ee;
         struct hashtb_enumerator *e = &ee;
         struct content_by_accession_entry *entry = NULL;
-        int res = -1;
         
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
         content->accession = ((ccnr_accession)offset) | r_store_mark_repoFile1;
@@ -1303,6 +1330,7 @@ r_store_set_accession_from_offset(struct ccnr_handle *h,
             if (res >= 0 && CCN_BT_SRCH_FOUND(res)) {
                 ndx = CCN_BT_SRCH_INDEX(res);
                 cobid = ccnr_accession_encode(h, content->accession);
+                ccn_btree_prepare_for_update(h->btree, leaf);
                 res = ccn_btree_content_set_cobid(leaf, ndx, cobid);
             }
             else
@@ -1320,7 +1348,7 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
     const unsigned char *content_msg = NULL;
     off_t offset;
 
-    if (CCNSHOULDLOG(h, LM_4, CCNL_INFO))
+    if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
         ccnr_debug_content(h, __LINE__, "content_to", fdholder, content);
     content_msg = r_store_content_base(h, content);
     r_link_stuff_and_send(h, fdholder, content_msg, content->size, NULL, 0, &offset);
@@ -1328,9 +1356,10 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
         int res;
         res = r_store_set_accession_from_offset(h, content, fdholder, offset);
         if (res == 0)
-            ccnr_debug_content(h, __LINE__, "content_stored",
-                               r_io_fdholder_from_fd(h, h->active_out_fd),
-                               content);
+            if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
+                ccnr_debug_content(h, __LINE__, "content_stored",
+                                   r_io_fdholder_from_fd(h, h->active_out_fd),
+                                   content);
     }
 }
 
@@ -1383,7 +1412,6 @@ r_store_index_cleaner(struct ccn_schedule *sched,
     struct hashtb_enumerator *e = &ee;
     struct ccn_btree_node *node = NULL;
     int k;
-    int opencount;
     int res;
     
     (void)(sched);
@@ -1398,10 +1426,10 @@ r_store_index_cleaner(struct ccn_schedule *sched,
     if (h->toclean != NULL) {
         for (k = 0; k < CCN_BT_CLEAN_BATCH && h->toclean->n > 0; k++) {
             node = ccn_btree_rnode(h->btree, h->toclean->buf[--h->toclean->n]);
-            if (node != NULL) {
+            if (node != NULL && node->iodata != NULL) {
                 res = ccn_btree_chknode(node); /* paranoia */
                 if (res < 0 || CCNSHOULDLOG(h, sdfsdffd, CCNL_FINER))
-                    ccnr_msg(h, "write index node %u (%d)",
+                    ccnr_msg(h, "write index node %u (err %d)",
                              (unsigned)node->nodeid, node->corrupt);
                 if (res >= 0) {
                     if (node->clean != node->buf->length)
@@ -1424,13 +1452,10 @@ r_store_index_cleaner(struct ccn_schedule *sched,
             return(nrand48(h->seed) % (2U * CCN_BT_CLEAN_TICK_MICROS) + 500);
     }
     /* Sweep though and find the nodes that still need cleaning */
-    opencount = 0;
     hashtb_start(h->btree->resident, e);
     for (; e->data != NULL; hashtb_next(e)) {
         node = e->data;
         node->activity /= 2; /* Age the node's activity */
-        if (node->iodata != NULL)
-            opencount++;
         if (node->clean != node->buf->length ||
             (node->iodata != NULL && node->activity == 0)) {
             if (h->toclean == NULL) {
@@ -1444,7 +1469,7 @@ r_store_index_cleaner(struct ccn_schedule *sched,
     hashtb_end(e);
     /* If nothing to do, shut down cleaner */
     if ((h->toclean == NULL || h->toclean->n == 0) &&
-        opencount <= CCN_BT_OPEN_NODES) {
+        h->btree->io->openfds <= CCN_BT_OPEN_NODES_IDLE) {
         h->index_cleaner = NULL;
         ccn_indexbuf_destroy(&h->toclean);
         if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINE))
@@ -1457,12 +1482,22 @@ r_store_index_cleaner(struct ccn_schedule *sched,
 PUBLIC void
 r_store_index_needs_cleaning(struct ccnr_handle *h)
 {
-    if (h->index_cleaner == NULL && h->btree != NULL && h->btree->io != NULL) {
-        h->index_cleaner = ccn_schedule_event(h->sched,
-                                              CCN_BT_CLEAN_TICK_MICROS,
-                                              r_store_index_cleaner, NULL, 0);
-        if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINER))
-            ccnr_msg(h, "index cleaner started");
+    int k;
+    if (h->btree != NULL && h->btree->io != NULL) {
+        if (h->index_cleaner == NULL) {
+            h->index_cleaner = ccn_schedule_event(h->sched,
+                                                  CCN_BT_CLEAN_TICK_MICROS,
+                                                  r_store_index_cleaner, NULL, 0);
+            if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINER))
+                ccnr_msg(h, "index cleaner started");
+        }
+        /* If necessary, clean in a hurry. */
+        for (k = 30; /* Backstop to make sure we do not loop here */
+             k > 0 && h->index_cleaner != NULL &&
+             h->btree->io->openfds > CCN_BT_OPEN_NODES_LIMIT - 2; k--)
+            r_store_index_cleaner(h->sched, h, h->index_cleaner, 0);
+        if (k == 0)
+            ccnr_msg(h, "index cleaner is in trouble");
     }
 }
 

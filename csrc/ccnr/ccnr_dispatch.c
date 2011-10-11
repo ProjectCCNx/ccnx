@@ -249,8 +249,8 @@ process_input_buffer(struct ccnr_handle *h, struct fdholder *fdholder)
  * cases, receive data, parse it into ccnb-encoded messages, and call
  * process_input_message for each one.
  */
-static void
-process_input(struct ccnr_handle *h, int fd)
+PUBLIC void
+r_dispatch_process_input(struct ccnr_handle *h, int fd)
 {
     struct fdholder *fdholder = NULL;
     struct fdholder *source = NULL;
@@ -299,8 +299,13 @@ process_input(struct ccnr_handle *h, int fd)
     if (res == -1)
         ccnr_msg(h, "read %u :%s (errno = %d)",
                     fdholder->filedesc, strerror(errno), errno);
-    else if (res == 0 && (fdholder->flags & CCNR_FACE_DGRAM) == 0)
+    else if (res == 0 && (fdholder->flags & CCNR_FACE_DGRAM) == 0) {
+        if (fd == h->active_in_fd && h->stable == 0) {
+            h->stable = lseek(fd, 0, SEEK_END);
+            ccnr_msg(h, "read %ju bytes", (uintmax_t)h->stable);
+        }
         r_io_shutdown_client_fd(h, fd);
+    }
     else {
         off_t offset = (off_t)-1;
         off_t *offsetp = NULL;
@@ -423,7 +428,7 @@ r_dispatch_run(struct ccnr_handle *h)
                 res--;
                 if (h->fds[i].revents & (POLLERR | POLLNVAL | POLLHUP)) {
                     if (h->fds[i].revents & (POLLIN))
-                        process_input(h, h->fds[i].fd);
+                        r_dispatch_process_input(h, h->fds[i].fd);
                     else
                         r_io_shutdown_client_fd(h, h->fds[i].fd);
                     continue;
@@ -431,7 +436,7 @@ r_dispatch_run(struct ccnr_handle *h)
                 if (h->fds[i].revents & (POLLOUT))
                     r_link_do_deferred_write(h, h->fds[i].fd);
                 else if (h->fds[i].revents & (POLLIN))
-                    process_input(h, h->fds[i].fd);
+                    r_dispatch_process_input(h, h->fds[i].fd);
                 else
                     ccnr_msg(h, "poll: UNHANDLED");
             }
