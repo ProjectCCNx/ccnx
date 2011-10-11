@@ -182,8 +182,9 @@ test_btree_lockfile(void)
     io = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"), NULL);
     CHKPTR(io);
     /* Make sure the locking works */
+    errno = 0;
     io2 = ccn_btree_io_from_directory(getenv("TEST_DIRECTORY"), NULL);
-    FAILIF(io2 != NULL || errno != EEXIST);
+    FAILIF(io2 != NULL || errno == 0);
     errno=EINVAL;
     res = io->btdestroy(&io);
     CHKSYS(res);

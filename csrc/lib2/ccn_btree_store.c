@@ -110,6 +110,8 @@ ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
             memset(tbuf, 0, sizeof(tbuf));
             read(md->lfd, tbuf, sizeof(tbuf) - 1);
             pid = strtol(tbuf, NULL, 10);
+            if (pid == (int)getpid())
+                goto Bail; /* locked by self; errno still EACCES */
             if (fcntl(md->lfd, F_SETLK, &flk) == -1) {
                 if (errno == EACCES || errno == EAGAIN) { // it's locked
                     fcntl(md->lfd, F_GETLK, &flk);
@@ -118,7 +120,8 @@ ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
                     goto Bail;
                 }            
             }
-            ccn_charbuf_putf(msgs, "Breaking stale lock by pid %d. ", pid);
+            if (msgs != NULL)
+                ccn_charbuf_putf(msgs, "Breaking stale lock by pid %d. ", pid);
             lseek(md->lfd, 0, SEEK_SET);
             ftruncate(md->lfd, 0);
         }
