@@ -191,7 +191,7 @@ ccnr_policy_complete(struct ccn_closure *selfp,
     fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 1);
     res = write(fd, ccnb, ccnb_size);
     if (res == -1) {
-        ccnr_msg(ccnr, "write %u :%s (errno = %d)",
+        ccnr_msg(ccnr, "Policy write %u :%s (errno = %d)",
                  fd, strerror(errno), errno);
         abort();
     }
@@ -237,7 +237,7 @@ ccnr_answer_req(struct ccn_closure *selfp,
             return(CCN_UPCALL_RESULT_ERR);
     }
     ccnr = (struct ccnr_handle *)selfp->data;
-    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
+    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
         ccnr_debug_ccnb(ccnr, __LINE__, "ccnr_answer_req", NULL,
                         info->interest_ccnb, info->pi->offset[CCN_PI_E]);
     morecomps = selfp->intdata & MORECOMPS_MASK;
@@ -334,7 +334,7 @@ ccnr_answer_req(struct ccn_closure *selfp,
                            reply_body->buf, reply_body->length);
     if (res < 0)
         goto Bail;
-    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
+    if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
         ccnr_debug_ccnb(ccnr, __LINE__, "ccnr_answer_req_response", NULL,
                         msg->buf, msg->length);
     res = ccn_put(info->h, msg->buf, msg->length);

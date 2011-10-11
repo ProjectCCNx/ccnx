@@ -413,7 +413,8 @@ merge_files(struct ccnr_handle *h)
     for (i = last_file; i > 1; --i) {
         filename->length = 0;
         ccn_charbuf_putf(filename, "%s/repoFile%d", h->directory, i);
-        ccnr_msg(h, "unlinking %s", ccn_charbuf_as_string(filename));   
+        if (CCNSHOULDLOG(h, LM_128, CCNL_INFO))
+            ccnr_msg(h, "unlinking %s", ccn_charbuf_as_string(filename));   
         unlink(ccn_charbuf_as_string(filename));
     }
     ccn_charbuf_destroy(&filename);

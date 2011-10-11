@@ -121,8 +121,9 @@ r_net_listen_on_wildcards(struct ccnr_handle *h)
                     r_io_record_fd(h, fd,
                                       a->ai_addr, a->ai_addrlen,
                                       CCNR_FACE_PASSIVE);
-                    ccnr_msg(h, "accepting %s status connections on fd %d",
-                             af_name(a->ai_family), fd);
+                    if (CCNSHOULDLOG(h, listen_on, CCNL_INFO))
+                        ccnr_msg(h, "accepting %s status connections on fd %d",
+                                 af_name(a->ai_family), fd);
                 }
             }
             freeaddrinfo(addrinfo);
@@ -141,7 +142,8 @@ r_net_listen_on_address(struct ccnr_handle *h, const char *addr)
     struct addrinfo *a;
     int ok = 0;
     
-    ccnr_msg(h, "listen_on %s", addr);
+    if (CCNSHOULDLOG(h, listen_on_addr, CCNL_FINE))
+        ccnr_msg(h, "listen_on %s", addr);
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
     res = getaddrinfo(addr, h->portstr, &hints, &addrinfo);
@@ -166,8 +168,9 @@ r_net_listen_on_address(struct ccnr_handle *h, const char *addr)
                 r_io_record_fd(h, fd,
                                   a->ai_addr, a->ai_addrlen,
                                   CCNR_FACE_PASSIVE);
-                ccnr_msg(h, "accepting %s status connections on fd %d",
-                         af_name(a->ai_family), fd);
+                if (CCNSHOULDLOG(h, listen_on, CCNL_INFO))
+                    ccnr_msg(h, "accepting %s status connections on fd %d",
+                             af_name(a->ai_family), fd);
                 ok++;
             }
         }
