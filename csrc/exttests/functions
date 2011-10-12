@@ -111,6 +111,12 @@ StageData () { (
   rm testfile
 ) }
 
+##
+#
+DoPS () {
+  ps aux | grep -w -e '[M]EM' -e '[c]cnd$' -e '[c]cnr$' -e '[j]ava'
+}
+
 RunTest () {
   ( . settings; . functions; . $1 )
 }
