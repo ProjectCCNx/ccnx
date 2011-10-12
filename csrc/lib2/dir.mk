@@ -19,11 +19,11 @@ SYNCLIBDIR = ../sync/
 CPREFLAGS = -I../include -I..
 
 INSTALLED_PROGRAMS = 
-PROGRAMS = ccnbtreetest
+PROGRAMS = ccnbtreetest ccnfilewatch
 DEBRIS = 
 
 BROKEN_PROGRAMS = 
-CSRC = ccn_btree.c ccn_btree_content.c ccn_btree_store.c ccnbtreetest.c
+CSRC = ccn_btree.c ccn_btree_content.c ccn_btree_store.c ccnbtreetest.c ccnfilewatch.c
 HSRC = 
 SCRIPTSRC = 
  
@@ -36,6 +36,9 @@ $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 LIB2_OBJ = ccn_btree.o ccn_btree_store.o ccn_btree_content.o
 ccnbtreetest: $(LIB2_OBJ) ccnbtreetest.c
 	$(CC) $(CFLAGS) -o $@ -Dccnbtreetest_main=main ccnbtreetest.c $(LIB2_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnfilewatch: ccnfilewatch.o
+	$(CC) $(CFLAGS) -o $@ ccnfilewatch.o
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
