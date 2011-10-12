@@ -30,18 +30,26 @@ WithCCND 3 StageData $TEST_DATA_SIZE
 WithCCND 1 CappedCCNDStart 100
 WithCCND 1 ccndc add / tcp localhost $((CCN_LOCAL_PORT_BASE + 3))
 
-rm -rf testrepo
-mkdir testrepo || Fail
-WithCCND 1 env CCNR_DIRECTORY=testrepo CCNR_DEBUG=WARNING SYNC_ENABLE=0 ccnr 2>>ccnr1.out &
+rm -rf testrepo2
+mkdir testrepo2 || Fail
+WithCCND 1 env CCNR_DIRECTORY=testrepo2 CCNR_DEBUG=WARNING SYNC_ENABLE=0 ccnr 2>>ccnr1.out &
 
-### WithCCND 3 ccnrm -o lastblock.ccnb `tail -n 1 lastblocks.txt`
 sleep 1
 NAMETOWRITE=`tail -n 1 lastblocks.txt | rev | cut -d / -f 2- | rev`
 SWR=$NAMETOWRITE/%C1.R.sw/%C1.N%00`GenSym`
 echo $SWR
-WithCCND 1 ccnget $SWR > startwrite-$TEST_DATA_SIZE.out
-jot 10 | while read i; do stat testrepo/repoFile1; sleep .1; done
-stat startwrite-$TEST_DATA_SIZE.out
-
-WithCCND 3 ccndstop
+echo Repo write test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
+WithCCND 1 ccnget $SWR > startwrite2-$TEST_DATA_SIZE.out
+ccnfilewatch testrepo2/repoFile1 || Fail ccnfilewatch returned $?
 WithCCND 1 ccndstop
+WithCCND 1 CappedCCNDStart 100
+WithCCND 1 ccndc add / tcp localhost $((CCN_LOCAL_PORT_BASE + 3))
+rm -rf testrepo1
+mkdir testrepo1 || Fail
+WithCCND 1 env ccn_repo testrepo1
+echo Repo write test using repo1 TEST_DATA_SIZE=$TEST_DATA_SIZE
+WithCCND 1 ccnget $SWR > startwrite1-$TEST_DATA_SIZE.out
+ccnfilewatch testrepo1/repoFile1 || Fail ccnfilewatch returned $?
+ccn_repo stopall
+WithCCND 1 ccndstop
+WithCCND 3 ccndstop
