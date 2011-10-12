@@ -83,4 +83,16 @@ WithCCND 1 ccnrm /
 DoPS
 ccn_repo stopall
 WithCCND 1 ccndstop
+
+# Get startup times
+echo Repo2 startup with stable index, no ccnd
+time -p env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo2 SYNC_ENABLE=0 ccnr
+
+echo Repo1 startup
+WithCCND 3 time -p ccn_repo testrepo1
+ccn_repo stopall
+
+echo Repo2 startup with index rebuild, no ccnd
+time -p env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo1 SYNC_ENABLE=0 ccnr
+
 WithCCND 3 ccndstop
