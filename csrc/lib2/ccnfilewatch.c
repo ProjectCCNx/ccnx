@@ -196,9 +196,9 @@ main(int argc, char** argv)
     FILE *out = stdout;
     off_t minsize = 1;
     off_t maxsize = 0; /* unlimited */
-    time_t maxsec = 24 * 60 * 60;
-    int msecstable = 20000;
-    int msecpoll = 200;
+    time_t maxsec = 600;
+    int msecstable = 5000;
+    int msecpoll = 100;
 
     while ((opt = getopt(argc, argv, "h")) != -1) {
         switch (opt) {
