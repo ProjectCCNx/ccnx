@@ -4,7 +4,7 @@
 #
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -82,6 +82,34 @@ ExpectLines () {
 GenSym () {
   echo $1`openssl rand -base64 12 | tr '/+' '-_'`
 }
+
+##
+# Start ccnd with specified capacity and minimal logging
+CappedCCNDStart () {
+  [ ${1:=missing} -ge 0 ] || Fail argument missing or invalid: $1
+  WHICHCCND=${CCN_LOCAL_PORT:-9695}
+  ccndsmoketest kill 2>/dev/null
+  env CCND_DEBUG=1 CCND_CAP=$1 ccnd 2>>ccnd$((WHICHCCND % 10)).out &
+  ccndsmoketest -u localhost -t 50 recv >/dev/null
+  ccndsmoketest >/dev/null
+}
+
+##
+# Stage data into the active ccnd by writing it into a fresh repo
+StageData () { (
+  [ ${1:=missing} -ge 1000 ] || Fail argument missing or invalid: $1
+  set -e
+  rm -rf stage
+  mkdir stage
+  env CCNR_DIRECTORY=stage CCNR_DEBUG=0 ccnr &
+  rm -f testfile
+  dd bs=1 count=1 oseek=$(($1 - 1)) of=testfile if=/dev/zero
+  ccnputfile /test/bulk/${1}.dat testfile 2> putfile-${1}.out
+  ccndstatus
+  ccnnamelist stage/repoFile1 | tail -n 4 >> lastblocks.txt
+  kill `cat stage/index/.LCK`
+  rm testfile
+) }
 
 RunTest () {
   ( . settings; . functions; . $1 )

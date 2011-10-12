@@ -25,6 +25,7 @@ ALLTESTS = \
   test_happy_face \
   test_late \
   test_long_example \
+  test_repo_performance \
   test_single_ccnd \
   test_single_ccnd_teardown \
   test_single_done \
