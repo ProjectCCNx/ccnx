@@ -152,10 +152,10 @@ r_util_segment_from_component(const unsigned char *ccnb, size_t start, size_t st
     
     if (start < stop) {
         ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, start, stop, &data, &len);
-        if (len > 0 && data != NULL) {
-            // parse big-endian encoded number
+        if (len > 0 && data != NULL && data[0] == 0) {
+            // parse big-endian encoded number with leading 0 byte
             segment = 0;
-            for (i = 0; i < len; i++) {
+            for (i = 1; i < len; i++) {
                 segment = segment * 256 + data[i];
             }
             return(segment);

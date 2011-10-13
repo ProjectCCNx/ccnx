@@ -425,15 +425,15 @@ enum es_active_state {
     ES_INACTIVE = 0,
     ES_ACTIVE = 1
 };
-
+#define ENUM_N_COBS 9
 struct enum_state {
     struct ccn_charbuf *name;
     struct content_entry *content;
     struct ccn_charbuf *reply_body;
     struct ccn_charbuf *interest;
     struct ccn_indexbuf *interest_comps;
-    struct ccn_charbuf *cob;
-    uintmax_t next_segment;
+    struct ccn_charbuf *cob[ENUM_N_COBS];
+    intmax_t next_segment;
     ccnr_cookie starting_cookie;
     enum es_active_state active;
     long lifetime;
