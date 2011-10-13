@@ -103,7 +103,7 @@ StageData () { (
   mkdir stage
   env CCNR_DIRECTORY=stage CCNR_DEBUG=0 ccnr &
   rm -f testfile
-  dd bs=1 count=1 oseek=$(($1 - 1)) of=testfile if=/dev/zero
+  dd bs=1 count=1 seek=$(($1 - 1)) of=testfile if=/dev/zero
   ccnputfile /test/bulk/${1}.dat testfile 2> putfile-${1}.out
   ccndstatus
   ccnnamelist stage/repoFile1 | tail -n 4 >> lastblocks.txt
