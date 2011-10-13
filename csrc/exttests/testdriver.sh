@@ -45,6 +45,12 @@ TestBusy () {
 TestBusy && { echo There is something else happening, waiting one minute ... '' >&2; sleep 60; }
 TestBusy && exit 1
 
+# If we are running in a git repo, print out the git hashes
+test -d ../../.git && {
+  (cd ../../../ccnx && git rev-parse HEAD) | xargs echo ccnx at
+  git rev-parse HEAD | xargs echo ccnr at
+}
+
 # If we need to generate key pairs for the tests, make them smallish
 export RSA_KEYSIZE=512
 
