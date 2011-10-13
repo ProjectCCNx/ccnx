@@ -595,7 +595,7 @@ load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
             ccnr_msg(ccnr, "CCNR_GLOBAL_PREFIX=%s", global_prefix);
         else 
             global_prefix = "ccnx:/parc.com/csl/ccn/Repos";
-        r_proto_policy_append_basic(ccnr, policy, "2.0", "Repository",
+        r_proto_policy_append_basic(ccnr, policy, "1.5", "Repository",
                                     global_prefix);
         r_proto_policy_append_namespace(ccnr, policy, "/");
         ccn_name_from_uri(basename, global_prefix);
