@@ -1018,7 +1018,7 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
             return (CCN_UPCALL_RESULT_OK);
         }
         // if theres a possibility we could have it
-        if (segment < es->next_segment - ENUM_N_COBS) {
+        if (segment >= es->next_segment - ENUM_N_COBS) {
             cob = es->cob[segment % ENUM_N_COBS];
             if (cob &&
                 ccn_content_matches_interest(cob->buf, cob->length, 1, NULL,
