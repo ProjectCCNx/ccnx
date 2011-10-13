@@ -48,7 +48,8 @@ testlist:
 
 clean:
 	rm -rf log logs seeds stems deps depend testdriver STATUS SKIPPED FAILING \
-        *.out *.ccnb *pre.html *post.html *status*.html *.err
+	 *.out *.ccnb *pre.html *post.html *status*.html *.err \
+	 ccnr.?.log lastblocks.txt stats?.txt stage testrepo testrepo?
 
 check test: $(SCRIPTSRC) testdriver stubs
 	MAKE_TEST_TARGET=$@ ./testdriver $(TESTS)
