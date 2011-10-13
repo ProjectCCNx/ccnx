@@ -38,27 +38,12 @@ usage(const char *progname) {
     exit(1);
 }
 
-// Works for Darwin.
-#define STAT_NANOS st_mtimespec.tv_nsec
-
-static unsigned
-stat_mtime_nanos(struct stat *s)
-{
-#ifdef STAT_NANOS
-    return(s->STAT_NANOS);
-#else
-    return(0);
-#endif
-}
-
 static int
 statchanged(struct stat *prev, struct stat *curr)
 {
     if (curr->st_size != prev->st_size)
         return(1);
     if (curr->st_mtime != prev->st_mtime)
-        return(1);
-    if (stat_mtime_nanos(curr) != stat_mtime_nanos(prev))
         return(1);
     return(0);
 }
