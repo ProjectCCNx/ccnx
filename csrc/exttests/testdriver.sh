@@ -30,18 +30,19 @@ cd $(dirname "$0")
 # Set up PATH so the tested programs are used, rather than any that
 # might be installed.
 X=../../../ccnx/csrc
-export PATH=.:../ccnr:../sync:../lib2:$X/ccnd:$X/libexec:$X/cmd:$X/lib:$X/util:$PATH:./stubs
+export PATH=.:../ccnr:../sync:../lib2:$X/ccnd:$X/libexec:$X/cmd:$X/lib:$X/util:../../../ccnx/bin:$PATH:./stubs
 type ccnd
 type ccnr
 type ccncat
 type jot
 type SyncTest
+type ccn_repo
 
 # If there are any ccnds running on test ports, wait a minute and retry.
 TestBusy () {
 	(. settings; ls /tmp/.ccnd.sock.$((CCN_LOCAL_PORT_BASE/10))[01234] 2>/dev/null)
 }
-TestBusy && { echo There is something else happening, waiting one minute ... ; sleep 60; }
+TestBusy && { echo There is something else happening, waiting one minute ... '' >&2; sleep 60; }
 TestBusy && exit 1
 
 # If we need to generate key pairs for the tests, make them smallish
