@@ -66,3 +66,4 @@ ccn_btree_store.o: ccn_btree_store.c ../ccn/btree.h \
 ccnbtreetest.o: ccnbtreetest.c ../ccn/btree.h ../include/ccn/charbuf.h \
   ../include/ccn/hashtb.h ../ccn/btree_content.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnfilewatch.o: ccnfilewatch.c
