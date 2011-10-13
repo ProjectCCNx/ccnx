@@ -603,7 +603,6 @@ main (int argc, char *argv[]) {
     do {
         struct ccn_charbuf *l = ccn_charbuf_create();
         struct ccn_charbuf *name = ccn_charbuf_create();
-        struct ccn_charbuf *la = ccn_charbuf_create();
         struct ccn_parsed_Link pl = {0};
         struct ccn_buf_decoder decoder;
         struct ccn_buf_decoder *d;
