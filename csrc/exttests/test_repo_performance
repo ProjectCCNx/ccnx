@@ -17,9 +17,6 @@ AFTER : test_single_ccnd_teardown
 # The data size can be set from the outside
 : ${TEST_DATA_SIZE:=5000000}
 
-# Call it a long test if 10 MB or more
-[ $TEST_DATA_SIZE -ge 100000000 ] && LongTest
-
 # Use a ccnd to hold the pre-signed data
 WithCCND 3 CappedCCNDStart $((TEST_DATA_SIZE / 4000 + 500))
 
