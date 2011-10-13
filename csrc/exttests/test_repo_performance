@@ -17,6 +17,9 @@ AFTER : test_single_ccnd_teardown
 # The data size can be set from the outside
 : ${TEST_DATA_SIZE:=5000000}
 
+# Run these without sync by default, but allow turning it on
+: ${SYNC_ENABLE:=0}
+
 # Use a ccnd to hold the pre-signed data
 WithCCND 3 CappedCCNDStart $((TEST_DATA_SIZE / 4000 + 500))
 
@@ -33,13 +36,14 @@ WithCCND 1 ccndc add / tcp localhost $((CCN_LOCAL_PORT_BASE + 3))
 # make a new, empty repo
 rm -rf testrepo2
 mkdir testrepo2 || Fail
-WithCCND 1 env CCNR_DIRECTORY=testrepo2 CCNR_DEBUG=WARNING SYNC_ENABLE=0 ccnr 2>>ccnr1.out &
+WithCCND 1 env CCNR_DIRECTORY=testrepo2 CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
 sleep 1
 echo Repo write test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
 WithCCND 1 ccnget $SWR > startwrite2-$TEST_DATA_SIZE.out
 ccnfilewatch testrepo2/repoFile1 || Fail ccnfilewatch returned $?
 DoPS
+WithCCND 1 ccndc del / tcp localhost $((CCN_LOCAL_PORT_BASE + 3))
 WithCCND 1 ccnrm /
 sleep 3
 echo Repo read test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
@@ -66,30 +70,34 @@ DoPS
 WithCCND 1 ccnget $SWR > startwrite1-$TEST_DATA_SIZE.out
 ccnfilewatch testrepo1/repoFile1 || Fail ccnfilewatch returned $?
 DoPS
+WithCCND 1 ccnrm $VERSIONEDNAME
+WithCCND 1 ccnget $VERSIONEDNAME | ccnnamelist
+WithCCND 1 ccndc del / tcp localhost $((CCN_LOCAL_PORT_BASE + 3))
 sleep 3
 echo Repo read test using repo1 TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
 WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
-WithCCND 1 ccnrm /
+WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
-WithCCND 1 ccnrm /
+WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
-WithCCND 1 ccnrm /
+WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 ccn_repo stopall
 WithCCND 1 ccndstop
 
 # Get startup times
 echo Repo2 startup with stable index, no ccnd
-time -p env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo2 SYNC_ENABLE=0 ccnr
+time -p env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo2 ccnr
 
-echo Repo1 startup
+echo Repo1 startup TEST_DATA_SIZE=$TEST_DATA_SIZE
 WithCCND 3 time -p ccn_repo testrepo1
-ccn_repo stopall
+echo Shutting down Repo1
+time -p ccn_repo stopall
 
-echo Repo2 startup with index rebuild, no ccnd
-time -p env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo1 SYNC_ENABLE=0 ccnr
+echo Repo2 startup with index rebuild, no ccnd TEST_DATA_SIZE=$TEST_DATA_SIZE
+time -p env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo1 ccnr
 
 WithCCND 3 ccndstop
