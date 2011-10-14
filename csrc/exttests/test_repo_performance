@@ -44,8 +44,9 @@ WithCCND 1 ccnget $SWR > startwrite2-$TEST_DATA_SIZE.out
 ccnfilewatch testrepo2/repoFile1 || Fail ccnfilewatch returned $?
 DoPS
 WithCCND 3 ccndstop || Fail
-WithCCND 1 ccnrm /
-sleep 3
+WithCCND 1 CappedCCNDStart 100
+WithCCND 1 env CCNR_DIRECTORY=testrepo2 CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
+sleep 1
 echo Repo read test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
 WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
