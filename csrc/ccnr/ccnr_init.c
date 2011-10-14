@@ -119,25 +119,32 @@ establish_min_send_bufsize(struct ccnr_handle *h, int fd, int minsize)
 }
 
 /**
- * Replace fd with a tcp socket
+ * If so configured, replace fd with a tcp socket
  * @returns new address family
  */
 static int
 try_tcp_instead(int fd)
 {
-    const char *port = getenv("CCN_LOCAL_PORT");
     struct addrinfo hints = {0};
     struct addrinfo *ai = NULL;
+    const char *port = NULL;
+    const char *proto = NULL;
     int res;
     int sock;
     int ans = AF_UNIX;
     int yes = 1;
     
+    proto = getenv("CCNR_PROTO");
+    if (proto == NULL || strcasecmp(proto, "tcp") != 0)
+        return(ans);
+    port = getenv("CCN_LOCAL_PORT");
+    if (port == NULL || port[0] == 0)
+        port = "9695";
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = 0;
     hints.ai_protocol = 0;
-    res = getaddrinfo(NULL, (port ? port : "9695"), &hints, &ai);
+    res = getaddrinfo(NULL, port, &hints, &ai);
     if (res == 0) {
         sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
         if (sock != -1) {
