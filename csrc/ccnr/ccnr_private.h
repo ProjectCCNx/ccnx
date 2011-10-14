@@ -245,6 +245,7 @@ struct ccnr_handle {
     struct ccn_charbuf *neighbor_ccnb; /**< for neighbor service discovery */
     struct ccnr_parsed_policy *parsed_policy;  /**< offsets for parsed fields of policy */
     struct ccn_charbuf *policy_name;
+    struct ccn_charbuf *policy_link_cob;
     struct ccn_seqwriter *notice;   /**< for notices of status changes */
     struct ccn_indexbuf *chface;    /**< faceids w/ recent status changes */
     struct ccn_scheduled_event *internal_client_refresh;
@@ -464,6 +465,7 @@ struct enum_state {
  */
 #define CCNRID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/KEY"
 #define CCNRID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository/KEY"
+#define CCNRID_POLICY_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/POLICY"
 
 #define PUBLIC
 #endif

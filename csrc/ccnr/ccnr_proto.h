@@ -24,7 +24,14 @@
 #define CCNR_PROTO_DEFINED
 
 #include "ccnr_private.h"
+
+#define REPO_SW "\xC1.R.sw"
+#define REPO_SWC "\xC1.R.sw-c"
+#define REPO_AF "\xC1.R.af"
+#define NAME_BE "\xC1.E.be"
+
 struct ccnr_parsed_policy {
+    unsigned char version[7];
     int policy_version_offset;
     int local_name_offset;
     int global_prefix_offset;

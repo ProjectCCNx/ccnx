@@ -19,8 +19,8 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
- 
- 
+
+
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -70,9 +70,10 @@
 #include "ccnr_proto.h"
 #include "ccnr_sendq.h"
 #include "ccnr_store.h"
+#include "ccnr_sync.h"
 #include "ccnr_util.h"
 
-static int load_policy(struct ccnr_handle *h, struct ccnr_parsed_policy *pp);
+static int load_policy(struct ccnr_handle *h);
 static int merge_files(struct ccnr_handle *h);
 
 static int
@@ -162,6 +163,30 @@ try_tcp_instead(int fd)
     return(ans);
 }
 
+PUBLIC struct ccnr_parsed_policy *
+ccnr_parsed_policy_create(void)
+{
+    struct ccnr_parsed_policy *pp;
+    pp = calloc(1, sizeof(struct ccnr_parsed_policy));
+    pp->store = ccn_charbuf_create();
+    pp->namespaces = ccn_indexbuf_create();
+    return(pp);
+}
+
+PUBLIC void
+ccnr_parsed_policy_destroy(struct ccnr_parsed_policy **ppp)
+{
+    struct ccnr_parsed_policy *pp;
+    
+    if (*ppp == NULL)
+        return;
+    pp = *ppp;
+    ccn_charbuf_destroy(&pp->store);
+    ccn_indexbuf_destroy(&pp->namespaces);
+    free(pp);
+    *ppp = NULL;
+}
+
 /**
  * Create a new ccnr instance
  * @param progname - name of program binary, used for locating helpers
@@ -176,9 +201,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     const char *listen_on;
     struct ccnr_handle *h;
     struct hashtb_param param = {0};
-    struct ccn_charbuf *cb;
-    struct ccn_charbuf *basename;
-    struct ccnr_parsed_policy *pp = NULL;
     
     sockname = r_net_get_local_sockname();
     h = calloc(1, sizeof(*h));
@@ -229,7 +251,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (listen_on != NULL && listen_on[0] != 0)
         ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
     h->appnonce = &r_fwd_append_debug_nonce;
-     
+    
     if (ccnr_init_repo_keystore(h, NULL) < 0) {
         h->running = -1;
         goto Bail;
@@ -280,26 +302,13 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     else
         ccn_disconnect(h->direct_client); // Apparently ccn_connect error case needs work.
     h->sync_handle = SyncNewBase(h, h->direct_client, h->sched);
-    // create a parsed_policy and load from the repoPolicy file (or env/defaults)
-    pp = ccnr_parsed_policy_create();
-    load_policy(h, pp);
-    h->parsed_policy = pp;
-    // set up special listener for (global prefix)/data/policy.xml
-    basename = ccn_charbuf_create();
-    ccn_name_init(basename);
-    ccn_name_from_uri(basename, (char *)pp->store->buf + pp->global_prefix_offset);
-    ccn_name_from_uri(basename, "data/policy.xml");
-    h->policy_name = basename;
-    cb = ccn_charbuf_create();
-    ccn_uri_append(cb, basename->buf, basename->length, 0);
-    ccnr_uri_listen(h, h->direct_client, ccn_charbuf_as_string(cb),
-                   &ccnr_answer_req, OP_POLICY | 3);
-    ccn_charbuf_destroy(&cb);
+    if (-1 == load_policy(h))
+        goto Bail;
     r_net_listen_on(h, listen_on);
     r_fwd_age_forwarding_needed(h);
     ccnr_internal_client_start(h);
     r_proto_init(h);
-    r_proto_activate_policy(h, pp);
+    r_proto_activate_policy(h, h->parsed_policy);
     if (merge_files(h) == -1)
         r_init_fail(h, __LINE__, "Unable to merge additional repository data files.", errno);
     if (h->running == -1) goto Bail;
@@ -342,7 +351,7 @@ r_init_destroy(struct ccnr_handle **pccnr)
     SyncFreeBase(&h->sync_handle);
     
     r_store_final(h, stable);
-
+    
     if (h->fds != NULL) {
         free(h->fds);
         h->fds = NULL;
@@ -368,6 +377,7 @@ r_init_destroy(struct ccnr_handle **pccnr)
         free(h->parsed_policy);
         h->parsed_policy = NULL;
     }
+    ccn_charbuf_destroy(&h->policy_link_cob);
     free(h);
     *pccnr = NULL;
 }
@@ -399,7 +409,7 @@ r_init_map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename,
     }
     if (statbuf.st_size == 0)
         goto Bail;
-
+    
     mapped_file = mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (mapped_file == MAP_FAILED) {
         ccnr_msg(h, "mmap failed for %s (fd=%d), %s (errno=%d)",
@@ -463,7 +473,7 @@ merge_files(struct ccnr_handle *h)
         res = r_init_map_and_process_file(h, filename, 1);
         if (res < 0) {
             ccnr_msg(h, "Error in phase 2 incorporating repository file %s", ccn_charbuf_as_string(filename));
-             return (-1);
+            return (-1);
         }
     }
     
@@ -480,116 +490,251 @@ merge_files(struct ccnr_handle *h)
 
 static struct ccn_charbuf *
 ccnr_init_policy_cob(struct ccnr_handle *ccnr, struct ccn *h,
-                      struct ccn_charbuf *basename,
-                      int freshness, struct ccn_charbuf *content)
+                     struct ccn_charbuf *basename,
+                     int freshness, struct ccn_charbuf *content)
 {
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     struct ccn_charbuf *name = ccn_charbuf_create();
     struct ccn_charbuf *pubid = ccn_charbuf_create();
     struct ccn_charbuf *pubkey = ccn_charbuf_create();
     struct ccn_charbuf *keyid = ccn_charbuf_create();
-    struct ccn_charbuf *cob = ccn_charbuf_create();
+    struct ccn_charbuf *tcob = ccn_charbuf_create();
+    struct ccn_charbuf *cob = NULL;          // result
     int res;
     
     res = ccn_get_public_key(h, NULL, pubid, pubkey);
-    if (res < 0) abort();
-    ccn_charbuf_append_charbuf(name, basename);
-    ccn_create_version(h, name, 0, ccnr->starttime, ccnr->starttime_usec * 1000);
-    ccn_name_from_uri(name, "%00");
+    if (res < 0) 
+        goto Leave;
+    res = ccn_charbuf_append_charbuf(name, basename);
+    if (ccn_name_from_uri(name, "%00") < 0)
+        goto Leave;
     sp.sp_flags |= CCN_SP_FINAL_BLOCK;
     sp.type = CCN_CONTENT_DATA;
     sp.freshness = freshness;
-    res = ccn_sign_content(h, cob, name, &sp, content->buf, content->length);
-    if (res != 0) abort();
+    res |= ccn_sign_content(h, tcob, name, &sp, content->buf, content->length);
+    if (res == 0) {
+        cob = tcob;
+        tcob = NULL;
+    }
+    
+Leave:
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&pubid);
     ccn_charbuf_destroy(&pubkey);
     ccn_charbuf_destroy(&keyid);
-    ccn_charbuf_destroy(&sp.template_ccnb);
-    return(cob);
+    ccn_charbuf_destroy(&tcob);
+    return (cob);
+}
+/**
+ * should probably return a new cob, rather than reusing one.
+ * should publish link as:
+ *    CCNRID_POLICY_URI("ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/POLICY)/%C1.M.K<pubid>/<version>/%00
+ * should have key locator which is the key name of the repository
+ */
+PUBLIC struct ccn_charbuf *
+ccnr_init_policy_link_cob(struct ccnr_handle *ccnr, struct ccn *h,
+                          struct ccn_charbuf *targetname)
+{
+    struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    struct ccn_charbuf *name = ccn_charbuf_create();
+    struct ccn_charbuf *pubid = ccn_charbuf_create();
+    struct ccn_charbuf *pubkey = ccn_charbuf_create();
+    struct ccn_charbuf *keyid = ccn_charbuf_create();
+    struct ccn_charbuf *content = ccn_charbuf_create();
+    struct ccn_charbuf *cob = ccn_charbuf_create();   // result
+    int res;
+    
+    res = ccn_get_public_key(h, NULL, pubid, pubkey);
+    if (res < 0)
+        goto Bail;
+    if (ccn_name_from_uri(name, CCNRID_POLICY_URI) < 0)
+        goto Bail;
+    res |= ccn_charbuf_append_value(keyid, CCN_MARKER_CONTROL, 1);
+    res |= ccn_charbuf_append_string(keyid, ".M.K");
+    res |= ccn_charbuf_append_value(keyid, 0, 1);
+    res |= ccn_charbuf_append_charbuf(keyid, pubid);
+    res |= ccn_name_append(name, keyid->buf, keyid->length);
+    res |= ccn_create_version(h, name, CCN_V_NOW, 0, 0);
+    if (ccn_name_from_uri(name, "%00") < 0)
+        goto Bail;
+    sp.sp_flags |= CCN_SP_FINAL_BLOCK;
+    sp.type = CCN_CONTENT_LINK;
+    res |= ccnb_append_Link(content, targetname, "Repository Policy", NULL);
+    if (res != 0)
+        goto Bail;
+    res |= ccn_sign_content(h, cob, name, &sp, content->buf, content->length);
+    if (res != 0)
+        goto Bail;
+    return (cob);
+    
+Bail:
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&pubid);
+    ccn_charbuf_destroy(&pubkey);
+    ccn_charbuf_destroy(&keyid);
+    ccn_charbuf_destroy(&content);
+    return (NULL);
 }
 
+
 /**
- * Load a repo policy from the repoPolicy file and incorporate the policy object
- * in the cache through process_incoming_content.
- * If a policy file does not exist a new one is created
+ * Load a link to the repo policy from the repoPolicy file and load the link
+ * target to extract the actual policy.
+ * If a policy file does not exist a new one is created, with a link to a policy
  * based either on the environment variable CCNR_GLOBAL_PREFIX or the system
  * default value of ccnx:/parc.com/csl/ccn/Repos, plus the system defaults for
  * other fields.
+ * This routine must be called after the btree code is initialized and capable
+ * of returning content objects.
+ * Sets the parsed_policy field of the handle to be the new policy.
  */
 static int
-load_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
+load_policy(struct ccnr_handle *ccnr)
 {
     int fd;
     ssize_t res;
-    struct fdholder *fdholder = NULL;
     struct content_entry *content = NULL;
+    const unsigned char *content_msg = NULL;
+    struct ccn_parsed_ContentObject pco = {0};
+    struct ccn_parsed_Link pl = {0};
+    struct ccn_indexbuf *nc = NULL;
+    struct ccn_charbuf *basename = NULL;
+    struct ccn_charbuf *policy = NULL;
+    struct ccn_charbuf *policy_cob = NULL;
+    const char *global_prefix;
     const unsigned char *buf = NULL;
     size_t length = 0;
-
-    while (content == NULL) {
-        fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 0);
-        if (fd >= 0) {
-            fdholder = r_io_fdholder_from_fd(ccnr, fd);
-            if (fdholder->inbuf == NULL)
-                fdholder->inbuf = ccn_charbuf_create();
-            fdholder->inbuf->length = 0;    // clear the buffer
-            ccn_charbuf_reserve(fdholder->inbuf, 8800);   // limits the size of the policy file
-            res = read(fdholder->filedesc, fdholder->inbuf->buf, fdholder->inbuf->limit - fdholder->inbuf->length);
-            if (res == -1) {
-                ccnr_msg(ccnr, "read policy: %s (errno = %d)", strerror(errno), errno);
-                abort();
-            }
-            fdholder->inbuf->length = res;
-            content = process_incoming_content(ccnr, fdholder, fdholder->inbuf->buf, fdholder->inbuf->length);
-            if (content == NULL) {
-                ccnr_msg(ccnr, "Unable to process repository policy object");
-                abort();
-            }
-            r_store_content_field_access(ccnr, content, CCN_DTAG_Content, &buf, &length);
-            if (r_proto_parse_policy(ccnr, buf, length, pp) < 0) {
-                ccnr_msg(ccnr, "Malformed policy");
-                abort();
-            }
-            r_store_commit_content(ccnr, content);
-        }
-        else {
-            struct ccn_charbuf *policy = ccn_charbuf_create();
-            struct ccn_charbuf *policy_cob;
-            struct ccn_charbuf *basename = ccn_charbuf_create();
-            const char *global_prefix;
-            
-            global_prefix = getenv ("CCNR_GLOBAL_PREFIX");
-            if (global_prefix != NULL)
-                ccnr_msg(ccnr, "CCNR_GLOBAL_PREFIX=%s", global_prefix);
-            else 
-                global_prefix = "ccnx:/parc.com/csl/ccn/Repos";
-            r_proto_policy_append_basic(ccnr, policy, "2.0", "Repository",
-                                        global_prefix);
-            r_proto_policy_append_namespace(ccnr, policy, "/");
-            ccn_name_from_uri(basename, global_prefix);
-            ccn_name_from_uri(basename, "data/policy.xml");
-            policy_cob = ccnr_init_policy_cob(ccnr, ccnr->direct_client, basename,
-                                              600, policy);
-            fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 1);
-            if (fd < 0) {
-                ccnr_msg(ccnr, "open policy: %s (errno = %d)", strerror(errno), errno);
-                abort();
-            }
-            
-            res = write(fd, policy_cob->buf, policy_cob->length);
-            if (res == -1) {
-                ccnr_msg(ccnr, "write policy: %s (errno = %d)", strerror(errno), errno);
-                abort();
-            }
-            ccn_charbuf_destroy(&policy_cob);
-            ccn_charbuf_destroy(&basename);
-            ccn_charbuf_destroy(&policy);
+    int segment = 0;
+    int final = 0;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    
+    ccnr->parsed_policy = ccnr_parsed_policy_create();
+    fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 0);
+    if (fd >= 0) {
+        ccnr->policy_link_cob = ccn_charbuf_create();
+        ccn_charbuf_reserve(ccnr->policy_link_cob, 4096);   // limits the size of the policy link
+        ccnr->policy_link_cob->length = 0;    // clear the buffer
+        res = read(fd, ccnr->policy_link_cob->buf, ccnr->policy_link_cob->limit - ccnr->policy_link_cob->length);
+        if (res == -1) {
+            r_init_fail(ccnr, __LINE__, "Error reading repoPolicy file.", errno);
+            ccn_charbuf_destroy(&ccnr->policy_link_cob);
+            return(-1);
         }
         r_io_shutdown_client_fd(ccnr, fd);
+        ccnr->policy_link_cob->length = res;
+        nc = ccn_indexbuf_create();
+        res = ccn_parse_ContentObject(ccnr->policy_link_cob->buf,
+                                      ccnr->policy_link_cob->length, &pco, nc);
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, ccnr->policy_link_cob->buf,
+                                  pco.offset[CCN_PCO_B_Content],
+                                  pco.offset[CCN_PCO_E_Content],
+                                  &buf, &length);
+        d = ccn_buf_decoder_start(&decoder, buf, length);
+        res = ccn_parse_Link(d, &pl, NULL);
+        basename = ccn_charbuf_create();
+        ccn_charbuf_append(basename, buf + pl.offset[CCN_PL_B_Name],
+                           pl.offset[CCN_PL_E_Name] - pl.offset[CCN_PL_B_Name]);
+        ccnr->policy_name = ccn_charbuf_create(); // to detect writes to this name
+        ccn_charbuf_append_charbuf(ccnr->policy_name, basename); // has version
+        ccn_name_chop(ccnr->policy_name, NULL, -1); // get rid of version
+        policy = ccn_charbuf_create();
+        // if we fail to retrieve the link target, report and then create a new one
+        do {
+            ccn_name_append_numeric(basename, CCN_MARKER_SEQNUM, segment++);
+            content = r_store_lookup_ccnb(ccnr, basename->buf, basename->length);
+            if (content == NULL) {
+                ccnr_debug_ccnb(ccnr, __LINE__, "policy lookup failed for", NULL,
+                                basename->buf, basename->length);
+                break;
+            }
+            ccn_name_chop(basename, NULL, -1);
+            content_msg = r_store_content_base(ccnr, content);
+            res = ccn_parse_ContentObject(content_msg, r_store_content_size(ccnr, content), &pco, nc);
+            res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, content_msg,
+                                      pco.offset[CCN_PCO_B_Content],
+                                      pco.offset[CCN_PCO_E_Content],
+                                      &buf, &length);
+            ccn_charbuf_append(policy, buf, length);
+            final = r_util_is_final_pco(content_msg, &pco, nc);
+        } while (!final);
+        if (policy->length == 0) {
+            ccnr_msg(ccnr, "Policy link points to empty or non-existant policy.");
+            goto CreateNewPolicy;
+        }
+        if (r_proto_parse_policy(ccnr, policy->buf, policy->length, ccnr->parsed_policy) < 0) {
+            ccnr_msg(ccnr, "Policy link points to malformed policy.");
+            goto CreateNewPolicy;
+        }
+        res = ccn_name_comp_get(content_msg, nc, nc->n - 3, &buf, &length);
+        if (length != 7 || buf[0] != CCN_MARKER_VERSION) {
+            ccnr_msg(ccnr, "Policy link points to unversioned policy.");
+            goto CreateNewPolicy;
+        }
+        memmove(ccnr->parsed_policy->version, buf, sizeof(ccnr->parsed_policy->version));
+        ccn_indexbuf_destroy(&nc);
+        ccn_charbuf_destroy(&basename);
+        ccn_charbuf_destroy(&policy);
+        return (0);
     }
-    r_store_content_change_flags(content, CCN_CONTENT_ENTRY_PRECIOUS, 0);
     
+CreateNewPolicy:
+    ccnr_msg(ccnr, "Creating new policy file.");
+    // construct the policy content object
+    global_prefix = getenv ("CCNR_GLOBAL_PREFIX");
+    if (global_prefix != NULL)
+        ccnr_msg(ccnr, "CCNR_GLOBAL_PREFIX=%s", global_prefix);
+    else 
+        global_prefix = "ccnx:/parc.com/csl/ccn/Repos";
+    policy = ccn_charbuf_create();
+    r_proto_policy_append_basic(ccnr, policy, "1.5", "Repository", global_prefix);
+    r_proto_policy_append_namespace(ccnr, policy, "/");
+    basename = ccn_charbuf_create();
+    ccn_name_from_uri(basename, global_prefix);
+    ccn_name_from_uri(basename, "data/policy.xml");
+    ccnr->policy_name = ccn_charbuf_create(); // to detect writes to this name
+    ccn_charbuf_append_charbuf(ccnr->policy_name, basename);
+    ccn_create_version(ccnr->direct_client, basename, 0,
+                       ccnr->starttime, ccnr->starttime_usec * 1000);
+    policy_cob = ccnr_init_policy_cob(ccnr, ccnr->direct_client, basename,
+                                      600, policy);
+    // save the policy content object to the repository
+    r_sync_local_store(ccnr, policy_cob);
+    ccn_charbuf_destroy(&policy_cob);
+    // make a link to the policy content object
+    ccnr->policy_link_cob = ccnr_init_policy_link_cob(ccnr, ccnr->direct_client,
+                                                      basename);
+    if (ccnr->policy_link_cob == NULL) {
+        r_init_fail(ccnr, __LINE__, "Unable to create policy link object", 0);
+        return(-1);
+    }
+    fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 1);
+    if (fd < 0) {
+        r_init_fail(ccnr, __LINE__, "Unable to open repoPolicy file for write", errno);
+        return(-1);
+    }
+    res = write(fd, ccnr->policy_link_cob->buf, ccnr->policy_link_cob->length);
+    if (res == -1) {
+        r_init_fail(ccnr, __LINE__, "Unable to write repoPolicy file", errno);
+        return(-1);
+    }
+    r_io_shutdown_client_fd(ccnr, fd);
+    // parse the policy for later use
+    if (r_proto_parse_policy(ccnr, policy->buf, policy->length, ccnr->parsed_policy) < 0) {
+        r_init_fail(ccnr, __LINE__, "Unable to parse new repoPolicy file", 0);
+        return(-1);
+    }
+    // get the pp->version from the policy_cob base name .../policy.xml/<ver>
+    nc = ccn_indexbuf_create();
+    ccn_name_split(basename, nc);
+    res = ccn_name_comp_get(basename->buf, nc, nc->n - 2, &buf, &length);
+    if (length != 7 || buf[0] != CCN_MARKER_VERSION) {
+        r_init_fail(ccnr, __LINE__, "Unable to get repository policy object version", 0);
+        return(-1);
+    }
+    memmove(ccnr->parsed_policy->version, buf, sizeof(ccnr->parsed_policy->version));
+    ccn_charbuf_destroy(&basename);
+    ccn_charbuf_destroy(&policy);
     return(0);
 }
 
