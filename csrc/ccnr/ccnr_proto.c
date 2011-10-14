@@ -250,13 +250,18 @@ r_proto_activate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
     
     for (i = 0; i < pp->namespaces->n; i++) {
         if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_INFO))
-            ccnr_msg(ccnr, "Adding listener for %s",
+            ccnr_msg(ccnr, "Adding listener for policy namespace %s",
                      (char *)pp->store->buf + pp->namespaces->buf[i]);
         r_proto_uri_listen(ccnr, ccnr->direct_client,
                            (char *)pp->store->buf + pp->namespaces->buf[i],
                            r_proto_answer_req, 0);
     }
-    
+    if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_INFO))
+        ccnr_msg(ccnr, "Adding listener for policy global prefix %s",
+                 (char *)pp->store->buf + pp->global_prefix_offset);
+    r_proto_uri_listen(ccnr, ccnr->direct_client,
+                       (char *)pp->store->buf + pp->global_prefix_offset,
+                       r_proto_answer_req, 0);    
 }
 /**
  * Uninstall the listener for the namespaces that the parsed policy says to serve
@@ -264,10 +269,16 @@ r_proto_activate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp)
 PUBLIC void
 r_proto_deactivate_policy(struct ccnr_handle *ccnr, struct ccnr_parsed_policy *pp) {
     int i;
-    
+
+    if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_INFO))
+        ccnr_msg(ccnr, "Removing listener for policy global prefix %s",
+                 (char *)pp->store->buf + pp->global_prefix_offset);
+    r_proto_uri_listen(ccnr, ccnr->direct_client,
+                       (char *)pp->store->buf + pp->global_prefix_offset,
+                       NULL, 0);    
     for (i = 0; i < pp->namespaces->n; i++) {
         if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_INFO))
-            ccnr_msg(ccnr, "Removing listener for %s",
+            ccnr_msg(ccnr, "Removing listener for policy namespace %s",
                      (char *)pp->store->buf + pp->namespaces->buf[i]);
         r_proto_uri_listen(ccnr, ccnr->direct_client,
                            (char *)pp->store->buf + pp->namespaces->buf[i],
