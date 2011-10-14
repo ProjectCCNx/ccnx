@@ -64,16 +64,11 @@
 static int
 choose_face_delay(struct ccnr_handle *h, struct fdholder *fdholder, enum cq_delay_class c)
 {
-    int shift = (c == CCN_CQ_SLOW) ? 2 : 0;
-    if (c == CCN_CQ_ASAP)
+    if (fdholder->flags & CCNR_FACE_CCND)
         return(1);
-    if ((fdholder->flags & CCNR_FACE_LOCAL) != 0)
-        return(5); /* local stream, answer quickly */
-    if ((fdholder->flags & CCNR_FACE_GG) != 0)
-        return(100 << shift); /* localhost, delay just a little */
-    if ((fdholder->flags & CCNR_FACE_DGRAM) != 0)
-        return(500 << shift); /* udp, delay just a little */
-    return(100); /* probably tcp to a different machine */
+    if (fdholder->flags & CCNR_FACE_REPODATA)
+        return(1);
+    return(1);
 }
 
 static struct content_queue *
