@@ -60,11 +60,11 @@ main(int argc, char **argv)
         exit(1);
     }
     signal(SIGPIPE, SIG_IGN);
-    signal(SIGINT, &handle_signal);
-    signal(SIGTERM, &handle_signal);
     global_h = r_init_create(argv[0], stdiologger, stderr);
     if (global_h == NULL)
         exit(1);
+    signal(SIGINT, &handle_signal);
+    signal(SIGTERM, &handle_signal);
     r_dispatch_run(global_h);
     s = (global_h->running != 0);
     ccnr_msg(global_h, "exiting.");
