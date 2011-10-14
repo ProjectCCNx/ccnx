@@ -118,6 +118,41 @@ establish_min_send_bufsize(struct ccnr_handle *h, int fd, int minsize)
 }
 
 /**
+ * Replace fd with a tcp socket
+ * @returns new address family
+ */
+static int
+try_tcp_instead(int fd)
+{
+    const char *port = getenv("CCN_LOCAL_PORT");
+    struct addrinfo hints = {0};
+    struct addrinfo *ai = NULL;
+    int res;
+    int sock;
+    int ans = AF_UNIX;
+    
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = 0;
+    hints.ai_protocol = 0;
+    res = getaddrinfo(NULL, (port ? port : "9695"), &hints, &ai);
+    if (res == 0) {
+        sock = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+        if (sock != -1) {
+            res = connect(sock, ai->ai_addr, ai->ai_addrlen);
+            if (res == 0) {
+                dup2(sock, fd);
+                ans = ai->ai_family;
+            }
+            else
+                close(sock);
+        }
+        freeaddrinfo(ai);
+    }
+    return(ans);
+}
+
+/**
  * Create a new ccnr instance
  * @param progname - name of program binary, used for locating helpers
  * @param logger - logger function
@@ -209,10 +244,22 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     }
     ccnr_direct_client_start(h);
     if (ccn_connect(h->direct_client, NULL) != -1) {
+        int af = 0;
+        int flags;
         int fd;
         struct fdholder *fdholder;
+
         fd = ccn_get_connection_fd(h->direct_client);
-        fdholder = r_io_record_fd(h, fd, "CCND", 5, CCNR_FACE_CCND | CCNR_FACE_LOCAL);
+        // Play a dirty trick here - if this wins, we can fix it right in the c lib later on...
+        af = try_tcp_instead(fd);  
+        flags = CCNR_FACE_CCND;
+        if (af == AF_INET)
+            flags |= CCNR_FACE_INET;
+        else if (af == AF_INET6)
+            flags |= CCNR_FACE_INET6;
+        else
+            flags |= CCNR_FACE_LOCAL;
+        fdholder = r_io_record_fd(h, fd, "CCND", 5, flags);
         if (fdholder == NULL) abort();
         ccnr_uri_listen(h, h->direct_client, "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository",
                         &ccnr_answer_req, OP_SERVICE);
