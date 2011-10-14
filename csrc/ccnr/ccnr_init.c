@@ -42,6 +42,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
@@ -130,6 +131,7 @@ try_tcp_instead(int fd)
     int res;
     int sock;
     int ans = AF_UNIX;
+    int yes = 1;
     
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -141,6 +143,7 @@ try_tcp_instead(int fd)
         if (sock != -1) {
             res = connect(sock, ai->ai_addr, ai->ai_addrlen);
             if (res == 0) {
+                setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
                 dup2(sock, fd);
                 ans = ai->ai_family;
             }
