@@ -43,12 +43,13 @@ DoPS
 WithCCND 1 ccnget $SWR > startwrite2-$TEST_DATA_SIZE.out
 ccnfilewatch testrepo2/repoFile1 || Fail ccnfilewatch returned $?
 DoPS
-WithCCND 1 ccndc del / tcp localhost $((CCN_LOCAL_PORT_BASE + 3))
+WithCCND 3 ccndstop || Fail
 WithCCND 1 ccnrm /
 sleep 3
 echo Repo read test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
 WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
+WithCCND 1 ccndstatus >> post-repo2-fetch.out
 WithCCND 1 ccnrm /
 DoPS
 WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
@@ -61,6 +62,8 @@ WithCCND 1 ccndstop
 
 # Now do it all again with the java repo
 WithCCND 1 CappedCCNDStart 100
+WithCCND 3 CappedCCNDStart $((TEST_DATA_SIZE / 4000 + 500))
+WithCCND 3 ccndsmoketest send stage/repoFile1
 WithCCND 1 ccndc add / tcp localhost $((CCN_LOCAL_PORT_BASE + 3))
 rm -rf testrepo1
 mkdir testrepo1 || Fail
@@ -72,11 +75,12 @@ ccnfilewatch testrepo1/repoFile1 || Fail ccnfilewatch returned $?
 DoPS
 WithCCND 1 ccnrm $VERSIONEDNAME
 WithCCND 1 ccnget $VERSIONEDNAME | ccnnamelist
-WithCCND 1 ccndc del / tcp localhost $((CCN_LOCAL_PORT_BASE + 3))
+WithCCND 3 ccndstop || Fail
 sleep 3
 echo Repo read test using repo1 TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
 WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
+WithCCND 1 ccndstatus >> post-repo1-fetch.out
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
@@ -93,6 +97,7 @@ echo Repo2 startup with stable index, no ccnd
 time -p env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo2 ccnr
 
 echo Repo1 startup TEST_DATA_SIZE=$TEST_DATA_SIZE
+WithCCND 3 CappedCCNDStart 100
 WithCCND 3 time -p ccn_repo testrepo1
 echo Shutting down Repo1
 time -p ccn_repo stopall
