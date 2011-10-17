@@ -527,7 +527,10 @@ CallMe(struct ccn_closure *selfp,
 		}
 		case CCN_UPCALL_CONTENT_UNVERIFIED:
 			return (CCN_UPCALL_RESULT_VERIFY);
+		case CCN_UPCALL_CONTENT_KEYMISSING:
+			return (CCN_UPCALL_RESULT_FETCHKEY);
 		case CCN_UPCALL_CONTENT:
+		case CCN_UPCALL_CONTENT_RAW:
 			if (fs->timeoutSeg >= 0 && fs->timeoutSeg <= thisSeg)
 				// we will ignore this, since we are blocked
 				return(CCN_UPCALL_RESULT_OK);
