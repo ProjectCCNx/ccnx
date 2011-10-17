@@ -690,8 +690,12 @@ CreateNewPolicy:
     r_proto_policy_append_basic(ccnr, policy, "1.5", "Repository", global_prefix);
     r_proto_policy_append_namespace(ccnr, policy, "/");
     basename = ccn_charbuf_create();
-    ccn_name_from_uri(basename, global_prefix);
-    ccn_name_from_uri(basename, "data/policy.xml");
+    res = ccn_name_from_uri(basename, global_prefix);
+    res |= ccn_name_from_uri(basename, "data/policy.xml");
+    if (res < 0) {
+        r_init_fail(ccnr, __LINE__, "Global prefix is not a valid URI", 0);
+        return(-1);
+    }
     ccnr->policy_name = ccn_charbuf_create(); // to detect writes to this name
     ccn_charbuf_append_charbuf(ccnr->policy_name, basename);
     ccn_create_version(ccnr->direct_client, basename, 0,
