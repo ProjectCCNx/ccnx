@@ -568,7 +568,7 @@ r_proto_policy_update(struct ccn_schedule *sched,
         ccnr->policy_link_cob = policy_link_cob;
     policyFileName = ccn_charbuf_create();
     ccn_charbuf_putf(policyFileName, "%s/repoPolicy", ccnr->directory);
-    fd = open(ccn_charbuf_as_string(policyFileName), O_WRONLY, 0666);
+    fd = open(ccn_charbuf_as_string(policyFileName), O_WRONLY | O_CREAT, 0666);
     if (fd < 0) {
         ccnr_msg(ccnr, "open policy: %s (errno = %d)", strerror(errno), errno);
         goto Bail;

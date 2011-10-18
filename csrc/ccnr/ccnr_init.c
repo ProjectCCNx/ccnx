@@ -631,7 +631,7 @@ CreateNewPolicy:
         return(-1);
     }
     
-    fd = open(ccn_charbuf_as_string(policyFileName), O_WRONLY, 0666);
+    fd = open(ccn_charbuf_as_string(policyFileName), O_WRONLY | O_CREAT, 0666);
     if (fd < 0) {
         r_init_fail(ccnr, __LINE__, "Unable to open repoPolicy file for write", errno);
         return(-1);
