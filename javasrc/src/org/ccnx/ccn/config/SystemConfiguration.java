@@ -22,6 +22,9 @@ import java.io.FileOutputStream;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -298,6 +301,9 @@ public class SystemConfiguration {
 		"com.parc.ccn.data.DefaultEncoding";
 
 	public static final int DEBUG_RADIX = 34;
+	
+	public static final int SYSTEM_THREAD_LIFE = 10;
+	public static ThreadPoolExecutor _systemThreadpool = (ThreadPoolExecutor)Executors.newCachedThreadPool();
 
 	/**
 	 * Obtain the management bean for this runtime if it is available.
@@ -465,6 +471,8 @@ public class SystemConfiguration {
 			System.err.println("The settable short timeout must be an integer.");
 			throw e;
 		}
+		
+		_systemThreadpool.setKeepAliveTime(SYSTEM_THREAD_LIFE, TimeUnit.SECONDS);
 		
 		// Dump netmanager statistics if requested
 		DUMP_NETMANAGER_STATS = Boolean.parseBoolean(retrievePropertyOrEnvironmentVariable(DUMP_NETMANAGER_STATS_PROPERTY, DUMP_NETMANAGER_STATS_ENV_VAR, Boolean.toString(DUMP_NETMANAGER_STATS)));
