@@ -36,7 +36,8 @@ WithCCND 3 CappedCCNDStart $((TEST_DATA_SIZE / 4000 + 500))
 WithCCND 3 StageData $TEST_DATA_SIZE
 
 # Prepare our start-write command
-VERSIONEDNAME=`tail -n 1 lastblocks.txt | rev | cut -d / -f 2- | rev`
+VERSIONEDNAME=`grep -v %C1.M lastblocks.txt | tail -n 1 | rev | cut -d / -f 2- | rev`
+
 SWR=$VERSIONEDNAME/%C1.R.sw/%C1.N%00`GenSym`
 echo Start write request will be $SWR
 
