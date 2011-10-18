@@ -325,6 +325,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	
 	public CCNNameEnumerator(CCNHandle handle, BasicNameEnumeratorListener c) {
 		_handle = handle;
+		_neHandler = new NEHandler(handle, this);
 		callback = c;
 	}
 	
