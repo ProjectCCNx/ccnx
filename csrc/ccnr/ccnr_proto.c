@@ -417,8 +417,17 @@ r_proto_expect_content(struct ccn_closure *selfp,
         if (CCNSHOULDLOG(ccnr, sdfdf, CCNL_FINE))
             ccnr_debug_ccnb(ccnr, __LINE__, "key_needed", NULL, info->content_ccnb, info->pco->offset[CCN_PCO_E]);
     }
-    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
-        return(CCN_UPCALL_RESULT_ERR);
+    switch (kind) {
+        case CCN_UPCALL_CONTENT:
+        case CCN_UPCALL_CONTENT_UNVERIFIED:
+#if (CCN_API_VERSION >= 4004)
+        case CCN_UPCALL_CONTENT_RAW:
+        case CCN_UPCALL_CONTENT_KEYMISSING:
+#endif
+            break;
+        default:
+            return(CCN_UPCALL_RESULT_ERR);
+    }
     
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];

@@ -196,11 +196,11 @@ ccnr_parsed_policy_destroy(struct ccnr_parsed_policy **ppp)
 PUBLIC struct ccnr_handle *
 r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
 {
-    char *sockname;
-    const char *portstr;
-    const char *listen_on;
-    const char *d;
-    struct ccnr_handle *h;
+    char *sockname = NULL;
+    const char *portstr = NULL;
+    const char *listen_on = NULL;
+    const char *d = NULL;
+    struct ccnr_handle *h = NULL;
     struct hashtb_param param = {0};
     
     sockname = r_net_get_local_sockname();
@@ -277,8 +277,12 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     }
     ccnr_direct_client_start(h);
     d = getenv("CCNR_SKIP_VERIFY");
-    if (d != NULL)
-        ccn_defer_verification(h->direct_client, d[0] == '1');
+#if (CCN_API_VERSION >= 4004)
+    if (d != NULL && strcmp(d, "1") == 0) {
+        ccnr_msg(h, "CCNR_SKIP_VERIFY=%s", d);
+        ccn_defer_verification(h->direct_client, 1);
+    }
+#endif
     if (ccn_connect(h->direct_client, NULL) != -1) {
         int af = 0;
         int flags;
