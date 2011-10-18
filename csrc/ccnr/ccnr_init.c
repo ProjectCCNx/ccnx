@@ -601,6 +601,7 @@ load_policy(struct ccnr_handle *ccnr)
     struct ccn_charbuf *basename = NULL;
     struct ccn_charbuf *policy = NULL;
     struct ccn_charbuf *policy_cob = NULL;
+    struct ccn_charbuf *policyFileName;
     const char *global_prefix;
     const unsigned char *buf = NULL;
     size_t length = 0;
@@ -609,19 +610,22 @@ load_policy(struct ccnr_handle *ccnr)
     struct ccn_buf_decoder decoder;
     struct ccn_buf_decoder *d;
     
+    policyFileName = ccn_charbuf_create();
+    ccn_charbuf_putf(policyFileName, "%s/repoPolicy", ccnr->directory);
     ccnr->parsed_policy = ccnr_parsed_policy_create();
-    fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 0);
+    fd = open(ccn_charbuf_as_string(policyFileName), O_RDONLY);
     if (fd >= 0) {
         ccnr->policy_link_cob = ccn_charbuf_create();
         ccn_charbuf_reserve(ccnr->policy_link_cob, 4096);   // limits the size of the policy link
         ccnr->policy_link_cob->length = 0;    // clear the buffer
         res = read(fd, ccnr->policy_link_cob->buf, ccnr->policy_link_cob->limit - ccnr->policy_link_cob->length);
+        close(fd);
         if (res == -1) {
             r_init_fail(ccnr, __LINE__, "Error reading repoPolicy file.", errno);
             ccn_charbuf_destroy(&ccnr->policy_link_cob);
+            ccn_charbuf_destroy(&policyFileName);
             return(-1);
         }
-        r_io_shutdown_client_fd(ccnr, fd);
         ccnr->policy_link_cob->length = res;
         nc = ccn_indexbuf_create();
         res = ccn_parse_ContentObject(ccnr->policy_link_cob->buf,
@@ -632,6 +636,10 @@ load_policy(struct ccnr_handle *ccnr)
                                   &buf, &length);
         d = ccn_buf_decoder_start(&decoder, buf, length);
         res = ccn_parse_Link(d, &pl, NULL);
+        if (res <= 0) {
+            ccnr_msg(ccnr, "Policy link is malformed.");
+            goto CreateNewPolicy;
+        }
         basename = ccn_charbuf_create();
         ccn_charbuf_append(basename, buf + pl.offset[CCN_PL_B_Name],
                            pl.offset[CCN_PL_E_Name] - pl.offset[CCN_PL_B_Name]);
@@ -657,10 +665,14 @@ load_policy(struct ccnr_handle *ccnr)
                                       &buf, &length);
             ccn_charbuf_append(policy, buf, length);
             final = r_util_is_final_pco(content_msg, &pco, nc);
-        } while (!final);
+        } while (!final && segment < 100);
         if (policy->length == 0) {
             ccnr_msg(ccnr, "Policy link points to empty or non-existant policy.");
             goto CreateNewPolicy;
+        }
+        if (segment >= 100) {
+            r_init_fail(ccnr, __LINE__, "Policy link points to policy with too many segments.", 0);
+            return(-1);
         }
         if (r_proto_parse_policy(ccnr, policy->buf, policy->length, ccnr->parsed_policy) < 0) {
             ccnr_msg(ccnr, "Policy link points to malformed policy.");
@@ -675,6 +687,7 @@ load_policy(struct ccnr_handle *ccnr)
         ccn_indexbuf_destroy(&nc);
         ccn_charbuf_destroy(&basename);
         ccn_charbuf_destroy(&policy);
+        ccn_charbuf_destroy(&policyFileName);
         return (0);
     }
     
@@ -712,17 +725,20 @@ CreateNewPolicy:
         r_init_fail(ccnr, __LINE__, "Unable to create policy link object", 0);
         return(-1);
     }
-    fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 1);
+    
+    fd = open(ccn_charbuf_as_string(policyFileName), O_WRONLY | O_CREAT, 0666);
     if (fd < 0) {
         r_init_fail(ccnr, __LINE__, "Unable to open repoPolicy file for write", errno);
         return(-1);
     }
+    lseek(fd, 0, SEEK_SET);
     res = write(fd, ccnr->policy_link_cob->buf, ccnr->policy_link_cob->length);
     if (res == -1) {
         r_init_fail(ccnr, __LINE__, "Unable to write repoPolicy file", errno);
         return(-1);
     }
-    r_io_shutdown_client_fd(ccnr, fd);
+    ftruncate(fd, ccnr->policy_link_cob->length);
+    close(fd);
     // parse the policy for later use
     if (r_proto_parse_policy(ccnr, policy->buf, policy->length, ccnr->parsed_policy) < 0) {
         r_init_fail(ccnr, __LINE__, "Unable to parse new repoPolicy file", 0);
@@ -739,6 +755,7 @@ CreateNewPolicy:
     memmove(ccnr->parsed_policy->version, buf, sizeof(ccnr->parsed_policy->version));
     ccn_charbuf_destroy(&basename);
     ccn_charbuf_destroy(&policy);
+    ccn_charbuf_destroy(&policyFileName);
     return(0);
 }
 
