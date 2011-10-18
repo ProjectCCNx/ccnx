@@ -14,6 +14,8 @@
 
 AFTER : test_single_ccnd_teardown
 
+alias time='/usr/bin/time -p'
+
 # The data size can be set from the outside
 : ${TEST_DATA_SIZE:=5000000}
 
@@ -23,6 +25,10 @@ AFTER : test_single_ccnd_teardown
 # Run these without sync by default, but allow turning it on
 : ${SYNC_ENABLE:=0}
 
+# Generate an identifier for this run if provided upstairs
+: ${TRP:=TRP-`date +%s`}
+
+echo START $TRP
 # Use a ccnd to hold the pre-signed data
 WithCCND 3 CappedCCNDStart $((TEST_DATA_SIZE / 4000 + 500))
 
@@ -33,6 +39,10 @@ WithCCND 3 StageData $TEST_DATA_SIZE
 VERSIONEDNAME=`tail -n 1 lastblocks.txt | rev | cut -d / -f 2- | rev`
 SWR=$VERSIONEDNAME/%C1.R.sw/%C1.N%00`GenSym`
 echo Start write request will be $SWR
+
+export SYNC_ENABLE PIPELINE TEST_DATA_SIZE CCNR_PROTO CCNR_SKIP_VERIFY SWR TRP
+echo Saving env in $TRP-env.out
+env > $TRP-env.out
 # ccnd1 will be the one connected to the repo
 WithCCND 1 CappedCCNDStart 100
 WithCCND 1 ccndc add / tcp localhost $((CCN_LOCAL_PORT_BASE + 3))
@@ -52,18 +62,18 @@ WithCCND 1 env CCNR_DIRECTORY=testrepo2 CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
 sleep 1
 echo Repo read test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
-export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-1
+export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-1
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
 WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccndstatus >> post-repo2-fetch.out
 WithCCND 1 ccnrm /
 DoPS
-export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-2
+export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-2
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
 WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm /
 DoPS
-export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-3
+export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-3
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
 WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm /
@@ -89,18 +99,18 @@ WithCCND 3 ccndstop || Fail
 sleep 3
 echo Repo read test using repo1 TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
-export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-1
+export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-1
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
 WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccndstatus >> post-repo1-fetch.out
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
-export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-2
+export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-2
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
 WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
-export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-3
+export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-3
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
 WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm $VERSIONEDNAME
@@ -110,15 +120,17 @@ WithCCND 1 ccndstop
 
 # Get startup times
 echo Repo2 startup with stable index, no ccnd
-time -p env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo2 ccnr
+time env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo2 ccnr
 
 echo Repo1 startup TEST_DATA_SIZE=$TEST_DATA_SIZE
 WithCCND 3 CappedCCNDStart 100
-WithCCND 3 time -p ccn_repo testrepo1
+WithCCND 3 time ccn_repo testrepo1
 echo Shutting down Repo1
-time -p ccn_repo stopall
+time ccn_repo stopall
 
 echo Repo2 startup with index rebuild, no ccnd TEST_DATA_SIZE=$TEST_DATA_SIZE
-time -p env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo1 ccnr
+time env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo1 ccnr
 
 WithCCND 3 ccndstop
+
+echo END $TRP
