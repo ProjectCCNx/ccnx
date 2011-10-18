@@ -17,6 +17,9 @@ AFTER : test_single_ccnd_teardown
 # The data size can be set from the outside
 : ${TEST_DATA_SIZE:=5000000}
 
+# The pipeline size can be set from the outside
+: ${PIPELINE:=8}
+
 # Run these without sync by default, but allow turning it on
 : ${SYNC_ENABLE:=0}
 
@@ -49,14 +52,14 @@ WithCCND 1 env CCNR_DIRECTORY=testrepo2 CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
 sleep 1
 echo Repo read test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
-WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
+WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccndstatus >> post-repo2-fetch.out
 WithCCND 1 ccnrm /
 DoPS
-WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
+WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm /
 DoPS
-WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
+WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm /
 DoPS
 WithCCND 1 ccndstop
@@ -80,14 +83,14 @@ WithCCND 3 ccndstop || Fail
 sleep 3
 echo Repo read test using repo1 TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
-WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
+WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccndstatus >> post-repo1-fetch.out
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
-WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
+WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
-WithCCND 1 time -p ccncat $VERSIONEDNAME | dd bs=4k of=/dev/null
+WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 ccn_repo stopall

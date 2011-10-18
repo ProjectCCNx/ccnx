@@ -199,6 +199,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     char *sockname;
     const char *portstr;
     const char *listen_on;
+    const char *d;
     struct ccnr_handle *h;
     struct hashtb_param param = {0};
     
@@ -275,6 +276,9 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
         r_io_enroll_face(h, fdholder);
     }
     ccnr_direct_client_start(h);
+    d = getenv("CCNR_SKIP_VERIFY");
+    if (d != NULL)
+        ccn_defer_verification(h->direct_client, d[0] == '1');
     if (ccn_connect(h->direct_client, NULL) != -1) {
         int af = 0;
         int flags;
