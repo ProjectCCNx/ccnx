@@ -45,16 +45,16 @@ import org.ccnx.ccn.protocol.Interest;
  * @see RepositoryDataListener
  */
 
-public class RepositoryInterestHandler extends Thread implements CCNInterestHandler {
+public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 	private RepositoryServer _server;
 	private CCNHandle _handle;
 	private Queue<Interest> _queue = new ConcurrentLinkedQueue<Interest>();
+	private boolean _isRunning = false;
 	private boolean _shutdown = false;
 	
 	public RepositoryInterestHandler(RepositoryServer server) {
 		_server = server;
 		_handle = server.getHandle();
-		start();
 	}
 
 	public boolean handleInterest(Interest interest) {
@@ -63,7 +63,12 @@ public class RepositoryInterestHandler extends Thread implements CCNInterestHand
 			Log.finest(Log.FAC_REPO, "Queueing interest: {0}", interest.name());
 		synchronized(_queue) {
 			_queue.add(interest);
-			_queue.notify();
+			synchronized (_queue) {
+				if (!_isRunning) {
+					_isRunning = true;
+					SystemConfiguration._systemThreadpool.execute(this);
+				}				
+			}	
 		}
 		return true;		// In the repository we never want to service an interest again
 	}
@@ -78,17 +83,13 @@ public class RepositoryInterestHandler extends Thread implements CCNInterestHand
 		while (!	_shutdown) {
 			Interest interest = null;
 			synchronized (_queue) {
-				do {
-					interest = _queue.poll();
-					if (null == interest)
-						try {
-							_queue.wait(SystemConfiguration.MEDIUM_TIMEOUT);
-						} catch (InterruptedException e) {}
-					if (_shutdown)
-						break;
-				} while (null == interest);
+				interest = _queue.poll();
+				if (null == interest) {
+					_isRunning = false;
+					break;
+				}
 			}
-				
+		
 			if (! _shutdown) {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 					Log.finer(Log.FAC_REPO, "Saw interest: {0}", interest.name());
@@ -321,21 +322,34 @@ public class RepositoryInterestHandler extends Thread implements CCNInterestHand
 	}
 	
 	/**
-	 * Handle name enumeration requests
+	 * Handle name enumeration requests.  NE responses can potentially take a long time so don't hog the queue - dispatch
+	 * these separately.
 	 * 
 	 * @param interest
 	 */
 	public void nameEnumeratorResponse(Interest interest) {
-		NameEnumerationResponse ner = _server.getRepository().getNamesWithPrefix(interest, _server.getResponseName());
+		SystemConfiguration._systemThreadpool.execute(new NEResponse(interest));
+	}
+	
+	protected class NEResponse implements Runnable {
+		protected Interest _interest;
+		
+		protected NEResponse(Interest interest) {
+			_interest = interest;
+		}
 
-		if (ner!=null && ner.hasNames()) {
-			_server.sendEnumerationResponse(ner);
-			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestNameEnumResponses);
-			if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
-				Log.fine(Log.FAC_REPO, "sending back name enumeration response {0}", ner.getPrefix());
-		} else {
-			if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
-				Log.fine(Log.FAC_REPO, "we are not sending back a response to the name enumeration interest (interest.name() = {0})", interest.name());
+		public void run() {
+			NameEnumerationResponse ner = _server.getRepository().getNamesWithPrefix(_interest, _server.getResponseName());
+
+			if (ner!=null && ner.hasNames()) {
+				_server.sendEnumerationResponse(ner);
+				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestNameEnumResponses);
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
+					Log.fine(Log.FAC_REPO, "sending back name enumeration response {0}", ner.getPrefix());
+			} else {
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
+					Log.fine(Log.FAC_REPO, "we are not sending back a response to the name enumeration interest (interest.name() = {0})", _interest.name());
+			}
 		}
 	}
 	
