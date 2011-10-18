@@ -52,14 +52,20 @@ WithCCND 1 env CCNR_DIRECTORY=testrepo2 CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
 sleep 1
 echo Repo read test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
-WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-1
+echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
+WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccndstatus >> post-repo2-fetch.out
 WithCCND 1 ccnrm /
 DoPS
-WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-2
+echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
+WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm /
 DoPS
-WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-3
+echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
+WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm /
 DoPS
 WithCCND 1 ccndstop
@@ -83,14 +89,20 @@ WithCCND 3 ccndstop || Fail
 sleep 3
 echo Repo read test using repo1 TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
-WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-1
+echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
+WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccndstatus >> post-repo1-fetch.out
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
-WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-2
+echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
+WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
-WithCCND 1 time -p ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+export CCN_EXPERIMENT_ID=TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-3
+echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
+WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 ccn_repo stopall
