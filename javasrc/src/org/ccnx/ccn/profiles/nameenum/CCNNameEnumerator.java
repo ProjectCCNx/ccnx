@@ -275,6 +275,10 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 			return null;
 		}
 		
+		if (Log.isLoggable(Level.FINE)) {
+			Log.fine("NE: received a response for interest {0}", interest);
+		}	
+		
 		synchronized(_currentRequests) {
 			ContentName prefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 			NERequest ner = getCurrentRequest(prefix);
