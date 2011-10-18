@@ -14,7 +14,7 @@
 
 AFTER : test_single_ccnd_teardown
 
-alias time='/usr/bin/time -p'
+TIME='/usr/bin/time -p'
 
 # The data size can be set from the outside
 : ${TEST_DATA_SIZE:=5000000}
@@ -64,18 +64,18 @@ echo Repo read test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-1
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccndstatus >> post-repo2-fetch.out
 WithCCND 1 ccnrm /
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-2
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm /
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-3
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm /
 DoPS
 WithCCND 1 ccndstop
@@ -101,18 +101,18 @@ echo Repo read test using repo1 TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-1
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccndstatus >> post-repo1-fetch.out
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-2
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-3
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 time ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 ccn_repo stopall
@@ -120,16 +120,16 @@ WithCCND 1 ccndstop
 
 # Get startup times
 echo Repo2 startup with stable index, no ccnd
-time env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo2 ccnr
+$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo2 ccnr
 
 echo Repo1 startup TEST_DATA_SIZE=$TEST_DATA_SIZE
 WithCCND 3 CappedCCNDStart 100
-WithCCND 3 time ccn_repo testrepo1
+WithCCND 3 $TIME ccn_repo testrepo1
 echo Shutting down Repo1
-time ccn_repo stopall
+$TIME ccn_repo stopall
 
 echo Repo2 startup with index rebuild, no ccnd TEST_DATA_SIZE=$TEST_DATA_SIZE
-time env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo1 ccnr
+$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo1 ccnr
 
 WithCCND 3 ccndstop
 
