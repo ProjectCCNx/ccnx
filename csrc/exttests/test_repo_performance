@@ -135,3 +135,4 @@ $TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo1 ccnr
 WithCCND 3 ccndstop
 
 echo END $TRP
+tar cvf $TRP.tar *.out
