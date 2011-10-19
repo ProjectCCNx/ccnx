@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include <string.h>
 #include <sys/errno.h>
 #include <sys/stat.h>
@@ -521,6 +522,7 @@ r_proto_policy_update(struct ccn_schedule *sched,
     struct ccn_indexbuf *nc;
     struct ccn_charbuf *policy = NULL;
     struct ccn_charbuf *policy_link_cob = NULL;
+    struct ccn_charbuf *policyFileName = NULL;
     const unsigned char *buf = NULL;
     size_t length = 0;
     struct ccnr_parsed_policy *pp;
@@ -575,11 +577,14 @@ r_proto_policy_update(struct ccn_schedule *sched,
     policy_link_cob = ccnr_init_policy_link_cob(ccnr, ccnr->direct_client, name);
     if (policy_link_cob != NULL)
         ccnr->policy_link_cob = policy_link_cob;
-    fd = r_io_open_repo_data_file(ccnr, "repoPolicy", 1);
+    policyFileName = ccn_charbuf_create();
+    ccn_charbuf_putf(policyFileName, "%s/repoPolicy", ccnr->directory);
+    fd = open(ccn_charbuf_as_string(policyFileName), O_WRONLY | O_CREAT, 0666);
     if (fd < 0) {
         ccnr_msg(ccnr, "open policy: %s (errno = %d)", strerror(errno), errno);
         goto Bail;
     }
+    lseek(fd, 0, SEEK_SET);
     res = write(fd, ccnr->policy_link_cob->buf, ccnr->policy_link_cob->length);
     if (res == -1) {
         ccnr_msg(ccnr, "write policy: %s (errno = %d)", strerror(errno), errno);
@@ -591,7 +596,7 @@ r_proto_policy_update(struct ccn_schedule *sched,
                  fd, strerror(errno), errno);
         goto Bail;
     }
-    r_io_shutdown_client_fd(ccnr, fd);
+    close(fd);
     fd = -1;
     r_proto_deactivate_policy(ccnr, ccnr->parsed_policy);
     ccnr_parsed_policy_destroy(&ccnr->parsed_policy);
@@ -604,7 +609,8 @@ Bail:
     ccn_charbuf_destroy(&name);
     ccn_indexbuf_destroy(&nc);
     ccn_charbuf_destroy(&policy);
-    if (fd >= 0) r_io_shutdown_client_fd(ccnr, fd);
+    ccn_charbuf_destroy(&policyFileName);
+    if (fd >= 0) close(fd);
     return (ans);
     
 }    
