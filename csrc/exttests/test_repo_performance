@@ -19,7 +19,7 @@ AFTER : test_single_ccnd_teardown
 : ${TEST_DATA_SIZE:=5000000}
 
 # The pipeline size can be set from the outside
-: ${PIPELINE:=8}
+: ${PIPELINE:=12}
 
 # Run these without sync by default, but allow turning it on
 : ${SYNC_ENABLE:=0}
@@ -32,7 +32,8 @@ TIME='/usr/bin/time -p'
 
 # Command for doing measured fetches
 FetchAndDiscard () {
-  $TIME ccncatchunks2 -s -p $PIPELINE -d "$1"
+  # $TIME ccncatchunks2 -s -p $PIPELINE -d "$1"
+  $TIME SyncTest -cat2 -bufs $PIPELINE -get "$1"
 }
 
 echo START $TRP
