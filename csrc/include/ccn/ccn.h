@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 4003
+#define CCN_API_VERSION 4004
 
 /**
  * Interest lifetime default.
@@ -66,6 +66,9 @@ struct ccn_parsed_Link;
 
 /**
  * This tells what kind of event the upcall is handling.
+ *
+ * The KEYMISSING and RAW codes are used only if deferred verification has been
+ * requested.
  */
 enum ccn_upcall_kind {
     CCN_UPCALL_FINAL,             /**< handler is about to be deregistered */
@@ -74,7 +77,9 @@ enum ccn_upcall_kind {
     CCN_UPCALL_CONTENT,           /**< incoming verified content */
     CCN_UPCALL_INTEREST_TIMED_OUT,/**< interest timed out */
     CCN_UPCALL_CONTENT_UNVERIFIED,/**< content that has not been verified */
-    CCN_UPCALL_CONTENT_BAD        /**< verification failed */
+    CCN_UPCALL_CONTENT_BAD,       /**< verification failed */
+    CCN_UPCALL_CONTENT_KEYMISSING,/**< key has not been fetched */
+    CCN_UPCALL_CONTENT_RAW        /**< verification has not been attempted */
 };
 
 /**
@@ -85,7 +90,8 @@ enum ccn_upcall_res {
     CCN_UPCALL_RESULT_OK = 0,   /**< normal upcall return */
     CCN_UPCALL_RESULT_REEXPRESS = 1, /**< reexpress the same interest again */
     CCN_UPCALL_RESULT_INTEREST_CONSUMED = 2,/**< upcall claims to consume interest */
-    CCN_UPCALL_RESULT_VERIFY = 3 /**< force an unverified result to be verified */
+    CCN_UPCALL_RESULT_VERIFY = 3, /**< force an unverified result to be verified */
+    CCN_UPCALL_RESULT_FETCHKEY = 4 /**< request fetching of an unfetched key */
 };
 
 /**
@@ -173,6 +179,9 @@ int ccn_disconnect(struct ccn *h);
  * Releases all resources associated with *hp and sets it to NULL.
  */ 
 void ccn_destroy(struct ccn **hp);
+
+/* Control where verification happens */
+int ccn_defer_verification(struct ccn *h, int defer);
 
 /***********************************
  * Writing Names
