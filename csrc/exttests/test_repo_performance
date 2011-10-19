@@ -14,7 +14,6 @@
 
 AFTER : test_single_ccnd_teardown
 
-TIME='/usr/bin/time -p'
 
 # The data size can be set from the outside
 : ${TEST_DATA_SIZE:=5000000}
@@ -27,6 +26,14 @@ TIME='/usr/bin/time -p'
 
 # Generate an identifier for this run if provided upstairs
 : ${TRP:=TRP-`date +%s`}
+
+# Use a consistent time utility
+TIME='/usr/bin/time -p'
+
+# Command for doing measured fetches
+FetchAndDiscard () {
+  $TIME ccncatchunks2 -s -p $PIPELINE -d "$1"
+}
 
 echo START $TRP
 # Use a ccnd to hold the pre-signed data
@@ -71,18 +78,18 @@ echo Repo read test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-1
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccndstatus >> post-repo2-fetch.out
 WithCCND 1 ccnrm /
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-2
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm /
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-3
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm /
 DoPS
 WithCCND 1 ccndstop
@@ -115,18 +122,18 @@ echo Repo read test using repo1 TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-1
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccndstatus >> post-repo1-fetch.out
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-2
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-3
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 $TIME ccncatchunks2 -s -p $PIPELINE -d $VERSIONEDNAME || Fail rc $?
+WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccnrm $VERSIONEDNAME
 DoPS
 ccn_repo stopall
