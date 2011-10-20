@@ -417,7 +417,7 @@ public class DataUtils {
 	 * a significant configuration error; we should catch it and signal a RuntimeException
 	 * in one place and let the rest of the code not worry about it.
 	 */
-	public static String getUTF8StringFromBytes(byte [] stringBytes) {
+	public static final String getUTF8StringFromBytes(final byte [] stringBytes) {
 		try {
 			// Version taking a Charset not available till 1.6. 
 			return new String(stringBytes, "UTF-8");
@@ -595,5 +595,39 @@ public class DataUtils {
 		byte [] newarray = new byte [len];
 		System.arraycopy(array, offset, newarray, 0, len);
 		return newarray;
+	}
+	
+	/**
+	 * Convert a BigEndian byte array in to a long assuming unsigned values.
+	 * No bounds checking is done on the array -- caller should make sure
+	 * it is 8 or fewer bytes.
+	 */
+	public static long byteArrayToUnsignedLong(final byte [] src) {
+		long value = 0;
+		for(int i = 0; i < src.length; i++) {
+			value = value << 8;
+			// Java will assume the byte is signed, so extend it and trim it.
+			int b = ((int) src[i]) & 0xFF;
+			value |= b;
+		}
+		return value;
+	}
+	
+	/**
+	 * Convert a long value to a Big Endian byte array.  Assume
+	 * the long is not signed.
+	 */
+	public static byte [] unsignedLongToByteArray(final long value) {
+		byte [] out = null;
+		int offset = -1;
+		for(int i = 7; i >=0; --i) {
+			byte b = (byte) ((value >> (i * 8)) & 0xFF);
+			if( out == null && b != 0 ) {
+				out = new byte[i+1];
+				offset = i;
+			}
+			out[ offset - i ] = b;
+		}
+		return out;
 	}
 }
