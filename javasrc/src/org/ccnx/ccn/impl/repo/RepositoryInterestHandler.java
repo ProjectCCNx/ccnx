@@ -63,12 +63,10 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 			Log.finest(Log.FAC_REPO, "Queueing interest: {0}", interest.name());
 		synchronized(_queue) {
 			_queue.add(interest);
-			synchronized (_queue) {
-				if (!_isRunning) {
-					_isRunning = true;
-					SystemConfiguration._systemThreadpool.execute(this);
-				}				
-			}	
+			if (!_isRunning) {
+				_isRunning = true;
+				SystemConfiguration._systemThreadpool.execute(this);
+			}				
 		}
 		return true;		// In the repository we never want to service an interest again
 	}
