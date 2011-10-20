@@ -30,6 +30,7 @@ import org.ccnx.ccn.impl.CCNStats.CCNEnumStats;
 import org.ccnx.ccn.impl.CCNStats.CCNStatistics;
 import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.TreeSet6;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;

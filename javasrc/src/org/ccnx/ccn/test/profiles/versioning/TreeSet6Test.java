@@ -22,7 +22,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Random;
 
-import org.ccnx.ccn.profiles.versioning.TreeSet6;
+import org.ccnx.ccn.impl.support.TreeSet6;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
