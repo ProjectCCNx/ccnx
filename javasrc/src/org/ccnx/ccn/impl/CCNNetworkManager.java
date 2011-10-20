@@ -1074,10 +1074,13 @@ public class CCNNetworkManager implements Runnable {
 							}
 							prefix = getRegisteredPrefix(filter); // Did some else already remove this prefix?
 							if (null != prefix) {  // no
-								_registrationChangeInProgress = true;
-								doRemove = true;
+								if (prefix._refCount <= 1) {
+									_registrationChangeInProgress = true;
+									doRemove = true;
+								}
 							}
-						} else
+						}
+						if (null != prefix)
 							prefix._refCount--;
 					}
 				}
