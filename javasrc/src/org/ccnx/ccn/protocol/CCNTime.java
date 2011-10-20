@@ -17,7 +17,6 @@
 
 package org.ccnx.ccn.protocol;
 
-import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -83,7 +82,7 @@ public class CCNTime extends Timestamp {
 	 * Create a CCNTime from its binary encoding
 	 * @param binaryTime12 the binary representation of a CCNTime
 	 */
-	public CCNTime(byte [] binaryTime12) {
+	public CCNTime(byte [] binaryTime12) {	
 		this(DataUtils.byteArrayToUnsignedLong(binaryTime12), true);
 		if ((null == binaryTime12) || (binaryTime12.length == 0)) {
 			throw new IllegalArgumentException("Invalid binary time!");

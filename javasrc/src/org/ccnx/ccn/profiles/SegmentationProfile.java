@@ -18,12 +18,12 @@
 package org.ccnx.ccn.profiles;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -103,7 +103,7 @@ public class SegmentationProfile implements CCNProfile {
 				((potentialSegmentID.length > 1) && (NO_SEGMENT_POSTFIX == potentialSegmentID[1])));		
 	}
 	
-	public static boolean isSegmentMarker(byte [] potentialSegmentID) {
+	public final static boolean isSegmentMarker(byte [] potentialSegmentID) {
 		return (!isNotSegmentMarker(potentialSegmentID));
 	}
 
@@ -134,11 +134,7 @@ public class SegmentationProfile implements CCNProfile {
 		if (baseSegment() == segmentNumber) {
 			segmentNumberNameComponent = FIRST_SEGMENT_MARKER;
 		} else {
-			byte [] iarr = BigInteger.valueOf(segmentNumber).toByteArray();
-			segmentNumberNameComponent = new byte[iarr.length + ((0 == iarr[0]) ? 0 : 1)];
-			segmentNumberNameComponent[0] = SEGMENT_MARKER;
-			int offset = ((0 == iarr[0]) ? 1 : 0);
-			System.arraycopy(iarr, offset, segmentNumberNameComponent, 1, iarr.length-offset);
+			segmentNumberNameComponent = DataUtils.unsignedLongToByteArray(segmentNumber, SEGMENT_MARKER);
 		}
 		return segmentNumberNameComponent;
 	}
@@ -149,15 +145,14 @@ public class SegmentationProfile implements CCNProfile {
 			// Will behave properly with everything but first fragment of fragmented content.
 			if (segmentNumberNameComponent.length == 1)
 				return 0;
-			byte [] ftemp = new byte[segmentNumberNameComponent.length-1];
-			System.arraycopy(segmentNumberNameComponent, 1, ftemp, 0, segmentNumberNameComponent.length-1);
-			segmentNumberNameComponent = ftemp;
+
+			return DataUtils.byteArrayToUnsignedLong(segmentNumberNameComponent, 1);
 		} 
 		// If this isn't formatted as one of our segment numbers, suspect it might
 		// be a sequence (e.g. a packet stream), and attempt to read the last name
 		// component as a number.
-		BigInteger value = new BigInteger(1, segmentNumberNameComponent);
-		return value.longValue();
+
+		return DataUtils.byteArrayToUnsignedLong(segmentNumberNameComponent);
 	}
 
 	/**
