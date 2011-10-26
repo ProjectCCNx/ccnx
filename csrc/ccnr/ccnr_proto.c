@@ -442,6 +442,9 @@ r_proto_expect_content(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_ERR);
     }
     r_store_commit_content(ccnr, content);
+    r_proto_initiate_key_fetch(ccnr, ccnb, info->pco, 0,
+                               r_store_content_cookie(ccnr, content));
+    
     md->tries = 0;
     segment = r_util_segment_from_component(ib, ic->buf[ic->n - 2], ic->buf[ic->n - 1]);
 
@@ -449,7 +452,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
     if (is_final(info) == 1)
         md->final = segment;
     
-    if (md->keyfetch != 0 && segment == 0) {
+    if (md->keyfetch != 0 && segment <= 0) {
         /* This should either be a key, or a link to get to it. */
         if (info->pco->type == CCN_CONTENT_LINK) {
             r_proto_initiate_key_fetch(ccnr, ccnb, info->pco, 1, md->keyfetch);
@@ -463,7 +466,14 @@ r_proto_expect_content(struct ccn_closure *selfp,
             // not a key or a link.  Log it so we have a clue.
             ccnr_msg(ccnr, "ERROR - got something else when trying to fetch key for item %u", (unsigned)(md->keyfetch));
         }
-
+    }
+    
+    // Unsegmented content should skip pipeline processing.
+    if (segment < 0) {
+        if (md->expect_complete != NULL) {
+            (md->expect_complete)(selfp, kind, info);
+        }
+        return(CCN_UPCALL_RESULT_OK);
     }
     
     /* retire the current segment and any segments beyond the final one */

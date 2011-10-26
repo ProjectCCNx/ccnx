@@ -1262,8 +1262,6 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
             goto Bail;
     }
     r_store_set_content_timer(h, content, &obj);
-    if ((fdholder->flags & CCNR_FACE_REPODATA) == 0)
-        r_proto_initiate_key_fetch(h, msg, &obj, 0, content->cookie);
     r_match_match_interests(h, content, &obj, NULL, fdholder);
     return(content);
 Bail:
@@ -1360,10 +1358,6 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
                 ccnr_debug_content(h, __LINE__, "content_stored",
                                    r_io_fdholder_from_fd(h, h->active_out_fd),
                                    content);
-        if (res == 0 && CCNSHOULDLOG(h, LM_4, CCNL_FINE))
-            ccnr_debug_content(h, __LINE__, "content_stored",
-                               r_io_fdholder_from_fd(h, h->active_out_fd),
-                               content);
     }
 }
 
@@ -1372,9 +1366,7 @@ r_store_commit_content(struct ccnr_handle *h, struct content_entry *content)
 {
     // XXX - here we need to check if this is something we *should* be storing, according to our policy
     if ((r_store_content_flags(content) & CCN_CONTENT_ENTRY_STABLE) == 0) {
-        // Need to actually append to the active repo data file
-        r_sendq_face_send_queue_insert(h, r_io_fdholder_from_fd(h, h->active_out_fd), content);
-        // XXX - it would be better to do this after the write succeeds
+        r_store_send_content(h, r_io_fdholder_from_fd(h, h->active_out_fd), content);
         r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
     }
     return(0);

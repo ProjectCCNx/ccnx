@@ -41,8 +41,9 @@
 
 #include "ccnr_dispatch.h"
 #include "ccnr_io.h"
+#include "ccnr_link.h"
 #include "ccnr_msg.h"
-#include "ccnr_sendq.h"
+#include "ccnr_proto.h"
 #include "ccnr_store.h"
 #include "ccnr_sync.h"
 #include "ccnr_util.h"
@@ -435,11 +436,15 @@ r_sync_upcall_store(struct ccnr_handle *ccnr,
     }
     // XXX - here we need to check if this is something we *should* be storing, according to our policy
     if ((r_store_content_flags(content) & CCN_CONTENT_ENTRY_STABLE) == 0) {
-        // Need to actually append to the active repo data file
-        r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
-        // XXX - it would be better to do this after the write succeeds
-        r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
-    }    
+        r_store_commit_content(ccnr, content);
+        if (CCNSHOULDLOG(ccnr, r_sync_upcall_store, CCNL_FINE))
+            ccnr_debug_content(ccnr, __LINE__, "content_stored",
+                               r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
+                               content);
+    }        
+    r_proto_initiate_key_fetch(ccnr, ccnb, info->pco, 0,
+                               r_store_content_cookie(ccnr, content));
+
     return(ans);
 }
 
@@ -465,11 +470,9 @@ r_sync_local_store(struct ccnr_handle *ccnr,
     // XXX - we assume we must store things from sync independent of policy
     // XXX - sync may want notification, or not, at least for now.
     if ((r_store_content_flags(content) & CCN_CONTENT_ENTRY_STABLE) == 0) {
-        r_sendq_face_send_queue_insert(ccnr, r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd), content);
-        // XXX - it would be better to do this after the write succeeds
-        r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
+        r_store_commit_content(ccnr, content);
         if (CCNSHOULDLOG(ccnr, r_sync_local_store, CCNL_FINE))
-            ccnr_debug_content(ccnr, __LINE__, "content_stored",
+            ccnr_debug_content(ccnr, __LINE__, "content_stored_local",
                                r_io_fdholder_from_fd(ccnr, ccnr->active_out_fd),
                                content);
     }
