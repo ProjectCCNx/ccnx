@@ -55,7 +55,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * Represents a CCNx data packet.
  * cf. Interest
  */
-public class ContentObject extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentObject> {
+public class ContentObject extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentObject>, ContentNameProvider {
 
 	public static boolean DEBUG_SIGNING = false;
 
@@ -323,6 +323,14 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * @return Name of the content object - without the final implicit digest component.
 	 */
 	public final ContentName name() { return _name; }
+
+	/**
+	 * To allow ContentObjects to be directly included in ContentName builders. This will supply
+	 * the name of the ContentObject *without* the final implicit digest component.
+	 */
+	public final ContentName getContentName() {
+		return _name;
+	}
 
 	/**
 	 * @return Name of the content object, complete with the final implicit digest component.

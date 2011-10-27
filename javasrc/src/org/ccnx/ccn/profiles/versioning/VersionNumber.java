@@ -34,7 +34,7 @@ import org.ccnx.ccn.protocol.ContentName;
  * This class is currently only used in the versioning package, not in
  * the VersioningProfile or elsewhere in the code.
  */
-public class VersionNumber implements Comparable<VersionNumber> {
+public class VersionNumber implements Comparable<VersionNumber>, ContentName.ComponentProvider {
 	
 	/**
 	 * Create a VersionNUmber with the current timestamp from 
@@ -294,4 +294,7 @@ public class VersionNumber implements Comparable<VersionNumber> {
 		return output;
 	}
 
+	public byte[] getComponent() {
+		return _versionComponent;
+	}
 }

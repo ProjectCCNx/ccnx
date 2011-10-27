@@ -35,6 +35,7 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.ContentNameProvider;
 
 /**
  * Blocking and background interface to name enumeration. This allows a caller to specify a prefix
@@ -46,7 +47,7 @@ import org.ccnx.ccn.protocol.ContentName;
  * @see CCNNameEnumerator
  * @see BasicNameEnumeratorListener
  */
-public class EnumeratedNameList implements BasicNameEnumeratorListener {
+public class EnumeratedNameList implements BasicNameEnumeratorListener, ContentNameProvider {
 	
 	protected ContentName _namePrefix;
 	protected CCNNameEnumerator _enumerator;
@@ -701,5 +702,15 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		if (null == ncbt)
 			ncbt = _newChildrenByThread.get(0);	// Thread pool
 		return ncbt;
+	}
+
+	/**
+	 * Enables an EnumeratedNameList to be used directly in a ContentName builder.
+	 * @return Gets the ContentName of the prefix being enumerated
+	 * @see ContentNameProvider
+	 * @see ContentName#builder(org.ccnx.ccn.protocol.ContentName.StringParser, Object[])
+	 */
+	public ContentName getContentName() {
+		return _namePrefix;
 	}
 }

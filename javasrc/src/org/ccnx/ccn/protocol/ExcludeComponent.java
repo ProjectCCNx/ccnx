@@ -28,7 +28,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 /**
  * This represents a Component with an Exclude filter
  */
-public class ExcludeComponent extends Exclude.Element implements Comparable<ExcludeComponent> {
+public class ExcludeComponent extends Exclude.Element implements Comparable<ExcludeComponent>, ContentName.ComponentProvider {
 
 	protected byte [] body = null;
 	
@@ -77,5 +77,9 @@ public class ExcludeComponent extends Exclude.Element implements Comparable<Excl
 
 	public byte [] getBytes() {
 		return body.clone();
+	}
+
+	public byte[] getComponent() {
+		return body;
 	}
 }

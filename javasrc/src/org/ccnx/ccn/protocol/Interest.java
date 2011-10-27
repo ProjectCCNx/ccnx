@@ -43,7 +43,7 @@ import org.ccnx.ccn.profiles.CommandMarker;
  * 
  * Implements Comparable to make it easy to store in a Set and avoid duplicates.
  */
-public class Interest extends GenericXMLEncodable implements XMLEncodable, Comparable<Interest>, Cloneable {
+public class Interest extends GenericXMLEncodable implements XMLEncodable, Comparable<Interest>, Cloneable, ContentNameProvider {
 	
 	// Used to remove spurious *'s
 	public static final String RECURSIVE_POSTFIX = "*";
@@ -724,5 +724,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		public Interest getInterest() {
 			return interest;
 		}
+	}
+
+	public ContentName getContentName() {
+		return _name;
 	}
 }

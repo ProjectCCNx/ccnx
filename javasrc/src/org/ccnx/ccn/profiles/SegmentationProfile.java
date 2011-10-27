@@ -116,7 +116,7 @@ public class SegmentationProfile implements CCNProfile {
 	public static ContentName segmentRoot(ContentName name) {
 		if (isUnsegmented(name))
 			return name;
-		return new ContentName(name.count()-1, name.components());
+		return name.parent();
 	}
 
 	public static ContentName segmentName(ContentName name, long index) {

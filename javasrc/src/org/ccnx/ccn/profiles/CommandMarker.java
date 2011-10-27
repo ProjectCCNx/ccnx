@@ -83,7 +83,7 @@ import org.ccnx.ccn.protocol.ContentName;
  * @author rasmusse, smetters
  *
  */
-public class CommandMarker {
+public class CommandMarker implements ContentName.ComponentProvider {
 	
 	/**
 	 * Reserved bytes.
@@ -459,5 +459,9 @@ public class CommandMarker {
 		}
 		
 		return DataUtils.subarray(nameComponent, argumentStart+1, nameComponent.length - argumentStart - 1);
+	}
+
+	public byte[] getComponent() {
+		return _byteCommandMarker;
 	}
 }
