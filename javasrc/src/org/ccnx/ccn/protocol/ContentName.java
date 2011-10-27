@@ -777,6 +777,13 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return Component.parseNative(name);
 	}
 
+	/**
+	 * @return
+	 * Warning: this returns the internal byte arrays used in the ContentName component representation, without copying them.
+	 * You must not modify the contents of these byte arrays, or you will break the immutability
+	 * of ContentNames, which can have many problematic consequences.
+	 */
+	@Deprecated
 	public ArrayList<byte[]> components() { return _components; }
 
 	/**
@@ -812,12 +819,21 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Get the i'th component, indexed from 0.
 	 * @param i
 	 * @return null if i is out of range.
+	 * Warning: this returns the internal byte array used in the ContentName component representation.
+	 * You must not modify the contents of this byte array, or you will break the immutability
+	 * of ContentNames, which can have many problematic consequences.
 	 */
 	public final byte[] component(int i) { 
 		if ((null == _components) || (i >= _components.size())) return null;
 		return _components.get(i);
 	}
 
+	/**
+	 * @return null if there are no components.
+	 * Warning: this returns the internal byte array used in the ContentName component representation.
+	 * You must not modify the contents of this byte array, or you will break the immutability
+	 * of ContentNames, which can have many problematic consequences.
+	 */
 	public final byte [] lastComponent() {
 		if (null == _components || _components.size() == 0)
 			return null;
