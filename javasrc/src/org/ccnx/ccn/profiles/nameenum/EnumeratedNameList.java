@@ -33,6 +33,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
@@ -305,7 +306,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 	 * @return boolean Returns true if the name is present in the list of known children.
 	 * */
 	public boolean hasChild(String childName) {
-		return hasChild(ContentName.componentParseNative(childName));
+		return hasChild(Component.parseNative(childName));
 	}
 	
 	/**
@@ -672,7 +673,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			if (parentEnumerator.hasChild(childNameComponent)) {
 				if (Log.isLoggable(Level.INFO)) {
 					Log.info("EnumeratedNameList.exists: we have a matching child to {0} and the parent enumerator {1} has {2} children.", 
-							ContentName.componentPrintURI(childNameComponent), parentName, parentEnumerator.childCount());
+							Component.printURI(childNameComponent), parentName, parentEnumerator.childCount());
 				}
 				childIndex++;
 				if (childIndex == childName.count()) {
@@ -685,7 +686,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 			} else {
 				if (Log.isLoggable(Level.INFO)) {
 					Log.info("EnumeratedNameList.exists: the parent enumerator {0} has {1} children but none of them are {2}.", 
-							parentName, parentEnumerator.childCount(), ContentName.componentPrintURI(childNameComponent));
+							parentName, parentEnumerator.childCount(), Component.printURI(childNameComponent));
 				}
 				break;
 			}

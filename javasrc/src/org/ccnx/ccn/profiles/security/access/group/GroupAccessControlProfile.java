@@ -31,6 +31,7 @@ import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
@@ -51,9 +52,9 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	
 	// These may eventually want to move somewhere more general
 	public static final String GROUP_PREFIX = "Groups";
-	public static final byte [] GROUP_PREFIX_BYTES = ContentName.componentParseNative(GROUP_PREFIX);
+	public static final byte [] GROUP_PREFIX_BYTES = Component.parseNative(GROUP_PREFIX);
 	public static final String USER_PREFIX = "Users";
-	public static final byte [] USER_PREFIX_BYTES = ContentName.componentParseNative(USER_PREFIX);
+	public static final byte [] USER_PREFIX_BYTES = Component.parseNative(USER_PREFIX);
 	
 	// The labels used to tag group or user storage information in AccessControlPolicyMarkerObjects
 	public static final String GROUP_LABEL = "Group";		
@@ -62,12 +63,12 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	public static final String GROUP_MEMBERSHIP_LIST_NAME = "MembershipList";
 	public static final String GROUP_POINTER_TO_PARENT_GROUP_NAME = "PointerToParentGroup";
 	public static final String ACL_NAME = "ACL";
-	public static final byte [] ACL_NAME_BYTES = ContentName.componentParseNative(ACL_NAME);
+	public static final byte [] ACL_NAME_BYTES = Component.parseNative(ACL_NAME);
 	public static final String NODE_KEY_NAME = "NK";
-	public static final byte [] NODE_KEY_NAME_BYTES = ContentName.componentParseNative(NODE_KEY_NAME);	
+	public static final byte [] NODE_KEY_NAME_BYTES = Component.parseNative(NODE_KEY_NAME);	
 	// These two must be the same length
-	public static final byte [] USER_PRINCIPAL_PREFIX = ContentName.componentParseNative("p");
-	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g");
+	public static final byte [] USER_PRINCIPAL_PREFIX = Component.parseNative("p");
+	public static final byte [] GROUP_PRINCIPAL_PREFIX = Component.parseNative("g");
 	public static final ContentName ACL_POSTFIX = new ContentName(new byte[][]{ACCESS_CONTROL_MARKER_BYTES, ACL_NAME_BYTES});
 
 	/**
@@ -141,7 +142,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 				while (principalInfoNameComponent[pos + fnLength] != CCNProfile.COMPONENT_SEPARATOR[0]) fnLength++;
 				byte[] friendlyNameBytes = new byte[fnLength];
 				System.arraycopy(principalInfoNameComponent, pos, friendlyNameBytes, 0, fnLength);
-				_friendlyName = ContentName.componentPrintNative(friendlyNameBytes);
+				_friendlyName = Component.printNative(friendlyNameBytes);
 				pos += fnLength;
 				pos += CCNProfile.COMPONENT_SEPARATOR.length;
 	
@@ -152,9 +153,9 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			} catch (Exception e) {
 				// we're having some trouble here...
 				Log.severe(Log.FAC_ACCESSCONTROL, "PrincipalInfo: error in parsing component {0}", 
-						ContentName.componentPrintURI(principalInfoNameComponent));
+						Component.printURI(principalInfoNameComponent));
 				Log.severe(Log.FAC_ACCESSCONTROL, "PrincipalInfo: typeMarker {0}, distinguishing hash {1}, friendly name {2}, timestamp {3}",
-						ContentName.componentPrintURI(_typeMarker), ContentName.componentPrintURI(_distinguishingHash),
+						Component.printURI(_typeMarker), Component.printURI(_distinguishingHash),
 						_friendlyName, _versionTimestamp);
 				System.exit(1);
 			}
@@ -171,7 +172,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		 */
 		public byte[] toNameComponent() {
 			byte [] prefix = (isGroup() ? GROUP_PRINCIPAL_PREFIX : USER_PRINCIPAL_PREFIX);
-			byte [] bytePrincipal = ContentName.componentParseNative(friendlyName());
+			byte [] bytePrincipal = Component.parseNative(friendlyName());
 			byte [] byteTime = versionTimestamp().toBinaryTime();
 			byte [] component = new byte[prefix.length + distinguishingHash().length + bytePrincipal.length + 
 			                             byteTime.length + 3*COMPONENT_SEPARATOR.length];
@@ -383,7 +384,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the friendly name of the group
 	 */
 	public static String groupNameToFriendlyName(ContentName groupName) {
-		return ContentName.componentPrintNative(groupName.lastComponent());
+		return Component.printNative(groupName.lastComponent());
 	}
 
 	/**

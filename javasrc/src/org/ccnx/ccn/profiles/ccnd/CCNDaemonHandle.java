@@ -29,6 +29,7 @@ import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -57,7 +58,7 @@ public class CCNDaemonHandle {
 	public static String idToString(PublisherPublicKeyDigest digest) {
 		byte [] digested;
 		digested = digest.digest();
-		return ContentName.componentPrintURI(digested);
+		return Component.printURI(digested);
 	}
 	
 	/**

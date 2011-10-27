@@ -33,6 +33,7 @@ import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -523,7 +524,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			
 		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 			Log.info(Log.FAC_IO, "flush: outputting to the segmenter, baseName " + _baseName +
-                     " basenameindex " + ContentName.componentPrintURI(SegmentationProfile.getSegmentNumberNameComponent(_baseNameIndex)) + "; " 
+                     " basenameindex " + Component.printURI(SegmentationProfile.getSegmentNumberNameComponent(_baseNameIndex)) + "; " 
                      + _blockOffset + 
                      " bytes written, holding back " + saveBytes + " flushing final blocks? " + flushLastBlock + ".");
 		// Flush to segmenter to generate ContentObjects, sign when appropriate, and output to flow controller

@@ -26,6 +26,7 @@ import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
@@ -41,7 +42,7 @@ public class MetadataProfile implements CCNProfile {
 	public static final byte [] OLD_METADATA_NAMESPACE = 
 		(CCNProfile.MARKER + "meta" + CCNProfile.MARKER).getBytes();
 	
-	public static final byte [] HEADER_NAME = ContentName.componentParseNative(".header");
+	public static final byte [] HEADER_NAME = Component.parseNative(".header");
 
 	/**
 	 * This interface allows getLatestVersion of metadata within one of the supported meta

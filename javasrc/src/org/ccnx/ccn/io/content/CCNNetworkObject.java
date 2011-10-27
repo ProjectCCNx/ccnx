@@ -50,6 +50,7 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.VersionNumber;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -1547,7 +1548,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 										excludes = new byte [][]{co.name().component(_currentInterest.name().count())};
 										if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 											Log.info(Log.FAC_IO, "updateInBackground: handleContent: got content for {0} that doesn't verify ({1}), excluding bogus version {2} as temporary workaround FIX WHEN POSSIBLE",
-													_currentInterest.name(), co.fullName(), ContentName.componentPrintURI(excludes[0]));
+													_currentInterest.name(), co.fullName(), Component.printURI(excludes[0]));
 
 									} else {
 										update(co);

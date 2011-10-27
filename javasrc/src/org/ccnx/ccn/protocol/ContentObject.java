@@ -832,7 +832,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		int len = _content.length;
 		if (len > 16)
 			len = 16;
-		s.append(ContentName.componentPrintURI(_content, 0, len));
+		s.append(Component.printURI(_content, 0, len));
 		return s.toString();
 	}
 }

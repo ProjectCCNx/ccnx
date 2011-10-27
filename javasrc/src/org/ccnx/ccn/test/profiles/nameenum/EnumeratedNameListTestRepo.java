@@ -33,6 +33,7 @@ import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -387,7 +388,7 @@ public class EnumeratedNameListTestRepo {
 	private ContentName addContentToRepo(ContentName name, CCNHandle handle) throws ConfigurationException, IOException {
 		//method to load something to repo for testing
 		CCNStringObject cso = 
-			new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), SaveType.REPOSITORY, handle);
+			new CCNStringObject(name, Component.printNative(name.lastComponent()), SaveType.REPOSITORY, handle);
 		cso.save();
 		Log.info(Log.FAC_TEST, "Saved new object: " + cso.getVersionedName());
 		return cso.getVersionedName();	

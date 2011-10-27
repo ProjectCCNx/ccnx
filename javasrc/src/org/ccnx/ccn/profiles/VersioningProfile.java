@@ -29,6 +29,7 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
@@ -145,7 +146,7 @@ public class VersioningProfile implements CCNProfile {
 	
 	public static String printAsVersionComponent(CCNTime version) {
 		byte [] vcomp = timeToVersionComponent(version);
-		return ContentName.componentPrintURI(vcomp);
+		return Component.printURI(vcomp);
 	}
 	
 	/**

@@ -36,6 +36,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.Flosser;
 
@@ -152,7 +153,7 @@ public class CreateUserData {
 		BasicKeyManager userKeyManager;
 		while (null != availableChildren) {
 			for (ContentName child : availableChildren) {
-				friendlyName = ContentName.componentPrintNative(child.lastComponent());
+				friendlyName = Component.printNative(child.lastComponent());
 				if (null != getUser(friendlyName)) {
 					Log.info("Already loaded data for user: " + friendlyName + " from name: " + _userContentNames.get(friendlyName));
 					continue;

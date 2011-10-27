@@ -32,6 +32,7 @@ import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
@@ -261,7 +262,7 @@ public class Flosser implements CCNContentHandler {
 					Log.finest(Log.FAC_TEST, "Creating new exclude filter for interest {0}", interest.name());
 				} else {
 					if (interest.exclude().match(result.name().component(prefixCount))) {
-						Log.fine(Log.FAC_TEST, "We should have already excluded child component: {0}", ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
+						Log.fine(Log.FAC_TEST, "We should have already excluded child component: {0}", Component.printURI(result.name().component(prefixCount)));                   	
 					} else {
 						// Has to be in order...
 						Log.finest(Log.FAC_TEST, "Adding child component to exclude.");
@@ -269,7 +270,7 @@ public class Flosser implements CCNContentHandler {
 								new byte [][] { result.name().component(prefixCount) });
 					}
 				}
-				Log.finer(Log.FAC_TEST, "Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.exclude().size());
+				Log.finer(Log.FAC_TEST, "Excluding child " + Component.printURI(result.name().component(prefixCount)) + " total excluded: " + interest.exclude().size());
 
 				if (_flossSubNamespaces || SegmentationProfile.isNotSegmentMarker(result.name().component(prefixCount))) {
 					ContentName newNamespace = null;

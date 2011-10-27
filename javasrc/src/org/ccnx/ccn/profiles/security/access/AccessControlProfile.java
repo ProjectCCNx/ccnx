@@ -21,6 +21,7 @@ import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceProfile;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
@@ -44,9 +45,9 @@ public class AccessControlProfile implements CCNProfile {
 	public static final byte [] ACCESS_CONTROL_MARKER_BYTES = ACCESS_CONTROL_MARKER.getBytes();
 
 	public static final String ROOT_NAME = "ROOT";
-	public static final byte [] ROOT_NAME_BYTES = ContentName.componentParseNative(ROOT_NAME);
+	public static final byte [] ROOT_NAME_BYTES = Component.parseNative(ROOT_NAME);
 	public static final String DATA_KEY_NAME = "DK";
-	public static final byte [] DATA_KEY_NAME_BYTES = ContentName.componentParseNative(DATA_KEY_NAME);
+	public static final byte [] DATA_KEY_NAME_BYTES = Component.parseNative(DATA_KEY_NAME);
 	public static final String ACCESS_CONTROL_POLICY_NAME = "AccessControl";
 	public static final byte [] ACCESS_CONTROL_POLICY_NAME_BYTES = ACCESS_CONTROL_POLICY_NAME.getBytes();
 	protected static final ContentName ACCESS_CONTROL_POLICY_CONTENTNAME = new ContentName(new byte [][] {ACCESS_CONTROL_POLICY_NAME_BYTES});

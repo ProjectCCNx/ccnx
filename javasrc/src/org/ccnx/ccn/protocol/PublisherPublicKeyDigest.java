@@ -107,7 +107,7 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 	 * @throws DotDotComponent 
 	 */
 	public static PublisherPublicKeyDigest fromURIEncoded(String uriEncoded) throws DotDotComponent, URISyntaxException {
-		byte [] encodedBytes = ContentName.componentParseURI(uriEncoded);
+		byte [] encodedBytes = Component.parseURI(uriEncoded);
 		
 		if (KeyProfile.KEY_NAME_COMPONENT_MARKER.isMarker(encodedBytes)) {
 			return new PublisherPublicKeyDigest(KeyProfile.getKeyIDFromNameComponent(encodedBytes));

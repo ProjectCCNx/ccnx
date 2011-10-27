@@ -18,9 +18,7 @@
 package org.ccnx.ccn.protocol;
 
 import java.io.Serializable;
-import java.math.BigInteger;
 import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -62,7 +60,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public static class DotDotComponent extends Exception { // Need to strip off a component
 		private static final long serialVersionUID = 4667513234636853164L;
 	}; 
-	private static final char HEX_DIGITS[] = {
+	static final char HEX_DIGITS[] = {
 		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
 	};
 
@@ -80,13 +78,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @see builder
 	 */
 	public interface ComponentProvider {
+		/**
+		 * @return Fetches a component. The byte array that is returned must be immutable - i.e. never get changed.
+		 * If there is any risk the byte array may be changed you must return a new copy of it.
+		 */
 		public byte[] getComponent();
-	}
-	/**
-	 * Indicates that a class will supply an immutable component to a ContentName builder, and hence that
-	 * the ContentName builder does not have to copy the component before including it in the ContentName.
-	 */
-	public interface ImmutableComponentProvider extends ContentName.ComponentProvider {
 	}
 	private static final StringParser constructorStringParser = new StringParser(){
 		@Override
@@ -181,10 +177,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			} else if (arg instanceof ContentName.ComponentProvider) {
 				ContentName.ComponentProvider p = (ContentName.ComponentProvider) arg;
 				componentCount++;
-				byte[] component = p.getComponent();
-				if (!(p instanceof ContentName.ImmutableComponentProvider))
-					component = component.clone();
-				args[i] = component;
+				args[i] = p.getComponent();
 			} else
 				throw new IllegalArgumentException("Argument " + i+1 + " is a " + arg.getClass().getSimpleName());
 		}
@@ -488,7 +481,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				// Leave off initial empty component
 				for (int i=1; i < parts.length; ++i) {
 					try {
-						byte[] component = componentParseURI(parts[i]);
+						byte[] component = Component.parseURI(parts[i]);
 						if (null != component) {
 							result._components.add(component);
 						}
@@ -522,7 +515,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				result = new ContentName(parts.length, (ArrayList<byte[]>)null);
 				for (int i=0; i < parts.length; ++i) {
 					try {
-						byte[] component = componentParseURI(parts[i]);
+						byte[] component = Component.parseURI(parts[i]);
 						if (null != component) {
 							result._components.add(component);
 						}
@@ -556,7 +549,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			ContentName result = new ContentName(parent.count() + ((null != name) ? 1 : 0), parent.components());
 			if (null != name) {
 				try {
-					byte[] decodedName = componentParseURI(name);
+					byte[] decodedName = Component.parseURI(name);
 					if (null != decodedName) {
 						result._components.add(decodedName);
 					}
@@ -603,7 +596,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			}
 			// Leave off initial empty component
 			for (int i=1; i < parts.length; ++i) {
-				byte[] component = componentParseNative(parts[i]);
+				byte[] component = Component.parseNative(parts[i]);
 				if (null != component) {
 					result._components.add(component);
 				}
@@ -624,7 +617,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public static ContentName fromNative(ContentName parent, String name) {
 		ContentName result = new ContentName(parent.count() + ((null != name) ? 1 : 0), parent.components());
 		if (null != name) {
-			byte[] decodedName = componentParseNative(name);
+			byte[] decodedName = Component.parseNative(name);
 			if (null != decodedName) {
 				result._components.add(decodedName);
 			}
@@ -652,7 +645,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		ContentName result = new ContentName(parentCount + extra, (null != parent) ? parent.components() : null);
 		if ((null != parts) && (parts.length > 0)) {
 			for (int i=0; i < parts.length; ++i) {
-				byte[] component = componentParseNative(parts[i]);
+				byte[] component = Component.parseNative(parts[i]);
 				if (null != component) {
 					result._components.add(component);
 				}
@@ -679,7 +672,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		StringBuffer nameBuf = new StringBuffer();
 		for (int i=0; i < _components.size(); ++i) {
 			nameBuf.append(SEPARATOR);
-			nameBuf.append(componentPrintURI(_components.get(i)));
+			nameBuf.append(Component.printURI(_components.get(i)));
 		}
 		return nameBuf.toString();
 	} 
@@ -715,123 +708,35 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * library handling of URI representation of names.
 	 * @param bs input byte array.
 	 * @return
+	 * @deprecated Use {@link Component#printURI(byte[],int,int)} instead
 	 */
+	@Deprecated
 	public static String componentPrintURI(byte[] bs, int offset, int length) {
-		int i;
-		if (null == bs || bs.length == 0) {
-			// Empty component represented by three '.'
-			return "...";
-		}
-		// To get enough control over the encoding, we use 
-		// our own loop and NOT simply new String(bs) (or java.net.URLEncoder) because
-		// the String constructor will decode illegal UTF-8 sub-sequences
-		// with Unicode "Replacement Character" U+FFFD.  We could use a CharsetDecoder
-		// to detect the illegal UTF-8 sub-sequences and handle them separately,
-		// except that this is almost certainly less efficient and some versions of Java 
-		// have bugs that prevent flagging illegal overlong UTF-8 encodings (CVE-2008-2938).
-		// Also, it is much easier to verify what this is doing and compare to the C library implementation.
-		//
-		// Initial allocation is based on the documented behavior of StringBuilder's buffer
-		// expansion algorithm being 2+2*length if expansion is required.
-		StringBuilder result = new StringBuilder((1 + 3 * bs.length) / 2);
-		for (i = 0; i < bs.length && bs[i] == '.'; i++) {
-			continue;
-		}
-		if (i == bs.length) {
-			// all dots
-			result.append("...");
-		}
-		for (i = 0; i < bs.length; i++) {
-			char ch = (char) bs[i];
-			if (('a' <= ch && ch <= 'z') ||
-					('A' <= ch && ch <= 'Z') ||
-					('0' <= ch && ch <= '9') ||
-					ch == '-' || ch == '.' || ch == '_' || ch == '~')
-				result.append(ch);
-			else {
-				result.append('%');
-				result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
-				result.append(HEX_DIGITS[ch & 0xF]);
-			}
-		}
-		return result.toString();
+		return Component.printURI(bs, offset, length);
 	}
 
+	/**
+	 * @deprecated Use {@link Component#printURI(byte[])} instead
+	 */
+	@Deprecated
 	public static String componentPrintURI(byte [] bs) {
-		return componentPrintURI(bs, 0, bs.length);
+		return Component.printURI(bs);
 	}
 
+	/**
+	 * @deprecated Use {@link Component#printNative(byte[])} instead
+	 */
+	@Deprecated
 	public static String componentPrintNative(byte[] bs) {
-		// Native string print is the one place where we can just use
-		// Java native platform decoding.  Note that this is not 
-		// necessarily invertible, since there may be byte sequences 
-		// that do not correspond to any legal native character encoding
-		// that may be converted to e.g. Unicode "Replacement Character" U+FFFD.
-		return new String(bs);
+		return Component.printNative(bs);
 	}
 
-	// UrlEncoded in case we want variant compatible with java.net.URLEncoder
-	// again in future
-	//	protected static String componentPrintUrlEncoded(byte[] bs) {
-	//		// NHB: Van is expecting the URI encoding rules
-	//		if (null == bs || bs.length == 0) {
-	//			// Empty component represented by three '.'
-	//			return "...";
-	//		}
-	//		try {
-	//			// Note that this would probably be more efficient as simple loop:
-	//			// In order to use the URLEncoder class to handle the 
-	//			// parts that are UTF-8 already, we decode the bytes into Java String
-	//			// as though they were UTF-8.  Wherever that fails
-	//			// (i.e. where byte sub-sequences are NOT legal UTF-8)
-	//			// we directly convert those bytes to the %xy output format.
-	//			// To get enough control over the decoding, we must use 
-	//			// the charset decoder and NOT simply new String(bs) because
-	//			// the String constructor will decode illegal UTF-8 sub-sequences
-	//			// with Unicode "Replacement Character" U+FFFD.
-	//			StringBuffer result = new StringBuffer();
-	//			Charset charset = Charset.forName("UTF-8");
-	//			CharsetDecoder decoder = charset.newDecoder();
-	//			// Leave nothing to defaults: we want to be notified on anything illegal
-	//			decoder.onMalformedInput(CodingErrorAction.REPORT);
-	//			decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
-	//			ByteBuffer input = ByteBuffer.wrap(bs);
-	//			CharBuffer output = CharBuffer.allocate(((int)decoder.maxCharsPerByte()*bs.length)+1);
-	//			while (input.remaining() > 0) {
-	//				CoderResult cr = decoder.decode(input, output, true);
-	//				assert(!cr.isOverflow());
-	//				// URLEncode whatever was successfully decoded from UTF-8
-	//				output.flip();
-	//				result.append(URLEncoder.encode(output.toString(), "UTF-8"));
-	//				output.clear();
-	//				if (cr.isError()) {
-	//					for (int i=0; i<cr.length(); i++) {
-	//						result.append(String.format("%%%02X", input.get()));
-	//					}
-	//				}
-	//			}
-	//			int i = 0;
-	//			for (i = 0; i < result.length() && result.charAt(i) == '.'; i++) {
-	//				continue;
-	//			}
-	//			if (i == result.length()) {
-	//				// all dots
-	//				result.append("...");
-	//			}
-	//			return result.toString();
-	//		} catch (UnsupportedCharsetException e) {
-	//			throw new RuntimeException("UTF-8 not supported charset", e);
-	//		} catch (UnsupportedEncodingException e) {
-	//			throw new RuntimeException("UTF-8 not supported", e);
-	//		}
-	//	}
-
+	/**
+	 * @deprecated Use {@link Component#hexPrint(byte[])} instead
+	 */
+	@Deprecated
 	public static String hexPrint(byte [] bs) {
-		if (null == bs)
-			return new String();
-
-		BigInteger bi = new BigInteger(1,bs);
-		return bi.toString(16);
+		return Component.hexPrint(bs);
 	}
 
 	/**
@@ -850,72 +755,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * the value obtained by removing three dots.
 	 * @param name a single component of a name, URI encoded
 	 * @return a name component
+	 * @deprecated Use {@link Component#parseURI(String)} instead
 	 */
+	@Deprecated
 	public static byte[] componentParseURI(String name) throws DotDotComponent, URISyntaxException {
-		byte[] decodedName = null;
-		boolean alldots = true; // does this component contain only dots after unescaping?
-		boolean quitEarly = false;
-
-		ByteBuffer result = ByteBuffer.allocate(name.length());
-		for (int i = 0; i < name.length() && !quitEarly; i++) {
-			char ch = name.charAt(i);
-			switch (ch) {
-			case '%': 
-				// This is a byte string %xy where xy are hex digits
-				// Since the input string must be compatible with the output
-				// of componentPrint(), we may convert the character values directly.
-				if (name.length()-1 < i+2) {
-					throw new URISyntaxException(name, "malformed %xy byte representation: too short", i);
-				}
-				int b1 = Character.digit(name.charAt(++i), 16); // consume x
-				int b2 = Character.digit(name.charAt(++i), 16); // consume y
-				if (b1 < 0 || b2 < 0)
-					throw new URISyntaxException(name, "malformed %xy byte representation: not legal hex number: " + name.substring(i-2, i+1), i-2);
-				result.put((byte)((b1 * 16) + b2));
-				break;
-				// Note in C lib case 0 is handled like the two general delimiters below that terminate processing 
-				// but that case should never arise in Java which uses real unicode characters.
-			case '/':
-			case '?':
-			case '#':
-				quitEarly = true; // early exit from containing loop
-				break;
-			case ':': case '[': case ']': case '@':
-			case '!': case '$': case '&': case '\'': case '(': case ')':
-			case '*': case '+': case ',': case ';': case '=':
-				// Permit unescaped reserved characters
-				result.put((byte)ch);
-				break;
-			default: 
-				if (('a' <= ch && ch <= 'z') ||
-						('A' <= ch && ch <= 'Z') ||
-						('0' <= ch && ch <= '9') ||
-						ch == '-' || ch == '.' || ch == '_' || ch == '~') {
-					// This character remains the same
-					result.put((byte)ch);
-				} else {
-					throw new URISyntaxException(name, "Illegal characters in URI", i);
-				}
-				break;
-			}
-			if (!quitEarly && result.get(result.position()-1) != '.') {
-				alldots = false;
-			}
-		}
-		result.flip();
-		if (alldots) {
-			if (result.limit() <= 1) {
-				return null;
-			} else if (result.limit() == 2) {
-				throw new DotDotComponent();
-			} else {
-				// Remove the three '.' extra
-				result.limit(result.limit()-3);
-			}
-		}
-		decodedName = new byte[result.limit()];
-		System.arraycopy(result.array(), 0, decodedName, 0, result.limit());
-		return decodedName;
+		return Component.parseURI(name);
 	}
 
 	/**
@@ -926,66 +770,12 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * so you can be confident in encoding any native Java String
 	 * TODO make this use Java string escaping rules?
 	 * @param name Component as native Java string
+	 * @deprecated Use {@link Component#parseNative(String)} instead
 	 */
+	@Deprecated
 	public static byte[] componentParseNative(String name) {
-		// Handle exception s around missing UTF-8
-		return DataUtils.getBytesFromUTF8String(name);
+		return Component.parseNative(name);
 	}
-
-	// UrlEncoded in case we want to enable it again 
-	//	protected static byte[] componentParseUrlEncoded(String name) throws DotDotComponent {
-	//		byte[] decodedName = null;
-	//		boolean alldots = true; // does this component contain only dots after unescaping?
-	//		try {
-	//			ByteBuffer result = ByteBuffer.allocate(name.length());
-	//			for (int i = 0; i < name.length(); i++) {
-	//				if (name.charAt(i) == '%') {
-	//					// This is a byte string %xy where xy are hex digits
-	//					// Since the input string must be compatible with the output
-	//					// of componentPrint(), we may convert the byte values directly.
-	//					// There is no need to go through a character representation.
-	//					if (name.length()-1 < i+2) {
-	//						throw new IllegalArgumentException("malformed %xy byte representation: too short");
-	//					}
-	//					if (name.charAt(i+1) == '-') {
-	//						throw new IllegalArgumentException("malformed %xy byte representation: negative value not permitted");
-	//					}
-	//					try {
-	//						result.put(new Integer(Integer.parseInt(name.substring(i+1, i+3),16)).byteValue());
-	//					} catch (NumberFormatException e) {
-	//						throw new IllegalArgumentException("malformed %xy byte representation: not legal hex number",e);
-	//					}
-	//					i+=2; // for loop will increment by one more to get net +3 so past byte string
-	//				} else if (name.charAt(i) == '+') {
-	//					// This is the one character translated to a different one
-	//					result.put(" ".getBytes("UTF-8"));
-	//				} else {
-	//					// This character remains the same
-	//					result.put(name.substring(i, i+1).getBytes("UTF-8"));
-	//				}
-	//				if (result.get(result.position()-1) != '.') {
-	//					alldots = false;
-	//				}
-	//			}
-	//			result.flip();
-	//			if (alldots) {
-	//				if (result.limit() <= 1) {
-	//					return null;
-	//				} else if (result.limit() == 2) {
-	//					throw new DotDotComponent();
-	//				} else {
-	//					// Remove the three '.' extra
-	//					result.limit(result.limit()-3);
-	//				}
-	//			}
-	//			decodedName = new byte[result.limit()];
-	//			System.arraycopy(result.array(), 0, decodedName, 0, result.limit());
-	//		} catch (UnsupportedEncodingException e) {
-	//			Library.severe("UTF-8 not supported.");
-	//			throw new RuntimeException("UTF-8 not supported", e);
-	//		}
-	//		return decodedName;
-	//	}
 
 	public ArrayList<byte[]> components() { return _components; }
 
@@ -1039,7 +829,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public String stringComponent(int i) {
 		if ((null == _components) || (i >= _components.size())) return null;
-		return componentPrintURI(_components.get(i));
+		return Component.printURI(_components.get(i));
 	}
 
 	/**
@@ -1164,7 +954,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public boolean contains(String str) throws URISyntaxException {
 		try {
-			byte[] parsed = componentParseURI(str);
+			byte[] parsed = Component.parseURI(str);
 			if (null == parsed) {
 				return false;
 			} else {
@@ -1187,7 +977,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public int containsWhere(String str) throws URISyntaxException {
 		try {
-			byte[] parsed = componentParseURI(str);
+			byte[] parsed = Component.parseURI(str);
 			if (null == parsed) {
 				return -1;
 			} else {
@@ -1206,7 +996,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public int whereLast(String str) throws URISyntaxException {
 		try {
-			byte[] parsed = componentParseURI(str);
+			byte[] parsed = Component.parseURI(str);
 			if (null == parsed) {
 				return -1;
 			} else {
@@ -1327,7 +1117,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	public ContentName cut(String component) throws URISyntaxException {
 		try {
-			byte[] parsed = componentParseURI(component);
+			byte[] parsed = Component.parseURI(component);
 			if (null == parsed) {
 				return this;
 			} else {

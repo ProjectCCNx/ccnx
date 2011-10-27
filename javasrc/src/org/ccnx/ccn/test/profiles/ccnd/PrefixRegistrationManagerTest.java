@@ -31,6 +31,7 @@ import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ActionType;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -127,7 +128,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 			e.printStackTrace();
 		}
 		System.out.println("Encoded: " );
-		System.out.println(ContentName.componentPrintURI(baos.toString().getBytes()));
+		System.out.println(Component.printURI(baos.toString().getBytes()));
 		System.out.println();
 		
 		Log.info(Log.FAC_TEST, "Completed testEncodeOutputStream");
@@ -151,7 +152,7 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 			e.printStackTrace();
 		}
 		System.out.println("Encoded: " );
-		System.out.println(ContentName.componentPrintURI(baos.toString().getBytes()));
+		System.out.println(Component.printURI(baos.toString().getBytes()));
 		
 		System.out.println("Decoding: ");
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());

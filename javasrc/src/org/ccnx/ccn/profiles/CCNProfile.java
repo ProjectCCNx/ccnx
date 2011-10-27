@@ -17,7 +17,7 @@
 
 package org.ccnx.ccn.profiles;
 
-import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.Component;
 
 /**
  * Marker profile.
@@ -30,6 +30,6 @@ public interface CCNProfile {
 	
 	// Needs to be something not in base64 charset.
 	public static final String COMPONENT_SEPARATOR_STRING = ":";
-	public static final byte [] COMPONENT_SEPARATOR = ContentName.componentParseNative(COMPONENT_SEPARATOR_STRING);
+	public static final byte [] COMPONENT_SEPARATOR = Component.parseNative(COMPONENT_SEPARATOR_STRING);
 
 }

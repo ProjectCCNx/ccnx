@@ -47,6 +47,7 @@ import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
 import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
 import org.ccnx.ccn.profiles.security.KeyProfile;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -609,7 +610,7 @@ public class CCNNetworkManager implements Runnable {
 				synchronized(_idSyncer) {
 					_ccndId = sentID;
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO) )
-						Log.info(Log.FAC_NETMANAGER, "CCNDIdGetter: ccndId {0}", ContentName.componentPrintURI(sentID.digest()));
+						Log.info(Log.FAC_NETMANAGER, "CCNDIdGetter: ccndId {0}", Component.printURI(sentID.digest()));
 				}
 			} /* null == _ccndId */
 		} /* run() */

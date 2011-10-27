@@ -33,6 +33,7 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
@@ -98,18 +99,18 @@ public class ContentTree {
 			if(component==null)
 				s = "root";
 			else{
-				s = ContentName.componentPrintURI(component);				
+				s = Component.printURI(component);				
 			}
 			if(oneChild!=null){
 				//there is only one child
-				s+= " oneChild: "+ContentName.componentPrintURI(component);
+				s+= " oneChild: "+Component.printURI(component);
 			}
 			else if(children!=null){
 				s+= " children: ";
 				int i = 0;
 				for(TreeNode c: children.keySet()){
 					//append each child to string
-					s+=" "+ContentName.componentPrintURI(c.component);
+					s+=" "+Component.printURI(c.component);
 					//s+=new String(t.component)+" ";
 					if (++i > 50) {
 						s+= "...";
@@ -546,7 +547,7 @@ public class ContentTree {
 			// Special case of root
 			myname = "/";
 		} else {
-			myname = ContentName.componentPrintURI(node.component);
+			myname = Component.printURI(node.component);
 			if (maxNodeLen > 0 && myname.length() > (maxNodeLen - 3)) {
 				myname = "<" + myname.substring(0,maxNodeLen-4) + "...>";
 			}

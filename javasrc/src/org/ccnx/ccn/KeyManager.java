@@ -46,6 +46,7 @@ import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -679,7 +680,7 @@ public abstract class KeyManager {
 			
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
 				Log.info(Log.FAC_KEYS, "Published key {0} from scratch as content {1}.", publishedKey.getVersionedName(), 
-						ContentName.componentPrintURI(publishedKey.getContentDigest()));
+						Component.printURI(publishedKey.getContentDigest()));
 			}
 			return publishedKey;
 		}
@@ -811,7 +812,7 @@ public abstract class KeyManager {
 		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
 			Log.info(Log.FAC_KEYS, "publishKey: key not previously published, making new key object {0} with version {1} displayed as {2}", 
 				keyObject.getVersionedName(), keyVersion, 
-				((null != nameAndVersion.second()) ? ContentName.componentPrintURI(nameAndVersion.second()) : "<no version>"));
+				((null != nameAndVersion.second()) ? Component.printURI(nameAndVersion.second()) : "<no version>"));
 		}
 
 		// Eventually may want to find something already published and link to it, but be simple here.
@@ -825,7 +826,7 @@ public abstract class KeyManager {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
 				Log.info(Log.FAC_KEYS, "Published key {0} to name {1} with key locator {2}; ephemeral digest {3}.", 
 						keyToPublish, keyObject.getVersionedName(), signingKeyLocator,
-						ContentName.componentPrintURI(keyObject.getFirstDigest()));
+						Component.printURI(keyObject.getFirstDigest()));
 			}
 		}
 		keyManager.getPublicKeyCache().remember(keyObject);

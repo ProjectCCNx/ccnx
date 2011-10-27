@@ -24,6 +24,7 @@ import javax.swing.table.AbstractTableModel;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class ACLTable extends AbstractTableModel {
@@ -78,7 +79,7 @@ public class ACLTable extends AbstractTableModel {
 	
 	public Object getValueAt(int row, int col) {
 		if (col == 0) {
-			String friendlyName = ContentName.componentPrintNative(principals[row].lastComponent());
+			String friendlyName = Component.printNative(principals[row].lastComponent());
 			return friendlyName;
 		}
 		else if (col < 4) return aclTable[row][col-1];

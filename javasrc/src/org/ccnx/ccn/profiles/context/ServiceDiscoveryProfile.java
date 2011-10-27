@@ -29,6 +29,7 @@ import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.security.KeyProfile;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
@@ -71,7 +72,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 		return new ContentName(
 				new byte [][]{ServiceDiscoveryProfile.LOCALHOST_SCOPE.getBytes(), 
 						SERVICE_NAME_COMPONENT_MARKER.getBytes(), 
-						ContentName.componentParseNative(service)});
+						Component.parseNative(service)});
 	}
 
 	public static String getLocalServiceName(ContentName nameWithServicePrefix) {
@@ -97,14 +98,14 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
 				Log.finer(Log.FAC_KEYS, "Cannot get local service name, {0} does not contain a service name component {1}.",
 						nameWithServicePrefix, 
-						ContentName.componentPrintURI(nameWithServicePrefix.component(SERVICE_MARKER_COMPONENT)));
+						Component.printURI(nameWithServicePrefix.component(SERVICE_MARKER_COMPONENT)));
 			}
 			return null;			
 		}
 
 		byte [] serviceNameComponent = 
 			nameWithServicePrefix.component(SERVICE_NAME_COMPONENT);
-		return ContentName.componentPrintNative(serviceNameComponent);
+		return Component.printNative(serviceNameComponent);
 	}
 
 	/**

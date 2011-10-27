@@ -20,6 +20,7 @@ import java.io.IOException;
 
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
@@ -30,8 +31,8 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class KeyProfile implements CCNProfile {
 	
-	public static final byte [] KEY_NAME_COMPONENT = ContentName.componentParseNative("KEY");
-	public static final byte [] KEYS_NAME_COMPONENT = ContentName.componentParseNative("KEYS");
+	public static final byte [] KEY_NAME_COMPONENT = Component.parseNative("KEY");
+	public static final byte [] KEYS_NAME_COMPONENT = Component.parseNative("KEYS");
 	
 	public static final CommandMarker KEY_NAME_COMPONENT_MARKER = 
 		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "K");
@@ -61,14 +62,14 @@ public class KeyProfile implements CCNProfile {
 	 * Helper method to return key ID name component as a string.
 	 */
 	public static String keyIDToNameComponentAsString(PublisherPublicKeyDigest keyID) {
-		return ContentName.componentPrintURI(keyIDToNameComponent(keyID));
+		return Component.printURI(keyIDToNameComponent(keyID));
 	}
 	
 	/**
 	 * Helper method to return key ID name component as a string.
 	 */
 	public static String keyIDToNameComponentAsString(byte [] keyID) {
-		return ContentName.componentPrintURI(keyIDToNameComponent(keyID));
+		return Component.printURI(keyIDToNameComponent(keyID));
 	}
 
 	

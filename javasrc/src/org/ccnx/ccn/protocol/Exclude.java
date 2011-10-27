@@ -403,7 +403,7 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 					sb.append(",");
 				if (ee instanceof ExcludeComponent) {
 					ExcludeComponent ec = (ExcludeComponent) ee;
-					sb.append(ContentName.componentPrintURI(ec.body));
+					sb.append(Component.printURI(ec.body));
 				} else {
 					sb.append("B");
 				}
