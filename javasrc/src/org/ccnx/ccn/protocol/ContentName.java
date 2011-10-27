@@ -32,6 +32,7 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.protocol.ContentNameProvider;
 
 /**
  * ContentNames consist of a sequence of byte[] components which may not 
@@ -40,7 +41,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * To create a ContentName from Strings, a client must call one of the static 
  * methods that implements a conversion.
  */
-public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName>, Serializable {
+public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName>, Serializable, ContentNameProvider {
 
 	private static final long serialVersionUID = 2754391169423477552L;
 
@@ -70,6 +71,144 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		this(0, (ArrayList<byte[]>)null);
 	}
 
+	// support for name builder methods
+	static abstract class StringParser {
+		public abstract ArrayList<byte[]> parse(String s) throws MalformedContentNameStringException;
+	}
+	/**
+	 * Allows a class to be included as an argument to a ContentName builder.
+	 * @see builder
+	 */
+	public interface ComponentProvider {
+		public byte[] getComponent();
+	}
+	/**
+	 * Indicates that a class will supply an immutable component to a ContentName builder, and hence that
+	 * the ContentName builder does not have to copy the component before including it in the ContentName.
+	 */
+	public interface ImmutableComponentProvider extends ContentName.ComponentProvider {
+	}
+	private static final StringParser constructorStringParser = new StringParser(){
+		@Override
+		public ArrayList<byte[]> parse(String s) {
+			try {
+				return fromNative(s)._components;
+			} catch (MalformedContentNameStringException e) {
+				ArrayList<byte[]> components = new ArrayList<byte[]>(1);
+				components.add(s.getBytes());
+				return components;
+			}
+		}
+	};
+	private static final StringParser nativeStringParser = new StringParser(){
+		@Override
+		public ArrayList<byte[]> parse(String s) throws MalformedContentNameStringException {
+			return fromNative(s)._components;
+		}
+	};
+	private static final StringParser uriStringParser = new StringParser(){
+		@Override
+		public ArrayList<byte[]> parse(String s) throws MalformedContentNameStringException {
+			return fromURI(s)._components;
+		}
+	};
+
+	protected ContentName(ArrayList<byte[]> components) {
+		_components = components;
+	}
+
+	/**
+	 * Varargs name builder, Strings interpreted as Native.
+	 * @see #builder(StringParser, Object[])
+	 */
+	public static ContentName fromNative(Object... args) throws MalformedContentNameStringException {
+		return new ContentName(builder(nativeStringParser, args));
+	}
+
+	/**
+	 * Varargs name builder, Strings interpreted as URI.
+	 * @see #builder(StringParser, Object[])
+	 */
+	public static ContentName fromURI(Object... args) throws MalformedContentNameStringException {
+		return new ContentName(builder(uriStringParser, args));
+	}
+
+	/**
+	 * Varargs name builder, Strings that do not start with a / will be added as a single
+	 * component. Strings that start with a / will be split at every / and added as a series
+	 * of components. No URI decoding will be done, Strings components are kept raw.
+	 * @see #builder(StringParser, Object[])
+	 */
+	public ContentName(Object... args) {
+		try {
+			_components = builder(constructorStringParser, args);
+		} catch (MalformedContentNameStringException e) {
+			// constructorStringParser won't throw an exception, this should never happen.
+			throw new RuntimeException(e);
+		}
+	}
+	
+	/**
+	 * Varargs name builder. Convenience method to allow ContentNames to be constructed from multiple parts.
+	 * @param stringParser method to call to parse String arguments
+	 * @param args Any number of byte[], String, ContentNameProvider or ComponentProvider arguments
+	 * @return an ArrayList of components built by taking components from all the arguments passed in.
+	 * @throws MalformedContentNameStringException if a String argument does not parse correctly when passed to stringParser
+	 * @see #ContentName(Object... args)
+	 * @see #fromNative(Object... args)
+	 * @see #fromURL(Object... args)
+	 */
+	@SuppressWarnings("unchecked")
+	protected static ArrayList<byte[]> builder(StringParser stringParser, Object[] args) throws MalformedContentNameStringException {
+		int componentCount = 0;
+
+		// first make 1 pass through the arguments validating them and determining the final component count
+		for(int i = 0; i < args.length; i++) {
+			Object arg = args[i];
+			if (arg instanceof byte[]) {
+				// incoming byte[] needs to be cloned to ensure ContentName's immutability
+				byte[] component = (byte[]) args[i];
+				componentCount++;
+				args[i] = component.clone();
+			} else if (arg instanceof ContentNameProvider) {
+				ContentName name = ((ContentNameProvider) arg).getContentName();
+				componentCount += name.count();
+				args[i] = name._components;
+			} else if (arg instanceof String) {
+				ArrayList<byte[]> components = stringParser.parse((String) arg);
+				args[i] = components;
+				componentCount += components.size();
+			} else if (arg instanceof ContentName.ComponentProvider) {
+				ContentName.ComponentProvider p = (ContentName.ComponentProvider) arg;
+				componentCount++;
+				byte[] component = p.getComponent();
+				if (!(p instanceof ContentName.ImmutableComponentProvider))
+					component = component.clone();
+				args[i] = component;
+			} else
+				throw new IllegalArgumentException("Argument " + i+1 + " is a " + arg.getClass().getSimpleName());
+		}
+
+		// allocate an array for the components
+		ArrayList<byte[]> components = new ArrayList<byte[]>(args.length);
+
+		// and collect the components into the array
+		for(int i = 0; i < args.length; i++) {
+			Object arg = args[i];
+			if (arg instanceof byte[]) {
+				components.add((byte[]) arg);
+			} else {
+				components.addAll((ArrayList<byte[]>) arg);
+			}
+		}
+		return components;
+	}
+
+	public final ContentName getContentName() {
+		return this;
+	}
+
+	@Deprecated
 	public ContentName(byte components[][]) {
 		if (null == components) {
 			_components = null;
@@ -123,6 +262,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param parent used for the base of the name.
 	 * @param childComponents the additional name components to add at the end of parent
 	 */
+	@Deprecated
 	public ContentName(ContentName parent, ArrayList<byte []> childComponents) {
 		this(parent.count() + ((null != childComponents) ? childComponents.size() : 0), parent.components());
 		if (null != childComponents) {
@@ -143,6 +283,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param start index in childComponents to begin adding from
 	 * @param childComponents the additional name components to add at the end of parent
 	 */
+	@Deprecated
 	public ContentName(ContentName parent, int start, ArrayList<byte []> childComponents) {
 		// shallow copy
 		this(parent.count() + ((null != childComponents) ? childComponents.size() : 0) - start, parent.components());
@@ -204,6 +345,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param count Only this number of name components are copied into the new name.
 	 * @param components These are the name components to be copied. Can be null, empty, or longer or shorter than count.
 	 */
+	@Deprecated
 	public ContentName(int count, ArrayList<byte []>components) {
 		if (0 >= count) {
 			_components = new ArrayList<byte[]>(0);
@@ -228,6 +370,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * 	greater than the last component in the components array, only copies count-start.
 	 * @param components These are the name components to be copied. Can be null, empty, or longer or shorter than count.
 	 */
+	@Deprecated
 	public ContentName(int start, int count, ArrayList<byte []>components) {
 		if (0 >= count) {
 			_components = new ArrayList<byte[]>(0);
