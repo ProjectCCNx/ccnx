@@ -1311,7 +1311,18 @@ public class CCNNetworkManager implements Runnable {
 			_stats.addSample(StatsEnum.ContentHandlerTime, System.nanoTime() - startTime);
 		}
 	}
-
+	
+	/**
+	 * Diagnostic routine to get a handler stack trace in time of suspected problem
+	 */
+	public void dumpHandlerStackTrace(String message) {
+		if (_inHandler) {
+			Throwable t = new Throwable(message);
+			t.setStackTrace(_thread.getStackTrace());
+			Log.logStackTrace(Log.FAC_NETMANAGER, Level.SEVERE, t);
+		}
+	}
+	
 	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) throws IOException {
 		try {
 			ContentName serviceKeyName = new ContentName(ServiceDiscoveryProfile.localServiceName(ServiceDiscoveryProfile.CCND_SERVICE_NAME), KeyProfile.KEY_NAME_COMPONENT);

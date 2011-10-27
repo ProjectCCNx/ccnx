@@ -94,6 +94,9 @@ public class CCNNetworkTestRepo extends CCNTestBase {
 			getHandle.expressInterest(interest, tl);
 			putHandle.checkError(TEST_TIMEOUT);
 			long beforeTime = System.currentTimeMillis();
+			bfl.wait(SystemConfiguration.SHORT_TIMEOUT);
+			// Make sure this works via log
+			putHandle.getNetworkManager().dumpHandlerStackTrace("Testing handler dump - this is expected");
 			bfl.wait(SystemConfiguration.MAX_TIMEOUT * 2);
 			if (System.currentTimeMillis() - beforeTime >= (SystemConfiguration.MAX_TIMEOUT * 2))
 				Assert.fail("Network manager failed to interrupt hung handler");

@@ -647,6 +647,11 @@ public class CCNFlowControl implements CCNInterestHandler {
 					for(ContentName co : _holdingArea.keySet()) {
 						Log.warning(Log.FAC_IO, "FlowController: still holding: " + co.toString());
 					}
+					// For now - dump the handlers stack if its active in case that may give a clue about what's wrong.
+					// We may want to leave this in permanently.
+					CCNNetworkManager cnm = _handle.getNetworkManager();
+					if (null != cnm)
+						cnm.dumpHandlerStackTrace("waitForPutDrain");
 					throw new IOException("Put(s) with no matching interests - size is " + _holdingArea.size());
 				}
 				startSize = _nOut;
