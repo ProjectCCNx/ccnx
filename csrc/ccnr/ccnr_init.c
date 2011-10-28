@@ -76,6 +76,48 @@
 static int load_policy(struct ccnr_handle *h);
 static int merge_files(struct ccnr_handle *h);
 
+int
+r_init_read_config(struct ccnr_handle *h)
+{
+    struct ccn_charbuf *path = NULL;
+    struct ccn_charbuf *contents = NULL;
+    size_t sz = 800;
+    ssize_t sres = -1;
+    int fd;
+    
+    h->directory = getenv("CCNR_DIRECTORY");
+    if (h->directory == NULL || h->directory[0] == 0)
+        h->directory = ".";
+    path = ccn_charbuf_create();
+    contents = ccn_charbuf_create();
+    if (path == NULL || contents == NULL)
+        return(-1);
+    ccn_charbuf_putf(path, "%s/config", h->directory);
+    fd = open(ccn_charbuf_as_string(path), O_RDONLY);
+    if (fd != -1) {
+        for (;;) {
+            sres = read(fd, ccn_charbuf_reserve(contents, sz), sz);
+            if (sres == 0)
+                break;
+            if (sres < 0) {
+                r_init_fail(h, __LINE__, "Read failed reading config", errno);
+                break;
+            }
+            contents->length += sres;
+            if (contents->length > 999999) {
+                r_init_fail(h, __LINE__, "config file too large", 0);
+                sres = -1;
+                break;
+            }
+        }
+        close(fd);
+    }
+fprintf(stderr, "%s\n", ccn_charbuf_as_string(contents));
+    ccn_charbuf_destroy(&path);
+    ccn_charbuf_destroy(&contents);
+    return(sres);
+}
+
 static int
 r_init_debug_getenv(struct ccnr_handle *h, const char *envname)
 {
@@ -203,7 +245,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     struct ccnr_handle *h = NULL;
     struct hashtb_param param = {0};
     
-    sockname = r_net_get_local_sockname();
     h = calloc(1, sizeof(*h));
     if (h == NULL)
         return(h);
@@ -214,6 +255,8 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->logpid = (int)getpid();
     h->progname = progname;
     h->debug = -1;
+    r_init_read_config(h);
+    sockname = r_net_get_local_sockname();
     h->skiplinks = ccn_indexbuf_create();
     h->face_limit = 10; /* soft limit */
     h->fdholder_by_fd = calloc(h->face_limit, sizeof(h->fdholder_by_fd[0]));
@@ -240,9 +283,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->debug = 1; /* so that we see any complaints */
     h->debug = r_init_debug_getenv(h, "CCNR_DEBUG");
     h->syncdebug = r_init_debug_getenv(h, "SYNC_DEBUG");
-    h->directory = getenv("CCNR_DIRECTORY");
-    if (h->directory == NULL || h->directory[0] == 0)
-        h->directory = ".";
     portstr = getenv("CCNR_STATUS_PORT");
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "";
