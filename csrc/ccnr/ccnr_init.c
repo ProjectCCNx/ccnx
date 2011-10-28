@@ -675,7 +675,7 @@ load_policy(struct ccnr_handle *ccnr)
             final = r_util_is_final_pco(content_msg, &pco, nc);
         } while (!final && segment < 100);
         if (policy->length == 0) {
-            ccnr_msg(ccnr, "Policy link points to empty or non-existant policy.");
+            ccnr_msg(ccnr, "Policy link points to empty or non-existent policy.");
             goto CreateNewPolicy;
         }
         if (segment >= 100) {
