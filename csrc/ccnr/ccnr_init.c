@@ -76,7 +76,13 @@
 static int load_policy(struct ccnr_handle *h);
 static int merge_files(struct ccnr_handle *h);
 
-int
+/**
+ * Read the contents of the repository config file
+ *
+ * Calls r_init_fail and returns NULL in case of error.
+ * @returns unparsed content of config file in a newly allocated charbuf
+ */
+struct ccn_charbuf *
 r_init_read_config(struct ccnr_handle *h)
 {
     struct ccn_charbuf *path = NULL;
@@ -91,10 +97,16 @@ r_init_read_config(struct ccnr_handle *h)
     path = ccn_charbuf_create();
     contents = ccn_charbuf_create();
     if (path == NULL || contents == NULL)
-        return(-1);
+        return(NULL);
     ccn_charbuf_putf(path, "%s/config", h->directory);
     fd = open(ccn_charbuf_as_string(path), O_RDONLY);
-    if (fd != -1) {
+    if (fd == -1) {
+        if (errno == ENOENT)
+            sres = 0;
+        else
+            r_init_fail(h, __LINE__, ccn_charbuf_as_string(path), errno);
+    }
+    else {
         for (;;) {
             sres = read(fd, ccn_charbuf_reserve(contents, sz), sz);
             if (sres == 0)
@@ -112,10 +124,76 @@ r_init_read_config(struct ccnr_handle *h)
         }
         close(fd);
     }
-fprintf(stderr, "%s\n", ccn_charbuf_as_string(contents));
     ccn_charbuf_destroy(&path);
-    ccn_charbuf_destroy(&contents);
-    return(sres);
+    if (sres < 0)
+        ccn_charbuf_destroy(&contents);
+    return(contents);
+}
+
+int
+r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config)
+{
+    struct ccn_charbuf *key = NULL;
+    struct ccn_charbuf *value = NULL;
+    const unsigned char *b;
+    int line;
+    size_t i;
+    size_t sol; /* start of line */
+    size_t len;
+    int ch;
+    
+    b = config->buf;
+    len = config->length;
+    if (len == 0)
+        return(0);
+    key = ccn_charbuf_create();
+    value = ccn_charbuf_create();
+    if (key == NULL || value == NULL)
+        return(-1);
+    for (line = 1, i = 1, ch = b[0], sol = 0; i < len;) {
+        if (ch == '#') { /* a comment line */
+            while (i < len && ch != '\n')
+                ch = b[i++];
+        }
+        else {
+            key->length = value->length = 0;
+            /* parse key */
+            while (i < len && ch > ' ' && ch != '=') {
+                ccn_charbuf_append_value(key, ch, 1);
+                ch = b[i++];
+            }
+            if (ch != '=' || i == len) {
+                r_init_fail(h, line, "missing '=' in config file", 0);
+                break;
+            }
+            ch = b[i++];
+            /* parse value */
+            while (i < len && ch > ' ') {
+                ccn_charbuf_append_value(value, ch, 1);
+                ch = b[i++];
+            }
+fprintf(stderr, "############### %s=%s\n", ccn_charbuf_as_string(key), ccn_charbuf_as_string(value));
+        }
+        while (i < len && ch <= ' ') {
+            if (ch == '\n') {
+                line++;
+                sol = i;
+                break;
+            }
+            ch = b[i++];
+        }
+        if (i == len)
+            ch = '\n';
+        else if (ch == '\n')
+            ch = b[i++];
+        else {
+            r_init_fail(h, line, "junk at end of line in config file", 0);
+            break;
+        }
+    }
+    ccn_charbuf_destroy(&key);
+    ccn_charbuf_destroy(&value);
+    return(0);
 }
 
 static int
@@ -244,6 +322,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     const char *d = NULL;
     struct ccnr_handle *h = NULL;
     struct hashtb_param param = {0};
+    struct ccn_charbuf *config = NULL;
     
     h = calloc(1, sizeof(*h));
     if (h == NULL)
@@ -255,7 +334,11 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->logpid = (int)getpid();
     h->progname = progname;
     h->debug = -1;
-    r_init_read_config(h);
+    config = r_init_read_config(h);
+    if (config == NULL)
+        goto Bail;
+    if (r_init_parse_config(h, config) != 0)
+        goto Bail;
     sockname = r_net_get_local_sockname();
     h->skiplinks = ccn_indexbuf_create();
     h->face_limit = 10; /* soft limit */
@@ -362,8 +445,10 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (h->running == -1) goto Bail;
     SyncInit(h->sync_handle);
 Bail:
-    free(sockname);
+    if (sockname)
+        free(sockname);
     sockname = NULL;
+    ccn_charbuf_destroy(&config);
     if (h->running == -1)
         r_init_destroy(&h);
     return(h);
