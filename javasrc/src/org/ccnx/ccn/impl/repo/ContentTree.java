@@ -378,6 +378,12 @@ public class ContentTree {
 						node.children.put(child, child);
 						node.oneChild = null;
 					}
+					if (node.timestamp == ts) {
+						if (Log.isLoggable(Log.FAC_REPO, Level.WARNING)) {
+							Log.warning(Log.FAC_REPO, "WARNING - info inserted at {0} without timestamp update - could cause NE miss", 
+									name);
+						}
+					}
 					node.timestamp = ts;
 					
 					if (node.interestFlag && (ner != null && ner.getPrefix()==null)){
@@ -637,11 +643,13 @@ public class ContentTree {
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
 			//first add the NE marker
+			CCNTime timestamp = new CCNTime(parent.timestamp);		// I think we want to use the earliest possible timestamp here - if there are duplicates
+																	// NE can straighten it out - worse to miss somethingf
 		    ContentName potentialCollectionName = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 		    //now add the response id
 		    potentialCollectionName = new ContentName(potentialCollectionName, responseName.components());
 		    //now finish up with version and segment
-		    potentialCollectionName = VersioningProfile.addVersion(potentialCollectionName, new CCNTime(parent.timestamp));
+		    potentialCollectionName = VersioningProfile.addVersion(potentialCollectionName, timestamp);
 		    potentialCollectionName = SegmentationProfile.segmentName(potentialCollectionName, SegmentationProfile.baseSegment());
 			//check if we should respond...
 			if (interest.matches(potentialCollectionName, null)) {
@@ -667,24 +675,26 @@ public class ContentTree {
 			}
 
 			//the parent has children we need to return
-			if (parent.oneChild!=null) {
-				names.add(new ContentName(ContentName.ROOT, parent.oneChild.component));
-			} else {
-				if (parent.children!=null) {
-					for (TreeNode ch:parent.children.keySet())
-						names.add(new ContentName(ContentName.ROOT, ch.component));
+			synchronized (parent) {		// Make sure especially that nobody changes from oneChild to children behind our back
+				if (parent.oneChild!=null) {
+					names.add(new ContentName(ContentName.ROOT, parent.oneChild.component));
+				} else {
+					if (parent.children!=null) {
+						for (TreeNode ch:parent.children.keySet())
+							names.add(new ContentName(ContentName.ROOT, ch.component));
+					}
 				}
-			}
-			
-			if (names.size()>0) {
-				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
-					Log.finer(Log.FAC_REPO, "sending back {0} names in the enumeration response for prefix {1}", names.size(), prefix);
+				
+				if (names.size()>0) {
+					if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
+						Log.finer(Log.FAC_REPO, "sending back {0} names in the enumeration response for prefix {1}", names.size(), prefix);
+					}
 				}
+				parent.interestFlag = false;
 			}
-			parent.interestFlag = false;
 			
 			return new NameEnumerationResponse(
-					new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), names, new CCNTime(parent.timestamp));
+					new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), names, timestamp);
 		}
 		return null;
 	}
