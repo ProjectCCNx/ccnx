@@ -18,7 +18,6 @@
 package org.ccnx.ccn.profiles.metadata;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.ccnx.ccn.CCNHandle;
@@ -98,7 +97,7 @@ public class MetadataProfile implements CCNProfile {
 	 */
 	public static ContentName getLatestVersion(ContentName baseName, ContentName metaName, 
 			long timeout, CCNHandle handle) throws IOException {
-		return getLatestVersion(baseName, new LocalMetaNamer(), metaName.components(), timeout, handle);
+		return getLatestVersion(baseName, new LocalMetaNamer(), metaName, timeout, handle);
 	}
 	
 	/**
@@ -128,7 +127,7 @@ public class MetadataProfile implements CCNProfile {
 	 * @return
 	 * @throws IOException
 	 */
-	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ArrayList<byte[]> metaName,
+	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ContentName metaName,
 			 long timeout, CCNHandle handle) throws IOException {
 		ContentName baseVersion = baseName;
 		//removing the stream instance:  1 - we are not actually attempting to get the stream, we just want to discover the latest version

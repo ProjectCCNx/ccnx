@@ -18,7 +18,6 @@
 package org.ccnx.ccn.profiles.metadata;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.profiles.CCNProfile;
@@ -39,7 +38,7 @@ public class ThumbnailProfile implements CCNProfile {
 		CommandMarker.commandMarker(MetadataProfile.METADATA_NAMESPACE, "thumbnail");
 	
 	private static class ThumbnailNamer implements MetadataProfile.MetaNamer {
-		public ContentName getMetaName(ContentName baseName,ArrayList<byte[]> metaName) {
+		public ContentName getMetaName(ContentName baseName, ContentName metaName) {
 			return new ContentName(thumbnailNamespace(baseName), metaName);
 		}
 	}
@@ -71,8 +70,7 @@ public class ThumbnailProfile implements CCNProfile {
 	 * @throws IOException
 	 */
 	public static ContentName getLatestVersion(ContentName baseName, byte[] thumbNailName, long timeout, CCNHandle handle) throws IOException {
-		ArrayList<byte[]> list = new ArrayList<byte[]>();
-		list.add(thumbNailName);
+		ContentName list = new ContentName(thumbNailName);
 		return MetadataProfile.getLatestVersion(baseName, new ThumbnailNamer(), list, timeout, handle);
 	}
 }
