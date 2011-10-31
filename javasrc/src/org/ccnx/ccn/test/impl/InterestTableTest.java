@@ -327,9 +327,9 @@ public class InterestTableTest extends CCNTestBase {
 	final String b = "/b";
 	final String c = "/c";
 	final String _aa = "/aa";
-	final ContentName zero = new ContentName(new byte[][]{{0x00, 0x02, 0x03, 0x04}});
-	final ContentName one = new ContentName(new byte[][]{{0x01, 0x02, 0x03, 0x04}});
-	final ContentName onethree = new ContentName(new byte[][]{{0x01, 0x02, 0x03, 0x04}, {0x03}});
+	final ContentName zero = new ContentName(new byte[]{0x00, 0x02, 0x03, 0x04});
+	final ContentName one = new ContentName(new byte[]{0x01, 0x02, 0x03, 0x04});
+	final ContentName onethree = new ContentName(new byte[]{0x01, 0x02, 0x03, 0x04}, new byte[]{0x03});
 
 	private InterestTable<Integer> initTable() throws MalformedContentNameStringException {
 		InterestTable<Integer> table = new InterestTable<Integer>();

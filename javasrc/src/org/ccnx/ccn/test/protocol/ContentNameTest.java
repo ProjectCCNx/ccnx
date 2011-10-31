@@ -222,7 +222,6 @@ public class ContentNameTest {
 		}
 		assertNotNull(name5);
 		assertEquals(name5.count(), 0);
-		assertEquals(name5.components().size(), 0);
 		assertEquals(name5.toString(), "/");
 		
 		// empty name with scheme
@@ -237,7 +236,6 @@ public class ContentNameTest {
 		}
 		assertNotNull(name6);
 		assertEquals(name6.count(), 0);
-		assertEquals(name6.components().size(), 0);
 		assertEquals(name6.toString(), "/");
 		
 		// query and fragment parts
@@ -343,7 +341,6 @@ public class ContentNameTest {
 		assertNotNull(name2);
 		System.out.println("Name 2: " + name2);
 		assertEquals(name2.count(), 4);
-		assertEquals(name2.components().size(), 4);
 		assert(DataUtils.arrayEquals(name2.component(0), arr[0]));
 		assert(DataUtils.arrayEquals(name2.component(1), arr[1]));
 		assert(DataUtils.arrayEquals(name2.component(2), arr[2]));

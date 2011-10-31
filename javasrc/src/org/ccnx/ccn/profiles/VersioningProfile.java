@@ -245,7 +245,7 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static ContentName cutLastVersion(ContentName name) {
 		int offset = findLastVersionComponent(name);
-		return (offset == -1) ? name : new ContentName(offset, name.components());
+		return (offset == -1) ? name : name.cut(offset);
 	}
 
 	/**

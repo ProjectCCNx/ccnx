@@ -489,11 +489,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 
 					for (ContentName n: _registeredNames) {
 						if (name.isPrefixOf(n) && name.count() < n.count()) {
-							ContentName tempName = n.clone();
-							byte[] tn = n.component(name.count());
-							byte[][] na = new byte[1][tn.length];
-							na[0] = tn;
-							tempName = new ContentName(na);
+							ContentName tempName = new ContentName(n.component(name.count()));
 							match = new Link(tempName);
 							if (!nem.contents().contains(match)) {
 								nem.add(match);

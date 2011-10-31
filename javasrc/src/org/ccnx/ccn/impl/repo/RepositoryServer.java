@@ -441,7 +441,7 @@ public class RepositoryServer implements CCNStatistics {
 					if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 						Log.info(Log.FAC_REPO, "node.timestamp was null!!!");
 				NameEnumerationResponseMessage nem = ner.getNamesForResponse();
-				neResponseObject = new NameEnumerationResponseMessageObject(new ContentName(ner.getPrefix(), _responseName.components()), nem, _handle);
+				neResponseObject = new NameEnumerationResponseMessageObject(ner.getPrefix().append(_responseName), nem, _handle);
 				// TODO this is only temporary until flow control issues can
 				// be worked out here
 				neResponseObject.disableFlowControl();

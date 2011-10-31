@@ -145,7 +145,7 @@ public class MultiResponderNameEnumerationTest implements BasicNameEnumeratorLis
 		
 		synchronized(names) {
 			for(ContentName n: returnedNames) {
-				ContentName name = new ContentName(_prefix, n.components());
+				ContentName name = _prefix.append(n);
 				Log.info("adding: {0}", name);
 				if(!names.contains(name))
 					names.add(name);

@@ -297,7 +297,7 @@ public class EnumeratedNameListTestRepo {
 			// Now we should have everything
 			ContentName latestReturnName = versionList.getLatestVersionChildName();
 			System.out.println("Got children: " + versionList.getChildren());
-			System.out.println("Got latest name " + latestReturnName + " expected " + new ContentName(new byte [][]{latestName.lastComponent()}));
+			System.out.println("Got latest name " + latestReturnName + " expected " + new ContentName(latestName.lastComponent()));
 			Assert.assertTrue(Arrays.areEqual(latestName.lastComponent(), latestReturnName.lastComponent()));
 			
 		} catch (Exception e) {

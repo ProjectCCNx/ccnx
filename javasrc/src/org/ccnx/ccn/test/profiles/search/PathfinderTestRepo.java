@@ -66,7 +66,7 @@ public class PathfinderTestRepo {
 		ContentName startingPoint = ContentName.fromNative(testRoot, new String[]{"This", "is", "a", "longer", "path", "than", "necessary."});
 		
 		CCNStringObject targetObject = new CCNStringObject(
-				new ContentName(startingPoint.parent().parent().parent(), TARGET_POSTFIX_NAME.components()), "The target!", SaveType.REPOSITORY, writeHandle);
+				new ContentName(startingPoint.parent().parent().parent(), TARGET_POSTFIX_NAME), "The target!", SaveType.REPOSITORY, writeHandle);
 		targetObject.save();
 		
 		Pathfinder finder = new Pathfinder(startingPoint,null, TARGET_POSTFIX_NAME, true, false, 

@@ -50,9 +50,9 @@ public class AccessControlProfile implements CCNProfile {
 	public static final byte [] DATA_KEY_NAME_BYTES = Component.parseNative(DATA_KEY_NAME);
 	public static final String ACCESS_CONTROL_POLICY_NAME = "AccessControl";
 	public static final byte [] ACCESS_CONTROL_POLICY_NAME_BYTES = ACCESS_CONTROL_POLICY_NAME.getBytes();
-	protected static final ContentName ACCESS_CONTROL_POLICY_CONTENTNAME = new ContentName(new byte [][] {ACCESS_CONTROL_POLICY_NAME_BYTES});
+	protected static final ContentName ACCESS_CONTROL_POLICY_CONTENTNAME = new ContentName(ACCESS_CONTROL_POLICY_NAME_BYTES);
 
-	protected static final ContentName ROOT_POSTFIX_NAME = new ContentName(new byte [][] {ACCESS_CONTROL_MARKER_BYTES, ROOT_NAME_BYTES});
+	protected static final ContentName ROOT_POSTFIX_NAME = new ContentName(ACCESS_CONTROL_MARKER_BYTES, ROOT_NAME_BYTES);
 
 	/**
 	 * Returns whether the specified name contains the access control marker

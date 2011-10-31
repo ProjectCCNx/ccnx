@@ -594,7 +594,7 @@ public class ContentTree {
 		// matching is that the name DOES NOT include digest component (conforming to the convention 
 		// for ContentObject.name() that the digest is not present) we must REMOVE the content 
 		// digest first or this test will not always be correct
-		ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
+		ContentName digestFreeName = nodeName.parent();
 		Interest publisherFreeInterest = interest.clone();
 		publisherFreeInterest.publisherID(null);
 
@@ -650,7 +650,7 @@ public class ContentTree {
 																	// NE can straighten it out - worse to miss somethingf
 		    ContentName potentialCollectionName = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 		    //now add the response id
-		    potentialCollectionName = new ContentName(potentialCollectionName, responseName.components());
+		    potentialCollectionName = potentialCollectionName.append(responseName);
 		    //now finish up with version and segment
 		    potentialCollectionName = VersioningProfile.addVersion(potentialCollectionName, timestamp);
 		    potentialCollectionName = SegmentationProfile.segmentName(potentialCollectionName, SegmentationProfile.baseSegment());
@@ -665,7 +665,7 @@ public class ContentTree {
 				}
 
 				//I am not supposed to respond...  is that because of the version or because I am specifically excluded?
-				 if (responseName.count() > 0 && interest.exclude().match(responseName.components().get(0))) {
+				 if (responseName.count() > 0 && interest.exclude().match(responseName.component(0))) {
 					 Log.finer(Log.FAC_REPO, "my repo is explicitly excluded!  not setting interestFlag to true");
 					 //do not set interest flag!  I wasn't supposed to respond
 				 } else {
@@ -736,10 +736,10 @@ public class ContentTree {
 			InterestPreScreener ips = new InterestPreScreener(interest, ncc + 1, ncc);
 			if (null != interest.childSelector() && ((interest.childSelector() & (Interest.CHILD_SELECTOR_RIGHT))
 					== (Interest.CHILD_SELECTOR_RIGHT))) {
-				return new RightSearch(interest, ips).search(prefixRoot, new ContentName(ncc, interest.name().components()), 
+				return new RightSearch(interest, ips).search(prefixRoot, interest.name().cut(ncc), 
 						getter, ncc, false);
 			} else {
-				return new LeftSearch(interest, ips).search(prefixRoot, new ContentName(ncc, interest.name().components()), 
+				return new LeftSearch(interest, ips).search(prefixRoot, interest.name().cut(ncc), 
 						getter, ncc, false);
 			}
 		}

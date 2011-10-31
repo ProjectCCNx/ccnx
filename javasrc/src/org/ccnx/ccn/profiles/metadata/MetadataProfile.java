@@ -49,15 +49,15 @@ public class MetadataProfile implements CCNProfile {
 	 * namespaces.
 	 */
 	public interface MetaNamer {
-		public ContentName getMetaName(ContentName baseName, ArrayList<byte[]> metaName);
+		public ContentName getMetaName(ContentName baseName, ContentName metaName);
 	}
 	
 	/**
 	 * General getter for generic metadata
 	 */
 	private static class LocalMetaNamer implements MetaNamer {
-		public ContentName getMetaName(ContentName baseName, ArrayList<byte[]> metaName) {
-			return new ContentName(metadataName(baseName), metaName);
+		public ContentName getMetaName(ContentName baseName, ContentName metaName) {
+			return metadataName(baseName).append(metaName);
 		}
 	}
 	

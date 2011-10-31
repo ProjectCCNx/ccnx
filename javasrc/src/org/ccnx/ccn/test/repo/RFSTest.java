@@ -207,13 +207,11 @@ public class RFSTest extends RepoTestBase {
 		ContentName reallyLongName = ContentName.fromNative("/repoTest/" + wayTooLongName);
 		repo.saveContent(ContentObject.buildContentObject(reallyLongName, "Really Long name!".getBytes()));
 		checkData(repo, reallyLongName, "Really Long name!");
-		byte[][] longNonASCIIBytes = new byte[2][];
-		longNonASCIIBytes[0] = "repoTest".getBytes();
-		longNonASCIIBytes[1] = new byte[300];
+		byte[] longNonASCIIBytes = new byte[300];
 		
 		for (int i = 0; i < 30; i++) {
-			rand.nextBytes(longNonASCIIBytes[1]);
-			ContentName lnab = new ContentName(longNonASCIIBytes);
+			rand.nextBytes(longNonASCIIBytes);
+			ContentName lnab = new ContentName("repoTest", longNonASCIIBytes);
 			repo.saveContent(ContentObject.buildContentObject(lnab, ("Long and Non ASCII " + i).getBytes()));
 			checkData(repo, lnab, "Long and Non ASCII " + i);
 		}

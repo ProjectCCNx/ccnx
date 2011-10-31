@@ -46,7 +46,7 @@ public class RepositoryBulkImport {
 		if (name.contains(UserConfiguration.FILE_SEP))
 			throw new IOException("Pathnames for repo bulk import data not allowed");
 		CommandMarker argMarker = CommandMarker.getMarker(CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.getBytes());
-		ContentObject co = handle.get(new ContentName(new byte[][]{argMarker.addArgument(name), Interest.generateNonce()}), timeout);
+		ContentObject co = handle.get(new ContentName(argMarker.addArgument(name), Interest.generateNonce()), timeout);
 		if (co == null)
 			return false;
 		RepositoryInfo repoInfo = new RepositoryInfo();

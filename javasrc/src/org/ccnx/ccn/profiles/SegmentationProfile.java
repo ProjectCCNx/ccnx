@@ -431,7 +431,7 @@ public class SegmentationProfile implements CCNProfile {
 				} else {
 					//this was not the last segment..  use the co.name() to try again.
 					
-					segmentName = new ContentName(getLastInterest.name().count(), co.name().components());
+					segmentName = co.name().cut(getLastInterest.name().count());
 					getLastInterest = lastSegmentInterest(segmentName, getSegmentNumber(co.name()), publisher);
 					
 					Log.fine("an object was returned...  but not the last segment, next Interest: {0}",getLastInterest);

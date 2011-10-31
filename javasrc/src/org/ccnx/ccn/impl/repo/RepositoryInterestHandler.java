@@ -164,7 +164,7 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 		// Create the name for the initial interest to retrieve content from the client that it desires to
 		// write.  Strip from the write request name (in the incoming Interest) the start write command component
 		// and the nonce component to get the prefix for the content to be written.
-		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
+		ContentName listeningName = interest.name().cut(interest.name().count() - 2);
 		try {
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 				Log.info(Log.FAC_REPO, "Processing write request for {0}", listeningName);
@@ -236,7 +236,7 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 			boolean verified = false;
 			RepositoryInfoObject rio = null;
 			ContentName unverifiedKeyLocator = null;
-			ContentName digestFreeTarget = new ContentName(target.count()-1, target.components());
+			ContentName digestFreeTarget = target.parent();
 			if (_server.getRepository().hasContent(target)) {
 				unverifiedKeyLocator = _server.getKeyTarget(digestFreeTarget);
 				if (null == unverifiedKeyLocator) {

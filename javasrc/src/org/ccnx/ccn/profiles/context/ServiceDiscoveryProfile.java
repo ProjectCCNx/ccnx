@@ -65,14 +65,11 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 	
 	public static final ContentName localhostScopeName() {
 		// could make a static variable if we expect this to get called.
-		return new ContentName(new byte [][]{LOCALHOST_SCOPE.getBytes()});
+		return new ContentName(LOCALHOST_SCOPE);
 	}
 
 	public static ContentName localServiceName(String service) {
-		return new ContentName(
-				new byte [][]{ServiceDiscoveryProfile.LOCALHOST_SCOPE.getBytes(), 
-						SERVICE_NAME_COMPONENT_MARKER.getBytes(), 
-						Component.parseNative(service)});
+		return new ContentName(LOCALHOST_SCOPE, SERVICE_NAME_COMPONENT_MARKER, service);
 	}
 
 	public static String getLocalServiceName(ContentName nameWithServicePrefix) {
