@@ -137,7 +137,6 @@ public class BenchmarkTest {
 		System.out.println("Benchmark Test starting on " + System.getProperty("os.name"));
 	}
 
-	@SuppressWarnings("unchecked")
 	public void runBenchmark(String desc, Operation op, Object input, Object parameter) throws Exception {
 		runBenchmark(NUM_ITER, desc, op, input, parameter);
 	}
