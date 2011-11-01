@@ -130,8 +130,32 @@ r_init_read_config(struct ccnr_handle *h)
     return(contents);
 }
 
+#define CCNR_CONFIG_IGNORELINE 0x100
+/**
+ * Message helper for r_init_parse_config()
+ */
+static void
+r_init_config_msg(struct ccnr_handle *h, int flags,
+                  int line, int chindex, const char *msg)
+{
+    if (flags == 1) {
+        ccnr_msg(h, "problem in config file - line %d column %d: %s",
+            line, chindex + 1, msg);
+    }
+}
+
+/**
+ * Parse the buffered configuration found in config
+ *
+ * The pass argument controls what is done with the result:
+ *   0 - silent check for syntax errors;
+ *   1 - check for syntax errors and warnings, logging the results,
+ *   2 - incorporate settings into environ.
+ *
+ * @returns -1 if an error is found, otherwise the count of warnings.
+ */
 int
-r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config)
+r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config, int pass)
 {
     struct ccn_charbuf *key = NULL;
     struct ccn_charbuf *value = NULL;
@@ -139,40 +163,83 @@ r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config)
     int line;
     size_t i;
     size_t sol; /* start of line */
-    size_t len;
+    size_t len; /* config->len */
+    size_t ndx; /* temp for column report*/
     int ch;
+    int warns = 0;
+    int errors = 0;
+    static const char pclegal[] = 
+        "~@%-+=:,./[]"
+        "abcdefghijklmnopqrstuvwxyz"
+        "0123456789"
+        "_"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const char *klegal = strchr(pclegal, 'a');
+    int flags; /* for reporting */
     
     b = config->buf;
     len = config->length;
     if (len == 0)
         return(0);
+    ccn_charbuf_as_string(config);
     key = ccn_charbuf_create();
     value = ccn_charbuf_create();
     if (key == NULL || value == NULL)
         return(-1);
-    for (line = 1, i = 1, ch = b[0], sol = 0; i < len;) {
-        if (ch == '#') { /* a comment line */
-            while (i < len && ch != '\n')
-                ch = b[i++];
-        }
-        else {
+    /* Ensure there is null termination in the buffered config */
+    if (ccn_charbuf_as_string(config) == NULL)
+        return(-1);
+    for (line = 1, i = 0, ch = b[0], sol = 0; i < len;) {
+        flags = pass;
+        if (ch != '#') {
             key->length = value->length = 0;
             /* parse key */
-            while (i < len && ch > ' ' && ch != '=') {
+            while (i < len && ch != '\n' && ch != '=') {
                 ccn_charbuf_append_value(key, ch, 1);
-                ch = b[i++];
+                ch = b[++i];
             }
-            if (ch != '=' || i == len) {
-                r_init_fail(h, line, "missing '=' in config file", 0);
-                break;
+            if (ch == '=')
+                ch = b[++i];
+            else {
+                r_init_config_msg(h, flags, line, key->length, "missing '='");
+                flags |= CCNR_CONFIG_IGNORELINE;
+                warns++;
+                ch = '\n';
             }
-            ch = b[i++];
             /* parse value */
             while (i < len && ch > ' ') {
                 ccn_charbuf_append_value(value, ch, 1);
-                ch = b[i++];
+                ch = b[++i];
             }
-fprintf(stderr, "############### %s=%s\n", ccn_charbuf_as_string(key), ccn_charbuf_as_string(value));
+            /* Check charset of key */
+            ndx = strspn(ccn_charbuf_as_string(key), klegal);
+            if (ndx != key->length) {
+                r_init_config_msg(h, flags, line, ndx,
+                                  "unexpected character in key");
+                flags |= CCNR_CONFIG_IGNORELINE;
+                warns++;
+            }
+            /* Check charset of value */
+            ndx = strspn(ccn_charbuf_as_string(value), pclegal);
+            if (ndx != value->length) {
+                r_init_config_msg(h, pass, line, key->length + 1 + ndx, "unexpected character in value");
+                flags |= CCNR_CONFIG_IGNORELINE;
+                warns++;
+            }
+            /* See if it might be one of ours */
+            if (key->length < 5 || (memcmp(key->buf, "CCNR_", 5) != 0 &&
+                                    memcmp(key->buf, "SYNC_", 5) != 0)) {
+                r_init_config_msg(h, flags, line, 0,
+                                  "ignoring unrecognized key");
+                flags |= CCNR_CONFIG_IGNORELINE;
+                warns++;
+            }
+fprintf(stderr, "####### ignore=%d ######## %s=%s\n", (flags & CCNR_CONFIG_IGNORELINE) != 0, ccn_charbuf_as_string(key), ccn_charbuf_as_string(value));
+        }
+        if (ch == '#') {
+            /* a comment line or error recovery. */
+            while (i < len && ch != '\n')
+                ch = b[++i];
         }
         while (i < len && ch <= ' ') {
             if (ch == '\n') {
@@ -180,20 +247,30 @@ fprintf(stderr, "############### %s=%s\n", ccn_charbuf_as_string(key), ccn_charb
                 sol = i;
                 break;
             }
-            ch = b[i++];
+            if (warns == 0 && memchr("\r\t ", ch, 3) == NULL) {
+                r_init_config_msg(h, pass, line, i - sol,
+                                  "non-whitespace control char at end of line");
+                warns++;
+            } 
+            ch = b[++i];
         }
-        if (i == len)
+        if (i == len) {
+            r_init_config_msg(h, pass, line, i - sol,
+                              "missing newline at end of file");
+            warns++;
             ch = '\n';
+        }
         else if (ch == '\n')
-            ch = b[i++];
+            ch = b[++i];
         else {
-            r_init_fail(h, line, "junk at end of line in config file", 0);
-            break;
+            r_init_config_msg(h, pass, line, i - sol, "junk at end of line");
+            warns++;
+            ch = '#';
         }
     }
     ccn_charbuf_destroy(&key);
     ccn_charbuf_destroy(&value);
-    return(0);
+    return(errors ? -1 : warns);
 }
 
 static int
@@ -323,6 +400,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     struct ccnr_handle *h = NULL;
     struct hashtb_param param = {0};
     struct ccn_charbuf *config = NULL;
+    int res;
     
     h = calloc(1, sizeof(*h));
     if (h == NULL)
@@ -337,8 +415,11 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     config = r_init_read_config(h);
     if (config == NULL)
         goto Bail;
-    if (r_init_parse_config(h, config) != 0)
+    res = r_init_parse_config(h, config, 1);
+    if (res < 0) {
+        h->running=-1; // XXX - temp
         goto Bail;
+    }
     sockname = r_net_get_local_sockname();
     h->skiplinks = ccn_indexbuf_create();
     h->face_limit = 10; /* soft limit */
