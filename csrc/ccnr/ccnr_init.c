@@ -130,7 +130,28 @@ r_init_read_config(struct ccnr_handle *h)
     return(contents);
 }
 
-#define CCNR_CONFIG_IGNORELINE 0x100
+static int
+r_init_debug_getenv(struct ccnr_handle *h, const char *envname)
+{
+    const char *debugstr;
+    int debugval;
+    
+    debugstr = getenv(envname);
+    debugval = ccnr_msg_level_from_string(debugstr);
+    /* Treat 1 and negative specially, for some backward compatibility. */
+    if (debugval == 1)
+        debugval = CCNL_WARNING;
+    if (debugval < 0) {
+        debugval = CCNL_FINEST;
+        if (h != NULL)
+            ccnr_msg(h, "%s='%s' is not valid, using FINEST", envname, debugstr);
+    }
+    return(debugval);
+}
+
+#define CCNR_CONFIG_PASSMASK   0x003 /* config pass */
+#define CCNR_CONFIG_IGNORELINE 0x100 /* Set if there are prior problems */
+#define CCNR_CONFIG_ERR        0x200 /* Report error rather than warning */
 /**
  * Message helper for r_init_parse_config()
  */
@@ -138,9 +159,18 @@ static void
 r_init_config_msg(struct ccnr_handle *h, int flags,
                   int line, int chindex, const char *msg)
 {
-    if (flags == 1) {
-        ccnr_msg(h, "problem in config file - line %d column %d: %s",
-            line, chindex + 1, msg);
+    const char *problem = "Problem";
+    int log_at = CCNL_WARNING;
+    
+    log_at = CCNL_WARNING;
+    if ((flags & CCNR_CONFIG_ERR) != 0) {
+        problem = "Error";
+        log_at = CCNL_ERROR;
+    }
+    if ((flags & (CCNR_CONFIG_IGNORELINE|CCNR_CONFIG_PASSMASK)) == 1 &&
+        CCNSHOULDLOG(h, mmm, log_at)) {
+        ccnr_msg(h, "%s in config file %s/config - line %d column %d: %s",
+                 problem, h->directory, line, chindex + 1, msg);
     }
 }
 
@@ -168,6 +198,7 @@ r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config, int pass)
     int ch;
     int warns = 0;
     int errors = 0;
+    int use_it = 0;
     static const char pclegal[] = 
         "~@%-+=:,./[]"
         "abcdefghijklmnopqrstuvwxyz"
@@ -191,6 +222,7 @@ r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config, int pass)
         return(-1);
     for (line = 1, i = 0, ch = b[0], sol = 0; i < len;) {
         flags = pass;
+        use_it = 0;
         if (ch != '#') {
             key->length = value->length = 0;
             /* parse key */
@@ -211,21 +243,6 @@ r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config, int pass)
                 ccn_charbuf_append_value(value, ch, 1);
                 ch = b[++i];
             }
-            /* Check charset of key */
-            ndx = strspn(ccn_charbuf_as_string(key), klegal);
-            if (ndx != key->length) {
-                r_init_config_msg(h, flags, line, ndx,
-                                  "unexpected character in key");
-                flags |= CCNR_CONFIG_IGNORELINE;
-                warns++;
-            }
-            /* Check charset of value */
-            ndx = strspn(ccn_charbuf_as_string(value), pclegal);
-            if (ndx != value->length) {
-                r_init_config_msg(h, pass, line, key->length + 1 + ndx, "unexpected character in value");
-                flags |= CCNR_CONFIG_IGNORELINE;
-                warns++;
-            }
             /* See if it might be one of ours */
             if (key->length < 5 || (memcmp(key->buf, "CCNR_", 5) != 0 &&
                                     memcmp(key->buf, "SYNC_", 5) != 0)) {
@@ -233,8 +250,30 @@ r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config, int pass)
                                   "ignoring unrecognized key");
                 flags |= CCNR_CONFIG_IGNORELINE;
                 warns++;
+                use_it = 0;
             }
-fprintf(stderr, "####### ignore=%d ######## %s=%s\n", (flags & CCNR_CONFIG_IGNORELINE) != 0, ccn_charbuf_as_string(key), ccn_charbuf_as_string(value));
+            else
+                use_it = 1;
+
+            /* Check charset of key */
+            ndx = strspn(ccn_charbuf_as_string(key), klegal);
+            if (ndx != key->length) {
+                errors += use_it;
+                r_init_config_msg(h, (flags | CCNR_CONFIG_ERR), line, ndx,
+                                  "unexpected character in key");
+                flags |= CCNR_CONFIG_IGNORELINE;
+                warns++;
+            }
+            /* Check charset of value */
+            ndx = strspn(ccn_charbuf_as_string(value), pclegal);
+            if (ndx != value->length) {
+                errors += use_it;
+                 r_init_config_msg(h, (flags | CCNR_CONFIG_ERR),
+                                   line, key->length + 1 + ndx,
+                                  "unexpected character in value");
+                flags |= CCNR_CONFIG_IGNORELINE;
+                warns++;
+            }
         }
         if (ch == '#') {
             /* a comment line or error recovery. */
@@ -255,7 +294,7 @@ fprintf(stderr, "####### ignore=%d ######## %s=%s\n", (flags & CCNR_CONFIG_IGNOR
             ch = b[++i];
         }
         if (i == len) {
-            r_init_config_msg(h, pass, line, i - sol,
+            r_init_config_msg(h, flags, line, i - sol,
                               "missing newline at end of file");
             warns++;
             ch = '\n';
@@ -263,33 +302,28 @@ fprintf(stderr, "####### ignore=%d ######## %s=%s\n", (flags & CCNR_CONFIG_IGNOR
         else if (ch == '\n')
             ch = b[++i];
         else {
-            r_init_config_msg(h, pass, line, i - sol, "junk at end of line");
+            r_init_config_msg(h, flags, line, i - sol, "junk at end of line");
+            flags |= CCNR_CONFIG_IGNORELINE;
             warns++;
             ch = '#';
+        }
+        if (flags == 0 && strcmp(ccn_charbuf_as_string(key), "CCNR_DEBUG") == 0) {
+            /* Set this on pass 0 so that it takes effect sooner. */
+            h->debug = 1;
+            setenv("CCNR_DEBUG", ccn_charbuf_as_string(value), 1);
+            h->debug = r_init_debug_getenv(h, "CCNR_DEBUG");
+        }
+        if (pass == 2 && use_it) {
+            if (CCNSHOULDLOG(h, mmm, CCNL_FINEST))
+                ccnr_msg(h, "config: %s=%s",
+                        ccn_charbuf_as_string(key),
+                        ccn_charbuf_as_string(value));
+            setenv(ccn_charbuf_as_string(key), ccn_charbuf_as_string(value), 1);
         }
     }
     ccn_charbuf_destroy(&key);
     ccn_charbuf_destroy(&value);
     return(errors ? -1 : warns);
-}
-
-static int
-r_init_debug_getenv(struct ccnr_handle *h, const char *envname)
-{
-    const char *debugstr;
-    int debugval;
-    
-    debugstr = getenv(envname);
-    debugval = ccnr_msg_level_from_string(debugstr);
-    /* Treat 1 and negative specially, for some backward compatibility. */
-    if (debugval == 1)
-        debugval = CCNL_WARNING;
-    if (debugval < 0) {
-        debugval = CCNL_FINEST;
-        if (h != NULL)
-            ccnr_msg(h, "%s='%s' is not valid, using FINEST", envname, debugstr);
-    }
-    return(debugval);
 }
 
 static int
@@ -415,11 +449,15 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     config = r_init_read_config(h);
     if (config == NULL)
         goto Bail;
+    r_init_parse_config(h, config, 0); /* silent pass to pick up CCNR_DEBUG */
+    h->debug = 1; /* so that we see any complaints */
+    h->debug = r_init_debug_getenv(h, "CCNR_DEBUG");
     res = r_init_parse_config(h, config, 1);
     if (res < 0) {
-        h->running=-1; // XXX - temp
+        h->running = -1;
         goto Bail;
     }
+    r_init_parse_config(h, config, 2);
     sockname = r_net_get_local_sockname();
     h->skiplinks = ccn_indexbuf_create();
     h->face_limit = 10; /* soft limit */
