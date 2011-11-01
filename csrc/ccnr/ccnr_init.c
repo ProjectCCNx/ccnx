@@ -251,7 +251,7 @@ r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config, int pass)
     for (line = 1, i = 0, ch = b[0], sol = 0; i < len;) {
         flags = pass;
         use_it = 0;
-        if (ch != '#') {
+        if (ch > ' ' && ch != '#') {
             key->length = value->length = 0;
             /* parse key */
             while (i < len && ch != '\n' && ch != '=') {
@@ -296,8 +296,8 @@ r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config, int pass)
             ndx = strspn(ccn_charbuf_as_string(value), pclegal);
             if (ndx != value->length) {
                 errors += use_it;
-                 r_init_config_msg(h, (flags | CCNR_CONFIG_ERR),
-                                   line, key->length + 1 + ndx,
+                r_init_config_msg(h, (flags | CCNR_CONFIG_ERR),
+                                  line, key->length + 1 + ndx,
                                   "unexpected character in value");
                 flags |= CCNR_CONFIG_IGNORELINE;
                 warns++;
@@ -314,7 +314,7 @@ r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config, int pass)
                 sol = i;
                 break;
             }
-            if (warns == 0 && memchr("\r\t ", ch, 3) == NULL) {
+            if (memchr("\r\t ", ch, 3) == NULL) {
                 r_init_config_msg(h, pass, line, i - sol,
                                   "non-whitespace control char at end of line");
                 warns++;
