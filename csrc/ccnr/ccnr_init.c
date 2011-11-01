@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <netdb.h>
 #include <poll.h>
@@ -147,6 +148,33 @@ r_init_debug_getenv(struct ccnr_handle *h, const char *envname)
             ccnr_msg(h, "%s='%s' is not valid, using FINEST", envname, debugstr);
     }
     return(debugval);
+}
+
+/**
+ * Get the specified numerical config value, subject to limits.
+ */
+intmax_t
+r_init_confval(struct ccnr_handle *h, const char *key,
+                     intmax_t lo, intmax_t hi, intmax_t deflt) {
+    const char *s;
+    intmax_t v;
+    char *ep;
+    
+    s = getenv(key);
+    if (s != NULL && s[0] != 0) {
+        ep = "x";
+        v = strtoimax(s, &ep, 10);
+        if (v != 0 || ep[0] == 0) {
+            if (v > hi)
+                v = hi;
+            if (v < lo)
+                v = lo;
+            if (CCNSHOULDLOG(h, mmm, CCNL_FINEST))
+                ccnr_msg(h, "Using %s=%jd", key, v);
+            return(v);
+        }
+    }
+    return (deflt);
 }
 
 #define CCNR_CONFIG_PASSMASK   0x003 /* config pass */

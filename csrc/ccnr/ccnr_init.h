@@ -32,4 +32,6 @@ void r_init_fail(struct ccnr_handle *, int, const char *, int);
 void r_init_destroy(struct ccnr_handle **pccnr);
 int r_init_map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename, int add_content);
 struct ccn_charbuf *ccnr_init_policy_link_cob(struct ccnr_handle *ccnr, struct ccn *h, struct ccn_charbuf *targetname);
+intmax_t r_init_confval(struct ccnr_handle *h, const char *key,
+                        intmax_t lo, intmax_t hi, intmax_t deflt);
 #endif

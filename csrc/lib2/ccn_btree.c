@@ -960,7 +960,7 @@ ccn_btree_create(void)
         ans->errors = 0;
         ans->io = NULL;
         ans->nextnodeid = 1;  /* This will be the root */
-        ans->full = 19;
+        ans->full = ans->full0 = 19;
     }
     return(ans);
 }

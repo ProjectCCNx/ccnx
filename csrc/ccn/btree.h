@@ -131,6 +131,9 @@ struct ccn_btree {
     int errors;                 /**< counter for detected errors */
     /* tunables */
     int full;                   /**< split internal nodes bigger than this */
+    int full0;                  /**< split leaf nodes bigger than this */
+    int nodebytes;              /**< limit size of node */
+    int nodepool;               /**< limit resident size */
 };
 
 /**

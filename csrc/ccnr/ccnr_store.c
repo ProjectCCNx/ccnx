@@ -531,7 +531,11 @@ r_store_init(struct ccnr_handle *h)
         if (res < 0)
             r_init_fail(h, __LINE__, "index is corrupt", res);
     }
-    btree->full = 1999;
+    btree->full = r_init_confval(h, "CCNR_BTREE_MAX_FANOUT", 4, 9999, 1999);
+    btree->full0 = r_init_confval(h, "CCNR_BTREE_MAX_LEAF_ENTRIES", 4, 9999, 1999);
+    btree->nodebytes = r_init_confval(h, "CCNR_BTREE_MAX_NODE_BYTES", 65535, 8388608, 2097152);
+    btree->nodepool = r_init_confval(h, "CCNR_BTREE_NODE_POOL", 16, 512, 2147483647);
+    h->cob_limit = r_init_confval(h, "CCNR_CONTENT_CACHE", 16, 4201, 2147483647);
     if (h->running != -1)
         r_store_index_needs_cleaning(h);
 }
@@ -761,7 +765,7 @@ r_store_content_btree_insert(struct ccnr_handle *h,
                                        content->flatname);
         if (res < 0)
             return(-1);
-        if (res > btree->full) {
+        if (res > btree->full0) {
             res = ccn_btree_split(btree, leaf);
             for (limit = 100; res >= 0 && btree->nextsplit != 0; limit--) {
                 if (limit == 0) abort();
