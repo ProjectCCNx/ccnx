@@ -586,15 +586,18 @@ ccn_btree_grow_a_level(struct ccn_btree *btree, struct ccn_btree_node *node)
     child = ccn_btree_getnode(btree, btree->nextnodeid++, node->nodeid);
     if (child == NULL)
         return(NULL);
+    res = ccn_btree_prepare_for_update(btree, child);
+    if (res < 0)
+        ccn_btree_note_error(btree, __LINE__);
+    res = ccn_btree_prepare_for_update(btree, node);
+    if (res < 0)
+        ccn_btree_note_error(btree, __LINE__);
     child->clean = 0;
     node->clean = 0;
     t = child->buf;
     child->buf = node->buf;
     node->buf = t;
     res = ccn_btree_init_node(node, level + 1, 'R', 0); // XXX - arbitrary extsz
-    if (res < 0)
-        ccn_btree_note_error(btree, __LINE__);
-    res = ccn_btree_prepare_for_update(btree, node);
     if (res < 0)
         ccn_btree_note_error(btree, __LINE__);
     MYSTORE(&link, child, child->nodeid);
@@ -606,6 +609,28 @@ ccn_btree_grow_a_level(struct ccn_btree *btree, struct ccn_btree_node *node)
         (unsigned)node->nodeid, level + 1,
         (unsigned)child->nodeid, btree->errors);
     return(child);
+}
+
+/**
+ * Test for an oversize node
+ *
+ * This takes into account both the size of a node and the count of
+ * entries.
+ *
+ * @returns a boolean result.
+ */
+int
+ccn_btree_oversize(struct ccn_btree *btree, struct ccn_btree_node *node)
+{
+    int n;
+    
+    n = ccn_btree_node_nent(node);
+    if (n > 4 && btree->nodebytes != 0 &&
+        node->buf->length > btree->nodebytes)
+        return(1);
+    if (ccn_btree_node_level(node) == 0 && btree->full0 > 0)
+        return(n > btree->full0);
+    return(n > btree->full);
 }
 
 int
@@ -660,6 +685,9 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     a[1] = ccn_btree_getnode(btree, btree->nextnodeid++, 0);
     if (a[1] == NULL)
         goto Bail;
+    res = ccn_btree_prepare_for_update(btree, a[1]);
+    if (res < 0)
+        return(-1);
     for (k = 0; k < 2; k++) {
         if (ccn_btree_node_nent(a[k]) != 0)
             goto Bail;
@@ -729,13 +757,13 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     res = ccn_btree_insert_entry(parent, i,
                                  key->buf, key->length,
                                  &link, sizeof(link));
-    if (res > btree->full) {
-        btree->missedsplit = btree->nextsplit;
-        btree->nextsplit = parent->nodeid;
-    }
     if (res < 0) {
         parent->corrupt = __LINE__;
         goto Bail;
+    }
+    else if (ccn_btree_oversize(btree, parent)) {
+        btree->missedsplit = btree->nextsplit;
+        btree->nextsplit = parent->nodeid;
     }
     node->clean = 0;
     node->buf = newnode.buf;
@@ -1020,7 +1048,7 @@ ccn_btree_init_node(struct ccn_btree_node *node,
     return(0);
 }
 
-#define CCN_BTREE_MAX_NODE_BYTES (1U<<20)
+#define CCN_BTREE_MAX_NODE_BYTES (8U<<20)
 
 /**
  * Access a btree node, creating or reading it if necessary

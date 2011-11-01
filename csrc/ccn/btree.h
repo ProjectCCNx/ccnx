@@ -256,6 +256,9 @@ int ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
 int ccn_btree_init_node(struct ccn_btree_node *node,
                         int level, unsigned char nodetype, unsigned char extsz);
 
+/* Test for an oversize node */
+int ccn_btree_oversize(struct ccn_btree *btree, struct ccn_btree_node *node);
+
 /* Check a node for internal consistency */
 int ccn_btree_chknode(struct ccn_btree_node *node);
 
