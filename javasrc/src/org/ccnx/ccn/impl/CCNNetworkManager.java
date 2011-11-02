@@ -960,7 +960,8 @@ public class CCNNetworkManager implements Runnable {
 				prefix = getRegisteredPrefix(filter);  // Did someone else already register it?
 				if (null == prefix) {  // no
 					_registrationChangeInProgress = true;
-				}
+				} else
+					prefix._refCount++;
 			}
 			
 			// We don't want to hold the _registeredPrefixes lock here, but we're safe to change things
@@ -976,11 +977,11 @@ public class CCNNetworkManager implements Runnable {
 					throw new IOException(e.getMessage());
 				}
 				synchronized (_registeredPrefixes) {
+					prefix._refCount++;
 					_registrationChangeInProgress = false;
 					_registeredPrefixes.notifyAll();
 				}
 			}
-			prefix._refCount++;
 		}
 
 		// Now we've dealt with what ccnd needs to know, register our callback so we can be called on
