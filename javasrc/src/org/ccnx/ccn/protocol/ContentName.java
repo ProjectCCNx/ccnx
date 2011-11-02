@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
@@ -39,7 +40,7 @@ import org.ccnx.ccn.protocol.ContentNameProvider;
  * To create a ContentName from Strings, a client must call one of the static 
  * methods that implements a conversion.
  */
-public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName>, Serializable, ContentNameProvider {
+public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName>, Serializable, ContentNameProvider, Iterable<byte []> {
 
 	private static final long serialVersionUID = 2754391169423477552L;
 
@@ -1214,5 +1215,18 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				return componentResult;
 		}
 		return 0;
+	}
+
+	/**
+	 * This returns the components of the name.
+	 * Warning - the iterator directly returns the underlying byte arrays used in the name to
+	 * hold the components. These must not be modified (they may be reused in multiple places,
+	 * and are assumed not to change).
+	 * @return iterator over the name components.
+	 */
+	@Override
+	public Iterator<byte[]> iterator() {
+		_components.iterator();
+		return null;
 	}
 }
