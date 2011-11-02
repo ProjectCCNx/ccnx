@@ -323,6 +323,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * for subsequent addition of components.
 	 * @param components
 	 */
+	@Deprecated
 	public ContentName(int count, byte components[][]) {
 		if (0 >= count) {
 			_components = new ArrayList<byte []>(0);

@@ -330,7 +330,7 @@ public class ContentNameTest {
 		arr[1] = subName1.getBytes();
 		arr[2] = document1.getBytes();
 		System.out.println("Creating name from byte arrays.");
-		ContentName name = new ContentName(3, arr);
+		ContentName name = new ContentName(arr[0], arr[1], arr[2]);
 		assertNotNull(name);
 		System.out.println("Name: " + name);
 		assertEquals(name, ContentName.fromURI(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR +
@@ -407,7 +407,7 @@ public class ContentNameTest {
 		arr[1] = subName1.getBytes();
 		arr[2] = document1.getBytes();
 		System.out.println("Creating name from byte arrays with invalid values.");
-		ContentName name = new ContentName(3, arr);
+		ContentName name = new ContentName(arr[0], arr[1], arr[2]);
 		assertNotNull(name);
 		System.out.println("Name: " + name);
 		// Now add invalid component and test round-trip
