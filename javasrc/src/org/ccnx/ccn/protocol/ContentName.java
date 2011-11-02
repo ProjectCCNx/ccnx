@@ -213,16 +213,12 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return this;
 	}
 
-	@Deprecated
+	/**
+	 * This method is here to avoid a warning when passing a byte[][]
+	 * parameter directly into the varargs constructor.
+	 */
 	public ContentName(byte components[][]) {
-		if (null == components) {
-			_components = null;
-		} else {
-			_components = new ArrayList<byte []>(components.length);
-			for (int i=0; i < components.length; ++i) {
-				_components.add(components[i].clone());
-			}
-		}
+		this((Object[]) components);
 	}
 
 	/**
