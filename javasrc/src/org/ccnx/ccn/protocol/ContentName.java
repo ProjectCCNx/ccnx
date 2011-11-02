@@ -1120,6 +1120,20 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
+	 * @param position component number to include as first component in the new name.
+	 * Starting with component 0.
+	 * @return A new name using the components starting from position.
+	 */
+	public ContentName right(int position) {
+		if ((position < 0) || (position > count())) {
+			throw new IllegalArgumentException("Illegal component count: " + position);
+		}
+		if (position == 0)
+			return this;
+		return new ContentName(position, _components.size()-position, _components);
+	}
+
+	/**
 	 * Slice the name off right before the given component
 	 * @param component
 	 */
