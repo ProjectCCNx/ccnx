@@ -36,9 +36,10 @@ import org.ccnx.ccn.protocol.ContentNameProvider;
 /**
  * ContentNames consist of a sequence of byte[] components which may not 
  * be assumed to follow any string encoding, or any other particular encoding.
- * The constructors therefore provide for creation only from byte[]s.
- * To create a ContentName from Strings, a client must call one of the static 
- * methods that implements a conversion.
+ * 
+ * Warning: This class is designed to be immutable. Some methods expose the internal
+ * byte[] components. You must be careful not to change the contents of these byte[]
+ * when you receive the values back from this class.
  */
 public class ContentName extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentName>, Serializable, ContentNameProvider, Iterable<byte []> {
 
