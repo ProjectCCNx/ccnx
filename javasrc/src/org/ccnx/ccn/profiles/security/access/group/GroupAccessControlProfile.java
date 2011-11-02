@@ -69,7 +69,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	// These two must be the same length
 	public static final byte [] USER_PRINCIPAL_PREFIX = Component.parseNative("p");
 	public static final byte [] GROUP_PRINCIPAL_PREFIX = Component.parseNative("g");
-	public static final ContentName ACL_POSTFIX = new ContentName(new byte[][]{ACCESS_CONTROL_MARKER_BYTES, ACL_NAME_BYTES});
+	public static final ContentName ACL_POSTFIX = new ContentName(ACCESS_CONTROL_MARKER_BYTES, ACL_NAME_BYTES);
 
 	/**
 	 * This class records information about a CCN principal.

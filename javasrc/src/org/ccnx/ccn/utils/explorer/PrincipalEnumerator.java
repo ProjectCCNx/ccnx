@@ -83,7 +83,7 @@ public class PrincipalEnumerator {
 			}
 			else {
 				for (ContentName child : availableChildren) {
-					ContentName fullName = new ContentName(path, child.components());
+					ContentName fullName = path.append(child);
 					principalList.add(fullName);
 				}
 			}

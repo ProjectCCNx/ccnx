@@ -18,7 +18,6 @@
 package org.ccnx.ccn.protocol;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.logging.Level;
@@ -322,24 +321,22 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 */
 	private static Interest nextOrLast(ContentName name, Exclude exclude, Integer order, Integer prefixCount, Integer maxSuffixComponents,
 					Integer minSuffixComponents, PublisherPublicKeyDigest publisher )  {
-		ArrayList<byte []>components = byteArrayClone(name.components());
-		ContentName nameToUse = new ContentName(components.size(), components);
 		if (null != prefixCount) {
 			if (prefixCount > name.count())
 				throw new IllegalArgumentException("Invalid prefixCount > components: " + prefixCount);
 		} else
-			prefixCount = nameToUse.count() - 1;
+			prefixCount = name.count() - 1;
 		
-		if (prefixCount < nameToUse.count()) {
-			byte [] component = nameToUse.component(prefixCount);
-			nameToUse = new ContentName(prefixCount, nameToUse.components());
-		
+		if (prefixCount < name.count()) {
+			byte [] component = name.component(prefixCount);
+			name = name.cut(prefixCount);
+
 			if (exclude == null) {
 				exclude = Exclude.uptoFactory(component);
 			} else
 				exclude.excludeUpto(component);
 		}
-		return constructInterest(nameToUse, exclude, order, maxSuffixComponents, minSuffixComponents, publisher);
+		return constructInterest(name, exclude, order, maxSuffixComponents, minSuffixComponents, publisher);
 	}
 	
 	/**
@@ -457,17 +454,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public boolean isPrefixOf(ContentObject other) {
 		return name().isPrefixOf(other, name().count());
 	}
-		
-	private static ArrayList<byte[]> byteArrayClone(ArrayList<byte[]> input) {
-		ArrayList<byte[]> al = new ArrayList<byte[]>();
-		for (int i = 0; i < input.size(); i++) {
-			byte[] value = new byte[input.get(i).length];
-			System.arraycopy(input.get(i), 0, value, 0, input.get(i).length);
-			al.add(value);
-		}
-		return al;
-	}
-	
+
 	/**
 	 * Thought about encoding and decoding as flat -- no wrapping
 	 * declaration. But then couldn't use these solo.

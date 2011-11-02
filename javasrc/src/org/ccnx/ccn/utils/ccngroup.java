@@ -142,7 +142,7 @@ public class ccngroup {
 			else {
 				System.out.println(availableChildren.size() + " group(s) found in: " + groupStorage);
 				for (ContentName child : availableChildren) {
-					ContentName fullName = new ContentName(groupStorage, child.components());
+					ContentName fullName = groupStorage.append(child);
 					System.out.println(fullName);
 				}
 			}
