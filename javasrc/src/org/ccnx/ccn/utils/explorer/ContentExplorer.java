@@ -178,20 +178,8 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			// add each component to the tree
 			newNode = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
 					null, new Name(root.component(i), root.copy(i), true)));
-			if (top == null) {
-				top = newNode;
-			} else {
-				node.add(newNode);
-			}
-			// usableRoot = node;
+			node.add(newNode);
 			node = newNode;
-		}
-
-		if (top == null) {
-			top = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null,
-					new Name(root.component(0), null, true)));
-			newNode = top;
-			node = top;
 		}
 
 		usableRoot = top;

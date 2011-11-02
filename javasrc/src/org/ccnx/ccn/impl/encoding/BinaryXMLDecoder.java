@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -360,18 +359,12 @@ public class BinaryXMLDecoder  extends GenericXMLDecoder implements XMLDecoder {
 	public CCNTime readDateTime(String startTag) throws ContentDecodingException {
 		byte [] byteTimestamp = readBinaryElement(startTag);
 		CCNTime timestamp = new CCNTime(byteTimestamp);
-		if (null == timestamp) {
-			throw new ContentDecodingException("Cannot parse timestamp: " + DataUtils.printHexBytes(byteTimestamp));
-		}		
 		return timestamp;
 	}
 	
 	public CCNTime readDateTime(long startTag) throws ContentDecodingException {
 		byte [] byteTimestamp = readBinaryElement(startTag);
 		CCNTime timestamp = new CCNTime(byteTimestamp);
-		if (null == timestamp) {
-			throw new ContentDecodingException("Cannot parse timestamp: " + DataUtils.printHexBytes(byteTimestamp));
-		}		
 		return timestamp;
 	}	
 }
