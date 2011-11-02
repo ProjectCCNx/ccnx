@@ -86,16 +86,17 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		 */
 		public byte[] getComponent();
 	}
+	
+	/**
+	 * When parsing string elements in a ContentName constructor
+	 * always interpret the String as a single raw UTF8 component.
+	 */
 	private static final StringParser constructorStringParser = new StringParser(){
 		@Override
 		public ArrayList<byte[]> parse(String s) {
-			try {
-				return fromNative(s)._components;
-			} catch (MalformedContentNameStringException e) {
-				ArrayList<byte[]> components = new ArrayList<byte[]>(1);
-				components.add(s.getBytes());
-				return components;
-			}
+			ArrayList<byte[]> components = new ArrayList<byte[]>(1);
+			components.add(s.getBytes());
+			return components;
 		}
 	};
 	private static final StringParser nativeStringParser = new StringParser(){
@@ -143,9 +144,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
-	 * Varargs name builder, Strings that do not start with a / will be added as a single
-	 * component. Strings that start with a / will be split at every / and added as a series
-	 * of components. No URI decoding will be done, Strings components are kept raw.
+	 * Varargs name builder, Strings always represent a single component, interpreted as UTF8.
 	 * @see #builder(StringParser, Object[])
 	 */
 	public ContentName(Object... args) {
