@@ -355,7 +355,7 @@ public class ContentTree {
 		assert(null != _root);
 		boolean added = false;
 		
-		for (byte[] component : name.components()) {
+		for (byte[] component : name) {
 			synchronized(node) {
 				//Library.finest("getting node for component: "+new String(component));
 				TreeNode child = node.getChild(component);
@@ -485,7 +485,7 @@ public class ContentTree {
 			return node;
 		}
 		
-		for (byte[] component : name.components()) {
+		for (byte[] component : name) {
 			synchronized(node) {
 				TreeNode child = node.getChild(component);
 				if (null == child) {

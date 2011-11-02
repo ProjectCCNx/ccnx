@@ -575,22 +575,16 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 */
 	DefaultMutableTreeNode getTreeNode(ContentName ccnContentName) {
 		Log.fine("handling returned names!!! prefix = "+ ccnContentName.toString());
-		Log.fine("handling returned names!!! prefix = "+ ccnContentName.toString());
 
 		TreePath prefixPath = new TreePath(usableRoot);
 
 		Log.fine("prefix path: " + prefixPath.toString());
-		Log.fine("prefix path: " + prefixPath.toString());
 
-		ArrayList<byte[]> nbytes = ccnContentName.components();
-		String[] names = new String[nbytes.size()];
+		String[] names = new String[ccnContentName.count()];
 		int ind = 0;
-		ContentName newName = null;
-		for (byte[] n : nbytes) {
+		for (byte[] n : ccnContentName) {
 			Log.fine("adding n: "+new String(n));
-			//names[ind] = new String(n);
-			//TODO: switch to the following line after current changes are checked in
-			newName = ContentName.fromNative(new ContentName(), n);
+			ContentName newName = new ContentName(n);
 			Log.fine("newName = "+newName+" "+newName.toString().replace("/", ""));
 			names[ind] = newName.toString();
 			ind++;
