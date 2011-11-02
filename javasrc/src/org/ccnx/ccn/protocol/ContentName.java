@@ -115,6 +115,17 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
+	 * This Constructor is required to avoid the varargs constructor interpreting
+	 * a single byte[] as a list of separate byte arguments.
+	 * @param component a single component. The data is cloned, so there is no restriction on
+	 * its use after this call.
+	 */
+	public ContentName(byte[] component) {
+		_components = new ArrayList<byte[]>(1);
+		_components.add(component.clone());
+	}
+
+	/**
 	 * Varargs name builder, Strings interpreted as Native.
 	 * @see #builder(StringParser, Object[])
 	 */
