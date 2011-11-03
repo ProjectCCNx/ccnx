@@ -766,6 +766,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
         btree->nextsplit = parent->nodeid;
     }
     node->clean = 0;
+    ccn_charbuf_destroy(&node->buf);
     node->buf = newnode.buf;
     newnode.buf = NULL;
     res = ccn_btree_chknode(node); /* Update freelow */
