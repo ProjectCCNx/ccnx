@@ -226,23 +226,19 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param parent used for the base of the name, if null, no prefix
 	 * 	added.
 	 * @param name component to be appended; if null, just copy parent
+	 * @deprecated superseded by the {@link ContentName#ContentName(Object...)} varargs constructor.
 	 */
 	public ContentName(ContentName parent, byte [] name) {
-		this(((parent != null) ? parent.count() : 0) +
-				((null != name) ? 1 : 0),
-				((parent != null) ? parent.components() : null));
-		if (null != name) {
-			byte [] c = new byte[name.length];
-			System.arraycopy(name,0,c,0,name.length);
-			_components.add(c);
-		}
+		this(new Object[]{parent, name});
 	}
 
 	/**
 	 * Constructor given another ContentName, appends extra components.
 	 * @param parent used for the base of the name.
 	 * @param childComponents components to be appended.
+	 * @deprecated superseded by the {@link ContentName#ContentName(Object...)} varargs constructor.
 	 */
+	@Deprecated
 	public ContentName(ContentName parent, byte [][] childComponents) {
 		this(parent.count() + 
 				((null != childComponents) ? childComponents.length : 0), parent.components());
@@ -262,6 +258,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * as input.
 	 * @param parent used for the base of the name.
 	 * @param childComponents the additional name components to add at the end of parent
+	 * @deprecated superseded by the {@link ContentName#ContentName(Object...)} varargs constructor.
 	 */
 	@Deprecated
 	public ContentName(ContentName parent, ArrayList<byte []> childComponents) {
@@ -283,6 +280,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param parent used for the base of the name.
 	 * @param start index in childComponents to begin adding from
 	 * @param childComponents the additional name components to add at the end of parent
+	 * @deprecated use {@link ContentName#right(int)} and the {@link ContentName#ContentName(Object...)}
+	 * varargs constructor instead.
 	 */
 	@Deprecated
 	public ContentName(ContentName parent, int start, ArrayList<byte []> childComponents) {
@@ -299,6 +298,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 	}
 
+	/**
+	 * @deprecated superseded by the {@link ContentName#ContentName(Object...)} varargs constructor.
+	 */
 	public ContentName(ContentName parent, byte[] name1, byte[] name2) {
 		this (parent.count() +
 				((null != name1) ? 1 : 0) +
@@ -318,10 +320,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	/**
 	 * Constructor for extending or contracting names.
 	 * @param count only this number of name components are taken from components.
-	 * If count exceeds the number of components passed all components will be
-	 * included and additional space will be preallocated in the representation
-	 * for subsequent addition of components.
 	 * @param components
+	 * @deprecated Use {@link ContentName#cut(int)} instead.
 	 */
 	@Deprecated
 	public ContentName(int count, byte components[][]) {
@@ -346,6 +346,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * once created.
 	 * @param count Only this number of name components are copied into the new name.
 	 * @param components These are the name components to be copied. Can be null, empty, or longer or shorter than count.
+	 * @deprecated Use {@link ContentName#cut(int)} instead.
 	 */
 	@Deprecated
 	public ContentName(int count, ArrayList<byte []>components) {
@@ -371,6 +372,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param count Only this number of name components are copied into the new name. If count-start is
 	 * 	greater than the last component in the components array, only copies count-start.
 	 * @param components These are the name components to be copied. Can be null, empty, or longer or shorter than count.
+	 * @deprecated Use {@link ContentName#subname(int, int)} instead.
 	 */
 	@Deprecated
 	public ContentName(int start, int count, ArrayList<byte []>components) {
