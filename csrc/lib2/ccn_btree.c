@@ -1078,6 +1078,7 @@ ccn_btree_getnode(struct ccn_btree *bt,
     if (res == HT_NEW_ENTRY) {
         node->nodeid = nodeid;
         node->buf = ccn_charbuf_create();
+        bt->cleanreq++;
         if (node->buf == NULL) {
             ccn_btree_note_error(bt, __LINE__);
             node->corrupt = __LINE__;
@@ -1238,6 +1239,7 @@ ccn_btree_prepare_for_update(struct ccn_btree *bt, struct ccn_btree_node *node)
     if (node->corrupt)
         return(-1);
     if (bt->io != NULL && node->iodata == NULL) {
+        bt->cleanreq++;
         res = bt->io->btopen(bt->io, node);
         if (res < 0) {
             ccn_btree_note_error(bt, __LINE__);

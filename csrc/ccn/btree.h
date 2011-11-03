@@ -129,6 +129,7 @@ struct ccn_btree {
     ccn_btnodeid nextsplit;     /**< oversize node that needs splitting */
     ccn_btnodeid missedsplit;   /**< should stay zero */
     int errors;                 /**< counter for detected errors */
+    int cleanreq;               /**< if nonzero, cleaning might be needed */
     /* tunables */
     int full;                   /**< split internal nodes bigger than this */
     int full0;                  /**< split leaf nodes bigger than this */

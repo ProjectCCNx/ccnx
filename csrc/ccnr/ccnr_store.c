@@ -233,6 +233,7 @@ r_store_trim(struct ccnr_handle *h, unsigned long limit)
     int checklimit;
     unsigned before;
     
+    r_store_index_needs_cleaning(h);
     before = h->cob_count;
     if (before <= limit)
         return;
@@ -1391,7 +1392,8 @@ ccnr_debug_content(struct ccnr_handle *h,
     ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
     if (fdholder != NULL)
         ccn_charbuf_putf(c, "%u ", fdholder->filedesc);
-    ccn_uri_append_flatname(c, flat->buf, flat->length, 1);
+    if (flat != NULL)
+        ccn_uri_append_flatname(c, flat->buf, flat->length, 1);
     ccn_charbuf_putf(c, " (%d bytes)", content->size);
     ccnr_msg(h, "%s", ccn_charbuf_as_string(c));
     ccn_charbuf_destroy(&c);
@@ -1413,6 +1415,7 @@ r_store_index_cleaner(struct ccn_schedule *sched,
     struct ccn_btree_node *node = NULL;
     int k;
     int res;
+    int overquota;
     
     (void)(sched);
     (void)(ev);
@@ -1452,9 +1455,22 @@ r_store_index_cleaner(struct ccn_schedule *sched,
             return(nrand48(h->seed) % (2U * CCN_BT_CLEAN_TICK_MICROS) + 500);
     }
     /* Sweep though and find the nodes that still need cleaning */
+    overquota = 0;
+    if (h->btree->nodepool >= 16)
+        overquota = hashtb_n(h->btree->resident) - h->btree->nodepool;
     hashtb_start(h->btree->resident, e);
-    for (; e->data != NULL; hashtb_next(e)) {
-        node = e->data;
+    for (node = e->data; node != NULL; node = e->data) {
+        if (overquota > 0 &&
+              node->activity == 0 &&
+              node->iodata == NULL &&
+              node->clean == node->buf->length) {
+            overquota -= 1;
+            if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINEST))
+                ccnr_msg(h, "prune index node %u",
+                         (unsigned)node->nodeid);
+            hashtb_delete(e);
+            continue;
+        }
         node->activity /= 2; /* Age the node's activity */
         if (node->clean != node->buf->length ||
             (node->iodata != NULL && node->activity == 0)) {
@@ -1465,15 +1481,18 @@ r_store_index_cleaner(struct ccn_schedule *sched,
             }
             ccn_indexbuf_append_element(h->toclean, node->nodeid);
         }
+        hashtb_next(e);
     }
     hashtb_end(e);
     /* If nothing to do, shut down cleaner */
-    if ((h->toclean == NULL || h->toclean->n == 0) &&
+    if ((h->toclean == NULL || h->toclean->n == 0) && overquota <= 0 &&
         h->btree->io->openfds <= CCN_BT_OPEN_NODES_IDLE) {
+        h->btree->cleanreq = 0;
         h->index_cleaner = NULL;
         ccn_indexbuf_destroy(&h->toclean);
         if (CCNSHOULDLOG(h, sdfsdffd, CCNL_FINE))
             ccnr_msg(h, "index btree nodes all clean");
+        
         return(0);
     }
     return(nrand48(h->seed) % (2U * CCN_BT_CLEAN_TICK_MICROS) + 500);
@@ -1483,7 +1502,7 @@ PUBLIC void
 r_store_index_needs_cleaning(struct ccnr_handle *h)
 {
     int k;
-    if (h->btree != NULL && h->btree->io != NULL) {
+    if (h->btree != NULL && h->btree->io != NULL && h->btree->cleanreq > 0) {
         if (h->index_cleaner == NULL) {
             h->index_cleaner = ccn_schedule_event(h->sched,
                                                   CCN_BT_CLEAN_TICK_MICROS,
