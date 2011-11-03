@@ -1,8 +1,11 @@
 package org.ccnx.ccn.protocol;
 
+import static org.ccnx.ccn.profiles.CommandMarker.COMMAND_MARKER_NONCE;
+
 import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
+import java.util.Random;
 
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.protocol.ContentName.ComponentProvider;
@@ -212,4 +215,18 @@ public class Component implements ComponentProvider {
 		}
 		return result.toString();
 	}
+
+	private static Random random = new Random();
+	/**
+	 * A random nonce component (with a nonce CommandMarker header).
+	 * Can be used in ContentName constructors where a nonce is required.
+	 */
+	public static final ComponentProvider NONCE = new ComponentProvider() {
+
+		public byte[] getComponent() {
+			byte [] nonce = new byte[8];
+			random.nextBytes(nonce);
+			return COMMAND_MARKER_NONCE.addBinaryData(nonce);
+		}
+	};
 }

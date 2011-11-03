@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.protocol;
 
+import static org.ccnx.ccn.protocol.Component.NONCE;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
@@ -62,11 +64,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public static final int DEFAULT_ANSWER_ORIGIN_KIND = ANSWER_CONTENT_STORE | ANSWER_GENERATED;
 
-	/**
-	 * For nonce generation
-	 */
-	protected static Random _random = new Random();
-	
 	protected ContentName _name;
 	protected Integer _maxSuffixComponents;
 	protected Integer _minSuffixComponents;
@@ -413,11 +410,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * same content.
 	 * 
 	 * @return the nonce in component form
+	 * @deprecated use {@link Component#NONCE} instead.
 	 */
+	@Deprecated
 	public static byte[] generateNonce() {
-		byte [] nonce = new byte[8];
-		_random.nextBytes(nonce);
-		return CommandMarker.COMMAND_MARKER_NONCE.addBinaryData(nonce);
+		return NONCE.getComponent();
 	}
 
 	/**

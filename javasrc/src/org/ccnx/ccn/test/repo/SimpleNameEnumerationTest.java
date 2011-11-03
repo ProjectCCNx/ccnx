@@ -1,5 +1,7 @@
 package org.ccnx.ccn.test.repo;
 
+import static org.ccnx.ccn.protocol.Component.NONCE;
+
 import java.io.IOException;
 
 import junit.framework.Assert;
@@ -11,7 +13,6 @@ import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.versioning.VersionNumber;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.Interest;
 import org.junit.Test;
 
 public final class SimpleNameEnumerationTest {
@@ -43,7 +44,7 @@ public final class SimpleNameEnumerationTest {
 		Assert.assertEquals(first, second);
 
 		// write something to the repo
-		ContentName freshContent = new ContentName(baseName, Interest.generateNonce());
+		ContentName freshContent = new ContentName(baseName, NONCE);
 		new RepositoryOutputStream(freshContent, handle).close();
 
 		// clear the ccnd cache
