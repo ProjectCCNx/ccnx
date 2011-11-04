@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -164,7 +164,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		int attempts = 0;
 		try{
 			while (names==null && attempts < 500){
-				Thread.sleep(rand.nextInt(50));
+				Thread.sleep(50);
 				attempts++;
 			}
 			
@@ -193,7 +193,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			putne.registerNameForResponses(name1Dirty);
 			
 			while(!putne.containsRegisteredName(name1Dirty)){
-				Thread.sleep(rand.nextInt(50));
+				Thread.sleep(50);
 			}
 				
 			//the names are registered...
@@ -216,7 +216,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		int attempts = 0;
 		try{
 			while(names==null && attempts < 1000){
-				Thread.sleep(rand.nextInt(50));
+				Thread.sleep(50);
 				attempts++;
 			}
 			
@@ -228,6 +228,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.fail();
 		}
 
+		Assert.assertNotNull(names);
 		Assert.assertTrue(names.size()==3);
 		for(ContentName cn: names){
 			System.out.println("got name: "+cn.toString());
@@ -287,7 +288,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		int attempts = 0;
 		try{
 			while(names==null && attempts < 100){
-				Thread.sleep(rand.nextInt(50));
+				Thread.sleep(50);
 				attempts++;
 			}
 			//we either broke out of loop or the names are here
