@@ -37,6 +37,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.security.KeyProfile;
+import org.ccnx.ccn.protocol.ContentName.ComponentProvider;
 import org.ccnx.ccn.protocol.ContentName.DotDotComponent;
 
 
@@ -54,7 +55,7 @@ import org.ccnx.ccn.protocol.ContentName.DotDotComponent;
  * To generate a PublisherPublicKeyDigest, we use the digest of the encoded PublicKey (the encoded SubjectPublicKeyInfo).
  */
 public class PublisherPublicKeyDigest extends GenericXMLEncodable 
-			implements XMLEncodable, Comparable<PublisherPublicKeyDigest>, Serializable {
+			implements XMLEncodable, Comparable<PublisherPublicKeyDigest>, Serializable, ComponentProvider {
     
  	private static final long serialVersionUID = -1636681985247106846L;
 
@@ -222,5 +223,10 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 	public String shortFingerprint() {
 		long lf = new BigInteger(1, _publisherPublicKeyDigest).longValue();
 		return Long.toHexString(lf);
+	}
+
+	@Override
+	public byte[] getComponent() {
+		return KeyProfile.keyIDToNameComponent(this);
 	}
 }
