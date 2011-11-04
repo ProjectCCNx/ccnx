@@ -140,16 +140,21 @@ public class CCNNetworkManager implements Runnable {
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
 	
 	// Prefix registration handling. Only one registration change (add or remove a registration) with ccnd is
-	// allowed at once. Before attempting a registration change, users must check _registrationChangeInProgress and wait
-	// for it to clear before continuing.  _registeredPrefixes must be locked on access. It is also used to lock
-	// access to _registrationChangeInProgress.
+	// allowed at once. Before attempting a registration change, users must acquire _registrationChangeInProgress
+	// _registeredPrefixes must be locked on read/write access of the prefixes
+	//
+	// setInterestFilter and cancelInterestFilter which may both potentially change the prefix registration with
+	// ccnd are not symmetrical. When calling setInterestFilter we must have completed any necessary prefix registration
+	// before returning to the user, but when we call cancelInterestFilter we can return before completing a prefix deregistration
+	// since we have already disabled the mechanism to call the users handler so any spurious interest for the prefix will be
+	// ignored.
 	public static final boolean DEFAULT_PREFIX_REG = true;  // Should we use prefix registration? (TODO - this is pretty much obsolete
 															// - it was used during the transition to prefix registration and
 															// should probably be removed)
 	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
 	protected PrefixRegistrationManager _prefixMgr = null;
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
-	protected Boolean _registrationChangeInProgress = false;
+	protected Semaphore _registrationChangeInProgress = new Semaphore(1);
 	
 	// Periodic timer
 	protected Timer _periodicTimer = null;
@@ -198,10 +203,9 @@ public class CCNNetworkManager implements Runnable {
 				if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE))
 					Log.fine(Log.FAC_NETMANAGER, "Cancel registration completed for {0}", 
 							_forwarding.getPrefixName());
-				_registrationChangeInProgress = false;	
-				_registeredPrefixes.notifyAll();
 				_registeredPrefixes.remove(_forwarding.getPrefixName());
 			}
+			_registrationChangeInProgress.release();
 			return null;
 		}
 	}
@@ -941,6 +945,7 @@ public class CCNNetworkManager implements Runnable {
 		setupTimers();
 		if (_usePrefixReg) {
 			RegisteredPrefix prefix = null;
+			_registrationChangeInProgress.acquireUninterruptibly();
 			synchronized(_registeredPrefixes) {
 				// Determine whether we need to register our prefix with ccnd
 				// We do if either its not registered now, or the one registered now is being
@@ -949,24 +954,15 @@ public class CCNNetworkManager implements Runnable {
 				// we go ahead and register it. And of course, someone else could have registered it
 				// before we got to it so check for that also. If its already registered, just bump
 				// its use count.
-				if (_registrationChangeInProgress && Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE)) {
-					Log.fine(Log.FAC_NETMANAGER, formatMessage("SetInterestFilter: Waiting for pending registration activity"));
-				}
-				while (_registrationChangeInProgress) {  // Wait for anyone else messing around with prefixes
-					try {
-						_registeredPrefixes.wait();
-					} catch (InterruptedException e) {}
-				}
 				prefix = getRegisteredPrefix(filter);  // Did someone else already register it?
-				if (null == prefix) {  // no
-					_registrationChangeInProgress = true;
-				} else
+				if (null != prefix) {  // no
 					prefix._refCount++;
+				}
 			}
 			
-			// We don't want to hold the _registeredPrefixes lock here, but we're safe to change things
-			// because we have set _registrationChangeInProgress to true
 			if (null == prefix) {
+				// We don't want to hold the _registeredPrefixes lock here, but we're safe to change things
+				// because we have acquired _registrationChangeInProgress.
 				try {
 					if (null == _prefixMgr) {
 						_prefixMgr = new PrefixRegistrationManager(this);
@@ -978,10 +974,9 @@ public class CCNNetworkManager implements Runnable {
 				}
 				synchronized (_registeredPrefixes) {
 					prefix._refCount++;
-					_registrationChangeInProgress = false;
-					_registeredPrefixes.notifyAll();
 				}
 			}
+			_registrationChangeInProgress.release();
 		}
 
 		// Now we've dealt with what ccnd needs to know, register our callback so we can be called on
@@ -1030,8 +1025,6 @@ public class CCNNetworkManager implements Runnable {
 			// prefix we use Integer.MAX_VALUE as the requested lifetime.
 			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 				Log.fine(Log.FAC_NETMANAGER, "registerPrefix for {0}: entry.lifetime: {1} entry.faceID: {2}", filter, entry.getLifetime(), entry.getFaceID());
-			_registrationChangeInProgress = false;
-			_registeredPrefixes.notifyAll();
     	}
 		return newPrefix;
     }
@@ -1055,30 +1048,24 @@ public class CCNNetworkManager implements Runnable {
 		Entry<Filter> found = null;
 		found = _myFilters.remove(filter, newOne);
 		if (null != found) {
+			boolean semaAcquired = false;
 			if (_usePrefixReg) {
 				// Deregister it with ccnd only if the refCount would go to 0
 				RegisteredPrefix prefix = null;
 				boolean doRemove = false;
 				synchronized (_registeredPrefixes) {
 					prefix = getRegisteredPrefix(filter);
-					if (null != prefix) {
-						// We need to deregister it with ccnd. But first we need to make sure nobody else is messing around
-						// with the ccnd prefix registration.
-						if (prefix._refCount <= 1) {
-							if (_registrationChangeInProgress && Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE)) {
-								Log.fine(Log.FAC_NETMANAGER, formatMessage("CancelInterestFilter: Waiting for pending registration activity"));
-							}
-							while (_registrationChangeInProgress) {
-								try {
-									_registeredPrefixes.wait();
-								} catch (InterruptedException e) {}
-							}
-							prefix = getRegisteredPrefix(filter); // Did some else already remove this prefix?
-							if (null != prefix) {  // no
-								if (prefix._refCount <= 1) {
-									_registrationChangeInProgress = true;
-									doRemove = true;
-								}
+				}
+				if (null != prefix && prefix._refCount <= 1) {
+					// We need to deregister it with ccnd. But first we need to make sure nobody else is messing around
+					// with the ccnd prefix registration.
+					_registrationChangeInProgress.acquireUninterruptibly();
+					semaAcquired = true;
+					synchronized (_registeredPrefixes) {
+						prefix = getRegisteredPrefix(filter); // Did some else already remove this prefix?
+						if (null != prefix) {  // no
+							if (prefix._refCount <= 1) {
+								doRemove = true;
 							}
 						}
 						if (null != prefix)
@@ -1088,7 +1075,7 @@ public class CCNNetworkManager implements Runnable {
 				if (doRemove) {
 					// We are going to deregister the prefix with ccnd. We don't want to hold locks here but
 					// we don't have to worry about others changing the prefix registration underneath us because
-					// _registrationChangeInProgress is true.
+					// we have acquired _registrationChangeInProgress.
 					try {
 						if (null == _prefixMgr) {
 							_prefixMgr = new PrefixRegistrationManager(this);
@@ -1097,7 +1084,11 @@ public class CCNNetworkManager implements Runnable {
 						_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
 					} catch (CCNDaemonException e) {
 						Log.warning(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage()));
+						_registrationChangeInProgress.release();
 					}
+				} else {
+					if (semaAcquired)
+						_registrationChangeInProgress.release();
 				}
 			}
 		} else {
