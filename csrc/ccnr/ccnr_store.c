@@ -232,21 +232,23 @@ r_store_trim(struct ccnr_handle *h, unsigned long limit)
     struct content_entry *content = NULL;
     int checklimit;
     unsigned before;
+    unsigned rover;
+    unsigned mask;
     
     r_store_index_needs_cleaning(h);
     before = h->cob_count;
     if (before <= limit)
         return;
-    checklimit = h->cookie + 1 - h->cookie_base;    
-    for (; checklimit > 0 && h->cob_count > limit; checklimit--) {
-        if (h->trim_rover >= h->cookie)
-            h->trim_rover = h->cookie_base;
-        else
-            h->trim_rover++;
-        content = r_store_content_from_cookie(h, h->trim_rover);
+    checklimit = h->cookie_limit;
+    mask = h->cookie_limit - 1;
+    for (rover = (h->trim_rover & mask);
+         checklimit > 0 && h->cob_count > limit;
+         checklimit--, rover = (rover + 1) & mask) {
+        content = h->content_by_cookie[rover];
         if (content != NULL)
             r_store_content_trim(h, content);
     }
+    h->trim_rover = rover;
     if (CCNSHOULDLOG(h, sdf, CCNL_FINER))
         ccnr_msg(h, "trimmed %u cobs", before - h->cob_count);
 }
@@ -427,6 +429,21 @@ r_store_reindexing(struct ccn_schedule *sched,
     return(2000000);
 }
 
+/**
+ * Select power of 2 between l and m + 1 (if possible).
+ */
+static unsigned
+choose_limit(unsigned l, unsigned m)
+{
+    unsigned k;
+    
+    for (k = 0; k < l; k = 2 * k + 1)
+        continue;
+    while (k > (m | 1) || k + 1 < k)
+        k >>= 1;
+    return(k + 1);
+}
+
 PUBLIC void
 r_store_init(struct ccnr_handle *h)
 {
@@ -443,6 +460,11 @@ r_store_init(struct ccnr_handle *h)
     path = ccn_charbuf_create();
     param.finalize_data = h;
     param.finalize = 0;
+    
+    h->cob_limit = r_init_confval(h, "CCNR_CONTENT_CACHE", 16, 4201, 2147483647);
+    h->cookie_limit = choose_limit(h->cob_limit, (ccnr_cookie)(~0U));
+    h->content_by_cookie = calloc(h->cookie_limit, sizeof(h->content_by_cookie[0]));
+    CHKPTR(h->content_by_cookie);
     h->content_by_accession_tab = hashtb_create(sizeof(struct content_by_accession_entry), NULL);
     CHKPTR(h->content_by_accession_tab);
     h->btree = btree = ccn_btree_create();
@@ -536,7 +558,6 @@ r_store_init(struct ccnr_handle *h)
     btree->full0 = r_init_confval(h, "CCNR_BTREE_MAX_LEAF_ENTRIES", 4, 9999, 1999);
     btree->nodebytes = r_init_confval(h, "CCNR_BTREE_MAX_NODE_BYTES", 1024, 8388608, 2097152);
     btree->nodepool = r_init_confval(h, "CCNR_BTREE_NODE_POOL", 16, 512, 2147483647);
-    h->cob_limit = r_init_confval(h, "CCNR_CONTENT_CACHE", 16, 4201, 2147483647);
     if (h->running != -1)
         r_store_index_needs_cleaning(h);
 }
@@ -601,68 +622,10 @@ r_store_content_from_cookie(struct ccnr_handle *h, ccnr_cookie cookie)
 {
     struct content_entry *ans = NULL;
     
-    if (cookie < h->cookie_base)
+    ans = h->content_by_cookie[cookie & (h->cookie_limit - 1)];
+    if (ans != NULL && ans->cookie != cookie)
         ans = NULL;
-    else if (cookie < h->cookie_base + h->content_by_cookie_window) {
-        ans = h->content_by_cookie[cookie - h->cookie_base];
-        if (ans != NULL && ans->cookie != cookie)
-            ans = NULL;
-    }
     return(ans);
-}
-
-static void
-cleanout_stragglers(struct ccnr_handle *h)
-{
-    struct content_entry **a = h->content_by_cookie;
-    unsigned n_direct;
-    unsigned n_occupied;
-    unsigned window;
-    unsigned i;
-    
-    if (h->cookie <= h->cookie_base || a[0] == NULL)
-        return;
-    n_direct = h->cookie - h->cookie_base;
-    if (n_direct < 1000)
-        return;
-    n_occupied = h->cob_count;
-    if (n_occupied >= (n_direct / 8))
-        return;
-    /* The direct lookup table is too sparse, so toss the stragglers */
-    window = h->content_by_cookie_window;
-    for (i = 0; i < window; i++) {
-        if (a[i] != NULL) {
-            if (n_occupied >= ((window - i) / 8))
-                break;
-            if (a[i]->accession == CCNR_NULL_ACCESSION && a[i]->cob != NULL)
-                break; /* Do not clean this prematurely */
-            r_store_forget_content(h, &(a[i]));
-            n_occupied -= 1;
-        }
-    }
-}
-
-static int
-cleanout_empties(struct ccnr_handle *h)
-{
-    unsigned i = 0;
-    unsigned j = 0;
-    struct content_entry **a = h->content_by_cookie;
-    unsigned window = h->content_by_cookie_window;
-    if (a == NULL)
-        return(-1);
-    cleanout_stragglers(h);
-    while (i < window && a[i] == NULL)
-        i++;
-    /* Don't slide things down too often. */
-    if (i < 100)
-        return(-1);
-    h->cookie_base += i;
-    while (i < window)
-        a[j++] = a[i++];
-    while (j < window)
-        a[j++] = NULL;
-    return(0);
 }
 
 /**
@@ -672,40 +635,17 @@ cleanout_empties(struct ccnr_handle *h)
 PUBLIC ccnr_cookie
 r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
 {
-    unsigned new_window;
-    struct content_entry **new_array;
-    struct content_entry **old_array;
-    unsigned i = 0;
-    unsigned j = 0;
-    unsigned window;
+    ccnr_cookie cookie;
+    unsigned mask;
     
-    window = h->content_by_cookie_window;
-    content->cookie = ++(h->cookie);
-    if ((content->cookie - h->cookie_base) >= window &&
-        cleanout_empties(h) < 0) {
-        if (content->cookie < h->cookie_base) {
-            /* Did we wrap? */
-            return(0);
-        }
-        window = h->content_by_cookie_window;
-        old_array = h->content_by_cookie;
-        new_window = ((window + 20) * 3 / 2);
-        if (new_window < window)
-            return(0);
-        new_array = calloc(new_window, sizeof(new_array[0]));
-        if (new_array == NULL)
-            return(0);
-        while (i < h->content_by_cookie_window && old_array[i] == NULL)
-            i++;
-        h->cookie_base += i;
-        h->content_by_cookie = new_array;
-        while (i < h->content_by_cookie_window)
-            new_array[j++] = old_array[i++];
-        h->content_by_cookie_window = new_window;
-        free(old_array);
-    }
-    h->content_by_cookie[content->cookie - h->cookie_base] = content;
-    
+    mask = h->cookie_limit - 1;
+    cookie = ++(h->cookie);
+    if (cookie == 0)
+        cookie = ++(h->cookie); /* Cookie numbers may wrap */
+    // XXX - check for persistence here, if we add that
+    r_store_forget_content(h, &(h->content_by_cookie[cookie & mask]));
+    content->cookie = cookie;
+    h->content_by_cookie[cookie & mask] = content;
     if (content->accession != CCNR_NULL_ACCESSION) {
         struct hashtb_enumerator ee;
         struct hashtb_enumerator *e = &ee;
@@ -719,7 +659,7 @@ r_store_enroll_content(struct ccnr_handle *h, struct content_entry *content)
         hashtb_end(e);
         content->flags |= CCN_CONTENT_ENTRY_STABLE;
     }
-    return(content->cookie);
+    return(cookie);
 }
 
 /** @returns 2 if content was added to index, 1 if it was there but had no accession, 0 if it was already there, -1 for error */
@@ -800,8 +740,8 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
     if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
         ccnr_debug_content(h, __LINE__, "remove", NULL, entry);
     /* Remove the cookie reference */
-    i = entry->cookie - h->cookie_base;
-    if (i < h->content_by_cookie_window && h->content_by_cookie[i] == entry)
+    i = entry->cookie & (h->cookie_limit - 1);
+    if (h->content_by_cookie[i] == entry)
         h->content_by_cookie[i] = NULL;
     entry->cookie = 0;
     /* Remove the accession reference */
@@ -820,12 +760,13 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
         hashtb_delete(e);
         hashtb_end(e);
         entry->accession = CCNR_NULL_ACCESSION;
-        if (entry->cob != NULL)
-            h->cob_count--;
     }
     /* Clean up allocated subfields */
     ccn_charbuf_destroy(&entry->flatname);
-    ccn_charbuf_destroy(&entry->cob);
+    if (entry->cob != NULL) {
+        h->cob_count--;
+        ccn_charbuf_destroy(&entry->cob);
+    }
     free(entry);
 }
 

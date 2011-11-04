@@ -201,11 +201,10 @@ struct ccnr_handle {
     struct ccn_schedule *sched;     /**< our schedule */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
-    /** Next three fields are used for direct cookie-to-content table */
-    ccnr_cookie cookie_base;
-    unsigned content_by_cookie_window;
-    struct content_entry **content_by_cookie;
-    struct hashtb *content_by_accession_tab; /* keyed by accession */
+    /** Next two fields are used for direct cookie-to-content table */
+    unsigned cookie_limit;          /**< content_by_cookie size(power of 2)*/
+    struct content_entry **content_by_cookie; /**< cookie-to-content table */
+    struct hashtb *content_by_accession_tab; /**< keyed by accession */
     ccnr_cookie cookie;      /**< newest used cookie number */
     ccnr_cookie min_stale;      /**< smallest cookie of stale content */
     ccnr_cookie max_stale;      /**< largest cookie of stale content */

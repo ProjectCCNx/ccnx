@@ -645,7 +645,7 @@ r_init_destroy(struct ccnr_handle **pccnr)
     if (h->content_by_cookie != NULL) {
         free(h->content_by_cookie);
         h->content_by_cookie = NULL;
-        h->content_by_cookie_window = 0;
+        h->cookie_limit = 1;
     }
     ccn_charbuf_destroy(&h->scratch_charbuf);
     ccn_indexbuf_destroy(&h->skiplinks);
