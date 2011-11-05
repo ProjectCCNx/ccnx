@@ -160,6 +160,8 @@ r_init_confval(struct ccnr_handle *h, const char *key,
     intmax_t v;
     char *ep;
     
+    if (!(lo <= deflt && deflt <= hi))
+        abort();
     s = getenv(key);
     if (s != NULL && s[0] != 0) {
         ep = "x";
