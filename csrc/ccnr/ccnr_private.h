@@ -250,8 +250,6 @@ struct ccnr_handle {
     struct ccn_scheduled_event *internal_client_refresh;
     struct ccn_scheduled_event *direct_client_refresh;
     struct ccn_scheduled_event *notice_push;
-    void (*appnonce)(struct ccnr_handle *, struct fdholder *, struct ccn_charbuf *);
-                                    /**< pluggable nonce generation */
     /* items related to sync/repo integration */
     struct SyncBaseStruct *sync_handle;  /**< handle to pass to the sync code */
     ccnr_accession notify_after;  /**< starting item for notifying sync */
@@ -314,11 +312,7 @@ struct fdholder {
 #define CCNR_FACE_GG     (1 << 2) /**< Considered friendly */
 #define CCNR_FACE_LOCAL  (1 << 3) /**< PF_UNIX socket */
 #define CCNR_FACE_INET   (1 << 4) /**< IPv4 */
-// XXX - remove
-#define CCNR_FACE_MCAST  (1 << 5) /**< a party line (e.g. multicast) */
 #define CCNR_FACE_INET6  (1 << 6) /**< IPv6 */
-// XXX - remove
-#define CCNR_FACE_DC     (1 << 7) /**< Direct control fdholder */
 #define CCNR_FACE_NOSEND (1 << 8) /**< Don't send anymore */
 #define CCNR_FACE_UNDECIDED (1 << 9) /**< Might not be talking ccn */
 #define CCNR_FACE_PERMANENT (1 << 10) /**< No timeout for inactivity */

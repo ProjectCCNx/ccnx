@@ -358,7 +358,7 @@ r_io_shutdown_client_fd(struct ccnr_handle *h, int fd)
         h->active_out_fd = -1;
     if (h->repofile1_fd == fd)
         h->repofile1_fd = -1;
-    r_fwd_reap_needed(h, 250000);
+    // r_fwd_reap_needed(h, 250000);
 }
 
 /**

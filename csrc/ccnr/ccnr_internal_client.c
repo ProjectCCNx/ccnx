@@ -286,7 +286,6 @@ ccnr_uri_listen(struct ccnr_handle *ccnr, struct ccn *ccn, const char *uri,
     const unsigned char *comp;
     size_t comp_size;
     size_t offset;
-    int reg_wanted = 0; // XXX - always off
     
     name = ccn_charbuf_create();
     ccn_name_from_uri(name, uri);
@@ -301,19 +300,12 @@ ccnr_uri_listen(struct ccnr_handle *ccnr, struct ccn *ccn, const char *uri,
             uri_modified = ccn_charbuf_create();
             ccn_uri_append(uri_modified, name->buf, name->length, 1);
             uri = (char *)uri_modified->buf;
-            reg_wanted = 0;
         }
     }
     closure = calloc(1, sizeof(*closure));
     closure->p = p;
     closure->data = ccnr;
     closure->intdata = intdata;
-    /* Register explicitly if needed or requested */
-    if (reg_wanted)
-        r_fwd_reg_uri(ccnr, uri,
-                     0, /* special filedesc for internal client */
-                     CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
-                     0x7FFFFFFF);
     ccn_set_interest_filter(ccn, name, closure);
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&uri_modified);

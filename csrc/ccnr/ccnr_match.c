@@ -133,28 +133,6 @@ r_match_consume_matching_interests(struct ccnr_handle *h,
 }
 
 /**
- * Keep a little history about where matching content comes from.
- */
-static void
-note_content_from(struct ccnr_handle *h,
-                  struct nameprefix_entry *npe,
-                  unsigned from_faceid,
-                  int prefix_comps)
-{
-    if (npe->src == from_faceid)
-        r_fwd_adjust_npe_predicted_response(h, npe, 0);
-    else if (npe->src == CCN_NOFACEID)
-        npe->src = from_faceid;
-    else {
-        npe->osrc = npe->src;
-        npe->src = from_faceid;
-    }
-    if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
-        ccnr_msg(h, "sl.%d %u ci=%d osrc=%u src=%u usec=%d", __LINE__,
-                 from_faceid, prefix_comps, npe->osrc, npe->src, npe->usec);
-}
-
-/**
  * Find and consume interests that match given content.
  *
  * Schedules the sending of the content.
@@ -195,14 +173,14 @@ r_match_match_interests(struct ccnr_handle *h, struct content_entry *content,
     ccn_charbuf_destroy(&name);
     ccn_indexbuf_destroy(&namecomps);
     for (; npe != NULL; npe = npe->parent, ci--) {
-        if (npe->fgen != h->forward_to_gen)
-            r_fwd_update_forward_to(h, npe);
+//        if (npe->fgen != h->forward_to_gen)
+//            r_fwd_update_forward_to(h, npe);
         if (from_face != NULL && (npe->flags & CCN_FORW_LOCAL) != 0 &&
             (from_face->flags & CCNR_FACE_GG) == 0)
             return(-1);
         new_matches = r_match_consume_matching_interests(h, npe, content, pc, fdholder);
-        if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
-            note_content_from(h, npe, from_face->filedesc, ci);
+//        if (from_face != NULL && (new_matches != 0 || ci + 1 == cm))
+//            note_content_from(h, npe, from_face->filedesc, ci);
         if (new_matches != 0) {
             cm = ci; /* update stats for this prefix and one shorter */
             n_matched += new_matches;

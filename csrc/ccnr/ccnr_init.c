@@ -472,7 +472,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->notify_after = CCNR_MAX_ACCESSION;
     h->logger = logger;
     h->loggerdata = loggerdata;
-    h->appnonce = &r_fwd_append_plain_nonce;
     h->logpid = (int)getpid();
     h->progname = progname;
     h->debug = -1;
@@ -495,7 +494,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     param.finalize_data = h;
     param.finalize = &r_fwd_finalize_nameprefix;
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
-    param.finalize = &r_fwd_finalize_propagating;
+    param.finalize = 0; // PRUNED &r_fwd_finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     param.finalize = 0;
     h->enum_state_tab = hashtb_create(sizeof(struct enum_state), NULL); // XXX - do we need finalization? Perhaps
@@ -523,7 +522,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     listen_on = getenv("CCNR_LISTEN_ON");
     if (listen_on != NULL && listen_on[0] != 0)
         ccnr_msg(h, "CCNR_LISTEN_ON=%s", listen_on);
-    h->appnonce = &r_fwd_append_debug_nonce;
     
     if (ccnr_init_repo_keystore(h, NULL) < 0) {
         h->running = -1;
@@ -587,7 +585,6 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (-1 == load_policy(h))
         goto Bail;
     r_net_listen_on(h, listen_on);
-    r_fwd_age_forwarding_needed(h);
     ccnr_internal_client_start(h);
     r_proto_init(h);
     r_proto_activate_policy(h, h->parsed_policy);

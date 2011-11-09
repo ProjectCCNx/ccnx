@@ -71,97 +71,6 @@
 #include "ccnr_util.h"
 
 static void
-process_incoming_interest(struct ccnr_handle *h, struct fdholder *fdholder,
-                          unsigned char *msg, size_t size)
-{
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    struct ccn_parsed_interest parsed_interest = {0};
-    struct ccn_parsed_interest *pi = &parsed_interest;
-    size_t namesize = 0;
-    int k;
-    int res;
-    int matched;
-    struct nameprefix_entry *npe = NULL;
-    struct content_entry *content = NULL;
-    struct ccn_indexbuf *comps = r_util_indexbuf_obtain(h);
-    if (size > 65535)
-        res = -__LINE__;
-    else
-        res = ccn_parse_interest(msg, size, pi, comps);
-    if (res < 0) {
-        ccnr_msg(h, "error parsing Interest - code %d", res);
-        ccn_indexbuf_destroy(&comps);
-        return;
-    }
-    ccnr_meter_bump(h, fdholder->meter[FM_INTI], 1);
-    if (r_fwd_is_duplicate_flooded(h, msg, pi, fdholder->filedesc)) {
-        if (CCNSHOULDLOG(h, LM_16, CCNL_WARNING))
-             ccnr_debug_ccnb(h, __LINE__, "interest_dup", fdholder, msg, size);
-        h->interests_dropped += 1;
-    }
-    else {
-        if (CCNSHOULDLOG(h, (16 | 8 | 2), CCNL_FINE))
-            ccnr_debug_ccnb(h, __LINE__, "interest_from", fdholder, msg, size);
-        if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
-            ccnr_msg(h,
-                     "version: %d, "
-                     "prefix_comps: %d, "
-                     "min_suffix_comps: %d, "
-                     "max_suffix_comps: %d, "
-                     "orderpref: %d, "
-                     "answerfrom: %d, "
-                     "scope: %d, "
-                     "lifetime: %d.%04d, "
-                     "excl: %d bytes, "
-                     "etc: %d bytes",
-                     pi->magic,
-                     pi->prefix_comps,
-                     pi->min_suffix_comps,
-                     pi->max_suffix_comps,
-                     pi->orderpref, pi->answerfrom, pi->scope,
-                     ccn_interest_lifetime_seconds(msg, pi),
-                     (int)(ccn_interest_lifetime(msg, pi) & 0xFFF) * 10000 / 4096,
-                     pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
-                     pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
-        namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
-        h->interests_accepted += 1;
-        matched = 0;
-        hashtb_start(h->nameprefix_tab, e);
-        res = r_fwd_nameprefix_seek(h, e, msg, comps, pi->prefix_comps);
-        npe = e->data;
-        if (npe == NULL)
-            goto Bail;
-        if ((npe->flags & CCN_FORW_LOCAL) != 0 &&
-            (fdholder->flags & CCNR_FACE_GG) == 0) {
-            ccnr_debug_ccnb(h, __LINE__, "interest_nonlocal", fdholder, msg, size);
-            h->interests_dropped += 1;
-            goto Bail;
-        }
-        if (1 || (pi->answerfrom & CCN_AOK_CS) != 0) {
-            content = r_store_lookup(h, msg, pi, comps);
-            if (content != NULL) {
-                k = r_sendq_face_send_queue_insert(h, fdholder, content);
-                if (k >= 0) {
-                    if (CCNSHOULDLOG(h, (32 | 8), CCNL_FINE))
-                        ccnr_debug_ccnb(h, __LINE__, "consume", fdholder, msg, size);
-                }
-                /* Any other matched interests need to be consumed, too. */
-                r_match_match_interests(h, content, NULL, fdholder, NULL);
-                if ((pi->answerfrom & CCN_AOK_EXPIRE) != 0)
-                    r_store_mark_stale(h, content);
-                matched = 1;
-            }
-        }
-        if (!matched && pi->scope != 0 && npe != NULL)
-            r_fwd_propagate_interest(h, fdholder, msg, pi, npe);
-    Bail:
-        hashtb_end(e);
-    }
-    r_util_indexbuf_release(h, comps);
-}
-
-static void
 process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
                       unsigned char *msg, size_t size, int pdu_ok,
                       off_t *offsetp)
@@ -190,9 +99,9 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
     }
     dtag = d->numval;
     switch (dtag) {
-        case CCN_DTAG_Interest:
-            process_incoming_interest(h, fdholder, msg, size);
-            return;
+//        case CCN_DTAG_Interest:
+//            process_incoming_interest(h, fdholder, msg, size);
+//            return;
         case CCN_DTAG_ContentObject:
             content = process_incoming_content(h, fdholder, msg, size);
             if (content != NULL && offsetp != NULL)
