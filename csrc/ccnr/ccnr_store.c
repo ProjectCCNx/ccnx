@@ -960,7 +960,8 @@ r_store_lookup(struct ccnr_handle *h,
 {
     struct content_entry *content = NULL;
     struct ccn_btree_node *leaf = NULL;
-    struct content_entry *last_match = NULL;
+    ccnr_cookie last_match = 0;
+    ccnr_accession last_match_acc = CCNR_NULL_ACCESSION;
     struct ccn_charbuf *scratch = NULL;
     size_t size = pi->offset[CCN_PI_E];
     int ndx;
@@ -985,7 +986,9 @@ r_store_lookup(struct ccnr_handle *h,
                                content->flatname->length,
                                &leaf);
         if (CCN_BT_SRCH_FOUND(res) == 0) {
-            abort(); // XXX - do something gentler
+            ccnr_debug_content(h, __LINE__, "impossible", NULL, content);
+            content = NULL;
+            break;
         }
         ndx = CCN_BT_SRCH_INDEX(res);
         res = ccn_btree_match_interest(leaf, ndx, msg, pi, scratch);
@@ -997,7 +1000,8 @@ r_store_lookup(struct ccnr_handle *h,
         if (res == 1) {
             if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
                 break;
-            last_match = content;
+            last_match = content->cookie;
+            last_match_acc = content->accession;
             content = r_store_next_child_at_level(h, content, comps->n - 1);
         }
         else
@@ -1006,8 +1010,11 @@ r_store_lookup(struct ccnr_handle *h,
             !r_store_content_matches_interest_prefix(h, content, msg, size))
                 content = NULL;
     }
-    if (last_match != NULL)
-        content = last_match;
+    if (last_match != 0) {
+        content = r_store_content_from_cookie(h, last_match);
+        if (content == NULL)
+            content = r_store_content_from_accession(h, last_match_acc);
+    }
     ccn_charbuf_destroy(&scratch);
     return(content);
 }
