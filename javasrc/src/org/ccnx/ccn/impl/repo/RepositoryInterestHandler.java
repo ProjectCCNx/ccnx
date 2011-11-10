@@ -172,6 +172,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				_server.addListener(listener);
 				listener.getInterests().add(readInterest, null);
 				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteExpressInterest);
+				_server.getDataHandler().addSync(readInterest.name());
 			}
 			_handle.expressInterest(readInterest, listener);
 			
