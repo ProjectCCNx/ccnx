@@ -74,6 +74,7 @@ public class ContentTree {
 		List<ContentRef> content;
 		long timestamp;
 		boolean interestFlag = false;
+		boolean neSent = false;		// NE response sent since last insert
 		
 		public boolean compEquals(byte[] other) {
 			return DataUtils.compare(other, this.component) == 0;
@@ -378,12 +379,13 @@ public class ContentTree {
 						node.children.put(child, child);
 						node.oneChild = null;
 					}
-					if (node.timestamp == ts) {
+					if (node.neSent && (node.timestamp == ts)) {
 						if (Log.isLoggable(Log.FAC_REPO, Level.WARNING)) {
-							Log.warning(Log.FAC_REPO, "WARNING - info inserted at {0} without timestamp update - could cause NE miss", 
+							Log.warning(Log.FAC_REPO, "WARNING - info inserted at {0} since last NE without timestamp update - could cause NE miss", 
 									name);
 						}
 					}
+					node.neSent = false;
 					node.timestamp = ts;
 					
 					if (node.interestFlag && (ner != null && ner.getPrefix()==null)){
@@ -666,7 +668,7 @@ public class ContentTree {
 					 Log.finer(Log.FAC_REPO, "my repo is explicitly excluded!  not setting interestFlag to true");
 					 //do not set interest flag!  I wasn't supposed to respond
 				 } else {
-					 if (interest.exclude().match(new CCNTime(parent.timestamp).toBinaryTime())) {
+					 if (interest.exclude().match(timestamp.toBinaryTime())) {
 						 Log.finer(Log.FAC_REPO, "my version is just excluded, setting interestFlag to true");
 						 parent.interestFlag = true;
 					 }
@@ -691,6 +693,7 @@ public class ContentTree {
 					}
 				}
 				parent.interestFlag = false;
+				parent.neSent = true;
 			}
 			
 			return new NameEnumerationResponse(
