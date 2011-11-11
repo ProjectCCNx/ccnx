@@ -172,7 +172,8 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 				_server.addListener(listener);
 				listener.getInterests().add(readInterest, null);
 				_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteExpressInterest);
-				_server.getDataHandler().addSync(readInterest.name());
+				// Get the keys also
+				_server.getDataHandler().addKeyCheck(readInterest.name());
 			}
 			_handle.expressInterest(readInterest, listener);
 			
@@ -254,7 +255,7 @@ public class RepositoryInterestHandler implements CCNFilterListener {
 					// confuse the DataHandler because in some cases it can confuse the digest with a segment ID.
 					readInterest = Interest.constructInterest(digestFreeTarget, _server.getExcludes(), null, 1, 1, null);
 				}
-				_server.getDataHandler().addSync(digestFreeTarget);
+				_server.getDataHandler().addKeyCheck(digestFreeTarget);
 				_server.doSync(interest, readInterest);
 			} else {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
