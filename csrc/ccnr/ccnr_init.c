@@ -557,6 +557,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
 #endif
     if (ccn_connect(h->direct_client, NULL) != -1) {
         int af = 0;
+        int bufsize;
         int flags;
         int fd;
         struct fdholder *fdholder;
@@ -577,7 +578,8 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
                         &ccnr_answer_req, OP_SERVICE);
         ccnr_uri_listen(h, h->direct_client, "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/repository",
                         &ccnr_answer_req, OP_SERVICE);
-        establish_min_send_bufsize(h, fd, 16384);
+        bufsize = r_init_confval(h, "CCNR_MIN_SEND_BUFSIZE", 1, 2097152, 16384);
+        establish_min_send_bufsize(h, fd, bufsize);
     }
     else
         ccn_disconnect(h->direct_client); // Apparently ccn_connect error case needs work.
