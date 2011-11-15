@@ -47,8 +47,8 @@ public class CCNMerkleTreeTest {
 	protected static Random _rand = new Random(); // don't need SecureRandom
 	
 	protected static KeyPair _pair = null;
-	static ContentName keyname = ContentName.fromNative(new String[]{"test","keys","treeKey"});
-	static ContentName baseName = ContentName.fromNative(new String[]{"test","data","treeTest"});
+	static ContentName keyname = new ContentName("test","keys","treeKey");
+	static ContentName baseName = new ContentName("test","data","treeTest");
 
 	static KeyPair pair = null;
 	static PublisherPublicKeyDigest publisher = null;
