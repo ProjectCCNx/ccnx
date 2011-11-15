@@ -37,7 +37,6 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.security.KeyProfile;
-import org.ccnx.ccn.protocol.Component.DotDot;
 import org.ccnx.ccn.protocol.ContentName.ComponentProvider;
 
 
