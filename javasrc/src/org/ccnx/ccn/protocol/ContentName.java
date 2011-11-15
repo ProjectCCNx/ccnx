@@ -61,23 +61,13 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	protected byte[][]  _components;
 	// Constructors
 	/**
-	 * This constructor will become private in future. Today it is used together with {@link #decode(XMLDecoder)}
+	 * Will become private in future. Today used together with {@link #decode(XMLDecoder)}
 	 * to decode a ContentName. In the future there will be a XMLDecoder constructor used for decoding.
 	 */
 	public ContentName() {
 	}
 
 	// support for name builder methods
-	static abstract class StringParser {
-		/**
-		 * @return Must return a byte[] or a byte[][]
-		 */
-		public abstract Object parse1st(String s) throws MalformedContentNameStringException;
-		/**
-		 * @return Must return a byte[] or a byte[][]
-		 */
-		public abstract Object parseRest(String s) throws MalformedContentNameStringException, Component.DotDot, URISyntaxException;
-	}
 	/**
 	 * Allows a class to be included as an argument to a ContentName builder.
 	 * @see builder
@@ -88,6 +78,23 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		 * If there is any risk the byte array you have may be changed you must return a new copy of it.
 		 */
 		public byte[] getComponent();
+	}
+
+	/**
+	 * Supports variations on argument parsing to implement the differences between
+	 * the new {@link ContentName#ContentName(Object...)} constructor, and the older
+	 * {@link ContentName#fromNative(Object...)} and {@link ContentName#fromURI(Object...)}
+	 * APIs.
+	 */
+	static abstract class StringParser {
+		/**
+		 * @return Must return a byte[] or a byte[][]
+		 */
+		public abstract Object parse1st(String s) throws MalformedContentNameStringException;
+		/**
+		 * @return Must return a byte[] or a byte[][]
+		 */
+		public abstract Object parseRest(String s) throws MalformedContentNameStringException, Component.DotDot, URISyntaxException;
 	}
 
 	/**
@@ -104,6 +111,12 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return s.getBytes();
 		}
 	};
+
+	/**
+	 * When parsing string elements passed to {@link ContentName#fromNative(Object...)}
+	 * interpret them like the old fromNative static methods - a String in the first
+	 * argument can be a path, in other arguments is always a single component.
+	 */
 	public static final StringParser nativeStringParser = new StringParser(){
 		@Override
 		public byte[][] parse1st(String s) throws MalformedContentNameStringException {
@@ -114,6 +127,12 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return Component.parseNative(s);
 		}
 	};
+
+	/**
+	 * When parsing string elements passed to {@link ContentName#fromURI(Object...)}
+	 * interpret them like the old fromURI static methods - a String in the first
+	 * argument can be a path, in other arguments is always a single component.
+	 */
 	public static final StringParser uriStringParser = new StringParser(){
 		@Override
 		public byte[][] parse1st(String s) throws MalformedContentNameStringException {
