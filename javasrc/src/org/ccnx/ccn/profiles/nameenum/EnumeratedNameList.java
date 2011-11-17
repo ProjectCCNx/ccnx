@@ -541,7 +541,7 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener {
 		if (!prefix.equals(_namePrefix)) {
 			Log.warning("Returned data doesn't match requested prefix!");
 		}
-		Log.info("Handling Name Iteration {0}", prefix);
+		Log.info("Handling Name Iteration {0}, size is {1}", prefix, names.size());
 		// the name enumerator hands off names to us, we own it now
 		// DKS -- want to keep listed as new children we previously had
 		synchronized (_childLock) {
