@@ -170,8 +170,8 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 		 * @param co
 		 */
 		protected void add(CCNContentInterest ci) {
-			_queue.add(ci);
 			synchronized (_queue) {
+				_queue.add(ci);
 				if (!_isRunning) {
 					_isRunning = true;
 					SystemConfiguration._systemThreadpool.execute(this);
@@ -200,7 +200,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 					//need to make sure the prefix is still registered
 					if (ner==null) {
 						//this is no longer registered...  no need to keep refreshing the interest use the callback
-						return;
+						continue;
 					} else {
 						ner.removeInterest(interest);
 		            }
