@@ -22,7 +22,9 @@ import java.util.ArrayList;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -65,6 +67,10 @@ public class AssertionCCNHandle extends CCNHandle {
 		super();
 	}
 	
+	protected AssertionCCNHandle(KeyManager keyManager) throws IOException {
+		super(keyManager);
+	}
+	
 	public static AssertionCCNHandle open() throws ConfigurationException, IOException { 
 		try {
 			return new AssertionCCNHandle();
@@ -75,6 +81,10 @@ public class AssertionCCNHandle extends CCNHandle {
 			Log.severe(Log.FAC_NETMANAGER, "IO exception initializing CCN library: " + e.getMessage());
 			throw e;
 		}
+	}
+	
+	public static AssertionCCNHandle open(KeyManager keyManager) throws IOException { 
+		return new AssertionCCNHandle(keyManager);
 	}
 	
 	/**
@@ -147,13 +157,15 @@ public class AssertionCCNHandle extends CCNHandle {
 	/**
 	 * Should be called after any callback has been triggered on the handle that would have
 	 * received the callback
-	 * @param timeout millis to wait for callback to occur
+	 * @param timeout millis to wait for callback to occur - doesn't wait if NO_TIMEOUT is used
 	 * @throws Error
 	 * @throws InterruptedException
 	 */
 	public void checkError(long timeout) throws Error, InterruptedException {
-		synchronized (this) {
-			wait(timeout);
+		if (timeout != SystemConfiguration.NO_TIMEOUT) {
+			synchronized (this) {
+				wait(timeout);
+			}
 		}
 		if (null != _error)
 			throw _error;
