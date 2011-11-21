@@ -155,8 +155,7 @@ public class LocalCopyTestRepo {
 			System.out.println("======= After reading string object");
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
-			Assert.assertEquals(2, dumpreg(listenerFaceId));
-			
+			Assert.assertEquals(2, dumpreg(listenerFaceId));		
 			
 			RepositoryControl.localRepoSync(readhandle, so_in);
 			readhandle.checkError(LONG_TIMEOUT);
@@ -164,7 +163,7 @@ public class LocalCopyTestRepo {
 			getfaces();
 			Assert.assertEquals(1, dumpreg(readFaceId));
 			Assert.assertEquals(2, dumpreg(listenerFaceId));
-			
+			so_in.close();		
 		} finally {
 			listener.close();
 		}
@@ -271,6 +270,7 @@ public class LocalCopyTestRepo {
 			// Now modify the string object and save again.
 			so_in.setData(String.format("%016X", _rnd.nextLong()));
 			lcw.save();
+			so_in.update();
 			readhandle.checkError(LONG_TIMEOUT);
 			System.out.println("======= After LocalCopyWrapper save");
 			getfaces();
@@ -412,7 +412,7 @@ public class LocalCopyTestRepo {
 					wait();
 				}
 			}
-			listenerhandle.checkError(SHORT_TIMEOUT);
+			listenerhandle.checkError(CHECK_TIMEOUT);
 		}
 		
 		public boolean handleInterest(Interest interest) {
@@ -455,6 +455,8 @@ public class LocalCopyTestRepo {
 					inListener = false;
 					notifyAll();
 				}
+				System.out.println("handleInterest done: " + interest.toString());
+
 				return ret;
 			}
 		}
