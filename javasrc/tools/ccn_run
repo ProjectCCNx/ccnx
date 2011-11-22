@@ -75,6 +75,8 @@ while [ $# -gt 0 ]; do
       fi
       JAVA_OPTIONS=$2
       shift 2
+    else
+      break
     fi
 done
 
