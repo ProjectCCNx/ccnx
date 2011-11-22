@@ -605,8 +605,7 @@ public class LocalCopyTestRepo {
 				sb.append('\n');
 			}
 			return sb.toString();
-		}
-		
+		}	
 	}
 	
 	private int getFaceId(CCNHandle handle, String type) throws CCNDaemonException {
