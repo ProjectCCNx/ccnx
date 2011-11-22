@@ -34,6 +34,7 @@ import javax.crypto.IllegalBlockSizeException;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.security.crypto.CCNAggregatedSigner;
 import org.ccnx.ccn.impl.security.crypto.CCNMerkleTree;
 import org.ccnx.ccn.impl.security.crypto.CCNMerkleTreeSigner;
@@ -114,7 +115,6 @@ public class CCNSegmenter {
 	 */
 	public static final int HOLD_COUNT = 128;
     
-	public static final String PROP_BLOCK_SIZE = "ccn.lib.blocksize";
 	public static final long LAST_SEGMENT = Long.valueOf(-1);
 
 	protected int _blockSize = SegmentationProfile.DEFAULT_BLOCKSIZE;
@@ -189,21 +189,7 @@ public class CCNSegmenter {
 			_bulkSigner = signer; // if null, default to merkle tree
 		}
 
-		initializeBlockSize();
-	}
-
-	protected void initializeBlockSize() {
-		String blockString = System.getProperty(PROP_BLOCK_SIZE);
-		if (null != blockString) {
-			try {
-				_blockSize = new Integer(blockString).intValue();
-				if( Log.isLoggable(Level.INFO))
-					Log.info("Using specified fragmentation block size " + _blockSize);
-			} catch (NumberFormatException e) {
-				// Do nothing
-				Log.warning("Error: malformed property value " + PROP_BLOCK_SIZE + ": " + blockString + " should be an integer.");
-			}
-		}
+		_blockSize = SystemConfiguration.BLOCK_SIZE;
 	}
 
 	/**

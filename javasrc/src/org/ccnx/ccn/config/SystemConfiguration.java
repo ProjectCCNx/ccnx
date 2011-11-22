@@ -32,6 +32,7 @@ import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
@@ -192,6 +193,13 @@ public class SystemConfiguration {
 	protected static final String PIPELINE_STATS_PROPERTY = "org.ccnx.PipelineStats";
 	protected static final String PIPELINE_STATS_ENV_VAR = "JAVA_PIPELINE_STATS";
 	public static boolean PIPELINE_STATS = false;
+	
+	/**
+	 * Default block size for IO
+	 */
+	protected static final String BLOCK_SIZE_PROPERTY = "ccn.lib.blocksize";
+	protected static final String BLOCK_SIZE_ENV_VAR = "CCNX_BLOCKSIZE";
+	public static int BLOCK_SIZE = SegmentationProfile.DEFAULT_BLOCKSIZE;
 
 	/**
 	 * Backwards-compatible handling of old header names. 
@@ -472,7 +480,16 @@ public class SystemConfiguration {
 			System.err.println("The settable short timeout must be an integer.");
 			throw e;
 		}
-
+		
+		// Allow override of block size
+		// TODO should we make sure its a reasonable number?
+		try {
+			BLOCK_SIZE = Integer.parseInt(retrievePropertyOrEnvironmentVariable(BLOCK_SIZE_PROPERTY, BLOCK_SIZE_ENV_VAR, Integer.toString(BLOCK_SIZE)));
+		} catch (NumberFormatException e) {
+			System.err.println("The settable block size must be an integer.");
+			throw e;
+		}
+		
 		// Handle old-style header names
 		OLD_HEADER_NAMES = Boolean.parseBoolean(
 				retrievePropertyOrEnvironmentVariable(OLD_HEADER_NAMES_PROPERTY, OLD_HEADER_NAMES_ENV_VAR, STRING_TRUE));
