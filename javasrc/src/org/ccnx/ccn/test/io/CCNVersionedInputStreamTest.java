@@ -159,9 +159,9 @@ public class CCNVersionedInputStreamTest {
 			randBytes.nextBytes(bytes);
 			digestStreamWrapper.write(bytes, 0, nextBufSize);
 			elapsed += nextBufSize;
-			System.out.println(completeName + " wrote " + elapsed + " out of " + fileLength + " bytes.");
+			Log.info(completeName + " wrote " + elapsed + " out of " + fileLength + " bytes.");
 			if (randBytes.nextDouble() < probFlush) {
-				System.out.println("Flushing buffers.");
+				Log.info("Flushing buffers.");
 				digestStreamWrapper.flush();
 			}
 		}
@@ -204,9 +204,9 @@ public class CCNVersionedInputStreamTest {
 	@Test
 	public void testCCNVersionedInputStreamContentNameLongPublisherKeyIDCCNLibrary() throws Exception {
 		// we can make a new handle; as long as we don't use the outputHandle it should work
-		System.out.println("first: "+firstVersionName);
-		System.out.println("middle: "+middleVersionName);
-		System.out.println("latest: "+latestVersionName);
+		Log.info("first: "+firstVersionName);
+		Log.info("middle: "+middleVersionName);
+		Log.info("latest: "+latestVersionName);
 		
 		CCNVersionedInputStream vfirst = 
 			new CCNVersionedInputStream(firstVersionName, 
@@ -218,27 +218,27 @@ public class CCNVersionedInputStreamTest {
 
 	@Test
 	public void testCCNVersionedInputStreamContentNamePublisherKeyIDCCNLibrary() throws Exception {
-		System.out.println("1============================");
-		System.out.println("firstVersionName: "+firstVersionName);
-		System.out.println("middle: "+middleVersionName);
-		System.out.println("latest: "+latestVersionName);
-		System.out.println("defaultStreamName: "+defaultStreamName);
+		Log.info("Starting testCCNVersionedInputStreamContentNamePublisherKeyIDCCNLibrary");
+		Log.info("firstVersionName: "+firstVersionName);
+		Log.info("middle: "+middleVersionName);
+		Log.info("latest: "+latestVersionName);
+		Log.info("defaultStreamName: "+defaultStreamName);
 		// we can make a new handle; as long as we don't use the outputHandle it should work
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, outputHandle.getDefaultPublisher(), inputHandle);
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, outputHandle.getDefaultPublisher(), inputHandle2);
 		testArgumentRunner(vfirst, vlatest);
-		System.out.println("1x============================");
+		Log.info("Ending testCCNVersionedInputStreamContentNamePublisherKeyIDCCNLibrary");
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentName() throws Exception {
-		System.out.println("2============================");
+		Log.info("Starting testCCNVersionedInputStreamContentName");
 
 		// we can make a new handle; as long as we don't use the outputHandle it should work
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName);
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName);
 		testArgumentRunner(vfirst, vlatest);
-		System.out.println("2x============================");
+		Log.info("Ending testCCNVersionedInputStreamContentName");
 
 	}
 
@@ -262,12 +262,12 @@ public class CCNVersionedInputStreamTest {
 		Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(firstVersionName),
 				vfirst.getVersionAsTimestamp());
 
-		System.out.println("Opened stream on latest version, expected: " + latestVersionName + " got: " + 
+		Log.info("Opened stream on latest version, expected: " + latestVersionName + " got: " + 
 				vlatest.getBaseName());
 		b = (byte)vlatest.read();
-		System.out.println("Post-read: Opened stream on latest version, expected: " + latestVersionName + " got: " + 
+		Log.info("Post-read: Opened stream on latest version, expected: " + latestVersionName + " got: " + 
 				vlatest.getBaseName());
-		System.out.println("versions as TS: "+VersioningProfile.getLastVersionAsTimestamp(latestVersionName)+" "+vlatest.getVersion());
+		Log.info("versions as TS: "+VersioningProfile.getLastVersionAsTimestamp(latestVersionName)+" "+vlatest.getVersion());
 		Assert.assertEquals(vlatest.getBaseName(), latestVersionName);
 		Assert.assertEquals(VersioningProfile.cutTerminalVersion(vlatest.getBaseName()).first(), defaultStreamName);
 		Assert.assertEquals(VersioningProfile.getLastVersionAsLong(latestVersionName), 
