@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -51,10 +51,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  *  Call stopMonitoringNamespace as soon as you are done with a namespace to improve
  *  performance. 
  *  
- *  Still has a few performance snags -- mysterious delays for the interest reexpression
- *  interval; so Flosser-based tests can be slow. Shouldn't be like that, there
- *  is likely a lingering bug somewhere.
- *  
  *  See CCNVersionedInputStream for related stream-based flossing code (basically
  *  a precursor to the full Flosser).
  *  
@@ -69,6 +65,7 @@ public class Flosser implements CCNInterestListener {
 	Map<ContentName, Interest> _interests = new HashMap<ContentName, Interest>();
 	Map<ContentName, Set<ContentName>> _subInterests = new HashMap<ContentName, Set<ContentName>>();
 	HashSet<ContentObject> _processedObjects = new HashSet<ContentObject>();
+	boolean _flossSubNamespaces = false;
 	boolean _shutdown = false;
 	
 	/**
@@ -180,6 +177,7 @@ public class Flosser implements CCNInterestListener {
 			}
 			Log.info("FLOSSER: handling child namespace: {0} expected parent: {1}", namespace, parent);
 			Interest namespaceInterest = new Interest(namespace);
+			namespaceInterest.minSuffixComponents(2);	// Don't reget the parent
 			_interests.put(namespace, namespaceInterest);
 			_handle.expressInterest(namespaceInterest, this);
 			
