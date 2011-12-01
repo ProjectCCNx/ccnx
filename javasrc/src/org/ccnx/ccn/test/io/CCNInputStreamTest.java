@@ -44,15 +44,15 @@ public class CCNInputStreamTest extends CCNTestBase {
 		Assert.assertTrue("Input stream timed out early", (System.currentTimeMillis() - startTime) > 9000);
 		cis.close();
 		
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(new TimeoutTest()));
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(new BackgroundStreamer()));
 		tar.start();
 		tar.join(SystemConfiguration.EXTRA_LONG_TIMEOUT * 2);
 	}
 	
-	protected class TimeoutTest implements Runnable {
+	protected class BackgroundStreamer implements Runnable {
 		CCNInputStream _stream = null;
 		
-		public TimeoutTest() {
+		public BackgroundStreamer() {
 			ContentName testName = testHelper.getTestNamespace("testInput/no/timeout");
 			try {
 				_stream = new CCNInputStream(testName, getHandle);
