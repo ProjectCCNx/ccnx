@@ -33,6 +33,7 @@ public class NameEnumeratorTestRepo extends CCNTestBase implements BasicNameEnum
 	public static final int NFILES = 1000;
 	public static final int TIMEOUT = 20000;
 	protected int _NESize = 0;
+	protected ArrayList<ContentName> _seenNames = new ArrayList<ContentName>();
 	
 	static CCNTestHelper testHelper = new CCNTestHelper(NameEnumeratorTestRepo.class);
 	static String fileNameBase = "NETest";
@@ -67,7 +68,19 @@ public class NameEnumeratorTestRepo extends CCNTestBase implements BasicNameEnum
 
 	public int handleNameEnumerator(ContentName prefix,
 			ArrayList<ContentName> names) {
-		_NESize += names.size();
+		for (ContentName incomingName : names) {
+			boolean nameSeen = false;
+			for (ContentName seenName : _seenNames) {
+				if (incomingName.equals(seenName)) {
+					nameSeen = true;
+					break;
+				}
+			}
+			if (!nameSeen) {
+				_NESize++;
+				_seenNames.add(incomingName);
+			}
+		}
 		synchronized (this) {
 			notifyAll();
 		}
