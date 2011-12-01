@@ -31,6 +31,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.ExcludeComponent;
@@ -43,10 +44,12 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  *  A class to help write tests without a repository or setting up a separate
  *  thread to read data. A Flosser tries to pull all content written under
  *  a set of specified namespaces; essentially loading that content into ccnd. 
- *  Based on ccnslurp, uses excludes to not get the same data back. Not as efficient
- *  as it could be; currently stops enumerating underneath segments (assumes that there 
- *  is only one content object per segment of a given version; very likely
- *  in the absence of adversarial data). 
+ *  Based on ccnslurp, uses excludes to not get the same data back
+ *  
+ *  By default does not floss namespaces below segments. This is because most
+ *  commonly we will receive a file with a segmented namespace and no hierarchy below
+ *  that. Trying to floss below this will lead to large numbers of unsatisfied interests 
+ *  being expressed, adversely affecting performance.
  *  
  *  Call stopMonitoringNamespace as soon as you are done with a namespace to improve
  *  performance. 
@@ -118,6 +121,10 @@ public class Flosser implements CCNInterestListener {
 				stopMonitoringNamespace(namespaces[i]);
 			}
 		}
+	}
+	
+	public void setFlossSubNamespaces(boolean flag) {
+		_flossSubNamespaces = flag;
 	}
 	
 	protected void removeInterest(ContentName namespace) {
@@ -245,6 +252,8 @@ public class Flosser implements CCNInterestListener {
 				}
 				Log.finer("Excluding content digest: " + DataUtils.printBytes(result.digest()) + " onto interest {0} total excluded: " + interest.exclude().size(), interest.name());
 			} else {
+				// Add an exclude for the content we just got
+				// DKS TODO might need to split to matchedComponents like ccnslurp
 				if (null == interest.exclude()) {
 					ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
 					excludes.add(new ExcludeComponent(result.name().component(prefixCount)));
@@ -261,20 +270,21 @@ public class Flosser implements CCNInterestListener {
 					}
 				}
 				Log.finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.exclude().size());
-				// DKS TODO might need to split to matchedComponents like ccnslurp
-				ContentName newNamespace = null;
-				try {
-					if (interest.name().count() == result.name().count()) {
-						newNamespace = new ContentName(interest.name(), result.digest());
-						Log.info("Not adding content exclusion namespace: {0}", newNamespace);
-					} else {
-						newNamespace = new ContentName(interest.name(), 
-								result.name().component(interest.name().count()));
-						Log.info("Adding new namespace: {0}", newNamespace);
-						handleNamespace(newNamespace, interest.name());
+				if (_flossSubNamespaces || SegmentationProfile.isNotSegmentMarker(result.name().component(prefixCount))) {
+					ContentName newNamespace = null;
+					try {
+						if (interest.name().count() == result.name().count()) {
+							newNamespace = new ContentName(interest.name(), result.digest());
+							Log.info("Not adding content exclusion namespace: {0}", newNamespace);
+						} else {
+							newNamespace = new ContentName(interest.name(), 
+									result.name().component(interest.name().count()));
+							Log.info("Adding new namespace: {0}", newNamespace);
+							handleNamespace(newNamespace, interest.name());
+						}
+					} catch (IOException ioex) {
+						Log.warning("IOException picking up namespace: {0}", newNamespace);
 					}
-				} catch (IOException ioex) {
-					Log.warning("IOException picking up namespace: {0}", newNamespace);
 				}
 			}
 		}
