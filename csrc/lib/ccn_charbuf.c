@@ -32,6 +32,26 @@ ccn_charbuf_create(void)
     return(c);
 }
 
+struct ccn_charbuf *
+ccn_charbuf_create_n(size_t n)
+{
+    struct ccn_charbuf *c;
+    c = malloc(sizeof(*c));
+    if (c == NULL) return (NULL);
+    c->length = 0;
+    c->limit = n;
+    if (n == 0) {
+        c->buf = NULL;
+        return(c);
+    }
+    c->buf = malloc(n);
+    if (c->buf == NULL) {
+        free(c);
+        c = NULL;
+    }
+    return(c);
+}
+
 void
 ccn_charbuf_destroy(struct ccn_charbuf **cbp)
 {
