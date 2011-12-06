@@ -1,6 +1,6 @@
 # exttests/dir.mk
 # 
-# (Someday) Part of the CCNx distribution.
+# Part of the CCNx distribution.
 #
 # Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
 #
@@ -58,7 +58,7 @@ check test: $(SCRIPTSRC) testdriver stubs
 	: ----------------------- :
 
 testdriver: testdriver.sh
-	../../../ccnx/csrc/util/shebang $(SH) testdriver.sh > testdriver
+	sh ../util/shebang $(SH) testdriver.sh > testdriver
 	chmod +x testdriver
 
 default all clean check test: _always

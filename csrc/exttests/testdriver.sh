@@ -29,7 +29,7 @@ cd $(dirname "$0")
 
 # Set up PATH so the tested programs are used, rather than any that
 # might be installed.
-X=../../../ccnx/csrc
+X=..
 export PATH=.:../ccnr:../sync:../lib2:$X/ccnd:$X/libexec:$X/cmd:$X/lib:$X/util:../../../ccnx/bin:$PATH:./stubs
 type ccnd
 type ccnr
@@ -45,10 +45,9 @@ TestBusy () {
 TestBusy && { echo There is something else happening, waiting one minute ... '' >&2; sleep 60; }
 TestBusy && exit 1
 
-# If we are running in a git repo, print out the git hashes
+# If we are running in a git repo, print out the git hash
 test -d ../../.git && {
-  (cd ../../../ccnx && git rev-parse HEAD) | xargs echo ccnx at
-  git rev-parse HEAD | xargs echo ccnr at
+  git rev-parse HEAD | xargs echo ccnx at
 }
 
 # If we need to generate key pairs for the tests, make them smallish
