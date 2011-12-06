@@ -1,0 +1,53 @@
+#!/usr/bin/perl
+# tools/ccn_dumplog
+# 
+# Part of the CCNx distribution.
+#
+# Converts XML log files into human readable single line output.
+#
+# Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation. 
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+# for more details. You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+# Boston, MA 02110-1301, USA.
+
+use XML::Simple;
+use Dumpvalue;
+
+if ($#ARGV < 0) {
+  print "Usage: $0 logfile\n";
+  exit(1);
+}
+my $print_names = 0;
+if ($#ARGV > 0) {
+  $print_names = 1;
+}
+
+while ($#ARGV >= 0) {
+  my $file = $ARGV[0];
+  if ($print_names) {
+    print "::::::::::::::\n";
+    print "$file\n";
+    print "::::::::::::::\n";
+  }
+  shift @ARGV;
+  my $xsl = XML::Simple->new();
+  my $doc = $xsl->XMLin($file);
+
+#   my $dumper = new Dumpvalue;
+#   $dumper->dumpValue($doc);
+
+  my @records = @{$doc->{record}};
+  print "$#records\n";
+  foreach my $rec (@records) {
+    print $rec->{date} . ' ' . $rec->{class} . ' ' . $rec->{method} . ' ';
+    print $rec->{level} . ': ' . $rec->{message} . "\n";
+  }
+}

@@ -1,0 +1,24 @@
+CCNx StatusResponse
+===================
+
+
+== StatusResponse
+The StatusResponse is used to indicate an exceptional condition or
+additional information in response to a request.
+Protocol descriptions should indicate the circumstances under which a 
+StatusResponse may be returned instead of a normal response.
+.......................................................
+StatusResponse ::= StatusCode
+	           StatusText?
+
+StatusCode	 ::= nonNegativeInteger
+StatusText	 ::= text
+.......................................................
+
+== StatusCode
+This is a three-digit decimal number, in the style of numeric codes
+used in various internet protocols such as HTTP, FTP, and SMTP.
+
+== StatusText
+A short textual description of the status.
+Programs should rely on the StatusCode, not the StatusText, for making decisions about haw to proceed.

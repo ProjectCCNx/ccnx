@@ -1,0 +1,36 @@
+<!-- DTD for CCNx Repository Protocol -->
+<!ENTITY % URI "CDATA">	<!-- a Uniform Resource Identifier -->
+<!ENTITY % commonattrs
+	"xmlns %URI; #FIXED 'http://www.ccnx.org/content/schema/20090915'">
+
+<!ELEMENT RepositoryInfo (Version, Type, RepositoryVersion, GlobalPrefixName, LocalName, Name*, InfoString?)>
+<!ATTLIST RepositoryInfo %commonattrs;>
+
+<!ELEMENT Type		(#PCDATA)>	<!-- INFO, DATA -->
+<!ATTLIST Type      ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT Version	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT RepositoryVersion	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT GlobalPrefixName		(Component*)>
+<!ATTLIST GlobalPrefixName		%commonattrs;>
+
+<!ELEMENT LocalName	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT Name		(Component*)>
+<!ATTLIST Name		%commonattrs;>
+
+<!ELEMENT InfoString	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT Policy (PolicyVersion | LocalName | GlobalPrefix | Namespace)* >
+<!ATTLIST Policy %commonattrs;>
+
+<!ELEMENT PolicyVersion	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT GlobalPrefix	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT Namespace	(#PCDATA)>	<!-- UTF-8 -->

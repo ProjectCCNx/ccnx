@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">cmVwb1Rlc3Q=</Component>
+    <Component ccnbencoding="base64Binary">ZGF0YTI=</Component>
+    <Component ccnbencoding="base64Binary">+A==</Component>
+  </Name>
+  <MinSuffixComponents>1</MinSuffixComponents>
+  <MaxSuffixComponents>1</MaxSuffixComponents>
+</Interest>

@@ -1,0 +1,13 @@
+<?xml version='1.0'?>
+<RepositoryInfo>
+  <Version>1.0</Version>
+  <Type>INFO</Type>
+  <RepositoryVersion>1.4</RepositoryVersion>
+  <GlobalPrefixName>
+    <Component ccnbencoding="base64Binary">cGFyYy5jb20=</Component>
+    <Component ccnbencoding="base64Binary">Y3Ns</Component>
+    <Component ccnbencoding="base64Binary">Y2Nu</Component>
+    <Component ccnbencoding="base64Binary">UmVwb3M=</Component>
+  </GlobalPrefixName>
+  <LocalName>Repository</LocalName>
+</RepositoryInfo>

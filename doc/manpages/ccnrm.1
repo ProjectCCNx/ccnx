@@ -1,0 +1,77 @@
+'\" t
+.\"     Title: ccnrm
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCNRM" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnrm \- Mark as stale any locally cached content objects matching the given prefixes\&.
+.SH "SYNOPSIS"
+.sp
+\fBccnrm\fR [\-o \fIoutfile\fR] \fIccnxname\fR \&...
+.SH "DESCRIPTION"
+.sp
+The \fBccnrm\fR utility marks as \fIstale\fR any matching content objects that are stored in the local \fBccnd\fR cache\&. This makes them unavalable using ordinary interests, effectively removing them\&. This does not affect neighboring nodes or local applications\&.
+.sp
+The objects that are marked stale can be written to an output file with the \fI\-o\fR option\&.
+.sp
+The \fIccnxname\fR prefixes must follow the CCNx name conventions\&.
+.SH "OPTIONS"
+.PP
+\fB\-o\fR \fIoutfile\fR
+.RS 4
+This option writes out the newly stale content objects to a file\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; retrieval error)
+.RE
+.SH "EXAMPLES"
+.sp
+This will "remove" everything whose name starts with \fIccnx:/ccnx\&.org/chat\fR:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+ccnrm ccnx:/ccnx\&.org/chat
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+This will make everything stale, appending the newly stale content objects to the file stuff\&.ccnb:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+ccmrm \-o \- ccnx:/ >> stuff\&.ccnb
+.fi
+.if n \{\
+.RE
+.\}
+.SH "AUTHOR"
+.sp
+Michael Plass <plass@parc\&.com>

@@ -1,0 +1,62 @@
+'\" t
+.\"     Title: ccnexplore
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCNEXPLORE" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnexplore \- Java Swing GUI to explore content stored in repositories
+.SH "SYNOPSIS"
+.sp
+\fBccnexplore\fR [\-root \fIccnxname\fR] [\-accessControl] [\-debugMode]
+.SH "DESCRIPTION"
+.sp
+The \fBccnexplore\fR utility is an experimental app still under development\&. This application explores available ContentObjects using the CCNx Java application, ContentExplorer and defaults to \fI/\fR as the starting point for displaying content and starting name enumeration\&. \fBccnexplore\fR uses CCNNameEnumeration to populate the GUI and can open \&.txt and \&.text files in a preview pane or separate window\&. The ContentExplorer can also be used to store files in a repository (using the Save to Repo button)\&. To override the default starting point, run with the \fI\-root\fR flag with a \fIccnxname\fR\&. \fBccnxeplore\fR is intended to be used as a first test of AccessControl functionality with CCN\&. This is in an extremely early state and will be updated in future releases\&. \fBccnexplore\fR can also be used to fully explore the name hierarchy of objects stored in the repositories\&. If run with the \fI\-debugMode\fR all ContentName components, including versions, segments and digests, will be displayed\&.
+.SH "OPTIONS"
+.PP
+\fB\-root\fR \fIccnxname\fR
+.RS 4
+Set a starting
+\fIccnxname\fR
+prefix to display in the GUI and immediately begin enumerating\&. This allows the user to avoid clicking through the full prefix to begin displaying files under the prefix in the GUI\&.
+.RE
+.PP
+\fB\-accessControl\fR
+.RS 4
+Allow testing and experimentation with the initial access control code\&.
+.RE
+.PP
+\fB\-debugMode\fR
+.RS 4
+Allow the GUI to enumerate past ContentName versions and segments\&. This is useful for debugging content in the repository, especially the access control content objects\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; enumeration error)
+.RE
+.SH "AUTHOR"
+.sp
+Rebecca Braynard <rbraynar@parc\&.com>
+.sp
+Philippe Golle <pgolle@parc\&.com>

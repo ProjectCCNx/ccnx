@@ -1,0 +1,58 @@
+#!/bin/sh
+# csrc/configure
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+CONFDIR="`dirname $0`/conf"
+
+TryAppend () {
+ test -f "$CONFDIR"/"$1".mk || return 0
+ sed -e '/^[#] /d' "$CONFDIR"/"$1".mk >> conf.mk
+}
+
+TryScript () {
+ SCRIPT="$CONFDIR"/"$1".sh
+ shift
+ test -f "$SCRIPT" || return 0
+ sh "$SCRIPT" "$@"
+}
+
+ProvideDefault () {
+ grep '^'${1}'[ 	]*=' conf.mk > /dev/null && return 0
+ echo $* >> conf.mk
+}
+
+test -f conf.mk && mv conf.mk conf.mk~
+echo '#' generated `uname -nsrv` > conf.mk
+TryAppend "`uname`"
+TryAppend "`uname -sr | sed -e 's/ /-/g'`"
+TryAppend "local"
+TryScript "`uname`" "$@"
+TryScript "local" "$@"
+ProvideDefault CPREFLAGS = -I../include
+ProvideDefault PCAP_PROGRAMS = ccndumppcap
+ProvideDefault RESOLV_LIBS = -lresolv
+ProvideDefault INSTALL_BASE = ${INSTALL_BASE:-/usr/local}
+ProvideDefault INSTALL_INCLUDE = '$(INSTALL_BASE)/include'
+ProvideDefault INSTALL_LIB = '$(INSTALL_BASE)/lib'
+ProvideDefault INSTALL_BIN = '$(INSTALL_BASE)/bin'
+ProvideDefault INSTALL = install
+ProvideDefault RM = rm -f
+ProvideDefault SH = /bin/sh
+
+echo ============= conf.mk =============>&2
+cat conf.mk				>&2
+echo ===================================>&2
+make config_subdir
+test -f conf.mk~ || exit 0
+cmp conf.mk~ conf.mk || make clean

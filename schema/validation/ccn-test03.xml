@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<Header>
+  <Start>1</Start>
+  <Count>21</Count>
+  <BlockSize>4096</BlockSize>
+  <Length>83545</Length>
+  <ContentDigest ccnbencoding="base64Binary">AQIDBAUGBwgJAAkIBwYFBAMCAQ==</ContentDigest>
+  <RootDigest ccnbencoding="base64Binary">AQIDBAUGBwgJAAkIBwYFBAMCAQ==</RootDigest>
+</Header>

@@ -1,0 +1,34 @@
+TITLE(1)
+========
+
+NAME
+----
+util - some text
+
+SYNOPSIS
+--------
+*util* [-flag 'value'] 'arg1' 'arg2'
+
+DESCRIPTION
+-----------
+The *util* utility ...
+
+OPTIONS
+-------
+*-flag* 'VALUE'::
+	Do X
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; retrieval error)
+
+AUTHOR
+------
+someone <someone@parc.com>
+
+
+

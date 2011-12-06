@@ -1,0 +1,52 @@
+CCNRM(1)
+========
+
+NAME
+----
+ccnrm - Mark as stale any locally cached content objects matching the given prefixes. 
+
+SYNOPSIS
+--------
+*ccnrm* [-o 'outfile'] 'ccnxname' ...
+
+DESCRIPTION
+-----------
+The *ccnrm* utility marks as _stale_ any matching content objects that
+are stored in the local *ccnd* cache.  This makes them unavalable using
+ordinary interests, effectively removing them.  This does not affect
+neighboring nodes or local applications.
+
+The objects that are marked stale can be written to an output file with
+the '-o' option.
+
+The 'ccnxname' prefixes must follow the CCNx name conventions.
+
+OPTIONS
+-------
+
+*-o* 'outfile'::
+     This option writes out the newly stale content objects to a file.
+
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; retrieval error)
+
+EXAMPLES
+--------
+This will "remove" everything whose name starts with 'ccnx:/ccnx.org/chat':
+
+    ccnrm ccnx:/ccnx.org/chat
+
+This will make everything stale, appending the newly stale content objects to
+the file stuff.ccnb:
+
+    ccmrm -o - ccnx:/ >> stuff.ccnb
+
+AUTHOR
+------
+Michael Plass <plass@parc.com>

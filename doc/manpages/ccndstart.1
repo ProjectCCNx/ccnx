@@ -1,0 +1,78 @@
+'\" t
+.\"     Title: ccndstart
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCNDSTART" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccndstart \- Start ccnd in the background and set up forwarding according to configuration
+.SH "SYNOPSIS"
+.sp
+\fBccndstart\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccndstart\fR utility starts ccnd in the background\&. \fBccndstart\fR looks for configuration of forwarding information in \fI$HOME/\&.ccnx/ccnd\&.conf\fR; refer to \fBccndc(1)\fR for the format\&. If \fBccnd\fR is already running, it will be shut down and restarted; any manually\-configured forwarding (with \fBccndc\fR) will need to be re\-executed\&.
+.sp
+\fBccndstart\fR will start using default values for \fICCND_CAP\fR, \fICCND_DEBUG\fR and the default port 9695 for \fICCN_LOCAL_PORT\fR\&. These environment values may be set to change the cache size, \fBccnd\fR debug logging, and port number, respectively\&. The values may be set in \fI$HOME/\&.ccnx/ccndrc\fR, which is sourced at startup\&.
+.SH "OPTIONS"
+.sp
+This utility does have have flags or arguments\&.
+.sp
+These environment variables are handled by \fBccndstart\fR:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+CCND_LOG
+CCND_PRELOAD
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+\fICCND_LOG\fR is the name of the log file\&. If none is specified, the log outputput appears on \fBstderr\fR\&.
+.sp
+\fICCND_PRELOAD\fR is a list of file names for files containing ccnb\-encoded content objects\&. These will be preloaded into the ccnd\(cqs cache at startup\&. See \fBccnrm(1)\fR for one way to make such a file\&.
+.sp
+Please see \fBccnd(1)\fR for additional environment variables\&.
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure
+.RE
+.SH "FILES"
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$HOME/\&.ccnx/ccnd\&.conf
+$HOME/\&.ccnx/ccndrc
+.fi
+.if n \{\
+.RE
+.\}
+.SH "AUTHOR"
+.sp
+Michael Plass <plass@parc\&.com>

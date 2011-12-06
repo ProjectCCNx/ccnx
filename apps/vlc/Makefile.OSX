@@ -1,0 +1,49 @@
+# vlc/Makefile.OSX
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+libdir = $(shell pkg-config --variable=libdir vlc-plugin )
+vlclibdir = $(libdir)/vlc
+VLCPLUGINVERDEF = `pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER=\1/;s/\.//g;s/=0/=/'`
+
+# You may have to specify ARCHOPT in some cases, for instance:
+#ARCHOPT = -arch `/usr/bin/arch`
+
+all: libaccess_ccn_plugin.dylib
+
+libaccess_ccn_plugin.dylib: libaccess_ccn_plugin.o
+	gcc $< `pkg-config  --libs vlc-plugin` $(ARCHOPT) -o $@ -bundle -L../../lib -L/usr/local/lib -L/opt/local/lib -lccn -lcrypto
+
+libaccess_ccn_plugin.o: ccn.c
+	gcc -c -g -O3 -std=gnu99  $< -I../../include/ `pkg-config  --cflags vlc-plugin` -D__PLUGIN__  -DMODULE_STRING=\"ccn\" $(VLCPLUGINVERDEF) -o $@  
+
+clean:
+	rm -f libaccess_ccn_plugin.o libaccess_ccn_plugin.dylib
+
+install: all
+	mkdir -p $(DESTDIR)$(vlclibdir)/access/
+	install -m 0755 libaccess_ccn_plugin.dylib $(DESTDIR)$(vlclibdir)/access/
+
+install-strip: all
+	mkdir -p $(DESTDIR)$(vlclibdir)/access/
+	install -s -m 0755 libaccess_ccn_plugin.dylib $(DESTDIR)$(vlclibdir)/access/
+
+uninstall:
+	rm -f -- $(DESTDIR)$(vlclibdir)/access/libaccess_ccn_plugin.dylib
+
+# srcref unpacks the vlc sources, for browsing purposes, from the distfiles kept by macports.
+# This copy is not actually used for building the ccn plugin
+# Use 'sudo port install vlc' before building the plugin
+srcref:
+	tar xjf /opt/local/var/macports/distfiles/VLC/vlc-0.9.9a.tar.bz2
+
+.PHONY: all clean install uninstall srcref

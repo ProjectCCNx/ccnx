@@ -1,0 +1,37 @@
+CCNDLOGGING(1)
+==============
+
+NAME
+----
+ccndlogging - change the log level of a running ccnd
+
+SYNOPSIS
+--------
+*ccndlogging [-T host] ( none | low | co | med | high )*
+
+DESCRIPTION
+-----------
+The *ccndlogging* utility changes the effective log level of a running *ccnd*.
+
+OPTIONS
+-------
+*-T host*::
+     Control the *ccnd* instance running on the specified host, instead of the current host.
+
+ARGUMENT
+--------
+The command takes one argument, the desired level.
+This maps into an appropriate setting of the effective *CCND_DEBUG* setting.
+The levels are *none*, *low*, *co*, *med*, and *high*.
+The *co* level shows content objects, but not interests (*CCND_DEBUG*=4);
+the others should be self-explanatory.
+
+ENVIRONMENT
+-----------
+The 'CCN_LOCAL_PORT' environment variable may be used to identify
+the port that the *ccnd* instance is using; if unset, the default
+port number (9695) is used.
+
+AUTHOR
+------
+Michael Plass <plass@parc.com>

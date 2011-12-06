@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ 
+ ccnChat build file
+
+ Copyright (C) 2009 Palo Alto Research Center, Inc.
+
+ This work is free software; you can redistribute it and/or modify it under
+ the terms of the GNU General Public License version 2 as published by the
+ Free Software Foundation.
+ This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE.
+-->
+
+<!-- This is an ant project file, see http://ant.apache.org/ -->
+
+<!-- NOTES
+  Do not use antcall with tests that depend on ccnd, because this 
+  can result in more than one ccnd being run at the same time.
+  If you stick to dependencies with one level of ant the ccnd
+  will never be run twice regardless of the number of test targets
+  that require it.
+  --> 
+
+<project default="jar" name="ccnChat">
+
+	<!-- To avoid conflict with Eclipse, we build in 'build' not 'bin' -->
+	
+	<property name="build" location="build"/>
+	<property name="jarfile-base" value="ccnChat.jar"/>
+	<property name="jarfile" location="${jarfile-base}"/>
+	<property name="TOP_DIR" value="../.."/>
+        <property name="javasrc" location="${TOP_DIR}/javasrc"/>
+        <property name="ccnxjar" location="${javasrc}/ccn.jar"/>
+	<!-- To enable remote debugging, the incantation is 
+	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
+
+        <!-- Get classpath from main javasrc --> 
+
+        <import file="${javasrc}/libs.xml"/>
+	<path id="classpath">
+		<path refid="ccn-classpath"/>
+                <pathelement location="${ccnxjar}"/>
+	</path>
+
+	<path id="classpath-run">
+		<path refid="classpath"/>
+		<pathelement location="${jarfile}"/>
+	</path>
+
+        <target name="dumpclasspath">
+                <pathconvert pathsep=":" property="classpatharg" refid="classpath-run"/>
+                <echo message="${classpatharg}" />
+        </target>
+
+	<target name="compile">
+		<mkdir dir="${build}"/>
+		<depend srcdir="src" destdir="${build}" closure="yes"/>
+		<javac destdir="${build}"
+              srcdir="src" debug="on">
+			<classpath>
+				<path refid="classpath"/>
+			</classpath>
+		</javac>
+		<copy todir="${build}">
+			<fileset dir="src" excludes="**/*.java"/>
+		</copy>
+	</target>
+
+	<target name="jar" depends="compile">
+		<jar compress="true" jarfile="${jarfile}" basedir="${build}">
+			<exclude name="**/.classpath"/>
+			<exclude name="**/.project"/>
+			<exclude name="${jarfile-base}"/>
+		</jar>
+	</target>
+
+        <target name="test" depends="jar">
+                <echo message="No tests defined for ccnChat"/>
+        </target>
+
+	<target name="clean">
+		<delete dir="${build}"/>
+	</target>
+
+        <!-- To run using ant, use command like:
+             ant -DCHAT=/mychat run-chat -->
+        <target name="run-chat" depends="jar"> 
+		<!-- Not a unit test, this is to run the utility -->
+		<java classname="org.ccnx.ccn.apps.ccnchat.CCNChat" fork="true">
+                   <classpath>
+                     <path refid="classpath-run"/>
+                   </classpath>
+                   <arg value="${CHAT}"/>           
+                </java>
+	</target>
+</project>
+

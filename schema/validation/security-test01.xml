@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<WrappedKey>
+  <WrappingKeyIdentifier ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</WrappingKeyIdentifier>
+  <WrapAlgorithm>2.16.840.1.101.3.4.1.5</WrapAlgorithm>
+  <KeyAlgorithm>1.2.840.113549.1.1.1</KeyAlgorithm>
+  <Label>A key for decrypting stuff.</Label>
+  <EncryptedNonceKey ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</EncryptedNonceKey>
+  <EncryptedKey ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</EncryptedKey>
+</WrappedKey>

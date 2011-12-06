@@ -1,0 +1,19 @@
+#!/bin/sh
+# csrc/makeagentcov
+# Assuming we're using gcc, set up to run gcov on ccnd.
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+./configure && make clean && make
+rm ccnd/ccnd.o ccnd/ccnd lib/ccn_match.o
+make CFLAGS='-g -fprofile-arcs -ftest-coverage' SUBDIRS='lib ccnd'
+echo "### Say 'make coverage' after test run to generate gcov results"

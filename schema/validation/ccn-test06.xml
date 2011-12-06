@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<Interest>
+  <Name/>
+  <MinSuffixComponents>4</MinSuffixComponents>
+  <MaxSuffixComponents>4</MaxSuffixComponents>
+  <PublisherIssuerKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherIssuerKeyDigest>
+  <ChildSelector>1</ChildSelector>
+  <AnswerOriginKind>3</AnswerOriginKind>
+  <Scope>1</Scope>
+</Interest>

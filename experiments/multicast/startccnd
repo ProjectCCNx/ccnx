@@ -1,0 +1,24 @@
+#!/bin/sh
+# multicast/startccnd
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+. ./settings
+file `which ccnd`
+ccndsmoketest kill 2>/dev/null || :
+test -f $SELF-ccnd.log && mv $SELF-ccnd.log $SELF-ccnd.log~
+ccnd 2>$SELF-ccnd.log &
+ccndsmoketest
+date | ccnput -f -x 60 ccnx:/experiments/multicast/hosts/$SELF
+ccnrm -o presence.ccnb ccnx:/experiments/multicast/hosts/$SELF
+ccndc add ccnx:/experiments/multicast udp $MULTICAST_ADDRESS $MULTICAST_PORT
+head -n 30 $SELF-ccnd.log settings

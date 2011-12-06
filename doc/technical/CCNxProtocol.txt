@@ -1,0 +1,355 @@
+CCNx Protocol
+=============
+
+
+Abstract
+--------
+
+This document describes the CCNx protocol, the transport protocol
+for a communications architecture called Content-Centric
+Networking (CCN) built on _named data_.  CCN has no notion of host at
+its lowest level -- a packet "address" names content, not location.
+The CCNx protocol efficiently delivers named content rather than connecting
+hosts to other hosts.  Every packet of data may be cached at any CCNx
+router -- combined with intrinsic support for multicast or broadcast
+delivery this leads to a very efficient use of the network when many
+people are interested in the same content.
+
+Introduction
+------------
+
+This document describes the CCNx protocol which provides
+location-independent delivery services for named data packets.  The
+services include multihop forwarding for end-to-end delivery, flow
+control, transparent and automatic multicast delivery using
+buffer storage available in the network, loop-free multipath
+forwarding, verification of content integrity regardless of delivery
+path, and carriage of arbitrary application data.  Applications run
+the CCNx protocol over some lower-layer communications service capable of
+transmitting packets.  There are no restrictions on the nature of the
+lower-layer service: it may be a physical transport or another network
+or transport protocol.  For example, applications will typically run
+the CCNx protocol on top of UDP to take advantage of existing IP connectivity.
+Since content is named independent of location in the CCNx protocol,
+it may also be preserved indefinitely in the network, providing
+effectively a form of distributed filesystem service.
+
+The CCNx protocol is general, supporting a wide range of network
+applications.  It may be natural to think of stored content
+applications such as distribution of video or document files, but the
+CCNx model also supports real-time communication and discovery
+protocols and is general enough to carry conversations between hosts
+such as TCP connections. The protocol supports a broad range of applications
+by leaving the choice of naming conventions to the application.  This
+document specifies the common functions that are independent of the
+contents of the names and data and the semantics of exchanges. In
+addition to this document, therefore, a complete specification of the
+use of the CCNx protocol for a particular application will require additional
+specification of the naming rules, data formats, and message
+semantics.  Such specifications of application protocols on top of the
+CCNx protocol (plus possibly API specifications) are called 'profiles'.
+
+The CCNx protocol is designed for end-to-end communication between
+applications and so it is intended to be integrated into application
+processing rather than being implemented as a separate layer.
+
+Definitions
+~~~~~~~~~~~
+
+node::
+  a CCNx network entity that implements forwarding and
+buffering
+party::
+  any entity in the network using the CCNx protocol to communicate.  Note
+that parties are not just machines, but also applications using the protocol.
+message:: 
+  a CCNx packet.  We use this term to avoid confusion with the
+lower-layer packet that may be carrying CCNx messages.  A single lower-layer
+packet (for example a single UDP packet) MAY contain more than one
+CCNx message.
+
+Message Format and Encodings
+----------------------------
+
+Unlike many other protocols, the CCNx protocol does not have any
+fixed-length fields.  Instead, CCNx data formats are defined by XML
+schemas and encoded with explicitly identified field boundaries.  This
+design permits field values of arbitrary length, optional fields that
+consume no packet space when omitted, and nested structures.  The use
+of XML structure does not imply that field values are text strings nor
+does it require that messages be encoded as human-readable text.  Most
+fields are defined to contain arbitrary binary values, including those
+that identify content.
+
+The wire format of CCNx messages is an link:BinaryEncoding.html[efficient binary
+encoding of XML structures] called link:BinaryEncoding.html[ccnb], which defines
+such things as the byte order. There is also a text XML encoding which
+is useful for debugging, testing, presentation in documentation,
+etc. but MUST NOT be used on the wire.
+
+Content Identification
+----------------------
+
+The CCNx protocol accomplishes transfers of content by _name_,
+irrespective of the identities or locations of machines involved.
+
+CCNx content names are hierarchically-structured, consisting of a
+number of 'components'.  The hierarchical structure is like that of IP
+addresses, but CCNx names and name components have arbitrary lengths
+and the component divisions are explicitly identified unlike in the classless
+model of IP addresses.  The protocol does not depend on anything but
+the hierarchical structure of the names so they may contain arbitrary
+binary data such as encrypted data.
+
+CCNx content names are not interpreted in the operation of the CCNx
+protocol itself, just matched.  All assignment of meaning to names or
+their component parts comes from application, institution, and/or global
+conventions reflected in prefix forwarding rules.
+
+A CCNx name sometimes identifies a specific chunk of data, but in other
+cases identifies a collection of data by naming a point in
+the name tree under which there may be multiple pieces of data.
+A name identifying a collection of data is analogous to 
+the address of a network in the host addressing scheme of IP, where the
+network address can be seen to identify the collection of hosts
+attached to that network.  In the case of naming a collection, the
+CCNx name is a prefix of the name of every piece of content in the
+collection, just as an IPv4 network address gives a prefix of the IP
+addresses of member hosts.  For this reason, a CCNx name may be
+referred to as a 'name prefix' or simply 'prefix'.
+
+See link:Name.html[CCNx Name] for details of the structure and
+representation of names.
+
+The CCNx name of a chunk of data always contains as its final, most
+specific component a value that is derived from the data, called the
+'digest component'.  Since it is derived from the data itself, the
+digest component is redundant and so is not transmitted.  For more
+details see link:DigestComponent.html[Implicit Digest Component].
+
+CCNx Message Types
+------------------
+
+There are two message types in the CCNx protocol: 'Interest' and
+'Data' (also called 'Content' or 'Content Object').
+
+The link:InterestMessage.html[Interest message] is used to request data
+by name.  An Interest message can identify a chunk of content to
+retrieve very specifically.  Alternatively, an Interest message can
+provide a name prefix and other qualifications to restrict what data
+is acceptable from the collection named by the prefix.
+
+The link:ContentObject.html[Content Object] is used to supply data.  A
+Content Object message not only contains a data payload but the
+identifying name (without the implicit digest component),  a
+cryptographic signature, and identification of the signer (called the
+'publisher') along with other information about the signing.
+Formally, a Content Object message is an immutable binding of a
+name, a publisher, and a chunk of data.  Every Content Object message
+is REQUIRED to contain a valid signature.  In this way, all data
+communicated with the CCNx protocol is attested.
+
+Any CCNx party MAY choose to verify the signature on any Content
+Object message that it receives.  Applications that are going to make
+use of the data MUST verify first.  Verification MAY require public
+keys which are not themselves included in the Content Object message
+to be verified.  A CCNx party MUST discard a Content Object message
+that fails to verify.  
+
+The CCNx protocol does not provide a separate mechanism for key
+distribution, since keys can be distributed just like any other data
+using the general features of the protocol.  Profiles for key
+distribution are separate specifications, not part of the CCNx
+protocol itself.  Signature verification can confirm that a Content
+Object message has not been corrupted in transit (intentionally or
+otherwise) since it was originally signed, and that it was signed by
+the identified publisher, but these verifications are not the same as
+determining that the publisher in question is a trustworthy source of
+data for a particular application purpose.  CCNx parties SHOULD use
+trust management practices to decide whether to trust data from
+particular publishers for particular purposes, but such practices are
+not specified as part of the CCNx protocol itself.  The CCNx protocol
+is designed to ensure attestation of data, without constraining
+decisions about key distribution and trust management.
+
+Basic Exchange
+--------------
+
+Communication using the CCNx protocol is receiver-controlled.  A
+consumer of data transmits an Interest message over available
+connectivity and any party receiving the message and having data that
+matches, or 'satisfies', the request (according to the specifications in the
+link:InterestMessage.html[Interest Message]) may transmit a matching Content
+Object message. Data MUST only be transmitted in response to an
+Interest that matches the Data.  An Interest message MAY be
+transmitted using broadcast or multicast facilities of the underlying
+transport in order to reach many potential sources of data with
+minimal bandwidth cost.  
+
+A party MUST transmit at most one Content Object message in response
+to a single received Interest message, even if the party has many
+Content Objects that match.  This one-for-one mapping between Interest
+and Data messages maintains a 'flow balance' that allows the receiver
+to control the rate at which data is transmitted from a sender, and
+avoids consuming bandwidth to send data anywhere it is not wanted.
+
+Nodes SHOULD implement 'suppression' mechanisms to minimize the
+potential for two different nodes to transmit two Content Object
+messages in response to a single Interest received by both nodes (for
+example via broadcast or multicast).  The suppression mechanisms
+SHOULD include randomizing response times and detecting the fact that
+another node has broadcast or multicast a response so the Interest may
+be discarded. This version of the CCNx protocol does not specify
+suppression rules.
+
+A receiver that desires to retrieve a large collection of data
+requiring multiple Content Object messages must transmit a sequence of
+Interest messages.  For pipelining, a receiver MAY transmit multiple
+Interest messages without waiting for data in response to each one before
+sending the next.  This is only possible if the receiver knows enough
+about the names of the Content Objects to construct different
+Interests in advance.  Sending multiple Interest messages with
+identical requests will usually cause the same Content Object to be
+transmitted repeatedly, since senders MUST respond to Interests based
+only on what content they have available at the time, and not on any
+memory of what Content Objects they have previously transmitted.
+
+The CCNx protocol does not assume that underlying transport of
+messages is reliable.  To provide reliable delivery, Interest messages
+that are not satisfied in some reasonable period of time must be
+retransmitted.  A receiver MUST maintain a timer on unsatisfied
+Interests for which it still wants the data, and retransmit
+them when the timer expires.  This version of the CCNx protocol does
+not specify timer values.
+
+These rules govern the basic Interest/Data exchange for local
+communication, that is communication between peers which directly
+receive message transmissions from each other.  Since the CCNx
+protocol may be used on top of any packet transport, this definition
+of local is quite broad, including pairs of nodes physically far apart
+but using a long-distance connection such as a TCP connection as a tunnel to
+transmit CCNx messages directly.  Multihop CCNx protocol communication
+requires forwarding of CCNx message which is specified in terms of the
+node model described in the next section.
+
+CCNx Node Model
+---------------
+
+A full CCNx node (as opposed to a limited CCNx party such as a single
+application) contains the following data structures to provide
+buffering/caching and loop-free forwarding.
+
+Content Store (CS)::
+   A buffer memory organized for retrieval by longest prefix match
+   lookup on names.  Since CCNx Content Object messages are
+   self-identifying and self-authenticating, each one is potentially
+   useful to many consumers.  The CS SHOULD implement a replacement
+   policy that maximizes the possibility of reuse such as
+   Least Recently Used (LRU) or Least Frequently Used (LFU).  The CS
+   MUST also implement the link:Staleness.html[Staleness Bit].  The CS
+   MAY retain Content Object messages indefinitely but is not required
+   to take any special measures to preserve them; the CS is a cache not
+   a persistent store.
+Forwarding Information Base (FIB)::
+   A table of destinations for Interests, organized for retrieval by
+   longest prefix match lookup on names.  Each prefix entry in the FIB
+   may point to a list of destinations rather than only one.
+Pending Interest Table (PIT)::
+   A table of sources for unsatisfied Interests, organized for
+   retrieval by longest prefix match lookup on names.  Each entry in
+   the PIT may point to a list of sources.  Entries in the PIT MUST
+   timeout rather than being held indefinitely.
+Face::
+   A 'face' is a generalization of the concept of 'interface': a face
+   may be a connection to a network or directly to an application
+   party.  A face may be configured to send and receive broadcast or
+   multicast packets on a particular network interface, or to send and
+   receive packets using point-to-point addressing in the underlying
+   transport, or using a tunnel (for example a TCP tunnel).  A face
+   may also be the connection to a single application process running
+   on the same machine, via an encapsulation like UDP or an
+   OS-specific interprocess communication path.  All messages arrive
+   through a face and are sent out through a face.
+
+Note that the tables listed above may be interconnected through a
+single index to minimize the cost of lookup operations at the core of
+CCNx message processing and forwarding.  Such an index must be ordered
+or prioritized to achieve the effect of the lookup order specified below.
+
+Processing Interest Messages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An Interest Message is processed according to the following sequence:
+
+1. Lookup is performed on CS.  If a matching ContentObject
+is found, it will be transmitted out the arrival face as a response to
+the Interest Message.  Note that to match a ContentObject must satisfy
+all of the specifications given in the Interest Message.  Note also
+that it may be that multiple ContentObjects simultaneously match in
+which case the specification in the link:InterestMessage.html[Interest
+Message] will be used to determine which object to return.  When a
+match is found in the CS, processing stops and the Interest
+Message is discarded since it has been satisfied.
+2. Lookup is performed on PIT.  If a matching Interest Message is
+found in the PIT it means that an equivalent Interest Message has
+already been forwarded and is pending.  The arrival face of the new
+Interest Message is added to the list of sources of unsatisfied
+Interests in the PIT entry and the the Interest Message is discarded.
+3. Lookup is performed on FIB.  If a matching prefix is found in the
+FIB, an entry is created in the PIT identifying the arrival face of
+the Interest Message and the message is transmitted according to the
+'strategy rules' to one or more of the destination faces registered
+for the prefix in the FIB.  Note that one of the destination faces may
+actually be connected to a local agent that uses the semantics of the
+name to dynamically configure new faces.
+4. If no match is found in the previous steps then the node has no way
+to satisfy the Interest Message and it is discarded.
+
+Processing Content Messages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A ContentObject is processed according to the following sequence:
+
+1. Lookup is performed on CS.  If a matching
+ContentObject is found it means that the newly arrived ContentObject
+is a duplicate which can safely be discarded, because any Interest
+Messages have already been satisfied and new ones will be satisfied
+out of the CS.
+2. Lookup is performed on PIT.  If there is a match in the PIT, the
+ContentObject is transmitted on all of the source faces for the
+Interests represented in the PIT.  A node MAY perform verification of
+the ContentObject before forwarding it, and MAY apply various policy
+restrictions.
+3. If no match is found in the previous steps, then the content is
+unsolicited.  A node MUST NOT forward unsolicited data and SHOULD
+discard unsolicited data but MAY store it in the CS in case it is
+subsequently requested.
+
+Strategy Rules
+~~~~~~~~~~~~~~
+
+Unlike in IP, CCNx FIB entries may point to multiple destinations
+simultaneously.  The self-identifying nature of Interest Messages and
+ContentObjects means that loops can be avoided without establishing a
+spanning tree allowing only one destination for any particular prefix
+at any particular node.  The possibility of multiple destinations
+means that different strategies may be employed to select among them
+for forwarding messages.  A node MUST implement some strategy rule,
+even if it is only to transmit an Interest Message on all listed
+destination faces in sequence. A node MAY implement many different
+strategies.  Strategy rules SHOULD be specified by FIB entries: in
+this case the FIB entry MAY contain effectively a constrained program
+for handling the forwarding of Interest Messages addressing the
+particular prefix.
+
+A node MUST discard PIT entries that have not been refreshed by the
+arrival of new Interest Messages within some timeout.  The new
+Interests confirm that the potential recipients are still interested
+in receiving content.  A node MUST retransmit Interest Messages
+periodically for pending PIT entries.  A node MAY use different
+timeouts for refreshing the liveness of received Interest Messages
+('downstream interests') from those used for retransmitting pending
+Interest Messages ('upstream interests'), and MAY use different
+timeouts associated for different faces.  In this way, each node
+SHOULD match to both to downstream and upstream parties.
+

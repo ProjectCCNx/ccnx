@@ -1,0 +1,35 @@
+CCNDSTATUS(1)
+=============
+
+NAME
+----
+ccndstatus - display the status a running ccnd
+
+SYNOPSIS
+--------
+*ccndstatus [-T host]
+
+DESCRIPTION
+-----------
+The *ccndstatus* displays the status of a running *ccnd*.
+
+This is the same display that is available via a browser at (for example)
+http://localhost:9695
+
+It fact, the implementation simply does the http fetch and strips out the html markup.
+
+OPTIONS
+-------
+*-T host*::
+     Control the *ccnd* instance running on the specified host, instead of the current host.
+     To use this option, host must be accessible via tcp.
+
+ENVIRONMENT
+-----------
+The 'CCN_LOCAL_PORT' environment variable may be used to identify
+the port that the *ccnd* instance is using; if unset, the default
+port number (9695) is used.
+
+AUTHOR
+------
+Michael Plass <plass@parc.com>

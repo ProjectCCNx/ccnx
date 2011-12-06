@@ -1,0 +1,80 @@
+CCNACL(1)
+=========
+
+NAME
+----
+ccnacl - show and modify access control lists (ACLs) for
+access control of a CCNx content namespace.
+
+SYNOPSIS
+--------
+*ccnacl* [-as 'keystore'] -show 'nodeName'
+
+*ccnacl* [-as 'keystore'] -edit 'nodeName' 'principalName' [null | r | rw | rw+]
+
+*ccnacl* [-as 'keystore'] -init 'domain' 'userNamespace' 'groupNamespace' 'principalName'
+
+DESCRIPTION
+-----------
+The *ccnacl* utility prints or modifies an access control list (ACL)
+published with CCNx. An ACL specifies who should have access to 
+a particular collection, identified by the given 'nodeName'. Entities
+that are supporting the CCNx access control profile will respect 
+any ACL specification that applies to namespaces they are 
+using.  Read control is achieved through encryption, so as long as the
+writers support access control the readers must support it and be
+authorized in order to read content.  Write control is achieved by
+consumers rejecting content that is not published by an authorized
+party. 
+
+The 'nodeName' specifies the CCNx namespace in which the ACL is
+published and to which it applies; CCNx Content Objects with
+'nodeName' as a prefix of their names will be affected.
+The 'nodeName' must be specified using the CCNx URI encoding
+syntax. For simple cases of ASCII name components this is just
+pathname syntax with / delimiters.
+
+An ACL is published as immutable CCNx content.  When an ACL edit is
+performed, new versions of the ACL and related keys are published.
+
+OPTIONS
+-------
+*-as* 'pathToKeystore'::
+	Specifies a file path to a keystore; this is used for signing any
+        newly-created content.  Applicable to all operations.  The default
+        keystore is used if this is not specified.
+
+*-show* 'nodeName'::
+	Print the contents of the ACL for the given 'nodeName'.
+
+*-edit* 'nodeName' 'principalName' [null | r | rw | rw+]::
+	Create an entry in the ACL of the given 'nodeName' to set the
+	permissions for the given 'principalName' as specified. If the
+	ACL does not exist it is created. The possible permissions are:
+
+	* *null* = no access
+	* *r* = Reader
+	* *rw* = Writer, can also read
+	* *rw+* = Manager, can read, write, and edit ACLs
+
+*-init* 'domain' 'userNamespace' 'groupNamespace' 'principalName'::
+	Initialises the authentication domain.
+///////////////////////////////////////////////////////////////////////////////
+FIXME - better descr. needed for -init
+///////////////////////////////////////////////////////////////////////////////
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; retrieval error, failure to write)
+
+FILES
+-----
+        $HOME/.ccnx/.ccnx_keystore - default keystore
+
+AUTHOR
+------
+Philippe Golle <pgolle@parc.com>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "XMLSchema.dtd">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<!-- DKS: leave this out, following ccn.xsd; as things don't work right
+     if you put it in. We should fix this. -->
+<!--
+        targetNamespace="http://www.ccnx.org/content/schema/20090915"
+        xmlns="http://www.ccnx.org/content/schema/20090915" 
+        elementFormDefault="unqualified"
+        attributeFormDefault="unqualified">
+-->
+
+<xs:include schemaLocation="ccnx.xsd"/>
+
+  <xs:annotation>
+    <xs:documentation xml:lang="en">
+      Content-Centric Networks security-related data schema.
+    </xs:documentation>
+  </xs:annotation>
+
+<!-- Top-level objects that can appear in 
+     documents, messages, etc. -->
+<xs:element name="WrappedKey" type="WrappedKeyType"/>
+<xs:element name="Root" type="RootType"/>
+<xs:element name="ACL" type="CollectionType"/> <!-- All we're doing is changing the tag... -->
+
+<xs:complexType name="WrappedKeyType">
+<!-- A wrapped (encrypted) key. The wrapped key may be secret (symmetric) or private,
+    the wrapping key used to encrypt it might be secret or public. -->
+
+  <xs:sequence>
+	<!-- Identify the key used to wrap this one, usually by its digest. -->
+	<xs:element name="WrappingKeyIdentifier" type="DigestType"
+                                     minOccurs="0" maxOccurs="1" /> 
+    <!-- Identify the name under which to find the wrapping key. -->
+    <xs:element name="WrappingKeyName" type="NameType"
+                                     minOccurs="0" maxOccurs="1" /> 
+	<!-- The default wrap algorithm is determined by the type of the wrapping key.
+         For AES, it's NIST/RFC3394 key wrapping. For RSA, RSA-OAEP. 
+         OIDs for AES: 128-bit: 2.16.840.1.101.3.4.1.5
+                       192-bit: 2.16.840.1.101.3.4.1.25
+                       256-bit: 2.16.840.1.101.3.4.1.45 -->
+	<xs:element name="WrapAlgorithm" type="xs:string"
+                                     minOccurs="0" maxOccurs="1" /> 
+	<!-- The algorithm this key is to be used for, used both to decode the
+         key material if necessary (e.g. if it's an encoded private key, rather
+         than a raw symmetric key); and to know how this key is used to encrypt
+         data; e.g. for AES, is it (or keys derived from it) used in CTR or CBC mode. 
+         For AES keys, in our default of CTR mode, we could use the NIST root OID for AES.
+         (NIST defines no OID for CTR mode, as it requires additional authentication,
+         and they don't want to encourage people to use it directly. We have 
+         additional authentication, so can; avoiding unnecessary MACs.): 
+         2.16.840.1.101.3.4.1  As this is the default, it is usually elided. -->
+	<xs:element name="KeyAlgorithm" type="xs:string"
+                                     minOccurs="0" maxOccurs="1" /> 
+	<xs:element name="Label" type="xs:string"
+                                     minOccurs="0" maxOccurs="1" /> 
+    <xs:element name="EncryptedNonceKey" type="Base64BinaryType"
+                minOccurs="0" maxOccurs="1"/>
+    <xs:element name="EncryptedKey" type="Base64BinaryType"
+                minOccurs="1" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Define a parameterized name algorithm, controlled by a prefix
+     and a suffix, where the algorithm user knows what to put in
+     between them. An optional label explains what this parameter is for. -->
+<xs:complexType name="ParameterizedNameType">
+  <xs:sequence>
+	<xs:element name="Label" type="xs:string"
+                                     minOccurs="0" maxOccurs="1" /> 
+    <xs:element name="Prefix" type="NameType" />
+    <xs:element name="Suffix" type="NameType" minOccurs="0" maxOccurs="1" />
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="RootType">
+<!-- Information parameterizing the root information for an access control
+     profile. Tries to be generic across multiple profiles. -->
+
+  <xs:sequence>
+	<!-- Identify the access control profile to apply to this namespace, via
+         a content name that can either be used for class lookup or actual
+         retrieval of parameters. -->
+    <xs:element name="ProfileName" type="NameType" />
+    <xs:element name="ParameterizedName" type="ParameterizedNameType" minOccurs="0" maxOccurs="unbounded"/>
+    <xs:element name="Parameters" type="KeyValueSetType"
+                minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+
+</xs:schema>

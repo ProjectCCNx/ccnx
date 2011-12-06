@@ -1,0 +1,105 @@
+'\" t
+.\"     Title: ccnputmeta
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCNPUTMETA" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnputmeta \- Associate a file with CCNx Content as metadata
+.SH "SYNOPSIS"
+.sp
+\fBccnputmeta\fR [\-v] [\-raw] [\-unversioned] [\-timeout \fImillis\fR] [\-log \fILEVEL\fR] \fIccnxname\fR \fImetaname\fR \fIfilename|url\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccnputmeta\fR utility publishes a local file \fIfilename\fR or url \fIurl\fR as metadata associated with the content \fIccnxname\fR\&. The metadata is published as as of CCNx Data in accordance with the naming conventions for segmented streams or files, optionally unversioned\&. For the default case of versioned content, \fBccnputmeta\fR will publish the metadata with the version based on the local machine time and will associate it with the latest version of the referenced CCNx content\&.
+.sp
+The \fIccnxname\fR must be specified using the CCNx URI encoding syntax\&. For simple cases of ASCII name components this is just pathname syntax with / delimiters\&.
+.sp
+The \fImetaname\fR must be the relative path of the metadata for the specified ccnxname, for example \fI\fIthumbnail\fR\fR\fI/image\fR\&.
+.sp
+The \fIfilename\fR must be the pathname of a local file that will published under the \fIccnxname\fR\&.
+.sp
+The \fIurl\fR must be a valid url to be published under a \fIccnxname\fR\&.
+.sp
+\fBccnputmeta\fR will publish versioned and segmented meta data objects, and the key used to sign them, to a repository by default\&. If there is not a reachable repository, \fBccnputmeta\fR will exit with a \fIwait for put drain\fR error\&. If there is a corresponding application able to retrieve the content \fBccnputmeta\fR can be used to publish the content with \fI\-raw\fR\&. However no such application is currently supported\&. \fI\-raw\fR allows \fBccnputmeta\fR to skip the repository handshake and directly put the content objects to satisfy the interests expressed by the reader application\&.
+.sp
+\fBccnputmeta\fR can also be used to publish metadata with a specific key using \fI\-as\fR where \fIpathToKeystore\fR must be a valid path to the local filesystem where a user key has previously been stored\&.
+.sp
+\fBccnputmeta\fR can additionally be used with access control using the \fI\-ac\fR flag\&.
+.SH "OPTIONS"
+.PP
+\fB\-v\fR
+.RS 4
+Run
+\fBccnputmeta\fR
+in verbose mode\&.
+.RE
+.PP
+\fB\-raw\fR
+.RS 4
+
+\fBccnputmeta\fR
+will publish the metadata without contacting a repository\&. This mode will fail unless there is another application, capable of reading the metadata, running\&.
+.RE
+.PP
+\fB\-unversioned\fR
+.RS 4
+Do not append a version component to the supplied
+\fImetaname\fR\&. This option may be used when the supplied
+\fImetaname\fR
+already includes an explicit version component at the end (which must be URI encoded)\&. This option may also be used for metadata content that is organized according to the segmentation convention but does not use the versioning convention at all\&. When this option is used, the FileOutputStream abstraction will not be used, since that implies versioning\&.
+.RE
+.PP
+\fB\-timeout\fR \fImillis\fR
+.RS 4
+Set the timeout that will be used for putting content objects on during the stream reading\&. I\&.e\&., the time to wait for incoming interests\&.
+.RE
+.PP
+\fB\-log\fR \fILEVEL\fR
+.RS 4
+Set the logging level\&.
+\fILEVEL\fR
+must be the an acceptable Java Logger level: either an integer or a level name (e\&.g\&. SEVERE)\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; publishing error \- no processes running that are prepared to ask or already asking for content)
+.RE
+.SH "EXAMPLE"
+.sp
+The following example publishes a new version of the file "mydocument" and adds the file "image\&.png" as thumbnail metadata for it
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+ccnputfile "ccnx:/mydocument" "mydocument"
+ccnputmeta "ccnx:/mydocument" "_thumbnail_/image\&.png" "image\&.png"
+.fi
+.if n \{\
+.RE
+.\}
+.SH "AUTHOR"
+.sp
+Paul Rasmussen <rasmussen@parc\&.com>

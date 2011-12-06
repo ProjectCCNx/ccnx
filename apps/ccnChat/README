@@ -1,0 +1,58 @@
+Instructions for running ccnchat
+
+The ccnchat executable is in the bin subdirectory
+
+Arguments to ccnchat include a chat room name (or chat room channel) (for eg: ccnx:/test_room or  ccnx:/ccnx.org/test_room). The chat room name (or channel name) must be preceded by ccnx:/
+
+You can run ccnChat in text mode by making the first commandline argument "-text".
+
+To run ccnchat, you first need to start ccnd (if it is not already running). 
+
+ccndstart
+ccnchat ccnx:/test_room
+
+After following the above two steps, you should see a test_room chat window open up.  
+You can run multiple instances of ccnchat on the same machine and if you specify the same chat room name for each instance, you should be able to "chat" with all the multiple ccnchat instances on the same machine.
+
+If you would like to run any instance of ccnchat with a different "user name", you need to set the following environment variables.
+
+export CCNX_USER_NAME=your_new_username
+export CCNX_DIR=/var/tmp/your_new_username/.ccnx
+ccnchat ccnx:/test_room
+
+Make sure to replace 'your_new_username' in the above export commands with the actual user name that you want to use for ccnchat.
+
+If on the other hand, you would like to run ccnchat across two different machines, your chat room name should be preceded by a routable prefix. For instance, naming your chat room as ccnx:/ccnx.org/test_room allows users from the other machine to reach this chat room using the prefix ccnx:/ccnx.org/ or ccnx:/ccnx.org/test_room (depending on how you set up the routing).
+
+In this case, you need to add route table entries so that each machine knows how to forward the test_room packets appropriately. On each machine, you need to specify the other machine's name (where you want to send the test_room packets). 
+
+To run ccnchat in this two-player two-machine mode, on each machine run the following commands: 
+
+ccndstart
+ccndc add ccnx:/ccnx.org udp other_machine_name
+ccnchat ccnx:/ccnx.org/test_room
+
+Please ensure that 'other_machine_name' in the ccndc command above is replaced by the actual name (or ip address) of the second machine. For instance, if A and B are the names of the two machines participating in ccnchat, the ccndc command on  machine A needs to be:
+ccndc add ccnx:/ccnx.org udp B
+
+Similarly, on machine B, the ccndc command needs to be:
+ccndc add ccnx:/ccnx.org udp A 
+
+
+Similar to running ccnchat on two different machines, you can also run ccnchat across multiple machines. As in the previous case, your chat room name should be preceded by a routable prefix. 
+For instance, naming your chat room as ccnx:/ccnx.org/test_room allows multiple users from multiple machines to reach this chat room using the prefix ccnx:/ccnx.org/ or ccnx:/ccnx.org/test_room (depending on how you set up the routing.)
+
+In this case, you need to add route table entries so that each machine knows how to forward those test_room packets.  Any one machine can be set up as the route_machine in this multi-machine version of ccnchat. Set up a topology with the chosen route_machine routing test_room packets to all the other machines and all the other machines routing test_room packets to the chosen route_machine.
+
+To run ccnchat in this multi-player multi-machine mode, on all the machines except for the machine chosen as the route_machine, run the following commands: 
+
+ccndstart
+ccndc add ccnx:/ccnx.org udp route_machine_name
+ccnchat ccnx:/ccnx.org/parc_test_room
+
+Please replace 'route_machine_name' with the actual name or ip address of the chosen route machine. 
+One the machine chosen as the route_machine, first run 
+ccndstart
+Add entries using ccndc for all the remaining machines. Then run 
+ccnchatccnx:/ccnx.org/parc_test_room
+

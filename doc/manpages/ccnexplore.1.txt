@@ -1,0 +1,51 @@
+CCNEXPLORE(1)
+=============
+
+NAME
+----
+ccnexplore - Java Swing GUI to explore content stored in repositories
+
+SYNOPSIS
+--------
+*ccnexplore* [-root 'ccnxname'] [-accessControl] [-debugMode]
+
+DESCRIPTION
+-----------
+The *ccnexplore* utility is an experimental app still under development. This
+application explores available ContentObjects using the CCNx Java application,
+ContentExplorer and defaults to '/' as the starting point for displaying
+content and starting name enumeration. *ccnexplore* uses CCNNameEnumeration to
+populate the GUI and can open .txt and .text files in a preview pane or
+separate window. The ContentExplorer can also be used to store files in a
+repository (using the Save to Repo button). To override the default starting
+point, run with the '-root' flag with a 'ccnxname'. *ccnxeplore* is intended
+to be used as a first test of AccessControl functionality with CCN. This is
+in an extremely early state and will be updated in future releases.
+*ccnexplore* can also be used to fully explore the name hierarchy of objects
+stored in the repositories.  If run with the '-debugMode' all ContentName
+components, including versions, segments and digests, will be displayed. 
+
+OPTIONS
+-------
+*-root* 'ccnxname'::
+	Set a starting 'ccnxname' prefix to display in the GUI and immediately begin enumerating.  This allows the user to avoid clicking through the full prefix to begin displaying files under the prefix in the GUI.
+
+*-accessControl*::
+	Allow testing and experimentation with the initial access control code.
+
+*-debugMode*::
+	Allow the GUI to enumerate past ContentName versions and segments.  This is useful for debugging content in the repository, especially the access control content objects.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; enumeration error)
+
+AUTHOR
+------
+Rebecca Braynard <rbraynar@parc.com>
+
+Philippe Golle <pgolle@parc.com>

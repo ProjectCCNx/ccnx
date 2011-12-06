@@ -1,0 +1,206 @@
+CCNx Notices
+
+This work is free software; you can redistribute it and/or modify it under
+the terms of the appropriate licenses as covered in the file LICENSE
+and noted in each source file.
+
+This software is distributed in hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the file
+LICENSE for more information.
+
+-------------------------
+CRYPTOGRAPHIC SOFTWARE 
+
+This distribution includes cryptographic software.  The country in
+which you currently reside may have restrictions on the import,
+possession, use, and/or re-export to another country, of
+encryption software.  BEFORE using any encryption software, please
+check your country's laws, regulations and policies concerning the
+import, possession, or use, and re-export of encryption software,
+to see if this is permitted.  See <http://www.wassenaar.org/> for more
+information.  In addition, this software is subject to U.S. export
+laws and regulations.
+
+Any use of information here by you is without recourse to the Palo
+Alto Research Center, Inc. (PARC) and is at your own risk. PARC makes
+NO WARRANTY or representation that the information contained here is
+accurate, current, or complete.  PARC is in no way responsible for any
+damages, whether direct, consequential, incidental, or otherwise,
+suffered by you as a result of using or relying upon such information
+for any purpose.
+
+The U.S. Government Department of Commerce, Bureau of Industry and
+Security (BIS), has classified this software as Export Commodity 
+Control Number (ECCN) 5D002.C.1, which includes information security
+software using or performing cryptographic functions with asymmetric
+algorithms.  The form and manner of this distribution makes it
+eligible for export under the License Exception ENC Technology
+Software Unrestricted (TSU) exception (see the BIS Export
+Administration Regulations, Section 740.13) for both object 
+code and source code.
+
+The included cryptographic software is the Bouncy Castle provider which
+is itself classified under ECCN 5D002 and approved for export under
+License Exception TSU.  It is included in this distribution for the
+convenience of users.
+
+For more information about export control of CCNx software, please see
+the page http://www.ccnx.org/exports
+
+-------------------------
+BOUNCY CASTLE 
+
+The Bouncy Castle cryptographic provider redistributed herein is:
+
+Copyright (c) 2000 - 2009 The Legion Of The Bouncy Castle
+(http://www.bouncycastle.org)
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+-------------------------
+JUNIT
+
+The JUnit software redistributed herein is covered under the Common
+Public License, and is subject to the following exclusions and
+disclaimers from that license:
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, THE PROGRAM IS
+PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, EITHER EXPRESS OR IMPLIED INCLUDING, WITHOUT LIMITATION, ANY
+WARRANTIES OR CONDITIONS OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY
+OR FITNESS FOR A PARTICULAR PURPOSE. Each Recipient is solely
+responsible for determining the appropriateness of using and
+distributing the Program and assumes all risks associated with its
+exercise of rights under this Agreement, including but not limited to
+the risks and costs of program errors, compliance with applicable
+laws, damage to or loss of data, programs or equipment, and
+unavailability or interruption of operations.
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, NEITHER RECIPIENT NOR
+ANY CONTRIBUTORS SHALL HAVE ANY LIABILITY FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING
+WITHOUT LIMITATION LOST PROFITS), HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OR
+DISTRIBUTION OF THE PROGRAM OR THE EXERCISE OF ANY RIGHTS GRANTED
+HEREUNDER, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+JUnit source code is available from http://github.com/KentBeck/junit
+
+-------------------------
+W3C SOFTWARE (XML Schema definitions)
+
+XML Schema definitions are redistributed herein for validation
+tests. The file XMLSchema.xsd has been modified (February 15, 2008)
+to remove a web reference from schemaLocation as noted in the file
+included in the distribution.
+
+Copyright © 2001 World Wide Web Consortium, (Massachusetts Institute
+of Technology, European Research Consortium for Informatics and
+Mathematics, Keio University). All Rights Reserved. This work is
+distributed under the W3C® Software License [1] in the hope that it
+will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+    [1] http://www.w3.org/Consortium/Legal/2002/copyright-software-20021231
+
+
+W3C® SOFTWARE NOTICE AND LICENSE
+http://www.w3.org/Consortium/Legal/2002/copyright-software-20021231
+
+This work (and included software, documentation such as READMEs, or
+other related items) is being provided by the copyright holders under
+the following license. By obtaining, using and/or copying this work,
+you (the licensee) agree that you have read, understood, and will
+comply with the following terms and conditions.
+
+Permission to copy, modify, and distribute this software and its
+documentation, with or without modification, for any purpose and
+without fee or royalty is hereby granted, provided that you include
+the following on ALL copies of the software and documentation or
+portions thereof, including modifications:
+
+   1. The full text of this NOTICE in a location viewable to users of
+   the redistributed or derivative work.
+   2. Any pre-existing intellectual property disclaimers, notices, or
+   terms and conditions. If none exist, the W3C Software Short Notice
+   should be included (hypertext is preferred, text is permitted)
+   within the body of any redistributed or derivative code.
+   3. Notice of any changes or modifications to the files, including
+   the date changes were made. (We recommend you provide URIs to the
+   location from which the code is derived.)
+
+THIS SOFTWARE AND DOCUMENTATION IS PROVIDED "AS IS," AND COPYRIGHT
+HOLDERS MAKE NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY OR FITNESS
+FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF THE SOFTWARE OR
+DOCUMENTATION WILL NOT INFRINGE ANY THIRD PARTY PATENTS, COPYRIGHTS,
+TRADEMARKS OR OTHER RIGHTS.
+
+COPYRIGHT HOLDERS WILL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL
+OR CONSEQUENTIAL DAMAGES ARISING OUT OF ANY USE OF THE SOFTWARE OR
+DOCUMENTATION.
+
+The name and trademarks of copyright holders may NOT be used in
+advertising or publicity pertaining to the software without specific,
+written prior permission. Title to copyright in this software and any
+associated documentation will at all times remain with copyright
+holders.
+
+-------------------------
+kXML
+
+Copyright (c) 2002,2003, Stefan Haustein, Oberhausen, Rhld., Germany
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The  above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+
+-------------------------
+Crystal Clear
+
+The Crystal Clear icon library from wikimedia.com is used for icons in the
+Android Services package (android/CCNx-Android-Services) and the Android
+Chat application (android/apps/CCNx-Android-Chat).  The icons are
+used and modified under this license:
+
+This library is free software; you can redistribute it and/or modify it under
+the terms of the GNU Lesser General Public License as published by the Free
+Software Foundation; either version 2.1 of the License, or (at your option)
+any later version. This library is distributed in the hope that it will be
+useful, but without any warranty; without even the implied warranty of
+merchantability or fitness for a particular purpose. See version 2.1 and
+version 3 of the GNU Lesser General Public License for more details. 
+

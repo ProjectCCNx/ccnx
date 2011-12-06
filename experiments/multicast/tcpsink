@@ -1,0 +1,23 @@
+#!/bin/sh
+# multicast/tcpsink
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+. ./settings
+ccnrm /experiments/multicast
+export CCN_EXPERIMENT_ID="$SELF:`./waitgo`"
+NOW=`date '+%s'`
+echo $NOW START $CCN_EXPERIMENT_ID | tee | ccnput -f /experiments/multicast/results/tcp/$NOW/$SELF/START
+curl http://$DATAHOST:$HTTPPORT/$DATASET | dd of=/dev/null
+NOW=`date '+%s'`
+echo $NOW STOP $CCN_EXPERIMENT_ID | tee | ccnput -f /experiments/multicast/results/tcp/$NOW/$SELF/STOP
+echo ''wake up, it is ready.

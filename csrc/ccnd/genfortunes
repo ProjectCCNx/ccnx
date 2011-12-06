@@ -1,0 +1,42 @@
+#!/bin/sh
+# ccnd/genfortunes
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+# This script is useful for regenerating fortunes.ccnb when the
+# schemas have changed.  The reference versions will have to
+# be adjusted as well.
+export CCN_LOCAL_PORT=8912
+ccnd &
+ccndsmoketest
+ccnsendchunks /local/test/fortunes/trust <<EOF
+TRUST ME:
+	Translation of the Latin "caveat emptor."
+EOF
+ccnsendchunks /local/test/fortunes/doubt <<EOF
+When in doubt, follow your heart.
+EOF
+ccnsendchunks /local/test/fortunes/revenue <<EOF
+For 20 dollars, I'll give you a good fortune next time ...
+EOF
+ccnsendchunks /local/test/fortunes/success <<EOF
+If A equals success, then the formula is A = X + Y + Z.  X is work.  Y
+is play.  Z is keep your mouth shut.
+		-- Albert Einstein
+EOF
+ccnsendchunks /local/test/fortunes/not/included <<EOF
+This fortune intentionally not included.
+EOF
+
+ccnrm -o fortunes.ccnb
+ccndsmoketest kill
+wait

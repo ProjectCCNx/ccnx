@@ -1,0 +1,8 @@
+
+This directory contains small example programs and code snippets
+which demonstrate how to use various CCNx features, but which
+are not themselves terribly useful as standalone (even demo)
+applications. See the subdirectory README files and comments
+in the code itself for explanations of what each example is
+attempting to demonstrate.
+

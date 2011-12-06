@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<CCNProtocolDataUnit>
+  <ContentObject>
+    <Signature>
+      <SignatureBits ccnbencoding="base64Binary">okEd7rqcA9aY6ZQ4kYpHgQZKIMseZz2qrUxBYjsA0cF9P6cbM9O7FSo7</SignatureBits>
+    </Signature>
+    <Name>
+      <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
+    </Name>
+    <SignedInfo>
+      <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
+      <Timestamp ccnbencoding="base64Binary">BHsH67bp</Timestamp>
+      <Type ccnbencoding="base64Binary">DATA</Type>
+      <KeyLocator>
+        <KeyName>
+          <Name>
+            <Component ccnbencoding="base64Binary">dGVzdA==</Component>
+            <Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
+            <Component ccnbencoding="base64Binary">a2V5</Component>
+          </Name>
+        </KeyName>
+      </KeyLocator>
+    </SignedInfo>
+    <Content ccnbencoding="base64Binary"/>
+  </ContentObject>
+  <Interest>
+    <Name>
+      <Component ccnbencoding="base64Binary">dGVzdA==</Component>
+      <Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
+      <Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
+    </Name>
+    <Exclude>
+      <Bloom ccnbencoding="base64Binary">AA==</Bloom>
+      <Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+      <Component ccnbencoding="base64Binary">BQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+      <Bloom ccnbencoding="base64Binary">AA==</Bloom>
+      <Component ccnbencoding="base64Binary">CQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+    </Exclude>
+    <ChildSelector>1</ChildSelector>
+  </Interest>
+</CCNProtocolDataUnit>

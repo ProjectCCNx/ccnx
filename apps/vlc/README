@@ -1,0 +1,35 @@
+The vlc plugin code provided is known to work with the 0.9.9 releases.
+
+In order to compile the vlc plugin you will need to install
+the vlc and libvlc-dev packages.  On Ubuntu Linux, for example,
+you can use:
+
+# apt-get install vlc libvlc-dev
+
+On Mac OS X, you can use macports to install VLC:
+
+$ sudo port install VLC
+
+
+Two system-dependent makefiles are provided, Makefile.Linux and Makefile.OSX.
+In the apps/vlc directory, make a symlink that reflects the
+appropriate one for your system, e.g.
+
+$ ln -s Makefile.Linux Makefile
+
+If you have not already compiled the CCN library, do so:
+
+$ ( cd ../.. && ./configure && make )
+
+Now compile the vlc plugin and install it:
+
+$ make 
+$ sudo make install
+
+The CCN vlc plugin Makefile makes use of the pkg-config info
+to locate the necessary vlc include files, and the correct
+directory in which to install the vlc access plugins.
+
+Note that to vlc, a CCN URI must start ccnx:/// (because of the URI parser in VLC).
+
+

@@ -1,0 +1,71 @@
+#!/bin/sh
+# ccnchat
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+JAR_FILE=ccn.jar
+JAVA_HOME=${JAVA_HOME:=/usr}
+JAVA=$JAVA_HOME/bin/java
+SCRIPT_DIR=`dirname $0`  # note this is relative path
+CMD_NAME=`basename $0` 
+CCN_HOME=${CCN_HOME:-$SCRIPT_DIR}
+if [ ! -f "$CCN_HOME/$JAR_FILE" ]
+then
+    if [ -f "$SCRIPT_DIR/../lib/$JAR_FILE" ] 
+    then
+	CCN_HOME="$SCRIPT_DIR/.."
+    elif [ -f "$SCRIPT_DIR/../../../lib/$JAR_FILE" ]
+    then
+        CCN_HOME="$SCRIPT_DIR/../../.."
+    else
+	echo "Cannot find $JAR_FILE, set CCN_HOME env variable."
+	exit 1;
+    fi
+fi
+
+GUI_OPTION=
+if [ "$1" = "-text" ]; then
+	GUI_OPTION=text
+   shift 1
+fi
+
+DEBUG_OPTION=
+if [ "$1" = "-debug" ]; then
+   DEBUG_OPTION="-Xrunjdwp:transport=dt_socket,address=$2,server=y,suspend=n"
+   shift 2
+fi
+
+CP1=$SCRIPT_DIR/../ccnChat.jar
+CP2=$CCN_HOME/lib/*.jar
+
+CP1=`echo $CP1 | sed "s/ /:/g"`
+CP2=`echo $CP2 | sed "s/ /:/g"`
+
+CLASSPATH=$CP1:$CP2
+PORTARG=
+
+if [ ! "$CCN_LOCAL_PORT" = "" ]; then
+  PORTARG="-Dccn.agent.port=$CCN_LOCAL_PORT"
+fi
+
+if [ $# = 0 ]
+then
+  echo "usage: $0 [-text] [-debug] <ccn URI>"
+  exit 1
+fi
+
+if [ "$GUI_OPTION" = "text" ]; then
+	$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION org.ccnx.ccn.apps.ccnchat.CCNChatText $*
+else
+	$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION org.ccnx.ccn.apps.ccnchat.CCNChat $*
+fi
+

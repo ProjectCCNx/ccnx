@@ -1,0 +1,71 @@
+CCNx Algorithm Use
+==================
+
+CCNx makes heavy use of cryptography.
+Here we present a brief discussion of algorithm agility in CCNx.
+
+== Signature Algorithms ==
+
+Whenever possible CCNx leaves the choice of signature algorithms
+(digest and public key) to use up to individual publishers and
+consumers, and specifies the algorithm used for a particular data item
+as part of the encoding of that item (for example, see
+link:SignatureGeneration.html[SignatureGeneration]).  This is both an attempt to
+accommodate the needs of different users and to allow for the
+advancement in cryptographic algorithm design over time.
+
+That said, CCNx nodes are free to drop content whose signatures they
+cannot verify, and so by selecting an exotic signature algorithm,
+a producer risks the non-propagation of their content. Eventually,
+like many network standards, there will likely be a list of 
+generally-supported signature algorithms associated with CCNx that
+cautious producers may prefer to use. 
+
+== Encryption Algorithms ==
+
+Content encryption is opaque to the operation of CCNx. Content producers
+and consumers are free to use any encryption algorithm that they can
+agree on, specified in any fashion that works for them. 
+
+For ease of use and maximal efficiency, the CCNx core libraries
+provide basic encryption functionality; these currently support a
+limited algorithm set (AES in CTR mode in Java, no encryption support
+in C). Eventually the built-in encryption support will expand to
+allow for a wide range of potential encryption algorithms, with
+algorithm choice up to the producer, mindful of its intended consumers.
+Producers and consumers are always free to ignore this functionality,
+and apply encryption at the application layer.
+
+== Built-in Digest Algorithm ==
+
+There are a small number of places in the core CCNx protocol where
+cryptographic digests are used. These are:
+
+* the calculation of PublisherPublicKeyDigests from publisher public keys,
+  both specified in ContentObjects and used as selectors in Links and
+  Interests
+* the calculation of ContentObject digests as the implicit last component
+  of content names in Interest matching (see link:InterestMessage.html[InterestMessage] and
+  link:DigestComponent.html[DigestComponent])
+* the calculation of ContentObject digests as an Exclude specifier in an
+  Interest, to avoid receiving that ContentObject again (this is not
+  yet completely implemented)
+
+To simplify operation of the lowest levels of CCNx, we choose to implement
+all three of these using a single, fixed digest algorithm tied to the top-level
+version of the CCNx protocol. While we understand this algorithm choice will
+evolve, we expect it to evolve slowly. For the immediate future, this algorithm
+will be `SHA-256`; we expect it to shift to `SHA-3` when that standard is
+finalized.
+
+This does leave the protocol open to the risk that legacy systems
+running old software supporting only outdated versions of the CCNx
+protocol may be vulnerable in the face of a catastrophic break of the
+algorithm used in those versions. Given the fact that such breaks tend
+not to happen overnight, and backwards-compatible evolution of the
+CCNx protocol is relatively simple, we see this as an acceptable risk
+given the implementation complexity and equivalent risks introduced by
+allowing this set of operations to specify their algorithm choice on
+the fly. Most of these examples, calculate their data on the fly,
+and so different digest algorithms can be used to query over the same
+set of (previously signed) ContentObjects over time. 

@@ -1,0 +1,110 @@
+CCN_REPO(1)
+===========
+
+NAME
+----
+ccn_repo - utility to start, stop and signal Java application CCNx repositories.
+
+SYNOPSIS
+--------
+*ccn_repo* [-memory 'memory'] [-debug 'portno'] [-output 'output_file']
+	   [-debug-daemon 'portno'] [-profile 'profile_info'] [-suspend] 
+	   [-noshare] [-debug-flags 'flags']
+	   <repository_directory>
+	   [-log 'loglevel'] [-prefix 'prefix'] [-global <global_prefix>]
+	   [-local <localname>] 
+	   | interactive <respository_directory> 
+	   | stop <pid> 
+	   | stopall 
+	   | signal <name> <pid>]
+
+
+DESCRIPTION
+-----------
+The *ccn_repo* utility starts, stops and signals CCNx Java content object repositories.  This call requires a backend 'repository_directory' to store the content objects to the filesystem.  Only one repository should run on a single 'repository_directory' at any time.
+
+There are many options with this utility, the most common uses are to start, signal and stop a repository.
+
+*ccn_repo* <repository_directory>::
+This will start a content object repository in the specified directory.  Once the repository is ready, a process id will be printed to the terminal.  This pid is needed to signal this specific repository.  The repository starts as a Daemon by default.
+
+*ccn_repo* signal <name> <pid>::
+This command is generally used to cause the running repository to dump the names of its stored content objects to a file.  The 'name' option can be either 'nametree' or 'nametreewide'.  'nametree' dumps the basic name tree while 'nametreewide' dumps the name tree with full name components (may be hard to read).  The 'pid' is the process id displayed when the repository was started.  The name tree file is written to the directory the repository was started with.
+
+*ccn_repo* stop <pid>::
+This command stops a single repository with the supplied 'pid'.  
+
+
+*ccn_repo* stopall::
+Stop all repositories running on a single machine (each needs a different 'repository_directory').
+
+Other options are available for this utility, and they are listed below.
+
+OPTIONS
+-------
+
+*-memory* 'memory'::
+     This option adjusts the maximum amount of heap memory used by the repository.
+     Units are bytes; optionally with a letter suffix (K, M, G, ...). 
+
+*-debug* 'portno'::
+     Allows attachment of an eclipse remote debugger to the repo at the specified port number.
+
+*-output* 'output_file'::
+     Writes the output from the repository to a file.  This has a side effect which 
+            causes ccn_repo to remain running in the foreground.
+
+*-debug-daemon* 'portno'::
+     Allows for debugging a running repository through the supplied port.
+
+*-profile* 'profile_info'::
+     Allows arbitrary system flags to the JVM for profiling or other uses.
+
+*-suspend*::
+     Only useful in combination with '-debug'.  Suspends the daemon at startup.
+
+*-noshare*::
+     Used to turn off Java sharing.  Needed for the vmvisual profiler.
+
+*-debug-flags* 'flags'::
+     Used to set Java properties.  For the repository, using 'REPO_EXITDUMP' will cause the repository to write out its name tree on exit without requiring a dynamic signal.
+
+*-log*  'LEVEL'::
+     Set the logging level. 'LEVEL' must be the an acceptable Java
+     Logger level: either an integer or a level name (e.g. SEVERE).
+
+*-prefix* 'prefix'::
+     Please note, this implementation is incomplete.  This allows you to set a single prefix for the repo namespace. The default is '/'.
+
+*-global* 'global_prefix'::
+     Sets the global name prefix for the repository (NOT the content it stores).
+
+*-local* 'local_prefix'::
+     Sets the local name prefix for the repository (NOT the content it stores).
+
+*interactive*::
+     Starts the repository in the foreground.
+
+*stop* 'pid'::
+     Stops a specific repository with the given process id.
+
+*stopall*::
+     Stops all repositories on the local machine.
+
+*signal*::
+     Signals a repository to perform a command, such as 'nametree', which causes it to write the names of its stored content to a file in the backend directory.
+
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; startup error; failed to have *ccnd* running)
+
+AUTHOR
+------
+Paul Rasmussen <rasmussen@parc.com>
+Rebecca Braynard <rbraynar@parc.com>
+Jim Thornton <jthornto@parc.com>

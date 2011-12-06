@@ -1,0 +1,99 @@
+'\" t
+.\"     Title: ccngroup
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCNGROUP" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccngroup \- show and modify access control groups for access control of a CCNx content namespace\&.
+.SH "SYNOPSIS"
+.sp
+\fBccngroup\fR [\-as \fIkeystore\fR] \-list
+.sp
+\fBccngroup\fR [\-as \fIkeystore\fR] \-listmembers \fIgroupFriendlyName\fR
+.sp
+\fBccngroup\fR [\-as \fIkeystore\fR] \-create \fIgroupFriendlyName\fR \fIgroupMember\fR\&...
+.sp
+\fBccngroup\fR [\-as \fIkeystore\fR] \-delete \fIgroupFriendlyName\fR
+.sp
+\fBccngroup\fR [\-as \fIkeystore\fR] \-add \fIgroupFriendlyName\fR \fIgroupMemberToAdd\fR\&...
+.sp
+\fBccngroup\fR [\-as \fIkeystore\fR] \-remove \fIgroupFriendlyName\fR \fIgroupMemberToRemove\fR\&...
+.SH "DESCRIPTION"
+.sp
+The \fBccngroup\fR utility lists or modifies access control groups published with CCNx\&. Groups may be referenced in access control lists (ACLs) under the CCNx access control profile\&.
+.sp
+Groups have short, human\-readable "friendly" names by which they are identified with this tool, although the internal identifier for a group is a digest of a public key\&.
+.SH "OPTIONS"
+.PP
+\fB\-as\fR \fIpathToKeystore\fR
+.RS 4
+Specifies a file path to a keystore; this is used for signing any newly\-created content\&. Applicable to all operations\&. The default keystore is used if this is not specified\&.
+.RE
+.PP
+\fB\-list\fR
+.RS 4
+List the groups that exist\&.
+.RE
+.PP
+\fB\-listmembers\fR \fIgroupFriendlyName\fR
+.RS 4
+List the members of the group
+\fIgroupFriendlyName\fR\&.
+.RE
+.PP
+\fB\-create\fR \fIgroupFriendlyName\fR \fIgroupMember\fR\&...
+.RS 4
+Create the group named
+\fIgroupFriendlyName\fR
+with initial members
+\fIgroupMember\fR\&...
+.RE
+.PP
+\fB\-delete\fR \fIgroupFriendlyName\fR
+.RS 4
+Delete the group named
+\fIgroupFriendlyName\fR\&.
+.RE
+.PP
+\fB\-add\fR \fIgroupFriendlyName\fR \fIgroupMemberToAdd\fR\&...
+.RS 4
+Add the
+\fIgroupMemberToAdd\fR\&... members to the group
+\fIgroupFriendlyName\fR\&.
+.RE
+.PP
+\fB\-remove\fR \fIgroupFriendlyName\fR \fIgroupMemberToRemove\fR\&...
+.RS 4
+Remove the
+\fIgroupMemberToRemove\fR\&... members from the group
+\fIgroupFriendlyName\fR\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; retrieval error)
+.RE
+.SH "AUTHOR"
+.sp
+Philippe Golle <pgolle@parc\&.com>

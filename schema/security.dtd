@@ -1,0 +1,49 @@
+<!-- DTD for ccn security -->
+<!ENTITY % URI "CDATA">	<!-- a Uniform Resource Identifier -->
+<!ENTITY % commonattrs
+	"xmlns %URI; #FIXED 'http://www.ccnx.org/content/schema/20090915'">
+
+<!ELEMENT WrappedKey (WrappingKeyIdentifier?, WrappingKeyName?, WrapAlgorithm?, KeyAlgorithm?, Label?, EncryptedNonceKey?, EncryptedKey)>
+<!ATTLIST WrappedKey %commonattrs;>
+
+<!ELEMENT WrappingKeyIdentifier	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST WrappingKeyIdentifier ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT WrappingKeyName		(Component*)>
+<!ATTLIST WrappingKeyName		%commonattrs;>
+
+<!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT WrapAlgorithm  (#PCDATA)>	<!-- decimal OID -->
+
+<!ELEMENT KeyAlgorithm  (#PCDATA)>	<!-- decimal OID -->
+
+<!ELEMENT Label	(#PCDATA)>	<!-- UTF-8 -->
+
+<!ELEMENT EncryptedNonceKey	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST EncryptedNonceKey ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT EncryptedKey	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST EncryptedKey ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT Root (ProfileName, ParameterizedName*, Parameters?)>
+<!ATTLIST Root %commonattrs;>
+
+<!ELEMENT ACL                   (Link*)> <!-- same structure as Collection -->
+<!ATTLIST ACL                   %commonattrs;>
+
+<!ELEMENT ProfileName		(Component*)>
+<!ATTLIST ProfileName		%commonattrs;>
+
+<!ELEMENT ParameterizedName (Label?, Prefix, Suffix?)>
+<!ATTLIST ParameterizedName %commonattrs;>
+
+<!ELEMENT Prefix		(Component*)>
+<!ATTLIST Prefix		%commonattrs;>
+
+<!ELEMENT Suffix		(Component*)>
+<!ATTLIST Suffix		%commonattrs;>
+
+<!ELEMENT Parameters	(Entry*)>
+<!ATTLIST Parameters	%commonattrs;>

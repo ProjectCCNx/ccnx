@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<!--
+	 targetNamespace="http://www.ccnx.org/content/schema/20090915"
+	 xmlns="http://www.ccnx.org/content/schema/20090915" 
+	 elementFormDefault="unqualified"
+	 attributeFormDefault="unqualified">
+	 -->
+	
+	<xs:include schemaLocation="ccnx.xsd"/>
+	
+	<xs:annotation>
+		<xs:documentation xml:lang="en">
+			Content-Centric Networks example of extending ccnb encoding/decoding.
+		</xs:documentation>
+	</xs:annotation>
+	
+	
+	<!-- Example of 2 Integers -->
+	<xs:element name="Example2Integers" type="Example2IntegersType"> </xs:element>
+	<xs:complexType name="Example2IntegersType">
+		<xs:sequence>
+			<xs:element name="Integer1" type="xs:nonNegativeInteger"/>
+			<xs:element name="Integer2" type="xs:nonNegativeInteger"/>
+		</xs:sequence>
+	</xs:complexType>
+	
+	
+	<!-- Example of a complex type -->
+	<xs:element name="ExampleComplicated" type="ComplicatedType"> </xs:element>
+	<xs:complexType name="ComplicatedType">
+		<xs:sequence>
+			<xs:element name="String" type="xs:string"/>
+			<xs:element name="Enum" type="EnumerationType"/>
+			<xs:element name="Data" type="StringBinaryVectorType" minOccurs="1" maxOccurs="5"/>
+		</xs:sequence>
+	</xs:complexType>
+	
+	
+	<xs:complexType name="EnumerationType">
+		<xs:simpleContent>
+			<xs:extension base="EnumerationTypeType">
+				<xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+
+	<xs:simpleType name="EnumerationTypeType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="Enu0"/>
+			<xs:enumeration value="Enu1"/>
+			<xs:enumeration value="Enu2"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+    <xs:complexType name="StringBinaryVectorType">
+		<xs:sequence>
+			<xs:element name="String" type="xs:string"/>
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element name="Name" type="NameType"/>
+				<xs:element name="Interest" type="InterestType"/>
+			</xs:choice>
+			<xs:element name="Bin" type="Base64BinaryType"/>
+		</xs:sequence>
+	</xs:complexType>	
+  
+</xs:schema>

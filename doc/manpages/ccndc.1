@@ -1,0 +1,93 @@
+'\" t
+.\"     Title: ccndc
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCNDC" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccndc \- manipulate CCNx forwarding table
+.SH "SYNOPSIS"
+.sp
+\fBccndc\fR [\-v] \-d
+.sp
+\fBccndc\fR [\-v] \-f \fIconfigfile\fR
+.sp
+\fBccndc\fR [\-v] add \fIuri\fR (udp|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]])
+.sp
+\fBccndc\fR [\-v] del \fIuri\fR (udp|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]])
+.SH "DESCRIPTION"
+.sp
+\fBccndc\fR is a simple routing utility/daemon that configures the forwarding table (FIB) in a \fBccnd(1)\fR\&. It may be used either as a command to add or remove static entries in the CCNx FIB (roughly analogous to the \fBroute(8)\fR utility for manipulating an IP routing table)\&. It may also run as a daemon that will dynamically create Faces and FIB entries to forward certain CCNx Interests based upon DNS SRV records\&. The Interests that can be dynamically routed in this way are those have an initial name component that is a legal DNS name, for which there is a DNS SRV record pointing to an endpoint for tunneling CCNx protocol traffic over the Internet\&.
+.sp
+\fBccndc\fR also supports configuration files containing sets of add and del commands\&.
+.SH "OPTIONS"
+.PP
+\fB\-d\fR
+.RS 4
+enter dynamic mode and create FIB entries based on DNS SRV records
+.RE
+.PP
+\fB\-f\fR
+.RS 4
+add or delete FIB entries based on contents of
+\fIconfigfile\fR
+.RE
+.PP
+\fB\-v\fR
+.RS 4
+increase logging level
+.RE
+.PP
+\fBadd\fR \fIuri\fR (udp|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]])
+.RS 4
+add a FIB entry based on the parameters
+.RE
+.PP
+\fBdel\fR \fIuri\fR (udp|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]])
+.RS 4
+delete a FIB entry based on the parameters
+.RE
+.SH "CONFIGURATION FILE"
+.sp
+\fBccndc\fR will process a configuration file if specified with the \fB\-f\fR flag\&. The configuration file may contain a sequence of add and del commands with the same parameters as may be specified on the \fBccndc\fR command\-line\&. Comments in the file are prefixed with #\&. Here is a sample:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+# Sample ccnd\&.conf for use with ccndc that will route all CCN URIs with
+# an example\&.com prefix to a link\-local multicast on an ephemeral port\&.
+#
+add ccnx:/example\&.com/ udp 224\&.0\&.0\&.204 52428
+.fi
+.if n \{\
+.RE
+.\}
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; communication error)
+.RE
+.SH "AUTHOR"
+.sp
+Nick Briggs <briggs@parc\&.com>

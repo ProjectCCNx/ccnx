@@ -1,0 +1,13 @@
+[Plass, 2009-02-04]
+After installing ubuntu-8.10-desktop-i386.iso and applying all updates,
+to build ccnd it was necessary to install these packages:
+
+libssl-dev
+libpcap-dev
+libexpat1-dev
+
+These are also desirable:
+athena-jot
+
+For example:
+sudo apt-get install git-core python-dev libssl-dev libpcap-dev libexpat1-dev athena-jot

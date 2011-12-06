@@ -1,0 +1,202 @@
+CCNx Face Management and Registration Protocol
+==============================================
+
+
+== Face Management Protocol
+The Face Management Protocol provides a method for an entity such as ccndc to control
+the faces maintained by ccnd, which are subsequently used in the Registration Protocol.
+
+The FMP supports "newface", "destroyface", and "queryface" operations.
+
+A request operation is represented as a CCNx Interest with
+a CCNx ContentObject encoding the majority of the request parameters embedded
+as a component of the Interest name.
+A response is represented as a ContentObject for which the name matches the Interest,
+and the content encodes any necessary response data.
+
+For the Face Management Protocol, the CCNx ContentObject encoding the request and reply
+is the FaceInstance.
+
+To create a new face ccndc signs a content object NFBLOB whose Content is a
+ccnb-encoded FaceInstance containing
+
+  - Action "newface"
+  - other fields necessary to set up a socket (at least IPProto, Host, and Port).
+
+ccndc then expresses an interest in /ccnx/CCNDID/newface/NFBLOB
+
+  - CCNDID is the pubid of the local ccnd
+  - NFBLOB is the signed content object
+
+The verb, "newface" occurs redundantly in both the interest prefix and in the NFBLOB.
+Its presence in the prefix is for dispatching the request.
+It is also in the NFBLOB, so that it is signed.
+
+ccnd creates the new face and answers with a FaceInstance containing
+at least the PublisherPublicKeyDigest and FaceID.
+
+== FaceInstance
+See ccnx.xsd/ccnx.dtd
+
+.......................................................
+FaceInstance ::= Action?
+	         PublisherPublicKeyDigest?
+		 FaceID?
+		 IPProto?
+		 Host?
+		 Port?
+		 MulticastInterface?
+		 MulticastTTL?
+		 FreshnessSeconds?
+
+Action		 ::= ("newface" | "destroyface" | "queryface")
+PublisherPublicKeyDigest ::= SHA-256 digest
+FaceID 		 ::= nonNegativeInteger
+IPProto 	 ::= nonNegativeInteger [IANA protocol number; 6=TCP, 17=UDP]
+Host 		 ::= textual representation of numeric IPv4 or IPv6 address
+Port 		 ::= nonNegativeInteger [1..65535]
+MulticastInterface ::= textual representation of numeric IPv4 or IPv6 address
+MulticastTTL 	 ::= nonNegativeInteger [1..255]
+FreshnessSeconds ::= nonNegativeInteger
+.......................................................
+
+=== Action
+When FaceInstance is used as a request, the Action must be specified.
+It will not be present in a response.
+
+. `newface` - If a face matching the parameters does not already exist, 
+   an attempt is made to create it.
+   Then if the face exists (whether new or old)
+   the full description is returned as a FaceInstance.
+. `destroyface` - at least the FaceID must be present.
+   If permitted, the face is destroyed.
+. `queryface` - specification TBD
+
+=== PublisherPublicKeyDigest
+Identifies the ccnd that the information is relevant for.
+PublisherPublicKeyDigest is not necessary for self-registration, but
+indicates the ccnd to which the request is directed, if present.
+PublisherPublicKeyDigest is always present in a response.
+
+=== FaceID
+FaceID is not present in a `newface` request, but must be specified in
+a `destroyface` or `queryface` request.
+FaceID is always present in a response.
+
+=== Host
+Identifies the IPv4 or IPv6 numeric address of the remote ccnd for this
+FaceInstance.
+
+=== Port
+Port identifies the port on the remote ccnd, or the port for the multicast group.
+
+=== MulticastInterface
+If the Host is a multicast address, and there are multiple
+interfaces present, MulticastInterface will identify the unicast
+numeric address of the interface to which the multicast address will be
+attached.
+
+=== MulticastTTL
+Specifies the TTL to be used for multicast operations.  The default value is 1.
+
+=== FreshnessSeconds
+FreshnessSeconds is optional in a request, but is treated as a hint by ccnd.
+In a response, FreshnessSeconds specifies the remaining lifetime of the
+face.
+
+== Prefix Registration Protocol
+The prefix registration protocol uses the ForwardingEntry element type
+to represent both requests and responses.
+.......................................................
+ForwardingEntry ::= Action?
+	            Name?
+	            PublisherPublicKeyDigest?
+		    FaceID?
+		   ForwardingFlags?
+		   FreshnessSeconds?
+
+Action		 ::= ("prefixreg" | "selfreg" | "unreg")
+Name		 ::= the name prefix to be registered
+PublisherPublicKeyDigest ::= SHA-256 digest of the ccnd's public key (CCNDID)
+FaceID 		 ::= nonNegativeInteger
+ForwardingFlags  ::= nonNegativeInteger
+FreshnessSeconds ::= nonNegativeInteger
+.......................................................
+
+=== Action
+When ForwardingEntry is used as a request, the Action must be specified.
+It will not be present in a response.
+
+- `prefixreg` - Register (or re-register) the prefix on the specified face.
+- `selfreg` - Register (or re-register) the prefix on the current face; the
+  FaceID need not be present in the request, but if present it must match
+  the current face.
+- `unreg` - Remove the prefix registration for the specified face.
+
+=== PublisherPublicKeyDigest
+Identifies the ccnd that the information is relevant for.
+It is optional in a request (the name in the requesting interest has
+already addressed the appropriate node).
+PublisherPublicKeyDigest is always present in a response.
+
+=== FaceID
+FaceID is required in `prefixreg` and `unreg` requests.
+FaceID is always present in a response.
+
+=== Name
+This is the name prefix that is to acted on.
+
+=== ForwardingFlags
+This integer holds the inclusive OR of the following bit fields:
+.........................
+CCN_FORW_ACTIVE         1
+CCN_FORW_CHILD_INHERIT  2
+CCN_FORW_ADVERTISE      4
+CCN_FORW_LAST           8
+CCN_FORW_CAPTURE       16
+CCN_FORW_LOCAL         32
+CCN_FORW_TAP           64
+CCN_FORW_CAPTURE_OK   128
+.........................
+The `CCN_FORW_ACTIVE` bit indicates that the entry is active;
+interests will not be sent for inactive entries (but see note below).
+
+`CCN_FORW_CHILD_INHERIT` says that this entry may be used even if there is a
+longer match available.
+In the absence of this bit, the presence of a longer matching prefix that
+has an active entry will prevent this entry from being used.
+
+`CCN_FORW_ADVERTISE` says that the prefix may be advertised to other nodes.
+
+`CCN_FORW_LAST` indicates that this entry should be used last, if nothing else
+worked.
+This is intended to be used by ccndc and similar programs to monitor
+unanswered interests.
+The presence of this flag on any entry causes the associated face to be considered non-local, as far as interest forwarding is concerned.
+Thus it will not receive interests with Scope=1, nor will it receive interests in namespaces that are marked local.
+However, the ability of the face to change prefix registrations is not affected.
+
+`CCN_FORW_CAPTURE` says that no shorter prefix may be used, overriding
+child-inherit bits that would otherwise make the shorter entries usable.
+For a child-inherit bit to be overridden, the CCN_FORW_CAPTURE_OK must be set
+in the same forwarding entry that has CCN_FORW_CHILD_INHERIT set.
+Note that this means that using CCN_FORW_CAPTURE will have no effect if the
+CCN_FORW_CAPTURE_OK flag is not used.
+
+`CCN_FORW_LOCAL` restricts the namespace to use by applications on the local
+machine.
+
+`CCN_FORW_TAP` causes the entry to be used right away.  This is intended for debugging and monitoring purposes.  It is likely that there will be no response as a result, so no intentional delay is added before any further forwarding of this interest.
+
+`CCN_FORW_CAPTURE_OK' used in conjunction with CCN_FORW_CHILD_INHERIT allows a
+CCN_FORW_CAPTURE flag on a longer prefix to override the effect of the child-inherit bit.
+
+The flags `CCN_FORW_ADVERTISE`, `CCN_FORW_CAPTURE` and `CCN_FORW_LOCAL` affect
+the prefix as a whole, rather than the individual registrations.
+Their effects take place whether or not the `CCN_FORW_ACTIVE` bit is set.
+
+=== FreshnessSeconds
+FreshnessSeconds is optional in a request, but is treated as a hint by ccnd.
+In a response, FreshnessSeconds specifies the remaining lifetime of the
+registration.
+

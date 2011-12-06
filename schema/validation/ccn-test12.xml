@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<CCNProtocolDataUnit>
+  <ContentObject>
+    <Signature>
+      <SignatureBits ccnbencoding="base64Binary">okEd7rqcA9aY6ZQ4kYpHgPZKIMseZz2qrUxBYjsA0cF9P6cbM9O7FSo7</SignatureBits>
+    </Signature>
+    <Name>
+      <Component ccnbencoding="base64Binary">dmdxO6LZm7ZZoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
+    </Name>
+    <SignedInfo>
+      <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
+      <Timestamp ccnbencoding="base64Binary">BIx7ZoZm</Timestamp>
+      <Type ccnbencoding="base64Binary">DATA</Type>
+    </SignedInfo>
+    <Content ccnbencoding="base64Binary"/>
+  </ContentObject>
+  <ContentObject>
+    <Signature>
+      <SignatureBits ccnbencoding="base64Binary">okEd7rqcA9aY6ZQ4kYpHgQZKIMseZz2qrUxBYjsA0cF9P6cbM9O7FSo7</SignatureBits>
+    </Signature>
+    <Name>
+      <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
+    </Name>
+    <SignedInfo>
+      <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
+      <Timestamp ccnbencoding="base64Binary">BHsH67bp</Timestamp>
+      <Type ccnbencoding="base64Binary">DATA</Type>
+      <FreshnessSeconds>42</FreshnessSeconds>
+      <KeyLocator>
+        <KeyName>
+          <Name>
+            <Component ccnbencoding="base64Binary">dGVzdA==</Component>
+            <Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
+            <Component ccnbencoding="base64Binary">a2V5</Component>
+          </Name>
+        </KeyName>
+      </KeyLocator>
+    </SignedInfo>
+    <Content ccnbencoding="base64Binary"/>
+  </ContentObject>
+</CCNProtocolDataUnit>

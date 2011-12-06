@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<Interest>
+  <Name/>
+  <PublisherIssuerCertificateDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherIssuerCertificateDigest>
+  <ChildSelector>1</ChildSelector>
+</Interest>

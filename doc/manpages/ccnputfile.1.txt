@@ -1,0 +1,98 @@
+CCNPUTFILE(1)
+=============
+
+NAME
+----
+ccnputfile - publish a file as CCNx content
+
+SYNOPSIS
+--------
+*ccnputfile* [-v] [-raw] [-unversioned] [-local] [-timeout 'millis'] [-log 'LEVEL'] [-as 'pathToKeystore'] [-ac]  'ccnxname' 'filename|url'
+
+DESCRIPTION
+-----------
+The *ccnputfile* utility publishes a local file 'filename' or url 'url' as
+content with the 'ccnxname'. The content is published as a collection of CCNx
+Data in
+accordance with the naming conventions for segmented streams or files,
+optionally unversioned. For the default case of versioned content, *ccnputfile*
+will publish content with the version based on the local machine time.
+
+The 'ccnxname' must be specified using the CCNx URI encoding
+syntax. For simple cases of ASCII name components this is just
+pathname syntax with / delimiters.
+
+The 'filename' must be the pathname of a local file that will published under
+the 'ccnxname'.
+
+The 'url' must be a valid url to be published under a 'ccnxname'.
+
+*ccnputfile* will publish versioned and segmented content objects, and the key
+used to sign them, to a repository by default. If the '-local' flag is used, a
+local repository on the same device will be used.  If there is not a reachable
+repository, *ccnputfile* will exit with a 'wait for put drain' error.  If
+there is a corresponding application able to retrieve the content (e.x.
+*ccngetfile*) *ccnputfile* can be used to publish the content with '-raw'. 
+'-raw' allows *ccnputfile* to skip the repository handshake and directly put
+the content objects to satisfy the *ccngetfile* interests.
+
+*ccnputfile* can also be used to publish content with a specific key using
+'-as' where 'pathToKeystore' must be a valid path to the local filesystem
+where a user key has previously been stored.
+
+*ccnputfile* can additionally be used with access control using the '-ac' flag.
+
+OPTIONS
+-------
+*-v*::
+     Run *ccnputfile* in verbose mode.
+
+*-raw*::
+     *ccnputfile* will publish the content objects without contacting a
+     repository.  This mode will fail unless there is another application,
+     such as *ccngetfile*, running.
+
+*-unversioned*::
+     Do not append a version component to the supplied 'ccnxname'. This option
+     may be used when the supplied 'ccnxname' already includes an explicit
+     version component at the end (which must be URI encoded). This option may
+     also be used for content that is organized according to the
+     segmentation convention but does not use the versioning
+     convention at all. When this option is used, the FileOutputStream
+     abstraction will not be used, since that implies versioning.
+
+*-local*::
+     Specifies that a local repository be used to save the file.  The file will not
+     also be saved to repositories on remote devices. 
+
+*-timeout* 'millis'::
+     Set the timeout that will be used for putting content objects on
+     during the stream reading. I.e., the time to wait for incoming interests.
+
+*-log* 'LEVEL'::
+     Set the logging level. 'LEVEL' must be the an acceptable Java
+     Logger level: either an integer or a level name (e.g. SEVERE).
+
+*-as* 'pathToKeystore'::
+     Set the user for signing published content.  This must point to a place
+     in the filesystem where ccnx compatible keys have been saved.
+
+*-ac*::
+     This options forces *ccnputfile* to obey access control restrictions. The
+     content is encrypted according to the access control list in force at the
+     node where the content is stored.
+
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; publishing error - no processes running that are prepared to ask or already asking for content)
+
+AUTHOR
+------
+Diana Smetters <smetters@parc.com>
+
+

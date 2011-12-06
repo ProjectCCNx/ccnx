@@ -1,0 +1,27 @@
+#!/bin/sh
+# validation/shouldfail
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+COMMANDLINE="$0 $*"
+Cleanup () {
+  test -f tmp-$$.out && test -f expectedfailures.out && echo "$COMMANDLINE" >> expectedfailures.out && cat tmp-$$.out >> expectedfailures.out
+  rm tmp-$$.out
+}
+trap Cleanup 0
+# We succeed if the commandline fails
+"$@" 2>tmp-$$.out || exit 0
+# We also succeed if the string "error:" came out on stderr
+# (because xmllint does not always set the exit status)
+grep -e 'error:' tmp-$$.out >/dev/null && exit 0
+echo '###' \'"$@"\' should not have succeeded! >&2
+exit 1

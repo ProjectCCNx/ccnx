@@ -1,0 +1,59 @@
+CCNDSTART(1)
+============
+
+NAME
+----
+ccndstart - Start ccnd in the background and set up forwarding according to configuration
+
+SYNOPSIS
+--------
+*ccndstart*
+
+DESCRIPTION
+-----------
+The *ccndstart* utility starts ccnd in the background.
+*ccndstart* looks for configuration of forwarding information in
+'$HOME/.ccnx/ccnd.conf'; refer to *ccndc(1)* for the format.
+If *ccnd* is already running, it will be shut down and restarted;
+any manually-configured forwarding (with *ccndc*) will need to be re-executed.
+
+*ccndstart* will start using default values for 'CCND_CAP', 'CCND_DEBUG' and
+the default port 9695 for 'CCN_LOCAL_PORT'.  These environment values may
+be set to change the cache size, *ccnd* debug logging, and port number, respectively.
+The values may be set in '$HOME/.ccnx/ccndrc', which is sourced at startup.
+
+OPTIONS
+-------
+
+This utility does have have flags or arguments.
+
+These environment variables are handled by *ccndstart*:
+
+     CCND_LOG
+     CCND_PRELOAD
+
+'CCND_LOG' is the name of the log file.  If none is specified, the
+log outputput appears on *stderr*.
+
+'CCND_PRELOAD' is a list of file names for files containing ccnb-encoded
+content objects.  These will be preloaded into the ccnd's cache at startup.
+See *ccnrm(1)* for one way to make such a file.
+
+Please see *ccnd(1)* for additional environment variables.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure
+
+FILES
+-----
+    $HOME/.ccnx/ccnd.conf
+    $HOME/.ccnx/ccndrc
+
+AUTHOR
+------
+Michael Plass <plass@parc.com>

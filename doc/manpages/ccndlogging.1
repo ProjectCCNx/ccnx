@@ -1,0 +1,45 @@
+'\" t
+.\"     Title: ccndlogging
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCNDLOGGING" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccndlogging \- change the log level of a running ccnd
+.SH "SYNOPSIS"
+.sp
+\fBccndlogging [\-T host] ( none | low | co | med | high )\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccndlogging\fR utility changes the effective log level of a running \fBccnd\fR\&.
+.SH "OPTIONS"
+.PP
+\fB\-T host\fR
+.RS 4
+Control the
+\fBccnd\fR
+instance running on the specified host, instead of the current host\&.
+.RE
+.SH "ARGUMENT"
+.sp
+The command takes one argument, the desired level\&. This maps into an appropriate setting of the effective \fBCCND_DEBUG\fR setting\&. The levels are \fBnone\fR, \fBlow\fR, \fBco\fR, \fBmed\fR, and \fBhigh\fR\&. The \fBco\fR level shows content objects, but not interests (\fBCCND_DEBUG\fR=4); the others should be self\-explanatory\&.
+.SH "ENVIRONMENT"
+.sp
+The \fICCN_LOCAL_PORT\fR environment variable may be used to identify the port that the \fBccnd\fR instance is using; if unset, the default port number (9695) is used\&.
+.SH "AUTHOR"
+.sp
+Michael Plass <plass@parc\&.com>

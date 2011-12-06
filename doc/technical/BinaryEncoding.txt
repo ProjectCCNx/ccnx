@@ -1,0 +1,68 @@
+CCNx Binary Encoding (ccnb)
+===========================
+
+== Design Target: 
+
+   * Custom binary encoding format for XML to meet specific needs of CCNx
+   * Encoding that would be attractive for others to adopt for general use independent of CCNx
+
+== Goals: 
+
+   * binary to xml to binary: output should exactly match input
+   * xml to binary to xml: output not guaranteed to exactly match input
+   * support evolution while still making binary to xml to binary transformation possible
+
+== Format: 
+
+   - transmission unit: octet, high-order transmitted first
+   - encoding unit: "blocks": represents start of XML element or attribute, or character data
+       . Header
+         .. number value (non-negative integer, variable-length big-endian representation, high order 1 is terminator, packed 7 bits per byte except for the last byte, which gets 4 bits)
+         .. 3 bits type (low-order bits): (TT) determines interpretation of rest of "block"
+       . Value - presence and length depend on the block type TT
+   - Ending delimiter: represents close of XML element
+       . single octet (0x00)
+         
+
+== "Block" Types: 
+
+   BLOB(TT=5)::
+     Arbitrary binary value, arbitrary length (including 0), no alignment requirements
+     * number value is length in octets
+     * Value will encoded as base 64 when converted to text XML
+   UDATA(TT=6):: 
+     same as BLOB but value restricted to valid UTF-8 sequences
+   TAG(TT=1):: 
+     XML element tag name in UTF-8 encoding
+     * number value is length in octets of UTF-8 encoding of tag name - 1 (minimum tag name length is 1)
+     * may be followed by anything due to XML nesting
+   ATTR(TT=3)::
+     XML attribute name in UTF-8 encoding
+     * number value is length in octets of UTF-8 encoding of attribute name - 1 (minimum attribute name length is 1)
+     * UDATA must follow immediately representing attribute value (though 0 length value may be represented)
+   DTAG(TT=2)::
+      Dictionary Tag
+      * Same as TAG except number value is an index into a dictionary of tag names (for compressed encoding of tag names)
+      * Dictionary must be agreed separately or from context
+   DATTR(TT=4):: 
+      same as DTag but for attribute names
+      * Distinct dictionary for tags and attributes
+   EXT(TT=0):: 
+      Anything other than the XML structures covered by explicit types above, e.g. processing instructions.
+      * number value is extension subtype identifier (identifiers to be allocated as extensions are defined)
+
+== Environment 
+
+   - Dictionary: interpretation depends on agreed external dictionaries for tags and attributes that will be commonly used
+     * For CCNx, a link:DTAG.html[single, static dictionary] is used for the DTags
+     * The CCNx protocols do not use any DAttr encoding, so the dictionary is effectively empty
+
+== Text Conversions
+
+   - When decoding to standard XML text, the arbitrary octets of a BLOB value are encoded as a sequence of UTF-8 characters according to a standard encoding
+     * Base 64 is the default encoding (base64Binary)
+       . Alternative encodings (e.g. hexBinary) may be used if called for by a schema governing the XML that is produced
+     * A special attribute value named _ccnbencoding_ will be added to the tag of any element containing such BLOB values so that the XML text may be encoded to produce the original binary encoding - i.e. the UTF-8 encoding of the arbitrary value will be reversed when the special attribute value is specified on the containing element
+     * The special attribute value may be specified implicitly by the governing schema definition rather than explicitly included in every tag where it applies
+     * XML attributes may not have BLOB-encoded values so that no issue arises for converting them to text representation
+

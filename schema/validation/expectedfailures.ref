@@ -1,0 +1,97 @@
+./shouldfail xmllint --noout --schema ccnx.xsd ccn-bad01.xml
+ccn-bad01.xml:1: parser error : Start tag expected, '<' not found
+This is not XML.
+^
+./shouldfail xmllint --noout --schema ccnx.xsd ccn-bad03.xml
+ccn-bad03.xml:1: element a: Schemas validity error : Element 'a': No matching global declaration available for the validation root.
+ccn-bad03.xml fails to validate
+./shouldfail xmllint --noout --schema ccnx.xsd ccn-bad06.xml
+ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: Schemas validity error : Element 'SpublisherIssuerKeyDigest': This element is not expected. Expected is one of ( PublisherPublicKeyDigest, PublisherCertificateDigest, PublisherIssuerKeyDigest, PublisherIssuerCertificateDigest, Exclude, ChildSelector, AnswerOriginKind, Scope, InterestLifetime, Nonce ).
+ccn-bad06.xml fails to validate
+./shouldfail xmllint --noout --schema ccnx.xsd ccn-bad09.xml
+ccn-bad09.xml:15: element FinalBlockID: Schemas validity error : Element 'FinalBlockID': This element is not expected. Expected is ( Timestamp ).
+ccn-bad09.xml fails to validate
+./shouldfail xmllint --noout --schema ccnx.xsd ccn-bad11.xml
+ccn-bad11.xml:5: element Bloom: Schemas validity error : Element 'Bloom': This element is not expected. Expected is ( Component ).
+ccn-bad11.xml fails to validate
+./shouldfail xmllint --noout --schema ccnx.xsd ccn-schemabad01.xml
+ccn-schemabad01.xml:5: element Witness: Schemas validity error : Element 'Witness': 'foo' is not a valid value of the atomic type 'xs:base64Binary'.
+ccn-schemabad01.xml fails to validate
+./shouldfail xmllint --noout --schema ccnx.xsd ccn-schemabad02.xml
+ccn-schemabad02.xml:5: element Witness: Schemas validity error : Element 'Witness': 'bad!' is not a valid value of the atomic type 'xs:base64Binary'.
+ccn-schemabad02.xml fails to validate
+./shouldfail xmllint --noout --schema ccnx.xsd ccn-schemabad04.xml
+ccn-schemabad04.xml:12: element Scope: Schemas validity error : Element 'Scope': 'E' is not a valid value of the atomic type 'xs:nonNegativeInteger'.
+ccn-schemabad04.xml fails to validate
+./shouldfail xmllint --noout --schema ccnx.xsd ccn-schemabad10.xml
+ccn-schemabad10.xml:12: element Timestamp: Schemas validity error : Element 'Timestamp': [facet 'length'] The value has a length of '9'; this differs from the allowed length of '6'.
+ccn-schemabad10.xml:12: element Timestamp: Schemas validity error : Element 'Timestamp': '+B+A+D+T67bp' is not a valid value of the atomic type 'BinaryTime12'.
+ccn-schemabad10.xml fails to validate
+./shouldfail xmllint --noout --schema ccnx.xsd ccn-schemabad12.xml
+ccn-schemabad12.xml:13: element Type: Schemas validity error : Element 'Type': [facet 'enumeration'] The value 'FUZZ' is not an element of the set {'DATA', 'ENCR', 'GONE', 'KEY/', 'LINK', 'NACK'}.
+ccn-schemabad12.xml:13: element Type: Schemas validity error : Element 'Type': 'FUZZ' is not a valid value of the atomic type 'ContentTypeType'.
+ccn-schemabad12.xml:27: element Type: Schemas validity error : Element 'Type': [facet 'enumeration'] The value 'FUZZ' is not an element of the set {'DATA', 'ENCR', 'GONE', 'KEY/', 'LINK', 'NACK'}.
+ccn-schemabad12.xml:27: element Type: Schemas validity error : Element 'Type': 'FUZZ' is not a valid value of the atomic type 'ContentTypeType'.
+ccn-schemabad12.xml fails to validate
+./shouldfail xmllint --noout --schema ccnx.xsd ccn-schemabad17.xml
+ccn-schemabad17.xml:7: element Entry: Schemas validity error : Element 'Entry': Missing child element(s). Expected is one of ( IntegerValue, DecimalValue, StringValue, BinaryValue, NameValue ).
+ccn-schemabad17.xml:15: element BinaryValue: Schemas validity error : Element 'BinaryValue': This element is not expected. Expected is ( Key ).
+ccn-schemabad17.xml fails to validate
+./shouldfail xmllint --noout --schema security.xsd security-bad01.xml
+security-bad01.xml:2: element WrappedKey: Schemas validity error : Element 'WrappedKey': Missing child element(s). Expected is one of ( WrappingKeyName, WrapAlgorithm, KeyAlgorithm, Label, EncryptedNonceKey, EncryptedKey ).
+security-bad01.xml fails to validate
+./shouldfail xmllint --noout --schema security.xsd security-schemabad01.xml
+security-schemabad01.xml:8: element EncryptedKey: Schemas validity error : Element 'EncryptedKey': 'bad!' is not a valid value of the atomic type 'xs:base64Binary'.
+security-schemabad01.xml fails to validate
+./shouldfail xmllint --noout --schema repository.xsd repository-schemabad01.xml
+repository-schemabad01.xml:4: element Type: Schemas validity error : Element 'Type': 'bad!' is not a valid value of the atomic type 'RepositoryInfoDataTypeType'.
+repository-schemabad01.xml fails to validate
+./shouldfail xmllint --noout --schema repository.xsd security-bad01.xml
+security-bad01.xml:2: element WrappedKey: Schemas validity error : Element 'WrappedKey': No matching global declaration available for the validation root.
+security-bad01.xml fails to validate
+./shouldfail xmllint --noout --dtdvalid ccnx.dtd ccn-bad01.xml
+ccn-bad01.xml:1: parser error : Start tag expected, '<' not found
+This is not XML.
+^
+./shouldfail xmllint --noout --dtdvalid ccnx.dtd ccn-bad03.xml
+ccn-bad03.xml:1: element a: validity error : No declaration for element a
+Document ccn-bad03.xml does not validate against ccnx.dtd
+./shouldfail xmllint --noout --dtdvalid ccnx.dtd ccn-bad06.xml
+ccn-bad06.xml:2: element Interest: validity error : Element Interest content does not follow the DTD, expecting (Name , MinSuffixComponents? , MaxSuffixComponents? , (PublisherPublicKeyDigest | PublisherCertificateDigest | PublisherIssuerKeyDigest | PublisherIssuerCertificateDigest)? , Exclude? , ChildSelector? , AnswerOriginKind? , Scope? , InterestLifetime? , Nonce?), got (Name MinSuffixComponents MaxSuffixComponents SpublisherIssuerKeyDigest ChildSelector AnswerOriginKind Scope )
+ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: validity error : No declaration for element SpublisherIssuerKeyDigest
+ccn-bad06.xml:6: element SpublisherIssuerKeyDigest: validity error : No declaration for attribute ccnbencoding of element SpublisherIssuerKeyDigest
+Document ccn-bad06.xml does not validate against ccnx.dtd
+./shouldfail xmllint --noout --dtdvalid ccnx.dtd ccn-bad09.xml
+ccn-bad09.xml:12: element SignedInfo: validity error : Element SignedInfo content does not follow the DTD, expecting (PublisherPublicKeyDigest , Timestamp , Type? , FreshnessSeconds? , FinalBlockID? , KeyLocator?), got (PublisherPublicKeyDigest FinalBlockID KeyLocator )
+Document ccn-bad09.xml does not validate against ccnx.dtd
+./shouldfail xmllint --noout --dtdvalid ccnx.dtd ccn-bad11.xml
+ccn-bad11.xml:4: element Exclude: validity error : Element Exclude content does not follow the DTD, expecting ((Any | Bloom)? , (Component , (Any | Bloom)?)*), got (Bloom Bloom Component Any Component )
+Document ccn-bad11.xml does not validate against ccnx.dtd
+./shouldfail xmllint --noout --dtdvalid ccnx.dtd ccn-dtdbad00.xml
+ccn-dtdbad00.xml:1: parser error : Document is empty
+
+^
+ccn-dtdbad00.xml:1: parser error : Start tag expected, '<' not found
+
+^
+./shouldfail xmllint --noout --dtdvalid security.dtd security-bad01.xml
+security-bad01.xml:2: element WrappedKey: validity error : Element WrappedKey content does not follow the DTD, expecting (WrappingKeyIdentifier? , WrappingKeyName? , WrapAlgorithm? , KeyAlgorithm? , Label? , EncryptedNonceKey? , EncryptedKey), got (WrappingKeyIdentifier )
+Document security-bad01.xml does not validate against security.dtd
+./shouldfail xmllint --noout --dtdvalid security.dtd security-dtdbad00.xml
+security-dtdbad00.xml:1: parser error : Document is empty
+
+^
+security-dtdbad00.xml:1: parser error : Start tag expected, '<' not found
+
+^
+./shouldfail xmllint --noout --dtdvalid repository.dtd repository-bad01.xml
+repository-bad01.xml:2: element RepositoryInfo: validity error : Element RepositoryInfo content does not follow the DTD, expecting (Version , Type , RepositoryVersion , GlobalPrefixName , LocalName , Name* , InfoString?), got (Version Type RepositoryVersion GlobalProofixName LocalName )
+repository-bad01.xml:6: element GlobalProofixName: validity error : No declaration for element GlobalProofixName
+Document repository-bad01.xml does not validate against repository.dtd
+./shouldfail xmllint --noout --dtdvalid repository.dtd repository-dtdbad00.xml
+repository-dtdbad00.xml:1: parser error : Document is empty
+
+^
+repository-dtdbad00.xml:1: parser error : Start tag expected, '<' not found
+
+^

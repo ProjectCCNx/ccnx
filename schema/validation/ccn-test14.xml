@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<FaceInstance>
+  <Action>create</Action>
+  <PublisherPublicKeyDigest ccnbencoding="base64Binary">
+  AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=
+  </PublisherPublicKeyDigest>
+  <IPProto>17</IPProto>
+  <Host>224.18.14.21</Host>
+  <MulticastInterface>192.168.0.13</MulticastInterface>
+  <MulticastTTL>2</MulticastTTL>
+  <FreshnessSeconds>3600</FreshnessSeconds>
+</FaceInstance>

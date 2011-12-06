@@ -1,0 +1,33 @@
+Staleness handling in CCNx
+==========================
+
+== Staleness
+
+Each content store associates a staleness bit with every ContentObject.
+
+The initial setting of this bit for newly-arrived content is "not stale".
+
+A ContentObject that has the staleness bit set is not eligible  to be sent in response to an InterestMessage
+unless the Interest has the "answer may be stale" bit (0x4) set in the AnswerOriginKind element.
+
+The effect is the same as if that stale ContentObject did not exist (i.e., the Interest might be matched by
+some other ContentObject in the store, or, failing that, get forward to other nodes).
+
+If an exact duplicate of a stale ContentObject arrives, the effect is the same as if the stale ContentObject
+had not been present.  In particular, the ContentObject in the store is no longer stale.
+
+As a practical matter, a stale ContentObject should be ranked high on the list of things to discard
+from the store when a storage quota has been reached.
+
+There are at least two ways for the staleness bit to be set: explicitly or by a timer.
+
+To set the staleness bit explicitly, a local client may express an interest for the content client with
+the "Mark as stale" bit (0x10) set in the AnswerOriginKind element.  This is restricted to local
+clients to limit the scope of attacks that might seek to make content inaccessible.
+
+To set the staleness bit by a timer, the ContentObject may include a FreshnessSeconds element.
+The per-object staleness timer is local to the CCNx node, and starts when the said ContentObject arrives.
+The ContentObject becomes stale when the specified number of seconds has expired.
+(Note that the implementation may choose to simply record the arrival time and compute the effective
+staleness bit lazily.)
+

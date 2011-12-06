@@ -1,0 +1,169 @@
+'\" t
+.\"     Title: ccn_repo
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCN_REPO" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccn_repo \- utility to start, stop and signal Java application CCNx repositories\&.
+.SH "SYNOPSIS"
+.sp
+\fBccn_repo\fR [\-memory \fImemory\fR] [\-debug \fIportno\fR] [\-output \fIoutput_file\fR] [\-debug\-daemon \fIportno\fR] [\-profile \fIprofile_info\fR] [\-suspend] [\-noshare] [\-debug\-flags \fIflags\fR] <repository_directory> [\-log \fIloglevel\fR] [\-prefix \fIprefix\fR] [\-global <global_prefix>] [\-local <localname>] | interactive <respository_directory> | stop <pid> | stopall | signal <name> <pid>]
+.SH "DESCRIPTION"
+.sp
+The \fBccn_repo\fR utility starts, stops and signals CCNx Java content object repositories\&. This call requires a backend \fIrepository_directory\fR to store the content objects to the filesystem\&. Only one repository should run on a single \fIrepository_directory\fR at any time\&.
+.sp
+There are many options with this utility, the most common uses are to start, signal and stop a repository\&.
+.PP
+\fBccn_repo\fR <repository_directory>
+.RS 4
+This will start a content object repository in the specified directory\&. Once the repository is ready, a process id will be printed to the terminal\&. This pid is needed to signal this specific repository\&. The repository starts as a Daemon by default\&.
+.RE
+.PP
+\fBccn_repo\fR signal <name> <pid>
+.RS 4
+This command is generally used to cause the running repository to dump the names of its stored content objects to a file\&. The
+\fIname\fR
+option can be either
+\fInametree\fR
+or
+\fInametreewide\fR\&.
+\fInametree\fR
+dumps the basic name tree while
+\fInametreewide\fR
+dumps the name tree with full name components (may be hard to read)\&. The
+\fIpid\fR
+is the process id displayed when the repository was started\&. The name tree file is written to the directory the repository was started with\&.
+.RE
+.PP
+\fBccn_repo\fR stop <pid>
+.RS 4
+This command stops a single repository with the supplied
+\fIpid\fR\&.
+.RE
+.PP
+\fBccn_repo\fR stopall
+.RS 4
+Stop all repositories running on a single machine (each needs a different
+\fIrepository_directory\fR)\&.
+.RE
+.sp
+Other options are available for this utility, and they are listed below\&.
+.SH "OPTIONS"
+.PP
+\fB\-memory\fR \fImemory\fR
+.RS 4
+This option adjusts the maximum amount of heap memory used by the repository\&. Units are bytes; optionally with a letter suffix (K, M, G, \&...)\&.
+.RE
+.PP
+\fB\-debug\fR \fIportno\fR
+.RS 4
+Allows attachment of an eclipse remote debugger to the repo at the specified port number\&.
+.RE
+.PP
+\fB\-output\fR \fIoutput_file\fR
+.RS 4
+Writes the output from the repository to a file\&. This has a side effect which causes ccn_repo to remain running in the foreground\&.
+.RE
+.PP
+\fB\-debug\-daemon\fR \fIportno\fR
+.RS 4
+Allows for debugging a running repository through the supplied port\&.
+.RE
+.PP
+\fB\-profile\fR \fIprofile_info\fR
+.RS 4
+Allows arbitrary system flags to the JVM for profiling or other uses\&.
+.RE
+.PP
+\fB\-suspend\fR
+.RS 4
+Only useful in combination with
+\fI\-debug\fR\&. Suspends the daemon at startup\&.
+.RE
+.PP
+\fB\-noshare\fR
+.RS 4
+Used to turn off Java sharing\&. Needed for the vmvisual profiler\&.
+.RE
+.PP
+\fB\-debug\-flags\fR \fIflags\fR
+.RS 4
+Used to set Java properties\&. For the repository, using
+\fIREPO_EXITDUMP\fR
+will cause the repository to write out its name tree on exit without requiring a dynamic signal\&.
+.RE
+.PP
+\fB\-log\fR \fILEVEL\fR
+.RS 4
+Set the logging level\&.
+\fILEVEL\fR
+must be the an acceptable Java Logger level: either an integer or a level name (e\&.g\&. SEVERE)\&.
+.RE
+.PP
+\fB\-prefix\fR \fIprefix\fR
+.RS 4
+Please note, this implementation is incomplete\&. This allows you to set a single prefix for the repo namespace\&. The default is
+\fI/\fR\&.
+.RE
+.PP
+\fB\-global\fR \fIglobal_prefix\fR
+.RS 4
+Sets the global name prefix for the repository (NOT the content it stores)\&.
+.RE
+.PP
+\fB\-local\fR \fIlocal_prefix\fR
+.RS 4
+Sets the local name prefix for the repository (NOT the content it stores)\&.
+.RE
+.PP
+\fBinteractive\fR
+.RS 4
+Starts the repository in the foreground\&.
+.RE
+.PP
+\fBstop\fR \fIpid\fR
+.RS 4
+Stops a specific repository with the given process id\&.
+.RE
+.PP
+\fBstopall\fR
+.RS 4
+Stops all repositories on the local machine\&.
+.RE
+.PP
+\fBsignal\fR
+.RS 4
+Signals a repository to perform a command, such as
+\fInametree\fR, which causes it to write the names of its stored content to a file in the backend directory\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; startup error; failed to have
+\fBccnd\fR
+running)
+.RE
+.SH "AUTHOR"
+.sp
+Paul Rasmussen <rasmussen@parc\&.com> Rebecca Braynard <rbraynar@parc\&.com> Jim Thornton <jthornto@parc\&.com>

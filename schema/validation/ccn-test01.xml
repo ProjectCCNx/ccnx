@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<ContentObject>
+  <Signature>
+    <DigestAlgorithm>2.16.840.1.101.3.4.2.1</DigestAlgorithm>
+    <Witness ccnbencoding="base64Binary">BlahBlah</Witness>
+    <SignatureBits ccnbencoding="base64Binary">AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==</SignatureBits>
+  </Signature>
+  <Name>
+    <Component ccnbencoding="base64Binary">dGVzdA==</Component>
+    <Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
+    <Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
+    <Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+    <Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
+    <Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
+  </Name>
+  <SignedInfo>
+    <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
+    <Timestamp ccnbencoding="base64Binary">BHsH3Mq8</Timestamp>
+    <KeyLocator>
+      <KeyName>
+        <Name>
+          <Component ccnbencoding="base64Binary">dGVzdA==</Component>
+          <Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
+          <Component ccnbencoding="base64Binary">a2V5</Component>
+        </Name>
+      </KeyName>
+    </KeyLocator>
+  </SignedInfo>
+  <Content ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Content>
+</ContentObject>

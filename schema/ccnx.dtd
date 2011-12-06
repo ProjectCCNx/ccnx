@@ -1,0 +1,208 @@
+<!-- DTD for CCNx Protocol -->
+<!ENTITY % URI "CDATA">	<!-- a Uniform Resource Identifier -->
+<!ENTITY % commonattrs
+	"xmlns %URI; #FIXED 'http://www.ccnx.org/content/schema/20090915'">
+
+<!ENTITY % publisherid "PublisherPublicKeyDigest        |
+                        PublisherCertificateDigest      |
+                        PublisherIssuerKeyDigest        |
+                        PublisherIssuerCertificateDigest">
+
+<!ELEMENT CCNProtocolDataUnit	((ContentObject | Interest)*)>
+<!ATTLIST CCNProtocolDataUnit	%commonattrs;>
+
+<!ELEMENT ContentObject	(Signature, Name, SignedInfo, Content)>
+<!ATTLIST ContentObject	%commonattrs;>
+
+<!ELEMENT Collection	(Link*)>
+<!ATTLIST Collection	%commonattrs;>
+
+<!ELEMENT Link    	(Name, Label?, LinkAuthenticator?)>
+<!ATTLIST Link		%commonattrs;>
+
+<!ELEMENT Label		(#PCDATA)>	<!-- string -->
+
+<!ELEMENT CompleteName	(Name, SignedInfo, Signature)>
+<!ATTLIST CompleteName	%commonattrs;>
+
+<!ELEMENT LinkAuthenticator ((%publisherid;)?, NameComponentCount?, Timestamp?, Type?, ContentDigest?)>
+<!ATTLIST LinkAuthenticator %commonattrs;>
+
+<!ELEMENT KeyValueSet	(Entry*)>
+<!ATTLIST KeyValueSet	%commonattrs;>
+
+<!ENTITY % valuechoice "IntegerValue    |
+                        DecimalValue    |
+                        StringValue     |
+                        BinaryValue     |
+                        NameValue">
+
+<!ELEMENT Entry         (Key, (%valuechoice;))>
+<!ATTLIST Entry         %commonattrs;>
+
+<!ELEMENT IntegerValue	(#PCDATA)>	<!-- integer -->
+<!ELEMENT DecimalValue	(#PCDATA)>	<!-- decimal -->
+<!ELEMENT StringValue	(#PCDATA)>	<!-- string -->
+
+<!ELEMENT BinaryValue	(#PCDATA)>	<!-- base64Binary -->
+<!ELEMENT NameValue	(Name)>		<!-- ccnx Name -->
+<!ATTLIST BinaryValue   ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ATTLIST BinaryValue	%commonattrs;>
+
+<!ELEMENT Header	(Start, Count, BlockSize, Length, ContentDigest?, RootDigest?)>
+<!ATTLIST Header	%commonattrs;>
+
+<!ELEMENT Start		(#PCDATA)>	<!-- nonNegativeInteger -->
+<!ELEMENT Count		(#PCDATA)>	<!-- nonNegativeInteger -->
+<!ELEMENT BlockSize	(#PCDATA)>	<!-- nonNegativeInteger -->
+<!ELEMENT Length	(#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT RootDigest	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST RootDigest    ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT Content	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST Content       ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT Name		(Component*)>
+<!ATTLIST Name		%commonattrs;>
+
+<!ELEMENT Component	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST Component     ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT SignedInfo    (PublisherPublicKeyDigest,
+                         Timestamp,
+                         Type?,
+                         FreshnessSeconds?,
+                         FinalBlockID?,
+                         KeyLocator?)>
+<!ATTLIST SignedInfo %commonattrs;>
+
+<!ELEMENT NameComponentCount (#PCDATA)> <!-- nonNegativeInteger -->
+
+<!ELEMENT Interest	(Name,
+                         MinSuffixComponents?,
+                         MaxSuffixComponents?,
+                         (%publisherid;)?,
+                         Exclude?,
+                         ChildSelector?,
+                         AnswerOriginKind?,
+                         Scope?,
+						 InterestLifetime?,
+                         Nonce?)>
+<!ATTLIST Interest	%commonattrs;>
+
+<!ELEMENT PublisherPublicKeyDigest	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST PublisherPublicKeyDigest   ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ATTLIST PublisherPublicKeyDigest	%commonattrs;>
+
+<!ELEMENT PublisherCertificateDigest	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST PublisherCertificateDigest   ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ATTLIST PublisherCertificateDigest	%commonattrs;>
+
+<!ELEMENT PublisherIssuerKeyDigest	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST PublisherIssuerKeyDigest   ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ATTLIST PublisherIssuerKeyDigest	%commonattrs;>
+
+<!ELEMENT PublisherIssuerCertificateDigest	(#PCDATA)>	<!-- base64Binary SHA-256 digest -->
+<!ATTLIST PublisherIssuerCertificateDigest   ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ATTLIST PublisherIssuerCertificateDigest	%commonattrs;>
+
+<!ELEMENT Exclude       ((Any | Bloom)?, (Component, (Any | Bloom)?)*)>
+
+<!ELEMENT Any           EMPTY>
+
+<!ELEMENT Bloom (#PCDATA)>      <!-- base64Binary -->
+<!ATTLIST Bloom ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT ChildSelector (#PCDATA)>    <!-- nonNegativeInteger -->
+
+<!ELEMENT AnswerOriginKind (#PCDATA)>   <!-- nonNegativeInteger -->
+
+<!ELEMENT Scope         (#PCDATA)>      <!-- nonNegativeInteger -->
+
+<!ELEMENT Nonce         (#PCDATA)>      <!-- base64Binary -->
+<!ATTLIST Nonce         ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT ExperimentalResponseFilter (#PCDATA)>      <!-- base64Binary -->
+<!ATTLIST ExperimentalResponseFilter ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT MinSuffixComponents (#PCDATA)> <!-- nonNegativeInteger -->
+
+<!ELEMENT MaxSuffixComponents (#PCDATA)> <!-- nonNegativeInteger -->
+
+<!ELEMENT Timestamp	(#PCDATA)>	<!-- binary, 12 bit fraction -->
+<!ATTLIST Timestamp	ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT InterestLifetime	(#PCDATA)>	<!-- binary, 12 bit fraction -->
+<!ATTLIST InterestLifetime	ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT FreshnessSeconds (#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT FinalBlockID  (#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST FinalBlockID  ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT Type		(#PCDATA)>	<!-- DATA, ENCR, GONE, KEY/, LINK, NACK -->
+<!ATTLIST Type          ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT ContentDigest	(#PCDATA)>	<!-- base64 encoding of DER-encoded DigestInfo -->
+<!ATTLIST ContentDigest ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT KeyLocator	(Key | Certificate | KeyName)>
+<!ATTLIST KeyLocator	%commonattrs;>
+
+<!ELEMENT Key		(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST Key           ccnbencoding CDATA #FIXED 'base64Binary'>
+<!ELEMENT Certificate	(#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST Certificate   ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT Signature	(DigestAlgorithm?, Witness?, SignatureBits)>
+
+<!ELEMENT DigestAlgorithm  (#PCDATA)>	<!-- decimal OID -->
+
+<!ELEMENT Witness       (#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST Witness       ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT SignatureBits (#PCDATA)>	<!-- base64Binary -->
+<!ATTLIST SignatureBits ccnbencoding CDATA #FIXED 'base64Binary'>
+
+<!ELEMENT KeyName	(Name, (%publisherid;)?)>
+<!ATTLIST KeyName	%commonattrs;>
+
+<!ELEMENT FaceInstance  (Action?,
+                         PublisherPublicKeyDigest?,
+                         FaceID?,
+                         IPProto?,
+                         Host?,
+                         Port?,
+                         MulticastInterface?,
+                         MulticastTTL?,
+                         FreshnessSeconds?)>
+
+<!ATTLIST FaceInstance %commonattrs;>
+
+<!ELEMENT Action        (#PCDATA)>
+
+<!ELEMENT FaceID        (#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT IPProto       (#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT Host          (#PCDATA)>	<!-- textual representation of address -->
+
+<!ELEMENT Port          (#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT MulticastInterface (#PCDATA)> <!-- for multicast when there are multiple interfaces -->
+<!ELEMENT MulticastTTL       (#PCDATA)> <!-- nonNegativeInteger -->
+
+<!ELEMENT ForwardingEntry  (Action?,
+                            Name?,
+                            PublisherPublicKeyDigest?,
+                            FaceID?,
+                            ForwardingFlags?,
+                            FreshnessSeconds?)>
+<!ATTLIST ForwardingEntry %commonattrs;>
+
+<!ELEMENT ForwardingFlags (#PCDATA)>	<!-- nonNegativeInteger -->
+
+<!ELEMENT StatusResponse (StatusCode, StatusText?)>
+<!ELEMENT StatusCode (#PCDATA)>	<!-- nonNegativeInteger -->
+<!ELEMENT StatusText (#PCDATA)>	<!-- textual description of error or other condition -->

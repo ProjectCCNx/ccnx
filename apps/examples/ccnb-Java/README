@@ -1,0 +1,55 @@
+ Copyright (C) 2011 Palo Alto Research Center, Inc.
+ 
+ This work is free software; you can redistribute it and/or modify it under
+ the terms of the GNU General Public License version 2 as published by the
+ Free Software Foundation.
+ This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ for more details. You should have received a copy of the GNU General Public
+ License along with this program; if not, write to the
+ Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ Boston, MA 02110-1301, USA.
+
+
+This directory contains an example of extending 'ccnb' encoding/decoding to other Java
+data types.  It includes JUnit tests for the encoder/decoder.  It also includes tests
+for the XML schema.
+
+There are 2 components that are required to extend the use of 'ccnb'.  The first is
+specifying the XML 'schema' that defines the extensions.  The second is the Java code 
+the implements the schema.
+
+The './schema' directory contains the following files:
+
+	example.xsd
+		This file defines the schema used in these examples.
+
+	tagname.csvdict
+		This file define the XML tags for use with the CCNx 'ccnb' tools.  (See the man pages for ccn_ccnbtoxml and ccn_xmltoccnb.)
+	
+	validate.sh
+		This script sets up and runs the tests defined for this schema.
+
+	2-integers-test01.xml
+	complicated-test01.xml
+	complicated-test02.xml
+		These XML source files are used by validate.sh to ensure that the schema defined by example.xsd correctly parses the test XML files.
+
+
+The following files implement the schema described by example.xsd:
+
+	src/org/ccnx/ccn/apps/examples/ccnb/ExampleDictionary.java
+	src/org/ccnx/ccn/apps/examples/ccnb/ExampleDTags.java
+	src/org/ccnx/ccn/apps/examples/ccnb/Example2Integers.java
+	src/org/ccnx/ccn/apps/examples/ccnb/ExampleComplicated.java
+	src/org/ccnx/ccn/apps/examples/ccnb/Enumeration.java
+	src/org/ccnx/ccn/apps/examples/ccnb/StringBinaryVector.java
+
+The JUnit test implemented for this example are in:
+
+	src/org/ccnx/ccn/apps/examples/ccnb/test/ExampleEncodeDecodeTest.java
+
+
+
+

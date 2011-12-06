@@ -1,0 +1,281 @@
+CCNx Signature Generation and Verification
+==========================================
+
+== Source references
+link:xsd.html[ccnx.xsd] is the xml schema that describes what the xml rendition of ccn data (including ContentObject messages) should look like.
+
+link:dtd.html[ccnx.dtd] is a dtd that should describe the same, in a less strongly-typed fashion.
+
+link:DTAG.html[tagname.csvdict] contains the mapping between the DTAG values used in the binary encoding and the element names used in the XML representation.
+
+Here we specify how content signatures are generated in CCNx.
+
+== Signed Content
+
+A link:ContentObject.html[ContentObject] in CCNx consists
+of:
+
+.......................................................
+ContentObject ::= Signature
+                  Name
+                  SignedInfo
+                  Content
+.......................................................
+
+The Signature, described below, is computed over the concatenated ccnb
+binary encoding of the `Name`, `SignedInfo` and `Content` components of the 
+ContentObject, with all of their start and end tags, but *without* the
+start or end tag of the ContentObject itself, or any component of the `Signature`.
+This makes possible a signing implementation that takes a packet in over the
+wire, selects the digest algorithm to use to verify the signature based on
+information in the `Signature` component, and then digest the bulk of the 
+packet, exactly as it arrived on the wire, in order to verify its signature.
+
+== Signature
+
+The Signature component of the ContentObject consists of:
+
+.......................................................
+Signature ::= DigestAlgorithm
+              Witness
+              SignatureBits
+.......................................................
+
+=== DigestAlgorithm
+
+The digest algorithm specifies the cryptographic digest algorithm used
+in signature generation. We need to specify either the digest
+algorithm used to generate the signature, or a combined signature
+algorithm which includes both the digest algorithm and public key
+algorithm used (for example, "SHA1withRSA"), so that verifiers know
+what digest to use to verify the signature. The X.509 digital
+signature standard uses a signature algorithm specified at the start
+of the certificate, as well as in the signature itself. The PKCS#7
+standard for signed data, and the standard for XML signatures specify
+only a digest algorithm up front.  Choosing to specify a digest
+algorithm, rather than a signature algorithm, at the start (and to
+only specify the digest algorithm, letting the signature algorithm be
+determined by the key rather than separately specified in the
+signature) forces us to assume that a given key can only be used for
+one algorithm type. However, assuming that a smaller number of digest
+algorithms are used than public key types, including only the digest
+algorithm in the specifier saves us the bytes for a separate
+specification of signature algorithm in the signature, and increases
+the chance that we will also be able to elide the digest algorithm
+identifier itself because the digest algorithm chosen will be one
+selected as the most common default (for now, `SHA-256`, see
+link:CryptographicAlgorithms.html[CryptographicAlgorithms]).
+
+We place the digest algorithm identifier, along with the content of the signature
+itself, at the start of the ContentObject, so that devices that need
+to perform signature verification on the incoming data stream as it
+arrives may do so. (Though they will need to store the Signature
+itself for verification until both the data is processed and the public
+key needed has been retrieved.)  For the moment, the digest algorithm
+is specified as a UTF-8 encoding of an Object Identifier, or OID. If
+it matches the default value (the OID for `SHA-256`, or `2.16.840.1.101.3.4.2.1`)
+it is elided.
+
+=== Witness
+
+A Witness is additional information necessary to verify the signature,
+particularly in the case where signature generation is aggregated and
+performed over multiple ContentObjects at once. In such a case, the
+Witness allows an individual ContentObject to be verified as being
+part of that set. For example, elements authenticated using a Merkle
+Hash Tree, the witness information would be the elements of the hash
+path through the tree.  
+
+The Witness is represented as a DER-encoded PKCS#1 DigestInfo, which
+contains an AlgorithmIdentifier (an OID, together with any necessary
+parameters) and a byte array (OCTET STRING) containing the digest
+information to be interpreted according
+to that OID.
+
+=== SignatureBits
+
+The contents of the digital signature itself, computed as appropriate for
+the algorithm used (see below). For now, this is the bits of the signature
+itself, encoded as appropriate for the particular cryptographic algorithm used
+(in other words, no encapsulating specification of signature algorithm).
+
+== Signature Generation
+
+Signature generation in CCNx takes one of two forms: either individual
+blocks are individually digitally signed with a standard public key signature
+algorithm, or multiple blocks are signed at once using an aggregated signature.
+
+=== Algorithm Choice
+
+The choice of signature algorithm and signature granularity (whether,
+or how much, to aggregate signing) is done by the publisher using a
+number of considerations: most importantly ease of implementation,
+computational constraints on the publisher and verifier, and bandwidth
+constraints. Signing each block individually is more computationally
+costly for the publisher than aggregating signature generation, but
+offers lower latency and requires less space for the signature. (Aggregated
+signatures require the use of per-block witness information to allow
+each block to be individually verified.) Verification cost is lower for
+aggregated signatures, as the consumer can cache and reuse the result of
+verifying the signature itself, and even parts of the witness, across
+multiple blocks. 
+
+The choice of the public key algorithm used to generate
+either the individual block or aggregated signature is determined by what
+keys the publisher has available, what algorithms they expect their
+consumers to support, and the relative cost of signature generation and
+verification for individual algorithms, as well as, of course, their
+security requirements. For example, the RSA algorithm offers a significant
+asymmetry in signing and verification times -- signature generation being
+an order of magnitude (or more) slower than verification. It is therefore
+a good choice if signatures will be verified many more times than they will
+be generated; at the cost of relatively long signatures. Elliptic curve
+cryptography can be used to generate short signatures with high security,
+but verification is as computationally expensive, or more expensive, than
+signature generation.
+
+=== Individual Block Signing
+
+To sign an individual ContentObject, we generate a standard digital
+signature using PKCS#1 padding over the Name, SignedInfo, and Content
+portions of the encoded ContentObject described above with the
+specified digest algorithm and a signature algorithm determined by
+that and the key. We place the resulting signature in the
+SignatureBits portion of the Signature, omitting the Witness. Such a
+signature can be generated and verified using any number of standard
+cryptographic libraries.
+
+=== Aggregated Signing 
+
+An aggregated signature takes a set of 2 or more ContentObjects, and generates
+a signature over their combination, together with a set of per-object witness
+data such that it is possible to verify for each ContentObject in the set that
+it is indeed a member of the set, that it was signed as part of the set by the
+designated public key, and that it has not been altered since (up to the security
+of the cryptographic algorithms used).
+
+The CCNx standard library currently implements a single aggregated
+signature algorithm, using Merkle hash trees. However, the intent is
+to make the aggregated, or bulk signature implementation sufficiently
+parameterizable that other algorithms (for experimental or production
+use) can be included. At the same time, the expectation that all nodes
+in the network can verify any signature they choose suggests that the
+number of production algorithms eventually supported will be relatively
+limited. As of the initial release, aggregated signature generation is
+set up to allow for new implementations to be added, but verification
+is not.
+
+While the typical use for aggregated signatures is to sign a set of related
+content objects -- for example a set of segments from a single stream; there is
+no requirement that the objects aggregated be related at all. (However, when they
+are, it maximizes the likelihood that a verifier will be verifying them all
+together and so will be able to reuse cached verification data.)
+
+==== Merkle Hash Tree Aggregated Signatures
+
+We describe here the aggregated signature algorithm implemented in the 
+CCNx library (as of September 2009). Some of the design elements used
+in this algorithm were selected to maximize overlap with the standard
+signing implementation, and would be good common elements to use for
+any aggregated signature implementation. Additional details of the 
+implementation can be seen in the Java library source code.
+
+A Merkle hash tree is constructed most simply by taking a set of data elements,
+and arranging them as leaf nodes in a n-ary tree. Each leaf node is represented
+by its cryptographic digest, or hash. The parent of a set of n leaves
+is calculated by concatenating the digests of those n leaves
+and then computing a cryptographic digest, or hash, over the result.
+This process is iterated up the tree, until a single root digest
+is calculated at the top. That root digest is then digitally signed.
+To verify a single leaf, one needs the leaf itself, as well as a _Merkle Path_ through
+the tree -- the values (digests) in the tree of that leaf's n-1 siblings,
+and its parents' siblings, and so on up the tree, so as to be able to take
+the leaf and the path values, and recompute the root. A consumer verifying the
+leaf uses the leaf and path data to compute a root value, and then given a
+digital signature on the actual root, determines whether or not the computed
+root value matches the value that was originally computed and signed. 
+Assuming the security of the cryptographic digest algorithm used to compute
+the tree, this verifies the content and position of the leaf in the tree.
+
+CCNx uses binary Merkle hash trees, with a parameterizable digest
+algorithm used to compute the leaf and interior (node) digests. Given
+a set of 2 or more ContentObjects, the leaf digest of each of those
+ContentObjects is computed using the same method used to compute an
+individual signature over a single ContentObject.  In other words, each
+leaf is represented by the cryptographic digest of the concatenated ccnb binary
+encodings of its contained Name, SignedInfo and Content fields.
+The node (interior) digests of the tree are computed as described above -- as
+the digest of the concatenation of the two children of the node to be computed.
+If that node has only a left child (the tree formulation used ensures that
+no node will have only a right child), the digest of that node is computed as
+the digest of its left child alone (this simplifies implementation over skipping
+the digest computation).
+
+To generate the signature on a Merkle hash tree (MHT), we sign the
+root node as follows: it's already a digest, so in n theory we could
+just wrap it up in some PKCS#1 padding, encrypt it with our private
+key, and voila! A signature. But there are basically no crypto
+software packages that provide signature primitives that take
+already-digested data and just do the padding and encryption, and so
+we'd be asking anyone attempting to implement CCN MHT signing
+(including ourselves) to re-implement a very complicated wheel, across
+a number of signature algorithms.  We might also want to sign with a
+key that does not support the digest algorithm we used to compute the
+root (for example, DSA).  so we take the computationally very slightly
+more expensive, but vastly simpler (implementation-wise) approach of
+taking our digest and signing it with a standard signing API -- which
+means digesting it one more time for the signature. So we sign (digest
++ encrypt) the root digest with a standard off-the-shelf signature
+algorithm. It is this signature that we place in the SignatureBits of
+the Signature of each ContentObject in the aggregated set, and the
+digest algorithm used for this signature that we place in the
+DigestAlgorithm field.
+
+To represent the witness, or Merkle Path, for each ContentObject in
+the aggregate, we list the leaf or node digests for the sibling of
+this leaf, and the sibling of its parent, and on up the tree, in that
+order. We do not include the digest of the leaf itself (that can be
+calculated from the content) or the root digest (which can be
+calculated from the calculated leaf digest and the path) in the path
+data (witness). In order to be able to verify the content with respect
+to the given path, the verifier needs to be able to determine whether
+this leaf represents the left or right leaf in a terminal pair, and
+which position (left or right child) each of the digests on the
+witness path takes (as the computation of the parent digest is order
+dependent). Because of the representation of trees used, the index of
+the leaf whose path this is determines the position of the remainder
+of the nodes on the path if they are presented in order (from top
+to bottom). We therefore represent our Merkle Paths as follows (noted in
+ASN.1):
+
+.......................................................
+MerklePath ::= SEQUENCE {
+           nodeIndex INTEGER,                  
+           nodes NodeList
+}
+
+NodeList ::= SEQUENCE OF OCTET STRING
+.......................................................
+
+We could probably save a few bytes by not encoding this
+as DER, and simply packing in the bytes to represent this
+data -- this encoding offers a fair amount of ease of parsing
+and clarity, at the cost of probably 5 + 2*pathLength bytes of overhead,
+or 20 bytes in typical paths. At some point this may
+seem too much, and we will move to a more compact encoding.
+
+
+The `Witness` for a Merkle hash tree-signed ContentObject contains,
+as noted above, a DER-encoded PKCS#1 DigestInfo. The AlgorithmIdentifier
+of that DigestInfo contains an OID that specifies both that this is
+a Merkle path, and the component digest algorithm used to compute the
+leaf and interior node digests.  The OCTET STRING of that DigestInfo
+contains the DER-encoded MerklePath for this leaf. OIDs for initial
+MHT algorithms are below. The default for the CCNx library is `SHA256MHT`.
+
+.......................................................
+SHA-1-Merkle-Hash-Tree ::= 1.2.840.113550.11.1.2.1
+
+SHA-256-Merkle-Hash-Tree ::= 1.2.840.113550.11.1.2.2
+.......................................................
+

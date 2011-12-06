@@ -1,0 +1,44 @@
+CCNLSREPO(1)
+============
+
+NAME
+----
+ccnlsrepo - explore content stored under a given prefix in one or more repositories.
+
+SYNOPSIS
+--------
+*ccnlsrepo* 'ccnxname' [-timeout 'millis' | -c(ontinuous) ]
+
+DESCRIPTION
+-----------
+The *ccnlsrepo* utility is a Java application used to explore content stored
+under a given prefix ('ccnxname') in a repository.  Uses name enumeration to
+limit responses to repositories and other NE responders.  The program defaults
+to a prefix of "/" but takes a prefix as the first command-line argument.  The
+tool displays names under the prefix after collecting names for a given time
+period.  The initial default setting is 2 seconds.  To enumerate names for
+more than 2 seconds (for example, if you have a long round trip time to a
+repository or many responding repositories) the time can be extended using the
+'-timeout' flag and the time to wait in milliseconds.  Another option is to
+have a long running enumeration that outputs results as they are received at
+the client.  This is triggered with the '-c' flag.
+
+OPTIONS
+-------
+*-timeout* 'millis'::
+	Enumerate names under the 'ccnxname' prefix from repositories for '-timeout' milliseconds.  The default is 2 seconds.
+
+*-c* ::
+	Allows for a long running enumeration that outputs responses from respositories as they are received.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; enumeration error)
+
+AUTHOR
+------
+Rebecca Braynard <rbraynar@parc.com>

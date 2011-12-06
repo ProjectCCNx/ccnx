@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<Interest>
+  <Name/>
+  <PublisherCertificateDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherCertificateDigest>
+  <Exclude>
+    <Any/>
+    <Component ccnbencoding="base64Binary">ooiW7GC4</Component>
+  </Exclude>
+</Interest>

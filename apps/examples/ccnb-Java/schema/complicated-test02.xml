@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<ExampleComplicated>
+	<String>This is a test of example-complicated-test</String>
+	<Enum ccnbencoding="base64Binary">Enu0</Enum>
+	<Data>
+		<String>This is the string content in a Data</String>
+		<Name>
+			<Component ccnbencoding="base64Binary">dGVzdA==</Component>
+			<Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
+			<Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
+			<Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+			<Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
+			<Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
+		</Name>
+		<Name>
+			<Component ccnbencoding="base64Binary">dGVzdA==</Component>
+			<Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
+			<Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
+			<Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+			<Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
+			<Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
+		</Name>
+		<Interest>
+			<Name>
+				<Component ccnbencoding="base64Binary">dGVzdA==</Component>
+				<Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
+				<Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
+			</Name>
+			<Exclude>
+				<Bloom ccnbencoding="base64Binary">AA==</Bloom>
+				<Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+				<Component ccnbencoding="base64Binary">BQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+				<Bloom ccnbencoding="base64Binary">AA==</Bloom>
+				<Component ccnbencoding="base64Binary">CQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+			</Exclude>
+			<ChildSelector>1</ChildSelector>
+		</Interest>
+		<Bin ccnbencoding="base64Binary">BId5E7bp</Bin>
+	</Data>
+	<Data>
+		<String>This is the string content in a Data</String>
+		<Name>
+			<Component ccnbencoding="base64Binary">dGVzdA==</Component>
+			<Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
+			<Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
+			<Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+			<Component ccnbencoding="base64Binary">c21ldHRlcnM=</Component>
+			<Component ccnbencoding="base64Binary">dGVzdDIudHh0</Component>
+		</Name>
+		<Interest>
+			<Name>
+				<Component ccnbencoding="base64Binary">dGVzdA==</Component>
+				<Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
+				<Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
+			</Name>
+			<Exclude>
+				<Bloom ccnbencoding="base64Binary">AA==</Bloom>
+				<Component ccnbencoding="base64Binary">AQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+				<Component ccnbencoding="base64Binary">BQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+				<Bloom ccnbencoding="base64Binary">AA==</Bloom>
+				<Component ccnbencoding="base64Binary">CQIDBAUGBwgJCgsMDQ4PHxscHR4fLjxKXG1+Dw==</Component>
+			</Exclude>
+			<ChildSelector>1</ChildSelector>
+		</Interest>
+		<Name>
+			<Component ccnbencoding="base64Binary">dGVzdA==</Component>
+			<Component ccnbencoding="base64Binary">YnJpZ2dz</Component>
+			<Component ccnbencoding="base64Binary">dGVzdC50eHQ=</Component>
+		</Name>
+		<Interest>
+			<Name>
+				<Component ccnbencoding="base64Binary">cmVwb1Rlc3Q=</Component>
+				<Component ccnbencoding="base64Binary">ZGF0YTI=</Component>
+				<Component ccnbencoding="base64Binary">+A==</Component>
+			</Name>
+			<Scope>0</Scope>
+			<InterestLifetime ccnbencoding="base64Binary">AAB10001</InterestLifetime>
+			<Nonce ccnbencoding="base64Binary">bguyKU4JG5m2</Nonce>
+		</Interest>
+		<Bin ccnbencoding="base64Binary">BId5E7bp</Bin>
+	</Data>
+</ExampleComplicated>

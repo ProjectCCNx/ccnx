@@ -1,0 +1,10 @@
+To build on Darwin, we require at least OpenSSL 0.9.8, installed in
+/opt/local.  Leopard (Mac OS 10.5) ships with 0.9.7.
+
+One option is to istall it using MacPorts.
+
+If you do not want to use MacPorts, try this:
+Make sure /opt/local exists:  "mkdir -p /opt/local"
+Then download openssl-0.9.8 from www.openssl.org, then configure it with
+
+  ./Configure shared --prefix=/opt/local darwin-i386-cc

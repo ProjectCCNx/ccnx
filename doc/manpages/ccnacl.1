@@ -1,0 +1,139 @@
+'\" t
+.\"     Title: ccnacl
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCNACL" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnacl \- show and modify access control lists (ACLs) for access control of a CCNx content namespace\&.
+.SH "SYNOPSIS"
+.sp
+\fBccnacl\fR [\-as \fIkeystore\fR] \-show \fInodeName\fR
+.sp
+\fBccnacl\fR [\-as \fIkeystore\fR] \-edit \fInodeName\fR \fIprincipalName\fR [null | r | rw | rw+]
+.sp
+\fBccnacl\fR [\-as \fIkeystore\fR] \-init \fIdomain\fR \fIuserNamespace\fR \fIgroupNamespace\fR \fIprincipalName\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccnacl\fR utility prints or modifies an access control list (ACL) published with CCNx\&. An ACL specifies who should have access to a particular collection, identified by the given \fInodeName\fR\&. Entities that are supporting the CCNx access control profile will respect any ACL specification that applies to namespaces they are using\&. Read control is achieved through encryption, so as long as the writers support access control the readers must support it and be authorized in order to read content\&. Write control is achieved by consumers rejecting content that is not published by an authorized party\&.
+.sp
+The \fInodeName\fR specifies the CCNx namespace in which the ACL is published and to which it applies; CCNx Content Objects with \fInodeName\fR as a prefix of their names will be affected\&. The \fInodeName\fR must be specified using the CCNx URI encoding syntax\&. For simple cases of ASCII name components this is just pathname syntax with / delimiters\&.
+.sp
+An ACL is published as immutable CCNx content\&. When an ACL edit is performed, new versions of the ACL and related keys are published\&.
+.SH "OPTIONS"
+.PP
+\fB\-as\fR \fIpathToKeystore\fR
+.RS 4
+Specifies a file path to a keystore; this is used for signing any newly\-created content\&. Applicable to all operations\&. The default keystore is used if this is not specified\&.
+.RE
+.PP
+\fB\-show\fR \fInodeName\fR
+.RS 4
+Print the contents of the ACL for the given
+\fInodeName\fR\&.
+.RE
+.PP
+\fB\-edit\fR \fInodeName\fR \fIprincipalName\fR [null | r | rw | rw+]
+.RS 4
+Create an entry in the ACL of the given
+\fInodeName\fR
+to set the permissions for the given
+\fIprincipalName\fR
+as specified\&. If the ACL does not exist it is created\&. The possible permissions are:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fBnull\fR
+= no access
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fBr\fR
+= Reader
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fBrw\fR
+= Writer, can also read
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fBrw+\fR
+= Manager, can read, write, and edit ACLs
+.RE
+.RE
+.PP
+\fB\-init\fR \fIdomain\fR \fIuserNamespace\fR \fIgroupNamespace\fR \fIprincipalName\fR
+.RS 4
+Initialises the authentication domain\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; retrieval error, failure to write)
+.RE
+.SH "FILES"
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+$HOME/\&.ccnx/\&.ccnx_keystore \- default keystore
+.fi
+.if n \{\
+.RE
+.\}
+.SH "AUTHOR"
+.sp
+Philippe Golle <pgolle@parc\&.com>

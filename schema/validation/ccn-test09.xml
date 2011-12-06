@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<ContentObject>
+  <Signature>
+    <SignatureBits ccnbencoding="base64Binary">FakeBits</SignatureBits>
+  </Signature>
+  <Name>
+    <Component ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Component>
+    <Component ccnbencoding="base64Binary">ZG1keE82TFptN1VVb1VkeXQ2RUczS3Jua05Ka2pkYWF5QnBwYnZmRA==</Component>
+    <Component ccnbencoding="base64Binary">/QSHd6DGuA==</Component>
+    <Component ccnbencoding="base64Binary">+Co=</Component>
+  </Name>
+  <SignedInfo>
+    <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
+    <Timestamp ccnbencoding="base64Binary">BId3oMa4</Timestamp>
+    <FinalBlockID ccnbencoding="base64Binary">+Co=</FinalBlockID>
+    <KeyLocator>
+      <Key ccnbencoding="base64Binary">MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAIS1Wt50GDXWhk2j/gflHoJh6UgZ+I1W5Jx4xVZM3lP6jFbWu+wcEios+KpjrQnFwqGNPH+TyKWH/DLHo5X1L0sCAwEAAQ==</Key>
+    </KeyLocator>
+  </SignedInfo>
+  <Content ccnbencoding="base64Binary">dmdxO6LZm7UUoUdyt6EG3KrnkNJkjdaayBppbvfD</Content>
+</ContentObject>

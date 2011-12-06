@@ -1,0 +1,53 @@
+/**
+@mainpage
+
+@section c_intro_sec Introduction
+
+
+
+@section c_install_sec Building and Installation
+
+@subsection starting Getting Started 
+
+For general instructions about how to install CCNx, please refer to
+the top-level README file.
+
+@subsection howitworks How the c build works 
+
+The C build sticks as closely as possible to the common subset
+of make(1) features, using the Posix specifications as a guide.
+
+Since most (or all) make implementations have their own extensions, staying
+within this subset is a continual challenge. The CCNx build is tested with
+GNU make, BSD make, and Solaris make.
+
+The ./configure script's main job is to build the conf.mk file that defines the
+configurable make macros.  This is done largely just by using the
+output of the uname command, but scripted configuration is possible as well.
+The csrc/conf/ directory contains the system-specific make fragments and scripts.
+
+If you need to override the configured values, put them into a file
+named csrc/conf/local.mk before you execute ./configure in csrc/.
+
+For convenience, there is a Makefile link placed into the subdirectories of
+csrc/ so that you can easily rebuild just part of the world.
+
+@subsection installing The test and install targets 
+
+After a successful make, you should do `make test` to check that things are 
+working.  Then, if you wish, you can use `make install` to install into
+/usr/local (or elsewhere if you have defined an override in local.mk).
+Of course, the appropriate permissions are needed.
+
+*/
+
+/*
+This file is processed by doxygen to create the main page for
+the Content-Centric Networking in C Documentation.
+
+If we want to refer to the directory ccn/csrc/cmd, with a link to the documentation for the
+directory under that text, we would use (at)link cmd ccn/csrc/cmd (at)endlink (like this)
+@link cmd ccn/csrc/cmd @endlink
+as the reference.  Note that the single word following the (at)link command is the object
+reference for the directory as doxygen believes it is named (see the Directories tab in the generated documentation)
+*/

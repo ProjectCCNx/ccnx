@@ -1,0 +1,107 @@
+'\" t
+.\"     Title: ccnputfile
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCNPUTFILE" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnputfile \- publish a file as CCNx content
+.SH "SYNOPSIS"
+.sp
+\fBccnputfile\fR [\-v] [\-raw] [\-unversioned] [\-local] [\-timeout \fImillis\fR] [\-log \fILEVEL\fR] [\-as \fIpathToKeystore\fR] [\-ac] \fIccnxname\fR \fIfilename|url\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccnputfile\fR utility publishes a local file \fIfilename\fR or url \fIurl\fR as content with the \fIccnxname\fR\&. The content is published as a collection of CCNx Data in accordance with the naming conventions for segmented streams or files, optionally unversioned\&. For the default case of versioned content, \fBccnputfile\fR will publish content with the version based on the local machine time\&.
+.sp
+The \fIccnxname\fR must be specified using the CCNx URI encoding syntax\&. For simple cases of ASCII name components this is just pathname syntax with / delimiters\&.
+.sp
+The \fIfilename\fR must be the pathname of a local file that will published under the \fIccnxname\fR\&.
+.sp
+The \fIurl\fR must be a valid url to be published under a \fIccnxname\fR\&.
+.sp
+\fBccnputfile\fR will publish versioned and segmented content objects, and the key used to sign them, to a repository by default\&. If the \fI\-local\fR flag is used, a local repository on the same device will be used\&. If there is not a reachable repository, \fBccnputfile\fR will exit with a \fIwait for put drain\fR error\&. If there is a corresponding application able to retrieve the content (e\&.x\&. \fBccngetfile\fR) \fBccnputfile\fR can be used to publish the content with \fI\-raw\fR\&. \fI\-raw\fR allows \fBccnputfile\fR to skip the repository handshake and directly put the content objects to satisfy the \fBccngetfile\fR interests\&.
+.sp
+\fBccnputfile\fR can also be used to publish content with a specific key using \fI\-as\fR where \fIpathToKeystore\fR must be a valid path to the local filesystem where a user key has previously been stored\&.
+.sp
+\fBccnputfile\fR can additionally be used with access control using the \fI\-ac\fR flag\&.
+.SH "OPTIONS"
+.PP
+\fB\-v\fR
+.RS 4
+Run
+\fBccnputfile\fR
+in verbose mode\&.
+.RE
+.PP
+\fB\-raw\fR
+.RS 4
+
+\fBccnputfile\fR
+will publish the content objects without contacting a repository\&. This mode will fail unless there is another application, such as
+\fBccngetfile\fR, running\&.
+.RE
+.PP
+\fB\-unversioned\fR
+.RS 4
+Do not append a version component to the supplied
+\fIccnxname\fR\&. This option may be used when the supplied
+\fIccnxname\fR
+already includes an explicit version component at the end (which must be URI encoded)\&. This option may also be used for content that is organized according to the segmentation convention but does not use the versioning convention at all\&. When this option is used, the FileOutputStream abstraction will not be used, since that implies versioning\&.
+.RE
+.PP
+\fB\-local\fR
+.RS 4
+Specifies that a local repository be used to save the file\&. The file will not also be saved to repositories on remote devices\&.
+.RE
+.PP
+\fB\-timeout\fR \fImillis\fR
+.RS 4
+Set the timeout that will be used for putting content objects on during the stream reading\&. I\&.e\&., the time to wait for incoming interests\&.
+.RE
+.PP
+\fB\-log\fR \fILEVEL\fR
+.RS 4
+Set the logging level\&.
+\fILEVEL\fR
+must be the an acceptable Java Logger level: either an integer or a level name (e\&.g\&. SEVERE)\&.
+.RE
+.PP
+\fB\-as\fR \fIpathToKeystore\fR
+.RS 4
+Set the user for signing published content\&. This must point to a place in the filesystem where ccnx compatible keys have been saved\&.
+.RE
+.PP
+\fB\-ac\fR
+.RS 4
+This options forces
+\fBccnputfile\fR
+to obey access control restrictions\&. The content is encrypted according to the access control list in force at the node where the content is stored\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; publishing error \- no processes running that are prepared to ask or already asking for content)
+.RE
+.SH "AUTHOR"
+.sp
+Diana Smetters <smetters@parc\&.com>

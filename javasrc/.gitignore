@@ -1,0 +1,14 @@
+bin/
+build/
+log/
+medium_file.txt_testout.txt
+testout/
+testout.*
+CCN_DEBUG_DATA/
+pmd-eclipse.log
+junit*.properties
+repotest/
+lib/jsr173*.jar
+lib/bcprov-jdk15*.jar
+# copy of dictionary from schema directory, placed here by top-level make
+tagname.csvdict

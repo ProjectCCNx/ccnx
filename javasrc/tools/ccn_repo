@@ -1,0 +1,117 @@
+#!/bin/sh
+# tools/ccn_repo
+# 
+# Part of the CCNx distribution.
+#
+# Starts or stops a CCNx repository daemon.
+#
+# Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation. 
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+# for more details. You should have received a copy of the GNU General Public
+# License along with this program; if not, write to the
+# Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+# Boston, MA 02110-1301, USA.
+
+JAR_FILE=ccn.jar
+: ${JAVA_HOME:=/usr}
+JAVA=$JAVA_HOME/bin/java
+SCRIPT_DIR=`dirname $0`  # note this is relative path
+CCN_HOME_JAVA=${CCN_HOME_JAVA:-$SCRIPT_DIR}
+if [ ! -f "$CCN_HOME_JAVA/$JAR_FILE" ]
+then
+    if [ -f "$SCRIPT_DIR/../lib/$JAR_FILE" -o -f "$SCRIPT_DIR/../$JAR_FILE" ] 
+    then
+	CCN_HOME_JAVA="$SCRIPT_DIR/.."
+    else
+	echo "Cannot find $JAR_FILE, set CCN_HOME_JAVA env variable."
+	exit 1;
+    fi
+fi
+
+
+CP1=$CCN_HOME_JAVA/*.jar
+CP2=$CCN_HOME_JAVA/lib/*.jar
+
+CP1=`echo $CP1 | sed "s/ /:/g"`
+CP2=`echo $CP2 | sed "s/ /:/g"`
+
+CLASSPATH=$CP1:$CP2
+MEMORY=
+DEBUG_PORT=
+DEBUG_SUSPEND=
+DEBUG_NOSHARE=
+OUTPUT_FILE=
+LOCAL_PORT=
+DEBUG_DAEMON=
+PROFILE_INFO=
+DEBUG_FLAGS=
+usage="usage: ccn_repo [-memory <memory>] [-debug <portno>] [-output <output_file>] \n\t\t[-debug-daemon <portno>] [-profile <profile_info>] [-suspend] \
+                \n\t\t[-noshare] [-debug-flags <flags>] \
+		\n\t\t<repository_directory> [-log <loglevel>] [-prefix <prefix>]\n\t\t[-global <global_prefix>] [-local <localname>]\
+		\n\t| interactive <respository_directory> \n\t| stop <pid> \n\t| stopall \n\t| signal <name> <pid>]"
+
+if [ $# = 0 ]
+then
+  echo -e $usage
+else
+  if [ ! "$CCN_LOCAL_PORT" = "" ]; then
+  	  LOCAL_PORT="-Dccn.agent.port=$CCN_LOCAL_PORT"
+  fi
+  while [ $# -gt 1 ]; do
+  	  if [ "$1" = "-memory" ]; then
+  	      MEMORY_INFO="-Dccn.daemon.memory=$2"
+  	      MEMORY=-Xmx$2
+  	      shift 2
+  	  elif [ "$1" = "-debug" ]; then
+  	      DEBUG_PORT="-Dccn.daemon.debug=$2"
+  	      shift 2
+  	  elif [ "$1" = "-suspend" ]; then
+  	      DEBUG_SUSPEND="-Dccn.daemon.debug.suspend=y"
+  	      shift
+  	  elif [ "$1" = "-noshare" ]; then
+  	      DEBUG_NOSHARE="-Dccn.daemon.debug.noshare=y"
+  	      shift
+  	  elif [ "$1" = "-output" ]; then
+  	      OUTPUT_FILE="-Dccn.daemon.output=$2"
+  	      shift 2
+  	  elif [ "$1" = "-debug-daemon" ]; then
+  	      DEBUG_DAEMON=" -Xrunjdwp:transport=dt_socket,address=$2,server=y,suspend=y";
+  	      shift 2
+	  elif [ "$1" = "-debug-flags" ]; then
+	      DEBUG_FLAGS="-Dcom.parc.ccn.DebugFlags=$2"
+	      shift 2
+  	  elif [ "$1" = "-profile" ]; then
+  	  	  PROFILE=$2
+  	      PROFILE_INFO="-Dccn.daemon.profile=$2"
+  	      shift 2
+  	  else
+  	  	  break
+  	  fi
+  done
+  
+  test=`echo "$1" | sed 's/\(.\).*/\1/'`
+  if [ "$test" = "-" ]; then
+  	   echo $usage
+  elif [ "$1" = "stop" ]; then
+	  $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -stop $2
+  elif [ "$1" = "stopall" ]; then
+	  allrepos=`ps aux | grep RepositoryDaemon | grep java  | awk '{print $2}'`
+	  for pid in $allrepos
+	   do
+		$JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -stop $pid
+           done
+  elif [ "$1" = "signal" ]; then
+      $JAVA -cp $CLASSPATH $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -signal $2 $3
+  elif [ "$1" = "interactive" ]; then
+ 	  shift
+      $JAVA -cp $CLASSPATH $PROFILE $MEMORY org.ccnx.ccn.impl.repo.RepositoryDaemon -interactive -root $*
+  else
+  	  $JAVA -cp $CLASSPATH $DEBUG_DAEMON $MEMORY_INFO $DEBUG_FLAGS $DEBUG_PORT $DEBUG_SUSPEND $DEBUG_NOSHARE $PROFILE_INFO $OUTPUT_FILE $LOCAL_PORT org.ccnx.ccn.impl.repo.RepositoryDaemon -start -root $*
+  fi
+fi

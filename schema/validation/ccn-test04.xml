@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<Interest>
+  <Name>
+    <Component ccnbencoding="base64Binary">Zm9vYmFy</Component>
+    <Component ccnbencoding="base64Binary">tribble//trouble</Component>
+    <Component ccnbencoding="base64Binary">ysahu5O3FBKZlQzAsgQeGQBTTJTTOAvjgUMm69PSKxqTYgvBISB02tJuxazIPMY5vbsdngD/JoTDFpvRdypURrY=</Component>
+  </Name>
+  <MaxSuffixComponents>0</MaxSuffixComponents>
+  <PublisherPublicKeyDigest ccnbencoding="base64Binary">AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=</PublisherPublicKeyDigest>
+  <ChildSelector>0</ChildSelector>
+  <AnswerOriginKind>3</AnswerOriginKind>
+  <Scope>1</Scope>
+  <Nonce ccnbencoding="base64Binary">bubblebabble</Nonce>
+</Interest>

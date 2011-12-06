@@ -1,0 +1,75 @@
+# tests/test_selfreg
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+AFTER : test_single_ccnd test_ccndid
+BEFORE : test_single_ccnd_teardown
+
+ccndsmoketest || SkipTest no ccnd
+test -f newface-response.ccnb || SkipTest missing newface-response.ccnb, need to run test_newface first
+
+# Create the body of a selfreg request.
+ccn_xmltoccnb -w - <<EOF >selfreg.ccnb
+<ForwardingEntry>
+  <Action>selfreg</Action>
+  <Name>
+     <Component ccnbencoding="text">Junk</Component>
+     <Component ccnbencoding="text">Testing</Component>
+     <Component ccnbencoding="text">Selfreg</Component>
+  </Name>
+  <FreshnessSeconds>19</FreshnessSeconds>
+</ForwardingEntry>
+EOF
+
+TNAME=`GenSym SR`
+cat selfreg.ccnb | ccnput -f -x 30 /$TNAME
+
+# Pull it out to use in the selfreg request.  Base-64 encode it for the benefit of the shell.
+
+SRBLOB="`ccnget /$TNAME | openssl enc -base64`"
+
+echo SRBLOB is $SRBLOB >&2
+
+# We have the CCNDID of our ccnd in a file, left from test_ccndid
+CCNDID=`cat ccndid.out`
+
+# Now construct the interest.
+
+cat <<EOF >selfreg-request.xml
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">ccnx</Component>
+    <Component ccnbencoding="hexBinary">$CCNDID</Component>
+    <Component ccnbencoding="text">selfreg</Component>
+    <Component ccnbencoding="base64Binary">$SRBLOB</Component>
+  </Name>
+  <Scope>1</Scope>
+</Interest>
+EOF
+ccn_xmltoccnb -w selfreg-request.xml || Fail botch constructing selfreg-request.ccnb
+
+CCNDStatus > selfreg-pre.html
+
+# Try out the request; use udp so our face does not instantly vanish
+# Send a heartbeat first to convince ccnd to trust us to selfreg
+dd if=/dev/zero bs=1 count=1 > heartbeat.ccnb
+ccndsmoketest -u localhost -b send heartbeat.ccnb send selfreg-request.ccnb recv > selfreg-response.ccnb
+
+cmp -s /dev/null selfreg-response.ccnb && Fail did not get selfreg response
+ccn_ccnbtoxml selfreg-response.ccnb || Failed to parse selfreg response
+
+ccnbx -d selfreg-response.ccnb Content | ccn_ccnbtoxml -x -
+
+CCNDStatus > selfreg-post.html
+grep ccnx:/Junk/Testing/Selfreg selfreg-post.html >/dev/null || Fail Self-registered prefix does not show up in ccnd status
+
+rm selfreg-request.xml

@@ -1,0 +1,9 @@
+Implicit Digest Component
+=========================
+
+The *implicit digest component* consists the SHA-256 digest of the entire ccnb-encoded link:ContentObject.html[ContentObject].
+
+The reasoning behind this is that we want to be able to do both of the following:
+
+. Link to one specific ContentObject and no other.
+. Exclude a specific ContentObject in an interest (whether or not it has a valid signature).

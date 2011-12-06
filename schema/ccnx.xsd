@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "XMLSchema.dtd">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<!-- XXX
+        xmlns:ccn="http://www.ccnx.org/content/schema/20090915" 
+        targetNamespace="http://www.ccnx.org/content/schema/20090915"
+        elementFormDefault="unqualified"
+        attributeFormDefault="unqualified"
+-->
+
+  <xs:annotation>
+    <xs:documentation xml:lang="en">
+      Content-Centric Networks data schema.
+    </xs:documentation>
+  </xs:annotation>
+
+<!-- Top-level objects that can appear in 
+     documents, messages, etc. -->
+<xs:element name="CCNProtocolDataUnit"/> <!-- FIXTHIS - needs a type -->
+<xs:element name="ContentObject" type="ContentObjectType"/>
+<xs:element name="CompleteName" type="CompleteNameType"/>
+<xs:element name="Collection" type="CollectionType"/>
+<xs:element name="Link" type="LinkType"/>
+<xs:element name="KeyValueSet" type="KeyValueSetType"/>
+<xs:element name="Header" type="HeaderType"/>
+<xs:element name="Interest" type="InterestType"/>
+<xs:element name="StatusResponse" type="StatusResponseType"/>
+
+<xs:complexType name="CollectionType">
+  <xs:sequence>
+    <xs:element name="Link" type="LinkType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="LinkType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+    <xs:element name="Label" type="xs:string" minOccurs="0" maxOccurs="1" /> 
+    <xs:element name="LinkAuthenticator" type="LinkAuthenticatorType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="LinkAuthenticatorType">
+  <xs:sequence>
+    <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherCertificateDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
+    </xs:choice>
+    <xs:element name="NameComponentCount" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="Timestamp" type="TimestampType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="Type" type="ContentType" minOccurs="0" maxOccurs="1"/>
+    <xs:element name="ContentDigest" type="Base64BinaryType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="NameValueType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="KeyValuePairType">
+  <xs:sequence>
+      <xs:element name="Key" type="xs:string"/>
+      <xs:choice>
+        <xs:element name="IntegerValue" type="xs:integer"/>
+        <xs:element name="DecimalValue" type="xs:decimal"/>
+        <xs:element name="StringValue" type="xs:string"/>
+        <xs:element name="BinaryValue" type="Base64BinaryType"/>
+        <xs:element name="NameValue" type="NameValueType"/>
+      </xs:choice>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Maybe there is a way to drop a level of nesting... -->
+<xs:complexType name="KeyValueSetType">
+  <xs:sequence>
+    <xs:element name="Entry" type="KeyValuePairType" minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="HeaderType">
+  <xs:sequence>
+    <xs:element name="Start" type="xs:nonNegativeInteger"/>
+    <xs:element name="Count" type="xs:nonNegativeInteger"/>
+    <xs:element name="BlockSize" type="xs:nonNegativeInteger"/>
+    <xs:element name="Length" type="xs:nonNegativeInteger"/>
+    <xs:element name="ContentDigest" type="Base64BinaryType" minOccurs="0"/>
+    <xs:element name="RootDigest" type="Base64BinaryType" minOccurs="0"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="NameType">
+  <xs:sequence>
+    <xs:element name="Component" type="Base64BinaryType"
+                minOccurs="0" maxOccurs="unbounded"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="Base64BinaryType">
+  <xs:simpleContent>
+    <xs:extension base="xs:base64Binary">
+      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
+<!-- Binary representation of time, Unix time epoch, units 2**-12 sec -->
+<!-- The length limit limit of 6 bytes is not actually to be enforced, but
+     it will be a loooooooong time before anyone cares. --> 
+
+<xs:simpleType name="BinaryTime12">
+    <xs:restriction base="xs:base64Binary">
+      <xs:length value="6" fixed="true"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="TimestampType">
+  <xs:simpleContent>
+    <xs:extension base="BinaryTime12">
+      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
+<!-- Binary representation of relative time, relative to "now" -->
+<xs:complexType name="FinegrainLifetimeType">
+  <xs:simpleContent>
+    <xs:extension base="BinaryTime12">
+      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
+<!-- Note: SignedInfo was formerly known as ContentAuthenticator -->
+<xs:complexType name="SignedInfoType">
+  <xs:sequence>
+    <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
+    <xs:element name="Timestamp" type="TimestampType"/>
+    <xs:element name="Type" type="ContentType" minOccurs="0" maxOccurs="1"/>
+    <!-- The optional FreshnessSeconds indicates how many seconds a node
+                 should wait after the arrival of this ContentObject before
+                 marking it as stale. -->
+    <xs:element name="FreshnessSeconds" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+    <!-- The optional FinalBlockID indicates the identifier of the final block
+                 in a sequence of fragments.  It should be present in the
+                 final block itself, and may also be present in other fragments
+                 to provide advanced warning of the end to consumers.  The
+                 value here should be equal to the last explicit Name Component
+                 of the final block. -->
+    <xs:element name="FinalBlockID" type="Base64BinaryType" minOccurs="0" maxOccurs="1"/>
+    <!-- A KeyLocator tells where to find the key to verify this content.
+                 This is signed, but may be omitted when the signer
+		 is really sure that everyone on the path can find the
+		 key. (In theory, does not need to be signed; you can't verify
+                 the signature over it until you have the key, and by then you
+		 know whether it was correct or not. Not signing it would also
+		 allow it to be replaced by updated information known to the
+		 forwarder.  DoS attacks mounted by omitting it can be
+		 mounted whether it is signed or not; as can attacks mounted
+		 by modifying it maliciously.) The PublisherKeyID in the
+		 SignedInfo is what is used as the real fast selector
+                 to identify the signer of this content, not the locator.
+                 The reason for leaving the locator in the signed component
+                 of the packet is the risk of selective DOS attacks - if
+		 credentials attached to a key can be found only by locating
+		 it within a certain namespace, one could replace the
+		 publisher's locator with another that pointed to the same key
+		 but made it seem as if it lacked those credentials. -->
+    <xs:element name="KeyLocator" type="KeyLocatorType" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Encapsulate some of the possible bits necessary to verify the
+	 mapping. -->
+<xs:complexType name="SignatureType">
+  <xs:sequence>
+	<!-- We either need to include a digest algorithm or a signature
+		 algorithm here. X.509 uses a sigalg up front (and again in
+		 the signature), PKCS#7 and XML signature uses a digest up
+		 front. Most APIs require us to know the signature algorithm,
+		 not the digest algorithm, to begin the verification process.
+		 Putting the signature up front along with this algorithm
+		 forces us to store the signature till we need it, but
+		 allows us to not repeat the algorithm. Expressing just a
+		 digest algorithm forces us to assume that a given key can
+		 only be used for one algorithm (depending on how we encode
+		 the signature). Also, if we digest the content before including
+		 it in the signature, we need to know what digest algorithm to
+		 use. We either have to assume it's the same one as for the
+		 signature, or standard one (with a separate, elided expression
+		 of version to allow later change if this one is broken).
+		 Right now, take the theory that a) signature algorithms
+		 are likely less standard for us than digest algorithms. So
+		 specify a digest algorithm here to increase our options of
+		 eliding it (default = sha-256). b) for now, sign the content
+		 directly rather than re-hashing it, except for aggregated signatures.  -->
+	<xs:element name="DigestAlgorithm" type="xs:string"
+					 default="2.16.840.1.101.3.4.2.1"
+                                         minOccurs="0" maxOccurs="1" /> 
+	<!-- A Witness is additional information necessary to verify the
+		 signature in some algorithms. For elements authenticated
+		 using a Merkle Hash Tree, the witness information would be
+		 the elements of the hash path through the tree. -->
+	<xs:element name="Witness" type="Base64BinaryType" minOccurs="0" maxOccurs="1" />
+	<!-- The signature over the name, content authenticator, and content. -->
+    <xs:element name="SignatureBits" type="Base64BinaryType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="ContentObjectType">
+  <xs:sequence>
+	<!-- Signature over name, content authenticator, and the content.
+                 Place first to allow grouping of Signature+Name
+		 and Name+Authenticator for various applications. -->
+	<xs:element name="Signature" type="SignatureType"/>
+	<xs:element name="Name" type="NameType"/>
+	<xs:element name="SignedInfo" type="SignedInfoType"/>
+	<!-- The content to be signed. As there is no longer a proxy for
+             (digest of) the content explicitly in the authenticator, you
+             need the content itself to verify the signature. Because we
+	     generally need to compute the digest of the content anyway,
+	     we do so prior to signing. Given that, we either need to pick
+	     a standard digest algorithm for content and always use it
+	     (presumably SHA-256), at which point we need a version number
+	     for messages, in case SHA-256 is broken and we need to change.
+	     Or, we need to specify what digest to use in each message. --> 
+	<xs:element name="Content" type="Base64BinaryType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- Sometimes we just need to talk about mappings (everything needed
+     to authenticate a name) without the content itself.  Since we
+     have moved the proxy for the content out of the content
+     authenticator, this information is no longer sufficient to
+     authenticate the content. We will have to look carefully at where
+     and how it is used. -->
+<xs:complexType name="CompleteNameType">
+  <xs:sequence>
+    <xs:element name="Signature" type="SignatureType"/>
+    <xs:element name="Name" type="NameType"/>
+    <xs:element name="SignedInfo" type="SignedInfoType"/>
+  </xs:sequence>
+</xs:complexType>
+
+<!-- XXX - figure out how to use this type instead of duplicating the choice inline.  -->
+<xs:complexType name="PublisherDigestType">
+  <xs:choice>
+    <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
+    <xs:element name="PublisherCertificateDigest" type="DigestType"/>
+    <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
+    <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
+  </xs:choice>
+</xs:complexType>
+
+<xs:complexType name="InterestType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+    <xs:element name="MinSuffixComponents" type="xs:nonNegativeInteger"
+                        minOccurs="0" maxOccurs="1"/>
+    <xs:element name="MaxSuffixComponents" type="xs:nonNegativeInteger"
+                        minOccurs="0" maxOccurs="1"/>
+    <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherCertificateDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
+    </xs:choice>
+    <xs:element name="Exclude" type="ExcludeType"
+                        minOccurs="0" maxOccurs="1"/>
+    <xs:element name="ChildSelector" type="xs:nonNegativeInteger"
+                        minOccurs="0" maxOccurs="1"/>
+    <xs:element name="AnswerOriginKind" type="xs:nonNegativeInteger"
+                        minOccurs="0" maxOccurs="1"/>
+    <xs:element name="Scope" type="xs:nonNegativeInteger"
+			minOccurs="0" maxOccurs="1"/>
+    <xs:element name="InterestLifetime" type="FinegrainLifetimeType"
+			minOccurs="0" maxOccurs="1"/>
+    <xs:element name="Nonce" type="Base64BinaryType"
+			minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="ExcludeType">
+  <xs:sequence>
+    <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="Any" type="EmptyType"/>
+        <xs:element name="Bloom" type="Base64BinaryType"/>
+    </xs:choice>
+     <xs:sequence minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Component" type="Base64BinaryType"/>
+        <xs:choice minOccurs="0" maxOccurs="1">
+            <xs:element name="Any" type="EmptyType"/>
+            <xs:element name="Bloom" type="Base64BinaryType"/>
+        </xs:choice>
+     </xs:sequence>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="EmptyType">
+  <xs:sequence/>
+</xs:complexType>
+
+<xs:complexType name="DigestType">
+  <xs:simpleContent>
+    <xs:extension base="SHA256Digest">
+      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
+<xs:simpleType name="SHA256Digest">
+    <xs:restriction base="xs:base64Binary">
+      <!-- SHA-256 digest -->
+      <xs:length value="32" fixed="true"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="ContentType">
+  <xs:simpleContent>
+    <xs:extension base="ContentTypeType">
+      <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
+    </xs:extension>
+  </xs:simpleContent>
+</xs:complexType>
+
+<xs:simpleType name="ContentTypeType">
+  <xs:restriction base="xs:base64Binary">
+    <xs:length value="3" fixed="true"/>
+    <xs:enumeration value="DATA"/> <!-- default when Type element is absent -->
+    <xs:enumeration value="ENCR"/> <!-- content is encrypted -->
+    <xs:enumeration value="GONE"/> <!-- whiteout marker -->
+    <xs:enumeration value="KEY/"/> <!-- public key -->
+    <xs:enumeration value="LINK"/> <!-- link -->
+    <xs:enumeration value="NACK"/> <!-- no content at this time -->
+  </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="KeyLocatorType">
+  <xs:sequence>
+    <xs:choice>
+      <xs:element name="Key" type="Base64BinaryType"/>
+      <xs:element name="Certificate" type="Base64BinaryType"/>
+      <xs:element name="KeyName" type="KeyNameType"/>
+    </xs:choice>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="KeyNameType">
+  <xs:sequence>
+    <xs:element name="Name" type="NameType"/>
+    <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="PublisherPublicKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherCertificateDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerKeyDigest" type="DigestType"/>
+        <xs:element name="PublisherIssuerCertificateDigest" type="DigestType"/>
+    </xs:choice>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:element name="FaceInstance" type="FaceInstanceType"/>
+<xs:complexType name="FaceInstanceType">
+  <xs:sequence>
+      <xs:element name="Action" type="xs:string" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="PublisherPublicKeyDigest" type="DigestType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="FaceID" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="IPProto" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="Host" type="xs:string" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="Port" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="MulticastInterface" type="xs:string" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="MulticastTTL" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="FreshnessSeconds" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:element name="ForwardingEntry" type="ForwardingEntryType"/>
+<xs:complexType name="ForwardingEntryType">
+  <xs:sequence>
+      <xs:element name="Action" type="xs:string" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="Name" type="NameType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="PublisherPublicKeyDigest" type="DigestType" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="FaceID" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="ForwardingFlags" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="FreshnessSeconds" type="xs:nonNegativeInteger" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="StatusResponseType">
+  <xs:sequence>
+      <xs:element name="StatusCode" type="xs:nonNegativeInteger" minOccurs="1" maxOccurs="1"/>
+      <xs:element name="StatusText" type="xs:string" minOccurs="0" maxOccurs="1"/>
+  </xs:sequence>
+</xs:complexType>
+
+</xs:schema>

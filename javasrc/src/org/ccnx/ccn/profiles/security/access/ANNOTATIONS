@@ -1,0 +1,4 @@
+/**
+ * @package org.ccnx.ccn.profiles.security.access
+ * Pluggable %access control framework.
+ */

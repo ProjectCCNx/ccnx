@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<Link>
+  <Name>
+    <Component ccnbencoding="base64Binary">d2hhdCdjaHU=</Component>
+    <Component ccnbencoding="base64Binary">bG9va2luJw==</Component>
+    <Component ccnbencoding="base64Binary">YXQ=</Component>
+    <Component ccnbencoding="base64Binary">V2lsbGlzPw==</Component>
+  </Name>
+  <Label>label string</Label>
+  <LinkAuthenticator>
+    <PublisherPublicKeyDigest ccnbencoding="base64Binary">KjIqNCo2KjgqMCoyKjQqNio4KjAqMio0KjYqOCowKjI=</PublisherPublicKeyDigest>
+    <NameComponentCount>2</NameComponentCount>
+    <Timestamp ccnbencoding="base64Binary">BHsH3Mq8</Timestamp>
+    <Type ccnbencoding="base64Binary">LINK</Type>
+    <ContentDigest ccnbencoding="base64Binary">MzIgYnl0ZSBzdHJpbmcgb2NjdXJzIG9wdGlvbmFsbHk=</ContentDigest>
+  </LinkAuthenticator>
+</Link>

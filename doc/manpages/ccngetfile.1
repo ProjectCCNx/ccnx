@@ -1,0 +1,84 @@
+'\" t
+.\"     Title: ccngetfile
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 11/03/2010
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.3.0
+.\"  Language: English
+.\"
+.TH "CCNGETFILE" "1" "11/03/2010" "\ \& 0\&.3\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccngetfile \- retrieve a file published as CCNx content and save it to a local file
+.SH "SYNOPSIS"
+.sp
+\fBccngetfile\fR [\-unversioned] [\-timeout \fImillis\fR] [\-as \fIpathToKeystore\fR] [\-ac] \fIccnxname\fR \fIfilename\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccngetfile\fR utility retrieves content published under the \fIccnxname\fR and writes it to the local file \fIfilename\fR\&. The content must be published as a collection of CCNx Data in accordance with the naming conventions for segmented streams or files, optionally unversioned\&. For the default case of versioned content, \fBccngetfile\fR will retrieve the latest version available\&.
+.sp
+The \fIccnxname\fR must be specified using the CCNx URI encoding syntax\&. For simple cases of ASCII name components this is just pathname syntax with / delimiters\&.
+.sp
+The \fIfilename\fR must be the pathname of a local file that will be written and will be overwritten if it already exists\&.
+.sp
+The \fI\-as\fR option sets the user key for decrypting published content\&. This must point to a place in the filesystem where CCNx compatible keys have been saved\&.
+.sp
+The \fI\-ac\fR flag forces \fBccngetfile\fR to obey access control restrictions\&. If the user is not permitted to read in a given namespace, decryption will fail\&.
+.SH "OPTIONS"
+.PP
+\fB\-unversioned\fR
+.RS 4
+Do not seek a version identifier as the next component following the
+\fIccnxname\fR
+prefix in retrieved Data\&. This option may be used when the supplied
+\fIccnxname\fR
+already includes an explicit version component at the end (which must be URI encoded)\&. This option may also be used for content that is organized according to the segmentation convention but does not use the versioning convention at all\&. When this option is used, the FileInputStream abstraction will not be used, since that implies versioning\&.
+.RE
+.PP
+\fB\-timeout\fR \fImillis\fR
+.RS 4
+Set the timeout that will be used for all content retrievals on during the stream reading\&.
+.RE
+.PP
+\fB\-log\fR \fILEVEL\fR
+.RS 4
+Set the logging level\&.
+\fILEVEL\fR
+must be the an acceptable Java Logger level: either an integer or a level name (e\&.g\&. SEVERE)\&.
+.RE
+.PP
+\fB\-as\fR \fIpathToKeystore\fR
+.RS 4
+Set the user for decrypting published content\&. This must point to a place in the filesystem where ccnx compatible keys have been saved\&.
+.RE
+.PP
+\fB\-ac\fR
+.RS 4
+This options forces
+\fBccngetfile\fR
+to obey access control restrictions\&. If the user is not permitted to read in a given namespace, decryption will fail\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; retrieval error)
+.RE
+.SH "AUTHOR"
+.sp
+Diana Smetters, <smetters@parc\&.com>

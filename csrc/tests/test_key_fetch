@@ -1,0 +1,168 @@
+# tests/test_key_fetch
+# 
+# Test for fetch of key via KeyLocator
+#
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 8))
+CCND_DEBUG=0 ccnd &
+trap "ccndsmoketest kill" 0
+
+# This test uses some preexisting ContentObjects; turen them into ccnb form.
+ccn_xmltoccnb -w - << 'EOF' > keyfetchdata.ccnb
+<?xml version="1.0" encoding="UTF-8"?>
+<ContentObject>
+  <Signature>
+    <SignatureBits ccnbencoding="base64Binary">H3PgCBsmwrNCP23kSgoQeeSdVivcaG0xly35ZEi7CDZRjAJguc2SA0XWTlgsPLBu
+UitKZ3+uyh9BmaUjB/EDM+bTzoz0Td+CnADKYAz/MORLYr9VTjyFqENaXFdnE5Vp
+TEzqUnoIrDIdh7rIXLXE2AkhucB3QEYAfY/TI1sU3zU=</SignatureBits>
+  </Signature>
+  <Name>
+    <Component ccnbencoding="text">ccnd</Component>
+    <Component ccnbencoding="text">test_keyfetch</Component>
+    <Component ccnbencoding="base64Binary">/QSghfBVTA==</Component>
+    <Component ccnbencoding="base64Binary">+A==</Component>
+  </Name>
+  <SignedInfo>
+    <PublisherPublicKeyDigest ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</PublisherPublicKeyDigest>
+    <Timestamp ccnbencoding="base64Binary">BKCF8HuA</Timestamp>
+    <FinalBlockID ccnbencoding="base64Binary">+A==</FinalBlockID>
+    <KeyLocator>
+      <KeyName>
+        <Name>
+          <Component ccnbencoding="text">parc.com</Component>
+          <Component ccnbencoding="text">home</Component>
+          <Component ccnbencoding="text">plass</Component>
+          <Component ccnbencoding="text">Key</Component>
+          <Component ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</Component>
+        </Name>
+        <PublisherPublicKeyDigest ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</PublisherPublicKeyDigest>
+      </KeyName>
+    </KeyLocator>
+  </SignedInfo>
+  <Content ccnbencoding="base64Binary">V2hlcmUgYXJlIG15IGtleXM/Cg==</Content>
+</ContentObject>
+EOF
+
+ccn_xmltoccnb -w - << 'EOF' > keyfetchpkey.ccnb
+<?xml version="1.0" encoding="UTF-8"?>
+<ContentObject>
+  <Signature>
+    <SignatureBits ccnbencoding="base64Binary">AKE6k54oWcHgr+Yr0yHgrsR60TVzukzZ4YKyIJJ2w+i9fT+U66U/d0/pPvC0ChlP
+3CFHroPMhzUWwLIUC2eNBGgqVK3cXjSnTuWDnhcZ++huha08KxopBTXqVSYQEXFb
+bvcQwKj00Md01XQdJA+UsrZzH3GOM1aHn1SzoC4IQqQ=</SignatureBits>
+  </Signature>
+  <Name>
+    <Component ccnbencoding="text">parc.com</Component>
+    <Component ccnbencoding="text">home</Component>
+    <Component ccnbencoding="text">plass</Component>
+    <Component ccnbencoding="text">Key</Component>
+    <Component ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</Component>
+  </Name>
+  <SignedInfo>
+    <PublisherPublicKeyDigest ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</PublisherPublicKeyDigest>
+    <Timestamp ccnbencoding="base64Binary">BKCF8IvA</Timestamp>
+    <Type ccnbencoding="text">(F?</Type>
+    <KeyLocator>
+      <KeyName>
+        <Name>
+          <Component ccnbencoding="text">parc.com</Component>
+          <Component ccnbencoding="text">home</Component>
+          <Component ccnbencoding="text">plass</Component>
+          <Component ccnbencoding="text">Key</Component>
+          <Component ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</Component>
+        </Name>
+        <PublisherPublicKeyDigest ccnbencoding="base64Binary">18raJi+VnDbQZjSE9Z1UJUjBTA1/BhTDaI1Nrx9yo28=</PublisherPublicKeyDigest>
+      </KeyName>
+    </KeyLocator>
+  </SignedInfo>
+  <Content ccnbencoding="base64Binary">MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCi5OJGBGO0O8t73keokEVl4RJC
+hjb1oITo2+AaS8w8jfapmlkeN7U22qgcWZGaKMEMKjjqoR2mDvKj3AbhEZmailXn
+Z3mfVZH6wODy6amzmd92jvZqmF9fvVwijHEO+avhUk9q0xiRGl+CXqyqPVXKa2G/
+dT9ZtpcTlnhdUwLzNwIDAQAB</Content>
+</ContentObject>
+EOF
+
+ccn_xmltoccnb -w - << 'EOF' > keyfetchsetup.ccnb
+<?xml version="1.0" encoding="UTF-8"?>
+<ContentObject>
+  <Signature>
+    <SignatureBits ccnbencoding="base64Binary">pz3Wj9XJvsvyHLug3TjfD/wgGdHHHg6qY7JOysBP6A9SuEm6QTIyd0JEsWNguWtR
+IhHAXA0B+MmPvwLcCCkp/KwDhlcCMkwy54K4KMT+7+IkLc3+5g1hFnXCVkdATxXQ
+YEk8kKEkTqY/V1Ev597qgWo5YhSBfQiyJJmrDpd/zcs=</SignatureBits>
+  </Signature>
+  <Name>
+    <Component ccnbencoding="text">check</Component>
+    <Component ccnbencoding="text">dataresponsetest</Component>
+    <Component ccnbencoding="base64Binary">/QTUcyxIww==</Component>
+    <Component ccnbencoding="base64Binary">AA==</Component>
+  </Name>
+  <SignedInfo>
+    <PublisherPublicKeyDigest ccnbencoding="base64Binary">gSNOydalY3g66mYS5MuRNBiAlKN5V9TYPJaxHPmAKl4=</PublisherPublicKeyDigest>
+    <Timestamp ccnbencoding="base64Binary">BNRzLEjU</Timestamp>
+    <FinalBlockID ccnbencoding="base64Binary">AA==</FinalBlockID>
+    <KeyLocator>
+      <Key ccnbencoding="base64Binary">MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDK93umny6aOICdBPZ5/7+eDRqA
+ec4G9QeyiVO5Eo7nMSfB7y/cTXEfteEy5k7fXx4donctXwO6fi76PqfydJTMryOG
+buOgY8JzwyzJbTqDrruWohsIuO4iNcUvZOGf+T7u4kBcnmJi7Rl/j5S/sAqF8Re7
+lfwlkVRGHCSHlFxjeQIDAQAB</Key>
+    </KeyLocator>
+  </SignedInfo>
+  <Content ccnbencoding="base64Binary">SGVyZQo=</Content>
+</ContentObject>
+EOF
+
+ccndsmoketest
+dataresponsetest keyfetchdata.ccnb keyfetchpkey.ccnb keyfetchsetup.ccnb &
+ccndsmoketest -t 100 recv
+
+# Don't start the test until our dataresponsetest process is ready.
+ccnget -c /check/dataresponsetest || SkipTest dataresponsetest not responding
+
+# This is the heart of the test.
+# First, do a vanilla ccnls, which does not attempt to fetch the key.
+ccnls ccnx:/ccnd/test_keyfetch > unverified.out
+# Next, tell ccnls that it should fetch the key.
+CCN_VERIFY=1 ccnls ccnx:/ccnd/test_keyfetch > verified.out
+
+# Now make sure that we got what we were expecting.
+fgrep '[unverified]' unverified.out || Fail should have gotten unverified data without key
+fgrep '[verified]' verified.out || Fail should have gotten verified data with key
+
+rm keyfetchdata.ccnb keyfetchpkey.ccnb keyfetchsetup.ccnb unverified.out verified.out
+####################################################################################
+: <<'EOF'
+# Instructions for creating pre-signed data
+# This will need re-doing if/when schema or encoding changes.
+# Need java for this.  WARNING: mucks with ~/.ccnx
+# WARNING: these instructions may be outdated, apply NaCl
+
+CCND_DEBUG=7 ccnd &
+tools/ccn_repo stop
+killall java
+rm -rf /tmp/test_key_fetch_repo
+mkdir /tmp/test_key_fetch_repo
+rm -rf ~/test_key_fetch.ccnx
+test -d ~/x.ccnx || mv ~/.ccnx ~/x.ccnx
+tools/ccn_repo /tmp/test_key_fetch_repo
+echo "Where are my keys?" > /tmp/test_key_fetch.data
+ccnputfile ccnx:/ccnd/test_keyfetch /tmp/test_key_fetch.data
+ccn_repo stop
+killall java
+mv ~/.ccnx ~/test_key_fetch.ccnx && mv ~/x.ccnx ~/.ccnx
+ccnget ccnx:/ccnd/test_keyfetch > keyfetchdata.ccnb
+cat ~/test_key_fetch.ccnx/*/*.ccnb > keyfetchpkey.ccnb
+ccndumpnames
+ccndsmoketest kill
+
+END

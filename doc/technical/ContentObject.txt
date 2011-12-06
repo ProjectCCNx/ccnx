@@ -1,0 +1,109 @@
+CCNx Content Object
+===================
+
+== Source references
+link:xsd.html[ccnx.xsd] is the xml schema that describes what the xml rendition of ccn data (including ContentObject messages) should look like.
+
+link:xsd.html[ccnx.xsd] is a dtd that should describe the same, in a less strongly-typed fashion.
+
+link:DTAG.html[tagname.csvdict] contains the mapping between the DTAG values used in the binary encoding and the element names used in the XML representation.
+
+Below we will use a less formal abstract syntax to indicate how the pieces fit together.
+
+== ContentObject
+.......................................................
+ContentObject ::= Signature
+                  Name
+                  SignedInfo
+                  Content
+.......................................................
+
+The ContentObject element represents some arbitrary binary data
+(held in the Content element) together with its link:Name.html[Name], some
+additional bits of information (the SignedInfo), and a digital
+Signature of the other three elements.
+
+== Signature 
+
+See the link:SignatureGeneration.html[Signature Specification].
+
+== Name
+
+See the link:Name.html[CCNx Name Specification].
+
+== SignedInfo
+
+.......................................................
+SignedInfo ::= PublisherPublicKeyDigest
+	       Timestamp
+	       Type?
+	       FreshnessSeconds?
+	       FinalBlockID?
+	       KeyLocator?
+.......................................................
+
+=== PublisherPublicKeyDigest
+
+The PublisherPublicKeyDigest identifies the publisher that signed this
+content.  The value is a SHA-256 digest of the public key of the publisher.
+
+=== Timestamp
+
+See link:Timestamp.html[CCNx Timestamp Specification]
+
+=== Type
+
+The primitive type of the ContentObject *Content*.
+This is encoded as a 3-byte BLOB;
+when viewed using a `base64Binary` encoding,
+the encoded value has some mnemonic value.
+The hex and decimal equivalents (in network byte order) are also given here for reference.
+Note that the default of DATA is not encoded in the ContentObject - the entire
+Type element is omitted.
+
+[width="90%",cols="^4m,^6m,^6m,30d",options="header"]
+|==================================================================
+| Base64 |   Hex    | Decimal |  Description 
+|  DATA  | 0x0C04C0 |  787648 | default when Type element is absent
+|  ENCR  | 0x10D091 | 1101969 | content is encrypted
+|  GONE  | 0x18E344 | 1631044 | whiteout marker
+|  KEY/  | 0x28463F | 2639423 | public key
+|  LINK  | 0x2C834A | 2917194 | link
+|  NACK  | 0x34008A | 3408010 | no content at this time
+|==================================================================
+
+=== FreshnessSeconds 
+
+The optional FreshnessSeconds indicates how many seconds a node should
+wait after the arrival of this ContentObject before marking it as
+stale.  See link:Staleness.html[Staleness Specification].
+
+=== FinalBlockID
+
+The optional FinalBlockID indicates the identifier of the final block
+in a sequence of fragments.  It should be present in the final block
+itself, and may also be present in other fragments to provide advanced
+warning of the end to consumers.  The value here should be equal to
+the last explicit Name Component of the final block.
+
+=== KeyLocator
+
+A KeyLocator tells where to find the key to verify this content.  The
+KeyLocator may be be omitted when the signer is really sure that
+all parties can find the key by other means.  Name conventions can be used
+to find the name of the key for a piece of content from the name of
+the ContentObject.
+
+The *PublisherPublicKeyDigest* is used as the fast selector to identify the
+signer of the content, not this locator.
+
+.......................................................
+KeyLocator ::= Key
+	     | Certificate
+	     | KeyName
+.......................................................
+
+== Content
+.......................................................
+Content ::= BLOB
+.......................................................

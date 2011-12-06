@@ -1,0 +1,29 @@
+CCNx Name
+=========
+
+== Name
+.......................................................
+Name ::= Component*
+Component ::= BLOB
+.......................................................
+A Name element represents a hierarchical name for CCNx content.
+It simply contains a sequence of *Component* elements.
+Each Component element contains a sequence of zero or more bytes.
+There are no restrictions on what byte sequences may be used.
+
+The Name element in an *Interest* is often referred to with the
+term 'name prefix' or simply 'prefix'.
+
+=== URI Representation
+It is often convenient to use a link:URI.html[URI Representation] for a CCNx Name.
+
+=== XML Presentation
+There are no restrictions on what byte sequences may be used in the,
+so when displayed as XML, a base64Binary or hexBinary encoding may be
+needed.  When the bytes happen to be printable UTF-8, a more human-friendly "text"
+alternative is available. (Note that the base64Binary and hexBinary options are not currently not shown in the link:xsd.html[official schema].)
+
+=== Related
+The Name element plays a pivotal role in both the
+link:InterestMessage.html[Interest] and
+link:ContentObject.html[ContentObject] element.  See the link:InterestMessage.html#example[Interest Message Example] for an example of encodings of a CCNx Name.

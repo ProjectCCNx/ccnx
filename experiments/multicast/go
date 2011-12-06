@@ -1,0 +1,19 @@
+#!/bin/sh
+# multicast/go
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+. ./settings
+PRESENT=`ccnls /experiments/multicast/hosts | cut -d ' ' -f 1  | sort | xargs | tr ' ' /`
+EXPERIMENTID=${1:-run}-$PRESENT-`date "+%s"`
+echo $EXPERIMENTID | ccnput -f -x 1 /experiments/multicast/GO
+ccnget -c /experiments/multicast/GO

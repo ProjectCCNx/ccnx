@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<ForwardingEntry>
+  <Action>destroy</Action>
+  <Name>
+    <Component ccnbencoding="base64Binary">VGhpc0lzUGFydE9mVGhlTmFtZQ==</Component>
+  </Name>
+  <PublisherPublicKeyDigest ccnbencoding="base64Binary">
+  AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=
+  </PublisherPublicKeyDigest>
+  <FaceID>123456</FaceID>
+  <ForwardingFlags>1</ForwardingFlags>
+  <FreshnessSeconds>13</FreshnessSeconds>
+</ForwardingEntry>

@@ -1,0 +1,49 @@
+CCNLS(1)
+========
+
+NAME
+----
+ccnls - Attempts to list name components available at the next level of
+the hierarchy for a given CCNx name prefix. 
+
+SYNOPSIS
+--------
+*ccnls* 'ccnxname'
+
+DESCRIPTION
+-----------
+The *ccnls* utility lists name components available after the supplied CCNx
+name prefix, 'ccnxname', for content objects that are cached in the local *ccnd*.
+
+This utility does not have explicit flags or options, but can be modified via
+environment variables.  These include the scope of the generated interest
+('CCN_SCOPE'), the amount of time to wait between responses from *ccnd*
+('CCN_LINGER') and whether signature verification is desired ('CCN_VERIFY').
+
+
+OPTIONS
+-------
+The *ccnls* utility does not have additional flags or options.  Behavior can
+be changed by using the following two environment variables.
+
+    CCN_SCOPE=
+      Scope in generated interests (0, 1, 2). The default is none specified.
+      
+    CCN_LINGER=
+      Timeout for not receiving data.  The default is 0.5 seconds.
+      
+    CCN_VERIFY=
+      If set and non-empty, indicates that signature verification is required.
+
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; retrieval error)
+
+AUTHOR
+------
+Michael Plass <plass@parc.com>

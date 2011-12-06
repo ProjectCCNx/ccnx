@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+
+Part of the CCNx Java Library.
+
+This work is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License version 2 as published by the
+Free Software Foundation. 
+This work is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+for more details. You should have received a copy of the GNU General Public
+License along with this program; if not, write to the
+Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+Boston, MA 02110-1301, USA. -->
+
+<!-- This is an ant project file, see http://ant.apache.org/ -->
+
+<!-- This file defines the libs required to compile and run CCN library
+     and apps written against it.  It is designed to be imported into
+     another ant file to get these definitions for building classpaths -->
+
+<project name="ccn-libs" basedir=".">
+
+	<dirname property="ccn-libs-basedir" file="${ant.file.ccn-libs}"/>
+	<property name="lib" location="${ccn-libs-basedir}/lib"/>
+	<property name="junit-jar" location="${lib}/junit-4.3.1.jar"/>
+	<!-- BouncyCastle for JDK1.5 is not distributed by may be supplied -->
+    <condition property="bcprov-jar" value="${lib}/bcprov-jdk16-143.jar"
+		                              else="${lib}/bcprov-jdk15-143.jar">
+		<equals arg1="1.6" arg2="${ant.java.version}"/>
+	</condition>
+	
+	<property name="xml-jar" location="${lib}/kxml2-2.3.0.jar"/>
+
+	<!-- CLASSPATH NOTE: This should be a minimal set of what is 
+        required, so we have an authoritative list of dependencies 
+		ccn-classpath contains jar files required to compile -->
+	<path id="ccn-classpath">
+		<pathelement location="${bcprov-jar}"/>
+		<pathelement location="${xml-jar}"/>
+		<pathelement location="${junit-jar}"/>
+	</path>
+
+    <!-- ccn-classpath-run contains ADDITIONAL needed at runtime -->
+	<path id="ccn-classpath-run">
+		<path refid="ccn-classpath"/>
+    </path>
+
+</project>
