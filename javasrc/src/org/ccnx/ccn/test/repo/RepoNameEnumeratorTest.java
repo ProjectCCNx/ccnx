@@ -249,7 +249,10 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener, CCNI
 			//Assert.assertTrue(names2.get(1).toString().equals("/name2"));
 			Assert.assertNull(names3);
 		} else if (count == 3) {
-			Assert.assertNull(names3);
+			if (names3 != null) {
+				Assert.assertTrue(names2.size()==2);
+				Assert.assertTrue((names2.get(0).toString().equals("/name1") && names2.get(1).toString().equals("/name2")) || (names2.get(0).toString().equals("/name2") && names2.get(1).toString().equals("/name1")));
+			}
 		} else if (count==4) {
 			Assert.assertNotNull(names3);
 			Log.info("names3 size = "+names3.size());
