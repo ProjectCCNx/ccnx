@@ -31,10 +31,10 @@ ALLTESTS = \
   test_single_done \
   test_sync_basic \
   test_sync_read \
+  test_sync_repo2 \
   test_twohop_ccnd \
-  test_twohop_ccnd_teardown \
-  test_sync_repo2
-
+  test_twohop_ccnd_teardown
+  
 default all: $(SCRIPTSRC) testdriver
 
 depend: testlist

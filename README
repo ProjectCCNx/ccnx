@@ -1,0 +1,28 @@
+This file is a placeholder for any special instructions related to this submodule.
+
+To build from submodule ccnr directory, type:
+make
+
+About the Test Framework for repo2:
+Building ccnx builds the tests. Once built you can run 'ant -Drepo2=true <test name>' in the ccnx/javasrc directory to run tests. All the repo related tests are:
+
+test-repo-initial-read
+test-io-with-repo
+test-repo-io
+test-access-control-with-repo
+test-benchmark
+test-repo-name-responder
+test-protocol-with-repo
+test-repo-objects
+test-repo-structure
+test-enumerated-name-list
+test-remote-repo1
+test-remote-repo2
+test-security-with-repo
+test-repo
+test-impl-with-repo
+test-repo-ccnd-restart
+test-repo-initial-policy
+
+
+Regular javasrc testing can be performed normally.
