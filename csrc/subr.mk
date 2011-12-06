@@ -1,1 +1,0 @@
-../../ccnx/csrc/subr.mk
