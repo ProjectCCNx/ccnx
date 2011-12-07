@@ -225,6 +225,9 @@ public class InterestTable<V> {
 						// corresponding to that one.
 						// XXX - should we care about whether the key has multiple
 						// interests attached?
+						if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO)) {
+							Log.info(Log.FAC_ENCODING, "removing entry associated with name {0}", _contentNamesLRU.get(0));
+						}
 						_contents.remove(_contentNamesLRU.get(0));
 						_contentNamesLRU.remove(0);
 					}
