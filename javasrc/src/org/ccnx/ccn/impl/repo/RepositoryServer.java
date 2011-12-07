@@ -477,7 +477,7 @@ public class RepositoryServer implements CCNStatistics {
 	}
 	
 	/**
-	 * Look for unverified keys based on content object
+	 * Look for keys we don't have based on content object
 	 * 
 	 * @param content
 	 * @param target

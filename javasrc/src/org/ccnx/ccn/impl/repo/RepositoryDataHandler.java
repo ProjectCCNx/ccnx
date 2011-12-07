@@ -39,7 +39,7 @@ import org.ccnx.ccn.protocol.Interest;
 public class RepositoryDataHandler implements Runnable {
 	private RepositoryServer _server;
 	private Queue<ContentObject> _queue = new ConcurrentLinkedQueue<ContentObject>();
-	private InterestTable<ContentName> _pendingSyncs = new InterestTable<ContentName>();
+	private InterestTable<ContentName> _pendingKeyChecks = new InterestTable<ContentName>();
 	private boolean _shutdown = false;
 	
 	public RepositoryDataHandler(RepositoryServer server) {
@@ -53,8 +53,8 @@ public class RepositoryDataHandler implements Runnable {
 		}
 	}
 	
-	public void addSync(ContentName target) {
-		_pendingSyncs.add(new Interest(target), target);
+	public void addKeyCheck(ContentName target) {
+		_pendingKeyChecks.add(new Interest(target), target);
 	}
 
 	/**
@@ -90,23 +90,25 @@ public class RepositoryDataHandler implements Runnable {
 						_server.sendEnumerationResponse(ner);
 					}
 					
-					// When a sync is incomplete, we may not know yet whether it has keys that
-					// need syncing. Now we can find this out. Also the key locator that we hadn't
-					// synced yet could have been a link. We didn't know that either. If it was we
-					// have to sync the data it points to.
+					// When a write or some syncs are first requested we don't know what key data 
+					// was being used because this is in the ContentObject which of course we didn't
+					// have yet. Bbut we need this data to make sure the key is saved along with the file.
+					// Now we can find the key data and check if we have it already or need to get it
+					// too. Also the key locator that we dont have yet could have been a link. We 
+					// didn't know that either. If it was we have to get the data it points to.
 					//
-					// Also we have to check for more unsynced locators associated with our new object 
+					// Also we have to check for more locators associated with our new object 
 					// and the objects pointed to by the links.
-					Entry<ContentName> entry = _pendingSyncs.removeMatch(co);
+					Entry<ContentName> entry = _pendingKeyChecks.removeMatch(co);
 					if (null != entry) {
 						ContentName nameToCheck = entry.value();
 						if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
-							Log.finer(Log.FAC_REPO, "Processing sync entry: {0}", nameToCheck);
+							Log.finer(Log.FAC_REPO, "Processing key check entry: {0}", nameToCheck);
 						}
 						ContentName linkCheck = _server.getLinkedKeyTarget(co);
 						if (null != linkCheck) {
 							if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
-								Log.finer(Log.FAC_REPO, "Processing sync entry for link: {0}", linkCheck);
+								Log.finer(Log.FAC_REPO, "Processing key check entry for link: {0}", linkCheck);
 							}
 							Interest linkInterest = new Interest(linkCheck);
 							_server.doSync(linkInterest, linkInterest);
@@ -129,7 +131,7 @@ public class RepositoryDataHandler implements Runnable {
 				Log.finer(Log.FAC_REPO, "Fetching key from dataHandler: " + target);
 			}
 			Interest interest = Interest.constructInterest(target, _server.getExcludes(), 1, 3, null, null);
-			addSync(target);
+			addKeyCheck(target);
 			_server.doSync(interest, interest);
 		}
 	}
