@@ -46,6 +46,8 @@ public class CCNTime extends Timestamp {
 
 	private static final long serialVersionUID = -1537142893653443100L;
 	
+	private byte [] _binarytime = null;
+	
 	/**
 	 * This is the highest nanos value that doesn't quantize to over the ns limit for Timestamp of 999999999.
 	 */
@@ -133,7 +135,11 @@ public class CCNTime extends Timestamp {
 	 * @return the binary representation we use for encoding
 	 */
 	public byte [] toBinaryTime() {
-		return DataUtils.unsignedLongToByteArray(toBinaryTimeAsLong());
+		if( null == _binarytime ) {
+			byte [] b = DataUtils.unsignedLongToByteArray(toBinaryTimeAsLong());
+			_binarytime = b;
+		}
+		return _binarytime;
 	}
 	
 	/**
@@ -160,12 +166,14 @@ public class CCNTime extends Timestamp {
 	}
 	
 	protected void setFromBinaryTimeAsLong(long binaryTimeAsLong) {
+		_binarytime = null;
 		super.setTime((binaryTimeAsLong / 4096L) * 1000L);
 		super.setNanos((int)(((binaryTimeAsLong % 4096L) * 1000000000L) / 4096L));
 	}
 	
 	@Override
 	public void setTime(long msec) {
+		_binarytime = null;
 		long binaryTimeAsLong = toBinaryTimeAsLong((msec/1000) * 1000, (msec % 1000) * 1000000L);
 		super.setTime((binaryTimeAsLong / 4096L) * 1000L);
 		super.setNanos((int)(((binaryTimeAsLong % 4096L) * 1000000000L) / 4096L));
@@ -173,6 +181,7 @@ public class CCNTime extends Timestamp {
 
 	@Override
 	public void setNanos(int nanos) {
+		_binarytime = null;
 		int quantizedNanos = (int)(((((nanos * 4096L + 500000000L) / 1000000000L)) * 1000000000L) / 4096L);
 		if ((quantizedNanos < 0) || (quantizedNanos > 999999999)) {
 			System.out.println("Quantizing nanos " + nanos + " resulted in out of range value " + quantizedNanos + "!");
@@ -186,6 +195,7 @@ public class CCNTime extends Timestamp {
 	 * @param nanos
 	 */
 	public void addNanos(int nanos) {
+		_binarytime = null;
 		setNanos(nanos + getNanos());
 	}
 	
@@ -195,6 +205,7 @@ public class CCNTime extends Timestamp {
 	 * be performed from multiple threads.
 	 */
 	public void increment(int timeUnits) {
+		_binarytime = null;
 		long binaryTimeAsLong = toBinaryTimeAsLong();
 		binaryTimeAsLong += timeUnits;
 		setFromBinaryTimeAsLong(binaryTimeAsLong);
