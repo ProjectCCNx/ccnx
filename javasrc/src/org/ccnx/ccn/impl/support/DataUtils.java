@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -34,7 +34,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 /**
  * Miscellaneous utility routines for CCN, mostly data comparison and conversion.
  */
-public class DataUtils {
+public final class DataUtils {
 
 	public static final int BITS_PER_BYTE = 8;
 	public static final String EMPTY = "";	
@@ -596,4 +596,129 @@ public class DataUtils {
 		System.arraycopy(array, offset, newarray, 0, len);
 		return newarray;
 	}
+	
+	/**
+	 * Convert a BigEndian byte array in to a long assuming unsigned values.
+	 * No bounds checking is done on the array -- caller should make sure
+	 * it is 8 or fewer bytes.
+	 * 
+	 * Should operate like BigInteger(1, bytes).longValue().
+	 */
+	public final static long byteArrayToUnsignedLong(final byte [] src) {
+		long value = 0;
+		for(int i = 0; i < src.length; i++) {
+			value = value << 8;
+			// Java will assume the byte is signed, so extend it and trim it.
+			int b = ((int) src[i]) & 0xFF;
+			value |= b;
+		}
+		return value;
+	}
+	
+	/**
+	 * Like byteArrayToUnsignedLong, excpet we begin at byte position @start, not
+	 * at position 0.  This is commonly used to skip the 1st byte of a CommandMarker.
+	 * If @start is 0, works exactly like byteArrayToUnsignedLong(src).
+	 * @param src
+	 * @param start
+	 * @return
+	 */
+	public final static long byteArrayToUnsignedLong(final byte [] src, int start) {
+		long value = 0;
+		for(int i = start; i < src.length; i++) {
+			value = value << 8;
+			// Java will assume the byte is signed, so extend it and trim it.
+			int b = ((int) src[i]) & 0xFF;
+			value |= b;
+		}
+		return value;
+	}
+	
+	/**
+	 * Convert a long value to a Big Endian byte array.  Assume
+	 * the long is not signed.
+	 * 
+	 * This should be the equivalent of:
+	 *		byte [] b = BigInteger.valueOf(toBinaryTimeAsLong()).toByteArray();
+			if( 0 == b[0] && b.length > 1 ) {
+				byte [] bb = new byte[b.length - 1];
+				System.arraycopy(b, 1, bb, 0, bb.length);
+				b = bb;
+			}
+
+	 */
+	private final static byte [] _byte0 = {0};
+	
+	public final static byte [] unsignedLongToByteArray(final long value) {
+		if( 0 == value )
+			return _byte0;
+
+		if( 0 <= value && value <= 0x00FF ) {
+			byte [] bb = new byte[1];
+			bb[0] = (byte) (value & 0x00FF);
+			return bb;
+		}
+
+		
+		byte [] out = null;
+		int offset = -1;
+		for(int i = 7; i >=0; --i) {
+			byte b = (byte) ((value >> (i * 8)) & 0xFF);
+			if( out == null && b != 0 ) {
+				out = new byte[i+1];
+				offset = i;
+			}
+			if( out != null )
+				out[ offset - i ] = b;
+		}
+		return out;
+	}
+	
+	/**
+	 * Like unsignedLongToByteArray, except we specify what the first byte should be, so the
+	 * array is 1 byte longer than normal.  This is used by things that need a CommandMarker.
+	 * 
+	 * If the value is 0, then the array will be 1 byte with only @fistByte.  The 0x00 byte
+	 * will not be included.
+	 */
+	public final static byte [] unsignedLongToByteArray(final long value, final byte firstByte) {
+		// A little bit of unwinding for common cases.
+		// These hit a lot of the SegmentationProfile cases
+		
+		if( 0 == value ) {
+			byte [] bb = new byte[1];
+			bb[0] = firstByte;
+			return bb;
+		}
+
+		if( 0 <= value && value <= 0x00FF ) {
+			byte [] bb = new byte[2];
+			bb[0] = firstByte;
+			bb[1] = (byte) (value & 0x00FF);
+			return bb;
+		}
+		
+		if( 0 <= value && value <= 0x0000FFFFL ) {
+			byte [] bb = new byte[3];
+			bb[0] = firstByte;
+			bb[1] = (byte) ((value >>> 8) & 0x00FF);
+			bb[2] = (byte) (value & 0x00FF);
+			return bb;
+		}
+
+		byte [] out = null;
+		int offset = -1;
+		for(int i = 7; i >=0; --i) {
+			byte b = (byte) ((value >> (i * 8)) & 0xFF);
+			if( out == null && b != 0 ) {
+				out = new byte[i+2];
+				offset = i;
+			}
+			if( out != null )
+				out[ offset - i + 1 ] = b;
+		}
+		out[0] = firstByte;
+		return out;
+	}
+
 }

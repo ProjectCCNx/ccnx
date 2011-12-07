@@ -17,8 +17,7 @@
 
 package org.ccnx.ccn.profiles;
 
-import java.io.IOException; 
-import java.math.BigInteger;
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.logging.Level;
@@ -26,6 +25,7 @@ import java.util.logging.Level;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -99,22 +99,7 @@ public class VersioningProfile implements CCNProfile {
 		if (0 == version) {
 			vcomp = FIRST_VERSION_MARKER;
 		} else {
-			BigInteger bi = BigInteger.valueOf(version);
-			byte [] varr = bi.toByteArray();
-			
-			// assume that bi is not zero paded 2's comp
-			int start = 0;
-			int length = varr.length;
-			
-			// If BigInteger added a zero pad, remove it
-			if( 0 == varr[0] && varr.length > 1) {
-				start = 1;
-				length--;
-			}
-			
-			vcomp = new byte[length + 1];
-			vcomp[0] = VERSION_MARKER;
-			System.arraycopy(varr, start, vcomp, 1, length);
+			vcomp = DataUtils.unsignedLongToByteArray(version, VERSION_MARKER);
 		}
 		return new ContentName(name, vcomp);
 	}
@@ -284,14 +269,8 @@ public class VersioningProfile implements CCNProfile {
 		return name.component(i);
 	}
 	
-	public static long getVersionComponentAsLong(byte [] versionComponent) {
-		byte [] versionData = new byte[versionComponent.length - 1];
-		System.arraycopy(versionComponent, 1, versionData, 0, versionComponent.length - 1);
-		if (versionData.length == 0)
-			return 0;
-		
-		// Use the sign-magnitude representation, not 2's complement
-		return new BigInteger(1, versionData).longValue();
+	public static long getVersionComponentAsLong(final byte [] versionComponent) {
+		return DataUtils.byteArrayToUnsignedLong(versionComponent, 1);
 	}
 
 	public static CCNTime getVersionComponentAsTimestamp(byte [] versionComponent) {
