@@ -631,8 +631,7 @@ public class LocalCopyTestRepo {
 				sb.append('\n');
 			}
 			return sb.toString();
-		}
-		
+		}	
 	}
 	
 	private int getFaceId(AssertionCCNHandle handle, String type) throws CCNDaemonException, InterruptedException, Error {
