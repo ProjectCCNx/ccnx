@@ -3,16 +3,10 @@ Changes between 0.4.1 and 0.4.2:
 This highlights some important changes since the most recent numbered release.
 Refer to http://www.ccnx.org/redmine/ for more details.
 
-  * Bug 100426 (test_spur_traffic fails in a FreeBSD jail) is caused by the lack
-	of a localhost address for FreeBSD jails.  One possible workaround is to
-	bind to the jail's IP address when starting ccnd.  For example, use
-	CCND_LISTEN_ON=203.0.113.42 in ~/.ccnx/ccndrc (if the jail's ip address were
-	203.0.113.42).	Another possible workaround is to attach the localhost name to
-	the jail's IP address (in the jail's /etc/hosts file).	For more information
-	related to using FreeBSD, please see csrc/README.freebsd.
   * Issues Resolved:
 	* Feature 100371 Implement marshalling/unmarshalling for Link objects
-	* Bug 100426 test_spur_traffic fails in a FreeBSD jail (see workaround above)
+	* Bug 100426 test_spur_traffic fails in a FreeBSD jail (Workarounds are
+	  documented in csrc/README.freebsd.)
 	* Bug 100509 LocalCopyTestRepo has a "silent" failure
 	* Feature 100516	CCNVersionedInputStreamTest should use standard flosser
 	* Bug 100534 -timeout option in utilities is broken
