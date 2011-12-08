@@ -41,23 +41,13 @@ SRC := $(wildcard src/org/ccnx/android/examples/startup/*.java) AndroidManifest.
 $(TARGET): $(JARS) local.properties build.xml $(SRC)
 	ant debug
 
-# This will also generate a build.xml, which we remove because
-# it's a bad version.
-# Due to a bug in android update project, cannot have a --library on the command line
-# if the default.properties (or something else?) does not exist yet. 
 local.properties:
 	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-StartupExamples -p . -t android-7
 	$(ANDROID_SDK)/tools/android update project -p . -t android-7 --library ../../CCNx-Android-Lib/
-#	rm build.xml
-
-# Need to build local.properties first, because that creates a bogus build.xml
-build.xml: build.xml.in local.properties
-#	cp build.xml.in build.xml
 
 libs/ccn.jar: ../../../javasrc/ccn.jar
 	mkdir -p $(dir $@)
 	rm -f $@
-#	ln -s ../$^ $@
 
 libs/ccnChat.jar: ../../../apps/ccnChat/ccnChat.jar
 	mkdir -p $(dir $@)

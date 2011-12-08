@@ -39,20 +39,12 @@ default all: $(TARGET)
 $(TARGET): $(JARS) ccnd local.properties project.properties default.properties build.xml
 	ant debug
 
-# This will also generate a build.xml, which we remove because
-# it's a bad version.
-# Due to a bug in android update project, cannot have a --library on the command line
-# if the default.properties (or something else?) does not exist yet. 
 local.properties project.properties default.properties:
 	@mkdir -p libs
 	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-Services -p . -t android-7
 	$(ANDROID_SDK)/tools/android update project -p . -t android-7 --library ../CCNx-Android-Lib/
-#	rm build.xml
 
-# Need to build local.properties first, because that creates a bogus build.xml
-build.xml: build.xml.in local.properties
-#	cp build.xml.in build.xml
-
+# Need to revisit this for newer NDK.
 # Compensate for the lack of proper dependencies by removing any ccnx object
 # files that are older than the newest ccnx header file.  The android build
 # seems to deal OK with changes to the .c files themselves.
@@ -74,7 +66,6 @@ ccnd: environment checkccnxdeps
 libs/ccn.jar: ../../javasrc/ccn.jar
 	mkdir -p $(dir $@)
 	rm -f $@
-#	ln -s ../$^ $@
 
 ######################################
 # Maintenance targets

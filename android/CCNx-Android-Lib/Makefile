@@ -41,10 +41,6 @@ $(TARGET): $(JARS) environment local.properties build.xml
 
 local.properties project.properties default.properties:
 	$(ANDROID_SDK)/tools/android update lib-project -p . -t android-7
-#	rm build.xml
-
-# build.xml: build.xml.in local.properties
-#	cp build.xml.in build.xml
 
 libs/ccn.jar: ../../javasrc/ccn.jar
 	rm -f $@
