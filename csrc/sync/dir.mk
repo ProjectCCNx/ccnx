@@ -24,11 +24,10 @@ DEBRIS =
 BROKEN_PROGRAMS = 
 CSRC = IndexSorter.c SyncActions.c SyncBase.c SyncHashCache.c SyncNode.c SyncTest.c SyncRoot.c SyncTreeWorker.c SyncUtil.c
 HSRC = IndexSorter.h SyncActions.h SyncBase.h SyncHashCache.h SyncMacros.h SyncPrivate.h SyncNode.h SyncRoot.h SyncTreeWorker.h SyncUtil.h
-LIBS = libsync.a
 LIB_OBJS = IndexSorter.o SyncActions.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o SyncTreeWorker.o SyncUtil.o
 SCRIPTSRC = 
  
-default: $(PROGRAMS) $(LIBS)
+default: $(PROGRAMS) libsync.a
 
 all: default $(BROKEN_PROGRAMS)
 
@@ -40,12 +39,8 @@ libsync.a:	$(LIB_OBJS)
 	ar crus $@ $(LIB_OBJS)
 
 SYNC_OBJ = IndexSorter.o SyncActions.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o SyncTreeWorker.o SyncUtil.o SyncTest.o
-SyncTest: $(SYNC_OBJ) Sync_built.sh
+SyncTest: $(SYNC_OBJ)
 	$(CC) $(CFLAGS) -o $@ $(SYNC_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
-	sh ./Sync_built.sh
-
-Sync_built.sh:
-	touch Sync_built.sh
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
