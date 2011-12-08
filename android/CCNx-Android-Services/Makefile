@@ -45,7 +45,7 @@ $(TARGET): $(JARS) ccnd local.properties project.properties default.properties b
 # if the default.properties (or something else?) does not exist yet. 
 local.properties project.properties default.properties:
 	@mkdir -p libs
-	$(ANDROID_SDK)/tools/android update project -p . -t android-7
+	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-Services -p . -t android-7
 	$(ANDROID_SDK)/tools/android update project -p . -t android-7 --library ../CCNx-Android-Lib/
 #	rm build.xml
 

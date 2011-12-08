@@ -46,7 +46,7 @@ $(TARGET): $(JARS) local.properties build.xml $(SRC)
 # Due to a bug in android update project, cannot have a --library on the command line
 # if the default.properties (or something else?) does not exist yet. 
 local.properties default.properties project.properties:
-	$(ANDROID_SDK)/tools/android update project -p . -t android-7
+	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-Chat -p . -t android-7
 	$(ANDROID_SDK)/tools/android update project -p . -t android-7 --library ../../CCNx-Android-Lib/
 #	rm build.xml
 
