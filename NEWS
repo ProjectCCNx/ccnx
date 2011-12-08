@@ -30,6 +30,8 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 				 leak detector
 	* Bug 100573 Excessive neighbor-check interests
 	* Bug 100575 java input streams don't honor NO_TIMEOUT
+	* Bug 100583 Android apps for CCNx should work with modern Android SDK 
+				(r13-r15, see android/README.build for details)
 
 
 Changes between 0.4.0 and 0.4.1:
