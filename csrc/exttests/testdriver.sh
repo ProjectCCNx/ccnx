@@ -1,7 +1,5 @@
-# tests/testdriver.sh
+# exttests/testdriver.sh
 # 
-# Part of the CCNx distribution.
-#
 # Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
@@ -30,17 +28,16 @@ cd $(dirname "$0")
 # Set up PATH so the tested programs are used, rather than any that
 # might be installed.
 X=..
-export PATH=.:../ccnr:../sync:../lib2:$X/ccnd:$X/libexec:$X/cmd:$X/lib:$X/util:../../../ccnx/bin:$PATH:./stubs
+export PATH=.:../ccnr:../sync:../lib2:$X/ccnd:$X/libexec:$X/cmd:$X/lib:$X/util:../../bin:$PATH:./stubs
 type ccnd
 type ccnr
 type ccncat
 type jot
 type SyncTest
-type ccn_repo
 
 # If there are any ccnds running on test ports, wait a minute and retry.
 TestBusy () {
-	(. settings; ls /tmp/.ccnd.sock.$((CCN_LOCAL_PORT_BASE/10))[01234] 2>/dev/null)
+  (. settings; ls ${CCN_LOCAL_SOCKNAME:-/tmp/.ccnd.sock}.$((CCN_LOCAL_PORT_BASE/10))[01234] 2>/dev/null)
 }
 TestBusy && { echo There is something else happening, waiting one minute ... '' >&2; sleep 60; }
 TestBusy && exit 1
@@ -62,7 +59,7 @@ mkdir STATUS
 
 GetTestNames () {
   case ${1:-x} in
-     test_*)	echo "$@";;
+     test_*)	echo "$@" test_final_teardown;;
      x)		echo test_*;;
   esac
 }
@@ -71,7 +68,7 @@ ExtractDeps () {
   for i in "$@"; do
     sed -n -e 's/^AFTER : //p' $i | xargs -n 1 echo  | while read j; do test -f "$j" && echo $j $i; done
     sed -n -e 's/^BEFORE : //p' $i | xargs -n 1 echo | while read j; do test -f "$j" && echo $i $j; done
-    echo $i $i
+    echo $i test_final_teardown
   done
 }
 
@@ -93,11 +90,16 @@ SetExitCode () {
   : | cmp -s - FAILING
 }
 
-# The next two lines, when uncommented, are handy for seeing what tsort is up to
-#ExtractDeps $(GetTestNames "$@") > deps.out
-#tsort deps.out > sorted-deps.out
+# Construct a test arder if necessary
+test -f order.txt || {
+  ExtractDeps $(GetTestNames) > deps.out
+  tsort deps.out > order.txt
+}
 
-ExtractDeps $(GetTestNames "$@") | tsort | while read TEST; do RunATest $TEST; done
+ExtractDeps $(GetTestNames "$@") | xargs -n 1 | sort | uniq > unordered.out
+grep -w -F -f unordered.out order.txt > planned-tests.out
+xargs <planned-tests.out echo Planned: >&2
+cat planned-tests.out | while read TEST; do RunATest $TEST; done
 
 grep test_ SKIPPED FAILING
 SetExitCode

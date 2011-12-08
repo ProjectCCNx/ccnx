@@ -95,21 +95,35 @@ CappedCCNDStart () {
 }
 
 ##
-# Stage data into the active ccnd by writing it into a fresh repo
-StageData () { (
+# Create a repo containing a file of the requested size
+GenerateRepoTestData () { (
   [ ${1:=missing} -ge 1000 ] || Fail argument missing or invalid: $1
-  set -e
-  rm -rf stage
-  mkdir stage
-  env CCNR_DIRECTORY=stage CCNR_DEBUG=0 ccnr &
-  rm -f testfile
+  export CCNR_DIRECTORY=${CCNR_TEST_REPOS:-.}/staged.$1
+  if [ -f $CCNR_DIRECTORY/index/stable ]; then
+     echo $CCNR_DIRECTORY
+     return 0 
+  fi
+  rm -R $CCNR_DIRECTORY 2>/dev/null
+  mkdir -p $CCNR_DIRECTORY || return 1
+  WithCCND 3 CappedCCNDStart 100
+  WithCCND 3 env CCNR_DEBUG=0 ccnr &
+  rm testfile 2>/dev/null
   dd bs=1 count=1 seek=$(($1 - 1)) of=testfile if=/dev/zero
-  ccnputfile /test/bulk/${1}.dat testfile 2> putfile-${1}.out
-  ccndstatus
-  ccnnamelist stage/repoFile1 | tail -n 4 >> lastblocks.txt
-  kill `cat stage/index/.LCK`
+  WithCCND 3 SyncTest -cat2 -put testfile ccnx:/test/bulk/${1}.dat
   rm testfile
+  WithCCND 3 ccnrm -o $CCNR_DIRECTORY/cached-keys.out /ccnx.org
+  WithCCND 3 ccndstop
+  sleep 1
+  echo $CCNR_DIRECTORY
+  return 0
 ) }
+
+##
+# Given a repo directory, choose a likely versioned name.
+GetTestDataVersionedName () {
+  ccnnamelist $1/repoFile1 | head -n 40 | grep -v %C1.M | tail -n 1 | \
+    sed -e 's@/%00[^/]*$@@'
+}
 
 ##
 #

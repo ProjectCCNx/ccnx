@@ -29,8 +29,9 @@ StartEmptyRepo () {
   env | grep CCNR
   N=$1
   CCNR_NAME="repo.$N"
-  export CCNR_DIRECTORY=$CCNR_NAME.dir
-  rm -Rf $CCNR_DIRECTORY; mkdir $CCNR_DIRECTORY
+  export CCNR_DIRECTORY=${CCNR_TEST_REPOS:-.}/$CCNR_NAME.dir
+  rm -Rf $CCNR_DIRECTORY
+  mkdir $CCNR_DIRECTORY
   echo in StartRepo $N, $CCNR_DIRECTORY
   ccnr 2>ccnr.$N.err >ccnr.$N.log
 }
@@ -43,7 +44,7 @@ WaitRepoLeaves () {
     { WithCCND $N SyncTest -scope 1 -stats $TOPO $RH >stats$N.txt ; } || Fail "Can't get stats"
     { grep -w "$TARGET" stats$N.txt >/dev/null ; } && break
     printf "."
-    sleep 1
+    sleep 1 || SkipTest
   done
   printf "\n"
 }

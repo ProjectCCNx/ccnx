@@ -12,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-SCRIPTSRC = testdriver.sh functions preamble settings $(ALLTESTS)
+SCRIPTSRC = testdriver.sh functions preamble settings make_clean.sh $(ALLTESTS)
 DUPDIR = stubs
 
 TESTS = $(ALLTESTS)
@@ -46,10 +46,8 @@ testlist:
 	cat seeds stems | sort -u | diff -u seeds -
 	#rm seeds stems deps
 
-clean:
-	rm -rf log logs seeds stems deps depend testdriver STATUS SKIPPED FAILING \
-	 *.out *.ccnb *pre.html *post.html *status*.html *.err \
-	 ccnr.?.log lastblocks.txt stats?.txt stage testrepo testrepo?
+clean: make_clean.sh
+	sh ./make_clean.sh
 
 check test: $(SCRIPTSRC) testdriver stubs
 	MAKE_TEST_TARGET=$@ ./testdriver $(TESTS)

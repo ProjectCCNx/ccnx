@@ -12,8 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-AFTER : test_single_ccnd_teardown
-
+AFTER : test_alone
 
 # The data size can be set from the outside
 : ${TEST_DATA_SIZE:=5000000}
@@ -24,11 +23,15 @@ AFTER : test_single_ccnd_teardown
 # Run these without sync by default, but allow turning it on
 : ${SYNC_ENABLE:=0}
 
+# Don't do unnecessary verifications in the repo
+: ${CCNR_SKIP_VERIFY:=1}
+
 # Generate an identifier for this run if provided upstairs
 : ${TRP:=TRP-`date +%s`}
 
 # Use a consistent time utility
 TIME='/usr/bin/time -p'
+TIME='env'
 
 # Command for doing measured fetches
 FetchAndDiscard () {
@@ -36,44 +39,51 @@ FetchAndDiscard () {
   $TIME SyncTest -cat2 -bufs $PIPELINE -get "$1"
 }
 
-echo START $TRP
-# Use a ccnd to hold the pre-signed data
-WithCCND 3 CappedCCNDStart $((TEST_DATA_SIZE / 4000 + 500))
+# Command for sending start write
+StartWrite() {
+  echo "$TRP-startwrite"
+  $TIME SyncTest -nores -noseg -cat2 -bufs 1 -get "$1" "$TRP-startwrite.out"
+}
 
-# Stage the data into ccnd3
-WithCCND 3 StageData $TEST_DATA_SIZE
+echo START $TRP
+
+STAGED=`GenerateRepoTestData $TEST_DATA_SIZE`
+ls -l $STAGED/repoFile1 || Fail
 
 # Prepare our start-write command
-VERSIONEDNAME=`grep -v %C1.M lastblocks.txt | tail -n 1 | rev | cut -d / -f 2- | rev`
-
+VERSIONEDNAME=`GetTestDataVersionedName $STAGED`
 SWR=$VERSIONEDNAME/%C1.R.sw/%C1.N%00`GenSym`
+
 echo Start write request will be $SWR
-WithCCND 3 ccnrm -o cached-keys.out /ccnx.org
-WithCCND 3 ccndstop || Fail
 
 export SYNC_ENABLE PIPELINE TEST_DATA_SIZE CCNR_PROTO CCNR_SKIP_VERIFY SWR TRP
 echo Saving env in $TRP-env.out
 env > $TRP-env.out
+
 # ccnd1 will be the one connected to the repo
 WithCCND 1 CappedCCNDStart $((TEST_DATA_SIZE / 4000 + 500))
-WithCCND 1 ccndsmoketest send stage/repoFile1
+WithCCND 1 ccndsmoketest send $STAGED/repoFile1
+
 # make a new, empty repo
-rm -rf testrepo2
-mkdir testrepo2 || Fail
+export CCNR_DIRECTORY=${CCNR_TEST_REPOS:-.}/testrepo2
+rm -R $CCNR_DIRECTORY 2>/dev/null
+mkdir -p $CCNR_DIRECTORY || Fail
 sleep 3
-WithCCND 1 env CCNR_DIRECTORY=testrepo2 CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
+WithCCND 1 env CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
 sleep 1
 echo Repo write test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
-WithCCND 1 ccnget $SWR > startwrite2-$TEST_DATA_SIZE.out
-ccnfilewatch testrepo2/repoFile1 || Fail ccnfilewatch returned $?
+WithCCND 1 StartWrite $SWR
+ccnfilewatch $CCNR_DIRECTORY/repoFile1 || Fail ccnfilewatch returned $?
 DoPS
 WithCCND 1 ccndstop
-sleep 1
-DoPS
-echo "(expecting nothing in ps output)"
+# sleep 1
+while ! [ -z "`DoPS > ps.out; cat ps.out >&2; grep -v MEM ps.out`" ]; do
+  echo `date +%s`. Waiting for write test processes to go away.
+  sleep 1 || Fail killed
+done
 WithCCND 1 CappedCCNDStart 100
-WithCCND 1 env CCNR_DIRECTORY=testrepo2 CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
+WithCCND 1 env CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
 sleep 1
 echo Repo read test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
 DoPS
@@ -81,78 +91,43 @@ export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-1
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
 WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
 WithCCND 1 ccndstatus >> post-repo2-fetch.out
-WithCCND 1 ccnrm /
+WithCCND 1 ccnrm -o ccnrm.out /
+while [ -s ccnrm.out ]; do
+    WithCCND 1 ccnrm -o ccnrm.out /
+    sleep 1
+done
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-2
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
 WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
-WithCCND 1 ccnrm /
+WithCCND 1 ccnrm -o ccnrm.out /
+while [ -s ccnrm.out ]; do
+    WithCCND 1 ccnrm -o ccnrm.out /
+    sleep 1
+done
 DoPS
 export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-3
 echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
 WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
-WithCCND 1 ccnrm /
-DoPS
+WithCCND 1 ccnrm -o ccnrm.out /
+while [ -s ccnrm.out ]; do
+    WithCCND 1 ccnrm -o ccnrm.out /
+    sleep 1
+done
 WithCCND 1 ccndstop
-
-sleep 3
-# Now do it all again with the java repo
-WithCCND 1 CappedCCNDStart $((TEST_DATA_SIZE / 4000 + 500))
-WithCCND 1 ccndsmoketest send stage/repoFile1
-# make a new, empty repo
-rm -rf testrepo1
-mkdir testrepo1 || Fail
-sleep 3
-WithCCND 1 env ccn_repo testrepo1
-sleep 1
-echo Repo write test using repo1 TEST_DATA_SIZE=$TEST_DATA_SIZE
-DoPS
-WithCCND 1 ccnget $SWR > startwrite1-$TEST_DATA_SIZE.out
-ccnfilewatch testrepo1/repoFile1 || Fail ccnfilewatch returned $?
-DoPS
-ccn_repo stopall
-WithCCND 1 ccndstop
-sleep 1
-DoPS
-echo "(expecting nothing in ps output)"
-WithCCND 1 CappedCCNDStart 100
-WithCCND 1 ccndsmoketest send cached-keys.out
-WithCCND 1 env ccn_repo testrepo1
-sleep 3
-echo Repo read test using repo1 TEST_DATA_SIZE=$TEST_DATA_SIZE
-DoPS
-export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-1
-echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
-WithCCND 1 ccndstatus >> post-repo1-fetch.out
-WithCCND 1 ccnrm $VERSIONEDNAME
-DoPS
-export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-2
-echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
-WithCCND 1 ccnrm $VERSIONEDNAME
-DoPS
-export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v1-3
-echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
-WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
-WithCCND 1 ccnrm $VERSIONEDNAME
-DoPS
-ccn_repo stopall
-WithCCND 1 ccndstop
+# sleep 1
+while ! [ -z "`DoPS > ps.out; cat ps.out >&2; grep -v MEM ps.out`" ]; do
+  echo `date +%s`. Waiting for read test processes to go away.
+  sleep 1 || Fail killed
+done
 
 # Get startup times
-echo Repo2 startup with stable index, no ccnd
-$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo2 ccnr
-
-echo Repo1 startup TEST_DATA_SIZE=$TEST_DATA_SIZE
-WithCCND 1 CappedCCNDStart 100
-WithCCND 1 $TIME ccn_repo testrepo1
-echo Shutting down Repo1
-$TIME ccn_repo stopall
-WithCCND 1 ccndstop
+echo Repo2 startup with stable index, no ccnd TEST_DATA_SIZE=$TEST_DATA_SIZE
+$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO ccnr
 
 echo Repo2 startup with index rebuild, no ccnd TEST_DATA_SIZE=$TEST_DATA_SIZE
-$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNR_DIRECTORY=testrepo1 ccnr
+rm -R $CCNR_DIRECTORY/index
+$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO ccnr
 
 echo END $TRP
 tar cvf $TRP.tar *.out
