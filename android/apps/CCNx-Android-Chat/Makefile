@@ -15,8 +15,8 @@
 # User-settable things
 
 APK_NAME := CCNx-Android-Chat-debug.apk
-BIN := bin_ant
-GEN := gen_ant
+BIN := bin
+GEN := gen
 
 ############
 # Nothing tweekable down here
@@ -45,19 +45,19 @@ $(TARGET): $(JARS) local.properties build.xml $(SRC)
 # it's a bad version.
 # Due to a bug in android update project, cannot have a --library on the command line
 # if the default.properties (or something else?) does not exist yet. 
-local.properties:
+local.properties default.properties project.properties:
 	$(ANDROID_SDK)/tools/android update project -p . -t android-7
 	$(ANDROID_SDK)/tools/android update project -p . -t android-7 --library ../../CCNx-Android-Lib/
-	rm build.xml
+#	rm build.xml
 
 # Need to build local.properties first, because that creates a bogus build.xml
 build.xml: build.xml.in local.properties
-	cp build.xml.in build.xml
+#	cp build.xml.in build.xml
 
 libs/ccn.jar: ../../../javasrc/ccn.jar
 	mkdir -p $(dir $@)
 	rm -f $@
-	ln -s ../$^ $@
+#	ln -s ../$^ $@
 
 libs/ccnChat.jar: ../../../apps/ccnChat/ccnChat.jar
 	mkdir -p $(dir $@)

@@ -15,8 +15,8 @@
 # User-settable things
 
 APK_NAME := CCNx-Android-Services-debug.apk
-BIN := bin_ant
-GEN := gen_ant
+BIN := bin
+GEN := gen
 
 ############
 # Nothing tweekable down here
@@ -36,22 +36,22 @@ TARGET  := $(BIN)/$(APK_NAME)
 
 default all: $(TARGET) 
 
-$(TARGET): $(JARS) ccnd local.properties default.properties build.xml
+$(TARGET): $(JARS) ccnd local.properties project.properties default.properties build.xml
 	ant debug
 
 # This will also generate a build.xml, which we remove because
 # it's a bad version.
 # Due to a bug in android update project, cannot have a --library on the command line
 # if the default.properties (or something else?) does not exist yet. 
-local.properties default.properties:
+local.properties project.properties default.properties:
 	@mkdir -p libs
 	$(ANDROID_SDK)/tools/android update project -p . -t android-7
 	$(ANDROID_SDK)/tools/android update project -p . -t android-7 --library ../CCNx-Android-Lib/
-	rm build.xml
+#	rm build.xml
 
 # Need to build local.properties first, because that creates a bogus build.xml
 build.xml: build.xml.in local.properties
-	cp build.xml.in build.xml
+#	cp build.xml.in build.xml
 
 # Compensate for the lack of proper dependencies by removing any ccnx object
 # files that are older than the newest ccnx header file.  The android build
@@ -74,7 +74,7 @@ ccnd: environment checkccnxdeps
 libs/ccn.jar: ../../javasrc/ccn.jar
 	mkdir -p $(dir $@)
 	rm -f $@
-	ln -s ../$^ $@
+#	ln -s ../$^ $@
 
 ######################################
 # Maintenance targets
@@ -101,6 +101,7 @@ simpleclean:
 	rm -rf $(BIN) $(GEN)
 	rm -rf libs/*
 	rm -f default.properties
+	rm -f project.properties
 	rm -f local.properties
 
 distclean: environment simpleclean
