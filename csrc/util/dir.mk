@@ -28,7 +28,7 @@ ccntestloop: ccntestloop-trampoline shebang
 	chmod +x $@
 
 clean:
-	rm -f $(PROGRAMS)
+	rm -f $(PROGRAMS) depend
 
 test:
 	@echo "Sorry, no util unit tests at this time"
