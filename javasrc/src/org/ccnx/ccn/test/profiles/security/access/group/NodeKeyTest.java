@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -20,6 +20,7 @@ package org.ccnx.ccn.test.profiles.security.access.group;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
@@ -64,7 +65,9 @@ public class NodeKeyTest {
 	}
 
 	@Test
-	public void testComputeDescendantNodeKey() throws Exception {		
+	public void testComputeDescendantNodeKey() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testComputeDescendantNodeKey");
+
 		byte[] aKeyBytes = descendantNodeKey3.nodeKey().getEncoded();
 		byte[] bKeyBytes = descendantNodeKey2.nodeKey().getEncoded();
 
@@ -92,13 +95,19 @@ public class NodeKeyTest {
 		System.out.println(Arrays.hashCode(descendantNodeKey3.storedNodeKeyID()));
 
 		Assert.assertArrayEquals(aKeyBytes, bKeyBytes);
+		
+		Log.info(Log.FAC_TEST, "Completed testComputeDescendantNodeKey");
 	}
 
 	@Test
 	public void testIsDerived(){
+		Log.info(Log.FAC_TEST, "Starting testIsDerived");
+
 		Assert.assertFalse(testNodeKey.isDerivedNodeKey());
 		Assert.assertTrue(descendantNodeKey1.isDerivedNodeKey());
 		Assert.assertTrue(descendantNodeKey2.isDerivedNodeKey());
 		Assert.assertTrue(descendantNodeKey3.isDerivedNodeKey());
+		
+		Log.info(Log.FAC_TEST, "Completed testIsDerived");
 	}
 }

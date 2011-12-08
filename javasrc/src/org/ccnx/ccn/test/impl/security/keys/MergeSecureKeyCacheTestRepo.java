@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -26,6 +26,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -68,6 +69,7 @@ public class MergeSecureKeyCacheTestRepo {
 	
 	@Test
 	public void testDisjointMerge() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testDisjointMerge");
 
 		populateCache1();
 		populateCache2();
@@ -104,10 +106,14 @@ public class MergeSecureKeyCacheTestRepo {
 		
 		Assert.assertTrue(DataUtils.compare(cache1.getKeyID(privateKeyName2),   pubIdentifier2)== 0);
 		Assert.assertTrue(DataUtils.compare(cache1.getKeyID(keyName2),          keyIdentifier2)== 0);
+		
+		Log.info(Log.FAC_TEST, "Completed testDisjointMerge");
 	}
 	
 	@Test
 	public void testSameCache() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testSameCache");
+
 		populateCache1();
 		
 		cache2 = cache1;
@@ -132,10 +138,14 @@ public class MergeSecureKeyCacheTestRepo {
 		
 		Assert.assertTrue(DataUtils.compare(cache1.getKeyID(privateKeyName1),   pubIdentifier1)== 0);
 		Assert.assertTrue(DataUtils.compare(cache1.getKeyID(keyName1),          keyIdentifier1)== 0);
+		
+		Log.info(Log.FAC_TEST, "Completed testSameCache");
 	}
 	
 	@Test
 	public void testDomination() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testDomination");
+
 		populateCache1();
 		
 		cache2 = new SecureKeyCache();
@@ -169,6 +179,7 @@ public class MergeSecureKeyCacheTestRepo {
 		Assert.assertTrue(DataUtils.compare(cache1.getKeyID(privateKeyName1),   pubIdentifier1)== 0);
 		Assert.assertTrue(DataUtils.compare(cache1.getKeyID(keyName1),          keyIdentifier1)== 0);
 		
+		Log.info(Log.FAC_TEST, "Completed testDomination");	
 	}
 	
 	@AfterClass

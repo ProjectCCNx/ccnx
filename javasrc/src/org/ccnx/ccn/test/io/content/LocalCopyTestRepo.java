@@ -141,6 +141,8 @@ public class LocalCopyTestRepo {
 	
 	@Test
 	public void testRepositoryControlObject() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testRepositoryControlObject");
+		
 		System.out.println(">>> Running testRepositoryControlObject");
 		MyListener listener = new MyListener();
 		
@@ -167,10 +169,14 @@ public class LocalCopyTestRepo {
 		} finally {
 			listener.close();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testRepositoryControlObject");
 	}
 
 	@Test
 	public void testLocalCopyWrapper() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLocalCopyWrapper");
+
 		System.out.println(">>> Running testLocalCopyWrapper");
 		MyListener listener = new MyListener();
 		
@@ -205,10 +211,14 @@ public class LocalCopyTestRepo {
 		} finally {
 			listener.close();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testLocalCopyWrapper");
 	}
 	
 	@Test
 	public void testLocalCopyListener() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLocalCopyListener");
+
 		System.out.println(">>> Running testLocalCopyListener");
 		MyListener listener = new MyListener();
 		
@@ -236,10 +246,14 @@ public class LocalCopyTestRepo {
 		} finally {
 			listener.close();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testLocalCopyListener");
 	}
 	
 	@Test
 	public void testLocalCopyWrapperWithSaveAndLcwClose() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLocalCopyWrapperWithSaveAndLcwClose");
+
 		System.out.println(">>> Running testLocalCopyWrapperWithSaveAndLcwClose");
 		MyListener listener = new MyListener();
 		
@@ -284,10 +298,14 @@ public class LocalCopyTestRepo {
 		} finally {
 			listener.close();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testLocalCopyWrapperWithSaveAndLcwClose");
 	}
 	
 	@Test
 	public void testLocalCopyWrapperWithSaveAndObjectClose() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLocalCopyWrapperWithSaveAndObjectClose");
+
 		System.out.println(">>> Running testLocalCopyWrapperWithSaveAndObjectClose");
 		MyListener listener = new MyListener();
 		
@@ -335,10 +353,14 @@ public class LocalCopyTestRepo {
 		} finally {
 			listener.close();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testLocalCopyWrapperWithSaveAndObjectClose");
 	}
 	
 	@Test
 	public void testLocalCopyListnerWithSaveAndObjectClose() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLocalCopyListnerWithSaveAndObjectClose");
+
 		System.out.println(">>> Running testLocalCopyListnerWithSaveAndObjectClose");
 		MyListener listener = new MyListener();
 		
@@ -383,6 +405,8 @@ public class LocalCopyTestRepo {
 		} finally {
 			listener.close();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testLocalCopyListnerWithSaveAndObjectClose");
 	}
 	
 	// ==============================================================================================

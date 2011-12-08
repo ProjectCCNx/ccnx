@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -61,6 +61,8 @@ public class CollectionObjectTestRepo {
 	
 	@Test
 	public void testCollections() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testCollections");
+
 		ContentName nonCollectionName = ContentName.fromNative(testHelper.getTestNamespace("testCollections"), "myNonCollection");
 		ContentName collectionName = ContentName.fromNative(testHelper.getTestNamespace("testCollections"), "myCollection");
 		
@@ -81,12 +83,11 @@ public class CollectionObjectTestRepo {
 			Assert.fail("Reading collection from non-collection succeeded.");
 		} catch (ContentDecodingException ex) {
 			// this is what we actually expect
-			System.out.println("Got expected exception reading collection from non-collection.");
+			Log.info(Log.FAC_TEST, "Got expected exception reading collection from non-collection.");
 		} catch (IOException ioe) {
-			System.out.println("Got another type of IOException reading link from non-collection: " + ioe);
-			Log.info("Unexpected: got IOException that wasn't a ContentDecodingException reading collection from non-collection: {0}", ioe);
+			Log.info(Log.FAC_TEST, "Unexpected: got IOException that wasn't a ContentDecodingException reading collection from non-collection: {0}", ioe);
 		} catch (Exception e) {
-			System.out.println("Got unexpected exception type reading collection from non-collection: " + e);
+			Log.warning(Log.FAC_TEST, "Got unexpected exception type reading collection from non-collection: " + e);
 			Assert.fail("Got unexpected exception type reading collection from non-collection: " + e);
 		}
 
@@ -104,10 +105,10 @@ public class CollectionObjectTestRepo {
 		newReferences.add(new Link(ContentName.fromNative("/libraryTest/r4")));
 		collection.contents().addAll(newReferences);
 		if (!collection.save()) {
-			System.out.println("Collection not saved -- data should have been updated?");
+			Log.info(Log.FAC_TEST, "Collection not saved -- data should have been updated?");
 		}
 		readCollection.update(5000);
-		System.out.println("read collection version: " + readCollection.getVersion());
+		Log.info(Log.FAC_TEST, "read collection version: " + readCollection.getVersion());
 		checkReferences = collection.contents();
 		Assert.assertEquals(collection.getVersion(), readCollection.getVersion());
 		Assert.assertEquals(checkReferences.size(), 4);
@@ -117,7 +118,7 @@ public class CollectionObjectTestRepo {
 		
 		collection.contents().removeAll(newReferences);
 		collection.save();
-		System.out.println("New version: " + collection.getVersion() + " old version " + oldVersion);
+		Log.info(Log.FAC_TEST, "New version: " + collection.getVersion() + " old version " + oldVersion);
 		readCollection.update(5000);
 		checkReferences = collection.contents();
 		Assert.assertEquals(collection.getVersion(), readCollection.getVersion());
@@ -125,5 +126,7 @@ public class CollectionObjectTestRepo {
 		Assert.assertEquals(collection.getVersion(), readCollection.getVersion());
 		Assert.assertEquals(collection.contents(), readCollection.contents());
 		Assert.assertTrue("Updated version contents", collection.getVersion().after(oldVersion));
+		
+		Log.info(Log.FAC_TEST, "Completed testCollections");
 	}
 }

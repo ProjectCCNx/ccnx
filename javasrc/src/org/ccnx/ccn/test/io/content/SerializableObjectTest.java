@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -26,6 +26,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 
 import org.bouncycastle.util.Arrays;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -49,7 +50,8 @@ public class SerializableObjectTest {
 
 	@Test
 	public void testSave() {
-		
+		Log.info(Log.FAC_TEST, "Starting testSave");
+
 		SerializablePublicKey spk1 = new SerializablePublicKey(kp1.getPublic());
 		SerializablePublicKey spk2 = new SerializablePublicKey(kp1.getPublic());
 		SerializablePublicKey spk3 = new SerializablePublicKey(kp2.getPublic());
@@ -70,10 +72,14 @@ public class SerializableObjectTest {
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testSave");
 	}
 	
 	@Test
 	public void testUpdate() {
+		Log.info(Log.FAC_TEST, "Starting testUpdate");
+
 		boolean caught = false;
 		SerializablePublicKey empty = new SerializablePublicKey();
 		try {
@@ -106,8 +112,7 @@ public class SerializableObjectTest {
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testUpdate");
 	}
-
-
-
 }

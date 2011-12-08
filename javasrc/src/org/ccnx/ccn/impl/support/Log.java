@@ -691,9 +691,17 @@ public class Log {
 	public static void warningStackTrace(Throwable t) {
 		logStackTrace(Level.WARNING, t);
 	}
+	
+	public static void warningStackTrace(int facility, Throwable t) {
+		logStackTrace(facility, Level.WARNING, t);
+	}
 
 	public static void infoStackTrace(Throwable t) {
 		logStackTrace(Level.INFO, t);
+	}
+	
+	public static void infoStackTrace(int facility, Throwable t) {
+		logStackTrace(facility, Level.INFO, t);
 	}
 
 	public static void logStackTrace(Level level, Throwable t) {

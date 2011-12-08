@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -75,7 +75,9 @@ public class KeyPublishingTestRepo {
 	
 	@Test
 	public void testSetLocator() throws Exception {
-		Log.info("User {0} has a key {1} published with key locator {2}", userNames[0], userKeyObjects[0].getVersionedName(), userKeyObjects[0].getPublisherKeyLocator());
+		Log.info(Log.FAC_TEST, "Starting testSetLocator");
+
+		Log.info(Log.FAC_TEST, "User {0} has a key {1} published with key locator {2}", userNames[0], userKeyObjects[0].getVersionedName(), userKeyObjects[0].getPublisherKeyLocator());
 		// Set a key locator to be the user location we just published to, and see if we use that when we publish
 		// Given what TUD does, the current locator should be unversioned, no publisher.
 		
@@ -84,7 +86,7 @@ public class KeyPublishingTestRepo {
 				CCNStringObject(testHelper.getTestChildName("testSetLocator", "testString"), "A test!", 
 									SaveType.REPOSITORY, userHandles[0]);
 		testString.save();
-		Log.info("Wrote data {0} publisher {1} KL {2}", testString.getVersionedName(), testString.getContentPublisher(), testString.getPublisherKeyLocator());
+		Log.info(Log.FAC_TEST, "Wrote data {0} publisher {1} KL {2}", testString.getVersionedName(), testString.getContentPublisher(), testString.getPublisherKeyLocator());
 		
 		Assert.assertEquals(testString.getPublisherKeyLocator(), userHandles[0].keyManager().getKeyLocator((PublisherPublicKeyDigest)null));
 		// now read it back in and see what we get
@@ -109,7 +111,7 @@ public class KeyPublishingTestRepo {
 		CCNStringObject testString2 = new CCNStringObject(testHelper.getTestChildName("testSetLocator", "testString2"), 
 								"A test!", SaveType.REPOSITORY, userHandles[NUM_USERS-1]);
 		testString2.save();
-		Log.info("Wrote data {0} publisher {1} KL {2}", testString2.getVersionedName(), testString2.getContentPublisher(), 
+		Log.info(Log.FAC_TEST, "Wrote data {0} publisher {1} KL {2}", testString2.getVersionedName(), testString2.getContentPublisher(), 
 				testString2.getPublisherKeyLocator());
 		
 		Assert.assertFalse(testString2.getPublisherKeyLocator().equals(userKeyObjects[NUM_USERS-1].getPublisherKeyLocator()));
@@ -118,6 +120,7 @@ public class KeyPublishingTestRepo {
 		CCNStringObject readString2 = new CCNStringObject(testString2.getBaseName(), userHandles[1]);
 		Assert.assertEquals(newerKeyLocator, readString2.getPublisherKeyLocator());
 	
+		Log.info(Log.FAC_TEST, "Completed testSetLocator");
 	}
 
 }

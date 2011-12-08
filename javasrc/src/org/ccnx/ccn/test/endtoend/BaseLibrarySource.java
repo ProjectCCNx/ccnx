@@ -24,6 +24,7 @@ import java.util.concurrent.Semaphore;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -61,7 +62,7 @@ public class BaseLibrarySource {
 	 *
 	 */
 	public void checkPutResults(ContentName putResult) {
-		System.out.println("Put data: " + putResult);
+		Log.info(Log.FAC_TEST, "Put data: " + putResult);
 	}
 
 	/**

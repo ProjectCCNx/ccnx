@@ -54,7 +54,8 @@ public class RepoInitialReadTest extends RepoTestBase {
 	
 	@Test
 	public void testReadViaRepo() throws Throwable {
-		System.out.println("Testing reading objects from repo");
+		Log.info(Log.FAC_TEST, "Starting testReadViaRepo");
+
 		ContentName name = ContentName.fromNative("/repoTest/data1");
 		
 		// Since we have 2 pieces of data with the name /repoTest/data1 we need to compute both
@@ -82,6 +83,8 @@ public class RepoInitialReadTest extends RepoTestBase {
 		for (ContentObject keyObject : keys) {
 			checkDataAndPublisher(name, "Testing2", new PublisherPublicKeyDigest(keyObject.content()));
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testReadViaRepo");
 	}
 	
 	/**

@@ -21,6 +21,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.ccnd.CCNDCacheManager;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -33,6 +34,8 @@ public class ClearCcndCacheTest extends CCNTestBase {
 	
 	@Test
 	public void testClearCache() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testClearCache");
+
 		ContentName prefix = ContentName.fromNative(testHelper.getClassNamespace(), "AreaToClear");
 		CCNFlowControl fc = new CCNFlowControl(prefix, putHandle);
 		for (int i = 0; i < 10; i++) {
@@ -62,5 +65,7 @@ public class ClearCcndCacheTest extends CCNTestBase {
 				Assert.assertEquals(null, co);
 			}
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testClearCache");
 	}
 }

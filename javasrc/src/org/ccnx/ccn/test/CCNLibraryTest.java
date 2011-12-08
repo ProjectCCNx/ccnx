@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -22,11 +22,11 @@ import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
-/* Use non quantized time for testing */
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
+import java.util.logging.Level;
 
 import junit.framework.Assert;
 
@@ -79,6 +79,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 	
 	@Test
 	public void testEnumerate() {
+		Log.info(Log.FAC_TEST, "Starting testEnumerate");
 		Assert.assertNotNull(putHandle);
 		Assert.assertNotNull(getHandle);
 
@@ -108,10 +109,10 @@ public class CCNLibraryTest extends LibraryTestBase {
 				ContentObject theObject = getHandle.get(theName.name(), 1000);
 
 				if (null == theObject) {
-					System.out.println("Missing content: enumerated name: " + theName.name() + " not gettable.");
+					Log.info(Log.FAC_TEST, "Missing content: enumerated name: " + theName.name() + " not gettable.");
 
 				} else {
-					System.out.println("Retrieved name: " + theName.name());
+					Log.info(Log.FAC_TEST, "Retrieved name: " + theName.name());
 				}
 				
 				for (NameSeen nt : testNames) {
@@ -126,14 +127,17 @@ public class CCNLibraryTest extends LibraryTestBase {
 			}
 
 		} catch (Exception e) {
-			System.out.println("Got an exception in enumerate test: " + e.getClass().getName() + ": " + e.getMessage());
-			e.printStackTrace();
+			Log.warning(Log.FAC_TEST, "Got an exception in enumerate test: " + e.getClass().getName() + ": " + e.getMessage());
+			Log.logStackTrace(Log.FAC_TEST, Level.WARNING, e);
 			Assert.fail("Exception in testEnumerate: " + e.getMessage());
 		}
+		Log.info(Log.FAC_TEST, "Completed testEnumerate");
 	}
 
 	@Test
 	public void testPut() {
+		Log.info(Log.FAC_TEST, "Starting testPut");
+		
 		Assert.assertNotNull(putHandle);
 		Assert.assertNotNull(getHandle);
 
@@ -153,16 +157,19 @@ public class CCNLibraryTest extends LibraryTestBase {
 		try {
 			CCNWriter segmenter = new CCNWriter(name, putHandle);
 			ContentName result = segmenter.put(name, content, publisher);
-			System.out.println("Resulting ContentName: " + result);
+			Log.info(Log.FAC_TEST, "Resulting ContentName: " + result);
 		} catch (SignatureException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		Log.info(Log.FAC_TEST, "Completed testPut");
 	}
 
 	@Test
 	public void testRevision() {
+		Log.info(Log.FAC_TEST, "Starting testRevision");
+
 		String key = "/test/key";
 		byte[] data1 = "data".getBytes();
 		byte[] data2 = "newdata".getBytes();
@@ -176,17 +183,19 @@ public class CCNLibraryTest extends LibraryTestBase {
 			revision2 = segmenter.newVersion(keyName, data2);
 			long version1 = VersioningProfile.getLastVersionAsLong(revision1);
 			long version2 = VersioningProfile.getLastVersionAsLong(revision2);
-			System.out.println("Version1: " + version1 + " version2: " + version2);
+			Log.info(Log.FAC_TEST, "Version1: " + version1 + " version2: " + version2);
 			Assert.assertTrue("Revisions are strange", 
 					version2 > version1);
 		} catch (Exception e) {
-			System.out.println("Exception in updating versions: " + e.getClass().getName() + ": " + e.getMessage());
+			Log.warning(Log.FAC_TEST, "Exception in updating versions: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());
-		}	
+		}
+		Log.info(Log.FAC_TEST, "Completed testRevision");
 	}
 
 	@Test
 	public void testVersion() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testVersion");
 
 		String name = "/test/smetters/stuff/versioned_name";
 		ContentName cn = ContentName.fromNative(name);
@@ -197,11 +206,13 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		versionTest(cn, data.getBytes(), newdata.getBytes());
 		versionTest(cn2, data.getBytes(), newdata.getBytes());
-
+		Log.info(Log.FAC_TEST, "Completed testRevision");
 	}
 
 	@Test
 	public void testGetLatestVersion() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testGetLatestVersion");
+
 		String name = "/test/simon/versioned_name-" + new Random().nextInt(10000);
 		// include a base object, who's digest can potentially confuse getLatestVersion
 		ContentName base = ContentName.fromNative(name);
@@ -226,8 +237,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 		class t {
 			void check(ContentObject o, int i) throws InvalidKeyException, ContentEncodingException,
 						SignatureException, NoSuchAlgorithmException, InterruptedException {
-				System.out.println("Got content: " + o.name());
-				System.out.println("Original value: " + i + " returned value: " + Byte.toString(o.content()[0]));
+				Log.info(Log.FAC_TEST, "Got content: " + o.name());
+				Log.info(Log.FAC_TEST, "Original value: " + i + " returned value: " + Byte.toString(o.content()[0]));
 				Assert.assertTrue(o.verify(putHandle.keyManager()));
 				Assert.assertTrue(DataUtils.arrayEquals(o.content(), data[i]));
 			}
@@ -242,7 +253,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 					throws ContentEncodingException,
 						IOException, InvalidKeyException, 
 						SignatureException, NoSuchAlgorithmException, InterruptedException {
-				System.out.println("Getting content: " + name);
+				Log.info(Log.FAC_TEST, "Getting content: " + name);
 				check(getHandle.get(name, 2000), index);
 			}
 		} t test = new t();
@@ -253,41 +264,44 @@ public class CCNLibraryTest extends LibraryTestBase {
 		// Beef this up a bit...
 		for (int i=2; i < testCount; ++i) {
 			f.put(cos[i]);
-			System.out.println("Wrote content: " + cos[i].name());
+			Log.info(Log.FAC_TEST, "Wrote content: " + cos[i].name());
 			test.check(VersioningProfile.getLatestVersion(cos[i-1].name(), putHandle.getDefaultPublisher(), 2000, putVerifier, getHandle), i);
 		}
+		Log.info(Log.FAC_TEST, "Completed testGetLatestVersion");
 	}
 
 	@Test
 	public void testRecall() {
+		Log.info(Log.FAC_TEST, "Starting testRecall");
+		
 		String key = "/test/smetters/values/data";
 		CCNTime time = CCNTime.now();
 		try {
 			ContentName keyName = ContentName.fromNative(key);
 			CCNWriter writer = new CCNWriter(keyName, putHandle);
 			ContentName name = writer.put(keyName, BigInteger.valueOf(time.getTime()).toByteArray());
-			System.out.println("Put under name: " + name);
+			Log.info(Log.FAC_TEST, "Put under name: " + name);
 			ContentObject result = getHandle.get(name, SystemConfiguration.NO_TIMEOUT);
 
-			System.out.println("Querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
+			Log.info(Log.FAC_TEST, "Querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
 			if (result == null) {
-				System.out.println("Didn't get back content we just put in.");
-				System.out.println("Put under name: " + keyName);
-				System.out.println("Final name: " + name);
+				Log.info(Log.FAC_TEST, "Didn't get back content we just put in.");
+				Log.info(Log.FAC_TEST, "Put under name: " + keyName);
+				Log.info(Log.FAC_TEST, "Final name: " + name);
 				//Assert.fail("Didn't get back content we just put!");
 
 				result = getHandle.get(name, SystemConfiguration.NO_TIMEOUT);
 
-				System.out.println("Recursive querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
+				Log.info(Log.FAC_TEST, "Recursive querying for returned name, Got back: " + (result == null ? "0"  : "1") + " results.");
 
 				ContentName parentName = name.parent();
-				System.out.println("Inserted name's parent same as key name? " + parentName.equals(keyName));
+				Log.info(Log.FAC_TEST, "Inserted name's parent same as key name? " + parentName.equals(keyName));
 
 			} else {
 				byte [] content = result.content();
-				System.out.println("Got content: " + result.name());
-				System.out.println("Original time: " + time + " returned time: " + new Timestamp(new BigInteger(1, content).longValue()));
+				Log.info(Log.FAC_TEST, "Got content: " + result.name());
+				Log.info(Log.FAC_TEST, "Original time: " + time + " returned time: " + new Timestamp(new BigInteger(1, content).longValue()));
 				Assert.assertNotNull("No content associated with name we just put!", content);
 				Assert.assertTrue("didn't get back same data", 
 						time.equals(new Timestamp(new BigInteger(1, content).longValue())));
@@ -295,7 +309,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 			result = getHandle.get(keyName, SystemConfiguration.NO_TIMEOUT);
 
-			System.out.println("Querying for inserted name, Got back: " 
+			Log.info(Log.FAC_TEST, "Querying for inserted name, Got back: " 
 							+ (result == null ? "0"  : "1") + " results.");
 
 			if (result == null)
@@ -303,9 +317,9 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 			if (SegmentationProfile.segmentRoot(result.name()).equals(name) &&
 					time.equals(new Timestamp(new BigInteger(1, result.content()).longValue()))) {
-				System.out.println("Got back name we inserted.");
+				Log.info(Log.FAC_TEST, "Got back name we inserted.");
 			} else {
-				Log.warning("Didn't get back data we just inserted:\n  result: " + result.name() + 
+				Log.warning(Log.FAC_TEST, "Didn't get back data we just inserted:\n  result: " + result.name() + 
 								" (write time: " + result.signedInfo().getTimestamp() + 
 								   " content time: " + new Timestamp(new BigInteger(1, result.content()).longValue()) +
 										")\n   orig: " + name + 
@@ -320,6 +334,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());
 		}
+		Log.info(Log.FAC_TEST, "Completed testRecall");
 	}
 
 	public void versionTest(ContentName docName,
@@ -328,7 +343,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 		CCNWriter writer = new CCNWriter(docName, putHandle);
 		ContentName version1 = writer.newVersion(docName, content1);
-		System.out.println("Inserted first version as: " + version1);
+		Log.info(Log.FAC_TEST, "Inserted first version as: " + version1);
 		Assert.assertNotNull("New version is null!", version1);
 
 		ContentVerifier putVerifier = new ContentObject.SimpleVerifier(putHandle.getDefaultPublisher());
@@ -336,19 +351,19 @@ public class CCNLibraryTest extends LibraryTestBase {
 			VersioningProfile.getLatestVersion(docName, null, SystemConfiguration.NO_TIMEOUT, putVerifier, getHandle);
 		Assert.assertTrue(latestVersion.verify(getHandle.keyManager()));
 		Assert.assertNotNull("Retrieved latest version of " + docName + " got null!", latestVersion);
-		System.out.println("Latest version name: " + latestVersion.name());
+		Log.info(Log.FAC_TEST, "Latest version name: " + latestVersion.name());
 
 		ContentName version2 = 
 			writer.newVersion(docName, content2);
 
 		Assert.assertNotNull("New version is null!", version2);
-		System.out.println("Inserted second version as: " + version2);
+		Log.info(Log.FAC_TEST, "Inserted second version as: " + version2);
 
 		ContentObject newLatestVersion = 
 			VersioningProfile.getLatestVersion(docName, null, SystemConfiguration.NO_TIMEOUT, putVerifier, getHandle);
 		Assert.assertTrue(newLatestVersion.verify(getHandle.keyManager()));
 		Assert.assertNotNull("Retrieved new latest version of " + docName + " got null!", newLatestVersion);
-		System.out.println("Latest version name: " + newLatestVersion.name());
+		Log.info(Log.FAC_TEST, "Latest version name: " + newLatestVersion.name());
 
 		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version1, docName));
 		Assert.assertTrue("Version is not a version of the parent name!", VersioningProfile.isVersionOf(version2, docName));
@@ -357,14 +372,17 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 	@Test
 	public void testNotFound() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testNotFound");
+
 		try {
 			String key = "/some_strange_key_we_should_never_find";
 			ContentObject result = getHandle.get(ContentName.fromNative(key), 1000);
 			Assert.assertTrue("found something when there shouldn't have been anything", result == null);
 		} catch (Exception e) {
-			System.out.println("Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
+			Log.info(Log.FAC_TEST, "Exception in testing recall: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());
 		}
+		Log.info(Log.FAC_TEST, "Completed testNotFound");
 	}
 
 	class TestListener extends BasicInterestListener {
@@ -382,7 +400,7 @@ public class CCNLibraryTest extends LibraryTestBase {
 			byte[] content = null;
 			try {
 				if (null != co) {
-						System.out.println("handleContent: got " + co.name());
+						Log.info(Log.FAC_TEST, "handleContent: got " + co.name());
 
 						content = co.content();
 						String strContent = new String(content);
@@ -392,21 +410,21 @@ public class CCNLibraryTest extends LibraryTestBase {
 							// does *not* version content for you, at least at the moment. 
 							// TODO We need to decide whether we expect it to. So don't require
 							// versioning here yet. 
-							System.out.println("Got update for " + co.name() + ": " + strContent + 
+							Log.info(Log.FAC_TEST, "Got update for " + co.name() + ": " + strContent + 
 								" (revision " + VersioningProfile.getLastVersionAsLong(co.name()) + ")");
 						} else {
-							System.out.println("Got update for " + co.name() + ": " + strContent);
+							Log.info(Log.FAC_TEST, "Got update for " + co.name() + ": " + strContent);
 						}
 						_count++;
 						switch(_count) {
 						case 1:
 							Assert.assertEquals("data1", strContent);
-							System.out.println("Got data1 back!");
+							Log.info(Log.FAC_TEST, "Got data1 back!");
 							_mainThread.interrupt();
 							break;
 						case 2: 
 							Assert.assertEquals("data2", strContent);
-							System.out.println("Got data2 back!");
+							Log.info(Log.FAC_TEST, "Got data2 back!");
 							_mainThread.interrupt();
 							break;
 						default:
@@ -422,6 +440,8 @@ public class CCNLibraryTest extends LibraryTestBase {
 
 	@Test
 	public void testInterest() {
+		Log.info(Log.FAC_TEST, "Starting testInterest");
+
 		String key = "/test/interest";
 		final Thread mainThread = Thread.currentThread();
 
@@ -452,9 +472,10 @@ public class CCNLibraryTest extends LibraryTestBase {
 			getHandle.cancelInterest(ik, tl);
 
 		} catch (Exception e) {
-			System.out.println("Exception in testing interests: " + e.getClass().getName() + ": " + e.getMessage());
+			Log.warning(Log.FAC_TEST, "Exception in testing interests: " + e.getClass().getName() + ": " + e.getMessage());
 			Assert.fail(e.getMessage());
 		}
+		Log.info(Log.FAC_TEST, "Completed testInterest");
 	}
 
 }

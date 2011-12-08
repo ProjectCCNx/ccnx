@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -51,8 +51,8 @@ public class BaseSecurityTest extends BasePutGetTest {
 				}
 				assertTrue(verifySig);
 			} catch (Exception e) {
-				Log.info("Exception in checkGetResults for name: " + getResults.get(i).name() +": " + e.getClass().getName() + " " + e.getMessage());
-				Log.infoStackTrace(e);
+				Log.warning(Log.FAC_TEST, "Exception in checkGetResults for name: " + getResults.get(i).name() +": " + e.getClass().getName() + " " + e.getMessage());
+				Log.warningStackTrace(Log.FAC_TEST, e);
 				fail();			
 			}
 		} 
@@ -72,8 +72,8 @@ public class BaseSecurityTest extends BasePutGetTest {
 				SystemConfiguration.logObject("checkPutResults: verification succeeded", co);
 			}
 		} catch (Exception e) {
-			Log.info("Exception in checkPutResults for name: " + putResult.name() +": " + e.getClass().getName() + " " + e.getMessage());
-			Log.infoStackTrace(e);
+			Log.warning(Log.FAC_TEST, "Exception in checkPutResults for name: " + putResult.name() +": " + e.getClass().getName() + " " + e.getMessage());
+			Log.warningStackTrace(Log.FAC_TEST, e);
 			fail();			
 		}
 	}

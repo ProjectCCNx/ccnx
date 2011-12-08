@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -116,33 +116,34 @@ public class WrappedKeyTest {
 		
 		storedKeyName = GroupAccessControlProfile.nodeKeyName(nodeName);
 		setupDone = true;
-		Log.info("Initialized keys for WrappedKeyTest");		
+		Log.info(Log.FAC_TEST, "Initialized keys for WrappedKeyTest");		
 	}
 
 	@Test
 	public void testWrapUnwrapKey() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testWrapUnwrapKey");
+
 		// don't use setUpBeforeClass, may not be handling slow initialization well
 		setupTest(); 
 		// for each wrap case, wrap, unwrap, and make sure it matches.
-		Log.info("Entering testWrapUnwrapKey");
 		// Wrap secret in secret
-		Log.info("Wrap secret key in secret key.");
+		Log.info(Log.FAC_TEST, "Wrap secret key in secret key.");
 		WrappedKey wks = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingAESKey);
 		Key unwrappedKey = wks.unwrapKey(wrappingAESKey);
 		Assert.assertArrayEquals(wrappedAESKey.getEncoded(), unwrappedKey.getEncoded());
 		// wrap secret in public			
-		Log.info("Wrap secret key in public key.");
+		Log.info(Log.FAC_TEST, "Wrap secret key in public key.");
 		WrappedKey wksp = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingKeyPair.getPublic());
 		unwrappedKey = wksp.unwrapKey(wrappingKeyPair.getPrivate());
 		Assert.assertArrayEquals(wrappedAESKey.getEncoded(), unwrappedKey.getEncoded());
 		// wrap private in public
-		Log.info("Wrap private key in public key.");
+		Log.info(Log.FAC_TEST, "Wrap private key in public key.");
 		WrappedKey wkpp = WrappedKey.wrapKey(wrappingKeyPair.getPrivate(), null, aLabel, wrappingKeyPair.getPublic());
 		unwrappedKey = wkpp.unwrapKey(wrappingKeyPair.getPrivate());
 		Assert.assertArrayEquals(wrappingKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
 		// wrap private in secret
-		Log.info("Wrap private key in secret key.");
-		Log.info("wpk length " + wrappingKeyPair.getPrivate().getEncoded().length);
+		Log.info(Log.FAC_TEST, "Wrap private key in secret key.");
+		Log.info(Log.FAC_TEST, "wpk length " + wrappingKeyPair.getPrivate().getEncoded().length);
 		WrappedKey wkp = WrappedKey.wrapKey(wrappingKeyPair.getPrivate(), null, aLabel, wrappingAESKey);
 		unwrappedKey = wkp.unwrapKey(wrappingAESKey);
 		Assert.assertArrayEquals(wrappingKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
@@ -159,33 +160,34 @@ public class WrappedKeyTest {
 			Assert.assertArrayEquals(wrappingEGKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
 		 */		
 		// wrap DSA private in public key
-		Log.info("Wrap DSA private in private.");
+		Log.info(Log.FAC_TEST, "Wrap DSA private in private.");
 		wkpp = WrappedKey.wrapKey(wrappedDSAKeyPair.getPrivate(), null, aLabel, wrappingKeyPair.getPublic());
 		unwrappedKey = wkpp.unwrapKey(wrappingKeyPair.getPrivate());
 		Assert.assertArrayEquals(wrappedDSAKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
-		Log.info("Wrap DSA private in secret.");
+		Log.info(Log.FAC_TEST, "Wrap DSA private in secret.");
 		wkp = WrappedKey.wrapKey(wrappedDSAKeyPair.getPrivate(), null, aLabel, wrappingAESKey);
 		unwrappedKey = wkp.unwrapKey(wrappingAESKey);
 		Assert.assertArrayEquals(wrappedDSAKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
 		
 		// wrap DH private in public key
-		Log.info("Wrap DH private in private.");
+		Log.info(Log.FAC_TEST, "Wrap DH private in private.");
 		wkpp = WrappedKey.wrapKey(wrappedDHKeyPair.getPrivate(), null, aLabel, wrappingKeyPair.getPublic());
 		unwrappedKey = wkpp.unwrapKey(wrappingKeyPair.getPrivate());
 		Assert.assertArrayEquals(wrappedDHKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
-		Log.info("Wrap DH private in secret.");
+		Log.info(Log.FAC_TEST, "Wrap DH private in secret.");
 		wkp = WrappedKey.wrapKey(wrappedDHKeyPair.getPrivate(), null, aLabel, wrappingAESKey);
 		unwrappedKey = wkp.unwrapKey(wrappingAESKey);
 		Assert.assertArrayEquals(wrappedDHKeyPair.getPrivate().getEncoded(), unwrappedKey.getEncoded());
 		
-		Log.info("Leaving testWrapUnwrapKey");
+		Log.info(Log.FAC_TEST, "Completed testWrapUnwrapKey");
 	}
 
 	@Test
 	public void testWrappedKeyByteArrayStringStringStringByteArrayByteArray() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testWrappedKeyByteArrayStringStringStringByteArrayByteArray");
+
 		// don't use setUpBeforeClass, may not be handling slow initialization well
 		setupTest(); 
-		Log.info("Entering testWrappedKeyByteArrayStringStringStringByteArrayByteArray");
 		WrappedKey wka = null;
 		wka = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, 
 				wrappingKeyPair.getPublic());
@@ -200,14 +202,16 @@ public class WrappedKeyTest {
 		WrappedKey bdwk = new WrappedKey();
 		XMLEncodableTester.encodeDecodeTest("WrappedKey(full)", wk2, dwk, bdwk);
 		wka.setWrappingKeyIdentifier(wrappingKeyID);
-		Log.info("Leaving testWrappedKeyByteArrayStringStringStringByteArrayByteArray");
+		
+		Log.info(Log.FAC_TEST, "Completed testWrappedKeyByteArrayStringStringStringByteArrayByteArray");
 	}
 	
 	@Test
 	public void testDecodeInputStream() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
+
 		// don't use setUpBeforeClass, may not be handling slow initialization well
 		setupTest(); 
-		Log.info("Entering testDecodeInputStream");
 		WrappedKey wk = new WrappedKey(wrappingKeyID, dummyWrappedKey);
 		WrappedKey dwk = new WrappedKey();
 		WrappedKey bdwk = new WrappedKey();
@@ -228,15 +232,17 @@ public class WrappedKeyTest {
 		WrappedKey bdwka = new WrappedKey();
 		XMLEncodableTester.encodeDecodeTest("WrappedKey(assymmetric wrap symmetric, with id and name)", wka, dwka, bdwka);
 		Assert.assertArrayEquals(dwka.wrappingKeyIdentifier(), wrappingKeyID);
-		Log.info("Leaving testDecodeInputStream");
+		
+		Log.info(Log.FAC_TEST, "Completed testDecodeInputStream");
 	}
 	
 	@Test
 	public void testWrappedKeyObject() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testWrappedKeyObject");
+
 		// don't use setUpBeforeClass, may not be handling slow initialization well
 		setupTest(); 
 		
-		Log.info("Entering testWrappedKeyObject");
 		WrappedKey wks = WrappedKey.wrapKey(wrappedAESKey, null, aLabel, wrappingAESKey);
 		WrappedKey wka = WrappedKey.wrapKey(wrappedAESKey, NISTObjectIdentifiers.id_aes128_CBC.toString(), 
 										aLabel, wrappingKeyPair.getPublic());
@@ -267,14 +273,15 @@ public class WrappedKeyTest {
 			Assert.assertEquals(wko.wrappedKey(), wka);
 		} finally {
 			if (null != flosser) {
-				Log.info("WrappedKeyTest: Stopping flosser.");
+				Log.info(Log.FAC_TEST, "WrappedKeyTest: Stopping flosser.");
 				flosser.stop();
-				Log.info("WrappedKeyTest: flosser stopped.");
+				Log.info(Log.FAC_TEST, "WrappedKeyTest: flosser stopped.");
 			}
 			thandle.close();
 			thandle2.close();
 		}
-		Log.info("Leaving testWrappedKeyObject");
+		
+		Log.info(Log.FAC_TEST, "Completed testWrappedKeyObject");
 	}
 
 }

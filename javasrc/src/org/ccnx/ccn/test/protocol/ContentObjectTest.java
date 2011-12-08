@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -27,6 +27,7 @@ import java.util.Date;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -111,6 +112,8 @@ public class ContentObjectTest {
 
 	@Test
 	public void testDecodeInputStream() {
+		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
+
 		try {
 			ContentObject cokey = 
 				new ContentObject(name, authKey, document3, pair.getPrivate());
@@ -144,14 +147,18 @@ public class ContentObjectTest {
 			fdump.close();
 			*/
 		} catch (Exception e) {
-			System.out.println("Exception : " + e.getClass().getName() + ": " + e.getMessage());
-			e.printStackTrace();
+			Log.warning(Log.FAC_TEST, "Exception : " + e.getClass().getName() + ": " + e.getMessage());
+			Log.warningStackTrace(Log.FAC_TEST, e);
 			Assert.fail("Exception: " + e.getClass().getName() + ": " + e.getMessage());
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testDecodeInputStream");
 	}
 	
 	@Test
 	public void testImmutable() {
+		Log.info(Log.FAC_TEST, "Starting testImmutable");
+
 		try {
 			ContentObject co = new ContentObject(name, auth, document2.getBytes(), pair.getPrivate());
 			byte [] bs = co.content();
@@ -163,10 +170,14 @@ public class ContentObjectTest {
 		} catch (SignatureException e) {
 			Assert.fail("Signature exception: " + e.getMessage());
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testImmutable");
 	}
 	
 	@Test
 	public void testDigest() {
+		Log.info(Log.FAC_TEST, "Starting testDigest");
+
 		try {
 			ContentObject coempty = 
 				new ContentObject(name, auth, new byte[0], pair.getPrivate());
@@ -179,6 +190,7 @@ public class ContentObjectTest {
 		} catch (Exception e) {
 			Assert.fail("Exception in testEncDec: " + e.getClass().getName() + ": " + e.getMessage());
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testDigest");
 	}
-
 }

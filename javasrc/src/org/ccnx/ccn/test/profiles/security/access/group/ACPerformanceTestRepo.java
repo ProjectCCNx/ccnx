@@ -26,6 +26,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
@@ -116,6 +117,8 @@ public class ACPerformanceTestRepo {
 	
 	@Test
 	public void performanceTest() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting performanceTest");
+
 		createBaseDirectoryACL();
 		writeContentInDirectory();
 
@@ -134,6 +137,8 @@ public class ACPerformanceTestRepo {
 		
 		// Carol now has permission to read the file
 		readFileAs(userNames[2]);
+		
+		Log.info(Log.FAC_TEST, "Completed performanceTest");
 	}
 	
 	/**
@@ -171,7 +176,7 @@ public class ACPerformanceTestRepo {
 			ostream.close();
 		} 
 		catch (Exception e) {
-			e.printStackTrace();
+			Log.warningStackTrace(Log.FAC_TEST, e);
 			Assert.fail();
 		}
 		

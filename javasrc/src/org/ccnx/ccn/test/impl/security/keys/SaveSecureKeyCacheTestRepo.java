@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -26,6 +26,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.impl.security.keys.SecureKeyCache;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -88,6 +89,7 @@ public class SaveSecureKeyCacheTestRepo {
 	
 	@Test
 	public void testReadSecureKeyCache() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testReadSecureKeyCache");
 
 		byte[] origKey    = pair.getPrivate().getEncoded();
 		byte[] origMyKey  = myPair.getPrivate().getEncoded();
@@ -111,6 +113,7 @@ public class SaveSecureKeyCacheTestRepo {
 		Assert.assertTrue(DataUtils.compare(newCache.getKeyID(privateKeyName),   pubIdentifier)== 0);
 		Assert.assertTrue(DataUtils.compare(newCache.getKeyID(keyName),          keyIdentifier)== 0);
 		
+		Log.info(Log.FAC_TEST, "Completed testReadSecureKeyCache");	
 	}
 	
 	@AfterClass

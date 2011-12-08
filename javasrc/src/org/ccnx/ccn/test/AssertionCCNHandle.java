@@ -152,8 +152,10 @@ public class AssertionCCNHandle extends CCNHandle {
 	 * @throws InterruptedException
 	 */
 	public void checkError(long timeout) throws Error, InterruptedException {
-		synchronized (this) {
-			wait(timeout);
+		if (timeout != 0) {
+			synchronized (this) {
+				wait(timeout);
+			}
 		}
 		if (null != _error)
 			throw _error;

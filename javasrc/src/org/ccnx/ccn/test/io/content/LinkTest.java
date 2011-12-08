@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -19,6 +19,7 @@ package org.ccnx.ccn.test.io.content;
 
 import java.util.Arrays;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
 import org.ccnx.ccn.protocol.CCNTime;
@@ -92,13 +93,16 @@ public class LinkTest {
 
 	@Test
 	public void testEncodeOutputStream() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Starting testEncodeOutputStream");
+
 		for (int i=0; i < ns.length; ++i) {
 			Link l = new Link(ls[i], labels[i], las[i]);
 			Link ldec = new Link();
 			Link lbdec = new Link();
 			XMLEncodableTester.encodeDecodeTest("LinkReference_" + i, l, ldec, lbdec);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodeOutputStream");
 	}
 
 }

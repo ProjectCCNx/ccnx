@@ -27,6 +27,7 @@ import org.ccnx.ccn.impl.security.crypto.ContentKeys;
 import org.ccnx.ccn.impl.security.crypto.KeyDerivationFunction;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys.ContentInfo;
 import org.ccnx.ccn.impl.security.crypto.ContentKeys.KeyAndIV;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
@@ -77,10 +78,14 @@ public class KeyDerivationFunctionTest {
 
 	@Test
 	public void testKeysSameTwice() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testKeysSameTwice");
+
 		KeyAndIV keyandiv2 = KeyDerivationFunction.DeriveKeysForObject(ContentKeys.DEFAULT_KEY_ALGORITHM,
 				keySpec.getEncoded(), 
 				new ContentInfo(testName, publisher, functionalLabel));
 		Assert.assertEquals(keyandiv, keyandiv2);
+		
+		Log.info(Log.FAC_TEST, "Completed testKeysSameTwice");
 	}
 	
 	@Test(expected=AssertionFailedError.class)
@@ -90,14 +95,20 @@ public class KeyDerivationFunctionTest {
 	
 	@Test
 	public void testNoLabelSameTwice() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testNoLabelSameTwice");
+
 		KeyAndIV keyandivnolabel2 = KeyDerivationFunction.DeriveKeysForObject(ContentKeys.DEFAULT_KEY_ALGORITHM,
 				keySpec.getEncoded(), 
 				new ContentInfo(testName, publisher, null));
 		Assert.assertEquals(keyandivnolabel, keyandivnolabel2);
+		
+		Log.info(Log.FAC_TEST, "Completed testNoLabelSameTwice");
 	}
 	
 	@Test(expected=AssertionFailedError.class)
 	public void testVersionMakesDifference() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testVersionMakesDifference");
+
 		KeyAndIV keyandivv1 = KeyDerivationFunction.DeriveKeysForObject(ContentKeys.DEFAULT_KEY_ALGORITHM,
 				keySpec.getEncoded(), 
 				new ContentInfo(testNameVersion1, publisher, null));

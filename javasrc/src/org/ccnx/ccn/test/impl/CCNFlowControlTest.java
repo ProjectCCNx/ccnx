@@ -47,7 +47,7 @@ public class CCNFlowControlTest extends CCNFlowControlTestBase {
 	 */
 	@Test
 	public void testMixedOrderInterestPut() throws Throwable {	
-
+		Log.info(Log.FAC_TEST, "Starting testMixedOrderInterestPut");
 		normalReset(name1);
 		
 		// First one normal order exchange: put first, interest next
@@ -67,11 +67,12 @@ public class CCNFlowControlTest extends CCNFlowControlTestBase {
 		co = testNext(co, segments[2]);
 		fc.put(segments[3]);
 		co = testNext(co, segments[3]);
+		Log.info(Log.FAC_TEST, "Completed testMixedOrderInterestPut");
 	}
 
 	@Test
 	public void testWaitForPutDrain() throws Throwable {	
-
+		Log.info(Log.FAC_TEST, "Starting testWaitForPutDrain");
 		normalReset(name1);
 		fc.put(segments[1]);
 		fc.put(segments[3]);
@@ -81,9 +82,8 @@ public class CCNFlowControlTest extends CCNFlowControlTestBase {
 		testLast(segments[0], segments[2]);
 		testLast(segments[0], segments[1]);
 		ContentObject lastOne = _handle.get(new Interest(segment_names[0]), 0);
-		Log.info("Retrieved final object {0}, blocks still in fc: {1}", lastOne.name(), fc.getCapacity()-fc.availableCapacity());
+		Log.info(Log.FAC_TEST, "Retrieved final object {0}, blocks still in fc: {1}", lastOne.name(), fc.getCapacity()-fc.availableCapacity());
 		
-		System.out.println("Testing \"waitForPutDrain\"");
 		try {
 			// can't call waitForPutDrain directly; call it via afterClose
 			fc.afterClose();
@@ -96,14 +96,15 @@ public class CCNFlowControlTest extends CCNFlowControlTestBase {
 			fc.afterClose();
 			Assert.fail("WaitforPutDrain succeeded when it should have failed");
 		} catch (IOException ioe) {}
+		Log.info(Log.FAC_TEST, "Completed testWaitForPutDrain");
 	}
 	
 	@Test
 	public void testHighwaterWait() throws Throwable {
+		Log.info(Log.FAC_TEST, "Starting testHighwaterWait");
 		
 		// Test that put over highwater fails with nothing draining
 		// the buffer
-		System.out.println("Testing \"testHighwaterWait\"");
 		normalReset(name1);
 		fc.setCapacity(4);
 		fc.put(segments[0]);
@@ -128,6 +129,7 @@ public class CCNFlowControlTest extends CCNFlowControlTestBase {
 		fc.put(segments[3]);
 		fc.put(segments[4]);
 		tar.join();
+		Log.info(Log.FAC_TEST, "Completed testMixedOrderInterestPut");
 	}
 	
 	protected void normalReset(ContentName n) throws IOException {
