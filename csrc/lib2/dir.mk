@@ -23,7 +23,7 @@ PROGRAMS = ccnbtreetest ccnfilewatch
 DEBRIS = 
 
 BROKEN_PROGRAMS = 
-CSRC = ccn_btree.c ccn_btree_content.c ccn_btree_store.c ccnbtreetest.c ccnfilewatch.c
+CSRC = ccn_btree.c ccn_btree_content.c ccn_btree_store.c ccnbtreetest.c
 HSRC = 
 SCRIPTSRC = 
  
@@ -36,9 +36,6 @@ $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 LIB2_OBJ = ccn_btree.o ccn_btree_store.o ccn_btree_content.o
 ccnbtreetest: $(LIB2_OBJ) ccnbtreetest.c
 	$(CC) $(CFLAGS) -o $@ -Dccnbtreetest_main=main ccnbtreetest.c $(LIB2_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
-
-ccnfilewatch: ccnfilewatch.o
-	$(CC) $(CFLAGS) -o $@ ccnfilewatch.o
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
@@ -66,4 +63,3 @@ ccn_btree_store.o: ccn_btree_store.c ../ccn/btree.h \
 ccnbtreetest.o: ccnbtreetest.c ../ccn/btree.h ../include/ccn/charbuf.h \
   ../include/ccn/hashtb.h ../ccn/btree_content.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
-ccnfilewatch.o: ccnfilewatch.c
