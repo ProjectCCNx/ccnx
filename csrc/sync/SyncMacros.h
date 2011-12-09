@@ -30,20 +30,6 @@
 #define MAX_NAME_BYTES (24*1024*1024 - 1)
 #define MAX_NREFS 256
 
-// temporary definition of Sync-related DTAG values
-#define CCN_DTAG_SyncNode ((enum ccn_dtag) 115)
-#define CCN_DTAG_SyncNodeKind ((enum ccn_dtag) 116)
-#define CCN_DTAG_SyncNodeElement ((enum ccn_dtag) 117)
-#define CCN_DTAG_SyncVersion ((enum ccn_dtag) 118)
-#define CCN_DTAG_SyncNodeElements ((enum ccn_dtag) 119)
-#define CCN_DTAG_SyncContentHash ((enum ccn_dtag) 120)
-#define CCN_DTAG_SyncLeafCount ((enum ccn_dtag) 121)
-#define CCN_DTAG_SyncTreeDepth ((enum ccn_dtag) 122)
-#define CCN_DTAG_SyncByteCount ((enum ccn_dtag) 123)
-#define CCN_DTAG_SyncConfigSlice ((enum ccn_dtag) 124)
-#define CCN_DTAG_SyncConfigSliceList ((enum ccn_dtag) 125)
-#define CCN_DTAG_SyncConfigSliceOp ((enum ccn_dtag) 126)
-
 #define NEW_ANY(N, T) ((T *) calloc(N, sizeof(T)))
 #define NEW_STRUCT(N, S) ((struct S *) calloc(N, sizeof(struct S)))
 
