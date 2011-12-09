@@ -1232,6 +1232,16 @@ public class CCNNetworkManager implements Runnable {
 					// registered to restore normal operation
 					if (!wasConnected && _channel.isConnected())
 						reregisterPrefixes();
+					if (!_channel.isConnected() && SystemConfiguration.EXIT_ON_NETWORK_ERROR) {
+						Log.warning(Log.FAC_NETMANAGER, 
+								formatMessage("ccnd down and exit on network error requested - exiting"));
+
+						// Note - exit is pretty drastic but this is not the default behaviour and if someone
+						// requested it, there's really no easy way to get this to happen without modifying
+						// upper level applications to learn about this. Perhaps there should be another option to
+						// do that i.e. exit netmanager and notify without immediate exit.
+						System.exit(1);
+					}
 					continue;
 				}			
 				_currentHandler++;
