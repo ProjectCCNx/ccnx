@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -78,14 +78,17 @@ while [ $I -lt 80 ]; do
 done
 
 #
+# Record status snapshot
+#
+WithCCND 4 ccndstatus > int-supp-ccnd4-status-A.out
+ccndstatus > int-supp-ccnd0-status-A.out
+
+#
 # Let things settle a bit before teardown.
 #
-sleep 1
-WithCCND 4 ccndstatus
-ccndstatus
 sleep 4
-WithCCND 4 ccndstatus
-ccndstatus
+WithCCND 4 ccndstatus > int-supp-ccnd4-status-B.out
+ccndstatus > int-supp-ccnd0-status-B.out
 
 #
 # See how we did.
