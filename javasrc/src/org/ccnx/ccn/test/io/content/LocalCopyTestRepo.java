@@ -440,7 +440,7 @@ public class LocalCopyTestRepo {
 				}
 				try {
 					String s = interest.name().toString();
-					CCNStringObject so = new CCNStringObject(interest.name(), s, SaveType.RAW, listenerhandle);
+					CCNStringObject so = new CCNStringObject(name, s, SaveType.RAW, listenerhandle);
 					so.saveLaterWithClose();
 					replies.add(interest.name());
 					ret = true;
