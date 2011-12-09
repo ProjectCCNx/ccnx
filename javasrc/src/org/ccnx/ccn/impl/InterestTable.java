@@ -71,7 +71,6 @@ public class InterestTable<V> {
 	}
 
     protected final static class LongestFirstComparator implements Comparator<ContentName>{
-        @Override
         public int compare(ContentName o1, ContentName o2) {
             if (o1 == o2)
                 return 0;
