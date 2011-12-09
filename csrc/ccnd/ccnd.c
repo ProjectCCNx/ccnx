@@ -3146,14 +3146,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                         break;
                     }
                 }
-                if ((p->flags & CCN_PR_EQV) == 0) {
-                    p->flags |= CCN_PR_EQV; /* Don't add new faces */
-                    ccnd_debug_ccnb(h, __LINE__, "set_pr_eqv",
-                                    face_from_faceid(h, p->faceid),
-                                    p->interest_msg, p->size);
-                }
-                
-                // XXX - How robust is setting of CCN_PR_EQV?
+                p->flags |= CCN_PR_EQV; /* Don't add new faces */
                 /*
                  * XXX - We would like to avoid having to keep this
                  * interest around if we get here with (outbound->n == 0).
