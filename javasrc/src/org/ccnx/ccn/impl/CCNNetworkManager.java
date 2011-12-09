@@ -483,11 +483,7 @@ public class CCNNetworkManager implements Runnable {
 					unregisterInterest(this);
 
 					// Callback the client - we can't hold any locks here!
-					Interest updatedInterest;
-					if (handler instanceof CCNInterestListener)
-						updatedInterest = ((CCNInterestListener)handler).handleContent(co, interest);
-					else
-						updatedInterest = ((CCNContentHandler)handler).handleContent(co, interest);
+					Interest updatedInterest = ((CCNContentHandler)handler).handleContent(co, interest);
 
 					// Possibly we should optimize here for the case where the same interest is returned back
 					// (now we would unregister it, then reregister it) but need to be careful that the timing
@@ -554,8 +550,6 @@ public class CCNNetworkManager implements Runnable {
 				// Call into client code without holding any library locks
 				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 					Log.finer(Log.FAC_NETMANAGER, "Filter callback for: {0}", prefix);
-				if (handler instanceof CCNFilterListener)
-					return ((CCNFilterListener)handler).handleInterest(interest);
 				return ((CCNInterestHandler)handler).handleInterest(interest);
 			} catch (RuntimeException ex) {
 				_stats.increment(StatsEnum.DeliverInterestFailed);

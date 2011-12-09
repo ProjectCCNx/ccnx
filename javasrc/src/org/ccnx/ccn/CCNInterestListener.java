@@ -17,8 +17,6 @@
 
 package org.ccnx.ccn;
 
-import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.Interest;
 
 /**
  * Deprecated - use CCNContentHandler instead
@@ -34,7 +32,7 @@ import org.ccnx.ccn.protocol.Interest;
  * @see CCNBase
  */
 @Deprecated
-public interface CCNInterestListener {
+public interface CCNInterestListener extends CCNContentHandler {
 	
 	/**
 	 * Callback called when we get new results for our query.
@@ -42,6 +40,6 @@ public interface CCNInterestListener {
 	 * @param interest Interest that was satisfied
 	 * @return new Interest to be expressed
 	 */
-    public Interest handleContent(ContentObject data, Interest interest);
+    //public Interest handleContent(ContentObject data, Interest interest);
     
 }
