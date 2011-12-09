@@ -137,9 +137,6 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		Assert.assertArrayEquals(resultDigest, writeDigest);
 		Assert.assertArrayEquals(writer.getFirstDigest(), vis.getFirstDigest());
 		Assert.assertEquals(writer.firstSegmentNumber(), (Long)vis.firstSegmentNumber());
-		
-		readHandle.close();
-		writeHandle.close();
 	}
 	
 	public static byte [] readFile(InputStream inputStream) throws IOException {
