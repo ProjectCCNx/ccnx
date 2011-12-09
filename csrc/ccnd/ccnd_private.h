@@ -280,8 +280,8 @@ struct sparse_straggler_entry {
  * duplicate nonces.
  */
 struct propagating_entry {
-    struct propagating_entry *next;
-    struct propagating_entry *prev;
+    struct propagating_entry *next; /**< next (in arrival order) */
+    struct propagating_entry *prev; /**< previous (older) */
     unsigned flags;             /**< CCN_PR_xxx */
     unsigned faceid;            /**< origin of the interest, dest for matches */
     int usec;                   /**< usec until timeout */

@@ -1622,7 +1622,7 @@ ccn_stuff_interest(struct ccnd_handle *h,
         struct nameprefix_entry *npe = e->data;
         struct propagating_entry *head = &npe->pe_head;
         struct propagating_entry *p;
-        for (p = head->prev; p != head; p = p->prev) {
+        for (p = head->next; p != head; p = p->next) {
             if (p->outbound != NULL &&
                 p->outbound->n > p->sent &&
                 p->size <= remaining_space &&
@@ -3086,7 +3086,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
     if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
         max_redundant = 0;
     if (outbound != NULL) {
-        for (p = head->next; p != head /*&& outbound->n > 0*/; p = p->next) {
+        for (p = head->prev; p != head && outbound->n > 0; p = p->prev) {
             if (p->size > minsize &&
                 p->interest_msg != NULL &&
                 p->usec > 0 &&
