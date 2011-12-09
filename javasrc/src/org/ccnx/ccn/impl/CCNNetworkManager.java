@@ -950,9 +950,6 @@ public class CCNNetworkManager implements Runnable {
 	 * get content matching an interest from ccnd. Expresses an interest, waits for ccnd to
 	 * return matching the data, then removes the interest and returns the data to the caller.
 	 * 
-	 * TODO should probably handle InterruptedException at this level instead of throwing it to
-	 * 		higher levels
-	 * 
 	 * @param interest	the interest
 	 * @param timeout	time to wait for return in ms
 	 * @return	ContentObject or null on timeout
@@ -969,12 +966,19 @@ public class CCNNetworkManager implements Runnable {
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 			Log.finest(Log.FAC_NETMANAGER, formatMessage("blocking for {0} on {1}"), interest.name(), reg.sema);
 		// Await data to consume the interest
-		if (timeout == SystemConfiguration.NO_TIMEOUT)
-			reg.sema.acquire(); // currently no timeouts
-		else
-			reg.sema.tryAcquire(timeout, TimeUnit.MILLISECONDS);
-		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
-			Log.finest(Log.FAC_NETMANAGER, formatMessage("unblocked for {0} on {1}"), interest.name(), reg.sema);
+		try {
+			if (timeout == SystemConfiguration.NO_TIMEOUT)
+				reg.sema.acquire(); // currently no timeouts
+			else
+				reg.sema.tryAcquire(timeout, TimeUnit.MILLISECONDS);
+			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
+				Log.finest(Log.FAC_NETMANAGER, formatMessage("unblocked for {0} on {1}"), interest.name(), reg.sema);
+		} catch (InterruptedException e) {
+			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
+				Log.finest(Log.FAC_NETMANAGER, formatMessage("interupted during acquire for {0} on {1}"), interest.name(), reg.sema);
+			unregisterInterest(reg);
+			throw e;
+		}
 		// Typically the main processing thread will have registered the interest
 		// which must be undone here, but no harm if never registered
 		unregisterInterest(reg);
