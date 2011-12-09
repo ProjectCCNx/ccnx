@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 4002
+#define CCN_API_VERSION 4005
 
 /**
  * Interest lifetime default.
@@ -56,6 +56,7 @@ struct ccn_closure;
 struct ccn_upcall_info;
 struct ccn_parsed_interest;
 struct ccn_parsed_ContentObject;
+struct ccn_parsed_Link;
 
 /*
  * Types for implementing upcalls
@@ -65,6 +66,9 @@ struct ccn_parsed_ContentObject;
 
 /**
  * This tells what kind of event the upcall is handling.
+ *
+ * The KEYMISSING and RAW codes are used only if deferred verification has been
+ * requested.
  */
 enum ccn_upcall_kind {
     CCN_UPCALL_FINAL,             /**< handler is about to be deregistered */
@@ -73,7 +77,9 @@ enum ccn_upcall_kind {
     CCN_UPCALL_CONTENT,           /**< incoming verified content */
     CCN_UPCALL_INTEREST_TIMED_OUT,/**< interest timed out */
     CCN_UPCALL_CONTENT_UNVERIFIED,/**< content that has not been verified */
-    CCN_UPCALL_CONTENT_BAD        /**< verification failed */
+    CCN_UPCALL_CONTENT_BAD,       /**< verification failed */
+    CCN_UPCALL_CONTENT_KEYMISSING,/**< key has not been fetched */
+    CCN_UPCALL_CONTENT_RAW        /**< verification has not been attempted */
 };
 
 /**
@@ -84,7 +90,8 @@ enum ccn_upcall_res {
     CCN_UPCALL_RESULT_OK = 0,   /**< normal upcall return */
     CCN_UPCALL_RESULT_REEXPRESS = 1, /**< reexpress the same interest again */
     CCN_UPCALL_RESULT_INTEREST_CONSUMED = 2,/**< upcall claims to consume interest */
-    CCN_UPCALL_RESULT_VERIFY = 3 /**< force an unverified result to be verified */
+    CCN_UPCALL_RESULT_VERIFY = 3, /**< force an unverified result to be verified */
+    CCN_UPCALL_RESULT_FETCHKEY = 4 /**< request fetching of an unfetched key */
 };
 
 /**
@@ -172,6 +179,9 @@ int ccn_disconnect(struct ccn *h);
  * Releases all resources associated with *hp and sets it to NULL.
  */ 
 void ccn_destroy(struct ccn **hp);
+
+/* Control where verification happens */
+int ccn_defer_verification(struct ccn *h, int defer);
 
 /***********************************
  * Writing Names
@@ -505,6 +515,84 @@ struct ccn_parsed_interest {
     int scope;
     unsigned short offset[CCN_PI_E+1];
 };
+
+enum ccn_parsed_Link_offsetid {
+    CCN_PL_B_Name,
+    CCN_PL_B_Component0,
+    CCN_PL_E_ComponentLast,
+    CCN_PL_E_Name,
+    CCN_PL_B_Label,
+    CCN_PL_E_Label,
+    CCN_PL_B_LinkAuthenticator,
+    CCN_PL_B_PublisherID,
+    CCN_PL_B_PublisherDigest,
+    CCN_PL_E_PublisherDigest,
+    CCN_PL_E_PublisherID,
+    CCN_PL_B_NameComponentCount,
+    CCN_PL_E_NameComponentCount,
+    CCN_PL_B_Timestamp,
+    CCN_PL_E_Timestamp,
+    CCN_PL_B_Type,
+    CCN_PL_E_Type,
+    CCN_PL_B_ContentDigest,
+    CCN_PL_E_ContentDigest,
+    CCN_PL_E_LinkAuthenticator,
+    CCN_PL_E
+};
+
+struct ccn_parsed_Link {
+    int name_ncomps;
+    int name_component_count;
+    int publisher_digest_type;
+    int type;
+    unsigned short offset[CCN_PL_E+1];
+};
+
+/*
+ * ccn_parse_Link:
+ * Returns number of name components, or a negative value for an error.
+ * Fills in *link.
+ * If components is not NULL, it is filled with byte indexes of
+ * the start of each Component of the Name of the Link,
+ * plus one additional value for the index of the end of the last component.
+ */
+int
+ccn_parse_Link(struct ccn_buf_decoder *d,
+                   struct ccn_parsed_Link *link,
+                   struct ccn_indexbuf *components);
+
+/*
+ * ccn_append_Link: TODO: fill in documentation
+ */
+int
+ccnb_append_Link(struct ccn_charbuf *buf,
+                 const struct ccn_charbuf *name,
+                 const char *label,
+                 const struct ccn_charbuf *linkAuthenticator
+                 );
+
+/*
+ * ccn_parse_LinkAuthenticator:
+ */
+int
+ccn_parse_LinkAuthenticator(struct ccn_buf_decoder *d,
+               struct ccn_parsed_Link *link);
+
+/*
+ * ccn_parse_Collection_start: TODO: fill in documentation
+ */
+
+int
+ccn_parse_Collection_start(struct ccn_buf_decoder *d);
+
+/*
+ * ccn_parse_Collection_next: TODO: fill in documentation
+ */
+
+int
+ccn_parse_Collection_next(struct ccn_buf_decoder *d,
+                          struct ccn_parsed_Link *link,
+                          struct ccn_indexbuf *components);
 
 /*
  * Bitmasks for AnswerOriginKind

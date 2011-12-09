@@ -3,7 +3,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -295,6 +295,10 @@ interest_handler(struct ccn_closure *selfp,
             }
         }
         return(0);
+    case CCN_UPCALL_CONTENT_KEYMISSING:
+    case CCN_UPCALL_CONTENT_RAW:
+        /* should not happen */
+        return (-1);
     }
     return (-1);
 }

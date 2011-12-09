@@ -17,7 +17,6 @@
 
 package org.ccnx.ccn.protocol;
 
-import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -46,6 +45,8 @@ import org.ccnx.ccn.impl.support.DataUtils;
 public class CCNTime extends Timestamp {
 
 	private static final long serialVersionUID = -1537142893653443100L;
+	
+	private byte [] _binarytime = null;
 	
 	/**
 	 * This is the highest nanos value that doesn't quantize to over the ns limit for Timestamp of 999999999.
@@ -81,8 +82,8 @@ public class CCNTime extends Timestamp {
 	 * Create a CCNTime from its binary encoding
 	 * @param binaryTime12 the binary representation of a CCNTime
 	 */
-	public CCNTime(byte [] binaryTime12) {
-		this(new BigInteger(1, binaryTime12).longValue(), true);
+	public CCNTime(byte [] binaryTime12) {	
+		this(DataUtils.byteArrayToUnsignedLong(binaryTime12), true);
 		if ((null == binaryTime12) || (binaryTime12.length == 0)) {
 			throw new IllegalArgumentException("Invalid binary time!");
 		} else if (binaryTime12.length > 6) {
@@ -134,14 +135,11 @@ public class CCNTime extends Timestamp {
 	 * @return the binary representation we use for encoding
 	 */
 	public byte [] toBinaryTime() {
-		// We need to get this in a signum representation that's not 2's complement
-		byte [] b = BigInteger.valueOf(toBinaryTimeAsLong()).toByteArray();
-		if( 0 == b[0] && b.length > 1 ) {
-			byte [] bb = new byte[b.length - 1];
-			System.arraycopy(b, 1, bb, 0, bb.length);
-			b = bb;
+		if( null == _binarytime ) {
+			byte [] b = DataUtils.unsignedLongToByteArray(toBinaryTimeAsLong());
+			_binarytime = b;
 		}
-		return b;
+		return _binarytime;
 	}
 	
 	/**
@@ -168,12 +166,14 @@ public class CCNTime extends Timestamp {
 	}
 	
 	protected void setFromBinaryTimeAsLong(long binaryTimeAsLong) {
+		_binarytime = null;
 		super.setTime((binaryTimeAsLong / 4096L) * 1000L);
 		super.setNanos((int)(((binaryTimeAsLong % 4096L) * 1000000000L) / 4096L));
 	}
 	
 	@Override
 	public void setTime(long msec) {
+		_binarytime = null;
 		long binaryTimeAsLong = toBinaryTimeAsLong((msec/1000) * 1000, (msec % 1000) * 1000000L);
 		super.setTime((binaryTimeAsLong / 4096L) * 1000L);
 		super.setNanos((int)(((binaryTimeAsLong % 4096L) * 1000000000L) / 4096L));
@@ -181,6 +181,7 @@ public class CCNTime extends Timestamp {
 
 	@Override
 	public void setNanos(int nanos) {
+		_binarytime = null;
 		int quantizedNanos = (int)(((((nanos * 4096L + 500000000L) / 1000000000L)) * 1000000000L) / 4096L);
 		if ((quantizedNanos < 0) || (quantizedNanos > 999999999)) {
 			System.out.println("Quantizing nanos " + nanos + " resulted in out of range value " + quantizedNanos + "!");
@@ -194,6 +195,7 @@ public class CCNTime extends Timestamp {
 	 * @param nanos
 	 */
 	public void addNanos(int nanos) {
+		_binarytime = null;
 		setNanos(nanos + getNanos());
 	}
 	
@@ -203,6 +205,7 @@ public class CCNTime extends Timestamp {
 	 * be performed from multiple threads.
 	 */
 	public void increment(int timeUnits) {
+		_binarytime = null;
 		long binaryTimeAsLong = toBinaryTimeAsLong();
 		binaryTimeAsLong += timeUnits;
 		setFromBinaryTimeAsLong(binaryTimeAsLong);

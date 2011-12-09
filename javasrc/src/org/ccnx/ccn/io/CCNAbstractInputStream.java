@@ -1666,11 +1666,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 				Log.info(Log.FAC_PIPELINE, "PIPELINE: _timeout = {0}", _timeout);
 				waitingThread = Thread.currentThread();
 				waitingSegment = number;
-				while (sleep < _timeout) {
+				while (sleep < _timeout || _timeout == SystemConfiguration.NO_TIMEOUT) {
 					try{
 						start = System.currentTimeMillis();
 						waitSleep = start;
-						sleepCheck = _timeout - sleep;
+						if (_timeout == SystemConfiguration.NO_TIMEOUT)
+							sleepCheck = SystemConfiguration.EXTRA_LONG_TIMEOUT;
+						else
+							sleepCheck = _timeout - sleep;
 						if(avgResponseTime > 0 && avgResponseTime < (long)SystemConfiguration.SHORT_TIMEOUT) {
 							if(avgResponseTime > sleepCheck)
 								inOrderSegments.wait(sleepCheck);

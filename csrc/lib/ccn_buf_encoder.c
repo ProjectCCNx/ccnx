@@ -461,3 +461,35 @@ ccnb_tagged_putf(struct ccn_charbuf *c,
     return(res == 0 ? 0 : -1);    
 }
 
+/**
+ * Append a representation of a Link to a charbuf.
+ * @param buf is the output buffer where encoded link is written.
+ * @param name is the ccnb-encoded name from ccn_name_init and friends.
+ * @param label is a UTF-8 string in a ccn_charbuf.
+ * @param linkAuthenticator is the ccnb-encoded LinkAuthenticator.
+ * @returns 0 for success or -1 for error.
+ */
+int
+ccnb_append_Link(struct ccn_charbuf *buf,
+                 const struct ccn_charbuf *name,
+                 const char *label,
+                 const struct ccn_charbuf *linkAuthenticator
+                 )
+{
+    int res = 0;
+    
+    res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Link, CCN_DTAG);
+    res |= ccn_charbuf_append_charbuf(buf, name);
+    if (label != NULL) {
+        res |= ccn_charbuf_append_tt(buf, CCN_DTAG_Label, CCN_DTAG);
+        res |= ccn_charbuf_append_tt(buf, strlen(label), CCN_UDATA);
+        res |= ccn_charbuf_append_string(buf, label);
+        res |= ccn_charbuf_append_closer(buf);
+    }
+    if (linkAuthenticator != NULL) {
+        res |= ccn_charbuf_append_charbuf(buf, linkAuthenticator);
+    }
+    res |= ccn_charbuf_append_closer(buf);
+    return(res == 0 ? 0 : -1);
+}
+
