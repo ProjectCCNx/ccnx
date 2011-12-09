@@ -3086,7 +3086,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
     if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
         max_redundant = 0;
     if (outbound != NULL) {
-        for (p = head->next; p != head && outbound->n > 0; p = p->next) {
+        for (p = head->next; p != head /*&& outbound->n > 0*/; p = p->next) {
             if (p->size > minsize &&
                 p->interest_msg != NULL &&
                 p->usec > 0 &&
@@ -3146,7 +3146,13 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                         break;
                     }
                 }
-                p->flags |= CCN_PR_EQV; /* Don't add new faces */
+                if ((p->flags & CCN_PR_EQV) == 0) {
+                    p->flags |= CCN_PR_EQV; /* Don't add new faces */
+                    ccnd_debug_ccnb(h, __LINE__, "set_pr_eqv",
+                                    face_from_faceid(h, p->faceid),
+                                    p->interest_msg, p->size);
+                }
+                
                 // XXX - How robust is setting of CCN_PR_EQV?
                 /*
                  * XXX - We would like to avoid having to keep this
