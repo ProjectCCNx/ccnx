@@ -1230,9 +1230,9 @@ public class CCNNetworkManager implements Runnable {
 				if (null == packet) {
 					// If ccnd went up and down, we have to reregister all prefixes that used to be
 					// registered to restore normal operation
-					if (!wasConnected && _channel.isConnected())
+					if (_run && !wasConnected && _channel.isConnected())
 						reregisterPrefixes();
-					if (!_channel.isConnected() && SystemConfiguration.EXIT_ON_NETWORK_ERROR) {
+					if (_run && !_channel.isConnected() && SystemConfiguration.EXIT_ON_NETWORK_ERROR) {
 						Log.warning(Log.FAC_NETMANAGER, 
 								formatMessage("ccnd down and exit on network error requested - exiting"));
 
