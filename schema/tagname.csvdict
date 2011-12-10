@@ -90,5 +90,17 @@
 112,StatusResponse
 113,StatusCode
 114,StatusText
+115,SyncNode
+116,SyncNodeKind
+117,SyncNodeElement
+118,SyncVersion
+119,SyncNodeElements
+120,SyncContentHash
+121,SyncLeafCount
+122,SyncTreeDepth
+123,SyncByteCount
+124,SyncConfigSlice
+125,SyncConfigSliceList
+126,SyncConfigSliceOp
 256,SequenceNumber
 17702112,CCNProtocolDataUnit

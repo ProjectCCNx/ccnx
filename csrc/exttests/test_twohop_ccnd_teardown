@@ -1,0 +1,16 @@
+# tests/test_twohop_ccnd_teardown
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+BEFORE : test_late test_alone test_final_teardown
+for i in 1 2 3; do WithCCND $i ccndsmoketest kill; done
+:

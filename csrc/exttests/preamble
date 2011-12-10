@@ -1,0 +1,16 @@
+# tests/preamble
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+# This is sourced after settings and functions
+# Provide defaults and do exports
+export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 0))

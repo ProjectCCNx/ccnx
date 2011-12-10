@@ -18,4 +18,6 @@ validation/repository-bad01.xml
 validation/repository-schemabad01.xml
 validation/repository.dtd
 validation/repository.xsd
+validation/sync.dtd
+validation/sync.xsd
 validation/xml.xsd
