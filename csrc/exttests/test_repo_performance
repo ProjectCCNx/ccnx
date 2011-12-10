@@ -78,7 +78,7 @@ ccnfilewatch $CCNR_DIRECTORY/repoFile1 || Fail ccnfilewatch returned $?
 DoPS
 WithCCND 1 ccndstop
 # sleep 1
-while WithCCND 1 ccndstatus >/dev/null ; do
+while WithCCND 1 ccndstatus >/dev/null 2>/dev/null ; do
   echo `date +%s`. Waiting for write test processes to go away.
   sleep 1 || Fail killed
 done
@@ -116,7 +116,7 @@ while [ -s ccnrm.out ]; do
 done
 WithCCND 1 ccndstop
 # sleep 1
-while WithCCND 1 ccndstatus >/dev/null ; do
+while WithCCND 1 ccndstatus >/dev/null 2>/dev/null ; do
   echo `date +%s`. Waiting for read test processes to go away.
   sleep 1 || Fail killed
 done
