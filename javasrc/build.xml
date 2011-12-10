@@ -38,7 +38,7 @@
 	<property name="LOGDIR_KEY" value="org.ccnx.ccn.LogDir"/>
 	<property name="JAVA_MEMORY" value="1g" />
 	<property name="ccnd" location="../csrc/ccnd/ccnd"/>
-	<property name="ccnr" location="../../ccnr/csrc/ccnr/ccnr"/>
+	<property name="ccnr" location="../csrc/ccnr/ccnr"/>
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
 	<property name="CCND_CMD" value="../../csrc/ccnd/ccnd"/>

@@ -1,0 +1,37 @@
+//EOF
+///bin/cat << //EOF >> ccnr_sendq.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_store.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_dispatch.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_forwarding.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_link.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_match.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_io.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_net.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_util.c
+
+//EOF
+///bin/cat << //EOF >> ccnr_init.c
+
+
+
+
+grep -A1 ^PUBLIC *.c | grep - | cut -d \( -f 1 | grep -v -e -- | sed -e 's/[.]c-/ /' -e s/^ccnr_// -e s/forwarding/fwd/ \
+| while read a b; do echo "s/$b/r_${a}_${b#ccnr_}/g"; done
+
+

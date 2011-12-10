@@ -29,6 +29,7 @@ cmd/ccndump
 cmd/ccndumpnames
 cmd/ccndumppcap
 cmd/ccnnamelist
+cmd/ccnfilewatch
 cmd/ccnget
 cmd/ccnhexdumpdata
 cmd/ccnls
