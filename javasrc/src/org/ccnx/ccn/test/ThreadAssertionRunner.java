@@ -70,6 +70,15 @@ public class ThreadAssertionRunner {
 			throw _exception;
 	}
 	
+	public void join(long millis) throws InterruptedException, Error, Exception {
+		_thd.join(millis);
+		if( _error != null )
+			throw _error;
+		if( _exception != null )
+			throw _exception;
+	}
+	
+	
 	public boolean isAlive() {
 		return _thd.isAlive();
 	}

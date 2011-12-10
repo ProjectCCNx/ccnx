@@ -34,7 +34,7 @@ public abstract class CommonArguments {
 				u.usage();
 			}
 			try {
-				CommonParameters.timeout = Integer.parseInt(args[i++]);
+				CommonParameters.timeout = Integer.parseInt(args[++i]);
 			} catch (NumberFormatException nfe) {
 				u.usage();
 			}

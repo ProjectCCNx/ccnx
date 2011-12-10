@@ -16,8 +16,8 @@
 
 PROJECT := CCNx-Android-Lib
 APK_NAME := $(PROJECT)-debug.apk
-BIN := bin_ant
-GEN := gen_ant
+BIN := bin
+GEN := gen
 
 ############
 # Nothing tweekable down here
@@ -32,23 +32,19 @@ JARS := libs/ccn.jar
 
 TARGET  := $(BIN)/$(APK_NAME)
 
-default all: $(TARGET) 
+default: local.properties libs/ccn.jar
+
+all: $(TARGET) 
 
 $(TARGET): $(JARS) environment local.properties build.xml
 	ant compile
 
-# This will also generate a build.xml, which we remove because
-# it's a bad version.
-local.properties:
+local.properties project.properties default.properties:
 	$(ANDROID_SDK)/tools/android update lib-project -p . -t android-7
-	rm build.xml
-
-# Need to build local.properties first, because that creates a bogus build.xml
-build.xml: build.xml.in local.properties
-	cp build.xml.in build.xml
 
 libs/ccn.jar: ../../javasrc/ccn.jar
 	rm -f $@
+	mkdir -p libs
 	ln -s ../$^ $@
 
 install:

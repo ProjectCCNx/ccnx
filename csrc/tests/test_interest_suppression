@@ -83,6 +83,9 @@ done
 sleep 1
 WithCCND 4 ccndstatus
 ccndstatus
+sleep 4
+WithCCND 4 ccndstatus
+ccndstatus
 
 #
 # See how we did.

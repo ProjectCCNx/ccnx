@@ -1,3 +1,39 @@
+Changes between 0.4.1 and 0.4.2:
+--------------------------------
+This highlights some important changes since the most recent numbered release.
+Refer to http://www.ccnx.org/redmine/ for more details.
+
+  * Issues Resolved:
+	* Feature 100371 Implement marshalling/unmarshalling for Link objects
+	* Bug 100426 test_spur_traffic fails in a FreeBSD jail (Workarounds are
+	  documented in csrc/README.freebsd.)
+	* Bug 100509 LocalCopyTestRepo has a "silent" failure
+	* Feature 100516	CCNVersionedInputStreamTest should use standard flosser
+	* Bug 100534 -timeout option in utilities is broken
+	* Feature 100545 Add an averaging counter to CCNStats
+	* Bug 100546 ccncat should fflush output
+	* Feature 100547 ccn_seqwriter needs method to set min/max block sizes when
+				 fixed block sizes are required
+	* Feature 100548 CCNTime should cache its binaryTime
+	* Feature 100550 PROP_BLOCK_SIZE should be settable via an environment
+				 variable
+	* Feature 100551 ccn_run should allow arbitrary setting of properties
+	* Feature 100552 InterestTable should use a Comparator
+	* Feature 100553	Don't use BigInteger for byte array conversion
+	* Feature 100561 repo should save associated keys along with the file on
+				 normal file writes
+	* Feature 100562 Allow deferred verification in libccn
+	* Bug 100567 RepoNameEnumeratorTest should be able to handle new names same as
+				 old
+	* Bug 100570 Could use charbuf creator that doesn't initialize buffer to zero
+	* Feature 100571 Make it easy to avoid realloc() as it confuses MacOSX memory
+				 leak detector
+	* Bug 100573 Excessive neighbor-check interests
+	* Bug 100575 java input streams don't honor NO_TIMEOUT
+	* Bug 100583 Android apps for CCNx should work with modern Android SDK 
+				(r13-r15, see android/README.build for details)
+
+
 Changes between 0.4.0 and 0.4.1:
 --------------------------------
 This highlights some important changes since the most recent numbered release.

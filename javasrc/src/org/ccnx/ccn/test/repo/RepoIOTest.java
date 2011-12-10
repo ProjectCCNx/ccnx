@@ -154,11 +154,6 @@ public class RepoIOTest extends RepoTestBase {
 		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefix, _testObj), "Initial string value", SaveType.REPOSITORY, putHandle);
 		so.save();
 		
-		// We sync the file here mainly to be sure to save the default public key in the repository for the first time
-		// We'll need this (of course) for future tests.
-		RepositoryControl.localRepoSync(getHandle, so);
-		so.close();
-		
 		// Floss content into ccnd for tests involving content not already in repo when we start
 		IOTestFlosser floss = new IOTestFlosser();
 		

@@ -1534,7 +1534,8 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
         ccn_charbuf_append_closer(c);
     }
     else if (size2 != 0 || h->mtu > size1 + size2 ||
-             (face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0) {
+             (face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0 ||
+             face->recvcount == 0) {
         c = charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
 		if (size2 != 0)
@@ -1561,7 +1562,7 @@ static int
 stuff_link_check(struct ccnd_handle *h,
                    struct face *face, struct ccn_charbuf *c)
 {
-    int checkflags = CCN_FACE_DGRAM | CCN_FACE_MCAST | CCN_FACE_GG;
+    int checkflags = CCN_FACE_DGRAM | CCN_FACE_MCAST | CCN_FACE_GG | CCN_FACE_LC;
     int wantflags = CCN_FACE_DGRAM;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *ibuf = NULL;
@@ -1586,6 +1587,7 @@ stuff_link_check(struct ccnd_handle *h,
     ccn_charbuf_append(c, ibuf->buf, ibuf->length);
     ccnd_meter_bump(h, face->meter[FM_INTO], 1);
     h->interests_stuffed++;
+    face->flags |= CCN_FACE_LC;
     if (h->debug & 2)
         ccnd_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
                         ibuf->buf, ibuf->length);
@@ -1770,6 +1772,7 @@ check_dgram_faces(struct ccnd_handle *h)
     while (e->data != NULL) {
         struct face *face = e->data;
         if (face->addr != NULL && (face->flags & checkflags) == wantflags) {
+            face->flags &= ~CCN_FACE_LC; /* Rate limit link check interests */
             if (face->recvcount == 0) {
                 if ((face->flags & CCN_FACE_PERMANENT) == 0) {
                     count += 1;
@@ -3083,7 +3086,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
     if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
         max_redundant = 0;
     if (outbound != NULL) {
-        for (p = head->next; p != head && outbound->n > 0; p = p->next) {
+        for (p = head->next; p != head /*&& outbound->n > 0*/; p = p->next) {
             if (p->size > minsize &&
                 p->interest_msg != NULL &&
                 p->usec > 0 &&
@@ -3143,7 +3146,13 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                         break;
                     }
                 }
-                p->flags |= CCN_PR_EQV; /* Don't add new faces */
+                if ((p->flags & CCN_PR_EQV) == 0) {
+                    p->flags |= CCN_PR_EQV; /* Don't add new faces */
+                    ccnd_debug_ccnb(h, __LINE__, "set_pr_eqv",
+                                    face_from_faceid(h, p->faceid),
+                                    p->interest_msg, p->size);
+                }
+                
                 // XXX - How robust is setting of CCN_PR_EQV?
                 /*
                  * XXX - We would like to avoid having to keep this
