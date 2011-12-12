@@ -101,25 +101,31 @@ public class PublicKeyObjectTestRepo {
 
 	@Test
 	public void testRawPublicKeyObject() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Starting testRawPublicKeyObject");
+
 		try {
 			testRawKeyReadWrite(storedKeyNames[0][0], pair1.getPublic(), pair2.getPublic());
 			testRawKeyReadWrite(storedKeyNames[0][1], dsaPair.getPublic(), null);
 			testRawKeyReadWrite(storedKeyNames[0][2], dhPair.getPublic(), null);
 		} finally {
-			Log.info("PublicKeyObjectTestRepo: Stopping flosser.");
+			Log.info(Log.FAC_TEST, "PublicKeyObjectTestRepo: Stopping flosser.");
 			flosser.stop();
 			flosser = null;
-			Log.info("PublicKeyObjectTestRepo: Flosser stopped.");
+			Log.info(Log.FAC_TEST, "PublicKeyObjectTestRepo: Flosser stopped.");
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testRawPublicKeyObject");
 	}
 
 	@Test
 	public void testRepoPublicKeyObject() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testRepoPublicKeyObject");
 
 		testRepoKeyReadWrite(storedKeyNames[1][0], pair1.getPublic(), pair2.getPublic());
 		testRepoKeyReadWrite(storedKeyNames[1][1], dsaPair.getPublic(), null);
 		testRepoKeyReadWrite(storedKeyNames[1][2], dhPair.getPublic(), null);
+		
+		Log.info(Log.FAC_TEST, "Completed testRepoPublicKeyObject");
 	}
 	
 	@Test
@@ -134,26 +140,28 @@ public class PublicKeyObjectTestRepo {
 		CCNOutputStream writeStream = new CCNOutputStream(unversionedName, handle);
 		writeStream.write(pair1.getPublic().getEncoded());
 		writeStream.close();
-		Log.info("Saved unversioned key to name {0}, now trying to read.", unversionedName);
+		Log.info(Log.FAC_TEST, "Saved unversioned key to name {0}, now trying to read.", unversionedName);
 		
 		CCNHandle otherHandle = CCNHandle.open();
 		ContentObject firstSegment = SegmentationProfile.getSegment(unversionedName, null, null, 
 									SystemConfiguration.getDefaultTimeout(), null, otherHandle);
 		if (null == firstSegment) {
-			Log.warning("Cannot retrieve segment of stream {0}", unversionedName);
+			Log.warning(Log.FAC_TEST, "Cannot retrieve segment of stream {0}", unversionedName);
 			Assert.fail("Cannot retrieve first segment: " + unversionedName);
 		}
 		
 		PublicKeyObject testObject = new PublicKeyObject(firstSegment, CCNHandle.open());
-		Log.info("testObject available? " + testObject.available());
+		Log.info(Log.FAC_TEST, "testObject available? " + testObject.available());
 		otherHandle.close();
 		testObject.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testRepoPublicKeyObject");
 	}
 
 	public void testRawKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, VersionMissingException {
 		
 
-		Log.info("Reading and writing raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
+		Log.info(Log.FAC_TEST, "Reading and writing raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 		if (null == flosser) {
 			flosser = new Flosser();
 		} 
@@ -161,7 +169,7 @@ public class PublicKeyObjectTestRepo {
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, SaveType.RAW, handle);
 		pko.save();
 
-		Log.info("Saved " + pko.getVersionedName() + ", now trying to read.");
+		Log.info(Log.FAC_TEST, "Saved " + pko.getVersionedName() + ", now trying to read.");
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getVersionedName()));
 		// should update in another thread
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new handle
@@ -170,7 +178,7 @@ public class PublicKeyObjectTestRepo {
 		Assert.assertTrue(pkoread.equalsKey(pko));
 		if (null != optional2ndKey) {
 			pkoread.setupSave(SaveType.RAW);
-			Log.info("Reading and writing second raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
+			Log.info(Log.FAC_TEST, "Reading and writing second raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 			pkoread.save(optional2ndKey);
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
 			pko.update();
@@ -178,17 +186,17 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertTrue(pkoread.equalsKey(pko));
 			Assert.assertTrue(pko.equalsKey(optional2ndKey));
 		}
-		Log.info("Finished reading and writing raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
+		Log.info(Log.FAC_TEST, "Finished reading and writing raw key " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 
 	}
 
 	public void testRepoKeyReadWrite(ContentName keyName, PublicKey key, PublicKey optional2ndKey) throws ConfigurationException, IOException, VersionMissingException {
 
-		Log.info("Reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
+		Log.info(Log.FAC_TEST, "Reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 		PublicKeyObject pko = new PublicKeyObject(keyName, key, SaveType.REPOSITORY, handle);
 		pko.save();
 		Assert.assertTrue(VersioningProfile.hasTerminalVersion(pko.getVersionedName()));
-		Log.info("Saved " + pko.getVersionedName() + " to repo, now trying to read.");
+		Log.info(Log.FAC_TEST, "Saved " + pko.getVersionedName() + " to repo, now trying to read.");
 		// should update in another thread
 
 		PublicKeyObject pkoread = new PublicKeyObject(keyName, null); // new handle
@@ -198,7 +206,7 @@ public class PublicKeyObjectTestRepo {
 
 		if (null != optional2ndKey) {
 			pkoread.setupSave(SaveType.REPOSITORY);
-			Log.info("Reading and writing second key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
+			Log.info(Log.FAC_TEST, "Reading and writing second key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 			pkoread.save(optional2ndKey);
 			Assert.assertTrue(VersioningProfile.isLaterVersionOf(pkoread.getVersionedName(), pko.getVersionedName()));
 			pko.update();
@@ -206,6 +214,6 @@ public class PublicKeyObjectTestRepo {
 			Assert.assertTrue(pkoread.equalsKey(pko));
 			Assert.assertTrue(pko.equalsKey(optional2ndKey));
 		}
-		Log.info("Finished reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
+		Log.info(Log.FAC_TEST, "Finished reading and writing key to repo " + keyName + " key 1: " + key.getAlgorithm() + " key 2: " + ((null == optional2ndKey) ? "null" : optional2ndKey.getAlgorithm()));
 	}
 }

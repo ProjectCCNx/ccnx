@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -44,6 +45,8 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 	
 	@Test
 	public void testInterestEndToEnd() throws MalformedContentNameStringException, IOException, InterruptedException {
+		Log.info(Log.FAC_TEST, "Starting testInterestEndToEnd");
+
 		Interest i;
 		getHandle.registerFilter(ContentName.fromNative(_prefix), this);
 		i = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
@@ -58,6 +61,8 @@ public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements 
 		i = new Interest(ContentName.fromNative(_prefix + "/simpleTest4"));
 		getHandle.unregisterFilter(ContentName.fromNative(_prefix), this);
 		doTestFail(i);
+		
+		Log.info(Log.FAC_TEST, "Completed testInterestEndToEnd");
 	}
 
 	public boolean handleInterest(Interest interest) {

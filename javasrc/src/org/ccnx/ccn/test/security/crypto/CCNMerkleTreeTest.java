@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -26,6 +26,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.CCNMerkleTree;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -74,6 +75,8 @@ public class CCNMerkleTreeTest {
 	
 	@Test
 	public void testMerkleTree() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testMerkleTree");
+
 		int [] sizes = new int[]{128,256,512,4096};
 		
 		try {
@@ -101,15 +104,21 @@ public class CCNMerkleTreeTest {
 		for (int i=0; i < nodecounts.length; ++i) {
 			testTreeWrapper(nodecounts[i],sizes[i%sizes.length],false);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testMerkleTree");
 	}
 	
 	@Test
 	public void testMerkleTreeBuf() {
+		Log.info(Log.FAC_TEST, "Starting testMerkleTreeBuf");
+
 		int [] sizes = new int[]{128,256,512,4096};
 		System.out.println("Testing small trees, random block widths.");
 		for (int i=10; i < 515; ++i) {
 			testTreeWrapper(i,sizes[i%sizes.length], true);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testMerkleTreeBuf");
 	}
 
 	public static void testTreeWrapper(int testNodeCount, int blockWidth, boolean randomWidths) {

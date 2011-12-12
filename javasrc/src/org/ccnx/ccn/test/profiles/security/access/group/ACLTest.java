@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -21,6 +21,7 @@ package org.ccnx.ccn.test.profiles.security.access.group;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
 import org.ccnx.ccn.profiles.security.access.group.ACL.ACLOperation;
@@ -76,6 +77,8 @@ public class ACLTest {
 	
 	@Test
 	public void testUpdate() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testUpdate");
+
 		ACL testACL = new ACL();
 		ArrayList<ACL.ACLOperation> userList = new ArrayList<ACL.ACLOperation>();
 		
@@ -100,6 +103,8 @@ public class ACLTest {
 		
 		// add readers lr1 and lr2 (only lr1 is new)
 		result = testACL.update(userList);
-		Assert.assertEquals(1, result.size());	
+		Assert.assertEquals(1, result.size());
+		
+		Log.info(Log.FAC_TEST, "Completed testUpdate");
 	}
 }

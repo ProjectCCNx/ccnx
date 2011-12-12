@@ -22,6 +22,7 @@ import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.CCNTestHelper;
@@ -37,28 +38,30 @@ public class CCNNetworkTestRepo {
 	
 	@Test
 	public void testObjectIOLoop() throws Exception {
-	   CCNHandle handle = CCNHandle.getHandle();
-	   ContentName basename = testHelper.getTestNamespace("content_"  + _rnd.nextLong());
+		Log.info(Log.FAC_TEST, "Starting testObjectIOLoop");
 
-	   // Send a stream of string objects
-	   ArrayList<CCNStringObject> sent = new ArrayList<CCNStringObject>();
-	         int tosend = 100;
-	   for(int i = 0; i < tosend; i++) {
-	       // Save content
-	       try {
-	    	   System.out.println("Trying for object " + i);
-	           CCNStringObject so = new CCNStringObject(basename,
-	                   String.format("string object %d", i),
-	                   SaveType.LOCALREPOSITORY, handle);
-	           so.save();
-	           so.close();
-	           sent.add(so);
-	       } catch(Exception e) {
-	           e.printStackTrace();
-	           throw e;
-	       }
-	       System.out.println(i);
-	   }
+		CCNHandle handle = CCNHandle.getHandle();
+		ContentName basename = testHelper.getTestNamespace("content_"  + _rnd.nextLong());
+
+		// Send a stream of string objects
+		ArrayList<CCNStringObject> sent = new ArrayList<CCNStringObject>();
+         int tosend = 100;
+         for(int i = 0; i < tosend; i++) {
+        	 // Save content
+        	 try {
+        		 Log.info(Log.FAC_TEST, "Trying for object " + i);
+        		 CCNStringObject so = new CCNStringObject(basename,
+                 String.format("string object %d", i),
+                 SaveType.LOCALREPOSITORY, handle);
+        		 so.save();
+        		 so.close();
+        		 sent.add(so);
+        	 } catch(Exception e) {
+        		 e.printStackTrace();
+        		 throw e;
+        	 }
+        	 Log.info(Log.FAC_TEST, new Integer(i).toString());
+         }
+         Log.info(Log.FAC_TEST, "Completed testHighwaterWait");
 	}
-
 }

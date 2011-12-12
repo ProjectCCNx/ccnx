@@ -87,7 +87,8 @@ public class RFSTest extends RepoTestBase {
 	 */
 	@Test
 	public void testRepo() throws Exception {
-		System.out.println("testing repo (log-structured implementation)");
+		Log.info(Log.FAC_TEST, "Starting testRepo");
+
 		initRepoLog();
 		test(repolog);
 		initRepoLog();
@@ -95,11 +96,14 @@ public class RFSTest extends RepoTestBase {
 		// test() method, now run testReinitialization to check consistency.
 		testReinitialization(repolog);
 		repolog.shutDown();
+		
+		Log.info(Log.FAC_TEST, "Completed testRepo");
 	}
 	
 	@Test
 	public void testBulkImport() throws Exception {
-		System.out.println("Testing bulk import to repo");
+		Log.info(Log.FAC_TEST, "Starting testBulkImport");
+
 		initRepoLog();
 		RepositoryStore repolog2 = new LogStructRepoStore();
 		repolog2.initialize(_fileTestDir2, null, Repository2, _globalPrefix, null, null);
@@ -115,6 +119,8 @@ public class RFSTest extends RepoTestBase {
 		repolog.bulkImport("BulkImportTest");
 		checkData(repolog, name, "Testing bulk import");
 		repolog.shutDown();
+		
+		Log.info(Log.FAC_TEST, "Completed testBulkImport");
 	}
 	
 	/**
@@ -122,6 +128,8 @@ public class RFSTest extends RepoTestBase {
 	 */
 	@Test
 	public void testPolicy() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testPolicy");
+
 		RepositoryStore repo = new LogStructRepoStore();
 		try {	// Test no version
 			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
@@ -135,6 +143,8 @@ public class RFSTest extends RepoTestBase {
 		repo.initialize(_fileTestDir,  
 					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
 		repo.shutDown();
+		
+		Log.info(Log.FAC_TEST, "Completed testPolicy");
 	}
 	
 	/**

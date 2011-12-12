@@ -26,6 +26,7 @@ import java.util.Random;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -60,6 +61,8 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testSetTime() {
+		Log.info(Log.FAC_TEST, "Starting testSetTime");
+
 		for (int i=0; i < NUM_RUNS; ++i) {
 			Timestamp e2 = new Timestamp(early.getTime());
 			e2.setNanos(early.getNanos());
@@ -77,6 +80,8 @@ public class CCNTimeTest {
 			Assert.assertTrue(c2.equals(e2));
 			testTimestamp(c2, e2);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testSetTime");
 	}
 
 	/**
@@ -84,6 +89,8 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testSetNanos() {
+		Log.info(Log.FAC_TEST, "Starting testSetNanos");
+
 		for (int i=0; i < NUM_RUNS; ++i) {
 			Timestamp e2 = new Timestamp(early.getTime());
 			e2.setNanos(early.getNanos());
@@ -101,6 +108,8 @@ public class CCNTimeTest {
 			Assert.assertTrue(c2.equals(e2));
 			testTimestamp(c2, e2);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testSetNanos");
 	}
 
 	/**
@@ -108,12 +117,16 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCCNTimeLong() {
+		Log.info(Log.FAC_TEST, "Starting testCCNTimeLong");
+
 		for (int i=0; i < NUM_RUNS; ++i) {
 			long msec = System.currentTimeMillis();
 			CCNTime t1 = new CCNTime(msec);
 			Timestamp ts1 = new Timestamp(msec);
 			testTimestamp(t1, ts1);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testCCNTimeLong");
 	}
 
 	/**
@@ -121,6 +134,7 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCCNTimeTimestamp() {
+		Log.info(Log.FAC_TEST, "Starting testCCNTimeTimestamp");
 
 		for (int i=0; i < NUM_RUNS; ++i) {
 			Timestamp ts2 = new Timestamp(System.currentTimeMillis());
@@ -128,6 +142,8 @@ public class CCNTimeTest {
 			CCNTime t2 = new CCNTime(ts2);
 			testTimestamp(t2, ts2);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testCCNTimeTimestamp");
 	}
 
 	/**
@@ -135,12 +151,16 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCCNTimeDate() {
+		Log.info(Log.FAC_TEST, "Starting testCCNTimeDate");
+
 		for (int i=0; i < NUM_RUNS; ++i) {
 			Date now = new Date();
 			CCNTime timeNow = new CCNTime(now);
 			Timestamp tsn = new Timestamp(now.getTime());
 			testTimestamp(timeNow, tsn);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testCCNTimeDate");
 	}
 
 	/**
@@ -148,6 +168,8 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCCNTime() {
+		Log.info(Log.FAC_TEST, "Starting testCCNTime");
+
 		for (int i=0; i < NUM_RUNS; ++i) {
 			CCNTime now = new CCNTime();
 			Timestamp tn = new Timestamp(now.getTime());
@@ -163,7 +185,9 @@ public class CCNTimeTest {
 		Timestamp rm = roundTimestamp(tm);
 		testTimestamp(m, tm);		
 		testTimestamp(m, rm);		
-		testTimestamp(m, tn);		
+		testTimestamp(m, tn);
+		
+		Log.info(Log.FAC_TEST, "Completed testCCNTime");
 	}
 
 	/**
@@ -171,6 +195,8 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCompareToDate() {
+		Log.info(Log.FAC_TEST, "Starting testCompareToDate");
+
 		CCNTime ce = new CCNTime(dearly);
 		CCNTime cm = new CCNTime(dmiddle);
 		CCNTime cl = new CCNTime(dlate);
@@ -181,6 +207,8 @@ public class CCNTimeTest {
 		Assert.assertTrue(cl.compareTo(dearly) > 0);
 		Assert.assertTrue(cl.compareTo(dmiddle) > 0);
 		// Can't compare the other way. Date.compareTo returning 1 for all targets, whether CCNTime or Timestamp. Only works on other Dates
+		
+		Log.info(Log.FAC_TEST, "Completed testCompareToDate");
 	}
 
 	/**
@@ -188,6 +216,8 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testCompareToTimestamp() {
+		Log.info(Log.FAC_TEST, "Starting testCompareToTimestamp");
+
 		CCNTime ce = new CCNTime(early);
 		CCNTime cm = new CCNTime(middle);
 		CCNTime cl = new CCNTime(late);
@@ -203,6 +233,8 @@ public class CCNTimeTest {
 		Assert.assertTrue(middle.compareTo(cl) < 0);
 		Assert.assertTrue(late.compareTo(ce) > 0);
 		Assert.assertTrue(late.compareTo(cm) > 0);
+		
+		Log.info(Log.FAC_TEST, "Completed testCompareToTimestamp");
 	}
 
 	/**
@@ -210,6 +242,8 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testBeforeAfterTimestamp() {
+		Log.info(Log.FAC_TEST, "Starting testBeforeAfterTimestamp");
+
 		CCNTime ce = new CCNTime(early);
 		CCNTime cm = new CCNTime(middle);
 		CCNTime cl = new CCNTime(late);
@@ -225,6 +259,8 @@ public class CCNTimeTest {
 		Assert.assertTrue(middle.before(cl));
 		Assert.assertTrue(late.after(ce));
 		Assert.assertTrue(late.after(cm));
+		
+		Log.info(Log.FAC_TEST, "Completed testBeforeAfterTimestamp");
 	}
 
 
@@ -233,6 +269,8 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testBeforeAfterDate() {
+		Log.info(Log.FAC_TEST, "Starting testBeforeAfterDate");
+
 		CCNTime ce = new CCNTime(dearly);
 		CCNTime cm = new CCNTime(dmiddle);
 		CCNTime cl = new CCNTime(dlate);
@@ -243,6 +281,8 @@ public class CCNTimeTest {
 		Assert.assertTrue(cl.after(dearly));
 		Assert.assertTrue(cl.after(dmiddle));
 		// Date's comparisons not happy with timestamps
+		
+		Log.info(Log.FAC_TEST, "Completed testBeforeAfterDate");
 	}
 
 	/**
@@ -250,16 +290,22 @@ public class CCNTimeTest {
 	 */
 	@Test
 	public void testNow() {
+		Log.info(Log.FAC_TEST, "Starting testNow");
+
 		for (int i=0; i < NUM_RUNS; ++i) {
 			CCNTime now = CCNTime.now();
 			Timestamp tn = new Timestamp(now.getTime());
 			tn.setNanos(now.getNanos());
 			testTimestamp(now, tn);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testNow");
 	}
 	
 	@Test
 	public void testBinaryArray() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testBinaryArray");
+
 		long v0 = 0x7FFFFF;
 		byte [] b0 = new byte [] {(byte) 0x7F, (byte) 0xFF, (byte) 0xFF};
 		CCNTime t0 = CCNTime.fromBinaryTimeAsLong(v0);
@@ -272,6 +318,7 @@ public class CCNTimeTest {
 		byte [] x1 = t1.toBinaryTime();
 		Assert.assertTrue(java.util.Arrays.equals(b1, x1));
 		
+		Log.info(Log.FAC_TEST, "Completed testBinaryArray");
 	}
 
 	public void testTimestamp(CCNTime ccnTime, Timestamp compareTS) {

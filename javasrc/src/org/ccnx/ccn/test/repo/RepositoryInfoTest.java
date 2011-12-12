@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -19,7 +19,9 @@ package org.ccnx.ccn.test.repo;
 
 import java.util.ArrayList;
 
+import org.ccnx.ccn.impl.repo.LogStructRepoStore;
 import org.ccnx.ccn.impl.repo.RepositoryInfo;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.impl.encoding.XMLEncodableTester;
 import org.junit.BeforeClass;
@@ -31,7 +33,7 @@ import org.junit.Test;
  */
 public class RepositoryInfoTest {
 
-	private static String CURRENT_VERSION = "1.4";
+	private static String CURRENT_VERSION = LogStructRepoStore.CURRENT_VERSION;
 	private static String DEFAULT_LOCAL_NAME = "Repository";
 	private static String DEFAULT_GLOBAL_NAME = "/parc.com/csl/ccn/Repos";
 	/**
@@ -46,6 +48,7 @@ public class RepositoryInfoTest {
 	 */
 	@Test
 	public void testDecodeInputStream() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
 		
 		RepositoryInfo ri = new RepositoryInfo(CURRENT_VERSION, DEFAULT_GLOBAL_NAME, DEFAULT_LOCAL_NAME);
 		RepositoryInfo dri = new RepositoryInfo();
@@ -60,6 +63,8 @@ public class RepositoryInfoTest {
 		RepositoryInfo drin = new RepositoryInfo();
 		RepositoryInfo brin = new RepositoryInfo();
 		XMLEncodableTester.encodeDecodeTest("RepositoryInfo(Names)", rin, drin, brin);
+		
+		Log.info(Log.FAC_TEST, "Completed testDecodeInputStream");
 	}
 
 }

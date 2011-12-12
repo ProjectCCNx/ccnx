@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -85,13 +85,13 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 			try {
 				synchronized (this) {
 					writeDigest = writeRandomFile(_stream, _fileLength, random);
-					Log.info("Finished writing file of {0} bytes, digest {1}.", _fileLength, DataUtils.printHexBytes(writeDigest));
+					Log.info(Log.FAC_TEST, "Finished writing file of {0} bytes, digest {1}.", _fileLength, DataUtils.printHexBytes(writeDigest));
 					_done = true;
 					this.notifyAll();
 				}
 			} catch (IOException e) {
-				Log.severe("Exception writing random file: " + e.getClass().getName() + ": " + e.getMessage());
-				Log.logStackTrace(Level.SEVERE, e);
+				Log.severe(Log.FAC_TEST, "Exception writing random file: " + e.getClass().getName() + ": " + e.getMessage());
+				Log.logStackTrace(Log.FAC_TEST, Level.SEVERE, e);
 				Assert.fail("Exception in writeRandomFile: " + e);
 			}
 		}

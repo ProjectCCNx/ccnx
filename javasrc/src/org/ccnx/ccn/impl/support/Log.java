@@ -112,6 +112,8 @@ public class Log {
 	public static final int FAC_USER13		= 26;
 	public static final int FAC_USER14		= 27;
 	public static final int FAC_USER15		= 28;
+	public static final int FAC_TEST		= 29;	// For Junit tests
+
 
 	protected static final String [] FAC_NAME = {
 		"ccnx.All", 		// should never show up
@@ -143,6 +145,7 @@ public class Log {
 		"ccnx.User13",
 		"ccnx.User14",
 		"ccnx.User15",
+		"ccnx.Test",
 	};
 
 
@@ -177,6 +180,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_PROPERTY + ".User13",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".User14",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".User15",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Test",
 	};
 
 	// The environment variable for each facility
@@ -210,6 +214,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV + "_USER13",
 		DEFAULT_LOG_LEVEL_ENV + "_USER14",
 		DEFAULT_LOG_LEVEL_ENV + "_USER15",
+		DEFAULT_LOG_LEVEL_ENV + "_TEST",
 	};
 
 	public static final Level [] FAC_LOG_LEVEL_DEFAULT = {
@@ -242,6 +247,7 @@ public class Log {
 		Level.INFO,		// User13
 		Level.INFO,		// User14
 		Level.INFO,		// User15
+		Level.INFO,		// Test
 	};
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];
@@ -685,9 +691,17 @@ public class Log {
 	public static void warningStackTrace(Throwable t) {
 		logStackTrace(Level.WARNING, t);
 	}
+	
+	public static void warningStackTrace(int facility, Throwable t) {
+		logStackTrace(facility, Level.WARNING, t);
+	}
 
 	public static void infoStackTrace(Throwable t) {
 		logStackTrace(Level.INFO, t);
+	}
+	
+	public static void infoStackTrace(int facility, Throwable t) {
+		logStackTrace(facility, Level.INFO, t);
 	}
 
 	public static void logStackTrace(Level level, Throwable t) {

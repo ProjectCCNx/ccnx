@@ -42,9 +42,11 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 	
 	@Test
 	public void source() throws Throwable {
+		Log.info(Log.FAC_TEST, "Starting source");
 		sync();
 		puts();
 		server();
+		Log.info(Log.FAC_TEST, "Completed source");
 	}
 	
 	/**
@@ -66,18 +68,18 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 
 	public void puts() throws Throwable {
 		assert(count <= Byte.MAX_VALUE);
-		Log.info("Put sequence started");
+		Log.info(Log.FAC_TEST, "Put sequence started");
 		CCNWriter writer = new CCNWriter("/BaseLibraryTest", handle);
 		writer.setTimeout(5000);
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			byte[] content = getRandomContent(i);
 			ContentName putResult = writer.put(ContentName.fromNative("/BaseLibraryTest/gets/" + new Integer(i).toString()), content);
-			Log.info("Put " + i + " done: " + content.length + " content bytes");
+			Log.info(Log.FAC_TEST, "Put " + i + " done: " + content.length + " content bytes");
 			checkPutResults(putResult);
 		}
 		writer.close();
-		Log.info("Put sequence finished");
+		Log.info(Log.FAC_TEST, "Put sequence finished");
 	}
 	
 	public void server() throws Throwable {
@@ -104,7 +106,7 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterLi
 			byte[] content = getRandomContent(next);
 			ContentName putResult = _writer.put(ContentName.fromNative("/BaseLibraryTest/server/" + new Integer(next).toString()), content);
 			result = true;
-			Log.info("Put " + next + " done: " + content.length + " content bytes");
+			Log.info(Log.FAC_TEST, "Put " + next + " done: " + content.length + " content bytes");
 			checkPutResults(putResult);
 			next++;
 			if (next >= count) {

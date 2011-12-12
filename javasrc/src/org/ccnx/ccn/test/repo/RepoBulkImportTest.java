@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -29,6 +29,7 @@ import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
 import org.ccnx.ccn.impl.repo.RepositoryStore;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore.LogStructRepoStoreProfile;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.repo.RepositoryBulkImport;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -40,6 +41,7 @@ public class RepoBulkImportTest extends RepoTestBase {
 	
 	@Test
 	public void testBulkImport() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testBulkImport");
 		
 		// Create some data to add
 		System.out.println("testing adding to repo via file in running repo");
@@ -59,7 +61,9 @@ public class RepoBulkImportTest extends RepoTestBase {
 		importFile.renameTo(new File(importDir, "BulkImportTest2"));
 		Assert.assertTrue(RepositoryBulkImport.bulkImport(getHandle, "BulkImportTest2", SystemConfiguration.MAX_TIMEOUT));
 		checkData(name, "Testing bulk import");
-		checkData(name2, "Testing bulk import #2");	
+		checkData(name2, "Testing bulk import #2");
+		
+		Log.info(Log.FAC_TEST, "Completed testBulkImport");
 	}
 
 }

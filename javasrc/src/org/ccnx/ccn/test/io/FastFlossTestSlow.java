@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -22,6 +22,7 @@ import java.security.MessageDigest;
 import java.util.Random;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.io.CCNVersionedOutputStream;
@@ -56,6 +57,8 @@ public class FastFlossTestSlow {
 	
 	@Test
 	public void fastFlossTest() {
+		Log.info(Log.FAC_TEST, "Starting fastFlossTest");
+
 		Flosser flosser = null;
 		try {
 			ContentName namespace = testHelper.getTestNamespace("fastFlossTest");
@@ -64,31 +67,37 @@ public class FastFlossTestSlow {
 			CCNVersionedOutputStream vos = new CCNVersionedOutputStream(ns, writeLibrary);
 			streamData(vos);
 		} catch (Exception e) {
-			System.out.println("Exception in test: " + e);
-			e.printStackTrace();
+			Log.warning(Log.FAC_TEST, "Exception in test: " + e);
+			Log.warningStackTrace(Log.FAC_TEST, e);
 			Assert.fail();
 		} finally {
 			flosser.stop();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed fastFlossTest");
 	}
 	
 	@Test
 	public void fastRepoTest() {
+		Log.info(Log.FAC_TEST, "Starting fastRepoTest");
+
 		try {
 			ContentName namespace = testHelper.getTestNamespace("fastRepoTest");			
 			ContentName ns = ContentName.fromNative(namespace, "RepoFile");
 			RepositoryVersionedOutputStream vos = new RepositoryVersionedOutputStream(ns, writeLibrary);
 			streamData(vos);
 		} catch (Exception e) {
-			System.out.println("Exception in test: " + e);
-			e.printStackTrace();
+			Log.warning(Log.FAC_TEST, "Exception in test: " + e);
+			Log.warningStackTrace(Log.FAC_TEST, e);
 			Assert.fail();
 		} finally {
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed fastRepoTest");
 	}
 
 	public void streamData(CCNOutputStream outputStream) throws Exception {
-		System.out.println("Streaming data to file " + outputStream.getBaseName() + 
+		Log.info(Log.FAC_TEST, "Streaming data to file " + outputStream.getBaseName() + 
 					" using stream class: " + outputStream.getClass().getName());
 		long elapsed = 0;
 		byte [] buf = new byte[BUF_SIZE];
@@ -116,7 +125,5 @@ public class FastFlossTestSlow {
 		byte [] readDigest = digest.digest();
 		
 		Assert.assertArrayEquals(writeDigest, readDigest);
-
 	}
-
 }

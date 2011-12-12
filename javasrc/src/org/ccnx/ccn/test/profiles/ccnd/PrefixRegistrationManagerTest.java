@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
@@ -110,6 +111,8 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 	 */
 	@Test
 	public void testEncodeOutputStream() {
+		Log.info(Log.FAC_TEST, "Starting testEncodeOutputStream");
+
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testEncodeOutputStream:");
 		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
@@ -126,10 +129,14 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		System.out.println("Encoded: " );
 		System.out.println(ContentName.componentPrintURI(baos.toString().getBytes()));
 		System.out.println();
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodeOutputStream");
 	}
 
 	@Test
 	public void testDecodeInputStream() {
+		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
+
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testDecodeInputStream:");
 		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
@@ -158,10 +165,14 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		System.out.println("Decoded: " + entryToDecodeTo);
 		assertEquals("DecodeOutputStream", entryToEncode, entryToDecodeTo);
 		System.out.println();
+		
+		Log.info(Log.FAC_TEST, "Completed testDecodeInputStream");
 	}
 	
 	@Test
 	public void testEncodingDecoding() {
+		Log.info(Log.FAC_TEST, "Starting testEncodingDecoding");
+
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testEncodingDecoding:");
 		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, contentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
@@ -173,11 +184,15 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		assertNotNull("EncodeDecodeOutput", binaryEntryToDecodeInto);
 		XMLEncodableTester.encodeDecodeTest("EncodeDecodeOutput", entryToEncode, textEntryToDecodeInto, binaryEntryToDecodeInto);
 		System.out.println();
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodingDecoding");
 	}
 
 	
 	@Test
 	public void testEncodingDecodingSubclass() {
+		Log.info(Log.FAC_TEST, "Starting testEncodingDecodingSubclass");
+
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testEncodingDecodingSubclass:");
 		ForwardingEntry entryToEncode = new ForwardingEntry(ActionType.Register, notReallyAContentNameToUse, keyDigest, new Integer(42), new Integer(3), new Integer(149));
@@ -189,17 +204,20 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 		assertNotNull("EncodeDecodeOutput", binaryEntryToDecodeInto);
 		XMLEncodableTester.encodeDecodeTest("EncodeDecodeOutput", entryToEncode, textEntryToDecodeInto, binaryEntryToDecodeInto);
 		System.out.println();
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodingDecodingSubclass");
 	}
 
 	
 	@Test
 	public void testCreation() {
+		Log.info(Log.FAC_TEST, "Starting testCreation");
+
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testCreation:");
 		Integer faceID = null;
 		ContentName testCN = null;
 		PrefixRegistrationManager manager = null;
-		boolean failTest;
 		
 		try {
 			testCN = ContentName.fromURI(prefixToUse);
@@ -248,15 +266,18 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 			e.printStackTrace();
 			fail("Failed to delete prefix.  Reason: " + e.getMessage());
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testCreation");
 	}
 	
 	@Test
 	public void testException() {
+		Log.info(Log.FAC_TEST, "Starting testException");
+
 		System.out.println();
 		System.out.println("PrefixRegistrationManagerTest.testException:");
 		ContentName testCN = null;
 		PrefixRegistrationManager manager = null;
-		boolean failTest;
 		
 		try {
 			testCN = ContentName.fromURI(prefixToUse);
@@ -279,6 +300,8 @@ public class PrefixRegistrationManagerTest extends LibraryTestBase {
 			fail("Failed to receive exception CCNDaemonException on selfRegisterPrefix to non-existant faceID: " + entry.getFaceID());
 		} catch (CCNDaemonException e) {
 			System.out.println("Received expected exception " + e.getClass().getName() + ", message: " + e.getMessage());
-		}		
+		}
+		
+		Log.info(Log.FAC_TEST, "Completed testException");
 	}
 }

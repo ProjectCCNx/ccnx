@@ -23,6 +23,7 @@ import java.io.IOException;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.impl.CCNFlowServer;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -40,6 +41,7 @@ public class CCNFlowServerTest extends CCNFlowControlTestBase {
 	
 	@Test
 	public void testMultipleGets() throws Throwable {	
+		Log.info(Log.FAC_TEST, "Starting testMultipleGets");
 
 		normalReset(name1);
 		// add data to the flow server, and make sure we can get it out multiple times
@@ -58,10 +60,12 @@ public class CCNFlowServerTest extends CCNFlowControlTestBase {
 		co = testNext(co, segments[2]);
 		co = testNext(co, segments[3]);
 		
+		Log.info(Log.FAC_TEST, "Completed testMultipleGets");
 	}
 
 	@Test
 	public void testWaitForPutDrain() throws Throwable {	
+		Log.info(Log.FAC_TEST, "Starting testWaitForPutDrain");
 
 		normalReset(name1);
 		fc.put(segments[1]);
@@ -72,7 +76,6 @@ public class CCNFlowServerTest extends CCNFlowControlTestBase {
 		testLast(segments[0], segments[3]); // should be same, if persistent server will get back same data
 		_handle.get(new Interest(segment_names[0]), 0);
 		
-		System.out.println("Testing \"waitForPutDrain\"");
 		try {
 			// can't call waitForPutDrain directly; call it via afterClose
 			fc.afterClose();
@@ -87,11 +90,14 @@ public class CCNFlowServerTest extends CCNFlowControlTestBase {
 		} catch (IOException ioe) {
 			Assert.fail("WaitforPutDrain threw unexpected exception");
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testWaitForPutDrain");
 	}
 	
 	@Test
 	public void testHighwaterWait() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Starting testHighwaterWait");
+
 		// Test that put over highwater fails with nothing draining
 		// the buffer
 		normalReset(name1);
@@ -121,6 +127,8 @@ public class CCNFlowServerTest extends CCNFlowControlTestBase {
 			Assert.fail("Attempt to put over capacity in non-draining FC succeeded.");
 		} catch (IOException ioe) {}
 		tar.join();
+		
+		Log.info(Log.FAC_TEST, "Completed testHighwaterWait");
 	}
 	
 	protected void normalReset(ContentName n) throws IOException {

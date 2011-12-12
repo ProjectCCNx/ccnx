@@ -162,7 +162,7 @@ public class AssertionCCNHandle extends CCNHandle {
 	 * @throws InterruptedException
 	 */
 	public void checkError(long timeout) throws Error, InterruptedException {
-		if (timeout != SystemConfiguration.NO_TIMEOUT) {
+		if (timeout != SystemConfiguration.NO_TIMEOUT && timeout != 0) {
 			synchronized (this) {
 				wait(timeout);
 			}

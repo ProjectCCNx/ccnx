@@ -25,6 +25,7 @@ public final class SimpleNameEnumerationTest {
 	public VersionNumber doNameEnumerationRequest() throws IOException {
 		ContentName neRequest = new ContentName(baseName, NAME_ENUMERATION_MARKER);
 		ContentObject co = handle.get(neRequest, 2000);
+		Assert.assertNotNull(co);
 		CollectionObject response = new CollectionObject(co, handle);
 		return response.getVersionNumber();
 	}
