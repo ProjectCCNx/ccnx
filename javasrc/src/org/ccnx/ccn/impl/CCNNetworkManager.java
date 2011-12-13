@@ -957,6 +957,7 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws InterruptedException	if process is interrupted during wait
 	 */
 	public ContentObject get(Interest interest, long timeout) throws IOException, InterruptedException {
+        boolean acquired = true;
 		_stats.increment(StatsEnum.Gets);
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
@@ -970,9 +971,11 @@ public class CCNNetworkManager implements Runnable {
 			if (timeout == SystemConfiguration.NO_TIMEOUT)
 				reg.sema.acquire(); // currently no timeouts
 			else
-				reg.sema.tryAcquire(timeout, TimeUnit.MILLISECONDS);
+				acquired = reg.sema.tryAcquire(timeout, TimeUnit.MILLISECONDS);
 			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
-				Log.finest(Log.FAC_NETMANAGER, formatMessage("unblocked for {0} on {1}"), interest.name(), reg.sema);
+				Log.finest(Log.FAC_NETMANAGER,
+                           formatMessage("unblocked for {0} on {1} (content{2} received)"),
+                           interest.name(), reg.sema, acquired ? "" : " not");
 		} catch (InterruptedException e) {
 			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 				Log.finest(Log.FAC_NETMANAGER, formatMessage("interupted during acquire for {0} on {1}"), interest.name(), reg.sema);
