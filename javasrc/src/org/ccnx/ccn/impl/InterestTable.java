@@ -478,9 +478,11 @@ public class InterestTable<V> {
 
 		List<Entry<V>> matches = new ArrayList<Entry<V>>();
 		if (null != target) {
-			for (ContentName name : _contents.keySet()) {
-				// Name match - is there an interest match here?
-				matches.addAll(getAllMatchByName(name, target));
+			synchronized (_contents) {
+				for (ContentName name : _contents.keySet()) {
+					// Name match - is there an interest match here?
+					matches.addAll(getAllMatchByName(name, target));
+				}
 			}
 		}
 		return matches;
