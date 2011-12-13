@@ -166,7 +166,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		int attempts = 0;
 		try{
 			while (names==null && attempts < 500){
-				Thread.sleep(rand.nextInt(50));
+				Thread.sleep(50);
 				attempts++;
 			}
 			
@@ -195,7 +195,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			putne.registerNameForResponses(name1Dirty);
 			
 			while(!putne.containsRegisteredName(name1Dirty)){
-				Thread.sleep(rand.nextInt(50));
+				Thread.sleep(50);
 			}
 				
 			//the names are registered...
@@ -217,7 +217,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		int attempts = 0;
 		try{
 			while(names==null && attempts < 1000){
-				Thread.sleep(rand.nextInt(50));
+				Thread.sleep(50);
 				attempts++;
 			}
 			
@@ -229,6 +229,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.fail();
 		}
 
+		Assert.assertNotNull(names);
 		Assert.assertTrue(names.size()==3);
 		for(ContentName cn: names){
 			Log.info(Log.FAC_TEST, "got name: "+cn.toString());
@@ -288,7 +289,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		int attempts = 0;
 		try{
 			while(names==null && attempts < 100){
-				Thread.sleep(rand.nextInt(50));
+				Thread.sleep(50);
 				attempts++;
 			}
 			//we either broke out of loop or the names are here

@@ -1,7 +1,7 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
@@ -35,7 +35,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * and so it is likely to receive the same content over and over.
  *
  */
-public class watch extends Thread implements CCNInterestListener {
+public class watch extends Thread implements CCNContentHandler {
 	
 	protected boolean _stop = false;
 	protected ArrayList<Interest> _interests = new ArrayList<Interest>();

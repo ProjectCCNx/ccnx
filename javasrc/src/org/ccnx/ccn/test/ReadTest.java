@@ -23,7 +23,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNReader;
@@ -43,7 +43,7 @@ import org.junit.Test;
  * 
  * A test of basic Interest mechanisms, using older test infrastructure.
  */
-public class ReadTest extends LibraryTestBase implements CCNInterestListener {
+public class ReadTest extends LibraryTestBase implements CCNContentHandler {
 	
 	private static ArrayList<Integer> currentSet;
 	

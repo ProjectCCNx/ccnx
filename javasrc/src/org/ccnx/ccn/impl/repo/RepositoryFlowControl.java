@@ -24,8 +24,8 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
@@ -51,7 +51,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * @see CCNFlowControl
  * @see RepositoryInterestHandler
  */
-public class RepositoryFlowControl extends CCNFlowControl implements CCNInterestListener {
+public class RepositoryFlowControl extends CCNFlowControl implements CCNContentHandler {
 	
 	// Outstanding interests output by this FlowController. Currently includes only the original
 	// start write request.
@@ -226,7 +226,9 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNInterest
 					return ((Client)check)._initialized;
 				}
 			}.wait(this, client);
-		} catch (Exception e) {} // Can't happen
+		} catch (Exception e) {
+			Log.warning(Log.FAC_REPO, e.getClass() + " : " + e.getMessage());
+		}
 		
 		synchronized (this) {
 			if (!client._initialized) {

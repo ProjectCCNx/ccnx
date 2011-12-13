@@ -19,8 +19,8 @@ package org.ccnx.ccn.test.profiles.ccnd;
 
 import java.io.IOException;
 
-import org.ccnx.ccn.CCNFilterListener;
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNContentHandler;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -30,14 +30,12 @@ import org.ccnx.ccn.test.LibraryTestBase;
 import org.junit.Assert;
 import org.junit.Test;
 
-
-
 /**
  * Test sending interests across ccnd.
  * Requires a running ccnd
  *
  */
-public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements CCNFilterListener, CCNInterestListener {
+public class InterestEndToEndUsingPrefixTest extends LibraryTestBase implements CCNInterestHandler, CCNContentHandler {
 	private Interest _interestSent;
 	private String _prefix = "/interestEtoETestUsingPrefix/test-" + rand.nextInt(10000);
 	private boolean _interestSeen = false;

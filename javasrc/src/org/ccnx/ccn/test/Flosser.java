@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.DataUtils;
@@ -34,8 +34,8 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Exclude;
+import org.ccnx.ccn.protocol.ExcludeComponent;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -62,7 +62,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  *  running content from an app, in through ccnd, to the flosser, so other
  *  parts of the (test) app can pull it back from ccnd later.
  */
-public class Flosser implements CCNInterestListener {
+public class Flosser implements CCNContentHandler {
 	
 	CCNHandle _handle;
 	Map<ContentName, Interest> _interests = new HashMap<ContentName, Interest>();

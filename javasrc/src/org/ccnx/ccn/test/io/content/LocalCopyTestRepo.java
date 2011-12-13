@@ -28,7 +28,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import junit.framework.Assert;
 
-import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
@@ -144,8 +144,8 @@ public class LocalCopyTestRepo {
 	@Test
 	public void testRepositoryControlObject() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testRepositoryControlObject");
-		
-		MyListener listener = new MyListener();
+
+		MyHandler listener = new MyHandler();
 		
 		try {
 			listener.open();
@@ -177,7 +177,7 @@ public class LocalCopyTestRepo {
 	public void testLocalCopyWrapper() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testLocalCopyWrapper");
 
-		MyListener listener = new MyListener();
+		MyHandler listener = new MyHandler();
 		
 		try {
 			listener.open();
@@ -218,8 +218,8 @@ public class LocalCopyTestRepo {
 	public void testLocalCopyListener() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testLocalCopyListener");
 
-		MyListener listener = new MyListener();
-		
+		MyHandler listener = new MyHandler();
+
 		try {
 			listener.open();
 			
@@ -254,7 +254,7 @@ public class LocalCopyTestRepo {
 	public void testLocalCopyWrapperWithSaveAndLcwClose() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testLocalCopyWrapperWithSaveAndLcwClose");
 
-		MyListener listener = new MyListener();
+		MyHandler listener = new MyHandler();
 		
 		try {
 			listener.open();
@@ -306,8 +306,8 @@ public class LocalCopyTestRepo {
 	public void testLocalCopyWrapperWithSaveAndObjectClose() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testLocalCopyWrapperWithSaveAndObjectClose");
 
-		MyListener listener = new MyListener();
-		
+		MyHandler listener = new MyHandler();
+
 		try {
 			listener.open();
 			
@@ -361,7 +361,7 @@ public class LocalCopyTestRepo {
 	public void testLocalCopyListnerWithSaveAndObjectClose() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testLocalCopyListnerWithSaveAndObjectClose");
 
-		MyListener listener = new MyListener();
+		MyHandler listener = new MyHandler();
 		
 		try {
 			listener.open();
@@ -415,7 +415,7 @@ public class LocalCopyTestRepo {
 	 * @author mmosko
 	 *
 	 */
-	private class MyListener implements CCNFilterListener {
+	private class MyHandler implements CCNInterestHandler {
 		// These are the replies we have sent
 //		public ConcurrentHashMap<ContentName, String> replies = new ConcurrentHashMap<ContentName, String>();
 		public HashSet<ContentName> replies = new HashSet<ContentName>();
@@ -457,13 +457,9 @@ public class LocalCopyTestRepo {
 					inListener = true;
 				}
 				try {
-					String s = name.toString();
+					String s = interest.name().toString();
 					CCNStringObject so = new CCNStringObject(name, s, SaveType.RAW, listenerhandle);
-					so.save();
-					try {
-						Thread.sleep(50);
-					} catch (InterruptedException e) {}
-					so.close();
+					so.saveLaterWithClose();
 					replies.add(interest.name());
 					ret = true;
 				} catch (IOException e) {

@@ -322,7 +322,7 @@ public class EnumeratedNameListTestRepo {
 		addContentToRepo(name5, putHandle);
 		addContentToRepo(name6, putHandle);
 		addContentToRepo(name7, putHandle);
-		noPoolOps(poolList);
+		noPoolOps(noPoolList);
 		Assert.assertEquals(4, contentSeenNoPool);
 		
 		Log.info(Log.FAC_TEST, "Completed testEnumeratedNameListWithThreads");

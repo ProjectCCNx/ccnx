@@ -25,7 +25,7 @@ import java.util.Random;
 
 import junit.framework.Assert;
 
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
@@ -40,7 +40,7 @@ import org.junit.Test;
  * Part of the end to end test infrastructure.
  * NOTE: This test requires ccnd to be running and complementary source process
  */
-public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestListener {
+public class EndToEndTestSink extends BaseLibrarySink implements CCNContentHandler {
 	
 	@Test
 	public void sink() throws Throwable {

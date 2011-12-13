@@ -21,8 +21,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
@@ -619,7 +619,7 @@ public class LatestVersionTest {
 	/**
 	 * Runnable class for the single ContentObject responder.
 	 */
-	class Responder implements CCNFilterListener {
+	class Responder implements CCNInterestHandler {
 		AssertionCCNHandle handle;
 
 		public Responder() throws IOException {

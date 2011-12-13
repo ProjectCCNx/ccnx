@@ -23,7 +23,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.security.SignatureException;
 
-import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
@@ -37,7 +37,7 @@ import org.junit.Test;
  * Part of the end to end test infrastructure.
  * NOTE: This test requires ccnd to be running and complementary sink process
  */
-public class EndToEndTestSource extends BaseLibrarySource implements CCNFilterListener {
+public class EndToEndTestSource extends BaseLibrarySource implements CCNInterestHandler {
 	protected CCNWriter _writer;
 	
 	@Test

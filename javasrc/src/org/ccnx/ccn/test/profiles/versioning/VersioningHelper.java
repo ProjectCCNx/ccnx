@@ -27,9 +27,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
@@ -179,7 +179,7 @@ public class VersioningHelper {
 		}
 	}
 
-	public static class TestListener implements CCNInterestListener {
+	public static class TestListener implements CCNContentHandler {
 		public final ConditionLong cl = new ConditionLong(0);
 		public final ArrayList<ReceivedData> received = new ArrayList<ReceivedData>();
 		public InterestData id = null;
@@ -248,7 +248,7 @@ public class VersioningHelper {
 		}
 	}
 
-	public static class TestFilterListener implements CCNFilterListener {
+	public static class TestFilterListener implements CCNInterestHandler {
 		public final ConditionLong cl = new ConditionLong(0);
 		public final ArrayList<Interest> received = new ArrayList<Interest>();
 		public int runCount = 0;
@@ -295,7 +295,7 @@ public class VersioningHelper {
 		@Override
 		public synchronized void expressInterest(
 				Interest interest,
-				CCNInterestListener listener) throws IOException {
+				CCNContentHandler handler) throws IOException {
 
 			// ignore startwrites
 			if( !interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes()) ) {
@@ -307,11 +307,11 @@ public class VersioningHelper {
 				count.increment();
 				total_count.increment();
 			}
-			super.expressInterest(interest, listener);
+			super.expressInterest(interest, handler);
 		}
 
 		@Override
-		public synchronized void cancelInterest(Interest interest, CCNInterestListener listener) {
+		public synchronized void cancelInterest(Interest interest, CCNContentHandler handler) {
 			if( !interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes()) ) {
 				interests.remove(interest);
 				//				System.out.println(String.format("cancelInterest  (%d): %s",
@@ -319,7 +319,7 @@ public class VersioningHelper {
 
 				count.decrement();
 			}
-			super.cancelInterest(interest, listener);
+			super.cancelInterest(interest, handler);
 		}
 
 	}
@@ -328,8 +328,8 @@ public class VersioningHelper {
 
 		public TestVIM(CCNHandle handle, ContentName name,
 				Set<VersionNumber> exclusions, VersionNumber startingVersion,
-				CCNInterestListener listener) {
-			super(handle, name, exclusions, startingVersion, listener);
+				CCNContentHandler handler) {
+			super(handle, name, exclusions, startingVersion, handler);
 		}
 
 		public Interest exposeReceive(ContentObject data, Interest interest) {

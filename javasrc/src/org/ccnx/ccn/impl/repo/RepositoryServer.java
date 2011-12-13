@@ -261,6 +261,7 @@ public class RepositoryServer implements CCNStatistics {
 		
 		_repo.shutDown();
 		_dataHandler.shutdown();
+		_iHandler.shutdown();
 		
 		// This closes our handle....
 		_handle = null;

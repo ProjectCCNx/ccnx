@@ -24,8 +24,8 @@ import java.util.Iterator;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
@@ -63,7 +63,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * by the repo client to allow objects to remain in the buffer until they are 
  * acked.
  */
-public class CCNFlowControl implements CCNFilterListener {
+public class CCNFlowControl implements CCNInterestHandler {
 	
 	public enum Shape {
 		STREAM("STREAM");
@@ -538,20 +538,20 @@ public class CCNFlowControl implements CCNFilterListener {
 				
 				Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
 				_unmatchedInterests.add(i, new UnmatchedInterest());
+				return false;		// XXX is this the right thing to do?
 			}
 		}
-		if (co != null) {
-			if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
-				Log.finest(Log.FAC_IO, "Found content {0} matching interest: {1}",co.name(), i);
-			try {
-				_handle.put(co);
-				synchronized (_holdingArea) {
-					afterPutAction(co);
-				}
-			} catch (IOException e) {
-				Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
-				Log.warningStackTrace(e);
+		
+		if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+			Log.finest(Log.FAC_IO, "Found content {0} matching interest: {1}",co.name(), i);
+		try {
+			_handle.put(co);
+			synchronized (_holdingArea) {
+				afterPutAction(co);
 			}
+		} catch (IOException e) {
+			Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
+			Log.warningStackTrace(e);
 		}
 			
 		return true;
@@ -646,6 +646,11 @@ public class CCNFlowControl implements CCNFilterListener {
 					for(ContentName co : _holdingArea.keySet()) {
 						Log.warning(Log.FAC_IO, "FlowController: still holding: " + co.toString());
 					}
+					// For now - dump the handlers stack if its active in case that may give a clue about what's wrong.
+					// We may want to leave this in permanently.
+					CCNNetworkManager cnm = _handle.getNetworkManager();
+					if (null != cnm)
+						cnm.dumpHandlerStackTrace("waitForPutDrain");
 					throw new IOException("Put(s) with no matching interests - size is " + _holdingArea.size());
 				}
 				startSize = _nOut;
