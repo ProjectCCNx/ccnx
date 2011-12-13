@@ -53,7 +53,7 @@ public class VersioningProfileTest {
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.warning("Warning! This tests bakes in low-level knowledge of versioning/segmentation conventions, and must be updated when they change!");
+		Log.warning(Log.FAC_TEST, "Warning! This tests bakes in low-level knowledge of versioning/segmentation conventions, and must be updated when they change!");
 	}
 
 	/**
@@ -82,6 +82,8 @@ public class VersioningProfileTest {
 	 */
 	@Test
 	public void testVersionNameContentNameLong() {
+		Log.info(Log.FAC_TEST, "Starting testVersionNameContentNameLong");
+
 		ContentName name;
 		/* try with length 2 contentname */
 		name = VersioningProfile.addVersion(abName, 256);
@@ -93,6 +95,8 @@ public class VersioningProfileTest {
 		name = VersioningProfile.addVersion(abName, 0);
 		if (!name.equals(ab0Name))
 			fail("long encode version=0 failed");
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionNameContentNameLong");
 	}
 
 	/**
@@ -100,6 +104,8 @@ public class VersioningProfileTest {
 	 */
 	@Test
 	public void testVersionNameContentNameTimestamp() {
+		Log.info(Log.FAC_TEST, "Starting testVersionNameContentNameTimestamp");
+
 		/* try with length 2 contentname */
 		CCNTime ts = new CCNTime(1000);
 		ts.setNanos(15722656);
@@ -107,6 +113,8 @@ public class VersioningProfileTest {
 		ContentName name = VersioningProfile.addVersion(abName, ts);
 		if (!name.equals(abvName))
 			fail("timestamp encode version failed");
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionNameContentNameTimestamp");
 	}
 
 	/**
@@ -115,14 +123,20 @@ public class VersioningProfileTest {
 	 */
 	@Test
 	public void testVersionNameContentName() throws InterruptedException {
+		Log.info(Log.FAC_TEST, "Starting testVersionNameContentName");
+
 		ContentName name = VersioningProfile.addVersion(abName);
 		Thread.sleep(10);
 		if (name == VersioningProfile.addVersion(abSegName))
 			fail("should be different versions");
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionNameContentName");
 	}
 
 	@Test
 	public void testFindVersionComponent() {
+		Log.info(Log.FAC_TEST, "Starting testFindVersionComponent");
+
 		if (VersioningProfile.findLastVersionComponent(abnotvName) != -1)
 			fail();
 		if (VersioningProfile.findLastVersionComponent(abName) != -1)
@@ -133,6 +147,8 @@ public class VersioningProfileTest {
 			fail();
 		if (VersioningProfile.findLastVersionComponent(abvvName) != 3)
 			fail();
+		
+		Log.info(Log.FAC_TEST, "Completed testFindVersionComponent");
 	}
 
 	/**
@@ -140,6 +156,8 @@ public class VersioningProfileTest {
 	 */
 	@Test
 	public void testhasTerminalVersion() {
+		Log.info(Log.FAC_TEST, "Starting testhasTerminalVersion");
+
 		if (VersioningProfile.hasTerminalVersion(abName))
 			fail("shouldn't be versioned");
 		if (!VersioningProfile.hasTerminalVersion(abvName))
@@ -156,6 +174,8 @@ public class VersioningProfileTest {
 		
 		if (VersioningProfile.hasTerminalVersion(abnotvName))
 			fail();
+		
+		Log.info(Log.FAC_TEST, "Completed testhasTerminalVersion");
 	}
 
 	/**
@@ -163,6 +183,8 @@ public class VersioningProfileTest {
 	 */
 	@Test
 	public void testCutTerminalVersion() {
+		Log.info(Log.FAC_TEST, "Starting testCutTerminalVersion");
+
 		if (!VersioningProfile.cutTerminalVersion(abSegName).first().equals(abName))
 			fail("Not equals: " + VersioningProfile.cutTerminalVersion(abSegName).first() + " and " + abName);
 		if (!VersioningProfile.cutTerminalVersion(abName).first().equals(abName))
@@ -172,6 +194,8 @@ public class VersioningProfileTest {
 		// check correct version field stripped if 2 present
 		if (!VersioningProfile.cutTerminalVersion(abvvName).first().equals(abvName))
 			fail();
+		
+		Log.info(Log.FAC_TEST, "Completed testCutTerminalVersion");
 	}
 
 	/**
@@ -179,12 +203,16 @@ public class VersioningProfileTest {
 	 */
 	@Test
 	public void testIsVersionOf() {
+		Log.info(Log.FAC_TEST, "Starting testIsVersionOf");
+
 		if (!VersioningProfile.isVersionOf(abSegName, abName))
 			fail();
 		if (VersioningProfile.isVersionOf(abName, abSegName))
 			fail();
 		if (VersioningProfile.isVersionOf(abvName, abvvName))
 			fail();
+		
+		Log.info(Log.FAC_TEST, "Completed testIsVersionOf");
 	}
 
 	/**
@@ -193,6 +221,8 @@ public class VersioningProfileTest {
 	 */
 	@Test
 	public void testGetVersionAsLong() throws VersionMissingException {
+		Log.info(Log.FAC_TEST, "Starting testGetVersionAsLong");
+
 		if (VersioningProfile.getLastVersionAsLong(abSegName) != 0x1040)
 			fail();
 
@@ -213,6 +243,8 @@ public class VersioningProfileTest {
 			return;
 		}
 		fail();
+		
+		Log.info(Log.FAC_TEST, "Completed testGetVersionAsLong");
 	}
 
 	/**
@@ -221,14 +253,20 @@ public class VersioningProfileTest {
 	 */
 	@Test
 	public void testGetVersionAsTimestamp() throws VersionMissingException {
+		Log.info(Log.FAC_TEST, "Starting testGetVersionAsTimestamp");
+
 		CCNTime ts = VersioningProfile.getLastVersionAsTimestamp(abSegName);
 		ContentName name = VersioningProfile.addVersion(abName, ts);
 		if (!name.equals(abvName))
 			fail();
+		
+		Log.info(Log.FAC_TEST, "Completed testGetVersionAsTimestamp");
 	}
 	
 	@Test
 	public void testUnpaddedVersions() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testUnpaddedVersions");
+
 		ContentName name = ContentName.fromNative("/testme");
 		long v0 = 0x7FFFFF;
 		byte [] b0 = {VersioningProfile.VERSION_MARKER, (byte) 0x7F, (byte) 0xFF, (byte) 0xFF};
@@ -244,10 +282,14 @@ public class VersioningProfileTest {
 		x0 = VersioningProfile.getLastVersionComponent(vn0);
 		System.out.println("From ccntime name: " + vn0.toString());
 		Assert.assertTrue(Arrays.areEqual(b0, x0));	
+		
+		Log.info(Log.FAC_TEST, "Completed testUnpaddedVersions");
 	}
 	
 	@Test
 	public void testPaddedVersions() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testPaddedVersions");
+
 		ContentName name = ContentName.fromNative("/testme");
 		long v0 = 0x80FFFF;
 		byte [] b0 = {VersioningProfile.VERSION_MARKER, (byte) 0x80, (byte) 0xFF, (byte) 0xFF};
@@ -262,7 +304,8 @@ public class VersioningProfileTest {
 		vn0 = VersioningProfile.addVersion(name, t0);
 		x0 = VersioningProfile.getLastVersionComponent(vn0);
 		System.out.println("From ccntime name: " + vn0.toString());
-		Assert.assertTrue(Arrays.areEqual(b0, x0));	
-	}
-	
+		Assert.assertTrue(Arrays.areEqual(b0, x0));
+		
+		Log.info(Log.FAC_TEST, "Completed testPaddedVersions");
+	}	
 }

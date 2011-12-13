@@ -25,6 +25,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -59,13 +60,15 @@ public class CCNNetworkTestRepo extends CCNTestBase {
 	 */
 	@Test
 	public void testObjectIOLoop() throws Exception {
-	   CCNHandle handle = CCNHandle.getHandle();
-	   ContentName basename = testHelper.getTestNamespace("content_"  + _rnd.nextLong());
+		Log.info(Log.FAC_TEST, "Starting testObjectIOLoop");
+		
+		CCNHandle handle = CCNHandle.getHandle();
+		ContentName basename = testHelper.getTestNamespace("content_"  + _rnd.nextLong());
 
-	   // Send a stream of string objects
-	   ArrayList<CCNStringObject> sent = new ArrayList<CCNStringObject>();
+	    // Send a stream of string objects
+	    ArrayList<CCNStringObject> sent = new ArrayList<CCNStringObject>();
 	         int tosend = 100;
-	   for(int i = 0; i < tosend; i++) {
+	    for(int i = 0; i < tosend; i++) {
 	       // Save content
 	       try {
 	    	   System.out.println("Trying for object " + i);
@@ -80,11 +83,15 @@ public class CCNNetworkTestRepo extends CCNTestBase {
 	           throw e;
 	       }
 	       System.out.println(i);
-	   }
+	    }
+	   
+		Log.info(Log.FAC_TEST, "Completed testObjectIOLoop");
 	}
 	
 	@Test
 	public void testBadCallback() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testBadCallback");
+
 		BogusFilterListener bfl = new BogusFilterListener();
 		TestListener tl = new TestListener();
 		putHandle.registerFilter(testPrefix, bfl);
@@ -103,6 +110,8 @@ public class CCNNetworkTestRepo extends CCNTestBase {
 		}
 		getHandle.cancelInterest(interest, tl);
 		putHandle.checkError(TEST_TIMEOUT);
+		
+		Log.info(Log.FAC_TEST, "Completed testBadCallback");
 	}
 	
 	class TestListener implements CCNContentHandler {
@@ -130,5 +139,4 @@ public class CCNNetworkTestRepo extends CCNTestBase {
 			return true;
 		}	
 	}	
-
 }

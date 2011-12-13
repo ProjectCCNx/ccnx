@@ -111,6 +111,8 @@ public class GACMNodeKeyDirtyTestRepo {
 	 */
 	@Test
 	public void testInOrder() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testInOrder");
+
 		createUserGroups();
 		createNodeACLs();
 		writeNodeContent();
@@ -118,6 +120,8 @@ public class GACMNodeKeyDirtyTestRepo {
 		writeMoreNodeContent();
 		removeMemberFromGroup0();
 		writeEvenMoreNodeContent();
+		
+		Log.info(Log.FAC_TEST, "Completed testInOrder");
 	}
 	
 	/**

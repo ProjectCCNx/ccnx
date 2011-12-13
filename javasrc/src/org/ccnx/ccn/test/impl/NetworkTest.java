@@ -26,6 +26,7 @@ import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -82,8 +83,11 @@ public class NetworkTest extends CCNTestBase {
 	 */
 	@Test
 	public void testRegisteredPrefix() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testRegisteredPrefix");
+
 		TestInterestHandler tfl = new TestInterestHandler();
 		TestContentHandler tl = new TestContentHandler();
+		
 		ContentName testName1 = ContentName.fromNative(testPrefix, "foo");
 		Interest interest1 = new Interest(testName1);
 		ContentName testName2 = ContentName.fromNative(testName1, "bar"); // /foo/bar
@@ -100,7 +104,6 @@ public class NetworkTest extends CCNTestBase {
 		gotInterest = false;
 		putHandle.registerFilter(testName2, tfl);
 		getHandle.expressInterest(interest1, tl);
-		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertFalse(gotInterest);
 		getHandle.cancelInterest(interest1, tl);
 		getHandle.expressInterest(interest2, tl);
@@ -162,11 +165,13 @@ public class NetworkTest extends CCNTestBase {
 		putHandle.unregisterFilter(slashName, tfl);
 		putHandle.unregisterFilter(testName5, tfl);
 		
+		Log.info(Log.FAC_TEST, "Completed testRegisteredPrefix");		
 	}
 
 	@Test
 	public void testNetworkManager() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Starting testNetworkManager");
+
 		/*
 		 * Test re-expression of interest
 		 */
@@ -176,30 +181,36 @@ public class NetworkTest extends CCNTestBase {
 		testInterest = new Interest(testName);
 		TestContentHandler tl = new TestContentHandler();
 		getHandle.expressInterest(testInterest, tl);
-		Thread.sleep(80);  
 		writer.put(testName, "aaa");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		getHandle.checkError(0);
 		Assert.assertTrue(gotData);
 		writer.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testNetworkManager");
 	}
 	
 	@Test
 	public void testNetworkManagerFixedPrefix() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testNetworkManagerFixedPrefix");
+
 		CCNWriter writer = new CCNWriter(putHandle);
 		ContentName testName = ContentName.fromNative(testPrefix, "ddd");
 		testInterest = new Interest(testName);
 		TestContentHandler tl = new TestContentHandler();
 		getHandle.expressInterest(testInterest, tl);
-		Thread.sleep(80);  
 		writer.put(testName, "ddd");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 		writer.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testNetworkManagerFixedPrefix");
 	}
 	
 	@Test
 	public void testNetworkManagerBackwards() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Starting testNetworkManagerBackwards");
+
 		CCNWriter writer = new CCNWriter(testPrefix, putHandle);
 		// Shouldn't have to do this -- need to refactor test. Had to add it after
 		// fixing CCNWriter to do proper flow control.
@@ -210,15 +221,19 @@ public class NetworkTest extends CCNTestBase {
 		testInterest = new Interest(testName);
 		TestContentHandler tl = new TestContentHandler();
 		writer.put(testName, "bbb");
-		Thread.sleep(80);  
 		getHandle.expressInterest(testInterest, tl);
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		getHandle.checkError(0);
 		Assert.assertTrue(gotData);
 		writer.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testNetworkManagerBackwards");
 	}
 	
 	@Test
 	public void testFreshnessSeconds() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testFreshnessSeconds");
+
 		CCNWriter writer = new CCNWriter(testPrefix, putHandle);
 		writer.disableFlowControl();
 		
@@ -231,11 +246,14 @@ public class NetworkTest extends CCNTestBase {
 		co = getHandle.get(testName, 1000);
 		Assert.assertTrue(co == null);
 		writer.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testFreshnessSeconds");
 	}
 
 	@Test
 	public void testInterestReexpression() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Starting testInterestReexpression");
+
 		/*
 		 * Test re-expression of interest
 		 */
@@ -248,8 +266,11 @@ public class NetworkTest extends CCNTestBase {
 		Thread.sleep(WAIT_MILLIS);  
 		writer.put(testName, "ccc");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
+		getHandle.checkError(0);
 		Assert.assertTrue(gotData);
 		writer.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testInterestReexpression");
 	}
 	
 	/**
@@ -258,8 +279,9 @@ public class NetworkTest extends CCNTestBase {
 	 */
 	@Test
 	public void testFlood() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testFlood");
+
 		if (getHandle.getNetworkManager().getProtocol() == NetworkProtocol.TCP) {
-			System.out.println("Testing TCP flooding");
 			TreeSet<ContentObject> cos = new TreeSet<ContentObject>();
 			for (int i = 0; i < FLOOD_ITERATIONS; i++) {
 				ContentName name = ContentName.fromNative(testPrefix, (new Integer(i)).toString());
@@ -272,6 +294,7 @@ public class NetworkTest extends CCNTestBase {
 				Assert.assertNotNull("Failed in flood after " + i + " iterations", co);
 			}
 		}
+		Log.info(Log.FAC_TEST, "Completed testFlood");
 	}
 	
 	class TestInterestHandler implements CCNInterestHandler {

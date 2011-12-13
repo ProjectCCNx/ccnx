@@ -21,6 +21,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
 import org.ccnx.ccn.profiles.repo.RepositoryControl;
@@ -55,6 +56,8 @@ public class LocalDataTestRepo {
 	
 	@Test
 	public void testWriteLocalData() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testWriteLocalData");
+
 		ContentName localStringName = testHelper.getTestChildName("testWriteLocalData", "a string");
 		
 		CCNStringObject localString = new CCNStringObject(localStringName, "Some local data.", 
@@ -68,6 +71,8 @@ public class LocalDataTestRepo {
 		Boolean inRepo = RepositoryControl.localRepoSync(defaultHandle, localString);
 		
 		Assert.assertTrue("Data is in the repo", inRepo);
+		
+		Log.info(Log.FAC_TEST, "Completed testWriteLocalData");
 	}
 
 }

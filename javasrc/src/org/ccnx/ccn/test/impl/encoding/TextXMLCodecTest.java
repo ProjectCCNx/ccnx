@@ -23,6 +23,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.TextXMLCodec;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -39,6 +40,8 @@ public class TextXMLCodecTest {
 	
 	@Test
 	public void testTagMap() {
+		Log.info(Log.FAC_TEST, "Starting testTagMap");
+
 		String name;
 		Long tag;
 		for (int i=1; i <= CCNProtocolDTags.Parameters; ++i) {
@@ -77,10 +80,14 @@ public class TextXMLCodecTest {
 
 		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.Parameters);
 		Assert.assertEquals("Parameters", name);
+		
+		Log.info(Log.FAC_TEST, "Completed testTagMap");
 	}
 	
 	@Test
 	public void testParseDateTime() {
+		Log.info(Log.FAC_TEST, "Starting testParseDateTime");
+
 		CCNTime now = CCNTime.now();
 		testDateTime(now);
 		
@@ -99,6 +106,8 @@ public class TextXMLCodecTest {
 		
 		now.setNanos(110672800);
 		testDateTime(now);
+		
+		Log.info(Log.FAC_TEST, "Completed testParseDateTime");
 	}
 	
 	public void testDateTime(CCNTime testDateTime) {

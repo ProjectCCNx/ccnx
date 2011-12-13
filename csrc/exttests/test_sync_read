@@ -1,0 +1,3 @@
+AFTER : test_sync_basic
+SyncTest -read SyncNames.txt 2>syncread.err > syncread.out|| Fail SyncTest -read
+diff /dev/null syncread.err || Fail error output

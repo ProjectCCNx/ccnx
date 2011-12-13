@@ -1,0 +1,21 @@
+# tests/test_final_teardown
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+P=$((CCN_LOCAL_PORT_BASE / 10))
+ls ${CCN_LOCAL_SOCKNAME:-/tmp/.ccnd.sock}.$P[0123456789] 2>/dev/null | cut -d . -f 4  | \
+    while read i; do CCN_LOCAL_PORT=$i ccndstop; done
+ls ${CCN_LOCAL_SOCKNAME:-/tmp/.ccnd.sock}.$P[0123456789] 2>/dev/null && Fail not all gone
+sleep 1
+netstat -an | grep -e $P[0123456789]
+:

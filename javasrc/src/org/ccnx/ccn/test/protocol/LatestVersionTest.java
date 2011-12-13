@@ -92,6 +92,8 @@ public class LatestVersionTest {
 	 */
 	@Test
 	public void getLatestVersion() throws InterruptedException, Error {
+		Log.info(Log.FAC_TEST, "Starting getLatestVersion");
+
 		ContentName one = null;
 		ContentName two = null;
 		ContentName three = null;
@@ -592,6 +594,7 @@ public class LatestVersionTest {
 		
 		responder.checkError();
 		
+		Log.info(Log.FAC_TEST, "Completed getLatestVersion");
 	}
 	
 	private void checkResponder() throws InterruptedException, Error {
@@ -694,8 +697,6 @@ public class LatestVersionTest {
 			System.out.println("resorting to default verifier");
 			
 			return LatestVersionTest.getHandle.defaultVerifier().verify(content);
-		}
-		
+		}	
 	}
-
 }

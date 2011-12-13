@@ -32,9 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNContentHandler;
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestHandler;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -78,7 +76,6 @@ import org.ccnx.ccn.protocol.WirePacket;
  * all the communications with ccnd.
  * 
  */
-@SuppressWarnings("deprecation")
 public class CCNNetworkManager implements Runnable {
 
 	public static final int DEFAULT_AGENT_PORT = 9695; // ccnx registered port

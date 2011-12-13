@@ -67,7 +67,7 @@ public class StreamTest extends BlockReadWriteTest {
 
 		CCNInputStream istream = new CCNInputStream(thisName, handle);
 		istream.setTimeout(120000);
-		Log.info("StreamTest: Opened descriptor for reading: " + thisName);
+		Log.info(Log.FAC_TEST, "StreamTest: Opened descriptor for reading: " + thisName);
 
 		FileOutputStream os = new FileOutputStream(_testDir + fileName + "_testout.txt");
 		byte[] compareBytes = TEST_LONG_CONTENT.getBytes();
@@ -77,10 +77,10 @@ public class StreamTest extends BlockReadWriteTest {
             int toRead = CHUNK_SIZE * 3;
             int slot = 0;
             while ((buflen = istream.read(bytes, slot, toRead)) > 0) {
-        		Log.info("Read " + buflen + " bytes from CCNDescriptor.");
+        		Log.info(Log.FAC_TEST, "Read " + buflen + " bytes from CCNDescriptor.");
         		os.write(bytes, 0, (int)buflen);
         		if (istream.available() == 0) {
-        			Log.info("Stream claims 0 bytes available.");
+        			Log.info(Log.FAC_TEST, "Stream claims 0 bytes available.");
         		}
         		slot += buflen;
         		toRead = ((compareBytes.length - slot) > CHUNK_SIZE * 3) ? (CHUNK_SIZE * 3) : (compareBytes.length - slot);
@@ -89,7 +89,7 @@ public class StreamTest extends BlockReadWriteTest {
         }
 
         istream.close();
-        Log.info("Closed CCN reading CCNInputStream.");
+        Log.info(Log.FAC_TEST, "Closed CCN reading CCNInputStream.");
 	}
 	
 	/**
@@ -108,8 +108,8 @@ public class StreamTest extends BlockReadWriteTest {
 		CCNOutputStream ostream = new CCNOutputStream(thisName, handle);
 		sema.release();	// put channel open
 		
-		Log.info("StreamTest: Opened output stream for writing: " + thisName);
-		Log.info("Writing " + TEST_LONG_CONTENT.length() + " bytes, " +
+		Log.info(Log.FAC_TEST, "StreamTest: Opened output stream for writing: " + thisName);
+		Log.info(Log.FAC_TEST, "Writing " + TEST_LONG_CONTENT.length() + " bytes, " +
 						(TEST_LONG_CONTENT.length()/ostream.getBlockSize()) + " segments (" + numIterations + " iterations of content");
 		
 		ByteArrayOutputStream bigBAOS = new ByteArrayOutputStream();
@@ -125,12 +125,12 @@ public class StreamTest extends BlockReadWriteTest {
         int buflen = 0;
         while ((buflen = is.read(bytes)) >= 0) {
         	ostream.write(bytes, 0, buflen);
-        	Log.info("Wrote " + buflen + " bytes to CCNDescriptor.");
+        	Log.info(Log.FAC_TEST, "Wrote " + buflen + " bytes to CCNDescriptor.");
         }
         ostream.flush();
-        Log.info("Finished writing. Closing CCN writing CCNDescriptor.");
+        Log.info(Log.FAC_TEST, "Finished writing. Closing CCN writing CCNDescriptor.");
         ostream.close();
-        Log.info("Closed CCN writing CCNDescriptor.");
+        Log.info(Log.FAC_TEST, "Closed CCN writing CCNDescriptor.");
 	}
 
 }

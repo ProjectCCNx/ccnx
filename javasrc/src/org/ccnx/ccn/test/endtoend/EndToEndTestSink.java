@@ -44,10 +44,11 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNContentHandl
 	
 	@Test
 	public void sink() throws Throwable {
-		Log.info("EndtoEnd Sink started");
+		Log.info(Log.FAC_TEST, "Starting sink");
 		sync();
 		gets();
 		server();
+		Log.info(Log.FAC_TEST, "Completed sink");
 	}
 	
 	public void sync() throws MalformedContentNameStringException, IOException, SignatureException {
@@ -62,7 +63,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNContentHandl
 	}
 	
 	public void gets() throws Throwable {
-		Log.info("Get sequence started");
+		Log.info(Log.FAC_TEST, "Get sequence started");
 		Random rand = new Random();
 		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
@@ -73,10 +74,10 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNContentHandl
 			// in the get()
 			assertEquals(true, value >= i);
 			i = value;
-			Log.info("Got " + i);
+			Log.info(Log.FAC_TEST, "Got " + i);
 			checkGetResults(contents);
 		}
-		System.out.println("Get sequence finished");
+		Log.info(Log.FAC_TEST, "Get sequence finished");
 	}
 	
 	public void server() throws Throwable {

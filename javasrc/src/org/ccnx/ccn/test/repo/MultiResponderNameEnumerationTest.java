@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -162,7 +162,7 @@ public class MultiResponderNameEnumerationTest implements BasicNameEnumeratorLis
 	
 	@Test
 	public void multiResponderNameEnumerationTest() {
-		Log.info("Now checking for responses.");
+		Log.info(Log.FAC_TEST, "Starting multiResponderNameEnumerationTest");
 		
 		try {
 			getne.registerPrefix(_prefix);
@@ -171,6 +171,8 @@ public class MultiResponderNameEnumerationTest implements BasicNameEnumeratorLis
 		}
 		
 		testGetResponses();
+		
+		Log.info(Log.FAC_TEST, "Completed multiResponderNameEnumerationTest");
 	}
 	
 	public void testGetResponses(){

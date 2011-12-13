@@ -27,6 +27,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -100,9 +101,9 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 	}
 	
 	@Test
-	public void testBasicControlFlow() throws Throwable {	
+	public void testBasicControlFlow() throws Throwable {		
+		Log.info(Log.FAC_TEST, "Starting testBasicControlFlow");
 		
-		System.out.println("Testing basic control flow functionality and errors");
 		_handle.reset();
 		try {
 			fc.put(obj1);
@@ -118,14 +119,16 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 			fc.put(obj1);
 		} catch (IOException e) {
 			Assert.fail("Put with good namespace failed");
-		}		
+		}
+		
+		Log.info(Log.FAC_TEST, "Completed testBasicControlFlow");
 	}
 	
 	@Test
 	public void testInterestFirst() throws Throwable {	
+		Log.info(Log.FAC_TEST, "Starting testInterestFirst");
 		
 		normalReset(name1);
-		System.out.println("Testing interest arrives before a put");
 		interestList.add(new Interest("/bar"));
 		fc.handleInterests(interestList);
 		fc.put(obj1);
@@ -134,12 +137,14 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 		fc.handleInterests(interestList);
 		fc.put(obj1);
 		testExpected(queue.poll(), obj1);
+		
+		Log.info(Log.FAC_TEST, "Completed testInterestFirst");
 	}
 	
 	@Test
 	public void testNextBeforePut() throws Exception {	
+		Log.info(Log.FAC_TEST, "Starting testNextBeforePut");
 
-		System.out.println("Testing \"next\" interest arrives before a put");
 		normalReset(name1);
 		interestList.add(Interest.next(segment_names[1], null, null));
 		fc.handleInterests(interestList);
@@ -147,12 +152,14 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 		Assert.assertTrue(queue.poll() == null);
 		fc.put(segments[2]);
 		testExpected(queue.poll(), segments[2]);
+		
+		Log.info(Log.FAC_TEST, "Completed testNextBeforePut");
 	}
 	
 	@Test
 	public void testLastBeforePut() throws Exception {	
+		Log.info(Log.FAC_TEST, "Starting testLastBeforePut");
 
-		System.out.println("Testing \"last\" interest arrives before a put");
 		normalReset(name1);
 		interestList.add(Interest.last(segment_names[1], null, null));
 		fc.handleInterests(interestList);
@@ -161,21 +168,25 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 		fc.put(segments[2]);
 		testExpected(queue.poll(), segments[2]);
 		
+		Log.info(Log.FAC_TEST, "Completed testLastBeforePut");
 	}
 	
 	@Test
 	public void testPutsOrdered() throws Throwable {	
+		Log.info(Log.FAC_TEST, "Starting testPutsOrdered");
 
-		System.out.println("Testing puts output in correct order");
 		normalReset(name1);
 		interestList.add(new Interest("/foo"));
 		fc.handleInterests(interestList);
 		fc.put(obj1);
-		testExpected(queue.poll(), obj1);	
+		testExpected(queue.poll(), obj1);
+		
+		Log.info(Log.FAC_TEST, "Starting testPutsOrdered");
 	} 
 	
 	@Test
 	public void testRandomOrderPuts() throws Throwable {	
+		Log.info(Log.FAC_TEST, "Starting testRandomOrderPuts");
 
 		normalReset(name1);
 		
@@ -189,6 +200,8 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 		co = testNext(co, segments[1]);
 		co = testNext(co, segments[2]);
 		co = testNext(co, segments[3]);	
+		
+		Log.info(Log.FAC_TEST, "Completed testRandomOrderPuts");
 	}
 	
 	public class HighWaterHelper extends Thread {

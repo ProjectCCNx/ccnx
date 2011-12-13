@@ -21,6 +21,7 @@ import java.util.Random;
 
 import org.ccnx.ccn.impl.CCNStats;
 import org.ccnx.ccn.impl.CCNStats.ExampleClassWithStatistics;
+import org.ccnx.ccn.impl.support.Log;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -30,6 +31,8 @@ public class CCNStatTest {
 	
 	@Test
 	public void testExample() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testExample");
+
 		ExampleClassWithStatistics ecws = new ExampleClassWithStatistics();
 		
 		int sends = 20;
@@ -57,13 +60,13 @@ public class CCNStatTest {
 
 		Assert.assertEquals(sends, test_sends);
 		Assert.assertEquals(recvs, test_recvs);
+		
+		Log.info(Log.FAC_TEST, "Completed testExample");
 	}
 
 	@Test
 	public void testPerformance() throws Exception {
-		System.out.println("===========================================");
-		System.out.println("Testing performance of counters");
-		System.out.println();
+		Log.info(Log.FAC_TEST, "Starting testPerformance");
 		
 		ExampleClassWithStatistics ecws = new ExampleClassWithStatistics();
 
@@ -101,6 +104,7 @@ public class CCNStatTest {
 		System.out.println(
 				String.format("average %f std %f nanos/increment",
 						avg_delta / sends, std_delta / sends));
+		Log.info(Log.FAC_TEST, "Completed testPerformance");
 
 	}	
 }

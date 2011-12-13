@@ -32,6 +32,7 @@ import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.keys.PublicKeyCache;
 import org.ccnx.ccn.impl.security.keys.KeyServer;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -82,6 +83,8 @@ public class KeyManagerTest {
 
 	@Test
 	public void testWriteContent() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testWriteContent");
+
 		// insert your preferred way of writing to the repo here
 		// I'm actually about to add a bunch of lower-level write stuff
 		// for the access control, but that's not in place now.
@@ -129,6 +132,7 @@ public class KeyManagerTest {
 
 		flosser.stop();
 		thandle.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testWriteContent");
 	}
-
 }

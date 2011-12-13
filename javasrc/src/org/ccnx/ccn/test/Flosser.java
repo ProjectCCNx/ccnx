@@ -106,7 +106,7 @@ public class Flosser implements CCNContentHandler {
 			// Remove the top-level interest.
 			removeInterest(namespace);
 			_subInterests.remove(namespace);
-			Log.info("FLOSSER: no longer monitoring namespace: {0}", namespace);
+			Log.info(Log.FAC_TEST, "FLOSSER: no longer monitoring namespace: {0}", namespace);
 		}
 	}
 	
@@ -135,7 +135,7 @@ public class Flosser implements CCNContentHandler {
 			Interest interest = _interests.get(namespace);
 			_handle.cancelInterest(interest, this);
 			_interests.remove(namespace);
-			Log.fine("Cancelled interest in {0}", namespace);
+			Log.fine(Log.FAC_TEST, "Cancelled interest in {0}", namespace);
 		}
 	}
 	
@@ -151,14 +151,14 @@ public class Flosser implements CCNContentHandler {
 	public void handleNamespace(ContentName namespace) throws IOException {
 		synchronized(_interests) {
 			if (_shutdown) {
-				Log.info("FLOSSER: in the process of shutting down. Not handling new namespace {0}.", namespace);
+				Log.info(Log.FAC_TEST, "FLOSSER: in the process of shutting down. Not handling new namespace {0}.", namespace);
 				return;
 			}
 			if (_interests.containsKey(namespace)) {
-				Log.fine("FLOSSER: Already handling namespace: {0}", namespace);
+				Log.fine(Log.FAC_TEST, "FLOSSER: Already handling namespace: {0}", namespace);
 				return;
 			}
-			Log.info("FLOSSER: handling namespace: {0}", namespace);
+			Log.info(Log.FAC_TEST, "FLOSSER: handling namespace: {0}", namespace);
 			Interest namespaceInterest = new Interest(namespace);
 			_interests.put(namespace, namespaceInterest);
 			_handle.expressInterest(namespaceInterest, this);
@@ -166,7 +166,7 @@ public class Flosser implements CCNContentHandler {
 			if (null == subNamespaces) {
 				subNamespaces = new HashSet<ContentName>();
 				_subInterests.put(namespace, subNamespaces);
-				Log.info("FLOSSER: setup parent namespace: {0}", namespace);
+				Log.info(Log.FAC_TEST, "FLOSSER: setup parent namespace: {0}", namespace);
 			}			
 		}
 	}
@@ -174,15 +174,15 @@ public class Flosser implements CCNContentHandler {
 	public void handleNamespace(ContentName namespace, ContentName parent) throws IOException {
 		synchronized(_interests) {
 			if (_shutdown) {
-				Log.info("FLOSSER: in the process of shutting down. Not handling new subnamespace {0} under parent {1}.", 
+				Log.info(Log.FAC_TEST, "FLOSSER: in the process of shutting down. Not handling new subnamespace {0} under parent {1}.", 
 						namespace, parent);
 				return;
 			}
 			if (_interests.containsKey(namespace)) {
-				Log.fine("Already handling child namespace: {0}", namespace);
+				Log.fine(Log.FAC_TEST, "Already handling child namespace: {0}", namespace);
 				return;
 			}
-			Log.info("FLOSSER: handling child namespace: {0} expected parent: {1}", namespace, parent);
+			Log.info(Log.FAC_TEST, "FLOSSER: handling child namespace: {0} expected parent: {1}", namespace, parent);
 			Interest namespaceInterest = new Interest(namespace);
 			namespaceInterest.minSuffixComponents(2);	// Don't reget the parent
 			_interests.put(namespace, namespaceInterest);
@@ -194,15 +194,15 @@ public class Flosser implements CCNContentHandler {
 			while ((subNamespace == null) && (!parentNamespace.equals(ContentName.ROOT))) {
 				parentNamespace = parentNamespace.parent();
 				subNamespace = _subInterests.get(parentNamespace);
-				Log.info("FLOSSER: initial parent not found in map, looked up {0} found in map? {1}", parentNamespace, ((null == subNamespace) ? "no" : "yes"));
+				Log.info(Log.FAC_TEST, "FLOSSER: initial parent not found in map, looked up {0} found in map? {1}", parentNamespace, ((null == subNamespace) ? "no" : "yes"));
 			}
 			if (null != subNamespace) {
-				Log.info("FLOSSER: Adding subnamespace: {0} to ancestor {1}", namespace, parentNamespace);
+				Log.info(Log.FAC_TEST, "FLOSSER: Adding subnamespace: {0} to ancestor {1}", namespace, parentNamespace);
 				subNamespace.add(namespace);
 			} else {
-				Log.info("FLOSSER: Cannot find ancestor namespace for {0}", namespace);
+				Log.info(Log.FAC_TEST, "FLOSSER: Cannot find ancestor namespace for {0}", namespace);
 				for (ContentName n : _subInterests.keySet()) {
-					Log.info("FLOSSER: 		available ancestor: {0}", n);
+					Log.info(Log.FAC_TEST, "FLOSSER: 		available ancestor: {0}", n);
 				}
 			}
 		}
@@ -210,13 +210,13 @@ public class Flosser implements CCNContentHandler {
 
 	public Interest handleContent(ContentObject result,
 								  Interest interest) {
-		Log.finest("Interests registered: " + _interests.size() + " content object returned");
+		Log.finest(Log.FAC_TEST, "Interests registered: " + _interests.size() + " content object returned");
 		// Parameterized behavior that subclasses can override.
 		ContentName interestName = null;
 		if (_processedObjects.contains(result)) {
-			Log.fine("FLOSSER: Got repeated content for interest: {0} content: {1}", interest, result.name());
+			Log.fine(Log.FAC_TEST, "FLOSSER: Got repeated content for interest: {0} content: {1}", interest, result.name());
 		} else {
-			Log.finest("FLOSSER: Got new content for interest {0} content name: {1}", interest, result.name());
+			Log.finest(Log.FAC_TEST, "FLOSSER: Got new content for interest {0} content name: {1}", interest, result.name());
 			processContent(result);
 			// update the interest. follow process used by ccnslurp.
 			// exclude the next component of this object, and set up a
@@ -240,17 +240,17 @@ public class Flosser implements CCNContentHandler {
 					ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
 					excludes.add(new ExcludeComponent(result.digest()));
 					interest.exclude(new Exclude(excludes));
-					Log.finest("Creating new exclude filter for interest {0}", interest.name());
+					Log.finest(Log.FAC_TEST, "Creating new exclude filter for interest {0}", interest.name());
 				} else {
 					if (interest.exclude().match(result.digest())) {
-						Log.fine("We should have already excluded content digest: " + DataUtils.printBytes(result.digest()));
+						Log.fine(Log.FAC_TEST, "We should have already excluded content digest: " + DataUtils.printBytes(result.digest()));
 					} else {
 						// Has to be in order...
-						Log.finest("Adding child component to exclude.");
+						Log.finest(Log.FAC_TEST, "Adding child component to exclude.");
 						interest.exclude().add(new byte [][] { result.digest() });
 					}
 				}
-				Log.finer("Excluding content digest: " + DataUtils.printBytes(result.digest()) + " onto interest {0} total excluded: " + interest.exclude().size(), interest.name());
+				Log.finer(Log.FAC_TEST, "Excluding content digest: " + DataUtils.printBytes(result.digest()) + " onto interest {0} total excluded: " + interest.exclude().size(), interest.name());
 			} else {
 				// Add an exclude for the content we just got
 				// DKS TODO might need to split to matchedComponents like ccnslurp
@@ -258,28 +258,29 @@ public class Flosser implements CCNContentHandler {
 					ArrayList<Exclude.Element> excludes = new ArrayList<Exclude.Element>();
 					excludes.add(new ExcludeComponent(result.name().component(prefixCount)));
 					interest.exclude(new Exclude(excludes));
-					Log.finest("Creating new exclude filter for interest {0}", interest.name());
+					Log.finest(Log.FAC_TEST, "Creating new exclude filter for interest {0}", interest.name());
 				} else {
 					if (interest.exclude().match(result.name().component(prefixCount))) {
-						Log.fine("We should have already excluded child component: {0}", ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
+						Log.fine(Log.FAC_TEST, "We should have already excluded child component: {0}", ContentName.componentPrintURI(result.name().component(prefixCount)));                   	
 					} else {
 						// Has to be in order...
-						Log.finest("Adding child component to exclude.");
+						Log.finest(Log.FAC_TEST, "Adding child component to exclude.");
 						interest.exclude().add(
 								new byte [][] { result.name().component(prefixCount) });
 					}
 				}
-				Log.finer("Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.exclude().size());
+				Log.finer(Log.FAC_TEST, "Excluding child " + ContentName.componentPrintURI(result.name().component(prefixCount)) + " total excluded: " + interest.exclude().size());
+
 				if (_flossSubNamespaces || SegmentationProfile.isNotSegmentMarker(result.name().component(prefixCount))) {
 					ContentName newNamespace = null;
 					try {
 						if (interest.name().count() == result.name().count()) {
 							newNamespace = new ContentName(interest.name(), result.digest());
-							Log.info("Not adding content exclusion namespace: {0}", newNamespace);
+							Log.info(Log.FAC_TEST, "Not adding content exclusion namespace: {0}", newNamespace);
 						} else {
 							newNamespace = new ContentName(interest.name(), 
 									result.name().component(interest.name().count()));
-							Log.info("Adding new namespace: {0}", newNamespace);
+							Log.info(Log.FAC_TEST, "Adding new namespace: {0}", newNamespace);
 							handleNamespace(newNamespace, interest.name());
 						}
 					} catch (IOException ioex) {
@@ -296,11 +297,11 @@ public class Flosser implements CCNContentHandler {
 	}
 	
 	public void stop() {
-		Log.info("Stop flossing.");
+		Log.info(Log.FAC_TEST, "Stop flossing.");
 		synchronized (_interests) {
 			_shutdown = true;
 			stopMonitoringNamespaces();
-			Log.info("Stopped flossing: remaining namespaces {0} (should be 0), subnamespaces {1} (should be 0).",
+			Log.info(Log.FAC_TEST, "Stopped flossing: remaining namespaces {0} (should be 0), subnamespaces {1} (should be 0).",
 						_interests.size(), _subInterests.size());
 		}
 		_handle.close();
@@ -324,7 +325,7 @@ public class Flosser implements CCNContentHandler {
 	 * @param result
 	 */
 	protected void processContent(ContentObject result) {
-		Log.info("Flosser got: " + result.fullName());
+		Log.info(Log.FAC_TEST, "Flosser got: " + result.fullName());
 	}
 	
 }

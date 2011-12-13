@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.test;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -32,30 +33,33 @@ public class BasePutGetTest extends LibraryTestBase {
 	
 	@Test
 	public void testGetPut() throws Throwable {
-		System.out.println("TEST: PutThread/GetThread");
+		Log.info(Log.FAC_TEST, "Starting testGetPut");
 		int id = getUniqueId();
 		Thread putter = new Thread(new PutThread(count, id));
 		Thread getter = new Thread(new GetThread(count, id));
 		genericGetPut(putter, getter);
+		Log.info(Log.FAC_TEST, "Completed testGetPut");
 	}
 	
 	@Test
 	public void testGetServPut() throws Throwable {
-		System.out.println("TEST: PutThread/GetServer");
+		Log.info(Log.FAC_TEST, "Starting testGetServPut");
 		int id = getUniqueId();
 
 		//Library.setLevel(Level.FINEST);
 		Thread putter = new Thread(new PutThread(count, id));
 		Thread getter = new Thread(new GetServer(count, id));
 		genericGetPut(putter, getter);
+		Log.info(Log.FAC_TEST, "Completed testGetServPut");
 	}
 
 	@Test
 	public void testGetPutServ() throws Throwable {
-		System.out.println("TEST: PutServer/GetThread");
+		Log.info(Log.FAC_TEST, "Starting testGetPutServ");
 		int id = getUniqueId();
 		Thread putter = new Thread(new PutServer(count, id));
 		Thread getter = new Thread(new GetThread(count, id));
 		genericGetPut(putter, getter);
+		Log.info(Log.FAC_TEST, "Completed testGetPutServ");
 	}
 }

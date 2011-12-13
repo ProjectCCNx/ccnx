@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -25,6 +25,7 @@ import java.io.ByteArrayOutputStream;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.Header;
@@ -39,6 +40,8 @@ public class HeaderTest {
 	
 	@Test
 	public void testHeaderConstructor() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testHeaderConstructor");
+
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
 		Header seq = new Header(1, 1, 8192, 2, digest, digest);
 		assertNotNull(seq);
@@ -46,10 +49,14 @@ public class HeaderTest {
 		assertEquals(1, seq.count());
 		assertEquals(seq.blockSize(), 8192);
 		assertEquals(seq.length(), 2);
+		
+		Log.info(Log.FAC_TEST, "Completed testHeaderConstructor");
 	}
 
 	@Test
 	public void testHeaderConstructor2() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testHeaderConstructor2");
+
 		int length = 77295;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
 		Header seq = new Header(length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
@@ -58,10 +65,14 @@ public class HeaderTest {
 		assertEquals(length, seq.length());
 		assertEquals(SegmentationProfile.DEFAULT_BLOCKSIZE, seq.blockSize());
 		assertEquals((length + SegmentationProfile.DEFAULT_BLOCKSIZE - 1) / SegmentationProfile.DEFAULT_BLOCKSIZE, seq.count());
+		
+		Log.info(Log.FAC_TEST, "Completed testHeaderConstructor2");
 	}
 	
 	@Test
 	public void testHeaderConstructor3() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testHeaderConstructor3");
+
 		int length = SegmentationProfile.DEFAULT_BLOCKSIZE;
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
 		Header seq = new Header(length, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
@@ -70,20 +81,24 @@ public class HeaderTest {
 		assertEquals(length, seq.length());
 		assertEquals(SegmentationProfile.DEFAULT_BLOCKSIZE, seq.blockSize());
 		assertEquals(1, seq.count());
+		
+		Log.info(Log.FAC_TEST, "Completed testHeaderConstructor3");
 	}
 	
 	@Test
 	public void testEncodeOutputStream() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testEncodeOutputStream");
+
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
 		Header seq = new Header(1, 37, 8192, 2, digest, digest);
 
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		System.out.println("Encoding Header...");
+		Log.info(Log.FAC_TEST, "Encoding Header...");
 		try {
 			seq.encode(baos);
 		} catch (ContentEncodingException e) {
-			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			e.printStackTrace();
+			Log.warning(Log.FAC_TEST, "Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			Log.warningStackTrace(Log.FAC_TEST, e);
 		}
 		System.out.println("Encoded Header: " );
 		System.out.println(baos.toString());
@@ -96,10 +111,14 @@ public class HeaderTest {
 		Header db = new Header();
 		
 		XMLEncodableTester.encodeDecodeTest("Header", seq, dt, db);
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodeOutputStream");
 	}
 
 	@Test
 	public void testDecodeInputStream() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
+
 		byte [] digest = new byte[]{1,2,3,4,5,6,7,8,9,0,9,8,7,6,5,4,3,2,1};
 		Header seqIn = new Header(83545, digest, digest, SegmentationProfile.DEFAULT_BLOCKSIZE);
 		Header seqOut = new Header();
@@ -108,8 +127,8 @@ public class HeaderTest {
 		try {
 			seqIn.encode(baos);
 		} catch (ContentEncodingException e) {
-			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			e.printStackTrace();
+			Log.warning(Log.FAC_TEST, "Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			Log.warningStackTrace(Log.FAC_TEST, e);
 		}
 		System.out.println("Encoded header: " + baos.toString());
 
@@ -119,11 +138,13 @@ public class HeaderTest {
 		try {
 			seqOut.decode(bais);
 		} catch (ContentDecodingException e) {
-			System.out.println("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			e.printStackTrace();
+			Log.warning(Log.FAC_TEST, "Exception " + e.getClass().getName() + ", message: " + e.getMessage());
+			Log.warningStackTrace(Log.FAC_TEST, e);
 		}
 		System.out.println("Decoded header: " + seqOut);
 		assertEquals(seqIn, seqOut);
+		
+		Log.info(Log.FAC_TEST, "Completed testDecodeInputStream");
 	}
 
 }

@@ -28,6 +28,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
@@ -89,9 +90,13 @@ public class GroupRecursiveKeyUpdateTestRepo {
 	 */
 	@Test
 	public void testInOrder() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testInOrder");
+
 		createGroups();
 		testRecursiveGroupAncestors();
 		removeMemberFromGroup0();
+		
+		Log.info(Log.FAC_TEST, "Completed testInOrder");
 	}
 	
 

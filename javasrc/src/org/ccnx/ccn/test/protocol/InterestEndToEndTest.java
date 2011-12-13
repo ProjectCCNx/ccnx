@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNInterestHandler;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.ConcurrencyUtils.Waiter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -47,6 +48,8 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNInterest
 	
 	@Test
 	public void testInterestEndToEnd() throws MalformedContentNameStringException, IOException, InterruptedException {
+		Log.info(Log.FAC_TEST, "Starting testInterestEndToEnd");
+
 		getHandle.registerFilter(ContentName.fromNative(_prefix), this);
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
 		doTest(1);
@@ -67,7 +70,8 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNInterest
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
 		doTestFail(4);
 		System.out.println("count: "+interestCount);
-
+		
+		Log.info(Log.FAC_TEST, "Completed testInterestEndToEnd");
 	}
 
 	public boolean handleInterest(Interest interest) {

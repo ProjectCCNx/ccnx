@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -26,6 +26,7 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.profiles.security.access.group.ACL;
@@ -88,13 +89,17 @@ public class GroupAccessControlManagerTestRepo {
 	 */
 	@Test
 	public void testInOrder() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testInOrder");
+
 		testSetBaseACL();
 		testGetBaseACL();
 		testGetACLFromAncestor();
 		testSetACL();
 		testUpdateACLAdd();
 		testUpdateACLRemove();
-		deleteACL(); 
+		deleteACL();
+		
+		Log.info(Log.FAC_TEST, "Completed testInOrder");
 	}
 	
 	/**
