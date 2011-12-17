@@ -153,9 +153,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	protected ContentName _basePipelineName = null;
 	protected long _lastSegmentNumber = -1;
 	protected ArrayList<Interest> _sentInterests = new ArrayList<Interest>();
-	private Thread waitingThread = null;
 	private long waitingSegment;
-	private long waitSleep = 0;
 	private long _holes = 0;
 	private long _totalReceived = 0;
 	private long _pipelineStartTime;
@@ -344,49 +342,6 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		long returnedSegment = SegmentationProfile.getSegmentNumber(co.name());
 		ArrayList<Interest> toRemove = new ArrayList<Interest>();	
 
-		//is there a reader ready?
-		long rr;
-		synchronized(readerReadyObj) {
-			rr = readerReadyVal;
-		}
-		//while(rr > -1) {
-		if(rr > -1) {
-			//there is a reader waiting
-			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-				Log.info(Log.FAC_PIPELINE, "PIPELINE: there is a reader waiting, we should wait unless we have their segment");
-			if(returnedSegment == rr) {
-				//this is the segment they want, we should just finish
-				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: we are working on their segment...  we should finish!");
-				//break;
-			} else {
-				if (haveSegmentBuffered(rr)) {
-					//we have their segment
-					//this isn't their segment, but the one they want is here. we should defer
-					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-						Log.info(Log.FAC_PIPELINE, "PIPELINE: we are deferring until they are done");
-					try {
-						processingDefer = 1;
-						inOrderSegments.wait();
-						//readerReady.wait();
-						synchronized(readerReadyObj) {
-							rr = readerReadyVal;
-						}
-					} catch (InterruptedException e) {
-						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-							Log.info(Log.FAC_PIPELINE, "PIPELINE: we can go back to processing");
-						//break;
-					}
-					processingDefer = 0;
-				} else {
-					//we don't have their segment, we should keep going
-					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-						Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have their segment, keep processing this one.");
-				}
-			}
-		}
-
-
 		//are we at the last segment?
 		synchronized(inOrderSegments) {
 			if (SegmentationProfile.isLastSegment(co)) {
@@ -497,15 +452,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 				processingSegment = -1;
 			}
 
-			inOrderSegments.notifyAll();
-			if(waitingThread!=null && returnedSegment == waitingSegment) {
-				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
-					Log.info(Log.FAC_PIPELINE, "PIPELINE: notifyAll: min sleep {0}", (System.currentTimeMillis()-waitSleep));
-				try {
-					inOrderSegments.wait();
-				} catch (InterruptedException e) {
-					//back to me...  keep going
-				}
+			if(returnedSegment == waitingSegment) {
+				inOrderSegments.notifyAll();
 			}
 		}
 	}
@@ -1660,16 +1608,15 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			// the segment was not available... we need to wait until the
 			// pipeline gets it in
 			synchronized(inOrderSegments) {
-				long start = System.currentTimeMillis();
+				long start = 0;
 				long sleep = 0;
 				long sleepCheck = 0;
 				Log.info(Log.FAC_PIPELINE, "PIPELINE: _timeout = {0}", _timeout);
-				waitingThread = Thread.currentThread();
 				waitingSegment = number;
 				while (sleep < _timeout || _timeout == SystemConfiguration.NO_TIMEOUT) {
 					try{
 						start = System.currentTimeMillis();
-						waitSleep = start;
+
 						if (_timeout == SystemConfiguration.NO_TIMEOUT)
 							sleepCheck = SystemConfiguration.EXTRA_LONG_TIMEOUT;
 						else
@@ -1704,7 +1651,6 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: awake: done sleeping {0}", sleep);
 
-				waitingThread = null;
 				waitingSegment = -1;
 				co = getPipelineSegment(number);
 				//}
