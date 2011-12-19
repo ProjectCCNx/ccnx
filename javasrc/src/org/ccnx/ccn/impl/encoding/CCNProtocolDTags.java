@@ -126,7 +126,15 @@ public class CCNProtocolDTags {
 	public static final int StatusText = 114;
 
 	// Sync protocol
+	public static final int SyncNode = 115;
+	public static final int SyncNodeKind = 116;
+	public static final int SyncNodeElement = 117;
 	public static final int SyncVersion = 118;
+	public static final int SyncNodeElements = 119;
+	public static final int SyncContentHash = 120;
+	public static final int SyncLeafCount = 121;
+	public static final int SyncTreeDepth = 122;
+	public static final int SyncByteCount = 123;
 	public static final int ConfigSlice = 124;
 	public static final int ConfigSliceList = 125;
 	public static final int ConfigSliceOp = 126;
@@ -155,9 +163,8 @@ public class CCNProtocolDTags {
 		"IntegerValue", "DecimalValue", "StringValue", "BinaryValue", "NameValue", "Entry",
 		"ACL", "ParameterizedName", "Prefix", "Suffix", "Root", "ProfileName", "Parameters",
 		"InfoString", null,
-        
-        "StatusResponse", "StatusCode", "StatusText", null, null, null,
-        "SyncVersion", null, null, null, null, null,
+        "StatusResponse", "StatusCode", "StatusText", "SyncNode", "SyncNodeKind", "SyncNodeElement",
+        "SyncVersion", "SyncNodeElements", "SyncContentHash", "SyncLeafCount", "SyncTreeDepth", "SyncByteCount",
         "ConfigSlice", "ConfigSliceList", "ConfigSliceOp" };
 	protected static final int TAG_MAP_LENGTH = _tagToStringMap.length;
 
