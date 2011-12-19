@@ -67,6 +67,7 @@ struct ccn {
     int verbose_error;
     int tap;
     int running;
+    int defer_verification;
 };
 
 struct expressed_interest;
@@ -259,22 +260,55 @@ ccn_create(void)
     char tap_name[255];
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(),
+        if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(),
                      (int)tv.tv_sec, (int)tv.tv_usec) >= 255) {
-        fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
-    } else {
-        h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
-        if (h->tap == -1) {
-        NOTE_ERRNO(h);
+            fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
+        } else {
+            h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
+            if (h->tap == -1) {
+                NOTE_ERRNO(h);
                 ccn_perror(h, "Unable to open CCN_TAP file");
-        }
+            }
             else
-        fprintf(stderr, "CCN_TAP writing to %s\n", tap_name);
-    }
-    } else {
-    h->tap = -1;
-    }
+                fprintf(stderr, "CCN_TAP writing to %s\n", tap_name);
+        }
+    } else
+        h->tap = -1;
+    h->defer_verification = 0;
     return(h);
+}
+
+/**
+ * Tell the library to defer verification.
+ *
+ * For some specialized applications (performance testing being an example),
+ * the normal verification done within the library may be undesirable.
+ * Setting the "defer validation" flag will cause the library to pass content
+ * to the application without attempting to verify it. In this case,
+ * the CCN_UPCALL_CONTENT_RAW upcall kind will be passed instead of
+ * CCN_UPCALL_CONTENT, and CCN_UPCALL_CONTENT_KEYMISSING instead of
+ * CCN_UPCALL_CONTENT_UNVERIFIED.  If the application wants do still do
+ * key fetches, it may use the CCN_UPCALL_RESULT_FETCHKEY response instead
+ * of CCN_UPCALL_RESULT_VERIFY.
+ *
+ * Calling this while there are interests outstanding is not recommended.
+ * 
+ * This call is available beginning with CCN_API_VERSION 4004.
+ *
+ * @param defer is 0 to verify, 1 to defer, -1 to leave unchanged.
+ * @returns previous value, or -1 in case of error.
+ */
+int
+ccn_defer_verification(struct ccn *h, int defer)
+{
+    int old;
+
+    if (h == NULL || defer > 1 || defer < -1)
+        return(-1);
+    old = h->defer_verification;
+    if (defer >= 0)
+        h->defer_verification = defer;
+    return(old);
 }
 
 /**
@@ -1004,6 +1038,8 @@ handle_key(struct ccn_closure *selfp,
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_CONTENT_UNVERIFIED:
             /* This is not exactly right, but trying to follow the KeyLocator could be worse trouble. */
+        case CCN_UPCALL_CONTENT_KEYMISSING:
+        case CCN_UPCALL_CONTENT_RAW:
         case CCN_UPCALL_CONTENT:
             type = ccn_get_content_type(msg, info->pco);
             if (type == CCN_CONTENT_KEY)
@@ -1221,7 +1257,13 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                     if (type == CCN_CONTENT_KEY)
                                         res = ccn_cache_key(h, msg, size, info.pco);
                                     res = ccn_locate_key(h, msg, info.pco, &pubkey);
-                                    if (res == 0) {
+                                    if (h->defer_verification) {
+                                        if (res == 0)
+                                            upcall_kind = CCN_UPCALL_CONTENT_RAW;
+                                        else
+                                            upcall_kind = CCN_UPCALL_CONTENT_KEYMISSING;
+                                    }
+                                    else if (res == 0) {
                                         /* we have the pubkey, use it to verify the msg */
                                         res = ccn_verify_signature(msg, size, info.pco, pubkey);
                                         upcall_kind = (res == 1) ? CCN_UPCALL_CONTENT : CCN_UPCALL_CONTENT_BAD;
@@ -1237,10 +1279,18 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                         ccn_gripe(interest);
                                     if (ures == CCN_UPCALL_RESULT_REEXPRESS)
                                         ccn_refresh_interest(h, interest);
-                                    else if (ures == CCN_UPCALL_RESULT_VERIFY &&
-                                             upcall_kind == CCN_UPCALL_CONTENT_UNVERIFIED) { /* KEYS */
+                                    else if ((ures == CCN_UPCALL_RESULT_VERIFY ||
+                                              ures == CCN_UPCALL_RESULT_FETCHKEY) &&
+                                             (upcall_kind == CCN_UPCALL_CONTENT_UNVERIFIED ||
+                                              upcall_kind == CCN_UPCALL_CONTENT_KEYMISSING)) { /* KEYS */
                                         ccn_initiate_key_fetch(h, msg, info.pco, interest);
-                                    } else {
+                                    }
+                                    else if (ures == CCN_UPCALL_RESULT_VERIFY &&
+                                             upcall_kind == CCN_UPCALL_CONTENT_RAW) {
+                                        /* For now, call this a client bug. */
+                                        abort();
+                                    }
+                                    else {
                                         interest->target = 0;
                                         replace_interest_msg(interest, NULL);
                                         ccn_replace_handler(h, &(interest->action), NULL);
@@ -1599,7 +1649,11 @@ handle_simple_incoming_content(
         if ((md->flags & CCN_GET_NOKEYWAIT) == 0)
             return(CCN_UPCALL_RESULT_VERIFY);
     }
-    else if (kind != CCN_UPCALL_CONTENT)
+    if (kind == CCN_UPCALL_CONTENT_KEYMISSING) {
+        if ((md->flags & CCN_GET_NOKEYWAIT) == 0)
+            return(CCN_UPCALL_RESULT_FETCHKEY);
+    }
+    else if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_RAW)
         return(CCN_UPCALL_RESULT_ERR);
     if (md->resultbuf != NULL) {
         md->resultbuf->length = 0;
@@ -1714,6 +1768,12 @@ handle_ccndid_response(struct ccn_closure *selfp,
     }
     if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_VERIFY);
+    if (kind == CCN_UPCALL_CONTENT_KEYMISSING)
+        return(CCN_UPCALL_RESULT_FETCHKEY);
+    if (kind == CCN_UPCALL_CONTENT_RAW) {
+        if (ccn_verify_content(h, info->content_ccnb, info->pco) == 0)
+            kind = CCN_UPCALL_CONTENT;
+    }
     if (kind != CCN_UPCALL_CONTENT) {
         NOTE_ERR(h, -1000 - kind);
         return(CCN_UPCALL_RESULT_ERR);
@@ -1781,6 +1841,12 @@ handle_prefix_reg_reply(
         return(CCN_UPCALL_RESULT_REEXPRESS);
     if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_VERIFY);
+    if (kind == CCN_UPCALL_CONTENT_KEYMISSING)
+        return(CCN_UPCALL_RESULT_FETCHKEY);
+    if (kind == CCN_UPCALL_CONTENT_RAW) {
+        if (ccn_verify_content(h, info->content_ccnb, info->pco) == 0)
+            kind = CCN_UPCALL_CONTENT;
+    }
     if (kind != CCN_UPCALL_CONTENT) {
         NOTE_ERR(h, -1000 - kind);
         return(CCN_UPCALL_RESULT_ERR);

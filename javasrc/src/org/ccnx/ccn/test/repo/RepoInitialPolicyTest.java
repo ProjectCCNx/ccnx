@@ -1,3 +1,20 @@
+/*
+ * A CCNx library test.
+ *
+ * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation. 
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
 package org.ccnx.ccn.test.repo;
 
 import java.io.File;
@@ -6,12 +23,15 @@ import junit.framework.Assert;
 
 import org.ccnx.ccn.impl.repo.RepositoryDaemon;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore.LogStructRepoStoreProfile;
+import org.ccnx.ccn.impl.support.Log;
 import org.junit.Test;
 
 public class RepoInitialPolicyTest extends RepoTestBase {
 
 	@Test
 	public void testPolicyInitialization() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testPolicyInitialization");
+
 		RepoDaemonTest rdt = new RepoDaemonTest(new String[]{"-root", _fileTestDir2, 
 						"-policy", _topdir + "/org/ccnx/ccn/test/repo/policyTest.xml",
 						"-global", "/parc.com/csl/ccn/repositories/TestRepository"}, this);
@@ -47,6 +67,8 @@ public class RepoInitialPolicyTest extends RepoTestBase {
 		checkNameSpace("/policyTest/foo/bar", true);
 		rdtNoChange.shutdown();
 		th.join();
+		
+		Log.info(Log.FAC_TEST, "Completed testPolicyInitialization");
 	}
 	
 	public class RepoDaemonTest extends RepositoryDaemon implements Runnable {

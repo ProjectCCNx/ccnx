@@ -23,13 +23,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.CCNStats;
 import org.ccnx.ccn.impl.CCNStats.CCNEnumStats;
 import org.ccnx.ccn.impl.CCNStats.CCNStatistics;
 import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.TreeSet6;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -100,7 +101,7 @@ import org.ccnx.ccn.protocol.Interest;
  *          then return interest to handleContent for current interestdata. 
  *   
  */
-public class VersioningInterestManager implements CCNInterestListener, CCNStatistics {
+public class VersioningInterestManager implements CCNContentHandler, CCNStatistics {
 
 	// MIN_FILL should be less than MAX_FILL/2 due to how step D.1 works.
 		public final static int MIN_FILL = 50;
@@ -123,10 +124,10 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	 * @param startingVersion non-negative, use 0 for all versions
 	 * @param listener
 	 */
-	public VersioningInterestManager(CCNHandle handle, ContentName name, Set<VersionNumber> exclusions, VersionNumber startingVersion, CCNInterestListener listener) {
+	public VersioningInterestManager(CCNHandle handle, ContentName name, Set<VersionNumber> exclusions, VersionNumber startingVersion, CCNContentHandler handler) {
 		_handle = handle;
 		_name = name;
-		_listener = listener;
+		_handler = handler;
 		
 		if( null == startingVersion )
 			_startingVersion = VersionNumber.getMinimumVersion();
@@ -176,7 +177,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 	protected final CCNHandle _handle;
 	private final ContentName _name;
 	private final VersionNumber _startingVersion;
-	private final CCNInterestListener _listener; // our callback
+	private final CCNContentHandler _handler; // our callback
 
 	// make sure receive() is single-threaded
 	private final Object _receiveLock = new Object();
@@ -385,7 +386,7 @@ public class VersioningInterestManager implements CCNInterestListener, CCNStatis
 		} // synchronized(_receiveLock)
 
 		// pass it off to the user
-		_listener.handleContent(data, interest);
+		_handler.handleContent(data, interest);
 
 		if( Log.isLoggable(Log.FAC_ENCODING, Level.FINER))
 			Log.finer(Log.FAC_ENCODING, "Returning new interest {0}",

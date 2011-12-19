@@ -28,7 +28,6 @@ import java.util.Random;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNOutputStream;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
@@ -38,15 +37,14 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.ccnx.ccn.test.Flosser;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * Test for versioned input streams. Uses a slightly simpler mechanism to set
- * up data in ccnd for the test, namely writing and simultaneously reading the
- * data in the setupBeforeClass. That could be replaced by a Flosser.
+ * Test for versioned input streams.
  */
 public class CCNVersionedInputStreamTest {
 	
@@ -97,6 +95,7 @@ public class CCNVersionedInputStreamTest {
 		inputHandle = CCNHandle.open();
 		inputHandle2 = CCNHandle.open();
 		reader = new CCNReader(inputHandle);
+		Flosser flosser = new Flosser();
 		
 		// Write a set of output
 		defaultStreamName = ContentName.fromNative(testHelper.getClassNamespace(), "LongOutput.bin");
@@ -105,25 +104,26 @@ public class CCNVersionedInputStreamTest {
 		firstVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
 		firstVersionMaxSegment = (firstVersionLength == 0) ? 0 :
 			((firstVersionLength + SegmentationProfile.DEFAULT_BLOCKSIZE - 1) / SegmentationProfile.DEFAULT_BLOCKSIZE) - 1;
-		firstVersionDigest = writeFileFloss(firstVersionName, firstVersionLength, randBytes);
+		firstVersionDigest = writeFile(flosser, firstVersionName, firstVersionLength, randBytes);
 		
 		middleVersionName = VersioningProfile.addVersion(defaultStreamName);
 		middleVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
 		middleVersionMaxSegment = (middleVersionLength == 0) ? 0 :
 			((middleVersionLength + SegmentationProfile.DEFAULT_BLOCKSIZE - 1) / SegmentationProfile.DEFAULT_BLOCKSIZE) - 1;
-		middleVersionDigest = writeFileFloss(middleVersionName, middleVersionLength, randBytes);
+		middleVersionDigest = writeFile(flosser, middleVersionName, middleVersionLength, randBytes);
 
 		latestVersionName = VersioningProfile.addVersion(defaultStreamName);
 		latestVersionLength = randBytes.nextInt(MAX_FILE_SIZE);
 		latestVersionMaxSegment = (latestVersionLength == 0) ? 0 :
 			((latestVersionLength + SegmentationProfile.DEFAULT_BLOCKSIZE - 1) / SegmentationProfile.DEFAULT_BLOCKSIZE) - 1;
-		latestVersionDigest = writeFileFloss(latestVersionName, latestVersionLength, randBytes);
+		latestVersionDigest = writeFile(flosser, latestVersionName, latestVersionLength, randBytes);
 		
 		for (int i=0; i < problematicLengths.length; ++i) {
 			problematicNames[i] = VersioningProfile.addVersion(
 					testHelper.getClassChildName("LengthTest-" + problematicLengths[i]));
-			problematicDigests[i] = writeFileFloss(problematicNames[i], problematicLengths[i], randBytes);
-		}		
+			problematicDigests[i] = writeFile(flosser, problematicNames[i], problematicLengths[i], randBytes);
+		}
+		flosser.stop();
 	}
 	
 	@AfterClass
@@ -134,11 +134,6 @@ public class CCNVersionedInputStreamTest {
 	}
 	
 	/**
-	 * Trick to get around lack of repo. We want the test below to read data out of
-	 * ccnd. Problem is to do that, we have to get it into ccnd. This pre-loads
-	 * ccnd with data by "flossing" it -- starting up a reader thread that will
-	 * pull our generated data into ccnd for us, where it will wait till we read
-	 * it back out.
 	 * @param completeName
 	 * @param fileLength
 	 * @param randBytes
@@ -146,15 +141,17 @@ public class CCNVersionedInputStreamTest {
 	 * @throws IOException
 	 * @throws NoSuchAlgorithmException
 	 */
-	public static byte [] writeFileFloss(ContentName completeName, int fileLength, Random randBytes) throws IOException, NoSuchAlgorithmException {
+	public static byte [] writeFile(Flosser flosser, ContentName completeName, int fileLength, Random randBytes) throws IOException, NoSuchAlgorithmException {
+		flosser.handleNamespace(completeName);
 		CCNOutputStream stockOutputStream = new CCNOutputStream(completeName, outputHandle);
 		
 		DigestOutputStream digestStreamWrapper = new DigestOutputStream(stockOutputStream, MessageDigest.getInstance("SHA1"));
 		byte [] bytes = new byte[BUF_SIZE];
 		int elapsed = 0;
 		int nextBufSize = 0;
-		boolean firstBuf = true;
-		System.out.println("Writing file: " + completeName + " bytes: " + fileLength);
+
+		Log.info(Log.FAC_TEST, "Writing file: " + completeName + " bytes: " + fileLength);
+
 		final double probFlush = .3;
 		
 		while (elapsed < fileLength) {
@@ -162,38 +159,17 @@ public class CCNVersionedInputStreamTest {
 			randBytes.nextBytes(bytes);
 			digestStreamWrapper.write(bytes, 0, nextBufSize);
 			elapsed += nextBufSize;
-			if (firstBuf) {
-				startReader(completeName, fileLength);
-				firstBuf = false;
-			}
-			System.out.println(completeName + " wrote " + elapsed + " out of " + fileLength + " bytes.");
+			Log.info(completeName + " wrote " + elapsed + " out of " + fileLength + " bytes.");
 			if (randBytes.nextDouble() < probFlush) {
-				System.out.println("Flushing buffers.");
+				Log.info(Log.FAC_TEST, "Flushing buffers.");
+
 				digestStreamWrapper.flush();
 			}
 		}
 		digestStreamWrapper.close();
-		System.out.println("Finished writing file " + completeName);
+		
+		Log.info(Log.FAC_TEST, "Finished writing file " + completeName);
 		return digestStreamWrapper.getMessageDigest().digest();
-	}
-	
-	public static void startReader(final ContentName completeName, final int fileLength) {
-		new Thread(){
-	        public void run() {
-	           try {
-				readFile(completeName, fileLength);
-			} catch (Exception e) {
-				e.printStackTrace();
-				Assert.fail("Class setup failed! " + e.getClass().getName() + ": " + e.getMessage());
-			} 
-	        }
-	    }.start();
-	}
-	
-	public static byte [] readFile(ContentName completeName, int fileLength) throws IOException {
-		CCNInputStream inputStream = new CCNInputStream(completeName);
-		System.out.println("Reading file : " + completeName);
-		return readFile(inputStream, fileLength);
 	}
 	
 	public static byte [] readFile(InputStream inputStream, int fileLength) throws IOException {
@@ -202,7 +178,7 @@ public class CCNVersionedInputStreamTest {
 		try {
 			dis = new DigestInputStream(inputStream, MessageDigest.getInstance("SHA1"));
 		} catch (NoSuchAlgorithmException e) {
-			Log.severe("No SHA1 available!");
+			Log.severe(Log.FAC_TEST, "No SHA1 available!");
 			Assert.fail("No SHA1 available!");
 		}
 		int elapsed = 0;
@@ -211,10 +187,10 @@ public class CCNVersionedInputStreamTest {
 		while (elapsed < fileLength) {
 			read = dis.read(bytes);
 			if (read < 0) {
-				System.out.println("EOF read at " + elapsed + " bytes out of " + fileLength);
+				Log.info(Log.FAC_TEST, "EOF read at " + elapsed + " bytes out of " + fileLength);
 				break;
 			} else if (read == 0) {
-				System.out.println("0 bytes read at " + elapsed + " bytes out of " + fileLength);
+				Log.info(Log.FAC_TEST, "0 bytes read at " + elapsed + " bytes out of " + fileLength);
 				try {
 					Thread.sleep(10);
 				} catch (InterruptedException e) {
@@ -222,17 +198,19 @@ public class CCNVersionedInputStreamTest {
 				}
 			}
 			elapsed += read;
-			System.out.println(" read " + elapsed + " bytes out of " + fileLength);
+			Log.info(Log.FAC_TEST, " read " + elapsed + " bytes out of " + fileLength);
 		}
 		return dis.getMessageDigest().digest();
 	}
 	
 	@Test
 	public void testCCNVersionedInputStreamContentNameLongPublisherKeyIDCCNLibrary() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testCCNVersionedInputStreamContentNameLongPublisherKeyIDCCNLibrary");
+
 		// we can make a new handle; as long as we don't use the outputHandle it should work
-		System.out.println("first: "+firstVersionName);
-		System.out.println("middle: "+middleVersionName);
-		System.out.println("latest: "+latestVersionName);
+		Log.info(Log.FAC_TEST, "first: "+firstVersionName);
+		Log.info(Log.FAC_TEST, "middle: "+middleVersionName);
+		Log.info(Log.FAC_TEST, "latest: "+latestVersionName);
 		
 		CCNVersionedInputStream vfirst = 
 			new CCNVersionedInputStream(firstVersionName, 
@@ -240,40 +218,49 @@ public class CCNVersionedInputStreamTest {
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, 
 				((3 > latestVersionMaxSegment) ? latestVersionMaxSegment : 3L), outputHandle.getDefaultPublisher(), inputHandle);
 		testArgumentRunner(vfirst, vlatest);
+		
+		Log.info(Log.FAC_TEST, "Completed testCCNVersionedInputStreamContentNameLongPublisherKeyIDCCNLibrary");
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentNamePublisherKeyIDCCNLibrary() throws Exception {
-		System.out.println("1============================");
-		System.out.println("firstVersionName: "+firstVersionName);
-		System.out.println("middle: "+middleVersionName);
-		System.out.println("latest: "+latestVersionName);
-		System.out.println("defaultStreamName: "+defaultStreamName);
+		Log.info(Log.FAC_TEST, "Starting testCCNVersionedInputStreamContentNamePublisherKeyIDCCNLibrary");
+
+		Log.info(Log.FAC_TEST, "firstVersionName: "+firstVersionName);
+		Log.info(Log.FAC_TEST, "middle: "+middleVersionName);
+		Log.info(Log.FAC_TEST, "latest: "+latestVersionName);
+		Log.info(Log.FAC_TEST, "defaultStreamName: "+defaultStreamName);
+
 		// we can make a new handle; as long as we don't use the outputHandle it should work
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, outputHandle.getDefaultPublisher(), inputHandle);
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, outputHandle.getDefaultPublisher(), inputHandle2);
 		testArgumentRunner(vfirst, vlatest);
-		System.out.println("1x============================");
+		
+		Log.info(Log.FAC_TEST, "Completed testCCNVersionedInputStreamContentNamePublisherKeyIDCCNLibrary");
+		
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentName() throws Exception {
-		System.out.println("2============================");
+		Log.info(Log.FAC_TEST, "Starting testCCNVersionedInputStreamContentName");
 
 		// we can make a new handle; as long as we don't use the outputHandle it should work
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName);
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName);
 		testArgumentRunner(vfirst, vlatest);
-		System.out.println("2x============================");
 
+		Log.info(Log.FAC_TEST, "Completed testCCNVersionedInputStreamContentName");
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentNameCCNLibrary() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Starting testCCNVersionedInputStreamContentNameCCNLibrary");
+
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, inputHandle);
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, inputHandle);
 		testArgumentRunner(vfirst, vlatest);
+		
+		Log.info(Log.FAC_TEST, "Completed testCCNVersionedInputStreamContentNameCCNLibrary");
 	}
 	
 	protected void testArgumentRunner(CCNVersionedInputStream vfirst,
@@ -288,12 +275,13 @@ public class CCNVersionedInputStreamTest {
 		Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(firstVersionName),
 				vfirst.getVersionAsTimestamp());
 
-		System.out.println("Opened stream on latest version, expected: " + latestVersionName + " got: " + 
+		Log.info(Log.FAC_TEST, "Opened stream on latest version, expected: " + latestVersionName + " got: " + 
 				vlatest.getBaseName());
 		b = (byte)vlatest.read();
-		System.out.println("Post-read: Opened stream on latest version, expected: " + latestVersionName + " got: " + 
+		Log.info(Log.FAC_TEST, "Post-read: Opened stream on latest version, expected: " + latestVersionName + " got: " + 
 				vlatest.getBaseName());
-		System.out.println("versions as TS: "+VersioningProfile.getLastVersionAsTimestamp(latestVersionName)+" "+vlatest.getVersion());
+		Log.info(Log.FAC_TEST, "versions as TS: "+VersioningProfile.getLastVersionAsTimestamp(latestVersionName)+" "+vlatest.getVersion());
+
 		Assert.assertEquals(vlatest.getBaseName(), latestVersionName);
 		Assert.assertEquals(VersioningProfile.cutTerminalVersion(vlatest.getBaseName()).first(), defaultStreamName);
 		Assert.assertEquals(VersioningProfile.getLastVersionAsLong(latestVersionName), 
@@ -301,31 +289,41 @@ public class CCNVersionedInputStreamTest {
 		Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(latestVersionName), 
 				VersioningProfile.getLastVersionAsTimestamp(vlatest.getBaseName()));
 		Assert.assertEquals(VersioningProfile.getLastVersionAsTimestamp(latestVersionName),
-				vlatest.getVersionAsTimestamp());
+				vlatest.getVersionAsTimestamp());	
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentNameInt() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testCCNVersionedInputStreamContentNameInt");
+
 		// we can make a new handle; as long as we don't use the outputHandle it should work
 		CCNVersionedInputStream vfirst = 
 			new CCNVersionedInputStream(firstVersionName, Math.min(4L, firstVersionMaxSegment), null);
 		CCNVersionedInputStream vlatest = 
 			new CCNVersionedInputStream(defaultStreamName, Math.min(4L, latestVersionMaxSegment), null);
 		testArgumentRunner(vfirst, vlatest);
+		
+		Log.info(Log.FAC_TEST, "Completed testCCNVersionedInputStreamContentNameInt");
 	}
 
 	@Test
 	public void testCCNVersionedInputStreamContentObjectCCNLibrary() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testCCNVersionedInputStreamContentObjectCCNLibrary");
+
 		// we can make a new handle; as long as we don't use the outputHandle it should work
 		ContentObject firstVersionBlock = inputHandle.get(firstVersionName, SystemConfiguration.getDefaultTimeout());
 		ContentObject latestVersionBlock = reader.get(Interest.last(defaultStreamName, defaultStreamName.count(), null), SystemConfiguration.getDefaultTimeout());
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionBlock, null, inputHandle);
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(latestVersionBlock, null, inputHandle);
 		testArgumentRunner(vfirst, vlatest);
+		
+		Log.info(Log.FAC_TEST, "Completed testCCNVersionedInputStreamContentObjectCCNLibrary");
 	}
 
 	@Test
 	public void testReadByteArray() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testReadByteArray");
+
 		// Test other forms of read in superclass test.
 		CCNVersionedInputStream vfirst = new CCNVersionedInputStream(firstVersionName, inputHandle);
 		byte [] readDigest = readFile(vfirst, firstVersionLength);
@@ -336,10 +334,14 @@ public class CCNVersionedInputStreamTest {
 		CCNVersionedInputStream vlatest = new CCNVersionedInputStream(defaultStreamName, inputHandle);
 		readDigest = readFile(vlatest, latestVersionLength);
 		Assert.assertArrayEquals(latestVersionDigest, readDigest);
+		
+		Log.info(Log.FAC_TEST, "Completed testReadByteArray");
 	}
 	
 	@Test
 	public void testReadProblematicLengths() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testReadProblematicLengths");
+
 		CCNVersionedInputStream vstream;
 		byte [] readDigest;
 		
@@ -349,5 +351,7 @@ public class CCNVersionedInputStreamTest {
 			Assert.assertArrayEquals("Stream " + i + " failed to match, length " + problematicLengths[i],
 									problematicDigests[i], readDigest);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testReadProblematicLengths");
 	}
 }

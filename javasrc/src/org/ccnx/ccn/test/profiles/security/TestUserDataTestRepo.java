@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -49,6 +49,8 @@ public class TestUserDataTestRepo {
 	
    @Test
 	public void testUserCreation() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testUserCreation");
+
 	    CCNHandle thandle = CCNHandle.open();
 		CreateUserData td = new CreateUserData(userKeyStorePrefix, userCount,
 				true,
@@ -136,6 +138,7 @@ public class TestUserDataTestRepo {
 
 		System.out.println("Success.");
 		thandle.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testUserCreation");
 	}
-
 }

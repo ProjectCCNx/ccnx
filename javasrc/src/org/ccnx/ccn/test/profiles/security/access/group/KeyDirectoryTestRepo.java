@@ -35,6 +35,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.ByteArrayCompare;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.WrappedKey;
 import org.ccnx.ccn.io.content.WrappedKey.WrappedKeyObject;
@@ -119,6 +120,8 @@ public class KeyDirectoryTestRepo {
 	 */
 	@Test
 	public void testInOrder() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testInOrder");
+
 		testKeyDirectoryCreation();
 		testAddPrivateKey();
 		testGetUnwrappedKeyGroupMember();
@@ -130,6 +133,8 @@ public class KeyDirectoryTestRepo {
 		testGetPrivateKey();
 		testGetUnwrappedKeySuperseded();
 		testAddPreviousKeyBlock();
+		
+		Log.info(Log.FAC_TEST, "Completed testInOrder");
 	}
 	
 	/*	
@@ -323,7 +328,5 @@ public class KeyDirectoryTestRepo {
 		kd.addPreviousKeyBlock(AESSecretKey, supersedingKeyName, newAESSecretKey);
 		kd.waitForNewChildren();
 		Assert.assertTrue(kd.hasPreviousKeyBlock());
-	}
-	
-	
+	}	
 }

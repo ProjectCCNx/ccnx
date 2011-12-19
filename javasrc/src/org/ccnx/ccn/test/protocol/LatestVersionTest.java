@@ -21,8 +21,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
@@ -92,6 +92,8 @@ public class LatestVersionTest {
 	 */
 	@Test
 	public void getLatestVersion() throws InterruptedException, Error {
+		Log.info(Log.FAC_TEST, "Starting getLatestVersion");
+
 		ContentName one = null;
 		ContentName two = null;
 		ContentName three = null;
@@ -592,6 +594,7 @@ public class LatestVersionTest {
 		
 		responder.checkError();
 		
+		Log.info(Log.FAC_TEST, "Completed getLatestVersion");
 	}
 	
 	private void checkResponder() throws InterruptedException, Error {
@@ -616,7 +619,7 @@ public class LatestVersionTest {
 	/**
 	 * Runnable class for the single ContentObject responder.
 	 */
-	class Responder implements CCNFilterListener {
+	class Responder implements CCNInterestHandler {
 		AssertionCCNHandle handle;
 
 		public Responder() throws IOException {
@@ -694,8 +697,6 @@ public class LatestVersionTest {
 			System.out.println("resorting to default verifier");
 			
 			return LatestVersionTest.getHandle.defaultVerifier().verify(content);
-		}
-		
+		}	
 	}
-
 }

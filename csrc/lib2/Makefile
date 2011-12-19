@@ -1,0 +1,1 @@
+../../../ccnx/csrc/generic.mk

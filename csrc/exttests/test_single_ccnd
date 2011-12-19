@@ -1,0 +1,30 @@
+# tests/test_single_ccnd
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+BEFORE : test_single_ccnd_teardown
+
+CCND_DEBUG=7 CCND_CAP=100 ccnd 2>ccnd0.out &
+sleep .1 2>/dev/null
+ccndsmoketest || { echo retrying; sleep 1; ccndsmoketest; }
+
+export CCNR_DIRECTORY=${CCNR_TEST_REPOS:-.}/testrepoA
+
+rm -R $CCNR_DIRECTORY 2>/dev/null
+mkdir $CCNR_DIRECTORY || Fail could not create $CCNR_DIRECTORY
+CCNR_DEBUG=FINE ccnr 2>ccnrA.out &
+[ $? -eq 0 ] || Fail ccnr startup failed
+echo Hello World | ccnseqwriter -r -b 2 ccnx:/hello/world || Fail /hello/world
+test -f $CCNR_DIRECTORY/repoFile1 || Fail do you know where the repo file landed\?
+ccnnamelist $CCNR_DIRECTORY/repoFile1 || Fail ccnnamelist
+ccnrm ccnx:/hello
+ccncat ccnx:/hello/world || Fail content did not come back from repo.

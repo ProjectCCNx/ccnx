@@ -1,0 +1,5 @@
+SyncTest
+*.a
+*.o
+*.dSYM
+*.dSYM/*

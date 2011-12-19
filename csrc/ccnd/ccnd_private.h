@@ -229,6 +229,7 @@ struct face {
 #define CCN_FACE_REGOK (1 << 16) /**< Allowed to do prefix registration */
 #define CCN_FACE_SEQOK (1 << 17) /** OK to send SequenceNumber link messages */
 #define CCN_FACE_SEQPROBE (1 << 18) /** SequenceNumber probe */
+#define CCN_FACE_LC    (1 << 19) /** A link check has been issued recently */
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
@@ -279,8 +280,8 @@ struct sparse_straggler_entry {
  * duplicate nonces.
  */
 struct propagating_entry {
-    struct propagating_entry *next;
-    struct propagating_entry *prev;
+    struct propagating_entry *next; /**< next (in arrival order) */
+    struct propagating_entry *prev; /**< previous (older) */
     unsigned flags;             /**< CCN_PR_xxx */
     unsigned faceid;            /**< origin of the interest, dest for matches */
     int usec;                   /**< usec until timeout */

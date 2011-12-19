@@ -56,6 +56,6 @@ public class BaseLibrarySink {
 	 *
 	 */
 	public void checkGetResults(ContentObject getResults) {
-		Log.info("Got result: " + getResults.name());
+		Log.info(Log.FAC_TEST, "Got result: " + getResults.name());
 	}
 }

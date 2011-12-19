@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -19,6 +19,7 @@ package org.ccnx.ccn.test.profiles;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
@@ -64,6 +65,8 @@ public class SegmentationProfileTest {
 	 */
 	@Test
 	public void testSegmentInterest() {
+		Log.info(Log.FAC_TEST, "Starting testSegmentInterest");
+
 		ContentName name = null;
 		ContentName segmentName = null;
 		ContentName nextSegmentName = null;
@@ -103,6 +106,7 @@ public class SegmentationProfileTest {
 		Assert.assertFalse(interest.matches(nextSegmentName, null));
 		Assert.assertFalse(interest.matches(longerName, null));
 		
+		Log.info(Log.FAC_TEST, "Completed testSegmentInterest");		
 	}
 	
 	/**
@@ -110,6 +114,8 @@ public class SegmentationProfileTest {
 	 */
 	@Test
 	public void testSegmentInterestWithNullSegmentNumber() {
+		Log.info(Log.FAC_TEST, "Starting testSegmentInterestWithNullSegmentNumber");
+
 		ContentName name = null;
 		ContentName segmentName = null;
 		ContentName nextSegmentName = null;
@@ -135,6 +141,8 @@ public class SegmentationProfileTest {
 		Assert.assertFalse(interest.matches(name, null));
 		Assert.assertFalse(interest.matches(nextSegmentName, null));
 		Assert.assertFalse(interest.matches(longerName, null));
+		
+		Log.info(Log.FAC_TEST, "Completed testSegmentInterestWithNullSegmentNumber");
 	}
 	
 	/**
@@ -142,6 +150,8 @@ public class SegmentationProfileTest {
 	 */
 	@Test
 	public void testFirstSegmentInterest(){
+		Log.info(Log.FAC_TEST, "Starting testFirstSegmentInterest");
+
 		ContentName name = null;
 		ContentName segmentName = null;
 		ContentName nextSegmentName = null;
@@ -167,6 +177,8 @@ public class SegmentationProfileTest {
 		Assert.assertFalse(interest.matches(name, null));
 		Assert.assertFalse(interest.matches(nextSegmentName, null));
 		Assert.assertFalse(interest.matches(longerName, null));
+		
+		Log.info(Log.FAC_TEST, "Completed testFirstSegmentInterest");
 	}
 	
 	//create a test that makes sure match is true for last on segment where final block id is set and another that fails for an earlier block
@@ -175,6 +187,8 @@ public class SegmentationProfileTest {
 	 */
 	@Test
 	public void testLastSegmentInterest(){
+		Log.info(Log.FAC_TEST, "Starting testLastSegmentInterest");
+
 		ContentName name = null;
 		ContentName segmentName = null;
 		ContentName nextSegmentName = null;
@@ -229,9 +243,6 @@ public class SegmentationProfileTest {
 		Assert.assertTrue(interest.matches(segmentName, null));
 		Assert.assertTrue(interest.matches(previousSegmentName, null));
 		
-	}
-	
-	
-	
-	
+		Log.info(Log.FAC_TEST, "Completed testLastSegmentInterest");	
+	}	
 }

@@ -25,7 +25,7 @@ import java.util.Random;
 
 import junit.framework.Assert;
 
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
@@ -40,14 +40,15 @@ import org.junit.Test;
  * Part of the end to end test infrastructure.
  * NOTE: This test requires ccnd to be running and complementary source process
  */
-public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestListener {
+public class EndToEndTestSink extends BaseLibrarySink implements CCNContentHandler {
 	
 	@Test
 	public void sink() throws Throwable {
-		Log.info("EndtoEnd Sink started");
+		Log.info(Log.FAC_TEST, "Starting sink");
 		sync();
 		gets();
 		server();
+		Log.info(Log.FAC_TEST, "Completed sink");
 	}
 	
 	public void sync() throws MalformedContentNameStringException, IOException, SignatureException {
@@ -62,7 +63,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 	}
 	
 	public void gets() throws Throwable {
-		Log.info("Get sequence started");
+		Log.info(Log.FAC_TEST, "Get sequence started");
 		Random rand = new Random();
 		for (int i = 0; i < BaseLibrarySource.count; i++) {
 			Thread.sleep(rand.nextInt(50));
@@ -73,10 +74,10 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNInterestList
 			// in the get()
 			assertEquals(true, value >= i);
 			i = value;
-			Log.info("Got " + i);
+			Log.info(Log.FAC_TEST, "Got " + i);
 			checkGetResults(contents);
 		}
-		System.out.println("Get sequence finished");
+		Log.info(Log.FAC_TEST, "Get sequence finished");
 	}
 	
 	public void server() throws Throwable {

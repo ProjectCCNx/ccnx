@@ -21,12 +21,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.InterestTable.Entry;
@@ -64,7 +63,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * by the repo client to allow objects to remain in the buffer until they are 
  * acked.
  */
-public class CCNFlowControl implements CCNFilterListener {
+public class CCNFlowControl implements CCNInterestHandler {
 	
 	public enum Shape {
 		STREAM("STREAM");
@@ -528,11 +527,10 @@ public class CCNFlowControl implements CCNFilterListener {
 			return false;
 		if (Log.isLoggable(Log.FAC_IO, Level.FINE))
 			Log.fine(Log.FAC_IO, "Flow controller {0}: got interest: {1}", this, i);
-		Set<ContentName> set;
 		ContentObject co;
 		synchronized (_holdingArea) {
-			set = _holdingArea.keySet();
-			co = getBestMatch(i, set);
+			
+			co = getBestMatch(i);
 			if (co == null) {
 				//only check if we are adding the interest, and check before we add so we don't check the new interest
 				if (_unmatchedInterests.size() > 0)
@@ -540,20 +538,20 @@ public class CCNFlowControl implements CCNFilterListener {
 				
 				Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
 				_unmatchedInterests.add(i, new UnmatchedInterest());
+				return false;		// XXX is this the right thing to do?
 			}
 		}
-		if (co != null) {
-			if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
-				Log.finest(Log.FAC_IO, "Found content {0} matching interest: {1}",co.name(), i);
-			try {
-				_handle.put(co);
-				synchronized (_holdingArea) {
-					afterPutAction(co);
-				}
-			} catch (IOException e) {
-				Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
-				Log.warningStackTrace(e);
+		
+		if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
+			Log.finest(Log.FAC_IO, "Found content {0} matching interest: {1}",co.name(), i);
+		try {
+			_handle.put(co);
+			synchronized (_holdingArea) {
+				afterPutAction(co);
 			}
+		} catch (IOException e) {
+			Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
+			Log.warningStackTrace(e);
 		}
 			
 		return true;
@@ -581,12 +579,13 @@ public class CCNFlowControl implements CCNFilterListener {
 	 * @param set
 	 * @return
 	 */
-	private ContentObject getBestMatch(Interest interest, Set<ContentName> set) {
+	private ContentObject getBestMatch(Interest interest) {
 		ContentObject bestMatch = null;
 		if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
-			Log.finest(Log.FAC_IO, "Looking for best match to " + interest + " among " + set.size() + " options.");
-		for (ContentName name : set) {
-			ContentObject result = _holdingArea.get(name);
+			Log.finest(Log.FAC_IO, "Looking for best match to " + interest + " among " + _holdingArea.size() + " options.");
+		for ( java.util.Map.Entry<ContentName, ContentObject> entry :  _holdingArea.entrySet() ) {
+			ContentName name = entry.getKey();
+			ContentObject result = entry.getValue();
 			
 			// We only have to do something unusual here if the caller is looking for CHILD_SELECTOR_RIGHT
 			if (null != interest.childSelector() && interest.childSelector() == Interest.CHILD_SELECTOR_RIGHT) {
@@ -647,6 +646,11 @@ public class CCNFlowControl implements CCNFilterListener {
 					for(ContentName co : _holdingArea.keySet()) {
 						Log.warning(Log.FAC_IO, "FlowController: still holding: " + co.toString());
 					}
+					// For now - dump the handlers stack if its active in case that may give a clue about what's wrong.
+					// We may want to leave this in permanently.
+					CCNNetworkManager cnm = _handle.getNetworkManager();
+					if (null != cnm)
+						cnm.dumpHandlerStackTrace("waitForPutDrain");
 					throw new IOException("Put(s) with no matching interests - size is " + _holdingArea.size());
 				}
 				startSize = _nOut;

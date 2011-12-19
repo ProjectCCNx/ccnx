@@ -1,7 +1,7 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -20,7 +20,8 @@ package org.ccnx.ccn.utils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import org.ccnx.ccn.CCNInterestListener;
+
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager;
@@ -37,7 +38,7 @@ import org.ccnx.ccn.protocol.Interest;
  * generate signed and encoded packets using only the base library facilities,
  * i.e. not even fragmentation and versioning but just basic interest and data
  */
-public class puttap implements CCNInterestListener {
+public class puttap implements CCNContentHandler {
 
 	public static final int CHUNK_SIZE = 432;
 	

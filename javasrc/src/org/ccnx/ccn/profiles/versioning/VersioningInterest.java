@@ -24,8 +24,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.CCNStats;
 import org.ccnx.ccn.impl.CCNStats.CCNCategorizedStatistics;
 import org.ccnx.ccn.impl.CCNStats.CCNStatistics;
@@ -97,8 +97,8 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 	 * @param listener
 	 * @throws IOException 
 	 */
-	public void expressInterest(ContentName name, CCNInterestListener listener) throws IOException {
-		expressInterest(name, listener, null, null);
+	public void expressInterest(ContentName name, CCNContentHandler handler) throws IOException {
+		expressInterest(name, handler, null, null);
 	}
 
 	/**
@@ -107,13 +107,13 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 	 * an interest.  Interests are re-expressed automatically until canceled.
 	 * 
 	 * @param name
-	 * @param listener
+	 * @param handler
 	 * @param retrySeconds
 	 * @param exclusions may be null
 	 * @throws IOException 
 	 */
-	public void expressInterest(ContentName name, CCNInterestListener listener, Set<VersionNumber> exclusions) throws IOException {
-		expressInterest(name, listener, exclusions, null);
+	public void expressInterest(ContentName name, CCNContentHandler handler, Set<VersionNumber> exclusions) throws IOException {
+		expressInterest(name, handler, exclusions, null);
 	}
 	
 	/**
@@ -124,14 +124,14 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 	 * an interest.  Interests are re-expressed automatically until canceled.
 	 * 
 	 * @param name
-	 * @param listener
+	 * @param handler
 	 * @param retrySeconds
 	 * @param exclusions may be null
 	 * @param startingVersion the minimum version to include (may be null)
 	 * @throws IOException 
 	 */
-	public void expressInterest(ContentName name, CCNInterestListener listener, Set<VersionNumber> exclusions, VersionNumber startingVeersion) throws IOException {
-		addInterest(name, listener, exclusions, startingVeersion);
+	public void expressInterest(ContentName name, CCNContentHandler handler, Set<VersionNumber> exclusions, VersionNumber startingVeersion) throws IOException {
+		addInterest(name, handler, exclusions, startingVeersion);
 	}
 	
 	/**
@@ -145,10 +145,10 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 	/**
 	 * Cancel a specific interest
 	 * @param name
-	 * @param listener
+	 * @param handler
 	 */
-	public void cancelInterest(ContentName name, CCNInterestListener listener) {
-		removeInterest(name, listener);
+	public void cancelInterest(ContentName name, CCNContentHandler handler) {
+		removeInterest(name, handler);
 	}
 
 	/**
@@ -199,7 +199,7 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 	private final CCNHandle _handle;
 	private final Map<ContentName, BasenameState> _map = new HashMap<ContentName, BasenameState>();
 
-	private void addInterest(ContentName name, CCNInterestListener listener, Set<VersionNumber> exclusions, VersionNumber startingVersion) throws IOException {
+	private void addInterest(ContentName name, CCNContentHandler handler, Set<VersionNumber> exclusions, VersionNumber startingVersion) throws IOException {
 		BasenameState data;
 		
 		synchronized(_map) {
@@ -207,10 +207,10 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 			if( null == data ) {
 				data = new BasenameState(_handle, name, exclusions, startingVersion);
 				_map.put(name, data);
-				data.addListener(listener);
+				data.addListener(handler);
 				data.start();
 			} else {
-				data.addListener(listener);
+				data.addListener(handler);
 			}
 		}
 	}
@@ -221,13 +221,13 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 	 * @param name
 	 * @param listener
 	 */
-	private void removeInterest(ContentName name, CCNInterestListener listener) {
+	private void removeInterest(ContentName name, CCNContentHandler handler) {
 		BasenameState data;
 		
 		synchronized(_map) {
 			data = _map.get(name);
 			if( null != data ) {
-				data.removeListener(listener);
+				data.removeListener(handler);
 				if( data.size() == 0 ) {
 					data.stop();
 					_map.remove(name);
@@ -250,7 +250,7 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 	// ======================================================================
 	// This is the state stored per base name
 	
-	private static class BasenameState implements CCNInterestListener, CCNStatistics {
+	private static class BasenameState implements CCNContentHandler, CCNStatistics {
 		
 		public BasenameState(CCNHandle handle, ContentName basename, Set<VersionNumber> exclusions, VersionNumber startingVersion) {
 			_vim = new VersioningInterestManager(handle, basename, exclusions, startingVersion, this);
@@ -261,26 +261,26 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 		 * @param retrySeconds IGNORED, not implemented
 		 * @return true if added, false if existed or only retrySeconds updated
 		 */
-		public boolean addListener(CCNInterestListener listener) {
-			if( listener == null) return false;
-			synchronized(_listeners) {
-				return _listeners.add(listener);
+		public boolean addListener(CCNContentHandler handler) {
+			if( handler == null) return false;
+			synchronized(_handlers) {
+				return _handlers.add(handler);
 			}
 		}
 		
 		/**
 		 * @return true if removed, false if not found
 		 */
-		public boolean removeListener(CCNInterestListener listener) {
-			if( listener == null) return false;
-			synchronized(_listeners) {
-				return _listeners.remove(listener);
+		public boolean removeListener(CCNContentHandler handler) {
+			if( handler == null) return false;
+			synchronized(_handlers) {
+				return _handlers.remove(handler);
 			}
 		}
 				
 		public int size() {
-			synchronized(_listeners) {
-				return _listeners.size();
+			synchronized(_handlers) {
+				return _handlers.size();
 			}
 		}
 
@@ -313,10 +313,10 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 			if( ! _running )
 				return null;
 			
-			synchronized(_listeners) {
-				for(CCNInterestListener listener : _listeners) {
+			synchronized(_handlers) {
+				for(CCNContentHandler handler : _handlers) {
 					try {
-						listener.handleContent(data, interest);
+						handler.handleContent(data, interest);
 					} catch(Exception e){
 						e.printStackTrace();
 					}
@@ -331,7 +331,7 @@ public class VersioningInterest implements CCNCategorizedStatistics {
 		
 		// =======
 		
-		private final Set<CCNInterestListener> _listeners = new HashSet<CCNInterestListener>();
+		private final Set<CCNContentHandler> _handlers = new HashSet<CCNContentHandler>();
 		private final VersioningInterestManager _vim;
 		private boolean _running = false;
 

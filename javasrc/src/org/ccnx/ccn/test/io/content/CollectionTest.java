@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -20,6 +20,7 @@ package org.ccnx.ccn.test.io.content;
 import java.util.Arrays;
 import java.util.LinkedList;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
@@ -88,23 +89,33 @@ public class CollectionTest {
 
 	@Test
 	public void testValidate() {
+		Log.info(Log.FAC_TEST, "Starting testValidate");
+
 		Collection cd = new Collection();
 		Assert.assertTrue(cd.validate());
 		cd.add(lrs[0]);
 		Assert.assertTrue(cd.validate());
 		cd.remove(0);
-		Assert.assertTrue(cd.validate());		
+		Assert.assertTrue(cd.validate());
+		
+		Log.info(Log.FAC_TEST, "Completed testValidate");
 	}
 
 	@Test
 	public void testCollectionData() {
+		Log.info(Log.FAC_TEST, "Starting testCollectionData");
+
 		Collection cd = new Collection();
 		Assert.assertNotNull(cd);
 		Assert.assertTrue(cd.validate());
+		
+		Log.info(Log.FAC_TEST, "Completed testCollectionData");
 	}
 
 	@Test
 	public void testContents() {
+		Log.info(Log.FAC_TEST, "Starting testContents");
+
 		Collection cd = new Collection();
 		Assert.assertTrue(cd.validate());
 		for (int i=0; i < lrs.length; ++i) {
@@ -122,10 +133,14 @@ public class CollectionTest {
 		for (Link l : cd) {
 			Assert.assertEquals(l, lrs[j++]);			
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testContents");
 	}
 
 	@Test
 	public void testAddGet() {
+		Log.info(Log.FAC_TEST, "Starting testAddGet");
+
 		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
@@ -133,20 +148,28 @@ public class CollectionTest {
 		for (int i=0; i < lrs.length; ++i) {
 			Assert.assertEquals(cd.get(i), lrs[i]);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testAddGet");
 	}
 
 	@Test
 	public void testRemoveInt() {
+		Log.info(Log.FAC_TEST, "Starting testRemoveInt");
+
 		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
 		cd.remove(0);
 		Assert.assertEquals(cd.get(0), lrs[1]);
+		
+		Log.info(Log.FAC_TEST, "Completed testRemoveInt");
 	}
 
 	@Test
 	public void testRemoveLink() {
+		Log.info(Log.FAC_TEST, "Starting testRemoveLink");
+
 		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
@@ -159,19 +182,27 @@ public class CollectionTest {
 		Link lr2alt = new Link(name3.clone(), la2alt);
 		cd.remove(lr2alt);
 		Assert.assertEquals(cd.get(1), lrs[3]);
+		
+		Log.info(Log.FAC_TEST, "Completed testRemoveLink");
 	}
 
 	@Test
 	public void testSize() {
+		Log.info(Log.FAC_TEST, "Starting testSize");
+
 		Collection cd = new Collection();
 		for (int i=0; i < lrs.length; ++i) {
 			cd.add(lrs[i]);
 		}
 		Assert.assertTrue(cd.size() == lrs.length);
+		
+		Log.info(Log.FAC_TEST, "Completed testSize");
 	}
 
 	@Test
 	public void testEqualsObject() {
+		Log.info(Log.FAC_TEST, "Starting testEqualsObject");
+
 		Collection cd = new Collection();
 		Collection cd2 = new Collection();
 		Collection cd3 = new Collection();
@@ -194,10 +225,14 @@ public class CollectionTest {
 		cd2.add(new Link(name3, las[2]));
 		cd2.add(new Link(name4, las[3]));
 		Assert.assertEquals(cd2, cd4);
+		
+		Log.info(Log.FAC_TEST, "Completed testEqualsObject");
 	}
 
 	@Test
 	public void testEncodeDecodeStream() {
+		Log.info(Log.FAC_TEST, "Starting testEncodeDecodeStream");
+
 		Collection cd = new Collection();
 		Collection cdec = new Collection();
 		Collection bdec = new Collection();
@@ -206,10 +241,14 @@ public class CollectionTest {
 			cd.add(lrs[i]);
 		}
 		XMLEncodableTester.encodeDecodeTest("Collection", cd, cdec, bdec);
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodeDecodeStream");
 	}
 
 	@Test
 	public void testEncodeDecodeByteArray() {
+		Log.info(Log.FAC_TEST, "Starting testEncodeDecodeByteArray");
+
 		Collection cd = new Collection();
 		Collection cdec = new Collection();
 		Collection bdec = new Collection();
@@ -218,5 +257,7 @@ public class CollectionTest {
 			cd.add(lrs[i]);
 		}
 		XMLEncodableTester.encodeDecodeByteArrayTest("Collection", cd, cdec, bdec);
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodeDecodeByteArray");
 	}
 }

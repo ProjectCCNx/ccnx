@@ -13,8 +13,7 @@
 00MANIFEST
 bin/
 include
-lib/libccn.a
-Java_CCN/daemon_cmd.txt
+lib/
 log
 testdir
 testdir/
@@ -22,3 +21,4 @@ version
 local
 local/
 local.subdirs
+ccnx-xcode-project

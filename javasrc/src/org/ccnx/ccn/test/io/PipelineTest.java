@@ -24,6 +24,7 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.CCNVersionedInputStream;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -66,7 +67,7 @@ public class PipelineTest {
 		try {
 			putSegments();
 		} catch (Exception e) {
-			System.err.println("failed to put objects for pipeline test: "+e.getMessage());
+			Log.info(Log.FAC_TEST, "failed to put objects for pipeline test: "+e.getMessage());
 			Assert.fail();
 		}
 		
@@ -105,13 +106,15 @@ public class PipelineTest {
 	//need to ask for objects...  start in order
 	@Test
 	public void testGetAllSegmentsFromPipeline() {
+		Log.info(Log.FAC_TEST, "Starting testGetAllSegmentsFromPipeline");
+
 		long received = 0;
 		byte[] bytes = new byte[1024];
 		
 		try {
 			istream = new CCNInputStream(testName, readHandle);
 		} catch (IOException e1) {
-			System.err.println("failed to open stream for pipeline test: "+e1.getMessage());
+			Log.warning(Log.FAC_TEST, "failed to open stream for pipeline test: "+e1.getMessage());
 			Assert.fail();
 		}
 		
@@ -119,18 +122,22 @@ public class PipelineTest {
 			try {
 				received += istream.read(bytes);
 			} catch (IOException e) {
-				System.err.println("failed to read segments: "+e.getMessage());
+				Log.warning(Log.FAC_TEST, "failed to read segments: "+e.getMessage());
 				Assert.fail();
 			}
 		}
-		System.out.println("read "+received+" from stream");
+		Log.info(Log.FAC_TEST, "read "+received+" from stream");
 		Assert.assertTrue(received == bytesWritten);
+		
+		Log.info(Log.FAC_TEST, "Completed testGetAllSegmentsFromPipeline");
 	}
 	
 	
 	//skip
 	@Test
 	public void testSkipWithPipeline() {
+		Log.info(Log.FAC_TEST, "Starting testSkipWithPipeline");
+
 		long received = 0;
 		byte[] bytes = new byte[100];
 		
@@ -139,13 +146,13 @@ public class PipelineTest {
 		try {
 			istream = new CCNInputStream(testName, readHandle);
 		} catch (IOException e1) {
-			System.err.println("Failed to get new stream: "+e1.getMessage());
+			Log.warning(Log.FAC_TEST, "Failed to get new stream: "+e1.getMessage());
 			Assert.fail();
 		}
 		
 		while (!istream.eof()) {
 			try {
-				System.out.println("Read so far: "+received);
+				Log.info(Log.FAC_TEST, "Read so far: "+received);
 				if (received > 0 && received < 250 && !skipDone) {
 					//want to skip some segments
 					istream.skip(100);
@@ -153,18 +160,22 @@ public class PipelineTest {
 				}
 				received += istream.read(bytes);
 			} catch (IOException e) {
-				System.err.println("failed to read segments: "+e.getMessage());
+				Log.info(Log.FAC_TEST, "failed to read segments: "+e.getMessage());
 				Assert.fail();
 			}
 		}
-		System.out.println("read "+received+" from stream");
+		Log.info(Log.FAC_TEST, "read "+received+" from stream");
 		Assert.assertTrue(received == bytesWritten - 100);
+		
+		Log.info(Log.FAC_TEST, "Completed testSkipWithPipeline");
 	}
 	
 	//seek
 	
 	@Test
 	public void testSeekWithPipeline() {
+		Log.info(Log.FAC_TEST, "Starting testSeekWithPipeline");
+
 		long received = 0;
 		byte[] bytes = new byte[100];
 		
@@ -174,13 +185,13 @@ public class PipelineTest {
 		try {
 			istream = new CCNInputStream(testName, readHandle);
 		} catch (IOException e1) {
-			System.err.println("Failed to seek stream to byte 0: "+e1.getMessage());
+			Log.warning(Log.FAC_TEST, "Failed to seek stream to byte 0: "+e1.getMessage());
 			Assert.fail();
 		}
 		
 		while (!istream.eof()) {
 			try {
-				System.out.println("Read so far: "+received);
+				Log.info(Log.FAC_TEST, "Read so far: "+received);
 				if (received > 0 && received < 150 && !seekDone) {
 					//want to skip some segments
 					istream.seek(200);
@@ -189,17 +200,21 @@ public class PipelineTest {
 				}
 				received += istream.read(bytes);
 			} catch (IOException e) {
-				System.err.println("failed to read segments: "+e.getMessage());
+				Log.info(Log.FAC_TEST, "failed to read segments: "+e.getMessage());
 				Assert.fail();
 			}
 		}
-		System.out.println("read "+received+" from stream");
+		Log.info(Log.FAC_TEST, "read "+received+" from stream");
 		Assert.assertTrue(received == bytesWritten - skipped);
+		
+		Log.info(Log.FAC_TEST, "Completed testSeekWithPipeline");
 	}
 	
 	//restart
 	@Test
 	public void testResetWithPipeline() {
+		Log.info(Log.FAC_TEST, "Starting testResetWithPipeline");
+
 		long received = 0;
 		byte[] bytes = new byte[100];
 		
@@ -210,13 +225,13 @@ public class PipelineTest {
 			istream = new CCNInputStream(testName, readHandle);
 			istream.mark(0);
 		} catch (IOException e1) {
-			System.err.println("Failed to get new stream: "+e1.getMessage());
+			Log.warning(Log.FAC_TEST, "Failed to get new stream: "+e1.getMessage());
 			Assert.fail();
 		}
 		
 		while (!istream.eof()) {
 			try {
-				System.out.println("Read so far: "+received);
+				Log.info(Log.FAC_TEST, "Read so far: "+received);
 				if (received > 0 && received < 250 && !resetDone) {
 					//want to skip some segments
 					istream.reset();
@@ -225,24 +240,28 @@ public class PipelineTest {
 				}
 				received += istream.read(bytes);
 			} catch (IOException e) {
-				System.err.println("failed to read segments: "+e.getMessage());
+				Log.info(Log.FAC_TEST, "failed to read segments: "+e.getMessage());
 				Assert.fail();
 			}
 		}
-		System.out.println("read "+received+" from stream");
+		Log.info(Log.FAC_TEST, "read "+received+" from stream");
 		Assert.assertTrue(received == bytesWritten + resetBytes);
+		
+		Log.info(Log.FAC_TEST, "Completed testResetWithPipeline");
 	}
 	
 	//test interface with versioning
 	@Test
 	public void testVersionedNameWithPipeline() {
+		Log.info(Log.FAC_TEST, "Starting testVersionedNameWithPipeline");
+
 		long received = 0;
 		byte[] bytes = new byte[1024];
 		
 		try {
 			vistream = new CCNVersionedInputStream(VersioningProfile.cutLastVersion(testName), readHandle);
 		} catch (IOException e1) {
-			System.err.println("failed to open stream for pipeline test: "+e1.getMessage());
+			Log.info(Log.FAC_TEST, "failed to open stream for pipeline test: "+e1.getMessage());
 			Assert.fail();
 		}
 		
@@ -250,45 +269,48 @@ public class PipelineTest {
 			try {
 				received += vistream.read(bytes);
 			} catch (IOException e) {
-				System.err.println("failed to read segments: "+e.getMessage());
+				Log.warning(Log.FAC_TEST, "failed to read segments: "+e.getMessage());
 				Assert.fail();
 			}
 		}
-		System.out.println("read "+received+" from stream");
+		Log.info(Log.FAC_TEST, "read "+received+" from stream");
 		Assert.assertTrue(received == bytesWritten);
 		
+		Log.info(Log.FAC_TEST, "Completed testVersionedNameWithPipeline");
 	}
 	
 	@Test
-	public void testGetFirstDigest() {		
+	public void testGetFirstDigest() {
+		Log.info(Log.FAC_TEST, "Starting testGetFirstDigest");
+
 		long received = 0;
 		byte[] bytes = new byte[1024];
 
 		try {
 			istream = new CCNInputStream(testName, readHandle);
 		} catch (IOException e1) {
-			System.err.println("failed to open stream for pipeline test: "+e1.getMessage());
+			Log.warning(Log.FAC_TEST, "failed to open stream for pipeline test: "+e1.getMessage());
 			Assert.fail();
 		}
 		
 		try {
 			Assert.assertTrue(DataUtils.arrayEquals(firstDigest, istream.getFirstDigest()));
 		} catch (IOException e3) {
-			System.err.println("failed to get first digest for pipeline test:");
+			Log.warning(Log.FAC_TEST, "failed to get first digest for pipeline test:");
 			Assert.fail();
 		}
 		try {
 			istream.close();
 		} catch (IOException e2) {
-			System.err.println("failed to close stream for pipeline test: "+e2.getMessage());
+			Log.warning(Log.FAC_TEST, "failed to close stream for pipeline test: "+e2.getMessage());
 			Assert.fail();
 		}		
-		System.out.println("start first segment digest "+firstDigest);
+		Log.info(Log.FAC_TEST, "start first segment digest "+firstDigest);
 		
 		try {
 			istream = new CCNInputStream(testName, readHandle);
 		} catch (IOException e1) {
-			System.err.println("failed to open stream for pipeline test: "+e1.getMessage());
+			Log.warning(Log.FAC_TEST, "failed to open stream for pipeline test: "+e1.getMessage());
 			Assert.fail();
 		}		
 		
@@ -296,7 +318,7 @@ public class PipelineTest {
 			try {
 				received += istream.read(bytes);
 			} catch (IOException e) {
-				System.err.println("failed to read segments: "+e.getMessage());
+				Log.warning(Log.FAC_TEST, "failed to read segments: "+e.getMessage());
 				Assert.fail();
 			}
 		}
@@ -304,9 +326,11 @@ public class PipelineTest {
 		try {
 			Assert.assertTrue(DataUtils.arrayEquals(firstDigest, istream.getFirstDigest()));
 		} catch (IOException e) {
-			System.err.println("failed to get first digest after reading in pipeline test:");
+			Log.warning(Log.FAC_TEST, "failed to get first digest after reading in pipeline test:");
 			Assert.fail();
 		}
-		System.out.println("end first segment digest "+firstDigest);
+		Log.info(Log.FAC_TEST, "end first segment digest "+firstDigest);
+		
+		Log.info(Log.FAC_TEST, "Completed testGetFirstDigest");
 	}
 }

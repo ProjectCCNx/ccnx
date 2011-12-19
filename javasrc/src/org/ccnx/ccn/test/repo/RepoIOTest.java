@@ -154,11 +154,6 @@ public class RepoIOTest extends RepoTestBase {
 		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefix, _testObj), "Initial string value", SaveType.REPOSITORY, putHandle);
 		so.save();
 		
-		// We sync the file here mainly to be sure to save the default public key in the repository for the first time
-		// We'll need this (of course) for future tests.
-		RepositoryControl.localRepoSync(getHandle, so);
-		so.close();
-		
 		// Floss content into ccnd for tests involving content not already in repo when we start
 		IOTestFlosser floss = new IOTestFlosser();
 		
@@ -218,18 +213,22 @@ public class RepoIOTest extends RepoTestBase {
 	
 	@Test
 	public void testPolicyViaCCN() throws Exception {
-		System.out.println("Testing namespace policy setting");
+		Log.info(Log.FAC_TEST, "Starting testPolicyViaCCN");
+
 		checkNameSpace("/repoTest/data2", true);
 		changePolicy("/org/ccnx/ccn/test/repo/policyTest.xml");
 		checkNameSpace("/repoTest/data3", false);
 		checkNameSpace("/testNameSpace/data1", true);
 		changePolicy("/org/ccnx/ccn/test/repo/origPolicy.xml");
 		checkNameSpace("/repoTest/data4", true);
+		
+		Log.info(Log.FAC_TEST, "Completed testPolicyViaCCN");
 	}
 	
 	@Test
 	public void testReadFromRepo() throws Exception {
-		System.out.println("Testing reading a stream from the repo");
+		Log.info(Log.FAC_TEST, "Starting testReadFromRepo");
+
 		ContentName name = ContentName.fromNative(_testPrefix, _testStream);
 		_cacheManager.clearCache(name, getHandle, CACHE_CLEAR_TIMEOUT);
 		Thread.sleep(5000);
@@ -237,6 +236,8 @@ public class RepoIOTest extends RepoTestBase {
 		byte[] testBytes = new byte[data.length];
 		input.read(testBytes);
 		Assert.assertArrayEquals(data, testBytes);
+		
+		Log.info(Log.FAC_TEST, "Completed testReadFromRepo");
 	}
 	
 	@Test
@@ -245,7 +246,8 @@ public class RepoIOTest extends RepoTestBase {
 	// what happens if we pull latest version and try to read
 	// content in order
 	public void testVersionedRead() throws InterruptedException, IOException, MalformedContentNameStringException {
-		System.out.println("Testing reading a versioned stream");
+		Log.info(Log.FAC_TEST, "Starting testVersionedRead");
+
 		ContentName versionedNameNormal = ContentName.fromNative(_testPrefix, "testVersionNormal");
 		CCNVersionedOutputStream ostream = new RepositoryVersionedOutputStream(versionedNameNormal, putHandle);
 		ostream.setBlockSize("segment".length() + new Long(5).toString().length());
@@ -266,12 +268,15 @@ public class RepoIOTest extends RepoTestBase {
 		}
 		Assert.assertEquals(-1, reader.read());
 		vstream.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionedRead");
 	}
 	
 	@Test
 	public void testLocalSyncInputStream() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLocalSyncInputStream");
+
 		// This test should run all on single handle, just as client would do
-		System.out.println("Testing local repo sync request for input stream");
 		CCNInputStream input = new CCNInputStream(ContentName.fromNative(_testPrefix, _testStream), getHandle);
 		// Ignore data in this case, just trigger repo confirmation
 		// Setup of this test writes the stream into repo, so we know it is already there --
@@ -298,10 +303,14 @@ public class RepoIOTest extends RepoTestBase {
 		input.read(testBytes);
 		Assert.assertArrayEquals(data, testBytes);
 		input.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testLocalSyncInputStream");
 	}
 	
 	@Test
 	public void testLocalSyncNetObj() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLocalSyncNetObj");
+
 		// This test should run all on single handle, just as client would do
 		System.out.println("Testing local repo sync request for network object");	
 		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefix, _testObj), getHandle);
@@ -328,6 +337,8 @@ public class RepoIOTest extends RepoTestBase {
 		_cacheManager.clearCache(ContentName.fromNative(_testPrefix, _testLink), getHandle, CACHE_CLEAR_TIMEOUT);
 		so = new CCNStringObject(name, getHandle);
 		assert(so.string().equals("String value for non-repo obj"));
+		
+		Log.info(Log.FAC_TEST, "Completed testLocalSyncNetObj");
 	}
 
 	private void changePolicy(String policyFile) throws Exception {

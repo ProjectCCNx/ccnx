@@ -22,8 +22,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.impl.InterestTable;
 import org.ccnx.ccn.impl.InterestTable.Entry;
 import org.ccnx.ccn.impl.support.Log;
@@ -40,7 +40,7 @@ import org.ccnx.ccn.protocol.Interest;
  * which triggered their creation has been fully read.
  */
 
-public class RepositoryDataListener implements CCNInterestListener {
+public class RepositoryDataListener implements CCNContentHandler {
 	private long _timer;				// Used to timeout inactive listeners
 	private Interest _origInterest;		// The interest which originally triggered the creation of
 										// this listener. Used to filter out duplicate or overlapping
@@ -112,6 +112,9 @@ public class RepositoryDataListener implements CCNInterestListener {
 				_finalSegmentNumber = SegmentationProfile.getSegmentNumber(co.signedInfo().getFinalBlockID());
 				if (_finalSegmentNumber == thisSegmentNumber) {
 					isFinalSegment = true; // we only know for sure what the final block is when this is true
+				}
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINEST)) {
+					Log.finest(Log.FAC_REPO, "Found final segment number: {0}", _finalSegmentNumber);
 				}
 			}
 		}
@@ -205,18 +208,18 @@ public class RepositoryDataListener implements CCNInterestListener {
 	 * @param value
 	 */
 	private class CancelInterestsAction extends InterestActionClass {
-		CCNInterestListener _listener;
+		CCNContentHandler _handler;
 		
-		private CancelInterestsAction(long startValue, CCNInterestListener listener) {
+		private CancelInterestsAction(long startValue, CCNContentHandler handler) {
 			_value = startValue;
-			_listener = listener;
+			_handler = handler;
 		}
 
 		@Override
 		protected void action(long value, Entry<?> entry, Iterator<Entry<Object>> it) {
 			if (value > _value) {
 				_server._stats.increment(RepositoryServer.StatsEnum.HandleContentCancelInterest);
-				_handle.cancelInterest(entry.interest(), _listener);
+				_handle.cancelInterest(entry.interest(), _handler);
 				it.remove();
 			}
 		}

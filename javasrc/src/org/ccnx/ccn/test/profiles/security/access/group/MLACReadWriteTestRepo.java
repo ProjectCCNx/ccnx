@@ -144,6 +144,8 @@ public class MLACReadWriteTestRepo {
 	
 	@Test
 	public void performanceTest() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting performanceTest");
+
 		// Create a new ACL for a subdirectory of baseDirectory.
 		// Set Alice (domain 0) as a manager and Bob and Carol (both domain 1) as readers
 		createSubDirectoryACL();
@@ -183,6 +185,8 @@ public class MLACReadWriteTestRepo {
 		catch (AccessDeniedException ade) {
 			Assert.fail();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed performanceTest");
 	}
 	
 	/**
@@ -205,11 +209,11 @@ public class MLACReadWriteTestRepo {
 			_AliceACM.setACL(subdirectory, baseDirACL);
 		}
 		catch (Exception e) {
-			e.printStackTrace();
+			Log.warningStackTrace(Log.FAC_TEST, e);
 			Assert.fail();
 		}
 
-		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: create ACL completed in {0} ms.", 
+		Log.info(Log.FAC_TEST, "MLACReadWriteTestRepo: create ACL completed in {0} ms.", 
 				(System.currentTimeMillis() - startTime));
 	}
 	
@@ -236,7 +240,7 @@ public class MLACReadWriteTestRepo {
 			Assert.fail();
 		}
 		
-		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: writing content completed in {0} ms.",
+		Log.info(Log.FAC_TEST, "MLACReadWriteTestRepo: writing content completed in {0} ms.",
 				(System.currentTimeMillis() - startTime));
 	}
 	
@@ -263,7 +267,7 @@ public class MLACReadWriteTestRepo {
 		// we want to propagate AccessDeniedException, but not IOException.
 		// Since AccessDeniedException is a subclass of IOException, we catch and re-throw it.
 		catch (AccessDeniedException ade) {
-			Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: determined that user {0} in domain {1} " +
+			Log.info(Log.FAC_TEST, "MLACReadWriteTestRepo: determined that user {0} in domain {1} " +
 					" does not read access to the content, in {2} ms.",
 					userName, domain, (System.currentTimeMillis() - startTime));
 			throw ade;
@@ -272,7 +276,7 @@ public class MLACReadWriteTestRepo {
 			throw e;
 		}
 
-		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: reading content as {0} succeeded in {1} ms.",
+		Log.info(Log.FAC_TEST, "MLACReadWriteTestRepo: reading content as {0} succeeded in {1} ms.",
 				userName, (System.currentTimeMillis() - startTime));
 	}
 	
@@ -293,7 +297,7 @@ public class MLACReadWriteTestRepo {
 			Assert.fail();
 		}
 
-		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: updated ACL in {1} ms.",
+		Log.info(Log.FAC_TEST, "MLACReadWriteTestRepo: updated ACL in {1} ms.",
 				(System.currentTimeMillis() - startTime));
 	}
 

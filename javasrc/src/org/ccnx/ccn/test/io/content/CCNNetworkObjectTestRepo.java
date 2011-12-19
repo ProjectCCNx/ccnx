@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -72,12 +72,12 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
-		Log.info("Tearing down CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
+		Log.info(Log.FAC_TEST, "Tearing down CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
 	}
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.info("Setting up CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
+		Log.info(Log.FAC_TEST, "Setting up CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
 		
 		CCNHandle myhandle = CCNHandle.open();
 		try {
@@ -118,7 +118,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			for (int i=0; i < NUM_LINKS; ++i) {
 				big.add(lrs[i]);
 			}
-			Log.info("Finihed setting up CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
+			Log.info(Log.FAC_TEST, "Finihed setting up CCNNetworkObjectTestRepo, prefix {0}", testHelper.getClassNamespace());
 		} finally {
 			myhandle.close();
 			KeyManager.closeDefaultKeyManager();
@@ -127,6 +127,8 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 
 	@Test
 	public void testVersioning() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testVersioning");
+
 		// Testing problem of disappearing versions, inability to get latest. Use simpler
 		// object than a collection.
 		CCNHandle lput = CCNHandle.open();
@@ -143,25 +145,19 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			CCNTime soTime, srTime, sr2Time, sr3Time, sr4Time, so2Time;
 			for (int i=0; i < numbers.length; ++i) {
 				soTime = saveAndLog(numbers[i], so, null, numbers[i]);
-				if (null == ro) {
-					ro = new CCNStringObject(testName, lget);
-					srTime = waitForDataAndLog(numbers[i], ro);
-				} else {
-					srTime = updateAndLog(numbers[i], ro, null);				
-				}
-				if (null == ro2) {
-					ro2 = new CCNStringObject(testName, null);
-					sr2Time = waitForDataAndLog(numbers[i], ro2);
-				} else {
-					sr2Time = updateAndLog(numbers[i], ro2, null);				
-				}
+				checkObject(lput, so);
+				ro = new CCNStringObject(testName, lget);
+				srTime = waitForDataAndLog(numbers[i], ro);
+				ro2 = new CCNStringObject(testName, null);
+				sr2Time = waitForDataAndLog(numbers[i], ro2);
 				ro3 = new CCNStringObject(ro.getVersionedName(), null); // read specific version
 				sr3Time = waitForDataAndLog("UpdateToROVersion", ro3);
 				// Save a new version and pull old
 				so2Time = saveAndLog(numbers[i] + "-Update", so, null, numbers[i] + "-Update");
+				checkObject(lput, so);
 				ro4 = new CCNStringObject(ro.getVersionedName(), null); // read specific version
 				sr4Time = waitForDataAndLog("UpdateAnotherToROVersion", ro4);
-				System.out.println("Update " + i + ": Times: " + soTime + " " + srTime + " " + sr2Time + " " + sr3Time + " different: " + so2Time);
+				Log.info(Log.FAC_TEST, "Update " + i + ": Times: " + soTime + " " + srTime + " " + sr2Time + " " + sr3Time + " different: " + so2Time);
 				Assert.assertEquals("SaveTime doesn't match first read", soTime, srTime);
 				Assert.assertEquals("SaveTime doesn't match second read", soTime, sr2Time);
 				Assert.assertEquals("SaveTime doesn't match specific version read", soTime, sr3Time);
@@ -173,10 +169,14 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			lget.close();
 			KeyManager.closeDefaultKeyManager();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testVersioning");
 	}
 
 	@Test
 	public void testSaveToVersion() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testSaveToVersion");
+
 		// Testing problem of disappearing versions, inability to get latest. Use simpler
 		// object than a collection.
 		CCNHandle lput = CCNHandle.open();
@@ -189,6 +189,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			CCNStringObject so = new CCNStringObject(testName, "First value", SaveType.REPOSITORY, lput);
 			setupNamespace(testName);
 			saveAndLog("SpecifiedVersion", so, desiredVersion, "Time: " + desiredVersion);
+			checkObject(lput, so);
 			Assert.assertEquals("Didn't write correct version", desiredVersion, so.getVersion());
 			
 			CCNStringObject ro = new CCNStringObject(testName, lget);
@@ -197,6 +198,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			ContentName versionName = ro.getVersionedName();
 			
 			saveAndLog("UpdatedVersion", so, null, "ReplacementData");
+			checkObject(lput, so);
 			updateAndLog("UpdatedData", ro, null);
 			Assert.assertTrue("New version " + so.getVersion() + " should be later than old version " + desiredVersion, (desiredVersion.before(so.getVersion())));
 			Assert.assertEquals("Didn't read correct version", so.getVersion(), ro.getVersion());
@@ -209,10 +211,14 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			lget.close();
 			KeyManager.closeDefaultKeyManager();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testSaveToVersion");
 	}
 
 	@Test
 	public void testEmptySave() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testEmptySave");
+
 		boolean caught = false;
 		CCNHandle handle = CCNHandle.open();
 		try {
@@ -232,10 +238,13 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			handle.close();
 			KeyManager.closeDefaultKeyManager();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testEmptySave");
 	}
 	
 	@Test
 	public void testStreamUpdate() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testStreamUpdate");
 		
 		CCNHandle tHandle = CCNHandle.open();
 		try {		
@@ -245,7 +254,8 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			setupNamespace(testName);
 			
 			saveAndLog("testStreamUpdate", testCollectionObject, null, small1);
-			System.out.println("testCollectionObject name: " + testCollectionObject.getVersionedName());
+			checkObject(tHandle, testCollectionObject);
+			Log.info(Log.FAC_TEST, "testCollectionObject name: " + testCollectionObject.getVersionedName());
 					
 			CCNVersionedInputStream vis = new CCNVersionedInputStream(testCollectionObject.getVersionedName());
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -256,12 +266,12 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 				if (read > 0)
 					baos.write(buf, 0, read);
 			}
-			System.out.println("Read " + baos.toByteArray().length + " bytes, digest: " + 
+			Log.info(Log.FAC_TEST, "Read " + baos.toByteArray().length + " bytes, digest: " + 
 					DigestHelper.printBytes(DigestHelper.digest(baos.toByteArray()), 16));
 	
 			Collection decodedData = new Collection();
 			decodedData.decode(baos.toByteArray());
-			System.out.println("Decoded collection data: " + decodedData);
+			Log.info(Log.FAC_TEST, "Decoded collection data: " + decodedData);
 			Assert.assertEquals("Decoding via stream fails to give expected result!", decodedData, small1);
 			
 			CCNVersionedInputStream vis2 = new CCNVersionedInputStream(testCollectionObject.getVersionedName());
@@ -273,7 +283,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 					break;
 				baos2.write((byte)val);
 			}
-			System.out.println("Read " + baos2.toByteArray().length + " bytes, digest: " + 
+			Log.info(Log.FAC_TEST, "Read " + baos2.toByteArray().length + " bytes, digest: " + 
 					DigestHelper.printBytes(DigestHelper.digest(baos2.toByteArray()), 16));
 			Assert.assertArrayEquals("Reading same object twice gets different results!", baos.toByteArray(), baos2.toByteArray());
 	
@@ -289,10 +299,14 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			tHandle.close();
 			KeyManager.closeDefaultKeyManager();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testStreamUpdate");
 	}
 	
 	@Test
 	public void testVersionOrdering() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testVersionOrdering");
+
 		CCNHandle tHandle = CCNHandle.open();
 		CCNHandle rHandle = CCNHandle.open();
 		try {
@@ -302,11 +316,13 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			CollectionObject c0 = new CollectionObject(testName, empty, SaveType.REPOSITORY, rHandle);
 			setupNamespace(testName);
 			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
+			checkObject(rHandle, c0);
 			
 			CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, tHandle);
 			CollectionObject c2 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, null);
 			setupNamespace(testName2);
 			CCNTime t1 = saveAndLog("Small", c1, null, small1);
+			checkObject(tHandle, c1);
 			Assert.assertTrue("First version should come before second", t0.before(t1));
 			
 			CCNTime t2 = saveAndLog("Small2ndWrite", c2, null, small1);
@@ -319,10 +335,13 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			rHandle.close();
 			KeyManager.closeDefaultKeyManager();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionOrdering");
 	}
 	
 	@Test
 	public void testUpdateInBackground() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testUpdateInBackground");
 		
 		CCNHandle thandle = CCNHandle.open();
 		CCNHandle thandle2 = CCNHandle.open();
@@ -345,7 +364,9 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			Assert.assertFalse(c1.isSaved());
 	
 			CCNTime t1 = saveAndLog("First string", c2, null, "Here is the first string.");
-			System.out.println("Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
+
+			checkObject(thandle, c2);
+			Log.info(Log.FAC_TEST, "Saved c2: " + c2.getVersionedName() + " c0 available? " + c0.available() + " c1 available? " + c1.available());
 			c0.waitForData();
 			Assert.assertEquals("c0 update", c0.getVersion(), c2.getVersion());
 			c1.waitForData();
@@ -357,12 +378,12 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			Assert.assertEquals("c0 unchanged", c0.getVersion(), t1);
 			
 			// Sleep for a while and see how fast the interests come. Should be only 2 interests.
-			System.out.println("Sleeping, count background interests.");
+			Log.info(Log.FAC_TEST, "Sleeping, count background interests.");
 			long time = System.currentTimeMillis();
 			Thread.sleep(2000);
 			long elapsed = System.currentTimeMillis() - time;
 			long count = (elapsed/4000) + 1;
-			System.out.println("Slept " + elapsed/1000.0 + " seconds, should have been " + count + " interests.");
+			Log.info(Log.FAC_TEST, "Slept " + elapsed/1000.0 + " seconds, should have been " + count + " interests.");
 			
 			CCNTime t3 = saveAndLog("Third string", c2, null, "Here is the third string.");
 			doWait(c1, t3);
@@ -376,10 +397,14 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			thandle3.close();
 			KeyManager.closeDefaultKeyManager();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testUpdateInBackground");
 	}
 	
 	@Test
 	public void testUpdateOtherName() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testUpdateOtherName");
+
 		CCNHandle thandle = CCNHandle.open();
 		CCNHandle rhandle = CCNHandle.open();
 		try {
@@ -389,12 +414,14 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			CollectionObject c0 = new CollectionObject(testName, empty, SaveType.REPOSITORY, rhandle);
 			setupNamespace(testName);
 			CCNTime t0 = saveAndLog("Empty", c0, null, empty);
+			checkObject(rhandle, c0);
 			
 			CollectionObject c1 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, thandle);
 			// Cheat a little, make this one before the setupNamespace...
 			CollectionObject c2 = new CollectionObject(testName2, small1, SaveType.REPOSITORY, null);
 			setupNamespace(testName2);
 			CCNTime t1 = saveAndLog("Small", c1, null, small1);
+			checkObject(thandle, c1);
 			Assert.assertTrue("First version should come before second", t0.before(t1));
 			
 			CCNTime t2 = saveAndLog("Small2ndWrite", c2, null, small1);
@@ -416,11 +443,15 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			rhandle.close();
 			KeyManager.closeDefaultKeyManager();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testUpdateOtherName");
 	}
 
 	
 	@Test
 	public void testSaveAsGone() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testSaveAsGone");
+
 		CCNHandle thandle = CCNHandle.open();
 		CCNHandle rhandle = CCNHandle.open();
 		CCNHandle shandle = CCNHandle.open();
@@ -434,6 +465,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			ContentName goneVersionName = c0.getVersionedName();
 			
 			CCNTime t1 = saveAndLog("NotGone", c0, null, small1);
+			checkObject(thandle, c0);
 			Assert.assertFalse("Should not be gone", c0.isGone());
 			Assert.assertTrue(t1.after(t0));
 			
@@ -460,11 +492,14 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			shandle.close();
 			KeyManager.closeDefaultKeyManager();
 		}
-
+		
+		Log.info(Log.FAC_TEST, "Completed testSaveAsGone");
 	}
 	
 	@Test
 	public void testUpdateDoesNotExist() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testUpdateDoesNotExist");
+
 		CCNHandle thandle = CCNHandle.open();
 		CCNHandle rhandle = CCNHandle.open();
 		try {
@@ -480,6 +515,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			CCNStringObject sowrite = new CCNStringObject(testName, "Now we write something.", SaveType.REPOSITORY, thandle);
 			setupNamespace(testName);
 			saveAndLog("Delayed write", sowrite, null, "Now we write something.");
+			checkObject(thandle, sowrite);
 			so.waitForData();
 			Assert.assertTrue(so.available());
 			Assert.assertEquals(so.string(), sowrite.string());
@@ -489,11 +525,14 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			rhandle.close();
 			KeyManager.closeDefaultKeyManager();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testUpdateDoesNotExist");
 	}
 	
 	@Test
 	public void testUpdateListener() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Starting testUpdateListener");
+
 		SaveType saveType = SaveType.REPOSITORY;
 		CCNHandle writeHandle = CCNHandle.open();
 		CCNHandle readHandle = CCNHandle.open();
@@ -529,10 +568,14 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			readHandle.close();
 			KeyManager.closeDefaultKeyManager();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testUpdateListener");
 	}
 
 	@Test
 	public void testLocalCopyWrapper() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLocalCopyWrapper");
+
 		CCNHandle thandle = CCNHandle.open();
 		CCNHandle rhandle = CCNHandle.open();
 		
@@ -565,6 +608,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			CCNStringObject sowrite = new CCNStringObject(testName, "Now we write", SaveType.RAW, thandle);
 			setupNamespace(testName);
 			saveAndLog("Delayed write", sowrite, null, "Now we write");
+			checkObject(thandle, sowrite);
 			wo.waitForData();
 			Assert.assertTrue(wo.available());
 			Assert.assertEquals(((CCNStringObject)wo.object()).string(), sowrite.string());
@@ -588,10 +632,14 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			rhandle.close();
 			KeyManager.closeDefaultKeyManager();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testLocalCopyWrapper");
 	}
 	
 	@Test
 	public void testLocalCopyListener() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLocalCopyListener");
+
 		CCNHandle rhandle = CCNHandle.open();
 		try {
 			// The local copy wrapper API isn't applicable in very many situations. Try this instead.
@@ -632,6 +680,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 				CCNStringObject sowrite = new CCNStringObject(testName, "Now we write", SaveType.RAW, thandle);
 				setupNamespace(testName);
 				saveAndLog("Delayed write", sowrite, null, "Now we write");
+				checkObject(thandle, sowrite);
 				so.waitForData();
 				Assert.assertTrue(so.available());
 				Assert.assertEquals(so.string(), sowrite.string());
@@ -656,5 +705,20 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 			rhandle.close();
 			KeyManager.closeDefaultKeyManager();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testLocalCopyListener");
+
+	}
+	
+	public void checkObject(CCNHandle handle, CCNNetworkObject<?> cno) throws IOException {
+		long startTime = System.currentTimeMillis();
+		boolean ok = false;
+		do {
+			ok = RepositoryControl.localRepoSync(handle, cno);
+			if (ok)
+				break;
+		} while((System.currentTimeMillis() - startTime) < SystemConfiguration.EXTRA_LONG_TIMEOUT);
+		if (!ok)
+			Assert.fail("Couldn't sync object: " + cno.getBaseName());
 	}
 }

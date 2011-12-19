@@ -21,14 +21,13 @@ INSTALLED_PROGRAMS = \
     ccnls ccnslurp ccnbx ccncat ccnbasicconfig \
     ccnsendchunks ccncatchunks ccncatchunks2 \
     ccnput ccnget ccnhexdumpdata \
-	ccnseqwriter \
-	$(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
+    ccnseqwriter ccnsimplecat \
+    ccnfilewatch \
+    $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
     ccnbuzz  \
-    ccnsimplecat \
     dataresponsetest \
-    ccnseqwriter \
     ccn_fetch_test \
     $(PCAP_PROGRAMS)
 
@@ -39,7 +38,7 @@ DEBRIS =
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
        ccnbuzz.c ccnbx.c ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
-       ccndumpnames.c ccndumppcap.c ccnget.c ccnhexdumpdata.c \
+       ccndumpnames.c ccndumppcap.c ccnfilewatch.c ccnget.c ccnhexdumpdata.c \
        ccnls.c ccnnamelist.c ccnput.c ccnrm.c ccnsendchunks.c ccnseqwriter.c \
        ccn_fetch_test.c ccnslurp.c dataresponsetest.c 
 
@@ -159,6 +158,9 @@ signbenchtest: signbenchtest.o
 ccndumppcap: ccndumppcap.o
 	$(CC) $(CFLAGS) -o $@ ccndumppcap.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto -lpcap
 
+ccnfilewatch: ccnfilewatch.o
+	$(CC) $(CFLAGS) -o $@ ccnfilewatch.o
+
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS) *% *~
@@ -202,6 +204,7 @@ ccndumpnames.o: ccndumpnames.c ../include/ccn/ccn.h \
 ccndumppcap.o: ccndumppcap.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccnd.h
+ccnfilewatch.o: ccnfilewatch.c
 ccnget.o: ccnget.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h

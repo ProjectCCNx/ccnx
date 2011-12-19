@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -25,6 +25,7 @@ import org.bouncycastle.asn1.x509.DigestInfo;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.security.crypto.MerklePath;
 import org.ccnx.ccn.impl.security.crypto.MerkleTree;
+import org.ccnx.ccn.impl.support.Log;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -47,6 +48,8 @@ public class MerkleTreeTest {
 	
 	@Test
 	public void testMerkleTree() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testMerkleTree");
+
 		int [] sizes = new int[]{128,256,512,4096};
 		
 		try {
@@ -73,6 +76,8 @@ public class MerkleTreeTest {
 		for (int i=0; i < nodecounts.length; ++i) {
 			testTree(nodecounts[i],sizes[i%sizes.length],false);
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testMerkleTree");
 	}
 	
 	public static void testTree(int numLeaves, int nodeLength, boolean digest) throws Exception {

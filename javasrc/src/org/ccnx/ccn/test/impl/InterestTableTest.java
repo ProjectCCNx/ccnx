@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -29,6 +29,7 @@ import java.util.Random;
 
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.InterestTable;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -91,7 +92,7 @@ public class InterestTableTest extends CCNTestBase {
 			
 		} catch (Exception ex) {
 			ex.printStackTrace();
-			System.out.println("Unable To Initialize Test!!!");
+			Log.info(Log.FAC_TEST, "Unable To Initialize Test!!!");
 			fail();
 		}	
 	}
@@ -112,6 +113,8 @@ public class InterestTableTest extends CCNTestBase {
 	
 	@Test
 	public void testAdd() throws MalformedContentNameStringException {
+		Log.info(Log.FAC_TEST, "Starting testAdd");
+
 		Interest intA = new Interest("/a/b/c");
 		Interest intB = new Interest("/a/b/c");
 		Interest intC = new Interest("/a/b/c/d");
@@ -149,6 +152,8 @@ public class InterestTableTest extends CCNTestBase {
 		
 		assertEquals(4, names.size());
 		assertEquals(2, names.sizeNames());
+		
+		Log.info(Log.FAC_TEST, "Completed testAdd");
 	}
 		
 	private ContentObject getContentObject(ContentName name) throws ConfigurationException, InvalidKeyException, SignatureException, MalformedContentNameStringException {
@@ -394,6 +399,8 @@ public class InterestTableTest extends CCNTestBase {
 	
 	@Test
 	public void testMatchName() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
+		Log.info(Log.FAC_TEST, "Starting testMatchName");
+
 		// First test names matching against names, no ContentObject
 		setID(-1);
 		runMatchName();
@@ -401,6 +408,8 @@ public class InterestTableTest extends CCNTestBase {
 		// Next run ContentObject against names in table
 		setID(0);
 		runMatchName();
+		
+		Log.info(Log.FAC_TEST, "Completed testMatchName");
 	}
 	
 	public InterestTable<Integer> initPub() throws MalformedContentNameStringException {
@@ -426,9 +435,9 @@ public class InterestTableTest extends CCNTestBase {
 	
 	@Test
 	public void testMatchPub() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		Log.info(Log.FAC_TEST, "Starting testMatchPub");
 
 		InterestTable<Integer> names = initPub();
-
 		
 		setID(2);
 		match(names, abb, 8);
@@ -458,16 +467,22 @@ public class InterestTableTest extends CCNTestBase {
 		setID(-1);
 		match(names, a, 1);
 		matches(names, "/a/b/b/a", new String[] {abb, abb, ab, a}, new int[] {4, 8, 5, 1});
+		
+		Log.info(Log.FAC_TEST, "Completed testMatchPub");
 	}
 
 
 	@Test
 	public void testSimpleRemoves() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
+		Log.info(Log.FAC_TEST, "Starting testSimpleRemoves");
+
 		removeByMatch = true;
 		runSimpleRemoves();
 		
 		removeByMatch = false;
 		runSimpleRemoves();
+		
+		Log.info(Log.FAC_TEST, "Completed testSimpleRemoves");
 	}
 	
 	private void runSimpleRemoves() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -518,11 +533,15 @@ public class InterestTableTest extends CCNTestBase {
 
 	@Test
 	public void testRemovesPub() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
+		Log.info(Log.FAC_TEST, "Starting testRemovesPub");
+
 		removeByMatch = true;
 		runRemovesPub();
 		
 		removeByMatch = false;
 		runRemovesPub();
+		
+		Log.info(Log.FAC_TEST, "Completed testRemovesPub");
 	}
 	
 	private void runRemovesPub() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -599,12 +618,16 @@ public class InterestTableTest extends CCNTestBase {
 	
 	@Test
 	public void testMatchNext() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		Log.info(Log.FAC_TEST, "Starting testMatchNext");
 		matchNextOrLast(InterestType.Next);
+		Log.info(Log.FAC_TEST, "Completed testMatchNext");
 	}
 	
 	@Test
 	public void testMatchLast() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		Log.info(Log.FAC_TEST, "Starting testMatchLast");
 		matchNextOrLast(InterestType.Last);
+		Log.info(Log.FAC_TEST, "Completed testMatchLast");
 	}
 
 	public void matchNextOrLast(InterestType type) throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
@@ -630,26 +653,36 @@ public class InterestTableTest extends CCNTestBase {
 	
 	@Test
 	public void testRemovesNext() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
+		Log.info(Log.FAC_TEST, "Starting testRemovesNext");
+
 		setID(0);
 		removeByMatch = true;
 		runRemovesNextOrLast(InterestType.Next);
 		
 		removeByMatch = false;
 		runRemovesNextOrLast(InterestType.Next);
+		
+		Log.info(Log.FAC_TEST, "Completed testRemovesNext");
 	}
 	
 	@Test
 	public void testRemovesLast() throws InvalidKeyException, MalformedContentNameStringException, SignatureException, ConfigurationException {
+		Log.info(Log.FAC_TEST, "Starting testRemovesLast");
+
 		setID(0);
 		removeByMatch = true;
 		runRemovesNextOrLast(InterestType.Last);
 		
 		removeByMatch = false;
 		runRemovesNextOrLast(InterestType.Last);
+		
+		Log.info(Log.FAC_TEST, "Completed testRemovesLast");
 	}
 	
 	@Test
 	public void testLRU() throws MalformedContentNameStringException, InvalidKeyException, SignatureException, ConfigurationException {
+		Log.info(Log.FAC_TEST, "Starting testLRU");
+
 		InterestTable<Integer> table = new InterestTable<Integer>();
 		table.setCapacity(6);
 		addEntry(table, a, new Integer(1));
@@ -667,6 +700,7 @@ public class InterestTableTest extends CCNTestBase {
 		match(table, abc, 7);
 		matches(table, ab, new String[] {ab, ab}, new int[] {2, 45});
 		noMatch(table, a);
+		
+		Log.info(Log.FAC_TEST, "Completed testLRU");
 	}
-
 }

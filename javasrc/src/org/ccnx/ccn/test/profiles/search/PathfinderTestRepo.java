@@ -22,6 +22,7 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.search.Pathfinder;
 import org.ccnx.ccn.profiles.search.Pathfinder.SearchResults;
@@ -58,6 +59,8 @@ public class PathfinderTestRepo {
 
 	@Test
 	public void testPathfinder() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testPathfinder");
+
 		// Make the content
 		ContentName testRoot = testHelper.getTestNamespace("testPathfinder");
 		ContentName startingPoint = ContentName.fromNative(testRoot, new String[]{"This", "is", "a", "longer", "path", "than", "necessary."});
@@ -70,6 +73,8 @@ public class PathfinderTestRepo {
 									SystemConfiguration.SHORT_TIMEOUT, null, readHandle);
 		SearchResults results = finder.waitForResults();
 		Assert.assertNotNull(results.getResult());
+		
+		Log.info(Log.FAC_TEST, "Completed testPathfinder");
 	}
 	
 
