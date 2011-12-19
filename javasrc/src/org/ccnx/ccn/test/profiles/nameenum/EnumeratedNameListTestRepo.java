@@ -98,10 +98,13 @@ public class EnumeratedNameListTestRepo {
 		directory = ContentName.fromNative(directoryString + Integer.toString(rand.nextInt(10000)));
 		directory2 = ContentName.fromNative(directoryString2 + Integer.toString(rand.nextInt(10000)));
 		directory3 = ContentName.fromNative(directoryString3 + Integer.toString(rand.nextInt(10000)));
-		name1String = nameString + Integer.toString(rand.nextInt(10000));
-		name2String = nameString + Integer.toString(rand.nextInt(10000));
-		name3String = nameString + Integer.toString(rand.nextInt(10000));
-		name4String = nameString + Integer.toString(rand.nextInt(10000));
+		
+		// These must all be different
+		int value = rand.nextInt(10000);
+		name1String = nameString + Integer.toString(value);
+		name2String = nameString + Integer.toString(value+1);
+		name3String = nameString + Integer.toString(value+2);
+		name4String = nameString + Integer.toString(value+3);
 
 		name1 = ContentName.fromNative(directory, name1String);
 		name2 = ContentName.fromNative(directory, name2String);
