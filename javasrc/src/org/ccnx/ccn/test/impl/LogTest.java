@@ -5,7 +5,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -14,10 +14,11 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
- 
+
 package org.ccnx.ccn.test.impl;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -33,7 +34,9 @@ public class LogTest {
 	protected static ByteArrayOutputStream _baos = new ByteArrayOutputStream();
 	protected static StreamHandler _sh = new StreamHandler(_baos, new SimpleFormatter());
 	protected static Level[] prevLevels;
-	
+	protected int _lastStart;
+	protected int _lastFinish;
+
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		prevLevels = Log.getLevels();
@@ -41,41 +44,52 @@ public class LogTest {
 		Logger logger = Logger.getLogger(app);
 		logger.addHandler(_sh);
 	}
-	
+
 	@AfterClass
 	public static void tearDownAfterClass() {
 		Log.setLevels(prevLevels);
 	}
-	
+
 	/**
 	 * Write to the log and return number of bytes that show up
 	 * in the log
 	 */
 	protected int writeLog(int facility, Level level, String msg) {
-		int start, finish;
 		_sh.flush();
-		start = _baos.toByteArray().length;
+		_lastStart = _baos.toByteArray().length;
 		Log.log(facility, level, msg);
 		_sh.flush();
-		finish = _baos.toByteArray().length;
-		return finish - start;
+		_lastFinish = _baos.toByteArray().length;
+		Assert.assertTrue("Finished before start!", _lastFinish >= _lastStart);
+		return _lastFinish - _lastStart;
 	}
-	
+
 	protected void doTest(int facility, Level level) {
-		
+
 		// set level off and make sure no logging
 		Log.setLevel(facility, Level.OFF);
-		Assert.assertEquals(0, writeLog(facility, level, "test me off"));
+		int result = writeLog(facility, level, "test me off");
+		if (result > 0) {
+			byte[] contents = _baos.toByteArray();
+			byte[] b = new byte[_lastFinish - _lastStart];
+			b = Arrays.copyOfRange(contents, _lastStart, _lastFinish);
+			System.out.println("Logging problem - we saw: \"" + new String(b) + "\" when there should have been no log");
+			Log.setLevel(Level.ALL);
+			Log.severe("Logging problem: we saw: \"{0}\" when there should have been no log", new String(b));
+		}
+		Assert.assertEquals(0, result);
 
 		// set to ALL and make sure it does log
 		Log.setLevel(facility, Level.ALL);
-		Assert.assertTrue(writeLog(facility, level, "test me all") > 0);
-		
+		result = writeLog(facility, level, "test me all");
+		Assert.assertTrue(result > 0);
+
 		// set to level and make sure it does log
 		Log.setLevel(facility, level);
-		Assert.assertTrue(writeLog(facility, level, "test me level") > 0);
+		result = writeLog(facility, level, "test me level");
+		Assert.assertTrue(result > 0);
 	}
-	
+
 	@Test
 	public void testInfoStringObjectArray() {
 		doTest(Log.FAC_DEFAULT, Level.INFO);
@@ -104,23 +118,23 @@ public class LogTest {
 		Log.setLevel(Level.OFF);
 		Assert.assertEquals(Level.OFF.intValue(), Log.getLevel().intValue());
 		Assert.assertEquals(Level.OFF.intValue(), Log.getLevel(Log.FAC_DEFAULT).intValue());
-		
+
 		Log.setLevel(Log.FAC_NETMANAGER, Level.SEVERE);
 		Assert.assertEquals(Level.SEVERE.intValue(), Log.getLevel(Log.FAC_NETMANAGER).intValue());
 	}
-	
+
 	@Test
 	public void testGetSetLevels() {
 		Log.setLevel(Log.FAC_ALL, Level.WARNING);
 		Log.setLevel(Log.FAC_NETMANAGER, Level.INFO);
 		Log.setLevel(Log.FAC_IO, Level.FINE);
-		
+
 		Level [] save = Log.getLevels();
 		Log.setLevel(Log.FAC_ALL, Level.FINER);
 		Assert.assertEquals(Level.FINER, Log.getLevel(Log.FAC_PIPELINE));
 		Assert.assertEquals(Level.FINER, Log.getLevel(Log.FAC_NETMANAGER));
 		Assert.assertEquals(Level.FINER, Log.getLevel(Log.FAC_IO));
-		
+
 		Log.setLevels(save);
 		Assert.assertEquals(Level.WARNING, Log.getLevel(Log.FAC_PIPELINE));
 		Assert.assertEquals(Level.INFO, Log.getLevel(Log.FAC_NETMANAGER));
