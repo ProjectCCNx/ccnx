@@ -31,8 +31,12 @@ usage(const char *progname)
 {
         fprintf(stderr,
                 "%s [-h] [-b 0<blocksize<=4096] [-r] ccnx:/some/uri\n"
-                " Reads stdin, sending data under the given URI"
-                " using ccn versioning and segmentation.\n", progname);
+                "    Reads stdin, sending data under the given URI"
+                " using ccn versioning and segmentation.\n"
+                "    -h generate this help message.\n"
+                "    -b specify the block (segment) size for content objects.\n"
+                "    -r generate start-write interest so a repository will"
+                " store the content.\n", progname);
         exit(1);
 }
 
