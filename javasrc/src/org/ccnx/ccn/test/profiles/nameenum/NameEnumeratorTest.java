@@ -59,6 +59,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	String prefix1String = "/parc.com/registerTest";
 	String prefix1StringError = "/park.com/registerTest";
 	ArrayList<ContentName> names;
+	Object namesLock = new Object();
 	ContentName prefix1;
 	ContentName c1;
 	ContentName c2;
@@ -160,12 +161,14 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	}
 	
 	
-	public void testGetCallback(){
-
-		
+	public void testGetCallback(){		
 		int attempts = 0;
 		try{
-			while (names==null && attempts < 500){
+			while (attempts < 500){
+				synchronized (namesLock) {
+					if (names != null)
+						break;
+				}
 				Thread.sleep(50);
 				attempts++;
 			}
@@ -177,14 +180,16 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.fail();
 		}
 		
-		Assert.assertNotNull(names);
-		
-		for (ContentName cn: names){
-			Log.info(Log.FAC_TEST, "got name: "+cn.toString());
-			Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2"));
+		synchronized (namesLock) {
+			Assert.assertNotNull(names);
+			
+			for (ContentName cn: names){
+				Log.info(Log.FAC_TEST, "got name: "+cn.toString());
+				Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2"));
+			}
+			
+			names = null;
 		}
-		
-		names = null;
 			
 	}
 	
@@ -216,7 +221,11 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 
 		int attempts = 0;
 		try{
-			while(names==null && attempts < 1000){
+			while(attempts < 1000){
+				synchronized (namesLock) {
+					if (names != null)
+						break;
+				}
 				Thread.sleep(50);
 				attempts++;
 			}
@@ -229,13 +238,15 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Assert.fail();
 		}
 
-		Assert.assertNotNull(names);
-		Assert.assertTrue(names.size()==3);
-		for(ContentName cn: names){
-			Log.info(Log.FAC_TEST, "got name: "+cn.toString());
-			Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2") || cn.toString().equals("/name1TestDirty"));
+		synchronized (namesLock) {
+			Assert.assertNotNull(names);
+			Assert.assertTrue(names.size()==3);
+			for(ContentName cn: names){
+				Log.info(Log.FAC_TEST, "got name: "+cn.toString());
+				Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2") || cn.toString().equals("/name1TestDirty"));
+			}
+			names = null;
 		}
-		names = null;
 	}
 	
 
@@ -288,13 +299,15 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 		int attempts = 0;
 		try{
-			while(names==null && attempts < 100){
-				Thread.sleep(50);
-				attempts++;
+			synchronized (namesLock) {
+				while(names==null && attempts < 100){
+					Thread.sleep(50);
+					attempts++;
+				}
+				//we either broke out of loop or the names are here
+				Log.info(Log.FAC_TEST, "done waiting for results to arrive");
+				Assert.assertNull(names);
 			}
-			//we either broke out of loop or the names are here
-			Log.info(Log.FAC_TEST, "done waiting for results to arrive");
-			Assert.assertNull(names);
 			getne.cancelPrefix(p1);
 		}
 		catch(InterruptedException e){
@@ -306,7 +319,9 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	
 	public void testGetCallbackAfterCancel(){
 		//assert names are still null in case we got a response even though the request was canceled
-		Assert.assertNull(names);
+		synchronized (namesLock) {
+			Assert.assertNull(names);
+		}
 	}
 	
 	
@@ -344,11 +359,13 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		
 		Log.info(Log.FAC_TEST, "got a callback!");
 		
-		names = n;
-		Log.info(Log.FAC_TEST, "here are the returned names: ");
-
-		for (ContentName cn: names)
-			Log.info(Log.FAC_TEST, cn.toString()+" ("+p.toString()+cn.toString()+")");
+		synchronized (namesLock) {
+			names = n;
+			Log.info(Log.FAC_TEST, "here are the returned names: ");
+	
+			for (ContentName cn: names)
+				Log.info(Log.FAC_TEST, cn.toString()+" ("+p.toString()+cn.toString()+")");
+		}
 		
 		return 0;
 	}	
