@@ -76,7 +76,7 @@ The following options are available for all modes of *ccn_repo* except [navy]#in
  +
  +
 
-The following options are available only when starting a repository:
+The following options are available only when starting a repository. Note that these options must be specified on the command line after the specification of the [navy]#<repository_directory>#:
 
 *-log*  'LEVEL'::
      Set the logging level. 'LEVEL' must be the an acceptable Java
