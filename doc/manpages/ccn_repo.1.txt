@@ -45,7 +45,7 @@ Stop all repositories running on a single machine (each needs a different 'repos
 OPTIONS
 -------
 
-The following options are available for all modes of *ccn_repo* except [navy]#interactive#.
+The following options are available for all modes of *ccn_repo* except [navy]#interactive#:
 
 *-memory* 'memory'::
      This option adjusts the maximum amount of heap memory used by the repository.
@@ -101,6 +101,7 @@ A policy file can most usefully be used to restrict the CCNx namespace(s)
 Here's an example policy file which restricts the namespace backed by the
      repo to `/parc.com/Users/rasmussen` and `/parc.com/CCNx/documentation` as
      well as the key namespace:
++
 ...........
      <?xml version="1.0" encoding="UTF-8"?>
      <Policy>
@@ -112,6 +113,9 @@ Here's an example policy file which restricts the namespace backed by the
 	<Namespace> /ccnx.org/Users </Namespace>
      </Policy>
 ..........
++
+Note that once the *-policy* option has been used to start a repository, the specified policy becomes that repository's permanent policy. If the repository is restarted, the *-policy* option does not need to be reissued to retain the same policy. To change the policy, the repository must be restarted using the *-policy* option specifying a policy file with a different policy.
+
 *-global* 'global_prefix'::
      Sets the global name prefix for the repository (NOT the content it stores). The prefix must be globally unique.
 
