@@ -22,11 +22,16 @@ DESCRIPTION
 -----------
 The *ccn_repo* utility starts, stops and signals CCNx Java content object repositories.  This call requires a backend 'repository_directory' to store the content objects to the filesystem.  Only one repository should run on a single 'repository_directory' at any time.
 
-There are many options with this utility, the most common uses are to start, signal and stop a repository.
+The utility has several modes - it is normally started in the background, but can also be started in the foreground, allowing logging information to be seen on the console. It can also be signalled and stopped. The modes are as follows:
 
 *ccn_repo* <repository_directory>::
 This will start a content object repository in the specified directory.  Once the repository is ready, a process id will be printed to the terminal.  This pid is needed to signal this specific repository.  The repository starts as a Daemon by default.
 
+*ccn_repo* interactive <repository_directory>::
+This will start the repository in the foreground so that logging information is output to the console.
+
+*ccn_repo* signal <name> <pid>::
+This command is generally used to cause the running repository to dump the names of its stored content objects to a file.  The 'name' option can be either 'nametree' or 'nametreewide'.  'nametree' dumps the basic name tree while 'nametreewide' dumps the name tree with full name components (may be hard to read).  The 'pid' is the process id displayed when the repository was started.  The name tree file is written to the directory the repository was started with.
 *ccn_repo* signal <name> <pid>::
 This command is generally used to cause the running repository to dump the names of its stored content objects to a file.  The 'name' option can be either 'nametree' or 'nametreewide'.  'nametree' dumps the basic name tree while 'nametreewide' dumps the name tree with full name components (may be hard to read).  The 'pid' is the process id displayed when the repository was started.  The name tree file is written to the directory the repository was started with.
 
@@ -37,10 +42,10 @@ This command stops a single repository with the supplied 'pid'.
 *ccn_repo* stopall::
 Stop all repositories running on a single machine (each needs a different 'repository_directory').
 
-Other options are available for this utility, and they are listed below.
-
 OPTIONS
 -------
+
+The following options are available for all modes of *ccn_repo* except [navy]#interactive#.
 
 *-memory* 'memory'::
      This option adjusts the maximum amount of heap memory used by the repository.
@@ -67,6 +72,11 @@ OPTIONS
 
 *-debug-flags* 'flags'::
      Used to set Java properties.  For the repository, using 'REPO_EXITDUMP' will cause the repository to write out its name tree on exit without requiring a dynamic signal.
+ +
+ +
+ +
+
+The following options are available only when starting a repository:
 
 *-log*  'LEVEL'::
      Set the logging level. 'LEVEL' must be the an acceptable Java
@@ -104,19 +114,6 @@ Here's an example policy file which restricts the namespace backed by the
 ..........
 *-global* 'global_prefix'::
      Sets the global name prefix for the repository (NOT the content it stores). The prefix must be globally unique.
-
-*interactive*::
-     Starts the repository in the foreground.
-
-*stop* 'pid'::
-     Stops a specific repository with the given process id.
-
-*stopall*::
-     Stops all repositories on the local machine.
-
-*signal*::
-     Signals a repository to perform a command, such as 'nametree', which causes it to write the names of its stored content to a file in the backend directory.
-
 
 EXIT STATUS
 -----------
