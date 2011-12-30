@@ -8,7 +8,7 @@ it to a local file
 
 SYNOPSIS
 --------
-*ccngetmeta* [-unversioned] [-timeout 'millis'] [-as 'pathToKeystore'] [-ac]  'ccnxname' 'metaname' 'filename'
+*ccngetmeta* [-javaopts '<options>'] [-debug '<portno>'] [-unversioned] [-timeout 'millis'] [-as 'pathToKeystore'] [-ac]  'ccnxname' 'metaname' 'filename'
 
 DESCRIPTION
 -----------
@@ -67,6 +67,11 @@ OPTIONS
      the user is not permitted to read in a given namespace, decryption will
      fail.
 
+*-debug* 'portno'::
+	Allows attachment of an eclipse remote debugger to the utility at the specified port number.
+
+*-javaopts* 'options'::
+	Allows use of arbitrary java properties or options with the utility.
 
 EXIT STATUS
 -----------
