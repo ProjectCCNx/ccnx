@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -43,7 +43,7 @@ import static org.ccnx.ccn.impl.encoding.CCNProtocolDTags.SyncVersion;
  * to slightly different NetworkObject semantics than usual.
  */
 public class ConfigSlice extends GenericXMLEncodable {
-	
+
 	/**
 	 * Config slice lists require a ConfigSliceOp written before the
 	 * ContentName, although it does nothing. This class
@@ -199,7 +199,7 @@ public class ConfigSlice extends GenericXMLEncodable {
 	 * @param topo from ConfigSlice
 	 * @param prefix from ConfigSlice
 	 * @param filters from ConfigSlice
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public static void checkAndCreate(ContentName topo, ContentName prefix, Collection<Filter> filters, CCNHandle handle) throws ContentDecodingException, IOException {
 		ConfigSlice slice = new ConfigSlice(topo, prefix, filters);

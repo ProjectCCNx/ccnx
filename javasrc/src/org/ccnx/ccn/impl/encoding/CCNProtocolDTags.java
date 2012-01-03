@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -21,7 +21,7 @@ package org.ccnx.ccn.impl.encoding;
  * In Java, you can't control the value an enum is assigned to, so we map
  * it into an interior value. Use the XML name as the name of the enum, so
  * can map easily to strings.
- * 
+ *
  * Move from enum to final ints, in order to reduce overhead.
  */
 public class CCNProtocolDTags {
@@ -139,7 +139,7 @@ public class CCNProtocolDTags {
 	public static final int ConfigSliceList = 125;
 	public static final int ConfigSliceOp = 126;
 
-	// Remember to keep in sync with schema/tagnames.csvsdict 
+	// Remember to keep in sync with schema/tagnames.csvsdict
 	public static final int CCNProtocolDataUnit = 17702112;
 	public static final String CCNPROTOCOL_DATA_UNIT = "CCNProtocolDataUnit";
 	
@@ -150,7 +150,7 @@ public class CCNProtocolDTags {
 		"Content", "SignedInfo", "ContentDigest", "ContentHash", null, "Count", "Header",
 		"Interest", "Key", "KeyLocator", "KeyName", "Length", "Link", "LinkAuthenticator",
 		"NameComponentCount", null, null, "RootDigest", "Signature", "Start", "Timestamp", "Type",
-		"Nonce", "Scope", "Exclude", "Bloom", "BloomSeed", null, "AnswerOriginKind", 
+		"Nonce", "Scope", "Exclude", "Bloom", "BloomSeed", null, "AnswerOriginKind",
 		"InterestLifetime", null, null, null, null, "Witness", "SignatureBits", "DigestAlgorithm", "BlockSize",
 		null, "FreshnessSeconds", "FinalBlockID", "PublisherPublicKeyDigest", "PublisherCertificateDigest",
 		"PublisherIssuerKeyDigest", "PublisherIssuerCertificateDigest", "ContentObject",
@@ -170,8 +170,8 @@ public class CCNProtocolDTags {
 
 	
 	/**
-	 * This is the slow search -- find a tag based on an index. Only 
-	 * used in cases where we need to print based on a binary tag value; 
+	 * This is the slow search -- find a tag based on an index. Only
+	 * used in cases where we need to print based on a binary tag value;
 	 * this is only used in text encoding of usually binary objects... For
 	 * now, as it's rare, do a scan, rather than taking the up front hit
 	 * to build a hash table.
