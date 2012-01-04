@@ -8,13 +8,13 @@ ccn_repo - utility to start, stop and signal Java application CCNx repositories.
 SYNOPSIS
 --------
 *ccn_repo* [-memory 'memory'] [-debug 'portno'] [-output 'output_file']
-	   [-debug-daemon 'portno'] [-profile 'profile_info'] [-suspend] 
+	   [-debug-daemon 'portno'] [-profile 'profile_info'] [-suspend]
 	   [-noshare] [-debug-flags 'flags']
 	   <repository_directory>
 	   [-log 'loglevel'] [-policy <policy_file>] [-global <global_prefix>]
-	   | interactive <respository_directory> 
-	   | stop <pid> 
-	   | stopall 
+	   | interactive <respository_directory>
+	   | stop <pid>
+	   | stopall
 	   | signal <name> <pid>]
 
 
@@ -36,7 +36,7 @@ This command is generally used to cause the running repository to dump the names
 This command is generally used to cause the running repository to dump the names of its stored content objects to a file.  The 'name' option can be either 'nametree' or 'nametreewide'.  'nametree' dumps the basic name tree while 'nametreewide' dumps the name tree with full name components (may be hard to read).  The 'pid' is the process id displayed when the repository was started.  The name tree file is written to the directory the repository was started with.
 
 *ccn_repo* stop <pid>::
-This command stops a single repository with the supplied 'pid'.  
+This command stops a single repository with the supplied 'pid'.
 
 
 *ccn_repo* stopall::
@@ -49,13 +49,13 @@ The following options are available for all modes of *ccn_repo* except [navy]#in
 
 *-memory* 'memory'::
      This option adjusts the maximum amount of heap memory used by the repository.
-     Units are bytes; optionally with a letter suffix (K, M, G, ...). 
+     Units are bytes; optionally with a letter suffix (K, M, G, ...).
 
 *-debug* 'portno'::
      Allows attachment of an eclipse remote debugger to the repo at the specified port number.
 
 *-output* 'output_file'::
-     Writes the output from the repository to a file.  This has a side effect which 
+     Writes the output from the repository to a file.  This has a side effect which
             causes ccn_repo to remain running in the foreground.
 
 *-debug-daemon* 'portno'::
@@ -85,7 +85,7 @@ The following options are available only when starting a repository. Note that t
 *-policy* 'policy_file'::
 A policy file can most usefully be used to restrict the CCNx namespace(s)
      backed by this repo. It can also used to set the global prefix. A policy
-     file is an XML file which must contain a <Policy> element containing the 
+     file is an XML file which must contain a <Policy> element containing the
      following elements:
 +
 --
