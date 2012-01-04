@@ -137,7 +137,9 @@ public class CCNNetworkManager implements Runnable {
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
 	
 	// Prefix registration handling. Only one registration change (add or remove a registration) with ccnd is
-	// allowed at once. Before attempting a registration change, users must acquire _registrationChangeInProgress
+	// allowed at once. To enforce this, before attempting a registration change, users must acquire 
+	// _registrationChangeInProgress which locks access to ccnd registration across the entire face.
+	//
 	// _registeredPrefixes must be locked on read/write access of the prefixes
 	//
 	// setInterestFilter and cancelInterestFilter which may both potentially change the prefix registration with
@@ -151,6 +153,10 @@ public class CCNNetworkManager implements Runnable {
 	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
 	protected PrefixRegistrationManager _prefixMgr = null;
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
+	
+	// Note that we always acquire this semaphore "uninterruptibly". I believe the dangers of trying to allow
+	// this semaphore to be interrupted outweigh any advantage in doing that. Also I have tried as much as possible
+	// to make it impossible or at least unlikely that this semaphore can be held for a long period without being released.
 	protected Semaphore _registrationChangeInProgress = new Semaphore(1);
 	
 	// Periodic timer
@@ -928,6 +934,9 @@ public class CCNNetworkManager implements Runnable {
 	 * @param callbackHandler a CCNInterestHandler
 	 * @param registrationFlags to use for this registration.
 	 * @throws IOException 
+	 * 
+	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
+	 * serving any useful purpose.
 	 */	
 	public void setInterestFilter(Object caller, ContentName filter, Object callbackHandler,
 			Integer registrationFlags) throws IOException {
@@ -938,8 +947,7 @@ public class CCNNetworkManager implements Runnable {
 			Log.warning(Log.FAC_NETMANAGER, formatMessage("Cannot set interest filter -- key manager not ready!"));
 			throw new IOException(formatMessage("Cannot set interest filter -- key manager not ready!"));
 		}
-		// TODO - use of "caller" should be reviewed - don't believe this is currently serving
-		// serving any useful purpose.
+		
 		setupTimers();
 		if (_usePrefixReg) {
 			RegisteredPrefix prefix = null;
@@ -1008,12 +1016,14 @@ public class CCNNetworkManager implements Runnable {
 	 * @throws CCNDaemonException
 	 */
     private RegisteredPrefix registerPrefix(ContentName filter, Integer registrationFlags) throws CCNDaemonException {
-    	ForwardingEntry entry;
-    	if (null == registrationFlags) {
-			entry = _prefixMgr.selfRegisterPrefix(filter);
-		} else {
-			entry = _prefixMgr.selfRegisterPrefix(filter, null, registrationFlags, Integer.MAX_VALUE);
-		}
+    	ForwardingEntry entry = null;
+    	if (_channel.isConnected()) {
+	    	if (null == registrationFlags) {
+				entry = _prefixMgr.selfRegisterPrefix(filter);
+			} else {
+				entry = _prefixMgr.selfRegisterPrefix(filter, null, registrationFlags, Integer.MAX_VALUE);
+			}
+    	}
     	RegisteredPrefix newPrefix = null;
     	synchronized (_registeredPrefixes) {
 			newPrefix = new RegisteredPrefix(entry);
@@ -1078,8 +1088,11 @@ public class CCNNetworkManager implements Runnable {
 						if (null == _prefixMgr) {
 							_prefixMgr = new PrefixRegistrationManager(this);
 						}
-						ForwardingEntry entry = prefix._forwarding;
-						_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
+						if (_channel.isConnected()) {
+							ForwardingEntry entry = prefix._forwarding;
+							_prefixMgr.unRegisterPrefix(filter, prefix, entry.getFaceID());
+						} else
+							_registrationChangeInProgress.release();
 					} catch (CCNDaemonException e) {
 						Log.warning(Log.FAC_NETMANAGER, formatMessage("cancelInterestFilter failed with CCNDaemonException: " + e.getMessage()));
 						_registrationChangeInProgress.release();
@@ -1230,15 +1243,22 @@ public class CCNNetworkManager implements Runnable {
 					// registered to restore normal operation
 					if (_run && !wasConnected && _channel.isConnected())
 						reregisterPrefixes();
-					if (_run && !_channel.isConnected() && SystemConfiguration.EXIT_ON_NETWORK_ERROR) {
-						Log.warning(Log.FAC_NETMANAGER, 
-								formatMessage("ccnd down and exit on network error requested - exiting"));
-
-						// Note - exit is pretty drastic but this is not the default behaviour and if someone
-						// requested it, there's really no easy way to get this to happen without modifying
-						// upper level applications to learn about this. Perhaps there should be another option to
-						// do that i.e. exit netmanager and notify without immediate exit.
-						System.exit(1);
+					if (_run && !_channel.isConnected()) {
+						if (SystemConfiguration.EXIT_ON_NETWORK_ERROR) {
+							Log.warning(Log.FAC_NETMANAGER, 
+									formatMessage("ccnd down and exit on network error requested - exiting"));
+	
+							// Note - exit is pretty drastic but this is not the default behaviour and if someone
+							// requested it, there's really no easy way to get this to happen without modifying
+							// upper level applications to learn about this. Perhaps there should be another option to
+							// do that i.e. exit netmanager and notify without immediate exit.
+							System.exit(1);
+						}
+					}
+					if (!_run || !_channel.isConnected()) {
+						// This is probably OK - its better than the altenative which is that if ccnd went down while
+						// someone held the semaphore we could (potentially) hang.
+						_registrationChangeInProgress.release();
 					}
 					continue;
 				}			
@@ -1373,6 +1393,7 @@ public class CCNNetworkManager implements Runnable {
 		new Thread() {
 			public void run() {
 				TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
+				_registrationChangeInProgress.acquireUninterruptibly();
 				try {
 					synchronized (_registeredPrefixes) {
 						for (ContentName prefix : _registeredPrefixes.keySet()) {
