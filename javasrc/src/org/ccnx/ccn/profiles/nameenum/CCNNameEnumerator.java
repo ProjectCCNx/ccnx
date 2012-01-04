@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -47,7 +47,7 @@ import org.ccnx.ccn.protocol.Interest;
  * Implements the base Name Enumerator.  Applications register name prefixes.
  * Each prefix is explored until canceled by the application. This version
  * supports enumeration with multiple responders (repositories and applications).
- * 
+ *
  * An application can have multiple enumerations active at the same time.
  * For each prefix, the name enumerator will generate an Interest.  Responses
  * to the Interest will be in the form of Collections (by a
@@ -57,8 +57,8 @@ import org.ccnx.ccn.protocol.Interest;
  * that namespace.  The application is expected to handle duplicate names from
  * multiple responses and should be able to handle names that are returned, but
  * may not be available at this time (for example, /a.com/b/c.txt might have
- * been enumerated but a.com content may not be available). 
- * 
+ * been enumerated but a.com content may not be available).
+ *
  * @see CCNFilterListener
  * @see CCNInterestListener
  * @see BasicNameEnumeratorListener
@@ -70,7 +70,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 
 	protected CCNHandle _handle = null;
 	//protected ArrayList<ContentName> _registeredPrefixes = new ArrayList<ContentName>();
-	protected BasicNameEnumeratorListener callback; 
+	protected BasicNameEnumeratorListener callback;
 	protected ArrayList<ContentName> _registeredNames = new ArrayList<ContentName>();
 	protected NEHandler _neHandler;
 	
@@ -166,7 +166,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 		/**
 		 * Add a content object to the queue for processing. If we aren't running a processing
 		 * thread right now, start one.
-		 * 
+		 *
 		 * @param co
 		 */
 		protected void add(CCNContentInterest ci) {
@@ -215,7 +215,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 					if (Log.isLoggable(Level.FINE)) {
 						Log.fine("we have a match for: "+interest.name()+" ["+ interest.toString()+"]");
 					}				
-					ArrayList<Interest> newInterests = new ArrayList<Interest>(); 
+					ArrayList<Interest> newInterests = new ArrayList<Interest>();
 	
 					//we want to get new versions of this object
 					newInterest = VersioningProfile.firstBlockLatestVersionInterest(c.name(), null);
@@ -228,7 +228,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 						//no response name...  this is an error!
 						Log.warning("CCNNameEnumerator received a response without a responseID: {0} matching interest {1}", c.name(), interest.name());
 					} else {
-						//we have a response name. 
+						//we have a response name.
 	
 						//supports single component response IDs
 						//if response IDs are hierarchical, we need to avoid exploding the number of Interests we express
@@ -242,13 +242,13 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 							//the interest has a response ID in it already...  skip making new base interest
 						} else {
 							//also need to add this responder to the exclude list to find more responders
-							ContentName prefixWithMarker = 
+							ContentName prefixWithMarker =
 								new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 							Exclude excludes = interest.exclude();
 							if(excludes==null)
 								excludes = new Exclude();
 							excludes.add(new byte[][]{responseName.component(0)});
-							newInterest = Interest.constructInterest(prefixWithMarker, excludes, null, null, 4, null); 
+							newInterest = Interest.constructInterest(prefixWithMarker, excludes, null, null, 4, null);
 	
 							//check to make sure the interest isn't already expressed
 							if(!ner.containsInterest(newInterest))
@@ -300,7 +300,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	/**
 	 * CCNNameEnumerator constructor.  Creates a CCNNameEnumerator, sets the CCNHandle,
 	 * registers the callback and registers a prefix for enumeration.
-	 * 
+	 *
 	 * @param prefix ContentName to enumerate names under
 	 * @param handle CCNHandle for sending and receiving collection objects during enumeration.
 	 * @param c BasicNameEnumeratorListener callback to receive enumeration responses.
@@ -317,7 +317,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	/**
 	 * CCNNameEnumerator constructor.  Creates a CCNNameEnumerator, sets the CCNHandle, and
 	 * registers the callback.
-	 * 
+	 *
 	 * @param handle CCNHandle for sending and receiving collection objects during enumeration.
 	 * @param c BasicNameEnumeratorListener callback to receive enumeration responses.
 	 */
@@ -334,7 +334,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	/**
 	 * Method to register a prefix for name enumeration.  A NERequest and initial interest is created for new prefixes.
 	 * Prefixes that are already registered return and do not impact the already active registration.
-	 * 
+	 *
 	 * @param prefix ContentName to enumerate
 	 * @throws IOException
 	 */
@@ -353,7 +353,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 
 			Log.info("Registered Prefix: {0}", prefix);
 
-			ContentName prefixMarked = 
+			ContentName prefixMarked =
 				new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 			
 			//we have minSuffixComponents to account for sig, version, seg and digest
@@ -369,7 +369,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	 * Method to cancel active enumerations.  The active interests are retrieved from the corresponding
 	 * NERequest object for the prefix.  Each interest is canceled and the NERequest object is removed
 	 * from the list of active enumerations.
-	 * 
+	 *
 	 * @param prefix  ContentName to cancel enumeration
 	 * @return boolean Returns if the prefix is successfully canceled.
 	 */
@@ -399,18 +399,18 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	 * Callback for name enumeration responses.  The results contain CollectionObjects containing the
 	 * names under a prefix.  The collection objects are matched to registered prefixes and returned
 	 * to the calling applications using their registered callback handlers.  Each response can create
-	 * a new Interest that is used to further enumerate the namespace. The implementation 
+	 * a new Interest that is used to further enumerate the namespace. The implementation
 	 * explicitly handles multiple name enumeration responders.  The method may now create multiple
 	 * interests to further enumerate the prefix.  Please note that the current implementation will
-	 * need to be updated if responseIDs are more than one component long. 
-	 * 
+	 * need to be updated if responseIDs are more than one component long.
+	 *
 	 * @param c ContentObject containing the ContentNames under a registered prefix
 	 * @param interest The interest matching or triggering a name enumeration response
-	 * 
+	 *
 	 * @return Interest Returns a new Interest to further enumerate or null to cancel the interest
 	 * that matched these objects.  This implementation returns null since new interests are created and
 	 * expressed as the returned CollectionObjects are processed.
-	 * 
+	 *
 	 * @see CollectionObject
 	 * @see CCNInterestHandler
 	 */
@@ -438,10 +438,10 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	 * verified to have the name enumeration marker.  The NEResponse matching the interest is found (if it already exists) and if
 	 * new names have been registered under the prefix or if no matching NEResponse object is found, a name enumeration
 	 * response is created.
-	 * 
+	 *
 	 * @param interest Interest object matching the namespace filter.
-	 * 
-	 * @return boolean 
+	 *
+	 * @return boolean
 	 */
 	
 	public boolean handleInterest(Interest interest) {
@@ -532,7 +532,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 
 	/**
 	 * Method to check if a name is already registered to be included in name enumeration responses for incoming Interests.
-	 * 
+	 *
 	 * @param name ContentName to check for in registered names for responses
 	 * @return boolean Returns true if the name is registered and false if not
 	 */
@@ -552,10 +552,10 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	
 	/**
 	 * Method to register a namespace for filtering incoming Interests
-	 * 
+	 *
 	 * @param name ContentName to register for filtering incoming Interests
-	 * @throws IOException 
-	 * 
+	 * @throws IOException
+	 *
 	 * @see CCNFilterListener
 	 */
 	
@@ -571,7 +571,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	
 	/**
 	 * Method to register a name to include in incoming name enumeration requests.
-	 * 
+	 *
 	 * @param name ContentName to register for name enumeration responses
 	 */
 	
@@ -595,7 +595,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	
 	/**
 	 * Method to get the NEResponse object for a registered name.  Returns null if no matching NEResponse is found.
-	 * 
+	 *
 	 * @param n ContentName identifying a NEResponse
 	 * @return NEResponse Returns the NEResponse matching the name.
 	 */
@@ -613,7 +613,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	
 	/**
 	 * Method to set the dirty flag for NEResponse objects that are updated as new names are registered for responses.
-	 * 
+	 *
 	 * @param n New ContentName to be included in name enumeration responses
 	 */
 	
@@ -630,9 +630,9 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	/**
 	 * Method to get the corresponding NERequest for a ContentName. Returns null
 	 * if no NERequest is found.
-	 * 
+	 *
 	 * @param n ContentName for the NERequest to be found.
-	 * 
+	 *
 	 * @return NERequest NERequest instance with the supplied ContentName.
 	 *         Returns null if no NERequest exists.
 	 */
@@ -650,8 +650,8 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	/**
 	 * Method to cancel more than one prefix at a time.  This method will cancel all active Interests
 	 * matching the prefix supplied. The matching NERequest objects are removed from the set of active
-	 * registered prefixes and the corresponding Interests are canceled. 
-	 * 
+	 * registered prefixes and the corresponding Interests are canceled.
+	 *
 	 * @param prefixToCancel
 	 */
 	
