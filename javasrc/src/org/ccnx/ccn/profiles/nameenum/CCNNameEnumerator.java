@@ -214,7 +214,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 				if (c != null) {
 					if (Log.isLoggable(Level.FINE)) {
 						Log.fine("we have a match for: "+interest.name()+" ["+ interest.toString()+"]");
-					}				
+					}
 					ArrayList<Interest> newInterests = new ArrayList<Interest>();
 	
 					//we want to get new versions of this object
