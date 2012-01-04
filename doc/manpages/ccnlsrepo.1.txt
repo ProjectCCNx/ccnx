@@ -7,7 +7,7 @@ ccnlsrepo - explore content stored under a given prefix in one or more repositor
 
 SYNOPSIS
 --------
-*ccnlsrepo* 'ccnxname' [-timeout 'millis' | -c(ontinuous) ]
+*ccnlsrepo* [-javaopts '<options>'] [-debug '<portno>'] 'ccnxname' [-timeout 'millis' | -c(ontinuous) ]
 
 DESCRIPTION
 -----------
@@ -30,6 +30,12 @@ OPTIONS
 
 *-c* ::
 	Allows for a long running enumeration that outputs responses from respositories as they are received.
+
+*-debug* 'portno'::
+	Allows attachment of an eclipse remote debugger to the utility at the specified port number.
+
+*-javaopts* 'options'::
+	Allows use of arbitrary java properties or options with the utility.
 
 EXIT STATUS
 -----------

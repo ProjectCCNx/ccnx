@@ -7,7 +7,7 @@ ccnputmeta - Associate a file with CCNx Content as metadata
 
 SYNOPSIS
 --------
-*ccnputmeta* [-v] [-raw] [-unversioned] [-timeout 'millis'] [-log 'LEVEL'] 'ccnxname' 'metaname' 'filename|url'
+*ccnputmeta* [-javaopts '<options>'] [-debug '<portno>'] [-v] [-raw] [-unversioned] [-timeout 'millis'] [-log 'LEVEL'] 'ccnxname' 'metaname' 'filename|url'
 
 DESCRIPTION
 -----------
@@ -73,6 +73,12 @@ OPTIONS
 *-log* 'LEVEL'::
      Set the logging level. 'LEVEL' must be the an acceptable Java
      Logger level: either an integer or a level name (e.g. SEVERE).
+
+*-debug* 'portno'::
+	Allows attachment of an eclipse remote debugger to the utility at the specified port number.
+
+*-javaopts* 'options'::
+	Allows use of arbitrary java properties or options with the utility.
 
 EXIT STATUS
 -----------

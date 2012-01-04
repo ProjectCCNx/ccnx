@@ -7,7 +7,7 @@ ccngetfile - retrieve a file published as CCNx content and save it to a local fi
 
 SYNOPSIS
 --------
-*ccngetfile* [-unversioned] [-timeout 'millis'] [-as 'pathToKeystore'] [-ac]  'ccnxname' 'filename'
+*ccngetfile* [-javaopts '<options>'] [-debug '<portno>'] [-unversioned] [-timeout 'millis'] [-as 'pathToKeystore'] [-ac]  'ccnxname' 'filename'
 
 DESCRIPTION
 -----------
@@ -62,6 +62,11 @@ OPTIONS
      the user is not permitted to read in a given namespace, decryption will
      fail.
 
+*-debug* 'portno'::
+	Allows attachment of an eclipse remote debugger to the utility at the specified port number.
+
+*-javaopts* 'options'::
+	Allows use of arbitrary java properties or options with the utility.
 
 EXIT STATUS
 -----------

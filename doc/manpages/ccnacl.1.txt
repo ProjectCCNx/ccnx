@@ -8,11 +8,11 @@ access control of a CCNx content namespace.
 
 SYNOPSIS
 --------
-*ccnacl* [-as 'keystore'] -show 'nodeName'
+*ccnacl* [-javaopts '<options>'] [-debug '<portno>'] [-as 'keystore'] -show 'nodeName'
 
-*ccnacl* [-as 'keystore'] -edit 'nodeName' 'principalName' [null | r | rw | rw+]
+*ccnacl* [-javaopts '<options>'] [-debug '<portno>'] [-as 'keystore'] -edit 'nodeName' 'principalName' [null | r | rw | rw+]
 
-*ccnacl* [-as 'keystore'] -init 'domain' 'userNamespace' 'groupNamespace' 'principalName'
+*ccnacl* [-javaopts '<options>'] [-debug '<portno>'] [-as 'keystore'] -init 'domain' 'userNamespace' 'groupNamespace' 'principalName'
 
 DESCRIPTION
 -----------
@@ -62,6 +62,12 @@ OPTIONS
 ///////////////////////////////////////////////////////////////////////////////
 FIXME - better descr. needed for -init
 ///////////////////////////////////////////////////////////////////////////////
+
+*-debug* 'portno'::
+	Allows attachment of an eclipse remote debugger to the utility at the specified port number.
+
+*-javaopts* 'options'::
+	Allows use of arbitrary java properties or options with the utility.
 
 EXIT STATUS
 -----------

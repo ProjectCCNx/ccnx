@@ -7,7 +7,7 @@ ccnexplore - Java Swing GUI to explore content stored in repositories
 
 SYNOPSIS
 --------
-*ccnexplore* [-root 'ccnxname'] [-accessControl] [-debugMode]
+*ccnexplore* [-javaopts '<options>'] [-debug '<portno>'] [-root 'ccnxname'] [-accessControl] [-debugMode]
 
 DESCRIPTION
 -----------
@@ -35,6 +35,12 @@ OPTIONS
 
 *-debugMode*::
 	Allow the GUI to enumerate past ContentName versions and segments.  This is useful for debugging content in the repository, especially the access control content objects.
+
+*-debug* 'portno'::
+	Allows attachment of an eclipse remote debugger to the utility at the specified port number.
+
+*-javaopts* 'options'::
+	Allows use of arbitrary java properties or options with the utility.
 
 EXIT STATUS
 -----------

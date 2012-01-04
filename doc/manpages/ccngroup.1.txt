@@ -8,17 +8,17 @@ a CCNx content namespace.
 
 SYNOPSIS
 --------
-*ccngroup* [-as 'keystore'] -list
+*ccngroup* [-javaopts '<options>'] [-debug '<portno>'] [-as 'keystore'] -list
 
-*ccngroup* [-as 'keystore'] -listmembers 'groupFriendlyName'
+*ccngroup* [-javaopts '<options>'] [-debug '<portno>'] [-as 'keystore'] -listmembers 'groupFriendlyName'
 
-*ccngroup* [-as 'keystore'] -create 'groupFriendlyName' 'groupMember'...
+*ccngroup* [-javaopts '<options>'] [-debug '<portno>'] [-as 'keystore'] -create 'groupFriendlyName' 'groupMember'...
 
-*ccngroup* [-as 'keystore'] -delete 'groupFriendlyName'
+*ccngroup* [-javaopts '<options>'] [-debug '<portno>'] [-as 'keystore'] -delete 'groupFriendlyName'
 
-*ccngroup* [-as 'keystore'] -add 'groupFriendlyName' 'groupMemberToAdd'...
+*ccngroup* [-javaopts '<options>'] [-debug '<portno>'] [-as 'keystore'] -add 'groupFriendlyName' 'groupMemberToAdd'...
 
-*ccngroup* [-as 'keystore'] -remove 'groupFriendlyName' 'groupMemberToRemove'...
+*ccngroup* [-javaopts '<options>'] [-debug '<portno>'] [-as 'keystore'] -remove 'groupFriendlyName' 'groupMemberToRemove'...
 
 DESCRIPTION
 -----------
@@ -56,6 +56,12 @@ OPTIONS
 *-remove* 'groupFriendlyName' 'groupMemberToRemove'...::
 	Remove the 'groupMemberToRemove'... members from the group
 	'groupFriendlyName'.
+
+*-debug* 'portno'::
+	Allows attachment of an eclipse remote debugger to the utility at the specified port number.
+
+*-javaopts* 'options'::
+	Allows use of arbitrary java properties or options with the utility.
 
 EXIT STATUS
 -----------
