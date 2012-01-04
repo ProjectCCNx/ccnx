@@ -11,8 +11,7 @@ SYNOPSIS
 	   [-debug-daemon 'portno'] [-profile 'profile_info'] [-suspend] 
 	   [-noshare] [-debug-flags 'flags']
 	   <repository_directory>
-	   [-log 'loglevel'] [-prefix 'prefix'] [-global <global_prefix>]
-	   [-local <localname>] 
+	   [-log 'loglevel'] [-policy <policy_file>] [-global <global_prefix>]
 	   | interactive <respository_directory> 
 	   | stop <pid> 
 	   | stopall 
@@ -23,11 +22,16 @@ DESCRIPTION
 -----------
 The *ccn_repo* utility starts, stops and signals CCNx Java content object repositories.  This call requires a backend 'repository_directory' to store the content objects to the filesystem.  Only one repository should run on a single 'repository_directory' at any time.
 
-There are many options with this utility, the most common uses are to start, signal and stop a repository.
+The utility has several modes - it is normally started in the background, but can also be started in the foreground, allowing logging information to be seen on the console. It can also be signalled and stopped. The modes are as follows:
 
 *ccn_repo* <repository_directory>::
 This will start a content object repository in the specified directory.  Once the repository is ready, a process id will be printed to the terminal.  This pid is needed to signal this specific repository.  The repository starts as a Daemon by default.
 
+*ccn_repo* interactive <repository_directory>::
+This will start the repository in the foreground so that logging information is output to the console.
+
+*ccn_repo* signal <name> <pid>::
+This command is generally used to cause the running repository to dump the names of its stored content objects to a file.  The 'name' option can be either 'nametree' or 'nametreewide'.  'nametree' dumps the basic name tree while 'nametreewide' dumps the name tree with full name components (may be hard to read).  The 'pid' is the process id displayed when the repository was started.  The name tree file is written to the directory the repository was started with.
 *ccn_repo* signal <name> <pid>::
 This command is generally used to cause the running repository to dump the names of its stored content objects to a file.  The 'name' option can be either 'nametree' or 'nametreewide'.  'nametree' dumps the basic name tree while 'nametreewide' dumps the name tree with full name components (may be hard to read).  The 'pid' is the process id displayed when the repository was started.  The name tree file is written to the directory the repository was started with.
 
@@ -38,10 +42,10 @@ This command stops a single repository with the supplied 'pid'.
 *ccn_repo* stopall::
 Stop all repositories running on a single machine (each needs a different 'repository_directory').
 
-Other options are available for this utility, and they are listed below.
-
 OPTIONS
 -------
+
+The following options are available for all modes of *ccn_repo* except [navy]#interactive#:
 
 *-memory* 'memory'::
      This option adjusts the maximum amount of heap memory used by the repository.
@@ -68,32 +72,52 @@ OPTIONS
 
 *-debug-flags* 'flags'::
      Used to set Java properties.  For the repository, using 'REPO_EXITDUMP' will cause the repository to write out its name tree on exit without requiring a dynamic signal.
+ +
+ +
+ +
+
+The following options are available only when starting a repository. Note that these options must be specified on the command line after the specification of the [navy]#<repository_directory>#:
 
 *-log*  'LEVEL'::
      Set the logging level. 'LEVEL' must be the an acceptable Java
      Logger level: either an integer or a level name (e.g. SEVERE).
 
-*-prefix* 'prefix'::
-     Please note, this implementation is incomplete.  This allows you to set a single prefix for the repo namespace. The default is '/'.
+*-policy* 'policy_file'::
+A policy file can most usefully be used to restrict the CCNx namespace(s)
+     backed by this repo. It can also used to set the global prefix. A policy
+     file is an XML file which must contain a <Policy> element containing the 
+     following elements:
++
+--
+     ** <PolicyVersion> (required) must be `1.5`.
+     ** <LocalName> (required) The eventual intent of this element is a value to be used as a "friendly name" for the repository. It is currently unused by the repository but must be present in the policy file.
+     ** <GlobalPrefix> (required) The global prefix of the repo.
+     ** <Namespace> The XML file may contain any number of <Namespace>
+        elements which define the CCNx namespace backed by this repo.
+        However in practice it is required that at least one of these
+        elements define the key namespace which is by default `ccnx.org/Users`.
+--
++
+Here's an example policy file which restricts the namespace backed by the
+     repo to `/parc.com/Users/rasmussen` and `/parc.com/CCNx/documentation` as
+     well as the key namespace:
++
+...........
+     <?xml version="1.0" encoding="UTF-8"?>
+     <Policy>
+     	<PolicyVersion> 1.5 </PolicyVersion>
+	<LocalName> /ParcRepositories/TestRepository </LocalName>
+	<GlobalPrefix> parc.com/csl/ccn/repositories/TestRepository </GlobalPrefix>
+	<Namespace> /parc.com/Users/rasmussen </Namespace>
+	<Namespace> /parc.com/CCNx/documentation </Namespace>
+	<Namespace> /ccnx.org/Users </Namespace>
+     </Policy>
+..........
++
+Note that once the *-policy* option has been used to start a repository, the specified policy becomes that repository's permanent policy. If the repository is restarted, the *-policy* option does not need to be reissued to retain the same policy. To change the policy, the repository must be restarted using the *-policy* option specifying a policy file with a different policy.
 
 *-global* 'global_prefix'::
-     Sets the global name prefix for the repository (NOT the content it stores).
-
-*-local* 'local_prefix'::
-     Sets the local name prefix for the repository (NOT the content it stores).
-
-*interactive*::
-     Starts the repository in the foreground.
-
-*stop* 'pid'::
-     Stops a specific repository with the given process id.
-
-*stopall*::
-     Stops all repositories on the local machine.
-
-*signal*::
-     Signals a repository to perform a command, such as 'nametree', which causes it to write the names of its stored content to a file in the backend directory.
-
+     Sets the global name prefix for the repository (NOT the content it stores). The prefix must be globally unique.
 
 EXIT STATUS
 -----------

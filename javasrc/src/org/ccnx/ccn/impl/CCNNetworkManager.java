@@ -242,8 +242,6 @@ public class CCNNetworkManager implements Runnable {
             long minInterestRefreshTime = PERIOD + ourTime;
 				
 			// Re-express interests that need to be re-expressed
-            // TODO Interest refresh time is supposed to "decay" over time but there are currently
-    		// unresolved problems with this.
 			try {
 				for (Entry<InterestRegistration> entry : _myInterests.values()) {
 					InterestRegistration reg = entry.value();
@@ -252,7 +250,8 @@ public class CCNNetworkManager implements Runnable {
                             if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
                                     Log.finer(Log.FAC_NETMANAGER, "Refresh interest: {0}", reg.interest);
                             _lastHeartbeat = ourTime;
-                            reg.nextRefresh = ourTime + reg.nextRefreshPeriod;
+                            reg.nextRefresh = ourTime + SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT;
+;
                             try {
                                 write(reg.interest);
                         } catch (NotYetConnectedException nyce) {
@@ -460,7 +459,6 @@ public class CCNNetworkManager implements Runnable {
 	protected class InterestRegistration extends CallbackHandlerRegistration {
 		public final Interest interest;
 		protected long nextRefresh;		// next time to refresh the interest
-		protected long nextRefreshPeriod = SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT;	// period to wait before refresh
 		protected ContentObject content;
 
 		// All internal client interests must have an owner
@@ -471,7 +469,7 @@ public class CCNNetworkManager implements Runnable {
 			if (null == handler) {
 				sema = new Semaphore(0);
 			}
-			nextRefresh = System.currentTimeMillis() + nextRefreshPeriod;
+			nextRefresh = System.currentTimeMillis() + SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT;
 		}
 		
 		/**
