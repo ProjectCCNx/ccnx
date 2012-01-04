@@ -7,7 +7,7 @@ ccnputfile - publish a file as CCNx content
 
 SYNOPSIS
 --------
-*ccnputfile* [-v] [-raw] [-unversioned] [-local] [-timeout 'millis'] [-log 'LEVEL'] [-as 'pathToKeystore'] [-ac]  'ccnxname' 'filename|url'
+*ccnputfile* [-javaopts '<options>'] [-debug '<portno>'] [-v] [-raw] [-unversioned] [-local] [-timeout 'millis'] [-log 'LEVEL'] [-as 'pathToKeystore'] [-ac]  'ccnxname' 'filename|url'
 
 DESCRIPTION
 -----------
@@ -82,6 +82,11 @@ OPTIONS
      content is encrypted according to the access control list in force at the
      node where the content is stored.
 
+*-debug* 'portno'::
+	Allows attachment of an eclipse remote debugger to the utility at the specified port number.
+
+*-javaopts* 'options'::
+	Allows use of arbitrary java properties or options with the utility.
 
 EXIT STATUS
 -----------
