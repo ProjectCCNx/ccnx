@@ -302,6 +302,12 @@ public class NetworkTest extends CCNTestBase {
 		Log.info(Log.FAC_TEST, "Completed testFlood");
 	}
 
+	/**
+	 * Test that when we cancel an interest and the interest is satisfied during the cancel, side affects
+	 * from handling the interest are not allowed to keep the interest alive.
+	 *
+	 * @throws Exception
+	 */
 	@Test
 	public void testCancelAtomicity() throws Exception {
 		CancelTestInterestHandler ctih = new CancelTestInterestHandler();
@@ -374,9 +380,11 @@ public class NetworkTest extends CCNTestBase {
 		public Interest handleContent(ContentObject data, Interest interest) {
 			gotData = true;
 			cancelSema.release();
-			while (!cancelWait) {
+			int timeToWait = TEST_TIMEOUT;
+			while (!cancelWait && timeToWait > 0) {
 				try {
 					Thread.sleep(50);
+					timeToWait -=50;
 				} catch (InterruptedException e) {
 					break;
 				}
