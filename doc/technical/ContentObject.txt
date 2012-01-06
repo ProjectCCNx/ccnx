@@ -4,7 +4,7 @@ CCNx Content Object
 == Source references
 link:xsd.html[ccnx.xsd] is the xml schema that describes what the xml rendition of ccn data (including ContentObject messages) should look like.
 
-link:xsd.html[ccnx.xsd] is a dtd that should describe the same, in a less strongly-typed fashion.
+link:dtd.html[ccnx.dtd] is a dtd that should describe the same, in a less strongly-typed fashion.
 
 link:DTAG.html[tagname.csvdict] contains the mapping between the DTAG values used in the binary encoding and the element names used in the XML representation.
 
