@@ -324,7 +324,7 @@ public class NetworkTest extends CCNTestBase {
 			cancelWait = true;
 		}
 		gotData = false;
-		putHandle.cancelInterest(interest, ctch);
+		getHandle.cancelInterest(interest, ctch);
 		cancelSema.release();
 		putHandle.checkError(CANCEL_TEST_TIMEOUT);
 		Assert.assertFalse("Interest was totally cancelled", gotData);

@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -57,24 +57,24 @@ import org.ccnx.ccn.protocol.WirePacket;
  * The low level interface to ccnd. This provides the main data API between the java library
  * and ccnd. Access to ccnd can be either via TCP or UDP. This is controlled by the
  * SystemConfiguration.AGENT_PROTOCOL property and currently defaults to TCP.
- * 
+ *
  * The write API is implemented by methods of this class but users should typically access these via the
  * CCNHandle API rather than directly.
  *
  * The read API is implemented in a thread that continuously reads from ccnd. Whenever the thread reads
- * a complete packet, it calls back a handler or handlers that have been previously setup by users. Since 
- * there is only one callback thread, users must take care to avoid slow or blocking processing directly 
- * within the callback. This is similar to the restrictions on the event dispatching thread in Swing. The 
+ * a complete packet, it calls back a handler or handlers that have been previously setup by users. Since
+ * there is only one callback thread, users must take care to avoid slow or blocking processing directly
+ * within the callback. This is similar to the restrictions on the event dispatching thread in Swing. The
  * setup of callback handlers should also normally be done via the CCNHandle API.
- * 
+ *
  * The class also has a separate timer process which is used to refresh unsatisfied interests and to
  * keep UDP connections alive by sending a heartbeat packet at regular intervals.
- * 
+ *
  * The class attempts to notice when a ccnd has died and to reconnect to a ccnd when it is restarted.
- * 
+ *
  * It also handles the low level output "tap" functionality - this allows inspection or logging of
  * all the communications with ccnd.
- * 
+ *
  */
 public class CCNNetworkManager implements Runnable {
 
@@ -89,13 +89,13 @@ public class CCNNetworkManager implements Runnable {
 	public static final String KEEPALIVE_NAME = "/HereIAm";
 	public static final int THREAD_LIFE = 8;	// in seconds
 	public static final int MAX_PAYLOAD = 8800; // number of bytes in UDP payload
-	
+
 	// These are to make log messages from CCNNetworkManager intelligable when
 	// there are multiple managers running
 	protected final static AtomicInteger _managerIdCount = new AtomicInteger(0);
 	protected final int _managerId;
 	protected final String _managerIdString;
-	
+
 	/**
 	 *  Definitions for which network protocol to use.  This allows overriding
 	 *  the current default.
@@ -118,7 +118,7 @@ public class CCNNetworkManager implements Runnable {
 	protected CCNDIdGetter _getter = null;
 
 	protected Thread _thread = null; // the main processing thread
-	
+
 	protected CCNNetworkChannel _channel = null;
 	protected boolean _run = true;
 
@@ -135,9 +135,9 @@ public class CCNNetworkManager implements Runnable {
 	// Tables of interests/filters
 	protected InterestTable<InterestRegistration> _myInterests = new InterestTable<InterestRegistration>();
 	protected InterestTable<Filter> _myFilters = new InterestTable<Filter>();
-	
+
 	// Prefix registration handling. Only one registration change (add or remove a registration) with ccnd is
-	// allowed at once. To enforce this, before attempting a registration change, users must acquire 
+	// allowed at once. To enforce this, before attempting a registration change, users must acquire
 	// _registrationChangeInProgress which locks access to ccnd registration across the entire face.
 	//
 	// _registeredPrefixes must be locked on read/write access of the prefixes
@@ -153,23 +153,27 @@ public class CCNNetworkManager implements Runnable {
 	protected boolean _usePrefixReg = DEFAULT_PREFIX_REG;
 	protected PrefixRegistrationManager _prefixMgr = null;
 	protected TreeMap<ContentName, RegisteredPrefix> _registeredPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
-	
+
 	// Note that we always acquire this semaphore "uninterruptibly". I believe the dangers of trying to allow
 	// this semaphore to be interrupted outweigh any advantage in doing that. Also I have tried as much as possible
 	// to make it impossible or at least unlikely that this semaphore can be held for a long period without being released.
 	protected Semaphore _registrationChangeInProgress = new Semaphore(1);
-	
+
 	// Periodic timer
 	protected Timer _periodicTimer = null;
 	protected Object _timersSetupLock = new Object();
 	protected Boolean _timersSetup = false;
-	
+
 	// Attempt to break up non returning handlers
 	protected boolean _inHandler = false;
 	protected long _timeForThisHandler;
 	protected long _currentHandler = 0;
 	protected long _lastHandler = -1;
-	
+
+	// Atomic cancel
+	protected InterestRegistration _beingDelivered = null;
+	protected Object _beingDeliveredLock = new Object();
+
 	/**
 	 * Keep track of prefixes that are actually registered with ccnd (as opposed to Filters used
 	 * to dispatch interests). There may be several filters for each registered prefix.
@@ -178,7 +182,7 @@ public class CCNNetworkManager implements Runnable {
 		private int _refCount = 0;
 		private ForwardingEntry _forwarding = null;
 		// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
-		// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+		// to understand this.  This isn't a problem for now because the lifetime we request when we register a
 		// prefix we use Integer.MAX_VALUE as the requested lifetime.
 		private long _lifetime = -1; // in seconds
 		protected long _nextRefresh = -1;
@@ -197,14 +201,14 @@ public class CCNNetworkManager implements Runnable {
 		 * complete during the setInterestFilter call but we don't wait for deregistration to
 		 * complete during cancelInterestFilter. This is because we need to insure that we see
 		 * interests for our prefix after a registration, but we don't need to worry about spurious
-		 * interests arriving after a deregistration because they can't be delivered anyway. However 
-		 * to insure registrations are done correctly, we must wait for a pending deregistration 
+		 * interests arriving after a deregistration because they can't be delivered anyway. However
+		 * to insure registrations are done correctly, we must wait for a pending deregistration
 		 * to complete before starting another registration or deregistration.
 		 */
-		public Interest handleContent(ContentObject data, Interest interest) {		
+		public Interest handleContent(ContentObject data, Interest interest) {
 			synchronized (_registeredPrefixes) {
 				if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE))
-					Log.fine(Log.FAC_NETMANAGER, "Cancel registration completed for {0}", 
+					Log.fine(Log.FAC_NETMANAGER, "Cancel registration completed for {0}",
 							_forwarding.getPrefixName());
 				_registeredPrefixes.remove(_forwarding.getPrefixName());
 			}
@@ -220,8 +224,9 @@ public class CCNNetworkManager implements Runnable {
 	 * refresh them here yet. At some point this should be fixed.
 	 */
 	private class PeriodicWriter extends TimerTask {
-		public void run() {	
-			boolean refreshError = false;			
+		@Override
+		public void run() {
+			boolean refreshError = false;
 			if (_protocol == NetworkProtocol.UDP) {
 				if (!_channel.isConnected()) {
                     //we are not connected.  reconnect attempt is in the heartbeat function...
@@ -240,7 +245,7 @@ public class CCNNetworkManager implements Runnable {
 
             long ourTime = System.currentTimeMillis();
             long minInterestRefreshTime = PERIOD + ourTime;
-				
+
 			// Re-express interests that need to be re-expressed
             // TODO Interest refresh time is supposed to "decay" over time but there are currently
     		// unresolved problems with this.
@@ -262,7 +267,7 @@ public class CCNNetworkManager implements Runnable {
 					if (minInterestRefreshTime > reg.nextRefresh)
 						minInterestRefreshTime = reg.nextRefresh;
 				}
-				
+
 			} catch (ContentEncodingException xmlex) {
                 Log.severe(Log.FAC_NETMANAGER, "PeriodicWriter interest refresh thread failure (Malformed datagram): {0}", xmlex.getMessage());
                 Log.warningStackTrace(xmlex);
@@ -309,25 +314,25 @@ public class CCNNetworkManager implements Runnable {
 						}	// for (Entry<Filter> entry: _myFilters.values())
 				}	// synchronized (_myFilters)
 			} // _usePrefixReg */
-        	
+
         	if (refreshError) {
                 Log.warning(Log.FAC_NETMANAGER, "we have had an error when refreshing an interest or prefix registration...  do we need to reconnect to ccnd?");
         	}
-        	
+
 			long currentTime = System.currentTimeMillis();
-        	
+
         	// Try to bring back the run thread if its hung
         	// TODO - do we want to keep this in permanently?
         	if (_inHandler) {
         		if (_currentHandler == _lastHandler) {
 	        		long delta = currentTime - _timeForThisHandler;
 	        		if (delta > SystemConfiguration.MAX_TIMEOUT) {
-	        			
+
 	        			// Print out what the thread was doing first
 	        			Throwable t = new Throwable("Handler took too long to return - stack trace follows");
 	        			t.setStackTrace(_thread.getStackTrace());
 	        			Log.logStackTrace(Log.FAC_NETMANAGER, Level.SEVERE, t);
-	        			
+
 	        			_thread.interrupt();
 	        		}
         		} else {
@@ -348,7 +353,7 @@ public class CCNNetworkManager implements Runnable {
 				checkPrefixDelay = 0;
 			if (checkPrefixDelay > PERIOD)
 				checkPrefixDelay = PERIOD;
-			
+
 			long useMe;
 			if (checkInterestDelay < checkPrefixDelay) {
 				useMe = checkInterestDelay;
@@ -362,8 +367,8 @@ public class CCNNetworkManager implements Runnable {
 				if ((currentTime - _lastHeartbeat) >= CCNNetworkChannel.HEARTBEAT_PERIOD) {
 					_lastHeartbeat = currentTime;
 					_channel.heartbeat();
-				}				
-	
+				}
+
 				//now factor in heartbeat time
 				long timeToHeartbeat = CCNNetworkChannel.HEARTBEAT_PERIOD - (currentTime - _lastHeartbeat);
 				if (useMe > timeToHeartbeat)
@@ -377,17 +382,17 @@ public class CCNNetworkManager implements Runnable {
 				_periodicTimer.schedule(new PeriodicWriter(), useMe);
 		} /* run */
 	} /* private class PeriodicWriter extends TimerTask */
-	
+
 	/**
-	 * First time startup of processing thread and periodic timer after first registration. We do this 
-	 * after the first registration rather than at startup, because in some cases network managers get 
+	 * First time startup of processing thread and periodic timer after first registration. We do this
+	 * after the first registration rather than at startup, because in some cases network managers get
 	 * created (via a CCNHandle) that are never used. We don't want to burden the JVM with more processing
 	 * until we are sure we are going to be used (which can't happen until there is a registration,
 	 * either of an interest in which case we expect to receive matching data, or of a prefix in
 	 * which case we expect to receive interests).
-	 * 
+	 *
 	 * We don't bother to "unstartup" if everything is deregistered
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	private void setupTimers() throws IOException {
 		synchronized (_timersSetupLock) {
@@ -395,14 +400,14 @@ public class CCNNetworkManager implements Runnable {
 				// Create main processing thread
 				_thread = new Thread(this, "CCNNetworkManager " + _managerId);
 				_thread.start();
-				
+
 				_timersSetup = true;
 				_channel.init();
 				if (_protocol == NetworkProtocol.UDP) {
 					_channel.heartbeat();
 					_lastHeartbeat = System.currentTimeMillis();
 				}
-				
+
 				// Create timer for periodic behavior
 				_periodicTimer = new Timer(true);
 				_periodicTimer.schedule(new PeriodicWriter(), PERIOD);
@@ -416,10 +421,12 @@ public class CCNNetworkManager implements Runnable {
 		protected Object handler;
 		public Semaphore sema = null;	//used to block thread waiting for data or null if none
 		public Object owner = null;
-		
-		/** Equality based on handler if present, so multiple objects can 
+		public boolean cancelled = false;
+
+		/** Equality based on handler if present, so multiple objects can
 		 *  have the same interest registered without colliding
 		 */
+		@Override
 		public boolean equals(Object obj) {
 			if (obj instanceof CallbackHandlerRegistration) {
 				CallbackHandlerRegistration other = (CallbackHandlerRegistration)obj;
@@ -433,7 +440,8 @@ public class CCNNetworkManager implements Runnable {
 			}
 			return false;
 		}
-		
+
+		@Override
 		public int hashCode() {
 			if (null != this.handler) {
 				if (null != owner) {
@@ -451,10 +459,10 @@ public class CCNNetworkManager implements Runnable {
 	 * Record of Interest
 	 * This is the mechanism that calls a user contentHandler when a ContentObject
 	 * that matches their interest is received by the network manager.
-	 * 
-	 * handler must be set (non-null) for cases of standing Interest that holds 
-	 * until canceled by the application.  The listener should be null when a 
-	 * thread is blocked waiting for data, in which case the thread will be 
+	 *
+	 * handler must be set (non-null) for cases of standing Interest that holds
+	 * until canceled by the application.  The listener should be null when a
+	 * thread is blocked waiting for data, in which case the thread will be
 	 * blocked on semaphore.
 	 */
 	protected class InterestRegistration extends CallbackHandlerRegistration {
@@ -465,7 +473,7 @@ public class CCNNetworkManager implements Runnable {
 
 		// All internal client interests must have an owner
 		public InterestRegistration(Interest i, Object h, Object owner) {
-			interest = i; 
+			interest = i;
 			handler = h;
 			this.owner = owner;
 			if (null == handler) {
@@ -473,11 +481,14 @@ public class CCNNetworkManager implements Runnable {
 			}
 			nextRefresh = System.currentTimeMillis() + nextRefreshPeriod;
 		}
-		
+
 		/**
 		 * Deliver content to a registered handler
 		 */
 		public void deliver(ContentObject co) {
+			synchronized (_beingDeliveredLock) {
+				_beingDelivered = this;
+			}
 			try {
 				if (null != this.handler) {
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
@@ -491,12 +502,12 @@ public class CCNNetworkManager implements Runnable {
 					// Possibly we should optimize here for the case where the same interest is returned back
 					// (now we would unregister it, then reregister it) but need to be careful that the timing
 					// behavior is right if we do that
-					if (null != updatedInterest) {
+					if (null != updatedInterest && !cancelled) {
 						if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER) )
 							Log.finer(Log.FAC_NETMANAGER, "Interest callback: updated interest to express: {0}", updatedInterest.name());
 						// if we want to cancel this one before we get any data, we need to remember the
 						// updated interest in the handler
-						expressInterest(this.owner, updatedInterest, handler);					
+						expressInterest(this.owner, updatedInterest, handler);
 					}
 				} else {
 					// This is the "get" case
@@ -511,7 +522,7 @@ public class CCNNetworkManager implements Runnable {
 							if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 								Log.finest(Log.FAC_NETMANAGER, "releasing {0}", this.sema);
 							this.sema.release();
-						} 
+						}
 					}
 					if (null == this.sema) {
 						// this is no longer valid registration
@@ -524,12 +535,16 @@ public class CCNNetworkManager implements Runnable {
 				Log.warning(Log.FAC_NETMANAGER, "failed to deliver data: {0}", ex);
 				Log.warningStackTrace(ex);
 			}
+
+			synchronized (_beingDeliveredLock) {
+				_beingDelivered = null;
+			}
 		}
 
 	} /* protected class InterestRegistration extends CallbackHandlerRegistration */
 
 	/**
-	 * Record of a filter describing portion of namespace for which this 
+	 * Record of a filter describing portion of namespace for which this
 	 * application can respond to interests. Used to deliver incoming interests
 	 * to registered interest handlers
 	 */
@@ -537,7 +552,7 @@ public class CCNNetworkManager implements Runnable {
 		protected Interest interest = null; // interest to be delivered
 		// extra interests to be delivered: separating these allows avoidance of ArrayList obj in many cases
 		protected ContentName prefix = null;
-		
+
 		public Filter(ContentName n, Object h, Object o) {
 			prefix = n; handler = h; owner = o;
 		}
@@ -572,7 +587,7 @@ public class CCNNetworkManager implements Runnable {
 		KeyManager _keyManager;
 
 		@SuppressWarnings("unused")
-		public CCNDIdGetter(CCNNetworkManager networkManager, KeyManager keyManager) { 
+		public CCNDIdGetter(CCNNetworkManager networkManager, KeyManager keyManager) {
 			_networkManager = networkManager;
 			_keyManager = keyManager;
 		}
@@ -610,7 +625,7 @@ public class CCNNetworkManager implements Runnable {
 	public CCNNetworkManager(KeyManager keyManager) throws IOException {
 		_managerId = _managerIdCount.incrementAndGet();
 		_managerIdString = "NetworkManager " + _managerId + ": ";
-		
+
 		if (null == keyManager) {
 			// Unless someone gives us one later, we won't be able to register filters. Log this.
 			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO) )
@@ -634,7 +649,7 @@ public class CCNNetworkManager implements Runnable {
 			_host = hostval;
 			Log.warning(Log.FAC_NETMANAGER, formatMessage("Non-standard CCN agent host " + _host + " per property " + PROP_AGENT_HOST));
 		}
-		
+
 		_protocol = SystemConfiguration.AGENT_PROTOCOL;
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO) )
@@ -652,7 +667,7 @@ public class CCNNetworkManager implements Runnable {
 			"-" + secs + "-" + msecs;
 			setTap(unique_tapname);
 		}
-		
+
 		_channel = new CCNNetworkChannel(_host, _port, _protocol, _tapStreamIn);
 		_ccndId = null;
 		_channel.open();
@@ -663,7 +678,7 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public void shutdown() {
 		Log.info(Log.FAC_NETMANAGER, formatMessage("Shutdown requested"));
-		
+
 		_run = false;
 		if (_periodicTimer != null)
 			_periodicTimer.cancel();
@@ -675,19 +690,19 @@ public class CCNNetworkManager implements Runnable {
 			} catch (IOException io) {
 				// Ignore since we're shutting down
 			}
-			
+
 			try {
 				_channel.close();
 			} catch (IOException io) {
 				// Ignore since we're shutting down
 			}
 		}
-		
+
 		// Print the statistics for this network manager
 		if (SystemConfiguration.DUMP_NETMANAGER_STATS)
 			System.out.println(getStats().toString());
 	}
-	
+
 	@Override
 	protected void finalize() throws Throwable {
 		try {
@@ -707,7 +722,7 @@ public class CCNNetworkManager implements Runnable {
 	public NetworkProtocol getProtocol() {
 		return _protocol;
 	}
-	
+
 	/**
 	 * Turns on writing of all packets to a file for test/debug
 	 * Overrides any previous setTap or environment/property setting.
@@ -737,9 +752,9 @@ public class CCNNetworkManager implements Runnable {
 
 	/**
 	 * Get the CCN Name of the 'ccnd' we're connected to.
-	 * 
+	 *
 	 * @return the CCN Name of the 'ccnd' this CCNNetworkManager is connected to.
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public PublisherPublicKeyDigest getCCNDId() throws IOException {
 		/*
@@ -772,14 +787,14 @@ public class CCNNetworkManager implements Runnable {
 	}
 
 	/**
-	 * 
+	 *
 	 */
 	public KeyManager getKeyManager() {
 		return _keyManager;
 	}
 
 	/**
-	 * 
+	 *
 	 */
 	public void setKeyManager(KeyManager manager) {
 		_keyManager = manager;
@@ -787,16 +802,16 @@ public class CCNNetworkManager implements Runnable {
 
 	/**
 	 * Write content to ccnd
-	 * 
+	 *
 	 * @param co the content
 	 * @return the same content that was passed into the method
-	 * 
+	 *
 	 * TODO - code doesn't actually throw either of these exceptions but need to fix upper
 	 * level code to compensate when they are removed.
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public ContentObject put(ContentObject co) throws IOException, InterruptedException {	
+	public ContentObject put(ContentObject co) throws IOException, InterruptedException {
 		_stats.increment(StatsEnum.Puts);
 
 		try {
@@ -810,7 +825,7 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * get content matching an interest from ccnd. Expresses an interest, waits for ccnd to
 	 * return matching the data, then removes the interest and returns the data to the caller.
-	 * 
+	 *
 	 * @param interest	the interest
 	 * @param timeout	time to wait for return in ms
 	 * @return	ContentObject or null on timeout
@@ -846,12 +861,12 @@ public class CCNNetworkManager implements Runnable {
 		// Typically the main processing thread will have registered the interest
 		// which must be undone here, but no harm if never registered
 		unregisterInterest(reg);
-		return reg.content; 
+		return reg.content;
 	}
 
 	/**
 	 * We express interests to the ccnd and register them within the network manager
-	 * 
+	 *
 	 * @param caller 	must not be null
 	 * @param interest 	the interest
 	 * @param handler	handler to callback on receipt of data
@@ -865,7 +880,7 @@ public class CCNNetworkManager implements Runnable {
 		// serving any useful purpose.
 		if (null == handler) {
 			throw new NullPointerException(formatMessage("expressInterest: callbackHandler cannot be null"));
-		}		
+		}
 
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("expressInterest: {0}"), interest);
@@ -886,7 +901,7 @@ public class CCNNetworkManager implements Runnable {
 
 	/**
 	 * Cancel this query
-	 * 
+	 *
 	 * @param caller 	must not be null
 	 * @param interest
 	 * @param handler
@@ -902,11 +917,17 @@ public class CCNNetworkManager implements Runnable {
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 			Log.fine(Log.FAC_NETMANAGER, formatMessage("cancelInterest: {0}"), interest.name());
 		// Remove interest from repeated presentation to the network.
-		unregisterInterest(caller, interest, handler);
+		InterestRegistration reg = unregisterInterest(caller, interest, handler);
+
+		// Make sure potential remnants of cancelled interest are also cancelled
+		synchronized (_beingDeliveredLock) {
+			if (null != _beingDelivered  && _beingDelivered.equals(reg))
+				_beingDelivered.cancelled = true;
+		}
 	}
 
 	/**
-	 * Register a standing interest filter with callback to receive any 
+	 * Register a standing interest filter with callback to receive any
 	 * matching interests seen. Any interests whose prefix completely matches "filter" will
 	 * be delivered to the handler. Also if this filter matches no currently registered
 	 * prefixes, register its prefix with ccnd.
@@ -914,18 +935,18 @@ public class CCNNetworkManager implements Runnable {
 	 * @param caller 	must not be null
 	 * @param filter	ContentName containing prefix of interests to match
 	 * @param handler 	a CCNInterestHandler
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, Object handler) throws IOException {
 		setInterestFilter(caller, filter, handler, null);
 	}
 
 	/**
-	 * Register a standing interest filter with callback to receive any 
+	 * Register a standing interest filter with callback to receive any
 	 * matching interests seen. Any interests whose prefix completely matches "filter" will
 	 * be delivered to the handler. Also if this filter matches no currently registered
 	 * prefixes, register its prefix with ccnd.
-	 * 
+	 *
 	 * Note that this is mismatched with deregistering prefixes. When registering, we wait for the
 	 * registration to complete before continuing, but when deregistering we don't.
 	 *
@@ -933,11 +954,11 @@ public class CCNNetworkManager implements Runnable {
 	 * @param filter	ContentName containing prefix of interests to match
 	 * @param callbackHandler a CCNInterestHandler
 	 * @param registrationFlags to use for this registration.
-	 * @throws IOException 
-	 * 
+	 * @throws IOException
+	 *
 	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
 	 * serving any useful purpose.
-	 */	
+	 */
 	public void setInterestFilter(Object caller, ContentName filter, Object callbackHandler,
 			Integer registrationFlags) throws IOException {
 
@@ -947,7 +968,7 @@ public class CCNNetworkManager implements Runnable {
 			Log.warning(Log.FAC_NETMANAGER, formatMessage("Cannot set interest filter -- key manager not ready!"));
 			throw new IOException(formatMessage("Cannot set interest filter -- key manager not ready!"));
 		}
-		
+
 		setupTimers();
 		if (_usePrefixReg) {
 			RegisteredPrefix prefix = null;
@@ -965,7 +986,7 @@ public class CCNNetworkManager implements Runnable {
 					prefix._refCount++;
 				}
 			}
-			
+
 			if (null == prefix) {
 				// We don't want to hold the _registeredPrefixes lock here, but we're safe to change things
 				// because we have acquired _registrationChangeInProgress.
@@ -991,11 +1012,11 @@ public class CCNNetworkManager implements Runnable {
 		newOne = new Filter(filter, callbackHandler, caller);
 		_myFilters.add(filter, newOne);
 	}
-	
+
 	/**
 	 * Get current list of prefixes that are actually registered on the face associated with this
 	 * netmanager
-	 * 
+	 *
 	 * @return the list of prefixes as an ArrayList of ContentNames
 	 */
 	public ArrayList<ContentName> getRegisteredPrefixes() {
@@ -1010,7 +1031,7 @@ public class CCNNetworkManager implements Runnable {
 
 	/**
 	 * Register a prefix with ccnd.
-	 * 
+	 *
 	 * @param filter
 	 * @param registrationFlags
 	 * @throws CCNDaemonException
@@ -1029,7 +1050,7 @@ public class CCNNetworkManager implements Runnable {
 			newPrefix = new RegisteredPrefix(entry);
 			_registeredPrefixes.put(filter, newPrefix);
 			// FIXME: The lifetime of a prefix is returned in seconds, not milliseconds.  The refresh code needs
-			// to understand this.  This isn't a problem for now because the lifetime we request when we register a 
+			// to understand this.  This isn't a problem for now because the lifetime we request when we register a
 			// prefix we use Integer.MAX_VALUE as the requested lifetime.
 			if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINE) )
 				Log.fine(Log.FAC_NETMANAGER, "registerPrefix for {0}: entry.lifetime: {1} entry.faceID: {2}", filter, entry.getLifetime(), entry.getFaceID());
@@ -1111,19 +1132,19 @@ public class CCNNetworkManager implements Runnable {
 	/**
 	 * Merge prefixes so we only add a new one when it doesn't have a
 	 * common ancestor already registered.
-	 * 
+	 *
 	 * Must be called with _registeredPrefixes locked
-	 * 
+	 *
 	 * We decided that if we are registering a prefix that already has another prefix that
 	 * is an descendant of it registered, we won't bother to now deregister that prefix because
 	 * it would be complicated to do that and doesn't hurt anything.
-	 * 
+	 *
 	 * Notes on efficiency: First of all I'm not sure how important efficiency is in this routine
 	 * because it may not be too common to have many different prefixes registered. Currently we search
 	 * all prefixes until we see one that is past the one we want to register before deciding there are
 	 * none that encapsulate it. There may be a more efficient way to code this that is still correct but
 	 * I haven't come up with it.
-	 * 
+	 *
 	 * @param prefix
 	 * @return prefix that incorporates or matches this one or null if none found
 	 */
@@ -1150,7 +1171,7 @@ public class CCNNetworkManager implements Runnable {
 	 * Write an interest directly to ccnd
 	 * Don't do this unless you know what you are doing! See CCNHandle.expressInterest for the proper
 	 * way to output interests to the network.
-	 *  
+	 *
 	 * @param interest
 	 * @throws ContentEncodingException
 	 */
@@ -1169,11 +1190,11 @@ public class CCNNetworkManager implements Runnable {
 				int result = _channel.write(datagram);
 				if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 					Log.finest(Log.FAC_NETMANAGER, formatMessage("Wrote datagram (" + datagram.position() + " bytes, result " + result + ")"));
-				
+
 				if( result < bytes.length ) {
 					_stats.increment(StatsEnum.WriteUnderflows);
 					if( Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO) )
-						Log.info(Log.FAC_NETMANAGER, 
+						Log.info(Log.FAC_NETMANAGER,
 								formatMessage("Wrote datagram {0} bytes to channel, but packet was {1} bytes"),
 								result,
 								bytes.length);
@@ -1190,7 +1211,7 @@ public class CCNNetworkManager implements Runnable {
 		} catch (IOException io) {
 			_stats.increment(StatsEnum.WriteErrors);
 
-			// We do not see errors on send typically even if 
+			// We do not see errors on send typically even if
 			// agent is gone, so log each but do not track
 			Log.warning(Log.FAC_NETMANAGER, formatMessage("Error sending packet: " + io.toString()));
 		}
@@ -1198,8 +1219,8 @@ public class CCNNetworkManager implements Runnable {
 
 	/**
 	 * Internal registration of interest to callback for matching data relationship.
-	 * 
-	 * @throws IOException 
+	 *
+	 * @throws IOException
 	 */
 	private InterestRegistration registerInterest(InterestRegistration reg) throws IOException {
 		// Add to standing interests table
@@ -1210,16 +1231,20 @@ public class CCNNetworkManager implements Runnable {
 		return reg;
 	}
 
-	private void unregisterInterest(Object caller, Interest interest, Object handler) {
+	private InterestRegistration unregisterInterest(Object caller, Interest interest, Object handler) {
 		InterestRegistration reg = new InterestRegistration(interest, handler, caller);
-		unregisterInterest(reg);
+		return unregisterInterest(reg);
 	}
-	
+
 	/**
 	 * @param reg - registration to unregister
 	 */
-	private void unregisterInterest(InterestRegistration reg) {
-		_myInterests.remove(reg.interest, reg);
+	private InterestRegistration unregisterInterest(InterestRegistration reg) {
+		InterestRegistration result = reg;
+		Entry<InterestRegistration> entry = _myInterests.remove(reg.interest, reg);
+		if (null != entry)
+			result = entry.value();
+		return result;
 	}
 
 	/**
@@ -1245,9 +1270,9 @@ public class CCNNetworkManager implements Runnable {
 						reregisterPrefixes();
 					if (_run && !_channel.isConnected()) {
 						if (SystemConfiguration.EXIT_ON_NETWORK_ERROR) {
-							Log.warning(Log.FAC_NETMANAGER, 
+							Log.warning(Log.FAC_NETMANAGER,
 									formatMessage("ccnd down and exit on network error requested - exiting"));
-	
+
 							// Note - exit is pretty drastic but this is not the default behaviour and if someone
 							// requested it, there's really no easy way to get this to happen without modifying
 							// upper level applications to learn about this. Perhaps there should be another option to
@@ -1261,10 +1286,10 @@ public class CCNNetworkManager implements Runnable {
 						_registrationChangeInProgress.release();
 					}
 					continue;
-				}			
+				}
 				_currentHandler++;
 				_inHandler = true;	// Do in this order
-				
+
 				if (packet instanceof ContentObject) {
 					_stats.increment(StatsEnum.ReceiveObject);
 					ContentObject co = (ContentObject)packet;
@@ -1272,7 +1297,7 @@ public class CCNNetworkManager implements Runnable {
 						Log.finer(Log.FAC_NETMANAGER, formatMessage("Data from net for port: " + _port + " {0}"), co.name());
 
 					//	SystemConfiguration.logObject("Data from net:", co);
-					
+
 					deliverContent(co);
 				} else if (packet instanceof Interest) {
 					_stats.increment(StatsEnum.ReceiveInterest);
@@ -1331,7 +1356,7 @@ public class CCNNetworkManager implements Runnable {
 			_stats.addSample(StatsEnum.ContentHandlerTime, System.nanoTime() - startTime);
 		}
 	}
-	
+
 	/**
 	 * Diagnostic routine to get a handler stack trace in time of suspected problem
 	 */
@@ -1342,7 +1367,7 @@ public class CCNNetworkManager implements Runnable {
 			Log.logStackTrace(Log.FAC_NETMANAGER, Level.SEVERE, t);
 		}
 	}
-	
+
 	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) throws IOException {
 		try {
 			ContentName serviceKeyName = new ContentName(ServiceDiscoveryProfile.localServiceName(ServiceDiscoveryProfile.CCND_SERVICE_NAME), KeyProfile.KEY_NAME_COMPONENT);
@@ -1386,11 +1411,12 @@ public class CCNNetworkManager implements Runnable {
 	 * Since this is called internally from the network manager run loop, but it needs to make use of
 	 * the network manager to correctly process the reregistration, we run the reregistration in a
 	 * separate thread
-	 * 
-	 * @throws IOException 
+	 *
+	 * @throws IOException
 	 */
 	private void reregisterPrefixes() {
 		new Thread() {
+			@Override
 			public void run() {
 				TreeMap<ContentName, RegisteredPrefix> newPrefixes = new TreeMap<ContentName, RegisteredPrefix>();
 				_registrationChangeInProgress.acquireUninterruptibly();
@@ -1408,28 +1434,28 @@ public class CCNNetworkManager implements Runnable {
 				} catch (CCNDaemonException cde) {}
 			}
 		}.start();
-	}	
-	
+	}
+
 	// ==============================================================
 	// Statistics
-	
+
 	protected CCNEnumStats<StatsEnum> _stats = new CCNEnumStats<StatsEnum>(StatsEnum.Puts);
 
 	public CCNStats getStats() {
 		return _stats;
 	}
-	
+
 	public enum StatsEnum implements IStatsEnum {
 		// ====================================
 		// Just edit this list, dont need to change anything else
-		
+
 		Puts ("ContentObjects", "The number of put calls"),
 		Gets ("ContentObjects", "The number of get calls"),
 		WriteInterest ("calls", "The number of calls to write(Interest)"),
 		WriteObject ("calls", "The number of calls to write(ContentObject)"),
 		WriteErrors ("count", "Error count for writeInner()"),
 		WriteUnderflows ("count", "The count of times when the bytes written to the channel < buffer size"),
-		
+
 		ExpressInterest ("calls", "The number of calls to expressInterest"),
 		CancelInterest ("calls", "The number of calls to cancelInterest"),
 		DeliverInterest ("calls", "The number of calls to deliverInterest"),
@@ -1438,7 +1464,7 @@ public class CCNNetworkManager implements Runnable {
 		DeliverContentMatchingInterests ("calls", "Count of the number of calls to content handlers"),
 		DeliverContentFailed ("calls", "The number of content deliveries that failed"),
 		DeliverInterestFailed ("calls", "The number of interest deliveries that failed"),
-		
+
 		InterestHandlerTime("nanos", "The average amount of time spent in interest handlers"),
 		ContentHandlerTime("nanos", "The average amount of time spent in content handlers"),
 
@@ -1446,13 +1472,13 @@ public class CCNNetworkManager implements Runnable {
 		ReceiveInterest ("interests", "Receive count of Interests from channel"),
 		ReceiveUnknown ("calls", "Receive count of unknown type from channel"),
 		ReceiveErrors ("errors", "Number of errors from the channel in run() loop"),
-		
+
 		ContentObjectsIgnored ("ContentObjects", "The number of ContentObjects that are never handled"),
 		;
 
 		// ====================================
 		// This is the same for every user of IStatsEnum
-		
+
 		protected final String _units;
 		protected final String _description;
 		protected final static String [] _names;
@@ -1490,7 +1516,7 @@ public class CCNNetworkManager implements Runnable {
 			return _names;
 		}
 	}
-	
+
 	protected String formatMessage(String message) {
 		return _managerIdString + message;
 	}
