@@ -17,9 +17,13 @@
 package org.ccnx.ccn.impl.encoding;
 
 /**
- * Defines the API of an XML dictionary
+ * Defines the API of an XML dictionary.
+ * 
+ * We use an interface because Java can only extend one base class.  If we want
+ * the dictionary provider to be a network object, we need to do this as
+ * an interface not an abstract base class.
  */
-public abstract class XMLDictionary {
-	abstract public Long stringToTag(String tag);
-	abstract public String tagToString(long tagVal);
+public interface XMLDictionary {
+	public Long stringToTag(String tag);
+	public String tagToString(long tagVal);
 }

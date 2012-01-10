@@ -31,7 +31,7 @@ import org.ccnx.ccn.impl.support.Log;
  * This type encapsulates a dictionary loaded from a file.
  * @see BinaryXMLCodec
  */
-public class FileBinaryXMLDictionary extends XMLDictionary {
+public class FileBinaryXMLDictionary implements XMLDictionary {
 	
 	// Should not necessarily tie this to CCN...
 	protected static String DEFAULT_DICTIONARY_RESNAME = "tagname.csvdict";

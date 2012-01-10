@@ -19,15 +19,17 @@ package org.ccnx.ccn.impl.encoding;
 /**
  * Uses the CCNProtocolDTags enum type to implement a dictionary.
  */
-public class CCNProtocolDictionary extends  XMLDictionary {
+public class CCNProtocolDictionary implements  XMLDictionary {
 	
 	private static CCNProtocolDictionary _defaultInstance = new CCNProtocolDictionary();
 	
 	public static CCNProtocolDictionary getDefaultInstance() { return _defaultInstance; }
 	
+	/**
+	 * Use getDefaultInstance()
+	 */
 	private CCNProtocolDictionary() {}
 
-	@Override
 	public Long stringToTag(String tag) {
 		Long tagVal = null;
 		try {
@@ -45,7 +47,6 @@ public class CCNProtocolDictionary extends  XMLDictionary {
 	 * This is the slow way, but we should only have to do this if printing things
 	 * out as text...
 	 */
-	@Override
 	public String tagToString(long tagVal) {
 		return CCNProtocolDTags.tagToString(tagVal);
 	}
