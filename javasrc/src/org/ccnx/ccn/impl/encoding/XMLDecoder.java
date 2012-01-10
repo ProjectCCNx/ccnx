@@ -304,4 +304,9 @@ public interface XMLDecoder {
 	 * @return returns the removed dictionary
 	 */
 	public XMLDictionary popXMLDictionary();
+	
+	/**
+	 * Get the decoder's input stream - needed for error recovery
+	 */
+	public InputStream getInputStream();
 }

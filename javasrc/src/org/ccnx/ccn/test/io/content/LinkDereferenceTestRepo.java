@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -71,7 +71,7 @@ public class LinkDereferenceTestRepo {
 			// save multiple versions of the same object.
 			data[i] = new CCNStringObject(stringName, 
 											"Value " + i, SaveType.REPOSITORY, writeHandle);
-			System.out.println("Saving as version " + version);
+			Log.info(Log.FAC_TEST, "Saving as version " + version);
 			data[i].save(version);
 			version.increment(1); // avoid version collisions
 		}
@@ -93,19 +93,20 @@ public class LinkDereferenceTestRepo {
 	
 	@Test
 	public void testDereference() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Starting testDereference");
+
 		Link versionedLink = new Link(data[1].getVersionedName());
 		
 		// Should get back a segment, ideally first, of that specific version.
 		ContentObject versionedTarget = versionedLink.dereference(SystemConfiguration.getDefaultTimeout(), readHandle);
-		Log.info("Dereferenced link {0}, retrieved content {1}", versionedLink, ((null == versionedTarget) ? "null" : versionedTarget.name()));
+		Log.info(Log.FAC_TEST, "Dereferenced link {0}, retrieved content {1}", versionedLink, ((null == versionedTarget) ? "null" : versionedTarget.name()));
 		Assert.assertNotNull(versionedTarget);
 		Assert.assertTrue(versionedLink.targetName().isPrefixOf(versionedTarget.name()));
 		Assert.assertTrue(SegmentationProfile.isFirstSegment(versionedTarget.name()));
 		
 		Link unversionedLink = new Link(data[1].getBaseName(), "unversioned", null);
 		ContentObject unversionedTarget = unversionedLink.dereference(SystemConfiguration.getDefaultTimeout(), readHandle);
-		Log.info("Dereferenced link {0}, retrieved content {1}", unversionedLink, ((null == unversionedTarget) ? "null" : unversionedTarget.name()));
+		Log.info(Log.FAC_TEST, "Dereferenced link {0}, retrieved content {1}", unversionedLink, ((null == unversionedTarget) ? "null" : unversionedTarget.name()));
 		Assert.assertNotNull(unversionedTarget);
 		Assert.assertTrue(unversionedLink.targetName().isPrefixOf(unversionedTarget.name()));
 		Assert.assertTrue(data[data.length-1].getVersionedName().isPrefixOf(unversionedTarget.name()));
@@ -113,32 +114,43 @@ public class LinkDereferenceTestRepo {
 		
 		Link bigDataLink = new Link(bigData, "big", new LinkAuthenticator(new PublisherID(writeHandle.keyManager().getDefaultKeyID())));
 		ContentObject bigDataTarget = bigDataLink.dereference(SystemConfiguration.getDefaultTimeout(), readHandle);
-		Log.info("BigData: Dereferenced link " + bigDataLink + ", retrieved content " + ((null == bigDataTarget) ? "null" : bigDataTarget.name()));
+		Log.info(Log.FAC_TEST, "BigData: Dereferenced link " + bigDataLink + ", retrieved content " + ((null == bigDataTarget) ? "null" : bigDataTarget.name()));
 		Assert.assertNotNull(bigDataTarget);
 		Assert.assertTrue(bigDataLink.targetName().isPrefixOf(bigDataTarget.name()));
 		Assert.assertTrue(SegmentationProfile.isFirstSegment(bigDataTarget.name()));
+		
+		Log.info(Log.FAC_TEST, "Completed testDereference");
 	}
 	
 	@Test
 	public void testMissingTarget() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Starting testMissingTarget");
+
 		Link linkToNowhere = new Link(testHelper.getTestChildName("testMissingTarget", "linkToNowhere"));
 		ContentObject nothing = linkToNowhere.dereference(SystemConfiguration.SHORT_TIMEOUT, readHandle);
 		Assert.assertNull(nothing);
+		
+		Log.info(Log.FAC_TEST, "Completed testMissingTarget");
 	}
 	
 	@Test
 	public void testWrongPublisher() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testWrongPublisher");
+
 		byte [] fakePublisher = new byte[PublisherID.PUBLISHER_ID_LEN];
 		PublisherID wrongPublisher = new PublisherID(new PublisherPublicKeyDigest(fakePublisher));
 		
 		Link linkToWrongPublisher = new Link(bigData, new LinkAuthenticator(wrongPublisher));
 		ContentObject nothing = linkToWrongPublisher.dereference(SystemConfiguration.SHORT_TIMEOUT, readHandle);
 		Assert.assertNull(nothing);
+		
+		Log.info(Log.FAC_TEST, "Completed testWrongPublisher");
 	}
 	
 	@Test
 	public void testLinkToUnversioned() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLinkToUnversioned");
+
 		// test dereferencing link to unversioned data.
 		CCNRepositoryWriter writer = new CCNRepositoryWriter(writeHandle);
 		ContentName unversionedDataName = testHelper.getTestChildName("testLinkToUnversioned", "UnversionedBigData");
@@ -147,14 +159,18 @@ public class LinkDereferenceTestRepo {
 
 		Link uvBigDataLink = new Link(unversionedDataName, "big", new LinkAuthenticator(new PublisherID(writeHandle.keyManager().getDefaultKeyID())));
 		ContentObject bigDataTarget = uvBigDataLink.dereference(SystemConfiguration.SETTABLE_SHORT_TIMEOUT, readHandle);
-		Log.info("BigData: Dereferenced link " + uvBigDataLink + ", retrieved content " + ((null == bigDataTarget) ? "null" : bigDataTarget.name()));
+		Log.info(Log.FAC_TEST, "BigData: Dereferenced link " + uvBigDataLink + ", retrieved content " + ((null == bigDataTarget) ? "null" : bigDataTarget.name()));
 		Assert.assertNotNull(bigDataTarget);
 		Assert.assertTrue(uvBigDataLink.targetName().isPrefixOf(bigDataTarget.name()));
 		Assert.assertTrue(SegmentationProfile.isFirstSegment(bigDataTarget.name()));
+		
+		Log.info(Log.FAC_TEST, "Completed testLinkToUnversioned");
 	}
 
 	@Test
 	public void testAutomatedDereferenceForStreams() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testAutomatedDereferenceForStreams");
+
 		Link bigDataLink = new Link(bigData, "big", new LinkAuthenticator(new PublisherID(writeHandle.keyManager().getDefaultKeyID())));
 		LinkObject bigDataLinkObject = new LinkObject(testHelper.getTestChildName("testAutomatedDereferenceForStreams", "bigDataLink"), bigDataLink, SaveType.REPOSITORY, writeHandle);
 		bigDataLinkObject.save();
@@ -166,21 +182,25 @@ public class LinkDereferenceTestRepo {
 		CCNReader reader = new CCNReader(readHandle);
 		byte [] bigDataReadback = reader.getVersionedData(bigDataLinkObject.getVersionedName(), null, SystemConfiguration.getDefaultTimeout());
 		byte [] bdrdigest = CCNDigestHelper.digest(bigDataReadback);
-		Log.info("Read back big data via link, got " + bigDataReadback.length + 
+		Log.info(Log.FAC_TEST, "Read back big data via link, got " + bigDataReadback.length + 
 				" bytes of an expected " + bigDataLength + ", digest match? " + (0 == DataUtils.compare(bdrdigest, bigValueDigest)));
 		Assert.assertEquals(bigDataLength, bigDataReadback.length);
 		Assert.assertArrayEquals(bdrdigest, bigValueDigest);
 		
 		byte [] bigDataReadback2 = reader.getVersionedData(twoHopLinkObject.getBaseName(), null, SystemConfiguration.getDefaultTimeout());
 		byte [] bdr2digest = CCNDigestHelper.digest(bigDataReadback);
-		Log.info("Read back big data via two links, got " + bigDataReadback2.length + 
+		Log.info(Log.FAC_TEST, "Read back big data via two links, got " + bigDataReadback2.length + 
 				" bytes of an expected " + bigDataLength + ", digest match? " + (0 == DataUtils.compare(bdr2digest, bigValueDigest)));
 		Assert.assertEquals(bigDataLength, bigDataReadback2.length);
-		Assert.assertArrayEquals(bdr2digest, bigValueDigest);	 
+		Assert.assertArrayEquals(bdr2digest, bigValueDigest);
+		
+		Log.info(Log.FAC_TEST, "Completed testAutomatedDereferenceForStreams");
 	}
 
 	@Test
 	public void testAutomatedDereferenceForObjects() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testAutomatedDereferenceForObjects");
+
 		Link versionedLink = new Link(data[1].getVersionedName());
 		LinkObject versionedLinkObject = new LinkObject(testHelper.getTestChildName("testAutomatedDereferenceForObjects", "versionedLink"), versionedLink, SaveType.REPOSITORY, writeHandle);
 		versionedLinkObject.save();
@@ -221,11 +241,15 @@ public class LinkDereferenceTestRepo {
 		Assert.assertNotNull(twoHopReadObject.getDereferencedLink().getDereferencedLink());
 		Assert.assertEquals(twoHopReadObject.getDereferencedLink().getDereferencedLink(), twoHopLinkObject);
 		
+		Log.info(Log.FAC_TEST, "Completed testAutomatedDereferenceForObjects");
+		
 	}
 	
 
 	@Test
 	public void testAutomatedDereferenceForGone() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testAutomatedDereferenceForGone");
+
 		Link versionedLink = new Link(gone.getVersionedName());
 		LinkObject versionedLinkObject = 
 			new LinkObject(testHelper.getTestChildName("testAutomatedDereferenceForGone", "versionedLink"), 
@@ -269,6 +293,6 @@ public class LinkDereferenceTestRepo {
 		Assert.assertNotNull(twoHopReadObject.getDereferencedLink().getDereferencedLink());
 		Assert.assertEquals(twoHopReadObject.getDereferencedLink().getDereferencedLink(), twoHopLinkObject);
 		
+		Log.info(Log.FAC_TEST, "Completed testAutomatedDereferenceForGone");		
 	}
-
 }

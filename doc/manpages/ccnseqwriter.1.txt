@@ -7,7 +7,7 @@ ccnseqwriter - Send data from stdin using ccn versioning and segmentation.
 
 SYNOPSIS
 --------
-*ccnseqwriter* [-h] [-b 'blocksize'] 'ccnx:/some/uri'
+*ccnseqwriter* [-h] [-b 'blocksize'] [-r] 'ccnx:/some/uri'
 
 DESCRIPTION
 -----------
@@ -16,7 +16,7 @@ of data.
 The argument is a CCNx URI to be used for the newly signed data; appropriate
 versioning and segmentation will be added.
 
-No attempt is made to save the data in a repository, so if nothing expresses
+Unless the "-r" option is used, no attempt is made to save the data in a repository, so if nothing expresses
 interest in the data, *ccnseqwriter* will simply wait forever.
 
 OPTIONS
@@ -27,6 +27,10 @@ OPTIONS
 *-b* 'blocksize'::
 	Use given blocksize instead of the default (1024 bytes).
 	The maximum size allowed is 4096 bytes.
+
+*-r*::
+	Generate a start-write request to a repository.
+	The start-write is not scoped, so a remote repository may answer.
 
 EXIT STATUS
 -----------

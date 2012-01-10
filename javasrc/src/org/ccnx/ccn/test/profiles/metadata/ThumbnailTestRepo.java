@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.io.RepositoryFileOutputStream;
 import org.ccnx.ccn.io.content.CCNStringObject;
@@ -73,6 +74,8 @@ public class ThumbnailTestRepo extends CCNTestBase {
 	
 	@Test
 	public void testThumbnails() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testThumbnails");
+
 		byte [] fakeImageData1 = "xxx".getBytes();
 		ContentName thumbNailBase = ContentName.fromNative(testHelper.getTestNamespace("testThumbnails"), "thumbnailBaseFile");
 		CCNStringObject cso = new CCNStringObject(thumbNailBase, "thumbNailBase", CCNFlowControl.SaveType.REPOSITORY, putHandle);
@@ -83,7 +86,7 @@ public class ThumbnailTestRepo extends CCNTestBase {
 		ContentName thumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(),
 					SystemConfiguration.LONG_TIMEOUT, putHandle);
 		
-		System.out.println("Check that we can retrieve a simple thumbnail");
+		Log.info(Log.FAC_TEST, "Check that we can retrieve a simple thumbnail");
 		RepositoryFileOutputStream thumbImage1 = new RepositoryFileOutputStream(thumbName, putHandle);
 		thumbImage1.write(fakeImageData1, 0, fakeImageData1.length);
 		thumbImage1.close();
@@ -91,7 +94,7 @@ public class ThumbnailTestRepo extends CCNTestBase {
 				SystemConfiguration.LONG_TIMEOUT, putHandle);
 		checkData(checkThumbName, fakeImageData1);
 		
-		System.out.println("Check that we can retrieve a second version of a thumbnail");
+		Log.info(Log.FAC_TEST, "Check that we can retrieve a second version of a thumbnail");
 		byte [] fakeImageData2 = "yyy".getBytes();
 		ContentName thumbName2 = VersioningProfile.updateVersion(checkThumbName);
 		RepositoryFileOutputStream thumbImage2 = new RepositoryFileOutputStream(thumbName2, putHandle);
@@ -102,7 +105,7 @@ public class ThumbnailTestRepo extends CCNTestBase {
 				SystemConfiguration.LONG_TIMEOUT, putHandle);
 		checkData(checkThumbName, fakeImageData2);
 		
-		System.out.println("Check that we can retrieve a thumbnail associated with a second version of a file");
+		Log.info(Log.FAC_TEST, "Check that we can retrieve a thumbnail associated with a second version of a file");
 		cso = new CCNStringObject(thumbNailBase, "thumbNailBase", CCNFlowControl.SaveType.REPOSITORY, putHandle);
 		cso.save();
 		cso.close();
@@ -115,7 +118,7 @@ public class ThumbnailTestRepo extends CCNTestBase {
 		checkThumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(), SystemConfiguration.LONG_TIMEOUT, putHandle);
 		checkData(checkThumbName, fakeImageData3);
 		
-		System.out.println("Check that we can retrieve a second thumbnail associated with a second version of a file");
+		Log.info(Log.FAC_TEST, "Check that we can retrieve a second thumbnail associated with a second version of a file");
 		byte [] fakeImageData4 = "fff".getBytes();
 		thumbName2 = VersioningProfile.updateVersion(checkThumbName);
 		RepositoryFileOutputStream thumbImage4 = new RepositoryFileOutputStream(thumbName2, putHandle);
@@ -125,9 +128,11 @@ public class ThumbnailTestRepo extends CCNTestBase {
 		checkThumbName = ThumbnailProfile.getLatestVersion(thumbNailBase, "image.png".getBytes(), SystemConfiguration.LONG_TIMEOUT, putHandle);
 		checkData(checkThumbName, fakeImageData4);
 
-		System.out.println("Check that we can retrieve the correct thumbnail associated with an arbitrary version of a file");
+		Log.info(Log.FAC_TEST, "Check that we can retrieve the correct thumbnail associated with an arbitrary version of a file");
 		checkThumbName = ThumbnailProfile.getLatestVersion(origVersion, "image.png".getBytes(), SystemConfiguration.LONG_TIMEOUT, putHandle);
-		checkData(checkThumbName, fakeImageData2);	
+		checkData(checkThumbName, fakeImageData2);
+		
+		Log.info(Log.FAC_TEST, "Completed testThumbnails");
 	}
 	
 	private void checkData(ContentName name, byte[] check) throws IOException {
@@ -137,5 +142,4 @@ public class ThumbnailTestRepo extends CCNTestBase {
 		Assert.assertArrayEquals(buffer, check);
 		input.close();		
 	}
-
 }

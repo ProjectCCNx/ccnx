@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.protocol;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
@@ -77,6 +78,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	protected Integer _answerOriginKind = null;
 	protected Integer _scope;
+	protected byte[] _interestLifetime = null;		// For now we don't have the ability to set an interest lifetime
 	protected byte[] _nonce;
 
 	public long userTime;
@@ -133,6 +135,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public Integer childSelector() { return _childSelector;}
 	public void childSelector(int childSelector) { _childSelector = childSelector; }
+	
+	public byte[] interestLifetime() { return _interestLifetime;}
+	public void interestLifetime(byte[] interestLifetime) { _interestLifetime = interestLifetime; }
 	
 	public Integer answerOriginKind() { 
 		if (null == _answerOriginKind) {
@@ -226,35 +231,39 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			if (null != maxSuffixComponents() && lengthDiff > maxSuffixComponents()) {
 				//Log.fine("Interest match failed: " + lengthDiff + " more than the " + maxSuffixComponents() + " components between expected " +
 				//		name() + " and tested " + name);
-				if(Log.isLoggable(Level.FINE))
-					Log.fine("Interest match failed: {0} more than the {1} components between expected {2} and tested {3}",lengthDiff, maxSuffixComponents(), name(), name);
+				if(Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
+					Log.fine(Log.FAC_ENCODING, "Interest match failed: {0} more than the {1} components between expected {2} and tested {3}",lengthDiff, maxSuffixComponents(), name(), name);
 				return false;
 			}
 			if (null != minSuffixComponents() && lengthDiff < minSuffixComponents()) {
 				//Log.fine("Interest match failed: " + lengthDiff + " less than the " + minSuffixComponents() + " components between expected " +
 				//		name() + " and tested " + name);
-				if(Log.isLoggable(Level.FINE))
-					Log.fine("Interest match failed: {0} less than the {1} components between expected {2} and tested {3}",lengthDiff, minSuffixComponents(), name(), name);
+				if(Log.isLoggable(Log.FAC_ENCODING, Level.FINE))
+					Log.fine(Log.FAC_ENCODING, "Interest match failed: {0} less than the {1} components between expected {2} and tested {3}",lengthDiff, minSuffixComponents(), name(), name);
 				return false;
 			}
 		}
 		if (null != exclude()) {
 			if (exclude().match(name.component(name().count()))) {
-				Log.finest("Interest match failed. {0} has been excluded", name);
+				if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+					Log.finest(Log.FAC_ENCODING, "Interest match failed. {0} has been excluded", name);
 				return false;
 			}
 		}
 		if (null != publisherID()) {
 			if (null == resultPublisherKeyID) {
-				Log.finest("Interest match failed, target {0} doesn't specify a publisherID and we require a particular one.", name);
+				if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+					Log.finest(Log.FAC_ENCODING, "Interest match failed, target {0} doesn't specify a publisherID and we require a particular one.", name);
 				return false; 
 			}
 			// Should this be more general?
 			// TODO DKS handle issuer
-			Log.finest("Interest match handed off to trust manager for name: {0}", name);
+			if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+				Log.finest(Log.FAC_ENCODING, "Interest match handed off to trust manager for name: {0}", name);
 			return TrustManager.getTrustManager().matchesRole(publisherID(), resultPublisherKeyID);
-		} 
-		Log.finest("Interest match succeeded to name: {0}", name);
+		}
+		if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
+			Log.finest(Log.FAC_ENCODING, "Interest match succeeded to name: {0}", name);
 		return true;
 	}
 	
@@ -499,16 +508,16 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		if (decoder.peekStartElement(CCNProtocolDTags.Scope)) {
 			_scope = decoder.readIntegerElement(CCNProtocolDTags.Scope);
 		}
+
+		if (decoder.peekStartElement(CCNProtocolDTags.InterestLifetime)) {
+			_interestLifetime = decoder.readBinaryElement(CCNProtocolDTags.InterestLifetime);
+		}
 		
 		if (decoder.peekStartElement(CCNProtocolDTags.Nonce)) {
 			_nonce = decoder.readBinaryElement(CCNProtocolDTags.Nonce);
 		}
 		
-		try {
-			decoder.readEndElement();
-		} catch (ContentDecodingException e) {
-			Log.info("Catching exception reading Interest end element, and moving on. Waiting for schema updates...");
-		}
+		decoder.readEndElement();
 	}
 
 	public void encode(XMLEncoder encoder) throws ContentEncodingException {
@@ -609,6 +618,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		result = prime * result
 				+ ((_publisher == null) ? 0 : _publisher.hashCode());
 		result = prime * result + ((_scope == null) ? 0 : _scope.hashCode());
+		result = prime * result + Arrays.hashCode(_interestLifetime);
 		result = prime * result + Arrays.hashCode(_nonce);
 		return result;
 	}
@@ -697,9 +707,22 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 			clone.childSelector(childSelector());
 		if (null != _answerOriginKind)
 			clone.answerOriginKind(answerOriginKind());
+		if (null != _interestLifetime)
+			clone.interestLifetime(interestLifetime());
 		if (null != _scope)
 			clone.scope(scope());
 		return clone;
 	}
 
+	@SuppressWarnings("serial")
+	public static class NoResponseException extends IOException {
+		protected Interest interest;
+		public NoResponseException(Interest i) {
+			super(i.toString());
+			interest = i;
+		}
+		public Interest getInterest() {
+			return interest;
+		}
+	}
 }

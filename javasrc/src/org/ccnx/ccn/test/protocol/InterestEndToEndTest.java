@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -18,8 +18,11 @@
 package org.ccnx.ccn.test.protocol;
 
 import java.io.IOException;
-import org.ccnx.ccn.CCNFilterListener;
-import org.ccnx.ccn.CCNInterestListener;
+
+import org.ccnx.ccn.CCNContentHandler;
+import org.ccnx.ccn.CCNInterestHandler;
+import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.ConcurrencyUtils.Waiter;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -35,43 +38,46 @@ import org.junit.Test;
  * Requires a running ccnd
  *
  */
-public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterListener, CCNInterestListener {
+public class InterestEndToEndTest extends LibraryTestBase implements CCNInterestHandler, CCNContentHandler {
 	private Interest _interestSent;
 	private String _prefix = "/interestEtoETest/test-" + rand.nextInt(10000);
 	private final static int TIMEOUT = 3000;
 	
-	private int count = 0;
+	private int interestCount = 0;
 
 	
 	@Test
 	public void testInterestEndToEnd() throws MalformedContentNameStringException, IOException, InterruptedException {
+		Log.info(Log.FAC_TEST, "Starting testInterestEndToEnd");
+
 		getHandle.registerFilter(ContentName.fromNative(_prefix), this);
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
 		doTest(1);
-		System.out.println("count: "+count);
+		System.out.println("count: "+interestCount);
 
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
 		_interestSent.maxSuffixComponents(4);
 		_interestSent.minSuffixComponents(3);
 		doTest(2);
-		System.out.println("count: "+count);
+		System.out.println("count: "+interestCount);
 
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest2"));
 		_interestSent.maxSuffixComponents(1);
 		doTest(3);
-		System.out.println("count: "+count);
+		System.out.println("count: "+interestCount);
 
 		getHandle.unregisterFilter(ContentName.fromNative(_prefix), this);
 		_interestSent = new Interest(ContentName.fromNative(_prefix + "/simpleTest"));
-		doTestFail(3);
-		System.out.println("count: "+count);
-
+		doTestFail(4);
+		System.out.println("count: "+interestCount);
+		
+		Log.info(Log.FAC_TEST, "Completed testInterestEndToEnd");
 	}
 
 	public boolean handleInterest(Interest interest) {
 		Assert.assertTrue(_interestSent.equals(interest));
 		synchronized(this) {
-			count++;
+			interestCount++;
 			notify();
 		}
 		return true;
@@ -86,33 +92,35 @@ public class InterestEndToEndTest extends LibraryTestBase implements CCNFilterLi
 	private void doTest(int c) throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		synchronized (this) {
-			try {
-				wait(TIMEOUT);
-			} catch (InterruptedException e) {
-				System.out.println("interrupted...  check the count and time");
-			}
-		}
+		doWait(c);
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
-		System.out.println("doTest time: "+duration+" and count:" +count +" should be "+c);
-		Assert.assertTrue(count == c);
+		System.out.println("doTest time: "+duration+" and count:" +interestCount +" should be "+c);
+		Assert.assertTrue(interestCount == c);
 		Assert.assertTrue(duration < TIMEOUT + (int)(TIMEOUT*0.1));
 	}
 
 	private void doTestFail(int c) throws IOException, InterruptedException {
 		long startTime = System.currentTimeMillis();
 		putHandle.expressInterest(_interestSent, this);
-		synchronized (this) {
-			wait(TIMEOUT);
-		}
+		doWait(c);
 		long stopTime = System.currentTimeMillis();
 		long duration = stopTime - startTime;
-		System.out.println("doTestFail time: "+duration+" and count:" +count +" should be "+c);
+		System.out.println("doTestFail time: "+duration+" and count:" +interestCount +" should not be "+c);
 
-		Assert.assertTrue(count == c);
+		Assert.assertTrue(interestCount != c);
 		//could be slightly less, no guarantees.  API says "more or less" after timeout
 		Assert.assertFalse(duration < TIMEOUT - (int)(TIMEOUT*0.01));
 	}
-
+	
+	private void doWait(int c) {
+		try {
+			new Waiter(TIMEOUT) {
+				@Override
+				protected boolean check(Object o, Object check) throws Exception {
+					return (Integer)check == interestCount;
+				}
+			}.wait(this, c);
+		} catch (Exception e) {} // Can't happen
+	}
 }

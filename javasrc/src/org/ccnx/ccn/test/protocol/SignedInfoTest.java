@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -30,6 +30,7 @@ import junit.framework.Assert;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -108,6 +109,8 @@ public class SignedInfoTest {
 	
 	@Test
 	public void testTypes() {
+		Log.info(Log.FAC_TEST, "Starting testTypes");
+
 		Assert.assertEquals(SignedInfo.nameToType(SignedInfo.typeToName(ContentType.LINK)), SignedInfo.ContentType.LINK);
 		Assert.assertEquals(SignedInfo.nameToType(SignedInfo.typeToName(ContentType.KEY)), SignedInfo.ContentType.KEY);
 		Assert.assertEquals(SignedInfo.nameToType(SignedInfo.typeToName(ContentType.DATA)), SignedInfo.ContentType.DATA);
@@ -125,10 +128,14 @@ public class SignedInfoTest {
 		byte [] key = new byte[3];
 		System.arraycopy(SignedInfo.KEY_VAL, 0, key, 0, key.length);
 		Assert.assertEquals(SignedInfo.valueToType(key), SignedInfo.ContentType.KEY);
+		
+		Log.info(Log.FAC_TEST, "Completed testTypes");
 	}
 
 	@Test
 	public void testDecodeInputStream() {
+		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
+
 		SignedInfo nca = new SignedInfo(
 				pubkey, 
 				CCNTime.now(), 
@@ -155,6 +162,6 @@ public class SignedInfoTest {
 		SignedInfo bdcca = new SignedInfo();
 		XMLEncodableTester.encodeDecodeTest("SignedInfo(cert)", cca, dcca, bdcca);
 		
+		Log.info(Log.FAC_TEST, "Completed testDecodeInputStream");
 	}
-
 }

@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -69,7 +69,7 @@ public interface CCNBase {
 	 * @throws IOException 
 	 */
 	public void registerFilter(ContentName filter,
-							   CCNFilterListener callbackListener) throws IOException;
+							   CCNInterestHandler callbackHandler) throws IOException;
 	
 	/**
 	 * Unregister a standing interest filter
@@ -77,13 +77,13 @@ public interface CCNBase {
 	 * @param callbackListener
 	 */
 	public void unregisterFilter(ContentName filter,
-								 CCNFilterListener callbackListener);
+								 CCNInterestHandler callbackHandler);
 	
 	/**
 	 * Query, or express an interest in particular
 	 * content. This request is sent out over the
 	 * CCN to other nodes. On any results, the
-	 * callbackListener if given, is notified.
+	 * callbackHandler if given, is notified.
 	 * Results may also be cached in a local repository
 	 * for later retrieval by get().
 	 * Get and expressInterest could be implemented
@@ -100,13 +100,13 @@ public interface CCNBase {
 	 */
 	public void expressInterest(
 			Interest interest,
-			CCNInterestListener listener) throws IOException;
+			CCNContentHandler handler) throws IOException;
 
 	/**
 	 * Cancel this interest. 
 	 * @param interest
 	 * @param listener Used to distinguish the same interest
-	 * 	requested by more than one listener.
+	 * 	requested by more than one handler.
 	 */
-	public void cancelInterest(Interest interest, CCNInterestListener listener);
+	public void cancelInterest(Interest interest, CCNContentHandler handler);
 }

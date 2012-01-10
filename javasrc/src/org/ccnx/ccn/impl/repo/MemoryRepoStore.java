@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -41,7 +41,7 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 	protected ContentName _namespace = null; // Prinmary/initial namespace
 
 	// For in-memory repo, we just hold onto each ContentObject directly in the ref
-	class MemRef extends ContentRef {
+	static class MemRef extends ContentRef {
 		ContentObject co;
 		public MemRef(ContentObject content) {
 			co = content;
@@ -134,5 +134,7 @@ public class MemoryRepoStore extends RepositoryStoreBase implements RepositorySt
 	public boolean bulkImport(String name) throws RepositoryException {
 		return false; // not supported
 	}
+
+	public void policyUpdate() throws RepositoryException {}
     
 }

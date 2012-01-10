@@ -33,6 +33,7 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/ccn_private.h>
+#include <ccn/keystore.h>
 #include <ccn/schedule.h>
 #include <ccn/sockaddrutil.h>
 #include <ccn/uri.h>
@@ -55,9 +56,6 @@
 #endif
 
 static void ccnd_start_notice(struct ccnd_handle *ccnd);
-
-#define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY"
-#define CCNDID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/ccnd/KEY"
 
 static struct ccn_charbuf *
 ccnd_init_service_ccnb(struct ccnd_handle *ccnd, const char *baseuri, int freshness)
@@ -368,8 +366,8 @@ ccnd_uri_listen(struct ccnd_handle *ccnd, const char *uri,
 
 /**
  * Make a forwarding table entry for ccnx:/ccnx/CCNDID
- * 
- * This one entry handles most of the namespace served by the 
+ *
+ * This one entry handles most of the namespace served by the
  * ccnd internal client.
  */
 static void
@@ -385,7 +383,7 @@ ccnd_reg_ccnx_ccndid(struct ccnd_handle *ccnd)
     ccn_uri_append(uri, name->buf, name->length, 1);
     ccnd_reg_uri(ccnd, ccn_charbuf_as_string(uri),
                  0, /* special faceid for internal client */
-                 (CCN_FORW_CHILD_INHERIT | 
+                 (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |
                   CCN_FORW_CAPTURE       |
                   CCN_FORW_ADVERTISE     ),
@@ -418,7 +416,6 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
     int res = -1;
     size_t save;
     char *keystore_path = NULL;
-    FILE *passfile;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
     if (ccnd->internal_client == NULL)
@@ -448,16 +445,9 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
     if (res >= 0)
         goto Finish;
     /* No stored keystore that we can access; create one. */
-    temp->length = save;
-    ccn_charbuf_putf(temp, "p");
-    passfile = fopen(ccn_charbuf_as_string(temp), "wb");
-    fprintf(passfile, "%s", CCND_KEYSTORE_PASS);
-    fclose(passfile);
-    ccn_charbuf_putf(cmd, "%s-init-keystore-helper %s",
-                     ccnd->progname, keystore_path);
-    res = system(ccn_charbuf_as_string(cmd));
+    res = ccn_keystore_file_init(keystore_path, CCND_KEYSTORE_PASS, "CCND-internal", 0, 0);
     if (res != 0) {
-        culprit = cmd;
+        culprit = temp;
         goto Finish;
     }
     res = ccn_load_default_key(ccnd->internal_client, keystore_path, CCND_KEYSTORE_PASS);
@@ -542,7 +532,7 @@ ccnd_notice_push(struct ccn_schedule *sched,
 /**
  * Called by ccnd when a face undergoes a substantive status change that
  * should be reported to interested parties.
- * 
+ *
  * In the destroy case, this is called from the hash table finalizer,
  * so it shouldn't do much directly.  Inspecting the face is OK, though.
  */
@@ -630,7 +620,7 @@ ccnd_internal_client_start(struct ccnd_handle *ccnd)
     ccnd_reg_ccnx_ccndid(ccnd);
     ccnd_reg_uri(ccnd, "ccnx:/%C1.M.S.localhost",
                  0, /* special faceid for internal client */
-                 (CCN_FORW_CHILD_INHERIT | 
+                 (CCN_FORW_CHILD_INHERIT |
                   CCN_FORW_ACTIVE        |
                   CCN_FORW_LOCAL         ),
                  0x7FFFFFFF);

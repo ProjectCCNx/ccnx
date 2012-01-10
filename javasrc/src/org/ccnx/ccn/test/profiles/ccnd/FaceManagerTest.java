@@ -26,6 +26,7 @@ import java.io.ByteArrayOutputStream;
 
 import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
@@ -55,6 +56,7 @@ public class FaceManagerTest extends LibraryTestBase {
 	 */
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		LibraryTestBase.setUpBeforeClass();
 	}
 
 	/**
@@ -62,6 +64,7 @@ public class FaceManagerTest extends LibraryTestBase {
 	 */
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
+		LibraryTestBase.tearDownAfterClass();
 	}
 
 	/**
@@ -85,6 +88,8 @@ public class FaceManagerTest extends LibraryTestBase {
 	 */
 	@Test
 	public void testEncodeOutputStream() {
+		Log.info(Log.FAC_TEST, "Starting testEncodeOutputStream");
+
 		FaceInstance face = new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
 				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
 		// ActionType.NewFace, _ccndId, ipProto, host, port,  multicastInterface, multicastTTL, freshnessSeconds
@@ -100,10 +105,14 @@ public class FaceManagerTest extends LibraryTestBase {
 		}
 		System.out.println("Encoded: " );
 		System.out.println(baos.toString());
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodeOutputStream");
 	}
 
 	@Test
 	public void testDecodeInputStream() {
+		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
+
 		FaceInstance faceToEncode = new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
 				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
 		System.out.println("Encoding: " + faceToEncode);
@@ -130,10 +139,14 @@ public class FaceManagerTest extends LibraryTestBase {
 		}
 		System.out.println("Decoded: " + faceToDecodeTo);
 		assertEquals(faceToEncode, faceToDecodeTo);
+		
+		Log.info(Log.FAC_TEST, "Completed testDecodeInputStream");
 	}
 	
 	@Test
 	public void testEncodingDecoding() {
+		Log.info(Log.FAC_TEST, "Starting testEncodingDecoding");
+
 		FaceInstance faceToEncode = new FaceInstance(ActionType.NewFace, keyDigest, NetworkProtocol.TCP, "TheNameDoesntMatter", 
 				new Integer(5),	"WhoCares", new Integer(42), new Integer(100));
 		System.out.println("Encoding: " + faceToEncode);
@@ -143,10 +156,14 @@ public class FaceManagerTest extends LibraryTestBase {
 		FaceInstance  binaryFaceToDecodeInto = new FaceInstance();
 		assertNotNull(binaryFaceToDecodeInto);
 		XMLEncodableTester.encodeDecodeTest("FaceIntance", faceToEncode, textFaceToDecodeInto, binaryFaceToDecodeInto);
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodingDecoding");
 	}
 	
 	@Test
 	public void testCreation() {
+		Log.info(Log.FAC_TEST, "Starting testCreation");
+
 		Integer faceID = new Integer(-142);
 		FaceManager mgr = null;
 		try {
@@ -168,6 +185,14 @@ public class FaceManagerTest extends LibraryTestBase {
 			e.printStackTrace();
 			fail("Failed to delete face.");
 		}
+		
+		try {
+			mgr.deleteFace(faceID);
+			fail("Failed to receive expected CCNDaemonException deleting already deleted face.");
+		}catch (CCNDaemonException e) {
+			System.out.println("Received expected exception " + e.getClass().getName() + ", message: " + e.getMessage());
+		}
+		
+		Log.info(Log.FAC_TEST, "Completed testCreation");
 	}
-
 }

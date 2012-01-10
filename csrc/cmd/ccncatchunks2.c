@@ -46,6 +46,7 @@ struct mydata {
     struct ccn *h;
     int allow_stale;
     int use_decimal;
+    int dummy;
     unsigned ooo_base;
     unsigned ooo_count;
     unsigned curwindow;
@@ -91,6 +92,7 @@ usage(const char *progname)
             "   Reads stuff written by ccnsendchunks under"
             " the given uri and writes to stdout\n"
             "   -a - allow stale data\n"
+            "   -d - discard data instead of writing (also skips verification)\n"
             "   -p n - use up to n pipeline slots\n"
             "   -s - use new-style segmentation markers\n",
             progname);
@@ -416,13 +418,26 @@ GOT_HERE();
         return(CCN_UPCALL_RESULT_REEXPRESS);
     }
 GOT_HERE();
-    if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_UNVERIFIED)
-        return(CCN_UPCALL_RESULT_ERR);
     assert(md != NULL);
-    if (kind == CCN_UPCALL_CONTENT_UNVERIFIED) {
-        if (md->pkts_recvd == 0)
+    switch (kind) {
+        case CCN_UPCALL_CONTENT:
+             break;
+        case CCN_UPCALL_CONTENT_UNVERIFIED:
+             if (md->pkts_recvd == 0)
             return(CCN_UPCALL_RESULT_VERIFY);
-        md->unverified++;
+            md->unverified++;
+            break;
+#if (CCN_API_VERSION >= 4004)
+        case CCN_UPCALL_CONTENT_RAW:
+            break;
+        case CCN_UPCALL_CONTENT_KEYMISSING:
+            if (md->pkts_recvd == 0)
+            return(CCN_UPCALL_RESULT_FETCHKEY);
+            md->unverified++;
+            break;
+#endif
+        default:
+            return(CCN_UPCALL_RESULT_ERR);
     }
     md->pkts_recvd++;
     if (selfp->intdata == -1) {
@@ -464,7 +479,9 @@ GOT_HERE();
         md->ooo[slot].closure.intdata = -1;
         md->delivered++;
         md->delivered_bytes += data_size;
-        written = fwrite(data, data_size, 1, stdout);
+        written = md->dummy;
+        if (! written)
+            written = fwrite(data, data_size, 1, stdout);
         if (written != 1)
             exit(1);
         /* Check for EOF */
@@ -482,13 +499,16 @@ GOT_HERE();
             struct ooodata *ooo = &md->ooo[slot];
             md->delivered++;
             md->delivered_bytes += (ooo->raw_data_size - 1);
-            written = fwrite(ooo->raw_data, ooo->raw_data_size - 1, 1, stdout);
+            written = md->dummy;
+            if (! written)
+                written = fwrite(ooo->raw_data, ooo->raw_data_size - 1, 1, stdout);
             if (written != 1)
                 exit(1);
             /* Check for EOF */
             if (slot == md->finalslot) {
                 GOT_HERE();
                 ccn_schedule_destroy(&md->sched);
+                print_summary(md);
                 exit(0);
             }
             free(ooo->raw_data);
@@ -524,14 +544,18 @@ main(int argc, char **argv)
     int use_decimal = 1;
     int i;
     unsigned maxwindow = PIPELIMIT-1;
+    int dummy = 0;
     
     if (maxwindow > 31)
         maxwindow = 31;
     
-    while ((opt = getopt(argc, argv, "hap:s")) != -1) {
+    while ((opt = getopt(argc, argv, "hadp:s")) != -1) {
         switch (opt) {
             case 'a':
                 allow_stale = 1;
+                break;
+            case 'd':
+                dummy = 1;
                 break;
             case 'p':
                 res = atoi(optarg);
@@ -564,7 +588,10 @@ main(int argc, char **argv)
         perror("Could not connect to ccnd");
         exit(1);
     }
-    
+#if (CCN_API_VERSION >= 4004)
+    if (dummy)
+        ccn_defer_verification(ccn, 1);
+#endif
     mydata = calloc(1, sizeof(*mydata));
     mydata->h = ccn;
     mydata->name = name;
@@ -576,6 +603,7 @@ main(int argc, char **argv)
     mydata->holefiller = NULL;
     mydata->maxwindow = maxwindow;
     mydata->finalslot = ~0;
+    mydata->dummy = dummy;
     for (i = 0; i < PIPELIMIT; i++) {
         incoming = &mydata->ooo[i].closure;
         incoming->p = &incoming_content;

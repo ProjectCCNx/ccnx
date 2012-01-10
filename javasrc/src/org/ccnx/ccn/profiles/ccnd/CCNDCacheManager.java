@@ -18,15 +18,17 @@
 package org.ccnx.ccn.profiles.ccnd;
 
 import java.io.IOException;
+import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
-public class CCNDCacheManager implements CCNInterestListener {
+public class CCNDCacheManager implements CCNContentHandler {
 	
 	public void clearCache(ContentName prefix, CCNHandle handle, long timeout) throws IOException {
 		Interest interest = new Interest(prefix);
@@ -39,20 +41,26 @@ public class CCNDCacheManager implements CCNInterestListener {
 			handle.expressInterest(interest, this);
 			synchronized (this) {
 				try {
-					this.wait(SystemConfiguration.SHORT_TIMEOUT);
+					this.wait(SystemConfiguration.MEDIUM_TIMEOUT);
 				} catch (InterruptedException e) {}
 			}
 			long prevTime = currentTime;
 			currentTime = System.currentTimeMillis();
-			if (currentTime - prevTime > SystemConfiguration.SHORT_TIMEOUT)
+			if (currentTime - prevTime > SystemConfiguration.MEDIUM_TIMEOUT) {
+				if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER))
+					Log.finer(Log.FAC_NETMANAGER, "ClearCache finished after {0} ms", currentTime - prevTime);
 				return;
+			}
 		}
-		throw new IOException("Clear Cache timed out before completion");
+		Log.warning("ClearCache timed out before completion");
+		throw new IOException("ClearCache timed out before completion");
 	}
 
 	public Interest handleContent(ContentObject data, Interest interest) {
 		synchronized (this) {
 			this.notifyAll();
+			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER))
+				Log.finer(Log.FAC_NETMANAGER, "Set {0} stale", data.name());
 		}
 		return interest;
 	}

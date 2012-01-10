@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -18,10 +18,8 @@
 
 package org.ccnx.ccn.test.profiles.security.access.group;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.logging.Level;
 
 import junit.framework.Assert;
 
@@ -66,12 +64,8 @@ public class MLACReadWriteTestRepo {
 	int _readsize = 1024;
 	byte [] _read_buffer = new byte[_readsize];
 
-	static Level [] logLevels;
-	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		logLevels = Log.getLevels();
-		Log.setDefaultLevel(Log.FAC_ALL, Level.WARNING);
 		
 		rnd = new Random();
 		_handle = CCNHandle.open();
@@ -89,7 +83,7 @@ public class MLACReadWriteTestRepo {
 			userNamespace[d] = GroupAccessControlProfile.userNamespaceName(domainPrefix[d]);
 			userKeystore[d] = ContentName.fromNative(userNamespace[d], "_keystore_");
 			groupNamespace[d] = GroupAccessControlProfile.groupNamespaceName(domainPrefix[d]);
-			cua[d] = new CreateUserData(userKeystore[d], userNames, userNames.length, true, "password".toCharArray(), _handle);
+			cua[d] = new CreateUserData(userKeystore[d], userNames, userNames.length, true, "password".toCharArray());
 			cua[d].publishUserKeysToRepositorySetLocators(userNamespace[d]);
 		}
 		
@@ -145,13 +139,13 @@ public class MLACReadWriteTestRepo {
 		
 		for( CreateUserData x : cua ) {
 				x.closeAll();
-		}
-		
-		Log.setLevels(logLevels);
+		}	
 	}
 	
 	@Test
-	public void performanceTest() {
+	public void performanceTest() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting performanceTest");
+
 		// Create a new ACL for a subdirectory of baseDirectory.
 		// Set Alice (domain 0) as a manager and Bob and Carol (both domain 1) as readers
 		createSubDirectoryACL();
@@ -191,6 +185,8 @@ public class MLACReadWriteTestRepo {
 		catch (AccessDeniedException ade) {
 			Assert.fail();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed performanceTest");
 	}
 	
 	/**
@@ -213,11 +209,11 @@ public class MLACReadWriteTestRepo {
 			_AliceACM.setACL(subdirectory, baseDirACL);
 		}
 		catch (Exception e) {
-			e.printStackTrace();
+			Log.warningStackTrace(Log.FAC_TEST, e);
 			Assert.fail();
 		}
 
-		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: create ACL completed in {0} ms.", 
+		Log.info(Log.FAC_TEST, "MLACReadWriteTestRepo: create ACL completed in {0} ms.", 
 				(System.currentTimeMillis() - startTime));
 	}
 	
@@ -244,7 +240,7 @@ public class MLACReadWriteTestRepo {
 			Assert.fail();
 		}
 		
-		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: writing content completed in {0} ms.",
+		Log.info(Log.FAC_TEST, "MLACReadWriteTestRepo: writing content completed in {0} ms.",
 				(System.currentTimeMillis() - startTime));
 	}
 	
@@ -253,7 +249,7 @@ public class MLACReadWriteTestRepo {
 	 * @param userName the name of the user
 	 * @throws AccessDeniedException
 	 */
-	public void readFileAs(int domain, String userName) throws AccessDeniedException {
+	public void readFileAs(int domain, String userName) throws Exception {
 		long startTime = System.currentTimeMillis();
 		
 		CCNHandle handle = null;
@@ -271,20 +267,16 @@ public class MLACReadWriteTestRepo {
 		// we want to propagate AccessDeniedException, but not IOException.
 		// Since AccessDeniedException is a subclass of IOException, we catch and re-throw it.
 		catch (AccessDeniedException ade) {
-			Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: determined that user {0} in domain {1} " +
+			Log.info(Log.FAC_TEST, "MLACReadWriteTestRepo: determined that user {0} in domain {1} " +
 					" does not read access to the content, in {2} ms.",
 					userName, domain, (System.currentTimeMillis() - startTime));
 			throw ade;
 		}
-		catch (IOException ioe) {
-			ioe.printStackTrace();
-			Assert.fail();
-		}
-		finally {
-			handle.close();
+		catch (Exception e) {
+			throw e;
 		}
 
-		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: reading content as {0} succeeded in {1} ms.",
+		Log.info(Log.FAC_TEST, "MLACReadWriteTestRepo: reading content as {0} succeeded in {1} ms.",
 				userName, (System.currentTimeMillis() - startTime));
 	}
 	
@@ -305,7 +297,7 @@ public class MLACReadWriteTestRepo {
 			Assert.fail();
 		}
 
-		Log.info(Log.FAC_ACCESSCONTROL, "MLACReadWriteTestRepo: updated ACL in {1} ms.",
+		Log.info(Log.FAC_TEST, "MLACReadWriteTestRepo: updated ACL in {1} ms.",
 				(System.currentTimeMillis() - startTime));
 	}
 

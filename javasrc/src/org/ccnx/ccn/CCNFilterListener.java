@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -17,9 +17,10 @@
 
 package org.ccnx.ccn;
 
-import org.ccnx.ccn.protocol.Interest;
 
 /**
+ * Deprecated - use CCNInterestListener instead
+ * 
  * A CCN filter is essentially an "interest in Interests" -- it allows a caller to register
  * to see Interest messages that come in from the network, and optionally generate (or
  * merely provide) data in response. Filters are registered using 
@@ -31,7 +32,8 @@ import org.ccnx.ccn.protocol.Interest;
  * @see CCNBase
  * @see CCNHandle
  */
-public interface CCNFilterListener {
+@Deprecated
+public interface CCNFilterListener extends CCNInterestHandler {
 
 	/**
 	 * Callback called when we get a new interest matching our filter.
@@ -39,7 +41,5 @@ public interface CCNFilterListener {
 	 * @return true if this handler has consumed the interest 
 	 * 	(that is the handler returned data satisfying the interest).
 	 */
-    public boolean handleInterest(Interest interest);
-    
-
+    //public boolean handleInterest(Interest interest);
 }

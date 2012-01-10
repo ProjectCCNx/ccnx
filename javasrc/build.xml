@@ -36,19 +36,22 @@
 	<property name="testout" location="testout"/>
 	<property name="testoutlog" location="testout/log"/>
 	<property name="LOGDIR_KEY" value="org.ccnx.ccn.LogDir"/>
+	<property name="JAVA_MEMORY" value="1g" />
 	<property name="ccnd" location="../csrc/ccnd/ccnd"/>
+	<property name="ccnr" location="../csrc/ccnr/ccnr"/>
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
 	<property name="CCND_CMD" value="../../csrc/ccnd/ccnd"/>
 	<property name="CCND_DEBUG" value="87"/>
 	<property name="CCND_CAP" value="50000"/>
 	<property name="REPO_ROOT" value="${testout}/repotest"/>
-	<property name="REPO_LOCAL_ROOT" value="repotest"/>
+	<property name="REPO_ROOT2" value="${testout}/repotest2"/>
 	<property name="REPO_LOCAL" value="TestRepository"/>
-	<property name="REPO_GLOBAL" value="parc.com/csl/ccn/repositories"/>
+	<property name="REPO_LOCAL_ROOT" value="repotest"/>
+	<property name="REPO_GLOBAL" value="/parc.com/csl/ccn/repositories/TestRepository"/>
 	<property name="USE_KEY_CONFIG_KEY" value="org.ccnx.config.UseKeyConfiguration"/>
 	<property name="USE_KEY_CONFIG_VAL" value="false"/>
-        <property name="CHATTY" value="FINER"/>
+    <property name="CHATTY" value="INFO"/>
 	<!-- To enable remote debugging, the incantation is 
 	"-Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n" -->
 	<property name="DEBUG_OPTIONS" value=""/>
@@ -87,7 +90,7 @@
 		<doxygen configFilename="Doxyfile"/>
 	</target>
 
-	<target name="compile">
+	<target name="compile" depends="init">
 		<mkdir dir="${build}"/>
 		<depend srcdir="src" destdir="${build}" closure="yes"/>
 		<javac destdir="${build}"
@@ -206,8 +209,11 @@
 	</target>
 
 	<!-- Don't run this by itself - use target repo -->
-	<target name="repo-start" depends="jar">
+	<target name="repo-start" depends="jar, repo-start-repov2, repo-start-repov1"/>
+
+	<target name="repo-start-repov1" unless="${repo2}">
 		<parallel>
+			<echo message="Running repo version 1"/>
 			<daemons>
 				<java classname="org.ccnx.ccn.impl.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
 					<classpath>
@@ -221,13 +227,28 @@
 					<arg value="-interactive" />
 					<arg value="-root" />
 					<arg value="${REPO_LOCAL_ROOT}" />
-					<arg value="-log" />
-					<arg value="400" />
 					<arg value="-local" />
 					<arg value="${REPO_LOCAL}" />
 					<arg value="-global" />
 					<arg value="${REPO_GLOBAL}" />
 				</java>
+			</daemons>
+            <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+            <sleep seconds="1"/>
+		</parallel>
+	</target>
+
+	<target name="repo-start-repov2" if="${repo2}">
+        <mkdir dir="${REPO_ROOT}"/>
+		<parallel>
+            <echo message="Running repo version 2"/>
+			<daemons>
+                <exec executable="${ccnr}" dir="${REPO_ROOT}" output="${testout}/TEST-ccnr-baselib.txt">
+                    <env key="CCN_LOCAL_PORT" value="${TEST_PORT}"/>
+                    <env key="CCNR_CAP" value="${CCNR_CAP}"/>
+                    <env key="CCNR_DEBUG" value="${CCNR_DEBUG}"/>
+                    <env key="CCNR_GLOBAL_PREFIX" value="${REPO_GLOBAL}"/>
+                </exec>
 			</daemons>
             <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
             <sleep seconds="1"/>
@@ -245,6 +266,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoInitializationTest.class"/>
@@ -256,12 +278,15 @@
 
     <!-- target for running a test repo foreground so you can run a test
 	     against it in debugger -->
-	<target name="run-test-repo" depends="jar">
+	<target name="run-test-repo" depends="run-test-repov2, run-test-repov1"/>
+
+	<target name="run-test-repov1" depends="jar" unless="${repo2}">
+		<echo message="Running repo version 1"/>
+		<mkdir dir="${testout}"/>
 		<java classname="org.ccnx.ccn.impl.repo.RepositoryDaemon" fork="true" failonerror="true" output = "${testout}/TEST-repo-daemon.txt" dir="${testout}">
 			<classpath>
 				<path refid="classpath-run" />
 			</classpath>
-			<sysproperty key="ccn.agent.port" value="${TEST_PORT}" />
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<jvmarg value="-Xrunjdwp:transport=dt_socket,address=25000,server=y,suspend=n" />
 			<arg value="-interactive" />
@@ -272,6 +297,17 @@
 			<arg value="-global" />
 			<arg value="${REPO_GLOBAL}" />
 		</java>
+		<!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
+		<sleep seconds="1"/>
+	</target>
+
+	<target name="run-test-repov2" depends="jar" if="${repo2}">
+		<echo message="Running repo version 2"/>
+        		<mkdir dir="${REPO_ROOT}"/>
+                <exec executable="${ccnr}" dir="${REPO_ROOT}" output="${testout}/TEST-repo-daemon.txt" failonerror="true">
+                        <env key="CCNR_CAP" value="${CCNR_CAP}"/>
+                        <env key="CCNR_DEBUG" value="${CCNR_DEBUG}"/>
+                </exec>
         <!-- sleep needed so parallel doesn't exit before any error from daemons is reported -->
         <sleep seconds="1"/>
 	</target>
@@ -279,7 +315,7 @@
 	<!-- test is for running all current automated tests to validate code 
 	     IMPORTANT: test-repo must be run before any test that will start a repo because it
 	     requires that a repo *not* be running when it starts -->
-	<target name="test" depends="test-repo, test-protocol, test-impl, test-io, test-endtoend">
+	<target name="test" depends="init, test-repo, test-protocol, test-impl, test-io, test-endtoend">
 	</target>
 
 	<target name="test-protocol" depends="test-protocol-without-repo, test-protocol-with-repo">
@@ -295,7 +331,8 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-
+            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/protocol/*Test.class"/>
@@ -315,6 +352,8 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel" value="FINEST"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+	        <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/protocol/*TestRepo.class"/>
@@ -336,7 +375,8 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-
+	        <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*Test.class"/>
@@ -352,7 +392,7 @@
 	
 	<target name="test-impl-with-repo" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+		<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -360,11 +400,13 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-
+            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/impl/**/*TestRepo.class"/>
 					<!-- should be profiles/**/*TestRepo.class, but don't want to include access control yet -->
+	                <include name="org/ccnx/ccn/test/profiles/nameenum/*TestRepo.class"/>
 				    <include name="org/ccnx/ccn/test/profiles/metadata/*TestRepo.class"/>
 				    <include name="org/ccnx/ccn/test/profiles/search/*TestRepo.class"/>
                     <include name="org/ccnx/ccn/test/profiles/context/*TestRepo.class"/>
@@ -372,6 +414,29 @@
 			</batchtest>
 		</junit>
 	</target>
+	
+	<target name="test-flow-control-extra" depends="jar, ccnd, repo">
+	        <mkdir dir="${testout}"/>
+	        <bunzip2 src="testBigFile.bz2" dest="${testout}/testBigFile" />
+	        <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
+	            <classpath>
+	                <path refid="classpath-run"/>
+	            </classpath>
+	            <formatter type="xml" usefile="true"/>
+	            <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+	            <sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+	            <sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+	            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+	            <batchtest todir="${testout}">
+	                <fileset dir="${build}">
+	                    <include name="org/ccnx/ccn/test/impl/**/CCNFlowControlTestRepoExtra.class"/>
+	                </fileset>
+	            </batchtest>
+	        </junit>
+	        <delete file="${testout}/testBigFile" />
+	    </target>
+
 
 	<target name="test-io" depends="test-io-without-repo, test-io-with-repo">
 	</target>
@@ -386,7 +451,8 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-
+            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/io/**/*Test.class"/>
@@ -406,7 +472,8 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-
+            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/io/**/*TestRepo.class"/>
@@ -477,9 +544,9 @@
 		</junit>
 	</target>
 	
-	<!-- IMPORTANT: test-repo-structure must be the *first* test in this list because subsequent test require
-	     that the repo must not have been running when test-repo-structure is run -->
-	<target name="test-repo" depends="test-repo-structure, test-repo-name-responder, test-repo-initial-read, test-repo-io">
+	<!-- IMPORTANT: test-repo-structure and test-repo-initial-policy must be the *first* tests in this list 
+	     because they require that the repo must not have been running and subsequent tests start the repo -->
+	<target name="test-repo" depends="test-repo-structure, test-repo-initial-policy, test-repo-name-responder, test-repo-initial-read, test-repo-io">
 	</target>
 	
 	<target name="test-repo-ccnd-restart">
@@ -502,6 +569,7 @@
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/nameenum/*TestRepo.class"/>
@@ -525,27 +593,83 @@
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}">
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RFSTest.class"/>
+					<include name="org/ccnx/ccn/test/repo/RepositoryInfoTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
 	</target>
 	
-	<!-- This is for generating the repotest.zip file: note that the file 
-             is not actually used any longer because we need to make data 
-             with keys of current user so using a common file doesn't work -->
-	<target name="generate-repotest-zip" depends="jar, ccnd, test-repo-structure">
-	    <delete file="${repozip}"/>
-		<zip destfile="${repozip}"
-		    basedir="${REPO_ROOT}"
-		    update="true">
-		 </zip>
-		<delete dir="${REPO_ROOT}" />
-	</target>
+	<target name="test-repo-initial-policy" depends="jar, ccnd" unless="${repo2}">
+        <mkdir dir="${testout}"/>
+        <delete dir="${REPO_ROOT2}"/>
+        <junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}">
+            <classpath>
+                <path refid="classpath-run"/>
+            </classpath>
+            <formatter type="xml" usefile="true"/>
+            <sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+            <sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+            <sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+            <sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+            <batchtest todir="${testout}">
+                <fileset dir="${build}">
+                    <include name="org/ccnx/ccn/test/repo/RepoInitialPolicyTest.class"/>
+                </fileset>
+            </batchtest>
+        </junit>
+    </target>
 	
 	<target name="test-repo-initial-read" depends="jar, test-repo-structure, ccnd, repo">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="org/ccnx/ccn/test/repo/RepoInitialReadTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
+	</target>
+	
+	<target name="test-repo-checked-write" depends="jar, repo">
+		<mkdir dir="${testout}"/>
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+			<classpath>
+				<path refid="classpath-run"/>
+			</classpath>
+			<formatter type="xml" usefile="true"/>
+			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
+			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+			<batchtest todir="${testout}" >
+				<fileset dir="${build}">
+					<include name="org/ccnx/ccn/test/repo/CheckedWriteTest.class"/>
+				</fileset>
+			</batchtest>
+		</junit>
+		<!-- <delete dir="${REPO_ROOT}"/> -->
+	</target>
+	
+	<!-- This isnt run by the standard tests currently and it doesn't pass -->
+	<target name="test-repo-simple-nameenumeration" depends="jar, repo">
 		<mkdir dir="${testout}"/>
 		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
 			<classpath>
@@ -559,7 +683,7 @@
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
-					<include name="org/ccnx/ccn/test/repo/RepoInitialReadTest.class"/>
+					<include name="org/ccnx/ccn/test/repo/SimpleNameEnumerationTest.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -575,13 +699,14 @@
 			<formatter type="xml" usefile="true"/>
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoIOTest.class"/>
-					<include name="org/ccnx/ccn/test/repo/RepoBulkImportTest.class"/>
+					<include name="org/ccnx/ccn/test/repo/RepoBulkImportTest.class" unless="${repo2}"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -598,7 +723,7 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
@@ -659,8 +784,9 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/repo/RepoNameEnumeratorTest.class"/>
@@ -720,6 +846,7 @@
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 				<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 				<test todir="${testout}"  name="org.ccnx.ccn.test.endtoend.EndToEndTestSource"/>
 			</junit>
 			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perTest" timeout="100000" dir="${testout}" showoutput="${showoutput}">
@@ -741,7 +868,7 @@
 	<target name="test-security-without-repo" depends="jar, ccnd">
 		<!-- Security tests that don't need a repo running -->
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" showoutput="${showoutput}">
+		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="yes" dir="${testout}" maxmemory="${JAVA_MEMORY}" showoutput="${showoutput}">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -749,8 +876,9 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/security/crypto/*Test.class"/>
@@ -772,8 +900,9 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/security/crypto/*TestRepo.class"/>
@@ -798,8 +927,9 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/security/access/**/*Test.class"/>
@@ -820,8 +950,9 @@
 			<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 			<sysproperty key="ccn.test.topdir" value="${TOP_DIR}"/>
 			<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
-			<sysproperty key="org.ccnx.ccn.LogLevel" value="${CHATTY}"/>
+			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/security/access/**/*TestRepo.class"/>
@@ -834,7 +965,7 @@
 	<!-- test versioning -->
 	<target name="test-versioning" depends="jar, ccnd, repo">
 		<mkdir dir="${testout}"/>
-		<junit printsummary="yes" fork="on" forkmode="perBatch" haltonfailure="no" dir="${testout}" showoutput="${showoutput}" maxmemory="1024m">
+		<junit printsummary="yes" fork="on" forkmode="perTest" haltonfailure="no" dir="${testout}" showoutput="${showoutput}" maxmemory="2048m">
 			<classpath>
 				<path refid="classpath-run"/>
 			</classpath>
@@ -845,10 +976,12 @@
 			<sysproperty key="org.ccnx.ccn.LogLevel.All" value="SEVERE"/>
 			<sysproperty key="org.ccnx.ccn.LogLevel.FAC_ENCODING" value="INFO"/>
 			<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 			<batchtest todir="${testout}" >
 				<fileset dir="${build}">
 					<include name="org/ccnx/ccn/test/profiles/versioning/**/*Test.class"/>
 					<include name="org/ccnx/ccn/test/profiles/versioning/**/*TestRepo.class"/>
+					<include name="org/ccnx/ccn/test/profiles/versioning/**/XVersioningInterestTestRepo.class"/>
 				</fileset>
 			</batchtest>
 		</junit>
@@ -862,6 +995,17 @@
                      <path refid="classpath-run"/>
                    </classpath>
         </java>
+	</target>
+	
+	<target name="init">
+		<echo message="Verifying Ant version is at least 1.8.0" />
+		<fail message="Ant version is less than version 1.8.0, exiting.  Please upgrade your version of Ant.">
+			<condition>
+  				<not>
+    				<antversion property="antversion" atleast="1.8.0"/>
+  				</not>
+			</condition>
+		</fail>
 	</target>
 </project>
 

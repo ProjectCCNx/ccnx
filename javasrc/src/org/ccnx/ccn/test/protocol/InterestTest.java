@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -23,6 +23,7 @@ import java.util.ArrayList;
 
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.BloomFilter;
 import org.ccnx.ccn.protocol.ContentName;
@@ -97,6 +98,8 @@ public class InterestTest extends CCNTestBase {
 
 	@Test
 	public void testSimpleInterest() {
+		Log.info(Log.FAC_TEST, "Starting testSimpleInterest");
+
 		Interest plain = new Interest(tcn);
 		Interest plainDec = new Interest();
 		Interest plainBDec = new Interest();
@@ -124,10 +127,14 @@ public class InterestTest extends CCNTestBase {
 		Interest opMinSCDec = new Interest();
 		Interest opMinSCBDec = new Interest();
 		XMLEncodableTester.encodeDecodeTest("MinSuffixComponentsInterest", opMinSC, opMinSCDec, opMinSCBDec);
+		
+		Log.info(Log.FAC_TEST, "Completed testSimpleInterest");
 	}
 	
 	@Test
 	public void testProfileInterests() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testProfileInterests");
+
 		// Should test the interests used for segments (getLower) as well.
 		Interest lv = 
 			VersioningProfile.latestVersionInterest(
@@ -143,10 +150,14 @@ public class InterestTest extends CCNTestBase {
 		Interest lvsDec = new Interest();
 		Interest lvsBDec = new Interest();
 		XMLEncodableTester.encodeDecodeTest("LatestVersionInterest - Short", lvs, lvsDec, lvsBDec);
+		
+		Log.info(Log.FAC_TEST, "Completed testProfileInterests");
 	}
 		
 	@Test
 	public void testExclude() {
+		Log.info(Log.FAC_TEST, "Starting testExclude");
+
 		excludeSetup();
 		
 		Interest exPlain = new Interest(tcn);
@@ -154,10 +165,14 @@ public class InterestTest extends CCNTestBase {
 		Interest exPlainDec = new Interest();
 		Interest exPlainBDec = new Interest();
 		XMLEncodableTester.encodeDecodeTest("ExcludeInterest", exPlain, exPlainDec, exPlainBDec);
+		
+		Log.info(Log.FAC_TEST, "Completed testExclude");
 	}
 	
 	@Test
 	public void testMatch() {
+		Log.info(Log.FAC_TEST, "Starting testMatch");
+
 		// paul r Comment - should really test more comprehensively
 		// For now just do this to test the exclude matching
 		excludeSetup();
@@ -173,17 +188,23 @@ public class InterestTest extends CCNTestBase {
 		} catch (MalformedContentNameStringException e) {
 			Assert.fail(e.getMessage());
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testMatch");
 	}
 
 	@Test
 	public void testMatchDigest() throws MalformedContentNameStringException {
+		Log.info(Log.FAC_TEST, "Starting testMatchDigest");
+
 		ContentName name = ContentName.fromNative("/paul");
 		byte [] content = "hello".getBytes();
-		ContentObject co = new ContentObject(name,fakeSignedInfo,content,fakeSignature);
+		ContentObject co = ContentObject.buildContentObject(name, content);
 		byte [] digest = co.digest();
 		Interest interest = new Interest(ContentName.fromNative(name, digest));
 		Assert.assertTrue(interest.matches(co));
 		interest = new Interest(ContentName.fromNative(name, "simon"));
 		Assert.assertFalse(interest.matches(co));
+		
+		Log.info(Log.FAC_TEST, "Completed testMatchDigest");
 	}
 }

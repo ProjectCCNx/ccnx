@@ -1,7 +1,7 @@
 /*
  * A CCNx chat library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -77,7 +77,7 @@ public final class CCNChatNet {
     	_callback = callback;
     	_namespace = ContentName.fromURI(namespace);  	
     	_namespaceStr = namespace;
-      	_friendlyNameToDigestHash = new HashMap<PublisherPublicKeyDigest, String>();
+       	_friendlyNameToDigestHash = new HashMap<PublisherPublicKeyDigest, String>();
     }
 
 	
@@ -124,10 +124,19 @@ public final class CCNChatNet {
 	 */
 	public void listen() throws ConfigurationException, IOException, MalformedContentNameStringException {
 		
-		CCNHandle tempReadHandle = CCNHandle.open();
+		//Also publish your keys under the chat "channel name" namespace
+		if (_namespace.toString().startsWith("ccnx:/")) {
+			UserConfiguration.setDefaultNamespacePrefix(_namespace.toString().substring(5));		
+		} else {
+			UserConfiguration.setDefaultNamespacePrefix(_namespace.toString());
+		}
+
+		CCNHandle tempReadHandle = CCNHandle.getHandle();
+
+		// Writing must be on a different handle, to enable us to read back text we have
+		// written when nobody else is reading.
 		CCNHandle tempWriteHandle = CCNHandle.open();
-		
-		
+
 		_readString = new CCNStringObject(_namespace, (String)null, SaveType.RAW, tempReadHandle);
 		_readString.updateInBackground(true); 
 		

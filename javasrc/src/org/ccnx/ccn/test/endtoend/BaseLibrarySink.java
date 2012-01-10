@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -17,8 +17,8 @@
 
 package org.ccnx.ccn.test.endtoend;
 
+import java.util.Random;
 import java.util.concurrent.Semaphore;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.support.Log;
@@ -36,12 +36,12 @@ public class BaseLibrarySink {
 	Semaphore sema = new Semaphore(0);
 	int next = 0;
 	protected static Throwable error = null; // for errors in callback
+	protected static Random rand;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
-		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Log.setDefaultLevel(Level.FINEST);
+		rand = new Random();
 	}
 	
 	@AfterClass
@@ -56,6 +56,6 @@ public class BaseLibrarySink {
 	 *
 	 */
 	public void checkGetResults(ContentObject getResults) {
-		Log.info("Got result: " + getResults.name());
+		Log.info(Log.FAC_TEST, "Got result: " + getResults.name());
 	}
 }

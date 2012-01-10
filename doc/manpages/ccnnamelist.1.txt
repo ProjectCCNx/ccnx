@@ -1,0 +1,44 @@
+CCNNAMELIST(1)
+================
+
+NAME
+----
+ccnnamelist - extract names from a file of ccnb encoded data
+
+SYNOPSIS
+--------
+*ccnnamelist* [-h] ['file' '...']
+
+DESCRIPTION
+-----------
+The *ccnnamelist* command prints on standard output a list of names from binary encoded data in one or more files.
+
+OPTIONS
+-------
+*-h*::
+	Print the usage message.
+
+ARGUMENTS
+---------
+The named files should contain ccnb-encoded data.  A "-" in the file list indicates input from stdin.
+If no arguments are given input will be read from stdin.
+
+OUTPUT
+------
+A list of CCNx URI format names is produced on standard output.
+Any errors due to malformed input will result in a message on stderr
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*nonzero*::
+     Failure (syntax or usage error, file not found)
+
+SEE ALSO
+--------
+*ccn_splitccnb*(1)
+
+Nick Briggs <briggs@parc.com>
+

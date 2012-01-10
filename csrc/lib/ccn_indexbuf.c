@@ -66,9 +66,17 @@ ccn_indexbuf_reserve(struct ccn_indexbuf *c, size_t n)
     if (newlim > oldlim) {
         if (2 * oldlim > newlim)
             newlim = 2 * oldlim;
+#ifdef CCN_NOREALLOC
+        buf = malloc(newlim * sizeof(ELEMENT));
+        if (buf == NULL)
+            return(NULL);
+        memcpy(buf, c->buf, oldlim * sizeof(ELEMENT));
+        free(c->buf);
+#else
         buf = realloc(c->buf, newlim * sizeof(ELEMENT));
         if (buf == NULL)
             return(NULL);
+#endif
         memset(buf + oldlim, 0, (newlim - oldlim) * sizeof(ELEMENT));
         c->buf = buf;
         c->limit = newlim;

@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -64,7 +64,7 @@ public class CCNTestHelper {
 		try {
 			TEST_PREFIX = ContentName.fromNative(TEST_PREFIX_STRING);
 		} catch (MalformedContentNameStringException e) {
-			Log.warning("Cannot parse default test namespace name {1}!", TEST_PREFIX_STRING);
+			Log.warning(Log.FAC_TEST, "Cannot parse default test namespace name {1}!", TEST_PREFIX_STRING);
 			throw new RuntimeException("Cannot parse default test namespace name: " + TEST_PREFIX_STRING +".");
 		}
 	}
@@ -91,7 +91,7 @@ public class CCNTestHelper {
 		}
 		_testTime = new CCNTime();
 		_testNamespace = ContentName.fromNative(externalPrefix, _testName + "-" + _testTime.toShortString());
-		Log.info("Initializing test {0}, data can be found under {1}.", testClassName, _testNamespace);		
+		Log.info(Log.FAC_TEST, "Initializing test {0}, data can be found under {1}.", testClassName, _testNamespace);		
 	}
 	
 	/**

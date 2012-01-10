@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -19,6 +19,7 @@ package org.ccnx.ccn.impl.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl;
@@ -75,12 +76,6 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		}
 		
 		public PolicyXML policyInfo() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
-		
-		public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws ContentDecodingException, IOException {
-			if (_handle instanceof RepositoryInternalInputHandler)
-				return true;
-			return super.update(name, publisher);
-		}
 	}
 	
 	/**
@@ -130,9 +125,7 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 	private static class NameSpacePutter implements ElementPutter {
 
 		public void put(PolicyXML pxml, String value) throws MalformedContentNameStringException {
-			if (null == pxml._namespace)
-				pxml._namespace = new ArrayList<ContentName>();
-			pxml._namespace.add(ContentName.fromNative(value.trim()));
+			pxml.addNamespace(ContentName.fromNative(value.trim()));
 		}
 	}
 	
@@ -195,6 +188,48 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		}
 		encoder.writeEndElement();   			
 	}
+	
+	public int hashCode() {
+		final int PRIME = 31;
+		int result = 1;
+		result = PRIME * result + ((_version == null) ? 0 : _version.hashCode());
+		result = PRIME * result + ((_localName == null) ? 0 : _localName.hashCode());
+		result = PRIME * result + ((_globalPrefix == null) ? 0 : _globalPrefix.hashCode());
+		result = PRIME * result + _namespace.hashCode();
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		final PolicyXML other = (PolicyXML) obj;
+		if (!_version.equals(other._version))
+			return false;
+		if (!_localName.equals(other._localName))
+			return false;
+		if (!_globalPrefix.equals(other._globalPrefix))
+			return false;
+		if (_namespace == null) {
+			if (other._namespace != null)
+				return false;
+		}
+		if (_namespace.size() != other._namespace.size())
+			return false;
+		ContentName[] ourNamespace = new ContentName[_namespace.size()];
+		ContentName[] otherNamespace = new ContentName[_namespace.size()];
+		_namespace.toArray(ourNamespace);
+		other._namespace.toArray(otherNamespace);
+		Arrays.sort(ourNamespace);
+		Arrays.sort(otherNamespace);
+		if (!Arrays.equals(ourNamespace, otherNamespace))
+			return false;
+		return true;
+	}
 
 	@Override
 	public long getElementLabel() {
@@ -206,42 +241,43 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 		return null != _version;
 	}
 	
-	public ArrayList<ContentName> getNamespace() {
-		return _namespace;
+	@SuppressWarnings("unchecked")
+	public synchronized ArrayList<ContentName> getNamespace() {
+		return (ArrayList<ContentName>)_namespace.clone();
 	}
 	
-	public void setNamespace(ArrayList<ContentName> namespace) {
+	public synchronized void setNamespace(ArrayList<ContentName> namespace) {
 		_namespace = namespace;
 	}
 	
-	public void addNamespace(ContentName name) {
+	public synchronized void addNamespace(ContentName name) {
 		if (null == _namespace)
 			_namespace = new ArrayList<ContentName>();
+		for (ContentName n : _namespace) {
+			if (n.equals(name))
+				return;
+		}
 		_namespace.add(name);
 	}
 	
-	public void removeNamespace(ContentName name) {
+	public synchronized void removeNamespace(ContentName name) {
 		if (null != _namespace)
 			_namespace.remove(name);
 	}
 	
-	public void setLocalName(String localName) {
+	public synchronized void setLocalName(String localName) {
 		_localName = localName;
 	}
 	
-	public String getLocalName() {
+	public synchronized String getLocalName() {
 		return _localName;
 	}
 	
-	public void setGlobalPrefix(String globalPrefix) throws MalformedContentNameStringException {
-		// Note - need to synchronize on "this" to synchronize with events reading
-		// the name space in the policy clients which have access only to this object
-		synchronized (this) {
-			if (null != _globalPrefix)
-				_namespace.remove(_globalPrefix);
-			_globalPrefix = ContentName.fromNative(fixSlash(globalPrefix));
-			addNamespace(_globalPrefix);
-		}
+	public synchronized void setGlobalPrefix(String globalPrefix) throws MalformedContentNameStringException {
+		if (null != _globalPrefix)
+			_namespace.remove(_globalPrefix);
+		_globalPrefix = ContentName.fromNative(fixSlash(globalPrefix));
+		addNamespace(_globalPrefix);
 	}
 	
 	/**
@@ -250,19 +286,19 @@ public class PolicyXML extends GenericXMLEncodable implements XMLEncodable {
 	 * 
 	 * @param globalPrefix
 	 */
-	public void setGlobalPrefixOnly(ContentName globalPrefix) {
+	public synchronized void setGlobalPrefixOnly(ContentName globalPrefix) {
 		_globalPrefix = globalPrefix;
 	}
 	
-	public ContentName getGlobalPrefix() {
+	public synchronized ContentName getGlobalPrefix() {
 		return _globalPrefix;
 	}
 	
-	public void setVersion(String version) {
+	public synchronized void setVersion(String version) {
 		_version = version;
 	}
 	
-	public String getVersion() {
+	public synchronized String getVersion() {
 		return _version;
 	}
 	

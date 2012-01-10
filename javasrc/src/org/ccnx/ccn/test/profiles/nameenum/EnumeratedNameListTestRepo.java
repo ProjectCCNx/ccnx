@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.SortedSet;
+import java.util.logging.Level;
 
 import junit.framework.Assert;
 
@@ -97,10 +98,13 @@ public class EnumeratedNameListTestRepo {
 		directory = ContentName.fromNative(directoryString + Integer.toString(rand.nextInt(10000)));
 		directory2 = ContentName.fromNative(directoryString2 + Integer.toString(rand.nextInt(10000)));
 		directory3 = ContentName.fromNative(directoryString3 + Integer.toString(rand.nextInt(10000)));
-		name1String = nameString + Integer.toString(rand.nextInt(10000));
-		name2String = nameString + Integer.toString(rand.nextInt(10000));
-		name3String = nameString + Integer.toString(rand.nextInt(10000));
-		name4String = nameString + Integer.toString(rand.nextInt(10000));
+		
+		// These must all be different
+		int value = rand.nextInt(10000);
+		name1String = nameString + Integer.toString(value);
+		name2String = nameString + Integer.toString(value+1);
+		name3String = nameString + Integer.toString(value+2);
+		name4String = nameString + Integer.toString(value+3);
 
 		name1 = ContentName.fromNative(directory, name1String);
 		name2 = ContentName.fromNative(directory, name2String);
@@ -122,33 +126,31 @@ public class EnumeratedNameListTestRepo {
 	
 	@Test
 	public void testEnumeratedName() throws Exception {
-		System.out.println("Starting Enumerated Name Test");
+		Log.info(Log.FAC_TEST, "Starting testEnumeratedName");
 		
 		try {
 			CCNHandle handle = CCNHandle.open();
 		
-			Log.info("*****************Starting Enumerated Name Test");
-
 			Assert.assertNotNull(directory);
 			Assert.assertNotNull(name1);
 			Assert.assertNotNull(name2);
 			Assert.assertNotNull(name3);
 			Assert.assertNotNull(brokenPrefix);
 
-			Log.info("*****************Creating Enumerated Name List Object");
+			Log.info(Log.FAC_TEST, "*****************Creating Enumerated Name List Object");
 			//creates Enumerated Name List
 			testList = new EnumeratedNameList(directory, putHandle);
 
-			Log.info("*****************assert creation of handle and enumeratednamelist object");
+			Log.info(Log.FAC_TEST, "*****************assert creation of handle and enumeratednamelist object");
 			//verify that the class and handle is setup
 			Assert.assertNotNull(putHandle);
 			Assert.assertNotNull(testList);
 
-			Log.info("*****************assert creation of prefix");
+			Log.info(Log.FAC_TEST, "*****************assert creation of prefix");
 			//Verify that the object has been created with the right prefix
 			ContentName prefixTest = testList.getName();
 			Assert.assertNotNull(prefixTest);
-			Log.info("***************** Prefix is "+ prefixTest.toString());
+			Log.info(Log.FAC_TEST, "***************** Prefix is "+ prefixTest.toString());
 			Assert.assertEquals(prefixTest, directory);
 			Assert.assertFalse(brokenPrefix.equals(prefixTest));
 
@@ -159,12 +161,12 @@ public class EnumeratedNameListTestRepo {
 			// appears.
 			//testList.waitForData();
 
-			Log.info("****************** adding name1 to repo");
+			Log.info(Log.FAC_TEST, "****************** adding name1 to repo");
 
 			// adding content to repo
 			ContentName latestName = addContentToRepo(name1, handle);
 			testList.waitForChildren();
-			Log.info("Added data to repo: " + latestName);
+			Log.info(Log.FAC_TEST, "Added data to repo: " + latestName);
 
 			//testing that the enumerator has new data
 			Assert.assertTrue(testList.hasNewData());
@@ -241,7 +243,6 @@ public class EnumeratedNameListTestRepo {
 				System.out.print(" "+n);
 			System.out.println();
 			
-			
 			// Might have older stuff from previous runs, so don't insist we get back only what we put in.
 			System.out.println("Got new data, second round size: " + returnedBytes2.size() + " first round " + returnedBytes.size());
 			//this is new data...  so comparing new data from one save to another doesn't really make sense
@@ -270,7 +271,7 @@ public class EnumeratedNameListTestRepo {
 			// This will add new versions
 			for (int i=0; i < 5; ++i) {
 				latestName = addContentToRepo(name1, handle);
-				Log.info("Added data to repo: " + latestName);
+				Log.info(Log.FAC_TEST, "Added data to repo: " + latestName);
 			}
 			
 			EnumeratedNameList versionList = new EnumeratedNameList(name1, handle);
@@ -299,14 +300,17 @@ public class EnumeratedNameListTestRepo {
 			Assert.assertTrue(Arrays.areEqual(latestName.lastComponent(), latestReturnName.lastComponent()));
 			
 		} catch (Exception e) {
-			Log.logException("Failed test with exception " + e.getMessage(), e);
+			Log.logException(Log.FAC_TEST, Level.WARNING, "Failed test with exception " + e.getMessage(), e);
 			Assert.fail("Failed test with exception " + e.getMessage());
-		}			
+		}
+		
+		Log.info(Log.FAC_TEST, "Completed testEnumeratedName");
 	}
 	
 	@Test
 	public void testEnumeratedNameListWithThreads() throws Exception {
-		Log.info("*****************Starting Enumerated Name Test for multiple threads");
+		Log.info(Log.FAC_TEST, "Starting testEnumeratedNameListWithThreads");
+
 		EnumeratedNameList poolList = new EnumeratedNameList(directory3, putHandle);
 		Thread poolThread = new Thread(new WaiterThreadForPool(poolList));
 		poolThread.start();
@@ -321,8 +325,10 @@ public class EnumeratedNameListTestRepo {
 		addContentToRepo(name5, putHandle);
 		addContentToRepo(name6, putHandle);
 		addContentToRepo(name7, putHandle);
-		noPoolOps(poolList);
+		noPoolOps(noPoolList);
 		Assert.assertEquals(4, contentSeenNoPool);
+		
+		Log.info(Log.FAC_TEST, "Completed testEnumeratedNameListWithThreads");
 	}
 	
 	private class WaiterThreadForPool implements Runnable {
@@ -383,9 +389,7 @@ public class EnumeratedNameListTestRepo {
 		CCNStringObject cso = 
 			new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), SaveType.REPOSITORY, handle);
 		cso.save();
-		System.out.println("Saved new object: " + cso.getVersionedName());
-		return cso.getVersionedName();
-		
+		Log.info(Log.FAC_TEST, "Saved new object: " + cso.getVersionedName());
+		return cso.getVersionedName();	
 	}
-	
 }

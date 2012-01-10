@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -31,7 +31,7 @@ import org.ccnx.ccn.impl.support.Log;
  * This type encapsulates a dictionary loaded from a file.
  * @see BinaryXMLCodec
  */
-public class FileBinaryXMLDictionary implements XMLDictionary {
+public class FileBinaryXMLDictionary extends XMLDictionary {
 	
 	// Should not necessarily tie this to CCN...
 	protected static String DEFAULT_DICTIONARY_RESNAME = "tagname.csvdict";
@@ -48,7 +48,7 @@ public class FileBinaryXMLDictionary implements XMLDictionary {
 		try {
 			loadDictionaryFile(DEFAULT_DICTIONARY_RESNAME);
 		} catch (IOException fe) {
-			Log.warning("Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_RESNAME + ":" + 
+			Log.warning(Log.FAC_ENCODING, "Cannot parse default CCN encoding dictionary: " + DEFAULT_DICTIONARY_RESNAME + ":" + 
 					fe.getMessage());
 		}
 	}

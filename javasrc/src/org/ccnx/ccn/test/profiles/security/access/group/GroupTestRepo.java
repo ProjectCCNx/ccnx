@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -61,7 +61,6 @@ public class GroupTestRepo {
 	 * @throws Exception
 	 */
 	static CreateUserData users = null;
-	static CCNHandle userHandle = null;
 	static GroupAccessControlManager _acm = null;
 	static GroupManager _gm = null;
 	static Random _random;
@@ -70,8 +69,7 @@ public class GroupTestRepo {
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		users.closeAll();
-		_handle.close();
-		userHandle.close();
+		KeyManager.closeDefaultKeyManager();
 	}
 	
 	@BeforeClass
@@ -88,13 +86,11 @@ public class GroupTestRepo {
 			System.out.println("group store: " + groupStore);
 			System.out.println("user store: " + userNamespace);
 
-			_handle = CCNHandle.open();
-			userHandle = _handle;
-	
+			_handle = CCNHandle.getHandle();
 			
 			users = new CreateUserData(userKeyStorePrefix, NUM_USERS,
 					USE_REPO,
-					USER_PASSWORD, userHandle);
+					USER_PASSWORD);
 			users.publishUserKeysToRepository(userNamespace);
 			
 			_acm = new GroupAccessControlManager(testStorePrefix, groupStore, userNamespace);
@@ -119,14 +115,16 @@ public class GroupTestRepo {
 			_randomGroupName = "testGroup" + _random.nextInt();
 
 		} catch (Exception e) {
-			Log.warning("Exception in setupBeforeClass: " + e);
-			Log.warningStackTrace(e);
+			Log.warning(Log.FAC_TEST, "Exception in setupBeforeClass: " + e);
+			Log.warningStackTrace(Log.FAC_TEST, e);
 			throw e;
 		}
 	}	
 	
 	@Test
 	public void testGroup() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testGroup");
+
 		ArrayList<Link> newMembers = new ArrayList<Link>();
 		ContentName userID = ContentName.fromNative(userNamespace, myUserName);
 		System.out.println("member to add:" + userID);
@@ -186,10 +184,13 @@ public class GroupTestRepo {
 
 		privKey = _gm.getGroupPrivateKey(_randomGroupName, null);
 		System.out.println("retrieved group priv key:" + privKey.toString());
+		
+		Log.info(Log.FAC_TEST, "Completed testGroup");
 	}
 	
 	@Test
 	public void testGroupUpdate() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testGroupUpdate");
 
 		Group ourExistingGroup = _gm.getGroup(_randomGroupName, SystemConfiguration.EXTRA_LONG_TIMEOUT);
 		
@@ -228,6 +229,7 @@ public class GroupTestRepo {
 		Log.info("Post-write and sleep Original key name {0}, copy key name {1}", ourExistingGroup.publicKeyName(), aSeparateGroupCopy.publicKeyName());
 		System.out.println("Post-write and sleep original key version: " + ourExistingGroup.publicKeyVersion());
 		System.out.println("Post-write and sleep copy key version    : " + aSeparateGroupCopy.publicKeyVersion());
+		
+		Log.info(Log.FAC_TEST, "Completed testGroupUpdate");
 	}
-	
 }

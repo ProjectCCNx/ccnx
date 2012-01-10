@@ -49,15 +49,10 @@ public class RepositoryDaemon extends Daemon {
 		
 		public void work() {
 			synchronized(this) {
-				boolean interrupted = false;
-				do {
-					try {
-						interrupted = false;
-						wait();
-					} catch (InterruptedException e) {
-						interrupted = true;
-					}		
-				} while (interrupted);
+				try {
+					wait();
+				} catch (InterruptedException e) {}	// OK to swallow interrupted exception because it will
+													// cause us to exit which is what we want
 			}
 		}
 		
@@ -70,6 +65,10 @@ public class RepositoryDaemon extends Daemon {
 			synchronized (this) {
 				notifyAll(); // notifyAll ensures shutdown in interactive case when main thread is join()'ing
 			}
+		}
+		
+		public void waitForStart() {
+			_server.waitForStart();
 		}
 		
 		public boolean signal(String name) {

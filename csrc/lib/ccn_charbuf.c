@@ -32,6 +32,26 @@ ccn_charbuf_create(void)
     return(c);
 }
 
+struct ccn_charbuf *
+ccn_charbuf_create_n(size_t n)
+{
+    struct ccn_charbuf *c;
+    c = malloc(sizeof(*c));
+    if (c == NULL) return (NULL);
+    c->length = 0;
+    c->limit = n;
+    if (n == 0) {
+        c->buf = NULL;
+        return(c);
+    }
+    c->buf = malloc(n);
+    if (c->buf == NULL) {
+        free(c);
+        c = NULL;
+    }
+    return(c);
+}
+
 void
 ccn_charbuf_destroy(struct ccn_charbuf **cbp)
 {
@@ -57,9 +77,17 @@ ccn_charbuf_reserve(struct ccn_charbuf *c, size_t n)
     if (newsz > c->limit) {
         if (2 * c->limit > newsz)
             newsz = 2 * c->limit;
+#ifdef CCN_NOREALLOC
+        buf = malloc(newsz);
+        if (buf == NULL)
+            return(NULL);
+        memcpy(buf, c->buf, c->limit);
+        free(c->buf);
+#else
         buf = realloc(c->buf, newsz);
         if (buf == NULL)
             return(NULL);
+#endif
         memset(buf + c->limit, 0, newsz - c->limit);
         c->buf = buf;
         c->limit = newsz;

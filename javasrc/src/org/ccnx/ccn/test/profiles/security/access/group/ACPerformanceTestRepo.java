@@ -17,10 +17,8 @@
 
 package org.ccnx.ccn.test.profiles.security.access.group;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.logging.Level;
 
 import junit.framework.Assert;
 
@@ -63,13 +61,9 @@ public class ACPerformanceTestRepo {
 
 	int readsize = 1024;
 	byte [] buffer = new byte[readsize];
-	
-	static Level [] logLevels;
-	
+		
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		logLevels = Log.getLevels();
-		Log.setDefaultLevel(Log.FAC_ALL, Level.WARNING);
 		rnd = new Random();
 		
 		CCNTestHelper testHelper = new CCNTestHelper(ACPerformanceTestRepo.class);
@@ -79,7 +73,7 @@ public class ACPerformanceTestRepo {
 		groupNamespace = GroupAccessControlProfile.groupNamespaceName(UserConfiguration.defaultNamespace());
 		userKeystore = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
 	
-		cua = new CreateUserData(userKeystore, userNames, userNames.length, true, "password".toCharArray(), CCNHandle.open());
+		cua = new CreateUserData(userKeystore, userNames, userNames.length, true, "password".toCharArray());
 		cua.publishUserKeysToRepositorySetLocators(userNamespace);
 
 		// The root ACL at domainPrefix has Alice as a manager
@@ -119,11 +113,12 @@ public class ACPerformanceTestRepo {
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		cua.closeAll();
-		Log.setLevels(logLevels);
 	}
 	
 	@Test
-	public void performanceTest() throws AccessDeniedException {
+	public void performanceTest() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting performanceTest");
+
 		createBaseDirectoryACL();
 		writeContentInDirectory();
 
@@ -142,26 +137,22 @@ public class ACPerformanceTestRepo {
 		
 		// Carol now has permission to read the file
 		readFileAs(userNames[2]);
+		
+		Log.info(Log.FAC_TEST, "Completed performanceTest");
 	}
 	
 	/**
 	 * Create a new ACL at baseDirectory with Alice as a manager and Bob as a reader
 	 */
-	public void createBaseDirectoryACL() {
+	public void createBaseDirectoryACL() throws Exception {
 		long startTime = System.currentTimeMillis();
 
-		try {
-			baseDirectory = domainPrefix.append(ContentName.fromNative("/Alice/documents/images/"));
-			ArrayList<Link> ACLcontents = new ArrayList<Link>();
-			ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[0]), ACL.LABEL_MANAGER, null));
-			ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[1]), ACL.LABEL_READER, null));		
-			ACL baseDirACL = new ACL(ACLcontents);
-			_AliceACM.setACL(baseDirectory, baseDirACL);
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-			Assert.fail();
-		}
+		baseDirectory = domainPrefix.append(ContentName.fromNative("/Alice/documents/images/"));
+		ArrayList<Link> ACLcontents = new ArrayList<Link>();
+		ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[0]), ACL.LABEL_MANAGER, null));
+		ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[1]), ACL.LABEL_READER, null));		
+		ACL baseDirACL = new ACL(ACLcontents);
+		_AliceACM.setACL(baseDirectory, baseDirACL);
 
 		System.out.println("createACL: " + (System.currentTimeMillis() - startTime));
 	}
@@ -185,7 +176,7 @@ public class ACPerformanceTestRepo {
 			ostream.close();
 		} 
 		catch (Exception e) {
-			e.printStackTrace();
+			Log.warningStackTrace(Log.FAC_TEST, e);
 			Assert.fail();
 		}
 		
@@ -197,12 +188,11 @@ public class ACPerformanceTestRepo {
 	 * @param userName the name of the user
 	 * @throws AccessDeniedException
 	 */
-	public void readFileAs(String userName) throws AccessDeniedException {
+	public void readFileAs(String userName) throws Exception {
 		long startTime = System.currentTimeMillis();
 		
-		CCNHandle handle = null;
 		try {
-			handle = cua.getHandleForUser(userName);
+			CCNHandle handle = cua.getHandleForUser(userName);
 			CCNInputStream input = new CCNFileInputStream(nodeName, handle);
 			input.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			int readcount = 0;
@@ -218,12 +208,8 @@ public class ACPerformanceTestRepo {
 			System.out.println("Failed to read file as " + userName + ": " + (System.currentTimeMillis() - startTime));		
 			throw ade;
 		}
-		catch (IOException ioe) {
-			ioe.printStackTrace();
-			Assert.fail();
-		}
-		finally {
-			handle.close();
+		catch (Exception e) {
+			throw e;
 		}
 
 		System.out.println("read file as " + userName + ": " + (System.currentTimeMillis() - startTime));		
@@ -232,19 +218,13 @@ public class ACPerformanceTestRepo {
 	/**
 	 * Add Carol as a reader to the ACL on baseDirectory
 	 */
-	public void updateACL() {
+	public void updateACL() throws Exception {
 		long startTime = System.currentTimeMillis();
 		
 		ArrayList<ACLOperation> ACLUpdates = new ArrayList<ACLOperation>();
 		Link lk = new Link(ContentName.fromNative(userNamespace, userNames[2]));
 		ACLUpdates.add(ACLOperation.addReaderOperation(lk));
-		try {
-			_AliceACM.updateACL(baseDirectory, ACLUpdates);
-		} 
-		catch (Exception e) {
-			e.printStackTrace();
-			Assert.fail();
-		}
+		_AliceACM.updateACL(baseDirectory, ACLUpdates);
 
 		System.out.println("updateACL: " + (System.currentTimeMillis() - startTime));		
 	}

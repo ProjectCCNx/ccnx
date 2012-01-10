@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -20,6 +20,7 @@ package org.ccnx.ccn.test.io.content;
 import java.util.Collection;
 import java.util.TreeMap;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -39,6 +40,8 @@ public class KeyValueSetTest {
 
 	@Test
 	public void testData() {
+		Log.info(Log.FAC_TEST, "Starting testData");
+
 		KeyValueSet kvs = new KeyValueSet();
 		Assert.assertNotNull(kvs);
 		Assert.assertTrue(kvs.validate());
@@ -59,10 +62,14 @@ public class KeyValueSetTest {
 			kvs.put("test5", 2);
 			Assert.fail("Attempt to put duplicate value succeeded");
 		} catch (Exception e) {} // Exception expected
+		
+		Log.info(Log.FAC_TEST, "Completed testData");
 	}
 
 	@Test
 	public void testMethods() {
+		Log.info(Log.FAC_TEST, "Starting testMethods");
+
 		KeyValueSet kvs = new KeyValueSet();
 		kvs.put("test3", 3);
 		kvs.put("test2", 2);
@@ -97,10 +104,14 @@ public class KeyValueSetTest {
 		}
 		kvs.clear();
 		Assert.assertTrue(kvs.isEmpty());
+		
+		Log.info(Log.FAC_TEST, "Completed testMethods");
 	}
 
 	@Test
 	public void testEncodeDecode() throws MalformedContentNameStringException {
+		Log.info(Log.FAC_TEST, "Starting testEncodeDecode");
+
 		KeyValueSet cd = new KeyValueSet();
 		KeyValueSet cdec = new KeyValueSet();
 		KeyValueSet bdec = new KeyValueSet();
@@ -111,5 +122,7 @@ public class KeyValueSetTest {
 		cd.put("test4", new byte[]{1,2,3,4});
 		cd.put("test5", ContentName.fromNative("/ccn/TestKeySetTest"));
 		XMLEncodableTester.encodeDecodeTest("Collection", cd, cdec, bdec);
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodeDecode");
 	}
 }

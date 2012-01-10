@@ -196,5 +196,9 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal, e);
 		}
 	}
+	
+	public InputStream getInputStream() {
+		return _istream;
+	}
 
 }

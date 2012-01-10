@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -30,9 +30,9 @@ import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl;
@@ -101,24 +101,24 @@ public class LibraryTestBase extends CCNTestBase {
 			exit = true;
 			if (getter.getState() != Thread.State.TERMINATED) {
 				getter.interrupt();
-				System.out.println("Get Thread has not finished!");
+				Log.warning(Log.FAC_TEST, "Get Thread has not finished!");
 				good = false;
 			}
 			if (putter.getState() != Thread.State.TERMINATED) {
 				putter.interrupt();
-				System.out.println("Put Thread has not finished!");
+				Log.warning(Log.FAC_TEST, "Put Thread has not finished!");
 				good = false;
 			}
 			if (null != error) {
-				System.out.println("Error in test thread: " + error.getClass().toString());
+				Log.warning(Log.FAC_TEST, "Error in test thread: " + error.getClass().toString());
 				throw error;
 			}
 			if (!good) {
 				fail();
 			}
-			System.out.println("Get/Put test in " + (new Date().getTime() - start.getTime()) + " ms");
+			Log.info(Log.FAC_TEST, "Get/Put test in " + (new Date().getTime() - start.getTime()) + " ms");
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			Log.logStackTrace(Level.WARNING, e);
 			fail("InterruptedException");
 		}
 	}
@@ -130,11 +130,11 @@ public class LibraryTestBase extends CCNTestBase {
 	 *
 	 */
 	public void checkGetResults(ContentObject getResults) {
-		System.out.println("Got result: " + getResults.name());
+		Log.info(Log.FAC_TEST, "Got result: " + getResults.name());
 	}
 	
 	public void checkPutResults(ContentName putResult) {
-		System.out.println("Put data: " + putResult);
+		Log.info(Log.FAC_TEST, "Put data: " + putResult);
 	}
 	
 	/**
@@ -152,30 +152,30 @@ public class LibraryTestBase extends CCNTestBase {
 	public void getResults(ContentName baseName, int count, CCNHandle handle) throws IOException, InvalidKeyException, SignatureException, InterruptedException {
 		Random rand = new Random();
 	//	boolean done = false;
-		System.out.println("getResults: getting children of " + baseName);
+		Log.info(Log.FAC_TEST, "getResults: getting children of " + baseName);
 		for (int i = 0; i < count; i++) {
 	//	while (!done) {
 			Thread.sleep(rand.nextInt(50));
-			System.out.println("getResults getting " + baseName + " subitem " + i);
+			Log.info(Log.FAC_TEST, "getResults getting " + baseName + " subitem " + i);
 			ContentObject contents = handle.get(ContentName.fromNative(baseName, Integer.toString(i)), SystemConfiguration.NO_TIMEOUT);
 		
 			try {
 				int val = Integer.parseInt(new String(contents.content()));
 				if (_resultSet.contains(val)) {
-					System.out.println("Got " + val + " again.");
+					Log.info(Log.FAC_TEST, "Got " + val + " again.");
 				} else {
-					System.out.println("Got " + val);
+					Log.info(Log.FAC_TEST, "Got " + val);
 				}
 				_resultSet.add(val);
 
 			} catch (NumberFormatException nfe) {
-				Log.info("BaseLibraryTest: unexpected content - not integer. Name: " + contents.content());
+				Log.info(Log.FAC_TEST, "BaseLibraryTest: unexpected content - not integer. Name: " + contents.content());
 			}
 			//assertEquals(i, Integer.parseInt(new String(contents.get(0).content())));
 			checkGetResults(contents);
 			
 			if (_resultSet.size() == count) {
-				System.out.println("We have everything!");
+				Log.info(Log.FAC_TEST, "We have everything!");
 //				done = true; 
 			}
 		}
@@ -199,7 +199,7 @@ public class LibraryTestBase extends CCNTestBase {
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			ContentName putResult = writer.put(ContentName.fromNative(baseName, Integer.toString(i)), new Integer(i).toString().getBytes());
-			System.out.println("Put " + i + " done");
+			Log.info(Log.FAC_TEST, "Put " + i + " done");
 			checkPutResults(putResult);
 		}
 		writer.close();
@@ -231,14 +231,14 @@ public class LibraryTestBase extends CCNTestBase {
 		}
 		public void run() {
 			try {
-				System.out.println("Get thread started");
+				Log.info(Log.FAC_TEST, "Get thread started");
 				getResults(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, handle);
 				handle.close();
-				System.out.println("Get thread finished");
+				Log.info(Log.FAC_TEST, "Get thread finished");
 			} catch (Throwable ex) {
 				error = ex;
-				Log.warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
-				Log.logStackTrace(Level.WARNING, ex);
+				Log.warning(Log.FAC_TEST, "Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.logStackTrace(Log.FAC_TEST, Level.WARNING, ex);
 			}
 		}
 	}
@@ -260,20 +260,20 @@ public class LibraryTestBase extends CCNTestBase {
 		}
 		public void run() {
 			try {
-				System.out.println("Put thread started");
+				Log.info(Log.FAC_TEST, "Put thread started");
 				doPuts(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, handle);
 				handle.close();
-				System.out.println("Put thread finished");
+				Log.info(Log.FAC_TEST, "Put thread finished");
 				//cf.shutdown();
 			} catch (Throwable ex) {
 				error = ex;
-				Log.warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
-				Log.logStackTrace(Level.WARNING, ex);
+				Log.warning(Log.FAC_TEST, "Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.logStackTrace(Log.FAC_TEST, Level.WARNING, ex);
 			}
 		}
 	}
 	
-	public class GetServer implements Runnable, CCNInterestListener {
+	public class GetServer implements Runnable, CCNContentHandler {
 		protected CCNHandle handle = null;
 		int count = 0;
 		int next = 0;
@@ -294,7 +294,7 @@ public class LibraryTestBase extends CCNTestBase {
 		}
 		public void run() {
 			try {
-				System.out.println("GetServer started");
+				Log.info(Log.FAC_TEST, "GetServer started");
 				Interest interest = new Interest(ContentName.fromNative(PARENT_NAME, Integer.toString(id)));
 				// Register interest
 				handle.expressInterest(interest, this);
@@ -310,8 +310,8 @@ public class LibraryTestBase extends CCNTestBase {
 
 			} catch (Throwable ex) {
 				error = ex;
-				Log.warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
-				Log.logStackTrace(Level.WARNING, ex);
+				Log.warning(Log.FAC_TEST, "Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.logStackTrace(Log.FAC_TEST, Level.WARNING, ex);
 			}
 		}
 		public synchronized Interest handleContent(ContentObject contentObject, Interest interest) {
@@ -320,23 +320,23 @@ public class LibraryTestBase extends CCNTestBase {
 				int val = Integer.parseInt(new String(contentObject.content()));
 				if (!accumulatedResults.contains(val)) {
 					accumulatedResults.add(val);
-					System.out.println("Got " + val);
+					Log.info(Log.FAC_TEST, "Got " + val);
 				}
 				newInterest = Interest.next(contentObject.fullName(), contentObject.name().count() - 2, null);
 			} catch (NumberFormatException nfe) {
-				Log.info("Unexpected content, " + contentObject.name() + " is not an integer!");
+				Log.info(Log.FAC_TEST, "Unexpected content, " + contentObject.name() + " is not an integer!");
 			}
 			checkGetResults(contentObject);
 
 			if (accumulatedResults.size() >= count) {
-				System.out.println("GetServer got all content: " + accumulatedResults.size() + ". Releasing semaphore.");
+				Log.info(Log.FAC_TEST, "GetServer got all content: " + accumulatedResults.size() + ". Releasing semaphore.");
 				sema.release();
 			}
 			return  newInterest;
 		}
 	}
 	
-	public class PutServer implements Runnable, CCNFilterListener {
+	public class PutServer implements Runnable, CCNInterestHandler {
 		protected CCNHandle handle = null;
 		int count = 0;
 		int next = 0;
@@ -361,7 +361,7 @@ public class LibraryTestBase extends CCNTestBase {
 		
 		public void run() {
 			try {
-				System.out.println("PutServer started");
+				Log.info(Log.FAC_TEST, "PutServer started");
 				// Register filter
 				name = ContentName.fromNative(PARENT_NAME, Integer.toString(id));
 				writer = new CCNWriter(name, handle);
@@ -369,13 +369,13 @@ public class LibraryTestBase extends CCNTestBase {
 				// Block on semaphore until enough data has been received
 				sema.acquire();
 				handle.unregisterFilter(name, this);
-				System.out.println("PutServer finished.");
+				Log.info(Log.FAC_TEST, "PutServer finished.");
 				handle.close();
 
 			} catch (Throwable ex) {
 				error = ex;
-				Log.warning("Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
-				Log.logStackTrace(Level.WARNING, ex);
+				Log.warning(Log.FAC_TEST, "Exception in run: " + ex.getClass().getName() + " message: " + ex.getMessage());
+				Log.logStackTrace(Log.FAC_TEST, Level.WARNING, ex);
 			}
 		}
 
@@ -384,25 +384,25 @@ public class LibraryTestBase extends CCNTestBase {
 			try {
 				try {
 					int val = Integer.parseInt(new String(interest.name().component(interest.name().count()-1)));
-					System.out.println("Got interest in " + val);
+					Log.info(Log.FAC_TEST, "Got interest in " + val);
 					if (!accumulatedResults.contains(val)) {
 						ContentName putResult = writer.put(ContentName.fromNative(name, Integer.toString(val)), Integer.toString(next).getBytes());
 						result = true;
-						System.out.println("Put " + val + " done");
+						Log.info(Log.FAC_TEST, "Put " + val + " done");
 						checkPutResults(putResult);
 						next++;
 						accumulatedResults.add(val);
 					}
 				} catch (NumberFormatException nfe) {
-					Log.info("Unexpected interest, " + interest.name() + " does not end in an integer!");
+					Log.info(Log.FAC_TEST, "Unexpected interest, " + interest.name() + " does not end in an integer!");
 				}
 				if (accumulatedResults.size() >= count) {
 					sema.release();
 				}
 			} catch (Throwable e) {
 				error = e;
-				Log.warning("Exception in run: " + e.getClass().getName() + " message: " + e.getMessage());
-				Log.logStackTrace(Level.WARNING, e);
+				Log.warning(Log.FAC_TEST, "Exception in run: " + e.getClass().getName() + " message: " + e.getMessage());
+				Log.logStackTrace(Log.FAC_TEST, Level.WARNING, e);
 			}
 			return result;
 		}

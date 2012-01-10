@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -27,6 +27,7 @@ import javax.security.auth.x500.X500Principal;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.ccnx.ccn.impl.security.crypto.util.MinimalCertificateGenerator;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -78,6 +79,8 @@ public class KeyLocatorTest {
 
 	@Test
 	public void testEncodeOutputStream() {
+		Log.info(Log.FAC_TEST, "Starting testEncodeOutputStream");
+
 		KeyLocator nameLoc = new KeyLocator(name);
 		KeyLocator nameLocDec = new KeyLocator();
 		KeyLocator bnameLocDec = new KeyLocator();
@@ -97,7 +100,8 @@ public class KeyLocatorTest {
 		KeyLocator certLocDec = new KeyLocator();
 		KeyLocator bcertLocDec = new KeyLocator();
 		XMLEncodableTester.encodeDecodeTest("KeyLocator(cert)", certLoc, certLocDec, bcertLocDec);
-
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodeOutputStream");
 	}	
 
 }

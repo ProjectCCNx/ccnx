@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.impl.support.TreeSet6;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
@@ -311,7 +312,7 @@ public class InterestData {
 	}
 
 	/**
-	 * Split this object to the left, transfering #count elements
+	 * Split this object to the left, transferring #count elements
 	 */
 	public synchronized InterestData splitLeft(int count) {
 		// create a pristine object
@@ -322,7 +323,7 @@ public class InterestData {
 	}
 
 	/**
-	 * Split this object to the right, transfering #count elements
+	 * Split this object to the right, transferring #count elements
 	 */
 	public synchronized InterestData splitRight(int count) {
 		// create a pristine object

@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -65,6 +65,7 @@ public class LastSegmentTest {
 	 */
 	@Test
 	public void lastSegmentTestCheckTimeout(){
+		Log.info(Log.FAC_TEST, "Starting lastSegmentTestCheckTimeout");
 		
 		//first, attempt to get a segment for something that isn't there...  should time out
 		
@@ -90,11 +91,13 @@ public class LastSegmentTest {
 	
 		Assert.assertNull(object);
 		
-		Assert.assertTrue(stoptime - starttime > timeout);
+		Assert.assertTrue("Returned too soon in : " + (stoptime - starttime) + " ms", stoptime - starttime >=  timeout);
 		
-		if (stoptime - starttime < 2*timeout) {
+		if (stoptime - starttime > 2*timeout) {
 			Log.warning("lastSegmentTimeoutTest was more than twice the timeout length");
-		}		
+		}
+		
+		Log.info(Log.FAC_TEST, "Completed lastSegmentTestCheckTimeout");
 	}
 	
 	
@@ -103,6 +106,7 @@ public class LastSegmentTest {
 	 */
 	@Test
 	public void testIsLastSegment(){
+		Log.info(Log.FAC_TEST, "Starting testIsLastSegment");
 		
 		//test to make sure the last segment check is correct
 		
@@ -118,6 +122,7 @@ public class LastSegmentTest {
 		
 		Assert.assertTrue(SegmentationProfile.isLastSegment(obj));
 		
+		Log.info(Log.FAC_TEST, "Completed testIsLastSegment");	
 	}
 	
 	/**
@@ -125,6 +130,7 @@ public class LastSegmentTest {
 	 */
 	@Test
 	public void testIsNotLastSegment(){
+		Log.info(Log.FAC_TEST, "Starting testIsNotLastSegment");
 		
 		//test to make sure the last segment check is correct
 		
@@ -139,6 +145,8 @@ public class LastSegmentTest {
 		ContentObject obj = ContentObject.buildContentObject(name, "here is a segment".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(4));
 		
 		Assert.assertFalse(SegmentationProfile.isLastSegment(obj));
+		
+		Log.info(Log.FAC_TEST, "Completed testIsNotLastSegment");
 	}
 	
 	/**
@@ -147,6 +155,8 @@ public class LastSegmentTest {
 	 */
 	@Test
 	public void testGetLastSegmentWithMultipleSegmentsUnversioned() {
+		Log.info(Log.FAC_TEST, "Starting testGetLastSegmentWithMultipleSegmentsUnversioned");
+
 		ContentName one = null;
 		ContentName last = null;
 		ContentName name = null;
@@ -181,6 +191,8 @@ public class LastSegmentTest {
 		} catch (IOException e) {
 			Assert.fail("Failed to get last segment: "+e.getMessage());
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testGetLastSegmentWithMultipleSegmentsUnversioned");
 	}
 	
 	/**
@@ -189,6 +201,8 @@ public class LastSegmentTest {
 	 */
 	@Test
 	public void testGetLastSegmentWithMultipleSegmentsVersioned() {
+		Log.info(Log.FAC_TEST, "Starting testGetLastSegmentWithMultipleSegmentsVersioned");
+
 		ContentName one = null;
 		ContentName last = null;
 		ContentName name = null;
@@ -225,6 +239,7 @@ public class LastSegmentTest {
 			Assert.fail("Failed to get last segment: "+e.getMessage());
 		}
 		
+		Log.info(Log.FAC_TEST, "Completed testGetLastSegmentWithMultipleSegmentsVersioned");
 	}
 		
 				
@@ -233,6 +248,8 @@ public class LastSegmentTest {
 	 */
 	@Test
 	public void testGetLastSegmentWithSingleSegmentVersioned() {
+		Log.info(Log.FAC_TEST, "Starting testGetLastSegmentWithSingleSegmentVersioned");
+
 		ContentName one = null;
 		ContentName name = null;
 		
@@ -262,8 +279,7 @@ public class LastSegmentTest {
 		} catch (IOException e) {
 			Assert.fail("Failed to get last segment: "+e.getMessage());
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testGetLastSegmentWithSingleSegmentVersioned");
 	}
-		
-		
-	
 }

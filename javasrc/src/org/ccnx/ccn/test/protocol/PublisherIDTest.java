@@ -23,6 +23,7 @@ import java.util.Arrays;
 
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.PublisherID;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 import org.ccnx.ccn.protocol.PublisherID.PublisherType;
@@ -52,6 +53,8 @@ public class PublisherIDTest {
 
 	@Test
 	public void testDecodeInputStream() {
+		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
+
 		PublisherID pubkey = new PublisherID(publisherid, PublisherType.KEY);
 		PublisherID pubkeyDec = new PublisherID();
 		PublisherID bpubkeyDec = new PublisherID();
@@ -71,11 +74,13 @@ public class PublisherIDTest {
 		PublisherID pubisscertDec = new PublisherID();
 		PublisherID bpubisscertDec = new PublisherID();
 		XMLEncodableTester.encodeDecodeTest("PublisherID(isscert)", pubisscert, pubisscertDec, bpubisscertDec);
-			
+		
+		Log.info(Log.FAC_TEST, "Completed testDecodeInputStream");
 	}
 	
 	@Test
 	public void testPublisherToString() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testPublisherToString");
 		
 		// Start with a java base 32 representation, a form used in debug output,
 		// but generally not in any actual protocols.
@@ -129,6 +134,7 @@ public class PublisherIDTest {
 		
 		PublisherPublicKeyDigest p3 = new PublisherPublicKeyDigest(p2.toString());
 		Assert.assertEquals(p2, p3);
+		
+		Log.info(Log.FAC_TEST, "Completed testPublisherToString");
 	}
-
 }

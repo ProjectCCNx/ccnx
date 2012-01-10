@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -18,6 +18,7 @@
 package org.ccnx.ccn.io.content;
 
 import java.security.InvalidParameterException;
+import java.util.Comparator;
 import java.util.Map;
 
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
@@ -128,8 +129,71 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 				|| (_value instanceof ContentName));
 	}
 
+	/**
+	 * Compares based on _key first.  If keys equal, then
+	 * compares based on _value.  Nulls are treated as equals, otherwise 
+	 * Null < non-Null.
+	 * 
+	 * The Comparison on _value requires the class of _value to be the same.  If
+	 * you try to compare keys with different classes for _value, compareTo will return
+	 * a consistent ordering based on class, not on the value of _value (i.e. 
+	 * ordering by cannonical class name).  If _value is of type byte[], then
+	 * the ordering is a shortlex.
+	 */
 	public int compareTo(KeyValuePair o) {
-		return _key.compareTo(o._key);
+		if( o == null )
+			throw new NullPointerException("compareTo called with null");
+		
+		int c;
+		
+		if( _key == null && o._key == null )
+			c = 0;
+		else if( _key == null && o._key != null )
+			c = -1;
+		else if( _key != null && o._key == null )
+			c = +1;
+		else 
+			c = _key.compareTo(o._key);
+		
+		if (c == 0) {	
+			if( _value == null && o._value == null )
+				c = 0;
+			else if( _value == null && o._value != null )
+				c = -1;
+			else if( _value != null && o._value == null )
+				c = +1;
+			else {
+				// both must be non-null
+				Class<?> cls_mine = _value.getClass();
+				Class<?> cls_his  = o._value.getClass();
+				
+				c = cls_mine.getCanonicalName().compareTo(cls_his.getCanonicalName());
+				if( c == 0 ) {
+				
+					// Classes are the same, so now compare on the actual value
+					if (_value instanceof Long) {
+						c = ((Long) _value).compareTo((Long) o._value);
+					}  else if (_value instanceof Integer) {
+						c = ((Integer) _value).compareTo((Integer) o._value);
+					} else if (_value instanceof Float) {
+						c = ((Float) _value).compareTo((Float) o._value);
+					} else if (_value instanceof String) {
+						c = ((String) _value).compareTo((String) o._value);
+					} else if (_value instanceof byte[]) {
+						byte [] mine = (byte []) _value;
+						byte [] his  = (byte []) o._value;
+						c = DataUtils.compare(mine, his);
+					} else if (_value instanceof ContentName) {
+						c = ((ContentName) _value).compareTo((ContentName) o._value);
+					} else {
+						// XXX Should never get here!
+						throw new RuntimeException("Unknown class type of _value");
+					}
+				}
+			}
+		}
+		
+		return c;
 	}
 	
 	@Override
@@ -139,19 +203,27 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 		if (obj == null)
 			return false;
 		KeyValuePair other = (KeyValuePair) obj;
-		if (_value.getClass() != other._value.getClass())
-			return false;
-		if (_value instanceof byte[]) {
-			if (!DataUtils.arrayEquals((byte[])_value, (byte[])other._value))
-				return false;
-		} else {
-			if (!_value.equals(other._value))
-				return false;
-		}
-		return true;
+		return (compareTo(other) == 0);
 	}
 
+	@Override
+	public int hashCode() {
+		int result = 1;
+		result = 31 * result + (_key != null ? _key.hashCode() : 0);
+		result = 31 * result + (_value != null ? _value.hashCode() : 0);
+		return result;
+	}
+	
 	public Object setValue(Object value) {
 		return null;
+	}
+	
+	/**
+	 * This can be used in a data structure to order KV pairs by their keys.
+	 */
+	public static class KeyOrderComparator implements Comparator<KeyValuePair> {
+		public int compare(KeyValuePair arg0, KeyValuePair arg1) {
+			return arg0._key.compareTo(arg1._key);
+		}
 	}
 }

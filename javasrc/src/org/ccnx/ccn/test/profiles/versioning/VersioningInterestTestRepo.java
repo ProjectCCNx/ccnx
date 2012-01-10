@@ -22,13 +22,11 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.TreeSet;
-import java.util.logging.Level;
 
 import junit.framework.Assert;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.VersionNumber;
@@ -40,7 +38,6 @@ import org.ccnx.ccn.test.profiles.versioning.VersioningHelper.ReceivedData;
 import org.ccnx.ccn.test.profiles.versioning.VersioningHelper.TestListener;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
@@ -57,26 +54,21 @@ public class VersioningInterestTestRepo {
 	protected CCNHandle sendhandle = null;
 	
 	protected final static long TIMEOUT=30000;
-	protected final static long SEND_PAUSE = 50;
+	protected final static long SEND_PAUSE = 30;
 
 	public VersioningInterestTestRepo() throws MalformedContentNameStringException {
-		prefix  = ContentName.fromNative(String.format("/test_%016X", _rnd.nextLong()));
-	}
-
-	@BeforeClass
-	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(Log.FAC_ALL, Level.WARNING);
-		Log.setLevel(Log.FAC_ENCODING, Level.WARNING);
+		prefix  = ContentName.fromNative(String.format("/repotest/test_%016X", _rnd.nextLong()));
 	}
 
 	@Before
 	public void setUp() throws Exception {
-		recvhandle = CCNHandle.getHandle();
-		sendhandle = CCNHandle.open(recvhandle.keyManager());
+		recvhandle = CCNHandle.open();
+		sendhandle = CCNHandle.open();
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		recvhandle.close();
 		sendhandle.close();
 	}
 
@@ -130,6 +122,7 @@ public class VersioningInterestTestRepo {
 			}
 		}
 		Assert.assertFalse(missing);
+		vi.close();
 		System.out.println("****** testTwoNamesOneListener done");
 	}
 	
@@ -193,6 +186,9 @@ public class VersioningInterestTestRepo {
 		long sum = listener1.cl.getValue() + listener2.cl.getValue() + listener3.cl.getValue();
 		System.out.println("Other listeners got " + sum);
 		Assert.assertEquals(count, (int) sum);
+		
+		vi.close();
+		
 		System.out.println("****** testThreeNamesFourListener done");
 	}
 	
@@ -232,16 +228,17 @@ public class VersioningInterestTestRepo {
 	private void send(CCNHandle handle, ContentName name, CCNTime version) throws IOException, InterruptedException {
 		
 		CCNStringObject so = new CCNStringObject(name, "Hello, World " + version, SaveType.LOCALREPOSITORY, handle);
-		int trycount = 10;
+		int maxtry = 10;
+		int trycount = 0;
 		IOException error = null;
 		
 		do {
 			error = null;
-			trycount--;
 			try {
 				// do this every time, not just on errors.  The FlowController seems
 				// to not like to receive a lot of objects all at once.
-				Thread.sleep(SEND_PAUSE);
+				// With each error, sleep longer
+				Thread.sleep(SEND_PAUSE * (2 * trycount + 1));
 				
 				boolean b = so.save(version);
 				if( b ) {
@@ -252,10 +249,11 @@ public class VersioningInterestTestRepo {
 				}
 			} catch(IOException e) {
 				error = e;
-				Thread.sleep(SEND_PAUSE);
+				Thread.sleep(SEND_PAUSE * (2 * trycount + 1));
 			} 
 			
-		} while( trycount > 0 && null != error );
+			trycount++;
+		} while( trycount < maxtry && null != error );
 		
 		if( null != error ) {
 			throw error;

@@ -8,7 +8,8 @@ ccn/apps/wireshark/ccn there.
 You'll need to follow the instructions in wireshark file doc/README.plugins
 regarding existing Wireshark files that need to be edited to add a new plugin.
 
-For wireshark 1.4.2, you need to change the following files (README.plugins sec 3)
+For wireshark 1.4.2 (we have tested up through 1.4.6), you need to change
+the following files (README.plugins sec 3)
 
 	configure.in
 	CMakeLists.txt
@@ -19,7 +20,8 @@ For wireshark 1.4.2, you need to change the following files (README.plugins sec 
 	plugins/Makefile.am
 	plugins/Makefile.nmake
 
-The patch file wireshark-1.4.2.patch can be applied to make the necessary changes:
+The patch file wireshark-1.4.2.patch (works on 1.4.6 too) can be applied to
+make the necessary changes:
 
     cd wireshark-1.4.2
     patch -p1 < .../ccn/apps/wireshark/wireshark-1.4.2.patch

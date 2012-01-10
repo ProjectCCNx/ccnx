@@ -1,6 +1,6 @@
 /*
  * ccnd/ccnd.c
- * 
+ *
  * Main program of ccnd - the CCNx Daemon
  *
  * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
@@ -1534,7 +1534,8 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
         ccn_charbuf_append_closer(c);
     }
     else if (size2 != 0 || h->mtu > size1 + size2 ||
-             (face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0) {
+             (face->flags & (CCN_FACE_SEQOK | CCN_FACE_SEQPROBE)) != 0 ||
+             face->recvcount == 0) {
         c = charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
 		if (size2 != 0)
@@ -1553,6 +1554,51 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
 }
 
 /**
+ * Append a link-check interest if appropriate.
+ *
+ * @returns the number of messages that were stuffed.
+ */
+static int
+stuff_link_check(struct ccnd_handle *h,
+                   struct face *face, struct ccn_charbuf *c)
+{
+    int checkflags = CCN_FACE_DGRAM | CCN_FACE_MCAST | CCN_FACE_GG | CCN_FACE_LC;
+    int wantflags = CCN_FACE_DGRAM;
+    struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *ibuf = NULL;
+    int res;
+    int ans = 0;
+    if (face->recvcount > 0)
+        return(0);
+    if ((face->flags & checkflags) != wantflags)
+        return(0);
+    name = ccn_charbuf_create();
+    if (name == NULL) goto Bail;
+    ccn_name_init(name);
+    res = ccn_name_from_uri(name, CCNDID_NEIGHBOR_URI);
+    if (res < 0) goto Bail;
+    ibuf = ccn_charbuf_create();
+    if (ibuf == NULL) goto Bail;
+    ccn_charbuf_append_tt(ibuf, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append(ibuf, name->buf, name->length);
+    ccnb_tagged_putf(ibuf, CCN_DTAG_Scope, "2");
+    // XXX - ought to generate a nonce
+    ccn_charbuf_append_closer(ibuf);
+    ccn_charbuf_append(c, ibuf->buf, ibuf->length);
+    ccnd_meter_bump(h, face->meter[FM_INTO], 1);
+    h->interests_stuffed++;
+    face->flags |= CCN_FACE_LC;
+    if (h->debug & 2)
+        ccnd_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
+                        ibuf->buf, ibuf->length);
+    ans = 1;
+Bail:
+    ccn_charbuf_destroy(&ibuf);
+    ccn_charbuf_destroy(&name);
+    return(ans);
+}
+
+/**
  * Stuff a PDU with interest messages that will fit.
  *
  * Note by default stuffing does not happen due to the setting of h->mtu.
@@ -1565,7 +1611,10 @@ ccn_stuff_interest(struct ccnd_handle *h,
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int n_stuffed = 0;
-    int remaining_space = h->mtu - c->length;
+    int remaining_space;
+    if (stuff_link_check(h, face, c) > 0)
+        n_stuffed++;
+    remaining_space = h->mtu - c->length;
     if (remaining_space < 20 || face == h->face0)
         return(0);
     for (hashtb_start(h->nameprefix_tab, e);
@@ -1573,7 +1622,7 @@ ccn_stuff_interest(struct ccnd_handle *h,
         struct nameprefix_entry *npe = e->data;
         struct propagating_entry *head = &npe->pe_head;
         struct propagating_entry *p;
-        for (p = head->prev; p != head; p = p->prev) {
+        for (p = head->next; p != head; p = p->next) {
             if (p->outbound != NULL &&
                 p->outbound->n > p->sent &&
                 p->size <= remaining_space &&
@@ -1716,19 +1765,27 @@ check_dgram_faces(struct ccnd_handle *h)
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     int count = 0;
-    int checkflags = CCN_FACE_DGRAM | CCN_FACE_PERMANENT;
+    int checkflags = CCN_FACE_DGRAM;
     int wantflags = CCN_FACE_DGRAM;
     
     hashtb_start(h->dgram_faces, e);
     while (e->data != NULL) {
         struct face *face = e->data;
         if (face->addr != NULL && (face->flags & checkflags) == wantflags) {
+            face->flags &= ~CCN_FACE_LC; /* Rate limit link check interests */
             if (face->recvcount == 0) {
-                count += 1;
-                hashtb_delete(e);
-                continue;
+                if ((face->flags & CCN_FACE_PERMANENT) == 0) {
+                    count += 1;
+                    hashtb_delete(e);
+                    continue;
+                }
             }
-            face->recvcount = (face->recvcount > 1); /* go around twice */
+            else if (face->recvcount == 1) {
+                face->recvcount = 0;
+            }
+            else {
+                face->recvcount = 1; /* go around twice */
+            }
         }
         hashtb_next(e);
     }
@@ -2161,13 +2218,8 @@ ccnd_reg_prefix(struct ccnd_handle *h,
     if (face == NULL)
         return(-1);
     /* This is a bit hacky, but it gives us a way to set CCN_FACE_DC */
-    if (flags >= 0 && (flags & CCN_FORW_LAST) != 0) {
+    if (flags >= 0 && (flags & CCN_FORW_LAST) != 0)
         face->flags |= CCN_FACE_DC;
-        if ((face->flags & CCN_FACE_GG) != 0) {
-            face->flags &= ~CCN_FACE_GG;
-            face->flags |= CCN_FACE_REGOK;
-        }
-    }
     hashtb_start(h->nameprefix_tab, e);
     res = nameprefix_seek(h, e, msg, comps, ncomps);
     if (res >= 0) {
@@ -2271,7 +2323,7 @@ register_new_face(struct ccnd_handle *h, struct face *face)
         ccnd_face_status_change(h, face->faceid);
         if (h->flood && h->autoreg != NULL && (face->flags & CCN_FACE_GG) == 0)
             ccnd_reg_uri_list(h, h->autoreg, face->faceid,
-                              CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
+                              CCN_FORW_CAPTURE_OK | CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE,
                               0x7FFFFFFF);
         ccn_link_state_init(h, face);
     }
@@ -2329,7 +2381,7 @@ check_forwarding_entry_ccndid(struct ccnd_handle *h,
  * @param msg points to a ccnd-encoded ContentObject containing a
  *         FaceInstance in its Content.
  * @param size is its size in bytes
- * @param reply_body is a buffer to hold the Content of the reply, as a 
+ * @param reply_body is a buffer to hold the Content of the reply, as a
  *         FaceInstance including faceid
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
@@ -2362,7 +2414,7 @@ ccnd_req_newface(struct ccnd_handle *h,
     h->flood = 0; /* never auto-register for these */
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
-        goto Finish;        
+        goto Finish;
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
@@ -2480,7 +2532,7 @@ Finish:
  * @param msg points to a ccnd-encoded ContentObject containing a FaceInstance
             in its Content.
  * @param size is its size in bytes
- * @param reply_body is a buffer to hold the Content of the reply, as a 
+ * @param reply_body is a buffer to hold the Content of the reply, as a
  *         FaceInstance including faceid
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
@@ -2562,7 +2614,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
 
     res = ccn_parse_ContentObject(msg, size, &pco, NULL);
     if (res < 0)
-        goto Finish;        
+        goto Finish;
     res = ccn_content_get_value(msg, size, &pco, &req, &req_size);
     if (res < 0)
         goto Finish;
@@ -2638,7 +2690,7 @@ Finish:
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @param reply_body is a buffer to hold the Content of the reply, as a 
+ * @param reply_body is a buffer to hold the Content of the reply, as a
  *         FaceInstance including faceid
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
@@ -2658,7 +2710,7 @@ ccnd_req_prefixreg(struct ccnd_handle *h,
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @param reply_body is a buffer to hold the Content of the reply, as a 
+ * @param reply_body is a buffer to hold the Content of the reply, as a
  *         ccnb-encoded ForwardingEntry
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
@@ -2678,7 +2730,7 @@ ccnd_req_selfreg(struct ccnd_handle *h,
  * @param msg points to a ccnd-encoded ContentObject containing a
  *          ForwardingEntry in its Content.
  * @param size is its size in bytes
- * @param reply_body is a buffer to hold the Content of the reply, as a 
+ * @param reply_body is a buffer to hold the Content of the reply, as a
  *         ccnb-encoded ForwardingEntry
  * @returns 0 for success, negative for no response, or CCN_CONTENT_NACK to
  *         set the response type to NACK.
@@ -2764,7 +2816,7 @@ ccnd_req_unreg(struct ccnd_handle *h,
         }
         p = &(f->next);
     }
-    if (!found) 
+    if (!found)
         goto Finish;    
     forwarding_entry->action = NULL;
     forwarding_entry->ccnd_id = h->ccnd_id;
@@ -2796,8 +2848,6 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
     unsigned moreflags;
     unsigned lastfaceid;
     unsigned namespace_flags;
-    /* tap_or_last flag bit is used only in this procedure */
-    unsigned tap_or_last = (1U << 31);
 
     x = npe->forward_to;
     if (x == NULL)
@@ -2812,9 +2862,8 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
         for (f = p->forwarding; f != NULL; f = f->next) {
             if (face_from_faceid(h, f->faceid) == NULL)
                 continue;
-            tflags = f->flags;
-            if (tflags & (CCN_FORW_TAP | CCN_FORW_LAST))
-                tflags |= tap_or_last;
+            /* The sense of this flag needs to be inverted for this test */
+            tflags = f->flags ^ CCN_FORW_CAPTURE_OK;
             if ((tflags & wantflags) == wantflags) {
                 if (h->debug & 32)
                     ccnd_msg(h, "fwd.%d adding %u", __LINE__, f->faceid);
@@ -2829,7 +2878,7 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
             }
             namespace_flags |= f->flags;
             if ((f->flags & CCN_FORW_CAPTURE) != 0)
-                moreflags |= tap_or_last;
+                moreflags |= CCN_FORW_CAPTURE_OK;
         }
         wantflags |= moreflags;
     }
@@ -2860,6 +2909,7 @@ get_outbound_faces(struct ccnd_handle *h,
     struct nameprefix_entry *npe)
 {
     int checkmask = 0;
+    int wantmask = 0;
     struct ccn_indexbuf *x;
     struct face *face;
     int i;
@@ -2879,11 +2929,14 @@ get_outbound_faces(struct ccnd_handle *h,
         checkmask = CCN_FACE_GG;
     else if (pi->scope == 2)
         checkmask = from ? (CCN_FACE_GG & ~(from->flags)) : ~0;
+    wantmask = checkmask;
+    if (wantmask == CCN_FACE_GG)
+        checkmask |= CCN_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         faceid = npe->forward_to->buf[i];
         face = face_from_faceid(h, faceid);
         if (face != NULL && face != from &&
-            ((face->flags & checkmask) == checkmask)) {
+            ((face->flags & checkmask) == wantmask)) {
             if (h->debug & 32)
                 ccnd_msg(h, "outbound.%d adding %u", __LINE__, face->faceid);
             ccn_indexbuf_append_element(x, face->faceid);
@@ -3002,7 +3055,7 @@ do_propagate(struct ccn_schedule *sched,
 }
 
 /**
- * Adjust the outbound face list for a new Interest, based upon 
+ * Adjust the outbound face list for a new Interest, based upon
  * existing similar interests.
  * @result besides possibly updating the outbound set, returns
  *         an extra delay time before propagation.  A negative return value
@@ -3033,7 +3086,7 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
     if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
         max_redundant = 0;
     if (outbound != NULL) {
-        for (p = head->next; p != head && outbound->n > 0; p = p->next) {
+        for (p = head->prev; p != head && outbound->n > 0; p = p->prev) {
             if (p->size > minsize &&
                 p->interest_msg != NULL &&
                 p->usec > 0 &&
@@ -3094,7 +3147,6 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                     }
                 }
                 p->flags |= CCN_PR_EQV; /* Don't add new faces */
-                // XXX - How robust is setting of CCN_PR_EQV?
                 /*
                  * XXX - We would like to avoid having to keep this
                  * interest around if we get here with (outbound->n == 0).
@@ -3176,7 +3228,7 @@ propagate_interest(struct ccnd_handle *h,
              * Completely subsumed by other interests.
              * We do not have to worry about generating a nonce if it
              * does not have one yet.
-             */ 
+             */
             if (h->debug & 16)
                 ccnd_debug_ccnb(h, __LINE__, "interest_subsumed", face,
                                 msg_out, msg_out_size);
@@ -3240,7 +3292,7 @@ propagate_interest(struct ccnd_handle *h,
             if (outbound->n > ntap &&
                   outbound->buf[ntap] == npe->src &&
                   extra_delay == 0) {
-                pe->flags = CCN_PR_UNSENT;
+                pe->flags |= CCN_PR_UNSENT;
                 delaymask = 0xFF;
             }
             outbound = NULL;
@@ -3290,6 +3342,7 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
     int n;
     unsigned faceid;
     unsigned checkmask = 0;
+    unsigned wantmask = 0;
     
     pe->fgen = h->forward_to_gen;
     if ((pe->flags & (CCN_PR_SCOPE0 | CCN_PR_EQV)) != 0)
@@ -3310,11 +3363,14 @@ replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
         checkmask = CCN_FACE_GG & ~(from->flags);
     if ((npe->flags & CCN_FORW_LOCAL) != 0)
         checkmask = ((from->flags & CCN_FACE_GG) != 0) ? CCN_FACE_GG : (~0);
+    wantmask = checkmask;
+    if (wantmask == CCN_FACE_GG)
+        checkmask |= CCN_FACE_DC;
     for (n = npe->forward_to->n, i = 0; i < n; i++) {
         faceid = npe->forward_to->buf[i];
         face = face_from_faceid(h, faceid);
         if (face != NULL && faceid != pe->faceid &&
-            ((face->flags & checkmask) == checkmask)) {
+            ((face->flags & checkmask) == wantmask)) {
             k = x->n;
             ccn_indexbuf_set_insert(x, faceid);
             if (x->n > k && (h->debug & 32) != 0)
@@ -3559,7 +3615,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                                 content->key,
                                 content->size);
             if (content != NULL &&
-                !content_matches_interest_prefix(h, content, msg, comps, 
+                !content_matches_interest_prefix(h, content, msg, comps,
                                                  pi->prefix_comps)) {
                 if (h->debug & 8)
                     ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
@@ -3583,7 +3639,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                         goto move_along;
                     }
                     if (h->debug & 8)
-                        ccnd_debug_ccnb(h, __LINE__, "matches", NULL, 
+                        ccnd_debug_ccnb(h, __LINE__, "matches", NULL,
                                         content->key,
                                         content->size);
                     if ((pi->orderpref & 1) == 0) // XXX - should be symbolic
@@ -3596,11 +3652,11 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 content = content_from_accession(h, content_skiplist_next(h, content));
             check_next_prefix:
                 if (content != NULL &&
-                    !content_matches_interest_prefix(h, content, msg, 
+                    !content_matches_interest_prefix(h, content, msg,
                                                      comps, pi->prefix_comps)) {
                     if (h->debug & 8)
                         ccnd_debug_ccnb(h, __LINE__, "prefix_mismatch", NULL,
-                                        content->key, 
+                                        content->key,
                                         content->size);
                     content = NULL;
                 }
@@ -4050,7 +4106,7 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
  * Break up data in a face's input buffer buffer into individual messages,
  * and call process_input_message on each one.
  *
- * This is used to handle things originating from the internal client - 
+ * This is used to handle things originating from the internal client -
  * its output is input for face 0.
  */
 static void
@@ -4158,7 +4214,7 @@ process_input(struct ccnd_handle *h, int fd)
         dres = ccn_skeleton_decode(d, buf, res);
         while (d->state == 0) {
             process_input_message(h, source,
-                                  face->inbuf->buf + msgstart, 
+                                  face->inbuf->buf + msgstart,
                                   d->index - msgstart,
                                   (face->flags & CCN_FACE_LOCAL) != 0);
             msgstart = d->index;
@@ -4363,7 +4419,7 @@ do_deferred_write(struct ccnd_handle *h, int fd)
  * Set up the array of fd descriptors for the poll(2) call.
  *
  * Arrange the array so that multicast receivers are early, so that
- * if the same packet arrives on both a multicast socket and a 
+ * if the same packet arrives on both a multicast socket and a
  * normal socket, we will count is as multicast.
  */
 static void

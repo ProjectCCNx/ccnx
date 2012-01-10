@@ -20,6 +20,8 @@
 <!ELEMENT Link    	(Name, Label?, LinkAuthenticator?)>
 <!ATTLIST Link		%commonattrs;>
 
+<!ELEMENT Label		(#PCDATA)>	<!-- string -->
+
 <!ELEMENT CompleteName	(Name, SignedInfo, Signature)>
 <!ATTLIST CompleteName	%commonattrs;>
 

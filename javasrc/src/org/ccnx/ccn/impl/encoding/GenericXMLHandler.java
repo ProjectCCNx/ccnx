@@ -51,15 +51,15 @@ public abstract class GenericXMLHandler {
 			}
 		}
 		
-		for (XMLDictionary dictionary : BinaryXMLDictionary.getGlobalDictionaries()) {
+		for (XMLDictionary dictionary : XMLDictionaryStack.getGlobalDictionaries()) {
 			tagVal = dictionary.stringToTag(tagName);
 			if (null != tagVal) {
 				return tagVal;
 			}
 		}
 
-		if (BinaryXMLDictionary.isUnknownTag(tagName)) {
-			return BinaryXMLDictionary.decodeUnknownTag(tagName);
+		if (XMLDictionaryStack.isUnknownTag(tagName)) {
+			return XMLDictionaryStack.decodeUnknownTag(tagName);
 		}
 		return null;
 	}
@@ -82,7 +82,7 @@ public abstract class GenericXMLHandler {
 			}
 		}
 
-		for (XMLDictionary dictionary : BinaryXMLDictionary.getGlobalDictionaries()) {
+		for (XMLDictionary dictionary : XMLDictionaryStack.getGlobalDictionaries()) {
 			tagName = dictionary.tagToString(tagVal);
 			if (null != tagName) {
 				return tagName;
@@ -92,7 +92,7 @@ public abstract class GenericXMLHandler {
 
 		// safe to always map to a string; only need to return null in other direction so
 		// that raw string can be encoded
-		return BinaryXMLDictionary.unknownTagMarker(tagVal);
+		return XMLDictionaryStack.unknownTagMarker(tagVal);
 	}
 	
 	/**

@@ -23,7 +23,6 @@ WARN_NO_INSTALL = echo Nothing installed from javasrc/
 # Default, the top-level Makefile default target will
 # call the install target here but override INSTALL_BASE
 # with dir in the source tree
-INSTALL_BASE=/usr/local
 INSTALL_LIB = $(INSTALL_BASE)/lib
 INSTALL_BIN = $(INSTALL_BASE)/bin
 INSTALL = cp 
@@ -52,7 +51,7 @@ uninstall:
 
 # Use ant to actually do the work for these targets
 jar test: _always
-	$(ANT) -k $@
+	$(ANT) -k -DTEST_PORT=$${CCN_LOCAL_PORT_BASE:-63000} $@
 
 clean: _always
 	$(ANT) -k clean
@@ -60,8 +59,8 @@ clean: _always
 
 test: test-alone
 test-alone: _always
-	netstat -a -n > test-alone
-	grep '^..p.*[.]61999' test-alone || rm test-alone
+	netstat -a -n | grep -v TIME_WAIT > test-alone
+	grep '^..p.*[.]'$${CCN_LOCAL_PORT_BASE:-63000} test-alone || rm test-alone
 	test \! -f test-alone        # Fail here if conflicting tests are running
 
 documentation: _always

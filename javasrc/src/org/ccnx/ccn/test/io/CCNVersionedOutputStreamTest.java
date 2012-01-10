@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -27,8 +27,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNAbstractOutputStream;
@@ -42,7 +42,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class CCNVersionedOutputStreamTest implements CCNFilterListener {
+public class CCNVersionedOutputStreamTest implements CCNInterestHandler {
 	
 	static CCNTestHelper testHelper = new CCNTestHelper(CCNVersionedOutputStreamTest.class);
 	static CCNHandle readHandle;
@@ -85,13 +85,13 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 			try {
 				synchronized (this) {
 					writeDigest = writeRandomFile(_stream, _fileLength, random);
-					Log.info("Finished writing file of {0} bytes, digest {1}.", _fileLength, DataUtils.printHexBytes(writeDigest));
+					Log.info(Log.FAC_TEST, "Finished writing file of {0} bytes, digest {1}.", _fileLength, DataUtils.printHexBytes(writeDigest));
 					_done = true;
 					this.notifyAll();
 				}
 			} catch (IOException e) {
-				Log.severe("Exception writing random file: " + e.getClass().getName() + ": " + e.getMessage());
-				Log.logStackTrace(Level.SEVERE, e);
+				Log.severe(Log.FAC_TEST, "Exception writing random file: " + e.getClass().getName() + ": " + e.getMessage());
+				Log.logStackTrace(Log.FAC_TEST, Level.SEVERE, e);
 				Assert.fail("Exception in writeRandomFile: " + e);
 			}
 		}
@@ -137,9 +137,6 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		Assert.assertArrayEquals(resultDigest, writeDigest);
 		Assert.assertArrayEquals(writer.getFirstDigest(), vis.getFirstDigest());
 		Assert.assertEquals(writer.firstSegmentNumber(), (Long)vis.firstSegmentNumber());
-		
-		readHandle.close();
-		writeHandle.close();
 	}
 	
 	public static byte [] readFile(InputStream inputStream) throws IOException {
@@ -225,7 +222,7 @@ public class CCNVersionedOutputStreamTest implements CCNFilterListener {
 		}
 		vos.addOutstandingInterest(interest);
 		writer = new Writer(vos, FILE_SIZE);
-		writer.run();
+		writer.start();
 		return true;
 	}
 

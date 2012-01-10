@@ -95,6 +95,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 	protected boolean _nameSpaceAdded = false;
 	protected boolean _flushed = false;	// Used to avoid double writes of final block
 										// on redundant close calls
+	
+	protected boolean _FCIsOurs = false; // Did we create our flow controller?  If so we should close it.
     
 	/**
 	 * Constructor for a simple CCN output stream.
@@ -168,6 +170,7 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 						   ContentKeys keys,
 						   CCNHandle handle) throws IOException {
 		this(baseName, locator, publisher, type, keys, new CCNFlowControl(baseName, handle));
+		_FCIsOurs = true;
 	}
     
 	/**
@@ -276,6 +279,8 @@ public class CCNOutputStream extends CCNAbstractOutputStream {
 			_segmenter.getFlowControl().beforeClose();
 			closeNetworkData();
 			_segmenter.getFlowControl().afterClose();
+			if (_FCIsOurs)
+				_segmenter.getFlowControl().close();
 			Log.info(Log.FAC_IO, "CCNOutputStream close: {0}", _baseName);
 		} catch (InvalidKeyException e) {
 			Log.logStackTrace(Level.WARNING, e);

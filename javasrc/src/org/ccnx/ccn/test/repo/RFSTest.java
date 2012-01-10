@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -82,9 +82,13 @@ public class RFSTest extends RepoTestBase {
 		repolog.initialize(_fileTestDir, null, _repoName, _globalPrefix, null, null);
 	}
 	
+	/**
+	 * This is the basic data test for the repo store without networking
+	 */
 	@Test
 	public void testRepo() throws Exception {
-		System.out.println("testing repo (log-structured implementation)");
+		Log.info(Log.FAC_TEST, "Starting testRepo");
+
 		initRepoLog();
 		test(repolog);
 		initRepoLog();
@@ -92,11 +96,14 @@ public class RFSTest extends RepoTestBase {
 		// test() method, now run testReinitialization to check consistency.
 		testReinitialization(repolog);
 		repolog.shutDown();
+		
+		Log.info(Log.FAC_TEST, "Completed testRepo");
 	}
 	
 	@Test
 	public void testBulkImport() throws Exception {
-		System.out.println("Testing bulk import to repo");
+		Log.info(Log.FAC_TEST, "Starting testBulkImport");
+
 		initRepoLog();
 		RepositoryStore repolog2 = new LogStructRepoStore();
 		repolog2.initialize(_fileTestDir2, null, Repository2, _globalPrefix, null, null);
@@ -112,8 +119,38 @@ public class RFSTest extends RepoTestBase {
 		repolog.bulkImport("BulkImportTest");
 		checkData(repolog, name, "Testing bulk import");
 		repolog.shutDown();
+		
+		Log.info(Log.FAC_TEST, "Completed testBulkImport");
 	}
 	
+	/**
+	 * Tests policy file parsing
+	 */
+	@Test
+	public void testPolicy() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testPolicy");
+
+		RepositoryStore repo = new LogStructRepoStore();
+		try {	// Test no version
+			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
+			Assert.fail("Bad policy file succeeded");
+		} catch (RepositoryException re) {}
+		try {	// Test bad version
+			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null, null);
+			Assert.fail("Bad policy file succeeded");
+		} catch (RepositoryException re) {}
+		// Make repository using repo's keystore, not user's
+		repo.initialize(_fileTestDir,  
+					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
+		repo.shutDown();
+		
+		Log.info(Log.FAC_TEST, "Completed testPolicy");
+	}
+	
+	/**
+	 * Various tests for storing and retrieving data from the store. Called via testRepo
+	 * after repo is set up
+	 */
 	public void test(RepositoryStore repo) throws Exception{		
 		System.out.println("Repotest - Testing basic data");
 		ContentName name = ContentName.fromNative("/repoTest/data1");
@@ -372,45 +409,6 @@ public class RFSTest extends RepoTestBase {
 			String segmentContent = "segment"+ new Long(i).toString();
 			checkData(repo, segmented, segmentContent);
 		}
-	}
-	
-	@Test
-	public void testPolicy() throws Exception {
-		// Writes all this content signed with the repository's key
-		initRepoLog();
-		RepositoryStore repo = new LogStructRepoStore();
-		try {	// Test no version
-			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest1.xml"), null, null, null, null);
-			Assert.fail("Bad policy file succeeded");
-		} catch (RepositoryException re) {}
-		try {	// Test bad version
-			repo.initialize(_fileTestDir, new File(_topdir + "/org/ccnx/ccn/test/repo/badPolicyTest2.xml"), null, null, null, null);
-			Assert.fail("Bad policy file succeeded");
-		} catch (RepositoryException re) {}
-		// Make repository using repo's keystore, not user's
-		repo.initialize(_fileTestDir,  
-					new File(_topdir + "/org/ccnx/ccn/test/repo/policyTest.xml"), _repoName, _globalPrefix, null, null);
-		ContentName name = ContentName.fromNative("/testNameSpace/data1");
-		ContentObject content = ContentObject.buildContentObject(name, "Here's my data!".getBytes());
-		repo.saveContent(content);
-		checkData(repo, name, "Here's my data!");
-		ContentName outOfNameSpaceName = ContentName.fromNative("/anotherNameSpace/data1");
-		ContentObject oonsContent = ContentObject.buildContentObject(outOfNameSpaceName, "Shouldn't see this".getBytes());
-		repo.saveContent(oonsContent);
-		ContentObject testContent = repo.getContent(new Interest(outOfNameSpaceName));
-		Assert.assertTrue(testContent == null);
-		
-		// Test reading policy file from the repo
-		repolog.initialize(_fileTestDir, null, _repoName, _globalPrefix, null, null);
-		repo.saveContent(oonsContent);
-		ContentObject testContentAgain = repo.getContent(new Interest(outOfNameSpaceName));
-		Assert.assertTrue(testContentAgain == null);
-		
-		// Test setting prefix from the prefix parameter
-		repo.initialize(_fileTestDir, null, _repoName, _globalPrefix, "/", null);
-		repo.saveContent(oonsContent);
-		checkData(repo, outOfNameSpaceName, "Shouldn't see this");
-		repolog.shutDown();
 	}
 	
 	private void checkData(RepositoryStore repo, ContentName name, String data) throws RepositoryException {

@@ -23,7 +23,7 @@ endif
 # pjproject-1.4.5 is configured for the host platform and built,
 # but not installed anywhere.
 
-SUBDIRS := external CCNx-Android-Services apps
+SUBDIRS := external CCNx-Android-Lib CCNx-Android-Services apps
 SUBDIRS_clean := $(addsuffix .clean,$(SUBDIRS))
 SUBDIRS_distclean := $(addsuffix .distclean,$(SUBDIRS))
 

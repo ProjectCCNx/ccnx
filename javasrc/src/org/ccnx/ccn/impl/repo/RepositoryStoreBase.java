@@ -31,6 +31,7 @@ import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
+import org.ccnx.ccn.io.content.ContentNotReadyException;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -136,14 +137,14 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	 * @throws MalformedContentNameStringException 
 	 */
 	public PolicyXML startInitPolicy(File policyFile, String nameSpace) throws RepositoryException {
-		_policy = new BasicPolicy(null);
-		_policy.setVersion(getVersion());
+		BasicPolicy policy = new BasicPolicy(null);
+		policy.setVersion(getVersion());
 
 		if (null != policyFile) {
 			try {
 				FileInputStream fis = new FileInputStream(policyFile);
 				try {
-					_policy.updateFromInputStream(fis);
+					policy.updateFromInputStream(fis);
 				} finally {
 					try {
 						fis.close();
@@ -161,36 +162,34 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 			} catch (MalformedContentNameStringException e) {
 				Log.warning(Log.FAC_REPO, "Invalid namespace specified: {0}", nameSpace);
 			}
-			_policy.setNamespace(nameSpaceAL);
-		} else
-			return null;
-		return _policy.getPolicyXML();
+			policy.setNamespace(nameSpaceAL);
+		}
+		return policy.getPolicyXML();
 	}
 	
 	/**
 	 * Read policy from persistent storage under standard naming convention.
 	 * This method may be called optionally during initialization by a subclass
 	 * after it is initialized enough to process getContent() calls 
-	 * @param localName
-	 * @throws RepositoryException
-	 * @throws ContentDecodingException 
+	 * @param globalPrefix - used to find our policy file
+	 * @return XML for the current policy or null if no current policy
+	 * @throws MalformedContentNameStringException 
+	 * @throws IOException 
 	 */
-	public void readPolicy(String localName, KeyManager km) throws RepositoryException, ContentDecodingException {
-		if (null != localName) {
-			RepositoryInternalInputHandler riih = null;
-			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
-				Log.info(Log.FAC_REPO, "REPO: reading policy from network: {0}/{1}/{2}", REPO_NAMESPACE, localName, REPO_POLICY);
-			try {
-				riih = new RepositoryInternalInputHandler(this, km);
-				ContentName policyName = BasicPolicy.getPolicyName(_policy.getGlobalPrefix(), localName);
-				PolicyObject policyObject = new PolicyObject(policyName, riih);
-				if (policyObject != null) {
-					_policy.update(policyObject.policyInfo(), false);
-				}
-			} catch (Exception e) {}	// presumably there is no currently stored policy file
-			if (null != riih)
-				riih.close();
-		}
+	public PolicyXML readPolicy(ContentName globalPrefix) throws MalformedContentNameStringException, IOException {
+		if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
+			Log.info(Log.FAC_REPO, "REPO: reading policy from network: {0}/{1}/{2}", REPO_NAMESPACE, globalPrefix, REPO_POLICY);
+		ContentName policyName = BasicPolicy.getPolicyName(globalPrefix);
+		
+		// We can't use the regular repo handle for this because we need ccnd to communicate across the faces
+		CCNHandle readHandle;
+		readHandle = CCNHandle.open(_km);
+		PolicyObject policyObject = new PolicyObject(policyName, readHandle);
+		try {
+			return policyObject.policyInfo();
+		} catch (ContentNotReadyException cge) {}
+		  finally {readHandle.close();}
+		return null;
 	}
 	
 	/**
@@ -217,6 +216,7 @@ public abstract class RepositoryStoreBase implements RepositoryStore {
 	}
 
 	public void shutDown() {
+		Log.info(Log.FAC_REPO, "RespositoryStoreBase.shutdown()");
 		if( null != _handle )
 			_handle.close();
 	}

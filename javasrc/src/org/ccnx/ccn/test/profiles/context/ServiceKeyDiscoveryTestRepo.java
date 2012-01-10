@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -24,6 +24,7 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.config.UserConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.test.CCNTestBase;
@@ -61,6 +62,8 @@ public class ServiceKeyDiscoveryTestRepo {
 
 	@Test
 	public void testGetLocalServiceKeys() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testGetLocalServiceKeys");
+
 		CCNHandle server1Handle = serviceProviders.getHandleForUser(SERVICE_PROVIDERS[0]);
 		CCNHandle server2Handle = serviceProviders.getHandleForUser(SERVICE_PROVIDERS[1]);
 		CCNHandle server3Handle = serviceProviders.getHandleForUser(SERVICE_PROVIDERS[2]);
@@ -95,11 +98,15 @@ public class ServiceKeyDiscoveryTestRepo {
 				TEST_TIMEOUT, readerHandle);
 		
 		printResults(results);
-		Assert.assertTrue(results.size() == 3);	
+		Assert.assertTrue(results.size() == 3);
+		
+		Log.info(Log.FAC_TEST, "Completed testGetLocalServiceKeys");
 	}
 	
 	@Test
 	public void testGetRepoKeys() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testGetRepoKeys");
+
 		CCNHandle readerHandle = CCNHandle.getHandle(); // use default
 		
 		System.out.println("Retrieving " + ServiceDiscoveryProfile.REPOSITORY_SERVICE_NAME + " keys.");
@@ -110,10 +117,13 @@ public class ServiceKeyDiscoveryTestRepo {
 		printResults(results);
 		Assert.assertTrue(results.size() == 1);		
 		
+		Log.info(Log.FAC_TEST, "Completed testGetRepoKeys");
 	}
 
 	@Test
 	public void testGetCcndKeys() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testGetCcndKeys");
+
 		CCNHandle readerHandle = CCNHandle.getHandle(); // use default
 		
 		System.out.println("Retrieving " + ServiceDiscoveryProfile.CCND_SERVICE_NAME + " keys.");
@@ -122,8 +132,10 @@ public class ServiceKeyDiscoveryTestRepo {
 					TEST_TIMEOUT, readerHandle);
 		
 		printResults(results);
-		Assert.assertTrue(results.size() == 1);		
+		Assert.assertTrue(results.size() == 1);
 		
+		Log.info(Log.FAC_TEST, "Completed testGetCcndKeys");
+	
 	}
 
 	public void printResults(ArrayList<ContentObject> results) {

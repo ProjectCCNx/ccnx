@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -47,14 +47,15 @@ public class RepoTestBase extends LibraryTestBase {
 	protected static String _fileTestDir2;
 	protected static String _fileTestDir3;
 	protected static String _repoName = "TestRepository";
-	protected static String _globalPrefix = "/parc.com/csl/ccn/repositories";
+	protected static String _globalPrefix = "/parc.com/csl/ccn/repositories/" + _repoName;
 	protected static File _fileTest;
 	protected static ContentName testprefix = ContentName.fromNative(new String[]{"repoTest","pubidtest"});
 	protected static ContentName keyprefix = ContentName.fromNative(testprefix,"keys");
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		// Let default logging level be set centrally so it can be overridden by property
+		LibraryTestBase.setUpBeforeClass();
+		
 		_topdir = System.getProperty(TOP_DIR);
 		if (null == _topdir)
 			_topdir = "src";

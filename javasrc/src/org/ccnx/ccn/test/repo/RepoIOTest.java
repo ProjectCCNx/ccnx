@@ -20,12 +20,8 @@ package org.ccnx.ccn.test.repo;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.TreeMap;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.ConfigurationException;
-import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.repo.BasicPolicy;
 import org.ccnx.ccn.impl.repo.PolicyXML;
@@ -44,8 +40,6 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.ccnd.CCNDCacheManager;
 import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.KeyLocator;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.CCNTestHelper;
@@ -64,6 +58,8 @@ import org.junit.Test;
  * and RFSTest to have been run.
  */
 public class RepoIOTest extends RepoTestBase {
+	protected static final int CACHE_CLEAR_TIMEOUT = 10000;
+	
 	protected static CCNTestHelper testHelper = new CCNTestHelper(RepoIOTest.class);
 	
 	protected static String _repoTestDir = "repotest";
@@ -84,62 +80,17 @@ public class RepoIOTest extends RepoTestBase {
 	
 	static String USER_NAMESPACE = "TestRepoUser";
 	
-	private static class IOTestFlosser extends Flosser {
-		public static int KEY_INTEREST_TIMEOUT = SystemConfiguration.SHORT_TIMEOUT;
-		private TreeMap<ContentName, Long> keyCheck = new TreeMap<ContentName, Long>();
-
-		public IOTestFlosser() throws ConfigurationException, IOException {
-			super();
-		}
-		
-		public void handleKeyNamespace(String name) throws IOException {
-			Log.info("Called handleKeyNamespace for {0}", name);
-			try {
-				ContentName cn = ContentName.fromNative(name);
-				keyCheck.put(cn, System.currentTimeMillis());
-				super.handleNamespace(cn);
-			} catch (MalformedContentNameStringException e) {}
-		}
-		
-		protected void processContent(ContentObject result) {
-			super.processContent(result);
-			for (ContentName cn : keyCheck.keySet()) {
-				if (cn.isPrefixOf(result.name())) {
-					keyCheck.put(cn, System.currentTimeMillis());
-					Log.info("Saw key data for {0}", cn);
-					break;
-				}
-			}
-		}
-		
-		public void waitForKeys() {
-			long curTime = System.currentTimeMillis();
-			long maxTime = 0;
-			while (true) {
-				for (ContentName cn : keyCheck.keySet()) {
-					long t = keyCheck.get(cn);
-					if (t > maxTime)
-						maxTime = t;
-				}
-				long delta = curTime - maxTime;
-				if (delta > KEY_INTEREST_TIMEOUT)
-					return;
-				try {
-					Thread.sleep(delta);
-				} catch (InterruptedException e) {}
-			}
-		}
-	}
-	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(Log.FAC_NETMANAGER, Level.FINEST);
-		Log.setLevel(Log.FAC_IO, Level.FINEST);
+
+		RepoTestBase.setUpBeforeClass();
+
 		_testPrefix = testHelper.getTestNamespace("testRepoIO");
 
 		_testStream += "-" + rand.nextInt(10000);
 		_testObj += "-" + rand.nextInt(10000);
-		RepoTestBase.setUpBeforeClass();
+		
+		
 		byte value = 1;
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;
@@ -151,29 +102,18 @@ public class RepoIOTest extends RepoTestBase {
 		ros.close();
 		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefix, _testObj), "Initial string value", SaveType.REPOSITORY, putHandle);
 		so.save();
-		so.close();
 		
-		// Need to save key also for first time sync test. Actually we need this for the policy
-		// test too since the repo needs to locate the key to verify the policy test file
-		KeyLocator locator = 
-			putHandle.keyManager().getKeyLocator(putHandle.keyManager().getDefaultKeyID()); 
-		putHandle.keyManager().publishSelfSignedKeyToRepository(
-		               locator.name().name(), 
-		               putHandle.keyManager().getDefaultPublicKey(), null, 
-		               SystemConfiguration.getDefaultTimeout());
-		
-
 		// Floss content into ccnd for tests involving content not already in repo when we start
-		IOTestFlosser floss = new IOTestFlosser();
+		Flosser floss = new Flosser();
 		
 		// Floss user based keys from CreateUserData
-		floss.handleKeyNamespace(testHelper.getClassChildName(USER_NAMESPACE) + "/" + CreateUserData.USER_NAMES[0]);
-		floss.handleKeyNamespace(testHelper.getClassChildName(USER_NAMESPACE) + "/" + CreateUserData.USER_NAMES[1]);
+		floss.handleNamespace(testHelper.getClassChildName(USER_NAMESPACE) + "/" + CreateUserData.USER_NAMES[0]);
+		floss.handleNamespace(testHelper.getClassChildName(USER_NAMESPACE) + "/" + CreateUserData.USER_NAMES[1]);
 		
 		// So we can test saving keys in the sync tests we build our first sync object (a stream) with
 		// an alternate key and the second one (a CCNNetworkObject) with an alternate key locater that is
 		// accessed through a link.
-		CreateUserData testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), 2, false, null, putHandle);
+		CreateUserData testUsers = new CreateUserData(testHelper.getClassChildName(USER_NAMESPACE), 2, false, null);
 		String [] userNames = testUsers.friendlyNames().toArray(new String[2]);
 		CCNHandle userHandle = testUsers.getHandleForUser(userNames[0]);
 				
@@ -208,7 +148,6 @@ public class RepoIOTest extends RepoTestBase {
 		_keyNameForObj = so.getFirstSegment().signedInfo().getKeyLocator().name().name();
 		lo.close();
 		so.close();
-		floss.waitForKeys();
 		floss.stop();
 	}
 	
@@ -222,25 +161,31 @@ public class RepoIOTest extends RepoTestBase {
 	
 	@Test
 	public void testPolicyViaCCN() throws Exception {
-		System.out.println("Testing namespace policy setting");
+		Log.info(Log.FAC_TEST, "Starting testPolicyViaCCN");
+
 		checkNameSpace("/repoTest/data2", true);
 		changePolicy("/org/ccnx/ccn/test/repo/policyTest.xml");
 		checkNameSpace("/repoTest/data3", false);
 		checkNameSpace("/testNameSpace/data1", true);
 		changePolicy("/org/ccnx/ccn/test/repo/origPolicy.xml");
 		checkNameSpace("/repoTest/data4", true);
+		
+		Log.info(Log.FAC_TEST, "Completed testPolicyViaCCN");
 	}
 	
 	@Test
 	public void testReadFromRepo() throws Exception {
-		System.out.println("Testing reading a stream from the repo");
+		Log.info(Log.FAC_TEST, "Starting testReadFromRepo");
+
 		ContentName name = ContentName.fromNative(_testPrefix, _testStream);
-		_cacheManager.clearCache(name, getHandle, 10000);
+		_cacheManager.clearCache(name, getHandle, CACHE_CLEAR_TIMEOUT);
 		Thread.sleep(5000);
 		CCNInputStream input = new CCNInputStream(name, getHandle);
 		byte[] testBytes = new byte[data.length];
 		input.read(testBytes);
 		Assert.assertArrayEquals(data, testBytes);
+		
+		Log.info(Log.FAC_TEST, "Completed testReadFromRepo");
 	}
 	
 	@Test
@@ -249,7 +194,8 @@ public class RepoIOTest extends RepoTestBase {
 	// what happens if we pull latest version and try to read
 	// content in order
 	public void testVersionedRead() throws InterruptedException, IOException, MalformedContentNameStringException {
-		System.out.println("Testing reading a versioned stream");
+		Log.info(Log.FAC_TEST, "Starting testVersionedRead");
+
 		ContentName versionedNameNormal = ContentName.fromNative(_testPrefix, "testVersionNormal");
 		CCNVersionedOutputStream ostream = new RepositoryVersionedOutputStream(versionedNameNormal, putHandle);
 		ostream.setBlockSize("segment".length() + new Long(5).toString().length());
@@ -258,7 +204,7 @@ public class RepoIOTest extends RepoTestBase {
 			ostream.write(segmentContent.getBytes(), 0, 8);
 		}
 		ostream.close();
-		_cacheManager.clearCache(versionedNameNormal, getHandle, 10000);
+		_cacheManager.clearCache(versionedNameNormal, getHandle, CACHE_CLEAR_TIMEOUT);
 		CCNVersionedInputStream vstream = new CCNVersionedInputStream(versionedNameNormal);
 		InputStreamReader reader = new InputStreamReader(vstream);
 		for (long i=SegmentationProfile.baseSegment(); i<5; i++) {
@@ -270,12 +216,15 @@ public class RepoIOTest extends RepoTestBase {
 		}
 		Assert.assertEquals(-1, reader.read());
 		vstream.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testVersionedRead");
 	}
 	
 	@Test
 	public void testLocalSyncInputStream() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLocalSyncInputStream");
+
 		// This test should run all on single handle, just as client would do
-		System.out.println("Testing local repo sync request for input stream");
 		CCNInputStream input = new CCNInputStream(ContentName.fromNative(_testPrefix, _testStream), getHandle);
 		// Ignore data in this case, just trigger repo confirmation
 		// Setup of this test writes the stream into repo, so we know it is already there --
@@ -295,17 +244,21 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertTrue(RepositoryControl.localRepoSync(getHandle, input));	
 		input.close();
 		
-		_cacheManager.clearCache(name, getHandle, 10000);
-		_cacheManager.clearCache(_keyNameForStream, getHandle, 1000);
+		_cacheManager.clearCache(name, getHandle, CACHE_CLEAR_TIMEOUT);
+		_cacheManager.clearCache(_keyNameForStream, getHandle, CACHE_CLEAR_TIMEOUT);
 		byte[] testBytes = new byte[data.length];
 		input = new CCNInputStream(name, getHandle);
 		input.read(testBytes);
 		Assert.assertArrayEquals(data, testBytes);
 		input.close();
+		
+		Log.info(Log.FAC_TEST, "Completed testLocalSyncInputStream");
 	}
 	
 	@Test
 	public void testLocalSyncNetObj() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testLocalSyncNetObj");
+
 		// This test should run all on single handle, just as client would do
 		System.out.println("Testing local repo sync request for network object");	
 		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefix, _testObj), getHandle);
@@ -327,19 +280,20 @@ public class RepoIOTest extends RepoTestBase {
 		Assert.assertTrue(RepositoryControl.localRepoSync(getHandle, so));
 		so.close();
 		
-		_cacheManager.clearCache(name, getHandle, 10000);
-		_cacheManager.clearCache(_keyNameForStream, getHandle, 1000);
-		_cacheManager.clearCache(ContentName.fromNative(_testPrefix, _testLink), getHandle, 1000);
+		_cacheManager.clearCache(name, getHandle, CACHE_CLEAR_TIMEOUT);
+		_cacheManager.clearCache(_keyNameForStream, getHandle, CACHE_CLEAR_TIMEOUT);
+		_cacheManager.clearCache(ContentName.fromNative(_testPrefix, _testLink), getHandle, CACHE_CLEAR_TIMEOUT);
 		so = new CCNStringObject(name, getHandle);
 		assert(so.string().equals("String value for non-repo obj"));
+		
+		Log.info(Log.FAC_TEST, "Completed testLocalSyncNetObj");
 	}
 
 	private void changePolicy(String policyFile) throws Exception {
 		FileInputStream fis = new FileInputStream(_topdir + policyFile);
 		PolicyXML pxml = BasicPolicy.createPolicyXML(fis);
 		fis.close();
-		ContentName basePolicy = BasicPolicy.getPolicyName(ContentName.fromNative(_globalPrefix), _repoName);
-		ContentName policyName = new ContentName(basePolicy, Interest.generateNonce());
+		ContentName policyName = BasicPolicy.getPolicyName(ContentName.fromNative(_globalPrefix));
 		PolicyObject po = new PolicyObject(policyName, pxml, SaveType.REPOSITORY, putHandle);
 		po.save();
 		Thread.sleep(4000);

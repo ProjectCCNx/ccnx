@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -21,7 +21,6 @@ package org.ccnx.ccn.test.endtoend;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
@@ -48,8 +47,6 @@ public class BaseLibrarySource {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		handle = CCNHandle.open();
-		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Log.setDefaultLevel(Level.INFO);
 		rand = new Random();
 	}
 	
@@ -65,7 +62,7 @@ public class BaseLibrarySource {
 	 *
 	 */
 	public void checkPutResults(ContentName putResult) {
-		System.out.println("Put data: " + putResult);
+		Log.info(Log.FAC_TEST, "Put data: " + putResult);
 	}
 
 	/**

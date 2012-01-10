@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -19,7 +19,7 @@ package org.ccnx.ccn.impl.encoding;
 /**
  * Defines the API of an XML dictionary
  */
-public interface XMLDictionary {
-	public Long stringToTag(String tag);
-	public String tagToString(long tagVal);
+public abstract class XMLDictionary {
+	abstract public Long stringToTag(String tag);
+	abstract public String tagToString(long tagVal);
 }

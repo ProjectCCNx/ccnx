@@ -17,7 +17,7 @@
 
 # This is the source file to download
 OPENSSL_HOST := http://www.openssl.org/source
-OPENSSL_SRC := openssl-1.0.0a.tar.gz
+OPENSSL_SRC := openssl-1.0.0d.tar.gz
 
 # This is the output directory for the armv5 version of openssl
 # This must match the link in CCNx-Android-Serices/jni/openssl

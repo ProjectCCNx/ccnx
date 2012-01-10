@@ -1,6 +1,6 @@
 /**
  * @file ccnd_private.h
- * 
+ *
  * Private definitions for ccnd - the CCNx daemon.
  * Data structures are described here so that logging and status
  * routines can be compiled separately.
@@ -229,6 +229,7 @@ struct face {
 #define CCN_FACE_REGOK (1 << 16) /**< Allowed to do prefix registration */
 #define CCN_FACE_SEQOK (1 << 17) /** OK to send SequenceNumber link messages */
 #define CCN_FACE_SEQPROBE (1 << 18) /** SequenceNumber probe */
+#define CCN_FACE_LC    (1 << 19) /** A link check has been issued recently */
 #define CCN_NOFACEID    (~0U)    /** denotes no face */
 
 /**
@@ -279,8 +280,8 @@ struct sparse_straggler_entry {
  * duplicate nonces.
  */
 struct propagating_entry {
-    struct propagating_entry *next;
-    struct propagating_entry *prev;
+    struct propagating_entry *next; /**< next (in arrival order) */
+    struct propagating_entry *prev; /**< previous (older) */
     unsigned flags;             /**< CCN_PR_xxx */
     unsigned faceid;            /**< origin of the interest, dest for matches */
     int usec;                   /**< usec until timeout */
@@ -342,13 +343,18 @@ void ccnd_meter_bump(struct ccnd_handle *h, struct ccnd_meter *m, unsigned amt);
 unsigned ccnd_meter_rate(struct ccnd_handle *h, struct ccnd_meter *m);
 uintmax_t ccnd_meter_total(struct ccnd_meter *m);
 
+
 /**
+ * Refer to doc/technical/Registration.txt for the meaning of these flags.
+ *
  * @def CCN_FORW_ACTIVE         1
  * @def CCN_FORW_CHILD_INHERIT  2
  * @def CCN_FORW_ADVERTISE      4
  * @def CCN_FORW_LAST           8
  * @def CCN_FORW_CAPTURE       16
  * @def CCN_FORW_LOCAL         32
+ * @def CCN_FORW_TAP           64
+ * @def CCN_FORW_CAPTURE_OK   128
  */
 #define CCN_FORW_PFXO (CCN_FORW_ADVERTISE | CCN_FORW_CAPTURE | CCN_FORW_LOCAL)
 #define CCN_FORW_REFRESHED      (1 << 16) /**< private to ccnd */
@@ -399,6 +405,12 @@ int ccnd_req_prefixreg(struct ccnd_handle *h,
 int ccnd_req_selfreg(struct ccnd_handle *h,
                      const unsigned char *msg, size_t size,
                      struct ccn_charbuf *reply_body);
+
+/**
+ * URIs for prefixes served by the internal client
+ */
+#define CCNDID_LOCAL_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY"
+#define CCNDID_NEIGHBOR_URI "ccnx:/%C1.M.S.neighborhood/%C1.M.SRV/ccnd/KEY"
 
 /*
  * The internal client calls this with the argument portion ARG of

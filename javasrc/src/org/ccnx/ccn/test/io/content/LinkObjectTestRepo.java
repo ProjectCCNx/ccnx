@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -62,7 +62,8 @@ public class LinkObjectTestRepo {
 	
 	@Test
 	public void testLinks() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Starting testLinks");
+
 		ContentName nonLinkName = ContentName.fromNative(testHelper.getTestNamespace("testLinks"), "myNonLink");
 		ContentName linkName = ContentName.fromNative(testHelper.getTestNamespace("testLinks"), "myLink");
 		
@@ -77,15 +78,12 @@ public class LinkObjectTestRepo {
 			Assert.fail("Reading link from non-link succeeded.");
 		} catch (ContentDecodingException ex) {
 			// this is what we actually expect
-			System.out.println("Got expected exception reading link from non-link.");
-			Log.info("Got expected exception reading link from non-link.");
+			Log.info(Log.FAC_TEST, "Got expected exception reading link from non-link.");
 		} catch (IOException ioe) {
-			System.out.println("Got another type of IOException reading link from non-link: " + ioe);
-			Log.info("Unexpected: got IOException that wasn't a ContentDecodingException reading link from non-link: {0}", ioe);
+			Log.info(Log.FAC_TEST, "Unexpected: got IOException that wasn't a ContentDecodingException reading link from non-link: {0}", ioe);
 			throw ioe;
 		} catch (Exception e) {
-			System.out.println("Got unexpected exception type reading link from non-link: " + e);
-			Log.info("Got unexpected exception type reading link from non-link: " + e);
+			Log.info(Log.FAC_TEST, "Got unexpected exception type reading link from non-link: " + e);
 			throw e;
 		}
 
@@ -109,7 +107,7 @@ public class LinkObjectTestRepo {
 		if (null == firstBlock) {
 			Assert.fail("Cannot read first block of link target: " + readLink.getTargetName());
 		}
-		Log.info("Got block of target: " + firstBlock.name());
+		Log.info(Log.FAC_TEST, "Got block of target: " + firstBlock.name());
 		
 		// TODO -- not a good test; does dereference get us back the first block? What about the
 		// first block of the latest version? What if thing isn't versioned? (e.g. intermediate node)
@@ -117,5 +115,7 @@ public class LinkObjectTestRepo {
 		readString.waitForData();
 		
 		Assert.assertEquals(readString.string(), so.string());
+		
+		Log.info(Log.FAC_TEST, "Completed testLinks");
 	}
 }

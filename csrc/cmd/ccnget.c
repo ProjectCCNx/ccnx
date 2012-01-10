@@ -36,6 +36,7 @@ usage(const char *progname)
             "\n"
             "   -a - allow stale data\n"
             "   -c - content only, not full ccnb\n"
+            "   -u - allow unverified content\n"
             "   -v - resolve version number\n",
             progname);
     exit(1);
@@ -59,14 +60,18 @@ main(int argc, char **argv)
     int resolve_version = 0;
     const char *env_timeout = getenv("CCN_LINGER");
     int timeout_ms = 3000;
+    int get_flags = 0;
     
-    while ((opt = getopt(argc, argv, "hacv")) != -1) {
+    while ((opt = getopt(argc, argv, "hacuv")) != -1) {
         switch (opt) {
             case 'a':
                 allow_stale = 1;
                 break;
             case 'c':
                 content_only = 1;
+                break;
+            case 'u':
+                get_flags |= CCN_GET_NOKEYWAIT;
                 break;
             case 'v':
                 if (resolve_version == 0)
@@ -143,7 +148,7 @@ main(int argc, char **argv)
             resultbuf->length = 0;
         }
     }
-    res = ccn_get(h, name, templ, timeout_ms, resultbuf, &pcobuf, NULL, 0);
+    res = ccn_get(h, name, templ, timeout_ms, resultbuf, &pcobuf, NULL, get_flags);
     if (res >= 0) {
         ptr = resultbuf->buf;
         length = resultbuf->length;

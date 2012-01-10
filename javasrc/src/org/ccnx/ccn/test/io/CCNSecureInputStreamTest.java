@@ -27,7 +27,6 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.util.Random;
-import java.util.logging.Level;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -77,7 +76,7 @@ public class CCNSecureInputStreamTest {
 			try {
 				keys = StaticContentKeys.generateRandomKeys();
 			} catch (NoSuchPaddingException e) {
-				Log.severe("NoSuchPaddingExcption creating algorithm we have used before! {0}", e.getMessage());
+				Log.severe(Log.FAC_TEST, "NoSuchPaddingExcption creating algorithm we have used before! {0}", e.getMessage());
 				return;
 			}
 			writeFile(encrLength);
@@ -105,7 +104,7 @@ public class CCNSecureInputStreamTest {
 				data.write(bytes, 0, nextBufSize);
 				elapsed += nextBufSize;
 				if (randBytes.nextDouble() < probFlush) {
-					System.out.println("Flushing buffers.");
+					Log.info(Log.FAC_TEST, "Flushing buffers.");
 					os.flush();
 				}
 			}
@@ -126,10 +125,10 @@ public class CCNSecureInputStreamTest {
 				keys = StaticContentKeys.generateRandomKeys();
 				v2 = makeInputStream();
 			} catch (NoSuchAlgorithmException e) {
-				Log.severe("Unexpected NoSuchAlgorithmException using default algorithm! " + keys.getBaseAlgorithm());
+				Log.severe(Log.FAC_TEST, "Unexpected NoSuchAlgorithmException using default algorithm! " + keys.getBaseAlgorithm());
 				Assert.fail("Unexpected NoSuchAlgorithmException using default algorithm! " + keys.getBaseAlgorithm());
 			} catch (NoSuchPaddingException e) {
-				Log.severe("Unexpected NoSuchPaddingException using default algorithm! " + keys.getBaseAlgorithm());
+				Log.severe(Log.FAC_TEST, "Unexpected NoSuchPaddingException using default algorithm! " + keys.getBaseAlgorithm());
 				Assert.fail("Unexpected NoSuchPaddingException using default algorithm! " + keys.getBaseAlgorithm());
 			} finally {
 				keys = keys2;
@@ -241,8 +240,6 @@ public class CCNSecureInputStreamTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Log.setDefaultLevel(Level.FINEST);
-		Log.setDefaultLevel(Log.FAC_SIGNING, Level.FINEST);
 		outputLibrary = CCNHandle.open();
 		inputLibrary = CCNHandle.open();
 				
@@ -312,12 +309,16 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void cipherEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, ContentEncodingException {
+		Log.info(Log.FAC_TEST, "Starting cipherEncryptDecrypt");
+
 		Cipher c = basic.keys.getSegmentEncryptionCipher(basic.name, outputLibrary.getDefaultPublisher(), 0);
 		byte [] d = c.doFinal(basic.encrData);
 		c = basic.keys.getSegmentDecryptionCipher(basic.name, outputLibrary.getDefaultPublisher(), 0);
 		d = c.doFinal(d);
 		// check we get identical data back out
 		Assert.assertArrayEquals(basic.encrData, d);
+		
+		Log.info(Log.FAC_TEST, "Completed cipherEncryptDecrypt");
 	}
 
 	/**
@@ -326,6 +327,8 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void cipherStreamEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, IOException {
+		Log.info(Log.FAC_TEST, "Starting cipherStreamEncryptDecrypt");
+
 		Cipher c = basic.keys.getSegmentEncryptionCipher(basic.name, outputLibrary.getDefaultPublisher(),0);
 		InputStream is = new ByteArrayInputStream(basic.encrData, 0, basic.encrData.length);
 		is = new UnbufferedCipherInputStream(is, c);
@@ -343,6 +346,8 @@ public class CCNSecureInputStreamTest {
 		byte [] input = new byte[Math.min(4096, basic.encrLength)];
 		System.arraycopy(basic.encrData, 0, input, 0, input.length);
 		Assert.assertArrayEquals(input, output);
+		
+		Log.info(Log.FAC_TEST, "Completed cipherStreamEncryptDecrypt");
 	}
 
 	/**
@@ -351,6 +356,8 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void contentEncryptDecrypt() throws InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, IOException {
+		Log.info(Log.FAC_TEST, "Starting contentEncryptDecrypt");
+
 		// create an encrypted content block
 		PublisherPublicKeyDigest publisher = outputLibrary.getDefaultPublisher();
 		Cipher c = basic.keys.getSegmentEncryptionCipher(basic.name, publisher, 0);
@@ -373,6 +380,8 @@ public class CCNSecureInputStreamTest {
 		byte [] input = new byte[Math.min(4096, co.contentLength())];
 		System.arraycopy(basic.encrData, 0, input, 0, input.length);
 		Assert.assertArrayEquals(input, output);
+		
+		Log.info(Log.FAC_TEST, "Completed contentEncryptDecrypt");
 	}
 
 	/**
@@ -380,16 +389,21 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void basicStreamEncryptDecrypt() throws IOException {
-		Log.setLevel(Log.FAC_PIPELINE, Level.INFO);
+		Log.info(Log.FAC_TEST, "Starting streamEncryptDecrypt");
 		basic.streamEncryptDecrypt();
+		Log.info(Log.FAC_TEST, "Completed streamEncryptDecrypt");
 	}
 	@Test
 	public void versionedStreamEncryptDecrypt() throws IOException {
+		Log.info(Log.FAC_TEST, "Starting versionedStreamEncryptDecrypt");
 		versioned.streamEncryptDecrypt();
+		Log.info(Log.FAC_TEST, "Completed versionedStreamEncryptDecrypt");
 	}
 	@Test
 	public void fileStreamEncryptDecrypt() throws IOException {
+		Log.info(Log.FAC_TEST, "Starting fileStreamEncryptDecrypt");
 		file.streamEncryptDecrypt();
+		Log.info(Log.FAC_TEST, "Completed fileStreamEncryptDecrypt");
 	}
 
 	/**
@@ -398,15 +412,21 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void basicSeeking() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting basicSeeking");
 		basic.seeking();
+		Log.info(Log.FAC_TEST, "Completed basicSeeking");
 	}
 	@Test
 	public void versionedSeeking() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting versionedSeeking");
 		versioned.seeking();
+		Log.info(Log.FAC_TEST, "Completed versionedSeeking");
 	}
 	@Test
 	public void fileSeeking() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting fileSeeking");
 		file.seeking();
+		Log.info(Log.FAC_TEST, "Completed fileSeeking");
 	}
 
 	/**
@@ -415,15 +435,21 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void basicSkipping() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting basicSkipping");
 		basic.skipping();
+		Log.info(Log.FAC_TEST, "Completed basicSkipping");
 	}
 	@Test
 	public void versionedSkipping() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting versionedSkipping");
 		versioned.skipping();
+		Log.info(Log.FAC_TEST, "Completed versionedSkipping");
 	}
 	@Test
 	public void fileSkipping() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting fileSkipping");
 		file.skipping();
+		Log.info(Log.FAC_TEST, "Completed fileSkipping");
 	}
 
 	/**
@@ -432,14 +458,20 @@ public class CCNSecureInputStreamTest {
 	 */
 	@Test
 	public void basicMarkReset() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting basicMarkReset");
 		basic.markReset();
+		Log.info(Log.FAC_TEST, "Completed basicMarkReset");
 	}
 	@Test
 	public void versionedMarkReset() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting versionedMarkReset");
 		versioned.markReset();
+		Log.info(Log.FAC_TEST, "Completed versionedMarkReset");
 	}
 	@Test
 	public void fileMarkReset() throws IOException, NoSuchAlgorithmException {
+		Log.info(Log.FAC_TEST, "Starting versionedMarkReset");
 		file.markReset();
+		Log.info(Log.FAC_TEST, "Completed versionedMarkReset");
 	}
 }

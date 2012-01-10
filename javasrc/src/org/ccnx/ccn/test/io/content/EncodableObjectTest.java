@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -24,6 +24,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import org.bouncycastle.util.Arrays;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.Collection;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
@@ -113,7 +114,8 @@ public class EncodableObjectTest {
 
 	@Test
 	public void testSave() {
-		
+		Log.info(Log.FAC_TEST, "Starting testSave");
+
 		EncodableCollectionData ecd0 = new EncodableCollectionData(empty);
 		EncodableCollectionData ecd1 = new EncodableCollectionData(small1);
 		EncodableCollectionData ecd2 = new EncodableCollectionData(small1);
@@ -140,10 +142,14 @@ public class EncodableObjectTest {
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testSave");
 	}
 	
 	@Test
 	public void testUpdate() {
+		Log.info(Log.FAC_TEST, "Starting testUpdate");
+
 		boolean caught = false;
 		EncodableCollectionData emptycoll = new EncodableCollectionData();
 		try {
@@ -177,6 +183,8 @@ public class EncodableObjectTest {
 			fail("ContentDecodingException! " + e.getMessage());
 		} catch (IOException e) {
 			fail("IOException! " + e.getMessage());
-		} 
+		}
+		
+		Log.info(Log.FAC_TEST, "Completed testUpdate");
 	}
 }

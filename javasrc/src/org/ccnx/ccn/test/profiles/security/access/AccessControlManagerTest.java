@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -19,6 +19,7 @@ package org.ccnx.ccn.test.profiles.security.access;
 
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
@@ -37,6 +38,8 @@ public class AccessControlManagerTest {
 
 	@Test
 	public void testPartialComponentMatch() {
+		Log.info(Log.FAC_TEST, "Starting testPartialComponentMatch");
+
 		CCNHandle handle = null;
 		try {
 			ContentName testPrefix = ContentName.fromNative("/parc/test/content/");
@@ -69,11 +72,13 @@ public class AccessControlManagerTest {
 			}
 			flosser.stop();
 		} catch (Exception e) {
-			System.out.println("Exception : " + e.getClass().getName() + ": " + e.getMessage());
-			e.printStackTrace();
+			Log.warning(Log.FAC_TEST, "Exception : " + e.getClass().getName() + ": " + e.getMessage());
+			Log.warningStackTrace(Log.FAC_TEST, e);
 		} finally {
 			if (null != handle)
 				handle.close();
 		}
+		
+		Log.info(Log.FAC_TEST, "Completed testPartialComponentMatch");
 	}
 }

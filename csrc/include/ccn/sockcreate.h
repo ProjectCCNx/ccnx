@@ -3,7 +3,7 @@
  *
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -26,7 +26,7 @@
  * Holds a pair of socket file descriptors.
  *
  * Some platforms/modes of operations require separate sockets for sending
- * and receiving, so we accomodate that with this pairing.  It is fine for
+ * and receiving, so we accommodate that with this pairing.  It is fine for
  * the two file descriptors to be the same.
  */
 struct ccn_sockets {

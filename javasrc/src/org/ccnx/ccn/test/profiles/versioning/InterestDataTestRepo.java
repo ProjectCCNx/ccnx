@@ -22,11 +22,9 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.TreeSet;
-import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
-import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.InterestData;
@@ -39,7 +37,6 @@ import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.profiles.versioning.VersioningHelper.TestListener;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class InterestDataTestRepo {
@@ -54,15 +51,9 @@ public class InterestDataTestRepo {
 	protected final VersionNumber vn_411333000000L = new VersionNumber(411333000000L);
 
 	public InterestDataTestRepo() throws MalformedContentNameStringException {
-		prefix  = ContentName.fromNative(String.format("/test_%016X", _rnd.nextLong()));
+		prefix  = ContentName.fromNative(String.format("/repotest/test_%016X", _rnd.nextLong()));
 	}
 	
-	@BeforeClass
-	public static void setUpBeforeClass() throws Exception {
-		Log.setLevel(Log.FAC_ALL, Level.WARNING);
-		Log.setLevel(Log.FAC_ENCODING, Level.FINE);
-	}
-
 	@Test
 	public void testVersionNumberInTree() throws Exception {
 		// make sure the sortable work
@@ -106,7 +97,7 @@ public class InterestDataTestRepo {
 
 	@Test
 	public void testInterestDataStartTimeCompare() throws Exception {
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		InterestData id1 =  new InterestData(basename, vn_411000000000L, new VersionNumber(411110000010L));
 		InterestData id1a = new InterestData(basename, vn_411000000000L, new VersionNumber(411110000020L));
@@ -165,7 +156,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testInterestDataInterestStream() throws Exception {
 		CCNHandle handle = CCNHandle.getHandle();
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		int tosend = 200;
 
@@ -191,7 +182,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testInterestDataInterestStreamWithStartTime() throws Exception {
 		CCNHandle handle = CCNHandle.getHandle();
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		int tosend = 100;
 
@@ -222,7 +213,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testInterestDataInterestStreamWithStartAndStopTime() throws Exception {
 		CCNHandle handle = CCNHandle.getHandle();
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		int tosend = 50;
 
@@ -234,7 +225,7 @@ public class InterestDataTestRepo {
 		ArrayList<CCNStringObject> sent2 = VersioningHelper.sendEventStream(handle, basename, tosend);
 		VersionNumber stop_version = new VersionNumber(sent2.get(sent2.size()-1).getVersion()).addAndReturn(1);
 		
-		// Make sure everyting in sent2 is between the start and stop versios
+		// Make sure everything in sent2 is between the start and stop versions
 		for(CCNStringObject so : sent2) {
 			Assert.assertTrue(start_version.before(so.getVersion()));
 			Assert.assertTrue(stop_version.after(so.getVersion()));
@@ -262,7 +253,7 @@ public class InterestDataTestRepo {
 	@Test
 	public void testSplitLeft() throws Exception {
 		// put a bunch of exclusions in an INterestData, then split it and check results.
-		ContentName basename = ContentName.fromNative(prefix, String.format("/content_%016X", _rnd.nextLong()));
+		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		VersionNumber starttime = new VersionNumber();
 		VersionNumber stoptime = null;

@@ -1,7 +1,7 @@
-/**
+/*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -18,7 +18,6 @@
 package org.ccnx.ccn.test.impl.encoding;
 
 import java.text.ParseException;
-import java.util.logging.Level;
 
 import junit.framework.Assert;
 
@@ -37,13 +36,12 @@ public class TextXMLCodecTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-	
-		// Set debug level: use for more FINE, FINER, FINEST for debug-level tracing
-		Log.setDefaultLevel(Level.INFO);
 	}
 	
 	@Test
 	public void testTagMap() {
+		Log.info(Log.FAC_TEST, "Starting testTagMap");
+
 		String name;
 		Long tag;
 		for (int i=1; i <= CCNProtocolDTags.Parameters; ++i) {
@@ -82,10 +80,14 @@ public class TextXMLCodecTest {
 
 		name = CCNProtocolDTags.tagToString(CCNProtocolDTags.Parameters);
 		Assert.assertEquals("Parameters", name);
+		
+		Log.info(Log.FAC_TEST, "Completed testTagMap");
 	}
 	
 	@Test
 	public void testParseDateTime() {
+		Log.info(Log.FAC_TEST, "Starting testParseDateTime");
+
 		CCNTime now = CCNTime.now();
 		testDateTime(now);
 		
@@ -104,6 +106,8 @@ public class TextXMLCodecTest {
 		
 		now.setNanos(110672800);
 		testDateTime(now);
+		
+		Log.info(Log.FAC_TEST, "Completed testParseDateTime");
 	}
 	
 	public void testDateTime(CCNTime testDateTime) {

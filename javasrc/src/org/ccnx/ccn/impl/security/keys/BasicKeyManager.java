@@ -117,6 +117,7 @@ public class BasicKeyManager extends KeyManager {
 	
 	/**
 	 * Handle used by key server and key retrieval.
+	 * This may be null, so always access via handle() if you are going to use it.
 	 */
 	protected CCNHandle _handle = null;
 	
@@ -201,7 +202,6 @@ public class BasicKeyManager extends KeyManager {
 	public synchronized void initialize() throws ConfigurationException, IOException {
 		if (_initialized)
 			return;
-		_handle = CCNHandle.open(this);
 		_publicKeyCache = new PublicKeyCache();
 		_privateKeyCache = new SecureKeyCache();
 		_keyStoreInfo = loadKeyStore();// uses _keyRepository and _privateKeyCache
@@ -215,7 +215,7 @@ public class BasicKeyManager extends KeyManager {
 		_initialized = true;		
 		// If we haven't been called off, initialize the key server
 		if (UserConfiguration.publishKeys()) {
-			initializeKeyServer(_handle);
+			initializeKeyServer(handle());
 		}
 	}
 	
@@ -261,7 +261,14 @@ public class BasicKeyManager extends KeyManager {
 	 * reopen them when they are next needed.
 	 */
 	public synchronized void close() {
-		_handle.close();
+		if( Log.isLoggable(Log.FAC_KEYS, Level.FINE) )
+			Log.fine(Log.FAC_KEYS, "BasicKeyManager.close()");
+		super.close();
+		
+		if (_handle != null) {
+			_handle.close();
+			_handle = null;
+		}
 		try {
 			saveSecureKeyCache();
 		} catch (Exception e) {
@@ -271,7 +278,11 @@ public class BasicKeyManager extends KeyManager {
 		}
 	}
 	
-	public CCNHandle handle() { return _handle; }
+	public synchronized CCNHandle handle() throws IOException {
+		if (null == _handle)
+			_handle = CCNHandle.open(this);
+		return _handle;
+	}
 	
 	protected void setPassword(char [] password) {
 		_password = password;
@@ -1070,7 +1081,7 @@ public class BasicKeyManager extends KeyManager {
 			long timeout) throws IOException {
 		
 		if( Log.isLoggable(Log.FAC_KEYS, Level.FINER) )
-			Log.finer(Log.FAC_KEYS, "getPublicKey: retrieving key: " + desiredKeyID + " located at: " + locator);
+			Log.finer(Log.FAC_KEYS, "getPublicKeyObject: retrieving key: {0} located at: {1}", desiredKeyID, locator);
 		// this will try local caches, the locator itself, and if it 
 		// has to, will go to the network. The result will be stored in the cache.
 		// All this tells us is that the key matches the publisher. For whether

@@ -156,6 +156,7 @@ CCN_FORW_LAST           8
 CCN_FORW_CAPTURE       16
 CCN_FORW_LOCAL         32
 CCN_FORW_TAP           64
+CCN_FORW_CAPTURE_OK   128
 .........................
 The `CCN_FORW_ACTIVE` bit indicates that the entry is active;
 interests will not be sent for inactive entries (but see note below).
@@ -175,14 +176,20 @@ The presence of this flag on any entry causes the associated face to be consider
 Thus it will not receive interests with Scope=1, nor will it receive interests in namespaces that are marked local.
 However, the ability of the face to change prefix registrations is not affected.
 
-`CCN_FORW_CAPTURE` says that no shorter prefix may be used, overriding any
+`CCN_FORW_CAPTURE` says that no shorter prefix may be used, overriding
 child-inherit bits that would otherwise make the shorter entries usable.
-However, entries with `CCN_FORW_LAST` or `CCN_FORW_TAP` set are not subject to capture.
+For a child-inherit bit to be overridden, the CCN_FORW_CAPTURE_OK must be set
+in the same forwarding entry that has CCN_FORW_CHILD_INHERIT set.
+Note that this means that using CCN_FORW_CAPTURE will have no effect if the
+CCN_FORW_CAPTURE_OK flag is not used.
 
 `CCN_FORW_LOCAL` restricts the namespace to use by applications on the local
 machine.
 
 `CCN_FORW_TAP` causes the entry to be used right away.  This is intended for debugging and monitoring purposes.  It is likely that there will be no response as a result, so no intentional delay is added before any further forwarding of this interest.
+
+`CCN_FORW_CAPTURE_OK' used in conjunction with CCN_FORW_CHILD_INHERIT allows a
+CCN_FORW_CAPTURE flag on a longer prefix to override the effect of the child-inherit bit.
 
 The flags `CCN_FORW_ADVERTISE`, `CCN_FORW_CAPTURE` and `CCN_FORW_LOCAL` affect
 the prefix as a whole, rather than the individual registrations.

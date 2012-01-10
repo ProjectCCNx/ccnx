@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -23,8 +23,9 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.ccnx.ccn.CCNInterestListener;
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNReader;
 import org.ccnx.ccn.io.CCNWriter;
 import org.ccnx.ccn.profiles.SegmentationProfile;
@@ -42,7 +43,7 @@ import org.junit.Test;
  * 
  * A test of basic Interest mechanisms, using older test infrastructure.
  */
-public class ReadTest extends LibraryTestBase implements CCNInterestListener {
+public class ReadTest extends LibraryTestBase implements CCNContentHandler {
 	
 	private static ArrayList<Integer> currentSet;
 	
@@ -77,7 +78,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 	
 	@Test
 	public void getNextTest() throws Throwable {
-		System.out.println("getNext test started");
+		Log.info(Log.FAC_TEST, "Starting getNextTest");
 		CCNWriter writer = new CCNWriter("/getNext", putHandle);
 		CCNReader reader = new CCNReader(getHandle);
 		for (int i = 0; i < count; i++) {
@@ -88,7 +89,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			ContentObject testCo = getHandle.get(ContentName.fromNative("/getNext/" + Integer.toString(i)), 3000);
 			Assert.assertTrue(testCo != null);
 		}
-		System.out.println("Put sequence finished");
+		Log.info(Log.FAC_TEST, "Put sequence finished");
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
 			int tValue = rand.nextInt(count - 1);
@@ -96,13 +97,13 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			ContentObject result = reader.get(Interest.next(cn, 1, null), 3000);
 			checkResult(result, tValue + 1);
 		}
-		System.out.println("getNext test finished");
+		Log.info(Log.FAC_TEST, "Completed getNextTest");
 	}
 	
 	@Test
 	public void getLatestTest() throws Throwable {
+		Log.info(Log.FAC_TEST, "Starting getLatestTest");
 		int highest = 0;
-		System.out.println("getLatest test started");
 		CCNWriter writer = new CCNWriter("/getLatest", putHandle);
 		CCNReader reader = new CCNReader(getHandle);
 		for (int i = 0; i < count; i++) {
@@ -110,7 +111,7 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 			if (tValue > highest)
 				highest = tValue;
 			String name = "/getLatest/" + Integer.toString(tValue);
-			System.out.println("Putting " + name);
+			Log.info(Log.FAC_TEST, "Putting " + name);
 			writer.put(name, Integer.toString(tValue));
 			
 			// Make sure ccnd has what we're looking for
@@ -127,12 +128,13 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 				checkResult(result, highest);
 			}
 		}
-		System.out.println("getLatest test finished");
+		Log.info(Log.FAC_TEST, "Completed getLatestTest");
 	}
 	
 	@Test
 	public void excludeTest() throws Throwable {
-		System.out.println("excludeTest test started");
+		Log.info(Log.FAC_TEST, "Starting excludeTest");
+
 		excludeSetup();
 		CCNWriter writer = new CCNWriter("/excludeTest", putHandle);
 		for (String value : bloomTestValues) {
@@ -149,22 +151,22 @@ public class ReadTest extends LibraryTestBase implements CCNInterestListener {
 		content = getHandle.get(interest, 3000);
 		Assert.assertFalse(content == null);
 		assertTrue(content.name().toString().startsWith(shouldGetIt));
-		System.out.println("excludeTest test finished");
+		Log.info(Log.FAC_TEST, "Completed excludeTest");
 	}
 	
 	@Test
 	public void getExcludeTest() throws Throwable {
-		System.out.println("getExclude test started");
+		Log.info(Log.FAC_TEST, "Starting getExcludeTest");
 		// Try with single bloom filter
 		excludeTest("/getExcludeTest1", Exclude.OPTIMUM_FILTER_SIZE/2);
 		// Try with multi part filter
 		excludeTest("/getExcludeTest2", Exclude.OPTIMUM_FILTER_SIZE + 5);
-		System.out.println("getExclude test finished");
+		Log.info(Log.FAC_TEST, "Completed getExcludeTest");
 	}
 	
 	private void excludeTest(String prefix, int nFilters) throws Throwable {
 	
-		System.out.println("Starting exclude test - nFilters is " + nFilters);
+		Log.info(Log.FAC_TEST, "Starting exclude test - nFilters is " + nFilters);
 		CCNWriter writer = new CCNWriter(prefix, putHandle);
 		byte [][] excludes = new byte[nFilters - 1][];
 		for (int i = 0; i < nFilters; i++) {

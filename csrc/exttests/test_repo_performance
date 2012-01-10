@@ -1,0 +1,133 @@
+# exttests/test_repo_performance
+# 
+# (Someday) Part of the CCNx distribution.
+#
+# Copyright (C) 2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+AFTER : test_alone
+
+# The data size can be set from the outside
+: ${TEST_DATA_SIZE:=5000000}
+
+# The pipeline size can be set from the outside
+: ${PIPELINE:=12}
+
+# Run these without sync by default, but allow turning it on
+: ${SYNC_ENABLE:=0}
+
+# Don't do unnecessary verifications in the repo
+: ${CCNR_SKIP_VERIFY:=1}
+
+# Generate an identifier for this run if provided upstairs
+: ${TRP:=TRP-`date +%s`}
+
+# Use a consistent time utility
+TIME='/usr/bin/time -p'
+TIME='env'
+
+# Command for doing measured fetches
+FetchAndDiscard () {
+  # $TIME ccncatchunks2 -s -p $PIPELINE -d "$1"
+  $TIME SyncTest -cat2 -bufs $PIPELINE -get "$1"
+}
+
+# Command for sending start write
+StartWrite() {
+  echo "$TRP-startwrite"
+  $TIME SyncTest -nores -noseg -cat2 -bufs 1 -get "$1" "$TRP-startwrite.out"
+}
+
+echo START $TRP
+
+STAGED=`GenerateRepoTestData $TEST_DATA_SIZE`
+ls -l $STAGED/repoFile1 || Fail
+
+# Prepare our start-write command
+VERSIONEDNAME=`GetTestDataVersionedName $STAGED`
+SWR=$VERSIONEDNAME/%C1.R.sw/%C1.N%00`GenSym`
+
+echo Start write request will be $SWR
+
+export SYNC_ENABLE PIPELINE TEST_DATA_SIZE CCNR_PROTO CCNR_SKIP_VERIFY SWR TRP
+echo Saving env in $TRP-env.out
+env > $TRP-env.out
+
+# ccnd1 will be the one connected to the repo
+WithCCND 1 CappedCCNDStart $((TEST_DATA_SIZE / 4000 + 500))
+WithCCND 1 ccndsmoketest send $STAGED/repoFile1
+
+# make a new, empty repo
+export CCNR_DIRECTORY=${CCNR_TEST_REPOS:-.}/testrepo2
+rm -R $CCNR_DIRECTORY 2>/dev/null
+mkdir -p $CCNR_DIRECTORY || Fail
+sleep 3
+WithCCND 1 env CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
+sleep 1
+echo Repo write test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
+DoPS
+WithCCND 1 StartWrite $SWR
+ccnfilewatch $CCNR_DIRECTORY/repoFile1 || Fail ccnfilewatch returned $?
+DoPS
+WithCCND 1 ccndstop
+# sleep 1
+while WithCCND 1 ccndstatus >/dev/null 2>/dev/null ; do
+  echo `date +%s`. Waiting for write test processes to go away.
+  sleep 1 || Fail killed
+done
+WithCCND 1 CappedCCNDStart 100
+WithCCND 1 env CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
+sleep 1
+echo Repo read test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE
+DoPS
+export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-1
+echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
+WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
+WithCCND 1 ccndstatus >> post-repo2-fetch.out
+WithCCND 1 ccnrm -o ccnrm.out /
+while [ -s ccnrm.out ]; do
+    WithCCND 1 ccnrm -o ccnrm.out /
+    sleep 1
+done
+DoPS
+export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-2
+echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
+WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
+WithCCND 1 ccnrm -o ccnrm.out /
+while [ -s ccnrm.out ]; do
+    WithCCND 1 ccnrm -o ccnrm.out /
+    sleep 1
+done
+DoPS
+export CCN_EXPERIMENT_ID=$TRP-p$PIPELINE-b$TEST_DATA_SIZE-v2-3
+echo CCN_EXPERIMENT_ID=$CCN_EXPERIMENT_ID
+WithCCND 1 FetchAndDiscard $VERSIONEDNAME || Fail rc $?
+WithCCND 1 ccnrm -o ccnrm.out /
+while [ -s ccnrm.out ]; do
+    WithCCND 1 ccnrm -o ccnrm.out /
+    sleep 1
+done
+WithCCND 1 ccndstop
+# sleep 1
+while WithCCND 1 ccndstatus >/dev/null 2>/dev/null ; do
+  echo `date +%s`. Waiting for read test processes to go away.
+  sleep 1 || Fail killed
+done
+
+# Get startup times
+echo Repo2 startup with stable index, no ccnd TEST_DATA_SIZE=$TEST_DATA_SIZE
+$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO ccnr
+
+echo Repo2 startup with index rebuild, no ccnd TEST_DATA_SIZE=$TEST_DATA_SIZE
+rm -R $CCNR_DIRECTORY/index
+$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO ccnr
+
+echo END $TRP
+tar cvf $TRP.tar *.out

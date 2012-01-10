@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -370,24 +370,24 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 		int [] blockLocation = new int[2];
 		Log.info("Header: " + this);
 		Log.info("position: " + position + " blockSize " + blockSize() + " position/blockSize " + position/blockSize() + " start: " + start());
-		blockLocation[0] = (int)(Math.floor(1.0*position/blockSize()));
-		blockLocation[1] = (int)(1.0*position % blockSize());
+		blockLocation[0] = (int)(position / blockSize());
+		blockLocation[1] = (int)(position % blockSize());
 		return blockLocation;
 	}
 
 	public long segmentLocationToPosition(long block, int offset) {
 		if (offset > blockSize()) {
-			block += (int)(Math.floor(1.0*offset/blockSize()));
-			offset = (int)(1.0*offset % blockSize());
+			block += offset / blockSize();
+			offset = offset % blockSize();
 		}
 		if (block >= segmentCount()) {
 			return length();
 		}
-		return block*blockSize() + offset;
+		return block * blockSize() + offset;
 	}
 
 	public int segmentCount() {
-		return (int)(Math.ceil(1.0*length()/blockSize()));
+		return (int) (length() + blockSize() - 1) / blockSize();
 	}
 	
 	/**
@@ -395,7 +395,7 @@ public class Header extends GenericXMLEncodable implements XMLEncodable  {
 	 * @return
 	 */
 	public int segmentRemainder() {
-		int remainder = (int)(1.0*length() % blockSize());
+		int remainder = (int)(length() % blockSize());
 		if (remainder == 0)
 			return blockSize();
 		return remainder;

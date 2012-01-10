@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -30,9 +30,13 @@ static void
 usage(const char *progname)
 {
         fprintf(stderr,
-                "%s [-h] [-b blocksize] ccnx:/some/uri\n"
-                " Reads stdin, sending data under the given URI"
-                " using ccn versioning and segmentation.\n", progname);
+                "%s [-h] [-b 0<blocksize<=4096] [-r] ccnx:/some/uri\n"
+                "    Reads stdin, sending data under the given URI"
+                " using ccn versioning and segmentation.\n"
+                "    -h generate this help message.\n"
+                "    -b specify the block (segment) size for content objects.\n"
+                "    -r generate start-write interest so a repository will"
+                " store the content.\n", progname);
         exit(1);
 }
 
@@ -43,18 +47,24 @@ main(int argc, char **argv)
     struct ccn *ccn = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_seqwriter *w = NULL;
-    long blocksize = 1024;
+    int blocksize = 1024;
+    int torepo = 0;
     int i;
     int status = 0;
     int res;
     ssize_t read_res;
+    size_t blockread;
     unsigned char *buf = NULL;
-    while ((res = getopt(argc, argv, "hb:")) != -1) {
+    
+    while ((res = getopt(argc, argv, "hrb:")) != -1) {
         switch (res) {
-	    case 'b':
-	        blocksize = atol(optarg);
+            case 'b':
+                blocksize = atoi(optarg);
                 if (blocksize <= 0 || blocksize > 4096)
                     usage(progname);
+                break;
+            case 'r':
+                torepo = 1;
                 break;
             default:
             case 'h':
@@ -88,28 +98,49 @@ main(int argc, char **argv)
         fprintf(stderr, "ccn_seqw_create failed\n");
         exit(1);
     }
+    ccn_seqw_set_block_limits(w, blocksize, blocksize);
+    if (torepo) {
+        struct ccn_charbuf *name_v = ccn_charbuf_create();
+        ccn_seqw_get_name(w, name_v);
+        ccn_name_from_uri(name_v, "%C1.R.sw");
+        ccn_name_append_nonce(name_v);
+        ccn_get(ccn, name_v, NULL, 2000, NULL, NULL, NULL, 0);
+        ccn_charbuf_destroy(&name_v);
+    }
+    blockread = 0;
     for (i = 0;; i++) {
-        ccn_run(ccn, 1);
-        read_res = read(0, buf, blocksize);
-        if (read_res < 0) {
-            perror("read");
-            read_res = 0;
-            status = 1;
+        while (blockread < blocksize) {
+            ccn_run(ccn, 1);
+            read_res = read(0, buf + blockread, blocksize - blockread);
+            if (read_res == 0)
+                goto cleanup;
+            if (read_res < 0) {
+                perror("read");
+                status = 1;
+                goto cleanup;
+            }
+            blockread += read_res;
         }
-        if (read_res == 0) {
-            ccn_seqw_close(w);
-            w = NULL;
-            status = 0;
-            break;
-        }
-        res = ccn_seqw_write(w, buf, read_res);
+        res = ccn_seqw_write(w, buf, blockread);
         while (res == -1) {
             ccn_run(ccn, 100);
-            res = ccn_seqw_write(w, buf, read_res);
+            res = ccn_seqw_write(w, buf, blockread);
         }
-        if (res != read_res)
+        if (res != blockread)
             abort(); /* hmm, ccn_seqw_write did a short write or something */
+        blockread = 0;
     }
+    
+cleanup:
+    // flush out any remaining data and close
+    if (blockread > 0) {
+        res = ccn_seqw_write(w, buf, blockread);
+        while (res == -1) {
+            ccn_run(ccn, 100);
+            res = ccn_seqw_write(w, buf, blockread);
+        }
+    }
+    ccn_seqw_close(w);
     ccn_run(ccn, 1);
     free(buf);
     buf = NULL;

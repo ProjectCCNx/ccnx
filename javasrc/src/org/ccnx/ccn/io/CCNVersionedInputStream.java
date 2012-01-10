@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -242,7 +242,7 @@ public class CCNVersionedInputStream extends CCNInputStream {
 		}
 		Log.info(Log.FAC_IO, "getFirstSegment: getting latest version of {0}", _baseName);
 		ContentObject result = 
-			VersioningProfile.getFirstBlockOfLatestVersion(_baseName, _startingSegmentNumber, _publisher, _timeout, this, _handle);
+			VersioningProfile.getFirstBlockOfLatestVersion(_baseName, _startingSegmentNumber, _publisher, _timeout, _handle.defaultVerifier(), _handle);
 		if (null != result){
             if (Log.isLoggable(Log.FAC_IO, Level.INFO))
                 Log.info(Log.FAC_IO, "getFirstSegment: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());

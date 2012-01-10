@@ -74,6 +74,7 @@ public class ContentTree {
 		List<ContentRef> content;
 		long timestamp;
 		boolean interestFlag = false;
+		boolean neSent = false;		// NE response sent since last insert
 		
 		public boolean compEquals(byte[] other) {
 			return DataUtils.compare(other, this.component) == 0;
@@ -133,7 +134,7 @@ public class ContentTree {
 	 * Currently we prescreen for matching the exclude filter if there is one
 	 * and that the candidate has the correct number of components.
 	 */
-	protected class InterestPreScreener {
+	protected static class InterestPreScreener {
 		protected int _minComponents = 0;
 		protected int _maxComponents = 32767;
 		protected Exclude _exclude;
@@ -300,7 +301,7 @@ public class ContentTree {
 	/**
 	 * Create an iterator that goes backwards through the candidates for right search
 	 */
-	protected class RightIterator implements Iterator<TreeNode> {
+	protected static class RightIterator implements Iterator<TreeNode> {
 		protected SortedMap<TreeNode, TreeNode> _map;
 		
 		protected RightIterator(SortedMap<TreeNode, TreeNode> map) {
@@ -378,6 +379,13 @@ public class ContentTree {
 						node.children.put(child, child);
 						node.oneChild = null;
 					}
+					if (node.neSent && (node.timestamp == ts)) {
+						if (Log.isLoggable(Log.FAC_REPO, Level.WARNING)) {
+							Log.warning(Log.FAC_REPO, "WARNING - info inserted at {0} since last NE without timestamp update - could cause NE miss", 
+									name);
+						}
+					}
+					node.neSent = false;
 					node.timestamp = ts;
 					
 					if (node.interestFlag && (ner != null && ner.getPrefix()==null)){
@@ -574,7 +582,7 @@ public class ContentTree {
 	/**
 	 * Return content at this level if there is matching content
 	 * 
-	 * @param interest - interest to match agains
+	 * @param interest - interest to match against
 	 * @param node	   - the node
 	 * @param nodeName - name of node as a ContentName
 	 * @param getter   - getter to get actual data for final match and return if matches
@@ -637,11 +645,13 @@ public class ContentTree {
 		TreeNode parent = lookupNode(prefix, prefix.count());
 		if (parent!=null) {
 			//first add the NE marker
+			CCNTime timestamp = new CCNTime(parent.timestamp);		// I think we want to use the earliest possible timestamp here - if there are duplicates
+																	// NE can straighten it out - worse to miss somethingf
 		    ContentName potentialCollectionName = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 		    //now add the response id
 		    potentialCollectionName = new ContentName(potentialCollectionName, responseName.components());
 		    //now finish up with version and segment
-		    potentialCollectionName = VersioningProfile.addVersion(potentialCollectionName, new CCNTime(parent.timestamp));
+		    potentialCollectionName = VersioningProfile.addVersion(potentialCollectionName, timestamp);
 		    potentialCollectionName = SegmentationProfile.segmentName(potentialCollectionName, SegmentationProfile.baseSegment());
 			//check if we should respond...
 			if (interest.matches(potentialCollectionName, null)) {
@@ -655,10 +665,10 @@ public class ContentTree {
 
 				//I am not supposed to respond...  is that because of the version or because I am specifically excluded?
 				 if (responseName.count() > 0 && interest.exclude().match(responseName.components().get(0))) {
-					 Log.finer(Log.FAC_REPO, "my repo is explictly excluded!  not setting interestFlag to true");
+					 Log.finer(Log.FAC_REPO, "my repo is explicitly excluded!  not setting interestFlag to true");
 					 //do not set interest flag!  I wasn't supposed to respond
 				 } else {
-					 if (interest.exclude().match(new CCNTime(parent.timestamp).toBinaryTime())) {
+					 if (interest.exclude().match(timestamp.toBinaryTime())) {
 						 Log.finer(Log.FAC_REPO, "my version is just excluded, setting interestFlag to true");
 						 parent.interestFlag = true;
 					 }
@@ -667,24 +677,27 @@ public class ContentTree {
 			}
 
 			//the parent has children we need to return
-			if (parent.oneChild!=null) {
-				names.add(new ContentName(ContentName.ROOT, parent.oneChild.component));
-			} else {
-				if (parent.children!=null) {
-					for (TreeNode ch:parent.children.keySet())
-						names.add(new ContentName(ContentName.ROOT, ch.component));
+			synchronized (parent) {		// Make sure especially that nobody changes from oneChild to children behind our back
+				if (parent.oneChild!=null) {
+					names.add(new ContentName(ContentName.ROOT, parent.oneChild.component));
+				} else {
+					if (parent.children!=null) {
+						for (TreeNode ch:parent.children.keySet())
+							names.add(new ContentName(ContentName.ROOT, ch.component));
+					}
 				}
-			}
-			
-			if (names.size()>0) {
-				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
-					Log.finer(Log.FAC_REPO, "sending back {0} names in the enumeration response for prefix {1}", names.size(), prefix);
+				
+				if (names.size()>0) {
+					if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
+						Log.finer(Log.FAC_REPO, "sending back {0} names in the enumeration response for prefix {1}", names.size(), prefix);
+					}
 				}
+				parent.interestFlag = false;
+				parent.neSent = true;
 			}
-			parent.interestFlag = false;
 			
 			return new NameEnumerationResponse(
-					new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), names, new CCNTime(parent.timestamp));
+					new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), names, timestamp);
 		}
 		return null;
 	}

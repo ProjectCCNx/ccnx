@@ -19,7 +19,6 @@ package org.ccnx.ccn.config;
 
 import java.security.Provider;
 import java.security.Security;
-import java.util.logging.Level;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -36,33 +35,46 @@ public final class PlatformConfiguration {
 		return _needSignatureLock;
 	}
 
+	public final static boolean workaroundGingerbreadBug;
+
+
 	// ==============================================
 	// Internal methods
 	private final static boolean _needSignatureLock;
 
 	static {
-		// Default is not to lock signature operations unless we're using
-		// BC 1.34 (as seen on Android)
+		// Default is not to lock signature operations
 		boolean needLock = false;
 
+		double bcVersion = 0;
 		try {
 			Log.info("BC provider: " + BouncyCastleProvider.PROVIDER_NAME);
 
 			Security.addProvider(new BouncyCastleProvider());
 
 			Provider prov = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME);
-			Log.info("Provider info: {0} version: {1}", prov.getInfo(), prov.getVersion());
+			bcVersion = prov.getVersion();
+			Log.info("Provider info: {0} version: {1}", prov.getInfo(), bcVersion);
 
-			// The unix/mac code uses "BouncyCastle Security Provider v1.43"
-			// The Android code uses "BouncyCastle Security Provider v1.34"
+			String vm = System.getProperty("java.vm.name");
+			Log.info("java.vm.name = {0}", vm);
 
-			if( prov.getVersion() == 1.34 ) {
+			// If we are running on Android then we need to work around a bug by
+			// locking all signature operations. Hopefully this will be fixed at
+			// some point, then this code will have to test version number.
+			if( vm.matches(".*(?i)Dalvik.*") ) {
+				Log.info("Running on Dalvik - locking all signature operations");
 				needLock = true;
 			}
 		} catch(Exception e) {
-			e.printStackTrace();
+			Log.warningStackTrace(e);
+			Log.abort();
 		}
 
 		_needSignatureLock = needLock;
+		workaroundGingerbreadBug = needLock && bcVersion == 1.45;
+		
+		if (workaroundGingerbreadBug)
+			Log.info("Detected running on Android Gingerbread, working around signature verification bug");
 	}
 }

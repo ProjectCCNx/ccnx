@@ -67,6 +67,7 @@ struct ccn {
     int verbose_error;
     int tap;
     int running;
+    int defer_verification;
 };
 
 struct expressed_interest;
@@ -259,22 +260,55 @@ ccn_create(void)
     char tap_name[255];
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(),
+        if (snprintf(tap_name, 255, "%s-%d-%d-%d", s, (int)getpid(),
                      (int)tv.tv_sec, (int)tv.tv_usec) >= 255) {
-        fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
-    } else {
-        h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
-        if (h->tap == -1) {
-        NOTE_ERRNO(h);
+            fprintf(stderr, "CCN_TAP path is too long: %s\n", s);
+        } else {
+            h->tap = open(tap_name, O_WRONLY|O_APPEND|O_CREAT, S_IRWXU);
+            if (h->tap == -1) {
+                NOTE_ERRNO(h);
                 ccn_perror(h, "Unable to open CCN_TAP file");
-        }
+            }
             else
-        fprintf(stderr, "CCN_TAP writing to %s\n", tap_name);
-    }
-    } else {
-    h->tap = -1;
-    }
+                fprintf(stderr, "CCN_TAP writing to %s\n", tap_name);
+        }
+    } else
+        h->tap = -1;
+    h->defer_verification = 0;
     return(h);
+}
+
+/**
+ * Tell the library to defer verification.
+ *
+ * For some specialized applications (performance testing being an example),
+ * the normal verification done within the library may be undesirable.
+ * Setting the "defer validation" flag will cause the library to pass content
+ * to the application without attempting to verify it. In this case,
+ * the CCN_UPCALL_CONTENT_RAW upcall kind will be passed instead of
+ * CCN_UPCALL_CONTENT, and CCN_UPCALL_CONTENT_KEYMISSING instead of
+ * CCN_UPCALL_CONTENT_UNVERIFIED.  If the application wants do still do
+ * key fetches, it may use the CCN_UPCALL_RESULT_FETCHKEY response instead
+ * of CCN_UPCALL_RESULT_VERIFY.
+ *
+ * Calling this while there are interests outstanding is not recommended.
+ * 
+ * This call is available beginning with CCN_API_VERSION 4004.
+ *
+ * @param defer is 0 to verify, 1 to defer, -1 to leave unchanged.
+ * @returns previous value, or -1 in case of error.
+ */
+int
+ccn_defer_verification(struct ccn *h, int defer)
+{
+    int old;
+
+    if (h == NULL || defer > 1 || defer < -1)
+        return(-1);
+    old = h->defer_verification;
+    if (defer >= 0)
+        h->defer_verification = defer;
+    return(old);
 }
 
 /**
@@ -993,6 +1027,7 @@ handle_key(struct ccn_closure *selfp,
     size_t data_size;
     int res;
     struct ccn_charbuf *name = NULL;
+    struct ccn_charbuf *templ = NULL;
     
     switch(kind) {
         case CCN_UPCALL_FINAL:
@@ -1001,37 +1036,58 @@ handle_key(struct ccn_closure *selfp,
         case CCN_UPCALL_INTEREST_TIMED_OUT:
             /* Don't keep trying */
             return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_CONTENT_UNVERIFIED:
+            /* This is not exactly right, but trying to follow the KeyLocator could be worse trouble. */
+        case CCN_UPCALL_CONTENT_KEYMISSING:
+        case CCN_UPCALL_CONTENT_RAW:
         case CCN_UPCALL_CONTENT:
             type = ccn_get_content_type(msg, info->pco);
             if (type == CCN_CONTENT_KEY)
                 return(CCN_UPCALL_RESULT_OK);
             if (type == CCN_CONTENT_LINK) {
                 /* resolve the link */
-                /* XXX - should limit how much we work at this */
+                /* Limit how much we work at this. */
+                if (selfp->intdata <= 0)
+                    return(NOTE_ERR(h, ELOOP));
+                selfp->intdata -= 1;
                 msg = info->content_ccnb;
                 size = info->pco->offset[CCN_PCO_E];
                 res = ccn_content_get_value(info->content_ccnb, size, info->pco,
                                             &data, &data_size);
                 if (res < 0)
                     return (CCN_UPCALL_RESULT_ERR);
+                templ = ccn_charbuf_create();
+                ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+                ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+                ccn_charbuf_append_closer(templ); /* </Name> */
+                ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
+                ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
+                ccn_charbuf_append_closer(templ); /* </Interest> */
                 name = ccn_charbuf_create();
                 res = ccn_append_link_name(name, data, data_size);
-                if (res < 0)
-                    return (CCN_UPCALL_RESULT_ERR);
-                res = ccn_express_interest(h, name, selfp, NULL);
+                if (res < 0) {
+                    NOTE_ERR(h, EINVAL);
+                    res = CCN_UPCALL_RESULT_ERR;
+                }
+                else
+                    res = ccn_express_interest(h, name, selfp, templ);
                 ccn_charbuf_destroy(&name);
+                ccn_charbuf_destroy(&templ);
                 return(res);
             }
             return (CCN_UPCALL_RESULT_ERR);
-        case CCN_UPCALL_CONTENT_UNVERIFIED:
-            type = ccn_get_content_type(msg, info->pco);
-            if (type == CCN_CONTENT_KEY)
-                return(CCN_UPCALL_RESULT_OK);
-            return(CCN_UPCALL_RESULT_VERIFY);
         default:
             return (CCN_UPCALL_RESULT_ERR);
     }
 }
+
+/**
+ * This is the maximum number of links in we are willing to traverse
+ * when resolving a key locator.
+ */
+#ifndef CCN_MAX_KEY_LINK_CHAIN
+#define CCN_MAX_KEY_LINK_CHAIN 7
+#endif
 
 static int
 ccn_initiate_key_fetch(struct ccn *h,
@@ -1079,22 +1135,25 @@ ccn_initiate_key_fetch(struct ccn *h,
     if (key_closure == NULL)
         return (NOTE_ERRNO(h));
     key_closure->p = &handle_key;
+    key_closure->intdata = CCN_MAX_KEY_LINK_CHAIN; /* to limit how many links we will resolve */
     
     key_name = ccn_charbuf_create();
     res = ccn_charbuf_append(key_name,
                              msg + pco->offset[CCN_PCO_B_KeyName_Name],
                              namelen);
+    templ = ccn_charbuf_create();
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
+    ccn_charbuf_append_closer(templ); /* </Name> */
+    ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 1);
+    ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
     if (pco->offset[CCN_PCO_B_KeyName_Pub] < pco->offset[CCN_PCO_E_KeyName_Pub]) {
-        templ = ccn_charbuf_create();
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-        ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
-        ccn_charbuf_append_closer(templ); /* </Name> */
         ccn_charbuf_append(templ,
                            msg + pco->offset[CCN_PCO_B_KeyName_Pub],
                            (pco->offset[CCN_PCO_E_KeyName_Pub] - 
                             pco->offset[CCN_PCO_B_KeyName_Pub]));
-        ccn_charbuf_append_closer(templ); /* </Interest> */
     }
+    ccn_charbuf_append_closer(templ); /* </Interest> */
     res = ccn_express_interest(h, key_name, key_closure, templ);
     ccn_charbuf_destroy(&key_name);
     ccn_charbuf_destroy(&templ);
@@ -1198,7 +1257,13 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                     if (type == CCN_CONTENT_KEY)
                                         res = ccn_cache_key(h, msg, size, info.pco);
                                     res = ccn_locate_key(h, msg, info.pco, &pubkey);
-                                    if (res == 0) {
+                                    if (h->defer_verification) {
+                                        if (res == 0)
+                                            upcall_kind = CCN_UPCALL_CONTENT_RAW;
+                                        else
+                                            upcall_kind = CCN_UPCALL_CONTENT_KEYMISSING;
+                                    }
+                                    else if (res == 0) {
                                         /* we have the pubkey, use it to verify the msg */
                                         res = ccn_verify_signature(msg, size, info.pco, pubkey);
                                         upcall_kind = (res == 1) ? CCN_UPCALL_CONTENT : CCN_UPCALL_CONTENT_BAD;
@@ -1214,10 +1279,18 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                                         ccn_gripe(interest);
                                     if (ures == CCN_UPCALL_RESULT_REEXPRESS)
                                         ccn_refresh_interest(h, interest);
-                                    else if (ures == CCN_UPCALL_RESULT_VERIFY &&
-                                             upcall_kind == CCN_UPCALL_CONTENT_UNVERIFIED) { /* KEYS */
+                                    else if ((ures == CCN_UPCALL_RESULT_VERIFY ||
+                                              ures == CCN_UPCALL_RESULT_FETCHKEY) &&
+                                             (upcall_kind == CCN_UPCALL_CONTENT_UNVERIFIED ||
+                                              upcall_kind == CCN_UPCALL_CONTENT_KEYMISSING)) { /* KEYS */
                                         ccn_initiate_key_fetch(h, msg, info.pco, interest);
-                                    } else {
+                                    }
+                                    else if (ures == CCN_UPCALL_RESULT_VERIFY &&
+                                             upcall_kind == CCN_UPCALL_CONTENT_RAW) {
+                                        /* For now, call this a client bug. */
+                                        abort();
+                                    }
+                                    else {
                                         interest->target = 0;
                                         replace_interest_msg(interest, NULL);
                                         ccn_replace_handler(h, &(interest->action), NULL);
@@ -1576,7 +1649,11 @@ handle_simple_incoming_content(
         if ((md->flags & CCN_GET_NOKEYWAIT) == 0)
             return(CCN_UPCALL_RESULT_VERIFY);
     }
-    else if (kind != CCN_UPCALL_CONTENT)
+    if (kind == CCN_UPCALL_CONTENT_KEYMISSING) {
+        if ((md->flags & CCN_GET_NOKEYWAIT) == 0)
+            return(CCN_UPCALL_RESULT_FETCHKEY);
+    }
+    else if (kind != CCN_UPCALL_CONTENT && kind != CCN_UPCALL_CONTENT_RAW)
         return(CCN_UPCALL_RESULT_ERR);
     if (md->resultbuf != NULL) {
         md->resultbuf->length = 0;
@@ -1691,6 +1768,12 @@ handle_ccndid_response(struct ccn_closure *selfp,
     }
     if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_VERIFY);
+    if (kind == CCN_UPCALL_CONTENT_KEYMISSING)
+        return(CCN_UPCALL_RESULT_FETCHKEY);
+    if (kind == CCN_UPCALL_CONTENT_RAW) {
+        if (ccn_verify_content(h, info->content_ccnb, info->pco) == 0)
+            kind = CCN_UPCALL_CONTENT;
+    }
     if (kind != CCN_UPCALL_CONTENT) {
         NOTE_ERR(h, -1000 - kind);
         return(CCN_UPCALL_RESULT_ERR);
@@ -1758,6 +1841,12 @@ handle_prefix_reg_reply(
         return(CCN_UPCALL_RESULT_REEXPRESS);
     if (kind == CCN_UPCALL_CONTENT_UNVERIFIED)
         return(CCN_UPCALL_RESULT_VERIFY);
+    if (kind == CCN_UPCALL_CONTENT_KEYMISSING)
+        return(CCN_UPCALL_RESULT_FETCHKEY);
+    if (kind == CCN_UPCALL_CONTENT_RAW) {
+        if (ccn_verify_content(h, info->content_ccnb, info->pco) == 0)
+            kind = CCN_UPCALL_CONTENT;
+    }
     if (kind != CCN_UPCALL_CONTENT) {
         NOTE_ERR(h, -1000 - kind);
         return(CCN_UPCALL_RESULT_ERR);
@@ -2289,4 +2378,46 @@ ccn_sign_content(struct ccn *h,
     ccn_charbuf_destroy(&finalblockid);
     ccn_charbuf_destroy(&signed_info);
     return(res);
+}
+/**
+ * Check whether content described by info is final block.
+ *
+ * @param info - the ccn_upcall_info describing the ContentObject
+ * @returns 1 for final block, 0 for not final, -1 if an error occurs
+ */
+int
+ccn_is_final_block(struct ccn_upcall_info *info)
+{
+    const unsigned char *ccnb;
+    size_t ccnb_size;
+    int res;
+    ccnb = info->content_ccnb;
+    if (ccnb == NULL || info->pco == NULL)
+        return(0);
+    ccnb_size = info->pco->offset[CCN_PCO_E];
+    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
+        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
+        const unsigned char *finalid = NULL;
+        size_t finalid_size = 0;
+        const unsigned char *nameid = NULL;
+        size_t nameid_size = 0;
+        struct ccn_indexbuf *cc = info->content_comps;
+        if (cc->n < 2) return(-1);
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
+                            info->pco->offset[CCN_PCO_B_FinalBlockID],
+                            info->pco->offset[CCN_PCO_E_FinalBlockID],
+                            &finalid,
+                            &finalid_size);
+        if (res < 0) return(-1);
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
+                            cc->buf[cc->n - 2],
+                            cc->buf[cc->n - 1],
+                            &nameid,
+                            &nameid_size);
+        if (res < 0) return(-1);
+        if (finalid_size == nameid_size &&
+            0 == memcmp(finalid, nameid, nameid_size))
+            return(1);
+    }
+    return(0);
 }

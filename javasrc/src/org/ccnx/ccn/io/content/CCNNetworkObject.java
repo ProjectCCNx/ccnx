@@ -22,10 +22,12 @@ import java.io.InvalidObjectException;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.ContentVerifier;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -95,7 +97,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * freshness, and so on. Expect new constructors to deal with the latter deficiencies, and
  * a cleanup of the constructor architecture overall in the near term.
  */
-public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNInterestListener {
+public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNContentHandler {
 
 	protected static final byte [] GONE_OUTPUT = "GONE".getBytes();
 	
@@ -152,8 +154,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected PublisherPublicKeyDigest _currentPublisher;
 	protected KeyLocator _currentPublisherKeyLocator;
 	protected CCNHandle _handle;
+	
+	/**
+	 * We are not allowed to register or deregister prefixes for flow controllers we didn't
+	 * create.
+	 */
 	protected CCNFlowControl _flowControl;
+	protected boolean _FCIsOurs = false;
 	protected boolean _disableFlowControlRequest = false;
+	
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use handle defaults
 	protected KeyLocator _keyLocator; // locator to find publisher key
 	protected SaveType _saveType = null; // what kind of flow controller to make if we don't have one
@@ -167,6 +176,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	Interest _currentInterest = null;
 	boolean _continuousUpdates = false;
 	HashSet<UpdateListener> _updateListeners = null;
+
+	protected Updater _updater = null;
 	
 	/**
 	 * Basic write constructor. This will set the object's internal data but it will not save it
@@ -214,6 +225,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				throw new IllegalArgumentException("handle null, and cannot create one: " + e.getMessage(), e);
 			}
 		}
+		_updater = new Updater(this);
 		_handle = handle;
 		_verifier = handle.defaultVerifier();
 		_baseName = name;
@@ -256,14 +268,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (null == flowControl) {
 			throw new IOException("FlowControl cannot be null!");
 		}
+		_updater = new Updater(this);
 		_flowControl = flowControl;
 		_handle = _flowControl.getHandle();
 		_saveType = _flowControl.saveType();
 		_verifier = _handle.defaultVerifier();
-		// Register interests for our base name, if we have one.
-		if (null != name) {
-			flowControl.addNameSpace(name);
-		}
 	}
 
 	/**
@@ -310,6 +319,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		if (null == flowControl) {
 			throw new IOException("FlowControl cannot be null!");
 		}
+		_updater = new Updater(this);
 		_flowControl = flowControl;
 		_handle = _flowControl.getHandle();
 		_saveType = _flowControl.saveType();
@@ -343,6 +353,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				throw new IllegalArgumentException("handle null, and cannot create one: " + e.getMessage(), e);
 			}
 		}
+		_updater = new Updater(this);
 		_handle = handle;
 		_verifier = handle.defaultVerifier();
 		_baseName = name;
@@ -370,6 +381,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				throw new IllegalArgumentException("handle null, and cannot create one: " + e.getMessage(), e);
 			}
 		}
+		_updater = new Updater(this);
 		_handle = handle;
 		_verifier = handle.defaultVerifier();
 		update(firstSegment);
@@ -393,6 +405,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		super(type, contentIsMutable);
 		if (null == flowControl)
 			throw new IllegalArgumentException("flowControl cannot be null!");
+		_updater = new Updater(this);
 		_flowControl = flowControl;
 		_handle = _flowControl.getHandle();
 		_saveType = _flowControl.saveType();
@@ -421,9 +434,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_keys = (null != other._keys) ? other._keys.clone() : null;
 		_firstSegment = other._firstSegment;
 		_verifier = other._verifier;
+		_updater = new Updater(this);
 		// Do not copy update behavior. Even if other one is updating, we won't
-		// pick that up. Have to kick off manually.
-		
+		// pick that up. Have to kick off manually	
 	}
 	
 	/**
@@ -455,12 +468,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			default:
 				throw new IOException("Unknown save type: " + _saveType);
 			}
+			_FCIsOurs = true;
 
 			if (_disableFlowControlRequest)
 				_flowControl.disable();
 			// Have to register the version root. If we just register this specific version, we won't
 			// see any shorter interests -- i.e. for get latest version.
-			_flowControl.addNameSpace(_baseName);
+			//_flowControl.addNameSpace(_baseName);
 			if (Log.isLoggable(Level.INFO))
 				Log.info("Created " + _saveType + " flow controller, for prefix {0}, save type " + _flowControl.saveType(), _baseName);
 		}
@@ -493,9 +507,6 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	
 	public synchronized void setupSave() throws IOException {
 		if (null != _flowControl) {
-			if (null != _baseName) {
-				_flowControl.addNameSpace(_baseName);
-			}
 			return;
 		}
 		createFlowController();
@@ -507,9 +518,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	@Override
 	protected void finalize() throws Throwable {
-		close();
+		try {
+			close();        // close the object, canceling interests and listeners.
+		} finally {
+			super.finalize();
+		}
 	}
-	
+
 	/**
 	 * Close flow controller, remove listeners. Have to call setupSave to save with this object again,
 	 * re-add listeners.
@@ -656,7 +671,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	public boolean update(ContentName name, PublisherPublicKeyDigest publisher) throws ContentDecodingException, IOException {
-		Log.info("Updating object to {0}.", name);
+		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "Updating object to {0}.", name);
 		CCNVersionedInputStream is = new CCNVersionedInputStream(name, publisher, _handle);
 		return update(is);
 	}
@@ -691,8 +707,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		Tuple<ContentName, byte []> nameAndVersion = null;
 		try {
 			if (inputStream.isGone()) {
-				if (Log.isLoggable(Level.FINE))
-					Log.fine("Reading from GONE stream: {0}", inputStream.getBaseName());
+				if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+					Log.fine(Log.FAC_IO, "Reading from GONE stream: {0}", inputStream.getBaseName());
 				_data = null;
 
 				// This will have a final version and a segment
@@ -713,8 +729,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 			_firstSegment = inputStream.getFirstSegment();  // preserve first segment
 		} catch (NoMatchingContentFoundException nme) {
-			if (Log.isLoggable(Level.INFO))
-				Log.info("NoMatchingContentFoundException in update from input stream {0}, timed out before data was available.", inputStream.getBaseName());
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "NoMatchingContentFoundException in update from input stream {0}, timed out before data was available.", inputStream.getBaseName());
 			nameAndVersion = VersioningProfile.cutTerminalVersion(inputStream.getBaseName());
 			_baseName = nameAndVersion.first();
 
@@ -726,8 +742,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// not an error state, merely a not ready state.
 			return false;
 		} catch (LinkCycleException lce) {
-			if (Log.isLoggable(Level.INFO))
-				Log.info("Link cycle exception: {0}", lce.getMessage());
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "Link cycle exception: {0}", lce.getMessage());
 			setError(lce);
 			throw lce;
 		}
@@ -793,15 +809,21 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException 
 	 */
 	public synchronized void updateInBackground(ContentName latestVersionKnown, boolean continuousUpdates, UpdateListener listener) throws IOException {
-
-		Log.info("updateInBackground: getting latest version after {0} in background.", latestVersionKnown);
+		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "updateInBackground: getting latest version after {0} in background.", latestVersionKnown);
 		cancelInterest();
 		if (null != listener) {
 			addListener(listener);
 		}
-		_continuousUpdates = continuousUpdates;
-		_currentInterest = VersioningProfile.firstBlockLatestVersionInterest(latestVersionKnown, null);
-		Log.info("updateInBackground: initial interest: {0}", _currentInterest);
+		synchronized (_updater) {
+			_continuousUpdates = continuousUpdates;
+		}
+		Interest currentInterest = VersioningProfile.firstBlockLatestVersionInterest(latestVersionKnown, null);
+		synchronized (_updater) {
+			_currentInterest = currentInterest;
+		}
+		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "updateInBackground: initial interest: {0}", _currentInterest);
 		_handle.expressInterest(_currentInterest, this);
 	}
 	
@@ -809,9 +831,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Cancel an outstanding updateInBackground().
 	 */
 	public synchronized void cancelInterest() {
-		_continuousUpdates = false;
-		if (null != _currentInterest) {
-			_handle.cancelInterest(_currentInterest, this);
+		synchronized (_updater) {
+			_continuousUpdates = false;
+		
+			if (null != _currentInterest) {
+				_handle.cancelInterest(_currentInterest, this);
+			}
 		}
 	}
 	
@@ -943,8 +968,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// write the object, and figure out if that's happened. Also need to make
 		// parent behavior just write, put the dirty check higher in the state.
 
-		if (!gone && !isDirty()) { 
-			Log.info("Object not dirty. Not saving.");
+		if (!gone && !isDirty()) {
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "Object not dirty. Not saving.");
 			return false;
 		}
 
@@ -974,12 +1000,19 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// DKS if we add the versioned name, we don't handle get latest version.
 		// We re-add the baseName here in case an update has changed it.
 		// TODO -- perhaps disallow updates for unrelated names.
-		_flowControl.addNameSpace(_baseName);
+		if (_FCIsOurs)
+			_flowControl.addNameSpace(_baseName);
 
 		if (!gone) {
 			// CCNVersionedOutputStream will version an unversioned name. 
 			// If it gets a versioned name, will respect it. 
 			// This will call startWrite on the flow controller.
+			//
+			// Note that we must use the flow controller given to us as opposed to letting
+			// the OutputStream create its own. This is because there may be dependencies from the
+			// caller on the specific flow controller - the known case is the flow controller is a
+			// CCNFlowServer which requires that the flow controller retain its objects after writing
+			// them. A standard FC would cause the objects to be lost.
 			CCNVersionedOutputStream cos = new CCNVersionedOutputStream(name, _keyLocator, _publisher, contentType(), _keys, _flowControl);
 			cos.setFreshnessSeconds(_freshnessSeconds);
 			if (null != outstandingInterest) {
@@ -1016,9 +1049,16 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_currentVersionName = name;
 		setDirty(false);
 		_available = true;
+		
+		// We have completed our save and don't know when or if another save may occur so don't keep
+		// ourselves registered with ccnd. That could cause interests to be unnecessarily or incorrectly
+		// forwarded to us during the dormant period.
+		if (_FCIsOurs)
+			_flowControl.removeNameSpace(_baseName);
 
 		newVersionAvailable(true);
-		Log.finest("Saved object {0} publisher {1} key locator {2}", name, _currentPublisher, _currentPublisherKeyLocator);
+		if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
+			Log.finest(Log.FAC_IO, "Saved object {0} publisher {1} key locator {2}", name, _currentPublisher, _currentPublisherKeyLocator);
 		return true;
 	}
 	
@@ -1044,6 +1084,42 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public synchronized boolean save(CCNTime version, E data) throws ContentEncodingException, IOException {
 		setData(data);
 		return save(version);
+	}
+	
+	/*
+	 * Methods to save from handlers. We probably don't want to wait in general to do a save from a handler
+	 * but if the save is to a respository (and we really can't tell) we definitely can't do that because we 
+	 * have to wait for a response from the repo which only the handler can receive.
+	 */
+
+	/**
+	 * Do a #save from a callback
+	 */
+	public void saveLater() {
+		doSave(null, false, null, false);
+	}
+	
+	/**
+	 * Do a #save from a callback
+	 * @param outstandingInterest
+	 */
+	public void saveLater(Interest outstandingInterest) {
+		doSave(null, false, null, false);
+	}
+	
+	/**
+	 * Do a #save followed by a close of the network object from a callback
+	 */
+	public void saveLaterWithClose() {
+		doSave(null, false, null, true);
+	}
+	
+	/**
+	 * Do a #save followed by a close of the network object from a callback
+	 * @param outstandingInterest
+	 */
+	public void saveLaterWithClose(Interest outstandingInterest) {
+		doSave(null, false, outstandingInterest, true);
 	}
 
 	/**
@@ -1109,7 +1185,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 	
 	/**
-	 * For use by CCNFilterListeners, saves a GONE object and emits an inital
+	 * For use by CCNFilterListeners, saves a GONE object and emits an initial
 	 * block in response to an already-received Interest.
 	 * Save this object as GONE. Intended to mark the latest version, rather
 	 * than a specific version as GONE. So for now, require that name handed in
@@ -1158,8 +1234,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 *   we found a new version on the network?
 	 */
 	protected void newVersionAvailable(boolean wasSave) {
-		if (Log.isLoggable(Level.FINER)) {
-			Log.finer("newVersionAvailable: New version of object available: {0}", getVersionedName());
+		if (Log.isLoggable(Log.FAC_IO, Level.FINER)) {
+			Log.finer(Log.FAC_IO, "newVersionAvailable: New version of object available: {0}", getVersionedName());
 		}
 		// by default signal all waiters
 		this.notifyAll();
@@ -1325,8 +1401,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		if (null != _dereferencedLink) {
 			if (null != dereferencedLink.getDereferencedLink()) {
-				if (Log.isLoggable(Level.WARNING)) {
-					Log.warning("Merging two link stacks -- {0} already has a dereferenced link from {1}. Behavior unpredictable.",
+				if (Log.isLoggable(Log.FAC_IO, Level.WARNING)) {
+					Log.warning(Log.FAC_IO, "Merging two link stacks -- {0} already has a dereferenced link from {1}. Behavior unpredictable.",
 							dereferencedLink.getVersionedName(), dereferencedLink.getDereferencedLink().getVersionedName());
 				}
 			}
@@ -1349,8 +1425,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 			return getBaseName();
 		} catch (IOException e) {
-			if (Log.isLoggable(Level.WARNING))
-				Log.warning("Invalid state for object {0}, cannot get current version name: {1}", getBaseName(), e);
+			if (Log.isLoggable(Log.FAC_IO, Level.WARNING))
+				Log.warning(Log.FAC_IO, "Invalid state for object {0}, cannot get current version name: {1}", getBaseName(), e);
 			return getBaseName();
 		}
 	}
@@ -1381,92 +1457,188 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_publisher = publisherIdentity;
 		_keyLocator = keyLocator;
 	}
+	
+	public void setTimeout(int timeout) {
+		try {
+			createFlowController();
+			getFlowControl().setTimeout(timeout);
+		} catch (IOException e) {}
+	}
 
 	public synchronized Interest handleContent(ContentObject co, Interest interest) {
-		try {
-			boolean hasNewVersion = false;
-			byte [][] excludes = null;
-			
-			try {
-				if (Log.isLoggable(Level.INFO))
-					Log.info("updateInBackground: handleContent: " + _currentInterest + " retrieved " + co.name());
-				if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
-					// OK, we have something that is a later version of our desired object.
-					// We're not sure it's actually the first content segment.
-					hasNewVersion = true;
-					
-					if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
-						if (Log.isLoggable(Level.INFO))
-							Log.info("updateInBackground: Background updating of {0}, got first segment: {1}", getVersionedName(), co.name());
+		_updater.add(co);
+		return null;
+	}
+	
+	
+	/**
+	 * Do queued updates in background
+	 */
+	protected class Updater {
+		protected Queue<ContentObject> _queue = new ConcurrentLinkedQueue<ContentObject>();
+		protected CCNContentHandler _handler = null;
+		protected boolean _isRunning = false;
+		
+		protected Updater(CCNContentHandler handler) {
+			_handler = handler;
+		}
+		
+		/**
+		 * Add a content object to the queue for processing. If we aren't running a processing
+		 * thread right now, start one.
+		 * 
+		 * @param co
+		 */
+		protected void add(ContentObject co) {
+			_queue.add(co);
+			synchronized (_queue) {
+				if (!_isRunning) {
+					_isRunning = true;
+					SystemConfiguration._systemThreadpool.execute(new BackgroundUpdater());
+				}				
+			}	
+		}
+		
+		protected class BackgroundUpdater implements Runnable {
+			public void run() {
+				while (true) {
+					try {
+						boolean hasNewVersion = false;
+						byte [][] excludes = null;
 						
-						// Streams assume caller has verified. So we verify here. 
-						// TODO add support for settable verifiers
-						if (!_verifier.verify(co)) {
-							if (Log.isLoggable(Log.FAC_SIGNING, Level.WARNING)) {
-								Log.warning(Log.FAC_SIGNING, "CCNNetworkObject: content object received from background update did not verify! Ignoring object: {0}", co.fullName());
+						ContentObject co = null;
+						synchronized (_queue) {
+							co = _queue.poll();
+							if (null == co) {
+								_isRunning = false;
+								return;
 							}
-							hasNewVersion = false;
-							
-							// TODO -- exclude this one by digest, otherwise we're going 
-							// to get it back! For now, just copy the top-level part of GLV
-							// behavior and exclude this version component. This isn't the right
-							// answer, malicious objects can exclude new versions. But it's not clear
-							// if the right answer is to do full gLV here and let that machinery
-							// handle things, pulling potentially multiple objects in a callback,
-							// or we just have to wait for issue #100011, and the ability to selectively
-							// exclude content digests.
-							excludes = new byte [][]{co.name().component(_currentInterest.name().count())};
-							if (Log.isLoggable(Level.INFO))
-								Log.info("updateInBackground: handleContent: got content for {0} that doesn't verify ({1}), excluding bogus version {2} as temporary workaround FIX WHEN POSSIBLE", 
-										_currentInterest.name(), co.fullName(), ContentName.componentPrintURI(excludes[0]));													
-							
-						} else {
-							update(co);
 						}
-					} else {
-						// Have something that is not the first segment, like a repo write or a later segment. Go back
-						// for first segment.
-						ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
-						Log.info("updateInBackground: handleContent (network object): Have version information, now querying first segment of {0}", latestVersionName);
-						// This should verify the first segment when we get it.
-						update(latestVersionName, co.signedInfo().getPublisherKeyID());
+						
+						try {
+							if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+								Log.info(Log.FAC_IO, "updateInBackground: handleContent: " + _currentInterest + " retrieved " + co.name());
+							if (VersioningProfile.startsWithLaterVersionOf(co.name(), _currentInterest.name())) {
+								// OK, we have something that is a later version of our desired object.
+								// We're not sure it's actually the first content segment.
+								hasNewVersion = true;
+								
+								if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
+									if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+										Log.info(Log.FAC_IO, "updateInBackground: Background updating of {0}, got first segment: {1}", getVersionedName(), co.name());
+									
+									// Streams assume caller has verified. So we verify here. 
+									// TODO add support for settable verifiers
+									if (!_verifier.verify(co)) {
+										if (Log.isLoggable(Log.FAC_SIGNING, Level.WARNING)) {
+											Log.warning(Log.FAC_SIGNING, "CCNNetworkObject: content object received from background update did not verify! Ignoring object: {0}", co.fullName());
+										}
+										hasNewVersion = false;
+										
+										// TODO -- exclude this one by digest, otherwise we're going 
+										// to get it back! For now, just copy the top-level part of GLV
+										// behavior and exclude this version component. This isn't the right
+										// answer, malicious objects can exclude new versions. But it's not clear
+										// if the right answer is to do full gLV here and let that machinery
+										// handle things, pulling potentially multiple objects in a callback,
+										// or we just have to wait for issue #100011, and the ability to selectively
+										// exclude content digests.
+										excludes = new byte [][]{co.name().component(_currentInterest.name().count())};
+										if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+											Log.info(Log.FAC_IO, "updateInBackground: handleContent: got content for {0} that doesn't verify ({1}), excluding bogus version {2} as temporary workaround FIX WHEN POSSIBLE", 
+													_currentInterest.name(), co.fullName(), ContentName.componentPrintURI(excludes[0]));													
+										
+									} else {
+										update(co);
+									}
+								} else {
+									// Have something that is not the first segment, like a repo write or a later segment. Go back
+									// for first segment.
+									ContentName latestVersionName = co.name().cut(_currentInterest.name().count() + 1);
+									if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+										Log.info(Log.FAC_IO, "updateInBackground: handleContent (network object): Have version information, now querying first segment of {0}", latestVersionName);
+									// This should verify the first segment when we get it.
+									update(latestVersionName, co.signedInfo().getPublisherKeyID());
+								}
+		
+							} else {
+								excludes = new byte [][]{co.name().component(_currentInterest.name().count() - 1)};
+								if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+									Log.info(Log.FAC_IO, "updateInBackground: handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());						
+							}
+						} catch (IOException ex) {
+							if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+								Log.info(Log.FAC_IO, "updateInBackground: Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
+							if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+								Log.logStackTrace(Log.FAC_IO, Level.FINE, ex);
+							}
+							// alright, that one didn't work, try to go on.    				
+						} 
+		
+						if (hasNewVersion) {
+							boolean continuousUpdates = false;
+							synchronized (_updater) {
+								continuousUpdates = _continuousUpdates;
+							}
+							if (continuousUpdates) {
+								if (Log.isLoggable(Log.FAC_IO, Level.INFO)) 
+									Log.info(Log.FAC_IO, "updateInBackground: handleContent: got a new version, continuous updates, calling updateInBackground recursively then returning null.");
+								updateInBackground(true);
+							} else {
+								if (Log.isLoggable(Log.FAC_IO, Level.INFO)) 
+									Log.info(Log.FAC_IO, "updateInBackground: handleContent: got a new version, not continuous updates, returning null.");
+							}
+							// the updates above call newVersionAvailable
+						} else {
+							synchronized (_updater) {
+								if (null != excludes) {
+									_currentInterest.exclude().add(excludes);
+								}
+								if (Log.isLoggable(Log.FAC_IO, Level.INFO)) 
+									Log.info(Log.FAC_IO, "updateInBackground: handleContent: no new version, returning new interest for expression: {0}", _currentInterest);
+								_handle.expressInterest (_currentInterest, _handler);
+							}
+						} 
+					} catch (IOException ex) {
+						if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+							Log.info(Log.FAC_IO, "updateInBackground: handleContent: Exception {0}: {1}  attempting to request further updates : {2}", ex.getClass().getName(), ex.getMessage(), _currentInterest);
+						if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+							Log.logStackTrace(Log.FAC_IO, Level.FINE, ex);
+						}
 					}
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Do saveInternal in background - used to implement saveLater...
+	 */
+	protected void doSave(CCNTime version, boolean gone, Interest outstandingInterest, boolean doClose) {
+		SystemConfiguration._systemThreadpool.execute(new BackgroundSaver(version, gone, outstandingInterest, doClose));
+	}
+	
+	protected class BackgroundSaver implements Runnable {
+		protected boolean _gone = false;
+		protected CCNTime _version = null;
+		protected Interest _outstandingInterest = null;
+		protected boolean _doClose = false;
+		
+		public BackgroundSaver(CCNTime version, boolean gone, Interest outstandingInterest, boolean doClose) {
+			_version = version;
+			_gone = gone;
+			_outstandingInterest = outstandingInterest;
+			_doClose = doClose;
+		}
 
-				} else {
-					excludes = new byte [][]{co.name().component(_currentInterest.name().count() - 1)};
-					if (Log.isLoggable(Level.INFO))
-						Log.info("updateInBackground: handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());						
-				}
-			} catch (IOException ex) {
-				if (Log.isLoggable(Level.INFO))
-					Log.info("updateInBackground: Exception {0}: {1}  attempting to update based on object : {2}", ex.getClass().getName(), ex.getMessage(), co.name());
-				// alright, that one didn't work, try to go on.    				
-			} 
-
-			if (hasNewVersion) {
-				if (_continuousUpdates) {
-					if (Log.isLoggable(Level.INFO)) 
-						Log.info("updateInBackground: handleContent: got a new version, continuous updates, calling updateInBackground recursively then returning null.");
-					updateInBackground(true);
-				} else {
-					if (Log.isLoggable(Level.INFO)) 
-						Log.info("updateInBackground: handleContent: got a new version, not continuous updates, returning null.");
-					_continuousUpdates = false;
-				}
-				// the updates above call newVersionAvailable
-				return null; // implicit cancel of interest
-			} else {
-				if (null != excludes) {
-					_currentInterest.exclude().add(excludes);
-				}
-				if (Log.isLoggable(Level.INFO)) 
-					Log.info("updateInBackground: handleContent: no new version, returning new interest for expression: {0}", _currentInterest);
-				return _currentInterest;
-			} 
-		} catch (IOException ex) {
-			if (Log.isLoggable(Level.INFO))
-				Log.info("updateInBackground: handleContent: Exception {0}: {1}  attempting to request further updates : {2}", ex.getClass().getName(), ex.getMessage(), _currentInterest);
-			return null;
+		public void run() {
+			try {
+				saveInternal(_version, _gone, _outstandingInterest);
+				if (_doClose)
+					close();
+			} catch (Exception e) {
+				Log.logStackTrace(Log.FAC_IO, Level.WARNING, e);
+			}
 		}
 	}
 	
@@ -1530,7 +1702,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				return getBaseName() + " (unsaved, no data)";	
 			}
 		} catch (IOException e) {
-			Log.info("Unexpected exception retrieving object information: {0}", e);
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "Unexpected exception retrieving object information: {0}", e);
 			return getBaseName() + ": unexpected exception " + e;
 		} 	
 	}

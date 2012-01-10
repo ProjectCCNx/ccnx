@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -21,6 +21,7 @@ import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.BloomFilter;
@@ -72,6 +73,8 @@ public class ExcludeTest {
 
 	@Test (expected=IllegalArgumentException.class)
 	public void testExcludeArrayListOfElementFails() {
+		Log.info(Log.FAC_TEST, "Starting testExcludeArrayListOfElementFails");
+
 		al.add(c06);
 		al.add(c1);
 		new Exclude(al);
@@ -79,6 +82,8 @@ public class ExcludeTest {
 
 	@Test (expected=IllegalArgumentException.class)
 	public void testExcludeArrayListOfElementFails2() {
+		Log.info(Log.FAC_TEST, "Starting testExcludeArrayListOfElementFails2");
+
 		al.add(c1);
 		al.add(c06);
 		al.add(bloom);
@@ -88,6 +93,8 @@ public class ExcludeTest {
 
 	@Test (expected=IllegalArgumentException.class)
 	public void testExcludeArrayListOfElementFails3() {
+		Log.info(Log.FAC_TEST, "Starting testExcludeArrayListOfElementFails3");
+
 		al.add(c1);
 		al.add(any);
 		al.add(bloom);
@@ -97,42 +104,60 @@ public class ExcludeTest {
 
 	@Test
 	public void testExcludeArrayListOfElement() {
+		Log.info(Log.FAC_TEST, "Starting testExcludeArrayListOfElement");
+
 		al.add(c1);
 		al.add(any);
 		al.add(c3);
 		al.add(c06);
 		al.add(bloom);
 		new Exclude(al);
+		
+		Log.info(Log.FAC_TEST, "Completed testExcludeArrayListOfElement");
 	}
 
 	@Test
 	public void testExcludeByteArrayArray() {
+		Log.info(Log.FAC_TEST, "Starting testExcludeByteArrayArray");
+
 		ef = new Exclude(array);
 		assertTrue(ef.match(b1));
 		assertFalse(ef.match(b3));
 		assertTrue(ef.match(b06));
+		
+		Log.info(Log.FAC_TEST, "Completed testExcludeByteArrayArray");
 	}
 
 	@Test
 	public void testUptoFactory() {
+		Log.info(Log.FAC_TEST, "Starting testUptoFactory");
+
 		ef = Exclude.uptoFactory(b3);
 		assertTrue(ef.match(b1));
 		assertTrue(ef.match(b3));
 		assertFalse(ef.match(b06));
+		
+		Log.info(Log.FAC_TEST, "Completed testUptoFactory");
 	}
 
 	@Test
 	public void testFactory() {
+		Log.info(Log.FAC_TEST, "Starting testFactory");
+
 		ef = Exclude.factory(null);
 		assertNull(ef);
 		ef = Exclude.factory(array);
 		assertTrue(ef.match(b1));
 		assertFalse(ef.match(b3));
 		assertTrue(ef.match(b06));
+		
+		Log.info(Log.FAC_TEST, "Completed testFactory");
 	}
 
 	@Test
 	public void testMatchBloom() {
+		Log.info(Log.FAC_TEST, "Starting testMatchBloom");
+
 		al.add(c1);
 		al.add(bloom);
 		al.add(c06);
@@ -141,25 +166,35 @@ public class ExcludeTest {
 		assertTrue(ef.match(b3));
 		assertTrue(ef.match(b06));
 		assertFalse(ef.match(b000));
+		
+		Log.info(Log.FAC_TEST, "Completed testMatchBloom");
 	}
 
 	@Test
 	public void testAdd() {
+		Log.info(Log.FAC_TEST, "Starting testAdd");
+
 		ef = Exclude.uptoFactory(b0);
 		assertFalse(ef.match(b1));
 		ef.add(array);
 		assertTrue(ef.match(b0));
 		assertTrue(ef.match(b1));
 		assertTrue(ef.match(b06));
+		
+		Log.info(Log.FAC_TEST, "Completed testAdd");
 	}
 
 	@Test
 	public void testEmpty() {
+		Log.info(Log.FAC_TEST, "Starting testEmpty");
+
 		ef = Exclude.uptoFactory(b0);
 		assertFalse(ef.empty());
 		ArrayList<Exclude.Element> empty = new ArrayList<Exclude.Element>();
 		ef = new Exclude(empty);
 		assertTrue(ef.empty());
+		
+		Log.info(Log.FAC_TEST, "Completed testEmpty");
 	}
 
 	//@Test
@@ -169,21 +204,31 @@ public class ExcludeTest {
 
 	@Test
 	public void testEqualsObject() {
+		Log.info(Log.FAC_TEST, "Starting testEqualsObject");
+
 		ef = Exclude.uptoFactory(b1);
 		ArrayList<Exclude.Element> a = new ArrayList<Exclude.Element>();
 		a.add(any);
 		a.add(c1);
 		assertEquals(ef, new Exclude(a));
+		
+		Log.info(Log.FAC_TEST, "Completed testEqualsObject");
 	}
 
 	@Test
 	public void testSize() {
+		Log.info(Log.FAC_TEST, "Starting testSize");
+
 		ef = Exclude.uptoFactory(b1);
 		assertTrue(ef.size() == 2);
+		
+		Log.info(Log.FAC_TEST, "Completed testSize");
 	}
 
 	@Test
 	public void testEncodeDecode() throws ContentEncodingException, ContentDecodingException {
+		Log.info(Log.FAC_TEST, "Starting testEncodeDecode");
+
 		al.add(c1);
 		al.add(any);
 		al.add(c3);
@@ -193,5 +238,7 @@ public class ExcludeTest {
 		Exclude ef2 = new Exclude();
 		ef2.decode(ef.encode());
 		assertTrue(ef.equals(ef2));
+		
+		Log.info(Log.FAC_TEST, "Completed testEncodeDecode");
 	}
 }

@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -23,7 +23,6 @@ package org.ccnx.ccn.test.profiles.security.access.group;
 
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.logging.Level;
 
 import junit.framework.Assert;
 
@@ -58,12 +57,8 @@ public class GroupRecursiveKeyUpdateTestRepo {
 
 	static CCNHandle handle;
 	
-	static Level [] logLevels;
-	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		logLevels = Log.getLevels();		
-		Log.setLevel(Log.FAC_ALL, Level.WARNING);
 		
 		CCNTestHelper testHelper = new CCNTestHelper(GroupRecursiveKeyUpdateTestRepo.class);
 		directoryBase = testHelper.getTestNamespace("testInOrder");
@@ -72,7 +67,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
 		
 		// create user identities with TestUserData		
-		td = new CreateUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray(), CCNHandle.open());
+		td = new CreateUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray());
 		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);				
 		
@@ -87,7 +82,6 @@ public class GroupRecursiveKeyUpdateTestRepo {
 	public static void tearDownAfterClass() throws Exception {
 		td.closeAll();
 		handle.close();
-		Log.setLevels(logLevels);
 	}
 	
 	/**
@@ -96,9 +90,13 @@ public class GroupRecursiveKeyUpdateTestRepo {
 	 */
 	@Test
 	public void testInOrder() throws Exception {
+		Log.info(Log.FAC_TEST, "Starting testInOrder");
+
 		createGroups();
 		testRecursiveGroupAncestors();
 		removeMemberFromGroup0();
+		
+		Log.info(Log.FAC_TEST, "Completed testInOrder");
 	}
 	
 

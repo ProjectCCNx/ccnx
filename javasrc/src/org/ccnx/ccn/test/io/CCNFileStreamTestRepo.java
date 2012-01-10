@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -87,47 +87,49 @@ public class CCNFileStreamTestRepo {
 	
 	@Test
 	public void testRepoFileOutputStream() throws Exception {
-		
+		Log.info(Log.FAC_TEST, "Started testRepoFileOutputStream");
+
 		int fileSize = random.nextInt(50000);
 		ContentName fileName = ContentName.fromNative(testHelper.getTestNamespace("testRepoFileOutputStream"), "outputFile.bin");
 		
 		// Write to a repo. Read it back in. See if repo gets the header.
 		RepositoryFileOutputStream rfos = new RepositoryFileOutputStream(fileName, writeLib);
 		byte [] digest = writeRandomFile(fileSize, rfos);
-		Log.info("Wrote file to repository: " + rfos.getBaseName());
+		Log.info(Log.FAC_TEST, "Wrote file to repository: " + rfos.getBaseName());
 		
 		CCNFileInputStream fis = new CCNFileInputStream(fileName, readLib);
 		CountAndDigest readDigest = readRandomFile(fis);
 		
-		Log.info("Read file from repository: " + fis.getBaseName() + " has header? " + 
+		Log.info(Log.FAC_TEST, "Read file from repository: " + fis.getBaseName() + " has header? " + 
 				fis.hasHeader());
 		if (!fis.hasHeader()) {
-			Log.info("No header yet, waiting..");
+			Log.info(Log.FAC_TEST, "No header yet, waiting..");
 			fis.waitForHeader();
 		}
 		Assert.assertTrue(fis.hasHeader());
-		Log.info("Read file size: " + readDigest.count() + " written size: " + fileSize + " header file size " + fis.header().length());
+		Log.info(Log.FAC_TEST, "Read file size: " + readDigest.count() + " written size: " + fileSize + " header file size " + fis.header().length());
 		Assert.assertEquals(readDigest.count(), fileSize);
 		Assert.assertEquals(fileSize, fis.header().length());		
-		Log.info("Read digest: " + DataUtils.printBytes(readDigest.digest()) + " wrote digest: " + digest);
+		Log.info(Log.FAC_TEST, "Read digest: " + DataUtils.printBytes(readDigest.digest()) + " wrote digest: " + digest);
 		Assert.assertArrayEquals(digest, readDigest.digest());
 		
 		CCNFileInputStream fis2 = new CCNFileInputStream(rfos.getBaseName(), readLib);
 		CountAndDigest readDigest2 = readRandomFile(fis2);
 		
-		Log.info("Read file from repository again: " + fis2.getBaseName() + " has header? " + 
+		Log.info(Log.FAC_TEST, "Read file from repository again: " + fis2.getBaseName() + " has header? " + 
 				fis2.hasHeader());
 		if (!fis2.hasHeader()) {
-			Log.info("No header yet, waiting..");
+			Log.info(Log.FAC_TEST, "No header yet, waiting..");
 			fis2.waitForHeader();
 		}
 		Assert.assertTrue(fis2.hasHeader());
-		Log.info("Read file size: " + readDigest2.count() + " written size: " + fileSize + " header file size " + fis.header().length());
+		Log.info(Log.FAC_TEST, "Read file size: " + readDigest2.count() + " written size: " + fileSize + " header file size " + fis.header().length());
 		Assert.assertEquals(readDigest2.count(), fileSize);
 		Assert.assertEquals(fileSize, fis2.header().length());		
-		Log.info("Read digest: " + DataUtils.printBytes(readDigest2.digest()) + " wrote digest: " + digest);
+		Log.info(Log.FAC_TEST, "Read digest: " + DataUtils.printBytes(readDigest2.digest()) + " wrote digest: " + digest);
 		Assert.assertArrayEquals(digest, readDigest2.digest());
-
+		
+		Log.info(Log.FAC_TEST, "Completed testRepoFileOutputStream");
 	}
 
 	public static byte [] writeRandomFile(int bytes, OutputStream out) throws IOException {

@@ -33,9 +33,12 @@ struct ccn_charbuf {
 
 /*
  * ccn_charbuf_create:  allocate a new charbuf
+ * ccn_charbuf_create_n: allocate a new charbuf with a preallocated but
+ *      uninitialized buffer
  * ccn_charbuf_destroy: destroy a charbuf
  */
 struct ccn_charbuf *ccn_charbuf_create(void);
+struct ccn_charbuf *ccn_charbuf_create_n(size_t n);
 void ccn_charbuf_destroy(struct ccn_charbuf **cbp);
 
 /*

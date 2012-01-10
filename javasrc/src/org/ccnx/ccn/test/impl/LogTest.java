@@ -24,6 +24,7 @@ import java.util.logging.SimpleFormatter;
 import java.util.logging.StreamHandler;
 
 import org.ccnx.ccn.impl.support.Log;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -31,12 +32,19 @@ import org.junit.Test;
 public class LogTest {
 	protected static ByteArrayOutputStream _baos = new ByteArrayOutputStream();
 	protected static StreamHandler _sh = new StreamHandler(_baos, new SimpleFormatter());
+	protected static Level[] prevLevels;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
+		prevLevels = Log.getLevels();
 		String app = Log.getApplicationClass();
 		Logger logger = Logger.getLogger(app);
 		logger.addHandler(_sh);
+	}
+	
+	@AfterClass
+	public static void tearDownAfterClass() {
+		Log.setLevels(prevLevels);
 	}
 	
 	/**
@@ -45,6 +53,7 @@ public class LogTest {
 	 */
 	protected int writeLog(int facility, Level level, String msg) {
 		int start, finish;
+		_sh.flush();
 		start = _baos.toByteArray().length;
 		Log.log(facility, level, msg);
 		_sh.flush();

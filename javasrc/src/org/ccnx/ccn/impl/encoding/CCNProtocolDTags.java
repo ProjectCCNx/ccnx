@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -21,7 +21,7 @@ package org.ccnx.ccn.impl.encoding;
  * In Java, you can't control the value an enum is assigned to, so we map
  * it into an interior value. Use the XML name as the name of the enum, so
  * can map easily to strings.
- * 
+ *
  * Move from enum to final ints, in order to reduce overhead.
  */
 public class CCNProtocolDTags {
@@ -62,6 +62,7 @@ public class CCNProtocolDTags {
 	public static final int Bloom = 44;
 	public static final int BloomSeed = 45;
 	public static final int AnswerOriginKind = 47;
+	public static final int InterestLifetime = 48;
 	public static final int Witness = 53;
 	public static final int SignatureBits = 54;
 	public static final int DigestAlgorithm = 55;
@@ -123,7 +124,22 @@ public class CCNProtocolDTags {
 	public static final int StatusResponse = 112;
 	public static final int StatusCode = 113;
 	public static final int StatusText = 114;
-	// Remember to keep in sync with schema/tagnames.csvsdict 
+
+	// Sync protocol
+	public static final int SyncNode = 115;
+	public static final int SyncNodeKind = 116;
+	public static final int SyncNodeElement = 117;
+	public static final int SyncVersion = 118;
+	public static final int SyncNodeElements = 119;
+	public static final int SyncContentHash = 120;
+	public static final int SyncLeafCount = 121;
+	public static final int SyncTreeDepth = 122;
+	public static final int SyncByteCount = 123;
+	public static final int ConfigSlice = 124;
+	public static final int ConfigSliceList = 125;
+	public static final int ConfigSliceOp = 126;
+
+	// Remember to keep in sync with schema/tagnames.csvsdict
 	public static final int CCNProtocolDataUnit = 17702112;
 	public static final String CCNPROTOCOL_DATA_UNIT = "CCNProtocolDataUnit";
 	
@@ -134,8 +150,8 @@ public class CCNProtocolDTags {
 		"Content", "SignedInfo", "ContentDigest", "ContentHash", null, "Count", "Header",
 		"Interest", "Key", "KeyLocator", "KeyName", "Length", "Link", "LinkAuthenticator",
 		"NameComponentCount", null, null, "RootDigest", "Signature", "Start", "Timestamp", "Type",
-		"Nonce", "Scope", "Exclude", "Bloom", "BloomSeed", null, "AnswerOriginKind", 
-		null, null, null, null, null, "Witness", "SignatureBits", "DigestAlgorithm", "BlockSize",
+		"Nonce", "Scope", "Exclude", "Bloom", "BloomSeed", null, "AnswerOriginKind",
+		"InterestLifetime", null, null, null, null, "Witness", "SignatureBits", "DigestAlgorithm", "BlockSize",
 		null, "FreshnessSeconds", "FinalBlockID", "PublisherPublicKeyDigest", "PublisherCertificateDigest",
 		"PublisherIssuerKeyDigest", "PublisherIssuerCertificateDigest", "ContentObject",
 		"WrappedKey", "WrappingKeyIdentifier", "WrapAlgorithm", "KeyAlgorithm", "Label",
@@ -147,14 +163,15 @@ public class CCNProtocolDTags {
 		"IntegerValue", "DecimalValue", "StringValue", "BinaryValue", "NameValue", "Entry",
 		"ACL", "ParameterizedName", "Prefix", "Suffix", "Root", "ProfileName", "Parameters",
 		"InfoString", null,
-        
-        "StatusResponse", "StatusCode", "StatusText"};
+        "StatusResponse", "StatusCode", "StatusText", "SyncNode", "SyncNodeKind", "SyncNodeElement",
+        "SyncVersion", "SyncNodeElements", "SyncContentHash", "SyncLeafCount", "SyncTreeDepth", "SyncByteCount",
+        "ConfigSlice", "ConfigSliceList", "ConfigSliceOp" };
 	protected static final int TAG_MAP_LENGTH = _tagToStringMap.length;
 
 	
 	/**
-	 * This is the slow search -- find a tag based on an index. Only 
-	 * used in cases where we need to print based on a binary tag value; 
+	 * This is the slow search -- find a tag based on an index. Only
+	 * used in cases where we need to print based on a binary tag value;
 	 * this is only used in text encoding of usually binary objects... For
 	 * now, as it's rare, do a scan, rather than taking the up front hit
 	 * to build a hash table.

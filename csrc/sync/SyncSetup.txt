@@ -1,0 +1,5 @@
+cd ~/CCN/ccnr
+export CCNX=~/CCN/ccnx
+export CCNR=~/CCN/ccnr
+cd $CCNR/csrc/sync
+git status
