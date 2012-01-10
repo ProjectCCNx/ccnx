@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <fcntl.h>
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
@@ -191,6 +192,7 @@ ccn_keystore_file_init(char *filename, char *password,
     unsigned char serial_bytes[sizeof(serial)];
     char *friendly_name = NULL;
     FILE *fp = NULL;
+    int fd = -1;
     int res;
     int i;
     int ans = -1;
@@ -280,11 +282,15 @@ ccn_keystore_file_init(char *filename, char *password,
     if (pkcs12 == NULL)
         goto Bail;
     
-    fp = fopen(filename, "wb");
+    fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
+    if (fd == -1)
+        goto Bail;
+    fp = fdopen(fd, "wb");
     if (fp == NULL)
         goto Bail;
     i2d_PKCS12_fp(fp, pkcs12);
     fclose(fp);
+    fd = -1;
     
     ans = 0;
     
@@ -296,7 +302,8 @@ ccn_keystore_file_init(char *filename, char *password,
     
     
 Bail:
-    
+    if (fd != -1)
+        close(fd);
     if (friendly_name != NULL) {
         free(friendly_name);
         friendly_name = NULL;
