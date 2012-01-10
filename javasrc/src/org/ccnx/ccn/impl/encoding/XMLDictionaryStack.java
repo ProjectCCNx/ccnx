@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -28,6 +28,10 @@ import java.util.Stack;
  * external file defined example).
  * 
  * If you want to use a text dictionary directly, use FileBinaryXMLDictionary.
+ * 
+ * TODO:
+ * - We should encapsulate the dictionary lookup in this class, rather than have other classes
+ *   deal with how to iterate through the dictionaries.
  *
  * @see BinaryXMLCodec XMLDictionary
  */
