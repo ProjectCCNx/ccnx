@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -23,6 +23,9 @@ package org.ccnx.ccn.impl.encoding;
  * can map easily to strings.
  *
  * Move from enum to final ints, in order to reduce overhead.
+ * 
+ * This is essentially an XMLDictionary, but it was created as a static class
+ * so it cannot implement XMLDictionary.  Therefore, it is wrapped by CCNProtocolDictionary.
  */
 public class CCNProtocolDTags {
 

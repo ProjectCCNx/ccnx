@@ -49,7 +49,7 @@ public class BinaryXMLEncoder extends GenericXMLEncoder implements XMLEncoder {
 	 * Create a BinaryXMLEncoder initialized with a specified dictionary.
 	 * @param dictionary the dictionary to use, if null the default dictionary is used.
 	 */
-	public BinaryXMLEncoder(BinaryXMLDictionary dictionary) {
+	public BinaryXMLEncoder(XMLDictionary dictionary) {
 		super(dictionary);
 	}
 	

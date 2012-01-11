@@ -19,11 +19,12 @@
 package org.ccnx.ccn.apps.examples.ccnb;
 
 import org.ccnx.ccn.impl.encoding.BinaryXMLDictionary;
+import org.ccnx.ccn.impl.encoding.XMLDictionary;
 
 /**
  * This class is used to insure that the example XML dictionary stuff get's loaded.
  */
-public class ExampleDictionary extends BinaryXMLDictionary  {
+public class ExampleDictionary implements XMLDictionary {
 	private static ExampleDictionary _defaultInstance = new ExampleDictionary();
 	
 	public static ExampleDictionary getDefaultInstance() { return _defaultInstance; }
