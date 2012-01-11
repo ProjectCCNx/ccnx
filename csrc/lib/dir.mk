@@ -56,7 +56,7 @@ all: basicparsetest ccn_verifysig
 
 install: install_headers
 install_headers:
-	test -d $(INSTALL_INCLUDE)
+	@test -d $(INSTALL_INCLUDE) || (echo $(INSTALL_INCLUDE) does not exist.  Please mkdir -p $(INSTALL_INCLUDE) if this is what you intended. && exit 2)
 	mkdir -p $(INSTALL_INCLUDE)/ccn
 	for i in `cd ../include/ccn && echo *.h`; do                \
 	    cmp -s ../include/ccn/$$i $(INSTALL_INCLUDE)/ccn/$$i || \
