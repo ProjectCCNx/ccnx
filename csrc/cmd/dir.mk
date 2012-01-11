@@ -22,7 +22,7 @@ INSTALLED_PROGRAMS = \
     ccnsendchunks ccncatchunks ccncatchunks2 \
     ccnput ccnget ccnhexdumpdata \
     ccnseqwriter ccnsimplecat \
-    ccnfilewatch \
+    ccnfilewatch ccninitkeystore \
     $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
@@ -39,8 +39,8 @@ SCRIPTSRC = ccn_initkeystore.sh
 CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
        ccnbuzz.c ccnbx.c ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
        ccndumpnames.c ccndumppcap.c ccnfilewatch.c ccnget.c ccnhexdumpdata.c \
-       ccnls.c ccnnamelist.c ccnput.c ccnrm.c ccnsendchunks.c ccnseqwriter.c \
-       ccn_fetch_test.c ccnslurp.c dataresponsetest.c 
+       ccninitkeystore.c ccnls.c ccnnamelist.c ccnput.c ccnrm.c ccnsendchunks.c \
+       ccnseqwriter.c ccn_fetch_test.c ccnslurp.c dataresponsetest.c 
 
 default all: $(PROGRAMS)
 # Don't try to build broken programs right now.
@@ -131,6 +131,9 @@ ccnget: ccnget.o
 ccnhexdumpdata: ccnhexdumpdata.o
 	$(CC) $(CFLAGS) -o $@ ccnhexdumpdata.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
+ccninitkeystore: ccninitkeystore.o
+	$(CC) $(CFLAGS) -o $@ ccninitkeystore.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
 ccn_digest.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_digest.c
 
@@ -210,6 +213,9 @@ ccnget.o: ccnget.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnhexdumpdata.o: ccnhexdumpdata.c ../include/ccn/coding.h \
   ../include/ccn/ccn.h ../include/ccn/charbuf.h ../include/ccn/indexbuf.h
+ccninitkeystore.o: ccninitkeystore.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/keystore.h
 ccnls.o: ccnls.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnnamelist.o: ccnnamelist.c ../include/ccn/coding.h ../include/ccn/uri.h \
