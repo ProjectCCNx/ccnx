@@ -398,6 +398,7 @@ public class CCNNetworkManager implements Runnable {
 			if (!_timersSetup) {
 				// Create main processing thread
 				_thread = new Thread(this, "CCNNetworkManager " + _managerId);
+				_thread.setPriority(Thread.MAX_PRIORITY);
 				_thread.start();
 
 				_timersSetup = true;
@@ -953,9 +954,12 @@ public class CCNNetworkManager implements Runnable {
 	 * @param callbackHandler a CCNInterestHandler
 	 * @param registrationFlags to use for this registration.
 	 * @throws IOException
+<<<<<<< HEAD
 	 *
 	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
 	 * serving any useful purpose.
+=======
+>>>>>>> 8ae13f2... refs #100427 test upping netmanager thread priority
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, Object callbackHandler,
 			Integer registrationFlags) throws IOException {
