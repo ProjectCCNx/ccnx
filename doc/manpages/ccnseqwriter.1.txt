@@ -31,6 +31,8 @@ OPTIONS
 *-r*::
 	Generate a start-write request to a repository.
 	The start-write is not scoped, so a remote repository may answer.
+	If there is no response to the start-write request after 60s the
+	command will fail with a diagnostic to stderr.
 
 EXIT STATUS
 -----------
