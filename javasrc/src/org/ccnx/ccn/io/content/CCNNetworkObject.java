@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -62,7 +62,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * Extends a NetworkObject to add specifics for using a CCN-based backing store. Each time
  * the object is saved creates a new CCN version. Readers can open a specific version or
  * not specify a version, in which case the latest available version is read. Defaults
- * allow for saving data to a repository or directly to the network. 
+ * allow for saving data to a repository or directly to the network.
  *
  * Need to support four use models:
  * dimension 1: synchronous - ask for and block, the latest version or a specific version
@@ -71,27 +71,27 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * When possible, keep track of the latest version known so that the latest version queries
  * can attempt to do better than that. Start by using only in the background load case, as until
  * something comes back we can keep using the old one and the propensity for blocking is high.
- * 
+ *
  * Support for subclasses or users specifying different flow controllers with
  * different behavior. Build in support for either the simplest standard flow
  * controller, or a standard repository-backed flow controller.
- * 
+ *
  * These objects attempt to maintain a CCN copy of the current state of their data. In descriptions
  * below, an object that is "dirty" is one whose data has been modified locally, but not yet
- * saved to the network. 
- * 
+ * saved to the network.
+ *
  * While CCNNetworkObject could be used directly, it almost never is; it is usually
  * more effective to define a subclass specialized to save/retrieve a specific object
  * type.
- * 
+ *
  * Updates, 12/09: Move to creating a flow controller in the write constructor if
- * one isn't passed in. Read constructors still lazily create flow controllers on 
+ * one isn't passed in. Read constructors still lazily create flow controllers on
  * first write (tradeoff); preemptive construction (and registering for interests)
  * can be achieved by calling the setupSave() method which creates a flow controller
  * if one hasn't been created already. Move to a strong default of saving
  * to a repository, unless overridden by the subclass itself. Change of repository/raw
  * nature can be made with the setRawSave() and setRepositorySave() methods.
- * 
+ *
  * TODO: Note that the CCNNetworkObject class hierarchy currently has a plethora of constructors.
  * It is also missing some important functionality -- encryption, the ability to specify
  * freshness, and so on. Expect new constructors to deal with the latter deficiencies, and
@@ -100,39 +100,39 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CCNContentHandler {
 
 	protected static final byte [] GONE_OUTPUT = "GONE".getBytes();
-	
+
 	/**
 	 * Unversioned "base" name.
 	 */
 	protected ContentName _baseName;
-	
+
 	/**
 	 * The most recent version we have read/written.
 	 */
-	protected byte [] _currentVersionComponent; 
-	
+	protected byte [] _currentVersionComponent;
+
 	/**
 	 * Cached versioned name.
 	 */
 	protected ContentName _currentVersionName;
-	
+
 	/**
 	 * Flag to indicate whether content has been explicitly marked as GONE
 	 * in the latest version we know about. Use an explicit flag to separate from
 	 * the option for valid null content, or content that has not yet been updated.
 	 */
 	protected boolean _isGone = false;
-	
+
 	/**
 	 * The first segment for the stored data
 	 */
 	protected ContentObject _firstSegment = null;
-	
+
 	/**
 	 * If the name we started with was actually a link, detect that, store the link,
 	 * and dereference it to get the content. Call updateLink() to update the link
 	 * itself, and if updated, to update the dereferenced value.
-	 * 
+	 *
 	 * If the initial link is a link, recursion should push that into the link of
 	 * this LinkObject, and read its data. If that is a link, it should push again --
 	 * this should chain through links till we reach an object of the desired type,
@@ -140,7 +140,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * between ENCR and ENCRL. Having encrypted links would be handy, to send people
 	 * off in random directions. But it matters a lot to be able to tell if the decryption
 	 * is a LINK or not.)
-	 * 
+	 *
 	 * Writing linked objects is better done by separately writing the object and
 	 * the link, as it gives you more control over what is happening. If you attempt
 	 * to save this object, it may break the link (as the link may link to the particular
@@ -150,11 +150,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * from getting their data and their links de-syncrhonized.
 	 */
 	protected LinkObject _dereferencedLink;
-	
+
 	protected PublisherPublicKeyDigest _currentPublisher;
 	protected KeyLocator _currentPublisherKeyLocator;
 	protected CCNHandle _handle;
-	
+
 	/**
 	 * We are not allowed to register or deregister prefixes for flow controllers we didn't
 	 * create.
@@ -162,14 +162,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected CCNFlowControl _flowControl;
 	protected boolean _FCIsOurs = false;
 	protected boolean _disableFlowControlRequest = false;
-	
+
 	protected PublisherPublicKeyDigest _publisher; // publisher we write under, if null, use handle defaults
 	protected KeyLocator _keyLocator; // locator to find publisher key
 	protected SaveType _saveType = null; // what kind of flow controller to make if we don't have one
 	protected Integer _freshnessSeconds = null; // if we want to set short freshness
 	protected ContentKeys _keys;
 	protected ContentVerifier _verifier;
-	
+
 	/**
 	 *  Controls ongoing update.
 	 */
@@ -178,7 +178,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	HashSet<UpdateListener> _updateListeners = null;
 
 	protected Updater _updater = null;
-	
+
 	/**
 	 * Basic write constructor. This will set the object's internal data but it will not save it
 	 * until save() is called. Unless overridden by the subclass, will default to save to
@@ -196,7 +196,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 							ContentName name, E data, SaveType saveType, CCNHandle handle) throws IOException {
 		this(type, contentIsMutable, name, data, saveType, null, null, handle);
 	}
-				
+
 	/**
 	 * Basic write constructor. This will set the object's internal data but it will not save it
 	 * until save() is called. Unless overridden by the subclass, will default to save to
@@ -214,7 +214,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-							ContentName name, E data, SaveType saveType, 
+							ContentName name, E data, SaveType saveType,
 							PublisherPublicKeyDigest publisher, KeyLocator locator,
 							CCNHandle handle) throws IOException {
 		super(type, contentIsMutable, data);
@@ -240,7 +240,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Specialized constructor, allowing subclasses to override default flow controller 
+	 * Specialized constructor, allowing subclasses to override default flow controller
 	 * (and hence backing store) behavior.
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
@@ -257,8 +257,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException If there is an error setting up network backing store.
 	 */
 	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-								ContentName name, E data, 
-								PublisherPublicKeyDigest publisher, 
+								ContentName name, E data,
+								PublisherPublicKeyDigest publisher,
 								KeyLocator locator,
 								CCNFlowControl flowControl) throws IOException {
 		super(type, contentIsMutable, data);
@@ -288,9 +288,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-							ContentName name, CCNHandle handle) 
+							ContentName name, CCNHandle handle)
 				throws ContentDecodingException, IOException {
-		this(type, contentIsMutable, name, 
+		this(type, contentIsMutable, name,
 			(PublisherPublicKeyDigest)null, handle);
 	}
 
@@ -298,7 +298,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Read constructor. Will try to pull latest version of this object, or a specific
 	 * named version if specified in the name. If read times out, will leave object in
 	 * its uninitialized state.
-	 * 
+	 *
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
@@ -311,9 +311,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-							  ContentName name, 
+							  ContentName name,
 							  PublisherPublicKeyDigest publisher,
-							  CCNFlowControl flowControl) 
+							  CCNFlowControl flowControl)
 				throws ContentDecodingException, IOException {
 		super(type, contentIsMutable);
 		if (null == flowControl) {
@@ -331,7 +331,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * Read constructor. Will try to pull latest version of this object, or a specific
 	 * named version if specified in the name. If read times out, will leave object in
 	 * its uninitialized state.
-	 * 
+	 *
 	 * @param type Wrapped class type.
 	 * @param contentIsMutable is the wrapped class type mutable or not
 	 * @param name Name from which to read the object. If versioned, will read that specific
@@ -343,7 +343,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 */
 	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
 							ContentName name, PublisherPublicKeyDigest publisher,
-							CCNHandle handle) 
+							CCNHandle handle)
 			throws ContentDecodingException, IOException {
 		super(type, contentIsMutable);
 		if (null == handle) {
@@ -359,7 +359,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_baseName = name;
 		update(name, publisher);
 	}
-	
+
 	/**
 	 * Read constructor if you already have a segment of the object. Used by streams.
 	 * @param type Wrapped class type.
@@ -371,7 +371,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	public CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-							ContentObject firstSegment, CCNHandle handle) 
+							ContentObject firstSegment, CCNHandle handle)
 			throws ContentDecodingException, IOException {
 		super(type, contentIsMutable);
 		if (null == handle) {
@@ -399,8 +399,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	protected CCNNetworkObject(Class<E> type, boolean contentIsMutable,
-							   ContentObject firstSegment, 
-							   CCNFlowControl flowControl) 
+							   ContentObject firstSegment,
+							   CCNFlowControl flowControl)
 					throws ContentDecodingException, IOException {
 		super(type, contentIsMutable);
 		if (null == flowControl)
@@ -412,7 +412,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_verifier = _handle.defaultVerifier();
 		update(firstSegment);
 	}
-	
+
 	/**
 	 * Copy constructor. Handle it piece by piece, though it means
 	 * updating this whenever the structure changes (rare).
@@ -436,30 +436,31 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_verifier = other._verifier;
 		_updater = new Updater(this);
 		// Do not copy update behavior. Even if other one is updating, we won't
-		// pick that up. Have to kick off manually	
+		// pick that up. Have to kick off manually
 	}
-	
+
 	/**
 	 * Maximize laziness of flow controller creation, to make it easiest for client code to
-	 * decide how to store this object. 
+	 * decide how to store this object.
 	 * When we create the flow controller, we add the base name namespace, so it will respond
 	 * to requests for latest version. Create them immediately in write constructors,
 	 * when we have a strong expectation that we will save data, if we have a namespace
 	 * to start listening on. Otherwise wait till we are going to write.
 	 * @return
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	protected synchronized void createFlowController() throws IOException {
 		if (null == _flowControl) {
 			if (null == _saveType) {
-				Log.finer("Not creating flow controller yet, no saveType set.");
+				if (Log.isLoggable(Log.FAC_IO, Level.FINER))
+					Log.finer(Log.FAC_IO, "Not creating flow controller yet, no saveType set.");
 				return;
 			}
 			switch (_saveType) {
 			case RAW:
 				_flowControl = new CCNFlowControl(_handle);
 				break;
-			case REPOSITORY: 
+			case REPOSITORY:
 				_flowControl = new RepositoryFlowControl(_handle);
 				break;
 			case LOCALREPOSITORY:
@@ -475,11 +476,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// Have to register the version root. If we just register this specific version, we won't
 			// see any shorter interests -- i.e. for get latest version.
 			//_flowControl.addNameSpace(_baseName);
-			if (Log.isLoggable(Level.INFO))
-				Log.info("Created " + _saveType + " flow controller, for prefix {0}, save type " + _flowControl.saveType(), _baseName);
+			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+				Log.info(Log.FAC_IO, "Created " + _saveType + " flow controller, for prefix {0}, save type " + _flowControl.saveType(), _baseName);
 		}
 	}
-	
+
 	/**
 	 * Get the flow controller associated with this object
 	 * @return the flow controller or null if not assigned
@@ -487,7 +488,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public CCNFlowControl getFlowControl() {
 		return _flowControl;
 	}
-	
+
 	/**
 	 * Get timeout associated with this object
 	 * @return
@@ -495,23 +496,23 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public long getTimeout() {
 		return _flowControl.getTimeout();
 	}
-		
+
 	/**
 	 * Start listening to interests on our base name, if we aren't already.
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public synchronized void setupSave(SaveType saveType) throws IOException {
 		setSaveType(saveType);
 		setupSave();
 	}
-	
+
 	public synchronized void setupSave() throws IOException {
 		if (null != _flowControl) {
 			return;
 		}
 		createFlowController();
 	}
-	
+
 	/**
 	 * Finalizer. Somewhat dangerous, but currently best way to close
 	 * lingering open registrations. Can't close the handle, till we ref count.
@@ -537,9 +538,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_flowControl.close();
 		}
 	}
-	
+
 	public SaveType saveType() { return _saveType; }
-	
+
 	/**
 	 * Used by subclasses to specify a mandatory save type in
 	 * read constructors. Only works on objects whose flow
@@ -553,7 +554,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IOException("Cannot change save type, flow controller already set!");
 		}
 	}
-	
+
 	/**
 	 * If you want to set the lifetime of objects saved with this instance.
 	 * @param freshnessSeconds If null, will unset any freshness seconds (will
@@ -563,7 +564,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public void setFreshnessSeconds(Integer freshnessSeconds) {
 		_freshnessSeconds = freshnessSeconds;
 	}
-	
+
 	/**
 	 * Override point where subclasses can modify each input stream before
 	 * it is read. Subclasses should at least set the flags using getInputStreamFlags,
@@ -573,7 +574,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// default -- just set any flags
 		inputStream.setFlags(getInputStreamFlags());
 	}
-	
+
 	/**
 	 * Override point where subclasses can specify set of flags on input stream
 	 * at point it is read or where necessary created.
@@ -582,18 +583,18 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	protected EnumSet<FlagTypes> getInputStreamFlags() {
 		return null;
 	}
-	
+
 	/**
-	 * Allow verifier to be specified. Could put this in the constructors; though they 
+	 * Allow verifier to be specified. Could put this in the constructors; though they
 	 * are already complicated enough. If not set, the default verifier for the key manager
 	 * used by the object's handle is used.
-	 * @param verifier the verifier to use. Cannot be null. 
+	 * @param verifier the verifier to use. Cannot be null.
 	 */
 	public void setVerifier(ContentVerifier verifier) {
 		if (null != verifier)
 			_verifier = verifier;
 	}
-	
+
 	/**
 	 * Attempts to find a version after the latest one we have, or times out. If
 	 * it times out, it simply leaves the object unchanged.
@@ -606,15 +607,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
 		}
 		// Look for first segment of version after ours, or first version if we have none.
-		ContentObject firstSegment = 
-			VersioningProfile.getFirstBlockOfLatestVersion(getVersionedName(), null, null, timeout, 
+		ContentObject firstSegment =
+			VersioningProfile.getFirstBlockOfLatestVersion(getVersionedName(), null, null, timeout,
 					_handle.defaultVerifier(), _handle);
 		if (null != firstSegment) {
 			return update(firstSegment);
 		}
 		return false;
 	}
-	
+
 	/**
 	 * The regular update does a call to do multi-hop get latest version -- i.e. it will try
 	 * multiple times to find the latest version of a piece of content, even if interposed caches
@@ -628,8 +629,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * it won't move beyond those to find a newer version available at a writer, or to find a later
 	 * version in the repo than one in the ccnd cache. Use this if you know there is only one version
 	 * of something, or you want a fast path to the latest version where it really doesn't have to
-	 * be the "absolute" latest. 
-	 * 
+	 * be the "absolute" latest.
+	 *
 	 * Like all update methods, it will start from the version you've got -- so it is guaranteed to find
 	 * something after the current version this object knows about (if it has already found something),
 	 * and to time out and return false if there isn't anything later.
@@ -639,15 +640,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			throw new IllegalStateException("Cannot retrieve an object without giving a name!");
 		}
 		// Look for first segment of version after ours, or first version if we have none.
-		ContentObject firstSegment = 
-			VersioningProfile.getFirstBlockOfAnyLaterVersion(getVersionedName(), null, null, timeout, 
+		ContentObject firstSegment =
+			VersioningProfile.getFirstBlockOfAnyLaterVersion(getVersionedName(), null, null, timeout,
 					_verifier, _handle);
 		if (null != firstSegment) {
 			return update(firstSegment);
 		}
 		return false;
 	}
-	
+
 	public boolean updateAny() throws ContentDecodingException, IOException {
 		return updateAny(SystemConfiguration.getDefaultTimeout());
 	}
@@ -661,10 +662,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public boolean update() throws ContentDecodingException, IOException {
 		return update(SystemConfiguration.getDefaultTimeout());
 	}
-	
+
 	/**
 	 * Load data into object. If name is versioned, load that version. If
-	 * name is not versioned, look for latest version. 
+	 * name is not versioned, look for latest version.
 	 * @param name Name of object to read.
 	 * @param publisher Desired publisher, or null for any.
 	 * @throws ContentDecodingException if there is a problem decoding the object.
@@ -700,10 +701,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error setting up network backing store.
 	 */
 	public synchronized boolean update(CCNInputStream inputStream) throws ContentDecodingException, IOException {
-		
+
 		// Allow subclasses to modify input stream processing prior to first read.
 		setInputStreamProperties(inputStream);
-		
+
 		Tuple<ContentName, byte []> nameAndVersion = null;
 		try {
 			if (inputStream.isGone()) {
@@ -718,7 +719,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				_available = true;
 				_isGone = true;
 				_isDirty = false;
-				_lastSaved = digestContent();	
+				_lastSaved = digestContent();
 			} else {
 				super.update(inputStream);
 
@@ -738,7 +739,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// chance on scooping up the content. But that seemed likely to confuse
 			// people and leave the object in an undetermined state. So allow caller
 			// to manage that themselves.
-				
+
 			// not an error state, merely a not ready state.
 			return false;
 		} catch (LinkCycleException lce) {
@@ -758,7 +759,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		newVersionAvailable(false);
 		return true;
 	}
-	
+
 	/**
 	 * Update this object in the background -- asynchronously. This call updates the
 	 * object a single time, after the first update (the requested version or the
@@ -771,9 +772,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public void updateInBackground() throws IOException {
 		updateInBackground(false);
 	}
-	
+
 	/**
-	 * Update this object in the background -- asynchronously. 
+	 * Update this object in the background -- asynchronously.
 	 * To use, create an object using a write constructor, setting the data field
 	 * to null. Then call updateInBackground() to retrieve the object's data asynchronously.
 	 * To wait for an update to arrive, call wait() on this object itself.
@@ -788,7 +789,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// Look for latest version.
 		updateInBackground(getVersionedName(), continuousUpdates, null);
 	}
-	
+
 	public void updateInBackground(ContentName latestVersionKnown, boolean continuousUpdates) throws IOException {
 		updateInBackground(latestVersionKnown, continuousUpdates, null);
 	}
@@ -798,7 +799,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	}
 
 	/**
-	 * Update this object in the background -- asynchronously. 
+	 * Update this object in the background -- asynchronously.
 	 * To use, create an object using a write constructor, setting the data field
 	 * to null. Then call updateInBackground() to retrieve the object's data asynchronously.
 	 * To wait for an update to arrive, call wait() on this object itself.
@@ -806,7 +807,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 *    name if no version known
 	 * @param continuousUpdates If true, updates the
 	 * object continuously to the latest version available, a single time if it is false.
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public synchronized void updateInBackground(ContentName latestVersionKnown, boolean continuousUpdates, UpdateListener listener) throws IOException {
 		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
@@ -826,20 +827,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			Log.info(Log.FAC_IO, "updateInBackground: initial interest: {0}", _currentInterest);
 		_handle.expressInterest(_currentInterest, this);
 	}
-	
+
 	/**
 	 * Cancel an outstanding updateInBackground().
 	 */
 	public synchronized void cancelInterest() {
 		synchronized (_updater) {
 			_continuousUpdates = false;
-		
+
 			if (null != _currentInterest) {
 				_handle.cancelInterest(_currentInterest, this);
 			}
 		}
 	}
-	
+
 	public synchronized void addListener(UpdateListener listener) {
 		if (null == _updateListeners) {
 			_updateListeners = new HashSet<UpdateListener>();
@@ -848,7 +849,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		_updateListeners.add(listener);
 	}
-	
+
 	/**
 	 * Does this object already have this listener. Uses Object.equals
 	 * for comparison; so will only say yes if it has this *exact* listener
@@ -862,7 +863,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		return (_updateListeners.contains(listener));
 	}
-	
+
 	public void removeListener(UpdateListener listener) {
 		if (null == _updateListeners)
 			return;
@@ -876,7 +877,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			return;
 		synchronized(_updateListeners) {
 			_updateListeners.clear();
-		}		
+		}
 	}
 	/**
 	 * Save to existing name, if content is dirty. Update version.
@@ -891,7 +892,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public boolean save() throws ContentEncodingException, IOException {
 		return saveInternal(null, false, null);
 	}
-	
+
 	/**
 	 * Method for CCNFilterListeners to save an object in response to an Interest
 	 * callback. An Interest has already been received, so the object can output
@@ -937,7 +938,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * even if the object is saved; the object will wait for matching Interests prior
 	 * to writing its blocks.)
 	 */
-	public boolean save(CCNTime version, Interest outstandingInterest) 
+	public boolean save(CCNTime version, Interest outstandingInterest)
 				throws ContentEncodingException, IOException {
 		return saveInternal(version, false, outstandingInterest);
 	}
@@ -948,12 +949,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * version. If not, set version based on current time.
 	 * @param gone Are we saving this content as gone or not.
 	 * @return return Returns true if it saved data, false if it thought data was not dirty and didn't
-	 * 		save. 
+	 * 		save.
 	 * TODO allow freshness specification
 	 * @throws ContentEncodingException if there is an error encoding the content
 	 * @throws IOException if there is an error reading the content from the network
 	 */
-	protected synchronized boolean saveInternal(CCNTime version, boolean gone, Interest outstandingInterest) 
+	protected synchronized boolean saveInternal(CCNTime version, boolean gone, Interest outstandingInterest)
 				throws ContentEncodingException, IOException {
 
 		if (null == _baseName) {
@@ -981,7 +982,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 		// Create the flow controller, if we haven't already.
 		createFlowController();
-		
+
 		// This is the point at which we care if we don't have a flow controller
 		if (null == _flowControl) {
 			throw new IOException("Cannot create flow controller! Specified save type is " + _saveType + "!");
@@ -1004,8 +1005,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_flowControl.addNameSpace(_baseName);
 
 		if (!gone) {
-			// CCNVersionedOutputStream will version an unversioned name. 
-			// If it gets a versioned name, will respect it. 
+			// CCNVersionedOutputStream will version an unversioned name.
+			// If it gets a versioned name, will respect it.
 			// This will call startWrite on the flow controller.
 			//
 			// Note that we must use the flow controller given to us as opposed to letting
@@ -1022,7 +1023,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			// digest stream; want to make sure we end up with a single non-MHT signed
 			// segment and no header on small objects
 			cos.close();
-			// Grab digest and segment number after close because for short objects there may not be 
+			// Grab digest and segment number after close because for short objects there may not be
 			// a segment generated until the close
 			_firstSegment = cos.getFirstSegment();
 		} else {
@@ -1030,7 +1031,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			ContentName segmentedName = SegmentationProfile.segmentName(name, SegmentationProfile.BASE_SEGMENT );
 			byte [] empty = new byte[0];
 			byte [] finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(SegmentationProfile.BASE_SEGMENT);
-			ContentObject goneObject = 
+			ContentObject goneObject =
 				ContentObject.buildContentObject(segmentedName, ContentType.GONE, empty, _publisher, _keyLocator, null, finalBlockID);
 
 			// The segmenter in the stream does an addNameSpace of the versioned name. Right now
@@ -1043,13 +1044,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_flowControl.afterClose();
 			_lastSaved = GONE_OUTPUT;
 		}
-		_currentPublisher = _firstSegment.signedInfo().getPublisherKeyID(); 
+		_currentPublisher = _firstSegment.signedInfo().getPublisherKeyID();
 		_currentPublisherKeyLocator = _firstSegment.signedInfo().getKeyLocator();
 		_currentVersionComponent = name.lastComponent();
 		_currentVersionName = name;
 		setDirty(false);
 		_available = true;
-		
+
 		// We have completed our save and don't know when or if another save may occur so don't keep
 		// ourselves registered with ccnd. That could cause interests to be unnecessarily or incorrectly
 		// forwarded to us during the dormant period.
@@ -1061,7 +1062,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			Log.finest(Log.FAC_IO, "Saved object {0} publisher {1} key locator {2}", name, _currentPublisher, _currentPublisherKeyLocator);
 		return true;
 	}
-	
+
 	/**
 	 * Convenience method to the data and save it in a single operation.
 	 * @param data new data for object, set with setData
@@ -1072,7 +1073,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public boolean save(E data) throws ContentEncodingException, IOException {
 		return save(null, data);
 	}
-	
+
 	/**
 	 * Convenience method to the data and save it as a particular version in a single operation.
 	 * @param version the desired version
@@ -1085,10 +1086,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		setData(data);
 		return save(version);
 	}
-	
+
 	/*
 	 * Methods to save from handlers. We probably don't want to wait in general to do a save from a handler
-	 * but if the save is to a respository (and we really can't tell) we definitely can't do that because we 
+	 * but if the save is to a respository (and we really can't tell) we definitely can't do that because we
 	 * have to wait for a response from the repo which only the handler can receive.
 	 */
 
@@ -1098,7 +1099,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public void saveLater() {
 		doSave(null, false, null, false);
 	}
-	
+
 	/**
 	 * Do a #save from a callback
 	 * @param outstandingInterest
@@ -1106,14 +1107,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public void saveLater(Interest outstandingInterest) {
 		doSave(null, false, null, false);
 	}
-	
+
 	/**
 	 * Do a #save followed by a close of the network object from a callback
 	 */
 	public void saveLaterWithClose() {
 		doSave(null, false, null, true);
 	}
-	
+
 	/**
 	 * Do a #save followed by a close of the network object from a callback
 	 * @param outstandingInterest
@@ -1146,10 +1147,10 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @throws IOException if there is an error reading the content from the network
 	 */
 	@Deprecated
-	public boolean saveToRepository() throws ContentEncodingException, IOException {		
+	public boolean saveToRepository() throws ContentEncodingException, IOException {
 		return saveToRepository((CCNTime)null);
 	}
-	
+
 	/**
 	 * Deprecated; use either object defaults or setRepositorySave() to indicate writes
 	 * should go to a repository, then call save() to write.
@@ -1160,7 +1161,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public boolean saveToRepository(E data) throws ContentEncodingException, IOException {
 		return saveToRepository(null, data);
 	}
-	
+
 	/**
 	 * Deprecated; use either object defaults or setRepositorySave() to indicate writes
 	 * should go to a repository, then call save() to write.
@@ -1183,7 +1184,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public synchronized boolean saveAsGone() throws ContentEncodingException, IOException {
 		return saveAsGone(null);
 	}
-	
+
 	/**
 	 * For use by CCNFilterListeners, saves a GONE object and emits an initial
 	 * block in response to an already-received Interest.
@@ -1192,8 +1193,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * is *not* already versioned; throw an IOException if it is.
 	 * @throws IOException
 	 */
-	public synchronized boolean saveAsGone(Interest outstandingInterest) 
-					throws ContentEncodingException, IOException {	
+	public synchronized boolean saveAsGone(Interest outstandingInterest)
+					throws ContentEncodingException, IOException {
 		if (null == _baseName) {
 			throw new IllegalStateException("Cannot save an object without giving it a name!");
 		}
@@ -1227,7 +1228,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			_flowControl.disable();
 		_disableFlowControlRequest = true;
 	}
-	
+
 	/**
 	 * Used to signal waiters and listeners that a new version is available.
 	 * @param wasSave is a new version available because we were saved, or because
@@ -1239,7 +1240,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		// by default signal all waiters
 		this.notifyAll();
-		
+
 		// and any registered listeners
 		if (null != _updateListeners) {
 			for (UpdateListener listener : _updateListeners) {
@@ -1247,7 +1248,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 		}
 	}
-	
+
 	/**
 	 * Will return immediately if this object already has data, otherwise
 	 * will wait indefinitely for the initial data to appear.
@@ -1264,7 +1265,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 		}
 	}
-	
+
 	/**
 	 * Will wait for data to arrive. Callers should use
 	 * available() to determine whether data has arrived or not.
@@ -1274,7 +1275,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * updates, call wait() on the object itself.
 	 * @param timeout In milliseconds. If 0, will wait forever (if data does not arrive).
 	 */
-	public void waitForData(long timeout) {		
+	public void waitForData(long timeout) {
 		if (available())
 			return;
 		synchronized (this) {
@@ -1289,14 +1290,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 					else
 						keepTrying = false;
 				} catch (InterruptedException ie) {}
-			} 
+			}
 		}
 	}
 
 	public boolean isGone() {
 		return _isGone;
 	}
-	
+
 	@Override
 	protected byte [] digestContent() throws IOException {
 		if (isGone()) {
@@ -1304,28 +1305,28 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		return super.digestContent();
 	}
-	
+
 	@Override
-	protected synchronized E data() throws ContentNotReadyException, ContentGoneException, ErrorStateException { 
+	protected synchronized E data() throws ContentNotReadyException, ContentGoneException, ErrorStateException {
 		if (isGone()) {
 			throw new ContentGoneException("Content is gone!");
 		}
 		return super.data();
 	}
-	
+
 	@Override
 	public synchronized void setData(E newData) {
 
 		_isGone = false; // clear gone, even if we're setting to null; only saveAsGone can set as gone
 		super.setData(newData);
 	}
-	
+
 	public synchronized CCNTime getVersion() throws IOException {
 		if (isSaved())
 			return VersioningProfile.getVersionComponentAsTimestamp(getVersionComponent());
 		return null;
 	}
-	
+
 	public synchronized VersionNumber getVersionNumber() throws IOException {
 		if (isSaved())
 			return new VersionNumber(getVersionComponent());
@@ -1335,17 +1336,17 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	public synchronized ContentName getBaseName() {
 		return _baseName;
 	}
-	
+
 	public CCNHandle getHandle() {
 		return _handle;
 	}
-	
+
 	public synchronized byte [] getVersionComponent() throws IOException {
 		if (isSaved())
 			return _currentVersionComponent;
 		return null;
 	}
-	
+
 	/**
 	 * Returns the first segment number for this object.
 	 * @return The index of the first segment of stream data or null if no segments generated yet.
@@ -1360,11 +1361,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 
 	/**
 	 * Returns the digest of the first segment of this object which may be used
-	 * to help identify object instance unambiguously. 
-	 * 
+	 * to help identify object instance unambiguously.
+	 *
 	 * @return The digest of the first segment of this object if available, null otherwise
 	 */
-	public byte[] getFirstDigest() {	
+	public byte[] getFirstDigest() {
 		// Do not attempt to force update here to leave control over whether reading
 		// or writing with the object creator.  The return value may be null if the
 		// object is not in a state of having a first segment
@@ -1374,7 +1375,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Returns the first segment of this object.
 	 */
@@ -1386,12 +1387,12 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * If we traversed a link to get this object, make it available.
 	 */
 	public synchronized LinkObject getDereferencedLink() { return _dereferencedLink; }
-	
+
 	/**
 	 * Use only if you know what you are doing.
 	 */
 	public synchronized void setDereferencedLink(LinkObject dereferencedLink) { _dereferencedLink = dereferencedLink; }
-	
+
 	/**
 	 * Add a LinkObject to the stack we had to dereference to get here.
 	 */
@@ -1410,7 +1411,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		}
 		setDereferencedLink(dereferencedLink);
 	}
-	
+
 	/**
 	 * If the object has been saved or read from the network, returns the (cached) versioned
 	 * name. Otherwise returns the base name.
@@ -1436,13 +1437,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			return _currentPublisher;
 		return null;
 	}
-	
+
 	public synchronized KeyLocator getPublisherKeyLocator() throws IOException  {
 		if (isSaved())
-			return _currentPublisherKeyLocator;		
+			return _currentPublisherKeyLocator;
 		return null;
 	}
-	
+
 	/**
 	 * Change the publisher information we use when we sign commits to this object.
 	 * Takes effect on the next save(). Useful for objects created with a read constructor,
@@ -1450,14 +1451,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 	 * @param signingKey indicates the identity we want to use to sign future writes to this
 	 * 	object. If null, will default to key manager's (user's) default key.
 	 * @param locator the key locator (key lookup location) information to attach to future
-	 * 	writes to this object. If null, will be the default value associated with the 
+	 * 	writes to this object. If null, will be the default value associated with the
 	 * 	chosen signing key.
 	 */
 	public synchronized void setOurPublisherInformation(PublisherPublicKeyDigest publisherIdentity, KeyLocator keyLocator) {
 		_publisher = publisherIdentity;
 		_keyLocator = keyLocator;
 	}
-	
+
 	public void setTimeout(int timeout) {
 		try {
 			createFlowController();
@@ -1469,8 +1470,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		_updater.add(co);
 		return null;
 	}
-	
-	
+
+
 	/**
 	 * Do queued updates in background
 	 */
@@ -1478,15 +1479,15 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		protected Queue<ContentObject> _queue = new ConcurrentLinkedQueue<ContentObject>();
 		protected CCNContentHandler _handler = null;
 		protected boolean _isRunning = false;
-		
+
 		protected Updater(CCNContentHandler handler) {
 			_handler = handler;
 		}
-		
+
 		/**
 		 * Add a content object to the queue for processing. If we aren't running a processing
 		 * thread right now, start one.
-		 * 
+		 *
 		 * @param co
 		 */
 		protected void add(ContentObject co) {
@@ -1495,17 +1496,17 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				if (!_isRunning) {
 					_isRunning = true;
 					SystemConfiguration._systemThreadpool.execute(new BackgroundUpdater());
-				}				
-			}	
+				}
+			}
 		}
-		
+
 		protected class BackgroundUpdater implements Runnable {
 			public void run() {
 				while (true) {
 					try {
 						boolean hasNewVersion = false;
 						byte [][] excludes = null;
-						
+
 						ContentObject co = null;
 						synchronized (_queue) {
 							co = _queue.poll();
@@ -1514,7 +1515,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 								return;
 							}
 						}
-						
+
 						try {
 							if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 								Log.info(Log.FAC_IO, "updateInBackground: handleContent: " + _currentInterest + " retrieved " + co.name());
@@ -1522,20 +1523,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 								// OK, we have something that is a later version of our desired object.
 								// We're not sure it's actually the first content segment.
 								hasNewVersion = true;
-								
+
 								if (VersioningProfile.isVersionedFirstSegment(_currentInterest.name(), co, null)) {
 									if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 										Log.info(Log.FAC_IO, "updateInBackground: Background updating of {0}, got first segment: {1}", getVersionedName(), co.name());
-									
-									// Streams assume caller has verified. So we verify here. 
+
+									// Streams assume caller has verified. So we verify here.
 									// TODO add support for settable verifiers
 									if (!_verifier.verify(co)) {
 										if (Log.isLoggable(Log.FAC_SIGNING, Level.WARNING)) {
 											Log.warning(Log.FAC_SIGNING, "CCNNetworkObject: content object received from background update did not verify! Ignoring object: {0}", co.fullName());
 										}
 										hasNewVersion = false;
-										
-										// TODO -- exclude this one by digest, otherwise we're going 
+
+										// TODO -- exclude this one by digest, otherwise we're going
 										// to get it back! For now, just copy the top-level part of GLV
 										// behavior and exclude this version component. This isn't the right
 										// answer, malicious objects can exclude new versions. But it's not clear
@@ -1545,9 +1546,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 										// exclude content digests.
 										excludes = new byte [][]{co.name().component(_currentInterest.name().count())};
 										if (Log.isLoggable(Log.FAC_IO, Level.INFO))
-											Log.info(Log.FAC_IO, "updateInBackground: handleContent: got content for {0} that doesn't verify ({1}), excluding bogus version {2} as temporary workaround FIX WHEN POSSIBLE", 
-													_currentInterest.name(), co.fullName(), ContentName.componentPrintURI(excludes[0]));													
-										
+											Log.info(Log.FAC_IO, "updateInBackground: handleContent: got content for {0} that doesn't verify ({1}), excluding bogus version {2} as temporary workaround FIX WHEN POSSIBLE",
+													_currentInterest.name(), co.fullName(), ContentName.componentPrintURI(excludes[0]));
+
 									} else {
 										update(co);
 									}
@@ -1560,11 +1561,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 									// This should verify the first segment when we get it.
 									update(latestVersionName, co.signedInfo().getPublisherKeyID());
 								}
-		
+
 							} else {
 								excludes = new byte [][]{co.name().component(_currentInterest.name().count() - 1)};
 								if (Log.isLoggable(Log.FAC_IO, Level.INFO))
-									Log.info(Log.FAC_IO, "updateInBackground: handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());						
+									Log.info(Log.FAC_IO, "updateInBackground: handleContent: got content for {0} that doesn't match: {1}", _currentInterest.name(), co.name());
 							}
 						} catch (IOException ex) {
 							if (Log.isLoggable(Log.FAC_IO, Level.INFO))
@@ -1572,20 +1573,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 							if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
 								Log.logStackTrace(Log.FAC_IO, Level.FINE, ex);
 							}
-							// alright, that one didn't work, try to go on.    				
-						} 
-		
+							// alright, that one didn't work, try to go on.
+						}
+
 						if (hasNewVersion) {
 							boolean continuousUpdates = false;
 							synchronized (_updater) {
 								continuousUpdates = _continuousUpdates;
 							}
 							if (continuousUpdates) {
-								if (Log.isLoggable(Log.FAC_IO, Level.INFO)) 
+								if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 									Log.info(Log.FAC_IO, "updateInBackground: handleContent: got a new version, continuous updates, calling updateInBackground recursively then returning null.");
 								updateInBackground(true);
 							} else {
-								if (Log.isLoggable(Log.FAC_IO, Level.INFO)) 
+								if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 									Log.info(Log.FAC_IO, "updateInBackground: handleContent: got a new version, not continuous updates, returning null.");
 							}
 							// the updates above call newVersionAvailable
@@ -1594,11 +1595,11 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 								if (null != excludes) {
 									_currentInterest.exclude().add(excludes);
 								}
-								if (Log.isLoggable(Log.FAC_IO, Level.INFO)) 
+								if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 									Log.info(Log.FAC_IO, "updateInBackground: handleContent: no new version, returning new interest for expression: {0}", _currentInterest);
 								_handle.expressInterest (_currentInterest, _handler);
 							}
-						} 
+						}
 					} catch (IOException ex) {
 						if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 							Log.info(Log.FAC_IO, "updateInBackground: handleContent: Exception {0}: {1}  attempting to request further updates : {2}", ex.getClass().getName(), ex.getMessage(), _currentInterest);
@@ -1610,20 +1611,20 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 		}
 	}
-	
+
 	/**
 	 * Do saveInternal in background - used to implement saveLater...
 	 */
 	protected void doSave(CCNTime version, boolean gone, Interest outstandingInterest, boolean doClose) {
 		SystemConfiguration._systemThreadpool.execute(new BackgroundSaver(version, gone, outstandingInterest, doClose));
 	}
-	
+
 	protected class BackgroundSaver implements Runnable {
 		protected boolean _gone = false;
 		protected CCNTime _version = null;
 		protected Interest _outstandingInterest = null;
 		protected boolean _doClose = false;
-		
+
 		public BackgroundSaver(CCNTime version, boolean gone, Interest outstandingInterest, boolean doClose) {
 			_version = version;
 			_gone = gone;
@@ -1641,14 +1642,14 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			}
 		}
 	}
-	
+
 	/**
 	 * Subclasses that need to write an object of a particular type can override.
 	 * DKS TODO -- verify type on read, modulo that ENCR overrides everything.
 	 * @return
 	 */
 	public ContentType contentType() { return ContentType.DATA; }
-	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -1689,9 +1690,9 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			return false;
 		return true;
 	}
-	
+
 	@Override
-	public String toString() { 
+	public String toString() {
 		try {
 			if (isSaved()) {
 				return getVersionedName() + ": " + (isGone() ? "GONE" : "\nData:" + data()) + "\n	Publisher: " +
@@ -1699,13 +1700,13 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 			} else if (available()) {
 				return getBaseName() + " (unsaved): " + data();
 			} else {
-				return getBaseName() + " (unsaved, no data)";	
+				return getBaseName() + " (unsaved, no data)";
 			}
 		} catch (IOException e) {
 			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 				Log.info(Log.FAC_IO, "Unexpected exception retrieving object information: {0}", e);
 			return getBaseName() + ": unexpected exception " + e;
-		} 	
+		}
 	}
 }
 
