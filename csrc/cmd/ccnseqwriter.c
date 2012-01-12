@@ -104,7 +104,7 @@ main(int argc, char **argv)
         ccn_seqw_get_name(w, name_v);
         ccn_name_from_uri(name_v, "%C1.R.sw");
         ccn_name_append_nonce(name_v);
-        ccn_get(ccn, name_v, NULL, 2000, NULL, NULL, NULL, 0);
+        ccn_get(ccn, name_v, NULL, 60000, NULL, NULL, NULL, 0);
         ccn_charbuf_destroy(&name_v);
     }
     blockread = 0;
