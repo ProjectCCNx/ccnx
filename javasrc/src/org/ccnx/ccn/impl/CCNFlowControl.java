@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -39,82 +39,80 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 /**
  * This class implements an input buffer for interests and an output buffer
  * for content objects.
- * 
+ *
  * ccnd will not accept data (content objects) except in response to an
  * interest. This class allows data sources such as output streams to
  * generate content objects speculatively, and buffers them until interests
  * arrive from ccnd. Equally when interests come in from ccnd before the
  * content has been generated this class will buffer the interests until
  * the content is generated.
- * 
+ *
  * Implements a capacity limit in the holding buffer. If the buffer consumption
  * reaches the specified capacity, any subsequent put will block until there is more
- * room in the buffer. Note that this means that the buffer may hold as many objects as the 
+ * room in the buffer. Note that this means that the buffer may hold as many objects as the
  * capacity value, and the object held by any later blocked put is extra, meaning the total
  * number of objects waiting to be sent is not bounded by the capacity alone.
  * Currently this is only per "flow controller". There
  * is nothing to stop multiple streams writing to the repo for instance to
  * independently all fill their buffers and cause a lot of memory to be used.
- * 
+ *
  * Also implements a limited capacity for held interests.
- * 
- * The buffer emptying policy in "afterPutAction" can be overridden by 
- * subclasses to implement a different way of draining the buffer. This is used 
- * by the repo client to allow objects to remain in the buffer until they are 
- * acked.
+ *
+ * The buffer emptying policy in "afterPutAction" can be overridden by
+ * subclasses to implement a different way of draining the buffer.
  */
 public class CCNFlowControl implements CCNInterestHandler {
-	
+
 	public enum Shape {
 		STREAM("STREAM");
-		
+
 		Shape(String str) { this._str = str; }
 		public String value() { return _str; }
-		
+
 		private final String _str;
 	}
-	
+
 	public enum SaveType {
 		RAW ("RAW"), REPOSITORY ("REPOSITORY"), LOCALREPOSITORY("LOCALREPOSITORY");
 
 		SaveType(String str) { this._str = str; }
 		public String value() { return _str; }
-		
+
 		private final String _str;
 	}
 
 	protected CCNHandle _handle = null;
-		
+
 	// Designed to allow a CCNOutputStream to flush its current output once without
 	// causing the over-capacity blocking to be triggered
 	protected static final int DEFAULT_CAPACITY = CCNSegmenter.HOLD_COUNT + 1;
-	
+
 	protected static final int DEFAULT_INTEREST_CAPACITY = 40;
-	
+
 	// Temporarily default to very high timeout so that puts have a good
 	// chance of going through.  We actually may want to keep this.
 	protected int _timeout = SystemConfiguration.FC_TIMEOUT;
-	
+
 	protected int _capacity = DEFAULT_CAPACITY;
-	
+
 	// Value used to determine whether the buffer is draining in waitForPutDrain
 	protected long _nOut = 0;
-	
+
 	// Unmatched interests are purged from our table if they have remained there longer than this
 	protected static final int PURGE = 4000;
-	
+
 	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
 	protected InterestTable<UnmatchedInterest> _unmatchedInterests = new InterestTable<UnmatchedInterest>();
-	
+
 	// The namespaces served by this flow controller
 	protected HashSet<ContentName> _filteredNames = new HashSet<ContentName>();
 
 	private static class UnmatchedInterest {
 		long timestamp = System.currentTimeMillis();
 	}
-	
+
 	private boolean _flowControlEnabled = true;
-	
+
 	/**
 	 * @param name		automatically handles this namespace
 	 * @param handle	CCNHandle - created if null
@@ -125,24 +123,24 @@ public class CCNFlowControl implements CCNInterestHandler {
 		if (name != null) {
 			if( Log.isLoggable(Log.FAC_IO, Level.INFO))
 				Log.info(Log.FAC_IO, "adding namespace: " + name);
-			// don't call full addNameSpace, in order to allow subclasses to 
+			// don't call full addNameSpace, in order to allow subclasses to
 			// override. just do minimal part
 			_filteredNames.add(name);
 			_handle.registerFilter(name, this);
 		}
 	}
-	
+
 	/**
 	 * @param name 		automatically handles this namespace
 	 * @param handle	CCNHandle - created if null
 	 * @throws MalformedContentNameStringException if namespace is malformed
 	 * @throws IOException	if handle can't be created
 	 */
-	public CCNFlowControl(String name, CCNHandle handle) 
+	public CCNFlowControl(String name, CCNHandle handle)
 				throws MalformedContentNameStringException, IOException {
 		this(ContentName.fromNative(name), handle);
 	}
-	
+
 	/**
 	 * @param handle  CCNHandle - created if null
 	 * @throws IOException	if handle can't be created
@@ -159,7 +157,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 		_handle = handle;
 		_unmatchedInterests.setCapacity(DEFAULT_INTEREST_CAPACITY);
 	}
-	
+
 	/**
 	 * Filter handler constructor -- an Interest has already come in, and
 	 * we are writing a stream in response. So we can write out the first
@@ -176,12 +174,12 @@ public class CCNFlowControl implements CCNInterestHandler {
 		this(name, handle);
 		handleInterest(outstandingInterest);
 	}
-	
+
 	/**
 	 * Add a new namespace to the controller. The controller will register a filter with ccnd to receive
 	 * interests in this namespace.
 	 * @param name
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public void addNameSpace(ContentName name) throws IOException {
 		if (!_flowControlEnabled)
@@ -204,7 +202,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 		if( Log.isLoggable(Log.FAC_IO, Level.INFO))
 			Log.info(Log.FAC_IO, "Flow controller addNameSpace: added namespace: " + name);
 	}
-	
+
 	/**
 	 * Convenience method.
 	 * @see #addNameSpace(ContentName)
@@ -213,16 +211,16 @@ public class CCNFlowControl implements CCNInterestHandler {
 	public void addNameSpace(String name) throws MalformedContentNameStringException, IOException {
 		addNameSpace(ContentName.fromNative(name));
 	}
-	
+
 	/**
 	 * Filter handler method, add a namespace and respond to an existing Interest.
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public void addNameSpace(ContentName name, Interest outstandingInterest) throws IOException {
 		addNameSpace(name);
 		handleInterest(outstandingInterest);
 	}
-	
+
 	/**
 	 * Convenience method.
 	 * @see #startWrite(ContentName, Shape)
@@ -240,20 +238,20 @@ public class CCNFlowControl implements CCNInterestHandler {
 	 * @throws IOException used by subclasses
 	 */
 	public void startWrite(ContentName name, Shape shape) throws IOException {}
-	
+
 	/**
 	 * Remove a namespace from those we are listening for interests within.
-	 * 
+	 *
 	 * For now we don't have any way to remove a part of a registered namespace from
 	 * buffering so we only allow removal of a namespace if it actually matches something that was
 	 * registered
-	 * 
+	 *
 	 * @param name
 	 */
 	public void removeNameSpace(ContentName name) {
 		removeNameSpace(name, false);
 	}
-	
+
 	private void removeNameSpace(ContentName name, boolean all) {
 		Iterator<ContentName> it = _filteredNames.iterator();
 		while (it.hasNext()) {
@@ -267,21 +265,21 @@ public class CCNFlowControl implements CCNInterestHandler {
 			}
 		}
 	}
-	
+
 	/**
 	 * Stop attending to all namespaces.
 	 */
 	public void removeAllNamespaces() {
 		removeNameSpace(null, true);
 	}
-	
+
 	/**
 	 * Helper method to clean up and close.
 	 */
 	public void close() {
 		removeAllNamespaces();
 	}
-	
+
 	/**
 	 * Someone needs to do the deregistration if nobody else did
 	 */
@@ -293,10 +291,10 @@ public class CCNFlowControl implements CCNInterestHandler {
 			super.finalize();
 		}
 	}
-	
+
 	/**
 	 * Test if this flow controller is currently serving a particular namespace.
-	 * 
+	 *
 	 * @param childName ContentName of test space
 	 * @return The actual namespace the flow controller is using if it does serve the child
 	 * 		   namespace.  null otherwise.
@@ -315,11 +313,11 @@ public class CCNFlowControl implements CCNInterestHandler {
 		}
 		return prefix;
 	}
-	
+
 	/**
 	 * Add multiple content objects to this flow controller.
 	 * @see #put(ContentObject)
-	 * 
+	 *
 	 * @param cos 	ArrayList of ContentObjects to put
 	 * @throws IOException if the put fails
 	 */
@@ -328,11 +326,11 @@ public class CCNFlowControl implements CCNInterestHandler {
 			put(co);
 		}
 	}
-	
+
 	/**
 	 * Add multiple content objects to this flow controller.
 	 * @see #put(ContentObject)
-	 * 
+	 *
 	 * @param cos Array of ContentObjects
 	 * @throws IOException if the put fails
 	 */
@@ -346,7 +344,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 	 * Add namespace and multiple content at the same time.
 	 * @see #addNameSpace(ContentName)
 	 * @see #put(ArrayList)
-	 * 
+	 *
 	 * @param name 	ContentName of namespace
 	 * @param cos	ArrayList of ContentObjects
 	 * @throws IOException if the put fails
@@ -355,12 +353,12 @@ public class CCNFlowControl implements CCNInterestHandler {
 		addNameSpace(name);
 		put(cos);
 	}
-	
+
 	/**
 	 * Add namespace and content at the same time
 	 * @see #addNameSpace(ContentName)
 	 * @see #put(ContentObject)
-	 * 
+	 *
 	 * @param name 	ContentName of namespace
 	 * @param co 	ContentObject
 	 * @return 		the ContentObject put
@@ -370,11 +368,11 @@ public class CCNFlowControl implements CCNInterestHandler {
 		addNameSpace(name);
 		return put(co);
 	}
-	
+
 	/**
 	 * Add a content object to this flow controller. It won't be sent to ccnd immediately unless
 	 * a currently waiting interest matches it.
-	 * 
+	 *
 	 * @param co	ContentObject to put
 	 * @return		the ContentObject put
 	 * @throws IOException if the put fails
@@ -389,12 +387,12 @@ public class CCNFlowControl implements CCNInterestHandler {
 				}
 			}
 			if (!found)
-				throw new IOException("Flow control: co name \"" + co.name() 
+				throw new IOException("Flow control: co name \"" + co.name()
 					+ "\" is not in the flow control namespace");
 		}
 		return waitForMatch(co);
 	}
-	
+
 	/**
 	 * Hold a content object in buffer until a matching interest has been received.
 	 * @param co
@@ -402,11 +400,11 @@ public class CCNFlowControl implements CCNInterestHandler {
 	 */
 	private ContentObject waitForMatch(ContentObject co) throws IOException {
 		if (_flowControlEnabled) {
-			// Always place the object in the _holdingArea, even if it will be 
+			// Always place the object in the _holdingArea, even if it will be
 			// transmitted immediately.  The reason for always holding objects
 			// is that there may be different buffer draining policies implemented by
-			// subclasses.  For example, a flow control may retain objects until it 
-			// has verified by separate communication that an intended recipient has 
+			// subclasses.  For example, a flow control may retain objects until it
+			// has verified by separate communication that an intended recipient has
 			// received them.
 			if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
 				Log.finest(Log.FAC_IO, "Holding {0}", co.name());
@@ -420,12 +418,12 @@ public class CCNFlowControl implements CCNInterestHandler {
 			if (size >= capacity) {
 				long ourTime = System.currentTimeMillis();
 
-				// When we're going to be blocked waiting for a reader anyway, 
+				// When we're going to be blocked waiting for a reader anyway,
 				// purge old unmatched interests
 				synchronized (_unmatchedInterests) {
 					removeUnmatchedInterests(ourTime);
 				}
-				
+
 				// Now wait for space to be cleared or timeout
 				// Must guard against "spurious wakeup" so must check elapsed time directly
 				if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
@@ -453,7 +451,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			}
 			assert(size < capacity);
 			// Space verified so now can hold object. See note above for reason to always hold.
-			
+
 			Entry<UnmatchedInterest> match = null;
 			synchronized (_holdingArea) {
 				_holdingArea.put(co.name(), co);
@@ -464,7 +462,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			if (match != null) {
 				Log.finest(Log.FAC_IO, "Found pending matching interest for " + co.name() + ", putting to network.");
 				_handle.put(co);
-				// afterPutAction may immediately remove the object from _holdingArea or retain it 
+				// afterPutAction may immediately remove the object from _holdingArea or retain it
 				// depending upon the buffer drain policy being implemented.
 				synchronized (_holdingArea) {
 					afterPutAction(co);
@@ -474,13 +472,13 @@ public class CCNFlowControl implements CCNInterestHandler {
 			_handle.put(co);
 		return co;
 	}
-	
+
 	/**
 	 * Function to remove expired interests from the flow controller.  This is called when a content
 	 * object is received and when an interest is added to the buffer.
-	 * 
+	 *
 	 * Must be called with _unmatchedInterests locked
-	 * 
+	 *
 	 * @param ourTime current time for checking if interests are expired
 	 */
 	private void removeUnmatchedInterests(long ourTime) {
@@ -501,26 +499,26 @@ public class CCNFlowControl implements CCNInterestHandler {
 				_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
 		} while (removeIt != null);
 	}
-	
-	
+
+
 	/**
 	 * Match incoming interests with data in the buffer. If the interest doesn't match it is
 	 * buffered awaiting potential later incoming data which may match it.
-	 * 
+	 *
 	 * Note that this method is used for testing only, since the interest callback only takes one interest
-	 * 
+	 *
 	 */
 	public void handleInterests(ArrayList<Interest> interests) {
 		for (Interest interest : interests) {
 			handleInterest(interest);
 		}
 	}
-	
+
 	/**
 	 * Match an incoming interest with data in the buffer. If the interest doesn't match it is
 	 * buffered awaiting potential later incoming data which may match it. This method returns 0
 	 * if the interest was null.
-	 * 
+	 *
 	 */
 	public boolean handleInterest(Interest i) {
 		if (i == null)
@@ -529,19 +527,19 @@ public class CCNFlowControl implements CCNInterestHandler {
 			Log.fine(Log.FAC_IO, "Flow controller {0}: got interest: {1}", this, i);
 		ContentObject co;
 		synchronized (_holdingArea) {
-			
+
 			co = getBestMatch(i);
 			if (co == null) {
 				//only check if we are adding the interest, and check before we add so we don't check the new interest
 				if (_unmatchedInterests.size() > 0)
 					removeUnmatchedInterests(System.currentTimeMillis());
-				
+
 				Log.finest(Log.FAC_IO, "No content matching pending interest: {0}, holding.", i);
 				_unmatchedInterests.add(i, new UnmatchedInterest());
 				return false;		// XXX is this the right thing to do?
 			}
 		}
-		
+
 		if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
 			Log.finest(Log.FAC_IO, "Found content {0} matching interest: {1}",co.name(), i);
 		try {
@@ -553,26 +551,26 @@ public class CCNFlowControl implements CCNInterestHandler {
 			Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
 			Log.warningStackTrace(e);
 		}
-			
+
 		return true;
 	}
-	
-	
+
+
 	/**
 	 * Allow override of action after a ContentObject is sent to ccnd
-	 * 
+	 *
 	 * NOTE: Don't need to sync on holding area because this is only called within
 	 * holding area sync
 	 * NOTE: Any subclass overriding this method must either make sure to call it eventually (in a _holdingArea sync)
 	 * or understand the use of _nOut and update it appropriately.
-	 * 
+	 *
 	 * @param co ContentObject to remove from flow controller.
 	 * @throws IOException may be thrown by overriding subclasses
 	 */
 	public void afterPutAction(ContentObject co) throws IOException {
 		remove(co);
 	}
-	
+
 	/**
 	 * Must be called with _holdingArea locked
 	 * @param interest
@@ -586,7 +584,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 		for ( java.util.Map.Entry<ContentName, ContentObject> entry :  _holdingArea.entrySet() ) {
 			ContentName name = entry.getKey();
 			ContentObject result = entry.getValue();
-			
+
 			// We only have to do something unusual here if the caller is looking for CHILD_SELECTOR_RIGHT
 			if (null != interest.childSelector() && interest.childSelector() == Interest.CHILD_SELECTOR_RIGHT) {
 				if (interest.matches(result)) {
@@ -602,7 +600,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 		}
 		return bestMatch;
 	}
-	
+
 	/**
 	 * Allow subclasses to override behavior before a flush
 	 * @throws IOException
@@ -618,12 +616,12 @@ public class CCNFlowControl implements CCNInterestHandler {
 	public void afterClose() throws IOException {
 		waitForPutDrain();
 	}
-	
+
 	/**
 	 * Implements a wait until all outstanding data has been drained from the
 	 * flow controller. This is required on close to ensure that all data is actually
 	 * sent to ccnd.
-	 * 
+	 *
 	 * @throws IOException if the data has not been drained after a reasonable period
 	 */
 	protected void waitForPutDrain() throws IOException {
@@ -641,7 +639,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 					if (_nOut != startSize || (System.currentTimeMillis() - startTime) >= _timeout)
 						keepTrying = false;
 				} while (keepTrying);
-				
+
 				if (_nOut == startSize) {
 					for(ContentName co : _holdingArea.keySet()) {
 						Log.warning(Log.FAC_IO, "FlowController: still holding: " + co.toString());
@@ -657,7 +655,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			}
 		}
 	}
-	
+
 	/**
 	 * Set the time to wait for buffer to drain on close
 	 * @param timeout timeout in milliseconds
@@ -665,7 +663,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 	public void setTimeout(int timeout) {
 		_timeout = timeout;
 	}
-	
+
 	/**
 	 * Get the current waiting time for the buffer to drain
 	 * @return 	timeout in milliseconds
@@ -673,7 +671,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 	public int getTimeout() {
 		return _timeout;
 	}
-	
+
 	/**
 	 * Shutdown operation of this flow controller -- wait for all current
 	 * data to clear, and unregister all outstanding interests. Do *not*
@@ -684,7 +682,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 		waitForPutDrain();
 		removeAllNamespaces();
 	}
-	
+
 	/**
 	 * Gets the CCNHandle used by this controller
 	 * @return	a CCNHandle
@@ -692,7 +690,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 	public CCNHandle getHandle() {
 		return _handle;
 	}
-	
+
 	/**
 	 * Remove any currently buffered unmatched interests
 	 */
@@ -701,7 +699,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
 		_unmatchedInterests.clear();
 	}
-	
+
 	/**
 	 * Debugging function to log unmatched interests.
 	 */
@@ -714,19 +712,19 @@ public class CCNFlowControl implements CCNInterestHandler {
 					Log.info(Log.FAC_IO, "   Unmatched interest: {0}", interestEntry.interest());
 		}
 	}
-	
+
 	/**
 	 * Re-enable disabled buffering.  Buffering is enabled by default.
 	 */
 	public void enable() {
 		_flowControlEnabled = true;
 	}
-	
+
 	/**
 	 * Change the capacity for the maximum amount of data to buffer before
 	 * causing putters to block. The capacity value is the number of content objects
 	 * that will be buffered.
-	 * 
+	 *
 	 * @param value number of content objects.
 	 */
 	public void setCapacity(int value) {
@@ -734,7 +732,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			_capacity = value;
 		}
 	}
-	
+
 	/**
 	 * Set the capacity to the maximum possible value, Integer.MAX_VALUE.
 	 */
@@ -743,7 +741,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			_capacity = Integer.MAX_VALUE;
 		}
 	}
-	
+
 	/**
 	 * Change the maximum number of unmatched interests to buffer.
 	 * @param value	number of interests
@@ -751,7 +749,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 	public void setInterestCapacity(int value) {
 		_unmatchedInterests.setCapacity(value);
 	}
-	
+
 	/**
 	 * What is the total capacity of this flow controller?
 	 * @return the total capacity of this flow controller; in other words the
@@ -762,7 +760,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			return _capacity;
 		}
 	}
-	
+
 	/**
 	 * Get the number of objects this flow controller is currently holding.
 	 * @return the number of objects (segments) in the buffer
@@ -772,7 +770,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			return _holdingArea.size();
 		}
 	}
-	
+
 	/**
 	 * Get the amount of remaining space available in this flow controller's buffer.
 	 * @return the number of additional objects that can currently be written to this controller
@@ -782,7 +780,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			return _capacity - _holdingArea.size(); // off by 1?
 		}
 	}
-	
+
 	/**
 	 * Remove a ContentObject from the set buffered by this flow controller, either
 	 * because we're done with it, or because we don't want to buffer it anymore.
@@ -799,7 +797,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			_holdingArea.notify();
 		}
 	}
-	
+
 	/**
 	 * Remove all the held objects from this buffer.
 	 */
@@ -810,10 +808,10 @@ public class CCNFlowControl implements CCNInterestHandler {
 			_holdingArea.notify();
 		}
 	}
-	
+
 	/**
 	 * Disable buffering
-	 * 
+	 *
 	 * Warning - calling this risks packet drops. It should only
 	 * be used for tests or other special circumstances in which
 	 * you "know what you are doing".
@@ -822,7 +820,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 		removeNameSpace(null, true);
 		_flowControlEnabled = false;
 	}
-	
+
 	/**
 	 * Help users determine what type of flow controller this is.
 	 */
