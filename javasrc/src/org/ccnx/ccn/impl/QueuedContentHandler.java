@@ -51,7 +51,7 @@ public abstract class QueuedContentHandler<E> implements Runnable {
 	 * Asynchronously dequeue and process data from a ContentHandler
 	 */
 	public void run() {
-		while (true) {
+		while (!checkShutdown()) {
 			E e = null;
 			synchronized (_queue) {
 				e = _queue.poll();
@@ -62,6 +62,14 @@ public abstract class QueuedContentHandler<E> implements Runnable {
 			}
 			process(e);
 		}
+	}
+
+	/**
+	 * Override for different behavior
+	 * @return
+	 */
+	protected boolean checkShutdown() {
+		return false;
 	}
 
 	/**
