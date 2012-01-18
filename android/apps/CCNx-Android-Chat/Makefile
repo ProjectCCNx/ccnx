@@ -42,8 +42,7 @@ $(TARGET): $(JARS) local.properties build.xml $(SRC)
 	ant debug
 
 local.properties default.properties project.properties:
-	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-Chat -p . -t android-7
-	$(ANDROID_SDK)/tools/android update project -p . -t android-7 --library ../../CCNx-Android-Lib/
+	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-Chat -p . -t android-7 --library ../../CCNx-Android-Lib/
 
 libs/ccn.jar: ../../../javasrc/ccn.jar
 	mkdir -p $(dir $@)
