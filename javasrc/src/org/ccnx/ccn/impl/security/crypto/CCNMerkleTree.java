@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -21,10 +21,8 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
-import java.util.logging.Level;
 
 import org.bouncycastle.asn1.DEROctetString;
-import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
@@ -230,9 +228,16 @@ public class CCNMerkleTree extends MerkleTree {
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
 			// DKS -- need to make sure content() doesn't clone
-			_tree[leafNodeIndex(i)-1] = 
-				new DEROctetString(computeBlockDigest(i, contentObjects[i].content(), 
-													  0, contentObjects[i].contentLength()));
+			try {
+				_tree[leafNodeIndex(i)-1] = 
+					new DEROctetString(
+							CCNDigestHelper.digest(
+									contentObjects[i].prepareContent() ));
+			} catch (ContentEncodingException e) {
+				Log.info("Exception in computeBlockDigest, leaf: " + i + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
+				e.printStackTrace();
+				// DKS todo -- what to throw?
+			}
 		}
 	}
 
@@ -247,28 +252,29 @@ public class CCNMerkleTree extends MerkleTree {
 	 * @param length the length of content for this leaf
 	 * @return the block digest
 	 */
-	@Override
-	protected byte [] computeBlockDigest(int leafIndex, byte [] content, int offset, int length) {
-
-		// Computing the leaf digest.
-		//new XMLEncodable[]{name, signedInfo}, new byte[][]{content},
-		
-		byte[] blockDigest = null;
-		try {
-			blockDigest = CCNDigestHelper.digest(
-									ContentObject.prepareContent(segmentName(leafIndex), 
-																 segmentSignedInfo(leafIndex),
-																 content, offset, length));
-			if (Log.isLoggable(Log.FAC_SIGNING, Level.INFO)) {
-				Log.info("offset: " + offset + " block length: " + length + " blockDigest " + 
-						DataUtils.printBytes(blockDigest) + " content digest: " + 
-						DataUtils.printBytes(CCNDigestHelper.digest(content, offset, length)));
-			}
-		} catch (ContentEncodingException e) {
-			Log.info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
-			// DKS todo -- what to throw?
-		} 
-
-		return blockDigest;
-	}
+//	@Override
+//	@Deprecated
+//	protected byte [] computeBlockDigest(int leafIndex, byte [] content, int offset, int length) {
+//
+//		// Computing the leaf digest.
+//		//new XMLEncodable[]{name, signedInfo}, new byte[][]{content},
+//		
+//		byte[] blockDigest = null;
+//		try {
+//			blockDigest = CCNDigestHelper.digest(
+//									ContentObject.prepareContent(segmentName(leafIndex), 
+//																 segmentSignedInfo(leafIndex),
+//																 content, offset, length));
+//			if (Log.isLoggable(Log.FAC_SIGNING, Level.INFO)) {
+//				Log.info("offset: " + offset + " block length: " + length + " blockDigest " + 
+//						DataUtils.printBytes(blockDigest) + " content digest: " + 
+//						DataUtils.printBytes(CCNDigestHelper.digest(content, offset, length)));
+//			}
+//		} catch (ContentEncodingException e) {
+//			Log.info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
+//			// DKS todo -- what to throw?
+//		} 
+//
+//		return blockDigest;
+//	}
 }

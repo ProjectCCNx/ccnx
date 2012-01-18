@@ -184,7 +184,7 @@ public class CCNMerkleTreeTest {
 					System.out.println("Block name: " + tree.segmentName(i) + " num "  + i + " verified? " + result + ", content: " + DataUtils.printBytes(block.digest()));
 					byte [] digest = CCNDigestHelper.digest(block.encode());
 					byte [] tbsdigest = 
-						CCNDigestHelper.digest(ContentObject.prepareContent(block.name(), block.signedInfo(), block.content()));
+						CCNDigestHelper.digest(block.prepareContent());
 					System.out.println("Raw content digest: " + DataUtils.printBytes(CCNDigestHelper.digest(block.content())) +
 							" object content digest:  " + DataUtils.printBytes(CCNDigestHelper.digest(block.content())));
 					System.out.println("Block: " + block.name() + " timestamp: " + block.signedInfo().getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
