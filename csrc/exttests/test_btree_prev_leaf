@@ -16,5 +16,5 @@ type ccnbtreetest
 ccnbtreetest - < test.dat 2>stderr.out >std.out || Fail ccnbtreetest returned $?
 grep leaf stderr.out | while read i j k l m; do echo $j; done | uniq | cut -c 2-  > revexpected
 jot `wc -l revexpected` | paste - revexpected | sort -nr | cut -f 2 | xargs echo Reversed leaf nodes: > expected
-grep 'Reversed leaf nodes:' std.out | diff expected - || SkipTest did not get expected leaf node reverse enumeration
+grep 'Reversed leaf nodes:' std.out | diff expected - || Fail did not get expected leaf node reverse enumeration
 rm test.dat stderr.out std.out expected revexpected
