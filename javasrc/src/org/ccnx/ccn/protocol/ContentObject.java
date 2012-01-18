@@ -54,6 +54,9 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 /**
  * Represents a CCNx data packet.
  * cf. Interest
+ * 
+ * prepareContent() is called to create the MerkelTree hash.  That encoding can be cached because
+ * _name, _signedInfo, and _content are only assigned in a constructor or in decode.
  */
 public class ContentObject extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentObject> {
 
