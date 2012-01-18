@@ -21,8 +21,10 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SignatureException;
+import java.util.logging.Level;
 
 import org.bouncycastle.asn1.DEROctetString;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
@@ -229,10 +231,16 @@ public class CCNMerkleTree extends MerkleTree {
 		for (int i=0; i < numLeaves(); ++i) {
 			// DKS -- need to make sure content() doesn't clone
 			try {
-				_tree[leafNodeIndex(i)-1] = 
-					new DEROctetString(
-							CCNDigestHelper.digest(
-									contentObjects[i].prepareContent() ));
+				ContentObject co = contentObjects[i];
+				byte [] blockDigest = CCNDigestHelper.digest(co.prepareContent()); 
+				_tree[leafNodeIndex(i)-1] = new DEROctetString(blockDigest);
+				
+				if (Log.isLoggable(Log.FAC_SIGNING, Level.INFO)) {
+					Log.info("offset: " + 0 + " block length: " + co.contentLength() + " blockDigest " + 
+							DataUtils.printBytes(blockDigest) + " content digest: " + 
+							DataUtils.printBytes(CCNDigestHelper.digest(co.content(), 0, co.contentLength())));
+				}
+
 			} catch (ContentEncodingException e) {
 				Log.info("Exception in computeBlockDigest, leaf: " + i + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
 				e.printStackTrace();
@@ -240,41 +248,4 @@ public class CCNMerkleTree extends MerkleTree {
 			}
 		}
 	}
-
-	/**
-	 * We need to incorporate the name of the content block
-	 * and the signedInfo into the leaf digest of the tree.
-	 * Essentially, we want the leaf digest to be the same thing
-	 * we would use for signing a stand-alone ContentObject.
-	 * @param leafIndex the index of the leaf to sign
-	 * @param content the content array containing the leaf content
-	 * @param offset the offset into content where the leaf start
-	 * @param length the length of content for this leaf
-	 * @return the block digest
-	 */
-//	@Override
-//	@Deprecated
-//	protected byte [] computeBlockDigest(int leafIndex, byte [] content, int offset, int length) {
-//
-//		// Computing the leaf digest.
-//		//new XMLEncodable[]{name, signedInfo}, new byte[][]{content},
-//		
-//		byte[] blockDigest = null;
-//		try {
-//			blockDigest = CCNDigestHelper.digest(
-//									ContentObject.prepareContent(segmentName(leafIndex), 
-//																 segmentSignedInfo(leafIndex),
-//																 content, offset, length));
-//			if (Log.isLoggable(Log.FAC_SIGNING, Level.INFO)) {
-//				Log.info("offset: " + offset + " block length: " + length + " blockDigest " + 
-//						DataUtils.printBytes(blockDigest) + " content digest: " + 
-//						DataUtils.printBytes(CCNDigestHelper.digest(content, offset, length)));
-//			}
-//		} catch (ContentEncodingException e) {
-//			Log.info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
-//			// DKS todo -- what to throw?
-//		} 
-//
-//		return blockDigest;
-//	}
 }
