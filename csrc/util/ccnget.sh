@@ -15,5 +15,5 @@
 # adjust the path to get consistency.
 D=`dirname "$0"`
 export PATH="$D:$PATH"
-echo ccnget is a deprecated command name.  The new name is ccnpeek.
+echo ccnget is a deprecated command name.  The new name is ccnpeek. 1>&2
 ccnpeek "$@"

@@ -15,5 +15,5 @@
 # adjust the path to get consistency.
 D=`dirname "$0"`
 export PATH="$D:$PATH"
-echo ccnput is a deprecated command name.  The new name is ccnpoke.
+echo ccnput is a deprecated command name.  The new name is ccnpoke. 1>&2
 ccnpoke "$@"
