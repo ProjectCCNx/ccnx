@@ -39,9 +39,9 @@ default all:
 	@echo '    Missing either ANDROID_SDK or ANDROID_NDK,'
 	@echo '           NOT building Android targets.'
 	@echo
-	@echo '  ANDROID_SDK should point to a R7 or later SDK'
-	@echo '     with Android 2.1 installed.'
-	@echo '  ANDROID_NDK should point to an R4 or later NDK.'
+	@echo '  ANDROID_SDK should point to a R16 or later SDK'
+	@echo '     with Android 2.1 (android-7) installed.'
+	@echo '  ANDROID_NDK should point to an R7 or later NDK.'
 	@echo '*************************************************'
 	@echo 
 endif
