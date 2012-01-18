@@ -1,5 +1,5 @@
 /**
- * @file ccnput.c
+ * @file ccnpoke.c
  * Injects one chunk of data from stdin into ccn.
  *
  * A CCNx command-line utility.

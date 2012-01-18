@@ -1,5 +1,5 @@
 /**
- * @file ccnget.c
+ * @file ccnpeek.c
  * Get one content item matching the name prefix and write it to stdout.
  * Written as test for ccn_get, but probably useful for debugging.
  *
