@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <ccn/bloom.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
@@ -31,14 +32,17 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-a] [-c] ccnx:/a/b\n"
+            "%s [-a] [-c] [-l lifetime] [-s scope] [-u] [-v] [-w timeout] ccnx:/a/b\n"
             "   Get one content item matching the name prefix and write it to stdout"
             "\n"
             "   -a - allow stale data\n"
             "   -c - content only, not full ccnb\n"
+            "   -l x - lifetime (seconds) of interest. 0.00012 < x <= 30.0000, Default 4.\n"
+            "   -s {0,1,2} - scope of interest.  Default none.\n"
             "   -u - allow unverified content\n"
-            "   -v - resolve version number\n",
-            progname);
+            "   -v - resolve version number\n"
+            "   -w x - wait time (seconds) for response.  0.001 <= timeout <= 60.000, Default 3.0\n",
+           progname);
     exit(1);
 }
 
@@ -55,14 +59,17 @@ main(int argc, char **argv)
     int opt;
     int allow_stale = 0;
     int content_only = 0;
+    int scope = -1;
     const unsigned char *ptr;
     size_t length;
     int resolve_version = 0;
-    const char *env_timeout = getenv("CCN_LINGER");
     int timeout_ms = 3000;
+    const unsigned lifetime_default = CCN_INTEREST_LIFETIME_SEC << 12;
+    unsigned lifetime_l12 = lifetime_default;
+    double lifetime;
     int get_flags = 0;
     
-    while ((opt = getopt(argc, argv, "hacuv")) != -1) {
+    while ((opt = getopt(argc, argv, "acl:s:uvw:h")) != -1) {
         switch (opt) {
             case 'a':
                 allow_stale = 1;
@@ -70,6 +77,25 @@ main(int argc, char **argv)
             case 'c':
                 content_only = 1;
                 break;
+            case 'l':
+                errno = 0;
+                lifetime = strtod(optarg, NULL);
+                if (errno != 0) {
+                    perror(optarg);
+                    exit(1);
+                }
+                lifetime_l12 = 4096 * (lifetime + 1.0/8192.0);
+                if (lifetime_l12 == 0 || lifetime_l12 > (30 << 12)) {
+                    fprintf(stderr, "%.5f: invalid lifetime. %.5f < lifetime <= 30.0\n", lifetime, 1.0/8192.0);
+                    exit(1);
+                }
+                break;
+            case 's':
+                scope = atoi(optarg);
+                if (scope < 0 || scope > 2) {
+                    fprintf(stderr, "%d: invalid scope.  0 <= scope <= 2\n", scope);
+                    exit(1);
+                }
             case 'u':
                 get_flags |= CCN_GET_NOKEYWAIT;
                 break;
@@ -78,6 +104,13 @@ main(int argc, char **argv)
                     resolve_version = CCN_V_HIGHEST;
                 else
                     resolve_version = CCN_V_HIGH;
+                break;
+            case 'w':
+                timeout_ms = strtod(optarg, NULL) * 1000;
+                if (timeout_ms <= 0 || timeout_ms > 60000) {
+                    fprintf(stderr, "%s: invalid timeout.  0.001 <= timeout <= 60.000\n", optarg);
+                    exit(1);
+                }
                 break;
             case 'h':
             default:
@@ -105,10 +138,7 @@ main(int argc, char **argv)
         fprintf(stderr, "%s: bad ccn URI: %s\n", argv[0], arg);
         exit(1);
     }
-    if (env_timeout != NULL && (res = atoi(env_timeout)) > 0) {
-		timeout_ms = res * 1000;
-    }
-	if (allow_stale || env_timeout != NULL) {
+	if (allow_stale || lifetime_l12 != lifetime_default || scope != -1) {
         templ = ccn_charbuf_create();
         ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
         ccn_charbuf_append_tt(templ, CCN_DTAG_Name, CCN_DTAG);
@@ -119,21 +149,18 @@ main(int argc, char **argv)
 							   CCN_AOK_DEFAULT | CCN_AOK_STALE);
 			ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
 		}
-		if (env_timeout != NULL) {
+        if (scope != -1) {
+            ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", scope);
+        }
+		if (lifetime_l12 != lifetime_default) {
 			/*
 			 * Choose the interest lifetime so there are at least 3
 			 * expressions (in the unsatisfied case).
 			 */
 			unsigned char buf[3] = { 0 };
-			unsigned lifetime;
 			int i;
-			if (timeout_ms > 60000)
-				lifetime = 30 << 12;
-			else {
-				lifetime = timeout_ms * 2 / 5 * 4096 / 1000;
-			}
-			for (i = sizeof(buf) - 1; i >= 0; i--, lifetime >>= 8)
-				buf[i] = lifetime & 0xff;
+			for (i = sizeof(buf) - 1; i >= 0; i--, lifetime_l12 >>= 8)
+				buf[i] = lifetime_l12 & 0xff;
 			ccnb_append_tagged_blob(templ, CCN_DTAG_InterestLifetime, buf, sizeof(buf));
 		}
         ccn_charbuf_append_closer(templ); /* </Interest> */

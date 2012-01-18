@@ -20,7 +20,7 @@ INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccndumpnames ccnnamelist ccnrm \
     ccnls ccnslurp ccnbx ccncat ccnbasicconfig \
     ccnsendchunks ccncatchunks ccncatchunks2 \
-    ccnput ccnget ccnhexdumpdata \
+    ccnpoke ccnpeek ccnhexdumpdata \
     ccnseqwriter ccnsimplecat \
     ccnfilewatch ccninitkeystore \
     $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
@@ -38,8 +38,8 @@ DEBRIS =
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
        ccnbuzz.c ccnbx.c ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
-       ccndumpnames.c ccndumppcap.c ccnfilewatch.c ccnget.c ccnhexdumpdata.c \
-       ccninitkeystore.c ccnls.c ccnnamelist.c ccnput.c ccnrm.c ccnsendchunks.c \
+       ccndumpnames.c ccndumppcap.c ccnfilewatch.c ccnpeek.c ccnhexdumpdata.c \
+       ccninitkeystore.c ccnls.c ccnnamelist.c ccnpoke.c ccnrm.c ccnsendchunks.c \
        ccnseqwriter.c ccn_fetch_test.c ccnslurp.c dataresponsetest.c 
 
 default all: $(PROGRAMS)
@@ -122,11 +122,11 @@ ccnbasicconfig: ccnbasicconfig.o
 ccnbuzz: ccnbuzz.o
 	$(CC) $(CFLAGS) -o $@ ccnbuzz.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
-ccnput: ccnput.o
-	$(CC) $(CFLAGS) -o $@ ccnput.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+ccnpoke: ccnpoke.o
+	$(CC) $(CFLAGS) -o $@ ccnpoke.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
-ccnget: ccnget.o
-	$(CC) $(CFLAGS) -o $@ ccnget.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+ccnpeek: ccnpeek.o
+	$(CC) $(CFLAGS) -o $@ ccnpeek.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccnhexdumpdata: ccnhexdumpdata.o
 	$(CC) $(CFLAGS) -o $@ ccnhexdumpdata.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -208,7 +208,7 @@ ccndumppcap.o: ccndumppcap.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccnd.h
 ccnfilewatch.o: ccnfilewatch.c
-ccnget.o: ccnget.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
+ccnpeek.o: ccnpeek.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnhexdumpdata.o: ccnhexdumpdata.c ../include/ccn/coding.h \
@@ -220,7 +220,7 @@ ccnls.o: ccnls.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnnamelist.o: ccnnamelist.c ../include/ccn/coding.h ../include/ccn/uri.h \
   ../include/ccn/charbuf.h
-ccnput.o: ccnput.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+ccnpoke.o: ccnpoke.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ../include/ccn/keystore.h ../include/ccn/signing.h
 ccnrm.o: ccnrm.c ../include/ccn/ccn.h ../include/ccn/coding.h \
