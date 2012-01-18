@@ -29,12 +29,12 @@ cmd/ccndump
 cmd/ccndumpnames
 cmd/ccndumppcap
 cmd/ccnfilewatch
-cmd/ccnget
+cmd/ccnpeek
 cmd/ccnhexdumpdata
 cmd/ccninitkeystore
 cmd/ccnls
 cmd/ccnnamelist
-cmd/ccnput
+cmd/ccnpoke
 cmd/ccnrm
 cmd/ccnsendchunks
 cmd/ccnseqwriter
