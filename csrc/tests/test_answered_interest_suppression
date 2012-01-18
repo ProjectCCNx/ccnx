@@ -44,7 +44,7 @@ trap "WithCCND 5 ccndstop" 0    # Tear it down at end of test
 # The heart of the the test
 HasEverybodyGotIt () {
     # One client is just a sink for the interests.
-    ccnput -x 1 /answered < /dev/null &
+    ccnpoke -x 1 /answered < /dev/null &
     
     #
     # Get 3 clients to be interested.
@@ -56,7 +56,7 @@ HasEverybodyGotIt () {
     # Provide the answer.
     sleep 1
     ccndstatus
-    echo "This is the answer" | ccnput -f -x 1 /answered/test/$UNIQ
+    echo "This is the answer" | ccnpoke -f -x 1 /answered/test/$UNIQ
 
     # The clients should finish quickly now - give them a second.
     sleep 1

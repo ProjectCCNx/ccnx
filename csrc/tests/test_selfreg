@@ -31,11 +31,11 @@ ccn_xmltoccnb -w - <<EOF >selfreg.ccnb
 EOF
 
 TNAME=`GenSym SR`
-cat selfreg.ccnb | ccnput -f -x 30 /$TNAME
+cat selfreg.ccnb | ccnpoke -f -x 30 /$TNAME
 
 # Pull it out to use in the selfreg request.  Base-64 encode it for the benefit of the shell.
 
-SRBLOB="`ccnget /$TNAME | openssl enc -base64`"
+SRBLOB="`ccnpeek /$TNAME | openssl enc -base64`"
 
 echo SRBLOB is $SRBLOB >&2
 

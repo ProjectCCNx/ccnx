@@ -22,7 +22,7 @@ trap "ccndsmoketest kill" 0
 until CheckForCCND 6; do :; done
 uptime
 date | ccnsendchunks -x 4 /test/ephemeral$$
-ccnget /test/ephemeral$$ > ephemeral$$.ccnb || Fail init fetch of ephemeral
+ccnpeek /test/ephemeral$$ > ephemeral$$.ccnb || Fail init fetch of ephemeral
 ccncatchunks /test/ephemeral$$ > ephemeral$$_0
 ccndsmoketest -t 2000 recv # delay for 2 sec
 ccncatchunks /test/ephemeral$$ > ephemeral$$_1

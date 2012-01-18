@@ -33,17 +33,17 @@ ccn_xmltoccnb -w - <<EOF >prefixreg.ccnb
 EOF
 
 TNAME=`GenSym _ignored_`
-cat prefixreg.ccnb | ccnput -f -x 30 /$TNAME
+cat prefixreg.ccnb | ccnpoke -f -x 30 /$TNAME
 
 # Pull it out to use in the prefixreg request.  Base-64 encode it for the benefit of the shell.
 
-PRBLOB="`ccnget /$TNAME | openssl enc -base64`"
+PRBLOB="`ccnpeek /$TNAME | openssl enc -base64`"
 
 echo PRBLOB is $PRBLOB >&2
 
 # Dinged version, to make sure verification is there.
 # Uncommenting these should make the test fail.
-#PRBLOB="`ccnget /$TNAME | ccn_ccnbtoxml - | sed -e s/_ignored_/-IGNORED-/ | ccn_xmltoccnb -w - | openssl enc -base64`"
+#PRBLOB="`ccnpeek /$TNAME | ccn_ccnbtoxml - | sed -e s/_ignored_/-IGNORED-/ | ccn_xmltoccnb -w - | openssl enc -base64`"
 #echo Dinged PRBLOB is $PRBLOB >&2
 
 # We have the CCNDID of our ccnd in a file, left from test_ccndid
