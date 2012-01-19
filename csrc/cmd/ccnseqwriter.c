@@ -74,17 +74,14 @@ main(int argc, char **argv)
     }
     argc -= optind;
     argv += optind;
-    if (argv[0] == NULL)
+    if (argc != 1)
         usage(progname);
     name = ccn_charbuf_create();
     res = ccn_name_from_uri(name, argv[0]);
     if (res < 0) {
-        fprintf(stderr, "%s: bad ccnx URI: %s\n", progname, argv[0]);
+        fprintf(stderr, "%s: bad CCN URI: %s\n", progname, argv[0]);
         exit(1);
     }
-    if (argv[1] != NULL)
-        fprintf(stderr, "%s warning: extra arguments ignored\n", progname);
-
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
         perror("Could not connect to ccnd");
