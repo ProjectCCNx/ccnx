@@ -3881,23 +3881,24 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         if (content == content_from_accession(h, content->accession)) {
             content->ncomps = comps->n;
             content->comps = calloc(comps->n, sizeof(comps[0]));
+            if (content->comps == NULL) {
+                ccnd_msg(h, "could not enroll ContentObject (accession %llu)",
+                         (unsigned long long)content->accession);
+                content = NULL;
+                hashtb_delete(e);
+                res = -__LINE__;
+                hashtb_end(e);
+                goto Bail;
+                
+            }
         }
         content->key_size = e->keysize;
         content->size = e->keysize + e->extsize;
         content->key = e->key;
-        if (content->comps != NULL) {
-            for (i = 0; i < comps->n; i++)
-                content->comps[i] = comps->buf[i];
-            content_skiplist_insert(h, content);
-            set_content_timer(h, content, &obj);
-        }
-        else {
-            ccnd_msg(h, "could not enroll ContentObject (accession %llu)",
-                (unsigned long long)content->accession);
-            hashtb_delete(e);
-            res = -__LINE__;
-            content = NULL;
-        }
+        for (i = 0; i < comps->n; i++)
+            content->comps[i] = comps->buf[i];
+        content_skiplist_insert(h, content);
+        set_content_timer(h, content, &obj);
         /* Mark public keys supplied at startup as precious. */
         if (obj.type == CCN_CONTENT_KEY && content->accession <= (h->capacity + 7)/8)
             content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
