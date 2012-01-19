@@ -2402,7 +2402,6 @@ ccnd_req_newface(struct ccnd_handle *h,
     struct ccn_face_instance *face_instance = NULL;
     struct addrinfo hints = {0};
     struct addrinfo *addrinfo = NULL;
-    int fd = -1;
     int mcast;
     struct face *face = NULL;
     struct face *reqface = NULL;
@@ -2470,7 +2469,6 @@ ccnd_req_newface(struct ccnd_handle *h,
     if (addrinfo->ai_next != NULL)
         ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
     if (face_instance->descr.ipproto == IPPROTO_UDP) {
-        fd = -1;
         mcast = 0;
         if (addrinfo->ai_family == AF_INET) {
             face = face_from_faceid(h, h->ipv4_faceid);
@@ -3256,7 +3254,7 @@ propagate_interest(struct ccnd_handle *h,
         noncesize = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
     }
     hashtb_start(h->propagating_tab, e);
-    res = hashtb_seek(e, nonce, noncesize, 0);
+    hashtb_seek(e, nonce, noncesize, 0);
     pe = e->data;
     if (pe != NULL && pe->interest_msg == NULL) {
         unsigned char *m;
