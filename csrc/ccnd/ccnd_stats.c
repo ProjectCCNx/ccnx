@@ -326,7 +326,7 @@ collect_forwarding_html(struct ccnd_handle *h, struct ccn_charbuf *b)
         for (f = ipe->forwarding; f != NULL; f = f->next) {
             if ((f->flags & (CCN_FORW_ACTIVE | CCN_FORW_PFXO)) != 0) {
                 ccn_name_init(name);
-                res = ccn_name_append_components(name, e->key, 0, e->keysize);
+                ccn_name_append_components(name, e->key, 0, e->keysize);
                 ccn_charbuf_putf(b, " <li>");
                 ccn_uri_append(b, name->buf, name->length, 1);
                 ccn_charbuf_putf(b,
@@ -512,7 +512,7 @@ collect_forwarding_xml(struct ccnd_handle *h, struct ccn_charbuf *b)
         }
         if (res) {
             ccn_name_init(name);
-            res = ccn_name_append_components(name, e->key, 0, e->keysize);
+            ccn_name_append_components(name, e->key, 0, e->keysize);
             ccn_charbuf_putf(b, "<fentry>");
             ccn_charbuf_putf(b, "<prefix>");
             ccn_uri_append(b, name->buf, name->length, 1);
