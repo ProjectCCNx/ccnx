@@ -414,7 +414,6 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
     struct stat statbuf;
     const char *dir = NULL;
     int res = -1;
-    size_t save;
     char *keystore_path = NULL;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
@@ -436,7 +435,6 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
             goto Finish;
         }
     }
-    save = temp->length;
     ccn_charbuf_putf(temp, ".ccnd_keystore_%s", ccnd->portstr);
     keystore_path = strdup(ccn_charbuf_as_string(temp));
     res = stat(keystore_path, &statbuf);
@@ -451,6 +449,8 @@ ccnd_init_internal_keystore(struct ccnd_handle *ccnd)
         goto Finish;
     }
     res = ccn_load_default_key(ccnd->internal_client, keystore_path, CCND_KEYSTORE_PASS);
+    if (res != 0)
+        culprit = temp;
 Finish:
     if (culprit != NULL) {
         ccnd_msg(ccnd, "%s: %s:\n", ccn_charbuf_as_string(culprit), strerror(errno));
