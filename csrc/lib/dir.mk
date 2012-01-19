@@ -16,7 +16,7 @@ LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib
 
-PROGRAMS = hashtbtest matrixtest skel_decode_test \
+PROGRAMS = hashtbtest skel_decode_test \
     smoketestclientlib  \
     encodedecodetest signbenchtest basicparsetest
 
@@ -27,19 +27,19 @@ CSRC = ccn_bloom.c ccn_buf_decoder.c ccn_buf_encoder.c ccn_bulkdata.c \
        ccn_charbuf.c ccn_client.c ccn_coding.c ccn_digest.c ccn_extend_dict.c \
        ccn_dtag_table.c ccn_indexbuf.c ccn_interest.c ccn_keystore.c \
        ccn_match.c ccn_reg_mgmt.c ccn_face_mgmt.c \
-       ccn_matrix.c ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
+       ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
        ccn_seqwriter.c ccn_signing.c \
        ccn_sockcreate.c ccn_traverse.c ccn_uri.c \
        ccn_verifysig.c ccn_versioning.c \
        ccn_header.c \
        ccn_fetch.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
-       matrixtest.c signbenchtest.c skel_decode_test.c \
+       signbenchtest.c skel_decode_test.c \
        smoketestclientlib.c basicparsetest.c \
        ccn_sockaddrutil.c ccn_setup_sockaddr_un.c
 LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
-       ccn_dtag_table.o ccn_schedule.o ccn_matrix.o ccn_extend_dict.o \
+       ccn_dtag_table.o ccn_schedule.o ccn_extend_dict.o \
        ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o \
        ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o \
        ccn_interest.o ccn_keystore.o ccn_seqwriter.o ccn_signing.o \
@@ -99,9 +99,6 @@ $(PROGRAMS): libccn.a
 
 hashtbtest: hashtbtest.o
 	$(CC) $(CFLAGS) -o $@ hashtbtest.o $(LDLIBS)
-
-matrixtest: matrixtest.o
-	$(CC) $(CFLAGS) -o $@ matrixtest.o $(LDLIBS)
 
 skel_decode_test: skel_decode_test.o
 	$(CC) $(CFLAGS) -o $@ skel_decode_test.o $(LDLIBS)
@@ -203,8 +200,6 @@ ccn_face_mgmt.o: ccn_face_mgmt.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/face_mgmt.h \
   ../include/ccn/sockcreate.h
-ccn_matrix.o: ccn_matrix.c ../include/ccn/matrix.h \
-  ../include/ccn/hashtb.h
 ccn_merkle_path_asn1.o: ccn_merkle_path_asn1.c \
   ../include/ccn/merklepathasn1.h
 ccn_name_util.o: ccn_name_util.c ../include/ccn/ccn.h \
@@ -245,7 +240,6 @@ encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
   ../include/ccn/signing.h ../include/ccn/random.h
 hashtb.o: hashtb.c ../include/ccn/hashtb.h
 hashtbtest.o: hashtbtest.c ../include/ccn/hashtb.h
-matrixtest.o: matrixtest.c ../include/ccn/matrix.h
 signbenchtest.o: signbenchtest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/keystore.h

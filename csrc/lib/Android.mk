@@ -23,7 +23,7 @@ LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../include
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../../android/external/openssl-armv5/include
 
 CCNLIBOBJ := ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
-		ccn_dtag_table.o ccn_schedule.o ccn_matrix.o \
+		ccn_dtag_table.o ccn_schedule.o \
 		ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o \
 		ccn_bloom.o ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o \
 		ccn_digest.o ccn_interest.o ccn_keystore.o \
