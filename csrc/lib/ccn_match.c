@@ -128,7 +128,7 @@ ccn_content_matches_interest(const unsigned char *content_object,
     struct ccn_buf_decoder *d;
     const unsigned char *nextcomp;
     size_t nextcomp_size = 0;
-    const unsigned char *comp;
+    const unsigned char *comp = NULL;
     size_t comp_size = 0;
     const unsigned char *bloom;
     size_t bloom_size = 0;
