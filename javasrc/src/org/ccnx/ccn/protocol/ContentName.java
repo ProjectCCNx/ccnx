@@ -568,6 +568,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @see fromURI(String)
 	 * @throws MalformedContentNameStringException
 	 * @deprecated Use {@link #fromURI(String)} or {@link #fromURI(Object...)} instead.
+	 * This is method creates an inconsistency in the API (Strings are components, not paths, unlike
+	 * other fromURI methods), hence is deprecated and will be removed in future.
 	 */
 	@Deprecated
 	public static ContentName fromURI(String parts[]) throws MalformedContentNameStringException {
@@ -1026,6 +1028,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @return
 	 * @throws MalformedContentNameStringException
 	 */
+	@Deprecated
 	public static ContentName parse(String str) throws MalformedContentNameStringException {
 		if(str == null) return null;
 		if(str.length() == 0) return ROOT;
