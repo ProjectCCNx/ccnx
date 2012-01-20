@@ -260,7 +260,6 @@ ccn_parse_tagged_string(struct ccn_buf_decoder *d, enum ccn_dtag dtag, struct cc
         ccn_buf_advance(d);
         if (d->decoder.state >= 0 &&
             CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
-            res = store->length;
             p = d->buf + d->decoder.index;
             size = d->decoder.numval;
             ccn_buf_advance(d);

@@ -89,7 +89,6 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     va_list ap;
     struct ccn_charbuf *b;
     int res;
-    const char *portstr;    
     if (h == NULL || h->debug == 0 || h->logger == 0)
         return;
     b = ccn_charbuf_create();
@@ -99,11 +98,8 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     if ((h->debug >= CCNL_FINE) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
           t.tv_sec >= h->logtime + 30)) {
-        portstr = h->portstr;
-        if (portstr == NULL)
-            portstr = "";
         ccn_charbuf_putf(b, "%ld.000000 ccnr[%d]: %s ____________________ %s",
-                         (long)t.tv_sec, h->logpid, h->portstr, ctime(&t.tv_sec));
+                         (long)t.tv_sec, h->logpid, h->portstr ? h->portstr : "", ctime(&t.tv_sec));
         h->logtime = t.tv_sec;
         h->logbreak = 30;
     }

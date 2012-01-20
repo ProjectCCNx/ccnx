@@ -109,6 +109,7 @@ ccn_decoder_create(int formatting_flags, const struct ccn_dict *dtags)
     if (d->stringstack == NULL) {
         free(d);
         d = NULL;
+        return(NULL);
     }
     d->schema = CCN_NO_SCHEMA;
     d->tagdict = dtags->dict;
@@ -680,6 +681,10 @@ process_file(char *path, int formatting_flags, const struct ccn_dict *dtags)
     }
 
     d = ccn_decoder_create(formatting_flags, dtags);
+    if (d == NULL) {
+        fprintf(stderr, "Unable to allocate decoder\n");
+        return(1);
+    }
     res = process_fd(d, fd);
     ccn_decoder_destroy(&d);
 
@@ -737,6 +742,10 @@ process_split_file(char *base, char *path, int formatting_flags,
     cs->fileprefix = base;
     cs->fragment = *suffix;
     d = ccn_decoder_create(formatting_flags, dtags);
+    if (d == NULL) {
+        fprintf(stderr, "Unable to allocate decoder\n");
+        return(1);
+    }
     ccn_decoder_set_callback(d, set_stdout, cs);
     res = process_fd(d, fd);
     *suffix = cs->fragment;
@@ -825,12 +834,16 @@ main(int argc, char **argv)
         usage(argv[0]);
     
     if (tflag) {
-            d = ccn_decoder_create(1, &ccn_dtag_dict);
-            res |= process_data(d, test1, sizeof(test1));
-            ccn_decoder_destroy(&d);
-            return (res);
+        d = ccn_decoder_create(1, &ccn_dtag_dict);
+        if (d == NULL) {
+            fprintf(stderr, "Unable to allocate decoder\n");
+            exit(1);
+        }
+        res |= process_data(d, test1, sizeof(test1));
+        ccn_decoder_destroy(&d);
+        return (res);
     }
-
+    
     for (suffix = 0; optind < argc; optind++) {
         if (sarg) {
             fprintf(stderr, "<!-- Processing %s into %s -->\n", argv[optind], sarg);
