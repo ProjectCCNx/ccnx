@@ -16,20 +16,21 @@ You must set the environment variables ANDROID_SDK and ANDROID_NDK.
 These must point to the root of the SDK Tools and NDK directories.  
 
 Supported Versions:
-* Android NDK r4-r6
-* Android SDK r13-r15
+* Android NDK r7
+* Android SDK r16
 
 Supported Target Android Devices:
 Android 2.1
 Android 2.2
 Android 2.3
+Android 3.x
 
 Newer tablet oriented versions of Android, such as 3.0+ are not supported yet but will be in the near future as build support and toolchains catch up.
 
 For example (Use the path to desired tools):
 
 	export ANDROID_SDK=~/android-sdk-mac_x86
-	export ANDROID_NDK=~/android-ndk-r6
+	export ANDROID_NDK=~/android-ndk-r7
 
 Android is not build as part of the top-level make.  You must run
 make in this directory.
@@ -68,6 +69,14 @@ these steps:
   the ccnd code.
 
 - Build the apps/ directory
+
+Honeycomb
+===========
+Android 3.x devices (and possibly some 2.x) devices the crypto support includes a subset of the Bouncy Castle library.  See: http://redmine.ccnx.org/issues/100589 for details.  As a result, the 3.x devices we tested failed with ClassNotFoundException trying to resolve the BouncyCastleProvider.  To work around this, we include the Bouncy Castle provider jar file if you specify in the CCNx-Android-Services project:
+
+make honeycomb
+
+Since this is the only project relying upon the functionality, this change only affects CCNx-Android-Services.  Because of the size of the jar file (around 1.5mb) we are interested in a better solution long term, though there is no indication Google has changed their approach, except to enhance the android crypto library to rely upon functionality delivered through openssl.
 
 Installing
 ===========
