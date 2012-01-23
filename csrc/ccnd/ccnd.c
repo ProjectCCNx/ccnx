@@ -3,7 +3,7 @@
  *
  * Main program of ccnd - the CCNx Daemon
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -2652,7 +2652,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     if (face == NULL)
         goto Finish;
     if (forwarding_entry->lifetime < 0)
-        forwarding_entry->lifetime = 60;
+        forwarding_entry->lifetime = 2000000000;
     else if (forwarding_entry->lifetime > 3600 &&
              forwarding_entry->lifetime < (1 << 30))
         forwarding_entry->lifetime = 300;
