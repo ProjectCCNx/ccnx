@@ -21,7 +21,7 @@ SUBDIRS_distclean := $(addsuffix .distclean,$(SUBDIRS))
 
 .PHONY: subdirs mkdirs install $(SUBDIRS) $(SUBDIRS_clean)
 
-default all: $(SUBDIRS)
+default all honeycomb: $(SUBDIRS)
 
 # Build externals without parallism
 $(SUBDIRS): 

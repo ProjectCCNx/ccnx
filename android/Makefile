@@ -30,10 +30,10 @@ SUBDIRS_distclean := $(addsuffix .distclean,$(SUBDIRS))
 .PHONY: subdirs $(SUBDIRS_clean) $(SUBDIRS) $(SUBDIRS_distclean) _always
 
 ifeq ($(SKIP_BUILD),)
-default all: $(SUBDIRS)
+default all honeycomb: $(SUBDIRS)
 
 else
-default all: 
+default all honeycomb: 
 	@echo 
 	@echo '*************************************************'
 	@echo '    Missing either ANDROID_SDK or ANDROID_NDK,'
