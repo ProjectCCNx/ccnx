@@ -345,7 +345,7 @@ public class RFSTest extends RepoTestBase {
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
 		Interest interest = new Interest(new ContentName(nerpre, COMMAND_MARKER_BASIC_ENUMERATION));
-		ContentName responseName = new ContentName();
+		ContentName responseName = ContentName.ROOT;
 		Log.info("RFSTEST: Name enumeration prefix:{0}", interest.name());
 		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);

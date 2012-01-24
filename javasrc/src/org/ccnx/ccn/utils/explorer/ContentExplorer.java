@@ -158,13 +158,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		setSize(400, 300);
 
 		ContentName slash = null;
-		try {
-			slash = ContentName.fromNative("/");
-			slash = new ContentName();
-		} catch (MalformedContentNameStringException e1) {
-			Log.logException("could not create slash (\"/\") content name", e1);
-			Log.exitApplication();
-		}
+		slash = ContentName.ROOT;
 
 		DefaultMutableTreeNode top = new DefaultMutableTreeNode(new IconData(
 				ICON_FOLDER, null, new Name(slash.component(0), null, true)));
@@ -898,7 +892,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			DefaultMutableTreeNode node = getTreeNode(event.getPath());
 			Name nodeName = getNameNode(node);
 			Log.fine("nodeName: " + nodeName.toString());
-			ContentName prefixToCancel = new ContentName();
+			ContentName prefixToCancel = ContentName.ROOT;
 			if (nodeName.path == null) {
 				Log.fine("collapsed the tree at the root");
 			} else {
@@ -1034,7 +1028,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			Log.fine("fnode: " + new ContentName(fnode.name) + " path: " + fnode.path.toString());
 		ContentName toExpand = null;
 		if (fnode.path == null)
-			toExpand = new ContentName();
+			toExpand = ContentName.ROOT;
 		else
 			toExpand = new ContentName(fnode.path, fnode.name);
 
@@ -1087,7 +1081,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		if (Log.getLevel()==Level.FINE) {
 			Log.fine("got a callback! Here are the returned names: ");
 			for (ContentName cn : n) {
-				if (!prefix.equals(new ContentName()))
+				if (!prefix.equals(ContentName.ROOT))
 					Log.fine(cn.toString() + " (" + prefix.toString() + cn.toString() + ")");
 				else
 					Log.fine(cn.toString() + " (" + cn.toString() + ")");

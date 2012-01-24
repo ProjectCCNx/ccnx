@@ -279,7 +279,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener, CCNC
 		Log.info(Log.FAC_TEST, "Completed explicitExcludeFastResponseTest");
 
 		ContentName prefixMarked = new ContentName(COMMAND_MARKER_BASIC_ENUMERATION);
-		
+
 		//we have minSuffixComponents to account for sig, version, seg and digest
 		Interest pi = Interest.constructInterest(prefixMarked, null, null, null, 4, null);
 

@@ -202,7 +202,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			_components = parent._components;
 			return;
 		}
-		byte[][] _components = new byte[parent._components.length+1][];
+		_components = new byte[parent._components.length+1][];
 		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
 		_components[parent._components.length] = component;
 	}
@@ -215,7 +215,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return;
 		}
 		ContentName cn = cnp.getContentName();
-		byte[][] _components = new byte[parent._components.length+cn._components.length][];
+		_components = new byte[parent._components.length+cn._components.length][];
 		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
 		System.arraycopy(cn._components, 0, _components, parent._components.length, cn._components.length);
 	}
@@ -227,7 +227,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			_components = parent._components;
 			return;
 		}
-		byte[][] _components = new byte[parent._components.length+1][];
+		_components = new byte[parent._components.length+1][];
 		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
 		_components[parent._components.length] = component.getBytes();
 	}
@@ -239,7 +239,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			_components = parent._components;
 			return;
 		}
-		byte[][] _components = new byte[parent._components.length+1][];
+		_components = new byte[parent._components.length+1][];
 		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
 		_components[parent._components.length] = cprov.getComponent();
 	}
@@ -556,7 +556,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			}
 
 			result = new ContentName();
-			result._components = (byte[][]) comps.toArray();
+			result._components = comps.toArray(new byte[comps.size()][]);
 			return result;
 		} catch (URISyntaxException e) {
 			throw new MalformedContentNameStringException(e.getMessage());
@@ -595,7 +595,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				}
 			}
 			ContentName result = new ContentName();
-			result._components = (byte[][]) comps.toArray();
+			result._components = comps.toArray(new byte[comps.size()][]);
 			return result;
 		} catch (URISyntaxException e) {
 			throw new MalformedContentNameStringException(e.getMessage());
@@ -949,7 +949,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			components.add(decoder.readBinaryElement(CCNProtocolDTags.Component));
 
 		decoder.readEndElement();
-		_components = (byte[][]) components.toArray();
+		_components = components.toArray(new byte[components.size()][]);
 	}
 
 	/**

@@ -480,7 +480,7 @@ public class ContentNameTest {
 	}
 
 	@Test
-	public void testDecodeInputStream() {
+	public void testDecodeInputStream() throws ContentDecodingException {
 		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
 
 		byte [][] arr = new byte[4][];
@@ -505,12 +505,7 @@ public class ContentNameTest {
 		System.out.println("Decoding name: ");
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
 		ContentName name2 = new ContentName();
-		try {
-			name2.decode(bais);
-		} catch (ContentDecodingException e) {
-			Log.warning("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			Log.warningStackTrace(Log.FAC_TEST, e);
-		}
+		name2.decode(bais);
 		System.out.println("Decoded name: " + name2);
 		assertEquals(name, name2);
 		

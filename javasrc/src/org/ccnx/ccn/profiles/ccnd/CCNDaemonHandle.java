@@ -17,6 +17,8 @@
 
 package	org.ccnx.ccn.profiles.ccnd;
 
+import static org.ccnx.ccn.protocol.ContentName.ROOT;
+
 import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
@@ -82,7 +84,7 @@ public class CCNDaemonHandle {
 			throw new IllegalArgumentException("Unexpected error encoding encodeMe parameter.  reason: " + reason);
 		}
 		KeyManager keyManager = _manager.getKeyManager();
-		ContentObject contentOut = ContentObject.buildContentObject(new ContentName(), SignedInfo.ContentType.DATA, 
+		ContentObject contentOut = ContentObject.buildContentObject(ROOT, SignedInfo.ContentType.DATA, 
 														encoded, 
 														keyManager.getDefaultKeyID(), 
 														new KeyLocator(keyManager.getDefaultPublicKey()), keyManager, 

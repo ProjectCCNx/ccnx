@@ -162,7 +162,7 @@ public class VersioningProfileTest {
 			fail("should be versioned");
 		if (!VersioningProfile.hasTerminalVersion(abSegName))
 			fail("should be versioned (with segments): " + abSegName);
-		if (VersioningProfile.hasTerminalVersion(new ContentName() ))
+		if (VersioningProfile.hasTerminalVersion(ContentName.ROOT))
 			fail("shouldn't be versioned");
 		
 		/* check the sequence 0xf8 0x00 * is not treated as a version */
@@ -186,7 +186,7 @@ public class VersioningProfileTest {
 			fail("Not equals: " + VersioningProfile.cutTerminalVersion(abSegName).first() + " and " + abName);
 		if (!VersioningProfile.cutTerminalVersion(abName).first().equals(abName))
 			fail();
-		if (!VersioningProfile.cutTerminalVersion(new ContentName()).first().equals(new ContentName()))
+		if (!VersioningProfile.cutTerminalVersion(ContentName.ROOT).first().equals(ContentName.ROOT))
 			fail();
 		// check correct version field stripped if 2 present
 		if (!VersioningProfile.cutTerminalVersion(abvvName).first().equals(abvName))
