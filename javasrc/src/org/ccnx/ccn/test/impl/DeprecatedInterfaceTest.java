@@ -98,7 +98,7 @@ public class DeprecatedInterfaceTest extends CCNTestBase implements CCNFilterLis
 		sawInterest = true;
 		interestSema.release();
 		if (putNow) {
-			ContentObject co = ContentObject.buildContentObject(ContentName.fromNative(prefix, 
+			ContentObject co = ContentObject.buildContentObject(new ContentName(prefix, 
 						Integer.toString(counter++)), "deprecationTest".getBytes());
 			try {
 				putNow = false;

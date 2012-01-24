@@ -357,7 +357,7 @@ public class NetworkTest extends CCNTestBase {
 
 	class CancelTestInterestHandler implements CCNInterestHandler {
 		CCNWriter writer = null;
-		ContentName testName = ContentName.fromNative(testPrefix, "cancelTest");
+		ContentName testName = new ContentName(testPrefix, "cancelTest");
 
 		private CancelTestInterestHandler() throws IOException {
 			writer = new CCNWriter(testName, putHandle);
