@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -20,15 +20,13 @@ package org.ccnx.ccn.profiles.nameenum;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNContentInterest;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestHandler;
-import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.QueuedContentHandler;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
@@ -59,8 +57,8 @@ import org.ccnx.ccn.protocol.Interest;
  * may not be available at this time (for example, /a.com/b/c.txt might have
  * been enumerated but a.com content may not be available).
  *
- * @see CCNFilterListener
- * @see CCNInterestListener
+ * @see CCNInterestHandler
+ * @see CCNContentHandler
  * @see BasicNameEnumeratorListener
  * @see NameEnumerationResponse
  *
@@ -152,142 +150,111 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	/**
 	 * Class to handle responses via a separate thread
 	 */
-	protected class NEHandler implements Runnable {
-		protected Queue<CCNContentInterest> _queue = new ConcurrentLinkedQueue<CCNContentInterest>();
+	protected class NEHandler extends QueuedContentHandler<CCNContentInterest> {
 		protected CCNHandle _handle;
 		protected CCNContentHandler _handler;
-		protected boolean _isRunning = false;
 
 		protected NEHandler(CCNHandle handle, CCNContentHandler handler) {
 			_handle = handle;
 			_handler = handler;
 		}
 
-		/**
-		 * Add a content object to the queue for processing. If we aren't running a processing
-		 * thread right now, start one.
-		 *
-		 * @param co
-		 */
-		protected void add(CCNContentInterest ci) {
-			synchronized (_queue) {
-				_queue.add(ci);
-				if (!_isRunning) {
-					_isRunning = true;
-					SystemConfiguration._systemThreadpool.execute(this);
+		@Override
+		public void process(CCNContentInterest ci) {
+			ContentObject c = ci.getContent();
+			Interest interest = ci.getInterest();
+			ContentName prefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+			NERequest ner = getCurrentRequest(prefix);
+
+			//need to make sure the prefix is still registered
+			if (ner==null)
+				return;
+
+			ner.removeInterest(interest);
+
+			NameEnumerationResponseMessageObject neResponse;
+			ArrayList<ContentName> names = new ArrayList<ContentName>();
+			LinkedList<Link> links;
+			Interest newInterest = interest;
+
+			//update: now supports multiple responders!
+			//note:  if responseIDs are longer than 1 component, need to revisit interest generation for followups
+			if (c != null) {
+				if (Log.isLoggable(Level.FINE)) {
+					Log.fine("we have a match for: "+interest.name()+" ["+ interest.toString()+"]");
 				}
-			}
-		}
+				ArrayList<Interest> newInterests = new ArrayList<Interest>();
 
-		public void run() {
-			while (true) {
+				//we want to get new versions of this object
+				newInterest = VersioningProfile.firstBlockLatestVersionInterest(c.name(), null);
+				newInterests.add(newInterest);
 
-				CCNContentInterest ci = null;
-				synchronized (_queue) {
-					ci = _queue.poll();
-					if (null == ci) {
-						_isRunning = false;
-						return;
-					}
-				}
+				//does this content object have a response id in it?
+				ContentName responseName = getIdFromName(c.name());
 
-				Interest interest = ci.getInterest();
-				ContentObject c = ci.getContent();
-				ContentName prefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
-				NERequest ner = getCurrentRequest(prefix);
-
-				//need to make sure the prefix is still registered
-				if (ner==null) {
-					//this is no longer registered...  no need to keep refreshing the interest use the callback
-					continue;
+				if (responseName==null ) {
+					//no response name...  this is an error!
+					Log.warning("CCNNameEnumerator received a response without a responseID: {0} matching interest {1}", c.name(), interest.name());
 				} else {
-					ner.removeInterest(interest);
-	            }
+					//we have a response name.
 
-				NameEnumerationResponseMessageObject neResponse;
-				ArrayList<ContentName> names = new ArrayList<ContentName>();
-				LinkedList<Link> links;
-				Interest newInterest = interest;
+					//supports single component response IDs
+					//if response IDs are hierarchical, we need to avoid exploding the number of Interests we express
 
-				//update: now supports multiple responders!
-				//note:  if responseIDs are longer than 1 component, need to revisit interest generation for followups
-				if (c != null) {
+					//if the interest had a responseId in it, we don't need to make a new base interest with an exclude, we would have done this already.
 					if (Log.isLoggable(Level.FINE)) {
-						Log.fine("we have a match for: "+interest.name()+" ["+ interest.toString()+"]");
+						Log.fine("response id from interest: "+getIdFromName(interest.name()));
 					}
-					ArrayList<Interest> newInterests = new ArrayList<Interest>();
 
-					//we want to get new versions of this object
-					newInterest = VersioningProfile.firstBlockLatestVersionInterest(c.name(), null);
-					newInterests.add(newInterest);
-
-					//does this content object have a response id in it?
-					ContentName responseName = getIdFromName(c.name());
-
-					if (responseName==null ) {
-						//no response name...  this is an error!
-						Log.warning("CCNNameEnumerator received a response without a responseID: {0} matching interest {1}", c.name(), interest.name());
+					if(getIdFromName(interest.name()) != null && getIdFromName(interest.name()).count() > 0) {
+						//the interest has a response ID in it already...  skip making new base interest
 					} else {
-						//we have a response name.
+						//also need to add this responder to the exclude list to find more responders
+						ContentName prefixWithMarker =
+							new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+						Exclude excludes = interest.exclude();
+						if(excludes==null)
+							excludes = new Exclude();
+						excludes.add(new byte[][]{responseName.component(0)});
+						newInterest = Interest.constructInterest(prefixWithMarker, excludes, null, null, 4, null);
 
-						//supports single component response IDs
-						//if response IDs are hierarchical, we need to avoid exploding the number of Interests we express
-
-						//if the interest had a responseId in it, we don't need to make a new base interest with an exclude, we would have done this already.
-						if (Log.isLoggable(Level.FINE)) {
-							Log.fine("response id from interest: "+getIdFromName(interest.name()));
-						}
-
-						if(getIdFromName(interest.name()) != null && getIdFromName(interest.name()).count() > 0) {
-							//the interest has a response ID in it already...  skip making new base interest
-						} else {
-							//also need to add this responder to the exclude list to find more responders
-							ContentName prefixWithMarker =
-								new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
-							Exclude excludes = interest.exclude();
-							if(excludes==null)
-								excludes = new Exclude();
-							excludes.add(new byte[][]{responseName.component(0)});
-							newInterest = Interest.constructInterest(prefixWithMarker, excludes, null, null, 4, null);
-
-							//check to make sure the interest isn't already expressed
-							if(!ner.containsInterest(newInterest))
-								newInterests.add(newInterest);
-						}
-
+						//check to make sure the interest isn't already expressed
+						if(!ner.containsInterest(newInterest))
+							newInterests.add(newInterest);
 					}
 
-					try {
-						for(Interest i: newInterests) {
-							_handle.expressInterest(i, _handler);
-							ner.addInterest(i);
-							Log.finest("expressed: {0}", i);
-						}
-					} catch (IOException e1) {
-						// error registering new interest
-						Log.warning("error registering new interest in handleContent");
-						Log.warningStackTrace(e1);
-					}
+				}
 
-					newInterests.clear();
-
-					try {
-						neResponse = new NameEnumerationResponseMessageObject(c, _handle);
-						links = neResponse.contents();
-						for (Link l: links) {
-							names.add(l.targetName());
-						}
-						//strip off NEMarker before passing through callback
-						//Note: we must not hold any locks here
-						callback.handleNameEnumerator(
-								interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), names);
-					} catch(ContentDecodingException e) {
-						Log.warning("Error parsing Collection from ContentObject in CCNNameEnumerator");
-						Log.warningStackTrace(e);
-					} catch(IOException e) {
-						Log.warning("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
-						Log.warningStackTrace(e);
+				try {
+					for(Interest i: newInterests) {
+						_handle.expressInterest(i, _handler);
+						ner.addInterest(i);
+						Log.finest("expressed: {0}", i);
 					}
+				} catch (IOException e1) {
+					// error registering new interest
+					Log.warning("error registering new interest in handleContent");
+					Log.warningStackTrace(e1);
+				}
+
+				newInterests.clear();
+
+				try {
+					neResponse = new NameEnumerationResponseMessageObject(c, _handle);
+					links = neResponse.contents();
+					for (Link l: links) {
+						names.add(l.targetName());
+					}
+					//strip off NEMarker before passing through callback
+					//Note: we must not hold any locks here
+					callback.handleNameEnumerator(
+							interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), names);
+				} catch(ContentDecodingException e) {
+					Log.warning("Error parsing Collection from ContentObject in CCNNameEnumerator");
+					Log.warningStackTrace(e);
+				} catch(IOException e) {
+					Log.warning("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
+					Log.warningStackTrace(e);
 				}
 			}
 		}
@@ -556,7 +523,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	 * @param name ContentName to register for filtering incoming Interests
 	 * @throws IOException
 	 *
-	 * @see CCNFilterListener
+	 * @see CCNInterestHandler
 	 */
 
 	public void registerNameSpace(ContentName name) throws IOException {
