@@ -3,7 +3,7 @@
  */ 
 /* (Will be) Part of the CCNx C Library.
  *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -865,35 +865,35 @@ ccn_btree_prev_leaf(struct ccn_btree *btree,
     struct ccn_btree_node *p = NULL;
     struct ccn_btree_node *q = NULL;
     struct ccn_btree_node *parent = NULL;
-    int i;
     int ans;
-    int res;
-    struct ccn_charbuf *key = NULL;
+    int i;
+    int n;
     
     ans = -1;
-    key = ccn_charbuf_create();
     p = node;
     while (p->parent != 0) {
-        res = ccn_btree_key_fetch(key, p, ccn_btree_node_level(p) == 0 ? 0 : 1);
-        if (res < 0)
-            goto Bail;
         parent = ccn_btree_getnode(btree, p->parent, 0);
         if (parent == NULL)
             goto Bail;
-        res = ccn_btree_searchnode(key->buf, key->length, parent);
-        if (res < 0)
+        n = ccn_btree_node_nent(parent);
+        if (n < 0)
             goto Bail;
-        i = CCN_BT_SRCH_INDEX(res) + CCN_BT_SRCH_FOUND(res) - 1;
+        /* Set i to our index in parent */
+        for (i = n - 1; i > 0; i--) {
+            e = ccn_btree_node_getentry(sizeof(*e), parent, i);
+            if (MYFETCH(e, child) == p->nodeid)
+                break;
+        }
         if (i > 0) {
-            /* We have found the ancestor that has the leaf we are after. */
-            q = NULL;
-            e = ccn_btree_node_getentry(sizeof(*e), parent, i - 1);
-            q = ccn_btree_getnode(btree, MYFETCH(e, child), parent->nodeid);
-            if (q == NULL)
-                goto Bail;
-            res = ccn_btree_lookup_internal(btree, q, 0, key->buf, 0, ansp);
-            if (res < 0)
-                goto Bail;
+            /* we can stop walking up the tree now, and walk down instead */
+            for (q = parent; ccn_btree_node_level(q) != 0;) {
+                e = ccn_btree_node_getentry(sizeof(*e), q, i - 1);
+                q = ccn_btree_getnode(btree, MYFETCH(e, child), q->nodeid);
+                if (q == NULL)
+                    goto Bail;
+                i = ccn_btree_node_nent(q);
+            }
+            *ansp = q;
             ans = 1;
             break;
         }
@@ -904,7 +904,6 @@ ccn_btree_prev_leaf(struct ccn_btree *btree,
         ans = 0;
     }
 Bail:
-    ccn_charbuf_destroy(&key);
     return(ans);
 }
 
