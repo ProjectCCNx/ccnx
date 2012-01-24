@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.test.protocol;
 
+import static org.ccnx.ccn.protocol.ContentName.ROOT;
+import static org.ccnx.ccn.protocol.ContentName.SEPARATOR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -282,23 +284,22 @@ public class ContentNameTest {
 	}
 	
 	@Test
+	@SuppressWarnings( "deprecation" ) // this method tests a deprecated method
 	public void testContentNameStringArray() throws MalformedContentNameStringException {
 		Log.info(Log.FAC_TEST, "Starting testContentNameStringArray");
 
 		ContentName name;
 		ContentName name2;
-		String testString = ContentName.SEPARATOR + baseName + ContentName.SEPARATOR +
-		subName1 + ContentName.SEPARATOR + 
-		document1;
+		String testString = SEPARATOR + baseName + SEPARATOR + subName1 + SEPARATOR + document1;
 		String [] testStringParts = new String[]{baseName,subName1,document1};
-		
+
 		// as URI format
-		name = ContentName.fromURI((Object[]) testStringParts);
+		name = ContentName.fromURI(testStringParts);
 		name2 = ContentName.fromURI(testString);
 		assertEquals(name, name2);
 		
 		// as native Java
-		name = new ContentName((Object[]) testStringParts);
+		name = new ContentName(baseName,subName1,document1);
 		name2 = ContentName.fromNative(testString);
 		assertEquals(name, name2);
 		
