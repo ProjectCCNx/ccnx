@@ -884,8 +884,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public ContentName append(ContentName other) {
 		ContentName cn = new ContentName();
 		cn._components = new byte[_components.length + other._components.length][];
-		System.arraycopy(cn._components, 0, _components, 0, _components.length);
-		System.arraycopy(cn._components, _components.length, other._components, 0, other._components.length);
+		System.arraycopy(_components, 0, cn._components, 0, _components.length);
+		System.arraycopy(other._components, 0, cn._components, _components.length, other._components.length);
 		return cn;
 	}
 
