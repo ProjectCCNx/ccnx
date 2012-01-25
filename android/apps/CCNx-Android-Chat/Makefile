@@ -69,7 +69,7 @@ uninstall:
 
 environment:
 ifeq ($(ANDROID_SDK),)
-	$(error Please set ANDROID_SDK path to point to an r7 or later SDK)
+	$(error Please set ANDROID_SDK path to point to an r16 or later SDK)
 endif
 	@echo "Executing in $(CURDIR)"
 
