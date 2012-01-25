@@ -39,7 +39,7 @@ default all: $(TARGET)
 honeycomb: clean bcprov default
 
 bcprov:
-    ./download.sh libs http://repo2.maven.org/maven2/org/bouncycastle/bcprov-jdk16/1.43 bcprov-jdk16-1.43.jar
+	./download.sh libs http://repo2.maven.org/maven2/org/bouncycastle/bcprov-jdk16/1.43 bcprov-jdk16-1.43.jar
 
 SRC := $(wildcard src/org/ccnx/android/examples/startup/*.java) AndroidManifest.xml
 

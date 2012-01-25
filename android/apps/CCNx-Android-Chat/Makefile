@@ -21,7 +21,7 @@ GEN := gen
 ############
 # Nothing tweekable down here
 
-.PHONY: all environment clean simpleclean distclean 
+.PHONY: all environment clean simpleclean distclean
 
 .SUFFIXES: .jar .properties .xml
 
@@ -39,7 +39,7 @@ default all: $(TARGET)
 honeycomb: clean bcprov default
 
 bcprov:
-    ./download.sh libs http://repo2.maven.org/maven2/org/bouncycastle/bcprov-jdk16/1.43 bcprov-jdk16-1.43.jar
+	./download.sh libs http://repo2.maven.org/maven2/org/bouncycastle/bcprov-jdk16/1.43 bcprov-jdk16-1.43.jar
 
 SRC := $(wildcard src/org/ccnx/android/apps/chat/*.java) AndroidManifest.xml
 
