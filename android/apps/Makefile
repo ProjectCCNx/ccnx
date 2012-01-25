@@ -21,7 +21,7 @@ SUBDIRS_distclean := $(addsuffix .distclean,$(SUBDIRS))
 
 .PHONY: subdirs mkdirs install $(SUBDIRS) $(SUBDIRS_clean)
 
-default all honeycomb: $(SUBDIRS)
+default all: $(SUBDIRS)
 
 # Build externals without parallism
 $(SUBDIRS): 
@@ -30,6 +30,11 @@ $(SUBDIRS):
 install uninstall:
 	for f in $(SUBDIRS); do \
 	   	$(MAKE) -C $$f $@; \
+	done
+
+honeycomb:
+	for f in $(SUBDIRS); do \
+	   	$(MAKE) honeycomb -C $$f $@; \
 	done
 
 clean: $(SUBDIRS_clean)

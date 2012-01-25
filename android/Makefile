@@ -30,7 +30,7 @@ SUBDIRS_distclean := $(addsuffix .distclean,$(SUBDIRS))
 .PHONY: subdirs $(SUBDIRS_clean) $(SUBDIRS) $(SUBDIRS_distclean) _always
 
 ifeq ($(SKIP_BUILD),)
-default all honeycomb: $(SUBDIRS)
+default all: $(SUBDIRS)
 
 else
 default all honeycomb: 
@@ -62,6 +62,11 @@ $(SUBDIRS):
 	$(MAKE) -C $@ -j 1
 
 install uninstall: 
+	$(MAKE) -C CCNx-Android-Services $@
+	$(MAKE) -C apps $@
+
+honeycomb:
+	$(MAKE) -C external -j 1
 	$(MAKE) -C CCNx-Android-Services $@
 	$(MAKE) -C apps $@
 
