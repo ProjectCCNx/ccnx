@@ -27,6 +27,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+
 /*
  * Class:     org_ccnx_android_services_repo_RepoService
  * Method:    ccnrCreate
