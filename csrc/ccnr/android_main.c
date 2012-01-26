@@ -42,4 +42,5 @@ start_ccnr(void)
 	s = (h->running != 0);
     ccnr_msg(h, "exiting.");
 	r_init_destroy(&h);
+	return 0;
 }
