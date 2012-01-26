@@ -21,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.util.Properties;
 import java.util.logging.Level;
+import java.util.regex.Matcher;
 
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.RepoWrapper.REPO_OPTIONS;
@@ -53,6 +54,12 @@ public final class RepoService extends CCNxService {
 	private String repo_local_name = null;
 	private String repo_global_name = null;
 	private String repo_namespace = null;
+	/* We should version the impl 
+	 * However we only provide versions bundled
+	 * with the CCNx release, currently just v1 and v2.
+	 * Does it make sense for support semver of our repo
+	 */
+	private String repo_version = "2.0.0"; 
 	
 	// used for startup & shutdown
 	protected Object _lock = new Object();
@@ -160,11 +167,16 @@ public final class RepoService extends CCNxService {
 							}
 						}
 					}
-					_server = new RepositoryServer(_repo);
-					setStatus(SERVICE_STATUS.SERVICE_RUNNING);
-					_server.start();
+					if (Matcher.matches("2.0.0", repo_version) {
+						Log.d(TAG,"Repo version 2 starting using native C-based repo optimized for ARMv7");
+								
+					} else if (Matcher.matches("1.0.0", repo_version)) {
+						Log.d(TAG,"Repo version 1 starting using Java-based repo");
+						_server = new RepositoryServer(_repo);
+						setStatus(SERVICE_STATUS.SERVICE_RUNNING);
+						_server.start();
+					} 
 				}
-				//ready = true;
 			}
 
 		} catch(Exception e) {
@@ -187,4 +199,10 @@ public final class RepoService extends CCNxService {
 		}
 		serviceStopped();
 	}
+
+	protected native int ccnrCreate(String version);
+	protected native int ccnrRun();
+    protected native int ccnrDestroy();
+    protected native int ccnrKill();
+    protected native void ccnrSetenv(String key, String value, int overwrite);
 }
