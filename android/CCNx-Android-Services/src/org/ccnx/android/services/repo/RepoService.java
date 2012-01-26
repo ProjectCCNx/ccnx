@@ -59,7 +59,7 @@ public final class RepoService extends CCNxService {
 	 * with the CCNx release, currently just v1 and v2.
 	 * Does it make sense for support semver of our repo
 	 */
-	private String repo_version = "2.0.0"; 
+	private String repo_version = "2.0.0"; // XXX Make this configurable via Android Menu
 	
 	// used for startup & shutdown
 	protected Object _lock = new Object();
@@ -125,66 +125,86 @@ public final class RepoService extends CCNxService {
 	protected void runService() {
 		setStatus(SERVICE_STATUS.SERVICE_INITIALIZING);
 		
-		try {
-			File f;
-			if(repo_dir != null) {
-				f = new File(repo_dir);
-				f.mkdirs();
-			} else {
-				File external_dir;
-				// repo_dir is null, lets get a directory from the android system
-				// in external storage.
-				external_dir = Environment.getExternalStorageDirectory();
-				f = new File(external_dir.getAbsolutePath() + "/ccnx/repo/");
-				f.mkdirs();
-				repo_dir = f.getAbsolutePath();
-			}
-			Log.d(TAG,"Using repo directory " + repo_dir);
-			Log.d(TAG,"Using repo debug     " + repo_debug);
-
-			// Set the log level for the Repo
-			Log.d(TAG, "Setting CCNx Logging FAC_ALL to " + repo_debug);
-			org.ccnx.ccn.impl.support.Log.setLevel(org.ccnx.ccn.impl.support.Log.FAC_ALL, Level.parse(repo_debug));
-			
-			synchronized(_lock) {
-				if( null == _repo ) {
-					_repo = new LogStructRepoStore();
-
-					int count = 0;
-					while( count < 3 ) {
-						try {
-							count++;
-							_repo.initialize(repo_dir, null, repo_local_name, repo_global_name, repo_namespace, null);
-							break;
-						} catch(Exception e) {
-							if( count >= 3 )
-								throw e;
+		if (Pattern.matches("1\\.0\\.0", repo_version)) {
+			try {
+				File f;
+				if(repo_dir != null) {
+					f = new File(repo_dir);
+					f.mkdirs();
+				} else {
+					File external_dir;
+					// repo_dir is null, lets get a directory from the android system
+					// in external storage.
+					external_dir = Environment.getExternalStorageDirectory();
+					f = new File(external_dir.getAbsolutePath() + "/ccnx/repo/");
+					f.mkdirs();
+					repo_dir = f.getAbsolutePath();
+				}
+				Log.d(TAG,"Using repo directory " + repo_dir);
+				Log.d(TAG,"Using repo debug     " + repo_debug);
+	
+				// Set the log level for the Repo
+				Log.d(TAG, "Setting CCNx Logging FAC_ALL to " + repo_debug);
+				org.ccnx.ccn.impl.support.Log.setLevel(org.ccnx.ccn.impl.support.Log.FAC_ALL, Level.parse(repo_debug));
+				
+				synchronized(_lock) {
+					if( null == _repo ) {
+						_repo = new LogStructRepoStore();
+	
+						int count = 0;
+						while( count < 3 ) {
 							try {
-								Log.d(TAG,"Experiencing problems starting REPO, try again...");
-								Thread.sleep(1000);
-							} catch(InterruptedException ie) {
-
+								count++;
+								_repo.initialize(repo_dir, null, repo_local_name, repo_global_name, repo_namespace, null);
+								break;
+							} catch(Exception e) {
+								if( count >= 3 )
+									throw e;
+								try {
+									Log.d(TAG,"Experiencing problems starting REPO, try again...");
+									Thread.sleep(1000);
+								} catch(InterruptedException ie) {
+	
+								}
 							}
 						}
-					}
-					if (Pattern.matches("2.0.0", repo_version)) {
-						Log.d(TAG,"Repo version 2 starting using native C-based repo optimized for ARMv7");
-								
-					} else if (Pattern.matches("1.0.0", repo_version)) {
+	
 						Log.d(TAG,"Repo version 1 starting using Java-based repo");
 						_server = new RepositoryServer(_repo);
 						setStatus(SERVICE_STATUS.SERVICE_RUNNING);
 						_server.start();
-					} 
+					}
 				}
+			} catch(Exception e) {
+				e.printStackTrace();
+				thd = null;
+				return;
+			} finally {
+				thd = null;
 			}
-
-		} catch(Exception e) {
-			e.printStackTrace();
-			thd = null;
-			return;
-		} finally {
-			thd = null;
+		} else if (Pattern.matches("2\\.0\\.0", repo_version)) {
+			Log.d(TAG,"Repo version 2 starting using native C-based repo optimized for ARMv7");
+			try {
+				/* XXX Need to handle options
+				for( Entry<String,String> entry : options.entrySet() ) {
+					setenv(entry.getKey(), entry.getValue(), 1);
+				} */
+	
+				ccnrCreate(repo_version);
+				setStatus(SERVICE_STATUS.SERVICE_RUNNING);
+				try {
+					ccnrRun();
+				} finally {
+					ccnrDestroy();
+				}
+			} catch(Exception e) {
+				e.printStackTrace();
+				// returning will end the thread
+			}
+			serviceStopped();
+		} else {
+			Log.d(TAG,"Unknown Repo version " + repo_version + " specified, failed to start Repo.");
+			setStatus(SERVICE_STATUS.SERVICE_ERROR);
 		}
 	}
 	
@@ -192,12 +212,20 @@ public final class RepoService extends CCNxService {
 		Log.i(TAG,"stopService() called");
 		
 		setStatus(SERVICE_STATUS.SERVICE_TEARING_DOWN);
-		if( _server != null ) {
-			Log.i(TAG,"calling _server.shutDown()");
-			_server.shutDown();
-			_server = null;
+		if (Pattern.matches("1\\.0\\.0", repo_version)) {
+			if( _server != null ) {
+				Log.i(TAG,"calling _server.shutDown()");
+				_server.shutDown();
+				_server = null;
+			}
+		} else if (Pattern.matches("2\\.0\\.0", repo_version)) {
+			setStatus(SERVICE_STATUS.SERVICE_TEARING_DOWN);
+        	ccnrKill();
+		} else {
+			Log.d(TAG,"Unknown Repo version " + repo_version + " specified, failed to stop Repo.");
+			setStatus(SERVICE_STATUS.SERVICE_ERROR);
 		}
-		serviceStopped();
+		serviceStopped(); // XXX Is it really ok to assume we've stopped when we might get errors?
 	}
 
 	protected native int ccnrCreate(String version);
