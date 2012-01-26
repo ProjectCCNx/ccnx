@@ -21,7 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.util.Properties;
 import java.util.logging.Level;
-import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.RepoWrapper.REPO_OPTIONS;
@@ -167,10 +167,10 @@ public final class RepoService extends CCNxService {
 							}
 						}
 					}
-					if (Matcher.matches("2.0.0", repo_version) {
+					if (Pattern.matches("2.0.0", repo_version)) {
 						Log.d(TAG,"Repo version 2 starting using native C-based repo optimized for ARMv7");
 								
-					} else if (Matcher.matches("1.0.0", repo_version)) {
+					} else if (Pattern.matches("1.0.0", repo_version)) {
 						Log.d(TAG,"Repo version 1 starting using Java-based repo");
 						_server = new RepositoryServer(_repo);
 						setStatus(SERVICE_STATUS.SERVICE_RUNNING);
