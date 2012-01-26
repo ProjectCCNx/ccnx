@@ -28,6 +28,17 @@
 extern "C" {
 #endif
 
+extern int start_ccnr();
+
+static struct ccnr_handle *h = NULL;
+
+static int
+androidlogger(void *loggerdata, const char *format, va_list ap)
+{
+	int len = 0;
+	len = __android_log_vprint(ANDROID_LOG_INFO, "CCNR", format, ap);
+	return len;
+}
 
 /*
  * Class:     org_ccnx_android_services_repo_RepoService
@@ -36,7 +47,11 @@ extern "C" {
  */
 JNIEXPORT jint JNICALL Java_org_ccnx_android_services_repo_RepoService_ccnrCreate
   (JNIEnv * env, jobject this, jstring version) {
-  	return -1;
+    h = r_init_create("ccnr", androidlogger, NULL);
+    if (h == NULL) {
+        __android_log_print(ANDROID_LOG_ERROR,"CCNR", "ccnrCreate - r_init_create returned NULL");
+        return;
+    }
   }
 
 /*
@@ -46,7 +61,9 @@ JNIEXPORT jint JNICALL Java_org_ccnx_android_services_repo_RepoService_ccnrCreat
  */
 JNIEXPORT jint JNICALL Java_org_ccnx_android_services_repo_RepoService_ccnrRun
   (JNIEnv * env, jobject this) {
-	return -1;
+	__android_log_print(ANDROID_LOG_INFO,"CCNR", "ccnrRun - calling r_dispatch_run(%p)", h);
+	r_dispatch_run(h);
+	__android_log_print(ANDROID_LOG_INFO,"CCNR", "ccnrRun - r_dispatch_run exited");
   }
 
 /*
@@ -56,7 +73,8 @@ JNIEXPORT jint JNICALL Java_org_ccnx_android_services_repo_RepoService_ccnrRun
  */
 JNIEXPORT jint JNICALL Java_org_ccnx_android_services_repo_RepoService_ccnrDestroy
   (JNIEnv * env, jobject this) {
-  	return -1;
+	__android_log_print(ANDROID_LOG_INFO,"CCNR", "ccnrDestroy - ccnr stopping");
+	r_init_destroy(&h);
   }
 
 /*
@@ -66,7 +84,13 @@ JNIEXPORT jint JNICALL Java_org_ccnx_android_services_repo_RepoService_ccnrDestr
  */
 JNIEXPORT jint JNICALL Java_org_ccnx_android_services_repo_RepoService_ccnrKill
   (JNIEnv * env, jobject this) {
-  	return -1;
+	if( h != NULL ) {
+		__android_log_print(ANDROID_LOG_INFO,"CCNR", "ccnrKill set kill flag (%p)", h);
+		h->running = 0;
+	} else {
+		__android_log_print(ANDROID_LOG_INFO,"CCNR", "ccnrKill null handle");
+	}
+	return 0;
   }
 
 /*
@@ -76,6 +100,15 @@ JNIEXPORT jint JNICALL Java_org_ccnx_android_services_repo_RepoService_ccnrKill
  */
 JNIEXPORT void JNICALL Java_org_ccnx_android_services_repo_RepoService_ccnrSetenv
   (JNIEnv * env, jobject this, jstring jkey, jstring jvalue, jint joverwrite) {
+	const char *key = (*env)->GetStringUTFChars(env, jkey, NULL);
+	const char *value = (*env)->GetStringUTFChars(env, jvalue, NULL);
+
+	__android_log_print(ANDROID_LOG_INFO,"CCNR", "ccnrSetenv %s = %s", key, value);
+
+	setenv(key, value, joverwrite);
+
+	(*env)->ReleaseStringUTFChars(env, jkey, key);
+	(*env)->ReleaseStringUTFChars(env, jvalue, value);
   }
 
 #ifdef __cplusplus
