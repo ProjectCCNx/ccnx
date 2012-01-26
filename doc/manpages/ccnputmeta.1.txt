@@ -7,7 +7,7 @@ ccnputmeta - Associate a file with CCNx Content as metadata
 
 SYNOPSIS
 --------
-*ccnputmeta* [-javaopts '<options>'] [-debug '<portno>'] [-v] [-raw] [-unversioned] [-timeout 'millis'] [-log 'LEVEL'] 'ccnxname' 'metaname' 'filename|url'
+*ccnputmeta* [-javaopts '<options>'] [-debug '<portno>'] [-v] [-raw] [-unversioned] [-local | -allownonlocal] [-timeout 'millis'] [-log 'LEVEL'] 'ccnxname' 'metaname' 'filename|url'
 
 DESCRIPTION
 -----------
@@ -65,6 +65,13 @@ OPTIONS
      segmentation convention but does not use the versioning
      convention at all. When this option is used, the FileOutputStream
      abstraction will not be used, since that implies versioning.
+
+*-local*::
+     Specifies that a local repository be used to save the file.
+     This is the (new, as of release 0.5.0) default behavior.
+
+*-allownonlocal*::
+     Specifies that either a local or non-local repository be used to save the file.
 
 *-timeout* 'millis'::
      Set the timeout that will be used for putting content objects on

@@ -4,7 +4,7 @@
  *
  * A CCNx command-line utility.
  *
- * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -45,8 +45,10 @@ usage(const char *progname)
             "    NoteFinal = 16,\n"
             "    NoteTimeout = 32,\n"
             "    NoteOpenClose = 64\n"
-            "  -p pipeline specifies the size of the pipeline\n"
-            "  -s scope specifies the scope for the interests\n"
+            "  -p pipeline specifies the size of the pipeline.  Default 4.\n"
+            "     pipeline >= 0.\n"
+            "  -s scope specifies the scope for the interests.  Default unlimited.\n"
+            "     scope = 0 (cache), 1 (local), 2 (neighborhood), 3 (unlimited).\n"
             "  -a allow stale data\n",
             progname);
     exit(1);
@@ -68,7 +70,7 @@ make_template(int allow_stale, int scope)
         ccnb_append_number(templ, CCN_AOK_DEFAULT | CCN_AOK_STALE);
         ccn_charbuf_append_closer(templ); /* </AnswerOriginKind> */
     }
-    if (scope >= 0) {
+    if (scope >= 0 && scope <= 2) {
         ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", scope);
     }
     ccn_charbuf_append_closer(templ); /* </Interest> */
@@ -108,9 +110,13 @@ main(int argc, char **argv)
                 break;
             case 'p':
                 pipeline = atoi(optarg);
+                if (pipeline < 0)
+                    usage(argv[0]);
                 break;
             case 's':
                 scope = atoi(optarg);
+                if (scope < 0 || scope > 3)
+                    usage(argv[0]);
                 break;
             case 'h':
             default:

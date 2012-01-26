@@ -2,12 +2,21 @@
 .\"     Title: ccnputmeta
 .\"    Author: [see the "AUTHOR" section]
 .\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
-.\"      Date: 12/07/2011
+.\"      Date: 01/26/2012
 .\"    Manual: \ \&
-.\"    Source: \ \& ccnx-0.4.2
+.\"    Source: \ \& 0.4.2
 .\"  Language: English
 .\"
-.TH "CCNPUTMETA" "1" "12/07/2011" "\ \& ccnx\-0\&.4\&.2" "\ \&"
+.TH "CCNPUTMETA" "1" "01/26/2012" "\ \& 0\&.4\&.2" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -22,7 +31,7 @@
 ccnputmeta \- Associate a file with CCNx Content as metadata
 .SH "SYNOPSIS"
 .sp
-\fBccnputmeta\fR [\-v] [\-raw] [\-unversioned] [\-timeout \fImillis\fR] [\-log \fILEVEL\fR] \fIccnxname\fR \fImetaname\fR \fIfilename|url\fR
+\fBccnputmeta\fR [\-javaopts \fI<options>\fR] [\-debug \fI<portno>\fR] [\-v] [\-raw] [\-unversioned] [\-local | \-allownonlocal] [\-timeout \fImillis\fR] [\-log \fILEVEL\fR] \fIccnxname\fR \fImetaname\fR \fIfilename|url\fR
 .SH "DESCRIPTION"
 .sp
 The \fBccnputmeta\fR utility publishes a local file \fIfilename\fR or url \fIurl\fR as metadata associated with the content \fIccnxname\fR\&. The metadata is published as as of CCNx Data in accordance with the naming conventions for segmented streams or files, optionally unversioned\&. For the default case of versioned content, \fBccnputmeta\fR will publish the metadata with the version based on the local machine time and will associate it with the latest version of the referenced CCNx content\&.
@@ -64,6 +73,16 @@ Do not append a version component to the supplied
 already includes an explicit version component at the end (which must be URI encoded)\&. This option may also be used for metadata content that is organized according to the segmentation convention but does not use the versioning convention at all\&. When this option is used, the FileOutputStream abstraction will not be used, since that implies versioning\&.
 .RE
 .PP
+\fB\-local\fR
+.RS 4
+Specifies that a local repository be used to save the file\&. This is the (new, as of release 0\&.5\&.0) default behavior\&.
+.RE
+.PP
+\fB\-allownonlocal\fR
+.RS 4
+Specifies that either a local or non\-local repository be used to save the file\&.
+.RE
+.PP
 \fB\-timeout\fR \fImillis\fR
 .RS 4
 Set the timeout that will be used for putting content objects on during the stream reading\&. I\&.e\&., the time to wait for incoming interests\&.
@@ -74,6 +93,16 @@ Set the timeout that will be used for putting content objects on during the stre
 Set the logging level\&.
 \fILEVEL\fR
 must be the an acceptable Java Logger level: either an integer or a level name (e\&.g\&. SEVERE)\&.
+.RE
+.PP
+\fB\-debug\fR \fIportno\fR
+.RS 4
+Allows attachment of an eclipse remote debugger to the utility at the specified port number\&.
+.RE
+.PP
+\fB\-javaopts\fR \fIoptions\fR
+.RS 4
+Allows use of arbitrary java properties or options with the utility\&.
 .RE
 .SH "EXIT STATUS"
 .PP
