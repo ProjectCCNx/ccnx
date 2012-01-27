@@ -16,6 +16,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE        := controller
 LOCAL_C_INCLUDES    += $(LOCAL_PATH)/../csrc/ccnd
+LOCAL_C_INCLUDES    += $(LOCAL_PATH)/../csrc/sync
 LOCAL_C_INCLUDES    += $(LOCAL_PATH)/../csrc/ccnr
 LOCAL_C_INCLUDES    += $(LOCAL_PATH)/../csrc/include
 
@@ -27,6 +28,7 @@ LOCAL_LDLIBS        := -ldl -llog $(OS_LDFLAGS)
 
 LOCAL_STATIC_LIBRARIES := \
 	libccnd \
+	libsync \
 	libccnr \
 	libccnx \
 	libssl libcrypto 

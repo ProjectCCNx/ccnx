@@ -15,20 +15,21 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE		:= libccnr
+LOCAL_MODULE		:= libsync
 LOCAL_C_INCLUDES	:= $(LOCAL_PATH)
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../include 
+LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/..
 
-# LOCAL_PATH = project_root/csrc/ccnr
+# LOCAL_PATH = project_root/csrc/sync
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../../android/external/openssl-armv5/include
 
-CCNROBJ := ccnr_dispatch.o ccnr_forwarding.o ccnr_init.o ccnr_internal_client.o ccnr_io.o ccnr_link.o ccnr_main.o ccnr_match.o ccnr_msg.o ccnr_net.o ccnr_proto.o ccnr_sendq.o ccnr_stats.o ccnr_store.o ccnr_sync.o ccnr_util.o ../lib2/ccn_btree.o ../lib2/ccn_btree_content.o ../lib2/ccn_btree_store.o
+SYNCOBJ := IndexSorter.o SyncActions.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o SyncTreeWorker.o SyncUtil.o 
 
-CCNRSRC := $(CCNROBJ:.o=.c)
+SYNCSRC := $(SYNCOBJ:.o=.c)
 
-LOCAL_SRC_FILES := $(CCNRSRC)
+LOCAL_SRC_FILES := $(SYNCSRC)
 LOCAL_CFLAGS := -g
-LOCAL_STATIC_LIBRARIES := libcrypto libccnx libsync
+LOCAL_STATIC_LIBRARIES := libcrypto libccnx
 LOCAL_SHARED_LIBRARIES :=
 
 include $(BUILD_STATIC_LIBRARY)
