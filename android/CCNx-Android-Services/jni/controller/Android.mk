@@ -27,6 +27,7 @@ LOCAL_LDLIBS        := -ldl -llog $(OS_LDFLAGS)
 
 LOCAL_STATIC_LIBRARIES := \
 	libccnd \
+	libccnr \
 	libccnx \
 	libssl libcrypto 
 
