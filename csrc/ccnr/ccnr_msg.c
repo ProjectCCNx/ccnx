@@ -207,10 +207,4 @@ const char *ccnr_usage_message =
     "      Same values as for CCNR_DEBUG\n"
     "    SYNC_ENABLE=1\n"
     "      Disable (0) or enable (1) Sync processing\n"
-    "    SYNC_TOPO=\n"
-    "      Specify default topo prefix for Sync protocol\n"
-    "      (TEMPORARY - will not be in the final release)\n"
-    "    SYNC_AUTO_REGISTER=\n"
-    "      Disable (0) or enable (1) root auto-registration, default enabled\n"
-    "      (TEMPORARY - will not be in the final release)\n"
 ;
