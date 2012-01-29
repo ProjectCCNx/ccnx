@@ -110,52 +110,52 @@ SyncInit(struct SyncBaseStruct *bp) {
             bp->debug = ccnr->syncdebug;
             
             int enable = 1;
-            char *s = getenv("SYNC_ENABLE");
+            char *s = getenv("CCNS_ENABLE");
             if (s != NULL && s[0] != 0)
                 enable = strtol(s, NULL, 10);
             
             if (enable <= 0) return;
             
-            char *debugStr = getenv("SYNC_DEBUG");
+            char *debugStr = getenv("CCNS_DEBUG");
             
             // enable/disable storing of sync tree nodes
             // default is to store
-            priv->useRepoStore = getEnvLimited("SYNC_REPO_STORE", 0, 1, 1);
+            priv->useRepoStore = getEnvLimited("CCNS_REPO_STORE", 0, 1, 1);
             
             // enable/disable stable recovery point
             // default is to disable recovery, but to calculate stable points
-            priv->stableEnabled = getEnvLimited("SYNC_STABLE_ENABLED", 0, 1, 1);
+            priv->stableEnabled = getEnvLimited("CCNS_STABLE_ENABLED", 0, 1, 1);
             
             // get faux error percent
-            priv->fauxErrorTrigger = getEnvLimited("SYNC_FAUX_ERROR",
+            priv->fauxErrorTrigger = getEnvLimited("CCNS_FAUX_ERROR",
                                                    0, 99, 0);
             
             // get private flags for SyncActions
-            priv->syncActionsPrivate = getEnvLimited("SYNC_ACTIONS_PRIVATE",
+            priv->syncActionsPrivate = getEnvLimited("CCNS_ACTIONS_PRIVATE",
                                                      0, 255, 3);
             
             // heartbeat rate
-            priv->heartbeatMicros = getEnvLimited("SYNC_HEARTBEAT_MICROS",
+            priv->heartbeatMicros = getEnvLimited("CCNS_HEARTBEAT_MICROS",
                                                   10000, 10*1000000, 200000);
             
             // root advise lifetime
-            priv->rootAdviseFresh = getEnvLimited("SYNC_ROOT_ADVISE_FRESH",
+            priv->rootAdviseFresh = getEnvLimited("CCNS_ROOT_ADVISE_FRESH",
                                                   1, 30, 4);
             
             // root advise lifetime
-            priv->rootAdviseLifetime = getEnvLimited("SYNC_ROOT_ADVISE_LIFETIME",
+            priv->rootAdviseLifetime = getEnvLimited("CCNS_ROOT_ADVISE_LIFETIME",
                                                      1, 30, 20);
             
             // root advise lifetime
-            priv->fetchLifetime = getEnvLimited("SYNC_NODE_FETCH_LIFETIME",
+            priv->fetchLifetime = getEnvLimited("CCNS_NODE_FETCH_LIFETIME",
                                                 1, 30, 4);
 
             // max node or content fetches busy per root
-            priv->maxFetchBusy = getEnvLimited("SYNC_MAX_FETCH_BUSY",
+            priv->maxFetchBusy = getEnvLimited("CCNS_MAX_FETCH_BUSY",
                                                1, 100, 6);
 
             // max number of compares busy
-            priv->maxComparesBusy = getEnvLimited("SYNC_MAX_COMPARES_BUSY",
+            priv->maxComparesBusy = getEnvLimited("CCNS_MAX_COMPARES_BUSY",
                                                1, 100, 4);
             
             
@@ -163,40 +163,40 @@ SyncInit(struct SyncBaseStruct *bp) {
                 char temp[1024];
                 int pos = 0;
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                "SYNC_ENABLE=%d",
+                                "CCNS_ENABLE=%d",
                                 enable);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_DEBUG=%s",
+                                ",CCNS_DEBUG=%s",
                                 debugStr);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_REPO_STORE=%d",
+                                ",CCNS_REPO_STORE=%d",
                                 priv->useRepoStore);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_STABLE_ENABLED=%d",
+                                ",CCNS_STABLE_ENABLED=%d",
                                 priv->stableEnabled);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_FAUX_ERROR=%d",
+                                ",CCNS_FAUX_ERROR=%d",
                                 priv->fauxErrorTrigger);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_ACTIONS_PRIVATE=%d",
+                                ",CCNS_ACTIONS_PRIVATE=%d",
                                 priv->syncActionsPrivate);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_HEARTBEAT_MICROS=%d",
+                                ",CCNS_HEARTBEAT_MICROS=%d",
                                 priv->heartbeatMicros);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_ROOT_ADVISE_FRESH=%d",
+                                ",CCNS_ROOT_ADVISE_FRESH=%d",
                                 priv->rootAdviseFresh);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_ROOT_ADVISE_LIFETIME=%d",
+                                ",CCNS_ROOT_ADVISE_LIFETIME=%d",
                                 priv->rootAdviseLifetime);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_NODE_FETCH_LIFETIME=%d",
+                                ",CCNS_NODE_FETCH_LIFETIME=%d",
                                 priv->fetchLifetime);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_MAX_FETCH_BUSY=%d",
+                                ",CCNS_MAX_FETCH_BUSY=%d",
                                 priv->maxFetchBusy);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_MAX_COMPARES_BUSY=%d",
+                                ",CCNS_MAX_COMPARES_BUSY=%d",
                                 priv->maxComparesBusy);
 #if (CCN_API_VERSION >= 4004)
                 pos += snprintf(temp+pos, sizeof(temp)-pos,

@@ -203,8 +203,8 @@ const char *ccnr_usage_message =
     "      List of ip addresses to listen on for status; defaults to wildcard\n"
     "    CCNR_STATUS_PORT=\n"
     "      Port to use for status server; default is to not serve status.\n"
-    "    SYNC_DEBUG=WARNING\n"
+    "    CCNS_DEBUG=WARNING\n"
     "      Same values as for CCNR_DEBUG\n"
-    "    SYNC_ENABLE=1\n"
+    "    CCNS_ENABLE=1\n"
     "      Disable (0) or enable (1) Sync processing\n"
 ;

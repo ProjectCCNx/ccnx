@@ -275,7 +275,7 @@ r_init_parse_config(struct ccnr_handle *h, struct ccn_charbuf *config, int pass)
             }
             /* See if it might be one of ours */
             if (key->length < 5 || (memcmp(key->buf, "CCNR_", 5) != 0 &&
-                                    memcmp(key->buf, "SYNC_", 5) != 0)) {
+                                    memcmp(key->buf, "CCNS_", 5) != 0)) {
                 r_init_config_msg(h, flags, line, 0,
                                   "ignoring unrecognized key");
                 flags |= CCNR_CONFIG_IGNORELINE;
@@ -513,7 +513,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->cob_limit = 4201;
     h->debug = 1; /* so that we see any complaints */
     h->debug = r_init_debug_getenv(h, "CCNR_DEBUG");
-    h->syncdebug = r_init_debug_getenv(h, "SYNC_DEBUG");
+    h->syncdebug = r_init_debug_getenv(h, "CCNS_DEBUG");
     portstr = getenv("CCNR_STATUS_PORT");
     if (portstr == NULL || portstr[0] == 0 || strlen(portstr) > 10)
         portstr = "";

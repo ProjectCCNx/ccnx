@@ -21,7 +21,7 @@ AFTER : test_alone
 : ${PIPELINE:=12}
 
 # Run these without sync by default, but allow turning it on
-: ${SYNC_ENABLE:=0}
+: ${CCNS_ENABLE:=0}
 
 # Don't do unnecessary verifications in the repo
 : ${CCNR_SKIP_VERIFY:=1}
@@ -56,7 +56,7 @@ SWR=$VERSIONEDNAME/%C1.R.sw/%C1.N%00`GenSym`
 
 echo Start write request will be $SWR
 
-export SYNC_ENABLE PIPELINE TEST_DATA_SIZE CCNR_PROTO CCNR_SKIP_VERIFY SWR TRP
+export CCNS_ENABLE PIPELINE TEST_DATA_SIZE CCNR_PROTO CCNR_SKIP_VERIFY SWR TRP
 echo Saving env in $TRP-env.out
 env > $TRP-env.out
 
