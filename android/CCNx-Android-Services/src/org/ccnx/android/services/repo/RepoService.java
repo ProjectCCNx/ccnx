@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
+import java.util.Map.Entry;
 
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.RepoWrapper.REPO_OPTIONS;
@@ -47,7 +48,8 @@ public final class RepoService extends CCNxService {
 	public final static String DEFAULT_REPO_DEBUG = "WARNING";
 	public final static String DEFAULT_REPO_LOCAL_NAME = "/local";
 	public final static String DEFAULT_REPO_GLOBAL_NAME = "/ccnx/repos";
-	public final static String DEFAULT_REPO_NAMESPACE = "/";
+	public final static String DEFAULT_REPO_NAMESPACE = "/"; 
+	public final static String DEFAULT_SYNC_ENABLE = "0";
 	
 	private String repo_dir = null;
 	private String repo_debug = null;
@@ -184,11 +186,37 @@ public final class RepoService extends CCNxService {
 			}
 		} else if (Pattern.matches("2\\.0\\.0", repo_version)) {
 			Log.d(TAG,"Repo version 2 starting using native C-based repo optimized for ARMv7");
+			/* String ccnd_port = options.get(CCNR_OPTIONS.CCN_LOCAL_PORT.name());
+			if( ccnd_port == null ) {
+				ccnd_port = OPTION_CCN_PORT_DEFAULT;
+				options.put(CCND_OPTIONS.CCN_LOCAL_PORT.name(), ccnd_port);
+			}
+			Log.d(TAG,CCND_OPTIONS.CCN_LOCAL_PORT.name() + " = " + options.get(CCND_OPTIONS.CCN_LOCAL_PORT.name()));
+			*/
+			// String ccnd_keydir = options.get(CCND_OPTIONS.CCND_KEYSTORE_DIRECTORY.name());
+			if(options.get(REPO_OPTIONS.CCNR_DIRECTORY.name()) == null) {
+				options.put(REPO_OPTIONS.CCNR_DIRECTORY.name(), options.get(REPO_OPTIONS.CCNR_DIRECTORY.name()));
+			}
+			
+			if(options.get(REPO_OPTIONS.CCNR_DEBUG.name()) == null) {
+				options.put(REPO_OPTIONS.CCNR_DEBUG.name(), DEFAULT_REPO_DEBUG);
+			}
+			
+			if(options.get(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name()) == null) {
+				options.put(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name(), DEFAULT_REPO_GLOBAL_NAME);
+			}
+			
+			if(options.get(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name()) == null) {
+				options.put(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name(), DEFAULT_REPO_GLOBAL_NAME);
+			}
+			
+			if(options.get(REPO_OPTIONS.CCNR_SYNC_ENABLE.name()) == null) {
+				options.put(REPO_OPTIONS.CCNR_SYNC_ENABLE.name(), DEFAULT_SYNC_ENABLE);
+			}
 			try {
-				/* XXX Need to handle options
 				for( Entry<String,String> entry : options.entrySet() ) {
-					setenv(entry.getKey(), entry.getValue(), 1);
-				} */
+					ccnrSetenv(entry.getKey(), entry.getValue(), 1);
+				}
 	
 				ccnrCreate(repo_version);
 				setStatus(SERVICE_STATUS.SERVICE_RUNNING);
@@ -233,4 +261,16 @@ public final class RepoService extends CCNxService {
     protected native int ccnrDestroy();
     protected native int ccnrKill();
     protected native void ccnrSetenv(String key, String value, int overwrite);
+    
+    static {
+    	//
+    	// load library
+    	//
+    	try {
+    		System.loadLibrary("controller");
+    		Log.e(CLASS_TAG, "loaded native library: controller");
+    	} catch(UnsatisfiedLinkError ule) {
+    		Log.e(CLASS_TAG, "Unable to load native library: controller");
+    	}
+    }
 }

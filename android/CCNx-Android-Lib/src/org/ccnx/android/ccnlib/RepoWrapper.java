@@ -34,7 +34,12 @@ public final class RepoWrapper extends CCNxWrapper {
 		REPO_DEBUG,
 		REPO_LOCAL,
 		REPO_GLOBAL,
-		REPO_NAMESPACE
+		REPO_NAMESPACE,
+		CCNR_DEBUG,
+		CCNR_GLOBAL_PREFIX,
+		CCNR_DIRECTORY,
+		CCNR_STATUS_PORT,
+		CCNR_SYNC_ENABLE
 	}
 	
 	public RepoWrapper(Context ctx) {
