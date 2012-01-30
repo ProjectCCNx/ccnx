@@ -50,7 +50,7 @@ public final class RepoService extends CCNxService {
 	public final static String DEFAULT_REPO_GLOBAL_NAME = "/ccnx/repos";
 	public final static String DEFAULT_REPO_DIR = "/ccnx/repo";
 	public final static String DEFAULT_REPO_NAMESPACE = "/"; 
-	public final static String DEFAULT_SYNC_ENABLE = "0";
+	public final static String DEFAULT_SYNC_ENABLE = "1";
 	public final static String DEFAULT_REPO_PROTO = "unix";
 	
 	private String repo_dir = null;
