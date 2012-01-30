@@ -50,8 +50,9 @@ JNIEXPORT jint JNICALL Java_org_ccnx_android_services_repo_RepoService_ccnrCreat
     h = r_init_create("ccnr", androidlogger, NULL);
     if (h == NULL) {
         __android_log_print(ANDROID_LOG_ERROR,"CCNR", "ccnrCreate - r_init_create returned NULL");
-        return;
+        return -1;
     }
+ 	return 0;
   }
 
 /*

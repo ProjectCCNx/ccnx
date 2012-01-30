@@ -36,6 +36,7 @@ public final class RepoWrapper extends CCNxWrapper {
 		REPO_GLOBAL,
 		REPO_NAMESPACE,
 		CCNR_DEBUG,
+		CCNR_PROTO,
 		CCNR_GLOBAL_PREFIX,
 		CCNR_DIRECTORY,
 		CCNR_STATUS_PORT,

@@ -48,8 +48,10 @@ public final class RepoService extends CCNxService {
 	public final static String DEFAULT_REPO_DEBUG = "WARNING";
 	public final static String DEFAULT_REPO_LOCAL_NAME = "/local";
 	public final static String DEFAULT_REPO_GLOBAL_NAME = "/ccnx/repos";
+	public final static String DEFAULT_REPO_DIR = "/ccnx/repo";
 	public final static String DEFAULT_REPO_NAMESPACE = "/"; 
 	public final static String DEFAULT_SYNC_ENABLE = "0";
+	public final static String DEFAULT_REPO_PROTO = "unix";
 	
 	private String repo_dir = null;
 	private String repo_debug = null;
@@ -129,19 +131,7 @@ public final class RepoService extends CCNxService {
 		
 		if (Pattern.matches("1\\.0\\.0", repo_version)) {
 			try {
-				File f;
-				if(repo_dir != null) {
-					f = new File(repo_dir);
-					f.mkdirs();
-				} else {
-					File external_dir;
-					// repo_dir is null, lets get a directory from the android system
-					// in external storage.
-					external_dir = Environment.getExternalStorageDirectory();
-					f = new File(external_dir.getAbsolutePath() + "/ccnx/repo/");
-					f.mkdirs();
-					repo_dir = f.getAbsolutePath();
-				}
+				repo_dir = createRepoDir(repo_dir);
 				Log.d(TAG,"Using repo directory " + repo_dir);
 				Log.d(TAG,"Using repo debug     " + repo_debug);
 	
@@ -186,6 +176,16 @@ public final class RepoService extends CCNxService {
 			}
 		} else if (Pattern.matches("2\\.0\\.0", repo_version)) {
 			Log.d(TAG,"Repo version 2 starting using native C-based repo optimized for ARMv7");
+			if ((repo_dir = createRepoDir(repo_dir)) == null) {
+				//
+				// If we can't create the directory 
+				// reasons: no perms, external storage unavailable
+				// then we cannot proceed
+				Log.e(TAG,"Repo version 2 unable to start because cannot create repo_dir");
+				setStatus(SERVICE_STATUS.SERVICE_ERROR);
+				return;
+			}
+			
 			/* String ccnd_port = options.get(CCNR_OPTIONS.CCN_LOCAL_PORT.name());
 			if( ccnd_port == null ) {
 				ccnd_port = OPTION_CCN_PORT_DEFAULT;
@@ -195,26 +195,38 @@ public final class RepoService extends CCNxService {
 			*/
 			// String ccnd_keydir = options.get(CCND_OPTIONS.CCND_KEYSTORE_DIRECTORY.name());
 			if(options.get(REPO_OPTIONS.CCNR_DIRECTORY.name()) == null) {
-				options.put(REPO_OPTIONS.CCNR_DIRECTORY.name(), options.get(REPO_OPTIONS.CCNR_DIRECTORY.name()));
+				options.put(REPO_OPTIONS.CCNR_DIRECTORY.name(), repo_dir);
+			} else {
+				Log.d(TAG,REPO_OPTIONS.CCNR_DIRECTORY.name() + " = " + options.get(REPO_OPTIONS.CCNR_DIRECTORY.name()));
 			}
 			
 			if(options.get(REPO_OPTIONS.CCNR_DEBUG.name()) == null) {
 				options.put(REPO_OPTIONS.CCNR_DEBUG.name(), DEFAULT_REPO_DEBUG);
+			} else {
+				Log.d(TAG,REPO_OPTIONS.CCNR_DEBUG.name() + " = " + options.get(REPO_OPTIONS.CCNR_DEBUG.name()));
 			}
 			
 			if(options.get(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name()) == null) {
 				options.put(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name(), DEFAULT_REPO_GLOBAL_NAME);
+			} else {
+				Log.d(TAG,REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name() + " = " + options.get(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name()));
 			}
 			
-			if(options.get(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name()) == null) {
-				options.put(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name(), DEFAULT_REPO_GLOBAL_NAME);
+			if(options.get(REPO_OPTIONS.CCNR_PROTO.name()) == null) {
+				options.put(REPO_OPTIONS.CCNR_PROTO.name(), DEFAULT_REPO_PROTO);
+			} else {
+				Log.d(TAG,REPO_OPTIONS.CCNR_PROTO.name() + " = " + options.get(REPO_OPTIONS.CCNR_PROTO.name()));
 			}
 			
 			if(options.get(REPO_OPTIONS.CCNR_SYNC_ENABLE.name()) == null) {
 				options.put(REPO_OPTIONS.CCNR_SYNC_ENABLE.name(), DEFAULT_SYNC_ENABLE);
+			} else {
+				Log.d(TAG,REPO_OPTIONS.CCNR_SYNC_ENABLE.name() + " = " + options.get(REPO_OPTIONS.CCNR_SYNC_ENABLE.name()));
 			}
+			
 			try {
 				for( Entry<String,String> entry : options.entrySet() ) {
+					Log.d(TAG, "options key setenv: " + entry.getKey());
 					ccnrSetenv(entry.getKey(), entry.getValue(), 1);
 				}
 	
@@ -256,6 +268,22 @@ public final class RepoService extends CCNxService {
 		serviceStopped(); // XXX Is it really ok to assume we've stopped when we might get errors?
 	}
 
+	private String createRepoDir(String repodir) {
+		File f;
+		if(repodir != null) {
+			f = new File(repo_dir);
+			f.mkdirs();
+		} else {
+			File external_dir;
+			// repo_dir is null, lets get a directory from the android system
+			// in external storage.
+			external_dir = Environment.getExternalStorageDirectory();
+			f = new File(external_dir.getAbsolutePath() + DEFAULT_REPO_DIR);
+			f.mkdirs();
+			repodir = f.getAbsolutePath();
+		}
+		return repodir;
+	}
 	protected native int ccnrCreate(String version);
 	protected native int ccnrRun();
     protected native int ccnrDestroy();
