@@ -1138,9 +1138,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * 
 	 * @param value
 	 * @return
+	 * @deprecated Renamed to {@link #componentStartsWith(byte[])}
 	 */
 	public boolean startsWith(byte [] value) {
-		return (startsWithWhere(value) >= 0);
+		return componentStartsWith(value);
 	}
 
 	/**
@@ -1148,8 +1149,23 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * 
 	 * @param value
 	 * @return
+	 * @deprecated Renamed to {@link #componentStartsWithWhere(byte[])}
 	 */
 	public int startsWithWhere(byte [] value) {
+		return componentStartsWithWhere(value);
+	}
+
+	/**
+	 * @return Does any component in the ContentName start with value?
+	 */
+	public boolean componentStartsWith(byte [] value) {
+		return (componentStartsWithWhere(value) >= 0);
+	}
+
+	/**
+	 * @return index of first component that starts with argument value
+	 */
+	public int componentStartsWithWhere(byte [] value) {
 		int i=0;
 		int size = value.length;
 		for (i=0; i < _components.length; ++i) {
