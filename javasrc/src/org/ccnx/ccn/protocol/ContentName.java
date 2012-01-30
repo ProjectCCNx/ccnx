@@ -1343,7 +1343,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * and are assumed not to change).
 	 * @return iterator over the name components.
 	 */
-	@Override
 	public Iterator<byte[]> iterator() {
 		return Arrays.asList(_components).iterator();
 	}

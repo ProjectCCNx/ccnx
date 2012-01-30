@@ -224,7 +224,10 @@ public class PublisherPublicKeyDigest extends GenericXMLEncodable
 		return Long.toHexString(lf);
 	}
 
-	@Override
+	/**
+	 * Implements the {@link ComponentProvider} interface, allowing a {@link PublisherPublicKeyDigest}
+	 * to be included in a ContentName constructor, yielding a PublisherPublicKey ID as a name component.
+	 */
 	public byte[] getComponent() {
 		return KeyProfile.keyIDToNameComponent(this);
 	}
