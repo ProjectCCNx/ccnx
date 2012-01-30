@@ -1,4 +1,4 @@
-October 27, 2010
+(Please see "Android Build System Notes" below for building CCN for Android.)
 
 Android Apps for CCNx
 =====================
@@ -16,8 +16,8 @@ Once you have configured your environment (config()) and started
 ccnd and the repo (startAll()), you can then use the
 CCNx library.
 
-You application needs these permissions:
-	# Always need this:
+Your application needs these permissions:
+         # Always need this:
     android.permission.INTERNET
 
 	# If your keystore is on /sdcard
@@ -27,16 +27,105 @@ Important Notes
 ===============
 - User keys are stored in /sdcard/ccnx/user
   Because this is on the SD card, it may become unavailable if you
-  plug in your usb and use the SD card for storage.  
+  plug in your usb and use the SD card for storage.
 
-  The user keysore is on the sdcard so multiple apps from different packages
+  The user keystore is on the sdcard so multiple apps from different packages
   can share the same identity.
 
   If your app wants to use a private keystore, call
-
+ 
 - Repo directory is /sdcard/ccnx/repo
   See User note about /sdcard
 
 - Ccnd directory is under the apk:
   /data/data/org.ccnx.android.services/app_ccnd
+
+
+Android Build System Notes
+===========================
+
+The build system is centered on gnu Make.  For Android projects, the
+Makefile wraps the ant commands.
+
+The android code depends on ccn.jar, so you must have run make in
+the top level directory before building here.
+
+Ccnd and the c-client library require OpenSSL library, which we need
+to include build ourselves, as there is no apparent way to use the
+included Android library.  As a result, we can use the latest 1.0.0d
+library!
+
+You must set the environment variables ANDROID_SDK and ANDROID_NDK.
+These must point to the root of the SDK Tools and NDK directories.
+
+Supported Versions:
+* Android NDK r7
+* Android SDK r16
+
+Supported Target Android Devices:
+Android 2.1
+Android 2.2
+Android 2.3
+Android 3.x
+
+Newer tablet oriented versions of Android, such as 4.0+ are not supported yet but will be in the near future as build support and toolchains catch up. (Ice Cream Sandwich (4.0) has not yet been tested.)
+
+For example (Use the path to desired tools):
+
+	export ANDROID_SDK=~/android-sdk-mac_x86
+	export ANDROID_NDK=~/android-ndk-r7
+
+Android is not built as part of the top-level make.  You must run
+make in this directory.
+
+What happens
+============
+
+When you run "make" in the android directory, the build process takes
+these steps:
+
+- Build "external".
+  This downloads the OpenSSL source, configures it for armv5, and
+  does a patch.  It them puts Android.mk files in to the OpenSSL
+  source directories.  There is no actual compiling done.
+
+  IF YOU DO NOT HAVE AN INTERNET CONNECTION
+  You will need to download openssl-1.0.0d.tar.gz from
+	http://www.openssl.org/source/openssl-1.0.0d.tar.gz
+  and put it in the directory external/downloads.
+
+- Build CCNx-Android-Services
+  This wraps the ccnd and repo services.  Because ccnd is C code,
+  it is included as JNI code, along with OpenSSL.
+
+  Doing a "make clean" will not erase the C object code.  Only
+  a "make distclean" will get rid of it.
+
+  The CCNx csrc/ folder now has Android.mk files in it already, so
+  the CCNx-Android-Services/jni folder has a link to csrc/.  We have
+  also include csrc/ccnd/android_{main,msg}.c.  android_main.c replaces
+  ccnd_main.c in Android.mk and is used to startup ccnd procedurally
+  rather than from a main() method.  android_msg.c replaces ccnd_msg.c
+  in Android.mk and sends ccnd log messages to the Android log.
+
+  Take a look in jni/controller/ctl_ccnd.c for the JNI bindings to
+  the ccnd code.
+
+- Build the apps/ directory
+
+Honeycomb
+===========
+Android 3.x devices (and possibly some 2.x) devices the crypto support includes a subset of the Bouncy Castle library.  See: http://redmine.ccnx.org/issues/100589 for details.  As a result, the 3.x devices we tested failed with ClassNotFoundException trying to resolve the BouncyCastleProvider.  To work around this, we include the Bouncy Castle provider jar file if you specify in the top level of the android project directory:
+
+make honeycomb
+
+This change affects CCNx-Android-Services, CCNx-Android-Chat, and CCNx-Android-StartupExamples.  Because of the size of the jar file (around 1.5mb) we are interested in a better solution long term, though there is no indication Google has changed their approach, except to enhance the android crypto library to rely upon functionality delivered through OpenSSL.
+
+Installing
+===========
+
+"make install" will install the Services and Chat applications.  You
+might need to "make unistall" before "make install" if the applications
+were previously installed with a different signing key (i.e. you use
+the phone with builds from multiple computers).
 

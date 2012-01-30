@@ -37,10 +37,13 @@ default: local.properties libs/ccn.jar
 all: $(TARGET) 
 
 $(TARGET): $(JARS) environment local.properties build.xml
-	ant compile
+	ant debug 
 
 local.properties project.properties default.properties:
 	$(ANDROID_SDK)/tools/android update lib-project -p . -t android-7
+	# Guard against a bug in Android SDK r16	
+	# You need to have android.library=true for rest of build to work
+	echo "android.library=true" >> project.properties
 
 libs/ccn.jar: ../../javasrc/ccn.jar
 	rm -f $@
@@ -53,7 +56,7 @@ uninstall:
 
 environment:
 ifeq ($(ANDROID_SDK),)
-	$(error Please set ANDROID_SDK path to point to an r7 or later SDK)
+	$(error Please set ANDROID_SDK path to point to an r16 or later SDK)
 endif
 	@echo "Executing in $(CURDIR)"
 

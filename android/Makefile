@@ -33,15 +33,15 @@ ifeq ($(SKIP_BUILD),)
 default all: $(SUBDIRS)
 
 else
-default all: 
+default all honeycomb: 
 	@echo 
 	@echo '*************************************************'
 	@echo '    Missing either ANDROID_SDK or ANDROID_NDK,'
 	@echo '           NOT building Android targets.'
 	@echo
-	@echo '  ANDROID_SDK should point to a R7 or later SDK'
-	@echo '     with Android 2.1 installed.'
-	@echo '  ANDROID_NDK should point to an R4 or later NDK.'
+	@echo '  ANDROID_SDK should point to a R16 or later SDK'
+	@echo '     with Android 2.1 (android-7) installed.'
+	@echo '  ANDROID_NDK should point to an R7 or later NDK.'
 	@echo '*************************************************'
 	@echo 
 endif
@@ -62,6 +62,12 @@ $(SUBDIRS):
 	$(MAKE) -C $@ -j 1
 
 install uninstall: 
+	$(MAKE) -C CCNx-Android-Services $@
+	$(MAKE) -C apps $@
+
+honeycomb:
+	$(MAKE) -C external -j 1
+	$(MAKE) -C CCNx-Android-Lib
 	$(MAKE) -C CCNx-Android-Services $@
 	$(MAKE) -C apps $@
 

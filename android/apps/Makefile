@@ -32,6 +32,11 @@ install uninstall:
 	   	$(MAKE) -C $$f $@; \
 	done
 
+honeycomb:
+	for f in $(SUBDIRS); do \
+	   	$(MAKE) honeycomb -C $$f $@; \
+	done
+
 clean: $(SUBDIRS_clean)
 
 distclean: $(SUBDIRS_distclean)

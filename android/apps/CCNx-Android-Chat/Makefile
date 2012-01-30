@@ -21,7 +21,7 @@ GEN := gen
 ############
 # Nothing tweekable down here
 
-.PHONY: all environment clean simpleclean distclean 
+.PHONY: all environment clean simpleclean distclean
 
 .SUFFIXES: .jar .properties .xml
 
@@ -36,14 +36,18 @@ TARGET  := $(BIN)/$(APK_NAME)
 
 default all: $(TARGET) 
 
+honeycomb: clean bcprov default
+
+bcprov:
+	./download.sh libs http://repo2.maven.org/maven2/org/bouncycastle/bcprov-jdk16/1.43 bcprov-jdk16-1.43.jar
+
 SRC := $(wildcard src/org/ccnx/android/apps/chat/*.java) AndroidManifest.xml
 
 $(TARGET): $(JARS) local.properties build.xml $(SRC)
 	ant debug
 
 local.properties default.properties project.properties:
-	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-Chat -p . -t android-7
-	$(ANDROID_SDK)/tools/android update project -p . -t android-7 --library ../../CCNx-Android-Lib/
+	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-Chat -p . -t android-7 --library ../../CCNx-Android-Lib/
 
 libs/ccn.jar: ../../../javasrc/ccn.jar
 	mkdir -p $(dir $@)
@@ -65,7 +69,7 @@ uninstall:
 
 environment:
 ifeq ($(ANDROID_SDK),)
-	$(error Please set ANDROID_SDK path to point to an r7 or later SDK)
+	$(error Please set ANDROID_SDK path to point to an r16 or later SDK)
 endif
 	@echo "Executing in $(CURDIR)"
 
