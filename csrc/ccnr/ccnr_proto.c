@@ -658,12 +658,11 @@ r_proto_start_write(struct ccn_closure *selfp,
     // If Exclude is there, there might be something fishy going on.
     
     ccnr = (struct ccnr_handle *)selfp->data;
-    if (ccnr->start_write_scope_limit >= 0) {
-        /* If no scope was specified but some scope is required, ignore this */
+    if (ccnr->start_write_scope_limit < 3) {
         start = info->pi->offset[CCN_PI_B_Scope];
         end = info->pi->offset[CCN_PI_E_Scope];
         if (start == end || info->pi->scope > ccnr->start_write_scope_limit) {
-            if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
+            if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
                 ccnr_msg(ccnr, "r_proto_start_write: interest scope exceeds limit");
             return(CCN_UPCALL_RESULT_OK);
         }
@@ -775,12 +774,11 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     
     // XXX - do we need to disallow the policy file here too?
     ccnr = (struct ccnr_handle *)selfp->data;
-    if (ccnr->start_write_scope_limit >= 0) {
-        /* If no scope was specified but some scope is required, ignore this */
+    if (ccnr->start_write_scope_limit < 3) {
         start = info->pi->offset[CCN_PI_B_Scope];
         end = info->pi->offset[CCN_PI_E_Scope];
         if (start == end || info->pi->scope > ccnr->start_write_scope_limit) {
-            if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
+            if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
                 ccnr_msg(ccnr, "r_proto_start_write_checked: interest scope exceeds limit");
             return(CCN_UPCALL_RESULT_OK);
         }
