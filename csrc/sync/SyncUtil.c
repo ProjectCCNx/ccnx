@@ -43,7 +43,7 @@ static int freshLimit = 30;             // freshness limit, in seconds
 #define SET_ERR(d) SyncSetDecodeErr(d, -__LINE__)
 extern void
 SyncNoteErr(const char *msg) {
-    char *s = getenv("SYNC_NOTE_ERR");
+    char *s = getenv("CCNS_NOTE_ERR");
     int useStdErr = 0;
     if (s != NULL && s[0] != 0)
         useStdErr = strtol(s, NULL, 10);
