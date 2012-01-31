@@ -511,6 +511,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
     h->cob_limit = 4201;
+    h->start_write_scope_limit = r_init_confval(h, "CCNR_START_WRITE_SCOPE_LIMIT", -1, 2, -1);
     h->debug = 1; /* so that we see any complaints */
     h->debug = r_init_debug_getenv(h, "CCNR_DEBUG");
     h->syncdebug = r_init_debug_getenv(h, "CCNS_DEBUG");

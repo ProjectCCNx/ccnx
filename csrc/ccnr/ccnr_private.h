@@ -225,6 +225,7 @@ struct ccnr_handle {
     unsigned long interests_stuffed;
     unsigned long content_from_accession_hits;
     unsigned long content_from_accession_misses;
+    int start_write_scope_limit;    /**< if >= 0, scope on start-write must be <= this value */
     unsigned short seed[3];         /**< for PRNG */
     int running;                    /**< true while should be running */
     int debug;                      /**< For controlling debug output */
