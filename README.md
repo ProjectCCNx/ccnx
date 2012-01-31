@@ -63,14 +63,14 @@ B. C/POSIX reference implementation of CCNx forwarder, repository
    implementation is required for all CCNx communication.
 
 C. Java reference implementation of library including primitive
-   utilities, skeleton API docs, and unit test suite.  The Java 
+   utilities, skeleton API docs, and unit test suite.  The Java
    library has more functionality implemented or started than the C
    library and may be an easier place to start experimenting.
 
 D. Minimal sample app (ccnChat) to demonstrate basic communication on
    local LAN.
 
-E. Minimal sample file proxy (ccnFileProxy) to demonstrate basic 
+E. Minimal sample file proxy (ccnFileProxy) to demonstrate basic
    communication on local LAN.
 
 F. Experimental plugins for vlc (media transport) and wireshark
@@ -215,7 +215,7 @@ library file independently:
 * Bouncy Castle Provider for JDK1.5: `bcprov-jdk15-143.jar`
    (http://www.bouncycastle.org/download/bcprov-jdk15-143.jar)
 
-Copy the extra JAR file into `javasrc/lib`, again ONLY IF you 
+Copy the extra JAR file into `javasrc/lib`, again ONLY IF you
 are running on JDK1.5.
 
 __SPECIAL PLATFORM NOTES__
@@ -239,8 +239,8 @@ Please see `android/README.build` for special notes about Android.
 3. Build and install instructions
 ---------------------------------
 
-Note that the overall build handles both the C and Java code, 
-so you will need to have requirements for both met in order 
+Note that the overall build handles both the C and Java code,
+so you will need to have requirements for both met in order
 to avoid errors.  See the section above. See `android/README.build`
 for information on building for Android.
 
@@ -254,12 +254,12 @@ In the root directory:
 The top-level build will compile both C and Java code, but
 not Android code.  The above is sufficient to run programs
 locally out of `bin/` and build apps referencing `lib/` and `include/`.
- 
+
 __TESTING__
 
 To run the complete test suite (both C and Java):
 
-    make test 
+    make test
 
 __MACHINE INSTALL (OPTIONAL)__
 
@@ -293,7 +293,7 @@ want to write.  Any existing file with that name will be overwritten.
 For a listing of other environment variables that are available
 (including debug message controls) run:
 
-    bin/ccnd -h 
+    bin/ccnd -h
 
 Note that you should not ordinarily run ccnd directly, but use the
 ccndstart script.
@@ -372,7 +372,7 @@ inconsistent as of this release.  Here are a few notable utilities:
                in file
 * `ccnchat` - the ccnChat sample application
 * `ccnfileproxy` - the ccnFileProxy sample application
-  
+
 
 5. Runtime files
 ----------------
@@ -387,7 +387,7 @@ files, and that this list may not be complete:
          does not occur if processes are terminated manually and in
          other cases.
 
-Repository directories are also created if you run a repository, but 
+Repository directories are also created if you run a repository, but
 in that case you must tell the program what directory to use.
 
 
