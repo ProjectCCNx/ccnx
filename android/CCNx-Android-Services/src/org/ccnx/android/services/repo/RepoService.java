@@ -1,7 +1,7 @@
 /*
  * CCNx Android Services
  *
- * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -26,6 +26,8 @@ import java.util.Map.Entry;
 
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.RepoWrapper.REPO_OPTIONS;
+import org.ccnx.android.ccnlib.RepoWrapper.CCNR_OPTIONS;
+import org.ccnx.android.ccnlib.RepoWrapper.SYNC_OPTIONS;
 import org.ccnx.android.services.CCNxService;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
@@ -51,6 +53,7 @@ public final class RepoService extends CCNxService {
 	public final static String DEFAULT_REPO_DIR = "/ccnx/repo";
 	public final static String DEFAULT_REPO_NAMESPACE = "/"; 
 	public final static String DEFAULT_SYNC_ENABLE = "1";
+	public final static String DEFAULT_SYNC_DEBUG = "WARNING";
 	public final static String DEFAULT_REPO_PROTO = "unix";
 	
 	private String repo_dir = null;
@@ -61,7 +64,12 @@ public final class RepoService extends CCNxService {
 	/* We should version the impl 
 	 * However we only provide versions bundled
 	 * with the CCNx release, currently just v1 and v2.
-	 * Does it make sense for support semver of our repo
+	 * Does it make sense to use semver for our repo?
+	 * Presumably we'll keep legacy versions around for backwards compatibility. 
+	 * But in addition to api versions, we'll potentially have pluggable repos, so 
+	 * will need to be able to load the version of repo at runtime.  So may be that 
+	 * will use reflection to load the repo instead of an ugly if-else/switch statement that 
+	 * we have at the moment.
 	 */
 	private String repo_version = "2.0.0"; // XXX Make this configurable via Android Menu
 	
@@ -73,56 +81,86 @@ public final class RepoService extends CCNxService {
 	}
 
 	protected void onStartService(Intent intent) {
-		Log.d(TAG, "Starting");
-
-		try {
-			Properties props = new Properties();
-			byte [] opts = intent.getByteArrayExtra("vm_options");
-			if( null != opts ) {
-				ByteArrayInputStream bais = new ByteArrayInputStream(opts);
-				props.loadFromXML(bais);
-
-				System.getProperties().putAll(props);
+		Log.d(TAG, "onStartService - Starting");
+	
+		if (Pattern.matches("1\\.0\\.0", repo_version)) {
+			try {
+				Properties props = new Properties();
+				byte [] opts = intent.getByteArrayExtra("vm_options");
+				if( null != opts ) {
+					ByteArrayInputStream bais = new ByteArrayInputStream(opts);
+					props.loadFromXML(bais);
+	
+					System.getProperties().putAll(props);
+				}
+			} catch(Exception e) {
+				e.printStackTrace();
 			}
-		} catch(Exception e) {
-			e.printStackTrace();
-		}
-		
-		Log.d(TAG, "CCN_DIR      = " + UserConfiguration.userConfigurationDirectory());
-		Log.d(TAG, "DEF_ALIS     = " + UserConfiguration.defaultKeyAlias());
-		Log.d(TAG, "KEY_DIR      = " + UserConfiguration.keyRepositoryDirectory());
-		Log.d(TAG, "KEY_FILE     = " + UserConfiguration.keystoreFileName());
-		Log.d(TAG, "USER_NAME    = " + UserConfiguration.userName());
-		
-		if(intent.hasExtra(REPO_OPTIONS.REPO_DIRECTORY.name())){
-			repo_dir = intent.getStringExtra(REPO_OPTIONS.REPO_DIRECTORY.name());
-		}
-		
-		if(intent.hasExtra(REPO_OPTIONS.REPO_DEBUG.name())){
-			repo_debug = intent.getStringExtra(REPO_OPTIONS.REPO_DEBUG.name());
+			
+			Log.d(TAG, "CCN_DIR      = " + UserConfiguration.userConfigurationDirectory());
+			Log.d(TAG, "DEF_ALIS     = " + UserConfiguration.defaultKeyAlias());
+			Log.d(TAG, "KEY_DIR      = " + UserConfiguration.keyRepositoryDirectory());
+			Log.d(TAG, "KEY_FILE     = " + UserConfiguration.keystoreFileName());
+			Log.d(TAG, "USER_NAME    = " + UserConfiguration.userName());
+			
+			if(intent.hasExtra(REPO_OPTIONS.REPO_DIRECTORY.name())){
+				repo_dir = intent.getStringExtra(REPO_OPTIONS.REPO_DIRECTORY.name());
+			}
+			
+			if(intent.hasExtra(REPO_OPTIONS.REPO_DEBUG.name())){
+				repo_debug = intent.getStringExtra(REPO_OPTIONS.REPO_DEBUG.name());
+			} else {
+				repo_debug = DEFAULT_REPO_DEBUG;
+			}
+			
+			if(intent.hasExtra(REPO_OPTIONS.REPO_LOCAL.name())){
+				repo_local_name = intent.getStringExtra(REPO_OPTIONS.REPO_LOCAL.name());
+			} else {
+				repo_local_name = DEFAULT_REPO_LOCAL_NAME;
+			}
+			
+			if(intent.hasExtra(REPO_OPTIONS.REPO_GLOBAL.name())){
+				repo_global_name = intent.getStringExtra(REPO_OPTIONS.REPO_GLOBAL.name());
+			} else {
+				repo_global_name = DEFAULT_REPO_GLOBAL_NAME;
+			}
+			
+			if(intent.hasExtra(REPO_OPTIONS.REPO_NAMESPACE.name())){
+				repo_namespace = intent.getStringExtra(REPO_OPTIONS.REPO_NAMESPACE.name());
+			} else {
+				repo_namespace = DEFAULT_REPO_NAMESPACE;
+			}	
+		} else if (Pattern.matches("2\\.0\\.0", repo_version)) {
+			for( CCNR_OPTIONS opt : CCNR_OPTIONS.values() ) {
+				if(!intent.hasExtra(opt.name())){
+					continue;
+				}
+				String s = intent.getStringExtra( opt.name() );
+				if( null == s ) 
+					s = System.getProperty(opt.name());
+					Log.d(TAG,"setting option " + opt.name() + " = " + s);
+				if( s != null ) {
+					options.put(opt.name(), s);
+				}
+			}
+			for( SYNC_OPTIONS opt : SYNC_OPTIONS.values() ) {
+				if(!intent.hasExtra(opt.name())){
+					continue;
+				}
+				String s = intent.getStringExtra( opt.name() );
+				if( null == s ) 
+					s = System.getProperty(opt.name());
+					Log.d(TAG,"setting option " + opt.name() + " = " + s);
+				if( s != null ) {
+					options.put(opt.name(), s);
+				}
+			}
+
 		} else {
-			repo_debug = DEFAULT_REPO_DEBUG;
+			Log.d(TAG,"Unknown Repo version " + repo_version + " specified, failed to start Repo.");
+			setStatus(SERVICE_STATUS.SERVICE_ERROR);
 		}
-		
-		if(intent.hasExtra(REPO_OPTIONS.REPO_LOCAL.name())){
-			repo_local_name = intent.getStringExtra(REPO_OPTIONS.REPO_LOCAL.name());
-		} else {
-			repo_local_name = DEFAULT_REPO_LOCAL_NAME;
-		}
-		
-		if(intent.hasExtra(REPO_OPTIONS.REPO_GLOBAL.name())){
-			repo_global_name = intent.getStringExtra(REPO_OPTIONS.REPO_GLOBAL.name());
-		} else {
-			repo_global_name = DEFAULT_REPO_GLOBAL_NAME;
-		}
-		
-		if(intent.hasExtra(REPO_OPTIONS.REPO_NAMESPACE.name())){
-			repo_namespace = intent.getStringExtra(REPO_OPTIONS.REPO_NAMESPACE.name());
-		} else {
-			repo_namespace = DEFAULT_REPO_NAMESPACE;
-		}
-		
-		Load();	
+		Load();
 	}
 
 	@Override
@@ -186,44 +224,54 @@ public final class RepoService extends CCNxService {
 				return;
 			}
 			
-			/* String ccnd_port = options.get(CCNR_OPTIONS.CCN_LOCAL_PORT.name());
-			if( ccnd_port == null ) {
-				ccnd_port = OPTION_CCN_PORT_DEFAULT;
-				options.put(CCND_OPTIONS.CCN_LOCAL_PORT.name(), ccnd_port);
-			}
-			Log.d(TAG,CCND_OPTIONS.CCN_LOCAL_PORT.name() + " = " + options.get(CCND_OPTIONS.CCN_LOCAL_PORT.name()));
-			*/
-			// String ccnd_keydir = options.get(CCND_OPTIONS.CCND_KEYSTORE_DIRECTORY.name());
-			if(options.get(REPO_OPTIONS.CCNR_DIRECTORY.name()) == null) {
-				options.put(REPO_OPTIONS.CCNR_DIRECTORY.name(), repo_dir);
+			/* Only set defaults when the CCNR/SYNC defaults are not appropriate for Android */
+			if(options.get(CCNR_OPTIONS.CCNR_DEBUG.name()) == null) {
+				options.put(CCNR_OPTIONS.CCNR_DEBUG.name(), DEFAULT_REPO_DEBUG);
 			} else {
-				Log.d(TAG,REPO_OPTIONS.CCNR_DIRECTORY.name() + " = " + options.get(REPO_OPTIONS.CCNR_DIRECTORY.name()));
+				Log.d(TAG,CCNR_OPTIONS.CCNR_DEBUG.name() + " = " + options.get(CCNR_OPTIONS.CCNR_DEBUG.name()));
 			}
 			
-			if(options.get(REPO_OPTIONS.CCNR_DEBUG.name()) == null) {
-				options.put(REPO_OPTIONS.CCNR_DEBUG.name(), DEFAULT_REPO_DEBUG);
+			if(options.get(CCNR_OPTIONS.CCNR_DIRECTORY.name()) == null) {
+				options.put(CCNR_OPTIONS.CCNR_DIRECTORY.name(), repo_dir);
 			} else {
-				Log.d(TAG,REPO_OPTIONS.CCNR_DEBUG.name() + " = " + options.get(REPO_OPTIONS.CCNR_DEBUG.name()));
+				Log.d(TAG,CCNR_OPTIONS.CCNR_DIRECTORY.name() + " = " + options.get(CCNR_OPTIONS.CCNR_DIRECTORY.name()));
 			}
 			
-			if(options.get(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name()) == null) {
-				options.put(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name(), DEFAULT_REPO_GLOBAL_NAME);
+			if(options.get(CCNR_OPTIONS.CCNR_GLOBAL_PREFIX.name()) == null) {
+				options.put(CCNR_OPTIONS.CCNR_GLOBAL_PREFIX.name(), DEFAULT_REPO_GLOBAL_NAME);
 			} else {
-				Log.d(TAG,REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name() + " = " + options.get(REPO_OPTIONS.CCNR_GLOBAL_PREFIX.name()));
+				Log.d(TAG,CCNR_OPTIONS.CCNR_GLOBAL_PREFIX.name() + " = " + options.get(CCNR_OPTIONS.CCNR_GLOBAL_PREFIX.name()));
 			}
 			
-			if(options.get(REPO_OPTIONS.CCNR_PROTO.name()) == null) {
-				options.put(REPO_OPTIONS.CCNR_PROTO.name(), DEFAULT_REPO_PROTO);
+			/* Take CCNR_BTREE_* defaults */
+			/* Take CCNR_CONTENT_CACHE defaults */
+			/* Take CCNR_MIN_SEND_BUFSIZE */
+			
+			/* If we decide to split the CCND and CCNR services into seperate APKs
+			 * We'll need to toggle this to use tcp */
+			if(options.get(CCNR_OPTIONS.CCNR_PROTO.name()) == null) {
+				options.put(CCNR_OPTIONS.CCNR_PROTO.name(), DEFAULT_REPO_PROTO);
 			} else {
-				Log.d(TAG,REPO_OPTIONS.CCNR_PROTO.name() + " = " + options.get(REPO_OPTIONS.CCNR_PROTO.name()));
+				Log.d(TAG,CCNR_OPTIONS.CCNR_PROTO.name() + " = " + options.get(CCNR_OPTIONS.CCNR_PROTO.name()));
 			}
 			
-			if(options.get(REPO_OPTIONS.CCNR_SYNC_ENABLE.name()) == null) {
-				options.put(REPO_OPTIONS.CCNR_SYNC_ENABLE.name(), DEFAULT_SYNC_ENABLE);
+			/* Take CCNR_LISTEN_ON defaults */
+			/* Take CCNR_STATUS_PORT defaults */
+			
+			if(options.get(SYNC_OPTIONS.SYNC_DEBUG.name()) == null) {
+				options.put(SYNC_OPTIONS.SYNC_DEBUG.name(), DEFAULT_SYNC_DEBUG);
 			} else {
-				Log.d(TAG,REPO_OPTIONS.CCNR_SYNC_ENABLE.name() + " = " + options.get(REPO_OPTIONS.CCNR_SYNC_ENABLE.name()));
+				Log.d(TAG,SYNC_OPTIONS.SYNC_DEBUG.name() + " = " + options.get(SYNC_OPTIONS.SYNC_DEBUG.name()));
 			}
 			
+			if(options.get(SYNC_OPTIONS.SYNC_ENABLE.name()) == null) {
+				options.put(SYNC_OPTIONS.SYNC_ENABLE.name(), DEFAULT_SYNC_ENABLE);
+			} else {
+				Log.d(TAG,SYNC_OPTIONS.SYNC_ENABLE.name() + " = " + options.get(SYNC_OPTIONS.SYNC_ENABLE.name()));
+			}
+			
+			/* Don't bother with undocumented SYNC_* variables */
+
 			try {
 				for( Entry<String,String> entry : options.entrySet() ) {
 					Log.d(TAG, "options key setenv: " + entry.getKey());
