@@ -98,12 +98,12 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     if ((h->debug >= CCNL_FINE) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
           t.tv_sec >= h->logtime + 30)) {
-        ccn_charbuf_putf(b, "%ld.000000 ccnr[\n]: %s ____________________ %s",
+        ccn_charbuf_putf(b, "%ld.000000 ccnr[%d]: %s ____________________ %s",
                          (long)t.tv_sec, h->logpid, h->portstr ? h->portstr : "", ctime(&t.tv_sec));
         h->logtime = t.tv_sec;
         h->logbreak = 30;
     }
-    ccn_charbuf_putf(b, "%ld.%06u ccnr[\n]: %s\n",
+    ccn_charbuf_putf(b, "%ld.%06u ccnr[%d]: %s\n",
         (long)t.tv_sec, (unsigned)t.tv_usec, h->logpid, fmt);
     va_start(ap, fmt);
     /* b should already have null termination, but use call for cleanliness */
@@ -143,7 +143,7 @@ ccnr_debug_ccnb(struct ccnr_handle *h,
     if (h != NULL && h->debug == 0)
         return;
     c = ccn_charbuf_create();
-    ccn_charbuf_putf(c, "debug.\n %s ", lineno, msg);
+    ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
     if (fdholder != NULL)
         ccn_charbuf_putf(c, "%u ", fdholder->filedesc);
     ccn_uri_append(c, ccnb, ccnb_size, 1);
