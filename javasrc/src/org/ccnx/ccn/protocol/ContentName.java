@@ -1257,24 +1257,22 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
-	 * Return a subname of this name as a new name.
+	 * Return a subname of this name as a new name. Two indexes are supplied,
+	 * and a new name is made, taking the components between these indexes.
 	 * @param start the starting component index (0-based)
-	 * @param componentCount the number of components to include beginning with start.
+	 * @param end the number of the last component to include. (1-based)
 	 * @return the new name.
 	 */
-	public ContentName subname(int start, int componentCount) {
-		if (start < 0 || start+componentCount > _components.length)
+	public ContentName subname(int start, int end) {
+		if (start < 0 || start > _components.length || end < start || end > _components.length)
 			throw new IllegalArgumentException("Start or end out of range");
 
-		if (start == 0)
-			return cut(componentCount);
-
-		if (componentCount == 0)
+		if (start == end)
 			return ROOT;
 
 		ContentName result = new ContentName();
-		result._components = new byte[componentCount][];
-		System.arraycopy(_components, start, result._components, 0, componentCount);
+		result._components = new byte[end-start][];
+		System.arraycopy(_components, start, result._components, 0, end-start);
 		return result;
 	}
 
