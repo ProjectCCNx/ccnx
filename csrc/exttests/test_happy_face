@@ -14,8 +14,8 @@
 AFTER : test_single_ccnd
 BEFORE : test_single_done
 
-echo ':-)' | ccnput -f /test/happy/face || Fail ':-('
-ccnget -c /test/happy/face | tee happyface.out || Fail ':-/'
+echo ':-)' | ccnpoke -f /test/happy/face || Fail ':-('
+ccnpeek -c /test/happy/face | tee happyface.out || Fail ':-/'
 echo ':-)' > expect-happyface.out
 echo ':-)' | diff expect-happyface.out happyface.out || Fail '8-('
 rm expect-happyface.out happyface.out

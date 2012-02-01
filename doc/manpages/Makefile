@@ -39,8 +39,10 @@ PAGE_NAMES =        		\
 	ccncat			\
 	ccnslurp		\
 	ccnchat			\
+	ccnpeek			\
+	ccnpoke			\
 
-PROJECT_NUMBER = 0.4.2
+PROJECT_NUMBER = 0.5.0
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)

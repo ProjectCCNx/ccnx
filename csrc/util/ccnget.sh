@@ -1,8 +1,8 @@
-# tests/test_happy_face
+# Source file: util/ccnget.sh
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -11,10 +11,9 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-AFTER : test_single_ccnd
-BEFORE : test_single_ccnd_teardown
-
-echo ':-)' | ccnpoke -f /test/happy/face || Fail ':-('
-ccnpeek -c /test/happy/face | tee happyface.out || Fail ':-/'
-echo ':-)' | diff - happyface.out || Fail
-rm happyface.out
+# This script should be installed in the same place as ccnpeek, ccnpoke, ...
+# adjust the path to get consistency.
+D=`dirname "$0"`
+export PATH="$D:$PATH"
+echo ccnget is a deprecated command name.  The new name is ccnpeek. 1>&2
+ccnpeek "$@"

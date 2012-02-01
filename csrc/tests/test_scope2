@@ -21,7 +21,7 @@ WithCCND 1 ccndlogging med
 WithCCND 2 ccndlogging med
 WithCCND 3 ccndlogging med
 
-WithCCND 3 ccnput -f /$UNIQ/scope2/stuff < /dev/null
+WithCCND 3 ccnpoke -f /$UNIQ/scope2/stuff < /dev/null
 cat <<EOF >scope2interest.xml
 <Interest>
   <Name>

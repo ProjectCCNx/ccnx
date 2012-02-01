@@ -127,7 +127,7 @@ dataresponsetest keyfetchdata.ccnb keyfetchpkey.ccnb keyfetchsetup.ccnb &
 ccndsmoketest -t 100 recv
 
 # Don't start the test until our dataresponsetest process is ready.
-ccnget -c /check/dataresponsetest || SkipTest dataresponsetest not responding
+ccnpeek -c /check/dataresponsetest || SkipTest dataresponsetest not responding
 
 # This is the heart of the test.
 # First, do a vanilla ccnls, which does not attempt to fetch the key.
@@ -160,7 +160,7 @@ ccnputfile ccnx:/ccnd/test_keyfetch /tmp/test_key_fetch.data
 ccn_repo stop
 killall java
 mv ~/.ccnx ~/test_key_fetch.ccnx && mv ~/x.ccnx ~/.ccnx
-ccnget ccnx:/ccnd/test_keyfetch > keyfetchdata.ccnb
+ccnpeek ccnx:/ccnd/test_keyfetch > keyfetchdata.ccnb
 cat ~/test_key_fetch.ccnx/*/*.ccnb > keyfetchpkey.ccnb
 ccndumpnames
 ccndsmoketest kill
