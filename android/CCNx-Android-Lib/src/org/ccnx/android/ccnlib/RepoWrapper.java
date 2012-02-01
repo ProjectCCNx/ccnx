@@ -52,11 +52,19 @@ public final class RepoWrapper extends CCNxWrapper {
 		CCNR_STATUS_PORT
 	}
 	
-	public enum SYNC_OPTIONS { /* sync */
-		SYNC_DEBUG,
-		SYNC_ENABLE,
-		SYNC_TOPO,
-		SYNC_AUTO_REGISTER
+	public enum CCNS_OPTIONS { /* sync */
+		CCNS_DEBUG,
+		CCNS_ENABLE,
+		CCNS_REPO_STORE,
+		CCNS_STABLE_ENABLED,
+		CCNS_FAUX_ERROR,
+		CCNS_HEARTBEAT_MICROS,
+		CCNS_ROOT_ADVISE_FRESH,
+		CCNS_ROOT_ADVISE_LIFETIME,
+		CCNS_NODE_FETCH_LIFETIME,
+		CCNS_MAX_FETCH_BUSY,
+		CCNS_MAX_COMPARES_BUSY,
+		CCNS_NOTE_ERR
 	}
 	
 	public RepoWrapper(Context ctx) {
@@ -89,7 +97,7 @@ public final class RepoWrapper extends CCNxWrapper {
 		setOption(key.name(), value);
 	}
 	
-	public void setOption(SYNC_OPTIONS key, String value) {
+	public void setOption(CCNS_OPTIONS key, String value) {
 		setOption(key.name(), value);
 	}
 }

@@ -27,7 +27,7 @@ import java.util.Map.Entry;
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.RepoWrapper.REPO_OPTIONS;
 import org.ccnx.android.ccnlib.RepoWrapper.CCNR_OPTIONS;
-import org.ccnx.android.ccnlib.RepoWrapper.SYNC_OPTIONS;
+import org.ccnx.android.ccnlib.RepoWrapper.CCNS_OPTIONS;
 import org.ccnx.android.services.CCNxService;
 import org.ccnx.ccn.config.UserConfiguration;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore;
@@ -143,7 +143,7 @@ public final class RepoService extends CCNxService {
 					options.put(opt.name(), s);
 				}
 			}
-			for( SYNC_OPTIONS opt : SYNC_OPTIONS.values() ) {
+			for( CCNS_OPTIONS opt : CCNS_OPTIONS.values() ) {
 				if(!intent.hasExtra(opt.name())){
 					continue;
 				}
@@ -256,20 +256,9 @@ public final class RepoService extends CCNxService {
 			
 			/* Take CCNR_LISTEN_ON defaults */
 			/* Take CCNR_STATUS_PORT defaults */
+			/* Take all CCNS_* defaults */
+			/* Don't bother with undocumented CCNS_* variables */
 			
-			if(options.get(SYNC_OPTIONS.SYNC_DEBUG.name()) == null) {
-				options.put(SYNC_OPTIONS.SYNC_DEBUG.name(), DEFAULT_SYNC_DEBUG);
-			} else {
-				Log.d(TAG,SYNC_OPTIONS.SYNC_DEBUG.name() + " = " + options.get(SYNC_OPTIONS.SYNC_DEBUG.name()));
-			}
-			
-			if(options.get(SYNC_OPTIONS.SYNC_ENABLE.name()) == null) {
-				options.put(SYNC_OPTIONS.SYNC_ENABLE.name(), DEFAULT_SYNC_ENABLE);
-			} else {
-				Log.d(TAG,SYNC_OPTIONS.SYNC_ENABLE.name() + " = " + options.get(SYNC_OPTIONS.SYNC_ENABLE.name()));
-			}
-			
-			/* Don't bother with undocumented SYNC_* variables */
 			if ((repo_dir = createRepoDir(repo_dir)) == null) {
 				//
 				// If we can't create the directory 
