@@ -3,6 +3,11 @@
 Android Apps for CCNx
 =====================
 
+CCNx-Android-Services
+  This is an Android app that manages the lifecycle of CCND and 
+  a REPO as a service.  One can build a standalone application 
+  to utlize the CCNx services made available by this application.
+
 CCNx-Android-Lib
   This is an Android library.  It has helpers for the ccnd and 
   repo services, among other things.  No build is done here, as
@@ -40,6 +45,7 @@ Important Notes
 - Ccnd directory is under the apk:
   /data/data/org.ccnx.android.services/app_ccnd
 
+- CCNR (repo2) is set to be the default repo version.  Please see the man pages for CCNR for more detailed information on environment variables and default values.
 
 Android Build System Notes
 ===========================
@@ -117,7 +123,7 @@ Honeycomb
 ===========
 Android 3.x devices (and possibly some 2.x) devices the crypto support includes a subset of the Bouncy Castle library.  See: http://redmine.ccnx.org/issues/100589 for details.  As a result, the 3.x devices we tested failed with ClassNotFoundException trying to resolve the BouncyCastleProvider.  To work around this, we include the Bouncy Castle provider jar file if you specify in the top level of the android project directory:
 
-make honeycomb
+	make honeycomb
 
 This change affects CCNx-Android-Services, CCNx-Android-Chat, and CCNx-Android-StartupExamples.  Because of the size of the jar file (around 1.5mb) we are interested in a better solution long term, though there is no indication Google has changed their approach, except to enhance the android crypto library to rely upon functionality delivered through OpenSSL.
 
