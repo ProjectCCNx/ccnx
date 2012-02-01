@@ -1,4 +1,4 @@
-# Copyright (C) 2009,2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -15,23 +15,20 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE		:= libccnd
+LOCAL_MODULE		:= libccnr
 LOCAL_C_INCLUDES	:= $(LOCAL_PATH)
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../include 
+LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/..
 
-# LOCAL_PATH = project_root/csrc/ccnd
+# LOCAL_PATH = project_root/csrc/ccnr
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../../android/external/openssl-armv5/include
 
-CCNDOBJ := ccnd.o ccnd_msg.o ccnd_internal_client.o ccnd_stats.o \
-			android_main.o android_msg.o
+CCNROBJ := ccnr_dispatch.o ccnr_forwarding.o ccnr_init.o ccnr_internal_client.o ccnr_io.o ccnr_link.o ccnr_main.o ccnr_match.o ccnr_msg.o ccnr_net.o ccnr_proto.o ccnr_sendq.o ccnr_stats.o ccnr_store.o ccnr_sync.o ccnr_util.o ../lib2/ccn_btree.o ../lib2/ccn_btree_content.o ../lib2/ccn_btree_store.o ../sync/IndexSorter.o ../sync/SyncActions.o ../sync/SyncBase.o ../sync/SyncHashCache.o ../sync/SyncNode.o ../sync/SyncRoot.o ../sync/SyncTreeWorker.o ../sync/SyncUtil.o
+CCNRSRC := $(CCNROBJ:.o=.c)
 
-CCNDSRC := $(CCNDOBJ:.o=.c)
-
-LOCAL_SRC_FILES := $(CCNDSRC)
+LOCAL_SRC_FILES := $(CCNRSRC)
 LOCAL_CFLAGS := -g
-# LOCAL_LDLIBS        := -lsync
 LOCAL_STATIC_LIBRARIES := libcrypto libccnx
 LOCAL_SHARED_LIBRARIES :=
 
 include $(BUILD_STATIC_LIBRARY)
-

@@ -21,7 +21,10 @@
 
 # The libraries
 APP_MODULES      := libccnx
+# APP_MODULES      += lib2ccnx
 APP_MODULES      += libccnd 
+# APP_MODULES      += libsync
+APP_MODULES      += libccnr 
 APP_MODULES      += libcrypto
 APP_MODULES      += libssl
 

@@ -29,12 +29,42 @@ public final class RepoWrapper extends CCNxWrapper {
 	
 	public static final String OPTION_LOG_LEVEL_DEFAULT = "WARNING";
 	
-	public enum REPO_OPTIONS {
+	public enum REPO_OPTIONS { /* repo1 */
 		REPO_DIRECTORY,
 		REPO_DEBUG,
 		REPO_LOCAL,
 		REPO_GLOBAL,
 		REPO_NAMESPACE
+	}
+	
+	public enum CCNR_OPTIONS { /* repo2 */
+		CCNR_DEBUG,
+		CCNR_DIRECTORY,
+		CCNR_GLOBAL_PREFIX,
+		CCNR_BTREE_MAX_FANOUT,
+		CCNR_BTREE_MAX_LEAF_ENTRIES,
+		CCNR_BTREE_MAX_NODE_BYTES,
+		CCNR_BTREE_NODE_POOL,
+		CCNR_CONTENT_CACHE,
+		CCNR_MIN_SEND_BUFSIZE,
+		CCNR_PROTO,
+		CCNR_LISTEN_ON,
+		CCNR_STATUS_PORT
+	}
+	
+	public enum CCNS_OPTIONS { /* sync */
+		CCNS_DEBUG,
+		CCNS_ENABLE,
+		CCNS_REPO_STORE,
+		CCNS_STABLE_ENABLED,
+		CCNS_FAUX_ERROR,
+		CCNS_HEARTBEAT_MICROS,
+		CCNS_ROOT_ADVISE_FRESH,
+		CCNS_ROOT_ADVISE_LIFETIME,
+		CCNS_NODE_FETCH_LIFETIME,
+		CCNS_MAX_FETCH_BUSY,
+		CCNS_MAX_COMPARES_BUSY,
+		CCNS_NOTE_ERR
 	}
 	
 	public RepoWrapper(Context ctx) {
@@ -43,7 +73,7 @@ public final class RepoWrapper extends CCNxWrapper {
 		Log.d(TAG,"Initializing");
 		serviceClassName = "org.ccnx.android.services.repo.RepoService";
 		serviceName = "org.ccnx.android.service.repo.SERVICE";
-		setOption(REPO_OPTIONS.REPO_DEBUG, OPTION_LOG_LEVEL_DEFAULT);
+		// setOption(REPO_OPTIONS.REPO_DEBUG, OPTION_LOG_LEVEL_DEFAULT);
 	}
 	
 	@Override
@@ -60,6 +90,14 @@ public final class RepoWrapper extends CCNxWrapper {
 	}
 	
 	public void setOption(REPO_OPTIONS key, String value) {
+		setOption(key.name(), value);
+	}
+	
+	public void setOption(CCNR_OPTIONS key, String value) {
+		setOption(key.name(), value);
+	}
+	
+	public void setOption(CCNS_OPTIONS key, String value) {
 		setOption(key.name(), value);
 	}
 }

@@ -20,6 +20,8 @@ package org.ccnx.android.ccnlib;
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.CcndWrapper.CCND_OPTIONS;
 import org.ccnx.android.ccnlib.RepoWrapper.REPO_OPTIONS;
+import org.ccnx.android.ccnlib.RepoWrapper.CCNS_OPTIONS;
+import org.ccnx.android.ccnlib.RepoWrapper.CCNR_OPTIONS;
 
 import android.content.Context;
 import android.util.Log;
@@ -216,11 +218,19 @@ public final class CCNxServiceControl {
 		repoInterface.setOption(option, value);
 	}
 	
+	public void setSyncOption(CCNS_OPTIONS option, String value) {
+		repoInterface.setOption(option, value);
+	}
+	
+	public void setCcnrOption(CCNR_OPTIONS option, String value) {
+		repoInterface.setOption(option, value);
+	}
+	
 	/**
 	 * Are ccnd and the repo running and ready?
 	 * @return true if BOTH ccnd and the repo are in state Running
 	 */
-	public boolean allReady(){
+	public boolean isAllRunning(){
 		return(SERVICE_STATUS.SERVICE_RUNNING.equals(ccndStatus) &&
 			   SERVICE_STATUS.SERVICE_RUNNING.equals(repoStatus));
 	}
