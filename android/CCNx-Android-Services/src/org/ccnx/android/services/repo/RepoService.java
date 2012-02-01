@@ -332,6 +332,22 @@ public final class RepoService extends CCNxService {
 		}
 		return repodir;
 	}
+	
+	private boolean deleteRepoDir() {
+		File f;
+		if(repo_dir != null) {
+			f = new File(repo_dir);
+			try {
+				return (f.delete());
+			} catch(SecurityException se) {
+				Log.e(TAG, "deleteRepoDir SecurityException: " + se.getMessage());
+				return false;
+			}
+		} else {
+			return false;
+		}
+	}
+	
 	protected native int ccnrCreate(String version);
 	protected native int ccnrRun();
     protected native int ccnrDestroy();
