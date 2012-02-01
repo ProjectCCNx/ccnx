@@ -1,0 +1,94 @@
+'\" t
+.\"     Title: ccnpeek
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 01/31/2012
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.5.0
+.\"  Language: English
+.\"
+.TH "CCNPEEK" "1" "01/31/2012" "\ \& 0\&.5\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnpeek \- Get one content item matching the name prefix and write it to stdout\&.
+.SH "SYNOPSIS"
+.sp
+\fBccnpeek\fR [\-h] [\-a] [\-c] [\-l \fIlifetime\fR] [\-s \fIscope\fR] [\-u] [\-v] [\-w timeout] \fIccnxuri\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccnpeek\fR utility generates an Interest, with attributes modfied by the given options, for the supplied CCNx URI prefix, \fIccnxuri\fR, and writes any response to stdout\&.
+.SH "OPTIONS"
+.PP
+\fB\-h\fR
+.RS 4
+Generate the help message\&.
+.RE
+.PP
+\fB\-a\fR
+.RS 4
+Accept stale data in response to the interest\&.
+.RE
+.PP
+\fB\-c\fR
+.RS 4
+Content only, rather than the full ccnb encoded ContentObject, should be written to stdout\&.
+.RE
+.PP
+\fB\-l\fR \fIlifetime\fR
+.RS 4
+Specifies the lifetime, in seconds, of the interest\&. The lifetime is encoded in the interest in units of 1/4096 seconds, and the input value is rounded to this precision\&. A lifetime up to 30\&.0s can be specified, the default is 4s\&.
+.RE
+.PP
+\fB\-s\fR \fIscope\fR
+.RS 4
+Specifies the Scope of the interest, which limits where the interest can propagate\&. A value of 0 limits it to the local
+\fBccnd\fR
+cache, 1 to the originating system, and 2 to no further than the next system\&. The default, with no scope specified, is unlimited forwarding\&.
+.RE
+.PP
+\fB\-u\fR
+.RS 4
+Allow unverified content to be returned\&.
+.RE
+.PP
+\fB\-v\fR
+.RS 4
+Resolve a version number prior to fetching the final ContentObject\&.
+.RE
+.PP
+\fB\-w\fR \fItimeout\fR
+.RS 4
+Specifies the wait time, in seconds, before returning if there is no response\&. Values in the range 0\&.001s to 60\&.0s can be specified, the default is 3s\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; retrieval error)
+.RE
+.SH "AUTHOR"
+.sp
+Nick Briggs <briggs@parc\&.com>
