@@ -20,7 +20,7 @@ package org.ccnx.android.ccnlib;
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.CcndWrapper.CCND_OPTIONS;
 import org.ccnx.android.ccnlib.RepoWrapper.REPO_OPTIONS;
-import org.ccnx.android.ccnlib.RepoWrapper.SYNC_OPTIONS;
+import org.ccnx.android.ccnlib.RepoWrapper.CCNS_OPTIONS;
 import org.ccnx.android.ccnlib.RepoWrapper.CCNR_OPTIONS;
 
 import android.content.Context;
@@ -218,7 +218,7 @@ public final class CCNxServiceControl {
 		repoInterface.setOption(option, value);
 	}
 	
-	public void setSyncOption(SYNC_OPTIONS option, String value) {
+	public void setSyncOption(CCNS_OPTIONS option, String value) {
 		repoInterface.setOption(option, value);
 	}
 	
