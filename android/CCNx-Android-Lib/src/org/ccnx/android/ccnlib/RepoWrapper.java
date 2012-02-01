@@ -65,7 +65,7 @@ public final class RepoWrapper extends CCNxWrapper {
 		Log.d(TAG,"Initializing");
 		serviceClassName = "org.ccnx.android.services.repo.RepoService";
 		serviceName = "org.ccnx.android.service.repo.SERVICE";
-		setOption(REPO_OPTIONS.REPO_DEBUG, OPTION_LOG_LEVEL_DEFAULT);
+		// setOption(REPO_OPTIONS.REPO_DEBUG, OPTION_LOG_LEVEL_DEFAULT);
 	}
 	
 	@Override
@@ -82,6 +82,14 @@ public final class RepoWrapper extends CCNxWrapper {
 	}
 	
 	public void setOption(REPO_OPTIONS key, String value) {
+		setOption(key.name(), value);
+	}
+	
+	public void setOption(CCNR_OPTIONS key, String value) {
+		setOption(key.name(), value);
+	}
+	
+	public void setOption(SYNC_OPTIONS key, String value) {
 		setOption(key.name(), value);
 	}
 }

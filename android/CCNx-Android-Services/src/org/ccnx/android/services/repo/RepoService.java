@@ -214,15 +214,6 @@ public final class RepoService extends CCNxService {
 			}
 		} else if (Pattern.matches("2\\.0\\.0", repo_version)) {
 			Log.d(TAG,"Repo version 2 starting using native C-based repo optimized for ARMv7");
-			if ((repo_dir = createRepoDir(repo_dir)) == null) {
-				//
-				// If we can't create the directory 
-				// reasons: no perms, external storage unavailable
-				// then we cannot proceed
-				Log.e(TAG,"Repo version 2 unable to start because cannot create repo_dir");
-				setStatus(SERVICE_STATUS.SERVICE_ERROR);
-				return;
-			}
 			
 			/* Only set defaults when the CCNR/SYNC defaults are not appropriate for Android */
 			if(options.get(CCNR_OPTIONS.CCNR_DEBUG.name()) == null) {
@@ -231,10 +222,18 @@ public final class RepoService extends CCNxService {
 				Log.d(TAG,CCNR_OPTIONS.CCNR_DEBUG.name() + " = " + options.get(CCNR_OPTIONS.CCNR_DEBUG.name()));
 			}
 			
-			if(options.get(CCNR_OPTIONS.CCNR_DIRECTORY.name()) == null) {
+			/* Make sure this directory is on the external storage */
+			if(options.get(CCNR_OPTIONS.CCNR_DIRECTORY.name()) == null){
+				repo_dir = DEFAULT_REPO_DIR;
 				options.put(CCNR_OPTIONS.CCNR_DIRECTORY.name(), repo_dir);
 			} else {
-				Log.d(TAG,CCNR_OPTIONS.CCNR_DIRECTORY.name() + " = " + options.get(CCNR_OPTIONS.CCNR_DIRECTORY.name()));
+				repo_dir = options.get(CCNR_OPTIONS.CCNR_DIRECTORY.name());
+				if (!repo_dir.startsWith(Environment.getExternalStorageDirectory().getAbsolutePath())) {
+					repo_dir = Environment.getExternalStorageDirectory().getAbsolutePath() + repo_dir;
+					options.put(CCNR_OPTIONS.CCNR_DIRECTORY.name(), repo_dir);
+					Log.d(TAG, "CCNR_DIRECTORY remapped to contain external storage path = " + repo_dir);
+				}
+				Log.d(TAG,CCNR_OPTIONS.CCNR_DIRECTORY.name() + " = " + repo_dir);
 			}
 			
 			if(options.get(CCNR_OPTIONS.CCNR_GLOBAL_PREFIX.name()) == null) {
@@ -252,7 +251,7 @@ public final class RepoService extends CCNxService {
 			if(options.get(CCNR_OPTIONS.CCNR_PROTO.name()) == null) {
 				options.put(CCNR_OPTIONS.CCNR_PROTO.name(), DEFAULT_REPO_PROTO);
 			} else {
-				Log.d(TAG,CCNR_OPTIONS.CCNR_PROTO.name() + " = " + options.get(CCNR_OPTIONS.CCNR_PROTO.name()));
+				Log.d(TAG,CCNR_OPTIONS.CCNR_PROTO.name() + " = " + CCNR_OPTIONS.CCNR_PROTO.name());
 			}
 			
 			/* Take CCNR_LISTEN_ON defaults */
@@ -271,7 +270,15 @@ public final class RepoService extends CCNxService {
 			}
 			
 			/* Don't bother with undocumented SYNC_* variables */
-
+			if ((repo_dir = createRepoDir(repo_dir)) == null) {
+				//
+				// If we can't create the directory 
+				// reasons: no perms, external storage unavailable
+				// then we cannot proceed
+				Log.e(TAG,"Repo version 2 unable to start because cannot create repo_dir");
+				setStatus(SERVICE_STATUS.SERVICE_ERROR);
+				return;
+			}
 			try {
 				for( Entry<String,String> entry : options.entrySet() ) {
 					Log.d(TAG, "options key setenv: " + entry.getKey());
@@ -318,16 +325,30 @@ public final class RepoService extends CCNxService {
 
 	private String createRepoDir(String repodir) {
 		File f;
+		File external_dir = Environment.getExternalStorageDirectory();
+		
 		if(repodir != null) {
-			f = new File(repo_dir);
-			f.mkdirs();
+			// Check if repodir contains the external storage path
+			if (!repodir.startsWith(external_dir.getAbsolutePath())) {
+				repodir = external_dir.getAbsolutePath() + repodir;
+			}
+			
+			f = new File(repodir); 
+			if (f.mkdirs()) {
+				Log.d(TAG,"Created repodir = " + repodir);
+			} else {
+				Log.d(TAG,"Unable to create repodir = " + repodir + ", already exists");
+			}
+			
 		} else {
-			File external_dir;
 			// repo_dir is null, lets get a directory from the android system
 			// in external storage.
-			external_dir = Environment.getExternalStorageDirectory();
 			f = new File(external_dir.getAbsolutePath() + DEFAULT_REPO_DIR);
-			f.mkdirs();
+			if (f.mkdirs()) {
+				Log.d(TAG,"Created default repodir = " + external_dir.getAbsolutePath() + DEFAULT_REPO_DIR);
+			} else {
+				Log.d(TAG,"Unable to create default repodir = " +  external_dir.getAbsolutePath() + DEFAULT_REPO_DIR + ", already exists");
+			}
 			repodir = f.getAbsolutePath();
 		}
 		return repodir;

@@ -16,7 +16,7 @@
 <LinearLayout android:id="@+id/LinearLayout01" android:layout_width="wrap_content" android:layout_height="wrap_content"><TextView android:id="@+id/TextView02" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ccndStatusLabel" android:textSize="8pt" android:layout_marginRight="3px"></TextView><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/tvCcndStatus" android:textSize="9pt"></TextView></LinearLayout>
 <LinearLayout android:id="@+id/LinearLayout02" android:layout_width="wrap_content" android:layout_height="wrap_content"><TextView android:id="@+id/TextView04" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/repoStatusLabel" android:textSize="8pt" android:layout_marginRight="3px"></TextView><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/tvRepoStatus" android:textSize="9pt"></TextView></LinearLayout>
 <EditText  
-    android:id="@+id/key_ccnr_dir"
+    android:id="@+id/key_ccnr_directory"
     android:layout_height="wrap_content"
     android:hint="@string/hint_ccnr_dir"
     android:text="@string/val_ccnr_dir"
