@@ -44,7 +44,7 @@ IndexSorter_Add(IndexSorter_Base base, IndexSorter_Index x) {
         IndexSorter_Index *old = vec;
         vec = calloc(nLim, sizeof(IndexSorter_Index));
         base->indexes = vec;
-        if (len > 0) memcpy(vec, old, len);
+        if (len > 0) memcpy(vec, old, len*sizeof(IndexSorter_Index));
         free(old);
         base->lim = nLim;
     }
