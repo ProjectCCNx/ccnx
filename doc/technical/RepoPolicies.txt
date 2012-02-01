@@ -1,0 +1,46 @@
+CCNx Repository Policy Handling
+===============================
+
+A Policy specifies the namespaces (name prefixes) for which the Repository accepts and holds content. The initial Policy is specified when the Repository is created. After that, the Policy may be updated using the link:RepoProtocol.html[CCNx Repository Protocol].
+
+On initial startup, when there is no existing Policy, a default Policy is created using the value of the +CCNR_GLOBAL_PREFIX+ configuration variable as described in the link:../manpages/ccnr.html[CCNR(1) Manual Page]. If +CCNR_GLOBAL_PREFIX+ is not specified, the default is +ccnx:/parc.com/csl/ccn/Repos+. The default namespace served at initial startup is /.
+
+If used, +CCNR_GLOBAL_PREFIX+ must be set to exactly one pathname: the prefix under which +data/policy.xml+ is stored. This does not have any relationship to the namespace that the Repository serves, except that it always listens for a Policy file in that namespace. The Repository loads the Policy during startup, and then registers the prefixes (along with the global prefix) with ccnd. From then on, ccnd only forwards Interests for names in these namespaces to the Repository.
+
+A Policy Object is stored in the Repository in +<global prefix>/data/policy.xml+, and a link to the current Policy is created and stored under the name
+.......................................................
+ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/POLICY/%C1.M.K<pubid>/<version>/%00
+.......................................................
+
+where +<pubid>+ is the Repository’s public key id, and +<version>+ is the regular version stamp representing the time when the Policy was updated. The content of the link might be similar to the following:
+.......................................................
+<Link>
+  <Name>
+    <Component ccnbencoding="text">parc.com</Component>
+    <Component ccnbencoding="text">csl</Component>
+    <Component ccnbencoding="text">ccn</Component>
+    <Component ccnbencoding="text">Repo</Component>
+    <Component ccnbencoding="text">data</Component>
+    <Component ccnbencoding="text">policy.xml</Component>
+    <Component ccnbencoding="base64Binary">/QTpckXGZw==</Component>
+    <!--       %FD%04%E9rE%C6g -->
+  </Name>
+  <Label>Repository Policy</Label>
+</Link>
+.......................................................
+(but should be updated to include the LinkAuthenticator!)
+
+A Repository Policy is in xml format (using ccnb encoding), and is stored in the Repository along with other CCN Content Objects. The content of a Policy might be similar to the following:
+.......................................................
+<Policy>
+  <PolicyVersion>1.5</PolicyVersion>
+  <LocalName>Repository</LocalName>
+  <GlobalPrefix>ccnx:/parc.com/csl/ccn/Repos</GlobalPrefix>
+  <Namespace>some/prefix</Namespace>
+</Policy>
+.......................................................
+with a separate +<Namespace>+ element for each namespace. (There can be an arbitrary number of namespaces.)
+
+A Policy can be replaced with a normal Start Write command to +<GlobalPrefix>/data/policy.xml/<version>/<segments>+. (The new Policy must have the same global prefix as, and a newer version than, the one it replaces.) If the version on the Policy is older than the current Policy in use, the Policy is not well formed, or the +<GlobalPrefix>+ in the Policy is different from the existing Policy, it is stored but not used (the link is not updated).
+ If a Policy is updated, the new version is put into effect almost immediately.
+

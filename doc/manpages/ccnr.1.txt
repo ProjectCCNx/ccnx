@@ -1,0 +1,91 @@
+CCNR(1)
+=======
+
+NAME
+----
+ccnr - CCNx Repository Daemon
+
+SYNOPSIS
+--------
+*ccnr* [-h]
+
+DESCRIPTION
+-----------
+A Repository supports the network by preserving content and responding to Interests requesting content that it holds. These services are available to CCN components, including CCN-enabled customer applications. A Repository can exist in any node, and is recommended if applications in that node need to preserve data. See link:../technical/RepoProtocol.html[CCNx Repository Protocols] for more information about the Repository.
+
+The *ccnr* command starts the Repository using the directory specified by the +CCNR_DIRECTORY+ environment variable. At startup, the Repository retrieves and applies the configuration options described below.
+
+The Repository uses +$CCNR_DIRECTORY/repoFile1+ for persistent storage of CCN Content Objects. A disk-resident index facilitates rapid start-up and limits the memory footprint. If an index does not exist, it is built during startup.
+
+The Repository is configured from information in the text file, +$CCNR_DIRECTORY/config+. The file is only read at startup time.
+
+Any or all variables in the file may also be expressed as environment variables that are examined at startup time. If the same variable is defined in both the configuration file and an environment variable, the value in the configuration file takes precedence.
+
+*CCNR_BTREE_MAX_FANOUT=_<Max fanout>_*::
+     where _<Max fanout>_ is the maximum number of entries in index B-tree interior nodes. The maximum value for _<Max fanout>_  is 1999.
+
+*CCNR_BTREE_MAX_LEAF_ENTRIES=_<Max leaf entries>_*::
+     where _<Max leaf entries>_ is the maximum number of entries in index B-tree leaf nodes. The maximum value for _<Max leaf entries>_  is 1999.
+
+*CCNR_BTREE_MAX_NODE_BYTES=_<Max index size>_*::
+     where _<Max index size>_ is the maximum size of index B-tree nodes, in bytes. The maximum value for _<Max index size>_  is 2097152.
+
+*CCNR_BTREE_NODE_POOL=_<Max index nodes cached>_*::
+     where _<Max index nodes cached>_ is the maximum number of index B-tree nodes cached in memory. The maximum value for _<Max index nodes cached>_  is 512.
+
+*CCNR_CONTENT_CACHE=_< Max objects cached>_*::
+     where _< Max objects cached>_ is the maximum number of Content Objects cached in memory. The maximum value for _< Max objects cached>_  is 4201.
+
+*CCNR_DEBUG=_<debug logging level>_*::
+     where _<debug logging level>_ is one of the following.  If the option is not specified, the default is +WARNING+.
+
+* +NONE+ - no messages
+
+* +SEVERE+ - severe, probably fatal, errors
+
+* +ERROR+ - errors
+
+* +WARNING+ – warnings
+
+* +FINE+, +FINER+, +FINEST+ - debugging/tracing
+
+*CCNR_DIRECTORY*=_<directory>_::
+     where _<directory>_ is the directory where the Repository storage is located, which defaults to the current directory. +CCNR_DIRECTORY+ is ignored in the configuration file.
+
+*CCNR_GLOBAL_PREFIX=_<URI>_*::
+     where _<URI>_ is the CCNx URI representing the prefix where +data/policy.xml+ is stored, and is meaningful only if no policy file exists at startup. If not specified, the URI defaults to +ccnx:/parc.com/csl/ccn/Repos+.
+
+*CCNR_LISTEN_ON=_<IP address list>_*::
+     where _<IP address list>_ is a list of IP addresses to listen on for status. If not specified, the default is a wild card.
+
+*CCNR_MIN_SEND_BUFSIZE=_<Min buffer size>_*::
+     where _<Min buffer size>_ is the minimum size in bytes of the output socket buffer (SO_SNDBUF) for the socket used to communicate with ccnd. The maximum value for _<Min buffer size>_ is 16384. If the system provides more than this by default, the system's value is used.
+
+*CCNR_PROTO=tcp*::
+     If this option is specified, Repo will connect to ccnd via TCP.  If not specified, the connection is via Unix IPC.
+
+*CCNR_STATUS_PORT=_<port>_*::
+     where _<port>_ is the port to use for a status server. If this option is not specified, no status is served.
+
+*CCNS_DEBUG=_<Sync debug logging level>_*::
+     where _<Sync debug logging level>_ has the same values as for +CCNR_DEBUG+ above. If not specified, the default is +WARNING+.
+
+*CCNS_ENABLE=_<do sync>_*::
+     where _<do sync>_ specifies whether to disable (0) or enable (1) Sync processing. If not specified, the default is enabled.
+
+OPTIONS
+-------
+*-h*::
+	Print a usage message.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; startup error; failed to connect to ccnd)
+
+AUTHOR
+------
+Michael Plass <plass@parc.com> Nick Briggs <briggs@parc.com>
