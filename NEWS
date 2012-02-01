@@ -1,3 +1,147 @@
+Changes between 0.4.2 and 0.5.0:
+--------------------------------
+This highlights some important changes since the most recent numbered release.
+Refer to http://www.ccnx.org/redmine/ for more details.
+
+  * Experience shows that many applications need local persistent storage.  With
+     the introduction of Repository-based synchronization, we now expect that
+     most nodes will use a local Repository running alongside their local ccnd.
+     As a result, we have changed defaults for storing content in a Repository
+     so that those store operations target only the local Repository."
+
+  * This release introduces an updated version of the Repository (ccnr) that is
+     written in C for faster performance and smaller footprint, and has a disk-
+     resident index for faster start-up and smaller footprint.
+
+     The startup and shutdown procedures have changed, as have some of the
+     configuration options and the procedure for obtaining debug information.
+     See doc/manpages/ccnr.1.html for more information about starting, stopping,
+     using, and configuring Repo, Repo policies, and links to Repository
+     protocol descriptions.
+
+     While the Repo startup procedure has changed, it still must be started
+     explicitly.
+
+  * This release introduces Sync, a mechanism for CCN components to define
+     collections of named data in Repositories, and for automatically
+     synchronizing copies of identically defined collections in neighboring
+     nodes.  Sync is currently embedded in Repo, but will be made available
+     separately in the future.
+
+     Sync is started automatically when Repo starts unless configured otherwise.
+
+     See the man page for SyncTest in doc/manpages/SyncTest.1.html for more
+     information about Sync, and how to use SyncTest, a command line tool for
+     testing Sync and creating collections.  See
+     doc/technical/SynchronizationProtocol.html for a description of the CCNx
+     Create Collection Protocol and the internal protocol used by Sync Agents
+     in neighboring nodes to keep their collections in synchrony.
+
+  * The default for a RepositoryFlowControl has changed from allowing any
+     repository to answer to requiring only a local (connected to the same ccnd
+     as the application) repository.
+
+     Direct users of the RepositoryFlowControl class can control the behavior
+     through a (previously present) boolean in the constructor.
+
+     Users of CCNNetworkObject can still control the local/non-local behavior
+     through the SaveType REPOSITORY (allows non-local repositories) and
+     LOCALREPOSITORY.
+
+     The SystemConfiguration option FC_LOCALREPOSITORY is unchanged and can
+     still be used to force a local repository. It cannot force permission to
+     use a non-local repository.
+
+     ccnputfile/ccnputmeta has been updated to have an -allownonlocal option.
+     The default behavior has also changed to require a local repository if no
+     command-line option is given.
+
+  * Issues Resolved:
+	* Feature 100112 Repo requires data storage in memory - this is unscalable
+	* Feature 100140 java library should have option of quitting when no ccnd
+	* Feature 100202 Rename ccnget and ccnput command line programs
+	* Bug 100315 CCNNetworkManager does not check semaphore timeout
+	* Bug 100376 CCNNetworkManager ignores semaphore return
+	* Feature 100407 Change BinaryXMLDictionary usage to an interface
+	* Feature 100427 CCNNetworkManager should not dispatch callbacks via separate
+		threads
+	* Bug 100445 ccnx.dtd missing Label elements (fixed in v0.4.2)
+	* Bug 100487 ccnx 0.4.0 does not install with /usr/local/<lib, bin,
+		include> missing
+	* Bug 100495 Cleanup Dos Newline ^M for target v0.4.1 (fixed in v0.4.1)
+	* Feature 100498 A new DTAG needs to be added for Sync.
+	* Feature 100500 Add java support for sync component
+	* Feature 100517 Junit tests should delimit themselves in the log file
+	* Bug 100524 libccn self-registration timeouts need adjusting
+	* Bug 100532 CCNVersionedOutputStreamTest does superfluous stackdumps
+	* Feature 100536 Java callback interfaces should have more intuitive names
+	* Feature 100537 Java interest callbacks should honor the boolean return
+	* Bug 100542 Lack of atomicity in cancelInterest
+	* Feature 100554 Improved wire encoding of type/value pairs
+	* Bug 100564 Name enumeration can miss quickly inserted content
+	* Bug 100565 Problems in NameEnumerationTest
+	* Feature 100572 Add a FAC_TEST and use this in test logging
+	* Bug 100577 test.io.StreamTest unused
+	* Feature 100578 New c implementation of ccn repository
+	* Feature 100579 Repository-based sync
+	* Bug 100580 The distributed ccn_repo documentation has missing and incorrect
+		information (documentation)
+	* Support 100581 Update readme to provide the dependencies for Mac OS X and
+		Linux (documentation)
+	* Feature 100584 Remove remnants of no longer valid interest refresh decay
+	* Bug 100585 Interest suppression test failures
+	* Bug 100586 README for Android support out of date (documentation)
+	* Bug 100587 @Override causes compile error in java 1.5
+	* Bug 100588 CCNNetworkManager.get() may take InterruptedException and not
+		unregister the interest.
+	* Bug 100589 CCNxRepoService can not start on android 3.1
+	* Bug 100590 New repo tests confused by presence of other processes
+	* Bug 100591 Java netmanager must compensate for _registrationChangeInProgress
+		not allowing interrupts
+	* Bug 100592 Synchronization error in InterestTable
+	* Feature 100593 Do better job of logging failures in log test
+	* Feature 100594 More pipelining pieces can be removed due to new netmanager
+	* Bug 100595 EnumeratedNameListTest fails randomly due to bad randomization
+	* Bug 100596 RepoIOTest can hang
+	* Bug 100599 NameEnumeration calls back user defined handler while holding a
+		lock
+	* Bug 100600 NameEnumeratorTest has synchronization errors
+	* Bug 100601 ccnseqwriter usage information is incomplete
+	* Bug 100602 Some CCNNetworkObject logging is missing facility
+	* Feature 100603 Improve logging of failed verifications in java repo
+	* Bug 100604 ccn_run commands don't have documentation for -debug and -javaopts
+		(documentation)
+	* Support 100609 Develop CCNx Repository protocols doc (documentation)
+	* Support 100610 Prepare for ccnx-0.5.0 release
+	* Bug 100612 ContentObject.html has two references to xsd.html where one should
+                  be a reference to dtd.html (documentation)
+	* Bug 100613 Remove unused comments and code in the java source referring to
+		the abandoned ACK protocol
+	* Bug 100614 Fix or remove ccn_btree_prev_leaf
+	* Feature 100615 Create a command-line utility to initialize a
+		.ccnx/.ccnx_keystore
+	* Bug 100616 ccn_keystore_file_init keystores don't exactly match either the
+		Java created keystores or the openssl command generated keystores.
+	* Bug 100618 ccnseqwriter should wait longer for repository response
+	* Bug 100623 ccn_run can wait longer than the timeout
+	* Bug 100625 make test fails on Mac OS X 10.7 (lion) in test_btree_prev_leaf
+		because grep says "regular expression too big"
+	* Bug 100626 CCNx Android apps should be set to use repo2 by default
+	* Bug 100627 NameEnumeratorTestRepo timeout too low
+	* Bug 100628 Wireshark README needs to be updated (documentation)
+	* Feature 100630 Change how the Merkle tree gets bytes to digest
+	* Feature 100632 Infrastructure and use of class to simplify use of threadpools
+		for content or interest handlers when necessary
+	* Feature 100633 Increase priority of netmanager thread
+	* Bug 100634 Remove lint identified by clang checker
+	* Feature 100635 Put top-level CCNx README in MarkDown format (documentation_
+	* Bug 100636 CCNxChat can not send message on Android 3.1
+	* Feature 100637 RepositoryFlowControl, and command line programs that write to
+		repositories, should default to scope 1
+	* Bug 100638 ccnr sync options need to be renamed
+	* Feature 100640 ccnr could use option to limit processing of start-write
+		commands to those with a given scope
+
 Changes between 0.4.1 and 0.4.2:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
