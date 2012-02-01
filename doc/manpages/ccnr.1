@@ -1,0 +1,249 @@
+'\" t
+.\"     Title: ccnr
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 02/01/2012
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.5.0
+.\"  Language: English
+.\"
+.TH "CCNR" "1" "02/01/2012" "\ \& 0\&.5\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnr \- CCNx Repository Daemon
+.SH "SYNOPSIS"
+.sp
+\fBccnr\fR [\-h]
+.SH "DESCRIPTION"
+.sp
+A Repository supports the network by preserving content and responding to Interests requesting content that it holds\&. These services are available to CCN components, including CCN\-enabled customer applications\&. A Repository can exist in any node, and is recommended if applications in that node need to preserve data\&. See CCNx Repository Protocols for more information about the Repository\&.
+.sp
+The \fBccnr\fR command starts the Repository using the directory specified by the CCNR_DIRECTORY environment variable\&. At startup, the Repository retrieves and applies the configuration options described below\&.
+.sp
+The Repository uses $CCNR_DIRECTORY/repoFile1 for persistent storage of CCN Content Objects\&. A disk\-resident index facilitates rapid start\-up and limits the memory footprint\&. If an index does not exist, it is built during startup\&.
+.sp
+The Repository is configured from information in the text file, $CCNR_DIRECTORY/config\&. The file is only read at startup time\&.
+.sp
+Any or all variables in the file may also be expressed as environment variables that are examined at startup time\&. If the same variable is defined in both the configuration file and an environment variable, the value in the configuration file takes precedence\&.
+.PP
+\fBCCNR_BTREE_MAX_FANOUT=\fR\fB\fI<Max fanout>\fR\fR
+.RS 4
+where
+\fI<Max fanout>\fR
+is the maximum number of entries in index B\-tree interior nodes\&. The maximum value for
+\fI<Max fanout>\fR
+is 1999\&.
+.RE
+.PP
+\fBCCNR_BTREE_MAX_LEAF_ENTRIES=\fR\fB\fI<Max leaf entries>\fR\fR
+.RS 4
+where
+\fI<Max leaf entries>\fR
+is the maximum number of entries in index B\-tree leaf nodes\&. The maximum value for
+\fI<Max leaf entries>\fR
+is 1999\&.
+.RE
+.PP
+\fBCCNR_BTREE_MAX_NODE_BYTES=\fR\fB\fI<Max index size>\fR\fR
+.RS 4
+where
+\fI<Max index size>\fR
+is the maximum size of index B\-tree nodes, in bytes\&. The maximum value for
+\fI<Max index size>\fR
+is 2097152\&.
+.RE
+.PP
+\fBCCNR_BTREE_NODE_POOL=\fR\fB\fI<Max index nodes cached>\fR\fR
+.RS 4
+where
+\fI<Max index nodes cached>\fR
+is the maximum number of index B\-tree nodes cached in memory\&. The maximum value for
+\fI<Max index nodes cached>\fR
+is 512\&.
+.RE
+.PP
+\fBCCNR_CONTENT_CACHE=\fR\fB\fI< Max objects cached>\fR\fR
+.RS 4
+where
+\fI< Max objects cached>\fR
+is the maximum number of Content Objects cached in memory\&. The maximum value for
+\fI< Max objects cached>\fR
+is 4201\&.
+.RE
+.PP
+\fBCCNR_DEBUG=\fR\fB\fI<debug logging level>\fR\fR
+.RS 4
+where
+\fI<debug logging level>\fR
+is one of the following\&. If the option is not specified, the default is
+WARNING\&.
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+NONE
+\- no messages
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+SEVERE
+\- severe, probably fatal, errors
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+ERROR
+\- errors
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+WARNING
+\(en warnings
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+FINE,
+FINER,
+FINEST
+\- debugging/tracing
+.RE
+.RE
+.PP
+\fBCCNR_DIRECTORY\fR=\fI<directory>\fR
+.RS 4
+where
+\fI<directory>\fR
+is the directory where the Repository storage is located, which defaults to the current directory\&.
+CCNR_DIRECTORY
+is ignored in the configuration file\&.
+.RE
+.PP
+\fBCCNR_GLOBAL_PREFIX=\fR\fB\fI<URI>\fR\fR
+.RS 4
+where
+\fI<URI>\fR
+is the CCNx URI representing the prefix where
+data/policy\&.xml
+is stored, and is meaningful only if no policy file exists at startup\&. If not specified, the URI defaults to
+ccnx:/parc\&.com/csl/ccn/Repos\&.
+.RE
+.PP
+\fBCCNR_LISTEN_ON=\fR\fB\fI<IP address list>\fR\fR
+.RS 4
+where
+\fI<IP address list>\fR
+is a list of IP addresses to listen on for status\&. If not specified, the default is a wild card\&.
+.RE
+.PP
+\fBCCNR_MIN_SEND_BUFSIZE=\fR\fB\fI<Min buffer size>\fR\fR
+.RS 4
+where
+\fI<Min buffer size>\fR
+is the minimum size in bytes of the output socket buffer (SO_SNDBUF) for the socket used to communicate with ccnd\&. The maximum value for
+\fI<Min buffer size>\fR
+is 16384\&. If the system provides more than this by default, the system\(cqs value is used\&.
+.RE
+.PP
+\fBCCNR_PROTO=tcp\fR
+.RS 4
+If this option is specified, Repo will connect to ccnd via TCP\&. If not specified, the connection is via Unix IPC\&.
+.RE
+.PP
+\fBCCNR_STATUS_PORT=\fR\fB\fI<port>\fR\fR
+.RS 4
+where
+\fI<port>\fR
+is the port to use for a status server\&. If this option is not specified, no status is served\&.
+.RE
+.PP
+\fBCCNS_DEBUG=\fR\fB\fI<Sync debug logging level>\fR\fR
+.RS 4
+where
+\fI<Sync debug logging level>\fR
+has the same values as for
+CCNR_DEBUG
+above\&. If not specified, the default is
+WARNING\&.
+.RE
+.PP
+\fBCCNS_ENABLE=\fR\fB\fI<do sync>\fR\fR
+.RS 4
+where
+\fI<do sync>\fR
+specifies whether to disable (0) or enable (1) Sync processing\&. If not specified, the default is enabled\&.
+.RE
+.SH "OPTIONS"
+.PP
+\fB\-h\fR
+.RS 4
+Print a usage message\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; startup error; failed to connect to ccnd)
+.RE
+.SH "AUTHOR"
+.sp
+Michael Plass <plass@parc\&.com> Nick Briggs <briggs@parc\&.com>
