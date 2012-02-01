@@ -5,7 +5,7 @@
  *
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 4005
+#define CCN_API_VERSION 5000
 
 /**
  * Interest lifetime default.
