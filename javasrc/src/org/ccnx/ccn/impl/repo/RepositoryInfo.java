@@ -1,11 +1,11 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -45,40 +45,37 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
  * Object to return information associated with a Repository to a repository client
- * 
- * TODO This object was once intended to be used for the currently unimplemented repo ACK
- * protocol also. If we decide to implement the ACK protocol in a different way, the dual use
- * aspects of this object should be removed.
  */
 
 public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
-	
+
 	protected static double _version = 1.1;
-	
+
 	protected String _repoVersion = null;
 	protected String _localName = null;
-	protected GlobalPrefix _globalPrefix = null; 
+	protected GlobalPrefix _globalPrefix = null;
 	protected ArrayList<ContentName> _names = new ArrayList<ContentName>();
 	protected ContentName _policyName;
 	protected String _infoString = null;
 	protected RepoInfoType _type = RepoInfoType.INFO;
-	
+
 	/**
 	 * The two possible types.
-	 * INFO is to return information, DATA is for the ACK protocol
+	 * INFO is used for most acknowledgements
+	 * DATA is used for positive responses (no need for data transfer) to checked write requests
 	 */
 	public enum RepoInfoType {
 		INFO ("INFO"),
 		DATA ("DATA");
-		
+
 		private String _stringValue = null;
-		
+
 		RepoInfoType() {}
-		
+
 		RepoInfoType(String stringValue) {
 			this._stringValue = stringValue;
 		}
-		
+
 		static RepoInfoType valueFromString(String value) {
 			for (RepoInfoType pv : RepoInfoType.values()) {
 				if (pv._stringValue != null) {
@@ -89,25 +86,25 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 			return null;
 		}
 	}
-	
+
 	private static class GlobalPrefix extends ContentName {
-		
+
 		private static final long serialVersionUID = -6669511721290965466L;
 
 		public GlobalPrefix(ContentName cn) {
 			super(cn);
 		}
-		
+
 		public GlobalPrefix() {
 			super();
 		}
-		
+
 		@Override
 		public long getElementLabel() { return CCNProtocolDTags.GlobalPrefixName; }
 	}
-	
+
 	protected static final HashMap<RepoInfoType, String> _InfoTypeNames = new HashMap<RepoInfoType, String>();
-	
+
 	/**
 	 * A CCNNetworkObject wrapper around RepositoryInfo, used for easily saving and retrieving
 	 * versioned RepositoryInfos to CCN. A typical pattern for using network objects to save
@@ -118,25 +115,25 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	public static class RepositoryInfoObject extends CCNEncodableObject<RepositoryInfo> {
 
 		/**
-		 * Read constructor. We have separated constructors into "write" and "read"; 
+		 * Read constructor. We have separated constructors into "write" and "read";
 		 * basically if you are only going to read with an object, use a read constructor
 		 * unless you do not want update() to be called to read data in the constructor
 		 * (for example, because you know no data has been written yet to this name).
-		 * In this case, use a write constructor, set the data argument to null, and 
+		 * In this case, use a write constructor, set the data argument to null, and
 		 * later call update or one of the forms of updateInBackground to read data
 		 * into the object.
-		 * 
+		 *
 		 * If the first thing you are going to do with an object is write data, use a
 		 * write constructor, with a SaveType chosen to reflect where you are going to
 		 * write data to (e.g. directly to the network or to a repository). The SaveType
 		 * just controls the choice of flow controller used by the object, so constructors
 		 * that explicitly specify a flow controller do not need a SaveType.
-		 * 
+		 *
 		 * If you want to use an object to both read and write data, and you create it
 		 * with a read constructor, you must call setupSave on the object prior to writing
 		 * to set its SaveType, unless you specified a flow controller in the constructor.
 		 */
-		public RepositoryInfoObject(ContentName name, CCNHandle handle) 
+		public RepositoryInfoObject(ContentName name, CCNHandle handle)
 		throws ContentDecodingException, IOException {
 			super(RepositoryInfo.class, true, name, (PublisherPublicKeyDigest)null, handle);
 		}
@@ -184,7 +181,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 				throws IOException {
 			super(RepositoryInfo.class, true, name, data, saveType, handle);
 		}
-	
+
 		/**
 		 * Write constructor.
 		 */
@@ -205,13 +202,13 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 				throws IOException {
 			super(RepositoryInfo.class, true, name, data, publisher, keyLocator, flowControl);
 		}
-		
+
 		public RepositoryInfo repositoryInfo() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }
 	}
 
 	/**
 	 * The main constructor used to create the information returned by a repository during initialization
-	 * 
+	 *
 	 * @param version
 	 * @param globalPrefix
 	 * @param localName
@@ -224,10 +221,10 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 			globalPrefix = "/" + _globalPrefix;
 		_globalPrefix = new GlobalPrefix(ContentName.fromNative(globalPrefix));
 	}
-	
+
 	/**
 	 * Create String info to return
-	 * 
+	 *
 	 * @param version
 	 * @param globalPrefix
 	 * @param localName
@@ -240,10 +237,10 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		_infoString = info;
 		_globalPrefix = new GlobalPrefix(globalPrefix);
 	}
-	
+
 	/**
 	 * Currently used only to test decoding/encoding
-	 * 
+	 *
 	 * @param version
 	 * @param globalPrefix
 	 * @param localName
@@ -257,9 +254,10 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		}
 		_type = RepoInfoType.DATA;
 	}
-	
+
 	/**
-	 * This would be used only for the ACK protocol.
+	 * Constructor for a DATA packet using names
+	 *
 	 * @param version
 	 * @param globalPrefix
 	 * @param localName
@@ -277,7 +275,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	}
 
 	public RepositoryInfo() {}	// For decoding
-	
+
 	/**
 	 * Gets the current local name as a slash separated String
 	 * @return the local name
@@ -285,7 +283,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	public String getLocalName() {
 		return _localName;
 	}
-	
+
 	/**
 	 * Gets the current global prefix as a ContentName
 	 * @return the prefix
@@ -293,7 +291,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	public ContentName getGlobalPrefix() {
 		return _globalPrefix;
 	}
-	
+
 	/**
 	 * Gets the ContentName that would be used to change policy for this repository
 	 * @return the name
@@ -307,7 +305,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		}
 		return _policyName;
 	}
-	
+
 	/**
 	 * Gets String info returned by the repo
 	 * @return
@@ -315,7 +313,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	public String getInfo() {
 		return _infoString;
 	}
-	
+
 	/**
 	 * Get the type of information encapsulated in this object (INFO or DATA).
 	 * @return
@@ -323,7 +321,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	public RepoInfoType getType() {
 		return _type;
 	}
-	
+
 	/**
 	 * Gets the repository store version as a String
 	 * @return the version
@@ -331,7 +329,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	public String getRepositoryVersion() {
 		return _repoVersion;
 	}
-	
+
 	/**
 	 * Get the repository store version as a Double
 	 * @return the version
@@ -346,10 +344,10 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		_version = Double.valueOf(decoder.readUTF8Element(CCNProtocolDTags.Version));
 		_type = RepoInfoType.valueFromString(decoder.readUTF8Element(CCNProtocolDTags.Type));
 		_repoVersion = decoder.readUTF8Element(CCNProtocolDTags.RepositoryVersion);
-		
+
 		_globalPrefix = new GlobalPrefix();
 		_globalPrefix.decode(decoder);
-		
+
 		_localName = decoder.readUTF8Element(CCNProtocolDTags.LocalName);
 		while (decoder.peekStartElement(CCNProtocolDTags.Name)) {
 			ContentName name = new ContentName();

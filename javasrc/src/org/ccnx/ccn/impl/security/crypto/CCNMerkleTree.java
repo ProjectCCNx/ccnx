@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -230,45 +230,22 @@ public class CCNMerkleTree extends MerkleTree {
 		// Hash the leaves
 		for (int i=0; i < numLeaves(); ++i) {
 			// DKS -- need to make sure content() doesn't clone
-			_tree[leafNodeIndex(i)-1] = 
-				new DEROctetString(computeBlockDigest(i, contentObjects[i].content(), 
-													  0, contentObjects[i].contentLength()));
-		}
-	}
+			try {
+				ContentObject co = contentObjects[i];
+				byte [] blockDigest = CCNDigestHelper.digest(co.prepareContent()); 
+				_tree[leafNodeIndex(i)-1] = new DEROctetString(blockDigest);
+				
+				if (Log.isLoggable(Log.FAC_SIGNING, Level.INFO)) {
+					Log.info("offset: " + 0 + " block length: " + co.contentLength() + " blockDigest " + 
+							DataUtils.printBytes(blockDigest) + " content digest: " + 
+							DataUtils.printBytes(CCNDigestHelper.digest(co.content(), 0, co.contentLength())));
+				}
 
-	/**
-	 * We need to incorporate the name of the content block
-	 * and the signedInfo into the leaf digest of the tree.
-	 * Essentially, we want the leaf digest to be the same thing
-	 * we would use for signing a stand-alone ContentObject.
-	 * @param leafIndex the index of the leaf to sign
-	 * @param content the content array containing the leaf content
-	 * @param offset the offset into content where the leaf start
-	 * @param length the length of content for this leaf
-	 * @return the block digest
-	 */
-	@Override
-	protected byte [] computeBlockDigest(int leafIndex, byte [] content, int offset, int length) {
-
-		// Computing the leaf digest.
-		//new XMLEncodable[]{name, signedInfo}, new byte[][]{content},
-		
-		byte[] blockDigest = null;
-		try {
-			blockDigest = CCNDigestHelper.digest(
-									ContentObject.prepareContent(segmentName(leafIndex), 
-																 segmentSignedInfo(leafIndex),
-																 content, offset, length));
-			if (Log.isLoggable(Log.FAC_SIGNING, Level.INFO)) {
-				Log.info("offset: " + offset + " block length: " + length + " blockDigest " + 
-						DataUtils.printBytes(blockDigest) + " content digest: " + 
-						DataUtils.printBytes(CCNDigestHelper.digest(content, offset, length)));
+			} catch (ContentEncodingException e) {
+				Log.info("Exception in computeBlockDigest, leaf: " + i + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
+				e.printStackTrace();
+				// DKS todo -- what to throw?
 			}
-		} catch (ContentEncodingException e) {
-			Log.info("Exception in computeBlockDigest, leaf: " + leafIndex + " out of " + numLeaves() + " type: " + e.getClass().getName() + ": " + e.getMessage());
-			// DKS todo -- what to throw?
-		} 
-
-		return blockDigest;
+		}
 	}
 }

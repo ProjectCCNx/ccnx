@@ -13,10 +13,10 @@
 #
 AFTER : test_single_ccnd
 BEFORE : test_single_ccnd_teardown
-echo TEST | ccnput -f /test/ccnls/TEST
+echo TEST | ccnpoke -f /test/ccnls/TEST
 ccnls /test/ccnls/TEST > digest.out || Failed
 read DIGESTCOMP VERF < digest.out
 echo $0: content object digest is $DIGESTCOMP
 ccnls /test/ccnls/TEST/$DIGESTCOMP || Failed
-echo META | ccnput -f /test/ccnls/TEST/$DIGESTCOMP
+echo META | ccnpoke -f /test/ccnls/TEST/$DIGESTCOMP
 ccnls /test/ccnls/TEST/$DIGESTCOMP || Failed

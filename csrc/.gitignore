@@ -28,12 +28,13 @@ cmd/ccncatchunks2
 cmd/ccndump
 cmd/ccndumpnames
 cmd/ccndumppcap
-cmd/ccnnamelist
 cmd/ccnfilewatch
-cmd/ccnget
+cmd/ccnpeek
 cmd/ccnhexdumpdata
+cmd/ccninitkeystore
 cmd/ccnls
-cmd/ccnput
+cmd/ccnnamelist
+cmd/ccnpoke
 cmd/ccnrm
 cmd/ccnsendchunks
 cmd/ccnseqwriter

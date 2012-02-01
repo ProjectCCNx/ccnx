@@ -22,6 +22,7 @@ import java.io.IOException;
 import junit.framework.Assert;
 
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.CCNTestBase;
@@ -34,6 +35,8 @@ public class CCNInputStreamTest extends CCNTestBase {
 	
 	@Test
 	public void testTimeouts() throws Exception {
+		Log.info("Started testTimeouts");
+
 		ContentName testName = testHelper.getTestNamespace("testInput/timeouts");
 		CCNInputStream cis = new CCNInputStream(testName, getHandle);
 		long startTime = System.currentTimeMillis();
@@ -42,11 +45,14 @@ public class CCNInputStreamTest extends CCNTestBase {
 			cis.read();
 		} catch (IOException e) {}
 		Assert.assertTrue("Input stream timed out early", (System.currentTimeMillis() - startTime) > 9000);
+
 		cis.close();
 		
 		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(new BackgroundStreamer()));
 		tar.start();
 		tar.join(SystemConfiguration.EXTRA_LONG_TIMEOUT * 2);
+
+		Log.info("Completed testTimeouts");
 	}
 	
 	protected class BackgroundStreamer implements Runnable {

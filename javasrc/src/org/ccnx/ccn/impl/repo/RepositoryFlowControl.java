@@ -1,11 +1,11 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -40,25 +40,22 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 /**
  * Handle repo specialty start/end protocol
- * 
+ *
  * Needs to be able to handle multiple clients. Currently due to limitations in close,
  * to do this requires that clients above close their streams in order when multiple
  * streams are using the same FC.
- * 
- * Intended to handle the repo ack protocol. This is currently unused until we find
- * a workable way to do it.
- * 
+ *
  * @see CCNFlowControl
  * @see RepositoryInterestHandler
  */
 public class RepositoryFlowControl extends CCNFlowControl implements CCNContentHandler {
-	
+
 	// Outstanding interests output by this FlowController. Currently includes only the original
 	// start write request.
 	protected HashSet<Interest> _writeInterests = new HashSet<Interest>();
-	
-	protected boolean localRepo = false;
-	
+
+	protected boolean localRepo = true;
+
 	// Queue of current clients of this RepositoryFlowController
 	// Implemented as a queue so we can decide which one to close on calls to beforeClose/afterClose
 	protected Queue<Client> _clients = new ConcurrentLinkedQueue<Client>();
@@ -70,11 +67,10 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 	public Interest handleContent(ContentObject co,
 			Interest interest) {
 
-		Interest interestToReturn = null;
 		if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 			Log.info(Log.FAC_REPO, "handleContent: got potential repo message: {0}", co.name());
 		if (co.signedInfo().getType() != ContentType.DATA)
-			return interestToReturn;
+			return null;
 		RepositoryInfo repoInfo = new RepositoryInfo();
 		try {
 			repoInfo.decode(co.content());
@@ -97,8 +93,8 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 		} catch (ContentDecodingException e) {
 			Log.info(Log.FAC_REPO, "ContentDecodingException parsing RepositoryInfo: {0} from content object {1}, skipping.",  e.getMessage(), co.name());
 		}
-		// So far, we seem never to have anything to return.
-		return interestToReturn;
+
+		return null;
 	}
 
 	/**
@@ -108,16 +104,16 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 		protected ContentName _name;
 		protected Shape _shape;
 		protected boolean _initialized = false;
-		
+
 		public Client(ContentName name, Shape shape) {
 			_name = name;
 			_shape = shape;
 		}
-		
+
 		public ContentName name() { return _name; }
 		public Shape shape() { return _shape; }
 	}
-	
+
 	/**
 	 * @param handle a CCNHandle - if null one is created
 	 * @throws IOException if library is null and a new CCNHandle can't be created
@@ -125,10 +121,10 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 	public RepositoryFlowControl(CCNHandle handle) throws IOException {
 		super(handle);
 	}
-	
+
 	/**
 	 * constructor to allow the repo flow controller to set the scope for the start write interest
-	 * 
+	 *
 	 * @param handle a CCNHandle - if null, one is created
 	 * @param local boolean to determine if a general start write, or one with the scope set to one.
 	 * 			A scope set to one will limit the write to a repo on the local device
@@ -138,7 +134,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 		super(handle);
 		localRepo = local;
 	}
-	
+
 	/**
 	 * @param name		an initial namespace for this stream
 	 * @param handle	a CCNHandle - if null one is created
@@ -147,7 +143,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 	public RepositoryFlowControl(ContentName name, CCNHandle handle) throws IOException {
 		super(name, handle);
 	}
-	
+
 	/**
 	 * @param name		an initial namespace for this stream
 	 * @param handle	a CCNHandle - if null one is created
@@ -159,7 +155,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 		super(name, handle);
 		localRepo = local;
 	}
-	
+
 	/**
 	 * @param name		an initial namespace for this stream
 	 * @param handle	a CCNHandle - if null one is created
@@ -186,38 +182,38 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 		super(name, handle);
 		localRepo = local;
 	}
-	
+
 	@Override
 	/**
 	 * Send out a start write request to any listening repositories and wait for a response.
-	 * 
+	 *
 	 * @param name	the basename of the stream to start
 	 * @param shape currently ignored - can only be Shape.STREAM
 	 * @throws IOException if there is no response from a repository
 	 */
 	public void startWrite(ContentName name, Shape shape) throws IOException {
-		
+
 		if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 			Log.info(Log.FAC_REPO, "RepositoryFlowControl.startWrite called for name {0}, shape {1}", name, shape);
 		Client client = new Client(name, shape);
 		_clients.add(client);
-		
+
 		// A nonce is used because if we tried to write data with the same name more than once, we could retrieve the
 		// the previous answer from the cache, and the repo would never be informed of our start write.
-		ContentName repoWriteName = 
+		ContentName repoWriteName =
 			new ContentName(name, CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes(), Interest.generateNonce());
 		Interest writeInterest = new Interest(repoWriteName);
 		if (localRepo || SystemConfiguration.FC_LOCALREPOSITORY) {
 			//this is meant to be written to a local repository, not any/multiple connected repos
 			writeInterest.scope(1);
 		}
-		
+
 		_handle.expressInterest(writeInterest, this);
 
 		synchronized (this) {
 			_writeInterests.add(writeInterest);
 		}
-		
+
 		//Wait for information to be returned from a repo
 		try {
 			new Waiter(getTimeout()) {
@@ -229,31 +225,12 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 		} catch (Exception e) {
 			Log.warning(Log.FAC_REPO, e.getClass() + " : " + e.getMessage());
 		}
-		
+
 		synchronized (this) {
 			if (!client._initialized) {
 				_clients.remove();
 				Log.warning(Log.FAC_REPO, "No response from a repository, cannot add name space : " + name);
 				throw new IOException("No response from a repository for " + name);
-			}
-		}
-	}
-
-	/**
-	 * Handle acknowledgement packet from the repo
-	 * @param name
-	 */
-	public void ack(ContentName name) {
-		synchronized (_holdingArea) {
-			if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
-				Log.fine(Log.FAC_REPO, "Handling ACK {0}", name);
-			if (_holdingArea.get(name) != null) {
-				ContentObject co = _holdingArea.get(name);
-				if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
-					Log.fine(Log.FAC_REPO, "CO {0} acked", co.name());
-				_holdingArea.remove(co.name());
-				if (_holdingArea.size() < _capacity)
-					_holdingArea.notify();
 			}
 		}
 	}
@@ -266,7 +243,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 		try {
 			_clients.remove();
 		} catch (NoSuchElementException nse) {}
-		
+
 		// super.afterClose() calls waitForPutDrain.
 		super.afterClose();
 		// DKS don't actually want to cancel all the interests, only the
@@ -284,16 +261,17 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 			_handle.cancelInterest(writeInterest, this);
 		}
 	}
-	
+
 	/**
 	 * Help users determine what type of flow controller this is.
 	 */
+	@Override
 	public SaveType saveType() {
 		//if the library is overridden with the property or environment variable
 		//for writing to a local repo, need to return LocalRepo save type
 		if (SystemConfiguration.FC_LOCALREPOSITORY)
 			return SaveType.LOCALREPOSITORY;
-		
+
 		if (localRepo)
 			return SaveType.LOCALREPOSITORY;
 		else

@@ -1,7 +1,11 @@
 /*
  * Part of the CCNx Java Library.
  *
+<<<<<<< HEAD
+ * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+=======
  * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+>>>>>>> 0f1ce5d4dba1b9f769b4a2edcbf8583543643287
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -45,13 +49,13 @@ import org.ccnx.ccn.impl.support.Log;
  *  
  * See the protocol documentation for more details of the ccnb format.
  */
-public class BinaryXMLCodec implements XMLCodec {
+public final class BinaryXMLCodec implements XMLCodec {
 	
 	/**
 	 * Class for managing the paired type/value representation used to encode tags
 	 * and content lengths.
 	 */
-	public static class TypeAndVal {
+	public final static class TypeAndVal {
 		protected int _type;
 		protected long _val;
 		
@@ -72,65 +76,70 @@ public class BinaryXMLCodec implements XMLCodec {
 	/**
 	 * // starts composite extension - value is subtype
 	 */
-	public static byte XML_EXT = 0x00; 
+	public static final byte XML_EXT = 0x00; 
 	
 	/**
 	 * // starts composite - value is tagnamelen-1
 	 */
-	public static byte XML_TAG = 0x01; 
+	public static final byte XML_TAG = 0x01; 
 	
 	/**
 	 * // starts composite - value is tagdict index
 	 */
-	public static byte XML_DTAG = 0x02; 
+	public static final byte XML_DTAG = 0x02; 
 	/**
 	 * // attribute - value is attrnamelen-1, attribute value follows
 	 */
-	public static byte XML_ATTR = 0x03; 
+	public static final byte XML_ATTR = 0x03; 
  
 	/**
 	 * // attribute value is attrdict index
 	 */
-	public static byte XML_DATTR = 0x04; 
+	public static final byte XML_DATTR = 0x04; 
 	/**
 	 * // opaque binary data - value is byte count
 	 */
-	public static byte XML_BLOB = 0x05; 
+	public static final byte XML_BLOB = 0x05; 
 	/**
 	 * // UTF-8 encoded character data - value is byte count
 	 */
-	public static byte XML_UDATA = 0x06; 
+	public static final byte XML_UDATA = 0x06; 
 	
 	/**
 	 * // end element
 	 */
-	public static byte XML_CLOSE = 0x0; 
+	public static final byte XML_CLOSE = 0x0; 
 
 	/**
 	 * // <?name:U value:U?>
 	 */
-	public static byte XML_SUBTYPE_PROCESSING_INSTRUCTIONS = 16; 
+	public static final byte XML_SUBTYPE_PROCESSING_INSTRUCTIONS = 16; 
 	
 	/**
 	 * Masks for bitwise processing. Java's bitwise operations operate
 	 * on ints, so save effort of promotion.
 	 */
-	public static int XML_TT_BITS = 3;
-	public static int XML_TT_MASK = ((1 << XML_TT_BITS) - 1);
-	public static int XML_TT_VAL_BITS = XML_TT_BITS + 1;
-	public static int XML_TT_VAL_MASK = ((1 << (XML_TT_VAL_BITS)) - 1);
-	public static int XML_REG_VAL_BITS = 7;
-	public static int XML_REG_VAL_MASK = ((1 << XML_REG_VAL_BITS) - 1);
-	public static int XML_TT_NO_MORE = (1 << XML_REG_VAL_BITS); // 0x80
-	public static int BYTE_MASK = 0xFF;
-	public static int LONG_BYTES = 8;
-	public static int LONG_BITS = 64;
+	public static final int XML_TT_BITS = 3;
+	public static final int XML_TT_MASK = ((1 << XML_TT_BITS) - 1);
+	public static final int XML_TT_VAL_BITS = XML_TT_BITS + 1;
+	public static final int XML_TT_VAL_MASK = ((1 << (XML_TT_VAL_BITS)) - 1);
+	public static final int XML_REG_VAL_BITS = 7;
+	public static final int XML_REG_VAL_MASK = ((1 << XML_REG_VAL_BITS) - 1);
+	public static final int XML_TT_NO_MORE = (1 << XML_REG_VAL_BITS); // 0x80
+	public static final int BYTE_MASK = 0xFF;
+	public static final int LONG_BYTES = 8;
+	public static final int LONG_BITS = 64;
 	
+    private static final long bits_11 = 0x0000007FFL;
+    private static final long bits_18 = 0x00003FFFFL;
+    private static final long bits_32 = 0x0FFFFFFFFL;
+
+    
 	/**
 	 * The name of this codec. Used to generate XMLEncoder and XMLDecoder instances with XMLCodecFactory.
 	 * @return the codec name.
 	 */
-	public static String codecName() { return CODEC_NAME; }
+	public final static String codecName() { return CODEC_NAME; }
 	
 
 	/**
@@ -148,7 +157,9 @@ public class BinaryXMLCodec implements XMLCodec {
 	 * @param buf the buffer to encode into
 	 * @param offset the offset into buf at which to start encoding
 	 * @return the number of bytes used to encode.
+	 * @deprecated Use encodeTypeAndVal(final int type, final long value, final OutputStream ostream)
 	 */
+	@Deprecated
 	public static int encodeTypeAndVal(int type, long val, byte [] buf, int offset) {
 		
 		if ((type > XML_UDATA) || (type < 0) || (val < 0)) {
@@ -195,7 +206,9 @@ public class BinaryXMLCodec implements XMLCodec {
 	 * @param val Positive integer, potentially of any length, allow only longs
 	 * 	   here.
 	 * @return the encoded type and value
+	 * @deprecated Use encodeTypeAndVal(final int type, final long value, final OutputStream ostream)
 	 */
+	@Deprecated
 	public static byte [] encodeTypeAndVal(int type, long val) {
 		byte [] buf = new byte[numEncodingBytes(val)];
 		
@@ -212,10 +225,62 @@ public class BinaryXMLCodec implements XMLCodec {
 	 * @param ostream the stream to encode to
 	 * @return the number of bytes encoded
 	 */
-	public static int encodeTypeAndVal(int tag, long val, OutputStream ostream) throws IOException {
-		byte [] encoding = encodeTypeAndVal(tag, val);
-		ostream.write(encoding);
-		return encoding.length;
+	public static int encodeTypeAndVal(final int type, final long value, final OutputStream ostream) throws IOException {
+        /*
+        We exploit the fact that encoding is done from the right, so this actually means
+        there is a deterministic encoding from a long to a Type/Value pair:
+        
+        |    0    |    1    |    2    |    3    |    4    |    5    |    6    |    7    |
+        |ABCD.EFGH|IJKL.MNOP|QRST.UVWX|YZ01.2345|6789.abcd|efgh.ijkl|mnop.qrst|uvwx.yz@#
+        
+               60>       53>       46>       39>       32>       25>       18>       11>        4>
+        |_000.ABCD|_EFG.HIJK|_LMN.OPQR|_STU.VWXY|_Z01.2345|_678.9abc|_defg.hij|_klm.nopq|_rst.uvwx|_yz@#___
+        
+        What we want to do is compute the result in MSB order and write it directly
+        to the channel without any intermediate form.
+        */
+   
+       int bits;
+       int count = 0;
+       
+       // once we start writing bits, we keep writing bits even if they are "0"
+       boolean writing = false;
+       
+       // a few heuristic to catch the small-bit length patterns
+       if( value < 0 || value > 15 ) {
+           int start = 60;
+           if( 0 <= value ) {
+        	   if( value < bits_11 )
+        		   start = 4;
+        	   else if( value < bits_18 )
+                   start = 11;
+               else if( value < bits_32 )
+                   start = 25;
+           }
+           
+           for( int i = start; i >= 4; i -= 7) {
+               bits = (int) (value >>> i) & BinaryXMLCodec.XML_REG_VAL_MASK;
+               if( bits != 0 || writing ) {
+                   ostream.write(bits);
+                   count++;
+                   writing = true;
+               }
+           }
+       }
+       
+       // Explicit computation of the bottom byte
+       bits = type & BinaryXMLCodec.XML_TT_MASK;
+       final int bottom4 = (int) value & BinaryXMLCodec.XML_TT_VAL_MASK;
+       bits |= bottom4 << BinaryXMLCodec.XML_TT_BITS;
+       // the bottom byte always has the NO_MORE flag
+       bits |= BinaryXMLCodec.XML_TT_NO_MORE;
+
+       ostream.write(bits);
+       count++;
+
+//		byte [] encoding = encodeTypeAndVal(tag, val);
+//		ostream.write(encoding);
+		return count;
 	}
 	
 	/**
@@ -417,7 +482,7 @@ public class BinaryXMLCodec implements XMLCodec {
 			if (Log.isLoggable(Log.FAC_ENCODING, Level.FINEST))
 				Log.finest(Log.FAC_ENCODING, "Expected UDATA, got " + ((null == tv) ? " not a tag " : tv.type()) + ", assuming elided 0-length blob.");
 			istream.reset();
-			return new String("");
+			return "";
 		}
 		return decodeUString(istream, (int)tv.val());
 	}

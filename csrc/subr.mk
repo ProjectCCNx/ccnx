@@ -31,11 +31,11 @@ $(OBJDIR)/dir.mk: dir.mk
 	cp -p dir.mk $(OBJDIR)/dir.mk
 
 install_libs: $(LIBS)
-	test -d $(INSTALL_LIB)
+	@test -d $(INSTALL_LIB) || (echo $(INSTALL_LIB) does not exist.  Please mkdir -p $(INSTALL_LIB) if this is what you intended. && exit 2)
 	for i in $(LIBS) ""; do test -z "$$i" || $(INSTALL) $$i $(INSTALL_LIB); done
 
 install_programs: $(INSTALLED_PROGRAMS)
-	test -d $(INSTALL_BIN)
+	@test -d $(INSTALL_BIN) || (echo $(INSTALL_BIN) does not exist.  Please mkdir -p $(INSTALL_BIN) if this is what you intended. && exit 2)
 	for i in $(INSTALLED_PROGRAMS) ""; do test -z "$$i" || $(INSTALL) $$i $(INSTALL_BIN); done
 
 install: install_libs install_programs

@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -19,13 +19,12 @@ package org.ccnx.ccn.impl.repo;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.QueuedContentHandler;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -39,19 +38,17 @@ import org.ccnx.ccn.protocol.Interest;
 
 /**
  * Handles interests matching the repository's namespace.
- * 
+ *
  * @see RepositoryServer
  * @see RepositoryFlowControl
  * @see RepositoryDataListener
  */
 
-public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
-	private RepositoryServer _server;
-	private CCNHandle _handle;
-	private Queue<Interest> _queue = new ConcurrentLinkedQueue<Interest>();
-	private boolean _isRunning = false;
+public class RepositoryInterestHandler extends QueuedContentHandler<Interest> implements Runnable, CCNInterestHandler {
+	private final RepositoryServer _server;
+	private final CCNHandle _handle;
 	private boolean _shutdown = false;
-	
+
 	public RepositoryInterestHandler(RepositoryServer server) {
 		_server = server;
 		_handle = server.getHandle();
@@ -61,88 +58,75 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 		_server._stats.increment(RepositoryServer.StatsEnum.HandleInterest);
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINEST))
 			Log.finest(Log.FAC_REPO, "Queueing interest: {0}", interest.name());
-		synchronized(_queue) {
-			_queue.add(interest);
-			if (!_isRunning) {
-				_isRunning = true;
-				SystemConfiguration._systemThreadpool.execute(this);
-			}				
-		}
+		add(interest);
 		return true;		// In the repository we never want to service an interest again
 	}
-	
+
 	/**
 	 * Parse incoming interests for type and dispatch those dedicated to some special purpose.
 	 * Interests can be to start a write or a name enumeration request.
 	 * If the interest has no special purpose, its assumed that it's to actually read data from
 	 * the repository and the request is sent to the RepositoryStore to be processed.
 	 */
-	public void run() {
-		while (!	_shutdown) {
-			Interest interest = null;
-			synchronized (_queue) {
-				interest = _queue.poll();
-				if (null == interest) {
-					_isRunning = false;
-					break;
+	@Override
+	public void process(Interest interest) {
+
+		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
+			Log.finer(Log.FAC_REPO, "Saw interest: {0}", interest.name());
+		try {
+			if (interest.name().startsWith(CommandMarker.COMMAND_PREFIX)) {
+				if (RepositoryOperations.isStartWriteOperation(interest)) {
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCommands);
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteReceived);
+					if (allowGenerated(interest)) {
+						startWrite(interest);
+						_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteProcessed);
+					} else
+						_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteIgnored);
+				} else if (RepositoryOperations.isNameEnumerationOperation(interest)) {
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCommands);
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestNameEnumReceived);
+					// Note - we are purposely allowing requests with allowGenerated turned off
+					// for NE for now. Disallowing it potentially causes problems.
+					nameEnumeratorResponse(interest);
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestNameEnumProcessed);
+				} else if (RepositoryOperations.isCheckedWriteOperation(interest)) {
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCommands);
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCheckedWriteReceived);
+					if (allowGenerated(interest)) {
+						startWriteChecked(interest);
+						_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCheckedWriteProcessed);
+					} else
+						_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCheckedWriteIgnored);
+				} else if (RepositoryOperations.isBulkImportOperation(interest)) {
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCommands);
+					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestBulkImportReceived);
+					if (allowGenerated(interest)) {
+						addBulkDataToRepo(interest);
+						_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestBulkImportReceived);
+					} else
+						_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestBulkImportIgnored);
 				}
 			}
-		
-			if (! _shutdown) {
-				if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
-					Log.finer(Log.FAC_REPO, "Saw interest: {0}", interest.name());
-				try {
-					if (interest.name().startsWith(CommandMarker.COMMAND_PREFIX)) {
-						if (RepositoryOperations.isStartWriteOperation(interest)) {
-							_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCommands);
-							_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteReceived);
-							if (allowGenerated(interest)) {
-								startWrite(interest);
-								_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteProcessed);
-							} else
-								_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteIgnored);
-						} else if (RepositoryOperations.isNameEnumerationOperation(interest)) {
-							_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCommands);
-							_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestNameEnumReceived);
-							// Note - we are purposely allowing requests with allowGenerated turned off
-							// for NE for now. Disallowing it potentially causes problems.
-							nameEnumeratorResponse(interest);
-							_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestNameEnumProcessed);
-						} else if (RepositoryOperations.isCheckedWriteOperation(interest)) {
-							_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCommands);
-							_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCheckedWriteReceived);
-							if (allowGenerated(interest)) {
-								startWriteChecked(interest);
-								_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCheckedWriteProcessed);
-							} else
-								_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCheckedWriteIgnored);
-						} else if (RepositoryOperations.isBulkImportOperation(interest)) {
-							_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCommands);
-							_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestBulkImportReceived);
-							if (allowGenerated(interest)) {
-								addBulkDataToRepo(interest);
-								_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestBulkImportReceived);
-							} else
-								_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestBulkImportIgnored);
-						}
-					}
-					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestUncategorized);
-					ContentObject content = _server.getRepository().getContent(interest);
-					if (content != null) {
-						if (Log.isLoggable(Log.FAC_REPO, Level.FINEST))
-							Log.finest(Log.FAC_REPO, "Satisfying interest: {0} with content {1}", interest, content.name());
-						_handle.put(content);
-					} else {
-						if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
-							Log.fine(Log.FAC_REPO, "Unsatisfied interest: {0}", interest);
-					}
-				} catch (Exception e) {
-					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestErrors);
-					Log.logStackTrace(Level.WARNING, e);
-					e.printStackTrace();
-				}
+			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestUncategorized);
+			ContentObject content = _server.getRepository().getContent(interest);
+			if (content != null) {
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINEST))
+					Log.finest(Log.FAC_REPO, "Satisfying interest: {0} with content {1}", interest, content.name());
+				_handle.put(content);
+			} else {
+				if (Log.isLoggable(Log.FAC_REPO, Level.FINE))
+					Log.fine(Log.FAC_REPO, "Unsatisfied interest: {0}", interest);
 			}
+		} catch (Exception e) {
+			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestErrors);
+			Log.logStackTrace(Level.WARNING, e);
+			e.printStackTrace();
 		}
+	}
+
+	protected boolean _checkShutdown() {
+		return _shutdown;
 	}
 
 	protected boolean allowGenerated(Interest interest) {
@@ -154,33 +138,33 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 
 	/**
 	 * Handle start write requests
-	 * 
+	 *
 	 * @param interest
 	 */
 	private void startWrite(Interest interest) {
-			
+
 		if (_server.isWriteSuspended(interest)) return;
-		
-		// Create the name for the initial interest to retrieve content from the client that it desires to 
+
+		// Create the name for the initial interest to retrieve content from the client that it desires to
 		// write.  Strip from the write request name (in the incoming Interest) the start write command component
 		// and the nonce component to get the prefix for the content to be written.
 		ContentName listeningName = new ContentName(interest.name().count() - 2, interest.name().components());
 		try {
 			if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 				Log.info(Log.FAC_REPO, "Processing write request for {0}", listeningName);
-			// Create the initial read interest.  Set maxSuffixComponents = 2 to get only content with one 
+			// Create the initial read interest.  Set maxSuffixComponents = 2 to get only content with one
 			// component past the prefix, plus the implicit digest.  This is designed to retrieve segments
-			// of a stream and avoid other content more levels below in the name space.  We do not ask for 
+			// of a stream and avoid other content more levels below in the name space.  We do not ask for
 			// a specific segment initially so as to support arbitrary starting segment numbers.
 			// TODO use better exclude filters to ensure we're only getting segments.
 			Interest readInterest = Interest.constructInterest(listeningName, _server.getExcludes(), null, 2, null, null);
-			
+
 			RepositoryInfoObject rio = _server.getRepository().getRepoInfo(interest.name(), null, null);
 			if (null == rio)
 				return;		// Should have logged an error in getRepoInfo
 			// Hand the object the outstanding interest, so it can put its first block immediately.
 			rio.save(interest);
-			
+
 			// Check for special case file written to repo
 			ContentName globalPrefix = _server.getRepository().getGlobalPrefix();
 			if (BasicPolicy.getPolicyName(globalPrefix).isPrefixOf(listeningName)) {
@@ -188,12 +172,12 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 				new RepositoryPolicyHandler(interest, readInterest, _server);
 				return;
 			}
-			
+
 			RepositoryDataListener listener = null;
-			
+
 			synchronized (_server.getDataListeners()) {
 				if (_server.isDuplicateRequest(interest)) return;
-				
+
 				listener = new RepositoryDataListener(interest, readInterest, _server);
 				_server.addListener(listener);
 				listener.getInterests().add(readInterest, null);
@@ -202,7 +186,7 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 				_server.getDataHandler().addKeyCheck(readInterest.name());
 			}
 			_handle.expressInterest(readInterest, listener);
-			
+
 		} catch (Exception e) {
 			_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteErrors);
 			Log.logStackTrace(Level.WARNING, e);
@@ -220,7 +204,7 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 	 */
 	private void startWriteChecked(Interest interest) {
 		if (_server.isDuplicateRequest(interest)) return;
-		
+
 		if (_server.isWriteSuspended(interest)) return;
 
 		try {
@@ -230,7 +214,7 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 				Log.warning(Log.FAC_REPO, "Repo checked write malformed request {0}", interest.name());
 				return;
 			}
-			
+
 			ContentName target = RepositoryOperations.getCheckedWriteTarget(interest);
 
 			boolean verified = false;
@@ -240,13 +224,21 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 			if (_server.getRepository().hasContent(target)) {
 				unverifiedKeyLocator = _server.getKeyTarget(digestFreeTarget);
 				if (null == unverifiedKeyLocator) {
-					// First impl, no further checks, if we have first segment, assume we have (or are fetching) 
+					// First impl, no further checks, if we have first segment, assume we have (or are fetching)
 					// the whole thing
 					// TODO: add better verification:
 					// 		find highest segment in the store (probably a new internal interest seeking rightmost)
 					//      getContent(): need full object in this case, verify that last segment matches segment name => verified = true
 					verified = true;
-				}		
+				} else {
+					if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+						Log.info(Log.FAC_REPO, "Checked write not confirmed due to key {0} not saved", unverifiedKeyLocator);
+					}
+				}
+			} else {
+				if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
+					Log.info(Log.FAC_REPO, "Checked write not confirmed due to original file {0} not saved", digestFreeTarget);
+				}
 			}
 			if (verified) {
 				// Send back a RepositoryInfoObject that contains a confirmation that content is already in repo
@@ -262,7 +254,7 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 				rio = _server.getRepository().getRepoInfo(interest.name(), null, null);
 			}
 			if (null == rio)
-				return;		// Should have logged an error in getRepoInfo					
+				return;		// Should have logged an error in getRepoInfo
 			// Hand the object the outstanding interest, so it can put its first block immediately.
 			rio.save(interest);
 
@@ -275,7 +267,7 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 					interest = Interest.constructInterest(target, _server.getExcludes(), null, 2, null, null);
 					readInterest = interest;
 				} else {
-					// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 1 
+					// Create the initial read interest.  Set maxSuffixComponents = minSuffixComponents = 1
 					// because in this SPECIAL CASE we have the complete name of the first segment.
 					// Note: We could in theory just request the digest too, since we have it, but that can
 					// confuse the DataHandler because in some cases it can confuse the digest with a segment ID.
@@ -292,15 +284,15 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 			e.printStackTrace();
 		}
 	}
-	
+
 	/**
 	 * Add to the repository via file based on interest request
 	 * @param interest
-	 * @throws IOException 
-	 * @throws ContentEncodingException 
+	 * @throws IOException
+	 * @throws ContentEncodingException
 	 * @throws RepositoryException
-	 * @throws IOException 
-	 * @throws ContentEncodingException 
+	 * @throws IOException
+	 * @throws ContentEncodingException
 	 */
 	private void addBulkDataToRepo(Interest interest) throws ContentEncodingException, IOException {
 		int i = CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.findMarker(interest.name());
@@ -320,20 +312,20 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 			}
 		}
 	}
-	
+
 	/**
 	 * Handle name enumeration requests.  NE responses can potentially take a long time so don't hog the queue - dispatch
 	 * these separately.
-	 * 
+	 *
 	 * @param interest
 	 */
 	public void nameEnumeratorResponse(Interest interest) {
 		SystemConfiguration._systemThreadpool.execute(new NEResponse(interest));
 	}
-	
+
 	protected class NEResponse implements Runnable {
 		protected Interest _interest;
-		
+
 		protected NEResponse(Interest interest) {
 			_interest = interest;
 		}
@@ -352,7 +344,7 @@ public class RepositoryInterestHandler implements Runnable, CCNInterestHandler {
 			}
 		}
 	}
-	
+
 	public void shutdown() {
 		_shutdown = true;
 	}

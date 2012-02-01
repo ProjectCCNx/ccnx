@@ -19,8 +19,10 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+#include <fcntl.h>
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
@@ -167,8 +169,6 @@ add_cert_extension(X509 *cert, int nid, char *value)
  * @param filename  the name of the keystore file to be created.
  * @param password  the import/export password for the keystore.
  * @param subject   the subject (and issuer) name in the certificate.
-                    A lowercase version of the subject name will be used for the
-                    "friendly name" (alias) associated with the private key.
  * @param keylength the number of bits in the RSA key to be generated.
  *                  A value <= 0 will result in the default (1024) being used.
  * @param validity_days the number of days the certificate in the keystore will
@@ -189,8 +189,8 @@ ccn_keystore_file_init(char *filename, char *password,
     char spkid_hex[1 + 2 * SHA256_DIGEST_LENGTH];
     unsigned long serial = 0;
     unsigned char serial_bytes[sizeof(serial)];
-    char *friendly_name = NULL;
     FILE *fp = NULL;
+    int fd = -1;
     int res;
     int i;
     int ans = -1;
@@ -229,7 +229,7 @@ ccn_keystore_file_init(char *filename, char *password,
     X509_gmtime_adj(X509_get_notAfter(cert), (long)(60 * 60 * 24 * validity_days));
     X509_set_pubkey(cert, pkey);
     
-    // Set up the simple subject name for the certificate.
+    // Set up the simple subject name and issuer name for the certificate.
     name = X509_get_subject_name(cert);
     if (name == NULL)
         goto Bail;
@@ -267,24 +267,21 @@ ccn_keystore_file_init(char *filename, char *password,
     if (res == 0)
         goto Bail;
 
-    // Construct the friendly name as lowercase of subject name
-    friendly_name = strdup(subject);
-    for (i = 0; i < strlen(friendly_name); i++){
-        int c = friendly_name[i];
-        if (isupper(c))
-            friendly_name[i] = tolower(c);
-    }
     // construct the full PKCS12 keystore to hold the certificate and private key
-    pkcs12 = PKCS12_create(password,  friendly_name, pkey, cert, NULL, 0, 0,
-                           1024 /*iter*/, 1024 /*mac_iter*/, 0);
+    pkcs12 = PKCS12_create(password,  "ccnxuser", pkey, cert, NULL, 0, 0,
+                           0 /*default iter*/, PKCS12_DEFAULT_ITER /*mac_iter*/, 0);
     if (pkcs12 == NULL)
         goto Bail;
     
-    fp = fopen(filename, "wb");
+    fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
+    if (fd == -1)
+        goto Bail;
+    fp = fdopen(fd, "wb");
     if (fp == NULL)
         goto Bail;
     i2d_PKCS12_fp(fp, pkcs12);
     fclose(fp);
+    fd = -1;
     
     ans = 0;
     
@@ -296,11 +293,8 @@ ccn_keystore_file_init(char *filename, char *password,
     
     
 Bail:
-    
-    if (friendly_name != NULL) {
-        free(friendly_name);
-        friendly_name = NULL;
-    }
+    if (fd != -1)
+        close(fd);
     if (pkey != NULL) {
         EVP_PKEY_free(pkey);
         pkey = NULL;

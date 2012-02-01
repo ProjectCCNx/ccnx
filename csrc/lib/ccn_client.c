@@ -703,7 +703,9 @@ ccn_put(struct ccn *h, const void *p, size_t length)
 {
     struct ccn_skeleton_decoder dd = {0};
     ssize_t res;
-    if (h == NULL || p == NULL || length == 0)
+    if (h == NULL)
+        return(-1);
+    if (p == NULL || length == 0)
         return(NOTE_ERR(h, EINVAL));
     res = ccn_skeleton_decode(&dd, p, length);
     if (!(res == length && dd.state == 0))
@@ -1585,7 +1587,7 @@ ccn_run(struct ccn *h, int timeout)
         else if (timeout >= 0) {
             millisec = (h->now.tv_sec  - start.tv_sec) *1000 +
             (h->now.tv_usec - start.tv_usec)/1000;
-            if (millisec > timeout) {
+            if (millisec >= timeout) {
                 res = 0;
                 break;
             }

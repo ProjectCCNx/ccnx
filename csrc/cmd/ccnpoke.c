@@ -1,5 +1,5 @@
 /**
- * @file ccnput.c
+ * @file ccnpoke.c
  * Injects one chunk of data from stdin into ccn.
  *
  * A CCNx command-line utility.
@@ -50,27 +50,20 @@ static void
 usage(const char *progname)
 {
     fprintf(stderr,
-            "%s [-fhv] [-V seg] [-x freshness_seconds] [-t type]"
+            "%s [-hflv] [-k key_uri] [-t type] [-V seg] [-w timeout] [-x freshness_seconds]"
             " ccnx:/some/place\n"
             " Reads data from stdin and sends it to the local ccnd"
-            " as a single ContentObject under the given URI"
-            "\n"
-            "  -h - print this message and exit"
-            "\n"
-            "  -k key_uri - use this name for key locator"
-            "\n"
-            "  -f - force - send content even if no interest received"
-            "\n"
-            "  -v - verbose"
-            "\n"
-            "  -V seg - generate version, use seg as name suffix"
-            "\n"
-            "  -w seconds - fail after this long if no interest arrives"
-            "\n"
-            "  -x seconds - set FreshnessSeconds"
-            "\n"
-            "  -t ( DATA | ENCR | GONE | KEY | LINK | NACK ) - set type"
-            "\n", progname);
+            " as a single ContentObject under the given URI\n"
+            "  -h - print this message and exit\n"
+            "  -f - force - send content even if no interest received\n"
+            "  -l - set FinalBlockId from last segment of URI\n"
+            "  -v - verbose\n"
+            "  -k key_uri - use this name for key locator\n"
+            "  -t ( DATA | ENCR | GONE | KEY | LINK | NACK ) - set type\n"
+            "  -V seg - generate version, use seg as name suffix\n"
+            "  -w seconds - fail after this long if no interest arrives\n"
+            "  -x seconds - set FreshnessSeconds\n"
+            , progname);
     exit(1);
 }
 
@@ -146,7 +139,7 @@ main(int argc, char **argv)
                 if (expire <= 0)
                     usage(progname);
                 break;
-	    case 'v':
+            case 'v':
                 verbose = 1;
                 break;
             case 'V':
@@ -155,7 +148,7 @@ main(int argc, char **argv)
                 if (0 == memcmp(postver, "%00", 3))
                     setfinal = 1;
                 break;
-	    case 'w':
+            case 'w':
                 timeout = atol(optarg);
                 if (timeout <= 0)
                     usage(progname);

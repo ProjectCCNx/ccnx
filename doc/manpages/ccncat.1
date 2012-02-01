@@ -2,12 +2,21 @@
 .\"     Title: ccncat
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
-.\"      Date: 12/07/2011
+.\"      Date: 01/25/2012
 .\"    Manual: \ \&
-.\"    Source: \ \& ccnx-0.4.2
+.\"    Source: \ \& 0.4.2
 .\"  Language: English
 .\"
-.TH "CCNCAT" "1" "12/07/2011" "\ \& ccnx\-0\&.4\&.2" "\ \&"
+.TH "CCNCAT" "1" "01/25/2012" "\ \& 0\&.4\&.2" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -22,7 +31,7 @@
 ccncat \- Read streams of CCNx content and write to stdout
 .SH "SYNOPSIS"
 .sp
-\fBccncat\fR [\-h] [\-d \fIflags\fR] [\-s \fIscope\fR] [\-a] \fIccnxnames\fR\&...
+\fBccncat\fR [\-h] [\-d \fIflags\fR] [\-p \fIpipeline\fR] [\-s \fIscope\fR] [\-a] \fIccnxnames\fR\&...
 .SH "DESCRIPTION"
 .sp
 The \fBccncat\fR utility retrieves content published under the \fIccnxnames\fR and writes it to stdout\&. The content must be published as a collection of CCNx Data in accordance with the naming conventions for segmented streams or files, optionally unversioned\&. For the default case of versioned content, \fBccncat\fR will retrieve the latest version available\&.
@@ -40,9 +49,14 @@ Generate the help message\&.
 Specify the fetch debug flags which are the sum of the following: NoteGlitch = 1, NoteAddRem = 2, NoteNeed = 4, NoteFill = 8, NoteFinal = 16, NoteTimeout = 32, NoteOpenClose = 64
 .RE
 .PP
+\fB\-p\fR \fIpipeline\fR
+.RS 4
+Set the size of the pipeline\&. Default 4\&.
+.RE
+.PP
 \fB\-s\fR \fIscope\fR
 .RS 4
-Set the scope (integer) of the interests\&.
+Set the scope (integer) of the interests\&. Default unlimited\&. scope may be 0(cache), 1(local), 2(neighborhood), 3(unlimited)\&.
 .RE
 .PP
 \fB\-a\fR

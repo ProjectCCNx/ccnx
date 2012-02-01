@@ -14,7 +14,7 @@
 AFTER : test_single_ccnd
 BEFORE : test_single_ccnd_teardown
 
-echo ':-)' | ccnput -f /test/happy/face || Fail ':-('
-ccnget -c /test/happy/face | tee happyface.out || Fail ':-/'
+echo ':-)' | ccnpoke -f /test/happy/face || Fail ':-('
+ccnpeek -c /test/happy/face | tee happyface.out || Fail ':-/'
 echo ':-)' | diff - happyface.out || Fail
 rm happyface.out

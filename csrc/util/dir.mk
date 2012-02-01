@@ -13,13 +13,13 @@
 #
 
 SCRIPTSRC = shebang \
-	ccndstart.sh ccndstop.sh ccndstatus.sh ccndlogging.sh
-PROGRAMS = ccndstart ccndstop ccndstatus ccntestloop ccndlogging
+	ccndstart.sh ccndstop.sh ccndstatus.sh ccndlogging.sh ccnget.sh ccnput.sh
+PROGRAMS = ccndstart ccndstop ccndstatus ccntestloop ccndlogging ccnget ccnput
 INSTALLED_PROGRAMS = $(PROGRAMS)
 
 default all: $(SCRIPTSRC) $(PROGRAMS)
 
-ccndstart ccndstop ccndstatus ccndlogging: $(SCRIPTSRC) shebang
+ccndstart ccndstop ccndstatus ccndlogging ccnget ccnput: $(SCRIPTSRC) shebang
 	./shebang $(SH) $(@:=.sh) > $@
 	chmod +x $@
 

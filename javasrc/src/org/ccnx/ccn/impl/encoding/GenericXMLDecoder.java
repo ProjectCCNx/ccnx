@@ -34,7 +34,7 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		super();
 	}
 
-	public GenericXMLDecoder(BinaryXMLDictionary dictionary) {
+	public GenericXMLDecoder(XMLDictionary dictionary) {
 		super(dictionary);
 	}
 		

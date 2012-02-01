@@ -52,11 +52,11 @@ WaitRepoLeaves () {
 # setup appropriate CCNR and SYNC env variables
 
 export CCNR_DEBUG=INFO
-export SYNC_ENABLE=1
-export SYNC_DEBUG=INFO
-export SYNC_REPO_STORE=1
-export SYNC_STABLE_ENABLED=0
-export SYNC_FAUX_ERROR=0
+export CCNS_ENABLE=1
+export CCNS_DEBUG=INFO
+export CCNS_REPO_STORE=1
+export CCNS_STABLE_ENABLED=0
+export CCNS_FAUX_ERROR=0
 
 # start 2 ccnd instances
 

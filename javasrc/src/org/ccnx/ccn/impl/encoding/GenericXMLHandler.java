@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -20,13 +20,13 @@ import java.util.Stack;
 
 public abstract class GenericXMLHandler {
 
-	protected Stack<BinaryXMLDictionary> _dictionaryStack = null;
+	protected Stack<XMLDictionary> _dictionaryStack = null;
 
 	public GenericXMLHandler() {
 		this(null);
 	}
 
-	public GenericXMLHandler(BinaryXMLDictionary dictionary) {
+	public GenericXMLHandler(XMLDictionary dictionary) {
 		if (null != dictionary)
 			pushXMLDictionary(dictionary);
 	}
@@ -43,7 +43,7 @@ public abstract class GenericXMLHandler {
 		}
 		Long tagVal = null;
 		if (null != _dictionaryStack) {
-			for (BinaryXMLDictionary dictionary : _dictionaryStack) {
+			for (XMLDictionary dictionary : _dictionaryStack) {
 				tagVal = dictionary.stringToTag(tagName);
 				if (null != tagVal) {
 					return tagVal;
@@ -51,15 +51,15 @@ public abstract class GenericXMLHandler {
 			}
 		}
 		
-		for (BinaryXMLDictionary dictionary : BinaryXMLDictionary.getGlobalDictionaries()) {
+		for (XMLDictionary dictionary : XMLDictionaryStack.getGlobalDictionaries()) {
 			tagVal = dictionary.stringToTag(tagName);
 			if (null != tagVal) {
 				return tagVal;
 			}
 		}
 
-		if (BinaryXMLDictionary.isUnknownTag(tagName)) {
-			return BinaryXMLDictionary.decodeUnknownTag(tagName);
+		if (XMLDictionaryStack.isUnknownTag(tagName)) {
+			return XMLDictionaryStack.decodeUnknownTag(tagName);
 		}
 		return null;
 	}
@@ -74,7 +74,7 @@ public abstract class GenericXMLHandler {
 		String tagName = null;
 		
 		if (null != _dictionaryStack) {
-			for (BinaryXMLDictionary dictionary : _dictionaryStack) {
+			for (XMLDictionary dictionary : _dictionaryStack) {
 				tagName = dictionary.tagToString(tagVal);
 				if (null != tagName) {
 					return tagName;
@@ -82,7 +82,7 @@ public abstract class GenericXMLHandler {
 			}
 		}
 
-		for (BinaryXMLDictionary dictionary : BinaryXMLDictionary.getGlobalDictionaries()) {
+		for (XMLDictionary dictionary : XMLDictionaryStack.getGlobalDictionaries()) {
 			tagName = dictionary.tagToString(tagVal);
 			if (null != tagName) {
 				return tagName;
@@ -92,7 +92,7 @@ public abstract class GenericXMLHandler {
 
 		// safe to always map to a string; only need to return null in other direction so
 		// that raw string can be encoded
-		return BinaryXMLDictionary.unknownTagMarker(tagVal);
+		return XMLDictionaryStack.unknownTagMarker(tagVal);
 	}
 	
 	/**
@@ -102,9 +102,9 @@ public abstract class GenericXMLHandler {
 	 * Pushes even if dictionary is on the stack, to make it easier to keep track of order.
 	 * @param dictionary
 	 */
-	public void pushXMLDictionary(BinaryXMLDictionary dictionary) {
+	public void pushXMLDictionary(XMLDictionary dictionary) {
 		if (null == _dictionaryStack) {
-			_dictionaryStack = new Stack<BinaryXMLDictionary>();
+			_dictionaryStack = new Stack<XMLDictionary>();
 		}
 		_dictionaryStack.push(dictionary);
 	}
@@ -113,7 +113,7 @@ public abstract class GenericXMLHandler {
 	 * Pop top XML dictionary from the stack used by this encoder or decoder instance only. 
 	 * @return the dictionary it popped if it popped one, otherwise null.
 	 */
-	public BinaryXMLDictionary popXMLDictionary() {
+	public XMLDictionary popXMLDictionary() {
 		if (null == _dictionaryStack) {
 			return null;
 		}

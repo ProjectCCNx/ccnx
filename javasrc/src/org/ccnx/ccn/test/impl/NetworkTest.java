@@ -5,7 +5,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -17,6 +17,7 @@
 
 package org.ccnx.ccn.test.impl;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.TreeSet;
 import java.util.concurrent.Semaphore;
@@ -42,32 +43,36 @@ import org.junit.Test;
 
 /**
  * Test CCNNetworkManager.
- * 
+ *
  * Note - this test requires ccnd to be running
  *
  */
 public class NetworkTest extends CCNTestBase {
-	
+
 	protected static final int WAIT_MILLIS = 8000;
 	protected static final int FLOOD_ITERATIONS = 1000;
-	
+
 	protected static final int TEST_TIMEOUT = SystemConfiguration.MEDIUM_TIMEOUT;
-	
-	private Semaphore sema = new Semaphore(0);
-	private Semaphore filterSema = new Semaphore(0);
+	protected static final int CANCEL_TEST_TIMEOUT = 100;
+
+	private final Semaphore sema = new Semaphore(0);
+	private final Semaphore filterSema = new Semaphore(0);
+	private final Semaphore cancelSema = new Semaphore(1);
 	private boolean gotData = false;
 	private boolean gotInterest = false;
+	private boolean cancelWait = false;
+	private final Object cancelLock = new Object();
 	Interest testInterest = null;
-	
+
 	// Fix test so it doesn't use static names.
 	static CCNTestHelper testHelper = new CCNTestHelper(NetworkTest.class);
 	static ContentName testPrefix = testHelper.getClassChildName("networkTest");
-	
+
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		CCNTestBase.setUpBeforeClass();
 	}
-	
+
 	@AfterClass
 	public static void tearDownAfterClass() throws Exception {
 		CCNTestBase.tearDownAfterClass();
@@ -76,7 +81,7 @@ public class NetworkTest extends CCNTestBase {
 	@Before
 	public void setUp() throws Exception {
 	}
-	
+
 	/**
 	 * Partially test prefix registration/deregistration
 	 * @throws Exception
@@ -87,7 +92,7 @@ public class NetworkTest extends CCNTestBase {
 
 		TestInterestHandler tfl = new TestInterestHandler();
 		TestContentHandler tl = new TestContentHandler();
-		
+
 		ContentName testName1 = ContentName.fromNative(testPrefix, "foo");
 		Interest interest1 = new Interest(testName1);
 		ContentName testName2 = ContentName.fromNative(testName1, "bar"); // /foo/bar
@@ -99,7 +104,7 @@ public class NetworkTest extends CCNTestBase {
 		ContentName testName6 = ContentName.fromNative(testName1, "zoo");  // /foo/zoo
 		ContentName testName7 = ContentName.fromNative(testName2, "spaz"); // /foo/bar/spaz
 		Interest interest6 = new Interest(testName6);
-		
+
 		// Test that we don't receive interests above what we registered
 		gotInterest = false;
 		putHandle.registerFilter(testName2, tfl);
@@ -111,7 +116,7 @@ public class NetworkTest extends CCNTestBase {
 		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest2, tl);
-		
+
 		// Test that an "in-between" prefix gets registered properly
 		gotInterest = false;
 		putHandle.getNetworkManager().cancelInterestFilter(this, testName2, tfl);
@@ -122,12 +127,12 @@ public class NetworkTest extends CCNTestBase {
 		putHandle.registerFilter(testName1, tfl);
 		gotInterest = false;
 		filterSema.drainPermits();
-		getHandle.expressInterest(interest6, tl);		
+		getHandle.expressInterest(interest6, tl);
 		filterSema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		getHandle.checkError(TEST_TIMEOUT);
 		Assert.assertTrue(gotInterest);
 		getHandle.cancelInterest(interest6, tl);
-		
+
 		// Make sure that a filter that is a prefix of a registered filter
 		// doesn't get registered separately.
 		gotInterest = false;
@@ -152,7 +157,7 @@ public class NetworkTest extends CCNTestBase {
 		putHandle.unregisterFilter(testName3, tfl);
 		putHandle.unregisterFilter(testName5, tfl);
 		putHandle.unregisterFilter(testName7, tfl);
-		
+
 		// Make sure nothing is registered after a /
 		ContentName slashName = ContentName.fromNative("/");
 		putHandle.registerFilter(testName1, tfl);
@@ -160,12 +165,12 @@ public class NetworkTest extends CCNTestBase {
 		putHandle.registerFilter(testName5, tfl);
 		prefixes = putHandle.getNetworkManager().getRegisteredPrefixes();
 		Assert.assertFalse(prefixes.contains(testName5));
-		
+
 		putHandle.unregisterFilter(testName1, tfl);
 		putHandle.unregisterFilter(slashName, tfl);
 		putHandle.unregisterFilter(testName5, tfl);
-		
-		Log.info(Log.FAC_TEST, "Completed testRegisteredPrefix");		
+
+		Log.info(Log.FAC_TEST, "Completed testRegisteredPrefix");
 	}
 
 	@Test
@@ -177,7 +182,7 @@ public class NetworkTest extends CCNTestBase {
 		 */
 		CCNWriter writer = new CCNWriter(testPrefix, putHandle);
 		ContentName testName = ContentName.fromNative(testPrefix, "aaa");
-		
+
 		testInterest = new Interest(testName);
 		TestContentHandler tl = new TestContentHandler();
 		getHandle.expressInterest(testInterest, tl);
@@ -186,10 +191,10 @@ public class NetworkTest extends CCNTestBase {
 		getHandle.checkError(0);
 		Assert.assertTrue(gotData);
 		writer.close();
-		
+
 		Log.info(Log.FAC_TEST, "Completed testNetworkManager");
 	}
-	
+
 	@Test
 	public void testNetworkManagerFixedPrefix() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testNetworkManagerFixedPrefix");
@@ -203,10 +208,10 @@ public class NetworkTest extends CCNTestBase {
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		Assert.assertTrue(gotData);
 		writer.close();
-		
+
 		Log.info(Log.FAC_TEST, "Completed testNetworkManagerFixedPrefix");
 	}
-	
+
 	@Test
 	public void testNetworkManagerBackwards() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testNetworkManagerBackwards");
@@ -215,7 +220,7 @@ public class NetworkTest extends CCNTestBase {
 		// Shouldn't have to do this -- need to refactor test. Had to add it after
 		// fixing CCNWriter to do proper flow control.
 		writer.disableFlowControl();
-		
+
 		ContentName testName = ContentName.fromNative(testPrefix, "bbb");
 
 		testInterest = new Interest(testName);
@@ -226,17 +231,17 @@ public class NetworkTest extends CCNTestBase {
 		getHandle.checkError(0);
 		Assert.assertTrue(gotData);
 		writer.close();
-		
+
 		Log.info(Log.FAC_TEST, "Completed testNetworkManagerBackwards");
 	}
-	
+
 	@Test
 	public void testFreshnessSeconds() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testFreshnessSeconds");
 
 		CCNWriter writer = new CCNWriter(testPrefix, putHandle);
 		writer.disableFlowControl();
-		
+
 		ContentName testName = ContentName.fromNative(testPrefix, "freshnessTest");
 		writer.put(testName, "freshnessTest", 3);
 		Thread.sleep(80);
@@ -246,7 +251,7 @@ public class NetworkTest extends CCNTestBase {
 		co = getHandle.get(testName, 1000);
 		Assert.assertTrue(co == null);
 		writer.close();
-		
+
 		Log.info(Log.FAC_TEST, "Completed testFreshnessSeconds");
 	}
 
@@ -263,16 +268,16 @@ public class NetworkTest extends CCNTestBase {
 		TestContentHandler tl = new TestContentHandler();
 		getHandle.expressInterest(testInterest, tl);
 		// Sleep long enough that the interest must be re-expressed
-		Thread.sleep(WAIT_MILLIS);  
+		Thread.sleep(WAIT_MILLIS);
 		writer.put(testName, "ccc");
 		sema.tryAcquire(WAIT_MILLIS, TimeUnit.MILLISECONDS);
 		getHandle.checkError(0);
 		Assert.assertTrue(gotData);
 		writer.close();
-		
+
 		Log.info(Log.FAC_TEST, "Completed testInterestReexpression");
 	}
-	
+
 	/**
 	 * Test flooding the system with a bunch of content. Only works for TCP
 	 * @throws Exception
@@ -296,7 +301,35 @@ public class NetworkTest extends CCNTestBase {
 		}
 		Log.info(Log.FAC_TEST, "Completed testFlood");
 	}
-	
+
+	/**
+	 * Test that when we cancel an interest and the interest is satisfied during the cancel, side affects
+	 * from handling the interest are not allowed to keep the interest alive.
+	 *
+	 * @throws Exception
+	 */
+	@Test
+	public void testCancelAtomicity() throws Exception {
+		CancelTestInterestHandler ctih = new CancelTestInterestHandler();
+		CancelTestContentHandler ctch = new CancelTestContentHandler();
+
+		cancelSema.acquire();
+		putHandle.registerFilter(testPrefix, ctih);
+		Interest interest =  new Interest(testPrefix);
+		getHandle.expressInterest(interest, ctch);
+		putHandle.checkError(CANCEL_TEST_TIMEOUT);
+		getHandle.checkError(CANCEL_TEST_TIMEOUT);
+		Assert.assertTrue(cancelSema.tryAcquire(TEST_TIMEOUT, TimeUnit.MILLISECONDS));
+		synchronized (cancelLock) {
+			cancelWait = true;
+		}
+		gotData = false;
+		getHandle.cancelInterest(interest, ctch);
+		cancelSema.release();
+		putHandle.checkError(CANCEL_TEST_TIMEOUT);
+		Assert.assertFalse("Interest was totally cancelled", gotData);
+	}
+
 	class TestInterestHandler implements CCNInterestHandler {
 
 		public boolean handleInterest(Interest interest) {
@@ -305,7 +338,7 @@ public class NetworkTest extends CCNTestBase {
 			return true;
 		}
 	}
-	
+
 	class TestContentHandler implements CCNContentHandler {
 
 		public Interest handleContent(ContentObject co,
@@ -313,12 +346,56 @@ public class NetworkTest extends CCNTestBase {
 			Assert.assertFalse(co == null);
 			gotData = true;
 			sema.release();
-			
+
 			/*
 			 * Test call of cancel in handler doesn't hang
 			 */
 			getHandle.cancelInterest(interest, this);
 			return null;
 		}
+	}
+
+	class CancelTestInterestHandler implements CCNInterestHandler {
+		CCNWriter writer = null;
+		ContentName testName = ContentName.fromNative(testPrefix, "cancelTest");
+
+		private CancelTestInterestHandler() throws IOException {
+			writer = new CCNWriter(testName, putHandle);
+			writer.disableFlowControl();
+		}
+
+		public boolean handleInterest(Interest interest) {
+			gotInterest = true;
+			try {
+				writer.put(testName, "Cancel Atomicity Test");
+			} catch (Exception e) {
+				Assert.fail(e.getMessage());
+			}
+			return false;
+		}
+	}
+
+	class CancelTestContentHandler implements CCNContentHandler {
+
+		public Interest handleContent(ContentObject data, Interest interest) {
+			gotData = true;
+			cancelSema.release();
+			int timeToWait = TEST_TIMEOUT;
+			while (!cancelWait && timeToWait > 0) {
+				try {
+					Thread.sleep(50);
+					timeToWait -=50;
+				} catch (InterruptedException e) {
+					break;
+				}
+			}
+			try {
+				Assert.assertTrue(cancelSema.tryAcquire(TEST_TIMEOUT, TimeUnit.MILLISECONDS));
+			} catch (InterruptedException e) {
+				Assert.fail(e.getMessage());
+			}
+			return interest;
+		}
+
 	}
 }

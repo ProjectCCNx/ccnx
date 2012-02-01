@@ -259,7 +259,7 @@ public abstract class CCNxWrapper {
 			String key = (String) entry.getKey();
 			String value = (String) entry.getValue();
 			i.putExtra(key, value);	
-			Log.i(TAG, "Adding option " + key + " = " + value);
+			Log.i(TAG, "fillIntentOptions - Adding option " + key + " = " + value);
 		}
 	}
 	

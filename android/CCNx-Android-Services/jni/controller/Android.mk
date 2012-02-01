@@ -15,17 +15,23 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE        := controller
+
 LOCAL_C_INCLUDES    += $(LOCAL_PATH)/../csrc/ccnd
+LOCAL_C_INCLUDES    += $(LOCAL_PATH)/../csrc/sync
+LOCAL_C_INCLUDES    += $(LOCAL_PATH)/../csrc/ccnr
 LOCAL_C_INCLUDES    += $(LOCAL_PATH)/../csrc/include
 
-LOCAL_SRC_FILES     := ctl_ccnd.c 
+LOCAL_SRC_FILES     := \
+			ctl_ccnd.c \
+			ctl_ccnr.c 
 LOCAL_CFLAGS		:= $(M_CFLAGS) $(OS_CFLAGS)
 LOCAL_LDLIBS        := -ldl -llog $(OS_LDFLAGS)
 
 LOCAL_STATIC_LIBRARIES := \
 	libccnd \
+	libccnr \
 	libccnx \
-	libssl libcrypto 
+	libssl \
+	libcrypto 
 
 include $(BUILD_SHARED_LIBRARY)
-

@@ -7,7 +7,7 @@ ccnseqwriter - Send data from stdin using ccn versioning and segmentation.
 
 SYNOPSIS
 --------
-*ccnseqwriter* [-h] [-b 'blocksize'] [-r] 'ccnx:/some/uri'
+*ccnseqwriter* [-h] [-b 'blocksize'] [-r] [-s 'scope'] 'ccnx:/some/uri'
 
 DESCRIPTION
 -----------
@@ -30,7 +30,14 @@ OPTIONS
 
 *-r*::
 	Generate a start-write request to a repository.
-	The start-write is not scoped, so a remote repository may answer.
+	The start-write is by default local scope, so only a local repository may answer.
+	If there is no response to the start-write request after 60s the
+	command will fail with a diagnostic to stderr.
+
+*-s* 'scope'::
+	Use the given scope on the start-write request (if -r specified).
+	'scope' can be 1 (local), 2 (neighborhood), or 3 (unlimited).
+	Note that a scope of 3 is encoded as the absence of any scope in the interest.
 
 EXIT STATUS
 -----------

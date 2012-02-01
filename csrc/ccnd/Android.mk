@@ -29,6 +29,7 @@ CCNDSRC := $(CCNDOBJ:.o=.c)
 
 LOCAL_SRC_FILES := $(CCNDSRC)
 LOCAL_CFLAGS := -g
+# LOCAL_LDLIBS        := -lsync
 LOCAL_STATIC_LIBRARIES := libcrypto libccnx
 LOCAL_SHARED_LIBRARIES :=
 

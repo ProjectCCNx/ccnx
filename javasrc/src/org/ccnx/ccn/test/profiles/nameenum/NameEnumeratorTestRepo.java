@@ -31,7 +31,7 @@ import org.junit.Test;
 
 public class NameEnumeratorTestRepo extends CCNTestBase implements BasicNameEnumeratorListener {
 	public static final int NFILES = 1000;
-	public static final int TIMEOUT = 20000;
+	public static final int TIMEOUT = 60000;
 	protected int _NESize = 0;
 	protected ArrayList<ContentName> _seenNames = new ArrayList<ContentName>();
 	

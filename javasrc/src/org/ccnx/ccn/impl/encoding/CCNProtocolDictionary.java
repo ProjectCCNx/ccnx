@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -19,15 +19,17 @@ package org.ccnx.ccn.impl.encoding;
 /**
  * Uses the CCNProtocolDTags enum type to implement a dictionary.
  */
-public class CCNProtocolDictionary extends BinaryXMLDictionary {
+public class CCNProtocolDictionary implements  XMLDictionary {
 	
 	private static CCNProtocolDictionary _defaultInstance = new CCNProtocolDictionary();
 	
 	public static CCNProtocolDictionary getDefaultInstance() { return _defaultInstance; }
 	
+	/**
+	 * Use getDefaultInstance()
+	 */
 	private CCNProtocolDictionary() {}
 
-	@Override
 	public Long stringToTag(String tag) {
 		Long tagVal = null;
 		try {
@@ -45,7 +47,6 @@ public class CCNProtocolDictionary extends BinaryXMLDictionary {
 	 * This is the slow way, but we should only have to do this if printing things
 	 * out as text...
 	 */
-	@Override
 	public String tagToString(long tagVal) {
 		return CCNProtocolDTags.tagToString(tagVal);
 	}

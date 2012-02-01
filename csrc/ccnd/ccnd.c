@@ -3,7 +3,7 @@
  *
  * Main program of ccnd - the CCNx Daemon
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -2402,7 +2402,6 @@ ccnd_req_newface(struct ccnd_handle *h,
     struct ccn_face_instance *face_instance = NULL;
     struct addrinfo hints = {0};
     struct addrinfo *addrinfo = NULL;
-    int fd = -1;
     int mcast;
     struct face *face = NULL;
     struct face *reqface = NULL;
@@ -2470,7 +2469,6 @@ ccnd_req_newface(struct ccnd_handle *h,
     if (addrinfo->ai_next != NULL)
         ccnd_msg(h, "ccnd_req_newface: (addrinfo->ai_next != NULL) ? ?");
     if (face_instance->descr.ipproto == IPPROTO_UDP) {
-        fd = -1;
         mcast = 0;
         if (addrinfo->ai_family == AF_INET) {
             face = face_from_faceid(h, h->ipv4_faceid);
@@ -2654,7 +2652,7 @@ ccnd_req_prefix_or_self_reg(struct ccnd_handle *h,
     if (face == NULL)
         goto Finish;
     if (forwarding_entry->lifetime < 0)
-        forwarding_entry->lifetime = 60;
+        forwarding_entry->lifetime = 2000000000;
     else if (forwarding_entry->lifetime > 3600 &&
              forwarding_entry->lifetime < (1 << 30))
         forwarding_entry->lifetime = 300;
@@ -3256,7 +3254,7 @@ propagate_interest(struct ccnd_handle *h,
         noncesize = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
     }
     hashtb_start(h->propagating_tab, e);
-    res = hashtb_seek(e, nonce, noncesize, 0);
+    hashtb_seek(e, nonce, noncesize, 0);
     pe = e->data;
     if (pe != NULL && pe->interest_msg == NULL) {
         unsigned char *m;
@@ -3881,23 +3879,24 @@ process_incoming_content(struct ccnd_handle *h, struct face *face,
         if (content == content_from_accession(h, content->accession)) {
             content->ncomps = comps->n;
             content->comps = calloc(comps->n, sizeof(comps[0]));
+            if (content->comps == NULL) {
+                ccnd_msg(h, "could not enroll ContentObject (accession %llu)",
+                         (unsigned long long)content->accession);
+                content = NULL;
+                hashtb_delete(e);
+                res = -__LINE__;
+                hashtb_end(e);
+                goto Bail;
+                
+            }
         }
         content->key_size = e->keysize;
         content->size = e->keysize + e->extsize;
         content->key = e->key;
-        if (content->comps != NULL) {
-            for (i = 0; i < comps->n; i++)
-                content->comps[i] = comps->buf[i];
-            content_skiplist_insert(h, content);
-            set_content_timer(h, content, &obj);
-        }
-        else {
-            ccnd_msg(h, "could not enroll ContentObject (accession %llu)",
-                (unsigned long long)content->accession);
-            hashtb_delete(e);
-            res = -__LINE__;
-            content = NULL;
-        }
+        for (i = 0; i < comps->n; i++)
+            content->comps[i] = comps->buf[i];
+        content_skiplist_insert(h, content);
+        set_content_timer(h, content, &obj);
         /* Mark public keys supplied at startup as precious. */
         if (obj.type == CCN_CONTENT_KEY && content->accession <= (h->capacity + 7)/8)
             content->flags |= CCN_CONTENT_ENTRY_PRECIOUS;
