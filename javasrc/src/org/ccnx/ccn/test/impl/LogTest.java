@@ -86,7 +86,7 @@ public class LogTest {
 					j++;
 				}
 				// Null out excess range
-				for (; j <= _lastFinish; j++) {
+				for (; j < _lastFinish; j++) {
 					b[j] = (byte) 0;	
 				}
 			}
