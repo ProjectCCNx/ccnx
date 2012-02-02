@@ -3,7 +3,7 @@ CCNR(1)
 
 NAME
 ----
-ccnr - CCNx Repository Daemon
+ccnr - CCNx Repository
 
 SYNOPSIS
 --------
@@ -15,7 +15,17 @@ A Repository supports the network by preserving content and responding to Intere
 
 The *ccnr* command starts the Repository using the directory specified by the +CCNR_DIRECTORY+ environment variable. At startup, the Repository retrieves and applies the configuration options described below.
 
+The directory named by CCNR_DIRECTORY must exist already. To start ccnr as a daemon, redirect stderr to a file and execute
+
+  bin/ccnr &
+
+ccnr shuts down gracefully if it receives SIGINT or SIGTERM, or if the ccnd to which it is connected is shut down.
+
+Do not run two Repositories on the same backing store directory at the same time.
+
 The Repository uses +$CCNR_DIRECTORY/repoFile1+ for persistent storage of CCN Content Objects. A disk-resident index facilitates rapid start-up and limits the memory footprint. If an index does not exist, it is built during startup.
+
+A policy file specifies the namespaces for which the Repository accepts and holds content. The name of the policy file is the concatenation of the global prefix and "data/policy.xml". Unless an alternative policy has been explicitly written/published under the policy information name, the the policy defaults to /, which means that writes will be accepted for any name and reads serviced for any name for which there is content.
 
 The Repository is configured from information in the text file, +$CCNR_DIRECTORY/config+. The file is only read at startup time.
 
@@ -55,16 +65,16 @@ Any or all variables in the file may also be expressed as environment variables 
      where _<directory>_ is the directory where the Repository storage is located, which defaults to the current directory. +CCNR_DIRECTORY+ is ignored in the configuration file.
 
 *CCNR_GLOBAL_PREFIX=_<URI>_*::
-     where _<URI>_ is the CCNx URI representing the prefix where +data/policy.xml+ is stored, and is meaningful only if no policy file exists at startup. If not specified, the URI defaults to +ccnx:/parc.com/csl/ccn/Repos+.
+     where _<URI>_ is the CCNx URI representing the prefix where +data/policy.xml+ is stored, and is meaningful only if no policy file exists at startup. _<URI>_ is expected by convention to be globally unique and meaningful, rather than only locally unique and contextually meaningful. If not specified, the URI defaults to +ccnx:/parc.com/csl/ccn/Repos+.
 
 *CCNR_LISTEN_ON=_<IP address list>_*::
-     where _<IP address list>_ is a list of IP addresses to listen on for status. If not specified, the default is a wild card.
+     where _<IP address list>_ is a list of IP addresses to listen on for status. IP addresses may be in either IPv4 format (e.g., 127.0.0.1) or IPv6 format (e.g., fe80::226:bbff:fe1c:5530). Addresses may be separated by spaces, commas, or semi-colons.  If not specified, the default is a wild card.
 
 *CCNR_MIN_SEND_BUFSIZE=_<Min buffer size>_*::
      where _<Min buffer size>_ is the minimum size in bytes of the output socket buffer (SO_SNDBUF) for the socket used to communicate with ccnd. The maximum value for _<Min buffer size>_ is 16384. If the system provides more than this by default, the system's value is used.
 
-*CCNR_PROTO=tcp*::
-     If this option is specified, Repo will connect to ccnd via TCP.  If not specified, the connection is via Unix IPC.
+*CCNR_PROTO=_<type>_*::
+     where _<type>_ is the type of connection, which must be tcp or unix. If _<type>_ is tcp, Repo will connect to ccnd via TCP; if _<type>_ is unix, Repo will connect via Unix IPC. If not specified, the default is unix.
 
 *CCNR_STATUS_PORT=_<port>_*::
      where _<port>_ is the port to use for a status server. If this option is not specified, no status is served.
@@ -78,6 +88,36 @@ Any or all variables in the file may also be expressed as environment variables 
 
 *CCNS_ENABLE=_<do sync>_*::
      where _<do sync>_ specifies whether to disable (0) or enable (1) Sync processing. If not specified, the default is enabled.
+
+*CCNS_FAUX_ERROR=_<simulate random loss>_*::
+     where _<simulate random loss>_ specifies whether and how much random packet loss to simulate. If _<simulate random loss>_ is 0, no loss is simulated; if in the range 1-99, the number is the percentage of packets to drop at random. If not specified, the default is 0 (no loss).
+
+*CCNS_HEARTBEAT_MICROS=_<heartbeat>_*::
+     where _<heartbeat>_ is the number of microseconds between Sync heartbeats, and must be an integer in the range 100000-10000000. If not specified, the default is 200000.
+
+*CCNS_MAX_COMPARES_BUSY=_<max compares>_*::
+     where  _<max compares>_ is the maximum number of Sync roots that can be in compare state simultaneously, and must be an integer in the range 1-100. If not specified, the default is 4.
+
+*CCNS_MAX_FETCH_BUSY=_<max fetches>_*::
+     where _<max fetches>_ is the maximum number of simultaneous node or content fetches per Sync root, and must be an integer in the range 1-100. If not specified, the default is 6.
+
+*CCNS_NODE_FETCH_LIFETIME=_<nf lifetime>_*::
+     where _<nf lifetime>_ is the maximum amount of time in seconds to wait for a response to a NodeFetch request, and must be an integer in the range 1-30. If not specified, the default is 4.
+
+*CCNS_NOTE_ERR=_<exceptional errors flag>_*::
+     where _<exceptional errors flag>_ specifies whether exceptional Sync error reporting is disabled (0) or enabled (1). If not specified, the default is 0 (disabled).
+
+*CCNS_REPO_STORE=_<store state flag>_*::
+     where _<store state flag>_ specifies whether storing of Sync state to the Repository is disabled (0) or enabled. If not specified, the default is 1 (enabled).
+
+*CCNS_ROOT_ADVISE_FRESH=_<freshness>_*::
+     where _<freshness>_ is the amount of time a response to a Sync RoodAdvise will stay "fresh" (valid) in a ccnd cache in seconds, and must be an integer in the range 1-30. If not specified, the default is 4.
+
+*CCNS_ROOT_ADVISE_LIFETIME=_<ra lifetime>_*::
+     where _<ra lifetime>_ is the maximum amount of time in seconds to wait for a response to a RootAdvise request, and must be an integer in the range 1-30. If not specified, the default is 20.
+
+*CCNS_STABLE_ENABLED=_<store stable flag>_*::
+     where _<store stable flag>_ specifies whether storing of Sync stable points to the Repository is disabled (0) or enabled (1). If not specified, the default is 1 (enabled).
 
 OPTIONS
 -------
