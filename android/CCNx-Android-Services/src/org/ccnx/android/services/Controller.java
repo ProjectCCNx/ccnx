@@ -37,6 +37,12 @@ import android.widget.TextView;
 import android.widget.EditText;
 import android.widget.Toast;
 import android.widget.Spinner;
+
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.Enumeration;
+
 /**
  * Android UI for controlling CCNx services.
  */
@@ -51,6 +57,7 @@ public final class Controller extends Activity implements OnClickListener {
 	
 	TextView tvCcndStatus;
 	TextView tvRepoStatus;
+	TextView deviceIPAddress;
 	
 	CCNxServiceControl control;
 	
@@ -84,7 +91,14 @@ public final class Controller extends Activity implements OnClickListener {
         allBtn.setOnClickListener(this);
         tvCcndStatus = (TextView)findViewById(R.id.tvCcndStatus);
         tvRepoStatus = (TextView)findViewById(R.id.tvRepoStatus);
+        deviceIPAddress = (TextView)findViewById(R.id.deviceIPAddress);
+        String ipaddr = getIPAddress();
         
+        if (ipaddr != null) {
+        	deviceIPAddress.setText(ipaddr);
+        } else {
+        	deviceIPAddress.setText("Unable to determine IP Address");
+        }
         init();
     }
     
@@ -92,6 +106,18 @@ public final class Controller extends Activity implements OnClickListener {
     public void onDestroy() {
     	control.disconnect();
     	super.onDestroy();
+    }
+    
+    @Override
+    public void onResume() {
+    	super.onResume();
+    	String ipaddr = getIPAddress();
+        
+        if (ipaddr != null) {
+        	deviceIPAddress.setText(ipaddr);
+        } else {
+        	deviceIPAddress.setText("Unable to determine IP Address");
+        }
     }
     
     private void init(){
@@ -169,6 +195,22 @@ public final class Controller extends Activity implements OnClickListener {
 		updateState();
 	}
 	
+	private String getIPAddress() {
+		try {
+			for (Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces(); e.hasMoreElements();) {
+				NetworkInterface nic = e.nextElement();
+				for (Enumeration<InetAddress> enumIpAddr = nic.getInetAddresses(); enumIpAddr.hasMoreElements();) {
+					InetAddress addr = enumIpAddr.nextElement();
+					if (!addr.isLoopbackAddress()) {
+						return addr.getHostAddress().toString();
+					}
+				}
+			}
+		} catch (SocketException ex) {
+			Toast.makeText(this, "Error obtaining IP Address.  Reason: " + ex.getMessage(), 10).show();
+		}
+		return null;
+	}
 	private boolean isValid(String val) {
 		// Normally we'd do real field validation to make sure input matches type of input
 		return (!((val == null) || (val.length() == 0)));
