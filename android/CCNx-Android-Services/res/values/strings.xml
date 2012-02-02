@@ -25,4 +25,7 @@
 <string name="debug_fine">FINE</string>
 <string name="debug_finer">FINER</string>
 <string name="debug_finest">FINEST</string>
+<string name="label_ccnr_directory">CCNR_DIRECTORY:</string>
+<string name="label_ccnr_global_prefix">CCNR_GLOBAL_PREFIX:</string>
+<string name="label_ccnr_debug">CCNR_DEBUG:</string>
 </resources>
