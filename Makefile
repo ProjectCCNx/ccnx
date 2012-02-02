@@ -98,7 +98,7 @@ distfile: tar
 fixupversions: _always
 	Fix1 () { sed -e '/^PROJECT_NUMBER/s/=.*$$/= $(VERSION)/' $$1 > DTemp && mv DTemp $$1; } && Fix1 csrc/Doxyfile && Fix1 csrc/Doxyfile.dist && Fix1 csrc/Doxyfile.latex && Fix1 javasrc/Doxyfile && Fix1 javasrc/Doxyfile.dist && Fix1 javasrc/Doxyfile.latex && Fix1 doc/manpages/Makefile && Fix1 android/Doxyfile && Fix1 android/Doxyfile.dist && Fix1 android/Doxyfile.latex 
 
-IGNORELINKS = -e android/CCNx-Android-Services/jni/csrc -e android/CCNx-Android-Services/jni/openssl/openssl-armv5
+IGNORELINKS = -e csrc/ccnr/Makefile -e csrc/lib2/Makefile -e android/CCNx-Android-Services/jni/csrc -e android/CCNx-Android-Services/jni/openssl/openssl-armv5
 MD5: _always
 	grep -v $(IGNORELINKS) MANIFEST | xargs openssl dgst > MD5
 
