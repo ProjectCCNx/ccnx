@@ -45,7 +45,9 @@ Any or all variables in the file may also be expressed as environment variables 
 
 * +ERROR+ - errors
 
-* +WARNING+ – warnings
+* +WARNING+ - warnings
+
+* +INFO+ - informational messages
 
 * +FINE+, +FINER+, +FINEST+ - debugging/tracing
 
@@ -66,6 +68,10 @@ Any or all variables in the file may also be expressed as environment variables 
 
 *CCNR_STATUS_PORT=_<port>_*::
      where _<port>_ is the port to use for a status server. If this option is not specified, no status is served.
+
+*CCNR_START_WRITE_SCOPE_LIMIT=_<Scope limit>_*::
+     where _<Scope limit>_ is in the range 0..3 (default 3). Process start-write(-checked) interests with a scope
+     not exceeding the given value.  0 is effectively read-only. 3 indicates unlimited.
 
 *CCNS_DEBUG=_<Sync debug logging level>_*::
      where _<Sync debug logging level>_ has the same values as for +CCNR_DEBUG+ above. If not specified, the default is +WARNING+.

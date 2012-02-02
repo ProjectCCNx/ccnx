@@ -145,7 +145,20 @@ ERROR
 .\}
 
 WARNING
-\(en warnings
+\- warnings
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+INFO
+\- informational messages
 .RE
 .sp
 .RS 4
@@ -209,6 +222,13 @@ If this option is specified, Repo will connect to ccnd via TCP\&. If not specifi
 where
 \fI<port>\fR
 is the port to use for a status server\&. If this option is not specified, no status is served\&.
+.RE
+.PP
+\fBCCNR_START_WRITE_SCOPE_LIMIT=\fR\fB\fI<Scope limit>\fR\fR
+.RS 4
+where
+\fI<Scope limit>\fR
+is in the range 0\&.\&.3 (default 3)\&. Process start\-write(\-checked) interests with a scope not exceeding the given value\&. 0 is effectively read\-only\&. 3 indicates unlimited\&.
 .RE
 .PP
 \fBCCNS_DEBUG=\fR\fB\fI<Sync debug logging level>\fR\fR
