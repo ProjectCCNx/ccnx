@@ -133,3 +133,10 @@ might need to "make uninstall" before "make install" if the applications
 were previously installed with a different signing key (i.e. you use
 the phone with builds from multiple computers).
 
+Routing
+=======
+To set up routing, utilize this set of commands with a USB-tethered Android Device:
+adb forward localfilesystem:/tmp/.ccnd.sock.9699 tcp:9695
+adb forward tcp:9699 tcp:9695
+
+and then run regular ccn commands, with CCN_LOCAL_PORT=9699 including ccndc, ccnputfile, ccnlsrepo, etc.  Note, ccndc commands issued will require the phone to point at an IP address reachable from the phone.  
