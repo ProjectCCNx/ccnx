@@ -3,3 +3,4 @@ SyncTest
 *.o
 *.dSYM
 *.dSYM/*
+Makefile
