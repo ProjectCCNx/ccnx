@@ -4,13 +4,13 @@ Android Apps for CCNx
 =====================
 
 CCNx-Android-Services
-  This is an Android app that manages the lifecycle of CCND and 
-  a REPO as a service.  One can build a standalone application 
+  This is an Android app that manages the lifecycle of CCND and
+  a REPO as a service.  One can build a standalone application
   to utlize the CCNx services made available by this application.
-
+  
 CCNx-Android-Lib
   This is an Android library.  It has helpers for the ccnd and 
-  repo services, among other things.  No build is done here, as
+  Repo services, among other things.  No build is done here, as
   Android libraries are included in source form.
 
 Before you use any CCNx library calls:
@@ -18,21 +18,20 @@ Before you use any CCNx library calls:
 - Call CCNxServiceControl.startAll() or startAllBackround()
 
 Once you have configured your environment (config()) and started
-ccnd and the repo (startAll()), you can then use the
-CCNx library.
+ccnd and Repo (startAll()), you can then use the CCNx library.
 
 Your application needs these permissions:
          # Always need this:
     android.permission.INTERNET
 
-	# If your keystore is on /sdcard
+	   	# If your keystore is on /sdcard
     android.permission.WRITE_EXTERNAL_STORAGE
 
 Important Notes
 ===============
 - User keys are stored in /sdcard/ccnx/user
   Because this is on the SD card, it may become unavailable if you
-  plug in your usb and use the SD card for storage.
+  plug in your USB and use the SD card for storage.  
 
   The user keystore is on the sdcard so multiple apps from different packages
   can share the same identity.
@@ -45,7 +44,6 @@ Important Notes
 - Ccnd directory is under the apk:
   /data/data/org.ccnx.android.services/app_ccnd
 
-- CCNR (repo2) is set to be the default repo version.  Please see the man pages for CCNR for more detailed information on environment variables and default values.
 
 Android Build System Notes
 ===========================
@@ -62,7 +60,7 @@ included Android library.  As a result, we can use the latest 1.0.0d
 library!
 
 You must set the environment variables ANDROID_SDK and ANDROID_NDK.
-These must point to the root of the SDK Tools and NDK directories.
+These must point to the root of the SDK Tools and NDK directories.  
 
 Supported Versions:
 * Android NDK r7
@@ -92,16 +90,16 @@ these steps:
 
 - Build "external".
   This downloads the OpenSSL source, configures it for armv5, and
-  does a patch.  It them puts Android.mk files in to the OpenSSL
+  does a patch.  It then puts Android.mk files in to the OpenSSL
   source directories.  There is no actual compiling done.
 
   IF YOU DO NOT HAVE AN INTERNET CONNECTION
-  You will need to download openssl-1.0.0d.tar.gz from
+  You will need to download openssl-1.0.0d.tar.gz from 
 	http://www.openssl.org/source/openssl-1.0.0d.tar.gz
   and put it in the directory external/downloads.
 
 - Build CCNx-Android-Services
-  This wraps the ccnd and repo services.  Because ccnd is C code,
+  This wraps the ccnd and Repo services.  Because ccnd is C code,
   it is included as JNI code, along with OpenSSL.
 
   Doing a "make clean" will not erase the C object code.  Only
@@ -123,7 +121,7 @@ Honeycomb
 ===========
 Android 3.x devices (and possibly some 2.x) devices the crypto support includes a subset of the Bouncy Castle library.  See: http://redmine.ccnx.org/issues/100589 for details.  As a result, the 3.x devices we tested failed with ClassNotFoundException trying to resolve the BouncyCastleProvider.  To work around this, we include the Bouncy Castle provider jar file if you specify in the top level of the android project directory:
 
-	make honeycomb
+make honeycomb
 
 This change affects CCNx-Android-Services, CCNx-Android-Chat, and CCNx-Android-StartupExamples.  Because of the size of the jar file (around 1.5mb) we are interested in a better solution long term, though there is no indication Google has changed their approach, except to enhance the android crypto library to rely upon functionality delivered through OpenSSL.
 
@@ -131,7 +129,14 @@ Installing
 ===========
 
 "make install" will install the Services and Chat applications.  You
-might need to "make unistall" before "make install" if the applications
+might need to "make uninstall" before "make install" if the applications
 were previously installed with a different signing key (i.e. you use
 the phone with builds from multiple computers).
 
+Routing
+=======
+To set up routing, utilize this set of commands with a USB-tethered Android Device:
+adb forward localfilesystem:/tmp/.ccnd.sock.9699 tcp:9695
+adb forward tcp:9699 tcp:9695
+
+and then run regular ccn commands, with CCN_LOCAL_PORT=9699 including ccndc, ccnputfile, ccnlsrepo, etc.  Note, ccndc commands issued will require the phone to point at an IP address reachable from the phone.  

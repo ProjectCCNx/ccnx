@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -29,6 +29,11 @@ DERIVED_HTML =				\
 	StatusResponse.html		\
 	SignatureGeneration.html	\
 	Staleness.html			\
+	NameEnumerationProtocol.html	\
+	RepoPolicies.html		\
+	RepoProtocol.html		\
+	RepositoryInfoObject.html	\
+	SynchronizationProtocol.html	\
 	LinkMessages.html		\
 	dtd.html			\
 	xsd.html			\
@@ -109,6 +114,21 @@ BinaryEncoding.html: BinaryEncoding.txt
 
 CCNxProtocol.html: CCNxProtocol.txt
 	asciidoc CCNxProtocol.txt
+
+NameEnumerationProtocol.html: NameEnumerationProtocol.txt
+	asciidoc NameEnumerationProtocol.txt
+
+RepoPolicies.html: RepoPolicies.txt
+	asciidoc RepoPolicies.txt	
+
+RepoProtocol.html: RepoProtocol.txt
+	asciidoc RepoProtocol.txt	
+
+RepositoryInfoObject.html: RepositoryInfoObject.txt
+	asciidoc RepositoryInfoObject.txt
+
+SynchronizationProtocol.html: SynchronizationProtocol.txt
+	asciidoc SynchronizationProtocol.txt
 
 LinkMessages.html: LinkMessages.txt
 	asciidoc LinkMessages.txt

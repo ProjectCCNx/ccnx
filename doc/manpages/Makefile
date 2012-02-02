@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2010, 2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -41,6 +41,8 @@ PAGE_NAMES =        		\
 	ccnchat			\
 	ccnpeek			\
 	ccnpoke			\
+	ccnr			\
+	SyncTest		\
 
 PROJECT_NUMBER = 0.5.0-rc1
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)

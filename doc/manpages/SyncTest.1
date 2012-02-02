@@ -1,0 +1,251 @@
+'\" t
+.\"     Title: SyncTest
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 02/01/2012
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.5.0
+.\"  Language: English
+.\"
+.TH "SYNCTEST" "1" "02/01/2012" "\ \& 0\&.5\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+SyncTest \- Test Synchronization
+.SH "SYNOPSIS"
+.sp
+SyncTest \-slice \fItopo naming clauses\fR
+.sp
+SyncTest \-delete \fItopo hash\fR
+.sp
+SyncTest \-stats \fItopo hash\fR
+.SH "DESCRIPTION"
+.sp
+Sync is a CCNx facility that allows CCN components to define collections of named data in Repositories, and automatically keeps their contents in synchrony with identically defined collections residing in neighboring Repositories\&. Sync is currently embedded in the Repository, but will be available separately in the future\&.
+.sp
+Sync is started automatically when Repo starts if the Repo configuration option, CCNS_ENABLE, is set to 1 (the default)\&. See ccnr(1) for more information about Repo configuration options\&.
+.sp
+Associated with each Repository, there is a Sync Agent that is responsible for keeping collections in the local Repo up to date, and for responding to inquiries from remote Sync Agents for information about contents of collections in the local Repo\&. To do this, it builds a sync tree for each collection defined in the local node\&. Eacb \fIsync tree\fR represents the content and organization of a particular collection, and is updated whenever content with a matching name is added to the Repository\&. The definition of a sync tree is contained in a \fIslice\fR that is specified by an application in the local node\&.
+.sp
+Once a collection is defined, the Sync Agent automatically keeps it synchronized with collections in neighboring nodes (ccnd scope = 2) that are identically defined\&. The protocol for creating a new slice and the internal protocol used by Sync Agents for keeping collections in sync are described in CCNx Synchronization Protocols\&.
+.sp
+Sync currently has the following limitations:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Sync only works with the local C\-based Repo; it is not yet available for separate use\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Sync only works with neighbors (ccnd scoping = 2)\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+The order in which names and content are synchronized is arbitrary\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+All versions are included (not just the last)\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Content deletions are not well supported\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Applications must agree exactly on the definition of collections\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+ccnd must have compatible routing\&.
+.RE
+.sp
+\fBSyncTest\fR (csrc/sync/SyncTest\&.c) is a tool for testing Sync that can also be used to define and delete slices in the current Repo, and to provide testing info\&. It can also serve as a model for how to create a slice (see sendSlice in SyncTest\&.c)\&.
+.SH "OPTIONS"
+.PP
+\fB\-slice \fR\fB\fItopo naming clauses\fR\fR
+.RS 4
+Create a slice:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fItopo\fR
+is the topological prefix used by Sync Agents for exchanging information about the collection\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fInaming\fR
+is the common prefix for all names in the collection\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fIclauses\fR
+is an optional filter that limits names in the collection\&. If omitted, all content names under
+\fInaming\fR
+are included\&.
+.RE
+.RE
+.PP
+\fB\-delete \fR\fB\fItopo hash\fR\fR
+.RS 4
+Delete a slice (but not the content):
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fItopo\fR
+is the topological prefix used by Sync Agents for exchanging information about the collection\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fIhash\fR
+is the hash over the ccnb encoding of the configuration slice for the root\&.
+.RE
+.RE
+.PP
+\fB\-stats \fR\fB\fItopo hash\fR\fR
+.RS 4
+Produces a single\-line text report that is useful for debugging and measurement\&.
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fItopo\fR
+is the topological prefix used by Sync Agents for exchanging information about the collection\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fIhash\fR
+is the hash over the ccnb encoding of the configuration slice for the root\&.
+.RE
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure
+.RE
+.SH "AUTHOR"
+.sp
+Russel Atkinson <atkinson@parc\&.com>

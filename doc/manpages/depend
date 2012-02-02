@@ -25,6 +25,8 @@ ccnslurp.1.html: ccnslurp.1.txt
 ccnchat.1.html: ccnchat.1.txt
 ccnpeek.1.html: ccnpeek.1.txt
 ccnpoke.1.html: ccnpoke.1.txt
+ccnr.1.html: ccnr.1.txt
+SyncTest.1.html: SyncTest.1.txt
 ccn_ccnbtoxml.1.pdf: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1.pdf: ccn_xmltoccnb.1.txt
 ccnacl.1.pdf: ccnacl.1.txt
@@ -52,6 +54,8 @@ ccnslurp.1.pdf: ccnslurp.1.txt
 ccnchat.1.pdf: ccnchat.1.txt
 ccnpeek.1.pdf: ccnpeek.1.txt
 ccnpoke.1.pdf: ccnpoke.1.txt
+ccnr.1.pdf: ccnr.1.txt
+SyncTest.1.pdf: SyncTest.1.txt
 ccn_ccnbtoxml.1: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1: ccn_xmltoccnb.1.txt
 ccnacl.1: ccnacl.1.txt
@@ -79,3 +83,5 @@ ccnslurp.1: ccnslurp.1.txt
 ccnchat.1: ccnchat.1.txt
 ccnpeek.1: ccnpeek.1.txt
 ccnpoke.1: ccnpoke.1.txt
+ccnr.1: ccnr.1.txt
+SyncTest.1: SyncTest.1.txt
