@@ -72,7 +72,24 @@ public class LogTest {
 		if (result > 0) {
 			byte[] contents = _baos.toByteArray();
 			byte[] b = new byte[_lastFinish - _lastStart];
-			b = Arrays.copyOfRange(contents, _lastStart, _lastFinish);
+			/* b = Arrays.copyOfRange(contents, _lastStart, _lastFinish); */
+			if (!(contents.length < _lastFinish)) {
+				int j = 0;
+				for (int i = _lastStart; i <= _lastFinish; i++) {
+					b[j] = contents[i];
+					j++;
+				}
+			} else {
+				int j = 0;
+				for (int i = _lastStart; i < contents.length; i++) {
+					b[j] = contents[i];
+					j++;
+				}
+				// Null out excess range
+				for (; j <= _lastFinish; j++) {
+					b[j] = (byte) 0;	
+				}
+			}
 			System.out.println("Logging problem - we saw: \"" + new String(b) + "\" when there should have been no log");
 			Log.setLevel(Level.ALL);
 			Log.severe("Logging problem: we saw: \"{0}\" when there should have been no log", new String(b));
