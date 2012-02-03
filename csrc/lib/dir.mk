@@ -21,7 +21,7 @@ PROGRAMS = hashtbtest skel_decode_test \
     encodedecodetest signbenchtest basicparsetest ccnbtreetest
 
 BROKEN_PROGRAMS =
-DEBRIS = ccn_verifysig
+DEBRIS = ccn_verifysig _bt_*
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC = ccn_bloom.c \
        ccn_btree.c ccn_btree_content.c ccn_btree_store.c \
@@ -79,6 +79,7 @@ lib: libccn.a
 test: default keystore_check encodedecodetest ccnbtreetest
 	./encodedecodetest -o /dev/null
 	./ccnbtreetest
+	rm -R _bt_*
 
 dtag_check: _always
 	@./gen_dtag_table 2>/dev/null | diff - ccn_dtag_table.c | grep '^[<]' >/dev/null && echo '*** Warning: ccn_dtag_table.c may be out of sync with tagnames.cvsdict' || :
