@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -33,7 +33,8 @@ all: default $(BROKEN_PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a 
 
-CCNR_OBJ = ccnr_dispatch.o ccnr_forwarding.o ccnr_init.o ccnr_internal_client.o ccnr_io.o ccnr_link.o ccnr_main.o ccnr_match.o ccnr_msg.o ccnr_net.o ccnr_proto.o ccnr_sendq.o ccnr_stats.o ccnr_store.o ccnr_sync.o ccnr_util.o ../lib2/ccn_btree.o ../lib2/ccn_btree_content.o ../lib2/ccn_btree_store.o
+CCNR_OBJ = ccnr_dispatch.o ccnr_forwarding.o ccnr_init.o ccnr_internal_client.o ccnr_io.o ccnr_link.o ccnr_main.o ccnr_match.o ccnr_msg.o ccnr_net.o ccnr_proto.o ccnr_sendq.o ccnr_stats.o ccnr_store.o ccnr_sync.o ccnr_util.o
+
 ccnr: $(CCNR_OBJ) $(SYNCLIBDIR)/libsync.a
 	$(CC) $(CFLAGS) -o $@ $(CCNR_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
@@ -108,9 +109,10 @@ ccnr_main.o: ccnr_main.c ccnr_private.h ../include/ccn/ccn_private.h \
   ../include/ccn/charbuf.h ../include/ccn/schedule.h \
   ../include/ccn/seqwriter.h ccnr_init.h ccnr_dispatch.h ccnr_msg.h \
   ccnr_stats.h
-ccnr_match.o: ccnr_match.c ../include/ccn/bloom.h ../ccn/btree_content.h \
-  ../ccn/btree.h ../include/ccn/charbuf.h ../include/ccn/hashtb.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/indexbuf.h \
+ccnr_match.o: ccnr_match.c ../include/ccn/bloom.h \
+  ../include/ccn/btree_content.h ../include/ccn/btree.h \
+  ../include/ccn/charbuf.h ../include/ccn/hashtb.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccn_private.h ../include/ccn/face_mgmt.h \
   ../include/ccn/sockcreate.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
@@ -147,18 +149,19 @@ ccnr_stats.o: ccnr_stats.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/hashtb.h ../include/ccn/uri.h ccnr_private.h \
   ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
   ../include/ccn/seqwriter.h ccnr_stats.h ccnr_io.h ccnr_msg.h
-ccnr_store.o: ccnr_store.c ../include/ccn/bloom.h ../ccn/btree_content.h \
-  ../ccn/btree.h ../include/ccn/charbuf.h ../include/ccn/hashtb.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/indexbuf.h \
+ccnr_store.o: ccnr_store.c ../include/ccn/bloom.h \
+  ../include/ccn/btree_content.h ../include/ccn/btree.h \
+  ../include/ccn/charbuf.h ../include/ccn/hashtb.h ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccn_private.h ../include/ccn/face_mgmt.h \
   ../include/ccn/sockcreate.h ../include/ccn/schedule.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/uri.h ccnr_private.h \
   ../include/ccn/seqwriter.h ccnr_stats.h ccnr_store.h ccnr_init.h \
   ccnr_link.h ccnr_util.h ccnr_proto.h ccnr_msg.h ccnr_sync.h \
   ccnr_match.h ccnr_sendq.h ccnr_io.h
-ccnr_sync.o: ccnr_sync.c ../ccn/btree.h ../include/ccn/charbuf.h \
-  ../include/ccn/hashtb.h ../ccn/btree_content.h ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/indexbuf.h \
+ccnr_sync.o: ccnr_sync.c ../include/ccn/btree.h ../include/ccn/charbuf.h \
+  ../include/ccn/hashtb.h ../include/ccn/btree_content.h \
+  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/indexbuf.h \
   ../include/ccn/schedule.h ../sync/SyncBase.h ../include/ccn/uri.h \
   ../ccnr/ccnr_private.h ../include/ccn/ccn_private.h \
   ../include/ccn/reg_mgmt.h ../include/ccn/seqwriter.h \
