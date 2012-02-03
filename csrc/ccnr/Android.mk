@@ -23,7 +23,7 @@ LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/..
 # LOCAL_PATH = project_root/csrc/ccnr
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../../android/external/openssl-armv5/include
 
-CCNROBJ := ccnr_dispatch.o ccnr_forwarding.o ccnr_init.o ccnr_internal_client.o ccnr_io.o ccnr_link.o ccnr_main.o ccnr_match.o ccnr_msg.o ccnr_net.o ccnr_proto.o ccnr_sendq.o ccnr_stats.o ccnr_store.o ccnr_sync.o ccnr_util.o ../lib2/ccn_btree.o ../lib2/ccn_btree_content.o ../lib2/ccn_btree_store.o ../sync/IndexSorter.o ../sync/SyncActions.o ../sync/SyncBase.o ../sync/SyncHashCache.o ../sync/SyncNode.o ../sync/SyncRoot.o ../sync/SyncTreeWorker.o ../sync/SyncUtil.o
+CCNROBJ := ccnr_dispatch.o ccnr_forwarding.o ccnr_init.o ccnr_internal_client.o ccnr_io.o ccnr_link.o ccnr_main.o ccnr_match.o ccnr_msg.o ccnr_net.o ccnr_proto.o ccnr_sendq.o ccnr_stats.o ccnr_store.o ccnr_sync.o ccnr_util.o ../sync/IndexSorter.o ../sync/SyncActions.o ../sync/SyncBase.o ../sync/SyncHashCache.o ../sync/SyncNode.o ../sync/SyncRoot.o ../sync/SyncTreeWorker.o ../sync/SyncUtil.o
 CCNRSRC := $(CCNROBJ:.o=.c)
 
 LOCAL_SRC_FILES := $(CCNRSRC)
