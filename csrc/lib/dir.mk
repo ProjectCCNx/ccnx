@@ -76,8 +76,9 @@ shlib: $(SHLIBNAME)
 
 lib: libccn.a
 
-test: default keystore_check encodedecodetest
+test: default keystore_check encodedecodetest ccnbtreetest
 	./encodedecodetest -o /dev/null
+	./ccnbtreetest
 
 dtag_check: _always
 	@./gen_dtag_table 2>/dev/null | diff - ccn_dtag_table.c | grep '^[<]' >/dev/null && echo '*** Warning: ccn_dtag_table.c may be out of sync with tagnames.cvsdict' || :

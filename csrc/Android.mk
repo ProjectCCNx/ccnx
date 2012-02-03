@@ -1,4 +1,4 @@
-# Copyright (C) 2009,2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009, 2010, 2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -16,7 +16,6 @@ LOCAL_PATH := $(call my-dir)
 subdirs := $(addprefix $(LOCAL_PATH)/,$(addsuffix /Android.mk, \
 				ccnd\
 				lib\
-				lib2\
 				sync\
 				ccnr\
 			))
