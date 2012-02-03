@@ -1,6 +1,6 @@
 # exttests/testdriver.sh
 # 
-# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2009, 2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -28,7 +28,7 @@ cd $(dirname "$0")
 # Set up PATH so the tested programs are used, rather than any that
 # might be installed.
 X=..
-export PATH=.:../ccnr:../sync:../lib2:$X/ccnd:$X/libexec:$X/cmd:$X/lib:$X/util:../../bin:$PATH:./stubs
+export PATH=.:../ccnr:../sync:$X/ccnd:$X/libexec:$X/cmd:$X/lib:$X/util:../../bin:$PATH:./stubs
 type ccnd
 type ccnr
 type ccncat

@@ -1,4 +1,4 @@
-# Copyright (C) 2009,2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009, 2010, 2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -30,7 +30,8 @@ CCNLIBOBJ := ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
                 ccn_signing.o ccn_sockcreate.o \
 		ccn_traverse.o ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
 		ccn_setup_sockaddr_un.o ccn_bulkdata.o ccn_versioning.o \
-		ccn_seqwriter.o ccn_sockaddrutil.o
+		ccn_seqwriter.o ccn_sockaddrutil.o \
+		ccn_btree.o ccn_btree_content.o ccn_btree_store.o
 
 CCNLIBSRC := $(CCNLIBOBJ:.o=.c)
 
