@@ -57,7 +57,7 @@ public class RepositoryOperations {
 		ContentName orig = interest.name();
 		int pos = getCheckedWriteMarkerPos(interest);
 		ContentName head = orig.subname(0, pos);
-		ContentName tail = orig.subname(pos+2, orig.count()-pos-2);
+		ContentName tail = orig.subname(pos+2, orig.count());
 		return head.append(tail);
 	}
 }
