@@ -100,13 +100,14 @@ static gint hf_ccn_interestlifetime = -1;
 static gint hf_ccn_nonce = -1;
 
 static dissector_handle_t ccn_handle = NULL;
+static gboolean ccn_register_dtls = FALSE;
 
 
 void
 proto_register_ccn(void)
 {
     module_t *ccn_module;
-    
+
     static const value_string contenttype_vals[] = {
         {CCN_CONTENT_DATA, "Data"},
         {CCN_CONTENT_ENCR, "Encrypted"},
@@ -200,6 +201,12 @@ proto_register_ccn(void)
     hf[0].hfinfo.strings = ccn_dtag_dict.dict;
     proto_register_field_array(proto_ccn, hf, array_length(hf));
     ccn_module = prefs_register_protocol(proto_ccn, proto_reg_handoff_ccn);
+    prefs_register_bool_preference(ccn_module, "register_dtls",
+                                   "Register dissector for CCN over DTLS",
+                                   "Whether the CCN dissector should register "
+                                   "as a heuristic dissector for messages over DTLS",
+                                   &ccn_register_dtls);
+    
 }
 
 void
@@ -213,6 +220,8 @@ proto_reg_handoff_ccn(void)
         ccn_handle = new_create_dissector_handle(dissect_ccn, proto_ccn);
         heur_dissector_add("udp", dissect_ccn_heur, proto_ccn);
         heur_dissector_add("tcp", dissect_ccn_heur, proto_ccn);
+        if (ccn_register_dtls)
+            heur_dissector_add("dtls", dissect_ccn_heur, proto_ccn);
         initialized = TRUE;
     }
     if (current_ccn_port != -1) {
