@@ -133,8 +133,14 @@ might need to "make uninstall" before "make install" if the applications
 were previously installed with a different signing key (i.e. you use
 the phone with builds from multiple computers).
 
+Upgrading
+=========
+
+After Android SDK r13, the tools and build.xml diverged significantly from prior version.  It disrupted some functioning of tools (ant targets vanished and moved into binary tool) and the build.xml from older generations of the SDK got marked as depricated.  If you are migrating up to Android SDK r13 or greater, you should delete the build.xml files within the android CCNx project folder.  By removing the old build.xml, any cryptic error messages will disappear, and newer build.xmls will be generated.
+
 Routing
 =======
+
 To set up routing, utilize this set of commands with a USB-tethered Android Device:
 adb forward localfilesystem:/tmp/.ccnd.sock.9699 tcp:9695
 adb forward tcp:9699 tcp:9695
