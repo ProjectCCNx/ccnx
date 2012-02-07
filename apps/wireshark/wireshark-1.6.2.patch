@@ -1,0 +1,96 @@
+*** wireshark-1.6.2/configure.in	2011-09-07 18:54:35.000000000 -0700
+--- wireshark-1.6.2-ccn/configure.in	2012-02-01 11:20:41.200017828 -0800
+***************
+*** 1999,2004 ****
+--- 1999,2005 ----
+    packaging/svr4/pkginfo
+    plugins/Makefile
+    plugins/asn1/Makefile
++   plugins/ccn/Makefile
+    plugins/docsis/Makefile
+    plugins/ethercat/Makefile
+    plugins/giop/Makefile
+*** wireshark-1.6.2/CMakeLists.txt	2011-09-07 18:54:36.000000000 -0700
+--- wireshark-1.6.2-ccn/CMakeLists.txt	2012-02-01 11:20:41.204018035 -0800
+***************
+*** 375,380 ****
+--- 375,381 ----
+  	set(PLUGIN_DIR="${DATAFILE_DIR}/plugins/${CPACK_PACKAGE_VERSION}")
+  	set(PLUGIN_SRC_DIRS
+  		plugins/asn1
++ 		plugins/ccn
+  		plugins/docsis
+  		plugins/ethercat
+  		plugins/giop
+*** wireshark-1.6.2/epan/Makefile.am	2011-09-07 18:54:26.000000000 -0700
+--- wireshark-1.6.2-ccn/epan/Makefile.am	2012-02-01 11:20:41.208018241 -0800
+***************
+*** 200,205 ****
+--- 200,206 ----
+  -include ../plugins/Custom.make
+  plugin_src = \
+  	../plugins/asn1/packet-asn1.c \
++ 	../plugins/ccn/packet-ccn.c \
+  	../plugins/docsis/packet-bintrngreq.c \
+  	../plugins/docsis/packet-bpkmattr.c \
+  	../plugins/docsis/packet-bpkmreq.c \
+*** wireshark-1.6.2/Makefile.am	2011-09-07 18:54:35.000000000 -0700
+--- wireshark-1.6.2-ccn/Makefile.am	2012-02-01 11:20:41.220018858 -0800
+***************
+*** 268,273 ****
+--- 268,274 ----
+  -include plugins/Custom.make
+  plugin_ldadd = $(_CUSTOM_plugin_ldadd_) \
+  	-dlopen plugins/asn1/asn1.la \
++ 	-dlopen plugins/ccn/ccn.la \
+  	-dlopen plugins/docsis/docsis.la \
+  	-dlopen plugins/ethercat/ethercat.la \
+  	-dlopen plugins/giop/cosnaming.la \
+*** wireshark-1.6.2/packaging/nsis/Makefile.nmake	2011-09-07 18:54:33.000000000 -0700
+--- wireshark-1.6.2-ccn/packaging/nsis/Makefile.nmake	2012-02-01 11:20:41.224019067 -0800
+***************
+*** 45,50 ****
+--- 45,51 ----
+  
+  PLUGINS= \
+  	../../plugins/asn1/asn1.dll \
++ 	../../plugins/ccn/ccn.dll \
+  	../../plugins/docsis/docsis.dll \
+  	../../plugins/ethercat/ethercat.dll \
+  	../../plugins/giop/coseventcomm.dll \
+*** wireshark-1.6.2/packaging/nsis/wireshark.nsi	2011-09-07 18:54:33.000000000 -0700
+--- wireshark-1.6.2-ccn/packaging/nsis/wireshark.nsi	2012-02-01 11:20:41.228019276 -0800
+***************
+*** 897,902 ****
+--- 897,903 ----
+  ;-------------------------------------------
+  SetOutPath '$INSTDIR\plugins\${VERSION}'
+  File "..\..\plugins\asn1\asn1.dll"
++ File "..\..\plugins\ccn\ccn.dll"
+  File "..\..\plugins\docsis\docsis.dll"
+  File "..\..\plugins\ethercat\ethercat.dll"
+  File "..\..\plugins\giop\coseventcomm.dll"
+*** wireshark-1.6.2/plugins/Makefile.am	2011-09-07 18:53:36.000000000 -0700
+--- wireshark-1.6.2-ccn/plugins/Makefile.am	2012-02-01 11:20:41.228019276 -0800
+***************
+*** 24,29 ****
+--- 24,30 ----
+  -include Custom.make
+  SUBDIRS = $(_CUSTOM_SUBDIRS_) \
+  	asn1 \
++ 	ccn \
+  	docsis \
+  	ethercat \
+  	giop \
+*** wireshark-1.6.2/plugins/Makefile.nmake	2011-09-07 18:53:36.000000000 -0700
+--- wireshark-1.6.2-ccn/plugins/Makefile.nmake	2012-02-01 11:20:41.228019276 -0800
+***************
+*** 8,13 ****
+--- 8,14 ----
+  
+  PLUGIN_LIST = \
+  	asn1        \
++ 	ccn	    \
+  	docsis      \
+  	ethercat    \
+  	giop        \
