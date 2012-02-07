@@ -3,4 +3,6 @@ bin_ant/
 gen/
 bin/
 local.properties
+project.properties
+default.properties
 build.xml
