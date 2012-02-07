@@ -3973,8 +3973,11 @@ process_input_message(struct ccnd_handle *h, struct face *face,
             if (size > 0)
                 size--;
             msg += d->index;
-            face->flags |= CCN_FACE_LINK;
-            face->flags &= ~CCN_FACE_GG;
+            if ((face->flags & (CCN_FACE_LINK | CCN_FACE_GG)) != CCN_FACE_LINK) {
+                face->flags |= CCN_FACE_LINK;
+                face->flags &= ~CCN_FACE_GG;
+                register_new_face(h, face);
+            }
             memset(d, 0, sizeof(*d));
             while (d->index < size) {
                 dres = ccn_skeleton_decode(d, msg + d->index, size - d->index);
