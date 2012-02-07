@@ -26,6 +26,7 @@ import junit.framework.Assert;
 import org.ccnx.ccn.CCNFilterListener;
 import org.ccnx.ccn.CCNInterestListener;
 import org.ccnx.ccn.config.SystemConfiguration;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -54,6 +55,8 @@ public class DeprecatedInterfaceTest extends CCNTestBase implements CCNFilterLis
 
 	@Test
 	public void testDeprecatedMethods() throws Throwable {
+		Log.info(Log.FAC_TEST, "Starting testDeprecatedMethods");
+
 		interestSema = new Semaphore(0);
 		contentSema = new Semaphore(0);
 		Interest interest = new Interest(prefix);
@@ -90,11 +93,15 @@ public class DeprecatedInterfaceTest extends CCNTestBase implements CCNFilterLis
 		putHandle.unregisterFilter(prefix, this);
 		getHandle.expressInterest(nextInterest, this);
 		interestSema.tryAcquire(QUICK_TIMEOUT, TimeUnit.MILLISECONDS);
+		getHandle.checkError(0);
 		Assert.assertFalse("Interest seen after cancel", sawInterest);
 		getHandle.cancelInterest(nextInterest, this);
+
+		Log.info(Log.FAC_TEST, "Completed testDeprecatedMethods");
 	}
 
 	public boolean handleInterest(Interest interest) {
+		Log.info(Log.FAC_TEST, "Saw interest: {0}", interest.name());
 		sawInterest = true;
 		interestSema.release();
 		if (putNow) {
@@ -111,6 +118,7 @@ public class DeprecatedInterfaceTest extends CCNTestBase implements CCNFilterLis
 	}
 
 	public Interest handleContent(ContentObject data, Interest interest) {
+		Log.info(Log.FAC_TEST, "Saw content: {0}", data.name());
 		sawContent = true;
 		contentSema.release();
 		return null;
