@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -150,7 +150,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			try {
 				handle = CCNHandle.open();
 			} catch (ConfigurationException e) {
-				Log.info("Got ConfigurationException attempting to create a handle. Rethrowing it as an IOException. Message: " + e.getMessage());
+				Log.info(Log.FAC_IO, "Got ConfigurationException attempting to create a handle. Rethrowing it as an IOException. Message: " + e.getMessage());
 				throw new IOException("ConfigurationException creating a handle: " + e.getMessage());
 			}
 		}
@@ -695,8 +695,8 @@ public class CCNFlowControl implements CCNInterestHandler {
 	 * Remove any currently buffered unmatched interests
 	 */
 	public void clearUnmatchedInterests() {
-		if( Log.isLoggable(Level.INFO))
-			Log.info("Clearing " + _unmatchedInterests.size() + " unmatched interests.");
+		if( Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "Clearing " + _unmatchedInterests.size() + " unmatched interests.");
 		_unmatchedInterests.clear();
 	}
 
