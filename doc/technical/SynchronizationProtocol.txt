@@ -20,7 +20,7 @@ A slice is created by writing a specially-formatted Content Object to the Reposi
 The format of the Content Object is as follows:
 
 .......................................................
-Content Object ::= Prefix
+Content Object ::= Name
 		Command Marker
 		Slice Hash
 		Version
@@ -28,9 +28,9 @@ Content Object ::= Prefix
 		Content
 .......................................................
 
-=== Prefix
+=== Name
 
-+Prefix+ is required, and must be +%C1.M.S.localhost/+, which restricts the definition to the local node and Repository.
++Name+ is required, and must be +%C1.M.S.localhost/+, which restricts the definition to the local node and Repository.
 
 === Command Marker
 +Command Marker+ is required, and must be +%C1.S.cs+ for Create Slice.
@@ -66,11 +66,11 @@ image:CreateSliceProtocol.png[align="center"]
 When a slice is defined in a Repository, the Repository begins trying to synchronize the collection with neighboring Repositories. When an identical slice is defined in a neighboring Repository, automatic synchronization of the two collections begins.
 
 
-== Internal Synchronization Protocol
+== Synchronization Protocol
 
 The <<CreateCollectionProtocol,CCNx Create Collection Protocol>> above is all that is needed for an application to define a collection to be synchronized with identical collections in neighboring Repositories. After a collection has been defined, synchronization-related messages can be observed on the network. This section describes that protocol.
 
-A Sync Agent is the component in each node that is responsible for synchronizing collections in its associated Repository with identical collections in neighboring Repositories. The internal Synchronization protocol is the dialog between Sync Agents to perform this function. Each collection is synchronized independently of all others.
+A Sync Agent is the component in each node that is responsible for synchronizing collections in its associated Repository with identical collections in neighboring Repositories. The Synchronization Protocol is the dialog between Sync Agents to perform this function. Each collection is synchronized independently of all others.
 
 Each collection is represented as a sync tree. A Sync Agent has a configuration that specifies the sync trees it is to build. This configuration can be defined at initialization time, and can be expanded through use of <<CreateCollectionProtocol,Create Slice>> commands.
 
@@ -148,7 +148,7 @@ As Content Objects are found in remote Repositories that are not in the local Re
 
 === Example
 
-The internal synchronization protocol is illustrated in the following simple example. 
+The Synchronization Protocol is illustrated in the following simple example. 
 
 In this example, there are two applications: App-1 and App-2, running on separate nodes. Each node has a Repo/Sync pair attached to the application. Assume that both applications wish to have identical contents for a shared collection.
 
