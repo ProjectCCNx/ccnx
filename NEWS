@@ -7,11 +7,13 @@ Refer to http://www.ccnx.org/redmine/ for more details.
      the introduction of Repository-based synchronization, we now expect that
      most nodes will use a local Repository running alongside their local ccnd.
      As a result, we have changed defaults for storing content in a Repository
-     so that those store operations target only the local Repository."
+     so that those store operations target only the local Repository.
 
-  * This release introduces an updated version of the Repository (ccnr) that is
-     written in C for faster performance and smaller footprint, and has a disk-
-     resident index for faster start-up and smaller footprint.
+  * This release introduces an updated version of the Repository, with much
+     improved scalability, that is capable of easily handling content
+     collections many gigabytes in size.  The new Repo, named ccnr, is written
+     in C, has a disk-resident index, and has much higher performance, a smaller
+     footprint, and faster start-up times.
 
      The startup and shutdown procedures have changed, as have some of the
      configuration options and the procedure for obtaining debug information.
@@ -38,22 +40,22 @@ Refer to http://www.ccnx.org/redmine/ for more details.
      in neighboring nodes to keep their collections in synchrony.
 
   * The default for a RepositoryFlowControl has changed from allowing any
-     repository to answer to requiring only a local (connected to the same ccnd
-     as the application) repository.
-
+     Repository to answer to requiring only a local (connected to the same ccnd
+     as the application) Repository.
+     
      Direct users of the RepositoryFlowControl class can control the behavior
      through a (previously present) boolean in the constructor.
 
      Users of CCNNetworkObject can still control the local/non-local behavior
-     through the SaveType REPOSITORY (allows non-local repositories) and
+     through the SaveType REPOSITORY (allows non-local Repositories) and
      LOCALREPOSITORY.
 
      The SystemConfiguration option FC_LOCALREPOSITORY is unchanged and can
-     still be used to force a local repository. It cannot force permission to
-     use a non-local repository.
+     still be used to force a local Repository. It cannot force permission to
+     use a non-local Repository.
 
      ccnputfile/ccnputmeta has been updated to have an -allownonlocal option.
-     The default behavior has also changed to require a local repository if no
+     The default behavior has also changed to require a local Repository if no
      command-line option is given.
 
   * Issues Resolved:
@@ -100,7 +102,7 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 		not allowing interrupts
 	* Bug 100592 Synchronization error in InterestTable
 	* Feature 100593 Do better job of logging failures in log test
-	* Feature 100594 More pipelining pieces can be removed due to new netmanager
+	* Feature 100594 More pipelining pieces can be removed due to new netmanagers
 	* Bug 100595 EnumeratedNameListTest fails randomly due to bad randomization
 	* Bug 100596 RepoIOTest can hang
 	* Bug 100599 NameEnumeration calls back user defined handler while holding a
@@ -113,6 +115,7 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 		(documentation)
 	* Support 100609 Develop CCNx Repository protocols doc (documentation)
 	* Support 100610 Prepare for ccnx-0.5.0 release
+	* Feature 100611 LatestVersionTest should use logging instead of println to save information
 	* Bug 100612 ContentObject.html has two references to xsd.html where one should
                   be a reference to dtd.html (documentation)
 	* Bug 100613 Remove unused comments and code in the java source referring to
@@ -123,6 +126,7 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 	* Bug 100616 ccn_keystore_file_init keystores don't exactly match either the
 		Java created keystores or the openssl command generated keystores.
 	* Bug 100618 ccnseqwriter should wait longer for repository response
+	* Bug 100620 CCNFlowControl has logs with missing facility
 	* Bug 100623 ccn_run can wait longer than the timeout
 	* Bug 100625 make test fails on Mac OS X 10.7 (lion) in test_btree_prev_leaf
 		because grep says "regular expression too big"
@@ -141,6 +145,10 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 	* Bug 100638 ccnr sync options need to be renamed
 	* Feature 100640 ccnr could use option to limit processing of start-write
 		commands to those with a given scope
+	* Bug 100644 Merge csrc/lib2 into csrc/lib
+	* Bug 100646 Android CCNx service control - screen layout is too large for Galaxy S
+	* Bug 100649 Increase timeout for end to end tests in build.xml
+	* Bug 100650 Problems with DeprecatedInterfaceTest
 
 Changes between 0.4.1 and 0.4.2:
 --------------------------------
