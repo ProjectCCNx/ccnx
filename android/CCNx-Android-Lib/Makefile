@@ -32,19 +32,18 @@ JARS := libs/ccn.jar
 
 TARGET  := $(BIN)/$(APK_NAME)
 
-default: local.properties libs/ccn.jar
+default: project.properties default.properties local.properties libs/ccn.jar
 
 all: $(TARGET) 
 
-$(TARGET): $(JARS) environment local.properties build.xml
+$(TARGET): $(JARS) environment project.properties default.properties local.properties build.xml
 	ant debug 
 
 local.properties project.properties default.properties:
 	$(ANDROID_SDK)/tools/android update lib-project -p . -t android-7
 	# Guard against a bug in Android SDK r16	
 	# You need to have android.library=true for rest of build to work
-	echo "android.library=true" >> project.properties
-
+	grep -q android.library=true project.properties || echo android.library=true >> project.properties 
 libs/ccn.jar: ../../javasrc/ccn.jar
 	rm -f $@
 	mkdir -p libs
