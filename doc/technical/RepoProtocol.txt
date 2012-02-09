@@ -26,22 +26,15 @@ Three commands are available in the CCNx Repository Protocol: Start Write, Check
 
 === Start Write
 
-The *Start Write (%C1.R.sw)* command requests the Repository to retrieve and store content.
+The *Start Write (%C1.R.sw)* command requests that the Repository retrieve and store content.  It is constructed as an Interest with a name that is, when expressed as a URI, of the form
 
-.......................................................
-Interest ::=	Prefix 
-		Command
-		Nonce
-.......................................................
++ccnx:+(+/*_component_*+)^\*^+/%C1.R.sw/*_nonce_*+
 
-==== Prefix
-+Prefix+ is required and is the name prefix of the content to be stored. See link:Name.html[CCNx Name Specification].
+==== +_component_+
+The components are required, and represent the name prefix of the content to be stored. See link:Name.html[CCNx Name Specification].
 
-==== Command
-+Command+ is required, and is +%C1.R.sw+ for Start Write.
-
-==== Nonce
-+Nonce+ is required, and is as described in the Nonce (Namespace N) section of link:NameConventions.html[CCNx Basic Name Conventions].
+==== +_nonce_+
+The +*_nonce_*+ is required, and is as described in the Nonce (Namespace N) section of link:NameConventions.html[CCNx Basic Name Conventions].
 
 ==== Response
 The Repository responds to a Start Write with a Content Object containing a +RepositoryInfo+ object of type +INFO+ as described in link:RepositoryInfoObject.html[CCNx RepositoryInfo Object]. (The message acknowledges that the request was accepted and gives details about the Repository that accepted the request. In this case, no response data is returned.) The Repository then begins fetching content from the writer using normal CCNx protocol messages. Retrieval is asynchronous.
@@ -67,30 +60,21 @@ Note that implementations of the Repository are likely to use pipelining to fetc
 
 === Checked Start Write
 
-The *Checked Start Write (%C1.R.sw-c)*  command is similar to Start Write, but the Repository first checks to see whether it already holds the content and does not retrieve and store it if it is already present. The Repository responds in either case.
+The *Checked Start Write (%C1.R.sw-c)* command is similar to Start Write, but the Repository first checks to see whether it already holds the content and does not retrieve and store it if it is already present. The Repository responds in either case.  The command is constructed as an Interest with a name that is, when expressed as a URI, of the form
 
-.......................................................
-Interest ::=	Prefix 
-		Command
-		Nonce
-		Segment Name
-		Digest
-.......................................................
++ccnx:+(+/*_component_*+)^\*^+/%C1.R.sw-c/*_nonce_*/*_segment_*/*_digest_*+
 
-==== Prefix
-+Prefix+ is required and is the name prefix of the content to be stored. See link:Name.html[CCNx Name Specification].
+==== +_component_+
+The components are required, and represent the name prefix of the content to be stored. See link:Name.html[CCNx Name Specification].
 
-==== Command
-+Command+ is required, and is +%C1.R.sw-c+ for Checked Start Write.
+==== +_nonce_+
+The +*_nonce_*+ is required, and is as described in the Nonce (Namespace N) section of link:NameConventions.html[CCNx Basic Name Conventions].
 
-==== Nonce
-+Nonce+ is required, and is as described in the Nonce (Namespace N) section of link:NameConventions.html[CCNx Basic Name Conventions].
+==== +_segment_+
+The +*_segment_*+ is required, and is the sequence component of the first segment to be stored. For consecutive numbering, this is typically +%00+.
 
-==== Segment Name
-+Segment Name+ is required, and is the sequence component of the first segment to be stored. For consecutive numbering, this is typically +%00+.
-
-==== Digest
-+Digest+ is required, and is the SHA-256 digest of the entire ccnb-encoded link:ContentObject.html[Content Object]. (This is the implicit digest component of the name of any Content Object. The combination of +Segment Name+ and +Digest+ precisely identify the first segment of the content to be stored.)
+==== +_digest_+
+The +*_digest_*+ is required, and is the SHA-256 digest of the entire ccnb-encoded link:ContentObject.html[Content Object]. (This is the implicit digest component of the name of any Content Object. The combination of +*_segment_*+ and +*_digest_*+ precisely identify the first segment of the content to be stored.)
 
 ==== Response
 If the object is NOT present, the Repository responds with a Content Object containing a +RepositoryInfo+ object of type +INFO+ as described in link:RepositoryInfoObject.html[CCNx RepositoryInfo Object], the same as for Start Write. The Repository then begins fetching content from the writer using normal CCNx protocol messages. Retrieval is asynchronous.
@@ -132,14 +116,16 @@ Note that implementations of the Repository are likely to use pipelining to fetc
 
 === Bulk Import
 
-The *Bulk Import (%C1.R.af)* command (also sometimes known as "add file") requests the Repository to merge Content Objects from a local file into the Repository store. This command is provided for backward compatibility, and its use is discouraged.
+The *Bulk Import (%C1.R.af)* command (also sometimes known as "add file") requests that the Repository merge Content Objects from a local file into the Repository store. This command is provided for backward compatibility, and its use is discouraged.
 
-Prior to issuing a Bulk Import command, a file that consists of a sequence of ccnb encoded Content Objects (as would have been created by a Repository) must be placed in the +$CCNR_DIRECTORY/import/+ directory.
+Prior to issuing a Bulk Import command, a file that consists of a sequence of ccnb encoded Content Objects (such as would have been created by a Repository) must be placed in the +$CCNR_DIRECTORY/import/+ directory.
 
-The Bulk Import command is sent as an Interest with the Name having one component: +Command+.
+The Bulk Import command is constructed as an Interest with a single component name that is, when expressed as a URI, of the form
 
-==== Command
-The +Command+ component is required, and is +%C1.R.af~<filename>+, where +<filename>+  is the ASCII name of a file that must exist within the +import+ directory of the Repository to which the content is being imported.  +<filename>+ must be a simple name with no +/+'s.
++ccnx:/%C1.R.af~*_filename_*+
+
+==== +_filename_+
+The +*_filename_*+ is the ASCII name of a file that must exist within the +import+ directory of the Repository to which the content is being imported. It must be a simple name with no +/+'s.
 
 If the command is accepted, the Repository attempts to open and parse the specified file. If there are no errors, Content Objects in the file that are not already in the Repository are imported, Content Objects that are already in the Repository are ignored, and the file is deleted.
 
