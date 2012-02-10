@@ -45,11 +45,15 @@
 #include <ccn/seqwriter.h>
 #include <ccn/uri.h>
 
+#define MAX_READ_LEN 1000000
+#define DEFAULT_CMD_TIMEOUT 6000
+
 struct SyncTestParms {
     struct SyncBaseStruct *base;
     struct SyncRootStruct *root;
     int mode;
     int mark;
+    int digest;
     int scope;
     int life;
     int sort;
@@ -57,11 +61,11 @@ struct SyncTestParms {
     int verbose;
     int resolve;
     int segmented;
+    int noDup;
+    int noSend;
     int blockSize;
     char *inputName;
     char *target;
-    char *topoPrefix;
-    char *namingPrefix;
     int nSplits;
     int *splits;
     struct timeval startTime;
@@ -470,6 +474,7 @@ testEncodeDecode(struct SyncTestParms *parms) {
     return 0;
 }
 
+
 static int
 testReader(struct SyncTestParms *parms) {
     char *fn = parms->inputName;
@@ -478,7 +483,7 @@ testReader(struct SyncTestParms *parms) {
     int res = 0;
     if (f != NULL) {
         sync_time startTime = SyncCurrentTime();
-        struct SyncNameAccum *na = readAndAccumNames(f, 1000000);
+        struct SyncNameAccum *na = readAndAccumNames(f, MAX_READ_LEN);
         fclose(f);
         struct ccn_charbuf *tmp = ccn_charbuf_create();
         int i = 0;
@@ -534,27 +539,6 @@ testReader(struct SyncTestParms *parms) {
     return res;
 }
 
-static struct SyncRootStruct *
-newDefaultRoot(struct SyncTestParms *parms, struct SyncNameAccum *filter) {
-    int res = 0;
-    struct SyncRootStruct *root = NULL;
-    struct ccn_charbuf *topo = ccn_charbuf_create();
-    struct ccn_charbuf *prefix = ccn_charbuf_create();
-    for (;;) {
-        res = ccn_name_from_uri(topo, parms->topoPrefix);
-        if (res < 0) {noteErr("invalid topo prefix"); break; }
-        
-        res = ccn_name_from_uri(prefix, parms->namingPrefix);
-        if (res < 0) {noteErr("invalid naming prefix"); break; }
-        
-        root = SyncAddRoot(parms->base, topo, prefix, filter);
-        break;
-    }
-    ccn_charbuf_destroy(&topo);
-    ccn_charbuf_destroy(&prefix);
-    return root;
-}
-
 static int
 testReadBuilder(struct SyncTestParms *parms) {
     FILE *f = fopen(parms->inputName, "r");
@@ -565,8 +549,17 @@ testReadBuilder(struct SyncTestParms *parms) {
         struct SyncRootStruct *root = parms->root;
         
         if (root == NULL) {
-            // need a new root (no clauses)
-            root = newDefaultRoot(parms, NULL);
+            // need a new one
+            struct ccn_charbuf *topo = ccn_charbuf_create();
+            ccn_name_from_uri(topo, "/ccn/test/sync");
+            
+            struct ccn_charbuf *prefix = ccn_charbuf_create();
+            ccn_name_from_uri(prefix, "/ccn/test");
+            
+            root = SyncAddRoot(parms->base, topo, prefix, NULL);
+            parms->root = root;
+            ccn_charbuf_destroy(&topo);
+            ccn_charbuf_destroy(&prefix);
         }
         
         if (root->namesToAdd != NULL)
@@ -579,7 +572,7 @@ testReadBuilder(struct SyncTestParms *parms) {
         for (;;) {
             int i = 0;
             if (ns == 0) {
-                root->namesToAdd = readAndAccumNames(f, 1000000);
+                root->namesToAdd = readAndAccumNames(f, MAX_READ_LEN);
             } else {
                 int p = 0;
                 int k = parms->splits[split];
@@ -655,6 +648,53 @@ testReadBuilder(struct SyncTestParms *parms) {
     } else {
         return noteErr("testReadBuilder, could not open %s", parms->inputName);
     }
+}
+
+// generate a simple canned root for routing
+// based on anticipated root for the routing info
+static struct SyncRootStruct *
+genTestRootRouting(struct SyncTestParms *parms) {
+    struct SyncBaseStruct *base = parms->base;
+    struct ccn_charbuf *topoPrefix = ccn_charbuf_create();
+    struct ccn_charbuf *namingPrefix = ccn_charbuf_create();
+    
+    ccn_name_from_uri(topoPrefix, "/ccn/test/sync");
+    ccn_name_from_uri(namingPrefix, "/ccn/test/routing");
+    struct SyncRootStruct *root = SyncAddRoot(base,
+                                              topoPrefix,
+                                              namingPrefix,
+                                              NULL);
+    ccn_charbuf_destroy(&topoPrefix);
+    ccn_charbuf_destroy(&namingPrefix);
+    return root;
+}
+
+// generate a simple canned root for repos
+// based on anticipated root for the routing info
+static struct SyncRootStruct *
+genTestRootRepos(struct SyncTestParms *parms) {
+    struct SyncBaseStruct *base = parms->base;
+    struct ccn_charbuf *topoPrefix = ccn_charbuf_create();
+    struct ccn_charbuf *namingPrefix = ccn_charbuf_create();
+    
+    ccn_name_from_uri(topoPrefix, "/ccn/test/sync");
+    ccn_name_from_uri(namingPrefix, "/ccn/test/repos");
+    
+    struct SyncNameAccum *filter = SyncAllocNameAccum(4);
+    struct ccn_charbuf *clause = ccn_charbuf_create();
+    ccn_name_from_uri(clause, "/PARC");
+    SyncNameAccumAppend(filter, clause, 0);
+    
+    struct SyncRootStruct *root = SyncAddRoot(base,
+                                              topoPrefix,
+                                              namingPrefix,
+                                              filter);
+    ccn_charbuf_destroy(&topoPrefix);
+    ccn_charbuf_destroy(&namingPrefix);
+    ccn_charbuf_destroy(&clause);
+    SyncFreeNameAccum(filter);
+    
+    return root;
 }
 
 static struct SyncRootStruct *
@@ -748,36 +788,24 @@ testRootBasic(struct SyncTestParms *parms) {
     }
     
     // test no filter
-    
-    root = newDefaultRoot(parms, NULL);
-    if (root == NULL) return noteErr("testRootBasic, newDefaultRoot");
+    root = genTestRootRouting(parms);
     root = testRootCoding(parms, root);
-    if (root == NULL) return noteErr("testRootBasic, testRootCoding");
-    char goodName[1024];
-    char *badName = "ccnx:/bogus/XXX";
-    snprintf(goodName, sizeof(goodName), "%s/PARC/XXX", parms->namingPrefix);
     res = testRootLookup(parms, root,
-                         goodName,
-                         badName);
-    if (res < 0) noteErr("testRootBasic, lookup");
+                         "ccnx:/ccn/test/routing/XXX",
+                         "ccnx:/ccn/test/repos/PARC/XXX");
     SyncRemRoot(root);
+    if (res < 0) return res;
     
-    struct SyncNameAccum *filter = SyncAllocNameAccum(4);
-    struct ccn_charbuf *clause = ccn_charbuf_create();
-    ccn_name_from_uri(clause, "/PARC");
-    SyncNameAccumAppend(filter, clause, 0);
-    root = newDefaultRoot(parms, filter);
-    ccn_charbuf_destroy(&clause);
-    SyncFreeNameAccum(filter);
-    if (root == NULL) {
-        return noteErr("testRootBasic, newDefaultRoot with filter");
+    // test with filter
+    root = genTestRootRepos(parms);
+    root = testRootCoding(parms, root);
+    res = testRootLookup(parms, root,
+                         "ccnx:/ccn/test/repos/PARC/XXX",
+                         "ccnx:/ccn/test/routing/XXX");
+    SyncRemRoot(root);
+    if (res < 0) {
+        return noteErr("testRootBasic, failed");
     }
-    
-    res = testRootLookup(parms, root,
-                         goodName,
-                         badName);
-    if (res < 0) noteErr("testRootBasic, lookup with filter");
-    SyncRemRoot(root);
     
     return res;
 }
@@ -789,7 +817,7 @@ localStore(struct ccn *ccn, struct ccn_charbuf *nm, struct ccn_charbuf *cb) {
     ccn_charbuf_append_charbuf(tmp, nm);
     ccn_name_from_uri(tmp, "%C1.R.sw");
     ccn_name_append_nonce(tmp);
-    ccn_get(ccn, tmp, NULL, 6000, NULL, NULL, NULL, 0);
+    ccn_get(ccn, tmp, NULL, DEFAULT_CMD_TIMEOUT, NULL, NULL, NULL, 0);
     ccn_charbuf_destroy(&tmp);
     
     struct ccn_charbuf *cob = ccn_charbuf_create();
@@ -863,15 +891,16 @@ sendSlice(struct SyncTestParms *parms,
         res |= ccn_name_append_str(nm, sliceCmd);
         res |= ccn_name_append(nm, hash->buf, hash->length);
         
-        if (res >= 0) {
-            // first line shows the root hash
-            struct ccn_charbuf *hashOnly = ccn_charbuf_create();
-            ccn_name_init(hashOnly);
-            ccn_name_append(hashOnly, hash->buf, hash->length);
-            struct ccn_charbuf *uri = SyncUriForName(hashOnly);
-            fprintf(stdout, "sendSlice, root hash %s\n",
-                    ccn_charbuf_as_string(uri));
+        if (parms->noSend) {
+            // don't send the slice, just print the hash as a URI
+            struct ccn_charbuf *hName = ccn_charbuf_create();
+            ccn_name_init(hName);
+            ccn_name_append(hName, hash->buf, hash->length);
+            struct ccn_charbuf *uri = SyncUriForName(hName);
+            fprintf(stdout, "%s\n", ccn_charbuf_as_string(uri));
+            ccn_charbuf_destroy(&hName);
             ccn_charbuf_destroy(&uri);
+            return 0;
         }
         
         ccn = ccn_create();
@@ -883,13 +912,13 @@ sendSlice(struct SyncTestParms *parms,
         if (res < 0) {
             res = noteErr("sendSlice, failed");
         } else {
-            struct ccn_charbuf *uri = SyncUriForName(nm);
             if (parms->mode != 0) {
+                struct ccn_charbuf *uri = SyncUriForName(nm);
                 if (parms->mark) putMark(stdout);
                 fprintf(stdout, "sendSlice, sent %s\n",
                         ccn_charbuf_as_string(uri));
+                ccn_charbuf_destroy(&uri);
             }
-            ccn_charbuf_destroy(&uri);
         }
         
         ccn_destroy(&ccn);
@@ -913,6 +942,7 @@ struct storeFileStruct {
     unsigned char *segData;
     int nSegs;
     int stored;
+    struct ccn_charbuf *template;
 };
 
 static int64_t
@@ -940,13 +970,14 @@ segFromInfo(struct ccn_upcall_info *info) {
 			if (len > 0 && data != NULL) {
 				// parse big-endian encoded number
 				// TBD: where is this in the library?
-				if (data[0] != CCN_MARKER_SEQNUM) return -1;
-				int64_t n = 0;
-                int i = 0;
-				for (i = 1; i < len; i++) {
-					n = n * 256 + data[i];
-				}
-				return n;
+				if (data[0] == CCN_MARKER_SEQNUM) {
+                    int64_t n = 0;
+                    int i = 0;
+                    for (i = 1; i < len; i++) {
+                        n = n * 256 + data[i];
+                    }
+                    return n;
+                }
 			}
 		}
 	}
@@ -965,9 +996,11 @@ storeHandler(struct ccn_closure *selfp,
         break;
         case CCN_UPCALL_INTEREST: {
             int64_t seg = segFromInfo(info);
+            if (seg < 0) seg = 0;
             struct ccn_charbuf *uri = ccn_charbuf_create();
             ccn_uri_append(uri, sfd->nm->buf, sfd->nm->length, 0);
             char *str = ccn_charbuf_as_string(uri);
+            ret = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
             if (seg >= 0 && seg < sfd->nSegs) {
                 struct ccn_charbuf *name = SyncCopyName(sfd->nm);
                 struct ccn_charbuf *cb = ccn_charbuf_create();
@@ -1003,6 +1036,8 @@ storeHandler(struct ccn_closure *selfp,
                     sp.type = CCN_CONTENT_DATA;
                     cp = (const void *) cb->buf;
                     cs = cb->length;
+                    sp.template_ccnb = sfd->template;
+                    
                     if (seg+1 == sfd->nSegs) sp.sp_flags |= CCN_SP_FINAL_BLOCK;
                     ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, seg);
                     res |= ccn_sign_content(sfd->ccn,
@@ -1011,6 +1046,15 @@ storeHandler(struct ccn_closure *selfp,
                                             &sp,
                                             cp,
                                             rs);
+                    if (sfd->parms->digest) {
+                        // not sure if this generates the right hash
+                        struct ccn_parsed_ContentObject pcos;
+                        ccn_parse_ContentObject(cob->buf, cob->length,
+                                                &pcos, NULL);
+                        ccn_digest_ContentObject(cob->buf, &pcos);
+                        if (pcos.digest_bytes > 0)
+                            res |= ccn_name_append(name, pcos.digest, pcos.digest_bytes);
+                    }
                     res |= ccn_put(sfd->ccn, (const void *) cob->buf, cob->length);
                     
                     if (res < 0) {
@@ -1019,9 +1063,13 @@ storeHandler(struct ccn_closure *selfp,
                                        str);
                     } else if (sfd->parms->verbose) {
                         if (sfd->parms->mark) putMark(stdout);
+                        struct ccn_charbuf *nameUri = ccn_charbuf_create();
+                        ccn_uri_append(nameUri, name->buf, name->length, 0);
+                        char *nameStr = ccn_charbuf_as_string(nameUri);
                         fprintf(stdout, "put seg %d, %s\n",
                                 (int) seg,
-                                str);
+                                nameStr);
+                        ccn_charbuf_destroy(&nameUri);
                     }
                     
                     // update the tracking
@@ -1029,7 +1077,14 @@ storeHandler(struct ccn_closure *selfp,
                     if (uc == 0) {
                         uc++;
                         sfd->stored++;
-                    } else if (uc < 255) uc++;
+                    } else {
+                        if (sfd->parms->noSend) {
+                            fprintf(stderr,
+                                    "ERROR in storeHandler, duplicate segment request, seg %d, %s\n",
+                                    (int) seg, str);
+                        }
+                        if (uc < 255) uc++;
+                    }
                     sfd->segData[seg] = uc;
                 }
                 
@@ -1039,7 +1094,6 @@ storeHandler(struct ccn_closure *selfp,
                 
             }
             ccn_charbuf_destroy(&uri);
-            ret = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
             break;
         }
         default:
@@ -1257,24 +1311,24 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
     struct stat myStat;
     int res = stat(src, &myStat);
     if (res < 0) {
-        perror("putFile failed, stat");
+        perror("putFile, stat failed");
         return -1;
     }
     off_t fSize = myStat.st_size;
     
     if (fSize == 0) {
-        return noteErr("stat failed, empty src");
+        return noteErr("putFile, stat failed, empty src");
     }
     FILE *file = fopen(src, "r");
     if (file == NULL) {
-        perror("putFile failed, fopen");
+        perror("putFile, fopen failed");
         return -1;
     }
     
     struct ccn *ccn = NULL;
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
-        return noteErr("Could not connect to ccnd");
+        return noteErr("putFile, could not connect to ccnd");
     }
     struct ccn_charbuf *cb = ccn_charbuf_create();
     struct ccn_charbuf *nm = ccn_charbuf_create();
@@ -1283,7 +1337,7 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
     
     res = ccn_name_from_uri(nm, dst);
     if (res < 0) {
-        return noteErr("ccn_name_from_uri failed");
+        return noteErr("putFile, ccn_name_from_uri failed");
     }
     ccn_create_version(ccn, nm, CCN_V_NOW, 0, 0);
     
@@ -1298,6 +1352,20 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
     sfData->nSegs = (fSize + bs -1) / bs;
     sfData->segData = NEW_ANY(sfData->nSegs, unsigned char);
     
+    {
+        // make a template to govern the timestamp for the segments
+        // this allows duplicate segment requests to return the same hash
+        const unsigned char *vp = NULL;
+        ssize_t vs;
+        SyncGetComponentPtr(nm, SyncComponentCount(nm)-1, &vp, &vs);
+        if (vp != NULL && vs > 0) {
+            sfData->template = ccn_charbuf_create();
+            ccnb_element_begin(sfData->template, CCN_DTAG_SignedInfo);
+            ccnb_append_tagged_blob(sfData->template, CCN_DTAG_Timestamp, vp, vs);
+            ccnb_element_end(sfData->template);
+        } else return noteErr("putFile, create store template failed");
+    }
+    
     struct ccn_charbuf *template = SyncGenInterest(NULL,
                                                    parms->scope,
                                                    parms->life,
@@ -1311,7 +1379,7 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
     // fire off a listener
     res = ccn_set_interest_filter(ccn, nm, action);
     if (res < 0) {
-        return noteErr("ccn_set_interest_filter failed");
+        return noteErr("putFile, ccn_set_interest_filter failed");
     }
     ccn_run(ccn, 40);
     // initiate the write
@@ -1320,13 +1388,15 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
     ccn_name_from_uri(cmd, "%C1.R.sw");
     ccn_name_append_nonce(cmd);
     
-    if (parms->verbose) {
+    if (parms->verbose && parms->mode != 0) {
+        struct ccn_charbuf *uri = SyncUriForName(nm);
         if (parms->mark) putMark(stdout);
         fprintf(stdout, "put init, %s\n",
-                ccn_charbuf_as_string(cmd));
+                ccn_charbuf_as_string(uri));
+        ccn_charbuf_destroy(&uri);
     }
     gettimeofday(&parms->startTime, 0);
-    ccn_get(ccn, cmd, template, 6000, NULL, NULL, NULL, 0);
+    ccn_get(ccn, cmd, template, DEFAULT_CMD_TIMEOUT, NULL, NULL, NULL, 0);
     
     // wait for completion
     while (sfData->stored < sfData->nSegs) {
@@ -1337,10 +1407,11 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
     
     res = ccn_set_interest_filter(ccn, nm, NULL);
     if (res < 0) {
-        return noteErr("ccn_set_interest_filter failed (removal)");
+        return noteErr("putFile, ccn_set_interest_filter failed (removal)");
     }
     ccn_run(ccn, 40);
     
+    ccn_charbuf_destroy(&sfData->template);
     free(sfData->segData);
     free(sfData);
     ccn_destroy(&ccn);
@@ -1353,6 +1424,111 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
     
     if (res > 0) res = 0;
     return res;
+}
+
+extern int
+appendComponents(struct ccn_charbuf *dst,
+                 const struct ccn_charbuf *src,
+                 int start, int len) {
+    struct ccn_buf_decoder sbd;
+    struct ccn_buf_decoder *s = SyncInitDecoderFromCharbuf(&sbd, src, 0);
+    int count = 0;
+    int pos = 0;
+    if (!ccn_buf_match_dtag(s, CCN_DTAG_Name))
+        // src is not a name
+        return -__LINE__;
+    ccn_buf_advance(s);
+    int lim = start + len;
+    while (count < lim) {
+        if (!ccn_buf_match_dtag(s, CCN_DTAG_Component)) {
+            ccn_buf_check_close(s);
+            if (SyncCheckDecodeErr(s)) return -__LINE__;
+            break;
+        }
+        ccn_buf_advance(s);
+        const unsigned char *cPtr = NULL;
+        size_t cSize = 0;
+        if (ccn_buf_match_blob(s, &cPtr, &cSize)) ccn_buf_advance(s);
+        if (cPtr == NULL)
+            return -__LINE__;
+        if (count >= start) {
+            if (ccn_name_append(dst, cPtr, cSize) < 0)
+                return -__LINE__;
+        }
+        count++;
+        ccn_buf_check_close(s);
+        if (SyncCheckDecodeErr(s)) return -__LINE__;
+        pos++;
+    }
+    return count;
+}
+
+static int
+putFileList(struct SyncTestParms *parms, char *listName) {
+    struct ccn *ccn = NULL;
+    ccn = ccn_create();
+    if (ccn_connect(ccn, NULL) == -1) {
+        return noteErr("putFile, could not connect to ccnd");
+    }
+    FILE *listFile = fopen(listName, "r");
+    if (listFile == NULL) {
+        return noteErr("putFileList, failed to open list file");
+    }
+    int ret = 0;
+    struct SyncNameAccum *na = readAndAccumNames(listFile, MAX_READ_LEN);
+    int i = 0;
+    fclose(listFile);
+    struct ccn_charbuf *tmp = ccn_charbuf_create();
+    struct ccn_charbuf *template = SyncGenInterest(NULL,
+                                                   parms->scope,
+                                                   parms->life,
+                                                   -1, -1, NULL);
+    while (i < na->len) {
+        tmp->length = 0;
+        ccn_name_init(tmp);
+        struct ccn_charbuf *each = na->ents[i].name;
+        int nc = SyncComponentCount(each);
+        if (parms->verbose) {
+            struct ccn_charbuf *uri = SyncUriForName(each);
+            if (parms->mark) putMark(stdout);
+            fprintf(stdout, "putFileList %d, %s\n",
+                    i, ccn_charbuf_as_string(uri));
+            fflush(stdout);
+            ccn_charbuf_destroy(&uri);
+        }
+        if (nc < 3) {
+            ret = noteErr("putFileList, bad name");
+            break;
+        }
+        const unsigned char *xp = NULL;
+        ssize_t xs = -1;
+        SyncGetComponentPtr(each, nc-2, &xp, &xs);
+        if (xs > 0 && xp[0] == '\000') {
+            // segment info, so split the name
+            ret |= appendComponents(tmp, each, 0, nc-2);
+            ret |= ccn_name_append_str(tmp, "\xC1.R.sw-c");
+            ret |= ccn_name_append_nonce(tmp);
+            ret |= appendComponents(tmp, each, nc-2, 2);
+        } else {
+            // no segment, so use the whole name
+            ret |= appendComponents(tmp, each, 0, nc);
+            ret |= ccn_name_append_str(tmp, "\xC1.R.sw-c");
+            ret |= ccn_name_append_nonce(tmp);
+        }
+        
+        if (ret < 0) {
+            ret = noteErr("putFileList, bad name");
+            break;
+        }
+        ccn_get(ccn, tmp, template, DEFAULT_CMD_TIMEOUT, NULL, NULL, NULL, 0);
+        ccn_run(ccn, 10);
+        i++;
+    }
+    ccn_charbuf_destroy(&template);
+    ccn_charbuf_destroy(&tmp);
+    na = SyncFreeNameAccumAndNames(na);
+    ccn_destroy(&ccn);
+    return ret;
 }
 
 static int
@@ -1402,7 +1578,7 @@ existingRootOp(struct SyncTestParms *parms,
     } else {
         // requesting stats
         struct ccn_charbuf *tmpl = SyncGenInterest(NULL, 1, 2, -1, 1, NULL);
-        res |= ccn_get(ccn, nm, tmpl, 6000, cb, NULL, NULL, 0);
+        res |= ccn_get(ccn, nm, tmpl, DEFAULT_CMD_TIMEOUT, cb, NULL, NULL, 0);
         
         const unsigned char *xp = NULL;
         size_t xs = 0;
@@ -1447,8 +1623,6 @@ main(int argc, char **argv) {
     parms->base = base;
     parms->resolve = 1;
     parms->segmented = 1;
-    parms->topoPrefix = "/Topo";
-    parms->namingPrefix = "/Naming";
     
     while (i < argc && res >= 0) {
         char * sw = argv[i];
@@ -1469,6 +1643,8 @@ main(int argc, char **argv) {
             parms->mode = 3;
         } else if (strcasecmp(sw, "-mark") == 0) {
             parms->mark = 1;
+        } else if (strcasecmp(sw, "-digest") == 0) {
+            parms->digest = 1;
         } else if (strcasecmp(sw, "-null") == 0) {
             parms->mode = 0;
         } else if (strcasecmp(sw, "-binary") == 0) {
@@ -1477,10 +1653,14 @@ main(int argc, char **argv) {
             parms->mode = 1;
         } else if (strcasecmp(sw, "-text") == 0) {
             parms->mode = 2;
+        } else if (strcasecmp(sw, "-nodup") == 0) {
+            parms->noDup = 1;
         } else if (strcasecmp(sw, "-nores") == 0) {
             parms->resolve = 0;
         } else if (strcasecmp(sw, "-noseg") == 0) {
             parms->segmented = 0;
+        } else if (strcasecmp(sw, "-nosend") == 0) {
+            parms->noSend = 1;
         } else if (strcasecmp(sw, "-bs") == 0) {
             i++;
             if (arg1 != NULL) {
@@ -1529,20 +1709,6 @@ main(int argc, char **argv) {
             seen++;
         } else if (strcasecmp(sw, "-basic") == 0) {
             res = testRootBasic(parms);
-            seen++;
-        } else if (strcasecmp(sw, "-topo") == 0) {
-            if (arg1 != NULL) {
-                parms->topoPrefix = arg1;
-                i++;
-            } else
-            res = noteErr("missing topo prefix");
-            seen++;
-        } else if (strcasecmp(sw, "-prefix") == 0) {
-            if (arg1 != NULL) {
-                parms->namingPrefix = arg1;
-                i++;
-            } else
-            res = noteErr("missing naming prefix");
             seen++;
         } else if (strcasecmp(sw, "-target") == 0) {
             if (arg1 != NULL) {
@@ -1653,6 +1819,15 @@ main(int argc, char **argv) {
                 res = putFile(parms, arg1, arg2);
             }
             seen++;
+        } else if (strcasecmp(sw, "-putList") == 0) {
+            if (arg1 == NULL) {
+                res = noteErr("missing list file");
+            } else {
+                i++;
+                i++;
+                res = putFileList(parms, arg1);
+            }
+            seen++;
         } else if (strcasecmp(sw, "-stats") == 0) {
             if (arg1 != NULL && arg2 != NULL) {
                 i++;
@@ -1689,14 +1864,15 @@ main(int argc, char **argv) {
         printf("    -text           use text output\n");
         printf("    -cat2           use ccncatchunks2 format\n");
         printf("    -mark           print a time code prefix\n");
+        printf("    -digest         show the digest when doing a put\n");
+        printf("    -nodup          disallow duplicate segment requests for -put\n");
         printf("    -nores          avoid resolve version\n");
         printf("    -noseg          no segments\n");
+        printf("    -nosend         no send of the slice\n");
         printf("    -scope N        scope=N for repo commands (default 1)\n");
         printf("    -life N         life=N for interests (default 4)\n");
         printf("    -bs N           set block size for put (default 4096)\n");
         printf("    -bufs N         number of buffers for get (default 4)\n");
-        printf("    -topo T         set default topo prefix to T\n");
-        printf("    -prefix P       set default naming prefix to P\n");
         printf("    -basic          some very basic tests\n");
         printf("    -read F         read names from file F\n");
         printf("    -sort F         read names from file F, sort them\n");
@@ -1704,6 +1880,7 @@ main(int argc, char **argv) {
         printf("    -build F        build tree from file F\n");
         printf("    -get src [dst]  src is uri in repo, dst is file name (optional)\n");
         printf("    -put src dst    src is file name, dst is uri in repo\n");
+        printf("    -putList L      does checked write of each name, L is file name of name list\n");
         printf("    -slice T P C*   topo, prefix, clause ... (send slice to repo)\n");
         printf("    -delete T H     delete root with topo T, hash H from the repo\n");
         printf("    -stats T H      print statistics for root with topo T, hash H\n");
