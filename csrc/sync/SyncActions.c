@@ -47,10 +47,11 @@ static int cacheCleanDelta = 8;         // cache clean batch size
 static int adviseNeedReset = 1;         // reset value for adviseNeed
 static int updateStallDelta = 15;       // seconds used to determine stalled update
 static int updateNeedDelta = 6;         // seconds for adaptive update
-static int shortDelayMicros = 1000;     // short delay for quick reschedule
+static int shortDelayMicros = 500;     // short delay for quick reschedule
 static int compareAssumeBad = 20;       // secs since last fetch OK to assume compare failed
 static int nodeSplitTrigger = 4000;     // in bytes, triggers node split
 static int exclusionLimit = 1000;       // in bytes, limits exclusion list size
+static int exclusionTrig = 5;           // trigger for including root hashes in excl list (secs)
 static int stableTimeTrig = 10;         // trigger for storing stable point (secs)
 static int hashSplitTrigger = 17;       // trigger for splitting based on hash (n/255)
 static int namesYieldInc = 100;         // number of names to inc between yield tests
@@ -499,6 +500,8 @@ exclusionsFromHashList(struct SyncRootStruct *root, struct SyncHashInfoList *lis
     struct SyncNameAccum *acc = SyncAllocNameAccum(0);
     int count = 0;
     int limit = exclusionLimit;
+    sync_time now = SyncCurrentTime();
+    int64_t limitMicros = exclusionTrig*M;
     
     if (root->currentHash->length > 0) {
         // if the current hash is not empty, start there
@@ -513,7 +516,8 @@ exclusionsFromHashList(struct SyncRootStruct *root, struct SyncHashInfoList *lis
     while (list != NULL) {
         struct SyncHashCacheEntry *ce = list->ce;
         if (ce != NULL && (ce->state & SyncHashState_remote)
-            && (ce->state & SyncHashState_covered)) {
+            && (ce->state & SyncHashState_covered)
+            && SyncDeltaTime(ce->lastUsed, now) < limitMicros) {
             // any remote root known to be covered is excluded
             struct ccn_charbuf *hash = ce->hash;
             count = count + hash->length + 8;
