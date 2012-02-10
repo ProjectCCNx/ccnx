@@ -26,9 +26,9 @@ Boston, MA 02110-1301, USA. -->
 	<property name="lib" location="${ccn-libs-basedir}/lib"/>
 	<property name="junit-jar" location="${lib}/junit-4.3.1.jar"/>
 	<!-- BouncyCastle for JDK1.5 is not distributed by may be supplied -->
-    <condition property="bcprov-jar" value="${lib}/bcprov-jdk16-143.jar"
-		                              else="${lib}/bcprov-jdk15-143.jar">
-		<equals arg1="1.6" arg2="${ant.java.version}"/>
+    <condition property="bcprov-jar" value="${lib}/bcprov-jdk15-143.jar"
+		                              else="${lib}/bcprov-jdk16-143.jar">
+		<equals arg1="1.5" arg2="${ant.java.version}"/>
 	</condition>
 	
 	<property name="xml-jar" location="${lib}/kxml2-2.3.0.jar"/>
