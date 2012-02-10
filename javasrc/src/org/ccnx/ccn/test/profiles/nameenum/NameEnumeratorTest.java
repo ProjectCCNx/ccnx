@@ -23,22 +23,19 @@ import java.util.Random;
 
 import junit.framework.Assert;
 
-import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.test.CCNTestBase;
 import org.junit.Test;
 
 /**
  * Test the asynchronous interface to name enumeration.
  */
-public class NameEnumeratorTest implements BasicNameEnumeratorListener{
+public class NameEnumeratorTest extends CCNTestBase implements BasicNameEnumeratorListener{
 
-	CCNHandle putLibrary;
-	CCNHandle getLibrary;
 	CCNNameEnumerator putne;
 	CCNNameEnumerator getne;
 
@@ -68,11 +65,8 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		Log.info(Log.FAC_TEST, "Starting testNameEnumerator");
 
 		//set up CCN libraries for testing
-		setLibraries();
+		setupNE();
 
-		//verify that everything is set up
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
 		Assert.assertNotNull(putne);
 		Assert.assertNotNull(getne);
 
@@ -96,7 +90,6 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 
 		//verify that we only get a response for names with the correct prefix and that are active
 		testGetCallbackNoResponse();
-		closeLibraries();
 
 		Log.info(Log.FAC_TEST, "Completed testNameEnumerator");
 	}
@@ -333,34 +326,13 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 
 
 	/*
-	 * function to open and set the put and get libraries
-	 * also creates and sets the Name Enumerator Objects
+	 * function to create and set the Name Enumerator Objects
 	 *
 	 */
-	public void setLibraries(){
-		try{
-			putLibrary = CCNHandle.open();
-			getLibrary = CCNHandle.open();
-			putne = new CCNNameEnumerator(putLibrary, this);
-			getne = new CCNNameEnumerator(getLibrary, this);
-		}
-		catch(ConfigurationException e){
-			Log.warningStackTrace(Log.FAC_TEST, e);
-			Assert.fail("Failed to open libraries for tests");
-		}
-		catch(IOException e){
-			Log.warningStackTrace(Log.FAC_TEST, e);
-			Assert.fail("Failed to open libraries for tests");
-		}
+	public void setupNE(){
+		putne = new CCNNameEnumerator(putHandle, this);
+		getne = new CCNNameEnumerator(getHandle, this);
 	}
-
-	public void closeLibraries() {
-		if (null != putLibrary)
-			putLibrary.close();
-		if (null != getLibrary)
-			getLibrary.close();
-	}
-
 
 	public int handleNameEnumerator(ContentName p, ArrayList<ContentName> n) {
 
