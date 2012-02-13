@@ -658,6 +658,15 @@ r_proto_start_write(struct ccn_closure *selfp,
     // If Exclude is there, there might be something fishy going on.
     
     ccnr = (struct ccnr_handle *)selfp->data;
+    if (ccnr->start_write_scope_limit < 3) {
+        start = info->pi->offset[CCN_PI_B_Scope];
+        end = info->pi->offset[CCN_PI_E_Scope];
+        if (start == end || info->pi->scope > ccnr->start_write_scope_limit) {
+            if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
+                ccnr_msg(ccnr, "r_proto_start_write: interest scope exceeds limit");
+            return(CCN_UPCALL_RESULT_OK);
+        }
+    }
     // don't handle the policy file here
     start = info->pi->offset[CCN_PI_B_Name];
     end = info->interest_comps->buf[marker_comp - 1]; // not including version or marker
@@ -765,6 +774,15 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     
     // XXX - do we need to disallow the policy file here too?
     ccnr = (struct ccnr_handle *)selfp->data;
+    if (ccnr->start_write_scope_limit < 3) {
+        start = info->pi->offset[CCN_PI_B_Scope];
+        end = info->pi->offset[CCN_PI_E_Scope];
+        if (start == end || info->pi->scope > ccnr->start_write_scope_limit) {
+            if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
+                ccnr_msg(ccnr, "r_proto_start_write_checked: interest scope exceeds limit");
+            return(CCN_UPCALL_RESULT_OK);
+        }
+    }
     name = ccn_charbuf_create();
     ccn_name_init(name);
     ic = info->interest_comps;
