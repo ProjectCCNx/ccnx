@@ -1,5 +1,5 @@
 /**
- * @file glue/vlc/ccn.c
+ * @file apps/vlc/ccn.c
  * 
  * CCNx input module for vlc.
  *
