@@ -46,8 +46,8 @@
  * Module descriptor
  *****************************************************************************/
 #define CCN_FIFO_MAX_BLOCKS 128
-#define CCN_CHUNK_SIZE 4096
-#define CCN_FIFO_BLOCK_SIZE (128 * CCN_CHUNK_SIZE)
+#define CCN_DEFAULT_CHUNK_SIZE 4096
+#define CCN_FIFO_BLOCK_SIZE (128 * CCN_DEFAULT_CHUNK_SIZE)
 #define CCN_VERSION_TIMEOUT 400
 #define CCN_HEADER_TIMEOUT 400
 
@@ -104,6 +104,7 @@ struct access_sys_t
     vlc_thread_t thread;
     int i_bufsize;
     int i_bufoffset;
+    int i_chunksize;
     int timeouts;
     int i_fifo_max;
     block_fifo_t *p_fifo;
@@ -162,6 +163,7 @@ static int CCNOpen(vlc_object_t *p_this)
         msg_Err(p_access, "CCN.Open failed: no memory for ccn_closure");
         goto exit_error;
     }
+    p_sys->i_chunksize = -1;
 #if (VLCPLUGINVER >= 10200)
     msg_Dbg(p_access, "CCN.Open %s, closure %p",
             p_access->psz_location, p_sys->incoming);
@@ -406,7 +408,7 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
     p_sys->i_pos = i_pos;
-    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / CCN_CHUNK_SIZE);
+    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
     ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_template);
     ccn_charbuf_destroy(&p_name);    
 
@@ -563,6 +565,8 @@ incoming_content(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_ERR);
     }
 
+    if (!vlc_object_alive(p_access))
+        return(CCN_UPCALL_RESULT_OK);
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
     ib = info->interest_ccnb;
@@ -571,14 +575,16 @@ incoming_content(struct ccn_closure *selfp,
     if (res < 0) abort();
 
     p_sys->timeouts = 0;
-
+    /* if we did not previously know the chunk size, record it */
+    if (p_sys->i_chunksize == -1)
+        p_sys->i_chunksize = data_size;
     /* was this the last block? */
-    if (ccn_is_final_block(info) || data_size < CCN_CHUNK_SIZE)
+    if (ccn_is_final_block(info) || data_size < p_sys->i_chunksize)
         b_last = true;
 
     /* something to process */
     if (data_size > 0) {
-        start_offset = p_sys->i_pos % CCN_CHUNK_SIZE;
+        start_offset = p_sys->i_pos % p_sys->i_chunksize;
         if (start_offset > data_size) {
             msg_Err(p_access, "start_offset %"PRId64" > data_size %zu", start_offset, data_size);
         } else {
@@ -617,8 +623,8 @@ incoming_content(struct ccn_closure *selfp,
 #endif
 
     /* Ask for the next fragment */
-    p_sys->i_pos = CCN_CHUNK_SIZE * (1 + (p_sys->i_pos / CCN_CHUNK_SIZE));
-    name = sequenced_name(p_sys->p_name, p_sys->i_pos / CCN_CHUNK_SIZE);
+    p_sys->i_pos = p_sys->i_chunksize * (1 + (p_sys->i_pos / p_sys->i_chunksize));
+    name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
     res = ccn_express_interest(info->h, name, selfp, NULL);
     ccn_charbuf_destroy(&name);
 
