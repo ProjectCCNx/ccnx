@@ -3,7 +3,7 @@
  * 
  * CCNx input module for vlc.
  *
- * Copyright (C) 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -68,7 +68,7 @@
 static int  CCNOpen(vlc_object_t *);
 static void CCNClose(vlc_object_t *);
 static block_t *CCNBlock(access_t *);
-#if (VLCPLUGINVER >= 110)
+#if (VLCPLUGINVER >= 10100)
 static int CCNSeek(access_t *, uint64_t);
 #else
 static int CCNSeek(access_t *, int64_t);
@@ -162,7 +162,7 @@ static int CCNOpen(vlc_object_t *p_this)
         msg_Err(p_access, "CCN.Open failed: no memory for ccn_closure");
         goto exit_error;
     }
-#if (VLCPLUGINVER >= 120)
+#if (VLCPLUGINVER >= 10200)
     msg_Dbg(p_access, "CCN.Open %s, closure %p",
             p_access->psz_location, p_sys->incoming);
 #else
@@ -183,7 +183,7 @@ static int CCNOpen(vlc_object_t *p_this)
         msg_Err(p_access, "CCN.Open failed: no memory for name charbuf");
         goto exit_error;
     }
-#if (VLCPLUGINVER >= 120)
+#if (VLCPLUGINVER >= 10200)
     i_ret = ccn_name_from_uri(p_name, p_access->psz_location);
 #else
     i_ret = ccn_name_from_uri(p_name, p_access->psz_path);
@@ -235,7 +235,6 @@ static int CCNOpen(vlc_object_t *p_this)
     }
 
     return VLC_SUCCESS;
-    
 
  exit_error:
     if (p_name) {
@@ -378,7 +377,7 @@ static ssize_t CCNRead(access_t *p_access, uint8_t *buf, size_t size)
 /*****************************************************************************
  * CCNSeek:
  *****************************************************************************/
-#if (VLCPLUGINVER < 110)
+#if (VLCPLUGINVER < 10100)
 static int CCNSeek(access_t *p_access, int64_t i_pos)
 #else
 static int CCNSeek(access_t *p_access, uint64_t i_pos)
@@ -388,7 +387,7 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
     struct ccn_charbuf *p_name;
     int i_ret;
 
-#if (VLCPLUGINVER < 110)
+#if (VLCPLUGINVER < 10100)
     if (i_pos < 0) {
         msg_Warn(p_access, "Attempting to seek before the beginning %"PRId64".", i_pos);
         i_pos = 0;
@@ -468,6 +467,8 @@ static void *ccn_event_thread(void *p_this)
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn *ccn = p_sys->ccn;
     int res = 0;
+    int cancel = vlc_savecancel();
+
     while (res >= 0) {
         res = ccn_run(ccn, 1000);
         if (res < 0 && ccn_get_connection_fd(ccn) == -1) {
@@ -479,8 +480,9 @@ static void *ccn_event_thread(void *p_this)
     if (res < 0) {
         block_FifoWake(p_sys->p_fifo);
     }
+    vlc_restorecancel(cancel);
 }
-#if (VLCPLUGINVER < 110)
+#if (VLCPLUGINVER < 10100)
 /* block_FifoPace was defined early on, but not exported until 1.1.0, so we
  * duplicate the code here if it is needed.
  */
@@ -631,7 +633,7 @@ incoming_content(struct ccn_closure *selfp,
         return (CCN_UPCALL_RESULT_OK);
     }
 
-#if (VLCPLUGINVER < 110)
+#if (VLCPLUGINVER < 10100)
     /* block_FifoPace was not exported until 1.1.0, use a copy of it... */
     s_block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
 #else

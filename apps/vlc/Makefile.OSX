@@ -15,7 +15,7 @@ libdir = $(shell pkg-config --variable=libdir vlc-plugin )
 # in a future VLC release (1.2.0?) we expect to see a pkg-config variable for the plugin directory.
 vlcplugindir := $(shell pkg-config --atleast-version=1.1.0 vlc-plugin && echo $(libdir)/vlc/plugins || echo $(libdir)/vlc/modules)
 vlcaccessdir := $(vlcplugindir)/access
-VLCPLUGINVERDEF = `pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER=\1/;s/\.//g;s/=0/=/'`
+VLCPLUGINVERDEF := $(shell pkg-config --modversion vlc-plugin | awk -F. '{printf "-DVLCPLUGINVER=%d%02d%02d",$$1,$$2,$$3}')
 
 # You may have to specify ARCHOPT in some cases, for instance:
 #ARCHOPT = -arch `/usr/bin/arch`
