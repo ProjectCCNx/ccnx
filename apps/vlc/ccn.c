@@ -274,10 +274,9 @@ static void CCNClose(vlc_object_t *p_this)
 
     msg_Dbg(p_access, "CCN.Close called");
     if (p_sys->p_fifo)
-        block_FifoWake(p_sys->p_fifo);
+        block_FifoEmpty(p_sys->p_fifo);
     vlc_cancel(p_sys->thread);
     vlc_join(p_sys->thread, NULL);
-    
     if (p_sys->p_fifo) {
         block_FifoRelease(p_sys->p_fifo);
         p_sys->p_fifo = NULL;
