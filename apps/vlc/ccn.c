@@ -573,33 +573,9 @@ incoming_content(struct ccn_closure *selfp,
     p_sys->timeouts = 0;
 
     /* was this the last block? */
-    /* TODO:  the test below should get refactored into the library */
-    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
-        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
-        const unsigned char *finalid = NULL;
-        size_t finalid_size = 0;
-        const unsigned char *nameid = NULL;
-        size_t nameid_size = 0;
-        struct ccn_indexbuf *cc = info->content_comps;
-        ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
-                            info->pco->offset[CCN_PCO_B_FinalBlockID],
-                            info->pco->offset[CCN_PCO_E_FinalBlockID],
-                            &finalid,
-                            &finalid_size);
-        if (cc->n < 2) abort();
-        ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
-                            cc->buf[cc->n - 2],
-                            cc->buf[cc->n - 1],
-                            &nameid,
-                            &nameid_size);
-        if (finalid_size == nameid_size && 0 == memcmp(finalid, nameid, nameid_size)) {
-            b_last = true;
-        }
-    }
-    
-    /* a short block can also indicate the end, if the client isn't using FinalBlockID */
-    if (data_size < CCN_CHUNK_SIZE)
+    if (ccn_is_final_block(info) || data_size < CCN_CHUNK_SIZE)
         b_last = true;
+
     /* something to process */
     if (data_size > 0) {
         start_offset = p_sys->i_pos % CCN_CHUNK_SIZE;
