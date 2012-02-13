@@ -1,4 +1,5 @@
-The vlc plugin code provided is known to work with the 0.9.9 releases.
+The vlc plugin code provided is known to work with the 0.9.9
+and later releases.
 
 In order to compile the vlc plugin you will need to install
 the vlc and libvlc-dev packages.  On Ubuntu Linux, for example,
@@ -6,30 +7,42 @@ you can use:
 
 # apt-get install vlc libvlc-dev
 
-On Mac OS X, you can use macports to install VLC:
+On Mac OS X, you have a choice of either using macports to install VLC:
 
 $ sudo port install VLC
 
+which as of VLC 1.0.6 will install the following additional packages:
 
-Two system-dependent makefiles are provided, Makefile.Linux and Makefile.OSX.
-In the apps/vlc directory, make a symlink that reflects the
-appropriate one for your system, e.g.
+a52dec faad2 ffmpeg XviD dirac cppunit gmake lame libogg libsdl
+xorg-libXext xorg-libX11 xorg-bigreqsproto xorg-inputproto
+xorg-kbproto xorg-libXau xorg-xproto xorg-libXdmcp xorg-libxcb
+python27 db46 python_select python27 xorg-libpthread-stubs
+xorg-xcb-proto libxml2 libxml2 xorg-util-macros xorg-xcmiscproto
+xorg-xextproto xorg-xf86bigfontproto xorg-xtrans xorg-libXrandr
+xorg-randrproto xrender xorg-renderproto libtheora libvorbis libvpx
+yasm openjpeg jbigkit lcms2 schroedinger orc speex texi2html x264 flac
+fontconfig freetype gnutls libgcrypt libgpg-error libtasn1 lzo2
+libcddb libcdio popt libdca libdvdnav libdvdread libdvdcss libdvdplay
+libid3tag libmad libmatroska libebml libmodplug libmpcdec live555 lua
+taglib cmake libidn twolame libsndfile
 
-$ ln -s Makefile.Linux Makefile
+or you may install a VLC binary distribution from videolan.org, and
+locate the corresponding VLC sources, and compile the CCN plugin for
+VLC against the include files in the VLC sources.
+ 
+Three system-dependent makefiles are provided, Makefile.Linux, Makefile.OSX,
+and Makefile.OSX-VLCsrconly
 
-If you have not already compiled the CCN library, do so:
+If you have not already compiled the CCN library, do so, then use
+the appropriate Makefile to compile the CCN VLC plugin.
 
-$ ( cd ../.. && ./configure && make )
+The CCN vlc plugin Makefile.Linux and Makefile.OSX make use of the
+pkg-config info to locate the necessary vlc include files, and the
+correct directory in which to install the vlc access plugins.
 
-Now compile the vlc plugin and install it:
+The Makefile.OSX-VLCsrconly does not assume that pkg-config is present,
+so you must set VLCAPP to where the VLC app has been installed
+(typically /Applications/VLC.app) and VLCSRC to where the unpacked
+VLC source is present (e.g., /Users/example/Software/vlc-1.1.12)
 
-$ make 
-$ sudo make install
-
-The CCN vlc plugin Makefile makes use of the pkg-config info
-to locate the necessary vlc include files, and the correct
-directory in which to install the vlc access plugins.
-
-Note that to vlc, a CCN URI must start ccnx:/// (because of the URI parser in VLC).
-
-
+Note that to VLC, a CCN URI must start ccnx:/// (because of the URI parser in VLC).
