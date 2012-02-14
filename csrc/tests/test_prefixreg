@@ -1,0 +1,81 @@
+# tests/test_prefixreg
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+AFTER : test_single_ccnd test_ccndid test_newface
+BEFORE : test_single_ccnd_teardown
+
+ccndsmoketest || SkipTest no ccnd
+test -f newface-response.ccnb || SkipTest missing newface-response.ccnb, need to run test_newface first
+
+FACEID=`ccnbx -d newface-response.ccnb Content | ccnbx -d - FaceID` || Fail
+echo FACEID=$FACEID
+
+# Create the body of a prefixreg request.
+ccn_xmltoccnb -w - <<EOF >prefixreg.ccnb
+<ForwardingEntry>
+  <Action>prefixreg</Action>
+  <Name>
+     <Component ccnbencoding="text">Junk</Component>
+  </Name>
+  <FaceID>$FACEID</FaceID>  
+  <FreshnessSeconds>2147483647</FreshnessSeconds>
+</ForwardingEntry>
+EOF
+
+TNAME=`GenSym _ignored_`
+cat prefixreg.ccnb | ccnpoke -f -x 30 /$TNAME
+
+# Pull it out to use in the prefixreg request.  Base-64 encode it for the benefit of the shell.
+
+PRBLOB="`ccnpeek /$TNAME | openssl enc -base64`"
+
+echo PRBLOB is $PRBLOB >&2
+
+# Dinged version, to make sure verification is there.
+# Uncommenting these should make the test fail.
+#PRBLOB="`ccnpeek /$TNAME | ccn_ccnbtoxml - | sed -e s/_ignored_/-IGNORED-/ | ccn_xmltoccnb -w - | openssl enc -base64`"
+#echo Dinged PRBLOB is $PRBLOB >&2
+
+# We have the CCNDID of our ccnd in a file, left from test_ccndid
+CCNDID=`cat ccndid.out`
+
+# Now construct the interest.
+
+cat <<EOF >prefixreg-request.xml
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">ccnx</Component>
+    <Component ccnbencoding="hexBinary">$CCNDID</Component>
+    <Component ccnbencoding="text">prefixreg</Component>
+    <Component ccnbencoding="base64Binary">$PRBLOB</Component>
+  </Name>
+  <Scope>1</Scope>
+</Interest>
+EOF
+ccn_xmltoccnb -w prefixreg-request.xml || Fail botch constructing prefixreg-request.ccnb
+
+CCNDStatus > prefixreg-pre.html
+
+# Try out the request
+ccndsmoketest -b send prefixreg-request.ccnb recv > prefixreg-response.ccnb
+
+cmp -s /dev/null prefixreg-response.ccnb && Fail did not get prefixreg response
+ccn_ccnbtoxml -xv prefixreg-response.ccnb || Failed to parse prefixreg response
+
+ccnbx -d prefixreg-response.ccnb Content | ccn_ccnbtoxml -x - > prefixreg-response.xml
+cat prefixreg-response.xml
+grep ForwardingEntry prefixreg-response.xml || Fail prefixreg response was not OK
+
+CCNDStatus > prefixreg-post.html
+
+rm prefixreg-request.xml prefixreg-response.xml

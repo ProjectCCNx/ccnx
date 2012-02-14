@@ -1,0 +1,102 @@
+#!/bin/sh
+# ccnd/testbasics
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+CCN_LOCAL_PORT=${CCN_LOCAL_PORT_BASE:-63000}
+export CCN_LOCAL_PORT
+: ${CCND_DEBUG:=0}
+export CCND_DEBUG
+
+Fail () {
+  echo '*** Failed' $* >&2
+  exit 1
+}
+
+Cleanup () {
+   ./ccndsmoketest kill 2>/dev/null
+   wait
+}
+
+./ccndsmoketest kill 2>/dev/null
+echo Starting ccnd with CCN_LOCAL_PORT=$CCN_LOCAL_PORT
+./ccnd &
+
+echo Making sure new ccnd is there
+./ccndsmoketest 2>/dev/null || { sleep 1; ./ccndsmoketest || Fail; }
+
+trap Cleanup 0
+
+echo Populating ccnd with pre-signed data
+./ccndsmoketest  -t 10 send fortunes.ccnb recv || Fail
+
+echo Making anything.ccnb
+../cmd/ccn_xmltoccnb -w - <<'END' > anything.ccnb
+<Interest>
+  <Name>
+  </Name>
+</Interest>
+END
+
+echo Trying for anything a few times
+./ccndsmoketest -t 200 send anything.ccnb recv send anything.ccnb recv send anything.ccnb recv > anything.out || Fail
+diff anything.ref anything.out || echo Diffs above might be OK, but have a look
+MATCHES=`grep -c '^recv of' anything.out`
+test $MATCHES = 3 || Fail Wrong number of matches, got $MATCHES expected 3
+
+echo Testing contentobjecthash
+../cmd/ccn_xmltoccnb -w - <<'END' > contentobjecthash.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">local</Component>
+    <Component ccnbencoding="text">test</Component>
+    <Component ccnbencoding="text">fortunes</Component>
+    <Component ccnbencoding="text">doubt</Component>
+    <Component ccnbencoding="text">0</Component>
+    <Component ccnbencoding="hexBinary">f7638fb36c69d8c6e18cadac0616801a63876949425ca19379166e91d1e70b97</Component>
+  </Name>
+</Interest>
+END
+
+./ccndsmoketest -t 300 send contentobjecthash.ccnb recv > contentobjecthash.out || Fail
+diff contentobjecthash.ref contentobjecthash.out || Fail contentobjecthash.out does not match expected
+
+echo Testing that fetch with bad hash does not succeed
+../cmd/ccn_xmltoccnb -w - <<'END' > contentmishash.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">local</Component>
+    <Component ccnbencoding="text">test</Component>
+    <Component ccnbencoding="text">fortunes</Component>
+    <Component ccnbencoding="text">doubt</Component>
+    <Component ccnbencoding="text">0</Component>
+    <Component ccnbencoding="hexBinary">f7638fb36c69d8c6e18cadac0616803a63876949425ca19379166e91d1e70b97</Component>
+  </Name>
+</Interest>
+END
+./ccndsmoketest -t 200 send contentmishash.ccnb recv | grep 'recv timed out' || Fail contentmishash
+
+echo Testing MinSuffixComponents
+../cmd/ccn_xmltoccnb -w - <<'END' > minsuffix.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">local</Component>
+    <Component ccnbencoding="text">test</Component>
+  </Name>
+  <MinSuffixComponents>5</MinSuffixComponents>
+</Interest>
+END
+
+./ccndsmoketest -t 300 send minsuffix.ccnb recv > minsuffix.out || Fail
+diff minsuffix.ref minsuffix.out || Fail minsuffix.out does not match expected
+
+echo $0 TESTS PASSED

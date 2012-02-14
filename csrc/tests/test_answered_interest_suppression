@@ -1,0 +1,73 @@
+# tests/test_answered_interest_suppression
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+#
+# Test to verify that similar interests from different faces
+# all get answered.
+#
+
+#
+# Construct the test interest
+#
+UNIQ=`GenSym TIS`
+ccn_xmltoccnb -w - <<EOF >answered.ccnb
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">answered</Component>
+    <Component ccnbencoding="text">test</Component>
+    <Component ccnbencoding="text">$UNIQ</Component>
+  </Name>
+</Interest>
+EOF
+
+rm -rf suppr-*.out
+
+#
+# Start up a private ccnd.
+#
+WithCCND 5 env CCND_DEBUG=-1 ccnd 2>ccnd5.out &
+WithCCND 5 ccndsmoketest        # Let forked ccnd get going
+trap "WithCCND 5 ccndstop" 0    # Tear it down at end of test
+
+
+# The heart of the the test
+HasEverybodyGotIt () {
+    # One client is just a sink for the interests.
+    ccnpoke -x 1 /answered < /dev/null &
+    
+    #
+    # Get 3 clients to be interested.
+    #
+    for i in 1 2 3;
+      do ccndsmoketest -t 100 -b recv answered.ccnb timeo 4000 recv > suppr-$i.out &
+    done
+
+    # Provide the answer.
+    sleep 1
+    ccndstatus
+    echo "This is the answer" | ccnpoke -f -x 1 /answered/test/$UNIQ
+
+    # The clients should finish quickly now - give them a second.
+    sleep 1
+    ccndstop
+}
+
+WithCCND 5 HasEverybodyGotIt
+
+for i in suppr-*.out; do strings -a $i > strings-$i; done
+COUNT=`grep -l "This is the answer" strings-suppr-*.out | wc -l`
+rm -f strings-suppr-*.out
+test "$COUNT" -eq 3 || Fail expecting 3 answers, but got $COUNT
+
+rm -rf answered.ccnb suppr-*.out

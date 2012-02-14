@@ -1,0 +1,43 @@
+# tests/test_twohop_ccnd_setup
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+AFTER : test_single_done
+BEFORE : test_single_ccnd_teardown test_twohop_ccnd_teardown
+# ccnd 0 is already running and loaded with some data
+
+rm -f ccnd1.out ccnd2.out ccnd3.out
+
+WithCCND 1 ccnd 2>ccnd1.out &
+WithCCND 2 ccnd 2>ccnd2.out &
+WithCCND 3 env CCND_DEBUG=7 ccnd 2>ccnd3.out &
+
+# Make sure they've all started
+until CheckForCCND 0 && CheckForCCND 1 && CheckForCCND 2 && CheckForCCND 3; do
+  echo Waiting ... >&2
+  sleep 1
+done
+
+# 0 --- 1 --- 2
+#       |
+#       3
+
+Linkup 1 0
+Linkup 1 2
+Linkup 1 3
+
+for i in 0 1 2 3; do
+  WithCCND $i CCNDStatus > twohop-status-$i.html
+done
+
+WithCCND 2 ccnls ccnx:/test
+

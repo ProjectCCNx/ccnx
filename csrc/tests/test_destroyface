@@ -1,0 +1,79 @@
+# tests/test_destroyface
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+AFTER : test_single_ccnd test_newface test_prefixreg
+BEFORE : test_single_ccnd_teardown
+
+# By default, we'll destroy the face that test_newface made.
+: ${FACEID:=`ccnbx -d newface-response.ccnb Content | ccnbx -d - FaceID`}
+echo FACEID=$FACEID
+
+rm -f destroyface*.ccnb
+ccndsmoketest || SkipTest no ccnd
+
+# Get our CCNDID
+. test_ccndid
+
+# Create the body of a face destroy request.
+ccn_xmltoccnb -w - <<EOF >destroyface.ccnb
+<FaceInstance>
+  <Action>destroyface</Action>
+  <PublisherPublicKeyDigest ccnbencoding="hexBinary">$CCNDID</PublisherPublicKeyDigest>
+  <FaceID>$FACEID</FaceID>
+</FaceInstance>
+EOF
+
+# The name does not matter for the request, but make it unique.
+REQNAME=`openssl dgst -sha1 destroyface.ccnb | sed -e 's/^.*=[ ]*//'`
+
+echo REQNAME is $REQNAME >&2
+
+cat destroyface.ccnb | ccnpoke -f -x 30 /$REQNAME
+
+ccnslurp /$REQNAME
+
+# Pull it out to use in the destroyface request.  Base-64 encode it for the benefit of the shell.
+DFBLOB="`ccnpeek /$REQNAME | openssl enc -base64`"
+
+echo DFBLOB is $DFBLOB >&2
+
+test -z "$DFBLOB" && Failed forming DFBLOB
+
+# Now construct the interest.
+
+cat <<EOF >destroyface-request.xml
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">ccnx</Component>
+    <Component ccnbencoding="hexBinary">$CCNDID</Component>
+    <Component ccnbencoding="text">destroyface</Component>
+    <Component ccnbencoding="base64Binary">$DFBLOB</Component>
+  </Name>
+  <Scope>1</Scope>
+</Interest>
+EOF
+ccn_xmltoccnb -w destroyface-request.xml || Fail botch constructing destroyface-request.ccnb
+
+CCNDStatus > destroyface-pre.html
+
+# Try out the destroyface request
+ccndsmoketest -b -t 4000 send destroyface-request.ccnb recv > destroyface-response.ccnb
+
+CCNDStatus > destroyface-post.html
+
+cmp -s /dev/null destroyface-response.ccnb && Fail did not get destroyface response
+
+ccn_ccnbtoxml destroyface-response.ccnb || Fail could not parse destroyface response
+
+ccnbx -d destroyface-response.ccnb Content | ccn_ccnbtoxml -x -
+rm destroyface-request.xml

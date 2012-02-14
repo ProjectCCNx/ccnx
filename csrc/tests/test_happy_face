@@ -1,0 +1,20 @@
+# tests/test_happy_face
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+AFTER : test_single_ccnd
+BEFORE : test_single_ccnd_teardown
+
+echo ':-)' | ccnpoke -f /test/happy/face || Fail ':-('
+ccnpeek -c /test/happy/face | tee happyface.out || Fail ':-/'
+echo ':-)' | diff - happyface.out || Fail
+rm happyface.out

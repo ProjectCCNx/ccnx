@@ -1,0 +1,46 @@
+# tests/test_scope2
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2010-2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+AFTER : test_twohop_ccnd
+BEFORE : test_twohop_ccnd_teardown
+
+UNIQ=`GenSym test_scope2_`
+
+# Turn up logging in case something goes awry
+WithCCND 1 ccndlogging med
+WithCCND 2 ccndlogging med
+WithCCND 3 ccndlogging med
+
+WithCCND 3 ccnpoke -f /$UNIQ/scope2/stuff < /dev/null
+cat <<EOF >scope2interest.xml
+<Interest>
+  <Name>
+    <Component ccnbencoding="text">$UNIQ</Component>
+    <Component ccnbencoding="text">scope2</Component>
+  </Name>
+  <Scope>2</Scope>
+</Interest>
+EOF
+ccn_xmltoccnb -w scope2interest.xml || Fail botch constructing scope2interest.ccnb
+
+WithCCND 2 ccndsmoketest -t 500 -b scope2interest.ccnb recv > scope2reply.ccnb
+cmp scope2reply.ccnb /dev/null || Fail interest was sent too far
+WithCCND 1 ccndsmoketest -t 500 -b scope2interest.ccnb recv > scope2reply.ccnb
+cmp scope2reply.ccnb /dev/null && Fail interest was not sent to neighbor
+WithCCND 0 ccndsmoketest -t 333 recv  # just a bit of delay
+WithCCND 2 ccndumpnames /$UNIQ/scope2/stuff > scope2stuff.out
+grep /$UNIQ/scope2/stuff scope2stuff.out || Fail original interest was not answered
+rm scope2interest.xml scope2interest.ccnb scope2reply.ccnb scope2stuff.out
+
+WithCCND 1 ccndlogging low
+WithCCND 2 ccndlogging low

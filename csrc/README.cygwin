@@ -1,0 +1,36 @@
+Notes on Building and Running on Windows under Cygwin
+
+Cygwin is not fully supported at this time and the code has not been 
+extensively tested.  Some functionality may be unavailable.
+
+CYGWIN INSTALLATION
+
+You need to install a number of the optional cygwin packages.  Just
+use the cygwin setup program to select these (and take their dependencies).  
+Please report errors/omissions.
+
+Listed version numbers are minimums on which some testing has been done.
+
+Category Devel
+~~~~~~~~~~~~~~
+autoconf (7-1)
+gcc (3.4.4-999)
+make (3.81-2)
+minires-devel (1.02-1)
+openssl-devel (0.9.8k-1)
+
+Category Libs
+~~~~~~~~~~~~~
+crypt (1.1-1)
+expat (2.0.1-1)
+libexpat1 (2.0.1-1)
+libexpat1-devel (2.0.1-1)
+minires (1.02-1)
+openssl(0.9.8k-1)
+
+BUILDING 
+
+./configure
+[this will configure and one-time build the third-party getaddrinfo
+library which provides some functions missing on cygwin]
+make 

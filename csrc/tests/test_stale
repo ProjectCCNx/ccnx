@@ -1,0 +1,47 @@
+# tests/test_stale
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+# Tests ccnd w.r.t. staleness handling
+BEFORE : test_final_teardown test_finished
+AFTER : test_alone
+export CCND_DEBUG=-1
+export CCN_LOCAL_PORT=$((CCN_LOCAL_PORT_BASE + 6))
+echo '<Interest><Name><Component ccnbencoding="text">Dummy</Component></Name></Interest>' | ccn_xmltoccnb - > dummy.ccnb
+ccnd &
+trap "ccndsmoketest kill" 0
+until CheckForCCND 6; do :; done
+uptime
+date | ccnsendchunks -x 4 /test/ephemeral$$
+ccnpeek /test/ephemeral$$ > ephemeral$$.ccnb || Fail init fetch of ephemeral
+ccncatchunks /test/ephemeral$$ > ephemeral$$_0
+ccndsmoketest -t 2000 recv # delay for 2 sec
+ccncatchunks /test/ephemeral$$ > ephemeral$$_1
+diff ephemeral$$_0 ephemeral$$_1 || Fail after only 2 sec data should not be stale
+sleep 4
+# By now the data should be stale.
+ccncatchunks -a /test/ephemeral$$ > ephemeral$$_2
+ccncatchunks /test/ephemeral$$ > ephemeral$$_3
+diff ephemeral$$_0 ephemeral$$_2 || Fail should have forced fetch of stale data
+: | diff - ephemeral$$_3 || Fail test data did not go stale as expected
+ccndsmoketest -t 40 recv send dummy.ccnb timeo 600 recv send ephemeral$$.ccnb &
+ccndsmoketest -t 100 recv # try to close race a bit.
+( ccncatchunks /test/ephemeral$$ || ccncatchunks /test/ephemeral$$ || \
+  ccncatchunks /test/ephemeral$$ || ccncatchunks /test/ephemeral$$ ;  \
+  ) > ephemeral$$_4
+diff ephemeral$$_0 ephemeral$$_4 || Fail did not get re-injected stale content
+ccncatchunks /test/ephemeral$$ > ephemeral$$_5
+diff ephemeral$$_0 ephemeral$$_5 || Fail test data did not become fresh again
+sleep 5
+ccncatchunks /test/ephemeral$$ > ephemeral$$_6
+: | diff - ephemeral$$_6 || Fail test data did not go stale the second time
+rm ephemeral$$_* ephemeral$$.ccnb dummy.ccnb

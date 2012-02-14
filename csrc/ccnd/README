@@ -1,0 +1,46 @@
+ccnd - CCNx Daemon
+	options: none
+	arguments: none
+	environment variables:
+		CCND_DEBUG=
+			0 - no messages
+			1 - basic messages (any non-zero value gets these)
+			2 - interest messages
+			4 - content messages
+			8 - matching details
+			16 - interest details
+			32 - gory interest details
+			64 - log occasional human-readable timestamps
+			128 - face registration debugging
+			bitwise OR these together for combinations; -1 gets everything
+		CCN_LOCAL_PORT=
+			UDP port for unicast clients (default 9695).
+			Also listens on this TCP port for stream connections.
+			Also affects name of unix-domain socket.
+		CCN_LOCAL_SOCKNAME=
+			Name stem of unix-domain socket (default /tmp/.ccnd.sock).
+		CCND_CAP=
+			Capacity limit, in count of ContentObjects.
+			Not an absolute limit.
+		CCND_MTU=
+			Packet size in bytes.
+			If set, interest stuffing is allowed within this budget.
+			Single items larger than this are not precluded.
+		CCND_DATA_PAUSE_MICROSEC=
+			Adjusts content-send delay time for multicast and udplink faces
+		CCND_KEYSTORE_DIRECTORY=
+			Directory readable only by ccnd where its keystores are kept
+			Defaults to a private subdirectory of /var/tmp
+
+ccndsmoketest - simple-minded program for exercising ccnd
+	options: -t millisconds - sets the timeout for recv operations
+		 -u hostname - communicate with ccnd using udp
+	arguments: ( send <filename> | recv | kill | timeo <millisconds> ) ...
+		send <filename> sends the literal contents of the file to the ccnd.
+			The file should be in ccnd format.
+		recv receives data from ccnd and dumps it to stdout.
+			Subject to timeout.
+		kill tries to get the ccnd to shut down.
+		timeo <millisconds> changes the timeout for subsequent recvs.
+	environment variables:
+		CCN_LOCAL_PORT as for ccnd

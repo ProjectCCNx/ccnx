@@ -1,0 +1,41 @@
+Building CCNx on NetBSD
+
+Install the needed packages (as root):
+Set your PKG_PATH appropriately for your installation - it will
+probably be something that looks like
+	
+	ftp://ftp.NetBSD.org/pub/pkgsrc/packages/NetBSD/AAAA/VVVV/All
+
+where AAAA is your architecture and VVVV is the pkgsrc version.
+
+	pkg_add -v expat
+	pkg_add -v libxml2
+
+That will be sufficient for building the c-based portions.
+
+If you want to use java, install these as well:
+
+	pkg_add -v pkg_alternatives
+	pkg_add -v openjdk7
+	pkg_add -v apache-ant
+
+For access to sources via git, you also need:
+
+	pkg_add -v scmgit-base
+
+To build all documentation as well ("make documentation"), install these:
+
+	pkg_add -v asciidoc
+	pkg_add -v doxygen
+
+Now you can return to a normal user account and build ccnx using the
+generic instructions.
+
+You may find that you need to set JAVA_HOME, for instance to
+/usr/pkg/java/openjdk7 if that is where your java lives.
+
+On some versions of java, it may be necessary to set the java system property
+java.net.preferIPv4Stack=true; the symptom is that java apps cannot connect
+to ccnd.  This no longer seems to be a problem with the version
+openjdk7-1.7.0.147.20110811nb2 in pkgsrc.
+See http://redmine.ccnx.org/issues/100648 if you think you are seeing this.

@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+# stubs/jot
+# 
+# Stub version of jot program
+# Only knows how to generate 1 through N
+#
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2009 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+N=${1:-MISSING_ARG}
+test $N -ge 0 || exit 1
+if ( seq $N 2>/dev/null ); then exit 0; fi
+i=1
+while [ $i -le $N ]; do echo $i; i=$((i+1)); done

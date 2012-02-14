@@ -1,0 +1,46 @@
+#!/bin/sh
+# util/gitwrap 
+# ~/bin/gitwrap
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+#
+# This is a wrapper that logs each git command issued.  It can be helpful
+# for figuring out what you might have done to confuse git, or to make
+# git confuse you.
+# 
+# To use it, copy this script to a safe place (for example ~/bin/gitwrap) and
+# edit your .profile (or .bash_profile) to create an alias that will
+# invoke the script instead of the real executable:
+#   [ -x ~/bin/gitwrap ] && alias git=~/bin/gitwrap
+#
+# (If you use csh or a variant, the details will differ.)
+#
+# Note that this is not specific to CCNx development - your commands will be
+# logged for all of your git projects.
+#
+
+# The real git location (edit if necessary)
+REALGIT=/usr/bin/git
+
+# Where we want to log
+LOGFILE=~/.gitcommand.log
+
+# Use seconds since epoch for a time stamp; easy to sort.
+TIMESTAMP=`date +%s`
+printf "%s %s %s %s " ${TIMESTAMP} ${HOST:--} ${PWD:-.} "git $*" >> ${LOGFILE}
+trap "echo >> ${LOGFILE}" 0
+${REALGIT} "$@"
+REALGIT_STATUS=$?
+printf '   (%s => %s)' ${1:-help} ${REALGIT_STATUS} >> ${LOGFILE}
+exit ${REALGIT_STATUS}

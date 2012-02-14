@@ -1,0 +1,15 @@
+Makefile
+FAILING
+SKIPPED
+STATUS/
+testdata.txt
+testdriver
+ephemeral*
+*.out
+*face*.ccnb
+*reg*.ccnb
+heartbeat.ccnb
+unanswered.ccnb
+*-pre.html
+*-post.html
+*-status-*.html

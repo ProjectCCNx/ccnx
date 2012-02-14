@@ -1,0 +1,56 @@
+CCNx csrc/README for FreeBSD
+
+It is possible to build the c portions of CCNx 
+on FreeBSD 7 or newer without any software beyond
+that provided in the base system.
+
+It is recommended, though, that the expat package be
+installed, because the xml support in the base system
+is not intended for add-on software.
+
+pkg_add -rv expat
+
+Having libxml2 available allows the schema validations
+to run, but it is not required to build the code.
+
+pkg_add -rv libxml2
+
+To build the basic documentation, install asciidoc (this
+will end up installing python and bash as well).
+
+pkg_add -rv asciidoc
+
+If you want to build the full documentation, you'll need
+to install doxygen.
+
+pkg_add -rv doxygen
+
+For access to sources via git:
+pkg_add -rv git
+
+For FreeBSD 8.0-RELEASE-p2, after installing the above
+(except for git and doxygen) these were the installed packages:
+bash-4.0.33         The GNU Project's Bourne Again SHell
+expat-2.0.1         XML 1.0 parser written in C
+gettext-0.17_1      GNU gettext package
+libiconv-1.13.1     A character set conversion library
+libxml2-2.7.5       XML parser library for GNOME
+pkg-config-0.23_1   A utility to retrieve information about installed libraries
+python26-2.6.2_3    An interpreted object-oriented programming language
+
+To build the java portions as well, you will need to install either
+java/diablo-jdk16 or java/openjdk6, as well as devel/apache-ant.  Note that
+these have dependencies on many other ports, including xorg.
+
+If you run the tests in a FreeBSD jail, you will probably get a failure in
+test_spur_traffic, saying "more spur traffic than expected".  There are a
+at least two workarounds for this:
+    1. Bind to the jail's IP address when starting ccnd. For example,
+        export CCND_LISTEN_ON=203.0.113.42
+    before running the tests (replace 203.0.113.42 with the jail's IP address).
+OR
+    2. Associate the localhost name with the jail's IP
+       (in the jail's /etc/hosts file).
+        # We are inside a jail; use our single IP for localhost.
+        203.0.113.42		localhost
+

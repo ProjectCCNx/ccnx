@@ -1,0 +1,25 @@
+If you start with an Ubuntu 10.04 server distribution (rather than a
+desktop distribution), it is necessary to add the following:
+
+git-core (not necessary if you only get tarballs)
+openjdk-6-jdk
+gcc
+libssl-dev
+libexpat1-dev
+libpcap-dev
+libxml2-utils
+ant1.8
+
+This is also desirable:
+athena-jot
+
+For example:
+sudo apt-get install git-core python-dev libssl-dev libpcap-dev libexpat1-dev athena-jot
+
+After installing ubuntu-8.10-desktop-i386.iso and applying all updates,
+to build ccnd it is necessary to install these packages:
+
+libexpat1-dev
+ libxml-dev
+  libssl-dev
+  libpcap-dev
