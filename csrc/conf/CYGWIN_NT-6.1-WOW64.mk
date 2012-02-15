@@ -1,4 +1,4 @@
-# conf/CYGWIN_NT-6.1-WOW64.sh
+# conf/CYGWIN_NT-6.1-WOW64.mk
 # 
 # Part of the CCNx distribution.
 #
@@ -11,11 +11,6 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-echo ""
-echo "Configure and build getaddrinfo for CYGWIN"
-echo ""
-cd contrib
-tar xzf getaddrinfo-*.tar.gz
-cd getaddrinfo
-./configure
-make
+MORE_LDLIBS=../contrib/getaddrinfo/getaddrinfo.o
+PLATCFLAGS=-DNEED_GETADDRINFO_COMPAT -Wl,--enable-auto-import -I../contrib/getaddrinfo
+PCAP_PROGRAMS=
