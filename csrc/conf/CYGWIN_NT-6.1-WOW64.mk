@@ -11,6 +11,6 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-MORE_LDLIBS=../contrib/getaddrinfo/getaddrinfo.o
-PLATCFLAGS=-DNEED_GETADDRINFO_COMPAT -Wl,--enable-auto-import -I../contrib/getaddrinfo
+MORE_LDLIBS=
+PLATCFLAGS=
 PCAP_PROGRAMS=

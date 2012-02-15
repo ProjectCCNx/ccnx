@@ -12,10 +12,5 @@
 # FOR A PARTICULAR PURPOSE.
 #
 echo ""
-echo "Configure and build getaddrinfo for CYGWIN"
+echo "Skip inclusion of getaddrinfo for CYGWIN on CYGWIN_NT-6.1-WOW64"
 echo ""
-cd contrib
-tar xzf getaddrinfo-*.tar.gz
-cd getaddrinfo
-./configure
-make
