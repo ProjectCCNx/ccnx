@@ -70,6 +70,7 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 	* Bug 100445 ccnx.dtd missing Label elements (fixed in v0.4.2)
 	* Bug 100487 ccnx 0.4.0 does not install with /usr/local/<lib, bin,
 		include> missing
+	* Bug 100491 replace uses of vlc_thread_create/join with vlc_clone/join
 	* Bug 100495 Cleanup Dos Newline ^M for target v0.4.1 (fixed in v0.4.1)
 	* Feature 100498 A new DTAG needs to be added for Sync.
 	* Feature 100500 Add java support for sync component
@@ -145,10 +146,13 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 	* Bug 100638 ccnr sync options need to be renamed
 	* Feature 100640 ccnr could use option to limit processing of start-write
 		commands to those with a given scope
+	* Bug 100641 Bad length given to memcpy in IndexSorter_Add
 	* Bug 100644 Merge csrc/lib2 into csrc/lib
 	* Bug 100646 Android CCNx service control - screen layout is too large for Galaxy S
+	* Bug 100648 Java CCNx does not work out of the box on NetBSD 5
 	* Bug 100649 Increase timeout for end to end tests in build.xml
 	* Bug 100650 Problems with DeprecatedInterfaceTest
+	* Bug 100652 Windows 7 Cygwin build fails during build of ccndumppcap
 
 Changes between 0.4.1 and 0.4.2:
 --------------------------------
