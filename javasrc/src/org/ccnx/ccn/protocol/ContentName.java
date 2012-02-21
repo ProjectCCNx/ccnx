@@ -756,6 +756,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Warning: this returns the internal byte arrays used in the ContentName component representation, without copying them.
 	 * You must not modify the contents of these byte arrays, or you will break the immutability
 	 * of ContentNames, which can have many problematic consequences.
+	 * @deprecated Use an iterator instead.
 	 */
 	@Deprecated
 	public ArrayList<byte[]> components() {
@@ -800,14 +801,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 
 	/**
 	 * Get the i'th component, indexed from 0.
-	 * @param i
+	 * @param i index of component to fetch, first (leftmost) component = 0.
 	 * @return null if i is out of range.
 	 * Warning: this returns the internal byte array used in the ContentName component representation.
 	 * You must not modify the contents of this byte array, or you will break the immutability
 	 * of ContentNames, which can have many problematic consequences.
 	 */
 	public final byte[] component(int i) {
-		if ((null == _components) || (i >= _components.length)) return null;
+		if ((null == _components) || (i >= _components.length) || i < 0) return null;
 		return _components[i];
 	}
 
@@ -922,6 +923,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param str
 	 * @return
 	 * @throws MalformedContentNameStringException
+	 * @Deprecated Use {@link #fromURI(String)}
 	 */
 	@Deprecated
 	public static ContentName parse(String str) throws MalformedContentNameStringException {
@@ -1081,8 +1083,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
-	 * Return the first componentNumber components of this name as a new name.
-	 * @param componentNumber
+	 * Return the first componentCount components of this name as a new name.
+	 * @param componentCount
 	 * @return
 	 */
 	public ContentName cut(int componentCount) {
@@ -1100,8 +1102,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
+	 * Removes the first components from the name. Includes only components from position on.
 	 * @param position component number to include as first component in the new name.
-	 * Starting with component 0.
+	 * 0 includes all components, 1 includes from the second component on.
 	 * @return A new name using the components starting from position.
 	 */
 	public ContentName right(int position) {
@@ -1119,8 +1122,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
-	 * Slice the name off right before the given component
+	 * Slice the name off right before the given component.
 	 * @param component
+	 * @return a new name with only the leftmost components before component.
+	 * If component is not found in the name, then returns the whole name.
 	 */
 	public ContentName cut(byte [] component) {
 		int offset = this.containsWhere(component);
@@ -1209,6 +1214,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return CCNProtocolDTags.Name;
 	}
 
+	/**
+	 * @deprecated Use {@link #cut(int)}
+	 */
 	@Deprecated
 	public ContentName copy(int nameComponentCount) {
 		return cut(nameComponentCount);
