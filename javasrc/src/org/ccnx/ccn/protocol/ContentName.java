@@ -1143,7 +1143,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	/**
 	 * Slice the name off right before the given component
 	 * @param component In URI encoded form.
+	 * @deprecated Use {@link #cut(byte[])}
 	 */
+	@Deprecated
 	public ContentName cut(String component) throws URISyntaxException {
 		try {
 			byte[] parsed = Component.parseURI(component);
