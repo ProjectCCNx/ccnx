@@ -131,10 +131,10 @@ public class VersioningProfile implements CCNProfile {
 	 * Get latest version is going to exclude [B, 0xFD00FFFFFFFFFF, 0xFE000000000000,B],
 	 * so you need to be sure to use version numbers in those bounds.
 	 * <p>
-	 * @see #addVersion(ContentName, CCNTime)
+	 * @see #addVersion(ContentName, long)
 	 */
 	public static ContentName addVersion(ContentName name) {
-		return addVersion(name, CCNTime.now());
+		return new ContentName(name, CCNTime.now());
 	}
 	
 	public static byte [] timeToVersionComponent(CCNTime version) {
@@ -163,7 +163,7 @@ public class VersioningProfile implements CCNProfile {
 	 * first removes it.
 	 */
 	public static ContentName updateVersion(ContentName name, CCNTime version) {
-		return addVersion(cutTerminalVersion(name).first(), version);
+		return new ContentName(cutTerminalVersion(name).first(), version);
 	}
 
 	/**

@@ -360,7 +360,7 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getTimestamp()!=null);
 		//now call get names with prefix again to set interest flag
 		//have to use the version from the last response (or at least a version after the last write
-		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
+		interest = Interest.last(new ContentName(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
 		//the response should be null and the flag set
 		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse==null || neresponse.hasNames()==false);
@@ -372,7 +372,7 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getTimestamp()!=null);
 		
 		//need to reconstruct the interest again
-		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
+		interest = Interest.last(new ContentName(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
 		//another interest to set interest flag, response should be null
 		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);

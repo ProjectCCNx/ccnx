@@ -367,7 +367,7 @@ public class GroupManager {
 		} else {
 			// Assume one is there...
 			ContentName versionedPublicKeyName = 
-				VersioningProfile.addVersion(
+				new ContentName(
 						GroupAccessControlProfile.groupPublicKeyName(_groupStorage, groupFriendlyName),
 						privateKeyVersion);
 			privateKeyDirectory =

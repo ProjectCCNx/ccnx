@@ -786,7 +786,7 @@ public abstract class KeyManager {
 					// Make a self-referential key locator. Include the version, in case we are not using the key ID in the name.
 					// People wanting versionless key locators need to construct their own.
 					existingLocator = new KeyLocator(
-							new KeyName(VersioningProfile.addVersion(nameAndVersion.first(), keyVersion), signingKeyID));
+							new KeyName(new ContentName(nameAndVersion.first(), keyVersion), signingKeyID));
 					
 					if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
 						Log.finer(Log.FAC_KEYS, "Overriding constructed key locator of type KEY, making self-referential locator {0}", existingLocator);
