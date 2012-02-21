@@ -80,71 +80,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		public byte[] getComponent();
 	}
 
-	/**
-	 * Supports variations on argument parsing to implement the differences between
-	 * the new {@link ContentName#ContentName(Object...)} constructor, and the older
-	 * {@link ContentName#fromNative(Object...)} and {@link ContentName#fromURI(Object...)}
-	 * APIs.
-	 */
-	static abstract class StringParser {
-		/**
-		 * @return Must return a byte[] or a byte[][]
-		 */
-		public abstract Object parse1st(String s) throws MalformedContentNameStringException;
-		/**
-		 * @return Must return a byte[] or a byte[][]
-		 */
-		public abstract Object parseRest(String s) throws MalformedContentNameStringException, Component.DotDot, URISyntaxException;
-	}
-
-	/**
-	 * When parsing string elements in a ContentName constructor
-	 * always interpret the String as a single raw UTF8 component.
-	 */
-	public static final StringParser constructorStringParser = new StringParser(){
-		@Override
-		public byte[] parse1st(String s) {
-			return s.getBytes();
-		}
-		@Override
-		public byte[] parseRest(String s) {
-			return s.getBytes();
-		}
-	};
-
-	/**
-	 * When parsing string elements passed to {@link ContentName#fromNative(Object...)}
-	 * interpret them like the old fromNative static methods - a String in the first
-	 * argument can be a path, in other arguments is always a single component.
-	 */
-	public static final StringParser nativeStringParser = new StringParser(){
-		@Override
-		public byte[][] parse1st(String s) throws MalformedContentNameStringException {
-			return fromNative(s)._components;
-		}
-		@Override
-		public byte[] parseRest(String s) {
-			return Component.parseNative(s);
-		}
-	};
-
-	/**
-	 * When parsing string elements passed to {@link ContentName#fromURI(Object...)}
-	 * interpret them like the old fromURI static methods - a String in the first
-	 * argument can be a path, in other arguments is always a single component.
-	 */
-	public static final StringParser uriStringParser = new StringParser(){
-		@Override
-		public byte[][] parse1st(String s) throws MalformedContentNameStringException {
-			return fromURI(s)._components;
-		}
-		@Override
-		public byte[] parseRest(String s) throws Component.DotDot, URISyntaxException {
-			// TODO: should parse multi component strings
-			return Component.parseURI(s);
-		}
-	};
-
 	@Deprecated
 	protected ContentName(ArrayList<byte[]> components) {
 		_components = components.toArray(new byte[components.size()][]);
@@ -161,31 +96,55 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
-	 * Varargs name builder, Strings interpreted as Native.
-	 * @see #builder(StringParser, Object[])
-	 */
-	public static ContentName fromNative(Object... args) throws MalformedContentNameStringException {
-		return new ContentName(builder(nativeStringParser, args));
-	}
-
-	/**
-	 * Varargs name builder, Strings interpreted as URI.
-	 * @see #builder(StringParser, Object[])
-	 */
-	public static ContentName fromURI(Object... args) throws MalformedContentNameStringException {
-		return new ContentName(builder(uriStringParser, args));
-	}
-
-	/**
 	 * Varargs name builder, Strings always represent a single component, interpreted as UTF8.
-	 * @see #builder(StringParser, Object[])
+	 * Varargs name builder. Convenience method to allow ContentNames to be constructed from multiple parts.
+	 * @param stringParser method to call to parse String arguments
+	 * @param args Any number of null, byte[], String, ContentNameProvider or ComponentProvider arguments
+	 * @return an ArrayList of components built by assembling components from all the arguments passed in.
+	 * @throws MalformedContentNameStringException if a String argument does not parse correctly when passed to stringParser
 	 */
 	public ContentName(Object... args) {
-		try {
-			_components = builder(constructorStringParser, args);
-		} catch (MalformedContentNameStringException e) {
-			// constructorStringParser won't throw an exception, this should never happen.
-			throw new RuntimeException(e);
+		int componentCount = 0;
+
+		// first make 1 pass through the arguments validating them,
+		// converting them to either byte[] or byte[][]
+		// and determining the final component count.
+		for(int i = 0; i < args.length; i++) {
+			Object arg = args[i];
+			if (arg instanceof byte[]) {
+				// incoming byte[] needs to be cloned to ensure ContentName's immutability
+				byte[] component = (byte[]) arg;
+				componentCount++;
+				args[i] = component.clone();
+			} else if (arg instanceof ContentNameProvider) {
+				ContentName name = ((ContentNameProvider) arg).getContentName();
+				componentCount += name._components.length;
+				args[i] = name._components;
+			} else if (arg instanceof String) {
+				String str = (String) arg;
+				args[i] = str.getBytes();
+				componentCount ++;
+			} else if (arg instanceof ContentName.ComponentProvider) {
+				ContentName.ComponentProvider p = (ContentName.ComponentProvider) arg;
+				componentCount++;
+				args[i] = p.getComponent();
+			} else if (arg != null)
+				throw new IllegalArgumentException("Argument " + i+1 + " is a " + arg.getClass().getSimpleName());
+		}
+
+		// allocate an array for the components
+		_components = new byte[componentCount][];
+
+		// and collect the components into the array
+		// now the args must be either byte[], byte[][] or null.
+		int c = 0;
+		for(Object arg : args) {
+			if (arg instanceof byte[]) {
+				_components[c++] = (byte[]) arg;
+			} else if (arg != null) {
+				for(byte[] component : (byte[][]) arg)
+					_components[c++] = component;
+			}
 		}
 	}
 
@@ -242,70 +201,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		_components = new byte[parent._components.length+1][];
 		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
 		_components[parent._components.length] = cprov.getComponent();
-	}
-
-	/**
-	 * Varargs name builder. Convenience method to allow ContentNames to be constructed from multiple parts.
-	 * @param stringParser method to call to parse String arguments
-	 * @param args Any number of null, byte[], String, ContentNameProvider or ComponentProvider arguments
-	 * @return an ArrayList of components built by assembling components from all the arguments passed in.
-	 * @throws MalformedContentNameStringException if a String argument does not parse correctly when passed to stringParser
-	 * @see #ContentName(Object... args)
-	 * @see #fromNative(Object... args)
-	 * @see #fromURL(Object... args)
-	 */
-	protected static byte[][] builder(StringParser stringParser, Object[] args) throws MalformedContentNameStringException {
-		int componentCount = 0;
-
-		// first make 1 pass through the arguments validating them,
-		// converting them to either byte[] or byte[][]
-		// and determining the final component count.
-		boolean first = true;
-		for(int i = 0; i < args.length; i++) {
-			Object arg = args[i];
-			if (arg instanceof byte[]) {
-				// incoming byte[] needs to be cloned to ensure ContentName's immutability
-				byte[] component = (byte[]) arg;
-				componentCount++;
-				args[i] = component.clone();
-			} else if (arg instanceof ContentNameProvider) {
-				ContentName name = ((ContentNameProvider) arg).getContentName();
-				componentCount += name._components.length;
-				args[i] = name._components;
-			} else if (arg instanceof String) {
-				String str = (String) arg;
-				try {
-					args[i] = first ? stringParser.parse1st(str) : stringParser.parseRest(str);
-					componentCount += (args[i] instanceof byte[][]) ? ((byte[][])args[i]).length : 1;
-				} catch (Component.DotDot e) {
-					// TODO Auto-generated catch block
-				} catch (URISyntaxException e) {
-					// TODO Auto-generated catch block
-				}
-			} else if (arg instanceof ContentName.ComponentProvider) {
-				ContentName.ComponentProvider p = (ContentName.ComponentProvider) arg;
-				componentCount++;
-				args[i] = p.getComponent();
-			} else if (arg != null)
-				throw new IllegalArgumentException("Argument " + i+1 + " is a " + arg.getClass().getSimpleName());
-			first = false;
-		}
-
-		// allocate an array for the components
-		byte[][] components = new byte[componentCount][];
-
-		// and collect the components into the array
-		// now the args must be either byte[], byte[][] or null.
-		int c = 0;
-		for(Object arg : args) {
-			if (arg instanceof byte[]) {
-				components[c++] = (byte[]) arg;
-			} else if (arg != null) {
-				for(byte[] component : (byte[][]) arg)
-					components[c++] = component;
-			}
-		}
-		return components;
 	}
 
 	public final ContentName getContentName() {
@@ -716,7 +611,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
-	 * @deprecated Use {@link #fromNative(Object...)} instead.
+	 * @deprecated Use {@link #ContentName(Object...)}.
 	 */
 	@Deprecated
 	public static ContentName fromNative(ContentName parent, String [] parts) {
