@@ -17,7 +17,8 @@
 
 package org.ccnx.ccn.profiles.repo;
 
-import org.ccnx.ccn.profiles.CommandMarker;
+import static org.ccnx.ccn.profiles.CommandMarker.*;
+
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 
@@ -27,24 +28,24 @@ import org.ccnx.ccn.protocol.Interest;
 public class RepositoryOperations {
 	
 	public static boolean isStartWriteOperation(Interest interest) {
-		return interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes());
+		return interest.name().contains(COMMAND_MARKER_REPO_START_WRITE);
 	}
 
 	public static boolean isNameEnumerationOperation(Interest interest) {
-		return interest.name().contains(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+		return interest.name().contains(COMMAND_MARKER_BASIC_ENUMERATION);
 	}
 
 	public static boolean isCheckedWriteOperation(Interest interest) {
-		return interest.name().contains(CommandMarker.COMMAND_MARKER_REPO_CHECKED_START_WRITE.getBytes());
+		return interest.name().contains(COMMAND_MARKER_REPO_CHECKED_START_WRITE);
 	}
 	
 	public static boolean isBulkImportOperation(Interest interest) {
-		int i = CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.findMarker(interest.name());
+		int i = COMMAND_MARKER_REPO_ADD_FILE.findMarker(interest.name());
 		return i >= 0;
 	}
 	
 	public static int getCheckedWriteMarkerPos(Interest interest) {
-		return interest.name().whereLast(CommandMarker.COMMAND_MARKER_REPO_CHECKED_START_WRITE.getBytes());
+		return interest.name().whereLast(COMMAND_MARKER_REPO_CHECKED_START_WRITE);
 	}
 
 	public static boolean verifyCheckedWrite(Interest interest) {

@@ -31,7 +31,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  */
 public class KeyProfile implements CCNProfile {
 	
-	public static final byte [] KEY_NAME_COMPONENT = Component.parseNative("KEY");
+	public static final Component KEY_NAME = new Component("KEY");
 	public static final byte [] KEYS_NAME_COMPONENT = Component.parseNative("KEYS");
 	
 	public static final CommandMarker KEY_NAME_COMPONENT_MARKER = 
@@ -98,7 +98,7 @@ public class KeyProfile implements CCNProfile {
 	 * @return the resulting name
 	 */
 	public static ContentName keyName(ContentName parent, PublisherPublicKeyDigest keyToName) {	
-		return new ContentName(parent, keyIDToNameComponent(keyToName));
+		return new ContentName(parent, keyToName);
 	}
 	
 	/**

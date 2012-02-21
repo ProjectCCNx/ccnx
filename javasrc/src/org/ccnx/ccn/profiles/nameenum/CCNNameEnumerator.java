@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.profiles.nameenum;
 
+import static org.ccnx.ccn.profiles.CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -354,7 +356,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 			Log.info("Registered Prefix: {0}", prefix);
 
 			ContentName prefixMarked =
-				new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+				new ContentName(prefix, COMMAND_MARKER_BASIC_ENUMERATION);
 
 			//we have minSuffixComponents to account for sig, version, seg and digest
 			Interest pi = Interest.constructInterest(prefixMarked, null, null, null, 4, null);
@@ -417,7 +419,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 
 	public Interest handleContent(ContentObject c, Interest interest) {
 
-		if (interest.name().contains(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes())) {
+		if (interest.name().contains(COMMAND_MARKER_BASIC_ENUMERATION)) {
 			//the NEMarker is in the name...  good!
 		} else {
 			//COMMAND_MARKER_BASIC_ENUMERATION missing...  we have a problem
@@ -457,14 +459,15 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 		if (Log.isLoggable(Level.FINER)) {
 			Log.finer("got an interest: {0}",interest.name());
 		}
-		name = interest.name().clone();
+		name = interest.name();
 		nem = new NameEnumerationResponseMessage();
 		//Verify NameEnumeration Marker is in the name
-		if (!name.contains(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes())) {
+		int cmbe = name.containsWhere(COMMAND_MARKER_BASIC_ENUMERATION);
+		if (cmbe < 0) {
 			//Skip...  we don't handle these
 		} else {
-			name = name.cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
-			responseName = new ContentName(name, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+			name = name.cut(cmbe);
+			responseName = new ContentName(name, COMMAND_MARKER_BASIC_ENUMERATION);
 
 			boolean skip = false;
 

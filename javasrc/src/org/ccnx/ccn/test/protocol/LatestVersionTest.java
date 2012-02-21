@@ -599,7 +599,7 @@ public class LatestVersionTest {
 	
 	private void checkResponder() throws InterruptedException, Error {
 		try {
-			ContentName test = ContentName.fromNative(baseName, "testResponder");
+			ContentName test = new ContentName(baseName, "testResponder");
 			ContentObject co = ContentObject.buildContentObject(SegmentationProfile.segmentName(VersioningProfile.addVersion(test), 0), "test content responder".getBytes(), null, null, SegmentationProfile.getSegmentNumberNameComponent(0));
 			responseObjects.add(co);
 			Interest i = new Interest(co.name());

@@ -291,7 +291,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			Interest interest = null;
 
 			if(_basePipelineName == null) {
-				_basePipelineName = _baseName.clone();
+				_basePipelineName = _baseName;
 			}
 
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: BaseName for pipeline: {0} base name: {1}", _basePipelineName, _baseName);
@@ -1066,7 +1066,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 
 	private void setPipelineName(ContentName n) {
 		//we need to set the base name for pipelining...  we might not have had the version (or the full name)
-		_basePipelineName = n.clone();
+		_basePipelineName = n;
 		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: setting _basePipelineName {0}", _basePipelineName);
 

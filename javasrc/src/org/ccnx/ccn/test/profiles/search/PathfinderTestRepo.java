@@ -63,7 +63,7 @@ public class PathfinderTestRepo {
 
 		// Make the content
 		ContentName testRoot = testHelper.getTestNamespace("testPathfinder");
-		ContentName startingPoint = ContentName.fromNative(testRoot, new String[]{"This", "is", "a", "longer", "path", "than", "necessary."});
+		ContentName startingPoint = new ContentName(testRoot, "This", "is", "a", "longer", "path", "than", "necessary.");
 		
 		CCNStringObject targetObject = new CCNStringObject(
 				new ContentName(startingPoint.parent().parent().parent(), TARGET_POSTFIX_NAME), "The target!", SaveType.REPOSITORY, writeHandle);

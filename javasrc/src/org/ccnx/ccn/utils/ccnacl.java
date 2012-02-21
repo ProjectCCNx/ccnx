@@ -37,8 +37,8 @@ import org.ccnx.ccn.protocol.ContentName;
 
 public class ccnacl {
 
-	private static ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
-	private static ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
+	private static ContentName userStorage = new ContentName(UserConfiguration.defaultNamespace(), "Users");
+	private static ContentName groupStorage = new ContentName(UserConfiguration.defaultNamespace(), "Groups");
 	
 	/**
 	 * @param args

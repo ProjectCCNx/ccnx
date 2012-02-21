@@ -78,9 +78,9 @@ public class MultiResponderNameEnumerationTest implements BasicNameEnumeratorLis
 			
 			_prefix = helper.getClassNamespace();
 			
-			_class = ContentName.fromNative(_prefix, "classResponder");
-			_class2 = ContentName.fromNative(_prefix, "classResponder2");
-			_repo = ContentName.fromNative(_prefix, "repoResponder");
+			_class = new ContentName(_prefix, "classResponder");
+			_class2 = new ContentName(_prefix, "classResponder2");
+			_repo = new ContentName(_prefix, "repoResponder");
 			
 			updated = false;
 			

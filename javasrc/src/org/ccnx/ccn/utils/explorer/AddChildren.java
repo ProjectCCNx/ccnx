@@ -81,7 +81,7 @@ public class AddChildren implements Runnable {
 				temp = (DefaultMutableTreeNode) parentNode.getChildAt(i);
 				if (temp.getUserObject() instanceof IconData) {
 					IconData id = (IconData) temp.getUserObject();
-					ContentName childName = ContentName.fromNative(new ContentName(), ((Name) id.m_data).name);
+					ContentName childName = new ContentName(((Name) id.m_data).name);
 					Log.finer(" " + childName);
 				}
 			}
@@ -143,7 +143,7 @@ public class AddChildren implements Runnable {
 						} else {
 							if (temp.getUserObject() instanceof IconData) {
 								IconData id = (IconData) temp.getUserObject();
-								ContentName nodeName = ContentName.fromNative(new ContentName(), ((Name) id.m_data).name);
+								ContentName nodeName = new ContentName(((Name) id.m_data).name);
 
 								// check if already there...
 								if (cn.compareTo(nodeName) == 0) {
@@ -177,7 +177,7 @@ public class AddChildren implements Runnable {
 				temp = (DefaultMutableTreeNode) parentNode.getChildAt(i);
 				if (temp.getUserObject() instanceof IconData) {
 					IconData id = (IconData) temp.getUserObject();
-					ContentName childName = ContentName.fromNative(new ContentName(), ((Name) id.m_data).name);
+					ContentName childName = new ContentName(((Name) id.m_data).name);
 					Log.finer(" " + childName);
 				}
 			}

@@ -34,7 +34,7 @@ public class NetworkTestExtra extends CCNTestBase implements CCNContentHandler {
 	
 	@Test
 	public void testThreadOverflow() {
-		ContentName name = ContentName.fromNative(testHelper.getClassNamespace(), "overflow-test");
+		ContentName name = new ContentName(testHelper.getClassNamespace(), "overflow-test");
 		int i = 0;
 		while (true) {
 			ContentObject obj = ContentObject.buildContentObject(name, ("test-" + i).getBytes());

@@ -106,7 +106,7 @@ public class CreateUserData {
 				friendlyName += Integer.toString(1 + i/userNames.length);
 			}
 
-			childName = ContentName.fromNative(userKeyStorePrefix, friendlyName);
+			childName = new ContentName(userKeyStorePrefix, friendlyName);
 			Log.info("Loading user: " + friendlyName + " from " + childName);
 			
 			if (storeInRepo) {
@@ -342,7 +342,7 @@ public class CreateUserData {
 		int i=0;
 		for (String friendlyName: _userKeyManagers.keySet()) {
 			CCNHandle userHandle = getHandleForUser(friendlyName);
-			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
+			ContentName keyName = new ContentName(userNamespace, friendlyName);
 			results[i++] = userHandle.keyManager().publishSelfSignedKeyToRepository(
 					keyName, userHandle.keyManager().getDefaultPublicKey(),
 					userHandle.keyManager().getDefaultKeyID(), SystemConfiguration.getDefaultTimeout());

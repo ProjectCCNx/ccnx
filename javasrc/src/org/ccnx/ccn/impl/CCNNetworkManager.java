@@ -17,6 +17,10 @@
 
 package org.ccnx.ccn.impl;
 
+import static org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile.CCND_SERVICE_NAME;
+import static org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile.localServiceName;
+import static org.ccnx.ccn.profiles.security.KeyProfile.KEY_NAME;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -45,8 +49,6 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.profiles.ccnd.CCNDaemonException;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
 import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager.ForwardingEntry;
-import org.ccnx.ccn.profiles.context.ServiceDiscoveryProfile;
-import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
@@ -1369,7 +1371,7 @@ public class CCNNetworkManager implements Runnable {
 
 	protected PublisherPublicKeyDigest fetchCCNDId(CCNNetworkManager mgr, KeyManager keyManager) throws IOException {
 		try {
-			ContentName serviceKeyName = new ContentName(ServiceDiscoveryProfile.localServiceName(ServiceDiscoveryProfile.CCND_SERVICE_NAME), KeyProfile.KEY_NAME_COMPONENT);
+			ContentName serviceKeyName = new ContentName(localServiceName(CCND_SERVICE_NAME), KEY_NAME);
 			Interest i = new Interest(serviceKeyName);
 			i.scope(1);
 			ContentObject c = mgr.get(i, SystemConfiguration.CCNDID_DISCOVERY_TIMEOUT);

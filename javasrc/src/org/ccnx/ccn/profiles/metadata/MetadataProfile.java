@@ -66,7 +66,7 @@ public class MetadataProfile implements CCNProfile {
 	 * @return metadata path for base file
 	 */
 	public static ContentName metadataName(ContentName baseName) {
-		return new ContentName(baseName, METADATA_MARKER.getBytes());
+		return new ContentName(baseName, METADATA_MARKER);
 	}
 	
 	/**
@@ -215,7 +215,7 @@ public class MetadataProfile implements CCNProfile {
 		if (SegmentationProfile.isSegment(name)) {
 			name = SegmentationProfile.segmentRoot(name);
 		}
-		return new ContentName(name, METADATA_MARKER.getBytes(), MetadataProfile.HEADER_NAME);
+		return new ContentName(name, METADATA_MARKER, MetadataProfile.HEADER_NAME);
 	}
 	
 	public static ContentName oldHeaderName(ContentName name) {

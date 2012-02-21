@@ -49,8 +49,8 @@ public class RepoTestBase extends LibraryTestBase {
 	protected static String _repoName = "TestRepository";
 	protected static String _globalPrefix = "/parc.com/csl/ccn/repositories/" + _repoName;
 	protected static File _fileTest;
-	protected static ContentName testprefix = ContentName.fromNative(new String[]{"repoTest","pubidtest"});
-	protected static ContentName keyprefix = ContentName.fromNative(testprefix,"keys");
+	protected static ContentName testprefix = new ContentName("repoTest","pubidtest");
+	protected static ContentName keyprefix = new ContentName(testprefix,"keys");
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {

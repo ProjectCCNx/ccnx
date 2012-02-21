@@ -31,6 +31,6 @@ public class CommonParameters {
 	
 	public static boolean local = false;
 	
-	public static ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
-	public static ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
+	public static ContentName userStorage = new ContentName(UserConfiguration.defaultNamespace(), "Users");
+	public static ContentName groupStorage = new ContentName(UserConfiguration.defaultNamespace(), "Groups");
 }

@@ -46,6 +46,7 @@ import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
 import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.NodeKey;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.PublisherID;
@@ -86,10 +87,10 @@ import org.ccnx.ccn.protocol.PublisherID;
  */
 public class KeyDirectory extends EnumeratedNameList {
 
-	public static final byte[] SUPERSEDED_MARKER = "SupersededBy".getBytes();
-	public static final byte[] PREVIOUS_KEY_NAME = "PreviousKey".getBytes();
-	public static final byte[] GROUP_PUBLIC_KEY_NAME = "Key".getBytes();
-	public static final byte[] GROUP_PRIVATE_KEY_NAME = "PrivateKey".getBytes();
+	public static final Component SUPERSEDED_MARKER = new Component("SupersededBy");
+	public static final Component PREVIOUS_KEY = new Component("PreviousKey");
+	public static final Component GROUP_PUBLIC_KEY = new Component("Key");
+	public static final Component GROUP_PRIVATE_KEY = new Component("PrivateKey");
 
 	protected static final Comparator<byte[]> byteArrayComparator = new ByteArrayCompare();
 
@@ -292,7 +293,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public static ContentName getSupersededBlockNameForKey(ContentName versionedKeyName) {
-		return ContentName.fromNative(versionedKeyName, SUPERSEDED_MARKER);
+		return new ContentName(versionedKeyName, SUPERSEDED_MARKER);
 	}
 
 	/**
@@ -362,7 +363,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
-			b = _otherNames.contains(PREVIOUS_KEY_NAME);
+			b = _otherNames.contains(PREVIOUS_KEY);
 		}finally{
 			_otherNamesLock.readLock().unlock();
 		}
@@ -374,7 +375,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public static ContentName getPreviousKeyBlockName(ContentName keyDirectoryName) {
-		return ContentName.fromNative(keyDirectoryName, PREVIOUS_KEY_NAME);
+		return new ContentName(keyDirectoryName, PREVIOUS_KEY);
 	}
 
 	/**
@@ -420,7 +421,7 @@ public class KeyDirectory extends EnumeratedNameList {
 		boolean b;
 		try{
 			_otherNamesLock.readLock().lock();
-			b = _otherNames.contains(GROUP_PRIVATE_KEY_NAME);
+			b = _otherNames.contains(GROUP_PRIVATE_KEY);
 		}finally{
 			_otherNamesLock.readLock().unlock();
 		}
@@ -428,7 +429,7 @@ public class KeyDirectory extends EnumeratedNameList {
 	}
 
 	public ContentName getPrivateKeyBlockName() {
-		return ContentName.fromNative(_namePrefix, GROUP_PRIVATE_KEY_NAME);
+		return new ContentName(_namePrefix, GROUP_PRIVATE_KEY);
 	}
 
 	/**

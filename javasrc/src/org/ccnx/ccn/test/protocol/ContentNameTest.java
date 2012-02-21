@@ -293,12 +293,12 @@ public class ContentNameTest {
 		String [] testStringParts = new String[]{baseName,subName1,document1};
 		
 		// as URI format
-		name = ContentName.fromURI(testStringParts);
+		name = ContentName.fromURI((Object[]) testStringParts);
 		name2 = ContentName.fromURI(testString);
 		assertEquals(name, name2);
 		
 		// as native Java
-		name = ContentName.fromNative(testStringParts);
+		name = new ContentName((Object[]) testStringParts);
 		name2 = ContentName.fromNative(testString);
 		assertEquals(name, name2);
 		
@@ -380,10 +380,10 @@ public class ContentNameTest {
 		assertEquals(child.cut(document1.getBytes()), parent);
 		assertTrue(DataUtils.arrayEquals(child.component(2), document1.getBytes()));
 		
-		child = ContentName.fromNative(parent, childComps[0], childComps[1]);
+		child = new ContentName(parent, childComps[0], childComps[1]);
 		System.out.println("Child is (native): " + child);
 		assertNotNull(child);
-		ContentName child2 = ContentName.fromNative(parent, childComps);
+		ContentName child2 = ContentName.fromNative(parent, document1, document2);
 		System.out.println("Child2 is (native): " + child2);
 		assertNotNull(child2);
 		assertEquals(child, child2);

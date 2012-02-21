@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.test.repo;
 
+import static org.ccnx.ccn.profiles.CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION;
+
 import java.io.File;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -330,19 +332,19 @@ public class RFSTest extends RepoTestBase {
 
 		//building names for tests
 		ContentName nerpre = ContentName.fromNative("/testFastNameEnumeration");
-		ContentName ner = new ContentName(nerpre, "name1".getBytes());
+		ContentName ner = new ContentName(nerpre, "name1");
 		ContentName nername1 = ContentName.fromNative("/name1");
-		ContentName ner2 = new ContentName(nerpre, "name2".getBytes());
+		ContentName ner2 = new ContentName(nerpre, "name2");
 		ContentName nername2 = ContentName.fromNative("/name2");
-		ContentName ner3 = new ContentName(nerpre, "longer".getBytes());
-		ner3 = new ContentName(ner3, "name3".getBytes());
+		ContentName ner3 = new ContentName(nerpre, "longer");
+		ner3 = new ContentName(ner3, "name3");
 		ContentName nername3 = ContentName.fromNative("/longer");
 		NameEnumerationResponse neresponse = null;
 
 		//send initial interest to make sure namespace is empty
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
-		Interest interest = new Interest(new ContentName(nerpre, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()));
+		Interest interest = new Interest(new ContentName(nerpre, COMMAND_MARKER_BASIC_ENUMERATION));
 		ContentName responseName = new ContentName();
 		Log.info("RFSTEST: Name enumeration prefix:{0}", interest.name());
 		neresponse = repo.getNamesWithPrefix(interest, responseName);

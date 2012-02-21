@@ -56,24 +56,27 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public static final String ORIGINAL_SCHEME = "ccn:";
 
 	public static final String SEPARATOR = "/";
-	public static final ContentName ROOT = new ContentName(0, (ArrayList<byte []>)null);
+	public static final ContentName ROOT = new ContentName( new byte[][]{ } );
 
-	protected ArrayList<byte []>  _components;
-	public static class DotDotComponent extends Exception { // Need to strip off a component
-		private static final long serialVersionUID = 4667513234636853164L;
-	}; 
-	static final char HEX_DIGITS[] = {
-		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-	};
-
+	protected byte[][]  _components;
 	// Constructors
+	/**
+	 * This constructor will become private in future. Today it is used together with {@link #decode(XMLDecoder)}
+	 * to decode a ContentName. In the future there will be a XMLDecoder constructor used for decoding.
+	 */
 	public ContentName() {
-		this(0, (ArrayList<byte[]>)null);
 	}
 
 	// support for name builder methods
 	static abstract class StringParser {
-		public abstract ArrayList<byte[]> parse(String s) throws MalformedContentNameStringException;
+		/**
+		 * @return Must return a byte[] or a byte[][]
+		 */
+		public abstract Object parse1st(String s) throws MalformedContentNameStringException;
+		/**
+		 * @return Must return a byte[] or a byte[][]
+		 */
+		public abstract Object parseRest(String s) throws MalformedContentNameStringException, Component.DotDot, URISyntaxException;
 	}
 	/**
 	 * Allows a class to be included as an argument to a ContentName builder.
@@ -82,38 +85,50 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public interface ComponentProvider {
 		/**
 		 * @return Fetches a component. The byte array that is returned must be immutable - i.e. never get changed.
-		 * If there is any risk the byte array may be changed you must return a new copy of it.
+		 * If there is any risk the byte array you have may be changed you must return a new copy of it.
 		 */
 		public byte[] getComponent();
 	}
-	
+
 	/**
 	 * When parsing string elements in a ContentName constructor
 	 * always interpret the String as a single raw UTF8 component.
 	 */
-	private static final StringParser constructorStringParser = new StringParser(){
+	public static final StringParser constructorStringParser = new StringParser(){
 		@Override
-		public ArrayList<byte[]> parse(String s) {
-			ArrayList<byte[]> components = new ArrayList<byte[]>(1);
-			components.add(s.getBytes());
-			return components;
+		public byte[] parse1st(String s) {
+			return s.getBytes();
+		}
+		@Override
+		public byte[] parseRest(String s) {
+			return s.getBytes();
 		}
 	};
-	private static final StringParser nativeStringParser = new StringParser(){
+	public static final StringParser nativeStringParser = new StringParser(){
 		@Override
-		public ArrayList<byte[]> parse(String s) throws MalformedContentNameStringException {
+		public byte[][] parse1st(String s) throws MalformedContentNameStringException {
 			return fromNative(s)._components;
 		}
-	};
-	private static final StringParser uriStringParser = new StringParser(){
 		@Override
-		public ArrayList<byte[]> parse(String s) throws MalformedContentNameStringException {
+		public byte[] parseRest(String s) {
+			return Component.parseNative(s);
+		}
+	};
+	public static final StringParser uriStringParser = new StringParser(){
+		@Override
+		public byte[][] parse1st(String s) throws MalformedContentNameStringException {
 			return fromURI(s)._components;
+		}
+		@Override
+		public byte[] parseRest(String s) throws Component.DotDot, URISyntaxException {
+			// TODO: should parse multi component strings
+			return Component.parseURI(s);
 		}
 	};
 
+	@Deprecated
 	protected ContentName(ArrayList<byte[]> components) {
-		_components = components;
+		_components = components.toArray(new byte[components.size()][]);
 	}
 
 	/**
@@ -123,8 +138,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * its use after this call.
 	 */
 	public ContentName(byte[] component) {
-		_components = new ArrayList<byte[]>(1);
-		_components.add(component.clone());
+		_components = new byte[][] { component.clone() };
 	}
 
 	/**
@@ -155,55 +169,121 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			throw new RuntimeException(e);
 		}
 	}
-	
+
+	/*
+	 * Varargs calls pay a small speed penalty, since the args have to be wrapped up
+	 * in an Object[], costing a heap allocation. A very common case is taking a
+	 * ContentName and adding a single item to it. For this case explicit non varargs
+	 * methods are provided, to avoid the speed & allocation penalty of the varargs call.
+	 */
+	public ContentName(ContentName parent, byte[] component) {
+		if (parent == null)
+			parent = ROOT;
+		if (component == null) {
+			_components = parent._components;
+			return;
+		}
+		byte[][] _components = new byte[parent._components.length+1][];
+		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
+		_components[parent._components.length] = component;
+	}
+
+	public ContentName(ContentName parent, ContentNameProvider cnp) {
+		if (parent == null)
+			parent = ROOT;
+		if (cnp == null) {
+			_components = parent._components;
+			return;
+		}
+		ContentName cn = cnp.getContentName();
+		byte[][] _components = new byte[parent._components.length+cn._components.length][];
+		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
+		System.arraycopy(cn._components, 0, _components, parent._components.length, cn._components.length);
+	}
+
+	public ContentName(ContentName parent, String component) {
+		if (parent == null)
+			parent = ROOT;
+		if (component == null) {
+			_components = parent._components;
+			return;
+		}
+		byte[][] _components = new byte[parent._components.length+1][];
+		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
+		_components[parent._components.length] = component.getBytes();
+	}
+
+	public ContentName(ContentName parent, ComponentProvider cprov) {
+		if (parent == null)
+			parent = ROOT;
+		if (cprov == null) {
+			_components = parent._components;
+			return;
+		}
+		byte[][] _components = new byte[parent._components.length+1][];
+		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
+		_components[parent._components.length] = cprov.getComponent();
+	}
+
 	/**
 	 * Varargs name builder. Convenience method to allow ContentNames to be constructed from multiple parts.
 	 * @param stringParser method to call to parse String arguments
-	 * @param args Any number of byte[], String, ContentNameProvider or ComponentProvider arguments
-	 * @return an ArrayList of components built by taking components from all the arguments passed in.
+	 * @param args Any number of null, byte[], String, ContentNameProvider or ComponentProvider arguments
+	 * @return an ArrayList of components built by assembling components from all the arguments passed in.
 	 * @throws MalformedContentNameStringException if a String argument does not parse correctly when passed to stringParser
 	 * @see #ContentName(Object... args)
 	 * @see #fromNative(Object... args)
 	 * @see #fromURL(Object... args)
 	 */
-	@SuppressWarnings("unchecked")
-	protected static ArrayList<byte[]> builder(StringParser stringParser, Object[] args) throws MalformedContentNameStringException {
+	protected static byte[][] builder(StringParser stringParser, Object[] args) throws MalformedContentNameStringException {
 		int componentCount = 0;
 
-		// first make 1 pass through the arguments validating them and determining the final component count
+		// first make 1 pass through the arguments validating them,
+		// converting them to either byte[] or byte[][]
+		// and determining the final component count.
+		boolean first = true;
 		for(int i = 0; i < args.length; i++) {
 			Object arg = args[i];
 			if (arg instanceof byte[]) {
 				// incoming byte[] needs to be cloned to ensure ContentName's immutability
-				byte[] component = (byte[]) args[i];
+				byte[] component = (byte[]) arg;
 				componentCount++;
 				args[i] = component.clone();
 			} else if (arg instanceof ContentNameProvider) {
 				ContentName name = ((ContentNameProvider) arg).getContentName();
-				componentCount += name.count();
+				componentCount += name._components.length;
 				args[i] = name._components;
 			} else if (arg instanceof String) {
-				ArrayList<byte[]> components = stringParser.parse((String) arg);
-				args[i] = components;
-				componentCount += components.size();
+				String str = (String) arg;
+				try {
+					args[i] = first ? stringParser.parse1st(str) : stringParser.parseRest(str);
+					componentCount += (args[i] instanceof byte[][]) ? ((byte[][])args[i]).length : 1;
+				} catch (Component.DotDot e) {
+					// TODO Auto-generated catch block
+				} catch (URISyntaxException e) {
+					// TODO Auto-generated catch block
+				}
 			} else if (arg instanceof ContentName.ComponentProvider) {
 				ContentName.ComponentProvider p = (ContentName.ComponentProvider) arg;
 				componentCount++;
 				args[i] = p.getComponent();
-			} else
+			} else if (arg != null)
 				throw new IllegalArgumentException("Argument " + i+1 + " is a " + arg.getClass().getSimpleName());
+			first = false;
 		}
 
 		// allocate an array for the components
-		ArrayList<byte[]> components = new ArrayList<byte[]>(args.length);
+		byte[][] components = new byte[componentCount][];
 
 		// and collect the components into the array
-		for(int i = 0; i < args.length; i++) {
-			Object arg = args[i];
+		// now the args must be either byte[], byte[][] or null.
+		int c = 0;
+		for(Object arg : args) {
 			if (arg instanceof byte[]) {
-				components.add((byte[]) arg);
-			} else {
-				components.addAll((ArrayList<byte[]>) arg);
+				components[c++] = (byte[]) arg;
+			} else if (arg != null) {
+				for(byte[] component : (byte[][]) arg)
+					components[c++] = component;
 			}
 		}
 		return components;
@@ -222,17 +302,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
-	 * Constructor given another ContentName, appends an extra component.
-	 * @param parent used for the base of the name, if null, no prefix
-	 * 	added.
-	 * @param name component to be appended; if null, just copy parent
-	 * @deprecated superseded by the {@link ContentName#ContentName(Object...)} varargs constructor.
-	 */
-	public ContentName(ContentName parent, byte [] name) {
-		this(new Object[]{parent, name});
-	}
-
-	/**
 	 * Constructor given another ContentName, appends extra components.
 	 * @param parent used for the base of the name.
 	 * @param childComponents components to be appended.
@@ -240,17 +309,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	@Deprecated
 	public ContentName(ContentName parent, byte [][] childComponents) {
-		this(parent.count() + 
-				((null != childComponents) ? childComponents.length : 0), parent.components());
-		if (null != childComponents) {
-			for (byte [] b : childComponents) {
-				if (null == b)
-					continue;
-				byte [] c = new byte[b.length];
-				System.arraycopy(b,0,c,0,b.length);
-				_components.add(c);
-			}
-		}
+		_components = new byte[parent._components.length + childComponents.length][];
+		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
+		System.arraycopy(childComponents, 0, _components, parent._components.length, childComponents.length);
 	}
 
 	/**
@@ -262,16 +323,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	@Deprecated
 	public ContentName(ContentName parent, ArrayList<byte []> childComponents) {
-		this(parent.count() + ((null != childComponents) ? childComponents.size() : 0), parent.components());
-		if (null != childComponents) {
-			for (byte [] b : childComponents) {
-				if (null == b)
-					continue;
-				byte [] c = new byte[b.length];
-				System.arraycopy(b,0,c,0,b.length);
-				_components.add(c);
-			}
-		}
+		_components = new byte[parent._components.length + childComponents.size()][];
+		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
+		for(int i = parent._components.length, j = 0; j < childComponents.size(); i++, j++)
+			_components[i] = childComponents.get(j);
 	}
 
 	/**
@@ -285,57 +340,29 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	@Deprecated
 	public ContentName(ContentName parent, int start, ArrayList<byte []> childComponents) {
-		// shallow copy
-		this(parent.count() + ((null != childComponents) ? childComponents.size() : 0) - start, parent.components());
-		if (null != childComponents) {
-			for( int i = start; i < childComponents.size(); i++ ) {
-				byte [] b = childComponents.get(i);
-				if (null == b)
-					continue;
-				// shallow copy
-				_components.add(childComponents.get(i));
-			}
-		}
-	}
-
-	/**
-	 * @deprecated superseded by the {@link ContentName#ContentName(Object...)} varargs constructor.
-	 */
-	public ContentName(ContentName parent, byte[] name1, byte[] name2) {
-		this (parent.count() +
-				((null != name1) ? 1 : 0) +
-				((null != name2) ? 1 : 0), parent.components());
-		if (null != name1) {
-			byte [] c = new byte[name1.length];
-			System.arraycopy(name1,0,c,0,name1.length);
-			_components.add(c);
-		}
-		if (null != name2) {
-			byte [] c = new byte[name2.length];
-			System.arraycopy(name2,0,c,0,name2.length);
-			_components.add(c);
-		}
+		_components = new byte[parent._components.length + childComponents.size() - start][];
+		System.arraycopy(parent._components, 0, _components, 0, parent._components.length);
+		for(int i = parent._components.length, j = start; j < childComponents.size(); i++, j++)
+			_components[i] = childComponents.get(j);
 	}
 
 	/**
 	 * Constructor for extending or contracting names.
 	 * @param count only this number of name components are taken from components.
 	 * @param components
-	 * @deprecated Use {@link ContentName#cut(int)} instead.
+	 * @deprecated Use {@link ContentName#cut(int)} with a ContentName instead.
 	 */
 	@Deprecated
 	public ContentName(int count, byte components[][]) {
 		if (0 >= count) {
-			_components = new ArrayList<byte []>(0);
+			_components = new byte[0][];
 		} else {
 			int max = (null == components) ? 0 : 
 				((count > components.length) ? 
 						components.length : count);
-			_components = new ArrayList<byte []>(count);
+			_components = new byte[count][];
 			for (int i=0; i < max; ++i) {
-				byte [] c = new byte[components[i].length];
-				System.arraycopy(components[i],0,c,0,components[i].length);
-				_components.add(c);
+				_components[i] = components[i].clone();
 			}
 		}
 	}
@@ -351,14 +378,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	@Deprecated
 	public ContentName(int count, ArrayList<byte []>components) {
 		if (0 >= count) {
-			_components = new ArrayList<byte[]>(0);
+			_components = new byte[0][];
 		} else {
 			int max = (null == components) ? 0 : 
 				((count > components.size()) ? 
 						components.size() : count);
-			_components = new ArrayList<byte []>(count);
+			_components = new byte[count][];
 			for (int i=0; i < max; ++i) {
-				_components.add(components.get(i));
+				_components[i] = components.get(i).clone();
 			}
 		}
 	}
@@ -377,14 +404,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	@Deprecated
 	public ContentName(int start, int count, ArrayList<byte []>components) {
 		if (0 >= count) {
-			_components = new ArrayList<byte[]>(0);
+			_components = new byte[0][];
 		} else {
 			int max = (null == components) ? 0 : 
 				((count > (components.size()-start)) ? 
 						(components.size()-start) : count);
-			_components = new ArrayList<byte []>(max);
+			_components = new byte[max][];
 			for (int i=start; i < max+start; ++i) {
-				_components.add(components.get(i));
+				_components[i] = components.get(i).clone();
 			}
 		}
 	}
@@ -393,9 +420,11 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Copy constructor, also used by subclasses merely wanting a different
 	 * name in encoding/decoding.
 	 * @param otherName
+	 * @deprecated ContentNames are immutable, so it should not be necessary to copy them.
 	 */
+	@Deprecated
 	public ContentName(ContentName otherName) {
-		this(((null == otherName) ? 0 : otherName.count()), ((null == otherName) ? null : otherName.components()));
+		_components = otherName._components;
 	}
 
 	/**
@@ -465,47 +494,50 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @throws MalformedContentNameStringException
 	 */
 	public static ContentName fromURI(String name) throws MalformedContentNameStringException {
+		ContentName result;
+		if ((name == null) || (name.length() == 0)) {
+			return ROOT;
+		}
+
 		try {
-			ContentName result;
-			if ((name == null) || (name.length() == 0)) {
-				result = new ContentName(0, (ArrayList<byte[]>)null);
-			} else {
-				String[] parts;
-				String justname = name;
-				if (!name.startsWith(SEPARATOR)){
-					if ((!name.startsWith(SCHEME + SEPARATOR)) && (!name.startsWith(ORIGINAL_SCHEME + SEPARATOR))) {
-						throw new MalformedContentNameStringException("ContentName strings must begin with " + SEPARATOR + " or " + SCHEME + SEPARATOR);
-					}
-					if (name.startsWith(SCHEME)) {
-						justname = name.substring(SCHEME.length());
-					} else if (name.startsWith(ORIGINAL_SCHEME)) {
-						justname = name.substring(ORIGINAL_SCHEME.length());
-					}
+			if (!name.startsWith(SEPARATOR)){
+				if ((!name.startsWith(SCHEME + SEPARATOR)) && (!name.startsWith(ORIGINAL_SCHEME + SEPARATOR))) {
+					throw new MalformedContentNameStringException("ContentName strings must begin with " + SEPARATOR + " or " + SCHEME + SEPARATOR);
 				}
-				parts = justname.split(SEPARATOR);
-				if (parts.length == 0) {
-					// We've been asked to parse the root name.
-					result = new ContentName(0, (ArrayList<byte[]>)null);
-				} else {
-					result = new ContentName(parts.length - 1, (ArrayList<byte[]>)null);
+				if (name.startsWith(SCHEME)) {
+					name = name.substring(SCHEME.length());
+				} else if (name.startsWith(ORIGINAL_SCHEME)) {
+					name = name.substring(ORIGINAL_SCHEME.length());
 				}
-				// Leave off initial empty component
-				for (int i=1; i < parts.length; ++i) {
-					try {
-						byte[] component = Component.parseURI(parts[i]);
-						if (null != component) {
-							result._components.add(component);
-						}
-					} catch (DotDotComponent c) {
-						// Need to strip "parent"
-						if (result._components.size() < 1) {
-							throw new MalformedContentNameStringException("ContentName string contains too many .. components: " + name);
-						} else {
-							result._components.remove(result._components.size()-1);
-						}
+			}
+
+			String[] parts = name.split(SEPARATOR);
+			if (parts.length == 0) {
+				// We've been asked to parse the root name.
+				return ROOT;
+			}
+
+			ArrayList<byte []> comps = new ArrayList<byte []>(parts.length -1);
+
+			// Leave off initial empty component
+			for (int i=1; i < parts.length; ++i) {
+				try {
+					byte[] component = Component.parseURI(parts[i]);
+					if (null != component) {
+						comps.add(component);
+					}
+				} catch (Component.DotDot c) {
+					// Need to strip "parent"
+					if (comps.isEmpty()) {
+						throw new MalformedContentNameStringException("ContentName string contains too many .. components: " + name);
+					} else {
+						comps.remove(comps.size()-1);
 					}
 				}
 			}
+
+			result = new ContentName();
+			result._components = (byte[][]) comps.toArray();
 			return result;
 		} catch (URISyntaxException e) {
 			throw new MalformedContentNameStringException(e.getMessage());
@@ -516,30 +548,33 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Given an array of strings, apply URI decoding and create a ContentName
 	 * @see fromURI(String)
 	 * @throws MalformedContentNameStringException
+	 * @deprecated Use {@link #fromURI(String)} or {@link #fromURI(Object...)} instead.
 	 */
+	@Deprecated
 	public static ContentName fromURI(String parts[]) throws MalformedContentNameStringException {
+		if ((parts == null) || (parts.length == 0)) {
+			return ROOT;
+		}
 		try {
-			ContentName result;
-			if ((parts == null) || (parts.length == 0)) {
-				result = new ContentName(0, (ArrayList<byte[]>)null);
-			} else {
-				result = new ContentName(parts.length, (ArrayList<byte[]>)null);
-				for (int i=0; i < parts.length; ++i) {
-					try {
-						byte[] component = Component.parseURI(parts[i]);
-						if (null != component) {
-							result._components.add(component);
-						}
-					} catch (DotDotComponent c) {
-						// Need to strip "parent"
-						if (result._components.size() < 1) {
-							throw new MalformedContentNameStringException("ContentName parts contains too many .. components");
-						} else {
-							result._components.remove(result._components.size()-1);
-						}					
+			
+			ArrayList<byte []> comps = new ArrayList<byte []>(parts.length);
+			for (String str : parts) {
+				try {
+					byte[] component = Component.parseURI(str);
+					if (component != null) {
+						comps.add(component);
 					}
+				} catch (Component.DotDot c) {
+					// Need to strip "parent"
+					if (comps.isEmpty()) {
+						throw new MalformedContentNameStringException("ContentName parts contains too many .. components");
+					} else {
+						comps.remove(comps.size()-1);
+					}					
 				}
 			}
+			ContentName result = new ContentName();
+			result._components = (byte[][]) comps.toArray();
 			return result;
 		} catch (URISyntaxException e) {
 			throw new MalformedContentNameStringException(e.getMessage());
@@ -554,24 +589,33 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param parent used for the base of the name.
 	 * @param name sequence of URI encoded name components, appended to the base.
 	 * @throws MalformedContentNameStringException
+	 * @Deprecated Use new {@link ContentName#ContentName(ContentName, String)} or {@link Component#parseURI(String)}
+	 * and new {@link ContentName#ContentName(ContentName, byte[])} for more exact semantic match.
 	 */
+	@Deprecated
 	public static ContentName fromURI(ContentName parent, String name) throws MalformedContentNameStringException {
+		if (name == null)
+			return parent;
 		try {
-			ContentName result = new ContentName(parent.count() + ((null != name) ? 1 : 0), parent.components());
-			if (null != name) {
-				try {
-					byte[] decodedName = Component.parseURI(name);
-					if (null != decodedName) {
-						result._components.add(decodedName);
-					}
-				} catch (DotDotComponent c) {
-					// Need to strip "parent"
-					if (result._components.size() < 1) {
-						throw new MalformedContentNameStringException("ContentName parts contains too many .. components");
-					} else {
-						result._components.remove(result._components.size()-1);
-					}									
-				}
+			ContentName result = new ContentName();
+			try {
+				byte[] decodedName = Component.parseURI(name);
+
+				if (decodedName == null)
+					return parent;
+				
+				// add a single component
+				result._components = new byte[parent._components.length + 1][];
+				System.arraycopy(parent._components, 0, result._components, 0, parent._components.length);
+				result._components[parent._components.length] = decodedName;
+			} catch (Component.DotDot c) {
+				// Need to strip "parent"
+				if (result._components.length < 1) {
+					throw new MalformedContentNameStringException("ContentName parts contains too many .. components");
+				} else {
+					result._components = new byte[parent._components.length - 1][];
+					System.arraycopy(parent._components, 0, result._components, 0, parent._components.length - 1);
+				}									
 			}
 			return result;
 		} catch (URISyntaxException e) {
@@ -590,28 +634,21 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @throws MalformedContentNameStringException if name does not start with "/"
 	 */
 	public static ContentName fromNative(String name) throws MalformedContentNameStringException {
-		ContentName result;
 		if (!name.startsWith(SEPARATOR)){
 			throw new MalformedContentNameStringException("ContentName native strings must begin with " + SEPARATOR);
 		}
-		if ((name == null) || (name.length() == 0)) {
-			result = new ContentName(0, (ArrayList<byte[]>)null);
-		} else {
-			String[] parts;
-			parts = name.split(SEPARATOR);
-			if (parts.length == 0) {
-				// We've been asked to parse the root name.
-				result = new ContentName(0, (ArrayList<byte[]>)null);
-			} else {
-				result = new ContentName(parts.length - 1, (ArrayList<byte[]>)null);
-			}
-			// Leave off initial empty component
-			for (int i=1; i < parts.length; ++i) {
-				byte[] component = Component.parseNative(parts[i]);
-				if (null != component) {
-					result._components.add(component);
-				}
-			}
+
+		String[] parts = name.split(SEPARATOR);
+		if (parts.length == 0) {
+			// We've been asked to parse the root name.
+			return ROOT;
+		}
+
+		ContentName result = new ContentName();
+		result._components = new byte[parts.length-1][];
+		// Leave off initial empty component
+		for (int i=1; i < parts.length; ++i) {
+			result._components[i-1] = Component.parseNative(parts[i]);
 		}
 		return result;
 	}
@@ -624,66 +661,76 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param parent used for the base of the name.
 	 * @param name Native Java String which will be encoded as UTF-8 in the output
 	 * <code>ContentName</code>
+	 * @deprecated Use new {@link ContentName#ContentName(ContentName, String)} instead.
 	 */
+	@Deprecated
 	public static ContentName fromNative(ContentName parent, String name) {
-		ContentName result = new ContentName(parent.count() + ((null != name) ? 1 : 0), parent.components());
-		if (null != name) {
-			byte[] decodedName = Component.parseNative(name);
-			if (null != decodedName) {
-				result._components.add(decodedName);
-			}
-		} 
-		return result;
+		return new ContentName(parent, name);
 	}
 
+	/**
+	 * @deprecated Use new {@link ContentName#ContentName(ContentName, byte[])} instead.
+	 */
+	@Deprecated
 	public static ContentName fromNative(ContentName parent, byte [] name) {
-		ContentName result = new ContentName(parent.count() + 1, parent.components());
-		result._components.add(name);
-		return result;
+		return new ContentName(parent, name);
 	}
 
+	/**
+	 * @deprecated Use new {@link ContentName#ContentName(Object...)} instead.
+	 */
+	@Deprecated
 	public static ContentName fromNative(ContentName parent, String name1, String name2) {
-		return fromNative(parent, new String[]{name1, name2});
+		return new ContentName(parent, name1, name2);
 	}
 
+	/**
+	 * @deprecated Use {@link #ContentName(Object...)} instead.
+	 * Note - in this method case each string, including the first one is interpreted as a
+	 * single component, unlike other fromNative() methods.
+	 */
+	@Deprecated
 	public static ContentName fromNative(String [] parts) {
-		return fromNative(null, parts);
+		return new ContentName((Object[]) parts);
 	}
 
+	/**
+	 * @deprecated Use {@link #fromNative(Object...)} instead.
+	 */
+	@Deprecated
 	public static ContentName fromNative(ContentName parent, String [] parts) {
 		int extra = (null != parts) ? parts.length : 0;
-		int parentCount = (null != parent) ? parent.count() : 0;
-		ContentName result = new ContentName(parentCount + extra, (null != parent) ? parent.components() : null);
-		if ((null != parts) && (parts.length > 0)) {
-			for (int i=0; i < parts.length; ++i) {
-				byte[] component = Component.parseNative(parts[i]);
-				if (null != component) {
-					result._components.add(component);
-				}
-			}
+		int parentCount = (null != parent) ? parent._components.length : 0;
+		ContentName result = new ContentName();
+		result._components = new byte[parentCount + extra][];
+		if (parent != null)
+			System.arraycopy(parent._components, 0, result._components, 0, parentCount);
+		if (parts != null) {
+			for (int i=0; i < parts.length; ++i)
+				result._components[i+parentCount] = Component.parseNative(parts[i]);
 		}
 		return result;
-	}
-
-	public ContentName clone() {
-		return new ContentName(count(), components());
 	}
 
 	/**
 	 * Returns a new name with the last component removed.
 	 */
 	public ContentName parent() {
-		return new ContentName(count()-1, components());
+		ContentName result = new ContentName();
+		result._components = new byte[_components.length - 1][];
+		System.arraycopy(_components, 0, result._components, 0, _components.length-1);
+		return result;
 	}
 
 	public String toString() {
 		if (null == _components) return null;
 		// toString of root name is "/"
-		if (0 == _components.size()) return SEPARATOR;
+		if (_components.length == 0) return SEPARATOR;
+
 		StringBuffer nameBuf = new StringBuffer();
-		for (int i=0; i < _components.size(); ++i) {
+		for (byte[] component : _components) {
 			nameBuf.append(SEPARATOR);
-			nameBuf.append(Component.printURI(_components.get(i)));
+			nameBuf.append(Component.printURI(component));
 		}
 		return nameBuf.toString();
 	} 
@@ -769,7 +816,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @deprecated Use {@link Component#parseURI(String)} instead
 	 */
 	@Deprecated
-	public static byte[] componentParseURI(String name) throws DotDotComponent, URISyntaxException {
+	public static byte[] componentParseURI(String name) throws Component.DotDot, URISyntaxException {
 		return Component.parseURI(name);
 	}
 
@@ -795,21 +842,30 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * of ContentNames, which can have many problematic consequences.
 	 */
 	@Deprecated
-	public ArrayList<byte[]> components() { return _components; }
+	public ArrayList<byte[]> components() {
+		ArrayList<byte[]> result = new ArrayList<byte []>(_components.length);
+		for(byte[] component : _components)
+			result.add(component);
+		return result;
+	}
 
 	/**
 	 * @return The number of components in the name.
 	 */
 	public int count() { 
 		if (null == _components) return 0;
-		return _components.size(); 
+		return _components.length;
 	}
 
 	/**
-	 * Append a segmented name to this name.
+	 * Append a name to this name.
 	 */
 	public ContentName append(ContentName other) {
-		return new ContentName(this, other.components());
+		ContentName cn = new ContentName();
+		cn._components = new byte[_components.length + other._components.length][];
+		System.arraycopy(cn._components, 0, _components, 0, _components.length);
+		System.arraycopy(cn._components, _components.length, other._components, 0, other._components.length);
+		return cn;
 	}
 
 	/**
@@ -834,9 +890,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * You must not modify the contents of this byte array, or you will break the immutability
 	 * of ContentNames, which can have many problematic consequences.
 	 */
-	public final byte[] component(int i) { 
-		if ((null == _components) || (i >= _components.size())) return null;
-		return _components.get(i);
+	public final byte[] component(int i) {
+		if ((null == _components) || (i >= _components.length)) return null;
+		return _components[i];
 	}
 
 	/**
@@ -846,17 +902,17 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * of ContentNames, which can have many problematic consequences.
 	 */
 	public final byte [] lastComponent() {
-		if (null == _components || _components.size() == 0)
+		if (null == _components || _components.length == 0)
 			return null;
-		return _components.get(_components.size()-1);
+		return _components[_components.length-1];
 	}
 
 	/**
 	 * @return The i'th component, converted using URI encoding.
 	 */
 	public String stringComponent(int i) {
-		if ((null == _components) || (i >= _components.size())) return null;
-		return Component.printURI(_components.get(i));
+		if ((null == _components) || (i >= _components.length)) return null;
+		return Component.printURI(_components[i]);
 	}
 
 	/**
@@ -866,13 +922,13 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
-		_components = new ArrayList<byte []>();
+		ArrayList<byte []> components = new ArrayList<byte []>(6);
 
-		while (decoder.peekStartElement(CCNProtocolDTags.Component)) {
-			_components.add(decoder.readBinaryElement(CCNProtocolDTags.Component));
-		}
+		while (decoder.peekStartElement(CCNProtocolDTags.Component))
+			components.add(decoder.readBinaryElement(CCNProtocolDTags.Component));
 
 		decoder.readEndElement();
+		_components = (byte[][]) components.toArray();
 	}
 
 	/**
@@ -882,7 +938,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @param name name being compared with.
 	 */
 	public boolean isPrefixOf(ContentName name) {
-		return isPrefixOf(name, count());
+		return isPrefixOf(name, _components.length);
 	}
 
 	/**
@@ -893,7 +949,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public boolean isPrefixOf(ContentName name, int count) {
 		if (null == name)
 			return false;
-		if (count > name.count())
+		if (count > name._components.length)
 			return false;
 		for (int i=0; i < count; ++i) {
 			if (!Arrays.equals(name.component(i), component(i)))
@@ -914,17 +970,15 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 
 	public boolean isPrefixOf(ContentObject other) {
-		return isPrefixOf(other, count());
+		return isPrefixOf(other, _components.length);
 	}
 
 	public boolean isPrefixOf(ContentObject other, int count) {
 		boolean match = isPrefixOf(other.name(), count);
-		if (match || count() != count)
+		if (match || _components.length != count)
 			return match;
-		if (count() == other.name().count() + 1) {
-			if (DataUtils.compare(component(count() - 1), other.digest()) == 0) {
-				return true;
-			}
+		if (_components.length == other.name()._components.length + 1) {
+			return Arrays.equals(_components[_components.length-1], other.digest());
 		}
 		return false;
 	}
@@ -934,32 +988,17 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
 		if (obj == null)
 			return false;
 		if (! (obj instanceof ContentName)) 
 			return false;
-		final ContentName other = (ContentName)obj;
-		if (other.count() != this.count())
-			return false;
-		int count = count();
-		for (int i=0; i < count; ++i) {
-			if (!Arrays.equals(other.component(i), this.component(i)))
-				return false;
-		}
-		return true;
+		ContentName other = (ContentName)obj;
+		return Arrays.deepEquals(_components, other._components);
 	}
 
 	@Override
 	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		int count = count();
-		for (int i=0; i < count; ++i) {
-			result = prime * result + Arrays.hashCode(component(i));			
-		}
-		return result;
+		return Arrays.deepHashCode(_components);
 	}
 
 	/**
@@ -978,7 +1017,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Uses the canonical URI representation
 	 * @param str
 	 * @return
+	 * @deprecated Use {@link #contains(ComponentProvider)} instead.
 	 */
+	@Deprecated
 	public boolean contains(String str) throws URISyntaxException {
 		try {
 			byte[] parsed = Component.parseURI(str);
@@ -987,13 +1028,17 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			} else {
 				return contains(parsed);
 			}
-		} catch (DotDotComponent c) {
+		} catch (Component.DotDot c) {
 			return false;
 		}
 	}
 
 	public boolean contains(byte [] component) {
 		return (containsWhere(component) >= 0);
+	}
+
+	public boolean contains(ComponentProvider cp) {
+		return (containsWhere(cp) >= 0);
 	}
 
 	/**
@@ -1010,9 +1055,13 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			} else {
 				return containsWhere(parsed);
 			}
-		} catch (DotDotComponent c) {
+		} catch (Component.DotDot c) {
 			return -1;
 		}
+	}
+
+	public int containsWhere(ComponentProvider cp) {
+		return containsWhere(cp.getComponent());
 	}
 
 	/**
@@ -1029,7 +1078,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			} else {
 				return whereLast(parsed);
 			}
-		} catch (DotDotComponent c) {
+		} catch (Component.DotDot c) {
 			return -1;
 		}
 	}
@@ -1040,16 +1089,9 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @return -1 on failure, component index otherwise (starts at 0).
 	 */
 	public int containsWhere(byte [] component) {
-		int i=0;
-		boolean result = false;
-		for (i=0; i < _components.size(); ++i) {
-			if (Arrays.equals(_components.get(i),component)) {
-				result = true;
-				break;
-			}	
-		}
-		if (result)
-			return i;
+		for (int i=0; i < _components.length; ++i)
+			if (Arrays.equals(_components[i],component))
+				return i;
 		return -1;		
 	}
 
@@ -1059,19 +1101,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @return -1 on failure, component index otherwise (starts at 0).
 	 */
 	public int whereLast(byte [] component) {
-		int i=0;
-		boolean result = false;
-		for (i=_components.size()-1; i >= 0; --i) {
-			if (Arrays.equals(_components.get(i),component)) {
-				result = true;
-				break;
-			}	
-		}
-		if (result)
-			return i;
+		for (int i=_components.length-1; i >= 0; --i)
+			if (Arrays.equals(_components[i],component))
+				return i;
 		return -1;		
 	}
-	
+
+	public int whereLast(ComponentProvider cp) {
+		return whereLast(cp.getComponent());
+	}
+
 	/**
 	 * Does a component of the ContentName startWith value?
 	 * 
@@ -1081,7 +1120,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public boolean startsWith(byte [] value) {
 		return (startsWithWhere(value) >= 0);
 	}
-	
+
 	/**
 	 * Return component index of first component that starts with argument value
 	 * 
@@ -1091,8 +1130,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public int startsWithWhere(byte [] value) {
 		int i=0;
 		int size = value.length;
-		for (i=0; i < _components.size(); ++i) {
-			byte [] component = _components.get(i);
+		for (i=0; i < _components.length; ++i) {
+			byte [] component = _components[i];
 			if (size <= component.length) {
 				boolean result = true;
 				for (int j = 0; j < size; j++) {
@@ -1107,19 +1146,24 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 		return -1;		
 	}
-	
+
 	/**
 	 * Return the first componentNumber components of this name as a new name.
 	 * @param componentNumber
 	 * @return
 	 */
 	public ContentName cut(int componentCount) {
-		if ((componentCount < 0) || (componentCount > count())) {
+		if ((componentCount < 0) || (componentCount > _components.length)) {
 			throw new IllegalArgumentException("Illegal component count: " + componentCount);
 		}
-		if (componentCount == count())
+
+		if (componentCount == _components.length)
 			return this;
-		return new ContentName(componentCount, this.components());
+
+		ContentName result = new ContentName();
+		result._components = new byte[componentCount][];
+		System.arraycopy(_components, 0, result._components, 0, componentCount);
+		return result;
 	}
 
 	/**
@@ -1128,12 +1172,17 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @return A new name using the components starting from position.
 	 */
 	public ContentName right(int position) {
-		if ((position < 0) || (position > count())) {
+		if ((position < 0) || (position > _components.length)) {
 			throw new IllegalArgumentException("Illegal component count: " + position);
 		}
 		if (position == 0)
 			return this;
-		return new ContentName(position, _components.size()-position, _components);
+
+		ContentName result = new ContentName();
+		int length = _components.length - position;
+		result._components = new byte[length][];
+		System.arraycopy(_components, position, result._components, 0, length);
+		return result;
 	}
 
 	/**
@@ -1149,7 +1198,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 
 		// else need to cut it
-		return new ContentName(offset, this.components());
+		return cut(offset);
 	}
 
 	/**
@@ -1164,7 +1213,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			} else {
 				return cut(parsed);
 			}
-		} catch (DotDotComponent c) {
+		} catch (Component.DotDot c) {
 			return this;
 		}
 	}
@@ -1176,7 +1225,19 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @return the new name.
 	 */
 	public ContentName subname(int start, int componentCount) {
-		return new ContentName(start, componentCount, components());
+		if (start < 0 || start+componentCount > _components.length)
+			throw new IllegalArgumentException("Start or end out of range");
+
+		if (start == 0)
+			return cut(componentCount);
+
+		if (componentCount == 0)
+			return ROOT;
+
+		ContentName result = new ContentName();
+		result._components = new byte[componentCount][];
+		System.arraycopy(_components, start, result._components, 0, componentCount);
+		return result;
 	}
 
 	/**
@@ -1188,11 +1249,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (!prefix.isPrefixOf(this))
 			return null;
 
-		if (prefix.count() == count()) {
-			return ROOT;
-		}
-
-		return subname(prefix.count(), count()-prefix.count());
+		return subname(prefix._components.length, _components.length-prefix._components.length);
 	}
 
 	/**
@@ -1205,9 +1262,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		}
 
 		encoder.writeStartElement(getElementLabel());
-		int count = count();
-		for (int i=0; i < count; ++i) {
-			encoder.writeElement(CCNProtocolDTags.Component, _components.get(i));
+		for (int i=0; i < _components.length; ++i) {
+			encoder.writeElement(CCNProtocolDTags.Component, _components[i]);
 		}
 		encoder.writeEndElement();
 	}
@@ -1222,15 +1278,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return CCNProtocolDTags.Name;
 	}
 
+	@Deprecated
 	public ContentName copy(int nameComponentCount) {
-		return new ContentName(nameComponentCount, this.components());
+		return cut(nameComponentCount);
 	}
 
 	public int compareTo(ContentName o) {
 		if (this == o)
 			return 0;
-		int thisCount = this.count();
-		int oCount = o.count();
+		int thisCount = _components.length;
+		int oCount = o._components.length;
 		int len = (thisCount > oCount) ? thisCount : oCount;
 		int componentResult;
 		for (int i=0; i < len; ++i) {
@@ -1250,7 +1307,6 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 */
 	@Override
 	public Iterator<byte[]> iterator() {
-		_components.iterator();
-		return null;
+		return Arrays.asList(_components).iterator();
 	}
 }

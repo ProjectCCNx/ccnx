@@ -179,7 +179,7 @@ public class NameEnumerationResponse {
 		_names = new ArrayList<ContentName>((null == names) ? 0 : names.length);
 		if (null != names) {
 			for (int i=0; i < names.length; ++i) {
-				_names.add(new ContentName(ContentName.ROOT, names[i]));
+				_names.add(new ContentName(names[i]));
 			}
 		}
 	}
@@ -217,14 +217,14 @@ public class NameEnumerationResponse {
 	 * Add a single-component name to the list.
 	 */
 	public void add(byte [] name) {
-		_names.add(new ContentName(ContentName.ROOT, name));
+		_names.add(new ContentName(name));
 	}
 	
 	/**
 	 * Add a single-component name to the list.
 	 */
 	public void add(String name) {
-		_names.add(ContentName.fromNative(ContentName.ROOT, name));
+		_names.add(new ContentName(name));
 	}
 	
 	/**

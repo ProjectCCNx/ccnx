@@ -287,7 +287,7 @@ public class MLACReadWriteTestRepo {
 		long startTime = System.currentTimeMillis();
 		
 		ArrayList<ACLOperation> ACLUpdates = new ArrayList<ACLOperation>();
-		Link lk = new Link(ContentName.fromNative(userNamespace[1], userNames[0]));
+		Link lk = new Link(new ContentName(userNamespace[1], userNames[0]));
 		ACLUpdates.add(ACLOperation.addReaderOperation(lk));
 		try {
 			_AliceACM.updateACL(subdirectory, ACLUpdates);

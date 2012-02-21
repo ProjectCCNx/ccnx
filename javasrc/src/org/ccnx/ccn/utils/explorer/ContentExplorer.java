@@ -177,7 +177,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			Log.fine("adding component: " + root.stringComponent(i));
 			// add each component to the tree
 			newNode = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
-					null, new Name(root.component(i), root.copy(i), true)));
+					null, new Name(root.component(i), root.cut(i), true)));
 			node.add(newNode);
 			node = newNode;
 		}
@@ -378,8 +378,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					Log.fine("Selected Node is " + selectedPrefix);
 
 					try {
-						ContentName contentName = ContentName.fromURI(selectedPrefix);
-						contentName = ContentName.fromURI(contentName, file.getName());
+						ContentName contentName = ContentName.fromURI(selectedPrefix, file.getName());
 						ContentName temp = null;
 						while (temp==null) {
 							String name = JOptionPane.showInputDialog("Send File to Repo As:", contentName.toString());
@@ -830,7 +829,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				return;
 			}
 			
-			ContentName cn = ContentName.fromNative(new ContentName(), node.name);
+			ContentName cn = new ContentName(node.name);
 			
 			String name = cn.toString();
 			
@@ -903,7 +902,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			if (nodeName.path == null) {
 				Log.fine("collapsed the tree at the root");
 			} else {
-				prefixToCancel = ContentName.fromNative(nodeName.path, nodeName.name);
+				prefixToCancel = new ContentName(nodeName.path, nodeName.name);
 				Log.fine("tree collapsed at: " + prefixToCancel.toString());
 			}
 			Log.fine("cancelling prefix: " + prefixToCancel);
@@ -1032,17 +1031,17 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		if (fnode.path == null)
 			Log.fine("the path is null");
 		else
-			Log.fine("fnode: " + ContentName.fromNative(new ContentName(), fnode.name) + " path: " + fnode.path.toString());
+			Log.fine("fnode: " + new ContentName(fnode.name) + " path: " + fnode.path.toString());
 		ContentName toExpand = null;
 		if (fnode.path == null)
 			toExpand = new ContentName();
 		else
-			toExpand = ContentName.fromNative(fnode.path, fnode.name);
+			toExpand = new ContentName(fnode.path, fnode.name);
 
 		String p = toExpand.toString();
 		Log.fine("toExpand: " + toExpand + " p: " + p);
 
-		if (fnode.name != null && previewTextFiles && (ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".txt") || ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".text"))) {
+		if (fnode.name != null && previewTextFiles && (new ContentName(fnode.name).toString().endsWith(".txt") || new ContentName(fnode.name).toString().endsWith(".text"))) {
 			// get the file from the repo
 			Log.fine("Retrieve from Repo: " + p);
 			retrieveFromRepo(p);
@@ -1052,7 +1051,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		if (fnode.path == null)
 			Log.fine("the path is null");
 		else
-			Log.fine("this is the path: " + fnode.path.toString() + " this is the name: " + ContentName.fromNative(new ContentName(), fnode.name));
+			Log.fine("this is the path: " + fnode.path.toString() + " this is the name: " + new ContentName(fnode.name));
 		Log.info("Registering Prefix: " + p);
 		registerPrefix(p);
 

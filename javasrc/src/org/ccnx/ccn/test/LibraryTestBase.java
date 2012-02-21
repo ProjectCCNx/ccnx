@@ -157,7 +157,7 @@ public class LibraryTestBase extends CCNTestBase {
 	//	while (!done) {
 			Thread.sleep(rand.nextInt(50));
 			Log.info(Log.FAC_TEST, "getResults getting " + baseName + " subitem " + i);
-			ContentObject contents = handle.get(ContentName.fromNative(baseName, Integer.toString(i)), SystemConfiguration.NO_TIMEOUT);
+			ContentObject contents = handle.get(new ContentName(baseName, Integer.toString(i)), SystemConfiguration.NO_TIMEOUT);
 		
 			try {
 				int val = Integer.parseInt(new String(contents.content()));

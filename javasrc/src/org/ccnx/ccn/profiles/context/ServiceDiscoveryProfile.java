@@ -16,6 +16,8 @@
  */
 package org.ccnx.ccn.profiles.context;
 
+import static org.ccnx.ccn.profiles.security.KeyProfile.KEY_NAME;
+
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.util.ArrayList;
@@ -120,7 +122,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 	 */
 	public static ArrayList<ContentObject> getLocalServiceKeys(String service, long timeout, CCNHandle handle) throws IOException {
 
-		ContentName serviceKeyName = new ContentName(localServiceName(service), KeyProfile.KEY_NAME_COMPONENT);
+		ContentName serviceKeyName = new ContentName(localServiceName(service), KEY_NAME);
 
 		// Construct an interest in anything below this that has the right form -- this prefix, a component
 		// for the key id, and then a version and segments. Might be more expensive to apply the filters than
@@ -191,7 +193,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 	 */
 	public static PublicKeyObject getLocalServiceKey(String service, long timeout, CCNHandle handle) throws IOException {
 
-		ContentName serviceKeyName = new ContentName(localServiceName(service), KeyProfile.KEY_NAME_COMPONENT);
+		ContentName serviceKeyName = new ContentName(localServiceName(service), KEY_NAME);
 
 		// Construct an interest in anything below this that has the right form -- this prefix, a component
 		// for the key id, and then a version and segments. Might be more expensive to apply the filters than
@@ -262,7 +264,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 			serviceKey = keyManager.getDefaultKeyID();
 		}
 
-		ContentName serviceKeyPrefix = new ContentName(localServiceName(service), KeyProfile.KEY_NAME_COMPONENT);
+		ContentName serviceKeyPrefix = new ContentName(localServiceName(service), KEY_NAME);
 		ContentName serviceKeyName = 
 			KeyProfile.keyName(serviceKeyPrefix, serviceKey);
 

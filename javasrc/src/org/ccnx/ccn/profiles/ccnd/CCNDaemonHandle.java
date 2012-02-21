@@ -99,7 +99,7 @@ public class CCNDaemonHandle {
 		/*
 		 * Add the contentOut bits to the name that's passed in.
 		 */
-		interestNamePrefix = ContentName.fromNative(interestNamePrefix, contentOutBits);
+		interestNamePrefix = new ContentName(interestNamePrefix, contentOutBits);
 		Interest interested = new Interest(interestNamePrefix);
 		interested.scope(1);
 		ContentObject contentIn = null;

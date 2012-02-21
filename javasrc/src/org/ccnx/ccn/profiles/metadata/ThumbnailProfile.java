@@ -49,12 +49,12 @@ public class ThumbnailProfile implements CCNProfile {
 	 * @return the thumbnail meta directory as a ContentName
 	 */
 	public static ContentName thumbnailNamespace(ContentName baseName) {
-		return new ContentName(MetadataProfile.metadataName(baseName), THUMBNAIL_MARKER.getBytes());
+		return new ContentName(MetadataProfile.metadataName(baseName), THUMBNAIL_MARKER);
 	}
 	
 	@Deprecated  // Use thumbnailNamespace instead
 	public static ContentName thumbnailName(ContentName baseName) {
-		return new ContentName(MetadataProfile.metadataName(baseName), THUMBNAIL_MARKER.getBytes());
+		return new ContentName(MetadataProfile.metadataName(baseName), THUMBNAIL_MARKER);
 	}
 	
 	/**

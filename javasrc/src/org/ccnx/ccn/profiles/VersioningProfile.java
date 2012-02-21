@@ -116,12 +116,13 @@ public class VersioningProfile implements CCNProfile {
 	 * so you need to be sure to use version numbers in those bounds.
 	 * <p>
 	 * @see #addVersion(ContentName, long)
+	 * @deprecated Use new ContentName(name, version) instead.
 	 */
+	@Deprecated
 	public static ContentName addVersion(ContentName name, CCNTime version) {
 		if (null == version)
 			throw new IllegalArgumentException("Version cannot be null!"); 
-		byte [] vcomp = timeToVersionComponent(version);
-		return new ContentName(name, vcomp);
+		return new ContentName(name, version);
 	}
 	
 	/**

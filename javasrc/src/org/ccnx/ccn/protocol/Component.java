@@ -7,6 +7,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
+import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.protocol.ContentName.ComponentProvider;
 
@@ -14,6 +15,7 @@ import org.ccnx.ccn.protocol.ContentName.ComponentProvider;
  * Wrapper class to store immutable name components.
  */
 public class Component implements ComponentProvider {
+
 	byte[] component;
 	
 	protected Component(byte[] comp) {
@@ -47,6 +49,13 @@ public class Component implements ComponentProvider {
 	}
 
 	/**
+	 * Indicates an attempt to parse a .. component.
+	 */
+	public static class DotDot extends Exception { // Need to strip off a component
+		private static final long serialVersionUID = 4667513234636853164L;
+	}
+
+	/**
 	 * Parse the URI Generic Syntax of RFC 3986.
 	 * Including handling percent encoding of sequences that are not legal character
 	 * encodings in any character set.  This method is the inverse of 
@@ -63,7 +72,7 @@ public class Component implements ComponentProvider {
 	 * @param name a single component of a name, URI encoded
 	 * @return a name component
 	 */
-	public static byte[] parseURI(String name) throws ContentName.DotDotComponent, URISyntaxException {
+	public static byte[] parseURI(String name) throws DotDot, URISyntaxException {
 		byte[] decodedName = null;
 		boolean alldots = true; // does this component contain only dots after unescaping?
 		boolean quitEarly = false;
@@ -119,7 +128,7 @@ public class Component implements ComponentProvider {
 			if (result.limit() <= 1) {
 				return null;
 			} else if (result.limit() == 2) {
-				throw new ContentName.DotDotComponent();
+				throw new DotDot();
 			} else {
 				// Remove the three '.' extra
 				result.limit(result.limit()-3);
@@ -150,6 +159,10 @@ public class Component implements ComponentProvider {
 	public static String printURI(byte [] bs) {
 		return printURI(bs, 0, bs.length);
 	}
+
+	static final char HEX_DIGITS[] = {
+		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+	};
 
 	/**
 	 * Print bytes in the URI Generic Syntax of RFC 3986 
@@ -209,8 +222,8 @@ public class Component implements ComponentProvider {
 				result.append(ch);
 			else {
 				result.append('%');
-				result.append(ContentName.HEX_DIGITS[(ch >> 4) & 0xF]);
-				result.append(ContentName.HEX_DIGITS[ch & 0xF]);
+				result.append(HEX_DIGITS[(ch >> 4) & 0xF]);
+				result.append(HEX_DIGITS[ch & 0xF]);
 			}
 		}
 		return result.toString();
@@ -218,15 +231,47 @@ public class Component implements ComponentProvider {
 
 	private static Random random = new Random();
 	/**
-	 * A random nonce component (with a nonce CommandMarker header).
+	 * Generates a random nonce component (with a nonce CommandMarker header).
 	 * Can be used in ContentName constructors where a nonce is required.
+	 * Note: the nonce component generated will be different every time this
+	 * is used.
 	 */
 	public static final ComponentProvider NONCE = new ComponentProvider() {
-
 		public byte[] getComponent() {
 			byte [] nonce = new byte[8];
 			random.nextBytes(nonce);
 			return COMMAND_MARKER_NONCE.addBinaryData(nonce);
 		}
 	};
+
+	private static byte[] emptyComponent = new byte[]{ };
+	/**
+	 * This object generates an empty component (length = 0).
+	 */
+	public static final ComponentProvider EMPTY = new ComponentProvider() {
+		public byte[] getComponent() {
+			return emptyComponent;
+		}
+	};
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof byte[])
+			return Arrays.areEqual( (byte[])obj, getComponent() );
+		if (obj instanceof ComponentProvider)
+			return Arrays.areEqual( ((ComponentProvider)obj).getComponent(), getComponent() );
+		if (obj instanceof String)
+			return Arrays.areEqual( ((String)obj).getBytes(), getComponent() );
+		return super.equals(obj);
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(getComponent());
+	}
+
+	@Override
+	public String toString() {
+		return printURI(component);
+	}
 }

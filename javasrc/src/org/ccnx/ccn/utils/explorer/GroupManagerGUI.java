@@ -53,8 +53,8 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 	
 	private GroupManager gm;
 	private PrincipalEnumerator pEnum;
-	ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
-	ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
+	ContentName userStorage = new ContentName(UserConfiguration.defaultNamespace(), "Users");
+	ContentName groupStorage = new ContentName(UserConfiguration.defaultNamespace(), "Groups");
 	
 	private ArrayList<ContentName> usersContentNameList = new ArrayList<ContentName>();
 	private ArrayList<ContentName> groupsContentNameList = new ArrayList<ContentName>();

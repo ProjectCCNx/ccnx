@@ -40,8 +40,8 @@ public class UserSelector extends JDialog implements ActionListener {
 
 	private static final long serialVersionUID = -1950067955162414507L;
 	
-	ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
-	ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
+	ContentName userStorage = new ContentName(UserConfiguration.defaultNamespace(), "Users");
+	ContentName groupStorage = new ContentName(UserConfiguration.defaultNamespace(), "Groups");
 	
 	private int _nbUsers;
 	private JButton[] _userButton;
@@ -175,7 +175,7 @@ public class UserSelector extends JDialog implements ActionListener {
 		
 		// create root ACL if it does not already exist
 		try{
-			ContentName baseNode = ContentName.fromNative("/");
+			ContentName baseNode = ContentName.ROOT;
 			CCNHandle handle = CCNHandle.open();
 			_gacm = new GroupAccessControlManager(baseNode, groupStorage, userStorage, handle);
 			// Have to the user first, otherwise we can't make a root acl...
@@ -196,7 +196,7 @@ public class UserSelector extends JDialog implements ActionListener {
 		} catch (IllegalStateException ise) {
 			System.out.println("The repository has no root ACL.");
 			System.out.println("Attempting to create missing root ACL with user " + userName + " as root manager.");
-			ContentName cn = ContentName.fromNative(userStorage, userName);
+			ContentName cn = new ContentName(userStorage, userName);
 			Link lk = new Link(cn, ACL.LABEL_MANAGER, null);
 			ArrayList<Link> rootACLcontents = new ArrayList<Link>();
 			rootACLcontents.add(lk);

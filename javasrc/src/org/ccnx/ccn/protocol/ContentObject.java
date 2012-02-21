@@ -314,7 +314,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 	public ContentObject clone() {
 		// Constructor will clone the _content, signedInfo and signature are immutable types.
-		return new ContentObject(_name.clone(), _signedInfo, _content, _signature);
+		return new ContentObject(_name, _signedInfo, _content, _signature);
 	}
 
 	/**

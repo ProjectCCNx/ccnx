@@ -225,12 +225,12 @@ public class VersioningProfileTest {
 
 		
 		ContentName name = VersioningProfile.addVersion(abName, 1);
-		ContentName n2 = ContentName.fromNative(name, "addon");
+		ContentName n2 = new ContentName(name, "addon");
 		
 		Assert.assertTrue(VersioningProfile.getLastVersionAsLong(name) == 1);
 		Assert.assertTrue(VersioningProfile.getLastVersionAsLong(n2) == 1);
 
-		n2 = ContentName.fromNative(n2, "addon2", "addon3");
+		n2 = new ContentName(n2, "addon2", "addon3");
 		Assert.assertTrue(VersioningProfile.getLastVersionAsLong(n2) == 1);
 		
 		try {
