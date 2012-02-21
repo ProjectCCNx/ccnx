@@ -900,16 +900,17 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return false;
 	}
 
-	/**
-	 * hashCode and equals not auto-generated, ArrayList does not do the right thing.
-	 */
 	@Override
 	public boolean equals(Object obj) {
 		if (obj == null)
 			return false;
-		if (! (obj instanceof ContentName)) 
-			return false;
-		ContentName other = (ContentName)obj;
+		if (! (obj instanceof ContentName)) {
+			if (obj instanceof ContentNameProvider)
+				obj = ((ContentNameProvider) obj).getContentName();
+			else
+				return false;
+		}
+		ContentName other = (ContentName) obj;
 		return Arrays.deepEquals(_components, other._components);
 	}
 
