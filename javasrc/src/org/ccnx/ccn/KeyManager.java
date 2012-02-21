@@ -288,10 +288,9 @@ public abstract class KeyManager {
 			}
 		}
 		ContentName keyName = KeyProfile.keyName(keyPrefix, keyID);
-		if (null != keyVersion) {
-			return VersioningProfile.addVersion(keyName, keyVersion);
-		}
-		return keyName;
+		if (keyVersion == null)
+			return keyName;
+		return new ContentName(keyName, keyVersion);
 	}
 
 	/**
