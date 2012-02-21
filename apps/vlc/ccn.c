@@ -82,11 +82,9 @@ set_shortname(N_("CCNx"));
 set_description(N_("CCNx input"));
 set_category(CAT_INPUT);
 set_subcategory(SUBCAT_INPUT_ACCESS);
-add_integer("ccn-caching", 4 * DEFAULT_PTS_DELAY / 1000, NULL,
-            CACHING_TEXT, CACHING_LONGTEXT, true);
-add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS, NULL,
+add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS,
             MAX_FIFO_TEXT, MAX_FIFO_LONGTEXT, true);
-add_integer("ccn-fifo-blocksize", CCN_FIFO_BLOCK_SIZE, NULL,
+add_integer("ccn-fifo-blocksize", CCN_FIFO_BLOCK_SIZE,
             BLOCK_FIFO_TEXT, BLOCK_FIFO_LONGTEXT, true);
 change_safe();
 set_capability("access", 0);
@@ -146,8 +144,6 @@ static int CCNOpen(vlc_object_t *p_this)
         return VLC_ENOMEM;
     }
     p_access->info.i_size = LLONG_MAX;	/* we don't know, but bigger is better */
-    /* Update default_pts */
-    var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
     p_sys->i_fifo_max = var_CreateGetInteger(p_access, "ccn-fifo-maxblocks");
     p_sys->i_bufsize = var_CreateGetInteger(p_access, "ccn-fifo-blocksize");
     p_sys->buf = calloc(1, p_sys->i_bufsize);
@@ -437,7 +433,8 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
 
         case ACCESS_GET_PTS_DELAY:
             pi_64 = (int64_t*)va_arg(args, int64_t *);
-            *pi_64 = (int64_t)var_GetInteger(p_access, "ccn-caching") * INT64_C(1000);
+            *pi_64 = INT64_C(1000) *
+                (int64_t)var_InheritInteger(p_access, "network-caching");
             break;
 
         case ACCESS_SET_PAUSE_STATE:
@@ -539,7 +536,7 @@ incoming_content(struct ccn_closure *selfp,
         msg_Dbg(p_access, "CCN upcall reexpress -- timed out");
         if (p_sys->timeouts > 5) {
             msg_Dbg(p_access, "CCN upcall reexpress -- too many reexpressions");
-            vlc_object_kill(p_access);
+            p_access->b_die = true;
             if (p_sys->p_fifo)
                 block_FifoWake(p_sys->p_fifo);
             return(CCN_UPCALL_RESULT_OK);
@@ -564,7 +561,7 @@ incoming_content(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_ERR);
     }
 
-    if (!vlc_object_alive(p_access))
+    if (p_access->b_die)
         return(CCN_UPCALL_RESULT_OK);
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
