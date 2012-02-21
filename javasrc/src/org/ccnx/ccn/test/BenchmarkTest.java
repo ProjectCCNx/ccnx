@@ -130,7 +130,7 @@ public class BenchmarkTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		ContentName namespace = testHelper.getTestNamespace("benchmarkTest");
-		testName = ContentName.fromNative(namespace, "BenchmarkObject");
+		testName = new ContentName(namespace, "BenchmarkObject");
 		testName = VersioningProfile.addVersion(testName);
 		shortPayload = ("this is sample segment content").getBytes();
 		longPayload = new byte[LONG_LENGTH];

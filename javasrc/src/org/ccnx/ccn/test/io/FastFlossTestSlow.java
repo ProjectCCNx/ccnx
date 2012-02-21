@@ -62,7 +62,7 @@ public class FastFlossTestSlow {
 		Flosser flosser = null;
 		try {
 			ContentName namespace = testHelper.getTestNamespace("fastFlossTest");
-			ContentName ns = ContentName.fromNative(namespace, "FlossFile");
+			ContentName ns = new ContentName(namespace, "FlossFile");
 			flosser = new Flosser(ns);
 			CCNVersionedOutputStream vos = new CCNVersionedOutputStream(ns, writeLibrary);
 			streamData(vos);
@@ -83,7 +83,7 @@ public class FastFlossTestSlow {
 
 		try {
 			ContentName namespace = testHelper.getTestNamespace("fastRepoTest");			
-			ContentName ns = ContentName.fromNative(namespace, "RepoFile");
+			ContentName ns = new ContentName(namespace, "RepoFile");
 			RepositoryVersionedOutputStream vos = new RepositoryVersionedOutputStream(ns, writeLibrary);
 			streamData(vos);
 		} catch (Exception e) {

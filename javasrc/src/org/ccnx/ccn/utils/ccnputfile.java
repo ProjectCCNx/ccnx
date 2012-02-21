@@ -83,7 +83,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 				for (int i=CommonParameters.startArg + 1; i < args.length; ++i) {
 					
 					// put as child of name
-					ContentName nodeName = ContentName.fromURI(argName, args[i]);
+					ContentName nodeName = new ContentName(argName, args[i]);
 					
 					doPut(handle, args[i], nodeName);
 					// leave this one as always printing for now

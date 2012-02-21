@@ -55,8 +55,8 @@ public class NodeKeyTest {
 		testNodeKey = new NodeKey(nodeKeyPrefix, key);
 		System.out.println("created node key, name =" + testNodeKey.nodeName());
 
-		descendantNodeName1 = ContentName.fromNative(testPrefix, "level1");
-		descendantNodeName2 = ContentName.fromNative(descendantNodeName1, "level2");
+		descendantNodeName1 = new ContentName(testPrefix, "level1");
+		descendantNodeName2 = new ContentName(descendantNodeName1, "level2");
 
 		descendantNodeKey2 = testNodeKey.computeDescendantNodeKey(descendantNodeName2);
 		descendantNodeKey1 = testNodeKey.computeDescendantNodeKey(descendantNodeName1);

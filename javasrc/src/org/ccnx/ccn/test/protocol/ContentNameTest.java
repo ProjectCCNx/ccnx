@@ -351,6 +351,7 @@ public class ContentNameTest {
 	}
 
 	@Test
+	@SuppressWarnings( "deprecation" ) // this method tests a deprecated method
 	public void testMultilevelString() throws MalformedContentNameStringException {
 		Log.info(Log.FAC_TEST, "Starting testMultilevelString");
 
@@ -373,7 +374,7 @@ public class ContentNameTest {
 		assertEquals(child.cut(document1.getBytes()), parent);
 		assertTrue(DataUtils.arrayEquals(child.component(2), document1.getBytes()));
 		
-		child = ContentName.fromNative(parent, document1);
+		child = new ContentName(parent, document1);
 		System.out.println("Child is (native, one additional comp): " + child);
 		assertNotNull(child);
 		assertTrue(parent.isPrefixOf(child));
@@ -384,7 +385,7 @@ public class ContentNameTest {
 		child = new ContentName(parent, childComps[0], childComps[1]);
 		System.out.println("Child is (native): " + child);
 		assertNotNull(child);
-		ContentName child2 = ContentName.fromNative(parent, document1, document2);
+		ContentName child2 = new ContentName(parent, document1, document2);
 		System.out.println("Child2 is (native): " + child2);
 		assertNotNull(child2);
 		assertEquals(child, child2);
@@ -544,8 +545,8 @@ public class ContentNameTest {
 
 		ContentName small = ContentName.fromURI(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR + subName1);
 		ContentName small2 = ContentName.fromURI(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR + subName1);
-		ContentName middle = ContentName.fromURI(small, subName2);
-		ContentName large = ContentName.fromURI(middle, document1);
+		ContentName middle = new ContentName(small, subName2);
+		ContentName large = new ContentName(middle, document1);
 		
 		assertEquals(small, small);
 		assertEquals(middle, middle);

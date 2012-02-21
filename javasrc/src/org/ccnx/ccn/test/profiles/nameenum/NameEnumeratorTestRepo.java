@@ -49,7 +49,8 @@ public class NameEnumeratorTestRepo extends CCNTestBase implements BasicNameEnum
 		ContentName baseName = testHelper.getClassNamespace();
 		
 		for (int i = 0; i < NFILES; i++) {
-			RepositoryOutputStream ros = new RepositoryOutputStream(ContentName.fromNative(baseName, fileNameBase + i), putHandle);
+			RepositoryOutputStream ros = new RepositoryOutputStream(
+					new ContentName(baseName, fileNameBase + i), putHandle);
 			ros.write("NE test".getBytes(), 0, "NE test".getBytes().length);
 			ros.close();
 		}

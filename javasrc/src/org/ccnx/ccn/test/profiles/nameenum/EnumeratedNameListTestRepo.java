@@ -107,15 +107,15 @@ public class EnumeratedNameListTestRepo {
 		name3String = nameString + Integer.toString(value+2);
 		name4String = nameString + Integer.toString(value+3);
 
-		name1 = ContentName.fromNative(directory, name1String);
-		name2 = ContentName.fromNative(directory, name2String);
-		name3 = ContentName.fromNative(directory, name3String);
-		name4 = ContentName.fromNative(directory2, name1String);
-		name5 = ContentName.fromNative(directory2, name2String);
-		name6 = ContentName.fromNative(directory2, name3String);
-		name7 = ContentName.fromNative(directory2, name4String);
-		name8 = ContentName.fromNative(directory3, name1String);
-		name9 = ContentName.fromNative(directory3, name2String);
+		name1 = new ContentName(directory, name1String);
+		name2 = new ContentName(directory, name2String);
+		name3 = new ContentName(directory, name3String);
+		name4 = new ContentName(directory2, name1String);
+		name5 = new ContentName(directory2, name2String);
+		name6 = new ContentName(directory2, name3String);
+		name7 = new ContentName(directory2, name4String);
+		name8 = new ContentName(directory3, name1String);
+		name9 = new ContentName(directory3, name2String);
 		brokenPrefix = ContentName.fromNative(prefix1StringError);
 		putHandle = CCNHandle.open();
 	}

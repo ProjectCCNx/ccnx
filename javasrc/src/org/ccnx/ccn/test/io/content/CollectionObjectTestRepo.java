@@ -63,16 +63,16 @@ public class CollectionObjectTestRepo {
 	public void testCollections() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testCollections");
 
-		ContentName nonCollectionName = ContentName.fromNative(testHelper.getTestNamespace("testCollections"), "myNonCollection");
-		ContentName collectionName = ContentName.fromNative(testHelper.getTestNamespace("testCollections"), "myCollection");
+		ContentName nonCollectionName = new ContentName(testHelper.getTestNamespace("testCollections"), "myNonCollection");
+		ContentName collectionName = new ContentName(testHelper.getTestNamespace("testCollections"), "myCollection");
 		
 		// Write something that isn't a collection
 		CCNSerializableStringObject so = new CCNSerializableStringObject(nonCollectionName, "This is not a collection.", SaveType.REPOSITORY, putLibrary);
 		so.save();
 		
 		Link[] references = new Link[2];
-		references[0] = new Link(ContentName.fromNative(collectionName, "r1"));
-		references[1] = new Link(ContentName.fromNative(collectionName, "r2"));
+		references[0] = new Link(new ContentName(collectionName, "r1"));
+		references[1] = new Link(new ContentName(collectionName, "r2"));
 		CollectionObject collection = 
 			new CollectionObject(collectionName, references, SaveType.REPOSITORY, putLibrary);
 		collection.save();

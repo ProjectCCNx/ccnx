@@ -62,7 +62,7 @@ public class PipelineTest {
 		writeHandle = CCNHandle.open();
 		
 		ContentName namespace = testHelper.getTestNamespace("pipelineTest");
-		testName = ContentName.fromNative(namespace, "PipelineSegments");
+		testName = new ContentName(namespace, "PipelineSegments");
 		testName = VersioningProfile.addVersion(testName);
 		try {
 			putSegments();

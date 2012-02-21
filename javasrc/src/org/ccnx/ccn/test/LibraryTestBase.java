@@ -198,7 +198,7 @@ public class LibraryTestBase extends CCNTestBase {
 		Random rand = new Random();
 		for (int i = 0; i < count; i++) {
 			Thread.sleep(rand.nextInt(50));
-			ContentName putResult = writer.put(ContentName.fromNative(baseName, Integer.toString(i)), new Integer(i).toString().getBytes());
+			ContentName putResult = writer.put(new ContentName(baseName, Integer.toString(i)), new Integer(i).toString().getBytes());
 			Log.info(Log.FAC_TEST, "Put " + i + " done");
 			checkPutResults(putResult);
 		}
@@ -232,7 +232,7 @@ public class LibraryTestBase extends CCNTestBase {
 		public void run() {
 			try {
 				Log.info(Log.FAC_TEST, "Get thread started");
-				getResults(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, handle);
+				getResults(new ContentName(PARENT_NAME, Integer.toString(id)), count, handle);
 				handle.close();
 				Log.info(Log.FAC_TEST, "Get thread finished");
 			} catch (Throwable ex) {
@@ -261,7 +261,7 @@ public class LibraryTestBase extends CCNTestBase {
 		public void run() {
 			try {
 				Log.info(Log.FAC_TEST, "Put thread started");
-				doPuts(ContentName.fromNative(PARENT_NAME, Integer.toString(id)), count, handle);
+				doPuts(new ContentName(PARENT_NAME, Integer.toString(id)), count, handle);
 				handle.close();
 				Log.info(Log.FAC_TEST, "Put thread finished");
 				//cf.shutdown();
@@ -295,7 +295,7 @@ public class LibraryTestBase extends CCNTestBase {
 		public void run() {
 			try {
 				Log.info(Log.FAC_TEST, "GetServer started");
-				Interest interest = new Interest(ContentName.fromNative(PARENT_NAME, Integer.toString(id)));
+				Interest interest = new Interest(new ContentName(PARENT_NAME, Integer.toString(id)));
 				// Register interest
 				handle.expressInterest(interest, this);
 				// Block on semaphore until enough data has been received
@@ -363,7 +363,7 @@ public class LibraryTestBase extends CCNTestBase {
 			try {
 				Log.info(Log.FAC_TEST, "PutServer started");
 				// Register filter
-				name = ContentName.fromNative(PARENT_NAME, Integer.toString(id));
+				name = new ContentName(PARENT_NAME, Integer.toString(id));
 				writer = new CCNWriter(name, handle);
 				handle.registerFilter(name, this);
 				// Block on semaphore until enough data has been received
@@ -386,7 +386,7 @@ public class LibraryTestBase extends CCNTestBase {
 					int val = Integer.parseInt(new String(interest.name().component(interest.name().count()-1)));
 					Log.info(Log.FAC_TEST, "Got interest in " + val);
 					if (!accumulatedResults.contains(val)) {
-						ContentName putResult = writer.put(ContentName.fromNative(name, Integer.toString(val)), Integer.toString(next).getBytes());
+						ContentName putResult = writer.put(new ContentName(name, Integer.toString(val)), Integer.toString(next).getBytes());
 						result = true;
 						Log.info(Log.FAC_TEST, "Put " + val + " done");
 						checkPutResults(putResult);

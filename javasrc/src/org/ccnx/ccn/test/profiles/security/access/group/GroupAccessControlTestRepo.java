@@ -45,7 +45,7 @@ public class GroupAccessControlTestRepo {
 	//	NamespaceManager.Root.create(acName, acl, SaveType.REPOSITORY, CCNHandle.getHandle());
 
 		// create a file in the namespace under access control
-		fileName = ContentName.fromNative(acName, "/test.txt");
+		fileName = new ContentName(acName, "test.txt");
 		CCNHandle h = CCNHandle.getHandle();
 		RepositoryFileOutputStream os = new RepositoryFileOutputStream(fileName, h);
 		os.write(content);

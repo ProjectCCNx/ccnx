@@ -81,7 +81,7 @@ public class MLACReadWriteTestRepo {
 		for (int d=0; d<domainCount; d++) {
 			domainPrefix[d] = ContentName.fromNative("/ccnx.org/domain" + d);
 			userNamespace[d] = GroupAccessControlProfile.userNamespaceName(domainPrefix[d]);
-			userKeystore[d] = ContentName.fromNative(userNamespace[d], "_keystore_");
+			userKeystore[d] = new ContentName(userNamespace[d], "_keystore_");
 			groupNamespace[d] = GroupAccessControlProfile.groupNamespaceName(domainPrefix[d]);
 			cua[d] = new CreateUserData(userKeystore[d], userNames, userNames.length, true, "password".toCharArray());
 			cua[d].publishUserKeysToRepositorySetLocators(userNamespace[d]);
@@ -93,7 +93,7 @@ public class MLACReadWriteTestRepo {
 		
 		// The root ACL at domainPrefix has Alice from domain 0 as a manager
 		ArrayList<Link> ACLcontents = new ArrayList<Link>();
-		Link lk = new Link(ContentName.fromNative(userNamespace[0], userNames[0]), ACL.LABEL_MANAGER, null);
+		Link lk = new Link(new ContentName(userNamespace[0], userNames[0]), ACL.LABEL_MANAGER, null);
 		ACLcontents.add(lk);
 		ACL rootACL = new ACL(ACLcontents);
 		
@@ -200,11 +200,11 @@ public class MLACReadWriteTestRepo {
 			subdirectory = baseDirectory.append(ContentName.fromNative("/Alice/documents/images/"));
 			ArrayList<Link> ACLcontents = new ArrayList<Link>();
 			// Alice from domain 0 is a manager
-			ACLcontents.add(new Link(ContentName.fromNative(userNamespace[0], userNames[0]), ACL.LABEL_MANAGER, null));
+			ACLcontents.add(new Link(new ContentName(userNamespace[0], userNames[0]), ACL.LABEL_MANAGER, null));
 			// Bob from domain 1 is a reader
-			ACLcontents.add(new Link(ContentName.fromNative(userNamespace[1], userNames[1]), ACL.LABEL_READER, null));
+			ACLcontents.add(new Link(new ContentName(userNamespace[1], userNames[1]), ACL.LABEL_READER, null));
 			// Carol from domain 1 is a reader
-			ACLcontents.add(new Link(ContentName.fromNative(userNamespace[1], userNames[2]), ACL.LABEL_READER, null));
+			ACLcontents.add(new Link(new ContentName(userNamespace[1], userNames[2]), ACL.LABEL_READER, null));
 			ACL baseDirACL = new ACL(ACLcontents);
 			_AliceACM.setACL(subdirectory, baseDirACL);
 		}
@@ -225,7 +225,7 @@ public class MLACReadWriteTestRepo {
 		byte [] _write_buffer = new byte[blockSize];
 		
 		try {
-			nodeName = ContentName.fromNative(subdirectory, "randomContent");
+			nodeName = new ContentName(subdirectory, "randomContent");
 			CCNOutputStream ostream = new RepositoryFileOutputStream(nodeName, _AliceHandle);
 			ostream.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			

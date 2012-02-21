@@ -90,7 +90,7 @@ public class CCNFileStreamTestRepo {
 		Log.info(Log.FAC_TEST, "Started testRepoFileOutputStream");
 
 		int fileSize = random.nextInt(50000);
-		ContentName fileName = ContentName.fromNative(testHelper.getTestNamespace("testRepoFileOutputStream"), "outputFile.bin");
+		ContentName fileName = new ContentName(testHelper.getTestNamespace("testRepoFileOutputStream"), "outputFile.bin");
 		
 		// Write to a repo. Read it back in. See if repo gets the header.
 		RepositoryFileOutputStream rfos = new RepositoryFileOutputStream(fileName, writeLib);

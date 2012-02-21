@@ -45,7 +45,7 @@ public class InterestAndFilterTestRepo {
 		_prefix = ContentName.fromNative(String.format("/repotest/InterestAndFilter_%016X", _rnd.nextLong()));
 		_userHandle = CCNHandle.getHandle();
 		
-		ContentName users = ContentName.fromNative(_prefix, "Users");
+		ContentName users = new ContentName(_prefix, "Users");
 		_cud = new CreateUserData(users, _users, _users.length, true, _password);
 		_userHandle = _cud.getHandleForUser(_users[0]);
 				
@@ -69,7 +69,7 @@ public class InterestAndFilterTestRepo {
 	public void testInterest() throws Exception {
 		System.out.println("********* Running testInterest");
 		
-		ContentName name = ContentName.fromNative(_prefix, "data");
+		ContentName name = new ContentName(_prefix, "data");
 		int sendcount = 2;
 
 		// this is needed to loop the listener
@@ -109,7 +109,7 @@ public class InterestAndFilterTestRepo {
 	public void testInterestAndFilter() throws Exception {
 		System.out.println("********* Running testInterestAndFilter");
 		
-		ContentName name = ContentName.fromNative(_prefix, "data");
+		ContentName name = new ContentName(_prefix, "data");
 		int sendcount = 2;
 		
 		// this is needed to loop the listener

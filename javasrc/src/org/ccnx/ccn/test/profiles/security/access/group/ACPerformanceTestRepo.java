@@ -71,14 +71,14 @@ public class ACPerformanceTestRepo {
 		
 		userNamespace = GroupAccessControlProfile.userNamespaceName(UserConfiguration.defaultNamespace());
 		groupNamespace = GroupAccessControlProfile.groupNamespaceName(UserConfiguration.defaultNamespace());
-		userKeystore = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
+		userKeystore = new ContentName(UserConfiguration.defaultNamespace(), "_keystore_"); 
 	
 		cua = new CreateUserData(userKeystore, userNames, userNames.length, true, "password".toCharArray());
 		cua.publishUserKeysToRepositorySetLocators(userNamespace);
 
 		// The root ACL at domainPrefix has Alice as a manager
 		ArrayList<Link> ACLcontents = new ArrayList<Link>();
-		Link lk = new Link(ContentName.fromNative(userNamespace, userNames[0]), ACL.LABEL_MANAGER, null);
+		Link lk = new Link(new ContentName(userNamespace, userNames[0]), ACL.LABEL_MANAGER, null);
 		ACLcontents.add(lk);
 		ACL rootACL = new ACL(ACLcontents);
 		
@@ -149,8 +149,8 @@ public class ACPerformanceTestRepo {
 
 		baseDirectory = domainPrefix.append(ContentName.fromNative("/Alice/documents/images/"));
 		ArrayList<Link> ACLcontents = new ArrayList<Link>();
-		ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[0]), ACL.LABEL_MANAGER, null));
-		ACLcontents.add(new Link(ContentName.fromNative(userNamespace, userNames[1]), ACL.LABEL_READER, null));		
+		ACLcontents.add(new Link(new ContentName(userNamespace, userNames[0]), ACL.LABEL_MANAGER, null));
+		ACLcontents.add(new Link(new ContentName(userNamespace, userNames[1]), ACL.LABEL_READER, null));		
 		ACL baseDirACL = new ACL(ACLcontents);
 		_AliceACM.setACL(baseDirectory, baseDirACL);
 
@@ -164,7 +164,7 @@ public class ACPerformanceTestRepo {
 		long startTime = System.currentTimeMillis();
 		
 		try {
-			nodeName = ContentName.fromNative(baseDirectory, "randomContent");
+			nodeName = new ContentName(baseDirectory, "randomContent");
 			CCNOutputStream ostream = new RepositoryFileOutputStream(nodeName, _AliceHandle);
 			ostream.setTimeout(SystemConfiguration.MAX_TIMEOUT);
 			
@@ -222,7 +222,7 @@ public class ACPerformanceTestRepo {
 		long startTime = System.currentTimeMillis();
 		
 		ArrayList<ACLOperation> ACLUpdates = new ArrayList<ACLOperation>();
-		Link lk = new Link(ContentName.fromNative(userNamespace, userNames[2]));
+		Link lk = new Link(new ContentName(userNamespace, userNames[2]));
 		ACLUpdates.add(ACLOperation.addReaderOperation(lk));
 		_AliceACM.updateACL(baseDirectory, ACLUpdates);
 

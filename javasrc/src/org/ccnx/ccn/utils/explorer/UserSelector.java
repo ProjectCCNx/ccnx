@@ -181,7 +181,7 @@ public class UserSelector extends JDialog implements ActionListener {
 			// Have to the user first, otherwise we can't make a root acl...
 			
 			System.out.println("Setting user: " + userName);
-			ContentName myIdentity = ContentName.fromNative(userStorage, userName);
+			ContentName myIdentity = new ContentName(userStorage, userName);
 			if (_publishIdentity) {
 				_gacm.publishMyIdentity(myIdentity, handle.keyManager().getDefaultPublicKey());
 			}

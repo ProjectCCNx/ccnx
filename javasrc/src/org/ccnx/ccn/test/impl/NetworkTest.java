@@ -93,16 +93,16 @@ public class NetworkTest extends CCNTestBase {
 		TestInterestHandler tfl = new TestInterestHandler();
 		TestContentHandler tl = new TestContentHandler();
 
-		ContentName testName1 = ContentName.fromNative(testPrefix, "foo");
+		ContentName testName1 = new ContentName(testPrefix, "foo");
 		Interest interest1 = new Interest(testName1);
-		ContentName testName2 = ContentName.fromNative(testName1, "bar"); // /foo/bar
+		ContentName testName2 = new ContentName(testName1, "bar"); // /foo/bar
 		Interest interest2 = new Interest(testName2);
-		ContentName testName3 = ContentName.fromNative(testName2, "blaz"); // /foo/bar/blaz
-		ContentName testName4 = ContentName.fromNative(testName2, "xxx");  // /foo/bar/xxx
+		ContentName testName3 = new ContentName(testName2, "blaz"); // /foo/bar/blaz
+		ContentName testName4 = new ContentName(testName2, "xxx");  // /foo/bar/xxx
 		Interest interest4 = new Interest(testName4);
-		ContentName testName5 = ContentName.fromNative(testPrefix, "zoo"); // /zoo
-		ContentName testName6 = ContentName.fromNative(testName1, "zoo");  // /foo/zoo
-		ContentName testName7 = ContentName.fromNative(testName2, "spaz"); // /foo/bar/spaz
+		ContentName testName5 = new ContentName(testPrefix, "zoo"); // /zoo
+		ContentName testName6 = new ContentName(testName1, "zoo");  // /foo/zoo
+		ContentName testName7 = new ContentName(testName2, "spaz"); // /foo/bar/spaz
 		Interest interest6 = new Interest(testName6);
 
 		// Test that we don't receive interests above what we registered
@@ -181,7 +181,7 @@ public class NetworkTest extends CCNTestBase {
 		 * Test re-expression of interest
 		 */
 		CCNWriter writer = new CCNWriter(testPrefix, putHandle);
-		ContentName testName = ContentName.fromNative(testPrefix, "aaa");
+		ContentName testName = new ContentName(testPrefix, "aaa");
 
 		testInterest = new Interest(testName);
 		TestContentHandler tl = new TestContentHandler();
@@ -200,7 +200,7 @@ public class NetworkTest extends CCNTestBase {
 		Log.info(Log.FAC_TEST, "Starting testNetworkManagerFixedPrefix");
 
 		CCNWriter writer = new CCNWriter(putHandle);
-		ContentName testName = ContentName.fromNative(testPrefix, "ddd");
+		ContentName testName = new ContentName(testPrefix, "ddd");
 		testInterest = new Interest(testName);
 		TestContentHandler tl = new TestContentHandler();
 		getHandle.expressInterest(testInterest, tl);
@@ -221,7 +221,7 @@ public class NetworkTest extends CCNTestBase {
 		// fixing CCNWriter to do proper flow control.
 		writer.disableFlowControl();
 
-		ContentName testName = ContentName.fromNative(testPrefix, "bbb");
+		ContentName testName = new ContentName(testPrefix, "bbb");
 
 		testInterest = new Interest(testName);
 		TestContentHandler tl = new TestContentHandler();
@@ -242,7 +242,7 @@ public class NetworkTest extends CCNTestBase {
 		CCNWriter writer = new CCNWriter(testPrefix, putHandle);
 		writer.disableFlowControl();
 
-		ContentName testName = ContentName.fromNative(testPrefix, "freshnessTest");
+		ContentName testName = new ContentName(testPrefix, "freshnessTest");
 		writer.put(testName, "freshnessTest", 3);
 		Thread.sleep(80);
 		ContentObject co = getHandle.get(testName, 1000);
@@ -263,7 +263,7 @@ public class NetworkTest extends CCNTestBase {
 		 * Test re-expression of interest
 		 */
 		CCNWriter writer = new CCNWriter(testPrefix, putHandle);
-		ContentName testName = ContentName.fromNative(testPrefix, "ccc");
+		ContentName testName = new ContentName(testPrefix, "ccc");
 		testInterest = new Interest(testName);
 		TestContentHandler tl = new TestContentHandler();
 		getHandle.expressInterest(testInterest, tl);
@@ -289,13 +289,13 @@ public class NetworkTest extends CCNTestBase {
 		if (getHandle.getNetworkManager().getProtocol() == NetworkProtocol.TCP) {
 			TreeSet<ContentObject> cos = new TreeSet<ContentObject>();
 			for (int i = 0; i < FLOOD_ITERATIONS; i++) {
-				ContentName name = ContentName.fromNative(testPrefix, (new Integer(i)).toString());
+				ContentName name = new ContentName(testPrefix, (new Integer(i)).toString());
 				cos.add(ContentObject.buildContentObject(name, new byte[]{(byte)i}));
 			}
 			for (ContentObject co : cos)
 				putHandle.put(co);
 			for (int i = 0; i < FLOOD_ITERATIONS; i++) {
-				ContentObject co = getHandle.get(ContentName.fromNative(testPrefix, new Integer(i).toString()), 2000);
+				ContentObject co = getHandle.get(new ContentName(testPrefix, new Integer(i).toString()), 2000);
 				Assert.assertNotNull("Failed in flood after " + i + " iterations", co);
 			}
 		}

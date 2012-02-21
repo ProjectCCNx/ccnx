@@ -372,7 +372,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					Log.fine("Selected Node is " + selectedPrefix);
 
 					try {
-						ContentName contentName = ContentName.fromURI(selectedPrefix, file.getName());
+						ContentName contentName = ContentName.fromURI(selectedPrefix).append(file.getName());
 						ContentName temp = null;
 						while (temp==null) {
 							String name = JOptionPane.showInputDialog("Send File to Repo As:", contentName.toString());

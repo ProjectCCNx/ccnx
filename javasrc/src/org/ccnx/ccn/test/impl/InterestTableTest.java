@@ -175,7 +175,7 @@ public class InterestTableTest extends CCNTestBase {
 		SignedInfo si = new SignedInfo(pub, now, SignedInfo.ContentType.DATA, locator);
 		// unique name		
 		return new ContentObject(
-				ContentName.fromNative(name, Long.toString(now.getTime())), si, contents, fakeSignature);
+				new ContentName(name, Long.toString(now.getTime())), si, contents, fakeSignature);
 	}
 	
 	private ContentObject getContentObject(ContentName name, int value) throws InvalidKeyException, SignatureException, MalformedContentNameStringException, ConfigurationException {
