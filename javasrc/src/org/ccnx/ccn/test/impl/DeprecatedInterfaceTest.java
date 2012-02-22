@@ -41,7 +41,7 @@ import org.junit.Test;
 @SuppressWarnings("deprecation")
 public class DeprecatedInterfaceTest extends CCNTestBase implements CCNFilterListener, CCNInterestListener {
 
-	static final int QUICK_TIMEOUT = 200;
+	static final int QUICK_TIMEOUT = 400;
 	static final int MORE_THAN_RETRY_TIMEOUT = SystemConfiguration.INTEREST_REEXPRESSION_DEFAULT * 2;
 	static CCNTestHelper testHelper = new CCNTestHelper(DeprecatedInterfaceTest.class);
 	static ContentName prefix = testHelper.getTestNamespace("testDeprecatedInterfaces");
