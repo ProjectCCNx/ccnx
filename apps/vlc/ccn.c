@@ -279,6 +279,7 @@ static void CCNClose(vlc_object_t *p_this)
     p_access->b_die = true;
     if (p_sys->p_fifo)
         block_FifoEmpty(p_sys->p_fifo);
+    vlc_cancel(p_sys->thread);
     vlc_join(p_sys->thread, NULL);
     if (p_sys->p_fifo) {
         block_FifoRelease(p_sys->p_fifo);
@@ -485,7 +486,7 @@ static void *ccn_event_thread(void *p_this)
     int cancel = vlc_savecancel();
 
     while (res >= 0 && !p_access->b_die) {
-        res = ccn_run(ccn, 1000);
+        res = ccn_run(ccn, 200);
         if (res < 0 && ccn_get_connection_fd(ccn) == -1) {
             /* Try reconnecting, after a bit of delay */
             msleep((500 + (getpid() % 512)) * 1024);
