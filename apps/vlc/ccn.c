@@ -382,6 +382,12 @@ static ssize_t CCNRead(access_t *p_access, uint8_t *buf, size_t size)
 /*****************************************************************************
  * CCNSeek:
  *****************************************************************************/
+/* XXX - VLC behavior when playing an MP4 file is to seek back and forth for
+ * the audio and video, which may be separated by many megabytes, so it is
+ * a much better (and possibly required) that the code not discard all
+ * previously buffered data when seeking, since the app is likely to seek back
+ * close to where it was very quickly.
+ */
 #if (VLCPLUGINVER < 10100)
 static int CCNSeek(access_t *p_access, int64_t i_pos)
 #else
