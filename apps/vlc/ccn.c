@@ -98,20 +98,20 @@ vlc_module_end();
  *****************************************************************************/
 struct access_sys_t
 {
-    int64_t i_pos;
-    vlc_thread_t thread;
-    int i_bufsize;
-    int i_bufoffset;
-    int i_chunksize;
-    int timeouts;
-    int i_fifo_max;
-    block_fifo_t *p_fifo;
-    unsigned char *buf;
-    struct ccn *ccn;
-    struct ccn_closure *incoming;
+    int64_t i_pos;       /**< byte offset in stream of next bytes to arrive over net */
+    vlc_thread_t thread; /**< thread that is running ccn_run loop */
+    int i_bufsize;       /**< size of intermediate buffer */
+    int i_bufoffset;     /**< offset in intermediate buffer for next bytes to arrive over net */
+    int i_chunksize;     /**< size of CCN ContentObject data blocks */
+    int timeouts;        /**< number of timeouts without good data received */
+    int i_fifo_max;      /**< maximum number of blocks in FIFO */
+    block_fifo_t *p_fifo; /**< FIFO for blocks delivered to VLC */
+    unsigned char *buf;  /**< intermediate buffer */
+    struct ccn *ccn;     /**< CCN handle */
+    struct ccn_closure *incoming; /**< current closure for incoming content handling */
     struct ccn_charbuf *p_name;
     struct ccn_charbuf *p_template;
-    vlc_mutex_t lock;
+    vlc_mutex_t lock;    /**< mutex protecting data shared between CCNSeek and incoming_content */
 };
 
 enum ccn_upcall_res
@@ -623,7 +623,9 @@ incoming_content(struct ccn_closure *selfp,
             p_sys->i_bufoffset += (data_size - start_offset);
         }
     }
-
+    /* Advance position */
+    p_sys->i_pos += (data_size - start_offset);
+    
     /* if we're done, indicate so with a 0-byte block, release any buffered data upstream,
      * and don't express an interest
      */
@@ -640,7 +642,6 @@ incoming_content(struct ccn_closure *selfp,
     }
 
     /* Ask for the next fragment */
-    p_sys->i_pos = p_sys->i_chunksize * (1 + (p_sys->i_pos / p_sys->i_chunksize));
     name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
     res = ccn_express_interest(info->h, name, selfp, NULL);
     ccn_charbuf_destroy(&name);
