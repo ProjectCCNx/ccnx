@@ -1216,7 +1216,7 @@ storeHandler(struct ccn_closure *selfp,
                         uc++;
                         sfd->stored++;
                     } else {
-                        if (sfd->parms->noSend) {
+                        if (sfd->parms->noDup) {
                             fprintf(stderr,
                                     "ERROR in storeHandler, duplicate segment request, seg %d, %s\n",
                                     (int) seg, str);
