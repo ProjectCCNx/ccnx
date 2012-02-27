@@ -98,12 +98,30 @@ ccn_keystore_init(struct ccn_keystore *p, char *filename, char *password)
                               p->pubkey_digest, NULL)) return (-1);
     p->pubkey_digest_length = SHA256_DIGEST_LENGTH;
 
-    /* check if the key-pair requires a particular digest algorithm */
-    if (EVP_PKEY_DSA == EVP_PKEY_type(p->private_key->type)) {
-        digest_obj = OBJ_nid2obj(EVP_MD_type(EVP_dss1()));
+    /* check if the key-pair requires a particular digest algorithm
+     * For eliptic curve DSA this is not really a requirement, but
+     * the OpenSSL 0.9.8 code has a difficult time separating the
+     * message digest from the signing algorithm implied by the key,
+     * so for now, we'll pass along the OID that is the EVP_MD_type
+     * for it as well as for the DSA keys.
+     * At some point we'll be able to drop this
+     * and use ECDSA with SHA-256 (the default digest algorithm at this time.)
+     */
+    
+    switch (EVP_PKEY_type(p->private_key->type)) {
+        case EVP_PKEY_DSA:
+            digest_obj = OBJ_nid2obj(EVP_MD_type(EVP_dss1()));
+            break;
+        case EVP_PKEY_EC:
+            digest_obj = OBJ_nid2obj(EVP_MD_type(EVP_ecdsa()));
+            break;
+        default:
+            digest_obj = NULL;
+    }
+    if (digest_obj) {
         digest_size = 1 + OBJ_obj2txt(NULL, 0, digest_obj, 1);
         p->digest_algorithm = calloc(1, digest_size);
-        OBJ_obj2txt(p->digest_algorithm, digest_size, digest_obj, 1);
+        OBJ_obj2txt(p->digest_algorithm, digest_size, digest_obj, 1);        
     } else {
         p->digest_algorithm = NULL;
     }
