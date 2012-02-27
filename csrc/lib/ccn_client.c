@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <openssl/evp.h>
 
 #include <ccn/ccn.h>
 #include <ccn/ccn_private.h>
@@ -275,6 +276,7 @@ ccn_create(void)
     } else
         h->tap = -1;
     h->defer_verification = 0;
+    OpenSSL_add_all_algorithms();
     return(h);
 }
 
