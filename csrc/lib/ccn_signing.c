@@ -65,7 +65,7 @@ ccn_sigc_init(struct ccn_sigc *ctx, const char *digest)
         /* figure out what algorithm the OID represents */
         ctx->digest = EVP_get_digestbyobj(OBJ_txt2obj(digest, 1)); // OID only
         if (ctx->digest == NULL) {
-            fprintf(stderr, "not a DigestAlgorithm I understand right now\n");
+            fprintf(stderr, "ccn_sigc_init: not a DigestAlgorithm I understand right now: %s\n", digest);
             return (-1);
         }
     }
@@ -231,7 +231,7 @@ int ccn_verify_signature(const unsigned char *msg,
          */
         digest = EVP_get_digestbyobj(OBJ_txt2obj((const char *)digest_algorithm, 1));
         if (digest == NULL) {
-            fprintf(stderr, "not a DigestAlgorithm I understand right now\n");
+            fprintf(stderr, "ccn_verify_signature: not a DigestAlgorithm I understand right now: %s\n", digest_algorithm);
             return (-1);
         }
     }
