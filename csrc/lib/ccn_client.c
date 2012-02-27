@@ -2367,7 +2367,7 @@ ccn_sign_content(struct ccn *h,
                                            signed_info,
                                            data,
                                            size,
-                                           NULL, // XXX
+                                           ccn_keystore_digest_algorithm(keystore),
                                            ccn_keystore_private_key(keystore));
     }
     else {
