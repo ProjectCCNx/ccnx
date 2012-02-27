@@ -173,7 +173,7 @@ main(int argc, char **argv)
                                    signed_info,
                                    newface->buf,
                                    newface->length,
-                                   NULL,
+                                   ccn_keystore_digest_algorithm(keystore),
                                    ccn_keystore_private_key(keystore));
     CHKRES(res);
     
@@ -235,7 +235,7 @@ main(int argc, char **argv)
                                    signed_info,
                                    prefixreg->buf,
                                    prefixreg->length,
-                                   NULL,
+                                   ccn_keystore_digest_algorithm(keystore),
                                    ccn_keystore_private_key(keystore));
     CHKRES(res);
     CHKRES(ccn_name_init(name));
