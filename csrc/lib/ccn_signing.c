@@ -55,14 +55,21 @@ ccn_sigc_init(struct ccn_sigc *ctx, const char *digest)
 {
     EVP_MD_CTX_init(&ctx->context);
     if (digest == NULL) {
+        /* this ought to be a message digest description that does NOT bind
+         * to a specific signature algorithm.  In openssl 0.9.8 it does, but
+         * in 1.0.0 there is some separation.
+         */
         ctx->digest = EVP_sha256();
     }
     else {
-        /* XXX - figure out what algorithm the OID represents */
-        fprintf(stderr, "not a DigestAlgorithm I understand right now\n");
-        return (-1);
+        /* figure out what algorithm the OID represents */
+        ctx->digest = EVP_get_digestbyobj(OBJ_txt2obj(digest, 1)); // OID only
+        if (ctx->digest == NULL) {
+            fprintf(stderr, "not a DigestAlgorithm I understand right now\n");
+            return (-1);
+        }
     }
-
+    
     if (0 == EVP_SignInit_ex(&ctx->context, ctx->digest, NULL))
         return (-1);
     return (0);
@@ -189,15 +196,15 @@ int ccn_verify_signature(const unsigned char *msg,
 
     const EVP_MD *digest;
     const EVP_MD *merkle_path_digest;
-
+    
     const unsigned char *signature_bits = NULL;
     size_t signature_bits_size = 0;
     const unsigned char *witness = NULL;
     size_t witness_size = 0;
+    const unsigned char *digest_algorithm;
+    size_t digest_algorithm_size;
+    
     EVP_PKEY *pkey = (EVP_PKEY *)verification_pubkey;
-#ifdef DEBUG
-    int x, h;
-#endif
 
     res = ccn_ref_tagged_BLOB(CCN_DTAG_SignatureBits, msg,
                               co->offset[CCN_PCO_B_SignatureBits],
@@ -211,9 +218,22 @@ int ccn_verify_signature(const unsigned char *msg,
         digest = EVP_sha256();
     }
     else {
-        /* XXX - figure out what algorithm the OID represents */
-        fprintf(stderr, "not a DigestAlgorithm I understand right now\n");
-        return (-1);
+        /* figure out what algorithm the OID represents */
+        res = ccn_ref_tagged_string(CCN_DTAG_DigestAlgorithm, msg,
+                                  co->offset[CCN_PCO_B_DigestAlgorithm],
+                                  co->offset[CCN_PCO_E_DigestAlgorithm],
+                                  &digest_algorithm,
+                                  &digest_algorithm_size);
+        if (res < 0)
+            return (-1);
+        /* NOTE: since the element closer is a 0, and the element is well formed,
+         * the string will be null terminated 
+         */
+        digest = EVP_get_digestbyobj(OBJ_txt2obj((const char *)digest_algorithm, 1));
+        if (digest == NULL) {
+            fprintf(stderr, "not a DigestAlgorithm I understand right now\n");
+            return (-1);
+        }
     }
 
     EVP_MD_CTX_init(ver_ctx);
@@ -252,6 +272,7 @@ int ccn_verify_signature(const unsigned char *msg,
         /* DER-encoded in the digest_info's digest ASN.1 octet string is the Merkle path info */
         merkle_path_info = d2i_MP_info(NULL, (const unsigned char **)&(digest_info->digest->data), digest_info->digest->length);
 #ifdef DEBUG
+        int x,h;
         int node = ASN1_INTEGER_get(merkle_path_info->node);
         int hash_count = sk_ASN1_OCTET_STRING_num(merkle_path_info->hashes);
         ASN1_OCTET_STRING *hash;
