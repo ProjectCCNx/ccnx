@@ -2,7 +2,7 @@
 # 
 # (Someday) Part of the CCNx distribution.
 #
-# Copyright (C) 2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -30,8 +30,11 @@ AFTER : test_alone
 : ${TRP:=TRP-`date +%s`}
 
 # Use a consistent time utility
-TIME='/usr/bin/time -p'
-TIME='env'
+if [ -x /usr/bin/time ]; then
+    TIME='/usr/bin/time -p'
+else
+    TIME='env'
+fi
 
 # Command for doing measured fetches
 FetchAndDiscard () {
@@ -42,7 +45,7 @@ FetchAndDiscard () {
 # Command for sending start write
 StartWrite() {
   echo "$TRP-startwrite"
-  $TIME SyncTest -nores -noseg -cat2 -bufs 1 -get "$1" "$TRP-startwrite.out"
+  $TIME SyncTest -nores -noseg -cat2 -bufs 1 -get "$1" "startwrite.out"
 }
 
 echo START $TRP
@@ -57,8 +60,8 @@ SWR=$VERSIONEDNAME/%C1.R.sw/%C1.N%00`GenSym`
 echo Start write request will be $SWR
 
 export CCNS_ENABLE PIPELINE TEST_DATA_SIZE CCNR_PROTO CCNR_SKIP_VERIFY SWR TRP
-echo Saving env in $TRP-env.out
-env > $TRP-env.out
+echo Saving env in TRP-env.out
+env > TRP-env.out
 
 # ccnd1 will be the one connected to the repo
 WithCCND 1 CappedCCNDStart $((TEST_DATA_SIZE / 4000 + 500))
@@ -130,4 +133,6 @@ rm -R $CCNR_DIRECTORY/index
 $TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO ccnr
 
 echo END $TRP
-tar cvf $TRP.tar *.out
+# The tar file may have been useful for debugging the test, but it is not
+# very useful to keep around anymore.
+# tar cvf $TRP.tar *.out
