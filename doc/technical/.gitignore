@@ -20,6 +20,8 @@ dtd.html
 xsd.html
 repository.dtd.html
 repository.xsd.html
+sync.dtd.html
+sync.xsd.html
 CanonicalOrder.html
 LinkMessages.html
 SynchronizationProtocol.html

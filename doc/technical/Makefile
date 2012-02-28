@@ -39,6 +39,8 @@ DERIVED_HTML =				\
 	xsd.html			\
 	repository.dtd.html			\
 	repository.xsd.html			\
+	sync.dtd.html			\
+	sync.xsd.html			\
 	DTAG.html			\
 
 DERIVED_INDEX = ../index.html index.html index.txt
@@ -80,6 +82,12 @@ repository.dtd.html: repository.dtd.txt $(XSDSRC)
 
 repository.xsd.html: repository.xsd.txt $(DTDSRC)
 	asciidoc --unsafe repository.xsd.txt
+
+sync.dtd.html: sync.dtd.txt $(XSDSRC)
+	asciidoc --unsafe sync.dtd.txt
+
+sync.xsd.html: sync.xsd.txt $(DTDSRC)
+	asciidoc --unsafe sync.xsd.txt
 
 CryptographicAlgorithms.html: CryptographicAlgorithms.txt
 	asciidoc CryptographicAlgorithms.txt
