@@ -1,11 +1,11 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -52,14 +52,14 @@ import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
 
 /**
  * High level implementation of repository protocol that
- * can be used by any application to provide repository service. 
+ * can be used by any application to provide repository service.
  * The application must supply a RepositoryStore instance to take care of actual storage
  * and retrieval, which might use persistent storage or application data structures.
- * 
+ *
  * Some notes:
  * We use a policy file to decide which namespaces to save. The policy file
  * is currently parsed within the lower level.
- * 
+ *
  * We can't just express an interest in anything that's within the namespaces
  * that we want to save within, because we will keep getting back the same
  * content over and over again if we do that. Instead the clients trigger a
@@ -71,33 +71,34 @@ import org.ccnx.ccn.protocol.KeyLocator.KeyLocatorType;
  */
 
 public class RepositoryServer implements CCNStatistics {
-	private final int REPO_PREFIX_FLAGS = PrefixRegistrationManager.DEFAULT_SELF_REG_FLAGS 
+	private final int REPO_PREFIX_FLAGS = PrefixRegistrationManager.DEFAULT_SELF_REG_FLAGS
 				+ PrefixRegistrationManager.CCN_FORW_TAP;
 	private RepositoryStore _repo = null;
 	private CCNHandle _handle = null;
 	private ArrayList<ContentName> _currentNamespace = new ArrayList<ContentName>();
-	private ArrayList<RepositoryDataListener> _currentListeners = new ArrayList<RepositoryDataListener>();
+	private final ArrayList<RepositoryDataListener> _currentListeners = new ArrayList<RepositoryDataListener>();
 	private Exclude _markerFilter;
-	private CCNWriter _writer;
+	private final CCNWriter _writer;
 	private boolean _pendingNamespaceChange = false;
-	private Object _pendingNamespaceChangeLock = new Object();
-	private int _windowSize = SystemConfiguration.PIPELINE_SIZE;
-	private int _ephemeralFreshness = FRESHNESS;
-	private RepositoryDataHandler _dataHandler;
+	private final Object _pendingNamespaceChangeLock = new Object();
+	private final int _windowSize = SystemConfiguration.PIPELINE_SIZE;
+	private final int _ephemeralFreshness = FRESHNESS;
+	private final RepositoryDataHandler _dataHandler;
 	private ContentName _responseName = null;
-	
+
 	public static final int PERIOD = 2000; // period for interest timeout check in ms.
 	public static final int THREAD_LIFE = 8;	// in seconds
 	//public static final int WINDOW_SIZE = 4;
 	public static final int FRESHNESS = 4;	// in seconds
-		
+
 	protected Timer _periodicTimer = null;
 	protected RepositoryInterestHandler _iHandler = null;
 	protected boolean _started = false;
 	protected Object _startedLock = new Object();
-	
+
 	private class InterestTimer extends TimerTask {
 
+		@Override
 		public void run() {
 			long currentTime = System.currentTimeMillis();
 			boolean changeNamespace = false;
@@ -112,14 +113,14 @@ public class RepositoryServer implements CCNStatistics {
 						}
 					}
 				}
-			
+
 				synchronized (_pendingNamespaceChangeLock) {
 					if (_currentListeners.size() == 0 && _pendingNamespaceChange) {
 						changeNamespace = true;
 					}
 				}
 			}
-			
+
 			// WARNING - we can't reset the name space while holding _currentListeners because
 			// resetNamespace can cause us to do an unregisterFilter which waits for interest handlers
 			// to complete before continuing, but we can have an interest handler that arrives after we
@@ -142,11 +143,11 @@ public class RepositoryServer implements CCNStatistics {
 					_currentListeners.notify();
 				}
 			}
-		}	
+		}
 	}
 
 	/**
-	 * Constructor.  Note that merely creating an instance does not begin service 
+	 * Constructor.  Note that merely creating an instance does not begin service
 	 * of requests from the network.  For that you must call start().
 	 * @param repo the RepositoryStore instance to use for backing storage.
 	 * 	The RepositoryServer uses repo.getHandle() to get the handle to use
@@ -159,7 +160,7 @@ public class RepositoryServer implements CCNStatistics {
 			_handle = repo.getHandle();
 			_writer = new CCNWriter(_handle);
 			_iHandler = new RepositoryInterestHandler(this);
-			
+
 			_responseName = KeyProfile.keyName(null, _handle.keyManager().getDefaultKeyID());
 
 			 // At some point we may want to refactor the code to
@@ -188,12 +189,12 @@ public class RepositoryServer implements CCNStatistics {
 			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
-		
+
 		byte[][]markerOmissions = new byte[2][];
 		markerOmissions[0] = CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes();
 		markerOmissions[1] = CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes();
 		_markerFilter = new Exclude(markerOmissions);
-		
+
 		// We can't read or write the policy file until now because we need the repo infrastructure
 		// to read it out of the repo. So now we can read it and/or write it. Since reading the file
 		// from the repo might cause us to change namespaces that are supported we need to reset the
@@ -210,16 +211,16 @@ public class RepositoryServer implements CCNStatistics {
 			Log.logStackTrace(Level.WARNING, e);
 			e.printStackTrace();
 		}
-		
+
 		_periodicTimer = new Timer(true);
 		_periodicTimer.scheduleAtFixedRate(new InterestTimer(), PERIOD, PERIOD);
-		
+
 		synchronized (_startedLock) {
 			_started = true;
 			_startedLock.notifyAll();
 		}
 	}
-	
+
 	public void waitForStart() {
 		synchronized (_startedLock) {
 			while (!_started) {
@@ -231,14 +232,14 @@ public class RepositoryServer implements CCNStatistics {
 			}
 		}
 	}
-	
+
 	/**
 	 * Stop serving requests
 	 */
 	public void shutDown() {
 		waitForStart();
 		Log.info(Log.FAC_REPO, "Stopping service of repository requests");
-		
+
 		if( _periodicTimer != null ) {
 			synchronized (_currentListeners) {
 				if (_currentListeners.size() != 0) {
@@ -258,28 +259,28 @@ public class RepositoryServer implements CCNStatistics {
 				_periodicTimer.cancel();
 			}
 		}
-		
-		_repo.shutDown();
+
 		_dataHandler.shutdown();
+		_repo.shutDown();
 		_iHandler.shutdown();
-		
+
 		// This closes our handle....
 		_handle = null;
-		
+
 		try {
 			_writer.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
-		
+
+
 	}
-	
+
 	/**
 	 * In general we need to wait until all sessions are complete before
 	 * making a namespace change because it involves changing the filter which
 	 * could cut off current sessions in process
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public void resetNamespaceFromHandler() throws IOException {
 		synchronized (_currentListeners) {
@@ -291,20 +292,20 @@ public class RepositoryServer implements CCNStatistics {
 			}
 			if( Log.isLoggable(Log.FAC_REPO, Level.INFO) )
 				Log.info(Log.FAC_REPO, "ResetNameSpaceFromHandler: pendingNameSpaceChange is {0}", _pendingNamespaceChange);
-		}	
+		}
 	}
-	
+
 	/**
 	 * Change namespace by registering/unregistering filters based on what's registered currently.
 	 * We can't completely lock the register/unregister but we can (hopefully) prevent this from
 	 * being called by simultaneous threads by not setting _pendingNamespaceChange to false until we
 	 * are all done which will effectively prevent us from processing new namespace change requests.
-	 * 
+	 *
 	 * Note that it is very important not to double register the same prefix which would be quite easy
 	 * to do here. If we do that, we end up with multiple handlers for each interest with the result that
-	 * the second handler sends a redundant duplicate answer back to ccnd which has a quite dramatic negative 
+	 * the second handler sends a redundant duplicate answer back to ccnd which has a quite dramatic negative
 	 * affect on performance.
-	 * 
+	 *
 	 * @throws IOException
 	 */
 	private void resetNamespace() throws IOException {
@@ -320,7 +321,7 @@ public class RepositoryServer implements CCNStatistics {
 				needToAdd = getUnMatched(newNamespace, _currentNamespace);
 			}
 		}
-		
+
 		// Calling _handle.unregisteredFilter with locks held is dangerous
 		if (null != unMatchedOld) {
 			for (ContentName oldName : unMatchedOld) {
@@ -329,7 +330,7 @@ public class RepositoryServer implements CCNStatistics {
 					Log.info(Log.FAC_REPO, "Dropping repo namespace {0}", oldName);
 			}
 		}
-		
+
 		if (null != needToAdd) {
 			for (ContentName newName : needToAdd) {
 				_handle.getNetworkManager().setInterestFilter(_handle, newName, _iHandler, REPO_PREFIX_FLAGS);
@@ -342,10 +343,10 @@ public class RepositoryServer implements CCNStatistics {
 			_pendingNamespaceChange = false;
 		}
 	}
-	
+
 	/**
 	 * Determine changes in the namespace so we can decide what needs to be unregistered.
-	 * 
+	 *
 	 * @param oldIn - previously registered names
 	 * @param newIn - new names to consider
 	 */
@@ -364,65 +365,65 @@ public class RepositoryServer implements CCNStatistics {
 		}
 		return toRemove;
 	}
-	
+
 	public CCNHandle getHandle() {
 		return _handle;
 	}
-	
+
 	public RepositoryStore getRepository() {
 		return _repo;
 	}
-	
+
 	public Exclude getExcludes() {
 		return _markerFilter;
 	}
-	
+
 	public CCNWriter getWriter() {
 		return _writer;
 	}
-	
+
 	public ArrayList<RepositoryDataListener> getDataListeners() {
 		return _currentListeners;
 	}
-	
+
 	public void addListener(RepositoryDataListener listener) {
 		synchronized(_currentListeners) {
 			_currentListeners.add(listener);
 		}
 	}
-	
+
 	public boolean getPendingNameSpaceState() {
 		synchronized (_pendingNamespaceChangeLock) {
 			return _pendingNamespaceChange;
 		}
 	}
-	
+
 	public RepositoryDataHandler getDataHandler() {
 		return _dataHandler;
 	}
-	
+
 	public int getWindowSize() {
 		return _windowSize;
 	}
-	
+
 	public int getFreshness() {
 		return _ephemeralFreshness;
 	}
-	
+
 	public ContentName getResponseName() {
 		return _responseName;
 	}
-	
-	
+
+
 	/**
 	 * Method to write out name enumeration responses.  This is called directly
 	 * to respond to incoming name enumeration interests and can also be called
 	 * when a content object is saved in the repo and the interest flag is set
 	 * by a previous name enumeration interest where there was not new information
 	 * available.
-	 * 
+	 *
 	 * @param ner NameEnumerationResponse object to send out
-	 * 
+	 *
 	 * @return void
 	 */
 	public void sendEnumerationResponse(NameEnumerationResponse ner){
@@ -458,11 +459,11 @@ public class RepositoryServer implements CCNStatistics {
 			}
 		}
 	}
-	
+
 	/**
 	 * Look for unverified keys. Note that we must have already checked to see that the repo has
 	 * the content for this target before calling this.
-	 * 
+	 *
 	 * @param target
 	 * @return new target if we need to verify the target
 	 */
@@ -476,10 +477,10 @@ public class RepositoryServer implements CCNStatistics {
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Look for keys we don't have based on content object
-	 * 
+	 *
 	 * @param content
 	 * @param target
 	 * @return
@@ -496,15 +497,15 @@ public class RepositoryServer implements CCNStatistics {
 			return null;
 		if (PublicKeyObject.isSelfSigned(target, (PublicKey)null, locator))
 			return null;
-		
+
 		// Here we are sort of mimicking code in PublicKeyCache. Should there be a routine to do
 		// this in PublicKeyCache? (it would need to have a generic getter to get the data since
 		// here we want to get it directly from the repo. Also I'm ignoring the "retry" code
 		// there that does exclusions since I think its wrong, it would be complicated to do it
 		// right and its unclear what kind of problem the code is concerned about...
-		
+
 		Interest keyInterest = new Interest(locator.name().name(), locator.name().publisher());
-		// we could have from 1 (content digest only) to 3 (version, segment, content digest) 
+		// we could have from 1 (content digest only) to 3 (version, segment, content digest)
 		// additional name components.
 		keyInterest.minSuffixComponents(1);
 		keyInterest.maxSuffixComponents(3);
@@ -515,14 +516,14 @@ public class RepositoryServer implements CCNStatistics {
 				Log.finer(Log.FAC_REPO, "Found key to sync: {0}", locator.name().name());
 			return locator.name().name();
 		}
-		
+
 		return getLinkedKeyTarget(keyContent);
 	}
-	
+
 	/**
 	 * Check whether co is a link and if so find any unsynced link target which is
-	 * chained to it. 
-	 * 
+	 * chained to it.
+	 *
 	 * @param co the ContentObject to test
 	 * @return null if no unresolved target, ContentName of unresolved target otherwise
 	 * @throws RepositoryException
@@ -548,12 +549,12 @@ public class RepositoryServer implements CCNStatistics {
 		}
 		return null;
 	}
-	
+
 	public void doSync(Interest interest, Interest readInterest) throws IOException {
 		RepositoryDataListener listener = null;
 		synchronized (_currentListeners) {
 			if (isDuplicateRequest(interest)) return;
-			
+
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 				Log.finer(Log.FAC_REPO, "Repo checked write no content for {0}, starting read", interest.name());
 			listener = new RepositoryDataListener(interest, readInterest, this);
@@ -562,11 +563,11 @@ public class RepositoryServer implements CCNStatistics {
 		}
 		_handle.expressInterest(readInterest, listener);
 	}
-	
+
 	public Object getStatus(String type) {
 		return _repo.getStatus(type);
 	}
-	
+
 	/**
 	 * Check for duplicate request, i.e. request already in process
 	 * Logs the request if found to be a duplicate.
@@ -608,30 +609,30 @@ public class RepositoryServer implements CCNStatistics {
 		}
 		return false;
 	}
-	
+
 	// ==============================================================
 	// Statistics
-	
+
 	protected CCNEnumStats<StatsEnum> _stats = new CCNEnumStats<StatsEnum>(StatsEnum.HandleInterest);
 
 	public CCNStats getStats() {
 		return _stats;
 	}
-	
+
 	public enum StatsEnum implements IStatsEnum {
 		// ====================================
 		// Just edit this list, dont need to change anything else
-		
+
 		HandleInterest ("interests", "Number of calls to RepositoryInterestHandler.handleInterest()"),
 		HandleInterestErrors ("errors", "Errors in handleInterest()"),
-		
+
 		HandleInterestCommands ("interests", "Number of command interests to handleInterest()"),
-		
+
 		HandleInterestStartWriteReceived ("interests", "Number of start writes to handleInterest()"),
 		HandleInterestStartWriteProcessed ("interests", "Number of start writes processed by handleInterest()"),
 		HandleInterestStartWriteIgnored ("interests", "Number of start writes ignored in handleInterest()"),
 		HandleInterestStartWriteErrors ("errors", "Error count in startWrite()"),
-		
+
 		HandleInterestNameEnumReceived ("interests", "Number of name enums to handleInterest()"),
 		HandleInterestNameEnumProcessed ("interests", "Number of name enums processed in handleInterest()"),
 		HandleInterestNameEnumIgnored ("interests", "Number of name enums ignored in handleInterest()"),
@@ -639,7 +640,7 @@ public class RepositoryServer implements CCNStatistics {
 		HandleInterestCheckedWriteReceived ("interests", "Number of checked write to handleInterest()"),
 		HandleInterestCheckedWriteProcessed ("interests", "Number of checked write processed in handleInterest()"),
 		HandleInterestCheckedWriteIgnored ("interests", "Number of checked write ignored in handleInterest()"),
-		
+
 		HandleInterestBulkImportReceived ("interests", "Number of bulk imports to handleInterest()"),
 		HandleInterestBulkImportProcessed ("interests", "Number of bulk imports processed in handleInterest()"),
 		HandleInterestBulkImportIgnored ("interests", "Number of bulk imports ignored in handleInterest()"),
@@ -650,7 +651,7 @@ public class RepositoryServer implements CCNStatistics {
 		HandleInterestStartWritePolicyHandlers ("responses", "Number of RepositoryPolicyHandler created for StartWrite"),
 		HandleInterestStartWriteExpressInterest ("responses", "Number of expressInterests created for StartWrite"),
 		HandleInterestNameEnumResponses ("responses", "Number of responses sent for Name Enums"),
-		
+
 		HandleContent ("objects", "Calls to ResponsitoryDataListener.handleContent()"),
 		HandleContentHandleData ("objects", "Calls to handleData in RepositoryDataListener"),
 		HandleContentExpressInterest ("interests", "Number of interests expressed in handleContent()"),
@@ -661,7 +662,7 @@ public class RepositoryServer implements CCNStatistics {
 
 		// ====================================
 		// This is the same for every user of IStatsEnum
-		
+
 		protected final String _units;
 		protected final String _description;
 		protected final static String [] _names;
