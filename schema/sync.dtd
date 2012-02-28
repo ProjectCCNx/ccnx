@@ -9,7 +9,7 @@
 <!ATTLIST Component         ccnbencoding CDATA #FIXED 'base64Binary'>
 <!-- End of copied items -->
 
-<!ELEMENT SyncVersion        (#PCDATA)>      <!-- nonNegativeInteger -->
+<!ELEMENT SyncVersion        (#PCDATA)>      <!-- 20110614 -->
 <!ELEMENT SyncLeafCount      (#PCDATA)>      <!-- nonNegativeInteger -->
 <!ELEMENT SyncTreeDepth      (#PCDATA)>      <!-- nonNegativeInteger -->
 <!ELEMENT SyncByteCount      (#PCDATA)>      <!-- nonNegativeInteger -->
