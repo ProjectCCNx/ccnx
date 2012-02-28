@@ -96,7 +96,7 @@ check: ccnx.xsd ccnx.dtd security.xsd security.dtd repository.xsd repository.dtd
 	xmllint --noout --schema repository.xsd repository-test??.xml
 	xmllint --noout --dtdvalid repository.dtd repository-test??.xml
 	xmllint --schema XMLSchema.xsd --noout sync.xsd
-	#xmllint --noout --schema sync.xsd sync-test??.xml
+	xmllint --noout --schema sync.xsd sync-test??.xml
 	xmllint --noout --dtdvalid sync.dtd sync-test??.xml
 
 	ls ccn-schemabad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --schema ccnx.xsd "$$i"; do :; done
