@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SyncConfigSlice>
+  <SyncVersion>20110614</SyncVersion>
+  <Name>
+    <Component ccnbencoding="base64Binary">VG9wbw==</Component>
+  </Name>
+  <Name>
+    <Component ccnbencoding="base64Binary">cm9vdA==</Component>
+    <Component ccnbencoding="base64Binary">YmVlcg==</Component>
+  </Name>
+  <SyncConfigSliceList/>
+</SyncConfigSlice>
