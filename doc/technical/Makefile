@@ -37,6 +37,8 @@ DERIVED_HTML =				\
 	LinkMessages.html		\
 	dtd.html			\
 	xsd.html			\
+	repository.dtd.html			\
+	repository.xsd.html			\
 	DTAG.html			\
 
 DERIVED_INDEX = ../index.html index.html index.txt
@@ -72,6 +74,12 @@ dtd.html: dtd.txt $(XSDSRC)
 
 xsd.html: xsd.txt $(DTDSRC)
 	asciidoc --unsafe xsd.txt
+
+repository.dtd.html: repository.dtd.txt $(XSDSRC)
+	asciidoc --unsafe repository.dtd.txt
+
+repository.xsd.html: repository.xsd.txt $(DTDSRC)
+	asciidoc --unsafe repository.xsd.txt
 
 CryptographicAlgorithms.html: CryptographicAlgorithms.txt
 	asciidoc CryptographicAlgorithms.txt
