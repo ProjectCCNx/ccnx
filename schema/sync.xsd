@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "XMLSchema.dtd">
 
-<!-- XXX - this schema does not correspond with reality - sync.dtd is closer. -->
-
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
        <xs:include schemaLocation="ccnx.xsd"/> <!-- using Name, Component, Base64BinaryType -->
 
@@ -52,6 +50,5 @@
                        <xs:element name="Name" type="NameType"/> <!-- topo -->
                </xs:sequence>
        </xs:complexType>
-
 
 </xs:schema>
