@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -168,6 +168,14 @@ security-schemabad01.xml: security-test01.xml
 check: repository-schemabad01.xml
 repository-schemabad01.xml: repository-test01.xml
 	sed -e '/Type/s/INFO/bad!/' $? > $@
+
+check: sync-bad00.xml
+sync-bad00.xml: sync-test00.xml
+	sed -e '/SyncConfigSliceList/d' $? > $@
+
+check: sync-schemabad25.xml
+sync-schemabad25.xml: sync-test25.xml
+	sed -e 's/TSoztEvAt4W/TS@ztEvAt4W/' $? > $@
 
 default all clean depend test check shared testinstall install uninstall: _always
 
