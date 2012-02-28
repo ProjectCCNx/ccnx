@@ -73,41 +73,13 @@ Document ccn-bad09.xml does not validate against ccnx.dtd
 ./shouldfail xmllint --noout --dtdvalid ccnx.dtd ccn-bad11.xml
 ccn-bad11.xml:4: element Exclude: validity error : Element Exclude content does not follow the DTD, expecting ((Any | Bloom)? , (Component , (Any | Bloom)?)*), got (Bloom Bloom Component Any Component )
 Document ccn-bad11.xml does not validate against ccnx.dtd
-./shouldfail xmllint --noout --dtdvalid ccnx.dtd ccn-dtdbad00.xml
-ccn-dtdbad00.xml:1: parser error : Document is empty
-
-^
-ccn-dtdbad00.xml:1: parser error : Start tag expected, '<' not found
-
-^
 ./shouldfail xmllint --noout --dtdvalid security.dtd security-bad01.xml
 security-bad01.xml:2: element WrappedKey: validity error : Element WrappedKey content does not follow the DTD, expecting (WrappingKeyIdentifier? , WrappingKeyName? , WrapAlgorithm? , KeyAlgorithm? , Label? , EncryptedNonceKey? , EncryptedKey), got (WrappingKeyIdentifier )
 Document security-bad01.xml does not validate against security.dtd
-./shouldfail xmllint --noout --dtdvalid security.dtd security-dtdbad00.xml
-security-dtdbad00.xml:1: parser error : Document is empty
-
-^
-security-dtdbad00.xml:1: parser error : Start tag expected, '<' not found
-
-^
 ./shouldfail xmllint --noout --dtdvalid repository.dtd repository-bad01.xml
 repository-bad01.xml:2: element RepositoryInfo: validity error : Element RepositoryInfo content does not follow the DTD, expecting (Version , Type , RepositoryVersion , GlobalPrefixName , LocalName , Name* , InfoString?), got (Version Type RepositoryVersion GlobalProofixName LocalName )
 repository-bad01.xml:6: element GlobalProofixName: validity error : No declaration for element GlobalProofixName
 Document repository-bad01.xml does not validate against repository.dtd
-./shouldfail xmllint --noout --dtdvalid repository.dtd repository-dtdbad00.xml
-repository-dtdbad00.xml:1: parser error : Document is empty
-
-^
-repository-dtdbad00.xml:1: parser error : Start tag expected, '<' not found
-
-^
 ./shouldfail xmllint --noout --dtdvalid sync.dtd sync-bad00.xml
 sync-bad00.xml:2: element SyncConfigSlice: validity error : Element SyncConfigSlice content does not follow the DTD, expecting (SyncVersion , Name , Name , SyncConfigSliceList), got (SyncVersion Name Name )
 Document sync-bad00.xml does not validate against sync.dtd
-./shouldfail xmllint --noout --dtdvalid sync.dtd sync-dtdbad00.xml
-sync-dtdbad00.xml:1: parser error : Document is empty
-
-^
-sync-dtdbad00.xml:1: parser error : Start tag expected, '<' not found
-
-^

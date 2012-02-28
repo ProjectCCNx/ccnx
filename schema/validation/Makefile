@@ -103,10 +103,10 @@ check: ccnx.xsd ccnx.dtd security.xsd security.dtd repository.xsd repository.dtd
 	ls security-schemabad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --schema security.xsd "$$i"; do :; done
 	ls repository-schemabad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --schema repository.xsd "$$i"; do :; done
 	ls sync-schemabad??.xml sync-bad??.xml | while read i && ./shouldfail xmllint --noout --schema sync.xsd "$$i"; do :; done
-	ls ccn-dtdbad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid ccnx.dtd "$$i"; do :; done
-	ls security-dtdbad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid security.dtd "$$i"; do :; done
-	ls repository-dtdbad??.xml repository-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid repository.dtd "$$i"; do :; done
-	ls sync-dtdbad??.xml sync-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid sync.dtd "$$i"; do :; done
+	ls ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid ccnx.dtd "$$i"; do :; done
+	ls security-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid security.dtd "$$i"; do :; done
+	ls repository-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid repository.dtd "$$i"; do :; done
+	ls sync-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid sync.dtd "$$i"; do :; done
 	@diff expectedfailures.ref expectedfailures.out || echo "***" $(LECTURE)
 	: --------------------------- :
 	: Schema validation complete  :
