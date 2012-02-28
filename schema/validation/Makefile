@@ -13,7 +13,7 @@
 #
 
 W3REFS=XMLSchema.dtd XMLSchema.xsd datatypes.dtd xml.xsd
-FUZZED= ccn-bad11.xml ccn-bad06.xml ccn-bad09.xml ccn-schemabad10.xml ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad12.xml ccn-schemabad04.xml security-schemabad01.xml repository-bad01.xml repository-schemabad01.xml
+FUZZED= ccn-bad11.xml ccn-bad06.xml ccn-bad09.xml ccn-schemabad10.xml ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad12.xml ccn-schemabad04.xml security-schemabad01.xml repository-bad01.xml repository-schemabad01.xml sync-bad00.xml sync-schemabad25.xml
 
 default:
 
