@@ -5,7 +5,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -21,25 +21,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 
-import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.config.ConfigurationException;
+import junit.framework.Assert;
+
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener;
 import org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
+import org.ccnx.ccn.test.CCNTestBase;
 import org.junit.Test;
-
-
-import junit.framework.Assert;
 
 /**
  * Test the asynchronous interface to name enumeration.
  */
-public class NameEnumeratorTest implements BasicNameEnumeratorListener{
-	
-	CCNHandle putLibrary;
-	CCNHandle getLibrary;
+public class NameEnumeratorTest extends CCNTestBase implements BasicNameEnumeratorListener{
+
 	CCNNameEnumerator putne;
 	CCNNameEnumerator getne;
 
@@ -55,7 +51,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	ContentName name2a;
 	String name1StringDirty = "/parc.com/registerTest/name1TestDirty";
 	ContentName name1Dirty;
-	
+
 	String prefix1String = "/parc.com/registerTest";
 	String prefix1StringError = "/park.com/registerTest";
 	ArrayList<ContentName> names;
@@ -63,48 +59,44 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 	ContentName prefix1;
 	ContentName c1;
 	ContentName c2;
-	
+
 	@Test
-	public void testNameEnumerator() throws Exception {		
+	public void testNameEnumerator() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testNameEnumerator");
-		
+
 		//set up CCN libraries for testing
-		setLibraries();
-		
-		//verify that everything is set up
-		Assert.assertNotNull(putLibrary);
-		Assert.assertNotNull(getLibrary);
+		setupNE();
+
 		Assert.assertNotNull(putne);
 		Assert.assertNotNull(getne);
-		
+
 		//tests that the names are properly registered (namespace and object names)
 		testRegisterName();
-		
+
 		//tests that prefixes are properly registered for exploring the namespace
 		testRegisterPrefix();
-		
+
 		//tests that an ArrayList of ContentNames was received for the registered prefix
 		testGetCallback();
-		
+
 		//register additional name to trigger (set responser dirty flag) a new response by the responder
 		registerAdditionalName();
-		
+
 		//verify that the new response with an updated list of names was received.
 		testGetCallbackDirty();
-		
+
 		//test that registered prefixes and their interests are canceled
 		testCancelPrefix();
-		
+
 		//verify that we only get a response for names with the correct prefix and that are active
 		testGetCallbackNoResponse();
-		closeLibraries();
-		
+
 		Log.info(Log.FAC_TEST, "Completed testNameEnumerator");
 	}
-	
-	
+
+
 	public void testRegisterName() throws IOException{
-		
+		Log.info(Log.FAC_TEST, "Starting testRegisterName");
 		try{
 			namespace = ContentName.fromNative(namespaceString);
 			name1 = ContentName.fromNative(name1String);
@@ -114,19 +106,19 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		catch(Exception e){
 			Assert.fail("Could not create ContentName from "+name1String +" or "+name2String);
 		}
-		
+
 		putne.registerNameSpace(namespace);
 		putne.registerNameForResponses(name1);
 		putne.registerNameForResponses(name2);
 		putne.registerNameForResponses(name2a);
 		ContentName nullName = null;
 		putne.registerNameForResponses(nullName);
-		
+
 		try{
 			while(!putne.containsRegisteredName(name2a)){
 				Thread.sleep(rand.nextInt(50));
 			}
-			
+
 			//the names are registered...
 			Log.info(Log.FAC_TEST, "the names are now registered");
 		}
@@ -134,11 +126,12 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Log.warning(Log.FAC_TEST, "error waiting for names to be registered by name enumeration responder");
 			Assert.fail();
 		}
-		
+		Log.info(Log.FAC_TEST, "Completed testRegisterName");
 	}
-	
-	
+
+
 	public void testRegisterPrefix(){
+		Log.info(Log.FAC_TEST, "Starting testRegisterPrefix");
 
 		try{
 			prefix1 = ContentName.fromNative(prefix1String);
@@ -146,9 +139,9 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		catch(Exception e){
 			Assert.fail("Could not create ContentName from "+prefix1String);
 		}
-		
+
 		Log.info(Log.FAC_TEST, "registering prefix: "+prefix1.toString());
-		
+
 		try{
 			getne.registerPrefix(prefix1);
 		}
@@ -157,11 +150,13 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Log.warningStackTrace(Log.FAC_TEST, e);
 			Assert.fail();
 		}
-		
+		Log.info(Log.FAC_TEST, "Completed testRegisterPrefix");
 	}
-	
-	
-	public void testGetCallback(){		
+
+
+	public void testGetCallback(){
+		Log.info(Log.FAC_TEST, "Starting testGetCallback");
+
 		int attempts = 0;
 		try{
 			while (attempts < 500){
@@ -172,37 +167,37 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 				Thread.sleep(50);
 				attempts++;
 			}
-			
+
 			//we either broke out of loop or the names are here
 			Log.info(Log.FAC_TEST, "done waiting for results to arrive: attempts " + attempts);
 		} catch(InterruptedException e){
 			Log.warning(Log.FAC_TEST, "error waiting for names to be registered by name enumeration responder");
 			Assert.fail();
 		}
-		
+
 		synchronized (namesLock) {
 			Assert.assertNotNull(names);
-			
+
 			for (ContentName cn: names){
 				Log.info(Log.FAC_TEST, "got name: "+cn.toString());
 				Assert.assertTrue(cn.toString().equals("/name1") || cn.toString().equals("/name2"));
 			}
-			
+
 			names = null;
 		}
-			
+		Log.info(Log.FAC_TEST, "Completed testGetCallback");
 	}
-	
+
 	public void registerAdditionalName(){
 		//now add new name
 		try{
 			name1Dirty = ContentName.fromNative(name1StringDirty);
 			putne.registerNameForResponses(name1Dirty);
-			
+
 			while(!putne.containsRegisteredName(name1Dirty)){
 				Thread.sleep(50);
 			}
-				
+
 			//the names are registered...
 			Log.info(Log.FAC_TEST, "the new name is now registered to trigger the dirty flag");
 		}
@@ -213,11 +208,12 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 		catch (MalformedContentNameStringException e) {
 			// TODO Auto-generated catch block
 			Log.warningStackTrace(Log.FAC_TEST, e);
-		}					
+		}
 	}
 
-	
+
 	public void testGetCallbackDirty(){
+		Log.info(Log.FAC_TEST, "Starting testGetCallbackDirty");
 
 		int attempts = 0;
 		try{
@@ -229,7 +225,7 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 				Thread.sleep(50);
 				attempts++;
 			}
-			
+
 			//we either broke out of loop or the names are here
 			Log.info(Log.FAC_TEST, "done waiting for results to arrive: attempts " + attempts);
 		}
@@ -247,15 +243,15 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			}
 			names = null;
 		}
+		Log.info(Log.FAC_TEST, "Completed testGetCallbackDirty");
 	}
-	
+
 
 	public void testCancelPrefix(){
+		Log.info(Log.FAC_TEST, "Starting testCancelPrefix");
 
-		Log.info(Log.FAC_TEST, "testing prefix cancel");
-		
 		ContentName prefix1Error = null;
-		
+
 		try{
 			prefix1Error = ContentName.fromNative(prefix1StringError);
 		}
@@ -263,30 +259,31 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Log.warningStackTrace(Log.FAC_TEST, e);
 			Assert.fail("Could not create ContentName from "+prefix1String);
 		}
-		
+
 		//try to remove a prefix not registered
 		Assert.assertFalse(getne.cancelPrefix(prefix1Error));
 		//remove the registered name
 		Assert.assertTrue(getne.cancelPrefix(prefix1));
 		//try to remove the registered name again
 		Assert.assertFalse(getne.cancelPrefix(prefix1));
-
+		Log.info(Log.FAC_TEST, "Completed testCancelPrefix");
 	}
-	
-	
+
+
 	public void testGetCallbackNoResponse(){
+		Log.info(Log.FAC_TEST, "Starting testGetCallbackNoResponse");
 
 		ContentName p1 = null;
-		
+
 		try{
 			p1 = ContentName.fromNative(prefix1String+"NoNames");
 		}
 		catch(Exception e){
 			Assert.fail("Could not create ContentName from "+prefix1String+"NoNames");
 		}
-		
+
 		Log.info(Log.FAC_TEST, "registering prefix: "+p1.toString());
-		
+
 		try{
 			getne.registerPrefix(p1);
 		}
@@ -295,8 +292,8 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Log.warningStackTrace(Log.FAC_TEST, e);
 			Assert.fail();
 		}
-	
-		
+
+
 		int attempts = 0;
 		try{
 			synchronized (namesLock) {
@@ -314,59 +311,41 @@ public class NameEnumeratorTest implements BasicNameEnumeratorListener{
 			Log.info(Log.FAC_TEST, "error waiting for names to be registered by name enumeration responder");
 			Assert.fail();
 		}
-		
+		Log.info(Log.FAC_TEST, "Completed testGetCallbackNoResponse");
 	}
-	
+
 	public void testGetCallbackAfterCancel(){
+		Log.info(Log.FAC_TEST, "Starting testGetCallbackAfterCancel");
+
 		//assert names are still null in case we got a response even though the request was canceled
 		synchronized (namesLock) {
 			Assert.assertNull(names);
 		}
+		Log.info(Log.FAC_TEST, "Completed testGetCallbackAfterCancel");
 	}
-	
-	
-	/* 
-	 * function to open and set the put and get libraries
-	 * also creates and sets the Name Enumerator Objects
-	 * 
+
+
+	/*
+	 * function to create and set the Name Enumerator Objects
+	 *
 	 */
-	public void setLibraries(){
-		try{
-			putLibrary = CCNHandle.open();
-			getLibrary = CCNHandle.open();
-			putne = new CCNNameEnumerator(putLibrary, this);
-			getne = new CCNNameEnumerator(getLibrary, this);
-		}
-		catch(ConfigurationException e){
-			Log.warningStackTrace(Log.FAC_TEST, e);
-			Assert.fail("Failed to open libraries for tests");
-		}
-		catch(IOException e){
-			Log.warningStackTrace(Log.FAC_TEST, e);
-			Assert.fail("Failed to open libraries for tests");
-		}
+	public void setupNE(){
+		putne = new CCNNameEnumerator(putHandle, this);
+		getne = new CCNNameEnumerator(getHandle, this);
 	}
-	
-	public void closeLibraries() {
-		if (null != putLibrary)
-			putLibrary.close();
-		if (null != getLibrary)
-			getLibrary.close();
-	}
-    
 
 	public int handleNameEnumerator(ContentName p, ArrayList<ContentName> n) {
-		
+
 		Log.info(Log.FAC_TEST, "got a callback!");
-		
+
 		synchronized (namesLock) {
 			names = n;
 			Log.info(Log.FAC_TEST, "here are the returned names: ");
-	
+
 			for (ContentName cn: names)
 				Log.info(Log.FAC_TEST, cn.toString()+" ("+p.toString()+cn.toString()+")");
 		}
-		
+
 		return 0;
-	}	
+	}
 }
