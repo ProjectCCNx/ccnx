@@ -1,0 +1,11 @@
+CCNx Sync DTD
+=============
+
+== CCNx Sync DTD
+
+This corresponds to the XML schema link:sync.xsd.html[sync.xsd].
+
+.sync.dtd
+------------------------------------
+include::../../schema/sync.dtd[]
+------------------------------------
