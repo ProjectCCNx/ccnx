@@ -511,7 +511,6 @@ testReader(struct SyncTestParms *parms) {
                 return noteErr("bad sort (duplicate)!");
             }
             struct ccn_charbuf *repl = each;
-            if (sort == 2) repl = replaceParts(each, &partsList);
             accumNameBytes = accumNameBytes + repl->length;
             ssize_t size = na->ents[j].data;
             accumContentBytes = accumContentBytes + size;
@@ -534,7 +533,6 @@ testReader(struct SyncTestParms *parms) {
         if (ixBase != NULL) IndexSorter_Free(&ixBase);
         ccn_charbuf_destroy(&tmp);
         na = SyncFreeNameAccum(na);
-        partsList = freePartsList(partsList);
     } else {
         return noteErr("testReader, could not open %s", fn);
     }
