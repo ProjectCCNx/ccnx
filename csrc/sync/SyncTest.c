@@ -474,11 +474,11 @@ testEncodeDecode(struct SyncTestParms *parms) {
     return 0;
 }
 
-
 static int
 testReader(struct SyncTestParms *parms) {
     char *fn = parms->inputName;
     int sort = parms->sort;
+    struct PartsElem *partsList = NULL;
     FILE *f = fopen(fn, "r");
     int res = 0;
     if (f != NULL) {
@@ -511,6 +511,7 @@ testReader(struct SyncTestParms *parms) {
                 return noteErr("bad sort (duplicate)!");
             }
             struct ccn_charbuf *repl = each;
+            if (sort == 2) repl = replaceParts(each, &partsList);
             accumNameBytes = accumNameBytes + repl->length;
             ssize_t size = na->ents[j].data;
             accumContentBytes = accumContentBytes + size;
@@ -533,6 +534,7 @@ testReader(struct SyncTestParms *parms) {
         if (ixBase != NULL) IndexSorter_Free(&ixBase);
         ccn_charbuf_destroy(&tmp);
         na = SyncFreeNameAccum(na);
+        partsList = freePartsList(partsList);
     } else {
         return noteErr("testReader, could not open %s", fn);
     }
@@ -811,7 +813,13 @@ testRootBasic(struct SyncTestParms *parms) {
 }
 
 static int
-localStore(struct ccn *ccn, struct ccn_charbuf *nm, struct ccn_charbuf *cb) {
+localStore(struct SyncTestParms *parms,
+           struct ccn *ccn, struct ccn_charbuf *nm, struct ccn_charbuf *cb) {
+    int res = 0;
+    struct ccn_charbuf *template = SyncGenInterest(NULL,
+                                                   1,  // always local
+                                                   parms->life,
+                                                   -1, -1, NULL);
     struct ccn_charbuf *tmp = ccn_charbuf_create();
     ccn_create_version(ccn, nm, CCN_V_NOW, 0, 0);
     ccn_charbuf_append_charbuf(tmp, nm);
@@ -819,12 +827,13 @@ localStore(struct ccn *ccn, struct ccn_charbuf *nm, struct ccn_charbuf *cb) {
     ccn_name_append_nonce(tmp);
     ccn_get(ccn, tmp, NULL, DEFAULT_CMD_TIMEOUT, NULL, NULL, NULL, 0);
     ccn_charbuf_destroy(&tmp);
+    ccn_charbuf_destroy(&template);
+    if (res < 0) return res;
     
     struct ccn_charbuf *cob = ccn_charbuf_create();
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     const void *cp = NULL;
     size_t cs = 0;
-    int res = 0;
     if (cb != NULL) {
         sp.type = CCN_CONTENT_DATA;
         cp = (const void *) cb->buf;
@@ -908,7 +917,7 @@ sendSlice(struct SyncTestParms *parms,
             perror("Could not connect to ccnd");
             exit(1);
         }
-        if (res >= 0) res |= localStore(ccn, nm, cb);
+        if (res >= 0) res |= localStore(parms, ccn, nm, cb);
         if (res < 0) {
             res = noteErr("sendSlice, failed");
         } else {
@@ -1078,7 +1087,7 @@ storeHandler(struct ccn_closure *selfp,
                         uc++;
                         sfd->stored++;
                     } else {
-                        if (sfd->parms->noSend) {
+                        if (sfd->parms->noDup) {
                             fprintf(stderr,
                                     "ERROR in storeHandler, duplicate segment request, seg %d, %s\n",
                                     (int) seg, str);
@@ -1224,6 +1233,7 @@ getFile(struct SyncTestParms *parms, char *src, char *dst) {
         res = ccn_get(ccn, nm, template,
                       parms->life*1000,
                       cb, &pcos, NULL, 0);
+        ccn_charbuf_destroy(&template);
         if (res < 0) {
             perror("get failed");
             return -1;
@@ -1397,6 +1407,10 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
     }
     gettimeofday(&parms->startTime, 0);
     ccn_get(ccn, cmd, template, DEFAULT_CMD_TIMEOUT, NULL, NULL, NULL, 0);
+    ccn_charbuf_destroy(&template);
+    if (res < 0) {
+        return noteErr("putFile, ccn_get failed");
+    }
     
     // wait for completion
     while (sfData->stored < sfData->nSegs) {
@@ -1564,7 +1578,7 @@ existingRootOp(struct SyncTestParms *parms,
     struct ccn_charbuf *cb = ccn_charbuf_create();
     if (delete) {
         // requesting deletion
-        res |= localStore(ccn, nm, NULL);
+        res |= localStore(parms, ccn, nm, NULL);
         if (res < 0) {
             res = noteErr("requestDelete, failed");
         } else {
