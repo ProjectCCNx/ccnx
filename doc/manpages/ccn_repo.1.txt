@@ -20,6 +20,8 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
+The *ccn_repo* utility has been deprecated and will be phased out in favor of a new repository implementation, named ccnr, that offers better performance and an integrated synchronization facility. With the availability of sync, we anticipate that most nodes will be running a ccnr instance along with ccnd, to automatically share content in designated namespaces. In accord with this direction, the default scope of repository write requests is now local. Please consult the link:ccnr.1.html[ccnr(1)] man page for details.
+
 The *ccn_repo* utility starts, stops and signals CCNx Java content object repositories.  This call requires a backend 'repository_directory' to store the content objects to the filesystem.  Only one repository should run on a single 'repository_directory' at any time.
 
 The utility has several modes - it is normally started in the background, but can also be started in the foreground, allowing logging information to be seen on the console. It can also be signalled and stopped. The modes are as follows:
