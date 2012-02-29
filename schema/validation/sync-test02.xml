@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SyncConfigSlice>
+  <SyncVersion>20110614</SyncVersion>
+  <Name>
+    <Component ccnbencoding="base64Binary">c3luYw==</Component>
+    <!--       sync -->
+    <Component ccnbencoding="base64Binary">dGhpcw==</Component>
+    <!--       this -->
+  </Name>
+  <Name>
+    <Component ccnbencoding="base64Binary">ZXZlcnk=</Component>
+    <!--       every -->
+    <Component ccnbencoding="base64Binary">cGxhY2U=</Component>
+    <!--       place -->
+  </Name>
+  <SyncConfigSliceList>
+    <SyncConfigSliceOp>0</SyncConfigSliceOp>
+    <Name>
+      <Component ccnbencoding="base64Binary">/w==</Component>
+      <!--       %FF -->
+      <Component ccnbencoding="base64Binary">AA==</Component>
+      <!--       %00 -->
+    </Name>
+    <SyncConfigSliceOp>0</SyncConfigSliceOp>
+    <Name>
+      <Component ccnbencoding="base64Binary">/w==</Component>
+      <!--       %FF -->
+      <Component ccnbencoding="base64Binary">/w==</Component>
+      <!--       %FF -->
+      <Component ccnbencoding="base64Binary">AA==</Component>
+      <!--       %00 -->
+    </Name>
+    <SyncConfigSliceOp>0</SyncConfigSliceOp>
+    <Name>
+      <Component ccnbencoding="base64Binary">/w==</Component>
+      <!--       %FF -->
+      <Component ccnbencoding="base64Binary">/w==</Component>
+      <!--       %FF -->
+      <Component ccnbencoding="base64Binary">/w==</Component>
+      <!--       %FF -->
+      <Component ccnbencoding="base64Binary">AA==</Component>
+      <!--       %00 -->
+    </Name>
+  </SyncConfigSliceList>
+</SyncConfigSlice>
+<!-- /%C1.M.S.localhost/%C1.S.cs/%8C8l%92%14%A2%BDK%E6%BDQ%E3%CDBb9d5%25%1A%CB%D5I%F9%D2%89%8B%C2q%D0nI/%FD%04%F4%C2Q%DF%28/%00 -->
