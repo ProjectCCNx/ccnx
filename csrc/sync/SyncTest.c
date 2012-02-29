@@ -474,135 +474,6 @@ testEncodeDecode(struct SyncTestParms *parms) {
     return 0;
 }
 
-struct PartsElem {
-    struct PartsElem *next;
-    int id;
-    struct ccn_charbuf *match;
-    struct ccn_charbuf *replace;
-};
-
-static struct PartsElem *
-appendPartsList(struct PartsElem *partsList,
-                struct ccn_charbuf *match,
-                struct ccn_charbuf *replace) {
-    struct PartsElem *ret = NEW_STRUCT(1, PartsElem);
-    ret->next = partsList;
-    ret->id = 1 + ((partsList == NULL) ? 0 : partsList->id);
-    ret->match = match;
-    ret->replace = replace;
-    return ret;       
-}
-
-static struct PartsElem *
-freePartsList(struct PartsElem *partsList) {
-    while (partsList != NULL) {
-        struct PartsElem *next = partsList->next;
-        ccn_charbuf_destroy(&partsList->match);
-        ccn_charbuf_destroy(&partsList->replace);
-        free(partsList);
-        partsList = next;
-    }
-    return NULL;
-}
-
-static struct PartsElem *
-findPartsList(struct PartsElem *partsList, char *key, size_t len) {
-    while (partsList != NULL) {
-        size_t pLen = partsList->match->length;
-        if (pLen == len) {
-            char *pKey = (char *) partsList->match->buf;
-            if (strncmp(pKey, key, len) == 0) {
-                // we match, so return the element
-                return partsList;
-            }
-        }
-        partsList = partsList->next;
-    }
-    return NULL;
-}
-
-static int
-hasPrefix(char *prefix, char *buf, size_t len) {
-    size_t i = 0;
-    for (;;) {
-        char c = prefix[i];
-        if (c == 0 || i == len) return 1;
-        if (c != buf[i]) return 0;
-        i++;
-    }
-}
-
-static struct PartsElem *
-findSubst(char *key, size_t len, char *format, struct PartsElem **partsPtr) {
-    struct PartsElem *list = findPartsList(partsPtr[0], key, len);
-    if (list == NULL) {
-        list = partsPtr[0];
-        int id = 1 + ((list == NULL) ? 0 : list->id);
-        char junk[64];
-        int n = snprintf(junk, sizeof(junk), format, id);
-        struct ccn_charbuf *match = ccn_charbuf_create();
-        struct ccn_charbuf *replace = ccn_charbuf_create();
-        ccn_charbuf_append(match, key, len);
-        ccn_charbuf_append(replace, junk, n);
-        list = appendPartsList(list, match, replace);
-        partsPtr[0] = list;
-    }
-    return list;
-}
-
-static struct ccn_charbuf *
-replaceParts(struct ccn_charbuf *cb, struct PartsElem **partsPtr) {
-    struct ccn_charbuf *ret = ccn_charbuf_create();
-    struct ccn_buf_decoder ds;
-    struct ccn_buf_decoder *d = SyncInitDecoderFromCharbuf(&ds, cb, 0);
-    
-    int mods = 0;
-    if (ccn_buf_match_dtag(d, CCN_DTAG_Name)) {
-        int res = ccn_charbuf_append_tt(ret, CCN_DTAG_Name, CCN_DTAG);
-        res |= ccn_charbuf_append_closer(ret);
-        ccn_buf_advance(d);
-        size_t i = 0;
-        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
-            const unsigned char *cPtr = NULL;
-            size_t cSize = 0;
-            ccn_buf_advance(d);
-            if (ccn_buf_match_blob(d, &cPtr, &cSize)) ccn_buf_advance(d);
-            ccn_buf_check_close(d);
-            char *comp = (char *) cPtr;
-            size_t len = cSize;
-            struct PartsElem *list = NULL;
-            if (!ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
-                // last, or an error
-                list = findSubst(comp, len, "Hash.%d", partsPtr);
-            } else if (hasPrefix("\xC1.sen.vpc.d1", comp, cSize)) {
-                // VPC 1
-                list = findSubst(comp, len, "VPC1.%d.", partsPtr);
-            } else if (hasPrefix("\xC1.sen.vpc.d2", comp, cSize)) {
-                // VPC 2
-                list = findSubst(comp, len, "VPC2.%d.", partsPtr);
-            } else if (hasPrefix("\xC1.sen.vpc.d3", comp, cSize)) {
-                // VPC 3
-                list = findSubst(comp, len, "VPC3.%d.", partsPtr);
-            } else if (hasPrefix("\xC1.M.K", comp, cSize)) {
-                // a key
-                list = findSubst(comp, len, "Key.%d.", partsPtr);
-            } else if (hasPrefix("\xFD", comp, cSize)) {
-                // a version
-                list = findSubst(comp, len, "Ver.%d.", partsPtr);
-            }
-            if (list != NULL) {
-                mods++;
-                comp = (char *) list->replace->buf;
-                len = list->replace->length;
-            }
-            ccn_name_append(ret, comp, len);
-            i++;    
-        }
-        ccn_buf_check_close(d);
-    }
-    return ret;
-}
-
 static int
 testReader(struct SyncTestParms *parms) {
     char *fn = parms->inputName;
@@ -682,10 +553,10 @@ testReadBuilder(struct SyncTestParms *parms) {
         if (root == NULL) {
             // need a new one
             struct ccn_charbuf *topo = ccn_charbuf_create();
-            ccn_name_from_uri(topo, "/sen/sync");
+            ccn_name_from_uri(topo, "/ccn/test/sync");
             
             struct ccn_charbuf *prefix = ccn_charbuf_create();
-            ccn_name_from_uri(prefix, "/sen");
+            ccn_name_from_uri(prefix, "/ccn/test");
             
             root = SyncAddRoot(parms->base, topo, prefix, NULL);
             parms->root = root;
@@ -789,8 +660,8 @@ genTestRootRouting(struct SyncTestParms *parms) {
     struct ccn_charbuf *topoPrefix = ccn_charbuf_create();
     struct ccn_charbuf *namingPrefix = ccn_charbuf_create();
     
-    ccn_name_from_uri(topoPrefix, "/sen/sync");
-    ccn_name_from_uri(namingPrefix, "/sen/routing");
+    ccn_name_from_uri(topoPrefix, "/ccn/test/sync");
+    ccn_name_from_uri(namingPrefix, "/ccn/test/routing");
     struct SyncRootStruct *root = SyncAddRoot(base,
                                               topoPrefix,
                                               namingPrefix,
@@ -808,8 +679,8 @@ genTestRootRepos(struct SyncTestParms *parms) {
     struct ccn_charbuf *topoPrefix = ccn_charbuf_create();
     struct ccn_charbuf *namingPrefix = ccn_charbuf_create();
     
-    ccn_name_from_uri(topoPrefix, "/sen/sync");
-    ccn_name_from_uri(namingPrefix, "/sen/repos");
+    ccn_name_from_uri(topoPrefix, "/ccn/test/sync");
+    ccn_name_from_uri(namingPrefix, "/ccn/test/repos");
     
     struct SyncNameAccum *filter = SyncAllocNameAccum(4);
     struct ccn_charbuf *clause = ccn_charbuf_create();
@@ -922,8 +793,8 @@ testRootBasic(struct SyncTestParms *parms) {
     root = genTestRootRouting(parms);
     root = testRootCoding(parms, root);
     res = testRootLookup(parms, root,
-                         "ccnx:/sen/routing/XXX",
-                         "ccnx:/sen/repos/PARC/XXX");
+                         "ccnx:/ccn/test/routing/XXX",
+                         "ccnx:/ccn/test/repos/PARC/XXX");
     SyncRemRoot(root);
     if (res < 0) return res;
     
@@ -931,8 +802,8 @@ testRootBasic(struct SyncTestParms *parms) {
     root = genTestRootRepos(parms);
     root = testRootCoding(parms, root);
     res = testRootLookup(parms, root,
-                         "ccnx:/sen/repos/PARC/XXX",
-                         "ccnx:/sen/routing/XXX");
+                         "ccnx:/ccn/test/repos/PARC/XXX",
+                         "ccnx:/ccn/test/routing/XXX");
     SyncRemRoot(root);
     if (res < 0) {
         return noteErr("testRootBasic, failed");
@@ -954,7 +825,7 @@ localStore(struct SyncTestParms *parms,
     ccn_charbuf_append_charbuf(tmp, nm);
     ccn_name_from_uri(tmp, "%C1.R.sw");
     ccn_name_append_nonce(tmp);
-    res = ccn_get(ccn, tmp, template, 6000, NULL, NULL, NULL, 0);
+    ccn_get(ccn, tmp, NULL, DEFAULT_CMD_TIMEOUT, NULL, NULL, NULL, 0);
     ccn_charbuf_destroy(&tmp);
     ccn_charbuf_destroy(&template);
     if (res < 0) return res;
@@ -1502,7 +1373,7 @@ putFile(struct SyncTestParms *parms, char *src, char *dst) {
             ccnb_element_begin(sfData->template, CCN_DTAG_SignedInfo);
             ccnb_append_tagged_blob(sfData->template, CCN_DTAG_Timestamp, vp, vs);
             ccnb_element_end(sfData->template);
-        } else return noteErr("putFile: create store template failed");
+        } else return noteErr("putFile, create store template failed");
     }
     
     struct ccn_charbuf *template = SyncGenInterest(NULL,
