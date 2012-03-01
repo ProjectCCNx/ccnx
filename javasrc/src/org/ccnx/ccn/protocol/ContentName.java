@@ -331,12 +331,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
-	 * Copy constructor, also used by subclasses merely wanting a different
-	 * name in encoding/decoding.
-	 * @param otherName
-	 * @deprecated ContentNames are immutable, so it should not be necessary to copy them.
+	 * Copy constructor, should not generally be needed since ContentNames are
+	 * immutable. Used by subclasses merely wanting to converta a ContentName into
+	 * a different type of name for encoding/decoding.
 	 */
-	@Deprecated
 	public ContentName(ContentName otherName) {
 		_components = otherName._components;
 	}
