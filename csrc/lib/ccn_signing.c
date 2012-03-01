@@ -51,7 +51,7 @@ ccn_sigc_destroy(struct ccn_sigc **ctx)
 }
 
 int
-ccn_sigc_init(struct ccn_sigc *ctx, const char *digest)
+ccn_sigc_init(struct ccn_sigc *ctx, const char *digest, const struct ccn_pkey *priv_key)
 {
     EVP_MD_CTX_init(&ctx->context);
     if (digest == NULL) {
