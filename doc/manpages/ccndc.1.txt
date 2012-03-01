@@ -13,7 +13,9 @@ SYNOPSIS
 
 *ccndc* [-v] add 'uri' (udp|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]])
 
-*ccndc* [-v] del 'uri' (udp|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]])
+*ccndc* [-v] del 'uri' (udp|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]])]
+
+*ccndc* [-v] destroyface 'faceid'
 
 DESCRIPTION
 -----------
@@ -27,6 +29,8 @@ records. The Interests that can be dynamically routed in this way are
 those have an initial name component that is a legal DNS name, for
 which there is a DNS SRV record pointing to an endpoint for tunneling
 CCNx protocol traffic over the Internet.
+*ccndc* can also send a destroyface operation to ccnd, destroying a face
+by the numeric faceid.
 
 *ccndc* also supports configuration files containing sets of `add` and
  `del` commands.
@@ -50,6 +54,8 @@ OPTIONS
 *del* 'uri' (udp|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]])::
       delete a FIB entry based on the parameters
 
+*destroyface* 'faceid'
+      destroy a face based on the numeric faceid.
 
 CONFIGURATION FILE
 ------------------
