@@ -128,8 +128,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				ContentName.ComponentProvider p = (ContentName.ComponentProvider) arg;
 				componentCount++;
 				args[i] = p.getComponent();
-			} else if (arg != null)
-				throw new IllegalArgumentException("Argument " + i+1 + " is a " + arg.getClass().getSimpleName());
+			} else
+				throw new IllegalArgumentException("Argument " + i+1 + " is " + (arg==null?"null":("a " + arg.getClass().getSimpleName())));
 		}
 
 		// allocate an array for the components
