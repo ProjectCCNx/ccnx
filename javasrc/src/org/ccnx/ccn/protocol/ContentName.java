@@ -56,15 +56,19 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	public static final String ORIGINAL_SCHEME = "ccn:";
 
 	public static final String SEPARATOR = "/";
-	public static final ContentName ROOT = new ContentName( new byte[][]{ } );
+	private static final byte[][] empty = new byte[][]{ };
+	public static final ContentName ROOT = new ContentName();
 
+	// Goal is to make this final in the future.
 	protected byte[][]  _components;
+	
 	// Constructors
 	/**
 	 * Will become private in future. Today used together with {@link #decode(XMLDecoder)}
 	 * to decode a ContentName. In the future there will be a XMLDecoder constructor used for decoding.
 	 */
 	public ContentName() {
+		_components = empty;
 	}
 
 	// support for name builder methods
