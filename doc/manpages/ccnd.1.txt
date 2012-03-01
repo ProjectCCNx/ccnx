@@ -51,7 +51,7 @@ Options for *ccnd* are set via environment variables.
       32 - gory interest details
       64 - log occasional human-readable timestamps
       128 - face registration debugging
-      bitwise OR these together for combinations; -1 gets everything
+      bitwise OR these together for combinations; -1 gets max logging
     CCN_LOCAL_PORT=
       UDP port for unicast clients (default 9695).
       Also listens on this TCP port for stream connections.
@@ -67,6 +67,13 @@ Options for *ccnd* are set via environment variables.
       Single items larger than this are not precluded.
     CCND_DATA_PAUSE_MICROSEC=
       Adjusts content-send delay time for multicast and udplink faces
+    CCND_DEFAULT_TIME_TO_STALE=
+      Default for content objects without explicit FreshnessSeconds,
+      in seconds.  Must be positive.
+    CCND_MAX_TIME_TO_STALE=
+      Limit, in seconds, until content becomes stale.  Must be positive.
+      If necessary, this will be reduced to the largest value
+      that the implemementation can enforce.
     CCND_KEYSTORE_DIRECTORY=
       Directory readable only by ccnd where its keystores are kept
       Defaults to a private subdirectory of /var/tmp
@@ -93,7 +100,7 @@ EXIT STATUS
      Success
 
 *1*::
-     Failure (syntax or usage error; retrieval error)
+     Failure (syntax or usage error)
 
 AUTHOR
 ------
