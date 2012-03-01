@@ -24,8 +24,13 @@ sync.dtd.html
 sync.xsd.html
 CanonicalOrder.html
 LinkMessages.html
-SynchronizationProtocol.html
+NameEnumerationProtocol.html
 RepoPolicies.html
 RepoProtocol.html
-NameEnumerationProtocol.html
 RepositoryInfoObject.html
+SynchronizationProtocol.html
+CreateCollectionProtocol.html
+repository.dtd.html
+repository.xsd.html
+sync.dtd.html
+sync.xsd.html

@@ -34,6 +34,7 @@ DERIVED_HTML =				\
 	RepoProtocol.html		\
 	RepositoryInfoObject.html	\
 	SynchronizationProtocol.html	\
+	CreateCollectionProtocol.html	\
 	LinkMessages.html		\
 	dtd.html			\
 	xsd.html			\
@@ -145,6 +146,9 @@ RepositoryInfoObject.html: RepositoryInfoObject.txt
 
 SynchronizationProtocol.html: SynchronizationProtocol.txt
 	asciidoc SynchronizationProtocol.txt
+
+CreateCollectionProtocol.html: CreateCollectionProtocol.txt
+	asciidoc CreateCollectionProtocol.txt
 
 LinkMessages.html: LinkMessages.txt
 	asciidoc LinkMessages.txt
