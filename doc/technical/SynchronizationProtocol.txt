@@ -1,233 +1,185 @@
-CCNx Synchronization Protocol
-=============================
+CCNx Synchronization Protocols
+==============================
+
+DRAFT
 
 == Introduction
 
-Sync is a CCNx facility that allows CCN components and applications to define Collections of named data in Repositories that are to be automatically kept in sync with identically defined Collections in neighboring Repositories. Sync is currently embedded in the Repository, and will be available separately in the future.
+The CCNx Create Collection Protocol is used to define a collection of Content Objects to be synchronized with identical collections at remote nodes. At a high-level, the process for creating a collection and starting synchronization is as follows:
 
-[[SynchronizationProtocol]]
+1. Write a definition of the collection to be synchronized (known as a _slice_) to the local Repository as described in <<CreateCollectionProtocol,CCNx Create Collection Protocol>> below.
+
+2. Write an identical definition to a remote Repository. (This is done by an application at the remote node.) There must be hash code equality over the two collections (i.e., agreement on the topological prefix, naming prefix, and filter classes as <<TermDefinitions,described below>>), and the two Repositories must be neighbors (i.e., ccnd scope = 2).
+
+[[CreateCollectionProtocol]]
+
+== CCNx Create Collection Protocol
+
+A slice is created by writing a specially-formatted Content Object to the Repository using the standard Start Write or Checked Start Write command as described in link:RepoProtocol.html[CCNx Repository Protocols]. The response to the write request is a +RepositoryInfo+ object as described in link:RepositoryInfoObject.html[CCNx RepositoryInfo Object]. If the command is accepted, the response +Type+ is  +INFO+; if the request is in error, the response +Type+ is +DATA+ and error info is returned in the +Name+ element of the object.
+
+The format of the Content Object is as follows:
+
+.......................................................
+Content Object ::= Name
+		Command Marker
+		Slice Hash
+		Version
+		Segment
+		Content
+.......................................................
+
+=== Name
+
++Name+ is required, and must be +%C1.M.S.localhost/+, which restricts the definition to the local node and Repository.
+
+=== Command Marker
++Command Marker+ is required, and must be +%C1.S.cs+ for Create Slice.
+
+=== Slice Hash
++Slice Hash+ is required, and must be the hash over the ccnb encoding of the configuration slice for the root.
+
+=== Version
++Version+ is required, and must follow normal CCN naming practices. (See link:NameConventions.html[CCNx Basic Name Conventions].)
+
+=== Segment
++Segment+ is required, and must follow normal CCN naming practices. (See link:NameConventions.html[CCNx Basic Name Conventions].)
+
+=== Content
++Content+ is required, and must contain the following
+[[TermDefinitions]]
+* A _topological prefix_ for exchanging information about the collection. Its purpose is to enable the proper routing of Sync protocol messages between Sync Agents in different nodes. The objective is to allow the high-level Content Object namespace to be partitioned for separate administration and routing; for the present, only one topological prefix is used.
+
+* A _naming prefix_, such that all of the names in the set share a given prefix.
+
+* An optional filter that limits the names to a subset of those that share the naming prefix, and may be omitted if all content names under the prefix are included. When used, the filter is a set of clauses expressed as prefixes that may contain wild card components.
+
+** Each wild card component in a filter clause matches a single component in a name.
+
+** The encoding of a wild card component is the single byte 255 (+0xFF+). To enable byte 255 to start a literal component, any pattern component that starts with byte 255 and has more than 1 byte is treated as the literal component consisting of the bytes following the initial byte.
+
+** A name matches a filter if it matches any of the filter prefix clauses. (All components are required.) Components of a name longer than the filter clause are accepted as matching. For example, using CCN URI syntax, the clause +/X/%FF/Z+ matches the names +/X/Y/Z+ and +/X/Y/Z/W+, but does not match the name +/X/Z+.
+
+The protocol for defining a collection is illustrated below.
+
+image:CreateSliceProtocol.png[align="center"]
+
+When a slice is defined in a Repository, the Repository begins trying to synchronize the collection with neighboring Repositories. When an identical slice is defined in a neighboring Repository, automatic synchronization of the two collections begins.
+
+
 == Synchronization Protocol
 
-Associated with each Repository is a Sync Agent that is responsible for keeping information about local Collections up to date as content is added to the Repository, for detecting and acquiring Content Objects in remote copies of the Collections that are not in the local Repository, and for responding to inquiries from remote Sync Agents for information about content in local Collections. The Synchronization Protocol is the dialog between Sync Agents for doing this.
+The <<CreateCollectionProtocol,CCNx Create Collection Protocol>> above is all that is needed for an application to define a collection to be synchronized with identical collections in neighboring Repositories. After a collection has been defined, synchronization-related messages can be observed on the network. This section describes that protocol.
 
-A Collection is a set of content whose names share a common prefix, and is defined by an application through use of a <<CreateCollectionProtocol,Create Collection>> request. (The definition of a Collection is known as a _slice_.) Each Collection is synchronized independently of all others. When it detects a new Collection, the local Sync Agent builds a _sync tree_ for the Collection that represents its content. As Content Objects are added to the Repository, their names are passed to the local Sync Agent, which updates appropriate sync trees whenever it detects new content with matching names.
+A Sync Agent is the component in each node that is responsible for synchronizing collections in its associated Repository with identical collections in neighboring Repositories. The Synchronization Protocol is the dialog between Sync Agents to perform this function. Each collection is synchronized independently of all others.
 
-The combined hash for each node in the tree is the arithmetic sum of the hashes of individual names in that node and of the combined hashes of all its child nodes (with carries). The combined hash for the sync tree is thus the sum of the hashes of all names in sync tree.
+Each collection is represented as a sync tree. A Sync Agent has a configuration that specifies the sync trees it is to build. This configuration can be defined at initialization time, and can be expanded through use of <<CreateCollectionProtocol,Create Slice>> commands.
 
-The Sync Agent synchronizes a Collection with remote copies by periodically expressing a Root Advise Interest to neighboring nodes (i.e., reachable with scope =2). The Root Advise contains the combined hash of the sync tree for the Collection. When a remote Sync Agent receives the Root Advise, it compares the root hash in the Interest with its own root hash. If they match, the Collections are in sync, and no response is sent.
-
-If the root hashes differ, the remote Sync Agent responds with its own root hash and the root node of its Collection. Using Node Fetch Interests, the local Sync Agent iteratively fetches all nodes having combined hashes that it does not recognize, and constructs a list of names that are not in the local sync tree. It then expresses a standard Interest for each name in the list, and stores returned content in the local Repository. (Note that, when possible, Node Fetches and Interests are pipelined for efficiency.)
-
+As Content Objects are added to a Repository, their names are passed to the local Sync Agent, which updates appropriate sync trees. The Sync Agent communicates with other Sync Agents to find names in remote sync trees that are not present in corresponding local sync trees, fetches missing content as necessary, and stores that content to the Repository.
 
 === Root Advise Interest
 
-A Root Advise Interest is used to determine if there are any names in a remote Collection that are not in the local Collection. For each local sync tree, the Sync Agent expresses a Root Advise Interest with a name that is, when expressed as a URI, of the form:
+A Root Advise Interest is used to determine when the names in a remote collection might differ from the names in the local collection. For each local sync tree, a Sync Agent expresses a Root Advise Interest of the following form:
 
-+ccnx:/*_topo_*/%C1.S.ra/*_slicehash_*/*_roothash_*+
-
+.......................................................
+		/Topo/%C1.S.ra/Slice Hash/Root Hash
+.......................................................
 where:
 [[RootAdviseComponents]]
-* +*_topo_*+ is the topological prefix for the sync tree.
+* +Topo+ is the topological prefix for the sync tree.
 
 * +%C1.S.ra+ is the command marker for the Root Advise Interest.
 
-* +*_slicehash_*+ is a hash code that names the collection. Computing +*_slicehash_*+ uses the CCN default hash algorithm to form a hash over the ccnb encoding of the configuration slice for the root.
+* +Slice Hash+ is a hash code that names the collection. Computing +Slice Hash+ uses the CCN default hash algorithm to form a hash over the ccnb encoding of the configuration slice for the root.
 
-* +*_roothash_*+ is the combined hash of the root node for the sync tree.
+* +Root Hash+ is the combined hash of the root node for the sync tree.
 
-The Root Advise Interest is a request for a Repository to respond with the root node for a corresponding sync set that does not have a combined hash equal to +*_roothash_*+. The Interest may also contain an exclusion list for combined hashes already examined, so remote trees need only be examined once for missing content. Since updates to the sync tree should be seen within a reasonable time, a short freshness seconds for the response is used.
+The Root Advise Interest is essentially a request for a Repository to respond with the root node for a corresponding sync set that does not have a combined hash equal to +Root Hash+. The Interest may also contain an exclusion list for combined hashes already examined, so remote trees need only be examined once for missing content. Since updates to the sync tree should be seen within a reasonable time, a short freshness seconds for the response is used.
 
-A Repository with a corresponding sync set that does not have a combined hash of +*_roothash_*+ should respond; otherwise, no response should be made.
+A Repository with a corresponding sync set that does not have a combined hash of +Root Hash+ should respond, otherwise, no response should be made.
 
-The response to a Root Advise Interest is, when expressed as a URI, of the form:
+The response to a Root Advise interest has a name of the form
 
-+ccnx:/*_topo_*/%C1.S.ra/*_slicehash_*/*_roothash_*/*_responsehash_*/*_version_*/*_segment_*+
-
+.......................................................
+		/Topo/%C1.S.ra/Slice Hash/Root Hash/Response Hash/version/segment
+.......................................................
 where:
 
-* +*_topo_*+, +*_slicehash_*+, and +*_roothash_*+ are as <<RootAdviseComponents,described above>> and must be the same as for the request.
+* +Topo+, +Slice Hash+, and +Root Hash+ are as <<RootAdviseComponents,described above>> and must be the same as for the request.
 
-* +*_responsehash_*+ is the hash for the responder’s root.
+* +Response Hash+ is the hash for the responder’s root.
 
-* +*_version_*+ and +*_segment_*+ are optional, and follow normal CCN naming practice. (See link:NameConventions.html[CCNx Basic Name Conventions].) 
+* The +version+ and +segment+ are optional, and follow normal CCN naming practice. (See link:NameConventions.html[CCNx Basic Name Conventions].)
 
-The Content Object in the response to the Root Advise Interest has the ccnb encoding of the root node of the remote sync tree, and is described below in <<ContentObjects,Root Advise and Node Fetch Response Content>>.
+The Content Object in the response to the Root Advise interest has the ccnb encoding of the root node of the remote sync tree that generated the response.
 
-As a Sync Agent examines nodes from the remote sync tree, it may encounter combined hash codes that are included in the local sync tree. In the above example, regardless of updates to the local sync tree, there is no need to receive remote roots with hashes of +*_roothash_*+ or +*_responsehash_*+ in response to subsequent Root Advise requests. The CCN Interest mechanism allows them to be excluded using an exclusion filter. This minimizes the likelihood of responses containing names that are already known to be included in the local tree.
+As a Sync Agent examines a remote sync tree, it may encounter combined hash codes that it finds are included in the local sync tree. In the above example, regardless of updates to the local sync tree, there is no need to receive remote roots with hashes of +Root Hash+ or +Response Hash+ in response to subsequent Root Advise requests. The CCN interest mechanism allows them to be excluded using an exclusion filter. This minimizes the likelihood of responses containing names that are already known to be included in the local tree.
 
 === Node Fetch Interest
 
-When Root Hashes differ, the Sync Agent must fetch nodes of the remote sync tree that have combined hashes that differ from hashes in the local tree. To obtain these nodes, the Sync Agent uses a Node Fetch Interest that is, when expressed as a URI, of the form:
+When Root Hashes differ, the Sync Agent must fetch nodes of the remote sync tree that it does not yet have in order to compare the sync trees. To name these nodes, the Sync Agent uses a Node Fetch Interest using a name of the form
 
-+ccnx:/*_topo_*/%C1.S.nf/*_slicehash_*/*_responsehash_*+
-
+.......................................................
+		/Topo/%C1.S.nf/Slice Hash/Response Hash 
+.......................................................
 where:
 [[NodeFetchComponents]]
-* +*_topo_*+ and +*_slicehash_*+ are as <<RootAdviseComponents,described above>> for Root Advise.
+* +Topo+ and +Slice Hash+ are as <<RootAdviseComponents,described above>> for Root Advise.
 
-* +%C1.S.nf+ is the command marker for the Node Fetch Interest.
+* +%C1.S.nf+ is a command marker for the Node Fetch Interest.
 
-* +*_responsehash_*+ is the combined hash for a node that was returned in response to the Root Advise or a previous Node Fetch.
+* +Response Hash+ is the combined hash for the desired node that was returned in response to the Root Advise.
 
-Note that the Root Advise refers to the node at the root of the sync tree, while the Node Fetch can fetch from any part of the sync tree.
+Note that the Root Advise refers to the nodes at the root of the sync trees, while the Node Fetch can fetch from any part of the sync tree.
 
-The response is, when expressed as a URI, of the form:
+The response has a name of the form
 
-+ccnx:/*_topo_*/%C1.S.nf/*_slicehash_*/*_responsehash_*/*_version_*/*_segment_*+
-
+.......................................................
+	/Topo/%C1.S.nf/Slice Hash/Response Hash/version/segment
+.......................................................
 where:
 
-* +*_topo_*+, +*_slicehash_*+, and +*_responsehash_*+ are as <<NodeFetchComponents,described above>> for Node Fetch, and must be the same as for the request.
+* +Topo+ +Slice Hash+, and +Response Hash+ are as <<RootAdviseComponents,described above>> for Node Fetch, and must be the same as for the request.
 
-* +*_version_*+ and +*_segment_*+ are optional, and follow normal CCN naming practice. (See link:NameConventions.html[CCNx Basic Name Conventions].) 
+* The +version+ and +segment+ are optional, and follow normal CCN naming practice. (See link:NameConventions.html[CCNx Basic Name Conventions].)
 
-The content for the response is the ccnb encoding of the requested tree node, and is described below in <<ContentObjects,Root Advise and Node Fetch Response Content>>.
+The content for the response is the ccnb encoding of the requested tree node.
 
-As Content Objects are found in remote Repositories that are not present locally, they are fetched using normal CCN Interests (see link:InterestMessage.html[CCNx Interest Message]) and stored in the local Repository.
+As Content Objects are found in remote Repositories that are not in the local Repository, they are fetched using normal CCN Interests (see link:InterestMessage.html[CCNx Interest Message]) and stored in the local Repository.
 
 === Example
 
 The Synchronization Protocol is illustrated in the following simple example. 
 
-In this example, there are two applications, App-1 and App-2, running on separate nodes. Each node has a Repo/Sync Agent pair attached to the application. Assume that both applications wish to have identical contents for a shared collection.
+In this example, there are two applications: App-1 and App-2, running on separate nodes. Each node has a Repo/Sync pair attached to the application. Assume that both applications wish to have identical contents for a shared collection.
 
 image:InternalSyncProtocol.png[align="center"]
 
-1. At t1, application App-1 creates a Collection. We will assume that nothing in Repo-1 matches the Collection description, so the Collection is initially empty.
+1. At t1, application App-1 creates a collection. We will assume that nothing in Repo-1 matches the collection description, so the collection is initially empty.
 
-2. At t2, Sync-1 sends a Root Advise Interest. Even through the Collection is empty, a neighboring Repository might have a matching Collection that is not empty. In this example, there is no matching Collection, so there is no reply.
+2. At t2, Sync-1 sends a Root Advise Interest. Even through the collection is empty, a neighboring Repository might have a matching collection that is not empty. In this example, there is no matching collection, so there is no reply.
 
 3. At t3, App-1 stores some content into Repo-1. This causes Sync-1 to notice that the empty sync tree is no longer valid, so it builds a new sync tree that describes the content.
 
 4. At t4, the new sync tree has been built and is stable.
 
-5. At t5 Sync-1 sends another Root Advise Interest. Since there is still no matching Collection, there is no response.
+5. At t5 Sync-1 sends another Root Advise Interest. Since there is still no matching collection, there is no response.
 
-6. At t6, a second application, App-2 running on node-2, creates a matching Collection (using the identical description as App-1 created). The Collection is initially empty.
+6. At t6, a second application, App-2 running on node-2, creates a matching collection (using the identical description as App-1 created).  The collection is initially empty.
 
 7. At t7, Sync-2 sends a Root Advise Interest.
 
-8. At t8, Sync-1 sends a Root Advise reply because, while Sync-1 has a matching Collection, the root hash from Sync-2 does not match the root hash for Sync-1.
+8. At t8, Sync-1 sends a Root Advise reply because, while Sync-1 has a matching collection, the root hash from Sync-2 does not match the root hash for Sync-1.
 
-9. At t9, Sync-2 notices that its local sync tree root hash does not match the root hash that it received from Sync-1, so it compares the root node that it received from Sync-1 with its own, and finds the name of the Content Object in the Repo-1 Collection that it doesn't have.
+9. At t9, Sync-2 notices that its local sync tree root hash does not match the root hash that it received from Sync-1, so it begins to build a new sync tree.
 
 10. At t10, Sync-2 sends a content Interest since, in this simple example, there is only one Content Object to fetch.
 
-11. At t11, Repo-1 replies with the Content Object.
+11. At t11, Repo-1 replies with the Content Object.  
 
-12. At t12, all of the sync tree differences have been resolved, and a new sync tree has been built by Sync-2 and is stable. At this point, the Collections are identical at both Repo-1 and Repo-2.
+12. At t12, all of the sync tree differences have been resolved, and a new sync tree has been built by Sync-2 and is stable. At this point, the collections are identical at both Repo-1 and Repo-2.
 
-13. At t13, the last event, Sync-2 sends a final Root Advise Interest, since there may be differences that have not yet been noticed between its local sync tree and some other remote sync trees. In this example, the two Repositories have the same contents for the Collection, and therefore the same root hash, so Sync-1 does not reply.
+13. At t13, the last event, Sync-2 sends a final Root Advise Interest, since there may be differences that have not yet been noticed between its local sync tree and some other remote sync trees. In this example, the two Repositories have the same contents for the collection, and therefore the same root hash, so Sync-1 does not reply.
 
-From this point on, Sync-1 and/or Sync-2 will periodically send Root Advise Interests (with no responses) until the Collection is updated at one of the nodes, at which time the sequence from t6 and beyond is repeated.
+From this point on, Sync-1 and/or Sync-2 will periodically send Root Advise Interests (with no responses) until the collection is updated at one of the nodes, at which time the sequence from t6 and beyond is repeated.
 
-[[ContentObjects]]
-=== Root Advise and Node Fetch Response Content
 
-The Content Object sent in response to a Root Advise or Node Fetch Interest contains a node of the sync tree associated with the specified Collection. For Root Advise, the Content Object is for the root node; for Node Fetch, it is for the requested node.
-
-The structure of a sync tree node, in XML format, is shown below. The content of the Content Object is the ccnb encoding of this structure.
-
-.......................................................
-<SyncNode>
-  <SyncVersion ... />
-  <SyncNodeElements>
-    <Name> ... </Name>
-    <ContentHash> ... </ContentHash>
-    ...
-    <ContentHash> ... </ContentHash>
-    <Name> ... </Name>
-  </SyncNodeElements>
-  <Name ... />
-  <Name ... />
-  <SyncNodeKind ... />
-  <SyncContentHash ... />
-  <SyncLeafCount ... />
-  <SyncTreeDepth ... />
-  <SyncByteCount ... />
-</SyncNode>
-.......................................................
-
-where:
-
-* +<SyncVersion ... />+ specifies the version of the Slice definition.
-
-* +<SyncNodeElements> ... </SyncNodeElements>+ specifies the elements in the sync tree node. An individual element can be the name of a Content Object as defined in the link:Name.html[CCNx Name Specification], or the combined hash of a descendant node in the tree. There can be any mix of names and hashes in a sync tree node.
-
-* +<Name ... />+ and +<Name ... />+ are the minimum and maximum names. The minimum name is the least name in the covered set, and the maximum name is the greatest name in the set, based on canonical ordering of CCN names. The "covered set" for a node is the union of the set of all names in the node with the covered sets of all descendant nodes.
-
-* +<SyncNodeKind ... />+ is the "kind" of sync node defined as the union of a set of 1-bit flags. See +schema/sync.xsd+ for their definitions.
-
-* +<SyncContentHash ... />+ is the combined hash of the current sync node and all of its descendants.
-
-* +<SyncLeafCount ... />+ is the count of sync tree leaf nodes including the current node and all of its descendants.
-
-* +<SyncTreeDepth ... />+ is the depth of the sync tree including the current node and all of its descendants.
-
-* +<SyncByteCount ... />+ is the sum of the byte counts for the encodings for descendants of the current node.
-
-The elements +<SyncNodeKind>+, +<SyncContentHash>+, +SyncLeafCount>+, +<SyncTreeDepth>+, and +<SyncByteCount>+ are provided for efficiency, and can be derived by analyzing lower-level nodes of the sync tree.
-
-== CCNx Create Collection Protocol
-
-The CCNx Create Collection Protocol is used to define a Collection of Content Objects to be synchronized with identical Collections in remote Repositories. At a high-level, the process for creating a Collection and starting its synchronization is as follows:
-
-1. Write a definition of the Collection (known as a _slice_) to the local Repository.
-
-2. Write an identical definition to a remote Repository. (This is done by an application at the remote node.) There must be hash code equality over the two Collections (i.e., agreement on the topological prefix, naming prefix, and filter clauses as <<TermDefinitions,described below>>), and the two Repositories must be neighbors (i.e., reachable with scope = 2).
-
-[[CreateCollectionProtocol]]
-
-A slice is created by writing a Content Object with specially formatted contents to the Repository using the standard Start Write or Checked Start Write command as described in link:RepoProtocol.html[CCNx Repository Protocols]. The response to the write request is a +RepositoryInfo+ object as described in link:RepositoryInfoObject.html[CCNx RepositoryInfo Object]. If the command is accepted, the response +Type+ is +INFO+; if the request is in error, the response +Type+ is +DATA+ and error info is returned in the +Name+ element of the object.
-
-The name in the Interest is, when expressed as a URI, of the form:
-
-+ccnx:/%C1.M.S.localhost/%C1.S.cs/*_slicehash_*/*_version_*/*_segment_*+
-
-where:
-
-* +%C1.M.S.localhost+ restricts the definition to the local node and Repository.
-
-* +%C1.S.cs+ is the command marker for the Create Slice Interest.
-
-* +*_slicehash_*+ is required, and is the SHA-256 hash of the ccnb encoding in the slice Content Object.
-
-* +*_version_*+ and +*_segment_*+ are required and must follow normal CCN naming practices. (See link:NameConventions.html[CCNx Basic Name Conventions].)
-
-The slice Content Object has the ccnb encoding of the Collection description.  The XML description is:
-
-.......................................................
-<SyncConfigSlice>
-  <SyncVersion 20110614/>
-  <Name>  topo  </Name>
-  <Name>  prefix  </Name>
-  <SyncConfigSliceList>
-    <SyncConfigSliceOp 0/>
-    <Name>  clause  </Name>
-        ...
-  </SyncConfigSliceList>
-</SyncConfigSlice>
-.......................................................
-
-where +*_topo_*+, +*_prefix_*+, and +*_clause_*+ are not literals, but stand for:
-
-[[TermDefinitions]]
-* +*_topo_*+ is the topological prefix used for routing Root Advise and Node Fetch interests for the Collection.
-
-* +*_prefix_*+ is the common naming prefix used for every name in the Collection.
-
-* +*_clause_*+ is a restriction on the names; if any clauses are present, then every name must match at least one clause. As a special case, if there are no clauses, then every name with the given prefix is part of the Collection.
-+
-Clauses may contain wild card components.
-
-** Each wild card component in a clause matches a single component in a name.
-
-** The encoding of a wild card component is the single byte 255 (+0xFF+). To enable byte 255 to start a literal component, any pattern component that starts with byte 255 and has more than 1 byte is treated as the literal component consisting of the bytes following the initial byte.
-
-** A name matches a clause if it matches any of the prefix clauses. (All components are required.) Components of a name longer than the clause are accepted as matching. For example, using CCN URI syntax, the clause +/X/%FF/Z+ matches the names +/X/Y/Z+ and +/X/Y/Z/W+, but does not match the name +/X/Z+.
-
-The protocol for defining a Collection is illustrated below.
-
-image:CreateSliceProtocol.png[align="center"]
-
-When a slice is defined in a Repository, the Repository begins trying to synchronize the Collection with copies in neighboring Repositories as <<SynchronizationProtocol,described above>>. When an identical slice is defined in a neighboring Repository, automatic synchronization of the two Collections begins.
