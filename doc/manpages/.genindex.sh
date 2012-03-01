@@ -3,8 +3,10 @@ Command/Utility Documentation
 =============================
 
 EOF
-grep '<title>.*</title>' "$@"   | tr A-Z a-z |\
-    sed -e 's/^/ - link:/' -e 's/:[ 	]*<title>/\[/' -e 's/<.title>/\]/'
+for i in "$@"; do
+    j="`echo $i | sed -e 's/\.1\.html$/(1)/'`"
+    echo ' - link:'$i'['$j']'
+done
 cat <<EOF
 
 link:../index.html[Main Page]
