@@ -3744,8 +3744,8 @@ expire_content(struct ccn_schedule *sched,
 }
 
 /**
- * Schedules content expiration based on its FreshnessSeconds.
- *
+ * Schedules content expiration based on its FreshnessSeconds, and the
+ * configured default and limit.
  */
 static void
 set_content_timer(struct ccnd_handle *h, struct content_entry *content,
@@ -3761,11 +3761,14 @@ set_content_timer(struct ccnd_handle *h, struct content_entry *content,
         goto Finish;
     }
     if (start == stop)
-        return;
-    seconds = ccn_fetch_tagged_nonNegativeInteger(
+        seconds = h->tts_default;
+    else
+        seconds = ccn_fetch_tagged_nonNegativeInteger(
                 CCN_DTAG_FreshnessSeconds,
                 content->key,
                 start, stop);
+    if (seconds <= 0 || (h->tts_limit > 0 && seconds > h->tts_limit))
+        seconds = h->tts_limit;
     if (seconds <= 0)
         return;
     if (seconds > ((1U<<31) / 1000000)) {
@@ -4811,6 +4814,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     const char *entrylimit;
     const char *mtu;
     const char *data_pause;
+    const char *tts_default;
+    const char *tts_limit;
     const char *autoreg;
     const char *listen_on;
     int fd;
@@ -4854,7 +4859,6 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->starttime_usec = h->usec;
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
-    h->data_pause_microsec = 10000;
     debugstr = getenv("CCND_DEBUG");
     if (debugstr != NULL && debugstr[0] != 0) {
         h->debug = atoi(debugstr);
@@ -4876,6 +4880,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         if (h->capacity <= 0)
             h->capacity = 10;
     }
+    ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
     h->mtu = 0;
     mtu = getenv("CCND_MTU");
     if (mtu != NULL && mtu[0] != 0) {
@@ -4885,6 +4890,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         if (h->mtu > 8800)
             h->mtu = 8800;
     }
+    h->data_pause_microsec = 10000;
     data_pause = getenv("CCND_DATA_PAUSE_MICROSEC");
     if (data_pause != NULL && data_pause[0] != 0) {
         h->data_pause_microsec = atol(data_pause);
@@ -4893,9 +4899,27 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         if (h->data_pause_microsec > 1000000)
             h->data_pause_microsec = 1000000;
     }
+    h->tts_default = -1;
+    tts_default = getenv("CCND_DEFAULT_TIME_TO_STALE");
+    if (tts_default != NULL && tts_default[0] != 0) {
+        h->tts_default = atoi(tts_default);
+        if (h->tts_default <= 0)
+            h->tts_default = -1;
+        ccnd_msg(h, "CCND_DEFAULT_TIME_TO_STALE=%d", h->tts_default);
+    }
+    h->tts_limit = ~0U;
+    tts_limit = getenv("CCND_MAX_TIME_TO_STALE");
+    if (tts_limit != NULL && tts_limit[0] != 0) {
+        h->tts_limit = atoi(tts_limit);
+        if (h->tts_limit <= 0)
+            h->tts_limit = -1;
+        else if (h->tts_limit > ((1U<<31) / 1000000))
+            h->tts_limit = (1U<<31) / 1000000;
+        ccnd_msg(h, "CCND_MAX_TIME_TO_STALE=%d", h->tts_limit);
+    }
     listen_on = getenv("CCND_LISTEN_ON");
     autoreg = getenv("CCND_AUTOREG");
-    ccnd_msg(h, "CCND_DEBUG=%d CCND_CAP=%lu", h->debug, h->capacity);
+    
     if (autoreg != NULL && autoreg[0] != 0) {
         h->autoreg = ccnd_parse_uri_list(h, "CCND_AUTOREG", autoreg);
         if (h->autoreg != NULL)

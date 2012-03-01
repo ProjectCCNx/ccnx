@@ -12,7 +12,7 @@ ccnd - CCNx Daemon
 			32 - gory interest details
 			64 - log occasional human-readable timestamps
 			128 - face registration debugging
-			bitwise OR these together for combinations; -1 gets everything
+			bitwise OR these together for combinations; -1 gets max logging
 		CCN_LOCAL_PORT=
 			UDP port for unicast clients (default 9695).
 			Also listens on this TCP port for stream connections.
@@ -28,9 +28,18 @@ ccnd - CCNx Daemon
 			Single items larger than this are not precluded.
 		CCND_DATA_PAUSE_MICROSEC=
 			Adjusts content-send delay time for multicast and udplink faces
+		CCND_DEFAULT_TIME_TO_STALE=
+			Default for content objects without explicit FreshnessSeconds
+		CCND_MAX_TIME_TO_STALE=
+			Limit, in seconds, until content becomes stale
 		CCND_KEYSTORE_DIRECTORY=
 			Directory readable only by ccnd where its keystores are kept
 			Defaults to a private subdirectory of /var/tmp
+		CCND_LISTEN_ON=
+			List of ip addresses to listen on; defaults to wildcard
+		CCND_AUTOREG=
+			List of prefixes to auto-register on new faces initiated by peers
+			example: CCND_AUTOREG=ccnx:/like/this,ccnx:/and/this
 
 ccndsmoketest - simple-minded program for exercising ccnd
 	options: -t millisconds - sets the timeout for recv operations

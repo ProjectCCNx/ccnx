@@ -7,7 +7,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -143,6 +143,8 @@ struct ccnd_handle {
     unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
     void (*appnonce)(struct ccnd_handle *, struct face *, struct ccn_charbuf *);
                                     /**< pluggable nonce generation */
+    int tts_default;                /**< CCND_DEFAULT_TIME_TO_STALE (seconds) */
+    int tts_limit;                  /**< CCND_MAX_TIME_TO_STALE (seconds) */
 };
 
 /**
