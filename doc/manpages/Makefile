@@ -43,6 +43,7 @@ PAGE_NAMES =        		\
 	ccnpoke			\
 	ccnr			\
 	SyncTest		\
+	ccnrepoimport	\
 
 PROJECT_NUMBER = 0.5.1pa1
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
