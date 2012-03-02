@@ -478,7 +478,6 @@ static int
 testReader(struct SyncTestParms *parms) {
     char *fn = parms->inputName;
     int sort = parms->sort;
-    struct PartsElem *partsList = NULL;
     FILE *f = fopen(fn, "r");
     int res = 0;
     if (f != NULL) {
