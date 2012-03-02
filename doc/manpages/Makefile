@@ -45,7 +45,7 @@ PAGE_NAMES =        		\
 	SyncTest		\
 	ccnrepoimport	\
 
-PROJECT_NUMBER = 0.5.1pa1
+PROJECT_NUMBER = 0.5.1rc1
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
