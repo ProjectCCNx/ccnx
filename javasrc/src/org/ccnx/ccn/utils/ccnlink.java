@@ -70,7 +70,7 @@ public class ccnlink {
 
 			boolean hasAs = false;
 			if (args.length - offset > 2) {
-				if (!args[offset + 3].equals("-as"))
+				if (args[offset + 2].equals("-as"))
 					hasAs = true;
 				else {
 					usage();
@@ -86,7 +86,6 @@ public class ccnlink {
 			if (hasAs) {
 				tuple = CreateUserData.handleAs(args, offset);
 				if (null == tuple) {
-					System.out.println("Came here!");
 					usage();
 					System.exit(1);
 				}
