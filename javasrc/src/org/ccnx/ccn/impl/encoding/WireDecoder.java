@@ -289,6 +289,12 @@ public final class WireDecoder extends GenericXMLDecoder {
 //		System.out.println(String.format("Decode tag 0x%02x value 0x%02x pos %d", typ, val, pos));
 
 		int index = _elementCount;
+		setElement(index, typ, (int)val, buffer);
+		_elementCount++;
+		return index;
+	}
+
+	private void setElement(int index, int typ, int val, byte[] buffer) {
 		try {
 			_elements_type[index]  = typ;
 		} catch (ArrayIndexOutOfBoundsException aiobe) {
@@ -304,10 +310,8 @@ public final class WireDecoder extends GenericXMLDecoder {
 			if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
 				Log.info("Reset decode array sizes to {0}", _currentElements);
 		}
-		_elements_value[index] = (int) val;
+		_elements_value[index] = val;
 		_elements_blob[index]  = buffer;
-		_elementCount++;
-		return index;
 	}
 
 	/**
@@ -344,6 +348,17 @@ public final class WireDecoder extends GenericXMLDecoder {
 
 		if( _elements_type[_parsingElement] == type )
 			return;
+
+		// This seems a little bogus but it emulates what the original code did...
+		if (type == BinaryXMLCodec.XML_BLOB) {
+			for (int i = _parsingElement; i < _elementCount; i++) {
+				setElement(i + 1, _elements_type[i], _elements_value[i], _elements_blob[i]);
+			}
+			_elementCount++;
+			_elements_blob[_parsingElement] = new byte[0];
+			_elements_type[_parsingElement] = type;
+			return;
+		}
 
 		throw new ContentDecodingException(
 				String.format("Element type mismatch: expected 0x%02x got type 0x%02x 0x%02x position %d",
