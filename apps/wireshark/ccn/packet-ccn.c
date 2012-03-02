@@ -412,7 +412,7 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
             ccn_charbuf_destroy(&c);
             return(-1);
         }
-        ccn_charbuf_append_string(c, "Exclude: ");    
+        ccn_charbuf_append_string(c, "Exclude: ");
         ccn_buf_advance(d);
         if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
             ccn_buf_advance(d);
