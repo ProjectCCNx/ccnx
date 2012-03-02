@@ -1,11 +1,11 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -20,9 +20,11 @@ package org.ccnx.ccn.utils;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.protocol.ContentName;
@@ -38,7 +40,8 @@ public class ccngetfile implements Usage {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		
+		Log.setDefaultLevel(Level.WARNING);
+
 		for (int i = 0; i < args.length - 2; i++) {
 			if (!CommonArguments.parseArguments(args, i, u)) {
 				u.usage();
@@ -47,12 +50,12 @@ public class ccngetfile implements Usage {
 			if (CommonParameters.startArg > (i + 1))
 				i = CommonParameters.startArg - 1;
 		}
-		
+
 		if (args.length < CommonParameters.startArg + 2) {
 			u.usage();
 			System.exit(1);
 		}
-		
+
 		try {
 			int readsize = 1024; // make an argument for testing...
 			// If we get one file name, put as the specific name given.
@@ -60,7 +63,7 @@ public class ccngetfile implements Usage {
 			// Ideally want to use newVersion to get latest version. Start
 			// with random version.
 			ContentName argName = ContentName.fromURI(args[CommonParameters.startArg]);
-			
+
 			CCNHandle handle = CCNHandle.open();
 
 			File theFile = new File(args[CommonParameters.startArg + 1]);
@@ -68,7 +71,7 @@ public class ccngetfile implements Usage {
 				System.out.println("Overwriting file: " + args[CommonParameters.startArg + 1]);
 			}
 			FileOutputStream output = new FileOutputStream(theFile);
-			
+
 			long starttime = System.currentTimeMillis();
 			CCNInputStream input;
 			if (CommonParameters.unversioned)
@@ -76,10 +79,10 @@ public class ccngetfile implements Usage {
 			else
 				input = new CCNFileInputStream(argName, handle);
 			if (CommonParameters.timeout != null) {
-				input.setTimeout(CommonParameters.timeout); 
+				input.setTimeout(CommonParameters.timeout);
 			}
 			byte [] buffer = new byte[readsize];
-			
+
 			int readcount = 0;
 			long readtotal = 0;
 			//while (!input.eof()) {
@@ -106,9 +109,9 @@ public class ccngetfile implements Usage {
 		}
 		System.exit(1);
 	}
-	
+
 	public void usage() {
 		System.out.println("usage: ccngetfile [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <filename>");
 	}
-	
+
 }
