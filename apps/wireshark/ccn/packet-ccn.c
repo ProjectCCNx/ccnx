@@ -353,6 +353,10 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
     proto_item *titem;
     struct ccn_parsed_interest interest;
     struct ccn_parsed_interest *pi = &interest;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    const unsigned char *bloom;
+    size_t bloom_size = 0;
     struct ccn_charbuf *c;
     struct ccn_indexbuf *comps;
     const unsigned char *comp;
@@ -402,9 +406,53 @@ dissect_ccn_interest(const unsigned char *ccnb, size_t ccnb_size, tvbuff_t *tvb,
     /* Exclude */
     l = pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude];
     if (l > 0) {
+        c = ccn_charbuf_create();
+        d = ccn_buf_decoder_start(&decoder, ccnb + pi->offset[CCN_PI_B_Exclude], l);
+        if (!ccn_buf_match_dtag(d, CCN_DTAG_Exclude)) {
+            ccn_charbuf_destroy(&c);
+            return(-1);
+        }
+        ccn_charbuf_append_string(c, "Exclude: ");    
+        ccn_buf_advance(d);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+            ccn_buf_advance(d);
+            ccn_charbuf_append_string(c, "* ");
+            ccn_buf_check_close(d);
+        }
+        else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+            ccn_buf_advance(d);
+            if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+                ccn_buf_advance(d);
+            ccn_charbuf_append_string(c, "? ");
+            ccn_buf_check_close(d);
+        }
+        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+            ccn_buf_advance(d);
+            comp_size = 0;
+            if (ccn_buf_match_blob(d, &comp, &comp_size))
+                ccn_buf_advance(d);
+            ccn_uri_append_percentescaped(c, comp, comp_size);
+            ccn_charbuf_append_string(c, " ");
+            ccn_buf_check_close(d);
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                ccn_buf_advance(d);
+                ccn_charbuf_append_string(c, "* ");
+                ccn_buf_check_close(d);
+            }
+            else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+                ccn_buf_advance(d);
+                if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+                    ccn_buf_advance(d);
+                ccn_charbuf_append_string(c, "? ");
+                ccn_buf_check_close(d);
+            }
+        }
+        
         titem = proto_tree_add_text(tree, tvb, pi->offset[CCN_PI_B_Exclude], l,
-                                    "Exclude");
+                                    "%s", ccn_charbuf_as_string(c));
         exclude_tree = proto_item_add_subtree(titem, ett_exclude);
+        ccn_charbuf_destroy(&c);
+
     }
     /* ChildSelector */
     l = pi->offset[CCN_PI_E_ChildSelector] - pi->offset[CCN_PI_B_ChildSelector];
