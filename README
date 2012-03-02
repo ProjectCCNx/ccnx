@@ -235,6 +235,12 @@ _Android_
 
 Please see `android/README.build` for special notes about Android.
 
+_Ubuntu_
+
+As a result of Sun Java JDK packages being removed for Ubuntu (see
+https://lists.ubuntu.com/archives/ubuntu-security-announce/2011-December/
+001528.html), we are now using OpenJDK for Ubuntu. Please see csrc/README.linux
+for more information.
 
 3. Build and install instructions
 ---------------------------------
