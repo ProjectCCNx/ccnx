@@ -462,14 +462,14 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
                        char *mcastttl,
                        char *mcastif)
 {
-    int lifetime;
-    struct ccn_charbuf *prefix;
-    int ipproto;
-    int socktype;
-    int iflags;
-    int imcastttl;
+    int lifetime = 0;
+    struct ccn_charbuf *prefix = NULL;
+    int ipproto = 0;
+    int socktype = 0;
+    int iflags = -1;
+    int imcastttl = -1;
     int createface;
-    int facenumber;
+    int facenumber = -1;
     char rhostnamebuf[NI_MAXHOST];
     char rhostportbuf[NI_MAXSERV];
     struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG)};
@@ -548,7 +548,6 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
             return (-1);
         }
         
-        iflags = -1;
         if (flags != NULL && flags[0] != 0) {
             iflags = atoi(flags);
             if ((iflags & ~CCN_FORW_PUBMASK) != 0) {
@@ -557,7 +556,6 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
             }
         }
         
-        imcastttl = -1;
         if (mcastttl != NULL) {
             imcastttl = atoi(mcastttl);
             if (imcastttl < 0 || imcastttl > 255) {
