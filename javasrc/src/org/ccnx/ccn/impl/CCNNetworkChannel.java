@@ -35,7 +35,7 @@ import java.util.logging.Level;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
-import org.ccnx.ccn.impl.encoding.WireDecoder;
+import org.ccnx.ccn.impl.encoding.BinaryXMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
@@ -252,8 +252,8 @@ public class CCNNetworkChannel extends InputStream {
 				if (ret <= 0 || !isConnected())
 					return null;
 			}
-			WireDecoder packet = new WireDecoder();
-			packet.decode(this);
+			BinaryXMLDecoder packet = new BinaryXMLDecoder();
+			packet.beginDecoding(this);
 			return packet.getPacket();
 		}
 		try {
