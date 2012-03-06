@@ -19,7 +19,6 @@ package org.ccnx.ccn.impl.encoding;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
@@ -267,12 +266,14 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 			_elements_type[index]  = typ;
 		} catch (ArrayIndexOutOfBoundsException aiobe) {
 			_currentElements += ELEM_INCR;
-			_elements_type = Arrays.copyOf(_elements_type, _currentElements);
-			_elements_value = Arrays.copyOf(_elements_value, _currentElements);
+			int[] newTypes = new int[_currentElements];
+			System.arraycopy(_elements_type, 0, newTypes, 0, _currentElements - ELEM_INCR);
+			_elements_type = newTypes;
+			int[] newValues = new int[_currentElements];
+			System.arraycopy(_elements_value, 0, newValues, 0, _currentElements - ELEM_INCR);
+			_elements_value = newValues;
 			byte[][] newBlobs = new byte[_currentElements][];
-			int copySize = _currentElements - ELEM_INCR;
-			for (int i = 0; i < copySize; i++)
-				newBlobs[i] = _elements_blob[i];
+			System.arraycopy(_elements_blob, 0, newBlobs, 0, _currentElements - ELEM_INCR);
 			_elements_blob = newBlobs;
 			_elements_type[index] = typ;
 			if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
