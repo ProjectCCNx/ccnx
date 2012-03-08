@@ -30,7 +30,6 @@
 
 struct ccn_sigc {
     EVP_MD_CTX context;
-    const EVP_MD *digest;
 };
 
 struct ccn_sigc *
@@ -53,24 +52,26 @@ ccn_sigc_destroy(struct ccn_sigc **ctx)
 int
 ccn_sigc_init(struct ccn_sigc *ctx, const char *digest, const struct ccn_pkey *priv_key)
 {
+    const EVP_MD *md;
+
     EVP_MD_CTX_init(&ctx->context);
     if (digest == NULL) {
         /* this ought to be a message digest description that does NOT bind
          * to a specific signature algorithm.  In openssl 0.9.8 it does, but
          * in 1.0.0 there is some separation.
          */
-        ctx->digest = EVP_sha256();
+        md = EVP_sha256();
     }
     else {
         /* figure out what algorithm the OID represents */
-        ctx->digest = EVP_get_digestbyobj(OBJ_txt2obj(digest, 1)); // OID only
-        if (ctx->digest == NULL) {
+        md = EVP_get_digestbyobj(OBJ_txt2obj(digest, 1)); // OID only
+        if (md == NULL) {
             fprintf(stderr, "ccn_sigc_init: not a DigestAlgorithm I understand right now: %s\n", digest);
             return (-1);
         }
     }
     
-    if (0 == EVP_SignInit_ex(&ctx->context, ctx->digest, NULL))
+    if (0 == EVP_SignInit_ex(&ctx->context, md, NULL))
         return (-1);
     return (0);
 }
