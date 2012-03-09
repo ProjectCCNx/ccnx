@@ -3,7 +3,7 @@ Changes between 0.5.0 and 0.5.1:
 This highlights some important changes since the most recent numbered release.
 Refer to http://www.ccnx.org/redmine/ for more details.
 
-  As a result of Sun Java JDK packages being removed for Ubuntu (see
+  * As a result of Sun Java JDK packages being removed for Ubuntu (see
     https://lists.ubuntu.com/archives/ubuntu-security-announce/2011-December/
     001528.html), we are now using OpenJDK for Ubuntu.  Please see
     csrc/README.linux for more information.
@@ -25,6 +25,8 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 	* Feature 100666 ccnd should provide a way to specify default staleness
 	* Bug 100667 Man page for synctest can't be accessed from Wiki
 	* Bug 100668 implement destroyface in ccndc
+	* Feature 100669 Add parameter to ccnpoke command for specifying the length
+	  of the prefix to be registered
 	* Bug 100670 SyncTest.localStore does not set scope
 	* Feature 100672 Wireshark plugin should decode Exclude filters in
 	  Interests
@@ -241,7 +243,8 @@ Refer to http://www.ccnx.org/redmine/ for more details.
   * The ant features used to process properties, -D<property>=<value> do not work with
 	ant 1.7.1.	If you have not done so already, you need to
 	update to ant 1.8.2.  Update in supported Ant version is reflected in README.
-  * Proper args for using the 'ccn_repo signal' command is reflected in README.	
+  * Proper args for using the 'ccn_repo signal' command is reflected in README.
+
   * Issues Resolved:
 	* Feature 100203 Rename updateheader command line program
 	* Feature 100224 Deprecate backward-compatibility support for older header
@@ -578,7 +581,7 @@ Changes between 0.2.0 and 0.3.0:
 	* This release changes ccnchat() to display user friendly names instead
 	  of partial key digest (100214).
 	* ccnchat is refactored to be re-usable, called from the ccnChat.java GUI
-	  and the ccnChatNet.java module. It is also available on the command line:	
+	  and the ccnChatNet.java module. It is also available on the command line:	 
 		 bin/ccnchat -text namespace
 	  (100234).
 	* ccnchat now verifies the first packet: if verification fails, it rejects
