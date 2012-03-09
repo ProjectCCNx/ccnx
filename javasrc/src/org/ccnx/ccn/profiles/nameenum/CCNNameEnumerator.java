@@ -677,7 +677,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 		ContentName responseName = null;
 
 		try {
-			int index = name.containsWhere(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+			int index = name.containsWhere(COMMAND_MARKER_BASIC_ENUMERATION);
 			ContentName prefix = name.subname(index+1, name.count());
 			if(VersioningProfile.hasTerminalVersion(prefix))
 				responseName = VersioningProfile.cutLastVersion(prefix);
