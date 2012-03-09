@@ -155,6 +155,22 @@ public class OIDLookup {
 		_s2oid.put("SHA1withECDSA", "1.2.840.10045.4.1");
 		_oid2s.put("1.2.840.10045.4.1", "SHA1withECDSA");
 
+		_s2oid.put("SHA224withECDSA", "1.2.840.10045.4.3.1");
+		_s2oid.put("SHA-224withECDSA", "1.2.840.10045.4.3.1");
+		_oid2s.put("1.2.840.10045.4.3.1", "SHA224withECDSA");
+        
+		_s2oid.put("SHA256withECDSA", "1.2.840.10045.4.3.2");
+		_s2oid.put("SHA-256withECDSA", "1.2.840.10045.4.3.2");
+		_oid2s.put("1.2.840.10045.4.3.2", "SHA256withECDSA");
+        
+		_s2oid.put("SHA384withECDSA", "1.2.840.10045.4.3.3");
+		_s2oid.put("SHA-384withECDSA", "1.2.840.10045.4.3.3");
+		_oid2s.put("1.2.840.10045.4.3.3", "SHA384withECDSA");
+        
+		_s2oid.put("SHA512withECDSA", "1.2.840.10045.4.3.4");
+		_s2oid.put("SHA-512withECDSA", "1.2.840.10045.4.3.4");
+		_oid2s.put("1.2.840.10045.4.3.4", "SHA512withECDSA");
+        
 		_d2oid.put("SHA1", "1.3.14.3.2.26");
 		_d2oid.put("SHA-1", "1.3.14.3.2.26");
 		_d2oid.put("SHA", "1.3.14.3.2.26");
@@ -199,6 +215,7 @@ public class OIDLookup {
 		_oid2c.put("1.3.14.3.2.12", "DSA");
 
 		_c2oid.put("ECDSA", "1.2.840.10045.2.1");
+		_c2oid.put("EC", "1.2.840.10045.2.1");  // PrivateKey.getAlgorithm()
 		_oid2c.put("1.2.840.10045.2.1", "ECDSA");
 
 		_c2oid.put("ElGamal", "1.3.14.7.2.1.1");
