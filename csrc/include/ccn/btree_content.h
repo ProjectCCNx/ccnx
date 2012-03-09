@@ -101,7 +101,7 @@ int ccn_btree_content_cobsz(struct ccn_btree_node *node, int ndx);
  * 0xff 0x3F 0x30 ...  => a component 16383 bytes long that starts with "0"
  *
  * Length indicators larger than this are possible in theory, but unlikely
- * to come up in practice. Nontheless, we do allow 3-byte length indicators.
+ * to come up in practice. Nonetheless, we do allow 3-byte length indicators.
  */
 
 /* Name flattening */

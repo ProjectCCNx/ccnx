@@ -137,7 +137,7 @@ public class KeyValuePair extends GenericXMLEncodable implements XMLEncodable, C
 	 * The Comparison on _value requires the class of _value to be the same.  If
 	 * you try to compare keys with different classes for _value, compareTo will return
 	 * a consistent ordering based on class, not on the value of _value (i.e. 
-	 * ordering by cannonical class name).  If _value is of type byte[], then
+	 * ordering by canonical class name).  If _value is of type byte[], then
 	 * the ordering is a shortlex.
 	 */
 	public int compareTo(KeyValuePair o) {
