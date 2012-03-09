@@ -99,7 +99,9 @@ public class CCNFlowControl implements CCNInterestHandler {
 	protected long _nOut = 0;
 
 	// Unmatched interests are purged from our table if they have remained there longer than this
+	//TODO need to normalize this with refresh time in CCNNetworkManager and put in SystemConfiguration
 	protected static final int PURGE = 4000;
+	protected static long _lastPurgeTime = 0;
 
 	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
 	protected InterestTable<UnmatchedInterest> _unmatchedInterests = new InterestTable<UnmatchedInterest>();
@@ -418,10 +420,13 @@ public class CCNFlowControl implements CCNInterestHandler {
 			if (size >= capacity) {
 				long ourTime = System.currentTimeMillis();
 
-				// When we're going to be blocked waiting for a reader anyway,
 				// purge old unmatched interests
-				synchronized (_unmatchedInterests) {
-					removeUnmatchedInterests(ourTime);
+				// Don't do it too often as this is time consuming
+				if ((ourTime - _lastPurgeTime) > PURGE) {
+					synchronized (_unmatchedInterests) {
+						removeUnmatchedInterests(ourTime);
+						_lastPurgeTime = ourTime;
+					}
 				}
 
 				// Now wait for space to be cleared or timeout
@@ -486,7 +491,6 @@ public class CCNFlowControl implements CCNInterestHandler {
 		do {
 			removeIt = null;
 			for (Entry<UnmatchedInterest> uie : _unmatchedInterests.values()) {
-				//TODO need to normalize this with refresh time in CCNNetworkManager and put in SystemConfiguration
 				if ((ourTime - uie.value().timestamp) > PURGE) {
 					removeIt = uie;
 					break;
@@ -495,8 +499,10 @@ public class CCNFlowControl implements CCNInterestHandler {
 					break;
 				}
 			}
-			if (removeIt != null)
+			if (removeIt != null) {
+				Log.warning("Removing unmatched interest {0}", removeIt.interest().name());
 				_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
+			}
 		} while (removeIt != null);
 	}
 
