@@ -69,4 +69,4 @@ EXIT STATUS
 
 AUTHOR
 ------
-Russel Atkinson <atkinson@parc.com>
+Russell Atkinson <atkinson@parc.com>
