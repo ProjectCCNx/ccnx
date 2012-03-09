@@ -34,8 +34,8 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNNetworkManager.NetworkProtocol;
-import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.BinaryXMLDecoder;
+import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
@@ -116,6 +116,8 @@ public class CCNNetworkChannel extends InputStream {
 	protected boolean _ncInitialized = false;
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
+
+	protected BinaryXMLDecoder _decoder = new BinaryXMLDecoder();
 
 	// Allocate datagram buffer
 	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(CCNNetworkManager.MAX_PAYLOAD);
@@ -252,9 +254,8 @@ public class CCNNetworkChannel extends InputStream {
 				if (ret <= 0 || !isConnected())
 					return null;
 			}
-			BinaryXMLDecoder packet = new BinaryXMLDecoder();
-			packet.beginDecoding(this);
-			return packet.getPacket();
+			_decoder.beginDecoding(this);
+			return _decoder.getPacket();
 		}
 		try {
 			if (_retry) {
