@@ -37,7 +37,7 @@
  * corresponding blob that that will be used in the final explicit
  * Component of the Name of item x in the sequence.  This should
  * act as a mathematical function, returning the same answer for a given x.
- * (Ususally param will be NULL, but is provided in case it is needed.)
+ * (Usually param will be NULL, but is provided in case it is needed.)
  */
 typedef void ccn_seqfunc(uintmax_t x, void *param,
                          struct ccn_charbuf *resultbuf);
