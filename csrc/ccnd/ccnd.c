@@ -60,7 +60,6 @@
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
-#define GOT_HERE ccnd_msg(h, "at ccnd.c:%d", __LINE__);
 
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
@@ -90,7 +89,6 @@ static ccn_accession_t content_skiplist_next(struct ccnd_handle *h,
                                              struct content_entry *content);
 static void reap_needed(struct ccnd_handle *h, int init_delay_usec);
 static void check_comm_file(struct ccnd_handle *h);
-static const char *unlink_this_at_exit = NULL;
 static struct nameprefix_entry *nameprefix_for_pe(struct ccnd_handle *h,
                                                   struct propagating_entry *pe);
 static int nameprefix_seek(struct ccnd_handle *h,
@@ -112,6 +110,14 @@ static int process_incoming_link_message(struct ccnd_handle *h,
                                          struct face *face, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
 
+/**
+ * Name of our unix-domain listener
+ *
+ * This tiny bit of global state is needed so that the unix-domain listener
+ * can be removed at shutdown.
+ */
+static const char *unlink_this_at_exit = NULL;
+
 static void
 cleanup_at_exit(void)
 {
@@ -128,6 +134,11 @@ handle_fatal_signal(int sig)
     _exit(sig);
 }
 
+/**
+ * Record the name of the unix-domain listener
+ *
+ * Sets up signal handlers in case we are stopping due to a signal.
+ */
 static void
 unlink_at_exit(const char *path)
 {
@@ -142,6 +153,11 @@ unlink_at_exit(const char *path)
     }
 }
 
+/**
+ * Check to see if the unix-domain listener has been unlinked
+ *
+ * @returns 1 if the file is there, 0 if not.
+ */
 static int
 comm_file_ok(void)
 {
@@ -155,6 +171,9 @@ comm_file_ok(void)
     return(1);
 }
 
+/**
+ * Obtain a charbuf for short-term use
+ */
 static struct ccn_charbuf *
 charbuf_obtain(struct ccnd_handle *h)
 {
@@ -166,6 +185,9 @@ charbuf_obtain(struct ccnd_handle *h)
     return(c);
 }
 
+/**
+ * Release a charbuf for reuse
+ */
 static void
 charbuf_release(struct ccnd_handle *h, struct ccn_charbuf *c)
 {
@@ -176,6 +198,9 @@ charbuf_release(struct ccnd_handle *h, struct ccn_charbuf *c)
         ccn_charbuf_destroy(&c);
 }
 
+/**
+ * Obtain an indexbuf for short-term use
+ */
 static struct ccn_indexbuf *
 indexbuf_obtain(struct ccnd_handle *h)
 {
@@ -187,6 +212,9 @@ indexbuf_obtain(struct ccnd_handle *h)
     return(c);
 }
 
+/**
+ * Release an indexbuf for reuse
+ */
 static void
 indexbuf_release(struct ccnd_handle *h, struct ccn_indexbuf *c)
 {
@@ -265,6 +293,11 @@ use_i:
     return (face->faceid);
 }
 
+/**
+ * Decide how much to delay the content sent out on a face.
+ *
+ * Units are microseconds. 
+ */
 static int
 choose_face_delay(struct ccnd_handle *h, struct face *face, enum cq_delay_class c)
 {
@@ -284,6 +317,9 @@ choose_face_delay(struct ccnd_handle *h, struct face *face, enum cq_delay_class 
     return(100); /* probably tcp to a different machine */
 }
 
+/**
+ * Create a queue for sending content.
+ */
 static struct content_queue *
 content_queue_create(struct ccnd_handle *h, struct face *face, enum cq_delay_class c)
 {
@@ -306,6 +342,9 @@ content_queue_create(struct ccnd_handle *h, struct face *face, enum cq_delay_cla
     return(q);
 }
 
+/**
+ * Destroy a queue.
+ */
 static void
 content_queue_destroy(struct ccnd_handle *h, struct content_queue **pq)
 {
@@ -356,6 +395,12 @@ ccnd_close_fd(struct ccnd_handle *h, unsigned faceid, int *pfd)
     }
 }
 
+/**
+ * Clean up when a face is being destroyed.
+ *
+ * This is called when an entry is deleted from one of the hash tables that
+ * keep track of faces.
+ */
 static void
 finalize_face(struct hashtb_enumerator *e)
 {
@@ -391,6 +436,11 @@ finalize_face(struct hashtb_enumerator *e)
         ccnd_meter_destroy(&face->meter[m]);
 }
 
+/**
+ * Convert an accession to its associated content handle.
+ *
+ * @returns content handle, or NULL if it is no longer available.
+ */
 static struct content_entry *
 content_from_accession(struct ccnd_handle *h, ccn_accession_t accession)
 {
@@ -410,6 +460,9 @@ content_from_accession(struct ccnd_handle *h, ccn_accession_t accession)
     return(ans);
 }
 
+/**
+ *  Sweep old entries out of the direct accession-to-content table
+ */
 static void
 cleanout_stragglers(struct ccnd_handle *h)
 {
@@ -450,6 +503,9 @@ cleanout_stragglers(struct ccnd_handle *h)
     hashtb_end(e);
 }
 
+/**
+ *  Prevent the direct accession-to-content table from becoming too sparse
+ */
 static int
 cleanout_empties(struct ccnd_handle *h)
 {
@@ -472,6 +528,9 @@ cleanout_empties(struct ccnd_handle *h)
     return(0);
 }
 
+/**
+ * Assign an accession number to a content object
+ */
 static void
 enroll_content(struct ccnd_handle *h, struct content_entry *content)
 {
@@ -505,6 +564,7 @@ enroll_content(struct ccnd_handle *h, struct content_entry *content)
     h->content_by_accession[content->accession - h->accession_base] = content;
 }
 
+// the hash table this is for is going away
 static void
 finalize_content(struct hashtb_enumerator *content_enumerator)
 {
@@ -538,6 +598,11 @@ finalize_content(struct hashtb_enumerator *content_enumerator)
     }
 }
 
+/**
+ * Find the skiplist entries associated with the key.
+ *
+ * @returns the number of entries of ans that were filled in.
+ */
 static int
 content_skiplist_findbefore(struct ccnd_handle *h,
                             const unsigned char *key,
@@ -578,7 +643,14 @@ content_skiplist_findbefore(struct ccnd_handle *h,
     return(n);
 }
 
+/**
+ * Limit for how deep our skiplists can be
+ */
 #define CCN_SKIPLIST_MAX_DEPTH 30
+
+/**
+ * Insert a new entry into the skiplist.
+ */
 static void
 content_skiplist_insert(struct ccnd_handle *h, struct content_entry *content)
 {
@@ -606,6 +678,9 @@ content_skiplist_insert(struct ccnd_handle *h, struct content_entry *content)
     }
 }
 
+/**
+ * Remove an entry from the skiplist.
+ */
 static void
 content_skiplist_remove(struct ccnd_handle *h, struct content_entry *content)
 {
@@ -628,6 +703,9 @@ content_skiplist_remove(struct ccnd_handle *h, struct content_entry *content)
     ccn_indexbuf_destroy(&content->skiplinks);
 }
 
+/**
+ * Find the first candidate that might match the given interest.
+ */
 static struct content_entry *
 find_first_match_candidate(struct ccnd_handle *h,
                            const unsigned char *interest_msg,
@@ -687,6 +765,9 @@ find_first_match_candidate(struct ccnd_handle *h,
     return(content_from_accession(h, pred[0]->buf[0]));
 }
 
+/**
+ * Check for a prefix match.
+ */
 static int
 content_matches_interest_prefix(struct ccnd_handle *h,
                                 struct content_entry *content,
@@ -710,6 +791,9 @@ content_matches_interest_prefix(struct ccnd_handle *h,
     return(1);
 }
 
+/**
+ * Advance to the next entry in the skiplist.
+ */
 static ccn_accession_t
 content_skiplist_next(struct ccnd_handle *h, struct content_entry *content)
 {
@@ -720,6 +804,9 @@ content_skiplist_next(struct ccnd_handle *h, struct content_entry *content)
     return(content->skiplinks->buf[0]);
 }
 
+/**
+ * Cansume an interest.
+ */
 static void
 consume(struct ccnd_handle *h, struct propagating_entry *pe)
 {
@@ -740,6 +827,9 @@ consume(struct ccnd_handle *h, struct propagating_entry *pe)
     pe->usec = 0;
 }
 
+/**
+ * Clean up a name prefix entry when it is removed from the hash table.
+ */
 static void
 finalize_nameprefix(struct hashtb_enumerator *e)
 {
@@ -759,6 +849,9 @@ finalize_nameprefix(struct hashtb_enumerator *e)
     }
 }
 
+/**
+ * Link an interest to its name prefix entry.
+ */
 static void
 link_propagating_interest_to_nameprefix(struct ccnd_handle *h,
     struct propagating_entry *pe, struct nameprefix_entry *npe)
@@ -769,6 +862,9 @@ link_propagating_interest_to_nameprefix(struct ccnd_handle *h,
     pe->prev->next = pe->next->prev = pe;
 }
 
+/**
+ * Clean up an interest when it is removed from its hash table.
+ */
 static void
 finalize_propagating(struct hashtb_enumerator *e)
 {
@@ -776,6 +872,9 @@ finalize_propagating(struct hashtb_enumerator *e)
     consume(h, e->data);
 }
 
+/**
+ * Create a listener on a unix-domain socket.
+ */
 static int
 create_local_listener(struct ccnd_handle *h, const char *sockname, int backlog)
 {
@@ -813,6 +912,9 @@ create_local_listener(struct ccnd_handle *h, const char *sockname, int backlog)
     return(sock);
 }
 
+/**
+ * Adjust socket buffer limit
+ */
 static int
 establish_min_recv_bufsize(struct ccnd_handle *h, int fd, int minsize)
 {
@@ -912,7 +1014,10 @@ record_connection(struct ccnd_handle *h, int fd,
 }
 
 /**
- * Accept an incoming DGRAM_STREAM connection, creating a new face.
+ * Accept an incoming SOCK_STREAM connection, creating a new face.
+ *
+ * This could be, for example, a unix-domain socket, or TCP.
+ *
  * @returns fd of new socket, or -1 for an error.
  */
 static int
@@ -1002,6 +1107,11 @@ make_connection(struct ccnd_handle *h,
     return(face);
 }
 
+/**
+ * Get a bound datagram socket.
+ *
+ * This is handed to ccn_setup_socket() when setting up a multicast face.
+ */
 static int
 ccnd_getboundsocket(void *dat, struct sockaddr *who, socklen_t wholen)
 {
@@ -1039,6 +1149,11 @@ ccnd_getboundsocket(void *dat, struct sockaddr *who, socklen_t wholen)
     return(ans);
 }
 
+/**
+ * Get the faceid associated with a file descriptor.
+ *
+ * @returns the faceid, or CCN_NOFACEID.
+ */
 static unsigned
 faceid_from_fd(struct ccnd_handle *h, int fd)
 {
@@ -1049,6 +1164,10 @@ faceid_from_fd(struct ccnd_handle *h, int fd)
 }
 
 typedef void (*loggerproc)(void *, const char *, ...);
+
+/**
+ * Set up a multicast face.
+ */
 static struct face *
 setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
                 struct sockaddr *who, socklen_t wholen)
@@ -1097,6 +1216,9 @@ setup_multicast(struct ccnd_handle *h, struct ccn_face_instance *face_instance,
     return(face);
 }
 
+/**
+ * Close a socket, destroying the associated face.
+ */
 static void
 shutdown_client_fd(struct ccnd_handle *h, int fd)
 {
@@ -1127,6 +1249,12 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
     reap_needed(h, 250000);
 }
 
+/**
+ * Send a ContentObject
+ *
+ * This is after it has worked its way through the queue; update the meters
+ * and stuff the packet as appropriate.
+ */
 static void
 send_content(struct ccnd_handle *h, struct face *face, struct content_entry *content)
 {
@@ -1151,6 +1279,9 @@ send_content(struct ccnd_handle *h, struct face *face, struct content_entry *con
     h->content_items_sent += 1;
 }
 
+/**
+ * Select the output queue class for a piece of content
+ */
 static enum cq_delay_class
 choose_content_delay_class(struct ccnd_handle *h, unsigned faceid, int content_flags)
 {
@@ -1166,6 +1297,14 @@ choose_content_delay_class(struct ccnd_handle *h, unsigned faceid, int content_f
     return(CCN_CQ_NORMAL); /* default */
 }
 
+/**
+ * Pick a randomized delay for sending
+ *
+ * This is primarily for multicast and similar broadcast situations, where we
+ * may see the content being sent by somebody else.  If that is the case,
+ * we will avoid sending our copy as well.
+ *
+ */
 static unsigned
 randomize_content_delay(struct ccnd_handle *h, struct content_queue *q)
 {
@@ -1182,6 +1321,9 @@ randomize_content_delay(struct ccnd_handle *h, struct content_queue *q)
     return(usec);
 }
 
+/**
+ * Scheduled event for sending from a queue.
+ */
 static int
 content_sender(struct ccn_schedule *sched,
     void *clienth,
@@ -1275,6 +1417,9 @@ Bail:
     return(0);
 }
 
+/**
+ * Queue a ContentObject to be sent on a face.
+ */
 static int
 face_send_queue_insert(struct ccnd_handle *h,
                        struct face *face, struct content_entry *content)
@@ -1388,6 +1533,13 @@ consume_matching_interests(struct ccnd_handle *h,
     return(matches);
 }
 
+/**
+ * Adjust the predicted response associated with a name prefix entry.
+ *
+ * It is decreased by a small fraction if we get content within our
+ * previous predicted value, and increased by a larger fraction if not.
+ *
+ */
 static void
 adjust_npe_predicted_response(struct ccnd_handle *h,
                               struct nameprefix_entry *npe, int up)
@@ -1404,6 +1556,13 @@ adjust_npe_predicted_response(struct ccnd_handle *h,
     npe->usec = t;
 }
 
+/**
+ * Adjust the predicted responses for an interest.
+ *
+ * We adjust two npes, so that the parents are informed about activity
+ * at the leaves.
+ *
+ */
 static void
 adjust_predicted_response(struct ccnd_handle *h,
                           struct propagating_entry *pe, int up)
@@ -1656,6 +1815,11 @@ ccn_stuff_interest(struct ccnd_handle *h,
     return(n_stuffed);
 }
 
+/**
+ * Set up to send one sequence number to see it the other side wants to play.
+ *
+ * If we don't hear a number from the other side, we won't keep sending them.
+ */
 static void
 ccn_link_state_init(struct ccnd_handle *h, struct face *face)
 {
@@ -1672,6 +1836,9 @@ ccn_link_state_init(struct ccnd_handle *h, struct face *face)
     face->flags |= CCN_FACE_SEQPROBE;
 }
 
+/**
+ * Append a sequence number if appropriate.
+ */
 static void
 ccn_append_link_stuff(struct ccnd_handle *h,
                       struct face *face,
@@ -1690,6 +1857,9 @@ ccn_append_link_stuff(struct ccnd_handle *h,
     face->flags &= ~CCN_FACE_SEQPROBE;
 }
 
+/**
+ * Process an incoming link message.
+ */
 static int
 process_incoming_link_message(struct ccnd_handle *h,
                               struct face *face, enum ccn_dtag dtag,
@@ -1956,6 +2126,9 @@ reap_needed(struct ccnd_handle *h, int init_delay_usec)
         h->reaper = ccn_schedule_event(h->sched, init_delay_usec, reap, NULL, 0);
 }
 
+/**
+ * Remove a content object from the store
+ */
 static int
 remove_content(struct ccnd_handle *h, struct content_entry *content)
 {
@@ -2088,6 +2261,9 @@ clean_deamon(struct ccn_schedule *sched,
     return(15000000);
 }
 
+/**
+ * Schedule clean_deamon, if it is not already scheduled.
+ */
 static void
 clean_needed(struct ccnd_handle *h)
 {
@@ -2152,6 +2328,9 @@ age_forwarding(struct ccn_schedule *sched,
     return(CCN_FWU_SECS*1000000);
 }
 
+/**
+ * Make sure a call to age_forwarding is scheduled.
+ */
 static void
 age_forwarding_needed(struct ccnd_handle *h)
 {
@@ -2162,6 +2341,9 @@ age_forwarding_needed(struct ccnd_handle *h)
                                                NULL, 0);
 }
 
+/**
+ * Look up a forwarding entry, creating it if it is not there.
+ */
 static struct ccn_forwarding *
 seek_forwarding(struct ccnd_handle *h,
                 struct nameprefix_entry *npe, unsigned faceid)
@@ -2349,6 +2531,8 @@ ccnd_nack(struct ccnd_handle *h, struct ccn_charbuf *reply_body,
 /**
  * Check that indicated ccndid matches ours.
  *
+ * Fills reply_body with a StatusResponse in case of no match.
+ *
  * @returns 0 if OK, or CCN_CONTENT_NACK if not.
  */
 static int
@@ -2360,6 +2544,9 @@ check_ccndid(struct ccnd_handle *h,
     return(0);
 }
 
+/**
+ * Check ccndid, given a face instance.
+ */
 static int
 check_face_instance_ccndid(struct ccnd_handle *h,
     struct ccn_face_instance *f, struct ccn_charbuf *reply_body)
@@ -2367,6 +2554,9 @@ check_face_instance_ccndid(struct ccnd_handle *h,
     return(check_ccndid(h, f->ccnd_id, f->ccnd_id_size, reply_body));
 }
 
+/**
+ * Check ccndid, given a parsed ForwardingEntry.
+ */
 static int
 check_forwarding_entry_ccndid(struct ccnd_handle *h,
     struct ccn_forwarding_entry *f, struct ccn_charbuf *reply_body)
@@ -2831,7 +3021,9 @@ Finish:
 }
 
 /**
- * Recompute the contents of npe->forward_to and npe->flags
+ * Set up forward_to list for a name prefix entry.
+ *
+ * Recomputes the contents of npe->forward_to and npe->flags
  * from forwarding lists of npe and all of its ancestors.
  */
 static void
@@ -2943,6 +3135,9 @@ get_outbound_faces(struct ccnd_handle *h,
     return(x);
 }
 
+/**
+ * Compute the delay until the next timed action on a propagating interest.
+ */
 static int
 pe_next_usec(struct ccnd_handle *h,
              struct propagating_entry *pe, int next_delay, int lineno)
@@ -2969,6 +3164,9 @@ pe_next_usec(struct ccnd_handle *h,
 
 static void replan_propagation(struct ccnd_handle *, struct propagating_entry *);
 
+/**
+ * Execute the next timed action on a propagating interest.
+ */
 static int
 do_propagate(struct ccn_schedule *sched,
              void *clienth,
@@ -3158,6 +3356,24 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
     return(extra_delay);
 }
 
+/**
+ * Append an interest Nonce that is useful for debugging.
+ *
+ * This does leak some information about the origin of interests, but it
+ * also makes it easier to figure out what is happening.
+ *
+ * The debug nonce is 12 bytes long.  When converted to hexadecimal and
+ * broken into fields (big-endian style), it looks like
+ *
+ *   IIIIII-PPPP-FFFF-SSss-XXXXXX
+ *
+ * where
+ *   IIIIII - first 24 bits of the CCNDID.
+ *   PPPP   - pid of the ccnd.
+ *   FFFF   - 16 low-order bits of the faceid.
+ *   SSss   - local time modulo 256 seconds, with 8 bits of fraction
+ *   XXXXXX - 24 random bits.
+ */
 static void
 ccnd_append_debug_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
         unsigned char s[12];
@@ -3176,6 +3392,11 @@ ccnd_append_debug_nonce(struct ccnd_handle *h, struct face *face, struct ccn_cha
         ccnb_append_tagged_blob(cb, CCN_DTAG_Nonce, s, i);
 }
 
+/**
+ * Append a random interest Nonce.
+ *
+ * For production use, although this uses a simple PRNG.
+ */
 static void
 ccnd_append_plain_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
         int noncebytes = 6;
@@ -3315,6 +3536,9 @@ propagate_interest(struct ccnd_handle *h,
     return(res);
 }
 
+/**
+ * Find the name prefix entry for a given propagating interest.
+ */
 static struct nameprefix_entry *
 nameprefix_for_pe(struct ccnd_handle *h, struct propagating_entry *pe)
 {
@@ -3328,6 +3552,12 @@ nameprefix_for_pe(struct ccnd_handle *h, struct propagating_entry *pe)
     return(npe);
 }
 
+/**
+ * Replan interest propagation.
+ *
+ * This comes up when a forwarding entry is added after an interest is
+ * already pending.
+ */
 static void
 replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
 {
@@ -3520,6 +3750,20 @@ next_child_at_level(struct ccnd_handle *h,
     return(next);
 }
 
+/**
+ * Process an incoming interest message.
+ *
+ * Parse the Interest and discard if it does not parse.
+ * Check for correct scope (a scope 0 or scope 1 interest should never
+ *  arrive on an external face).
+ * Check for a duplicated Nonce, discard if it has been seen before.
+ * Look up the name prefix.  Check for a local namespace and discard
+ *  if an interest in a local namespace arrives from outside.
+ * Consult the content store.  If a suitable matching ContentObject is found,
+ *  prepare to send it, consuming this interest and any pending interests
+ *  on that face that also match this object.
+ * Otherwise, initiate propagation of the interest.
+ */
 static void
 process_incoming_interest(struct ccnd_handle *h, struct face *face,
                           unsigned char *msg, size_t size)
@@ -3782,6 +4026,24 @@ Finish:
                        &expire_content, NULL, content->accession);
 }
 
+/**
+ * Process an arriving ContentObject.
+ *
+ * Parse the ContentObject and discard if it is not well-formed.
+ *
+ * Compute the digest.
+ *
+ * Look it up in the content store.  It it is already there, but is stale,
+ * make it fresh again.  If it is not there, add it.
+ *
+ * Find the matching pending interests in the PIT and consume them,
+ * queueing the ContentObject to be sent on the associated faces.
+ * If no matches were found and the content object was new, discard remove it
+ * from the store.
+ *
+ * XXX - the change to staleness should also not happen if there was no
+ * matching PIT entry.
+ */
 static void
 process_incoming_content(struct ccnd_handle *h, struct face *face,
                          unsigned char *wire_msg, size_t wire_size)
@@ -3942,6 +4204,12 @@ Bail:
     }
 }
 
+/**
+ * Process an incoming message.
+ *
+ * This is where we decide whether we have an Interest message,
+ * a ContentObject, or something else.
+ */
 static void
 process_input_message(struct ccnd_handle *h, struct face *face,
                       unsigned char *msg, size_t size, int pdu_ok)
@@ -4007,6 +4275,9 @@ process_input_message(struct ccnd_handle *h, struct face *face,
              (unsigned long)size);
 }
 
+/**
+ * Log a notification that a new datagram face has been created.
+ */
 static void
 ccnd_new_face_msg(struct ccnd_handle *h, struct face *face)
 {
@@ -4066,6 +4337,9 @@ scrub_sockaddr(struct sockaddr *addr, socklen_t addrlen,
     return((struct sockaddr *)dst);
 }
 
+/**
+ * Get (or create) the face associated with a given sockaddr.
+ */
 static struct face *
 get_dgram_source(struct ccnd_handle *h, struct face *face,
                  struct sockaddr *addr, socklen_t addrlen, int why)
@@ -4254,6 +4528,11 @@ process_input(struct ccnd_handle *h, int fd)
     }
 }
 
+/**
+ * Process messages from our internal client.
+ *
+ * The internal client's output is input to us.
+ */
 static void
 process_internal_client_buffer(struct ccnd_handle *h)
 {
@@ -4294,6 +4573,17 @@ handle_send_error(struct ccnd_handle *h, int errnum, struct face *face,
     return(res);
 }
 
+/**
+ * Determine what socket to use to send on a face.
+ *
+ * For streams, this just returns the associated fd.
+ *
+ * For datagrams, one fd may be in use for many faces, so we need to find the
+ * right one to use.
+ *
+ * This is not as smart as it should be for situations where
+ * CCND_LISTEN_ON has been specified.
+ */
 static int
 sending_fd(struct ccnd_handle *h, struct face *face)
 {
@@ -4374,6 +4664,11 @@ ccnd_send(struct ccnd_handle *h,
                        ((const unsigned char *)data) + res, size - res);
 }
 
+/**
+ * Do deferred sends.
+ *
+ * These can only happen on streams, after there has been a partial write.
+ */
 static void
 do_deferred_write(struct ccnd_handle *h, int fd)
 {
@@ -4501,6 +4796,9 @@ ccnd_run(struct ccnd_handle *h)
     }
 }
 
+/**
+ * Reseed our pseudo-random number generator.
+ */
 static void
 ccnd_reseed(struct ccnd_handle *h)
 {
@@ -4524,6 +4822,12 @@ ccnd_reseed(struct ccnd_handle *h)
     seed48(h->seed);
 }
 
+/**
+ * Get the name of our unix-domain socket listener.
+ *
+ * Uses the library to generate the name, using the environment.
+ * @returns a newly-allocated nul-terminated string.
+ */
 static char *
 ccnd_get_local_sockname(void)
 {
@@ -4532,6 +4836,11 @@ ccnd_get_local_sockname(void)
     return(strdup(sa.sun_path));
 }
 
+/**
+ * Get the time.
+ *
+ * This is used to supply the clock for our scheduled events.
+ */
 static void
 ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 {
@@ -4544,6 +4853,11 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
     h->usec = now.tv_usec;
 }
 
+/**
+ * Set IPV6_V6ONLY on a socket.
+ *
+ * The handle is used for error reporting.
+ */
 void
 ccnd_setsockopt_v6only(struct ccnd_handle *h, int fd)
 {
@@ -4557,6 +4871,9 @@ ccnd_setsockopt_v6only(struct ccnd_handle *h, int fd)
                  fd, strerror(errno));
 }
 
+/**
+ * Translate an address family constant to a string.
+ */
 static const char *
 af_name(int family)
 {
@@ -4570,6 +4887,9 @@ af_name(int family)
     }
 }
 
+/**
+ * Create the standard ipv4 and ipv6 bound ports.
+ */
 static int
 ccnd_listen_on_wildcards(struct ccnd_handle *h)
 {
@@ -4648,6 +4968,9 @@ ccnd_listen_on_wildcards(struct ccnd_handle *h)
     return(0);
 }
 
+/**
+ * Create a tcp listener and a bound udp socket on the given address
+ */
 static int
 ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
 {
@@ -4726,6 +5049,11 @@ ccnd_listen_on_address(struct ccnd_handle *h, const char *addr)
     return(ok > 0 ? 0 : -1);
 }
 
+/**
+ * Create listeners or bound udp ports using the given addresses
+ *
+ * The addresses may be separated by whitespace, commas, or semicolons.
+ */
 static int
 ccnd_listen_on(struct ccnd_handle *h, const char *addrs)
 {
@@ -4759,6 +5087,16 @@ ccnd_listen_on(struct ccnd_handle *h, const char *addrs)
     return(res);
 }
 
+/**
+ * Parse a list of ccnx URIs
+ *
+ * The URIs may be separated by whitespace, commas, or semicolons.
+ *
+ * Errors are logged.
+ *
+ * @returns a newly-allocated charbuf containing nul-terminated URIs; or
+ *          NULL if no valid URIs are found.
+ */
 static struct ccn_charbuf *
 ccnd_parse_uri_list(struct ccnd_handle *h, const char *what, const char *uris)
 {
