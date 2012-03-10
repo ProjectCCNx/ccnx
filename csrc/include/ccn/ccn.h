@@ -850,6 +850,9 @@ int ccn_chk_signing_params(struct ccn *h,
                            struct ccn_charbuf **pkeylocator);
 
 /* low-level content-object signing */
+
+#define CCN_SIGNING_DEFAULT_DIGEST_ALGORITHM "SHA256"
+
 int ccn_signed_info_create(
     struct ccn_charbuf *c,              /* filled with result */
     const void *publisher_key_id,	/* input, (sha256) hash */
