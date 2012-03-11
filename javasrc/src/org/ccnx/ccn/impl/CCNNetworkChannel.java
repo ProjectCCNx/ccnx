@@ -1,7 +1,7 @@
 /**
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2010-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -40,7 +40,6 @@ import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
-import org.ccnx.ccn.protocol.WirePacket;
 
 /**
  *  This guy manages all of the access to the network connection.
@@ -67,36 +66,6 @@ public class CCNNetworkChannel extends InputStream {
 	protected final int _ncPort;
 	protected final NetworkProtocol _ncProto;
 	protected final FileOutputStream _ncTapStreamIn;
-
-	/**
-	 * Error recover from receipt of a bad packet which can cause the read to error out in the
-	 * middle of reading the packet. For UDP we can just ignore this and skip to the next packet, but
-	 * for TCP where data is continuous we need to skip over the rest of the bad data so that we can
-	 * resync on the next good packet.
-	 */
-	protected class TCPErrorCorrectionStrategy implements WirePacket.ErrorCorrectionStrategy {
-		/**
-		 * Sync to next packet after an error
-		 * @throws IOException
-		 */
-		public void resync(XMLDecoder decoder) {
-			while (true) {
-				try {
-					if (decoder.peekStartElement(CCNProtocolDTags.Interest)
-							|| decoder.peekStartElement(CCNProtocolDTags.ContentObject)) {
-						return;
-					}
-				} catch (ContentDecodingException e) {}
-				try {
-					if (decoder.getInputStream().read() < 0)
-						return;	// EOF
-				} catch (IOException e) {
-					Log.logStackTrace(Log.FAC_NETMANAGER, Level.WARNING, e);
-					return;
-				}
-			}
-		}
-	}
 
 	protected int _ncLocalPort;
 	protected DatagramChannel _ncDGrmChannel = null;
@@ -205,7 +174,6 @@ public class CCNNetworkChannel extends InputStream {
 				_ncSockChannel.register(_ncWriteSelector, SelectionKey.OP_WRITE);
 				_ncLocalPort = _ncSockChannel.socket().getLocalPort();
 				//_ncSockChannel.socket().setSoLinger(true, LINGER_TIME);
-				WirePacket.setErrorCorrectionStrategy(new TCPErrorCorrectionStrategy());
 			} else {
 				throw new IOException("NetworkChannel " + _channelId + ": invalid protocol specified");
 			}
@@ -254,8 +222,12 @@ public class CCNNetworkChannel extends InputStream {
 				if (ret <= 0 || !isConnected())
 					return null;
 			}
-			_decoder.beginDecoding(this);
-			return _decoder.getPacket();
+			try {
+				_decoder.beginDecoding(this);
+				return _decoder.getPacket();
+			} catch (ContentDecodingException cde) {
+				resync(_decoder);
+			}
 		}
 		try {
 			if (_retry) {
@@ -536,5 +508,25 @@ public class CCNNetworkChannel extends InputStream {
 			} catch (IOException e) {}
 		}
 		return false;
+	}
+
+	/**
+	 * Error recover from receipt of a bad packet which can cause the read to error out in the
+	 * middle of reading the packet. For UDP we can just ignore this and skip to the next packet, but
+	 * for TCP where data is continuous we need to skip over the rest of the bad data so that we can
+	 * resync on the next good packet.
+	 *
+	 * Sync to next packet after an error
+	 * @throws IOException
+	 */
+	private void resync(XMLDecoder decoder) throws IOException {
+		while (true) {
+			if (decoder.peekStartElement(CCNProtocolDTags.Interest)
+					|| decoder.peekStartElement(CCNProtocolDTags.ContentObject)) {
+				return;
+			}
+			if (decoder.getInputStream().read() < 0)
+				return;	// EOF
+		}
 	}
 } /* NetworkChannel */
