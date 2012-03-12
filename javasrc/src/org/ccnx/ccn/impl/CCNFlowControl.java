@@ -500,7 +500,8 @@ public class CCNFlowControl implements CCNInterestHandler {
 				}
 			}
 			if (removeIt != null) {
-				Log.warning("Removing unmatched interest {0}", removeIt.interest().name());
+				if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "Removing unmatched interest {0}", removeIt.interest().name());
 				_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
 			}
 		} while (removeIt != null);
