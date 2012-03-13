@@ -1,11 +1,11 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedMap;
@@ -34,14 +35,14 @@ import org.ccnx.ccn.protocol.Interest;
 
 
 /**
- * Table of Interests, holding an arbitrary value for any  
+ * Table of Interests, holding an arbitrary value for any
  * Interest or ContentName.  This is conceptually like a Map<Interest, V> except it supports
- * duplicate entries and has operations for access based on CCN 
- * matching.  An InterestTable may be used to hold real Interests, or merely 
+ * duplicate entries and has operations for access based on CCN
+ * matching.  An InterestTable may be used to hold real Interests, or merely
  * ContentNames only, though mixing the two in the same instance of InterestTable
  * is not recommended. InterestTables are synchronized using _contents as a synchronization
  * object
- * 
+ *
  * Since interests can be reexpressed we could end up with duplicate
  * interests in the table. To avoid that an LRU algorithm is
  * optionally implemented to keep the table from growing without
@@ -85,16 +86,17 @@ public class InterestTable<V> {
     protected SortedMap<ContentName,List<Holder<V>>> _contents = new TreeMap<ContentName,List<Holder<V>>>(new LongestFirstComparator()) {
         private static final long serialVersionUID = -2774858588706066528L;
 
-        public String toString() {
+        @Override
+		public String toString() {
             StringBuffer s = new StringBuffer();
             for(ContentName n : keySet() )
                 s.append(n.toString() + " ");
             return s.toString();
         }
     };
-	
-	protected ArrayList<ContentName> _contentNamesLRU = new ArrayList<ContentName>();
-	
+
+	protected List<ContentName> _contentNamesLRU = null;
+
 	protected Integer _capacity = null;	// For LRU size control - default is none
 
 	protected abstract class Holder<T> implements Entry<T> {
@@ -136,12 +138,13 @@ public class InterestTable<V> {
 	/**
 	 * Set capacity for LRU size control. Defaults to
 	 * no size control
-	 * 
+	 *
 	 * @param capacity
 	 */
 	public void setCapacity(int capacity) {
 		synchronized (_contents) {
 			_capacity = capacity;
+			_contentNamesLRU = new LinkedList<ContentName>();
 		}
 	}
 
@@ -157,7 +160,7 @@ public class InterestTable<V> {
 
 	/**
 	 * Add a value associated with an interest to the table
-	 * 
+	 *
 	 * @param interest	the interest
 	 * @param value		associated object
 	 */
@@ -176,7 +179,7 @@ public class InterestTable<V> {
 
 	/**
 	 * Add a value associated with content to the table
-	 * 
+	 *
 	 * @param name	name of the content
 	 * @param value	associated object
 	 */
@@ -192,7 +195,7 @@ public class InterestTable<V> {
 
 	/**
 	 * Add a value holder - could be interest or content
-	 * 
+	 *
 	 * @param holder
 	 */
 	protected void add(Holder<V> holder) {
@@ -242,17 +245,17 @@ public class InterestTable<V> {
 						if (holder.interest().matches(target)) {
 							return holder;
 						}
-					}	
+					}
 				}
 			}
 		}
 		return null;
 	}
 
-	/** 
+	/**
 	 * Internal: return all the entries having exactly the specified name,
 	 * useful once you have found the matching names to collect entries from them
-	 * 
+	 *
 	 * @param name
 	 * @param target
 	 * @return
@@ -271,7 +274,7 @@ public class InterestTable<V> {
 						if (holder.interest().matches(target)) {
 							matches.add(holder);
 						}
-					}	
+					}
 				}
 			}
 		}
@@ -294,7 +297,7 @@ public class InterestTable<V> {
 							}
 							return holder;
 						}
-					}	
+					}
 				}
 			}
 		}
@@ -303,10 +306,10 @@ public class InterestTable<V> {
 
 	/**
 	 * Remove first exact match entry (both name and value match).
-	 * 
+	 *
 	 * @param name	ContentName of name
 	 * @param value	associated value
-	 * 
+	 *
 	 * @return the matching entry or null if none found
 	 */
 	public Entry<V> remove(ContentName name, V value) {
@@ -340,7 +343,7 @@ public class InterestTable<V> {
 
 	/**
 	 * Remove first exact match entry (both interest and value match)
-	 * 
+	 *
 	 * @param interest	Interest to match
 	 * @param value		associated value
 	 * @return			the matching entry or null if none found
@@ -358,7 +361,7 @@ public class InterestTable<V> {
 							if (null == value) {
 								holdIt.remove();
 								result = holder;
-	
+
 							}
 						} else {
 							if (holder.value().equals(value)) {
@@ -388,7 +391,7 @@ public class InterestTable<V> {
 							holdIt.remove();
 							matches.add(holder);
 						}
-					}	
+					}
 				}
 				if (list.size() == 0) {
 					_contents.remove(name);
@@ -400,9 +403,9 @@ public class InterestTable<V> {
 
 	/**
 	 * Get value of longest matching Interest for a ContentObject, where longest is defined
-	 * as longest ContentName.  Any ContentName entries in the table will be 
+	 * as longest ContentName.  Any ContentName entries in the table will be
 	 * ignored by this operation. If there are multiple matches, first is returned.
-	 * 
+	 *
 	 * @param target - desired ContentObject
 	 * @return Entry of longest match if any, null if no match
 	 */
@@ -416,11 +419,11 @@ public class InterestTable<V> {
 	}
 
 	/**
-	 * Get longest matching Interest for a ContentObject.  This is the same as 
+	 * Get longest matching Interest for a ContentObject.  This is the same as
 	 * getValue() except that the Entry is returned so the matching item
-	 * may be retrieved and null value may be detected. The Entry returned will have a 
+	 * may be retrieved and null value may be detected. The Entry returned will have a
 	 * non-null interest because this method matches only Interests in the table.
-	 * 
+	 *
 	 * @param target - desired ContentObject
 	 * @return Entry of longest match if any, null if no match
 	 */
@@ -442,9 +445,9 @@ public class InterestTable<V> {
 
 	/**
 	 * Get values of all matching Interests for a ContentObject.
-	 * Any ContentName entries in the table will be 
+	 * Any ContentName entries in the table will be
 	 * ignored by this operation and any null values will be ignored.
-	 * 
+	 *
 	 * @param target	target ContentObject
 	 * @return 			list of all matching values
 	 */
@@ -464,11 +467,11 @@ public class InterestTable<V> {
 
 	/**
 	 * Get all matching Interests for a ContentObject.
-	 * Any ContentName entries in the table will be 
-	 * ignored by this operation, so every Entry returned will have a 
-	 * non-null interest.  This is the same as getValues() except that 
+	 * Any ContentName entries in the table will be
+	 * ignored by this operation, so every Entry returned will have a
+	 * non-null interest.  This is the same as getValues() except that
 	 * Entry objects are returned.
-	 * 
+	 *
 	 * @param target - desired ContentObject
 	 * @return List of matches, empty if no match
 	 */
@@ -490,10 +493,10 @@ public class InterestTable<V> {
 
 	/**
 	 * Get value of longest matching Interest for a ContentName, where longest is defined
-	 * as longest ContentName.  If there are multiple matches, first is returned.  
+	 * as longest ContentName.  If there are multiple matches, first is returned.
 	 * This will return a mix of ContentName and Interest entries if they exist
 	 * (and match) in the table, i.e. the Interest of an Entry may be null in some cases.
-	 * 
+	 *
 	 * @param target desired ContentName
 	 * @return Entry of longest match if any, null if no match
 	 */
@@ -511,9 +514,9 @@ public class InterestTable<V> {
 
 	/**
 	 * Get longest matching Interest.  This method is the same as getValue()
-	 * except that the  Entry is returned so the matching item may be retrieved 
+	 * except that the  Entry is returned so the matching item may be retrieved
 	 * and null value may be detected.
-	 * 
+	 *
 	 * @param target	desired ContentName
 	 * @return			longest matching entry or null if none found
 	 */
@@ -535,7 +538,7 @@ public class InterestTable<V> {
 
 	/**
 	 * Get values matching a target ContentName
-	 * 
+	 *
 	 * @param target	the desired ContentName
 	 * @return 			list of values associated with this ContentName
 	 */
@@ -548,7 +551,7 @@ public class InterestTable<V> {
 		for (Entry<V> entry : matches) {
 			if (null != entry.value()) {
 				result.add(entry.value());
-			} 
+			}
 		}
 		return result;
 	}
@@ -557,7 +560,7 @@ public class InterestTable<V> {
 	 * Get all matching entries for a ContentName.
 	 * This will return a mix of ContentName and Interest entries if they exist
 	 * (and match) in the table, i.e. the Interest of an Entry may be null in some cases.
-	 * 
+	 *
 	 * @param target desired ContentName
 	 * @return List of matches ordered from longest match to shortest, empty if no match
 	 */
@@ -579,7 +582,7 @@ public class InterestTable<V> {
 	/**
 	 * Get all entries.  This will return a mix of ContentName and Interest entries
 	 * if they exist in the table, i.e. the Interest of an Entry may be null in some cases.
-	 * 
+	 *
 	 * @return Collection of entries in arbitrary order
 	 */
 	public Collection<Entry<V>> values() {
@@ -596,12 +599,12 @@ public class InterestTable<V> {
 
 	/**
 	 * Remove and return value of the longest matching Interest for a ContentObject, where best is defined
-	 * as longest ContentName.  Any ContentName entries in the table will be 
+	 * as longest ContentName.  Any ContentName entries in the table will be
 	 * ignored by this operation, as will null values.
-	 * 
+	 *
 	 * @param target - desired ContentObject
 	 * @return value of longest match if any, null if no match
-	 */	
+	 */
 	public V removeValue(ContentObject target) {
 		Entry<V> match = removeMatch(target);
 		if (null != match) {
@@ -613,10 +616,10 @@ public class InterestTable<V> {
 
 	/**
 	 * Remove and return the longest matching Interest for a ContentObject, where best is defined
-	 * as longest ContentName.  Any ContentName entries in the table will be 
-	 * ignored by this operation, so the Entry returned will have a 
+	 * as longest ContentName.  Any ContentName entries in the table will be
+	 * ignored by this operation, so the Entry returned will have a
 	 * non-null interest.
-	 * 
+	 *
 	 * @param target - desired ContentObject
 	 * @return Entry of longest match if any, null if no match
 	 */
@@ -647,10 +650,10 @@ public class InterestTable<V> {
 
 	/**
 	 * Remove and return values for all matching Interests for a ContentObject.
-	 * Any ContentName entries in the table will be 
+	 * Any ContentName entries in the table will be
 	 * ignored by this operation.  Null values will not be represented in returned
-	 * list though their Interests will have been removed if any. 
-	 * 
+	 * list though their Interests will have been removed if any.
+	 *
 	 * @param target - desired ContentObject
 	 * @return List of matches ordered from longest match to shortest, empty if no match
 	 */
@@ -667,10 +670,10 @@ public class InterestTable<V> {
 
 	/**
 	 * Remove and return all matching Interests for a ContentObject.
-	 * Any ContentName entries in the table will be 
-	 * ignored by this operation, so every Entry returned will have a 
-	 * non-null interest. 
-	 * 
+	 * Any ContentName entries in the table will be
+	 * ignored by this operation, so every Entry returned will have a
+	 * non-null interest.
+	 *
 	 * @param target - desired ContentObject
 	 * @return List of matches ordered from longest match to shortest, empty if no match
 	 */
@@ -689,7 +692,7 @@ public class InterestTable<V> {
 			}
 			if (matches.size() != 0) {
 				for (ContentName contentName : names) {
-					removeAllMatchByName(contentName, target);				
+					removeAllMatchByName(contentName, target);
 				}
 			}
 		}
@@ -698,9 +701,9 @@ public class InterestTable<V> {
 
 	/**
 	 * Get the number of distinct entries in the table.  Note that duplicate entries
-	 * are fully supported, so the number of entries may be much larger than the 
+	 * are fully supported, so the number of entries may be much larger than the
 	 * number of ContentNames (sizeNames()).
-	 * 
+	 *
 	 * @return the number of entries in the table
 	 */
 	public int size() {
@@ -719,7 +722,7 @@ public class InterestTable<V> {
 	 * Get the number of distinct ContentNames in the table.  Note that duplicate
 	 * entries are fully supported, so the number of ContentNames may be much smaller
 	 * than the number of entries (size()).
-	 * 
+	 *
 	 * @return	the number of ContentNames in the table
 	 */
 	public int sizeNames() {
