@@ -55,6 +55,7 @@ struct SyncTestParms {
     int mark;
     int digest;
     int scope;
+    int syncScope;
     int life;
     int sort;
     int bufs;
@@ -555,7 +556,11 @@ testReadBuilder(struct SyncTestParms *parms) {
             struct ccn_charbuf *prefix = ccn_charbuf_create();
             ccn_name_from_uri(prefix, "/ccn/test");
             
-            root = SyncAddRoot(parms->base, topo, prefix, NULL);
+            root = SyncAddRoot(parms->base,
+                               parms->syncScope,
+                               topo,
+                               prefix,
+                               NULL);
             parms->root = root;
             ccn_charbuf_destroy(&topo);
             ccn_charbuf_destroy(&prefix);
@@ -660,6 +665,7 @@ genTestRootRouting(struct SyncTestParms *parms) {
     ccn_name_from_uri(topoPrefix, "/ccn/test/sync");
     ccn_name_from_uri(namingPrefix, "/ccn/test/routing");
     struct SyncRootStruct *root = SyncAddRoot(base,
+                                              parms->syncScope,
                                               topoPrefix,
                                               namingPrefix,
                                               NULL);
@@ -685,6 +691,7 @@ genTestRootRepos(struct SyncTestParms *parms) {
     SyncNameAccumAppend(filter, clause, 0);
     
     struct SyncRootStruct *root = SyncAddRoot(base,
+                                              parms->syncScope,
                                               topoPrefix,
                                               namingPrefix,
                                               filter);
@@ -1180,11 +1187,9 @@ getFile(struct SyncTestParms *parms, char *src, char *dst) {
     
     struct ccn *ccn = NULL;
     ccn = ccn_create();
-#if (CCN_API_VERSION >= 4004)
     // special case to remove verification overhead
     if (dst == NULL)
     ccn_defer_verification(ccn, 1);
-#endif
     if (ccn_connect(ccn, NULL) == -1) {
         perror("Could not connect to ccnd");
         return -1;
@@ -1628,6 +1633,7 @@ main(int argc, char **argv) {
     
     parms->mode = 1;
     parms->scope = 1;
+    parms->syncScope = 2;
     parms->life = 4;
     parms->bufs = 4;
     parms->blockSize = 4096;
@@ -1704,7 +1710,19 @@ main(int argc, char **argv) {
                 parms->scope = scope;
                 i++;
             } else
-            res = noteErr("missing scope");
+                res = noteErr("missing scope");
+            seen++;
+        } else if (strcasecmp(sw, "-syncScope") == 0) {
+            if (arg1 != NULL) {
+                int scope = atoi(arg1);
+                if (scope < -1 || scope > 2) {
+                    res = noteErr("invalid scope %s", arg1);
+                    break;
+                }
+                parms->syncScope = scope;
+                i++;
+            } else
+                res = noteErr("missing scope");
             seen++;
         } else if (strcasecmp(sw, "-life") == 0) {
             if (arg1 != NULL) {

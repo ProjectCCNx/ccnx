@@ -68,6 +68,7 @@ struct SyncRootStruct {
 
 /**
  * Creates a new root structure and adds it to the base.
+ * The syncScope will be used for sync control interests (-1 for unscoped).
  * The topoPrefix and namingPrefix will be copied and canonicalized.
  * The filter (and the names in it) will also be copied and canonicalized.
  * Canonicalized data is owned by the base.
@@ -75,6 +76,7 @@ struct SyncRootStruct {
  */
 struct SyncRootStruct *
 SyncAddRoot(struct SyncBaseStruct *base,
+            int syncScope,
             const struct ccn_charbuf *topoPrefix,
             const struct ccn_charbuf *namingPrefix,
             struct SyncNameAccum *filter);
