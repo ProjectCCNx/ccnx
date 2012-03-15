@@ -40,7 +40,6 @@ import org.ccnx.ccn.protocol.Interest;
  * segment DOM via getElement().
  *
  * TODO:
- * - decode needs a resync if it doesnt find an INTEREST or CONTENT
  * - Try buffering reads from the network channel rather than byte-by-byte.
  *   CCNNetworkChannel is rewindable, so if we read past the end of the
  *   segment, we can re-position to where we end.  A better organization
@@ -52,6 +51,8 @@ import org.ccnx.ccn.protocol.Interest;
  *   form.
  */
 public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
+
+	public final int RESYNC_LIMIT = 256;	// Max we can go back for a resync
 
 	public BinaryXMLDecoder() {
 		super();
@@ -94,42 +95,62 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	}
 
 	/**
-	 * Reset the WireDecoder's state and start parsing the input stream.
-	 * This method calls initialize() on WireDecoder.
+	 * Reset the Decoder's state and start parsing the input stream.
 	 *
 	 * @param istream
 	 */
 	@Override
 	public final void beginDecoding(InputStream istream) throws ContentDecodingException {
-		initialize();
+		istream.mark(RESYNC_LIMIT);
 
 		try {
-			int opentags = 0;
-
-			do {
-				int index = readTypeAndValue(istream);
-				int type = _elements_type[index] ;
-
-				if( type == BinaryXMLCodec.XML_DTAG ) {
-					opentags++;
-					continue;
+			setupForDecoding(istream);
+		} catch (IOException ioe) {
+			Log.severe("Saw error: {0} - attempting resync", ioe.getMessage());
+			while (true) {
+				try {
+					resync(istream);
+				} catch (IOException resyncIOE) {
+					throw new ContentDecodingException(resyncIOE.getMessage());
 				}
+				try {
+					setupForDecoding(istream);
+				} catch (IOException sfdIOE) {}
+				XMLEncodable testPacket = getPacket();
+				_parsingElement = 0;
+				if (null != testPacket)
+					return;
+			}
+		}
+	}
 
-				if( type  == BinaryXMLCodec.XML_CLOSE ) {
-					opentags--;
-					continue;
-				}
+	private final void setupForDecoding(InputStream istream) throws IOException {
+		int type = -1;
+		initialize();
 
-				if( type  == BinaryXMLCodec.XML_BLOB || type == BinaryXMLCodec.XML_UDATA ) {
+		int opentags = 0;
+
+		do {
+			int index = 0;
+				index = readTypeAndValue(istream);
+			type = _elements_type[index] ;
+
+			if( type == BinaryXMLCodec.XML_DTAG ) {
+				opentags++;
+				continue;
+			}
+
+			if( type  == BinaryXMLCodec.XML_CLOSE ) {
+				opentags--;
+				continue;
+			}
+
+			if( type  == BinaryXMLCodec.XML_BLOB || type == BinaryXMLCodec.XML_UDATA ) {
 					readBlob(istream, _elements_blob[index]);
-				}
-			} while(opentags > 0);
+			}
+		} while(opentags > 0);
 
 //			System.out.println("count = " + _elements.size() + ", bytes = " + _buffer.position());
-		} catch (IOException e) {
-			e.printStackTrace();
-			throw new ContentDecodingException(e.getMessage());
-		}
 	}
 
 	@Override
@@ -244,10 +265,13 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 			}
 		}
 
+		if (next < 0)
+			throw new IOException("Unexpected EOF");
+
 		// sanity check.  tag needs to be either a DTAG or a BLOB
 		if( typ != BinaryXMLCodec.XML_DTAG && typ != BinaryXMLCodec.XML_BLOB &&
 				typ != BinaryXMLCodec.XML_UDATA && typ != BinaryXMLCodec.XML_CLOSE )
-			throw new IOException("Type value invalid: " + typ);
+			throw new ContentDecodingException("Type value invalid: " + typ);
 
 		byte [] buffer = null;
 		if( typ == BinaryXMLCodec.XML_BLOB || typ == BinaryXMLCodec.XML_UDATA )
@@ -496,6 +520,47 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 		byte [] buffer = readBinary(BinaryXMLCodec.XML_UDATA);
 
 		return DataUtils.getUTF8StringFromBytes(buffer);
+	}
+
+	/**
+	 * Error recover from receipt of a bad packet which can cause the read to error out in the
+	 * middle of reading the packet. For UDP we can just ignore this and skip to the next packet, but
+	 * for TCP where data is continuous we need to skip over the rest of the bad data so that we can
+	 * resync on the next good packet.
+	 *
+	 * Sync to next packet after an error
+	 * @throws IOException
+	 */
+	private void resync(InputStream istream) throws IOException {
+
+		if (!istream.markSupported())
+			throw new IOException("Can't resync on unresettable stream");
+		backup(istream);
+		int index = 0;
+
+		while (true) {
+			try {
+				index = readTypeAndValue(istream);
+			} catch (IOException ioe) {
+				if (!(ioe instanceof ContentDecodingException)) {
+					if (index == 0)
+						throw ioe;
+					backup(istream);
+				}
+			}
+			if (_elements_type[index] == BinaryXMLCodec.XML_DTAG) {
+				initialize();
+				istream.reset();
+				break;
+			}
+		}
+	}
+
+	private void backup(InputStream istream) throws IOException {
+		initialize();
+		istream.reset();
+		istream.read();
+		istream.mark(RESYNC_LIMIT);
 	}
 
 	// ==============================================================
