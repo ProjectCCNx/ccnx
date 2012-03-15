@@ -2,12 +2,12 @@
 .\"     Title: ccnpoke
 .\"    Author: [see the "AUTHOR" section]
 .\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
-.\"      Date: 03/02/2012
+.\"      Date: 03/09/2012
 .\"    Manual: \ \&
 .\"    Source: \ \& 0.5.1
 .\"  Language: English
 .\"
-.TH "CCNPOKE" "1" "03/02/2012" "\ \& 0\&.5\&.1" "\ \&"
+.TH "CCNPOKE" "1" "03/09/2012" "\ \& 0\&.5\&.1" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -31,7 +31,7 @@
 ccnpoke \- Read data from stdin and send it as a single ContentObject in response to an interest\&.
 .SH "SYNOPSIS"
 .sp
-\fBccnpoke\fR [\-hflv] [\-k \fIkeyuri\fR] [\-t \fItype\fR] [\-V \fIseg\fR] [\-w \fItimeout\fR] [\-x \fIfreshness\fR] \fIccnxuri\fR
+\fBccnpoke\fR [\-hflv] [\-k \fIkeyuri\fR] [\-p \fIn\fR] [\-t \fItype\fR] [\-V \fIseg\fR] [\-w \fItimeout\fR] [\-x \fIfreshness\fR] \fIccnxuri\fR
 .SH "DESCRIPTION"
 .sp
 The \fBccnpoke\fR utility reads data from stdin and generates a single ContentOjbect, with attributes modfied by the given options, for the supplied CCNx URI, \fIccnxuri\fR, and sends that object in response to a matching interest\&.
@@ -60,6 +60,16 @@ Report on stdout the name of the ContentObject written\&.
 \fB\-k\fR \fIkeyuri\fR
 .RS 4
 Specifies the name to be used in the KeyLocator of the ContentObject\&.
+.RE
+.PP
+\fB\-p\fR \fIn\fR
+.RS 4
+Specifies the number of components of the URI that should be registered in the interest filter\&.
+\fIn\fR=0 implies registering ccnx:/\&.
+\fIn\fR
+must not be greater than the number of components in the name\&. The default is to register the name as given, which will not include any derived version component implied by the
+\fB\-V\fR
+option\&.
 .RE
 .PP
 \fB\-t\fR \fItype\fR

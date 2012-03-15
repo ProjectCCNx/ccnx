@@ -23,17 +23,3 @@ libexpat1-dev
  libxml-dev
   libssl-dev
   libpcap-dev
-
-For MacOS 10.6 and above (Snow Leopard), you don't need to install any
-additional software.  They now ship with openssl 0.9.8 or higher.
-
-On MacOS 10.7, gcc -> i686-apple-darwin11-llvm-gcc-4.2.  We get the gcc compiler
-via XCode.  One CAN get gcc via fink or macports.   However, our past experience
-shows that this can complicate the process of making the CCNx build work without
-issue.  Our recommendation is to use the version of the compiler included with
-XCode.  XCode is still available in versions 3.2 and 4.2.x.  4.2.x adds some new
-compiler features with llvm backend and clang front end but, since we aren't
-using XCode project builds, we are less likely to be concerned with build issues
-related to new compiler features.  Our understanding is GCC 4.2 is still the
-default for the system, but Apple's objective is to replace gcc with clang in
-the future for various reasons.

@@ -7,7 +7,7 @@ ccnpoke - Read data from stdin and send it as a single ContentObject in response
 
 SYNOPSIS
 --------
-*ccnpoke* [-hflv] [-k 'keyuri'] [-t 'type'] [-V 'seg'] [-w 'timeout'] [-x 'freshness'] 'ccnxuri'
+*ccnpoke* [-hflv] [-k 'keyuri'] [-p 'n'] [-t 'type'] [-V 'seg'] [-w 'timeout'] [-x 'freshness'] 'ccnxuri'
 
 DESCRIPTION
 -----------
@@ -31,6 +31,13 @@ OPTIONS
 
 *-k* 'keyuri'::
     Specifies the name to be used in the KeyLocator of the ContentObject.
+
+*-p* 'n'::
+    Specifies the number of components of the URI that should be registered
+    in the interest filter.  'n'=0 implies registering ccnx:/.  'n' must not
+    be greater than the number of components in the name.  The default is to
+    register the name as given, which will not include any derived version
+    component implied by the *-V* option.
 
 *-t* 'type'::
     Specifies the type to be encoded in the ContentObject.  Values are

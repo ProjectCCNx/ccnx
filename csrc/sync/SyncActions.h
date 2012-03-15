@@ -102,7 +102,7 @@ SyncAddName(struct SyncBaseStruct *base, struct ccn_charbuf *name, ccnr_accessio
 /**
  * Creates a new slice from a full name.
  * The name must start with base->priv->sliceCmdPrefix.
- * @returns < 0 if an error occured, otherwise the new root number.
+ * @returns < 0 if an error occurred, otherwise the new root number.
  */
 int
 SyncHandleSlice(struct SyncBaseStruct *base, struct ccn_charbuf *name);

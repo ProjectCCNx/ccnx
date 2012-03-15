@@ -59,6 +59,7 @@ usage(const char *progname)
             "  -l - set FinalBlockId from last segment of URI\n"
             "  -v - verbose\n"
             "  -k key_uri - use this name for key locator\n"
+            "  -p n - limit registration to n (>=0) components of the given URI in the interest filter.\n"
             "  -t ( DATA | ENCR | GONE | KEY | LINK | NACK ) - set type\n"
             "  -V seg - generate version, use seg as name suffix\n"
             "  -w seconds - fail after this long if no interest arrives\n"
@@ -121,9 +122,10 @@ main(int argc, char **argv)
     int verbose = 0;
     int timeout = -1;
     int setfinal = 0;
+    int prefixcomps = -1;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
     
-    while ((res = getopt(argc, argv, "fhk:lvV:t:w:x:")) != -1) {
+    while ((res = getopt(argc, argv, "fhk:lvV:p:t:w:x:")) != -1) {
         switch (res) {
             case 'f':
                 force = 1;
@@ -133,6 +135,11 @@ main(int argc, char **argv)
                 break;
             case 'k':
                 key_uri = optarg;
+                break;
+            case 'p':
+                prefixcomps = atoi(optarg);
+                if (prefixcomps < 0)
+                    usage(progname);
                 break;
             case 'x':
                 expire = atol(optarg);
@@ -203,10 +210,19 @@ main(int argc, char **argv)
     if (argv[1] != NULL)
         fprintf(stderr, "%s warning: extra arguments ignored\n", progname);
     
-    /* Preserve the original prefix, in case we add versioning. */
+    /* Preserve the original prefix, in case we add versioning,
+     * but trim it down if requested for the interest filter registration
+     */
     pname = ccn_charbuf_create();
     ccn_charbuf_append(pname, name->buf, name->length);
-
+    if (prefixcomps >= 0) {
+        res = ccn_name_chop(pname, NULL, prefixcomps);
+        if (res < 0) {
+            fprintf(stderr, "%s: unable to trim name to %d component%s.\n",
+                    progname, prefixcomps, prefixcomps == 1 ? "" : "s");
+            exit(1);
+        }
+    }
     /* Connect to ccnd */
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
