@@ -1,19 +1,20 @@
 package org.ccnx.ccn.test.impl.encoding;
 
 import java.io.ByteArrayInputStream;
+import java.util.Random;
 
 import junit.framework.Assert;
 
 import org.ccnx.ccn.impl.encoding.BinaryXMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.junit.Test;
 
 public class DecoderTest {
-	public final int CHOPOFF_SIZE = 10;
 	public final String badTest = "/test/bad";
 	public final String goodTest = "/test/good";
 	public final String interestTest = "/test/interest";
@@ -45,25 +46,55 @@ public class DecoderTest {
 	@Test
 	public void testResync() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testResync");
+		Random random = new Random();
+		_decoder.setResyncable(true);
 
 		ContentName badName = ContentName.fromNative(badTest);
 		Interest badInterest = new Interest(badName);
 		byte[] badBytes = badInterest.encode();
-		Assert.assertTrue(badBytes.length > CHOPOFF_SIZE);
 
 		ContentName name = ContentName.fromNative(goodTest);
 		Interest goodInterest = new Interest(name);
 		byte[] goodBytes = goodInterest.encode();
 
-		byte [] bytes = new byte[badBytes.length + goodBytes.length - CHOPOFF_SIZE];
-		System.arraycopy(badBytes, 0, bytes, 0, badBytes.length - CHOPOFF_SIZE);
-		System.arraycopy(goodBytes, 0, bytes, badBytes.length - CHOPOFF_SIZE, goodBytes.length);
+		int[] badSizes = {0, 13};
+		for (int i = 0; i < 4; i++) {
+			testChopped(getGoodSize(random, badSizes, badBytes.length - 1), badBytes, goodBytes, goodInterest, name);
+		}
+
+		ContentObject co = ContentObject.buildContentObject(badName, "test decoder".getBytes());
+		badBytes = co.encode();
+
+		int[] badSizes2 = {0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 157, 167, 172, 174, 179, 213, 222, 227, 229, 234};
+		for (int i = 1; i < 4; i++) {
+			testChopped(getGoodSize(random, badSizes2, badBytes.length - 1), badBytes, goodBytes, goodInterest, name);
+		}
+
+		Log.info(Log.FAC_TEST, "Completed testResync");
+	}
+
+	private int getGoodSize(Random random, int[] badSizes, int maxSize) {
+
+		outside: while (true)	{
+			int size = random.nextInt(maxSize);
+
+			for (int s = 0; s < badSizes.length; s++) {
+				if (size == badSizes[s])
+					continue outside;
+			}
+			return size;
+		}
+	}
+
+
+	private void testChopped(int size, byte[] toChop, byte[] good, Object kind, ContentName name) throws ContentDecodingException {
+		byte [] bytes = new byte[toChop.length + good.length - size];
+		System.arraycopy(toChop, 0, bytes, 0, toChop.length - size);
+		System.arraycopy(good, 0, bytes, toChop.length - size, good.length);
 		ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
 		_decoder.beginDecoding(bais);
 		XMLEncodable packet = _decoder.getPacket();
-		Assert.assertTrue("Packet has incorrect type", packet instanceof Interest);
+		Assert.assertTrue("Packet has incorrect type", packet.getClass().isInstance(kind));
 		Assert.assertEquals(((Interest)packet).name(), name);
-
-		Log.info(Log.FAC_TEST, "Completed testResync");
 	}
 }

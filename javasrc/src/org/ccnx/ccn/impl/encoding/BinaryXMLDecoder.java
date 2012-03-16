@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
+import org.ccnx.ccn.impl.CCNNetworkManager;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -52,7 +53,8 @@ import org.ccnx.ccn.protocol.Interest;
  */
 public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 
-	public final int RESYNC_LIMIT = 256;	// Max we can go back for a resync
+	public final int RESYNC_LIMIT = 512;	// Max we can go back for a resync
+	boolean _resyncable = false;
 
 	public BinaryXMLDecoder() {
 		super();
@@ -96,6 +98,7 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 
 	/**
 	 * Reset the Decoder's state and start parsing the input stream.
+	 * Handle resyncing.
 	 *
 	 * @param istream
 	 */
@@ -106,6 +109,8 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 		try {
 			setupForDecoding(istream);
 		} catch (IOException ioe) {
+			if (! _resyncable)
+				throw new ContentDecodingException(ioe.getMessage());
 			Log.severe("Saw error: {0} - attempting resync", ioe.getMessage());
 			while (true) {
 				try {
@@ -116,10 +121,13 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 				try {
 					setupForDecoding(istream);
 				} catch (IOException sfdIOE) {}
-				XMLEncodable testPacket = getPacket();
-				_parsingElement = 0;
-				if (null != testPacket)
-					return;
+				try {
+					XMLEncodable testPacket = getPacket();
+					if (null != testPacket) {
+						_parsingElement = 0;
+						return;
+					}
+				} catch (IOException gpIOE) {}
 			}
 		}
 	}
@@ -131,8 +139,7 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 		int opentags = 0;
 
 		do {
-			int index = 0;
-				index = readTypeAndValue(istream);
+			int	index = readTypeAndValue(istream);
 			type = _elements_type[index] ;
 
 			if( type == BinaryXMLCodec.XML_DTAG ) {
@@ -220,7 +227,11 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 		int read = 0;
 		do {
 //			read += istream.read(_bytes, offset + read, count-read);
-			read += istream.read(buffer, read, buffer.length -read);
+			try {
+				read += istream.read(buffer, read, buffer.length -read);
+			} catch (Exception e) {
+				throw new IOException(e.getMessage());
+			}
 		} while(read < buffer.length);
 
 		_bytesRead += read;
@@ -274,8 +285,11 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 			throw new ContentDecodingException("Type value invalid: " + typ);
 
 		byte [] buffer = null;
-		if( typ == BinaryXMLCodec.XML_BLOB || typ == BinaryXMLCodec.XML_UDATA )
+		if( typ == BinaryXMLCodec.XML_BLOB || typ == BinaryXMLCodec.XML_UDATA ) {
+			if (val < 0 || val > CCNNetworkManager.MAX_PAYLOAD)
+				throw new ContentDecodingException("Invalid blob size: " + val);
 			buffer = new byte[(int) val];
+		}
 
 //		System.out.println(String.format("Decode tag 0x%02x value 0x%02x pos %d", typ, val, pos));
 
@@ -523,12 +537,11 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	}
 
 	/**
-	 * Error recover from receipt of a bad packet which can cause the read to error out in the
+	 * Attempt Error recover from receipt of a bad packet which can cause the read to error out in the
 	 * middle of reading the packet. For UDP we can just ignore this and skip to the next packet, but
 	 * for TCP where data is continuous we need to skip over the rest of the bad data so that we can
 	 * resync on the next good packet.
 	 *
-	 * Sync to next packet after an error
 	 * @throws IOException
 	 */
 	private void resync(InputStream istream) throws IOException {
@@ -561,6 +574,10 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 		istream.reset();
 		istream.read();
 		istream.mark(RESYNC_LIMIT);
+	}
+
+	public void setResyncable(boolean value) {
+		_resyncable = value;
 	}
 
 	// ==============================================================

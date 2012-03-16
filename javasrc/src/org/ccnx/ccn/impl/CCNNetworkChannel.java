@@ -83,7 +83,7 @@ public class CCNNetworkChannel extends InputStream {
 	protected Timer _ncHeartBeatTimer = null;
 	protected Boolean _ncStarted = false;
 
-	protected BinaryXMLDecoder _decoder = new BinaryXMLDecoder();
+	protected BinaryXMLDecoder _decoder = null;
 
 	// Allocate datagram buffer
 	protected ByteBuffer _datagram = ByteBuffer.allocateDirect(CCNNetworkManager.MAX_PAYLOAD);
@@ -102,6 +102,8 @@ public class CCNNetworkChannel extends InputStream {
 		_ncProto = proto;
 		_ncTapStreamIn = tapStreamIn;
 		_channelId = _channelIdCounter.incrementAndGet();
+		_decoder = new BinaryXMLDecoder();
+		_decoder.setResyncable(true);
 
 		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO))
 			Log.info(Log.FAC_NETMANAGER, "NetworkChannel {0}: Starting up CCNNetworkChannel using {1}.",  _channelId, proto.toString());
