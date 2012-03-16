@@ -54,7 +54,8 @@ import org.ccnx.ccn.protocol.Interest;
 public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 
 	public final int RESYNC_LIMIT = 512;	// Max we can go back for a resync
-	boolean _resyncable = false;
+	protected int _resyncLimit = RESYNC_LIMIT;
+	protected boolean _resyncable = false;
 
 	public BinaryXMLDecoder() {
 		super();
@@ -104,7 +105,8 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	 */
 	@Override
 	public final void beginDecoding(InputStream istream) throws ContentDecodingException {
-		istream.mark(RESYNC_LIMIT);
+		if (_resyncable)
+			istream.mark(_resyncLimit);
 
 		try {
 			setupForDecoding(istream);
@@ -573,11 +575,15 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 		initialize();
 		istream.reset();
 		istream.read();
-		istream.mark(RESYNC_LIMIT);
+		istream.mark(_resyncLimit);
 	}
 
 	public void setResyncable(boolean value) {
 		_resyncable = value;
+	}
+
+	public void setLimit(int limit) {
+		_resyncLimit = limit;
 	}
 
 	// ==============================================================
