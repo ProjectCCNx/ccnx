@@ -54,7 +54,7 @@ import org.ccnx.ccn.protocol.Interest;
  * Notes about resync:
  *   - Is it really needed at all?  For instance ccnd won't output a bad packet.
  *   - By default resync is turned off. We normally don't want it when decoding packets
- *     outside the readin stream.
+ *     outside the wire.
  *   - The current resync is primitive. It should work in most cases though it hasn't had
  *     much in the way of real testing over a lossy network.
  *   - It doesn't work in some cases - the resync happens when an error is detected during
@@ -68,7 +68,7 @@ import org.ccnx.ccn.protocol.Interest;
  */
 public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 
-	public final int RESYNC_LIMIT = 512;	// Max we can go back for a resync
+	public final int RESYNC_LIMIT = 512;	// Default max we can go back for a resync
 	protected int _resyncLimit = RESYNC_LIMIT;
 	protected boolean _resyncable = false;
 
