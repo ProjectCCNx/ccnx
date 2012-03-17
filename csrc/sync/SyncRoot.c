@@ -215,10 +215,12 @@ SyncRemRoot(struct SyncRootStruct *root) {
                 }
                 struct SyncRootDeltas *deltas = rp->deltasHead;
                 while (deltas != NULL) {
-                    struct SyncRootDeltas *lag = deltas;
-                    deltas = deltas->next;
+                    struct SyncRootDeltas *next = deltas->next;
                     ccn_charbuf_destroy(&deltas->coding);
-                    free(lag);
+                    ccn_charbuf_destroy(&deltas->name);
+                    ccn_charbuf_destroy(&deltas->cob);
+                    free(deltas);
+                    deltas = next;
                 }
                 if (rp->remoteDeltas != NULL) {
                     SyncFreeNameAccumAndNames(rp->remoteDeltas);

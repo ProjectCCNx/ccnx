@@ -2447,6 +2447,164 @@ SyncHandleSlice(struct SyncBaseStruct *base, struct ccn_charbuf *name) {
     return -1;
 }
 
+// NewDeltas allocates a new deltas object for the given root
+// note: caller is responsible for storing the pointer 
+static struct SyncRootDeltas *
+NewDeltas(struct SyncRootStruct *root) {
+    struct SyncRootDeltas *deltas = NEW_STRUCT(1, SyncRootDeltas);
+    struct ccn_charbuf *hashL = root->currentHash;
+    if (hashL != NULL) {
+        deltas->ceStart = SyncHashLookup(root->ch, hashL->buf, hashL->length);
+    }
+    deltas->coding = ccn_charbuf_create();
+    deltas->when = SyncCurrentTime();
+    ccnb_element_begin(deltas->coding, CCN_DTAG_SyncNodeDeltas);
+    SyncAppendTaggedNumber(deltas->coding, CCN_DTAG_SyncVersion, SYNC_UPDATE_VERSION);
+    return deltas;
+}
+
+// FreeDeltas frees up a deltas object, which is presumed to be delinked
+// no action if deltas == NULL
+// returns NULL
+static struct SyncRootDeltas *
+FreeDeltas(struct SyncRootDeltas *deltas) {
+    if (deltas != NULL) {
+        ccn_charbuf_destroy(&deltas->coding);
+        ccn_charbuf_destroy(&deltas->name);
+        ccn_charbuf_destroy(&deltas->cob);
+        free(deltas);
+    }
+    return NULL;
+}
+
+static int
+SendDeltasReply(struct SyncRootStruct *root, struct SyncRootDeltas *deltas) {
+    static char *here = "Sync.SendDeltasReply";
+    struct SyncBaseStruct *base = root->base;
+    struct ccn_charbuf *name = deltas->name;
+    struct ccn_charbuf *cob = deltas->cob;
+    int res = 0;
+    int debug = root->base->debug;
+    if (name == NULL) {
+        // don't have an output name yet
+        struct ccn_charbuf *hash = NULL;
+        name = constructCommandPrefix(root, SRI_Kind_RootAdvise);
+        if (deltas->ceStart != NULL) hash = deltas->ceStart->hash;
+        if (hash == NULL)
+            ccn_name_append_str(name, "");
+        else ccn_name_append(name, hash->buf, hash->length);
+        hash = deltas->ceStop->hash;
+        ccn_name_append(name, hash->buf, hash->length);
+        ccn_create_version(base->ccn, name, CCN_V_NOW, 0, 0);
+        ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
+        deltas->name = name;
+    }
+    if (cob == NULL) {
+        // don't have a signed outbut buffer
+        cob = SyncSignBuf(base, deltas->coding, name,
+                          base->priv->rootAdviseFresh,
+                          CCN_SP_FINAL_BLOCK);
+        deltas->cob = cob;
+        if (debug >= CCNL_FINE)
+            SyncNoteUri(root, here, "new deltas->cob", name);
+    }
+    res = ccn_put(base->ccn, cob->buf, cob->length);
+    if (res >= 0) {
+        // we have success!
+        if (debug >= CCNL_INFO) {
+            char temp[64];
+            snprintf(temp, sizeof(temp),
+                     "response sent (%u)",
+                     deltas->deltasCount);
+            SyncNoteUri(root, here, temp, name);
+        }
+    } else {
+        if (debug >= CCNL_SEVERE)
+            SyncNoteUri(root, here, "response failed", name);
+    }
+    return res;
+}
+
+// RemRootDeltas removes a specific deltas object from the chain,
+// updating the chain head and tail and the count as needed
+// returns 1 if the rmoval worked, 0 if the object was not found
+static int
+RemRootDeltas(struct SyncRootStruct *root, struct SyncRootDeltas *deltas) {
+    struct SyncRootPrivate *rp = root->priv;
+    if (deltas != NULL) {
+        struct SyncRootDeltas *lag = NULL;
+        struct SyncRootDeltas *each = rp->deltasHead;
+        while (each != NULL) {
+            struct SyncRootDeltas *next = each->next;
+            if (each == deltas) {
+                // found it, so delink
+                if (lag == NULL) rp->deltasHead = next;
+                else lag->next = next;
+                if (deltas == rp->deltasTail)
+                    rp->deltasTail = lag;
+                rp->nDeltas--;
+                // delinked, so free the storage
+                FreeDeltas(deltas);
+                return 1;
+            }
+            lag = each;
+            each = next;
+        }
+    }
+    return 0;
+}
+
+// CloseUpdateCoding finishes up the deltas object (closes the coding),
+// removes it from the updates, and moves it to the root
+// note: if the update object has a deltas object then the coding is not closed!
+static void
+CloseUpdateCoding(struct SyncUpdateData *ud) {
+    struct SyncRootDeltas *deltas = ud->deltas;
+    if (deltas != NULL) {
+        struct ccn_charbuf *hashL = ud->root->currentHash;
+        ud->deltas = NULL;
+        if (deltas->deltasCount <= 0
+            || hashL == NULL || deltas->coding == NULL) {
+            // nothing here, so forget it (fail over to using NodeFetch)
+            FreeDeltas(deltas);
+        } else {
+            // link into the deltas chain
+            ccnb_element_end(deltas->coding);
+            struct SyncRootStruct *root = ud->root;
+            struct SyncRootPrivate *rp = root->priv;
+            struct SyncRootDeltas *tail = rp->deltasTail;
+            if (tail != NULL) {
+                tail->next = deltas;
+            } else {
+                rp->deltasHead = deltas;
+            }
+            tail = deltas;
+            deltas->ceStop = SyncHashLookup(root->ch, hashL->buf, hashL->length);
+            rp->nDeltas++;
+            // send out the signed buffer just in case there is a remote hash waiting for it
+            // TBD: avoid sending it if likely that no one wants it
+            SendDeltasReply(root, deltas);
+            // purge deltas beyond some count
+            // (TBD: better method for purging?)
+            while (rp->nDeltas > nDeltasLimit) {
+                deltas = rp->deltasHead;
+                if (deltas == tail) break;
+                if (RemRootDeltas(root, deltas) != 1) break;
+            }
+        }
+    }
+}
+
+// remove all of the deltas objects for the root
+void
+RemAllRootDeltas(struct SyncRootStruct *root) {
+    for (;;) {
+        struct SyncRootDeltas *deltas = root->priv->deltasTail;
+        if (deltas == NULL) break;
+        RemRootDeltas(root, deltas);
+    }
+}
+
 static struct SyncRootDeltas *
 scanDeltas(struct SyncRootStruct *root, struct SyncHashCacheEntry *ceR) {
     struct SyncRootDeltas *deltas = root->priv->deltasHead;
@@ -2634,11 +2792,21 @@ SyncInterestArrived(struct ccn_closure *selfp,
                     // root advise: name is prefix + hashIn + hashOut
                     // node fetch: name is prefix + hashIn
                     // empty hashes are OK, but must be encoded
+                    struct SyncRootDeltas *deltas = NULL;
+                    struct ccn_charbuf *cbL = ncL->cb;
                     struct ccn_charbuf *name = SyncCopyName(data->prefix);
                     ccn_name_append(name, bufR, lenR);
-                    if (data->kind == SRI_Kind_AdviseInt)
+                    if (data->kind == SRI_Kind_AdviseInt) {
                         // respond with the current local hash
                         ccn_name_append(name, bufL, lenL);
+                        deltas = scanDeltas(root, ceR);
+                        if (deltas != NULL) {
+                            // we've got one, so send it now
+                            SendDeltasReply(root, deltas);
+                            ccn_charbuf_destroy(&name);
+                            break;
+                        }
+                    }
                     
                     // the content object is based on the node
                     struct ccn_charbuf *cob = NULL;
@@ -2646,19 +2814,8 @@ SyncInterestArrived(struct ccn_closure *selfp,
                         // node fetch results need not expire
                         cob = ncL->content;
                     }
-                    if (cob == NULL) {
+                    if (cob == NULL && cbL != NULL) {
                         // don't already have it, so make it
-                        struct ccn_charbuf *cbL = ncL->cb;
-                        if (data->kind == SRI_Kind_AdviseInt) {
-                            // try an existing deltas object
-                            struct SyncRootDeltas *deltas = scanDeltas(root, ceR);
-                            if (deltas != NULL) {
-                                // we've got one, so use the coding
-                                cbL = deltas->coding;
-                                if (debug >= CCNL_FINE)
-                                    SyncNoteUri(root, here, "using deltas", name);
-                            }
-                        }
                         cob = SyncSignBuf(base, cbL, name,
                                           fresh, CCN_SP_FINAL_BLOCK);
                     }
@@ -2904,8 +3061,13 @@ SyncRootAdviseResponse(struct ccn_closure *selfp,
                         int nd = extractDeltas(root, info);
                         if (nd > 0) {
                             // the deltas have been remembered in the root
-                            if (debug >= CCNL_INFO)
-                                SyncNoteSimple2(root, here, "using deltas", hex);
+                            if (debug >= CCNL_INFO) {
+                                char temp[64];
+                                snprintf(temp, sizeof(temp),
+                                         "using deltas (%u)",
+                                         deltas->deltasCount);
+                                SyncNoteSimple2(root, here, temp, hex);
+                            }
                             SyncStartCompareAction(root, NULL);
                         } else {
                             nc = extractNode(root, info);
@@ -3191,159 +3353,6 @@ AddUpdateName(struct SyncUpdateData *ud, struct ccn_charbuf *name) {
         res = TryNodeSplit(ud);
     }
     return res;
-}
-
-// NewDeltas allocates a new deltas object for the given root
-// note: caller is responsible for storing the pointer 
-static struct SyncRootDeltas *
-NewDeltas(struct SyncRootStruct *root) {
-    struct SyncRootDeltas *deltas = NEW_STRUCT(1, SyncRootDeltas);
-    struct ccn_charbuf *hashL = root->currentHash;
-    if (hashL != NULL) {
-        deltas->ceStart = SyncHashLookup(root->ch, hashL->buf, hashL->length);
-    }
-    deltas->coding = ccn_charbuf_create();
-    deltas->when = SyncCurrentTime();
-    ccnb_element_begin(deltas->coding, CCN_DTAG_SyncNodeDeltas);
-    SyncAppendTaggedNumber(deltas->coding, CCN_DTAG_SyncVersion, SYNC_UPDATE_VERSION);
-    return deltas;
-}
-
-// FreeDeltas frees up a deltas object, which is presumed to be delinked
-// no action if deltas == NULL
-// returns NULL
-static struct SyncRootDeltas *
-FreeDeltas(struct SyncRootDeltas *deltas) {
-    if (deltas != NULL) {
-        ccn_charbuf_destroy(&deltas->coding);
-        ccn_charbuf_destroy(&deltas->name);
-        ccn_charbuf_destroy(&deltas->cob);
-        free(deltas);
-    }
-    return NULL;
-}
-
-static int
-SendDeltasReply(struct SyncRootStruct *root, struct SyncRootDeltas *deltas) {
-    static char *here = "Sync.SendDeltasReply";
-    struct SyncBaseStruct *base = root->base;
-    struct ccn_charbuf *name = deltas->name;
-    struct ccn_charbuf *cob = deltas->cob;
-    int res = 0;
-    int debug = root->base->debug;
-    if (name == NULL) {
-        // don't have an output name yet
-        struct ccn_charbuf *hash = NULL;
-        name = constructCommandPrefix(root, SRI_Kind_RootAdvise);
-        if (deltas->ceStart != NULL) hash = deltas->ceStart->hash;
-        if (hash == NULL)
-            ccn_name_append_str(name, "");
-        else ccn_name_append(name, hash->buf, hash->length);
-        hash = deltas->ceStop->hash;
-        ccn_name_append(name, hash->buf, hash->length);
-        ccn_create_version(base->ccn, name, CCN_V_NOW, 0, 0);
-        ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
-        deltas->name = name;
-    }
-    if (cob == NULL) {
-        // don't have a signed outbut buffer
-        cob = SyncSignBuf(base, deltas->coding, name,
-                          base->priv->rootAdviseFresh,
-                          CCN_SP_FINAL_BLOCK);
-        deltas->cob = cob;
-        if (debug >= CCNL_FINE)
-            SyncNoteUri(root, here, "new deltas->cob", name);
-    }
-    res = ccn_put(base->ccn, cob->buf, cob->length);
-    if (res >= 0) {
-        // we have success!
-        if (debug >= CCNL_INFO)
-            SyncNoteUri(root, here, "response sent", name);
-    } else {
-        if (debug >= CCNL_SEVERE)
-            SyncNoteUri(root, here, "response failed", name);
-    }
-    ccn_charbuf_destroy(&name);
-    ccn_charbuf_destroy(&cob);
-    return res;
-}
-
-// CloseUpdateCoding finishes up the deltas object (closes the coding),
-// removes it from the updates, and moves it to the root
-// note: if the update object has a deltas object then the coding is not closed!
-static void
-CloseUpdateCoding(struct SyncUpdateData *ud) {
-    struct SyncRootDeltas *deltas = ud->deltas;
-    if (deltas != NULL) {
-        struct ccn_charbuf *hashL = ud->root->currentHash;
-        ud->deltas = NULL;
-        if (deltas->deltasCount <= 0
-            || hashL == NULL || deltas->coding == NULL) {
-            // nothing here, so forget it (fail over to using NodeFetch)
-            FreeDeltas(deltas);
-        } else {
-            // link into the deltas chain
-            ccnb_element_end(deltas->coding);
-            struct SyncRootStruct *root = ud->root;
-            struct SyncRootPrivate *rp = root->priv;
-            struct SyncRootDeltas *tail = rp->deltasTail;
-            if (tail != NULL) {
-                tail->next = deltas;
-            } else {
-                rp->deltasHead = deltas;
-            }
-            tail = deltas;
-            deltas->ceStop = SyncHashLookup(root->ch, hashL->buf, hashL->length);
-            rp->nDeltas++;
-            // send out the signed buffer just in case there is a remote hash waiting for it
-            // TBD: avoid sending it if likely that no one wants it
-            SendDeltasReply(root, deltas);
-            // purge deltas beyond some count
-            // (TBD: better method for purging?)
-            while (rp->nDeltas > nDeltasLimit) {
-                deltas = rp->deltasHead;
-                if (deltas == tail) break;
-                rp->deltasHead = deltas->next;
-                FreeDeltas(deltas);
-                rp->nDeltas--;
-            }
-        }
-    }
-}
-
-static int
-RemRootDeltas(struct SyncRootStruct *root, struct SyncRootDeltas *deltas) {
-    struct SyncRootPrivate *rp = root->priv;
-    if (deltas != NULL) {
-        struct SyncRootDeltas *lag = NULL;
-        struct SyncRootDeltas *each = rp->deltasHead;
-        while (each != NULL) {
-            struct SyncRootDeltas *next = each->next;
-            if (each == deltas) {
-                // found it, so delink
-                if (lag == NULL) rp->deltasHead = next;
-                else lag->next = next;
-                if (deltas == rp->deltasTail)
-                    rp->deltasTail = lag;
-                // delinked, so free the storage
-                FreeDeltas(deltas);
-                return 1;
-            }
-            lag = each;
-            each = next;
-        }
-    }
-    return 0;
-}
-
-// remove all of the deltas objects for the root
-void
-RemAllRootDeltas(struct SyncRootStruct *root) {
-    for (;;) {
-        struct SyncRootDeltas *deltas = root->priv->deltasTail;
-        if (deltas == NULL) break;
-        RemRootDeltas(root, deltas);
-    }
 }
 
 // merge the semi-sorted names and the old sync tree
