@@ -50,6 +50,21 @@ import org.ccnx.ccn.protocol.Interest;
  *   except for BLOB and UDATA, where you need to know what the value is.
  *   for all the DTAG and CLOSE, we should just use them in their encoded
  *   form.
+ *
+ * Notes about resync:
+ *   - Is it really needed at all?  For instance ccnd won't output a bad packet.
+ *   - By default resync is turned off. We normally don't want it when decoding packets
+ *     outside the readin stream.
+ *   - The current resync is primitive. It should work in most cases though it hasn't had
+ *     much in the way of real testing over a lossy network.
+ *   - It doesn't work in some cases - the resync happens when an error is detected during
+ *     the initial "DOM" style parsing but in some cases an error can't be detected until
+ *     the actual decode of the packet occurs. But we don't want to pre-decode every packet
+ *     just to see if it has an error as this code is potentially one of our major
+ *     bottlenecks.
+ *   - It only works up to the "resync limit" which is currently 512 bytes. If we increase
+ *     this too much, it potentially means more overhead during readin since we need to
+ *     insure that the read buffer can be rewound back to the mark.
  */
 public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDecoder {
 
@@ -124,16 +139,24 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 					setupForDecoding(istream);
 				} catch (IOException sfdIOE) {}
 				try {
+					// If we are trying a resync we are slowing down anyway, so
+					// we want to do our best to get things right - so here we
+					// test the packet.
 					XMLEncodable testPacket = getPacket();
 					if (null != testPacket) {
 						_parsingElement = 0;
-						return;
+						return;  // We successfully resynced (we hope :-))
 					}
 				} catch (IOException gpIOE) {}
 			}
 		}
 	}
 
+	/**
+	 * This method does the initial parsing into elements
+	 * @param istream
+	 * @throws IOException
+	 */
 	private final void setupForDecoding(InputStream istream) throws IOException {
 		int type = -1;
 		initialize();
@@ -301,6 +324,13 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 		return index;
 	}
 
+	/**
+	 * Build the current element. Handle expansion of the arrays is necessary
+	 * @param index
+	 * @param typ
+	 * @param val
+	 * @param buffer
+	 */
 	private void setElement(int index, int typ, int val, byte[] buffer) {
 		try {
 			_elements_type[index]  = typ;
@@ -538,11 +568,17 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 		return DataUtils.getUTF8StringFromBytes(buffer);
 	}
 
+	// ===================================
+	// Resync
+
 	/**
 	 * Attempt Error recover from receipt of a bad packet which can cause the read to error out in the
 	 * middle of reading the packet. For UDP we can just ignore this and skip to the next packet, but
 	 * for TCP where data is continuous we need to skip over the rest of the bad data so that we can
 	 * resync on the next good packet.
+	 *
+	 * Algorithm is we move the read ahead 1 byte at a time from the last good spot and then try to
+	 * parse the data from there. Declare victory if we are successful.
 	 *
 	 * @throws IOException
 	 */
@@ -571,6 +607,11 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 		}
 	}
 
+	/**
+	 * Backup to last good spot + 1
+	 * @param istream
+	 * @throws IOException
+	 */
 	private void backup(InputStream istream) throws IOException {
 		initialize();
 		istream.reset();
