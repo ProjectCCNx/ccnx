@@ -1,11 +1,11 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -31,12 +31,11 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
-import org.ccnx.ccn.protocol.ContentNameProvider;
 
 /**
- * ContentNames consist of a sequence of byte[] components which may not 
+ * ContentNames consist of a sequence of byte[] components which may not
  * be assumed to follow any string encoding, or any other particular encoding.
- * 
+ *
  * Warning: This class is designed to be immutable. Some methods expose the internal
  * byte[] components. You must be careful not to change the contents of these byte[]
  * when you receive the values back from this class.
@@ -61,7 +60,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 
 	// Goal is to make this final in the future.
 	protected byte[][]  _components;
-	
+
 	// Constructors
 	/**
 	 * Will become private in future. Today used together with {@link #decode(XMLDecoder)}
@@ -275,8 +274,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (0 >= count) {
 			_components = new byte[0][];
 		} else {
-			int max = (null == components) ? 0 : 
-				((count > components.length) ? 
+			int max = (null == components) ? 0 :
+				((count > components.length) ?
 						components.length : count);
 			_components = new byte[count][];
 			for (int i=0; i < max; ++i) {
@@ -298,8 +297,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (0 >= count) {
 			_components = new byte[0][];
 		} else {
-			int max = (null == components) ? 0 : 
-				((count > components.size()) ? 
+			int max = (null == components) ? 0 :
+				((count > components.size()) ?
 						components.size() : count);
 			_components = new byte[count][];
 			for (int i=0; i < max; ++i) {
@@ -324,8 +323,8 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (0 >= count) {
 			_components = new byte[0][];
 		} else {
-			int max = (null == components) ? 0 : 
-				((count > (components.size()-start)) ? 
+			int max = (null == components) ? 0 :
+				((count > (components.size()-start)) ?
 						(components.size()-start) : count);
 			_components = new byte[max][];
 			for (int i=start; i < max+start; ++i) {
@@ -347,39 +346,39 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Return the <code>ContentName</code> represented by the given URI.
 	 * A CCN <code>ContentName</code> consists of a sequence of binary components
 	 * of any length (including 0), which allows such things as encrypted
-	 * name components.  It is often convenient to work with string 
+	 * name components.  It is often convenient to work with string
 	 * representations of names in various forms.
-	 * <p> 
-	 * The canonical String representation of a CCN <code>ContentName</code> is a 
-	 * URI encoding of the name according to RFC 3986 with the addition 
-	 * of special treatment for name components of 0 length or containing 
+	 * <p>
+	 * The canonical String representation of a CCN <code>ContentName</code> is a
+	 * URI encoding of the name according to RFC 3986 with the addition
+	 * of special treatment for name components of 0 length or containing
 	 * only one or more of the byte value 0x2E, which is the US-ASCII
-	 * encoding of '.'.  The major features of the URI encoding are the 
-	 * use of a limited set of characters and the use of percent-encoding 
+	 * encoding of '.'.  The major features of the URI encoding are the
+	 * use of a limited set of characters and the use of percent-encoding
 	 * to encode all other byte values.  The combination of percent-encoding
-	 * and special treatment for certain name components allows the 
+	 * and special treatment for certain name components allows the
 	 * canonical CCN string representation to encode all possible CCN names.
 	 * <p>
-	 * The legal characters in the URI are limited to the <i>unreserved</i> characters 
+	 * The legal characters in the URI are limited to the <i>unreserved</i> characters
 	 * "a" through "z", "A" through "Z", "0" through "9", and "-", "_", ".", and "~"
 	 * plus the <i>reserved</i> delimiters  "!", "$" "&", "'", "(", ")",
 	 * "*", "+", ",", ";", "=".
 	 * The reserved delimiter "/" is a special case interpreted as component separator and so
 	 * may not be used within a component unescaped.
 	 * Any query (starting '?') or fragment (starting '#') is ignored which means that these
-	 * reserved delimiters must be percent-encoded if they are to be part of the name. 
+	 * reserved delimiters must be percent-encoded if they are to be part of the name.
 	 * <p>
 	 * The URI must begin with either the "/" delimiter or the scheme specification "ccnx:"
 	 * plus delimiter to make URI absolute.
 	 * <p>
-	 * The decoding from a URI String to a ContentName translates each legal 
-	 * character to its US-ASCII byte encoding, except for the "." which is subject 
-	 * to special handling described below.  Any other byte value in a component 
-	 * (including those corresponding to "/" and ":") must be percent-encoded in 
+	 * The decoding from a URI String to a ContentName translates each legal
+	 * character to its US-ASCII byte encoding, except for the "." which is subject
+	 * to special handling described below.  Any other byte value in a component
+	 * (including those corresponding to "/" and ":") must be percent-encoded in
 	 * the URI.  Any character sequence starting with "?" or "#" is discarded (to the
 	 * end of the component).
 	 * <p>
-	 * The resolution rules for relative references are applied in this 
+	 * The resolution rules for relative references are applied in this
 	 * decoding:
 	 * <ul>
 	 * <li> "//" in the URI is interpreted as "/"
@@ -387,10 +386,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * <li> "/../" and "/.." in the URI are interpreted as removing the preceding component
 	 * </ul>
 	 * <p>
-	 * Any component of 0 length, or containing only one or more of the byte 
-	 * value 0x2E ("."), is represented in the URI by one "." per byte plus the 
+	 * Any component of 0 length, or containing only one or more of the byte
+	 * value 0x2E ("."), is represented in the URI by one "." per byte plus the
 	 * suffix "..." which provides unambiguous representation of all possible name
-	 * components in conjunction with the use of the resolution rules given above. 
+	 * components in conjunction with the use of the resolution rules given above.
 	 * Thus the decoding from URI String to ContentName makes conversions such as:
 	 * <ul>
 	 * <li> "/.../" in the URI is converted to a 0-length name component
@@ -399,10 +398,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * <li> "/....../" in the URI is converted to the name component {0x2E, 0x2E, 0x2E}
 	 * </ul>
 	 * <p>
-	 * Note that this URI encoding is very similar to but not the same as the 
-	 * application/x-www-form-urlencoded MIME format that is used by the Java 
+	 * Note that this URI encoding is very similar to but not the same as the
+	 * application/x-www-form-urlencoded MIME format that is used by the Java
 	 * java.net.URLDecoder.
-	 * 
+	 *
 	 * TODO: Inconsistent with C lib in that it does not strip authority part
 	 * TODO: Inconsistent with C lib in that it does not fully strip query and fragment parts (within component only)
 	 * @param name
@@ -474,7 +473,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			return ROOT;
 		}
 		try {
-			
+
 			ArrayList<byte []> comps = new ArrayList<byte []>(parts.length);
 			for (String str : parts) {
 				try {
@@ -488,7 +487,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 						throw new MalformedContentNameStringException("ContentName parts contains too many .. components");
 					} else {
 						comps.remove(comps.size()-1);
-					}					
+					}
 				}
 			}
 			ContentName result = new ContentName();
@@ -501,7 +500,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 
 	/**
 	 * Return the <code>ContentName</code> created by appending one component
-	 * to the supplied parent.  The new component is converted from URI 
+	 * to the supplied parent.  The new component is converted from URI
 	 * string encoding.
 	 * @see fromURI(String)
 	 * @param parent used for the base of the name.
@@ -521,7 +520,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 
 				if (decodedName == null)
 					return parent;
-				
+
 				// add a single component
 				result._components = new byte[parent._components.length + 1][];
 				System.arraycopy(parent._components, 0, result._components, 0, parent._components.length);
@@ -533,7 +532,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 				} else {
 					result._components = new byte[parent._components.length - 1][];
 					System.arraycopy(parent._components, 0, result._components, 0, parent._components.length - 1);
-				}									
+				}
 			}
 			return result;
 		} catch (URISyntaxException e) {
@@ -640,6 +639,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		return result;
 	}
 
+	@Override
 	public String toString() {
 		if (null == _components) return null;
 		// toString of root name is "/"
@@ -651,7 +651,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 			nameBuf.append(Component.printURI(component));
 		}
 		return nameBuf.toString();
-	} 
+	}
 
 	/**
 	 * Print as string with scheme in front. toString already
@@ -662,25 +662,25 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	/**
-	 * Print bytes in the URI Generic Syntax of RFC 3986 
+	 * Print bytes in the URI Generic Syntax of RFC 3986
 	 * including byte sequences that are not legal character
-	 * encodings in any character set and byte sequences that have special 
+	 * encodings in any character set and byte sequences that have special
 	 * meaning for URI resolution per RFC 3986.  This is designed to match
 	 * the C library URI encoding.
-	 * 
-	 * This method must be invertible by parseComponent() so 
+	 *
+	 * This method must be invertible by parseComponent() so
 	 * for any input sequence of bytes it must be the case
 	 * that parseComponent(printComponent(input)) == input.
-	 * 
+	 *
 	 * All bytes that are unreserved characters per RFC 3986 are left unescaped.
 	 * Other bytes are percent encoded.
-	 * 
-	 * Empty path components and path components "." and ".." have special 
-	 * meaning for relative URI resolution per RFC 3986.  To guarantee 
+	 *
+	 * Empty path components and path components "." and ".." have special
+	 * meaning for relative URI resolution per RFC 3986.  To guarantee
 	 * these component variations are preserved and recovered exactly when
-	 * the URI is parsed by parseComponent() we use a convention that 
-	 * components that are empty or consist entirely of '.' characters will 
-	 * have "..." appended.  This is intended to be consistent with the CCN C 
+	 * the URI is parsed by parseComponent() we use a convention that
+	 * components that are empty or consist entirely of '.' characters will
+	 * have "..." appended.  This is intended to be consistent with the CCN C
 	 * library handling of URI representation of names.
 	 * @param bs input byte array.
 	 * @return
@@ -718,16 +718,16 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	/**
 	 * Parse the URI Generic Syntax of RFC 3986.
 	 * Including handling percent encoding of sequences that are not legal character
-	 * encodings in any character set.  This method is the inverse of 
+	 * encodings in any character set.  This method is the inverse of
 	 * printComponent() and for any input sequence of bytes it must be the case
 	 * that parseComponent(printComponent(input)) == input.  Note that the inverse
 	 * is NOT true printComponent(parseComponent(input)) != input in general.
-	 *  
+	 *
 	 * @see fromURI(String)
-	 * 
+	 *
 	 * Note in particular that this method interprets sequences of more than
 	 * two dots ('.') as representing an empty component or dot component value
-	 * as encoded by componentPrint.  That is, the component value will be 
+	 * as encoded by componentPrint.  That is, the component value will be
 	 * the value obtained by removing three dots.
 	 * @param name a single component of a name, URI encoded
 	 * @return a name component
@@ -771,7 +771,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	/**
 	 * @return The number of components in the name.
 	 */
-	public int count() { 
+	public int count() {
 		if (null == _components) return 0;
 		return _components.length;
 	}
@@ -791,7 +791,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Append a name to this one, where the child name might have more than one
 	 * path component -- e.g. foo/bar/bash. Will add leading / to postfix for
 	 * parsing, if one not present.
-	 * @throws MalformedContentNameStringException 
+	 * @throws MalformedContentNameStringException
 	 */
 	public ContentName append(String postfix) throws MalformedContentNameStringException {
 		if (!postfix.startsWith("/")) {
@@ -838,6 +838,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * Used by NetworkObject to decode the object from a network stream.
 	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
 	 */
+	@Override
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());
 
@@ -853,7 +854,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	/**
 	 * Test if this name is a prefix of another name - i.e. do all components in this name exist in the
 	 * name being compared with. Note there do not need to be any more components in the name
-	 * being compared with. 
+	 * being compared with.
 	 * @param name name being compared with.
 	 */
 	public boolean isPrefixOf(ContentName name) {
@@ -883,7 +884,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * and no prefix count is set, our name might contain a digest.
 	 * In that case, try matching the content to the last component as
 	 * a digest.
-	 * 
+	 *
 	 * @param other
 	 * @return
 	 */
@@ -1014,7 +1015,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		for (int i=0; i < _components.length; ++i)
 			if (Arrays.equals(_components[i],component))
 				return i;
-		return -1;		
+		return -1;
 	}
 
 	/**
@@ -1026,7 +1027,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		for (int i=_components.length-1; i >= 0; --i)
 			if (Arrays.equals(_components[i],component))
 				return i;
-		return -1;		
+		return -1;
 	}
 
 	public int whereLast(ComponentProvider cp) {
@@ -1035,22 +1036,24 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 
 	/**
 	 * Does a component of the ContentName startWith value?
-	 * 
+	 *
 	 * @param value
 	 * @return
 	 * @deprecated Renamed to {@link #componentStartsWith(byte[])}
 	 */
+	@Deprecated
 	public boolean startsWith(byte [] value) {
 		return componentStartsWith(value);
 	}
 
 	/**
 	 * Return component index of first component that starts with argument value
-	 * 
+	 *
 	 * @param value
 	 * @return
 	 * @deprecated Renamed to {@link #componentStartsWithWhere(byte[])}
 	 */
+	@Deprecated
 	public int startsWithWhere(byte [] value) {
 		return componentStartsWithWhere(value);
 	}
@@ -1082,7 +1085,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 					return i;
 			}
 		}
-		return -1;		
+		return -1;
 	}
 
 	/**
@@ -1190,13 +1193,14 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (!prefix.isPrefixOf(this))
 			return null;
 
-		return subname(prefix._components.length, _components.length-prefix._components.length);
+		return subname(prefix._components.length, (_components.length-prefix._components.length) + 1);
 	}
 
 	/**
 	 * Used by NetworkObject to encode the object to a network stream.
 	 * @see org.ccnx.ccn.impl.encoding.XMLEncodable
 	 */
+	@Override
 	public void encode(XMLEncoder encoder) throws ContentEncodingException {
 		if (!validate()) {
 			throw new ContentEncodingException("Cannot encode " + this.getClass().getName() + ": field values missing.");
@@ -1210,12 +1214,12 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	}
 
 	@Override
-	public boolean validate() { 
+	public boolean validate() {
 		return (null != _components);
 	}
 
 	@Override
-	public long getElementLabel() { 
+	public long getElementLabel() {
 		return CCNProtocolDTags.Name;
 	}
 
