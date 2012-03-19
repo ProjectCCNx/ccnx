@@ -72,6 +72,8 @@ public class DecoderTest {
 	}
 
 	private void testChopped(int size, byte[] toChop, byte[] good, Object kind, ContentName name) throws ContentDecodingException {
+		if (size == 0)
+			return;
 		byte [] bytes = new byte[toChop.length + good.length - size];
 		System.arraycopy(toChop, 0, bytes, 0, toChop.length - size);
 		System.arraycopy(good, 0, bytes, toChop.length - size, good.length);
