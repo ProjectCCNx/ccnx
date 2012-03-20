@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -45,6 +45,15 @@
 #include <ccn/keystore.h>
 #include <ccn/uri.h>
 
+/* Forward struct declarations */
+struct interests_by_prefix;
+struct expressed_interest;
+struct interest_filter;
+struct ccn_reg_closure;
+
+/**
+ * Handle representing a connection to ccnd
+ */
 struct ccn {
     int sock;
     size_t outbufindex;
@@ -67,11 +76,8 @@ struct ccn {
     int verbose_error;
     int tap;
     int running;
-    int defer_verification;
+    int defer_verification;     /* Client wants to do its own verification */
 };
-
-struct expressed_interest;
-struct ccn_reg_closure;
 
 struct interests_by_prefix { /* keyed by components of name prefix */
     struct expressed_interest *list;
@@ -90,18 +96,23 @@ struct expressed_interest {
     struct expressed_interest *next; /* link to next in list */
 };
 
+/**
+ * Data field for entries in the interest_filters hash table
+ */
 struct interest_filter { /* keyed by components of name */
     struct ccn_closure *action;
     struct ccn_reg_closure *ccn_reg_closure;
-    struct timeval expiry;       /* Expiration time */
+    struct timeval expiry;       /* Time that refresh will be needed */
     int flags;
 };
 #define CCN_FORW_WAITING_CCNDID (1<<30)
 
 struct ccn_reg_closure {
     struct ccn_closure action;
-    struct interest_filter *interest_filter;
+    struct interest_filter *interest_filter; /* Backlink */
 };
+
+/* Macros */
 
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, ccn_note_err(h))
 #define NOTE_ERRNO(h) NOTE_ERR(h, errno)
@@ -112,6 +123,8 @@ struct ccn_reg_closure {
 #define XXX \
     do { NOTE_ERR(h, -76); ccn_perror(h, "Please write some more code here"); } while (0)
 
+/* Prototypes */
+
 static void ccn_refresh_interest(struct ccn *, struct expressed_interest *);
 static void ccn_initiate_prefix_reg(struct ccn *,
                                     const void *, size_t,
@@ -120,6 +133,9 @@ static void finalize_pkey(struct hashtb_enumerator *e);
 static void finalize_keystore(struct hashtb_enumerator *e);
 static int ccn_pushout(struct ccn *h);
 
+/**
+ * Compare two timvals
+ */
 static int
 tv_earlier(const struct timeval *a, const struct timeval *b)
 {
@@ -1620,7 +1636,9 @@ ccn_run(struct ccn *h, int timeout)
     return((res < 0) ? res : 0);
 }
 
-/* This is the upcall for implementing ccn_get() */
+/**
+ * Instance data associated with handle_simple_incoming_content()
+ */
 struct simple_get_data {
     struct ccn_closure closure;
     struct ccn_charbuf *resultbuf;
@@ -1630,6 +1648,9 @@ struct simple_get_data {
     int res;
 };
 
+/**
+ * Upcall for implementing ccn_get()
+ */
 static enum ccn_upcall_res
 handle_simple_incoming_content(
     struct ccn_closure *selfp,
@@ -1754,6 +1775,9 @@ ccn_get(struct ccn *h,
     return(res);
 }
 
+/**
+ * Upcall to handle response to fetch a ccndid
+ */
 static enum ccn_upcall_res
 handle_ccndid_response(struct ccn_closure *selfp,
                      enum ccn_upcall_kind kind,
@@ -1815,6 +1839,9 @@ ccn_initiate_ccndid_fetch(struct ccn *h)
     ccn_charbuf_destroy(&name);
 }
 
+/**
+ * Handle reply to a prefix registration request
+ */
 static enum ccn_upcall_res
 handle_prefix_reg_reply(
     struct ccn_closure *selfp,
