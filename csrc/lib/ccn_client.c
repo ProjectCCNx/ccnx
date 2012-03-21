@@ -49,6 +49,7 @@
 struct interests_by_prefix;
 struct expressed_interest;
 struct interest_filter;
+struct closure_list;
 struct ccn_reg_closure;
 
 /**
@@ -100,12 +101,22 @@ struct expressed_interest {
  * Data field for entries in the interest_filters hash table
  */
 struct interest_filter { /* keyed by components of name */
-    struct ccn_closure *action;
+    struct closure_list *list;
     struct ccn_reg_closure *ccn_reg_closure;
     struct timeval expiry;       /* Time that refresh will be needed */
-    int flags;
+    int flags; /* combined flags */
 };
+/** Private flag bit used only in this module */
 #define CCN_FORW_WAITING_CCNDID (1<<30)
+
+/**
+ * Handler list for interest filters associated with a prefix
+ */
+struct closure_list {
+    struct ccn_closure *action;
+    int flags;
+    struct closure_list *next;
+};
 
 struct ccn_reg_closure {
     struct ccn_closure action;
@@ -228,6 +239,11 @@ ccn_indexbuf_release(struct ccn *h, struct ccn_indexbuf *c)
         ccn_indexbuf_destroy(&c);
 }
 
+/**
+ * Do the refcount updating for closure instances on assignment
+ *
+ * When the refcount drops to 0, the closure is told to finalize itself.
+ */
 static void
 ccn_replace_handler(struct ccn *h,
                     struct ccn_closure **dstp,
@@ -465,6 +481,20 @@ ccn_clean_interests_by_prefix(struct ccn *h, struct interests_by_prefix *entry)
 }
 
 void
+destroy_closure_list(struct ccn *h, struct closure_list **listp)
+{
+    struct closure_list *p;
+    struct closure_list *next;
+    
+    for (p = *listp; p != NULL; p = next) {
+        next = p->next;
+        ccn_replace_handler(h, &(p->action), NULL);
+        free(p);
+    }
+    *listp = NULL;
+}
+
+void
 ccn_destroy(struct ccn **hp)
 {
     struct hashtb_enumerator ee;
@@ -485,7 +515,7 @@ ccn_destroy(struct ccn **hp)
     if (h->interest_filters != NULL) {
         for (hashtb_start(h->interest_filters, e); e->data != NULL; hashtb_next(e)) {
             struct interest_filter *i = e->data;
-            ccn_replace_handler(h, &(i->action), NULL);
+            destroy_closure_list(h, &(i->list));
         }
         hashtb_end(e);
         hashtb_destroy(&(h->interest_filters));
@@ -655,7 +685,7 @@ finalize_interest_filter(struct hashtb_enumerator *e)
 
 int
 ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
-                        struct ccn_closure *action, int forw_flags)
+                                   struct ccn_closure *action, int forw_flags)
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
@@ -675,10 +705,17 @@ ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
     res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2, 0);
     if (res >= 0) {
         entry = e->data;
-        entry->flags = forw_flags;
-        ccn_replace_handler(h, &(entry->action), action);
         if (action == NULL)
             hashtb_delete(e);
+        else {
+            entry->flags = forw_flags;
+            if (entry->list == NULL) {
+                entry->list = calloc(1, sizeof(*entry->list));
+                // XXX - need NULL check
+            }
+            ccn_replace_handler(h, &(entry->list->action), action);
+            entry->list->flags = forw_flags;
+        }
     }
     hashtb_end(e);
     return(res);
@@ -1208,6 +1245,7 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
 {
     struct ccn_parsed_interest pi = {0};
     struct ccn_upcall_info info = {0};
+    struct closure_list *p = NULL;
     int i;
     int res;
     enum ccn_upcall_res ures;
@@ -1230,9 +1268,14 @@ ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size)
                 entry = hashtb_lookup(h->interest_filters, key, comps->buf[i] - keystart);
                 if (entry != NULL) {
                     info.matched_comps = i;
-                    ures = (entry->action->p)(entry->action, upcall_kind, &info);
-                    if (ures == CCN_UPCALL_RESULT_INTEREST_CONSUMED)
-                        upcall_kind = CCN_UPCALL_CONSUMED_INTEREST;
+                    for (p = entry->list; p != NULL; p = p->next) {
+                        // XXX - need to make sure list is not mutated during upcall
+                        ures = (p->action->p)(p->action, upcall_kind, &info);
+                        if (ures == CCN_UPCALL_RESULT_INTEREST_CONSUMED) {
+                            upcall_kind = CCN_UPCALL_CONSUMED_INTEREST;
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -1555,9 +1598,10 @@ ccn_process_scheduled_operations(struct ccn *h)
 
 /**
  * Modify ccn_run timeout.
+ *
  * This may be called from an upcall to change the timeout value.
  * Most often this will be used to set the timeout to zero so that
- * ccn_run will return control to the client.
+ * ccn_run() will return control to the client.
  * @param h is the ccn handle.
  * @param timeout is in milliseconds.
  * @returns old timeout value.
