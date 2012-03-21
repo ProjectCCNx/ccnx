@@ -132,7 +132,8 @@ static void ccn_initiate_prefix_reg(struct ccn *,
 static void finalize_pkey(struct hashtb_enumerator *e);
 static void finalize_keystore(struct hashtb_enumerator *e);
 static int ccn_pushout(struct ccn *h);
-
+static void update_interest_filter_flags(struct ccn *, struct interest_filter *, int);
+static int update_composite_handler(struct ccn *, struct interest_filter *, struct ccn_closure *, int);
 /**
  * Compare two timvals
  */
@@ -658,6 +659,24 @@ finalize_interest_filter(struct hashtb_enumerator *e)
     }
 }
 
+/**
+ * Register to receive interests on a prefix, with forwarding flags
+ *
+ * See ccn_set_interest_filter for a description of the basic operation.
+ *
+ * The additional forw_flags argument offers finer control of which
+ * interests are forward to the application.
+ * Refer to doc/technical/Registration for details.
+ *
+ * There may be multiple actions associated with the prefix.  They will be
+ * called in an unspecified order.  The flags passed to ccnd will be
+ * the inclusive-or of the flags associated with each action.
+ *
+ * Passing a value of 0 for forw_flags will unregister just this specific action,
+ * leaving other actions untouched.
+ *
+ * @returns -1 in case of error, non-negative for success.
+ */
 int
 ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
                         struct ccn_closure *action, int forw_flags)
@@ -666,6 +685,7 @@ ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
     struct hashtb_enumerator *e = &ee;
     int res;
     struct interest_filter *entry;
+    
     if (h->interest_filters == NULL) {
         struct hashtb_param param = {0};
         param.finalize = &finalize_interest_filter;
@@ -680,21 +700,76 @@ ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
     res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2, 0);
     if (res >= 0) {
         entry = e->data;
-        entry->flags = forw_flags;
-        ccn_replace_handler(h, &(entry->action), action);
-        if (action == NULL)
+        if (entry->action != NULL && action != NULL && action != entry->action)
+            res = update_composite_handler(h, entry, action, forw_flags);
+        else {
+            update_interest_filter_flags(h, entry, forw_flags);
+            ccn_replace_handler(h, &(entry->action), action);
+        }
+        if (entry->action == NULL)
             hashtb_delete(e);
     }
     hashtb_end(e);
     return(res);
 }
 
+/**
+ * Register to receive interests on a prefix
+ *
+ * The action will be called upon the arrival of an interest that
+ * has the given name as a prefix.
+ *
+ * If action is NULL, any existing filter for the prefix is removed.
+ * Note that this may have undesirable effects in applications that share
+ * the same handle for independently operating subcompononents.
+ * See update_interest_filter_flags for a way to deal with this.
+ * 
+ * The contents of namebuf are copied as needed.
+ *
+ * The handler should return CCN_UPCALL_RESULT_INTEREST_CONSUMED as a
+ * promise that it has produced, or will soon produce, a matching content
+ * object.
+ *
+ * The upcall kind passed to the handler will be CCN_UPCALL_INTEREST
+ * if no other handler has claimed to produce content, or else
+ * CCN_UPCALL_CONSUMED_INTEREST.
+ *
+ * This call is equivalent to a call to ccn_set_interest_filter_with_flags,
+ * passing the forwarding flags (CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT).
+ *
+ * @returns -1 in case of error, non-negative for success.
+ */
 int
 ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
                         struct ccn_closure *action)
 {
     int forw_flags = CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT;
     return(ccn_set_interest_filter_with_flags(h, namebuf, action, forw_flags));
+}
+
+/**
+ * Change forwarding flags, triggering a refresh as needed.
+ */
+static void
+update_interest_filter_flags(struct ccn *h, struct interest_filter *f, int forw_flags)
+{
+    if (f->flags != forw_flags) {
+        memset(&f->expiry, 0, sizeof(&f->expiry));
+        f->flags = forw_flags;
+    }
+}
+
+
+/**
+ * Take care of multiple actions registered on one prefix
+ */
+static int
+update_composite_handler(struct ccn *h,
+                         struct interest_filter *f,
+                         struct ccn_closure *action,
+                         int forw_flags)
+{
+    return(NOTE_ERR(h, ENOSYS));
 }
 
 static int
