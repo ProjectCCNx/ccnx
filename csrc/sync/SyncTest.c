@@ -481,7 +481,7 @@ testReader(struct SyncTestParms *parms) {
     FILE *f = fopen(fn, "r");
     int res = 0;
     if (f != NULL) {
-        sync_time startTime = SyncCurrentTime();
+        int64_t startTime = SyncCurrentTime();
         struct SyncNameAccum *na = readAndAccumNames(f, MAX_READ_LEN);
         fclose(f);
         struct ccn_charbuf *tmp = ccn_charbuf_create();

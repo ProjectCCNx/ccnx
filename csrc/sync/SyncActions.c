@@ -16,17 +16,11 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/resource.h>
 #include <sys/time.h>
-
-#include "SyncActions.h"
-#include "SyncNode.h"
-#include "SyncPrivate.h"
-#include "SyncRoot.h"
-#include "SyncTreeWorker.h"
-#include "SyncUtil.h"
 
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
@@ -37,6 +31,13 @@
 #include <ccnr/ccnr_msg.h>
 #include <ccnr/ccnr_sync.h>
 #include <ccnr/ccnr_private.h>
+
+#include "SyncActions.h"
+#include "SyncNode.h"
+#include "SyncPrivate.h"
+#include "SyncRoot.h"
+#include "SyncTreeWorker.h"
+#include "SyncUtil.h"
 
 #define M 1000000
 // various configuration parameters
@@ -88,10 +89,10 @@ struct SyncCompareData {
     int contentFetchFailed;         /**< number of failed content fetches */
     struct ccn_scheduled_event *ev; /**< progress event */
     enum SyncCompareState state;    /**< summary state of comparison */
-    sync_time lastFetchOK;          /**< time marker for last successul node/content fetch */
-    sync_time startTime;            /**< time marker for compare data creation */
-    sync_time lastEnter;            /**< time marker for last compare step entry */
-    sync_time lastMark;             /**< time marker for stall determination */
+    int64_t lastFetchOK;          /**< time marker for last successul node/content fetch */
+    int64_t startTime;            /**< time marker for compare data creation */
+    int64_t lastEnter;            /**< time marker for last compare step entry */
+    int64_t lastMark;             /**< time marker for stall determination */
     int64_t maxHold;                /**< max time thread was held by compare */
 };
 
@@ -115,8 +116,8 @@ struct SyncUpdateData {
     int nameLenAccum;
     int namesAdded;
     int initLen;
-    sync_time startTime;
-    sync_time entryTime;
+    int64_t startTime;
+    int64_t entryTime;
     int64_t maxHold;
     int preSortCount;
     int postSortCount;
@@ -389,7 +390,7 @@ formatStats(struct SyncRootStruct *root, struct ccn_charbuf *cb) {
     char s[2000];
     int lim = sizeof(s);
     int pos = 0;
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     int ru_ok = -1;
 #ifdef RUSAGE_SELF
     struct rusage ru;
@@ -500,7 +501,7 @@ exclusionsFromHashList(struct SyncRootStruct *root, struct SyncHashInfoList *lis
     struct SyncNameAccum *acc = SyncAllocNameAccum(0);
     int count = 0;
     int limit = exclusionLimit;
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     int64_t limitMicros = exclusionTrig*M;
     
     if (root->currentHash->length > 0) {
@@ -607,7 +608,7 @@ noteRemoteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce, int a
     struct SyncHashInfoList *head = root->priv->remoteSeen;
     struct SyncHashInfoList *each = head;
     struct SyncHashInfoList *lag = NULL;
-    sync_time mark = SyncCurrentTime();
+    int64_t mark = SyncCurrentTime();
     ce->lastUsed = mark;
     ce->lastRemoteFetch = mark;
     if (ce->state & SyncHashState_local)
@@ -649,7 +650,7 @@ noteRemoteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce, int a
 static struct SyncHashInfoList *
 chooseRemoteHash(struct SyncRootStruct *root) {
     struct SyncHashInfoList *each = root->priv->remoteSeen;
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     int64_t limit = ((int64_t)root->base->priv->rootAdviseLifetime)*3*M;
     struct SyncHashInfoList *lag = NULL;
     while (each != NULL) {
@@ -1249,7 +1250,7 @@ purgeOldEntries(struct SyncRootStruct *root) {
                                                     hashL->length);
     if (ceL == NULL) return;
     struct SyncTreeWorkerHead *twL = SyncTreeWorkerCreate(ch, ceL, 0);
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     int64_t trigger = cachePurgeTrigger*M;
     SyncHashClearMarks(ch);
     SyncTreeMarkReachable(twL, 0);
@@ -1395,7 +1396,7 @@ CompareAction(struct ccn_schedule *sched,
         }
         case SyncCompare_done: {
             // cleanup
-            sync_time now = SyncCurrentTime();
+            int64_t now = SyncCurrentTime();
             int64_t mh = SyncDeltaTime(data->lastEnter, now);
             int64_t dt = SyncDeltaTime(data->startTime, now);
             root->priv->stats->comparesDone++;
@@ -1638,7 +1639,7 @@ HeartbeatAction(struct ccn_schedule *sched,
         }
         root = root->next;
     }
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     root = priv->rootHead;
     int64_t lifeMicros = ((int64_t) priv->rootAdviseLifetime)*M;
     int64_t needMicros = ((int64_t) updateNeedDelta)*M;
@@ -1873,7 +1874,7 @@ SyncRemoteFetchResponse(struct ccn_closure *selfp,
             struct SyncRootStats *stats = root->priv->stats;
             size_t bytes = 0;
             int faux = fauxError(root->base);
-            sync_time now = SyncCurrentTime();
+            int64_t now = SyncCurrentTime();
             if (ccnr != NULL && info != NULL && info->pco != NULL && faux == 0
                 && kind != CCN_UPCALL_INTEREST_TIMED_OUT)
                 bytes = info->pco->offset[CCN_PCO_E];
@@ -2483,7 +2484,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                         }
                         if (lenR != 0) {
                             ceR = SyncHashEnter(root->ch, bufR, lenR, SyncHashState_remote);
-                            sync_time lastMark = ceR->lastRemoteFetch;
+                            int64_t lastMark = ceR->lastRemoteFetch;
                             noteRemoteHash(root, ceR, 1);
                             rp->adviseNeed = adviseNeedReset;
                             // force any old interest to be inactive
@@ -2741,7 +2742,7 @@ SyncRootAdviseResponse(struct ccn_closure *selfp,
                 data->root == NULL || data->kind != SRI_Kind_RootAdvise) {
                 // not active, no useful info
             } else {
-                sync_time now = SyncCurrentTime();
+                int64_t now = SyncCurrentTime();
                 struct SyncRootStruct *root = data->root;
                 int debug = root->base->debug;
                 root->priv->stats->rootAdviseTimeout++;
@@ -3223,14 +3224,14 @@ UpdateAction(struct ccn_schedule *sched,
              struct ccn_scheduled_event *ev,
              int flags) {
     char *here = "Sync.UpdateAction";
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     struct SyncUpdateData *ud = (struct SyncUpdateData *) ev->evdata;
     struct SyncRootStruct *root = ud->root;
     struct SyncBaseStruct *base = root->base;
     int debug = base->debug;
     struct ccnr_handle *ccnr = base->ccnr;
     int showEntry = base->priv->syncActionsPrivate & 8;
-    // sync_time prevTime = ud->entryTime;
+    // int64_t prevTime = ud->entryTime;
     ud->entryTime = now;
     switch (ud->state) {
         case SyncUpdate_init: {
@@ -3416,7 +3417,7 @@ SyncUpdateRoot(struct SyncRootStruct *root) {
     char *here = "Sync.UpdateAction";
     struct SyncNameAccum *acc = root->namesToAdd;
     if (acc->len == 0) return 0;
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     struct SyncBaseStruct *base = root->base;
     struct ccnr_handle *ccnr = base->ccnr;
     struct SyncUpdateData *ud = NEW_STRUCT(1, SyncUpdateData);
@@ -3482,7 +3483,7 @@ SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR) {
     int debug = root->base->debug;
     struct ccnr_handle *ccnr = root->base->ccnr;
     struct SyncCompareData *data = NEW_STRUCT(1, SyncCompareData);
-    sync_time mark = SyncCurrentTime();
+    int64_t mark = SyncCurrentTime();
     data->startTime = mark;
     data->lastEnter = mark;
     data->lastMark = mark;

@@ -23,14 +23,7 @@
 
 #include <sys/types.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <ccn/ccn.h>
-#include <ccn/indexbuf.h>
-#include <ccn/schedule.h>
-#include <ccn/uri.h>
 #include <ccnr/ccnr_private.h>
-
-#include "SyncMacros.h"
 
 // Incomplete types for opaque structures.
 struct ccn_schedule;
