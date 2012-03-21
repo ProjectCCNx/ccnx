@@ -212,6 +212,11 @@ ccn_indexbuf_release(struct ccn *h, struct ccn_indexbuf *c)
         ccn_indexbuf_destroy(&c);
 }
 
+/**
+ * Do the refcount updating for closure instances on assignment
+ *
+ * When the refcount drops to 0, the closure is told to finalize itself.
+ */
 static void
 ccn_replace_handler(struct ccn *h,
                     struct ccn_closure **dstp,
@@ -1539,9 +1544,10 @@ ccn_process_scheduled_operations(struct ccn *h)
 
 /**
  * Modify ccn_run timeout.
+ *
  * This may be called from an upcall to change the timeout value.
  * Most often this will be used to set the timeout to zero so that
- * ccn_run will return control to the client.
+ * ccn_run() will return control to the client.
  * @param h is the ccn handle.
  * @param timeout is in milliseconds.
  * @returns old timeout value.
