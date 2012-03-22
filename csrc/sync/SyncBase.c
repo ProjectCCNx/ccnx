@@ -17,11 +17,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#include "SyncMacros.h"
 #include "SyncActions.h"
 #include "SyncBase.h"
 #include "SyncPrivate.h"
 #include "SyncUtil.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <ccn/uri.h>
 #include <ccnr/ccnr_msg.h>
@@ -66,7 +68,7 @@ extern struct SyncBaseStruct *
 SyncNewBase(struct ccnr_handle *ccnr,
             struct ccn *ccn,
             struct ccn_schedule *sched) {
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     struct SyncBaseStruct *base = NEW_STRUCT(1, SyncBaseStruct);
     base->ccnr = ccnr;
     base->ccn = ccn;

@@ -47,8 +47,8 @@ struct SyncPrivate {
     int nStoring;
     ccnr_hwm stableTarget;
     ccnr_hwm stableStored;
-    sync_time lastStable;
-    sync_time lastCacheClean;
+    int64_t lastStable;
+    int64_t lastCacheClean;
     int sliceEnum;
     int sliceBusy;
     int fauxErrorTrigger;
@@ -65,7 +65,7 @@ struct SyncPrivate {
 struct SyncHashInfoList {
     struct SyncHashInfoList *next;
     struct SyncHashCacheEntry *ce;
-    sync_time lastSeen;
+    int64_t lastSeen;
 };
 
 struct SyncRootStats {
@@ -107,10 +107,10 @@ struct SyncRootPrivate {
     int sliceBusy;
     ccnr_hwm highWater;             // high water via SyncNotifyContent
     ccnr_hwm stablePoint;           // stable point for this root
-    sync_time lastAdvise;
-    sync_time lastUpdate;
-    sync_time lastStable;
-    sync_time lastHashChange;
+    int64_t lastAdvise;
+    int64_t lastUpdate;
+    int64_t lastStable;
+    int64_t lastHashChange;
     int adviseNeed;
     struct SyncHashCacheEntry *lastLocalSent;
     size_t currentSize;
