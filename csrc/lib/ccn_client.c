@@ -458,6 +458,7 @@ ccn_destroy(struct ccn **hp)
     struct ccn *h = *hp;
     if (h == NULL)
         return;
+    ccn_schedule_destroy(&h->schedule);
     ccn_disconnect(h);
     if (h->interests_by_prefix != NULL) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
