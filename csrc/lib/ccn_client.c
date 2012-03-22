@@ -1485,18 +1485,20 @@ ccn_notify_ccndid_changed(struct ccn *h)
  * @param h is the ccn handle
  * @returns pointer to the event schedule
  */
-struct ccn_schedule *ccn_get_schedule(struct ccn *h)
+struct ccn_schedule *
+ccn_get_schedule(struct ccn *h)
 {
     return(h->schedule);
 }
 
 /**
- * Set the previously set event schedule from a ccn handle
+ * Set the event schedule in a ccn handle
  * @param h is the ccn handle
  * @param schedule is the new event schedule to be set in the handle
  * @returns pointer to the previous event schedule (or NULL)
  */
-struct ccn_schedule *ccn_set_schedule(struct ccn *h, struct ccn_schedule *schedule)
+struct ccn_schedule *
+ccn_set_schedule(struct ccn *h, struct ccn_schedule *schedule)
 {
     struct ccn_schedule *old = h->schedule;
     h->schedule = schedule;
