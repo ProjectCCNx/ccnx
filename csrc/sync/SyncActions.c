@@ -2561,15 +2561,16 @@ RemRootDeltas(struct SyncRootStruct *root, struct SyncRootDeltas *deltas) {
     return 0;
 }
 
-int
-countRemoteSeen(struct SyncRootStruct *root, struct SyncHashCacheEntry *ceR) {
+// scanRemoteSeen returns the first SyncHashInfoList object int the remoteSeen
+// list that refers to the given hash entry (which may be NULL)
+static struct SyncHashInfoList *
+scanRemoteSeen(struct SyncRootStruct *root, struct SyncHashCacheEntry *ceR) {
     struct SyncHashInfoList *remoteSeen = root->priv->remoteSeen;
-    int count = 0;
     while (remoteSeen != NULL) {
-        if (remoteSeen->ce == ceR) count++;
+        if (remoteSeen->ce == ceR) return remoteSeen;
         remoteSeen = remoteSeen->next;
     }
-    return count;
+    return NULL;
 }
 
 // CloseUpdateCoding finishes up the deltas object (closes the coding),
@@ -2604,8 +2605,11 @@ CloseUpdateCoding(struct SyncUpdateData *ud) {
             tail = deltas;
             deltas->ceStop = ceStop;
             rp->nDeltas++;
-            if (countRemoteSeen(root, ceStop) == 0)
-                // send out the signed buffer if is a remote hash waiting for it
+            if (scanRemoteSeen(root, deltas->ceStart) != NULL
+                && scanRemoteSeen(root, ceStop) == NULL)
+                // if there is no remote hash matching the deltas stopping hash
+                // but there is a request for the starting hash, then send
+                // the updates now
                 // TBD: is this a good enough test?
                 SendDeltasReply(root, deltas);
             // purge deltas beyond some count
@@ -2629,6 +2633,8 @@ RemAllRootDeltas(struct SyncRootStruct *root) {
     }
 }
 
+// scanDeltas retruns the first SyncRootDeltas object that starts with
+// the given hash entry
 static struct SyncRootDeltas *
 scanDeltas(struct SyncRootStruct *root, struct SyncHashCacheEntry *ceR) {
     struct SyncRootDeltas *deltas = root->priv->deltasHead;
@@ -3350,7 +3356,9 @@ TryNodeSplit(struct SyncUpdateData *ud) {
     res = MakeNodeFromNames(ud, split);
     return res;
 }
-    
+
+// AddUpdateName adds a name to the current update name accumulator
+// and adds it to the deltas if it is a new name and can be added
 static int
 AddUpdateName(struct SyncUpdateData *ud, struct ccn_charbuf *name, int isNew) {
     static char *here = "Sync.AddUpdateName";
@@ -3362,8 +3370,10 @@ AddUpdateName(struct SyncUpdateData *ud, struct ccn_charbuf *name, int isNew) {
     int res = 0;
     name = SyncCopyName(name);
     SyncNameAccumAppend(dst, name, 0);
-    if (debug >= CCNL_FINE)
-        SyncNoteUri(root, here, "added", name);
+    if (debug >= CCNL_FINE) {
+        char *msg = ((isNew) ? "added+" : "added");
+        SyncNoteUri(root, here, msg, name);
+    }
     if (isNew) {
         struct SyncRootDeltas *deltas = ud->deltas;
         int deltasLimit = root->base->priv->deltasLimit;
