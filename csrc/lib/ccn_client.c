@@ -41,6 +41,7 @@
 #include <ccn/digest.h>
 #include <ccn/hashtb.h>
 #include <ccn/reg_mgmt.h>
+#include <ccn/schedule.h>
 #include <ccn/signing.h>
 #include <ccn/keystore.h>
 #include <ccn/uri.h>
@@ -59,6 +60,7 @@ struct ccn {
     struct hashtb *keys;    /* public keys, by pubid */
     struct hashtb *keystores;   /* unlocked private keys */
     struct ccn_charbuf *default_pubid;
+    struct ccn_schedule *schedule;
     struct timeval now;
     int timeout;
     int refresh_us;
@@ -1479,6 +1481,29 @@ ccn_notify_ccndid_changed(struct ccn *h)
 }
 
 /**
+ * Get the previously set event schedule from a ccn handle
+ * @param h is the ccn handle
+ * @returns pointer to the event schedule
+ */
+struct ccn_schedule *ccn_get_schedule(struct ccn *h)
+{
+    return(h->schedule);
+}
+
+/**
+ * Set the previously set event schedule from a ccn handle
+ * @param h is the ccn handle
+ * @param schedule is the new event schedule to be set in the handle
+ * @returns pointer to the previous event schedule (or NULL)
+ */
+struct ccn_schedule *ccn_set_schedule(struct ccn *h, struct ccn_schedule *schedule)
+{
+    struct ccn_schedule *old = h->schedule;
+    h->schedule = schedule;
+    return(old);
+}
+
+/**
  * Process any scheduled operations that are due.
  * This is not used by normal ccn clients, but is made available for use
  * by ccnd to run its internal client.
@@ -1568,6 +1593,7 @@ ccn_run(struct ccn *h, int timeout)
     struct timeval start;
     struct pollfd fds[1];
     int microsec;
+    int s_microsec = -1;
     int millisec;
     int res = -1;
     if (h->running != 0)
@@ -1580,7 +1606,12 @@ ccn_run(struct ccn *h, int timeout)
             res = -1;
             break;
         }
+        if (h->schedule != NULL) {
+            s_microsec = ccn_schedule_run(h->schedule);
+        }
         microsec = ccn_process_scheduled_operations(h);
+        if (s_microsec >= 0 && s_microsec < microsec)
+            microsec = s_microsec;
         timeout = h->timeout;
         if (start.tv_sec == 0)
             start = h->now;
