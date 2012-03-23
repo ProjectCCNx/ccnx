@@ -81,6 +81,8 @@ SyncHashEnter(struct SyncHashCacheHead *head,
     }
     head->misses = head->misses + 1;
     if (ent == NULL) {
+        uintmax_t index = head->lastIndex + 1;
+        head->lastIndex = index;
         head->probes = head->probes + 1;
         head->misses = head->misses + 1;
         ent = NEW_STRUCT(1, SyncHashCacheEntry);
@@ -90,6 +92,7 @@ SyncHashEnter(struct SyncHashCacheHead *head,
         ent->next = old;
         ent->small = h;
         ent->hash = ccn_charbuf_create();
+        ent->index = index;
         ccn_charbuf_append(ent->hash, xp, xs);
         head->ents[hx] = ent;
         head->len++;
