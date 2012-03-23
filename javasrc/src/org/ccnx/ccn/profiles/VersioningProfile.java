@@ -1,11 +1,11 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -40,7 +40,7 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 
 /**
- * Versions, when present, usually occupy the penultimate component of the CCN name, 
+ * Versions, when present, usually occupy the penultimate component of the CCN name,
  * not counting the digest component. A name may actually incorporate multiple
  * versions, where the rightmost version is the version of "this" object, if it
  * has one, and previous (parent) versions are the versions of the objects of
@@ -54,18 +54,18 @@ import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
  * up an (unnecessary) version in their own right). Versioning operations therefore
  * take context from their caller about where to expect to find a version,
  * and attempt to ignore other versions in the name.
- * 
+ *
  * Versions may be chosen based on time.
  * The first byte of the version component is 0xFD. The remaining bytes are a
  * big-endian binary number. If based on time they are expressed in units of
  * 2**(-12) seconds since the start of Unix time, using the minimum number of
  * bytes. The time portion will thus take 48 bits until quite a few centuries
- * from now (Sun, 20 Aug 4147 07:32:16 GMT). With 12 bits of precision, it allows 
- * for sub-millisecond resolution. The client generating the version stamp 
- * should try to avoid using a stamp earlier than (or the same as) any 
- * version of the file, to the extent that it knows about it. It should 
+ * from now (Sun, 20 Aug 4147 07:32:16 GMT). With 12 bits of precision, it allows
+ * for sub-millisecond resolution. The client generating the version stamp
+ * should try to avoid using a stamp earlier than (or the same as) any
+ * version of the file, to the extent that it knows about it. It should
  * also avoid generating stamps that are unreasonably far in the future.
- * 
+ *
  * Get latest version is going to exclude [B, 0xFD00FFFFFFFFFF, 0xFE000000000000,B],
  * so you need to be sure to use version numbers in those bounds.
  */
@@ -78,7 +78,7 @@ public class VersioningProfile implements CCNProfile {
 
 	public static final byte [] FIRST_VERSION_MARKER = new byte []{VERSION_MARKER};
 	public static final byte [] LAST_VERSION_MARKER  = new byte [] {VERSION_MARKER+1, OO, OO, OO, OO, OO, OO };
-	
+
 	// Due to shortlex comparison, need to have something 7 bytes long
 	public static final byte [] MIN_VERSION_MARKER = new byte [] {VERSION_MARKER, O1, OO, OO, OO, OO, OO};
 
@@ -86,7 +86,7 @@ public class VersioningProfile implements CCNProfile {
 
 	public static final byte [] BOTTOM_EXCLUDE_VERSION_MARKER = MIN_VERSION_MARKER;
 	public static final byte [] TOP_EXCLUDE_VERSION_MARKER    = LAST_VERSION_MARKER;
-	
+
 
 	/**
 	 * Add a version field to a ContentName.
@@ -103,7 +103,7 @@ public class VersioningProfile implements CCNProfile {
 		}
 		return new ContentName(name, vcomp);
 	}
-	
+
 	/**
 	 * Converts a timestamp into a fixed point representation, with 12 bits in the fractional
 	 * component, and adds this to the ContentName as a version field. The timestamp is rounded
@@ -118,11 +118,11 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static ContentName addVersion(ContentName name, CCNTime version) {
 		if (null == version)
-			throw new IllegalArgumentException("Version cannot be null!"); 
+			throw new IllegalArgumentException("Version cannot be null!");
 		byte [] vcomp = timeToVersionComponent(version);
 		return new ContentName(name, vcomp);
 	}
-	
+
 	/**
 	 * Add a version field based on the current time, accurate to 1/4096 second.
 	 * <p>
@@ -134,7 +134,7 @@ public class VersioningProfile implements CCNProfile {
 	public static ContentName addVersion(ContentName name) {
 		return addVersion(name, CCNTime.now());
 	}
-	
+
 	public static byte [] timeToVersionComponent(CCNTime version) {
 		byte [] varr = version.toBinaryTime();
 		byte [] vcomp = new byte[varr.length + 1];
@@ -142,12 +142,12 @@ public class VersioningProfile implements CCNProfile {
 		System.arraycopy(varr, 0, vcomp, 1, varr.length);
 		return vcomp;
 	}
-	
+
 	public static String printAsVersionComponent(CCNTime version) {
 		byte [] vcomp = timeToVersionComponent(version);
 		return ContentName.componentPrintURI(vcomp);
 	}
-	
+
 	/**
 	 * Adds a version to a ContentName; if there is a terminal version there already,
 	 * first removes it.
@@ -155,7 +155,7 @@ public class VersioningProfile implements CCNProfile {
 	public static ContentName updateVersion(ContentName name, long version) {
 		return addVersion(cutTerminalVersion(name).first(), version);
 	}
-	
+
 	/**
 	 * Adds a version to a ContentName; if there is a terminal version there already,
 	 * first removes it.
@@ -192,33 +192,33 @@ public class VersioningProfile implements CCNProfile {
 	public static boolean containsVersion(ContentName name) {
 		return findLastVersionComponent(name) != -1;
 	}
-	
+
 	/**
 	 * Checks to see if this name has a validly formatted version field either in final
 	 * component or in next to last component with final component being a segment marker.
 	 */
 	public static boolean hasTerminalVersion(ContentName name) {
-		if ((name.count() > 0) && 
-			((isVersionComponent(name.lastComponent()) || 
+		if ((name.count() > 0) &&
+			((isVersionComponent(name.lastComponent()) ||
 			 ((name.count() > 1) && SegmentationProfile.isSegment(name) && isVersionComponent(name.component(name.count()-2)))))) {
 			return true;
 		}
 		return false;
 	}
-	
+
 	/**
 	 * Check a name component to see if it is a valid version field
 	 */
 	public static boolean isVersionComponent(byte [] nameComponent) {
-		return (null != nameComponent) && (0 != nameComponent.length) && 
-			   (VERSION_MARKER == nameComponent[0]) && 
+		return (null != nameComponent) && (0 != nameComponent.length) &&
+			   (VERSION_MARKER == nameComponent[0]) &&
 			   ((nameComponent.length == 1) || (nameComponent[1] != 0));
 	}
-	
+
 	public static boolean isBaseVersionComponent(byte [] nameComponent) {
 		return (isVersionComponent(nameComponent) && (1 == nameComponent.length));
 	}
-	
+
 	/**
 	 * Remove a terminal version marker (one that is either the last component of name, or
 	 * the next to last component of name followed by a segment marker) if one exists, otherwise
@@ -236,7 +236,7 @@ public class VersioningProfile implements CCNProfile {
 		}
 		return new Tuple<ContentName, byte []>(name, null);
 	}
-	
+
 	/**
 	 * Take a name which may have one or more version components in it,
 	 * and strips the last one and all following components. If no version components
@@ -257,18 +257,18 @@ public class VersioningProfile implements CCNProfile {
 		int i = findLastVersionComponent(name);
 		if (i == -1)
 			throw new VersionMissingException();
-		
+
 		return getVersionComponentAsLong(name.component(i));
 	}
-	
+
 	public static byte [] getLastVersionComponent(ContentName name) throws VersionMissingException {
 		int i = findLastVersionComponent(name);
 		if (i == -1)
 			throw new VersionMissingException();
-		
+
 		return name.component(i);
 	}
-	
+
 	public static long getVersionComponentAsLong(final byte [] versionComponent) {
 		return DataUtils.byteArrayToUnsignedLong(versionComponent, 1);
 	}
@@ -281,15 +281,15 @@ public class VersioningProfile implements CCNProfile {
 
 	/**
 	 * Extract the version from this name as a Timestamp.
-	 * @throws VersionMissingException 
+	 * @throws VersionMissingException
 	 */
 	public static CCNTime getLastVersionAsTimestamp(ContentName name) throws VersionMissingException {
 		long time = getLastVersionAsLong(name);
 		return CCNTime.fromBinaryTimeAsLong(time);
 	}
-	
+
 	/**
-	 * Returns null if no version, otherwise returns the last version in the name. 
+	 * Returns null if no version, otherwise returns the last version in the name.
 	 * @param name
 	 * @return
 	 */
@@ -299,7 +299,7 @@ public class VersioningProfile implements CCNProfile {
 			return null;
 		return getVersionComponentAsTimestamp(name.component(versionComponent));
 	}
-	
+
 	public static CCNTime getTerminalVersionAsTimestampIfVersioned(ContentName name) {
 		if (!hasTerminalVersion(name))
 			return null;
@@ -308,11 +308,11 @@ public class VersioningProfile implements CCNProfile {
 			return null;
 		return getVersionComponentAsTimestamp(name.component(versionComponent));
 	}
-	
+
 	public static CCNTime versionLongToTimestamp(long version) {
 		return CCNTime.fromBinaryTimeAsLong(version);
 	}
-	
+
 	/**
 	 * Control whether versions start at 0 or 1.
 	 * @return
@@ -338,7 +338,7 @@ public class VersioningProfile implements CCNProfile {
 			throw new IllegalArgumentException("Name that isVersioned returns true for throws VersionMissingException!: " + right);
 		}
 	}
-	
+
 	public static int compareVersionComponents(
 			byte [] left,
 			byte [] right) throws VersionMissingException {
@@ -348,7 +348,7 @@ public class VersioningProfile implements CCNProfile {
 		// DKS TODO -- should be able to just compare byte arrays, but would have to check version
 		return getVersionComponentAsTimestamp(left).compareTo(getVersionComponentAsTimestamp(right));
 	}
-	
+
 	/**
 	 * See if version is a version of parent (not commutative).
 	 * @return
@@ -362,7 +362,7 @@ public class VersioningProfile implements CCNProfile {
 			return false; // version isn't a version
 		return true;
     }
-	
+
 	/**
 	 * This compares two names, with terminal versions, and determines whether one is later than the other.
 	 * @param laterVersion
@@ -371,8 +371,6 @@ public class VersioningProfile implements CCNProfile {
 	 * @throws VersionMissingException
 	 */
 	public static boolean isLaterVersionOf(ContentName laterVersion, ContentName earlierVersion) throws VersionMissingException {
-		// TODO -- remove temporary warning
-		Log.warning("SEMANTICS CHANGED: if experiencing unexpected behavior, check to see if you want to call isLaterVerisionOf or startsWithLaterVersionOf");
 		Tuple<ContentName, byte []>earlierVersionParts = cutTerminalVersion(earlierVersion);
 		Tuple<ContentName, byte []>laterVersionParts = cutTerminalVersion(laterVersion);
 		if (!laterVersionParts.first().equals(earlierVersionParts.first())) {
@@ -380,13 +378,13 @@ public class VersioningProfile implements CCNProfile {
 		}
 		return (compareVersionComponents(laterVersionParts.second(), earlierVersionParts.second()) > 0);
     }
-	
+
 	/**
-	 * Finds out if you have a versioned name, and a ContentObject that might have a versioned name which is 
+	 * Finds out if you have a versioned name, and a ContentObject that might have a versioned name which is
 	 * a later version of the given name, even if that CO name might not refer to a segment of the original name.
 	 * For example, given a name /parc/foo.txt/<version1> or /parc/foo.txt/<version1>/<segment>
 	 * and /parc/foo.txt/<version2>/<stuff>, return true, whether <stuff> is a segment marker, a whole
-	 * bunch of repo write information, or whatever. 
+	 * bunch of repo write information, or whatever.
 	 * @param newName Will check to see if this name begins with something which is a later version of previousVersion.
 	 * @param previousVersion The name to compare to, must have a terminal version or be unversioned.
 	 * @return
@@ -397,7 +395,7 @@ public class VersioningProfile implements CCNProfile {
 		if (!previousVersionParts.first().isPrefixOf(newName))
 			return false;
 		if (null == previousVersionParts.second()) {
-			return ((newName.count() > previousVersionParts.first().count()) && 
+			return ((newName.count() > previousVersionParts.first().count()) &&
 					VersioningProfile.isVersionComponent(newName.component(previousVersionParts.first().count())));
 		}
 		try {
@@ -434,16 +432,16 @@ public class VersioningProfile implements CCNProfile {
 		} else {
 			start = startingVersionComponent;
 		}
-		
+
 		ArrayList<Exclude.Element> ees = new ArrayList<Exclude.Element>();
 		ees.add(new ExcludeAny());
 		ees.add(new ExcludeComponent(start));
 		ees.add(new ExcludeComponent(LAST_VERSION_MARKER));
 		ees.add(new ExcludeAny());
-		
+
 		return new Exclude(ees);
 	}
-	
+
 	/**
 	 * Active methods. Want to provide profile-specific methods that:
 	 * - find the latest version without regard to what is below it
@@ -452,12 +450,12 @@ public class VersioningProfile implements CCNProfile {
 	 *            will time out if no such newer version exists
 	 *    Returns a content object, which may or may not be a segment of the latest version, but the
 	 *    latest version information is available from its name.
-	 *    
+	 *
 	 * - find the first segment of the latest version of a name
 	 * 		- if no version given, gets the first segment of the latest version
 	 * 		- if a starting version given, gets the latest version available *after* that version or times out
 	 *    Will ensure that what it returns is a segment of a version of that object.
-	 *    
+	 *
 	 * - generate an interest designed to find the first segment of the latest version
 	 *   of a name, in the above form; caller is responsible for checking and re-issuing
 	 */
@@ -476,7 +474,7 @@ public class VersioningProfile implements CCNProfile {
 		// doesn't have one already, so look for names with 2 extra components -- segment and digest.
 		return latestVersionInterest(startingVersion, 3, publisher);
 	}
-	
+
 	/**
 	 * Generate an interest that will find a descendant of the latest version of startingVersion,
 	 * after any existing version component. If additionalNameComponents is non-null, it will
@@ -487,7 +485,7 @@ public class VersioningProfile implements CCNProfile {
 	 * will work more effectively with appropriate segment numbering).
 	 */
 	public static Interest latestVersionInterest(ContentName startingVersion, Integer additionalNameComponents, PublisherPublicKeyDigest publisher) {
-		
+
 		if (hasTerminalVersion(startingVersion)) {
 			// Has a version. Make sure it doesn't have a segment; find a version after this one.
 			startingVersion = SegmentationProfile.segmentRoot(startingVersion);
@@ -497,8 +495,8 @@ public class VersioningProfile implements CCNProfile {
 			startingVersion = firstVersionName;
 		}
 		byte [] versionComponent = startingVersion.lastComponent();
-		
-		Interest constructedInterest = Interest.last(startingVersion, acceptVersions(versionComponent), startingVersion.count() - 1, additionalNameComponents, 
+
+		Interest constructedInterest = Interest.last(startingVersion, acceptVersions(versionComponent), startingVersion.count() - 1, additionalNameComponents,
 					additionalNameComponents, null);
 		if (null != publisher) {
 			constructedInterest.publisherID(new PublisherID(publisher));
@@ -511,36 +509,36 @@ public class VersioningProfile implements CCNProfile {
 	 * if you ask again passing in the version found (i.e. each response will be the latest version
 	 * a given responder knows about. Further queries will move past that responder to other responders,
 	 * who may have newer information.)
-	 *  
+	 *
 	 * @param name If the name ends in a version then this method explicitly looks for a newer version
-	 * than that, and will time out if no such later version exists. If the name does not end in a 
+	 * than that, and will time out if no such later version exists. If the name does not end in a
 	 * version then this call just looks for the latest version.
 	 * @param publisher Currently unused, will limit query to a specific publisher.
 	 * @param timeout  This is the time to wait until you get any response.  If nothing is returned, this method will return null.
 	 * @param verifier Used to verify the returned content objects
 	 * @param handle CCNHandle used to get the latest version
-	 * @return A ContentObject with the latest version, or null if the query timed out. 
+	 * @return A ContentObject with the latest version, or null if the query timed out.
 	 * @result Returns a matching ContentObject, verified.
 	 * @throws IOException
 	 */
-	public static ContentObject getLatestVersion(ContentName startingVersion, 
-											     PublisherPublicKeyDigest publisher, 
-												 long timeout, 
+	public static ContentObject getLatestVersion(ContentName startingVersion,
+											     PublisherPublicKeyDigest publisher,
+												 long timeout,
  												 ContentVerifier verifier,
 												 CCNHandle handle) throws IOException {
-		
+
 		return getLatestVersion(startingVersion, publisher, timeout, verifier, handle, null, false);
-		
+
 	}
-	
+
 	/**
 	 * Function to (best effort) get the latest version. There may be newer versions available
 	 * if you ask again passing in the version found (i.e. each response will be the latest version
 	 * a given responder knows about. Further queries will move past that responder to other responders,
 	 * who may have newer information.)
-	 *  
+	 *
 	 * @param name If the name ends in a version then this method explicitly looks for a newer version
-	 * than that, and will time out if no such later version exists. If the name does not end in a 
+	 * than that, and will time out if no such later version exists. If the name does not end in a
 	 * version then this call just looks for the latest version.
 	 * @param publisher Currently unused, will limit query to a specific publisher.
 	 * @param timeout  This is the time to wait to retrieve any version.  If nothing is returned, this method will return null.
@@ -549,27 +547,27 @@ public class VersioningProfile implements CCNProfile {
  	 * @param startingSegmentNumber If we are requiring content to be a segment, what segment number
  	 *    do we want. If null, and findASegment is true, uses SegmentationProfile.baseSegment().
  	 * @param findASegment are we requiring returned content to be a segment of this version
-	 * @return A ContentObject with the latest version, or null if the query timed out. 
+	 * @return A ContentObject with the latest version, or null if the query timed out.
 	 * @result Returns a matching ContentObject, verified.
 	 * @throws IOException
 	 */
-	private static ContentObject getLatestVersion(ContentName startingVersion, 
+	private static ContentObject getLatestVersion(ContentName startingVersion,
 												  PublisherPublicKeyDigest publisher,
 												  long timeout,
 												  ContentVerifier verifier,
 												  CCNHandle handle,
 												  Long startingSegmentNumber,
 												  boolean findASegment) throws IOException {
-		
-		if (Log.isLoggable(Level.FINE)){ 
-			Log.fine("getFirstBlockOfLatestVersion: getting version later than {0} called with timeout: {1}", startingVersion, timeout);
+
+		if (Log.isLoggable(Log.FAC_IO, Level.FINE)){
+			Log.fine(Log.FAC_IO, "getFirstBlockOfLatestVersion: getting version later than {0} called with timeout: {1}", startingVersion, timeout);
 		}
-		
+
 		if (null == verifier) {
 			// TODO DKS normalize default behavior
 			verifier = handle.keyManager().getDefaultVerifier();
 		}
-		
+
 		long startTime = System.currentTimeMillis();
 		long interestTime = 0;
 		long elapsedTime = 0;
@@ -580,26 +578,29 @@ public class VersioningProfile implements CCNProfile {
 		if (timeout == SystemConfiguration.NO_TIMEOUT) {
 			//glv called with no timeout...  should probably return what we have as soon as we have something
 			//to return and have suffered a timeout
-			Log.finest("gLV called with NO_TIMEOUT");
+			if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
+				Log.finest(Log.FAC_IO, "gLV called with NO_TIMEOUT");
 			noTimeout = true;
 			//if something comes back, we should try for one more interest and then return what we have
 		} else if (timeout == 0) {
-			Log.finest("gLV called with timeout = 0, should just return the first thing we get");
+			if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
+				Log.finest(Log.FAC_IO, "gLV called with timeout = 0, should just return the first thing we get");
 		}
-				
+
 		ContentName prefix = startingVersion;
 		if (hasTerminalVersion(prefix)) {
 			prefix = startingVersion.parent();
 		}
 		int versionedLength = prefix.count() + 1;
-		
+
 		ContentObject result = null;
 		ContentObject lastResult = null;
-		
+
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
-		
+
 		while ( (remainingTime > 0 && elapsedTime < timeout) || (noTimeout || timeout == 0)) {
-			Log.finer("gLV timeout: {0} remainingTime: {1} attemptTimeout: {2}", timeout, remainingTime, attemptTimeout);
+			if (Log.isLoggable(Log.FAC_IO, Level.FINER))
+				Log.finer(Log.FAC_IO, "gLV timeout: {0} remainingTime: {1} attemptTimeout: {2}", timeout, remainingTime, attemptTimeout);
 			lastResult = result;
 			//attempts++;
 			Interest getLatestInterest = null;
@@ -608,16 +609,17 @@ public class VersioningProfile implements CCNProfile {
 			} else {
 				getLatestInterest = latestVersionInterest(startingVersion, null, publisher);
 			}
-			
+
 			if (excludeList.size() > 0) {
 				//we have explicit excludes, add them to this interest
 				byte [][] e = new byte[excludeList.size()][];
 				excludeList.toArray(e);
 				getLatestInterest.exclude().add(e);
 			}
-			
-			Log.finer("timeout {0} startTime: {1} elapsedTime: {2} remainingTime: {3} new elapsedTime = {4}", timeout, startTime, elapsedTime, remainingTime, (System.currentTimeMillis() - startTime));
-			
+
+			if (Log.isLoggable(Log.FAC_IO, Level.FINER))
+				Log.finer(Log.FAC_IO, "timeout {0} startTime: {1} elapsedTime: {2} remainingTime: {3} new elapsedTime = {4}", timeout, startTime, elapsedTime, remainingTime, (System.currentTimeMillis() - startTime));
+
 			interestTime = System.currentTimeMillis();
 			long tempT;
 			if (noTimeout) {
@@ -632,95 +634,99 @@ public class VersioningProfile implements CCNProfile {
 				}
 			}
 			result = handle.get(getLatestInterest, tempT);
-			
+
 			elapsedTime = System.currentTimeMillis() - startTime;
-			
+
 			respondTime = System.currentTimeMillis() - interestTime;
-			
+
 			if (result == null && respondTime == 0) {
-				Log.warning("gLV: handle.get returned null and did not wait the full timeout time for the object (timeout: {0} responseTime: {1}", timeout, respondTime);
+				Log.warning(Log.FAC_IO, "gLV: handle.get returned null and did not wait the full timeout time for the object (timeout: {0} responseTime: {1}", timeout, respondTime);
 				return null;
 			}
-			
+
 			remainingTime = timeout - elapsedTime;
-			if (Log.isLoggable(Level.FINE)) {
-				Log.fine("gLV INTEREST: {0}", getLatestInterest);
-				Log.fine("gLV trying handle.get with timeout: {0}", tempT);
-				Log.fine("gLVTime sending Interest from gLV at {0} started at: {1}", System.currentTimeMillis(), startTime);
-				Log.fine("gLVTime returned from handle.get in {0} ms",respondTime);
-				Log.fine("gLV remaining time is now {0} ms", remainingTime);
+			if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+				Log.fine(Log.FAC_IO, "gLV INTEREST: {0}", getLatestInterest);
+				Log.fine(Log.FAC_IO, "gLV trying handle.get with timeout: {0}", tempT);
+				Log.fine(Log.FAC_IO, "gLVTime sending Interest from gLV at {0} started at: {1}", System.currentTimeMillis(), startTime);
+				Log.fine(Log.FAC_IO, "gLVTime returned from handle.get in {0} ms",respondTime);
+				Log.fine(Log.FAC_IO, "gLV remaining time is now {0} ms", remainingTime);
 			}
-			
+
 			if (null != result){
-				if (Log.isLoggable(Level.INFO))
-					Log.info("gLV getLatestVersion: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());
-			
+				if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "gLV getLatestVersion: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());
+
 				//did it verify?
 				//if it doesn't verify, we need to try harder to get a different content object (exclude this digest)
 				//make this a loop?
 				if (!verifier.verify(result)) {
 					//excludes = addVersionToExcludes(excludes, result.name());
-					Log.fine("gLV result did not verify, trying to find a verifiable answer");
+					if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+						Log.fine(Log.FAC_IO, "gLV result did not verify, trying to find a verifiable answer");
 					excludeList = addVersionToExcludes(excludeList, result.name());
 					//note:  need to use the full name, but want to exclude this particular digest.  This means we can't cut off the segment marker.
 					//Interest retry = new Interest(SegmentationProfile.segmentRoot(result.name()), publisher);
 					//retry.maxSuffixComponents(1);
 					Interest retry = new Interest(result.name(), publisher);
-					
+
 					boolean verifyDone = false;
 					while (!verifyDone) {
 						if (retry.exclude() == null)
 							retry.exclude(new Exclude());
 						retry.exclude().add(new byte[][] {result.digest()});
-						if (Log.isLoggable(Level.FINE)) {
-							Log.fine("gLV result did not verify!  doing retry!! {0}", retry);
-							Log.fine("gLVTime sending retry interest at {0}", System.currentTimeMillis());
+						if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+							Log.fine(Log.FAC_IO, "gLV result did not verify!  doing retry!! {0}", retry);
+							Log.fine(Log.FAC_IO, "gLVTime sending retry interest at {0}", System.currentTimeMillis());
 						}
-						
+
 						//try to send the interest with the response time the bad content object was returned with
 						//if (timeout == 0)
 							result = handle.get(retry, attemptTimeout);
 						//else
 						//	result = handle.get(retry, respondTime);
-						
+
 						if (result!=null) {
-							if (Log.isLoggable(Level.FINE))
-								Log.fine("gLV we got something back: {0}", result.name());
+							if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+								Log.fine(Log.FAC_IO, "gLV we got something back: {0}", result.name());
 							if (verifier.verify(result)) {
-								Log.fine("gLV the returned answer verifies");
+								if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+									Log.fine(Log.FAC_IO, "gLV the returned answer verifies");
 								verifyDone = true;
 							} else {
-								Log.fine("gLV this answer did not verify either...  try again");
+								if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+									Log.fine(Log.FAC_IO, "gLV this answer did not verify either...  try again");
 							}
 						} else {
 							//result is null, we didn't find a verifiable answer
-							Log.fine("gLV did not get a verifiable answer back");
+							if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+								Log.fine(Log.FAC_IO, "gLV did not get a verifiable answer back");
 							verifyDone = true;
 						}
-					}	
-					//TODO  if this is the latest version and we exclude it, we might not have anything to send back...  we should reset the starting version
-					if (Log.isLoggable(Level.FINE)) {
-						Log.fine("the latest version did not verify and we might not have anything to send back...");
-						if (lastResult == null)
-							Log.fine("lastResult is null...  we have nothing to send back");
-						else
-							Log.fine("lastResult is NOT null, we have something to send back!");
 					}
-				} 
+					//TODO  if this is the latest version and we exclude it, we might not have anything to send back...  we should reset the starting version
+					if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+						Log.fine(Log.FAC_IO, "the latest version did not verify and we might not have anything to send back...");
+						if (lastResult == null)
+							Log.fine(Log.FAC_IO, "lastResult is null...  we have nothing to send back");
+						else
+							Log.fine(Log.FAC_IO, "lastResult is NOT null, we have something to send back!");
+					}
+				}
 				if (result!=null) {
 					//else {
 					//it verified!  are we done?
-					
+
 					//first check if we need to get the first segment...
 					if (findASegment) {
 						//yes, we need to have the first segment....
 						// Now we know the version. Did we luck out and get first block?
 						if (VersioningProfile.isVersionedFirstSegment(prefix, result, startingSegmentNumber)) {
-							if (Log.isLoggable(Level.FINE))
-								Log.fine("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
+							if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+								Log.fine(Log.FAC_IO, "getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
 						} else {
 							//not the first segment...
-							
+
 							// This isn't the first block. Might be simply a later (cached) segment, or might be something
 							// crazy like a repo_start_write. So what we want is to get the version of this new block -- if getLatestVersion
 							// is doing its job, we now know the version we want (if we already knew that, we called super.getFirstBlock
@@ -729,31 +735,33 @@ public class VersioningProfile implements CCNProfile {
 							// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
 							// right, that should be the right thing.
 							ContentName notFirstBlockVersion = result.name().cut(versionedLength);
-							Log.info("CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
+							if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+								Log.info(Log.FAC_IO, "CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
 							// this will verify
-														
+
 							result = SegmentationProfile.getSegment(notFirstBlockVersion, startingSegmentNumber, null, timeout - elapsedTime, verifier, handle); // now that we have the latest version, go back for the first block.
 							//if this isn't the first segment...  then we should exclude it.  otherwise, we can use it!
 							if (result == null) {
 								//we couldn't get a new segment...
-								Log.fine("gLV could not get the first segment of the version we just found...  should exclude the version");
+								if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+									Log.fine(Log.FAC_IO, "gLV could not get the first segment of the version we just found...  should exclude the version");
 								//excludes = addVersionToExcludes(excludes, startingVersion);
 								excludeList = addVersionToExcludes(excludeList, notFirstBlockVersion);
 							}
 						}
-						
-						
+
+
 					} else {
 						//no need to get the first segment!
 						//this is already verified!
 					}
-					
+
 					//if result is not null, we really have something to try since it also verified
 					if (result != null) {
-					
+
 						//this could be our answer...  set to lastResult and see if we have time to do better
 						lastResult = result;
-					
+
 						if (noTimeout) {
 							//we want to keep trying for something new
 							//we don't want to wait forever...  we have something to hand back.  try one more time and then hand back what we have
@@ -761,7 +769,8 @@ public class VersioningProfile implements CCNProfile {
 							remainingTime = attemptTimeout;
 						} else if (timeout == 0) {
 							//caller just wants the first answer...
-							Log.fine("gLV we got an answer and the caller wants the first thing we found, returning");
+							if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+								Log.fine(Log.FAC_IO, "gLV we got an answer and the caller wants the first thing we found, returning");
 							return result;
 						} else if (remainingTime > 0) {
 							//we still have time to try for a better answer, but we shouldn't wait the full timeout
@@ -775,45 +784,50 @@ public class VersioningProfile implements CCNProfile {
 								//we already tried again for a better answer...  but we got something again...  try again,
 								//since the remaining time is less than the attempt time, don't adjust
 							}
-							Log.fine("gLV we still have time to try for a better answer: remaining time = {0}", remainingTime);
+							if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+								Log.fine(Log.FAC_IO, "gLV we still have time to try for a better answer: remaining time = {0}", remainingTime);
 						} else {
-							Log.fine("gLV time is up, return what we have");
+							if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+								Log.fine(Log.FAC_IO, "gLV time is up, return what we have");
 							//attempts = SystemConfiguration.GET_LATEST_VERSION_ATTEMPTS;
 						}
-					
-						
+
+
 					} else {
 						//result is null
 						//will be handled below
 					}
 				}//the result verified
 			} //we got something back
-			
+
 			if (result == null) {
-				
+
 				//This check is added for the case where the underlying handle.get call did not respect the timeout.
 				//This should not happen in regular operation, but is a current behavior by an overridden handle
 				//for junit testing.  For now, log at a warning and return the object to avoid slowing the test suite.
 				if (respondTime == 0) {
-					Log.warning("gLV: handle.get returned null and did not wait the full timeout time for the object (timeout: {0} responseTime: {1}", timeout, respondTime);
+					Log.warning(Log.FAC_IO, "gLV: handle.get returned null and did not wait the full timeout time for the object (timeout: {0} responseTime: {1}", timeout, respondTime);
 					return null;
 				}
-				
-				Log.fine("gLV we didn't get anything");
-				Log.info("getFirstBlockOfLatestVersion: no block available for later version of {0}", startingVersion);
+
+				// we didn't get anything
+				if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "getFirstBlockOfLatestVersion: no block available for later version of {0}", startingVersion);
 				//we didn't get a new version...  we can return the last one we received if it isn't null.
 				if (lastResult!=null) {
-					if (Log.isLoggable(Level.FINE)) {
-						Log.fine("gLV returning the last result that wasn't null... ");
-						Log.fine("gLV returning: {0}",lastResult.name());
+					if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+						Log.fine(Log.FAC_IO, "gLV returning the last result that wasn't null... ");
+						Log.fine(Log.FAC_IO, "gLV returning: {0}",lastResult.name());
 					}
 					return lastResult;
 				}
 				else {
-					Log.fine("gLV we didn't get anything, and we haven't had anything at all... try with remaining long timeout");
+					if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+						Log.fine(Log.FAC_IO, "gLV we didn't get anything, and we haven't had anything at all... try with remaining long timeout");
 					//if remaining time is done..  then we should return null
 					if (remainingTime > 0) {
-						Log.fine("we did not get anything back from our interest, but we still have time remaining.  timeout: {0} elapsedTime {1} remainingTime {2}", timeout, elapsedTime, remainingTime);
+						if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+							Log.fine(Log.FAC_IO, "we did not get anything back from our interest, but we still have time remaining.  timeout: {0} elapsedTime {1} remainingTime {2}", timeout, elapsedTime, remainingTime);
 						timeout = remainingTime;
 					}
 				}
@@ -824,13 +838,13 @@ public class VersioningProfile implements CCNProfile {
 				startingVersion = SegmentationProfile.segmentRoot(result.name());
 		}
 		if(result!=null) {
-			if (Log.isLoggable(Level.FINE))
-				Log.fine("gLV returning: {0}", result.name());
+			if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+				Log.fine(Log.FAC_IO, "gLV returning: {0}", result.name());
 		}
 		return result;
 	}
-	
-	
+
+
 	/**
 	 * Find a particular segment of the latest version of a name
 	 * 		- if no version given, gets the desired segment of the latest version
@@ -849,17 +863,17 @@ public class VersioningProfile implements CCNProfile {
 	 *   		This block is verified.
 	 * @throws IOException
 	 */
-	public static ContentObject getFirstBlockOfLatestVersion(ContentName startingVersion, 
-															 Long startingSegmentNumber, 
-															 PublisherPublicKeyDigest publisher, 
-															 long timeout, 
+	public static ContentObject getFirstBlockOfLatestVersion(ContentName startingVersion,
+															 Long startingSegmentNumber,
+															 PublisherPublicKeyDigest publisher,
+															 long timeout,
 															 ContentVerifier verifier,
 															 CCNHandle handle) throws IOException {
-		
+
 		return getLatestVersion(startingVersion, publisher, timeout, verifier, handle, startingSegmentNumber, true);
-		
+
 	}
-	
+
 	/**
 	 * Single-attempt function to get the first version found; and if there are multiple
 	 * versions at the network point where that version is found, it will retrieve
@@ -872,26 +886,26 @@ public class VersioningProfile implements CCNProfile {
 	 * if one is available (i.e. each response will be the latest version
 	 * a given responder knows about. Further queries will move past that responder to other responders,
 	 * who may have newer information.)
-	 *  
+	 *
 	 * @param name If the name ends in a version then this method explicitly looks for a newer version
-	 * than that, and will time out if no such later version exists. If the name does not end in a 
+	 * than that, and will time out if no such later version exists. If the name does not end in a
 	 * version then this call just looks for the latest version.
 	 * @param publisher Currently unused, will limit query to a specific publisher.
 	 * @param timeout  This is the time to wait until you get any response.  If nothing is returned, this method will return null.
 	 * @param verifier Used to verify the returned content objects
 	 * @param handle CCNHandle used to get the latest version
-	 * @return A ContentObject with the latest version, or null if the query timed out. 
+	 * @return A ContentObject with the latest version, or null if the query timed out.
 	 * @result Returns a matching ContentObject, verified.
 	 * @throws IOException
 	 */
-	public static ContentObject getAnyLaterVersion(ContentName startingVersion, 
-											     PublisherPublicKeyDigest publisher, 
-												 long timeout, 
+	public static ContentObject getAnyLaterVersion(ContentName startingVersion,
+											     PublisherPublicKeyDigest publisher,
+												 long timeout,
  												 ContentVerifier verifier,
 												 CCNHandle handle) throws IOException {
-		
+
 		return getLocalLatestVersion(startingVersion, publisher, timeout, verifier, handle, null, false);
-		
+
 	}
 
 	/**
@@ -914,10 +928,10 @@ public class VersioningProfile implements CCNProfile {
 	 *   		This block is verified.
 	 * @throws IOException
 	 */
-	public static ContentObject getFirstBlockOfAnyLaterVersion(ContentName startingVersion, 
-			Long startingSegmentNumber, 
-			PublisherPublicKeyDigest publisher, 
-			long timeout, 
+	public static ContentObject getFirstBlockOfAnyLaterVersion(ContentName startingVersion,
+			Long startingSegmentNumber,
+			PublisherPublicKeyDigest publisher,
+			long timeout,
 			ContentVerifier verifier,
 			CCNHandle handle) throws IOException {
 
@@ -925,7 +939,7 @@ public class VersioningProfile implements CCNProfile {
 
 	}
 
-	protected static ContentObject getLocalLatestVersion(ContentName startingVersion, 
+	protected static ContentObject getLocalLatestVersion(ContentName startingVersion,
 			  PublisherPublicKeyDigest publisher,
 			  long timeout,
 			  ContentVerifier verifier,
@@ -933,13 +947,14 @@ public class VersioningProfile implements CCNProfile {
 			  Long startingSegmentNumber,
 			  boolean findASegment) throws IOException {
 
-		Log.info("getLocalLatestVersion: getting version later than {0} called with timeout: {1}", startingVersion, timeout);
-		
+		if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+			Log.info(Log.FAC_IO, "getLocalLatestVersion: getting version later than {0} called with timeout: {1}", startingVersion, timeout);
+
 		if (null == verifier) {
 			// TODO DKS normalize default behavior
 			verifier = handle.keyManager().getDefaultVerifier();
 		}
-		
+
 		//TODO  This timeout is set to SystemConfiguration.MEDIUM_TIMEOUT to work around the problem
 		//in ccnd where some interests take >300ms (and sometimes longer, have seen periodic delays >800ms)
 		//when that bug is found and fixed, this can be reduced back to the SHORT_TIMEOUT.
@@ -953,28 +968,28 @@ public class VersioningProfile implements CCNProfile {
 		}
 
 		long stopTime = System.currentTimeMillis() + timeout;
-		
+
 		ContentName prefix = startingVersion;
 		if (hasTerminalVersion(prefix)) {
 			prefix = startingVersion.parent();
 		}
 		int versionedLength = prefix.count() + 1;
-		
+
 		ContentObject result = null;
-		
+
 		ArrayList<byte[]> excludeList = new ArrayList<byte[]>();
-		
-		while ((null == result) && 
+
+		while ((null == result) &&
 			   ((timeout == SystemConfiguration.NO_TIMEOUT) || (System.currentTimeMillis() < stopTime))) {
 
 			Interest getLatestInterest = null;
-			
+
 			if (findASegment) {
 				getLatestInterest = firstBlockLatestVersionInterest(startingVersion, publisher);
 			} else {
 				getLatestInterest = latestVersionInterest(startingVersion, null, publisher);
 			}
-			
+
 			if (excludeList.size() > 0) {
 				//we have explicit excludes, add them to this interest
 				byte [][] e = new byte[excludeList.size()][];
@@ -985,9 +1000,9 @@ public class VersioningProfile implements CCNProfile {
 			result = handle.get(getLatestInterest, timeout);
 
 			if (null != result) {
-				if (Log.isLoggable(Level.INFO))
-					Log.info("gLLV getLocalLatestVersion: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());
-			
+				if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "gLLV getLocalLatestVersion: retrieved latest version object {0} type: {1}", result.name(), result.signedInfo().getTypeName());
+
 				//did it verify?
 				//if it doesn't verify, we need to try harder to get a different content object (exclude this digest)
 				//make this a loop?
@@ -995,57 +1010,61 @@ public class VersioningProfile implements CCNProfile {
 					// DKS TODO FIX -- this is incorrect; even if this one fails to verify it doesn't
 					// mean that the version is bad, if you do this attacker can shadow good versions with bad
 					//excludes = addVersionToExcludes(excludes, result.name());
-					Log.fine("gLLV result did not verify, trying to find a verifiable answer");
+					if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+						Log.fine(Log.FAC_IO, "gLLV result did not verify, trying to find a verifiable answer");
 					excludeList = addVersionToExcludes(excludeList, result.name());
 					//note:  need to use the full name, but want to exclude this particular digest.  This means we can't cut off the segment marker.
 					//Interest retry = new Interest(SegmentationProfile.segmentRoot(result.name()), publisher);
 					//retry.maxSuffixComponents(1);
 					Interest retry = new Interest(result.name(), publisher);
-					
+
 					boolean verifyDone = false;
 					while (!verifyDone) {
 						if (retry.exclude() == null)
 							retry.exclude(new Exclude());
-						
+
 						retry.exclude().add(new byte[][] {result.digest()});
-						if (Log.isLoggable(Level.FINE)) {
-							Log.fine("gLLV result did not verify!  doing retry!! {0}", retry);
-							Log.fine("gLLVTime sending retry interest at {0}", System.currentTimeMillis());
+						if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
+							Log.fine(Log.FAC_IO, "gLLV result did not verify!  doing retry!! {0}", retry);
+							Log.fine(Log.FAC_IO, "gLLVTime sending retry interest at {0}", System.currentTimeMillis());
 						}
-						
+
 						result = handle.get(retry, attemptTimeout);
-						
+
 						if (result!=null) {
-							if (Log.isLoggable(Level.FINE))
-								Log.fine("gLLV we got something back: {0}", result.name());
+							if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+								Log.fine(Log.FAC_IO, "gLLV we got something back: {0}", result.name());
 							if(verifier.verify(result)) {
-								Log.fine("gLLV the returned answer verifies");
+								if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+									Log.fine(Log.FAC_IO, "gLLV the returned answer verifies");
 								verifyDone = true;
 							} else {
-								Log.fine("gLLV this answer did not verify either...  try again");
+								if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+									Log.fine(Log.FAC_IO, "gLLV this answer did not verify either...  try again");
 							}
 						} else {
 							//result is null, we didn't find a verifiable answer
-							Log.fine("gLLV did not get a verifiable answer back");
+							if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+								Log.fine(Log.FAC_IO, "gLLV did not get a verifiable answer back");
 							verifyDone = true;
 						}
-					}	
+					}
 					//TODO  if this is the latest version and we exclude it, we might not have anything to send back...  we should reset the starting version
-				} 
+				}
 				if (result != null) {
 					//else {
 					//it verified!  are we done?
-					
+
 					//first check if we need to get the first segment...
 					if (findASegment) {
 						//yes, we need to have the first segment....
 						// Now we know the version. Did we luck out and get first block?
 						if (VersioningProfile.isVersionedFirstSegment(prefix, result, startingSegmentNumber)) {
-							if (Log.isLoggable(Level.FINE))
-								Log.fine("getFirstBlockOfLatestVersion: got first block on first try: " + result.name());
+							if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+								Log.fine(Log.FAC_IO, "getFirstBlockOfLatestVersion: got first block on first try: {0}", result.name());
 						} else {
 							//not the first segment...
-							
+
 							// This isn't the first block. Might be simply a later (cached) segment, or might be something
 							// crazy like a repo_start_write. So what we want is to get the version of this new block -- if getLatestVersion
 							// is doing its job, we now know the version we want (if we already knew that, we called super.getFirstBlock
@@ -1054,22 +1073,24 @@ public class VersioningProfile implements CCNProfile {
 							// So chop off the new name just after the (first) version, and use that. If getLatestVersion is working
 							// right, that should be the right thing.
 							ContentName notFirstBlockVersion = result.name().cut(versionedLength);
-							Log.info("CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
+							if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+								Log.info(Log.FAC_IO, "CHILD SELECTOR FAILURE: getFirstBlockOfLatestVersion: Have version information, now querying first segment of " + startingVersion);
 							// this will verify
-							
+
 							//don't count this against the gLV timeout.
-							
+
 							result = SegmentationProfile.getSegment(notFirstBlockVersion, startingSegmentNumber, null, timeout, verifier, handle); // now that we have the latest version, go back for the first block.
 							//if this isn't the first segment...  then we should exclude it.  otherwise, we can use it!
 							if(result == null) {
 								//we couldn't get a new segment...
-								Log.fine("gLV could not get the first segment of the version we just found...  should exclude the version");
+								if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+									Log.fine(Log.FAC_IO, "gLV could not get the first segment of the version we just found...  should exclude the version");
 								//excludes = addVersionToExcludes(excludes, startingVersion);
 								excludeList = addVersionToExcludes(excludeList, notFirstBlockVersion);
 							}
 						}
-						
-						
+
+
 					} else {
 						//no need to get the first segment!
 						//this is already verified!
@@ -1077,10 +1098,10 @@ public class VersioningProfile implements CCNProfile {
 				} //the result verified
 			} //we got something back
 		}
-		
+
 		if (result != null) {
-			if (Log.isLoggable(Level.FINE))
-				Log.fine("gLLV returning: {0}", result.name());
+			if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+				Log.fine(Log.FAC_IO, "gLLV returning: {0}", result.name());
 		}
 		return result;
 	}
@@ -1090,28 +1111,28 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static boolean isVersionedFirstSegment(ContentName desiredName, ContentObject potentialFirstSegment, Long startingSegmentNumber) {
 		if ((null != potentialFirstSegment) && (SegmentationProfile.isSegment(potentialFirstSegment.name()))) {
-			if (Log.isLoggable(Level.FINER))
-				Log.finer("is " + potentialFirstSegment.name() + " a first segment of " + desiredName);
+			if (Log.isLoggable(Log.FAC_IO, Level.FINER))
+				Log.finer(Log.FAC_IO, "is {0} a first segment of {1}", potentialFirstSegment.name(), desiredName);
 			// In theory, the segment should be at most a versioning component different from desiredName.
 			// In the case of complex segmented objects (e.g. a KeyDirectory), where there is a version,
 			// then some name components, then a segment, desiredName should contain all of those other
 			// name components -- you can't use the usual versioning mechanisms to pull first segment anyway.
 			if (!desiredName.isPrefixOf(potentialFirstSegment.name())) {
-				if (Log.isLoggable(Level.FINE))
-					Log.fine("Desired name :" + desiredName + " is not a prefix of segment: " + potentialFirstSegment.name());
+				if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+					Log.fine(Log.FAC_IO, "Desired name : {0} is not a prefix of segment: {1}", desiredName, potentialFirstSegment.name());
 				return false;
 			}
 			int difflen = potentialFirstSegment.name().count() - desiredName.count();
 			if (difflen > 2) {
-				if (Log.isLoggable(Level.FINE))
-					Log.fine("Have " + difflen + " extra components between " + potentialFirstSegment.name() + " and desired " + desiredName);
+				if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+					Log.fine(Log.FAC_IO, "Have {0} extra components between {1} and desired {2}", difflen,  potentialFirstSegment.name(), desiredName);
 				return false;
 			}
 			// Now need to make sure that if the difference is more than 1, that difference is
 			// a version component.
 			if ((difflen == 2) && (!isVersionComponent(potentialFirstSegment.name().component(potentialFirstSegment.name().count()-2)))) {
-				if (Log.isLoggable(Level.FINE))
-					Log.fine("The " + difflen + " extra component between " + potentialFirstSegment.name() + " and desired " + desiredName + " is not a version.");
+				if (Log.isLoggable(Log.FAC_IO, Level.FINE))
+					Log.fine(Log.FAC_IO, "The {0} extra component between {1} and desired {2} is not a version.", difflen, potentialFirstSegment.name(), desiredName);
 			}
 			if ((null != startingSegmentNumber) && (SegmentationProfile.baseSegment() != startingSegmentNumber)) {
 				return (startingSegmentNumber.longValue() == SegmentationProfile.getSegmentNumber(potentialFirstSegment.name()));
@@ -1128,19 +1149,19 @@ public class VersioningProfile implements CCNProfile {
 	 * @param name component to add to the exclude list
 	 * @return updated exclude list
 	 */
-	
+
 	private static ArrayList<byte[]> addVersionToExcludes(ArrayList<byte[]> excludeList, ContentName name) {
 		try {
 			excludeList.add(VersioningProfile.getLastVersionComponent(name));
-			
+
 		} catch (VersionMissingException e) {
-			Log.warning("failed to exclude content object version that did not verify: {0}",name);
+			Log.warning(Log.FAC_IO, "failed to exclude content object version that did not verify: {0}",name);
 		}
 		return excludeList;
 	}
 
 	public static byte[] versionComponentFromStripped(byte[] bs) {
-		if (null == bs) 
+		if (null == bs)
 			return null;
 		byte [] versionComponent = new byte[bs.length + 1];
 		versionComponent[0] = VERSION_MARKER;
@@ -1149,7 +1170,7 @@ public class VersioningProfile implements CCNProfile {
 	}
 
 	public static byte[] stripVersionMarker(byte[] version) throws VersionMissingException {
-		if (null == version) 
+		if (null == version)
 			return null;
 		if (VERSION_MARKER != version[0]) {
 			throw new VersionMissingException("This is not a version component!");
@@ -1158,5 +1179,5 @@ public class VersioningProfile implements CCNProfile {
 		System.arraycopy(version, 1, stripped, 0, stripped.length);
 		return stripped;
 	}
-	
+
 }
