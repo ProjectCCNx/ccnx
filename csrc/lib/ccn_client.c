@@ -132,8 +132,11 @@ static void ccn_initiate_prefix_reg(struct ccn *,
 static void finalize_pkey(struct hashtb_enumerator *e);
 static void finalize_keystore(struct hashtb_enumerator *e);
 static int ccn_pushout(struct ccn *h);
-static void update_interest_filter_flags(struct ccn *, struct interest_filter *, int);
-static int update_composite_handler(struct ccn *, struct interest_filter *, struct ccn_closure *, int);
+static void update_ifilt_flags(struct ccn *, struct interest_filter *, int);
+static int update_multifilt(struct ccn *,
+                            struct interest_filter *,
+                            struct ccn_closure *,
+                            int);
 /**
  * Compare two timvals
  */
@@ -701,9 +704,9 @@ ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
     if (res >= 0) {
         entry = e->data;
         if (entry->action != NULL && action != NULL && action != entry->action)
-            res = update_composite_handler(h, entry, action, forw_flags);
+            res = update_multifilt(h, entry, action, forw_flags);
         else {
-            update_interest_filter_flags(h, entry, forw_flags);
+            update_ifilt_flags(h, entry, forw_flags);
             ccn_replace_handler(h, &(entry->action), action);
         }
         if (entry->action == NULL)
@@ -722,7 +725,7 @@ ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
  * If action is NULL, any existing filter for the prefix is removed.
  * Note that this may have undesirable effects in applications that share
  * the same handle for independently operating subcompononents.
- * See update_interest_filter_flags for a way to deal with this.
+ * See ccn_set_interest_filter_with_flags() for a way to deal with this.
  * 
  * The contents of namebuf are copied as needed.
  *
@@ -751,7 +754,7 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
  * Change forwarding flags, triggering a refresh as needed.
  */
 static void
-update_interest_filter_flags(struct ccn *h, struct interest_filter *f, int forw_flags)
+update_ifilt_flags(struct ccn *h, struct interest_filter *f, int forw_flags)
 {
     if (f->flags != forw_flags) {
         memset(&f->expiry, 0, sizeof(&f->expiry));
@@ -764,7 +767,7 @@ update_interest_filter_flags(struct ccn *h, struct interest_filter *f, int forw_
  * Take care of multiple actions registered on one prefix
  */
 static int
-update_composite_handler(struct ccn *h,
+update_multifilt(struct ccn *h,
                          struct interest_filter *f,
                          struct ccn_closure *action,
                          int forw_flags)
