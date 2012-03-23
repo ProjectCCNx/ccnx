@@ -465,13 +465,17 @@ public class CCNFlowControl implements CCNInterestHandler {
 				match = _unmatchedInterests.removeMatch(co);
 			}
 			if (match != null) {
-				Log.finest(Log.FAC_IO, "Found pending matching interest for {0}, putting to network.", co.name());
+				if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
+					Log.finest(Log.FAC_IO, "Found pending matching interest for {0}, putting to network.", co.name());
 				_handle.put(co);
 				// afterPutAction may immediately remove the object from _holdingArea or retain it
 				// depending upon the buffer drain policy being implemented.
 				synchronized (_holdingArea) {
 					afterPutAction(co);
 				}
+			} else {
+				if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
+					Log.finest(Log.FAC_IO, "No match found for {0}", co.name());
 			}
 		} else // Flow control disabled entirely: put to network immediately
 			_handle.put(co);
