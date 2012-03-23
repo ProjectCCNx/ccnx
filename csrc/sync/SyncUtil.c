@@ -244,7 +244,7 @@ SyncIsName(const struct ccn_charbuf *cb) {
     return 0;
 }
 
-int
+extern int
 SyncComponentCount(const struct ccn_charbuf *name) {
     struct ccn_buf_decoder ds;
     struct ccn_buf_decoder *d = SyncInitDecoderFromCharbuf(&ds, name, 0);
@@ -341,7 +341,7 @@ SyncPatternMatch(const struct ccn_charbuf *pattern,
     return (-1);
 }
 
-int
+extern int
 SyncPrefixMatch(const struct ccn_charbuf *prefix,
                 const struct ccn_charbuf *name,
                 int start) {
@@ -515,7 +515,7 @@ SyncNameForIndexbuf(const unsigned char *buf, struct ccn_indexbuf *comps) {
     return name;
 }
 
-struct ccn_charbuf *
+extern struct ccn_charbuf *
 SyncUriForName(struct ccn_charbuf *name) {
     struct ccn_charbuf *ret = ccn_charbuf_create();
     ccn_uri_append(ret, name->buf, name->length, 0);
