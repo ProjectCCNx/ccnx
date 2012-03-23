@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -113,6 +113,7 @@ public class Log {
 	public static final int FAC_USER14		= 27;
 	public static final int FAC_USER15		= 28;
 	public static final int FAC_TEST		= 29;	// For Junit tests
+	public static final int FAC_SEARCH		= 30;	// name enumeration, path finder
 
 
 	protected static final String [] FAC_NAME = {
@@ -146,6 +147,7 @@ public class Log {
 		"ccnx.User14",
 		"ccnx.User15",
 		"ccnx.Test",
+		"ccnx.Search",
 	};
 
 
@@ -215,6 +217,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV + "_USER14",
 		DEFAULT_LOG_LEVEL_ENV + "_USER15",
 		DEFAULT_LOG_LEVEL_ENV + "_TEST",
+		DEFAULT_LOG_LEVEL_ENV + "_SEARCH",
 	};
 
 	public static final Level [] FAC_LOG_LEVEL_DEFAULT = {
@@ -248,6 +251,7 @@ public class Log {
 		Level.INFO,		// User14
 		Level.INFO,		// User15
 		Level.INFO,		// Test
+		Level.INFO,		// Search
 	};
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];
