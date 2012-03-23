@@ -27,8 +27,10 @@
 #include <ccn/digest.h>
 #include <ccn/indexbuf.h>
 #include <ccn/schedule.h>
+#include <ccn/uri.h>
 #include <ccnr/ccnr_msg.h>
 
+#include "SyncMacros.h"
 #include "SyncPrivate.h"
 #include "SyncActions.h"
 #include "SyncHashCache.h"
@@ -111,7 +113,7 @@ SyncAddRoot(struct SyncBaseStruct *base,
     root->base = base;
     root->priv = NEW_STRUCT(1, SyncRootPrivate);
     root->priv->stats = NEW_STRUCT(1, SyncRootStats);
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     root->priv->lastAdvise = now;
     root->priv->lastUpdate = now;
     root->priv->stablePoint = CCNR_NULL_HWM;

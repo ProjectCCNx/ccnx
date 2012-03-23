@@ -20,7 +20,7 @@
 #ifndef CCN_SyncHashCache
 #define CCN_SyncHashCache
 
-#include "SyncUtil.h"
+#include <ccnr/ccnr_private.h>
 
 struct SyncRootStruct; // defined in SyncRoot
 
@@ -55,9 +55,9 @@ struct SyncHashCacheEntry {
     struct ccn_charbuf *hash;           /**< hash used to reach this entry */
     struct SyncNodeComposite *ncL;      /**< the local node in memory */
     struct SyncNodeComposite *ncR;      /**< some remote node in memory */
-    sync_time lastUsed;                 /**< time when entry last used in compare */
-    sync_time lastLocalFetch;           /**< time when local entry last fetched */
-    sync_time lastRemoteFetch;          /**< time when remote entry last fetched */
+    int64_t lastUsed;                 /**< time when entry last used in compare */
+    int64_t lastLocalFetch;           /**< time when local entry last fetched */
+    int64_t lastRemoteFetch;          /**< time when remote entry last fetched */
     ccnr_hwm stablePoint;               /**< stable point (roots only) */
 };
 

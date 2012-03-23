@@ -34,6 +34,7 @@
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
+#include <ccn/uri.h>
 
 
 static int freshLimit = 30;             // freshness limit, in seconds
@@ -65,7 +66,7 @@ SyncCheckDecodeErr(struct ccn_buf_decoder *d) {
     return d->decoder.state < 0;
 }
 
-extern sync_time
+extern int64_t
 SyncCurrentTime(void) {
     const int64_t M = 1000*1000;
     struct timeval now = {0};
@@ -74,7 +75,7 @@ SyncCurrentTime(void) {
 }
 
 extern int64_t
-SyncDeltaTime(sync_time mt1, sync_time mt2) {
+SyncDeltaTime(int64_t mt1, int64_t mt2) {
     return mt2-mt1;
 }
 

@@ -20,14 +20,14 @@
 #ifndef CCN_SyncRoot
 #define CCN_SyncRoot
 
-#include <ccn/charbuf.h>
-#include "SyncBase.h"
+#include <ccn/ccn.h>
 
 struct SyncHashCacheHead;  // defined in SyncHashCache.h
 struct SyncNameAccum;      // defined in SyncUtil.h
 struct SyncActionData;     // defined in SyncActions.h
 struct SyncCompareData;    // defined in SyncActions.c
 struct SyncUpdateData;     // defined in SyncActions.c
+struct SyncBaseStruct;     // defined in SyncBase.h
 struct SyncRootPrivate;    // private to SyncRoot.c
 
 /**

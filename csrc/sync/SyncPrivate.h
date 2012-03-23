@@ -47,8 +47,8 @@ struct SyncPrivate {
     int nStoring;
     ccnr_hwm stableTarget;
     ccnr_hwm stableStored;
-    sync_time lastStable;
-    sync_time lastCacheClean;
+    int64_t lastStable;
+    int64_t lastCacheClean;
     int sliceEnum;
     int sliceBusy;
     int fauxErrorTrigger;
@@ -67,7 +67,7 @@ struct SyncPrivate {
 struct SyncHashInfoList {
     struct SyncHashInfoList *next;
     struct SyncHashCacheEntry *ce;
-    sync_time lastSeen;
+    int64_t lastSeen;
 };
 
 struct SyncRootStats {
@@ -107,7 +107,7 @@ struct SyncRootDeltas {
     struct SyncRootDeltas *next;        /*< link to next update */
     struct SyncHashCacheEntry *ceStart; /*< entry for start hash (may be NULL) */
     struct SyncHashCacheEntry *ceStop;  /*< entry for end hash */
-    sync_time when;                     /*< when created */
+    int64_t when;                       /*< when created */
     int deltasCount;                    /*< number of names in coding */
     int closed;                         /*< 1 if coding is complete */
     struct ccn_charbuf *coding;         /*< coding for updates */
@@ -124,12 +124,12 @@ struct SyncRootPrivate {
     struct SyncNameAccum *remoteDeltas; /*< delta names from remote sources */
     int syncScope;                      /*< scope to be used for sync */
     int sliceBusy;
-    ccnr_hwm highWater;                 /*< high water via SyncNotifyContent */
-    ccnr_hwm stablePoint;               /*< stable point for this root */
-    sync_time lastAdvise;
-    sync_time lastUpdate;
-    sync_time lastStable;
-    sync_time lastHashChange;
+    ccnr_hwm highWater;             // high water via SyncNotifyContent
+    ccnr_hwm stablePoint;           // stable point for this root
+    int64_t lastAdvise;
+    int64_t lastUpdate;
+    int64_t lastStable;
+    int64_t lastHashChange;
     int adviseNeed;
     struct SyncHashCacheEntry *lastLocalSent;
     size_t currentSize;

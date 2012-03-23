@@ -20,9 +20,9 @@
 #ifndef CCN_SyncTreeWorker
 #define CCN_SyncTreeWorker
 
-#include "SyncNode.h"
-#include "SyncUtil.h"
 #include "SyncHashCache.h"
+
+struct SyncNameAccum;
 
 /**
  * SyncTreeWorker maintains the state for walking a local sync tree root,
