@@ -724,7 +724,7 @@ ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
  *
  * If action is NULL, any existing filter for the prefix is removed.
  * Note that this may have undesirable effects in applications that share
- * the same handle for independently operating subcompononents.
+ * the same handle for independently operating subcomponents.
  * See ccn_set_interest_filter_with_flags() for a way to deal with this.
  * 
  * The contents of namebuf are copied as needed.
@@ -762,18 +762,231 @@ update_ifilt_flags(struct ccn *h, struct interest_filter *f, int forw_flags)
     }
 }
 
+/* * * multifilt * * */
 
 /**
- * Take care of multiple actions registered on one prefix
+ * Item in the array of interest filters associated with one prefix
+ */
+struct multifilt_item {
+    struct ccn_closure *action;
+    int forw_flags;
+};
+
+/**
+ * Data for the multifilt case
+ *
+ * This wraps multiple interest filters up as a single one, so they
+ * can share the single slot in a struct interest_filter.
+ */
+struct multifilt {
+    struct ccn_closure me;
+    int n;                      /**< Number of elements in a */
+    struct multifilt_item *a;   /**< The filters that are to be combined */
+};
+
+/* Prototypes */
+static enum ccn_upcall_res handle_multifilt(struct ccn_closure *selfp,
+                                            enum ccn_upcall_kind kind,
+                                            struct ccn_upcall_info *info);
+static int build_multifilt_array(struct ccn *h,
+                                 struct multifilt_item **ap,
+                                 int n,
+                                 struct ccn_closure *action,
+                                 int forw_flags);
+static void destroy_multifilt_array(struct ccn *h,
+                                    struct multifilt_item **ap,
+                                    int n);
+
+/**
+ * Take care of the case of multiple filters registered on one prefix
+ *
+ * Avoid calling when either action or f->action is NULL.
  */
 static int
 update_multifilt(struct ccn *h,
-                         struct interest_filter *f,
-                         struct ccn_closure *action,
-                         int forw_flags)
+                 struct interest_filter *f,
+                 struct ccn_closure *action,
+                 int forw_flags)
 {
-    return(NOTE_ERR(h, ENOSYS));
+    struct multifilt *md = NULL;
+    struct multifilt_item *a = NULL;
+    int flags;
+    int i;
+    int n = 0;
+    
+    if (action->p == &handle_multifilt) {
+        /* This should never happen. */
+        abort();
+    }
+    if (f->action->p == &handle_multifilt) {
+        /* Already have a multifilt */
+        md = f->action->data;
+        if (md->me.data != md)
+            abort();
+        a = md->a;
+    }
+    else {
+        /* Make a new multifilt, with 2 slots */
+        a = calloc(2, sizeof(&a));
+        if (a == NULL)
+            return(NOTE_ERRNO(h));
+        md = calloc(1, sizeof(&md));
+        if (md == NULL) {
+            free(a);
+            return(NOTE_ERRNO(h));
+        }
+        md->me.p = &handle_multifilt;
+        md->me.data = &md;
+        md->n = 2;
+        md->a = a;
+        ccn_replace_handler(h, &(a[0].action), f->action);
+        a[0].forw_flags = f->flags;
+        ccn_replace_handler(h, &(a[1].action), action);
+        a[0].forw_flags = 0;
+    }
+    /* Search for the action */
+    for (i = 0; i < n; i++) {
+        if (a[i].action == action) {
+            a[i].forw_flags = forw_flags;
+            if (forw_flags == 0) {
+                ccn_replace_handler(h, &(a[i].action), NULL);
+                action = NULL;
+            }
+            goto Finish;
+        }
+    }
+    /* Not there, but if the flags are 0 we do not need to remember action */
+    if (forw_flags == 0) {
+        action->refcount++;
+        ccn_replace_handler(h, &action, NULL);
+        goto Finish;
+    }
+    /* Need to build a new array */
+    n = build_multifilt_array(h, &a, n, action, forw_flags);
+    if (n < 0)
+        return(n);
+    destroy_multifilt_array(h, &md->a, md->n);
+    md->a = a;
+    md->n = n;
+Finish:
+    /* The only thing left to do is to combine the forwarding flags */
+    for (i = 0, flags = 0; i < n; i++)
+        flags |= a[i].forw_flags;
+    update_ifilt_flags(h, f, flags);
+    return(0);
 }
+
+/**
+ * Replace *ap with a copy, perhaps with one additional element
+ *
+ * The old array is not modified.  Empty slots are not copied.
+ *
+ * @returns new count, or -1 in case of an error.
+ */
+static int
+build_multifilt_array(struct ccn *h,
+                      struct multifilt_item **ap,
+                      int n,
+                      struct ccn_closure *action,
+                      int forw_flags)
+{
+    struct multifilt_item *a = NULL; /* old array */
+    struct multifilt_item *c = NULL; /* new array */
+    int i, j, m;
+    
+    a = *ap;
+    /* Determine how many slots we will need */
+    for (m = 0, i = 0; i < n; i++) {
+        if (a[i].action != NULL)
+            m++;
+    }
+    if (action != NULL)
+        m++;
+    if (m == 0) {
+        *ap = NULL;
+        return(0);
+    }
+    c = calloc(m, sizeof(*c));
+    if (c == NULL)
+        return(NOTE_ERRNO(h));
+    for (i = 0, j = 0; i < n; i++) {
+        if (a[i].action != NULL) {
+            ccn_replace_handler(h, &(c[j].action), a[i].action);
+            c[j].forw_flags = a[i].forw_flags;
+            j++;
+        }
+    }
+    if (j < m) {
+        ccn_replace_handler(h, &(c[j].action), action);
+        c[j].forw_flags = forw_flags;
+    }
+    *ap = c;
+    return(m);
+}
+
+/**
+ * Destroy a multifilt_array
+ */
+static void
+destroy_multifilt_array(struct ccn *h, struct multifilt_item **ap, int n)
+{
+    struct multifilt_item *a;
+    int i;
+    
+    a = *ap;
+    if (a != NULL) {
+        for (i = 0; i < n; i++)
+            ccn_replace_handler(h, &(a[i].action), NULL);
+        free(a);
+        *ap = NULL;
+    }
+}
+
+/**
+ * Upcall to handle multifilt
+ */
+static enum ccn_upcall_res
+handle_multifilt(struct ccn_closure *selfp,
+                 enum ccn_upcall_kind kind,
+                 struct ccn_upcall_info *info)
+{
+    struct multifilt *md;
+    struct multifilt_item *a;
+    enum ccn_upcall_res ans;
+    enum ccn_upcall_res res;
+    int i, n;
+    
+    md = selfp->data;
+    if (kind == CCN_UPCALL_FINAL) {
+        destroy_multifilt_array(info->h, &md->a, md->n);
+        free(md);
+        return(CCN_UPCALL_RESULT_OK);
+    }
+    /*
+     * Since the upcalls might be changing registrations on the fly,
+     * we need to make a copy of the array (updating the refcounts).
+     * Forget md and selfp, since they could go away during upcalls.
+     */
+    a = md->a;
+    n = build_multifilt_array(info->h, &a, n, NULL, 0);
+    ans = CCN_UPCALL_RESULT_OK;
+    md = NULL;
+    selfp = NULL;
+    for (i = 0; i < n; i++) {
+        if ((a[i].forw_flags & CCN_FORW_ACTIVE) != 0) {
+            res = (a[i].action->p)(a[i].action, kind, info);
+            if (res == CCN_UPCALL_RESULT_INTEREST_CONSUMED) {
+                ans = res;
+                if (kind == CCN_UPCALL_INTEREST)
+                    kind = CCN_UPCALL_CONSUMED_INTEREST;
+            }
+        }
+    }
+    destroy_multifilt_array(info->h, &a, n);
+    return(ans);
+}
+
+/* end of multifilt */
 
 static int
 ccn_pushout(struct ccn *h)
