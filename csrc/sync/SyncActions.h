@@ -47,6 +47,7 @@ enum SyncActionState {
 struct SyncActionData {
     struct SyncActionData *next;
     struct SyncRootStruct *root;
+    struct SyncHashCacheEntry *ce;
     struct SyncCompareData *comp;
     struct ccnr_handle *ccnr;
     struct ccn_charbuf *prefix;

@@ -59,7 +59,7 @@ SyncInitDecoderFromElem(struct ccn_buf_decoder *d,
 
 void
 SyncNodeIncRC(struct SyncNodeComposite *nc) {
-    int rc = nc->rc++;
+    int rc = nc->rc+1;
     if (rc > 0) nc->rc = rc;
 }
 

@@ -117,6 +117,7 @@ struct SyncRootDeltas {
 
 struct SyncRootPrivate {
     struct SyncRootStats *stats;
+    struct SyncHashCacheEntry *ceCurrent; /*< entry for current root hash (may be NULL) */
     struct SyncHashInfoList *remoteSeen;
     struct SyncRootDeltas *deltasHead;  /*< pointer to eldest update */
     struct SyncRootDeltas *deltasTail;  /*< pointer to youngest update */
