@@ -1,10 +1,10 @@
 /**
- * @file smoketestclientlib.c
- * Simple program for smoke-test of ccn client lib.
- * 
+ * @file cmd/ccnlibtest.c
+ */
+/*
  * A CCNx program.
  *
- * Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2010, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -17,14 +17,16 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+ 
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <ccn/ccn.h>
 #include <unistd.h>
+
+#include <ccn/ccn.h>
 
 void printraw(const void *r, int n)
 {
