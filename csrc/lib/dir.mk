@@ -17,7 +17,6 @@ EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib
 
 PROGRAMS = hashtbtest skel_decode_test \
-    smoketestclientlib  \
     encodedecodetest signbenchtest basicparsetest ccnbtreetest
 
 BROKEN_PROGRAMS =
@@ -37,7 +36,7 @@ CSRC = ccn_bloom.c \
        ccn_fetch.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        signbenchtest.c skel_decode_test.c \
-       smoketestclientlib.c basicparsetest.c ccnbtreetest.c \
+       basicparsetest.c ccnbtreetest.c \
        ccn_sockaddrutil.c ccn_setup_sockaddr_un.c
 LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
@@ -107,9 +106,6 @@ hashtbtest: hashtbtest.o
 
 skel_decode_test: skel_decode_test.o
 	$(CC) $(CFLAGS) -o $@ skel_decode_test.o $(LDLIBS)
-
-smoketestclientlib: smoketestclientlib.o
-	$(CC) $(CFLAGS) -o $@ smoketestclientlib.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 basicparsetest: basicparsetest.o libccn.a
 	$(CC) $(CFLAGS) -o $@ basicparsetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -265,9 +261,6 @@ signbenchtest.o: signbenchtest.c ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/keystore.h
 skel_decode_test.o: skel_decode_test.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
-smoketestclientlib.o: smoketestclientlib.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
 basicparsetest.o: basicparsetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/face_mgmt.h \
