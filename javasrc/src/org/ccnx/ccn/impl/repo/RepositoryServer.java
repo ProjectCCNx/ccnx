@@ -96,6 +96,8 @@ public class RepositoryServer implements CCNStatistics {
 	protected boolean _started = false;
 	protected Object _startedLock = new Object();
 
+	protected boolean _throttled = false;
+
 	private class InterestTimer extends TimerTask {
 
 		@Override
@@ -608,6 +610,21 @@ public class RepositoryServer implements CCNStatistics {
 			return true;
 		}
 		return false;
+	}
+
+	public boolean getThrottle() {
+		return _throttled;
+	}
+
+	public void setThrottle(boolean throttle) {
+		if (throttle == false && _throttled == true) {
+			synchronized (_currentListeners) {
+				for (RepositoryDataListener l : _currentListeners) {
+					l.restart();
+				}
+			}
+		}
+		_throttled = throttle;
 	}
 
 	// ==============================================================
