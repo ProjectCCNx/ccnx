@@ -89,6 +89,7 @@ SyncNewBase(struct ccnr_handle *ccnr,
     return base;
 }
 
+#ifndef SYNCLIBRARY
 static int
 getEnvLimited(char *key, int lo, int hi, int def) {
     char *s = getenv(key);
@@ -98,7 +99,6 @@ getEnvLimited(char *key, int lo, int hi, int def) {
     }
     return def;
 }
-#ifndef SYNCLIBRARY
 extern void
 SyncInit(struct SyncBaseStruct *bp) {
     if (bp != NULL) {
