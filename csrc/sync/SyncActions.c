@@ -155,27 +155,30 @@ CompareAction(struct ccn_schedule *sched,
 ///// General internal routines
 ///////////////////////////////////////////////////////////////////////////
 
+
+static int
+showCacheEntry(struct SyncRootStruct *root, char *dst, int lim,
+               char *prefix, struct SyncHashCacheEntry *ce) {
+    int n = 0;
+    if (ce == NULL) n = snprintf(dst, lim, "%shash#null", prefix);
+    else n = snprintf(dst, lim, "%shash#%08x", prefix, (uint32_t) ce->small);
+    return n;
+}
+
 static void
 showCacheEntry1(struct SyncRootStruct *root, char *here, char *msg,
                 struct SyncHashCacheEntry *ce) {
-    char temp[64];
-    if (ce == NULL) snprintf(temp, sizeof(temp), "hash#null");
-    else snprintf(temp, sizeof(temp), "hash#%08x",
-                  (uint32_t) ((ce == NULL) ? 0 : ce->small));
+    char temp[1024];
+    showCacheEntry(root, temp, sizeof(temp), "", ce);
     SyncNoteSimple2(root, here, msg, temp);
 }
 
 static void
 showCacheEntry2(struct SyncRootStruct *root, char *here, char *msg,
                 struct SyncHashCacheEntry *ce1, struct SyncHashCacheEntry *ce2) {
-    char temp[64];
-    int n = 0;
-    if (ce1 == NULL) n += snprintf(temp+n, sizeof(temp)-n, "hash#null");
-    else n += snprintf(temp+n, sizeof(temp)-n, "hash#%08x",
-                  (uint32_t) ((ce1 == NULL) ? 0 : ce1->small));
-    if (ce2 == NULL) n += snprintf(temp+n, sizeof(temp)-n, ", hash#null");
-    else n += snprintf(temp+n, sizeof(temp)-n, ", hash#%08x",
-                  (uint32_t) ((ce2 == NULL) ? 0 : ce2->small));
+    char temp[1024];
+    int n = showCacheEntry(root, temp, sizeof(temp), "", ce1);
+    showCacheEntry(root, temp+n, sizeof(temp)-n, ", ", ce2);
     SyncNoteSimple2(root, here, msg, temp);
 }
 
@@ -740,6 +743,11 @@ noteRemoteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce, int a
         each->next = head;
         root->priv->remoteSeen = each;
     }
+    if (each != NULL) {
+        each->ce = ce;
+        if (ce != NULL) ce->busy++;
+        each->lastSeen = mark;
+    }
     if (debug >= CCNL_FINE) {
         char *hex = "empty";
         if (hl > 0) hex = SyncHexStr(hash->buf, hl);
@@ -749,43 +757,36 @@ noteRemoteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce, int a
         ccnr_msg(ccnr, "%s, root#%u, %s%s", here, root->rootId, extra, hex);
         if (hl > 0) free(hex);
     }
-    if (each != NULL) {
-        each->ce = ce;
-        if (ce != NULL) ce->busy++;
-        each->lastSeen = mark;
-    }
     return res;
 }
 
 // chooseRemoteHash returns the most recently seen/used remote hash
 // from the remoteSeen list.  The chosen hash must be remote (duh),
 // and not covered and must have been seen or used recently enough.
-// (TBD: is 3*rootAdviseLifetime a good choice?)
+// (TBD: is 2*rootAdviseLifetime a good choice?)
 // chooseRemoteHash also prunes the remoteSeen list of ineligible entries.
 static struct SyncHashInfoList *
 chooseRemoteHash(struct SyncRootStruct *root) {
     struct SyncHashInfoList *each = root->priv->remoteSeen;
     int64_t now = SyncCurrentTime();
-    int64_t limit = ((int64_t)root->base->priv->rootAdviseLifetime)*3*M;
+    int64_t limit = ((int64_t)root->base->priv->rootAdviseLifetime)*2*M;
     struct SyncHashInfoList *lag = NULL;
     while (each != NULL) {
         struct SyncHashCacheEntry *ce = each->ce;
         struct SyncHashInfoList *next = each->next;
-        if (ce != NULL
-            && (ce->state & SyncHashState_remote)
-            && ((ce->state & SyncHashState_covered) == 0)) {
-            // choose the first entry that is remote and not covered
-            int64_t dt = SyncDeltaTime(ce->lastUsed, now);
-            if (dt < limit) return each;
-            ce = NULL;
-        }
-        if (ce == NULL || (ce->state & SyncHashState_covered)) {
-            // prune this entry
+        int64_t dt = SyncDeltaTime(each->lastSeen, now);
+        if (dt < limit) {
+            // not expired
+            if (ce != NULL 
+                && (ce->state & SyncHashState_remote)
+                && ((ce->state & SyncHashState_covered) == 0))
+                return each;
+        } else {
+            // prune this entry (too old)
             if (lag == NULL) root->priv->remoteSeen = next;
             else lag->next = next;
             free(each);
-        } else
-            lag = each;
+        }
         each = next;
     }
     return NULL;
@@ -2653,20 +2654,18 @@ scanRemoteSeen(struct SyncRootStruct *root, struct SyncHashCacheEntry *ceR) {
 // CloseUpdateCoding finishes up the deltas object (closes the coding),
 // removes it from the updates, and moves it to the root
 // note: if the update object has a deltas object then the coding is not closed!
-static void
+static struct SyncRootDeltas *
 CloseUpdateCoding(struct SyncUpdateData *ud) {
     struct SyncRootStruct *root = ud->root;
     struct SyncRootDeltas *deltas = ud->deltas;
-    ud->deltas = NULL;
     if (deltas != NULL) {
-        struct ccn_charbuf *hashL = ud->root->currentHash;
         struct SyncHashCacheEntry *ceStop = root->priv->ceCurrent;
-        ud->ceStop = ceStop;
-        if (deltas->deltasCount <= 0
-            || hashL == NULL || deltas->coding == NULL
-            || ud->ceStart == ud->ceStop) {
+        ud->deltas = NULL;
+        deltas->next = NULL;
+        if (deltas->deltasCount <= 0 || deltas->coding == NULL || ud->ceStart == ceStop) {
             // nothing here, so forget it (fail over to using NodeFetch)
             FreeDeltas(deltas);
+            deltas = NULL;
         } else {
             // link into the deltas chain
             ccnb_element_end(deltas->coding);
@@ -2680,15 +2679,9 @@ CloseUpdateCoding(struct SyncUpdateData *ud) {
             tail = deltas;
             deltas->ceStop = ceStop;
             rp->nDeltas++;
-            if (scanRemoteSeen(root, deltas->ceStart) != NULL
-                && scanRemoteSeen(root, ceStop) == NULL)
-                // if there is no remote hash matching the deltas stopping hash
-                // but there is a request for the starting hash, then send
-                // the updates now
-                // TBD: is this a good enough test?
-                SendDeltasReply(root, deltas);
         }
     }
+    return deltas;
 }
 
 // scanDeltas retruns the first SyncRootDeltas object that starts with
@@ -3741,8 +3734,9 @@ UpdateAction(struct ccn_schedule *sched,
                         // note the time of the last hash change
                         root->priv->lastHashChange = now;
                     }
+                    ud->ceStop = ce;
                     // now that we have a new current hash, close out the deltas
-                    CloseUpdateCoding(ud);
+                    struct SyncRootDeltas *deltas = CloseUpdateCoding(ud);
                     int64_t dt = SyncDeltaTime(ud->startTime, now);
                     root->priv->stats->updatesDone++;
                     root->priv->stats->lastUpdateMicros = dt;
@@ -3776,7 +3770,7 @@ UpdateAction(struct ccn_schedule *sched,
                         ccnr_hwm hwm = root->priv->highWater;
                         ce->stablePoint = hwm;
                         if (debug >= CCNL_INFO) {
-                            char temp[64];
+                            char temp[1024];
                             if (hwm != CCNR_NULL_HWM) {
                                 snprintf(temp, sizeof(temp),
                                          "new stable point at %ju",
@@ -3786,15 +3780,43 @@ UpdateAction(struct ccn_schedule *sched,
                             }
                             SyncNoteSimple(root, here, temp);
                             if (showHighLevel) {
-                                snprintf(temp, sizeof(temp),
-                                         "done (%d)",
-                                         count);
+                                int tlim = sizeof(temp)-16;
+                                int pos = snprintf(temp, sizeof(temp),
+                                                   "done (%d)",
+                                                   count);
+                                if (deltas != NULL) {
+                                    struct SyncRootDeltas *each = deltas;
+                                    char *sep = "";
+                                    pos += snprintf(temp+pos, tlim-pos,
+                                                    ", deltas (%d) [",
+                                                    each->deltasCount);
+                                    while (each != NULL) {
+                                        struct SyncHashCacheEntry *ce = each->ceStart;
+                                        pos += showCacheEntry(root, 
+                                                              temp+pos, tlim-pos,
+                                                              sep, ce);
+                                        sep = ", ";
+                                        each = each->next;
+                                    }
+                                    pos += snprintf(temp+pos, tlim-pos, "]");
+                                }
+                                struct SyncHashInfoList *remoteSeen = scanRemoteSeen(root, ud->ceStart);
+
+                                if (remoteSeen != NULL)
+                                    pos += snprintf(temp+pos, tlim-pos, ", seen");
+
                                 showCacheEntry2(root, "Sync.$Update", temp,
                                                 ud->ceStart, ud->ceStop);
                             }
                         }
                         // since we have a new root, we need a new RootAdvise
                         SyncSendRootAdviseInterest(root);
+                        if (deltas != NULL && scanRemoteSeen(root, ud->ceStart) != NULL)
+                            // if there is no remote hash matching the deltas stopping hash
+                            // but there is a request for the starting hash, then send
+                            // the updates now
+                            // TBD: is this a good enough test?
+                            SendDeltasReply(root, deltas);
                     } 
                     if (old != NULL) ccn_charbuf_destroy(&old);
                     free(hex);
