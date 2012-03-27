@@ -48,7 +48,7 @@ struct SyncActionData {
     struct SyncActionData *next;
     struct SyncRootStruct *root;
     struct SyncCompareData *comp;
-    struct ccnr_handle *ccnr;
+    void *client_handle;
     struct ccn_charbuf *prefix;
     struct ccn_charbuf *hash;
     int64_t startTime;

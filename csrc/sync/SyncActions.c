@@ -141,7 +141,7 @@ static void
 linkActionData(struct SyncRootStruct *root, struct SyncActionData *data) {
     data->root = root;
     data->next = root->actions;
-    data->ccnr = root->base->client_handle;
+    data->client_handle = root->base->client_handle;
     data->state = SyncActionState_sent;
     root->actions = data;
 }
@@ -1866,7 +1866,7 @@ SyncRemoteFetchResponse(struct ccn_closure *selfp,
         case CCN_UPCALL_INTEREST_TIMED_OUT:
         case CCN_UPCALL_CONTENT: {
             if (data == NULL) break;
-            struct ccnr_handle *ccnr = data->ccnr;
+            struct ccnr_handle *ccnr = data->client_handle;
             struct SyncRootStruct *root = data->root;
             struct SyncCompareData *comp = data->comp;
             if (root == NULL) break;
