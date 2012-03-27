@@ -347,7 +347,7 @@ SyncRootLookupName(struct SyncRootStruct *root,
             struct ccn_charbuf *uri = ccn_charbuf_create();
             ccn_uri_append(uri, name->buf, name->length, 0);
             char *str = ccn_charbuf_as_string(uri);
-            ccnr_msg(root->base->ccnr, "SyncRootLookupName, rejected %s", str);
+            ccnr_msg(root->base->client_handle, "SyncRootLookupName, rejected %s", str);
             ccn_charbuf_destroy(&uri);
         }
     }

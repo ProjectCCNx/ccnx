@@ -141,7 +141,7 @@ static void
 linkActionData(struct SyncRootStruct *root, struct SyncActionData *data) {
     data->root = root;
     data->next = root->actions;
-    data->ccnr = root->base->ccnr;
+    data->ccnr = root->base->client_handle;
     data->state = SyncActionState_sent;
     root->actions = data;
 }
@@ -601,7 +601,7 @@ static int
 noteRemoteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce, int add) {
     char *here = "Sync.noteRemoteHash";
     int debug = root->base->debug;
-    struct ccnr_handle *ccnr = root->base->ccnr;
+    struct ccnr_handle *ccnr = root->base->client_handle;
     struct ccn_charbuf *hash = ce->hash;
     int hl = hash->length;
     if (hl == 0) return 0;
@@ -749,7 +749,7 @@ abortCompare(struct SyncCompareData *data, char *why) {
                 if (base->debug >= CCNL_INFO) {
                     // maybe this should be a warning?
                     char *hex = SyncHexStr(hash->buf, hash->length);
-                    ccnr_msg(root->base->ccnr,
+                    ccnr_msg(root->base->client_handle,
                              "%s, root#%u, remove remote hash %s",
                              here, root->rootId, hex);
                     free(hex);
@@ -1159,7 +1159,7 @@ fetchStablePoint(struct SyncBaseStruct *base, ccnr_hwm *ptr) {
     struct ccn_charbuf *interest = SyncGenInterest(name, 1, 0, -1, 1, NULL);
     if (interest == NULL) return -__LINE__;
     // TBD: check the signature!
-    res |= r_sync_lookup(base->ccnr, interest, cb);
+    res |= r_sync_lookup(base->client_handle, interest, cb);
     if (res >= 0) {
         // parse the object
         const unsigned char *xp = NULL;
@@ -1189,7 +1189,7 @@ fetchStablePoint(struct SyncBaseStruct *base, ccnr_hwm *ptr) {
                             res = 0;
                         }
                         if (ptr != NULL && res == 0)
-                            *ptr = ccnr_hwm_decode(base->ccnr, val);
+                            *ptr = ccnr_hwm_decode(base->client_handle, val);
                     }
                 }
             }
@@ -1209,7 +1209,7 @@ storeStablePoint(struct SyncBaseStruct *base, ccnr_hwm point) {
     int res = 0;
     char temp[32];
     int nc = snprintf(temp, sizeof(temp), "stable %ju",
-                      ccnr_hwm_encode(base->ccnr, point));
+                      ccnr_hwm_encode(base->client_handle, point));
     // TBD: find a better encoding & use better tags?
     res |= ccnb_append_tagged_blob(x, CCN_DTAG_StringValue, temp, nc);
     res |= ccn_name_append_str(name, syncStableSuffix);
@@ -1221,7 +1221,7 @@ storeStablePoint(struct SyncBaseStruct *base, ccnr_hwm point) {
         struct ccn_charbuf *cob = SyncSignBuf(base, x, name,
                                               1, CCN_SP_FINAL_BLOCK);
         if (cob != NULL) {
-            res |= r_sync_local_store(base->ccnr, cob);
+            res |= r_sync_local_store(base->client_handle, cob);
             ccn_charbuf_destroy(&cob);
         }
     }
@@ -1295,7 +1295,7 @@ CompareAction(struct ccn_schedule *sched,
     }
     data->lastEnter = SyncCurrentTime();
     struct SyncRootStruct *root = data->root;
-    struct ccnr_handle *ccnr = root->base->ccnr;
+    struct ccnr_handle *ccnr = root->base->client_handle;
     int debug = root->base->debug;
     if (data->ev != ev || flags & CCN_SCHEDULE_CANCEL) {
         // orphaned or cancelled
@@ -1418,7 +1418,7 @@ CompareAction(struct ccn_schedule *sched,
                     struct ccn_charbuf *cb = ccn_charbuf_create();
                     formatStats(root, cb);
                     char *str = ccn_charbuf_as_string(cb);
-                    ccnr_msg(root->base->ccnr, "%s, %s", here, str);
+                    ccnr_msg(root->base->client_handle, "%s, %s", here, str);
                     ccn_charbuf_destroy(&cb);
                 }
             }
@@ -1457,7 +1457,7 @@ newNodeCommon(struct SyncRootStruct *root,
     // finish building and inserting a local node
     char *here = "Sync.newNodeCommon";
     int debug = root->base->debug;
-    struct ccnr_handle *ccnr = root->base->ccnr;
+    struct ccnr_handle *ccnr = root->base->client_handle;
     if (nc == NULL || nc->hash == NULL) {
         SyncNoteFailed(root, here, "bad node", __LINE__);
         return NULL;
@@ -1521,7 +1521,7 @@ nodeFromNodes(struct SyncRootStruct *root, struct SyncNodeAccum *na) {
     char *here = "Sync.nodeFromNodes";
     struct SyncHashCacheHead *ch = root->ch;
     struct SyncBaseStruct *base = root->base;
-    struct ccnr_handle *ccnr = base->ccnr;
+    struct ccnr_handle *ccnr = base->client_handle;
     int debug = base->debug;
     int lim = na->len;
     if (lim == 0) {
@@ -1589,7 +1589,7 @@ SyncStartSliceEnum(struct SyncRootStruct *root) {
         struct ccn_charbuf *nin = SyncGenInterest(name,
                                                   -1, -1, -1, -1,
                                                   NULL);
-        int res = r_sync_enumerate(base->ccnr, nin);
+        int res = r_sync_enumerate(base->client_handle, nin);
         
         ccn_charbuf_destroy(&nin);
         if (res > 0) {
@@ -1728,17 +1728,17 @@ HeartbeatAction(struct ccn_schedule *sched,
             if (priv->nStoring > 0) priv->nStoring--;
             root = ce->head->root;
             ccnr_hwm chw = ce->stablePoint;
-            if (ccnr_hwm_compare(base->ccnr, chw, root->priv->stablePoint) > 0) {
+            if (ccnr_hwm_compare(base->client_handle, chw, root->priv->stablePoint) > 0) {
                 // the node that just got stored had a better stablePoint for the node
                 root->priv->stablePoint = chw;
                 root->priv->lastStable = now;
-                if (ccnr_hwm_compare(base->ccnr, chw, priv->stableTarget) > 0)
+                if (ccnr_hwm_compare(base->client_handle, chw, priv->stableTarget) > 0)
                     priv->stableTarget = chw;
                 if (base->debug >= CCNL_INFO) {
                     char temp[64];
                     snprintf(temp, sizeof(temp),
                              "newly stable at %ju",
-                             ccnr_hwm_encode(base->ccnr, chw));
+                             ccnr_hwm_encode(base->client_handle, chw));
                     SyncNoteSimple(root, here, temp);
                 }
             }
@@ -1748,7 +1748,7 @@ HeartbeatAction(struct ccn_schedule *sched,
     }
     if (priv->stableEnabled && priv->useRepoStore
         && priv->nStoring == 0
-        && ccnr_hwm_compare(base->ccnr, priv->stableTarget, priv->stableStored) > 0) {
+        && ccnr_hwm_compare(base->client_handle, priv->stableTarget, priv->stableStored) > 0) {
         // test for stability
         int unstable = 1;
         int64_t dt = SyncDeltaTime(priv->lastStable, now);
@@ -1770,12 +1770,12 @@ HeartbeatAction(struct ccn_schedule *sched,
                 char temp[64];
                 snprintf(temp, sizeof(temp),
                          "stable target reached at %ju",
-                         ccnr_hwm_encode(base->ccnr, priv->stableTarget));
-                ccnr_msg(base->ccnr, "%s, %s", here, temp);
+                         ccnr_hwm_encode(base->client_handle, priv->stableTarget));
+                ccnr_msg(base->client_handle, "%s, %s", here, temp);
             }
             int spRes = storeStablePoint(base, priv->stableTarget);
             if (spRes < 0 && base->debug >= CCNL_WARNING) {
-                ccnr_msg(base->ccnr, "%s, warning: stable target not stored", here);
+                ccnr_msg(base->client_handle, "%s, warning: stable target not stored", here);
             }
             priv->lastStable = now;
             priv->stableStored = priv->stableTarget;
@@ -1795,7 +1795,7 @@ SyncStartHeartbeat(struct SyncBaseStruct *base) {
     int res = -1;
     if (base != NULL && base->sched != NULL) {
         int debug = base->debug;
-        struct ccnr_handle *ccnr = base->ccnr;
+        struct ccnr_handle *ccnr = base->client_handle;
         struct SyncPrivate *priv = base->priv;
         struct ccn_charbuf *nin = SyncGenInterest(priv->sliceCmdPrefix,
                                                   -1, -1, -1, -1,
@@ -1807,9 +1807,9 @@ SyncStartHeartbeat(struct SyncBaseStruct *base) {
         if (priv->stableEnabled && priv->useRepoStore) {
             res = fetchStablePoint(base, &commitPoint);
             if (res < 0 && base->debug >= CCNL_WARNING) 
-                ccnr_msg(base->ccnr, "%s, no stable recovery point", here);
+                ccnr_msg(base->client_handle, "%s, no stable recovery point", here);
         }
-        r_sync_notify_after(base->ccnr, commitPoint);
+        r_sync_notify_after(base->client_handle, commitPoint);
 
         // at startup we ask for all of the existing slices
         res = r_sync_enumerate(ccnr, nin);
@@ -2109,7 +2109,7 @@ SyncStartContentFetch(struct SyncRootStruct *root,
     
     // first, test to see if the content is already in the repo (yes, it happens)
     struct ccn_charbuf *interest = SyncGenInterest(name, 1, 0, 0, -1, NULL); 
-    int res = r_sync_lookup(base->ccnr, interest, NULL);
+    int res = r_sync_lookup(base->client_handle, interest, NULL);
     ccn_charbuf_destroy(&interest);
     
     if (res >= 0) {
@@ -2187,10 +2187,10 @@ SyncAddName(struct SyncBaseStruct *base,
                 }
             } else {
                 // not obviously a duplicate
-                uintmax_t itemNum = ccnr_accession_encode(base->ccnr, item);
+                uintmax_t itemNum = ccnr_accession_encode(base->client_handle, item);
                 SyncNameAccumAppend(root->namesToAdd, SyncCopyName(name), itemNum);
                 if (item != CCNR_NULL_ACCESSION)
-                    root->priv->highWater = ccnr_hwm_update(base->ccnr,
+                    root->priv->highWater = ccnr_hwm_update(base->client_handle,
                                                             root->priv->highWater,
                                                             item);
                 count++;
@@ -2209,7 +2209,7 @@ SyncAddName(struct SyncBaseStruct *base,
         root = root->next;
     }
     if (item != CCNR_NULL_ACCESSION)
-        base->highWater = ccnr_hwm_update(base->ccnr, base->highWater, item);
+        base->highWater = ccnr_hwm_update(base->client_handle, base->highWater, item);
     return count;
 }
 
@@ -2224,7 +2224,7 @@ findAndDeleteRoot(struct SyncBaseStruct *base, char *here,
             // matching an existing root, so delete it
             if (debug >= CCNL_INFO) {
                 char *hex = SyncHexStr(hp, hs);
-                ccnr_msg(base->ccnr,
+                ccnr_msg(base->client_handle,
                          "%s, root#%u, deleted, %s",
                          here, root->rootId, hex);
                 free(hex);
@@ -2251,7 +2251,7 @@ findAndDeleteRoot(struct SyncBaseStruct *base, char *here,
     }
     if (debug >= CCNL_FINE) {
         char *hex = SyncHexStr(hp, hs);
-        ccnr_msg(base->ccnr,
+        ccnr_msg(base->client_handle,
                  "%s, root not found, %s",
                  here, hex);
         free(hex);
@@ -2263,7 +2263,7 @@ extern int
 SyncHandleSlice(struct SyncBaseStruct *base, struct ccn_charbuf *name) {
     char *here = "Sync.SyncHandleSlice";
     char *why = NULL;
-    struct ccnr_handle *ccnr = base->ccnr;
+    struct ccnr_handle *ccnr = base->client_handle;
     int debug = base->debug;
     const unsigned char *hp = NULL;
     ssize_t hs = 0;
@@ -2688,7 +2688,7 @@ SyncRegisterInterests(struct SyncRootStruct *root) {
             msgPrefix = ccn_charbuf_as_string(uriPrefix);
         }
         
-        ccnr_msg(root->base->ccnr,
+        ccnr_msg(root->base->client_handle,
                  "%s, root#%u, topo %s, prefix %s, hash %s",
                  here, root->rootId, msgTopo, msgPrefix, hex);
         
@@ -2697,7 +2697,7 @@ SyncRegisterInterests(struct SyncRootStruct *root) {
             int i = 0;
             for (i = 0; i < filter->len; i++) {
                 struct ccn_charbuf *uri = SyncUriForName(filter->ents[i].name);
-                ccnr_msg(root->base->ccnr,
+                ccnr_msg(root->base->client_handle,
                          "%s, root#%u, op %d, pattern %s",
                          here, root->rootId,
                          (int) filter->ents[i].data,
@@ -3229,7 +3229,7 @@ UpdateAction(struct ccn_schedule *sched,
     struct SyncRootStruct *root = ud->root;
     struct SyncBaseStruct *base = root->base;
     int debug = base->debug;
-    struct ccnr_handle *ccnr = base->ccnr;
+    struct ccnr_handle *ccnr = base->client_handle;
     int showEntry = base->priv->syncActionsPrivate & 8;
     // int64_t prevTime = ud->entryTime;
     ud->entryTime = now;
@@ -3353,7 +3353,7 @@ UpdateAction(struct ccn_schedule *sched,
                             struct ccn_charbuf *cb = ccn_charbuf_create();
                             formatStats(root, cb);
                             char *str = ccn_charbuf_as_string(cb);
-                            ccnr_msg(root->base->ccnr, "%s, %s", here, str);
+                            ccnr_msg(root->base->client_handle, "%s, %s", here, str);
                             ccn_charbuf_destroy(&cb);
                         }
                     }
@@ -3373,7 +3373,7 @@ UpdateAction(struct ccn_schedule *sched,
                         if (hwm != CCNR_NULL_HWM) {
                             snprintf(temp, sizeof(temp),
                                      "new stable point at %ju",
-                                     ccnr_hwm_encode(root->base->ccnr, hwm));
+                                     ccnr_hwm_encode(root->base->client_handle, hwm));
                         } else {
                             snprintf(temp, sizeof(temp), "high water?");
                         }
@@ -3419,7 +3419,7 @@ SyncUpdateRoot(struct SyncRootStruct *root) {
     if (acc->len == 0) return 0;
     int64_t now = SyncCurrentTime();
     struct SyncBaseStruct *base = root->base;
-    struct ccnr_handle *ccnr = base->ccnr;
+    struct ccnr_handle *ccnr = base->client_handle;
     struct SyncUpdateData *ud = NEW_STRUCT(1, SyncUpdateData);
     ud->root = root;
     ud->state = SyncUpdate_init;
@@ -3481,7 +3481,7 @@ SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR) {
         return SyncNoteFailed(root, here, "bad lookup for R", __LINE__);
     
     int debug = root->base->debug;
-    struct ccnr_handle *ccnr = root->base->ccnr;
+    struct ccnr_handle *ccnr = root->base->client_handle;
     struct SyncCompareData *data = NEW_STRUCT(1, SyncCompareData);
     int64_t mark = SyncCurrentTime();
     data->startTime = mark;

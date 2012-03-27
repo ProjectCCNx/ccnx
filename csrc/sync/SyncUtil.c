@@ -139,7 +139,7 @@ SyncHexStr(const unsigned char *cp, size_t sz) {
 extern int
 SyncNoteFailed(struct SyncRootStruct *root, char *where, char *why, int line) {
     if (root->base->debug >= CCNL_SEVERE)
-        ccnr_msg(root->base->ccnr, "%s, root#%u, failed, %s, line %d",
+        ccnr_msg(root->base->client_handle, "%s, root#%u, failed, %s, line %d",
                  where, root->rootId, why, line);
     SyncNoteErr("Sync.SyncNoteFailed");
     return -line;
@@ -147,24 +147,24 @@ SyncNoteFailed(struct SyncRootStruct *root, char *where, char *why, int line) {
 
 extern void
 SyncNoteSimple(struct SyncRootStruct *root, char *where, char *s1) {
-    ccnr_msg(root->base->ccnr, "%s, root#%u, %s", where, root->rootId, s1);
+    ccnr_msg(root->base->client_handle, "%s, root#%u, %s", where, root->rootId, s1);
 }
 
 extern void
 SyncNoteSimple2(struct SyncRootStruct *root, char *where, char *s1, char *s2) {
-    ccnr_msg(root->base->ccnr, "%s, root#%u, %s, %s", where, root->rootId, s1, s2);
+    ccnr_msg(root->base->client_handle, "%s, root#%u, %s, %s", where, root->rootId, s1, s2);
 }
 
 extern void
 SyncNoteSimple3(struct SyncRootStruct *root, char *where, char *s1, char *s2, char *s3) {
-    ccnr_msg(root->base->ccnr, "%s, root#%u, %s, %s, %s", where, root->rootId, s1, s2, s3);
+    ccnr_msg(root->base->client_handle, "%s, root#%u, %s, %s, %s", where, root->rootId, s1, s2, s3);
 }
 
 extern void
 SyncNoteUri(struct SyncRootStruct *root, char *where, char *why, struct ccn_charbuf *name) {
     struct ccn_charbuf *uri = SyncUriForName(name);
     char *str = ccn_charbuf_as_string(uri);
-    ccnr_msg(root->base->ccnr, "%s, root#%u, %s, %s", where, root->rootId, why, str);
+    ccnr_msg(root->base->client_handle, "%s, root#%u, %s, %s", where, root->rootId, why, str);
     ccn_charbuf_destroy(&uri);
 }
 
@@ -172,7 +172,7 @@ extern void
 SyncNoteUriBase(struct SyncBaseStruct *base, char *where, char *why, struct ccn_charbuf *name) {
     struct ccn_charbuf *uri = SyncUriForName(name);
     char *str = ccn_charbuf_as_string(uri);
-    ccnr_msg(base->ccnr, "%s, %s, %s", where, why, str);
+    ccnr_msg(base->client_handle, "%s, %s, %s", where, why, str);
     ccn_charbuf_destroy(&uri);
 }
 
@@ -1141,7 +1141,7 @@ SyncLocalRepoStore(struct SyncBaseStruct *base,
     if (cob == NULL)
         why = "signing failed";
     else {
-        res = r_sync_local_store(base->ccnr, cob);
+        res = r_sync_local_store(base->client_handle, cob);
         if (res < 0) why = "store failed";
         ccn_charbuf_destroy(&cob);
     }
@@ -1157,7 +1157,7 @@ SyncLocalRepoFetch(struct SyncBaseStruct *base,
                    struct ccn_charbuf *cb,
                    struct ccn_parsed_ContentObject *pco) {
     char *here = "Sync.SyncLocalRepoFetch";
-    struct ccnr_handle *ccnr = base->ccnr;
+    struct ccnr_handle *ccnr = base->client_handle;
     struct ccn_charbuf *interest = SyncGenInterest(name, 1, 1, -1, 1, NULL);
     struct ccn_parsed_ContentObject pcos;
     if (pco == NULL) pco = &pcos;
