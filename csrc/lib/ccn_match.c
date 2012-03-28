@@ -300,10 +300,10 @@ ccn_content_matches_interest(const unsigned char *content_object,
         }
         else abort(); /* bug - should have returned already */
         if (ccn_excluded(interest_msg + pi->offset[CCN_PI_B_Exclude],
-                           (pi->offset[CCN_PI_E_Exclude] -
-                            pi->offset[CCN_PI_B_Exclude]),
-                           nextcomp,
-                           nextcomp_size))
+                         (pi->offset[CCN_PI_E_Exclude] -
+                          pi->offset[CCN_PI_B_Exclude]),
+                         nextcomp,
+                         nextcomp_size))
             return(0);
     exclude_checked: {}
     }
