@@ -61,6 +61,9 @@
 #define NAMES_YIELD_INC 100        // number of names to inc between yield tests
 #define NAMES_YIELD_MICROS 20*1000 // number of micros to use as yield trigger
 
+static ccnr_hwm ccns_hwm_update(struct ccnr_handle *ccnr, ccnr_hwm hwm, ccnr_accession a);
+static uintmax_t ccns_accession_encode(struct ccnr_handle *ccnr, ccnr_accession a);
+
 /*
  * Utility routines to allocate/deallocate ccns_slice structures
  */
@@ -558,6 +561,7 @@ ccns_open(struct ccn *h,
     struct ccn_schedule *schedule;
     struct ccn_gettime *timer;
     struct ccns_handle *ccns = calloc(1, sizeof(*ccns));
+    struct SyncHashCacheEntry *ce = NULL;
     if (ccns == NULL)
         return(NULL);
     schedule = ccn_get_schedule(h);
@@ -578,6 +582,14 @@ ccns_open(struct ccn *h,
     ccns->base->debug = CCNL_WARNING;
     ccns->root = SyncAddRoot(ccns->base, slice->topo, slice->prefix, NULL);
     // TODO: no filters yet
+    
+    // starting at given root hash -- need to sanity check rhash, check node fetch works
+    if (rhash != NULL) {
+        ccn_charbuf_reset(ccns->root->currentHash);
+        ccn_charbuf_append_charbuf(ccns->root->currentHash, rhash);
+        ce = SyncHashEnter(ccns->root->ch, rhash->buf, rhash->length, 0);
+    }
+    
     ccns_send_root_advise_interest(ccns->root);
     ccns->ev = ccn_schedule_event(ccns->base->sched,
                                   ccns->base->priv->heartbeatMicros,
@@ -840,10 +852,10 @@ SyncAddName(struct SyncBaseStruct *base,
                 }
             } else {
                 // not obviously a duplicate
-                uintmax_t itemNum = ccnr_accession_encode(base->client_handle, item);
+                uintmax_t itemNum = ccns_accession_encode(base->client_handle, item);
                 SyncNameAccumAppend(root->namesToAdd, SyncCopyName(name), itemNum);
                 if (item != CCNR_NULL_ACCESSION)
-                    root->priv->highWater = ccnr_hwm_update(base->client_handle,
+                    root->priv->highWater = ccns_hwm_update(base->client_handle,
                                                             root->priv->highWater,
                                                             item);
                 count++;
@@ -862,7 +874,7 @@ SyncAddName(struct SyncBaseStruct *base,
         root = root->next;
     }
     if (item != CCNR_NULL_ACCESSION)
-        base->highWater = ccnr_hwm_update(base->client_handle, base->highWater, item);
+        base->highWater = ccns_hwm_update(base->client_handle, base->highWater, item);
     return count;
 }
 
@@ -2433,6 +2445,12 @@ r_sync_local_store(struct ccnr_handle *ccnr,
     int ans = -1;
     ccns_msg(ccnr, "WARNING: r_sync_local_store should not be called in sync library");
     return(ans);
+}
+
+static uintmax_t
+ccns_accession_encode(struct ccnr_handle *ccnr, ccnr_accession a)
+{
+    return(a);
 }
 
 static ccnr_hwm
