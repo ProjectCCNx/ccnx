@@ -617,6 +617,7 @@ public class RepositoryServer implements CCNStatistics {
 	}
 
 	public void setThrottle(boolean throttle) {
+		Log.fine("Throttle set to {0}", throttle);
 		if (throttle == false && _throttled == true) {
 			synchronized (_currentListeners) {
 				for (RepositoryDataListener l : _currentListeners) {

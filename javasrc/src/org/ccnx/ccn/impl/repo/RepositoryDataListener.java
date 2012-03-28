@@ -188,7 +188,7 @@ public class RepositoryDataListener implements CCNContentHandler {
 	}
 
 	public void restart() {
-		if (!_throttled) {
+		if (_throttled) {
 			_throttled = false;
 			if (null != _restartInterest) {
 				outputInterest(_restartInterest);
