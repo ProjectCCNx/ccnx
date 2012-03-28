@@ -2435,12 +2435,6 @@ r_sync_local_store(struct ccnr_handle *ccnr,
     return(ans);
 }
 
-static uintmax_t
-ccns_accession_encode(struct ccnr_handle *ccnr, ccnr_accession a)
-{
-    return(a);
-}
-
 static ccnr_hwm
 ccns_hwm_update(struct ccnr_handle *ccnr, ccnr_hwm hwm, ccnr_accession a)
 {
@@ -2449,7 +2443,6 @@ ccns_hwm_update(struct ccnr_handle *ccnr, ccnr_hwm hwm, ccnr_accession a)
 #define extern
 #define SYNCLIBRARY
 #define ccnr_msg ccns_msg
-#define ccnr_accession_encode ccns_accession_encode */
 #define ccnr_hwm_update ccns_hwm_update
 #include <sync/IndexSorter.c>
 #include <sync/SyncBase.c>
