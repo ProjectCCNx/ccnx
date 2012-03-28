@@ -46,6 +46,7 @@ public class RepositoryDataHandler implements Runnable {
 	private boolean _shutdown = false;
 	private boolean _shutdownComplete = false;
 	protected int _currentQueueSize;
+	protected boolean _throttled = false;
 
 	public RepositoryDataHandler(RepositoryServer server) {
 		_server = server;
@@ -54,8 +55,10 @@ public class RepositoryDataHandler implements Runnable {
 	public void add(ContentObject co) {
 		synchronized(_queue) {
 			_currentQueueSize++;
-			if (_currentQueueSize > THROTTLE_TOP)
+			if (!_throttled && _currentQueueSize > THROTTLE_TOP) {
+				_throttled = true;
 				_server.setThrottle(true);
+			}
 			_queue.add(co);
 			_queue.notify();
 		}
@@ -93,8 +96,10 @@ public class RepositoryDataHandler implements Runnable {
 					}
 				} while (null == co);
 				_currentQueueSize--;
-				if (_currentQueueSize < THROTTLE_BOTTOM)
+				if (_throttled && _currentQueueSize < THROTTLE_BOTTOM) {
+					_throttled = false;
 					_server.setThrottle(false);
+				}
 			}
 			try {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
