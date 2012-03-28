@@ -880,17 +880,12 @@ int ccn_content_matches_interest(const unsigned char *content_object,
                                  const struct ccn_parsed_interest *pi);
 
 /*
- * ccn_content_matches_nextcomp: Test for a match of the next name component
- * against the exclusion clause of the parsed interest.  This is useful for 
- * matching before a complete content object is constructed.
- * Return 1 if the ccnb-encoded nextcomp matches the 
- * ccnb-encoded exclusion clause, otherwise 0.
+ * Test whether the given raw name is int the Exclude set.
  */
-int
-ccn_content_matches_nextcomp(const unsigned char *excl,
-                             size_t excl_size,
-                             const unsigned char *nextcomp,
-                             size_t nextcomp_size);
+int ccn_excluded(const unsigned char *excl,
+                 size_t excl_size,
+                 const unsigned char *nextcomp,
+                 size_t nextcomp_size);
 
 /***********************************
  * StatusResponse
