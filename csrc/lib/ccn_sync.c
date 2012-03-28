@@ -30,7 +30,6 @@
 #include <ccn/digest.h>
 #include <ccn/sync.h>
 #include <ccn/uri.h>
-#include <ccnr/ccnr_msg.h>
 
 #include <sync/SyncActions.h>
 #include <sync/SyncNode.h>
@@ -611,6 +610,23 @@ void ccns_close(struct ccns_handle **ccnsp, struct ccn_charbuf *rhash, struct cc
     return;
 }
 
+void
+ccns_msg(struct ccnr_handle *h, const char *fmt, ...)
+{
+    struct timeval t;
+    va_list ap;
+    struct ccn_charbuf *b = ccn_charbuf_create();
+    ccn_charbuf_reserve(b, 1024);
+    gettimeofday(&t, NULL);
+    ccn_charbuf_putf(b, "%s\n", fmt);
+    char *fb = ccn_charbuf_as_string(b);
+    va_start(ap, fmt);
+    vfprintf(stdout, fb, ap);
+    va_end(ap);
+    fflush(stdout);
+    ccn_charbuf_destroy(&b);
+}
+
 enum SyncCompareState {
     SyncCompare_init,
     SyncCompare_preload,
@@ -918,7 +934,7 @@ noteRemoteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce, int a
         char *hex = SyncHexStr(hash->buf, hash->length);
         char *extra = "";
         if (ce->state & SyncHashState_covered) extra = "covered, ";
-        ccnr_msg(ccnr, "%s, root#%u, %s%s", here, root->rootId, extra, hex);
+        ccns_msg(ccnr, "%s, root#%u, %s%s", here, root->rootId, extra, hex);
         free(hex);
     }
     if (each != NULL) {
@@ -1342,7 +1358,7 @@ abortCompare(struct SyncCompareData *data, char *why) {
                 if (base->debug >= CCNL_INFO) {
                     // maybe this should be a warning?
                     char *hex = SyncHexStr(hash->buf, hash->length);
-                    ccnr_msg(root->base->client_handle,
+                    ccns_msg(root->base->client_handle,
                              "%s, root#%u, remove remote hash %s",
                              here, root->rootId, hex);
                     free(hex);
@@ -2086,7 +2102,7 @@ CompareAction(struct ccn_schedule *sched,
                     struct ccn_charbuf *cb = ccn_charbuf_create();
                     // formatStats(root, cb);
                     char *str = ccn_charbuf_as_string(cb);
-                    ccnr_msg(root->base->client_handle, "%s, %s", here, str);
+                    ccns_msg(root->base->client_handle, "%s, %s", here, str);
                     ccn_charbuf_destroy(&cb);
                 }
             }
@@ -2157,7 +2173,7 @@ SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR) {
         char *msgL = ((hashL->length > 0) ? hexL : "empty");
         char *hexR = SyncHexStr(hashR->buf, hashR->length);
         char *msgR = ((hashR->length > 0) ? hexR : "empty");
-        ccnr_msg(ccnr, "%s, root#%u, L %s, R %s",
+        ccns_msg(ccnr, "%s, root#%u, L %s, R %s",
                  here, root->rootId, msgL, msgR);
         free(hexL);
         free(hexR);
@@ -2380,12 +2396,12 @@ SyncHandleSlice(struct SyncBaseStruct *base, struct ccn_charbuf *name) {
     return(0);
 }
 
-extern int
+int
 SyncStartSliceEnum(struct SyncRootStruct *root) {
     return(0);
 }
 
-extern int
+int
 SyncStartHeartbeat(struct SyncBaseStruct *base) {
     return(0);
 }
@@ -2394,30 +2410,13 @@ SyncStartHeartbeat(struct SyncBaseStruct *base) {
  * along with some others, be turned into methods
  */
 
-void
-ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
-{
-    struct timeval t;
-    va_list ap;
-    struct ccn_charbuf *b = ccn_charbuf_create();
-    ccn_charbuf_reserve(b, 1024);
-    gettimeofday(&t, NULL);
-    ccn_charbuf_putf(b, "%s\n", fmt);
-    char *fb = ccn_charbuf_as_string(b);
-    va_start(ap, fmt);
-    vfprintf(stdout, fb, ap);
-    va_end(ap);
-    fflush(stdout);
-    ccn_charbuf_destroy(&b);
-}
-
-int
+static int
 r_sync_lookup(struct ccnr_handle *ccnr,
               struct ccn_charbuf *interest,
               struct ccn_charbuf *content_ccnb)
 {
     int ans = -1;
-    ccnr_msg(ccnr, "WARNING: r_sync_lookup should not be called in sync library");
+    ccns_msg(ccnr, "WARNING: r_sync_lookup should not be called in sync library");
     return(ans);
 }
 
@@ -2427,28 +2426,31 @@ r_sync_lookup(struct ccnr_handle *ccnr,
  * returns 0 for success, -1 for error.
  */
 
-int
+static int
 r_sync_local_store(struct ccnr_handle *ccnr,
                    struct ccn_charbuf *content)
 {
     int ans = -1;
-    ccnr_msg(ccnr, "WARNING: r_sync_local_store should not be called in sync library");
+    ccns_msg(ccnr, "WARNING: r_sync_local_store should not be called in sync library");
     return(ans);
 }
 
-uintmax_t
-ccnr_accession_encode(struct ccnr_handle *ccnr, ccnr_accession a)
+static uintmax_t
+ccns_accession_encode(struct ccnr_handle *ccnr, ccnr_accession a)
 {
     return(a);
 }
 
-ccnr_hwm
-ccnr_hwm_update(struct ccnr_handle *ccnr, ccnr_hwm hwm, ccnr_accession a)
+static ccnr_hwm
+ccns_hwm_update(struct ccnr_handle *ccnr, ccnr_hwm hwm, ccnr_accession a)
 {
     return(a <= hwm ? hwm : a);
 }
 #define extern
 #define SYNCLIBRARY
+#define ccnr_msg ccns_msg
+#define ccnr_accession_encode ccns_accession_encode */
+#define ccnr_hwm_update ccns_hwm_update
 #include <sync/IndexSorter.c>
 #include <sync/SyncBase.c>
 #include <sync/SyncHashCache.c>
