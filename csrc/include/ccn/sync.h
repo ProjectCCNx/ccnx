@@ -63,6 +63,15 @@ struct ccns_slice *ccns_slice_create(void);
  */
 void ccns_slice_destroy(struct ccns_slice **sp);
 /*
+ * Set the topo and prefix fields of a slice
+ * @param slice is the slice to be modified
+ * @param t is a charbuf containing the topo prefix (used to route Sync commands)
+ * @param p is a charbuf containing the prefix
+ * @returns 0 on success, -1 otherwise.
+ */
+int ccns_slice_set_topo_prefix(struct ccns_slice *slice, struct ccn_charbuf *t,
+                               struct ccn_charbuf *p);
+/*
  * Add a (filter) clause to a ccns_slice structure
  * @param slice is the slice to be modified
  * @param f is a filter clause ccnb-encoded as a Name
