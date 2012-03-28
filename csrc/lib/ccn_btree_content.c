@@ -1,9 +1,9 @@
 /**
  * B-tree for indexing ccnx content objects
  */
-/* (Will be) Part of the CCNx C Library.
+/* Part of the CCNx C Library.
  *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -211,69 +211,12 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int ndx,
         }
         if (nextcomp == NULL)
             return(0);
-        /* XXX - Lots of code here that came from ccn_match.c - should refactor */
-        d = ccn_buf_decoder_start(&decoder,
-                                  interest_msg + pi->offset[CCN_PI_B_Exclude],
-                                  pi->offset[CCN_PI_E_Exclude] -
-                                  pi->offset[CCN_PI_B_Exclude]);
-        if (!ccn_buf_match_dtag(d, CCN_DTAG_Exclude))
-            return(-1);
-        ccn_buf_advance(d);
-        bloom = NULL;
-        bloom_size = 0;
-        if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
-            ccn_buf_advance(d);
-            bloom = match_any;
-            ccn_buf_check_close(d);
-        }
-        else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
-            ccn_buf_advance(d);
-            if (ccn_buf_match_blob(d, &bloom, &bloom_size))
-                ccn_buf_advance(d);
-            ccn_buf_check_close(d);
-        }
-        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
-            ccn_buf_advance(d);
-            comp_size = 0;
-            if (ccn_buf_match_blob(d, &comp, &comp_size))
-                ccn_buf_advance(d);
-            ccn_buf_check_close(d);
-            if (comp_size > nextcomp_size)
-                break;
-            if (comp_size == nextcomp_size) {
-                res = memcmp(comp, nextcomp, comp_size);
-                if (res == 0)
-                    return(0); /* One of the explicit excludes */
-                if (res > 0)
-                    break;
-            }
-            bloom = NULL;
-            bloom_size = 0;
-            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
-                ccn_buf_advance(d);
-                bloom = match_any;
-                ccn_buf_check_close(d);
-            }
-            else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
-                ccn_buf_advance(d);
-                if (ccn_buf_match_blob(d, &bloom, &bloom_size))
-                    ccn_buf_advance(d);
-                ccn_buf_check_close(d);
-            }
-        }
-        /*
-         * Now we have isolated the applicable filter (Any or Bloom or none).
-         */
-        if (bloom == match_any)
+        if (ccn_excluded(interest_msg + pi->offset[CCN_PI_B_Exclude],
+                         (pi->offset[CCN_PI_E_Exclude] -
+                          pi->offset[CCN_PI_B_Exclude]),
+                         nextcomp,
+                         nextcomp_size))
             return(0);
-        else if (bloom_size != 0) {
-            const struct ccn_bloom_wire *f = ccn_bloom_validate_wire(bloom, bloom_size);
-            /* If not a valid filter, treat like a false positive */
-            if (f == NULL)
-                return(0);
-            if (ccn_bloom_match_wire(f, nextcomp, nextcomp_size))
-                return(0);
-        }
     }
     /*
      * At this point the prefix matches and exclude-by-next-component is done.

@@ -98,10 +98,10 @@ ccn_pubid_matches(const unsigned char *content_object,
  *           ccnb-encoded exclusion clause, otherwise 0.
  */
 int
-ccn_content_matches_nextcomp(const unsigned char *excl,
-                             size_t excl_size,
-                             const unsigned char *nextcomp,
-                             size_t nextcomp_size)
+ccn_excluded(const unsigned char *excl,
+             size_t excl_size,
+             const unsigned char *nextcomp,
+             size_t nextcomp_size)
 {
     unsigned char match_any[2] = "-";
     const unsigned char *bloom = NULL;
@@ -110,6 +110,8 @@ ccn_content_matches_nextcomp(const unsigned char *excl,
     struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, excl, excl_size);
     const unsigned char *comp = NULL;
     size_t comp_size = 0;
+    const int excluded = 1;
+    
     if (!ccn_buf_match_dtag(d, CCN_DTAG_Exclude))
         abort();
     ccn_buf_advance(d);
@@ -135,7 +137,7 @@ ccn_content_matches_nextcomp(const unsigned char *excl,
         if (comp_size == nextcomp_size) {
             int res = memcmp(comp, nextcomp, comp_size);
             if (res == 0)
-                return(0); /* One of the explicit excludes */
+                return(excluded); /* One of the explicit excludes */
             if (res > 0)
                 break;
         }
@@ -157,17 +159,18 @@ ccn_content_matches_nextcomp(const unsigned char *excl,
      * Now we have isolated the applicable filter (Any or Bloom or none).
      */
     if (bloom == match_any)
-        return(0);
+        return(excluded);
     else if (bloom_size != 0) {
         const struct ccn_bloom_wire *f = ccn_bloom_validate_wire(bloom, bloom_size);
         /* If not a valid filter, treat like a false positive */
         if (f == NULL)
-            return(0);
+            return(excluded);
         if (ccn_bloom_match_wire(f, nextcomp, nextcomp_size))
-            return(0);
+            return(excluded);
     }
-    return(1);
+    return(!excluded);
 }
+
 /**
  * Test for a match between a ContentObject and an Interest
  *
@@ -296,11 +299,12 @@ ccn_content_matches_interest(const unsigned char *content_object,
             nextcomp = pc->digest;
         }
         else abort(); /* bug - should have returned already */
-        return (ccn_content_matches_nextcomp
-                (interest_msg + pi->offset[CCN_PI_B_Exclude],
-                 pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
-                 nextcomp,
-                 nextcomp_size));
+        if (ccn_excluded(interest_msg + pi->offset[CCN_PI_B_Exclude],
+                         (pi->offset[CCN_PI_E_Exclude] -
+                          pi->offset[CCN_PI_B_Exclude]),
+                         nextcomp,
+                         nextcomp_size))
+            return(0);
     exclude_checked: {}
     }
     /*
