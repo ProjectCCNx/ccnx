@@ -2828,10 +2828,10 @@ SyncInterestArrived(struct ccn_closure *selfp,
                                 reportExclude(root, d);
                             }
                             if (useCompExcl && lenL > 0
-                                && ccn_content_matches_nextcomp(buf+excl_start,
-                                                                excl_len,
-                                                                bufL,
-                                                                lenL) == 0) {
+                                && ccn_excluded(buf+excl_start,
+                                                excl_len,
+                                                bufL,
+                                                lenL)) {
                                     // we have an exclusion match, so forget it!
                                     if (debug >= CCNL_INFO)
                                         SyncNoteSimple2(root, here, who, "excluded");

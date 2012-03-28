@@ -1,9 +1,10 @@
 /**
  * @file sync/SyncPrivate.h
  *  
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
- *
  * Part of CCNx Sync.
+ */
+/*
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1

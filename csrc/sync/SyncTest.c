@@ -1,7 +1,10 @@
 /**
  * @file sync/SyncTest.c
  * 
- * Part of CCNX Sync.
+ * Part of CCNx Sync.
+ */
+/*
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * Copyright (C) 2011 Palo Alto Research Center, Inc.
  *
