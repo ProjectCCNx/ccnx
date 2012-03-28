@@ -14,3 +14,12 @@
 PATH=/usr/xpg6/bin:/usr/xpg4/bin:$PATH
 export PATH
 echo SH = `which sh` >> conf.mk
+whichcc=`which cc`
+gcciscc="`echo $whichcc | grep gnu`"
+
+if test \( -z "$gcciscc" \)
+then
+	echo "PLATCFLAGS = -mt -Kpic" >> conf.mk
+else
+	echo "PLATCFLAGS = " >> conf.mk
+fi 

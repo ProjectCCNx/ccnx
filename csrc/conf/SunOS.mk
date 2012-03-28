@@ -11,7 +11,6 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-PLATCFLAGS = -mt -Kpic
 MORE_LDLIBS = -lmtmalloc -lnsl -lsocket -L/usr/sfw/lib -R/usr/sfw/lib
 CPREFLAGS = -I../include -I/usr/sfw/include
 SHEXT = so
