@@ -68,6 +68,7 @@ struct SyncHashInfoList {
     struct SyncHashInfoList *next;
     struct SyncHashCacheEntry *ce;
     int64_t lastSeen;
+    int64_t lastReplied;
 };
 
 struct SyncRootStats {

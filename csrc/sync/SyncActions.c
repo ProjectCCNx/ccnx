@@ -42,6 +42,7 @@
 #define M 1000000
 // various configuration parameters
 // TBD: get them from an external source?
+static int useCompExcl = 1;             // governs use of nextcomp exclusion use
 static int showHighLevel = 1;           // limit of deltas objects in chain per root
 static int nDeltasLimit = 4;            // limit of deltas objects in chain per root
 static int cachePurgeTrigger = 60;      // cache entry purge, in seconds
@@ -747,6 +748,7 @@ noteRemoteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce, int a
         each->ce = ce;
         if (ce != NULL) ce->busy++;
         each->lastSeen = mark;
+        each->lastReplied = 0;
     }
     if (debug >= CCNL_FINE) {
         char *hex = "empty";
@@ -2213,7 +2215,7 @@ SyncStartNodeFetch(struct SyncRootStruct *root,
                 SyncNoteSimple2(root, here, "fetching", hex);
                 free(hex);
                 if (showHighLevel)
-                    showCacheEntry1(root, "Sync.$NodeFetch", "interest arrived", ce);
+                    showCacheEntry1(root, "Sync.$NodeFetch", "interest sent", ce);
             }
         }
         ccn_charbuf_destroy(&template);
@@ -2703,6 +2705,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
     static char *here = "Sync.SyncInterestArrived";
     struct SyncActionData *data = selfp->data;
     enum ccn_upcall_res ret = CCN_UPCALL_RESULT_OK;
+    char temp[200];
     switch (kind) {
         case CCN_UPCALL_FINAL:
             data = destroyActionData(data);
@@ -2739,7 +2742,6 @@ SyncInterestArrived(struct ccn_closure *selfp,
                     struct ccn_charbuf *cb = ccn_charbuf_create();
                     struct timeval tv = {0};
                     gettimeofday(&tv, 0);
-                    char temp[128];
                     int pos = snprintf(temp, sizeof(temp),
                                        "%ju.%06u: ", 
                                        (uintmax_t) tv.tv_sec,
@@ -2776,69 +2778,98 @@ SyncInterestArrived(struct ccn_closure *selfp,
                     ccn_name_comp_get(buf, comps, skipToHash, &bufR, &lenR);
                     if (bufR == NULL || lenR == 0) {
                         if (data->kind == SRI_Kind_FetchInt) {
-                            // not well-formed, so ignore it
-                            if (debug >= CCNL_SEVERE)
-                                SyncNoteSimple2(root, here, who, "failed, no remote hash");
-                            return ret;
                         }
-                    } else hexR = SyncHexStr(bufR, lenR);
+                    } else {
+                        hexR = SyncHexStr(bufR, lenR);
+                        ceR = SyncHashEnter(root->ch, bufR, lenR, SyncHashState_remote);
+                    }
+                    hexL = SyncHexStr(bufL, lenL);
+                    ceL = root->priv->ceCurrent;
                     
                     if (debug >= CCNL_INFO) {
                         if (hexR == NULL)
                             SyncNoteSimple2(root, here, who, "empty remote hash");
                         else SyncNoteSimple3(root, here, who, "remote hash", hexR);
+                        if (hexL == NULL)
+                            SyncNoteSimple2(root, here, who, "empty local hash");
+                        else SyncNoteSimple3(root, here, who, "local hash", hexL);
                     }
                     if (data->kind == SRI_Kind_AdviseInt) {
-                        // worth noting the remote root
-                        if (debug >= CCNL_FINER) {
-                            ssize_t start = info->pi->offset[CCN_PI_B_Exclude];
-                            ssize_t stop = info->pi->offset[CCN_PI_E_Exclude];
-                            if (stop > start) {
-                                // we appear to have an exclusion
+                        // get the entry for the local root node
+                        // should expire fairly quickly
+                        int seen = noteRemoteHash(root, ceR, 1);
+                        if (debug >= CCNL_INFO) {
+                            // worth noting the remote root
+                            rp->stats->rootAdviseSeen++;
+                            highHere = "Sync.$RootAdvise";
+                            if (debug >= CCNL_INFO && showHighLevel)
+                                showCacheEntry1(root, highHere, "interest arrived", ceR);
+                        }
+                        if (lenR == lenL && memcmp(bufL, bufR, lenR) == 0) {
+                            // hash given is same as our root hash, so ignore the request
+                            if (debug >= CCNL_INFO)
+                                SyncNoteSimple2(root, here, who, "ignored (same hash)");
+                            // both L and R are empty, so suppress short-term thrashing
+                            rp->adviseNeed = 0;
+                            purgeOldEntries(root);
+                            break;
+                        }
+                        ssize_t excl_start = info->pi->offset[CCN_PI_B_Exclude];
+                        ssize_t excl_stop = info->pi->offset[CCN_PI_E_Exclude];
+                        ssize_t excl_len = excl_stop - excl_start;
+                        if (excl_len > 0) {
+                            // we appear to have an exclusion
+                            if (debug >= CCNL_FINER) {
                                 struct ccn_buf_decoder ds;
                                 struct ccn_buf_decoder *d = &ds;
-                                ccn_buf_decoder_start(d, buf+start, stop - start);
+                                ccn_buf_decoder_start(d,
+                                                      buf+excl_start,
+                                                      excl_len);
                                 reportExclude(root, d);
                             }
+                            if (useCompExcl && lenL > 0
+                                && ccn_content_matches_nextcomp(buf+excl_start,
+                                                                excl_len,
+                                                                bufL,
+                                                                lenL) == 0) {
+                                    // we have an exclusion match, so forget it!
+                                    if (debug >= CCNL_INFO)
+                                        SyncNoteSimple2(root, here, who, "excluded");
+                                    break;
+                                }
                         }
-                        if (lenR != 0)
-                            ceR = SyncHashEnter(root->ch, bufR, lenR, SyncHashState_remote);
-                        int seen = noteRemoteHash(root, ceR, 1);
                         if (seen == 0 && !isCovered(ceR)) {
                             // first time seen, so force a RootAdvise from our side
                             // this should allow the remote to answer with deltas (if present)
                             SyncSendRootAdviseInterest(root);
                             kickHeartBeat(root);
                         }
-                        rp->stats->rootAdviseSeen++;
-                        highHere = "Sync.$RootAdvise";
-                        if (debug >= CCNL_INFO && showHighLevel)
-                            showCacheEntry1(root, highHere, "interest arrived", ceR);
                     } else {
+                        // NodeFetch
                         rp->stats->nodeFetchSeen++;
+                        if (ceR == NULL) {
+                            // NodeFetch MUST have a valid remote hash!
+                            if (debug >= CCNL_SEVERE)
+                                SyncNoteSimple2(root, here, who, "failed, no remote hash");
+                            return CCN_UPCALL_RESULT_ERR;
+                        }
                         highHere = "Sync.$NodeFetch";
                         if (debug >= CCNL_INFO && showHighLevel)
-                            showCacheEntry1(root, highHere, "interest arrived",
-                                            SyncHashLookup(root->ch, bufR, lenR));
-                    }                    
+                            showCacheEntry1(root, highHere, "interest arrived", ceR);
+                        // after this point, ceL is the requested node
+                        ceL = ceR;
+                    }
                     if (lenL == 0) {
                         if (debug >= CCNL_INFO)
                             SyncNoteSimple2(root, here, who, "ignored (empty local root)");
                         if (lenR == 0) {
                             // both L and R are empty, so suppress short-term thrashing
                             rp->adviseNeed = 0;
-                        } else if (root->namesToAdd->len > 0) {
+                        }
+                        if (root->namesToAdd->len > 0) {
                             if (debug >= CCNL_FINE)
                                 SyncNoteSimple2(root, here, who, "new tree needed");
                         }
-                        break;
-                    }
-                    if (data->kind == SRI_Kind_AdviseInt
-                        && lenR == lenL && memcmp(bufL, bufR, lenR) == 0) {
-                        // hash given is same as our root hash, so ignore the request
-                        if (debug >= CCNL_INFO)
-                            SyncNoteSimple2(root, here, who, "ignored (same hash)");
-                        purgeOldEntries(root);
                         break;
                     }
                     
@@ -2848,24 +2879,11 @@ SyncInterestArrived(struct ccn_closure *selfp,
                     // subnodes that C cannot reach
                     // TBD: come up with a better solution!
                     
-                    hexL = SyncHexStr(bufL, lenL);
-                    
                     rp->adviseNeed = adviseNeedReset;
                     
-                    // we need to respond with our local root node
+                    // we need to respond with a local tree node (in ceL)
                     
-                    if (data->kind == SRI_Kind_AdviseInt) {
-                        // get the entry for the local root node
-                        // should expire fairly quickly
-                        ceL = root->priv->ceCurrent;
-                        if (debug >= CCNL_INFO) {
-                            SyncNoteSimple3(root, here, who, "local hash", hexL);
-                        }
-                    } else {
-                        // get the entry for the requested local tree node
-                        ceL = SyncHashLookup(root->ch, bufR, lenR);
-                    }
-                    // test for local root node being present
+                    // test for desired local tree node being present
                     if (SyncCacheEntryFetch(ceL) < 0) {
                         // requested local node is probably not ours
                         if (debug >= CCNL_FINE) {
@@ -2890,6 +2908,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                             // we've got one, so send it now
                             SendDeltasReply(root, deltas);
                             ccn_charbuf_destroy(&name);
+                            ret = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
                             break;
                         }
                     }
@@ -3767,6 +3786,7 @@ UpdateAction(struct ccn_schedule *sched,
                     else if (ud->ceStart != ud->ceStop) {
                         // only do this if the update got something
                         // when this root node is stored we will need to know the stable point
+                        struct SyncHashInfoList *remoteSeen = scanRemoteSeen(root, ud->ceStart);
                         ccnr_hwm hwm = root->priv->highWater;
                         ce->stablePoint = hwm;
                         if (debug >= CCNL_INFO) {
@@ -3785,22 +3805,10 @@ UpdateAction(struct ccn_schedule *sched,
                                                    "done (%d)",
                                                    count);
                                 if (deltas != NULL) {
-                                    struct SyncRootDeltas *each = deltas;
-                                    char *sep = "";
                                     pos += snprintf(temp+pos, tlim-pos,
-                                                    ", deltas (%d) [",
-                                                    each->deltasCount);
-                                    while (each != NULL) {
-                                        struct SyncHashCacheEntry *ce = each->ceStart;
-                                        pos += showCacheEntry(root, 
-                                                              temp+pos, tlim-pos,
-                                                              sep, ce);
-                                        sep = ", ";
-                                        each = each->next;
-                                    }
-                                    pos += snprintf(temp+pos, tlim-pos, "]");
+                                                    ", deltas (%d)",
+                                                    deltas->deltasCount);
                                 }
-                                struct SyncHashInfoList *remoteSeen = scanRemoteSeen(root, ud->ceStart);
 
                                 if (remoteSeen != NULL)
                                     pos += snprintf(temp+pos, tlim-pos, ", seen");
@@ -3809,14 +3817,16 @@ UpdateAction(struct ccn_schedule *sched,
                                                 ud->ceStart, ud->ceStop);
                             }
                         }
-                        // since we have a new root, we need a new RootAdvise
-                        SyncSendRootAdviseInterest(root);
-                        if (deltas != NULL && scanRemoteSeen(root, ud->ceStart) != NULL)
+                        if (deltas != NULL && remoteSeen != NULL && remoteSeen->lastReplied == 0) {
                             // if there is no remote hash matching the deltas stopping hash
                             // but there is a request for the starting hash, then send
                             // the updates now
                             // TBD: is this a good enough test?
                             SendDeltasReply(root, deltas);
+                            remoteSeen->lastReplied = now;
+                        } else
+                            // since we have a new root, we need a new RootAdvise
+                            SyncSendRootAdviseInterest(root);
                     } 
                     if (old != NULL) ccn_charbuf_destroy(&old);
                     free(hex);
