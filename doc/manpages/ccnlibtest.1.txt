@@ -1,0 +1,43 @@
+CCNDLIBTEST(1)
+================
+
+NAME
+----
+ccnlibtest - Run scripted tests of the ccnx C library.
+
+SYNOPSIS
+--------
+*ccnlibtest* [-h] 'command' '...'
+
+DESCRIPTION
+-----------
+The *ccnlibtest* is a program for running scripted tests of the ccnx C library.
+
+xxx yyy zzz.
+
+OPTIONS
+-------
+*-h*::
+     Print usage information and exit.
+
+ARGUMENTS
+---------
+The remaining arguments are processed in order, as commands.
+
+
+INPUT
+-----
+*post*::
+     xxxx
+
+*load* 'filename'::
+     yyyy
+
+
+SEE ALSO
+--------
+*ccndsmoketest*(1)
+
+AUTHOR
+------
+Michael Plass <plass@parc.com>
