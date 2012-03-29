@@ -78,10 +78,10 @@ clean:
 clean-documentation:
 	rm -f $(NONSOURCE)
 
-.gitignore: Makefile
-	for i in $(NONSOURCE); do echo $$i; done > $@
+.gitignore: Makefile _always
+	@for i in $(NONSOURCE); do echo $$i; done > $@
 
-depend: Makefile _always
+depend: Makefile .gitignore _always
 	@for i in $(PAGE_NAMES); do echo $$i.1.html: $$i.1.txt; done > depend
 	@for i in $(PAGE_NAMES); do echo $$i.1.pdf: $$i.1.txt; done >> depend
 	@for i in $(PAGE_NAMES); do echo $$i.1: $$i.1.txt;     done >> depend
