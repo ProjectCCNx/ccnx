@@ -49,6 +49,20 @@ int hex_value(char c)
     return (10+tolower(c) - 'a');
 }
 
+void
+usage(char *prog)
+{
+    fprintf(stderr,
+            "%s [-t topo-uri] [-p prefix-uri] [-r roothash-hex] [-w timeout-secs]\n"
+            "   topo-uri and prefix-uri must be CCNx URIs.\n"
+            "   roothash-hex must be an even number of hex digits "
+            "representing a valid starting root hash.\n"
+            "   timeout-secs is the time, in seconds that the program "
+            "should monitor sync activity.\n"
+            "       or -1 to run until interrupted.\n", prog);
+    exit(1);
+}
+
 int
 sync_cb(struct ccns_handle *h,
         struct ccn_charbuf *lhash,
@@ -93,11 +107,12 @@ main(int argc, char **argv)
     while ((opt = getopt(argc, argv, "hp:r:t:w:")) != -1) {
         switch (opt) {
             case 'p':
-                ccn_name_from_uri(prefix, optarg);
+                if (0 > ccn_name_from_uri(prefix, optarg)) usage(argv[0]);
                 break;
             case 'r':
                 n = strlen(optarg);
-                if ((n % 2) != 0) goto Usage;
+                if ((n % 2) != 0)
+                    usage(argv[0]);
                 roothash = ccn_charbuf_create_n(n / 2);
                 for (i = 0; i < (n / 2); i++) {
                     j = (hex_value(optarg[2*i]) << 4) | hex_value(optarg[1+2*i]);
@@ -105,18 +120,19 @@ main(int argc, char **argv)
                 }
                 break;
             case 't':
-                ccn_name_from_uri(topo, optarg);
+                if (0 > ccn_name_from_uri(topo, optarg)) usage(argv[0]);
                 break;
             case 'w':
-                timeout = atoi(optarg) * 1000;
+                timeout = atoi(optarg);
+                if (timeout < -1) usage(argv[0]);
+                timeout *= 1000;
                 break;
             default:
             case 'h':
-            Usage:
-                fprintf(stderr, "%s [-t topo-uri] [-p prefix-uri] [-r roothash-hex] [-w timeout-secs]\n", argv[0]);
-                exit(1);
+                usage(argv[0]);
         }
     }
+    
     h = ccn_create();
     res = ccn_connect(h, NULL);
     slice = ccns_slice_create();
