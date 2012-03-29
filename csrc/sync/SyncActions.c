@@ -2805,7 +2805,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                             if (debug >= CCNL_INFO && showHighLevel)
                                 showCacheEntry1(root, highHere, "interest arrived", ceR);
                         }
-                        if (lenR == lenL && memcmp(bufL, bufR, lenR) == 0) {
+                        if (ceL == ceR) {
                             // hash given is same as our root hash, so ignore the request
                             if (debug >= CCNL_INFO)
                                 SyncNoteSimple2(root, here, who, "ignored (same hash)");
@@ -3817,7 +3817,7 @@ UpdateAction(struct ccn_schedule *sched,
                                                 ud->ceStart, ud->ceStop);
                             }
                         }
-                        if (deltas != NULL && remoteSeen != NULL && remoteSeen->lastReplied == 0) {
+                        if (deltas != NULL && remoteSeen != NULL) {
                             // if there is no remote hash matching the deltas stopping hash
                             // but there is a request for the starting hash, then send
                             // the updates now
