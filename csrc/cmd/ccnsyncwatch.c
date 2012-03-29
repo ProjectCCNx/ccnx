@@ -82,16 +82,17 @@ main(int argc, char **argv)
     struct ccn *h;
     struct ccns_slice *slice;
     struct ccns_handle *ccns;
-    struct ccn_charbuf *prefix;
+    struct ccn_charbuf *prefix = ccn_charbuf_create();
     struct ccn_charbuf *roothash = NULL;
-    struct ccn_charbuf *topo;
+    struct ccn_charbuf *topo = ccn_charbuf_create();
     int timeout = 10*1000;
     unsigned i, j, n;
     
+    ccn_name_init(prefix);
+    ccn_name_init(topo);
     while ((opt = getopt(argc, argv, "hp:r:t:w:")) != -1) {
         switch (opt) {
             case 'p':
-                prefix = ccn_charbuf_create();
                 ccn_name_from_uri(prefix, optarg);
                 break;
             case 'r':
@@ -104,7 +105,6 @@ main(int argc, char **argv)
                 }
                 break;
             case 't':
-                topo = ccn_charbuf_create();
                 ccn_name_from_uri(topo, optarg);
                 break;
             case 'w':
