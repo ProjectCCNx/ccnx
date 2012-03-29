@@ -23,6 +23,7 @@ INSTALLED_PROGRAMS = \
     ccnpoke ccnpeek ccnhexdumpdata \
     ccnseqwriter ccnsimplecat \
     ccnfilewatch ccninitkeystore \
+    ccnsyncwatch \
     $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
@@ -40,7 +41,7 @@ CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
        ccnbuzz.c ccnbx.c ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
        ccndumpnames.c ccndumppcap.c ccnfilewatch.c ccnpeek.c ccnhexdumpdata.c \
        ccninitkeystore.c ccnls.c ccnnamelist.c ccnpoke.c ccnrm.c ccnsendchunks.c \
-       ccnseqwriter.c ccn_fetch_test.c ccnslurp.c dataresponsetest.c 
+       ccnseqwriter.c ccnsyncwatch.c ccn_fetch_test.c ccnslurp.c dataresponsetest.c 
 
 default all: $(PROGRAMS)
 # Don't try to build broken programs right now.
@@ -163,6 +164,9 @@ ccndumppcap: ccndumppcap.o
 
 ccnfilewatch: ccnfilewatch.o
 	$(CC) $(CFLAGS) -o $@ ccnfilewatch.o
+
+ccnsyncwatch: ccnsyncwatch.o
+	$(CC) $(CFLAGS) -o $@ ccnsyncwatch.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
