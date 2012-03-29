@@ -7,7 +7,7 @@ In CCNx, a Repository supports the network by preserving content as instructed a
 
 A Repository uses the local file system for persistent storage of CCN Content Objects. A disk-resident index facilitates rapid start-up and limits the memory footprint.
 
-All interactions with the Repository are conducted through ccnd. The primary method of instructing a Repository to obtain and preserve content is through the CCNx Repository Protocol. A client wishing to store content (the _writer_) expresses a specially constructed Interest,  in the form of a "request for Interests," that triggers the Repository to start retrieving content with a given name prefix that the writer provides. (All of this is hidden from the typical application by one of the conventional I/O APIs.) Retrieval of content is performed with standard CCNx Protocol features.
+All interactions with the Repository are conducted through ccnd. The primary method of instructing a Repository to obtain and preserve content is through the CCNx Repository Protocol. A client wishing to store content (the 'writer') expresses a specially constructed Interest,  in the form of a "request for Interests" that triggers the Repository to start retrieving content with a given name prefix that the writer provides. (All of this is hidden from the typical application by one of the conventional I/O APIs.) Retrieval of content is performed with standard CCNx Protocol features.
 
 The CCNx Name Enumeration Protocol provides means for a CCN component to obtain a list of names under a specified prefix, much like a directory listing. This protocol is described in link:NameEnumerationProtocol.html[CCNx Name Enumeration Protocol].
 
@@ -15,12 +15,12 @@ The CCNx Synchronization Protocol allows CCN components to define collections of
 
 A Repository has a Policy that specifies the namespaces (name prefixes) for which it accepts and holds content. An initial Policy may be specified by configuration information; after that, Policies may be updated using the CCNx Repository Protocol like any other content. The process for defining policies is described in link:RepoPolicies.html[CCNx Repository Policy Handling].
 
-The Repository may be initiated with the +ccnr+ command. The command and Repository configuration options are described in link:../manpages/ccnr.html[CCNR(1) Manual Page].
+The Repository may be initiated with the `ccnr` command. The command and Repository configuration options are described in the link:../manpages/ccnr.html[CCNR(1)] man page.
 
 
 == CCNx Repository Protocol
 
-The Repository Protocol provides a method for an entity such as an application to store Content Objects. A content storage request  is represented as a CCNx Interest with a command marker as a component of the name indicating the desired action. A response is represented as a ContentObject for which the name matches the Interest, and the content encodes any necessary response data.
+The Repository Protocol provides a method for an entity such as an application to store Content Objects. A content storage request  is represented as a CCNx Interest with a command marker as a component of the name indicating the desired action. A response is represented as a Content y response data.
 
 Three commands are available in the CCNx Repository Protocol: Start Write, Checked Start Write, and Bulk Import.
 
@@ -28,28 +28,28 @@ Three commands are available in the CCNx Repository Protocol: Start Write, Check
 
 The *Start Write (%C1.R.sw)* command requests that the Repository retrieve and store content.  It is constructed as an Interest with a name that is, when expressed as a URI, of the form
 
-+ccnx:+(+/*_component_*+)^\*^+/%C1.R.sw/*_nonce_*+
+ ccnx:(/<component>)*/%C1.R.sw/<nonce>
 
-==== +_component_+
+==== *'<component>'*
 The components are required, and represent the name prefix of the content to be stored. See link:Name.html[CCNx Name Specification].
 
-==== +_nonce_+
-The +*_nonce_*+ is required, and is as described in the Nonce (Namespace N) section of link:NameConventions.html[CCNx Basic Name Conventions].
+==== *'<nonce>'*
+*'<nonce>'* is required, and is as described in the Nonce (Namespace N) section of link:NameConventions.html[CCNx Basic Name Conventions].
 
 ==== Response
-The Repository responds to a Start Write with a Content Object containing a +RepositoryInfo+ object of type +INFO+ as described in link:RepositoryInfoObject.html[CCNx RepositoryInfo Object]. (The message acknowledges that the request was accepted and gives details about the Repository that accepted the request. In this case, no response data is returned.) The Repository then begins fetching content from the writer using normal CCNx protocol messages. Retrieval is asynchronous.
+The Repository responds to a Start Write with a Content Object containing a `RepositoryInfo` object of type "INFO" as described in link:RepositoryInfoObject.html[CCNx RepositoryInfo Object]. (The message acknowledges that the request was accepted and gives details about the Repository that accepted the request. In this case, no response data is returned.) The Repository then begins fetching content from the writer using normal CCNx protocol messages. Retrieval is asynchronous.
 
 The variable elements of the returned +RepositoryInfo+ object are as follows:
 
-* +Type+ is +INFO+.
+* `Type` is "INFO".
 
-* +RepositoryVersion+ is +2.0+.
+* `RepositoryVersion` is "2.0".
 
-* +GlobalPrefixName+ is the Global Prefix (e.g., +/parc.com/csl/ccn/Repos+), which is the name under which the Repository stores its own objects.
+* `GlobalPrefixName` is the Global Prefix (e.g., "/parc.com/csl/ccn/Repos"), which is the name under which the Repository stores its own objects.
 
-* +LocalName+ is +Repository+.
+* `LocalName` is "Repository".
 
-The +InfoString+ element is not used.
+The `InfoString` element is not used.
 
 The protocol is illustrated below.
 
@@ -62,50 +62,50 @@ Note that implementations of the Repository are likely to use pipelining to fetc
 
 The *Checked Start Write (%C1.R.sw-c)* command is similar to Start Write, but the Repository first checks to see whether it already holds the content and does not retrieve and store it if it is already present. The Repository responds in either case.  The command is constructed as an Interest with a name that is, when expressed as a URI, of the form
 
-+ccnx:+(+/*_component_*+)^\*^+/%C1.R.sw-c/*_nonce_*/*_segment_*/*_digest_*+
+ ccnx:(/<component>)*/%C1.R.sw-c/<nonce>/<segment>/<digest>
 
-==== +_component_+
+==== *'<component>'*
 The components are required, and represent the name prefix of the content to be stored. See link:Name.html[CCNx Name Specification].
 
-==== +_nonce_+
-The +*_nonce_*+ is required, and is as described in the Nonce (Namespace N) section of link:NameConventions.html[CCNx Basic Name Conventions].
+==== *'<nonce>'*
+*'<nonce>'* is required, and is as described in the Nonce (Namespace N) section of link:NameConventions.html[CCNx Basic Name Conventions].
 
-==== +_segment_+
-The +*_segment_*+ is required, and is the sequence component of the first segment to be stored. For consecutive numbering, this is typically +%00+.
+==== *'<segment>'*
+*'<segment>'* is required, and is the sequence component of the first segment to be stored. For consecutive numbering, this is typically +%00+.
 
-==== +_digest_+
-The +*_digest_*+ is required, and is the SHA-256 digest of the entire ccnb-encoded link:ContentObject.html[Content Object]. (This is the implicit digest component of the name of any Content Object. The combination of +*_segment_*+ and +*_digest_*+ precisely identify the first segment of the content to be stored.)
+==== *'<digest>'*
+*'<digest>'* is required, and is the SHA-256 digest of the entire ccnb-encoded link:ContentObject.html[Content Object]. (This is the implicit digest component of the name of any Content Object. The combination of *'<segment>'* and *'<digest>'* precisely identify the first segment of the content to be stored.)
 
 ==== Response
-If the object is NOT present, the Repository responds with a Content Object containing a +RepositoryInfo+ object of type +INFO+ as described in link:RepositoryInfoObject.html[CCNx RepositoryInfo Object], the same as for Start Write. The Repository then begins fetching content from the writer using normal CCNx protocol messages. Retrieval is asynchronous.
+If the object is 'not' present, the Repository responds with a Content Object containing a +RepositoryInfo+ object of type "INFO" as described in link:RepositoryInfoObject.html[CCNx RepositoryInfo Object], the same as for Start Write. The Repository then begins fetching content from the writer using normal CCNx protocol messages. Retrieval is asynchronous.
 
-If the object is NOT present, variable elements of the returned +RepositoryInfo+ object are as follows:
+If the object is 'not' present, variable elements of the returned +RepositoryInfo+ object are as follows:
 
-* +Type+ is +INFO+.
+* `Type` is "INFO".
 
-* +RepositoryVersion+ is +2.0+.
+* `RepositoryVersion` is "2.0".
 
-* +GlobalPrefixName+ is the Global Prefix (e.g., /parc.com/csl/ccn/Repos+), which is the name under which the Repository stores its own objects.
+* `GlobalPrefixName` is the Global Prefix (e.g., "/parc.com/csl/ccn/Repos"), which is the name under which the Repository stores its own objects.
 
-* +LocalName+ is +Repository+.
+* `LocalName` is "Repository".
 
-The +InfoString+ element is not used.
+The `InfoString` element is not used.
 
-If the object IS present, the Repository responds with a Content Object containing a +RepositoryInfo+ object of type +DATA+. In this case, the data returned (in the +Name+ element) is the complete name of the target of the Checked Start Write, and the Repository does not fetch any data from the writer.
+If the object 'is' present, the Repository responds with a Content Object containing a +RepositoryInfo+ object of type "DATA". In this case, the data returned (in the `Name` element) is the complete name of the target of the Checked Start Write, and the Repository does not fetch any data from the writer.
 
-If the object IS present, variable elements of the returned +RepositoryInfo+ object are as follows:
+If the object 'is' present, variable elements of the returned +RepositoryInfo+ object are as follows:
 
-* +Type+ is +DATA+.
+* `Type` is "DATA".
 
-* +RepositoryVersion+ is +2.0+.
+* `RepositoryVersion` is "2.0".
 
-* +GlobalPrefixName+ is the Global Prefix (e.g., +/parc.com/csl/ccn/Repos+).
+* `GlobalPrefixName` is the Global Prefix (e.g., "/parc.com/csl/ccn/Repos").
 
-* +LocalName+ is +Repository+.
+* `LocalName` is "Repository".
 
-* +Name+ is the complete name (including the digest) of the target of the Checked Start Write.
+* `Name` is the complete name (including the digest) of the target of the Checked Start Write.
 
-The +InfoString+ element is not used.
+The `InfoString` element is not used.
 
 The protocol is illustrated below.
 
@@ -118,32 +118,32 @@ Note that implementations of the Repository are likely to use pipelining to fetc
 
 The *Bulk Import (%C1.R.af)* command (also sometimes known as "add file") requests that the Repository merge Content Objects from a local file into the Repository store. This command is provided for backward compatibility, and its use is discouraged.
 
-Prior to issuing a Bulk Import command, a file that consists of a sequence of ccnb encoded Content Objects (such as would have been created by a Repository) must be placed in the +$CCNR_DIRECTORY/import/+ directory.
+Prior to issuing a Bulk Import command, a file that consists of a sequence of ccnb encoded Content Objects (such as would have been created by a Repository) must be placed in the `$CCNR_DIRECTORY/import/` directory.
 
 The Bulk Import command is constructed as an Interest with a single component name that is, when expressed as a URI, of the form
 
-+ccnx:/%C1.R.af~*_filename_*+
+ ccnx:/%C1.R.af~<filename>
 
-==== +_filename_+
-The +*_filename_*+ is the ASCII name of a file that must exist within the +import+ directory of the Repository to which the content is being imported. It must be a simple name with no +/+'s.
+==== *'<filename>'*
+*'<filename>'* is the ASCII name of a file that must exist within the `import` directory of the Repository to which the content is being imported. It must be a simple name with no `/`'s.
 
 If the command is accepted, the Repository attempts to open and parse the specified file. If there are no errors, Content Objects in the file that are not already in the Repository are imported, Content Objects that are already in the Repository are ignored, and the file is deleted.
 
 ==== Response
 
-The Repository responds to a Bulk Import with a Content Object containing a +RepositoryInfo+ object of type +INFO+ as described in link:RepositoryInfoObject.html[CCNx RepositoryInfo Object].
+The Repository responds to a Bulk Import with a Content Object containing a `RepositoryInfo` object of type "INFO" as described in link:RepositoryInfoObject.html[CCNx RepositoryInfo Object].
 
 The variable elements of the returned +RepositoryInfo+ object are as follows:
 
-* +Type+ is +INFO+.
+* `Type` is "INFO".
 
-* +RepositoryVersion+ is +2.0+.
+* `RepositoryVersion` is "2.0".
 
-* +GlobalPrefixName+ is the Global Prefix (e.g., +/parc.com/csl/ccn/Repos+), which is the name under which the Repository stores its own objects.
+* `GlobalPrefixName` is the Global Prefix (e.g., "/parc.com/csl/ccn/Repos"), which is the name under which the Repository stores its own objects.
 
-* +LocalName+ is +Repository+.
+* `LocalName` is "Repository".
 
-* +InfoString+ reflects the success or failure of the request. If the request is successful, +InfoString+ contains the string +OK+. If an error is detected, +InfoString+ contains a diagnostic message.
+* `InfoString` reflects the success or failure of the request. If the request is successful, `InfoString` contains the string "OK". If an error is detected, `InfoString` contains a diagnostic message.
 
 The protocol is illustrated below.
 
@@ -154,9 +154,9 @@ image:BulkImportProtocol.png[align="center"]
 
 A standard Interest is used to fetch content from the Repository. The Interest specifies a prefix; if it has matching content, the Repository returns it from its backing store. The prefix is the only required component of the Interest, although other components may be used to narrow the selection. See link:InterestMessage.html[CCNx Interest Message] for details.
 
-If a matching object IS present, the Repository responds with the requested Content Object.
+If a matching object 'is' present, the Repository responds with the requested Content Object.
 
-If a matching object is NOT present, the Repository does not respond.
+If a matching object is 'not' present, the Repository does not respond.
 
 The protocol is illustrated below.
 
