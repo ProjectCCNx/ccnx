@@ -2,24 +2,20 @@ Name Enumeration Protocol
 =========================
 
 == Basic Enumeration
-The *Basic Enumeration (%C1.E.be)* command requests the first-level names under a specified prefix, much like a single-level directory listing command.
+The *Basic Enumeration (%C1.E.be)* command requests the first-level names under a specified prefix, much like a single-level directory listing command. It is constructed as an Interest with a name that is, when expressed as a URI, of the form
 
-.......................................................
-Interest ::=	Prefix 
-		Command
-.......................................................
+ ccnx:/<prefix>/%C1.E.be
 
-=== Prefix
-+Prefix+ is required and is the prefix under which lower-level names are requested. See link:Name.html[CCNx Name Specification].
+=== *'<prefix>'*
 
-=== Command
-+Command+ is required, and is +%C1.E.be+ for Basic Enumeration.
+*'<prefix>'* is required, is the prefix under which lower-level names are requested, and may have multiple components. See link:Name.html[CCNx Name Specification].
+
 
 === Response
 
-If the object IS present, the Repository responds with the first segment of names immediately below the specified prefix. If the result does not fit in a single segment, the remaining segments may be fetched using the standard segmentation markers (+%00%01+, +%00%02+, …) in place of the +%00+. If every component of the prefix exists in the Repository but there are no components below the last component of the prefix, then an empty collection is returned (i.e., +<collection/>+).
+If the object 'is' present, the Repository responds with the first segment of names immediately below the specified prefix. If the result does not fit in a single segment, the remaining segments may be fetched using the standard segmentation markers (`%00%01`, `%00%02`, …) in place of the `%00`. If every component of the prefix exists in the Repository but there are no components below the last component of the prefix, then an empty collection is returned (i.e., "<collection/>").
 
-If the object is NOT present, the Repository does not respond.
+If the object is 'not' present, the Repository does not respond.
 
 For example, if you express the following interest:
 
@@ -29,7 +25,7 @@ For example, if you express the following interest:
 then the first segment of the response will be named:
 
 [literal]
-	ccnx:/xxx/yyy/%C1.E.be/%C1.M.K%00<public key of responding repository>/%FD<version>/%00
+	ccnx:/xxx/yyy/%C1.E.be/%C1.M.K%00<public_key_of_responding_repository>/%FD<version>/%00
 
 and the content will be a Collection of Links (see link:xsd.html[ccnx.xsd]) of the following form:
 
@@ -48,4 +44,3 @@ where the query in this case was for a part of the namespace that happened to ha
 The protocol is illustrated below.
 
 image:NameEnumerationProtocol.png[align="center"]
-

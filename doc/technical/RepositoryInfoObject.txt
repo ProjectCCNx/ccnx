@@ -21,10 +21,10 @@ Type		::= BLOB ("INFO" | "DATA")
 .......................................................
 
 === Version
-+Version+ is required, and identifies the version of the +RepositoryInfo+ object definition. Its value is +1.1+.
+*Version* is required, and identifies the version of the +RepositoryInfo+ object definition. Its value is "1.1".
 
 === Type
-+Type+ the primitive type of the ContentObject *Content*. It is encoded as a 3-byte BLOB; when viewed using a +base64Binary+ encoding, the encoded value has some mnemonic value. The hex and decimal equivalents (in network byte order) are also given here for reference.
+*Type* is the primitive type of the ContentObject *Content*. It is encoded as a 3-byte BLOB; when viewed using a `base64Binary` encoding, the encoded value has some mnemonic value. The hex and decimal equivalents (in network byte order) are also given here for reference.
 
 [width="90%",cols="^4m,^6m,^6m,30d",options="header"]
 |==================================================================
@@ -34,16 +34,16 @@ Type		::= BLOB ("INFO" | "DATA")
 |==================================================================
 
 === RepositoryVersion
-+RepositoryVersion+ is required, and is used by the Repository to identify its version.
+*RepositoryVersion* is required, and is used by the Repository to identify its version.
 
 === GlobalPrefixName
-+GlobalPrefixName+ is required, and is used by the Repository to identify its Global Prefix. (The Global Prefix is the namespace used by a Repository for its own data.)
+*GlobalPrefixName* is required, and is used by the Repository to identify its Global Prefix. (The Global Prefix is the namespace used by a Repository for its own data.)
 
 === LocalName
-+LocalName+ is required, and is specified by the Repository.
+*LocalName* is required, and is specified by the Repository.
 
 === Name
-+Name+ is optional, and is defined as having 0 or more instances. (At present, the Repository uses a maximum of one instance.) When +Type+ is +INFO+, +Name+ is not present. When +Type+ is +DATA+, +Name+ contains the Repository's response data.
+*Name* is optional, and is defined as having 0 or more instances. (At present, the Repository uses a maximum of one instance.) When Type is "INFO", *Name* is not present. When Type is "DATA", *Name* contains the Repository's response data.
 
-==== InfoString
-+InfoString+ is optional, and is defined as having 0 or 1 instance, and is used by some commands to return response information.
+=== InfoString
+*InfoString* is optional, is defined as having 0 or 1 instance, and is used by some commands to return response information.
