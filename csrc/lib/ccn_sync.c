@@ -2098,6 +2098,9 @@ CompareAction(struct ccn_schedule *sched,
             // before switch to busy, reset the remote tree walker
             SyncTreeWorkerInit(data->twR, ceR, 1);
             data->state = SyncCompare_busy;
+            // HACK: if wanting to start at *current* root instead of seeing everything
+            // then we want to go directly to SyncCompare_done state -- set state
+            // and return 0.
         case SyncCompare_busy:
             // come here when we are comparing the trees
             if (debug >= CCNL_FINE)
