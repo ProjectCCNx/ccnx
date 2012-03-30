@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -37,7 +37,7 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 	public GenericXMLDecoder(XMLDictionary dictionary) {
 		super(dictionary);
 	}
-		
+
 	public void beginDecoding(InputStream istream) throws ContentDecodingException {
 		if (null == istream)
 			throw new IllegalArgumentException(this.getClass().getName() + ": input stream cannot be null!");
@@ -45,13 +45,13 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		initializeDecoding();
 		readStartDocument();
 	}
-	
+
 	/**
 	 * Default implementation does nothing. Subclass-specific parser setup.
 	 */
 	public void initializeDecoding() throws ContentDecodingException {
 	}
-	
+
 	public void endDecoding() throws ContentDecodingException {
 		readEndDocument();
 	}
@@ -90,7 +90,7 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 
 	/**
 	 * Force low-level readers to all consume the end element, to get behavior
-	 * matching the text decoder (lowest common denominator); allows us to 
+	 * matching the text decoder (lowest common denominator); allows us to
 	 * collapse this level of behavior here.
 	 */
 	public String readUTF8Element(String startTag,
@@ -103,7 +103,7 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 
 	/**
 	 * Force low-level readers to all consume the end element, to get behavior
-	 * matching the text decoder (lowest common denominator); allows us to 
+	 * matching the text decoder (lowest common denominator); allows us to
 	 * collapse this level of behavior here.
 	 */
 	public String readUTF8Element(long startTag,
@@ -113,11 +113,11 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		// readEndElement(); // readUString consumes end element
 		return strElementText;
 	}
-	
+
 	public byte[] readBinaryElement(String startTag) throws ContentDecodingException {
 		return readBinaryElement(startTag, null);
 	}
-	
+
 	public byte[] readBinaryElement(long startTag) throws ContentDecodingException {
 		return readBinaryElement(startTag, null);
 	}
@@ -125,7 +125,7 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 	/**
 	 * Expect a start tag (label), optional attributes, a BLOB, and an end element.
 	 * Force low-level readers to all consume the end element, to get behavior
-	 * matching the text decoder (lowest common denominator); allows us to 
+	 * matching the text decoder (lowest common denominator); allows us to
 	 * collapse this level of behavior here.
 	 */
 	public byte [] readBinaryElement(String startTag,
@@ -138,13 +138,13 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		} catch (IOException e) {
 			throw new ContentDecodingException(e.getMessage(),e);
 		}
-		
+
 		return blob;
 	}
-	
+
 	/**
 	 * Force low-level readers to all consume the end element, to get behavior
-	 * matching the text decoder (lowest common denominator); allows us to 
+	 * matching the text decoder (lowest common denominator); allows us to
 	 * collapse this level of behavior here.
 	 */
 	public byte[] readBinaryElement(long startTag,
@@ -157,12 +157,12 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 		} catch (IOException e) {
 			throw new ContentDecodingException(e.getMessage(), e);
 		}
-		
+
 		return blob;
 	}
 
 	public long readLongElement(String startTag) throws ContentDecodingException {
-		String strVal = readUTF8Element(startTag); 
+		String strVal = readUTF8Element(startTag);
 		try {
 			return Long.valueOf(strVal);
 		} catch (NumberFormatException e) {
@@ -171,16 +171,16 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 	}
 
 	public long readLongElement(long startTag) throws ContentDecodingException {
-		String strVal = readUTF8Element(startTag); 
+		String strVal = readUTF8Element(startTag);
 		try {
 			return Long.valueOf(strVal);
 		} catch (NumberFormatException e) {
 			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal, e);
 		}
 	}
-	
+
 	public int readIntegerElement(String startTag) throws ContentDecodingException {
-		String strVal = readUTF8Element(startTag); 
+		String strVal = readUTF8Element(startTag);
 		try {
 			return Integer.valueOf(strVal);
 		} catch (NumberFormatException e) {
@@ -189,14 +189,14 @@ public abstract class GenericXMLDecoder extends GenericXMLHandler implements XML
 	}
 
 	public int readIntegerElement(long startTag) throws ContentDecodingException {
-		String strVal = readUTF8Element(startTag); 
+		String strVal = readUTF8Element(startTag);
 		try {
 			return Integer.valueOf(strVal);
 		} catch (NumberFormatException e) {
 			throw new ContentDecodingException("Cannot parse " + startTag + ": " + strVal, e);
 		}
 	}
-	
+
 	public InputStream getInputStream() {
 		return _istream;
 	}
