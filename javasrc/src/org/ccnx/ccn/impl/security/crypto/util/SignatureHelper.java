@@ -316,7 +316,7 @@ public class SignatureHelper {
 	{
 		String signatureAlgorithm = OIDLookup.getSignatureAlgorithm(hashAlgorithm,
 				keyAlgorithm);
-		//Library.info("getSignatureName: combining " +
+		//Log.info("getSignatureAlgorithmName: combining " +
 		//			hashAlgorithm  + " and " + keyAlgorithm +
 		//			" results in: " + signatureAlgorithm);
 		return signatureAlgorithm;
@@ -335,7 +335,7 @@ public class SignatureHelper {
 	{
 		String signatureAlgorithm = OIDLookup.getSignatureAlgorithmOID(hashAlgorithm,
 				keyAlgorithm);
-	//	Library.info("getSignatureAlgorithmOID: combining " +
+	//	Log.info("getSignatureAlgorithmOID: combining " +
 	//				hashAlgorithm  + " and " + keyAlgorithm +
 	//				" results in: " + signatureAlgorithm);
 		return signatureAlgorithm;

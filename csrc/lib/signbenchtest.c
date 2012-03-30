@@ -96,7 +96,7 @@ main(int argc, char **argv)
     res = ccn_encode_ContentObject(/* out */ message,
 				   path, signed_info, 
 				   msgbuf, PAYLOAD_SIZE,
-				   /* digest_algorithm */ NULL, 
+				   ccn_keystore_digest_algorithm(keystore), 
 				   ccn_keystore_private_key(keystore));
 
     ccn_charbuf_reset(message);

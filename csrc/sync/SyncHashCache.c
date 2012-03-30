@@ -102,7 +102,7 @@ SyncHashEnter(struct SyncHashCacheHead *head,
     return ent;
 }
 
-void
+extern void
 SyncHashRemoveEntry(struct SyncHashCacheHead *head,
                     struct SyncHashCacheEntry *ce) {
     if (ce != NULL) {

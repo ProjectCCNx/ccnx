@@ -28,6 +28,7 @@
 struct ccn;
 struct ccn_charbuf;
 struct sockaddr_un;
+struct ccn_schedule;
 
 /*
  * Dispatch a message as if it had arrived on the socket
@@ -39,6 +40,13 @@ void ccn_dispatch_message(struct ccn *h, unsigned char *msg, size_t size);
  * Returns number of microseconds before next call needed
  */
 int ccn_process_scheduled_operations(struct ccn *h);
+
+/*
+ * get or set the schedule in a handle.  Events on this schedule will
+ * be run from the ccn_run() calls.
+ */
+struct ccn_schedule *ccn_get_schedule(struct ccn *h);
+struct ccn_schedule *ccn_set_schedule(struct ccn *h, struct ccn_schedule *s);
 
 /*
  * Grab buffered output

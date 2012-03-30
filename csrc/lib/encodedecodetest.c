@@ -65,7 +65,9 @@ void path_destroy(struct path **path) {
 }
 
 int 
-encode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len, struct ccn_charbuf *signed_info, const void *pkey) {
+encode_message(struct ccn_charbuf *message, struct path * name_path,
+               char *data, size_t len, struct ccn_charbuf *signed_info,
+               const void *pkey, const char *digest_algorithm) {
     struct ccn_charbuf *path = ccn_charbuf_create();
     int i;
     int res;
@@ -79,7 +81,7 @@ encode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 	ccn_name_append_str(path, name_path->comps[i]);
     }
 
-    res = ccn_encode_ContentObject(message, path, signed_info, data, len, NULL, pkey);
+    res = ccn_encode_ContentObject(message, path, signed_info, data, len, digest_algorithm, pkey);
 
     if (res != 0) {
 	fprintf(stderr, "Failed to encode ContentObject\n");
@@ -90,7 +92,8 @@ encode_message(struct ccn_charbuf *message, struct path * name_path, char *data,
 }
 
 int 
-decode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len, const void *verkey) {
+decode_message(struct ccn_charbuf *message, struct path * name_path, char *data, size_t len,
+               const void *verkey) {
     struct ccn_parsed_ContentObject content;
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
     const unsigned char * content_value;
@@ -213,21 +216,30 @@ main (int argc, char *argv[]) {
 
     int i;
 
-    if (argc == 3 && strcmp(argv[1], "-o") == 0) {
-	outname = argv[2];
-    } else {
-	printf("Usage: %s -o <outfilename>\n", argv[0]);
-	exit(1);
+    while ((i = getopt(argc, argv, "k:o:")) != -1) {
+        switch (i) {
+            case 'k':
+                keystore_name = optarg;
+                break;
+            case 'o':
+                outname = optarg;
+                break;
+            default:
+                printf("Usage: %s [-k <keystore>] [-o <outfilename>]\n", argv[0]);
+                exit(1);
+        }
     }
+    
 
-    if (home == NULL) {
+    if (keystore_name == NULL && home == NULL) {
         printf("Unable to determine home directory for keystore\n");
         exit(1);
     }
-    keystore_name = calloc(1, strlen(home) + strlen(keystore_suffix) + 1);
-    
-    strcat(keystore_name, home);
-    strcat(keystore_name, keystore_suffix);
+    if (keystore_name == NULL) {
+        keystore_name = calloc(1, strlen(home) + strlen(keystore_suffix) + 1);
+        strcat(keystore_name, home);
+        strcat(keystore_name, keystore_suffix);
+    }
 
     if (0 != ccn_keystore_init(keystore, keystore_name, "Th1s1sn0t8g00dp8ssw0rd.")) {
         printf("Failed to initialize keystore\n");
@@ -257,7 +269,8 @@ main (int argc, char *argv[]) {
 
     printf("Encoding sample message data length %d\n", (int)strlen(contents[0]));
     cur_path = path_create(paths[0]);
-    if (encode_message(buffer, cur_path, contents[0], strlen(contents[0]), signed_info, ccn_keystore_private_key(keystore))) {
+    if (encode_message(buffer, cur_path, contents[0], strlen(contents[0]), signed_info,
+                       ccn_keystore_private_key(keystore), ccn_keystore_digest_algorithm(keystore))) {
 	printf("Failed to encode message!\n");
     } else {
 	printf("Encoded sample message length is %d\n", (int)buffer->length);
@@ -294,7 +307,8 @@ main (int argc, char *argv[]) {
 	printf("Unit test case %d\n", i);
 	cur_path = path_create(paths[i]);
 	buffer = ccn_charbuf_create();
-	if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]), signed_info, ccn_keystore_private_key(keystore))) {
+	if (encode_message(buffer, cur_path, contents[i], strlen(contents[i]), signed_info,
+                       ccn_keystore_private_key(keystore), ccn_keystore_digest_algorithm(keystore))) {
 	    printf("Failed encode\n");
             result = 1;
 	} else if (decode_message(buffer, cur_path, contents[i], strlen(contents[i]), ccn_keystore_public_key(keystore))) {

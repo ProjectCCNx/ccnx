@@ -39,6 +39,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.CCNStats.CCNEnumStats;
 import org.ccnx.ccn.impl.CCNStats.CCNEnumStats.IStatsEnum;
 import org.ccnx.ccn.impl.InterestTable.Entry;
+import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
@@ -51,7 +52,6 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
-import org.ccnx.ccn.protocol.WirePacket;
 
 /**
  * The low level interface to ccnd. This provides the main data API between the java library
@@ -954,12 +954,9 @@ public class CCNNetworkManager implements Runnable {
 	 * @param callbackHandler a CCNInterestHandler
 	 * @param registrationFlags to use for this registration.
 	 * @throws IOException
-<<<<<<< HEAD
 	 *
 	 * TODO - use of "caller" should be reviewed - don't believe this is currently serving
 	 * serving any useful purpose.
-=======
->>>>>>> 8ae13f2... refs #100427 test upping netmanager thread priority
 	 */
 	public void setInterestFilter(Object caller, ContentName filter, Object callbackHandler,
 			Integer registrationFlags) throws IOException {
@@ -1163,8 +1160,7 @@ public class CCNNetworkManager implements Runnable {
 	protected void write(ContentObject data) throws ContentEncodingException {
 		_stats.increment(StatsEnum.WriteObject);
 
-		WirePacket packet = new WirePacket(data);
-		writeInner(packet);
+		writeInner(data);
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.FINEST) )
 			Log.finest(Log.FAC_NETMANAGER, formatMessage("Wrote content object: {0}"), data.name());
 	}
@@ -1179,12 +1175,11 @@ public class CCNNetworkManager implements Runnable {
 	 */
 	public void write(Interest interest) throws ContentEncodingException {
 		_stats.increment(StatsEnum.WriteInterest);
-		WirePacket packet = new WirePacket(interest);
-		writeInner(packet);
+		writeInner(interest);
 	}
 
 	// DKS TODO unthrown exception
-	private void writeInner(WirePacket packet) throws ContentEncodingException {
+	private void writeInner(GenericXMLEncodable packet) throws ContentEncodingException {
 		try {
 			byte[] bytes = packet.encode();
 			ByteBuffer datagram = ByteBuffer.wrap(bytes);
@@ -1258,7 +1253,7 @@ public class CCNNetworkManager implements Runnable {
 			Log.warning(Log.FAC_NETMANAGER, formatMessage("CCNNetworkManager run() called after shutdown"));
 			return;
 		}
-		//WirePacket packet = new WirePacket();
+
 		if( Log.isLoggable(Log.FAC_NETMANAGER, Level.INFO) )
 			Log.info(Log.FAC_NETMANAGER, formatMessage("CCNNetworkManager processing thread started for port: " + _port));
 		while (_run) {

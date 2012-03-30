@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -28,9 +28,9 @@ import org.ccnx.ccn.impl.support.Log;
  * that handle that codec. Allows new codecs to be registered on the fly for extensibility.
  */
 public class XMLCodecFactory {
-	
+
 	protected static String _defaultCodec = null;
-	
+
 	static {
 		// Make sure this happens before any registrations
 		_registeredEncoders = new HashMap<String,Class<? extends XMLEncoder>>();
@@ -41,23 +41,23 @@ public class XMLCodecFactory {
 		// those aren't called till the classes are loaded, which doesn't
 		// happen till we make one -- which we can't do till they're
 		// registered. Chicken and egg... avoid by doing it here.
-		XMLCodecFactory.registerEncoder(TextXMLCodec.codecName(), 
+		XMLCodecFactory.registerEncoder(TextXMLCodec.codecName(),
 										TextXMLEncoder.class);
-		XMLCodecFactory.registerDecoder(TextXMLCodec.codecName(), 
+		XMLCodecFactory.registerDecoder(TextXMLCodec.codecName(),
 										TextXMLDecoder.class);
-		XMLCodecFactory.registerDecoder(BinaryXMLCodec.codecName(), 
+		XMLCodecFactory.registerDecoder(BinaryXMLCodec.codecName(),
 										BinaryXMLDecoder.class);
-		XMLCodecFactory.registerEncoder(BinaryXMLCodec.codecName(), 
+		XMLCodecFactory.registerEncoder(BinaryXMLCodec.codecName(),
 										BinaryXMLEncoder.class);
 	}
-	
+
 	protected static HashMap<String,Class<? extends XMLEncoder>> _registeredEncoders;
 	protected static HashMap<String,Class<? extends XMLDecoder>> _registeredDecoders;
-	
+
 	public static void registerEncoder(String name, Class<? extends XMLEncoder> encoderClass) {
 		_registeredEncoders.put(name, encoderClass);
 	}
-	
+
 	public static void registerDecoder(String name, Class<? extends XMLDecoder> decoderClass) {
 		_registeredDecoders.put(name, decoderClass);
 	}
@@ -69,19 +69,19 @@ public class XMLCodecFactory {
 		}
 		_defaultCodec = name;
 	}
-	
+
 	/**
 	 * If default codec has been set for this runtime using setDefaultCodec,
 	 * use that value. If not, go to SystemConfiguration to get either the
 	 * command-line value if present or the compiled-in default.
 	 * @return
 	 */
-	public static String getDefaultCodecName() { 
+	public static String getDefaultCodecName() {
 		if (null != _defaultCodec)
-			return _defaultCodec; 
+			return _defaultCodec;
 		return SystemConfiguration.getDefaultEncoding();
 	}
-	
+
 	/**
 	 * Get instance of default encoder.
 	 * @return
@@ -89,7 +89,7 @@ public class XMLCodecFactory {
 	public static XMLEncoder getEncoder() {
 		return getEncoder(null);
 	}
-	
+
 	/**
 	 * Get an instance of the specified encoder.
 	 * @param codecName
@@ -97,11 +97,11 @@ public class XMLCodecFactory {
 	 */
 	public static XMLEncoder getEncoder(String codecName) {
 		Class<? extends XMLEncoder> encoderClass = getEncoderClass(codecName);
-		
+
 		if (null == encoderClass) {
 			return null;
 		}
-		
+
 		// Have the class. Now need to use the default constructor.
 		XMLEncoder encoder = null;
 		try {
@@ -111,10 +111,10 @@ public class XMLCodecFactory {
 			Log.logStackTrace(Level.WARNING, e);
 			throw new RuntimeException("Unexpected error: cannot create instance of encoder class " + encoderClass.getName(), e);
 		}
-		
+
 		return encoder;
 	}
-	
+
 	/**
 	 * Get instance of default decoder.
 	 */
@@ -129,7 +129,7 @@ public class XMLCodecFactory {
 	 */
 	public static XMLDecoder getDecoder(String codecName) {
 		Class<? extends XMLDecoder> decoderClass = getDecoderClass(codecName);
-		
+
 		if (null == decoderClass) {
 			return null;
 		}
@@ -142,7 +142,7 @@ public class XMLCodecFactory {
 			Log.logStackTrace(Level.WARNING, e);
 			throw new RuntimeException("Unexpected error: cannot create instance of decoder class " + decoderClass.getName(), e);
 		}
-		
+
 		return decoder;
 	}
 
@@ -151,17 +151,17 @@ public class XMLCodecFactory {
 			return getDefaultEncoderClass();
 		return _registeredEncoders.get(codecName);
 	}
-	
+
 	public static Class<? extends XMLDecoder> getDecoderClass(String codecName) {
 		if (null == codecName)
 			return getDefaultDecoderClass();
 		return _registeredDecoders.get(codecName);
 	}
-	
+
 	public static Class<? extends XMLEncoder> getDefaultEncoderClass() {
 		return getEncoderClass(getDefaultCodecName());
 	}
-	
+
 	public static Class<? extends XMLDecoder> getDefaultDecoderClass() {
 		return getDecoderClass(getDefaultCodecName());
 	}

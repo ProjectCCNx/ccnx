@@ -184,7 +184,7 @@ ccn_encode_ContentObject(struct ccn_charbuf *buf,
     sig_ctx = ccn_sigc_create();
     if (sig_ctx == NULL)
         return(-1);
-    if (0 != ccn_sigc_init(sig_ctx, digest_algorithm))
+    if (0 != ccn_sigc_init(sig_ctx, digest_algorithm, private_key))
         return(-1);
     if (0 != ccn_sigc_update(sig_ctx, Name->buf, Name->length))
         return(-1);
