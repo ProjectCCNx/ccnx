@@ -561,7 +561,7 @@ ccns_open(struct ccn *h,
     struct ccn_schedule *schedule;
     struct ccn_gettime *timer;
     struct ccns_handle *ccns = calloc(1, sizeof(*ccns));
-    struct SyncHashCacheEntry *ce = NULL;
+    struct SyncHashCacheEntry *ceL = NULL;
     if (ccns == NULL)
         return(NULL);
     schedule = ccn_get_schedule(h);
@@ -584,10 +584,10 @@ ccns_open(struct ccn *h,
     // TODO: no filters yet
     
     // starting at given root hash -- need to sanity check rhash, check node fetch works
-    if (rhash != NULL) {
+    if (rhash != NULL && rhash->length > 0) {
         ccn_charbuf_reset(ccns->root->currentHash);
         ccn_charbuf_append_charbuf(ccns->root->currentHash, rhash);
-        ce = SyncHashEnter(ccns->root->ch, rhash->buf, rhash->length, 0);
+        ceL = SyncHashEnter(ccns->root->ch, rhash->buf, rhash->length, 0);
     }
     
     ccns_send_root_advise_interest(ccns->root);
@@ -1562,6 +1562,12 @@ SyncRemoteFetchResponse(struct ccn_closure *selfp,
                             ce = SyncHashEnter(root->ch, xp, xs, SyncHashState_remote);
                             ce->ncR = ncR;
                             SyncNodeIncRC(ncR);
+                            // for the library, need to duplicate into the Local side
+                            if (ce->ncL == NULL) {
+                                ce->ncL = ncR;
+                                SyncNodeIncRC(ncR);
+                            }
+                            // end
                             if (debug >= CCNL_INFO) {
                                 SyncNoteSimple2(root, here, "remote node entered", hex);
                             }
@@ -1698,14 +1704,13 @@ SyncStartNodeFetch(struct SyncRootStruct *root,
  * speeding up the load process.
  */
 static int
-doPreload(struct SyncCompareData *data) {
+doPreload(struct SyncCompareData *data, struct SyncTreeWorkerHead *twHead) {
     struct SyncRootStruct *root = data->root;
-    struct SyncTreeWorkerHead *twR = data->twR;
     int busyLim = root->base->priv->maxFetchBusy;
     for (;;) {
         if (data->nodeFetchBusy > busyLim) return 0;
-        if (twR->level <= 0) break;
-        struct SyncTreeWorkerEntry *ent = SyncTreeWorkerTop(twR);
+        if (twHead->level <= 0) break;
+        struct SyncTreeWorkerEntry *ent = SyncTreeWorkerTop(twHead);
         if (ent->cacheEntry == NULL)
             return -1;
         struct SyncHashCacheEntry *ceR = ent->cacheEntry;
@@ -1729,7 +1734,7 @@ doPreload(struct SyncCompareData *data) {
                 struct SyncHashCacheEntry *sub = cacheEntryForElem(data, ncR, ep, 1);
                 if (sub == NULL)
                     return -1;
-                ent = SyncTreeWorkerPush(twR);
+                ent = SyncTreeWorkerPush(twHead);
                 if (ent == NULL)
                     return -1;
                 continue;
@@ -1739,7 +1744,7 @@ doPreload(struct SyncCompareData *data) {
             SyncStartNodeFetch(root, ceR, data);
         }
         // common exit to pop and iterate
-        ent = SyncTreeWorkerPop(twR);
+        ent = SyncTreeWorkerPop(twHead);
         if (ent != NULL) ent->pos++;
     }
     while (data->nodeFetchBusy < busyLim) {
@@ -1755,7 +1760,7 @@ doPreload(struct SyncCompareData *data) {
     
     if (data->nodeFetchBusy > 0) return 0;
     if (data->errList != NULL) return 0;
-    if (twR->level > 0) return 0;
+    if (twHead->level > 0) return 0;
     return 1;
 }
 
@@ -1869,9 +1874,24 @@ doComparison(struct SyncCompareData *data) {
             }
         } else {
             struct SyncHashCacheEntry *ceL = tweL->cacheEntry;
-            if (SyncCacheEntryFetch(ceL) < 0)
-                return comparisonFailed(data, "bad cache entry for L", __LINE__);
+            //// Need to duplicate what happens for remote
             struct SyncNodeComposite *ncL = ceL->ncL;
+            if (ncL == NULL) {
+                // top remote node not present, so go get it
+                int nf = SyncStartNodeFetch(root, ceL, data);
+                if (nf == 0) {
+                    // TBD: duplicate, so ignore the fetch?
+                    // for now, this is an error!
+                    return comparisonFailed(data, "node fetch duplicate?", __LINE__);
+                } else if (nf > 0) {
+                    // node fetch started OK
+                } else {
+                    // node fetch failed to initiate
+                    return comparisonFailed(data, "bad node fetch for R", __LINE__);
+                }
+                return 0;
+            }
+            /////
             ceL->lastUsed = data->lastEnter;
             if (tweL->pos >= ncL->refLen) {
                 // we just went off the end of the current local node, so pop it
@@ -1925,7 +1945,7 @@ doComparison(struct SyncCompareData *data) {
                     
                 } else {
                     // both L and R are nodes, test for L being present
-                    struct SyncHashCacheEntry *subL = cacheEntryForElem(data, ncL, neL, 0);
+                    struct SyncHashCacheEntry *subL = cacheEntryForElem(data, ncL, neL, 1); // HACK it's remote.
                     if (subL == NULL || subL->ncL == NULL)
                         return comparisonFailed(data, "bad cache entry for L", __LINE__);
                     // both L and R are nodes, and both are present
@@ -1961,7 +1981,7 @@ doComparison(struct SyncCompareData *data) {
                     }
                 } else {
                     // R is a leaf, but L is a node
-                    struct SyncHashCacheEntry *subL = cacheEntryForElem(data, ncL, neL, 0);
+                    struct SyncHashCacheEntry *subL = cacheEntryForElem(data, ncL, neL, 1);  // HACK, it's remote
                     if (subL == NULL || subL->ncL == NULL)
                         return comparisonFailed(data, "bad cache entry for L", __LINE__);
                     enum SyncCompareResult scr = SyncNodeCompareMinMax(subL->ncL, data->cbR);
@@ -2034,13 +2054,36 @@ CompareAction(struct ccn_schedule *sched,
             // nothing to do (yet), flow into next state
             if (debug >= CCNL_FINE)
                 SyncNoteSimple(root, here, "preload");
+            // For library, need to preload for Local as well as Remote.
+            struct SyncHashCacheEntry *ceL = SyncHashLookup(root->ch,
+                                                            data->hashL->buf,
+                                                            data->hashL->length);
+            if (ceL != NULL) {
+                SyncTreeWorkerInit(data->twL, ceL, 1);
+                res = doPreload(data, data->twL);
+                if (res < 0) {
+                    abortCompare(data, "doPreloadL failed");
+                    return -1;
+                }
+                if (res == 0) {
+                    // not yet preloaded
+                    if (data->nodeFetchBusy > 0) {
+                        // rely on SyncRemoteFetchResponse to restart us
+                        data->ev = NULL;
+                        delay = -1;
+                    }
+                    break;
+                }
+                // before switch to busy, reset the remote tree walker
+                SyncTreeWorkerInit(data->twL, ceL, 1);
+            }
             struct SyncHashCacheEntry *ceR = SyncHashLookup(root->ch,
                                                             data->hashR->buf,
                                                             data->hashR->length);
             SyncTreeWorkerInit(data->twR, ceR, 1);
-            res = doPreload(data);
+            res = doPreload(data, data->twR);
             if (res < 0) {
-                abortCompare(data, "doPreload failed");
+                abortCompare(data, "doPreloadR failed");
                 return -1;
             }
             if (res == 0) {
