@@ -836,13 +836,14 @@ update_multifilt(struct ccn *h,
             return(NOTE_ERRNO(h));
         }
         md->me.p = &handle_multifilt;
-        md->me.data = &md;
+        md->me.data = md;
         md->n = 2;
         md->a = a;
         ccn_replace_handler(h, &(a[0].action), f->action);
         a[0].forw_flags = f->flags;
         ccn_replace_handler(h, &(a[1].action), action);
         a[1].forw_flags = 0; /* Actually set these below */
+        ccn_replace_handler(h, &f->action, &md->me);
     }
     /* Search for the action */
     for (i = 0; i < n; i++) {
