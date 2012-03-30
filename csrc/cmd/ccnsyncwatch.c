@@ -111,6 +111,10 @@ main(int argc, char **argv)
                 break;
             case 'r':
                 n = strlen(optarg);
+                if (n == 0) {
+                    roothash = ccn_charbuf_create();
+                    break;
+                }
                 if ((n % 2) != 0)
                     usage(argv[0]);
                 roothash = ccn_charbuf_create_n(n / 2);
