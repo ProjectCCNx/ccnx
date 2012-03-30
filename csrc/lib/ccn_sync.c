@@ -1,6 +1,6 @@
 /**
  * @file csrc/ccn_sync.c
- * 
+ *
  * Sync library interface.
  * Implements a library interface to the Sync protocol facilities implemented
  * by the Repository
@@ -128,7 +128,7 @@ ccns_slice_add_clause(struct ccns_slice *s, struct ccn_charbuf *c)
     ccn_charbuf_append_charbuf(clause, c);
     s->clauses[s->nclauses++] = clause;
     return (0);
-    
+
 Cleanup:
     ccn_charbuf_destroy(&clause);
     return (-1);
@@ -161,7 +161,7 @@ append_slice(struct ccn_charbuf *c, struct ccns_slice *s)
 {
     int res = 0;
     int i;
-    
+
     res |= ccnb_element_begin(c, CCN_DTAG_SyncConfigSlice);
     res |= ccnb_tagged_putf(c, CCN_DTAG_SyncVersion, "%u", SLICE_VERSION);
     res |= ccn_charbuf_append_charbuf(c, s->topo);
@@ -189,7 +189,7 @@ slice_parse(struct ccns_slice *s, const unsigned char *p, size_t size)
     int op;
     int start;
     struct ccn_charbuf *clause = NULL;
-    
+
     if (!ccn_buf_match_dtag(d, CCN_DTAG_SyncConfigSlice))
         return (-1);
     ccn_buf_advance(d);
@@ -254,14 +254,14 @@ ccns_slice_name(struct ccn_charbuf *nm, struct ccns_slice *s)
     struct ccn_digest *digest = NULL;
     struct ccn_charbuf *hash = NULL;
     int res = 0;
-    
+
     c = ccn_charbuf_create();
     if (c == NULL)
         return (-1);
     res = append_slice(c, s);
     if (res < 0)
         goto Cleanup;
-    
+
     digest = ccn_digest_create(CCN_DIGEST_SHA256);
     hash = ccn_charbuf_create_n(ccn_digest_size(digest));
     if (hash == NULL)
@@ -271,11 +271,11 @@ ccns_slice_name(struct ccn_charbuf *nm, struct ccns_slice *s)
     res |= ccn_digest_final(digest, hash->buf, hash->limit);
     if (res < 0)
         goto Cleanup;
-    hash->length = hash->limit;    
+    hash->length = hash->limit;
     if (ccn_name_from_uri(nm, "ccnx:/%C1.M.S.localhost/%C1.S.cs") < 0)
         res = -1;
     res |= ccn_name_append(nm, hash->buf, hash->length);
-    
+
 Cleanup:
     ccn_charbuf_destroy(&c);
     ccn_digest_destroy(&digest);
@@ -302,10 +302,10 @@ ccns_read_slice(struct ccn *h, struct ccn_charbuf *name,
     const unsigned char *content;
     size_t content_length;
     int res;
-    
+
     if (nc == NULL || cob == NULL)
         goto Cleanup;
-    
+
     ccn_charbuf_append_charbuf(nc, name);
     res = ccn_resolve_version(h, nc,  CCN_V_HIGHEST, 100); // XXX: timeout
     if (res < 0)
@@ -325,7 +325,7 @@ ccns_read_slice(struct ccn *h, struct ccn_charbuf *name,
     if (res < 0)
         goto Cleanup;
     res = slice_parse(slice, content, content_length);
-    
+
 Cleanup:
     ccn_charbuf_destroy(&nc);
     ccn_charbuf_destroy(&cob);
@@ -352,7 +352,7 @@ write_interest_handler (struct ccn_closure *selfp,
 {
     struct ccn_charbuf *cob = selfp->data;
     struct ccn *h = info->h;
-    
+
     if (kind != CCN_UPCALL_INTEREST)
         return(CCN_UPCALL_RESULT_OK);
     if (ccn_content_matches_interest(cob->buf, cob->length, 1, NULL,
@@ -364,7 +364,7 @@ write_interest_handler (struct ccn_closure *selfp,
         ccn_set_run_timeout(h, 0);
         return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
     }
-    return(CCN_UPCALL_RESULT_OK);    
+    return(CCN_UPCALL_RESULT_OK);
 }
 
 static int
@@ -380,17 +380,17 @@ write_slice(struct ccn *h, struct ccns_slice *slice,
     struct ccn_signing_params sparm = CCN_SIGNING_PARAMS_INIT;
     struct ccn_closure *wc;
     int res;
-    
+
     sw = ccn_charbuf_create_n(32 + name->length);
     if (sw == NULL) {
         res = -1;
         goto Cleanup;
-    }    
+    }
     ccn_charbuf_append_charbuf(sw, name);
     ccn_name_chop(sw, NULL, -1); // remove segment number
     ccn_name_from_uri(sw, "%C1.R.sw");
     ccn_name_append_nonce(sw);
-    
+
     // create and sign the content object
     cob = ccn_charbuf_create();
     if (cob == NULL) {
@@ -411,7 +411,7 @@ write_slice(struct ccn *h, struct ccns_slice *slice,
     } else {
         sparm.type = CCN_CONTENT_GONE;
     }
-    
+
     sparm.sp_flags = CCN_SP_FINAL_BLOCK;
     res = ccn_sign_content(h, cob, name, &sparm, cbuf, clength);
     if (res < 0)
@@ -431,7 +431,7 @@ write_slice(struct ccn *h, struct ccns_slice *slice,
     if (templ == NULL) {
         res = -1;
         goto Cleanup;
-    }    
+    }
     res = ccn_get(h, sw, templ, 1000, NULL, NULL, NULL, 0);
     if (res < 0)
         goto Cleanup;
@@ -475,13 +475,13 @@ ccns_write_slice(struct ccn *h, struct ccns_slice *slice,
     res |= ccn_create_version(h, n, CCN_V_NOW, 0, 0);
     if (name != NULL) {
         ccn_charbuf_reset(name);
-        res |= ccn_charbuf_append_charbuf(name, n);  
+        res |= ccn_charbuf_append_charbuf(name, n);
     }
     res |= ccn_name_append_numeric(n, CCN_MARKER_SEQNUM, 0);
     if (res < 0)
         goto Cleanup;
     res = write_slice(h, slice, n);
-    
+
 Cleanup:
     ccn_charbuf_destroy(&n);
     return (res);
@@ -497,7 +497,7 @@ ccns_delete_slice(struct ccn *h, struct ccn_charbuf *name)
 {
     struct ccn_charbuf *n = NULL;
     int res;
-    
+
     // calculate versioned and segmented name for the slice
     n = ccn_charbuf_create_n(32 + name->length);
     if (n == NULL)
@@ -582,21 +582,21 @@ ccns_open(struct ccn *h,
     ccns->base->debug = CCNL_WARNING;
     ccns->root = SyncAddRoot(ccns->base, slice->topo, slice->prefix, NULL);
     // TODO: no filters yet
-    
+
     // starting at given root hash -- need to sanity check rhash, check node fetch works
     if (rhash != NULL && rhash->length > 0) {
         ccn_charbuf_reset(ccns->root->currentHash);
         ccn_charbuf_append_charbuf(ccns->root->currentHash, rhash);
         ceL = SyncHashEnter(ccns->root->ch, rhash->buf, rhash->length, 0);
     }
-    
+
     ccns_send_root_advise_interest(ccns->root);
     ccns->ev = ccn_schedule_event(ccns->base->sched,
                                   ccns->base->priv->heartbeatMicros,
                                   &HeartbeatAction,
                                   ccns->base,
                                   0);
-    
+
     return(ccns);
 }
 /**
@@ -892,7 +892,7 @@ extractNode(struct SyncRootStruct *root, struct ccn_upcall_info *info) {
         SyncNoteFailed(root, here, "ccn_content_get_value", __LINE__);
         return NULL;
     }
-    
+
     // second, parse the object
     struct SyncNodeComposite *nc = SyncAllocComposite(root->base);
     struct ccn_buf_decoder ds;
@@ -974,7 +974,7 @@ getCmdStr(enum SyncRegisterActionKind kind) {
 }
 
 // take a list of names and sort them, removing duplicates!
-// should leave src empty  
+// should leave src empty
 static struct SyncNameAccum *
 sortNames(struct SyncRootStruct *root, struct SyncNameAccum *src) {
     char *here = "Sync.sortNames";
@@ -1006,7 +1006,7 @@ sortNames(struct SyncRootStruct *root, struct SyncNameAccum *src) {
             // this name needs to be destroyed
             ccn_charbuf_destroy(&name);
         }
-    }    
+    }
     src->len = 0;
     IndexSorter_Free(&ixBase);
     return dst;
@@ -1019,7 +1019,7 @@ exclusionsFromHashList(struct SyncRootStruct *root, struct SyncHashInfoList *lis
     int limit = 1000;   // exclusionLimit
     int64_t now = SyncCurrentTime();
     int64_t limitMicros = 1000000 * 5; // exclusionTrig
-    
+
     if (root->currentHash->length > 0) {
         // if the current hash is not empty, start there
         struct ccn_charbuf *hash = root->currentHash;
@@ -1029,7 +1029,7 @@ exclusionsFromHashList(struct SyncRootStruct *root, struct SyncHashInfoList *lis
         ccn_name_append(name, hash->buf, hash->length);
         SyncNameAccumAppend(acc, name, 0);
     }
-    
+
     while (list != NULL) {
         struct SyncHashCacheEntry *ce = list->ce;
         if (ce != NULL && (ce->state & SyncHashState_remote)
@@ -1077,7 +1077,7 @@ constructCommandPrefix(struct SyncRootStruct *root,
     // the command comes after the topo
     ccn_name_append_str(prefix, getCmdStr(kind));
     res |= ccn_name_append(prefix, root->sliceHash->buf, root->sliceHash->length);
-    
+
     if (res < 0) {
         ccn_charbuf_destroy(&prefix);
     }
@@ -1149,7 +1149,7 @@ ccns_root_advise_response(struct ccn_closure *selfp,
                 SyncNoteUri(root, here, temp, nm);
                 ccn_charbuf_destroy(&nm);
             }
-            
+
             const unsigned char *hp = NULL;
             size_t hs = 0;
             size_t bytes = 0;
@@ -1235,17 +1235,17 @@ ccns_send_root_advise_interest(struct SyncRootStruct *root) {
     struct ccn_closure *action = calloc(1, sizeof(*action));
     struct ccn_charbuf *prefix = constructCommandPrefix(root, kind);
     struct ccn_charbuf *hash = ccn_charbuf_create();
-    
+
     ccn_charbuf_append_charbuf(hash, root->currentHash);
     ccn_name_append(prefix, hash->buf, hash->length);
-    
+
     data = newActionData(kind);
     data->skipToHash = SyncComponentCount(prefix);
     data->hash = hash;
     data->prefix = prefix;
     action->data = data;
     action->p = &ccns_root_advise_response;
-    
+
     struct SyncNameAccum *excl = exclusionsFromHashList(root, root->priv->remoteSeen);
     struct ccn_charbuf *template = SyncGenInterest(NULL,
                                                    1, // scope
@@ -1405,7 +1405,7 @@ extractBuf(struct ccn_charbuf *cb, struct SyncNodeComposite *nc, struct SyncNode
     struct ccn_buf_decoder *d = SyncInitDecoderFromElem(&ds, nc, ne);
     ccn_charbuf_reset(cb);
     int res = SyncAppendElementInner(cb, d);
-    return res;    
+    return res;
 }
 
 static struct SyncHashCacheEntry *
@@ -1522,7 +1522,7 @@ SyncRemoteFetchResponse(struct ccn_closure *selfp,
                 if (kind == CCN_UPCALL_INTEREST_TIMED_OUT) ks = "timeout!";
                 int64_t dt = SyncDeltaTime(data->startTime, now);
                 dt = (dt + 500) / 1000;
-                if (bytes > 0) 
+                if (bytes > 0)
                     snprintf(temp, sizeof(temp),
                              "%s, %s, %d.%03d secs, %u bytes",
                              ns, ks, (int) (dt / 1000), (int) (dt % 1000),
@@ -1533,7 +1533,7 @@ SyncRemoteFetchResponse(struct ccn_closure *selfp,
                              ns, ks, (int) (dt / 1000), (int) (dt % 1000));
                 SyncNoteUri(root, here, temp, data->prefix);
             }
-            
+
             switch (data->kind) {
                 case SRI_Kind_NodeFetch: {
                     // node fetch response
@@ -1642,7 +1642,7 @@ SyncStartNodeFetch(struct SyncRootStruct *root,
             return 0;
         data = data->next;
     }
-    
+
     struct ccn_closure *action = calloc(1, sizeof(*action));
     data = newActionData(kind);
     struct ccn_charbuf *name = constructCommandPrefix(root, kind);
@@ -1657,7 +1657,7 @@ SyncStartNodeFetch(struct SyncRootStruct *root,
         data->comp = comp;
         action->data = data;
         action->p = &SyncRemoteFetchResponse;
-        
+
         struct ccn_charbuf *template = SyncGenInterest(NULL,
                                                        1,
                                                        base->priv->fetchLifetime,
@@ -1757,7 +1757,7 @@ doPreload(struct SyncCompareData *data, struct SyncTreeWorkerHead *twHead) {
         SyncStartNodeFetch(root, ceR, data);
         destroyActionData(sad);
     }
-    
+
     if (data->nodeFetchBusy > 0) return 0;
     if (data->errList != NULL) return 0;
     if (twHead->level > 0) return 0;
@@ -1800,7 +1800,7 @@ doComparison(struct SyncCompareData *data) {
     struct SyncRootStruct *root = data->root;
     struct SyncTreeWorkerHead *twL = data->twL;
     struct SyncTreeWorkerHead *twR = data->twR;
-    
+
     for (;;) {
         struct SyncTreeWorkerEntry *tweR = SyncTreeWorkerTop(twR);
         if (tweR == NULL) {
@@ -1855,11 +1855,11 @@ doComparison(struct SyncCompareData *data) {
         struct SyncNodeElem *neR = SyncTreeWorkerGetElem(twR);
         if (neR == NULL)
             return comparisonFailed(data, "bad element for R", __LINE__);
-        
+
         if (extractBuf(data->cbR, ncR, neR) < 0)
             // the remote name/hash extract failed
             return comparisonFailed(data, "bad extract for R", __LINE__);
-        
+
         struct SyncTreeWorkerEntry *tweL = SyncTreeWorkerTop(twL);
         if (tweL == NULL) {
             // L is now empty, so add R
@@ -1922,7 +1922,7 @@ doComparison(struct SyncCompareData *data) {
                         return comparisonFailed(data, "bad push for R", __LINE__);
                     continue;
                 }
-                
+
                 if (neL->kind == SyncElemKind_leaf) {
                     // L is a leaf, R is a node that is present
                     enum SyncCompareResult scr = SyncNodeCompareMinMax(subR->ncR, data->cbL);
@@ -1942,7 +1942,7 @@ doComparison(struct SyncCompareData *data) {
                                 return comparisonFailed(data, "bad push for R", __LINE__);
                             break;
                     }
-                    
+
                 } else {
                     // both L and R are nodes, test for L being present
                     struct SyncHashCacheEntry *subL = cacheEntryForElem(data, ncL, neL, 1); // HACK it's remote.
@@ -1973,7 +1973,7 @@ doComparison(struct SyncCompareData *data) {
                         tweL->pos++;
                         tweR->pos++;
                     } else if (cmp < 0) {
-                        // L < R, advance L 
+                        // L < R, advance L
                         tweL->pos++;
                     } else {
                         // L > R, so add R
@@ -2012,7 +2012,7 @@ doComparison(struct SyncCompareData *data) {
                             // this is really broken
                             return comparisonFailed(data, "bad min/max compare", __LINE__);
                     }
-                    
+
                 }
             }
         }
@@ -2027,7 +2027,7 @@ CompareAction(struct ccn_schedule *sched,
     char *here = "Sync.CompareAction";
     struct SyncCompareData *data = (struct SyncCompareData *) ev->evdata;
     int res;
-    
+
     if (data == NULL || data->root == NULL) {
         // invalid, not sure how we got here
         return -1;
@@ -2042,7 +2042,7 @@ CompareAction(struct ccn_schedule *sched,
         data->ev = NULL;
         return -1;
     }
-    
+
     int delay = 2000;
     switch (data->state) {
         case SyncCompare_init:
@@ -2146,7 +2146,7 @@ CompareAction(struct ccn_schedule *sched,
             if (mh > data->maxHold) data->maxHold = mh;
             mh = (mh + 500) / 1000;
             dt = (dt + 500) / 1000;
-            
+
             if (debug >= CCNL_INFO) {
                 int reportStats = 1;
                 char temp[64];
@@ -2181,10 +2181,10 @@ SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR) {
     if (root->compare != NULL
         || priv->comparesBusy >= priv->maxComparesBusy)
         return 0;
-    
+
     struct ccn_charbuf *hashL = root->currentHash;
     struct SyncHashCacheEntry *ceL = NULL;
-    
+
     if (hashL->length > 0) {
         // if L is not empty, check the cache entry
         ceL = SyncHashLookup(root->ch, hashL->buf, hashL->length);
@@ -2197,7 +2197,7 @@ SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR) {
                                                    SyncHashState_remote);
     if (ceR == NULL)
         return SyncNoteFailed(root, here, "bad lookup for R", __LINE__);
-    
+
     int debug = root->base->debug;
     struct ccnr_handle *ccnr = root->base->client_handle;
     struct SyncCompareData *data = calloc(1, sizeof(*data));
@@ -2217,15 +2217,15 @@ SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR) {
     ccn_charbuf_append_charbuf(data->hashL, hashL);
     data->hashR = ccn_charbuf_create();
     ccn_charbuf_append_charbuf(data->hashR, hashR);
-    
+
     data->cbL = ccn_charbuf_create();
     data->cbR = ccn_charbuf_create();
-    
+
     data->state = SyncCompare_init;
     priv->comparesBusy++;
-    
+
     kickCompare(data, NULL);
-    
+
     if (debug >= CCNL_INFO) {
         char *hexL = SyncHexStr(hashL->buf, hashL->length);
         char *msgL = ((hashL->length > 0) ? hexL : "empty");
@@ -2236,7 +2236,7 @@ SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR) {
         free(hexL);
         free(hexR);
     }
-    
+
     return 1;
 }
 
@@ -2251,11 +2251,11 @@ HeartbeatAction(struct ccn_schedule *sched,
         // TBD: and why did this happen? (can't report it, though)
         return -1;
     }
-    
+
     struct SyncPrivate *priv = base->priv;
     int64_t now = SyncCurrentTime();
     struct SyncRootStruct *root = priv->rootHead;
-        
+
     while (root != NULL) {
         struct SyncCompareData *comp = root->compare;
         if (comp == NULL) {
@@ -2334,7 +2334,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                             return ret;
                         }
                     } else hexR = SyncHexStr(bufR, lenR);
-                    
+
                     if (debug >= CCNL_INFO) {
                         if (hexR == NULL)
                             SyncNoteSimple2(root, here, who, "empty remote hash");
@@ -2370,7 +2370,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
                     } else {
                         rp->stats->nodeFetchSeen++;
                     }
-                    
+
                     if (lenL == 0) {
                         if (debug >= CCNL_INFO)
                             SyncNoteSimple2(root, here, who, "ignored (empty local root)");
@@ -2424,7 +2424,7 @@ SyncRegisterInterests(struct SyncRootStruct *root) {
 
     if (ccn == NULL) return -1;
     int res = 0;
-    
+
     prefix = constructCommandPrefix(root, SRI_Kind_AdviseInt);
     if (prefix == NULL) {
         res = SyncNoteFailed(root, here, "bad prefix", __LINE__);
@@ -2445,9 +2445,9 @@ SyncRegisterInterests(struct SyncRootStruct *root) {
         linkActionData(root, data);
         if (base->debug >= CCNL_INFO)
             SyncNoteUri(root, here, "RootAdvise", prefix);
-    }    
+    }
     return(res);
-}    
+}
 
 int
 SyncHandleSlice(struct SyncBaseStruct *base, struct ccn_charbuf *name) {

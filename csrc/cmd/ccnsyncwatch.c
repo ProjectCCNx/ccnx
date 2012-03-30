@@ -101,7 +101,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *topo = ccn_charbuf_create();
     int timeout = 10*1000;
     unsigned i, j, n;
-    
+ 
     ccn_name_init(prefix);
     ccn_name_init(topo);
     while ((opt = getopt(argc, argv, "hp:r:t:w:")) != -1) {
