@@ -29,14 +29,7 @@
 
 #define SLICE_VERSION 20110614
 
-struct ccns_slice {
-    unsigned version;
-    unsigned nclauses;
-    struct ccn_charbuf *topo;
-    struct ccn_charbuf *prefix;
-    struct ccn_charbuf **clauses; // contents defined in documentation, need utils
-};
-
+struct ccns_slice;
 struct ccns_handle;
 
 typedef int (*ccns_callback)(struct ccns_handle *ccns,
@@ -44,24 +37,19 @@ typedef int (*ccns_callback)(struct ccns_handle *ccns,
                              struct ccn_charbuf *rhash,
                              struct ccn_charbuf *pname);
 
-struct ccns_handle {
-    struct SyncBaseStruct *base;
-    struct SyncRootStruct *root;
-    struct ccn_scheduled_event *ev;
-    ccns_callback callback;
-    // what else is in here?
-};
 /**
  * Allocate a ccns_slice structure
  * @returns a pointer to a new ccns_slice structure
  */
 struct ccns_slice *ccns_slice_create(void);
+
 /**
  * Deallocate a ccns_slice structure
  * @param a pointer to a pointer to a ccns_slice structure.  The pointer will
  *  be set to NULL on return.
  */
 void ccns_slice_destroy(struct ccns_slice **sp);
+
 /*
  * Set the topo and prefix fields of a slice
  * @param slice is the slice to be modified
@@ -71,13 +59,15 @@ void ccns_slice_destroy(struct ccns_slice **sp);
  */
 int ccns_slice_set_topo_prefix(struct ccns_slice *slice, struct ccn_charbuf *t,
                                struct ccn_charbuf *p);
-/*
+
+/**
  * Add a (filter) clause to a ccns_slice structure
  * @param slice is the slice to be modified
  * @param f is a filter clause ccnb-encoded as a Name
  * @returns 0 on success, -1 otherwise.
  */
 int ccns_slice_add_clause(struct ccns_slice *s, struct ccn_charbuf *f);
+
 /**
  * Construct the name of a Sync configuration slice.
  * @param nm is a ccn_charbuf into which will be stored the slice name
@@ -85,6 +75,7 @@ int ccns_slice_add_clause(struct ccns_slice *s, struct ccn_charbuf *f);
  * @returns 0 on success, -1 otherwise.
  */
 int ccns_slice_name(struct ccn_charbuf *nm, struct ccns_slice *s);
+
 /**
  * Read a slice given the name.
  * @param h is the ccn_handle on which to read.
@@ -94,9 +85,9 @@ int ccns_slice_name(struct ccn_charbuf *nm, struct ccns_slice *s);
  * @returns 0 on success, -1 otherwise.
  * XXX: should name be permitted to have trailing segment?
  */
-// could use name from slice, though slice is also result...
 int ccns_read_slice(struct ccn *h, struct ccn_charbuf *name,
                         struct ccns_slice *slice);
+
 /**
  * Write a ccns_slice object to a repository.
  * @param h is the ccn_handle on which to write.
@@ -105,9 +96,9 @@ int ccns_read_slice(struct ccn *h, struct ccn_charbuf *name,
  *  in with the name of the slice that was written.
  * @returns 0 on success, -1 otherwise.
  */
-// could set name in slice
 int ccns_write_slice(struct ccn *h, struct ccns_slice *slice,
                          struct ccn_charbuf *name);
+
 /**
  * Delete a ccns_slice object from a repository.
  * @param h is the ccn_handle on which to write.
@@ -115,11 +106,11 @@ int ccns_write_slice(struct ccn *h, struct ccns_slice *slice,
  * @returns 0 on success, -1 otherwise.
  */
 int ccns_delete_slice(struct ccn *h, struct ccn_charbuf *name);
-// could take slice object...
+
 /**
  * Start notification of addition of names to a sync slice.
  * @param h is the ccn_handle on which to communicate.
- * @param name is the name of the slice to be opened.
+ * @param slice is the slice to be opened.
  * @param callback is the procedure which will be called for each new name,
  *  and returns 0 to continue enumeration, -1 to stop further enumeration.
  *  NOTE: It is not safe to call ccns_close from within the callback.
@@ -138,6 +129,7 @@ struct ccns_handle *ccns_open(struct ccn *h,
                                       ccns_callback callback,
                                       struct ccn_charbuf *rhash,
                                       struct ccn_charbuf *pname);
+
 /**
  * Stop notification of changes of names in a sync slice and free the handle.
  * @param sh is a pointer (to a pointer) to the sync handle returned

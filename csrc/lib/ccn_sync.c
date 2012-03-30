@@ -64,6 +64,24 @@
 static ccnr_hwm ccns_hwm_update(struct ccnr_handle *ccnr, ccnr_hwm hwm, ccnr_accession a);
 static uintmax_t ccns_accession_encode(struct ccnr_handle *ccnr, ccnr_accession a);
 
+struct ccns_slice {
+    unsigned version;
+    unsigned nclauses;
+    struct ccn_charbuf *topo;
+    struct ccn_charbuf *prefix;
+    struct ccn_charbuf **clauses; // contents defined in documentation, need utils
+};
+
+#define CCNS_FLAGS_SC 1      // start at current root hash.
+
+struct ccns_handle {
+    struct SyncBaseStruct *base;
+    struct SyncRootStruct *root;
+    struct ccn_scheduled_event *ev;
+    ccns_callback callback;
+    unsigned flags;
+};
+
 /*
  * Utility routines to allocate/deallocate ccns_slice structures
  */
@@ -531,7 +549,7 @@ static int HeartbeatAction(struct ccn_schedule *sched,
 
 static int ccns_send_root_advise_interest(struct SyncRootStruct *root);
 
-    /**
+/**
  * Start notification of addition of names to a sync slice.
  * @param h is the ccn_handle on which to communicate
  * @param slice is the slice to be opened.
@@ -555,9 +573,6 @@ ccns_open(struct ccn *h,
           struct ccn_charbuf *rhash,
           struct ccn_charbuf *pname)
 {
-    // needs to set up interest listener on the root advise interests,
-    // and use activity there to trigger the callback
-    //
     struct ccn_schedule *schedule;
     struct ccn_gettime *timer;
     struct ccns_handle *ccns = calloc(1, sizeof(*ccns));
@@ -584,10 +599,15 @@ ccns_open(struct ccn *h,
     // TODO: no filters yet
 
     // starting at given root hash -- need to sanity check rhash, check node fetch works
-    if (rhash != NULL && rhash->length > 0) {
-        ccn_charbuf_reset(ccns->root->currentHash);
-        ccn_charbuf_append_charbuf(ccns->root->currentHash, rhash);
-        ceL = SyncHashEnter(ccns->root->ch, rhash->buf, rhash->length, 0);
+    // current behavior on unknown hash is to report failure.
+    if (rhash != NULL) {
+        if (rhash->length > 0) {
+            ccn_charbuf_reset(ccns->root->currentHash);
+            ccn_charbuf_append_charbuf(ccns->root->currentHash, rhash);
+            ceL = SyncHashEnter(ccns->root->ch, rhash->buf, rhash->length, 0);
+        } else {
+            ccns->flags |= CCNS_FLAGS_SC;
+        }
     }
 
     ccns_send_root_advise_interest(ccns->root);
@@ -2034,6 +2054,7 @@ CompareAction(struct ccn_schedule *sched,
     }
     data->lastEnter = SyncCurrentTime();
     struct SyncRootStruct *root = data->root;
+    struct ccns_handle *ccns = (struct ccns_handle *)root->base->client_handle;
     int debug = root->base->debug;
     if (data->ev != ev || flags & CCN_SCHEDULE_CANCEL) {
         // orphaned or cancelled
@@ -2097,10 +2118,15 @@ CompareAction(struct ccn_schedule *sched,
             }
             // before switch to busy, reset the remote tree walker
             SyncTreeWorkerInit(data->twR, ceR, 1);
+            // If library indicates start at current root, skip to done and
+            // reset the restart at current root flag
+            if (ccns->flags & CCNS_FLAGS_SC) {
+                ccns->flags &= ~CCNS_FLAGS_SC;
+                data->state = SyncCompare_done;
+                delay = 20;  // reschedule in a short time.
+                break; 
+            }
             data->state = SyncCompare_busy;
-            // HACK: if wanting to start at *current* root instead of seeing everything
-            // then we want to go directly to SyncCompare_done state -- set state
-            // and return 0.
         case SyncCompare_busy:
             // come here when we are comparing the trees
             if (debug >= CCNL_FINE)
