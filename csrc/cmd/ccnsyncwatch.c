@@ -1,7 +1,7 @@
 /**
  * @file ccnsyncwatch.c
  * Utility to use the Sync library protocol to watch changes in a repository's contents.
- * 
+ *
  * A CCNx program.
  *
  * Copyright (C) 2012 Palo Alto Research Center, Inc.
@@ -132,7 +132,7 @@ main(int argc, char **argv)
                 usage(argv[0]);
         }
     }
-    
+
     h = ccn_create();
     res = ccn_connect(h, NULL);
     slice = ccns_slice_create();
