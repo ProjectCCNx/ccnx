@@ -842,7 +842,7 @@ update_multifilt(struct ccn *h,
         ccn_replace_handler(h, &(a[0].action), f->action);
         a[0].forw_flags = f->flags;
         ccn_replace_handler(h, &(a[1].action), action);
-        a[0].forw_flags = 0;
+        a[1].forw_flags = forw_flags;
     }
     /* Search for the action */
     for (i = 0; i < n; i++) {
