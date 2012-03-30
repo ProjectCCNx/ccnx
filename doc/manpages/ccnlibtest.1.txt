@@ -60,6 +60,12 @@ it will be placed into the pool that was active when the interest was sent.
     Run for the indicated number of milliseconds,
     or until the arrival of data.
 
+*mincob* 'num'::
+    Fail if the current pool has fewer than 'num' content objects.
+
+*maxcob* 'num'::
+    Fail if the current pool has more than 'num' content objects.
+
 
 SEE ALSO
 --------
