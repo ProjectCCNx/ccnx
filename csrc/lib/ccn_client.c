@@ -757,7 +757,7 @@ static void
 update_ifilt_flags(struct ccn *h, struct interest_filter *f, int forw_flags)
 {
     if (f->flags != forw_flags) {
-        memset(&f->expiry, 0, sizeof(&f->expiry));
+        memset(&f->expiry, 0, sizeof(f->expiry));
         f->flags = forw_flags;
     }
 }
@@ -827,10 +827,10 @@ update_multifilt(struct ccn *h,
     }
     else {
         /* Make a new multifilt, with 2 slots */
-        a = calloc(2, sizeof(&a));
+        a = calloc(2, sizeof(*a));
         if (a == NULL)
             return(NOTE_ERRNO(h));
-        md = calloc(1, sizeof(&md));
+        md = calloc(1, sizeof(*md));
         if (md == NULL) {
             free(a);
             return(NOTE_ERRNO(h));
