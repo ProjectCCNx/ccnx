@@ -319,7 +319,7 @@ ccns_read_slice(struct ccn *h, struct ccn_charbuf *name,
     struct ccn_charbuf *cob = ccn_charbuf_create();
     const unsigned char *content;
     size_t content_length;
-    int res;
+    int res = -1;
 
     if (nc == NULL || cob == NULL)
         goto Cleanup;
@@ -396,7 +396,7 @@ write_slice(struct ccn *h, struct ccns_slice *slice,
     struct ccn_charbuf *templ = NULL;
     struct ccn_charbuf *cob = NULL;
     struct ccn_signing_params sparm = CCN_SIGNING_PARAMS_INIT;
-    struct ccn_closure *wc;
+    struct ccn_closure *wc = NULL;
     int res;
 
     sw = ccn_charbuf_create_n(32 + name->length);
