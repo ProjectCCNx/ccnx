@@ -968,7 +968,7 @@ handle_multifilt(struct ccn_closure *selfp,
      * Forget md and selfp, since they could go away during upcalls.
      */
     a = md->a;
-    n = build_multifilt_array(info->h, &a, n, NULL, 0);
+    n = build_multifilt_array(info->h, &a, md->n, NULL, 0);
     ans = CCN_UPCALL_RESULT_OK;
     md = NULL;
     selfp = NULL;
