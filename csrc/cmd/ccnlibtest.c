@@ -245,12 +245,19 @@ main(int argc, char **argv)
             res = ccn_name_from_uri(c, argv[i+1]);
             if (res < 0)
                 usage();
+            fprintf(stderr, "Prefix ff=%#x %s pool %d\n",
+                    regflgs, argv[i+1], pool);
+            if (store[pool].me.intdata != pool) {
+                abort();
+            }
             res = ccn_set_interest_filter_with_flags(ccnH, c, &store[pool].me, regflgs);
             if (res < 0) {
                 ccn_perror(ccnH, "ccn_set_interest_filter_with_flags");
                 status = 1;
             }
             res = ccn_run(ccnH, 2);
+            if (res < 0)
+                break;
             i++;
             continue;
         }
