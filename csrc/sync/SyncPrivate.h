@@ -109,7 +109,8 @@ struct SyncRootDeltas {
     struct SyncRootDeltas *next;        /*< link to next update */
     struct SyncHashCacheEntry *ceStart; /*< entry for start hash (may be NULL) */
     struct SyncHashCacheEntry *ceStop;  /*< entry for end hash */
-    int64_t when;                       /*< when created */
+    int64_t whenMade;                   /*< when created */
+    int64_t whenSent;                   /*< when last sent */
     int deltasCount;                    /*< number of names in coding */
     int closed;                         /*< 1 if coding is complete */
     struct ccn_charbuf *coding;         /*< coding for updates */
@@ -121,6 +122,7 @@ struct SyncRootPrivate {
     struct SyncRootStats *stats;
     struct SyncHashCacheEntry *ceCurrent; /*< entry for current root hash (may be NULL) */
     struct SyncHashInfoList *remoteSeen;
+    struct SyncHashInfoList *localMade;
     struct SyncRootDeltas *deltasHead;  /*< pointer to eldest update */
     struct SyncRootDeltas *deltasTail;  /*< pointer to youngest update */
     int nDeltas;                        /*< number of deltas in the list */

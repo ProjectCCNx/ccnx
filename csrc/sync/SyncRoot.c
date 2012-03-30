@@ -216,6 +216,13 @@ SyncRemRoot(struct SyncRootStruct *root) {
                     list = list->next;
                     free(lag);
                 }
+                list = rp->localMade;
+                while (list != NULL) {
+                    struct SyncHashInfoList *lag = list;
+                    list = list->next;
+                    free(lag);
+                }
+                
                 struct SyncRootDeltas *deltas = rp->deltasHead;
                 while (deltas != NULL) {
                     struct SyncRootDeltas *next = deltas->next;
