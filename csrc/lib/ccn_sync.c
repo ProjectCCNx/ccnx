@@ -64,6 +64,21 @@
 static ccnr_hwm ccns_hwm_update(struct ccnr_handle *ccnr, ccnr_hwm hwm, ccnr_accession a);
 static uintmax_t ccns_accession_encode(struct ccnr_handle *ccnr, ccnr_accession a);
 
+struct ccns_slice {
+    unsigned version;
+    unsigned nclauses;
+    struct ccn_charbuf *topo;
+    struct ccn_charbuf *prefix;
+    struct ccn_charbuf **clauses; // contents defined in documentation, need utils
+};
+
+struct ccns_handle {
+    struct SyncBaseStruct *base;
+    struct SyncRootStruct *root;
+    struct ccn_scheduled_event *ev;
+    ccns_callback callback;
+};
+
 /*
  * Utility routines to allocate/deallocate ccns_slice structures
  */

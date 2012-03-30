@@ -29,14 +29,7 @@
 
 #define SLICE_VERSION 20110614
 
-struct ccns_slice {
-    unsigned version;
-    unsigned nclauses;
-    struct ccn_charbuf *topo;
-    struct ccn_charbuf *prefix;
-    struct ccn_charbuf **clauses; // contents defined in documentation, need utils
-};
-
+struct ccns_slice;
 struct ccns_handle;
 
 typedef int (*ccns_callback)(struct ccns_handle *ccns,
@@ -44,13 +37,6 @@ typedef int (*ccns_callback)(struct ccns_handle *ccns,
                              struct ccn_charbuf *rhash,
                              struct ccn_charbuf *pname);
 
-struct ccns_handle {
-    struct SyncBaseStruct *base;
-    struct SyncRootStruct *root;
-    struct ccn_scheduled_event *ev;
-    ccns_callback callback;
-    // what else is in here?
-};
 /**
  * Allocate a ccns_slice structure
  * @returns a pointer to a new ccns_slice structure
