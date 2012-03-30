@@ -70,7 +70,7 @@ SyncNewBase(struct ccnr_handle *ccnr,
             struct ccn_schedule *sched) {
     int64_t now = SyncCurrentTime();
     struct SyncBaseStruct *base = NEW_STRUCT(1, SyncBaseStruct);
-    base->ccnr = ccnr;
+    base->client_handle = ccnr;
     base->ccn = ccn;
     base->sched = sched;
     struct SyncPrivate *priv = NEW_STRUCT(1, SyncPrivate);
@@ -89,6 +89,7 @@ SyncNewBase(struct ccnr_handle *ccnr,
     return base;
 }
 
+#ifndef SYNCLIBRARY
 static int
 getEnvLimited(char *key, int lo, int hi, int def) {
     char *s = getenv(key);
@@ -98,11 +99,10 @@ getEnvLimited(char *key, int lo, int hi, int def) {
     }
     return def;
 }
-
 extern void
 SyncInit(struct SyncBaseStruct *bp) {
     if (bp != NULL) {
-        struct ccnr_handle *ccnr = bp->ccnr;
+        struct ccnr_handle *ccnr = bp->client_handle;
         char *here = "Sync.SyncInit";
         
         if (ccnr != NULL) {
@@ -212,6 +212,7 @@ SyncInit(struct SyncBaseStruct *bp) {
         }
     }
 }
+#endif
 
 extern void
 SyncFreeBase(struct SyncBaseStruct **bp) {
@@ -250,7 +251,7 @@ SyncNotifyContent(struct SyncBaseStruct *base,
     // or from prefix-based enumeration
     char *here = "Sync.SyncNotifyContent";
     
-    if (base != NULL && base->ccnr != NULL) {
+    if (base != NULL && base->client_handle != NULL) {
         struct SyncPrivate *priv = base->priv;
         int debug = base->debug;
         
@@ -258,11 +259,11 @@ SyncNotifyContent(struct SyncBaseStruct *base,
             // end of an enumeration
             if (enumeration == 0) {
                 if (debug >= CCNL_WARNING)
-                    ccnr_msg(base->ccnr, "%s, end of time-based enum?", here);
+                    ccnr_msg(base->client_handle, "%s, end of time-based enum?", here);
             } else if (enumeration == priv->sliceEnum) {
                 priv->sliceEnum = 0;
                 if (debug >= CCNL_INFO)
-                    ccnr_msg(base->ccnr, "%s, all slice names seen", here);
+                    ccnr_msg(base->client_handle, "%s, all slice names seen", here);
             } else if (enumeration == priv->sliceBusy) {
                 priv->sliceBusy = 0;
                 struct SyncRootStruct *root = priv->rootHead;
@@ -288,14 +289,14 @@ SyncNotifyContent(struct SyncBaseStruct *base,
                 }  
             } else {
                 if (debug >= CCNL_WARNING)
-                    ccnr_msg(base->ccnr, "%s, end of what enum?", here);
+                    ccnr_msg(base->client_handle, "%s, end of what enum?", here);
             }
             return -1;
         }
         
         if (debug >= CCNL_FINE) {
             struct ccn_charbuf *uri = SyncUriForName(name);
-            ccnr_msg(base->ccnr,
+            ccnr_msg(base->client_handle,
                      "%s, enum %d, %s!",
                      here, enumeration, ccn_charbuf_as_string(uri));
             ccn_charbuf_destroy(&uri);
@@ -306,7 +307,7 @@ SyncNotifyContent(struct SyncBaseStruct *base,
         if (splitRes < 0) {
             // really hould not happen!  but it does not hurt to log and ignore it
             if (debug >= CCNL_SEVERE)
-                ccnr_msg(base->ccnr, "%s, invalid name!", here);
+                ccnr_msg(base->client_handle, "%s, invalid name!", here);
             return 0;
         }
         
@@ -327,7 +328,7 @@ SyncNotifyContent(struct SyncBaseStruct *base,
                 SyncHandleSlice(base, name);
         }
         if (mark != CCNR_NULL_ACCESSION)
-            priv->stableTarget = ccnr_hwm_update(base->ccnr, priv->stableTarget, mark);
+            priv->stableTarget = ccnr_hwm_update(base->client_handle, priv->stableTarget, mark);
         
         // add the name to any applicable roots
         SyncAddName(base, name, item);
@@ -341,7 +342,7 @@ SyncShutdown(struct SyncBaseStruct *bp) {
     char *here = "Sync.SyncShutdown";
     int debug = bp->debug;
     if (debug >= CCNL_INFO)
-        ccnr_msg(bp->ccnr, "%s", here);
+        ccnr_msg(bp->client_handle, "%s", here);
     // TBD: shutdown the hearbeat
     // TBD: unregister the prefixes
 }
