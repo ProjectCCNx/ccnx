@@ -252,7 +252,7 @@ main(int argc, char **argv)
                                        signed_info,
                                        buf,
                                        read_res,
-                                       NULL,
+                                       ccn_keystore_digest_algorithm(keystore),
                                        ccn_keystore_private_key(keystore));
         if (res != 0) {
             fprintf(stderr, "Failed to encode ContentObject (res == %d)\n", res);
