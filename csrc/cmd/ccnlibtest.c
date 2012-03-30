@@ -28,6 +28,7 @@
 
 #include <ccn/ccn.h>
 #include <ccn/reg_mgmt.h>
+#include <ccn/uri.h>
 
 int verbose;
 
@@ -51,6 +52,39 @@ printraw(const void *r, int n)
         n -= l;
     }
 }
+/* Use some static data for this simple program */
+static unsigned char rawbuf[65536];
+static ssize_t rawlen;
+
+#define N_POOLS 10
+#define MINI_STORE_LIMIT 10
+struct mini_store {
+    struct ccn_closure me;
+    struct ccn_charbuf *cob[MINI_STORE_LIMIT];
+};
+static struct ccn_closure incoming_content_action[N_POOLS];
+static struct mini_store store[N_POOLS];
+
+int
+add_to_pool(int pool, const unsigned char *r, size_t n)
+{
+    int i, j;
+    struct ccn_charbuf **coba;
+    
+    coba = store[pool].cob;
+    for (i = 0, j = 0; i < MINI_STORE_LIMIT; i++) {
+        if (coba[i] != NULL)
+            coba[j++] = coba[i];
+    }
+    for (i = j; i < MINI_STORE_LIMIT; i++)
+        coba[i] = NULL;
+    if (j < MINI_STORE_LIMIT) {
+        coba[j] = ccn_charbuf_create();
+        ccn_charbuf_append(coba[j], r, n);
+        return(j + 1);
+    }
+    return(-1);
+}
 
 enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
@@ -65,21 +99,9 @@ incoming_content(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_ERR);
     printf("Got content matching %d components:\n", info->pi->prefix_comps);
     printraw(info->content_ccnb, info->pco->offset[CCN_PCO_E]);
+    add_to_pool(selfp->intdata, info->content_ccnb, info->pco->offset[CCN_PCO_E]);
     return(CCN_UPCALL_RESULT_OK);
 }
-
-/* Use some static data for this simple program */
-static unsigned char rawbuf[65536];
-static ssize_t rawlen;
-
-#define N_POOLS 10
-#define MINI_STORE_LIMIT 10
-struct mini_store {
-    struct ccn_closure me;
-    struct ccn_charbuf *cob[MINI_STORE_LIMIT];
-};
-static struct ccn_closure incoming_content_action[N_POOLS];
-static struct mini_store store[N_POOLS];
 
 int
 cob_matches(struct ccn_upcall_info *info, struct ccn_charbuf *cob)
@@ -139,27 +161,6 @@ outgoing_content(struct ccn_closure *selfp,
     return(CCN_UPCALL_RESULT_ERR);
 }
 
-int
-add_to_pool(int pool, const unsigned char *r, size_t n)
-{
-    int i, j;
-    struct ccn_charbuf **coba;
-    
-    coba = store[pool].cob;
-    for (i = 0, j = 0; i < MINI_STORE_LIMIT; i++) {
-        if (coba[i] != NULL)
-            coba[j++] = coba[i];
-    }
-    for (i = j; i < MINI_STORE_LIMIT; i++)
-        coba[i] = NULL;
-    if (j < MINI_STORE_LIMIT) {
-        coba[j] = ccn_charbuf_create();
-        ccn_charbuf_append(coba[j], r, n);
-        return(j + 1);
-    }
-    return(-1);
-}
-
 #define USAGE "ccnlibtest [-hv] (pool n | flags x | prefix uri | run millis | file.ccnb) ..."
 
 void
@@ -201,7 +202,7 @@ main(int argc, char **argv)
     argv += optind;
     ccnH = ccn_create();
     if (ccn_connect(ccnH, NULL) == -1) {
-        perror("ccn_connect");
+        ccn_perror(ccnH, "ccn_connect");
         exit(1);
     }
     for (i = 0; i < N_POOLS; i++) {
@@ -231,7 +232,10 @@ main(int argc, char **argv)
             if (res < 0)
                 usage();
             res = ccn_set_interest_filter_with_flags(ccnH, c, &store[pool].me, regflgs);
-            if (res < 0) abort();
+            if (res < 0) {
+                ccn_perror(ccnH, "ccn_set_interest_filter_with_flags");
+                status = 1;
+            }
             res = ccn_run(ccnH, 2);
             i++;
             continue;
@@ -254,7 +258,7 @@ main(int argc, char **argv)
             i++;
             res = ccn_run(ccnH, millis);
             if (res < 0) {
-                fprintf(stderr, "ccn_run returnes %d\n", res);
+                ccn_perror(ccnH, "ccn_run");
                 exit(1);
             }
             continue;
@@ -310,6 +314,10 @@ main(int argc, char **argv)
             }
         }
         res = ccn_run(ccnH, 10);
+        if (res < 0) {
+            ccn_perror(ccnH, "oops");
+            status = 1;
+        }
     }
     res = ccn_run(ccnH, 10);
     if (res < 0)
