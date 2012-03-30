@@ -86,6 +86,19 @@ add_to_pool(int pool, const unsigned char *r, size_t n)
     return(-1);
 }
 
+int
+n_pool(int pool)
+{
+    int i, n;
+    struct ccn_charbuf **coba;
+    
+    coba = store[pool].cob;
+    for (i = 0, n = 0; i < MINI_STORE_LIMIT; i++)
+        if (coba[i] != NULL)
+            n++;
+    return(n);
+}
+
 enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -186,6 +199,7 @@ main(int argc, char **argv)
     int regflgs = (CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
     int res;
     int status = 0;
+    int val = 0;
     
     while ((opt = getopt(argc, argv, "hv")) != -1) {
         switch (opt) {
@@ -249,6 +263,34 @@ main(int argc, char **argv)
             i++;
             continue;
         }
+        if (0 == strcmp(arg, "mincob")) {
+            if (argv[i+1] == NULL)
+                usage();
+            val = atoi(argv[i+1]);
+            if (val <= 0 && strcmp(argv[i+1], "0") != 0)
+                usage();
+            i++;
+            if (n_pool(pool) < val) {
+                fprintf(stderr, "Pool %d has %d cobs, expected at least %d\n",
+                        pool, n_pool(pool), val);
+                exit(1);
+            }
+            continue;
+        }
+        if (0 == strcmp(arg, "maxcob")) {
+            if (argv[i+1] == NULL)
+                usage();
+            val = atoi(argv[i+1]);
+            if (val <= 0 && strcmp(argv[i+1], "0") != 0)
+                usage();
+            i++;
+            if (n_pool(pool) > val) {
+                fprintf(stderr, "Pool %d has %d cobs, expected at most %d\n",
+                        pool, n_pool(pool), val);
+                exit(1);
+            }
+            continue;
+        }
         if (0 == strcmp(arg, "run")) {
             if (argv[i+1] == NULL)
                 usage();
@@ -296,15 +338,18 @@ main(int argc, char **argv)
             if (res >= 0) {
                 for (try = 0; try < 5; try++) {
                     res = add_to_pool(pool, rawbuf, rawlen);
-                    if (res >= 0 || try == 5)
+                    if (res >= 0) {
+                        fprintf(stderr, "Added to pool %d\n", pool);
                         break;
+                    }
+                    if (try == 5) {
+                        fprintf(stderr, "No buffer for %s\n", arg);
+                        status = 1;
+                        break;
+                    }
                     fprintf(stderr, "Pool %d full - wait for drain\n", pool);
                     if (ccn_run(ccnH, 1000) < 0)
                         break;
-                }
-                if (res < 0) {
-                    fprintf(stderr, "No buffer for %s\n", arg);
-                    status = 1;
                 }
                 res = ccn_run(ccnH, 10);
             }
