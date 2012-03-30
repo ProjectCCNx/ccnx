@@ -27,11 +27,18 @@
 #include <unistd.h>
 
 #include <ccn/ccn.h>
+#include <ccn/reg_mgmt.h>
 
-void printraw(const void *r, int n)
+int verbose;
+
+void
+printraw(const void *r, int n)
 {
     int i, l;
     const unsigned char *p = r;
+    
+    if (verbose == 0)
+        return;
     while (n > 0) {
         l = (n > 40 ? 40 : n);
         for (i = 0; i < l; i++)
@@ -62,20 +69,17 @@ incoming_content(struct ccn_closure *selfp,
 }
 
 /* Use some static data for this simple program */
-static struct ccn_closure incoming_content_action = {
-    .p = &incoming_content
-};
-
 static unsigned char rawbuf[65536];
 static ssize_t rawlen;
 
+#define N_POOLS 10
 #define MINI_STORE_LIMIT 10
 struct mini_store {
     struct ccn_closure me;
     struct ccn_charbuf *cob[MINI_STORE_LIMIT];
 };
-
-static struct mini_store store[10];
+static struct ccn_closure incoming_content_action[N_POOLS];
+static struct mini_store store[N_POOLS];
 
 int
 cob_matches(struct ccn_upcall_info *info, struct ccn_charbuf *cob)
@@ -103,7 +107,7 @@ outgoing_content(struct ccn_closure *selfp,
     md = selfp->data;
     which = md->me.intdata;
     if (kind == CCN_UPCALL_FINAL) {
-        printf("CCN_UPCALL_FINAL for store %d\n", which);
+        fprintf(stderr, "CCN_UPCALL_FINAL for store %d\n", which);
         for (i = 0; i < MINI_STORE_LIMIT; i++)
             ccn_charbuf_destroy(&md->cob[i]);
         return(CCN_UPCALL_RESULT_OK);
@@ -114,7 +118,7 @@ outgoing_content(struct ccn_closure *selfp,
     if (kind == CCN_UPCALL_INTEREST) {
         for (i = 0; i < MINI_STORE_LIMIT; i++) {
             cob = md->cob[i];
-            if (cob_matches(info, cob)) {
+            if (cob != NULL && cob_matches(info, cob)) {
                 res = ccn_put(info->h, cob->buf, cob->length);
                 if (res == -1) {
                     fprintf(stderr, "... error sending data\n");
@@ -135,32 +139,61 @@ outgoing_content(struct ccn_closure *selfp,
     return(CCN_UPCALL_RESULT_ERR);
 }
 
+int
+add_to_pool(int pool, const unsigned char *r, size_t n)
+{
+    int i, j;
+    struct ccn_charbuf **coba;
+    
+    coba = store[pool].cob;
+    for (i = 0, j = 0; i < MINI_STORE_LIMIT; i++) {
+        if (coba[i] != NULL)
+            coba[j++] = coba[i];
+    }
+    for (i = j; i < MINI_STORE_LIMIT; i++)
+        coba[i] = NULL;
+    if (j < MINI_STORE_LIMIT) {
+        coba[j] = ccn_charbuf_create();
+        ccn_charbuf_append(coba[j], r, n);
+        return(j + 1);
+    }
+    return(-1);
+}
+
+#define USAGE "ccnlibtest [-hv] (pool n | flags x | prefix uri | run millis | file.ccnb) ..."
 
 void
 usage(void)
 {
-    fprintf(stderr, "provide names of files containing ccnb format interests and content\n");
+    fprintf(stderr, USAGE "\n");
     exit(1);
 }
 
 int
 main(int argc, char **argv)
 {
-    int opt;
-    int res;
-    char *filename = NULL;
-    int rep = 1;
+    char *arg = NULL;
     struct ccn *ccnH = NULL;
     struct ccn_parsed_interest interest = {0};
-    int i;
     struct ccn_charbuf *c = ccn_charbuf_create();
     struct ccn_charbuf *templ = ccn_charbuf_create();
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
-    while ((opt = getopt(argc, argv, "h")) != -1) {
+    int i;
+    int millis = 0;
+    int opt;
+    int pool = 0;
+    int regflgs = (CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE);
+    int res;
+    int status = 0;
+    
+    while ((opt = getopt(argc, argv, "hv")) != -1) {
         switch (opt) {
             default:
             case 'h':
                 usage();
+                break;
+            case 'v':
+                verbose++;
                 break;
         }
     }
@@ -171,23 +204,72 @@ main(int argc, char **argv)
         perror("ccn_connect");
         exit(1);
     }
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < N_POOLS; i++) {
         store[i].me.p = &outgoing_content;
         store[i].me.data = &store[i];
         store[i].me.intdata = i;
+        incoming_content_action[i].p = &incoming_content;
+        incoming_content_action[i].intdata = i;
     }
     for (i = 0; i < argc; i++) {
-        filename = argv[i];
+        arg = argv[i];
+        if (0 == strcmp(arg, "pool")) {
+            if (argv[i+1] == NULL)
+                usage();
+            pool = argv[i+1][0] - '0';
+            if (argv[i+1][1] || pool < 0 || pool >= N_POOLS)
+                usage();
+            fprintf(stderr, "Pool %d\n", pool);
+            i++;
+            continue;
+        }
+        if (0 == strcmp(arg, "prefix")) {
+            if (argv[i+1] == NULL)
+                usage();
+            c->length = 0;
+            res = ccn_name_from_uri(c, argv[i+1]);
+            if (res < 0)
+                usage();
+            res = ccn_set_interest_filter_with_flags(ccnH, c, &store[pool].me, regflgs);
+            if (res < 0) abort();
+            res = ccn_run(ccnH, 2);
+            i++;
+            continue;
+        }
+        if (0 == strcmp(arg, "flags")) {
+            if (argv[i+1] == NULL)
+                usage();
+            regflgs = atoi(argv[i+1]);
+            if (regflgs <= 0 && strcmp(argv[i+1], "0") != 0)
+                usage();
+            i++;
+            continue;
+        }
+        if (0 == strcmp(arg, "run")) {
+            if (argv[i+1] == NULL)
+                usage();
+            millis = atoi(argv[i+1]);
+            if (millis <= 0 && strcmp(argv[i+1], "0") != 0)
+                usage();
+            i++;
+            res = ccn_run(ccnH, millis);
+            if (res < 0) {
+                fprintf(stderr, "ccn_run returnes %d\n", res);
+                exit(1);
+            }
+            continue;
+        }
         close(0);
-        res = open(filename, O_RDONLY);
+        res = open(arg, O_RDONLY);
         if (res != 0) {
-            perror(filename);
+            perror(arg);
             exit(1);
         }
-        fprintf(stderr, "Reading %s ... ", filename);
+        fprintf(stderr, "Reading %s ... ", arg);
         rawlen = read(0, rawbuf, sizeof(rawbuf));
         if (rawlen < 0) {
             perror("skipping");
+            // XXX - status
             continue;
         }
         // XXX - Should do a skeleton check before parse
@@ -197,46 +279,41 @@ main(int argc, char **argv)
             size_t name_size = interest.offset[CCN_PI_E_Name] - name_start;
             templ->length = 0;
             ccn_charbuf_append(templ, rawbuf, rawlen);
-            fprintf(stderr, "Registering interest with %d name components\n", res);
+            fprintf(stderr, "Expressing interest with %d name components\n", res);
             c->length = 0;
             ccn_charbuf_append(c, rawbuf + name_start, name_size);
             // XXX - res is currently ignored
-            ccn_express_interest(ccnH, c, &incoming_content_action, templ);
+            ccn_express_interest(ccnH, c, &(incoming_content_action[pool]), templ);
         }
         else {
             struct ccn_parsed_ContentObject obj = {0};
-            int k;
+            int try;
             res = ccn_parse_ContentObject(rawbuf, rawlen, &obj, comps);
             if (res >= 0) {
-                fprintf(stderr, "Offering content\n");
-                /* We won't listen for interests with fewer than 2 name component */
-                for (k = comps->n - 1; k >= 2; k--) {
-                    // XXX - there is a nicer way to do this...
-                    c->length = 0;
-                    ccn_charbuf_append_tt(c, CCN_DTAG_Name, CCN_DTAG);
-                    ccn_charbuf_append(c, rawbuf+comps->buf[0], comps->buf[k] - comps->buf[0]);
-                    ccn_charbuf_append_closer(c);
-                    res = ccn_set_interest_filter(ccnH, c, &store[0].me);
-                    if (res < 0) abort();
+                for (try = 0; try < 5; try++) {
+                    res = add_to_pool(pool, rawbuf, rawlen);
+                    if (res >= 0 || try == 5)
+                        break;
+                    fprintf(stderr, "Pool %d full - wait for drain\n", pool);
+                    if (ccn_run(ccnH, 1000) < 0)
+                        break;
                 }
-                res = ccn_run(ccnH, 1000);
-                /* Stop listening for these interests now */
-                for (k = comps->n - 1; k >= 2; k--) {
-                    c->length = 0;
-                    ccn_charbuf_append_tt(c, CCN_DTAG_Name, CCN_DTAG);
-                    ccn_charbuf_append(c, rawbuf+comps->buf[0], comps->buf[k] - comps->buf[0]);
-                    ccn_charbuf_append_closer(c);
-                    res = ccn_set_interest_filter(ccnH, c, NULL);
-                    if (res < 0) abort();
+                if (res < 0) {
+                    fprintf(stderr, "No buffer for %s\n", arg);
+                    status = 1;
                 }
+                res = ccn_run(ccnH, 10);
             }
             else {
-                fprintf(stderr, "what's that?\n");
+                fprintf(stderr, "What is that?\n");
+                status = 1;
             }
         }
+        res = ccn_run(ccnH, 10);
     }
-    fprintf(stderr, "Running for 8 more seconds\n");
-    res = ccn_run(ccnH, 8000);
+    res = ccn_run(ccnH, 10);
+    if (res < 0)
+        status = 1;
     ccn_destroy(&ccnH);
-    exit(0);
+    exit(status);
 }
