@@ -46,7 +46,7 @@ PAGE_NAMES =        		\
 	ccnrepoimport	\
 	ccnprintlink \
 
-PROJECT_NUMBER = 0.5.1
+PROJECT_NUMBER = 0.6.0rc1
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
