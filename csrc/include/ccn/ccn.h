@@ -875,6 +875,7 @@ int ccn_encode_ContentObject(struct ccn_charbuf *buf,
  * Matching
  */
 
+
 /*
  * ccn_content_matches_interest: Test for a match
  * Return 1 if the ccnb-encoded content_object matches the 
@@ -892,6 +893,14 @@ int ccn_content_matches_interest(const unsigned char *content_object,
                                  const unsigned char *interest_msg,
                                  size_t interest_msg_size,
                                  const struct ccn_parsed_interest *pi);
+
+/*
+ * Test whether the given raw name is int the Exclude set.
+ */
+int ccn_excluded(const unsigned char *excl,
+                 size_t excl_size,
+                 const unsigned char *nextcomp,
+                 size_t nextcomp_size);
 
 /***********************************
  * StatusResponse

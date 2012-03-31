@@ -595,7 +595,8 @@ ccns_open(struct ccn *h,
     ccns->base->priv->rootAdviseLifetime = 20;
     ccns->base->priv->maxComparesBusy = 8;
     ccns->base->debug = CCNL_WARNING;
-    ccns->root = SyncAddRoot(ccns->base, slice->topo, slice->prefix, NULL);
+    ccns->root = SyncAddRoot(ccns->base, ccns->base->priv->syncScope,
+                             slice->topo, slice->prefix, NULL);
     // TODO: no filters yet
 
     // starting at given root hash -- need to sanity check rhash, check node fetch works

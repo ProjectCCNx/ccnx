@@ -1,9 +1,10 @@
 /**
  * @file sync/SyncBase.c
- * 
+ *  
  * Part of CCNx Sync.
- *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ */
+/*
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -111,11 +112,8 @@ SyncInit(struct SyncBaseStruct *bp) {
             struct SyncPrivate *priv = bp->priv;
             bp->debug = ccnr->syncdebug;
             
-            int enable = 1;
-            char *s = getenv("CCNS_ENABLE");
-            if (s != NULL && s[0] != 0)
-                enable = strtol(s, NULL, 10);
-            
+            int enable = getEnvLimited("CCNS_ENABLE", 0, 1, 1);
+
             if (enable <= 0) return;
             
             char *debugStr = getenv("CCNS_DEBUG");
@@ -158,7 +156,15 @@ SyncInit(struct SyncBaseStruct *bp) {
 
             // max number of compares busy
             priv->maxComparesBusy = getEnvLimited("CCNS_MAX_COMPARES_BUSY",
-                                               1, 100, 4);
+                                                  1, 100, 4);
+            
+            // # of bytes permitted for RootAdvise delta mode
+            priv->deltasLimit = getEnvLimited("CCNS_DELTAS_LIMIT",
+                                              0, 8000, 0);
+            
+            // # of bytes permitted for RootAdvise delta mode
+            priv->syncScope = getEnvLimited("CCNS_SYNC_SCOPE",
+                                              0, 2, 2);
             
             
             if (bp->debug >= CCNL_INFO) {
@@ -200,11 +206,15 @@ SyncInit(struct SyncBaseStruct *bp) {
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
                                 ",CCNS_MAX_COMPARES_BUSY=%d",
                                 priv->maxComparesBusy);
-#if (CCN_API_VERSION >= 4004)
+                pos += snprintf(temp+pos, sizeof(temp)-pos,
+                                ",CCNS_DELTAS_LIMIT=%d",
+                                priv->deltasLimit);
+                pos += snprintf(temp+pos, sizeof(temp)-pos,
+                                ",CCNS_SYNC_SCOPE=%d",
+                                priv->syncScope);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
                                 ",defer_verification=%d",
                                 ccn_defer_verification(bp->ccn, -1));
-#endif
                 ccnr_msg(ccnr, "%s, %s", here, temp);
             }
             

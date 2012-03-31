@@ -1,10 +1,11 @@
 /**
  * @file ccn_match.c
- * @brief Support for the match predicate between interest and content.
+ * Support for the match predicate between interest and content.
  * 
  * Part of the CCNx C Library.
- *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ */
+/*
+ * Copyright (C) 2008, 2009, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -88,6 +89,90 @@ ccn_pubid_matches(const unsigned char *content_object,
 }
 
 /**
+ * Test for a match between a next component and an exclusion clause
+ *
+ * @param excl                  address of exclusion encoding
+ * @param excl_size             bytes in exclusion encoding
+ * @param nextcomp              addr of nextcomp bytes
+ * @param nextcomp_size         number of nextcomp bytes
+ * @result 1 if the ccnb-encoded nextcomp matches the 
+ *           ccnb-encoded exclusion clause, otherwise 0.
+ */
+int
+ccn_excluded(const unsigned char *excl,
+             size_t excl_size,
+             const unsigned char *nextcomp,
+             size_t nextcomp_size)
+{
+    unsigned char match_any[2] = "-";
+    const unsigned char *bloom = NULL;
+    size_t bloom_size = 0;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = ccn_buf_decoder_start(&decoder, excl, excl_size);
+    const unsigned char *comp = NULL;
+    size_t comp_size = 0;
+    const int excluded = 1;
+    
+    if (!ccn_buf_match_dtag(d, CCN_DTAG_Exclude))
+        abort();
+    ccn_buf_advance(d);
+    if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+        ccn_buf_advance(d);
+        bloom = match_any;
+        ccn_buf_check_close(d);
+    }
+    else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+        ccn_buf_advance(d);
+        if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+            ccn_buf_advance(d);
+        ccn_buf_check_close(d);
+    }
+    while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+        ccn_buf_advance(d);
+        comp_size = 0;
+        if (ccn_buf_match_blob(d, &comp, &comp_size))
+            ccn_buf_advance(d);
+        ccn_buf_check_close(d);
+        if (comp_size > nextcomp_size)
+            break;
+        if (comp_size == nextcomp_size) {
+            int res = memcmp(comp, nextcomp, comp_size);
+            if (res == 0)
+                return(excluded); /* One of the explicit excludes */
+            if (res > 0)
+                break;
+        }
+        bloom = NULL;
+        bloom_size = 0;
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+            ccn_buf_advance(d);
+            bloom = match_any;
+            ccn_buf_check_close(d);
+        }
+        else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+            ccn_buf_advance(d);
+            if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+                ccn_buf_advance(d);
+            ccn_buf_check_close(d);
+        }
+    }
+    /*
+     * Now we have isolated the applicable filter (Any or Bloom or none).
+     */
+    if (bloom == match_any)
+        return(excluded);
+    else if (bloom_size != 0) {
+        const struct ccn_bloom_wire *f = ccn_bloom_validate_wire(bloom, bloom_size);
+        /* If not a valid filter, treat like a false positive */
+        if (f == NULL)
+            return(excluded);
+        if (ccn_bloom_match_wire(f, nextcomp, nextcomp_size))
+            return(excluded);
+    }
+    return(!excluded);
+}
+
+/**
  * Test for a match between a ContentObject and an Interest
  *
  * @param content_object        ccnb-encoded ContentObject
@@ -130,9 +215,6 @@ ccn_content_matches_interest(const unsigned char *content_object,
     size_t nextcomp_size = 0;
     const unsigned char *comp = NULL;
     size_t comp_size = 0;
-    const unsigned char *bloom;
-    size_t bloom_size = 0;
-    unsigned char match_any[2] = "-";
     if (pc == NULL) {
         res = ccn_parse_ContentObject(content_object, content_object_size,
                                       &pc_store, NULL);
@@ -218,68 +300,12 @@ ccn_content_matches_interest(const unsigned char *content_object,
             nextcomp = pc->digest;
         }
         else abort(); /* bug - should have returned already */
-        d = ccn_buf_decoder_start(&decoder,
-                                  interest_msg + pi->offset[CCN_PI_B_Exclude],
-                                  pi->offset[CCN_PI_E_Exclude] -
-                                  pi->offset[CCN_PI_B_Exclude]);
-        if (!ccn_buf_match_dtag(d, CCN_DTAG_Exclude))
-            abort();
-        ccn_buf_advance(d);
-        bloom = NULL;
-        bloom_size = 0;
-        if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
-                ccn_buf_advance(d);
-                bloom = match_any;
-                ccn_buf_check_close(d);
-        }
-        else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
-                ccn_buf_advance(d);
-                if (ccn_buf_match_blob(d, &bloom, &bloom_size))
-                    ccn_buf_advance(d);
-                ccn_buf_check_close(d);
-        }
-        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
-            ccn_buf_advance(d);
-            comp_size = 0;
-            if (ccn_buf_match_blob(d, &comp, &comp_size))
-                ccn_buf_advance(d);
-            ccn_buf_check_close(d);
-            if (comp_size > nextcomp_size)
-                break;
-            if (comp_size == nextcomp_size) {
-                res = memcmp(comp, nextcomp, comp_size);
-                if (res == 0)
-                    return(0); /* One of the explicit excludes */
-                if (res > 0)
-                    break;
-            }
-            bloom = NULL;
-            bloom_size = 0;
-            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
-                ccn_buf_advance(d);
-                bloom = match_any;
-                ccn_buf_check_close(d);
-            }
-            else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
-                ccn_buf_advance(d);
-                if (ccn_buf_match_blob(d, &bloom, &bloom_size))
-                    ccn_buf_advance(d);
-                ccn_buf_check_close(d);
-            }
-        }
-        /*
-         * Now we have isolated the applicable filter (Any or Bloom or none).
-         */
-        if (bloom == match_any)
+        if (ccn_excluded(interest_msg + pi->offset[CCN_PI_B_Exclude],
+                         (pi->offset[CCN_PI_E_Exclude] -
+                          pi->offset[CCN_PI_B_Exclude]),
+                         nextcomp,
+                         nextcomp_size))
             return(0);
-        else if (bloom_size != 0) {
-            const struct ccn_bloom_wire *f = ccn_bloom_validate_wire(bloom, bloom_size);
-            /* If not a valid filter, treat like a false positive */
-            if (f == NULL)
-                return(0);
-            if (ccn_bloom_match_wire(f, nextcomp, nextcomp_size))
-                return(0);
-        }
     exclude_checked: {}
     }
     /*

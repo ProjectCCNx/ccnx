@@ -2,8 +2,9 @@
  * @file sync/SyncHashCache.h
  *  
  * Part of CCNx Sync.
- *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ */
+/*
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -38,6 +39,7 @@ struct SyncHashCacheHead {
     struct SyncRootStruct *root;        /**< the parent root */
     uintmax_t probes;                   /**< number of cache probes */
     uintmax_t misses;                   /**< number of cache misses */
+    uintmax_t lastIndex;                /**< assigned by order of creation */
     size_t len;                         /**< number of entries */
     uint32_t mod;                       /**< the mod to use */
     struct SyncHashCacheEntry **ents;   /**< the vector of hash chains */
@@ -48,6 +50,7 @@ struct SyncHashCacheEntry {
     struct SyncHashCacheEntry *next;    /**< the next entry in the hash chain */
     struct SyncHashCacheEntry *storing; /**< the next entry in the storing chain */
     enum SyncHashState state;           /**< state bits */
+    uintmax_t index;                    /**< assigned by order of creation */
     uint32_t busy;                      /**< the tree worker usage count */
     uint32_t small;                     /**< the small hash */
     struct ccn_charbuf *hash;           /**< hash used to reach this entry */

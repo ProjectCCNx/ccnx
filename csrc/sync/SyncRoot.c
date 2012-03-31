@@ -1,9 +1,10 @@
 /**
  * @file sync/SyncRoot.c
  *  
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
- *
  * Part of CCNx Sync.
+ */
+/*
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -103,6 +104,7 @@ canonFilter(struct SyncBaseStruct *base, struct SyncNameAccum *filter) {
 
 extern struct SyncRootStruct *
 SyncAddRoot(struct SyncBaseStruct *base,
+            int syncScope,
             const struct ccn_charbuf *topoPrefix,
             const struct ccn_charbuf *namingPrefix,
             struct SyncNameAccum *filter) {
@@ -117,6 +119,10 @@ SyncAddRoot(struct SyncBaseStruct *base,
     root->priv->lastUpdate = now;
     root->priv->stablePoint = CCNR_NULL_HWM;
     root->priv->lastUpdate = CCNR_NULL_HWM;
+    if (syncScope < 1 || syncScope > 2)
+        // invalid scopes treated as unscoped
+        syncScope = -1;
+    root->priv->syncScope = syncScope;
     root->priv->sliceBusy = -1;
     base->lastRootId++;
     root->rootId = base->lastRootId;
@@ -210,6 +216,25 @@ SyncRemRoot(struct SyncRootStruct *root) {
                     list = list->next;
                     free(lag);
                 }
+                list = rp->localMade;
+                while (list != NULL) {
+                    struct SyncHashInfoList *lag = list;
+                    list = list->next;
+                    free(lag);
+                }
+                
+                struct SyncRootDeltas *deltas = rp->deltasHead;
+                while (deltas != NULL) {
+                    struct SyncRootDeltas *next = deltas->next;
+                    ccn_charbuf_destroy(&deltas->coding);
+                    ccn_charbuf_destroy(&deltas->name);
+                    ccn_charbuf_destroy(&deltas->cob);
+                    free(deltas);
+                    deltas = next;
+                }
+                if (rp->remoteDeltas != NULL) {
+                    SyncFreeNameAccumAndNames(rp->remoteDeltas);
+                }
                 free(rp);
             }
             free(root);
@@ -251,7 +276,8 @@ SyncRootDecodeAndAdd(struct SyncBaseStruct *base,
             ccn_buf_check_close(d);
             if (SyncCheckDecodeErr(d)) oops++;
             if (oops == 0) {
-                root = SyncAddRoot(base, topo, prefix, filter);
+                // TBD: extract the scope from the slice
+                root = SyncAddRoot(base, base->priv->syncScope, topo, prefix, filter);
             }
             // regardless of success, the temporary storage must be returned
             if (topo != NULL) ccn_charbuf_destroy(&topo);
@@ -282,6 +308,7 @@ SyncRootAppendSlice(struct ccn_charbuf *cb, struct SyncRootStruct *root) {
     int res = 0;
     res |= ccnb_element_begin(cb, CCN_DTAG_SyncConfigSlice);
     res |= SyncAppendTaggedNumber(cb, CCN_DTAG_SyncVersion, SLICE_VERSION);
+    // TBD: encode the scope
     res |= appendName(cb, root->topoPrefix);
     res |= appendName(cb, root->namingPrefix);
     res |= ccnb_element_begin(cb, CCN_DTAG_SyncConfigSliceList);

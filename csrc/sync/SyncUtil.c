@@ -2,8 +2,9 @@
  * @file sync/SyncUtil.c
  *  
  * Part of CCNx Sync.
- *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ */
+/*
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -1051,6 +1052,7 @@ SyncGenInterest(struct ccn_charbuf *name,
 // Routines for local repo read/write
 ///////////////////////////////////////////////////////
 
+#define UseLocalTopoPrefix 1
 extern struct ccn_charbuf *
 SyncNameForLocalNode(struct SyncRootStruct *root, struct ccn_charbuf *hash) {
     // form the name of the node
@@ -1058,8 +1060,14 @@ SyncNameForLocalNode(struct SyncRootStruct *root, struct ccn_charbuf *hash) {
     struct ccn_charbuf *sh = root->sliceHash;
     struct ccn_charbuf *nm = ccn_charbuf_create();
     int res = 0;
-    res |= ccn_name_init(nm);
-    res |= ccn_name_append_str(nm, "\xC1.M.S.localhost");
+#ifdef UseLocalTopoPrefix
+    // new method used root->topoPrefix
+    res |= ccn_charbuf_append_charbuf(nm, root->topoPrefix);
+#else    
+    // old method used localhost instead of topoPrefix
+     res |= ccn_name_init(nm);
+     res |= ccn_name_append_str(nm, "\xC1.M.S.localhost");
+#endif
     res |= ccn_name_append_str(nm, "\xC1.S.nf");
     res |= ccn_name_append(nm, sh->buf, sh->length);
     res |= ccn_name_append(nm, hash->buf, hash->length);

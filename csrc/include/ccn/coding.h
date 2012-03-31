@@ -162,6 +162,7 @@ enum ccn_dtag {
     CCN_DTAG_SyncConfigSlice = 124,
     CCN_DTAG_SyncConfigSliceList = 125,
     CCN_DTAG_SyncConfigSliceOp = 126,
+    CCN_DTAG_SyncNodeDeltas = 127,
     CCN_DTAG_SequenceNumber = 256,
     CCN_DTAG_CCNProtocolDataUnit = 17702112
 };

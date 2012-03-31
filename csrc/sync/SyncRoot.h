@@ -1,9 +1,10 @@
 /**
  * @file sync/SyncRoot.h
  *  
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
- *
  * Part of CCNx Sync.
+ */
+/*
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -68,6 +69,7 @@ struct SyncRootStruct {
 
 /**
  * Creates a new root structure and adds it to the base.
+ * The syncScope will be used for sync control interests (-1 for unscoped).
  * The topoPrefix and namingPrefix will be copied and canonicalized.
  * The filter (and the names in it) will also be copied and canonicalized.
  * Canonicalized data is owned by the base.
@@ -75,6 +77,7 @@ struct SyncRootStruct {
  */
 struct SyncRootStruct *
 SyncAddRoot(struct SyncBaseStruct *base,
+            int syncScope,
             const struct ccn_charbuf *topoPrefix,
             const struct ccn_charbuf *namingPrefix,
             struct SyncNameAccum *filter);

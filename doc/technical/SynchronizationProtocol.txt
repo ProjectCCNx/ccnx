@@ -110,7 +110,7 @@ where:
 
 * The +version+ and +segment+ are optional, and follow normal CCN naming practice. (See link:NameConventions.html[CCNx Basic Name Conventions].)
 
-The Content Object in the response to the Root Advise interest has the ccnb encoding of the root node of the remote sync tree that generated the response.
+The Content Object in the response has one of two forms.  The most general form of the response is to include the root node of the remote sync tree of the responding Sync.  In the case of relatively few changes, a "delta" response may be used, where the Content Object has a list of the names that changed since the last sync tree root.
 
 As a Sync Agent examines a remote sync tree, it may encounter combined hash codes that it finds are included in the local sync tree. In the above example, regardless of updates to the local sync tree, there is no need to receive remote roots with hashes of +Root Hash+ or +Response Hash+ in response to subsequent Root Advise requests. The CCN interest mechanism allows them to be excluded using an exclusion filter. This minimizes the likelihood of responses containing names that are already known to be included in the local tree.
 

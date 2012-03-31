@@ -102,5 +102,6 @@
 124,SyncConfigSlice
 125,SyncConfigSliceList
 126,SyncConfigSliceOp
+127,SyncNodeDeltas
 256,SequenceNumber
 17702112,CCNProtocolDataUnit

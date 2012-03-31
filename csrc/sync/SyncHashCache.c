@@ -2,8 +2,9 @@
  * @file sync/SyncHashCache.c
  *  
  * Part of CCNx Sync.
- *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ */
+/*
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -81,6 +82,8 @@ SyncHashEnter(struct SyncHashCacheHead *head,
     }
     head->misses = head->misses + 1;
     if (ent == NULL) {
+        uintmax_t index = head->lastIndex + 1;
+        head->lastIndex = index;
         head->probes = head->probes + 1;
         head->misses = head->misses + 1;
         ent = NEW_STRUCT(1, SyncHashCacheEntry);
@@ -90,6 +93,7 @@ SyncHashEnter(struct SyncHashCacheHead *head,
         ent->next = old;
         ent->small = h;
         ent->hash = ccn_charbuf_create();
+        ent->index = index;
         ccn_charbuf_append(ent->hash, xp, xs);
         head->ents[hx] = ent;
         head->len++;
