@@ -739,7 +739,7 @@ noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
     }
     if (remote == 0) root->priv->localMade = head;
     else root->priv->remoteSeen = head;
-    
+
     if (debug >= CCNL_FINE) {
         char *hex = "empty";
         if (hl > 0) hex = SyncHexStr(hash->buf, hl);
