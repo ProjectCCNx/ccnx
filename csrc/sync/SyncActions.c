@@ -63,7 +63,6 @@ static int namesYieldMicros = 20*1000;  // number of micros to use as yield trig
 static char *syncStableSuffix = "SyncStable";
 
 #define SYNC_UPDATE_VERSION (20120307)
-static enum ccn_dtag CCN_DTAG_SyncNodeDeltas = (enum ccn_dtag) 127;
 
 enum SyncCompareState {
     SyncCompare_init,
