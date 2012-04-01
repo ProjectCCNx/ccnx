@@ -26,6 +26,10 @@
                               SyncLeafCount, SyncTreeDepth, SyncByteCount)>
 <!ATTLIST SyncNode           %commonattrs;>
 
+<!ELEMENT SyncNodeDeltas     (SyncVersion, Name*)>  <!-- 20120307 -->
+
+<!ATTLIST SyncNodeDeltas     %commonattrs;>
+
 <!ELEMENT SyncConfigSliceOp       (#PCDATA)>      <!-- 0 -->
 
 <!ELEMENT SyncConfigSliceList     ((SyncConfigSliceOp, Name)*)>

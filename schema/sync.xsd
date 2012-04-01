@@ -34,6 +34,16 @@
                </xs:sequence>
        </xs:complexType>
 
+        <xs:element name="SyncNodeDeltas" type="SyncNodeDeltasType"/>
+        <xs:complexType name="SyncNodeDeltasType">
+                <xs:sequence>
+                        <xs:element name="SyncVersion" type="xs:nonNegativeInteger"/> <!-- 20120307 -->
+                        <xs:sequence>
+                                <xs:element name="Name" type="NameType"/>
+                        </xs:sequence>
+                </xs:sequence>
+        </xs:complexType>
+        
        <xs:element name="SyncConfigSlice" type="SyncConfigSliceType"/>
        <xs:complexType name="SyncConfigSliceType">
                <xs:sequence>
