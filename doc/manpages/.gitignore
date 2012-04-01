@@ -30,6 +30,7 @@ ccnr.1.html
 SyncTest.1.html
 ccnrepoimport.1.html
 ccnprintlink.1.html
+ccntestloop.1.html
 ccn_ccnbtoxml.1.pdf
 ccn_xmltoccnb.1.pdf
 ccnacl.1.pdf
@@ -62,6 +63,7 @@ ccnr.1.pdf
 SyncTest.1.pdf
 ccnrepoimport.1.pdf
 ccnprintlink.1.pdf
+ccntestloop.1.pdf
 index.html
 index.txt
 ccn_ccnbtoxml.1.fo
@@ -96,6 +98,7 @@ ccnr.1.fo
 SyncTest.1.fo
 ccnrepoimport.1.fo
 ccnprintlink.1.fo
+ccntestloop.1.fo
 ccn_ccnbtoxml.1.xml
 ccn_xmltoccnb.1.xml
 ccnacl.1.xml
@@ -128,3 +131,4 @@ ccnr.1.xml
 SyncTest.1.xml
 ccnrepoimport.1.xml
 ccnprintlink.1.xml
+ccntestloop.1.xml
