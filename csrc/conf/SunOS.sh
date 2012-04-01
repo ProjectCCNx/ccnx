@@ -16,7 +16,7 @@ export PATH
 echo SH = `which sh` >> conf.mk
 whichcc=`which cc`
 gcciscc="`echo $whichcc | grep gnu`"
-
+echo Using CC found in $whichcc
 if test \( -z "$gcciscc" \)
 then
 	echo "PLATCFLAGS = -mt -Kpic" >> conf.mk
