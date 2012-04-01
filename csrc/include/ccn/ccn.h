@@ -107,6 +107,7 @@ typedef enum ccn_upcall_res (*ccn_handler)(
 /**
  * Handle for upcalls that allow clients receive notifications of
  * incoming interests and content.
+ *
  * The client is responsible for managing this piece of memory and the
  * data therein. The refcount should be initially zero, and is used by the
  * library to keep to track of multiple registrations of the same closure.
@@ -122,6 +123,7 @@ struct ccn_closure {
 
 /**
  * Additional information provided in the upcall.
+ *
  * The client is responsible for managing this piece of memory and the
  * data therein. The refcount should be initially zero, and is used by the
  * library to keep to track of multiple registrations of the same closure.
@@ -304,22 +306,14 @@ int ccn_express_interest(struct ccn *h,
                          struct ccn_closure *action,
                          struct ccn_charbuf *interest_template);
 
-/***********************************
- * ccn_set_interest_filter: 
- * The action, if provided, will be called when an interest arrives that
- * has the given name as a prefix.
- * If action is NULL, any existing filter is removed.
- * The namebuf may be reused or destroyed after the call.
- * Handler should return CCN_UPCALL_RESULT_ERR if it cannot matching content.
- * The upcall kind passed to the handler will be CCN_UPCALL_INTEREST
- * if no other handler has claimed to produce content, or else
- * CCN_UPCALL_CONSUMED_INTEREST.
+/*
+ * Register to receive interests on a prefix
  */
 int ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
                             struct ccn_closure *action);
 
 /*
- * Variation allows non-default forwarding flags.
+ * Variation allows non-default forwarding flags
  */
 int ccn_set_interest_filter_with_flags(struct ccn *h,
                                        struct ccn_charbuf *namebuf,

@@ -11,7 +11,6 @@ ccnd/contentobjecthash.ccnb
 ccnd/contentobjecthash.out
 ccnd/contentmishash.ccnb
 ccnd/minsuffix.ccnb
-ccnd/smoketestccnd
 conf.mk
 conf/local.mk
 cmd/Makefile
@@ -32,6 +31,7 @@ cmd/ccnfilewatch
 cmd/ccnpeek
 cmd/ccnhexdumpdata
 cmd/ccninitkeystore
+cmd/ccnlibtest
 cmd/ccnls
 cmd/ccnnamelist
 cmd/ccnpoke
@@ -52,7 +52,6 @@ lib/libccn.a
 lib/matrixtest
 lib/signbenchtest
 lib/skel_decode_test
-lib/smoketestclientlib
 libexec/Makefile
 libexec/ccndc
 libexec/ccndc-inject

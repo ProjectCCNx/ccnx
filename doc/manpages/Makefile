@@ -32,6 +32,7 @@ PAGE_NAMES =        		\
 	ccnputfile		\
 	ccnputmeta		\
 	ccngetmeta		\
+	ccnlibtest		\
 	ccnnamelist		\
 	ccnrm			\
 	ccnseqwriter		\
@@ -43,8 +44,8 @@ PAGE_NAMES =        		\
 	ccnpoke			\
 	ccnr			\
 	SyncTest		\
-	ccnrepoimport	\
-	ccnprintlink \
+	ccnrepoimport		\
+	ccnprintlink		\
 	ccntestloop \
 
 PROJECT_NUMBER = 0.6.0rc1
@@ -78,10 +79,10 @@ clean:
 clean-documentation:
 	rm -f $(NONSOURCE)
 
-.gitignore: Makefile
-	for i in $(NONSOURCE); do echo $$i; done > $@
+.gitignore: Makefile _always
+	@for i in $(NONSOURCE); do echo $$i; done > $@
 
-depend: Makefile
+depend: Makefile .gitignore _always
 	@for i in $(PAGE_NAMES); do echo $$i.1.html: $$i.1.txt; done > depend
 	@for i in $(PAGE_NAMES); do echo $$i.1.pdf: $$i.1.txt; done >> depend
 	@for i in $(PAGE_NAMES); do echo $$i.1: $$i.1.txt;     done >> depend
