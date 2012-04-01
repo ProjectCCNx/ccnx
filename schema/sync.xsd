@@ -38,7 +38,7 @@
         <xs:complexType name="SyncNodeDeltasType">
                 <xs:sequence>
                         <xs:element name="SyncVersion" type="xs:nonNegativeInteger"/> <!-- 20120307 -->
-                        <xs:sequence>
+                        <xs:sequence minOccurs="0" maxOccurs="unbounded">
                                 <xs:element name="Name" type="NameType"/>
                         </xs:sequence>
                 </xs:sequence>
