@@ -45,6 +45,7 @@ PAGE_NAMES =        		\
 	SyncTest		\
 	ccnrepoimport	\
 	ccnprintlink \
+	ccntestloop \
 
 PROJECT_NUMBER = 0.6.0rc1
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
