@@ -82,10 +82,12 @@ clean-documentation:
 .gitignore: Makefile
 	@for i in $(NONSOURCE); do echo $$i; done > $@
 
-depend: Makefile .gitignore
-	@for i in $(PAGE_NAMES); do echo $$i.1.html: $$i.1.txt; done > depend.mk
-	@for i in $(PAGE_NAMES); do echo $$i.1.pdf: $$i.1.txt; done >> depend.mk
-	@for i in $(PAGE_NAMES); do echo $$i.1: $$i.1.txt;     done >> depend.mk
+depend: .gitignore _always
+	@for i in $(PAGE_NAMES); do echo $$i.1.html: $$i.1.txt; done > depend.mk+
+	@for i in $(PAGE_NAMES); do echo $$i.1.pdf: $$i.1.txt; done >> depend.mk+
+	@for i in $(PAGE_NAMES); do echo $$i.1: $$i.1.txt;     done >> depend.mk+
+	@diff depend.mk depend.mk+ || mv depend.mk+ depend.mk
+	@rm -f depend.mk+
 
 index.html: index.txt
 	asciidoc index.txt
