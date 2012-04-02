@@ -335,41 +335,6 @@ r_proto_mktemplate(struct ccnr_expect_content *md, struct ccn_upcall_info *info)
     return(templ);
 }
 
-static int
-is_final(struct ccn_upcall_info *info)
-{
-    // XXX The test below is refactored into the library with 100496 as ccn_is_final_block()
-    const unsigned char *ccnb;
-    size_t ccnb_size;
-    ccnb = info->content_ccnb;
-    if (ccnb == NULL || info->pco == NULL)
-        return(0);
-    ccnb_size = info->pco->offset[CCN_PCO_E];
-    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
-        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
-        const unsigned char *finalid = NULL;
-        size_t finalid_size = 0;
-        const unsigned char *nameid = NULL;
-        size_t nameid_size = 0;
-        struct ccn_indexbuf *cc = info->content_comps;
-        ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
-                            info->pco->offset[CCN_PCO_B_FinalBlockID],
-                            info->pco->offset[CCN_PCO_E_FinalBlockID],
-                            &finalid,
-                            &finalid_size);
-        if (cc->n < 2) return(-1);
-        ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
-                            cc->buf[cc->n - 2],
-                            cc->buf[cc->n - 1],
-                            &nameid,
-                            &nameid_size);
-        if (finalid_size == nameid_size &&
-            0 == memcmp(finalid, nameid, nameid_size))
-            return(1);
-    }
-    return(0);
-}
-
 PUBLIC enum ccn_upcall_res
 r_proto_expect_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
@@ -448,8 +413,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
     md->tries = 0;
     segment = r_util_segment_from_component(ib, ic->buf[ic->n - 2], ic->buf[ic->n - 1]);
 
-    // XXX The test below should get replace by ccn_is_final_block() when it is available
-    if (is_final(info) == 1)
+    if (ccn_is_final_block(info) == 1)
         md->final = segment;
     
     if (md->keyfetch != 0 && segment <= 0) {
@@ -694,6 +658,15 @@ r_proto_start_write(struct ccn_closure *selfp,
     // If Exclude is there, there might be something fishy going on.
     
     ccnr = (struct ccnr_handle *)selfp->data;
+    if (ccnr->start_write_scope_limit < 3) {
+        start = info->pi->offset[CCN_PI_B_Scope];
+        end = info->pi->offset[CCN_PI_E_Scope];
+        if (start == end || info->pi->scope > ccnr->start_write_scope_limit) {
+            if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
+                ccnr_msg(ccnr, "r_proto_start_write: interest scope exceeds limit");
+            return(CCN_UPCALL_RESULT_OK);
+        }
+    }
     // don't handle the policy file here
     start = info->pi->offset[CCN_PI_B_Name];
     end = info->interest_comps->buf[marker_comp - 1]; // not including version or marker
@@ -801,6 +774,15 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     
     // XXX - do we need to disallow the policy file here too?
     ccnr = (struct ccnr_handle *)selfp->data;
+    if (ccnr->start_write_scope_limit < 3) {
+        start = info->pi->offset[CCN_PI_B_Scope];
+        end = info->pi->offset[CCN_PI_E_Scope];
+        if (start == end || info->pi->scope > ccnr->start_write_scope_limit) {
+            if (CCNSHOULDLOG(ccnr, LM_128, CCNL_INFO))
+                ccnr_msg(ccnr, "r_proto_start_write_checked: interest scope exceeds limit");
+            return(CCN_UPCALL_RESULT_OK);
+        }
+    }
     name = ccn_charbuf_create();
     ccn_name_init(name);
     ic = info->interest_comps;

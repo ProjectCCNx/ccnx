@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -37,13 +37,13 @@ import org.ccnx.ccn.config.SystemConfiguration;
 
 /**
  * Wrapper for the standard java.util Logging classes.
- * 
+ *
  * This allows log messages which will not actually be output due to being at a lower
  * level than the current logging level to not affect performance by performing expensive calculations to
  * compute their parameters.
- * 
+ *
  * To send log entries to file, specify the log output directory using either the system property
- * org.ccnx.ccn.LogDir or the environment variable CCN_LOG_DIR.	 To override the default 
+ * org.ccnx.ccn.LogDir or the environment variable CCN_LOG_DIR.	 To override the default
  * log level for whatever program you are running, set the system property org.ccnx.ccn.LogLevel.
  */
 public class Log {
@@ -252,7 +252,7 @@ public class Log {
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];
 	protected static int [] _fac_value = new int[FAC_LOG_LEVEL_PROPERTY.length];
-	
+
 	protected static boolean _timestamp = false;
 
 	// ==========================================================
@@ -323,14 +323,14 @@ public class Log {
 		// Could just do a console handler if the file won't open.
 		// Do that eventually, for debugging put in both.
 		// Actually, right now, seem to get a console handler by default.
-		// This move is anti-social, but a starting point.	We don't want 
-		// any handlers to be more restrictive then the level set for 
+		// This move is anti-social, but a starting point.	We don't want
+		// any handlers to be more restrictive then the level set for
 		// our _systemLevel
 		Handler[] handlers = Logger.getLogger( "" ).getHandlers();
 		for (int index = 0; index < handlers.length; index++) {
 			handlers[index].setLevel(Level.ALL);
 
-			// TODO Enabling the following by default seems to cause ccn_repo to 
+			// TODO Enabling the following by default seems to cause ccn_repo to
 			// hang when run from the command line, at least on Leopard.
 			// Not sure why, so make it a special option.
 			if (SystemConfiguration.hasLoggingConfigurationProperty(SystemConfiguration.DETAILED_LOGGER)) {
@@ -376,7 +376,7 @@ public class Log {
 	}
 
 	public static void info(int facility, String msg, Object... params) {
-		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length)
 			doLog(facility, Level.INFO, msg, params);
 	}
 
@@ -389,7 +389,7 @@ public class Log {
 	}
 
 	public static void warning(int facility, String msg, Object... params) {
-		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length)
 			doLog(facility, Level.WARNING, msg, params);
 	}
 
@@ -402,7 +402,7 @@ public class Log {
 	}
 
 	public static void severe(int facility, String msg, Object... params) {
-		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length)
 			doLog(facility, Level.SEVERE, msg, params);
 	}
 
@@ -415,7 +415,7 @@ public class Log {
 	}
 
 	public static void fine(int facility, String msg, Object... params) {
-		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length)
 			doLog(facility, Level.FINE, msg, params);
 	}
 
@@ -428,7 +428,7 @@ public class Log {
 	}
 
 	public static void finer(int facility, String msg, Object... params) {
-		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length)
 			doLog(facility, Level.FINER, msg, params);
 	}
 
@@ -441,7 +441,7 @@ public class Log {
 	}
 
 	public static void finest(int facility, String msg, Object... params) {
-		if (FAC_DEFAULT <= facility && facility < _fac_level.length) 
+		if (FAC_DEFAULT <= facility && facility < _fac_level.length)
 			doLog(facility, Level.FINEST, msg, params);
 	}
 
@@ -465,13 +465,13 @@ public class Log {
 			}
 		}
 	}
-	
+
 	public static void setLevels(Level [] levels) {
 		if( levels.length != _fac_level.length ) {
 			doLog(FAC_DEFAULT, Level.SEVERE, "setLevels array incorrect size");
 			return;
 		}
-		
+
 		// The 0 element (FAC_ALL) is always null
 		for( int i = 1; i < levels.length; i++ )
 			setLevel(i, levels[i]);
@@ -479,16 +479,17 @@ public class Log {
 
 	/**
 	 * Set the default log level that will be in effect unless overridden by
-	 * the system property.	 Use of this method allows a program to change the 
+	 * the system property.	 Use of this method allows a program to change the
 	 * default logging level while still allowing external override by the user
-	 * at runtime.	
-	 * 
+	 * at runtime.
+	 *
 	 * This must be called before using setLevel().	 Calling this method will
 	 * reset all log levels to the default or to the system property level.
 	 * @param l the new default level
 	 */
 	public static void setDefaultLevel(Level l) {
-		FAC_LOG_LEVEL_DEFAULT[FAC_DEFAULT] = l;
+		for (int i = FAC_DEFAULT; i < FAC_LOG_LEVEL_DEFAULT.length; i++ )
+			FAC_LOG_LEVEL_DEFAULT[i] = l;
 		setLogLevels();
 	}
 
@@ -512,8 +513,8 @@ public class Log {
 
 		// First get the FAC_ALL value, and if set use it to set the default log level for all facilities
 		logLevelName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(
-				FAC_LOG_LEVEL_PROPERTY[FAC_ALL], 
-				FAC_LOG_LEVEL_ENV[FAC_ALL], 
+				FAC_LOG_LEVEL_PROPERTY[FAC_ALL],
+				FAC_LOG_LEVEL_ENV[FAC_ALL],
 				null);
 		if (logLevelName != null) {
 			try {
@@ -527,15 +528,15 @@ public class Log {
 				e.printStackTrace();
 			}
 		}
-		
+
 		// Then get the individual facility's log level from property/environment, or the default
 		for (int i = FAC_DEFAULT; i < FAC_LOG_LEVEL_PROPERTY.length; i++ ) {
 			logLevelName = SystemConfiguration.retrievePropertyOrEnvironmentVariable(
-					FAC_LOG_LEVEL_PROPERTY[i], 
-					FAC_LOG_LEVEL_ENV[i], 
+					FAC_LOG_LEVEL_PROPERTY[i],
+					FAC_LOG_LEVEL_ENV[i],
 					FAC_LOG_LEVEL_DEFAULT[i].getName());
 			try {
-				logLevel = Level.parse(logLevelName);	
+				logLevel = Level.parse(logLevelName);
 			} catch(IllegalArgumentException e) {
 				doLog(FAC_DEFAULT, Level.SEVERE, String.format("Error parsing property %s=%s", FAC_LOG_LEVEL_PROPERTY[i], logLevelName));
 				e.printStackTrace();
@@ -543,8 +544,8 @@ public class Log {
 			}
 
 			if (logLevel.intValue() != FAC_LOG_LEVEL_DEFAULT[i].intValue())
-				doLog(FAC_DEFAULT, Level.INFO, String.format("Set log level for facility %s to %s", 
-						FAC_LOG_LEVEL_PROPERTY[i], logLevel));				
+				doLog(FAC_DEFAULT, Level.INFO, String.format("Set log level for facility %s to %s",
+						FAC_LOG_LEVEL_PROPERTY[i], logLevel));
 
 			setLevel(i, logLevel);
 		}
@@ -568,7 +569,7 @@ public class Log {
 		else
 			return null;
 	}
-	
+
 	/**
 	 * Returns a copy of the array of all log levels.  The 0 element (FAC_ALL) will be null.
 	 */
@@ -609,13 +610,13 @@ public class Log {
 	/**
 	 * Set flag for enabling/disabling timestamps on all messages
 	 */
-	
+
 	public static boolean setTimestamp(boolean enableTimestamp) {
 		boolean previous = _timestamp;
 		_timestamp = enableTimestamp;
 		return previous;
 	}
-	
+
 	/**
 	 * The main logging wrapper. Allows for variable parameters to the message.
 	 * Using the variable parameters here rather then constructing the message
@@ -623,7 +624,7 @@ public class Log {
 	 * params do not have their .toString() methods called if the message is not
 	 * logged).
 	 * @param l Log level.
-	 * @param msg Message or format string. Note that to improve performance, only 
+	 * @param msg Message or format string. Note that to improve performance, only
 	 *			the simplest form of of MessageFormat, i.e. {0}, {1}, {2}... is supported
 	 * @see java.text.MessageFormat
 	 * @param params
@@ -648,10 +649,10 @@ public class Log {
 		// msec precision.
 		if( (facility == FAC_TIMING)  || _timestamp) {
 			long now = System.currentTimeMillis();
-			double d = (double) now / 1000.0;
+			double d = now / 1000.0;
 			msg = String.format("%.6f %s", d, msg);
 		}
-		
+
 		StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
 		Class<?> c;
 		try {
@@ -676,7 +677,7 @@ public class Log {
 				msg = sb.toString();
 			}
 		}
-		
+
 		_facilityLoggers[facility].logp(l, c.getCanonicalName(), ste.getMethodName(), msg);
 	}
 
@@ -690,7 +691,7 @@ public class Log {
 	public static void warningStackTrace(Throwable t) {
 		logStackTrace(Level.WARNING, t);
 	}
-	
+
 	public static void warningStackTrace(int facility, Throwable t) {
 		logStackTrace(facility, Level.WARNING, t);
 	}
@@ -698,7 +699,7 @@ public class Log {
 	public static void infoStackTrace(Throwable t) {
 		logStackTrace(Level.INFO, t);
 	}
-	
+
 	public static void infoStackTrace(int facility, Throwable t) {
 		logStackTrace(facility, Level.INFO, t);
 	}
@@ -708,11 +709,11 @@ public class Log {
 		t.printStackTrace(new PrintWriter(sw));
 		_facilityLoggers[FAC_DEFAULT].log(level, sw.toString());
 	}
-	
+
 	public static void logStackTrace(int facility, Level level, Throwable t) {
 		if (!isLoggable(facility, level))
 			return;
-		
+
 		StringWriter sw = new StringWriter();
 		t.printStackTrace(new PrintWriter(sw));
 		_facilityLoggers[facility].log(level, sw.toString());
@@ -722,7 +723,7 @@ public class Log {
 		_facilityLoggers[FAC_DEFAULT].warning(message);
 		Log.warningStackTrace(e);
 	}
-	
+
 	public static void logException(int facility, Level level, String message, Exception e) {
 		if (!isLoggable(facility, level))
 			return;

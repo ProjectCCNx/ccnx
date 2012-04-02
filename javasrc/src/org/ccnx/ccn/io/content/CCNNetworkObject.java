@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -462,7 +462,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 				_flowControl = new CCNFlowControl(_handle);
 				break;
 			case REPOSITORY:
-				_flowControl = new RepositoryFlowControl(_handle);
+				_flowControl = new RepositoryFlowControl(_handle, false);
 				break;
 			case LOCALREPOSITORY:
 				_flowControl = new RepositoryFlowControl(_handle, true);

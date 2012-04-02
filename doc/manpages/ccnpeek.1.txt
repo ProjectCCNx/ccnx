@@ -1,0 +1,63 @@
+CCNPEEK(1)
+==========
+
+NAME
+----
+ccnpeek - Get one content item matching the name prefix and write it
+to stdout. 
+
+SYNOPSIS
+--------
+*ccnpeek* [-h] [-a] [-c] [-l 'lifetime'] [-s 'scope'] [-u] [-v] [-w timeout] 'ccnxuri'
+
+DESCRIPTION
+-----------
+The *ccnpeek* utility generates an Interest, with attributes modfied by the
+given options, for the supplied CCNx URI prefix, 'ccnxuri', and writes any
+response to stdout.
+
+OPTIONS
+-------
+*-h*::
+    Generate the help message.
+
+*-a*::
+    Accept stale data in response to the interest.
+    
+*-c*::
+    Content only, rather than the full ccnb encoded ContentObject, should be
+    written to stdout.
+
+*-l* 'lifetime'::
+    Specifies the lifetime, in seconds, of the interest.  The lifetime is encoded
+    in the interest in units of 1/4096 seconds, and the input value is rounded
+    to this precision.  A lifetime up to 30.0s can be specified, the default is 4s.
+
+*-s* 'scope'::
+    Specifies the Scope of the interest, which limits where the interest can
+    propagate. A value of 0 limits it to the local *ccnd* cache, 1 to the
+    originating system, and 2 to no further than the next system. The default,
+    with no scope specified, is unlimited forwarding.
+
+*-u*::
+    Allow unverified content to be returned.
+
+*-v*::
+    Resolve a version number prior to fetching the final ContentObject.
+
+*-w* 'timeout'::
+    Specifies the wait time, in seconds, before returning if there is no response.
+    Values in the range 0.001s to 60.0s can be specified, the default is 3s.
+    
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error; retrieval error)
+
+AUTHOR
+------
+Nick Briggs <briggs@parc.com>

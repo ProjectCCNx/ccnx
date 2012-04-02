@@ -6,11 +6,25 @@
 
 
 
-<string name="controllerTitle">CCNx Service Controller</string>
 <string name="allStartButton">Start All</string>
 
 <string name="repoStatusLabel">Repo Status:</string>
 
 <string name="ccndStatusLabel">CCNd status:</string>
 <string name="allStopButton">Stop All</string>
+<string name="hint_ccnr_dir">Enter CCNR_DIRECTORY env</string>
+<string name="val_ccnr_dir">/ccnx/repo</string>
+<string name="hint_ccnr_global_prefix">Enter CCNR_GLOBAL_PREFIX env</string>
+<string name="val_ccnr_global_prefix">/ccnx/repos</string>
+<string name="hint_ccnr_debug">Enter CCNR_DEBUG env</string>
+<string name="debug_none">NONE</string>
+<string name="debug_severe">SEVERE</string>
+<string name="debug_error">ERROR</string>
+<string name="debug_warning">WARNING</string>
+<string name="debug_fine">FINE</string>
+<string name="debug_finer">FINER</string>
+<string name="debug_finest">FINEST</string>
+<string name="label_ccnr_directory">CCNR_DIRECTORY:</string>
+<string name="label_ccnr_global_prefix">CCNR_GLOBAL_PREFIX:</string>
+<string name="label_ccnr_debug">CCNR_DEBUG:</string>
 </resources>

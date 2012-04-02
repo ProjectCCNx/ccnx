@@ -27,8 +27,10 @@
 #include <ccn/digest.h>
 #include <ccn/indexbuf.h>
 #include <ccn/schedule.h>
+#include <ccn/uri.h>
 #include <ccnr/ccnr_msg.h>
 
+#include "SyncMacros.h"
 #include "SyncPrivate.h"
 #include "SyncActions.h"
 #include "SyncHashCache.h"
@@ -110,7 +112,7 @@ SyncAddRoot(struct SyncBaseStruct *base,
     root->base = base;
     root->priv = NEW_STRUCT(1, SyncRootPrivate);
     root->priv->stats = NEW_STRUCT(1, SyncRootStats);
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     root->priv->lastAdvise = now;
     root->priv->lastUpdate = now;
     root->priv->stablePoint = CCNR_NULL_HWM;
@@ -345,7 +347,7 @@ SyncRootLookupName(struct SyncRootStruct *root,
             struct ccn_charbuf *uri = ccn_charbuf_create();
             ccn_uri_append(uri, name->buf, name->length, 0);
             char *str = ccn_charbuf_as_string(uri);
-            ccnr_msg(root->base->ccnr, "SyncRootLookupName, rejected %s", str);
+            ccnr_msg(root->base->client_handle, "SyncRootLookupName, rejected %s", str);
             ccn_charbuf_destroy(&uri);
         }
     }

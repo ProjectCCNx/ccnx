@@ -101,7 +101,10 @@ usage(const char *progname)
             "   -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
             "   -f configfile add or delete FIB entries based on contents of configfile\n"
             "   -v increase logging level\n"
-            "	add|del add or delete FIB entry based on parameters\n",
+            "	add|del add or delete FIB entry based on parameters\n"
+            "%s [-v] destroyface faceid\n"
+            "   destroy face based on face number\n",
+            progname,
             progname);
     exit(1);
 }
@@ -232,7 +235,9 @@ static struct prefix_face_list_item *prefix_face_list_item_create(struct ccn_cha
                                                                   char *port,
                                                                   char *mcastif,
                                                                   int lifetime,
-                                                                  int flags)
+                                                                  int flags,
+                                                                  int create,
+                                                                  unsigned faceid)
 {
     struct prefix_face_list_item *pfl = calloc(1, sizeof(struct prefix_face_list_item));
     struct ccn_face_instance *fi = calloc(1, sizeof(*fi));
@@ -254,9 +259,17 @@ static struct prefix_face_list_item *prefix_face_list_item_create(struct ccn_cha
     pfl->fi->descr.ipproto = ipproto;
     pfl->fi->descr.mcast_ttl = mcast_ttl;
     pfl->fi->lifetime = lifetime;
+    if (faceid > 0)
+        pfl->fi->faceid = faceid;
     pfl->flags = flags;
     
-    ccn_charbuf_append(store, "newface", strlen("newface") + 1);
+    if (create) {
+        ccn_charbuf_append(store, "newface", strlen("newface") + 1);
+    }
+    else {
+        ccn_charbuf_append(store, "destroyface", strlen("destroyface") + 1);
+    }
+    
     host_off = store->length;
     ccn_charbuf_append(store, host, strlen(host) + 1);
     port_off = store->length;
@@ -293,14 +306,14 @@ static void prefix_face_list_destroy(struct prefix_face_list_item **pflpp)
 }
 
 /**
- *  @brief Create a face based on the face attributes
+ *  @brief Create or delete a face based on the face attributes
  *  @param h  the ccnd handle
  *  @param face_instance  the parameters of the face to be created
  *  @param flags
- *  @result returns new face_instance representing the face created
+ *  @result returns new face_instance representing the face created/deleted
  */
 static struct ccn_face_instance *
-create_face(struct ccn *h, struct ccn_face_instance *face_instance)
+do_face_action(struct ccn *h, struct ccn_face_instance *face_instance)
 {
     struct ccn_charbuf *newface = NULL;
     struct ccn_charbuf *signed_info = NULL;
@@ -449,114 +462,134 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
                        char *mcastttl,
                        char *mcastif)
 {
-    int lifetime;
-    struct ccn_charbuf *prefix;
-    int ipproto;
-    int socktype;
-    int iflags;
-    int imcastttl;
+    int lifetime = 0;
+    struct ccn_charbuf *prefix = NULL;
+    int ipproto = 0;
+    int socktype = 0;
+    int iflags = 0;
+    int imcastttl = 0;
+    int createface = 0;
+    int facenumber = 0;
     char rhostnamebuf[NI_MAXHOST];
     char rhostportbuf[NI_MAXSERV];
     struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG)};
     struct addrinfo mcasthints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG | AI_NUMERICHOST)};
     struct addrinfo *raddrinfo = NULL;
     struct addrinfo *mcastifaddrinfo = NULL;
-    struct prefix_face_list_item *pflp;
+    struct prefix_face_list_item *pflp = NULL;
     int res;
     
     if (cmd == NULL) {
         ccndc_warn(__LINE__, "command error (line %d), missing command\n", lineno);
         return (-1);
-    }   
+    }
+    createface = 1;
     if (strcasecmp(cmd, "add") == 0)
         lifetime = (~0U) >> 1;
     else if (strcasecmp(cmd, "del") == 0)
         lifetime = 0;
+    else if (strcasecmp(cmd, "destroyface") == 0)
+        createface = 0;
     else {
         ccndc_warn(__LINE__, "command error (line %d), unrecognized command '%s'\n", lineno, cmd);
         return (-1);
     }
-    
-    if (uri == NULL) {
-        ccndc_warn(__LINE__, "command error (line %d), missing CCNx URI\n", lineno);
-        return (-1);
-    }   
-    prefix = ccn_charbuf_create();
-    res = ccn_name_from_uri(prefix, uri);
-    if (res < 0) {
-        ccndc_warn(__LINE__, "command error (line %d), bad CCNx URI '%s'\n", lineno, uri);
-        return (-1);
-    }
-    
-    if (proto == NULL) {
-        ccndc_warn(__LINE__, "command error (line %d), missing address type\n", lineno);
-        return (-1);
-    }
-    if (strcasecmp(proto, "udp") == 0) {
-        ipproto = IPPROTO_UDP;
-        socktype = SOCK_DGRAM;
-    }
-    else if (strcasecmp(proto, "tcp") == 0) {
-        ipproto = IPPROTO_TCP;
-        socktype = SOCK_STREAM;
-    }
-    else {
-        ccndc_warn(__LINE__, "command error (line %d), unrecognized address type '%s'\n", lineno, proto);
-        return (-1);
-    }
-    
-    if (host == NULL) {
-        ccndc_warn(__LINE__, "command error (line %d), missing hostname\n", lineno);
-        return (-1);
-    }
-    
-    if (port == NULL || port[0] == 0)
-        port = CCN_DEFAULT_UNICAST_PORT;
-    
-    hints.ai_socktype = socktype;
-    res = getaddrinfo(host, port, &hints, &raddrinfo);
-    if (res != 0 || raddrinfo == NULL) {
-        ccndc_warn(__LINE__, "command error (line %d), getaddrinfo: %s\n", lineno, gai_strerror(res));
-        return (-1);
-    }
-    res = getnameinfo(raddrinfo->ai_addr, raddrinfo->ai_addrlen,
-                      rhostnamebuf, sizeof(rhostnamebuf),
-                      rhostportbuf, sizeof(rhostportbuf),
-                      NI_NUMERICHOST | NI_NUMERICSERV);
-    freeaddrinfo(raddrinfo);
-    if (res != 0) {
-        ccndc_warn(__LINE__, "command error (line %d), getnameinfo: %s\n", lineno, gai_strerror(res));
-        return (-1);
-    }
-    
-    iflags = -1;
-    if (flags != NULL && flags[0] != 0) {
-        iflags = atoi(flags);
-        if ((iflags & ~CCN_FORW_PUBMASK) != 0) {
-            ccndc_warn(__LINE__, "command error (line %d), invalid flags 0x%x\n", lineno, iflags);
+    if (createface) {
+        /* we will be creating the face to either add/delete a prefix on it */
+        if (uri == NULL) {
+            ccndc_warn(__LINE__, "command error (line %d), missing CCNx URI\n", lineno);
+            return (-1);
+        }   
+        prefix = ccn_charbuf_create();
+        res = ccn_name_from_uri(prefix, uri);
+        if (res < 0) {
+            ccndc_warn(__LINE__, "command error (line %d), bad CCNx URI '%s'\n", lineno, uri);
             return (-1);
         }
-    }
-    
-    imcastttl = -1;
-    if (mcastttl != NULL) {
-        imcastttl = atoi(mcastttl);
-        if (imcastttl < 0 || imcastttl > 255) {
-            ccndc_warn(__LINE__, "command error (line %d), invalid multicast ttl: %s\n", lineno, mcastttl);
+        
+        if (proto == NULL) {
+            ccndc_warn(__LINE__, "command error (line %d), missing address type\n", lineno);
             return (-1);
         }
-    }
-    
-    if (mcastif != NULL) {
-        res = getaddrinfo(mcastif, NULL, &mcasthints, &mcastifaddrinfo);
+        if (strcasecmp(proto, "udp") == 0) {
+            ipproto = IPPROTO_UDP;
+            socktype = SOCK_DGRAM;
+        }
+        else if (strcasecmp(proto, "tcp") == 0) {
+            ipproto = IPPROTO_TCP;
+            socktype = SOCK_STREAM;
+        }
+        else {
+            ccndc_warn(__LINE__, "command error (line %d), unrecognized address type '%s'\n", lineno, proto);
+            return (-1);
+        }
+        
+        if (host == NULL) {
+            ccndc_warn(__LINE__, "command error (line %d), missing hostname\n", lineno);
+            return (-1);
+        }
+        
+        if (port == NULL || port[0] == 0)
+            port = CCN_DEFAULT_UNICAST_PORT;
+        
+        hints.ai_socktype = socktype;
+        res = getaddrinfo(host, port, &hints, &raddrinfo);
+        if (res != 0 || raddrinfo == NULL) {
+            ccndc_warn(__LINE__, "command error (line %d), getaddrinfo: %s\n", lineno, gai_strerror(res));
+            return (-1);
+        }
+        res = getnameinfo(raddrinfo->ai_addr, raddrinfo->ai_addrlen,
+                          rhostnamebuf, sizeof(rhostnamebuf),
+                          rhostportbuf, sizeof(rhostportbuf),
+                          NI_NUMERICHOST | NI_NUMERICSERV);
+        freeaddrinfo(raddrinfo);
         if (res != 0) {
-            ccndc_warn(__LINE__, "command error (line %d), mcastifaddr getaddrinfo: %s\n", lineno, gai_strerror(res));
+            ccndc_warn(__LINE__, "command error (line %d), getnameinfo: %s\n", lineno, gai_strerror(res));
             return (-1);
         }
+        
+        iflags = -1;
+        if (flags != NULL && flags[0] != 0) {
+            iflags = atoi(flags);
+            if ((iflags & ~CCN_FORW_PUBMASK) != 0) {
+                ccndc_warn(__LINE__, "command error (line %d), invalid flags 0x%x\n", lineno, iflags);
+                return (-1);
+            }
+        }
+        
+        imcastttl = -1;
+        if (mcastttl != NULL) {
+            imcastttl = atoi(mcastttl);
+            if (imcastttl < 0 || imcastttl > 255) {
+                ccndc_warn(__LINE__, "command error (line %d), invalid multicast ttl: %s\n", lineno, mcastttl);
+                return (-1);
+            }
+        }
+        
+        if (mcastif != NULL) {
+            res = getaddrinfo(mcastif, NULL, &mcasthints, &mcastifaddrinfo);
+            if (res != 0) {
+                ccndc_warn(__LINE__, "command error (line %d), mcastifaddr getaddrinfo: %s\n", lineno, gai_strerror(res));
+                return (-1);
+            }
+        }
+    } else {
+        /* destroy a face - the URI field will hold the face number */
+        if (uri == NULL) {
+            ccndc_warn(__LINE__, "command error (line %d), missing face number for destroyface\n", lineno);
+            return (-1);
+        }
+        facenumber = atoi(uri);
+        if (facenumber < 0) {
+            ccndc_warn(__LINE__, "command error (line %d), invalid face number for destroyface: %d\n", lineno, facenumber);
+            return (-1);
+        }
+        
     }
-    
     /* we have successfully parsed a command line */
-    pflp = prefix_face_list_item_create(prefix, ipproto, imcastttl, rhostnamebuf, rhostportbuf, mcastif, lifetime, iflags);
+    pflp = prefix_face_list_item_create(prefix, ipproto, imcastttl, rhostnamebuf,
+                                        rhostportbuf, mcastif, lifetime, iflags,
+                                        createface, facenumber);
     if (pflp == NULL) {
         ccndc_fatal(__LINE__, "Unable to allocate prefix_face_list_item\n");
     }
@@ -724,38 +757,46 @@ process_prefix_face_list_item(struct ccn *h,
     struct ccn_face_instance *nfi;
     struct ccn_charbuf *temp;
     int op;
+    int createface;
     int res;
     
     op = (pfl->fi->lifetime > 0) ? OP_REG : OP_UNREG;
     pfl->fi->ccnd_id = ccndid;
     pfl->fi->ccnd_id_size = ccndid_size;
-    nfi = create_face(h, pfl->fi);
-    if (nfi == NULL) {
-        temp = ccn_charbuf_create();
-        ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
-        ccndc_warn(__LINE__, "Unable to create face for %s %s %s %s %s\n",
-                   (op == OP_REG) ? "add" : "del", ccn_charbuf_as_string(temp),
-                   (pfl->fi->descr.ipproto == IPPROTO_UDP) ? "udp" : "tcp",
-                   pfl->fi->descr.address,
-                   pfl->fi->descr.port);
-        ccn_charbuf_destroy(&temp);
-        return;
+    createface = 0 == strcmp(pfl->fi->action, "newface");
+    nfi = do_face_action(h, pfl->fi);
+    if (!createface) {
+        if (nfi == NULL) {
+            ccndc_warn(__LINE__, "Unable to destroy face %d\n",
+                       pfl->fi->faceid);
+            return;
+        }
+    } else {
+        if (nfi == NULL) {
+            temp = ccn_charbuf_create();
+            ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
+            ccndc_warn(__LINE__, "Unable to create face for %s %s %s %s %s\n",
+                       (op == OP_REG) ? "add" : "del", ccn_charbuf_as_string(temp),
+                       (pfl->fi->descr.ipproto == IPPROTO_UDP) ? "udp" : "tcp",
+                       pfl->fi->descr.address,
+                       pfl->fi->descr.port);
+            ccn_charbuf_destroy(&temp);
+            return;
+        }
+        res = register_unregister_prefix(h, op, pfl->prefix, nfi, pfl->flags);
+        if (res < 0) {
+            temp = ccn_charbuf_create();
+            ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
+            ccndc_warn(__LINE__, "Unable to %sregister prefix on face %d for %s %s %s %s %s\n",
+                       (op == OP_UNREG) ? "un" : "", nfi->faceid,
+                       (op == OP_REG) ? "add" : "del",
+                       ccn_charbuf_as_string(temp),
+                       (pfl->fi->descr.ipproto == IPPROTO_UDP) ? "udp" : "tcp",
+                       pfl->fi->descr.address,
+                       pfl->fi->descr.port);
+            ccn_charbuf_destroy(&temp);
+        }
     }
-
-    res = register_unregister_prefix(h, op, pfl->prefix, nfi, pfl->flags);
-    if (res < 0) {
-        temp = ccn_charbuf_create();
-        ccn_uri_append(temp, pfl->prefix->buf, pfl->prefix->length, 1);
-        ccndc_warn(__LINE__, "Unable to %sregister prefix on face %d for %s %s %s %s %s\n",
-                   (op == OP_UNREG) ? "un" : "", nfi->faceid,
-                   (op == OP_REG) ? "add" : "del",
-                   ccn_charbuf_as_string(temp),
-                   (pfl->fi->descr.ipproto == IPPROTO_UDP) ? "udp" : "tcp",
-                   pfl->fi->descr.address,
-                   pfl->fi->descr.port);
-        ccn_charbuf_destroy(&temp);
-    }
-
     ccn_face_instance_destroy(&nfi);
     return;
 }
@@ -867,14 +908,14 @@ main(int argc, char **argv)
         }
         /* (add|delete) uri type host [port [flags [mcast-ttl [mcast-if]]]] */
         
-        if (argc - optind < 4 || argc - optind > 8)
+        if (argc - optind < 2 || argc - optind > 8)
             usage(progname);
         
         res = process_command_tokens(pflhead, 0,
                                      argv[optind],
                                      argv[optind+1],
-                                     argv[optind+2],
-                                     argv[optind+3],
+                                     (optind + 2) < argc ? argv[optind+2] : NULL,
+                                     (optind + 3) < argc ? argv[optind+3] : NULL,
                                      (optind + 4) < argc ? argv[optind+4] : NULL,
                                      (optind + 5) < argc ? argv[optind+5] : NULL,
                                      (optind + 6) < argc ? argv[optind+6] : NULL,

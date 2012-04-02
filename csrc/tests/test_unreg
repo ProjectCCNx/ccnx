@@ -36,11 +36,11 @@ ccn_xmltoccnb -w - <<EOF >unreg.ccnb
 EOF
 
 TNAME=`GenSym _ignored_`
-cat unreg.ccnb | ccnput -f -x 30 /$TNAME
+cat unreg.ccnb | ccnpoke -f -x 30 /$TNAME
 
 # Pull it out to use in the unreg request.  Base-64 encode it for the benefit of the shell.
 
-PRBLOB="`ccnget /$TNAME | openssl enc -base64`"
+PRBLOB="`ccnpeek /$TNAME | openssl enc -base64`"
 
 echo PRBLOB is $PRBLOB >&2
 

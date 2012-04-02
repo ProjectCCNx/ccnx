@@ -23,18 +23,10 @@
 
 #include <sys/types.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <ccn/ccn.h>
-#include <ccn/indexbuf.h>
-#include <ccn/schedule.h>
-#include <ccn/uri.h>
 #include <ccnr/ccnr_private.h>
-
-#include "SyncMacros.h"
 
 // Incomplete types for opaque structures.
 struct ccn_schedule;
-struct ccnr_handle;
 struct ccn;
 struct SyncPrivate;
 
@@ -44,7 +36,7 @@ struct SyncPrivate;
 struct SyncBaseStruct {
     struct SyncErrStruct *errList;  // private data for Sync
     struct SyncPrivate *priv;       // opaque data for Repo (from Repo)
-    struct ccnr_handle *ccnr;       // the ccnr handle to use (from Repo)
+    void *client_handle;            // the ccnr/ccns handle to use (from Repo or Sync client)
     struct ccn *ccn;                // the ccn handle to use (from Repo)
     struct ccn_schedule *sched;     // the scheduler to use (from Repo)
     int debug;                      // higher gives more output, 0 gives none

@@ -5,7 +5,7 @@
  *
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 4005
+#define CCN_API_VERSION 5001
 
 /**
  * Interest lifetime default.
@@ -405,6 +405,7 @@ void ccn_buf_advance(struct ccn_buf_decoder *d);
 int ccn_buf_advance_past_element(struct ccn_buf_decoder *d);
 
 /* The match routines return a boolean - true for match */
+/* XXX - note, ccn_buf_match_blob doesn't match - it extracts the blob! */
 int ccn_buf_match_dtag(struct ccn_buf_decoder *d, enum ccn_dtag dtag);
 
 int ccn_buf_match_some_dtag(struct ccn_buf_decoder *d);
@@ -448,6 +449,17 @@ void ccn_buf_check_close(struct ccn_buf_decoder *d);
  * Returns 0 for success, negative value for error.
  */
 int ccn_ref_tagged_BLOB(enum ccn_dtag tt,
+                        const unsigned char *buf,
+                        size_t start, size_t stop,
+                        const unsigned char **presult, size_t *psize);
+
+/*
+ * ccn_ref_tagged_string: Get address & size associated with
+ * string(UDATA)-valued element.   Note that since the element closer
+ * is a 0 byte, the string result will be correctly interpreted as a C string.
+ * Returns 0 for success, negative value for error.
+ */
+int ccn_ref_tagged_string(enum ccn_dtag tt,
                         const unsigned char *buf,
                         size_t start, size_t stop,
                         const unsigned char **presult, size_t *psize);
@@ -838,6 +850,9 @@ int ccn_chk_signing_params(struct ccn *h,
                            struct ccn_charbuf **pkeylocator);
 
 /* low-level content-object signing */
+
+#define CCN_SIGNING_DEFAULT_DIGEST_ALGORITHM "SHA256"
+
 int ccn_signed_info_create(
     struct ccn_charbuf *c,              /* filled with result */
     const void *publisher_key_id,	/* input, (sha256) hash */

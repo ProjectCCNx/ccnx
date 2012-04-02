@@ -17,11 +17,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#include "SyncMacros.h"
 #include "SyncActions.h"
 #include "SyncBase.h"
 #include "SyncPrivate.h"
 #include "SyncUtil.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <ccn/uri.h>
 #include <ccnr/ccnr_msg.h>
@@ -66,9 +68,9 @@ extern struct SyncBaseStruct *
 SyncNewBase(struct ccnr_handle *ccnr,
             struct ccn *ccn,
             struct ccn_schedule *sched) {
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     struct SyncBaseStruct *base = NEW_STRUCT(1, SyncBaseStruct);
-    base->ccnr = ccnr;
+    base->client_handle = ccnr;
     base->ccn = ccn;
     base->sched = sched;
     struct SyncPrivate *priv = NEW_STRUCT(1, SyncPrivate);
@@ -87,6 +89,7 @@ SyncNewBase(struct ccnr_handle *ccnr,
     return base;
 }
 
+#ifndef SYNCLIBRARY
 static int
 getEnvLimited(char *key, int lo, int hi, int def) {
     char *s = getenv(key);
@@ -96,11 +99,10 @@ getEnvLimited(char *key, int lo, int hi, int def) {
     }
     return def;
 }
-
 extern void
 SyncInit(struct SyncBaseStruct *bp) {
     if (bp != NULL) {
-        struct ccnr_handle *ccnr = bp->ccnr;
+        struct ccnr_handle *ccnr = bp->client_handle;
         char *here = "Sync.SyncInit";
         
         if (ccnr != NULL) {
@@ -110,52 +112,52 @@ SyncInit(struct SyncBaseStruct *bp) {
             bp->debug = ccnr->syncdebug;
             
             int enable = 1;
-            char *s = getenv("SYNC_ENABLE");
+            char *s = getenv("CCNS_ENABLE");
             if (s != NULL && s[0] != 0)
                 enable = strtol(s, NULL, 10);
             
             if (enable <= 0) return;
             
-            char *debugStr = getenv("SYNC_DEBUG");
+            char *debugStr = getenv("CCNS_DEBUG");
             
             // enable/disable storing of sync tree nodes
             // default is to store
-            priv->useRepoStore = getEnvLimited("SYNC_REPO_STORE", 0, 1, 1);
+            priv->useRepoStore = getEnvLimited("CCNS_REPO_STORE", 0, 1, 1);
             
             // enable/disable stable recovery point
             // default is to disable recovery, but to calculate stable points
-            priv->stableEnabled = getEnvLimited("SYNC_STABLE_ENABLED", 0, 1, 1);
+            priv->stableEnabled = getEnvLimited("CCNS_STABLE_ENABLED", 0, 1, 1);
             
             // get faux error percent
-            priv->fauxErrorTrigger = getEnvLimited("SYNC_FAUX_ERROR",
+            priv->fauxErrorTrigger = getEnvLimited("CCNS_FAUX_ERROR",
                                                    0, 99, 0);
             
             // get private flags for SyncActions
-            priv->syncActionsPrivate = getEnvLimited("SYNC_ACTIONS_PRIVATE",
+            priv->syncActionsPrivate = getEnvLimited("CCNS_ACTIONS_PRIVATE",
                                                      0, 255, 3);
             
             // heartbeat rate
-            priv->heartbeatMicros = getEnvLimited("SYNC_HEARTBEAT_MICROS",
+            priv->heartbeatMicros = getEnvLimited("CCNS_HEARTBEAT_MICROS",
                                                   10000, 10*1000000, 200000);
             
             // root advise lifetime
-            priv->rootAdviseFresh = getEnvLimited("SYNC_ROOT_ADVISE_FRESH",
+            priv->rootAdviseFresh = getEnvLimited("CCNS_ROOT_ADVISE_FRESH",
                                                   1, 30, 4);
             
             // root advise lifetime
-            priv->rootAdviseLifetime = getEnvLimited("SYNC_ROOT_ADVISE_LIFETIME",
+            priv->rootAdviseLifetime = getEnvLimited("CCNS_ROOT_ADVISE_LIFETIME",
                                                      1, 30, 20);
             
             // root advise lifetime
-            priv->fetchLifetime = getEnvLimited("SYNC_NODE_FETCH_LIFETIME",
+            priv->fetchLifetime = getEnvLimited("CCNS_NODE_FETCH_LIFETIME",
                                                 1, 30, 4);
 
             // max node or content fetches busy per root
-            priv->maxFetchBusy = getEnvLimited("SYNC_MAX_FETCH_BUSY",
+            priv->maxFetchBusy = getEnvLimited("CCNS_MAX_FETCH_BUSY",
                                                1, 100, 6);
 
             // max number of compares busy
-            priv->maxComparesBusy = getEnvLimited("SYNC_MAX_COMPARES_BUSY",
+            priv->maxComparesBusy = getEnvLimited("CCNS_MAX_COMPARES_BUSY",
                                                1, 100, 4);
             
             
@@ -163,40 +165,40 @@ SyncInit(struct SyncBaseStruct *bp) {
                 char temp[1024];
                 int pos = 0;
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                "SYNC_ENABLE=%d",
+                                "CCNS_ENABLE=%d",
                                 enable);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_DEBUG=%s",
+                                ",CCNS_DEBUG=%s",
                                 debugStr);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_REPO_STORE=%d",
+                                ",CCNS_REPO_STORE=%d",
                                 priv->useRepoStore);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_STABLE_ENABLED=%d",
+                                ",CCNS_STABLE_ENABLED=%d",
                                 priv->stableEnabled);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_FAUX_ERROR=%d",
+                                ",CCNS_FAUX_ERROR=%d",
                                 priv->fauxErrorTrigger);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_ACTIONS_PRIVATE=%d",
+                                ",CCNS_ACTIONS_PRIVATE=%d",
                                 priv->syncActionsPrivate);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_HEARTBEAT_MICROS=%d",
+                                ",CCNS_HEARTBEAT_MICROS=%d",
                                 priv->heartbeatMicros);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_ROOT_ADVISE_FRESH=%d",
+                                ",CCNS_ROOT_ADVISE_FRESH=%d",
                                 priv->rootAdviseFresh);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_ROOT_ADVISE_LIFETIME=%d",
+                                ",CCNS_ROOT_ADVISE_LIFETIME=%d",
                                 priv->rootAdviseLifetime);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_NODE_FETCH_LIFETIME=%d",
+                                ",CCNS_NODE_FETCH_LIFETIME=%d",
                                 priv->fetchLifetime);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_MAX_FETCH_BUSY=%d",
+                                ",CCNS_MAX_FETCH_BUSY=%d",
                                 priv->maxFetchBusy);
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
-                                ",SYNC_MAX_COMPARES_BUSY=%d",
+                                ",CCNS_MAX_COMPARES_BUSY=%d",
                                 priv->maxComparesBusy);
 #if (CCN_API_VERSION >= 4004)
                 pos += snprintf(temp+pos, sizeof(temp)-pos,
@@ -210,6 +212,7 @@ SyncInit(struct SyncBaseStruct *bp) {
         }
     }
 }
+#endif
 
 extern void
 SyncFreeBase(struct SyncBaseStruct **bp) {
@@ -248,7 +251,7 @@ SyncNotifyContent(struct SyncBaseStruct *base,
     // or from prefix-based enumeration
     char *here = "Sync.SyncNotifyContent";
     
-    if (base != NULL && base->ccnr != NULL) {
+    if (base != NULL && base->client_handle != NULL) {
         struct SyncPrivate *priv = base->priv;
         int debug = base->debug;
         
@@ -256,11 +259,11 @@ SyncNotifyContent(struct SyncBaseStruct *base,
             // end of an enumeration
             if (enumeration == 0) {
                 if (debug >= CCNL_WARNING)
-                    ccnr_msg(base->ccnr, "%s, end of time-based enum?", here);
+                    ccnr_msg(base->client_handle, "%s, end of time-based enum?", here);
             } else if (enumeration == priv->sliceEnum) {
                 priv->sliceEnum = 0;
                 if (debug >= CCNL_INFO)
-                    ccnr_msg(base->ccnr, "%s, all slice names seen", here);
+                    ccnr_msg(base->client_handle, "%s, all slice names seen", here);
             } else if (enumeration == priv->sliceBusy) {
                 priv->sliceBusy = 0;
                 struct SyncRootStruct *root = priv->rootHead;
@@ -286,14 +289,14 @@ SyncNotifyContent(struct SyncBaseStruct *base,
                 }  
             } else {
                 if (debug >= CCNL_WARNING)
-                    ccnr_msg(base->ccnr, "%s, end of what enum?", here);
+                    ccnr_msg(base->client_handle, "%s, end of what enum?", here);
             }
             return -1;
         }
         
         if (debug >= CCNL_FINE) {
             struct ccn_charbuf *uri = SyncUriForName(name);
-            ccnr_msg(base->ccnr,
+            ccnr_msg(base->client_handle,
                      "%s, enum %d, %s!",
                      here, enumeration, ccn_charbuf_as_string(uri));
             ccn_charbuf_destroy(&uri);
@@ -304,7 +307,7 @@ SyncNotifyContent(struct SyncBaseStruct *base,
         if (splitRes < 0) {
             // really hould not happen!  but it does not hurt to log and ignore it
             if (debug >= CCNL_SEVERE)
-                ccnr_msg(base->ccnr, "%s, invalid name!", here);
+                ccnr_msg(base->client_handle, "%s, invalid name!", here);
             return 0;
         }
         
@@ -325,7 +328,7 @@ SyncNotifyContent(struct SyncBaseStruct *base,
                 SyncHandleSlice(base, name);
         }
         if (mark != CCNR_NULL_ACCESSION)
-            priv->stableTarget = ccnr_hwm_update(base->ccnr, priv->stableTarget, mark);
+            priv->stableTarget = ccnr_hwm_update(base->client_handle, priv->stableTarget, mark);
         
         // add the name to any applicable roots
         SyncAddName(base, name, item);
@@ -339,7 +342,7 @@ SyncShutdown(struct SyncBaseStruct *bp) {
     char *here = "Sync.SyncShutdown";
     int debug = bp->debug;
     if (debug >= CCNL_INFO)
-        ccnr_msg(bp->ccnr, "%s", here);
+        ccnr_msg(bp->client_handle, "%s", here);
     // TBD: shutdown the hearbeat
     // TBD: unregister the prefixes
 }

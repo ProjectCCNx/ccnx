@@ -5,7 +5,7 @@
  *
  * Part of ccnd - the CCNx Daemon.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -47,7 +47,6 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
     va_list ap;
     struct ccn_charbuf *b;
     int res;
-    const char *portstr;    
     if (h == NULL || h->debug == 0 || h->logger == 0)
         return;
     b = ccn_charbuf_create();
@@ -55,11 +54,8 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
     if (((h->debug & 64) != 0) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
           t.tv_sec >= h->logtime + 30)) {
-        portstr = h->portstr;
-        if (portstr == NULL)
-            portstr = "";
         ccn_charbuf_putf(b, "%ld.000000 ccnd[%d]: %s ____________________ %s",
-                         (long)t.tv_sec, h->logpid, h->portstr, ctime(&t.tv_sec));
+                         (long)t.tv_sec, h->logpid, h->portstr ? h->portstr : "", ctime(&t.tv_sec));
         h->logtime = t.tv_sec;
         h->logbreak = 30;
     }
@@ -164,6 +160,10 @@ const char *ccnd_usage_message =
     "      Single items larger than this are not precluded.\n"
     "    CCND_DATA_PAUSE_MICROSEC=\n"
     "      Adjusts content-send delay time for multicast and udplink faces\n"
+    "    CCND_DEFAULT_TIME_TO_STALE=\n"
+    "      Default for content objects without explicit FreshnessSeconds\n"
+    "    CCND_MAX_TIME_TO_STALE=\n"
+    "      Limit, in seconds, until content becomes stale\n"
     "    CCND_KEYSTORE_DIRECTORY=\n"
     "      Directory readable only by ccnd where its keystores are kept\n"
     "      Defaults to a private subdirectory of /var/tmp\n"

@@ -93,7 +93,7 @@ typedef uint_least64_t ccnr_accession;
 #endif
 
 #define CCNR_NOT_COMPARABLE (-2)
-
+ 
 /* Encode/decode a ccnr_accession as an unsigned number. */
 uintmax_t ccnr_accession_encode(struct ccnr_handle *, ccnr_accession);
 ccnr_accession ccnr_accession_decode(struct ccnr_handle *, uintmax_t);
@@ -225,6 +225,7 @@ struct ccnr_handle {
     unsigned long interests_stuffed;
     unsigned long content_from_accession_hits;
     unsigned long content_from_accession_misses;
+    unsigned start_write_scope_limit;    /**< Scope on start-write must be <= this value.  3 indicates unlimited */
     unsigned short seed[3];         /**< for PRNG */
     int running;                    /**< true while should be running */
     int debug;                      /**< For controlling debug output */
@@ -461,4 +462,9 @@ struct enum_state {
 #define CCNRID_POLICY_URI "ccnx:/%C1.M.S.localhost/%C1.M.SRV/repository/POLICY"
 
 #define PUBLIC
+
+struct ccnr_handle *r_init_create(const char *, ccnr_logger, void *);
+void r_init_run(struct ccnr_handle *h);
+void r_init_destroy(struct ccnr_handle **);
+
 #endif

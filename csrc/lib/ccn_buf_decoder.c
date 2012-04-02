@@ -260,7 +260,6 @@ ccn_parse_tagged_string(struct ccn_buf_decoder *d, enum ccn_dtag dtag, struct cc
         ccn_buf_advance(d);
         if (d->decoder.state >= 0 &&
             CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
-            res = store->length;
             p = d->buf + d->decoder.index;
             size = d->decoder.numval;
             ccn_buf_advance(d);
@@ -855,6 +854,49 @@ ccn_ref_tagged_BLOB(enum ccn_dtag tt,
         return(-1);
     if (d->decoder.index != d->size || !CCN_FINAL_DSTATE(d->decoder.state))
         return (CCN_DSTATE_ERR_CODING);
+    return(0);
+}
+/**
+ * Produce a pointer and length for the string in a ccnb-encoded tagged element
+ * containing a UDATA string.
+ * @param dtag is the expected dtag value
+ * @param buf is a ccnb-encoded source.
+ * @param start is an offset into buf at which the element starts
+ * @param stop is an offset into buf where the element ends
+ * @param presult if non-NULL, a pointer through which pointer into buf
+ *        for start of string will be stored
+ * @param psize if non-NULL, a pointer through which size of string will be stored.
+ * @returns 0 on success, <0 on failure.
+ */
+
+int
+ccn_ref_tagged_string(enum ccn_dtag dtag,
+                    const unsigned char *buf, size_t start, size_t stop,
+                    const unsigned char **presult, size_t *psize)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    const unsigned char *result = NULL;
+    size_t size = 0;
+
+    if (stop < start) return(-1);
+    d = ccn_buf_decoder_start(&decoder, buf + start, stop - start);
+    if (ccn_buf_match_dtag(d, dtag)) {
+        ccn_buf_advance(d);
+        if (d->decoder.state >= 0 &&
+            CCN_GET_TT_FROM_DSTATE(d->decoder.state) == CCN_UDATA) {
+            result = d->buf + d->decoder.index;
+            size = d->decoder.numval;
+            ccn_buf_advance(d);
+        }
+        ccn_buf_check_close(d);
+    }
+    else
+        return(-1);
+    if (d->decoder.index != d->size || !CCN_FINAL_DSTATE(d->decoder.state))
+        return (CCN_DSTATE_ERR_CODING);
+    if (presult) *presult = result;
+    if (psize) *psize = size;
     return(0);
 }
 

@@ -4,4 +4,6 @@ ccndstart
 ccndstatus
 ccndstop
 ccntestloop
+ccnget
+ccnput
 depend

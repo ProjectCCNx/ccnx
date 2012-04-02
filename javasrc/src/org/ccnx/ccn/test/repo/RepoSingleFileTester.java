@@ -1,11 +1,11 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -27,20 +27,19 @@ import org.ccnx.ccn.impl.repo.RepositoryException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.WirePacket;
 
 /**
  * Part of repository test infrastructure.
  */
 public class RepoSingleFileTester extends RepoPerformanceTester {
-	
+
 	private static RepoSingleFileTester _rpt = new RepoSingleFileTester();
 	private static TestFlowControl _tfc = null;
 
 	private class TestFlowControl extends CCNFlowControl {
-		
+
 		private FileOutputStream _fos = null;
-		
+
 		public TestFlowControl(String repoName, ContentName name, CCNHandle handle)
 				throws RepositoryException, IOException {
 			super(name, handle);
@@ -56,15 +55,15 @@ public class RepoSingleFileTester extends RepoPerformanceTester {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-			
+
 			}
 		}
-		
+
+		@Override
 		public ContentObject put(ContentObject co) throws IOException {
 			if (_fos != null) {
 				try {
-					WirePacket packet = new WirePacket(co);
-					_fos.write(packet.encode());
+					_fos.write(co.encode());
 				} catch (ContentEncodingException e) {
 					e.printStackTrace();
 				}
@@ -72,25 +71,27 @@ public class RepoSingleFileTester extends RepoPerformanceTester {
 			return co;
 		}
 	}
-	
+
 	public RepoSingleFileTester() {}
-	
+
 	public RepoSingleFileTester(String repoName, ContentName name, CCNHandle handle)
 			throws IOException, RepositoryException {
 		super(name, _rpt.new TestFlowControl(repoName, name, handle));
 	}
-	
-	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle handle) 
+
+	@Override
+	public RepoPerformanceTester getTester(String repoName, ContentName name, CCNHandle handle)
 			throws IOException, RepositoryException {
 		return new RepoSingleFileTester(repoName, name, handle);
 	}
-	
+
+	@Override
 	public void close() throws IOException {
 		super.close();
 		if (_tfc._fos != null)
 			_tfc._fos.close();
 	}
-	
+
 	public static void main(String[] args) {
 		_rpt.doTest(args);
 	}

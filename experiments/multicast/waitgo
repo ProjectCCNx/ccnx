@@ -15,7 +15,7 @@
 . ./settings
 export CCN_LINGER=60
 ccndsmoketest presence.ccnb >&2
-until ccnget -c /experiments/multicast/GO >/tmp/gostamp$$; do
+until ccnpeek -c /experiments/multicast/GO >/tmp/gostamp$$; do
    echo `hostname` waiting for go signal - `date` >&2
    ccndsmoketest presence.ccnb >&2
 done

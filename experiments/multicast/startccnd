@@ -18,7 +18,7 @@ ccndsmoketest kill 2>/dev/null || :
 test -f $SELF-ccnd.log && mv $SELF-ccnd.log $SELF-ccnd.log~
 ccnd 2>$SELF-ccnd.log &
 ccndsmoketest
-date | ccnput -f -x 60 ccnx:/experiments/multicast/hosts/$SELF
+date | ccnpoke -f -x 60 ccnx:/experiments/multicast/hosts/$SELF
 ccnrm -o presence.ccnb ccnx:/experiments/multicast/hosts/$SELF
 ccndc add ccnx:/experiments/multicast udp $MULTICAST_ADDRESS $MULTICAST_PORT
 head -n 30 $SELF-ccnd.log settings

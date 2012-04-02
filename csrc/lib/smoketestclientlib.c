@@ -111,7 +111,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *c = ccn_charbuf_create();
     struct ccn_charbuf *templ = ccn_charbuf_create();
     struct ccn_indexbuf *comps = ccn_indexbuf_create();
-    while ((opt = getopt(argc, argv, "hf:n:")) != -1) {
+    while ((opt = getopt(argc, argv, "hn:")) != -1) {
         switch (opt) {
             default:
             case 'h':
@@ -129,7 +129,7 @@ main(int argc, char **argv)
         perror("ccn_connect");
         exit(1);
     }
-    for (i = 0; argv[i] != NULL; i++) {
+    for (i = 0; i < argc; i++) {
         filename = argv[i];
         close(0);
         res = open(filename, O_RDONLY);

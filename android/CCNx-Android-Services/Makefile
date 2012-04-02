@@ -36,13 +36,17 @@ TARGET  := $(BIN)/$(APK_NAME)
 
 default all: $(TARGET) 
 
-$(TARGET): $(JARS) ccnd local.properties project.properties default.properties build.xml
+honeycomb: clean bcprov default
+
+bcprov:
+	./download.sh libs http://repo2.maven.org/maven2/org/bouncycastle/bcprov-jdk16/1.43 bcprov-jdk16-1.43.jar
+
+$(TARGET): $(JARS) ccnd local.properties project.properties build.xml
 	ant debug
 
-local.properties project.properties default.properties:
+local.properties project.properties:
 	@mkdir -p libs
-	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-Services -p . -t android-7
-	$(ANDROID_SDK)/tools/android update project -p . -t android-7 --library ../CCNx-Android-Lib/
+	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-Services -p . -t android-7 --library ../CCNx-Android-Lib/
 
 # Need to revisit this for newer NDK.
 # Compensate for the lack of proper dependencies by removing any ccnx object
@@ -78,10 +82,10 @@ uninstall:
 
 environment:
 ifeq ($(ANDROID_NDK),)
-	$(error Please set ANDROID_NDK path)
+	$(error Please set ANDROID_NDK path to point to r7)
 endif
 ifeq ($(ANDROID_SDK),)
-	$(error Please set ANDROID_SDK path to point to an r7 or later SDK)
+	$(error Please set ANDROID_SDK path to point to r16 or later SDK)
 endif
 	@echo "Executing in $(CURDIR)"
 
@@ -91,7 +95,6 @@ clean: simpleclean
 simpleclean:
 	rm -rf $(BIN) $(GEN)
 	rm -rf libs/*
-	rm -f default.properties
 	rm -f project.properties
 	rm -f local.properties
 

@@ -1,17 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE xs:schema PUBLIC "-//W3C//DTD XMLSCHEMA 200102//EN" "XMLSchema.dtd">
 
-<!-- XXX - this schema does not correspond with reality - sync.dtd is closer. -->
-
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-       <!-- XXX
-                       xmlns:ccn="http://www.ccnx.org/content/schema/20090915" 
-                       targetNamespace="http://www.ccnx.org/content/schema/20090915"
-                       elementFormDefault="unqualified"
-                       attributeFormDefault="unqualified"
-       -->
-
-       <xs:include schemaLocation="ccnx.xsd"/>
+       <xs:include schemaLocation="ccnx.xsd"/> <!-- using Name, Component, Base64BinaryType -->
 
        <xs:annotation>
                <xs:documentation xml:lang="en">
@@ -22,70 +13,41 @@
        <xs:element name="SyncNode" type="SyncNodeType"/>
        <xs:complexType name="SyncNodeType">
                <xs:sequence>
-                       <xs:element name="BinaryValue" type="Base64BinaryType"/>        <!-- version -->
-                       <xs:element name="BinaryValue" type="Base64BinaryType"/>        <!-- flags -->
-                       <xs:element name="BinaryValue" type="Base64BinaryType"/>        <!-- nRefs -->
-                       <xs:sequence  minOccurs="0" maxOccurs="unbounded">
-                                       <xs:element name="ContentHash" type="Base64BinaryType"/>
-                       </xs:sequence>
+                       <xs:element name="SyncVersion" type="xs:nonNegativeInteger"/> <!-- 20110614 -->
+                       <xs:element name="SyncNodeElements" type="SyncNodeElementsType"/>
+                       <xs:element name="SyncContentHash" type="Base64BinaryType"/>
                        <xs:element name="Name" type="NameType"/>
                        <xs:element name="Name" type="NameType"/>
-                       <xs:element name="ContentHash" type="Base64BinaryType"/>
-                       <xs:element name="BinaryValue" type="Base64BinaryType"/>        <!-- nc->leafCount -->
-                       <xs:element name="BinaryValue" type="Base64BinaryType"/>        <!-- nc->treeDepth -->
+                       <xs:element name="SyncNodeKind" type="xs:nonNegativeInteger"/> <!-- 0 for now -->
+                       <xs:element name="SyncLeafCount" type="xs:nonNegativeInteger"/>
+                       <xs:element name="SyncTreeDepth" type="xs:nonNegativeInteger"/>
+                       <xs:element name="SyncByteCount" type="xs:nonNegativeInteger"/>
                </xs:sequence>
        </xs:complexType>
-
-<!-- ******************************************************************************** -->
-
-       <xs:complexType name="SyncNodeKind">
-               <xs:simpleContent>
-                       <xs:extension base="SyncNodeKindType">
-                               <xs:attribute name="ccnbencoding" type="xs:string" fixed="base64Binary"/>
-                       </xs:extension>
-               </xs:simpleContent>
-       </xs:complexType>
-
-       <xs:simpleType name="SyncNodeKindType">
-               <xs:restriction base="xs:string">
-                       <xs:enumeration value="SyncNodeKind_zero"/>                     <!--  = 0 // no bits set -->
-                       <xs:enumeration value="SyncNodeKind_leaf"/>                     <!--  = 1 // composite / leaf  -->
-                       <xs:enumeration value="SyncNodeKind_union"/>            <!--  = 2 // ordered / union  -->
-                       <xs:enumeration value="SyncNodeKind_duplicates"/>       <!--  = 4 // names unique / duplicates  -->
-                       <xs:enumeration value="SyncNodeKind_deletion"/>         <!--  = 8 // insertion / deletion  -->
-                       <xs:enumeration value="SyncNodeKind_mask"/>                     <!--  = 15 // valid flags mask  -->
-               </xs:restriction>
-       </xs:simpleType>
-       
 
        <xs:complexType name="SyncNodeElementsType">
-               <xs:sequence>
-                       <xs:element minOccurs="0" maxOccurs="unbounded" name="SyncNodeElement" type="SyncNodeElementType"/>
-               </xs:sequence>
-       </xs:complexType>
-
-       <xs:complexType name="SyncNodeElementType">
-               <xs:sequence>
-                       <xs:element name="SyncNodeKind" type="SyncNodeKind"/>
+               <xs:sequence minOccurs="0" maxOccurs="unbounded" >
                        <xs:choice>
                                <xs:element name="Name" type="NameType"/>
-                               <xs:element name="ContentHash" type="Base64BinaryType"/>
-                               <xs:element name="Binary" type="Base64BinaryType"/>
+                               <xs:element name="SyncContentHash" type="Base64BinaryType"/>
                        </xs:choice>
                </xs:sequence>
        </xs:complexType>
 
-       <xs:element name="NewSyncNode" type="NewSyncNodeType"/>
-       <xs:complexType name="NewSyncNodeType">
+       <xs:element name="SyncConfigSlice" type="SyncConfigSliceType"/>
+       <xs:complexType name="SyncConfigSliceType">
                <xs:sequence>
-                       <xs:element name="SyncVersion" type="xs:nonNegativeInteger"/>
-                       <xs:element name="SyncNodeKind" type="SyncNodeKindType"/>       <!-- flags -->
-                       <xs:element name="NodeElements" type="SyncNodeElementsType"/>
-                       <xs:element name="Name" type="NameType"/>
-                       <xs:element name="Name" type="NameType"/>
-                       <xs:element name="NodeContentHash" type="Base64BinaryType"/>
-                       <xs:element name="LeafCount" type="xs:nonNegativeInteger"/>     
-                       <xs:element name="TreeDepth" type="xs:nonNegativeInteger"/>     
+                       <xs:element name="SyncVersion" type="xs:nonNegativeInteger"/> <!-- 20110614 -->
+                       <xs:element name="Name" type="NameType"/> <!-- topo -->
+                       <xs:element name="Name" type="NameType"/> <!-- prefix -->
+                       <xs:element name="SyncConfigSliceList" type="SyncConfigSliceListType"/>
+               </xs:sequence>
+       </xs:complexType>
+       
+       <xs:complexType name="SyncConfigSliceListType">
+               <xs:sequence minOccurs="0" maxOccurs="unbounded">
+                       <xs:element name="SyncConfigSliceOp" type="xs:nonNegativeInteger"/> <!-- 0 for now -->
+                       <xs:element name="Name" type="NameType"/> <!-- topo -->
                </xs:sequence>
        </xs:complexType>
 

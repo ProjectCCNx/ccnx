@@ -1,0 +1,107 @@
+'\" t
+.\"     Title: ccnpoke
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
+.\"      Date: 03/09/2012
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.5.1
+.\"  Language: English
+.\"
+.TH "CCNPOKE" "1" "03/09/2012" "\ \& 0\&.5\&.1" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnpoke \- Read data from stdin and send it as a single ContentObject in response to an interest\&.
+.SH "SYNOPSIS"
+.sp
+\fBccnpoke\fR [\-hflv] [\-k \fIkeyuri\fR] [\-p \fIn\fR] [\-t \fItype\fR] [\-V \fIseg\fR] [\-w \fItimeout\fR] [\-x \fIfreshness\fR] \fIccnxuri\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccnpoke\fR utility reads data from stdin and generates a single ContentOjbect, with attributes modfied by the given options, for the supplied CCNx URI, \fIccnxuri\fR, and sends that object in response to a matching interest\&.
+.SH "OPTIONS"
+.PP
+\fB\-h\fR
+.RS 4
+Generate the help message\&.
+.RE
+.PP
+\fB\-f\fR
+.RS 4
+Force sending the ContentObject to ccnd even if there is no matching interest\&.
+.RE
+.PP
+\fB\-l\fR
+.RS 4
+Set the FinalBlockId based on the last component of the name\&.
+.RE
+.PP
+\fB\-v\fR
+.RS 4
+Report on stdout the name of the ContentObject written\&.
+.RE
+.PP
+\fB\-k\fR \fIkeyuri\fR
+.RS 4
+Specifies the name to be used in the KeyLocator of the ContentObject\&.
+.RE
+.PP
+\fB\-p\fR \fIn\fR
+.RS 4
+Specifies the number of components of the URI that should be registered in the interest filter\&.
+\fIn\fR=0 implies registering ccnx:/\&.
+\fIn\fR
+must not be greater than the number of components in the name\&. The default is to register the name as given, which will not include any derived version component implied by the
+\fB\-V\fR
+option\&.
+.RE
+.PP
+\fB\-t\fR \fItype\fR
+.RS 4
+Specifies the type to be encoded in the ContentObject\&. Values are DATA (default), ENCR, GONE, KEY, LINK, NACK, as documented for ContentObjects\&.
+.RE
+.PP
+\fB\-V\fR \fIseg\fR
+.RS 4
+Generate a version stamp, and use the specfied segment number as a suffix\&. If the segment number is "%00" then the FinalBlockId will also be set\&.
+.RE
+.PP
+\fB\-w\fR \fItimeout\fR
+.RS 4
+Specifies the time to wait, in seconds, for an Interest to be received\&.
+.RE
+.PP
+\fB\-x\fR \fIfreshness\fR
+.RS 4
+Specifies the Freshness, in seconds, to be encoded in the ContentObject\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error, error sending ContentObject)
+.RE
+.SH "AUTHOR"
+.sp
+Nick Briggs <briggs@parc\&.com>

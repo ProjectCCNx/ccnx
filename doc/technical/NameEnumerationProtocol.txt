@@ -1,0 +1,51 @@
+Name Enumeration Protocol
+=========================
+
+== Basic Enumeration
+The *Basic Enumeration (%C1.E.be)* command requests the first-level names under a specified prefix, much like a single-level directory listing command.
+
+.......................................................
+Interest ::=	Prefix 
+		Command
+.......................................................
+
+=== Prefix
++Prefix+ is required and is the prefix under which lower-level names are requested. See link:Name.html[CCNx Name Specification].
+
+=== Command
++Command+ is required, and is +%C1.E.be+ for Basic Enumeration.
+
+=== Response
+
+If the object IS present, the Repository responds with the first segment of names immediately below the specified prefix. If the result does not fit in a single segment, the remaining segments may be fetched using the standard segmentation markers (+%00%01+, +%00%02+, …) in place of the +%00+. If every component of the prefix exists in the Repository but there are no components below the last component of the prefix, then an empty collection is returned (i.e., +<collection/>+).
+
+If the object is NOT present, the Repository does not respond.
+
+For example, if you express the following interest:
+
+[literal]
+	ccnx:/xxx/yyy/%C1.E.be
+
+then the first segment of the response will be named:
+
+[literal]
+	ccnx:/xxx/yyy/%C1.E.be/%C1.M.K%00<public key of responding repository>/%FD<version>/%00
+
+and the content will be a Collection of Links (see link:xsd.html[ccnx.xsd]) of the following form:
+
+[literal]
+	<Collection>
+	  <Link>
+	    <Name>
+	      <Component ccnbencoding="base64Binary">/QTuZqRyKQ==</Component>
+	      <!--       %FD%04%EEf%A4r%29 -->
+	    </Name>
+	  </Link>
+	</Collection>
+
+where the query in this case was for a part of the namespace that happened to have exactly one component under it that looked like a version.
+
+The protocol is illustrated below.
+
+image:NameEnumerationProtocol.png[align="center"]
+

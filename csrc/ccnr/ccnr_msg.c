@@ -89,7 +89,6 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     va_list ap;
     struct ccn_charbuf *b;
     int res;
-    const char *portstr;    
     if (h == NULL || h->debug == 0 || h->logger == 0)
         return;
     b = ccn_charbuf_create();
@@ -99,11 +98,8 @@ ccnr_msg(struct ccnr_handle *h, const char *fmt, ...)
     if ((h->debug >= CCNL_FINE) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
           t.tv_sec >= h->logtime + 30)) {
-        portstr = h->portstr;
-        if (portstr == NULL)
-            portstr = "";
         ccn_charbuf_putf(b, "%ld.000000 ccnr[%d]: %s ____________________ %s",
-                         (long)t.tv_sec, h->logpid, h->portstr, ctime(&t.tv_sec));
+                         (long)t.tv_sec, h->logpid, h->portstr ? h->portstr : "", ctime(&t.tv_sec));
         h->logtime = t.tv_sec;
         h->logbreak = 30;
     }
@@ -171,50 +167,3 @@ ccnr_debug_ccnb(struct ccnr_handle *h,
     ccn_charbuf_destroy(&c);
 }
 
-/**
- * CCNR Usage message
- */
-const char *ccnr_usage_message =
-    "ccnr - CCNx Repository Daemon\n"
-    "  options: none\n"
-    "  arguments: none\n"
-    "  configuration (via $CCNR_DIRECTORY/config or environment):\n"
-    "    CCNR_DEBUG=WARNING\n"
-    "      Debug logging level:\n"
-    "      NONE - no messages\n"
-    "      SEVERE - severe, probably fatal, errors\n"
-    "      ERROR - errors\n"
-    "      WARNING - warnings\n"
-    "      FINE, FINER, FINEST - debugging/tracing\n"
-    "    CCNR_DIRECTORY=.\n"
-    "      Directory where ccnr data is kept\n"
-    "      Defaults to current directory\n"
-    "      Ignored in config file\n"
-    "    CCNR_GLOBAL_PREFIX=ccnx:/parc.com/csl/ccn/Repos\n"
-    "      CCNx URI representing the prefix where data/policy.xml is stored.\n"
-    "      Only meaningful if no policy file exists at startup.\n"
-    "    CCNR_BTREE_MAX_FANOUT=1999\n"
-    "    CCNR_BTREE_MAX_LEAF_ENTRIES=1999\n"
-    "    CCNR_BTREE_MAX_NODE_BYTES=2097152\n"
-    "    CCNR_BTREE_NODE_POOL=512\n"
-    "    CCNR_CONTENT_CACHE=4201\n"
-    "      Maximum number of Content Objects cached in memory.\n"
-    "    CCNR_MIN_SEND_BUFSIZE=16384\n"
-    "      Minimum in bytes for output socket buffering.\n"
-    "    CCNR_PROTO=unix\n"
-    "      Specify 'tcp' to connect to ccnd using tcp instead of unix ipc\n"
-    "    CCNR_LISTEN_ON=\n"
-    "      List of ip addresses to listen on for status; defaults to wildcard\n"
-    "    CCNR_STATUS_PORT=\n"
-    "      Port to use for status server; default is to not serve status.\n"
-    "    SYNC_DEBUG=WARNING\n"
-    "      Same values as for CCNR_DEBUG\n"
-    "    SYNC_ENABLE=1\n"
-    "      Disable (0) or enable (1) Sync processing\n"
-    "    SYNC_TOPO=\n"
-    "      Specify default topo prefix for Sync protocol\n"
-    "      (TEMPORARY - will not be in the final release)\n"
-    "    SYNC_AUTO_REGISTER=\n"
-    "      Disable (0) or enable (1) root auto-registration, default enabled\n"
-    "      (TEMPORARY - will not be in the final release)\n"
-;

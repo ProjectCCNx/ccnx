@@ -17,9 +17,9 @@ ccnrm /experiments/multicast/DATA
 export CCN_EXPERIMENT_ID="$SELF:`./waitgo`"
 netstat -s | grep 'dropped due to full socket buffers' > netstat.before
 NOW=`date '+%s'`
-echo $NOW START $CCN_EXPERIMENT_ID | tee | ccnput -f /experiments/multicast/results/ccnx/$NOW/$SELF/START
+echo $NOW START $CCN_EXPERIMENT_ID | tee | ccnpoke -f /experiments/multicast/results/ccnx/$NOW/$SELF/START
 ccncatchunks2 -p $PIPELINE /experiments/multicast/DATA/$DATASET | dd of=/dev/null
 NOW=`date '+%s'`
-echo $NOW STOP $CCN_EXPERIMENT_ID | tee | ccnput -f /experiments/multicast/results/ccnx/$NOW/$SELF/STOP
+echo $NOW STOP $CCN_EXPERIMENT_ID | tee | ccnpoke -f /experiments/multicast/results/ccnx/$NOW/$SELF/STOP
 netstat -s | grep 'dropped due to full socket buffers' | diff  netstat.before -
 echo ''wake up, it is ready.

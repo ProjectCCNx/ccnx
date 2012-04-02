@@ -1,0 +1,367 @@
+'\" t
+.\"     Title: ccnr
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
+.\"      Date: 03/09/2012
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.5.1
+.\"  Language: English
+.\"
+.TH "CCNR" "1" "03/09/2012" "\ \& 0\&.5\&.1" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnr \- CCNx Repository
+.SH "SYNOPSIS"
+.sp
+\fBccnr\fR [\-h]
+.SH "DESCRIPTION"
+.sp
+A Repository supports the network by preserving content and responding to Interests requesting content that it holds\&. These services are available to CCN components, including CCN\-enabled customer applications\&. A Repository can exist in any node, and is recommended if applications in that node need to preserve data\&. See CCNx Repository Protocols for more information about the Repository\&.
+.sp
+The \fBccnr\fR command starts the Repository using the directory specified by the CCNR_DIRECTORY environment variable\&. At startup, the Repository retrieves and applies the configuration options described below\&.
+.sp
+The directory named by CCNR_DIRECTORY must exist already\&. To start ccnr as a daemon, redirect stderr to a file and execute
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+bin/ccnr &
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+ccnr shuts down gracefully if it receives SIGINT or SIGTERM, or if the ccnd to which it is connected is shut down\&.
+.sp
+Do not run two Repositories on the same backing store directory at the same time\&.
+.sp
+The Repository uses $CCNR_DIRECTORY/repoFile1 for persistent storage of CCN Content Objects\&. A disk\-resident index facilitates rapid start\-up and limits the memory footprint\&. If an index does not exist, it is built during startup\&.
+.sp
+A policy file specifies the namespaces for which the Repository accepts and holds content\&. The name of the policy file is the concatenation of the global prefix and "data/policy\&.xml"\&. Unless an alternative policy has been explicitly written/published under the policy information name, the the policy defaults to /, which means that writes will be accepted for any name and reads serviced for any name for which there is content\&.
+.sp
+The Repository is configured from information in the text file, $CCNR_DIRECTORY/config\&. The file is only read at startup time\&.
+.sp
+Any or all variables in the file may also be expressed as environment variables that are examined at startup time\&. If the same variable is defined in both the configuration file and an environment variable, the value in the configuration file takes precedence\&.
+.PP
+\fBCCNR_BTREE_MAX_FANOUT=\fR\fB\fI<Max fanout>\fR\fR
+.RS 4
+where
+\fI<Max fanout>\fR
+is the maximum number of entries in index B\-tree interior nodes\&. The maximum value for
+\fI<Max fanout>\fR
+is 1999\&.
+.RE
+.PP
+\fBCCNR_BTREE_MAX_LEAF_ENTRIES=\fR\fB\fI<Max leaf entries>\fR\fR
+.RS 4
+where
+\fI<Max leaf entries>\fR
+is the maximum number of entries in index B\-tree leaf nodes\&. The maximum value for
+\fI<Max leaf entries>\fR
+is 1999\&.
+.RE
+.PP
+\fBCCNR_BTREE_MAX_NODE_BYTES=\fR\fB\fI<Max index size>\fR\fR
+.RS 4
+where
+\fI<Max index size>\fR
+is the maximum size of index B\-tree nodes, in bytes\&. The maximum value for
+\fI<Max index size>\fR
+is 2097152\&.
+.RE
+.PP
+\fBCCNR_BTREE_NODE_POOL=\fR\fB\fI<Max index nodes cached>\fR\fR
+.RS 4
+where
+\fI<Max index nodes cached>\fR
+is the maximum number of index B\-tree nodes cached in memory\&. The maximum value for
+\fI<Max index nodes cached>\fR
+is 512\&.
+.RE
+.PP
+\fBCCNR_CONTENT_CACHE=\fR\fB\fI< Max objects cached>\fR\fR
+.RS 4
+where
+\fI< Max objects cached>\fR
+is the maximum number of Content Objects cached in memory\&. The maximum value for
+\fI< Max objects cached>\fR
+is 4201\&.
+.RE
+.PP
+\fBCCNR_DEBUG=\fR\fB\fI<debug logging level>\fR\fR
+.RS 4
+where
+\fI<debug logging level>\fR
+is one of the following\&. If the option is not specified, the default is
+WARNING\&.
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+NONE
+\- no messages
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+SEVERE
+\- severe, probably fatal, errors
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+ERROR
+\- errors
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+WARNING
+\- warnings
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+INFO
+\- informational messages
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+FINE,
+FINER,
+FINEST
+\- debugging/tracing
+.RE
+.RE
+.PP
+\fBCCNR_DIRECTORY\fR=\fI<directory>\fR
+.RS 4
+where
+\fI<directory>\fR
+is the directory where the Repository storage is located, which defaults to the current directory\&.
+CCNR_DIRECTORY
+is ignored in the configuration file\&.
+.RE
+.PP
+\fBCCNR_GLOBAL_PREFIX=\fR\fB\fI<URI>\fR\fR
+.RS 4
+where
+\fI<URI>\fR
+is the CCNx URI representing the prefix where
+data/policy\&.xml
+is stored, and is meaningful only if no policy file exists at startup\&.
+\fI<URI>\fR
+is expected by convention to be globally unique and meaningful, rather than only locally unique and contextually meaningful\&. If not specified, the URI defaults to
+ccnx:/parc\&.com/csl/ccn/Repos\&.
+.RE
+.PP
+\fBCCNR_LISTEN_ON=\fR\fB\fI<IP address list>\fR\fR
+.RS 4
+where
+\fI<IP address list>\fR
+is a list of IP addresses to listen on for status\&. IP addresses may be in either IPv4 format (e\&.g\&., 127\&.0\&.0\&.1) or IPv6 format (e\&.g\&., fe80::226:bbff:fe1c:5530)\&. Addresses may be separated by spaces, commas, or semi\-colons\&. If not specified, the default is a wild card\&.
+.RE
+.PP
+\fBCCNR_MIN_SEND_BUFSIZE=\fR\fB\fI<Min buffer size>\fR\fR
+.RS 4
+where
+\fI<Min buffer size>\fR
+is the minimum size in bytes of the output socket buffer (SO_SNDBUF) for the socket used to communicate with ccnd\&. The maximum value for
+\fI<Min buffer size>\fR
+is 16384\&. If the system provides more than this by default, the system\(cqs value is used\&.
+.RE
+.PP
+\fBCCNR_PROTO=\fR\fB\fI<type>\fR\fR
+.RS 4
+where
+\fI<type>\fR
+is the type of connection, which must be tcp or unix\&. If
+\fI<type>\fR
+is tcp, Repo will connect to ccnd via TCP; if
+\fI<type>\fR
+is unix, Repo will connect via Unix IPC\&. If not specified, the default is unix\&.
+.RE
+.PP
+\fBCCNR_STATUS_PORT=\fR\fB\fI<port>\fR\fR
+.RS 4
+where
+\fI<port>\fR
+is the port to use for a status server\&. If this option is not specified, no status is served\&.
+.RE
+.PP
+\fBCCNR_START_WRITE_SCOPE_LIMIT=\fR\fB\fI<Scope limit>\fR\fR
+.RS 4
+where
+\fI<Scope limit>\fR
+is in the range 0\&.\&.3 (default 3)\&. Process start\-write(\-checked) interests with a scope not exceeding the given value\&. 0 is effectively read\-only\&. 3 indicates unlimited\&.
+.RE
+.PP
+\fBCCNS_DEBUG=\fR\fB\fI<Sync debug logging level>\fR\fR
+.RS 4
+where
+\fI<Sync debug logging level>\fR
+has the same values as for
+CCNR_DEBUG
+above\&. If not specified, the default is
+WARNING\&.
+.RE
+.PP
+\fBCCNS_ENABLE=\fR\fB\fI<do sync>\fR\fR
+.RS 4
+where
+\fI<do sync>\fR
+specifies whether to disable (0) or enable (1) Sync processing\&. If not specified, the default is enabled\&.
+.RE
+.PP
+\fBCCNS_FAUX_ERROR=\fR\fB\fI<simulate random loss>\fR\fR
+.RS 4
+where
+\fI<simulate random loss>\fR
+specifies whether and how much random packet loss to simulate\&. If
+\fI<simulate random loss>\fR
+is 0, no loss is simulated; if in the range 1\-99, the number is the percentage of packets to drop at random\&. If not specified, the default is 0 (no loss)\&.
+.RE
+.PP
+\fBCCNS_HEARTBEAT_MICROS=\fR\fB\fI<heartbeat>\fR\fR
+.RS 4
+where
+\fI<heartbeat>\fR
+is the number of microseconds between Sync heartbeats, and must be an integer in the range 100000\-10000000\&. If not specified, the default is 200000\&.
+.RE
+.PP
+\fBCCNS_MAX_COMPARES_BUSY=\fR\fB\fI<max compares>\fR\fR
+.RS 4
+where
+\fI<max compares>\fR
+is the maximum number of Sync roots that can be in compare state simultaneously, and must be an integer in the range 1\-100\&. If not specified, the default is 4\&.
+.RE
+.PP
+\fBCCNS_MAX_FETCH_BUSY=\fR\fB\fI<max fetches>\fR\fR
+.RS 4
+where
+\fI<max fetches>\fR
+is the maximum number of simultaneous node or content fetches per Sync root, and must be an integer in the range 1\-100\&. If not specified, the default is 6\&.
+.RE
+.PP
+\fBCCNS_NODE_FETCH_LIFETIME=\fR\fB\fI<nf lifetime>\fR\fR
+.RS 4
+where
+\fI<nf lifetime>\fR
+is the maximum amount of time in seconds to wait for a response to a NodeFetch request, and must be an integer in the range 1\-30\&. If not specified, the default is 4\&.
+.RE
+.PP
+\fBCCNS_NOTE_ERR=\fR\fB\fI<exceptional errors flag>\fR\fR
+.RS 4
+where
+\fI<exceptional errors flag>\fR
+specifies whether exceptional Sync error reporting is disabled (0) or enabled (1)\&. If not specified, the default is 0 (disabled)\&.
+.RE
+.PP
+\fBCCNS_REPO_STORE=\fR\fB\fI<store state flag>\fR\fR
+.RS 4
+where
+\fI<store state flag>\fR
+specifies whether storing of Sync state to the Repository is disabled (0) or enabled\&. If not specified, the default is 1 (enabled)\&.
+.RE
+.PP
+\fBCCNS_ROOT_ADVISE_FRESH=\fR\fB\fI<freshness>\fR\fR
+.RS 4
+where
+\fI<freshness>\fR
+is the amount of time a response to a Sync RoodAdvise will stay "fresh" (valid) in a ccnd cache in seconds, and must be an integer in the range 1\-30\&. If not specified, the default is 4\&.
+.RE
+.PP
+\fBCCNS_ROOT_ADVISE_LIFETIME=\fR\fB\fI<ra lifetime>\fR\fR
+.RS 4
+where
+\fI<ra lifetime>\fR
+is the maximum amount of time in seconds to wait for a response to a RootAdvise request, and must be an integer in the range 1\-30\&. If not specified, the default is 20\&.
+.RE
+.PP
+\fBCCNS_STABLE_ENABLED=\fR\fB\fI<store stable flag>\fR\fR
+.RS 4
+where
+\fI<store stable flag>\fR
+specifies whether storing of Sync stable points to the Repository is disabled (0) or enabled (1)\&. If not specified, the default is 1 (enabled)\&.
+.RE
+.SH "OPTIONS"
+.PP
+\fB\-h\fR
+.RS 4
+Print a usage message\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure (syntax or usage error; startup error; failed to connect to ccnd)
+.RE
+.SH "AUTHOR"
+.sp
+Michael Plass <plass@parc\&.com> Nick Briggs <briggs@parc\&.com>

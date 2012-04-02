@@ -1,13 +1,22 @@
 '\" t
 .\"     Title: ccn_repo
 .\"    Author: [see the "AUTHOR" section]
-.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
-.\"      Date: 12/07/2011
+.\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
+.\"      Date: 03/09/2012
 .\"    Manual: \ \&
-.\"    Source: \ \& ccnx-0.4.2
+.\"    Source: \ \& 0.5.1
 .\"  Language: English
 .\"
-.TH "CCN_REPO" "1" "12/07/2011" "\ \& ccnx\-0\&.4\&.2" "\ \&"
+.TH "CCN_REPO" "1" "03/09/2012" "\ \& 0\&.5\&.1" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -22,16 +31,39 @@
 ccn_repo \- utility to start, stop and signal Java application CCNx repositories\&.
 .SH "SYNOPSIS"
 .sp
-\fBccn_repo\fR [\-memory \fImemory\fR] [\-debug \fIportno\fR] [\-output \fIoutput_file\fR] [\-debug\-daemon \fIportno\fR] [\-profile \fIprofile_info\fR] [\-suspend] [\-noshare] [\-debug\-flags \fIflags\fR] <repository_directory> [\-log \fIloglevel\fR] [\-prefix \fIprefix\fR] [\-global <global_prefix>] [\-local <localname>] | interactive <respository_directory> | stop <pid> | stopall | signal <name> <pid>]
+\fBccn_repo\fR [\-memory \fImemory\fR] [\-debug \fIportno\fR] [\-output \fIoutput_file\fR] [\-debug\-daemon \fIportno\fR] [\-profile \fIprofile_info\fR] [\-suspend] [\-noshare] [\-debug\-flags \fIflags\fR] <repository_directory> [\-log \fIloglevel\fR] [\-policy <policy_file>] [\-global <global_prefix>] | interactive <respository_directory> | stop <pid> | stopall | signal <name> <pid>]
 .SH "DESCRIPTION"
+.sp
+The \fBccn_repo\fR utility has been deprecated and will be phased out in favor of a new repository implementation, named ccnr, that offers better performance and an integrated synchronization facility\&. With the availability of sync, we anticipate that most nodes will be running a ccnr instance along with ccnd, to automatically share content in designated namespaces\&. In accord with this direction, the default scope of repository write requests is now local\&. Please consult the ccnr(1) man page for details\&.
 .sp
 The \fBccn_repo\fR utility starts, stops and signals CCNx Java content object repositories\&. This call requires a backend \fIrepository_directory\fR to store the content objects to the filesystem\&. Only one repository should run on a single \fIrepository_directory\fR at any time\&.
 .sp
-There are many options with this utility, the most common uses are to start, signal and stop a repository\&.
+The utility has several modes \- it is normally started in the background, but can also be started in the foreground, allowing logging information to be seen on the console\&. It can also be signalled and stopped\&. The modes are as follows:
 .PP
 \fBccn_repo\fR <repository_directory>
 .RS 4
 This will start a content object repository in the specified directory\&. Once the repository is ready, a process id will be printed to the terminal\&. This pid is needed to signal this specific repository\&. The repository starts as a Daemon by default\&.
+.RE
+.PP
+\fBccn_repo\fR interactive <repository_directory>
+.RS 4
+This will start the repository in the foreground so that logging information is output to the console\&.
+.RE
+.PP
+\fBccn_repo\fR signal <name> <pid>
+.RS 4
+This command is generally used to cause the running repository to dump the names of its stored content objects to a file\&. The
+\fIname\fR
+option can be either
+\fInametree\fR
+or
+\fInametreewide\fR\&.
+\fInametree\fR
+dumps the basic name tree while
+\fInametreewide\fR
+dumps the name tree with full name components (may be hard to read)\&. The
+\fIpid\fR
+is the process id displayed when the repository was started\&. The name tree file is written to the directory the repository was started with\&.
 .RE
 .PP
 \fBccn_repo\fR signal <name> <pid>
@@ -61,9 +93,9 @@ This command stops a single repository with the supplied
 Stop all repositories running on a single machine (each needs a different
 \fIrepository_directory\fR)\&.
 .RE
-.sp
-Other options are available for this utility, and they are listed below\&.
 .SH "OPTIONS"
+.sp
+The following options are available for all modes of \fBccn_repo\fR except interactive:
 .PP
 \fB\-memory\fR \fImemory\fR
 .RS 4
@@ -106,7 +138,11 @@ Used to turn off Java sharing\&. Needed for the vmvisual profiler\&.
 Used to set Java properties\&. For the repository, using
 \fIREPO_EXITDUMP\fR
 will cause the repository to write out its name tree on exit without requiring a dynamic signal\&.
+
+
 .RE
+.sp
+The following options are available only when starting a repository\&. Note that these options must be specified on the command line after the specification of the <repository_directory>:
 .PP
 \fB\-log\fR \fILEVEL\fR
 .RS 4
@@ -115,41 +151,92 @@ Set the logging level\&.
 must be the an acceptable Java Logger level: either an integer or a level name (e\&.g\&. SEVERE)\&.
 .RE
 .PP
-\fB\-prefix\fR \fIprefix\fR
+\fB\-policy\fR \fIpolicy_file\fR
 .RS 4
-Please note, this implementation is incomplete\&. This allows you to set a single prefix for the repo namespace\&. The default is
-\fI/\fR\&.
+A policy file can most usefully be used to restrict the CCNx namespace(s) backed by this repo\&. It can also used to set the global prefix\&. A policy file is an XML file which must contain a <Policy> element containing the following elements:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+<PolicyVersion> (required) must be
+1\&.5\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+<LocalName> (required) The eventual intent of this element is a value to be used as a "friendly name" for the repository\&. It is currently unused by the repository but must be present in the policy file\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+<GlobalPrefix> (required) The global prefix of the repo\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+<Namespace> The XML file may contain any number of <Namespace> elements which define the CCNx namespace backed by this repo\&. However in practice it is required that at least one of these elements define the key namespace which is by default
+ccnx\&.org/Users\&.
+.RE
+.sp
+Here\(cqs an example policy file which restricts the namespace backed by the repo to
+/parc\&.com/Users/rasmussen
+and
+/parc\&.com/CCNx/documentation
+as well as the key namespace:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+     <?xml version="1\&.0" encoding="UTF\-8"?>
+     <Policy>
+        <PolicyVersion> 1\&.5 </PolicyVersion>
+        <LocalName> /ParcRepositories/TestRepository </LocalName>
+        <GlobalPrefix> parc\&.com/csl/ccn/repositories/TestRepository </GlobalPrefix>
+        <Namespace> /parc\&.com/Users/rasmussen </Namespace>
+        <Namespace> /parc\&.com/CCNx/documentation </Namespace>
+        <Namespace> /ccnx\&.org/Users </Namespace>
+     </Policy>
+.fi
+.if n \{\
+.RE
+.\}
+.sp
+Note that once the
+\fB\-policy\fR
+option has been used to start a repository, the specified policy becomes that repository\(cqs permanent policy\&. If the repository is restarted, the
+\fB\-policy\fR
+option does not need to be reissued to retain the same policy\&. To change the policy, the repository must be restarted using the
+\fB\-policy\fR
+option specifying a policy file with a different policy\&.
 .RE
 .PP
 \fB\-global\fR \fIglobal_prefix\fR
 .RS 4
-Sets the global name prefix for the repository (NOT the content it stores)\&.
-.RE
-.PP
-\fB\-local\fR \fIlocal_prefix\fR
-.RS 4
-Sets the local name prefix for the repository (NOT the content it stores)\&.
-.RE
-.PP
-\fBinteractive\fR
-.RS 4
-Starts the repository in the foreground\&.
-.RE
-.PP
-\fBstop\fR \fIpid\fR
-.RS 4
-Stops a specific repository with the given process id\&.
-.RE
-.PP
-\fBstopall\fR
-.RS 4
-Stops all repositories on the local machine\&.
-.RE
-.PP
-\fBsignal\fR
-.RS 4
-Signals a repository to perform a command, such as
-\fInametree\fR, which causes it to write the names of its stored content to a file in the backend directory\&.
+Sets the global name prefix for the repository (NOT the content it stores)\&. The prefix must be globally unique\&.
 .RE
 .SH "EXIT STATUS"
 .PP

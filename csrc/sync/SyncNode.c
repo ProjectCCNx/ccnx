@@ -57,13 +57,13 @@ SyncInitDecoderFromElem(struct ccn_buf_decoder *d,
 }
 
 
-void
+extern void
 SyncNodeIncRC(struct SyncNodeComposite *nc) {
-    int rc = nc->rc++;
+    int rc = 1 + nc->rc;
     if (rc > 0) nc->rc = rc;
 }
 
-struct SyncNodeComposite *
+extern struct SyncNodeComposite *
 SyncNodeDecRC(struct SyncNodeComposite *nc) {
     int rc = nc->rc;
     if (rc > 1) {

@@ -21,13 +21,11 @@
 #define CCN_SyncUtil
 
 #include "IndexSorter.h"
-#include "SyncBase.h"
-
 #include <ccn/ccn.h>
-#include <ccn/uri.h>
 
 struct SyncLongHashStruct;
 struct SyncRootStruct;
+struct SyncBaseStruct;
 
 // emit a message to stderr
 void
@@ -42,14 +40,13 @@ SyncCheckDecodeErr(struct ccn_buf_decoder *d);
 
 //// Elapsed high-precision time
 
-typedef int64_t sync_time;
 // get current time in microseconds (since arbitrary event)
-sync_time
+int64_t
 SyncCurrentTime(void);
 
 // get delta time in microseconds (from mt1 to mt2)
 int64_t
-SyncDeltaTime(sync_time mt1, sync_time mt2);
+SyncDeltaTime(int64_t mt1, int64_t mt2);
 
 // Some basic ccn_charbuf utilities
 

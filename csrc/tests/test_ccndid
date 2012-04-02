@@ -19,6 +19,6 @@ IsolatePubID () {
 	sed -n -e 's@^.*PublisherPublicKeyDigest ccnbencoding="hexBinary">@@' \
                -e 's@</PublisherPublicKeyDigest.*$@@p'
 }
-ccnget ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY | ccn_ccnbtoxml -bx - | IsolatePubID > ccndid.out
+ccnpeek ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY | ccn_ccnbtoxml -bx - | IsolatePubID > ccndid.out
 grep '^[0-9A-F][0-9A-F]*$' ccndid.out || Fail Could not get CCNDID
 CCNDID=`cat ccndid.out`

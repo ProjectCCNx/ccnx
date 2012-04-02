@@ -1,0 +1,40 @@
+CCNREPOIMPORT(1)
+================
+
+NAME
+----
+ccnrepoimport - Import file into Repository
+
+SYNOPSIS
+--------
+*ccnrepoimport* [-timeout _millis]_ [-log _level_] _repodir_ _filename_
+
+DESCRIPTION
+-----------
+The *ccnrepoimport* utility is being deprecated and its use is discouraged.
+
+The command merges Content Objects in a local file (_filename_) into the Repository located in _repodir_. Content Objects must be in the standard Repo form. The Repository located in _repodir_ must be currently served by an instance of +ccnr+; *ccnrepoimport* will not work with +ccn_repo+.
+
+_repodir_ is an absolute or relative pathname of the directory containing the Repository. _filename_ is an absolute or relative pathname of the file from which content is being imported. If relative, pathnames must be relative to the directory in which *ccnrepoimport* is being executed.
+
+If the command is accepted, the Repository attempts to open and parse the specified file. If there are no errors, Content Objects in the file that are not already in the Repository are added, and Content Objects that are already in the Repository are ignored.
+
+OPTIONS
+-------
+*-timeout* _millis_::
+	Sets the timeout that will be used for importing the file, in milliseconds. This time depends on the length of the import file. If not specified, the default is 20000 (20 seconds).
+
+*-log* _level_::
+     Set the logging level. _level_ must be an acceptable Logger level: either an integer or a level name (e.g., SEVERE). If not specified, the default is INFO.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure
+
+AUTHOR
+------
+Paul Rasmussen <rasmussen@parc.com>

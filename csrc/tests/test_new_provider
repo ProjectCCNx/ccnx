@@ -19,15 +19,15 @@ date > testdata.txt
 NAME=`GenSym`
 
 # Someone is interested ...
-CCN_LINGER=2 ccnget -c /test/test_new_provider/$NAME > testdata.out &
+CCN_LINGER=2 ccnpeek -c /test/test_new_provider/$NAME > testdata.out &
 
 # Wait a bit so that the interest will have been propagated to all old places.
 ccndsmoketest -t 133 recv recv
 # Provide the data in response to an interest.
 #  This wins only if ccnd forwards the interest to the new face, because
-#  the ccnget does not wait around long enough to reexpress.
-ccnput -v -x 30 -w 1 /test/test_new_provider/$NAME < testdata.txt
-# Make sure the ccnget has finished.
+#  the ccnpeek does not wait around long enough to reexpress.
+ccnpoke -v -x 30 -w 1 /test/test_new_provider/$NAME < testdata.txt
+# Make sure the ccnpeek has finished.
 wait %%
 diff testdata.txt testdata.out || Fail Interest was not sent to latecomer provider.
 rm testdata.txt testdata.out

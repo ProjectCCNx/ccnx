@@ -32,11 +32,11 @@ ccn_xmltoccnb -w - <<EOF >newface.ccnb
 </FaceInstance>
 EOF
 
-cat newface.ccnb | ccnput -f -x 30 /_this_name_ignored_$$
+cat newface.ccnb | ccnpoke -f -x 30 /_this_name_ignored_$$
 
 # Pull it out to use in the face creation request.  Base-64 encode it for the benefit of the shell.
 
-NFBLOB="`ccnget /_this_name_ignored_$$ | openssl enc -base64`"
+NFBLOB="`ccnpeek /_this_name_ignored_$$ | openssl enc -base64`"
 
 echo NFBLOB is $NFBLOB >&2
 

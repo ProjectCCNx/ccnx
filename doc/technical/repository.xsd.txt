@@ -1,0 +1,11 @@
+CCNx Repository Schema
+======================
+
+== CCNx Repository XML schema
+
+This corresponds to the DTD link:repository.dtd.html[repository.dtd].
+
+.repository.xsd
+------------------------------------
+include::../../schema/repository.xsd[]
+------------------------------------

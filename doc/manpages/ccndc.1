@@ -1,13 +1,22 @@
 '\" t
 .\"     Title: ccndc
 .\"    Author: [see the "AUTHOR" section]
-.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
-.\"      Date: 12/07/2011
+.\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
+.\"      Date: 03/09/2012
 .\"    Manual: \ \&
-.\"    Source: \ \& ccnx-0.4.2
+.\"    Source: \ \& 0.5.1
 .\"  Language: English
 .\"
-.TH "CCNDC" "1" "12/07/2011" "\ \& ccnx\-0\&.4\&.2" "\ \&"
+.TH "CCNDC" "1" "03/09/2012" "\ \& 0\&.5\&.1" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
 .\" -----------------------------------------------------------------
 .\" * set default formatting
 .\" -----------------------------------------------------------------
@@ -28,10 +37,12 @@ ccndc \- manipulate CCNx forwarding table
 .sp
 \fBccndc\fR [\-v] add \fIuri\fR (udp|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]])
 .sp
-\fBccndc\fR [\-v] del \fIuri\fR (udp|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]])
+\fBccndc\fR [\-v] del \fIuri\fR (udp|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]])]
+.sp
+\fBccndc\fR [\-v] destroyface \fIfaceid\fR
 .SH "DESCRIPTION"
 .sp
-\fBccndc\fR is a simple routing utility/daemon that configures the forwarding table (FIB) in a \fBccnd(1)\fR\&. It may be used either as a command to add or remove static entries in the CCNx FIB (roughly analogous to the \fBroute(8)\fR utility for manipulating an IP routing table)\&. It may also run as a daemon that will dynamically create Faces and FIB entries to forward certain CCNx Interests based upon DNS SRV records\&. The Interests that can be dynamically routed in this way are those have an initial name component that is a legal DNS name, for which there is a DNS SRV record pointing to an endpoint for tunneling CCNx protocol traffic over the Internet\&.
+\fBccndc\fR is a simple routing utility/daemon that configures the forwarding table (FIB) in a \fBccnd(1)\fR\&. It may be used either as a command to add or remove static entries in the CCNx FIB (roughly analogous to the \fBroute(8)\fR utility for manipulating an IP routing table)\&. It may also run as a daemon that will dynamically create Faces and FIB entries to forward certain CCNx Interests based upon DNS SRV records\&. The Interests that can be dynamically routed in this way are those have an initial name component that is a legal DNS name, for which there is a DNS SRV record pointing to an endpoint for tunneling CCNx protocol traffic over the Internet\&. \fBccndc\fR can also send a destroyface operation to ccnd, destroying a face by the numeric faceid\&.
 .sp
 \fBccndc\fR also supports configuration files containing sets of add and del commands\&.
 .SH "OPTIONS"
@@ -61,6 +72,8 @@ add a FIB entry based on the parameters
 .RS 4
 delete a FIB entry based on the parameters
 .RE
+.sp
+\fBdestroyface\fR \fIfaceid\fR destroy a face based on the numeric faceid\&.
 .SH "CONFIGURATION FILE"
 .sp
 \fBccndc\fR will process a configuration file if specified with the \fB\-f\fR flag\&. The configuration file may contain a sequence of add and del commands with the same parameters as may be specified on the \fBccndc\fR command\-line\&. Comments in the file are prefixed with #\&. Here is a sample:

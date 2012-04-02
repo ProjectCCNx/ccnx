@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -54,6 +54,9 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 /**
  * Represents a CCNx data packet.
  * cf. Interest
+ * 
+ * prepareContent() is called to create the MerkelTree hash.  That encoding can be cached because
+ * _name, _signedInfo, and _content are only assigned in a constructor or in decode.
  */
 public class ContentObject extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentObject>, ContentNameProvider {
 
@@ -62,6 +65,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	protected ContentName _name;
 	protected SignedInfo _signedInfo;
 	protected byte [] _content;
+	
 	/**
 	 * Cache of the complete ContentObject's digest. Set when first calculated.
 	 * Used as the implicit last name component.
@@ -167,7 +171,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		if ((null != signature) && Log.isLoggable(Log.FAC_SIGNING, Level.FINEST)) {
 			try {
 				byte [] digest = CCNDigestHelper.digest(this.encode());
-				byte [] tbsdigest = CCNDigestHelper.digest(prepareContent(name, signedInfo, content, offset, length));
+				byte [] tbsdigest = CCNDigestHelper.digest(prepareContent());
 				if (Log.isLoggable(Level.INFO)) {
 					Log.info("Created content object: " + name + " timestamp: " + signedInfo.getTimestamp() + " encoded digest: " + DataUtils.printBytes(digest) + " tbs content: " + DataUtils.printBytes(tbsdigest));
 					Log.info("Signature: " + this.signature());
@@ -719,7 +723,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		// Have to eventually handle various forms of witnesses...
 		// Need to take an algorithm to control the digest used.
 		byte[] blockDigest = CCNDigestHelper.digest(
-					prepareContent(name(), signedInfo(), content()));
+					prepareContent());
 		return signature().computeProxy(blockDigest, true);
 	}
 	
@@ -740,9 +744,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * that is just digested.
 	 * @return
 	 */
-	public static byte [] prepareContent(ContentName name, 
-			SignedInfo signedInfo, 
-			byte [] content, int offset, int length) throws ContentEncodingException {
+	public static byte [] prepareContent(final ContentName name, final SignedInfo signedInfo, final byte [] content, int start, int length) throws ContentEncodingException {
 		if ((null == name) || (null == signedInfo)) {
 			Log.info("Name and signedInfo must not be null.");
 			throw new ContentEncodingException("prepareContent: name, signedInfo must not be null.");
@@ -762,7 +764,8 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		// sign the same thing, plus it's really hard to do the automated codec
 		// stuff without doing a whole document, unless we do some serious
 		// rearranging.
-		encoder.writeElement(CCNProtocolDTags.Content, content, offset, length);
+		
+		encoder.writeElement(CCNProtocolDTags.Content, content, start, length);
 
 		encoder.endEncoding();	
 

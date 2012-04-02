@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -13,7 +13,7 @@
 #
 
 W3REFS=XMLSchema.dtd XMLSchema.xsd datatypes.dtd xml.xsd
-FUZZED= ccn-bad11.xml ccn-bad06.xml ccn-bad09.xml ccn-schemabad10.xml ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad12.xml ccn-schemabad04.xml security-schemabad01.xml repository-bad01.xml repository-schemabad01.xml
+FUZZED= ccn-bad11.xml ccn-bad06.xml ccn-bad09.xml ccn-schemabad10.xml ccn-schemabad01.xml ccn-schemabad02.xml ccn-schemabad12.xml ccn-schemabad04.xml security-schemabad01.xml repository-bad01.xml repository-schemabad01.xml sync-bad00.xml sync-schemabad25.xml
 
 default:
 
@@ -44,21 +44,30 @@ repository.xsd:
 repository.dtd:
 	ln -s ../repository.dtd
 
+sync.xsd:
+	ln -s ../sync.xsd
+
+sync.dtd:
+	ln -s ../sync.dtd
+
 clean:
 	rm -f $(W3REFS) $(FUZZED) expectedfailures.out
 	test -L ccnx.xsd && rm ccnx.xsd || :
 	test -L security.xsd && rm security.xsd || :
 	test -L repository.xsd && rm repository.xsd || :
+	test -L sync.xsd && rm sync.xsd || :
 	test -L ccnx.dtd && rm ccnx.dtd || :
 	test -L security.dtd && rm security.dtd || :
 	test -L repository.dtd && rm repository.dtd || :
+	test -L sync.dtd && rm sync.dtd || :
 
 pretty:
 	echo ccn-test??.xml | xargs -n 1 sh prettify.sh
 	echo security-test??.xml | xargs -n 1 sh prettify.sh
 	echo repository-test??.xml | xargs -n 1 sh prettify.sh
+	echo sync-test??.xml | xargs -n 1 sh prettify.sh
 
-check: ccnx.xsd ccnx.dtd security.xsd security.dtd repository.xsd repository.dtd $(W3REFS) $(FUZZED) always
+check: ccnx.xsd ccnx.dtd security.xsd security.dtd repository.xsd repository.dtd sync.xsd sync.dtd $(W3REFS) $(FUZZED) always
 	@:> expectedfailures.out
 	xmllint --noout --schema XMLSchema.xsd XMLSchema.xsd || ./oops
 	xmllint --noout ccnx.xsd
@@ -67,12 +76,16 @@ check: ccnx.xsd ccnx.dtd security.xsd security.dtd repository.xsd repository.dtd
 	@echo === security.xsd is well-formed
 	xmllint --noout repository.xsd
 	@echo === repository.xsd is well-formed
+	xmllint --noout sync.xsd
+	@echo === sync.xsd is well-formed
 	xmllint --valid --nowarning --noout ccnx.xsd
 	@echo === ccnx.xsd is valid according to its dtd
 	xmllint --valid --nowarning --noout security.xsd
 	@echo === security.xsd is valid according to its dtd
 	xmllint --valid --nowarning --noout repository.xsd
 	@echo === repository.xsd is valid according to its dtd
+	xmllint --valid --nowarning --noout sync.xsd
+	@echo === sync.xsd is valid according to its dtd
 	xmllint --schema XMLSchema.xsd --noout ccnx.xsd
 	xmllint --noout --schema ccnx.xsd ccn-test??.xml
 	xmllint --noout --dtdvalid ccnx.dtd ccn-test??.xml
@@ -82,12 +95,18 @@ check: ccnx.xsd ccnx.dtd security.xsd security.dtd repository.xsd repository.dtd
 	xmllint --schema XMLSchema.xsd --noout repository.xsd
 	xmllint --noout --schema repository.xsd repository-test??.xml
 	xmllint --noout --dtdvalid repository.dtd repository-test??.xml
+	xmllint --schema XMLSchema.xsd --noout sync.xsd
+	xmllint --noout --schema sync.xsd sync-test??.xml
+	xmllint --noout --dtdvalid sync.dtd sync-test??.xml
+
 	ls ccn-schemabad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --schema ccnx.xsd "$$i"; do :; done
 	ls security-schemabad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --schema security.xsd "$$i"; do :; done
 	ls repository-schemabad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --schema repository.xsd "$$i"; do :; done
-	ls ccn-dtdbad??.xml ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid ccnx.dtd "$$i"; do :; done
-	ls security-dtdbad??.xml security-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid security.dtd "$$i"; do :; done
-	ls repository-dtdbad??.xml repository-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid repository.dtd "$$i"; do :; done
+	ls sync-schemabad??.xml sync-bad??.xml | while read i && ./shouldfail xmllint --noout --schema sync.xsd "$$i"; do :; done
+	ls ccn-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid ccnx.dtd "$$i"; do :; done
+	ls security-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid security.dtd "$$i"; do :; done
+	ls repository-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid repository.dtd "$$i"; do :; done
+	ls sync-bad??.xml | while read i && ./shouldfail xmllint --noout --dtdvalid sync.dtd "$$i"; do :; done
 	@diff expectedfailures.ref expectedfailures.out || echo "***" $(LECTURE)
 	: --------------------------- :
 	: Schema validation complete  :
@@ -149,6 +168,14 @@ security-schemabad01.xml: security-test01.xml
 check: repository-schemabad01.xml
 repository-schemabad01.xml: repository-test01.xml
 	sed -e '/Type/s/INFO/bad!/' $? > $@
+
+check: sync-bad00.xml
+sync-bad00.xml: sync-test00.xml
+	sed -e '/SyncConfigSliceList/d' $? > $@
+
+check: sync-schemabad25.xml
+sync-schemabad25.xml: sync-test25.xml
+	sed -e 's/TSoztEvAt4W/TS@ztEvAt4W/' $? > $@
 
 default all clean depend test check shared testinstall install uninstall: _always
 

@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -29,9 +29,19 @@ DERIVED_HTML =				\
 	StatusResponse.html		\
 	SignatureGeneration.html	\
 	Staleness.html			\
+	NameEnumerationProtocol.html	\
+	RepoPolicies.html		\
+	RepoProtocol.html		\
+	RepositoryInfoObject.html	\
+	SynchronizationProtocol.html	\
+	CreateCollectionProtocol.html	\
 	LinkMessages.html		\
 	dtd.html			\
 	xsd.html			\
+	repository.dtd.html			\
+	repository.xsd.html			\
+	sync.dtd.html			\
+	sync.xsd.html			\
 	DTAG.html			\
 
 DERIVED_INDEX = ../index.html index.html index.txt
@@ -67,6 +77,18 @@ dtd.html: dtd.txt $(XSDSRC)
 
 xsd.html: xsd.txt $(DTDSRC)
 	asciidoc --unsafe xsd.txt
+
+repository.dtd.html: repository.dtd.txt $(XSDSRC)
+	asciidoc --unsafe repository.dtd.txt
+
+repository.xsd.html: repository.xsd.txt $(DTDSRC)
+	asciidoc --unsafe repository.xsd.txt
+
+sync.dtd.html: sync.dtd.txt $(XSDSRC)
+	asciidoc --unsafe sync.dtd.txt
+
+sync.xsd.html: sync.xsd.txt $(DTDSRC)
+	asciidoc --unsafe sync.xsd.txt
 
 CryptographicAlgorithms.html: CryptographicAlgorithms.txt
 	asciidoc CryptographicAlgorithms.txt
@@ -109,6 +131,24 @@ BinaryEncoding.html: BinaryEncoding.txt
 
 CCNxProtocol.html: CCNxProtocol.txt
 	asciidoc CCNxProtocol.txt
+
+NameEnumerationProtocol.html: NameEnumerationProtocol.txt
+	asciidoc NameEnumerationProtocol.txt
+
+RepoPolicies.html: RepoPolicies.txt
+	asciidoc RepoPolicies.txt	
+
+RepoProtocol.html: RepoProtocol.txt
+	asciidoc RepoProtocol.txt	
+
+RepositoryInfoObject.html: RepositoryInfoObject.txt
+	asciidoc RepositoryInfoObject.txt
+
+SynchronizationProtocol.html: SynchronizationProtocol.txt
+	asciidoc SynchronizationProtocol.txt
+
+CreateCollectionProtocol.html: CreateCollectionProtocol.txt
+	asciidoc CreateCollectionProtocol.txt
 
 LinkMessages.html: LinkMessages.txt
 	asciidoc LinkMessages.txt

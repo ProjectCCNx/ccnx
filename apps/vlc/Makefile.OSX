@@ -12,7 +12,9 @@
 # FOR A PARTICULAR PURPOSE.
 #
 libdir = $(shell pkg-config --variable=libdir vlc-plugin )
-vlclibdir = $(libdir)/vlc
+# in a future VLC release (1.2.0?) we expect to see a pkg-config variable for the plugin directory.
+vlcplugindir := $(shell pkg-config --atleast-version=1.1.0 vlc-plugin && echo $(libdir)/vlc/plugins || echo $(libdir)/vlc/modules)
+vlcaccessdir := $(vlcplugindir)/access
 VLCPLUGINVERDEF = `pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER=\1/;s/\.//g;s/=0/=/'`
 
 # You may have to specify ARCHOPT in some cases, for instance:
@@ -30,15 +32,15 @@ clean:
 	rm -f libaccess_ccn_plugin.o libaccess_ccn_plugin.dylib
 
 install: all
-	mkdir -p $(DESTDIR)$(vlclibdir)/access/
-	install -m 0755 libaccess_ccn_plugin.dylib $(DESTDIR)$(vlclibdir)/access/
+	mkdir -p $(DESTDIR)$(vlcaccessdir)
+	install -m 0755 libaccess_ccn_plugin.dylib $(DESTDIR)$(vlcaccessdir)
 
 install-strip: all
-	mkdir -p $(DESTDIR)$(vlclibdir)/access/
-	install -s -m 0755 libaccess_ccn_plugin.dylib $(DESTDIR)$(vlclibdir)/access/
+	mkdir -p $(DESTDIR)$(vlcaccessdir)
+	install -s -m 0755 libaccess_ccn_plugin.dylib $(DESTDIR)$(vlcaccessdir)
 
 uninstall:
-	rm -f -- $(DESTDIR)$(vlclibdir)/access/libaccess_ccn_plugin.dylib
+	rm -f -- $(DESTDIR)$(vlcaccessdir)/libaccess_ccn_plugin.dylib
 
 # srcref unpacks the vlc sources, for browsing purposes, from the distfiles kept by macports.
 # This copy is not actually used for building the ccn plugin

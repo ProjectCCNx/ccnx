@@ -132,8 +132,8 @@ main(int argc, char **argv)
                 if (expire <= 0)
                     usage(progname);
                 break;
-	    case 'b':
-	        blocksize = atol(optarg);
+            case 'b':
+                blocksize = atol(optarg);
                 break;
             default:
             case 'h':
@@ -143,17 +143,14 @@ main(int argc, char **argv)
     }
     argc -= optind;
     argv += optind;
-    if (argv[0] == NULL)
+    if (argc != 1)
         usage(progname);
     name = ccn_charbuf_create();
     res = ccn_name_from_uri(name, argv[0]);
     if (res < 0) {
-        fprintf(stderr, "%s: bad ccn URI: %s\n", progname, argv[0]);
+        fprintf(stderr, "%s: bad CCN URI: %s\n", progname, argv[0]);
         exit(1);
     }
-    if (argv[1] != NULL)
-        fprintf(stderr, "%s warning: extra arguments ignored\n", progname);
-
     ccn = ccn_create();
     if (ccn_connect(ccn, NULL) == -1) {
         perror("Could not connect to ccnd");
@@ -255,7 +252,7 @@ main(int argc, char **argv)
                                        signed_info,
                                        buf,
                                        read_res,
-                                       NULL,
+                                       ccn_keystore_digest_algorithm(keystore),
                                        ccn_keystore_private_key(keystore));
         if (res != 0) {
             fprintf(stderr, "Failed to encode ContentObject (res == %d)\n", res);

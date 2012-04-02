@@ -48,7 +48,7 @@ struct ccn_signature;
 struct ccn_parsed_ContentObject;
 
 struct ccn_sigc *ccn_sigc_create(void);
-int ccn_sigc_init(struct ccn_sigc *ctx, const char *digest);
+int ccn_sigc_init(struct ccn_sigc *ctx, const char *digest, const struct ccn_pkey *priv_key);
 void ccn_sigc_destroy(struct ccn_sigc **);
 int ccn_sigc_update(struct ccn_sigc *ctx, const void *data, size_t size);
 int ccn_sigc_final(struct ccn_sigc *ctx, struct ccn_signature *signature, size_t *size, const struct ccn_pkey *priv_key);

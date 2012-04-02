@@ -1,0 +1,68 @@
+CCNPOKE(1)
+==========
+
+NAME
+----
+ccnpoke - Read data from stdin and send it as a single ContentObject in response to an interest. 
+
+SYNOPSIS
+--------
+*ccnpoke* [-hflv] [-k 'keyuri'] [-p 'n'] [-t 'type'] [-V 'seg'] [-w 'timeout'] [-x 'freshness'] 'ccnxuri'
+
+DESCRIPTION
+-----------
+The *ccnpoke* utility reads data from stdin and generates a single ContentOjbect,
+with attributes modfied by the given options, for the supplied CCNx
+URI, 'ccnxuri', and sends that object in response to a matching interest.
+
+OPTIONS
+-------
+*-h*::
+    Generate the help message.
+
+*-f*::
+    Force sending the ContentObject to ccnd even if there is no matching interest.
+    
+*-l*::
+    Set the FinalBlockId based on the last component of the name.
+    
+*-v*::
+    Report on stdout the name of the ContentObject written.
+
+*-k* 'keyuri'::
+    Specifies the name to be used in the KeyLocator of the ContentObject.
+
+*-p* 'n'::
+    Specifies the number of components of the URI that should be registered
+    in the interest filter.  'n'=0 implies registering ccnx:/.  'n' must not
+    be greater than the number of components in the name.  The default is to
+    register the name as given, which will not include any derived version
+    component implied by the *-V* option.
+
+*-t* 'type'::
+    Specifies the type to be encoded in the ContentObject.  Values are
+    DATA (default), ENCR, GONE, KEY, LINK, NACK, as documented for ContentObjects.
+
+*-V* 'seg'::
+    Generate a version stamp, and use the specfied segment number as a suffix.
+    If the segment number is "%00" then the FinalBlockId will also be set.
+
+*-w* 'timeout'::
+    Specifies the time to wait, in seconds, for an Interest to be received.
+    
+*-x* 'freshness'::
+    Specifies the Freshness, in seconds, to be encoded in the ContentObject.
+
+    
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure (syntax or usage error, error sending ContentObject)
+
+AUTHOR
+------
+Nick Briggs <briggs@parc.com>

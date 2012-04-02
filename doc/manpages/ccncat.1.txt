@@ -7,7 +7,7 @@ ccncat - Read streams of CCNx content and write to stdout
 
 SYNOPSIS
 --------
-*ccncat* [-h] [-d 'flags'] [-s 'scope'] [-a] 'ccnxnames'...
+*ccncat* [-h] [-d 'flags'] [-p 'pipeline'] [-s 'scope'] [-a] 'ccnxnames'...
 
 DESCRIPTION
 -----------
@@ -37,8 +37,12 @@ OPTIONS
           NoteTimeout = 32,
           NoteOpenClose = 64
 
+*-p* 'pipeline'::
+     Set the size of the pipeline.  Default 4.
+
 *-s* 'scope'::
-     Set the scope (integer) of the interests.
+     Set the scope (integer) of the interests.  Default unlimited.
+     scope may be 0(cache), 1(local), 2(neighborhood), 3(unlimited).
 
 *-a*::
      Allow stale data to be retrieved.

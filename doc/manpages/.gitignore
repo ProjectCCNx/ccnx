@@ -23,6 +23,10 @@ ccn_repo.1.html
 ccncat.1.html
 ccnslurp.1.html
 ccnchat.1.html
+ccnpeek.1.html
+ccnpoke.1.html
+ccnr.1.html
+SyncTest.1.html
 ccn_ccnbtoxml.1.pdf
 ccn_xmltoccnb.1.pdf
 ccnacl.1.pdf
@@ -48,6 +52,10 @@ ccn_repo.1.pdf
 ccncat.1.pdf
 ccnslurp.1.pdf
 ccnchat.1.pdf
+ccnpeek.1.pdf
+ccnpoke.1.pdf
+ccnr.1.pdf
+SyncTest.1.pdf
 index.html
 index.txt
 ccn_ccnbtoxml.1.fo
@@ -75,6 +83,10 @@ ccn_repo.1.fo
 ccncat.1.fo
 ccnslurp.1.fo
 ccnchat.1.fo
+ccnpeek.1.fo
+ccnpoke.1.fo
+ccnr.1.fo
+SyncTest.1.fo
 ccn_ccnbtoxml.1.xml
 ccn_xmltoccnb.1.xml
 ccnacl.1.xml
@@ -100,3 +112,9 @@ ccn_repo.1.xml
 ccncat.1.xml
 ccnslurp.1.xml
 ccnchat.1.xml
+ccnpeek.1.xml
+ccnpoke.1.xml
+ccnr.1.xml
+SyncTest.1.xml
+ccnrepoimport.1.xml
+ccnprintlink.1.xml
