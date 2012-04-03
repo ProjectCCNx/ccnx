@@ -51,10 +51,6 @@
 #define CCN_VERSION_TIMEOUT 400
 #define CCN_HEADER_TIMEOUT 400
 
-#define CACHING_TEXT N_("Caching value in ms")
-#define CACHING_LONGTEXT N_(                                            \
-                            "Caching value for CCN streams. This "      \
-                            "value should be set in milliseconds.")
 #define MAX_FIFO_TEXT N_("FIFO max blocks")
 #define MAX_FIFO_LONGTEXT N_(						\
 	"Maximum number of blocks held in FIFO "			\
@@ -79,7 +75,7 @@ static void *ccn_event_thread(void *p_this);
 
 vlc_module_begin();
 set_shortname(N_("CCNx"));
-set_description(N_("CCNx input"));
+set_description(N_("Access module for CCNx URIs"));
 set_category(CAT_INPUT);
 set_subcategory(SUBCAT_INPUT_ACCESS);
 add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS,
