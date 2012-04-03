@@ -158,13 +158,10 @@ public class RepositoryDataListener implements CCNContentHandler {
 					ContentName name = SegmentationProfile.segmentName(co.name(), largestSegmentNumberRequested + i);
 					// DKS - should use better interest generation to only get segments (TBD, in SegmentationProfile)
 					Interest newInterest = new Interest(name);
-					synchronized (_server) {
-						if (_server.getThrottle()) {
-							_throttled = true;
-							_restartInterest = newInterest;
-							handleData(co);
-							return null;
-						}
+					if (_server.getThrottle()) {
+						_throttled = true;
+						_restartInterest = newInterest;
+						break;
 					}
 					outputInterest(newInterest);
 				}
@@ -188,11 +185,15 @@ public class RepositoryDataListener implements CCNContentHandler {
 	}
 
 	public void restart() {
-		if (_throttled) {
-			_throttled = false;
-			if (null != _restartInterest) {
-				outputInterest(_restartInterest);
-				_restartInterest = null;
+		synchronized (_interests) {
+			if (_throttled) {
+				if (null != _restartInterest) {
+					Log.warning("Restarting - interest is {0}", _restartInterest);
+					outputInterest(_restartInterest);
+					_restartInterest = null;
+				} else
+					Log.warning("Warning - restart with no interest");
+				_throttled = false;
 			}
 		}
 	}
