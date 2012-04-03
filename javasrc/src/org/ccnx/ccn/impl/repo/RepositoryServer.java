@@ -613,19 +613,26 @@ public class RepositoryServer implements CCNStatistics {
 	}
 
 	public boolean getThrottle() {
-		return _throttled;
+		synchronized (this) {
+			return _throttled;
+		}
 	}
 
 	public void setThrottle(boolean throttle) {
-		Log.fine("Throttle set to {0}", throttle);
-		if (throttle == false && _throttled == true) {
+		if (Log.isLoggable(Log.FAC_REPO, Level.FINE	))
+			Log.fine(Log.FAC_REPO, "Throttle set to {0}", throttle);
+		boolean check;
+		synchronized (this) {
+			check = (throttle == false && _throttled == true);
+			_throttled = throttle;
+		}
+		if (check) {
 			synchronized (_currentListeners) {
 				for (RepositoryDataListener l : _currentListeners) {
 					l.restart();
 				}
 			}
 		}
-		_throttled = throttle;
 	}
 
 	// ==============================================================
