@@ -7,7 +7,7 @@ ccnprintlink - Prints information about specified links.
 
 SYNOPSIS
 --------
-*ccnprintlink* [-q] _linkURI_ [_linkURI_ ...]
+*ccnprintlink* [-q] 'linkuri' ['linkuri' ...]
 
 DESCRIPTION
 -----------
@@ -16,7 +16,7 @@ The *ccnprintlink* utility prints information about each of the links specified 
 OPTIONS
 -------
 *-q*::
-	If specified, sets the default Logging level to WARNING.
+	If specified, sets the default Logging level to "WARNING".
 
 EXIT STATUS
 -----------
