@@ -1,0 +1,44 @@
+CCNDCONTROL(1)
+==============
+
+NAME
+----
+ccndcontrol - manipulate CCNx forwarding table
+
+SYNOPSIS
+--------
+*ccndcontrol* [-v] -f 'configfile'
+
+*ccndcontrol* [-v] add 'uri' (upd|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]]
+
+*ccndcontrol* [-v] del 'uri' (upd|tcp) 'host' ['port' [flags [mcastttl [mcastif]]]]
+
+DESCRIPTION
+-----------
+The *ccndcontrol* utility was written as a Java-based workalike for ccndc(1), but is not being actively maintained or extended. In its current form, it serves as an example of how to use the Java API for prefix registration.
+
+The significance of the operands is as follows:
+
+* *'uri'* is the name prefix to be registered.
+
+* *'host'* identifies the remote hostname for this face.
+
+See the link:ccndc.1.html[ccndc(1)] man page for a more complete description of the operands.
+
+OPTIONS
+-------
+
+*-v*::
+	Sets the logging level to INFO and prints messages when prefixes are registered and when ccnd faces are created or deleted.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure
+
+AUTHOR
+------
+Tim Diebert <diebert@parc.com>
