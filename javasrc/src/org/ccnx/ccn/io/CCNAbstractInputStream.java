@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -55,8 +55,8 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 
 /**
  * This abstract class is the superclass of all classes representing an input stream of
- * bytes segmented and stored in CCN. 
- * 
+ * bytes segmented and stored in CCN.
+ *
  * @see SegmentationProfile for description of CCN segmentation
  */
 public abstract class CCNAbstractInputStream extends InputStream implements CCNContentHandler {
@@ -74,7 +74,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 */
 	protected LinkObject _dereferencedLink = null;
 
-	public enum FlagTypes { DONT_DEREFERENCE };
+	public enum FlagTypes { DONT_DEREFERENCE, BLOCKING, BLOCK_AFTER_FIRST_SEGMENT };
 
 	protected EnumSet<FlagTypes> _flags = EnumSet.noneOf(FlagTypes.class);
 
@@ -85,7 +85,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 
 	/**
 	 *  first segment of the stream we are reading, which is the GONE segment (see ContentType) if content is deleted.
-	 *  this cached first segment is used to supply certain information it contains, such as for computing digest only 
+	 *  this cached first segment is used to supply certain information it contains, such as for computing digest only
 	 *  when required
 	 */
 	private ContentObject _firstSegment = null;
@@ -93,7 +93,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	/**
 	 * Internal stream used for buffering reads. May include filters.
 	 */
-	protected InputStream _segmentReadStream = null; 
+	protected InputStream _segmentReadStream = null;
 
 	/**
 	 * The name prefix of the segmented stream we are reading, up to (but not including)
@@ -106,7 +106,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 * read, or read from previous blocks (for now, we assume that all segments in a
 	 * stream are created by the same publisher).
 	 */
-	protected PublisherPublicKeyDigest _publisher = null; 
+	protected PublisherPublicKeyDigest _publisher = null;
 
 	/**
 	 * The segment number to start with. If not specified, is SegmentationProfile#baseSegment().
@@ -114,7 +114,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	protected Long _startingSegmentNumber = null;
 
 	/**
-	 * The timeout to use for segment retrieval. 
+	 * The timeout to use for segment retrieval.
 	 */
 	protected int _timeout = SystemConfiguration.getDefaultTimeout();
 
@@ -132,8 +132,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 * to the same root, if so don't reverify signature. If not, assume it's part of
 	 * a new tree and change the root.
 	 */
-	protected byte [] _verifiedRootSignature = null; 
-	protected byte [] _verifiedProxy = null; 
+	protected byte [] _verifiedRootSignature = null;
+	protected byte [] _verifiedProxy = null;
 
 	protected boolean _atEOF = false;
 
@@ -157,22 +157,22 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	private long _holes = 0;
 	private long _totalReceived = 0;
 	private long _pipelineStartTime;
-	private Object readerReadyObj = new Object();
+	private final Object readerReadyObj = new Object();
 	private long readerReadyVal = -1;
 
 	private double avgResponseTime = -1;
 
-	private Object processingSegmentLock = new Object();
+	private final Object processingSegmentLock = new Object();
 	private long processingSegment = -1;
-	
-	private int processingDefer = 0;
+
+	private final int processingDefer = 0;
 
 	/**
-	 * Set up an input stream to read segmented CCN content under a given name. 
+	 * Set up an input stream to read segmented CCN content under a given name.
 	 * Note that this constructor does not currently retrieve any
 	 * data; data is not retrieved until read() is called. This will change in the future, and
 	 * this constructor will retrieve the first block.
-	 * 
+	 *
 	 * @param baseName Name to read from. If contains a segment number, will start to read from that
 	 *    segment.
 	 * @param startingSegmentNumber Alternative specification of starting segment number. If
@@ -187,7 +187,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 */
 	public CCNAbstractInputStream(
 			ContentName baseName, Long startingSegmentNumber,
-			PublisherPublicKeyDigest publisher, 
+			PublisherPublicKeyDigest publisher,
 			ContentKeys keys,
 			EnumSet<FlagTypes> flags,
 			CCNHandle handle) throws IOException {
@@ -196,11 +196,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		if (null == baseName) {
 			throw new IllegalArgumentException("baseName cannot be null!");
 		}
-		_handle = handle; 
+		_handle = handle;
 		if (null == _handle) {
 			_handle = CCNHandle.getHandle();
 		}
-		_publisher = publisher;	
+		_publisher = publisher;
 
 		if (null != keys) {
 			keys.requireDefaultAlgorithm();
@@ -227,7 +227,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		}
 		if (startingSegmentNumber != null) {
 			_startingSegmentNumber = startingSegmentNumber;
-		} 
+		}
 		//TODO this base name does not include the version!!!!!!!!!
 		Log.info(Log.FAC_IO, "CCNAbstractInputStream: {0} segment {1}", _baseName, _startingSegmentNumber);
 		startPipeline();
@@ -235,7 +235,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 
 	/**
 	 * Set up an input stream to read segmented CCN content starting with a given
-	 * ContentObject that has already been retrieved.  
+	 * ContentObject that has already been retrieved.
 	 * @param startingSegment The first segment to read from. If this is not the
 	 * 		first segment of the stream, reading will begin from this point.
 	 * 		We assume that the signature on this segment was verified by our caller.
@@ -252,7 +252,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			EnumSet<FlagTypes> flags,
 			CCNHandle handle) throws IOException  {
 		super();
-		_handle = handle; 
+		_handle = handle;
 		if (null == _handle) {
 			_handle = CCNHandle.getHandle();
 		}
@@ -285,7 +285,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 
 			_pipelineStartTime = System.currentTimeMillis();
 			if (SystemConfiguration.PIPELINE_STATS)
-				System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1"+ "avgResponseTime "+avgResponseTime);		
+				System.out.println("plot "+(System.currentTimeMillis() - _pipelineStartTime)+" inOrder: "+inOrderSegments.size() +" outOfOrder: "+outOfOrderSegments.size() + " interests: "+_sentInterests.size() +" holes: "+_holes + " received: "+_totalReceived+" ["+_baseName+"].1"+ "avgResponseTime "+avgResponseTime);
 
 			long segmentToGet = -1;
 			Interest interest = null;
@@ -340,7 +340,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 
 	private void receivePipelineContent(ContentObject co) {
 		long returnedSegment = SegmentationProfile.getSegmentNumber(co.name());
-		ArrayList<Interest> toRemove = new ArrayList<Interest>();	
+		ArrayList<Interest> toRemove = new ArrayList<Interest>();
 
 		//are we at the last segment?
 		synchronized(inOrderSegments) {
@@ -367,7 +367,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			toRemove.clear();
 			//_lastRequestedPipelineSegment = returnedSegment;
 
-		//no good reason to release the lock here...	
+		//no good reason to release the lock here...
 		//}
 		//synchronized(inOrderSegments) {
 			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
@@ -481,13 +481,13 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			while (_sentInterests.size() + inOrderSegments.size() + outOfOrderSegments.size() + processingDefer < SystemConfiguration.PIPELINE_SIZE && !doneAdvancing) {
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: _sentInterests.size() = {0} inOrderSegments.size() = {1} outOfOrderSegments.size()  = {2} processingDefer = {3} total = {4}", _sentInterests.size(), inOrderSegments.size(), outOfOrderSegments.size(), processingDefer, (_sentInterests.size() + inOrderSegments.size() + outOfOrderSegments.size() + processingDefer) );
-				
+
 				//we have tokens to use
 				i = null;
 
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: _lastSegmentNumber = {0}", _lastSegmentNumber);
-				
+
 				//if we haven't gotten a valid base segment, we do not want to advance the pipeline.
 				if (_lastRequestedPipelineSegment == SegmentationProfile.baseSegment()) {
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: the last segment number is the base segment, need to make sure we have received the base segment before we press on");
@@ -499,7 +499,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: _lastInOrderSegment == {0}, we have received the base segment, we can advance the pipeline!", _lastInOrderSegment);
 					}
 				}
-				
+
 				if (_lastSegmentNumber == -1 || _lastRequestedPipelineSegment < _lastSegmentNumber) {
 					//we don't have the last segment already...
 					i = SegmentationProfile.segmentInterest(_basePipelineName, _lastRequestedPipelineSegment + 1, _publisher);
@@ -568,7 +568,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		long elapsed2 = -1;
 
 		long newUserTime = -1;
-		
+
 		Interest expressed;
 		try {
 			synchronized (inOrderSegments) {
@@ -653,7 +653,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 					index2++;
 				}
 
-				
+
 				if(toDelete!=null) {
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: we can try again to fill the hole!");
@@ -714,7 +714,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 							Log.info(Log.FAC_PIPELINE, "PIPELINE: adding the first holefilling attempt! {0}",  i);
 							//need to use the previous user time for this expression
 							//userTime = userTime - elapsed1;
-							
+
 						}
 					}
 					//i.userTime = System.currentTimeMillis();
@@ -783,14 +783,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
                     }
 				}
 			}
-            
+
 			if (_lastInOrderSegment != -1)
 				return _lastInOrderSegment +1;
 			else
 				return _startingSegmentNumber;
 		}
 	}
-    
+
 	private boolean haveSegmentBuffered(long segmentNumber) {
 		synchronized(inOrderSegments) {
 			ContentObject co = null;
@@ -837,7 +837,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 					if (inOrderSegments.size() > 0 || segmentNumber == 1)
 						advancePipeline();
 					else
-						advancePipeline(); 
+						advancePipeline();
 					return co;
 				}
 			}
@@ -886,7 +886,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)){
 
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: detected a pipeline jump!!!!");
-				
+
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump adjustment conditions");
 					printSegments();
 					String s = "pre-pipeline jump interests: [";
@@ -895,7 +895,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 					s += "]";
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: "+s);
 				}
-				
+
 				Interest interest = SegmentationProfile.segmentInterest(_basePipelineName, segmentNumber, _publisher);
 				try {
 					//probably could just clear out some pipeline state instead of clearing all of it...
@@ -922,7 +922,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 					//resetPipelineState();
 					//_lastRequestedPipelineSegment = segmentNumber;
 					_nextPipelineSegment = segmentNumber;
-					
+
 					//now check our received segments
 					for (ContentObject segment : inOrderSegments) {
 						segNum = SegmentationProfile.getSegmentNumber(segment.name());
@@ -943,7 +943,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 						}
 					}
 					inOrderSegments.removeAll(toRemove);
-					
+
 					toRemove.clear();
 					for (ContentObject segment : outOfOrderSegments) {
 						segNum = SegmentationProfile.getSegmentNumber(segment.name());
@@ -960,7 +960,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 						}
 					}
 					outOfOrderSegments.removeAll(toRemove);
-					
+
 					long segNum2;
 					//now move segments from in order to out of order...
 					if (outOfOrderSegments.size() == 0) {
@@ -969,10 +969,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 					} else {
 						ContentObject segX;
 						for (int x = 0 ; x < inOrderSegments.size(); x++) {
-							segX = (ContentObject)inOrderSegments.get(x);
+							segX = inOrderSegments.get(x);
 							segNum = SegmentationProfile.getSegmentNumber(segX.name());
 							for (int y = 0 ; y < inOrderSegments.size(); y++) {
-								segNum2 = SegmentationProfile.getSegmentNumber(((ContentObject)outOfOrderSegments.get(y)).name());
+								segNum2 = SegmentationProfile.getSegmentNumber((outOfOrderSegments.get(y)).name());
 								if (segNum < segNum2) {
 									Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump - moving segment {0} to position {1} in outOfOrderSegments", segNum, y);
 									outOfOrderSegments.add(y, segX);
@@ -983,15 +983,15 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 						}
 					}
 					inOrderSegments.clear();
-					
-					
+
+
 					//resetting some of the state...
 					_lastRequestedPipelineSegment = lastExpressed;
 					_lastInOrderSegment = segmentNumber - 1;
-					
+
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump - we have now reset the state...  now we can try asking for the next segments - advance pipeline with holefilling");
 					advancePipeline();
-					
+
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO)) {
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: we hadn't asked for segment {0} asking now... {1}", segmentNumber, interest);
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: pipeline jump _lastRequestedPipelineSegment {0} _lastInOrderSegment {1}", _lastRequestedPipelineSegment, _lastInOrderSegment);
@@ -1003,8 +1003,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 						s += "]";
 						Log.info(Log.FAC_PIPELINE, "PIPELINE: "+s);
 					}
-					
-					
+
+
 				} catch (IOException e) {
 					if (Log.isLoggable(Log.FAC_PIPELINE, Level.WARNING))
 						Log.warning(Log.FAC_PIPELINE, "failed to express interest for CCNAbstractInputStream pipeline: {0}", e.getMessage());
@@ -1141,7 +1141,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			} else {
 				//do not include hole filling responses, they will be extra fast
 				//if (interest.exclude()==null)
-				
+
 				//TODO:  find true cause of this bug, temporary fix to get seek/skip fix merged
 				long newResponseTime = starttime - interest.userTime;
 				if (newResponseTime < 100 * avgResponseTime)
@@ -1158,10 +1158,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 				Log.info(Log.FAC_PIPELINE, "PIPELINE: in handleContent after reading {0} avgResponseTime {1}", result.name(), avgResponseTime);
 			is = new IncomingSegment(result, interest);
-			
+
 			processingSegment = SegmentationProfile.getSegmentNumber(is.content.name());
 		}
-		
+
 		synchronized(inOrderSegments){
 
 			//was this a content object we were looking for?
@@ -1292,16 +1292,16 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 * @return The version of the stream being read, if its name is versioned.
 	 */
 	public CCNTime getVersion() {
-		if (null == _baseName) 
+		if (null == _baseName)
 			return null;
 		return VersioningProfile.getTerminalVersionAsTimestampIfVersioned(_baseName);
 	}
 
 	/**
-	 * Returns the digest of the first segment of this stream. 
+	 * Returns the digest of the first segment of this stream.
 	 * Together with firstSegmentNumber() and getBaseName() this method may be used to
 	 * identify the stream content unambiguously.
-	 * 
+	 *
 	 * @return The digest of the first segment of this stream
 	 * @throws NoMatchingContentException if no content available
 	 * @throws IOException on communication error
@@ -1338,7 +1338,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	}
 
 	/**
-	 * Actual mechanism used to trigger segment retrieval and perform content reads. 
+	 * Actual mechanism used to trigger segment retrieval and perform content reads.
 	 * Subclasses define different schemes for retrieving content across segments.
 	 * @param buf As in read(byte[], int, int).
 	 * @param offset As in read(byte[], int, int).
@@ -1371,7 +1371,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		while (newSegment.isType(ContentType.LINK) && (!hasFlag(FlagTypes.DONT_DEREFERENCE))) {
 			// Automated dereferencing. Want to make a link object to read in this link, then
 			// dereference it to get the segment we really want. We then fix up the _baseName,
-			// and continue like nothing ever happened. 
+			// and continue like nothing ever happened.
 			theLink = new LinkObject(newSegment, _handle);
 			pushDereferencedLink(theLink); // set _dereferencedLink to point to the new link, pushing
 			// old ones down the stack if necessary
@@ -1401,11 +1401,11 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 					// so can call it more than once.
 					throw _dereferencedLink.getError();
 				} else {
-					throw new NoMatchingContentFoundException("Cannot find first segment of " + getBaseName() + ", which is a link pointing to " + _dereferencedLink.link().targetName());					
+					throw new NoMatchingContentFoundException("Cannot find first segment of " + getBaseName() + ", which is a link pointing to " + _dereferencedLink.link().targetName());
 				}
 			}
 			_baseName = SegmentationProfile.segmentRoot(newSegment.name());
-			// go around again, 
+			// go around again,
 		}
 
 		_firstSegment = newSegment;
@@ -1444,7 +1444,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		// getSegment will ensure we get a requested publisher (if we have one) for the
 		// first segment; once we have a publisher, it will ensure that future segments match it.
 		_publisher = newSegment.signedInfo().getPublisherKeyID();
-		
+
 		if (deletionInformation() != newSegment) { // want pointer ==, not equals() here
 			// if we're decrypting, then set it up now
 			if (_keys != null) {
@@ -1477,7 +1477,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 				// decrypting a whole ContentObject at a time. It's not a huge security risk,
 				// and right now we can't rewind the buffers so if we do try to decode out of
 				// an encrypted block we constantly restart from the beginning and redecrypt
-				// the content. 
+				// the content.
 				// Previously we used our own UnbufferedCipherInputStream class directly as
 				// our _segmentReadStream for encrypted data, as Java's CipherInputStreams
 				// assume block-oriented boundaries for decryption, and buffer incorrectly as a result.
@@ -1501,7 +1501,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 				}
 				if ((null == tailData) || (0 == tailData.length)) {
 					_segmentReadStream = new ByteArrayInputStream(bodyData);
-				} 
+				}
 				else if ((null == bodyData) || (0 == bodyData.length)) {
 					_segmentReadStream = new ByteArrayInputStream(tailData);
 				}
@@ -1599,7 +1599,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			} else {
 				if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: we don't have segment {0} pipelined... blocking", number);
-				
+
 				//we don't have the segment...  might just be that it isn't here yet, but this might be an out of order request
 				if (number < _lastInOrderSegment)
 					Log.info(Log.FAC_PIPELINE, "PIPELINE: we do not have segment {0} and the last in order segment was {1}, we must have had a skip/seek", number, _lastInOrderSegment);
@@ -1621,17 +1621,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 							sleepCheck = SystemConfiguration.EXTRA_LONG_TIMEOUT;
 						else
 							sleepCheck = _timeout - sleep;
-						if(avgResponseTime > 0 && avgResponseTime < (long)SystemConfiguration.SHORT_TIMEOUT) {
+						if(avgResponseTime > 0 && avgResponseTime < SystemConfiguration.SHORT_TIMEOUT) {
 							if(avgResponseTime > sleepCheck)
 								inOrderSegments.wait(sleepCheck);
 							else
 								inOrderSegments.wait((long)avgResponseTime);
 						}
 						else {
-							if((long)SystemConfiguration.SHORT_TIMEOUT > sleepCheck)
+							if(SystemConfiguration.SHORT_TIMEOUT > sleepCheck)
 								inOrderSegments.wait(sleepCheck);
 							else
-								inOrderSegments.wait((long)SystemConfiguration.SHORT_TIMEOUT);
+								inOrderSegments.wait(SystemConfiguration.SHORT_TIMEOUT);
 						}
 					} catch(InterruptedException e1) {
 						if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
@@ -1707,7 +1707,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		if (null != _currentSegment.signedInfo().getFinalBlockID()) {
 			if (Arrays.equals(_currentSegment.signedInfo().getFinalBlockID(), _currentSegment.name().lastComponent())) {
 				if (Log.isLoggable(Log.FAC_IO, Level.FINER)) {
-					Log.finer(Log.FAC_IO, "getNextSegment: there is no next segment. We have segment: " + 
+					Log.finer(Log.FAC_IO, "getNextSegment: there is no next segment. We have segment: " +
 							DataUtils.printHexBytes(_currentSegment.name().lastComponent()) + " which is marked as the final segment.");
 				}
 				return false;
@@ -1742,7 +1742,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	}
 
 	/**
-	 * Retrieves the first segment of the stream, based on specified startingSegmentNumber 
+	 * Retrieves the first segment of the stream, based on specified startingSegmentNumber
 	 * (see #CCNAbstractInputStream(ContentName, Long, PublisherPublicKeyDigest, ContentKeys, CCNHandle)).
 	 * @return the first segment, if found.
 	 * @throws IOException If can't get a valid starting segment number
@@ -1751,13 +1751,17 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 		if (null != _firstSegment) {
 			return _firstSegment;
 		} else if (null != _startingSegmentNumber) {
+			int oldTimeout = _timeout;
+			if (hasFlag(FlagTypes.BLOCKING))
+				setTimeout(SystemConfiguration.NO_TIMEOUT);
 			ContentObject firstSegment = getSegment(_startingSegmentNumber);
+			setTimeout(oldTimeout);
 			if (Log.isLoggable(Log.FAC_IO, Level.FINE)) {
-				Log.fine(Log.FAC_IO, "getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " + 
+				Log.fine(Log.FAC_IO, "getFirstSegment: segment number: " + _startingSegmentNumber + " got segment? " +
 						((null == firstSegment) ? "no " : firstSegment.name()));
 			}
-			// Do not call setFirstSegment() here because that should only be done when 
-			// we are initializing since it does one-time processing including changing the 
+			// Do not call setFirstSegment() here because that should only be done when
+			// we are initializing since it does one-time processing including changing the
 			// current segment.  Callers to this method may be simply needing the first segment
 			// without changing current.
 			return firstSegment;
@@ -1772,8 +1776,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 * Overridden by subclasses to implement narrower constraints on names. Once first
 	 * segment is retrieved, further segments can be identified just by segment-naming
 	 * conventions (see SegmentationProfile).
-	 * 
-	 * @param desiredName The expected name prefix for the stream. 
+	 *
+	 * @param desiredName The expected name prefix for the stream.
 	 * 	For CCNAbstractInputStream, assume that desiredName contains the name up to but not including
 	 * 	segmentation information.
 	 * @param segment The potential first segment.
@@ -1841,7 +1845,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	/**
 	 * Returns the segment number for the next segment.
 	 * Default segmentation generates sequentially-numbered stream
-	 * segments but this method may be overridden in subclasses to 
+	 * segments but this method may be overridden in subclasses to
 	 * perform re-assembly on streams that have been segmented differently.
 	 * @return The index of the next segment of stream data.
 	 */
@@ -1896,7 +1900,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			// this way all retry behavior is localized in the various versions of getFirstSegment.
 			// Previously what would happen is getFirstSegment would be called by isGone, return null,
 			// and we'd have a second chance to catch it on the call to update if things were slow. But
-			// that means we would get a more general update on a gone object.  
+			// that means we would get a more general update on a gone object.
 		}
 		if (_firstSegment.isType(ContentType.GONE)) {
 			return true;
@@ -1906,8 +1910,8 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	}
 
 	/**
-	 * Return the single segment of a stream marked as GONE.  This method 
-	 * should be called only after checking isGone() == true otherwise it 
+	 * Return the single segment of a stream marked as GONE.  This method
+	 * should be called only after checking isGone() == true otherwise it
 	 * may return the wrong result.
 	 * @return the GONE segment or null if state unknown or stream is not marked GONE
 	 */
@@ -1941,7 +1945,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 			ContentObject firstSegment = getFirstSegment();
 			setFirstSegment(firstSegment);
 		}
-		return _firstSegment.signedInfo().getKeyLocator();		
+		return _firstSegment.signedInfo().getKeyLocator();
 	}
 
 	/**
@@ -1959,18 +1963,18 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	}
 
 	/**
-	 * @return Whether this stream believes it is at eof (has read past the end of the 
+	 * @return Whether this stream believes it is at eof (has read past the end of the
 	 *   last segment of the stream).
 	 */
-	public boolean eof() { 
+	public boolean eof() {
 		//Log.finest(Log.FAC_IO, "Checking eof: there yet? " + _atEOF);
-		return _atEOF; 
+		return _atEOF;
 	}
 
 	@Override
 	public void close() throws IOException {
 		Log.info(Log.FAC_IO, "CCNAbstractInputStream: close {0}:  shutting down pipelining", _baseName);
-		
+
 		//now that we have pipelining, we need to cancel our interests and clean up
 
 		//cancel our outstanding interests
@@ -1982,7 +1986,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	public synchronized void mark(int readlimit) {
 		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: in mark({0}) currentSegment {1}", readlimit, currentSegmentNumber());
-		
+
 		// Shouldn't have a problem if we are GONE, and don't want to
 		// deal with exceptions raised by a call to isGone.
 		_readlimit = readlimit;
@@ -2049,7 +2053,7 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 
 		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: in skip({0}) currentSegment {1}", n, currentSegmentNumber());
-		
+
 		if (isGone())
 			return 0;
 		if (Log.isLoggable(Log.FAC_IO, Level.FINER))
@@ -2077,10 +2081,10 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 * @throws IOException
 	 */
 	public void seek(long position) throws IOException {
-		
+
 		if (Log.isLoggable(Log.FAC_PIPELINE, Level.INFO))
 			Log.info(Log.FAC_PIPELINE, "PIPELINE: in seek({0}) currentSegment {1}", position, currentSegmentNumber());
-		
+
 		if (isGone())
 			return; // can't seek gone stream
 
