@@ -277,6 +277,7 @@ static void CCNClose(vlc_object_t *p_this)
         block_FifoEmpty(p_sys->p_fifo);
     vlc_cancel(p_sys->thread);
     vlc_join(p_sys->thread, NULL);
+    vlc_mutex_lock(&p_sys->lock);
     if (p_sys->p_fifo) {
         block_FifoRelease(p_sys->p_fifo);
         p_sys->p_fifo = NULL;
@@ -293,6 +294,7 @@ static void CCNClose(vlc_object_t *p_this)
         p_sys->p_name = NULL;
     }
     ccn_destroy(&(p_sys->ccn));
+    vlc_mutex_unlock(&p_sys->lock);
     vlc_mutex_destroy(&p_sys->lock);
     if (p_sys->buf) {
         free(p_sys->buf);
