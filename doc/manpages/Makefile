@@ -32,6 +32,7 @@ PAGE_NAMES =        		\
 	ccnputfile		\
 	ccnputmeta		\
 	ccngetmeta		\
+	ccnlibtest		\
 	ccnnamelist		\
 	ccnrm			\
 	ccnseqwriter		\
@@ -43,10 +44,11 @@ PAGE_NAMES =        		\
 	ccnpoke			\
 	ccnr			\
 	SyncTest		\
-	ccnrepoimport	\
-	ccnprintlink \
+	ccnrepoimport		\
+	ccnprintlink		\
+	ccntestloop \
 
-PROJECT_NUMBER = 0.5.1
+PROJECT_NUMBER = 0.6.0rc1
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
@@ -78,12 +80,14 @@ clean-documentation:
 	rm -f $(NONSOURCE)
 
 .gitignore: Makefile
-	for i in $(NONSOURCE); do echo $$i; done > $@
+	@for i in $(NONSOURCE); do echo $$i; done > $@
 
-depend: Makefile
-	@for i in $(PAGE_NAMES); do echo $$i.1.html: $$i.1.txt; done > depend
-	@for i in $(PAGE_NAMES); do echo $$i.1.pdf: $$i.1.txt; done >> depend
-	@for i in $(PAGE_NAMES); do echo $$i.1: $$i.1.txt;     done >> depend
+depend: .gitignore _always
+	@for i in $(PAGE_NAMES); do echo $$i.1.html: $$i.1.txt; done > depend.mk+
+	@for i in $(PAGE_NAMES); do echo $$i.1.pdf: $$i.1.txt; done >> depend.mk+
+	@for i in $(PAGE_NAMES); do echo $$i.1: $$i.1.txt;     done >> depend.mk+
+	@diff depend.mk depend.mk+ || mv depend.mk+ depend.mk
+	@rm -f depend.mk+
 
 index.html: index.txt
 	asciidoc index.txt
@@ -105,6 +109,6 @@ default all clean clean-documentation test check shared documentation dist-docs 
 
 _always:
 
-.PHONY: _always
+.PHONY: _always depend
 
-include depend
+include depend.mk

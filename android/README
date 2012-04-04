@@ -109,8 +109,8 @@ these steps:
   the CCNx-Android-Services/jni folder has a link to csrc/.  We have
   also include csrc/ccnd/android_{main,msg}.c.  android_main.c replaces
   ccnd_main.c in Android.mk and is used to startup ccnd procedurally
-  rather than from a main() method.  android_msg.c replaces ccnd_msg.c
-  in Android.mk and sends ccnd log messages to the Android log.
+  rather than from a main() method.  android_main.c is now used to 
+  send ccnd log messages to the Android log.
 
   Take a look in jni/controller/ctl_ccnd.c for the JNI bindings to
   the ccnd code.
@@ -124,6 +124,10 @@ Android 3.x devices (and possibly some 2.x) devices the crypto support includes 
 make honeycomb
 
 This change affects CCNx-Android-Services, CCNx-Android-Chat, and CCNx-Android-StartupExamples.  Because of the size of the jar file (around 1.5mb) we are interested in a better solution long term, though there is no indication Google has changed their approach, except to enhance the android crypto library to rely upon functionality delivered through OpenSSL.
+
+Ice Cream Sandwich 
+==================
+The 4.x series of Android needs additional testing before it can be fully supported.  Use make honeycomb for building.
 
 Installing
 ===========

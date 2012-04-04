@@ -1,4 +1,4 @@
-# conf/SunOS.sh
+# conf/SunOS-5.10.mk
 # 
 # Part of the CCNx distribution.
 #
@@ -11,15 +11,5 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-PATH=/usr/xpg6/bin:/usr/xpg4/bin:$PATH
-export PATH
-echo SH = `which sh` >> conf.mk
-whichcc=`which cc`
-gcciscc="`echo $whichcc | grep gnu`"
-echo Using CC found in $whichcc
-if test \( -z "$gcciscc" \)
-then
-	echo "PLATCFLAGS = -mt -Kpic" >> conf.mk
-else
-	echo "PLATCFLAGS = " >> conf.mk
-fi 
+MORE_LDLIBS = -L/usr/local/ssl/lib -R/usr/local/ssl/lib -L/usr/sfw/lib -R/usr/local/ssl/lib -lmtmalloc -lnsl -lsocket
+CPREFLAGS = -I../include -I/usr/local/ssl/include -I/usr/sfw/include

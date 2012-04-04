@@ -1,9 +1,76 @@
+Changes between 0.5.1 and 0.6.0:
+--------------------------------
+This highlights some important changes since the most recent numbered release.
+Refer to http://www.ccnx.org/redmine/ for more details.
+
+  * A new varargs constructor has been added to ContentNames, a new Component
+    class has been created, and ContentNameProvider and ComponentProvider
+    interfaces have been provided to simplify the generation and minimize the
+    overhead of building ContentNames. The Component class provides an
+    immutable Component type, which encapsulates the component as a byte[]
+    array, that is designed to hold static components to be passed into
+    ComponentName constructors. In code, a Component should be used wherever
+    possible in lieu of a static final byte[] array or a static final String,
+    to avoid unnecessary copying.
+
+    The ContentName varargs constructor, and the ContentNameProvider and
+    ComponentProvider interfaces, allow classes to pass ContentNames and
+    Components directly into the ContentName constructor.
+
+    Most of the static component-related methods that previously existed under
+    ContentName have been moved to the new Component class. The old methods
+    remain available but are deprecated; it is recommended that code be changed
+    to use the new static methods under Component. Please see Component,
+    ContentName, and ContentNameProvider documentation for more information.
+
+  * Issues Resolved:
+    * Bug 100046 OpenSolaris build fails when cc is actually gcc
+    * Feature 100070 clean up exception hierarchy, use
+    * Bug 100138 building
+    * Bug 100470 make in android directory with current tools leaves chaff
+    * Feature 100499 Unify ContentName constructors
+    * Bug 100605 No man pages for some of the java utilities
+    * Bug 100645 Android CCNx service control - tapping "Start All" button
+      multiple times quickly causes services to fail
+    * Feature 100647 Default support for multiple architectures in MacOS X build
+    * Support 100662 Setup CCNx Open Source project commit notifications via
+      email + outbound tweets for all commits to projectccnx
+    * Bug 100664 Remove ccnd/android_msg.c
+    * Feature 100675 C/Java Libraries should be able to use different digest
+      algorithms based on key type for signing
+    * Bug 100676 Multiple registrations using ccn_set_interest_filter with same
+      prefix do not work well
+    * Bug 100682 CCNx tests uses grep flags unsupported by Solaris SunOS
+      default grep but tests still succeed
+    * Bug 100688 Man page for ccntestloop
+    * Feature 100690 Improve decoding performance
+    * Bug 100691 Inconsistent formatting and use of asciidoc markup
+    * Support 100692 Prepare for ccnx-0.6.0 release
+    * Bug 100694 Fix ccntestloop stop command to more reliably clean up spawned
+      processes
+    * Support 100695 Improve comments in ccnd
+    * Bug 100696 Broken link in top-level README
+    * Support 100697 Prepare for ccnx-0.5.2 release
+    * Feature 100698 Add use of deltas to the RootAdvise protocol
+    * Bug 100699 ccndc fails with Unable to create face in ccnx-0.5.1 on guest OS
+    * Support 100700 Add ccnx-0.5.x api-stable branch
+    * Bug 100702 Intermittent test_repo_performance failures on slow platforms
+    * Bug 100703 sync header files include other files only needed for
+      implementation
+    * Feature 100706 Integrate ccn_schedule events with ccn_run()
+    * Feature 100707 Provide interface for applications to set up Sync
+      configuration slices and receive notification of (newly) sync'ed
+      ContentObjects
+    * Feature 100709 Update schema and assign DTAG for new sync delta
+      RootAdvise response
+
+
 Changes between 0.5.0 and 0.5.1:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
 Refer to http://www.ccnx.org/redmine/ for more details.
 
-  * As a result of Sun Java JDK packages being removed for Ubuntu (see
+  • As a result of Sun Java JDK packages being removed for Ubuntu (see
     https://lists.ubuntu.com/archives/ubuntu-security-announce/2011-December/
     001528.html), we are now using OpenJDK for Ubuntu.  Please see
     csrc/README.linux for more information.
@@ -22,7 +89,7 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 	  environment variable settings for logging
 	* Support 100660 Prepare for ccnx-0.5.1 release
 	* Bug 100665 Graphics missing from protocol descriptions
-	* Feature 100666 ccnd should provide a way to specify default staleness
+	* Feature 100666 ccnd should provide a way to specify default staleness 
 	* Bug 100667 Man page for synctest can't be accessed from Wiki
 	* Bug 100668 implement destroyface in ccndc
 	* Feature 100669 Add parameter to ccnpoke command for specifying the length
@@ -88,7 +155,7 @@ Refer to http://www.ccnx.org/redmine/ for more details.
   * The default for a RepositoryFlowControl has changed from allowing any
      Repository to answer to requiring only a local (connected to the same ccnd
      as the application) Repository.
-
+     
      Direct users of the RepositoryFlowControl class can control the behavior
      through a (previously present) boolean in the constructor.
 
@@ -231,7 +298,7 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 				 leak detector
 	* Bug 100573 Excessive neighbor-check interests
 	* Bug 100575 java input streams don't honor NO_TIMEOUT
-	* Bug 100583 Android apps for CCNx should work with modern Android SDK
+	* Bug 100583 Android apps for CCNx should work with modern Android SDK 
 				(r13-r15, see android/README.build for details)
 
 
@@ -243,8 +310,7 @@ Refer to http://www.ccnx.org/redmine/ for more details.
   * The ant features used to process properties, -D<property>=<value> do not work with
 	ant 1.7.1.	If you have not done so already, you need to
 	update to ant 1.8.2.  Update in supported Ant version is reflected in README.
-  * Proper args for using the 'ccn_repo signal' command is reflected in README.
-
+  * Proper args for using the 'ccn_repo signal' command is reflected in README.	   
   * Issues Resolved:
 	* Feature 100203 Rename updateheader command line program
 	* Feature 100224 Deprecate backward-compatibility support for older header
@@ -300,10 +366,10 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 	* Bug 100538 Install ccnsimplecat program
 	* Feature 100535 Add the ability to set a default scope on a CCNHandle.
 	* Feature 100541 ccnnamelist should be able to read from a pipe as well as mmap accessible files
-
+	
 Changes between 0.3.0 and 0.4.0:
 --------------------------------
-
+ 
   * The 'ping' responder in ccnd is deprecated. For compatibility, it is still
 	present by default, but further use should be phased out. The libraries
 	have been changed to use local service discovery instead. The java option
@@ -404,7 +470,7 @@ Changes between 0.3.0 and 0.4.0:
   * [Support] Instructions in the README for ccnchat were enhanced. (100338)
   * [Support] Description of forwarding flags used in
 	 ccn_set_interest_filter_with_flags (100467)
-
+ 
   * Issues Resolved:
 	* Bug 100091 Long running java applications can't recover from ccnd restart
 	* Bug 100094 infinite loop building wireshark plugin
@@ -560,194 +626,194 @@ Changes between 0.3.0 and 0.4.0:
 
 Changes between 0.2.0 and 0.3.0:
 --------------------------------
-
-  * Android support. This release includes support for Android 2.1 platform
+ 
+  * Android support. This release includes support for Android 2.1 platform 
 	development. (100246)
   * Self-registration protocol. This functionality allows clients to register
-	the prefixes for interests they wish to receive. (100071, 100072, 100073)
-	The old form of self-registration (operating on the prefix
+	the prefixes for interests they wish to receive. (100071, 100072, 100073) 
+	The old form of self-registration (operating on the prefix 
 	ccnx:/ccnx/reg/self) has been removed. (100114)
   * Prefix registration on incoming connections. For a ccnd to act as a hub
 	(as in a hub-and-spoke configuration) there needs to be a way to get prefix
-	registration on incoming connections. Eventually, routing agents will
+	registration on incoming connections. Eventually, routing agents will 
 	perform this operation. This implementation retains the 'flooding' behavior
 	of earlier releases for selected prefixes. NOTE: this requires explicit
 	additional configuration via CCND_AUTOREG setting. (100225)
-  * ccnd_destroy(). This functionality provides improved flexibility beyond
+  * ccnd_destroy(). This functionality provides improved flexibility beyond 
 	exit() to free up all resources. (100051)
   * destroyface(). Implementation of the previously documented functionality.
 	(100068)
   * ccnChat improvements:
-	* This release changes ccnchat() to display user friendly names instead
-	  of partial key digest (100214).
-	* ccnchat is refactored to be re-usable, called from the ccnChat.java GUI
+	* This release changes ccnchat() to display user friendly names instead 
+	  of partial key digest (100214). 
+	* ccnchat is refactored to be re-usable, called from the ccnChat.java GUI 
 	  and the ccnChatNet.java module. It is also available on the command line:	 
-		 bin/ccnchat -text namespace
-	  (100234).
+		 bin/ccnchat -text namespace 
+	  (100234). 
 	* ccnchat now verifies the first packet: if verification fails, it rejects
 	  that version and looks for a later one. (100163)
-  * Performance improvements in CCNNetworkObject. This release includes a
-	revamp of the network objects including a few major API changes (100088):
+  * Performance improvements in CCNNetworkObject. This release includes a 
+	revamp of the network objects including a few major API changes (100088): 
 	* Write constructors create flow controllers at construction time, leaving
-	  lazy creation for read constructors. Write constructors make/take a FC
+	  lazy creation for read constructors. Write constructors make/take a FC 
 	  start listening for interests for their base name immediately (if they
-	  know it)
+	  know it) 
 	* The repository is the default behavior for network objects, rather than
 	  "raw".
-  * Support a customized DTAG dictionary. This release changes the
+  * Support a customized DTAG dictionary. This release changes the 
 	ccn_ccnbtoxml and ccn_xmltoccnb tools so that a customized dictionary could
-	be provided at runtime; this enables the tools to be used for protocols
+	be provided at runtime; this enables the tools to be used for protocols 
 	that live outside of the CCNx base. (100129)
-  * Key naming. This release defines the KeyProfile (100055) and uses it for
-	key ids, guids, and other component types (100131).	 This change is
+  * Key naming. This release defines the KeyProfile (100055) and uses it for 
+	key ids, guids, and other component types (100131).	 This change is 
 	incompatible with existing header naming; backward compatibility is enabled
-	by default.
+	by default. 
   * Still-pending interests behavior. This release changes how ccnd keeps track
-	of the outbound faces for an interest. In the new representation,
-	pe->outbound is kept in send order instead of the reverse, and the new
-	index pe->sent is advanced as the faces are used. This leaves a trail of
-	the faces that have been used already, giving more flexibility in altering
+	of the outbound faces for an interest. In the new representation, 
+	pe->outbound is kept in send order instead of the reverse, and the new 
+	index pe->sent is advanced as the faces are used. This leaves a trail of 
+	the faces that have been used already, giving more flexibility in altering 
 	the outbound list to the right of pe->sent. (100103)
-  * Repository publishes public key. Any app that wants to depend on name
-	enumeration, checked writes, etc, needs to be able to validate who a
-	repository is. This release includes publishing the repository key using
+  * Repository publishes public key. Any app that wants to depend on name 
+	enumeration, checked writes, etc, needs to be able to validate who a 
+	repository is. This release includes publishing the repository key using 
 	localhost key discovery, making it easier to configure where the repository
 	publishes its key. (100144)
   * javax.xml streams. Removed as many dependencies as possible such that their
 	use is isolated to the text xml encoder/decoder. (100053)
-  * Access control to stream/object encryption. The access control system
+  * Access control to stream/object encryption. The access control system 
 	allows you to assign keys to content/recipients, and automatically retrieve
-	keys. In this release, the output and input streams (and the network
-	objects that use them) retrieve keys and automatically encrypt content.
+	keys. In this release, the output and input streams (and the network 
+	objects that use them) retrieve keys and automatically encrypt content. 
 	(100063)
-  * Bulk import to repo. This release supports bulk importing of a sequence of
-	content objects (data) from a file in a single operation. The file must
-	contain content objects in wire format. The repository can incorporate the
-	file as a new storage file directly if that is compatible with its store
+  * Bulk import to repo. This release supports bulk importing of a sequence of 
+	content objects (data) from a file in a single operation. The file must 
+	contain content objects in wire format. The repository can incorporate the 
+	file as a new storage file directly if that is compatible with its store 
 	format. (100210)
-  * Local repo save and save-type override. This release supports objects and
-	streams to be written to a local (same device) repo (100213). In addition,
-	it implements an environment variable to allow objects to be saved in a
-	local repository even if they were generically coded to be written to
+  * Local repo save and save-type override. This release supports objects and 
+	streams to be written to a local (same device) repo (100213). In addition, 
+	it implements an environment variable to allow objects to be saved in a 
+	local repository even if they were generically coded to be written to 
 	any/multiple repos (100223).
   * Localhost tcp peers considered friendly. Now ccnd considers tcp connections
-	from localhost to be "friendly" and only considers incoming localhost udp
+	from localhost to be "friendly" and only considers incoming localhost udp 
 	traffic to be "friendly" if it starts out with a heartbeat packet. (100120)
   * Next-neighbor scope. For applications that want to be assured that they are
-	communicating only with immediately neighboring machines, this release
+	communicating only with immediately neighboring machines, this release 
 	defines a new allowed Scope value in the interests. (Scope = 2) (100123)
-  * EnumeratedNameList methods. This release includes methods to replace
+  * EnumeratedNameList methods. This release includes methods to replace 
 	deprecated methods in EnumeratedNameList. (100230)
-  * Capture-prefix flag. In the FIB, if a shorter registration has the
+  * Capture-prefix flag. In the FIB, if a shorter registration has the 
 	CCN_FORW_CHILD_INHERIT set, a registration for a longer match can't be used
 	to prevent the interest from being propagated. This release includes a flag
-	that can be applied on the longer prefix to override the effect of
+	that can be applied on the longer prefix to override the effect of 
 	CHILD_INHERIT on the shorted prefixes. (100116)
-  * Prefix registration using a ContentName. In this release, the
-	PrefixRegistrationManager accepts a ContentName object for the prefix to
+  * Prefix registration using a ContentName. In this release, the 
+	PrefixRegistrationManager accepts a ContentName object for the prefix to 
 	register in addition to a URI encoded string. (100186)
   * Multicast traffic. ccnd is now able to set up multicast using the standard
 	ccnd socket. This involved changing the way ccnd keeps track of the sending
 	side when the multicast cannot be done using a single socket. Instead of
-	keeping 2 fds per face, ccnd now keeps 1 fd and a faceid to be used for
-	datagram sends. Because the faceids are never reused, the bookkeeping
+	keeping 2 fds per face, ccnd now keeps 1 fd and a faceid to be used for 
+	datagram sends. Because the faceids are never reused, the bookkeeping 
 	becomes simpler.
- A user-visible side effect of this is that there are now
-	faces visible in the status display that are not used for ccnx traffic.
-	These represent the stream listeners and the datagram sockets that are
-	shared among other faces. They carry the face flag CCN_FACE_PASSIVE.
+ A user-visible side effect of this is that there are now 
+	faces visible in the status display that are not used for ccnx traffic. 
+	These represent the stream listeners and the datagram sockets that are 
+	shared among other faces. They carry the face flag CCN_FACE_PASSIVE. 
 	(100135)
   * Timeouts. Timeouts are now settable for situations which may require longer
 	than usual timeouts. (100153)
-  * Key cache. You can set a variable to control whether or not to save/load
+  * Key cache. You can set a variable to control whether or not to save/load 
 	the key cache. This variable is set to false by default. (100154)
   * ccn directory location. libccn now uses the CCNX_DIR environment variable.
 	(100026)
   * Compatibility with openssl-1.0.0beta4 and following. ccn is now compatible
 	with the STACK_OF macro and related changes in the OpenSSL code. (100095)
-  * Local service discovery protocol. This release introduces the
-	CCN_FORW_LOCAL forwarding flag. The presence of this flag in a FIB entry
-	marks the namespace as local to the host (more specifically, to apps
-	directly connected to the ccnd in question). This is in support of
-	implementing a host-local namespace useful for local service discovery.
-	The ccnd does its best to make sure that content within such a namespace
+  * Local service discovery protocol. This release introduces the 
+	CCN_FORW_LOCAL forwarding flag. The presence of this flag in a FIB entry 
+	marks the namespace as local to the host (more specifically, to apps 
+	directly connected to the ccnd in question). This is in support of 
+	implementing a host-local namespace useful for local service discovery. 
+	The ccnd does its best to make sure that content within such a namespace 
 	comes only from local apps, and is delivered only to local apps.
-	There is one known flaw in the current implementation, namely that an
-	off-machine attacker could cause a stale content object in the local
-	space to become fresh again. To do this, the attacker would have to
+	There is one known flaw in the current implementation, namely that an 
+	off-machine attacker could cause a stale content object in the local 
+	space to become fresh again. To do this, the attacker would have to 
 	already have a copy of the C.O., which was supposed to be machine-local.
-	Thus there must also be some collusion going on for this to happen.
+	Thus there must also be some collusion going on for this to happen. 
 	(100134)
-  * Logging changes. This release includes a number of changes to logging
+  * Logging changes. This release includes a number of changes to logging 
 	configuration and content:
-
-* Log messages use the facility name for the logger name instead of
+	
+* Log messages use the facility name for the logger name instead of 
 	  org.ccnx.ccn.CCNHandle for everything. This change makes it easier to
-	  find specific facility related messages in large log files. The
+	  find specific facility related messages in large log files. The 
 	  DEFAULT_APPLICATION_CLASS must be a prefix in the Logging namespace of
 	  the other loggers so that they inherit the handlers added to it. (100185)
-
-* ccntestloop now keeps logs for failed runs and the last few successes,
-	  and deletes the rest. (100220)
-
-* This release allows you to reduce the number of messages produced by
-	  ccndstart.sh: specify CND_LOG for ccndstart so ccndstart will discard
-	  messages about stuffing the cache. (100069)
-
+	
+* ccntestloop now keeps logs for failed runs and the last few successes, 
+	  and deletes the rest. (100220) 
+	
+* This release allows you to reduce the number of messages produced by 
+	  ccndstart.sh: specify CND_LOG for ccndstart so ccndstart will discard 
+	  messages about stuffing the cache. (100069) 
+	
 * Stream open/close events are now logged. (100181)
-
+	
 * FAC_USERxx facility names include more complete logging. (100183)
 
   * Many small bug fixes to address issues with tests.
-  * Clarity and documentation: The RepositoryDataListener method and variable
-	names better reflect the current functionality (100216); there is now a
+  * Clarity and documentation: The RepositoryDataListener method and variable 
+	names better reflect the current functionality (100216); there is now a 
 	manpage entry for ccndstatus (100232).
   * Interests. Bugs fixed for interest handling behavior include:
-
+	
 * Repo generating new responses to ccnls interests (100102)
 
-	* Java library sending explicit AnswerOriginKind in interests, using the
+	* Java library sending explicit AnswerOriginKind in interests, using the 
 	  default value (100106)
-
+	
 * Change default behavior for ccnput command to wait for interest (100117)
-
-* ccnd occasionally retransmits interest (spurious interest re-expression
+	
+* ccnd occasionally retransmits interest (spurious interest re-expression 
 	  fixed) (100121)
-
-* ccnd can occasionally fail to remove interests from prefix table
+	
+* ccnd can occasionally fail to remove interests from prefix table 
 	  (100226)
 
-  * Pipeline fixes. The release includes the following fixes in the area of
+  * Pipeline fixes. The release includes the following fixes in the area of 
 	pipelining data segments:
-
+	
 * MetadataProfile getLatestVersion() will no longer append a version based
-	  on the current time if there is no version found in the network in the
+	  on the current time if there is no version found in the network in the 
 	  passed-in timeout (100233)
-
+	
 * Pipeline code sent the first segment interest when version was not known
 	  yet (100141)
-
-* Pipelining initialization problem: Some timing circumstances caused
+	
+* Pipelining initialization problem: Some timing circumstances caused 
 	  pipelining to hang (100194)
 
-	* Repo pipelining now issues new interest before processing received
+	* Repo pipelining now issues new interest before processing received 
 	  content
 failed verification and advancing the pipeline (100221)
 
   * Streaming fixes. The release includes the following fixes in the area of
 	streaming data:
-
+	
 * CCNAbstractInputStream now uses Long instead of String for readerReady
 	  (100204)
-
-* NullOutputStream now provides byte string methods to reduce call
+	
+* NullOutputStream now provides byte string methods to reduce call 
 	  overhead (100212)
-
-* Input streams now call close() and close() shuts down pipelining and
+	
+* Input streams now call close() and close() shuts down pipelining and 
 	  closes any headers that might be retrieved (or attempted). (100235)
 
   * ccn_resolve_version(). The exclude filter is now fixed to always return the
-	highest version; ccn_resolve_version() returns quickly if a version is
+	highest version; ccn_resolve_version() returns quickly if a version is 
 	already present.
   * Repo FreshnessSeconds. This release increases the FreshnessSeconds on
 	repository startWrite() response to 12 sec from 1 sec so transactional data
@@ -757,12 +823,12 @@ failed verification and advancing the pipeline (100221)
 	* Bug #100018 content explorer takes exception when there is no repo
 	* Bug #100044 ccnget -c returns incorrect status
 	* Bug #100061 ccnd Exclude processing needs performance improvement
-	* Bug #100066 unsolicited content should not cause ccnd to toss good
+	* Bug #100066 unsolicited content should not cause ccnd to toss good 
 				  content
 	* Bug #100074 ccn_initkeystore.sh fails if $USER is not set
 	* Bug #100076 Use of $$ in csrc/tests/test-* considered harmful
 	* Bug #100085 ccnchat doesn't work with java 1.5 by default
-	* Bug #100090 Java ContentType definition for ENCR does not match the one
+	* Bug #100090 Java ContentType definition for ENCR does not match the one 
 				  in ccn.h
 	* Bug #100093 seg fault in ccndc
 	* Bug #100098 ccnchat gets illegalArgumentException for empty line
@@ -776,25 +842,25 @@ failed verification and advancing the pipeline (100221)
 	* Bug #100130 ccnsendchunks / ccncatchunks block size problems
 	* Bug #100136 Nonce-based interest suppression in ccd is incomplete
 	* Bug #100137 The handling of responses from the ccnd internal client does
-				  not cope with multiple messages in the buffer, causing them
+				  not cope with multiple messages in the buffer, causing them 
 				  to be discarded.
 	* Bug #100151 All Repo related logging should use FAC_REPO
 	* Bug #100176 EnumeratedNameList.getNewData only gets data once
 	* Bug #100179 ServiceKeyDiscoveryTest hardwires data writing into "."
 	* Bug #100184 getLatestVersion resets the attempt time
 	* Bug #100191 Java ForwardingEntry object validation is incorrect
-	* Bug #100200 The constructor for PublisherPublicKeyDigest(String) should
+	* Bug #100200 The constructor for PublisherPublicKeyDigest(String) should 
 				  raise an exception if the string is not a proper base64Binary
 				  encoding. Both that and the PublisherPublicKeyDigest(byte [])
 				  constructor should probably raise an exception if the input
-				  is too long, rather than silently truncating.
+				  is too long, rather than silently truncating. 
 	* Bug #100208 It is possible for WaitForPutDrain to go into an endless loop
 				  rather than throwing an exception when the buffer hasn't been
 				  drained correctly.
-	* Bug #100231 Fix ccndc delete command to correctly remove prefix
+	* Bug #100231 Fix ccndc delete command to correctly remove prefix 
 				  registration rather than attempting to destroy a face.
 	* Bug #100240 Java library missing some forwarding flag definitions
-	* Bug #100244 CCNNetworkManager code should log using FAC_NETMANAGER
+	* Bug #100244 CCNNetworkManager code should log using FAC_NETMANAGER 
 				  facility
 	* Bug #100252 Reduce number of writing threads in network manager
 
@@ -804,13 +870,13 @@ Changes between 0.1.2 and 0.2.0:
    a change in the definition of ephemeral digests.
 
   * The implicit digest component used as the last component in the
-	name of a ContentObject, used in Links and Exclude filters,
-	now use the digest of the entire encoded ContentObject, rather than
+	name of a ContentObject, used in Links and Exclude filters, 
+	now use the digest of the entire encoded ContentObject, rather than 
 	merely the digest of the CO's content field. This allows exclusion of inadvertent or
 	malicious traffic with the same name and content but different signing information
 	from the intended traffic. Described in doc/technical/DigestComponent.txt
   * Removed dependency on javax.xml.streams. Replaced with stream-based XML Pull
-	parser as implemented in the kXML library (http://kxml.sourceforge.net/).
+	parser as implemented in the kXML library (http://kxml.sourceforge.net/). 
 	This removes the JDK 1.5-specific requirement for JSR 173 jars; JDK 1.5 users
 	can delete jsr173.jar and jsr173_ri.jar from their lib directories.
   * Repositories now have their own key pairs, rather than using the user's default
@@ -819,7 +885,7 @@ Changes between 0.1.2 and 0.2.0:
   * Implementation of the registration protocol, which allows clients to register
 	with ccnd the prefixes for Interests they wish to receive, is well under way
 	(see issues #100071, #100072, #100073). Until this code is stable, we will
-	retain the default Interest flooding behavior.
+	retain the default Interest flooding behavior. 
   * Initial version of Java-based registration control client, ccndcontrol, analogous
 	to ccndc.
   * Added new ccnFileProxy application, and start script bin/ccnfileproxy; this
@@ -842,7 +908,7 @@ Changes between 0.1.2 and 0.2.0:
 		ccn-fifo-blocksize -- the size of blocks queued in the FIFO
   * Improved vlc plugin to use data prefetching, and attempt reconnection when
 	  disconnected from ccnd.
-  * Make the XML jar file a property so it can be overriden on the command
+  * Make the XML jar file a property so it can be overriden on the command 
 	line if using different library.
   * Cleanup, bug fixes and additional tests for access control code.
   * Many small bugfixes to address issues with tests.
@@ -890,7 +956,7 @@ Changes between 0.1.1 and 0.1.2:
 	machine.
   * Turned off ccnd message about heartbeats by default (use CCND_DEBUG=128 to
 	get these messages back).
-  * Fixed ccnput to allow name components after the version marker, generate
+  * Fixed ccnput to allow name components after the version marker, generate 
 	FinalBlockID where appropriate.
   * Added support for file segmentation convention to ccncatchunks2.
   * Centralized timeout definitions in Java library to SystemConfiguration.
@@ -915,7 +981,7 @@ Changes between 0.1.1 and 0.1.2:
 	* Bug #100021 Repo should have a simple way to specify prefix on startup.
 	* Bug #100023 c tests minsuffix and contenthash failing.
 	* Bug #100024 BasicKeyManager passes null to generateConfigurationException.
-	* Bug #100030 ccnChat/default network string shouldn't use Java
+	* Bug #100030 ccnChat/default network string shouldn't use Java 
 				  serialization. Converted Java CCNStringObject to use UTF-8
 				  string encoding.
 	* Bug #100039 ccn.h should have an API version identifier.
@@ -957,7 +1023,7 @@ Changes between 0.1.0 and 0.1.1:
 	takes a PrincipalInfo object as input rather than individual values from such object.
   * The logging level for the Java end-to-end test has been increased to help track down
 	intermittent bugs.
-  * Bugs have been fixed in org.ccnx.ccn.test.io.content.CCNNetworkObjectTest,
+  * Bugs have been fixed in org.ccnx.ccn.test.io.content.CCNNetworkObjectTest, 
 	CCNNetworkObjectTestRepo.
   * ccnls now prints a usage message if not given useful input (#100004).
   * Java ContentName now has additional convenience constructor.
@@ -965,11 +1031,11 @@ Changes between 0.1.0 and 0.1.1:
 	names for unit tests.  This is not yet fully implemented in test suite.
   * Java Eclipse project name is now CCNx-Java, and the README now explains how to import
 	the Eclipse projects from files in the distribution to get the cross-references.
-  * The BinaryEncoding and SignatureGeneration technical documentation has been slightly
+  * The BinaryEncoding and SignatureGeneration technical documentation has been slightly 
 	repaired.
   * Java lib CCNAbstractInputStream now decrypts content objects as a unit, improving
 	random access performance for streams without significant security penalty. (#100007).
-  * ContentExplorer now handles errors better and has fewer blocking threads and new UI
+  * ContentExplorer now handles errors better and has fewer blocking threads and new UI 
 	menu options that are not fully implemented.
 
 Version 0.1.0:

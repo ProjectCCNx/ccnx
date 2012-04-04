@@ -17,7 +17,6 @@ EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib
 
 PROGRAMS = hashtbtest skel_decode_test \
-    smoketestclientlib  \
     encodedecodetest signbenchtest basicparsetest ccnbtreetest
 
 BROKEN_PROGRAMS =
@@ -31,13 +30,13 @@ CSRC = ccn_bloom.c \
        ccn_match.c ccn_reg_mgmt.c ccn_face_mgmt.c \
        ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
        ccn_seqwriter.c ccn_signing.c \
-       ccn_sockcreate.c ccn_traverse.c ccn_uri.c \
+       ccn_sockcreate.c ccn_sync.c ccn_traverse.c ccn_uri.c \
        ccn_verifysig.c ccn_versioning.c \
        ccn_header.c \
        ccn_fetch.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        signbenchtest.c skel_decode_test.c \
-       smoketestclientlib.c basicparsetest.c ccnbtreetest.c \
+       basicparsetest.c ccnbtreetest.c \
        ccn_sockaddrutil.c ccn_setup_sockaddr_un.c
 LIBS = libccn.a
 LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
@@ -45,7 +44,7 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_buf_decoder.o ccn_uri.o ccn_buf_encoder.o ccn_bloom.o \
        ccn_name_util.o ccn_face_mgmt.o ccn_reg_mgmt.o ccn_digest.o \
        ccn_interest.o ccn_keystore.o ccn_seqwriter.o ccn_signing.o \
-       ccn_sockcreate.o ccn_traverse.o \
+       ccn_sockcreate.o ccn_sync.o ccn_traverse.o \
        ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
        ccn_sockaddrutil.o ccn_setup_sockaddr_un.o \
        ccn_bulkdata.o ccn_versioning.o ccn_header.o ccn_fetch.o \
@@ -108,9 +107,6 @@ hashtbtest: hashtbtest.o
 skel_decode_test: skel_decode_test.o
 	$(CC) $(CFLAGS) -o $@ skel_decode_test.o $(LDLIBS)
 
-smoketestclientlib: smoketestclientlib.o
-	$(CC) $(CFLAGS) -o $@ smoketestclientlib.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
-
 basicparsetest: basicparsetest.o libccn.a
 	$(CC) $(CFLAGS) -o $@ basicparsetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
@@ -131,6 +127,9 @@ ccn_signing.o:
 
 ccn_sockcreate.o:
 	$(CC) $(CFLAGS) -c ccn_sockcreate.c
+
+ccn_sync.o:
+	$(CC) $(CFLAGS) -I.. -c ccn_sync.c
 
 ccn_traverse.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_traverse.c
@@ -198,8 +197,8 @@ ccn_client.o: ccn_client.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccn_private.h ../include/ccn/ccnd.h \
   ../include/ccn/digest.h ../include/ccn/hashtb.h \
-  ../include/ccn/reg_mgmt.h ../include/ccn/signing.h \
-  ../include/ccn/keystore.h ../include/ccn/uri.h
+  ../include/ccn/reg_mgmt.h ../include/ccn/schedule.h \
+  ../include/ccn/signing.h ../include/ccn/keystore.h ../include/ccn/uri.h
 ccn_coding.o: ccn_coding.c ../include/ccn/coding.h
 ccn_digest.o: ccn_digest.c ../include/ccn/digest.h
 ccn_extend_dict.o: ccn_extend_dict.c ../include/ccn/charbuf.h \
@@ -234,6 +233,9 @@ ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/indexbuf.h ../include/ccn/signing.h \
   ../include/ccn/random.h
 ccn_sockcreate.o: ccn_sockcreate.c ../include/ccn/sockcreate.h
+ccn_sync.o: ccn_sync.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/digest.h ../include/ccn/sync.h
 ccn_traverse.o: ccn_traverse.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
@@ -265,9 +267,6 @@ signbenchtest.o: signbenchtest.c ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/keystore.h
 skel_decode_test.o: skel_decode_test.c ../include/ccn/charbuf.h \
   ../include/ccn/coding.h
-smoketestclientlib.o: smoketestclientlib.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h
 basicparsetest.o: basicparsetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/face_mgmt.h \

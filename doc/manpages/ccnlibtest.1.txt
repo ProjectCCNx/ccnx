@@ -1,0 +1,76 @@
+CCNDLIBTEST(1)
+================
+
+NAME
+----
+ccnlibtest - Run scripted tests of the ccnx C library.
+
+SYNOPSIS
+--------
+*ccnlibtest* [-h] [-v] ( 'command' | 'file.ccnb' ) '...'
+
+DESCRIPTION
+-----------
+The *ccnlibtest* program is for running scripted tests of the ccnx C library.
+
+The basic behavior of ccnlibtest is to use ccn_connect() to connect to a ccnd,
+and then to process its arguments, in order.
+
+
+OPTIONS
+-------
+*-h*::
+     Print usage information and exit.
+
+*-v*::
+     Be more verbose.
+
+ARGUMENTS
+---------
+The arguments are processed in order.
+
+An argument ending in .ccnb is assumed to name a file that contains a single
+ccnb-encoded Interest or ContentObject.
+These files are read, and processed as follows:
+
+A ContentObject is held in a local buffer pool.
+When triggered by the arrival of a matching interest,
+the ContentObject is sent, and also removed from the pool.
+There are up to 10 buffer pools available,
+and each buffer pool may contain up to 10 content objects.
+Initially pool 0 is the active pool.
+
+An Interest is sent via ccn_express_interest().
+If and when a matching ContentObject arrives,
+it will be placed into the pool that was active when the interest was sent.
+
+*pool* 'digit'::
+     Switch to the indicated buffer pool.
+
+*prefix* 'ccnx:/uri'::
+     Causes a prefix registration to happen, using the given name as the prefix.
+     The registration is associated with the current buffer pool.
+
+*flags* 'regflgs'::
+     Use 'regflgs' as the flags for subsequent prefix registration.
+     This should be expressed as a number.
+     Refer to doc/technical/Registration for flag bits.
+
+*run* 'millisec'::
+    Run for the indicated number of milliseconds,
+    or until the arrival of data.
+
+*mincob* 'num'::
+    Fail if the current pool has fewer than 'num' content objects.
+
+*maxcob* 'num'::
+    Fail if the current pool has more than 'num' content objects.
+
+
+SEE ALSO
+--------
+*ccndsmoketest*(1)
+
+AUTHOR
+------
+Michael Plass <plass@parc.com>

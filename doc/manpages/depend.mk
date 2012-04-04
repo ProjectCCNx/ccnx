@@ -16,6 +16,7 @@ ccngetfile.1.html: ccngetfile.1.txt
 ccnputfile.1.html: ccnputfile.1.txt
 ccnputmeta.1.html: ccnputmeta.1.txt
 ccngetmeta.1.html: ccngetmeta.1.txt
+ccnlibtest.1.html: ccnlibtest.1.txt
 ccnnamelist.1.html: ccnnamelist.1.txt
 ccnrm.1.html: ccnrm.1.txt
 ccnseqwriter.1.html: ccnseqwriter.1.txt
@@ -29,6 +30,7 @@ ccnr.1.html: ccnr.1.txt
 SyncTest.1.html: SyncTest.1.txt
 ccnrepoimport.1.html: ccnrepoimport.1.txt
 ccnprintlink.1.html: ccnprintlink.1.txt
+ccntestloop.1.html: ccntestloop.1.txt
 ccn_ccnbtoxml.1.pdf: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1.pdf: ccn_xmltoccnb.1.txt
 ccnacl.1.pdf: ccnacl.1.txt
@@ -47,6 +49,7 @@ ccngetfile.1.pdf: ccngetfile.1.txt
 ccnputfile.1.pdf: ccnputfile.1.txt
 ccnputmeta.1.pdf: ccnputmeta.1.txt
 ccngetmeta.1.pdf: ccngetmeta.1.txt
+ccnlibtest.1.pdf: ccnlibtest.1.txt
 ccnnamelist.1.pdf: ccnnamelist.1.txt
 ccnrm.1.pdf: ccnrm.1.txt
 ccnseqwriter.1.pdf: ccnseqwriter.1.txt
@@ -60,6 +63,7 @@ ccnr.1.pdf: ccnr.1.txt
 SyncTest.1.pdf: SyncTest.1.txt
 ccnrepoimport.1.pdf: ccnrepoimport.1.txt
 ccnprintlink.1.pdf: ccnprintlink.1.txt
+ccntestloop.1.pdf: ccntestloop.1.txt
 ccn_ccnbtoxml.1: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1: ccn_xmltoccnb.1.txt
 ccnacl.1: ccnacl.1.txt
@@ -78,6 +82,7 @@ ccngetfile.1: ccngetfile.1.txt
 ccnputfile.1: ccnputfile.1.txt
 ccnputmeta.1: ccnputmeta.1.txt
 ccngetmeta.1: ccngetmeta.1.txt
+ccnlibtest.1: ccnlibtest.1.txt
 ccnnamelist.1: ccnnamelist.1.txt
 ccnrm.1: ccnrm.1.txt
 ccnseqwriter.1: ccnseqwriter.1.txt
@@ -91,3 +96,4 @@ ccnr.1: ccnr.1.txt
 SyncTest.1: SyncTest.1.txt
 ccnrepoimport.1: ccnrepoimport.1.txt
 ccnprintlink.1: ccnprintlink.1.txt
+ccntestloop.1: ccntestloop.1.txt

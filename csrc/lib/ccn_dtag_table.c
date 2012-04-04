@@ -128,6 +128,7 @@ static const struct ccn_dict_entry ccn_tagdict[] = {
     {CCN_DTAG_SyncConfigSlice, "SyncConfigSlice"},
     {CCN_DTAG_SyncConfigSliceList, "SyncConfigSliceList"},
     {CCN_DTAG_SyncConfigSliceOp, "SyncConfigSliceOp"},
+    {CCN_DTAG_SyncNodeDeltas, "SyncNodeDeltas"},
     {CCN_DTAG_SequenceNumber, "SequenceNumber"},
     {CCN_DTAG_CCNProtocolDataUnit, "CCNProtocolDataUnit"},
     {0, 0}

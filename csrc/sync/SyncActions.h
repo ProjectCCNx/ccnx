@@ -18,8 +18,8 @@
 #ifndef CCN_SyncActions
 #define CCN_SyncActions
 
+#include <ccn/charbuf.h>
 #include "SyncBase.h"
-#include "SyncNode.h"
 #include "SyncRoot.h"
 #include "SyncUtil.h"
 
@@ -47,11 +47,12 @@ enum SyncActionState {
 struct SyncActionData {
     struct SyncActionData *next;
     struct SyncRootStruct *root;
+    struct SyncHashCacheEntry *ce;
     struct SyncCompareData *comp;
-    struct ccnr_handle *ccnr;
+    void *client_handle;
     struct ccn_charbuf *prefix;
     struct ccn_charbuf *hash;
-    sync_time startTime;
+    int64_t startTime;
     enum SyncRegisterActionKind kind;
     enum SyncActionState state;
     int skipToHash;
