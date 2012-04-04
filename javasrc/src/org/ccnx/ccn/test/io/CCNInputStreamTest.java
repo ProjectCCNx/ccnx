@@ -1,7 +1,7 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -52,9 +52,11 @@ public class CCNInputStreamTest extends CCNTestBase {
 
 		testName = testHelper.getTestNamespace("testInput/no/timeout");
 		CCNInputStream	stream = new CCNInputStream(testName, getHandle);
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(new BackgroundStreamer(stream, true, SystemConfiguration.NO_TIMEOUT)));
+		BackgroundStreamer bas = new BackgroundStreamer(stream, true, SystemConfiguration.NO_TIMEOUT);
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(bas));
 		tar.start();
 		tar.join(SystemConfiguration.EXTRA_LONG_TIMEOUT * 2);
+		bas.close();
 
 		Log.info(Log.FAC_TEST, "Completed testTimeouts");
 	}
@@ -66,7 +68,8 @@ public class CCNInputStreamTest extends CCNTestBase {
 		ContentName testName = testHelper.getTestNamespace("testInput/blocking");
 		CCNInputStream stream = new CCNInputStream(testName, getHandle);
 		stream.addFlag(FlagTypes.BLOCKING);
-		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(new BackgroundStreamer(stream, false, 0)));
+		BackgroundStreamer bas = new BackgroundStreamer(stream, false, 0);
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(bas));
 		tar.start();
 		Thread.sleep(SystemConfiguration.getDefaultTimeout() * 2);
 		CCNOutputStream ostream = new CCNOutputStream(testName, putHandle);
@@ -77,8 +80,36 @@ public class CCNInputStreamTest extends CCNTestBase {
 		ostream.write(bytes);
 		ostream.close();
 		tar.join(SystemConfiguration.EXTRA_LONG_TIMEOUT * 2);
+		bas.close();
 
 		Log.info(Log.FAC_TEST, "Completed testBlocking");
+	}
+
+	@Test
+	public void testBlockAfterFirstSegment() throws Exception {
+		Log.info(Log.FAC_TEST, "Started testBlockAfterFirstSegment");
+
+		ContentName testName = testHelper.getTestNamespace("testInput/blockAfterFirst");
+		CCNInputStream stream = new CCNInputStream(testName, getHandle);
+		stream.addFlag(FlagTypes.BLOCK_AFTER_FIRST_SEGMENT);
+		BackgroundStreamer bas = new BackgroundStreamer(stream, false, 0);
+		ThreadAssertionRunner tar = new ThreadAssertionRunner(new Thread(bas));
+		tar.start();
+		CCNOutputStream ostream = new CCNOutputStream(testName, putHandle);
+		ostream.setBlockSize(100);
+		ostream.setTimeout(SystemConfiguration.NO_TIMEOUT);
+		byte[] bytes = new byte[400];
+		for (int i = 0; i < bytes.length; i++)
+			bytes[i] = (byte)i;
+		ostream.write(bytes);
+		ostream.flush();
+		Thread.sleep(SystemConfiguration.getDefaultTimeout() * 2);
+		ostream.write(bytes);
+		ostream.close();
+		tar.join(SystemConfiguration.EXTRA_LONG_TIMEOUT * 2);
+		bas.close();
+
+		Log.info(Log.FAC_TEST, "Completed testBlockAfterFirstSegment");
 	}
 
 	protected class BackgroundStreamer implements Runnable {

@@ -92,6 +92,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 	// Temporarily default to very high timeout so that puts have a good
 	// chance of going through.  We actually may want to keep this.
 	protected int _timeout = SystemConfiguration.FC_TIMEOUT;
+	protected int _timeoutToUse = SystemConfiguration.FC_TIMEOUT;
 
 	protected int _capacity = DEFAULT_CAPACITY;
 
@@ -156,6 +157,8 @@ public class CCNFlowControl implements CCNInterestHandler {
 		}
 		_handle = handle;
 		_unmatchedInterests.setCapacity(DEFAULT_INTEREST_CAPACITY);
+		if (_timeout != SystemConfiguration.NO_TIMEOUT)
+			_timeoutToUse = _timeout;
 	}
 
 	/**
@@ -432,13 +435,13 @@ public class CCNFlowControl implements CCNInterestHandler {
 				synchronized (_holdingArea) {
 					do {
 						try {
-							_holdingArea.wait(_timeout-elapsed);
+							_holdingArea.wait(_timeoutToUse-elapsed);
 						} catch (InterruptedException e) {
 							// intentional no-op
 						}
 						elapsed = System.currentTimeMillis() - ourTime;
 						size = _holdingArea.size();
-					} while (size >= capacity && elapsed < _timeout);
+					} while (size >= capacity && (_timeout == SystemConfiguration.NO_TIMEOUT || elapsed < _timeoutToUse));
 				}
 				if (size >= capacity) {
 					String names = "";
@@ -632,11 +635,11 @@ public class CCNFlowControl implements CCNInterestHandler {
 				boolean keepTrying = true;
 				do {
 					try {
-						long waitTime = _timeout - (System.currentTimeMillis() - startTime);
+						long waitTime = _timeoutToUse - (System.currentTimeMillis() - startTime);
 						if (waitTime > 0)
 							_holdingArea.wait(waitTime);
 					} catch (InterruptedException ie) {}
-					if (_nOut != startSize || (System.currentTimeMillis() - startTime) >= _timeout)
+					if (_nOut != startSize || (System.currentTimeMillis() - startTime) >= _timeoutToUse)
 						keepTrying = false;
 				} while (keepTrying);
 
@@ -662,6 +665,8 @@ public class CCNFlowControl implements CCNInterestHandler {
 	 */
 	public void setTimeout(int timeout) {
 		_timeout = timeout;
+		if (timeout != SystemConfiguration.NO_TIMEOUT)
+			_timeoutToUse = timeout;
 	}
 
 	/**
