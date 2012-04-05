@@ -1195,7 +1195,7 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 		if (!prefix.isPrefixOf(this))
 			return null;
 
-		return subname(prefix._components.length, (_components.length-prefix._components.length) + 1);
+		return subname(prefix._components.length, _components.length);
 	}
 
 	/**
