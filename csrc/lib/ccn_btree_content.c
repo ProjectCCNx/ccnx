@@ -146,8 +146,6 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int ndx,
                          struct ccn_charbuf *scratch)
 {
     const unsigned char *blob = NULL;
-    const unsigned char *bloom = NULL;
-    const unsigned char *comp = NULL;
     const unsigned char *nextcomp = NULL;
     int i;
     int n;
@@ -157,15 +155,10 @@ ccn_btree_match_interest(struct ccn_btree_node *node, int ndx,
     int res;
     int rnc;
     size_t blob_size = 0;
-    size_t bloom_size = 0;
-    size_t comp_size = 0;
     size_t nextcomp_size = 0;
     size_t size;
     struct ccn_btree_content_payload *e = NULL;
-    struct ccn_buf_decoder *d = NULL;
-    struct ccn_buf_decoder decoder;
     unsigned char *flatname = NULL;
-    unsigned char match_any[2] = "-";
     
     e = ccn_btree_node_getentry(sizeof(*e), node, ndx);
     if (e == NULL || e->magic[0] != CCN_BT_CONTENT_MAGIC)
