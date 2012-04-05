@@ -127,7 +127,10 @@ public class CCNInputStreamTest extends CCNTestBase {
 
 		public void run() {
 			try {
-				_stream.read();
+				int val;
+				do {
+					val = _stream.read();
+				} while (val != -1);
 			} catch (IOException e) {
 				Assert.fail("Input stream timed out or read failed: " + e.getMessage());
 			}
