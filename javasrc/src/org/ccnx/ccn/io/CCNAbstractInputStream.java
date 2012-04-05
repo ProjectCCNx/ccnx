@@ -74,6 +74,14 @@ public abstract class CCNAbstractInputStream extends InputStream implements CCNC
 	 */
 	protected LinkObject _dereferencedLink = null;
 
+	/**
+	 * Definitions for flags:
+	 * DONT_DEREFERENCE:		This is used to avoid automatic dereferencing when reading in a link itself
+	 * BLOCKING:				Wait until we see the first segment of the file before we start using timeouts.
+	 * 							Useful for waiting for an object which has not yet been created.
+	 * BLOCK_AFTER_FIRST_SEGMENT:	Use timeout only for first segment, then wait indefinitely for subsequent
+	 * 							ones. Useful for data that is being manufactured on the fly such as slow live feeds.
+	 */
 	public enum FlagTypes { DONT_DEREFERENCE, BLOCKING, BLOCK_AFTER_FIRST_SEGMENT };
 
 	protected EnumSet<FlagTypes> _flags = EnumSet.noneOf(FlagTypes.class);

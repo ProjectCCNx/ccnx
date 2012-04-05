@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -549,6 +549,7 @@ public class CCNSegmenter {
 	 * @param publisher the publisher to use
 	 * @param keys the keys to use for encrypting this segment, or null if unencrypted. The
 	 *   specific Key/IV used for this segment will be obtained by calling keys.getSegmentEncryptionCipher().
+	 * @param flushNow Used for user level flush requests to flush the data to the flow controller early.
 	 * @return returns the segment identifier for the next segment to be written, if any.
 	 * 		If the caller doesn't want to override this, they can hand this number back
 	 * 	    to a subsequent call to fragmentedPut.
