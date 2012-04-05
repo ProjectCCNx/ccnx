@@ -235,7 +235,7 @@ ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
 ccn_sockcreate.o: ccn_sockcreate.c ../include/ccn/sockcreate.h
 ccn_sync.o: ccn_sync.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/digest.h ../include/ccn/sync.h
+  ../include/ccn/digest.h ../include/ccn/sync.h ../include/ccn/uri.h
 ccn_traverse.o: ccn_traverse.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
