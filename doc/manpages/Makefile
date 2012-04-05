@@ -20,6 +20,7 @@ PAGE_NAMES =        		\
 	ccngroup		\
 	ccnd			\
 	ccndc			\
+	ccndcontrol		\
 	ccndlogging		\
 	ccndsmoketest		\
 	ccndstart		\
@@ -44,9 +45,11 @@ PAGE_NAMES =        		\
 	ccnpoke			\
 	ccnr			\
 	SyncTest		\
-	ccnrepoimport		\
+	ccnlink			\
 	ccnprintlink		\
-	ccntestloop \
+	ccnrepoimport		\
+	ccntestloop 		\
+
 
 PROJECT_NUMBER = 0.6.0rc1
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
@@ -66,7 +69,9 @@ default:
 
 documentation: html
 
-all dist-docs: html $(DERIVED_MAN)
+all dist-docs: html manpages
+
+manpages: $(DERIVED_MAN)
 
 html: $(DERIVED_HTML) $(DERIVED_INDEX)
 
@@ -109,6 +114,6 @@ default all clean clean-documentation test check shared documentation dist-docs 
 
 _always:
 
-.PHONY: _always depend
+.PHONY: _always depend manpages html
 
 include depend.mk

@@ -4,6 +4,7 @@ ccnacl.1.html: ccnacl.1.txt
 ccngroup.1.html: ccngroup.1.txt
 ccnd.1.html: ccnd.1.txt
 ccndc.1.html: ccndc.1.txt
+ccndcontrol.1.html: ccndcontrol.1.txt
 ccndlogging.1.html: ccndlogging.1.txt
 ccndsmoketest.1.html: ccndsmoketest.1.txt
 ccndstart.1.html: ccndstart.1.txt
@@ -28,8 +29,9 @@ ccnpeek.1.html: ccnpeek.1.txt
 ccnpoke.1.html: ccnpoke.1.txt
 ccnr.1.html: ccnr.1.txt
 SyncTest.1.html: SyncTest.1.txt
-ccnrepoimport.1.html: ccnrepoimport.1.txt
+ccnlink.1.html: ccnlink.1.txt
 ccnprintlink.1.html: ccnprintlink.1.txt
+ccnrepoimport.1.html: ccnrepoimport.1.txt
 ccntestloop.1.html: ccntestloop.1.txt
 ccn_ccnbtoxml.1.pdf: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1.pdf: ccn_xmltoccnb.1.txt
@@ -37,6 +39,7 @@ ccnacl.1.pdf: ccnacl.1.txt
 ccngroup.1.pdf: ccngroup.1.txt
 ccnd.1.pdf: ccnd.1.txt
 ccndc.1.pdf: ccndc.1.txt
+ccndcontrol.1.pdf: ccndcontrol.1.txt
 ccndlogging.1.pdf: ccndlogging.1.txt
 ccndsmoketest.1.pdf: ccndsmoketest.1.txt
 ccndstart.1.pdf: ccndstart.1.txt
@@ -61,8 +64,9 @@ ccnpeek.1.pdf: ccnpeek.1.txt
 ccnpoke.1.pdf: ccnpoke.1.txt
 ccnr.1.pdf: ccnr.1.txt
 SyncTest.1.pdf: SyncTest.1.txt
-ccnrepoimport.1.pdf: ccnrepoimport.1.txt
+ccnlink.1.pdf: ccnlink.1.txt
 ccnprintlink.1.pdf: ccnprintlink.1.txt
+ccnrepoimport.1.pdf: ccnrepoimport.1.txt
 ccntestloop.1.pdf: ccntestloop.1.txt
 ccn_ccnbtoxml.1: ccn_ccnbtoxml.1.txt
 ccn_xmltoccnb.1: ccn_xmltoccnb.1.txt
@@ -70,6 +74,7 @@ ccnacl.1: ccnacl.1.txt
 ccngroup.1: ccngroup.1.txt
 ccnd.1: ccnd.1.txt
 ccndc.1: ccndc.1.txt
+ccndcontrol.1: ccndcontrol.1.txt
 ccndlogging.1: ccndlogging.1.txt
 ccndsmoketest.1: ccndsmoketest.1.txt
 ccndstart.1: ccndstart.1.txt
@@ -94,6 +99,7 @@ ccnpeek.1: ccnpeek.1.txt
 ccnpoke.1: ccnpoke.1.txt
 ccnr.1: ccnr.1.txt
 SyncTest.1: SyncTest.1.txt
-ccnrepoimport.1: ccnrepoimport.1.txt
+ccnlink.1: ccnlink.1.txt
 ccnprintlink.1: ccnprintlink.1.txt
+ccnrepoimport.1: ccnrepoimport.1.txt
 ccntestloop.1: ccntestloop.1.txt
