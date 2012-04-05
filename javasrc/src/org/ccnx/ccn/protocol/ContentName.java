@@ -1172,8 +1172,10 @@ public class ContentName extends GenericXMLEncodable implements XMLEncodable, Co
 	 * @return the new name.
 	 */
 	public ContentName subname(int start, int end) {
-		if (start < 0 || start > _components.length || end < start || end > _components.length)
-			throw new IllegalArgumentException("Start or end out of range");
+		if (start < 0 || start > _components.length)
+			throw new IllegalArgumentException("Start out of range");
+		if (end < start || end > _components.length)
+			throw new IllegalArgumentException("End out of range");
 
 		if (start == end)
 			return ROOT;
