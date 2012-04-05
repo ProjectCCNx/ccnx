@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -58,70 +58,70 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * Combines segmentation, signing and encryption. This is used
  * to prepare data for writing out to ccnd. The intent is to provide a user-friendly,
  * efficient, minimum-copy interface, with some support for extensibility.
- * 
+ *
  * <ul>
  * <li>
  *   Segmentation is the division of a large piece of content into multiple
  *   smaller content objects. A segment component is appended to the content
  *   name to distinguish different segments.
  *   @see org.ccnx.ccn.profiles.SegmentationProfile
- * 
+ *
  *    This class currently supports a range of quite complex
  *    segmentation options. At this point, only a subset of these are supported
  *    by the higher level org.ccnx.ccn.io interfaces.
- *    
+ *
  *    Contiguous blocks (fixed or variable size), or sparse blocks, e.g. at various
  *    time offsets. Configurations set the numbering scheme. The two interfaces
  *    are either contiguous writes, or (for the sparse case), writes of individual
  *    segments specified by offset (can be multi-buffered, as may be multiple KB).
- *    
+ *
  *    Simplest way to handle might be to expect contiguous blocks (either
  *    increments or byte count) and remember what we last wrote, so next
  *    call gets next value. Clients writing sparse blocks (only byte count
  *    or scaled byte count makes sense for this) can override by setting
  *    counter on a call.</li>
- *    
+ *
  * <li>Signing Control -- per ContentObject signing with a choice of signature algorithm,
  *    or amortized signing. The default is Merkle Hash Tree based amortization, later
  *    there will be other options.
  *    @see org.ccnx.ccn.impl.security.crypto.CCNMerkleTreeSigner</li>
- *    
+ *
  * <li>Stock low-level encryption. --
  *    Given a key K, an IV, and a chosen encryption algorithm segment content so as
  *    to meet a desired net data length with potential block expansion, and encrypt.
- *    
+ *
  *    For this, we use the standard Java encryption mechanisms, augmented by
  *    alternative providers (e.g. BouncyCastle for AES-CTR). We just need
  *    a Cipher, a SecretKeySpec, and an IvParameterSpec holding the relevant
  *    key data.
- *    
+ *
  *    For block ciphers, we require a certain amount of extra space in the
  *    blocks to accommodate padding (a minimum of 1 bytes for PKCS5 padding,
- *    for example). 
+ *    for example).
  *    DKS TODO -- deal with the padding and length expansion
  *    	For the moment, until we deal with padding we use only AES-CTR.</li>
  * </ul>
- *    
+ *
  * Overall this class attempts to minimize copying of data. Data must be copied into final
  * ContentObjects returned by the signing operations. On the way, it may need
  * to pass through a block encrypter, which may perform local copies. Higher-level
  * constructs, such as streams, may buffer it above.
  */
 public class CCNSegmenter {
-	
+
 	/**
 	 * Number of content objects we keep around prior to signing and outputting to the flow controller
 	 * Note that the flow controller also uses this value to determine its default high water mark.
 	 */
 	public static final int HOLD_COUNT = 128;
-    
+
 	public static final long LAST_SEGMENT = Long.valueOf(-1);
 
 	protected int _blockSize = SegmentationProfile.DEFAULT_BLOCKSIZE;
 	protected int _blockIncrement = SegmentationProfile.DEFAULT_INCREMENT;
 	protected int _byteScale = SegmentationProfile.DEFAULT_SCALE;
 	protected SegmentNumberType _sequenceType = SegmentNumberType.SEGMENT_FIXED_INCREMENT;
-	
+
 	protected ArrayList<ContentObject> _blocks = new ArrayList<ContentObject>(HOLD_COUNT + 1);
 
 	protected CCNHandle _handle;
@@ -135,7 +135,7 @@ public class CCNSegmenter {
 	 * Handle multi-block amortized signing. If null, default to single-block signing.
 	 */
 	protected CCNAggregatedSigner _bulkSigner;
-	
+
 	/**
 	 * The first segment, useful for obtaining starting segment number and digest to characterize
 	 * set of segmented content.
@@ -180,7 +180,7 @@ public class CCNSegmenter {
 		if ((null == flowControl) || (null == flowControl.getHandle())) {
 			// Tries to get a library or make a flow control, yell if we fail.
 			throw new IllegalArgumentException("CCNSegmenter: must provide a valid library or flow controller.");
-		} 
+		}
 		_flowControl = flowControl;
 		_handle = _flowControl.getHandle();
 		if (null == signer) {
@@ -249,7 +249,7 @@ public class CCNSegmenter {
 	public ContentObject getFirstSegment() {
 		return _firstSegment;
 	}
-	
+
 	/**
 	 * Sets the segmentation block size to use
 	 * @param blockSize block size in bytes
@@ -305,7 +305,7 @@ public class CCNSegmenter {
 	 * all the blocks of the item; if multiple calls to the
 	 * segmenter will be required to output an item, use other
 	 * methods to manage segment identifiers.
-	 * 
+	 *
 	 * If the data is small enough this doesn't fragment. Otherwise, does.
 	 * If multi-fragment, uses the naming profile and specified
 	 * bulk signer (default: Merkle Hash Tree) to generate names and signatures.
@@ -315,22 +315,22 @@ public class CCNSegmenter {
 	 * of fragmented data, the first fragment is returned). This way the
 	 * caller can then easily link to the data if
 	 * they need to, or put again with a different name.
-	 * @throws InvalidAlgorithmParameterException 
+	 * @throws InvalidAlgorithmParameterException
 	 **/
 	public long put(
 			ContentName name, byte [] content, int offset, int length,
 			boolean lastSegments,
 			SignedInfo.ContentType type,
-			Integer freshnessSeconds, 
-			KeyLocator locator, 
+			Integer freshnessSeconds,
+			KeyLocator locator,
 			PublisherPublicKeyDigest publisher,
-			ContentKeys keys) 
+			ContentKeys keys)
 	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
 		if (null == content) {
 			throw new IOException("Content cannot be null!");
 		}
-		
+
 		if (null == publisher) {
 			publisher = _handle.keyManager().getDefaultKeyID();
 		}
@@ -357,10 +357,10 @@ public class CCNSegmenter {
 			try {
 				// We should only get here on a single-fragment object, where the lastBlocks
 				// argument is false (omitted).
-				return putFragment(name, SegmentationProfile.baseSegment(), 
+				return putFragment(name, SegmentationProfile.baseSegment(),
 						content, offset, length, type,
-						null, freshnessSeconds, 
-						Long.valueOf(SegmentationProfile.baseSegment()), 
+						null, freshnessSeconds,
+						Long.valueOf(SegmentationProfile.baseSegment()),
 						locator, publisher, keys);
 			} catch (IOException e) {
 				Log.warning("This should not happen: put failed with an IOException.");
@@ -370,12 +370,12 @@ public class CCNSegmenter {
 		}
 	}
 
-	/** 
+	/**
 	 * Segments content, builds segment names and ContentObjects, signs
 	 * them, and writes them to the flow controller to go out to the network.
 	 * Low-level segmentation interface. Assume arguments have been cleaned
 	 * prior to arrival -- name is not already segmented, type is set, etc.
-	 * 
+	 *
 	 * Starts segmentation at segment SegmentationProfile().baseSegment().
 	 * @param name name prefix to use for the segments
 	 * @param content content buffer containing content to put
@@ -397,19 +397,19 @@ public class CCNSegmenter {
 	 * @throws InvalidKeyException
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
-	 * @throws IOException 
-	 * @throws InvalidAlgorithmParameterException 
+	 * @throws IOException
+	 * @throws InvalidAlgorithmParameterException
 	 */
 	public long fragmentedPut(
-			ContentName name, 
+			ContentName name,
 			byte [] content, int offset, int length,
 			Long finalSegmentIndex,
 			SignedInfo.ContentType type,
-			Integer freshnessSeconds, 
-			KeyLocator locator, 
+			Integer freshnessSeconds,
+			KeyLocator locator,
 			PublisherPublicKeyDigest publisher,
-			ContentKeys keys) 
-	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, 
+			ContentKeys keys)
+	throws InvalidKeyException, SignatureException, NoSuchAlgorithmException,
 	IOException, InvalidAlgorithmParameterException {
 
 		return fragmentedPut(name, SegmentationProfile.baseSegment(),
@@ -418,11 +418,11 @@ public class CCNSegmenter {
 				keys);
 	}
 
-	/** 
+	/**
 	 * Segments content, builds segment names and ContentObjects, signs
 	 * them, and writes them to the flow controller to go out to the network.
 	 * NOTE - ControlFlow.addNameSpace must be done before calling this
-	 * 
+	 *
 	 * @param name name prefix to use for the segments
 	 * @param baseSegmentNumber the segment number to start this batch with
 	 * @param content content buffer containing content to put
@@ -446,26 +446,26 @@ public class CCNSegmenter {
 	 * @throws InvalidKeyException
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
-	 * @throws IOException 
-	 * @throws InvalidAlgorithmParameterException 
+	 * @throws IOException
+	 * @throws InvalidAlgorithmParameterException
 	 * @see fragmentedPut(ContentName, byte[], int, int, Long, ContentType, Integer, KeyLocator, PublisherPublicKeyDigest)
 	 * Starts segmentation at segment SegmentationProfile().baseSegment().
 	 */
 	public long fragmentedPut(
 			ContentName name, long baseSegmentNumber,
 			byte [] content, int offset, int length, int blockWidth,
-			ContentType type, 
+			ContentType type,
 			CCNTime timestamp,
 			Integer freshnessSeconds, Long finalSegmentIndex,
-			KeyLocator locator, 
+			KeyLocator locator,
 			PublisherPublicKeyDigest publisher,
-			ContentKeys keys) throws InvalidKeyException, 
-			SignatureException, IOException, 
+			ContentKeys keys) throws InvalidKeyException,
+			SignatureException, IOException,
 			InvalidAlgorithmParameterException, NoSuchAlgorithmException {
 
 
 		// This will call into CCNBase after picking appropriate credentials
-		// take content, blocksize (static), divide content into array of 
+		// take content, blocksize (static), divide content into array of
 		// content blocks, call hash fn for each block, call fn to build merkle
 		// hash tree.   Build header, for each block, get authinfo for block,
 		// (with hash tree, block identifier, timestamp -- SQLDateTime)
@@ -493,26 +493,41 @@ public class CCNSegmenter {
 				// compute final segment number; which might be this one if blockCount == 1
 				int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
 				finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(
-						lastSegmentIndex(baseSegmentNumber, (blockCount-1)*blockWidth, 
+						lastSegmentIndex(baseSegmentNumber, (blockCount-1)*blockWidth,
 								blockCount));
 			} else {
 				finalBlockID = SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex);
 			}
 		}
 
-		long nextSegmentIndex = 
-			buildBlocks(rootName, baseSegmentNumber, 
+		long nextSegmentIndex =
+			buildBlocks(rootName, baseSegmentNumber,
 					new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
 					content, offset, length, blockWidth, keys, signingKey, null != finalSegmentIndex);
-		
+
 		if (_blocks.size() >= HOLD_COUNT || null != finalSegmentIndex) {
-			outputCurrentBlocks(signingKey);	
+			outputCurrentBlocks(signingKey);
 		}
 
 		return nextSegmentIndex;
 	}
 
-	/** 
+	public long fragmentedPut(
+			ContentName name, long baseSegmentNumber,
+			byte contentBlocks[][], int blockCount,
+			int firstBlockIndex, int lastBlockLength,
+			ContentType type,
+			CCNTime timestamp,
+			Integer freshnessSeconds, Long finalSegmentIndex,
+			KeyLocator locator,
+			PublisherPublicKeyDigest publisher,
+			ContentKeys keys) throws InvalidKeyException, SignatureException,
+			NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
+		return fragmentedPut(name, baseSegmentNumber, contentBlocks, blockCount, firstBlockIndex, lastBlockLength,
+				type, timestamp, freshnessSeconds, finalSegmentIndex, locator, publisher, keys, false);
+	}
+
+	/**
 	 * Takes pre-segmented content, builds segment names and ContentObjects, signs
 	 * them, and writes them to the flow controller to go out to the network.
 	 * @param name name prefix to use for the segments
@@ -540,24 +555,25 @@ public class CCNSegmenter {
 	 * @throws InvalidKeyException
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
-	 * @throws IOException 
-	 * @throws InvalidAlgorithmParameterException 
+	 * @throws IOException
+	 * @throws InvalidAlgorithmParameterException
 	 * @see fragmentedPut(ContentName, byte[], int, int, Long, ContentType, Integer, KeyLocator, PublisherPublicKeyDigest)
 	 * Starts segmentation at segment SegmentationProfile().baseSegment().
 	 */
 	public long fragmentedPut(
 			ContentName name, long baseSegmentNumber,
-			byte contentBlocks[][], int blockCount, 
+			byte contentBlocks[][], int blockCount,
 			int firstBlockIndex, int lastBlockLength,
-			ContentType type, 
+			ContentType type,
 			CCNTime timestamp,
 			Integer freshnessSeconds, Long finalSegmentIndex,
-			KeyLocator locator, 
-			PublisherPublicKeyDigest publisher, 
-			ContentKeys keys) throws InvalidKeyException, SignatureException, 
+			KeyLocator locator,
+			PublisherPublicKeyDigest publisher,
+			ContentKeys keys,
+			boolean flushNow) throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
-		if (blockCount == 0)
+		if (!flushNow && blockCount == 0)
 			return baseSegmentNumber;
 
 		if (null == publisher) {
@@ -593,36 +609,36 @@ public class CCNSegmenter {
 
 		long nextIndex = baseSegmentNumber;
 		for (int i = firstBlockIndex; i < firstBlockIndex + blockCount; i++) {
-			nextIndex = newBlock(rootName, nextIndex, 
+			nextIndex = newBlock(rootName, nextIndex,
 						new SignedInfo(publisher, timestamp, type, locator, freshnessSeconds, finalBlockID),
 								contentBlocks[i], 0, (i < firstBlockIndex + blockCount - 1)
 								?  contentBlocks[i].length : lastBlockLength, keys);
 			if (_blocks.size() >= HOLD_COUNT) {
-				outputCurrentBlocks(signingKey);	
+				outputCurrentBlocks(signingKey);
 			}
 		}
-		if (null != finalSegmentIndex) {
-			outputCurrentBlocks(signingKey);	
+		if (flushNow || null != finalSegmentIndex) {
+			outputCurrentBlocks(signingKey);
 		}
-		
+
 		return nextIndex;
 	}
-	
+
 	/**
 	 * Sign and output all outstanding blocks to the flow controller. This is done when the number of
 	 * blocks reaches HOLD_COUNT (see above) or we are doing a final flush of a file.
-	 * 
+	 *
 	 * There are 2 cases:
 	 * 1) we're flushing a single block and can put it out with a straight signature (includes
      *   0-length file case)
 	 * 2) we're flushing more than one block, and need to use a bulk signer.
-	 * 
+	 *
 	 * All code is capable of handling any mix of these types of blocks but internal mixing should not
 	 * happen anymore unless we decide to add a higher level capability to allow an immediate flush all
 	 * the way to the flow controller. Normally we would see groups of bulk signatures followed by a
 	 * straight signature block in rare cases where only a single block is left over for the flush
 	 * after a bulk signing pass.
-	 * 
+	 *
 	 * @param signingKey
 	 * @param finalFlush sign and dump everything if true
 	 * @throws InvalidKeyException
@@ -633,28 +649,28 @@ public class CCNSegmenter {
 	protected void outputCurrentBlocks(PrivateKey signingKey) throws InvalidKeyException, SignatureException, NoSuchAlgorithmException, IOException {
 		if (_blocks.size() == 0)
 			return;
-		
+
 		if (_blocks.size() == 1) {
-			
+
 			ContentObject co = _blocks.get(0);
 			co.sign(signingKey);
 			if( Log.isLoggable(Level.FINER))
 				Log.finer("CCNSegmenter: putting " + co.name() + " (timestamp: " + co.signedInfo().getTimestamp() + ", length: " + co.contentLength() + ")");
 			_flowControl.put(co);
-			
+
 		} else {
-		
+
 			// Digest of complete contents
 			// If we're going to unique-ify the block names
 			// (or just in general) we need to incorporate the names
-			// and signedInfos in the MerkleTree blocks. 
+			// and signedInfos in the MerkleTree blocks.
 			// For now, this generates the root signature too, so can
 			// ask for the signature for each block.
 			ContentObject[] blocks = new ContentObject[_blocks.size()];
 			_blocks.toArray(blocks);
-			
+
 			if (Log.isLoggable(Log.FAC_IO, Level.INFO))
-				Log.info(Log.FAC_IO, "flush: putting merkle tree to the network, name starts with " + blocks[0].name() + "; " 
+				Log.info(Log.FAC_IO, "flush: putting merkle tree to the network, name starts with " + blocks[0].name() + "; "
 	                    + _blocks.size() + " blocks");
 			_bulkSigner.signBlocks(blocks, signingKey);
 			getFlowControl().put(blocks);
@@ -664,10 +680,10 @@ public class CCNSegmenter {
 
 	/**
 	 * Puts a single block of content of arbitrary length using a segment naming convention. The only
-	 * current use of this is to allow a Segmenter.put of less than a blocksize. 
+	 * current use of this is to allow a Segmenter.put of less than a blocksize.
 	 * I'm not quite sure why that needs to use this and it would be nice to get rid of this since its
 	 * mostly superfluous and duplicating other code at this point but for now I'll leave it in.
-	 * 
+	 *
 	 * @param name name prefix to use for the object, without the segment number
 	 * @param segmentNumber the segment number to use for this object
 	 * @param content content buffer containing content to put
@@ -690,18 +706,18 @@ public class CCNSegmenter {
 	 * @throws InvalidKeyException
 	 * @throws SignatureException
 	 * @throws NoSuchAlgorithmException
-	 * @throws IOException 
-	 * @throws InvalidAlgorithmParameterException 
+	 * @throws IOException
+	 * @throws InvalidAlgorithmParameterException
 	 */
 	public long putFragment(
-			ContentName name, long segmentNumber, 
+			ContentName name, long segmentNumber,
 			byte [] content, int offset, int length,
-			ContentType type, 
-			CCNTime timestamp, 
+			ContentType type,
+			CCNTime timestamp,
 			Integer freshnessSeconds, Long finalSegmentIndex,
-			KeyLocator locator, 
+			KeyLocator locator,
 			PublisherPublicKeyDigest publisher,
-			ContentKeys keys) throws InvalidKeyException, SignatureException, 
+			ContentKeys keys) throws InvalidKeyException, SignatureException,
 			NoSuchAlgorithmException, IOException, InvalidAlgorithmParameterException {
 
 		if (null == publisher) {
@@ -719,18 +735,18 @@ public class CCNSegmenter {
 		ContentName rootName = SegmentationProfile.segmentRoot(name);
 		_flowControl.addNameSpace(rootName);
 
-		byte [] finalBlockID = ((null == finalSegmentIndex) ? null : 
-			((finalSegmentIndex.longValue() == LAST_SEGMENT) ? 
-					SegmentationProfile.getSegmentNumberNameComponent(segmentNumber) : 
+		byte [] finalBlockID = ((null == finalSegmentIndex) ? null :
+			((finalSegmentIndex.longValue() == LAST_SEGMENT) ?
+					SegmentationProfile.getSegmentNumberNameComponent(segmentNumber) :
 						SegmentationProfile.getSegmentNumberNameComponent(finalSegmentIndex)));
-		
+
 		SignedInfo signedInfo = new SignedInfo(publisher, timestamp, type, locator,freshnessSeconds, finalBlockID);
-		
-		segmentNumber = newBlock(rootName, segmentNumber, 
+
+		segmentNumber = newBlock(rootName, segmentNumber,
 				signedInfo, content, offset, length, keys);
 		if (_blocks.size() >= HOLD_COUNT + 1 || null != finalSegmentIndex)
 			outputCurrentBlocks(signingKey);
-			
+
 		return segmentNumber;
 	}
 
@@ -750,13 +766,13 @@ public class CCNSegmenter {
 	 * @throws InvalidKeyException
 	 * @throws InvalidAlgorithmParameterException
 	 * @throws IOException
-	 * @throws NoSuchAlgorithmException 
-	 * @throws SignatureException 
+	 * @throws NoSuchAlgorithmException
+	 * @throws SignatureException
 	 */
 	protected long buildBlocks(ContentName rootName,
-			long baseSegmentNumber, SignedInfo signedInfo, 
+			long baseSegmentNumber, SignedInfo signedInfo,
 			byte[] content, int offset, int length, int blockWidth,
-			ContentKeys keys, PrivateKey signingKey, boolean finalFlush) 
+			ContentKeys keys, PrivateKey signingKey, boolean finalFlush)
 	throws InvalidKeyException, InvalidAlgorithmParameterException, IOException, SignatureException, NoSuchAlgorithmException {
 
 		int blockCount = CCNMerkleTree.blockCount(length, blockWidth);
@@ -790,21 +806,21 @@ public class CCNSegmenter {
 			if (null == _firstSegment) {
 				_firstSegment = co;
 			}
-			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex, 
+			nextSegmentIndex = nextSegmentIndex(nextSegmentIndex,
 					co.contentLength());
 			offset += blockWidth;
 			length -= blockWidth;
 			if (_blocks.size() >= HOLD_COUNT + 1 || finalFlush) {
-				outputCurrentBlocks(signingKey);	
+				outputCurrentBlocks(signingKey);
 			}
 		}
 		return nextSegmentIndex;
 	}
 
 	/**
-	 * Create a ContentObject, encrypt it if requested, and add it to the list of ContentObjects 
+	 * Create a ContentObject, encrypt it if requested, and add it to the list of ContentObjects
 	 * awaiting signing and output to the flow controller. Also creates the segmented name for the CO.
-	 * 
+	 *
 	 * @param rootName
 	 * @param segmentNumber
 	 * @param signedInfo
