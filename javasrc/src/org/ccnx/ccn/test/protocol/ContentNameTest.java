@@ -19,6 +19,7 @@ package org.ccnx.ccn.test.protocol;
 
 import static org.ccnx.ccn.protocol.ContentName.ROOT;
 import static org.ccnx.ccn.protocol.ContentName.SEPARATOR;
+import static org.ccnx.ccn.protocol.ContentName.fromNative;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -630,5 +631,12 @@ public class ContentNameTest {
 		System.out.println("Executed "+ loops + " ContentName.toString() in " + elapsed + " ms; " + ((loops * 1000) / elapsed) + "/s");
 		
 		Log.info(Log.FAC_TEST, "Completed testContentNamePrintPerformance");
+	}
+	
+	@Test
+	public void testPostfix() throws MalformedContentNameStringException {
+		assertEquals( fromNative("/a/b/c/d/e").postfix(fromNative("/a/b/c")), fromNative("/d/e") );
+		assertEquals( fromNative("/a/b/c").postfix(fromNative("/a/b/c")), ROOT );
+		assertEquals( fromNative("/a/b/c").postfix(fromNative("/a/b/d/e")), null );
 	}
 }
