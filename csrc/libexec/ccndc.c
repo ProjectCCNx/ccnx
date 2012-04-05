@@ -548,7 +548,6 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
             return (-1);
         }
         
-        iflags = -1;
         if (flags != NULL && flags[0] != 0) {
             iflags = atoi(flags);
             if ((iflags & ~CCN_FORW_PUBMASK) != 0) {
@@ -557,7 +556,6 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
             }
         }
         
-        imcastttl = -1;
         if (mcastttl != NULL) {
             imcastttl = atoi(mcastttl);
             if (imcastttl < 0 || imcastttl > 255) {
