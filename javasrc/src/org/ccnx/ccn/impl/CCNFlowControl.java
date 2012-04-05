@@ -99,7 +99,9 @@ public class CCNFlowControl implements CCNInterestHandler {
 	protected long _nOut = 0;
 
 	// Unmatched interests are purged from our table if they have remained there longer than this
+	//TODO need to normalize this with refresh time in CCNNetworkManager and put in SystemConfiguration
 	protected static final int PURGE = 4000;
+	protected static long _lastPurgeTime = 0;
 
 	protected TreeMap<ContentName, ContentObject> _holdingArea = new TreeMap<ContentName, ContentObject>();
 	protected InterestTable<UnmatchedInterest> _unmatchedInterests = new InterestTable<UnmatchedInterest>();
@@ -122,7 +124,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 		this(handle);
 		if (name != null) {
 			if( Log.isLoggable(Log.FAC_IO, Level.INFO))
-				Log.info(Log.FAC_IO, "adding namespace: " + name);
+				Log.info(Log.FAC_IO, "adding namespace: {0}", name);
 			// don't call full addNameSpace, in order to allow subclasses to
 			// override. just do minimal part
 			_filteredNames.add(name);
@@ -150,7 +152,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			try {
 				handle = CCNHandle.open();
 			} catch (ConfigurationException e) {
-				Log.info(Log.FAC_IO, "Got ConfigurationException attempting to create a handle. Rethrowing it as an IOException. Message: " + e.getMessage());
+				Log.info(Log.FAC_IO, "Got ConfigurationException attempting to create a handle. Rethrowing it as an IOException. Message: {0}", e.getMessage());
 				throw new IOException("ConfigurationException creating a handle: " + e.getMessage());
 			}
 		}
@@ -189,7 +191,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 			ContentName filteredName = it.next();
 			if (filteredName.isPrefixOf(name)) {
 				if( Log.isLoggable(Log.FAC_IO, Level.INFO))
-					Log.info(Log.FAC_IO, "addNameSpace: not adding name: " + name + " already monitoring prefix: " + filteredName);
+					Log.info(Log.FAC_IO, "addNameSpace: not adding name: {0} already monitoring prefix: {1}", name, filteredName);
 				return;		// Already part of filter
 			}
 			if (name.isPrefixOf(filteredName)) {
@@ -200,7 +202,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 		_filteredNames.add(name);
 		_handle.registerFilter(name, this);
 		if( Log.isLoggable(Log.FAC_IO, Level.INFO))
-			Log.info(Log.FAC_IO, "Flow controller addNameSpace: added namespace: " + name);
+			Log.info(Log.FAC_IO, "Flow controller addNameSpace: added namespace: {0}", name);
 	}
 
 	/**
@@ -260,7 +262,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 				_handle.unregisterFilter(filteredName, this);
 				it.remove();
 				if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
-					Log.finest(Log.FAC_IO, "removing namespace: " + name);
+					Log.finest(Log.FAC_IO, "removing namespace: {0}", name);
 				break;
 			}
 		}
@@ -418,10 +420,13 @@ public class CCNFlowControl implements CCNInterestHandler {
 			if (size >= capacity) {
 				long ourTime = System.currentTimeMillis();
 
-				// When we're going to be blocked waiting for a reader anyway,
 				// purge old unmatched interests
-				synchronized (_unmatchedInterests) {
-					removeUnmatchedInterests(ourTime);
+				// Don't do it too often as this is time consuming
+				if ((ourTime - _lastPurgeTime) > PURGE) {
+					synchronized (_unmatchedInterests) {
+						removeUnmatchedInterests(ourTime);
+						_lastPurgeTime = ourTime;
+					}
 				}
 
 				// Now wait for space to be cleared or timeout
@@ -460,13 +465,17 @@ public class CCNFlowControl implements CCNInterestHandler {
 				match = _unmatchedInterests.removeMatch(co);
 			}
 			if (match != null) {
-				Log.finest(Log.FAC_IO, "Found pending matching interest for " + co.name() + ", putting to network.");
+				if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
+					Log.finest(Log.FAC_IO, "Found pending matching interest for {0}, putting to network.", co.name());
 				_handle.put(co);
 				// afterPutAction may immediately remove the object from _holdingArea or retain it
 				// depending upon the buffer drain policy being implemented.
 				synchronized (_holdingArea) {
 					afterPutAction(co);
 				}
+			} else {
+				if (Log.isLoggable(Log.FAC_IO, Level.FINEST))
+					Log.finest(Log.FAC_IO, "No match found for {0}", co.name());
 			}
 		} else // Flow control disabled entirely: put to network immediately
 			_handle.put(co);
@@ -486,7 +495,6 @@ public class CCNFlowControl implements CCNInterestHandler {
 		do {
 			removeIt = null;
 			for (Entry<UnmatchedInterest> uie : _unmatchedInterests.values()) {
-				//TODO need to normalize this with refresh time in CCNNetworkManager and put in SystemConfiguration
 				if ((ourTime - uie.value().timestamp) > PURGE) {
 					removeIt = uie;
 					break;
@@ -495,8 +503,11 @@ public class CCNFlowControl implements CCNInterestHandler {
 					break;
 				}
 			}
-			if (removeIt != null)
+			if (removeIt != null) {
+				if (Log.isLoggable(Log.FAC_IO, Level.INFO))
+					Log.info(Log.FAC_IO, "Removing unmatched interest {0}", removeIt.interest().name());
 				_unmatchedInterests.remove(removeIt.interest(), removeIt.value());
+			}
 		} while (removeIt != null);
 	}
 
@@ -548,7 +559,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 				afterPutAction(co);
 			}
 		} catch (IOException e) {
-			Log.warning(Log.FAC_IO, "IOException in handleInterests: " + e.getClass().getName() + ": " + e.getMessage());
+			Log.warning(Log.FAC_IO, "IOException in handleInterests: {0}: {1}", e.getClass().getName(), e.getMessage());
 			Log.warningStackTrace(e);
 		}
 
@@ -580,7 +591,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 	private ContentObject getBestMatch(Interest interest) {
 		ContentObject bestMatch = null;
 		if( Log.isLoggable(Log.FAC_IO, Level.FINEST))
-			Log.finest(Log.FAC_IO, "Looking for best match to " + interest + " among " + _holdingArea.size() + " options.");
+			Log.finest(Log.FAC_IO, "Looking for best match to {0} among {1} options.", interest, _holdingArea.size());
 		for ( java.util.Map.Entry<ContentName, ContentObject> entry :  _holdingArea.entrySet() ) {
 			ContentName name = entry.getKey();
 			ContentObject result = entry.getValue();
@@ -642,7 +653,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 
 				if (_nOut == startSize) {
 					for(ContentName co : _holdingArea.keySet()) {
-						Log.warning(Log.FAC_IO, "FlowController: still holding: " + co.toString());
+						Log.warning(Log.FAC_IO, "FlowController: still holding: {0}", co.toString());
 					}
 					// For now - dump the handlers stack if its active in case that may give a clue about what's wrong.
 					// We may want to leave this in permanently.
@@ -696,7 +707,7 @@ public class CCNFlowControl implements CCNInterestHandler {
 	 */
 	public void clearUnmatchedInterests() {
 		if( Log.isLoggable(Log.FAC_IO, Level.INFO))
-			Log.info(Log.FAC_IO, "Clearing " + _unmatchedInterests.size() + " unmatched interests.");
+			Log.info(Log.FAC_IO, "Clearing {0} unmatched interests.", _unmatchedInterests.size());
 		_unmatchedInterests.clear();
 	}
 
