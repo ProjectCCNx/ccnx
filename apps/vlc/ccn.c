@@ -81,13 +81,21 @@ set_shortname(N_("CCNx"));
 set_description(N_("Access module for CCNx URIs"));
 set_category(CAT_INPUT);
 set_subcategory(SUBCAT_INPUT_ACCESS);
+#if (VLCPLUGINVER < 10200)
+add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS, NULL,
+            MAX_FIFO_TEXT, MAX_FIFO_LONGTEXT, true);
+add_integer("ccn-fifo-blocksize", CCN_FIFO_BLOCK_SIZE, NULL,
+            BLOCK_FIFO_TEXT, BLOCK_FIFO_LONGTEXT, true);
+add_bool( "ccn-streams-seekable", true, NULL,
+         SEEKABLE_TEXT, SEEKABLE_LONGTEXT, true )
+#else
 add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS,
             MAX_FIFO_TEXT, MAX_FIFO_LONGTEXT, true);
 add_integer("ccn-fifo-blocksize", CCN_FIFO_BLOCK_SIZE,
             BLOCK_FIFO_TEXT, BLOCK_FIFO_LONGTEXT, true);
-add_bool( "ccn-streams-seekable", true, SEEKABLE_TEXT,
-         SEEKABLE_LONGTEXT, true )
-
+add_bool( "ccn-streams-seekable", true,
+         SEEKABLE_TEXT, SEEKABLE_LONGTEXT, true )
+#endif
 change_safe();
 set_capability("access", 0);
 add_shortcut("ccn");
