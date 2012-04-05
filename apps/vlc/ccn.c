@@ -53,16 +53,16 @@
 
 #define MAX_FIFO_TEXT N_("FIFO max blocks")
 #define MAX_FIFO_LONGTEXT N_(						\
-	"Maximum number of blocks held in FIFO "			\
-	"used by content fetcher.")
+"Maximum number of blocks held in FIFO "			\
+"used by content fetcher.")
 
 #define BLOCK_FIFO_TEXT N_("FIFO block size")
 #define BLOCK_FIFO_LONGTEXT N_(						\
-	"Size of blocks held in FIFO "			\
-	"used by content fetcher.")
+"Size of blocks held in FIFO "			\
+"used by content fetcher.")
 #define SEEKABLE_TEXT N_("CCN streams can seek")
 #define SEEKABLE_LONGTEXT N_(               \
-    "Enable or disable seeking within a CCN stream.")
+"Enable or disable seeking within a CCN stream.")
 
 static int  CCNOpen(vlc_object_t *);
 static void CCNClose(vlc_object_t *);
@@ -240,7 +240,7 @@ static int CCNOpen(vlc_object_t *p_this)
 
     return VLC_SUCCESS;
 
- exit_error:
+exit_error:
     if (p_name) {
         ccn_charbuf_destroy(&p_name);
     }
@@ -306,7 +306,7 @@ static void CCNClose(vlc_object_t *p_this)
         free(p_sys->buf);
         p_sys->buf = NULL;
     }
-    
+
     free(p_sys);
 }
 
@@ -426,7 +426,7 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
     p_sys->i_pos = i_pos;
     p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
     ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_template);
-    ccn_charbuf_destroy(&p_name);    
+    ccn_charbuf_destroy(&p_name);
 
     p_access->info.i_pos = i_pos;
     p_access->info.b_eof = false;
@@ -450,23 +450,23 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
             pb_bool = (bool*)va_arg(args, bool *);
             *pb_bool = var_CreateGetBool(p_access, "ccn-streams-seekable");
             break;
-            
+        
         case ACCESS_CAN_CONTROL_PACE:
         case ACCESS_CAN_PAUSE:
             pb_bool = (bool*)va_arg(args, bool *);
             *pb_bool = true;
             break;
-            
+        
         case ACCESS_GET_PTS_DELAY:
             pi_64 = (int64_t*)va_arg(args, int64_t *);
             *pi_64 = INT64_C(1000) *
-                (int64_t)var_InheritInteger(p_access, "network-caching");
+                (int64_t) var_InheritInteger(p_access, "network-caching");
             break;
-            
+        
         case ACCESS_SET_PAUSE_STATE:
             pb_bool = (bool*)va_arg(args, bool *);
             break;
-
+        
         case ACCESS_GET_TITLE_INFO:
         case ACCESS_GET_META:
         case ACCESS_SET_TITLE:
@@ -476,12 +476,12 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
         case ACCESS_GET_PRIVATE_ID_STATE:
         case ACCESS_GET_CONTENT_TYPE:
             return VLC_EGENERIC;
-
+        
         default:
             msg_Warn(p_access, "CCN unimplemented query in control - %d", i_query);
             return VLC_EGENERIC;
-
-        }
+        
+    }
     return VLC_SUCCESS;
 }
 
@@ -514,7 +514,7 @@ static void
 s_block_FifoPace (block_fifo_t *fifo, size_t max_depth, size_t max_size)
 {
     vlc_testcancel ();
-    
+
     vlc_mutex_lock (&fifo->lock);
     while ((fifo->i_depth > max_depth) || (fifo->i_size > max_size))
     {
@@ -547,49 +547,49 @@ incoming_content(struct ccn_closure *selfp,
     struct ccn_indexbuf *ic = NULL;
     int res;
     int result = CCN_UPCALL_RESULT_OK;
-    
+
     vlc_mutex_lock(&p_sys->lock);
     switch (kind) {
         case CCN_UPCALL_FINAL:
-        msg_Dbg(p_access, "CCN upcall final %p", selfp);
-        if (selfp == p_sys->incoming)
-            p_sys->incoming = NULL;
-        free(selfp);
+            msg_Dbg(p_access, "CCN upcall final %p", selfp);
+            if (selfp == p_sys->incoming)
+                p_sys->incoming = NULL;
+            free(selfp);
             goto exit;
         case CCN_UPCALL_INTEREST_TIMED_OUT:
-        if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN Interest timed out on dead closure %p", selfp);
-            goto exit;
-        }
-        msg_Dbg(p_access, "CCN upcall reexpress -- timed out");
-        if (p_sys->timeouts > 5) {
-            msg_Dbg(p_access, "CCN upcall reexpress -- too many reexpressions");
-            p_access->b_die = true;
-            if (p_sys->p_fifo)
-                block_FifoWake(p_sys->p_fifo);
-            goto exit;
-        }
-        p_sys->timeouts++;
+            if (selfp != p_sys->incoming) {
+                msg_Dbg(p_access, "CCN Interest timed out on dead closure %p", selfp);
+                goto exit;
+            }
+            msg_Dbg(p_access, "CCN upcall reexpress -- timed out");
+            if (p_sys->timeouts > 5) {
+                msg_Dbg(p_access, "CCN upcall reexpress -- too many reexpressions");
+                p_access->b_die = true;
+                if (p_sys->p_fifo)
+                    block_FifoWake(p_sys->p_fifo);
+                goto exit;
+            }
+            p_sys->timeouts++;
             result = CCN_UPCALL_RESULT_REEXPRESS;
             goto exit;
         case CCN_UPCALL_CONTENT_UNVERIFIED:
-        if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN unverified content on dead closure %p", selfp);
+            if (selfp != p_sys->incoming) {
+                msg_Dbg(p_access, "CCN unverified content on dead closure %p", selfp);
+                goto exit;
+            }
+            result = CCN_UPCALL_RESULT_VERIFY;
             goto exit;
-        }
-        result = CCN_UPCALL_RESULT_VERIFY;
-        goto exit;
-
-    case CCN_UPCALL_CONTENT:
-        if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN content on dead closure %p", selfp);
+        
+        case CCN_UPCALL_CONTENT:
+            if (selfp != p_sys->incoming) {
+                msg_Dbg(p_access, "CCN content on dead closure %p", selfp);
+                goto exit;
+            }
+            break;
+        default:
+            msg_Warn(p_access, "CCN upcall result error");
+            result = CCN_UPCALL_RESULT_ERR;
             goto exit;
-        }
-        break;
-    default:
-        msg_Warn(p_access, "CCN upcall result error");
-        result = CCN_UPCALL_RESULT_ERR;
-        goto exit;
     }
     if (p_access->b_die)
         goto exit;
@@ -604,7 +604,7 @@ incoming_content(struct ccn_closure *selfp,
     vlc_mutex_lock(&p_sys->lock);
     if (p_access->b_die || selfp != p_sys->incoming)
         goto exit;
-    
+
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
     ib = info->interest_ccnb;
@@ -640,7 +640,7 @@ incoming_content(struct ccn_closure *selfp,
     }
     /* Advance position */
     p_sys->i_pos += (data_size - start_offset);
-    
+
     /* if we're done, indicate so with a 0-byte block, release any buffered data upstream,
      * and don't express an interest
      */
@@ -670,7 +670,7 @@ static struct ccn_charbuf *
 sequenced_name(struct ccn_charbuf *basename, uintmax_t seq)
 {
     struct ccn_charbuf *name = NULL;
-    
+
     name = ccn_charbuf_create();
     ccn_charbuf_append_charbuf(name, basename);
     ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, seq);
