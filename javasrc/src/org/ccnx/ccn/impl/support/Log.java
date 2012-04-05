@@ -701,6 +701,10 @@ public class Log {
 		logStackTrace(facility, Level.WARNING, t);
 	}
 
+	public static void severeStackTrace(int facility, Throwable t) {
+		logStackTrace(facility, Level.WARNING, t);
+	}
+
 	public static void infoStackTrace(Throwable t) {
 		logStackTrace(Level.INFO, t);
 	}
