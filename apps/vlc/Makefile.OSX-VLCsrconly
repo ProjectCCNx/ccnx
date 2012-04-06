@@ -1,0 +1,42 @@
+# vlc/Makefile.OSX
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2012 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+VLCAPP = /Applications/VLC.app
+VLCSRC = /Users/Briggs/projects/vlc-2.0.0
+
+VLCLIBDIR = $(VLCAPP)/Contents/MacOS/lib
+VLCPLUGINSDIR = $(VLCAPP)/Contents/MacOS/plugins
+VLCPLUGINVERDEF := $(shell grep PACKAGE_VERSION= $(VLCSRC)/configure | sed 's/^.*=.//;s/.$$//' | awk -F. '{printf "-DVLCPLUGINVER=%d%02d%02d",$$1,$$2,$$3}')
+VLCPLUGINDEFS = -D__PLUGIN__ -D_FILE_OFFSET_BITS=64 -D__USE_UNIX98 -D_REENTRANT -D_THREAD_SAFE
+
+all: libaccess_ccn_plugin.dylib
+
+libaccess_ccn_plugin.dylib: libaccess_ccn_plugin.o
+	gcc $< -o $@ -bundle -L../../lib -lccn -lcrypto -L$(VLCLIBDIR) -lvlccore
+	install_name_tool -change "@loader_path/lib/libvlccore.5.dylib" "@loader_path/../lib/libvlccore.5.dylib" $@
+
+libaccess_ccn_plugin.o: ccn.c
+	gcc -c -g -O3 -std=gnu99  $(VLCPLUGINDEFS) $< -I../../include/ -I$(VLCSRC)/include -DMODULE_STRING=\"ccn\" $(VLCPLUGINVERDEF) -o $@  
+
+clean:
+	rm -f libaccess_ccn_plugin.o libaccess_ccn_plugin.dylib
+
+install: all
+	test -d $(VLCPLUGINSDIR) || (echo "VLC plugins directory does not exist at " $(VLCPLUGINSDIR) && exit 1)
+	install -m 0755 libaccess_ccn_plugin.dylib $(VLCPLUGINSDIR)
+
+uninstall:
+	test -d $(VLCPLUGINSDIR) || (echo "VLC plugins directory does not exist at " $(VLCPLUGINSDIR) && exit 1)
+	rm -f -- $(VLCPLUGINSDIR)/libaccess_ccn_plugin.dylib
+
+.PHONY: all clean install uninstall

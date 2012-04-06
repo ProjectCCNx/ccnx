@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009, 2010, 2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -15,7 +15,7 @@ libdir := $(shell pkg-config --variable=libdir vlc-plugin )
 # in a future VLC release (1.2.0?) we expect to see a pkg-config variable for the plugin directory.
 vlcplugindir := $(shell pkg-config --atleast-version=1.1.0 vlc-plugin && echo $(libdir)/vlc/plugins || echo $(libdir)/vlc/modules)
 vlcaccessdir := $(vlcplugindir)/access
-VLCPLUGINVERDEF := $(shell pkg-config --modversion vlc-plugin | sed 's/\(^.....\).*/-DVLCPLUGINVER=\1/;s/\.//g;s/=0/=/')
+VLCPLUGINVERDEF := $(shell pkg-config --modversion vlc-plugin | awk -F. '{printf "-DVLCPLUGINVER=%d%02d%02d",$$1,$$2,$$3}')
 
 all: libaccess_ccn_plugin.so
 
