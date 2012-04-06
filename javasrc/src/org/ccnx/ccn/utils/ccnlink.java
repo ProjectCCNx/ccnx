@@ -44,26 +44,51 @@ public class ccnlink {
 		try {
 
 			int offset = 0;
-			if ((args.length > 1) && (args[0].equals("-q"))) {
-				Log.setDefaultLevel(Level.WARNING);
-				offset++;
-			}
-
 			SaveType type = SaveType.REPOSITORY;
-			if ((args.length-offset > 1) && (args[0].equals("-r"))) {
-				type = SaveType.RAW;
-				offset++;
+
+			for (int i = 0; i < args.length; i++) {
+
+				if (!args[i].startsWith("-"))
+					break;
+
+				if (args[i].equals("-q")) {
+					Log.setDefaultLevel(Level.WARNING);
+					offset++;
+				}
+
+				if (args[i].equals("-r")) {
+					type = SaveType.RAW;
+					offset++;
+				}
 			}
 
 			if (args.length-offset < 2) {
 				usage();
-				return;
+				System.exit(1);
+			}
+
+			boolean hasAs = false;
+			if (args.length - offset > 2) {
+				if (args[offset + 2].equals("-as"))
+					hasAs = true;
+				else {
+					usage();
+					System.exit(1);
+				}
 			}
 
 			ContentName linkName = ContentName.fromURI(args[offset++]);
 			ContentName targetName = ContentName.fromURI(args[offset++]);
 
-			Tuple<Integer, CCNHandle> tuple = CreateUserData.handleAs(args, offset);
+			Tuple<Integer, CCNHandle> tuple = null;
+
+			if (hasAs) {
+				tuple = CreateUserData.handleAs(args, offset);
+				if (null == tuple) {
+					usage();
+					System.exit(1);
+				}
+			}
 
 			// Can also use command line system properties and environment variables to
 			// point this handle to the correct user.
