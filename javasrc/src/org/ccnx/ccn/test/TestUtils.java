@@ -26,7 +26,7 @@ import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.junit.Assert;
 
 /**
- * Random static utilities for testing
+ * Miscellaneous static utilities for testing
  */
 public class TestUtils {
 	public static final int WAIT_TIME = 100;
