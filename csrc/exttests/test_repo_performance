@@ -71,7 +71,11 @@ WithCCND 1 ccndsmoketest send $STAGED/repoFile1
 export CCNR_DIRECTORY=${CCNR_TEST_REPOS:-.}/testrepo2
 rm -R $CCNR_DIRECTORY 2>/dev/null
 mkdir -p $CCNR_DIRECTORY || Fail
-sleep 3
+# create this with no ccnd, so we do not go on until the keystore is generated
+WithCCND 7 env CCNR_DEBUG=WARNING ccnr 2>ccnr-repo-create.out
+test -d $CCNR_DIRECTORY/index || Fail no index
+test -f $CCNR_DIRECTORY/repoFile1 || Fail no repoFile1
+# now start the new repo, connected to ccnd1
 WithCCND 1 env CCNR_DEBUG=WARNING ccnr 2>>ccnr1.out &
 sleep 1
 echo Repo write test using ccnr TEST_DATA_SIZE=$TEST_DATA_SIZE

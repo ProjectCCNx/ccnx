@@ -18,8 +18,8 @@
 #ifndef CCN_SyncActions
 #define CCN_SyncActions
 
+#include <ccn/charbuf.h>
 #include "SyncBase.h"
-#include "SyncNode.h"
 #include "SyncRoot.h"
 #include "SyncUtil.h"
 
@@ -47,11 +47,12 @@ enum SyncActionState {
 struct SyncActionData {
     struct SyncActionData *next;
     struct SyncRootStruct *root;
+    struct SyncHashCacheEntry *ce;
     struct SyncCompareData *comp;
-    struct ccnr_handle *ccnr;
+    void *client_handle;
     struct ccn_charbuf *prefix;
     struct ccn_charbuf *hash;
-    sync_time startTime;
+    int64_t startTime;
     enum SyncRegisterActionKind kind;
     enum SyncActionState state;
     int skipToHash;
@@ -102,7 +103,7 @@ SyncAddName(struct SyncBaseStruct *base, struct ccn_charbuf *name, ccnr_accessio
 /**
  * Creates a new slice from a full name.
  * The name must start with base->priv->sliceCmdPrefix.
- * @returns < 0 if an error occured, otherwise the new root number.
+ * @returns < 0 if an error occurred, otherwise the new root number.
  */
 int
 SyncHandleSlice(struct SyncBaseStruct *base, struct ccn_charbuf *name);

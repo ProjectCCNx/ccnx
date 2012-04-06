@@ -462,21 +462,21 @@ process_command_tokens(struct prefix_face_list_item *pfltail,
                        char *mcastttl,
                        char *mcastif)
 {
-    int lifetime;
-    struct ccn_charbuf *prefix;
-    int ipproto;
-    int socktype;
-    int iflags;
-    int imcastttl;
-    int createface;
-    int facenumber;
+    int lifetime = 0;
+    struct ccn_charbuf *prefix = NULL;
+    int ipproto = 0;
+    int socktype = 0;
+    int iflags = 0;
+    int imcastttl = 0;
+    int createface = 0;
+    int facenumber = 0;
     char rhostnamebuf[NI_MAXHOST];
     char rhostportbuf[NI_MAXSERV];
     struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG)};
     struct addrinfo mcasthints = {.ai_family = AF_UNSPEC, .ai_flags = (AI_ADDRCONFIG | AI_NUMERICHOST)};
     struct addrinfo *raddrinfo = NULL;
     struct addrinfo *mcastifaddrinfo = NULL;
-    struct prefix_face_list_item *pflp;
+    struct prefix_face_list_item *pflp = NULL;
     int res;
     
     if (cmd == NULL) {

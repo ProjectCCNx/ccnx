@@ -1,11 +1,11 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008, 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -42,19 +42,22 @@ import org.ccnx.ccn.protocol.Interest;
 
 public class RepositoryDataListener implements CCNContentHandler {
 	private long _timer;				// Used to timeout inactive listeners
-	private Interest _origInterest;		// The interest which originally triggered the creation of
+	private final Interest _origInterest;		// The interest which originally triggered the creation of
 										// this listener. Used to filter out duplicate or overlapping
 										// requests for listeners
-	private InterestTable<Object> _interests = new InterestTable<Object>();	// Used to hold outstanding interests
+	private final InterestTable<Object> _interests = new InterestTable<Object>();	// Used to hold outstanding interests
 										// expressed but not yet satisfied.  Also used to decide how many interests
 										// may be expressed to satisfy the current pipelining window
 	protected RepositoryServer _server;
-	private CCNHandle _handle;
+	private final CCNHandle _handle;
 	private long _largestSegmentNumberReceived = -1;
 	private long _finalSegmentNumber = -1; 	// expected last block of the stream
-	
-	private GetLargestSegmentNumberAction _glsna = new GetLargestSegmentNumberAction();
-	
+
+	private final GetLargestSegmentNumberAction _glsna = new GetLargestSegmentNumberAction();
+
+	protected boolean _throttled = false;
+	protected Interest _restartInterest = null;
+
 	/**
 	 * @param origInterest	interest to be used to identify this listener to filter out subsequent duplicate or overlapping
 	 * 		requests
@@ -70,14 +73,14 @@ public class RepositoryDataListener implements CCNContentHandler {
 			Log.info(Log.FAC_REPO, "Starting up repository listener on original interest: {0} interest {1}", origInterest, interest);
 		}
 	}
-	
+
 	/**
 	 * The actual incoming data handler. Kicks off a thread to store the data and expresses interest in data following
 	 * the incoming data.
 	 */
 	public Interest handleContent(ContentObject co,
 			Interest interest) {
-		
+
 		_server._stats.increment(RepositoryServer.StatsEnum.HandleContent);
 
 		_timer = System.currentTimeMillis();
@@ -130,7 +133,7 @@ public class RepositoryDataListener implements CCNContentHandler {
 			}
 
 			int remainingWindow = _server.getWindowSize() - _interests.size();
-			
+
 			// Make sure we don't go past prospective last block.
 			if (_finalSegmentNumber >= 0 && _finalSegmentNumber < (largestSegmentNumberRequested + remainingWindow)) {
 				// want max to be _finalSegmentNumber or largestSegmentNumberRequested, whichever is larger,
@@ -148,26 +151,53 @@ public class RepositoryDataListener implements CCNContentHandler {
 			if (Log.isLoggable(Log.FAC_REPO, Level.FINEST)) {
 				Log.finest(Log.FAC_REPO, "REPO: Got block: {0} expressing {1} more interests, largest block {2} final block {3} last block? {4}", co.name(), remainingWindow, _largestSegmentNumberReceived, _finalSegmentNumber, isFinalSegment);
 			}
-			for (int i = 1; i <= remainingWindow; i++) {
-				ContentName name = SegmentationProfile.segmentName(co.name(), largestSegmentNumberRequested + i);
-				// DKS - should use better interest generation to only get segments (TBD, in SegmentationProfile)
-				Interest newInterest = new Interest(name);
-				try {
-					_handle.expressInterest(newInterest, this);
-					_interests.add(newInterest, null);
-					_server._stats.increment(RepositoryServer.StatsEnum.HandleContentExpressInterest);
 
-				} catch (IOException e) {
-					_server._stats.increment(RepositoryServer.StatsEnum.HandleContentExpressInterestErrors);
-					Log.logStackTrace(Level.WARNING, e);
-					e.printStackTrace();
+			if (! _throttled) {
+
+				for (int i = 1; i <= remainingWindow; i++) {
+					ContentName name = SegmentationProfile.segmentName(co.name(), largestSegmentNumberRequested + i);
+					// DKS - should use better interest generation to only get segments (TBD, in SegmentationProfile)
+					Interest newInterest = new Interest(name);
+					if (_server.getThrottle()) {
+						_throttled = true;
+						_restartInterest = newInterest;
+						break;
+					}
+					outputInterest(newInterest);
 				}
 			}
 		}
 		handleData(co);
 		return null;
 	}
-	
+
+	public void outputInterest(Interest interest) {
+		try {
+			_handle.expressInterest(interest, this);
+			_interests.add(interest, null);
+			_server._stats.increment(RepositoryServer.StatsEnum.HandleContentExpressInterest);
+
+		} catch (IOException e) {
+			_server._stats.increment(RepositoryServer.StatsEnum.HandleContentExpressInterestErrors);
+			Log.logStackTrace(Level.WARNING, e);
+			e.printStackTrace();
+		}
+	}
+
+	public void restart() {
+		synchronized (_interests) {
+			if (_throttled) {
+				if (null != _restartInterest) {
+					Log.warning("Restarting - interest is {0}", _restartInterest);
+					outputInterest(_restartInterest);
+					_restartInterest = null;
+				} else
+					Log.warning("Warning - restart with no interest");
+				_throttled = false;
+			}
+		}
+	}
+
 	/**
 	 * Allow subclasses to override data handling behavior
 	 * @param co
@@ -176,13 +206,13 @@ public class RepositoryDataListener implements CCNContentHandler {
 		_server._stats.increment(RepositoryServer.StatsEnum.HandleContentHandleData);
 		_server.getDataHandler().add(co);
 	}
-	
+
 	/**
 	 * Since the interest table doesn't have a defined order for values with the same length we
 	 * must explicitly go through all the values to decide whether we want to take some action
 	 * based on the "value" (i.e. segment #) of some particular interest
 	 */
-	
+
 	/**
 	 * Must match implementation of nextSegmentNumber in input streams, segmenters.
 	 */
@@ -192,24 +222,24 @@ public class RepositoryDataListener implements CCNContentHandler {
 			if (value >= _value)
 				_value = value;
 		}
-		
+
 		private long getValue() {
 			return _value;
 		}
-		
+
 	}
 	private long getLargestSegmentNumber() {
 		interestsAction(_glsna);
 		return _glsna.getValue();
 	}
-	
+
 	/**
 	 * Cancel all interests for segments higher than "value"
 	 * @param value
 	 */
 	private class CancelInterestsAction extends InterestActionClass {
 		CCNContentHandler _handler;
-		
+
 		private CancelInterestsAction(long startValue, CCNContentHandler handler) {
 			_value = startValue;
 			_handler = handler;
@@ -224,11 +254,12 @@ public class RepositoryDataListener implements CCNContentHandler {
 			}
 		}
 	}
+
 	private void cancelHigherInterests(long value) {
 		CancelInterestsAction cia = new CancelInterestsAction(value, this);
 		interestsAction(cia);
 	}
-	
+
 	/**
 	 * Perform the specified action for all values in the interest table
 	 * @param value
@@ -249,7 +280,7 @@ public class RepositoryDataListener implements CCNContentHandler {
 			}
 		}
 	}
-	
+
 	/**
 	 * Called on listener teardown.
 	 */
@@ -259,7 +290,7 @@ public class RepositoryDataListener implements CCNContentHandler {
 			_handle.cancelInterest(entry.interest(), this);
 		}
 	}
-	
+
 	/**
 	 * Gets the time of the last data received
 	 * @return
@@ -267,15 +298,15 @@ public class RepositoryDataListener implements CCNContentHandler {
 	public long getTimer() {
 		return _timer;
 	}
-	
+
 	/**
 	 * Changes the time used to timeout the listener
-	 * @param time 
+	 * @param time
 	 */
 	public void setTimer(long time) {
 		_timer = time;
 	}
-	
+
 	/**
 	 * Gets the namespace served by this listener as an interest
 	 * @return
@@ -283,7 +314,7 @@ public class RepositoryDataListener implements CCNContentHandler {
 	public Interest getOrigInterest() {
 		return _origInterest;
 	}
-	
+
 	/**
 	 * Gets the current set of outstanding interests for this listener
 	 * @return

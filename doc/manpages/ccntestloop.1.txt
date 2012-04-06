@@ -1,0 +1,59 @@
+CCNTESTLOOP(1)
+==============
+
+NAME
+----
+ccntestloop - runs the CCNx unit tests repeatedly
+
+SYNOPSIS
+--------
+
+*ccntestloop* [ start | stop | restart | status ]
+
+*ccntestloop* [-h]
+
+DESCRIPTION
+-----------
+This shell script is intended to be run from the top-level of the CCNx distribution. Results of the test runs are kept in the `testdir` subdirectory, which is created if necessary. However, `testdir` may be a symlink to another directory (preferably on the same file system). It is advisable to link to some location outside of the workspace to avoid loss of test results due to a `git clean` command.
+
+* *ccntestloop start* starts the test run in the background.
+
+* *ccntestloop stop* stops a test run in the background.
+
+* *ccntestloop restart* stops a test run in the background, and then starts a new one in the background.
+
+* *ccntestloop status* prints current test status.
+
+If no options are specified, executes the test run in the foreground.
+
+The `testdir/config` file is sourced as a sh script upon startup. This allows the environment variables to be set up for the next round. Creative use of this capability allows for such things as testing various combinations of parameters on each run. Look in `testdir/config.defaults` for examples.
+
+There is provision for customization by means of executable hooks called at various stages:
+
+* If `testdir/hooks/update` is present and executable, it is executed to update sources before each run. If it returns non-zero status, the testing will be stopped. The default behavior is to pull from a configurable git branch unless modified files are present.
+
+* If `testdir/hooks/success` is present and executable, it is executed after every successful run. It should return a status of 0 to continue on to the next run, or nonzero to stop. The default is to continue.
+
+* If `testdir/hooks/failure` is present and executable, it is executed after every unsuccessful run. The status is checked in the same way, but the default is to stop.
+
+The run number is passed as an argument to these hooks. 
+
+One recommended strategy is to set up `testdir/hooks/failure` to notify you of the failure and then stop, then set up a cron job to start the test loop several times per day (and do nothing if it is running). That way you end up with a bounded number of failures to look at each day, but when all is well you test continuously. 
+
+OPTIONS
+-------
+
+*-h*::
+	Outputs usage information
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure
+
+AUTHOR
+------
+Michael Plass <plass@parc.com>

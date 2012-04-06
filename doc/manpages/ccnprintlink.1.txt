@@ -1,0 +1,31 @@
+CCNPRINTLINK(1)
+===============
+
+NAME
+----
+ccnprintlink - Prints information about specified links.
+
+SYNOPSIS
+--------
+*ccnprintlink* [-q] 'linkuri' ['linkuri' ...]
+
+DESCRIPTION
+-----------
+The *ccnprintlink* utility prints information about each of the links specified on the command line if available. If a named Content Object does not exist or is not a link, tells you so. The utility places no limit on the number of names that can be specified.
+
+OPTIONS
+-------
+*-q*::
+	If specified, sets the default Logging level to "WARNING".
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure
+
+AUTHOR
+------
+Diana Smetters <smetters@parc.com>

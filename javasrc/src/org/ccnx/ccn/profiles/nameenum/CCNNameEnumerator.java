@@ -180,8 +180,8 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 			//update: now supports multiple responders!
 			//note:  if responseIDs are longer than 1 component, need to revisit interest generation for followups
 			if (c != null) {
-				if (Log.isLoggable(Level.FINE)) {
-					Log.fine("we have a match for: "+interest.name()+" ["+ interest.toString()+"]");
+				if (Log.isLoggable(Log.FAC_SEARCH, Level.FINE)) {
+					Log.fine(Log.FAC_SEARCH, "we have a match for: {0} [{1}]", interest.name(), interest.toString());
 				}
 				ArrayList<Interest> newInterests = new ArrayList<Interest>();
 
@@ -194,7 +194,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 
 				if (responseName==null ) {
 					//no response name...  this is an error!
-					Log.warning("CCNNameEnumerator received a response without a responseID: {0} matching interest {1}", c.name(), interest.name());
+					Log.warning(Log.FAC_SEARCH, "CCNNameEnumerator received a response without a responseID: {0} matching interest {1}", c.name(), interest.name());
 				} else {
 					//we have a response name.
 
@@ -202,8 +202,8 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 					//if response IDs are hierarchical, we need to avoid exploding the number of Interests we express
 
 					//if the interest had a responseId in it, we don't need to make a new base interest with an exclude, we would have done this already.
-					if (Log.isLoggable(Level.FINE)) {
-						Log.fine("response id from interest: "+getIdFromName(interest.name()));
+					if (Log.isLoggable(Log.FAC_SEARCH, Level.FINE)) {
+						Log.fine(Log.FAC_SEARCH, "response id from interest: {0}", getIdFromName(interest.name()));
 					}
 
 					if(getIdFromName(interest.name()) != null && getIdFromName(interest.name()).count() > 0) {
@@ -229,12 +229,13 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 					for(Interest i: newInterests) {
 						_handle.expressInterest(i, _handler);
 						ner.addInterest(i);
-						Log.finest("expressed: {0}", i);
+						if (Log.isLoggable(Log.FAC_SEARCH, Level.FINEST))
+							Log.finest(Log.FAC_SEARCH, "expressed: {0}", i);
 					}
 				} catch (IOException e1) {
 					// error registering new interest
-					Log.warning("error registering new interest in handleContent");
-					Log.warningStackTrace(e1);
+					Log.warning(Log.FAC_SEARCH, "error registering new interest in handleContent");
+					Log.warningStackTrace(Log.FAC_SEARCH, e1);
 				}
 
 				newInterests.clear();
@@ -250,11 +251,11 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 					callback.handleNameEnumerator(
 							interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), names);
 				} catch(ContentDecodingException e) {
-					Log.warning("Error parsing Collection from ContentObject in CCNNameEnumerator");
-					Log.warningStackTrace(e);
+					Log.warning(Log.FAC_SEARCH, "Error parsing Collection from ContentObject in CCNNameEnumerator");
+					Log.warningStackTrace(Log.FAC_SEARCH, e);
 				} catch(IOException e) {
-					Log.warning("error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
-					Log.warningStackTrace(e);
+					Log.warning(Log.FAC_SEARCH, "error getting CollectionObject from ContentObject in CCNNameEnumerator.handleContent");
+					Log.warningStackTrace(Log.FAC_SEARCH, e);
 				}
 			}
 		}
@@ -311,14 +312,16 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 			NERequest r = getCurrentRequest(prefix);
 			if (r != null) {
 				// this prefix is already registered...
-				Log.fine("prefix {0} is already registered...  returning", prefix);
+				if (Log.isLoggable(Log.FAC_SEARCH, Level.FINE))
+					Log.fine(Log.FAC_SEARCH, "prefix {0} is already registered...  returning", prefix);
 				return;
 			} else {
 				r = new NERequest(prefix);
 				_currentRequests.add(r);
 			}
 
-			Log.info("Registered Prefix: {0}", prefix);
+			if (Log.isLoggable(Log.FAC_SEARCH, Level.INFO))
+				Log.info(Log.FAC_SEARCH, "Registered Prefix: {0}", prefix);
 
 			ContentName prefixMarked =
 				new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
@@ -342,13 +345,15 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	 */
 
 	public boolean cancelPrefix(ContentName prefix) {
-		Log.info("cancel prefix: {0} ", prefix);
+		if (Log.isLoggable(Log.FAC_SEARCH, Level.INFO))
+			Log.info(Log.FAC_SEARCH, "cancel prefix: {0} ", prefix);
 		synchronized(_currentRequests) {
 			//cancel the behind the scenes interests and remove from the local ArrayList
 			NERequest r = getCurrentRequest(prefix);
 			if (r != null) {
 				ArrayList<Interest> is = r.getInterests();
-				Log.fine("we have {0} interests to cancel", is.size());
+				if (Log.isLoggable(Log.FAC_SEARCH, Level.FINE))
+					Log.fine(Log.FAC_SEARCH, "we have {0} interests to cancel", is.size());
 				Interest i;
 				while (!r.getInterests().isEmpty()) {
 					i=r.getInterests().remove(0);
@@ -388,12 +393,12 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 			//the NEMarker is in the name...  good!
 		} else {
 			//COMMAND_MARKER_BASIC_ENUMERATION missing...  we have a problem
-			Log.warning("the name enumeration marker is missing...  shouldn't have gotten this callback");
+			Log.warning(Log.FAC_SEARCH, "the name enumeration marker is missing...  shouldn't have gotten this callback");
 			return null;
 		}
 
-		if (Log.isLoggable(Level.FINE)) {
-			Log.fine("NE: received a response for interest {0}", interest);
+		if (Log.isLoggable(Log.FAC_SEARCH, Level.FINE)) {
+			Log.fine(Log.FAC_SEARCH, "NE: received a response for interest {0}", interest);
 		}
 
 		_neHandler.add(new CCNContentInterest(c, interest));
@@ -421,8 +426,8 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 
 		ContentName name = null;
 		NEResponse r = null;
-		if (Log.isLoggable(Level.FINER)) {
-			Log.finer("got an interest: {0}",interest.name());
+		if (Log.isLoggable(Log.FAC_SEARCH, Level.FINER)) {
+			Log.finer(Log.FAC_SEARCH, "got an interest: {0}",interest.name());
 		}
 		name = interest.name().clone();
 		nem = new NameEnumerationResponseMessage();
@@ -476,19 +481,20 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 						nemobj.saveLaterWithClose(interest);
 						result = true;
 
-						if (Log.isLoggable(Level.FINE)) {
-							Log.fine("Saved collection object in name enumeration: " + nemobj.getVersionedName());
+						if (Log.isLoggable(Log.FAC_SEARCH, Level.FINE)) {
+							Log.fine(Log.FAC_SEARCH, "Saved collection object in name enumeration: " + nemobj.getVersionedName());
 						}
 
 						r.clean();
 					} catch(IOException e) {
-						Log.warning("error processing an incoming interest..  dropping and returning");
-						Log.warningStackTrace(e);
+						Log.warning(Log.FAC_SEARCH, "error processing an incoming interest..  dropping and returning");
+						Log.warningStackTrace(Log.FAC_SEARCH, e);
 						return false;
 					}
 				}
 
-				Log.finer("this interest did not have any matching names...  not returning anything.");
+				if (Log.isLoggable(Log.FAC_SEARCH, Level.FINER))
+					Log.finer(Log.FAC_SEARCH, "this interest did not have any matching names...  not returning anything.");
 				if (r != null)
 					r.clean();
 			} //end of synchronized
@@ -506,7 +512,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 
 	public boolean containsRegisteredName(ContentName name) {
 		if (name == null) {
-			Log.warning("trying to check for null registered name");
+			Log.warning(Log.FAC_SEARCH, "trying to check for null registered name");
 			return false;
 		}
 		synchronized(_handledResponses) {
@@ -545,7 +551,7 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	public void registerNameForResponses(ContentName name) {
 
 		if (name == null) {
-			Log.warning("The content name for registerNameForResponses was null, ignoring");
+			Log.warning(Log.FAC_SEARCH, "The content name for registerNameForResponses was null, ignoring");
 			return;
 		}
 		//Do not need to register each name as a filter...  the namespace should cover it
@@ -623,7 +629,8 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 	 */
 
 	public void cancelEnumerationsWithPrefix(ContentName prefixToCancel) {
-		Log.info("cancel prefix: {0}",prefixToCancel);
+		if (Log.isLoggable(Log.FAC_SEARCH, Level.INFO))
+			Log.info(Log.FAC_SEARCH, "cancel prefix: {0}",prefixToCancel);
 		synchronized(_currentRequests) {
 			//cancel the behind the scenes interests and remove from the local ArrayList
 			ArrayList<NERequest> toRemove = new ArrayList<NERequest>();
@@ -633,9 +640,11 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 			}
 			while(!toRemove.isEmpty()){
 				if(cancelPrefix(toRemove.remove(0).prefix))
-					Log.info("cancelled prefix: {0}", prefixToCancel);
+					if (Log.isLoggable(Log.FAC_SEARCH, Level.INFO))
+						Log.info(Log.FAC_SEARCH, "cancelled prefix: {0}", prefixToCancel);
 				else
-					Log.info("could not cancel prefix: {0}", prefixToCancel);
+					if (Log.isLoggable(Log.FAC_SEARCH, Level.INFO))
+						Log.info(Log.FAC_SEARCH, "could not cancel prefix: {0}", prefixToCancel);
 			}
 		}
 	}
@@ -651,7 +660,8 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 				responseName = VersioningProfile.cutLastVersion(prefix);
 			else
 				responseName = prefix;
-			Log.finest("NameEnumeration response ID: {0}", responseName);
+			if (Log.isLoggable(Log.FAC_SEARCH, Level.FINEST))
+				Log.finest(Log.FAC_SEARCH, "NameEnumeration response ID: {0}", responseName);
 		} catch(Exception e) {
 			return null;
 		}

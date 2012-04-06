@@ -1,0 +1,101 @@
+'\" t
+.\"     Title: ccndlibtest
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 04/02/2012
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.6.0rc1
+.\"  Language: English
+.\"
+.TH "CCNDLIBTEST" "1" "04/02/2012" "\ \& 0\&.6\&.0rc1" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnlibtest \- Run scripted tests of the ccnx C library\&.
+.SH "SYNOPSIS"
+.sp
+\fBccnlibtest\fR [\-h] [\-v] ( \fIcommand\fR | \fIfile\&.ccnb\fR ) \fI\&...\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccnlibtest\fR program is for running scripted tests of the ccnx C library\&.
+.sp
+The basic behavior of ccnlibtest is to use ccn_connect() to connect to a ccnd, and then to process its arguments, in order\&.
+.SH "OPTIONS"
+.PP
+\fB\-h\fR
+.RS 4
+Print usage information and exit\&.
+.RE
+.PP
+\fB\-v\fR
+.RS 4
+Be more verbose\&.
+.RE
+.SH "ARGUMENTS"
+.sp
+The arguments are processed in order\&.
+.sp
+An argument ending in \&.ccnb is assumed to name a file that contains a single ccnb\-encoded Interest or ContentObject\&. These files are read, and processed as follows:
+.sp
+A ContentObject is held in a local buffer pool\&. When triggered by the arrival of a matching interest, the ContentObject is sent, and also removed from the pool\&. There are up to 10 buffer pools available, and each buffer pool may contain up to 10 content objects\&. Initially pool 0 is the active pool\&.
+.sp
+An Interest is sent via ccn_express_interest()\&. If and when a matching ContentObject arrives, it will be placed into the pool that was active when the interest was sent\&.
+.PP
+\fBpool\fR \fIdigit\fR
+.RS 4
+Switch to the indicated buffer pool\&.
+.RE
+.PP
+\fBprefix\fR \fIccnx:/uri\fR
+.RS 4
+Causes a prefix registration to happen, using the given name as the prefix\&. The registration is associated with the current buffer pool\&.
+.RE
+.PP
+\fBflags\fR \fIregflgs\fR
+.RS 4
+Use
+\fIregflgs\fR
+as the flags for subsequent prefix registration\&. This should be expressed as a number\&. Refer to doc/technical/Registration for flag bits\&.
+.RE
+.PP
+\fBrun\fR \fImillisec\fR
+.RS 4
+Run for the indicated number of milliseconds, or until the arrival of data\&.
+.RE
+.PP
+\fBmincob\fR \fInum\fR
+.RS 4
+Fail if the current pool has fewer than
+\fInum\fR
+content objects\&.
+.RE
+.PP
+\fBmaxcob\fR \fInum\fR
+.RS 4
+Fail if the current pool has more than
+\fInum\fR
+content objects\&.
+.RE
+.SH "SEE ALSO"
+.sp
+\fBccndsmoketest\fR(1)
+.SH "AUTHOR"
+.sp
+Michael Plass <plass@parc\&.com>

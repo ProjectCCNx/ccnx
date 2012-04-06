@@ -246,7 +246,7 @@ public final class RepoService extends CCNxService {
 			/* Take CCNR_CONTENT_CACHE defaults */
 			/* Take CCNR_MIN_SEND_BUFSIZE */
 			
-			/* If we decide to split the CCND and CCNR services into seperate APKs
+			/* If we decide to split the CCND and CCNR services into separate APKs
 			 * We'll need to toggle this to use tcp */
 			if(options.get(CCNR_OPTIONS.CCNR_PROTO.name()) == null) {
 				options.put(CCNR_OPTIONS.CCNR_PROTO.name(), DEFAULT_REPO_PROTO);

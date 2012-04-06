@@ -1,9 +1,10 @@
 /**
  * @file sync/SyncPrivate.h
  *  
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
- *
  * Part of CCNx Sync.
+ */
+/*
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -47,25 +48,28 @@ struct SyncPrivate {
     int nStoring;
     ccnr_hwm stableTarget;
     ccnr_hwm stableStored;
-    sync_time lastStable;
-    sync_time lastCacheClean;
+    int64_t lastStable;
+    int64_t lastCacheClean;
     int sliceEnum;
     int sliceBusy;
     int fauxErrorTrigger;
     int syncActionsPrivate;
-    int heartbeatMicros;
+    int heartbeatMicros;        /*< microseconds between action heartbeats */
     int rootAdviseFresh;        /*< seconds for root advise response freshness */
     int rootAdviseLifetime;     /*< seconds for root advise interest lifetime */
     int fetchLifetime;          /*< seconds for node fetch interest lifetime */
     int maxFetchBusy;           /*< max # of fetches per root busy */
     int comparesBusy;           /*< # of roots doing compares */
     int maxComparesBusy;        /*< max # of roots doing compares */
+    int deltasLimit;            /*< # of bytes permitted for RootAdvise delta mode */
+    int syncScope;              /*< default sync scope */
 };
 
 struct SyncHashInfoList {
     struct SyncHashInfoList *next;
     struct SyncHashCacheEntry *ce;
-    sync_time lastSeen;
+    int64_t lastSeen;
+    int64_t lastReplied;
 };
 
 struct SyncRootStats {
@@ -101,16 +105,36 @@ struct SyncRootStats {
     
 };
 
+struct SyncRootDeltas {
+    struct SyncRootDeltas *next;        /*< link to next update */
+    struct SyncHashCacheEntry *ceStart; /*< entry for start hash (may be NULL) */
+    struct SyncHashCacheEntry *ceStop;  /*< entry for end hash */
+    int64_t whenMade;                   /*< when created */
+    int64_t whenSent;                   /*< when last sent */
+    int deltasCount;                    /*< number of names in coding */
+    int closed;                         /*< 1 if coding is complete */
+    struct ccn_charbuf *coding;         /*< coding for updates */
+    struct ccn_charbuf *name;           /*< name used for reply */
+    struct ccn_charbuf *cob;            /*< signed response buffer */
+};
+
 struct SyncRootPrivate {
     struct SyncRootStats *stats;
+    struct SyncHashCacheEntry *ceCurrent; /*< entry for current root hash (may be NULL) */
     struct SyncHashInfoList *remoteSeen;
+    struct SyncHashInfoList *localMade;
+    struct SyncRootDeltas *deltasHead;  /*< pointer to eldest update */
+    struct SyncRootDeltas *deltasTail;  /*< pointer to youngest update */
+    int nDeltas;                        /*< number of deltas in the list */
+    struct SyncNameAccum *remoteDeltas; /*< delta names from remote sources */
+    int syncScope;                      /*< scope to be used for sync */
     int sliceBusy;
     ccnr_hwm highWater;             // high water via SyncNotifyContent
     ccnr_hwm stablePoint;           // stable point for this root
-    sync_time lastAdvise;
-    sync_time lastUpdate;
-    sync_time lastStable;
-    sync_time lastHashChange;
+    int64_t lastAdvise;
+    int64_t lastUpdate;
+    int64_t lastStable;
+    int64_t lastHashChange;
     int adviseNeed;
     struct SyncHashCacheEntry *lastLocalSent;
     size_t currentSize;

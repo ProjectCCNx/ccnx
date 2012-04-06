@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <openssl/evp.h>
 
 #include <ccn/ccn.h>
 #include <ccn/ccn_private.h>
@@ -41,10 +42,20 @@
 #include <ccn/digest.h>
 #include <ccn/hashtb.h>
 #include <ccn/reg_mgmt.h>
+#include <ccn/schedule.h>
 #include <ccn/signing.h>
 #include <ccn/keystore.h>
 #include <ccn/uri.h>
 
+/* Forward struct declarations */
+struct interests_by_prefix;
+struct expressed_interest;
+struct interest_filter;
+struct ccn_reg_closure;
+
+/**
+ * Handle representing a connection to ccnd
+ */
 struct ccn {
     int sock;
     size_t outbufindex;
@@ -59,6 +70,7 @@ struct ccn {
     struct hashtb *keys;    /* public keys, by pubid */
     struct hashtb *keystores;   /* unlocked private keys */
     struct ccn_charbuf *default_pubid;
+    struct ccn_schedule *schedule;
     struct timeval now;
     int timeout;
     int refresh_us;
@@ -67,11 +79,8 @@ struct ccn {
     int verbose_error;
     int tap;
     int running;
-    int defer_verification;
+    int defer_verification;     /* Client wants to do its own verification */
 };
-
-struct expressed_interest;
-struct ccn_reg_closure;
 
 struct interests_by_prefix { /* keyed by components of name prefix */
     struct expressed_interest *list;
@@ -90,18 +99,23 @@ struct expressed_interest {
     struct expressed_interest *next; /* link to next in list */
 };
 
+/**
+ * Data field for entries in the interest_filters hash table
+ */
 struct interest_filter { /* keyed by components of name */
     struct ccn_closure *action;
     struct ccn_reg_closure *ccn_reg_closure;
-    struct timeval expiry;       /* Expiration time */
+    struct timeval expiry;       /* Time that refresh will be needed */
     int flags;
 };
 #define CCN_FORW_WAITING_CCNDID (1<<30)
 
 struct ccn_reg_closure {
     struct ccn_closure action;
-    struct interest_filter *interest_filter;
+    struct interest_filter *interest_filter; /* Backlink */
 };
+
+/* Macros */
 
 #define NOTE_ERR(h, e) (h->err = (e), h->errline = __LINE__, ccn_note_err(h))
 #define NOTE_ERRNO(h) NOTE_ERR(h, errno)
@@ -112,6 +126,8 @@ struct ccn_reg_closure {
 #define XXX \
     do { NOTE_ERR(h, -76); ccn_perror(h, "Please write some more code here"); } while (0)
 
+/* Prototypes */
+
 static void ccn_refresh_interest(struct ccn *, struct expressed_interest *);
 static void ccn_initiate_prefix_reg(struct ccn *,
                                     const void *, size_t,
@@ -119,7 +135,14 @@ static void ccn_initiate_prefix_reg(struct ccn *,
 static void finalize_pkey(struct hashtb_enumerator *e);
 static void finalize_keystore(struct hashtb_enumerator *e);
 static int ccn_pushout(struct ccn *h);
-
+static void update_ifilt_flags(struct ccn *, struct interest_filter *, int);
+static int update_multifilt(struct ccn *,
+                            struct interest_filter *,
+                            struct ccn_closure *,
+                            int);
+/**
+ * Compare two timvals
+ */
 static int
 tv_earlier(const struct timeval *a, const struct timeval *b)
 {
@@ -212,6 +235,11 @@ ccn_indexbuf_release(struct ccn *h, struct ccn_indexbuf *c)
         ccn_indexbuf_destroy(&c);
 }
 
+/**
+ * Do the refcount updating for closure instances on assignment
+ *
+ * When the refcount drops to 0, the closure is told to finalize itself.
+ */
 static void
 ccn_replace_handler(struct ccn *h,
                     struct ccn_closure **dstp,
@@ -275,6 +303,7 @@ ccn_create(void)
     } else
         h->tap = -1;
     h->defer_verification = 0;
+    OpenSSL_add_all_algorithms();
     return(h);
 }
 
@@ -456,6 +485,7 @@ ccn_destroy(struct ccn **hp)
     struct ccn *h = *hp;
     if (h == NULL)
         return;
+    ccn_schedule_destroy(&h->schedule);
     ccn_disconnect(h);
     if (h->interests_by_prefix != NULL) {
         for (hashtb_start(h->interests_by_prefix, e); e->data != NULL; hashtb_next(e)) {
@@ -637,6 +667,24 @@ finalize_interest_filter(struct hashtb_enumerator *e)
     }
 }
 
+/**
+ * Register to receive interests on a prefix, with forwarding flags
+ *
+ * See ccn_set_interest_filter for a description of the basic operation.
+ *
+ * The additional forw_flags argument offers finer control of which
+ * interests are forward to the application.
+ * Refer to doc/technical/Registration for details.
+ *
+ * There may be multiple actions associated with the prefix.  They will be
+ * called in an unspecified order.  The flags passed to ccnd will be
+ * the inclusive-or of the flags associated with each action.
+ *
+ * Passing a value of 0 for forw_flags will unregister just this specific action,
+ * leaving other actions untouched.
+ *
+ * @returns -1 in case of error, non-negative for success.
+ */
 int
 ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
                         struct ccn_closure *action, int forw_flags)
@@ -645,6 +693,7 @@ ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
     struct hashtb_enumerator *e = &ee;
     int res;
     struct interest_filter *entry;
+    
     if (h->interest_filters == NULL) {
         struct hashtb_param param = {0};
         param.finalize = &finalize_interest_filter;
@@ -659,15 +708,45 @@ ccn_set_interest_filter_with_flags(struct ccn *h, struct ccn_charbuf *namebuf,
     res = hashtb_seek(e, namebuf->buf + 1, namebuf->length - 2, 0);
     if (res >= 0) {
         entry = e->data;
-        entry->flags = forw_flags;
-        ccn_replace_handler(h, &(entry->action), action);
-        if (action == NULL)
+        if (entry->action != NULL && action != NULL && action != entry->action)
+            res = update_multifilt(h, entry, action, forw_flags);
+        else {
+            update_ifilt_flags(h, entry, forw_flags);
+            ccn_replace_handler(h, &(entry->action), action);
+        }
+        if (entry->action == NULL)
             hashtb_delete(e);
     }
     hashtb_end(e);
     return(res);
 }
 
+/**
+ * Register to receive interests on a prefix
+ *
+ * The action will be called upon the arrival of an interest that
+ * has the given name as a prefix.
+ *
+ * If action is NULL, any existing filter for the prefix is removed.
+ * Note that this may have undesirable effects in applications that share
+ * the same handle for independently operating subcomponents.
+ * See ccn_set_interest_filter_with_flags() for a way to deal with this.
+ * 
+ * The contents of namebuf are copied as needed.
+ *
+ * The handler should return CCN_UPCALL_RESULT_INTEREST_CONSUMED as a
+ * promise that it has produced, or will soon produce, a matching content
+ * object.
+ *
+ * The upcall kind passed to the handler will be CCN_UPCALL_INTEREST
+ * if no other handler has claimed to produce content, or else
+ * CCN_UPCALL_CONSUMED_INTEREST.
+ *
+ * This call is equivalent to a call to ccn_set_interest_filter_with_flags,
+ * passing the forwarding flags (CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT).
+ *
+ * @returns -1 in case of error, non-negative for success.
+ */
 int
 ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
                         struct ccn_closure *action)
@@ -675,6 +754,245 @@ ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
     int forw_flags = CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT;
     return(ccn_set_interest_filter_with_flags(h, namebuf, action, forw_flags));
 }
+
+/**
+ * Change forwarding flags, triggering a refresh as needed.
+ */
+static void
+update_ifilt_flags(struct ccn *h, struct interest_filter *f, int forw_flags)
+{
+    if (f->flags != forw_flags) {
+        memset(&f->expiry, 0, sizeof(f->expiry));
+        f->flags = forw_flags;
+    }
+}
+
+/* * * multifilt * * */
+
+/**
+ * Item in the array of interest filters associated with one prefix
+ */
+struct multifilt_item {
+    struct ccn_closure *action;
+    int forw_flags;
+};
+
+/**
+ * Data for the multifilt case
+ *
+ * This wraps multiple interest filters up as a single one, so they
+ * can share the single slot in a struct interest_filter.
+ */
+struct multifilt {
+    struct ccn_closure me;
+    int n;                      /**< Number of elements in a */
+    struct multifilt_item *a;   /**< The filters that are to be combined */
+};
+
+/* Prototypes */
+static enum ccn_upcall_res handle_multifilt(struct ccn_closure *selfp,
+                                            enum ccn_upcall_kind kind,
+                                            struct ccn_upcall_info *info);
+static int build_multifilt_array(struct ccn *h,
+                                 struct multifilt_item **ap,
+                                 int n,
+                                 struct ccn_closure *action,
+                                 int forw_flags);
+static void destroy_multifilt_array(struct ccn *h,
+                                    struct multifilt_item **ap,
+                                    int n);
+
+/**
+ * Take care of the case of multiple filters registered on one prefix
+ *
+ * Avoid calling when either action or f->action is NULL.
+ */
+static int
+update_multifilt(struct ccn *h,
+                 struct interest_filter *f,
+                 struct ccn_closure *action,
+                 int forw_flags)
+{
+    struct multifilt *md = NULL;
+    struct multifilt_item *a = NULL;
+    int flags;
+    int i;
+    int n = 0;
+    
+    if (action->p == &handle_multifilt) {
+        /* This should never happen. */
+        abort();
+    }
+    if (f->action->p == &handle_multifilt) {
+        /* Already have a multifilt */
+        md = f->action->data;
+        if (md->me.data != md)
+            abort();
+        a = md->a;
+    }
+    else {
+        /* Make a new multifilt, with 2 slots */
+        a = calloc(2, sizeof(*a));
+        if (a == NULL)
+            return(NOTE_ERRNO(h));
+        md = calloc(1, sizeof(*md));
+        if (md == NULL) {
+            free(a);
+            return(NOTE_ERRNO(h));
+        }
+        md->me.p = &handle_multifilt;
+        md->me.data = md;
+        md->n = 2;
+        md->a = a;
+        ccn_replace_handler(h, &(a[0].action), f->action);
+        a[0].forw_flags = f->flags;
+        ccn_replace_handler(h, &(a[1].action), action);
+        a[1].forw_flags = 0; /* Actually set these below */
+        ccn_replace_handler(h, &f->action, &md->me);
+    }
+    /* Search for the action */
+    for (i = 0; i < n; i++) {
+        if (a[i].action == action) {
+            a[i].forw_flags = forw_flags;
+            if (forw_flags == 0) {
+                ccn_replace_handler(h, &(a[i].action), NULL);
+                action = NULL;
+            }
+            goto Finish;
+        }
+    }
+    /* Not there, but if the flags are 0 we do not need to remember action */
+    if (forw_flags == 0) {
+        action->refcount++;
+        ccn_replace_handler(h, &action, NULL);
+        goto Finish;
+    }
+    /* Need to build a new array */
+    n = build_multifilt_array(h, &a, n, action, forw_flags);
+    if (n < 0)
+        return(n);
+    destroy_multifilt_array(h, &md->a, md->n);
+    md->a = a;
+    md->n = n;
+Finish:
+    /* The only thing left to do is to combine the forwarding flags */
+    for (i = 0, flags = 0; i < n; i++)
+        flags |= a[i].forw_flags;
+    update_ifilt_flags(h, f, flags);
+    return(0);
+}
+
+/**
+ * Replace *ap with a copy, perhaps with one additional element
+ *
+ * The old array is not modified.  Empty slots are not copied.
+ *
+ * @returns new count, or -1 in case of an error.
+ */
+static int
+build_multifilt_array(struct ccn *h,
+                      struct multifilt_item **ap,
+                      int n,
+                      struct ccn_closure *action,
+                      int forw_flags)
+{
+    struct multifilt_item *a = NULL; /* old array */
+    struct multifilt_item *c = NULL; /* new array */
+    int i, j, m;
+    
+    a = *ap;
+    /* Determine how many slots we will need */
+    for (m = 0, i = 0; i < n; i++) {
+        if (a[i].action != NULL)
+            m++;
+    }
+    if (action != NULL)
+        m++;
+    if (m == 0) {
+        *ap = NULL;
+        return(0);
+    }
+    c = calloc(m, sizeof(*c));
+    if (c == NULL)
+        return(NOTE_ERRNO(h));
+    for (i = 0, j = 0; i < n; i++) {
+        if (a[i].action != NULL) {
+            ccn_replace_handler(h, &(c[j].action), a[i].action);
+            c[j].forw_flags = a[i].forw_flags;
+            j++;
+        }
+    }
+    if (j < m) {
+        ccn_replace_handler(h, &(c[j].action), action);
+        c[j].forw_flags = forw_flags;
+    }
+    *ap = c;
+    return(m);
+}
+
+/**
+ * Destroy a multifilt_array
+ */
+static void
+destroy_multifilt_array(struct ccn *h, struct multifilt_item **ap, int n)
+{
+    struct multifilt_item *a;
+    int i;
+    
+    a = *ap;
+    if (a != NULL) {
+        for (i = 0; i < n; i++)
+            ccn_replace_handler(h, &(a[i].action), NULL);
+        free(a);
+        *ap = NULL;
+    }
+}
+
+/**
+ * Upcall to handle multifilt
+ */
+static enum ccn_upcall_res
+handle_multifilt(struct ccn_closure *selfp,
+                 enum ccn_upcall_kind kind,
+                 struct ccn_upcall_info *info)
+{
+    struct multifilt *md;
+    struct multifilt_item *a;
+    enum ccn_upcall_res ans;
+    enum ccn_upcall_res res;
+    int i, n;
+    
+    md = selfp->data;
+    if (kind == CCN_UPCALL_FINAL) {
+        destroy_multifilt_array(info->h, &md->a, md->n);
+        free(md);
+        return(CCN_UPCALL_RESULT_OK);
+    }
+    /*
+     * Since the upcalls might be changing registrations on the fly,
+     * we need to make a copy of the array (updating the refcounts).
+     * Forget md and selfp, since they could go away during upcalls.
+     */
+    a = md->a;
+    n = build_multifilt_array(info->h, &a, md->n, NULL, 0);
+    ans = CCN_UPCALL_RESULT_OK;
+    md = NULL;
+    selfp = NULL;
+    for (i = 0; i < n; i++) {
+        if ((a[i].forw_flags & CCN_FORW_ACTIVE) != 0) {
+            res = (a[i].action->p)(a[i].action, kind, info);
+            if (res == CCN_UPCALL_RESULT_INTEREST_CONSUMED) {
+                ans = res;
+                if (kind == CCN_UPCALL_INTEREST)
+                    kind = CCN_UPCALL_CONSUMED_INTEREST;
+            }
+        }
+    }
+    destroy_multifilt_array(info->h, &a, n);
+    return(ans);
+}
+
+/* end of multifilt */
 
 static int
 ccn_pushout(struct ccn *h)
@@ -1479,6 +1797,31 @@ ccn_notify_ccndid_changed(struct ccn *h)
 }
 
 /**
+ * Get the previously set event schedule from a ccn handle
+ * @param h is the ccn handle
+ * @returns pointer to the event schedule
+ */
+struct ccn_schedule *
+ccn_get_schedule(struct ccn *h)
+{
+    return(h->schedule);
+}
+
+/**
+ * Set the event schedule in a ccn handle
+ * @param h is the ccn handle
+ * @param schedule is the new event schedule to be set in the handle
+ * @returns pointer to the previous event schedule (or NULL)
+ */
+struct ccn_schedule *
+ccn_set_schedule(struct ccn *h, struct ccn_schedule *schedule)
+{
+    struct ccn_schedule *old = h->schedule;
+    h->schedule = schedule;
+    return(old);
+}
+
+/**
  * Process any scheduled operations that are due.
  * This is not used by normal ccn clients, but is made available for use
  * by ccnd to run its internal client.
@@ -1539,9 +1882,10 @@ ccn_process_scheduled_operations(struct ccn *h)
 
 /**
  * Modify ccn_run timeout.
+ *
  * This may be called from an upcall to change the timeout value.
  * Most often this will be used to set the timeout to zero so that
- * ccn_run will return control to the client.
+ * ccn_run() will return control to the client.
  * @param h is the ccn handle.
  * @param timeout is in milliseconds.
  * @returns old timeout value.
@@ -1568,6 +1912,7 @@ ccn_run(struct ccn *h, int timeout)
     struct timeval start;
     struct pollfd fds[1];
     int microsec;
+    int s_microsec = -1;
     int millisec;
     int res = -1;
     if (h->running != 0)
@@ -1580,7 +1925,12 @@ ccn_run(struct ccn *h, int timeout)
             res = -1;
             break;
         }
+        if (h->schedule != NULL) {
+            s_microsec = ccn_schedule_run(h->schedule);
+        }
         microsec = ccn_process_scheduled_operations(h);
+        if (s_microsec >= 0 && s_microsec < microsec)
+            microsec = s_microsec;
         timeout = h->timeout;
         if (start.tv_sec == 0)
             start = h->now;
@@ -1620,7 +1970,9 @@ ccn_run(struct ccn *h, int timeout)
     return((res < 0) ? res : 0);
 }
 
-/* This is the upcall for implementing ccn_get() */
+/**
+ * Instance data associated with handle_simple_incoming_content()
+ */
 struct simple_get_data {
     struct ccn_closure closure;
     struct ccn_charbuf *resultbuf;
@@ -1630,6 +1982,9 @@ struct simple_get_data {
     int res;
 };
 
+/**
+ * Upcall for implementing ccn_get()
+ */
 static enum ccn_upcall_res
 handle_simple_incoming_content(
     struct ccn_closure *selfp,
@@ -1754,6 +2109,9 @@ ccn_get(struct ccn *h,
     return(res);
 }
 
+/**
+ * Upcall to handle response to fetch a ccndid
+ */
 static enum ccn_upcall_res
 handle_ccndid_response(struct ccn_closure *selfp,
                      enum ccn_upcall_kind kind,
@@ -1815,6 +2173,9 @@ ccn_initiate_ccndid_fetch(struct ccn *h)
     ccn_charbuf_destroy(&name);
 }
 
+/**
+ * Handle reply to a prefix registration request
+ */
 static enum ccn_upcall_res
 handle_prefix_reg_reply(
     struct ccn_closure *selfp,
@@ -2367,7 +2728,7 @@ ccn_sign_content(struct ccn *h,
                                            signed_info,
                                            data,
                                            size,
-                                           NULL, // XXX
+                                           ccn_keystore_digest_algorithm(keystore),
                                            ccn_keystore_private_key(keystore));
     }
     else {

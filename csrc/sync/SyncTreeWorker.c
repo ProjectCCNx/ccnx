@@ -20,6 +20,8 @@
 #include "SyncMacros.h"
 #include "SyncNode.h"
 #include "SyncTreeWorker.h"
+#include "SyncHashCache.h"
+#include "SyncUtil.h"
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>

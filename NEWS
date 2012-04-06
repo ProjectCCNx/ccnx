@@ -1,3 +1,116 @@
+Changes between 0.5.1 and 0.6.0:
+--------------------------------
+This highlights some important changes since the most recent numbered release.
+Refer to http://www.ccnx.org/redmine/ for more details.
+
+  * A new varargs constructor has been added to ContentNames, a new Component
+    class has been created, and ContentNameProvider and ComponentProvider
+    interfaces have been provided to simplify the generation and minimize the
+    overhead of building ContentNames. The Component class provides an
+    immutable Component type, which encapsulates the component as a byte[]
+    array, that is designed to hold static components to be passed into
+    ComponentName constructors. In code, a Component should be used wherever
+    possible in lieu of a static final byte[] array or a static final String,
+    to avoid unnecessary copying.
+
+    The ContentName varargs constructor, and the ContentNameProvider and
+    ComponentProvider interfaces, allow classes to pass ContentNames and
+    Components directly into the ContentName constructor.
+
+    Most of the static component-related methods that previously existed under
+    ContentName have been moved to the new Component class. The old methods
+    remain available but are deprecated; it is recommended that code be changed
+    to use the new static methods under Component. Please see Component,
+    ContentName, and ContentNameProvider documentation for more information.
+
+  * Issues Resolved:
+    * Bug 100046 OpenSolaris build fails when cc is actually gcc
+    * Feature 100070 clean up exception hierarchy, use
+    * Bug 100138 building
+    * Bug 100470 make in android directory with current tools leaves chaff
+    * Feature 100499 Unify ContentName constructors
+    * Bug 100605 No man pages for some of the java utilities
+    * Bug 100645 Android CCNx service control - tapping "Start All" button
+      multiple times quickly causes services to fail
+    * Feature 100647 Default support for multiple architectures in MacOS X build
+    * Support 100662 Setup CCNx Open Source project commit notifications via
+      email + outbound tweets for all commits to projectccnx
+    * Bug 100664 Remove ccnd/android_msg.c
+    * Feature 100675 C/Java Libraries should be able to use different digest
+      algorithms based on key type for signing
+    * Bug 100676 Multiple registrations using ccn_set_interest_filter with same
+      prefix do not work well
+    * Bug 100682 CCNx tests uses grep flags unsupported by Solaris SunOS
+      default grep but tests still succeed
+    * Bug 100688 Man page for ccntestloop
+    * Feature 100690 Improve decoding performance
+    * Bug 100691 Inconsistent formatting and use of asciidoc markup
+    * Support 100692 Prepare for ccnx-0.6.0 release
+    * Bug 100694 Fix ccntestloop stop command to more reliably clean up spawned
+      processes
+    * Support 100695 Improve comments in ccnd
+    * Bug 100696 Broken link in top-level README
+    * Support 100697 Prepare for ccnx-0.5.2 release
+    * Feature 100698 Add use of deltas to the RootAdvise protocol
+    * Bug 100699 ccndc fails with Unable to create face in ccnx-0.5.1 on guest OS
+    * Support 100700 Add ccnx-0.5.x api-stable branch
+    * Bug 100702 Intermittent test_repo_performance failures on slow platforms
+    * Bug 100703 sync header files include other files only needed for
+      implementation
+    * Feature 100706 Integrate ccn_schedule events with ccn_run()
+    * Feature 100707 Provide interface for applications to set up Sync
+      configuration slices and receive notification of (newly) sync'ed
+      ContentObjects
+    * Feature 100709 Update schema and assign DTAG for new sync delta
+      RootAdvise response
+
+
+Changes between 0.5.0 and 0.5.1:
+--------------------------------
+This highlights some important changes since the most recent numbered release.
+Refer to http://www.ccnx.org/redmine/ for more details.
+
+  • As a result of Sun Java JDK packages being removed for Ubuntu (see
+    https://lists.ubuntu.com/archives/ubuntu-security-announce/2011-December/
+    001528.html), we are now using OpenJDK for Ubuntu.  Please see
+    csrc/README.linux for more information.
+
+  * Issues Resolved:
+	* Bug 100047 The top-level Makefile's method of populating ./bin does not
+	  work with Solaris make
+	* Feature 100576 Topic branch for csrc
+	* Support 100597 Ensure CCNx builds on openjdk1.6/ubuntu packages
+	* Bug 100621 NameEnumeratorTests should have better logging
+	* Bug 100651 autoreg does not work for link adaptor faces
+	* Bug 100653 Timeouts too short in DeprecatedInterfaceTest
+	* Bug 100655 RootAdvise exclusion lists can become too long
+	* Feature 100656 Fix options in SyncTest
+	* Bug 100658 Utilities should default logging to WARNING but respect
+	  environment variable settings for logging
+	* Support 100660 Prepare for ccnx-0.5.1 release
+	* Bug 100665 Graphics missing from protocol descriptions
+	* Feature 100666 ccnd should provide a way to specify default staleness 
+	* Bug 100667 Man page for synctest can't be accessed from Wiki
+	* Bug 100668 implement destroyface in ccndc
+	* Feature 100669 Add parameter to ccnpoke command for specifying the length
+	  of the prefix to be registered
+	* Bug 100670 SyncTest.localStore does not set scope
+	* Feature 100672 Wireshark plugin should decode Exclude filters in
+	  Interests
+	* Bug 100673 Repo dtd and xsd missing from CCN documentation wiki
+	* Bug 100674 Sync dtd and xsd missing from doc/technical
+	* Bug 100678 ccngetfile should not print out logs at INFO by default
+	* Bug 100679 Bring sync.dtd and sync.xsd into alignment with implementation
+	* Bug 100680 Repo-1 man page should mention Java repo has been deprecated
+	* Bug 100681 Descriptions in Sync and Create Protocol descriptions should
+	  be in BNF
+	* Bug 100683 Saved output from test_repo_performance accumulates without
+	  bound
+	* Bug 100684 java repo shutdown needs to wait for data output to complete
+	  before shutting down
+	* Bug 100685 No man page for ccnrepoimport
+	* Bug 100687 No man page for ccnprintlink
+
 Changes between 0.4.2 and 0.5.0:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
@@ -70,7 +183,6 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 	* Bug 100445 ccnx.dtd missing Label elements (fixed in v0.4.2)
 	* Bug 100487 ccnx 0.4.0 does not install with /usr/local/<lib, bin,
 		include> missing
-	* Bug 100491 replace uses of vlc_thread_create/join with vlc_clone/join
 	* Bug 100495 Cleanup Dos Newline ^M for target v0.4.1 (fixed in v0.4.1)
 	* Feature 100498 A new DTAG needs to be added for Sync.
 	* Feature 100500 Add java support for sync component
