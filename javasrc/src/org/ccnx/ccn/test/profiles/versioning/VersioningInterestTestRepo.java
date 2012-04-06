@@ -80,8 +80,8 @@ public class VersioningInterestTestRepo {
 	@Test
 	public void testTwoNamesOneListener() throws Exception {
 		System.out.println("****** testTwoNamesOneListener starting");
-		ContentName base1 = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
-		ContentName base2 = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		ContentName base1 = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
+		ContentName base2 = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		ContentName [] names = new ContentName [] {base1, base2};
 
@@ -132,9 +132,9 @@ public class VersioningInterestTestRepo {
 	@Test
 	public void testThreeNamesFourListener() throws Exception {
 		System.out.println("****** testThreeNamesFourListener starting");
-		ContentName base1 = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
-		ContentName base2 = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
-		ContentName base3 = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		ContentName base1 = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
+		ContentName base2 = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
+		ContentName base3 = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		ContentName [] names = new ContentName [] {base1, base2, base3};
 

@@ -16,6 +16,8 @@
  */
 package org.ccnx.ccn.profiles.context;
 
+import static org.ccnx.ccn.profiles.security.KeyProfile.KEY_NAME;
+
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.util.ArrayList;
@@ -29,6 +31,7 @@ import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.security.KeyProfile;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
@@ -64,14 +67,11 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 	
 	public static final ContentName localhostScopeName() {
 		// could make a static variable if we expect this to get called.
-		return new ContentName(new byte [][]{LOCALHOST_SCOPE.getBytes()});
+		return new ContentName(LOCALHOST_SCOPE);
 	}
 
 	public static ContentName localServiceName(String service) {
-		return new ContentName(
-				new byte [][]{ServiceDiscoveryProfile.LOCALHOST_SCOPE.getBytes(), 
-						SERVICE_NAME_COMPONENT_MARKER.getBytes(), 
-						ContentName.componentParseNative(service)});
+		return new ContentName(LOCALHOST_SCOPE, SERVICE_NAME_COMPONENT_MARKER, service);
 	}
 
 	public static String getLocalServiceName(ContentName nameWithServicePrefix) {
@@ -97,14 +97,14 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
 				Log.finer(Log.FAC_KEYS, "Cannot get local service name, {0} does not contain a service name component {1}.",
 						nameWithServicePrefix, 
-						ContentName.componentPrintURI(nameWithServicePrefix.component(SERVICE_MARKER_COMPONENT)));
+						Component.printURI(nameWithServicePrefix.component(SERVICE_MARKER_COMPONENT)));
 			}
 			return null;			
 		}
 
 		byte [] serviceNameComponent = 
 			nameWithServicePrefix.component(SERVICE_NAME_COMPONENT);
-		return ContentName.componentPrintNative(serviceNameComponent);
+		return Component.printNative(serviceNameComponent);
 	}
 
 	/**
@@ -122,7 +122,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 	 */
 	public static ArrayList<ContentObject> getLocalServiceKeys(String service, long timeout, CCNHandle handle) throws IOException {
 
-		ContentName serviceKeyName = new ContentName(localServiceName(service), KeyProfile.KEY_NAME_COMPONENT);
+		ContentName serviceKeyName = new ContentName(localServiceName(service), KEY_NAME);
 
 		// Construct an interest in anything below this that has the right form -- this prefix, a component
 		// for the key id, and then a version and segments. Might be more expensive to apply the filters than
@@ -193,7 +193,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 	 */
 	public static PublicKeyObject getLocalServiceKey(String service, long timeout, CCNHandle handle) throws IOException {
 
-		ContentName serviceKeyName = new ContentName(localServiceName(service), KeyProfile.KEY_NAME_COMPONENT);
+		ContentName serviceKeyName = new ContentName(localServiceName(service), KEY_NAME);
 
 		// Construct an interest in anything below this that has the right form -- this prefix, a component
 		// for the key id, and then a version and segments. Might be more expensive to apply the filters than
@@ -264,7 +264,7 @@ public class ServiceDiscoveryProfile implements CCNProfile {
 			serviceKey = keyManager.getDefaultKeyID();
 		}
 
-		ContentName serviceKeyPrefix = new ContentName(localServiceName(service), KeyProfile.KEY_NAME_COMPONENT);
+		ContentName serviceKeyPrefix = new ContentName(localServiceName(service), KEY_NAME);
 		ContentName serviceKeyName = 
 			KeyProfile.keyName(serviceKeyPrefix, serviceKey);
 

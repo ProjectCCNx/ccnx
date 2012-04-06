@@ -58,7 +58,7 @@ public class KeyLocatorTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		try {
-			name = ContentName.fromURI(new String[]{baseName, subName2, document2});
+			name = new ContentName(baseName, subName2, document2);
 			Security.addProvider(new BouncyCastleProvider());
 			
 			// generate key pair

@@ -18,19 +18,22 @@
 package org.ccnx.ccn.profiles.security.access.group;
 
 
+import static org.ccnx.ccn.io.content.KeyDirectory.GROUP_PRIVATE_KEY;
+import static org.ccnx.ccn.io.content.KeyDirectory.GROUP_PUBLIC_KEY;
+
 import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.ContentEncodingException;
-import org.ccnx.ccn.io.content.KeyDirectory;
 import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.namespace.ParameterizedName;
 import org.ccnx.ccn.profiles.security.access.AccessControlProfile;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
@@ -50,10 +53,8 @@ import org.ccnx.ccn.protocol.ContentName;
 public class GroupAccessControlProfile extends AccessControlProfile implements CCNProfile {
 	
 	// These may eventually want to move somewhere more general
-	public static final String GROUP_PREFIX = "Groups";
-	public static final byte [] GROUP_PREFIX_BYTES = ContentName.componentParseNative(GROUP_PREFIX);
-	public static final String USER_PREFIX = "Users";
-	public static final byte [] USER_PREFIX_BYTES = ContentName.componentParseNative(USER_PREFIX);
+	public static final Component GROUP_PREFIX = new Component("Groups");
+	public static final Component USER_PREFIX = new Component("Users");
 	
 	// The labels used to tag group or user storage information in AccessControlPolicyMarkerObjects
 	public static final String GROUP_LABEL = "Group";		
@@ -62,13 +63,13 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	public static final String GROUP_MEMBERSHIP_LIST_NAME = "MembershipList";
 	public static final String GROUP_POINTER_TO_PARENT_GROUP_NAME = "PointerToParentGroup";
 	public static final String ACL_NAME = "ACL";
-	public static final byte [] ACL_NAME_BYTES = ContentName.componentParseNative(ACL_NAME);
+	public static final byte [] ACL_NAME_BYTES = Component.parseNative(ACL_NAME);
 	public static final String NODE_KEY_NAME = "NK";
-	public static final byte [] NODE_KEY_NAME_BYTES = ContentName.componentParseNative(NODE_KEY_NAME);	
+	public static final byte [] NODE_KEY_NAME_BYTES = Component.parseNative(NODE_KEY_NAME);	
 	// These two must be the same length
-	public static final byte [] USER_PRINCIPAL_PREFIX = ContentName.componentParseNative("p");
-	public static final byte [] GROUP_PRINCIPAL_PREFIX = ContentName.componentParseNative("g");
-	public static final ContentName ACL_POSTFIX = new ContentName(new byte[][]{ACCESS_CONTROL_MARKER_BYTES, ACL_NAME_BYTES});
+	public static final byte [] USER_PRINCIPAL_PREFIX = Component.parseNative("p");
+	public static final byte [] GROUP_PRINCIPAL_PREFIX = Component.parseNative("g");
+	public static final ContentName ACL_POSTFIX = new ContentName(ACCESS_CONTROL_MARKER_BYTES, ACL_NAME_BYTES);
 
 	/**
 	 * This class records information about a CCN principal.
@@ -141,7 +142,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 				while (principalInfoNameComponent[pos + fnLength] != CCNProfile.COMPONENT_SEPARATOR[0]) fnLength++;
 				byte[] friendlyNameBytes = new byte[fnLength];
 				System.arraycopy(principalInfoNameComponent, pos, friendlyNameBytes, 0, fnLength);
-				_friendlyName = ContentName.componentPrintNative(friendlyNameBytes);
+				_friendlyName = Component.printNative(friendlyNameBytes);
 				pos += fnLength;
 				pos += CCNProfile.COMPONENT_SEPARATOR.length;
 	
@@ -152,9 +153,9 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 			} catch (Exception e) {
 				// we're having some trouble here...
 				Log.severe(Log.FAC_ACCESSCONTROL, "PrincipalInfo: error in parsing component {0}", 
-						ContentName.componentPrintURI(principalInfoNameComponent));
+						Component.printURI(principalInfoNameComponent));
 				Log.severe(Log.FAC_ACCESSCONTROL, "PrincipalInfo: typeMarker {0}, distinguishing hash {1}, friendly name {2}, timestamp {3}",
-						ContentName.componentPrintURI(_typeMarker), ContentName.componentPrintURI(_distinguishingHash),
+						Component.printURI(_typeMarker), Component.printURI(_distinguishingHash),
 						_friendlyName, _versionTimestamp);
 				System.exit(1);
 			}
@@ -171,7 +172,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 		 */
 		public byte[] toNameComponent() {
 			byte [] prefix = (isGroup() ? GROUP_PRINCIPAL_PREFIX : USER_PRINCIPAL_PREFIX);
-			byte [] bytePrincipal = ContentName.componentParseNative(friendlyName());
+			byte [] bytePrincipal = Component.parseNative(friendlyName());
 			byte [] byteTime = versionTimestamp().toBinaryTime();
 			byte [] component = new byte[prefix.length + distinguishingHash().length + bytePrincipal.length + 
 			                             byteTime.length + 3*COMPONENT_SEPARATOR.length];
@@ -271,11 +272,9 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the corresponding node key
 	 */
 	public static ContentName nodeKeyName(ContentName nodeName) {
-		ContentName rootName = accessRoot(nodeName);
-		ContentName nodeKeyName = new ContentName(rootName, ACCESS_CONTROL_MARKER_BYTES, NODE_KEY_NAME_BYTES);
-		return nodeKeyName;
+		return new ContentName(accessRoot(nodeName), ACCESS_CONTROL_MARKER_BYTES, NODE_KEY_NAME_BYTES);
 	}
-	
+
 	/**
 	 * Get the name of the access control list (ACL) for a given content node.
 	 * This is nodeName/<access marker>/ACL.
@@ -299,7 +298,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the user namespace
 	 */
 	public static ContentName userNamespaceName(ContentName namespace) {
-		return new ContentName(accessRoot(namespace), USER_PREFIX_BYTES);
+		return new ContentName(accessRoot(namespace), USER_PREFIX);
 	}
 
 	/**
@@ -310,7 +309,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 */
 	public static ContentName userNamespaceName(ContentName userNamespace,
 			String userName) {
-		return ContentName.fromNative(userNamespace, userName);
+		return new ContentName(userNamespace, userName);
 	}
 	
 	/**
@@ -321,7 +320,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the group namespace
 	 */
 	public static ContentName groupNamespaceName(ContentName namespace) {
-		return new ContentName(accessRoot(namespace), GROUP_PREFIX_BYTES);
+		return new ContentName(accessRoot(namespace), GROUP_PREFIX);
 	}
 	
 	/**
@@ -331,7 +330,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the namespace for the group
 	 */
 	public static ContentName groupName(ContentName namespace, String groupFriendlyName) {
-		return ContentName.fromNative(groupNamespaceName(namespace), groupFriendlyName);
+		return new ContentName(groupNamespaceName(namespace), groupFriendlyName);
 	}
 	
 	/**
@@ -344,22 +343,22 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the group public key
 	 */
 	public static ContentName groupPublicKeyName(ParameterizedName groupStorage, String groupFriendlyName) {
-		ContentName groupFullName = ContentName.fromNative(groupStorage.prefix(), groupFriendlyName);
+		ContentName groupFullName = new ContentName(groupStorage.prefix(), groupFriendlyName);
 		return groupPublicKeyName(groupStorage, groupFullName);
 	}
-	
+
 	/**
 	 * Get the name of the public key of a group specified by its full name
 	 * @param groupFullName the full name of the group
 	 * @return the name of the group public key
 	 */
 	public static ContentName groupPublicKeyName(ParameterizedName groupStorage, ContentName groupFullName) {
-		if (null != groupStorage.suffix()) {
-			return ContentName.fromNative(groupFullName.append(groupStorage.suffix()), KeyDirectory.GROUP_PUBLIC_KEY_NAME);
+		if (groupStorage.suffix() != null) {
+			return new ContentName(groupFullName, groupStorage.suffix(), GROUP_PUBLIC_KEY);
 		}
-		return ContentName.fromNative(groupFullName, KeyDirectory.GROUP_PUBLIC_KEY_NAME);
+		return new ContentName(groupFullName, GROUP_PUBLIC_KEY);
 	}
-	
+
 	public static ContentName userPublicKeyName(ParameterizedName userStorage, ContentName userName) {
 		if (null != userStorage.suffix()) {
 			return userName.append(userStorage.suffix());
@@ -374,7 +373,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the name of the group membership list
 	 */
 	public static ContentName groupMembershipListName(ParameterizedName groupNamespaceName, String groupFriendlyName) {
-		return ContentName.fromNative(ContentName.fromNative(groupNamespaceName.prefix(), groupFriendlyName),  GROUP_MEMBERSHIP_LIST_NAME);
+		return new ContentName(groupNamespaceName.prefix(), groupFriendlyName, GROUP_MEMBERSHIP_LIST_NAME);
 	}
 
 	/**
@@ -383,7 +382,7 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return the friendly name of the group
 	 */
 	public static String groupNameToFriendlyName(ContentName groupName) {
-		return ContentName.componentPrintNative(groupName.lastComponent());
+		return Component.printNative(groupName.lastComponent());
 	}
 
 	/**
@@ -403,12 +402,11 @@ public class GroupAccessControlProfile extends AccessControlProfile implements C
 	 * @return
 	 */
 	public static ContentName groupPrivateKeyBlockName(ContentName groupPublicKeyNameAndVersion) {
-		return ContentName.fromNative(groupPrivateKeyDirectory(groupPublicKeyNameAndVersion), 
-				KeyDirectory.GROUP_PRIVATE_KEY_NAME);
+		return new ContentName(groupPrivateKeyDirectory(groupPublicKeyNameAndVersion), GROUP_PRIVATE_KEY);
 	}
-	
+
 	public static ContentName groupPointerToParentGroupName(ContentName groupFullName) {
-		return ContentName.fromNative(groupFullName, GROUP_POINTER_TO_PARENT_GROUP_NAME);
+		return new ContentName(groupFullName, GROUP_POINTER_TO_PARENT_GROUP_NAME);
 	}
 
 }

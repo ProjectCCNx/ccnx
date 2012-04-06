@@ -200,9 +200,9 @@ public class InterestTest extends CCNTestBase {
 		byte [] content = "hello".getBytes();
 		ContentObject co = ContentObject.buildContentObject(name, content);
 		byte [] digest = co.digest();
-		Interest interest = new Interest(ContentName.fromNative(name, digest));
+		Interest interest = new Interest(new ContentName(name, digest));
 		Assert.assertTrue(interest.matches(co));
-		interest = new Interest(ContentName.fromNative(name, "simon"));
+		interest = new Interest(new ContentName(name, "simon"));
 		Assert.assertFalse(interest.matches(co));
 		
 		Log.info(Log.FAC_TEST, "Completed testMatchDigest");

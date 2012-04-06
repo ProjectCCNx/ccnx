@@ -22,6 +22,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.profiles.VersioningProfile;
 
 
 
@@ -42,7 +43,7 @@ import org.ccnx.ccn.impl.support.DataUtils;
  * represents time with a granularity equal to the underlying
  * CCN wire format -- i.e. ~.25 msec.
  */
-public class CCNTime extends Timestamp {
+public class CCNTime extends Timestamp implements ContentName.ComponentProvider {
 
 	private static final long serialVersionUID = -1537142893653443100L;
 	
@@ -270,5 +271,13 @@ public class CCNTime extends Timestamp {
 		// use . instead of : as URI printer will make it look nicer in the logs
 		SimpleDateFormat df = new SimpleDateFormat("yy-MM-dd-HH.mm.ss");
 		return df.format(this);
+	}
+
+	/**
+	 * Convert the time into a version component, so CCNTime objects can be used
+	 * directly in a ContentName builder.
+	 */
+	public final byte[] getComponent() {
+		return VersioningProfile.timeToVersionComponent(this);
 	}
 }

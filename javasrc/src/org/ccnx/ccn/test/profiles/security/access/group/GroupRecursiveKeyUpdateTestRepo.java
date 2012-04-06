@@ -64,7 +64,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		directoryBase = testHelper.getTestNamespace("testInOrder");
 		userNamespace = GroupAccessControlProfile.userNamespaceName(UserConfiguration.defaultNamespace());
 		groupNamespace = GroupAccessControlProfile.groupNamespaceName(UserConfiguration.defaultNamespace());
-		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
+		userKeyStorePrefix = new ContentName(UserConfiguration.defaultNamespace(), "_keystore_"); 
 		
 		// create user identities with TestUserData		
 		td = new CreateUserData(userKeyStorePrefix, numberOfusers, true, "password".toCharArray());
@@ -74,7 +74,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		// create ACM
 		handle = td.getHandleForUser(friendlyNames[1]);
 		acm = new GroupAccessControlManager(directoryBase, groupNamespace, userNamespace, handle);
-		acm.publishMyIdentity(ContentName.fromNative(userNamespace, friendlyNames[1]), handle.keyManager().getDefaultPublicKey());
+		acm.publishMyIdentity(new ContentName(userNamespace, friendlyNames[1]), handle.keyManager().getDefaultPublicKey());
 	}
 	
 	
@@ -118,20 +118,20 @@ public class GroupRecursiveKeyUpdateTestRepo {
 
 		// create group0 containing user0 and user1
 		ArrayList<Link> G0Members = new ArrayList<Link>();
-		G0Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[0])));
-		G0Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[1])));
+		G0Members.add(new Link(new ContentName(userNamespace, friendlyNames[0])));
+		G0Members.add(new Link(new ContentName(userNamespace, friendlyNames[1])));
 		groupName[0] = "group0-" + rand.nextInt(10000);
 		group[0] = acm.groupManager().createGroup(groupName[0], G0Members, 0);
 		
 		// create group4 containing user1
 		ArrayList<Link> G4Members = new ArrayList<Link>();
-		G4Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[1])));
+		G4Members.add(new Link(new ContentName(userNamespace, friendlyNames[1])));
 		groupName[4] = "group4-" + rand.nextInt(10000);
 		group[4] = acm.groupManager().createGroup(groupName[4], G4Members, 0);
 		
 		// create group1 and group2 containing group0
 		ArrayList<Link> G1G2Members = new ArrayList<Link>();
-		G1G2Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[0])));
+		G1G2Members.add(new Link(new ContentName(groupNamespace, groupName[0])));
 		groupName[1] = "group1-" + rand.nextInt(10000);
 		group[1] = acm.groupManager().createGroup(groupName[1], G1G2Members, 0);
 		groupName[2] = "group2-" + rand.nextInt(10000);
@@ -139,8 +139,8 @@ public class GroupRecursiveKeyUpdateTestRepo {
 		
 		// create group3 containing group1 and group2
 		ArrayList<Link> G3Members = new ArrayList<Link>();
-		G3Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[1])));
-		G3Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[2])));
+		G3Members.add(new Link(new ContentName(groupNamespace, groupName[1])));
+		G3Members.add(new Link(new ContentName(groupNamespace, groupName[2])));
 		groupName[3] = "group3-" + rand.nextInt(10000);
 		group[3] = acm.groupManager().createGroup(groupName[3], G3Members, 0);
 		
@@ -177,7 +177,7 @@ public class GroupRecursiveKeyUpdateTestRepo {
 	public void removeMemberFromGroup0() throws Exception {
 		// delete user0 from group0
 		ArrayList<Link> membersToRemove = new ArrayList<Link>();
-		membersToRemove.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[0])));
+		membersToRemove.add(new Link(new ContentName(userNamespace, friendlyNames[0])));
 		group[0].removeMembers(membersToRemove);
 		Thread.sleep(1000);
 		

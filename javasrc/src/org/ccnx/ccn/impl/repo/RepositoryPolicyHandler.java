@@ -17,13 +17,16 @@
 
 package org.ccnx.ccn.impl.repo;
 
+import static org.ccnx.ccn.impl.repo.RepositoryStore.REPO_NAMESPACE;
+import static org.ccnx.ccn.impl.repo.RepositoryStore.REPO_POLICY;
+import static org.ccnx.ccn.protocol.CCNTime.now;
+
 import java.io.IOException;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.repo.PolicyXML.PolicyObject;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
-import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
@@ -58,8 +61,7 @@ public class RepositoryPolicyHandler {
 		PolicyXML pxml = po.policyInfo();
 		Policy policy = server.getRepository().getPolicy();
 		policy.update(pxml, true);
-		ContentName policyName = VersioningProfile.addVersion(
-				ContentName.fromNative(RepositoryStore.REPO_NAMESPACE + "/" + pxml._localName + "/" + RepositoryStore.REPO_POLICY));
+		ContentName policyName = new ContentName(REPO_NAMESPACE, pxml._localName, REPO_POLICY, now());
 		if (Log.isLoggable(Log.FAC_REPO, Level.INFO))
 			Log.info(Log.FAC_REPO, "REPO: got policy update, global name {0} local name {1}, saving to {2}", policy.getGlobalPrefix(), policy.getLocalName(), policyName);
 		server.resetNamespaceFromHandler();

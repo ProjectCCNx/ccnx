@@ -36,8 +36,8 @@ public class PrincipalEnumerator {
 	private static long TIMEOUT = 1000;
 	
 	GroupManager gm;
-	ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
-	ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
+	ContentName userStorage = new ContentName(UserConfiguration.defaultNamespace(), "Users");
+	ContentName groupStorage = new ContentName(UserConfiguration.defaultNamespace(), "Groups");
 	
 	public PrincipalEnumerator(GroupManager gm) {
 		this.gm = gm;
@@ -83,7 +83,7 @@ public class PrincipalEnumerator {
 			}
 			else {
 				for (ContentName child : availableChildren) {
-					ContentName fullName = new ContentName(path, child.components());
+					ContentName fullName = path.append(child);
 					principalList.add(fullName);
 				}
 			}

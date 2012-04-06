@@ -109,7 +109,7 @@ public class KeyDirectoryTestRepo {
 		
 		ContentName cnDirectoryBase = ContentName.fromNative(directoryBase);
 		ContentName groupStore = GroupAccessControlProfile.groupNamespaceName(cnDirectoryBase);
-		userStore = ContentName.fromNative(cnDirectoryBase, "Users");
+		userStore = new ContentName(cnDirectoryBase, "Users");
 		acm = new GroupAccessControlManager(cnDirectoryBase, groupStore, userStore);
 		versionedDirectoryName = VersioningProfile.addVersion(keyDirectoryName);
 	}
@@ -167,7 +167,7 @@ public class KeyDirectoryTestRepo {
 	 * Unwrap the private key via membership in a group
 	 */
 	public void testGetUnwrappedKeyGroupMember() throws Exception {
-		ContentName myIdentity = ContentName.fromNative(userStore, "pgolle");
+		ContentName myIdentity = new ContentName(userStore, "pgolle");
 		acm.publishMyIdentity(myIdentity, null);		
 				
 		// add myself to a newly created group				
@@ -213,7 +213,7 @@ public class KeyDirectoryTestRepo {
 		wrappingKeyPair = kpg.generateKeyPair();
 		PublicKey publicKey = wrappingKeyPair.getPublic();
 		wrappingPKID = CCNDigestHelper.digest(publicKey.getEncoded());
-		publicKeyName = ContentName.fromNative(userStore, principalName);
+		publicKeyName = new ContentName(userStore, principalName);
 		ContentName versionPublicKeyName = VersioningProfile.addVersion(publicKeyName);
 		
 		// add to the KeyDirectory the secret key wrapped in the public key

@@ -36,8 +36,7 @@ import org.junit.Test;
  * Test basic version manipulation.
  */
 public class VersioningProfileTest {
-	private static byte[][] abParts = { { 97 }, { 98 } };
-	private static ContentName abName = new ContentName(abParts);
+	private static ContentName abName = new ContentName(new byte[]{ 97 }, new byte[]{ 98 });
 	private static byte[] ver = { -3, 16, 64 };
 	private static byte[] seg = { 0, 16 };
 	private static ContentName abSegName = new ContentName(abName, ver, seg);
@@ -87,8 +86,7 @@ public class VersioningProfileTest {
 		ContentName name;
 		/* try with length 2 contentname */
 		name = VersioningProfile.addVersion(abName, 256);
-		byte[][] parts = { { 97 }, { 98 }, { -3, 1, 0 } };
-		if (!name.equals(new ContentName(parts)))
+		if (!name.equals(new ContentName(new byte[]{ 97 }, new byte[]{ 98 }, new byte[]{ -3, 1, 0 })))
 			fail("long encode version failed");
 
 		/* check v=0 comes out 0 length */
@@ -164,12 +162,11 @@ public class VersioningProfileTest {
 			fail("should be versioned");
 		if (!VersioningProfile.hasTerminalVersion(abSegName))
 			fail("should be versioned (with segments): " + abSegName);
-		if (VersioningProfile.hasTerminalVersion(new ContentName() ))
+		if (VersioningProfile.hasTerminalVersion(ContentName.ROOT))
 			fail("shouldn't be versioned");
 		
 		/* check the sequence 0xf8 0x00 * is not treated as a version */
-		byte[][] parts = { { 97 }, { 98 }, { -3, 0 } };
-		if (VersioningProfile.hasTerminalVersion(new ContentName(parts)))
+		if (VersioningProfile.hasTerminalVersion(new ContentName(new byte[]{ 97 }, new byte[]{ 98 }, new byte[]{ -3, 0 })))
 			fail("not version component");
 		
 		if (VersioningProfile.hasTerminalVersion(abnotvName))
@@ -189,7 +186,7 @@ public class VersioningProfileTest {
 			fail("Not equals: " + VersioningProfile.cutTerminalVersion(abSegName).first() + " and " + abName);
 		if (!VersioningProfile.cutTerminalVersion(abName).first().equals(abName))
 			fail();
-		if (!VersioningProfile.cutTerminalVersion(new ContentName()).first().equals(new ContentName()))
+		if (!VersioningProfile.cutTerminalVersion(ContentName.ROOT).first().equals(ContentName.ROOT))
 			fail();
 		// check correct version field stripped if 2 present
 		if (!VersioningProfile.cutTerminalVersion(abvvName).first().equals(abvName))
@@ -228,12 +225,12 @@ public class VersioningProfileTest {
 
 		
 		ContentName name = VersioningProfile.addVersion(abName, 1);
-		ContentName n2 = ContentName.fromNative(name, "addon");
+		ContentName n2 = new ContentName(name, "addon");
 		
 		Assert.assertTrue(VersioningProfile.getLastVersionAsLong(name) == 1);
 		Assert.assertTrue(VersioningProfile.getLastVersionAsLong(n2) == 1);
 
-		n2 = ContentName.fromNative(n2, "addon2", "addon3");
+		n2 = new ContentName(n2, "addon2", "addon3");
 		Assert.assertTrue(VersioningProfile.getLastVersionAsLong(n2) == 1);
 		
 		try {

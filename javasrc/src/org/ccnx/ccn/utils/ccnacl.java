@@ -37,8 +37,8 @@ import org.ccnx.ccn.protocol.ContentName;
 
 public class ccnacl {
 
-	private static ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
-	private static ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
+	private static ContentName userStorage = new ContentName(UserConfiguration.defaultNamespace(), "Users");
+	private static ContentName groupStorage = new ContentName(UserConfiguration.defaultNamespace(), "Groups");
 	
 	/**
 	 * @param args
@@ -216,7 +216,7 @@ public class ccnacl {
 			
 			// Create the ACL for nodeName with principalName as a manager
 			ArrayList<Link> ACLcontents = new ArrayList<Link>();
-			Link lk = new Link(ContentName.fromNative(userNamespaceCN, principalName), ACL.LABEL_MANAGER, null);
+			Link lk = new Link(new ContentName(userNamespaceCN, principalName), ACL.LABEL_MANAGER, null);
 			ACLcontents.add(lk);
 			ACL domainRootACL = new ACL(ACLcontents);
 			

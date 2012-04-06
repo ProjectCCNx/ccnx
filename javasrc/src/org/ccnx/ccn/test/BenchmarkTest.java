@@ -88,7 +88,7 @@ public class BenchmarkTest {
 	
 	public static NumberFormat format = DecimalFormat.getNumberInstance();
 	
-	public abstract class Operation<T,U> {
+	static abstract class Operation<T extends Object,U extends Object> {
 		abstract Object execute(T input, U parameter) throws Exception;
 		
 		int size(T input) {
@@ -102,12 +102,35 @@ public class BenchmarkTest {
 				throw new RuntimeException("Unsupported input type " + input.getClass());
 			}
 		}
+
+		public void runBenchmark(String desc, T input, U parameter) throws Exception {
+			runBenchmark(NUM_ITER, desc, input, parameter);
+		}
+
+		public void runBenchmark(int count, String desc, T input, U parameter) throws Exception {
+			long start = System.nanoTime();
+			execute(input, parameter);
+			long dur = System.nanoTime() - start;
+			//System.out.println("Start " + start + " dur " + dur);
+			int size = size(input);
+			System.out.println("Initial time to " + desc + (size >= 0 ? " (payload " + size(input) + " bytes)" : "") +
+					" = " + dur/NanoToMilli + " ms.");
+			
+			start = System.nanoTime();
+			for (int i=0; i<count; i++) {
+				execute(input, parameter);
+			}
+			dur = System.nanoTime() - start;
+			System.out.println("Avg. to " + desc + " (" + count + " iterations) = " + 
+					dur/count/NanoToMilli + " ms. (" + 
+					format.format(NanoToSec/dur) + " operations/sec)");		
+		}
 	}
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		ContentName namespace = testHelper.getTestNamespace("benchmarkTest");
-		testName = ContentName.fromNative(namespace, "BenchmarkObject");
+		testName = new ContentName(namespace, "BenchmarkObject");
 		testName = VersioningProfile.addVersion(testName);
 		shortPayload = ("this is sample segment content").getBytes();
 		longPayload = new byte[LONG_LENGTH];
@@ -137,31 +160,6 @@ public class BenchmarkTest {
 		System.out.println("Benchmark Test starting on " + System.getProperty("os.name"));
 	}
 
-	@SuppressWarnings("unchecked")
-	public void runBenchmark(String desc, Operation op, Object input, Object parameter) throws Exception {
-		runBenchmark(NUM_ITER, desc, op, input, parameter);
-	}
-	
-	@SuppressWarnings("unchecked")
-	public void runBenchmark(int count, String desc, Operation op, Object input, Object parameter) throws Exception {
-		long start = System.nanoTime();
-		op.execute(input, parameter);
-		long dur = System.nanoTime() - start;
-		//System.out.println("Start " + start + " dur " + dur);
-		int size = op.size(input);
-		System.out.println("Initial time to " + desc + (size >= 0 ? " (payload " + op.size(input) + " bytes)" : "") +
-				" = " + dur/NanoToMilli + " ms.");
-		
-		start = System.nanoTime();
-		for (int i=0; i<count; i++) {
-			op.execute(input, parameter);
-		}
-		dur = System.nanoTime() - start;
-		System.out.println("Avg. to " + desc + " (" + count + " iterations) = " + 
-				dur/count/NanoToMilli + " ms. (" + 
-				format.format(NanoToSec/dur) + " operations/sec)");		
-	}
-	
 	@Test
 	public void testDigest() throws Exception {
 		System.out.println("==== Digests");
@@ -175,7 +173,7 @@ public class BenchmarkTest {
 		for (int i=0; i < digestAlgorithms.length; ++i) {
 			System.out.println("--- Raw = digest only of byte[] using " + digestAlgorithms[i]);
 			for (int j=0; j<payloads.length; ++j) {
-				runBenchmark("raw digest (" + payloads[j].length + " bytes)", digest, 
+				digest.runBenchmark("raw digest (" + payloads[j].length + " bytes)", 
 						payloads[j], digestAlgorithms[i]);
 			}
 			System.out.println("");
@@ -194,8 +192,7 @@ public class BenchmarkTest {
 		for (int i=0; i < digestAlgorithms.length; ++i) {
 			System.out.println("--- Raw = digest of contentObject using " + digestAlgorithms[i]);
 			for (int j=0; j<contentObjects.length; ++j) {
-				runBenchmark("ContentObject digest (content " + contentObjects[j].contentLength() + " bytes) ", 
-						digestObj, 
+				digestObj.runBenchmark("ContentObject digest (content " + contentObjects[j].contentLength() + " bytes) ", 
 						contentObjects[j], digestAlgorithms[i]);
 			}
 			System.out.println("");
@@ -213,8 +210,7 @@ public class BenchmarkTest {
 		};
 
 		for (int j=0; j<contentObjects.length; ++j) {
-			runBenchmark("ContentObject encode (content " + contentObjects[j].contentLength() + " bytes) ", 
-					encodeObj, 
+			encodeObj.runBenchmark("ContentObject encode (content " + contentObjects[j].contentLength() + " bytes) ", 
 					contentObjects[j], null);
 		}
 		System.out.println("");
@@ -227,8 +223,7 @@ public class BenchmarkTest {
 
 		System.out.println("Prepare content: perform the encoding steps necessary for signing:");
 		for (int j=0; j<contentObjects.length; ++j) {
-			runBenchmark("ContentObject prepareDigest (content " + contentObjects[j].contentLength() + " bytes) ", 
-					prepareObj, 
+			prepareObj.runBenchmark("ContentObject prepareDigest (content " + contentObjects[j].contentLength() + " bytes) ", 
 					contentObjects[j], null);
 		}
 		System.out.println("");
@@ -256,7 +251,7 @@ public class BenchmarkTest {
 			for (int j=0; j < keyPairs.length; ++j) {
 				System.out.println("======= " + keyLengths[j] + "-bit " + keyPairs[j].getPublic().getAlgorithm() + " Key with " + digestAlgorithms[i] + ":");
 				for (int k=0; k < payloads.length; ++k) {
-					runBenchmark("sign " + payloads[k].length + " bytes ", sign, 
+					sign.runBenchmark("sign " + payloads[k].length + " bytes ",
 							payloads[k], new Tuple<String,PrivateKey>(digestAlgorithms[i],keyPairs[j].getPrivate()));
 				}
 				System.out.println("");
@@ -284,7 +279,7 @@ public class BenchmarkTest {
 				System.out.println("======= " + keyLengths[j] + "-bit " + keyPairs[j].getPublic().getAlgorithm() + " Key with " + digestAlgorithms[i] + ":");
 				for (int k=0; k < payloads.length; ++k) {
 					byte [] signature = (byte[])sign.execute(payloads[k], new Tuple<String,PrivateKey>(digestAlgorithms[i],keyPairs[j].getPrivate()));
-					runBenchmark("verify " + payloads[k].length + " bytes ", verify, 
+					verify.runBenchmark("verify " + payloads[k].length + " bytes ",
 							new Tuple<byte [], byte[]>(payloads[k],signature), 
 							new Tuple<String,PublicKey>(digestAlgorithms[i],keyPairs[j].getPublic()));
 				}
@@ -330,10 +325,10 @@ public class BenchmarkTest {
 			for (int j=0; j < keyPairs.length; ++j) {
 				System.out.println("======= " + keyLengths[j] + "-bit " + keyPairs[j].getPublic().getAlgorithm() + " Key:");
 				for (int k=0; k < unsignedContentObjects.length; ++k) {
-					runBenchmark("sign " + unsignedContentObjects[k].contentLength() + " bytes ", objSign, 
+					objSign.runBenchmark("sign " + unsignedContentObjects[k].contentLength() + " bytes ",
 							unsignedContentObjects[k], 
 							new Tuple<String,PrivateKey>(digestAlgorithms[i],keyPairs[j].getPrivate()));
-					runBenchmark("verify " + unsignedContentObjects[k].contentLength() + " bytes ", objVerify, 
+					objVerify.runBenchmark("verify " + unsignedContentObjects[k].contentLength() + " bytes ", 
 							unsignedContentObjects[k], keyPairs[j].getPublic());
 				}
 				System.out.println("");
@@ -358,7 +353,7 @@ public class BenchmarkTest {
 		
 		for (int i = 0; i < keyLengths.length; ++i) {
 			System.out.println("==== Key Generation: " + keyLengths[i] + "-bit " + UserConfiguration.defaultKeyAlgorithm() + " key.");
-			runBenchmark(NUM_KEYGEN, "generate keypair", genpair, null, new Tuple<KeyPairGenerator, Integer>(kpg, keyLengths[i]));
+			genpair.runBenchmark(NUM_KEYGEN, "generate keypair", null, new Tuple<KeyPairGenerator, Integer>(kpg, keyLengths[i]));
 		}
 	}
 	
@@ -394,6 +389,6 @@ public class BenchmarkTest {
 		};
 		Interest interest = new Interest(name);
 		System.out.println("==== Single data retrieval from ccnd: " + name);
-		runBenchmark("retrieve data", getcontent, interest, null);
+		getcontent.runBenchmark("retrieve data", interest, null);
 	}
 }

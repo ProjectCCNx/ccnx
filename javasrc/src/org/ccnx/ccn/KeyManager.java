@@ -46,6 +46,7 @@ import org.ccnx.ccn.profiles.repo.RepositoryControl;
 import org.ccnx.ccn.profiles.security.KeyProfile;
 import org.ccnx.ccn.profiles.security.access.AccessControlManager;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.KeyLocator;
@@ -287,10 +288,9 @@ public abstract class KeyManager {
 			}
 		}
 		ContentName keyName = KeyProfile.keyName(keyPrefix, keyID);
-		if (null != keyVersion) {
-			return VersioningProfile.addVersion(keyName, keyVersion);
-		}
-		return keyName;
+		if (keyVersion == null)
+			return keyName;
+		return new ContentName(keyName, keyVersion);
 	}
 
 	/**
@@ -679,7 +679,7 @@ public abstract class KeyManager {
 			
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) {
 				Log.info(Log.FAC_KEYS, "Published key {0} from scratch as content {1}.", publishedKey.getVersionedName(), 
-						ContentName.componentPrintURI(publishedKey.getContentDigest()));
+						Component.printURI(publishedKey.getContentDigest()));
 			}
 			return publishedKey;
 		}
@@ -786,7 +786,7 @@ public abstract class KeyManager {
 					// Make a self-referential key locator. Include the version, in case we are not using the key ID in the name.
 					// People wanting versionless key locators need to construct their own.
 					existingLocator = new KeyLocator(
-							new KeyName(VersioningProfile.addVersion(nameAndVersion.first(), keyVersion), signingKeyID));
+							new KeyName(new ContentName(nameAndVersion.first(), keyVersion), signingKeyID));
 					
 					if (Log.isLoggable(Log.FAC_KEYS, Level.FINER)) {
 						Log.finer(Log.FAC_KEYS, "Overriding constructed key locator of type KEY, making self-referential locator {0}", existingLocator);
@@ -811,7 +811,7 @@ public abstract class KeyManager {
 		if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
 			Log.info(Log.FAC_KEYS, "publishKey: key not previously published, making new key object {0} with version {1} displayed as {2}", 
 				keyObject.getVersionedName(), keyVersion, 
-				((null != nameAndVersion.second()) ? ContentName.componentPrintURI(nameAndVersion.second()) : "<no version>"));
+				((null != nameAndVersion.second()) ? Component.printURI(nameAndVersion.second()) : "<no version>"));
 		}
 
 		// Eventually may want to find something already published and link to it, but be simple here.
@@ -825,7 +825,7 @@ public abstract class KeyManager {
 			if (Log.isLoggable(Log.FAC_KEYS, Level.INFO)) { 
 				Log.info(Log.FAC_KEYS, "Published key {0} to name {1} with key locator {2}; ephemeral digest {3}.", 
 						keyToPublish, keyObject.getVersionedName(), signingKeyLocator,
-						ContentName.componentPrintURI(keyObject.getFirstDigest()));
+						Component.printURI(keyObject.getFirstDigest()));
 			}
 		}
 		keyManager.getPublicKeyCache().remember(keyObject);

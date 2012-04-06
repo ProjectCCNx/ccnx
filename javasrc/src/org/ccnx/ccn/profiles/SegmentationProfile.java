@@ -116,7 +116,7 @@ public class SegmentationProfile implements CCNProfile {
 	public static ContentName segmentRoot(ContentName name) {
 		if (isUnsegmented(name))
 			return name;
-		return new ContentName(name.count()-1, name.components());
+		return name.parent();
 	}
 
 	public static ContentName segmentName(ContentName name, long index) {
@@ -438,8 +438,8 @@ public class SegmentationProfile implements CCNProfile {
 					}
 				} else {
 					//this was not the last segment..  use the co.name() to try again.
-
-					segmentName = new ContentName(getLastInterest.name().count(), co.name().components());
+					
+					segmentName = co.name().cut(getLastInterest.name().count());
 					getLastInterest = lastSegmentInterest(segmentName, getSegmentNumber(co.name()), publisher);
 
 					if (Log.isLoggable(Log.FAC_IO, Level.FINE))

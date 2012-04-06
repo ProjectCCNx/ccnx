@@ -36,6 +36,7 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.PublicKeyObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.test.Flosser;
 
@@ -105,7 +106,7 @@ public class CreateUserData {
 				friendlyName += Integer.toString(1 + i/userNames.length);
 			}
 
-			childName = ContentName.fromNative(userKeyStorePrefix, friendlyName);
+			childName = new ContentName(userKeyStorePrefix, friendlyName);
 			Log.info("Loading user: " + friendlyName + " from " + childName);
 			
 			if (storeInRepo) {
@@ -152,7 +153,7 @@ public class CreateUserData {
 		BasicKeyManager userKeyManager;
 		while (null != availableChildren) {
 			for (ContentName child : availableChildren) {
-				friendlyName = ContentName.componentPrintNative(child.lastComponent());
+				friendlyName = Component.printNative(child.lastComponent());
 				if (null != getUser(friendlyName)) {
 					Log.info("Already loaded data for user: " + friendlyName + " from name: " + _userContentNames.get(friendlyName));
 					continue;
@@ -341,7 +342,7 @@ public class CreateUserData {
 		int i=0;
 		for (String friendlyName: _userKeyManagers.keySet()) {
 			CCNHandle userHandle = getHandleForUser(friendlyName);
-			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
+			ContentName keyName = new ContentName(userNamespace, friendlyName);
 			results[i++] = userHandle.keyManager().publishSelfSignedKeyToRepository(
 					keyName, userHandle.keyManager().getDefaultPublicKey(),
 					userHandle.keyManager().getDefaultKeyID(), SystemConfiguration.getDefaultTimeout());

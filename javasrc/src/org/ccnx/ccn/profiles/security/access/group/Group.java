@@ -241,7 +241,7 @@ public class Group {
 	 * Get the name of the namespace for the group
 	 * @return the group namespace
 	 */
-	public ContentName groupName() {return ContentName.fromNative(_groupNamespace.prefix(), _groupFriendlyName);}
+	public ContentName groupName() {return new ContentName(_groupNamespace.prefix(), _groupFriendlyName); }
 
 	/**
 	 * Returns a list containing all the members of a Group.
@@ -556,7 +556,7 @@ public class Group {
 				// PG TODO check for existence of back pointer to avoid writing multiple copies of the same pointer
 				Link backPointer = new Link(groupName(), friendlyName(), null);
 				ContentName bpNamespace = GroupAccessControlProfile.groupPointerToParentGroupName(lr.targetName());
-				LinkObject bplo = new LinkObject(ContentName.fromNative(bpNamespace, friendlyName()), backPointer, SaveType.REPOSITORY, _handle);
+				LinkObject bplo = new LinkObject(new ContentName(bpNamespace, friendlyName()), backPointer, SaveType.REPOSITORY, _handle);
 				bplo.save();
 			} else {
 				// MLAC mods to make sure we fully parameterize key names

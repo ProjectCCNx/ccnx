@@ -100,7 +100,7 @@ public class puttap implements CCNContentHandler {
 	        CCNWriter writer = new CCNWriter(name, handle);
 	        writer.disableFlowControl();
 	        while (is.read(bytes) >= 0) {
-	        	writer.put(ContentName.fromNative(name, new Integer(i++).toString()), bytes);
+	        	writer.put(new ContentName(name, new Integer(i++).toString()), bytes);
 	        }
 	        
 	        return true;

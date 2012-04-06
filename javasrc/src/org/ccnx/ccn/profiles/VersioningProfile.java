@@ -29,6 +29,7 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
@@ -115,12 +116,13 @@ public class VersioningProfile implements CCNProfile {
 	 * so you need to be sure to use version numbers in those bounds.
 	 * <p>
 	 * @see #addVersion(ContentName, long)
+	 * @deprecated Use new ContentName(name, version) instead.
 	 */
+	@Deprecated
 	public static ContentName addVersion(ContentName name, CCNTime version) {
 		if (null == version)
-			throw new IllegalArgumentException("Version cannot be null!");
-		byte [] vcomp = timeToVersionComponent(version);
-		return new ContentName(name, vcomp);
+			throw new IllegalArgumentException("Version cannot be null!"); 
+		return new ContentName(name, version);
 	}
 
 	/**
@@ -129,10 +131,10 @@ public class VersioningProfile implements CCNProfile {
 	 * Get latest version is going to exclude [B, 0xFD00FFFFFFFFFF, 0xFE000000000000,B],
 	 * so you need to be sure to use version numbers in those bounds.
 	 * <p>
-	 * @see #addVersion(ContentName, CCNTime)
+	 * @see #addVersion(ContentName, long)
 	 */
 	public static ContentName addVersion(ContentName name) {
-		return addVersion(name, CCNTime.now());
+		return new ContentName(name, CCNTime.now());
 	}
 
 	public static byte [] timeToVersionComponent(CCNTime version) {
@@ -145,7 +147,7 @@ public class VersioningProfile implements CCNProfile {
 
 	public static String printAsVersionComponent(CCNTime version) {
 		byte [] vcomp = timeToVersionComponent(version);
-		return ContentName.componentPrintURI(vcomp);
+		return Component.printURI(vcomp);
 	}
 
 	/**
@@ -161,7 +163,7 @@ public class VersioningProfile implements CCNProfile {
 	 * first removes it.
 	 */
 	public static ContentName updateVersion(ContentName name, CCNTime version) {
-		return addVersion(cutTerminalVersion(name).first(), version);
+		return new ContentName(cutTerminalVersion(name).first(), version);
 	}
 
 	/**
@@ -244,7 +246,7 @@ public class VersioningProfile implements CCNProfile {
 	 */
 	public static ContentName cutLastVersion(ContentName name) {
 		int offset = findLastVersionComponent(name);
-		return (offset == -1) ? name : new ContentName(offset, name.components());
+		return (offset == -1) ? name : name.cut(offset);
 	}
 
 	/**

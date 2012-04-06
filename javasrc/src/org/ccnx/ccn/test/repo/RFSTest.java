@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.test.repo;
 
+import static org.ccnx.ccn.profiles.CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION;
+
 import java.io.File;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -207,13 +209,11 @@ public class RFSTest extends RepoTestBase {
 		ContentName reallyLongName = ContentName.fromNative("/repoTest/" + wayTooLongName);
 		repo.saveContent(ContentObject.buildContentObject(reallyLongName, "Really Long name!".getBytes()));
 		checkData(repo, reallyLongName, "Really Long name!");
-		byte[][] longNonASCIIBytes = new byte[2][];
-		longNonASCIIBytes[0] = "repoTest".getBytes();
-		longNonASCIIBytes[1] = new byte[300];
+		byte[] longNonASCIIBytes = new byte[300];
 		
 		for (int i = 0; i < 30; i++) {
-			rand.nextBytes(longNonASCIIBytes[1]);
-			ContentName lnab = new ContentName(longNonASCIIBytes);
+			rand.nextBytes(longNonASCIIBytes);
+			ContentName lnab = new ContentName("repoTest", longNonASCIIBytes);
 			repo.saveContent(ContentObject.buildContentObject(lnab, ("Long and Non ASCII " + i).getBytes()));
 			checkData(repo, lnab, "Long and Non ASCII " + i);
 		}
@@ -332,20 +332,20 @@ public class RFSTest extends RepoTestBase {
 
 		//building names for tests
 		ContentName nerpre = ContentName.fromNative("/testFastNameEnumeration");
-		ContentName ner = new ContentName(nerpre, "name1".getBytes());
+		ContentName ner = new ContentName(nerpre, "name1");
 		ContentName nername1 = ContentName.fromNative("/name1");
-		ContentName ner2 = new ContentName(nerpre, "name2".getBytes());
+		ContentName ner2 = new ContentName(nerpre, "name2");
 		ContentName nername2 = ContentName.fromNative("/name2");
-		ContentName ner3 = new ContentName(nerpre, "longer".getBytes());
-		ner3 = new ContentName(ner3, "name3".getBytes());
+		ContentName ner3 = new ContentName(nerpre, "longer");
+		ner3 = new ContentName(ner3, "name3");
 		ContentName nername3 = ContentName.fromNative("/longer");
 		NameEnumerationResponse neresponse = null;
 
 		//send initial interest to make sure namespace is empty
 		//interest flag will not be set for a fast response since there isn't anything in the index yet
 		
-		Interest interest = new Interest(new ContentName(nerpre, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()));
-		ContentName responseName = new ContentName();
+		Interest interest = new Interest(new ContentName(nerpre, COMMAND_MARKER_BASIC_ENUMERATION));
+		ContentName responseName = ContentName.ROOT;
 		Log.info("RFSTEST: Name enumeration prefix:{0}", interest.name());
 		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);
@@ -360,7 +360,7 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getTimestamp()!=null);
 		//now call get names with prefix again to set interest flag
 		//have to use the version from the last response (or at least a version after the last write
-		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
+		interest = Interest.last(new ContentName(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
 		//the response should be null and the flag set
 		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse==null || neresponse.hasNames()==false);
@@ -372,7 +372,7 @@ public class RFSTest extends RepoTestBase {
 		Assert.assertTrue(neresponse.getTimestamp()!=null);
 		
 		//need to reconstruct the interest again
-		interest = Interest.last(VersioningProfile.addVersion(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
+		interest = Interest.last(new ContentName(neresponse.getPrefix(), neresponse.getTimestamp()), null, null);
 		//another interest to set interest flag, response should be null
 		neresponse = repo.getNamesWithPrefix(interest, responseName);
 		Assert.assertTrue(neresponse == null || neresponse.hasNames()==false);

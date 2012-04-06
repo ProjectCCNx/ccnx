@@ -16,6 +16,8 @@
  */
 package org.ccnx.ccn.profiles.repo;
 
+import static org.ccnx.ccn.protocol.Component.NONCE;
+
 import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
@@ -27,7 +29,6 @@ import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.Interest;
 
 public class RepositoryBulkImport {
 	
@@ -46,7 +47,7 @@ public class RepositoryBulkImport {
 		if (name.contains(UserConfiguration.FILE_SEP))
 			throw new IOException("Pathnames for repo bulk import data not allowed");
 		CommandMarker argMarker = CommandMarker.getMarker(CommandMarker.COMMAND_MARKER_REPO_ADD_FILE.getBytes());
-		ContentObject co = handle.get(new ContentName(new byte[][]{argMarker.addArgument(name), Interest.generateNonce()}), timeout);
+		ContentObject co = handle.get(new ContentName(argMarker.addArgument(name), NONCE), timeout);
 		if (co == null)
 			return false;
 		RepositoryInfo repoInfo = new RepositoryInfo();

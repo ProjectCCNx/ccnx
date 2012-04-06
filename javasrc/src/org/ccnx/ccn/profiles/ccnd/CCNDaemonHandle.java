@@ -17,6 +17,8 @@
 
 package	org.ccnx.ccn.profiles.ccnd;
 
+import static org.ccnx.ccn.protocol.ContentName.ROOT;
+
 import java.io.IOException;
 
 import org.ccnx.ccn.CCNHandle;
@@ -29,6 +31,7 @@ import org.ccnx.ccn.impl.encoding.BinaryXMLCodec;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -57,7 +60,7 @@ public class CCNDaemonHandle {
 	public static String idToString(PublisherPublicKeyDigest digest) {
 		byte [] digested;
 		digested = digest.digest();
-		return ContentName.componentPrintURI(digested);
+		return Component.printURI(digested);
 	}
 	
 	/**
@@ -81,7 +84,7 @@ public class CCNDaemonHandle {
 			throw new IllegalArgumentException("Unexpected error encoding encodeMe parameter.  reason: " + reason);
 		}
 		KeyManager keyManager = _manager.getKeyManager();
-		ContentObject contentOut = ContentObject.buildContentObject(new ContentName(), SignedInfo.ContentType.DATA, 
+		ContentObject contentOut = ContentObject.buildContentObject(ROOT, SignedInfo.ContentType.DATA, 
 														encoded, 
 														keyManager.getDefaultKeyID(), 
 														new KeyLocator(keyManager.getDefaultPublicKey()), keyManager, 
@@ -98,7 +101,7 @@ public class CCNDaemonHandle {
 		/*
 		 * Add the contentOut bits to the name that's passed in.
 		 */
-		interestNamePrefix = ContentName.fromNative(interestNamePrefix, contentOutBits);
+		interestNamePrefix = new ContentName(interestNamePrefix, contentOutBits);
 		Interest interested = new Interest(interestNamePrefix);
 		interested.scope(1);
 		ContentObject contentIn = null;

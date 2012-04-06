@@ -47,8 +47,8 @@ public class ACLManager extends JDialog implements ActionListener {
 	private GroupManager gm;
 	private PrincipalEnumerator pEnum;
 	private ContentName node;
-	ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
-	ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
+	ContentName userStorage = new ContentName(UserConfiguration.defaultNamespace(), "Users");
+	ContentName groupStorage = new ContentName(UserConfiguration.defaultNamespace(), "Groups");
 	
 	private ContentName[] userList;
 	private ContentName[] groupList;

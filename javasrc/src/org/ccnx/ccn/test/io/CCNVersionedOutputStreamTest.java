@@ -119,7 +119,7 @@ public class CCNVersionedOutputStreamTest implements CCNInterestHandler {
 		
 		// Let's express an Interest in some data, and see if the network managers can
 		// handle the threading for us...
-		ContentName streamName = ContentName.fromNative(testHelper.getTestNamespace("testAddOutstandingInterest"), "testFile.bin");
+		ContentName streamName = new ContentName(testHelper.getTestNamespace("testAddOutstandingInterest"), "testFile.bin");
 	
 		writeHandle.registerFilter(streamName, this);
 		// Get the latest version when no versions exist. 

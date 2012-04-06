@@ -24,6 +24,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.repo.RepositoryInfo.RepositoryInfoObject;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -44,9 +45,9 @@ import org.ccnx.ccn.protocol.Interest;
 
 public interface RepositoryStore {
 
-	public static final String REPO_POLICY = "policy.xml";
-	public static final String REPO_NAMESPACE = "/ccn/repository";
-	public static final String REPO_DATA = "data";
+	public static final Component REPO_POLICY = new Component("policy.xml");
+	public static final ContentName REPO_NAMESPACE = new ContentName("ccn", "repository");
+	public static final Component REPO_DATA = new Component("data");
 	public static final String REPO_LOGGING = "repo";
 	
 	public static final String REPO_SIMPLE_STATUS_REQUEST = "simpleStatus";

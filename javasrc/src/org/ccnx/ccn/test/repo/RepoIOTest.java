@@ -95,12 +95,12 @@ public class RepoIOTest extends RepoTestBase {
 		for (int i = 0; i < data.length; i++)
 			data[i] = value++;
 
-		RepositoryOutputStream ros = new RepositoryOutputStream(ContentName.fromNative(_testPrefix, _testStream), putHandle); 
+		RepositoryOutputStream ros = new RepositoryOutputStream(new ContentName(_testPrefix, _testStream), putHandle); 
 		ros.setBlockSize(100);
 		ros.setTimeout(4000);
 		ros.write(data, 0, data.length);
 		ros.close();
-		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefix, _testObj), "Initial string value", SaveType.REPOSITORY, putHandle);
+		CCNStringObject so = new CCNStringObject(new ContentName(_testPrefix, _testObj), "Initial string value", SaveType.REPOSITORY, putHandle);
 		so.save();
 		
 		// Floss content into ccnd for tests involving content not already in repo when we start
@@ -121,7 +121,7 @@ public class RepoIOTest extends RepoTestBase {
 		_testNonRepo += "-" + rand.nextInt(10000);
 		_testNonRepoObj += "-" + rand.nextInt(10000);
 		_testLink += "-" + rand.nextInt(10000);
-		ContentName name = ContentName.fromNative(_testPrefix, _testNonRepo);
+		ContentName name = new ContentName(_testPrefix, _testNonRepo);
 		floss.handleNamespace(name);
 		CCNOutputStream cos = new CCNOutputStream(name, userHandle);
 		cos.setBlockSize(100);
@@ -134,14 +134,14 @@ public class RepoIOTest extends RepoTestBase {
 		KeyLocator userLocator = 
 			userHandle2.keyManager().getKeyLocator(userHandle2.keyManager().getDefaultKeyID());
 		Link link = new Link(userLocator.name().name());
-		ContentName linkName = ContentName.fromNative(_testPrefix, _testLink);
+		ContentName linkName = new ContentName(_testPrefix, _testLink);
 		LinkObject lo = new LinkObject(linkName, link, SaveType.RAW, putHandle);
 		floss.handleNamespace(lo.getBaseName());
 		lo.save();
 		
 		KeyLocator linkLocator = new KeyLocator(linkName);
 		userHandle2.keyManager().setKeyLocator(null, linkLocator);
-		name = ContentName.fromNative(_testPrefix, _testNonRepoObj);
+		name = new ContentName(_testPrefix, _testNonRepoObj);
 		floss.handleNamespace(name);
 		so = new CCNStringObject(name, "String value for non-repo obj", SaveType.RAW, userHandle2);
 		so.save();
@@ -177,7 +177,7 @@ public class RepoIOTest extends RepoTestBase {
 	public void testReadFromRepo() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testReadFromRepo");
 
-		ContentName name = ContentName.fromNative(_testPrefix, _testStream);
+		ContentName name = new ContentName(_testPrefix, _testStream);
 		_cacheManager.clearCache(name, getHandle, CACHE_CLEAR_TIMEOUT);
 		Thread.sleep(5000);
 		CCNInputStream input = new CCNInputStream(name, getHandle);
@@ -196,7 +196,7 @@ public class RepoIOTest extends RepoTestBase {
 	public void testVersionedRead() throws InterruptedException, IOException, MalformedContentNameStringException {
 		Log.info(Log.FAC_TEST, "Starting testVersionedRead");
 
-		ContentName versionedNameNormal = ContentName.fromNative(_testPrefix, "testVersionNormal");
+		ContentName versionedNameNormal = new ContentName(_testPrefix, "testVersionNormal");
 		CCNVersionedOutputStream ostream = new RepositoryVersionedOutputStream(versionedNameNormal, putHandle);
 		ostream.setBlockSize("segment".length() + new Long(5).toString().length());
 		for (long i=SegmentationProfile.baseSegment(); i<5; i++) {
@@ -225,7 +225,7 @@ public class RepoIOTest extends RepoTestBase {
 		Log.info(Log.FAC_TEST, "Starting testLocalSyncInputStream");
 
 		// This test should run all on single handle, just as client would do
-		CCNInputStream input = new CCNInputStream(ContentName.fromNative(_testPrefix, _testStream), getHandle);
+		CCNInputStream input = new CCNInputStream(new ContentName(_testPrefix, _testStream), getHandle);
 		// Ignore data in this case, just trigger repo confirmation
 		// Setup of this test writes the stream into repo, so we know it is already there --
 		// should get immediate confirmation from repo, which means no new repo read starts
@@ -235,7 +235,7 @@ public class RepoIOTest extends RepoTestBase {
 		
 		// Test case of content not already in repo
 		Log.info("About to do first sync for stream");
-		ContentName name = ContentName.fromNative(_testPrefix, _testNonRepo);
+		ContentName name = new ContentName(_testPrefix, _testNonRepo);
 		input = new CCNInputStream(name, getHandle);
 		Assert.assertFalse(RepositoryControl.localRepoSync(getHandle, input));
 		
@@ -261,7 +261,7 @@ public class RepoIOTest extends RepoTestBase {
 
 		// This test should run all on single handle, just as client would do
 		System.out.println("Testing local repo sync request for network object");	
-		CCNStringObject so = new CCNStringObject(ContentName.fromNative(_testPrefix, _testObj), getHandle);
+		CCNStringObject so = new CCNStringObject(new ContentName(_testPrefix, _testObj), getHandle);
 		// Ignore data in this case, just trigger repo confirmation
 		// Setup of this test writes the object into repo, so we know it is already there --
 		// should get immediate confirmation from repo, which means no new repo read starts
@@ -270,7 +270,7 @@ public class RepoIOTest extends RepoTestBase {
 		so.close();
 		
 		// Test case of content not already in repo
-		ContentName name = ContentName.fromNative(_testPrefix, _testNonRepoObj);
+		ContentName name = new ContentName(_testPrefix, _testNonRepoObj);
 		so = new CCNStringObject(name, getHandle);
 		Log.info("About to do first sync for object {0}", so.getBaseName());
 		Assert.assertFalse(RepositoryControl.localRepoSync(getHandle, so));
@@ -282,7 +282,7 @@ public class RepoIOTest extends RepoTestBase {
 		
 		_cacheManager.clearCache(name, getHandle, CACHE_CLEAR_TIMEOUT);
 		_cacheManager.clearCache(_keyNameForStream, getHandle, CACHE_CLEAR_TIMEOUT);
-		_cacheManager.clearCache(ContentName.fromNative(_testPrefix, _testLink), getHandle, CACHE_CLEAR_TIMEOUT);
+		_cacheManager.clearCache(new ContentName(_testPrefix, _testLink), getHandle, CACHE_CLEAR_TIMEOUT);
 		so = new CCNStringObject(name, getHandle);
 		assert(so.string().equals("String value for non-repo obj"));
 		

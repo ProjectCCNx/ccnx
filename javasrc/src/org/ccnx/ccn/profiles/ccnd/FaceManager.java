@@ -32,8 +32,8 @@ import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
-import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.protocol.PublisherPublicKeyDigest;
 
 /**
@@ -48,6 +48,8 @@ public class FaceManager extends CCNDaemonHandle /* extends GenericXMLEncodable 
 		private final String st;
 		public String value() { return st; }
 	}
+
+	public static final Component CCNX = new Component("ccnx");
 	
 public static class FaceInstance extends GenericXMLEncodable implements XMLEncodable {
 	/* extends CCNEncodableObject<PolicyXML>  */
@@ -361,17 +363,7 @@ public static class FaceInstance extends GenericXMLEncodable implements XMLEncod
 	}
 	
 	private FaceInstance sendIt(FaceInstance face) throws CCNDaemonException {
-		final String startURI = "ccnx:/ccnx/";
-		ContentName interestName = null;
-		try {
-			interestName = ContentName.fromURI(startURI);
-			interestName = ContentName.fromNative(interestName, getId().digest());
-			interestName = ContentName.fromNative(interestName, face.action());
-		} catch (MalformedContentNameStringException e) {
-			Log.fine("Call to create ContentName failed: " + e.getMessage() + "\n");
-			String msg = ("Unexpected MalformedContentNameStringException in call creating ContentName, reason: " + e.getMessage());
-			throw new CCNDaemonException(msg);
-		}
+		ContentName interestName = new ContentName(CCNX, getId().digest(), face.action());
 
 		byte[] payloadBack = super.sendIt(interestName, face, null, true);
 		FaceInstance faceBack = new FaceInstance(payloadBack);

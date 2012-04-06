@@ -167,7 +167,7 @@ public class Pathfinder implements CCNContentHandler {
 	 * Separate out so subclasses can override.
 	 */
 	protected Interest constructInterest(ContentName searchPoint) {
-		ContentName targetName = new ContentName(searchPoint, _postfix.components());
+		ContentName targetName = searchPoint.append(_postfix);
 		return new Interest(targetName);
 	}
 

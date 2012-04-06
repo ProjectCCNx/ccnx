@@ -46,9 +46,9 @@ public class AccessControlManagerTest {
 			Flosser flosser = new Flosser(testPrefix);
 			
 			ContentName versionPrefix = VersioningProfile.addVersion(testPrefix);
-			ContentName aname = ContentName.fromNative(versionPrefix, "aaaaa");
-			ContentName bname = ContentName.fromNative(versionPrefix, "bbbbb");
-			ContentName abname = ContentName.fromNative(versionPrefix, "aaaaa:bbbbb");
+			ContentName aname = new ContentName(versionPrefix, "aaaaa");
+			ContentName bname = new ContentName(versionPrefix, "bbbbb");
+			ContentName abname = new ContentName(versionPrefix, "aaaaa:bbbbb");
 			
 			CCNWriter writer = new CCNWriter(versionPrefix, CCNHandle.open());
 			writer.put(bname, "Some b's.".getBytes());

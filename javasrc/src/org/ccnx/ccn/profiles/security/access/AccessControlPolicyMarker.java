@@ -79,7 +79,7 @@ public class AccessControlPolicyMarker extends GenericXMLEncodable implements Po
 		}
 
 		public ContentName namespace() {
-			return _baseName.copy(_baseName.count()-2);
+			return _baseName.cut(_baseName.count()-2);
 		}
 		
 		public AccessControlPolicyMarker policy() throws ContentNotReadyException, ContentGoneException, ErrorStateException { return data(); }

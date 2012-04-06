@@ -46,7 +46,7 @@ public class ObjectPathfinder extends Pathfinder {
 	
 	@Override
 	protected Interest constructInterest(ContentName searchPoint) {
-		ContentName targetName = new ContentName(searchPoint, _postfix.components());
+		ContentName targetName = searchPoint.append(_postfix);
 		return VersioningProfile.firstBlockLatestVersionInterest(targetName, null);
 	}
 	

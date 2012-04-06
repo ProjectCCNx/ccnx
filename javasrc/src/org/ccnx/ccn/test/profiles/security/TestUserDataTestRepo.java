@@ -40,8 +40,8 @@ public class TestUserDataTestRepo {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		testPrefix = UserConfiguration.defaultNamespace();
-		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "home");
-		userNamespace = ContentName.fromNative(testPrefix, "Users");
+		userKeyStorePrefix = new ContentName(UserConfiguration.defaultNamespace(), "home");
+		userNamespace = new ContentName(testPrefix, "Users");
 		System.out.println("testPrefix = " + testPrefix);
 		System.out.println("userKeyStorePrefix =" + userKeyStorePrefix);
 		System.out.println("userNamespace = " + userNamespace);
@@ -102,7 +102,7 @@ public class TestUserDataTestRepo {
 		for (String friendlyName: td.friendlyNames()){
 			CCNHandle uHandle = td.getHandleForUser(friendlyName);
 			KeyManager uKeyManager = uHandle.keyManager();
-			ContentName keyName = ContentName.fromNative(userNamespace, friendlyName);
+			ContentName keyName = new ContentName(userNamespace, friendlyName);
 			//PublicKeyObject pko = new PublicKeyObject(keyName, uKeyManager.getDefaultPublicKey(), uHandle);
 			PublicKeyObject pko = new PublicKeyObject(keyName, uHandle);
 			//pko.saveToRepository();

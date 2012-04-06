@@ -179,7 +179,7 @@ public class KeyDerivationFunction {
 		ContentName descendantNodeName = ancestorNodeName;
 		byte [] descendantNodeKey = ancestorNodeKey;
 		while (!descendantNodeName.equals(nodeName)) {
-			descendantNodeName = nodeName.copy(descendantNodeName.count() + 1);
+			descendantNodeName = nodeName.cut(descendantNodeName.count() + 1);
 			descendantNodeKey = DeriveKeyForNode(descendantNodeKey, label, descendantNodeName);
 		}
 		return descendantNodeKey;

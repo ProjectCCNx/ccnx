@@ -39,8 +39,8 @@ import org.ccnx.ccn.protocol.ContentName;
 public class ccngroup {
 
 	private static long TIMEOUT = 1000;
-	private static ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
-	private static ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
+	private static ContentName userStorage = new ContentName(UserConfiguration.defaultNamespace(), "Users");
+	private static ContentName groupStorage = new ContentName(UserConfiguration.defaultNamespace(), "Groups");
 	
 	/**
 	 * @param args
@@ -142,7 +142,7 @@ public class ccngroup {
 			else {
 				System.out.println(availableChildren.size() + " group(s) found in: " + groupStorage);
 				for (ContentName child : availableChildren) {
-					ContentName fullName = new ContentName(groupStorage, child.components());
+					ContentName fullName = groupStorage.append(child);
 					System.out.println(fullName);
 				}
 			}
