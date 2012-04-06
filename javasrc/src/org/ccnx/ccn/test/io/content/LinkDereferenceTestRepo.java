@@ -61,7 +61,7 @@ public class LinkDereferenceTestRepo extends CCNTestBase {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-
+		CCNTestBase.setUpBeforeClass();
 		CCNTime version = new CCNTime();
 		ContentName stringName = testHelper.getClassChildName(STRING_VALUE_NAME);
 		for (int i=0; i < data.length; ++i) {
