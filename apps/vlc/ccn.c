@@ -1,9 +1,9 @@
 /**
- * @file glue/vlc/ccn.c
+ * @file apps/vlc/ccn.c
  * 
  * CCNx input module for vlc.
  *
- * Copyright (C) 2009, 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -46,29 +46,28 @@
  * Module descriptor
  *****************************************************************************/
 #define CCN_FIFO_MAX_BLOCKS 128
-#define CCN_CHUNK_SIZE 4096
-#define CCN_FIFO_BLOCK_SIZE (128 * CCN_CHUNK_SIZE)
-#define CCN_VERSION_TIMEOUT 400
-#define CCN_HEADER_TIMEOUT 400
+#define CCN_DEFAULT_CHUNK_SIZE 4096
+#define CCN_FIFO_BLOCK_SIZE (128 * CCN_DEFAULT_CHUNK_SIZE)
+#define CCN_VERSION_TIMEOUT 1000
+#define CCN_HEADER_TIMEOUT 1000
 
-#define CACHING_TEXT N_("Caching value in ms")
-#define CACHING_LONGTEXT N_(                                            \
-                            "Caching value for CCN streams. This "      \
-                            "value should be set in milliseconds.")
 #define MAX_FIFO_TEXT N_("FIFO max blocks")
 #define MAX_FIFO_LONGTEXT N_(						\
-	"Maximum number of blocks held in FIFO "			\
-	"used by content fetcher.")
+"Maximum number of blocks held in FIFO "			\
+"used by content fetcher.")
 
 #define BLOCK_FIFO_TEXT N_("FIFO block size")
 #define BLOCK_FIFO_LONGTEXT N_(						\
-	"Size of blocks held in FIFO "			\
-	"used by content fetcher.")
+"Size of blocks held in FIFO "			\
+"used by content fetcher.")
+#define SEEKABLE_TEXT N_("CCN streams can seek")
+#define SEEKABLE_LONGTEXT N_(               \
+"Enable or disable seeking within a CCN stream.")
 
 static int  CCNOpen(vlc_object_t *);
 static void CCNClose(vlc_object_t *);
 static block_t *CCNBlock(access_t *);
-#if (VLCPLUGINVER >= 110)
+#if (VLCPLUGINVER >= 10100)
 static int CCNSeek(access_t *, uint64_t);
 #else
 static int CCNSeek(access_t *, int64_t);
@@ -79,15 +78,24 @@ static void *ccn_event_thread(void *p_this);
 
 vlc_module_begin();
 set_shortname(N_("CCNx"));
-set_description(N_("CCNx input"));
+set_description(N_("Access module for CCNx URIs"));
 set_category(CAT_INPUT);
 set_subcategory(SUBCAT_INPUT_ACCESS);
-add_integer("ccn-caching", 4 * DEFAULT_PTS_DELAY / 1000, NULL,
-            CACHING_TEXT, CACHING_LONGTEXT, true);
+#if (VLCPLUGINVER < 10200)
 add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS, NULL,
             MAX_FIFO_TEXT, MAX_FIFO_LONGTEXT, true);
 add_integer("ccn-fifo-blocksize", CCN_FIFO_BLOCK_SIZE, NULL,
             BLOCK_FIFO_TEXT, BLOCK_FIFO_LONGTEXT, true);
+add_bool( "ccn-streams-seekable", true, NULL,
+         SEEKABLE_TEXT, SEEKABLE_LONGTEXT, true )
+#else
+add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS,
+            MAX_FIFO_TEXT, MAX_FIFO_LONGTEXT, true);
+add_integer("ccn-fifo-blocksize", CCN_FIFO_BLOCK_SIZE,
+            BLOCK_FIFO_TEXT, BLOCK_FIFO_LONGTEXT, true);
+add_bool( "ccn-streams-seekable", true,
+         SEEKABLE_TEXT, SEEKABLE_LONGTEXT, true )
+#endif
 change_safe();
 set_capability("access", 0);
 add_shortcut("ccn");
@@ -100,18 +108,20 @@ vlc_module_end();
  *****************************************************************************/
 struct access_sys_t
 {
-    int64_t i_pos;
-    vlc_thread_t thread;
-    int i_bufsize;
-    int i_bufoffset;
-    int timeouts;
-    int i_fifo_max;
-    block_fifo_t *p_fifo;
-    unsigned char *buf;
-    struct ccn *ccn;
-    struct ccn_closure *incoming;
+    int64_t i_pos;       /**< byte offset in stream of next bytes to arrive over net */
+    vlc_thread_t thread; /**< thread that is running ccn_run loop */
+    int i_bufsize;       /**< size of intermediate buffer */
+    int i_bufoffset;     /**< offset in intermediate buffer for next bytes to arrive over net */
+    int i_chunksize;     /**< size of CCN ContentObject data blocks */
+    int timeouts;        /**< number of timeouts without good data received */
+    int i_fifo_max;      /**< maximum number of blocks in FIFO */
+    block_fifo_t *p_fifo; /**< FIFO for blocks delivered to VLC */
+    unsigned char *buf;  /**< intermediate buffer */
+    struct ccn *ccn;     /**< CCN handle */
+    struct ccn_closure *incoming; /**< current closure for incoming content handling */
     struct ccn_charbuf *p_name;
     struct ccn_charbuf *p_template;
+    vlc_mutex_t lock;    /**< mutex protecting data shared between CCNSeek and incoming_content */
 };
 
 enum ccn_upcall_res
@@ -145,10 +155,10 @@ static int CCNOpen(vlc_object_t *p_this)
         return VLC_ENOMEM;
     }
     p_access->info.i_size = LLONG_MAX;	/* we don't know, but bigger is better */
-    /* Update default_pts */
-    var_Create(p_access, "ccn-caching", VLC_VAR_INTEGER | VLC_VAR_DOINHERIT);
     p_sys->i_fifo_max = var_CreateGetInteger(p_access, "ccn-fifo-maxblocks");
     p_sys->i_bufsize = var_CreateGetInteger(p_access, "ccn-fifo-blocksize");
+    msg_Info(p_access, "CCN.Open: ccn-fifo-maxblocks %d, ccn-fifo-blocksize %d",
+             p_sys->i_fifo_max, p_sys->i_bufsize);
     p_sys->buf = calloc(1, p_sys->i_bufsize);
     if (p_sys->buf == NULL) {
         i_err = VLC_ENOMEM;
@@ -162,7 +172,8 @@ static int CCNOpen(vlc_object_t *p_this)
         msg_Err(p_access, "CCN.Open failed: no memory for ccn_closure");
         goto exit_error;
     }
-#if (VLCPLUGINVER >= 120)
+    p_sys->i_chunksize = -1;
+#if (VLCPLUGINVER >= 10200)
     msg_Dbg(p_access, "CCN.Open %s, closure %p",
             p_access->psz_location, p_sys->incoming);
 #else
@@ -183,7 +194,7 @@ static int CCNOpen(vlc_object_t *p_this)
         msg_Err(p_access, "CCN.Open failed: no memory for name charbuf");
         goto exit_error;
     }
-#if (VLCPLUGINVER >= 120)
+#if (VLCPLUGINVER >= 10200)
     i_ret = ccn_name_from_uri(p_name, p_access->psz_location);
 #else
     i_ret = ccn_name_from_uri(p_name, p_access->psz_path);
@@ -211,6 +222,21 @@ static int CCNOpen(vlc_object_t *p_this)
         msg_Dbg(p_access, "Set length %"PRId64, p_access->info.i_size);
     }
     ccn_charbuf_destroy(&p_name);
+
+    p_sys->p_fifo = block_FifoNew();
+    if (p_sys->p_fifo == NULL) {
+        i_err = VLC_ENOMEM;
+        msg_Err(p_access, "CCN.Open failed: no memory for block FIFO");
+        goto exit_error;
+    }
+    vlc_mutex_init(&p_sys->lock);
+    //PRE 1.0: i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
+    //                          VLC_THREAD_PRIORITY_INPUT);
+    i_err = vlc_clone(&(p_sys->thread), ccn_event_thread, p_access, VLC_THREAD_PRIORITY_INPUT);
+    if (i_err != 0) {
+        msg_Err(p_access, "CCN.Open failed: unable to vlc_clone for CCN run thread");
+        goto exit_error;
+    }
     p_name = sequenced_name(p_sys->p_name, 0);
     i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming,
                                  p_sys->p_template);
@@ -220,24 +246,9 @@ static int CCNOpen(vlc_object_t *p_this)
         goto exit_error;
     }
 
-    p_sys->p_fifo = block_FifoNew();
-    if (p_sys->p_fifo == NULL) {
-        i_err = VLC_ENOMEM;
-        msg_Err(p_access, "CCN.Open failed: no memory for block FIFO");
-        goto exit_error;
-    }
-    //PRE 1.0: i_ret = vlc_thread_create(p_access, "CCN run thread", ccn_event_thread,
-    //                          VLC_THREAD_PRIORITY_INPUT);
-    i_err = vlc_clone(&(p_sys->thread), ccn_event_thread, p_access, VLC_THREAD_PRIORITY_INPUT);
-    if (i_err != 0) {
-        msg_Err(p_access, "CCN.Open failed: unable to vlc_clone for CCN run thread");
-        goto exit_error;
-    }
-
     return VLC_SUCCESS;
-    
 
- exit_error:
+exit_error:
     if (p_name) {
         ccn_charbuf_destroy(&p_name);
     }
@@ -272,11 +283,15 @@ static void CCNClose(vlc_object_t *p_this)
     access_sys_t *p_sys = p_access->p_sys;
 
     msg_Dbg(p_access, "CCN.Close called");
+    /* indicate exit required, then clear the FIFO so we will wake from
+     * block_FifoPace, and join the exiting thread
+     */
+    p_access->b_die = true;
     if (p_sys->p_fifo)
-        block_FifoWake(p_sys->p_fifo);
+        block_FifoEmpty(p_sys->p_fifo);
     vlc_cancel(p_sys->thread);
     vlc_join(p_sys->thread, NULL);
-    
+    vlc_mutex_lock(&p_sys->lock);
     if (p_sys->p_fifo) {
         block_FifoRelease(p_sys->p_fifo);
         p_sys->p_fifo = NULL;
@@ -293,11 +308,13 @@ static void CCNClose(vlc_object_t *p_this)
         p_sys->p_name = NULL;
     }
     ccn_destroy(&(p_sys->ccn));
+    vlc_mutex_unlock(&p_sys->lock);
+    vlc_mutex_destroy(&p_sys->lock);
     if (p_sys->buf) {
         free(p_sys->buf);
         p_sys->buf = NULL;
     }
-    
+
     free(p_sys);
 }
 
@@ -378,7 +395,13 @@ static ssize_t CCNRead(access_t *p_access, uint8_t *buf, size_t size)
 /*****************************************************************************
  * CCNSeek:
  *****************************************************************************/
-#if (VLCPLUGINVER < 110)
+/* XXX - VLC behavior when playing an MP4 file is to seek back and forth for
+ * the audio and video, which may be separated by many megabytes, so it is
+ * a much better (and possibly required) that the code not discard all
+ * previously buffered data when seeking, since the app is likely to seek back
+ * close to where it was very quickly.
+ */
+#if (VLCPLUGINVER < 10100)
 static int CCNSeek(access_t *p_access, int64_t i_pos)
 #else
 static int CCNSeek(access_t *p_access, uint64_t i_pos)
@@ -386,9 +409,9 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
 {
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn_charbuf *p_name;
-    int i_ret;
 
-#if (VLCPLUGINVER < 110)
+    vlc_mutex_lock(&p_sys->lock);
+#if (VLCPLUGINVER < 10100)
     if (i_pos < 0) {
         msg_Warn(p_access, "Attempting to seek before the beginning %"PRId64".", i_pos);
         i_pos = 0;
@@ -400,6 +423,7 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
     p_sys->i_bufoffset = 0;
     p_sys->incoming = calloc(1, sizeof(struct ccn_closure));
     if (p_sys->incoming == NULL) {
+        vlc_mutex_unlock(&p_sys->lock);
         return (VLC_EGENERIC);
     }
     msg_Dbg(p_access, "CCN.Seek to %"PRId64", closure %p",
@@ -407,12 +431,13 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
     p_sys->i_pos = i_pos;
-    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / CCN_CHUNK_SIZE);
+    p_name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
     ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_template);
-    ccn_charbuf_destroy(&p_name);    
+    ccn_charbuf_destroy(&p_name);
 
     p_access->info.i_pos = i_pos;
     p_access->info.b_eof = false;
+    vlc_mutex_unlock(&p_sys->lock);
     return (VLC_SUCCESS);
 }
 /*****************************************************************************
@@ -420,30 +445,33 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
  *****************************************************************************/
 static int CCNControl(access_t *p_access, int i_query, va_list args)
 {
-    access_sys_t *p_sys = p_access->p_sys;
     bool   *pb_bool;
-    int          *pi_int;
     int64_t      *pi_64;
 
     switch(i_query)
-        {
+    {
         case ACCESS_CAN_SEEK:
         case ACCESS_CAN_FASTSEEK:
+            pb_bool = (bool*)va_arg(args, bool *);
+            *pb_bool = var_CreateGetBool(p_access, "ccn-streams-seekable");
+            break;
+        
         case ACCESS_CAN_CONTROL_PACE:
         case ACCESS_CAN_PAUSE:
             pb_bool = (bool*)va_arg(args, bool *);
             *pb_bool = true;
             break;
-
+        
         case ACCESS_GET_PTS_DELAY:
             pi_64 = (int64_t*)va_arg(args, int64_t *);
-            *pi_64 = (int64_t)var_GetInteger(p_access, "ccn-caching") * INT64_C(1000);
+            *pi_64 = INT64_C(1000) *
+                (int64_t) var_InheritInteger(p_access, "network-caching");
             break;
-
+        
         case ACCESS_SET_PAUSE_STATE:
             pb_bool = (bool*)va_arg(args, bool *);
             break;
-
+        
         case ACCESS_GET_TITLE_INFO:
         case ACCESS_GET_META:
         case ACCESS_SET_TITLE:
@@ -453,12 +481,12 @@ static int CCNControl(access_t *p_access, int i_query, va_list args)
         case ACCESS_GET_PRIVATE_ID_STATE:
         case ACCESS_GET_CONTENT_TYPE:
             return VLC_EGENERIC;
-
+        
         default:
             msg_Warn(p_access, "CCN unimplemented query in control - %d", i_query);
             return VLC_EGENERIC;
-
-        }
+        
+    }
     return VLC_SUCCESS;
 }
 
@@ -468,19 +496,24 @@ static void *ccn_event_thread(void *p_this)
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn *ccn = p_sys->ccn;
     int res = 0;
-    while (res >= 0) {
-        res = ccn_run(ccn, 1000);
+    int cancel = vlc_savecancel();
+
+    while (res >= 0 && !p_access->b_die) {
+        res = ccn_run(ccn, 500);
         if (res < 0 && ccn_get_connection_fd(ccn) == -1) {
             /* Try reconnecting, after a bit of delay */
             msleep((500 + (getpid() % 512)) * 1024);
             res = ccn_connect(ccn, NULL);
         }
     }
-    if (res < 0) {
+    if (res < 0 || p_access->b_die) {
         block_FifoWake(p_sys->p_fifo);
     }
+    vlc_restorecancel(cancel);
+    return(NULL);
 }
-#if (VLCPLUGINVER < 110)
+
+#if (VLCPLUGINVER < 10100)
 /* block_FifoPace was defined early on, but not exported until 1.1.0, so we
  * duplicate the code here if it is needed.
  */
@@ -488,7 +521,7 @@ static void
 s_block_FifoPace (block_fifo_t *fifo, size_t max_depth, size_t max_size)
 {
     vlc_testcancel ();
-    
+
     vlc_mutex_lock (&fifo->lock);
     while ((fifo->i_depth > max_depth) || (fifo->i_size > max_size))
     {
@@ -511,96 +544,86 @@ incoming_content(struct ccn_closure *selfp,
     block_t *p_block = NULL;
     bool b_last = false;
     struct ccn_charbuf *name = NULL;
-    struct ccn_charbuf *templ = NULL;
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
     const unsigned char *data = NULL;
     size_t data_size = 0;
-    size_t written;
-    const unsigned char *ib = NULL; /* info->interest_ccnb */
-    struct ccn_indexbuf *ic = NULL;
     int res;
+    int result = CCN_UPCALL_RESULT_OK;
 
+    vlc_mutex_lock(&p_sys->lock);
     switch (kind) {
-    case CCN_UPCALL_FINAL:
-        msg_Dbg(p_access, "CCN upcall final %p", selfp);
-        if (selfp == p_sys->incoming)
-            p_sys->incoming = NULL;
-        free(selfp);
-        return(CCN_UPCALL_RESULT_OK);
-    case CCN_UPCALL_INTEREST_TIMED_OUT:
-        if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN Interest timed out on dead closure %p", selfp);
-            return(CCN_UPCALL_RESULT_OK);
-        }
-        msg_Dbg(p_access, "CCN upcall reexpress -- timed out");
-        if (p_sys->timeouts > 5) {
-            msg_Dbg(p_access, "CCN upcall reexpress -- too many reexpressions");
-            vlc_object_kill(p_access);
-            if (p_sys->p_fifo)
-                block_FifoWake(p_sys->p_fifo);
-            return(CCN_UPCALL_RESULT_OK);
-        }
-        p_sys->timeouts++;
-        return(CCN_UPCALL_RESULT_REEXPRESS); // XXX - may need to reseed bloom filter
-    case CCN_UPCALL_CONTENT_UNVERIFIED:
-        if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN unverified content on dead closure %p", selfp);
-            return(CCN_UPCALL_RESULT_OK);
-        }
-        return (CCN_UPCALL_RESULT_VERIFY);
-
-    case CCN_UPCALL_CONTENT:
-        if (selfp != p_sys->incoming) {
-            msg_Dbg(p_access, "CCN content on dead closure %p", selfp);
-            return(CCN_UPCALL_RESULT_OK);
-        }
-        break;
-    default:
-        msg_Warn(p_access, "CCN upcall result error");
-        return(CCN_UPCALL_RESULT_ERR);
+        case CCN_UPCALL_FINAL:
+            msg_Dbg(p_access, "CCN upcall final %p", selfp);
+            if (selfp == p_sys->incoming)
+                p_sys->incoming = NULL;
+            free(selfp);
+            goto exit;
+        case CCN_UPCALL_INTEREST_TIMED_OUT:
+            if (selfp != p_sys->incoming) {
+                msg_Dbg(p_access, "CCN Interest timed out on dead closure %p", selfp);
+                goto exit;
+            }
+            msg_Dbg(p_access, "CCN upcall reexpress -- timed out");
+            if (p_sys->timeouts > 5) {
+                msg_Dbg(p_access, "CCN upcall reexpress -- too many reexpressions");
+                p_access->b_die = true;
+                if (p_sys->p_fifo)
+                    block_FifoWake(p_sys->p_fifo);
+                goto exit;
+            }
+            p_sys->timeouts++;
+            result = CCN_UPCALL_RESULT_REEXPRESS;
+            goto exit;
+        case CCN_UPCALL_CONTENT_UNVERIFIED:
+            if (selfp != p_sys->incoming) {
+                msg_Dbg(p_access, "CCN unverified content on dead closure %p", selfp);
+                goto exit;
+            }
+            result = CCN_UPCALL_RESULT_VERIFY;
+            goto exit;
+        
+        case CCN_UPCALL_CONTENT:
+            if (selfp != p_sys->incoming) {
+                msg_Dbg(p_access, "CCN content on dead closure %p", selfp);
+                goto exit;
+            }
+            break;
+        default:
+            msg_Warn(p_access, "CCN upcall result error");
+            result = CCN_UPCALL_RESULT_ERR;
+            goto exit;
     }
+    if (p_access->b_die)
+        goto exit;
+    /* don't hold p_sys->lock when blocking for FIFO space */
+    vlc_mutex_unlock(&p_sys->lock);
+#if (VLCPLUGINVER < 10100)
+    /* block_FifoPace was not exported until 1.1.0, use a copy of it... */
+    s_block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
+#else
+    block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
+#endif
+    vlc_mutex_lock(&p_sys->lock);
+    if (p_access->b_die)
+        goto exit;
 
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
-    ib = info->interest_ccnb;
-    ic = info->interest_comps;
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) abort();
 
     p_sys->timeouts = 0;
-
+    /* if we did not previously know the chunk size, record it */
+    if (p_sys->i_chunksize == -1)
+        p_sys->i_chunksize = data_size;
     /* was this the last block? */
-    /* TODO:  the test below should get refactored into the library */
-    if (info->pco->offset[CCN_PCO_B_FinalBlockID] !=
-        info->pco->offset[CCN_PCO_E_FinalBlockID]) {
-        const unsigned char *finalid = NULL;
-        size_t finalid_size = 0;
-        const unsigned char *nameid = NULL;
-        size_t nameid_size = 0;
-        struct ccn_indexbuf *cc = info->content_comps;
-        ccn_ref_tagged_BLOB(CCN_DTAG_FinalBlockID, ccnb,
-                            info->pco->offset[CCN_PCO_B_FinalBlockID],
-                            info->pco->offset[CCN_PCO_E_FinalBlockID],
-                            &finalid,
-                            &finalid_size);
-        if (cc->n < 2) abort();
-        ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb,
-                            cc->buf[cc->n - 2],
-                            cc->buf[cc->n - 1],
-                            &nameid,
-                            &nameid_size);
-        if (finalid_size == nameid_size && 0 == memcmp(finalid, nameid, nameid_size)) {
-            b_last = true;
-        }
-    }
-    
-    /* a short block can also indicate the end, if the client isn't using FinalBlockID */
-    if (data_size < CCN_CHUNK_SIZE)
+    if (ccn_is_final_block(info) || data_size < p_sys->i_chunksize)
         b_last = true;
+
     /* something to process */
     if (data_size > 0) {
-        start_offset = p_sys->i_pos % CCN_CHUNK_SIZE;
+        start_offset = p_sys->i_pos % p_sys->i_chunksize;
         if (start_offset > data_size) {
             msg_Err(p_access, "start_offset %"PRId64" > data_size %zu", start_offset, data_size);
         } else {
@@ -616,6 +639,8 @@ incoming_content(struct ccn_closure *selfp,
             p_sys->i_bufoffset += (data_size - start_offset);
         }
     }
+    /* Advance position */
+    p_sys->i_pos += (data_size - start_offset);
 
     /* if we're done, indicate so with a 0-byte block, release any buffered data upstream,
      * and don't express an interest
@@ -628,31 +653,25 @@ incoming_content(struct ccn_closure *selfp,
             p_sys->i_bufoffset = 0;
         }
         block_FifoPut(p_sys->p_fifo, block_New(p_access, 0));
-        return (CCN_UPCALL_RESULT_OK);
+        goto exit;
     }
 
-#if (VLCPLUGINVER < 110)
-    /* block_FifoPace was not exported until 1.1.0, use a copy of it... */
-    s_block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
-#else
-    block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
-#endif
-
     /* Ask for the next fragment */
-    p_sys->i_pos = CCN_CHUNK_SIZE * (1 + (p_sys->i_pos / CCN_CHUNK_SIZE));
-    name = sequenced_name(p_sys->p_name, p_sys->i_pos / CCN_CHUNK_SIZE);
+    name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
     res = ccn_express_interest(info->h, name, selfp, NULL);
     ccn_charbuf_destroy(&name);
-
     if (res < 0) abort();
-    return(CCN_UPCALL_RESULT_OK);
+
+exit:
+    vlc_mutex_unlock(&p_sys->lock);
+    return(result);
 }
 
 static struct ccn_charbuf *
 sequenced_name(struct ccn_charbuf *basename, uintmax_t seq)
 {
     struct ccn_charbuf *name = NULL;
-    
+
     name = ccn_charbuf_create();
     ccn_charbuf_append_charbuf(name, basename);
     ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, seq);

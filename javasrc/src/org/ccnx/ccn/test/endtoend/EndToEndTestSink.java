@@ -54,7 +54,7 @@ public class EndToEndTestSink extends BaseLibrarySink implements CCNContentHandl
 	public void sync() throws MalformedContentNameStringException, IOException, SignatureException {
 		ContentName syncBaseName = ContentName.fromNative("/BaseLibraryTest/sync");
 		ContentName syncReturnName = ContentName.fromNative("/BaseLibraryTest/sync/return");
-		ContentName syncName = new ContentName(syncReturnName, new Integer(rand.nextInt(5000)).toString().getBytes());
+		ContentName syncName = new ContentName(syncReturnName, new Integer(rand.nextInt(5000)).toString());
 		ContentObject co = handle.get(syncBaseName, SystemConfiguration.NO_TIMEOUT);
 		Assert.assertNotNull("Sync get returned null", co);
 		CCNWriter writer = new CCNWriter(syncBaseName, handle);

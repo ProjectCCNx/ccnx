@@ -1,7 +1,7 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -20,7 +20,6 @@ package org.ccnx.ccn.utils;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
-import org.ccnx.ccn.KeyManager;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.Tuple;
@@ -102,8 +101,6 @@ public class ccnlink {
 			System.out.println("Created link: " + theLink);
 
 			handle.close();
-			handle.keyManager().close();
-			KeyManager.closeDefaultKeyManager();
 
 		} catch (Exception e) {
 			handleException("Error: cannot initialize device. ", e);

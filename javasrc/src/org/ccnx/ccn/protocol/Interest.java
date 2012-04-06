@@ -17,10 +17,10 @@
 
 package org.ccnx.ccn.protocol;
 
+import static org.ccnx.ccn.protocol.Component.NONCE;
+
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Random;
 import java.util.logging.Level;
 
 import org.ccnx.ccn.TrustManager;
@@ -33,7 +33,6 @@ import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
-import org.ccnx.ccn.profiles.CommandMarker;
 
 
 /**
@@ -43,7 +42,7 @@ import org.ccnx.ccn.profiles.CommandMarker;
  * 
  * Implements Comparable to make it easy to store in a Set and avoid duplicates.
  */
-public class Interest extends GenericXMLEncodable implements XMLEncodable, Comparable<Interest>, Cloneable {
+public class Interest extends GenericXMLEncodable implements XMLEncodable, Comparable<Interest>, Cloneable, ContentNameProvider {
 	
 	// Used to remove spurious *'s
 	public static final String RECURSIVE_POSTFIX = "*";
@@ -63,11 +62,6 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	
 	public static final int DEFAULT_ANSWER_ORIGIN_KIND = ANSWER_CONTENT_STORE | ANSWER_GENERATED;
 
-	/**
-	 * For nonce generation
-	 */
-	protected static Random _random = new Random();
-	
 	protected ContentName _name;
 	protected Integer _maxSuffixComponents;
 	protected Integer _minSuffixComponents;
@@ -322,24 +316,22 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 */
 	private static Interest nextOrLast(ContentName name, Exclude exclude, Integer order, Integer prefixCount, Integer maxSuffixComponents,
 					Integer minSuffixComponents, PublisherPublicKeyDigest publisher )  {
-		ArrayList<byte []>components = byteArrayClone(name.components());
-		ContentName nameToUse = new ContentName(components.size(), components);
 		if (null != prefixCount) {
 			if (prefixCount > name.count())
 				throw new IllegalArgumentException("Invalid prefixCount > components: " + prefixCount);
 		} else
-			prefixCount = nameToUse.count() - 1;
+			prefixCount = name.count() - 1;
 		
-		if (prefixCount < nameToUse.count()) {
-			byte [] component = nameToUse.component(prefixCount);
-			nameToUse = new ContentName(prefixCount, nameToUse.components());
-		
+		if (prefixCount < name.count()) {
+			byte [] component = name.component(prefixCount);
+			name = name.cut(prefixCount);
+
 			if (exclude == null) {
 				exclude = Exclude.uptoFactory(component);
 			} else
 				exclude.excludeUpto(component);
 		}
-		return constructInterest(nameToUse, exclude, order, maxSuffixComponents, minSuffixComponents, publisher);
+		return constructInterest(name, exclude, order, maxSuffixComponents, minSuffixComponents, publisher);
 	}
 	
 	/**
@@ -416,11 +408,11 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	 * same content.
 	 * 
 	 * @return the nonce in component form
+	 * @deprecated use {@link Component#NONCE} instead.
 	 */
+	@Deprecated
 	public static byte[] generateNonce() {
-		byte [] nonce = new byte[8];
-		_random.nextBytes(nonce);
-		return CommandMarker.COMMAND_MARKER_NONCE.addBinaryData(nonce);
+		return NONCE.getComponent();
 	}
 
 	/**
@@ -457,17 +449,7 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 	public boolean isPrefixOf(ContentObject other) {
 		return name().isPrefixOf(other, name().count());
 	}
-		
-	private static ArrayList<byte[]> byteArrayClone(ArrayList<byte[]> input) {
-		ArrayList<byte[]> al = new ArrayList<byte[]>();
-		for (int i = 0; i < input.size(); i++) {
-			byte[] value = new byte[input.get(i).length];
-			System.arraycopy(input.get(i), 0, value, 0, input.get(i).length);
-			al.add(value);
-		}
-		return al;
-	}
-	
+
 	/**
 	 * Thought about encoding and decoding as flat -- no wrapping
 	 * declaration. But then couldn't use these solo.
@@ -724,5 +706,9 @@ public class Interest extends GenericXMLEncodable implements XMLEncodable, Compa
 		public Interest getInterest() {
 			return interest;
 		}
+	}
+
+	public ContentName getContentName() {
+		return _name;
 	}
 }

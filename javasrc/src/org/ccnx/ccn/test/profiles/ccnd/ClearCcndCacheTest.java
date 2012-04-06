@@ -36,16 +36,16 @@ public class ClearCcndCacheTest extends CCNTestBase {
 	public void testClearCache() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testClearCache");
 
-		ContentName prefix = ContentName.fromNative(testHelper.getClassNamespace(), "AreaToClear");
+		ContentName prefix = new ContentName(testHelper.getClassNamespace(), "AreaToClear");
 		CCNFlowControl fc = new CCNFlowControl(prefix, putHandle);
 		for (int i = 0; i < 10; i++) {
-			ContentName name = ContentName.fromNative(prefix, "head-" + i);
+			ContentName name = new ContentName(prefix, "head-" + i);
 			ContentObject obj = ContentObject.buildContentObject(name, "test".getBytes());
 			fc.put(obj);
 			obj = getHandle.get(prefix, SystemConfiguration.MEDIUM_TIMEOUT);
 			Assert.assertNotNull(obj);
 			for (int j = 0; j < 10; j++) {
-				ContentName subName = ContentName.fromNative(name, "subObj-" + j);
+				ContentName subName = new ContentName(name, "subObj-" + j);
 				ContentObject subObj = ContentObject.buildContentObject(subName, "test".getBytes());
 				fc.put(subObj);
 				obj = getHandle.get(prefix, SystemConfiguration.MEDIUM_TIMEOUT);
@@ -56,11 +56,11 @@ public class ClearCcndCacheTest extends CCNTestBase {
 		new CCNDCacheManager().clearCache(prefix, getHandle, 100 * SystemConfiguration.SHORT_TIMEOUT);
 		
 		for (int i = 0; i < 10; i++) {
-			ContentName name = ContentName.fromNative(prefix, "head-" + i);
+			ContentName name = new ContentName(prefix, "head-" + i);
 			ContentObject co = getHandle.get(name, SystemConfiguration.SHORT_TIMEOUT);
 			Assert.assertEquals(null, co);
 			for (int j = 0; j < 10; j++) {
-				ContentName subName = ContentName.fromNative(name, "subObj-" + j);
+				ContentName subName = new ContentName(name, "subObj-" + j);
 				co = getHandle.get(subName, SystemConfiguration.SHORT_TIMEOUT);
 				Assert.assertEquals(null, co);
 			}

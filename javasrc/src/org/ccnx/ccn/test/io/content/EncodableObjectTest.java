@@ -74,8 +74,8 @@ public class EncodableObjectTest {
 	public static void setUpBeforeClass() throws Exception {
 		ns = new ContentName[NUM_LINKS];
 		for (int i=0; i < NUM_LINKS; ++i) {
-			ns[i] = ContentName.fromURI(new String[]{baseName, subName, document1, 
-										prefix+Integer.toString(i)});
+			ns[i] = new ContentName(baseName, subName, document1, 
+										prefix+Integer.toString(i));
 		}
 		Arrays.fill(publisherid1, (byte)6);
 		Arrays.fill(publisherid2, (byte)3);

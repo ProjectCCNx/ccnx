@@ -56,7 +56,7 @@ public class AssertionCCNHandleTest {
 		getHandle.registerFilter(filter, flt);
 		putHandle.expressInterest(new Interest(filter), new InterestListenerTester());
 		getHandle.checkError(WAIT_TIME);
-		ContentName pastFilter = ContentName.fromNative(filter, "pastFilter");
+		ContentName pastFilter = new ContentName(filter, "pastFilter");
 		putHandle.expressInterest(new Interest(pastFilter), new InterestListenerTester());
 		try {
 			getHandle.checkError(WAIT_TIME);

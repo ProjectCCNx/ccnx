@@ -58,7 +58,7 @@ import org.ccnx.ccn.protocol.SignedInfo.ContentType;
  * prepareContent() is called to create the MerkelTree hash.  That encoding can be cached because
  * _name, _signedInfo, and _content are only assigned in a constructor or in decode.
  */
-public class ContentObject extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentObject> {
+public class ContentObject extends GenericXMLEncodable implements XMLEncodable, Comparable<ContentObject>, ContentNameProvider {
 
 	public static boolean DEBUG_SIGNING = false;
 
@@ -318,7 +318,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 
 	public ContentObject clone() {
 		// Constructor will clone the _content, signedInfo and signature are immutable types.
-		return new ContentObject(_name.clone(), _signedInfo, _content, _signature);
+		return new ContentObject(_name, _signedInfo, _content, _signature);
 	}
 
 	/**
@@ -327,6 +327,14 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 	 * @return Name of the content object - without the final implicit digest component.
 	 */
 	public final ContentName name() { return _name; }
+
+	/**
+	 * To allow ContentObjects to be directly included in ContentName builders. This will supply
+	 * the name of the ContentObject *without* the final implicit digest component.
+	 */
+	public final ContentName getContentName() {
+		return _name;
+	}
 
 	/**
 	 * @return Name of the content object, complete with the final implicit digest component.
@@ -835,7 +843,7 @@ public class ContentObject extends GenericXMLEncodable implements XMLEncodable, 
 		int len = _content.length;
 		if (len > 16)
 			len = 16;
-		s.append(ContentName.componentPrintURI(_content, 0, len));
+		s.append(Component.printURI(_content, 0, len));
 		return s.toString();
 	}
 }

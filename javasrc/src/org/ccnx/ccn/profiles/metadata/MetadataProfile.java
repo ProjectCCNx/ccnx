@@ -18,7 +18,6 @@
 package org.ccnx.ccn.profiles.metadata;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.ccnx.ccn.CCNHandle;
@@ -26,6 +25,7 @@ import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 
@@ -41,22 +41,22 @@ public class MetadataProfile implements CCNProfile {
 	public static final byte [] OLD_METADATA_NAMESPACE = 
 		(CCNProfile.MARKER + "meta" + CCNProfile.MARKER).getBytes();
 	
-	public static final byte [] HEADER_NAME = ContentName.componentParseNative(".header");
+	public static final byte [] HEADER_NAME = Component.parseNative(".header");
 
 	/**
 	 * This interface allows getLatestVersion of metadata within one of the supported meta
 	 * namespaces.
 	 */
 	public interface MetaNamer {
-		public ContentName getMetaName(ContentName baseName, ArrayList<byte[]> metaName);
+		public ContentName getMetaName(ContentName baseName, ContentName metaName);
 	}
 	
 	/**
 	 * General getter for generic metadata
 	 */
 	private static class LocalMetaNamer implements MetaNamer {
-		public ContentName getMetaName(ContentName baseName, ArrayList<byte[]> metaName) {
-			return new ContentName(metadataName(baseName), metaName);
+		public ContentName getMetaName(ContentName baseName, ContentName metaName) {
+			return metadataName(baseName).append(metaName);
 		}
 	}
 	
@@ -66,7 +66,7 @@ public class MetadataProfile implements CCNProfile {
 	 * @return metadata path for base file
 	 */
 	public static ContentName metadataName(ContentName baseName) {
-		return new ContentName(baseName, METADATA_MARKER.getBytes());
+		return new ContentName(baseName, METADATA_MARKER);
 	}
 	
 	/**
@@ -97,7 +97,7 @@ public class MetadataProfile implements CCNProfile {
 	 */
 	public static ContentName getLatestVersion(ContentName baseName, ContentName metaName, 
 			long timeout, CCNHandle handle) throws IOException {
-		return getLatestVersion(baseName, new LocalMetaNamer(), metaName.components(), timeout, handle);
+		return getLatestVersion(baseName, new LocalMetaNamer(), metaName, timeout, handle);
 	}
 	
 	/**
@@ -127,7 +127,7 @@ public class MetadataProfile implements CCNProfile {
 	 * @return
 	 * @throws IOException
 	 */
-	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ArrayList<byte[]> metaName,
+	public static ContentName getLatestVersion(ContentName baseName, MetaNamer namer, ContentName metaName,
 			 long timeout, CCNHandle handle) throws IOException {
 		ContentName baseVersion = baseName;
 		//removing the stream instance:  1 - we are not actually attempting to get the stream, we just want to discover the latest version
@@ -215,7 +215,7 @@ public class MetadataProfile implements CCNProfile {
 		if (SegmentationProfile.isSegment(name)) {
 			name = SegmentationProfile.segmentRoot(name);
 		}
-		return new ContentName(name, METADATA_MARKER.getBytes(), MetadataProfile.HEADER_NAME);
+		return new ContentName(name, METADATA_MARKER, MetadataProfile.HEADER_NAME);
 	}
 	
 	public static ContentName oldHeaderName(ContentName name) {

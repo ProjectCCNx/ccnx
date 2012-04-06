@@ -71,7 +71,7 @@ public class CCNSecureInputStreamTest {
 		byte [] encrData;
 		
 		public StreamFactory(String file_name) throws NoSuchAlgorithmException, IOException, InterruptedException {
-			name = ContentName.fromNative(testHelper.getClassNamespace(), file_name);
+			name = new ContentName(testHelper.getClassNamespace(), file_name);
 			flosser.handleNamespace(name);
 			try {
 				keys = StaticContentKeys.generateRandomKeys();

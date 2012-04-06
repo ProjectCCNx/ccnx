@@ -77,7 +77,7 @@ public class ThumbnailTestRepo extends CCNTestBase {
 		Log.info(Log.FAC_TEST, "Starting testThumbnails");
 
 		byte [] fakeImageData1 = "xxx".getBytes();
-		ContentName thumbNailBase = ContentName.fromNative(testHelper.getTestNamespace("testThumbnails"), "thumbnailBaseFile");
+		ContentName thumbNailBase = new ContentName(testHelper.getTestNamespace("testThumbnails"), "thumbnailBaseFile");
 		CCNStringObject cso = new CCNStringObject(thumbNailBase, "thumbNailBase", CCNFlowControl.SaveType.REPOSITORY, putHandle);
 		cso.save();
 		cso.close();

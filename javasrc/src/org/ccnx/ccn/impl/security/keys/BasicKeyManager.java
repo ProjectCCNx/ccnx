@@ -891,9 +891,7 @@ public class BasicKeyManager extends KeyManager {
 		
 	@Override
 	public ContentName getDefaultKeyNamePrefix() {
-		ContentName keyDir =
-			ContentName.fromNative(_userNamespace, 
-				   			       UserConfiguration.defaultKeyNamespaceMarker());
+		ContentName keyDir = new ContentName(_userNamespace, UserConfiguration.defaultKeyNamespaceMarker());
 		return keyDir;
 	}
 	

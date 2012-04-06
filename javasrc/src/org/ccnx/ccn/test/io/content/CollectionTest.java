@@ -60,9 +60,9 @@ public class CollectionTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		name = ContentName.fromURI(new String[]{baseName, subName, document1});
-		name2 = ContentName.fromURI(new String[]{baseName, subName, document2});
-		name3 = ContentName.fromURI(new String[]{baseName, subName, document3});
+		name = new ContentName(baseName, subName, document1);
+		name2 = new ContentName(baseName, subName, document2);
+		name3 = new ContentName(baseName, subName, document3);
 		name4 = ContentName.fromURI("/parc/home/briggs/collaborators.txt");
 		ns = new ContentName[]{name,name2,name3,name4};
 		Arrays.fill(contenthash1, (byte)2);
@@ -179,7 +179,7 @@ public class CollectionTest {
 		LinkAuthenticator la2alt = new LinkAuthenticator(pubID2, null, null,
 				SignedInfo.ContentType.DATA, contenthash1);
 
-		Link lr2alt = new Link(name3.clone(), la2alt);
+		Link lr2alt = new Link(name3, la2alt);
 		cd.remove(lr2alt);
 		Assert.assertEquals(cd.get(1), lrs[3]);
 		

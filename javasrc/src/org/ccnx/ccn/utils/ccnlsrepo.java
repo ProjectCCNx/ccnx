@@ -129,7 +129,7 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 
 		try {
 			if (prefix == null || prefix.equals(""))
-				name = new ContentName();
+				name = ContentName.ROOT;
 			else
 				name = ContentName.fromURI(prefix);
 			Log.fine("monitoring prefix " + name.toString());

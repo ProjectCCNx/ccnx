@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.profiles.ccnd;
 
+import static org.ccnx.ccn.profiles.ccnd.FaceManager.CCNX;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
@@ -363,18 +365,9 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 		/*
 		 * First create a name that looks like 'ccnx:/ccnx/CCNDId/action/ContentObjectWithForwardInIt'
 		 */
-		final String startURI = "ccnx:/ccnx/";
 		ContentName interestName = null;
 		try {
-			interestName = ContentName.fromURI(startURI);
-			interestName = ContentName.fromNative(interestName, _manager.getCCNDId().digest());
-			interestName = ContentName.fromNative(interestName, ActionType.Register.value());
-		} catch (MalformedContentNameStringException e) {
-			String reason = e.getMessage();
-			String msg = ("MalformedContentNameStringException in call creating ContentName for Interest, reason: " + reason);
-			Log.warning(Log.FAC_NETMANAGER, msg);
-			Log.warningStackTrace(e);
-			throw new CCNDaemonException(msg);
+			interestName = new ContentName(CCNX, _manager.getCCNDId().digest(), ActionType.Register.value());
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -411,7 +404,6 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 	}
 	
 	public ForwardingEntry selfRegisterPrefix(ContentName prefixToRegister, Integer faceID, Integer flags, Integer lifetime) throws CCNDaemonException {
-		final String startURI = "ccnx:/ccnx/";
 		PublisherPublicKeyDigest ccndId;
 		try {
 			ccndId = _manager.getCCNDId();
@@ -421,17 +413,7 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			throw new CCNDaemonException(e1.getMessage());
 		}
 		ContentName interestName;
-		try {
-			interestName = ContentName.fromURI(startURI);
-			interestName = ContentName.fromNative(interestName, ccndId.digest());
-			interestName = ContentName.fromNative(interestName, ActionType.SelfRegister.value());
-		} catch (MalformedContentNameStringException e) {
-			String reason = e.getMessage();
-			String msg = ("Unexpected MalformedContentNameStringException in call creating ContentName " + startURI + ", reason: " + reason);
-			Log.warning(Log.FAC_NETMANAGER, msg);
-			Log.warningStackTrace(e);
-			throw new CCNDaemonException(msg);
-		}
+		interestName = new ContentName(CCNX, ccndId.digest(), ActionType.SelfRegister.value());
 		ForwardingEntry forward = new ForwardingEntry(ActionType.SelfRegister, prefixToRegister, ccndId, faceID, flags, lifetime);
 
 		byte[] payloadBack = super.sendIt(interestName, forward, null, true);
@@ -453,7 +435,6 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 	 * @throws CCNDaemonException
 	 */
 	public void unRegisterPrefix(ContentName prefixName, RegisteredPrefix prefix, Integer faceID) throws CCNDaemonException {
-		final String startURI = "ccnx:/ccnx/";
 		PublisherPublicKeyDigest ccndId;
 		try {
 			ccndId = _manager.getCCNDId();
@@ -462,20 +443,8 @@ public class PrefixRegistrationManager extends CCNDaemonHandle {
 			e1.printStackTrace();
 			throw new CCNDaemonException(e1.getMessage());
 		}
-		ContentName interestName;
-		try {
-			interestName = ContentName.fromURI(startURI);
-			interestName = ContentName.fromNative(interestName, ccndId.digest());
-			interestName = ContentName.fromNative(interestName, ActionType.UnRegister.value());
-		} catch (MalformedContentNameStringException e) {
-			String reason = e.getMessage();
-			String msg = ("Unexpected MalformedContentNameStringException in call creating ContentName " + startURI + ", reason: " + reason);
-			Log.warning(Log.FAC_NETMANAGER, msg);
-			Log.warningStackTrace(e);
-			throw new CCNDaemonException(msg);
-		}
+		ContentName interestName = new ContentName(CCNX, ccndId.digest(), ActionType.UnRegister.value());
 		ForwardingEntry forward = new ForwardingEntry(ActionType.UnRegister, prefixName, ccndId, faceID, null, null);
-		// byte[] entryBits = super.getBinaryEncoding(forward);
 
 		super.sendIt(interestName, forward, prefix, false);
 	}

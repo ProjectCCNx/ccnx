@@ -61,7 +61,7 @@ public class MLACTestRepo {
 		for (int d=0; d<domainCount; d++) {
 			domainPrefix[d] = ContentName.fromNative("/ccnx.org/domain" + d);
 			userNamespace[d] = GroupAccessControlProfile.userNamespaceName(domainPrefix[d]);
-			userKeystore[d] = ContentName.fromNative(userNamespace[d], "_keystore_");
+			userKeystore[d] = new ContentName(userNamespace[d], "_keystore_");
 			groupNamespace[d] = GroupAccessControlProfile.groupNamespaceName(domainPrefix[d]);
 			td = new CreateUserData(userKeystore[d], userNames, userNames.length, true, "password".toCharArray());
 			td.publishUserKeysToRepositorySetLocators(userNamespace[d]);			
@@ -94,11 +94,11 @@ public class MLACTestRepo {
 		
 		ArrayList<Link> groupMembers = new ArrayList<Link>();
 		// add Alice from domain0
-		groupMembers.add(new Link(ContentName.fromNative(userNamespace[0], userNames[0])));
+		groupMembers.add(new Link(new ContentName(userNamespace[0], userNames[0])));
 		// add Bob from domain0
-		groupMembers.add(new Link(ContentName.fromNative(userNamespace[0], userNames[1])));
+		groupMembers.add(new Link(new ContentName(userNamespace[0], userNames[1])));
 		// add Alice from domain1
-		groupMembers.add(new Link(ContentName.fromNative(userNamespace[1], userNames[0])));
+		groupMembers.add(new Link(new ContentName(userNamespace[1], userNames[0])));
 
 		firstGroupName = "group-" + rnd.nextInt(10000);
 		Group mixedGroup = _gm0.createGroup(firstGroupName, groupMembers, 0);
@@ -115,9 +115,9 @@ public class MLACTestRepo {
 		
 		ArrayList<Link> groupMembers = new ArrayList<Link>();
 		// add the group from domain0 created above
-		groupMembers.add(new Link(ContentName.fromNative(groupNamespace[0], firstGroupName)));
+		groupMembers.add(new Link(new ContentName(groupNamespace[0], firstGroupName)));
 		// add Bob from domain1
-		groupMembers.add(new Link(ContentName.fromNative(userNamespace[1], userNames[1])));
+		groupMembers.add(new Link(new ContentName(userNamespace[1], userNames[1])));
 		
 		Group mixedGroupOfGroup = _gm1.createGroup("group-" + rnd.nextInt(10000), groupMembers, 0);
 		Assert.assertNotNull(mixedGroupOfGroup);

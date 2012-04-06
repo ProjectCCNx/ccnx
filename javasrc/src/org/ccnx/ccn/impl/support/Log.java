@@ -644,7 +644,6 @@ public class Log {
 			doLog(facility, l, msg, params);
 	}
 
-	@SuppressWarnings("unchecked")
 	protected static void doLog(int facility, Level l, String msg, Object... params) {
 		if (!isLoggable(facility, l))
 			return;
@@ -659,7 +658,7 @@ public class Log {
 		}
 
 		StackTraceElement ste = Thread.currentThread().getStackTrace()[3];
-		Class c;
+		Class<?> c;
 		try {
 			c = Class.forName(ste.getClassName());
 		} catch (ClassNotFoundException e) {

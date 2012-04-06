@@ -27,6 +27,7 @@ import java.util.logging.Level;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.TreeSet6;
 import org.ccnx.ccn.profiles.VersioningProfile;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.ExcludeAny;
@@ -202,7 +203,7 @@ public class InterestData {
 		components.add(new ExcludeComponent(startTimeMinusOneComponent));
 		if( Log.isLoggable(Log.FAC_ENCODING, Level.FINEST) )
 			Log.finest(Log.FAC_ENCODING, "Exclusion: start version {0}", 
-					ContentName.componentPrintURI(startTimeMinusOneComponent));
+					Component.printURI(startTimeMinusOneComponent));
 
 		// Now add the specific exclusions
 

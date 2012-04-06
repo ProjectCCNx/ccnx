@@ -91,7 +91,7 @@ public class VersioningInterestManagerTestRepo {
 	public void testStreamFromRight() throws Exception {
 		System.out.println("********** testStreamFromRight");
 
-		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		TestListener listener = new TestListener();
 
@@ -173,7 +173,7 @@ public class VersioningInterestManagerTestRepo {
 	@Test
 	public void testLongStreamFromRight() throws Exception {
 		System.out.println("********** testLongStreamFromRight");
-		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		TestListener listener = new TestListener();
 
@@ -228,7 +228,7 @@ public class VersioningInterestManagerTestRepo {
 	@Test
 	public void testLongStreamFromLeft() throws Exception {
 		System.out.println("********** testLongStreamFromLeft");
-		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		TestListener listener = new TestListener();
 
@@ -286,7 +286,7 @@ public class VersioningInterestManagerTestRepo {
 	@Test
 	public void testLongStreamUniform() throws Exception {
 		System.out.println("********** testLongStreamUniform");
-		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		TestListener listener = new TestListener();
 
@@ -334,7 +334,7 @@ public class VersioningInterestManagerTestRepo {
 	@Test
 	public void testLongStreamGaussian() throws Exception {
 		System.out.println("********** testLongStreamGaussian");
-		ContentName basename = ContentName.fromNative(prefix, String.format("content_%016X", _rnd.nextLong()));
+		ContentName basename = new ContentName(prefix, String.format("content_%016X", _rnd.nextLong()));
 
 		TestListener listener = new TestListener();
 

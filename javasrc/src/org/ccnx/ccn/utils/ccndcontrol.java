@@ -207,11 +207,6 @@ public class ccndcontrol {
 	private static void processConfigFile(String configFile) {
 		Log.info("Processing configuration file " + configFile + ".");
 		File file = new File(configFile);
-		if (null == file) {
-			Log.severe("Unable to convert " + configFile + " into java file.");
-			System.err.println("Unable to convert " + configFile + " into java file.");
-			System.exit(1);
-		}
 		FileReader reader = null;
 		try {
 			reader = new FileReader(file);

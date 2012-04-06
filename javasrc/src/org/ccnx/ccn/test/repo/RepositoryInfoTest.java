@@ -58,7 +58,7 @@ public class RepositoryInfoTest {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		names.add(ContentName.fromNative("/aprefix/asuffix"));
 		names.add(ContentName.fromNative("/aprefix/anothersuffix"));
-		names.add(ContentName.fromNative(names.get(0), "moresuffix"));
+		names.add(new ContentName(names.get(0), "moresuffix"));
 		RepositoryInfo rin = new RepositoryInfo(CURRENT_VERSION, DEFAULT_GLOBAL_NAME, DEFAULT_LOCAL_NAME, names);
 		RepositoryInfo drin = new RepositoryInfo();
 		RepositoryInfo brin = new RepositoryInfo();

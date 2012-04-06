@@ -49,7 +49,7 @@ public class Name {
 	public String toString() {
 		if(name==null)
 			return new String("/");
-		ContentName n = new ContentName(new ContentName(),name);
+		ContentName n = new ContentName(name);
         return n.toString().replaceFirst("/", "");
     }
 

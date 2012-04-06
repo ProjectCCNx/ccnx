@@ -18,6 +18,7 @@
 package org.ccnx.ccn.config;
 
 import org.ccnx.ccn.impl.support.Log;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
@@ -41,8 +42,8 @@ public class UserConfiguration {
 
 	protected static final String CCNX_DEFAULT_NAMESPACE = "/ccnx.org";
 	
-	protected static final String DEFAULT_USER_NAMESPACE_MARKER = "Users";
-	protected static final String DEFAULT_KEY_NAMESPACE_MARKER = "Keys";
+	protected static final Component DEFAULT_USER_NAMESPACE_MARKER = new Component("Users");
+	protected static final Component DEFAULT_KEY_NAMESPACE_MARKER = new Component("Keys");
 	
 	/**
 	 * Currently very cheezy keystore handling. Will improve when we can actually use
@@ -308,7 +309,7 @@ public class UserConfiguration {
 		if (null == userName) {
 			userName = userName();
 		}
-		return ContentName.fromNative(userNamespacePrefix(), userName);
+		return new ContentName(userNamespacePrefix(), userName);
 	}
 	
 	public static void setUserNamespacePrefix(String userNamespacePrefix) throws MalformedContentNameStringException {
@@ -327,7 +328,7 @@ public class UserConfiguration {
 					throw new RuntimeException("Attempt to configure invalid default user namespace prefix: " + userNamespacePrefixString + "!");
 				}
 			} else {
-				_userNamespacePrefix = ContentName.fromNative(defaultNamespace(), DEFAULT_USER_NAMESPACE_MARKER);
+				_userNamespacePrefix = new ContentName(defaultNamespace(), DEFAULT_USER_NAMESPACE_MARKER);
 			}
 		}
 		return _userNamespacePrefix; 
@@ -445,5 +446,5 @@ public class UserConfiguration {
 	
 	public static int defaultKeyLength() { return DEFAULT_KEY_LENGTH; }
 
-	public static String defaultKeyNamespaceMarker() { return DEFAULT_KEY_NAMESPACE_MARKER; }
+	public static Component defaultKeyNamespaceMarker() { return DEFAULT_KEY_NAMESPACE_MARKER; }
 }

@@ -126,7 +126,7 @@ public class CCNNetworkTestRepo extends CCNTestBase {
 
 		public boolean handleInterest(Interest interest) {
 			try {
-				CCNStringObject cso = new CCNStringObject(ContentName.fromNative(testPrefix, "bogus"), "bogus",
+				CCNStringObject cso = new CCNStringObject(new ContentName(testPrefix, "bogus"), "bogus",
 						SaveType.REPOSITORY, putHandle);
 				cso.setTimeout(SystemConfiguration.NO_TIMEOUT);
 				cso.save();		// This is bogus

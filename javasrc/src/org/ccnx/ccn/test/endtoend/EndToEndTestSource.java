@@ -61,7 +61,7 @@ public class EndToEndTestSource extends BaseLibrarySource implements CCNInterest
 		ContentName syncReturnName = ContentName.fromNative("/BaseLibraryTest/sync/return");
 		CCNWriter writer = new CCNWriter(syncBaseName, handle);
 		writer.setTimeout(100000);
-		ContentName syncName = new ContentName(syncBaseName, new Integer(rand.nextInt(5000)).toString().getBytes());		
+		ContentName syncName = new ContentName(syncBaseName, new Integer(rand.nextInt(5000)).toString());		
 		writer.put(syncName, "Hi Sink!");
 		handle.get(syncReturnName, SystemConfiguration.NO_TIMEOUT);
 	}

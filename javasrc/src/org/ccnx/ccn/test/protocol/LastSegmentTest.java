@@ -169,8 +169,8 @@ public class LastSegmentTest {
 		
 		try {
 			name = ContentName.fromURI("/ccnx.org/test/segmentationProfile/"+(new CCNTime()).toShortString()+"/testGetLastMultiUnversioned/");
-			one = name.clone();
-			last = one.clone();
+			one = name;
+			last = one;
 			one = SegmentationProfile.segmentName(one, SegmentationProfile.baseSegment());
 			last = SegmentationProfile.segmentName(last, 2);
 		} catch (MalformedContentNameStringException e) {
@@ -216,8 +216,8 @@ public class LastSegmentTest {
 		try {
 			name = ContentName.fromURI("/ccnx.org/test/segmentationProfile/"+(new CCNTime()).toShortString()+"/testGetLastMultiVersioned/");
 			name = VersioningProfile.addVersion(name);
-			one = name.clone();
-			last = one.clone();
+			one = name;
+			last = one;
 			one = SegmentationProfile.segmentName(one, SegmentationProfile.baseSegment());
 			last = SegmentationProfile.segmentName(last, 2);
 		} catch (MalformedContentNameStringException e) {
@@ -261,7 +261,7 @@ public class LastSegmentTest {
 		try {
 			name = ContentName.fromURI("/ccnx.org/test/segmentationProfile/"+(new CCNTime()).toShortString()+"/testGetLastSingleVersioned/");
 			name = VersioningProfile.addVersion(name);
-			one = name.clone();
+			one = name;
 			one = SegmentationProfile.segmentName(one, SegmentationProfile.baseSegment());
 		} catch (MalformedContentNameStringException e) {
 			Assert.fail("could not create ContentName for test");

@@ -79,7 +79,7 @@ public abstract class CCNFlowControlTestBase extends CCNTestBase {
 			CCNTime time = new CCNTime();
 			Timestamp afterTime = null;
 			for (int i=0; i < VERSION_COUNT; ++i) {
-				versions[i] = VersioningProfile.addVersion(name1, time);
+				versions[i] = new ContentName(name1, time);
 				afterTime = new Timestamp(time.getTime());
 				afterTime.setNanos(time.getNanos() + NANO_INCREMENT);
 				time = new CCNTime(afterTime);

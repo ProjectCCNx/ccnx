@@ -21,7 +21,7 @@
 package org.ccnx.ccn.utils;
 
 import org.ccnx.ccn.impl.support.DataUtils;
-import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.Component;
 
 public class URIToBase64 {
 
@@ -44,7 +44,7 @@ public class URIToBase64 {
 	
 	public static void processArg(String arg) {
 		try {
-			byte [] binary = ContentName.componentParseURI(arg);
+			byte [] binary = Component.parseURI(arg);
 			System.out.println(new String(DataUtils.base64Encode(binary)));
 		} catch (Exception e) {
 			e.printStackTrace();

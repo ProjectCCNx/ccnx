@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.test.repo;
 
+import static org.ccnx.ccn.profiles.CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
@@ -103,7 +105,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener, CCNC
 		
 		Log.info(Log.FAC_TEST, "now testing with a version in the prefix");
 		ContentName versionedName = getVersionedName(prefix1String);
-		addContentToRepo(new ContentName(versionedName, "versionNameTest".getBytes()));
+		addContentToRepo(new ContentName(versionedName, "versionNameTest"));
 		registerPrefix(versionedName);
 		testGetResponse(4);
 		closeHandles();
@@ -276,8 +278,8 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener, CCNC
 	public void explicitExcludeFastResponseTest(){
 		Log.info(Log.FAC_TEST, "Completed explicitExcludeFastResponseTest");
 
-		ContentName prefixMarked = new ContentName(new ContentName(), CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
-		
+		ContentName prefixMarked = new ContentName(COMMAND_MARKER_BASIC_ENUMERATION);
+
 		//we have minSuffixComponents to account for sig, version, seg and digest
 		Interest pi = Interest.constructInterest(prefixMarked, null, null, null, 4, null);
 
@@ -341,10 +343,7 @@ public class RepoNameEnumeratorTest implements BasicNameEnumeratorListener, CCNC
 		
 		if (interest.exclude()!=null) {
 			Assert.assertFalse(firstResponse);
-			if (responseName == null)
-				Assert.fail("responseName is null, this is not the first response and it should not be null");
-			else
-				Assert.assertFalse(!data.name().contains(responseName.component(0)));
+			Assert.fail("responseName is null, this is not the first response and it should not be null");
 		} else {
 			firstResponse = false;
 		}

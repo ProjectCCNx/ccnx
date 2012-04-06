@@ -17,6 +17,9 @@
 
 package org.ccnx.ccn.impl.repo;
 
+import static org.ccnx.ccn.impl.repo.RepositoryStore.REPO_DATA;
+import static org.ccnx.ccn.impl.repo.RepositoryStore.REPO_POLICY;
+
 import java.io.InputStream;
 import java.util.ArrayList;
 
@@ -181,9 +184,9 @@ public class BasicPolicy implements Policy {
 	 * @return the name as a ContentName
 	 */
 	public static ContentName getPolicyName(ContentName globalPrefix) {
-		return ContentName.fromNative(globalPrefix, new String[]{RepositoryStore.REPO_DATA, RepositoryStore.REPO_POLICY});
+		return new ContentName(globalPrefix, REPO_DATA, REPO_POLICY);
 	}
-	
+
 	public static PolicyXML createPolicyXML(InputStream stream) throws ContentDecodingException {
 		Log.info(Log.FAC_REPO, "Creating policy file");
 		XMLDecoder decoder = XMLCodecFactory.getDecoder(TextXMLCodec.codecName());

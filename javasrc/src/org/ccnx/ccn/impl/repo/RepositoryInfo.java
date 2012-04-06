@@ -250,7 +250,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 	public RepositoryInfo(String version, String globalPrefix, String localName, ArrayList<ContentName> names) throws MalformedContentNameStringException {
 		this(localName, globalPrefix, version);
 		for (ContentName name : names) {
-			_names.add(name.clone());
+			_names.add(name);
 		}
 		_type = RepoInfoType.DATA;
 	}
@@ -269,7 +269,7 @@ public class RepositoryInfo extends GenericXMLEncodable implements XMLEncodable{
 		_repoVersion = version;
 		_globalPrefix = new GlobalPrefix(globalPrefix);
 		for (ContentName name : names) {
-			_names.add(name.clone());
+			_names.add(name);
 		}
 		_type = RepoInfoType.DATA;
 	}

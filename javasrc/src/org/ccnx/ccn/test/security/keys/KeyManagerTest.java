@@ -54,9 +54,9 @@ public class KeyManagerTest {
 	protected static final int KEY_COUNT = 5;
 	protected static final int DATA_COUNT_PER_KEY = 3;
 	protected static KeyPair [] pairs = new KeyPair[KEY_COUNT];
-	static ContentName testprefix = ContentName.fromNative(new String[]{"test","pubidtest"});
-	static ContentName keyprefix = ContentName.fromNative(testprefix,"keys");
-	static ContentName dataprefix = ContentName.fromNative(testprefix,"data");
+	static ContentName testprefix = new ContentName("test","pubidtest");
+	static ContentName keyprefix = new ContentName(testprefix,"keys");
+	static ContentName dataprefix = new ContentName(testprefix,"data");
 
 	static PublisherPublicKeyDigest [] publishers = new PublisherPublicKeyDigest[KEY_COUNT];
 	static KeyLocator [] keyLocs = new KeyLocator[KEY_COUNT];

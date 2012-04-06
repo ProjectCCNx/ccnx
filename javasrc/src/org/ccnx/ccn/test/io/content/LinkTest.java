@@ -63,15 +63,15 @@ public class LinkTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		name = ContentName.fromURI(new String[]{baseName, subName, document1});
-		name2 = ContentName.fromURI(new String[]{baseName, subName, document2});
-		name3 = ContentName.fromURI(new String[]{baseName, subName, document3});
+		name = new ContentName(baseName, subName, document1);
+		name2 = new ContentName(baseName, subName, document2);
+		name3 = new ContentName(baseName, subName, document3);
 		name4 = ContentName.fromURI("/parc/home/briggs/collaborators.txt");
 		ns = new ContentName[]{name,name2,name3,name4};
 		labels = new String[]{"This is a label", "", null, "BigLabel"};
-		linkName = ContentName.fromURI(new String[]{linkBaseName, subName, document1});
-		linkName2 = ContentName.fromURI(new String[]{linkBaseName, subName, document2});
-		linkName3 = ContentName.fromURI(new String[]{linkBaseName, subName, document3});
+		linkName = new ContentName(linkBaseName, subName, document1);
+		linkName2 = new ContentName(linkBaseName, subName, document2);
+		linkName3 = new ContentName(linkBaseName, subName, document3);
 		linkName4 = ContentName.fromURI("/link/home/briggs/collaborators.txt");
 		ls = new ContentName[]{linkName,linkName2,linkName3,linkName4};
 		Arrays.fill(contenthash1, (byte)2);

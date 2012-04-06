@@ -41,12 +41,13 @@ import org.ccnx.ccn.impl.support.ByteArrayCompare;
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import static org.ccnx.ccn.impl.support.Log.*;
+import static org.ccnx.ccn.io.content.KeyDirectory.PREVIOUS_KEY;
+
 import org.ccnx.ccn.impl.support.Tuple;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.ContentEncodingException;
 import org.ccnx.ccn.io.content.ContentGoneException;
 import org.ccnx.ccn.io.content.ContentNotReadyException;
-import org.ccnx.ccn.io.content.KeyDirectory;
 import org.ccnx.ccn.io.content.KeyValueSet;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.LinkAuthenticator;
@@ -335,7 +336,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// for this access control manager type
 		int componentCount = policyInformation.getBaseName().count();
 		componentCount -= NamespaceProfile.policyPostfix().count(); 
-		componentCount -= AccessControlProfile.AccessControlPolicyContentName().count();
+		componentCount -= 1;
 		_namespace = policyInformation.getBaseName().cut(componentCount);
 
 		ArrayList<ParameterizedName> parameterizedNames = policyInformation.policy().parameterizedNames();
@@ -800,7 +801,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// TODO really want to check simple existence here, but need to integrate with verifier
 		// use. GLV too slow for negative results. Given that we need latest version, at least
 		// use the segment we get, and don't pull it twice.
-		ContentName aclName = new ContentName(GroupAccessControlProfile.aclName(aclNodeName));
+		ContentName aclName = GroupAccessControlProfile.aclName(aclNodeName);
 		ContentObject aclNameList = VersioningProfile.getLatestVersion(aclName, 
 				null, SystemConfiguration.MAX_TIMEOUT, handle().defaultVerifier(), handle()); 
 
@@ -1653,7 +1654,7 @@ public class GroupAccessControlManager extends AccessControlManager {
 		// But the data key is wrapped in the previous node key that was at this node prior to the ACL interposition.
 		// So we need to retrieve the previous node key, which was wrapped with KeyDirectory.addPreviousKeyBlock 
 		// at the time the ACL was interposed.
-		ContentName previousKeyName = ContentName.fromNative(currentNodeKey.storedNodeKeyName(), KeyDirectory.PREVIOUS_KEY_NAME);
+		ContentName previousKeyName = new ContentName(currentNodeKey.storedNodeKeyName(), PREVIOUS_KEY);
 		if (Log.isLoggable(Log.FAC_ACCESSCONTROL, Level.FINER)) {
 			Log.finer(Log.FAC_ACCESSCONTROL, "getNodeKeyUsingInterposedACL: retrieving previous key at {0}", previousKeyName);
 		}

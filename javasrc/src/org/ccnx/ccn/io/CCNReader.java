@@ -143,7 +143,7 @@ public class CCNReader {
 					" on query: " + query.name());
 			result.add(co);
 			for (int i = co.name().count() - 1; i > count; i--) {
-				result.addAll(enumerate(new Interest(new ContentName(i, co.name().components())), timeout));
+				result.addAll(enumerate(new Interest(co.name().cut(i)), timeout));
 			}
 			query = Interest.next(co.name(), count, null);
 		}
