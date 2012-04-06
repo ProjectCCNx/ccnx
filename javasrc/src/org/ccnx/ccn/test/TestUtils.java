@@ -31,6 +31,14 @@ import org.junit.Assert;
 public class TestUtils {
 	public static final int WAIT_TIME = 100;
 
+	/**
+	 * Check if object has been stored in a repo.  Waits up to EXTRA_LONG_TIMEOUT - if not stored
+	 * by then - assertion failure.
+	 *
+	 * @param handle
+	 * @param cno
+	 * @throws IOException
+	 */
 	public static void checkObject(CCNHandle handle, CCNNetworkObject<?> cno) throws IOException {
 		long startTime = System.currentTimeMillis();
 		boolean ok = false;
@@ -46,6 +54,14 @@ public class TestUtils {
 			Assert.fail("Couldn't sync object: " + cno.getBaseName());
 	}
 
+	/**
+	 * Check if file has been stored in a repo. Waits up to EXTRA_LONG_TIMEOUT - if not stored
+	 * by then - assertion failure.
+	 *
+	 * @param handle
+	 * @param stream
+	 * @throws IOException
+	 */
 	public static void checkFile(CCNHandle handle, CCNAbstractInputStream stream) throws IOException {
 		long startTime = System.currentTimeMillis();
 		boolean ok = false;
