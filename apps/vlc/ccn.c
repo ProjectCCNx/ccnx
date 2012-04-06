@@ -409,7 +409,6 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
 {
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn_charbuf *p_name;
-    int i_ret;
 
     vlc_mutex_lock(&p_sys->lock);
 #if (VLCPLUGINVER < 10100)
@@ -446,9 +445,7 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
  *****************************************************************************/
 static int CCNControl(access_t *p_access, int i_query, va_list args)
 {
-    access_sys_t *p_sys = p_access->p_sys;
     bool   *pb_bool;
-    int          *pi_int;
     int64_t      *pi_64;
 
     switch(i_query)
@@ -513,7 +510,9 @@ static void *ccn_event_thread(void *p_this)
         block_FifoWake(p_sys->p_fifo);
     }
     vlc_restorecancel(cancel);
+    return(NULL);
 }
+
 #if (VLCPLUGINVER < 10100)
 /* block_FifoPace was defined early on, but not exported until 1.1.0, so we
  * duplicate the code here if it is needed.
@@ -545,14 +544,10 @@ incoming_content(struct ccn_closure *selfp,
     block_t *p_block = NULL;
     bool b_last = false;
     struct ccn_charbuf *name = NULL;
-    struct ccn_charbuf *templ = NULL;
     const unsigned char *ccnb = NULL;
     size_t ccnb_size = 0;
     const unsigned char *data = NULL;
     size_t data_size = 0;
-    size_t written;
-    const unsigned char *ib = NULL; /* info->interest_ccnb */
-    struct ccn_indexbuf *ic = NULL;
     int res;
     int result = CCN_UPCALL_RESULT_OK;
 
@@ -610,13 +605,11 @@ incoming_content(struct ccn_closure *selfp,
     block_FifoPace(p_sys->p_fifo, p_sys->i_fifo_max, SIZE_MAX);
 #endif
     vlc_mutex_lock(&p_sys->lock);
-    if (p_access->b_die || selfp != p_sys->incoming)
+    if (p_access->b_die)
         goto exit;
 
     ccnb = info->content_ccnb;
     ccnb_size = info->pco->offset[CCN_PCO_E];
-    ib = info->interest_ccnb;
-    ic = info->interest_comps;
     res = ccn_content_get_value(ccnb, ccnb_size, info->pco, &data, &data_size);
     if (res < 0) abort();
 
