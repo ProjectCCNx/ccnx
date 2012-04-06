@@ -50,6 +50,7 @@
 #define CCN_FIFO_BLOCK_SIZE (128 * CCN_DEFAULT_CHUNK_SIZE)
 #define CCN_VERSION_TIMEOUT 1000
 #define CCN_HEADER_TIMEOUT 1000
+#define PREFETCH 5
 
 #define MAX_FIFO_TEXT N_("FIFO max blocks")
 #define MAX_FIFO_LONGTEXT N_(						\
@@ -119,6 +120,7 @@ struct access_sys_t
     unsigned char *buf;  /**< intermediate buffer */
     struct ccn *ccn;     /**< CCN handle */
     struct ccn_closure *incoming; /**< current closure for incoming content handling */
+    struct ccn_closure *prefetch; /**< closure for handling prefetch content */
     struct ccn_charbuf *p_name;
     struct ccn_charbuf *p_template;
     vlc_mutex_t lock;    /**< mutex protecting data shared between CCNSeek and incoming_content */
@@ -126,6 +128,10 @@ struct access_sys_t
 
 enum ccn_upcall_res
 incoming_content(struct ccn_closure *selfp,
+                 enum ccn_upcall_kind kind,
+                 struct ccn_upcall_info *info);
+enum ccn_upcall_res
+discard_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info);
 static struct ccn_charbuf *
@@ -144,6 +150,7 @@ static int CCNOpen(vlc_object_t *p_this)
     struct ccn_header *p_header = NULL;
     int i_ret = 0;
     int i_err = VLC_EGENERIC;
+    int i;
 
     /* Init p_access */
     access_InitFields(p_access);
@@ -172,6 +179,13 @@ static int CCNOpen(vlc_object_t *p_this)
         msg_Err(p_access, "CCN.Open failed: no memory for ccn_closure");
         goto exit_error;
     }
+    p_sys->prefetch = calloc(1, sizeof(struct ccn_closure));
+    if (p_sys->prefetch == NULL) {
+        i_err = VLC_ENOMEM;
+        msg_Err(p_access, "CCN.Open failed: no memory for prefetch ccn_closure");
+        goto exit_error;
+    }
+    
     p_sys->i_chunksize = -1;
 #if (VLCPLUGINVER >= 10200)
     msg_Dbg(p_access, "CCN.Open %s, closure %p",
@@ -182,6 +196,8 @@ static int CCNOpen(vlc_object_t *p_this)
 #endif
     p_sys->incoming->data = p_access; /* so CCN callbacks can find p_sys */
     p_sys->incoming->p = &incoming_content; /* the CCN callback */
+    p_sys->prefetch->data = p_access; /* so CCN callbacks can find p_sys */
+    p_sys->prefetch->p = &discard_content; /* the CCN callback */
 
     p_sys->ccn = ccn_create();
     if (p_sys->ccn == NULL || ccn_connect(p_sys->ccn, NULL) == -1) {
@@ -244,6 +260,12 @@ static int CCNOpen(vlc_object_t *p_this)
     if (i_ret < 0) {
         msg_Err(p_access, "CCN.Open failed: unable to express interest");
         goto exit_error;
+    }
+    for (i=1; i <= PREFETCH; i++) {
+        p_name = sequenced_name(p_sys->p_name, i);
+        i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
+                                     p_sys->p_template);
+        ccn_charbuf_destroy(&p_name);        
     }
 
     return VLC_SUCCESS;
@@ -409,6 +431,7 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
 {
     access_sys_t *p_sys = p_access->p_sys;
     struct ccn_charbuf *p_name;
+    int i;
 
     vlc_mutex_lock(&p_sys->lock);
 #if (VLCPLUGINVER < 10100)
@@ -435,6 +458,13 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
     ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_template);
     ccn_charbuf_destroy(&p_name);
 
+    for (i = 1; i <= PREFETCH; i++) {
+        p_name = sequenced_name(p_sys->p_name, i + p_sys->i_pos / p_sys->i_chunksize);
+        ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
+                                     p_sys->p_template);
+        ccn_charbuf_destroy(&p_name);        
+    }
+    
     p_access->info.i_pos = i_pos;
     p_access->info.b_eof = false;
     vlc_mutex_unlock(&p_sys->lock);
@@ -661,10 +691,27 @@ incoming_content(struct ccn_closure *selfp,
     res = ccn_express_interest(info->h, name, selfp, NULL);
     ccn_charbuf_destroy(&name);
     if (res < 0) abort();
+    
+    name = sequenced_name(p_sys->p_name, PREFETCH + p_sys->i_pos / p_sys->i_chunksize);
+    res = ccn_express_interest(info->h, name, p_sys->prefetch, NULL);
+    ccn_charbuf_destroy(&name);
 
 exit:
     vlc_mutex_unlock(&p_sys->lock);
     return(result);
+}
+
+enum ccn_upcall_res
+discard_content(struct ccn_closure *selfp,
+                enum ccn_upcall_kind kind,
+                struct ccn_upcall_info *info)
+{
+    switch (kind) {
+        case CCN_UPCALL_FINAL:
+            free(selfp);
+        default:
+            return(CCN_UPCALL_RESULT_OK);
+    }
 }
 
 static struct ccn_charbuf *
