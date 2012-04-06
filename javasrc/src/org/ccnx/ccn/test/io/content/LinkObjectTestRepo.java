@@ -34,6 +34,7 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.SignedInfo.ContentType;
 import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.ccnx.ccn.test.TestUtils;
 import org.junit.Test;
 
 /**
@@ -58,6 +59,7 @@ public class LinkObjectTestRepo extends CCNTestBase {
 		CCNSerializableStringObject so =
 			new CCNSerializableStringObject(nonLinkName, "This is not a link, number " + new Random().nextInt(10000), SaveType.REPOSITORY, putHandle);
 		so.save();
+		TestUtils.checkObject(putHandle, so);
 
 		try {
 			LinkObject notAnObject = new LinkObject(nonLinkName, getHandle);
