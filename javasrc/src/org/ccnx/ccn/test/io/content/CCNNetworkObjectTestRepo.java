@@ -84,7 +84,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		try {
 			ns = new ContentName[NUM_LINKS];
 			for (int i=0; i < NUM_LINKS; ++i) {
-				ns[i] = ContentName.fromNative(testHelper.getClassNamespace(), "Links", prefix+Integer.toString(i));
+				ns[i] = new ContentName(testHelper.getClassNamespace(), "Links", prefix+Integer.toString(i));
 			}
 			Arrays.fill(publisherid1, (byte)6);
 			Arrays.fill(publisherid2, (byte)3);
@@ -136,7 +136,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		CCNHandle lget = CCNHandle.open();
 
 		try {
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testVersioning"), stringObjName);
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testVersioning"), stringObjName);
 
 			CCNStringObject so = new CCNStringObject(testName, "First value", SaveType.REPOSITORY, lput);
 			setupNamespace(testName);
@@ -183,7 +183,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		CCNHandle lput = CCNHandle.open();
 		CCNHandle lget = CCNHandle.open();
 		try {
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveToVersion"), stringObjName);
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testSaveToVersion"), stringObjName);
 
 			CCNTime desiredVersion = CCNTime.now();
 
@@ -223,7 +223,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		boolean caught = false;
 		CCNHandle handle = CCNHandle.open();
 		try {
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testEmptySave"), collectionObjName);
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testEmptySave"), collectionObjName);
 			CollectionObject emptycoll =
 				new CollectionObject(testName, (Collection)null, SaveType.REPOSITORY, handle);
 			setupNamespace(testName);
@@ -250,7 +250,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 
 		CCNHandle tHandle = CCNHandle.open();
 		try {
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testStreamUpdate"), collectionObjName);
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testStreamUpdate"), collectionObjName);
 			CollectionObject testCollectionObject =
 				new CollectionObject(testName, small1, SaveType.REPOSITORY, tHandle);
 			setupNamespace(testName);
@@ -312,8 +312,8 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		CCNHandle tHandle = CCNHandle.open();
 		CCNHandle rHandle = CCNHandle.open();
 		try {
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name1");
-			ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name2");
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name1");
+			ContentName testName2 = new ContentName(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name2");
 
 			CollectionObject c0 = new CollectionObject(testName, empty, SaveType.REPOSITORY, rHandle);
 			setupNamespace(testName);
@@ -351,7 +351,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		CCNHandle thandle3 = CCNHandle.open();
 
 		try {
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateInBackground"), stringObjName, "name1");
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testUpdateInBackground"), stringObjName, "name1");
 			// Make writer first, so it picks up readers first interests even before it writes.
 			CCNStringObject c2 = new CCNStringObject(testName, (String)null, SaveType.REPOSITORY, thandle);
 
@@ -412,8 +412,8 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		CCNHandle thandle = CCNHandle.open();
 		CCNHandle rhandle = CCNHandle.open();
 		try {
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name1");
-			ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name2");
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name1");
+			ContentName testName2 = new ContentName(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name2");
 
 			CollectionObject c0 = new CollectionObject(testName, empty, SaveType.REPOSITORY, rhandle);
 			setupNamespace(testName);
@@ -462,7 +462,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		CCNHandle shandle = CCNHandle.open();
 
 		try {
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
 			CollectionObject c0 = new CollectionObject(testName, empty, SaveType.REPOSITORY, thandle);
 			setupNamespace(testName);
 			CCNTime t0 = saveAsGoneAndLog("Gone", c0);
@@ -508,7 +508,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		CCNHandle thandle = CCNHandle.open();
 		CCNHandle rhandle = CCNHandle.open();
 		try {
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateDoesNotExist"), collectionObjName);
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testUpdateDoesNotExist"), collectionObjName);
 			CCNStringObject so = new CCNStringObject(testName, rhandle);
 
 			// so should catch exception thrown by underlying stream when it times out.
@@ -543,7 +543,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		CCNHandle readHandle = CCNHandle.open();
 
 		try {
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateListener"),
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testUpdateListener"),
 											stringObjName);
 
 			CCNStringObject writeObject =
@@ -585,7 +585,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		CCNHandle rhandle = CCNHandle.open();
 
 		try {
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testLocalCopyWrapper"), collectionObjName);
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testLocalCopyWrapper"), collectionObjName);
 			CCNStringObject so = new CCNStringObject(testName, rhandle);
 			LocalCopyWrapper wo = new LocalCopyWrapper(so);
 			Assert.assertFalse(wo.available());
@@ -648,8 +648,7 @@ public class CCNNetworkObjectTestRepo extends CCNNetworkObjectTestBase {
 		CCNHandle rhandle = CCNHandle.open();
 		try {
 			// The local copy wrapper API isn't applicable in very many situations. Try this instead.
-
-			ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testLocalCopyListener"), collectionObjName);
+			ContentName testName = new ContentName(testHelper.getTestNamespace("testLocalCopyListener"), collectionObjName);
 
 			LocalCopyListener copyListener = new LocalCopyListener();
 

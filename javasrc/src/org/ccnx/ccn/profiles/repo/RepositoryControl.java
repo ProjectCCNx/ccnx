@@ -16,6 +16,10 @@
  */
 package org.ccnx.ccn.profiles.repo;
 
+import static org.ccnx.ccn.profiles.CommandMarker.COMMAND_MARKER_REPO_CHECKED_START_WRITE;
+import static org.ccnx.ccn.profiles.SegmentationProfile.getSegmentNumberNameComponent;
+import static org.ccnx.ccn.protocol.Component.NONCE;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
@@ -31,8 +35,6 @@ import org.ccnx.ccn.io.CCNAbstractInputStream;
 import org.ccnx.ccn.io.content.CCNNetworkObject;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link.LinkObject;
-import org.ccnx.ccn.profiles.CommandMarker;
-import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -219,11 +221,13 @@ public class RepositoryControl {
 		// We do not use a nonce in this protocol, because a cached confirmation is satisfactory,
 		// assuming verification of the repository that published it.
 		
-		ContentName repoCommandName = 
-			new ContentName(baseName, new byte[][]{ CommandMarker.COMMAND_MARKER_REPO_CHECKED_START_WRITE.getBytes(),
-													Interest.generateNonce(),
-													SegmentationProfile.getSegmentNumberNameComponent(startingSegmentNumber), 
-													firstDigest});
+		ContentName repoCommandName = new ContentName(
+											baseName,
+											COMMAND_MARKER_REPO_CHECKED_START_WRITE,
+											NONCE,
+											getSegmentNumberNameComponent(startingSegmentNumber),
+											firstDigest
+										);
 		Interest interest = new Interest(repoCommandName);
 		interest.scope(1); // local repositories only
 

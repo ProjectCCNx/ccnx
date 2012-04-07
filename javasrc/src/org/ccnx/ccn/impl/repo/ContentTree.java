@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.impl.repo;
 
+import static org.ccnx.ccn.profiles.CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION;
+
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Date;
@@ -28,11 +30,10 @@ import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
-import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.SegmentationProfile;
-import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Exclude;
@@ -98,18 +99,18 @@ public class ContentTree {
 			if(component==null)
 				s = "root";
 			else{
-				s = ContentName.componentPrintURI(component);				
+				s = Component.printURI(component);				
 			}
 			if(oneChild!=null){
 				//there is only one child
-				s+= " oneChild: "+ContentName.componentPrintURI(component);
+				s+= " oneChild: "+Component.printURI(component);
 			}
 			else if(children!=null){
 				s+= " children: ";
 				int i = 0;
 				for(TreeNode c: children.keySet()){
 					//append each child to string
-					s+=" "+ContentName.componentPrintURI(c.component);
+					s+=" "+Component.printURI(c.component);
 					//s+=new String(t.component)+" ";
 					if (++i > 50) {
 						s+= "...";
@@ -354,7 +355,7 @@ public class ContentTree {
 		assert(null != _root);
 		boolean added = false;
 		
-		for (byte[] component : name.components()) {
+		for (byte[] component : name) {
 			synchronized(node) {
 				//Library.finest("getting node for component: "+new String(component));
 				TreeNode child = node.getChild(component);
@@ -396,26 +397,21 @@ public class ContentTree {
 						}
 						ContentName prefix = name.cut(component);
 	
-						prefix = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
-						//prefix = VersioningProfile.addVersion(prefix, new CCNTime(node.timestamp));
+						prefix = new ContentName(prefix, COMMAND_MARKER_BASIC_ENUMERATION);
 						if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
 							Log.info(Log.FAC_REPO, "prefix for FastNEResponse: {0}", prefix);
 							Log.info(Log.FAC_REPO, "response name will be: {0}",
-									VersioningProfile.addVersion(
-											new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), 
-											new CCNTime(node.timestamp)));
+									new ContentName(prefix, COMMAND_MARKER_BASIC_ENUMERATION, new CCNTime(node.timestamp)));
 						}
 	
 						ArrayList<ContentName> names = new ArrayList<ContentName>();
 						// the parent has children we need to return
-						ContentName c = new ContentName();
 						if (node.oneChild != null) {
-							names.add(new ContentName(c,
-									node.oneChild.component));
+							names.add(new ContentName(node.oneChild.component));
 						} else {
 							if (node.children != null) {
 								for (TreeNode ch : node.children.keySet())
-									names.add(new ContentName(c, ch.component));
+									names.add(new ContentName(ch.component));
 							}
 						}
 						ner.setPrefix(prefix);
@@ -484,7 +480,7 @@ public class ContentTree {
 			return node;
 		}
 		
-		for (byte[] component : name.components()) {
+		for (byte[] component : name) {
 			synchronized(node) {
 				TreeNode child = node.getChild(component);
 				if (null == child) {
@@ -546,7 +542,7 @@ public class ContentTree {
 			// Special case of root
 			myname = "/";
 		} else {
-			myname = ContentName.componentPrintURI(node.component);
+			myname = Component.printURI(node.component);
 			if (maxNodeLen > 0 && myname.length() > (maxNodeLen - 3)) {
 				myname = "<" + myname.substring(0,maxNodeLen-4) + "...>";
 			}
@@ -593,7 +589,7 @@ public class ContentTree {
 		// matching is that the name DOES NOT include digest component (conforming to the convention 
 		// for ContentObject.name() that the digest is not present) we must REMOVE the content 
 		// digest first or this test will not always be correct
-		ContentName digestFreeName = new ContentName(nodeName.count()-1, nodeName.components());
+		ContentName digestFreeName = nodeName.parent();
 		Interest publisherFreeInterest = interest.clone();
 		publisherFreeInterest.publisherID(null);
 
@@ -636,7 +632,7 @@ public class ContentTree {
 	public final NameEnumerationResponse getNamesWithPrefix(Interest interest, ContentName responseName) {
 		ArrayList<ContentName> names = new ArrayList<ContentName>();
 		//first chop off NE marker
-		ContentName prefix = interest.name().cut(CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
+		ContentName prefix = interest.name().cut(COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
 
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINE)) {
 			Log.fine(Log.FAC_REPO, "checking for content names under: {0}", prefix);
@@ -647,12 +643,13 @@ public class ContentTree {
 			//first add the NE marker
 			CCNTime timestamp = new CCNTime(parent.timestamp);		// I think we want to use the earliest possible timestamp here - if there are duplicates
 																	// NE can straighten it out - worse to miss somethingf
-		    ContentName potentialCollectionName = new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes());
-		    //now add the response id
-		    potentialCollectionName = new ContentName(potentialCollectionName, responseName.components());
-		    //now finish up with version and segment
-		    potentialCollectionName = VersioningProfile.addVersion(potentialCollectionName, timestamp);
-		    potentialCollectionName = SegmentationProfile.segmentName(potentialCollectionName, SegmentationProfile.baseSegment());
+		    ContentName potentialCollectionName = new ContentName(
+									    		prefix,
+									    		COMMAND_MARKER_BASIC_ENUMERATION,
+									    		responseName,
+									    		timestamp,
+									    		SegmentationProfile.getSegmentNumberNameComponent(SegmentationProfile.baseSegment())
+		    								);
 			//check if we should respond...
 			if (interest.matches(potentialCollectionName, null)) {
 				if (Log.isLoggable(Log.FAC_REPO, Level.INFO)) {
@@ -664,7 +661,7 @@ public class ContentTree {
 				}
 
 				//I am not supposed to respond...  is that because of the version or because I am specifically excluded?
-				 if (responseName.count() > 0 && interest.exclude().match(responseName.components().get(0))) {
+				 if (responseName.count() > 0 && interest.exclude().match(responseName.component(0))) {
 					 Log.finer(Log.FAC_REPO, "my repo is explicitly excluded!  not setting interestFlag to true");
 					 //do not set interest flag!  I wasn't supposed to respond
 				 } else {
@@ -679,11 +676,11 @@ public class ContentTree {
 			//the parent has children we need to return
 			synchronized (parent) {		// Make sure especially that nobody changes from oneChild to children behind our back
 				if (parent.oneChild!=null) {
-					names.add(new ContentName(ContentName.ROOT, parent.oneChild.component));
+					names.add(new ContentName(parent.oneChild.component));
 				} else {
 					if (parent.children!=null) {
 						for (TreeNode ch:parent.children.keySet())
-							names.add(new ContentName(ContentName.ROOT, ch.component));
+							names.add(new ContentName(ch.component));
 					}
 				}
 				
@@ -697,7 +694,7 @@ public class ContentTree {
 			}
 			
 			return new NameEnumerationResponse(
-					new ContentName(prefix, CommandMarker.COMMAND_MARKER_BASIC_ENUMERATION.getBytes()), names, timestamp);
+					new ContentName(prefix, COMMAND_MARKER_BASIC_ENUMERATION), names, timestamp);
 		}
 		return null;
 	}
@@ -735,10 +732,10 @@ public class ContentTree {
 			InterestPreScreener ips = new InterestPreScreener(interest, ncc + 1, ncc);
 			if (null != interest.childSelector() && ((interest.childSelector() & (Interest.CHILD_SELECTOR_RIGHT))
 					== (Interest.CHILD_SELECTOR_RIGHT))) {
-				return new RightSearch(interest, ips).search(prefixRoot, new ContentName(ncc, interest.name().components()), 
+				return new RightSearch(interest, ips).search(prefixRoot, interest.name().cut(ncc), 
 						getter, ncc, false);
 			} else {
-				return new LeftSearch(interest, ips).search(prefixRoot, new ContentName(ncc, interest.name().components()), 
+				return new LeftSearch(interest, ips).search(prefixRoot, interest.name().cut(ncc), 
 						getter, ncc, false);
 			}
 		}

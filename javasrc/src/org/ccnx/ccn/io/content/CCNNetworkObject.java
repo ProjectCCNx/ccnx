@@ -50,6 +50,7 @@ import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.versioning.VersionNumber;
 import org.ccnx.ccn.protocol.CCNTime;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -992,12 +993,8 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 		// We might have been handed a _baseName that was versioned. For most general behavior,
 		// have to treat it as a normal name and that we are supposed to put our own version
 		// underneath it. To save as a specific version, need to use save(version).
-		ContentName name = _baseName;
-		if (null != version) {
-			name = VersioningProfile.addVersion(_baseName, version);
-		} else {
-			name = VersioningProfile.addVersion(_baseName);
-		}
+		ContentName name = new ContentName(_baseName, version == null ? CCNTime.now() : version);
+
 		// DKS if we add the versioned name, we don't handle get latest version.
 		// We re-add the baseName here in case an update has changed it.
 		// TODO -- perhaps disallow updates for unrelated names.
@@ -1547,7 +1544,7 @@ public abstract class CCNNetworkObject<E> extends NetworkObject<E> implements CC
 										excludes = new byte [][]{co.name().component(_currentInterest.name().count())};
 										if (Log.isLoggable(Log.FAC_IO, Level.INFO))
 											Log.info(Log.FAC_IO, "updateInBackground: handleContent: got content for {0} that doesn't verify ({1}), excluding bogus version {2} as temporary workaround FIX WHEN POSSIBLE",
-													_currentInterest.name(), co.fullName(), ContentName.componentPrintURI(excludes[0]));
+													_currentInterest.name(), co.fullName(), Component.printURI(excludes[0]));
 
 									} else {
 										update(co);

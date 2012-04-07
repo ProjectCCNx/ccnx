@@ -97,7 +97,7 @@ public class KeyPublishingTestRepo {
 		// First, hand-build self-signed key object. Need to improve built-in API for this.
 		CCNTime version = new CCNTime();
 		ContentName newKeyName = testHelper.getTestChildName("testSetLocator", "newKeyName");
-		KeyLocator newerKeyLocator = new KeyLocator(VersioningProfile.addVersion(newKeyName, version), 
+		KeyLocator newerKeyLocator = new KeyLocator(new ContentName(newKeyName, version), 
 							userHandles[NUM_USERS-1].getDefaultPublisher());
 		PublicKeyObject newPublicKey = 
 			new PublicKeyObject(newKeyName, userHandles[NUM_USERS-1].keyManager().getDefaultPublicKey(),

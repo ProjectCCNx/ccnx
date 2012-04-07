@@ -67,7 +67,7 @@ public class GACMNodeKeyDirtyTestRepo {
 		directoryBase = testHelper.getTestNamespace("testInOrder");
 		userNamespace = GroupAccessControlProfile.userNamespaceName(UserConfiguration.defaultNamespace());
 		groupNamespace = GroupAccessControlProfile.groupNamespaceName(UserConfiguration.defaultNamespace());
-		userKeyStorePrefix = ContentName.fromNative(UserConfiguration.defaultNamespace(), "_keystore_"); 
+		userKeyStorePrefix = new ContentName(UserConfiguration.defaultNamespace(), "_keystore_"); 
 
 		// create user identities with TestUserData		
 		Log.info("Creating {0} test users, if they do not already exist.", numberOfusers);
@@ -79,18 +79,18 @@ public class GACMNodeKeyDirtyTestRepo {
 		// create and register ACM
 		handle = td.getHandleForUser(friendlyNames[0]);
 		acm = new GroupAccessControlManager(directoryBase, groupNamespace, userNamespace, handle);
-		acm.publishMyIdentity(ContentName.fromNative(userNamespace, friendlyNames[0]), handle.keyManager().getDefaultPublicKey());
+		acm.publishMyIdentity(new ContentName(userNamespace, friendlyNames[0]), handle.keyManager().getDefaultPublicKey());
 		handle.keyManager().publishKeyToRepository();
 		
 		// create the root ACL
 		// The root has user0 as a manager
-		Link lk = new Link(ContentName.fromNative(userNamespace, friendlyNames[0]), ACL.LABEL_MANAGER, null);
+		Link lk = new Link(new ContentName(userNamespace, friendlyNames[0]), ACL.LABEL_MANAGER, null);
 		ArrayList<Link> rootACLcontents = new ArrayList<Link>();
 		rootACLcontents.add(lk);
 		// it also has me as a manager, which means I'd better publish my identity as well
 		String myUserName = UserConfiguration.userName();
 		acm.publishMyIdentity(GroupAccessControlProfile.userNamespaceName(userNamespace, myUserName), KeyManager.getDefaultKeyManager().getDefaultPublicKey());
-		Link mlk = new Link(ContentName.fromNative(userNamespace, myUserName), ACL.LABEL_MANAGER, null);
+		Link mlk = new Link(new ContentName(userNamespace, myUserName), ACL.LABEL_MANAGER, null);
 		rootACLcontents.add(mlk);
 		ACL rootACL = new ACL(rootACLcontents);
 		acm.initializeNamespace(rootACL);
@@ -140,21 +140,21 @@ public class GACMNodeKeyDirtyTestRepo {
 
 		// create group0 containing user0 and user1
 		ArrayList<Link> G0Members = new ArrayList<Link>();
-		G0Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[0])));
-		G0Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[1])));
+		G0Members.add(new Link(new ContentName(userNamespace, friendlyNames[0])));
+		G0Members.add(new Link(new ContentName(userNamespace, friendlyNames[1])));
 		groupName[0] = "usergroup0-" + rand.nextInt(10000);
 		group[0] = acm.groupManager().createGroup(groupName[0], G0Members, 0);
 		
 		// create group1 containing group0
 		ArrayList<Link> G1Members = new ArrayList<Link>();
-		G1Members.add(new Link(ContentName.fromNative(groupNamespace, groupName[0])));
+		G1Members.add(new Link(new ContentName(groupNamespace, groupName[0])));
 		groupName[1] = "usergroup1-" + rand.nextInt(10000);
 		group[1] = acm.groupManager().createGroup(groupName[1], G1Members, 0);
 		
 		// create group2 containing user0 and user2
 		ArrayList<Link> G2Members = new ArrayList<Link>();
-		G2Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[0])));
-		G2Members.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[2])));
+		G2Members.add(new Link(new ContentName(userNamespace, friendlyNames[0])));
+		G2Members.add(new Link(new ContentName(userNamespace, friendlyNames[2])));
 		groupName[2] = "usergroup2-" + rand.nextInt(10000);
 		group[2] = acm.groupManager().createGroup(groupName[2], G2Members, 0);
 
@@ -170,8 +170,8 @@ public class GACMNodeKeyDirtyTestRepo {
 		// create nodes [0-2] and corresponding ACLs that make group[i] a manager of node[i].
 		for (int i=0; i<numberOfGroups; i++) {
 			String nodeName = "node" + i + "-" + rand.nextInt(10000) + ".txt";
-			node[i] = ContentName.fromNative(directoryBase, nodeName);
-			ContentName groupCN = ContentName.fromNative(groupNamespace, groupName[i]);
+			node[i] = new ContentName(directoryBase, nodeName);
+			ContentName groupCN = new ContentName(groupNamespace, groupName[i]);
 			Link lk = new Link(groupCN, ACL.LABEL_MANAGER, null);
 			ArrayList<Link> ACLcontents = new ArrayList<Link>();
 			ACLcontents.add(lk);
@@ -199,7 +199,7 @@ public class GACMNodeKeyDirtyTestRepo {
 	public void addMemberToGroup0() throws Exception {
 		// add user2 to group0
 		ArrayList<Link> membersToAdd = new ArrayList<Link>();
-		membersToAdd.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[2])));
+		membersToAdd.add(new Link(new ContentName(userNamespace, friendlyNames[2])));
 		group[0].addMembers(membersToAdd);
 		
 		// check that group0 is now of size 3
@@ -230,7 +230,7 @@ public class GACMNodeKeyDirtyTestRepo {
 	public void removeMemberFromGroup0() throws Exception {
 		// delete user1 from group0
 		ArrayList<Link> membersToRemove = new ArrayList<Link>();
-		membersToRemove.add(new Link(ContentName.fromNative(userNamespace, friendlyNames[1])));
+		membersToRemove.add(new Link(new ContentName(userNamespace, friendlyNames[1])));
 		group[0].removeMembers(membersToRemove);
 		
 		// check group0 is of size 2 again

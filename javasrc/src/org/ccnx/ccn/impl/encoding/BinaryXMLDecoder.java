@@ -508,11 +508,7 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 		// +2
 		byte [] byteTimestamp = readBlob();
 
-		CCNTime timestamp = new CCNTime(byteTimestamp);
-		if (null == timestamp) {
-			throw new ContentDecodingException("Cannot parse timestamp: " + DataUtils.printHexBytes(byteTimestamp));
-		}
-		return timestamp;
+		return new CCNTime(byteTimestamp);
 	}
 
 	public void readEndDocument() throws ContentDecodingException {

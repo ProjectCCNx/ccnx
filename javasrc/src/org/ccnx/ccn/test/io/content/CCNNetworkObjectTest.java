@@ -101,7 +101,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		
 		ns = new ContentName[NUM_LINKS];
 		for (int i=0; i < NUM_LINKS; ++i) {
-			ns[i] = ContentName.fromNative(testHelper.getClassNamespace(), "Links", prefix+Integer.toString(i));
+			ns[i] = new ContentName(testHelper.getClassNamespace(), "Links", prefix+Integer.toString(i));
 		}
 		Arrays.fill(publisherid1, (byte)6);
 		Arrays.fill(publisherid2, (byte)3);
@@ -155,7 +155,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		CCNHandle lput = CCNHandle.open();
 		CCNHandle lget = CCNHandle.open();
 		
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testVersioning"), stringObjName);
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testVersioning"), stringObjName);
 		try {
 
 			CCNStringObject so = new CCNStringObject(testName, "First value", SaveType.RAW, lput);
@@ -209,7 +209,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		// object than a collection.
 		CCNHandle lput = CCNHandle.open();
 		CCNHandle lget = CCNHandle.open();
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveToVersion"), stringObjName);
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testSaveToVersion"), stringObjName);
 		try {
 
 			CCNTime desiredVersion = CCNTime.now();
@@ -246,7 +246,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		Log.info(Log.FAC_TEST, "Starting testEmptySave");
 
 		boolean caught = false;
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testEmptySave"), collectionObjName);
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testEmptySave"), collectionObjName);
 		try {
 			CollectionObject emptycoll = 
 				new CollectionObject(testName, (Collection)null, SaveType.RAW, handle);
@@ -270,7 +270,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 	public void testStreamUpdate() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testStreamUpdate");
 
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testStreamUpdate"), collectionObjName);
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testStreamUpdate"), collectionObjName);
 		CCNHandle tHandle = CCNHandle.open();
 		try {
 			CollectionObject testCollectionObject = new CollectionObject(testName, small1, SaveType.RAW, tHandle);
@@ -329,8 +329,8 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 	public void testVersionOrdering() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testVersionOrdering");
 
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name1");
-		ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name2");
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name1");
+		ContentName testName2 = new ContentName(testHelper.getTestNamespace("testVersionOrdering"), collectionObjName, "name2");
 		CCNHandle tHandle = CCNHandle.open();
 		
 		try {
@@ -364,8 +364,8 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		Log.info(Log.FAC_TEST, "Started testUpdateOtherName");
 
 		CCNHandle tHandle = CCNHandle.open();
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name1");
-		ContentName testName2 = ContentName.fromNative(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name2");
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name1");
+		ContentName testName2 = new ContentName(testHelper.getTestNamespace("testUpdateOtherName"), collectionObjName, "name2");
 		try {
 
 			CollectionObject c0 = new CollectionObject(testName, empty, SaveType.RAW, handle);
@@ -409,7 +409,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		CCNHandle tHandle = CCNHandle.open();
 		CCNHandle tHandle2 = CCNHandle.open();
 		CCNHandle tHandle3 = CCNHandle.open();
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateInBackground"), stringObjName, "name1");
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testUpdateInBackground"), stringObjName, "name1");
 		try {
 			CCNStringObject c0 = new CCNStringObject(testName, (String)null, SaveType.RAW, tHandle);
 			c0.updateInBackground();
@@ -451,7 +451,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 	public void testBackgroundVerifier() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testBackgroundVerifier");
 
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testBackgroundVerifier"), stringObjName, "name1");
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testBackgroundVerifier"), stringObjName, "name1");
 		try {
 			CCNStringObject c0 = new CCNStringObject(testName, (String)null, SaveType.RAW, CCNHandle.open());
 			c0.updateInBackground(true);
@@ -512,7 +512,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 	public void testSaveAsGone() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testSaveAsGone");
 
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testSaveAsGone"), collectionObjName);
 		CCNHandle tHandle = CCNHandle.open();
 		CCNHandle tHandle2 = CCNHandle.open();
 		try {
@@ -568,7 +568,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 	public void testUpdateDoesNotExist() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testUpdateDoesNotExist");
 
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateDoesNotExist"), collectionObjName);
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testUpdateDoesNotExist"), collectionObjName);
 		CCNHandle tHandle = CCNHandle.open();
 		try {
 			Log.info(Log.FAC_TEST, "CCNNetworkObjectTest: Entering testUpdateDoesNotExist");
@@ -603,7 +603,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		// Testing for matching info about first segment.
 		CCNHandle lput = CCNHandle.open();
 		CCNHandle lget = CCNHandle.open();
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testFirstSegmentInfo"), stringObjName);
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testFirstSegmentInfo"), stringObjName);
 		try {
 
 			CCNTime desiredVersion = CCNTime.now();
@@ -651,7 +651,7 @@ public class CCNNetworkObjectTest extends CCNNetworkObjectTestBase {
 		SaveType saveType = SaveType.RAW;
 		CCNHandle writeHandle = CCNHandle.open();
 		CCNHandle readHandle = CCNHandle.open();
-		ContentName testName = ContentName.fromNative(testHelper.getTestNamespace("testUpdateListener"), 
+		ContentName testName = new ContentName(testHelper.getTestNamespace("testUpdateListener"), 
 										stringObjName);
 		
 		CounterListener ourListener = new CounterListener();

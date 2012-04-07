@@ -17,6 +17,9 @@
 
 package org.ccnx.ccn.impl.repo;
 
+import static org.ccnx.ccn.profiles.CommandMarker.COMMAND_MARKER_REPO_START_WRITE;
+import static org.ccnx.ccn.protocol.Component.NONCE;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.NoSuchElementException;
@@ -31,7 +34,6 @@ import org.ccnx.ccn.impl.CCNFlowControl;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.support.ConcurrencyUtils.Waiter;
 import org.ccnx.ccn.io.content.ContentDecodingException;
-import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -200,8 +202,7 @@ public class RepositoryFlowControl extends CCNFlowControl implements CCNContentH
 
 		// A nonce is used because if we tried to write data with the same name more than once, we could retrieve the
 		// the previous answer from the cache, and the repo would never be informed of our start write.
-		ContentName repoWriteName =
-			new ContentName(name, CommandMarker.COMMAND_MARKER_REPO_START_WRITE.getBytes(), Interest.generateNonce());
+		ContentName repoWriteName = new ContentName(name, COMMAND_MARKER_REPO_START_WRITE, NONCE);
 		Interest writeInterest = new Interest(repoWriteName);
 		if (localRepo || SystemConfiguration.FC_LOCALREPOSITORY) {
 			//this is meant to be written to a local repository, not any/multiple connected repos

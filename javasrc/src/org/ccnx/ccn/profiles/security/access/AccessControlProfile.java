@@ -21,6 +21,7 @@ import org.ccnx.ccn.profiles.CCNProfile;
 import org.ccnx.ccn.profiles.CommandMarker;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.namespace.NamespaceProfile;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
@@ -44,14 +45,12 @@ public class AccessControlProfile implements CCNProfile {
 	public static final byte [] ACCESS_CONTROL_MARKER_BYTES = ACCESS_CONTROL_MARKER.getBytes();
 
 	public static final String ROOT_NAME = "ROOT";
-	public static final byte [] ROOT_NAME_BYTES = ContentName.componentParseNative(ROOT_NAME);
+	public static final byte [] ROOT_NAME_BYTES = Component.parseNative(ROOT_NAME);
 	public static final String DATA_KEY_NAME = "DK";
-	public static final byte [] DATA_KEY_NAME_BYTES = ContentName.componentParseNative(DATA_KEY_NAME);
-	public static final String ACCESS_CONTROL_POLICY_NAME = "AccessControl";
-	public static final byte [] ACCESS_CONTROL_POLICY_NAME_BYTES = ACCESS_CONTROL_POLICY_NAME.getBytes();
-	protected static final ContentName ACCESS_CONTROL_POLICY_CONTENTNAME = new ContentName(new byte [][] {ACCESS_CONTROL_POLICY_NAME_BYTES});
+	public static final byte [] DATA_KEY_NAME_BYTES = Component.parseNative(DATA_KEY_NAME);
+	public static final Component ACCESS_CONTROL_POLICY_NAME = new Component("AccessControl");
 
-	protected static final ContentName ROOT_POSTFIX_NAME = new ContentName(new byte [][] {ACCESS_CONTROL_MARKER_BYTES, ROOT_NAME_BYTES});
+	protected static final ContentName ROOT_POSTFIX_NAME = new ContentName(ACCESS_CONTROL_MARKER_BYTES, ROOT_NAME_BYTES);
 
 	/**
 	 * Returns whether the specified name contains the access control marker
@@ -122,20 +121,16 @@ public class AccessControlProfile implements CCNProfile {
 	 * @return
 	 */
 	public static final ContentName getAccessControlPolicyName(ContentName policyPrefix) {
-		return new ContentName(policyPrefix, ACCESS_CONTROL_POLICY_NAME_BYTES);
+		return new ContentName(policyPrefix, ACCESS_CONTROL_POLICY_NAME);
 	}
 
-	public static ContentName AccessControlPolicyContentName() {
-		return ACCESS_CONTROL_POLICY_CONTENTNAME;
-	}
-	
 	/**
 	 * Returns whether the specified name contains the access control policy marker
 	 * @param name the name
 	 * @return
 	 */
 	public static boolean isAccessControlPolicyName(ContentName name) {
-		return name.contains(ACCESS_CONTROL_POLICY_NAME_BYTES);
+		return name.contains(ACCESS_CONTROL_POLICY_NAME);
 	}
 	
 	/**

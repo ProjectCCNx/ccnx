@@ -158,13 +158,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		setSize(400, 300);
 
 		ContentName slash = null;
-		try {
-			slash = ContentName.fromNative("/");
-			slash = new ContentName();
-		} catch (MalformedContentNameStringException e1) {
-			Log.logException("could not create slash (\"/\") content name", e1);
-			Log.exitApplication();
-		}
+		slash = ContentName.ROOT;
 
 		DefaultMutableTreeNode top = new DefaultMutableTreeNode(new IconData(
 				ICON_FOLDER, null, new Name(slash.component(0), null, true)));
@@ -177,21 +171,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			Log.fine("adding component: " + root.stringComponent(i));
 			// add each component to the tree
 			newNode = new DefaultMutableTreeNode(new IconData(ICON_FOLDER,
-					null, new Name(root.component(i), root.copy(i), true)));
-			if (top == null) {
-				top = newNode;
-			} else {
-				node.add(newNode);
-			}
-			// usableRoot = node;
+					null, new Name(root.component(i), root.cut(i), true)));
+			node.add(newNode);
 			node = newNode;
-		}
-
-		if (top == null) {
-			top = new DefaultMutableTreeNode(new IconData(ICON_FOLDER, null,
-					new Name(root.component(0), null, true)));
-			newNode = top;
-			node = top;
 		}
 
 		usableRoot = top;
@@ -390,8 +372,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					Log.fine("Selected Node is " + selectedPrefix);
 
 					try {
-						ContentName contentName = ContentName.fromURI(selectedPrefix);
-						contentName = ContentName.fromURI(contentName, file.getName());
+						ContentName contentName = ContentName.fromURI(selectedPrefix).append(file.getName());
 						ContentName temp = null;
 						while (temp==null) {
 							String name = JOptionPane.showInputDialog("Send File to Repo As:", contentName.toString());
@@ -587,22 +568,16 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 */
 	DefaultMutableTreeNode getTreeNode(ContentName ccnContentName) {
 		Log.fine("handling returned names!!! prefix = "+ ccnContentName.toString());
-		Log.fine("handling returned names!!! prefix = "+ ccnContentName.toString());
 
 		TreePath prefixPath = new TreePath(usableRoot);
 
 		Log.fine("prefix path: " + prefixPath.toString());
-		Log.fine("prefix path: " + prefixPath.toString());
 
-		ArrayList<byte[]> nbytes = ccnContentName.components();
-		String[] names = new String[nbytes.size()];
+		String[] names = new String[ccnContentName.count()];
 		int ind = 0;
-		ContentName newName = null;
-		for (byte[] n : nbytes) {
+		for (byte[] n : ccnContentName) {
 			Log.fine("adding n: "+new String(n));
-			//names[ind] = new String(n);
-			//TODO: switch to the following line after current changes are checked in
-			newName = ContentName.fromNative(new ContentName(), n);
+			ContentName newName = new ContentName(n);
 			Log.fine("newName = "+newName+" "+newName.toString().replace("/", ""));
 			names[ind] = newName.toString();
 			ind++;
@@ -848,7 +823,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				return;
 			}
 			
-			ContentName cn = ContentName.fromNative(new ContentName(), node.name);
+			ContentName cn = new ContentName(node.name);
 			
 			String name = cn.toString();
 			
@@ -917,11 +892,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			DefaultMutableTreeNode node = getTreeNode(event.getPath());
 			Name nodeName = getNameNode(node);
 			Log.fine("nodeName: " + nodeName.toString());
-			ContentName prefixToCancel = new ContentName();
+			ContentName prefixToCancel = ContentName.ROOT;
 			if (nodeName.path == null) {
 				Log.fine("collapsed the tree at the root");
 			} else {
-				prefixToCancel = ContentName.fromNative(nodeName.path, nodeName.name);
+				prefixToCancel = new ContentName(nodeName.path, nodeName.name);
 				Log.fine("tree collapsed at: " + prefixToCancel.toString());
 			}
 			Log.fine("cancelling prefix: " + prefixToCancel);
@@ -1050,17 +1025,17 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		if (fnode.path == null)
 			Log.fine("the path is null");
 		else
-			Log.fine("fnode: " + ContentName.fromNative(new ContentName(), fnode.name) + " path: " + fnode.path.toString());
+			Log.fine("fnode: " + new ContentName(fnode.name) + " path: " + fnode.path.toString());
 		ContentName toExpand = null;
 		if (fnode.path == null)
-			toExpand = new ContentName();
+			toExpand = ContentName.ROOT;
 		else
-			toExpand = ContentName.fromNative(fnode.path, fnode.name);
+			toExpand = new ContentName(fnode.path, fnode.name);
 
 		String p = toExpand.toString();
 		Log.fine("toExpand: " + toExpand + " p: " + p);
 
-		if (fnode.name != null && previewTextFiles && (ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".txt") || ContentName.fromNative(new ContentName(), fnode.name).toString().endsWith(".text"))) {
+		if (fnode.name != null && previewTextFiles && (new ContentName(fnode.name).toString().endsWith(".txt") || new ContentName(fnode.name).toString().endsWith(".text"))) {
 			// get the file from the repo
 			Log.fine("Retrieve from Repo: " + p);
 			retrieveFromRepo(p);
@@ -1070,7 +1045,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		if (fnode.path == null)
 			Log.fine("the path is null");
 		else
-			Log.fine("this is the path: " + fnode.path.toString() + " this is the name: " + ContentName.fromNative(new ContentName(), fnode.name));
+			Log.fine("this is the path: " + fnode.path.toString() + " this is the name: " + new ContentName(fnode.name));
 		Log.info("Registering Prefix: " + p);
 		registerPrefix(p);
 
@@ -1106,7 +1081,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		if (Log.getLevel()==Level.FINE) {
 			Log.fine("got a callback! Here are the returned names: ");
 			for (ContentName cn : n) {
-				if (!prefix.equals(new ContentName()))
+				if (!prefix.equals(ContentName.ROOT))
 					Log.fine(cn.toString() + " (" + prefix.toString() + cn.toString() + ")");
 				else
 					Log.fine(cn.toString() + " (" + cn.toString() + ")");

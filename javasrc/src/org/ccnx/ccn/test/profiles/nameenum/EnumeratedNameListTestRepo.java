@@ -33,6 +33,7 @@ import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.CCNStringObject;
 import org.ccnx.ccn.profiles.nameenum.EnumeratedNameList;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -106,15 +107,15 @@ public class EnumeratedNameListTestRepo {
 		name3String = nameString + Integer.toString(value+2);
 		name4String = nameString + Integer.toString(value+3);
 
-		name1 = ContentName.fromNative(directory, name1String);
-		name2 = ContentName.fromNative(directory, name2String);
-		name3 = ContentName.fromNative(directory, name3String);
-		name4 = ContentName.fromNative(directory2, name1String);
-		name5 = ContentName.fromNative(directory2, name2String);
-		name6 = ContentName.fromNative(directory2, name3String);
-		name7 = ContentName.fromNative(directory2, name4String);
-		name8 = ContentName.fromNative(directory3, name1String);
-		name9 = ContentName.fromNative(directory3, name2String);
+		name1 = new ContentName(directory, name1String);
+		name2 = new ContentName(directory, name2String);
+		name3 = new ContentName(directory, name3String);
+		name4 = new ContentName(directory2, name1String);
+		name5 = new ContentName(directory2, name2String);
+		name6 = new ContentName(directory2, name3String);
+		name7 = new ContentName(directory2, name4String);
+		name8 = new ContentName(directory3, name1String);
+		name9 = new ContentName(directory3, name2String);
 		brokenPrefix = ContentName.fromNative(prefix1StringError);
 		putHandle = CCNHandle.open();
 	}
@@ -296,7 +297,7 @@ public class EnumeratedNameListTestRepo {
 			// Now we should have everything
 			ContentName latestReturnName = versionList.getLatestVersionChildName();
 			System.out.println("Got children: " + versionList.getChildren());
-			System.out.println("Got latest name " + latestReturnName + " expected " + new ContentName(new byte [][]{latestName.lastComponent()}));
+			System.out.println("Got latest name " + latestReturnName + " expected " + new ContentName(latestName.lastComponent()));
 			Assert.assertTrue(Arrays.areEqual(latestName.lastComponent(), latestReturnName.lastComponent()));
 			
 		} catch (Exception e) {
@@ -387,7 +388,7 @@ public class EnumeratedNameListTestRepo {
 	private ContentName addContentToRepo(ContentName name, CCNHandle handle) throws ConfigurationException, IOException {
 		//method to load something to repo for testing
 		CCNStringObject cso = 
-			new CCNStringObject(name, ContentName.componentPrintNative(name.lastComponent()), SaveType.REPOSITORY, handle);
+			new CCNStringObject(name, Component.printNative(name.lastComponent()), SaveType.REPOSITORY, handle);
 		cso.save();
 		Log.info(Log.FAC_TEST, "Saved new object: " + cso.getVersionedName());
 		return cso.getVersionedName();	

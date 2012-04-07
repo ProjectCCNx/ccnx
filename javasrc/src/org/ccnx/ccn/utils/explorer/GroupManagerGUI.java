@@ -44,6 +44,7 @@ import org.ccnx.ccn.profiles.security.access.AccessDeniedException;
 import org.ccnx.ccn.profiles.security.access.group.Group;
 import org.ccnx.ccn.profiles.security.access.group.GroupAccessControlManager;
 import org.ccnx.ccn.profiles.security.access.group.GroupManager;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
 public class GroupManagerGUI extends JDialog implements ActionListener, ListSelectionListener {
@@ -52,8 +53,8 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 	
 	private GroupManager gm;
 	private PrincipalEnumerator pEnum;
-	ContentName userStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Users");
-	ContentName groupStorage = ContentName.fromNative(UserConfiguration.defaultNamespace(), "Groups");
+	ContentName userStorage = new ContentName(UserConfiguration.defaultNamespace(), "Users");
+	ContentName groupStorage = new ContentName(UserConfiguration.defaultNamespace(), "Groups");
 	
 	private ArrayList<ContentName> usersContentNameList = new ArrayList<ContentName>();
 	private ArrayList<ContentName> groupsContentNameList = new ArrayList<ContentName>();
@@ -464,7 +465,7 @@ public class GroupManagerGUI extends JDialog implements ActionListener, ListSele
 		JList list = (JList) e.getSource();		
 		if(list.getSelectedValue() != null){
 			ContentName groupContentName = (ContentName) list.getSelectedValue();
-			selectedGroupFriendlyName = ContentName.componentPrintNative(groupContentName.lastComponent());
+			selectedGroupFriendlyName = Component.printNative(groupContentName.lastComponent());
 			membersToAdd = new ArrayList<Link>();
 			membersToRemove = new ArrayList<Link>();
 			populateGroupMembershipList();

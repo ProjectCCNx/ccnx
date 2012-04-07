@@ -98,7 +98,7 @@ public class CCNVersionedInputStreamTest {
 		Flosser flosser = new Flosser();
 
 		// Write a set of output
-		defaultStreamName = ContentName.fromNative(testHelper.getClassNamespace(), "LongOutput.bin");
+		defaultStreamName = new ContentName(testHelper.getClassNamespace(), "LongOutput.bin");
 
 		firstVersionName = VersioningProfile.addVersion(defaultStreamName);
 		firstVersionLength = randBytes.nextInt(MAX_FILE_SIZE);

@@ -17,6 +17,9 @@
 
 package org.ccnx.ccn.test.protocol;
 
+import static org.ccnx.ccn.protocol.ContentName.ROOT;
+import static org.ccnx.ccn.protocol.ContentName.SEPARATOR;
+import static org.ccnx.ccn.protocol.ContentName.fromNative;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -222,7 +225,6 @@ public class ContentNameTest {
 		}
 		assertNotNull(name5);
 		assertEquals(name5.count(), 0);
-		assertEquals(name5.components().size(), 0);
 		assertEquals(name5.toString(), "/");
 		
 		// empty name with scheme
@@ -237,7 +239,6 @@ public class ContentNameTest {
 		}
 		assertNotNull(name6);
 		assertEquals(name6.count(), 0);
-		assertEquals(name6.components().size(), 0);
 		assertEquals(name6.toString(), "/");
 		
 		// query and fragment parts
@@ -284,23 +285,22 @@ public class ContentNameTest {
 	}
 	
 	@Test
+	@SuppressWarnings( "deprecation" ) // this method tests a deprecated method
 	public void testContentNameStringArray() throws MalformedContentNameStringException {
 		Log.info(Log.FAC_TEST, "Starting testContentNameStringArray");
 
 		ContentName name;
 		ContentName name2;
-		String testString = ContentName.SEPARATOR + baseName + ContentName.SEPARATOR +
-		subName1 + ContentName.SEPARATOR + 
-		document1;
+		String testString = SEPARATOR + baseName + SEPARATOR + subName1 + SEPARATOR + document1;
 		String [] testStringParts = new String[]{baseName,subName1,document1};
-		
+
 		// as URI format
 		name = ContentName.fromURI(testStringParts);
 		name2 = ContentName.fromURI(testString);
 		assertEquals(name, name2);
 		
 		// as native Java
-		name = ContentName.fromNative(testStringParts);
+		name = new ContentName(baseName,subName1,document1);
 		name2 = ContentName.fromNative(testString);
 		assertEquals(name, name2);
 		
@@ -332,7 +332,7 @@ public class ContentNameTest {
 		arr[1] = subName1.getBytes();
 		arr[2] = document1.getBytes();
 		System.out.println("Creating name from byte arrays.");
-		ContentName name = new ContentName(3, arr);
+		ContentName name = new ContentName(arr[0], arr[1], arr[2]);
 		assertNotNull(name);
 		System.out.println("Name: " + name);
 		assertEquals(name, ContentName.fromURI(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR +
@@ -343,7 +343,6 @@ public class ContentNameTest {
 		assertNotNull(name2);
 		System.out.println("Name 2: " + name2);
 		assertEquals(name2.count(), 4);
-		assertEquals(name2.components().size(), 4);
 		assert(DataUtils.arrayEquals(name2.component(0), arr[0]));
 		assert(DataUtils.arrayEquals(name2.component(1), arr[1]));
 		assert(DataUtils.arrayEquals(name2.component(2), arr[2]));
@@ -353,6 +352,7 @@ public class ContentNameTest {
 	}
 
 	@Test
+	@SuppressWarnings( "deprecation" ) // this method tests a deprecated method
 	public void testMultilevelString() throws MalformedContentNameStringException {
 		Log.info(Log.FAC_TEST, "Starting testMultilevelString");
 
@@ -375,7 +375,7 @@ public class ContentNameTest {
 		assertEquals(child.cut(document1.getBytes()), parent);
 		assertTrue(DataUtils.arrayEquals(child.component(2), document1.getBytes()));
 		
-		child = ContentName.fromNative(parent, document1);
+		child = new ContentName(parent, document1);
 		System.out.println("Child is (native, one additional comp): " + child);
 		assertNotNull(child);
 		assertTrue(parent.isPrefixOf(child));
@@ -383,10 +383,10 @@ public class ContentNameTest {
 		assertEquals(child.cut(document1.getBytes()), parent);
 		assertTrue(DataUtils.arrayEquals(child.component(2), document1.getBytes()));
 		
-		child = ContentName.fromNative(parent, childComps[0], childComps[1]);
+		child = new ContentName(parent, childComps[0], childComps[1]);
 		System.out.println("Child is (native): " + child);
 		assertNotNull(child);
-		ContentName child2 = ContentName.fromNative(parent, childComps);
+		ContentName child2 = new ContentName(parent, document1, document2);
 		System.out.println("Child2 is (native): " + child2);
 		assertNotNull(child2);
 		assertEquals(child, child2);
@@ -410,7 +410,7 @@ public class ContentNameTest {
 		arr[1] = subName1.getBytes();
 		arr[2] = document1.getBytes();
 		System.out.println("Creating name from byte arrays with invalid values.");
-		ContentName name = new ContentName(3, arr);
+		ContentName name = new ContentName(arr[0], arr[1], arr[2]);
 		assertNotNull(name);
 		System.out.println("Name: " + name);
 		// Now add invalid component and test round-trip
@@ -483,7 +483,7 @@ public class ContentNameTest {
 	}
 
 	@Test
-	public void testDecodeInputStream() {
+	public void testDecodeInputStream() throws ContentDecodingException {
 		Log.info(Log.FAC_TEST, "Starting testDecodeInputStream");
 
 		byte [][] arr = new byte[4][];
@@ -508,12 +508,7 @@ public class ContentNameTest {
 		System.out.println("Decoding name: ");
 		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
 		ContentName name2 = new ContentName();
-		try {
-			name2.decode(bais);
-		} catch (ContentDecodingException e) {
-			Log.warning("Exception " + e.getClass().getName() + ", message: " + e.getMessage());
-			Log.warningStackTrace(Log.FAC_TEST, e);
-		}
+		name2.decode(bais);
 		System.out.println("Decoded name: " + name2);
 		assertEquals(name, name2);
 		
@@ -551,8 +546,8 @@ public class ContentNameTest {
 
 		ContentName small = ContentName.fromURI(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR + subName1);
 		ContentName small2 = ContentName.fromURI(ContentName.SEPARATOR + baseName + ContentName.SEPARATOR + subName1);
-		ContentName middle = ContentName.fromURI(small, subName2);
-		ContentName large = ContentName.fromURI(middle, document1);
+		ContentName middle = new ContentName(small, subName2);
+		ContentName large = new ContentName(middle, document1);
 		
 		assertEquals(small, small);
 		assertEquals(middle, middle);
@@ -636,5 +631,12 @@ public class ContentNameTest {
 		System.out.println("Executed "+ loops + " ContentName.toString() in " + elapsed + " ms; " + ((loops * 1000) / elapsed) + "/s");
 		
 		Log.info(Log.FAC_TEST, "Completed testContentNamePrintPerformance");
+	}
+	
+	@Test
+	public void testPostfix() throws MalformedContentNameStringException {
+		assertEquals( fromNative("/a/b/c/d/e").postfix(fromNative("/a/b/c")), fromNative("/d/e") );
+		assertEquals( fromNative("/a/b/c").postfix(fromNative("/a/b/c")), ROOT );
+		assertEquals( fromNative("/a/b/c").postfix(fromNative("/a/b/d/e")), null );
 	}
 }

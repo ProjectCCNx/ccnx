@@ -78,8 +78,8 @@ public class SignedInfoTest {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		try {
-			name = ContentName.fromURI(new String[]{baseName, subName2, document2});
-			keyname = ContentName.fromURI(new String[]{baseName, subName2, keydoc});
+			name = new ContentName(baseName, subName2, document2);
+			keyname = new ContentName(baseName, subName2, keydoc);
 			Security.addProvider(new BouncyCastleProvider());
 			
 			// generate key pair

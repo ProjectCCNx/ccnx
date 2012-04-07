@@ -52,8 +52,8 @@ public class LinkObjectTestRepo extends CCNTestBase {
 	public void testLinks() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testLinks");
 
-		ContentName nonLinkName = ContentName.fromNative(testHelper.getTestNamespace("testLinks"), "myNonLink");
-		ContentName linkName = ContentName.fromNative(testHelper.getTestNamespace("testLinks"), "myLink");
+		ContentName nonLinkName = new ContentName(testHelper.getTestNamespace("testLinks"), "myNonLink");
+		ContentName linkName = new ContentName(testHelper.getTestNamespace("testLinks"), "myLink");
 
 		// Write something that isn't a collection
 		CCNSerializableStringObject so =

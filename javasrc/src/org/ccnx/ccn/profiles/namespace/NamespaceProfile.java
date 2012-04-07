@@ -26,7 +26,7 @@ public class NamespaceProfile implements CCNProfile {
 		CommandMarker.commandMarker(CommandMarker.MARKER_NAMESPACE, "policy");
 	public static final byte [] NAMESPACE_POLICY_MARKER_BYTES = NAMESPACE_POLICY_MARKER.getBytes();
 	protected static final ContentName POLICY_POSTFIX_NAME = 
-		new ContentName(new byte [][] {NAMESPACE_POLICY_MARKER_BYTES});
+		new ContentName(NAMESPACE_POLICY_MARKER_BYTES);
 
 	/**
 	 * Return the set of name components to add to get the policy path

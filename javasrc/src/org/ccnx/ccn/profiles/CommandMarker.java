@@ -18,6 +18,7 @@
 package org.ccnx.ccn.profiles;
 
 import org.ccnx.ccn.impl.support.DataUtils;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 
 /**
@@ -82,7 +83,7 @@ import org.ccnx.ccn.protocol.ContentName;
  * @author rasmusse, smetters
  *
  */
-public class CommandMarker {
+public class CommandMarker implements ContentName.ComponentProvider {
 	
 	/**
 	 * Reserved bytes.
@@ -198,7 +199,7 @@ public class CommandMarker {
 
 			StringBuffer sb = new StringBuffer(COMMAND_SEPARATOR);
 			sb.append(operation);
-			byte [] csb = ContentName.componentParseNative(sb.toString());
+			byte [] csb = Component.parseNative(sb.toString());
 			byte [] bc = new byte[csb.length + prefix.length];
 			System.arraycopy(prefix, 0, bc, 0, prefix.length);
 			System.arraycopy(csb, 0, bc, prefix.length, csb.length);
@@ -215,7 +216,7 @@ public class CommandMarker {
 			}			
                         sb.append(command);
 		}
-		byte [] csb = ContentName.componentParseNative(sb.toString());
+		byte [] csb = Component.parseNative(sb.toString());
 		byte [] bc = new byte[csb.length + COMMAND_PREFIX.length];
 		System.arraycopy(COMMAND_PREFIX, 0, bc, 0, COMMAND_PREFIX.length);
 		System.arraycopy(csb, 0, bc, COMMAND_PREFIX.length, csb.length);
@@ -285,7 +286,7 @@ public class CommandMarker {
 				sb.append(CommandMarker.UTF8_ARGUMENT_SEPARATOR);
 				sb.append(arguments[i]);
 			}
-			csb = ContentName.componentParseNative(sb.toString());
+			csb = Component.parseNative(sb.toString());
 		}
 		int csblen = ((null != csb) ? csb.length : 0);
 		
@@ -458,5 +459,9 @@ public class CommandMarker {
 		}
 		
 		return DataUtils.subarray(nameComponent, argumentStart+1, nameComponent.length - argumentStart - 1);
+	}
+
+	public byte[] getComponent() {
+		return _byteCommandMarker;
 	}
 }

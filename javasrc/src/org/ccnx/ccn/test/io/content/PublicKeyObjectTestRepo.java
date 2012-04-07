@@ -87,11 +87,11 @@ public class PublicKeyObjectTestRepo {
         keyGen = KeyPairGenerator.getInstance("DH");
         keyGen.initialize(576);
         dhPair = keyGen.genKeyPair();
-	    namespace = ContentName.fromNative(testHelper.getClassNamespace(), "Users");
+	    namespace = new ContentName(testHelper.getClassNamespace(), "Users");
 	    for (int i=0; i < storedKeyNames.length; ++i) {
-			storedKeyNames[i][0] = ContentName.fromNative(namespace, "testRSAUser-" + i, "KEY");
-			storedKeyNames[i][1] = ContentName.fromNative(namespace, "testDSAUser-" + i, "KEY");
-			storedKeyNames[i][2] = ContentName.fromNative(namespace, "testDHUser-" + i, "KEY");
+			storedKeyNames[i][0] = new ContentName(namespace, "testRSAUser-" + i, "KEY");
+			storedKeyNames[i][1] = new ContentName(namespace, "testDSAUser-" + i, "KEY");
+			storedKeyNames[i][2] = new ContentName(namespace, "testDHUser-" + i, "KEY");
 	    }
 	}
 
@@ -132,7 +132,7 @@ public class PublicKeyObjectTestRepo {
 	@Test
 	public void testUnversionedPublicKeyObject() throws Exception {
 		// we might want to use a PKO to read an object written without a version.
-		ContentName unversionedName = ContentName.fromNative(testHelper.getTestNamespace("testUnversionedPublicKeyObject"), "unversionedKey");
+		ContentName unversionedName = new ContentName(testHelper.getTestNamespace("testUnversionedPublicKeyObject"), "unversionedKey");
 		if (null == flosser) {
 			flosser = new Flosser();
 		}

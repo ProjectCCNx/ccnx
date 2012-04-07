@@ -66,21 +66,21 @@ public class GroupAccessControlManagerTestRepo {
 		Random rand = new Random();
 		String directoryBase = "/test/AccessControlManagerTestRepo-";
 		baseNode = ContentName.fromNative(directoryBase + Integer.toString(rand.nextInt(10000)));
-		childNode = ContentName.fromNative(baseNode, "child");
-		grandchildNode = ContentName.fromNative(childNode, "grandchild");
+		childNode = new ContentName(baseNode, "child");
+		grandchildNode = new ContentName(childNode, "grandchild");
 				
 		// create user identities with TestUserData
 		ContentName testPrefix = UserConfiguration.defaultNamespace();
-		userKeyStorePrefix = ContentName.fromNative(testPrefix, AccessControlProfile.ACCESS_CONTROL_MARKER_BYTES);
-		userNamespace = ContentName.fromNative(testPrefix, "home");
-		groupNamespace = ContentName.fromNative(testPrefix, "groups");
+		userKeyStorePrefix = new ContentName(testPrefix, AccessControlProfile.ACCESS_CONTROL_MARKER_BYTES);
+		userNamespace = new ContentName(testPrefix, "home");
+		groupNamespace = new ContentName(testPrefix, "groups");
 		td = new CreateUserData(userKeyStorePrefix, userCount, true, "password".toCharArray());
 		td.publishUserKeysToRepository(userNamespace);
 		friendlyNames = td.friendlyNames().toArray(new String[0]);
 		Assert.assertEquals(userCount, friendlyNames.length);
-		user0 = ContentName.fromNative(userNamespace, friendlyNames[0]);
-		user1 = ContentName.fromNative(userNamespace, friendlyNames[1]);
-		user2 = ContentName.fromNative(userNamespace, friendlyNames[2]);
+		user0 = new ContentName(userNamespace, friendlyNames[0]);
+		user1 = new ContentName(userNamespace, friendlyNames[1]);
+		user2 = new ContentName(userNamespace, friendlyNames[2]);
 	}
 	
 	/**

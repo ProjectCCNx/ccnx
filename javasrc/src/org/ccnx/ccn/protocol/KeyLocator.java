@@ -45,7 +45,7 @@ import org.ccnx.ccn.io.content.ContentEncodingException;
  * necessary to verify a piece of content. It might include the key itself, a certificate
  * containing the key, or a CCN name pointing to a location where the key can be found.
  */
-public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Serializable {
+public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Serializable, ContentNameProvider {
 
 	private static final long serialVersionUID = 7608180398885293453L;
 
@@ -296,4 +296,13 @@ public class KeyLocator extends GenericXMLEncodable implements XMLEncodable, Ser
 		return output + " UNKNOWN";
 	}
 
+	/**
+	 * Enables a KeyLocator to be used directly in a ContentName builder.
+	 * @return Gets the ContentName from the KeyName
+	 * @see ContentNameProvider
+	 * @see ContentName#builder(org.ccnx.ccn.protocol.ContentName.StringParser, Object[])
+	 */
+	public ContentName getContentName() {
+		return _keyName.name();
+	}
 }
