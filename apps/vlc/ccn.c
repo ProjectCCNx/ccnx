@@ -304,7 +304,7 @@ static void CCNClose(vlc_object_t *p_this)
     access_t     *p_access = (access_t *)p_this;
     access_sys_t *p_sys = p_access->p_sys;
 
-    msg_Dbg(p_access, "CCN.Close called");
+    msg_Info(p_access, "CCN.Close called");
     /* indicate exit required, then clear the FIFO so we will wake from
      * block_FifoPace, and join the exiting thread
      */
@@ -314,6 +314,7 @@ static void CCNClose(vlc_object_t *p_this)
     vlc_cancel(p_sys->thread);
     vlc_join(p_sys->thread, NULL);
     vlc_mutex_lock(&p_sys->lock);
+    ccn_destroy(&(p_sys->ccn));
     if (p_sys->p_fifo) {
         block_FifoRelease(p_sys->p_fifo);
         p_sys->p_fifo = NULL;
@@ -321,15 +322,14 @@ static void CCNClose(vlc_object_t *p_this)
     if (p_sys->p_template) {
         ccn_charbuf_destroy(&p_sys->p_template);
     }
-    if (p_sys->incoming) {
-        free(p_sys->incoming);
-        p_sys->incoming = NULL;
+    if (p_sys->prefetch) {
+        free(p_sys->prefetch);
+        p_sys->prefetch = NULL;
     }
     if (p_sys->p_name) {
         ccn_charbuf_destroy(&p_sys->p_name);
         p_sys->p_name = NULL;
     }
-    ccn_destroy(&(p_sys->ccn));
     vlc_mutex_unlock(&p_sys->lock);
     vlc_mutex_destroy(&p_sys->lock);
     if (p_sys->buf) {
@@ -706,12 +706,7 @@ discard_content(struct ccn_closure *selfp,
                 enum ccn_upcall_kind kind,
                 struct ccn_upcall_info *info)
 {
-    switch (kind) {
-        case CCN_UPCALL_FINAL:
-            free(selfp);
-        default:
-            return(CCN_UPCALL_RESULT_OK);
-    }
+    return(CCN_UPCALL_RESULT_OK);
 }
 
 static struct ccn_charbuf *
