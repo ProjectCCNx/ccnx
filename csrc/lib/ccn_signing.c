@@ -222,6 +222,7 @@ int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
     data_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
     res = EVP_DigestUpdate(digest_contextp, msg + co->offset[CCN_PCO_B_Name], data_size);
     res &= EVP_DigestFinal_ex(digest_contextp, result, NULL);
+    EVP_MD_CTX_cleanup(digest_contextp);
     if (res != 1)
         return(-1);
     /* input_hash[0, 1] = address of hash for (left,right) node of parent
@@ -250,6 +251,7 @@ int ccn_merkle_root_hash(const unsigned char *msg, size_t size,
         res &= EVP_DigestUpdate(digest_contextp, input_hash[0], result_size);
         res &= EVP_DigestUpdate(digest_contextp, input_hash[1], result_size);
         res &= EVP_DigestFinal_ex(digest_contextp, result, NULL);
+        EVP_MD_CTX_cleanup(digest_contextp);
         if (res != 1)
             return(-1);
         node = parent_of(node);
@@ -273,20 +275,21 @@ int ccn_verify_signature(const unsigned char *msg,
     EVP_MD_CTX verc;
     EVP_MD_CTX *ver_ctx = &verc;
     X509_SIG *digest_info = NULL;
+    const unsigned char *dd = NULL;
     MP_info *merkle_path_info = NULL;
-    unsigned char *root_hash;
+    unsigned char *root_hash = NULL;
     size_t root_hash_size;
 
     int res;
 
-    const EVP_MD *digest;
-    const EVP_MD *merkle_path_digest;
+    const EVP_MD *digest = NULL;
+    const EVP_MD *merkle_path_digest = NULL;
     
     const unsigned char *signature_bits = NULL;
     size_t signature_bits_size = 0;
     const unsigned char *witness = NULL;
     size_t witness_size = 0;
-    const unsigned char *digest_algorithm;
+    const unsigned char *digest_algorithm = NULL;
     size_t digest_algorithm_size;
     
     EVP_PKEY *pkey = (EVP_PKEY *)verification_pubkey;
@@ -318,9 +321,10 @@ int ccn_verify_signature(const unsigned char *msg,
     digest = md_from_digest_and_pkey((const char *)digest_algorithm, verification_pubkey);
     EVP_MD_CTX_init(ver_ctx);
     res = EVP_VerifyInit_ex(ver_ctx, digest, NULL);
-    if (!res)
+    if (!res) {
+        EVP_MD_CTX_cleanup(ver_ctx);
         return (-1);
-
+    }
     if (co->offset[CCN_PCO_B_Witness] != co->offset[CCN_PCO_E_Witness]) {
         /* The witness is a DigestInfo, where the octet-string therein encapsulates
          * a sequence of [integer (origin 1 node#), sequence of [octet-string]]
@@ -331,8 +335,10 @@ int ccn_verify_signature(const unsigned char *msg,
                                   co->offset[CCN_PCO_E_Witness],
                                   &witness,
                                   &witness_size);
-        if (res < 0)
+        if (res < 0) {
+            EVP_MD_CTX_cleanup(ver_ctx);
             return (-1);
+        }
 
         digest_info = d2i_X509_SIG(NULL, &witness, witness_size);
         /* digest_info->algor->algorithm->{length, data}
@@ -342,6 +348,7 @@ int ccn_verify_signature(const unsigned char *msg,
         ASN1_OBJECT *merkle_hash_tree_oid = OBJ_txt2obj("1.2.840.113550.11.1.2.2", 1);
         if (0 != OBJ_cmp(digest_info->algor->algorithm, merkle_hash_tree_oid)) {
             fprintf(stderr, "A witness is present without an MHT OID!\n");
+            EVP_MD_CTX_cleanup(ver_ctx);
             ASN1_OBJECT_free(merkle_hash_tree_oid);
             return (-1);
         }
@@ -349,7 +356,9 @@ int ccn_verify_signature(const unsigned char *msg,
         ASN1_OBJECT_free(merkle_hash_tree_oid);
         merkle_path_digest = EVP_sha256();
         /* DER-encoded in the digest_info's digest ASN.1 octet string is the Merkle path info */
-        merkle_path_info = d2i_MP_info(NULL, (const unsigned char **)&(digest_info->digest->data), digest_info->digest->length);
+        dd = digest_info->digest->data;
+        merkle_path_info = d2i_MP_info(NULL, &dd, digest_info->digest->length);
+        X509_SIG_free(digest_info);
 #ifdef DEBUG
         int x,h;
         int node = ASN1_INTEGER_get(merkle_path_info->node);
@@ -370,9 +379,18 @@ int ccn_verify_signature(const unsigned char *msg,
         root_hash_size = EVP_MD_size(merkle_path_digest);
         root_hash = calloc(1, root_hash_size);
         res = ccn_merkle_root_hash(msg, size, co, merkle_path_digest, merkle_path_info, root_hash, root_hash_size);
-        if (res < 0) return(-1);
+        MP_info_free(merkle_path_info);
+        if (res < 0) {
+            EVP_MD_CTX_cleanup(ver_ctx);
+            free(root_hash);
+            return(-1);
+        }
         res = EVP_VerifyUpdate(ver_ctx, root_hash, root_hash_size);
-        if (res == 0) return(-1);
+        free(root_hash);
+        if (res == 0) {
+            EVP_MD_CTX_cleanup(ver_ctx);
+            return(-1);
+        }
         res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, pkey);
         EVP_MD_CTX_cleanup(ver_ctx);
     } else {
@@ -382,7 +400,10 @@ int ccn_verify_signature(const unsigned char *msg,
          */
         size_t signed_size = co->offset[CCN_PCO_E_Content] - co->offset[CCN_PCO_B_Name];
         res = EVP_VerifyUpdate(ver_ctx, msg + co->offset[CCN_PCO_B_Name], signed_size);
-        if (res == 0) return(-1);
+        if (res == 0) {
+            EVP_MD_CTX_cleanup(ver_ctx);
+            return(-1);
+        }
         res = EVP_VerifyFinal(ver_ctx, signature_bits, signature_bits_size, pkey);
         EVP_MD_CTX_cleanup(ver_ctx);
     }
