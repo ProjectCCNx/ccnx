@@ -516,6 +516,7 @@ ccn_destroy(struct ccn **hp)
         close(h->tap);
     free(h);
     *hp = NULL;
+    EVP_cleanup();
 }
 
 /*
