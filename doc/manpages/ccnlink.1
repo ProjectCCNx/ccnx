@@ -1,0 +1,67 @@
+'\" t
+.\"     Title: ccnlink
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 04/09/2012
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.6.0
+.\"  Language: English
+.\"
+.TH "CCNLINK" "1" "04/09/2012" "\ \& 0\&.6\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnlink \- Create new link to target URI\&.
+.SH "SYNOPSIS"
+.sp
+\fBccnlink\fR [\-q] [\-r] \fIlinkURI\fR \fIlinkTargetURI\fR [\-as \fIpathToKeystore\fR ]
+.SH "DESCRIPTION"
+.sp
+The \fBccnlink\fR utility creates a CCN link object with the name, linkURI, and a target of linkTargetURI\&. By default, the utility attempts to store the link in a Repository\&.
+.SH "OPTIONS"
+.PP
+\fB\-q\fR
+.RS 4
+("quiet") If specified, sets the default Logging level to WARNING\&.
+.RE
+.PP
+\fB\-r\fR
+.RS 4
+("raw") Prepares a new link to be output to CCN\&. An Interest must be expressed for it\&.
+.RE
+.PP
+\fB\-as\fR \fIpathToKeystore\fR
+.RS 4
+Specifies the relative or absolute pathname of a file where CCNx compatible keys have been saved\&. If a relative path is specified, it is relative to the current execution directory\&. If not specified, the default keystore is used\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure
+.RE
+.SH "AUTHOR"
+.sp
+Diana Smetters <smetters@parc\&.com>

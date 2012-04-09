@@ -1,0 +1,91 @@
+'\" t
+.\"     Title: ccndcontrol
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 04/09/2012
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.6.0
+.\"  Language: English
+.\"
+.TH "CCNDCONTROL" "1" "04/09/2012" "\ \& 0\&.6\&.0" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccndcontrol \- manipulate CCNx forwarding table
+.SH "SYNOPSIS"
+.sp
+\fBccndcontrol\fR [\-v] \-f \fIconfigfile\fR
+.sp
+\fBccndcontrol\fR [\-v] add \fIuri\fR (upd|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]]
+.sp
+\fBccndcontrol\fR [\-v] del \fIuri\fR (upd|tcp) \fIhost\fR [\fIport\fR [flags [mcastttl [mcastif]]]]
+.SH "DESCRIPTION"
+.sp
+The \fBccndcontrol\fR utility was written as a Java\-based workalike for ccndc(1), but is not being actively maintained or extended\&. In its current form, it serves as an example of how to use the Java API for prefix registration\&.
+.sp
+The significance of the operands is as follows:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fB\fIuri\fR\fR
+is the name prefix to be registered\&.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+
+\fB\fIhost\fR\fR
+identifies the remote hostname for this face\&.
+.RE
+.sp
+See the ccndc(1) man page for a more complete description of the operands\&.
+.SH "OPTIONS"
+.PP
+\fB\-v\fR
+.RS 4
+Sets the logging level to INFO and prints messages when prefixes are registered and when ccnd faces are created or deleted\&.
+.RE
+.SH "EXIT STATUS"
+.PP
+\fB0\fR
+.RS 4
+Success
+.RE
+.PP
+\fB1\fR
+.RS 4
+Failure
+.RE
+.SH "AUTHOR"
+.sp
+Tim Diebert <diebert@parc\&.com>
