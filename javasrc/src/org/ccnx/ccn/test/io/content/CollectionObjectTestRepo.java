@@ -1,11 +1,11 @@
 /*
  * A CCNx library test.
  *
- * Copyright (C) 2008, 2009, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -24,7 +24,6 @@ import java.util.LinkedList;
 
 import junit.framework.Assert;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.impl.CCNFlowControl.SaveType;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -32,8 +31,9 @@ import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
-import org.junit.BeforeClass;
+import org.ccnx.ccn.test.TestUtils;
 import org.junit.Test;
 
 
@@ -41,44 +41,38 @@ import org.junit.Test;
 /**
  * Tests writing versioned Collection objects to a repository.
  */
-public class CollectionObjectTestRepo {
+public class CollectionObjectTestRepo extends CCNTestBase {
 
 	/**
 	 * Handle naming for the test.
 	 */
 	static CCNTestHelper testHelper = new CCNTestHelper(CollectionObjectTestRepo.class);
-	
-	static CCNHandle getLibrary;
-	static CCNHandle putLibrary;
+
 	/**
 	 * @throws java.lang.Exception
 	 */
-	@BeforeClass
-	public static void setUpBeforeClass() throws Exception {
-		putLibrary = CCNHandle.open();
-		getLibrary = CCNHandle.open();
-	}
-	
+
 	@Test
 	public void testCollections() throws Exception {
 		Log.info(Log.FAC_TEST, "Starting testCollections");
 
 		ContentName nonCollectionName = new ContentName(testHelper.getTestNamespace("testCollections"), "myNonCollection");
 		ContentName collectionName = new ContentName(testHelper.getTestNamespace("testCollections"), "myCollection");
-		
+
 		// Write something that isn't a collection
-		CCNSerializableStringObject so = new CCNSerializableStringObject(nonCollectionName, "This is not a collection.", SaveType.REPOSITORY, putLibrary);
+		CCNSerializableStringObject so = new CCNSerializableStringObject(nonCollectionName, "This is not a collection.", SaveType.REPOSITORY, putHandle);
 		so.save();
-		
+
 		Link[] references = new Link[2];
 		references[0] = new Link(new ContentName(collectionName, "r1"));
 		references[1] = new Link(new ContentName(collectionName, "r2"));
-		CollectionObject collection = 
-			new CollectionObject(collectionName, references, SaveType.REPOSITORY, putLibrary);
+		CollectionObject collection =
+			new CollectionObject(collectionName, references, SaveType.REPOSITORY, putHandle);
 		collection.save();
-		
+		TestUtils.checkObject(putHandle, collection);
+
 		try {
-			CollectionObject notAnObject = new CollectionObject(nonCollectionName, getLibrary);
+			CollectionObject notAnObject = new CollectionObject(nonCollectionName, getHandle);
 			notAnObject.waitForData();
 			Assert.fail("Reading collection from non-collection succeeded.");
 		} catch (ContentDecodingException ex) {
@@ -92,13 +86,13 @@ public class CollectionObjectTestRepo {
 		}
 
 		// test reading latest version
-		CollectionObject readCollection = new CollectionObject(collectionName, getLibrary);
+		CollectionObject readCollection = new CollectionObject(collectionName, getHandle);
 		readCollection.waitForData();
 		LinkedList<Link> checkReferences = collection.contents();
 		Assert.assertEquals(checkReferences.size(), 2);
 		Assert.assertEquals(references[0], checkReferences.get(0));
 		Assert.assertEquals(references[1], checkReferences.get(1));
-		
+
 		// test addToCollection
 		ArrayList<Link> newReferences = new ArrayList<Link>();
 		newReferences.add(new Link(ContentName.fromNative("/libraryTest/r3")));
@@ -115,7 +109,7 @@ public class CollectionObjectTestRepo {
 		Assert.assertEquals(newReferences.get(0), checkReferences.get(2));
 		Assert.assertEquals(newReferences.get(1), checkReferences.get(3));
 		CCNTime oldVersion = collection.getVersion();
-		
+
 		collection.contents().removeAll(newReferences);
 		collection.save();
 		Log.info(Log.FAC_TEST, "New version: " + collection.getVersion() + " old version " + oldVersion);
@@ -126,7 +120,7 @@ public class CollectionObjectTestRepo {
 		Assert.assertEquals(collection.getVersion(), readCollection.getVersion());
 		Assert.assertEquals(collection.contents(), readCollection.contents());
 		Assert.assertTrue("Updated version contents", collection.getVersion().after(oldVersion));
-		
+
 		Log.info(Log.FAC_TEST, "Completed testCollections");
 	}
 }
