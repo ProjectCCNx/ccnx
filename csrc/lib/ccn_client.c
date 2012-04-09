@@ -507,12 +507,16 @@ ccn_destroy(struct ccn **hp)
     hashtb_destroy(&(h->keys));
     hashtb_destroy(&(h->keystores));
     ccn_charbuf_destroy(&h->interestbuf);
+    ccn_charbuf_destroy(&h->inbuf);
+    ccn_charbuf_destroy(&h->outbuf);
     ccn_indexbuf_destroy(&h->scratch_indexbuf);
     ccn_charbuf_destroy(&h->default_pubid);
+    ccn_charbuf_destroy(&h->ccndid);
     if (h->tap != -1)
         close(h->tap);
     free(h);
     *hp = NULL;
+    EVP_cleanup();
 }
 
 /*
@@ -2149,11 +2153,11 @@ handle_ccndid_response(struct ccn_closure *selfp,
         return(CCN_UPCALL_RESULT_ERR);
     }
     if (h->ccndid == NULL) {
-        h->ccndid = ccn_charbuf_create();
+        h->ccndid = ccn_charbuf_create_n(size);
         if (h->ccndid == NULL)
             return(NOTE_ERRNO(h));
     }
-    h->ccndid->length = 0;
+    ccn_charbuf_reset(h->ccndid);
     ccn_charbuf_append(h->ccndid, ccndid, size);
     ccn_notify_ccndid_changed(h);
     return(CCN_UPCALL_RESULT_OK);
