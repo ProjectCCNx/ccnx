@@ -11,7 +11,7 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The *ccnlink* utility creates a CCN link object with the name, +_linkURI_+, and a target of +_linkTargetURI_+. By default, the utility attempts to store the link in a Repository.
+The *ccnlink* utility creates a CCN link object with the name, +linkURI+, and a target of +linkTargetURI+. By default, the utility attempts to store the link in a Repository.
 
 OPTIONS
 -------
