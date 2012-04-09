@@ -684,8 +684,8 @@ public class EnumeratedNameList implements BasicNameEnumeratorListener, ContentN
 				if (! parentEnumerator.waitForNewChildren(false, SystemConfiguration.MAX_TIMEOUT)) break;
 			}
 			if (parentEnumerator.hasChild(childNameComponent)) {
-				if (Log.isLoggable(Level.INFO)) {
-					Log.info("EnumeratedNameList.exists: we have a matching child to {0} and the parent enumerator {1} has {2} children.", 
+				if (Log.isLoggable(Log.FAC_SEARCH, Level.INFO)) {
+					Log.info(Log.FAC_SEARCH, "EnumeratedNameList.exists: we have a matching child to {0} and the parent enumerator {1} has {2} children.", 
 							Component.printURI(childNameComponent), parentName, parentEnumerator.childCount());
 				}
 				childIndex++;
