@@ -25,14 +25,29 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 
   * Issues Resolved:
     * Bug 100046 OpenSolaris build fails when cc is actually gcc
-    * Feature 100070 clean up exception hierarchy, use
-    * Bug 100138 building
-    * Bug 100470 make in android directory with current tools leaves chaff
-    * Feature 100499 Unify ContentName constructors
-    * Bug 100605 No man pages for some of the java utilities
-    * Bug 100645 Android CCNx service control - tapping "Start All" button
-      multiple times quickly causes services to fail
-    * Feature 100647 Default support for multiple architectures in MacOS X build
+	* Bug 100724 Possible memory leaks of crypto allocated memory in merkle 
+	  hash tree signature verification
+	* Bug 100723 VLC plugin needs prefetcher
+	* Bug 100719 User requested flush should actually flush out to network 
+	* Bug 100712 Java repo queue mismatch causes heap space problems
+	* Bug 100704 Improve performance of flow control 
+	* Bug 100686 ccnlink parses its arguments incorrectly
+	* Bug 100677 Several utilities do an incorrect close, causing a warning 
+	  exception
+	* Bug 100671 Netmanager thread can die mysteriously
+	* Feature 100661 Improve logging in flow controller
+	* Bug 100657 VLC plugin needs updates
+	* Feature 100654 Input streams should have a true "blocking" mode
+	* Bug 100608 CCNNetworkObjectTestRepo and other IO tests using the repo 
+	  need to insure files have reached the repo before testing them
+	* Feature 100574 Add a new logging facility (FAC_SEARCH?) for features 
+	  like NameEnumeration and PathFinder 
+	* Bug 100528 VersioningProfile logging should be part of a facility 
+	* Bug 100717 Make loops in doc/manpages 
+	* Bug 100708 SyncNodeIncRC implementation is incorrect
+	* Feature 100713 Refactor matching code so Exclude tests can be done 
+	  separately 
+	* Bug 100716 fix couple of compiler warnings in ccn_sync.c	
     * Support 100662 Setup CCNx Open Source project commit notifications via
       email + outbound tweets for all commits to projectccnx
     * Bug 100664 Remove ccnd/android_msg.c
@@ -40,20 +55,16 @@ Refer to http://www.ccnx.org/redmine/ for more details.
       algorithms based on key type for signing
     * Bug 100676 Multiple registrations using ccn_set_interest_filter with same
       prefix do not work well
-    * Bug 100682 CCNx tests uses grep flags unsupported by Solaris SunOS
-      default grep but tests still succeed
     * Bug 100688 Man page for ccntestloop
     * Feature 100690 Improve decoding performance
     * Bug 100691 Inconsistent formatting and use of asciidoc markup
     * Support 100692 Prepare for ccnx-0.6.0 release
-    * Bug 100694 Fix ccntestloop stop command to more reliably clean up spawned
-      processes
     * Support 100695 Improve comments in ccnd
     * Bug 100696 Broken link in top-level README
     * Support 100697 Prepare for ccnx-0.5.2 release
     * Feature 100698 Add use of deltas to the RootAdvise protocol
-    * Bug 100699 ccndc fails with Unable to create face in ccnx-0.5.1 on guest OS
-    * Support 100700 Add ccnx-0.5.x api-stable branch
+    * Bug 100699 ccndc fails with Unable to create face in ccnx-0.5.1 on 
+	  guest OS (fixed on 0.6.0)
     * Bug 100702 Intermittent test_repo_performance failures on slow platforms
     * Bug 100703 sync header files include other files only needed for
       implementation
