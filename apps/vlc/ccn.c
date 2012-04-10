@@ -215,7 +215,6 @@ static void CCNClose(vlc_object_t *p_this)
 {
     access_t     *p_access = (access_t *)p_this;
     access_sys_t *p_sys = p_access->p_sys;
-    int i_ret;
 
     msg_Info(p_access, "CCN.Close called");
     /* indicate exit required, then clear the FIFO so we will wake from
@@ -228,9 +227,8 @@ static void CCNClose(vlc_object_t *p_this)
     vlc_mutex_lock(&p_sys->lock);
     while (!p_sys->b_state_changed)
         vlc_cond_wait(&p_sys->cond, &p_sys->lock);
-    i_ret = p_sys->i_state;
     p_sys->b_state_changed = false;
-    vlc_mutex_unlock(&p_sys->lock);     /* release lock by running cleanup */
+    vlc_mutex_unlock(&p_sys->lock);
     vlc_join(p_sys->thread, NULL);
 
     
