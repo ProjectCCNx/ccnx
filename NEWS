@@ -24,6 +24,7 @@ Refer to http://www.ccnx.org/redmine/ for more details.
     ContentName, and ContentNameProvider documentation for more information.
 
   * Issues Resolved:
+    * Feature 100499 Unify ContentName constructors
     * Bug 100046 OpenSolaris build fails when cc is actually gcc
 	* Bug 100724 Possible memory leaks of crypto allocated memory in merkle
 	  hash tree signature verification
