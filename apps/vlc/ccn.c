@@ -249,6 +249,7 @@ static void CCNClose(vlc_object_t *p_this)
         p_sys->p_name = NULL;
     }
     vlc_mutex_destroy(&p_sys->lock);
+    vlc_cond_destroy(&p_sys->cond);
     if (p_sys->buf) {
         free(p_sys->buf);
         p_sys->buf = NULL;
