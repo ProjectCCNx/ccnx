@@ -153,6 +153,7 @@ static int CCNOpen(vlc_object_t *p_this)
     access_t     *p_access = (access_t *)p_this;
     access_sys_t *p_sys = NULL;
     int i_ret = VLC_EGENERIC;
+    bool b_threaded = false;
     
     /* Init p_access */
     access_InitFields(p_access);
@@ -182,6 +183,7 @@ static int CCNOpen(vlc_object_t *p_this)
         msg_Err(p_access, "CCN.Open failed: unable to vlc_clone for CCN run thread");
         goto exit;
     }
+    b_threaded = true;
     msg_Info(p_access, "CCN.Open: waiting for CCN event thread start");
     vlc_mutex_lock(&p_sys->lock);
     while (!p_sys->b_state_changed)
@@ -193,7 +195,7 @@ static int CCNOpen(vlc_object_t *p_this)
 exit:
     if (i_ret != VLC_SUCCESS) {
         msg_Err(p_access, "CCN.Open: CCN event thread failed");
-        if (p_sys->thread != NULL)
+        if (b_threaded)
             vlc_join(p_sys->thread, NULL);
         vlc_cond_destroy(&p_sys->cond);
         vlc_mutex_destroy(&p_sys->lock);
