@@ -306,6 +306,8 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
     struct ccn_charbuf *p_name;
     int i;
 
+    /* flush the FIFO in case the incoming content handler is blocked */
+    block_FifoEmpty(p_sys->p_fifo);
     vlc_mutex_lock(&p_sys->lock);
     if (p_access->b_die) {
         vlc_mutex_unlock(&p_sys->lock);
@@ -317,7 +319,7 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
         i_pos = 0;
     }
 #endif
-    /* flush the FIFO, restart from the specified point */
+    /* flush the FIFO for real, restart from the specified point */
     block_FifoEmpty(p_sys->p_fifo);
     /* forget any data in the intermediate buffer */
     p_sys->i_bufoffset = 0;
