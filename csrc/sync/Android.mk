@@ -21,10 +21,9 @@ LOCAL_C_INCLUDES	:= $(LOCAL_PATH)
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../include 
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/..
 
-# LOCAL_PATH = project_root/csrc/sync
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../../android/external/openssl-armv5/include
 
-SYNCOBJ := IndexSorter.o SyncActions.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o SyncTreeWorker.o SyncUtil.o 
+SYNCOBJ := IndexSorter.o SyncActions.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o SyncTreeWorker.o SyncUtil.o SyncTest.o
 
 SYNCSRC := $(SYNCOBJ:.o=.c)
 
@@ -33,5 +32,4 @@ LOCAL_CFLAGS := -g
 LOCAL_STATIC_LIBRARIES := libcrypto libccnx
 LOCAL_SHARED_LIBRARIES :=
 
-# include $(BUILD_STATIC_LIBRARY)
 include $(BUILD_SHARED_LIBRARY)
