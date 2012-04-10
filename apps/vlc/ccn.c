@@ -50,7 +50,7 @@
  *****************************************************************************/
 #define CCN_FIFO_MAX_BLOCKS 128
 #define CCN_DEFAULT_CHUNK_SIZE 4096
-#define CCN_FIFO_BLOCK_SIZE (128 * CCN_DEFAULT_CHUNK_SIZE)
+#define CCN_FIFO_BLOCK_SIZE (6 * CCN_DEFAULT_CHUNK_SIZE)
 #define CCN_VERSION_TIMEOUT 1000
 #define CCN_HEADER_TIMEOUT 1000
 #define PREFETCH 5
