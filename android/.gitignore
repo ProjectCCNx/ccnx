@@ -1,1 +1,5 @@
 gen
+libs
+project.properties
+local.properties
+proguard.cfg
