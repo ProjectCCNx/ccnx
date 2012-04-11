@@ -106,8 +106,6 @@ ccn_keystore_init(struct ccn_keystore *p, char *filename, char *password)
         case EVP_PKEY_DSA:
             digest_obj = OBJ_nid2obj(NID_sha1);
             break;
-        case EVP_PKEY_RSA:
-        case EVP_PKEY_EC:
         default:
             digest_obj = NULL;
     }
