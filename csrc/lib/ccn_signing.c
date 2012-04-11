@@ -32,6 +32,7 @@ struct ccn_sigc {
     EVP_MD_CTX context;
 };
 
+#ifdef EVP_PKEY_EC
 static int init256(EVP_MD_CTX *ctx)
 { return SHA256_Init(ctx->md_data); }
 static int update256(EVP_MD_CTX *ctx,const void *data,size_t count)
@@ -54,6 +55,7 @@ static const EVP_MD sha256ec_md=
     SHA256_CBLOCK,
     sizeof(EVP_MD *)+sizeof(SHA256_CTX),
 };
+#endif
 
 static const EVP_MD *
 md_from_digest_and_pkey(const char *digest, const struct ccn_pkey *pkey)
@@ -82,7 +84,9 @@ md_from_digest_and_pkey(const char *digest, const struct ccn_pkey *pkey)
     switch (pkey_type) {
         case EVP_PKEY_RSA:
         case EVP_PKEY_DSA:
+#ifdef EVP_PKEY_EC
         case EVP_PKEY_EC:
+#endif
             break;
         default:
             fprintf(stderr, "not a Key type I understand right now: NID %d\n", pkey_type);
@@ -108,16 +112,20 @@ md_from_digest_and_pkey(const char *digest, const struct ccn_pkey *pkey)
                     return(EVP_sha1());
                 case EVP_PKEY_DSA:
                     return(EVP_dss1());
+#ifdef EVP_PKEY_EC
                 case EVP_PKEY_EC:
                     return(EVP_ecdsa());
+#endif
             }
             break;
         case NID_sha256:    // supported for RSA/EC key types
             if (pkey_type == EVP_PKEY_RSA)
                 return(EVP_sha256());
+#ifdef EVP_PKEY_EC
             else if (pkey_type == EVP_PKEY_EC) {
                 return(&sha256ec_md);
             } /* our own md */
+#endif
             break;
         case NID_sha512:     // supported for RSA
             if (pkey_type == EVP_PKEY_RSA)
