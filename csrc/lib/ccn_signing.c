@@ -32,7 +32,7 @@ struct ccn_sigc {
     EVP_MD_CTX context;
 };
 
-#ifdef EVP_PKEY_EC
+#ifdef NID_ecdsa_with_SHA256
 static int init256(EVP_MD_CTX *ctx)
 { return SHA256_Init(ctx->md_data); }
 static int update256(EVP_MD_CTX *ctx,const void *data,size_t count)
@@ -121,7 +121,7 @@ md_from_digest_and_pkey(const char *digest, const struct ccn_pkey *pkey)
         case NID_sha256:    // supported for RSA/EC key types
             if (pkey_type == EVP_PKEY_RSA)
                 return(EVP_sha256());
-#ifdef EVP_PKEY_EC
+#if defined(EVP_PKEY_EC) && defined(NID_ecdsa_with_SHA256)
             else if (pkey_type == EVP_PKEY_EC) {
                 return(&sha256ec_md);
             } /* our own md */
