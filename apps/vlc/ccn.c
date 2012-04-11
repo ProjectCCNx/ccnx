@@ -53,7 +53,7 @@
 #define CCN_FIFO_BLOCK_SIZE (6 * CCN_DEFAULT_CHUNK_SIZE)
 #define CCN_VERSION_TIMEOUT 1000
 #define CCN_HEADER_TIMEOUT 1000
-#define PREFETCH 5
+#define CCN_DEFAULT_PREFETCH 5
 
 #define MAX_FIFO_TEXT N_("FIFO max blocks")
 #define MAX_FIFO_LONGTEXT N_(						\
@@ -64,6 +64,10 @@
 #define BLOCK_FIFO_LONGTEXT N_(						\
 "Size of blocks held in FIFO "			\
 "used by content fetcher.")
+#define PREFETCH_TEXT N_("Prefetch offset")
+#define PREFETCH_LONGTEXT N_(                                          \
+"Number of content objects prefetched, "                       \
+"and offset from content object received for next interest.")
 #define SEEKABLE_TEXT N_("CCN streams can seek")
 #define SEEKABLE_LONGTEXT N_(               \
 "Enable or disable seeking within a CCN stream.")
@@ -90,6 +94,8 @@ add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS, NULL,
             MAX_FIFO_TEXT, MAX_FIFO_LONGTEXT, true);
 add_integer("ccn-fifo-blocksize", CCN_FIFO_BLOCK_SIZE, NULL,
             BLOCK_FIFO_TEXT, BLOCK_FIFO_LONGTEXT, true);
+add_integer("ccn-prefetch", CCN_DEFAULT_PREFETCH, NULL,
+            PREFETCH_TEXT, PREFETCH_LONGTEXT, true);
 add_bool( "ccn-streams-seekable", true, NULL,
          SEEKABLE_TEXT, SEEKABLE_LONGTEXT, true )
 #else
@@ -97,6 +103,8 @@ add_integer("ccn-fifo-maxblocks", CCN_FIFO_MAX_BLOCKS,
             MAX_FIFO_TEXT, MAX_FIFO_LONGTEXT, true);
 add_integer("ccn-fifo-blocksize", CCN_FIFO_BLOCK_SIZE,
             BLOCK_FIFO_TEXT, BLOCK_FIFO_LONGTEXT, true);
+add_integer("ccn-prefetch", CCN_DEFAULT_PREFETCH,
+            PREFETCH_TEXT, PREFETCH_LONGTEXT, true);
 add_bool( "ccn-streams-seekable", true,
          SEEKABLE_TEXT, SEEKABLE_LONGTEXT, true )
 #endif
@@ -123,6 +131,7 @@ struct access_sys_t
     int i_chunksize;        /**< size of CCN ContentObject data blocks */
     int timeouts;           /**< number of timeouts without good data received */
     int i_fifo_max;         /**< maximum number of blocks in FIFO */
+    int i_prefetch;         /**< offset for prefetching */
     block_fifo_t *p_fifo;   /**< FIFO for blocks delivered to VLC */
     unsigned char *buf;     /**< intermediate buffer */
     struct ccn *ccn;        /**< CCN handle */
@@ -174,6 +183,7 @@ static int CCNOpen(vlc_object_t *p_this)
     p_sys->i_chunksize = -1;
     p_sys->i_fifo_max = var_CreateGetInteger(p_access, "ccn-fifo-maxblocks");
     p_sys->i_bufsize = var_CreateGetInteger(p_access, "ccn-fifo-blocksize");
+    p_sys->i_prefetch = var_CreateGetInteger(p_access, "ccn-prefetch");
     msg_Info(p_access, "CCN.Open: ccn-fifo-maxblocks %d, ccn-fifo-blocksize %d",
              p_sys->i_fifo_max, p_sys->i_bufsize);
     p_access->info.i_size = LLONG_MAX;	/* don't know yet, but bigger is better */
@@ -337,7 +347,7 @@ static int CCNSeek(access_t *p_access, uint64_t i_pos)
     ccn_express_interest(p_sys->ccn, p_name, p_sys->incoming, p_sys->p_template);
     ccn_charbuf_destroy(&p_name);
 
-    for (i = 1; i <= PREFETCH; i++) {
+    for (i = 1; i <= p_sys->i_prefetch; i++) {
         p_name = sequenced_name(p_sys->p_name, i + p_sys->i_pos / p_sys->i_chunksize);
         ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
                                      p_sys->p_template);
@@ -484,7 +494,7 @@ static void *ccn_event_thread(void *p_this)
         msg_Err(p_access, "CCN.Input failed: unable to express interest");
         goto exit;
     }
-    for (i=1; i <= PREFETCH; i++) {
+    for (i=1; i <= p_sys->i_prefetch; i++) {
         p_name = sequenced_name(p_sys->p_name, i);
         i_ret = ccn_express_interest(p_sys->ccn, p_name, p_sys->prefetch,
                                      p_sys->p_template);
@@ -682,7 +692,7 @@ incoming_content(struct ccn_closure *selfp,
     ccn_charbuf_destroy(&name);
     if (res < 0) abort();
     
-    name = sequenced_name(p_sys->p_name, PREFETCH + p_sys->i_pos / p_sys->i_chunksize);
+    name = sequenced_name(p_sys->p_name, p_sys->i_prefetch + p_sys->i_pos / p_sys->i_chunksize);
     res = ccn_express_interest(info->h, name, p_sys->prefetch, NULL);
     ccn_charbuf_destroy(&name);
 
