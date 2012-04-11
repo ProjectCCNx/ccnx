@@ -1,0 +1,37 @@
+CCNLINK(1)
+==========
+
+NAME
+----
+ccnlink - Create new link to target URI.
+
+SYNOPSIS
+--------
+*ccnlink* [-q] [-r] _linkURI_ _linkTargetURI_ [-as _pathToKeystore_ ]
+
+DESCRIPTION
+-----------
+The *ccnlink* utility creates a CCN link object with the name, +linkURI+, and a target of +linkTargetURI+. By default, the utility attempts to store the link in a Repository.
+
+OPTIONS
+-------
+*-q*::
+	("quiet") If specified, sets the default Logging level to WARNING.
+
+*-r*::
+	("raw") Prepares a new link to be output to CCN. An Interest must be expressed for it.
+
+*-as* _pathToKeystore_::
+	Specifies the relative or absolute pathname of a file where CCNx compatible keys have been saved. If a relative path is specified, it is relative to the current execution directory. If not specified, the default keystore is used.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure
+
+AUTHOR
+------
+Diana Smetters <smetters@parc.com>
