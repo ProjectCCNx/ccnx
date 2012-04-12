@@ -1314,7 +1314,12 @@ public class CCNNetworkManager implements Runnable {
 			} catch (Exception ex) {
 				_stats.increment(StatsEnum.ReceiveErrors);
 				Log.severe(Log.FAC_NETMANAGER, formatMessage("Processing thread failure (UNKNOWN): " + ex.getMessage() + " for port: " + _port));
-                Log.warningStackTrace(ex);
+                Log.severeStackTrace(Log.FAC_NETMANAGER, ex);
+			} catch (Error er) {
+				_stats.increment(StatsEnum.ReceiveErrors);
+				Log.severe(Log.FAC_NETMANAGER, formatMessage("Processing thread error: " + er.getMessage() + " - exiting"));
+                Log.severeStackTrace(Log.FAC_NETMANAGER, er);
+                System.exit(1);
 			}
 			_inHandler = false;
 		}

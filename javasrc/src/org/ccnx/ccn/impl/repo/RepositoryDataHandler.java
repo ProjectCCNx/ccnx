@@ -37,11 +37,16 @@ import org.ccnx.ccn.protocol.Interest;
  */
 
 public class RepositoryDataHandler implements Runnable {
+	public static final int THROTTLE_TOP = 2000;
+	public static final int THROTTLE_BOTTOM = 1800;
+
 	private final RepositoryServer _server;
 	private final Queue<ContentObject> _queue = new ConcurrentLinkedQueue<ContentObject>();
 	private final InterestTable<ContentName> _pendingKeyChecks = new InterestTable<ContentName>();
 	private boolean _shutdown = false;
 	private boolean _shutdownComplete = false;
+	protected int _currentQueueSize;
+	protected boolean _throttled = false;
 
 	public RepositoryDataHandler(RepositoryServer server) {
 		_server = server;
@@ -49,6 +54,11 @@ public class RepositoryDataHandler implements Runnable {
 
 	public void add(ContentObject co) {
 		synchronized(_queue) {
+			_currentQueueSize++;
+			if (!_throttled && _currentQueueSize > THROTTLE_TOP) {
+				_throttled = true;
+				_server.setThrottle(true);
+			}
 			_queue.add(co);
 			_queue.notify();
 		}
@@ -85,6 +95,11 @@ public class RepositoryDataHandler implements Runnable {
 						} catch (InterruptedException e) {}
 					}
 				} while (null == co);
+				_currentQueueSize--;
+				if (_throttled && _currentQueueSize < THROTTLE_BOTTOM) {
+					_throttled = false;
+					_server.setThrottle(false);
+				}
 			}
 			try {
 				if (Log.isLoggable(Log.FAC_REPO, Level.FINER)) {
@@ -152,5 +167,9 @@ public class RepositoryDataHandler implements Runnable {
 				} catch (InterruptedException e) {}
 			}
 		}
+	}
+
+	public int getCurrentQueueSize() {
+		return _currentQueueSize;
 	}
 }
