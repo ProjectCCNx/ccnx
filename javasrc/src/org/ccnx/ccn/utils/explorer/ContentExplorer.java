@@ -1,11 +1,11 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -82,12 +82,12 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  * also be used to store files in a repository. Finally, the ContentExplorer is
  * intended to be used as a first test of AccessControl functionality with CCN.
  * This is in an extremely early state and will be updated in future releases.
- * 
+ *
  */
 public class ContentExplorer extends JFrame implements BasicNameEnumeratorListener, ActionListener {
 
 	private static ContentName root;
-	
+
 	private static boolean accessControlOn = false;
 	protected static boolean showVersions = false;
 	protected static boolean debugMode = false;
@@ -100,15 +100,15 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	private static boolean useSystemLookAndFeel = false;
 
 	private static final long serialVersionUID = 1L;
-	
+
 	static java.net.URL netURL = ContentExplorer.class.getResource("Network.png");
 	public static final ImageIcon ICON_COMPUTER = new ImageIcon(getScaledImage(
 			(new ImageIcon(netURL)).getImage(), 32, 32));
-	
+
 	static java.net.URL compURL = ContentExplorer.class.getResource("Computer.png");
 	public static final ImageIcon ICON_DISK = new ImageIcon(getScaledImage(
 			(new ImageIcon(compURL)).getImage(), 32, 32));
-	
+
 	static java.net.URL imageURL = ContentExplorer.class.getResource("Folder.png");
 	public static final ImageIcon ICON_FOLDER = new ImageIcon(getScaledImage(
 			(new ImageIcon(imageURL)).getImage(), 32, 32));
@@ -120,13 +120,13 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	public static final ImageIcon ICON_DOCUMENT = new ImageIcon(getScaledImage(
 			(new ImageIcon(docURL)).getImage(), 32, 32));
 
-	private JEditorPane htmlPane;
+	private final JEditorPane htmlPane;
 	public String selectedPrefix;
 	public String selectedPath;
 	protected JTree tree;
 	protected DefaultTreeModel m_model;
 	//protected JTextField m_display;
-	private JTextField textArea;
+	private final JTextField textArea;
 
 	private JButton openACL = null;
 	private JButton openGroup = null;
@@ -134,13 +134,13 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	private ContentName currentPrefix = null;
 
 	private DefaultMutableTreeNode usableRoot = null;
-	
+
 	private DirExpansionListener dirExpansionListener = null;
 	private DirSelectionListener dirSelectionListener = null;
-	
+
 	protected JPopupMenu tree_popup;
 	protected Action tree_popupaction;
-	
+
 	protected boolean vlcSupported = false;
 
 	/**
@@ -150,7 +150,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	public ContentExplorer() {
 		super("CCN Content Explorer");
 		if (userName != null) this.setTitle("CCN Content Explorer for " + userName);
-		
+
 		//vlcSupported = checkVLCsupport();
 
 		setupNameEnumerator();
@@ -215,37 +215,37 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 					}
 				}
-				
+
 			}
 		};
 		tree_popup.add(tree_popupaction);
 		tree_popup.addSeparator();
-		
-		
+
+
 		Action displayName = new AbstractAction("Display Full Prefix") {
 
 			private static final long serialVersionUID = 6373543410642021178L;
 
 			public void actionPerformed(ActionEvent e){
 				tree.repaint();
-				
+
 				TreePath p = (TreePath)(tree_popupaction.getValue("PATH"));
 
 				Name node = getNameNode((DefaultMutableTreeNode) p.getLastPathComponent());
 
 				ContentName n = null;
-				
+
 				if(node.name == null && node.path == null)
 					n = new ContentName();
 				else
 					n = new ContentName(node.path, node.name);
-				
+
 				htmlPane.setText(n.toString());
 			}
 		};
-		
+
 		tree_popup.add(displayName);
-		
+
 		Action saveFile = new AbstractAction("Save File") {
 
 			private static final long serialVersionUID = -3770094703319020441L;
@@ -256,9 +256,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				TreePath p = (TreePath)(tree_popupaction.getValue("PATH"));
 
 				Name node = getNameNode((DefaultMutableTreeNode) p.getLastPathComponent());
-					
+
 				ContentName name = null;
-				
+
 				if(node.name == null && node.path == null)
 					name = new ContentName();
 				else
@@ -266,12 +266,12 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				LocalSaveContentRetriever localsave = new LocalSaveContentRetriever(_handle, name, htmlPane);
 				Thread t = new Thread(localsave);
 				t.start();
-			
+
 			}
 		};
-		
+
 		tree_popup.add(saveFile);
-		
+
 		Action playFile = new AbstractAction("Play File") {
 
 			private static final long serialVersionUID = -2932828512965050415L;
@@ -279,12 +279,12 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			public void actionPerformed(ActionEvent e){
 				tree.repaint();
 				htmlPane.setText("play file with VLC not implemented yet");
-				
+
 			}
 		};
 		if(vlcSupported)
 			tree_popup.add(playFile);
-		
+
 		Action showVersions = new AbstractAction("Show Versions") {
 
 			private static final long serialVersionUID = -827879841202976452L;
@@ -302,7 +302,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 						toDisplay = toDisplay+c.toString()+"\n";
 					}
 				}
-				
+
 				if (toDisplay.equals("")) {
 					htmlPane.setText("Version numbers are currently not available for this name. \nThis can occur if the node was not previously selected.");
 				} else {
@@ -310,11 +310,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				}
 			}
 		};
-		
+
 		tree_popup.add(showVersions);
-		
+
 		tree.add(tree_popup);
-		
+
 		tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 		tree.setShowsRootHandles(true);
 		tree.setEditable(false);
@@ -342,13 +342,13 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 				//commented out this behavior.  we have many things that do have a . in them.  also
 				//when showing versions, they may have characters that are interpreted as a .
-				
+
 				/*if (((selectedPrefix.toString()).split("\\.")).length > 2) {
 				*	JOptionPane.showMessageDialog(this.frame,
 				*			"Please Select a Directory to add a file",
 				  *			"Select Directory", JOptionPane.ERROR_MESSAGE);
 				 * } else {
-				 * 
+				 *
 				 */
 					// Show dialog; this method does not return until dialog is
 					// closed
@@ -380,11 +380,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 								Log.fine("user selected cancel, returning");
 								return;
 							}
-							
+
 							Log.info("user entered [{0}]", name);
 							//System.out.println("user entered ["+name+"]");
 
-							
+
 							try {
 								if (name.startsWith("ccnx:/"))
 									name = name.replaceFirst("ccnx:/", "/");
@@ -403,7 +403,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 									JOptionPane.showMessageDialog(chooser, (name + " is not a valid CCNx name.  Please be sure it starts with \"/\""));
 							}
 						}
-						
+
 						sendFile(file, contentName);
 					} catch (MalformedContentNameStringException e) {
 						Log.logException("could not create content name for selected file: "+file.getName(), e);
@@ -434,10 +434,10 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		textArea = new JTextField();
 		textArea.setEditable(false);
 		textArea.setText("here is where names will appear");
-		
+
 		//Component c1 = new ExplorerPanel();
 		//Component c2 = new TextPanel();
-		
+
 		// Add the scroll panes to a split pane.
 		JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
 		splitPane.setContinuousLayout(true);
@@ -489,6 +489,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		tree.addMouseListener(new MouseActions());
 
 		WindowListener wndCloser = new WindowAdapter() {
+			@Override
 			public void windowClosing(WindowEvent e) {
 				System.exit(0);
 			}
@@ -503,7 +504,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 * Method to trigger a thread to retrieve a file. A new thread is created to get the file.
 	 * This method displays a message about the file to retrieve in the preview pane and displays
 	 * the text of the file when the download is complete.
-	 * 
+	 *
 	 * @param name Name of the file to retrieve
 	 * @param txtPopup True if the file should be opened in a text popup
 	 */
@@ -518,12 +519,12 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		Thread t = new Thread(retriever);
 		t.start();
 	}
-	
+
 	/**
 	 * Method to trigger a thread to retrieve a file. A new thread is created to get the file.
 	 * This method displays a message about the file to retrieve in the preview pane and displays
 	 * the text of the file when the download is complete.
-	 * 
+	 *
 	 * @param name Name of the file to retrieve
 	 */
 
@@ -531,13 +532,13 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		retrieveFromRepo(name, false);
 	}
 
-	
+
 	/**
 	 * Method to store a file in a repository.  A new thread is created for this process.
 	 * A message indicating the file the is being written displays in the preview pane.
 	 * When the upload is complete, or an error occurs, the preview pane is updated to show
 	 * the new state.
-	 * 
+	 *
 	 * @param file
 	 * @param ccnName
 	 */
@@ -558,11 +559,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		htmlPane.setText("Please expand folder names you would like to enumerate.  You may also select text files to be displayed in this window.");
 	}
 
-	
+
 	/**
 	 * Method to get Swing components used for storing the name hierarchy.  Returns null if the
 	 * prefix is not found.  Uses the ContentExplorer.find() method to recursively search through the tree.
-	 * 
+	 *
 	 * @param ccnContentName Prefix to retrieve in the tree.
 	 * @return DefaultMutableTreeNode The node in the tree representing the supplied prefix.
 	 */
@@ -591,7 +592,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 	/**
 	 * Method for traversing the tree to find a particular node corresponding to a name.
-	 * 
+	 *
 	 * @param parent TreePath for the node we are able to explore
 	 * @param depth Current depth of the tree (int)
 	 * @param names String[] representing the name we are looking for in components
@@ -602,7 +603,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		String nodeName = node.toString().replace("/", "");
 		Log.fine("check nodeName: [" + nodeName + "] node: [" + node.toString()+ "]");
 		Log.fine("depth = "+depth +" names.length = "+names.length);
-				
+
 		if (names.length <= depth) {
 			// we don't have to look far... this matches the root
 			Log.fine("this is the root, and we want the root...  returning the root");
@@ -618,7 +619,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		}
 
 		String nameToCheck = names[depth].replace("/","");
-		
+
 		Log.fine("names[depth] " + names[depth]);
 		Log.fine("nameToCheck: "+nameToCheck);
 		// we added an extra empty slash at the top... need to account for this
@@ -658,11 +659,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 	/**
 	 * Method to find a child with a specific name.
-	 * 
+	 *
 	 * @param parent TreePath for the parent we are searching
 	 * @param n Node to look for children
 	 * @param name Name for the child we are looking for
-	 * 
+	 *
 	 * @return DefaultMutableTreeNode Returns the child we are looking for,
 	 *  or null if it does not exist.
 	 */
@@ -688,9 +689,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 	/**
 	 * Method to get the DefaultMutableTreeNode for a given path.
-	 * 
+	 *
 	 * @param path TreePath for the node we are looking for
-	 * 
+	 *
 	 * @return DefaultMutableTreeNode Node we are looking for
 	 */
 	DefaultMutableTreeNode getTreeNode(TreePath path) {
@@ -699,7 +700,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 	/**
 	 * Method to get the user object as a Name from a DefaultMutableTreeNode.
-	 * 
+	 *
 	 * @param node The node we need the name of
 	 * @return Name The name of the node.  Returns null if the node is null.
 	 */
@@ -718,7 +719,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 	/**
 	 * Method to get the user object as a FileNode.
-	 * 
+	 *
 	 * @param node  The node we want a FileNode from
 	 * @return FileNode The user object casted to a FileNode if it is one, null otherwise.
 	 */
@@ -738,9 +739,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 * Experimental code - not tested
 	 *
 	 */
-	
+
 	class MouseActions implements MouseListener {
-		
+
 		/**
 		 * Class to handle mouse events.  This includes a single click to begin enumeration for folders.
 		 * If the selected item is a .txt or .text file, it will preview in the lower pane.
@@ -756,27 +757,27 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					myDoubleClick(selRow, selPath);
 				}
 			}
-			
+
 			if(e.isPopupTrigger()) {
 				popup(selPath, e.getX(), e.getY(), tree.getRowForLocation(e.getX(), e.getY()));
-			}		
-			
+			}
+
 		}
-		
+
 		public void mouseReleased(MouseEvent e) {
-			
+
 			if(e.isPopupTrigger()) {
 				popup(tree.getPathForLocation(e.getX(), e.getY()), e.getX(), e.getY(), tree.getRowForLocation(e.getX(), e.getY()));
 			}
 		}
-		
-		
+
+
 		public void mouseClicked(MouseEvent e) {
-			
+
 			if(e.isPopupTrigger()) {
 				popup(tree.getPathForLocation(e.getX(), e.getY()), e.getX(), e.getY(), tree.getRowForLocation(e.getX(), e.getY()));
 			}
-			
+
 		}
 
 		private void popup(TreePath selPath, int x, int y, int row){
@@ -785,9 +786,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				if(tree.isExpanded(selPath)) {
 					tree_popupaction.putValue(Action.NAME, "Collapse");
 				} else {
-					
+
 					if(tree.isRowSelected(row)) {
-											
+
 						//if this is the first selection, the node needs to be selected first
 						//TreeExpansionEvent t = new TreeExpansionEvent(tree, selPath);
 						//dirExpansionListener.treeExpanded(t);
@@ -801,13 +802,13 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				//tree_clickedpath = selPath;
 			}
 		}
-		
-		
+
+
 		/**
 		 * Double click action.  If a .txt or .text file is double clicked, it will open in a separate window.
 		 * The file is obtained through CCN.  If the file is no longer available, a message will appear in
 		 * the preview pane.
-		 * 
+		 *
 		 * @param selRow Swing row selection
 		 * @param selPath Path selected
 		 */
@@ -822,11 +823,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 							JOptionPane.ERROR_MESSAGE);
 				return;
 			}
-			
+
 			ContentName cn = new ContentName(node.name);
-			
+
 			String name = cn.toString();
-			
+
 			if (name.toLowerCase().endsWith(".txt")	|| name.toLowerCase().endsWith(".text")) {
 				if (node.path.count() == 0) {
 					//retrieveFromRepo("/" + name);
@@ -836,7 +837,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					//retrieveFromRepo(node.path.toString() + "/" + name);
 					retrieveFromRepo(node.path.toString() + name, true);
 				}
-				
+
 			} else {
 				// Can't handle filetype
 				JOptionPane.showMessageDialog(ContentExplorer.this, "Cannot Open file "
@@ -845,12 +846,12 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 								JOptionPane.ERROR_MESSAGE);
 			}
 		}
-		
-		
+
+
 		public void mouseEntered(MouseEvent e) {
 			// we do not have actions for this yet
 		}
-		
+
 		public void mouseExited(MouseEvent e) {
 			// we do not have actions for this yet
 		}
@@ -860,14 +861,14 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 	/**
 	 * Class to handle directory actions - expand and collapse.
-	 * 
+	 *
 	 * @see TreeExpansionListener
 	 */
 	class DirExpansionListener implements TreeExpansionListener {
-		
+
 		/**
 		 * Method called when a tree node is expanded, currently not used.
-		 * 
+		 *
 		 * @param event Swing TreeExpansionEvent object
 		 * @return void
 		 */
@@ -883,9 +884,9 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 		/**
 		 * Method to handle tree collapse events.  When a tree is collapsed, all name enumerations under
 		 * the collapsed node are canceled.
-		 * 
+		 *
 		 * @param event TreeExpansionEvent object for the event
-		 * 
+		 *
 		 * @return void
 		 */
 		public void treeCollapsed(TreeExpansionEvent event) {
@@ -901,7 +902,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			}
 			Log.fine("cancelling prefix: " + prefixToCancel);
 			_nameEnumerator.cancelEnumerationsWithPrefix(prefixToCancel);
-			
+
 		}
 	}
 
@@ -910,14 +911,14 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 *
 	 */
 	class DirSelectionListener implements TreeSelectionListener {
-		
+
 		/**
 		 * Method to handle selection events.  If a node is selected for the first time and is a folder,
 		 * name enumeration will begin under that prefix.  This event is also triggered as the tree is collapsed.
 		 * In this case, we do not want to reselect nodes that were already canceled since
 		 * enumeration will be started again.  To avoid this, the method checks if the path has any parent collapsed,
 		 * if so, the event is not processed so name enumeration will not be restarted.
-		 * 
+		 *
 		 * @param event TreeSelectionEvent object to handle.
 		 * @return void
 		 */
@@ -931,10 +932,11 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			// is being
 			// selected as part of a collapse, so we don't want to re-register
 			// it for enumerating
-			
+
 			if (tree.getRowForPath(event.getPath()) > -1) {
 				tree.setSelectionPath(event.getPath());
 				Thread runner = new Thread() {
+					@Override
 					public void run() {
 						Log.fine("getting name node: " + node.toString());
 						Name fnode = getNameNode(node);
@@ -945,7 +947,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 							// usable node
 							fnode = getNameNode(usableRoot);
 						}
-								
+
 						Log.fine("In the tree selection listener with "	+ fnode.name + " and " + node.toString());
 						String p = getNodes(fnode);
 						selectedPath = p;
@@ -960,14 +962,22 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	/**
 	 * Main method for the ContentExplorer GUI.  The GUI defaults to exploring "/" but takes a -root option for exploring
 	 * alternate namespaces.
-	 * 
+	 *
 	 * @param args String[] of the arguments for the GUI.  (path to explore and optional experimental access control GUI)
 	 */
 	public static void main(String[] args) {
 		Log.setDefaultLevel(Level.WARNING);
 		if (args.length > 0) {
 			// we have some options
+			String extraUsage = "";
 			for (int i = 0; i < args.length; i++) {
+				if (i == 0 && args[0].startsWith("[")) {
+					extraUsage = args[0];
+					continue;
+				}
+				if (args[i].equals("-h")) {
+					usage(extraUsage);
+				}
 				String s = args[i];
 				if (s.equalsIgnoreCase("-root")) {
 					i++;
@@ -985,8 +995,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				} else if (s.equals("-debugMode")) {
 					debugMode = true;
 				} else {
-					usage();
-					System.exit(1);
+					usage(extraUsage);
 				}
 			}
 		}
@@ -1011,13 +1020,14 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	/**
 	 * Usage for ContentExplorer GUI.
 	 */
-	public static void usage() {
-		System.out.println("Content Explorer usage: [-root /pathToExplore] [-accessControl]");
+	public static void usage(String extraUsage) {
+		System.out.println("Content Explorer usage: " + extraUsage + "[-root /pathToExplore] [-accessControl]");
+		System.exit(1);
 	}
 
 	/**
 	 * Method to get the node selected with the SelectionListener
-	 * 
+	 *
 	 * @param fnode Name node to select
 	 * @return String the full name for the selected node
 	 */
@@ -1040,7 +1050,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 			Log.fine("Retrieve from Repo: " + p);
 			retrieveFromRepo(p);
 		}
-		
+
 		// this is a directory that we want to enumerate...  if it is a text file, we will still want to get the versions
 		if (fnode.path == null)
 			Log.fine("the path is null");
@@ -1072,7 +1082,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 * Method to handle CCNNameEnumeration callbacks.  This implementation assumes the
 	 * application handles duplicates. This method creates an instance of the Runnable
 	 * AddChildren class to process the names returned through CCNNameEnumeration.
-	 * 
+	 *
 	 * @param prefix ContentName of the prefix for returned names
 	 * @param n ArrayList<ContentNames> of children returned by enumeration.
 	 */
@@ -1087,17 +1097,17 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 					Log.fine(cn.toString() + " (" + cn.toString() + ")");
 			}
 		}
-		
+
 		AddChildren adder = new AddChildren(this, n, prefix);
 		Thread t = new Thread(adder);
 		t.start();
-		
+
 		return 0;
 	}
 
 	/**
 	 * Method to register a prefix for name enumeration with CCNNameEnumerator
-	 * 
+	 *
 	 * @param prefix String representation of the name to enumerate
 	 */
 	public void registerPrefix(String prefix) {
@@ -1119,7 +1129,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 	/**
 	 *  Method to get an instance of a CCNHandle and CCNNameEnumerator.
-	 *  
+	 *
 	 *  @return void
 	 */
 	private void setupNameEnumerator() {
@@ -1135,7 +1145,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 	/**
 	 * Method to get the scaled images for displaying in the GUI.
-	 * 
+	 *
 	 * @param srcImg
 	 * @param w
 	 * @param h
@@ -1152,7 +1162,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 	/**
 	 * Experimental code for access control GUI.
-	 * 
+	 *
 	 * @param e ActionEvent
 	 * @return void
 	 */
@@ -1191,36 +1201,36 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 	/**
 	 * Method to return the CCNNameEnumerator for the ContentExplorer application
-	 * 
+	 *
 	 * @return CCNNameEnumerator
 	 */
 	public CCNNameEnumerator getNameEnumerator() {
 		return _nameEnumerator;
 	}
-	
+
 	/**
-	 * Method to check for CCN Plugin for VLC.  Returns true if the ccn plugin is 
+	 * Method to check for CCN Plugin for VLC.  Returns true if the ccn plugin is
 	 * installed for VLC.  If it is not found, the "Play File" option is disabled
 	 * for files.
-	 * 
+	 *
 	 * Currently not tested on non-linux platforms.
-	 * 
+	 *
 	 * @return  boolean True if the text ccn is found in the vlc --list output.
 	 */
-	
+
 	public boolean checkVLCsupport() {
-		
+
 		InputStream output = null;
 		//InputStream stderr = null;
-		
+
 		boolean check = false;
-		
+
 		String[] cmd = {"/bin/sh", "-c", "vlc --list | grep ccn"};
 		try {
 			Process p = Runtime.getRuntime().exec(cmd);
 			output = p.getInputStream();
 			//stderr = p.getErrorStream();
-			
+
 			String line = null;
 			BufferedReader brCleanUp = new BufferedReader (new InputStreamReader (output));
 			while ((line = brCleanUp.readLine ()) != null) {
@@ -1231,13 +1241,13 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 				}
 			}
 			brCleanUp.close();
-		      
+
 			//brCleanUp = new BufferedReader (new InputStreamReader (stderr));
 			//while ((line = brCleanUp.readLine ()) != null) {
 			//}
 			//brCleanUp.close();
 
-			
+
 		} catch (IOException e) {
 			Log.warning("ContentExplorer could not check for CCN VLC plugin, disabling play file option");
 			Log.logException("Error checking for VLC CCN plugin", e);
@@ -1245,33 +1255,33 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 
 		return check;
 	}
-	
+
 	public static void setRoot(ContentName r) {
 		root = r;
 	}
-	
+
 	public static void setAccessControl(boolean ac) {
 		accessControlOn = ac;
 	}
-	
+
 	public static void setShowVersions(boolean sv) {
 		showVersions = sv;
 	}
-	
+
 	public static void setDebugMode(boolean dm) {
 		debugMode = dm;
 	}
-	
+
 	public static void setGroupAccessControlManager(GroupAccessControlManager acm) {
 		gacm = acm;
 	}
-	
+
 	public static void setUsername(String name) {
 		userName = name;
 	}
-	
+
 	public static void setPreviewTextfiles(boolean ptf) {
 		previewTextFiles = ptf;
 	}
-	
+
 }
