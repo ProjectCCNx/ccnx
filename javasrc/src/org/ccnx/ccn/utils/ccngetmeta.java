@@ -1,11 +1,11 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -32,49 +32,50 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 
 /**
  * A command-line utility for pulling meta files associated with a file
- * out of a repository. The "metaname" should be the relative path (including filename) for 
+ * out of a repository. The "metaname" should be the relative path (including filename) for
  * the desired metadata only.
  * Note class name needs to match command name to work with ccn_run
  */
 public class ccngetmeta implements Usage {
-	
+
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		Usage u = new ccngetmeta();
-		
-		for (int i = 0; i < args.length - 3; i++) {
+
+		for (int i = 0; i < args.length; i++) {
 			if (!CommonArguments.parseArguments(args, i, u)) {
-				u.usage();
+				u.usage(CommonArguments.getExtraUsage());
 				System.exit(1);
 			}
 			if (CommonParameters.startArg > i + 1)
 				i = CommonParameters.startArg - 1;
+			if (i >= args.length - 3)
+				break;
 		}
-		
+
 		if (args.length != CommonParameters.startArg + 3) {
-			u.usage();
-			System.exit(1);
+			u.usage(CommonArguments.getExtraUsage());
 		}
-		
+
 		try {
 			int readsize = 1024; // make an argument for testing...
-			
+
 			CCNHandle handle = CCNHandle.open();
 
 			String metaArg = args[CommonParameters.startArg + 1];
 			if (!metaArg.startsWith("/"))
 				metaArg = "/" + metaArg;
-			ContentName fileName = MetadataProfile.getLatestVersion(ContentName.fromURI(args[CommonParameters.startArg]), 
+			ContentName fileName = MetadataProfile.getLatestVersion(ContentName.fromURI(args[CommonParameters.startArg]),
 					ContentName.fromNative(metaArg), CommonParameters.timeout, handle);
-		
+
 			if (fileName == null) {
 				//This base content does not exist...  cannot get metadata associated with the base name.
 				System.out.println("File " + args[CommonParameters.startArg] + " does not exist");
 				System.exit(1);
 			}
-			
+
 			if (VersioningProfile.hasTerminalVersion(fileName)) {
 				//MetadataProfile has found a terminal version...  we have something to get!
 			} else {
@@ -82,13 +83,13 @@ public class ccngetmeta implements Usage {
 				System.out.println("File " + fileName + " does not exist...  exiting");
 				System.exit(1);
 			}
-			
+
 			File theFile = new File(args[CommonParameters.startArg + 2]);
 			if (theFile.exists()) {
 				System.out.println("Overwriting file: " + args[CommonParameters.startArg + 1]);
 			}
 			FileOutputStream output = new FileOutputStream(theFile);
-			
+
 			long starttime = System.currentTimeMillis();
 			CCNInputStream input;
 			if (CommonParameters.unversioned)
@@ -96,10 +97,10 @@ public class ccngetmeta implements Usage {
 			else
 				input = new CCNFileInputStream(fileName, handle);
 			if (CommonParameters.timeout != null) {
-				input.setTimeout(CommonParameters.timeout); 
+				input.setTimeout(CommonParameters.timeout);
 			}
 			byte [] buffer = new byte[readsize];
-			
+
 			int readcount = 0;
 			long readtotal = 0;
 			//while (!input.eof()) {
@@ -126,9 +127,10 @@ public class ccngetmeta implements Usage {
 		}
 		System.exit(1);
 	}
-	
-	public void usage() {
-		System.out.println("usage: ccngetmeta [-v (verbose)] [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <metaname> <filename>");
+
+	public void usage(String extraArgs) {
+		System.out.println("usage: ccngetmeta " + extraArgs + "[-v (verbose)] [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <metaname> <filename>");
+		System.exit(1);
 	}
-	
+
 }

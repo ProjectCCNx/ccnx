@@ -27,22 +27,36 @@ import org.ccnx.ccn.protocol.ContentName;
 
 public class ccnprintlink {
 
-	public static void usage() {
-		System.err.println("usage: ccnlink [-q] <link uri> [<link uri> ...]  (-q == quiet)");
+	public static void usage(String extraUsage) {
+		System.err.println("usage: ccnlink " + extraUsage + "[-q] <link uri> [<link uri> ...]  (-q == quiet)");
+		System.exit(1);
 	}
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		String extraUsage = "";
+
 		try {
 
-			if (args.length < 1) {
-				usage();
-				return;
+			if (args == null || args.length == 0) {
+				usage(extraUsage);
+			}
+
+			int offset = 0;
+			if (args[0].startsWith("[")) {
+				extraUsage = args[0];
+				offset++;
+			}
+			if (args[offset].equals("-h")) {
+				usage(extraUsage);
+			}
+
+			if (args.length < 2) {
+				usage(extraUsage);
 			}
 			CCNHandle handle = CCNHandle.getHandle();
 
-			int offset = 0;
 			if ((args.length > 1) && (args[0].equals("-q"))) {
 				Log.setDefaultLevel(Level.WARNING);
 				offset++;

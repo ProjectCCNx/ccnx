@@ -89,7 +89,7 @@ else
   shift
 fi
 
-$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION $JAVA_OPTIONS org.ccnx.ccn.utils.$UTIL $*
+$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION $JAVA_OPTIONS org.ccnx.ccn.utils.$UTIL "[-debug <portno>] [-javaopts <options>] " $*
 
 
 

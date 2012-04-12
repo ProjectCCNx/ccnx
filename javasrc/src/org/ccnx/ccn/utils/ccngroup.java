@@ -1,11 +1,11 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -41,46 +41,54 @@ public class ccngroup {
 	private static long TIMEOUT = 1000;
 	private static ContentName userStorage = new ContentName(UserConfiguration.defaultNamespace(), "Users");
 	private static ContentName groupStorage = new ContentName(UserConfiguration.defaultNamespace(), "Groups");
-	
+
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		// silence logging
 		Log.setDefaultLevel(Level.WARNING);
-		
+		String extraUsage = "";
+
 		if ((args == null) || (args.length == 0)) {
-			usage();
+			usage(extraUsage);
 		}
-		
+
 		int pos = 0;
+		if (args[0].startsWith("[")) {
+			extraUsage = args[0];
+			pos++;
+		}
+		if (args[pos].equals("-h")) {
+			usage(extraUsage);
+		}
 		if (args[pos].equals("-as")) {
-			if (args.length < pos+2) usage();
+			if (args.length < pos+2) usage(extraUsage);
 			pos++;
 			setUser(args[pos]);
 			pos++;
 		}
-		
+
 		if (args[pos].equals("-list")) {
 			listGroups();
 			System.exit(0);
 		}
 		else if (args[pos].equals("-listmembers")) {
-			if (args.length < pos + 2) usage();
+			if (args.length < pos + 2) usage(extraUsage);
 			pos++;
 			String groupName = args[pos];
 			listMembers(groupName);
 			System.exit(0);
 		}
 		else if (args[pos].equals("-delete")) {
-			if (args.length < pos + 2) usage();
+			if (args.length < pos + 2) usage(extraUsage);
 			pos ++;
 			String groupName = args[pos];
 			deleteGroup(groupName);
 			System.exit(0);
 		}
 		else if (args[pos].equals("-create") || args[pos].equals("-add") || args[pos].equals("-remove")) {
-			if (args.length < pos + 2) usage();
+			if (args.length < pos + 2) usage(extraUsage);
 			String command = args[pos];
 			pos++;
 			String groupName = args[pos];
@@ -90,7 +98,7 @@ public class ccngroup {
 				try {
 					Link lk = new Link(ContentName.fromNative(args[i]));
 					groupMembers.add(lk);
-				} 
+				}
 				catch (Exception e) {
 					e.printStackTrace();
 					System.exit(1);
@@ -102,17 +110,17 @@ public class ccngroup {
 			System.exit(0);
 		}
 		else {
-			usage();
+			usage(extraUsage);
 		}
 
 	}
 
-	public static void usage() {
+	public static void usage(String extraUsage) {
 		System.out.println("usage:");
-		System.out.println("ccngroup [-as pathToKeystore] -list");
-		System.out.println("ccngroup [-as pathToKeystore] -listmembers groupFriendlyName");
-		System.out.println("ccngroup [-as pathToKeystore] [-create | -add | -remove] groupFriendlyName (groupMember)*");
-		System.out.println("ccngroup [-as pathToKeystore] -delete groupFriendlyName");
+		System.out.println("ccngroup " + extraUsage + "[-as pathToKeystore] -list");
+		System.out.println("ccngroup " + extraUsage + "[-as pathToKeystore] -listmembers groupFriendlyName");
+		System.out.println("ccngroup " + extraUsage + "[-as pathToKeystore] [-create | -add | -remove] groupFriendlyName (groupMember)*");
+		System.out.println("ccngroup " + extraUsage + "[-as pathToKeystore] -delete groupFriendlyName");
 		System.exit(1);
 	}
 
@@ -128,13 +136,13 @@ public class ccngroup {
 			UserConfiguration.setUserName(userName);
 		}
 	}
-	
+
 	public static void listGroups() {
 		try {
 			EnumeratedNameList userDirectory = new EnumeratedNameList(groupStorage, CCNHandle.open());
 			userDirectory.waitForChildren(TIMEOUT);
 			Thread.sleep(TIMEOUT);
-			
+
 			SortedSet<ContentName> availableChildren = userDirectory.getChildren();
 			if ((null == availableChildren) || (availableChildren.size() == 0)) {
 				System.out.println("No group found in: " + groupStorage);
@@ -151,7 +159,7 @@ public class ccngroup {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public static void listMembers(String groupName) {
 		try{
 			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
@@ -170,8 +178,8 @@ public class ccngroup {
 			System.exit(1);
 		}
 	}
-	
-	
+
+
 	public static void createGroup(String groupName, ArrayList<Link> membersToAdd) {
 		try {
 			ContentName root = ContentName.fromNative("/");
@@ -187,7 +195,7 @@ public class ccngroup {
 			System.out.println(lk.targetName());
 		}
 	}
-	
+
 	public static void deleteGroup(String groupName) {
 		try {
 			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
@@ -199,7 +207,7 @@ public class ccngroup {
 		}
 		System.out.println("Deleted group " + groupName);
 	}
-	
+
 	public static void addMember(String groupName, ArrayList<Link> membersToAdd) {
 		try {
 			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
@@ -207,7 +215,7 @@ public class ccngroup {
 			Thread.sleep(TIMEOUT);
 			Group g = gm.getGroup(groupName, SystemConfiguration.getDefaultTimeout());
 			g.modify(membersToAdd, null);
-		} 
+		}
 		catch (AccessDeniedException aed) {
 			System.out.println("You do not have the permission to edit the membership of Group " + groupName);
 			System.exit(1);
@@ -221,7 +229,7 @@ public class ccngroup {
 			System.out.println(lk.targetName());
 		}
 	}
-	
+
 	public static void removeMember(String groupName, ArrayList<Link> membersToRemove) {
 		try {
 			GroupAccessControlManager acm = new GroupAccessControlManager(null, groupStorage, userStorage, CCNHandle.open());
@@ -243,5 +251,5 @@ public class ccngroup {
 			System.out.println(lk.targetName());
 		}
 	}
-	
+
 }
