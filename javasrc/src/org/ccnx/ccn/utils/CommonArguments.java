@@ -68,8 +68,8 @@ public abstract class CommonArguments {
 		} else {
 			ret = false;
 		}
-		if (CommonParameters.startArg < i + 1)
-			CommonParameters.startArg = i + 1;
+		if (ret)
+			CommonParameters.startArg = i;
 		return ret;
 	}
 

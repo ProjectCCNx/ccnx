@@ -44,12 +44,13 @@ public class ccngetfile implements Usage {
 
 		for (int i = 0; i < args.length; i++) {
 			if (!CommonArguments.parseArguments(args, i, u)) {
+				if (i >= args.length - 3) {
+					CommonParameters.startArg = i;
+					break;
+				}
 				u.usage(CommonArguments.getExtraUsage());
 			}
-			if (CommonParameters.startArg > (i + 1))
-				i = CommonParameters.startArg - 1;
-			if (i >= args.length - 2)
-				break;
+			i = CommonParameters.startArg;
 		}
 
 		if (args.length < CommonParameters.startArg + 2) {

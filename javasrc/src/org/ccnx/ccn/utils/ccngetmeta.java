@@ -20,9 +20,11 @@ package org.ccnx.ccn.utils;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.CCNFileInputStream;
 import org.ccnx.ccn.io.CCNInputStream;
 import org.ccnx.ccn.profiles.VersioningProfile;
@@ -42,17 +44,18 @@ public class ccngetmeta implements Usage {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		Log.setDefaultLevel(Level.WARNING);
 		Usage u = new ccngetmeta();
 
 		for (int i = 0; i < args.length; i++) {
 			if (!CommonArguments.parseArguments(args, i, u)) {
+				if (i >= args.length - 3) {
+					CommonParameters.startArg = i;
+					break;
+				}
 				u.usage(CommonArguments.getExtraUsage());
-				System.exit(1);
 			}
-			if (CommonParameters.startArg > i + 1)
-				i = CommonParameters.startArg - 1;
-			if (i >= args.length - 3)
-				break;
+			i = CommonParameters.startArg;
 		}
 
 		if (args.length != CommonParameters.startArg + 3) {

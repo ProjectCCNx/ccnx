@@ -21,10 +21,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.repo.LogStructRepoStore.LogStructRepoStoreProfile;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.repo.RepositoryBulkImport;
 
 /**
@@ -42,38 +44,37 @@ public class ccnrepoimport implements Usage {
 	 * @param args
 	 */
 	public void doimport(String[] args) {
-		int startArg = 0;
+		Log.setDefaultLevel(Level.WARNING);
 
 		for (int i = 0; i < args.length; i++) {
 			if (!CommonArguments.parseArguments(args, i, ccnrepoimport)) {
+				if (i >= args.length - 2) {
+					CommonParameters.startArg = i;
+					break;
+				}
 				usage(CommonArguments.getExtraUsage());
-				System.exit(1);
 			}
-			if (CommonParameters.startArg > i + 1)
-				i = CommonParameters.startArg - 1;
-			if (i >= args.length - 2)
-				break;
+			i = CommonParameters.startArg;
 		}
 
 		if (CommonParameters.startArg > args.length - 2) {
 			usage(CommonArguments.getExtraUsage());
-			System.exit(1);
 		}
 
 		try {
 
-			File repoDir = new File(args[startArg]);
+			File repoDir = new File(args[CommonParameters.startArg]);
 			if (!repoDir.exists()) {
-				System.out.println("Repo at: " + args[startArg + 1] + " does not exist");
+				System.out.println("Repo at: " + args[CommonParameters.startArg] + " does not exist");
 				System.exit(1);
 			}
 
 			File repoImportDir = new File(repoDir, LogStructRepoStoreProfile.REPO_IMPORT_DIR);
 			repoImportDir.mkdir();
 
-			File theFile = new File(args[startArg + 1]);
+			File theFile = new File(args[CommonParameters.startArg + 1]);
 			if (!theFile.exists()) {
-				System.out.println("File: " + args[startArg + 1] + " does not exist");
+				System.out.println("File: " + args[CommonParameters.startArg + 1] + " does not exist");
 				System.exit(1);
 			}
 

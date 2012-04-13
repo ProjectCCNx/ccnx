@@ -44,22 +44,21 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 	public void write(String[] args) {
 		Log.setDefaultLevel(Level.WARNING);
 		for (int i = 0; i < args.length; i++) {
-			boolean ret = CommonArguments.parseArguments(args, i, ccnputmeta);
-			if (CommonParameters.startArg > i + 1) {
-				i = CommonParameters.startArg - 1;
+			if (CommonArguments.parseArguments(args, i, ccnputmeta)) {
+				i = CommonParameters.startArg;
+				continue;
 			}
-			if (CommonParameters.startArg <= i)
-				CommonParameters.startArg = i + 1;
-			if ((i + 3) > args.length)
+			if ((i + 3) >= args.length) {
+				CommonParameters.startArg = i;
 				break;
+			}
 			if (args[i].equals("-local")) {
 				CommonParameters.local = true;
 			} else if (args[i].equals(("-allownonlocal"))) {
 				CommonParameters.local = false;
 			} else if (args[i].equals(("-raw"))) {
 				CommonParameters.rawMode = true;
-			}
-			if (!ret)
+			} else
 				usage(CommonArguments.getExtraUsage());
 		}
 
