@@ -24,8 +24,9 @@ Refer to http://www.ccnx.org/redmine/ for more details.
     ContentName, and ContentNameProvider documentation for more information.
 
   * Issues Resolved:
+	* Bug 100470 Make in android directory with current tools leaves chaff
   	* Bug 100726 Still some occasional deadlocks in VLC plugin
-  	* Feature 100729 VLC CCN plugin should provide access to prefetch offset 
+	* Feature 100729 VLC CCN plugin should provide access to prefetch offset 
 	  via VLC option
     * Feature 100499 Unify ContentName constructors
     * Bug 100046 OpenSolaris build fails when cc is actually gcc
