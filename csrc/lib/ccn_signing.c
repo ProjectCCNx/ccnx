@@ -32,7 +32,7 @@ struct ccn_sigc {
     EVP_MD_CTX context;
 };
 
-#ifdef NID_ecdsa_with_SHA256
+#if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA) && defined(NID_ecdsa_with_SHA256)
 static int init256(EVP_MD_CTX *ctx)
 { return SHA256_Init(ctx->md_data); }
 static int update256(EVP_MD_CTX *ctx,const void *data,size_t count)
@@ -84,7 +84,7 @@ md_from_digest_and_pkey(const char *digest, const struct ccn_pkey *pkey)
     switch (pkey_type) {
         case EVP_PKEY_RSA:
         case EVP_PKEY_DSA:
-#ifdef EVP_PKEY_EC
+#if !defined(OPENSSL_NO_EC)
         case EVP_PKEY_EC:
 #endif
             break;
@@ -106,22 +106,24 @@ md_from_digest_and_pkey(const char *digest, const struct ccn_pkey *pkey)
      * set of hash maps to perform a similar function.
      */
     switch (md_nid) {
+#ifndef OPENSSL_NO_SHA
         case NID_sha1:      // supported for RSA/DSA/EC key types
             switch (pkey_type) {
                 case EVP_PKEY_RSA:
                     return(EVP_sha1());
                 case EVP_PKEY_DSA:
                     return(EVP_dss1());
-#ifdef EVP_PKEY_EC
+#if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
                 case EVP_PKEY_EC:
                     return(EVP_ecdsa());
 #endif
             }
             break;
+#endif
         case NID_sha256:    // supported for RSA/EC key types
             if (pkey_type == EVP_PKEY_RSA)
                 return(EVP_sha256());
-#if defined(EVP_PKEY_EC) && defined(NID_ecdsa_with_SHA256)
+#if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA) && defined(NID_ecdsa_with_SHA256)
             else if (pkey_type == EVP_PKEY_EC) {
                 return(&sha256ec_md);
             } /* our own md */
