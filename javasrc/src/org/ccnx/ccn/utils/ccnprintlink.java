@@ -36,6 +36,7 @@ public class ccnprintlink {
 	 */
 	public static void main(String[] args) {
 		String extraUsage = "";
+		Log.setDefaultLevel(Level.WARNING);
 
 		try {
 

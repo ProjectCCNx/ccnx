@@ -275,6 +275,7 @@ public class ccndcontrol {
 		for (int i = 0; i < args.length; i++) {
 			if (i == 0 && args[0].startsWith("[")) {
 				_extraUsage = args[0];
+				startArg++;
 			} else if (args[i].equals("-h")) {
 				usage(_extraUsage);
 				System.exit(0);

@@ -42,6 +42,7 @@ public class ccnlink {
 	 */
 	public static void main(String[] args) {
 		String extraUsage = "";
+		Log.setDefaultLevel(Level.WARNING);
 
 		try {
 
@@ -51,6 +52,8 @@ public class ccnlink {
 			for (int i = 0; i < args.length; i++) {
 				if (i == 0 && args[0].startsWith("[")) {
 					extraUsage = args[0];
+					offset++;
+					continue;
 				} else if (args[i].equals("-h")) {
 					usage(extraUsage);
 					System.exit(0);

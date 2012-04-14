@@ -72,7 +72,6 @@ public class ccnacl {
 		if (args[pos].equals("-show")) {
 			if (args.length < pos + 2) {
 				usage(extraUsage);
-				System.exit(1);
 			}
 			pos++;
 			String nodeName = args[pos];
@@ -81,7 +80,6 @@ public class ccnacl {
 		else if (args[pos].equals("-edit")) {
 			if (args.length < pos + 4) {
 				usage(extraUsage);
-				System.exit(1);
 			}
 			String nodeName = args[pos + 1];
 			String principalName = args[pos + 2];
@@ -94,14 +92,14 @@ public class ccnacl {
 		else if (args[pos].equals("-init")) {
 			if (args.length < pos + 5) {
 				usage(extraUsage);
-				System.exit(1);
 			}
 			String domain = args[pos + 1];
 			String userNamespace = args[pos + 2];
 			String groupNamespace = args[pos + 3];
 			String principalName = args[pos + 4];
 			initACL(domain, userNamespace, groupNamespace, principalName);
-		}
+		} else
+			usage(extraUsage);
 	}
 
 	public static void usage(String extraUsage) {
