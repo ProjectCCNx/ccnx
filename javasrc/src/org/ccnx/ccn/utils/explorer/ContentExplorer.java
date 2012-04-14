@@ -1021,7 +1021,7 @@ public class ContentExplorer extends JFrame implements BasicNameEnumeratorListen
 	 * Usage for ContentExplorer GUI.
 	 */
 	public static void usage(String extraUsage) {
-		System.out.println("Content Explorer usage: " + extraUsage + "[-root /pathToExplore] [-accessControl]");
+		System.out.println("Content Explorer usage: " + extraUsage + "[-root /pathToExplore] [-accessControl] [-showVersions] [-debugMode]");
 		System.exit(1);
 	}
 

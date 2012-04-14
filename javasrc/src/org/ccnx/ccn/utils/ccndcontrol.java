@@ -159,7 +159,7 @@ public class ccndcontrol {
 					System.exit(1);
 				}
 			}
-			if (6 < nTokens && null != tokens[start + 6]) {
+			if (start + 6 < nTokens && null != tokens[start + 6]) {
 				try {
 					entry.multicastTTL = Integer.valueOf(tokens[start + 6]);
 				} catch (NumberFormatException e) {

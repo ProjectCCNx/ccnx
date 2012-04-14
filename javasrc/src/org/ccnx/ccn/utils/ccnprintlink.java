@@ -58,7 +58,7 @@ public class ccnprintlink {
 			}
 			CCNHandle handle = CCNHandle.getHandle();
 
-			if ((args.length > 1) && (args[0].equals("-q"))) {
+			if ((args.length > offset + 1) && (args[offset].equals("-q"))) {
 				Log.setDefaultLevel(Level.WARNING);
 				offset++;
 			}
