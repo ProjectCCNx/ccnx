@@ -419,7 +419,8 @@ struct ccn_forwarding {
 enum es_active_state {
     ES_PENDING = -1,
     ES_INACTIVE = 0,
-    ES_ACTIVE = 1
+    ES_ACTIVE = 1,
+    ES_ACTIVE_PENDING_INACTIVE = 2
 };
 #define ENUM_N_COBS 9
 struct enum_state {
@@ -429,6 +430,7 @@ struct enum_state {
     struct ccn_charbuf *interest;
     struct ccn_indexbuf *interest_comps;
     struct ccn_charbuf *cob[ENUM_N_COBS];
+    int cob_deferred[ENUM_N_COBS];
     intmax_t next_segment;
     ccnr_cookie starting_cookie;
     enum es_active_state active;
