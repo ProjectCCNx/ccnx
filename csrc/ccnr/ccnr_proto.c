@@ -1258,7 +1258,8 @@ NextSegment:
     }
     if (cobs_deferred > 0) {
         if (CCNSHOULDLOG(ccnr, blah, CCNL_FINER))
-            ccnr_msg(ccnr, "enumeration: %d pending cobs, inactive pending", es->next_segment);
+            ccnr_msg(ccnr, "enumeration: %d pending cobs, inactive pending complete",
+                     cobs_deferred);
         es->active = ES_ACTIVE_PENDING_INACTIVE;
         hashtb_end(e);
         return (CCN_UPCALL_RESULT_INTEREST_CONSUMED);
