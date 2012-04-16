@@ -24,6 +24,8 @@ Refer to http://www.ccnx.org/redmine/ for more details.
     ContentName, and ContentNameProvider documentation for more information.
 
   * Issues Resolved:
+	* Bug 100722 CCN C-library changes for must be brought up to date in 
+	  Android
 	* Bug 100470 Make in android directory with current tools leaves chaff
 	* Bug 100726 Still some occasional deadlocks in VLC plugin
 	* Feature 100729 VLC CCN plugin should provide access to prefetch offset 
