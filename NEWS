@@ -24,6 +24,8 @@ Refer to http://www.ccnx.org/redmine/ for more details.
     ContentName, and ContentNameProvider documentation for more information.
 
   * Issues Resolved:
+	* Feature 100732 Tests should use C repo (repo2) instead of the old java
+	  one
 	* Bug 100727 ccnr can fail to answer enumeration requests when interests
 	  are reordered
 	* Bug 100725 The signing and verification code in the C library needs
