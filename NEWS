@@ -24,7 +24,10 @@ Refer to http://www.ccnx.org/redmine/ for more details.
     ContentName, and ContentNameProvider documentation for more information.
 
   * Issues Resolved:
-	* Bug 100722 CCN C-library changes for must be brought up to date in 
+	* Bug 100725 The signing and verification code in the C library needs
+	  to conditionally compile elliptic curve (EC) features in case the
+	  crypto library is too old or has them compiled out.
+	* Bug 100722 CCN C-library changes for must be brought up to date in
 	  Android
 	* Bug 100470 Make in android directory with current tools leaves chaff
 	* Bug 100726 Still some occasional deadlocks in VLC plugin
