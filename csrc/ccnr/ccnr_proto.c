@@ -1010,6 +1010,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         ccnr_debug_ccnb(ccnr, __LINE__, "enumeration: begin hash key", NULL,
                         name->buf, name->length);
     // Do not restart an active enumeration, it is probably a duplicate interest
+    // TODO: may need attention when es->active == ES_ACTIVE_PENDING_INACTIVE
     if (res == HT_OLD_ENTRY && es->active != ES_INACTIVE) {
         if (es->next_segment > 0)
             cob = es->cob[(es->next_segment - 1) % ENUM_N_COBS];
@@ -1018,6 +1019,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
             if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
                 ccnr_msg(ccnr, "enumeration: duplicate request for last cob");
             ccn_put(info->h, cob->buf, cob->length);
+            es->cob_deferred[(es->next_segment - 1) % ENUM_N_COBS] = 0;
             ans = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
         } else {
             if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINEST)) {
@@ -1064,6 +1066,7 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         !r_store_content_matches_interest_prefix(ccnr, content, interest->buf, interest->length))
         content = NULL;
     es->cob[0] = ccn_charbuf_create();
+    memset(es->cob_deferred, 0, sizeof(es->cob_deferred));
     es->reply_body = ccn_charbuf_create();
     ccnb_element_begin(es->reply_body, CCN_DTAG_Collection);
     es->content = content;
@@ -1113,9 +1116,9 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
     struct hashtb_enumerator enumerator = {0};
     struct hashtb_enumerator *e = &enumerator;
     struct ccn_signing_params sp = CCN_SIGNING_PARAMS_INIT;
+    int cobs_deferred;
     int i;
     int res = 0;
-    int ans = CCN_UPCALL_RESULT_ERR;
     
     ccnr = (struct ccnr_handle *)selfp->data;
     ic = info->interest_comps;
@@ -1128,12 +1131,13 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
     res = hashtb_seek(e, hashkey->buf, hashkey->length, 0);
     ccn_charbuf_destroy(&hashkey);
     if (res != HT_OLD_ENTRY) {
-        goto Bail;
+        hashtb_end(e);
+        return(CCN_UPCALL_RESULT_ERR);
     }
     es = e->data;
-    if (es->active != ES_ACTIVE) {
+    if (es->active != ES_ACTIVE && es->active != ES_ACTIVE_PENDING_INACTIVE) {
         hashtb_end(e);
-        return(ans);
+        return(CCN_UPCALL_RESULT_ERR);
     }
     // If there is a segment in the request, get the value.
     segment = r_util_segment_from_component(info->interest_ccnb,
@@ -1156,8 +1160,17 @@ r_proto_continue_enumeration(struct ccn_closure *selfp,
                 ccn_content_matches_interest(cob->buf, cob->length, 1, NULL,
                                              info->interest_ccnb, info->pi->offset[CCN_PI_E], info->pi)) {
                     if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
-                        ccnr_msg(ccnr, "enumeration: processing dup request for segment %jd", segment);
+                        ccnr_msg(ccnr, "enumeration: putting cob for out-of-order segment %jd",
+                                 segment);
                     ccn_put(info->h, cob->buf, cob->length);
+                    es->cob_deferred[segment % ENUM_N_COBS] = 0;
+                    if (es->active == ES_ACTIVE_PENDING_INACTIVE) {
+                        for (i = 0, cobs_deferred = 0; i < ENUM_N_COBS; i++) {
+                            cobs_deferred += es->cob_deferred[i];
+                        }
+                        if (cobs_deferred == 0)
+                            goto EnumerationComplete;
+                    }
                     hashtb_end(e);
                     return (CCN_UPCALL_RESULT_INTEREST_CONSUMED);
                 }
@@ -1204,10 +1217,13 @@ NextSegment:
             res = ccn_sign_content(info->h, cob, result_name, &sp,
                                    es->reply_body->buf, 4096);
             ccn_charbuf_destroy(&result_name);
-            if (CCNSHOULDLOG(ccnr, blah, CCNL_FINER))
-                ccnr_msg(ccnr, "enumeration: putting cob for segment %jd, req %jd", es->next_segment, segment);
-            if (segment == -1 || segment == es->next_segment)
+            if (segment == -1 || segment == es->next_segment) {
+                if (CCNSHOULDLOG(ccnr, blah, CCNL_FINER))
+                    ccnr_msg(ccnr, "enumeration: putting cob for segment %jd", es->next_segment);
                 ccn_put(info->h, cob->buf, cob->length);
+            } else {
+                es->cob_deferred[es->next_segment % ENUM_N_COBS] = 1;
+            }
             es->next_segment++;
             memmove(es->reply_body->buf, es->reply_body->buf + 4096, es->reply_body->length - 4096);
             es->reply_body->length -= 4096;
@@ -1236,20 +1252,30 @@ NextSegment:
     if (CCNSHOULDLOG(ccnr, blah, CCNL_FINER))
         ccnr_msg(ccnr, "enumeration: putting final cob for segment %jd", es->next_segment);
     ccn_put(info->h, cob->buf, cob->length);
-    es->active = ES_INACTIVE;
-    ans = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
-    
-Bail:
-    if (es != NULL) {
-        // leave the name 
-        ccn_charbuf_destroy(&es->interest);
-        ccn_charbuf_destroy(&es->reply_body);
-        for (i = 0; i < ENUM_N_COBS; i++)
-            ccn_charbuf_destroy(&es->cob[i]);
-        ccn_indexbuf_destroy(&es->interest_comps);
+    es->cob_deferred[es->next_segment % ENUM_N_COBS] = 0;
+    for (i = 0, cobs_deferred = 0; i < ENUM_N_COBS; i++) {
+        cobs_deferred += es->cob_deferred[i];
     }
+    if (cobs_deferred > 0) {
+        if (CCNSHOULDLOG(ccnr, blah, CCNL_FINER))
+            ccnr_msg(ccnr, "enumeration: %d pending cobs, inactive pending complete",
+                     cobs_deferred);
+        es->active = ES_ACTIVE_PENDING_INACTIVE;
+        hashtb_end(e);
+        return (CCN_UPCALL_RESULT_INTEREST_CONSUMED);
+    }
+EnumerationComplete:
+    if (CCNSHOULDLOG(ccnr, blah, CCNL_FINER))
+        ccnr_msg(ccnr, "enumeration: inactive", es->next_segment);
+    // The enumeration is complete, free charbufs but leave the name.
+    es->active = ES_INACTIVE;
+    ccn_charbuf_destroy(&es->interest);
+    ccn_charbuf_destroy(&es->reply_body);
+    for (i = 0; i < ENUM_N_COBS; i++)
+        ccn_charbuf_destroy(&es->cob[i]);
+    ccn_indexbuf_destroy(&es->interest_comps);
     hashtb_end(e);
-    return(ans);
+    return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
 }
 
 void
