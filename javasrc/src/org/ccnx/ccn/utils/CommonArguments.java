@@ -27,50 +27,66 @@ import org.ccnx.ccn.impl.support.Log;
 public abstract class CommonArguments {
 
 	protected static String _extraUsage = "";
+	public static String[] defaultOkArgs = {"-unversioned", "-timeout", "-log", "-v", "-as", "-ac"};
 
 	public static boolean parseArguments(String[] args, int i, Usage u) {
-		boolean ret = true;
+		return parseArguments(args, i, u, null);
+	}
+
+	public static boolean parseArguments(String[] args, int i, Usage u, String[] okArgs) {
+		if (null == okArgs)
+			okArgs = defaultOkArgs;
 		if (i == 0 && args[0].startsWith("[")) {
 			_extraUsage = args[0];
+			return true;
 		} else if (args[i].equals("-h") || args[i].equals("-help")) {
 			u.usage(_extraUsage);
-		} else if (args[i].equals("-unversioned")) {
-			CommonParameters.unversioned = true;
-		} else if (args[i].equals("-timeout")) {
-			if (args.length < (i + 2)) {
-				u.usage(_extraUsage);
-			}
-			try {
-				CommonParameters.timeout = Integer.parseInt(args[++i]);
-			} catch (NumberFormatException nfe) {
-				u.usage(_extraUsage);
-			}
-		} else if (args[i].equals("-log")) {
-			Level level = null;
-			if (args.length < (i + 2)) {
-				u.usage(_extraUsage);
-			}
-			try {
-				level = Level.parse(args[++i]);
-			} catch (NumberFormatException nfe) {
-				u.usage(_extraUsage);
-			}
-			Log.setLevel(Log.FAC_ALL, level);
-		} else if (args[i].equals("-v")) {
-			CommonParameters.verbose = true;
-		} else if (args[i].equals("-as")) {
-			if (args.length < (i + 2)) {
-				u.usage(_extraUsage);
-			}
-			CommonSecurity.setUser(args[++i]);
-		} else if (args[i].equals("-ac")) {
-			CommonSecurity.setAccessControl();
-		} else {
-			ret = false;
 		}
-		if (ret)
+
+		boolean argOK = false;
+		for (String okArg : okArgs) {
+			if (args[i].equals(okArg)) {
+				argOK = true;
+				break;
+			}
+		}
+		if (argOK) {
+			if (args[i].equals("-unversioned")) {
+				CommonParameters.unversioned = true;
+			} else if (args[i].equals("-timeout")) {
+				if (args.length < (i + 2)) {
+					u.usage(_extraUsage);
+				}
+				try {
+					CommonParameters.timeout = Integer.parseInt(args[++i]);
+				} catch (NumberFormatException nfe) {
+					u.usage(_extraUsage);
+				}
+			} else if (args[i].equals("-log")) {
+				Level level = null;
+				if (args.length < (i + 2)) {
+					u.usage(_extraUsage);
+				}
+				try {
+					level = Level.parse(args[++i]);
+				} catch (NumberFormatException nfe) {
+					u.usage(_extraUsage);
+				}
+				Log.setLevel(Log.FAC_ALL, level);
+			} else if (args[i].equals("-v")) {
+				CommonParameters.verbose = true;
+			} else if (args[i].equals("-as")) {
+				if (args.length < (i + 2)) {
+					u.usage(_extraUsage);
+				}
+				CommonSecurity.setUser(args[++i]);
+			} else if (args[i].equals("-ac")) {
+				CommonSecurity.setAccessControl();
+			}
 			CommonParameters.startArg = i;
-		return ret;
+			return true;
+		}
+		return false;
 	}
 
 	public static String getExtraUsage() {
