@@ -24,6 +24,15 @@ Refer to http://www.ccnx.org/redmine/ for more details.
     ContentName, and ContentNameProvider documentation for more information.
 
   * Issues Resolved:
+	* Feature 100732 Tests should use C repo (repo2) instead of the old java
+	  one
+	* Bug 100727 ccnr can fail to answer enumeration requests when interests
+	  are reordered
+	* Bug 100725 The signing and verification code in the C library needs
+	  to conditionally compile elliptic curve (EC) features in case the
+	  crypto library is too old or has them compiled out.
+	* Bug 100722 CCN C-library changes for must be brought up to date in
+	  Android
 	* Bug 100470 Make in android directory with current tools leaves chaff
 	* Bug 100726 Still some occasional deadlocks in VLC plugin
 	* Feature 100729 VLC CCN plugin should provide access to prefetch offset 
