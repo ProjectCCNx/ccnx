@@ -88,13 +88,13 @@ main(int argc, char **argv)
     
     slice = ccns_slice_create();
     
-    ccn_name_init(topo);
+    ccn_charbuf_reset(topo);
     if (0 > ccn_name_from_uri(topo, argv[1])) usage(prog);
-    ccn_name_init(prefix);
+    ccn_charbuf_reset(prefix);
     if (0 > ccn_name_from_uri(prefix, argv[2])) usage(prog);
     if (0 > ccns_slice_set_topo_prefix(slice, topo, prefix)) usage(prog);
     for (i = 3; i < argc; i++) {
-        ccn_name_init(clause);
+        ccn_charbuf_reset(clause);
         if (0 > ccn_name_from_uri(clause, argv[i])) usage(prog);
         else
             if (0 > ccns_slice_add_clause(slice, clause)) usage(prog);

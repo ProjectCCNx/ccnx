@@ -104,8 +104,8 @@ main(int argc, char **argv)
     unsigned i, j, n;
  
     slice = ccns_slice_create();
-    ccn_name_init(prefix);
-    ccn_name_init(topo);
+    ccn_charbuf_reset(prefix);
+    ccn_charbuf_reset(topo);
     while ((opt = getopt(argc, argv, "hf:p:r:t:w:")) != -1) {
         switch (opt) {
             case 'f':
