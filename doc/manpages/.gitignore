@@ -29,6 +29,7 @@ ccnpeek.1.html
 ccnpoke.1.html
 ccnr.1.html
 ccnsyncslice.1.html
+ccnsyncwatch.1.html
 ccnlink.1.html
 ccnprintlink.1.html
 ccnrepoimport.1.html
@@ -64,6 +65,7 @@ ccnpeek.1.pdf
 ccnpoke.1.pdf
 ccnr.1.pdf
 ccnsyncslice.1.pdf
+ccnsyncwatch.1.pdf
 ccnlink.1.pdf
 ccnprintlink.1.pdf
 ccnrepoimport.1.pdf
@@ -101,6 +103,7 @@ ccnpeek.1.fo
 ccnpoke.1.fo
 ccnr.1.fo
 ccnsyncslice.1.fo
+ccnsyncwatch.1.fo
 ccnlink.1.fo
 ccnprintlink.1.fo
 ccnrepoimport.1.fo
@@ -136,6 +139,7 @@ ccnpeek.1.xml
 ccnpoke.1.xml
 ccnr.1.xml
 ccnsyncslice.1.xml
+ccnsyncwatch.1.xml
 ccnlink.1.xml
 ccnprintlink.1.xml
 ccnrepoimport.1.xml

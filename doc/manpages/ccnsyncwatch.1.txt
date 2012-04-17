@@ -1,0 +1,45 @@
+CCNSYNCWATCH(1)
+===============
+
+NAME
+----
+ccnsyncwatch - watch sync operations and report new content objects
+
+SYNOPSIS
+--------
+*ccnsyncwatch* [*-h*] [*-t* 'topo-uri'] [*-p* 'prefix-uri'] [*-f* 'filter-uri'] [*-r* 'roothash-hex'] [*-w* 'timeout-secs']
+
+DESCRIPTION
+-----------
+The *ccnsyncwatch* program is for monitoring the operation of the sync
+agent of a repository, and the source provides an example of how to use
+the sync library interface.
+
+
+OPTIONS
+-------
+*-h*::
+	Print usage information and exit.
+
+*-t* 'topo-uri'::
+	Specify the CCNx URI representing the prefix under which Sync agents communicate.
+
+*-p* 'prefix-uri'::
+	Specify the CCNx URI representing the prefix of the information which the Sync agents are exchanging.
+
+*-f* 'filter-uri'::
+	This option may occur multiple times.  Order is significant and should match the order used when the Sync configuration slice was defined.  Provides zero or more CCNx URIs representing filter clauses, see *ccnsyncslice*(1) for further information.
+
+*-r* 'roothash-hex'::
+	If present, indicates that the differences noted should be from the current root hash ('roothash-hex' is the empty string) or a particular root hash (an even number of hex digits) previously noted in a Sync exchange.  It is an error to provide a root hash that is not a valid hash for the slice being monitored.
+
+*-w* 'timeout-secs'::
+	The time in seconds that sync activity should be monitored, or -1 to run until interrupted.
+
+SEE ALSO
+--------
+*ccnsyncslice*(1)
+
+AUTHOR
+------
+Nick Briggs <briggs@parc.com>
