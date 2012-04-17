@@ -1,6 +1,6 @@
 /**
- * @file ccnsyncwatch.c
- * Utility to use the Sync library protocol to watch changes in a repository's contents.
+ * @file ccnsyncslice.c
+ * Utility to use the Sync library to create or delete sync configuration slices..
  *
  * A CCNx program.
  *
