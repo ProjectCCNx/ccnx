@@ -41,6 +41,7 @@ cmd/ccnseqwriter
 cmd/ccnsimplecat
 cmd/ccnslurp
 cmd/ccnsyncwatch
+cmd/ccnsyncslice
 cmd/ccntimestamps
 cmd/dataresponsetest
 lib/Makefile
