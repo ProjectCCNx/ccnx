@@ -7,7 +7,7 @@ ccnsyncslice - manipulate Sync configuration slices
 
 SYNOPSIS
 --------
-*ccnsyncslice* (create|delete) _topo prefix [clause]..._
+*ccnsyncslice* *[-hv]* (*create*|*delete*) _topo prefix [clause]..._
 
 
 DESCRIPTION
@@ -55,6 +55,14 @@ ccnsyncslice is a tool for creating and deleting the Sync configuration slices i
 
 OPTIONS
 -------
+*-h*::
+	Print the usage message and exit.
+
+*-v*::
+	Be more verbose, reporting success as well as failure after an operation.
+
+COMMANDS
+--------
 *(create|delete) _topo prefix [clause]..._*::
     * _topo_ is the topological prefix used by Sync Agents for exchanging information about the collection.
     * _prefix_ is the common prefix for all names in the collection.
