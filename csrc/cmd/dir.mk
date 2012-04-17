@@ -244,6 +244,9 @@ ccnseqwriter.o: ccnseqwriter.c ../include/ccn/ccn.h \
 ccnsyncwatch.o: ccnsyncwatch.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/sync.h ../include/ccn/uri.h
+ccnsyncslice.o: ccnsyncslice.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/sync.h ../include/ccn/uri.h
 ccn_fetch_test.o: ccn_fetch_test.c ../include/ccn/fetch.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
