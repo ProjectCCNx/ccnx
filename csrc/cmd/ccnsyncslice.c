@@ -32,7 +32,7 @@ void
 usage(char *prog)
 {
     fprintf(stderr,
-            "%s [create|delete] topo-uri prefix-uri [filter-uri]...\n"
+            "%s [-hv] (create|delete) topo-uri prefix-uri [filter-uri]...\n"
             "   topo-uri, prefix-uri, and the optional filter-uris must be CCNx URIs.\n", prog);
     exit(1);
 }
@@ -57,7 +57,8 @@ main(int argc, char **argv)
     unsigned verbose = 0;
     unsigned i;
     
-    if (prefix == NULL || topo == NULL || slice_name == NULL) {
+    if (prefix == NULL || topo == NULL || clause == NULL ||
+        slice_name == NULL || slice_uri == NULL) {
         fprintf(stderr, "Unable to allocate required memory.\n");
         exit(1);
     }
@@ -92,10 +93,12 @@ main(int argc, char **argv)
     ccn_name_init(prefix);
     if (0 > ccn_name_from_uri(prefix, argv[2])) usage(prog);
     if (0 > ccns_slice_set_topo_prefix(slice, topo, prefix)) usage(prog);
-    for (i = 3; i < argc; i++)
+    for (i = 3; i < argc; i++) {
+        ccn_name_init(clause);
         if (0 > ccn_name_from_uri(clause, argv[i])) usage(prog);
         else
             if (0 > ccns_slice_add_clause(slice, clause)) usage(prog);
+    }
     
     h = ccn_create();
     res = ccn_connect(h, NULL);
