@@ -53,7 +53,7 @@ void
 usage(char *prog)
 {
     fprintf(stderr,
-            "%s [-t topo-uri] [-p prefix-uri] [-f filter-uri] [-r roothash-hex] [-w timeout-secs]\n"
+            "%s [-h] [-t topo-uri] [-p prefix-uri] [-f filter-uri] [-r roothash-hex] [-w timeout-secs]\n"
             "   topo-uri, prefix-uri, and filter-uri must be CCNx URIs.\n"
             "   roothash-hex must be an even number of hex digits "
             "representing a valid starting root hash.\n"
