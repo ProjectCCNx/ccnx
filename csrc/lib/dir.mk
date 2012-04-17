@@ -169,6 +169,22 @@ clean:
 	rm -rf *.dSYM $(DEBRIS) *% *~
 
 ###############################
+# Dependencies here are NOT checked by depend target
+# and must be updated manually.
+###############################
+ccn_sync.o: \
+  ../sync/SyncActions.h ../sync/SyncBase.h ../ccnr/ccnr_private.h \
+  ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
+  ../include/ccn/schedule.h ../include/ccn/seqwriter.h ../sync/SyncRoot.h \
+  ../sync/SyncUtil.h ../sync/IndexSorter.h ../sync/SyncNode.h \
+  ../sync/SyncMacros.h ../sync/SyncPrivate.h ../sync/SyncTreeWorker.h \
+  ../sync/SyncHashCache.h ../sync/IndexSorter.c ../sync/SyncBase.c \
+  ../sync/SyncActions.h ../sync/SyncPrivate.h ../ccnr/ccnr_msg.h \
+  ../ccnr/ccnr_private.h ../ccnr/ccnr_sync.h ../sync/SyncHashCache.c \
+  ../sync/SyncNode.h ../sync/SyncNode.c ../sync/SyncRoot.c \
+  ../sync/SyncTreeWorker.c ../sync/SyncTreeWorker.h ../sync/SyncUtil.c
+
+###############################
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
