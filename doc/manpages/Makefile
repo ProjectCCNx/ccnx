@@ -44,7 +44,8 @@ PAGE_NAMES =        		\
 	ccnpeek			\
 	ccnpoke			\
 	ccnr			\
-	SyncTest		\
+	ccnsyncslice		\
+	ccnsyncwatch		\
 	ccnlink			\
 	ccnprintlink		\
 	ccnrepoimport		\

@@ -53,8 +53,8 @@ void
 usage(char *prog)
 {
     fprintf(stderr,
-            "%s [-t topo-uri] [-p prefix-uri] [-r roothash-hex] [-w timeout-secs]\n"
-            "   topo-uri and prefix-uri must be CCNx URIs.\n"
+            "%s [-h] [-t topo-uri] [-p prefix-uri] [-f filter-uri] [-r roothash-hex] [-w timeout-secs]\n"
+            "   topo-uri, prefix-uri, and filter-uri must be CCNx URIs.\n"
             "   roothash-hex must be an even number of hex digits "
             "representing a valid starting root hash.\n"
             "   timeout-secs is the time, in seconds that the program "
@@ -99,14 +99,22 @@ main(int argc, char **argv)
     struct ccn_charbuf *prefix = ccn_charbuf_create();
     struct ccn_charbuf *roothash = NULL;
     struct ccn_charbuf *topo = ccn_charbuf_create();
+    struct ccn_charbuf *clause = ccn_charbuf_create();
     int timeout = 10*1000;
     unsigned i, j, n;
  
-    ccn_name_init(prefix);
-    ccn_name_init(topo);
-    while ((opt = getopt(argc, argv, "hp:r:t:w:")) != -1) {
+    slice = ccns_slice_create();
+    ccn_charbuf_reset(prefix);
+    ccn_charbuf_reset(topo);
+    while ((opt = getopt(argc, argv, "hf:p:r:t:w:")) != -1) {
         switch (opt) {
+            case 'f':
+                ccn_charbuf_reset(clause);
+                if (0 > ccn_name_from_uri(clause, optarg)) usage(argv[0]);
+                ccns_slice_add_clause(slice, clause);
+                break;
             case 'p':
+                ccn_charbuf_reset(prefix);
                 if (0 > ccn_name_from_uri(prefix, optarg)) usage(argv[0]);
                 break;
             case 'r':
@@ -124,6 +132,7 @@ main(int argc, char **argv)
                 }
                 break;
             case 't':
+                ccn_charbuf_reset(topo);
                 if (0 > ccn_name_from_uri(topo, optarg)) usage(argv[0]);
                 break;
             case 'w':
@@ -137,10 +146,9 @@ main(int argc, char **argv)
         }
     }
 
+    ccns_slice_set_topo_prefix(slice, topo, prefix);
     h = ccn_create();
     res = ccn_connect(h, NULL);
-    slice = ccns_slice_create();
-    ccns_slice_set_topo_prefix(slice, topo, prefix);
     ccns = ccns_open(h, slice, &sync_cb, roothash, NULL);
     ccn_run(h, timeout);
     ccns_close(&ccns, NULL, NULL);

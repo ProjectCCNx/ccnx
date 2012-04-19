@@ -1,0 +1,89 @@
+CCNSYNCSLICE(1)
+===============
+
+NAME
+----
+ccnsyncslice - manipulate Sync configuration slices
+
+SYNOPSIS
+--------
+*ccnsyncslice* *[-hv]* (*create*|*delete*) _topo prefix [clause]..._
+
+
+DESCRIPTION
+-----------
+Sync is a CCNx facility that allows CCN components to define
+collections of named data in Repositories, and automatically keeps
+their contents in synchrony with identically defined collections
+residing in neighboring Repositories. Sync is currently embedded in
+the Repository, but will be available separately in the future.
+
+Sync is started automatically when a Repository starts if the
+Repository configuration option, +CCNS_ENABLE+, is set to 1 (the
+default). See link:ccnr.1.html[ccnr(1)] for more information about
+Repository configuration options.
+
+Associated with each Repository, there is a Sync Agent that is
+responsible for keeping collections in the local repository up to
+date, and for responding to inquiries from remote Sync Agents for
+information about contents of collections known to it. To do this, it
+builds a sync tree for each collection defined in the local node. Eacb
+_sync tree_ represents the content and organization of a particular
+collection, and is updated whenever content with a matching name is
+added to the Repository. The definition of a sync tree is contained in
+a _configuration slice_ that is specified by an application in the
+local node.
+
+Once a collection is defined, the Sync Agent automatically keeps it
+synchronized with collections in neighboring nodes (ccnd scope = 2)
+that are identically defined. The protocol for creating a new slice
+and the internal protocol used by Sync Agents for keeping collections
+in sync are described in
+link:../technical/SynchronizationProtocol.html[CCNx Synchronization Protocols].
+
+Sync currently has the following limitations:
+
+* Sync only works with the local C-based Repo; it is not yet available for separate use.
+* Sync only works with neighbors (ccnd scoping = 2).
+* The order in which names and content are synchronized is arbitrary.
+* All versions are included (not just the last).
+* Content deletions are not well supported.
+* Applications must agree exactly on the definition of collections.
+* ccnd must have compatible routing.
+
+ccnsyncslice is a tool for creating and deleting the Sync configuration slices in a repository.
+
+OPTIONS
+-------
+*-h*::
+	Print the usage message and exit.
+
+*-v*::
+	Be more verbose, reporting success as well as failure after an operation.
+
+COMMANDS
+--------
+*(create|delete) _topo prefix [clause]..._*::
+    * _topo_ is the topological prefix used by Sync Agents for exchanging information about the collection.
+    * _prefix_ is the common prefix for all names in the collection.
+    * _[clause]..._ is zero or more optional filter clauses that limit the names in the collection.
+    A filter _clause_ is a CCNx URI representing a pattern in which a component consisting solely of %FF matches any single component. 
+    If the filter clause is omitted, all content names under _prefix_ are included.
+
+Creates, or deletes, a slice representing the content matching
+the prefix and filter clause parameters, communicated under the _topo_ prefix.
+Deleting a slice does not delete the content described by the slice,
+it merely stops the local Sync agent from synchronizing the content
+described by the slice.
+
+EXIT STATUS
+-----------
+*0*::
+     Success
+
+*1*::
+     Failure
+
+AUTHOR
+------
+Nick Briggs <briggs@parc.com>
