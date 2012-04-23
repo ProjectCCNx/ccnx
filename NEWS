@@ -28,7 +28,7 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 	* Bug 100738 Missing dependencies for csrc/lib/ccn_sync.c
 	* Feature 100732 Tests should use C repo (repo2) instead of the old java
 	  one
-	* Bug 100727 ccnr can fail to answer enumeration requests when interests
+	* Bug 100737 ccnr can fail to answer enumeration requests when interests
 	  are reordered
 	* Bug 100725 The signing and verification code in the C library needs
 	  to conditionally compile elliptic curve (EC) features in case the
