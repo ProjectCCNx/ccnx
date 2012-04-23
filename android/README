@@ -1,4 +1,12 @@
-(Please see "Android Build System Notes" below for building CCN for Android.)
+Building
+========
+
+* First 'make' the top level ccn project
+* cd android
+* make (or make honeycomb)
+* make install
+
+(Please see "Android Build System Notes" below for extended details on building CCN for Android.)
 
 Android Apps for CCNx
 =====================
@@ -63,24 +71,27 @@ You must set the environment variables ANDROID_SDK and ANDROID_NDK.
 These must point to the root of the SDK Tools and NDK directories.  
 
 Supported Versions:
-* Android NDK r7
-* Android SDK r16
+* Android NDK >= r7
+* Android SDK >= r16
 
 Supported Target Android Devices:
 Android 2.1
 Android 2.2
 Android 2.3
 Android 3.x
+Android 4.x
 
-Newer tablet oriented versions of Android, such as 4.0+ are not supported yet but will be in the near future as build support and toolchains catch up. (Ice Cream Sandwich (4.0) has not yet been tested.)
+Newer tablet oriented versions of Android, such as 3.x and 4.x have been tested and verified.  These will be the focus platforms going forward, though we will continue to support older release targets for the near future.
 
-For example (Use the path to desired tools):
+For example (Use the path to desired tools for your platform):
 
 	export ANDROID_SDK=~/android-sdk-mac_x86
 	export ANDROID_NDK=~/android-ndk-r7
 
 Android is not built as part of the top-level make.  You must run
 make in this directory.
+
+Eclipse IDE isn't currently supported as a tool to *build* the Android CCNx project.  It can be used as an IDE to view and edit files.
 
 What happens
 ============
@@ -117,17 +128,13 @@ these steps:
 
 - Build the apps/ directory
 
-Honeycomb
-===========
-Android 3.x devices (and possibly some 2.x) devices the crypto support includes a subset of the Bouncy Castle library.  See: http://redmine.ccnx.org/issues/100589 for details.  As a result, the 3.x devices we tested failed with ClassNotFoundException trying to resolve the BouncyCastleProvider.  To work around this, we include the Bouncy Castle provider jar file if you specify in the top level of the android project directory:
+Honeycomb and Ice Cream Sandwich
+================================
+Android 3.x & 4.x devices (and possibly some 2.x) devices the crypto support includes a subset of the Bouncy Castle library.  See: http://redmine.ccnx.org/issues/100589 for details.  As a result, the 3.x & 4.x devices we tested failed with ClassNotFoundException trying to resolve the BouncyCastleProvider.  To work around this, we include the Bouncy Castle provider jar file if you specify in the top level of the android project directory:
 
 make honeycomb
 
 This change affects CCNx-Android-Services, CCNx-Android-Chat, and CCNx-Android-StartupExamples.  Because of the size of the jar file (around 1.5mb) we are interested in a better solution long term, though there is no indication Google has changed their approach, except to enhance the android crypto library to rely upon functionality delivered through OpenSSL.
-
-Ice Cream Sandwich 
-==================
-The 4.x series of Android needs additional testing before it can be fully supported.  Use make honeycomb for building.
 
 Installing
 ===========
