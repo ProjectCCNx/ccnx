@@ -38,6 +38,7 @@ struct ccn_keystore {
     EVP_PKEY *private_key;
     EVP_PKEY *public_key;
     X509 *certificate;
+    char *digest_algorithm;
     ssize_t pubkey_digest_length;
     unsigned char pubkey_digest[SHA256_DIGEST_LENGTH];
 };
@@ -59,6 +60,8 @@ ccn_keystore_destroy(struct ccn_keystore **p)
             EVP_PKEY_free((*p)->public_key);
         if ((*p)->certificate != NULL)
             X509_free((*p)->certificate);
+        if ((*p)->digest_algorithm != NULL)
+            free((*p)->digest_algorithm);
         free(*p);
         *p = NULL;
     }
@@ -69,6 +72,8 @@ ccn_keystore_init(struct ccn_keystore *p, char *filename, char *password)
 {
     FILE *fp;
     PKCS12 *keystore;
+    ASN1_OBJECT *digest_obj;
+    int digest_size;
     int res;
 
     OpenSSL_add_all_algorithms();
@@ -92,6 +97,26 @@ ccn_keystore_init(struct ccn_keystore *p, char *filename, char *password)
                               X509_get_X509_PUBKEY(p->certificate),
                               p->pubkey_digest, NULL)) return (-1);
     p->pubkey_digest_length = SHA256_DIGEST_LENGTH;
+
+    /* check if the key-pair requires a particular digest algorithm.
+     * ECDSA keys from 160 through 383 bits are OK with SHA-256 (n.b. RFC5480)
+     */
+    
+    switch (EVP_PKEY_type(p->private_key->type)) {
+        case EVP_PKEY_DSA:
+            digest_obj = OBJ_nid2obj(NID_sha1);
+            break;
+        default:
+            digest_obj = NULL;
+    }
+    if (digest_obj) {
+        digest_size = 1 + OBJ_obj2txt(NULL, 0, digest_obj, 1);
+        p->digest_algorithm = calloc(1, digest_size);
+        OBJ_obj2txt(p->digest_algorithm, digest_size, digest_obj, 1);        
+    } else {
+        p->digest_algorithm = NULL;
+    }
+    
     p->initialized = 1;
     return (0);
 }
@@ -112,6 +137,14 @@ ccn_keystore_public_key(struct ccn_keystore *p)
         return (NULL);
 
     return ((const struct ccn_pkey *)(p->public_key));
+}
+
+const char *
+ccn_keystore_digest_algorithm(struct ccn_keystore *p)
+{
+    if (0 == p->initialized)
+        return (NULL);
+    return (p->digest_algorithm);
 }
 
 ssize_t

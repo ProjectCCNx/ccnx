@@ -30,8 +30,116 @@
 
 struct ccn_sigc {
     EVP_MD_CTX context;
-    const EVP_MD *digest;
 };
+
+#if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA) && defined(NID_ecdsa_with_SHA256)
+static int init256(EVP_MD_CTX *ctx)
+{ return SHA256_Init(ctx->md_data); }
+static int update256(EVP_MD_CTX *ctx,const void *data,size_t count)
+{ return SHA256_Update(ctx->md_data,data,count); }
+static int final256(EVP_MD_CTX *ctx,unsigned char *md)
+{ return SHA256_Final(md,ctx->md_data); }
+
+static const EVP_MD sha256ec_md=
+{
+    NID_sha256,
+    NID_ecdsa_with_SHA256,
+    SHA256_DIGEST_LENGTH,
+    0,
+    init256,
+    update256,
+    final256,
+    NULL,
+    NULL,
+    EVP_PKEY_ECDSA_method,
+    SHA256_CBLOCK,
+    sizeof(EVP_MD *)+sizeof(SHA256_CTX),
+};
+#endif
+
+static const EVP_MD *
+md_from_digest_and_pkey(const char *digest, const struct ccn_pkey *pkey)
+{
+    int md_nid;
+    int pkey_type;
+
+    /* This encapsulates knowledge that the default digest algorithm for
+     * signing is SHA256.  See also CCN_SIGNING_DEFAULT_DIGEST_ALGORITHM
+     * in ccn/ccn.h.  We could call OBJ_txt2nid(), but this would be rather
+     * inefficient.  If there were a place to stand for overall signing
+     * initialization then that would be an appropriate place to do so.
+     */
+    if (digest == NULL) {
+        md_nid = NID_sha256;
+    }
+    else {
+        /* figure out what algorithm the OID represents */
+        md_nid = OBJ_txt2nid(digest);
+        if (md_nid == NID_undef) {
+            fprintf(stderr, "not a DigestAlgorithm I understand right now: %s\n", digest);
+            return (NULL);
+        }
+    }
+    pkey_type = EVP_PKEY_type(((EVP_PKEY *)pkey)->type);
+    switch (pkey_type) {
+        case EVP_PKEY_RSA:
+        case EVP_PKEY_DSA:
+#if !defined(OPENSSL_NO_EC)
+        case EVP_PKEY_EC:
+#endif
+            break;
+        default:
+            fprintf(stderr, "not a Key type I understand right now: NID %d\n", pkey_type);
+            return(NULL);
+    }
+    /*
+     * In OpenSSL 0.9.8 the digest algorithm and key type determine the
+     * digest and signature methods that are in the staticly defined
+     * EVP_MD structures, so we need to get the correct predefined one, or
+     * create our own.
+     * In OpenSSL 1.0.0 the EVP_MD structure allows for the key that is passed
+     * in the signature finalization step to determine the signature algorithm
+     * applied to the digest, so we would be able to use a single SHA256 context
+     * independent of the key type (assuming size compatability).
+     * At the point that 1.0.0 or later is the default provider we could simplify
+     * this code.   The Java code (OIDLookup.java) uses a much more elaborate
+     * set of hash maps to perform a similar function.
+     */
+    switch (md_nid) {
+#ifndef OPENSSL_NO_SHA
+        case NID_sha1:      // supported for RSA/DSA/EC key types
+            switch (pkey_type) {
+                case EVP_PKEY_RSA:
+                    return(EVP_sha1());
+                case EVP_PKEY_DSA:
+                    return(EVP_dss1());
+#if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
+                case EVP_PKEY_EC:
+                    return(EVP_ecdsa());
+#endif
+            }
+            break;
+#endif
+        case NID_sha256:    // supported for RSA/EC key types
+            if (pkey_type == EVP_PKEY_RSA)
+                return(EVP_sha256());
+#if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA) && defined(NID_ecdsa_with_SHA256)
+            else if (pkey_type == EVP_PKEY_EC) {
+                return(&sha256ec_md);
+            } /* our own md */
+#endif
+            break;
+        case NID_sha512:     // supported for RSA
+            if (pkey_type == EVP_PKEY_RSA)
+                return(EVP_sha512());
+        default:
+            break;
+    }
+    fprintf(stderr, "not a Digest+Signature algorithm I understand right now: %s with NID %d\n",
+            digest, pkey_type);
+    return (NULL);
+}
+
 
 struct ccn_sigc *
 ccn_sigc_create(void)
@@ -51,19 +159,13 @@ ccn_sigc_destroy(struct ccn_sigc **ctx)
 }
 
 int
-ccn_sigc_init(struct ccn_sigc *ctx, const char *digest)
+ccn_sigc_init(struct ccn_sigc *ctx, const char *digest, const struct ccn_pkey *priv_key)
 {
-    EVP_MD_CTX_init(&ctx->context);
-    if (digest == NULL) {
-        ctx->digest = EVP_sha256();
-    }
-    else {
-        /* XXX - figure out what algorithm the OID represents */
-        fprintf(stderr, "not a DigestAlgorithm I understand right now\n");
-        return (-1);
-    }
+    const EVP_MD *md;
 
-    if (0 == EVP_SignInit_ex(&ctx->context, ctx->digest, NULL))
+    EVP_MD_CTX_init(&ctx->context);
+    md = md_from_digest_and_pkey(digest, priv_key);
+    if (0 == EVP_SignInit_ex(&ctx->context, md, NULL))
         return (-1);
     return (0);
 }
@@ -197,11 +299,10 @@ int ccn_verify_signature(const unsigned char *msg,
     size_t signature_bits_size = 0;
     const unsigned char *witness = NULL;
     size_t witness_size = 0;
+    const unsigned char *digest_algorithm = NULL;
+    size_t digest_algorithm_size;
     
     EVP_PKEY *pkey = (EVP_PKEY *)verification_pubkey;
-#ifdef DEBUG
-    int x, h;
-#endif
 
     res = ccn_ref_tagged_BLOB(CCN_DTAG_SignatureBits, msg,
                               co->offset[CCN_PCO_B_SignatureBits],
@@ -212,14 +313,22 @@ int ccn_verify_signature(const unsigned char *msg,
         return (-1);
 
     if (co->offset[CCN_PCO_B_DigestAlgorithm] == co->offset[CCN_PCO_E_DigestAlgorithm]) {
-        digest = EVP_sha256();
+        digest_algorithm = (const unsigned char *)CCN_SIGNING_DEFAULT_DIGEST_ALGORITHM;
     }
     else {
-        /* XXX - figure out what algorithm the OID represents */
-        fprintf(stderr, "not a DigestAlgorithm I understand right now\n");
-        return (-1);
+        /* figure out what algorithm the OID represents */
+        res = ccn_ref_tagged_string(CCN_DTAG_DigestAlgorithm, msg,
+                                  co->offset[CCN_PCO_B_DigestAlgorithm],
+                                  co->offset[CCN_PCO_E_DigestAlgorithm],
+                                  &digest_algorithm,
+                                  &digest_algorithm_size);
+        if (res < 0)
+            return (-1);
+        /* NOTE: since the element closer is a 0, and the element is well formed,
+         * the string will be null terminated 
+         */
     }
-
+    digest = md_from_digest_and_pkey((const char *)digest_algorithm, verification_pubkey);
     EVP_MD_CTX_init(ver_ctx);
     res = EVP_VerifyInit_ex(ver_ctx, digest, NULL);
     if (!res) {
@@ -241,7 +350,6 @@ int ccn_verify_signature(const unsigned char *msg,
             return (-1);
         }
 
-
         digest_info = d2i_X509_SIG(NULL, &witness, witness_size);
         /* digest_info->algor->algorithm->{length, data}
          * digest_info->digest->{length, type, data}
@@ -262,6 +370,7 @@ int ccn_verify_signature(const unsigned char *msg,
         merkle_path_info = d2i_MP_info(NULL, &dd, digest_info->digest->length);
         X509_SIG_free(digest_info);
 #ifdef DEBUG
+        int x,h;
         int node = ASN1_INTEGER_get(merkle_path_info->node);
         int hash_count = sk_ASN1_OCTET_STRING_num(merkle_path_info->hashes);
         ASN1_OCTET_STRING *hash;

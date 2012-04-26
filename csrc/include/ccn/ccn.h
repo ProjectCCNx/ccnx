@@ -37,7 +37,7 @@
  * Thus CCN_API_VERSION=1000 would have corresponded to the first public
  * release (0.1.0), but that version did not have this macro defined.
  */
-#define CCN_API_VERSION 5001
+#define CCN_API_VERSION 6000
 
 /**
  * Interest lifetime default.
@@ -107,6 +107,7 @@ typedef enum ccn_upcall_res (*ccn_handler)(
 /**
  * Handle for upcalls that allow clients receive notifications of
  * incoming interests and content.
+ *
  * The client is responsible for managing this piece of memory and the
  * data therein. The refcount should be initially zero, and is used by the
  * library to keep to track of multiple registrations of the same closure.
@@ -122,6 +123,7 @@ struct ccn_closure {
 
 /**
  * Additional information provided in the upcall.
+ *
  * The client is responsible for managing this piece of memory and the
  * data therein. The refcount should be initially zero, and is used by the
  * library to keep to track of multiple registrations of the same closure.
@@ -304,22 +306,14 @@ int ccn_express_interest(struct ccn *h,
                          struct ccn_closure *action,
                          struct ccn_charbuf *interest_template);
 
-/***********************************
- * ccn_set_interest_filter: 
- * The action, if provided, will be called when an interest arrives that
- * has the given name as a prefix.
- * If action is NULL, any existing filter is removed.
- * The namebuf may be reused or destroyed after the call.
- * Handler should return CCN_UPCALL_RESULT_ERR if it cannot matching content.
- * The upcall kind passed to the handler will be CCN_UPCALL_INTEREST
- * if no other handler has claimed to produce content, or else
- * CCN_UPCALL_CONSUMED_INTEREST.
+/*
+ * Register to receive interests on a prefix
  */
 int ccn_set_interest_filter(struct ccn *h, struct ccn_charbuf *namebuf,
                             struct ccn_closure *action);
 
 /*
- * Variation allows non-default forwarding flags.
+ * Variation allows non-default forwarding flags
  */
 int ccn_set_interest_filter_with_flags(struct ccn *h,
                                        struct ccn_charbuf *namebuf,
@@ -405,6 +399,7 @@ void ccn_buf_advance(struct ccn_buf_decoder *d);
 int ccn_buf_advance_past_element(struct ccn_buf_decoder *d);
 
 /* The match routines return a boolean - true for match */
+/* XXX - note, ccn_buf_match_blob doesn't match - it extracts the blob! */
 int ccn_buf_match_dtag(struct ccn_buf_decoder *d, enum ccn_dtag dtag);
 
 int ccn_buf_match_some_dtag(struct ccn_buf_decoder *d);
@@ -448,6 +443,17 @@ void ccn_buf_check_close(struct ccn_buf_decoder *d);
  * Returns 0 for success, negative value for error.
  */
 int ccn_ref_tagged_BLOB(enum ccn_dtag tt,
+                        const unsigned char *buf,
+                        size_t start, size_t stop,
+                        const unsigned char **presult, size_t *psize);
+
+/*
+ * ccn_ref_tagged_string: Get address & size associated with
+ * string(UDATA)-valued element.   Note that since the element closer
+ * is a 0 byte, the string result will be correctly interpreted as a C string.
+ * Returns 0 for success, negative value for error.
+ */
+int ccn_ref_tagged_string(enum ccn_dtag tt,
                         const unsigned char *buf,
                         size_t start, size_t stop,
                         const unsigned char **presult, size_t *psize);
@@ -838,6 +844,9 @@ int ccn_chk_signing_params(struct ccn *h,
                            struct ccn_charbuf **pkeylocator);
 
 /* low-level content-object signing */
+
+#define CCN_SIGNING_DEFAULT_DIGEST_ALGORITHM "SHA256"
+
 int ccn_signed_info_create(
     struct ccn_charbuf *c,              /* filled with result */
     const void *publisher_key_id,	/* input, (sha256) hash */
@@ -860,6 +869,7 @@ int ccn_encode_ContentObject(struct ccn_charbuf *buf,
  * Matching
  */
 
+
 /*
  * ccn_content_matches_interest: Test for a match
  * Return 1 if the ccnb-encoded content_object matches the 
@@ -877,6 +887,14 @@ int ccn_content_matches_interest(const unsigned char *content_object,
                                  const unsigned char *interest_msg,
                                  size_t interest_msg_size,
                                  const struct ccn_parsed_interest *pi);
+
+/*
+ * Test whether the given raw name is int the Exclude set.
+ */
+int ccn_excluded(const unsigned char *excl,
+                 size_t excl_size,
+                 const unsigned char *nextcomp,
+                 size_t nextcomp_size);
 
 /***********************************
  * StatusResponse
