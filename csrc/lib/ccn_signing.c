@@ -197,8 +197,6 @@ int ccn_verify_signature(const unsigned char *msg,
     size_t signature_bits_size = 0;
     const unsigned char *witness = NULL;
     size_t witness_size = 0;
-    const unsigned char *digest_algorithm = NULL;
-    size_t digest_algorithm_size;
     
     EVP_PKEY *pkey = (EVP_PKEY *)verification_pubkey;
 #ifdef DEBUG
