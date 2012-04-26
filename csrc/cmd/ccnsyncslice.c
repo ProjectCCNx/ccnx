@@ -53,7 +53,7 @@ main(int argc, char **argv)
     enum {
         CREATE = 0,
         DELETE = 1
-    } cmd;
+    } cmd = CREATE;
     unsigned verbose = 0;
     unsigned i;
     
