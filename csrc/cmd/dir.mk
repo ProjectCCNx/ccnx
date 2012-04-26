@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -23,6 +23,8 @@ INSTALLED_PROGRAMS = \
     ccnpoke ccnpeek ccnhexdumpdata \
     ccnseqwriter ccnsimplecat \
     ccnfilewatch ccninitkeystore \
+    ccnlibtest \
+	ccnsyncwatch ccnsyncslice \
     $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
@@ -40,7 +42,7 @@ CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
        ccnbuzz.c ccnbx.c ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
        ccndumpnames.c ccndumppcap.c ccnfilewatch.c ccnpeek.c ccnhexdumpdata.c \
        ccninitkeystore.c ccnls.c ccnnamelist.c ccnpoke.c ccnrm.c ccnsendchunks.c \
-       ccnseqwriter.c ccn_fetch_test.c ccnslurp.c dataresponsetest.c 
+       ccnseqwriter.c ccnsyncwatch.c ccnsyncslice.c ccn_fetch_test.c ccnlibtest.c ccnslurp.c dataresponsetest.c 
 
 default all: $(PROGRAMS)
 # Don't try to build broken programs right now.
@@ -68,8 +70,8 @@ matrixtest: matrixtest.o
 skel_decode_test: skel_decode_test.o
 	$(CC) $(CFLAGS) -o $@ skel_decode_test.o $(LDLIBS)
 
-smoketestclientlib: smoketestclientlib.o
-	$(CC) $(CFLAGS) -o $@ smoketestclientlib.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+ccnlibtest: ccnlibtest.o
+	$(CC) $(CFLAGS) -o $@ ccnlibtest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 dataresponsetest: dataresponsetest.o
 	$(CC) $(CFLAGS) -o $@ dataresponsetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -164,6 +166,12 @@ ccndumppcap: ccndumppcap.o
 ccnfilewatch: ccnfilewatch.o
 	$(CC) $(CFLAGS) -o $@ ccnfilewatch.o
 
+ccnsyncwatch: ccnsyncwatch.o
+	$(CC) $(CFLAGS) -o $@ ccnsyncwatch.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnsyncslice: ccnsyncslice.o
+	$(CC) $(CFLAGS) -o $@ ccnsyncslice.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS) *% *~
@@ -233,9 +241,18 @@ ccnseqwriter.o: ccnseqwriter.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ../include/ccn/seqwriter.h
+ccnsyncwatch.o: ccnsyncwatch.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/sync.h ../include/ccn/uri.h
+ccnsyncslice.o: ccnsyncslice.c ../include/ccn/ccn.h \
+  ../include/ccn/coding.h ../include/ccn/charbuf.h \
+  ../include/ccn/indexbuf.h ../include/ccn/sync.h ../include/ccn/uri.h
 ccn_fetch_test.o: ccn_fetch_test.c ../include/ccn/fetch.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
+ccnlibtest.o: ccnlibtest.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/reg_mgmt.h ../include/ccn/uri.h
 ccnslurp.o: ccnslurp.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h

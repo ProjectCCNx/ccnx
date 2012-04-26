@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009, 2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2009, 2011, 2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -57,65 +57,57 @@ check test: SyncTest $(SCRIPTSRC)
 # but must be updated manually.
 ###############################
 IndexSorter.o: IndexSorter.c IndexSorter.h
-SyncActions.o: SyncActions.c SyncActions.h SyncBase.h \
-  ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
-  ../include/ccn/uri.h ../ccnr/ccnr_private.h \
+SyncActions.o: SyncActions.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/schedule.h ../ccnr/ccnr_msg.h ../ccnr/ccnr_private.h \
   ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/seqwriter.h SyncMacros.h SyncNode.h SyncRoot.h \
-  SyncUtil.h IndexSorter.h SyncPrivate.h SyncTreeWorker.h SyncHashCache.h \
-  ../ccnr/ccnr_msg.h ../ccnr/ccnr_private.h ../ccnr/ccnr_sync.h
-SyncBase.o: SyncBase.c SyncActions.h SyncBase.h ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
-  ../include/ccn/uri.h ../ccnr/ccnr_private.h \
-  ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/seqwriter.h SyncMacros.h SyncNode.h SyncRoot.h \
-  SyncUtil.h IndexSorter.h SyncPrivate.h ../ccnr/ccnr_msg.h \
-  ../ccnr/ccnr_private.h ../ccnr/ccnr_sync.h
-SyncHashCache.o: SyncHashCache.c SyncBase.h ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
-  ../include/ccn/uri.h ../ccnr/ccnr_private.h \
-  ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/seqwriter.h SyncMacros.h SyncHashCache.h SyncUtil.h \
-  IndexSorter.h SyncNode.h SyncRoot.h ../ccnr/ccnr_msg.h \
+  ../include/ccn/seqwriter.h ../ccnr/ccnr_sync.h ../ccnr/ccnr_private.h \
+  SyncActions.h SyncBase.h SyncRoot.h SyncUtil.h IndexSorter.h SyncNode.h \
+  SyncMacros.h SyncPrivate.h SyncTreeWorker.h SyncHashCache.h
+SyncBase.o: SyncBase.c SyncMacros.h SyncActions.h \
+  ../include/ccn/charbuf.h SyncBase.h ../ccnr/ccnr_private.h \
+  ../include/ccn/ccn_private.h ../include/ccn/coding.h \
+  ../include/ccn/reg_mgmt.h ../include/ccn/schedule.h \
+  ../include/ccn/seqwriter.h SyncRoot.h ../include/ccn/ccn.h \
+  ../include/ccn/indexbuf.h SyncUtil.h IndexSorter.h SyncPrivate.h \
+  ../include/ccn/uri.h ../ccnr/ccnr_msg.h ../ccnr/ccnr_private.h \
+  ../ccnr/ccnr_sync.h
+SyncHashCache.o: SyncHashCache.c SyncBase.h ../ccnr/ccnr_private.h \
+  ../include/ccn/ccn_private.h ../include/ccn/coding.h \
+  ../include/ccn/reg_mgmt.h ../include/ccn/charbuf.h \
+  ../include/ccn/schedule.h ../include/ccn/seqwriter.h SyncHashCache.h \
+  SyncNode.h ../include/ccn/ccn.h ../include/ccn/indexbuf.h SyncMacros.h \
+  SyncRoot.h SyncUtil.h IndexSorter.h ../ccnr/ccnr_msg.h \
   ../ccnr/ccnr_private.h
-SyncNode.o: SyncNode.c SyncNode.h SyncBase.h ../include/ccn/ccn.h \
+SyncNode.o: SyncNode.c SyncNode.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
-  ../include/ccn/uri.h ../ccnr/ccnr_private.h \
-  ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/seqwriter.h SyncMacros.h SyncUtil.h IndexSorter.h
-SyncTest.o: SyncTest.c SyncActions.h SyncBase.h ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
-  ../include/ccn/uri.h ../ccnr/ccnr_private.h \
-  ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/seqwriter.h SyncMacros.h SyncNode.h SyncRoot.h \
-  SyncUtil.h IndexSorter.h SyncHashCache.h SyncPrivate.h SyncTreeWorker.h \
-  ../include/ccn/digest.h ../include/ccn/fetch.h ../ccnr/ccnr_sync.h \
-  ../ccnr/ccnr_private.h
+  ../include/ccn/indexbuf.h SyncMacros.h SyncUtil.h IndexSorter.h
+SyncTest.o: SyncTest.c SyncActions.h ../include/ccn/charbuf.h SyncBase.h \
+  ../ccnr/ccnr_private.h ../include/ccn/ccn_private.h \
+  ../include/ccn/coding.h ../include/ccn/reg_mgmt.h \
+  ../include/ccn/schedule.h ../include/ccn/seqwriter.h SyncRoot.h \
+  ../include/ccn/ccn.h ../include/ccn/indexbuf.h SyncUtil.h IndexSorter.h \
+  SyncHashCache.h SyncNode.h SyncMacros.h SyncPrivate.h SyncTreeWorker.h \
+  ../include/ccn/digest.h ../include/ccn/fetch.h ../include/ccn/uri.h \
+  ../ccnr/ccnr_sync.h ../ccnr/ccnr_private.h
 SyncRoot.o: SyncRoot.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/digest.h ../include/ccn/schedule.h ../ccnr/ccnr_msg.h \
-  ../ccnr/ccnr_private.h ../include/ccn/ccn_private.h \
-  ../include/ccn/reg_mgmt.h ../include/ccn/seqwriter.h SyncPrivate.h \
-  SyncBase.h ../include/ccn/uri.h ../ccnr/ccnr_private.h SyncMacros.h \
-  SyncRoot.h SyncUtil.h IndexSorter.h SyncActions.h SyncNode.h \
-  SyncHashCache.h
-SyncTreeWorker.o: SyncTreeWorker.c SyncMacros.h SyncNode.h SyncBase.h \
+  ../include/ccn/digest.h ../include/ccn/schedule.h ../include/ccn/uri.h \
+  ../ccnr/ccnr_msg.h ../ccnr/ccnr_private.h ../include/ccn/ccn_private.h \
+  ../include/ccn/reg_mgmt.h ../include/ccn/seqwriter.h SyncMacros.h \
+  SyncPrivate.h SyncBase.h ../ccnr/ccnr_private.h SyncRoot.h SyncUtil.h \
+  IndexSorter.h SyncActions.h SyncHashCache.h
+SyncTreeWorker.o: SyncTreeWorker.c SyncMacros.h SyncNode.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
-  ../include/ccn/uri.h ../ccnr/ccnr_private.h \
-  ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/seqwriter.h SyncTreeWorker.h SyncUtil.h IndexSorter.h \
-  SyncHashCache.h
-SyncUtil.o: SyncUtil.c SyncBase.h ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/schedule.h \
-  ../include/ccn/uri.h ../ccnr/ccnr_private.h \
-  ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/seqwriter.h SyncMacros.h SyncActions.h SyncNode.h \
-  SyncRoot.h SyncUtil.h IndexSorter.h SyncHashCache.h ../ccnr/ccnr_msg.h \
-  ../ccnr/ccnr_private.h ../ccnr/ccnr_sync.h
+  ../include/ccn/indexbuf.h SyncTreeWorker.h SyncHashCache.h \
+  ../ccnr/ccnr_private.h ../include/ccn/ccn_private.h \
+  ../include/ccn/reg_mgmt.h ../include/ccn/schedule.h \
+  ../include/ccn/seqwriter.h SyncUtil.h IndexSorter.h
+SyncUtil.o: SyncUtil.c SyncBase.h ../ccnr/ccnr_private.h \
+  ../include/ccn/ccn_private.h ../include/ccn/coding.h \
+  ../include/ccn/reg_mgmt.h ../include/ccn/charbuf.h \
+  ../include/ccn/schedule.h ../include/ccn/seqwriter.h SyncActions.h \
+  SyncRoot.h ../include/ccn/ccn.h ../include/ccn/indexbuf.h SyncUtil.h \
+  IndexSorter.h SyncHashCache.h SyncNode.h SyncMacros.h \
+  ../ccnr/ccnr_msg.h ../ccnr/ccnr_private.h ../ccnr/ccnr_sync.h \
+  ../include/ccn/uri.h

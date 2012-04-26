@@ -24,7 +24,11 @@
 #ifndef CCN_SyncNode
 #define CCN_SyncNode
 
-#include "SyncBase.h"
+#include <stdio.h>
+#include <ccn/ccn.h>
+#include "SyncMacros.h"
+
+struct SyncBaseStruct;  // defined in SyncBase.h
 
 typedef enum {
     SyncNodeKind_zero = 0,  /**< no bits set */

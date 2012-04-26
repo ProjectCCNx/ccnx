@@ -16,17 +16,11 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/resource.h>
 #include <sys/time.h>
-
-#include "SyncActions.h"
-#include "SyncNode.h"
-#include "SyncPrivate.h"
-#include "SyncRoot.h"
-#include "SyncTreeWorker.h"
-#include "SyncUtil.h"
 
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
@@ -38,19 +32,29 @@
 #include <ccnr/ccnr_sync.h>
 #include <ccnr/ccnr_private.h>
 
+#include "SyncActions.h"
+#include "SyncNode.h"
+#include "SyncPrivate.h"
+#include "SyncRoot.h"
+#include "SyncTreeWorker.h"
+#include "SyncUtil.h"
+
 #define M 1000000
 // various configuration parameters
 // TBD: get them from an external source?
+static int useCompExcl = 1;             // governs use of nextcomp exclusion use
+static int showHighLevel = 1;           // governs high-level comments
+static int nDeltasLimit = 4;            // limit of deltas objects in chain per root
 static int cachePurgeTrigger = 60;      // cache entry purge, in seconds
 static int cacheCleanBatch = 16;        // seconds between cleaning batches
 static int cacheCleanDelta = 8;         // cache clean batch size
 static int adviseNeedReset = 1;         // reset value for adviseNeed
 static int updateStallDelta = 15;       // seconds used to determine stalled update
 static int updateNeedDelta = 6;         // seconds for adaptive update
-static int shortDelayMicros = 500;     // short delay for quick reschedule
+static int shortDelayMicros = 1000;     // short delay for quick reschedule
 static int compareAssumeBad = 20;       // secs since last fetch OK to assume compare failed
 static int nodeSplitTrigger = 4000;     // in bytes, triggers node split
-static int exclusionLimit = 1000;       // in bytes, limits exclusion list size
+static int exclusionLimit = 600;        // in bytes, limits exclusion list size
 static int exclusionTrig = 5;           // trigger for including root hashes in excl list (secs)
 static int stableTimeTrig = 10;         // trigger for storing stable point (secs)
 static int hashSplitTrigger = 17;       // trigger for splitting based on hash (n/255)
@@ -58,7 +62,7 @@ static int namesYieldInc = 100;         // number of names to inc between yield 
 static int namesYieldMicros = 20*1000;  // number of micros to use as yield trigger
 static char *syncStableSuffix = "SyncStable";
 
-static int syncScope = 2;
+#define SYNC_UPDATE_VERSION (20120307)
 
 enum SyncCompareState {
     SyncCompare_init,
@@ -88,10 +92,10 @@ struct SyncCompareData {
     int contentFetchFailed;         /**< number of failed content fetches */
     struct ccn_scheduled_event *ev; /**< progress event */
     enum SyncCompareState state;    /**< summary state of comparison */
-    sync_time lastFetchOK;          /**< time marker for last successul node/content fetch */
-    sync_time startTime;            /**< time marker for compare data creation */
-    sync_time lastEnter;            /**< time marker for last compare step entry */
-    sync_time lastMark;             /**< time marker for stall determination */
+    int64_t lastFetchOK;          /**< time marker for last successul node/content fetch */
+    int64_t startTime;            /**< time marker for compare data creation */
+    int64_t lastEnter;            /**< time marker for last compare step entry */
+    int64_t lastMark;             /**< time marker for stall determination */
     int64_t maxHold;                /**< max time thread was held by compare */
 };
 
@@ -115,17 +119,68 @@ struct SyncUpdateData {
     int nameLenAccum;
     int namesAdded;
     int initLen;
-    sync_time startTime;
-    sync_time entryTime;
+    struct SyncHashCacheEntry *ceStart; /*< entry for start hash (may be NULL) */
+    struct SyncHashCacheEntry *ceStop;  /*< entry for end hash */
+    int64_t startTime;
+    int64_t entryTime;
     int64_t maxHold;
     int preSortCount;
     int postSortCount;
+    struct SyncRootDeltas *deltas;
 };
 
+///////////////////////////////////////////////////////////////////////////
+///// Forward procedure declarations
+///////////////////////////////////////////////////////////////////////////
+
+static int
+HeartbeatAction(struct ccn_schedule *sched,
+                void *clienth,
+                struct ccn_scheduled_event *ev,
+                int flags);
+
+static int
+UpdateAction(struct ccn_schedule *sched,
+             void *clienth,
+             struct ccn_scheduled_event *ev,
+             int flags);
+
+static int
+CompareAction(struct ccn_schedule *sched,
+              void *clienth,
+              struct ccn_scheduled_event *ev,
+              int flags);
 
 ///////////////////////////////////////////////////////////////////////////
 ///// General internal routines
 ///////////////////////////////////////////////////////////////////////////
+
+
+static int
+showCacheEntry(struct SyncRootStruct *root, char *dst, int lim,
+               char *prefix, struct SyncHashCacheEntry *ce) {
+    int n = 0;
+    if (ce == NULL) n = snprintf(dst, lim, "%shash#null", prefix);
+    else n = snprintf(dst, lim, "%shash#%08x", prefix, (uint32_t) ce->small);
+    return n;
+}
+
+static void
+showCacheEntry1(struct SyncRootStruct *root, char *here, char *msg,
+                struct SyncHashCacheEntry *ce) {
+    char temp[1024];
+    showCacheEntry(root, temp, sizeof(temp), "", ce);
+    SyncNoteSimple2(root, here, msg, temp);
+}
+
+static void
+showCacheEntry2(struct SyncRootStruct *root, char *here, char *msg,
+                struct SyncHashCacheEntry *ce1, struct SyncHashCacheEntry *ce2) {
+    char temp[1024];
+    int n = showCacheEntry(root, temp, sizeof(temp), "", ce1);
+    showCacheEntry(root, temp+n, sizeof(temp)-n, ", ", ce2);
+    SyncNoteSimple2(root, here, msg, temp);
+}
 
 static struct SyncActionData *
 newActionData(enum SyncRegisterActionKind kind) {
@@ -139,8 +194,9 @@ newActionData(enum SyncRegisterActionKind kind) {
 static void
 linkActionData(struct SyncRootStruct *root, struct SyncActionData *data) {
     data->root = root;
+    data->ce = root->priv->ceCurrent;
     data->next = root->actions;
-    data->ccnr = root->base->ccnr;
+    data->client_handle = root->base->client_handle;
     data->state = SyncActionState_sent;
     root->actions = data;
 }
@@ -288,6 +344,7 @@ setCovered(struct SyncHashCacheEntry *ce) {
 
 static int
 isCovered(struct SyncHashCacheEntry *ce) {
+    if (ce == NULL) return 1;
     if (ce->state & SyncHashState_covered) return 1;
     if (ce->state & SyncHashState_local) {
         setCovered(ce);
@@ -347,7 +404,7 @@ sortNames(struct SyncRootStruct *root, struct SyncNameAccum *src) {
     return dst;
 }
 
-int
+static int
 reportExclude(struct SyncRootStruct *root, struct ccn_buf_decoder *d) {
     char *here = "Sync.reportExclude";
     int res = -1;
@@ -383,13 +440,11 @@ pos += snprintf(s+pos, lim-pos, ", %s %ju", #XXX, (uintmax_t) stats->XXX);
 static struct ccn_charbuf *
 formatStats(struct SyncRootStruct *root, struct ccn_charbuf *cb) {
     struct SyncRootStats *stats = root->priv->stats;
-    const unsigned char *bufL = root->currentHash->buf;
-    int lenL = root->currentHash->length;
     struct SyncNodeComposite *ncL = NULL;
     char s[2000];
     int lim = sizeof(s);
     int pos = 0;
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     int ru_ok = -1;
 #ifdef RUSAGE_SELF
     struct rusage ru;
@@ -398,12 +453,10 @@ formatStats(struct SyncRootStruct *root, struct ccn_charbuf *cb) {
     struct ccn_charbuf *hash = root->currentHash;
     struct SyncCompareData *comp = root->compare;
     struct SyncUpdateData *update = root->update;
-    if (lenL > 0) {
-        struct SyncHashCacheEntry *ceL = SyncHashLookup(root->ch, bufL, lenL);
-        if (ceL != NULL) {
-            SyncCacheEntryFetch(ceL);
-            ncL = ceL->ncL;
-        }
+    struct SyncHashCacheEntry *ceL = root->priv->ceCurrent;
+    if (ceL != NULL) {
+        SyncCacheEntryFetch(ceL);
+        ncL = ceL->ncL;
     }
     
     pos += snprintf(s+pos, lim-pos, "stats for root#%u", root->rootId);
@@ -496,29 +549,19 @@ formatStats(struct SyncRootStruct *root, struct ccn_charbuf *cb) {
 #undef StatsLine
 
 static struct SyncNameAccum *
-exclusionsFromHashList(struct SyncRootStruct *root, struct SyncHashInfoList *list) {
-    struct SyncNameAccum *acc = SyncAllocNameAccum(0);
+exclusionsFromHashList(struct SyncRootStruct *root,
+                       struct SyncNameAccum *acc,
+                       struct SyncHashInfoList *list) {
     int count = 0;
     int limit = exclusionLimit;
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     int64_t limitMicros = exclusionTrig*M;
-    
-    if (root->currentHash->length > 0) {
-        // if the current hash is not empty, start there
-        struct ccn_charbuf *hash = root->currentHash;
-        struct ccn_charbuf *name = ccn_charbuf_create();
-        count = count + hash->length + 8;
-        ccn_name_init(name);
-        ccn_name_append(name, hash->buf, hash->length);
-        SyncNameAccumAppend(acc, name, 0);
-    }
     
     while (list != NULL) {
         struct SyncHashCacheEntry *ce = list->ce;
-        if (ce != NULL && (ce->state & SyncHashState_remote)
-            && (ce->state & SyncHashState_covered)
+        if (ce != NULL && isCovered(ce)
             && SyncDeltaTime(ce->lastUsed, now) < limitMicros) {
-            // any remote root known to be covered is excluded
+            // any root known to be covered is excluded
             struct ccn_charbuf *hash = ce->hash;
             count = count + hash->length + 8;
             if (count > limit)
@@ -527,23 +570,17 @@ exclusionsFromHashList(struct SyncRootStruct *root, struct SyncHashInfoList *lis
             struct ccn_charbuf *name = ccn_charbuf_create();
             ccn_name_init(name);
             ccn_name_append(name, hash->buf, hash->length);
+            if (acc == NULL) acc = SyncAllocNameAccum(0);
             SyncNameAccumAppend(acc, name, 0);
         }
         list = list->next;
     }
-    if (acc->len == 0) {
-        SyncFreeNameAccum(acc);
-        return NULL;
-    }
-    struct SyncNameAccum *lag = acc;
-    if (acc->len == 0) {
-        // empty liust convention is NULL
-        acc = NULL;
-    } else {
+    if (acc != NULL && acc->len > 1) {
         // exclusion list must be sorted
+        struct SyncNameAccum *lag = acc;
         acc = sortNames(root, acc);
+        SyncFreeNameAccum(lag);
     }
-    SyncFreeNameAccum(lag);
     return acc;
 }
 
@@ -567,6 +604,56 @@ constructCommandPrefix(struct SyncRootStruct *root,
     return prefix;
 }
 
+// extract deltas extracts a list of delta names from an upcall info
+// the names are placed in a name accum stored in root->priv->remoteDeltas
+// returns < 0 on error, or the name count on success
+static int
+extractDeltas(struct SyncRootStruct *root, struct ccn_upcall_info *info) {
+    // first, find the content
+    char *here = "Sync.extractDeltas";
+    const unsigned char *cp = NULL;
+    int count = 0;
+    size_t cs = 0;
+    size_t ccnb_size = info->pco->offset[CCN_PCO_E];
+    const unsigned char *ccnb = info->content_ccnb;
+    int res = ccn_content_get_value(ccnb, ccnb_size, info->pco,
+                                    &cp, &cs);
+    if (res < 0 || cs < 2) {
+        SyncNoteFailed(root, here, "ccn_content_get_value", __LINE__);
+        return -1;
+    }
+    
+    // second, parse the object
+    struct ccn_buf_decoder ds;
+    struct ccn_buf_decoder *d = ccn_buf_decoder_start(&ds, cp, cs);
+    
+    if (ccn_buf_match_dtag(d, CCN_DTAG_SyncNodeDeltas)) {
+        ccn_buf_advance(d);
+        uintmax_t vers = SyncParseUnsigned(d, CCN_DTAG_SyncVersion);
+        if (SyncCheckDecodeErr(d) || vers != SYNC_UPDATE_VERSION) {
+            SyncNoteFailed(root, here, "bad version", __LINE__);
+            return -1;
+        }
+        struct SyncNameAccum *na = root->priv->remoteDeltas;
+        if (na != NULL) SyncFreeNameAccumAndNames(na);
+        na = SyncAllocNameAccum(4);
+        root->priv->remoteDeltas = na;
+        while (ccn_buf_match_dtag(d, CCN_DTAG_Name)) {
+            struct ccn_charbuf *name = SyncExtractName(d);
+            if (name == NULL) {
+                SyncNoteFailed(root, here, "bad name", __LINE__);
+                break;
+            }
+            SyncNameAccumAppend(na, name, 0);
+            count++;
+        }
+        ccn_buf_check_close(d);
+    }
+    return count;
+}
+
+// extractNode parses and creates a sync tree node from an upcall info
+// returns NULL if there was any kind of error
 static struct SyncNodeComposite *
 extractNode(struct SyncRootStruct *root, struct ccn_upcall_info *info) {
     // first, find the content
@@ -596,29 +683,42 @@ extractNode(struct SyncRootStruct *root, struct ccn_upcall_info *info) {
     return nc;
 }
 
+// noteHash remembers a remote hash (given by the hash cache entry),
+// promoting it to the front
+// if add == TRUE and there is no remote hash, then add it, else ignore it
+// returns < 0 for error, 0 if not added, 1 if added
 static int
-noteRemoteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce, int add) {
+noteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce,
+               int add, int remote) {
     char *here = "Sync.noteRemoteHash";
     int debug = root->base->debug;
-    struct ccnr_handle *ccnr = root->base->ccnr;
-    struct ccn_charbuf *hash = ce->hash;
-    int hl = hash->length;
-    if (hl == 0) return 0;
+    struct ccnr_handle *ccnr = root->base->client_handle;
+    struct ccn_charbuf *hash = NULL;
+    int hl = 0;
     struct SyncHashInfoList *head = root->priv->remoteSeen;
     struct SyncHashInfoList *each = head;
     struct SyncHashInfoList *lag = NULL;
-    sync_time mark = SyncCurrentTime();
-    ce->lastUsed = mark;
-    ce->lastRemoteFetch = mark;
-    if (ce->state & SyncHashState_local)
-        setCovered(ce);
+    int64_t mark = SyncCurrentTime();
+    int res = 0;
+    if (remote == 0) {
+        head = root->priv->localMade;
+        here = "Sync.noteLocalHash";
+    }
+    if (ce != NULL) {
+        ce->lastUsed = mark;
+        if (ce->state & SyncHashState_local)
+            setCovered(ce);
+        hash = ce->hash;
+        hl = hash->length;
+    }
     while (each != NULL) {
         if (ce == each->ce) {
             if (lag != NULL) {
                 // move it to the front
                 lag->next = each->next;
                 each->next = head;
-                root->priv->remoteSeen = each;
+                head = each;
+                res = 1;
             }
             break;
         }
@@ -629,47 +729,54 @@ noteRemoteHash(struct SyncRootStruct *root, struct SyncHashCacheEntry *ce, int a
         // need a new entry
         each = NEW_STRUCT(1, SyncHashInfoList);
         each->next = head;
-        root->priv->remoteSeen = each;
-    }
-    if (debug >= CCNL_FINE) {
-        char *hex = SyncHexStr(hash->buf, hash->length);
-        char *extra = "";
-        if (ce->state & SyncHashState_covered) extra = "covered, ";
-        ccnr_msg(ccnr, "%s, root#%u, %s%s", here, root->rootId, extra, hex);
-        free(hex);
+        head = each;
     }
     if (each != NULL) {
         each->ce = ce;
-        ce->busy++;
+        if (ce != NULL) ce->busy++;
         each->lastSeen = mark;
+        each->lastReplied = 0;
     }
-    return 1;
+    if (remote == 0) root->priv->localMade = head;
+    else root->priv->remoteSeen = head;
+
+    if (debug >= CCNL_FINE) {
+        char *hex = "empty";
+        if (hl > 0) hex = SyncHexStr(hash->buf, hl);
+        char *extra = ((isCovered(ce)) ? "covered, " : "");
+        ccnr_msg(ccnr, "%s, root#%u, %s%s", here, root->rootId, extra, hex);
+        if (hl > 0) free(hex);
+    }
+    return res;
 }
 
+// chooseRemoteHash returns the most recently seen/used remote hash
+// from the remoteSeen list.  The chosen hash must be remote (duh),
+// and not covered and must have been seen or used recently enough.
+// (TBD: is 2*rootAdviseLifetime a good choice?)
+// chooseRemoteHash also prunes the remoteSeen list of ineligible entries.
 static struct SyncHashInfoList *
 chooseRemoteHash(struct SyncRootStruct *root) {
     struct SyncHashInfoList *each = root->priv->remoteSeen;
-    sync_time now = SyncCurrentTime();
-    int64_t limit = ((int64_t)root->base->priv->rootAdviseLifetime)*3*M;
+    int64_t now = SyncCurrentTime();
+    int64_t limit = ((int64_t)root->base->priv->rootAdviseLifetime)*2*M;
     struct SyncHashInfoList *lag = NULL;
     while (each != NULL) {
         struct SyncHashCacheEntry *ce = each->ce;
         struct SyncHashInfoList *next = each->next;
-        if (ce != NULL
-            && (ce->state & SyncHashState_remote)
-            && ((ce->state & SyncHashState_covered) == 0)) {
-            // choose the first entry that is remote and not covered
-            int64_t dt = SyncDeltaTime(ce->lastUsed, now);
-            if (dt < limit) return each;
-            ce = NULL;
-        }
-        if (ce == NULL || (ce->state & SyncHashState_covered)) {
-            // prune this entry
+        int64_t dt = SyncDeltaTime(each->lastSeen, now);
+        if (dt < limit) {
+            // not expired
+            if (ce != NULL 
+                && (ce->state & SyncHashState_remote)
+                && ((ce->state & SyncHashState_covered) == 0))
+                return each;
+        } else {
+            // prune this entry (too old)
             if (lag == NULL) root->priv->remoteSeen = next;
             else lag->next = next;
             free(each);
-        } else
-            lag = each;
+        }
         each = next;
     }
     return NULL;
@@ -748,7 +855,7 @@ abortCompare(struct SyncCompareData *data, char *why) {
                 if (base->debug >= CCNL_INFO) {
                     // maybe this should be a warning?
                     char *hex = SyncHexStr(hash->buf, hash->length);
-                    ccnr_msg(root->base->ccnr,
+                    ccnr_msg(root->base->client_handle,
                              "%s, root#%u, remove remote hash %s",
                              here, root->rootId, hex);
                     free(hex);
@@ -876,13 +983,11 @@ doPreload(struct SyncCompareData *data) {
         if (data->nodeFetchBusy > busyLim) return 0;
         if (twR->level <= 0) break;
         struct SyncTreeWorkerEntry *ent = SyncTreeWorkerTop(twR);
-        if (ent->cacheEntry == NULL)
-            return -1;
         struct SyncHashCacheEntry *ceR = ent->cacheEntry;
-        if (ceR == NULL
-            || ceR->state & SyncHashState_fetching
-            || ceR->state & SyncHashState_covered
-            || ceR->state & SyncHashState_local) {
+        if (ceR == NULL)
+            return -1;
+        if (ceR->state & SyncHashState_fetching
+            || isCovered(ceR)) {
             // not a needed node, so pop it
         } else if (ceR->ncR != NULL) {
             // visit the children
@@ -1158,7 +1263,7 @@ fetchStablePoint(struct SyncBaseStruct *base, ccnr_hwm *ptr) {
     struct ccn_charbuf *interest = SyncGenInterest(name, 1, 0, -1, 1, NULL);
     if (interest == NULL) return -__LINE__;
     // TBD: check the signature!
-    res |= r_sync_lookup(base->ccnr, interest, cb);
+    res |= r_sync_lookup(base->client_handle, interest, cb);
     if (res >= 0) {
         // parse the object
         const unsigned char *xp = NULL;
@@ -1188,7 +1293,7 @@ fetchStablePoint(struct SyncBaseStruct *base, ccnr_hwm *ptr) {
                             res = 0;
                         }
                         if (ptr != NULL && res == 0)
-                            *ptr = ccnr_hwm_decode(base->ccnr, val);
+                            *ptr = ccnr_hwm_decode(base->client_handle, val);
                     }
                 }
             }
@@ -1208,7 +1313,7 @@ storeStablePoint(struct SyncBaseStruct *base, ccnr_hwm point) {
     int res = 0;
     char temp[32];
     int nc = snprintf(temp, sizeof(temp), "stable %ju",
-                      ccnr_hwm_encode(base->ccnr, point));
+                      ccnr_hwm_encode(base->client_handle, point));
     // TBD: find a better encoding & use better tags?
     res |= ccnb_append_tagged_blob(x, CCN_DTAG_StringValue, temp, nc);
     res |= ccn_name_append_str(name, syncStableSuffix);
@@ -1220,7 +1325,7 @@ storeStablePoint(struct SyncBaseStruct *base, ccnr_hwm point) {
         struct ccn_charbuf *cob = SyncSignBuf(base, x, name,
                                               1, CCN_SP_FINAL_BLOCK);
         if (cob != NULL) {
-            res |= r_sync_local_store(base->ccnr, cob);
+            res |= r_sync_local_store(base->client_handle, cob);
             ccn_charbuf_destroy(&cob);
         }
     }
@@ -1242,14 +1347,10 @@ static void
 purgeOldEntries(struct SyncRootStruct *root) {
     char *here = "Sync.purgeOldEntries";
     struct SyncHashCacheHead *ch = root->ch;
-    struct ccn_charbuf *hashL = root->currentHash;
-    if (hashL == NULL || hashL->length == 0) return;
-    struct SyncHashCacheEntry *ceL = SyncHashLookup(ch,
-                                                    hashL->buf,
-                                                    hashL->length);
+    struct SyncHashCacheEntry *ceL = root->priv->ceCurrent;
     if (ceL == NULL) return;
     struct SyncTreeWorkerHead *twL = SyncTreeWorkerCreate(ch, ceL, 0);
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     int64_t trigger = cachePurgeTrigger*M;
     SyncHashClearMarks(ch);
     SyncTreeMarkReachable(twL, 0);
@@ -1294,7 +1395,7 @@ CompareAction(struct ccn_schedule *sched,
     }
     data->lastEnter = SyncCurrentTime();
     struct SyncRootStruct *root = data->root;
-    struct ccnr_handle *ccnr = root->base->ccnr;
+    struct ccnr_handle *ccnr = root->base->client_handle;
     int debug = root->base->debug;
     if (data->ev != ev || flags & CCN_SCHEDULE_CANCEL) {
         // orphaned or cancelled
@@ -1395,7 +1496,7 @@ CompareAction(struct ccn_schedule *sched,
         }
         case SyncCompare_done: {
             // cleanup
-            sync_time now = SyncCurrentTime();
+            int64_t now = SyncCurrentTime();
             int64_t mh = SyncDeltaTime(data->lastEnter, now);
             int64_t dt = SyncDeltaTime(data->startTime, now);
             root->priv->stats->comparesDone++;
@@ -1417,7 +1518,7 @@ CompareAction(struct ccn_schedule *sched,
                     struct ccn_charbuf *cb = ccn_charbuf_create();
                     formatStats(root, cb);
                     char *str = ccn_charbuf_as_string(cb);
-                    ccnr_msg(root->base->ccnr, "%s, %s", here, str);
+                    ccnr_msg(root->base->client_handle, "%s, %s", here, str);
                     ccn_charbuf_destroy(&cb);
                 }
             }
@@ -1445,6 +1546,16 @@ kickCompare(struct SyncCompareData *scd, struct SyncActionData *action) {
     }
 }
 
+static void
+kickHeartBeat(struct SyncRootStruct *root, int micros) {
+    if (root != NULL)
+        ccn_schedule_event(root->base->sched,
+                           micros,
+                           HeartbeatAction,
+                           root->base,
+                           0);
+}
+
 ///////////////////////////////////////////////////////////////////////////
 ///// Tree building internal routines
 ///////////////////////////////////////////////////////////////////////////
@@ -1456,7 +1567,7 @@ newNodeCommon(struct SyncRootStruct *root,
     // finish building and inserting a local node
     char *here = "Sync.newNodeCommon";
     int debug = root->base->debug;
-    struct ccnr_handle *ccnr = root->base->ccnr;
+    struct ccnr_handle *ccnr = root->base->client_handle;
     if (nc == NULL || nc->hash == NULL) {
         SyncNoteFailed(root, here, "bad node", __LINE__);
         return NULL;
@@ -1466,7 +1577,7 @@ newNodeCommon(struct SyncRootStruct *root,
     struct SyncHashCacheEntry *ce = SyncHashLookup(ch, hash->buf, hash->length);
     SyncCacheEntryFetch(ce);
     if (ce != NULL && ce->ncL != NULL) {
-        // and equivalent local node is already in the cache
+        // an equivalent local node is already in the cache
         // so get rid of the new node and return the existing entry
         if (debug >= CCNL_FINE) {
             char *hex = SyncHexStr(hash->buf, hash->length);
@@ -1477,8 +1588,8 @@ newNodeCommon(struct SyncRootStruct *root,
         nc = ce->ncL;
         root->priv->stats->nodesShared++;
     } else {
+        // no local cache entry, so make one
         struct SyncPrivate *priv = root->base->priv;
-        // must ensure that there is a local cache entry
         ce = SyncHashEnter(ch, hash->buf, hash->length, SyncHashState_local);
         if (ce == NULL) {
             // this should not have happened!
@@ -1520,7 +1631,7 @@ nodeFromNodes(struct SyncRootStruct *root, struct SyncNodeAccum *na) {
     char *here = "Sync.nodeFromNodes";
     struct SyncHashCacheHead *ch = root->ch;
     struct SyncBaseStruct *base = root->base;
-    struct ccnr_handle *ccnr = base->ccnr;
+    struct ccnr_handle *ccnr = base->client_handle;
     int debug = base->debug;
     int lim = na->len;
     if (lim == 0) {
@@ -1588,7 +1699,7 @@ SyncStartSliceEnum(struct SyncRootStruct *root) {
         struct ccn_charbuf *nin = SyncGenInterest(name,
                                                   -1, -1, -1, -1,
                                                   NULL);
-        int res = r_sync_enumerate(base->ccnr, nin);
+        int res = r_sync_enumerate(base->client_handle, nin);
         
         ccn_charbuf_destroy(&nin);
         if (res > 0) {
@@ -1638,7 +1749,7 @@ HeartbeatAction(struct ccn_schedule *sched,
         }
         root = root->next;
     }
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     root = priv->rootHead;
     int64_t lifeMicros = ((int64_t) priv->rootAdviseLifetime)*M;
     int64_t needMicros = ((int64_t) updateNeedDelta)*M;
@@ -1672,23 +1783,24 @@ HeartbeatAction(struct ccn_schedule *sched,
                     // need to update the root
                     SyncUpdateRoot(root);
                 }
-                if (root->currentHash->length > 0) {
-                    struct SyncHashCacheEntry *ce = SyncHashLookup(root->ch,
-                                                                   root->currentHash->buf,
-                                                                   root->currentHash->length);
-                    if (ce != NULL && (ce->state & SyncHashState_local)) {
-                        if (rp->adviseNeed > 0
-                            || ce != rp->lastLocalSent) {
-                            SyncSendRootAdviseInterest(root);
-                        }
+                struct SyncHashCacheEntry *ceL = rp->ceCurrent;
+                if (ceL != NULL && (ceL->state & SyncHashState_local)) {
+                    if (rp->adviseNeed > 0 || ceL != rp->lastLocalSent) {
+                        SyncSendRootAdviseInterest(root);
                     }
                 } else
-                    // empty hash, so try for a starting response
+                    // empty hash, so try for a starting reply
                     SyncSendRootAdviseInterest(root);
                 if (root->update == NULL) {
-                    struct SyncHashInfoList *x = chooseRemoteHash(root);
-                    if (x != NULL) {
-                        SyncStartCompareAction(root, x->ce->hash);
+                    if (rp->remoteDeltas != NULL)
+                        // there are cheap updates to try first
+                        SyncStartCompareAction(root, NULL);
+                    else {
+                        // we might try the expensive way
+                        struct SyncHashInfoList *x = chooseRemoteHash(root);
+                        if (x != NULL) {
+                            SyncStartCompareAction(root, x->ce->hash);
+                        }
                     }
                 }
             }
@@ -1727,17 +1839,17 @@ HeartbeatAction(struct ccn_schedule *sched,
             if (priv->nStoring > 0) priv->nStoring--;
             root = ce->head->root;
             ccnr_hwm chw = ce->stablePoint;
-            if (ccnr_hwm_compare(base->ccnr, chw, root->priv->stablePoint) > 0) {
+            if (ccnr_hwm_compare(base->client_handle, chw, root->priv->stablePoint) > 0) {
                 // the node that just got stored had a better stablePoint for the node
                 root->priv->stablePoint = chw;
                 root->priv->lastStable = now;
-                if (ccnr_hwm_compare(base->ccnr, chw, priv->stableTarget) > 0)
+                if (ccnr_hwm_compare(base->client_handle, chw, priv->stableTarget) > 0)
                     priv->stableTarget = chw;
                 if (base->debug >= CCNL_INFO) {
                     char temp[64];
                     snprintf(temp, sizeof(temp),
                              "newly stable at %ju",
-                             ccnr_hwm_encode(base->ccnr, chw));
+                             ccnr_hwm_encode(base->client_handle, chw));
                     SyncNoteSimple(root, here, temp);
                 }
             }
@@ -1747,7 +1859,7 @@ HeartbeatAction(struct ccn_schedule *sched,
     }
     if (priv->stableEnabled && priv->useRepoStore
         && priv->nStoring == 0
-        && ccnr_hwm_compare(base->ccnr, priv->stableTarget, priv->stableStored) > 0) {
+        && ccnr_hwm_compare(base->client_handle, priv->stableTarget, priv->stableStored) > 0) {
         // test for stability
         int unstable = 1;
         int64_t dt = SyncDeltaTime(priv->lastStable, now);
@@ -1769,12 +1881,12 @@ HeartbeatAction(struct ccn_schedule *sched,
                 char temp[64];
                 snprintf(temp, sizeof(temp),
                          "stable target reached at %ju",
-                         ccnr_hwm_encode(base->ccnr, priv->stableTarget));
-                ccnr_msg(base->ccnr, "%s, %s", here, temp);
+                         ccnr_hwm_encode(base->client_handle, priv->stableTarget));
+                ccnr_msg(base->client_handle, "%s, %s", here, temp);
             }
             int spRes = storeStablePoint(base, priv->stableTarget);
             if (spRes < 0 && base->debug >= CCNL_WARNING) {
-                ccnr_msg(base->ccnr, "%s, warning: stable target not stored", here);
+                ccnr_msg(base->client_handle, "%s, warning: stable target not stored", here);
             }
             priv->lastStable = now;
             priv->stableStored = priv->stableTarget;
@@ -1794,7 +1906,7 @@ SyncStartHeartbeat(struct SyncBaseStruct *base) {
     int res = -1;
     if (base != NULL && base->sched != NULL) {
         int debug = base->debug;
-        struct ccnr_handle *ccnr = base->ccnr;
+        struct ccnr_handle *ccnr = base->client_handle;
         struct SyncPrivate *priv = base->priv;
         struct ccn_charbuf *nin = SyncGenInterest(priv->sliceCmdPrefix,
                                                   -1, -1, -1, -1,
@@ -1806,9 +1918,9 @@ SyncStartHeartbeat(struct SyncBaseStruct *base) {
         if (priv->stableEnabled && priv->useRepoStore) {
             res = fetchStablePoint(base, &commitPoint);
             if (res < 0 && base->debug >= CCNL_WARNING) 
-                ccnr_msg(base->ccnr, "%s, no stable recovery point", here);
+                ccnr_msg(base->client_handle, "%s, no stable recovery point", here);
         }
-        r_sync_notify_after(base->ccnr, commitPoint);
+        r_sync_notify_after(base->client_handle, commitPoint);
 
         // at startup we ask for all of the existing slices
         res = r_sync_enumerate(ccnr, nin);
@@ -1840,7 +1952,7 @@ SyncStartHeartbeat(struct SyncBaseStruct *base) {
     return res;
 }
 
-// callback for when an interest gets a response
+// callback for when an interest gets a reply
 // used when fetching a remote content object by explicit name
 // or when fetching a remote node
 extern enum ccn_upcall_res
@@ -1858,14 +1970,12 @@ SyncRemoteFetchResponse(struct ccn_closure *selfp,
         case CCN_UPCALL_CONTENT_UNVERIFIED:
             // TBD: fix this when we can actually verify
             // return CCN_UPCALL_RESULT_VERIFY;
-#if (CCN_API_VERSION >= 4004)
         case CCN_UPCALL_CONTENT_RAW:
         case CCN_UPCALL_CONTENT_KEYMISSING:
-#endif
         case CCN_UPCALL_INTEREST_TIMED_OUT:
         case CCN_UPCALL_CONTENT: {
             if (data == NULL) break;
-            struct ccnr_handle *ccnr = data->ccnr;
+            struct ccnr_handle *ccnr = data->client_handle;
             struct SyncRootStruct *root = data->root;
             struct SyncCompareData *comp = data->comp;
             if (root == NULL) break;
@@ -1873,7 +1983,7 @@ SyncRemoteFetchResponse(struct ccn_closure *selfp,
             struct SyncRootStats *stats = root->priv->stats;
             size_t bytes = 0;
             int faux = fauxError(root->base);
-            sync_time now = SyncCurrentTime();
+            int64_t now = SyncCurrentTime();
             if (ccnr != NULL && info != NULL && info->pco != NULL && faux == 0
                 && kind != CCN_UPCALL_INTEREST_TIMED_OUT)
                 bytes = info->pco->offset[CCN_PCO_E];
@@ -1940,19 +2050,22 @@ SyncRemoteFetchResponse(struct ccn_closure *selfp,
                     break;
                 }
                 case SRI_Kind_NodeFetch: {
-                    // node fetch response
+                    // node fetch reply
                     const unsigned char *xp = data->hash->buf;
                     ssize_t xs = data->hash->length;
+                    char *highWhy = "??";
                     char *hex = SyncHexStr(xp, xs);
                     struct SyncHashCacheEntry *ce = SyncHashLookup(root->ch, xp, xs);
                     if (bytes <= 0) {
                         // did not get the node at all
+                        highWhy = "no fetch";
                     } else if (ce != NULL && (isCovered(ce) || ce->ncR != NULL)) {
                         // there was a race, and we no longer need this
                         // for stats, count this as a success
                         if (debug >= CCNL_FINE) {
                             SyncNoteSimple2(root, here, "remote node covered", hex);
                         }
+                        highWhy = "covered";
                     } else {
                         // we actually need the node that arrived
                         struct SyncNodeComposite *ncR = extractNode(root, info);
@@ -1961,6 +2074,7 @@ SyncRemoteFetchResponse(struct ccn_closure *selfp,
                             if (debug >= CCNL_SEVERE)
                                 SyncNoteSimple2(root, here, "extractNode failed", hex);
                             bytes = 0;
+                            highWhy = "extract failed";
                         } else {
                             // the entry can now be completed
                             ce = SyncHashEnter(root->ch, xp, xs, SyncHashState_remote);
@@ -1973,8 +2087,18 @@ SyncRemoteFetchResponse(struct ccn_closure *selfp,
                                 if (debug >= CCNL_ERROR)
                                     SyncNoteSimple(root, here, "remote node comp == NULL");
                             }
+                            highWhy = "entered";
                         }
+                        
                     }
+                    if (debug >= CCNL_INFO && showHighLevel) {
+                        char temp[64];
+                        snprintf(temp, sizeof(temp),
+                                 "reply received, %s",
+                                 highWhy);
+                        showCacheEntry1(root, "Sync.$NodeFetch", temp, ce);
+                    }
+                    
                     if (comp != NULL && comp->nodeFetchBusy > 0)
                         comp->nodeFetchBusy--;
                     if (bytes > 0) {
@@ -2057,7 +2181,7 @@ SyncStartNodeFetch(struct SyncRootStruct *root,
         action->p = &SyncRemoteFetchResponse;
         
         struct ccn_charbuf *template = SyncGenInterest(NULL,
-                                                       syncScope,
+                                                       root->priv->syncScope,
                                                        base->priv->fetchLifetime,
                                                        -1, 1, NULL);
         res = ccn_express_interest(ccn, name, action, template);
@@ -2074,6 +2198,8 @@ SyncStartNodeFetch(struct SyncRootStruct *root,
                 char *hex = SyncHexStr(hash->buf, hash->length);
                 SyncNoteSimple2(root, here, "fetching", hex);
                 free(hex);
+                if (showHighLevel)
+                    showCacheEntry1(root, "Sync.$NodeFetch", "interest sent", ce);
             }
         }
         ccn_charbuf_destroy(&template);
@@ -2108,7 +2234,7 @@ SyncStartContentFetch(struct SyncRootStruct *root,
     
     // first, test to see if the content is already in the repo (yes, it happens)
     struct ccn_charbuf *interest = SyncGenInterest(name, 1, 0, 0, -1, NULL); 
-    int res = r_sync_lookup(base->ccnr, interest, NULL);
+    int res = r_sync_lookup(base->client_handle, interest, NULL);
     ccn_charbuf_destroy(&interest);
     
     if (res >= 0) {
@@ -2128,7 +2254,7 @@ SyncStartContentFetch(struct SyncRootStruct *root,
         action->p = &SyncRemoteFetchResponse;
         data->skipToHash = -1;  // no hash here
         struct ccn_charbuf *template = SyncGenInterest(NULL,
-                                                       syncScope,
+                                                       root->priv->syncScope,
                                                        base->priv->fetchLifetime,
                                                        0, -1, NULL);
         res = ccn_express_interest(ccn, name, action, template);
@@ -2186,10 +2312,10 @@ SyncAddName(struct SyncBaseStruct *base,
                 }
             } else {
                 // not obviously a duplicate
-                uintmax_t itemNum = ccnr_accession_encode(base->ccnr, item);
+                uintmax_t itemNum = ccnr_accession_encode(base->client_handle, item);
                 SyncNameAccumAppend(root->namesToAdd, SyncCopyName(name), itemNum);
                 if (item != CCNR_NULL_ACCESSION)
-                    root->priv->highWater = ccnr_hwm_update(base->ccnr,
+                    root->priv->highWater = ccnr_hwm_update(base->client_handle,
                                                             root->priv->highWater,
                                                             item);
                 count++;
@@ -2208,7 +2334,7 @@ SyncAddName(struct SyncBaseStruct *base,
         root = root->next;
     }
     if (item != CCNR_NULL_ACCESSION)
-        base->highWater = ccnr_hwm_update(base->ccnr, base->highWater, item);
+        base->highWater = ccnr_hwm_update(base->client_handle, base->highWater, item);
     return count;
 }
 
@@ -2223,7 +2349,7 @@ findAndDeleteRoot(struct SyncBaseStruct *base, char *here,
             // matching an existing root, so delete it
             if (debug >= CCNL_INFO) {
                 char *hex = SyncHexStr(hp, hs);
-                ccnr_msg(base->ccnr,
+                ccnr_msg(base->client_handle,
                          "%s, root#%u, deleted, %s",
                          here, root->rootId, hex);
                 free(hex);
@@ -2250,7 +2376,7 @@ findAndDeleteRoot(struct SyncBaseStruct *base, char *here,
     }
     if (debug >= CCNL_FINE) {
         char *hex = SyncHexStr(hp, hs);
-        ccnr_msg(base->ccnr,
+        ccnr_msg(base->client_handle,
                  "%s, root not found, %s",
                  here, hex);
         free(hex);
@@ -2262,7 +2388,7 @@ extern int
 SyncHandleSlice(struct SyncBaseStruct *base, struct ccn_charbuf *name) {
     char *here = "Sync.SyncHandleSlice";
     char *why = NULL;
-    struct ccnr_handle *ccnr = base->ccnr;
+    struct ccnr_handle *ccnr = base->client_handle;
     int debug = base->debug;
     const unsigned char *hp = NULL;
     ssize_t hs = 0;
@@ -2377,6 +2503,186 @@ SyncHandleSlice(struct SyncBaseStruct *base, struct ccn_charbuf *name) {
     return -1;
 }
 
+// NewDeltas allocates a new deltas object for the given root
+// note: caller is responsible for storing the pointer 
+static struct SyncRootDeltas *
+NewDeltas(struct SyncRootStruct *root) {
+    struct SyncRootDeltas *deltas = NEW_STRUCT(1, SyncRootDeltas);
+    deltas->ceStart = root->priv->ceCurrent;
+    deltas->coding = ccn_charbuf_create();
+    deltas->whenMade = SyncCurrentTime();
+    ccnb_element_begin(deltas->coding, CCN_DTAG_SyncNodeDeltas);
+    SyncAppendTaggedNumber(deltas->coding, CCN_DTAG_SyncVersion, SYNC_UPDATE_VERSION);
+    return deltas;
+}
+
+// FreeDeltas frees up a deltas object, which is presumed to be delinked
+// no action if deltas == NULL
+// returns NULL
+static struct SyncRootDeltas *
+FreeDeltas(struct SyncRootDeltas *deltas) {
+    if (deltas != NULL) {
+        ccn_charbuf_destroy(&deltas->coding);
+        ccn_charbuf_destroy(&deltas->name);
+        ccn_charbuf_destroy(&deltas->cob);
+        free(deltas);
+    }
+    return NULL;
+}
+
+// RemRootDeltas removes a specific deltas object from the chain,
+// updating the chain head and tail and the count as needed
+// returns 1 if the rmoval worked, 0 if the object was not found
+static int
+RemRootDeltas(struct SyncRootStruct *root, struct SyncRootDeltas *deltas) {
+    struct SyncRootPrivate *rp = root->priv;
+    if (deltas != NULL) {
+        struct SyncRootDeltas *lag = NULL;
+        struct SyncRootDeltas *each = rp->deltasHead;
+        while (each != NULL) {
+            struct SyncRootDeltas *next = each->next;
+            if (each == deltas) {
+                // found it, so delink
+                if (lag == NULL) rp->deltasHead = next;
+                else lag->next = next;
+                if (deltas == rp->deltasTail)
+                    rp->deltasTail = lag;
+                rp->nDeltas--;
+                // delinked, so free the storage
+                FreeDeltas(deltas);
+                return 1;
+            }
+            lag = each;
+            each = next;
+        }
+    }
+    return 0;
+}
+
+// SendDeltasReply sends a RootAdvise reply using the given deltas.
+// It may purge older deltas objects from the root.
+static int
+SendDeltasReply(struct SyncRootStruct *root, struct SyncRootDeltas *deltas) {
+    static char *here = "Sync.SendDeltasReply";
+    struct SyncBaseStruct *base = root->base;
+    struct SyncRootPrivate *rp = root->priv;
+    struct ccn_charbuf *name = deltas->name;
+    struct ccn_charbuf *cob = deltas->cob;
+    int res = 0;
+    int debug = root->base->debug;
+    char *newCobMsg = "";
+    if (name == NULL) {
+        // don't have an output name yet, so make it
+        struct ccn_charbuf *hash = NULL;
+        name = constructCommandPrefix(root, SRI_Kind_RootAdvise);
+        if (deltas->ceStart != NULL) hash = deltas->ceStart->hash;
+        if (hash == NULL)
+            // empty component
+            ccn_name_append_str(name, "");
+        else
+            // append the start hash as a component
+            ccn_name_append(name, hash->buf, hash->length);
+        // next, append the stop hash to the name
+        hash = deltas->ceStop->hash;
+        ccn_name_append(name, hash->buf, hash->length);
+        ccn_create_version(base->ccn, name, CCN_V_NOW, 0, 0);
+        ccn_name_append_numeric(name, CCN_MARKER_SEQNUM, 0);
+        deltas->name = name;
+    }
+    if (cob == NULL) {
+        // don't have a signed outbut buffer
+        cob = SyncSignBuf(base, deltas->coding, name,
+                          base->priv->rootAdviseFresh,
+                          CCN_SP_FINAL_BLOCK);
+        deltas->cob = cob;
+        newCobMsg = "+";
+    }
+    res = ccn_put(base->ccn, cob->buf, cob->length);
+    if (res >= 0) {
+        // we have success!
+        deltas->whenSent = SyncCurrentTime();
+        if (debug >= CCNL_INFO) {
+            char temp[64];
+            snprintf(temp, sizeof(temp),
+                               "reply sent%s (%u)",
+                               newCobMsg,
+                               deltas->deltasCount);
+            SyncNoteUri(root, here, temp, name);
+            if (showHighLevel)
+                showCacheEntry2(root, "Sync.$RootAdvise", temp,
+                                deltas->ceStart, deltas->ceStop);
+        }
+    } else {
+        if (debug >= CCNL_SEVERE)
+            SyncNoteUri(root, here, "reply failed", name);
+    }
+    // purge deltas beyond some count
+    // (TBD: better method for purging?)
+    while (rp->nDeltas > nDeltasLimit) {
+        deltas = rp->deltasHead;
+        if (deltas == rp->deltasTail) break;
+        if (RemRootDeltas(root, deltas) != 1) break;
+    }
+    return res;
+}
+
+// scanRemoteSeen returns the first SyncHashInfoList object int the remoteSeen
+// list that refers to the given hash entry (which may be NULL)
+static struct SyncHashInfoList *
+scanRemoteSeen(struct SyncRootStruct *root, struct SyncHashCacheEntry *ceR) {
+    struct SyncHashInfoList *remoteSeen = root->priv->remoteSeen;
+    while (remoteSeen != NULL) {
+        if (remoteSeen->ce == ceR) return remoteSeen;
+        remoteSeen = remoteSeen->next;
+    }
+    return NULL;
+}
+
+// CloseUpdateCoding finishes up the deltas object (closes the coding),
+// removes it from the updates, and moves it to the root
+// note: if the update object has a deltas object then the coding is not closed!
+static struct SyncRootDeltas *
+CloseUpdateCoding(struct SyncUpdateData *ud) {
+    struct SyncRootStruct *root = ud->root;
+    struct SyncRootDeltas *deltas = ud->deltas;
+    if (deltas != NULL) {
+        struct SyncHashCacheEntry *ceStop = root->priv->ceCurrent;
+        ud->deltas = NULL;
+        deltas->next = NULL;
+        if (deltas->deltasCount <= 0 || deltas->coding == NULL || ud->ceStart == ceStop) {
+            // nothing here, so forget it (fail over to using NodeFetch)
+            FreeDeltas(deltas);
+            deltas = NULL;
+        } else {
+            // link into the deltas chain
+            ccnb_element_end(deltas->coding);
+            struct SyncRootPrivate *rp = root->priv;
+            struct SyncRootDeltas *tail = rp->deltasTail;
+            if (tail != NULL) {
+                tail->next = deltas;
+            } else {
+                rp->deltasHead = deltas;
+            }
+            tail = deltas;
+            deltas->ceStop = ceStop;
+            rp->nDeltas++;
+        }
+    }
+    return deltas;
+}
+
+// scanDeltas retruns the first SyncRootDeltas object that starts with
+// the given hash entry
+static struct SyncRootDeltas *
+scanDeltas(struct SyncRootStruct *root, struct SyncHashCacheEntry *ceR) {
+    struct SyncRootDeltas *deltas = root->priv->deltasHead;
+    while (deltas != NULL) {
+        if (deltas->ceStart == ceR) break;
+        deltas = deltas->next;
+    }
+    return deltas;
+}
+
 extern enum ccn_upcall_res
 SyncInterestArrived(struct ccn_closure *selfp,
                     enum ccn_upcall_kind kind,
@@ -2384,6 +2690,7 @@ SyncInterestArrived(struct ccn_closure *selfp,
     static char *here = "Sync.SyncInterestArrived";
     struct SyncActionData *data = selfp->data;
     enum ccn_upcall_res ret = CCN_UPCALL_RESULT_OK;
+    char temp[200];
     switch (kind) {
         case CCN_UPCALL_FINAL:
             data = destroyActionData(data);
@@ -2420,7 +2727,6 @@ SyncInterestArrived(struct ccn_closure *selfp,
                     struct ccn_charbuf *cb = ccn_charbuf_create();
                     struct timeval tv = {0};
                     gettimeofday(&tv, 0);
-                    char temp[128];
                     int pos = snprintf(temp, sizeof(temp),
                                        "%ju.%06u: ", 
                                        (uintmax_t) tv.tv_sec,
@@ -2433,10 +2739,10 @@ SyncInterestArrived(struct ccn_closure *selfp,
                     if (res >= 0) {
                         // we have success!
                         if (debug >= CCNL_INFO)
-                            SyncNoteUri(root, here, "response sent", name);
+                            SyncNoteUri(root, here, "reply sent", name);
                     } else {
                         if (debug >= CCNL_SEVERE)
-                            SyncNoteUri(root, here, "response failed", name);
+                            SyncNoteUri(root, here, "reply failed", name);
                     }
                     ccn_charbuf_destroy(&name);
                     ccn_charbuf_destroy(&cb);
@@ -2453,69 +2759,102 @@ SyncInterestArrived(struct ccn_closure *selfp,
                     const unsigned char *bufL = root->currentHash->buf;
                     char *who = getKindStr(data->kind);
                     size_t lenL = root->currentHash->length;
+                    char *highHere = "??";
                     ccn_name_comp_get(buf, comps, skipToHash, &bufR, &lenR);
                     if (bufR == NULL || lenR == 0) {
                         if (data->kind == SRI_Kind_FetchInt) {
-                            // not well-formed, so ignore it
-                            if (debug >= CCNL_SEVERE)
-                                SyncNoteSimple2(root, here, who, "failed, no remote hash");
-                            return ret;
                         }
-                    } else hexR = SyncHexStr(bufR, lenR);
+                    } else {
+                        hexR = SyncHexStr(bufR, lenR);
+                        ceR = SyncHashEnter(root->ch, bufR, lenR, SyncHashState_remote);
+                    }
+                    hexL = SyncHexStr(bufL, lenL);
+                    ceL = root->priv->ceCurrent;
                     
                     if (debug >= CCNL_INFO) {
                         if (hexR == NULL)
                             SyncNoteSimple2(root, here, who, "empty remote hash");
                         else SyncNoteSimple3(root, here, who, "remote hash", hexR);
+                        if (hexL == NULL)
+                            SyncNoteSimple2(root, here, who, "empty local hash");
+                        else SyncNoteSimple3(root, here, who, "local hash", hexL);
                     }
                     if (data->kind == SRI_Kind_AdviseInt) {
-                        // worth noting the remote root
-                        if (debug >= CCNL_FINER) {
-                            ssize_t start = info->pi->offset[CCN_PI_B_Exclude];
-                            ssize_t stop = info->pi->offset[CCN_PI_E_Exclude];
-                            if (stop > start) {
-                                // we appear to have an exclusion
+                        // get the entry for the local root node
+                        // should expire fairly quickly
+                        int seen = noteHash(root, ceR, 1, 1);
+                        if (debug >= CCNL_INFO) {
+                            // worth noting the remote root
+                            rp->stats->rootAdviseSeen++;
+                            highHere = "Sync.$RootAdvise";
+                            if (debug >= CCNL_INFO && showHighLevel)
+                                showCacheEntry1(root, highHere, "interest arrived", ceR);
+                        }
+                        if (ceL == ceR) {
+                            // hash given is same as our root hash, so ignore the request
+                            if (debug >= CCNL_INFO)
+                                SyncNoteSimple2(root, here, who, "ignored (same hash)");
+                            // both L and R are empty, so suppress short-term thrashing
+                            rp->adviseNeed = 0;
+                            purgeOldEntries(root);
+                            break;
+                        }
+                        ssize_t excl_start = info->pi->offset[CCN_PI_B_Exclude];
+                        ssize_t excl_stop = info->pi->offset[CCN_PI_E_Exclude];
+                        ssize_t excl_len = excl_stop - excl_start;
+                        if (excl_len > 0) {
+                            // we appear to have an exclusion
+                            if (debug >= CCNL_FINER) {
                                 struct ccn_buf_decoder ds;
                                 struct ccn_buf_decoder *d = &ds;
-                                ccn_buf_decoder_start(d, buf+start, stop - start);
+                                ccn_buf_decoder_start(d,
+                                                      buf+excl_start,
+                                                      excl_len);
                                 reportExclude(root, d);
                             }
+                            if (useCompExcl && lenL > 0
+                                && ccn_excluded(buf+excl_start,
+                                                excl_len,
+                                                bufL,
+                                                lenL)) {
+                                    // we have an exclusion match, so forget it!
+                                    if (debug >= CCNL_INFO)
+                                        SyncNoteSimple2(root, here, who, "excluded");
+                                    break;
+                                }
                         }
-                        if (lenR != 0) {
-                            ceR = SyncHashEnter(root->ch, bufR, lenR, SyncHashState_remote);
-                            sync_time lastMark = ceR->lastRemoteFetch;
-                            noteRemoteHash(root, ceR, 1);
+                        if (seen == 0 && !isCovered(ceR)) {
+                            // first time seen, so force a RootAdvise from our side
+                            // this should allow the remote to answer with deltas (if present)
                             rp->adviseNeed = adviseNeedReset;
-                            // force any old interest to be inactive
-                            if (lastMark == 0) {
-                                // not entered, so we need to do a RootAdvise
-                                struct SyncActionData *data = SyncFindAction(root, SRI_Kind_RootAdvise);
-                                if (data != NULL) data->kind = SRI_Kind_None;
-                            }
+                            // kickHeartBeat(root, shortDelayMicros);
                         }
-                        rp->stats->rootAdviseSeen++;
                     } else {
+                        // NodeFetch
                         rp->stats->nodeFetchSeen++;
+                        if (ceR == NULL) {
+                            // NodeFetch MUST have a valid remote hash!
+                            if (debug >= CCNL_SEVERE)
+                                SyncNoteSimple2(root, here, who, "failed, no remote hash");
+                            return CCN_UPCALL_RESULT_ERR;
+                        }
+                        highHere = "Sync.$NodeFetch";
+                        if (debug >= CCNL_INFO && showHighLevel)
+                            showCacheEntry1(root, highHere, "interest arrived", ceR);
+                        // after this point, ceL is the requested node
+                        ceL = ceR;
                     }
-                    
                     if (lenL == 0) {
                         if (debug >= CCNL_INFO)
                             SyncNoteSimple2(root, here, who, "ignored (empty local root)");
                         if (lenR == 0) {
                             // both L and R are empty, so suppress short-term thrashing
                             rp->adviseNeed = 0;
-                        } else if (root->namesToAdd->len > 0) {
+                        }
+                        if (root->namesToAdd->len > 0) {
                             if (debug >= CCNL_FINE)
                                 SyncNoteSimple2(root, here, who, "new tree needed");
                         }
-                        break;
-                    }
-                    if (data->kind == SRI_Kind_AdviseInt
-                        && lenR == lenL && memcmp(bufL, bufR, lenR) == 0) {
-                        // hash given is same as our root hash, so ignore the request
-                        if (debug >= CCNL_INFO)
-                            SyncNoteSimple2(root, here, who, "ignored (same hash)");
-                        purgeOldEntries(root);
                         break;
                     }
                     
@@ -2525,24 +2864,11 @@ SyncInterestArrived(struct ccn_closure *selfp,
                     // subnodes that C cannot reach
                     // TBD: come up with a better solution!
                     
-                    hexL = SyncHexStr(bufL, lenL);
-                    
                     rp->adviseNeed = adviseNeedReset;
                     
-                    // we need to respond with our local root node
+                    // we need to respond with a local tree node (in ceL)
                     
-                    if (data->kind == SRI_Kind_AdviseInt) {
-                        // get the entry for the local root node
-                        // should expire fairly quickly
-                        ceL = SyncHashLookup(root->ch, bufL, lenL);
-                        if (debug >= CCNL_INFO) {
-                            SyncNoteSimple3(root, here, who, "local hash", hexL);
-                        }
-                    } else {
-                        // get the entry for the requested local tree node
-                        ceL = SyncHashLookup(root->ch, bufR, lenR);
-                    }
-                    // test for local root node being present
+                    // test for desired local tree node being present
                     if (SyncCacheEntryFetch(ceL) < 0) {
                         // requested local node is probably not ours
                         if (debug >= CCNL_FINE) {
@@ -2555,11 +2881,22 @@ SyncInterestArrived(struct ccn_closure *selfp,
                     // root advise: name is prefix + hashIn + hashOut
                     // node fetch: name is prefix + hashIn
                     // empty hashes are OK, but must be encoded
+                    struct SyncRootDeltas *deltas = NULL;
+                    struct ccn_charbuf *cbL = ncL->cb;
                     struct ccn_charbuf *name = SyncCopyName(data->prefix);
                     ccn_name_append(name, bufR, lenR);
-                    if (data->kind == SRI_Kind_AdviseInt)
+                    if (data->kind == SRI_Kind_AdviseInt) {
                         // respond with the current local hash
                         ccn_name_append(name, bufL, lenL);
+                        deltas = scanDeltas(root, ceR);
+                        if (deltas != NULL && deltas->whenSent == 0) {
+                            // we've got one, so send it now
+                            SendDeltasReply(root, deltas);
+                            ccn_charbuf_destroy(&name);
+                            ret = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
+                            break;
+                        }
+                    }
                     
                     // the content object is based on the node
                     struct ccn_charbuf *cob = NULL;
@@ -2567,13 +2904,14 @@ SyncInterestArrived(struct ccn_closure *selfp,
                         // node fetch results need not expire
                         cob = ncL->content;
                     }
-                    if (cob == NULL)
+                    if (cob == NULL && cbL != NULL) {
                         // don't already have it, so make it
-                        cob = SyncSignBuf(base, ncL->cb, name,
+                        cob = SyncSignBuf(base, cbL, name,
                                           fresh, CCN_SP_FINAL_BLOCK);
+                    }
                     
                     if (cob != NULL) {
-                        // we have a response encoded
+                        // we have a reply encoded
                         if (ccn_content_matches_interest(cob->buf, cob->length,
                                                          1, NULL,
                                                          info->interest_ccnb,
@@ -2583,11 +2921,18 @@ SyncInterestArrived(struct ccn_closure *selfp,
                             int res = ccn_put(info->h, cob->buf, cob->length);
                             if (res >= 0) {
                                 // we have success!
-                                if (debug >= CCNL_INFO)
-                                    SyncNoteUri(root, here, "response sent", name);
+                                if (debug >= CCNL_INFO) {
+                                    char *why = "reply sent";
+                                    SyncNoteUri(root, here, why, name);
+                                    if (showHighLevel) {
+                                        if (data->kind == SRI_Kind_AdviseInt)
+                                            showCacheEntry2(root, highHere, why, ceR, ceL);
+                                        else showCacheEntry1(root, highHere, why, ceL);
+                                    }
+                                }
                             } else {
                                 if (debug >= CCNL_SEVERE)
-                                    SyncNoteUri(root, here, "response failed", name);
+                                    SyncNoteUri(root, here, "reply failed", name);
                             }
                             ret = CCN_UPCALL_RESULT_INTEREST_CONSUMED;
                         } else {
@@ -2687,7 +3032,7 @@ SyncRegisterInterests(struct SyncRootStruct *root) {
             msgPrefix = ccn_charbuf_as_string(uriPrefix);
         }
         
-        ccnr_msg(root->base->ccnr,
+        ccnr_msg(root->base->client_handle,
                  "%s, root#%u, topo %s, prefix %s, hash %s",
                  here, root->rootId, msgTopo, msgPrefix, hex);
         
@@ -2696,7 +3041,7 @@ SyncRegisterInterests(struct SyncRootStruct *root) {
             int i = 0;
             for (i = 0; i < filter->len; i++) {
                 struct ccn_charbuf *uri = SyncUriForName(filter->ents[i].name);
-                ccnr_msg(root->base->ccnr,
+                ccnr_msg(root->base->client_handle,
                          "%s, root#%u, op %d, pattern %s",
                          here, root->rootId,
                          (int) filter->ents[i].data,
@@ -2715,7 +3060,7 @@ SyncRegisterInterests(struct SyncRootStruct *root) {
     return res;
 }
 
-// callback for when a root advise interest gets a response
+// callback for when a root advise interest gets a reply
 extern enum ccn_upcall_res
 SyncRootAdviseResponse(struct ccn_closure *selfp,
                        enum ccn_upcall_kind kind,
@@ -2731,17 +3076,15 @@ SyncRootAdviseResponse(struct ccn_closure *selfp,
         case CCN_UPCALL_CONTENT_UNVERIFIED:
             ret = CCN_UPCALL_RESULT_VERIFY;
             break;
-#if (CCN_API_VERSION >= 4004)
         case CCN_UPCALL_CONTENT_KEYMISSING:
             ret = CCN_UPCALL_RESULT_FETCHKEY;
             break;
-#endif
         case CCN_UPCALL_INTEREST_TIMED_OUT: {
             if (data == NULL || info == NULL ||
                 data->root == NULL || data->kind != SRI_Kind_RootAdvise) {
                 // not active, no useful info
             } else {
-                sync_time now = SyncCurrentTime();
+                int64_t now = SyncCurrentTime();
                 struct SyncRootStruct *root = data->root;
                 int debug = root->base->debug;
                 root->priv->stats->rootAdviseTimeout++;
@@ -2755,14 +3098,12 @@ SyncRootAdviseResponse(struct ccn_closure *selfp,
                     SyncNoteUri(root, here, temp, data->prefix);
                 }
                 data->startTime = now;
-                // as long as we need a response, keep expressing it
+                // as long as we need a reply, keep expressing it
                 ret = CCN_UPCALL_RESULT_REEXPRESS;
             }
             break;
         }
-#if (CCN_API_VERSION >= 4004)
         case CCN_UPCALL_CONTENT_RAW:
-#endif
         case CCN_UPCALL_CONTENT: {
             if (data == NULL || info == NULL ||
                 data->root == NULL || data->kind != SRI_Kind_RootAdvise) {
@@ -2793,7 +3134,7 @@ SyncRootAdviseResponse(struct ccn_closure *selfp,
             int cres = ccn_name_comp_get(info->content_ccnb,
                                          info->content_comps,
                                          data->skipToHash, &hp, &hs);
-            if (cres < 0 || hp == NULL) {
+            if (cres < 0 || hp == NULL || hs == 0) {
                 // bad hash, so complain
                 failed++;
                 SyncNoteFailed(root, here, "bad hash", __LINE__);
@@ -2802,34 +3143,59 @@ SyncRootAdviseResponse(struct ccn_closure *selfp,
                 if (debug >= CCNL_WARNING)
                     SyncNoteSimple(root, here, "faux error");
             } else {
+                char *highWhy = "covered";
+                char highWhyTemp[32];
                 struct SyncHashCacheEntry *ce = SyncHashEnter(root->ch, hp, hs,
                                                               SyncHashState_remote);
-                noteRemoteHash(root, ce, 1);
+                noteHash(root, ce, 1, 1);
                 if (!isCovered(ce)) {
                     // may need to make an entry
                     struct SyncNodeComposite *nc = NULL;
                     char *hex = SyncHexStr(hp, hs);
                     if (ce != NULL && ce->ncR != NULL) {
                         nc = ce->ncR;
+                        highWhy = "not covered";
                         if (debug >= CCNL_INFO)
-                            SyncNoteSimple2(root, here, "existing but not covered", hex);
+                            SyncNoteSimple2(root, here, highWhy, hex);
                     } else {
-                        nc = extractNode(root, info);
-                        if (nc == NULL) {
-                            // this is bad news, the parsing failed
-                            failed++;
-                            if (debug >= CCNL_SEVERE)
-                                SyncNoteSimple2(root, here, "extractNode failed", hex);
+                        int nd = extractDeltas(root, info);
+                        if (nd > 0) {
+                            // the deltas have been remembered in the root
+                            snprintf(highWhyTemp, sizeof(highWhyTemp),
+                                     "deltas (%u)", nd);
+                            highWhy = highWhyTemp;
+                            if (debug >= CCNL_INFO) {
+                                SyncNoteSimple2(root, here, highWhy, hex);
+                            }
+                            SyncStartCompareAction(root, NULL);
                         } else {
-                            // new entry
-                            ce->ncR = nc;
-                            SyncNodeIncRC(nc);
-                            bytes = info->pco->offset[CCN_PCO_E];
-                            if (debug >= CCNL_INFO)
-                                SyncNoteSimple2(root, here, "remote entered", hex);
+                            nc = extractNode(root, info);
+                            if (nc == NULL) {
+                                // this is bad news, the parsing failed
+                                failed++;
+                                if (debug >= CCNL_SEVERE)
+                                    SyncNoteSimple2(root, here, "extractNode failed", hex);
+                            } else {
+                                // new entry
+                                ce->ncR = nc;
+                                SyncNodeIncRC(nc);
+                                bytes = info->pco->offset[CCN_PCO_E];
+                                if (debug >= CCNL_INFO)
+                                    SyncNoteSimple2(root, here, "remote entered", hex);
+                                SyncStartCompareAction(root, ce->hash);
+                            }
                         }
                     }
                     free(hex);
+                }
+                if (debug >= CCNL_INFO && showHighLevel) {
+                    char temp[64];
+                    snprintf(temp, sizeof(temp),
+                             "reply received, %s",
+                             highWhy);
+                    showCacheEntry2(root, "Sync.$RootAdvise", temp,
+                                    root->priv->ceCurrent,
+                                    ce);
                 }
             }
             if (failed) {
@@ -2854,17 +3220,15 @@ SyncSendRootAdviseInterest(struct SyncRootStruct *root) {
     enum SyncRegisterActionKind kind = SRI_Kind_RootAdvise;
     int debug = root->base->debug;
     struct SyncActionData *data = SyncFindAction(root, kind);
-    struct SyncHashCacheEntry *ce = NULL;
-    if (root->currentHash->length > 0) {
-        ce = SyncHashLookup(root->ch,
-                            root->currentHash->buf,
-                            root->currentHash->length);
-    }
+    struct SyncHashCacheEntry *ce = root->priv->ceCurrent;
+    if (root->base->ccn == NULL)
+        // we don't have a way to send interests
+        return 0;
     if (data != NULL) {
         // don't override exiting interest for this root unless the root has changed
         if (ce == NULL || ce == root->priv->lastLocalSent)
             return 0;
-        // mark this as inactive, response to be ignored
+        // mark this as inactive, reply to be ignored
         data->kind = SRI_Kind_None;
         if (debug >= CCNL_FINE)
             SyncNoteSimple(root, here, "marked old interest as inactive");
@@ -2883,9 +3247,11 @@ SyncSendRootAdviseInterest(struct SyncRootStruct *root) {
     action->data = data;
     action->p = &SyncRootAdviseResponse;
     
-    struct SyncNameAccum *excl = exclusionsFromHashList(root, root->priv->remoteSeen);
+    struct SyncNameAccum *excl = exclusionsFromHashList(root, NULL, root->priv->remoteSeen);
+    excl = exclusionsFromHashList(root, excl, root->priv->localMade);
+    int exclCount = ((excl == NULL) ? 0 : excl->len);
     struct ccn_charbuf *template = SyncGenInterest(NULL,
-                                                   syncScope,
+                                                   root->priv->syncScope,
                                                    root->base->priv->rootAdviseLifetime,
                                                    -1, -1,
                                                    excl);
@@ -2902,8 +3268,15 @@ SyncSendRootAdviseInterest(struct SyncRootStruct *root) {
         root->priv->lastAdvise = SyncCurrentTime();
         root->priv->lastLocalSent = ce;
         root->priv->stats->rootAdviseSent++;
-        if (debug >= CCNL_INFO)
+        if (debug >= CCNL_INFO) {
             SyncNoteUri(root, here, "sent", prefix);
+            if (showHighLevel) {
+                char temp[32];
+                snprintf(temp, sizeof(temp),
+                         "interest sent (excl %d)", exclCount);
+                showCacheEntry1(root, "Sync.$RootAdvise", temp, ce);
+            }
+        }
         return 1;
     } else {
         // failed, so return the storage
@@ -3066,15 +3439,38 @@ TryNodeSplit(struct SyncUpdateData *ud) {
     res = MakeNodeFromNames(ud, split);
     return res;
 }
-    
+
+// AddUpdateName adds a name to the current update name accumulator
+// and adds it to the deltas if it is a new name and can be added
 static int
-AddUpdateName(struct SyncUpdateData *ud, struct ccn_charbuf *name) {
+AddUpdateName(struct SyncUpdateData *ud, struct ccn_charbuf *name, int isNew) {
+    static char *here = "Sync.AddUpdateName";
+    struct SyncRootStruct *root = ud->root;
+    int debug = root->base->debug;
     struct SyncNameAccum *dst = ud->sort;
     int nameLen = name->length;
     int accLim = nodeSplitTrigger - nodeSplitTrigger/8;
     int res = 0;
     name = SyncCopyName(name);
     SyncNameAccumAppend(dst, name, 0);
+    if (debug >= CCNL_FINE) {
+        char *msg = ((isNew) ? "added+" : "added");
+        SyncNoteUri(root, here, msg, name);
+    }
+    if (isNew) {
+        struct SyncRootDeltas *deltas = ud->deltas;
+        int deltasLimit = root->base->priv->deltasLimit;
+        if (deltasLimit > 0 && deltas != NULL && deltas->coding != NULL) {
+            // append the name to the update coding
+            ccn_charbuf_append_charbuf(deltas->coding, name);
+            if (deltas->coding->length > deltasLimit) {
+                // too large for simple update, kill the coding
+                ccn_charbuf_destroy(&deltas->coding);
+            }
+            deltas->deltasCount++;
+        }
+    }
+
     ud->nameLenAccum += nameLen;
     ud->namesAdded++;
     if (ud->nameLenAccum >= accLim) {
@@ -3137,7 +3533,7 @@ SyncTreeMergeNames(struct SyncTreeWorkerHead *head,
                     switch (cmp) {
                         case SCR_before:
                             // add the name from src
-                            AddUpdateName(ud, name);
+                            AddUpdateName(ud, name, 1);
                         case SCR_min:
                             // advance the src, remove duplicates
                             if (cmp == SCR_min) {
@@ -3159,7 +3555,7 @@ SyncTreeMergeNames(struct SyncTreeWorkerHead *head,
                         case SCR_after:
                             // add the name from the tree
                             extractBuf(cb, nc, ep);
-                            AddUpdateName(ud, cb);
+                            AddUpdateName(ud, cb, 0);
                             ent->pos++;
                             break;
                         default:
@@ -3193,7 +3589,7 @@ SyncTreeMergeNames(struct SyncTreeWorkerHead *head,
         while (ud->ixBase->len > 0) {
             srcPos = IndexSorter_Best(ud->ixBase);
             struct ccn_charbuf *name = src->ents[srcPos].name;
-            AddUpdateName(ud, name);
+            AddUpdateName(ud, name, 1);
             for (;;) {
                 IndexSorter_Rem(ud->ixBase);
                 if (ud->ixBase->len <= 0) break;
@@ -3217,21 +3613,33 @@ SyncTreeMergeNames(struct SyncTreeWorkerHead *head,
     return res;
 }
 
+static struct SyncUpdateData *
+FreeUpdateData(struct SyncUpdateData *ud) {
+    if (ud != NULL) {
+        ud->sort = SyncFreeNameAccumAndNames(ud->sort);
+        ud->nodes = SyncFreeNodeAccum(ud->nodes);
+        ud->deltas = FreeDeltas(ud->deltas);
+        free(ud);
+    }
+    return NULL;
+}
+
 static int
 UpdateAction(struct ccn_schedule *sched,
              void *clienth,
              struct ccn_scheduled_event *ev,
              int flags) {
     char *here = "Sync.UpdateAction";
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     struct SyncUpdateData *ud = (struct SyncUpdateData *) ev->evdata;
     struct SyncRootStruct *root = ud->root;
     struct SyncBaseStruct *base = root->base;
     int debug = base->debug;
-    struct ccnr_handle *ccnr = base->ccnr;
+    struct ccnr_handle *ccnr = base->client_handle;
     int showEntry = base->priv->syncActionsPrivate & 8;
-    // sync_time prevTime = ud->entryTime;
+    // int64_t prevTime = ud->entryTime;
     ud->entryTime = now;
+    
     switch (ud->state) {
         case SyncUpdate_init: {
             // we are initialized, and need to insert root->namesToAdd
@@ -3244,7 +3652,6 @@ UpdateAction(struct ccn_schedule *sched,
             IndexSorter_Index ix = ud->ixPos;
             IndexSorter_Index ixLim = ix+namesYieldInc;
             if (srcLen < ixLim) ixLim = srcLen;
-            
             
             while (ix < srcLen) {
                 if (ix > ixLim) {
@@ -3269,7 +3676,6 @@ UpdateAction(struct ccn_schedule *sched,
                 // not done yet, so take a break
                 return shortDelayMicros;
             
-            ud->state = SyncUpdate_inserted;
             struct SyncHashCacheEntry *ent = SyncRootTopEntry(root);
             if (ent != NULL && ud->tw == NULL) {
                 SyncCacheEntryFetch(ent);
@@ -3278,7 +3684,7 @@ UpdateAction(struct ccn_schedule *sched,
             ud->sort = SyncAllocNameAccum(0);
             ud->cb = ccn_charbuf_create();
             ud->nodes = SyncAllocNodeAccum(0);
-            break;
+            ud->state = SyncUpdate_inserted;
         }
         case SyncUpdate_inserted: {
             // all names to be added are now in ud->ixBase
@@ -3300,15 +3706,15 @@ UpdateAction(struct ccn_schedule *sched,
             ccn_charbuf_destroy(&ud->cb);
             if (res < 0) {
                 // this is bad news!
+                ud->deltas = FreeDeltas(ud->deltas);
                 ud->sort = SyncFreeNameAccumAndNames(ud->sort);
                 SyncNoteFailed(root, here, "merge names", __LINE__);
                 return res;
             }
             ud->state = SyncUpdate_busy;
-            break;
         }
         case SyncUpdate_busy: {
-            // ud->nodes has the noes created from the names
+            // ud->nodes has the nodes created from the names
             // the last step is to make up the node superstructure
             if (showEntry && debug >= CCNL_INFO) {
                 SyncNoteSimple(root, here, "SyncUpdate_busy");
@@ -3325,13 +3731,22 @@ UpdateAction(struct ccn_schedule *sched,
                     struct ccn_charbuf *old = root->currentHash;
                     struct ccn_charbuf *hash = SyncLongHashToBuf(&nc->longHash);
                     char *hex = SyncHexStr(hash->buf, hash->length);
+                    struct SyncHashCacheEntry *cePrev = root->priv->ceCurrent;
+                    struct SyncHashCacheEntry *ce = SyncHashEnter(root->ch, 
+                                                                  hash->buf, hash->length,
+                                                                  SyncHashState_local);
                     root->currentHash = hash;
+                    root->priv->ceCurrent = ce;
                     root->priv->currentSize = count;
                     now = SyncCurrentTime();
-                    if (compareHash(old, hash) != 0) {
+                    if (ce != cePrev) {
                         // note the time of the last hash change
                         root->priv->lastHashChange = now;
+                        noteHash(root, ce, 1, 0);
                     }
+                    ud->ceStop = ce;
+                    // now that we have a new current hash, close out the deltas
+                    struct SyncRootDeltas *deltas = CloseUpdateCoding(ud);
                     int64_t dt = SyncDeltaTime(ud->startTime, now);
                     root->priv->stats->updatesDone++;
                     root->priv->stats->lastUpdateMicros = dt;
@@ -3352,16 +3767,59 @@ UpdateAction(struct ccn_schedule *sched,
                             struct ccn_charbuf *cb = ccn_charbuf_create();
                             formatStats(root, cb);
                             char *str = ccn_charbuf_as_string(cb);
-                            ccnr_msg(root->base->ccnr, "%s, %s", here, str);
+                            ccnr_msg(root->base->client_handle, "%s, %s", here, str);
                             ccn_charbuf_destroy(&cb);
                         }
                     }
                     struct SyncHashCacheEntry *chk = SyncRootTopEntry(root);
                     if (chk != ce)
                         count = SyncNoteFailed(root, here, "bad top entry", __LINE__);
-                    else if (root->base->ccn != NULL)
-                        // only do this if it is not the test code
-                        SyncSendRootAdviseInterest(root);
+                    else if (ud->ceStart != ud->ceStop) {
+                        // only do this if the update got something
+                        // when this root node is stored we will need to know the stable point
+                        struct SyncHashInfoList *remoteSeen = scanRemoteSeen(root, ud->ceStart);
+                        ccnr_hwm hwm = root->priv->highWater;
+                        ce->stablePoint = hwm;
+                        if (debug >= CCNL_INFO) {
+                            char temp[1024];
+                            if (hwm != CCNR_NULL_HWM) {
+                                snprintf(temp, sizeof(temp),
+                                         "new stable point at %ju",
+                                         ccnr_hwm_encode(root->base->client_handle, hwm));
+                            } else {
+                                snprintf(temp, sizeof(temp), "high water?");
+                            }
+                            SyncNoteSimple(root, here, temp);
+                            if (showHighLevel) {
+                                int tlim = sizeof(temp)-16;
+                                int pos = snprintf(temp, sizeof(temp),
+                                                   "done (%d)",
+                                                   count);
+                                if (deltas != NULL) {
+                                    pos += snprintf(temp+pos, tlim-pos,
+                                                    ", deltas (%d)",
+                                                    deltas->deltasCount);
+                                }
+
+                                if (remoteSeen != NULL)
+                                    pos += snprintf(temp+pos, tlim-pos, ", seen");
+
+                                showCacheEntry2(root, "Sync.$Update", temp,
+                                                ud->ceStart, ud->ceStop);
+                            }
+                        }
+                        if (deltas != NULL && deltas->whenSent == 0
+                            && remoteSeen != NULL) {
+                            // if there is no remote hash matching the deltas stopping hash
+                            // but there is a request for the starting hash, then send
+                            // the updates now
+                            // TBD: is this a good enough test?
+                            SendDeltasReply(root, deltas);
+                            remoteSeen->lastReplied = now;
+                        } else
+                            // since we have a new root, we need a new RootAdvise
+                            SyncSendRootAdviseInterest(root);
+                    } 
                     if (old != NULL) ccn_charbuf_destroy(&old);
                     free(hex);
                     // when this root node is stored we will need to know the stable point
@@ -3372,7 +3830,7 @@ UpdateAction(struct ccn_schedule *sched,
                         if (hwm != CCNR_NULL_HWM) {
                             snprintf(temp, sizeof(temp),
                                      "new stable point at %ju",
-                                     ccnr_hwm_encode(root->base->ccnr, hwm));
+                                     ccnr_hwm_encode(root->base->client_handle, hwm));
                         } else {
                             snprintf(temp, sizeof(temp), "high water?");
                         }
@@ -3383,8 +3841,6 @@ UpdateAction(struct ccn_schedule *sched,
                 }
             }
             root->priv->adviseNeed = adviseNeedReset;
-            ud->sort = SyncFreeNameAccumAndNames(ud->sort);
-            ud->nodes = SyncFreeNodeAccum(ud->nodes);
             if (count <= initCount) {
                 // we were supposed to add something?
                 if (debug >= CCNL_INFO) {
@@ -3396,9 +3852,9 @@ UpdateAction(struct ccn_schedule *sched,
                     free(hex);
                 }
             }
-            root->update = NULL;
-            free(ud);
+            root->update = FreeUpdateData(ud);
             ev->evdata = NULL;
+            kickHeartBeat(root, 0);
             return -1;
         }
         default: {
@@ -3411,14 +3867,17 @@ UpdateAction(struct ccn_schedule *sched,
     return shortDelayMicros;
 }
 
+// SyncUpdateRoot initiates an update action for the given root,
+// creating the SyncUpdateData and scheduling the initial phase
 extern int
 SyncUpdateRoot(struct SyncRootStruct *root) {
     char *here = "Sync.UpdateAction";
     struct SyncNameAccum *acc = root->namesToAdd;
     if (acc->len == 0) return 0;
-    sync_time now = SyncCurrentTime();
+    int64_t now = SyncCurrentTime();
     struct SyncBaseStruct *base = root->base;
-    struct ccnr_handle *ccnr = base->ccnr;
+    struct ccn_charbuf *hash = root->currentHash;
+    struct ccnr_handle *ccnr = base->client_handle;
     struct SyncUpdateData *ud = NEW_STRUCT(1, SyncUpdateData);
     ud->root = root;
     ud->state = SyncUpdate_init;
@@ -3429,6 +3888,10 @@ SyncUpdateRoot(struct SyncRootStruct *root) {
     ud->ixBase->client = acc;
     ud->ixPos = 0;
     ud->initLen = root->priv->currentSize;
+    ud->ceStart = root->priv->ceCurrent;
+    if (root->base->priv->deltasLimit > 0)
+        // create and init the deltas object
+        ud->deltas = NewDeltas(root);
     struct ccn_scheduled_event *ev = ccn_schedule_event(base->sched,
                                                         0,
                                                         UpdateAction,
@@ -3437,14 +3900,13 @@ SyncUpdateRoot(struct SyncRootStruct *root) {
     if (ev == NULL) {
         if (base->debug >= CCNL_SEVERE)
             ccnr_msg(ccnr, "%s, initial schedule failed!", here);
-        free(ud);
+        FreeUpdateData(ud);
         return -1;
     }
     root->priv->lastUpdate = now;
     root->update = ud;
     root->namesToAdd = SyncAllocNameAccum(0);
     if (base->debug >= CCNL_INFO) {
-        struct ccn_charbuf *hash = root->currentHash;
         char *hex = SyncHexStr(hash->buf, hash->length);
         ccnr_msg(ccnr,
                  "%s, root#%u, start, toAdd %d, current %d, hash %s",
@@ -3459,30 +3921,32 @@ extern int
 SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR) {
     char *here = "Sync.SyncStartCompareAction";
     struct SyncPrivate *priv = root->base->priv;
-    if (root->compare != NULL
+    if (root->compare != NULL || root->update != NULL
         || priv->comparesBusy >= priv->maxComparesBusy)
+        // not OK to start another compare
         return 0;
     
     struct ccn_charbuf *hashL = root->currentHash;
-    struct SyncHashCacheEntry *ceL = NULL;
+    struct SyncHashCacheEntry *ceL = root->priv->ceCurrent;
+    struct SyncNameAccum *remoteDeltas = root->priv->remoteDeltas;
+    if (remoteDeltas == NULL && hashR == NULL)
+        // no point in trying, no data to work on
+        return 0;
     
-    if (hashL->length > 0) {
-        // if L is not empty, check the cache entry
-        ceL = SyncHashLookup(root->ch, hashL->buf, hashL->length);
-        if (ceL == NULL)
-            return SyncNoteFailed(root, here, "bad lookup for L", __LINE__);
+    struct SyncHashCacheEntry *ceR = NULL;
+    if (hashR != NULL) {
+        ceR = SyncHashEnter(root->ch,
+                            hashR->buf,
+                            hashR->length,
+                            SyncHashState_remote);
+        if (ceR == NULL)
+            return SyncNoteFailed(root, here, "bad lookup for R", __LINE__);
     }
-    struct SyncHashCacheEntry *ceR = SyncHashEnter(root->ch,
-                                                   hashR->buf,
-                                                   hashR->length,
-                                                   SyncHashState_remote);
-    if (ceR == NULL)
-        return SyncNoteFailed(root, here, "bad lookup for R", __LINE__);
     
     int debug = root->base->debug;
-    struct ccnr_handle *ccnr = root->base->ccnr;
+    struct ccnr_handle *ccnr = root->base->client_handle;
     struct SyncCompareData *data = NEW_STRUCT(1, SyncCompareData);
-    sync_time mark = SyncCurrentTime();
+    int64_t mark = SyncCurrentTime();
     data->startTime = mark;
     data->lastEnter = mark;
     data->lastMark = mark;
@@ -3493,16 +3957,24 @@ SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR) {
     data->twL = SyncTreeWorkerCreate(root->ch, ceL, 0);
     if (ceL != NULL) ceL->lastUsed = mark;
     data->twR = SyncTreeWorkerCreate(root->ch, ceR, 1);
-    ceR->lastUsed = mark;
+    if (ceR != NULL) ceR->lastUsed = mark;
     data->hashL = ccn_charbuf_create();
     ccn_charbuf_append_charbuf(data->hashL, hashL);
-    data->hashR = ccn_charbuf_create();
-    ccn_charbuf_append_charbuf(data->hashR, hashR);
+    if (remoteDeltas == NULL) {
+        // no deltas, so must work from hashR
+        data->state = SyncCompare_init;
+        data->hashR = ccn_charbuf_create();
+        ccn_charbuf_append_charbuf(data->hashR, hashR);
+    } else {
+        // deltas trump hashR
+        root->namesToFetch = remoteDeltas;
+        root->priv->remoteDeltas = NULL;
+        data->state = SyncCompare_waiting;
+    }
     
     data->cbL = ccn_charbuf_create();
     data->cbR = ccn_charbuf_create();
     
-    data->state = SyncCompare_init;
     priv->comparesBusy++;
     
     kickCompare(data, NULL);
@@ -3510,12 +3982,16 @@ SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR) {
     if (debug >= CCNL_INFO) {
         char *hexL = SyncHexStr(hashL->buf, hashL->length);
         char *msgL = ((hashL->length > 0) ? hexL : "empty");
-        char *hexR = SyncHexStr(hashR->buf, hashR->length);
-        char *msgR = ((hashR->length > 0) ? hexR : "empty");
-        ccnr_msg(ccnr, "%s, root#%u, L %s, R %s",
-                 here, root->rootId, msgL, msgR);
+        if (hashR != NULL && hashR->length > 0) {
+            char *hexR = SyncHexStr(hashR->buf, hashR->length);
+            ccnr_msg(ccnr, "%s, root#%u, L %s, R %s",
+                     here, root->rootId, msgL, hexR);
+            free(hexR);
+        } else {
+            ccnr_msg(ccnr, "%s, root#%u, L %s, R empty",
+                     here, root->rootId, msgL);
+        }
         free(hexL);
-        free(hexR);
     }
     
     return 1;
