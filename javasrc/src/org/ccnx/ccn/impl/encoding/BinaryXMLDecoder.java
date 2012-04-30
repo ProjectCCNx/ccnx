@@ -213,7 +213,7 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	// should probably move away from an ArrayList to a plain array
 //	private final ArrayList<Element> _elements = new ArrayList<Element>(128);
 	private final static int ELEM_FIRST = 100;
-	private final static int ELEM_INCR = 25;
+	private final static int ELEM_INCR = 100;
 	private int _currentElements = ELEM_FIRST;
 
 //	private final Element [] _elements = new Element[ELEM_MAX];
