@@ -122,7 +122,6 @@ CheckDirectory () {
 }
 
 BackgroundPID () {
-	local PID;
 	if [ -f testdir/ccntestloop.pid ]; then
 		PID=`cat testdir/ccntestloop.pid`
 		kill -0 "$PID" 2>/dev/null || return 1
@@ -133,7 +132,6 @@ BackgroundPID () {
 }
 
 SetPIDFile () {
-	local PID;
 	if [ -f testdir/ccntestloop.pid ]; then
 		PID=`cat testdir/ccntestloop.pid`
 		test "$PID" = $$ && return 0
@@ -209,7 +207,6 @@ NoteTimes () {
 }
 
 Rebuild () {
-	local LOG;
 	Echo Building for run $1
 	LOG=javasrc/testout/TEST-buildlog.txt
 	mkdir -p javasrc/testout
@@ -224,7 +221,6 @@ Rebuild () {
 }
 
 RunCTest () {
-	local LOG STATUS;
 	test "${CCN_CTESTS:=}" = "NO" && return 0
 	Echo Running csrc tests...
 	LOG=javasrc/testout/TEST-csrc-testlog.txt
@@ -241,7 +237,6 @@ RunCTest () {
 }
 
 RunJavaTest () {
-	local LOG;
 	test "${CCN_JAVATESTS:-}" = "NO" && return 0
 	Echo Running javasrc tests...
 	LOG=javasrc/testout/TEST-javasrc-testlog.txt
@@ -284,13 +279,11 @@ StartBackground () {
 }
 
 StopBackground () {
-	local PID;
 	PID=`BackgroundPID` && kill -HUP $PID && sleep 1 && \
 	  echo STOPPED >> testdir/log
 }
 
 Status () {
-	local STATUS;
 	test -f testdir/log && tail -n 9 testdir/log
 	BackgroundPID 'ccntestloop running as pid '
 	STATUS=$?
