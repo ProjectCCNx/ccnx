@@ -2010,7 +2010,7 @@ handle_simple_incoming_content(
         if ((md->flags & CCN_GET_NOKEYWAIT) == 0)
             return(CCN_UPCALL_RESULT_VERIFY);
     }
-    if (kind == CCN_UPCALL_CONTENT_KEYMISSING) {
+    else if (kind == CCN_UPCALL_CONTENT_KEYMISSING) {
         if ((md->flags & CCN_GET_NOKEYWAIT) == 0)
             return(CCN_UPCALL_RESULT_FETCHKEY);
     }
