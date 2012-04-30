@@ -333,10 +333,14 @@ r_store_write_stable_point(struct ccnr_handle *h)
 {
     struct ccn_charbuf *path = NULL;
     struct ccn_charbuf *cb = NULL;
-    int fd;
+    int fd, res;
     
     path = ccn_charbuf_create();
     cb = ccn_charbuf_create();
+    if (path == NULL || cb == NULL) {
+        ccnr_msg(h, "memory allocation failure writing stable mark");
+        goto Bail;
+    }
     ccn_charbuf_putf(path, "%s/index/stable", h->directory);
     unlink(ccn_charbuf_as_string(path)); /* Should not exist, but just in case. */
     fd = open(ccn_charbuf_as_string(path),
@@ -348,11 +352,17 @@ r_store_write_stable_point(struct ccnr_handle *h)
     }
     else {
         ccn_charbuf_putf(cb, "%ju", (uintmax_t)(h->stable));
-        write(fd, cb->buf, cb->length);
+        res = write(fd, cb->buf, cb->length);
         close(fd);
+        if (res != cb->length) {
+            unlink(ccn_charbuf_as_string(path));
+            ccnr_msg(h, "cannot write stable mark %s: unexpected write result %d",
+                     ccn_charbuf_as_string(path), res);
+        }
         if (CCNSHOULDLOG(h, dfsdf, CCNL_INFO))
             ccnr_msg(h, "Index marked stable - %s", ccn_charbuf_as_string(cb));
     }
+Bail:
     ccn_charbuf_destroy(&path);
     ccn_charbuf_destroy(&cb);
     return(0);

@@ -108,7 +108,11 @@ ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
                 goto Bail;
             }
             memset(tbuf, 0, sizeof(tbuf));
-            read(md->lfd, tbuf, sizeof(tbuf) - 1);
+            if (read(md->lfd, tbuf, sizeof(tbuf) - 1) <= 0) {
+                if (msgs != NULL)
+                    ccn_charbuf_append_string(msgs, "Unable to read pid from pid file. ");
+                goto Bail;
+            }
             pid = strtol(tbuf, NULL, 10);
             if (pid == (int)getpid())
                 goto Bail; /* locked by self; errno still EACCES */
@@ -123,7 +127,11 @@ ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
             if (msgs != NULL)
                 ccn_charbuf_putf(msgs, "Breaking stale lock by pid %d. ", pid);
             lseek(md->lfd, 0, SEEK_SET);
-            ftruncate(md->lfd, 0);
+            if (ftruncate(md->lfd, 0) < 0) {
+                if (msgs != NULL)
+                    ccn_charbuf_append_string(msgs, "Unable to truncate pid file. ");
+                goto Bail; /* errno per ftruncate */
+            };
         }
         else {
             if (msgs != NULL)
@@ -142,7 +150,7 @@ ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
     /* Locking succeeded - place our pid in the lockfile so humans can see it */
     temp->length = 0;
     ccn_charbuf_putf(temp, "%d", (int)getpid());
-    if (write(md->lfd, temp->buf, temp->length) < 0) {
+    if (write(md->lfd, temp->buf, temp->length) <= 0) {
         if (msgs != NULL)
             ccn_charbuf_append_string(msgs, "Unable to write pid file.");
         goto Bail;
@@ -155,7 +163,7 @@ ccn_btree_io_from_directory(const char *path, struct ccn_charbuf *msgs)
     fd = open(ccn_charbuf_as_string(temp), O_RDWR);
     if (fd != -1) {
         memset(tbuf, 0, sizeof(tbuf));
-        read(fd, tbuf, sizeof(tbuf) - 1);
+        res = read(fd, tbuf, sizeof(tbuf) - 1);
         errno = EINVAL;
         maxnodeid = strtoul(tbuf, NULL, 10);
         if (maxnodeid == 0)
@@ -200,7 +208,7 @@ bts_open(struct ccn_btree_io *io, struct ccn_btree_node *node)
     struct bts_node_state *nd = NULL;
     struct ccn_charbuf *temp = NULL;
     struct bts_data *md = io->data;
-    int res;
+    int res, l;
     
     if (node->iodata != NULL || io != md->io) abort();
     nd = calloc(1, sizeof(*nd));
@@ -208,42 +216,46 @@ bts_open(struct ccn_btree_io *io, struct ccn_btree_node *node)
         return(-1);
     temp = ccn_charbuf_create();
     if (temp == NULL)
-        return(-1);
+        goto Bail;
     res = ccn_charbuf_append_charbuf(temp, md->dirpath);
     res |= ccn_charbuf_putf(temp, "/%u", (unsigned)node->nodeid);
-    if (res < 0) {
-        ccn_charbuf_destroy(&temp);
-        free(nd);
-        return(-1);
-    }
+    if (res < 0)
+        goto Bail;
     nd->fd = open(ccn_charbuf_as_string(temp),
                (O_RDWR | O_CREAT),
                0640);
-    if (nd->fd != -1 && node->nodeid > io->maxnodeid) {
+    if (nd->fd < 0)
+        goto Bail;
+    if (node->nodeid > io->maxnodeid) {
         /* Record maxnodeid in a file */
         io->maxnodeid = node->nodeid;
         temp->length = 0;
         ccn_charbuf_append_charbuf(temp, md->dirpath);
         ccn_charbuf_putf(temp, "/maxnodeid");
         res = open(ccn_charbuf_as_string(temp),
-               (O_RDWR | O_CREAT | O_TRUNC),
-               0640);
-        if (res >= 0) {
-            temp->length = 0;
-            ccn_charbuf_putf(temp, "%u", (unsigned)node->nodeid);
-            write(res, temp->buf, temp->length);
-            close(res);
-        }
+                   (O_RDWR | O_CREAT | O_TRUNC),
+                   0640);
+        if (res < 0)
+            goto Bail;
+        temp->length = 0;
+        ccn_charbuf_putf(temp, "%u", (unsigned)node->nodeid);
+        l = write(res, temp->buf, temp->length);
+        close(res);
+        if (l != temp->length)
+            goto Bail;
     }
     ccn_charbuf_destroy(&temp);
-    if (nd->fd == -1) {
-        free(nd);
-        return(-1);
-    }
     io->openfds++;
     nd->node = node;
     node->iodata = nd;
     return(nd->fd);
+    
+Bail:
+    ccn_charbuf_destroy(&temp);
+    if (nd->fd >= 0)
+        close(nd->fd);
+    free(nd);
+    return(-1);
 }
 
 static int
