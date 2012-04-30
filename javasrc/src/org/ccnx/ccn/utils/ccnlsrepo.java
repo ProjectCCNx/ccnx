@@ -1,11 +1,11 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2008, 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -55,15 +55,15 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 	private long timeout = 2000;
 	private SortedSet<ContentName> allNames;
 
-	
+
 	/**
 	 * Main function for the ccnlsrepo tool.  Initializes the tool and triggers name enumeration.
-	 * 
+	 *
 	 * @param args Command line arguments: prefix to enumeration and timeout flag (and time in ms)
-	 * 
+	 *
 	 * @return void
 	 */
-	
+
 	public static void main(String[] args) {
 		Log.setDefaultLevel(Level.WARNING);
 		ccnlsrepo lister = new ccnlsrepo();
@@ -76,55 +76,65 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 	 * Initialization function for ccnlsrepo.  This method parses the command line input
 	 * and creates a ContentName for the supplied prefix (or creates a new ContentName for the default "/" prefix).
 	 * The program prints the usage and exits if the input is not correct.
-	 * 
+	 *
 	 * @param args Command line arguments.  Prefix to enumerate and timeout flags.
-	 * 
+	 *
 	 * @return void
-	 * 
+	 *
 	 * @throws org.ccnx.ccn.protocol.MalformedContentNameStringException Converting the input to a
 	 * ContentName can throw a MalformedContentNameException.
-	 * 
+	 *
 	 * @see org.ccnx.ccn.protocol.ContentName
 	 */
-	
+
 	private void init(String[] args) {
 		// first look for prefix and timeout in the args list
 		boolean tflag = false;
 		boolean cflag = false;
+		String extraUsage = "";
+
 		for (int i = 0; i < args.length; i++) {
+			if (i == 0 && args[0].startsWith("[")) {
+				extraUsage = args[0];
+				continue;
+			}
+			if (args[i].equals("-h")) {
+				usage(extraUsage);
+				System.exit(0);
+			}
 			if (!args[i].equals("-timeout") && !args[i].equals("-c") && !args[i].equals("-continuous")) {
 				prefix = args[i];
 			} else if (args[i].equals("-timeout")) {
 				if (cflag) {
 					System.err.println("please use either the -timeout or -c flags, not both");
-					usage();
+					usage(extraUsage);
 					System.exit(1);
 				}
 				tflag = true;
 				i++;
 				if (i >= args.length) {
-					usage();
+					usage(extraUsage);
 					System.exit(1);
 				} else {
 					try {
 						timeout = Long.parseLong(args[i]);
 					} catch (Exception e) {
 						System.err.println("Could not parse timeout.  Please check and retry.");
-						usage();
+						usage(extraUsage);
 						System.exit(1);
 					}
-					
+
 				}
 			} else if (args[i].equals("-c") || args[i].equals("-continuous")) {
 				cflag = true;
 				if (tflag) {
 					System.err.println("please use either the -timeout or -c flags, not both");
-					usage();
+					usage(extraUsage);
 					System.exit(1);
 				}
 				timeout = 0;
 			}
-			
+
 		}
 
 		try {
@@ -148,17 +158,17 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 	/**
 	 * Method to initialize a CCNHandle and the CCNNameEnumerator for the ccnlsrepo tool.
 	 * This method also determines when the program should print out results and exit.
-	 * 
+	 *
 	 * @return void
-	 * 
+	 *
 	 * @throws org.ccnx.ccn.config.ConfigurationException A configuration exception is
 	 * 	thrown if the CCNHandle is not properly configured
 	 * @throws java.io.IOException  Am IOException is thrown if the CCNHandle is not properly initialized.
-	 * 
+	 *
 	 * @see org.ccnx.ccn.CCNHandle
 	 * @see org.ccnx.ccn.profiles.nameenum.CCNNameEnumerator
 	 */
-	
+
 	private void enumerateNames() {
 		try {
 			CCNHandle handle = CCNHandle.open();
@@ -194,45 +204,45 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 
 	/**
 	 * Function to print out the options for ccnlsrepo
-	 * 
+	 *
 	 * @returns void
 	 */
-	
-	public void usage() {
-		System.out.println("usage: ccnlsrepo <ccnprefix> [-timeout millis (default is 2000ms) | -c(ontinuous)]");
+
+	public void usage(String extraUsage) {
+		System.out.println("usage: ccnlsrepo " + extraUsage + "<ccnprefix> [-timeout millis (default is 2000ms) | -c(ontinuous)]");
 	}
 
 	/**
 	 * Callback method to handle names returned through enumeration.  Adds all names not already in the
 	 * stored list to be printed out before the program exits.  In the case of a long-running iteration
 	 * (called with -c), the names are printed out as they are returned in enumeration responses.
-	 * 
+	 *
 	 * @param prefix  The registered prefix for the returned names.
 	 * @param names   Returned names matching the prefix.
-	 * 
+	 *
 	 * @return int Number of names in the collection. (currently unused in this implementation)
-	 * 
+	 *
 	 * @see org.ccnx.ccn.profiles.nameenum.BasicNameEnumeratorListener
 	 */
-	
+
 	public int handleNameEnumerator(ContentName prefix,	ArrayList<ContentName> names) {
 		allNames.addAll(names);
-		
+
 		if (timeout <= 0) {
 			System.out.println("-----");
 			printNames();
 			System.out.println("-----");
 			System.out.println();
 		}
-			
+
 		return 0;
 	}
 
-	
+
 	/**
 	 *	Method to print the names collection through enumeration.  Iterates through the names and prints each content name.
 	 *	Uses the ContentName.toString method and removes the leading "/" - component separator.
-	 * 
+	 *
 	 *  @return void
 	 */
 	private void printNames() {

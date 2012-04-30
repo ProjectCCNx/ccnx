@@ -34,23 +34,31 @@ import org.ccnx.ccn.protocol.ContentName;
  */
 public class ccnlink {
 
-	public static void usage() {
-		System.err.println("usage: ccnlink [-q] [-r] <link uri> <link target uri> [-as <pathToKeystore> [-name <friendly name]] (-q == quiet, -r == raw)");
+	public static void usage(String extraUsage) {
+		System.err.println("usage: ccnlink " + extraUsage + "[-q] [-r] <link uri> <link target uri> [-as <pathToKeystore> [-name <friendly name]] (-q == quiet, -r == raw)");
 	}
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		String extraUsage = "";
+		Log.setDefaultLevel(Level.WARNING);
+
 		try {
 
 			int offset = 0;
 			SaveType type = SaveType.REPOSITORY;
 
 			for (int i = 0; i < args.length; i++) {
-
-				if (!args[i].startsWith("-"))
+				if (i == 0 && args[0].startsWith("[")) {
+					extraUsage = args[0];
+					offset++;
+					continue;
+				} else if (args[i].equals("-h")) {
+					usage(extraUsage);
+					System.exit(0);
+				} else if (!args[i].startsWith("-"))
 					break;
-
 				if (args[i].equals("-q")) {
 					Log.setDefaultLevel(Level.WARNING);
 					offset++;
@@ -63,7 +71,7 @@ public class ccnlink {
 			}
 
 			if (args.length-offset < 2) {
-				usage();
+				usage(extraUsage);
 				System.exit(1);
 			}
 
@@ -72,7 +80,7 @@ public class ccnlink {
 				if (args[offset + 2].equals("-as"))
 					hasAs = true;
 				else {
-					usage();
+					usage(extraUsage);
 					System.exit(1);
 				}
 			}
@@ -85,7 +93,7 @@ public class ccnlink {
 			if (hasAs) {
 				tuple = CreateUserData.handleAs(args, offset);
 				if (null == tuple) {
-					usage();
+					usage(extraUsage);
 					System.exit(1);
 				}
 			}

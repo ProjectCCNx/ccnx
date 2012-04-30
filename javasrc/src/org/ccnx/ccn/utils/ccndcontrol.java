@@ -1,11 +1,11 @@
 /*
  * A CCNx command line utility for managing prefix registrations.
  *
- * Copyright (C) 2009 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -40,11 +40,13 @@ import org.ccnx.ccn.profiles.ccnd.PrefixRegistrationManager;
 
 
 /**
- * Java utility to 
+ * Java utility to
  *
  */
 public class ccndcontrol {
-	
+
+	public static String _extraUsage = "";
+
 	public enum Command {Add, Delete};
 
 	public static class RegEntry {
@@ -57,51 +59,51 @@ public class ccndcontrol {
 		public Integer flags;
 		public Integer multicastTTL;
 		public String multicastInterface;
-		
+
 		public Integer faceID;
-		
+
 		public RegEntry() {}
 	}
-	
+
 	private static Vector<RegEntry> regList = new Vector<RegEntry>(5);
 	private static boolean verbose = false;
-	
+
 	private static void parseString(String in) {
 		String [] tokens = in.split("\\s");
 		parseFromTokens(tokens, 0, tokens.length);
 	}
-	
+
 	private static void parseFromTokens(String [] tokens, int start, int nTokens) {
 		RegEntry entry = new ccndcontrol.RegEntry();
 		if (nTokens < 1) {
-			usage();
+			usage(_extraUsage);
 			System.exit(1);
 		}
 		String tmp = tokens[start];
 		if (null == tmp || tmp.length() == 0) {
 			System.err.println("Command token either null or of 0 length.");
-			usage();
+			usage(_extraUsage);
 			System.exit(1);
 		}
 		/******** add command **********/
 		if (tmp.equalsIgnoreCase("add")) {
 			entry.command = Command.Add;
 			if (nTokens < 3) {
-				usage();
+				usage(_extraUsage);
 				System.exit(1);
 			}
 			tmp = tokens[start + 1];
 			if (null == tmp || tmp.length() == 0) {
 				System.err.println("URI token either null or of 0 length.");
-				usage();
+				usage(_extraUsage);
 				System.exit(1);
 			}
 			entry.uri = tokens[start + 1];
-			
+
 			tmp = tokens[start + 2];
 			if (null == tmp || tmp.length() == 0) {
 				System.err.println("Protocol token either null or of 0 length.");
-				usage();
+				usage(_extraUsage);
 				System.exit(1);
 			}
 			entry.protocol = null;
@@ -114,14 +116,14 @@ public class ccndcontrol {
 			}
 			if (null == entry.protocol) {
 				System.err.println("Protocol (" + tmp + ") not valid.");
-				usage();
+				usage(_extraUsage);
 				System.exit(1);
 			}
-			
+
 			tmp = tokens[start + 3];
 			if (null == tmp || tmp.length() == 0) {
 				System.err.println("Host name either null or of 0 length.");
-				usage();
+				usage(_extraUsage);
 				System.exit(1);
 			}
 			String hostNameNumeric = null;
@@ -131,18 +133,18 @@ public class ccndcontrol {
 			} catch (UnknownHostException e) {
 				String reason = e.getMessage();
 				System.err.println("Host name (" + tmp + ") not found.  reason: " + reason);
-				usage();
+				usage(_extraUsage);
 				System.exit(1);
 			}
 			entry.hostName = tmp;
 			entry.host = hostNameNumeric;
-				
+
 			if (start + 4 < nTokens && null != tokens[start + 4]) {
 				try {
 					entry.port = Integer.valueOf(tokens[start + 4]);
 				} catch (NumberFormatException e) {
 					System.err.println("Port (" + tokens[start + 4] + ") not valid.");
-					usage();
+					usage(_extraUsage);
 					System.exit(1);
 				}
 			} else {
@@ -153,54 +155,54 @@ public class ccndcontrol {
 					entry.flags = Integer.valueOf(tokens[start + 5]);
 				} catch (NumberFormatException e) {
 					System.err.println("Flags (" + tokens[start + 5] + ") not valid.");
-					usage();
+					usage(_extraUsage);
 					System.exit(1);
 				}
 			}
-			if (6 < nTokens && null != tokens[start + 6]) {
+			if (start + 6 < nTokens && null != tokens[start + 6]) {
 				try {
 					entry.multicastTTL = Integer.valueOf(tokens[start + 6]);
 				} catch (NumberFormatException e) {
 					System.err.println("Multicast TTL (" + tokens[start + 6] + ") not valid.");
-					usage();
+					usage(_extraUsage);
 					System.exit(1);
 				}
 			}
 			if (7 < nTokens && null != tokens[start + 7]) {
 				entry.multicastInterface = tokens[start + 7];
 			}
-			
+
 		} /* add */
-		
+
 		/******** delete command **********/
 		else if ((tmp.equalsIgnoreCase("delete") || tmp.equalsIgnoreCase("del"))) {
 			entry.command = Command.Delete;
 			if (nTokens < 1) {
 				System.err.println("Exiting because nTokens < 1 and command is " + tmp + "nTokens: " + nTokens);
-				usage();
+				usage(_extraUsage);
 				System.exit(1);
 			}
 			tmp = tokens[start + 1];
 			if (null == tmp || tmp.length() == 0) {
 				System.err.println("FaceID token either null or of 0 length.");
-				usage();
+				usage(_extraUsage);
 				System.exit(1);
 			}
 			try {
 				entry.faceID = Integer.valueOf(tmp);
 			} catch (NumberFormatException e) {
 				System.err.println("Face ID (" + tokens[start + 1] + ") not valid.");
-				usage();
+				usage(_extraUsage);
 				System.exit(1);
 			}
 		} /* del */
-		
+
 		else {
 			System.err.println("Command (" + tmp + ") not valid.");
-			usage();
+			usage(_extraUsage);
 			System.exit(1);
 		}
-		
+
 		regList.add(entry);
 	}
 
@@ -236,10 +238,10 @@ public class ccndcontrol {
 
 	/**
 	 * Function to print out the options for ccndcontrol
-	 * 
+	 *
 	 * @returns void
 	 */
-	public static void usage() {
+	public static void usage(String extraUsage) {
 		/*
 		 *     fprintf(stderr,
             "%s [-d] (-f configfile | (add|del) uri proto host [port [flags [mcastttl [mcastif]]]])\n"
@@ -249,29 +251,35 @@ public class ccndcontrol {
             progname);
 
 		 */
-		System.out.println("usage: ccn_ccndc [-v|-vv] add uri protocol host [port [flags [multicastTTL [multicastInterface]]]]\n" +
-						    "      ccn_ccndc [-v|-vv] del face_id\n" +
-						    "      ccn_ccndc [-v|-vv] -f configfile");
+		System.out.println("usage: ccndcontrol " + extraUsage + "[-v|-vv] add uri protocol host [port [flags [multicastTTL [multicastInterface]]]]\n" +
+						    "      ccndcontrol " + extraUsage + "[-v|-vv] del face_id\n" +
+						    "      ccndcontrol " + extraUsage + "[-v|-vv] -f configfile");
 	}
 
 	/**
 	 * Main function for the ccndcontrol tool.  Initializes the tool, reads the argument list
 	 * and constructs face to be added.
-	 * 
-	 * @param args Command line arguments: 
-	 * 
+	 *
+	 * @param args Command line arguments:
+	 *
 	 * @return void
 	 */
 	@SuppressWarnings("unused")
 	public static void main(String[] args) {
 		boolean dynamic = false;
-		String configFile = null;	
+		String configFile = null;
 		int startArg = 0;
 		Level logLevel = Level.SEVERE;
 		verbose = false;
-		
-		for (int i = 0; i < args.length - 1; i++) {
-			if (args[i].equals(("-v"))) {
+
+		for (int i = 0; i < args.length; i++) {
+			if (i == 0 && args[0].startsWith("[")) {
+				_extraUsage = args[0];
+				startArg++;
+			} else if (args[i].equals("-h")) {
+				usage(_extraUsage);
+				System.exit(0);
+			} else if (args[i].equals(("-v"))) {
 				if (startArg <= i)
 					startArg = i + 1;
 				verbose = true;
@@ -286,8 +294,8 @@ public class ccndcontrol {
 				dynamic = true; // never read
 			} else if (args[i].equals("-f")) {
 				if (args.length < (i + 2)) {
-					usage();
-					System.exit(1);					
+					usage(_extraUsage);
+					System.exit(1);
 				}
 				configFile = args[++i];
 				if (startArg <= i) {
@@ -296,24 +304,24 @@ public class ccndcontrol {
 			}
 		}
 		Log.setDefaultLevel(logLevel);
-		
+
 		if (null == configFile && args.length < startArg + 2) {
-			usage();
-			System.exit(1);					
+			usage(_extraUsage);
+			System.exit(1);
 		}
-		
+
 		if (null != configFile) {
 			processConfigFile(configFile);
 		} else {
 			parseFromTokens(args, startArg, args.length);
 		}
-		
+
 		int nReg = regList.size();
 		for (int i = 0; i < nReg; i++) {
 			RegEntry entry = regList.get(i);
 			CCNHandle ccnHandle = null;
 			FaceManager fHandle = null;
-			Integer faceID = null;		
+			Integer faceID = null;
 			try {
 				ccnHandle = CCNHandle.open();
 				fHandle = new FaceManager(ccnHandle);
@@ -336,25 +344,25 @@ public class ccndcontrol {
 				} else {
 					/* This really can't happen unless the check above was wrong. */
 					System.err.println("Internal error.  command (" + entry.command + ") not add or del");
-					System.exit(1);			
+					System.exit(1);
 				}
 
 			} catch (ConfigurationException e) {
 				String m = e.getMessage();
 				System.err.println(m);
-				System.exit(1);			
+				System.exit(1);
 			} catch (IOException e) {
 				String m = e.getMessage();
 				System.err.println(m);
-				System.exit(1);			
+				System.exit(1);
 			}catch (CCNDaemonException e) {
 				String m = e.getMessage();
 				System.err.println(m);
-				System.exit(1);			
+				System.exit(1);
 			}
 		}
 
 		System.exit(0);
 	}
-	
+
 }

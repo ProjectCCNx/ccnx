@@ -5,7 +5,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -43,35 +43,36 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 	 */
 	public void write(String[] args) {
 		Log.setDefaultLevel(Level.WARNING);
-		for (int i = 0; i < args.length - 3; i++) {
+		for (int i = 0; i < args.length; i++) {
+			if (CommonArguments.parseArguments(args, i, ccnputmeta)) {
+				i = CommonParameters.startArg;
+				continue;
+			}
+			if ((i + 3) >= args.length) {
+				CommonParameters.startArg = i;
+				break;
+			}
 			if (args[i].equals("-local")) {
 				CommonParameters.local = true;
 			} else if (args[i].equals(("-allownonlocal"))) {
 				CommonParameters.local = false;
 			} else if (args[i].equals(("-raw"))) {
 				CommonParameters.rawMode = true;
-			} else {
-				if (!CommonArguments.parseArguments(args, i, ccnputmeta)) {
-					usage();
-				}
-				if (CommonParameters.startArg > i + 1)
-					i = CommonParameters.startArg - 1;
-			}
-			if (CommonParameters.startArg <= i)
-				CommonParameters.startArg = i + 1;
+			} else
+				usage(CommonArguments.getExtraUsage());
 		}
-		
+
 		if (args.length != CommonParameters.startArg + 3) {
-			usage();
+			usage(CommonArguments.getExtraUsage());
 		}
-		
+
 		long starttime = System.currentTimeMillis();
 		try {
 			// If we get one file name, put as the specific name given.
 			// If we get more than one, put underneath the first as parent.
 			// Ideally want to use newVersion to get latest version. Start
 			// with random version.
-			
+
 			ContentName baseName = ContentName.fromURI(args[CommonParameters.startArg]);
 			String metaArg = args[CommonParameters.startArg + 1];
 			if (!metaArg.startsWith("/"))
@@ -86,7 +87,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			ContentName fileName = VersioningProfile.updateVersion(prevFileName);
 			if (CommonParameters.verbose)
 				Log.info("ccnputmeta: putting metadata file " + args[CommonParameters.startArg + 1]);
-			
+
 			doPut(handle, args[CommonParameters.startArg + 2], fileName);
 			System.out.println("Inserted metadata file: " + args[CommonParameters.startArg + 1] + " for file: " + args[CommonParameters.startArg] + ".");
 			if (CommonParameters.verbose)
@@ -108,12 +109,13 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 		System.exit(1);
 
 	}
-	
-	public void usage() {
-		System.out.println("usage: ccnputmeta [-v (verbose)] [-raw] [-unversioned] [-local | -allownonlocal] [-timeout millis] [-log level] [-as pathToKeystore] [-ac (access control)] <ccnname> <metaname> (<filename>|<url>)*");
+
+	@Override
+	public void usage(String extraUsage) {
+		System.out.println("usage: ccnputmeta " + extraUsage + "[-v (verbose)] [-raw] [-unversioned] [-local | -allownonlocal] [-timeout millis] [-log level] [-as pathToKeystore] [-ac (access control)] <ccnname> <metaname> (<filename>|<url>)*");
 		System.exit(1);
 	}
-	
+
 	public static void main(String[] args) {
 		new ccnputmeta().write(args);
 	}
