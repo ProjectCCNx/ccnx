@@ -97,7 +97,7 @@ test -f order.txt || {
 }
 
 ExtractDeps $(GetTestNames "$@") | xargs -n 1 | sort | uniq > unordered.out
-grep -w -F -f unordered.out order.txt > planned-tests.out
+grep -w -f unordered.out order.txt > planned-tests.out
 xargs <planned-tests.out echo Planned: >&2
 cat planned-tests.out | while read TEST; do RunATest $TEST; done
 
