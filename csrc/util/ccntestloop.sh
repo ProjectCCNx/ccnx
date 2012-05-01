@@ -241,12 +241,17 @@ Rebuild () {
 	return 1
 }
 
+LimitCPU () {
+	test -z "$CCN_TEST_CPU_LIMIT" && return
+	ulimit -t $CCN_TEST_CPU_LIMIT
+}
+
 RunCTest () {
 	test "${CCN_CTESTS:=}" = "NO" && return 0
 	Echo Running csrc tests...
 	LOG=javasrc/testout/TEST-csrc-testlog.txt
 	mkdir -p javasrc/testout
-	( cd csrc && $MAKE test TESTS="$CCN_CTESTS" 2>&1 ) > $LOG
+	(LimitCPU; cd csrc && $MAKE test TESTS="$CCN_CTESTS" 2>&1 ) > $LOG
 	STATUS=$?
 	NoteTimes postc
 	test $STATUS -eq 0 && return 0
@@ -261,7 +266,7 @@ RunJavaTest () {
 	test "${CCN_JAVATESTS:-}" = "NO" && return 0
 	Echo Running javasrc tests...
 	LOG=javasrc/testout/TEST-javasrc-testlog.txt
-	(cd javasrc && \
+	(LimitCPU; cd javasrc && \
 	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL}             \
 	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000} \
 	      ${CCN_JAVATESTS:-test}; ) > $LOG
