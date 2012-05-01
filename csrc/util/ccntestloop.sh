@@ -153,6 +153,7 @@ CheckTestout () {
 	  rm -rf javasrc/testout~             && \
 	  mv javasrc/testout javasrc/testout~ && \
 	  Echo WARNING: existing javasrc/testout renamed to javasrc/testout~
+	mkdir -p javasrc/testout
 }
 
 PrintDetails () {
@@ -202,6 +203,7 @@ SourcesChanged () {
 }
 
 ScriptChanged () {
+	test -f testdir/.~tainted~ && return 0
 	diff testdir/.~ctloop~ csrc/util/ccntestloop.sh && return 1
 	return 0 # Yes, it changed.
 }
@@ -344,11 +346,17 @@ Status () {
 	return $STATUS
 }
 
+WaitAbit () {
+	sleep 10
+	test -f testdir/.~tainted~ && sleep 110
+}
+
 FailHook () {
+	Echo Run number $1 failed
 	if [ -x testdir/hooks/failure ]; then
-		testdir/hooks/failure $1 && sleep 10 && ExecSelf
+		testdir/hooks/failure $1 && WaitAbit && ExecSelf
 	fi
-	Fail run $1 failed - stopping
+	Fail Stopping after failure
 }
 
 # Finally, here's what we actually want to do
@@ -384,14 +392,14 @@ UpdateSources $RUN
 if ScriptChanged; then
 	Echo "*** Script changed - will clean and restart"
 	$MAKE clean >.make.clean.log 2>&1|| Fail make clean - see .make.clean.log
-	rm -f .make.clean.log
+	rm -f .make.clean.log testdir/.~tainted~
 	echo Pausing for 10 seconds before restart...
 	sleep 10
 	ExecSelf
 fi
 
 if SourcesChanged; then
-	Rebuild $RUN || Fail make
+	Rebuild $RUN || touch testdir/.~tainted~ && FailHook $RUN
 fi
 
 RunTest $RUN || FailHook $RUN
