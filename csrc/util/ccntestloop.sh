@@ -347,8 +347,9 @@ Status () {
 }
 
 WaitAbit () {
-	sleep 10
-	test -f testdir/.~tainted~ && sleep 110
+	sleep 10 || return 1
+	test -f testdir/.~tainted~ && sleep 110 || return 1
+	true
 }
 
 FailHook () {
