@@ -77,6 +77,9 @@ MAKE=make
 # These are only used if hooks/update is not present
 CCN_TEST_BRANCH=HEAD
 CCN_TEST_GITCOMMAND=$CCN_TEST_GITCOMMAND
+
+# Limit the CPU time used per process in tests, in seconds (no default)
+CCN_TEST_CPU_LIMIT=""
 EOF
 }
 
