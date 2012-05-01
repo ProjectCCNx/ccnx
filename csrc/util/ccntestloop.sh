@@ -348,7 +348,7 @@ Status () {
 
 WaitAbit () {
 	sleep 10 || return 1
-	test -f testdir/.~tainted~ && sleep 110 || return 1
+	test -f testdir/.~tainted~ && { sleep 110 || return 1; }
 	true
 }
 
@@ -400,7 +400,7 @@ if ScriptChanged; then
 fi
 
 if SourcesChanged; then
-	Rebuild $RUN || touch testdir/.~tainted~ && FailHook $RUN
+	Rebuild $RUN || { touch testdir/.~tainted~ && FailHook $RUN; }
 fi
 
 RunTest $RUN || FailHook $RUN
