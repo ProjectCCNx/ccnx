@@ -278,9 +278,32 @@ StartBackground () {
 	sh -c "sh csrc/util/ccntestloop.sh &" < /dev/null >> testdir/log 2>&1
 }
 
+# Gather up the list of descendants
+Descendants () { (
+    export LANG=C
+    ps -U `id -u` -o ppid,pid | \
+      while read ppid pid; do echo =$ppid= $pid; done > mypids
+    echo $1 > killpids
+    while true; do
+        PATS=`while read i; do echo " -e =$i="; done < killpids`
+        grep $PATS mypids | cut -d ' ' -f 2 > morepids
+        cat killpids morepids | sort -u > newkillpids
+        cmp killpids newkillpids >/dev/null 2>/dev/null && break
+        mv newkillpids killpids
+    done
+    echo `grep -v "^$1" killpids`
+    rm killpids newkillpids morepids mypids
+) }
+
 StopBackground () {
-	PID=`BackgroundPID` && kill -HUP $PID && sleep 1 && \
-	  echo STOPPED >> testdir/log
+	PID=`BackgroundPID`
+    test -z "$PID" && return 1
+    VICTIMS=`Descendants $PID`
+    kill -HUP $PID
+    kill $VICTIMS 2>/dev/null
+    echo STOPPED >> testdir/log
+    sleep 1
+    kill -9 $VICTIMS 2>/dev/null
 }
 
 Status () {
