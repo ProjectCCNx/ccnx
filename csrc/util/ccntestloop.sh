@@ -225,7 +225,7 @@ PrintTimesForRun () { (
 	cd testdir/testout.$1 || return
 	DiffTimes postb.times postc.times "RUN $1 CTSTTIMES"
 	DiffTimes postc.times postj.times "RUN $1 JAVATIMES"
-}
+) }
 
 Rebuild () {
 	Echo Building for run $1
