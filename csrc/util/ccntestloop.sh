@@ -234,14 +234,16 @@ PrintTimesForRun () { (
 
 Rebuild () {
 	Echo Building for run $1
-	LOG=javasrc/testout/TEST-buildlog.txt
 	mkdir -p javasrc/testout
+	LOG=javasrc/testout/TEST-buildlog.txt
 	(./configure && $MAKE; ) > $LOG 2>&1
 	if [ $? -eq 0 ]; then
 		NoteTimes postb
 		return 0
 	fi
 	tail $LOG
+	echo build failed > javasrc/testout/TEST-failures.txt
+	SaveLogs $1.FAILED
 	return 1
 }
 
