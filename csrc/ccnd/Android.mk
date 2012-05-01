@@ -23,7 +23,7 @@ LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../include
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../../android/external/openssl-armv5/include
 
 CCNDOBJ := ccnd.o ccnd_msg.o ccnd_internal_client.o ccnd_stats.o \
-			ccnd_internal_client.o android_main.o
+			android_main.o
 CCNDSRC := $(CCNDOBJ:.o=.c)
 
 LOCAL_SRC_FILES := $(CCNDSRC)
