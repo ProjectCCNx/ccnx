@@ -325,7 +325,7 @@ StopBackground () {
 	PID=`BackgroundPID`
 	test -z "$PID" && return 1
 	VICTIMS=`Descendants $PID`
-	echo "$PID" $VICTIMS >> javasrc/testout/KILLED
+	sh -c "echo $PID $VICTIMS >> javasrc/testout/KILLED" 2>/dev/null
 	kill -HUP $PID
 	kill $VICTIMS 2>/dev/null
 	echo STOPPED >> testdir/log
