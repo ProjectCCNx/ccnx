@@ -168,8 +168,9 @@ SaveLogs () {
 		exit
 	fi
 	PrintDetails > javasrc/testout/TEST-details.txt
-	# grep -e BUILD -e 'Total time.*minutes' javasrc/testout/TEST-javasrc-testlog.txt
-	mv javasrc/testout testdir/testout.$1
+	mv javasrc/testout testdir/testout.$1 || return 1
+	PrintTimesForRun $1
+	true
 }
 
 PruneOldLogs () {
@@ -203,7 +204,27 @@ ScriptChanged () {
 }
 
 NoteTimes () {
-	times > javasrc/testout/$1.times
+	LC_ALL=C times > javasrc/testout/$1.times
+}
+
+# Use saved before-and-after outputs of times(1) to compute cpu times used
+DiffTimes () {
+	test -f $1 || return
+	test -f $2 || return
+	paste $2 $1  | \
+		tr 'ms' '  ' | \
+		while read A B C D  a b c d  etc; do
+			echo 3 k
+			echo $A 60 '*' $B + $a 60 '*' $b + - p
+			echo $C 60 '*' $D + $c 60 '*' $d + - p
+			echo + p
+		done | dc | xargs echo $3
+}
+
+PrintTimesForRun () { (
+	cd testdir/testout.$1 || return
+	DiffTimes postb.times postc.times "RUN $1 CTSTTIMES"
+	DiffTimes postc.times postj.times "RUN $1 JAVATIMES"
 }
 
 Rebuild () {
