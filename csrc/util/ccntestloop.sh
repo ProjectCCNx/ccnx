@@ -242,7 +242,6 @@ Rebuild () {
 		return 0
 	fi
 	tail $LOG
-	Echo build failed
 	return 1
 }
 
@@ -346,18 +345,21 @@ Status () {
 	return $STATUS
 }
 
-WaitAbit () {
-	sleep 10 || return 1
-	test -f testdir/.~tainted~ && { sleep 110 || return 1; }
-	true
-}
-
 FailHook () {
 	Echo Run number $1 failed
 	if [ -x testdir/hooks/failure ]; then
-		testdir/hooks/failure $1 && WaitAbit && ExecSelf
+		testdir/hooks/failure $1 && sleep 10 && ExecSelf
 	fi
 	Fail Stopping after failure
+}
+
+BuildFailHook () {
+	Echo Run number $1 build failed
+	touch testdir/.~tainted~ # Clean before next build
+	if [ -x testdir/hooks/failure ]; then
+		testdir/hooks/failure $1
+	fi
+	Fail Stopping after build failure
 }
 
 # Finally, here's what we actually want to do
@@ -400,7 +402,7 @@ if ScriptChanged; then
 fi
 
 if SourcesChanged; then
-	Rebuild $RUN || { touch testdir/.~tainted~ && FailHook $RUN; }
+	Rebuild $RUN || BuildFailHook $RUN
 fi
 
 RunTest $RUN || FailHook $RUN
