@@ -74,7 +74,7 @@ public class RepositoryInterestHandler extends QueuedContentHandler<Interest> im
 		if (Log.isLoggable(Log.FAC_REPO, Level.FINER))
 			Log.finer(Log.FAC_REPO, "Saw interest: {0}", interest.name());
 		try {
-			if (interest.name().startsWith(CommandMarker.COMMAND_PREFIX)) {
+			if (interest.name().componentStartsWith(CommandMarker.COMMAND_PREFIX)) {
 				if (RepositoryOperations.isStartWriteOperation(interest)) {
 					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestCommands);
 					_server._stats.increment(RepositoryServer.StatsEnum.HandleInterestStartWriteReceived);
