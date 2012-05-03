@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2009-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -90,7 +90,7 @@ static const char *ccnr_usage_message =
 "    CCNR_PROTO=unix\n"
 "      Specify 'tcp' to connect to ccnd using tcp instead of unix ipc.\n"
 "    CCNR_LISTEN_ON=\n"
-"      List of ip addresses to listen on for status; defaults to wildcard.\n"
+"      List of ip addresses to listen on for status; defaults to localhost addresses.\n"
 "    CCNR_STATUS_PORT=\n"
 "      Port to use for status server; default is to not serve status.\n"
 "    CCNS_DEBUG=WARNING\n"

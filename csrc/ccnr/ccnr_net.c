@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -83,56 +83,6 @@ af_name(int family)
 }
 
 PUBLIC int
-r_net_listen_on_wildcards(struct ccnr_handle *h)
-{
-    int fd;
-    int res;
-    int whichpf;
-    struct addrinfo hints = {0};
-    struct addrinfo *addrinfo = NULL;
-    struct addrinfo *a;
-    
-    if (h->portstr == NULL || h->portstr[0] == 0)
-        return(-1);
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-    for (whichpf = 0; whichpf < 2; whichpf++) {
-        hints.ai_family = whichpf ? PF_INET6 : PF_INET;
-        res = getaddrinfo(NULL, h->portstr, &hints, &addrinfo);
-        if (res == 0) {
-            for (a = addrinfo; a != NULL; a = a->ai_next) {
-                fd = socket(a->ai_family, SOCK_STREAM, 0);
-                if (fd != -1) {
-                    int yes = 1;
-                    // XXX - perhaps we should not set reuseaddr
-                    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-                    if (a->ai_family == AF_INET6)
-                        r_net_setsockopt_v6only(h, fd);
-                    res = bind(fd, a->ai_addr, a->ai_addrlen);
-                    if (res != 0) {
-                        close(fd);
-                        continue;
-                    }
-                    res = listen(fd, 30);
-                    if (res == -1) {
-                        close(fd);
-                        continue;
-                    }
-                    r_io_record_fd(h, fd,
-                                      a->ai_addr, a->ai_addrlen,
-                                      CCNR_FACE_PASSIVE);
-                    if (CCNSHOULDLOG(h, listen_on, CCNL_INFO))
-                        ccnr_msg(h, "accepting %s status connections on fd %d",
-                                 af_name(a->ai_family), fd);
-                }
-            }
-            freeaddrinfo(addrinfo);
-        }
-    }
-    return(0);
-}
-
-PUBLIC int
 r_net_listen_on_address(struct ccnr_handle *h, const char *addr)
 {
     int fd;
@@ -190,8 +140,10 @@ r_net_listen_on(struct ccnr_handle *h, const char *addrs)
     
     if (h->portstr == NULL || h->portstr[0] == 0)
         return(-1);
-    if (addrs == NULL || !*addrs || 0 == strcmp(addrs, "*"))
-        return(r_net_listen_on_wildcards(h));
+    if (addrs == NULL || !*addrs)
+        addrs="127.0.0.1,[::1]";
+    else if (0 == strcmp(addrs, "*"))
+        addrs="0.0.0.0,[::]";
     addr = ccn_charbuf_create();
     for (i = 0, ch = addrs[i]; addrs[i] != 0;) {
         addr->length = 0;
