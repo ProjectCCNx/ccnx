@@ -104,8 +104,8 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
 //            return;
         case CCN_DTAG_ContentObject:
             content = process_incoming_content(h, fdholder, msg, size);
-            if (content != NULL && offsetp != NULL)
-                r_store_set_accession_from_offset(h, content, fdholder, *offsetp);
+            if (content != NULL)
+                r_store_commit_content(h, content);
             return;
         default:
             break;
