@@ -6,7 +6,7 @@
  */
 
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -28,6 +28,5 @@ void r_net_setsockopt_v6only(struct ccnr_handle *h,int fd);
 char *r_net_get_local_sockname(void);
 int r_net_listen_on(struct ccnr_handle *h,const char *addrs);
 int r_net_listen_on_address(struct ccnr_handle *h,const char *addr);
-int r_net_listen_on_wildcards(struct ccnr_handle *h);
 
 #endif
