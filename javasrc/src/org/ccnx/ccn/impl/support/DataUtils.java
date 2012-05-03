@@ -5,7 +5,7 @@
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation. 
+ * as published by the Free Software Foundation.
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
@@ -37,7 +37,7 @@ import org.ccnx.ccn.config.SystemConfiguration;
 public final class DataUtils {
 
 	public static final int BITS_PER_BYTE = 8;
-	public static final String EMPTY = "";	
+	public static final String EMPTY = "";
 	public static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
 	/**
@@ -61,7 +61,7 @@ public final class DataUtils {
 	public static <T extends Comparable<T>> int compare(T left, T right) {
 		int result = 0;
 		if (null != left) {
-			if (null == right) 
+			if (null == right)
 				return 1; // sort nothing before something
 			result = left.compareTo(right);
 		} else {
@@ -77,10 +77,10 @@ public final class DataUtils {
 	/**
 	 * Perform a shortlex comparison of byte arrays in canonical CCN ordering.
 	 * Shortlex ordering is ordering by cardinality, then by lexigraphic.
-	 * 
+	 *
 	 * MM - This method should really be renamed to "shortlex" or something
 	 * other than "compare", unless it is needed for an Override name.
-	 * 
+	 *
 	 * @param left
 	 * @param right
 	 * @return < 0 if left comes before right, 0 if they are equal, > 0 if left comes after right
@@ -163,7 +163,7 @@ public final class DataUtils {
 
 	/**
 	 * Used to print non ASCII components for logging, etc.
-	 * 
+	 *
 	 * @param bytes
 	 * @return the data as a BigInteger String
 	 */
@@ -208,7 +208,7 @@ public final class DataUtils {
 		return lineWrap(DataUtils.getUTF8StringFromBytes(encodedBytes), LINELEN);
 	}
 	/**
-	 * @deprecated not used in CCNx, candidate for removal in future release. 
+	 * @deprecated not used in CCNx, candidate for removal in future release.
 	 * @param input
 	 * @param lineLength
 	 * @return the byte array with added CRLF line-breaks and null termination.
@@ -312,9 +312,9 @@ public final class DataUtils {
 
 	/**
 	 * Check if a byte array starts with a certain prefix.
-	 * 
+	 *
 	 * Used to check for binary prefixes used to mark certain ContentName components for special purposes.
-	 * 
+	 *
 	 * @param prefix bytes to look for, if null this method always returns true.
 	 * @param data data to inspect. If null this method always returns false.
 	 * @return true if data starts with prefix.
@@ -333,7 +333,7 @@ public final class DataUtils {
 
 	/**
 	 * Recursively delete a directory and all its contents.
-	 * If given File does not exist, this method returns with no error 
+	 * If given File does not exist, this method returns with no error
 	 * but if it exists as a file not a directory, an exception will be thrown.
 	 * Similar to org.apache.commons.io.FileUtils.deleteDirectory
 	 * but avoids dependency on that library for minimal use.
@@ -370,7 +370,7 @@ public final class DataUtils {
 		long length = file.length();
 
 		if (length > Integer.MAX_VALUE) {
-			// File is too large
+			throw new IOException("File is too large: " + file.getName());
 		}
 
 		// Create the byte array to hold the data
@@ -419,7 +419,7 @@ public final class DataUtils {
 	 */
 	public static String getUTF8StringFromBytes(byte [] stringBytes) {
 		try {
-			// Version taking a Charset not available till 1.6. 
+			// Version taking a Charset not available till 1.6.
 			return new String(stringBytes, "UTF-8");
 		} catch (UnsupportedEncodingException e) {
 			Log.severe("Unknown encoding UTF-8! This is a significant configuration problem.");
@@ -435,7 +435,7 @@ public final class DataUtils {
 	 */
 	public static byte [] getBytesFromUTF8String(String stringData) {
 		try {
-			// Version taking a Charset not available till 1.6. 
+			// Version taking a Charset not available till 1.6.
 			return stringData.getBytes("UTF-8");
 		} catch (UnsupportedEncodingException e) {
 			Log.severe("Unknown encoding UTF-8! This is a significant configuration problem.");
@@ -541,7 +541,7 @@ public final class DataUtils {
 	 */
 	public static int occurcount(byte [] array, int startingOffset, int length, byte byteToFind) {
 		int count = 0;
-		if (array == null) 
+		if (array == null)
 			return 0;
 
 		for (int i=startingOffset; i < length; ++i) {
@@ -571,7 +571,7 @@ public final class DataUtils {
 		if (count == 1) {
 			// no split values; just return the original array
 			return new byte [][]{array};
-		} 
+		}
 		byte [][] components = new byte[count][];
 		while (index < count) {
 			offset = byteindex(array, lastoffset, splitValue);
@@ -596,12 +596,12 @@ public final class DataUtils {
 		System.arraycopy(array, offset, newarray, 0, len);
 		return newarray;
 	}
-	
+
 	/**
 	 * Convert a BigEndian byte array in to a long assuming unsigned values.
 	 * No bounds checking is done on the array -- caller should make sure
 	 * it is 8 or fewer bytes.
-	 * 
+	 *
 	 * Should operate like BigInteger(1, bytes).longValue().
 	 */
 	public final static long byteArrayToUnsignedLong(final byte [] src) {
@@ -609,12 +609,12 @@ public final class DataUtils {
 		for(int i = 0; i < src.length; i++) {
 			value = value << 8;
 			// Java will assume the byte is signed, so extend it and trim it.
-			int b = ((int) src[i]) & 0xFF;
+			int b = (src[i]) & 0xFF;
 			value |= b;
 		}
 		return value;
 	}
-	
+
 	/**
 	 * Like byteArrayToUnsignedLong, excpet we begin at byte position @start, not
 	 * at position 0.  This is commonly used to skip the 1st byte of a CommandMarker.
@@ -628,16 +628,16 @@ public final class DataUtils {
 		for(int i = start; i < src.length; i++) {
 			value = value << 8;
 			// Java will assume the byte is signed, so extend it and trim it.
-			int b = ((int) src[i]) & 0xFF;
+			int b = (src[i]) & 0xFF;
 			value |= b;
 		}
 		return value;
 	}
-	
+
 	/**
 	 * Convert a long value to a Big Endian byte array.  Assume
 	 * the long is not signed.
-	 * 
+	 *
 	 * This should be the equivalent of:
 	 *		byte [] b = BigInteger.valueOf(toBinaryTimeAsLong()).toByteArray();
 			if( 0 == b[0] && b.length > 1 ) {
@@ -648,7 +648,7 @@ public final class DataUtils {
 
 	 */
 	private final static byte [] _byte0 = {0};
-	
+
 	public final static byte [] unsignedLongToByteArray(final long value) {
 		if( 0 == value )
 			return _byte0;
@@ -659,7 +659,7 @@ public final class DataUtils {
 			return bb;
 		}
 
-		
+
 		byte [] out = null;
 		int offset = -1;
 		for(int i = 7; i >=0; --i) {
@@ -673,18 +673,18 @@ public final class DataUtils {
 		}
 		return out;
 	}
-	
+
 	/**
 	 * Like unsignedLongToByteArray, except we specify what the first byte should be, so the
 	 * array is 1 byte longer than normal.  This is used by things that need a CommandMarker.
-	 * 
+	 *
 	 * If the value is 0, then the array will be 1 byte with only @fistByte.  The 0x00 byte
 	 * will not be included.
 	 */
 	public final static byte [] unsignedLongToByteArray(final long value, final byte firstByte) {
 		// A little bit of unwinding for common cases.
 		// These hit a lot of the SegmentationProfile cases
-		
+
 		if( 0 == value ) {
 			byte [] bb = new byte[1];
 			bb[0] = firstByte;
@@ -697,7 +697,7 @@ public final class DataUtils {
 			bb[1] = (byte) (value & 0x00FF);
 			return bb;
 		}
-		
+
 		if( 0 <= value && value <= 0x0000FFFFL ) {
 			byte [] bb = new byte[3];
 			bb[0] = firstByte;
