@@ -68,7 +68,7 @@ Any or all variables in the file may also be expressed as environment variables 
      where _<URI>_ is the CCNx URI representing the prefix where +data/policy.xml+ is stored, and is meaningful only if no policy file exists at startup. _<URI>_ is expected by convention to be globally unique and meaningful, rather than only locally unique and contextually meaningful. If not specified, the URI defaults to +ccnx:/parc.com/csl/ccn/Repos+.
 
 *CCNR_LISTEN_ON=_<IP address list>_*::
-     where _<IP address list>_ is a list of IP addresses to listen on for status. IP addresses may be in either IPv4 format (e.g., 127.0.0.1) or IPv6 format (e.g., fe80::226:bbff:fe1c:5530). Addresses may be separated by spaces, commas, or semi-colons.  If not specified, the default is a wild card.
+     where _<IP address list>_ is a list of IP addresses to listen on for status, in the case that +CCNR_STATUS_PORT+ is given. IP addresses may be in either IPv4 format (e.g., 127.0.0.1) or IPv6 format (e.g., fe80::226:bbff:fe1c:5530). Addresses may be separated by spaces, commas, or semi-colons.  If not specified, the default is effectively localhost.
 
 *CCNR_MIN_SEND_BUFSIZE=_<Min buffer size>_*::
      where _<Min buffer size>_ is the minimum size in bytes of the output socket buffer (SO_SNDBUF) for the socket used to communicate with ccnd. The maximum value for _<Min buffer size>_ is 16384. If the system provides more than this by default, the system's value is used.
@@ -77,7 +77,7 @@ Any or all variables in the file may also be expressed as environment variables 
      where _<type>_ is the type of connection, which must be tcp or unix. If _<type>_ is tcp, Repo will connect to ccnd via TCP; if _<type>_ is unix, Repo will connect via Unix IPC. If not specified, the default is unix.
 
 *CCNR_STATUS_PORT=_<port>_*::
-     where _<port>_ is the port to use for a status server. If this option is not specified, no status is served.
+     where _<port>_ is the tcp port to use for a status server. If this option is not specified, no status is served. As an expedient, this port may also be used to insert Content Objects into the Repository.
 
 *CCNR_START_WRITE_SCOPE_LIMIT=_<Scope limit>_*::
      where _<Scope limit>_ is in the range 0..3 (default 3). Process start-write(-checked) interests with a scope

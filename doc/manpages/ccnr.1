@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: ccnr
 .\"    Author: [see the "AUTHOR" section]
-.\" Generator: DocBook XSL Stylesheets v1.76.0 <http://docbook.sf.net/>
-.\"      Date: 04/22/2012
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 05/03/2012
 .\"    Manual: \ \&
-.\"    Source: \ \& 0.6.0
+.\"    Source: \ \& 0.6.1
 .\"  Language: English
 .\"
-.TH "CCNR" "1" "04/22/2012" "\ \& 0\&.6\&.0" "\ \&"
+.TH "CCNR" "1" "05/03/2012" "\ \& 0\&.6\&.1" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -220,7 +220,9 @@ ccnx:/parc\&.com/csl/ccn/Repos\&.
 .RS 4
 where
 \fI<IP address list>\fR
-is a list of IP addresses to listen on for status\&. IP addresses may be in either IPv4 format (e\&.g\&., 127\&.0\&.0\&.1) or IPv6 format (e\&.g\&., fe80::226:bbff:fe1c:5530)\&. Addresses may be separated by spaces, commas, or semi\-colons\&. If not specified, the default is a wild card\&.
+is a list of IP addresses to listen on for status, in the case that
+CCNR_STATUS_PORT
+is given\&. IP addresses may be in either IPv4 format (e\&.g\&., 127\&.0\&.0\&.1) or IPv6 format (e\&.g\&., fe80::226:bbff:fe1c:5530)\&. Addresses may be separated by spaces, commas, or semi\-colons\&. If not specified, the default is effectively localhost\&.
 .RE
 .PP
 \fBCCNR_MIN_SEND_BUFSIZE=\fR\fB\fI<Min buffer size>\fR\fR
@@ -247,7 +249,7 @@ is unix, Repo will connect via Unix IPC\&. If not specified, the default is unix
 .RS 4
 where
 \fI<port>\fR
-is the port to use for a status server\&. If this option is not specified, no status is served\&.
+is the tcp port to use for a status server\&. If this option is not specified, no status is served\&. As an expedient, this port may also be used to insert Content Objects into the Repository\&.
 .RE
 .PP
 \fBCCNR_START_WRITE_SCOPE_LIMIT=\fR\fB\fI<Scope limit>\fR\fR
