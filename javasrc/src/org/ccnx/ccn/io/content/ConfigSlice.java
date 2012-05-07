@@ -21,11 +21,13 @@ import java.util.Collection;
 import java.util.LinkedList;
 
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -55,7 +57,11 @@ public class ConfigSlice extends GenericXMLEncodable {
 
 		public Filter() {
 		}
-
+		
+		public Filter(ContentName cn) {
+			super(cn);
+		}
+		
 		public Filter(byte[][] arg) {
 			super(arg);
 		}
@@ -201,13 +207,62 @@ public class ConfigSlice extends GenericXMLEncodable {
 	 * @param filters from ConfigSlice
 	 * @throws IOException
 	 */
-	public static void checkAndCreate(ContentName topo, ContentName prefix, Collection<Filter> filters, CCNHandle handle) throws ContentDecodingException, IOException {
+	public static ConfigSlice checkAndCreate(ContentName topo, ContentName prefix, Collection<Filter> filters, CCNHandle handle) throws ContentDecodingException, IOException {
 		ConfigSlice slice = new ConfigSlice(topo, prefix, filters);
-		ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice.getHash(), handle);
-		if (!csno.available() || csno.isGone()) {
+		//ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice.getHash(), handle);
+		ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice, handle);
+		boolean updated = csno.update(SystemConfiguration.SHORT_TIMEOUT);
+		if (!updated || (!csno.available() || csno.isGone())) {
 			csno.setData(slice);
 			csno.save();
 		}
 		csno.close();
+		return slice;
+	}
+	
+	public void checkAndCreate(CCNHandle handle) throws ContentDecodingException, ContentEncodingException, IOException{
+		ConfigSlice.NetworkObject existingSlice;
+		try {
+			//existingSlice = new ConfigSlice.NetworkObject(this.getHash(), handle);
+			existingSlice = new ConfigSlice.NetworkObject(this, handle);
+		} catch (ContentDecodingException e) {
+			Log.warning(Log.FAC_REPO, "ContentDecodingException: Unable to read in existing slice data from repository.");
+			throw e;
+		} catch (IOException e) {
+			Log.warning(Log.FAC_REPO, "IOException: error when attempting to retrieve existing slice");
+			throw e;
+		}
+		if (!existingSlice.available() || existingSlice.isGone()) {
+			existingSlice.setData(this);
+			try {
+				existingSlice.save();
+			} catch (ContentEncodingException e) {
+				Log.warning(Log.FAC_REPO, "ContentEncodingException: Unable to create Sync Slice when saving it to repo.  Slice Details: {0}", this.toString());
+				throw e;
+			} catch (IOException e) {
+				Log.warning(Log.FAC_REPO, "IOException: Unable to write Sync Slice to repository.  Slice Information: {0}", this.toString());
+				throw e;
+			}
+		}
+		existingSlice.close();
+	}
+	
+	
+	public boolean deleteSlice(CCNHandle handle) throws IOException{
+		
+		ConfigSlice.NetworkObject existingSlice;
+		
+		try {
+			existingSlice = new ConfigSlice.NetworkObject(this.getHash(), handle);
+			return existingSlice.saveAsGone();
+		} catch (ContentDecodingException e) {
+			Log.warning(Log.FAC_REPO, "ContentDecodingException: Unable to read in existing slice data from repository.");
+			throw new IOException("Unable to delete slice from repository: " + e.getMessage());
+		} catch (IOException e) {
+			Log.warning(Log.FAC_REPO, "IOException: error when attempting to retrieve existing slice before deletion");
+			throw new IOException("Unable to delete slice from repository: " + e.getMessage());
+		}
+		
+		
 	}
 }
