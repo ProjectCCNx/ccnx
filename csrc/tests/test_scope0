@@ -15,8 +15,6 @@ AFTER : test_single_ccnd
 BEFORE : test_single_ccnd_teardown
 
 UNIQ=`GenSym test_scope0_`
-ccndlogging med
-set -x
 ccnsnew -0 /$UNIQ/one /$UNIQ/two > scope0.ccnb &
 SNEW=$!
 echo three | ccnpoke -p1 -V%00 /$UNIQ/three &
