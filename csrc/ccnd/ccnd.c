@@ -3925,7 +3925,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 matched = 1;
             }
         }
-        if (!matched && pi->scope != 0 && npe != NULL)
+        if (!matched && npe != NULL)
             propagate_interest(h, face, msg, pi, npe);
     Bail:
         hashtb_end(e);
