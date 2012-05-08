@@ -3925,7 +3925,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 matched = 1;
             }
         }
-        if (!matched && npe != NULL)
+        if (!matched && npe != NULL && (pi->answerfrom & CCN_AOK_EXPIRE) == 0)
             propagate_interest(h, face, msg, pi, npe);
     Bail:
         hashtb_end(e);
