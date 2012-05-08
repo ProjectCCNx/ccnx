@@ -20,6 +20,7 @@ SNEW=$!
 echo three | ccnpoke -p1 -V%00 /$UNIQ/three &
 echo two | ccnpoke -p1 -V%00 /$UNIQ/two &
 echo one | ccnpoke -p1 -V%00 /$UNIQ/one &
+ccndsmoketest timeo 500 recv # 1/2 second delay
 ccnpeek -c /$UNIQ/one | grep one || SkipTest test data not generated
 ccnpeek -c /$UNIQ/two | grep two || SkipTest test data not generated
 ccnpeek -c /$UNIQ/three | grep three || SkipTest test data not generated
