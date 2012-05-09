@@ -26,8 +26,7 @@
 #include <ccn/reg_mgmt.h>
 #include <ccn/uri.h>
 
-
-#define USAGE "[-p port] [ -0 | -1 ] ccnx:/uri ...\n collect arriving content"
+#define USAGE "[-p port] [ -0123s ] ccnx:/uri ...\n collect arriving content"
 
 static enum ccn_upcall_res incoming_interest(struct ccn_closure *,
                                              enum ccn_upcall_kind,
@@ -37,7 +36,7 @@ static enum ccn_upcall_res  incoming_content(struct ccn_closure *,
                                              struct ccn_upcall_info *);
 static void usage(void);
 static const char *progname;
-static const char *setscope = NULL;
+static int setscope = 0;
 
 int
 main(int argc, char **argv)
@@ -52,18 +51,22 @@ main(int argc, char **argv)
 	struct ccn_charbuf *regprefix = NULL;
 	struct ccn_closure in_interest = {0};
     
-	progname = argv[0];
-	while ((opt = getopt(argc, argv, "01hp:")) != -1) {
+	setscope = 0;
+    progname = argv[0];
+	while ((opt = getopt(argc, argv, "0123shp:")) != -1) {
 		switch (opt) {
 			case 'p':
 				fprintf(stderr, "-p port: not yet implemented\n");
 				portstr = optarg;
 				break;
 			case '0':
-                setscope = "0";
-                break;
             case '1':
-                setscope = "1";
+            case '2':
+            case '3':
+                setscope = opt - '0';
+                break;
+            case 's':
+                setscope = -1;
                 break;
             case 'h':
 			default:
@@ -142,10 +145,23 @@ incoming_content(struct ccn_closure *selfp,
 	return(CCN_UPCALL_RESULT_OK);
 }
 
-/** Me too - express the interest that we just saw,
-    stripping out the Nonce and possibly setting the scope. */
-static void
-me_too(struct ccn *h, struct ccn_parsed_interest *pi, const unsigned char *imsg)
+/**
+ * Me too - express the interest that we just saw, with small modifications
+ *
+ * The idea is to be able to get a copy of whatever content comes along to
+ * satisfy the interest.
+ *
+ * Before sending the interest back out, we need to strip the Nonce, because
+ * otherwise it will just be discarded as a duplicate.
+ *
+ * The scope may also be modified; normally it is set to 0 to minimize the
+ * impact on traffic.
+ */
+static int
+me_too(struct ccn *h,
+           struct ccn_parsed_interest *pi,
+           const unsigned char *imsg,
+           int scope)
 {
 	struct ccn_charbuf *templ;
 	struct ccn_charbuf *name;
@@ -163,24 +179,25 @@ me_too(struct ccn *h, struct ccn_parsed_interest *pi, const unsigned char *imsg)
 	p = imsg;
 	s = pi->offset[CCN_PI_B_Scope];
 	ccn_charbuf_append(templ, p, s);
-    if (setscope != NULL) {
-        ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%s", setscope);
+    if (scope >= 0) {
+        if (scope < 3)
+            ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", scope);
         s = pi->offset[CCN_PI_E_Scope];
     }
     t = pi->offset[CCN_PI_B_Nonce];
     ccn_charbuf_append(templ, p + s, t - s);
 	ccn_charbuf_append_closer(templ);
 	md = calloc(1, sizeof(*md));
-	if (md == NULL) exit(1);
-	md->self.p = &incoming_content;
-	md->self.data = md;
-	res = ccn_express_interest(h, name, &md->self, templ);
-	if (res < 0) {
-		ccn_perror(h, "error expressing interest");
-		exit(1);
-	}
+	if (md == NULL)
+        res = -1;
+    else {
+        md->self.p = &incoming_content;
+        md->self.data = md;
+        res = ccn_express_interest(h, name, &md->self, templ);
+    }
 	ccn_charbuf_destroy(&name);
 	ccn_charbuf_destroy(&templ);
+    return(res);
 }
 
 /** Interest handler */
@@ -194,7 +211,8 @@ incoming_interest(struct ccn_closure *selfp,
             /* no cleanup needed */
             break;
         case CCN_UPCALL_INTEREST:
-            me_too(info->h, info->pi, info->interest_ccnb);
+        case CCN_UPCALL_CONSUMED_INTEREST:
+            me_too(info->h, info->pi, info->interest_ccnb, setscope);
             break;
         default:
             return(CCN_UPCALL_RESULT_ERR);
