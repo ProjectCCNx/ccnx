@@ -1623,6 +1623,11 @@ reorder_outbound_using_history(struct ccnd_handle *h,
         for (i = 0; i < ntap; i++)
             promote_outbound(pe, npe->tap->buf[i]);
     }
+    ccnd_msg(h, "debug.%d reorder %u tap=%p, ntap=%d, lasttap=%u", __LINE__,
+                 (unsigned)(pe->outbound && pe->outbound->n ? pe->outbound->buf[0] : CCN_NOFACEID),
+                 (void*)npe->tap,
+                 ntap,
+                 (unsigned)(ntap&&npe->tap->n ? npe->tap->buf[0] : CCN_NOFACEID));
     return(ntap);
 }
 
@@ -3843,6 +3848,8 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         npe = e->data;
         if (npe == NULL)
             goto Bail;
+        if (npe->fgen != h->forward_to_gen)
+            update_forward_to(h, npe);
         if ((npe->flags & CCN_FORW_LOCAL) != 0 &&
             (face->flags & CCN_FACE_GG) == 0) {
             ccnd_debug_ccnb(h, __LINE__, "interest_nonlocal", face, msg, size);
