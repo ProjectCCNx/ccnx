@@ -16,7 +16,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
- 
+
 /**
  * Provides a proxy for HTTP that allows some traffic to be served via
  * the CCN protocol.
@@ -51,7 +51,7 @@
 
 
 #define FetchBuffers 8
-#define RobustMillis 40
+#define RobustMillis 200
 
 #define CCN_CHUNK_SIZE 4096
 
@@ -88,7 +88,9 @@ typedef enum {
 	HostLine_NoQuery = 8,
 	HostLine_SingleConn = 16,
 	HostLine_Proxy = 32,
-	HostLine_FailQuick = 256
+	HostLine_Translate = 64,
+	HostLine_FailQuick = 256,
+	HostLine_QueryHack = 512
 } HostLineFlags;
 
 typedef struct HostLineStruct *HostLine;
@@ -96,6 +98,7 @@ struct HostLineStruct {
 	HostLine next;
 	string pat;
 	int patLen;
+    string translate;
 	HostLineFlags flags; 
 };
 
@@ -111,6 +114,7 @@ struct StatsStruct {
 
 struct MainBaseStruct {
 	FILE *debug;
+    char *custom;
 	int removeProxy;
 	int removeHost;
 	string ccnRoot;
@@ -119,10 +123,12 @@ struct MainBaseStruct {
 	int defaultKeepAlive;
 	int sockFD;
 	int ccnFD;
+    int usePort;
 	struct ccn_fetch * fetchBase;
 	SockEntry client;
 	RequestBase requestList;
 	SockBase sockBase;
+    ccn_fetch_flags ccn_flags;
 	int maxBusy;
 	int maxConn;
 	int nReady;
@@ -148,7 +154,14 @@ typedef enum {
 	HTTP_CONNECT
 } HttpVerb;
 
+struct ByteRange {
+    struct ByteRange *next;
+    ssize_t rangeStart;
+    ssize_t rangeStop;
+};
+
 typedef struct HttpInfoStruct {
+	HttpVerb httpVerb;
 	int httpVersion;
 	int httpSubVersion;
 	int headerLen;
@@ -156,7 +169,13 @@ typedef struct HttpInfoStruct {
 	int badHeader;
 	int forceClose;
 	int cookie;
-	int hasRange;
+    int64_t assertLength;       // asserted length from ContentLength:
+    int hasRange;
+    int hasContentLength;
+    int hasContentRange;
+    string contentType;
+	struct ByteRange *rangeList;
+	int queryHack;
 	int hasReferer;
 	int keepAlive;
 	int proxyConn;
@@ -209,6 +228,12 @@ struct RequestBaseStruct {
 	int index;
 	int maxConn;
 	int removeHost;
+	int rewriteHost;
+	int forceFail;
+	int fastOptions;
+    int headerLenInit;         // initial header length (CheckHttpHeader)
+    int headerLenReply;        // reply header length (CheckHttpHeader)
+	HttpVerb parentVerb;
 	int64_t accum;
 	int64_t msgLen;
 	int msgCount;
@@ -217,13 +242,14 @@ struct RequestBaseStruct {
 	uint64_t startTime;
 	uint64_t recentTime;
 	uint64_t sockTime;
-	HttpVerb httpVerb;
 	struct HttpInfoStruct httpInfo;
 	SockEntry seSrc;
 	SockEntry seDst;
 	HostLine hostLines;
 	string host;
+	string translate;
 	int port;
+    int fetchOff;
 	void *buffer;
 	int bufferLen;
 	int bufferMax;
@@ -291,10 +317,47 @@ newStringCopy(string src) {
 }
 
 static string
+newStringCat(string x, string y) {
+	int xn = ((x == NULL) ? 0 : strlen(x));
+	int yn = ((y == NULL) ? 0 : strlen(y));
+    int n = xn+yn;
+	if (n <= 0) return globalNullString;
+	string s = ProxyUtil_Alloc(n+1, char);
+	if (xn > 0) strncpy(s, x, xn);
+	if (yn > 0) strncpy(s+xn, y, yn);
+	return s;
+}
+
+static string
 freeString(string s) {
 	if (s != NULL && s != globalNullString)
 		free(s);
 	return NULL;
+}
+
+static string
+newDateString(void) {
+    int pos = 0;
+    time_t clk;
+    struct tm tms;
+    char ds[40];
+    clk = time(NULL);
+    gmtime_r(&clk, &tms);
+    string dowArray[8] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "??"};
+        string monArray[13] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+                           "??"};
+    int wd = tms.tm_wday;
+    int mon = tms.tm_mon;
+    if (wd < 0 || wd > 7) wd = 7;
+    if (mon < 0 || mon > 12) wd = 12;
+    
+    pos += snprintf(ds+pos, sizeof(ds)-pos, "%s, ", dowArray[wd]);
+    pos += snprintf(ds+pos, sizeof(ds)-pos, "%02d %s %04d ",
+                    tms.tm_mday, monArray[wd], tms.tm_year);
+    pos += snprintf(ds+pos, sizeof(ds)-pos, "%02d:%02d:%02d GMT",
+                    tms.tm_sec, tms.tm_min, tms.tm_hour);
+    return newStringPrefix(ds, pos);
 }
 
 static void
@@ -604,7 +667,7 @@ RobustSendmsg(RequestBase rb, SockEntry se) {
 			if (nb < len) {
 				// short write, note it and compensate
 				fprintf(f, "-- Warning, only sent %zd bytes out of %zd\n",
-					   nb, len);
+                        nb, len);
 				flushLog(f);
 				rb->sendOff = rb->sendOff + nb;
 			} else {
@@ -775,14 +838,18 @@ PutRequestId(RequestBase rb) {
 static void
 SetRequestHost(RequestBase rb, string host, int port) {
 	string rh = rb->host;
-	if (rh != NULL) rb->host = freeString(rh);
 	rb->host = newStringCopy(host);
+	if (rh != NULL) freeString(rh);
 	rb->port = port;
 }
 
 static void
 SetMsgLen(RequestBase rb, int64_t len) {
+	FILE *f = rb->mb->debug;
 	rb->msgLen = len;
+    if (len >= 0 && f != NULL) {
+        fprintf(f, "-- SetMsgLen, %jd\n", (intmax_t) len);
+    }
 }
 
 static RequestBase
@@ -818,11 +885,11 @@ NewRequestBase(MainBase mb,
 	}
 	rb->buffer = newString(BufferSize);
 	rb->bufferMax = BufferSize;
-
+    
 	memset(&rb->msg, 0, sizeof(struct msghdr));
 	rb->msg.msg_iovlen = 1;
 	rb->msg.msg_iov = &rb->iov;
-
+    
 	if (parent != NULL) {
 		// created in reply to the parent
 		rb->request = newStringCopy(parent->request);
@@ -831,6 +898,11 @@ NewRequestBase(MainBase mb,
 		rb->fwdPath = parent;
 		if (parent->httpInfo.keepAlive > rb->httpInfo.keepAlive)
 			rb->httpInfo.keepAlive = parent->httpInfo.keepAlive;
+        // transfer the range list from parent (remove from parent!)
+        rb->httpInfo.rangeList = parent->httpInfo.rangeList;
+        parent->httpInfo.rangeList = NULL;
+        rb->httpInfo.assertLength = parent->httpInfo.assertLength;
+        rb->parentVerb = parent->httpInfo.httpVerb;
 	}
 	FILE *f = mb->debug;
 	if (f != NULL) {
@@ -839,6 +911,7 @@ NewRequestBase(MainBase mb,
 			fprintf(f, ", parent #%d", parent->index);
 		PutRequestId(rb);
 		fprintf(f, "\n");
+        
 		flushLog(f);
 	}
 	return rb;
@@ -908,6 +981,13 @@ DestroyRequestBase(RequestBase rb) {
 		rb->request = freeString(rb->request);
 		rb->shortName = freeString(rb->shortName);
 		rb->backPath = NULL;
+        struct ByteRange *rl = rb->httpInfo.rangeList;
+        rb->httpInfo.rangeList = NULL;
+        while (rl != NULL) {
+            struct ByteRange *lag = rl;
+            rl = rl->next;
+            free(lag);
+        }
 		free(rb);
 		mb->requestDone++;
 		mb->nChanges++;
@@ -925,7 +1005,7 @@ TrySelect(MainBase mb) {
 	int max = mb->ccnFD;
 	FD_SET(max, &mb->sds.readFDS);
 	FD_SET(max, &mb->sds.errorFDS);
-
+    
 	// gather up all of the potential bits we need
 	if ((mb->requestCount - mb->requestDone) < mb->maxBusy) {
 		// we could start a new request
@@ -982,7 +1062,7 @@ TrySelect(MainBase mb) {
 					fprintf(f, "\n");
 					PutTimeMark(mb);
 					fprintf(f, "select, sockFD %d, ccnFD %d, busy %d, ready %d:",
-						   mb->sockFD, mb->ccnFD, busy, res);
+                            mb->sockFD, mb->ccnFD, busy, res);
 				}
 				fprintf(f, " %d ", i);
 				if (bitR) fprintf(f, "r");
@@ -1009,6 +1089,7 @@ static int
 SetNameCCN(MainBase mb,
 		   struct ccn_charbuf *cb,
 		   char *ccnRoot, char *dir, char *name) {
+	FILE *f = mb->debug;
 	char temp[NameMax];
 	snprintf(temp, sizeof(temp), "ccnx:/%s/", ccnRoot);
 	int res = ccn_name_from_uri(cb, temp);
@@ -1020,6 +1101,12 @@ SetNameCCN(MainBase mb,
 	// name
 	res = res | ccn_name_append_str(cb, (const char *) name);
 	if (res < 0) return retErr(mb, "SetNameCCN bad name");
+    if (f != NULL) {
+        struct ccn_charbuf *uri = ccn_charbuf_create();
+        ccn_uri_append(uri, cb->buf, cb->length, 0);
+        fprintf(f, "-- SetNameCCN, %s\n", ccn_charbuf_as_string(uri));
+        ccn_charbuf_destroy(&uri);
+    }
 	return 0;
 }
 
@@ -1074,6 +1161,22 @@ StringToVerb(string verb) {
 		return HTTP_NONE;
 	}
 }
+
+static string
+VerbToString(HttpVerb verb) {
+    switch (verb) {
+        case HTTP_NONE:     return "NONE";
+        case HTTP_HEAD:     return "HEAD";
+        case HTTP_GET:      return "GET";
+        case HTTP_POST:     return "POST";
+        case HTTP_PUT:      return "PUT";
+        case HTTP_DELETE:   return "DELETE";
+        case HTTP_TRACE:    return "TRACE";
+        case HTTP_OPTIONS:  return "OPTIONS";
+        case HTTP_CONNECT:  return "CONNECT";
+        default:            return "??";
+    }
+}    
 
 static int
 AdvanceChunks(MainBase mb, string buf, int pos, int len, ChunkInfo info) {
@@ -1245,7 +1348,7 @@ ExtractShortName(RequestBase rb) {
 	}
 	int pos = start;
 	while (pos < len) {
-		char c = buf[pos];
+		char c = buf[pos] & 255;
 		if (c <= ' ') break;
 		pos++;
 	}
@@ -1253,7 +1356,6 @@ ExtractShortName(RequestBase rb) {
 	if (len < 1)
 		return NULL;
 	string s = newStringPrefix(buf+start, len);
-	// fprintf(f, "-- ExtractShortName %s\n", s);
 	return s;
 }
 
@@ -1287,7 +1389,7 @@ TryHostHack(RequestBase rb) {
 				// found the host, so check for port
 				pos = pos + hostLen;
 				if (buf[pos] == ':') {
-					// skip over the host
+					// skip over the port
 					pos++;
 					for (;;) {
 						char c = buf[pos];
@@ -1295,11 +1397,24 @@ TryHostHack(RequestBase rb) {
 						pos++;
 					}
 				}
-				int delta = pos-addrStart;
-				memmove(buf+addrStart, buf+pos, len-pos);
-				rb->bufferLen = len - delta;
-				return delta;
-			}
+			} else if (rb->rewriteHost > 0) {
+                // can't match on the name, so just accept the first name
+                // (note: will not work for multiple levels of proxy/translate)
+                while (pos < len) {
+                    char c = buf[pos];
+                    if (ShortNameChar(c) == 0) break;
+                    if (c == '/') break;
+                    pos++;
+                }
+            }
+            int delta = pos-addrStart;
+            if (delta > 0) {
+                memmove(buf+addrStart, buf+pos, len-pos);
+                len = len - delta;
+                buf[len] = 0;
+                rb->bufferLen = len;
+                return delta;
+            }
 		}
 	}
 	return 0;
@@ -1320,7 +1435,7 @@ ExtractHttpVersion(HttpInfo httpInfo, string s, int len) {
 
 static int
 CheckHttpHeader(RequestBase rb) {
-	// return -1 if invalid, 0 if incomplete, 1 if complete
+	// return -1 if invalid, 0 if incomplete, header length if valid
 	MainBase mb = rb->mb;
 	FILE *f = mb->debug;
 	string buf = rb->buffer;
@@ -1332,6 +1447,7 @@ CheckHttpHeader(RequestBase rb) {
 	int verPos = 0;
 	char lag = 0;
 	int reportBinary = 0;
+    rb->headerLenInit = -1;
 	while (pos < len) {
 		char c = buf[pos];
 		pos++;
@@ -1346,9 +1462,11 @@ CheckHttpHeader(RequestBase rb) {
 					// first line has proper HTTP version info
 				} else
 					return -1;
-			} else if (line > 0 && lineLen == 0)
-				// there is a blank line
-				return 1;
+			} else if (line > 0 && lineLen == 0) {
+				// there is a blank line, so we have found the end of the header
+				rb->headerLenInit = pos;
+                return pos;
+            }
 			line++;
 			lineLen = 0;
 			lineStart = pos;
@@ -1373,7 +1491,120 @@ CheckHttpHeader(RequestBase rb) {
 		}
 		lag = c;
 	}
+    rb->headerLenInit = 0;
 	return 0;
+}
+
+static int
+RewriteBuffer(RequestBase rb, int start, int len, string replace) {
+    string buf = (string) rb->buffer;
+    int bufLen = rb->bufferLen;
+    int repLen = ((replace != NULL) ? strlen(replace) : 0);
+    int delta = repLen - len;
+    int newLen = bufLen + delta;
+    int sPos = start+len;
+    int dPos = start+repLen;
+    int rem = bufLen - sPos;
+    if (len < 0 || sPos > bufLen || newLen > rb->bufferMax)
+        // failed sanity check
+        return -1;
+    if (len != repLen && rem > 0) {
+        // create hole for the replacement and shift the remaining bytes
+        memmove(buf+dPos, buf+sPos, rem);
+    }
+    if (repLen > 0) {
+        // insert the replacement string
+        memmove(buf+start, replace, repLen);
+    }
+    rb->bufferLen = newLen;
+    return 0;
+}
+
+static int
+AcceptByteRange(RequestBase rb, string s, int len) {
+    int res = 0;
+	MainBase mb = rb->mb;
+	FILE *f = mb->debug;
+    static string rKind = "bytes";
+    struct ByteRange *rangeTail = NULL;
+    int pos = 0;
+    if (!TokenPresent(s, len, rKind)) {
+        res = -__LINE__;
+    } else {
+        pos = pos + strlen(rKind);
+        pos = SkipOverBlank(s, pos, len);
+        if (s[pos] != '=')
+            res = -__LINE__;
+        pos++;
+    }
+    
+    while (pos < len && res == 0) {
+        struct ByteRange *rl = NULL;
+        ssize_t rStart = 0;
+        ssize_t rStop = -1;
+        pos = SkipOverBlank(s, pos, len);
+        if (!IsNumeric(s[pos])) {
+            // a rangeStart number is required
+            res = -__LINE__;
+            break;
+        }
+        for (;;) {
+            int c = IsNumeric(s[pos]);
+            if (c == 0) break;
+            rStart = rStart*10 + (c - '0');
+            pos++;
+        }
+        pos = SkipOverBlank(s, pos, len);
+        if (s[pos] != '-') {
+            res = -__LINE__;
+            break;
+        }
+        pos++;
+        pos = SkipOverBlank(s, pos, len);
+        // a rangeStop number is optional
+        if (IsNumeric(s[pos])) {
+            rStop = 0;
+            for (;;) {
+                int c = IsNumeric(s[pos]);
+                if (c == 0) break;
+                rStop = rStop*10 + (c - '0');
+                pos++;
+            }
+            if (rStop < rStart) {
+                // if both number are present, require valid range
+                res = -__LINE__;
+                break;
+            }
+        }
+        // now, make up a new entry to hold the new range
+        // TBD: canonicalize the ranges
+        rl = ProxyUtil_StructAlloc(1, ByteRange);
+        rl->rangeStart = rStart;
+        rl->rangeStop = rStop;
+        if (f != NULL) {
+            fprintf(f, "-- found range spec: %jd-%jd\n", 
+                    (intmax_t) rStart,
+                    (intmax_t) rStop);
+        }
+        
+        if (rangeTail == NULL) rb->httpInfo.rangeList = rl;
+        else rangeTail->next = rl;
+        rangeTail = rl;
+        pos = SkipOverBlank(s, pos, len);
+        if (s[pos] != ',') break;
+        pos++;
+    }
+    if (res < 0) {
+        // must remove the request
+        if (f != NULL) {
+            char *line = newStringPrefix(s, len);
+            fprintf(f, "** Invalid range spec: %d, %s\n",
+                    res, line);
+            flushLog(f);
+            freeString(line);
+        }
+    }
+    return res;
 }
 
 static int
@@ -1392,12 +1623,14 @@ ExtractHTTPInfo(RequestBase rb, HttpVerb httpVerb) {
 	HttpInfo h = &rb->httpInfo;
 	
 	rb->chunkInfo.state = Chunk_None;
-	rb->msgLen = -1;
+    SetMsgLen(rb, -1);
 	
+    h->assertLength = -1;
 	for (;;) {
 		int lineLen = 0; // does not include termination
 		int lineStart = pos;
-		int colonPos = -1;
+		int colonPos = -1;  // pos just after the colon
+		int queryPos = -1;  // pos just after the query
 		if (pos == len) {
 			// this is not a good sign, non-terminating header
 			h->badHeader = 1;
@@ -1419,6 +1652,7 @@ ExtractHTTPInfo(RequestBase rb, HttpVerb httpVerb) {
 				break;
 			} else {
 				if (c == ':' && colonPos < 0) colonPos = pos;
+				if (c == '?' && queryPos < 0) queryPos = pos;
 				lineLen++;
 			}
 			lag = c;
@@ -1453,18 +1687,43 @@ ExtractHTTPInfo(RequestBase rb, HttpVerb httpVerb) {
 			}
 		} else if (colonPos > lineStart) {
 			// at this point we have a candidate line
-			int keyLen = 1 + colonPos - lineStart;
-			string postKey = key+keyLen;
-			int postLen = lineLen - keyLen;
+            int keyLen = colonPos - lineStart - 1;
+			string postKey = buf+colonPos;
+			int postLen = lineLen - (colonPos - lineStart) + 1;
+            // strip leading and trailing key blanks
+            while (key[0] == ' ' && keyLen > 0) {
+                key++;
+                keyLen--;
+            }
+            while (keyLen > 0 && key[keyLen-1] == ' ') {
+                keyLen--;
+            }
+            // skip post-colon blanks
+            while (postKey[0] == ' ') {
+                postKey++;
+                postLen--;
+            }
 			int remove = 0;
 			char replace[NameMax+16];
 			replace[0] = 0;
 			int keepAlive = mb->defaultKeepAlive;
 			if (h->keepAlive > keepAlive) keepAlive = h->keepAlive;
-			if (TokenPresent(key, keyLen, "Content-Length: ")) {
+            if (f != NULL) {
+                fprintf(f, "-- key(%d): ", keyLen);
+                fwrite(key, sizeof(char), keyLen, f);
+                fprintf(f, ", post(%d): ", postLen);
+                fwrite(postKey, sizeof(char), postLen, f);
+            }
+			if (TokenPresent(key, keyLen, "Content-Length")) {
 				// we have an alleged length for the content
 				contentLen = EvalUint(postKey, 0);
-			} else if (TokenPresent(key, keyLen, "Connection: ")) {
+                h->assertLength = contentLen;
+                h->hasContentLength++;
+			} else if (TokenPresent(key, keyLen, "Content-Range")) {
+                h->hasContentRange++;
+			} else if (TokenPresent(key, keyLen, "Content-Type")) {
+                h->contentType = newStringPrefix(postKey, postLen);
+			} else if (TokenPresent(key, keyLen, "Connection")) {
 				if (TokenPresent(postKey, postLen, "close")) {
 					h->forceClose = 1;
 				} else if (TokenPresent(postKey, postLen, "Keep-Alive")) {
@@ -1474,19 +1733,22 @@ ExtractHTTPInfo(RequestBase rb, HttpVerb httpVerb) {
 					remove = (keepAlive < 0);
 					h->keepAlive = keepAlive;
 				}
-			} else if (TokenPresent(key, keyLen, "Transfer-Encoding: ")) {
+			} else if (TokenPresent(key, keyLen, "Transfer-Encoding")) {
 				h->transferEncoding = 1;
 				if (TokenPresent(postKey, postLen, "chunked"))
 					h->transferChunked = 1;
-			} else if (TokenPresent(key, keyLen, "Proxy-Connection: ")) {
+			} else if (TokenPresent(key, keyLen, "Proxy-Connection")) {
 				remove = mb->removeProxy;
 				h->proxyConn = 1;
 				if (TokenPresent(postKey, postLen, "keep-alive"))
 					h->proxyKeepAlive = keepAlive;
-			} else if (TokenPresent(key, keyLen, "Cookie: ")) {
+			} else if (TokenPresent(key, keyLen, "Cookie")) {
 				h->cookie = 1;
-			} else if (TokenPresent(key, keyLen, "Range: ")) {
-				h->hasRange = 1;
+			} else if (TokenPresent(key, keyLen, "Range")) {
+                if (AcceptByteRange(rb, postKey, postLen) < 0)
+                    remove = 1;
+			} else if (TokenPresent(key, keyLen, "Accept-Ranges: ")) {
+				h->hasRange = 2;
 			} else if (TokenPresent(key, keyLen, "Referer: ")) {
 				h->hasReferer = 1;
 			} else if (TokenPresent(key, keyLen, "Keep-Alive: ")) {
@@ -1517,7 +1779,6 @@ ExtractHTTPInfo(RequestBase rb, HttpVerb httpVerb) {
 							postLen--;
 							c = postKey[0];
 						}
-						
 					}
 					
 					// TBD: handle options better
@@ -1526,50 +1787,61 @@ ExtractHTTPInfo(RequestBase rb, HttpVerb httpVerb) {
 				// interpret the host spec as an override
 				host[0] = 0;
 				hostLen = AcceptHostName(postKey, 0, host, NameMax);
-				if (mb->hostFromGet == 0
-					|| rb->host == NULL
-					|| strlen(rb->host) == 0 ) {
-					// in this case we get the host from the Host: line
-					if (hostLen > 0) {
-						int port = 0;
-						int pLen = AcceptHostPort(postKey, hostLen, &port);
-						if (pLen <= 0)
-							// good idea to inherit this?
-							port = rb->port;
-						SetRequestHost(rb, host, port);
-					}
-				} else if (strcasecmp(rb->host, host) != 0) {
-					// we need to remove this line
-					// the GET host is not like the Host:
-					// HOWEVER, we need to replace the bogus host!
-					remove = 1;
-					snprintf(replace, sizeof(replace),
-							 "Host: %s\r\n",
-							 rb->host);
-				}
+                HostLine lookup = SelectHostSuffix(mb, host);
+                if (lookup != NULL && lookup->translate != NULL) {
+                    // replace the host here
+                    SetRequestHost(rb, lookup->translate, rb->port);
+                    remove = 1;
+                    snprintf(replace, sizeof(replace),
+                             "Host: %s\r\n",
+                             rb->host);
+                    rb->rewriteHost = 1;
+                } else if (rb->rewriteHost == 0
+                           && (mb->hostFromGet == 0
+                               || rb->host == NULL
+                               || strlen(rb->host) == 0) ) {
+                               // in this case we get the host from the Host: line
+                               if (hostLen > 0) {
+                                   int port = 0;
+                                   int pLen = AcceptHostPort(postKey, hostLen, &port);
+                                   if (pLen <= 0)
+                                       // good idea to inherit this?
+                                       port = rb->port;
+                                   SetRequestHost(rb, host, port);
+                               }
+                           } else if (strcasecmp(rb->host, host) != 0) {
+                               // we need to remove this line
+                               // the GET host is not like the Host:
+                               // HOWEVER, we need to replace the bogus host!
+                               rb->rewriteHost = 1;
+                               remove = 1;
+                               snprintf(replace, sizeof(replace),
+                                        "Host: %s\r\n",
+                                        rb->host);
+                           }
 			} else {
 				// TBD: what to do about unrecognized cases?  anything?
 			}
 			// test for replacing/removing the line
 			int rem = len-pos;
-			if (httpVerb != HTTP_NONE && remove) {
+			if (remove) {
 				// remove the current line
-				if (f != NULL) {
-					char sc = buf[pos-2];
-					buf[pos-2] = 0;
-					fprintf(f, "  removing line %d, %s\n", lines, key);
-					flushLog(f);
-					buf[pos-2] = sc;
-				}
 				int add = strlen(replace);
+				if (f != NULL) {
+                    int scp = pos-2;
+					char sc = buf[scp];
+					buf[scp] = 0;
+					fprintf(f, "  removing line %d, %s\n", lines, key);
+					buf[scp] = sc;
+                    if (add > 0) {
+						fprintf(f, "  replacing with %s\n", replace);
+					}
+                    flushLog(f);
+				}
 				memmove(key+add, buf+pos, rem);
-				if (add != 0) {
+				if (add > 0) {
 					// we have something to insert (includes cr-lf)
 					memmove(key, replace, add);
-					if (f != NULL) {
-						fprintf(f, "  replacing with %s", replace);
-						flushLog(f);
-					}
 				}
 				pos = lineStart+add;
 				len = len - (lineLen+2) + add;
@@ -1579,10 +1851,9 @@ ExtractHTTPInfo(RequestBase rb, HttpVerb httpVerb) {
 	}
 	if (lag != '\n') h->badHeader = 1;
 	
-	if (httpVerb == HTTP_GET) {
+	if (httpVerb == HTTP_GET || httpVerb == HTTP_HEAD || httpVerb == HTTP_OPTIONS) {
 		// we have a supported verb
 		rb->shortName = ExtractShortName(rb);
-		
 		if (rb->removeHost) {
 			// may need to hack GET line to remove host
 			int delta = TryHostHack(rb);
@@ -1594,12 +1865,6 @@ ExtractHTTPInfo(RequestBase rb, HttpVerb httpVerb) {
 	
 	h->headerLen = pos;
 	
-	if (f != NULL && h->headerLen > 0) {
-		// show the header
-		fwrite(buf, sizeof(char), h->headerLen, stdout);
-		if (lag != '\n') fprintf(f, "\n");
-		flushLog(f);
-	}
 	if (h->badHeader) {
 		// non-terminating header line?
 		SetMsgLen(rb, h->headerLen);
@@ -1615,7 +1880,7 @@ ExtractHTTPInfo(RequestBase rb, HttpVerb httpVerb) {
 		if (rb->msgLen < len) {
 			if (f != NULL) {
 				fprintf(f, "-- truncating buffer, msgLen %jd len %d\n",
-					   (intmax_t) rb->msgLen, len);
+                        (intmax_t) rb->msgLen, len);
 				pos = len;
 				for (;;) {
 					int nPos = NextLine(buf, pos, len);
@@ -1705,16 +1970,16 @@ ExtractHTTPInfo(RequestBase rb, HttpVerb httpVerb) {
 			default: {
 				if (f != NULL) {
 					fprintf(f, "-- chunking in progress, chunkRem %u\n",
-						   info->chunkRem);
+                            info->chunkRem);
 					flushLog(f);
 				}
 			}
 		}
 		
-	} else if (httpVerb == HTTP_GET && rb->msgLen < h->headerLen) {
-		// a GET should not have content
-		// TBD: really true?
-		SetMsgLen(rb, h->headerLen);
+	} else if (httpVerb == HTTP_GET || httpVerb == HTTP_HEAD || httpVerb == HTTP_OPTIONS) {
+		// these should not have content
+		if (rb->msgLen < h->headerLen)
+            SetMsgLen(rb, h->headerLen);
 	}
 	return 0;
 }
@@ -1817,9 +2082,18 @@ ExamShortName(struct ShortNameInfo *info, char *s) {
 	int query = 0;
 	int dots = 0;
 	if (s != NULL) {
+        char lag = 0;
 		for (;;) {
 			char c = s[pos];
-			if (c == 0) break;
+			if (c == 0) {
+                // found the end, clip off any trailing slash
+                // (correct for brain-dead Apple use of OPTIONS)
+                if (lag == '/' && pos > 1) {
+                    s[pos-1] = 0;
+                    count--;
+                }
+                break;
+            }
 			if (IsAlpha(c) || IsNumeric(c)) count = count + 1;
 			else {
 				count = count + 3;
@@ -1827,12 +2101,67 @@ ExamShortName(struct ShortNameInfo *info, char *s) {
 				if (c == '.') dots++;
 			}
 			pos++;
+            lag = c;
 		}
 	}
 	info->count = count;
 	info->len = pos;
 	info->query = query;
 	info->dots = dots;
+}
+
+static int
+StripQuery(string s, int len) {
+    int i = 0;
+    while (i < len) {
+        if (s[i] == '?') {
+            s[i] = 0;
+            return 1;
+        }
+        i++;
+    }
+    return 0;
+}
+
+
+static int
+WriteNotFoundReply(RequestBase rb) {
+    string buf = (string) rb->buffer;
+    int max = rb->bufferMax;
+    int pos = 0;
+    pos += snprintf(buf+pos, max-pos, "HTTP/1.1 404\r\n");
+    pos += snprintf(buf+pos, max-pos, "\r\n");
+    buf[pos] = 0;
+    rb->bufferLen = pos;
+    return 0;
+}
+
+static int
+WriteOptionsReply(RequestBase rb) {
+    FILE *f = rb->mb->debug;
+    HttpInfo h = &rb->httpInfo;
+    string buf = (string) rb->buffer;
+    int max = rb->bufferMax;
+    int pos = 0;
+    string dateStr = newDateString();
+    pos += snprintf(buf+pos, max-pos, "HTTP/1.1 200 OK\r\n");
+    pos += snprintf(buf+pos, max-pos, "Date: %s\r\n", dateStr);
+    pos += snprintf(buf+pos, max-pos, "Server: Bruce Radicchio\r\n");
+    pos += snprintf(buf+pos, max-pos, "Allow: GET,HEAD,OPTIONS\r\n");
+    pos += snprintf(buf+pos, max-pos, "Content-Length: 0\r\n");
+    if (h->contentType != NULL) {
+        // we got a reply
+        pos += snprintf(buf+pos, max-pos,
+                        "Content-Type: %s\r\n", h->contentType);
+    }
+    pos += snprintf(buf+pos, max-pos, "\r\n");
+    buf[pos] = 0;
+    rb->bufferLen = pos;
+    if (f != NULL) {
+        fprintf(f, "-- OPTIONS reply, %u\n%s", pos, buf);
+        flushLog(f);
+    }
+    return 0;
 }
 
 static int
@@ -1848,6 +2177,7 @@ RequestBaseStart(RequestBase rb) {
 	rb->maxConn = mb->maxConn;
 	rb->removeHost = mb->removeHost;
 	ssize_t nb = RobustRecvmsg(rb, seSrc);
+    HttpInfo h = &rb->httpInfo;
 	
 	if (nb <= 0) {
 		rb->state = ((nb < 0) ? RB_Error : RB_Done);
@@ -1855,7 +2185,7 @@ RequestBaseStart(RequestBase rb) {
 			fprintf(f, "-- RequestBaseStart, nothing??\n");
 			flushLog(f);
 		}
-		rb->httpInfo.keepAlive = -1;
+		h->keepAlive = -1;
 		return 0; // nothing to receive
 	}
 	nb = rb->bufferLen;
@@ -1863,6 +2193,11 @@ RequestBaseStart(RequestBase rb) {
 	mb->stats.requests++;
 	
 	int ck = CheckHttpHeader(rb);
+    if (f != NULL) {
+        fprintf(f, "-- RequestBaseStart, initial request, %d\n%s",
+                ck, (char *) rb->buffer);
+        flushLog(f);
+    }
 	if (ck < 0) {
 		// bad header
 		SetRequestErr(rb, "Invalid header", 0);
@@ -1877,7 +2212,7 @@ RequestBaseStart(RequestBase rb) {
 		}
 		return 0;
 	}
-	rb->msgLen = -1; // negative means unknown
+    SetMsgLen(rb, -1); // negative means unknown
 	mb->nChanges++;
 	
 	struct sockaddr_storage sa;
@@ -1896,16 +2231,16 @@ RequestBaseStart(RequestBase rb) {
 		flushLog(f);
 	}
 	
-	string  buf = (string) rb->buffer;
+	string buf = (string) rb->buffer;
 	char verb[PartMax+1];
 	int pos = AcceptPart(buf, 0, verb, PartMax);
 	int tryHost = 0;
 	while (buf[pos] == ' ') pos++;
 	
-	rb->httpVerb = StringToVerb(verb);
+	h->httpVerb = StringToVerb(verb);
 	
 	char kind[PartMax+1];
-	switch (rb->httpVerb) {
+	switch (h->httpVerb) {
 		case HTTP_CONNECT: {
 			// no XXX: part
 			tryHost = 1;
@@ -1951,10 +2286,10 @@ RequestBaseStart(RequestBase rb) {
 	}
 	
 	// parse the header
-	ExtractHTTPInfo(rb, rb->httpVerb);
+	ExtractHTTPInfo(rb, h->httpVerb);
 	rb->msgCount++;
 	
-	if (rb->httpVerb == HTTP_CONNECT) {
+	if (h->httpVerb == HTTP_CONNECT) {
 		if (port == 443) {
 			strcpy(kind, "https");
 			// TBD: figure out how to do https?
@@ -1973,11 +2308,14 @@ RequestBaseStart(RequestBase rb) {
 	}
 	
 	// translate the dest name
-		
+    
 	int firstLineLen = NextLine(buf, 0, nb);
 	HostLine hostLine = NULL;
 	int failQuick = 0;
-	if (mb->ccnRoot != NULL && rb->httpVerb == HTTP_GET) {
+	if (mb->ccnRoot != NULL
+        && (h->httpVerb == HTTP_GET
+            || h->httpVerb == HTTP_HEAD
+            || h->httpVerb == HTTP_OPTIONS)) {
 		// determine if this is an acceptable host for CCN
 		string effectiveHost = rb->host;
 		string effectiveName = rb->shortName;
@@ -1988,59 +2326,161 @@ RequestBaseStart(RequestBase rb) {
 			ExamShortName(&info, effectiveName);
 			hostLine = SelectHostSuffix(mb, effectiveHost);
 			if (hostLine == NULL) break;
-			if ((hostLine->flags & HostLine_Proxy) == 0) break;
-			if (effectiveName[0] == '/') effectiveName++;
-			int hLen = AcceptHostName(effectiveName, 0, tempHost, NameMax);
-			if (hLen == 0) break;
-			// we have a place to split the line to extract the host
-			effectiveHost = tempHost;
-			effectiveName = effectiveName + hLen;
-		}
-		// now, we have an effective host and we have flags for the name
-		if (hostLine != NULL) {
+            if ((hostLine->flags & (HostLine_Proxy | HostLine_Translate)) == 0)
+                break;
+            if (effectiveName[0] == '/') effectiveName++;
+            int hLen = AcceptHostName(effectiveName, 0, tempHost, NameMax);
+            if (hLen == 0) break;
+            // we have a place to split the line to extract the host
+            if (hostLine->translate == NULL) {
+                effectiveHost = tempHost;
+                effectiveName = effectiveName + hLen;
+            } else {
+                effectiveHost = hostLine->translate;
+                effectiveName = effectiveName + hLen;
+            }
+            if (f != NULL) {
+                fprintf(f, "-- proxy name, host %s, name %s\n",
+                        effectiveHost, effectiveName);
+                flushLog(f);
+            }
+            string lag = rb->host;
+            rb->host = newStringCopy(effectiveHost);
+            freeString(lag);
+            lag = rb->shortName;
+            rb->shortName = newStringCopy(effectiveName);
+            freeString(lag);
+            rb->rewriteHost++;
+        }
+        if (rb->shortName == NULL || (rb->shortName[0] != '/')) {
+            // force a leading slash in the name
+            string lag = rb->shortName;
+            rb->shortName = newStringCat("/", rb->shortName);
+            freeString(lag);
+        }
+        // now, we have an effective host and we have flags for the name
+		while (hostLine != NULL) {
 			// maybe CCN, so process the flags for this host
 			int flags = hostLine->flags;
-			if (mb->debug != NULL) {
+			if (f != NULL) {
 				fprintf(f, "-- SelectHostSuffix, host %s, flags %d\n",
-					   rb->host, flags);
+                        rb->host, flags);
 				flushLog(f);
 			}
-			if (flags & HostLine_NeedDot && info.dots <= 0)
+			if (flags & HostLine_FailQuick) {
+				// these never win 
+				failQuick = 1;
+				hostLine = NULL;
+                break;
+			}
+			if (flags & HostLine_NeedDot && info.dots <= 0) {
 				// requires a dot in the name
 				hostLine = NULL;
-			if ((flags & HostLine_NoCookie) && rb->httpInfo.cookie != 0)
+                break;
+            }
+			if ((flags & HostLine_NoCookie) && h->cookie != 0) {
 				// prohibits Cookie:
 				hostLine = NULL;
-			if ((flags & HostLine_NoReferer) && rb->httpInfo.hasReferer != 0)
+                break;
+            }
+			if ((flags & HostLine_NoReferer) && h->hasReferer != 0) {
 				// prohibits Referer:
 				hostLine = NULL;
-			if ((flags & HostLine_NoQuery) && info.query > 0)
+                break;
+            }
+			if ((flags & HostLine_NoQuery) && info.query > 0) {
 				// prohibits queries ('?') in name 
 				hostLine = NULL;
+                break;
+            }
 			if (flags & HostLine_SingleConn) {
 				// force a single connection
 				hostLine = NULL;
 				rb->maxConn = 1;
+                break;
 			}
-			if (flags & HostLine_FailQuick) {
-				// these never win 
-				hostLine = NULL;
-				failQuick = 1;
-			}
-			if (rb->httpInfo.hasRange)
-				// CCN can't do ranges yet
-				hostLine = NULL;
-			if (info.count < 0 || firstLineLen >= NameMax)
+			if (info.count < 0 || firstLineLen >= NameMax/2) {
 				// CCN can't handle excessively long names
 				hostLine = NULL;
-			if (hostLine == NULL) {
-				fprintf(f, "-- Prevent CCN for %s:%s; using HTTP\n",
-					   rb->host, rb->shortName);
+                break;
+            }
+            if (flags & HostLine_QueryHack) {
+				// force a Range interpretation, if a query is present
+                int i = 0;
+                while (i < firstLineLen) {
+                    char c = buf[i];
+                    i++;
+                    if (c == '?') {
+                        // the query is parsed as a byte range, then deleted
+                        AcceptByteRange(rb, buf+i, firstLineLen-i);
+                        i--;
+                        RewriteBuffer(rb, i, firstLineLen-i, "\r\n");
+                        StripQuery(rb->shortName, strlen(rb->shortName));
+                        break;
+                    }
+                }
 			}
+            break;
 		}
+        if (hostLine == NULL && failQuick == 0) {
+            fprintf(f, "-- Prevent CCN for %s:%s; using HTTP\n",
+                    rb->host, rb->shortName);
+        }
 	}
-	
-	if (hostLine != NULL) {
+    
+	if (failQuick) {
+        // make a failing reply
+        RequestBaseContinue(rb, NULL);
+        RequestBase reply = rb->backPath;
+        if (reply != NULL) {
+            if (f != NULL) {
+                fprintf(f, "-- Fail force for #%d, %s:%s\n",
+                        rb->index, rb->host, rb->shortName);
+                flushLog(f);
+            }
+            reply->forceFail++;
+            reply->parentVerb = h->httpVerb;
+            SetRequestState(reply, RB_NeedRead);
+            SetRequestState(rb, RB_Done);
+            return 0;
+        } else {
+            if (f != NULL) {
+                fprintf(f, "-- Fail quick for #%d, %s:%s\n",
+                        rb->index, rb->host, rb->shortName);
+                flushLog(f);
+            }
+            rb->httpInfo.forceClose = 1;
+            SetRequestState(rb, RB_Done);
+            return -1;
+        }
+    } else if (h->httpVerb == HTTP_OPTIONS
+               && rb->shortName != NULL
+               && strcmp(rb->shortName, "*") == 0) {
+        // fast OPTIONS reply
+        RequestBaseContinue(rb, NULL);
+        RequestBase reply = rb->backPath;
+        if (reply != NULL) {
+            if (f != NULL) {
+                fprintf(f, "-- Fast OPTIONS for #%d, %s:%s\n",
+                        rb->index, rb->host, rb->shortName);
+                flushLog(f);
+            }
+            reply->fastOptions++;
+            reply->parentVerb = h->httpVerb;
+            SetRequestState(reply, RB_NeedRead);
+            SetRequestState(rb, RB_Done);
+            return 0;
+        } else {
+            if (f != NULL) {
+                fprintf(f, "-- OPTIONS failed for #%d, %s:%s\n",
+                        rb->index, rb->host, rb->shortName);
+                flushLog(f);
+            }
+            rb->httpInfo.forceClose = 1;
+            SetRequestState(rb, RB_Done);
+            return -1;
+        }
+    } else if (hostLine != NULL) {
 		// for this host we use CCN
 		
 		// make up the name
@@ -2059,13 +2499,14 @@ RequestBaseStart(RequestBase rb) {
 			// failed to open, so report, then fall through
 			// and use HHTP
 			fprintf(f, "-- Could not use CCN for %s:%s; using HTTP\n",
-				   rb->host, rb->shortName);
+                    rb->host, rb->shortName);
 			flushLog(f);
 		} else {
 			fprintf(f, "-- Using CCN for %s:%s\n",
-				   rb->host, rb->shortName);
+                    rb->host, rb->shortName);
 			flushLog(f);
 			rb->fetchStream = fs;
+			rb->msgCount = 0;
 			
 			// dest socket is the src connection socket
 			int connFD = rb->seSrc->fd;
@@ -2076,25 +2517,21 @@ RequestBaseStart(RequestBase rb) {
 			// convert this request into a reply handler
 			SetMsgLen(rb, -1);
 			rb->origin = 0;
-			mb->stats.replies++;
+            rb->parentVerb = h->httpVerb;
 			mb->stats.repliesCCN++;
 			return 0;
 		}
 	}
 	
-	if (failQuick) {
-		fprintf(f, "-- Fail quick for #%d, %s:%s\n",
-			   rb->index, rb->host, rb->shortName);
-		flushLog(f);
-		rb->httpInfo.forceClose = 1;
-		SetRequestState(rb, RB_Done);
-		return -1;
-	}
-	
-	// for this host we use HTTP
+	// this is where we come to send the header, appropriately rewritten,
+    // to the designated host
+    if (f != NULL && h->headerLen > 0 && h->headerLen <= rb->bufferLen) {
+        PutRequestMark(rb, "Sending Request Header\n");
+        fwrite(rb->buffer, sizeof(char), h->headerLen, f);
+        flushLog(f);
+    }
 	
 	SetRequestState(rb, RB_Wait);
-	mb->stats.replies++;
 	return 0;
 	
 }
@@ -2112,11 +2549,158 @@ NoteDone(RequestBase rb) {
 		fprintf(f, ", %jd bytes", accum);
 		if (accum > 0 && dt > 0.0) {
 			fprintf(f, " in %4.3f secs (%4.3f MB/sec)",
-				   dt, accum*1.0e-6/dt);
+                    dt, accum*1.0e-6/dt);
 		}
 		fprintf(f, "\n");
 		flushLog(f);
 	}
+}
+
+// we have just read a buffer, but we have to adjust for byte ranges
+static int
+AdjustForRanges(RequestBase rb) {
+    FILE *f = rb->mb->debug;
+    HttpInfo h = &rb->httpInfo;
+    if (h->rangeList != NULL
+        && h->hasContentRange == 0
+        && rb->msgCount == 0) {
+        // first time through, need to rewrite the header
+
+        // rewrite header to use 206 code
+        string buf = (string) rb->buffer;
+        int pos = NextLine(buf, 0, rb->bufferLen);
+        string replace = "HTTP/1.1 206 Partial content\r\n";
+        if (RewriteBuffer(rb, 0, pos, replace) < 0) {
+            return retErr(rb->mb, "initial rewrite failed");
+        }
+        // we probably changed the header length
+        h->headerLen = h->headerLen + strlen(replace) - pos;
+        
+        int64_t rStart = h->rangeList->rangeStart;
+        int64_t rStop = h->rangeList->rangeStop;
+        int64_t rLen = rStop - rStart + 1;
+        int hLen = h->headerLen;
+        
+        while (pos < hLen) {
+            int npos = NextLine(buf, pos, hLen);
+            if (npos <= pos) break;
+            int cpos = pos;
+            while (cpos < npos) {
+                char c = buf[cpos];
+                if (c == ' ' || c == ':') break;
+                cpos++;
+            }
+            if (TokenPresent(buf+pos, cpos-pos, "Content-Length")) {
+                // note: this rewrite assumes that the requested range can be satisfied
+                // if not, we won't know until it is too late
+                char temp[256];
+                int tpos = 0;
+                while (cpos < npos) {
+                    char c = buf[cpos];
+                    if (c == ' ' || c == ':') cpos++;
+                    else break;
+                }
+                h->assertLength = EvalUint(buf, cpos);
+                if (h->assertLength < 1)
+                    return retErr(rb->mb, "invalid Content-Length");
+                if (rStop < 0) {
+                    // unknown length originally, so now fill it in
+                    rStop = h->assertLength-1;
+                    h->rangeList->rangeStop = rStop;
+                    rLen = rStop - rStart + 1;
+                }
+                tpos =+ snprintf(temp+tpos, sizeof(temp) - tpos,
+                                 "Content-Length: %jd\r\n",
+                                 (intmax_t) rLen
+                                 );
+                tpos =+ snprintf(temp+tpos, sizeof(temp) - tpos,
+                                 "Content-Range: bytes %ju-%ju/%ju\r\n",
+                                 (intmax_t) rStart,
+                                 (intmax_t) rStop,
+                                 (intmax_t) h->assertLength
+                                 );
+                if (RewriteBuffer(rb, pos, npos-pos, temp) < 0)
+                    return retErr(rb->mb, "range rewrite failed");
+                int deltaChars = strlen(temp) - (npos-pos);
+                hLen = hLen + deltaChars;
+                h->headerLen = hLen;
+                int64_t clamp = hLen+rLen;
+                if (rLen > 0 && clamp < rb->bufferLen) {
+                    // clamp the buffer length to reflect the range
+                    rb->bufferLen = clamp;
+                }
+                // now we know what the delivered number of bytes should be
+                rb->headerLenReply = hLen;
+                SetMsgLen(rb, clamp);
+                if (f != NULL) {
+                    fprintf(f, "-- in AdjustForRanges");
+                    fprintf(f, ", headerLen %d", hLen);
+                    fprintf(f, ", headerLenInit %d", rb->headerLenInit);
+                    fprintf(f, ", bufferLen %d", (int) rb->bufferLen);
+                    fprintf(f, ", clamp %jd,", (intmax_t) clamp);
+                    fprintf(f, ", rLen %jd\n", (intmax_t) rLen);
+                    fflush(f);
+                }
+                break;
+            }
+            pos = npos;    
+        }
+
+        int off = h->headerLen;
+        string ptr = buf+off;
+        
+        int rem = rb->bufferLen - off;
+        
+        if (rStart < rem) {
+            // the current buffer at least the start of the content
+            if (rStart > 0) {
+                // have to get rid of a few bytes
+                rem = rem - rStart;
+                memmove(ptr, ptr + rStart, rem);
+                rb->bufferLen = off + rem;
+            }
+            if (rLen <= rem) {
+                // done, as of this buffer
+                rb->bufferLen = off + rLen;
+                SetMsgLen(rb, rb->bufferLen);
+            }
+        } else {
+            // we have the header, but no bytes
+            // seek to the desired place and append what we can get
+            int64_t seekTo = rb->headerLenInit+rStart;
+            if (f != NULL) {
+                fprintf(f, "-- seek to %jd: rStart %jd, rStop %jd\n", 
+                        (intmax_t) seekTo,
+                        (intmax_t) rStart,
+                        (intmax_t) rStop);
+            }
+            ccn_fetch_seek(rb->fetchStream, seekTo);
+            rb->bufferLen = off;
+            rb->fetchOff = off;
+            return 0;
+        }
+        
+    } else {
+        // subsequent fetches just get delivered (possibly truncated at the end)
+        int64_t rStop = h->rangeList->rangeStop;
+        int len = rb->bufferLen;
+        if (rStop >= 0) {
+            int64_t nextAccum = rb->accum + len;
+            int64_t limAccum = rStop+1+h->headerLen;
+            if (nextAccum >= limAccum) {
+                // we have reached the range end inside of this buffer
+                int delta = nextAccum - limAccum;
+                len = len - delta;
+                rb->bufferLen = len;
+                SetMsgLen(rb, limAccum);
+                if (f != NULL) {
+                    fprintf(f, "-- in AdjustForRanges, delta %jd, bufferLen %d\n",
+                            (intmax_t) delta, (int) rb->bufferLen);
+                }
+            }
+        }
+    }
+    return 1;
 }
 
 static int
@@ -2154,16 +2738,39 @@ RequestBaseStep(RequestBase rb) {
 		case RB_NeedRead: {
 			SockEntry se = rb->seSrc;
 			intmax_t nb = -1;
-			if (rb->fetchStream != NULL) {
+            HttpInfo h = &rb->httpInfo;
+            string buf = (string) rb->buffer;
+            if (rb->msgCount == 0)
+                mb->stats.replies++;
+            if (rb->forceFail) {
+                // synthetic not found
+                WriteNotFoundReply(rb);
+                nb = rb->bufferLen;
+                if (f != NULL) {
+                    fprintf(f, "-- in RequestBaseStep, rb->forcefail\n%s", buf);
+                    flushLog(f);
+                }
+            } else if (rb->fastOptions) {
+                // reply for OPTIONS, no server probe
+                WriteOptionsReply(rb);
+                nb = rb->bufferLen;
+                if (f != NULL) {
+                    fprintf(f, "-- in RequestBaseStep, fast OPTIONS reply\n%s", buf);
+                    flushLog(f);
+                }
+            } else if (rb->fetchStream != NULL) {
 				// we get this buffer through CCN
-				nb = ccn_fetch_read(rb->fetchStream, rb->buffer, CCN_CHUNK_SIZE);
+				int off = rb->fetchOff;
+                string buf = (string) rb->buffer;
+                nb = ccn_fetch_read(rb->fetchStream, buf+off, CCN_CHUNK_SIZE);
 				if (nb < 0)
 					// nothing to do, no characters available
 					return 0;
-				rb->bufferLen = nb;
 				if (nb > 0) {
 					mb->stats.replyReadsCCN++;
 					mb->stats.replyBytesCCN = mb->stats.replyBytesCCN + nb;
+                    rb->bufferLen = nb + off;
+                    rb->fetchOff = 0;
 				}
 			} else {
 				// we get this buffer through HTTP
@@ -2179,7 +2786,7 @@ RequestBaseStep(RequestBase rb) {
 				}
 			}
 			double dt = DeltaTime(rb->recentTime, now);
-			
+            
 			if (nb <= 0) {
 				if (nb == 0) {
 					// no more from this socket
@@ -2198,20 +2805,27 @@ RequestBaseStep(RequestBase rb) {
 				PutRequestMark(rb, "read");
 				if (rb->fetchStream == NULL) {
 					fprintf(f, " %jd bytes on sock %d, dt %4.3f, %s\n",
-						   nb, se->fd, dt, rb->host);
+                            nb, se->fd, dt, rb->host);
 				} else {
 					intmax_t pos = ccn_fetch_position(rb->fetchStream) - nb;
 					intmax_t seg = pos / CCN_CHUNK_SIZE;
 					fprintf(f, " %jd bytes via CCN, seg %jd, dt %4.3f, %s\n",
-						   nb, seg, dt, rb->host);
+                            nb, seg, dt, rb->host);
 				}
 				flushLog(f);
 			}
-			if (rb->msgCount == 0 && rb->fetchStream == NULL) {
+            if (f != NULL) {
+                fprintf(f, "-- in RequestBaseStep, rb->msgCount %d, parentVerb %s\n",
+                        (int) rb->msgCount, VerbToString(rb->parentVerb));
+                flushLog(f);
+            }
+			if (rb->msgCount == 0 && rb->forceFail == 0) {
 				int ck = CheckHttpHeader(rb);
 				if (ck < 0) {
 					// bad header
 					SetRequestErr(rb, "Invalid header", 0);
+                    fwrite(rb->buffer, sizeof(char), rb->bufferLen, f);
+                    flushLog(f);
 					return -1;
 				}
 				if (ck == 0) {
@@ -2221,7 +2835,7 @@ RequestBaseStep(RequestBase rb) {
 						SetRequestErr(rb, "Header too long", 0);
 						return -1;
 					}
-					if (mb->debug != NULL) {
+					if (f != NULL) {
 						fprintf(f, "-- need additional header bytes\n");
 						flushLog(f);
 					}
@@ -2229,10 +2843,11 @@ RequestBaseStep(RequestBase rb) {
 				}
 			}
 			ChunkInfo info = &rb->chunkInfo;
+            
 			if (rb->msgCount == 0) {
 				// first time through, should get the info
 				// verb == HTTP_NONE marks a reply
-				ExtractHTTPInfo(rb, HTTP_NONE);
+                ExtractHTTPInfo(rb, HTTP_NONE);
 			} else if (info->state >= Chunk_Skip) {
 				AdvanceChunks(mb, rb->buffer, 0, nb, info);
 				FILE *f = mb->debug;
@@ -2241,7 +2856,7 @@ RequestBaseStep(RequestBase rb) {
 						SetMsgLen(rb, rb->accum + nb);
 						if (f != NULL) {
 							fprintf(f, "-- chunking done, msgLen %jd\n",
-								   (intmax_t) rb->msgLen);
+                                    (intmax_t) rb->msgLen);
 							flushLog(f);
 						}
 						break;
@@ -2250,7 +2865,7 @@ RequestBaseStep(RequestBase rb) {
 						SetMsgLen(rb, rb->accum + nb);
 						if (f != NULL) {
 							fprintf(f, "-- chunking error, chunkRem %u, msgLen %jd\n",
-								   info->chunkRem, (intmax_t) rb->msgLen);
+                                    info->chunkRem, (intmax_t) rb->msgLen);
 							flushLog(f);
 						}
 						rb->httpInfo.forceClose = 1;
@@ -2259,13 +2874,71 @@ RequestBaseStep(RequestBase rb) {
 					default: {
 						if (f != NULL) {
 							fprintf(f, "-- chunking in progress, chunkRem %u\n",
-								   info->chunkRem);
+                                    info->chunkRem);
 							flushLog(f);
 						}
 					}
 				}
 			}
-			if (rb->msgLen == rb->accum + nb
+            if (rb->parentVerb == HTTP_GET
+                && rb->fetchStream != NULL && h->rangeList != NULL) {
+                // we have a range request
+                int adj = AdjustForRanges(rb);
+                if (adj == 0) return 0;
+            }
+            nb = rb->bufferLen;
+            int hLen = h->headerLen;
+            if (rb->headerLenReply == 0)
+                rb->headerLenReply = hLen;
+            switch (rb->parentVerb) {
+                case HTTP_HEAD: 
+                    // reply to HEAD request, so truncate without contents
+                    rb->bufferLen = hLen;
+                    if (f != NULL) {
+                        fprintf(f, "-- HEAD truncation %u\n", hLen);
+                        flushLog(f);
+                    }
+                    SetMsgLen(rb, hLen);
+                    break;
+                case HTTP_OPTIONS:
+                    // reply to OPTIONS request, completely rewrite the header
+                    WriteOptionsReply(rb);
+                    hLen = rb->bufferLen;
+                    nb = hLen;
+                    SetMsgLen(rb, hLen);
+                    break;
+                case HTTP_GET:
+                    // reply to GET request
+                    if (rb->msgCount == 0 && hLen > 0) {
+                        if (f != NULL) {
+                            string buf = (string) rb->buffer;
+                            int i = 0;
+                            int run = nb - hLen;
+                            if (run > 16) run = 16;
+                            PutRequestMark(rb, "Sending Reply Header\n");
+                            fwrite(buf, sizeof(char), hLen, f);
+                            if (run > 0) {
+                                while (i < run) {
+                                    char c = buf[hLen+i];
+                                    if ((i & 15) == 0) {
+                                        if (i > 0) fprintf(f, "\n");
+                                        fprintf(f, "-- %4d:", i);
+                                    }    
+                                    i++;
+                                    fprintf(f, " %02x", c & 255);
+                                }
+                                fprintf(f, "\n");
+                            }
+                            flushLog(f);
+                        }
+                    }
+                    break;
+                default:  
+                    // should not happen
+                    break;
+            }
+            
+			if (rb->msgLen <= rb->accum + nb
 				&& rb->origin == 0
 				&& rb->seSrc != NULL
 				&& rb->httpInfo.forceClose == 0
@@ -2353,12 +3026,20 @@ NewMainBase(FILE *f, int maxBusy, struct ccn_fetch * fetchBase) {
 	mb->maxBusy = maxBusy;
 	mb->fetchBase = fetchBase;
 	mb->ccnFD = ccn_get_connection_fd(ccn_fetch_get_ccn(fetchBase));
-	
+	mb->usePort = 8080;
+	mb->ccn_flags = (ccn_fetch_flags_NoteAll);
 	mb->debug = f;
-	FILE *pf = fopen("./HttpProxy.list", "r");
+    mb->custom = "./HttpProxy.list";
+    return mb;
+}
+
+static int
+StartMainBase(MainBase mb) {
+	FILE *pf = fopen(mb->custom, "r");
 	if (pf == NULL) {
-		fprintf(f, "** No HttpProxy.list file found!\n");
-		flushLog(f);
+		fprintf(mb->debug, "** No HttpProxy.list file found!\n");
+		flushLog(mb->debug);
+        return -1;
 	} else {
 		char buf[1024+4];
 		int maxLen = 1024;
@@ -2382,19 +3063,27 @@ NewMainBase(FILE *f, int maxBusy, struct ccn_fetch * fetchBase) {
 					int tokLen = pos-start;
 					if (tokLen > 1) {
 						if (SwitchPresent(tok, tokLen, "-noCookie")) {
-							h->flags = h->flags | HostLine_NoCookie;
+							h->flags |= HostLine_NoCookie;
 						} else if (SwitchPresent(tok, tokLen, "-noReferer")) {
-							h->flags = h->flags | HostLine_NoReferer;
+							h->flags |= HostLine_NoReferer;
 						} else if (SwitchPresent(tok, tokLen, "-needDot")) {
-							h->flags = h->flags | HostLine_NeedDot;
+							h->flags |= HostLine_NeedDot;
 						} else if (SwitchPresent(tok, tokLen, "-noQuery")) {
-							h->flags = h->flags | HostLine_NoQuery;
+							h->flags |= HostLine_NoQuery;
 						} else if (SwitchPresent(tok, tokLen, "-single")) {
-							h->flags = h->flags | HostLine_SingleConn;
+							h->flags |= HostLine_SingleConn;
 						} else if (SwitchPresent(tok, tokLen, "-proxy")) {
-							h->flags = h->flags | HostLine_Proxy;
+							h->flags |= HostLine_Proxy;
+						} else if (SwitchPresent(tok, tokLen, "-translate")) {
+							h->flags |= HostLine_Translate;
+                            start = SkipOverBlank(line, pos, lineLen);
+                            pos = SkipToBlank(line, start, lineLen);
+                            if (start >= pos) break;
+                            h->translate = newStringPrefix(line+start, pos-start);
 						} else if (SwitchPresent(tok, tokLen, "-fail")) {
-							h->flags = h->flags | HostLine_FailQuick;
+							h->flags |= HostLine_FailQuick;
+						} else if (SwitchPresent(tok, tokLen, "-queryHack")) {
+							h->flags |= HostLine_QueryHack;
 						}
 					}
 				}
@@ -2410,7 +3099,7 @@ NewMainBase(FILE *f, int maxBusy, struct ccn_fetch * fetchBase) {
 		}
 		fclose(pf);
 	}
-	return mb;
+	return 0;
 }
 
 static void
@@ -2440,7 +3129,7 @@ DestroyMainBase(MainBase mb) {
 			free(h);
 			h = next;
 		}
-			
+        
 		free(mb);
 	}
 }
@@ -2562,14 +3251,14 @@ ShowStats(MainBase mb) {
 	PutTimeMark(mb);
 	fprintf(f, "stats, socks %d", mb->sockBase->nSocks);
 	fprintf(f, ", req %jd, rep %jd, reads %jd, bytes %jd",
-		   (intmax_t) mb->stats.requests,
-		   (intmax_t) mb->stats.replies,
-		   (intmax_t) mb->stats.replyReads,
-		   (intmax_t) mb->stats.replyBytes);
+            (intmax_t) mb->stats.requests,
+            (intmax_t) mb->stats.replies,
+            (intmax_t) mb->stats.replyReads,
+            (intmax_t) mb->stats.replyBytes);
 	fprintf(f, ", repCCN %jd, readsCCN %jd, bytesCCN %jd",
-		   (intmax_t) mb->stats.repliesCCN,
-		   (intmax_t) mb->stats.replyReadsCCN,
-		   (intmax_t) mb->stats.replyBytesCCN);
+            (intmax_t) mb->stats.repliesCCN,
+            (intmax_t) mb->stats.replyReadsCCN,
+            (intmax_t) mb->stats.replyBytesCCN);
 	fprintf(f, "\n");
 	flushLog(f);
 }
@@ -2612,10 +3301,73 @@ DispatchLoop(MainBase mb) {
 	return res;
 }
 
+static int
+ExecMainBase(MainBase mb) {
+    int res = 0;
+    signal(SIGPIPE, SIG_IGN);
+    
+    struct sockaddr_in sa;
+    struct sockaddr *sap = (struct sockaddr *) &sa;
+    int sockFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    
+    if (-1 == sockFD)
+        return retFail(mb, "can not create socket");
+    
+    sa.sin_family = PF_INET;
+    sa.sin_port = htons(mb->usePort);
+    sa.sin_addr.s_addr = INADDR_ANY;
+    
+    int it = 0;
+    for (;;) {
+        int bindRes = bind(sockFD, sap, sizeof(struct sockaddr_in));
+        if (bindRes < 0) {
+            int e = errno;
+            if (e == EADDRINUSE && it <= 120) {
+                // may be useful to wait for timeout of the old bind
+                // we probably did not close it properly due to an error
+                if (it == 0) fprintf(mb->debug, "Waiting for proxy socket...\n");
+                flushLog(mb->debug);
+                MilliSleep(1000);
+            } else {
+                close(sockFD);
+                return retFail(mb, "error bind failed");
+            }
+        } else break;
+        it++;
+    }
+    if (-1 == listen(sockFD, 10)) {
+        close(sockFD);
+        return retFail(mb, "error listen failed");
+    }
+    
+    double bt = DeltaTime(0, GetCurrentTime());
+    fprintf(mb->debug, "Socket listening, fd %d, baseTime %7.6f\n", sockFD, bt);
+    flushLog(mb->debug);
+    
+    res = StartMainBase(mb);
+    if (res < 0) return res;
+    if (mb->fetchBase == NULL)
+        // should not happen unless ccnd is not answering
+        return retErr(mb, "Init failed!  No ccnd?");
+    SetSockFD(mb, sockFD);
+    SetSockEntryAddr(mb->client, sap);
+    mb->ccnRoot = "TestCCN";
+    mb->removeProxy = 0;
+    mb->removeHost = 1;
+    mb->defaultKeepAlive = 13;
+    mb->timeoutSecs = 30;
+    mb->maxConn = 2; // RFC 2616 (pg. 2)
+    mb->resolveFlags = CCN_V_HIGHEST;
+    
+    if (mb->debug != NULL && mb->ccn_flags != ccn_fetch_flags_None)
+        ccn_fetch_set_debug(mb->fetchBase, mb->debug, mb->ccn_flags);
+    
+    return DispatchLoop(mb);
+}
+
 int
 main(int argc, string *argv) {
 	
-	ccn_fetch_flags ccn_flags = (ccn_fetch_flags_NoteAll);
 	FILE *f = stdout;
 	
 	struct ccn_fetch * fetchBase = ccn_fetch_new(NULL);
@@ -2623,9 +3375,9 @@ main(int argc, string *argv) {
 		fprintf(stdout, "** Can't connect to ccnd\n");
 		return -1;
 	}
-
+    
 	MainBase mb = NewMainBase(f, 16, fetchBase);
-	int usePort = 8080;
+    int res = 0;
 	
 	int i = 1;
 	for (; i <= argc; i++) {
@@ -2646,7 +3398,7 @@ main(int argc, string *argv) {
 				mb->removeHost = 0;
 			} else if (strcasecmp(arg, "-noDebug") == 0) {
 				mb->debug = NULL;
-				ccn_flags = ccn_fetch_flags_None;
+				mb->ccn_flags = ccn_fetch_flags_None;
 			} else if (strcasecmp(arg, "-absTime") == 0) {
 				mb->startTime = 0;
 			} else if (strcasecmp(arg, "-resolveHigh") == 0) {
@@ -2662,7 +3414,8 @@ main(int argc, string *argv) {
 				if (i <= argc) n = atoi(argv[i]);
 				if (n < 1 || n > 120) {
 					fprintf(stdout, "** bad keepAlive: %d\n", n);
-					return -1;
+                    res = -1;
+                    break;
 				}
 				mb->defaultKeepAlive = n;
 			} else if (strcasecmp(arg, "-timeoutSecs") == 0) {
@@ -2671,7 +3424,8 @@ main(int argc, string *argv) {
 				if (i <= argc) n = atoi(argv[i]);
 				if (n < 1 || n > 120) {
 					fprintf(stdout, "** bad timeoutSecs: %d\n", n);
-					return -1;
+                    res = -1;
+                    break;
 				}
 				mb->timeoutSecs = n;
 			} else if (strcasecmp(arg, "-usePort") == 0) {
@@ -2680,84 +3434,33 @@ main(int argc, string *argv) {
 				if (i <= argc) n = atoi(argv[i]);
 				if (n < 1 || n >= 64*1024) {
 					fprintf(stdout, "** bad port: %d\n", n);
-					return -1;
+                    res = -1;
+                    break;
 				}
-				usePort = n;
+				mb->usePort = n;
+			} else if (strcasecmp(arg, "-custom") == 0) {
+				i++;
+				if (i <= argc)
+                    mb ->custom = argv[i];
 			} else if (strcasecmp(arg, "-maxConn") == 0) {
 				i++;
 				int n = 0;
 				if (i <= argc) n = atoi(argv[i]);
 				if (n < 1 || n > 16) {
 					fprintf(stdout, "** bad maxConn: %d\n", n);
-					return -1;
+                    res = -1;
+                    break;
 				}
 				mb->maxConn = n;
 			} else {
 				fprintf(stdout, "** bad arg: %s\n", arg);
-				return -1;
+                res = -1;
+                break;
 			}
 		}
     }
-
-	signal(SIGPIPE, SIG_IGN);
-	
-	struct sockaddr_in sa;
-	struct sockaddr *sap = (struct sockaddr *) &sa;
-    int sockFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	
-    if (-1 == sockFD)
-		return retFail(NULL, "can not create socket");
-	
-    sa.sin_family = PF_INET;
-    sa.sin_port = htons(usePort);
-    sa.sin_addr.s_addr = INADDR_ANY;
-	
-	int it = 0;
-	for (;;) {
-		int bindRes = bind(sockFD, sap, sizeof(struct sockaddr_in));
-		if (bindRes < 0) {
-			int e = errno;
-			if (e == EADDRINUSE && it <= 120) {
-				// may be useful to wait for timeout of the old bind
-				// we probably did not close it properly due to an error
-				if (it == 0) fprintf(f, "Waiting for proxy socket...\n");
-				flushLog(f);
-				MilliSleep(1000);
-			} else {
-				close(sockFD);
-				return retFail(NULL, "error bind failed");
-			}
-		} else break;
-		it++;
-	}
-	
-    if (-1 == listen(sockFD, 10)) {
-		close(sockFD);
-		return retFail(NULL, "error listen failed");
-    }
-	double bt = DeltaTime(0, GetCurrentTime());
-	fprintf(f, "Socket listening, fd %d, baseTime %7.6f\n", sockFD, bt);
-	flushLog(f);
-	
-	
-	if (mb->fetchBase == NULL) {
-		// should not happen unless ccnd is not answering
-		return retErr(mb, "Init failed!  No ccnd?");
-	}
-	SetSockFD(mb, sockFD);
-	SetSockEntryAddr(mb->client, sap);
-	mb->ccnRoot = "TestCCN";
-	mb->removeProxy = 0;
-	mb->removeHost = 1;
-	mb->defaultKeepAlive = 13;
-	mb->timeoutSecs = 30;
-	mb->maxConn = 2; // RFC 2616 (pg. 2)
-	mb->resolveFlags = CCN_V_HIGHEST;
-	
-	if (mb->debug != NULL && ccn_flags != ccn_fetch_flags_None)
-		ccn_fetch_set_debug(mb->fetchBase, mb->debug, ccn_flags);
-	
-	int res = DispatchLoop(mb);
+    
+    res = ExecMainBase(mb);
 	
     DestroyMainBase(mb);
 	return res;
