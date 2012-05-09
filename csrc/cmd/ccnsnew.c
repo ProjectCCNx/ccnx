@@ -16,7 +16,7 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
- 
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -41,25 +41,25 @@ static int setscope = 0;
 int
 main(int argc, char **argv)
 {
-	struct ccn *h;
-	int fflags;
-	int i;
-	int opt;
-	int res;
-	const char *arg = NULL;
-	const char *portstr = NULL;
-	struct ccn_charbuf *regprefix = NULL;
-	struct ccn_closure in_interest = {0};
+    struct ccn *h;
+    int fflags;
+    int i;
+    int opt;
+    int res;
+    const char *arg = NULL;
+    const char *portstr = NULL;
+    struct ccn_charbuf *regprefix = NULL;
+    struct ccn_closure in_interest = {0};
     
-	setscope = 0;
+    setscope = 0;
     progname = argv[0];
-	while ((opt = getopt(argc, argv, "0123shp:")) != -1) {
-		switch (opt) {
-			case 'p':
-				fprintf(stderr, "-p port: not yet implemented\n");
-				portstr = optarg;
-				break;
-			case '0':
+    while ((opt = getopt(argc, argv, "0123shp:")) != -1) {
+        switch (opt) {
+            case 'p':
+                fprintf(stderr, "-p port: not yet implemented\n");
+                portstr = optarg;
+                break;
+            case '0':
             case '1':
             case '2':
             case '3':
@@ -69,46 +69,46 @@ main(int argc, char **argv)
                 setscope = -1;
                 break;
             case 'h':
-			default:
-				usage();
-		}
-	}
-	if (argv[optind] == NULL)
-		usage();
+            default:
+                usage();
+        }
+    }
+    if (argv[optind] == NULL)
+        usage();
     
-	h = ccn_create();
-	res = ccn_connect(h, NULL);
-	if (res < 0) {
-		ccn_perror(h, "ccn_connect");
-		return(1);
-	}
-	regprefix = ccn_charbuf_create();
-	in_interest.p = &incoming_interest;
-	for (i = optind; (arg = argv[i]) != NULL; i++) {
-		ccn_charbuf_reset(regprefix);
-		res = ccn_name_from_uri(regprefix, arg);
-		if (res < 0) {
-			fprintf(stderr, "%s: not a valid ccnx URI\n", arg);
-			usage();
-		}
-		fflags = CCN_FORW_TAP | CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE;
-		res = ccn_set_interest_filter_with_flags(h, regprefix, &in_interest, fflags);
-		if (res < 0) {
-			ccn_perror(h, "ccn_set_interest_filter_with_flags");
-			exit(1);
-		}
-	}
-	ccn_run(h, -1);
-	ccn_charbuf_destroy(&regprefix);
-	ccn_destroy(&h);
-	return(0);
+    h = ccn_create();
+    res = ccn_connect(h, NULL);
+    if (res < 0) {
+        ccn_perror(h, "ccn_connect");
+        return(1);
+    }
+    regprefix = ccn_charbuf_create();
+    in_interest.p = &incoming_interest;
+    for (i = optind; (arg = argv[i]) != NULL; i++) {
+        ccn_charbuf_reset(regprefix);
+        res = ccn_name_from_uri(regprefix, arg);
+        if (res < 0) {
+            fprintf(stderr, "%s: not a valid ccnx URI\n", arg);
+            usage();
+        }
+        fflags = CCN_FORW_TAP | CCN_FORW_CHILD_INHERIT | CCN_FORW_ACTIVE;
+        res = ccn_set_interest_filter_with_flags(h, regprefix, &in_interest, fflags);
+        if (res < 0) {
+            ccn_perror(h, "ccn_set_interest_filter_with_flags");
+            exit(1);
+        }
+    }
+    ccn_run(h, -1);
+    ccn_charbuf_destroy(&regprefix);
+    ccn_destroy(&h);
+    return(0);
 }
 
 struct mydata {
-	struct ccn_closure self;
-	int timeouts;
-	const char *debug;
-	char debugspace[1];
+    struct ccn_closure self;
+    int timeouts;
+    const char *debug;
+    char debugspace[1];
 };
 
 /** Content handler */
@@ -117,14 +117,14 @@ incoming_content(struct ccn_closure *selfp,
                  enum ccn_upcall_kind kind,
                  struct ccn_upcall_info *info)
 {
-	struct mydata *md;
-	size_t size;
-	ssize_t resl;
-	
-	md = selfp->data;
-	if (selfp != &md->self)
-		return(CCN_UPCALL_RESULT_ERR);
-	switch (kind) {
+    struct mydata *md;
+    size_t size;
+    ssize_t resl;
+    
+    md = selfp->data;
+    if (selfp != &md->self)
+        return(CCN_UPCALL_RESULT_ERR);
+    switch (kind) {
         case CCN_UPCALL_FINAL:
             selfp->data = NULL;
             free(md);
@@ -141,8 +141,8 @@ incoming_content(struct ccn_closure *selfp,
             break;
         default:
             return(CCN_UPCALL_RESULT_ERR);
-	}
-	return(CCN_UPCALL_RESULT_OK);
+    }
+    return(CCN_UPCALL_RESULT_OK);
 }
 
 /**
@@ -159,26 +159,26 @@ incoming_content(struct ccn_closure *selfp,
  */
 static int
 me_too(struct ccn *h,
-           struct ccn_parsed_interest *pi,
-           const unsigned char *imsg,
-           int scope)
+       struct ccn_parsed_interest *pi,
+       const unsigned char *imsg,
+       int scope)
 {
-	struct ccn_charbuf *templ;
-	struct ccn_charbuf *name;
-	struct mydata *md;
-	const unsigned char *p;
-	size_t s;
+    struct ccn_charbuf *templ;
+    struct ccn_charbuf *name;
+    struct mydata *md;
+    const unsigned char *p;
+    size_t s;
     size_t t;
-	int res;
+    int res;
     
-	templ = ccn_charbuf_create();
-	name = ccn_charbuf_create();
-	p = &(imsg[pi->offset[CCN_PI_B_Name]]);
-	s = pi->offset[CCN_PI_E_Name] - pi->offset[CCN_PI_B_Name];
-	ccn_charbuf_append(name, p, s);
-	p = imsg;
-	s = pi->offset[CCN_PI_B_Scope];
-	ccn_charbuf_append(templ, p, s);
+    templ = ccn_charbuf_create();
+    name = ccn_charbuf_create();
+    p = &(imsg[pi->offset[CCN_PI_B_Name]]);
+    s = pi->offset[CCN_PI_E_Name] - pi->offset[CCN_PI_B_Name];
+    ccn_charbuf_append(name, p, s);
+    p = imsg;
+    s = pi->offset[CCN_PI_B_Scope];
+    ccn_charbuf_append(templ, p, s);
     if (scope >= 0) {
         if (scope < 3)
             ccnb_tagged_putf(templ, CCN_DTAG_Scope, "%d", scope);
@@ -186,17 +186,17 @@ me_too(struct ccn *h,
     }
     t = pi->offset[CCN_PI_B_Nonce];
     ccn_charbuf_append(templ, p + s, t - s);
-	ccn_charbuf_append_closer(templ);
-	md = calloc(1, sizeof(*md));
-	if (md == NULL)
+    ccn_charbuf_append_closer(templ);
+    md = calloc(1, sizeof(*md));
+    if (md == NULL)
         res = -1;
     else {
         md->self.p = &incoming_content;
         md->self.data = md;
         res = ccn_express_interest(h, name, &md->self, templ);
     }
-	ccn_charbuf_destroy(&name);
-	ccn_charbuf_destroy(&templ);
+    ccn_charbuf_destroy(&name);
+    ccn_charbuf_destroy(&templ);
     return(res);
 }
 
