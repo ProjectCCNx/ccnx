@@ -1,3 +1,49 @@
+Changes between 0.5.1 and 0.5.2:
+--------------------------------
+This highlights some important changes since the most recent numbered release.
+Release 0.5.2 is the first minor maintenance release.
+Refer to http://www.ccnx.org/redmine/ for more details.
+
+  * Issues Resolved:
+	* Bug 100737 ccnr can fail to answer enumeration requests when interests are reordered
+	* Bug 100724 possible memory leaks of crypto allocated memory in merkle hash tree
+	  signature verification
+	* Bug 100708 SyncNodeIncRC implementation is incorrect
+	* Bug 100664 Remove ccnd/android_msg.c
+	* Bug 100046 OpenSolaris build fails when cc is actually gcc
+	* Feature 100707 Provide interface for applications to set up Sync configuration slices
+	  and receive notification of (newly) sync'ed ContentObjects
+	* Bug 100676 Provide interface for applications to set up Sync configuration slices and
+	  receive notification of (newly) sync'ed ContentObjects
+	* Bug 100702 Provide interface for applications to set up Sync configuration slices and
+	  receive notification of (newly) sync'ed ContentObjects
+	* Bug 100699 Provide interface for applications to set up Sync configuration slices and
+	  receive notification of (newly) sync'ed ContentObjects
+	* Support 100695 Improve comments in ccnd
+	* Feature 100576 Topic branch for csrc
+	* Feature 100669 Add parameter to ccnpoke command for specifying the length of the prefix
+	  to be registered
+	* Bug 100670 SyncTest.localStore does not set scope
+	* Bug 100651 autoreg does not work for link adaptor faces
+	* Bug 100655 RootAdvise exclusion lists can become too long
+	* Feature 100666 ccnd should provide a way to specify default staleness
+	* Bug 100679 Bring sync.dtd and sync.xsd into alignment with implementation
+	* Bug 100691 Inconsistent formatting and use of asciidoc markup
+	* Bug 100657 VLC plugin needs updates
+	* Bug 100726 Still some occasional deadlocks in VLC plugin
+	* Bug 100723 VLC plugin needs prefetcher
+	* Bug 100729 VLC CCN plugin should provide access to prefech offset via VLC option
+	* Bug 100671 netmanager threads can die mysteriously
+	* Bug 100686 ccnlink parses its arguments incorrectly
+	* Bug 100677 Several utilities do an incorrect close, cause a warning
+	* Bug 100712 java repo queue mismatch causes heap space problems
+	* Bug 100688 Man page for ccntestloop
+	* Bug 100719 User requested flush should actually flush out network
+	* Bug 100708 SyncNodeIncRC implementation is incorrect
+	* Bug 100724 possible memory leaks of crypto allocated memory in merkle hash tree signature
+	  verification
+	* Bug 100737 ccnr can fail to answer enumeration requests when interests are reordered
+
 Changes between 0.5.0 and 0.5.1:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
