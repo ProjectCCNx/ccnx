@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.ccnx.ccn.CCNSyncHandler;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ConfigSlice;
@@ -28,13 +29,54 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	
 	
 	int runInterval = 2000;
-	private static boolean isRunning = false;
+	private static Boolean isRunning = false;
 	
 	private static HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> callbacks = new HashMap<ConfigSlice, ArrayList<CCNSyncHandler>>();
 	
 	private static FileChannel fileChannel;
 	
-	public FileBasedSyncMonitor(){
+	private static String filename;
+
+	public FileBasedSyncMonitor() throws ConfigurationException{
+
+		synchronized (isRunning) {
+
+			if (!isRunning) {
+				//based on the env variable for running ccnr
+				filename = System.getenv("CCNR_DIRECTORY");
+				if (filename == null) {
+					Log.severe("Please set CCNR_DIRECTORY environment variable before running!");
+					throw new ConfigurationException("Please set CCNR_DIRECTORY environment variable before running!");
+				}
+
+				String configError = "Please install the CCNx installation or set your path to use the ccnnamelist command";
+				try {
+					System.out.println("PATH: "+System.getenv("PATH"));
+					ProcessBuilder pbCheck = new ProcessBuilder();
+					pbCheck.command("/bin/sh", "-c", "command -v ccnnamelist");
+					int exitStatus = pbCheck.start().waitFor();
+					System.out.println("the exitValue = "+exitStatus);
+					if (exitStatus == 0) {
+						//the command is found!
+						Log.fine(Log.FAC_REPO, "ccnnamelist command was found in the path!");
+						System.out.println("ccnnamelist command was found in the path!");
+					} else {
+						System.out.println(configError);
+						Log.severe(configError);
+						throw new ConfigurationException(configError);
+					}
+				} catch (IOException e2) {
+					Log.severe("{0} Exception while checking for correct setup: {1}", configError, e2.getMessage());
+					throw new ConfigurationException(configError);
+				} catch (InterruptedException e) {
+					Log.severe("{0} Exception while checking for correct setup: {1}", configError, e.getMessage());
+					throw new ConfigurationException(configError);
+				}
+			} else {
+				System.out.println("no need to check config!  SyncMonitor is already running!");
+			}
+		}
+		
 	}
 
 	/**
@@ -43,35 +85,6 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	 * First check if there are even differences in the timestamps
 	 */
 	public void run() {
-		
-		
-		//based on the env variable for running ccnr
-		String filename = System.getenv("CCNR_DIRECTORY");
-		if (filename == null) {
-			Log.severe(Log.FAC_REPO, "Please set CCNR_DIRECTORY environment variable before running!");
-			System.exit(1);
-		}
-		
-		//now make sure that the path is set correctly to run the ccnnamelist command
-		try {
-			System.out.println(System.getenv("PATH"));
-			Process p = new ProcessBuilder("command", "-v", "ccnnamelist").start();
-			int exitStatus = p.waitFor();
-			System.out.println("the exitValue = "+exitStatus);
-			if (exitStatus == 0) {
-				//the command is found!
-				Log.fine(Log.FAC_REPO, "ccnnamelist command was found in the path!");
-			} else {
-				Log.severe(Log.FAC_REPO, "Please install the CCNx installation or set your path to use the ccnnamelist command");
-				System.exit(1);
-			}
-		} catch (IOException e2) {
-			Log.severe(Log.FAC_REPO, "Please install the CCNx installation or set your path to use the ccnnamelist command.  Exception while checking for correct setup: {0}", e2.getMessage());
-			System.exit(1);
-		} catch (InterruptedException e) {
-			Log.severe(Log.FAC_REPO, "Please install the CCNx installation or set your path to use the ccnnamelist command.  Exception while checking for correct setup: {0}", e.getMessage());
-			System.exit(1);
-		}
 		
 		File repoDir = new File(filename);
 		System.out.println("repoDir: "+repoDir);
@@ -93,16 +106,16 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 				fileChannel = new RandomAccessFile(filename+"/sync.lock", "rw").getChannel();
 				fileLock = fileChannel.lock();
 			} catch (FileNotFoundException e1) {
-				Log.severe(Log.FAC_REPO, "CCNR_DIRECTORY setting = {0}: file not found.  Exiting.", filename);
+				Log.severe("CCNR_DIRECTORY setting = {0}: file not found.  Exiting.", filename);
 				System.exit(1);
 			} catch (IOException e) {
 				try {
 					fileLock.release();
 				} catch (IOException e1) {
 					//already in an error state...
-					Log.warning(Log.FAC_REPO, "Error releasing lock for Sync API file processing: {0}", e1.getMessage());
+					Log.warning("Error releasing lock for Sync API file processing: {0}", e1.getMessage());
 				}
-				Log.severe(Log.FAC_REPO, "Exception when trying to acquire lock to process new names for Sync API: {0}.  Exiting.", e.getMessage());
+				Log.severe("Exception when trying to acquire lock to process new names for Sync API: {0}.  Exiting.", e.getMessage());
 				System.exit(1);
 			}
 
@@ -134,7 +147,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 							}
 							lastReadTime = lastModified;
 						} catch (IOException e) {
-							Log.warning(Log.FAC_REPO, "Error while executing bash commands to find diffs in repo files: {0}", e.getMessage());
+							Log.warning("Error while executing bash commands to find diffs in repo files: {0}", e.getMessage());
 						}
 						lastReadTime = lastModified;
 					} else {
@@ -150,30 +163,33 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 				lastModified = repoFileTime;
 				//there is something new in the backend file...  need to process
 				Process pr;
-				try {
-					ProcessBuilder pb = new ProcessBuilder();
-					pb.directory(repoDir);
-					pb.redirectErrorStream(true);
+				try {					
 					commandCreateDiffFinal = commandCreateDiff.replace("diffNames", "diffNames."+repoFileTime);
 					if (lastReadTime!=-1)
 						commandCreateDiffFinal = commandCreateDiffFinal.concat(" ; rm diffNames."+lastReadTime);
 					System.out.println("executing command: "+commandCreateDiffFinal);
+					
+				    ProcessBuilder pb = new ProcessBuilder();
+					pb.directory(repoDir);
+					pb.redirectErrorStream(true);
 					pb.command("/bin/sh", "-c", commandCreateDiffFinal);
 					pr = pb.start();
 					pr.waitFor();
+					
+					System.out.println("done processing the backend, now reading in diffs: "+filename+"/diffNames."+repoFileTime);
 					BufferedReader buf = new BufferedReader(new FileReader(filename+"/diffNames."+repoFileTime));
 					String line = buf.readLine();
 					while ( line != null ) {
-						//System.out.println("reading in line!: "+line);
+						System.out.println("reading in line!: "+line);
 						processNewName(line);
 						
 						line = buf.readLine();
 					}
 					lastReadTime = lastModified;
 				} catch (IOException e) {
-					Log.warning(Log.FAC_REPO, "Error while executing bash commands to find diffs in repo files: {0}", e.getMessage());
+					Log.warning("Error while executing bash commands to find diffs in repo files: {0}", e.getMessage());
 				} catch (InterruptedException e) {
-					Log.warning(Log.FAC_REPO, "Error while waiting for bash commands to find diffs in repo files: {0}", e.getMessage());
+					Log.warning("Error while waiting for bash commands to find diffs in repo files: {0}", e.getMessage());
 				} 
 			} else {
 				//there is nothing new, might as well sleep
@@ -183,15 +199,19 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 			try {
 				fileLock.release();
 			} catch (IOException e) {
-				Log.severe(Log.FAC_REPO, "Exception when trying to release lock to process new names for Sync API: {0}.  Exiting.", e.getMessage());
+				Log.severe("Exception when trying to release lock to process new names for Sync API: {0}.  Exiting.", e.getMessage());
 				System.exit(1);
 			}
 			
 			try {
 				Thread.sleep(runInterval);
 			} catch (InterruptedException e) {
-				Log.warning(Log.FAC_REPO, "FileBasedSyncMonitor:  error while sleeping... {0}", e.getMessage());
+				Log.warning("FileBasedSyncMonitor:  error while sleeping... {0}", e.getMessage());
 			}			
+		}
+		synchronized(isRunning) {
+			System.out.println("isRunning was false, time to shut down");
+			isRunning = false;
 		}
 	}
 	
@@ -214,14 +234,16 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 					}
 				}
 			} catch (MalformedContentNameStringException e) {
-				Log.warning(Log.FAC_REPO, "Error while processing new names from executed script: {0} {1}", line, e.getMessage());
+				Log.warning("Error while processing new names from executed script: {0} {1}", line, e.getMessage());
 			}
 		}
 	}
 	
 	private boolean checkShutdown() {
 		//System.out.println("checking shutdown: "+ (!isRunning));
-		return !isRunning;
+		synchronized(callbacks) {
+			return !isRunning;
+		}
 	}
 	
 	private void processCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {

@@ -4,9 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 
-import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.CCNSyncHandler;
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ConfigSlice;
 import org.ccnx.ccn.protocol.ContentName;
@@ -56,6 +56,8 @@ public class ccnsync implements Usage, CCNSyncHandler{
 			System.out.println("created slice! "+slice);
 		} catch (IOException e) {
 			Log.warning(Log.FAC_REPO, "failed to start sync for prefix {0}: {1}", prefix, e.getMessage());
+		} catch (ConfigurationException e){
+			Log.info(Log.FAC_TEST, "failed to start sync for prefix {0}: {1}", prefix, e.getMessage());
 		}
 		
 		while (true) {

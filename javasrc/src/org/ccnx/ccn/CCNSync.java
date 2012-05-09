@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import org.ccnx.ccn.config.ConfigurationException;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.impl.sync.FileBasedSyncMonitor;
 import org.ccnx.ccn.impl.sync.SyncMonitor;
@@ -15,19 +16,21 @@ public class CCNSync {
 	
 	protected SyncMonitor syncMon = null;
 	
-	public void startSync(CCNHandle handle, ConfigSlice syncSlice, CCNSyncHandler syncCallback) throws IOException{
+	public void startSync(CCNHandle handle, ConfigSlice syncSlice, CCNSyncHandler syncCallback) throws IOException, ConfigurationException{
 		try {
 			syncSlice.checkAndCreate(handle);
 			if (syncMon == null)
 				syncMon = new FileBasedSyncMonitor();
 			syncMon.registerCallback(syncCallback, syncSlice);
+		} catch (ConfigurationException e){
+			throw e;
 		} catch (Exception e) {
 			Log.warning(Log.FAC_REPO, "Error when starting sync for slice: {0}", syncSlice);
 			throw new IOException("Unable to create sync slice: "+e.getMessage());
 		}
 	}
 		
-	public ConfigSlice startSync(CCNHandle handle, ContentName topo, ContentName prefix, Collection<ContentName> filters, CCNSyncHandler syncCallback) throws IOException{
+	public ConfigSlice startSync(CCNHandle handle, ContentName topo, ContentName prefix, Collection<ContentName> filters, CCNSyncHandler syncCallback) throws IOException, ConfigurationException{
 		if (handle == null)
 			handle = CCNHandle.getHandle();
 		Collection<Filter> f = new ArrayList<Filter>();
@@ -41,13 +44,15 @@ public class CCNSync {
 				syncMon = new FileBasedSyncMonitor();
 			syncMon.registerCallback(syncCallback, slice);
 			return slice;
+		} catch (ConfigurationException e) {
+			throw e;
 		} catch (Exception e) {
 			Log.warning(Log.FAC_REPO, "Error when starting sync for slice with prefix: {0}", prefix);
 			throw new IOException("Unable to create sync slice: "+e.getMessage());
 		}
 	}
 	
-	public ConfigSlice startSync(ContentName topo, ContentName prefix, Collection<ContentName> filters, CCNSyncHandler syncCallback) throws IOException{
+	public ConfigSlice startSync(ContentName topo, ContentName prefix, Collection<ContentName> filters, CCNSyncHandler syncCallback) throws IOException, ConfigurationException{
 		return startSync(null, topo, prefix, filters, syncCallback);
 	}
 	
