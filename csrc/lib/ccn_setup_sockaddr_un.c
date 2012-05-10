@@ -21,11 +21,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
 #include <ccn/ccnd.h>
 #include <ccn/ccn_private.h>
+#include <ccn/charbuf.h>
 
 /**
  * Set up a unix-domain socket address for contacting ccnd.
@@ -57,4 +60,45 @@ ccn_setup_sockaddr_un(const char *portstr, struct sockaddr_un *result)
     else
         snprintf(sa->sun_path, sizeof(sa->sun_path), "%s",
                  sockname);
+}
+
+/**
+ * Set up a Internet socket address for contacting ccnd.
+ *
+ * The name must be of the form "tcp[4|6][:port]"
+ * If there is no port specified, the environment variable CCN_LOCAL_PORT is
+ * checked. Bad port specifications will result in the default port (9695)
+ * being used.  If neither "4" nor "6" is present, the code will prefer the IPv4
+ * localhost address.
+ */
+void
+ccn_setup_sockaddr_in(const char *name, struct sockaddr *result)
+{
+    char *portstr;
+    char *nameonly = strdup(name);
+    int port = 0;
+
+    portstr = strchr(nameonly, ':');
+    if (portstr)
+        *portstr++ = 0;
+    if (portstr == NULL || portstr[0] == 0)
+        portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
+    if (portstr != NULL)
+        port = atoi(portstr);
+    if (port <= 0 || port >= 65536)
+        port = CCN_DEFAULT_UNICAST_PORT_NUMBER;
+    if (strcasecmp(nameonly, "tcp6") == 0) {
+        struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)result;
+        memset(sa6, 0, sizeof(*sa6));
+        sa6->sin6_family = AF_INET6;
+        inet_pton(AF_INET6, "::1", &sa6->sin6_addr);
+        sa6->sin6_port = htons(port);
+    } else {
+        struct sockaddr_in *sa = (struct sockaddr_in *)result;
+        memset(sa, 0, sizeof(*sa));
+        sa->sin_family = AF_INET;
+        inet_pton(AF_INET, "127.0.0.1", &sa->sin_addr);
+        sa->sin_port = htons(port);
+    }
+    free(nameonly);
 }

@@ -28,6 +28,7 @@
 struct ccn;
 struct ccn_charbuf;
 struct sockaddr_un;
+struct sockaddr;
 struct ccn_schedule;
 
 /*
@@ -54,6 +55,16 @@ struct ccn_schedule *ccn_set_schedule(struct ccn *h, struct ccn_schedule *s);
  */
 struct ccn_charbuf *ccn_grab_buffered_output(struct ccn *h);
 
+/*
+ * set up client sockets for communicating with ccnd
+ * In the INET case, the sockaddr passed in must be large enough to
+ * hold either an IPv4 or IPv6 address.
+ */
 void ccn_setup_sockaddr_un(const char *, struct sockaddr_un *);
+void ccn_setup_sockaddr_in(const char *, struct sockaddr *);
+
+void ccn_set_connect_type(struct ccn *h, const char *name);
+const char *ccn_get_connect_type(struct ccn *h);
+
 
 #endif
