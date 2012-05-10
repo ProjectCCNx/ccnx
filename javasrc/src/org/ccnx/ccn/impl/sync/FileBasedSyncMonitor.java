@@ -249,14 +249,15 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	private void processCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
 		synchronized(callbacks) {
 			System.out.println("isRunning: "+isRunning);
-			if (!isRunning) {
-				//this means we do not have a thread...  and therefore are not watching the names now.
-				isRunning = true;
-				callbacks.clear();
-				//System.out.println("was not running...  starting up now!");
-				SystemConfiguration._systemThreadpool.execute(this);
+			synchronized (isRunning) {
+				if (!isRunning) {
+					//this means we do not have a thread...  and therefore are not watching the names now.
+					isRunning = true;
+					callbacks.clear();
+					//System.out.println("was not running...  starting up now!");
+					SystemConfiguration._systemThreadpool.execute(this);
+				}
 			}
-		
 			//now we need to register the callback...  check the prefix
 			ArrayList<CCNSyncHandler> cb = callbacks.get(slice);
 			if (cb != null) {
@@ -285,6 +286,12 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 				if (cb.isEmpty()) {
 					//no callbacks left for the slice, go ahead and remove it.
 					callbacks.remove(slice);
+				}
+			}
+			if (callbacks.isEmpty()) {
+				//we don't have any registered callbacks, we can go ahead and stop running.
+				synchronized (isRunning) {
+					isRunning = false;
 				}
 			}
 		}

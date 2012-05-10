@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 
+import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
@@ -136,6 +137,10 @@ public class ConfigSlice extends GenericXMLEncodable {
 
 	protected LinkedList<Filter> filters = new LinkedList<Filter>();
 
+	public boolean equals(ConfigSlice otherSlice) {
+		return Arrays.areEqual(this.getHash(), otherSlice.getHash());
+	}
+	
 	public byte[] getHash() {
 		try {
 			return CCNDigestHelper.digest(encode());
@@ -212,9 +217,16 @@ public class ConfigSlice extends GenericXMLEncodable {
 		//ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice.getHash(), handle);
 		ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice, handle);
 		boolean updated = csno.update(SystemConfiguration.SHORT_TIMEOUT);
-		if (!updated || (!csno.available() || csno.isGone())) {
+		if (updated)
+			System.out.println("i found this slice in my repo! "+csno.getVersionedName());
+		else
+			System.out.println("i didn't find a slice in my repo.");
+		if (!updated || (updated && (!csno.available() || csno.isGone()))) {
+			System.out.println("need to save my data to create the slice for the repo!");
 			csno.setData(slice);
 			csno.save();
+		} else {
+			System.out.println("don't need to do anything...  returning the existing slice");
 		}
 		csno.close();
 		return slice;
@@ -225,24 +237,17 @@ public class ConfigSlice extends GenericXMLEncodable {
 		try {
 			//existingSlice = new ConfigSlice.NetworkObject(this.getHash(), handle);
 			existingSlice = new ConfigSlice.NetworkObject(this, handle);
+			boolean updated = existingSlice.update(SystemConfiguration.SHORT_TIMEOUT);
+			if (!updated || (updated && (!existingSlice.available() || existingSlice.isGone()))) {
+				existingSlice.setData(this);
+				existingSlice.save();
+			}
 		} catch (ContentDecodingException e) {
 			Log.warning(Log.FAC_REPO, "ContentDecodingException: Unable to read in existing slice data from repository.");
 			throw e;
 		} catch (IOException e) {
 			Log.warning(Log.FAC_REPO, "IOException: error when attempting to retrieve existing slice");
 			throw e;
-		}
-		if (!existingSlice.available() || existingSlice.isGone()) {
-			existingSlice.setData(this);
-			try {
-				existingSlice.save();
-			} catch (ContentEncodingException e) {
-				Log.warning(Log.FAC_REPO, "ContentEncodingException: Unable to create Sync Slice when saving it to repo.  Slice Details: {0}", this.toString());
-				throw e;
-			} catch (IOException e) {
-				Log.warning(Log.FAC_REPO, "IOException: Unable to write Sync Slice to repository.  Slice Information: {0}", this.toString());
-				throw e;
-			}
 		}
 		existingSlice.close();
 	}

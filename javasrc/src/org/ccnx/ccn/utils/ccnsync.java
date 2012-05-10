@@ -15,7 +15,6 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 public class ccnsync implements Usage, CCNSyncHandler{
 	static ccnsync ccnsync = new ccnsync();
 	
-	@Override
 	public void usage() {
 		System.out.println("usage: ccnsync [-v (verbose)]  [-log level] [-ac (access control)] <topo> <prefix> [-f (filter) filter]");
 		System.exit(1);
@@ -70,7 +69,6 @@ public class ccnsync implements Usage, CCNSyncHandler{
 		}
 	}
 
-	@Override
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
 		System.out.println("Got a new name!!!! "+ syncedContent);
 	}
