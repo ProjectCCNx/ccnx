@@ -61,7 +61,7 @@ struct ccn_charbuf *ccn_grab_buffered_output(struct ccn *h);
  * hold either an IPv4 or IPv6 address.
  */
 void ccn_setup_sockaddr_un(const char *, struct sockaddr_un *);
-void ccn_setup_sockaddr_in(const char *, struct sockaddr *);
+int ccn_setup_sockaddr_in(const char *, struct sockaddr *, int);
 
 void ccn_set_connect_type(struct ccn *h, const char *name);
 const char *ccn_get_connect_type(struct ccn *h);

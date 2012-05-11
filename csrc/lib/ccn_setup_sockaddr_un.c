@@ -23,8 +23,16 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <netdb.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#if defined(NEED_GETADDRINFO_COMPAT)
+#include "getaddrinfo.h"
+#include "dummyin6.h"
+#endif
+#ifndef AI_ADDRCONFIG
+#define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
+#endif
 
 #include <ccn/ccnd.h>
 #include <ccn/ccn_private.h>
@@ -70,35 +78,39 @@ ccn_setup_sockaddr_un(const char *portstr, struct sockaddr_un *result)
  * checked. Bad port specifications will result in the default port (9695)
  * being used.  If neither "4" nor "6" is present, the code will prefer the IPv4
  * localhost address.
+ * @returns 0 on success, -1 on error
  */
-void
-ccn_setup_sockaddr_in(const char *name, struct sockaddr *result)
+int
+ccn_setup_sockaddr_in(const char *name, struct sockaddr *result, int length)
 {
-    char *portstr;
+    struct addrinfo hints = {0};
+    struct addrinfo *ai = NULL;
+    char *port;
     char *nameonly = strdup(name);
-    int port = 0;
+    int ans = -1;
+    int res;
 
-    portstr = strchr(nameonly, ':');
-    if (portstr)
-        *portstr++ = 0;
-    if (portstr == NULL || portstr[0] == 0)
-        portstr = getenv(CCN_LOCAL_PORT_ENVNAME);
-    if (portstr != NULL)
-        port = atoi(portstr);
-    if (port <= 0 || port >= 65536)
-        port = CCN_DEFAULT_UNICAST_PORT_NUMBER;
-    if (strcasecmp(nameonly, "tcp6") == 0) {
-        struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)result;
-        memset(sa6, 0, sizeof(*sa6));
-        sa6->sin6_family = AF_INET6;
-        inet_pton(AF_INET6, "::1", &sa6->sin6_addr);
-        sa6->sin6_port = htons(port);
-    } else {
-        struct sockaddr_in *sa = (struct sockaddr_in *)result;
-        memset(sa, 0, sizeof(*sa));
-        sa->sin_family = AF_INET;
-        inet_pton(AF_INET, "127.0.0.1", &sa->sin_addr);
-        sa->sin_port = htons(port);
-    }
+    port = strchr(nameonly, ':');
+    if (port)
+        *port++ = 0;
+    if (port == NULL || port[0] == 0)
+        port = getenv(CCN_LOCAL_PORT_ENVNAME);
+    if (port == NULL || port[0] == 0)
+        port = CCN_DEFAULT_UNICAST_PORT;
+    memset(result, 0, length);
+    hints.ai_family = AF_UNSPEC;
+    if (strcasecmp(nameonly, "tcp6") == 0) hints.ai_family = AF_INET6;
+    if (strcasecmp(nameonly, "tcp4") == 0) hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_ADDRCONFIG;
+    hints.ai_protocol = 0;
+    res = getaddrinfo(NULL, port, &hints, &ai);
+    if (res != 0 || ai->ai_addrlen > length)
+        goto Bail;
+    memcpy(result, ai->ai_addr, ai->ai_addrlen);
+    ans = 0;
+Bail:
     free(nameonly);
+    freeaddrinfo(ai);
+    return (ans);
 }

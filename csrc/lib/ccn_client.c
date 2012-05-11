@@ -346,7 +346,7 @@ ccn_defer_verification(struct ccn *h, int defer)
  * Connect to local ccnd.
  * @param h is a ccn library handle
  * @param name is the name of the unix-domain socket to connect to,
- *      or the string "tcp[4|6][:port] to indicate a TCP connection
+ *      or the string "tcp[4|6][:port]" to indicate a TCP connection
  *      using either IPv4 (default) or IPv6 on the optional port;
  *      use NULL to get the default, which is affected by the
  *      environment variables CCN_LOCAL_TRANSPORT, interpreted as is name,
@@ -363,17 +363,24 @@ ccn_connect(struct ccn *h, const char *name)
     struct sockaddr_in6 *in6_addr = (struct sockaddr_in6 *)&sockaddr;
     struct sockaddr *addr = (struct sockaddr *)&sockaddr;
     int addr_size;
-    const char *s;
     int res;
+#ifndef CCN_LOCAL_TCP
+    const char *s;
+#endif
     
     if (h == NULL)
         return(-1);
     h->err = 0;
     if (h->sock != -1)
         return(NOTE_ERR(h, EINVAL));
+#ifdef CCN_LOCAL_TCP
+    res = ccn_setup_sockaddr_in("tcp", addr, sizeof(*addr));
+#else
     if (name != NULL && name[0] != 0) {
         if (strncasecmp(name, "tcp", 3) == 0) {
-            ccn_setup_sockaddr_in(name, addr);
+            res = ccn_setup_sockaddr_in(name, addr, sizeof(*addr));
+            if (res == -1)
+                return(NOTE_ERR(h, EINVAL));
         } else {
             un_addr->sun_family = AF_UNIX;
             strncpy(un_addr->sun_path, name, sizeof(un_addr->sun_path));
@@ -382,13 +389,18 @@ ccn_connect(struct ccn *h, const char *name)
     } else {
         s = getenv("CCN_LOCAL_TRANSPORT");
         if (s != NULL && strncasecmp(s, "tcp", 3) == 0) {
-            ccn_setup_sockaddr_in(s, addr);
+            res = ccn_setup_sockaddr_in(s, addr, sizeof(*addr));
+            if (res == -1)
+                return(NOTE_ERR(h, EINVAL));
             ccn_set_connect_type(h, s);
-        } else {
+        } else if (s == NULL || strcasecmp(s, "unix")) {
             ccn_setup_sockaddr_un(NULL, un_addr);
             ccn_set_connect_type(h, un_addr->sun_path);
+        } else {
+            return(NOTE_ERR(h, EINVAL));
         }
     }
+#endif
     h->sock = socket(sockaddr.ss_family, SOCK_STREAM, 0);
     if (h->sock == -1)
         return(NOTE_ERRNO(h));
