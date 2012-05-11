@@ -680,6 +680,20 @@ ccn_btree_oversize(struct ccn_btree *btree, struct ccn_btree_node *node)
     return(n > btree->full);
 }
 
+/**
+ * Smallest number of entries a non-root node should have
+ */
+int
+ccn_btree_minfill(struct ccn_btree *btree)
+{
+    int n;
+    
+    n = btree->full / 3;
+    if (n < 2)
+        n = 2;
+    return(n);
+}
+
 int
 ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
 {
