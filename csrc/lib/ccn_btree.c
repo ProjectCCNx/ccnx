@@ -602,15 +602,7 @@ ccn_btree_delete_entry(struct ccn_btree_node *node, int i)
     /* Fix up the entdx in the relocated entries */
     for (j = i; j < n; j++, to += k) {
         t = (void*)(to + k - sizeof(*t));
-        if (MYFETCH(t, entdx) != j + 1) {
-            node->corrupt = __LINE__;
-            return(-1);
-        }
         MYSTORE(t, entdx, j);
-    }
-    if (to - node->buf->buf != node->buf->length) {
-                    node->corrupt = __LINE__;
-            return(-1);
     }
     return(n);
 }
