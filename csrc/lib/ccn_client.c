@@ -374,11 +374,11 @@ ccn_connect(struct ccn *h, const char *name)
     if (h->sock != -1)
         return(NOTE_ERR(h, EINVAL));
 #ifdef CCN_LOCAL_TCP
-    res = ccn_setup_sockaddr_in("tcp", addr, sizeof(*addr));
+    res = ccn_setup_sockaddr_in("tcp", addr, sizeof(sockaddr));
 #else
     if (name != NULL && name[0] != 0) {
         if (strncasecmp(name, "tcp", 3) == 0) {
-            res = ccn_setup_sockaddr_in(name, addr, sizeof(*addr));
+            res = ccn_setup_sockaddr_in(name, addr, sizeof(sockaddr));
             if (res == -1)
                 return(NOTE_ERR(h, EINVAL));
         } else {
@@ -389,7 +389,7 @@ ccn_connect(struct ccn *h, const char *name)
     } else {
         s = getenv("CCN_LOCAL_TRANSPORT");
         if (s != NULL && strncasecmp(s, "tcp", 3) == 0) {
-            res = ccn_setup_sockaddr_in(s, addr, sizeof(*addr));
+            res = ccn_setup_sockaddr_in(s, addr, sizeof(sockaddr));
             if (res == -1)
                 return(NOTE_ERR(h, EINVAL));
             ccn_set_connect_type(h, s);
