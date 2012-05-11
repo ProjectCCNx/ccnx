@@ -574,9 +574,7 @@ test_basic_btree_delete_entry(void)
          FAILIF(ndx != i);
          res = ccn_btree_chknode(leaf);
          CHKSYS(res);
-         ccn_btree_check(btree, stderr);
          res = ccn_btree_delete_entry(leaf, i);
-         ccn_btree_check(btree, stderr);
          FAILIF((res < 0) != (i == 3));
          for (j = 0; j < 3; j++) {
             s = ex[j];
