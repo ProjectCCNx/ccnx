@@ -582,7 +582,7 @@ test_basic_btree_delete_entry(void)
             s = ex[j];
             res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
             CHKSYS(res);
-            FAILIF(CCN_BT_SRCH_FOUND(res) != (i == j));
+            FAILIF(CCN_BT_SRCH_FOUND(res) == (i == j));
          }
          FAILIF(btree->errors != 0);
          res = ccn_btree_destroy(&btree);
@@ -984,7 +984,7 @@ ccnbtreetest_main(int argc, char **argv)
     CHKSYS(res);
     res = test_basic_btree_insert_entry();
     CHKSYS(res);
-    // test_basic_btree_delete_entry();
+    test_basic_btree_delete_entry();
     CHKSYS(res);
     res = test_flatname();
     CHKSYS(res);
