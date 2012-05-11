@@ -1,12 +1,11 @@
 /**
  * @file ccnbtreetest.c
  * 
- * Part of ccnr - CCNx Repository Daemon.
+ * Unit tests for btree functions
  *
  */
-
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -553,6 +552,46 @@ test_basic_btree_insert_entry(void)
 }
 
 int
+test_basic_btree_delete_entry(void)
+{
+    struct ccn_btree *btree = NULL;
+    struct ccn_btree_node *leaf = NULL;
+    int res;
+    int i;
+    int j;
+    int ndx;
+    const char *s = "";
+    const char *ex[4] = {"d", "goodstuff", "odd", "odder"};
+    
+    for (i = 0; i < 4; i++) {
+         btree = example_btree_small();
+         CHKPTR(btree);
+         s = ex[i];
+         res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
+         CHKSYS(res);
+         FAILIF(CCN_BT_SRCH_FOUND(res) != (i < 3));
+         ndx = CCN_BT_SRCH_INDEX(res);
+         FAILIF(ndx != i);
+         res = ccn_btree_chknode(leaf);
+         CHKSYS(res);
+         ccn_btree_check(btree, stderr);
+         res = ccn_btree_delete_entry(leaf, i);
+         ccn_btree_check(btree, stderr);
+         FAILIF((res < 0) != (i == 3));
+         for (j = 0; j < 3; j++) {
+            s = ex[j];
+            res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
+            CHKSYS(res);
+            FAILIF(CCN_BT_SRCH_FOUND(res) != (i == j));
+         }
+         FAILIF(btree->errors != 0);
+         res = ccn_btree_destroy(&btree);
+         FAILIF(btree != NULL);
+    }
+    return(res);
+}
+
+int
 test_btree_inserts_from_stdin(void)
 {
     struct ccn_charbuf *c;
@@ -944,6 +983,8 @@ ccnbtreetest_main(int argc, char **argv)
     res = test_btree_lookup();
     CHKSYS(res);
     res = test_basic_btree_insert_entry();
+    CHKSYS(res);
+    // test_basic_btree_delete_entry();
     CHKSYS(res);
     res = test_flatname();
     CHKSYS(res);

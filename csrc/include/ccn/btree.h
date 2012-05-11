@@ -2,9 +2,9 @@
  * @file ccn/btree.h
  * BTree
  */
-/* (Will be) Part of the CCNx C Library.
+/* Part of the CCNx C Library.
  *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-12 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -252,6 +252,9 @@ int ccn_btree_searchnode(const unsigned char *key, size_t size,
 int ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
                            const unsigned char *key, size_t keysize,
                            void *payload, size_t payload_bytes);
+
+/* Delete the entry at slot i of node */
+int ccn_btree_delete_entry(struct ccn_btree_node *node, int i);
 
 /* Initialize a btree node */
 int ccn_btree_init_node(struct ccn_btree_node *node,

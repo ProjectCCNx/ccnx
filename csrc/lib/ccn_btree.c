@@ -1,7 +1,7 @@
 /**
  * BTree implementation
  */ 
-/* (Will be) Part of the CCNx C Library.
+/* Part of the CCNx C Library.
  *
  * Copyright (C) 2011, 2012 Palo Alto Research Center, Inc.
  *
@@ -558,6 +558,53 @@ ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
     memmove(to, key + reuse[0], keysize - reuse[1]);
     node->freelow += keysize - reuse[1];
     return(n + 1);
+}
+
+/**
+ *  Remove an entry from a btree node
+ *
+ * The caller is responsible for triggering a merge.
+ *
+ * @returns the new entry count, or -1 in case of error.
+ */
+int
+ccn_btree_delete_entry(struct ccn_btree_node *node, int i)
+{
+    struct ccn_btree_entry_trailer *t;
+    unsigned char *to;
+    size_t k, off;
+    int j;
+    int n;
+    
+    if (node->corrupt)
+        return(-1);
+    n = ccn_btree_node_nent(node);
+    if (i >= n)
+        return(-1);
+    if (n == 1) {
+        /* Removing the last entry */
+        struct ccn_btree_node_header *hdr;
+        hdr = (void*)node->buf->buf;
+        k = sizeof(*hdr) + MYFETCH(hdr, extsz) * CCN_BT_SIZE_UNITS;
+        node->buf->length = node->freelow = k;
+        if (k < node->clean)
+           node->clean = k;
+        return(0);
+    }
+    k = ccn_btree_node_getentrysize(node);
+    off = node->buf->length - k * (n - i);
+    to = node->buf->buf + off;
+    memmove(to, to + k, k * (n - i - 1));
+    node->buf->length -= k;
+    n -= 1;
+    if (off < node->clean)
+        node->clean = off;
+    /* Fix up the entdx in the relocated entries */
+    for (j = i; j < n; j++, to += k) {
+        t = (void*)to;
+        MYSTORE(t, entdx, j);
+    }
+    return(n);
 }
 
 #if 0
