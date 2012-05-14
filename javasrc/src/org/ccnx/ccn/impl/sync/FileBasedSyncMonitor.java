@@ -298,12 +298,12 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 		}
 	}
 	
-	@Override
+	
 	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
 		//start monitoring the namespace, if not already monitored...  if so, add to the callback list
 		processCallback(syncHandler, slice);
 	}
-	@Override
+	
 	public void removeCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
 		// remove callback from hashmap.  turn off thread if no longer needed
 		processRemoveCallback(syncHandler, slice);

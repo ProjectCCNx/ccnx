@@ -261,7 +261,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 		Log.info(Log.FAC_TEST,"Finished running testSyncRestart");
 	}
 	
-	@Override
+	
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
 		System.out.println("Callback for name: " +syncedContent);
 		synchronized (callbackNames) {
