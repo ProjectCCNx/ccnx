@@ -363,7 +363,7 @@
 		</junit>
 	</target>
 
-	<target name="test-impl" depends="test-impl-without-repo, test-impl-with-repo">
+	<target name="test-impl" depends="test-impl-without-repo, test-impl-with-repo, test-impl-with-sync">
 	</target>
 	
 	<target name="test-impl-without-repo" depends="jar, ccnd">
