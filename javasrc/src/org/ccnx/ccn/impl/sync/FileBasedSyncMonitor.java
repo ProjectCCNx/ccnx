@@ -213,6 +213,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 			System.out.println("isRunning was false, time to shut down");
 			isRunning = false;
 		}
+		return;
 	}
 	
 	private void processNewName(String line) {
