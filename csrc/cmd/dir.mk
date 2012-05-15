@@ -31,6 +31,7 @@ PROGRAMS = $(INSTALLED_PROGRAMS) \
     ccnbuzz  \
     dataresponsetest \
     ccn_fetch_test \
+    ccnsnew \
     $(PCAP_PROGRAMS)
 
 EXPAT_PROGRAMS = ccn_xmltoccnb
@@ -42,7 +43,9 @@ CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
        ccnbuzz.c ccnbx.c ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
        ccndumpnames.c ccndumppcap.c ccnfilewatch.c ccnpeek.c ccnhexdumpdata.c \
        ccninitkeystore.c ccnls.c ccnnamelist.c ccnpoke.c ccnrm.c ccnsendchunks.c \
-       ccnseqwriter.c ccnsyncwatch.c ccnsyncslice.c ccn_fetch_test.c ccnlibtest.c ccnslurp.c dataresponsetest.c 
+       ccnseqwriter.c \
+       ccnsnew.c \
+       ccnsyncwatch.c ccnsyncslice.c ccn_fetch_test.c ccnlibtest.c ccnslurp.c dataresponsetest.c 
 
 default all: $(PROGRAMS)
 # Don't try to build broken programs right now.
@@ -166,6 +169,9 @@ ccndumppcap: ccndumppcap.o
 ccnfilewatch: ccnfilewatch.o
 	$(CC) $(CFLAGS) -o $@ ccnfilewatch.o
 
+ccnsnew: ccnsnew.o
+	$(CC) $(CFLAGS) -o $@ ccnsnew.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
 ccnsyncwatch: ccnsyncwatch.o
 	$(CC) $(CFLAGS) -o $@ ccnsyncwatch.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
@@ -241,6 +247,9 @@ ccnseqwriter.o: ccnseqwriter.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ../include/ccn/seqwriter.h
+ccnsnew.o: ccnsnew.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/reg_mgmt.h ../include/ccn/uri.h
 ccnsyncwatch.o: ccnsyncwatch.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/sync.h ../include/ccn/uri.h

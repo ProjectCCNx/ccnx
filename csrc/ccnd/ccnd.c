@@ -3843,6 +3843,8 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         npe = e->data;
         if (npe == NULL)
             goto Bail;
+        if (npe->fgen != h->forward_to_gen)
+            update_forward_to(h, npe);
         if ((npe->flags & CCN_FORW_LOCAL) != 0 &&
             (face->flags & CCN_FACE_GG) == 0) {
             ccnd_debug_ccnb(h, __LINE__, "interest_nonlocal", face, msg, size);
@@ -3925,7 +3927,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 matched = 1;
             }
         }
-        if (!matched && pi->scope != 0 && npe != NULL)
+        if (!matched && npe != NULL && (pi->answerfrom & CCN_AOK_EXPIRE) == 0)
             propagate_interest(h, face, msg, pi, npe);
     Bail:
         hashtb_end(e);
