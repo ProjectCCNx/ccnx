@@ -295,4 +295,4 @@ ccnbtreetest.o: ccnbtreetest.c ../include/ccn/btree.h \
 ccn_sockaddrutil.o: ccn_sockaddrutil.c ../include/ccn/charbuf.h \
   ../include/ccn/sockaddrutil.h
 ccn_setup_sockaddr_un.o: ccn_setup_sockaddr_un.c ../include/ccn/ccnd.h \
-  ../include/ccn/ccn_private.h
+  ../include/ccn/ccn_private.h ../include/ccn/charbuf.h
