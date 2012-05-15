@@ -681,17 +681,32 @@ ccn_btree_oversize(struct ccn_btree *btree, struct ccn_btree_node *node)
 }
 
 /**
- * Smallest number of entries a non-root node should have
+ * Test for an unbalanced node
+ *
+ * This takes into account both the size of a node and the count of
+ * entries.
+ *
+ * @returns 1 if node is too big, -1 if too small, 0 if just right.
  */
 int
-ccn_btree_minfill(struct ccn_btree *btree)
+ccn_btree_unbalance(struct ccn_btree *btree, struct ccn_btree_node *node)
 {
     int n;
     
-    n = btree->full / 3;
-    if (n < 2)
-        n = 2;
-    return(n);
+    n = ccn_btree_node_nent(node);
+    if (n > 4 && btree->nodebytes != 0 && node->buf->length > btree->nodebytes)
+        return(1);
+    if (ccn_btree_node_level(node) == 0 && btree->full0 > 0) {
+        if (n > btree->full0)
+            return(1);
+        if (2 * n < btree->full0)
+            return(-1);
+    }
+    if (n > btree->full)
+        return(1);
+    if (2 * n < btree->full)
+        return(-1);
+    return(0);
 }
 
 int

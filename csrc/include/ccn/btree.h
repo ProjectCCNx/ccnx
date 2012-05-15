@@ -263,8 +263,8 @@ int ccn_btree_init_node(struct ccn_btree_node *node,
 /* Test for an oversize node */
 int ccn_btree_oversize(struct ccn_btree *btree, struct ccn_btree_node *node);
 
-/* Smallest number of entries a non-root node should have */
-int ccn_btree_minfill(struct ccn_btree *btree);
+/* Test for unbalance */
+int ccn_btree_unbalance(struct ccn_btree *btree, struct ccn_btree_node *node);
 
 /* Check a node for internal consistency */
 int ccn_btree_chknode(struct ccn_btree_node *node);
