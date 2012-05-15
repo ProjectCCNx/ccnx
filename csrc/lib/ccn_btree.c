@@ -669,15 +669,7 @@ ccn_btree_grow_a_level(struct ccn_btree *btree, struct ccn_btree_node *node)
 int
 ccn_btree_oversize(struct ccn_btree *btree, struct ccn_btree_node *node)
 {
-    int n;
-    
-    n = ccn_btree_node_nent(node);
-    if (n > 4 && btree->nodebytes != 0 &&
-        node->buf->length > btree->nodebytes)
-        return(1);
-    if (ccn_btree_node_level(node) == 0 && btree->full0 > 0)
-        return(n > btree->full0);
-    return(n > btree->full);
+    return(ccn_btree_unbalance(btree, node) > 0);
 }
 
 /**
