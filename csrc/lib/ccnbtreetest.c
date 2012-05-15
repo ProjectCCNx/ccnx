@@ -255,7 +255,7 @@ test_btree_chknode(void)
     FAILIF(node->corrupt != 0);
     FAILIF(node->freelow != 8 + 34); // header plus goodstuff<- ... ->d
     ex = (void *)node->buf->buf;
-    ex->e[1].t.ksiz0[2] = 100; /* ding the size in entry 1 */
+    ex->e[1].t.ksiz0[1] = 100; /* ding the size in entry 1 */
     res = ccn_btree_chknode(node);
     FAILIF(res != -1);
     FAILIF(node->corrupt == 0);
