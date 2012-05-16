@@ -701,6 +701,17 @@ ccn_btree_unbalance(struct ccn_btree *btree, struct ccn_btree_node *node)
     return(0);
 }
 
+/**
+ * Split a btree node
+ *
+ * This creates a new sibling, and distributes the entries of node
+ * between the two.
+ *
+ * The node's parent gains a child; if in doing so, it grows too large,
+ * the parent will be noted in btree->nextsplit for the caller to deal with.
+ *
+ * @returns 0 for success, -1 in case of error.
+ */
 int
 ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
 {
