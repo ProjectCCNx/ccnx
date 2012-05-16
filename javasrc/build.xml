@@ -437,14 +437,11 @@
 				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
 				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
 				<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
-	            <!-- <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/> -->
-				<sysproperty key="org.ccnx.ccn.LogLevel.All" value="WARNING"/>
+	            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+				<sysproperty key="org.ccnx.ccn.LogLevel.Sync" value="FINE"/>
+				<sysproperty key="org.ccnx.ccn.LogLevel.Test" value="FINE"/>
 	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
-				<!-- <sysproperty key="PATH" path="${PATH}:../csrc/cmd"/> -->
-				<!-- <sysproperty key="PATH" path="../csrc/cmd"/> -->
-				<!-- <env key="PATH" path="${PATH}:../csrc/cmd"/> -->
 				<env key="CCNR_DIRECTORY" value="${REPO_ROOT}"/>
-				<!-- <env key="${PATH}" path="${PATH}:/${cmddir}"/>-->
 				<env key="PATH" value="${env.PATH}:${cmddir}"/>
 				<batchtest todir="${testout}">
 					<fileset dir="${build}">

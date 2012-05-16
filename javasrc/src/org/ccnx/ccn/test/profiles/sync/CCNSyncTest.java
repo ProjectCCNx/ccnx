@@ -105,13 +105,13 @@ public class CCNSyncTest implements CCNSyncHandler{
 			ConfigSlice slice3 = sync1.startSync(topo, prefix1, null, this);
 			
 			//the slice should be written..  now save content and get a callback.
-			System.out.println("writing out file: "+prefix1);
+			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
 			int segments = writeFile(prefix1);
 			int segmentCheck = checkCallbacks(prefix1, segments);
 			if (segmentCheck!=0)
 				Assert.fail("Did not receive all of the callbacks");
 			else
-				System.out.println("I got all the callbacks for part 1 of testSyncClose!");
+				Log.fine(Log.FAC_TEST, "I got all the callbacks for part 1 of testSyncClose!");
 			
 			//now close the callback interface
 			sync1.stopSync(this, slice3);
@@ -119,16 +119,15 @@ public class CCNSyncTest implements CCNSyncHandler{
 			
 			//then close and make sure we don't get a callback
 			prefix1 = prefix1.append("round2");
-			System.out.println("writing out file: "+prefix1);
+			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
 			segments = writeFile(prefix1);  //this should be a new version
 			segmentCheck = checkCallbacks(prefix1, segments);
 			if (segmentCheck != segments) {
 				//we must have gotten callbacks...  bad.
 				Assert.fail("received callbacks after interface was closed.  ERROR");
 			}
-			System.out.println("I didn't get callbacks after I stopped sync for myself!");
-			
-			
+			Log.fine(Log.FAC_TEST, "I didn't get callbacks after I stopped sync for myself!");
+					
 		} catch (MalformedContentNameStringException e) {
 			Log.info(Log.FAC_TEST, "failed to create name for slice prefix: {0}", e.getMessage());
 			Assert.fail();
@@ -139,7 +138,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			Log.info(Log.FAC_TEST, "failed to create slice for test: {0}", e.getMessage());
 			Assert.fail();
 		}
-		System.out.println("Finished running testSyncStop");
+
 		Log.info(Log.FAC_TEST,"Finished running testSyncStop");
 	}
 	
@@ -157,7 +156,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			ConfigSlice slice5 = sync1.startSync(topo, prefix2, null, this);
 			
 			//the slice should be written..  now save content and get a callback.
-			System.out.println("writing out file: "+prefix1);
+			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
 			int segments = writeFile(prefix1);
 			int segments2 = writeFile(prefix2);
 			int segmentCheck = checkCallbacks(prefix1, segments);
@@ -196,13 +195,13 @@ public class CCNSyncTest implements CCNSyncHandler{
 			ConfigSlice slice6 = sync1.startSync(topo, prefix1, null, this);
 			
 			//the slice should be written..  now save content and get a callback.
-			System.out.println("writing out file: "+prefix1);
+			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
 			int segments = writeFile(prefix1);
 			int segmentCheck = checkCallbacks(prefix1, segments);
 			if (segmentCheck!=0)
 				Assert.fail("Did not receive all of the callbacks");
 			else
-				System.out.println("I got all the callbacks for part 1 of testSyncRestart!");
+				Log.fine(Log.FAC_TEST, "I got all the callbacks for part 1 of testSyncRestart!");
 			
 			//now close the callback interface
 			sync1.stopSync(this, slice6);
@@ -210,39 +209,39 @@ public class CCNSyncTest implements CCNSyncHandler{
 			
 			//then close and make sure we don't get a callback
 			ContentName prefix1a = prefix1.append("round2");
-			System.out.println("writing out file: "+prefix1a);
+			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1a);
 			segments = writeFile(prefix1a);  //this should be a new version
 			segmentCheck = checkCallbacks(prefix1a, segments);
 			if (segmentCheck != segments) {
 				//we must have gotten callbacks...  bad.
 				Assert.fail("received callbacks after interface was closed.  ERROR");
 			}
-			System.out.println("I didn't get callbacks after I stopped sync for myself!");
+			Log.fine(Log.FAC_TEST, "I didn't get callbacks after I stopped sync for myself!");
 			
 			//now restart sync and make sure i get everything
 			ContentName prefix1b = prefix1.append("round3");
 			//ConfigSlice slice3 = sync1.startSync(topo, prefix1, null, this);
 			ConfigSlice slice6b = sync1.startSync(topo, prefix1, null, this);
 			
-			System.out.println("check if slice 6 == slice 6b, they should be equal!");
+			Log.fine(Log.FAC_TEST, "check if slice 6 == slice 6b, they should be equal!");
 			if (slice6.equals(slice6b)) {
-				System.out.println("the slices are equal!");
+				Log.fine(Log.FAC_TEST, "the slices are equal!");
 			} else {
-				System.out.println("XXXXXXXXX  the slices are not equal!!!!");
-				
+				Log.warning("the slices are not equal!!!!");
 				//what makes them different?
-				System.out.println("slice6: "+slice6);
-				System.out.println("slice6b: "+slice6b);
+				Log.fine(Log.FAC_TEST, "slice6: {0}", slice6);
+				Log.fine(Log.FAC_TEST, "slice6b: {0}", slice6b);
+				Assert.fail("the slices were not equal, they should have been.");
 			}
 			
 			//the slice should be written..  now save content and get a callback.
-			System.out.println("writing out file: "+prefix1b);
+			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1b);
 			segments = writeFile(prefix1b);
 			segmentCheck = checkCallbacks(prefix1b, segments);
 			if (segmentCheck!=0)
 				Assert.fail("Did not receive all of the callbacks");
 			else
-				System.out.println("I got all the callbacks for part 1 of testSyncRestart!");
+				Log.fine(Log.FAC_TEST, "I got all the callbacks for part 1 of testSyncRestart!");
 			
 			//now close the callback interface
 			sync1.stopSync(this, slice6b);
@@ -257,13 +256,13 @@ public class CCNSyncTest implements CCNSyncHandler{
 			Log.info(Log.FAC_TEST, "failed to create slice for test: {0}", e.getMessage());
 			Assert.fail();
 		}
-		System.out.println("Finished running testSyncRestart");
+
 		Log.info(Log.FAC_TEST,"Finished running testSyncRestart");
 	}
 	
 	
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
-		System.out.println("Callback for name: " +syncedContent);
+		Log.fine(Log.FAC_TEST, "Callback for name: {0}", syncedContent);
 		synchronized (callbackNames) {
 			callbackNames.add(syncedContent);
 		}
@@ -282,8 +281,8 @@ public class CCNSyncTest implements CCNSyncHandler{
 			int bytes = rand.nextInt(maxBytes) + 1;
 			double block = (double)bytes/(double)SystemConfiguration.BLOCK_SIZE;
 			segmentsToWrite = (int) (Math.ceil(block) + 1);
-			System.out.println("bytes: "+bytes+" block size: "+SystemConfiguration.BLOCK_SIZE+" div: "+block +" ceil: "+(int)Math.ceil(block));
-			System.out.println("will write out a "+bytes+" byte file, will have "+segmentsToWrite+" segments (1 is a header)");
+			Log.fine(Log.FAC_TEST, "bytes: {0} block size: {1} div: {2} ceil: {3}", bytes, SystemConfiguration.BLOCK_SIZE, block, (int)Math.ceil(block));
+			Log.fine(Log.FAC_TEST, "will write out a {0} byte file, will have {1} segments (1 is a header)", bytes, segmentsToWrite);
 			while (count < bytes) {
 				rand.nextBytes(buf);
 				towrite = ((bytes - count) > buf.length) ? buf.length : (bytes - count);
@@ -292,8 +291,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			}
 			dos.flush();
 			dos.close();
-			System.out.println("Wrote file to repository: " + rfos.getBaseName()+ " with "+segmentsToWrite+" segments");
-			Log.info(Log.FAC_TEST, "Wrote file to repository: " + rfos.getBaseName());
+			Log.info(Log.FAC_TEST, "Wrote file to repository: {0} with {1} segments", rfos.getBaseName(), segmentsToWrite);
 		} catch (NoSuchAlgorithmException e) {
 			Assert.fail("Cannot find digest algorithm: " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
 		} catch (MalformedContentNameStringException e) {
@@ -307,7 +305,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 
 	
 	private int checkCallbacks(ContentName prefix, int segments) {
-		System.out.println("checking for callbacks:  "+ prefix + " segments: "+segments);
+		Log.fine(Log.FAC_TEST, "checking for callbacks:  {0} segments: {1}", prefix, segments);
 		boolean[] received = (boolean[]) Array.newInstance(boolean.class, segments);
 		Arrays.fill(received, false);
 		boolean[]finished = (boolean[]) Array.newInstance(boolean.class, segments);
@@ -326,26 +324,26 @@ public class CCNSyncTest implements CCNSyncHandler{
 						if ( MetadataProfile.isHeader(n)) {
 							//this is the header!
 							received[segments-1] = true;
-							System.out.println("got the header");
+							Log.fine(Log.FAC_TEST, "got the header");
 						} else {
 							//this is not the header...  get the segment number
 							received[(int) SegmentationProfile.getSegmentNumber(n)] = true;
-							System.out.println("got segment "+SegmentationProfile.getSegmentNumber(n));
+							Log.fine(Log.FAC_TEST, "got segment {0}", SegmentationProfile.getSegmentNumber(n));
 						}
-						System.out.println("received: "+Arrays.toString(received)+" finished: "+Arrays.toString(finished));
+						Log.fine(Log.FAC_TEST, "received: {0} finished: {1}", Arrays.toString(received), Arrays.toString(finished));
 						if (Arrays.equals(received, finished)) {
 							//all done!
 							segments = 0;
-							System.out.println("got all the segments!");
+							Log.fine(Log.FAC_TEST, "got all the segments!");
 							break;
 						}
 					}
 				}
 			}
 			loopsToTry = loopsToTry - 1;
-			System.out.println("trying to loop again looking for segments");
+			Log.fine(Log.FAC_TEST, "trying to loop again looking for segments");
 		}
-		System.out.println("done looping, returning.  outstanding segments = "+segments);
+		Log.fine(Log.FAC_TEST, "done looping, returning.  outstanding segments = {0}", segments);
 		return segments;
 	}
 }

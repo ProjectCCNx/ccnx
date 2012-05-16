@@ -51,17 +51,14 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 
 				String configError = "Please install the CCNx installation or set your path to use the ccnnamelist command";
 				try {
-					System.out.println("PATH: "+System.getenv("PATH"));
+					Log.fine(Log.FAC_SYNC, "PATH: {0}", System.getenv("PATH"));
 					ProcessBuilder pbCheck = new ProcessBuilder();
 					pbCheck.command("/bin/sh", "-c", "command -v ccnnamelist");
 					int exitStatus = pbCheck.start().waitFor();
-					System.out.println("the exitValue = "+exitStatus);
 					if (exitStatus == 0) {
 						//the command is found!
-						Log.fine(Log.FAC_REPO, "ccnnamelist command was found in the path!");
-						System.out.println("ccnnamelist command was found in the path!");
+						Log.fine(Log.FAC_SYNC, "ccnnamelist command was found in the path!");
 					} else {
-						System.out.println(configError);
 						Log.severe(configError);
 						throw new ConfigurationException(configError);
 					}
@@ -73,7 +70,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 					throw new ConfigurationException(configError);
 				}
 			} else {
-				System.out.println("no need to check config!  SyncMonitor is already running!");
+				Log.fine(Log.FAC_SYNC, "no need to check config!  SyncMonitor is already running!");
 			}
 		}
 		
@@ -87,7 +84,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	public void run() {
 		
 		File repoDir = new File(filename);
-		System.out.println("repoDir: "+repoDir);
+		Log.fine(Log.FAC_SYNC, "repoDir: "+repoDir);
 		File repoFile = new File(filename+"/repoFile1");
 		
 		String commandCreateDiff= "ccnnamelist repoFile1 > names ;  sort names > newnames ; rm names ; diff -N newnames oldnames > diffNames ; mv newnames oldnames";
@@ -128,16 +125,16 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 			for (String diffFiles : repoDir.list()) {
 				if (diffFiles.startsWith("diffNames.")) {
 					//this is a diff names to process
-					System.out.println("have a diffFile: "+diffFiles);
+					Log.fine(Log.FAC_SYNC, "have a diffFile: "+diffFiles);
 					if (lastModified < Long.parseLong(diffFiles.substring(10)) || lastModified == -1) {
 						//we need to read in this file
-						System.out.println("this is a new diffFile!  reading it in!");
+						Log.fine(Log.FAC_SYNC, "this is a new diffFile!  reading it in!");
 						lastModified = Long.parseLong(diffFiles.substring(10));
 						
 						//read in file here
 						try {
 							
-							System.out.println("going to read in: "+commandReadDiff);
+							Log.fine(Log.FAC_SYNC, "going to read in: "+commandReadDiff);
 							
 							BufferedReader buf = new BufferedReader(new FileReader(filename+"/"+diffFiles));
 							String line = buf.readLine();
@@ -158,7 +155,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 				
 			//now check if the file is even new...  might have more names to process
 			if (lastModified == -1 || (repoFileTime > lastModified && System.currentTimeMillis() - lastModified > runInterval )) {
-				System.out.println("the repo has a new backend, and the last time the process was run at least one runInterval before");
+				Log.fine(Log.FAC_SYNC, "the repo has a new backend, and the last time the process was run at least one runInterval before");
 				
 				lastModified = repoFileTime;
 				//there is something new in the backend file...  need to process
@@ -167,7 +164,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 					commandCreateDiffFinal = commandCreateDiff.replace("diffNames", "diffNames."+repoFileTime);
 					if (lastReadTime!=-1)
 						commandCreateDiffFinal = commandCreateDiffFinal.concat(" ; rm diffNames."+lastReadTime);
-					System.out.println("executing command: "+commandCreateDiffFinal);
+					Log.fine(Log.FAC_SYNC, "executing command: "+commandCreateDiffFinal);
 					
 				    ProcessBuilder pb = new ProcessBuilder();
 					pb.directory(repoDir);
@@ -176,11 +173,11 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 					pr = pb.start();
 					pr.waitFor();
 					
-					System.out.println("done processing the backend, now reading in diffs: "+filename+"/diffNames."+repoFileTime);
+					Log.fine(Log.FAC_SYNC, "done processing the backend, now reading in diffs: "+filename+"/diffNames."+repoFileTime);
 					BufferedReader buf = new BufferedReader(new FileReader(filename+"/diffNames."+repoFileTime));
 					String line = buf.readLine();
 					while ( line != null ) {
-						System.out.println("reading in line!: "+line);
+						Log.fine(Log.FAC_SYNC, "reading in line!: {0}", line);
 						processNewName(line);
 						
 						line = buf.readLine();
@@ -210,7 +207,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 			}			
 		}
 		synchronized(isRunning) {
-			System.out.println("isRunning was false, time to shut down");
+			Log.fine(Log.FAC_SYNC, "isRunning was false, time to shut down");
 			isRunning = false;
 		}
 		return;
@@ -219,19 +216,13 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	private void processNewName(String line) {
 		line = line.replaceAll("< ", "");
 		if (line.startsWith("ccnx:/")) {
-			//System.out.println(line);
 			try {
 				ContentName newName = ContentName.fromURI(line);
 				for (ConfigSlice cs : callbacks.keySet()) {
-					//System.out.println("checking name: "+newName+" prefix: "+cs.prefix);
 					if (cs.prefix.isPrefixOf(newName)) {
-						//System.out.println("found a match!!!  doing callbacks!  there are "+callbacks.get(cs).size());
 						for (CCNSyncHandler handler: callbacks.get(cs)) {
-							//System.out.println("callback!");
 							handler.handleContentName(cs, newName);
 						}
-					} else {
-						//System.out.println("not a match to this prefix");
 					}
 				}
 			} catch (MalformedContentNameStringException e) {
@@ -241,7 +232,6 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	}
 	
 	private boolean checkShutdown() {
-		//System.out.println("checking shutdown: "+ (!isRunning));
 		synchronized(callbacks) {
 			return !isRunning;
 		}
@@ -249,7 +239,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	
 	private void processCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
 		synchronized(callbacks) {
-			System.out.println("isRunning: "+isRunning);
+			Log.fine(Log.FAC_SYNC, "isRunning: {0}", isRunning);
 			synchronized (isRunning) {
 				if (!isRunning) {
 					//this means we do not have a thread...  and therefore are not watching the names now.
@@ -264,10 +254,10 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 			if (cb != null) {
 				//the slice is already registered...  add handler if not there
 				if (cb.contains(syncHandler)) {
-					System.out.println("the handler is already registered!");
+					Log.fine(Log.FAC_SYNC, "the handler is already registered!");
 				} else {
 					cb.add(syncHandler);
-					System.out.println("the handler has been added!");
+					Log.fine(Log.FAC_SYNC, "the handler has been added!");
 				}
 			} else {
 				//the slice is not there...  adding now!
@@ -282,7 +272,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 		synchronized(callbacks) {
 			ArrayList<CCNSyncHandler> cb = callbacks.get(slice);
 			if (cb.contains(syncHandler)) {
-				System.out.println("found the callback to remove");
+				Log.fine(Log.FAC_SYNC, "found the callback to remove");
 				cb.remove(syncHandler);
 				if (cb.isEmpty()) {
 					//no callbacks left for the slice, go ahead and remove it.

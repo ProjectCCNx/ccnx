@@ -218,15 +218,15 @@ public class ConfigSlice extends GenericXMLEncodable {
 		ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice, handle);
 		boolean updated = csno.update(SystemConfiguration.SHORT_TIMEOUT);
 		if (updated)
-			System.out.println("i found this slice in my repo! "+csno.getVersionedName());
+			Log.fine(Log.FAC_SYNC, "found this slice in my repo! {0}", csno.getVersionedName());
 		else
-			System.out.println("i didn't find a slice in my repo.");
+			Log.fine(Log.FAC_SYNC, "didn't find a slice in my repo.");
 		if (!updated || (updated && (!csno.available() || csno.isGone()))) {
-			System.out.println("need to save my data to create the slice for the repo!");
+			Log.fine(Log.FAC_SYNC, "need to save my data to create the slice for the repo!");
 			csno.setData(slice);
 			csno.save();
 		} else {
-			System.out.println("don't need to do anything...  returning the existing slice");
+			Log.fine(Log.FAC_SYNC, "don't need to do anything...  returning the existing slice");
 		}
 		csno.close();
 		return slice;
