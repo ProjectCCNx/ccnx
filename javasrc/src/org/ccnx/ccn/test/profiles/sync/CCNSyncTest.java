@@ -310,7 +310,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 		Arrays.fill(received, false);
 		boolean[]finished = (boolean[]) Array.newInstance(boolean.class, segments);
 		Arrays.fill(finished, true);
-		int loopsToTry = 5;
+		int loopsToTry = 10;
 		while (segments != 0 && loopsToTry > 0) {
 			try {
 				Thread.sleep(500);
