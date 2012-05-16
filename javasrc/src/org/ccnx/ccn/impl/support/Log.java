@@ -183,6 +183,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_PROPERTY + ".User14",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".User15",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Test",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Search",
 	};
 
 	// The environment variable for each facility
@@ -263,13 +264,21 @@ public class Log {
 
 	static {
 		// Can add an append=true argument to generate appending behavior.
+        int nFac = FAC_NAME.length;
 		Handler theHandler = null;
 		_systemLogger = Logger.getLogger(DEFAULT_APPLICATION_CLASS);
-		_facilityLoggers = new Logger[FAC_NAME.length];
+		_facilityLoggers = new Logger[nFac];
+        
+        if (FAC_LOG_LEVEL_PROPERTY.length != nFac ||
+            FAC_LOG_LEVEL_ENV.length != nFac ||
+            FAC_LOG_LEVEL_DEFAULT.length != nFac) {
+            System.err.println("Log facility consistency check failed");
+            System.exit(1);
+        }
 
 		// We restrict logging based on our _fac_level, not on the system logger
 		_systemLogger.setLevel(Level.ALL);
-		for (int i=FAC_DEFAULT; i < FAC_NAME.length; i++) {
+		for (int i=FAC_DEFAULT; i < nFac; i++) {
 			_facilityLoggers[i] = Logger.getLogger(FAC_NAME[i]);
 			_facilityLoggers[i].setLevel(Level.ALL);
 		}
