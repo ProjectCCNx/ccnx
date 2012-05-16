@@ -216,9 +216,6 @@ SyncCacheEntryFetch(struct SyncHashCacheEntry *ce) {
     } else if (ce->ncL != NULL) {
         // it's already here
         res = 0;
-    } else if ((ce->state & SyncHashState_stored) == 0) {
-        // it's never been stored, fail quietly
-        res = -1;
     } else {
         // at this point we try to fetch it from the local repo
         // a failure should complain
@@ -256,10 +253,10 @@ SyncCacheEntryFetch(struct SyncHashCacheEntry *ce) {
                     ce->state |= SyncHashState_stored;
                 }
             }
+            if (res < 0)
+                if (root->base->debug >= CCNL_ERROR)
+                    SyncNoteUri(root, here, why, name);
         }
-        if (res < 0)
-            if (root->base->debug >= CCNL_ERROR)
-                SyncNoteUri(root, here, why, name);
         ccn_charbuf_destroy(&name);
         ccn_charbuf_destroy(&content);
     }

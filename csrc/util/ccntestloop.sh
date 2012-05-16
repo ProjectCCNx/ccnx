@@ -77,6 +77,9 @@ MAKE=make
 # These are only used if hooks/update is not present
 CCN_TEST_BRANCH=HEAD
 CCN_TEST_GITCOMMAND=$CCN_TEST_GITCOMMAND
+
+# Limit the CPU time used per process in tests, in seconds (no default)
+CCN_TEST_CPU_LIMIT=""
 EOF
 }
 
@@ -122,7 +125,6 @@ CheckDirectory () {
 }
 
 BackgroundPID () {
-	local PID;
 	if [ -f testdir/ccntestloop.pid ]; then
 		PID=`cat testdir/ccntestloop.pid`
 		kill -0 "$PID" 2>/dev/null || return 1
@@ -133,7 +135,6 @@ BackgroundPID () {
 }
 
 SetPIDFile () {
-	local PID;
 	if [ -f testdir/ccntestloop.pid ]; then
 		PID=`cat testdir/ccntestloop.pid`
 		test "$PID" = $$ && return 0
@@ -152,6 +153,7 @@ CheckTestout () {
 	  rm -rf javasrc/testout~             && \
 	  mv javasrc/testout javasrc/testout~ && \
 	  Echo WARNING: existing javasrc/testout renamed to javasrc/testout~
+	mkdir -p javasrc/testout
 }
 
 PrintDetails () {
@@ -170,8 +172,9 @@ SaveLogs () {
 		exit
 	fi
 	PrintDetails > javasrc/testout/TEST-details.txt
-	# grep -e BUILD -e 'Total time.*minutes' javasrc/testout/TEST-javasrc-testlog.txt
-	mv javasrc/testout testdir/testout.$1
+	mv javasrc/testout testdir/testout.$1 || return 1
+	PrintTimesForRun $1
+	true
 }
 
 PruneOldLogs () {
@@ -200,36 +203,61 @@ SourcesChanged () {
 }
 
 ScriptChanged () {
+	test -f testdir/.~tainted~ && return 0
 	diff testdir/.~ctloop~ csrc/util/ccntestloop.sh && return 1
 	return 0 # Yes, it changed.
 }
 
 NoteTimes () {
-	times > javasrc/testout/$1.times
+	LC_ALL=C times > javasrc/testout/$1.times
 }
 
+# Use saved before-and-after outputs of times(1) to compute cpu times used
+DiffTimes () {
+	test -f $1 || return
+	test -f $2 || return
+	paste $2 $1  | \
+		tr 'ms' '  ' | \
+		while read A B C D  a b c d  etc; do
+			echo 3 k
+			echo $A 60 '*' $B + $a 60 '*' $b + - p
+			echo $C 60 '*' $D + $c 60 '*' $d + - p
+			echo + p
+		done | dc | xargs echo $3
+}
+
+PrintTimesForRun () { (
+	cd testdir/testout.$1 || return
+	DiffTimes postb.times postc.times "RUN $1 CTSTTIMES"
+	DiffTimes postc.times postj.times "RUN $1 JAVATIMES"
+) }
+
 Rebuild () {
-	local LOG;
 	Echo Building for run $1
-	LOG=javasrc/testout/TEST-buildlog.txt
 	mkdir -p javasrc/testout
+	LOG=javasrc/testout/TEST-buildlog.txt
 	(./configure && $MAKE; ) > $LOG 2>&1
 	if [ $? -eq 0 ]; then
 		NoteTimes postb
 		return 0
 	fi
 	tail $LOG
-	Echo build failed
+	echo build failed > javasrc/testout/TEST-failures.txt
+	SaveLogs $1.FAILED
 	return 1
 }
 
+LimitCPU () {
+	test -z "$CCN_TEST_CPU_LIMIT" && return
+	ulimit -t $CCN_TEST_CPU_LIMIT
+}
+
 RunCTest () {
-	local LOG STATUS;
 	test "${CCN_CTESTS:=}" = "NO" && return 0
 	Echo Running csrc tests...
 	LOG=javasrc/testout/TEST-csrc-testlog.txt
 	mkdir -p javasrc/testout
-	( cd csrc && $MAKE test TESTS="$CCN_CTESTS" 2>&1 ) > $LOG
+	(LimitCPU; cd csrc && $MAKE test TESTS="$CCN_CTESTS" 2>&1 ) > $LOG
 	STATUS=$?
 	NoteTimes postc
 	test $STATUS -eq 0 && return 0
@@ -241,11 +269,10 @@ RunCTest () {
 }
 
 RunJavaTest () {
-	local LOG;
 	test "${CCN_JAVATESTS:-}" = "NO" && return 0
 	Echo Running javasrc tests...
 	LOG=javasrc/testout/TEST-javasrc-testlog.txt
-	(cd javasrc && \
+	(LimitCPU; cd javasrc && \
 	  ant -DCHATTY=${CCN_LOG_LEVEL_ALL}             \
 	      -DTEST_PORT=${CCN_LOCAL_PORT_BASE:-63000} \
 	      ${CCN_JAVATESTS:-test}; ) > $LOG
@@ -283,14 +310,36 @@ StartBackground () {
 	sh -c "sh csrc/util/ccntestloop.sh &" < /dev/null >> testdir/log 2>&1
 }
 
+# Gather up the list of descendants
+Descendants () { (
+	export LANG=C
+	ps -U `id -u` -o ppid,pid | \
+	  while read ppid pid; do echo =$ppid= $pid; done > mypids
+	echo $1 > killpids
+	while true; do
+		PATS=`while read i; do echo " -e =$i="; done < killpids`
+		grep $PATS mypids | cut -d ' ' -f 2 > morepids
+		cat killpids morepids | sort -u > newkillpids
+		cmp killpids newkillpids >/dev/null 2>/dev/null && break
+		mv newkillpids killpids
+	done
+	echo `grep -v "^$1" killpids`
+	rm killpids newkillpids morepids mypids
+) }
+
 StopBackground () {
-	local PID;
-	PID=`BackgroundPID` && kill -HUP $PID && sleep 1 && \
-	  echo STOPPED >> testdir/log
+	PID=`BackgroundPID`
+	test -z "$PID" && return 1
+	VICTIMS=`Descendants $PID`
+	sh -c "echo $PID $VICTIMS >> javasrc/testout/KILLED" 2>/dev/null
+	kill -HUP $PID
+	kill $VICTIMS 2>/dev/null
+	echo STOPPED >> testdir/log
+	sleep 1
+	kill -9 $VICTIMS 2>/dev/null
 }
 
 Status () {
-	local STATUS;
 	test -f testdir/log && tail -n 9 testdir/log
 	BackgroundPID 'ccntestloop running as pid '
 	STATUS=$?
@@ -299,10 +348,20 @@ Status () {
 }
 
 FailHook () {
+	Echo Run number $1 failed
 	if [ -x testdir/hooks/failure ]; then
 		testdir/hooks/failure $1 && sleep 10 && ExecSelf
 	fi
-	Fail run $1 failed - stopping
+	Fail Stopping after failure
+}
+
+BuildFailHook () {
+	Echo Run number $1 build failed
+	touch testdir/.~tainted~ # Clean before next build
+	if [ -x testdir/hooks/failure ]; then
+		testdir/hooks/failure $1
+	fi
+	Fail Stopping after build failure
 }
 
 # Finally, here's what we actually want to do
@@ -338,14 +397,14 @@ UpdateSources $RUN
 if ScriptChanged; then
 	Echo "*** Script changed - will clean and restart"
 	$MAKE clean >.make.clean.log 2>&1|| Fail make clean - see .make.clean.log
-	rm -f .make.clean.log
+	rm -f .make.clean.log testdir/.~tainted~
 	echo Pausing for 10 seconds before restart...
 	sleep 10
 	ExecSelf
 fi
 
 if SourcesChanged; then
-	Rebuild $RUN || Fail make
+	Rebuild $RUN || BuildFailHook $RUN
 fi
 
 RunTest $RUN || FailHook $RUN

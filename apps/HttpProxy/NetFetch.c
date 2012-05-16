@@ -992,13 +992,12 @@ init_internal_keystore(MainData md) {
     struct ccn_charbuf *temp = NULL;
     struct ccn_charbuf *cmd = NULL;
     struct ccn_keystore *keystore = NULL;
-    struct ccn_charbuf *culprit = NULL;
+    char *culprit = NULL;
     struct stat statbuf;
     char *dir = NULL;
     int res = -1;
     size_t save;
     char *keystore_path = NULL;
-    FILE *passfile;
     
     if (md->keystore != NULL)
         return(0);
@@ -1015,7 +1014,7 @@ init_internal_keystore(MainData md) {
         if (errno == ENOENT)
             res = mkdir(ccn_charbuf_as_string(temp), 0700);
         if (res != 0) {
-            culprit = temp;
+            culprit = ccn_charbuf_as_string(temp);
             goto Finish;
         }
     }
@@ -1029,30 +1028,11 @@ init_internal_keystore(MainData md) {
         keystore = NULL;
         goto Finish;
     }
-    // No stored keystore that we can access; create one.
-    temp->length = save;
-    ccn_charbuf_putf(temp, "p");
-    passfile = fopen(ccn_charbuf_as_string(temp), "wb");
-    fprintf(passfile, "%s", CCNK_KEYSTORE_PASS);
-    fclose(passfile);
-    ccn_charbuf_putf(cmd, "ccnd-init-keystore-helper %s",
-                     keystore_path);
-    res = system(ccn_charbuf_as_string(cmd));
-    if (res != 0) {
-        culprit = cmd;
-    } else {
-		res = ccn_keystore_init(keystore, keystore_path, CCNK_KEYSTORE_PASS);
-		if (res == 0) {
-			md->keystore = keystore;
-			keystore = NULL;
-		}
-	}
 Finish:
     if (culprit != NULL) {
         fprintf(stdout,
 				"** %s: %s\n",
-				ccn_charbuf_as_string(culprit),
-				strerror(errno));
+				culprit, strerror(errno));
 		flushLog();
         culprit = NULL;
     }
@@ -1070,6 +1050,9 @@ Finish:
 			ccn_charbuf_append_closer(keylocator); /* </KeyLocator> */
 		}
 		md->keylocator = keylocator;
+    } else {
+        fprintf(stdout, "** No keystore\n");
+		flushLog();
     }
     ccn_charbuf_destroy(&temp);
     ccn_charbuf_destroy(&cmd);

@@ -5,7 +5,7 @@
 #
 # A utility script to start a CCNx java command line utility
 #
-# Copyright (C) 2008-2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2008-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -67,7 +67,7 @@ while [ $# -gt 0 ]; do
       if [ $# -lt 2 ]; then
         usage
       fi
-      DEBUG_OPTION="-Xrunjdwp:transport=dt_socket,address=$2,server=y,suspend=n"
+      DEBUG_OPTION="-Xrunjdwp:transport=dt_socket,address=$2,server=y,suspend=y"
       shift 2
     elif [ "$1" = "-javaopts" ]; then
       if [ $# -lt 2 ]; then
@@ -89,7 +89,7 @@ else
   shift
 fi
 
-$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION $JAVA_OPTIONS org.ccnx.ccn.utils.$UTIL $*
+$JAVA -cp $CLASSPATH $PORTARG $DEBUG_OPTION $JAVA_OPTIONS org.ccnx.ccn.utils.$UTIL "[-debug <portno>] [-javaopts <options>] " $*
 
 
 

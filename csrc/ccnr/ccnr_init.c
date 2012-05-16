@@ -823,7 +823,8 @@ ccnr_init_policy_link_cob(struct ccnr_handle *ccnr, struct ccn *h,
     struct ccn_charbuf *pubkey = ccn_charbuf_create();
     struct ccn_charbuf *keyid = ccn_charbuf_create();
     struct ccn_charbuf *content = ccn_charbuf_create();
-    struct ccn_charbuf *cob = ccn_charbuf_create();   // result
+    struct ccn_charbuf *cob = ccn_charbuf_create();
+    struct ccn_charbuf *answer = NULL;
     int res;
     
     res = ccn_get_public_key(h, NULL, pubid, pubkey);
@@ -847,7 +848,8 @@ ccnr_init_policy_link_cob(struct ccnr_handle *ccnr, struct ccn *h,
     res |= ccn_sign_content(h, cob, name, &sp, content->buf, content->length);
     if (res != 0)
         goto Bail;
-    return (cob);
+    answer = cob;
+    cob = NULL;
     
 Bail:
     ccn_charbuf_destroy(&name);
@@ -855,7 +857,8 @@ Bail:
     ccn_charbuf_destroy(&pubkey);
     ccn_charbuf_destroy(&keyid);
     ccn_charbuf_destroy(&content);
-    return (NULL);
+    ccn_charbuf_destroy(&cob);
+    return (answer);
 }
 
 
@@ -974,6 +977,10 @@ load_policy(struct ccnr_handle *ccnr)
     }
     
 CreateNewPolicy:
+    // clean up if we had previously done some allocation
+    ccn_indexbuf_destroy(&nc);
+    ccn_charbuf_destroy(&basename);
+    ccn_charbuf_destroy(&policy);
     ccnr_msg(ccnr, "Creating new policy file.");
     // construct the policy content object
     global_prefix = getenv ("CCNR_GLOBAL_PREFIX");
@@ -1019,8 +1026,12 @@ CreateNewPolicy:
         r_init_fail(ccnr, __LINE__, "Unable to write repoPolicy file", errno);
         return(-1);
     }
-    ftruncate(fd, ccnr->policy_link_cob->length);
+    res = ftruncate(fd, ccnr->policy_link_cob->length);
     close(fd);
+    if (res == -1) {
+        r_init_fail(ccnr, __LINE__, "Unable to truncate repoPolicy file", errno);
+        return(-1);
+    }
     // parse the policy for later use
     if (r_proto_parse_policy(ccnr, policy->buf, policy->length, ccnr->parsed_policy) < 0) {
         r_init_fail(ccnr, __LINE__, "Unable to parse new repoPolicy file", 0);
@@ -1035,6 +1046,7 @@ CreateNewPolicy:
         return(-1);
     }
     memmove(ccnr->parsed_policy->version, buf, sizeof(ccnr->parsed_policy->version));
+    ccn_indexbuf_destroy(&nc);
     ccn_charbuf_destroy(&basename);
     ccn_charbuf_destroy(&policy);
     ccn_charbuf_destroy(&policyFileName);

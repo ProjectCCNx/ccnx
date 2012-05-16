@@ -1,11 +1,11 @@
 /*
  * Part of the CCNx command line utilities
  *
- * Copyright (C) 2008, 2009, 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -44,22 +44,22 @@ public abstract class CommonOutput {
 			System.out.printf("filename %s\n", fileName);
 		if (fileName.startsWith("http://")) {
 			if (CommonParameters.verbose)
-				System.out.printf("filename is http\n");			
+				System.out.printf("filename is http\n");
 			is = new URL(fileName).openStream();
 		} else {
 			if (CommonParameters.verbose)
-				System.out.printf("filename is file\n");			
+				System.out.printf("filename is file\n");
 			File theFile = new File(fileName);
-	
+
 			if (!theFile.exists()) {
 				System.out.println("No such file: " + theFile.getName());
-				usage();
+				usage(CommonArguments.getExtraUsage());
 			}
 			is = new FileInputStream(theFile);
 		}
 
 		CCNOutputStream ostream;
-		
+
 		// Use file stream in both cases to match behavior. CCNOutputStream doesn't do
 		// versioning and neither it nor CCNVersionedOutputStream add headers.
 		if (CommonParameters.rawMode) {
@@ -76,10 +76,10 @@ public abstract class CommonOutput {
 		if (CommonParameters.timeout != null)
 			ostream.setTimeout(CommonParameters.timeout);
 		do_write(ostream, is);
-		
+
 		return ostream.getVersion();
 	}
-	
+
 	private void do_write(CCNOutputStream ostream, InputStream is) throws IOException {
 		long time = System.currentTimeMillis();
 		int size = CommonParameters.BLOCK_SIZE;
@@ -87,19 +87,19 @@ public abstract class CommonOutput {
 		byte [] buffer = new byte[CommonParameters.BLOCK_SIZE];
 		if( Log.isLoggable(Level.FINER)) {
 			Log.finer("do_write: " + is.available() + " bytes left.");
-			while ((readLen = is.read(buffer, 0, size)) != -1){	
+			while ((readLen = is.read(buffer, 0, size)) != -1){
 				ostream.write(buffer, 0, readLen);
 				Log.finer("do_write: wrote " + size + " bytes.");
 				Log.finer("do_write: " + is.available() + " bytes left.");
 			}
 		} else {
-			while ((readLen = is.read(buffer, 0, size)) != -1){	
+			while ((readLen = is.read(buffer, 0, size)) != -1){
 				ostream.write(buffer, 0, readLen);
 			}
 		}
 		ostream.close();
 		Log.fine("finished write: {0}", System.currentTimeMillis() - time);
 	}
-	
-	protected abstract void usage();
+
+	protected abstract void usage(String extraUsage);
 }

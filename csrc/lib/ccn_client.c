@@ -31,6 +31,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#include <netinet/in.h>
 #include <unistd.h>
 #include <openssl/evp.h>
 
@@ -59,6 +60,7 @@ struct ccn_reg_closure;
 struct ccn {
     int sock;
     size_t outbufindex;
+    struct ccn_charbuf *connect_type;   /* text representing connection to ccnd */
     struct ccn_charbuf *interestbuf;
     struct ccn_charbuf *inbuf;
     struct ccn_charbuf *outbuf;
@@ -343,31 +345,72 @@ ccn_defer_verification(struct ccn *h, int defer)
 /**
  * Connect to local ccnd.
  * @param h is a ccn library handle
- * @param name is the name of the unix-domain socket to connect to;
- *             use NULL to get the default.
+ * @param name is the name of the unix-domain socket to connect to,
+ *      or the string "tcp[4|6][:port]" to indicate a TCP connection
+ *      using either IPv4 (default) or IPv6 on the optional port;
+ *      use NULL to get the default, which is affected by the
+ *      environment variables CCN_LOCAL_TRANSPORT, interpreted as is name,
+ *      and CCN_LOCAL_PORT if there is no port specified,
+ *      or CCN_LOCAL_SOCKNAME and CCN_LOCAL_PORT.
  * @returns the fd for the connection, or -1 for error.
  */ 
 int
 ccn_connect(struct ccn *h, const char *name)
 {
-    struct sockaddr_un addr = {0};
+    struct sockaddr_storage sockaddr = {0};
+    struct sockaddr_un *un_addr = (struct sockaddr_un *)&sockaddr;
+    struct sockaddr_in *in_addr = (struct sockaddr_in *)&sockaddr;
+    struct sockaddr_in6 *in6_addr = (struct sockaddr_in6 *)&sockaddr;
+    struct sockaddr *addr = (struct sockaddr *)&sockaddr;
+    int addr_size;
     int res;
+#ifndef CCN_LOCAL_TCP
+    const char *s;
+#endif
+    
     if (h == NULL)
         return(-1);
     h->err = 0;
     if (h->sock != -1)
         return(NOTE_ERR(h, EINVAL));
-    addr.sun_family = AF_UNIX;
-    if (name == NULL || name[0] == 0)
-        ccn_setup_sockaddr_un(NULL, &addr);
-    else {
-        addr.sun_family = AF_UNIX;
-        strncpy(addr.sun_path, name, sizeof(addr.sun_path));
+#ifdef CCN_LOCAL_TCP
+    res = ccn_setup_sockaddr_in("tcp", addr, sizeof(sockaddr));
+#else
+    if (name != NULL && name[0] != 0) {
+        if (strncasecmp(name, "tcp", 3) == 0) {
+            res = ccn_setup_sockaddr_in(name, addr, sizeof(sockaddr));
+            if (res == -1)
+                return(NOTE_ERR(h, EINVAL));
+        } else {
+            un_addr->sun_family = AF_UNIX;
+            strncpy(un_addr->sun_path, name, sizeof(un_addr->sun_path));
+        }
+        ccn_set_connect_type(h, name);
+    } else {
+        s = getenv("CCN_LOCAL_TRANSPORT");
+        if (s != NULL && strncasecmp(s, "tcp", 3) == 0) {
+            res = ccn_setup_sockaddr_in(s, addr, sizeof(sockaddr));
+            if (res == -1)
+                return(NOTE_ERR(h, EINVAL));
+            ccn_set_connect_type(h, s);
+        } else if (s == NULL || strcasecmp(s, "unix")) {
+            ccn_setup_sockaddr_un(NULL, un_addr);
+            ccn_set_connect_type(h, un_addr->sun_path);
+        } else {
+            return(NOTE_ERR(h, EINVAL));
+        }
     }
-    h->sock = socket(AF_UNIX, SOCK_STREAM, 0);
+#endif
+    h->sock = socket(sockaddr.ss_family, SOCK_STREAM, 0);
     if (h->sock == -1)
         return(NOTE_ERRNO(h));
-    res = connect(h->sock, (struct sockaddr *)&addr, sizeof(addr));
+    switch (sockaddr.ss_family) {
+        case AF_UNIX: addr_size = sizeof(*un_addr); break;
+        case AF_INET: addr_size = sizeof(*in_addr); break;
+        case AF_INET6: addr_size = sizeof(*in6_addr); break;
+        default: addr_size = 0;
+    }
+    res = connect(h->sock, addr, addr_size);
     if (res == -1)
         return(NOTE_ERRNO(h));
     res = fcntl(h->sock, F_SETFL, O_NONBLOCK);
@@ -380,6 +423,26 @@ int
 ccn_get_connection_fd(struct ccn *h)
 {
     return(h->sock);
+}
+
+
+void
+ccn_set_connect_type(struct ccn *h, const char *name)
+{
+    if (h->connect_type == NULL) {
+        h->connect_type = ccn_charbuf_create();
+    } else {
+        ccn_charbuf_reset(h->connect_type);
+    }
+    ccn_charbuf_append_string(h->connect_type, name);
+}
+
+const char *
+ccn_get_connect_type(struct ccn *h)
+{
+    if (h->connect_type == NULL || h->connect_type->length == 0)
+        return (NULL);
+    return (ccn_charbuf_as_string(h->connect_type));
 }
 
 int
@@ -2010,7 +2073,7 @@ handle_simple_incoming_content(
         if ((md->flags & CCN_GET_NOKEYWAIT) == 0)
             return(CCN_UPCALL_RESULT_VERIFY);
     }
-    if (kind == CCN_UPCALL_CONTENT_KEYMISSING) {
+    else if (kind == CCN_UPCALL_CONTENT_KEYMISSING) {
         if ((md->flags & CCN_GET_NOKEYWAIT) == 0)
             return(CCN_UPCALL_RESULT_FETCHKEY);
     }
@@ -2077,7 +2140,7 @@ ccn_get(struct ccn *h,
             saved_keys = h->keys;
             h->keys = orig_h->keys;
         }
-        res = ccn_connect(h, NULL);
+        res = ccn_connect(h, ccn_get_connect_type(orig_h));
         if (res < 0) {
             ccn_destroy(&h);
             return(-1);

@@ -5,7 +5,7 @@
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -33,35 +33,36 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
  **/
  public class ccnputfile extends CommonOutput implements Usage {
 	 static ccnputfile ccnputfile = new ccnputfile();
- 
+
 	/**
 	 * @param args
 	 */
 	public void write(String[] args) {
 		Log.setDefaultLevel(Level.WARNING);
-		
-		for (int i = 0; i < args.length - 2; i++) {
+
+		for (int i = 0; i < args.length; i++) {
+			if (CommonArguments.parseArguments(args, i, ccnputfile)) {
+				i = CommonParameters.startArg;
+				continue;
+			}
+			if ((i + 2) >= args.length) {
+				CommonParameters.startArg = i;
+				break;
+			}
 			if (args[i].equals("-local")) {
 				CommonParameters.local = true;
 			} else if (args[i].equals(("-allownonlocal"))) {
 				CommonParameters.local = false;
 			} else if (args[i].equals(("-raw"))) {
 				CommonParameters.rawMode = true;
-			} else {
-				if (!CommonArguments.parseArguments(args, i, ccnputfile)) {
-					usage();
-				}
-				if (CommonParameters.startArg > i + 1)
-					i = CommonParameters.startArg - 1;
-			}
-			if (CommonParameters.startArg <= i)
-				CommonParameters.startArg = i + 1;
+			} else
+				usage(CommonArguments.getExtraUsage());
 		}
-		
+
 		if (args.length < CommonParameters.startArg + 2) {
-			usage();
+			usage(CommonArguments.getExtraUsage());
 		}
-				
+
 		long starttime = System.currentTimeMillis();
 		try {
 			// If we get one file name, put as the specific name given.
@@ -69,13 +70,13 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 			// Ideally want to use newVersion to get latest version. Start
 			// with random version.
 			ContentName argName = ContentName.fromURI(args[CommonParameters.startArg]);
-			
+
 			CCNHandle handle = CCNHandle.open();
-			
+
 			if (args.length == (CommonParameters.startArg + 2)) {
 				if (CommonParameters.verbose)
 					Log.info("ccnputfile: putting file " + args[CommonParameters.startArg + 1]);
-				
+
 				doPut(handle, args[CommonParameters.startArg + 1], argName);
 				System.out.println("Inserted file " + args[CommonParameters.startArg + 1] + ".");
 				if (CommonParameters.verbose)
@@ -83,10 +84,10 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 				System.exit(0);
 			} else {
 				for (int i=CommonParameters.startArg + 1; i < args.length; ++i) {
-					
+
 					// put as child of name
 					ContentName nodeName = new ContentName(argName, args[i]);
-					
+
 					doPut(handle, args[i], nodeName);
 					// leave this one as always printing for now
 					System.out.println("Inserted file " + args[i] + ".");
@@ -111,9 +112,10 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 		System.exit(1);
 
 	}
-	
-	public void usage() {
-		System.out.println("usage: ccnputfile [-v (verbose)] [-raw] [-unversioned] [-local | -allownonlocal] [-timeout millis] [-log level] [-as pathToKeystore] [-ac (access control)] <ccnname> (<filename>|<url>)*");
+
+	@Override
+	public void usage(String extraUsage) {
+		System.out.println("usage: ccnputfile " + extraUsage + "[-v (verbose)] [-raw] [-unversioned] [-local | -allownonlocal] [-timeout millis] [-log level] [-as pathToKeystore] [-ac (access control)] <ccnname> (<filename>|<url>)*");
 		System.exit(1);
 	}
 

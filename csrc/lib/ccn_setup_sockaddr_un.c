@@ -21,11 +21,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netdb.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#if defined(NEED_GETADDRINFO_COMPAT)
+#include "getaddrinfo.h"
+#include "dummyin6.h"
+#endif
+#ifndef AI_ADDRCONFIG
+#define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
+#endif
 
 #include <ccn/ccnd.h>
 #include <ccn/ccn_private.h>
+#include <ccn/charbuf.h>
 
 /**
  * Set up a unix-domain socket address for contacting ccnd.
@@ -57,4 +68,49 @@ ccn_setup_sockaddr_un(const char *portstr, struct sockaddr_un *result)
     else
         snprintf(sa->sun_path, sizeof(sa->sun_path), "%s",
                  sockname);
+}
+
+/**
+ * Set up a Internet socket address for contacting ccnd.
+ *
+ * The name must be of the form "tcp[4|6][:port]"
+ * If there is no port specified, the environment variable CCN_LOCAL_PORT is
+ * checked. Bad port specifications will result in the default port (9695)
+ * being used.  If neither "4" nor "6" is present, the code will prefer the IPv4
+ * localhost address.
+ * @returns 0 on success, -1 on error
+ */
+int
+ccn_setup_sockaddr_in(const char *name, struct sockaddr *result, int length)
+{
+    struct addrinfo hints = {0};
+    struct addrinfo *ai = NULL;
+    char *port;
+    char *nameonly = strdup(name);
+    int ans = -1;
+    int res;
+
+    port = strchr(nameonly, ':');
+    if (port)
+        *port++ = 0;
+    if (port == NULL || port[0] == 0)
+        port = getenv(CCN_LOCAL_PORT_ENVNAME);
+    if (port == NULL || port[0] == 0)
+        port = CCN_DEFAULT_UNICAST_PORT;
+    memset(result, 0, length);
+    hints.ai_family = AF_UNSPEC;
+    if (strcasecmp(nameonly, "tcp6") == 0) hints.ai_family = AF_INET6;
+    if (strcasecmp(nameonly, "tcp4") == 0) hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_ADDRCONFIG;
+    hints.ai_protocol = 0;
+    res = getaddrinfo(NULL, port, &hints, &ai);
+    if (res != 0 || ai->ai_addrlen > length)
+        goto Bail;
+    memcpy(result, ai->ai_addr, ai->ai_addrlen);
+    ans = 0;
+Bail:
+    free(nameonly);
+    freeaddrinfo(ai);
+    return (ans);
 }

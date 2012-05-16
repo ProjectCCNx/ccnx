@@ -42,18 +42,19 @@ public class ccngetfile implements Usage {
 	public static void main(String[] args) {
 		Log.setDefaultLevel(Level.WARNING);
 
-		for (int i = 0; i < args.length - 2; i++) {
+		for (int i = 0; i < args.length; i++) {
 			if (!CommonArguments.parseArguments(args, i, u)) {
-				u.usage();
-				System.exit(1);
+				if (i >= args.length - 3) {
+					CommonParameters.startArg = i;
+					break;
+				}
+				u.usage(CommonArguments.getExtraUsage());
 			}
-			if (CommonParameters.startArg > (i + 1))
-				i = CommonParameters.startArg - 1;
+			i = CommonParameters.startArg;
 		}
 
 		if (args.length < CommonParameters.startArg + 2) {
-			u.usage();
-			System.exit(1);
+			u.usage(CommonArguments.getExtraUsage());
 		}
 
 		try {
@@ -110,8 +111,9 @@ public class ccngetfile implements Usage {
 		System.exit(1);
 	}
 
-	public void usage() {
-		System.out.println("usage: ccngetfile [-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <filename>");
+	public void usage(String extraUsage) {
+		System.out.println("usage: ccngetfile " + extraUsage + "[-unversioned] [-timeout millis] [-as pathToKeystore] [-ac (access control)] <ccnname> <filename>");
+		System.exit(1);
 	}
 
 }

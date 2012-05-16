@@ -1,11 +1,11 @@
 /*
  * A CCNx command line utility.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010, 2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation. 
+ * Free Software Foundation.
  * This work is distributed in the hope that it will be useful, but WITHOUT ANY
  * WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
@@ -34,73 +34,50 @@ import org.ccnx.ccn.profiles.repo.RepositoryBulkImport;
  * file is not changed.
  * Note class name needs to match command name to work with ccn_run
  */
-public class ccnrepoimport {
-	
+public class ccnrepoimport implements Usage {
+	static ccnrepoimport ccnrepoimport = new ccnrepoimport();
+
 	public static Integer timeout = 20000;
 	public static String importFileName = "myImport";
-	
+
 	/**
 	 * @param args
 	 */
-	public static void main(String[] args) {
-		int startArg = 0;
-		
-		for (int i = 0; i < args.length - 2; i++) {
-			if (args[i].equals("-timeout")) {
-				if (args.length < (i + 2)) {
-					usage();
-					return;
+	public void doimport(String[] args) {
+		Log.setDefaultLevel(Level.WARNING);
+
+		for (int i = 0; i < args.length; i++) {
+			if (!CommonArguments.parseArguments(args, i, ccnrepoimport)) {
+				if (i >= args.length - 2) {
+					CommonParameters.startArg = i;
+					break;
 				}
-				try {
-					timeout = Integer.parseInt(args[++i]);
-				} catch (NumberFormatException nfe) {
-					usage();
-					return;
-				}
-				if (startArg <= i)
-					startArg = i + 1;
-			} else if (args[i].equals("-log")) {
-				Level level = null;
-				if (args.length < (i + 2)) {
-					usage();
-				}
-				try {
-					level = Level.parse(args[++i]);
-				} catch (NumberFormatException nfe) {
-					usage();
-				}
-				Log.setLevel(level);
-				if (startArg <= i)
-					startArg = i + 1;
+				usage(CommonArguments.getExtraUsage());
 			}
-			else {
-				usage();
-				System.exit(1);
-			}
+			i = CommonParameters.startArg;
 		}
-		
-		if (args.length < startArg + 2) {
-			usage();
-			System.exit(1);
+
+		if (CommonParameters.startArg > args.length - 2) {
+			usage(CommonArguments.getExtraUsage());
 		}
-		
+
 		try {
-			
-			File repoDir = new File(args[startArg]);
+
+			File repoDir = new File(args[CommonParameters.startArg]);
 			if (!repoDir.exists()) {
-				System.out.println("Repo at: " + args[startArg + 1] + " does not exist");
+				System.out.println("Repo at: " + args[CommonParameters.startArg] + " does not exist");
 				System.exit(1);
 			}
-			
+
 			File repoImportDir = new File(repoDir, LogStructRepoStoreProfile.REPO_IMPORT_DIR);
 			repoImportDir.mkdir();
-			
-			File theFile = new File(args[startArg + 1]);
+
+			File theFile = new File(args[CommonParameters.startArg + 1]);
 			if (!theFile.exists()) {
-				System.out.println("File: " + args[startArg + 1] + " does not exist");
+				System.out.println("File: " + args[CommonParameters.startArg + 1] + " does not exist");
 				System.exit(1);
 			}
-			
+
 			File importFile;
 			String importName;
 			int test = 0;
@@ -122,11 +99,11 @@ public class ccnrepoimport {
 			}
 			fis.close();
 			fos.close();
-			
+
 			CCNHandle handle = CCNHandle.open();
-			
+
 			long starttime = System.currentTimeMillis();
-			
+
 			boolean result = RepositoryBulkImport.bulkImport(handle, importName, timeout);
 			System.out.println("Bulk import of " + theFile + (result ? " succeeded" : " failed"));
 			System.out.println("ccnrepoimport took: "+(System.currentTimeMillis() - starttime)+" ms");
@@ -141,9 +118,14 @@ public class ccnrepoimport {
 		}
 		System.exit(1);
 	}
-	
-	public static void usage() {
-		System.out.println("usage: ccnrepoimport [-timeout millis] [-log level] <repodir> <filename>");
+
+	public void usage(String extraUsage) {
+		System.out.println("usage: ccnrepoimport " + extraUsage + "[-timeout millis] [-log level] <repodir> <filename>");
+		System.exit(1);
 	}
-	
+
+	public static void main(String[] args) {
+		ccnrepoimport.doimport(args);
+	}
+
 }
