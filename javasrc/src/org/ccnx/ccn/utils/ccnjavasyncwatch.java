@@ -16,7 +16,7 @@ import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 public class ccnjavasyncwatch implements Usage, CCNSyncHandler{
 	static ccnjavasyncwatch ccnsync = new ccnjavasyncwatch();
 	
-	public void usage() {
+	public void usage(String extraUsage) {
 		System.out.println("usage: ccnjavasyncwatch [-log level] -t <topo> -p <prefix> [-f filter] [-r roothash-hex] [-w timeout-secs]");
 		System.exit(1);
 	}
@@ -108,4 +108,5 @@ public class ccnjavasyncwatch implements Usage, CCNSyncHandler{
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
 		System.out.println("Got a new name!!!! "+ syncedContent);
 	}
+
 }
