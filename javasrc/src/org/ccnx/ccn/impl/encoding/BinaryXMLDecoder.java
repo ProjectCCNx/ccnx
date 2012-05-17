@@ -213,11 +213,11 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	// should probably move away from an ArrayList to a plain array
 //	private final ArrayList<Element> _elements = new ArrayList<Element>(128);
 	private final static int ELEM_FIRST = 100;
-	private final static int ELEM_INCR = 100;
+	private final static int ELEM_INCR_FRAC = 2;    // increase by 1/2 each time
 	private int _currentElements = ELEM_FIRST;
 
 //	private final Element [] _elements = new Element[ELEM_MAX];
-	private int [] _elements_type = new int[ELEM_FIRST];
+	private byte [] _elements_type = new byte[ELEM_FIRST];
 	private int [] _elements_value = new int[ELEM_FIRST];
 	private byte [][] _elements_blob = new byte[ELEM_FIRST][];
 	private int _bytesRead = 0;
@@ -273,7 +273,7 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	 * @throws IOException If not DTAG or BLOB/UDATA or CLOSE (END), throws exception
 	 */
 	private final int readTypeAndValue(final InputStream istream) throws IOException {
-		int typ = -1;
+		byte typ = -1;
 		long val = 0;
 
 		int next;
@@ -294,7 +294,7 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 				val |= (next & BinaryXMLCodec.XML_REG_VAL_MASK);
 			} else {
 				// last byte
-				typ = next & BinaryXMLCodec.XML_TT_MASK;
+				typ = (byte) (next & BinaryXMLCodec.XML_TT_MASK);
 				val = val << BinaryXMLCodec.XML_TT_VAL_BITS;
 				val |= ((next >>> BinaryXMLCodec.XML_TT_BITS) & BinaryXMLCodec.XML_TT_VAL_MASK);
 				break;
@@ -331,23 +331,24 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	 * @param val
 	 * @param buffer
 	 */
-	private void setElement(int index, int typ, int val, byte[] buffer) {
+	private void setElement(int index, byte typ, int val, byte[] buffer) {
 		try {
 			_elements_type[index]  = typ;
 		} catch (ArrayIndexOutOfBoundsException aiobe) {
-			_currentElements += ELEM_INCR;
-			int[] newTypes = new int[_currentElements];
-			System.arraycopy(_elements_type, 0, newTypes, 0, _currentElements - ELEM_INCR);
+            int prevElements = _currentElements;
+			_currentElements += _currentElements / ELEM_INCR_FRAC;
+			byte[] newTypes = new byte[_currentElements];
+			System.arraycopy(_elements_type, 0, newTypes, 0, prevElements);
 			_elements_type = newTypes;
 			int[] newValues = new int[_currentElements];
-			System.arraycopy(_elements_value, 0, newValues, 0, _currentElements - ELEM_INCR);
+			System.arraycopy(_elements_value, 0, newValues, 0, prevElements);
 			_elements_value = newValues;
 			byte[][] newBlobs = new byte[_currentElements][];
-			System.arraycopy(_elements_blob, 0, newBlobs, 0, _currentElements - ELEM_INCR);
+			System.arraycopy(_elements_blob, 0, newBlobs, 0, prevElements);
 			_elements_blob = newBlobs;
 			_elements_type[index] = typ;
 			if (Log.isLoggable(Log.FAC_ENCODING, Level.INFO))
-				Log.info("Reset decode array sizes to {0}", _currentElements);
+				Log.info(Log.FAC_ENCODING, "Reset decode array sizes to {0}", _currentElements);
 		}
 		_elements_value[index] = val;
 		_elements_blob[index]  = buffer;
@@ -361,7 +362,7 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	 * @return none
 	 * @throws ContentDecodingException if current DOM element does not match @expected
 	 */
-	private final void peekTag(int type, long expected) throws ContentDecodingException {
+	private final void peekTag(byte type, long expected) throws ContentDecodingException {
 		if( _parsingElement >= _elementCount )
 			throw new ContentDecodingException(
 					String.format("Past end of DOM! size %d position %d", _elementCount, _parsingElement));
@@ -380,7 +381,7 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	 * @return
 	 * @throws ContentDecodingException
 	 */
-	private final void peekTag(int type) throws ContentDecodingException {
+	private final void peekTag(byte type) throws ContentDecodingException {
 		if( _parsingElement >= _elementCount )
 			throw new ContentDecodingException(
 					String.format("Past end of DOM! size %d position %d", _elementCount, _parsingElement));
@@ -448,7 +449,7 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	 * which actually closes the preceeding start element, not the Blob's END
 	 * (blobs don't have an end element).
 	 */
-	public final byte[] readBinary(int type) throws ContentDecodingException {
+	public final byte[] readBinary(byte type) throws ContentDecodingException {
 		if( type != BinaryXMLCodec.XML_BLOB && type != BinaryXMLCodec.XML_UDATA )
 			throw new ContentDecodingException("Must be BLOB or UDATA");
 
