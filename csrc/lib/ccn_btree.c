@@ -911,13 +911,13 @@ ccn_btree_spill(struct ccn_btree *btree, struct ccn_btree_node *node)
         btree->nextspill = 0;
     n = ccn_btree_node_nent(node);
     if (node->nodeid == 1)
-        return(-1);
+        return(0); /* nothing to do for the root */
     res = ccn_btree_prepare_for_update(btree, node);
     if (res < 0)
         return(-1);
     parent = ccn_btree_getnode(btree, node->parent, 0);
     if (parent == NULL)
-        return(-1);
+        return(-1); /* only the root has no parent */
     res = ccn_btree_prepare_for_update(btree, parent);
     if (res < 0)
         return(-1);
@@ -1006,7 +1006,7 @@ ccn_btree_next_leaf(struct ccn_btree *btree,
     key = ccn_charbuf_create();
     p = node;
     n = ccn_btree_node_nent(p);
-    if (n < 1)
+    if (n < 1 && p->parent != 0)
         goto Bail;
     while (p->parent != 0) {
         res = ccn_btree_key_fetch(key, p, n - 1);
