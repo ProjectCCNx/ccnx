@@ -88,7 +88,6 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 		File repoFile = new File(filename+"/repoFile1");
 		
 		String commandCreateDiff= "ccnnamelist repoFile1 > names ;  sort names > newnames ; rm names ; diff -N newnames oldnames > diffNames ; mv newnames oldnames";
-		String commandReadDiff = "cat diffNames";
 		String commandCreateDiffFinal;
 		
 		long lastReadTime = -1;
@@ -134,11 +133,12 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 						//read in file here
 						try {
 							
-							Log.fine(Log.FAC_SYNC, "going to read in: "+commandReadDiff);
+							Log.fine(Log.FAC_SYNC, "going to read in: "+filename+"/"+diffFiles);
 							
 							BufferedReader buf = new BufferedReader(new FileReader(filename+"/"+diffFiles));
 							String line = buf.readLine();
 							while ( line != null ) {
+								Log.fine(Log.FAC_SYNC, "reading in line!: {0}", line);
 								processNewName(line);
 								line = buf.readLine();
 							}
@@ -153,6 +153,8 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 				}
 			}
 				
+			
+			Log.fine(Log.FAC_SYNC, "checking if the repo backend is new.  last modified: {0} repoFileTime: {1} diff: {2} runInterval: {3}", lastModified, repoFileTime, (System.currentTimeMillis() - lastModified), runInterval);
 			//now check if the file is even new...  might have more names to process
 			if (lastModified == -1 || (repoFileTime > lastModified && System.currentTimeMillis() - lastModified > runInterval )) {
 				Log.fine(Log.FAC_SYNC, "the repo has a new backend, and the last time the process was run at least one runInterval before");
