@@ -114,6 +114,7 @@ public class Log {
 	public static final int FAC_USER15		= 28;
 	public static final int FAC_TEST		= 29;	// For Junit tests
 	public static final int FAC_SEARCH		= 30;	// name enumeration, path finder
+	public static final int FAC_SYNC		= 31;	// sync api and sync control traffic processing
 
 
 	protected static final String [] FAC_NAME = {
@@ -148,6 +149,7 @@ public class Log {
 		"ccnx.User15",
 		"ccnx.Test",
 		"ccnx.Search",
+		"ccnx.Sync",
 	};
 
 
@@ -184,6 +186,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_PROPERTY + ".User15",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Test",
 		DEFAULT_LOG_LEVEL_PROPERTY + ".Search",
+		DEFAULT_LOG_LEVEL_PROPERTY + ".Sync",
 	};
 
 	// The environment variable for each facility
@@ -219,6 +222,7 @@ public class Log {
 		DEFAULT_LOG_LEVEL_ENV + "_USER15",
 		DEFAULT_LOG_LEVEL_ENV + "_TEST",
 		DEFAULT_LOG_LEVEL_ENV + "_SEARCH",
+		DEFAULT_LOG_LEVEL_ENV + "_SYNC",
 	};
 
 	public static final Level [] FAC_LOG_LEVEL_DEFAULT = {
@@ -253,6 +257,7 @@ public class Log {
 		Level.INFO,		// User15
 		Level.INFO,		// Test
 		Level.INFO,		// Search
+		Level.INFO,		// Sync
 	};
 
 	protected static Level [] _fac_level = new Level[FAC_LOG_LEVEL_PROPERTY.length];

@@ -20,12 +20,15 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 
+import org.bouncycastle.util.Arrays;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.CCNProtocolDTags;
 import org.ccnx.ccn.impl.encoding.GenericXMLEncodable;
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.encoding.XMLEncoder;
 import org.ccnx.ccn.impl.security.crypto.CCNDigestHelper;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.ContentName;
 
@@ -55,7 +58,11 @@ public class ConfigSlice extends GenericXMLEncodable {
 
 		public Filter() {
 		}
-
+		
+		public Filter(ContentName cn) {
+			super(cn);
+		}
+		
 		public Filter(byte[][] arg) {
 			super(arg);
 		}
@@ -130,6 +137,10 @@ public class ConfigSlice extends GenericXMLEncodable {
 
 	protected LinkedList<Filter> filters = new LinkedList<Filter>();
 
+	public boolean equals(ConfigSlice otherSlice) {
+		return Arrays.areEqual(this.getHash(), otherSlice.getHash());
+	}
+	
 	public byte[] getHash() {
 		try {
 			return CCNDigestHelper.digest(encode());
@@ -201,13 +212,62 @@ public class ConfigSlice extends GenericXMLEncodable {
 	 * @param filters from ConfigSlice
 	 * @throws IOException
 	 */
-	public static void checkAndCreate(ContentName topo, ContentName prefix, Collection<Filter> filters, CCNHandle handle) throws ContentDecodingException, IOException {
+	public static ConfigSlice checkAndCreate(ContentName topo, ContentName prefix, Collection<Filter> filters, CCNHandle handle) throws ContentDecodingException, IOException {
 		ConfigSlice slice = new ConfigSlice(topo, prefix, filters);
-		ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice.getHash(), handle);
-		if (!csno.available() || csno.isGone()) {
+		//ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice.getHash(), handle);
+		ConfigSlice.NetworkObject csno = new ConfigSlice.NetworkObject(slice, handle);
+		boolean updated = csno.update(SystemConfiguration.SHORT_TIMEOUT);
+		if (updated)
+			Log.fine(Log.FAC_SYNC, "found this slice in my repo! {0}", csno.getVersionedName());
+		else
+			Log.fine(Log.FAC_SYNC, "didn't find a slice in my repo.");
+		if (!updated || (updated && (!csno.available() || csno.isGone()))) {
+			Log.fine(Log.FAC_SYNC, "need to save my data to create the slice for the repo!");
 			csno.setData(slice);
 			csno.save();
+		} else {
+			Log.fine(Log.FAC_SYNC, "don't need to do anything...  returning the existing slice");
 		}
 		csno.close();
+		return slice;
+	}
+	
+	public void checkAndCreate(CCNHandle handle) throws ContentDecodingException, ContentEncodingException, IOException{
+		ConfigSlice.NetworkObject existingSlice;
+		try {
+			//existingSlice = new ConfigSlice.NetworkObject(this.getHash(), handle);
+			existingSlice = new ConfigSlice.NetworkObject(this, handle);
+			boolean updated = existingSlice.update(SystemConfiguration.SHORT_TIMEOUT);
+			if (!updated || (updated && (!existingSlice.available() || existingSlice.isGone()))) {
+				existingSlice.setData(this);
+				existingSlice.save();
+			}
+		} catch (ContentDecodingException e) {
+			Log.warning(Log.FAC_REPO, "ContentDecodingException: Unable to read in existing slice data from repository.");
+			throw e;
+		} catch (IOException e) {
+			Log.warning(Log.FAC_REPO, "IOException: error when attempting to retrieve existing slice");
+			throw e;
+		}
+		existingSlice.close();
+	}
+	
+	
+	public boolean deleteSlice(CCNHandle handle) throws IOException{
+		
+		ConfigSlice.NetworkObject existingSlice;
+		
+		try {
+			existingSlice = new ConfigSlice.NetworkObject(this.getHash(), handle);
+			return existingSlice.saveAsGone();
+		} catch (ContentDecodingException e) {
+			Log.warning(Log.FAC_REPO, "ContentDecodingException: Unable to read in existing slice data from repository.");
+			throw new IOException("Unable to delete slice from repository: " + e.getMessage());
+		} catch (IOException e) {
+			Log.warning(Log.FAC_REPO, "IOException: error when attempting to retrieve existing slice before deletion");
+			throw new IOException("Unable to delete slice from repository: " + e.getMessage());
+		}
+		
+		
 	}
 }

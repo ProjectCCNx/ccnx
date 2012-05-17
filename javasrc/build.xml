@@ -39,6 +39,8 @@
 	<property name="JAVA_MEMORY" value="1g" />
 	<property name="ccnd" location="../csrc/ccnd/ccnd"/>
 	<property name="ccnr" location="../csrc/ccnr/ccnr"/>
+	<property name="cmddir" location="../csrc/cmd"/>
+	<property environment="env"/>
 	<property name="showoutput" value="no"/>
 	<property name="repozip" value="repotest.zip"/>
 	<property name="CCND_CMD" value="../../csrc/ccnd/ccnd"/>
@@ -363,7 +365,7 @@
 		</junit>
 	</target>
 
-	<target name="test-impl" depends="test-impl-without-repo, test-impl-with-repo">
+	<target name="test-impl" depends="test-impl-without-repo, test-impl-with-repo, test-impl-with-sync">
 	</target>
 	
 	<target name="test-impl-without-repo" depends="jar, ccnd">
@@ -415,6 +417,39 @@
 			</batchtest>
 		</junit>
 	</target>
+	
+	<target name="test-impl-with-sync" depends="jar, ccnd, repo" if="${repo2}">
+			<mkdir dir="${testout}"/>
+			<delete verbose="true">
+				<fileset dir="${REPO_ROOT}">
+			    	<include name="newnames"/>
+	    			<include name="names"/>
+					<include name="sync.lock"/>
+					<include name="diffNames.*"/>
+				</fileset>
+			</delete>
+
+			<junit printsummary="yes" haltonfailure="yes" fork="on" forkmode="perBatch" dir="${testout}" showoutput="${showoutput}" maxmemory="1g">
+				<classpath>
+					<path refid="classpath-run"/>
+				</classpath>
+				<formatter type="xml" usefile="true"/>
+				<sysproperty key="ccn.agent.port" value="${TEST_PORT}"/>
+				<sysproperty key="${LOGDIR_KEY}" value="${testoutlog}"/>
+				<sysproperty key="${USE_KEY_CONFIG_KEY}" value="${USE_KEY_CONFIG_VAL}"/>
+	            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
+				<sysproperty key="org.ccnx.ccn.LogLevel.Sync" value="FINE"/>
+				<sysproperty key="org.ccnx.ccn.LogLevel.Test" value="FINE"/>
+	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
+				<env key="CCNR_DIRECTORY" value="${REPO_ROOT}"/>
+				<env key="PATH" value="${env.PATH}:${cmddir}"/>
+				<batchtest todir="${testout}">
+					<fileset dir="${build}">
+	                    <include name="org/ccnx/ccn/test/profiles/sync/*Test.class"/>
+					</fileset>
+				</batchtest>
+			</junit>
+		</target>
 	
 	<target name="test-flow-control-extra" depends="jar, ccnd, repo">
 	        <mkdir dir="${testout}"/>
