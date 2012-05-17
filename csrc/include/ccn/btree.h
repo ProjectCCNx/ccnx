@@ -126,6 +126,7 @@ struct ccn_btree {
     ccn_btnodeid nextnodeid;    /**< for allocating new btree nodes */
     struct ccn_btree_io *io;    /**< storage layer */
     struct hashtb *resident;    /**< of ccn_btree_node, by nodeid */
+    ccn_btnodeid nextspill;     /**< undersize node that needs spilling */
     ccn_btnodeid nextsplit;     /**< oversize node that needs splitting */
     ccn_btnodeid missedsplit;   /**< should stay zero */
     int errors;                 /**< counter for detected errors */
@@ -303,6 +304,10 @@ int ccn_btree_lookup_internal(struct ccn_btree *btree,
                      const unsigned char *key, size_t size,
                      struct ccn_btree_node **ansp);
 
+/* Search for nodeid in parent */ 
+int ccn_btree_index_in_parent(struct ccn_btree_node *parent,
+                              ccn_btnodeid nodeid);
+
 /* Find the leaf that comes after the given node */
 int ccn_btree_next_leaf(struct ccn_btree *btree,
                         struct ccn_btree_node *node,
@@ -315,6 +320,9 @@ int ccn_btree_prev_leaf(struct ccn_btree *btree,
 
 /* Split a node into two */
 int ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node);
+
+/* Spill a node over into sibling */
+int ccn_btree_spill(struct ccn_btree *btree, struct ccn_btree_node *node);
 
 /* Prepare to update a node */
 int ccn_btree_prepare_for_update(struct ccn_btree *bt,

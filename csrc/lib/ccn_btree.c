@@ -859,6 +859,125 @@ Bail:
     ccn_btree_note_error(btree, __LINE__);
     return(-1);
 }
+
+
+/**
+ * Search for nodeid in parent
+ *
+ * This does not rely on the keys, but just scans the entries.
+ *
+ * @returns the index within parent, or -1 if there is an error.
+ */
+int
+ccn_btree_index_in_parent(struct ccn_btree_node *parent, ccn_btnodeid nodeid)
+{
+    struct ccn_btree_internal_payload *e = NULL;
+    int i, n;
+    
+    n = ccn_btree_node_nent(parent);
+    for (i = n - 1; i > 0; i--) {
+        e = ccn_btree_node_getentry(sizeof(*e), parent, i);
+        if (e == NULL)
+            break;
+        if (MYFETCH(e, child) == nodeid)
+            return(i);
+    }
+    return(-1);
+} 
+
+/**
+ * Eliminate a node by combining it with a sibling
+ *
+ * In success case, the node will be emptied out completely, and
+ * The parent node will have one fewer child.
+ * It is possible for a sibling to need splitting; in this case
+ * btree->nextsplit will be set accordingly.
+ *
+ * btree->nextspill will be set if there are more nodes to spill.
+ *
+ * @returns 0 for success, 1 if deferred to left, -1 if error.
+ */
+int
+ccn_btree_spill(struct ccn_btree *btree, struct ccn_btree_node *node)
+{
+    struct ccn_btree_internal_payload *e = NULL;
+    struct ccn_btree_node *parent = NULL;
+    struct ccn_btree_node *s = NULL;
+    void *payload = NULL;
+    struct ccn_charbuf *key = NULL;
+    int i, j, n, pb, ndx, res;
+    
+    if (btree->nextspill == node->nodeid)
+        btree->nextspill = 0;
+    n = ccn_btree_node_nent(node);
+    if (node->nodeid == 1)
+        return(-1);
+    res = ccn_btree_prepare_for_update(btree, node);
+    if (res < 0)
+        return(-1);
+    parent = ccn_btree_getnode(btree, node->parent, 0);
+    if (parent == NULL)
+        return(-1);
+    res = ccn_btree_prepare_for_update(btree, parent);
+    if (res < 0)
+        return(-1);
+    pb = ccn_btree_node_payloadsize(node);
+    ndx = ccn_btree_index_in_parent(parent, node->nodeid);
+    MSG("Spilling %d entries of node %u, child %d of %u", n,
+        (unsigned)node->nodeid, ndx, (unsigned)node->parent);
+    if (ndx == 0) {
+        /* No place to spill to the left; shift attention to right sibling */
+        e = ccn_btree_node_getentry(sizeof(*e), parent, ndx + 1);
+        if (e != NULL) {
+            btree->nextspill = MYFETCH(e, child);
+            return(1);
+        }
+        return(-1);
+    }
+    e = ccn_btree_node_getentry(sizeof(*e), parent, ndx - 1);
+    if (e == NULL)
+        return(-1);
+    s = ccn_btree_getnode(btree, MYFETCH(e, child), 0);
+    if (s == NULL)
+        return(-1);
+    res = ccn_btree_prepare_for_update(btree, s);
+    if (res < 0)
+        return(-1);
+    key = ccn_charbuf_create();
+    for (i = 0, j = ccn_btree_node_nent(s); i < n; i++, j++) {
+        res = ccn_btree_key_fetch(key, node, i);
+        payload = ccn_btree_node_getentry(pb, node, i);
+        if (res < 0 || payload == NULL)
+            goto Bail;
+        res = ccn_btree_insert_entry(s, j, key->buf, key->length, payload, pb);
+        if (res < 0)
+            goto Bail;
+    }
+    res = ccn_btree_delete_entry(parent, ndx);
+    if (res < 0)
+        goto Bail;
+    node->parent = 0;
+    node->clean = 0;
+    node->freelow = 0;
+    ccn_charbuf_reset(node->buf);
+    ccn_charbuf_destroy(&key);
+    res = ccn_btree_unbalance(btree, s);
+    if (res > 0) {
+        btree->missedsplit = btree->nextsplit;
+        btree->nextsplit = s->nodeid;
+        /* Do not spill parent, since sibling split will fix it up. */
+        return(0);
+    }
+    res = ccn_btree_unbalance(btree, parent);
+    if (res < 0)
+        btree->nextspill = parent->nodeid;
+    return(0);
+Bail:
+    ccn_charbuf_destroy(&key);
+    ccn_btree_note_error(btree, __LINE__);
+    return(-1);
+}
+
 #undef MSG
 
 /**
