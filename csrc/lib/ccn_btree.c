@@ -724,6 +724,29 @@ ccn_btree_unbalance(struct ccn_btree *btree, struct ccn_btree_node *node)
 }
 
 /**
+ * Update the cached parent pointer if necessary
+ */
+static void
+ccn_btree_update_cached_parent(struct ccn_btree *btree,
+                               struct ccn_btree_internal_payload *olink,
+                               ccn_btnodeid parentid)
+{
+    struct ccn_btree_node *chld = NULL;
+    
+    if (MYFETCH(olink, magic) == CCN_BT_INTERNAL_MAGIC)
+        chld = ccn_btree_rnode(btree, MYFETCH(olink, child));
+    if (chld != NULL) {
+        if (chld->parent != parentid) {
+            MSG("Parent of %u changed from %u to %u",
+                (unsigned)chld->nodeid,
+                (unsigned)chld->parent,
+                (unsigned)parentid);
+        }
+        chld->parent = parentid;
+    }
+}
+
+/**
  * Split a btree node
  *
  * This creates a new sibling, and distributes the entries of node
@@ -740,7 +763,6 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     int i, j, k, n, pb, res;
     struct ccn_btree_node newnode = {};
     struct ccn_btree_node *a[2] = {NULL, NULL};
-    struct ccn_btree_node *chld = NULL;
     struct ccn_btree_node *parent = NULL;
     void *payload = NULL;
     struct ccn_charbuf *key = NULL;
@@ -817,19 +839,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
             goto Bail;
         if (level > 0) {
             /* Fix up the cached parent pointer if necessary */
-            chld = NULL;
-            olink = payload;
-            if (MYFETCH(olink, magic) == CCN_BT_INTERNAL_MAGIC)
-                chld = ccn_btree_rnode(btree, MYFETCH(olink, child));
-            if (chld != NULL) {
-                if (chld->parent != a[k]->nodeid) {
-                    MSG("Parent of %u changed from %u to %u",
-                        (unsigned)chld->nodeid,
-                        (unsigned)chld->parent,
-                        (unsigned)a[k]->nodeid);
-                }
-                chld->parent = a[k]->nodeid;
-            }
+            ccn_btree_update_cached_parent(btree, payload, a[k]->nodeid);
         }
     }
     /* Link the new node into the parent */
@@ -927,6 +937,7 @@ ccn_btree_spill(struct ccn_btree *btree, struct ccn_btree_node *node)
     void *payload = NULL;
     struct ccn_charbuf *key = NULL;
     int i, j, n, pb, ndx, res;
+    int level;
     
     if (btree->nextspill == node->nodeid)
         btree->nextspill = 0;
@@ -964,9 +975,10 @@ ccn_btree_spill(struct ccn_btree *btree, struct ccn_btree_node *node)
     res = ccn_btree_prepare_for_update(btree, s);
     if (res < 0)
         return(-1);
+    level = ccn_btree_node_level(node);
     key = ccn_charbuf_create();
     for (i = 0, j = ccn_btree_node_nent(s); i < n; i++, j++) {
-        if (i == 0)
+        if (i == 0 && level > 0)
             res = ccn_btree_smallest_key_under(btree, node, key);
         else
             res = ccn_btree_key_fetch(key, node, i);
@@ -976,6 +988,8 @@ ccn_btree_spill(struct ccn_btree *btree, struct ccn_btree_node *node)
         res = ccn_btree_insert_entry(s, j, key->buf, key->length, payload, pb);
         if (res < 0)
             goto Bail;
+        if (level > 0)
+            ccn_btree_update_cached_parent(btree, payload, s->nodeid);
     }
     res = ccn_btree_delete_entry(parent, ndx);
     if (res < 0)
