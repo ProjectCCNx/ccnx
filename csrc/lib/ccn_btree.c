@@ -123,7 +123,7 @@ ccn_btree_node_getentry(size_t payload_bytes, struct ccn_btree_node *node, int i
  * Get the address of entry within an internal (non-leaf) node.
  */
 static struct ccn_btree_internal_payload *
-seek_internal(struct ccn_btree_node *node, int i)
+ccn_btree_node_internal_entry(struct ccn_btree_node *node, int i)
 {
     struct ccn_btree_internal_payload *ans;
     
@@ -421,7 +421,7 @@ ccn_btree_lookup_internal(struct ccn_btree *btree,
         entdx = CCN_BT_SRCH_INDEX(srchres) + CCN_BT_SRCH_FOUND(srchres) - 1;
         if (entdx < 0)
             abort();
-        e = seek_internal(node, entdx);
+        e = ccn_btree_node_internal_entry(node, entdx);
         if (e == NULL)
             return(-1);
         childid = MYFETCH(e, child);
@@ -712,7 +712,7 @@ ccn_btree_shrink_a_level(struct ccn_btree *btree)
     n = ccn_btree_node_nent(root);
     if (n != 1)
         return(0);
-    olink = seek_internal(root, 0);
+    olink = ccn_btree_node_internal_entry(root, 0);
     if (olink == NULL) goto Bail;
     child = ccn_btree_getnode(btree, MYFETCH(olink, child), root->parent);
     if (child == NULL) goto Bail;
@@ -925,7 +925,7 @@ ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node)
     if (CCN_BT_SRCH_FOUND(res) && key->length != 0)
         goto Bail;
     i = CCN_BT_SRCH_INDEX(res);
-    olink = ccn_btree_node_getentry(sizeof(link), parent, i - 1);
+    olink = ccn_btree_node_internal_entry(parent, i - 1);
     if (olink == NULL || MYFETCH(olink, child) != a[0]->nodeid) {
         node->corrupt = __LINE__;
         parent->corrupt = __LINE__;
@@ -974,7 +974,7 @@ ccn_btree_index_in_parent(struct ccn_btree_node *parent, ccn_btnodeid nodeid)
     
     n = ccn_btree_node_nent(parent);
     for (i = n - 1; i > 0; i--) {
-        e = ccn_btree_node_getentry(sizeof(*e), parent, i);
+        e = ccn_btree_node_internal_entry(parent, i);
         if (e == NULL)
             break;
         if (MYFETCH(e, child) == nodeid)
@@ -1031,14 +1031,14 @@ ccn_btree_spill(struct ccn_btree *btree, struct ccn_btree_node *node)
         (unsigned)node->nodeid, ndx, (unsigned)node->parent);
     if (ndx == 0) {
         /* No place to spill to the left; shift attention to right sibling */
-        e = ccn_btree_node_getentry(sizeof(*e), parent, ndx + 1);
+        e = ccn_btree_node_internal_entry(parent, ndx + 1);
         if (e != NULL) {
             btree->nextspill = MYFETCH(e, child);
             return(1);
         }
         return(-1);
     }
-    e = ccn_btree_node_getentry(sizeof(*e), parent, ndx - 1);
+    e = ccn_btree_node_internal_entry(parent, ndx - 1);
     if (e == NULL)
         return(-1);
     s = ccn_btree_getnode(btree, MYFETCH(e, child), 0);
@@ -1135,7 +1135,7 @@ ccn_btree_next_leaf(struct ccn_btree *btree,
         if (i < n - 1) {
             /* We have found the ancestor that has the leaf we are after. */
             q = NULL;
-            e = ccn_btree_node_getentry(sizeof(*e), parent, i + 1);
+            e = ccn_btree_node_internal_entry(parent, i + 1);
             q = ccn_btree_getnode(btree, MYFETCH(e, child), parent->nodeid);
             if (q == NULL)
                 goto Bail;
@@ -1188,14 +1188,14 @@ ccn_btree_prev_leaf(struct ccn_btree *btree,
             goto Bail;
         /* Set i to our index in parent */
         for (i = n - 1; i > 0; i--) {
-            e = ccn_btree_node_getentry(sizeof(*e), parent, i);
+            e = ccn_btree_node_internal_entry(parent, i);
             if (MYFETCH(e, child) == p->nodeid)
                 break;
         }
         if (i > 0) {
             /* we can stop walking up the tree now, and walk down instead */
             for (q = parent; ccn_btree_node_level(q) != 0;) {
-                e = ccn_btree_node_getentry(sizeof(*e), q, i - 1);
+                e = ccn_btree_node_internal_entry(q, i - 1);
                 q = ccn_btree_getnode(btree, MYFETCH(e, child), q->nodeid);
                 if (q == NULL)
                     goto Bail;
@@ -1708,7 +1708,7 @@ ccn_btree_check(struct ccn_btree *btree, FILE *outfp) {
                 kstk[sp] = k + 1;
                 sp++;
                 if (sp == 40) goto Bail;
-                e = ccn_btree_node_getentry(sizeof(*e), node, k);
+                e = ccn_btree_node_internal_entry(node, k);
                 if (e == NULL) goto Bail;
                 child = ccn_btree_getnode(btree, MYFETCH(e, child), node->nodeid);
                 if (child == NULL) goto Bail;
