@@ -973,7 +973,7 @@ ccn_btree_index_in_parent(struct ccn_btree_node *parent, ccn_btnodeid nodeid)
     int i, n;
     
     n = ccn_btree_node_nent(parent);
-    for (i = n - 1; i > 0; i--) {
+    for (i = n - 1; i >= 0; i--) {
         e = ccn_btree_node_internal_entry(parent, i);
         if (e == NULL)
             break;
