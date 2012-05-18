@@ -1120,6 +1120,11 @@ r_store_set_content_timer(struct ccnr_handle *h, struct content_entry *content,
     if (start == stop)
         return;
     content_msg = r_store_content_base(h, content);
+    if (content_msg == NULL) {
+        ccnr_debug_content(h, __LINE__, "Missing_content_base", NULL,
+                           content);
+        return;        
+    }
     seconds = ccn_fetch_tagged_nonNegativeInteger(
                 CCN_DTAG_FreshnessSeconds,
                 content_msg,
@@ -1309,9 +1314,13 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
     const unsigned char *content_msg = NULL;
     off_t offset;
 
+    content_msg = r_store_content_base(h, content);
+    if (content_msg == NULL) {
+        ccnr_debug_content(h, __LINE__, "content_missing", fdholder, content);
+        return;        
+    }
     if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
         ccnr_debug_content(h, __LINE__, "content_to", fdholder, content);
-    content_msg = r_store_content_base(h, content);
     r_link_stuff_and_send(h, fdholder, content_msg, content->size, NULL, 0, &offset);
     if (offset != (off_t)-1 && content->accession == CCNR_NULL_ACCESSION) {
         int res;

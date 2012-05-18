@@ -398,9 +398,14 @@ r_sync_lookup(struct ccnr_handle *ccnr,
     if (content != NULL) {
         ans = 0;
         if (content_ccnb != NULL) {
-            ccn_charbuf_append(content_ccnb,
-                               r_store_content_base(ccnr, content),
-                               r_store_content_size(ccnr, content));
+            const unsigned char *base = r_store_content_base(ccnr, content);
+            size_t size = r_store_content_size(ccnr, content);
+            if (base == NULL) {
+                ccnr_debug_ccnb(ccnr, __LINE__, "r_sync_lookup null content base", NULL,
+                                interest->buf, interest->length);
+                ans = -1;
+            } else
+                ccn_charbuf_append(content_ccnb, base, size);
         }
     }
     r_util_indexbuf_release(ccnr, comps);
