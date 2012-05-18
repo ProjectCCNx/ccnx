@@ -28,6 +28,11 @@
 
 #include <ccn/btree.h>
 
+static void
+ccn_btree_update_cached_parent(struct ccn_btree *btree,
+                               struct ccn_btree_internal_payload *olink,
+                               ccn_btnodeid parentid);
+
 #ifndef MYFETCH
 #define MYFETCH(p, f) ccn_btree_fetchval(&((p)->f[0]), sizeof((p)->f))
 #endif
@@ -681,6 +686,68 @@ ccn_btree_grow_a_level(struct ccn_btree *btree, struct ccn_btree_node *node)
 }
 
 /**
+ *  If the root is a singleton and not a leaf, remove a level.
+ *
+ *  @return 0 if nothing done, 1 if the root changed, or -1 for error.
+ */
+static int
+ccn_btree_shrink_a_level(struct ccn_btree *btree)
+{
+    struct ccn_btree_internal_payload *olink = NULL;
+    struct ccn_btree_node *child = NULL;
+    struct ccn_btree_node *root = NULL;
+    struct ccn_charbuf *key = NULL;
+    void *payload = NULL;
+    int level;
+    int i, n;
+    int pb;
+    int res;
+    
+    root = ccn_btree_getnode(btree, 1, 0);
+    if (root == NULL)
+        return(-1);
+    level = ccn_btree_node_level(root);
+    if (level == 0)
+        return(0);
+    n = ccn_btree_node_nent(root);
+    if (n != 1)
+        return(0);
+    olink = seek_internal(root, 0);
+    if (olink == NULL) goto Bail;
+    child = ccn_btree_getnode(btree, MYFETCH(olink, child), root->parent);
+    if (child == NULL) goto Bail;
+    pb = ccn_btree_node_payloadsize(child);
+    n = ccn_btree_node_nent(child);
+    level = ccn_btree_node_level(child);
+    res = ccn_btree_prepare_for_update(btree, root);
+    if (res < 0) goto Bail;
+    res = ccn_btree_prepare_for_update(btree, child);
+    if (res < 0) goto Bail;
+    res = ccn_btree_init_node(root, level, 'R', 0); // XXX - arbitrary extsz
+    if (res < 0) goto Bail;
+    key = ccn_charbuf_create();
+    for (i = 0; i < n; i++) {
+        res = ccn_btree_key_fetch(key, child, i);
+        payload = ccn_btree_node_getentry(pb, child, i);
+        if (res < 0 || payload == NULL) goto Bail;
+        res = ccn_btree_insert_entry(root, i, key->buf, key->length, payload, pb);
+        if (res < 0) goto Bail;
+        if (level > 0)
+            ccn_btree_update_cached_parent(btree, payload, root->nodeid);
+    }
+    ccn_charbuf_destroy(&key);
+    child->parent = 0;
+    child->clean = 0;
+    child->freelow = 0;
+    ccn_charbuf_reset(child->buf);
+    return(1);
+Bail:
+    ccn_charbuf_destroy(&key);
+    ccn_btree_note_error(btree, __LINE__);
+    return(-1);
+}
+
+/**
  * Test for an oversize node
  *
  * This takes into account both the size of a node and the count of
@@ -942,8 +1009,13 @@ ccn_btree_spill(struct ccn_btree *btree, struct ccn_btree_node *node)
     if (btree->nextspill == node->nodeid)
         btree->nextspill = 0;
     n = ccn_btree_node_nent(node);
-    if (node->nodeid == 1)
-        return(0); /* nothing to do for the root */
+    if (node->nodeid == 1) {
+        /* We may be able to eliminate a level */
+        res = ccn_btree_shrink_a_level(btree);
+        if (res == 1)
+            res = 0;
+        return(res);
+    }
     res = ccn_btree_prepare_for_update(btree, node);
     if (res < 0)
         return(-1);
