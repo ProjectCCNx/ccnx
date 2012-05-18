@@ -617,6 +617,7 @@ test_btree_inserts_from_stdin(void)
     res = ccn_btree_chknode(node);
     CHKSYS(res);
     btree->full = 5;
+    btree->full0 = 7;
     
     c = ccn_charbuf_create();
     CHKPTR(c);
@@ -638,7 +639,7 @@ test_btree_inserts_from_stdin(void)
             if (CCN_BT_SRCH_FOUND(res)) {
                 res = ccn_btree_delete_entry(leaf, CCN_BT_SRCH_INDEX(res));
                 CHKSYS(res);
-                if (res < 2) {
+                if (res < btree->full0 / 2) {
                     int limit = 20;
                     res = ccn_btree_spill(btree, leaf);
                     CHKSYS(res);
@@ -673,7 +674,7 @@ test_btree_inserts_from_stdin(void)
                                          c->buf, c->length,
                                          payload, sizeof(payload));
             CHKSYS(res);
-            if (res > 7) {
+            if (res > btree->full0) {
                 int limit = 20;
                 res = ccn_btree_split(btree, leaf);
                 CHKSYS(res);

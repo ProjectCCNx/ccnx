@@ -438,6 +438,28 @@ ccn_btree_lookup_internal(struct ccn_btree *btree,
     return(srchres);
 }
 
+/**
+ * Extracts the smallest key under the node.
+ *
+ * @returns -1 for an error.
+ */
+static int
+ccn_btree_smallest_key_under(struct ccn_btree *btree,
+                             struct ccn_btree_node *node,
+                             struct ccn_charbuf *result)
+{
+    struct ccn_btree_node *leaf = NULL;
+    int res;
+    
+    res = ccn_btree_lookup_internal(btree, node, 0, NULL, 0, &leaf);
+    if (res < 0 || leaf == NULL)
+        return(-1);
+    res = ccn_btree_key_fetch(result, leaf, 0);
+    return(res);
+}
+
+
+
 /* See if we can reuse a leading portion of the key */
 static void
 scan_reusable(const unsigned char *key, size_t keysize,
@@ -860,7 +882,6 @@ Bail:
     return(-1);
 }
 
-
 /**
  * Search for nodeid in parent
  *
@@ -945,7 +966,10 @@ ccn_btree_spill(struct ccn_btree *btree, struct ccn_btree_node *node)
         return(-1);
     key = ccn_charbuf_create();
     for (i = 0, j = ccn_btree_node_nent(s); i < n; i++, j++) {
-        res = ccn_btree_key_fetch(key, node, i);
+        if (i == 0)
+            res = ccn_btree_smallest_key_under(btree, node, key);
+        else
+            res = ccn_btree_key_fetch(key, node, i);
         payload = ccn_btree_node_getentry(pb, node, i);
         if (res < 0 || payload == NULL)
             goto Bail;
