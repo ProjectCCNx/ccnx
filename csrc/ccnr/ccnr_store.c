@@ -164,12 +164,10 @@ r_store_content_read(struct ccnr_handle *h, struct content_entry *content)
     fd = r_io_repo_data_file_fd(h, repofile, 0);
     if (fd == -1)
         goto Bail;
-    cob = ccn_charbuf_create();
+    cob = ccn_charbuf_create_n(content->size);
     if (cob == NULL)
         goto Bail;
     if (content->size > 0) {
-        if (ccn_charbuf_reserve(cob, content->size) == NULL)
-            goto Bail;
         rres = pread(fd, cob->buf, content->size, offset);
         if (rres == content->size) {
             cob->length = content->size;
@@ -843,7 +841,7 @@ r_store_find_first_match_candidate(struct ccnr_handle *h,
     struct ccn_charbuf *flatname = NULL;
     struct content_entry *content = NULL;
     
-    flatname = ccn_charbuf_create();
+    flatname = ccn_charbuf_create_n(pi->offset[CCN_PI_E]);
     ccn_flatname_from_ccnb(flatname, interest_msg, pi->offset[CCN_PI_E]);
     if (pi->offset[CCN_PI_B_Exclude] < pi->offset[CCN_PI_E_Exclude]) {
         /* Check for <Exclude><Any/><Component>... fast case */
@@ -864,7 +862,7 @@ r_store_find_first_match_candidate(struct ccnr_handle *h,
                 ccn_buf_advance_past_element(d);
                 ex1end = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
                 if (d->decoder.state >= 0) {
-                    namebuf = ccn_charbuf_create();
+                    namebuf = ccn_charbuf_create_n((end - start) + (ex1end - ex1start));
                     ccn_charbuf_append(namebuf,
                                        interest_msg + start,
                                        end - start);
@@ -899,7 +897,7 @@ r_store_content_matches_interest_prefix(struct ccnr_handle *h,
                                 const unsigned char *interest_msg,
                                 size_t interest_size)
 {
-    struct ccn_charbuf *flatname = ccn_charbuf_create();
+    struct ccn_charbuf *flatname = ccn_charbuf_create_n(interest_size);
     int ans;
     int cmp;
 
