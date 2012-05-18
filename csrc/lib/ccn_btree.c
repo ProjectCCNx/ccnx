@@ -1330,6 +1330,8 @@ ccn_btree_destroy(struct ccn_btree **pbt)
  *
  * It is the caller's responsibility to be sure that the node does not
  * contain any useful information.
+ * 
+ * Leaves alone nodeid, iodata, and activity fields.
  *
  * @returns -1 for error, 0 for success
  */
@@ -1347,12 +1349,15 @@ ccn_btree_init_node(struct ccn_btree_node *node,
     node->buf->length = 0;
     hdr = (struct ccn_btree_node_header *)ccn_charbuf_reserve(node->buf, bytes);
     if (hdr == NULL) return(-1);
+    memset(hdr, 0, bytes);
     MYSTORE(hdr, magic, CCN_BTREE_MAGIC);
     MYSTORE(hdr, version, CCN_BTREE_VERSION);
     MYSTORE(hdr, nodetype, nodetype);
     MYSTORE(hdr, level, level);
     MYSTORE(hdr, extsz, extsz);
-    node->buf->length += bytes;
+    node->buf->length = bytes;
+    node->freelow = bytes;
+    node->parent = 0;
     return(0);
 }
 
