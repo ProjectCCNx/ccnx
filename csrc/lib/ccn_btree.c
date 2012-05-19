@@ -1175,7 +1175,6 @@ ccn_btree_prev_leaf(struct ccn_btree *btree,
     struct ccn_btree_node *parent = NULL;
     int ans;
     int i;
-    int n;
     
     ans = -1;
     p = node;
@@ -1183,15 +1182,8 @@ ccn_btree_prev_leaf(struct ccn_btree *btree,
         parent = ccn_btree_getnode(btree, p->parent, 0);
         if (parent == NULL)
             goto Bail;
-        n = ccn_btree_node_nent(parent);
-        if (n < 0)
-            goto Bail;
-        /* Set i to our index in parent */
-        for (i = n - 1; i > 0; i--) {
-            e = ccn_btree_node_internal_entry(parent, i);
-            if (MYFETCH(e, child) == p->nodeid)
-                break;
-        }
+        i = ccn_btree_index_in_parent(parent, p->nodeid);
+        if (i < 0) goto Bail;
         if (i > 0) {
             /* we can stop walking up the tree now, and walk down instead */
             for (q = parent; ccn_btree_node_level(q) != 0;) {
