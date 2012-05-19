@@ -82,6 +82,7 @@ sync_cb(struct ccns_handle *h,
     } else
         hexR = hex_string(rhash->buf, rhash->length);
     printf("%s %s %s\n", ccn_charbuf_as_string(uri), hexL, hexR);
+    fflush(stdout);
     free(hexL);
     free(hexR);
     ccn_charbuf_destroy(&uri);
