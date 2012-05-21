@@ -4,7 +4,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -86,6 +86,7 @@ ccn_extend_dict(const char *dict_file, struct ccn_dict *d, struct ccn_dict **rdp
     FILE *df = NULL;
     int i, c;
     struct ccn_dict_entry *ndd = NULL;
+    struct ccn_dict_entry *ndd_tmp = NULL;
     int ndc = 0;
     struct ccn_charbuf *enamebuf = NULL;
     unsigned int eindex = 0;;
@@ -146,7 +147,10 @@ ccn_extend_dict(const char *dict_file, struct ccn_dict *d, struct ccn_dict **rdp
                     ccn_charbuf_append_value(enamebuf, c, 1);
                 } else if (c == ',' || c == '\n') {
                     /* construct entry */
-                    ndd = realloc(ndd, sizeof(*ndd) * (ndc + 1));
+                    ndd_tmp = realloc(ndd, sizeof(*ndd) * (ndc + 1));
+                    if (ndd_tmp == NULL)
+                        goto err;
+                    ndd = ndd_tmp;
                     ndd[ndc].index = eindex;
                     ndd[ndc].name = strdup(ccn_charbuf_as_string(enamebuf));
                     ndc++;
@@ -170,7 +174,10 @@ ccn_extend_dict(const char *dict_file, struct ccn_dict *d, struct ccn_dict **rdp
     if (s < 0 || s == S_INDEX)
         goto err;
     else if (s == S_NAME) {
-        ndd = realloc(ndd, sizeof(*ndd) * (ndc + 1));
+        ndd_tmp = realloc(ndd, sizeof(*ndd) * (ndc + 1));
+        if (ndd_tmp == NULL)
+            goto err;
+        ndd = ndd_tmp;
         ndd[ndc].index = eindex;
         ndd[ndc].name = strdup(ccn_charbuf_as_string(enamebuf));
         ndc++;
@@ -196,7 +203,10 @@ ccn_extend_dict(const char *dict_file, struct ccn_dict *d, struct ccn_dict **rdp
     for (i = 1; i < ndc; i++) {
         if (ndd[i].name == NULL) {
             ndc = i;
-            ndd = realloc(ndd, sizeof(*ndd) * ndc);
+            ndd_tmp = realloc(ndd, sizeof(*ndd) * ndc);
+            if (ndd_tmp == NULL)
+                goto err;
+            ndd = ndd_tmp;
             break;
         }
         if (ndd[i-1].index == ndd[i].index)
@@ -220,6 +230,7 @@ err:
         for (ndc--; ndc >= 0; ndc--) {
             free((void *)ndd[ndc].name);
         }
+        free(ndd);
     }
     return (-1);
     
