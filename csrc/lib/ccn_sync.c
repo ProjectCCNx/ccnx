@@ -99,9 +99,10 @@ ccns_slice_create()
         ccn_charbuf_destroy(&s->prefix);
         free(s);
         s = NULL;
+    } else {
+        ccn_name_init(s->topo);
+        ccn_name_init(s->prefix);
     }
-    ccn_name_init(s->topo);
-    ccn_name_init(s->prefix);
     return(s);
 }
 void
