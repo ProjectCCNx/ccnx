@@ -943,6 +943,11 @@ load_policy(struct ccnr_handle *ccnr)
             }
             ccn_name_chop(basename, NULL, -1);
             content_msg = r_store_content_base(ccnr, content);
+            if (content_msg == NULL) {
+                ccnr_debug_ccnb(ccnr, __LINE__, "Unable to read policy object", NULL,
+                                basename->buf, basename->length);
+                break;
+            }
             res = ccn_parse_ContentObject(content_msg, r_store_content_size(ccnr, content), &pco, nc);
             res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, content_msg,
                                       pco.offset[CCN_PCO_B_Content],

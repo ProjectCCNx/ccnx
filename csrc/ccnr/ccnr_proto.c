@@ -523,6 +523,11 @@ r_proto_policy_update(struct ccn_schedule *sched,
         }
         ccn_name_chop(name, NULL, -1);
         content_msg = r_store_content_base(ccnr, content);
+        if (content_msg == NULL) {
+            ccnr_debug_ccnb(ccnr, __LINE__, "Policy read failed for", NULL,
+                            name->buf, name->length);
+            goto Bail;            
+        }
         res = ccn_parse_ContentObject(content_msg, r_store_content_size(ccnr, content), &pco, nc);
         res = ccn_ref_tagged_BLOB(CCN_DTAG_Content, content_msg,
                                   pco.offset[CCN_PCO_B_Content],
