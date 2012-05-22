@@ -220,10 +220,12 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 		if (line.startsWith("ccnx:/")) {
 			try {
 				ContentName newName = ContentName.fromURI(line);
-				for (ConfigSlice cs : callbacks.keySet()) {
-					if (cs.prefix.isPrefixOf(newName)) {
-						for (CCNSyncHandler handler: callbacks.get(cs)) {
-							handler.handleContentName(cs, newName);
+				synchronized(callbacks) {
+					for (ConfigSlice cs : callbacks.keySet()) {
+						if (cs.prefix.isPrefixOf(newName)) {
+							for (CCNSyncHandler handler: callbacks.get(cs)) {
+								handler.handleContentName(cs, newName);
+							}
 						}
 					}
 				}
