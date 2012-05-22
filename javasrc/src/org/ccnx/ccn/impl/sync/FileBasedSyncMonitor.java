@@ -87,7 +87,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 		Log.fine(Log.FAC_SYNC, "repoDir: "+repoDir);
 		File repoFile = new File(filename+"/repoFile1");
 		
-		String commandCreateDiff= "ccnnamelist repoFile1 > names ;  sort names > newnames ; rm names ; diff -N newnames oldnames > diffNames ; mv newnames oldnames";
+		String commandCreateDiff= "ccnnamelist repoFile1 > names ;  sort names > newnames ; rm names ; :>> oldnames ; diff newnames oldnames > diffNames ; mv newnames oldnames";
 		String commandCreateDiffFinal;
 		
 		long lastReadTime = -1;
