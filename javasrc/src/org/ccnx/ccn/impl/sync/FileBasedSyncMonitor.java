@@ -30,6 +30,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	
 	int runInterval = 2000;
 	private static Boolean isRunning = false;
+	private static boolean shutDown = false;
 	
 	private static HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> callbacks = new HashMap<ConfigSlice, ArrayList<CCNSyncHandler>>();
 	
@@ -82,6 +83,10 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	 * First check if there are even differences in the timestamps
 	 */
 	public void run() {
+		boolean keepRunning = true;
+		synchronized(isRunning) {
+			isRunning = true;
+		}
 		
 		File repoDir = new File(filename);
 		Log.fine(Log.FAC_SYNC, "repoDir: "+repoDir);
@@ -96,7 +101,7 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 		
 		FileLock fileLock = null;
 		
-		while (!checkShutdown()) {
+		while (keepRunning) {
 			
 			try {
 				fileChannel = new RandomAccessFile(filename+"/sync.lock", "rw").getChannel();
@@ -206,11 +211,16 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 				Thread.sleep(runInterval);
 			} catch (InterruptedException e) {
 				Log.warning("FileBasedSyncMonitor:  error while sleeping... {0}", e.getMessage());
-			}			
-		}
-		synchronized(isRunning) {
-			Log.fine(Log.FAC_SYNC, "isRunning was false, time to shut down");
-			isRunning = false;
+			}
+			
+			synchronized(isRunning) {
+				if (checkShutdown()) {
+					keepRunning = false;
+					Log.fine(Log.FAC_SYNC, "isRunning was false, time to shut down");
+					isRunning = false;
+					shutDown = false;
+				}
+			}
 		}
 		return;
 	}
@@ -236,8 +246,8 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 	}
 	
 	private boolean checkShutdown() {
-		synchronized(callbacks) {
-			return !isRunning;
+		synchronized(isRunning) {
+			return shutDown;
 		}
 	}
 	
@@ -245,12 +255,23 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 		synchronized(callbacks) {
 			Log.fine(Log.FAC_SYNC, "isRunning: {0}", isRunning);
 			synchronized (isRunning) {
-				if (!isRunning) {
+				if (!isRunning && !checkShutdown()) {
 					//this means we do not have a thread...  and therefore are not watching the names now.
-					isRunning = true;
+					Log.fine(Log.FAC_SYNC, "sync was not running, clearing callbacks and starting up sync thread");
+					shutDown = false;
 					callbacks.clear();
 					//System.out.println("was not running...  starting up now!");
 					SystemConfiguration._systemThreadpool.execute(this);
+				} else if (isRunning && checkShutdown()) {
+					//in case we thought we were done running, but really need to stay up.
+					Log.fine(Log.FAC_SYNC, "sync still running, but was set to shutdown, cancel shutdown and clear callbacks");
+					shutDown = false;
+					callbacks.clear();
+				} else if (isRunning && !checkShutdown())  {
+					//normal operation...  good.
+					Log.fine(Log.FAC_SYNC, "sync in normal operation during callback");
+				}  else {
+					Log.fine(Log.FAC_SYNC, "invalid run state: isRunning = {0} checkShutdown = {1}", isRunning, checkShutdown());
 				}
 			}
 			//now we need to register the callback...  check the prefix
@@ -284,9 +305,10 @@ public class FileBasedSyncMonitor implements SyncMonitor, Runnable{
 				}
 			}
 			if (callbacks.isEmpty()) {
+				Log.fine(Log.FAC_SYNC, "all callbacks are removed, shutting down sync");
 				//we don't have any registered callbacks, we can go ahead and stop running.
 				synchronized (isRunning) {
-					isRunning = false;
+					shutDown = true;
 				}
 			}
 		}

@@ -85,8 +85,11 @@ public class Exclude extends GenericXMLEncodable implements XMLEncodable,
 			if (ee instanceof ExcludeComponent) {
 				ExcludeComponent ec = (ExcludeComponent) ee;
 				// Components must be in increasing order, and no duplicates.
-				if (c != null && ec.compareTo(c) <=0)
-					throw new InvalidParameterException("out of order or duplicate component element");
+				if (c != null && ec.compareTo(c) <=0) {
+					//getting this error... adding more debugging information
+					String errorMessage = "out of order or duplicate component element: comparing "+Component.printURI(c.getComponent())+" and "+Component.printURI(ec.getComponent());
+					throw new InvalidParameterException(errorMessage);
+				}
 				c = ec;
 			} else if (last instanceof Filler)
 				// do not allow 2 fillers in a row
