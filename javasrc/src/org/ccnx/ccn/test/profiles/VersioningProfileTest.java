@@ -321,7 +321,7 @@ public class VersioningProfileTest {
 		try {
 			Log.info(Log.FAC_TEST, "testing name {0}:  componentBytes: {1}", invalidName, invalidName.component(3).length);
 			long val = VersioningProfile.getLastVersionAsLong(invalidName);
-			Assert.fail("version deemed valid.  error.  "+invalidName);
+			Assert.fail("version deemed valid.  error.  "+invalidName+" val = "+val);
 		} catch (VersionMissingException e) {
 			//this should fail!
 		}
@@ -333,7 +333,7 @@ public class VersioningProfileTest {
 		ContentName invalidName = null;
 		
 		try {
-			invalidName = ContentName.fromURI("/name/to/test/%FD%01");
+			invalidName = ContentName.fromURI("/name/to/test/%FD%00%01");
 		} catch (MalformedContentNameStringException e) {
 			Assert.fail("unable to create ContentName for test");
 		}
@@ -341,7 +341,7 @@ public class VersioningProfileTest {
 		try {
 			Log.info(Log.FAC_TEST, "testing name {0}:  componentBytes: {1}", invalidName, invalidName.component(3).length);
 			long val = VersioningProfile.getLastVersionAsLong(invalidName);
-			Assert.fail("version deemed valid.  error.  "+invalidName);
+			Assert.fail("version deemed valid.  error.  "+invalidName+" val = "+val);
 		} catch (VersionMissingException e) {
 			//should also fail!
 		}
