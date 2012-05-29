@@ -3,7 +3,7 @@
  * 
  * Part of the CCNx C Library.
  *
- * Copyright (C) 2010-2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -818,7 +818,12 @@ ccn_fetch_open(struct ccn_fetch *f,
 	if (ns >= max) {
 		// extend the vector
 		int nMax = max+max/2+4;
-        f->streams = realloc(f->streams, sizeof(*(f->streams)) * nMax);
+        struct ccn_fetch_stream **streams;
+        streams = realloc(f->streams, sizeof(*(f->streams)) * nMax);
+        if (streams == NULL) {
+            return (NULL); // TBD: should this be handled differently?
+        }
+        f->streams = streams;
 		f->maxStreams = nMax;
 	}
 	// guaranteed room to add at the end
