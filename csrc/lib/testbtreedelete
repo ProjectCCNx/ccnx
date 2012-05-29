@@ -1,0 +1,24 @@
+# lib/testbtreedelete
+# 
+# Part of the CCNx distribution.
+#
+# Copyright (C) 2012 Palo Alto Research Center, Inc.
+#
+# This work is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License version 2 as published by the
+# Free Software Foundation.
+# This work is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.
+#
+
+# basic test of btree deletions
+# not run as part of the usual suite because jot is not available everywhere
+
+test -f q || look q | grep '^q' | tail -n 42 > q
+type jot || exit 0
+N=`cat q | wc -l`
+jot -r -p 10 $N | paste - q | sort -n | cut -f 2 > q.dat
+jot -r -p 10 $N | paste - q | sort -n | cut -f 2 | \
+	while read i; do echo $i'!'; done >> q.dat
+./ccnbtreetest - < q.dat

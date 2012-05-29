@@ -2,9 +2,9 @@
  * @file ccn/btree.h
  * BTree
  */
-/* (Will be) Part of the CCNx C Library.
+/* Part of the CCNx C Library.
  *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-12 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -126,6 +126,7 @@ struct ccn_btree {
     ccn_btnodeid nextnodeid;    /**< for allocating new btree nodes */
     struct ccn_btree_io *io;    /**< storage layer */
     struct hashtb *resident;    /**< of ccn_btree_node, by nodeid */
+    ccn_btnodeid nextspill;     /**< undersize node that needs spilling */
     ccn_btnodeid nextsplit;     /**< oversize node that needs splitting */
     ccn_btnodeid missedsplit;   /**< should stay zero */
     int errors;                 /**< counter for detected errors */
@@ -253,12 +254,18 @@ int ccn_btree_insert_entry(struct ccn_btree_node *node, int i,
                            const unsigned char *key, size_t keysize,
                            void *payload, size_t payload_bytes);
 
+/* Delete the entry at slot i of node */
+int ccn_btree_delete_entry(struct ccn_btree_node *node, int i);
+
 /* Initialize a btree node */
 int ccn_btree_init_node(struct ccn_btree_node *node,
                         int level, unsigned char nodetype, unsigned char extsz);
 
 /* Test for an oversize node */
 int ccn_btree_oversize(struct ccn_btree *btree, struct ccn_btree_node *node);
+
+/* Test for unbalance */
+int ccn_btree_unbalance(struct ccn_btree *btree, struct ccn_btree_node *node);
 
 /* Check a node for internal consistency */
 int ccn_btree_chknode(struct ccn_btree_node *node);
@@ -297,6 +304,10 @@ int ccn_btree_lookup_internal(struct ccn_btree *btree,
                      const unsigned char *key, size_t size,
                      struct ccn_btree_node **ansp);
 
+/* Search for nodeid in parent */ 
+int ccn_btree_index_in_parent(struct ccn_btree_node *parent,
+                              ccn_btnodeid nodeid);
+
 /* Find the leaf that comes after the given node */
 int ccn_btree_next_leaf(struct ccn_btree *btree,
                         struct ccn_btree_node *node,
@@ -309,6 +320,9 @@ int ccn_btree_prev_leaf(struct ccn_btree *btree,
 
 /* Split a node into two */
 int ccn_btree_split(struct ccn_btree *btree, struct ccn_btree_node *node);
+
+/* Spill a node over into sibling */
+int ccn_btree_spill(struct ccn_btree *btree, struct ccn_btree_node *node);
 
 /* Prepare to update a node */
 int ccn_btree_prepare_for_update(struct ccn_btree *bt,

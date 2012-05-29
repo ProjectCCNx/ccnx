@@ -1,12 +1,11 @@
 /**
  * @file ccnbtreetest.c
  * 
- * Part of ccnr - CCNx Repository Daemon.
+ * Unit tests for btree functions
  *
  */
-
 /*
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -256,7 +255,7 @@ test_btree_chknode(void)
     FAILIF(node->corrupt != 0);
     FAILIF(node->freelow != 8 + 34); // header plus goodstuff<- ... ->d
     ex = (void *)node->buf->buf;
-    ex->e[1].t.ksiz0[2] = 100; /* ding the size in entry 1 */
+    ex->e[1].t.ksiz0[1] = 100; /* ding the size in entry 1 */
     res = ccn_btree_chknode(node);
     FAILIF(res != -1);
     FAILIF(node->corrupt == 0);
@@ -553,14 +552,55 @@ test_basic_btree_insert_entry(void)
 }
 
 int
+test_basic_btree_delete_entry(void)
+{
+    struct ccn_btree *btree = NULL;
+    struct ccn_btree_node *leaf = NULL;
+    int res;
+    int i;
+    int j;
+    int ndx;
+    const char *s = "";
+    const char *ex[4] = {"d", "goodstuff", "odd", "odder"};
+    
+    for (i = 0; i < 4; i++) {
+         btree = example_btree_small();
+         CHKPTR(btree);
+         s = ex[i];
+         res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
+         CHKSYS(res);
+         FAILIF(CCN_BT_SRCH_FOUND(res) != (i < 3));
+         ndx = CCN_BT_SRCH_INDEX(res);
+         FAILIF(ndx != i);
+         res = ccn_btree_chknode(leaf);
+         CHKSYS(res);
+         res = ccn_btree_delete_entry(leaf, i);
+         FAILIF((res < 0) != (i == 3));
+         for (j = 0; j < 3; j++) {
+            s = ex[j];
+            res = ccn_btree_lookup(btree, (const void *)s, strlen(s), &leaf);
+            CHKSYS(res);
+            FAILIF(CCN_BT_SRCH_FOUND(res) == (i == j));
+         }
+         FAILIF(btree->errors != 0);
+         res = ccn_btree_destroy(&btree);
+         FAILIF(btree != NULL);
+    }
+    return(res);
+}
+
+int
 test_btree_inserts_from_stdin(void)
 {
     struct ccn_charbuf *c;
     char payload[8] = "TestTree";
     int res;
+    int delete;      /* Lines ending with a '!' are to be deleted instead */
     int item = 0;
     int dups = 0;
     int unique = 0;
+    int deleted = 0;
+    int missing = 0;
     struct ccn_btree *btree = NULL;
     struct ccn_btree_node *node = NULL;
     struct ccn_btree_node *leaf = NULL;
@@ -577,6 +617,7 @@ test_btree_inserts_from_stdin(void)
     res = ccn_btree_chknode(node);
     CHKSYS(res);
     btree->full = 5;
+    btree->full0 = 7;
     
     c = ccn_charbuf_create();
     CHKPTR(c);
@@ -587,8 +628,43 @@ test_btree_inserts_from_stdin(void)
         if (c->length > 0 && c->buf[c->length - 1] == '\n')
             c->length--;
         // printf("%9d %s\n", item, ccn_charbuf_as_string(c));
+        delete = 0;
+        if (c->length > 0 && c->buf[c->length - 1] == '!') {
+            delete = 1;
+            c->length--;
+        }
         res = ccn_btree_lookup(btree, c->buf, c->length, &leaf);
         CHKSYS(res);
+        if (delete) {
+            if (CCN_BT_SRCH_FOUND(res)) {
+                res = ccn_btree_delete_entry(leaf, CCN_BT_SRCH_INDEX(res));
+                CHKSYS(res);
+                if (res < btree->full0 / 2) {
+                    int limit = 20;
+                    res = ccn_btree_spill(btree, leaf);
+                    CHKSYS(res);
+                    while (btree->nextspill != 0) {
+                        node = ccn_btree_rnode(btree, btree->nextspill);
+                        CHKPTR(node);
+                        res = ccn_btree_spill(btree, node);
+                        CHKSYS(res);
+                        FAILIF(!--limit);
+                    }
+                    while (btree->nextsplit != 0) {
+                        node = ccn_btree_rnode(btree, btree->nextsplit);
+                        CHKPTR(node);
+                        res = ccn_btree_split(btree, node);
+                        CHKSYS(res);
+                        FAILIF(!--limit);
+                    }
+                }
+                deleted++;
+            }
+            else
+                missing++;
+            continue;
+        }
+        /* insert case */
         if (CCN_BT_SRCH_FOUND(res)) {
             dups++;
         }
@@ -598,7 +674,7 @@ test_btree_inserts_from_stdin(void)
                                          c->buf, c->length,
                                          payload, sizeof(payload));
             CHKSYS(res);
-            if (res > 7) {
+            if (res > btree->full0) {
                 int limit = 20;
                 res = ccn_btree_split(btree, leaf);
                 CHKSYS(res);
@@ -615,7 +691,8 @@ test_btree_inserts_from_stdin(void)
     }
     res = ccn_btree_check(btree, stderr);
     CHKSYS(res);
-    printf("%d unique, %d duplicate, %d errors\n", unique, dups, btree->errors);
+    printf("%d unique, %d duplicate, %d deleted, %d missing, %d errors\n",
+               unique,    dups,         deleted,    missing, btree->errors);
     FAILIF(btree->errors != 0);
     res = ccn_btree_lookup(btree, c->buf, 0, &leaf); /* Get the first leaf */
     CHKSYS(res);
@@ -789,10 +866,10 @@ Bail:
 /**
  * Make an index from a file filled ccnb-encoded content objects
  *
- * Intersprsed interests will be regarded as querys, and matches will be
+ * Interspersed interests will be regarded as querys, and matches will be
  * found.
  *
- * The file is named by the environment varible TEST_CONTENT.
+ * The file is named by the environment variable TEST_CONTENT.
  */
 int
 test_insert_content(void)
@@ -944,6 +1021,8 @@ ccnbtreetest_main(int argc, char **argv)
     res = test_btree_lookup();
     CHKSYS(res);
     res = test_basic_btree_insert_entry();
+    CHKSYS(res);
+    test_basic_btree_delete_entry();
     CHKSYS(res);
     res = test_flatname();
     CHKSYS(res);

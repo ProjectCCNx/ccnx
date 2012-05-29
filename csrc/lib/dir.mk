@@ -78,6 +78,7 @@ lib: libccn.a
 test: default keystore_check encodedecodetest ccnbtreetest
 	./encodedecodetest -o /dev/null
 	./ccnbtreetest
+	./ccnbtreetest - < q.dat
 	rm -R _bt_*
 
 dtag_check: _always
