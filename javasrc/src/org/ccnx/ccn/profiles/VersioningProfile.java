@@ -441,6 +441,8 @@ public class VersioningProfile implements CCNProfile {
 		ees.add(new ExcludeComponent(LAST_VERSION_MARKER));
 		ees.add(new ExcludeAny());
 
+		Log.fine(Log.FAC_IO, "acceptVersions:  creating excludes {0} {1}", VersioningProfile.getVersionComponentAsLong(start), VersioningProfile.getVersionComponentAsLong(LAST_VERSION_MARKER));
+
 		return new Exclude(ees);
 	}
 
@@ -498,11 +500,16 @@ public class VersioningProfile implements CCNProfile {
 		}
 		byte [] versionComponent = startingVersion.lastComponent();
 
+		Log.fine(Log.FAC_IO, "latestVersionInterest: creating interest - startingVersion = {0}", startingVersion); 
+		
 		Interest constructedInterest = Interest.last(startingVersion, acceptVersions(versionComponent), startingVersion.count() - 1, additionalNameComponents,
 					additionalNameComponents, null);
 		if (null != publisher) {
 			constructedInterest.publisherID(new PublisherID(publisher));
 		}
+		
+		Log.fine(Log.FAC_IO, "latestVersionInterest: created interest = {0}", constructedInterest); 
+		
 		return constructedInterest;
 	}
 

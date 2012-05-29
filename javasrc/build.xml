@@ -440,6 +440,7 @@
 	            <sysproperty key="org.ccnx.ccn.LogLevel.All" value="${CHATTY}"/>
 				<sysproperty key="org.ccnx.ccn.LogLevel.Sync" value="FINE"/>
 				<sysproperty key="org.ccnx.ccn.LogLevel.Test" value="FINE"/>
+				<sysproperty key="org.ccnx.ccn.LogLevel.IO" value="FINE"/>
 	            <sysproperty key="${EXIT_ON_ERROR}" value="true"/>
 				<env key="CCNR_DIRECTORY" value="${REPO_ROOT}"/>
 				<env key="PATH" value="${env.PATH}:${cmddir}"/>
