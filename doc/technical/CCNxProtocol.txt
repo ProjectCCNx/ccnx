@@ -250,15 +250,6 @@ Content Store (CS)::
    MAY retain Content Object messages indefinitely but is not required
    to take any special measures to preserve them; the CS is a cache, not
    a persistent store.
-Forwarding Information Base (FIB)::
-   A table of outbound faces for Interests, organized for retrieval by
-   longest prefix match lookup on names.  Each prefix entry in the FIB
-   may point to a list of faces rather than only one.
-Pending Interest Table (PIT)::
-   A table of sources for unsatisfied Interests, organized for
-   retrieval by longest prefix match lookup on names.  Each entry in
-   the PIT may point to a list of sources.  Entries in the PIT MUST
-   timeout rather than being held indefinitely.
 Face::
    A 'face' is a generalization of the concept of 'interface': a face
    may be a connection to a network or directly to an application
@@ -270,6 +261,15 @@ Face::
    on the same machine, via an encapsulation like UDP or an
    OS-specific interprocess communication path.  All messages arrive
    through a face and are sent out through a face.
+Forwarding Information Base (FIB)::
+   A table of outbound faces for Interests, organized for retrieval by
+   longest prefix match lookup on names.  Each prefix entry in the FIB
+   may point to a list of faces rather than only one.
+Pending Interest Table (PIT)::
+   A table of sources for unsatisfied Interests, organized for
+   retrieval by longest prefix match lookup on names.  Each entry in
+   the PIT may point to a list of sources.  Entries in the PIT MUST
+   timeout rather than being held indefinitely.
 
 Note that the tables listed above may be interconnected through a
 single index to minimize the cost of lookup operations at the core of
