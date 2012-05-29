@@ -26,6 +26,7 @@ import org.ccnx.ccn.profiles.VersionMissingException;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.protocol.CCNTime;
 import org.ccnx.ccn.protocol.ContentName;
+import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -304,5 +305,67 @@ public class VersioningProfileTest {
 		Assert.assertTrue(Arrays.areEqual(b0, x0));
 		
 		Log.info(Log.FAC_TEST, "Completed testPaddedVersions");
-	}	
+	}
+	
+	@Test
+	public void testInvalidVersionComponentTooLong() {
+		
+		ContentName invalidName = null;
+		
+		try {
+			invalidName = ContentName.fromURI("/name/to/test/%FD%C0%B5g%07%FEcI%FA%3AEW%12%AB%AA%82%07%18%1B%F6L%84%BD%09-%B4sy%0A%234%16");
+		} catch (MalformedContentNameStringException e) {
+			Assert.fail("unable to create ContentName for test");
+		}
+
+		try {
+			Log.info(Log.FAC_TEST, "testing name {0}:  componentBytes: {1}", invalidName, invalidName.component(3).length);
+			long val = VersioningProfile.getLastVersionAsLong(invalidName);
+			Assert.fail("version deemed valid.  error.  "+invalidName+" val = "+val);
+		} catch (VersionMissingException e) {
+			//this should fail!
+		}
+	}
+	
+	@Test
+	public void testInvalidVersionComponentTooShort() {
+		
+		ContentName invalidName = null;
+		
+		try {
+			invalidName = ContentName.fromURI("/name/to/test/%FD%00%01");
+		} catch (MalformedContentNameStringException e) {
+			Assert.fail("unable to create ContentName for test");
+		}
+		
+		try {
+			Log.info(Log.FAC_TEST, "testing name {0}:  componentBytes: {1}", invalidName, invalidName.component(3).length);
+			long val = VersioningProfile.getLastVersionAsLong(invalidName);
+			Assert.fail("version deemed valid.  error.  "+invalidName+" val = "+val);
+		} catch (VersionMissingException e) {
+			//should also fail!
+		}
+	}
+	
+	@Test
+	public void testInvalidVersionComponentValid() {
+		
+		ContentName validName = null;
+		
+		try {
+			validName = ContentName.fromURI("/name/to/test/%FD%04%FB%DC%3BG%7D");
+		} catch (MalformedContentNameStringException e) {
+			Assert.fail("unable to create ContentName for test");
+		}
+		
+		try {
+			Log.info(Log.FAC_TEST, "testing name {0}:  componentBytes: {1}", validName, validName.component(3).length);
+			long val = VersioningProfile.getLastVersionAsLong(validName);
+		} catch (VersionMissingException e) {
+			//this should work!!
+			Assert.fail("version deemed invalid.  error.  "+validName);
+		}
+
+
+	}
 }
