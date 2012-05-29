@@ -1,3 +1,7 @@
+* XCode
+
+Apple has provided numerous updates to XCode throughout the years, with both XCode 3.x and 4.x versions capable of building CCNx csrc.  In recent years, Apple has been moving aggressively to push users towards the latest version of XCode and Mac OS X, limiting availability of legacy versions of XCode as new versions are released.  There is no strict requirement to upgrade to the latest version of XCode in order to build CCNx for Mac OS X.
+
 * MacOS 10.5
 
 To build on MacOS 10.5, we require at least OpenSSL 0.9.8, installed in
@@ -11,9 +15,9 @@ Then download openssl-0.9.8 from www.openssl.org, then configure it with
 
   ./Configure shared --prefix=/opt/local darwin-i386-cc
 
-* MacOS 10.6 and above
+* MacOS 10.6
 
-For MacOS 10.6 (Snow Leopard) and above, you don't need to install any
+For MacOS 10.6 (Snow Leopard), you don't need to install any
 additional software to run, because the library versions provided with the OS are
 sufficient.  To build, the recommended path is to install XCode.  Either gcc or clang
 may be used (e.g. "make CC=clang").
@@ -23,3 +27,16 @@ shows that this can complicate the process of making the CCNx build work without
 issue.  Our recommendation is to use the version of the compiler included with
 XCode.
 
+* XCode 4.3 and Mac OS X 10.7 (Lion)
+
+For users of Mac OS X 10.7, the latest version of XCode must be obtained
+through the Mac "App Store".  While the steps to install XCode are clear
+enough, the newer versions of XCode require an additional set of steps to
+get a complete SDK environment.  After you have installed XCode via the
+"App Store", you must go to XCode -> Preferences -> Downloads, and click
+on the "Command Line Tools" download button.  This will complete installation
+of required command line tools used for building.  Prior versions of XCode
+were obtained directly from the Apple Developer portal and included a
+complete distribution of XCode GUI tools + Command Line Tools as part of
+the installer.  Please make note of these extra steps when performing a new
+installation of XCode.
