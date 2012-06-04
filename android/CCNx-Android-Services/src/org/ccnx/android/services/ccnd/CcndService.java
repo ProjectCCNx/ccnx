@@ -59,7 +59,12 @@ public final class CcndService extends CCNxService {
 			for( int i = 0; i < libs.length; i++ ) {
 				System.loadLibrary(libs[i]);
 			}
-		} catch(Throwable e) { e.printStackTrace(); }
+		} catch(Throwable e) {
+			// Need to clean this up to catch each exception, may be that we can recover or handle effectively
+			// Why in the world would we not handle this?  Nothing will work if we have a runtime 
+			// exception loading libraries
+			e.printStackTrace();
+		}
 	}
 
 	protected void onStartService(Intent intent) {
@@ -117,16 +122,18 @@ public final class CcndService extends CCNxService {
 			for( Entry<String,String> entry : options.entrySet() ) {
 				setenv(entry.getKey(), entry.getValue(), 1);
 			}
-			
+			// Shouldn't we check to see that we aren't already running before we run?
 			ccndCreate();
-			setStatus(SERVICE_STATUS.SERVICE_RUNNING);
 			try {
+				setStatus(SERVICE_STATUS.SERVICE_RUNNING);
 				ccndRun();
 			} finally {
 				ccndDestroy();
 			}
 		} catch(Exception e) {
 			e.printStackTrace();
+			Log.d(TAG, "Exception caught while starting up/shutting down.  Reason: " + e.getMessage()); 
+			setStatus(SERVICE_STATUS.SERVICE_ERROR);
 			// returning will end the thread
 		}
 		serviceStopped();
@@ -151,7 +158,10 @@ public final class CcndService extends CCNxService {
 			BasicKeyManager.createKeyStore(stream, null, "ccnd", KEYSTORE_PASS, "CCND");
 			stream.close();
 		} catch(Exception e) {
+			// Need to clean this up to catch each exception, may be that we can recover or handle effectively
 			e.printStackTrace();
+			Log.d(TAG, "Exception while creating keystore.  Reason: " + e.getMessage()); 
+			setStatus(SERVICE_STATUS.SERVICE_ERROR);
 		}
 
 	}

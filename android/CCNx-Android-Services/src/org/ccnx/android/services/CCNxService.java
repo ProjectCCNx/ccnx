@@ -149,6 +149,7 @@ public abstract class CCNxService extends Service implements Runnable {
 				} catch (RemoteException e) {
 					// The RemoteCallbackList will take care of removing
 					// the dead object for us.
+					// Do we really want to bury RemoteException?
 					e.printStackTrace();
 				}
 			}
