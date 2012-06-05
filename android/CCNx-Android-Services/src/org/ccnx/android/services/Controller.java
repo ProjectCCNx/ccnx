@@ -31,7 +31,11 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.View.OnClickListener;
+import android.view.MenuItem;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.EditText;
@@ -93,22 +97,16 @@ public final class Controller extends Activity implements OnClickListener {
         
         _ctx = this.getApplicationContext();
         
-        mAllBtn = (Button)findViewById(R.id.allStartButton);
-        mAllBtn.setOnClickListener(this);
-
-        tvCcndStatus = (TextView)findViewById(R.id.tvCcndStatus);
-        tvRepoStatus = (TextView)findViewById(R.id.tvRepoStatus);
-        deviceIPAddress = (TextView)findViewById(R.id.deviceIPAddress);
-        String ipaddr = getIPAddress();
-        
-        if (ipaddr != null) {
-        	deviceIPAddress.setText(ipaddr);
-        } else {
-        	deviceIPAddress.setText("Unable to determine IP Address");
-        }
+       	initUI();
         init();
     }
     
+    @Override
+    protected void onPause() {
+    	super.onPause();
+    	// We should be saving out the state here for the UI so we don't lose user settings
+    }
+
     @Override
     public void onDestroy() {
     	control.disconnect();
@@ -130,6 +128,30 @@ public final class Controller extends Activity implements OnClickListener {
         updateState();
     }
     
+    @Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+    	MenuInflater inflater = getMenuInflater();
+    	inflater.inflate(R.menu.servicemenu, menu);
+    	return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+	    // Handle item selection
+	    switch (item.getItemId()) {
+	        case R.id.reset:
+	        	// Need to figure out if this is always safe to call even when nothing is running
+	            control.stopAll();
+	            Toast.makeText(this, "Reset CCNxServiceStatus complete, new status is: {ccnd: " + control.getCcndStatus().name() + 
+	            	", repo: " + control.getRepoStatus().name() + "}", 10).show();
+	            return true;
+	        case R.id.about:
+	        	setContentView(R.layout.aboutview);
+	            return true;
+	        default:
+	            return super.onOptionsItemSelected(item);
+	    }
+	}
     private void init(){
     	control = new CCNxServiceControl(this);
     	control.registerCallback(cb);
@@ -223,6 +245,21 @@ public final class Controller extends Activity implements OnClickListener {
 		// updateState();
 	}
 	
+	private void initUI() {
+		mAllBtn = (Button)findViewById(R.id.allStartButton);
+        mAllBtn.setOnClickListener(this);
+
+        tvCcndStatus = (TextView)findViewById(R.id.tvCcndStatus);
+        tvRepoStatus = (TextView)findViewById(R.id.tvRepoStatus);
+        deviceIPAddress = (TextView)findViewById(R.id.deviceIPAddress);
+        String ipaddr = getIPAddress();
+        
+        if (ipaddr != null) {
+        	deviceIPAddress.setText(ipaddr);
+        } else {
+        	deviceIPAddress.setText("Unable to determine IP Address");
+        }
+	}
 	private String getIPAddress() {
 		try {
 			for (Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces(); e.hasMoreElements();) {
@@ -242,8 +279,16 @@ public final class Controller extends Activity implements OnClickListener {
 		}
 		return null;
 	}
+
 	private boolean isValid(String val) {
 		// Normally we'd do real field validation to make sure input matches type of input
 		return (!((val == null) || (val.length() == 0)));
+	}
+
+	public void aboutviewButtonListener (View view) {
+		// Called with user clicks OK, return to main view
+		setContentView(R.layout.controllermain);
+		initUI();
+		updateState();
 	}
 }
