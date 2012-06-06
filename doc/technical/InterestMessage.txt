@@ -90,7 +90,7 @@ The *Bloom* element's BLOB is of length 8 + ceiling(n/8) bytes, where n is the n
 ...........................................................
 and the remaining bytes hold the bits of the Bloom filter.  The bits in the filter itself are packed little-endian by byte.  Note that a Bloom filter with 0 hash functions is one way to match everything, and a filter with all ones is another.  But these are not very compact, so the *All* element is provided as a better way to encode this common case.
 
-**TODO - The the calculation of the hash functions must also be specified.  At present, referring to the c code or java code in the libraries is the best option.**
+**TODO - The calculation of the hash functions must also be specified.  At present, referring to the c code or java code in the libraries is the best option.**
 
 **NOTE - New applications should avoid the use of the Bloom form of exclusion.  Support for this will be phased out in future revisions.**
 
@@ -98,7 +98,22 @@ and the remaining bytes hold the bits of the Bloom filter.  The bits in the filt
 ...........................................................
 ChildSelector ::= nonNegativeInteger
 ...........................................................
-Often a given interest will match more than one ContentObject within a given content store. The *ChildSelector* provides a way of expressing a preference for which of these should be returned.  If the (low order bit of) the value is 0, the leftmost child is preferred. If 1, the rightmost child is preferred. Here leftmost and rightmost refer to the least and greatest components according to the link:CanonicalOrder.html[canonical CCNx ordering].  This ordering is only done at the level of the name hierarchy one past the name prefix.
+Often a given interest will match more than one ContentObject within a given content store. The *ChildSelector* provides a way of expressing a preference for which of these should be returned.
+If the value is 0, the leftmost child is preferred.
+If 1, the rightmost child is preferred.
+Here leftmost and rightmost refer to the least and greatest components according to the link:CanonicalOrder.html[canonical CCNx ordering].
+This ordering is only done at the level of the name hierarchy one past the name prefix.
+
+For example, when using the normal versioning and segmentation profiles,
+use of rightmost order while performing version resolution is useful.
+It increases the likelyhood that the most desirable response is obtained,
+namely the first segment of the highest version.
+However, a single round cannot be counted on to yield the final answer,
+because the selection is only done with respect to a single content store,
+not globally.
+Additional rounds that exclude the earlier versions may be used to explore the space of versions.
+In this case, the use of ChildSelector does not change the multi-round outcome,
+but it decreases the number of rounds needed to converge to an answer.
 
 == AnswerOriginKind
 ...........................................................
