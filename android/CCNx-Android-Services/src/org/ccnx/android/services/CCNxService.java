@@ -101,7 +101,10 @@ public abstract class CCNxService extends Service implements Runnable {
 
 		// Get all the options from the intent
 
-		onStartService(intent);
+		onStartService(intent); 
+		// If service failed to start for any reason, should we keep trying to start?
+		// We want this service to be sticky to ensure execution for arbitrary duration
+		// however, problems in startup usually don't go away, creating repeated user alerts
 		return START_STICKY;
 	}
 
