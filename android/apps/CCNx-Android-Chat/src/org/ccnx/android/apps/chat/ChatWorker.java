@@ -112,7 +112,7 @@ public class ChatWorker implements Runnable, CCNxServiceCallback, CCNChatCallbac
 				e.printStackTrace();
 			}
 			try {
-				_ccnxService.stoptAll();
+				_ccnxService.stopAll();
 			} catch(Exception e) {
 				e.printStackTrace();
 			}
