@@ -26,6 +26,8 @@ import org.ccnx.android.ccnlib.RepoWrapper.CCNR_OPTIONS;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -63,7 +65,8 @@ public final class Controller extends Activity implements OnClickListener {
 	private TextView deviceIPAddress;
 	
 	private CCNxServiceControl control;
-	
+	private String mReleaseVersion = "Unknown";
+
 	// Create a handler to receive status updates
 	private final Handler _handler = new Handler() {
 		public void handleMessage(Message msg){
@@ -147,6 +150,9 @@ public final class Controller extends Activity implements OnClickListener {
 	            return true;
 	        case R.id.about:
 	        	setContentView(R.layout.aboutview);
+	        	TextView aboutdata = (TextView) findViewById(R.id.about_text);
+	        	aboutdata.setText(mReleaseVersion + "\n" + aboutdata.getText());
+
 	            return true;
 	        default:
 	            return super.onOptionsItemSelected(item);
@@ -156,6 +162,12 @@ public final class Controller extends Activity implements OnClickListener {
     	control = new CCNxServiceControl(this);
     	control.registerCallback(cb);
     	control.connect();
+    	try {
+    		PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+			mReleaseVersion = TAG + " " + pInfo.versionName;
+		} catch(NameNotFoundException e) {
+			Log.e(TAG, "Could not find package name.  Reason: " + e.getMessage());
+		}
     	updateState();
     }
 
