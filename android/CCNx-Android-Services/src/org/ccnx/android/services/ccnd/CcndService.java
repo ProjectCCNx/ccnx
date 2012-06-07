@@ -25,6 +25,7 @@ import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.CcndWrapper.CCND_OPTIONS;
 import org.ccnx.android.services.CCNxService;
 import org.ccnx.ccn.impl.security.keys.BasicKeyManager;
+import org.ccnx.android.ccnlib.CCNxLibraryCheck;
 
 import android.content.Context;
 import android.content.Intent;
@@ -114,11 +115,10 @@ public final class CcndService extends CCNxService {
 		}
 		
 		dumpOptions();
-		
-		createKeystore(ccnd_keydir, KEYSTORE_NAME + ccnd_port);
 
 		
 		try {
+			createKeystore(ccnd_keydir, KEYSTORE_NAME + ccnd_port);
 			for( Entry<String,String> entry : options.entrySet() ) {
 				setenv(entry.getKey(), entry.getValue(), 1);
 			}
@@ -127,8 +127,10 @@ public final class CcndService extends CCNxService {
 			try {
 				setStatus(SERVICE_STATUS.SERVICE_RUNNING);
 				ccndRun();
+			} catch(RuntimeException rte) {
+				Log.e(TAG, "RuntimeException while starting up CcndService");
 			} finally {
-				ccndDestroy();
+				ccndDestroy();		
 			}
 		} catch(Exception e) {
 			e.printStackTrace();
@@ -153,22 +155,46 @@ public final class CcndService extends CCNxService {
 		
 		Log.d(TAG,"Creating Keystore @ " + try_keystore.getAbsolutePath());
 
-		try {			   
+		try {
+			//
+			// In order to give us a chance to properly report service state avoid a mess on 
+			// subsequent attempts to start up this service (manual or via intent), we should
+			CCNxLibraryCheck.checkBCP();	   
 			FileOutputStream stream = new FileOutputStream(try_keystore);
 			BasicKeyManager.createKeyStore(stream, null, "ccnd", KEYSTORE_PASS, "CCND");
 			stream.close();
+		} catch(RuntimeException rte) {
+			// There are a few which can fail and this makes the service unstable since
+			// subsequent service invocations will find the keystore, partially baked, return, and later crash, 
+			// can cause dependent applications.  Handle this by:
+			// 0. Log it
+			// 1. Delete any keystore cruft
+			// 2. set error status (do not pass go)
+			// 3. Rethrow so this can bubble up properly
+			// We may find there are outher errors that warrant handling
+			Log.e(TAG, "Error loading class.  Reason: " + rte.getMessage());
+			if (try_keystore.exists()) {
+				Log.d(TAG, "Deleting existing keystore");
+				try_keystore.delete();
+			}
+			setStatus(SERVICE_STATUS.SERVICE_ERROR);
+			// We want to throw this so that runService() gets a chance to handle and close down
+			throw rte;
 		} catch(Exception e) {
 			// Need to clean this up to catch each exception, may be that we can recover or handle effectively
+			// What other exceptions do we see?  Should just deal with each case
+			// 1. File Access/Permission Denied
 			e.printStackTrace();
 			Log.d(TAG, "Exception while creating keystore.  Reason: " + e.getMessage()); 
 			setStatus(SERVICE_STATUS.SERVICE_ERROR);
-		}
+		} 
 
 	}
 
 	protected void stopService(){
 		setStatus(SERVICE_STATUS.SERVICE_TEARING_DOWN);
 		kill();
+		setStatus(SERVICE_STATUS.SERVICE_FINISHED);
 	}
 	
 	/* ************************************************************* */

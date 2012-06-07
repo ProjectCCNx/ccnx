@@ -311,7 +311,7 @@ public final class RepoService extends CCNxService {
 			Log.d(TAG,"Unknown Repo version " + repo_version + " specified, failed to stop Repo.");
 			setStatus(SERVICE_STATUS.SERVICE_ERROR);
 		}
-		serviceStopped(); // XXX Is it really ok to assume we've stopped when we might get errors?
+		setStatus(SERVICE_STATUS.SERVICE_FINISHED); // XXX Is it really ok to assume we've stopped when we might get errors?
 	}
 
 	private String createRepoDir(String repodir) {

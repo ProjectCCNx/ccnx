@@ -61,6 +61,9 @@ public final class CCNxServiceControl {
 			case SERVICE_RUNNING:
 				newCCNxAPIStatus(SERVICE_STATUS.CCND_RUNNING);
 				break;
+			case SERVICE_ERROR:
+				newCCNxAPIStatus(SERVICE_STATUS.SERVICE_ERROR);
+				break;
 			default:
 				Log.d(TAG, "ccndCallback, ignoring status = " + st.toString());
 			}
@@ -84,6 +87,9 @@ public final class CCNxServiceControl {
 				break;
 			case SERVICE_RUNNING:
 				newCCNxAPIStatus(SERVICE_STATUS.REPO_RUNNING);
+				break;
+			case SERVICE_ERROR:
+				newCCNxAPIStatus(SERVICE_STATUS.SERVICE_ERROR);
 				break;
 			default:
 				Log.d(TAG, "repoCallback, ignoring status = " + st.toString());
@@ -179,7 +185,7 @@ public final class CCNxServiceControl {
 		ccndInterface.stopService();
 		newCCNxAPIStatus(SERVICE_STATUS.STOP_ALL_DONE);
 	}
-	
+
 	public boolean isCcndRunning(){
 		return ccndInterface.isRunning();
 	}
