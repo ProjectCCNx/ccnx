@@ -61,6 +61,11 @@ public final class CCNxServiceControl {
 			case SERVICE_RUNNING:
 				newCCNxAPIStatus(SERVICE_STATUS.CCND_RUNNING);
 				break;
+			case SERVICE_ERROR:
+				newCCNxAPIStatus(SERVICE_STATUS.SERVICE_ERROR);
+				break;
+			default:
+				Log.d(TAG, "ccndCallback, ignoring status = " + st.toString());
 			}
 		}
 	};
@@ -83,6 +88,11 @@ public final class CCNxServiceControl {
 			case SERVICE_RUNNING:
 				newCCNxAPIStatus(SERVICE_STATUS.REPO_RUNNING);
 				break;
+			case SERVICE_ERROR:
+				newCCNxAPIStatus(SERVICE_STATUS.SERVICE_ERROR);
+				break;
+			default:
+				Log.d(TAG, "repoCallback, ignoring status = " + st.toString());
 			}
 		}
 	};
@@ -115,17 +125,20 @@ public final class CCNxServiceControl {
 	 */
 	public boolean startAll(){
 		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_INITIALIZING);
-		Log.i(TAG,"startAll waitng for startService");
+		Log.i(TAG,"startAll waiting for CCND startService");
 		ccndInterface.startService();
-		Log.i(TAG,"startAll waitng for waitForReady");
+		Log.i(TAG,"startAll waiting for CCND waitForReady");
 		ccndInterface.waitForReady();
 		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_CCND_DONE);
 		if(!ccndInterface.isReady()){
 			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_ERROR);
 			return false;
 		}
+		Log.i(TAG,"startAll waiting for REPO startService");
 		repoInterface.startService();
+		Log.i(TAG,"startAll waiting for REPO waitForReady");
 		repoInterface.waitForReady();
+		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_REPO_DONE);
 		if(!repoInterface.isReady()){
 			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_ERROR);
 			return false;
@@ -167,11 +180,12 @@ public final class CCNxServiceControl {
 	 * Stop the CCN daemon and Repo 
 	 * This call will unbind from the service and stop it. There is no need to issue a disconnect().
 	 */
-	public void stoptAll(){
+	public void stopAll(){
 		repoInterface.stopService();
 		ccndInterface.stopService();
+		newCCNxAPIStatus(SERVICE_STATUS.STOP_ALL_DONE);
 	}
-	
+
 	public boolean isCcndRunning(){
 		return ccndInterface.isRunning();
 	}
