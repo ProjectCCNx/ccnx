@@ -11,10 +11,15 @@
 # Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301, USA.
 # 
-# For Android 1.5 static compilation, we need to put
-# everything in one bundle.  ANything newer could use
-# multiple .so files, but why for this?
-#
+
+# Set APP_PLATFORM override
+# You shouldn't need to change this
+APP_PLATFORM := android-5
+
+# Set APP_ABI
+# You should manually change this if you need other arm or x86 or mips ABIs
+# left blank, default is just for armeabi
+APP_ABI := armeabi armeabi-v7a
 
 # Don't need this in a jni/Application.mk
 #APP_PROJECT_PATH := 
