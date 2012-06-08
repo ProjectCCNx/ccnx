@@ -101,7 +101,10 @@ public abstract class CCNxService extends Service implements Runnable {
 
 		// Get all the options from the intent
 
-		onStartService(intent);
+		onStartService(intent); 
+		// If service failed to start for any reason, should we keep trying to start?
+		// We want this service to be sticky to ensure execution for arbitrary duration
+		// however, problems in startup usually don't go away, creating repeated user alerts
 		return START_STICKY;
 	}
 
@@ -132,7 +135,12 @@ public abstract class CCNxService extends Service implements Runnable {
 	}
 
 	protected void serviceStopped(){
-		setStatus(SERVICE_STATUS.SERVICE_FINISHED);
+		// If there is a service error, don't clear the status to finished
+		// Otherwise we'll never see that the service is in an error state
+		//
+		if (status != SERVICE_STATUS.SERVICE_ERROR) {
+			setStatus(SERVICE_STATUS.SERVICE_FINISHED);
+		}
 		running = false;
 	}
 
@@ -149,6 +157,7 @@ public abstract class CCNxService extends Service implements Runnable {
 				} catch (RemoteException e) {
 					// The RemoteCallbackList will take care of removing
 					// the dead object for us.
+					// Do we really want to bury RemoteException?
 					e.printStackTrace();
 				}
 			}
