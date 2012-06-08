@@ -274,12 +274,17 @@ public final class RepoService extends CCNxService {
 					ccnrSetenv(entry.getKey(), entry.getValue(), 1);
 				}
 	
-				ccnrCreate(repo_version);
-				setStatus(SERVICE_STATUS.SERVICE_RUNNING);
-				try {
-					ccnrRun();
-				} finally {
-					ccnrDestroy();
+				if (ccnrCreate(repo_version) == 0) {
+					setStatus(SERVICE_STATUS.SERVICE_RUNNING);
+					try {
+						ccnrRun();
+					} finally {
+						ccnrDestroy();
+					}
+				} else {
+					// If we have problems initially creating the CCNR handle, we should shutdown with error
+					Log.d(TAG,"ccnrCreate failure, failed to start Repo.");
+					setStatus(SERVICE_STATUS.SERVICE_ERROR);
 				}
 			} catch(Exception e) {
 				e.printStackTrace();
