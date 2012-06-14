@@ -54,7 +54,6 @@ import java.util.Enumeration;
  */
 public final class Controller extends Activity implements OnClickListener {
 	public final static String TAG = "CCNx Service Controller";
-	
 	private Button mAllBtn;
 	private ProgressDialog pd;
 	
@@ -126,7 +125,7 @@ public final class Controller extends Activity implements OnClickListener {
         } else {
         	deviceIPAddress.setText("Unable to determine IP Address");
         }
-
+ 
         // We should updateState on resuming, in case Service state has changed
         updateState();
     }
@@ -256,7 +255,7 @@ public final class Controller extends Activity implements OnClickListener {
 		}
 		// updateState();
 	}
-	
+
 	private void initUI() {
 		mAllBtn = (Button)findViewById(R.id.allStartButton);
         mAllBtn.setOnClickListener(this);

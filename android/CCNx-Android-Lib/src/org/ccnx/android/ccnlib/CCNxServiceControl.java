@@ -32,6 +32,7 @@ import android.util.Log;
  * as interact with them for configuration and monitoring.
  */
 public final class CCNxServiceControl {
+	public final static Long EPOC_TIME_UNIX_MAX = 31535999L;
 	private final static String TAG = "CCNxServiceControl";
 	
 	CcndWrapper ccndInterface;
@@ -125,26 +126,31 @@ public final class CCNxServiceControl {
 	 */
 	public boolean startAll(){
 		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_INITIALIZING);
-		Log.i(TAG,"startAll waiting for CCND startService");
-		ccndInterface.startService();
-		Log.i(TAG,"startAll waiting for CCND waitForReady");
-		ccndInterface.waitForReady();
-		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_CCND_DONE);
-		if(!ccndInterface.isReady()){
-			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_ERROR);
+		if (checkSystemOK()) {
+			Log.i(TAG,"startAll waiting for CCND startService");
+			ccndInterface.startService();
+			Log.i(TAG,"startAll waiting for CCND waitForReady");
+			ccndInterface.waitForReady();
+			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_CCND_DONE);
+			if(!ccndInterface.isReady()){
+				newCCNxAPIStatus(SERVICE_STATUS.START_ALL_ERROR);
+				return false;
+			}
+			Log.i(TAG,"startAll waiting for REPO startService");
+			repoInterface.startService();
+			Log.i(TAG,"startAll waiting for REPO waitForReady");
+			repoInterface.waitForReady();
+			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_REPO_DONE);
+			if(!repoInterface.isReady()){
+				newCCNxAPIStatus(SERVICE_STATUS.START_ALL_ERROR);
+				return false;
+			} 
+			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_DONE);
+			return true;
+		} else {
 			return false;
 		}
-		Log.i(TAG,"startAll waiting for REPO startService");
-		repoInterface.startService();
-		Log.i(TAG,"startAll waiting for REPO waitForReady");
-		repoInterface.waitForReady();
-		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_REPO_DONE);
-		if(!repoInterface.isReady()){
-			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_ERROR);
-			return false;
-		} 
-		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_DONE);
-		return true;
+
 	}
 	
 	/**
@@ -186,6 +192,18 @@ public final class CCNxServiceControl {
 		newCCNxAPIStatus(SERVICE_STATUS.STOP_ALL_DONE);
 	}
 
+	public boolean checkSystemOK() {
+		//
+		// Do a quick check of things before we start.  If we can't properly inialize the following, don't pass go:
+		// 1) system time
+		// 2) others - TBD
+		//
+		if (System.currentTimeMillis() < EPOC_TIME_UNIX_MAX) {
+			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_ERROR);
+			return false;
+		}
+		return true;
+	}
 	public boolean isCcndRunning(){
 		return ccndInterface.isRunning();
 	}
