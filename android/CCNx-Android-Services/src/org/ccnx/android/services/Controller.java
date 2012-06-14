@@ -78,7 +78,12 @@ public final class Controller extends Activity implements OnClickListener {
 			if ((st == SERVICE_STATUS.START_ALL_DONE) || (st == SERVICE_STATUS.STOP_ALL_DONE)) {
 				mAllBtn.setText(R.string.allStartButton);
 				mAllBtn.setEnabled(true);
-			}
+			} 
+
+			if (st == SERVICE_STATUS.START_ALL_ERROR) {
+				Toast.makeText(_ctx, "Unable to Start Services.  Reason:" + control.getErrorMessage(), 20).show();
+				mAllBtn.setText(R.string.allStartButton_Error);
+			} 
 			// Update the UI after we receive a notification, otherwise we won't capture all state changes
 			updateState();
 		}
@@ -144,6 +149,7 @@ public final class Controller extends Activity implements OnClickListener {
 	        case R.id.reset:
 	        	// Need to figure out if this is always safe to call even when nothing is running
 	            control.stopAll();
+	            control.clearErrorMessage();
 	            Toast.makeText(this, "Reset CCNxServiceStatus complete, new status is: {ccnd: " + control.getCcndStatus().name() + 
 	            	", repo: " + control.getRepoStatus().name() + "}", 10).show();
 	            return true;
