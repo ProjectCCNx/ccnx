@@ -98,7 +98,6 @@ main(int argc, char **argv)
     struct ccn *h = NULL;
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *cob = NULL;
-    struct ccn_charbuf *regprefix = NULL;
     struct ccn_closure in_interest = {0};
     struct ccnxchat_state state = {0};
     struct ccnxchat_state *st;
@@ -124,7 +123,6 @@ main(int argc, char **argv)
     if (res < 0)
         FATAL(res);
     debug_logger(st, __LINE__, st->basename);
-    ccn_charbuf_destroy(&regprefix);
     /* Run the event loop */
     for (;;) {
         res = ccn_run(h, 100);
