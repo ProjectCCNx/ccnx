@@ -13,6 +13,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -56,6 +57,7 @@ struct ccnxchat_state {
     struct ccn_charbuf *name;   /* Buffer for constructed name */
     struct ccn_charbuf *payload; /* Buffer for payload */
     struct ccn_charbuf *cob;    /* Buffer for ContentObject */
+    int eof;                    /* true if we have encountered eof */
 };
 
 /* Prototypes */
@@ -187,7 +189,7 @@ generate_cob(struct ccnxchat_state *st)
     sp.sp_flags |= CCN_SP_FINAL_BLOCK;
     /* Make a ContentObject using the constructed name and our payload */
     ccn_charbuf_reset(st->cob);
-    res = ccn_sign_content(st->h, st->cob, st->name, NULL,
+    res = ccn_sign_content(st->h, st->cob, st->name, &sp,
                            st->payload->buf, st->payload->length);
     if (res < 0)
         FATAL(res);
@@ -196,12 +198,44 @@ generate_cob(struct ccnxchat_state *st)
     fflush(stdout);
 }
 
-/** Generate some new data and place in store */
+/** Collect some new data and when ready, place it in store */
 static void
 generate_new_data(struct ccnxchat_state *st)
 {
-    generate_cob(st);
-    toss_in_cs(st, st->cob->buf, st->cob->length);
+    unsigned char *cp;
+    ssize_t res;
+    int fl;
+    int ready = 0;    /* set when we have a whole line */
+    int fd = 0;       /* standard input */
+
+    if (st->eof > 3)
+        exit(0);
+    fl = fcntl(fd, F_GETFL);
+    fcntl(fd, F_SETFL, O_NONBLOCK | fl);
+    while (!ready) {
+        cp = ccn_charbuf_reserve(st->payload, 1);
+        res = read(fd, cp, 1);
+        if (res == 1) {
+           if (cp[0] == '\n')
+               ready = 1;
+           else
+               st->payload->length++;
+        }
+        else if (res == 0) {
+            if (st->eof == 0)
+                ccn_charbuf_putf(st->payload, " --- leaving");
+            ready = 1;
+            st->eof++;
+        }
+        else
+            break;
+    }
+    if (ready) {    
+        generate_cob(st);
+        toss_in_cs(st, st->cob->buf, st->cob->length);
+        ccn_charbuf_reset(st->payload);
+    }
+    fcntl(fd, F_SETFL, fl);
 }
 
 /**
@@ -464,7 +498,8 @@ debug_logger(struct ccnxchat_state *st, int lineno, struct ccn_charbuf *ccnb)
     stampnow(c);
     ccn_charbuf_putf(c, "debug.%d %5d", lineno, wrappednow());
     if (st != NULL)
-        ccn_charbuf_putf(c, " %d %d", st->n_pit, st->n_cob);
+        ccn_charbuf_putf(c, " pit=%d cob=%d buf=%d",
+                         st->n_pit, st->n_cob, (int)st->payload->length);
     if (ccnb != NULL) {
         ccn_charbuf_putf(c, " ");
         ccn_uri_append(c, ccnb->buf, ccnb->length, 1);

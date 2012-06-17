@@ -4,7 +4,7 @@ INSTALL_BASE = $$HOME/ccnx
 IFLAGS = -I$(INSTALL_BASE)/include
 LFLAGS = -L$(INSTALL_BASE)/lib -lccn -lcrypto
 
-CFLAGS = -O1
+CFLAGS = -g
 
 default: $(PROGRAMS)
 
