@@ -56,7 +56,6 @@ struct ccnxchat_state {
     struct ccn_charbuf *name;   /* Buffer for constructed name */
     struct ccn_charbuf *payload; /* Buffer for payload */
     struct ccn_charbuf *cob;    /* Buffer for ContentObject */
-    int seqno;                  /* Sequence number */
 };
 
 /* Prototypes */
@@ -81,7 +80,6 @@ static void age_pit(struct ccnxchat_state *);
 void debug_logger(struct ccnxchat_state *, int lineno, struct ccn_charbuf *);
         
 static void generate_cob(struct ccnxchat_state *);
-static void set_seqno(struct ccnxchat_state *, int);
 
 /* Very simple error handling */
 #define FATAL(res) fatal(__LINE__, res)
@@ -119,7 +117,6 @@ main(int argc, char **argv)
     st->name = ccn_charbuf_create();
     st->payload = ccn_charbuf_create();
     st->cob = ccn_charbuf_create();
-    set_seqno(st, random() & 0xFFFFF); /* random starting point */
     /* Set up a handler for interests */
     res = ccn_set_interest_filter(h, st->basename, &in_interest);
     if (res < 0)
@@ -171,28 +168,6 @@ incoming_interest(struct ccn_closure *selfp,
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**
- * Set the current sequence number
- *
- * Update the name as well, and invalidate the payload and cob buffers.
- */
-static void
-set_seqno(struct ccnxchat_state *st, int seqno)
-{
-    struct ccn_charbuf *c = NULL;
-    int res;
-    
-    st->seqno = seqno;    
-    c = ccn_charbuf_create();
-    ccn_charbuf_putf(c, "%d", st->seqno);
-    ccn_charbuf_reset(st->name);
-    ccn_charbuf_append(st->name, st->basename->buf, st->basename->length);
-    ccn_name_append(st->name, c->buf, c->length);
-    ccn_charbuf_reset(st->payload);
-    ccn_charbuf_reset(st->cob);
-    ccn_charbuf_destroy(&c);
-}
-
-/**
  * Generate a content object containing the current payload
  *
  * The standard versioning and segmentation profiles are used.
@@ -227,7 +202,6 @@ generate_new_data(struct ccnxchat_state *st)
 {
     generate_cob(st);
     toss_in_cs(st, st->cob->buf, st->cob->length);
-    set_seqno(st, st->seqno + 1);
 }
 
 /**
@@ -337,6 +311,7 @@ age_cs(struct ccnxchat_state *st)
     for (i = 0, j = 0; i < st->n_cob; i++) {
         if (st->cs[i].sent != 0) {
             /* could log here */
+            DB(st, st->cs[i].cob);
             ccn_charbuf_destroy(&(st->cs[i].cob));
         }
         else
@@ -367,6 +342,7 @@ age_pit(struct ccnxchat_state *st)
         pie = &(st->pit[i]);
         if (pie->consumed || (now - pie->expiry) <= deltawrap) {
             /* could log here */
+            DB(st, pie->pib);
             ccn_charbuf_destroy(&(pie->pib));
         }
         else
