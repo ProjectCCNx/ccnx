@@ -25,6 +25,9 @@ import org.ccnx.android.ccnlib.RepoWrapper.CCNR_OPTIONS;
 
 import android.content.Context;
 import android.util.Log;
+import android.os.Environment;
+
+import java.io.File;
 
 /**
  * This is a helper class to access the ccnd and repo services. It provides
@@ -32,8 +35,10 @@ import android.util.Log;
  * as interact with them for configuration and monitoring.
  */
 public final class CCNxServiceControl {
+	public final static Long EPOC_TIME_UNIX_IN_FIRST_YEAR = 31535999L;
 	private final static String TAG = "CCNxServiceControl";
-	
+	private static String mErrorMessage = "";
+
 	CcndWrapper ccndInterface;
 	RepoWrapper repoInterface;
 	Context _ctx;
@@ -124,27 +129,35 @@ public final class CCNxServiceControl {
 	 * @return true if everything started correctly, false otherwise
 	 */
 	public boolean startAll(){
-		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_INITIALIZING);
-		Log.i(TAG,"startAll waiting for CCND startService");
-		ccndInterface.startService();
-		Log.i(TAG,"startAll waiting for CCND waitForReady");
-		ccndInterface.waitForReady();
-		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_CCND_DONE);
-		if(!ccndInterface.isReady()){
+		if (checkSystemOK()) {
+			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_INITIALIZING);
+			Log.i(TAG,"startAll waiting for CCND startService");
+			ccndInterface.startService();
+			Log.i(TAG,"startAll waiting for CCND waitForReady");
+			ccndInterface.waitForReady();
+			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_CCND_DONE);
+			if(!ccndInterface.isReady()){
+				mErrorMessage = mErrorMessage.concat("Unable to start ccnd service.");
+				newCCNxAPIStatus(SERVICE_STATUS.START_ALL_ERROR);
+				return false;
+			}
+			Log.i(TAG,"startAll waiting for REPO startService");
+			repoInterface.startService();
+			Log.i(TAG,"startAll waiting for REPO waitForReady");
+			repoInterface.waitForReady();
+			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_REPO_DONE);
+			if(!repoInterface.isReady()){
+				mErrorMessage = mErrorMessage.concat("Unable to start repo service.");
+				newCCNxAPIStatus(SERVICE_STATUS.START_ALL_ERROR);
+				return false;
+			} 
+			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_DONE);
+			return true;
+		} else {
 			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_ERROR);
 			return false;
 		}
-		Log.i(TAG,"startAll waiting for REPO startService");
-		repoInterface.startService();
-		Log.i(TAG,"startAll waiting for REPO waitForReady");
-		repoInterface.waitForReady();
-		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_REPO_DONE);
-		if(!repoInterface.isReady()){
-			newCCNxAPIStatus(SERVICE_STATUS.START_ALL_ERROR);
-			return false;
-		} 
-		newCCNxAPIStatus(SERVICE_STATUS.START_ALL_DONE);
-		return true;
+
 	}
 	
 	/**
@@ -186,6 +199,39 @@ public final class CCNxServiceControl {
 		newCCNxAPIStatus(SERVICE_STATUS.STOP_ALL_DONE);
 	}
 
+	public boolean checkSystemOK() {
+		//
+		// Do a quick check of things before we start.  If we can't properly inialize the following, don't pass go.
+		// We fail write away rather than checking everything.
+		// 1) system time
+		// 2) check external storage writable
+		// 3) other checks - TBD ... In the future we may want to verify that we have at least one usable *face
+		//
+		Log.d(TAG, "Checking current time in millis: " + System.currentTimeMillis() + " and date today = " + new java.util.Date());
+		if (System.currentTimeMillis()/1000 <= EPOC_TIME_UNIX_IN_FIRST_YEAR) {
+			// Realistically no modern device will be shipping from the factory without a reasonable default
+			// near or close to the current date at manufacture, nor will it lack the ability to get time
+			// from the network.  However, in dealing with Android "open source", some devices still seem to 
+			// ship with time set to the beginning of Epoch (UNIX) time.
+			Log.e(TAG,"Error in checkSystemOK(), please set OS System Time to valid, non-default date.");
+			mErrorMessage = mErrorMessage.concat("Please set OS System Time before running this service.");
+			return false;
+		}
+
+		if (!Environment.getExternalStorageDirectory().canWrite()) {
+			// Again, not a likely scenario, but it's been seen before that some Android devices have either 
+			// low quality media or problems in the design of the SDCARD reader that prevent the external storage
+			// from build a valid write target.  Since we'll need both access to this storage and write 
+			// access to it, we should not proceed if we fail to get writable external storage.
+			// Future, more robust versions of this service should look for alternatives (app data space)
+			// before failing completely.
+			Log.e(TAG,"Error in checkSystemOK(), please fix permissions to access external storage for write, or insert writable media.");
+			mErrorMessage = mErrorMessage.concat("Please check external SDCARD is available and writable.");
+			return false;
+		}
+
+		return true;
+	}
 	public boolean isCcndRunning(){
 		return ccndInterface.isRunning();
 	}
@@ -240,6 +286,13 @@ public final class CCNxServiceControl {
 		repoInterface.setOption(option, value);
 	}
 	
+	public String getErrorMessage() {
+		return mErrorMessage;
+	}
+
+	public void clearErrorMessage() {
+		mErrorMessage = "";
+	}
 	/**
 	 * Are ccnd and the repo running and ready?
 	 * @return true if BOTH ccnd and the repo are in state Running
