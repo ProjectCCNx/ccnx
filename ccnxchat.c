@@ -40,6 +40,8 @@ struct cs_entry {
 };
 /** Number of generated data items we will hold */
 #define CS_LIMIT 3
+/** Max number of received versions to track */
+#define VER_LIMIT 5
 
 /**
  * Application state
@@ -52,6 +54,8 @@ struct ccnxchat_state {
     struct pit_entry pit[PIT_LIMIT];
     int n_cob;                  /* Number of live CS entries */
     struct cs_entry cs[CS_LIMIT];
+    int n_ver;                  /* Number of recently received versions */
+    struct ccn_charbuf *ver[VER_LIMIT];
     /* All these buffers contain ccnb-encoded data, except for payload */
     struct ccn_charbuf *basename; /* The namespace we are serving */
     struct ccn_charbuf *name;   /* Buffer for constructed name */
@@ -67,6 +71,7 @@ static enum ccn_upcall_res incoming_interest(struct ccn_closure *,
 static void fatal(int lineno, int val);
 static void initialize(int argc, char **argv, struct ccn_charbuf *);
 struct ccn_charbuf *adjust_regprefix(struct ccn_charbuf *);
+static int namecompare(const void *, const void *);
 static void stampnow(struct ccn_charbuf *);
 static void seed_random(void);
 static void usage(void);
@@ -79,8 +84,9 @@ static void toss_in_cs(struct ccnxchat_state *, const unsigned char *p, size_t);
 static void toss_in_pit(struct ccnxchat_state *, const unsigned char *, size_t);
 static void age_cs(struct ccnxchat_state *);
 static void age_pit(struct ccnxchat_state *);        
-void debug_logger(struct ccnxchat_state *, int lineno, struct ccn_charbuf *);
-        
+static void debug_logger(struct ccnxchat_state *, int lineno, struct ccn_charbuf *);
+static int append_interest_details(struct ccn_charbuf *c,
+                                   const unsigned char *ccnb, size_t size);        
 static void generate_cob(struct ccnxchat_state *);
 
 /* Very simple error handling */
@@ -274,6 +280,7 @@ toss_in_pit(struct ccnxchat_state *st, const unsigned char *p, size_t size)
     ccn_charbuf_append(pie->pib, p, size);
     pie->consumed = 0;
     pie->expiry = wrappednow() + lifetime_ms;
+    DB(st, pie->pib);
 }
 
 /**
@@ -306,6 +313,7 @@ matchbox(struct ccnxchat_state *st)
                     new_matches++;
                 cse->matched = 1;
                 pie->consumed = 1;
+                DB(st, pie->pib);
             }
         }
     }
@@ -372,11 +380,13 @@ age_pit(struct ccnxchat_state *st)
     now = wrappednow();
     for (i = 0, j = 0; i < st->n_pit; i++) {
         pie = &(st->pit[i]);
-        if (pie->consumed || (now - pie->expiry) <= deltawrap) {
-            /* could log here */
+        delta = now - pie->expiry;
+        if (delta <= deltawrap) {
             DB(st, pie->pib);
-            ccn_charbuf_destroy(&(pie->pib));
+            pie->consumed = 1;
         }
+        if (pie->consumed)
+            ccn_charbuf_destroy(&(pie->pib));
         else
             st->pit[j++] = st->pit[i];
     }
@@ -384,6 +394,21 @@ age_pit(struct ccnxchat_state *st)
     /* Clear out now-unused entries */
     while (i > j)
         st->pit[--i] = empty;
+}
+
+/**
+ * Comparison operator for sorting the excl list with qsort.
+ * For convenience, the items in the excl array are
+ * charbufs containing ccnb-encoded Names of one component each.
+ * (This is not the most efficient representation.)
+ */
+static int /* for qsort */
+namecompare(const void *a, const void *b)
+{
+    const struct ccn_charbuf *aa = *(const struct ccn_charbuf **)a;
+    const struct ccn_charbuf *bb = *(const struct ccn_charbuf **)b;
+    int ans = ccn_compare_names(aa->buf, aa->length, bb->buf, bb->length);
+    return (ans);
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -487,7 +512,7 @@ seed_random(void)
  * Prints some internal state to stderr.
  * If non-NULL, ccnb should be a ccnb-encoded Name, Interest, or ContentObject.
  */
-void
+static void
 debug_logger(struct ccnxchat_state *st, int lineno, struct ccn_charbuf *ccnb)
 {
     struct ccn_charbuf *c;
@@ -501,7 +526,71 @@ debug_logger(struct ccnxchat_state *st, int lineno, struct ccn_charbuf *ccnb)
     if (ccnb != NULL) {
         ccn_charbuf_putf(c, " ");
         ccn_uri_append(c, ccnb->buf, ccnb->length, 1);
+        append_interest_details(c, ccnb->buf, ccnb->length);
     }
     fprintf(stderr, "%s\n", ccn_charbuf_as_string(c));
     ccn_charbuf_destroy(&c);
 }
+
+static int
+append_interest_details(struct ccn_charbuf *c, const unsigned char *ccnb, size_t size)
+{
+    struct ccn_parsed_interest interest;
+    struct ccn_parsed_interest *pi = &interest;
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d;
+    const unsigned char *bloom;
+    size_t bloom_size = 0;
+    const unsigned char *comp;    
+    size_t comp_size = 0;
+    int i;
+    int l;
+    int res;
+
+    res = ccn_parse_interest(ccnb, size, pi, NULL);
+    if (res < 0)
+        return(res);
+    i = pi->offset[CCN_PI_B_Exclude];
+    l = pi->offset[CCN_PI_E_Exclude] - i;
+    if (l > 0) {
+        d = ccn_buf_decoder_start(&decoder, ccnb + i, l);
+        ccn_charbuf_append_string(c, " excl: ");
+        ccn_buf_advance(d);
+        
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+            ccn_buf_advance(d);
+            ccn_charbuf_append_string(c, "* ");
+            ccn_buf_check_close(d);
+        }
+        else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+            ccn_buf_advance(d);
+            if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+                ccn_buf_advance(d);
+            ccn_charbuf_append_string(c, "? ");
+            ccn_buf_check_close(d);
+        }
+        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+            ccn_buf_advance(d);
+            comp_size = 0;
+            if (ccn_buf_match_blob(d, &comp, &comp_size))
+                ccn_buf_advance(d);
+            ccn_uri_append_percentescaped(c, comp, comp_size);
+            ccn_charbuf_append_string(c, " ");
+            ccn_buf_check_close(d);
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                ccn_buf_advance(d);
+                ccn_charbuf_append_string(c, "* ");
+                ccn_buf_check_close(d);
+            }
+            else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom)) {
+                ccn_buf_advance(d);
+                if (ccn_buf_match_blob(d, &bloom, &bloom_size))
+                    ccn_buf_advance(d);
+                ccn_charbuf_append_string(c, "? ");
+                ccn_buf_check_close(d);
+            }
+        }
+    }
+    return(0);
+}
+
