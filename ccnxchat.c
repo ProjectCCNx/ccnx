@@ -80,13 +80,13 @@ unsigned short wrappednow(void);
 static void generate_new_data(struct ccnxchat_state *);
 static int  matchbox(struct ccnxchat_state *);
 static void send_matching_data(struct ccnxchat_state *);
-static void toss_in_cs(struct ccnxchat_state *, const unsigned char *p, size_t);
+static void toss_in_cs(struct ccnxchat_state *, const unsigned char *, size_t);
 static void toss_in_pit(struct ccnxchat_state *, const unsigned char *, size_t);
 static void age_cs(struct ccnxchat_state *);
-static void age_pit(struct ccnxchat_state *);        
+static void age_pit(struct ccnxchat_state *);
 static void debug_logger(struct ccnxchat_state *, int lineno, struct ccn_charbuf *);
 static int append_interest_details(struct ccn_charbuf *c,
-                                   const unsigned char *ccnb, size_t size);        
+                                   const unsigned char *ccnb, size_t size);
 static void generate_cob(struct ccnxchat_state *);
 
 /* Very simple error handling */
@@ -134,12 +134,12 @@ main(int argc, char **argv)
         res = ccn_run(h, 100);
         if (res != 0)
             FATAL(res);
-        if (st->n_pit != 0 && st->n_cob < CS_LIMIT)
+        if (st->n_cob == 0 || (st->n_pit != 0 && st->n_cob < CS_LIMIT))
             generate_new_data(st);
         matchbox(st);
         send_matching_data(st);
         age_cs(st);
-        age_pit(st);        
+        age_pit(st);
     }
     /* Loop has no normal exit */
 }
@@ -212,8 +212,12 @@ generate_new_data(struct ccnxchat_state *st)
     int ready = 0;    /* set when we have a whole line */
     int fd = 0;       /* standard input */
 
-    if (st->eof > 3)
-        exit(0);
+    if (st->eof != 0) {
+        if (st->eof++ > 3)
+            exit(0);
+        if (st->payload->length == 0)
+            return;
+    } 
     fl = fcntl(fd, F_GETFL);
     fcntl(fd, F_SETFL, O_NONBLOCK | fl);
     while (!ready) {
@@ -227,9 +231,11 @@ generate_new_data(struct ccnxchat_state *st)
         }
         else if (res == 0) {
             if (st->eof == 0)
-                ccn_charbuf_putf(st->payload, " --- leaving");
-            ready = 1;
+                ccn_charbuf_putf(st->payload, "--- leaving");
+            if (st->cob->length > 0)
+                ready = 1;
             st->eof++;
+            break;
         }
         else
             break;
