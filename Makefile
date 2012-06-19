@@ -8,8 +8,8 @@ CFLAGS = -g
 
 default: $(PROGRAMS)
 
-ccnxchat: ccnxchat.c
-	$(CC) $(CFLAGS) $(IFLAGS) -o ccnxchat ccnxchat.c $(LFLAGS)
+ccnxchat: ccnxchat.c lned.c
+	$(CC) $(CFLAGS) $(IFLAGS) -o ccnxchat lned.c ccnxchat.c $(LFLAGS)
 
 clean:
 	rm -f $(PROGRAMS) *.o

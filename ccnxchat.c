@@ -112,7 +112,7 @@ static void prune_oldest_exclusion(struct ccnxchat_state *st);
 
 /** Main */
 int
-main(int argc, char **argv)
+child_main(int argc, char **argv)
 {
     struct ccn *h = NULL;
     struct ccn_charbuf *name = NULL;
