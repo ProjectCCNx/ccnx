@@ -84,7 +84,7 @@ unsigned short wrappednow(void);
 
 static void generate_new_data(struct ccnxchat_state *);
 static int  matchbox(struct ccnxchat_state *);
-static void send_matching_data(struct ccnxchat_state *);
+static int  send_matching_data(struct ccnxchat_state *);
 static void toss_in_cs(struct ccnxchat_state *, const unsigned char *, size_t);
 static void toss_in_pit(struct ccnxchat_state *, const unsigned char *, size_t);
 static void age_cs(struct ccnxchat_state *);
@@ -157,7 +157,8 @@ main(int argc, char **argv)
         if (st->n_cob == 0 || (st->n_pit != 0 && st->n_cob < CS_LIMIT))
             generate_new_data(st);
         matchbox(st);
-        send_matching_data(st);
+        if (send_matching_data(st) > 0)
+            express_interest(st);
         age_cs(st);
         age_pit(st);
     }
@@ -524,13 +525,15 @@ matchbox(struct ccnxchat_state *st)
 }
 
 /** Send data that has been matched */
-static void
+static int
 send_matching_data(struct ccnxchat_state *st)
 {
-    struct cs_entry *cse;
+    struct cs_entry *cse = NULL;
     int i;
     int res;
+    int sent;
     
+    sent = 0;
     for (i = 0; i < st->n_cob; i++) {
         cse = &(st->cs[i]);
         if (cse->matched) {
@@ -539,8 +542,10 @@ send_matching_data(struct ccnxchat_state *st)
                 FATAL(res);
             cse->sent++;
             cse->matched = 0;
+            sent++;
         }
     }
+    return(sent);
 }
 
 /** Remove already-sent entries from the content store */
