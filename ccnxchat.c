@@ -66,6 +66,7 @@ struct ccnxchat_state {
     struct ccn_charbuf *lineout; /* For building output line */
     int eof;                    /* true if we have encountered eof */
     int verbose;		/* to turn on debugging output */
+    int prefer_newest;          /* for saner startup */
 };
 
 /* Prototypes */
@@ -151,6 +152,7 @@ child_main(int argc, char **argv)
     if (res < 0)
         FATAL(res);
     debug_logger(st, __LINE__, st->basename);
+    st->prefer_newest = 1;
     express_interest(st);
     /* Run the event loop */
     for (;;) {
@@ -280,7 +282,7 @@ add_ver_exclusion(struct ccnxchat_state *st, struct ccn_charbuf **c)
         if (t < 0)
             break;
     }
-    if (st->n_ver == VER_LIMIT) {
+    if (st->n_ver == VER_LIMIT || st->prefer_newest) {
         if (i == 0)
             return;
         ccn_charbuf_destroy(&st->ver[0]);
@@ -288,6 +290,7 @@ add_ver_exclusion(struct ccnxchat_state *st, struct ccn_charbuf **c)
             st->ver[j] = st->ver[j + 1];
         st->ver[j] = *c;
         *c = NULL;
+        st->prefer_newest = 0;
         return;
     }
     for (j = st->n_ver; j > i; j--)
@@ -370,6 +373,8 @@ express_interest(struct ccnxchat_state *st)
     }
     ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
     ccn_charbuf_append_closer(templ); /* </Exclude> */
+    if (st->prefer_newest)
+        ccnb_tagged_putf(templ, CCN_DTAG_ChildSelector, "%d", 1);
     ccn_charbuf_append_closer(templ); /* </Interest> */
     ccn_express_interest(st->h, st->basename, st->cc, templ);
     ccn_charbuf_destroy(&templ);
