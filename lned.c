@@ -258,8 +258,7 @@ main(int argc, char** argv)
 	}
 	close(sp[1]);
 	fprintf(stderr, "Child is %d; gdb %s %d\n", (int)pid, argv[0], (int)getpid());
-	write(sp[0], "hello\n", 6);
-	shuttle(sp[0], " ... ");
+	shuttle(sp[0], "Chat.. ");
 	shutdown(sp[0], SHUT_WR);
 	while (read(sp[0], cb, 1) == 1)
 		write(1, cb, 1);
