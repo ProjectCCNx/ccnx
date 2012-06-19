@@ -56,16 +56,21 @@ struct ccnxchat_state {
     struct cs_entry cs[CS_LIMIT];
     int n_ver;                  /* Number of recently received versions */
     struct ccn_charbuf *ver[VER_LIMIT];
+    struct ccn_closure *cc;     /* Closure for incoming content */
     /* All these buffers contain ccnb-encoded data, except for payload */
     struct ccn_charbuf *basename; /* The namespace we are serving */
     struct ccn_charbuf *name;   /* Buffer for constructed name */
     struct ccn_charbuf *payload; /* Buffer for payload */
     struct ccn_charbuf *cob;    /* Buffer for ContentObject */
+    struct ccn_charbuf *lineout; /* For building output line */
     int eof;                    /* true if we have encountered eof */
 };
 
 /* Prototypes */
 static enum ccn_upcall_res incoming_interest(struct ccn_closure *,
+                                             enum ccn_upcall_kind,
+                                             struct ccn_upcall_info *);
+static enum ccn_upcall_res  incoming_content(struct ccn_closure *,
                                              enum ccn_upcall_kind,
                                              struct ccn_upcall_info *);
 static void fatal(int lineno, int val);
@@ -88,6 +93,13 @@ static void debug_logger(struct ccnxchat_state *, int lineno, struct ccn_charbuf
 static int append_interest_details(struct ccn_charbuf *c,
                                    const unsigned char *ccnb, size_t size);
 static void generate_cob(struct ccnxchat_state *);
+static void add_info_exclusion(struct ccnxchat_state *st, struct ccn_upcall_info *info);
+static void add_uri_exclusion(struct ccnxchat_state *st, const char *uri);
+static void add_ver_exclusion(struct ccnxchat_state *st, struct ccn_charbuf **c);
+static void display_the_content(struct ccnxchat_state *st, struct ccn_upcall_info *info);
+static void express_interest(struct ccnxchat_state *st);
+static void init_ver_exclusion(struct ccnxchat_state *st);
+static void prune_oldest_exclusion(struct ccnxchat_state *st);
 
 /* Very simple error handling */
 #define FATAL(res) fatal(__LINE__, res)
@@ -105,6 +117,7 @@ main(int argc, char **argv)
     struct ccn_charbuf *name = NULL;
     struct ccn_charbuf *cob = NULL;
     struct ccn_closure in_interest = {0};
+    struct ccn_closure in_content = {0};
     struct ccnxchat_state state = {0};
     struct ccnxchat_state *st;
     int res;
@@ -119,16 +132,23 @@ main(int argc, char **argv)
     /* Set up state for interest handler */
     in_interest.p = &incoming_interest;
     in_interest.data = st = &state;
+    /* Set up state for content handler */
+    in_content.p = &incoming_content;
+    in_content.data = st;
     st->h = h;
     st->basename = name;
     st->name = ccn_charbuf_create();
     st->payload = ccn_charbuf_create();
     st->cob = ccn_charbuf_create();
+    st->lineout = ccn_charbuf_create();
+    st->cc = &in_content;
+    init_ver_exclusion(st);
     /* Set up a handler for interests */
     res = ccn_set_interest_filter(h, st->basename, &in_interest);
     if (res < 0)
         FATAL(res);
     debug_logger(st, __LINE__, st->basename);
+    express_interest(st);
     /* Run the event loop */
     for (;;) {
         res = ccn_run(h, 100);
@@ -171,6 +191,183 @@ incoming_interest(struct ccn_closure *selfp,
     return(CCN_UPCALL_RESULT_OK);
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+static enum ccn_upcall_res
+incoming_content(struct ccn_closure *selfp,
+                  enum ccn_upcall_kind kind,
+                  struct ccn_upcall_info *info)
+{
+    struct ccnxchat_state *st = selfp->data;
+
+    switch (kind) {
+        case CCN_UPCALL_FINAL:
+            return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_CONTENT_UNVERIFIED:
+            add_info_exclusion(st, info);
+            return(CCN_UPCALL_RESULT_VERIFY);
+        case CCN_UPCALL_CONTENT:
+            display_the_content(st, info);
+            add_info_exclusion(st, info);
+            express_interest(st);
+            return(CCN_UPCALL_RESULT_OK);
+        case CCN_UPCALL_INTEREST_TIMED_OUT:
+            prune_oldest_exclusion(st);
+            express_interest(st);
+            return(CCN_UPCALL_RESULT_OK);
+        default:
+            /* something unexpected - make noise */
+            DB(st, NULL);
+            express_interest(st);
+            return(CCN_UPCALL_RESULT_ERR);
+    }
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+static void
+display_the_content(struct ccnxchat_state *st, struct ccn_upcall_info *info)
+{
+    struct ccn_charbuf *cob = st->cob;
+    struct ccn_charbuf *line = st->lineout;
+    const unsigned char *keyhash = NULL;
+    const unsigned char *data = NULL;
+    size_t size;
+    size_t ksize;
+    ssize_t sres;
+    int res;
+    
+    ccn_charbuf_reset(cob);
+    ccn_charbuf_append(cob, info->content_ccnb, info->pco->offset[CCN_PCO_E]);
+    DB(st, cob);
+    res = ccn_content_get_value(cob->buf, cob->length, info->pco,
+                                &data, &size);
+    if (res < 0) abort();
+    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
+                              cob->buf,
+                              info->pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
+                              info->pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
+                              &keyhash, &ksize);
+     if (res < 0 || ksize < 32) abort();
+     ccn_charbuf_reset(line);
+     ccn_charbuf_putf(line, "%02x%02x%02x ", keyhash[0], keyhash[1], keyhash[2]);
+     ccn_charbuf_append(line, data, size);
+     ccn_charbuf_putf(line, "\n");
+     sres = write(1, line->buf, line->length);
+     if (sres != line->length) {
+          exit(1);
+     }
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+static void
+add_ver_exclusion(struct ccnxchat_state *st, struct ccn_charbuf **c)
+{
+    int i;
+    int j;
+    int t;
+    
+    for (i = 0; i < st->n_ver; i++) {
+        t = namecompare(c, &(st->ver[i]));
+        if (t == 0)
+            return;
+        if (t < 0)
+            break;
+    }
+    if (st->n_ver == VER_LIMIT) {
+        if (i == 0)
+            return;
+        ccn_charbuf_destroy(&st->ver[0]);
+        for (j = 0; j + 1 < i; j++)
+            st->ver[j] = st->ver[j + 1];
+        st->ver[j] = *c;
+        *c = NULL;
+        return;
+    }
+    for (j = st->n_ver; j > i; j--)
+        st->ver[j] = st->ver[j - 1];
+    st->n_ver++;
+    st->ver[j] = *c;
+    *c = NULL;
+}
+
+static void
+prune_oldest_exclusion(struct ccnxchat_state *st)
+{
+    int j;
+    
+    if (st->n_ver <= 2)
+        return;
+    ccn_charbuf_destroy(&st->ver[0]);
+    for (j = 0; j + 1 < st->n_ver; j++)
+        st->ver[j] = st->ver[j + 1];
+    st->n_ver--;
+}
+
+static void
+add_info_exclusion(struct ccnxchat_state *st, struct ccn_upcall_info *info)
+{
+    struct ccn_charbuf *c = ccn_charbuf_create();
+    const unsigned char *ver = NULL;
+    size_t ver_size = 0;
+    int res;
+    
+    if (info->content_comps->n > info->matched_comps + 1) {
+        ccn_name_init(c);
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, info->content_ccnb,
+                                  info->content_comps->buf[info->matched_comps],
+                                  info->content_comps->buf[info->matched_comps + 1],
+                                  &ver,
+                                  &ver_size);
+        if (res < 0) abort();
+        ccn_name_append(c, ver, ver_size);
+        add_ver_exclusion(st, &c);
+    }
+    ccn_charbuf_destroy(&c);
+}
+
+static void
+add_uri_exclusion(struct ccnxchat_state *st, const char *uri)
+{
+    struct ccn_charbuf *c = ccn_charbuf_create();
+    
+    ccn_name_from_uri(c, uri);
+    add_ver_exclusion(st, &c);
+    ccn_charbuf_destroy(&c);
+}
+
+static void
+init_ver_exclusion(struct ccnxchat_state *st)
+{    
+    add_uri_exclusion(st, "/%FE%00%00%00%00%00%00");
+    add_uri_exclusion(st, "/%FD%00%FF%FF%FF%FF%FF");
+}
+
+static void
+express_interest(struct ccnxchat_state *st)
+{
+    struct ccn_charbuf *templ = ccn_charbuf_create();
+    struct ccn_charbuf *comp = NULL;
+    int i;
+    
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
+    ccn_charbuf_append(templ, st->basename->buf, st->basename->length); /* Name */
+    ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 3);
+    ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
+    ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
+    if (st->n_ver > 1)
+        ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
+    for (i = 0; i < st->n_ver; i++) {
+        comp = st->ver[i];
+        if (comp->length < 4) abort();
+        ccn_charbuf_append(templ, comp->buf + 1, comp->length - 2);
+    }
+    ccnb_tagged_putf(templ, CCN_DTAG_Any, "");
+    ccn_charbuf_append_closer(templ); /* </Exclude> */
+    ccn_charbuf_append_closer(templ); /* </Interest> */
+    ccn_express_interest(st->h, st->basename, st->cc, templ);
+    ccn_charbuf_destroy(&templ);
+}
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**
