@@ -65,6 +65,7 @@ struct ccnxchat_state {
     struct ccn_charbuf *incob;  /* Most recent incoming ContentObject */
     struct ccn_charbuf *lineout; /* For building output line */
     int eof;                    /* true if we have encountered eof */
+    int verbose;		/* to turn on debugging output */
 };
 
 /* Prototypes */
@@ -729,6 +730,8 @@ debug_logger(struct ccnxchat_state *st, int lineno, struct ccn_charbuf *ccnb)
 {
     struct ccn_charbuf *c;
     
+    if (st->verbose == 0)
+        return;
     c = ccn_charbuf_create();
     stampnow(c);
     ccn_charbuf_putf(c, "debug.%d %5d", lineno, wrappednow());
