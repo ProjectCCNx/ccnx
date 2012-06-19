@@ -62,6 +62,7 @@ struct ccnxchat_state {
     struct ccn_charbuf *name;   /* Buffer for constructed name */
     struct ccn_charbuf *payload; /* Buffer for payload */
     struct ccn_charbuf *cob;    /* Buffer for ContentObject */
+    struct ccn_charbuf *incob;  /* Most recent incoming ContentObject */
     struct ccn_charbuf *lineout; /* For building output line */
     int eof;                    /* true if we have encountered eof */
 };
@@ -140,6 +141,7 @@ main(int argc, char **argv)
     st->name = ccn_charbuf_create();
     st->payload = ccn_charbuf_create();
     st->cob = ccn_charbuf_create();
+    st->incob = ccn_charbuf_create();
     st->lineout = ccn_charbuf_create();
     st->cc = &in_content;
     init_ver_exclusion(st);
@@ -157,7 +159,7 @@ main(int argc, char **argv)
         if (st->n_cob == 0 || (st->n_pit != 0 && st->n_cob < CS_LIMIT))
             generate_new_data(st);
         matchbox(st);
-        if (send_matching_data(st) > 0)
+        if (send_matching_data(st) > 0 || st->cc->refcount == 0)
             express_interest(st);
         age_cs(st);
         age_pit(st);
@@ -210,16 +212,14 @@ incoming_content(struct ccn_closure *selfp,
         case CCN_UPCALL_CONTENT:
             display_the_content(st, info);
             add_info_exclusion(st, info);
-            express_interest(st);
+            ccn_set_run_timeout(info->h, 0);
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_INTEREST_TIMED_OUT:
             prune_oldest_exclusion(st);
-            express_interest(st);
             return(CCN_UPCALL_RESULT_OK);
         default:
             /* something unexpected - make noise */
             DB(st, NULL);
-            express_interest(st);
             return(CCN_UPCALL_RESULT_ERR);
     }
 }
@@ -229,7 +229,7 @@ incoming_content(struct ccn_closure *selfp,
 static void
 display_the_content(struct ccnxchat_state *st, struct ccn_upcall_info *info)
 {
-    struct ccn_charbuf *cob = st->cob;
+    struct ccn_charbuf *cob = st->incob;
     struct ccn_charbuf *line = st->lineout;
     const unsigned char *keyhash = NULL;
     const unsigned char *data = NULL;
@@ -238,8 +238,12 @@ display_the_content(struct ccnxchat_state *st, struct ccn_upcall_info *info)
     ssize_t sres;
     int res;
     
+    /* We see our own data twice because of having 2 outstanding interests */
+    size = info->pco->offset[CCN_PCO_E];
+    if (size == cob->length && memcmp(cob->buf, info->content_ccnb, size) == 0)
+        return;
     ccn_charbuf_reset(cob);
-    ccn_charbuf_append(cob, info->content_ccnb, info->pco->offset[CCN_PCO_E]);
+    ccn_charbuf_append(cob, info->content_ccnb, size);
     DB(st, cob);
     res = ccn_content_get_value(cob->buf, cob->length, info->pco,
                                 &data, &size);
@@ -729,8 +733,8 @@ debug_logger(struct ccnxchat_state *st, int lineno, struct ccn_charbuf *ccnb)
     stampnow(c);
     ccn_charbuf_putf(c, "debug.%d %5d", lineno, wrappednow());
     if (st != NULL)
-        ccn_charbuf_putf(c, " pit=%d cob=%d buf=%d",
-                         st->n_pit, st->n_cob, (int)st->payload->length);
+        ccn_charbuf_putf(c, " pit=%d pot=%d cob=%d buf=%d",
+                         st->n_pit, st->cc->refcount, st->n_cob, (int)st->payload->length);
     if (ccnb != NULL) {
         ccn_charbuf_putf(c, " ");
         ccn_uri_append(c, ccnb->buf, ccnb->length, 1);
