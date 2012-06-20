@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/ttycom.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -48,12 +49,12 @@ term_width(int fd)
 {
     int ans = 80;
 #ifdef TIOCGWINSZ
-    struct ttysize w;
+    struct winsize w;
     int res;
     
     res = ioctl(fd, TIOCGWINSZ, &w);
     if (res == 0)
-        ans = w.ts_cols;
+        ans = w.ws_col;
 #endif
     if (ans > MAX_TERM_WIDTH)
         ans = MAX_TERM_WIDTH;
