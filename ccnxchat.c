@@ -33,7 +33,7 @@ struct pit_entry {
     unsigned short expiry;      /* Wrapped time that this object expires */
 };
 /** Number of pending interests we will keep */
-#define PIT_LIMIT 4
+#define PIT_LIMIT 10
 
 /** Entry in the mini content store that holds our generated data */
 struct cs_entry {
