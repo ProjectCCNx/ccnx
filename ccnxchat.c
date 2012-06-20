@@ -22,6 +22,8 @@
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 
+#include "lned.h"
+
 #define USAGE "ccnx:/uri/of/chat/room"
 
 /** Entry in the application's pending interest table */
@@ -65,6 +67,7 @@ struct ccnxchat_state {
     struct ccn_charbuf *cob;    /* Buffer for ContentObject */
     struct ccn_charbuf *incob;  /* Most recent incoming ContentObject */
     struct ccn_charbuf *lineout; /* For building output line */
+    struct ccn_charbuf *luser;   /* user's name */
     int eof;                    /* true if we have encountered eof */
     int verbose;		/* to turn on debugging output */
     int prefer_newest;          /* for saner startup */
@@ -116,7 +119,7 @@ static int append_full_user_name(struct ccn_charbuf *c);
 
 /** Main */
 int
-child_main(int argc, char **argv)
+chat_main(int argc, char **argv)
 {
     struct ccn *h = NULL;
     struct ccn_charbuf *name = NULL;
@@ -141,13 +144,15 @@ child_main(int argc, char **argv)
     in_content.p = &incoming_content;
     in_content.data = st;
     st->h = h;
+    st->cc = &in_content;
     st->basename = name;
     st->name = ccn_charbuf_create();
     st->payload = ccn_charbuf_create();
     st->cob = ccn_charbuf_create();
     st->incob = ccn_charbuf_create();
     st->lineout = ccn_charbuf_create();
-    st->cc = &in_content;
+    st->luser = ccn_charbuf_create();
+    append_full_user_name(st->luser);
     init_ver_exclusion(st);
     /* Set up a handler for interests */
     res = ccn_set_interest_filter(h, st->basename, &in_interest);
@@ -439,7 +444,8 @@ generate_new_data(struct ccnxchat_state *st)
         }
         else if (res == 0) {
             if (st->eof == 0) {
-                append_full_user_name(st->payload);
+                ccn_charbuf_putf(st->payload, "=== ");
+                ccn_charbuf_append_charbuf(st->payload, st->luser);
                 ccn_charbuf_putf(st->payload, " leaving chat");
             }
             if (st->cob->length > 0)
@@ -834,4 +840,10 @@ append_full_user_name(struct ccn_charbuf *c)
         ccn_charbuf_putf(c, "%s", pwd->pw_gecos);
     ccn_charbuf_destroy(&tmp);
     return(res);
+}
+
+int
+main(int argc, char** argv)
+{
+    return(lned_run(argc, argv, "Chat.. ", &chat_main));
 }
