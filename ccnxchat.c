@@ -14,6 +14,7 @@
  */
 
 #include <fcntl.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -103,6 +104,7 @@ static void display_the_content(struct ccnxchat_state *st, struct ccn_upcall_inf
 static void express_interest(struct ccnxchat_state *st);
 static void init_ver_exclusion(struct ccnxchat_state *st);
 static void prune_oldest_exclusion(struct ccnxchat_state *st);
+static int append_full_user_name(struct ccn_charbuf *c);
 
 /* Very simple error handling */
 #define FATAL(res) fatal(__LINE__, res)
@@ -406,8 +408,6 @@ generate_cob(struct ccnxchat_state *st)
     if (res < 0)
         FATAL(res);
     DB(st, st->cob);
-    printf("=== %s\n", ccn_charbuf_as_string(st->payload));
-    fflush(stdout);
 }
 
 /** Collect some new data and when ready, place it in store */
@@ -438,8 +438,10 @@ generate_new_data(struct ccnxchat_state *st)
                st->payload->length++;
         }
         else if (res == 0) {
-            if (st->eof == 0)
-                ccn_charbuf_putf(st->payload, "--- leaving");
+            if (st->eof == 0) {
+                append_full_user_name(st->payload);
+                ccn_charbuf_putf(st->payload, " leaving chat");
+            }
             if (st->cob->length > 0)
                 ready = 1;
             st->eof++;
@@ -814,3 +816,22 @@ append_interest_details(struct ccn_charbuf *c, const unsigned char *ccnb, size_t
     return(0);
 }
 
+static int
+append_full_user_name(struct ccn_charbuf *c)
+{
+    struct passwd pwdspace;
+    struct passwd *pwd = NULL;
+    struct ccn_charbuf *tmp;
+    int bufl;
+    int res;
+    
+    bufl = sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (bufl < 64) bufl = 255;
+    tmp = ccn_charbuf_create();
+    res = getpwuid_r(getuid(), &pwdspace,
+                     ccn_charbuf_reserve(tmp, bufl), bufl, &pwd);
+    if (res == 0)
+        ccn_charbuf_putf(c, "%s", pwd->pw_gecos);
+    ccn_charbuf_destroy(&tmp);
+    return(res);
+}

@@ -14,6 +14,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <errno.h>
@@ -25,14 +26,35 @@
 #include <termios.h>
 #include <unistd.h>
 
-#define LINE_MAX 40
+#define MAX_TERM_WIDTH 255
 #define CTL(x) ((x)-'@')
 
 int child_main(int argc, char** argv);
 int main(int argc, char** argv);
 static int shuttle(int peer, const char *prompt);
 static int fillout(char ch, int k);
+static int term_width(int fd);
 static int takedown(int n, int extra);
+
+/**
+ * Get the terminal width, if possible
+ */
+static int
+term_width(int fd)
+{
+    int ans = 80;
+#ifdef TIOCGWINSZ
+    struct ttysize w;
+    int res;
+    
+    res = ioctl(fd, TIOCGWINSZ, &w);
+    if (res == 0)
+        ans = w.ts_cols;
+#endif
+    if (ans > MAX_TERM_WIDTH)
+        ans = MAX_TERM_WIDTH;
+    return(ans);
+}
 
 /**
  * Copy from the peer fd to stdout, and from stdin to peer.
@@ -48,16 +70,18 @@ static int
 shuttle(int peer, const char *prompt)
 {
     struct pollfd fds[3];
-    char line[LINE_MAX];
+    char line[MAX_TERM_WIDTH];
     ssize_t sres = 0;
     int e = 0;
     int n = 0;      /* total valid chars in line, including prompt */
+    int nmax;       /* limit on n, based on window */
     int ip = 0;     /* insertion point */
     int pl = 0;     /* prompt length */
     int shows = 0;
     int res;
     char ch;
 
+    nmax = term_width(0);
     memset(fds, 0, sizeof(fds));
     fds[0].fd = 0;
     fds[0].events = POLLIN;
@@ -68,13 +92,13 @@ shuttle(int peer, const char *prompt)
     pl = 0;
     if (prompt != NULL) {
         pl = strlen(prompt);
-        if (pl >= LINE_MAX)
+        if (pl >= nmax)
             pl = 0;
         memcpy(line, prompt, pl);
         n = ip = pl;
     }
     for (;;) {
-        if (n == LINE_MAX) {
+        if (n == nmax) {
             if (shows != 0)
                 takedown(ip, n - ip);
             shows = 0;
