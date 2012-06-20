@@ -1,16 +1,20 @@
-/*
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
+/**
+ * @file lned.c
+ * 
+ * Part of the CCNx C Library.
+ */
+/* Copyright (C) 2012 Palo Alto Research Center, Inc.
  *
- * This work is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License version 2 as published by the
- * Free Software Foundation.
- * This work is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
- * for more details. You should have received a copy of the GNU General Public
- * License along with this program; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
- * Boston, MA 02110-1301, USA.
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License version 2.1
+ * as published by the Free Software Foundation.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details. You should have received
+ * a copy of the GNU Lesser General Public License along with this library;
+ * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
+ * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 #include <sys/types.h>
@@ -26,15 +30,15 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "lned.h"
+
 #define MAX_TERM_WIDTH 255
 #define CTL(x) ((x)-'@')
 
-int child_main(int argc, char** argv);
-int main(int argc, char** argv);
-static int shuttle(int peer, const char *prompt);
 static int fillout(char ch, int k);
-static int term_width(int fd);
 static int takedown(int n, int extra);
+static int term_width(int fd);
+static int shuttle(int peer, const char *prompt);
 
 /**
  * Get the terminal width, if possible
@@ -256,8 +260,18 @@ takedown(int n, int extra)
     return(0);
 }
 
+/**
+ * Interpose a simple line editor in front of a command-line utility
+ *
+ * This should be called early in the application's main program, in
+ * in particular before the creation of threads or the use of stdio.
+ *
+ * If both stdin and stdout are tty devices, worker() is called in a forked
+ * process, and it may use the standard file descriptors in a conventional
+ * fashion.  Otherwise worker() is just called directly.
+ */
 int
-main(int argc, char** argv)
+lned_run(int argc, char** argv, const char *prompt, int (*worker)(int, char**))
 {
     struct termios tc[4];
     struct termios *t;
@@ -276,15 +290,12 @@ main(int argc, char** argv)
             goto Direct;
     }
     res = socketpair(AF_UNIX, SOCK_STREAM, 0, sp);
-    if (res < 0) perror("socketpair");
+    if (res < 0) goto Direct;
     t = &(tc[3]);
     *t = tc[0];
     t->c_lflag &= ~(ECHO | ECHOCTL | ICANON);
     res = tcsetattr(0, TCSANOW, t);
-    if (res < 0) {
-        perror("tcsetattr stdin");
-        exit(1);
-    }
+    if (res < 0) goto Direct;
     pid = fork();
     if (pid == 0) {
         dup2(sp[1], 0);
@@ -296,8 +307,7 @@ main(int argc, char** argv)
         goto Direct;
     }
     close(sp[1]);
-    fprintf(stderr, "Child is %d; gdb %s %d\n", (int)pid, argv[0], (int)getpid());
-    shuttle(sp[0], "Chat.. ");
+    shuttle(sp[0], prompt);
     shutdown(sp[0], SHUT_WR);
     while (read(sp[0], cb, 1) == 1)
         write(1, cb, 1);
@@ -305,27 +315,5 @@ main(int argc, char** argv)
     tcsetattr(0, TCSANOW, &(tc[0]));
     return(st);
 Direct:
-    st = child_main(argc, argv);
-    return(st);
+    return(worker(argc, argv));
 }
-
-#if 0
-int
-child_main(int argc, char** argv)
-{
-    char ch;
-    ssize_t sres;
-
-    write(1, "Hello, world\n", 13);
-    for (;;) {
-        sres = read(0, &ch, 1);
-        if (sres <= 0)
-            break;
-        if ('a' <= ch && ch <= 'z')
-            ch -= 'z'-'Z';
-        sleep(1);
-        write(1, &ch, 1);
-    }
-    return(0);
-}
-#endif
