@@ -1,7 +1,7 @@
 /*
  * CCNx Android Helper Library.
  *
- * Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -35,7 +35,7 @@ import java.io.File;
  * as interact with them for configuration and monitoring.
  */
 public final class CCNxServiceControl {
-	public final static Long EPOC_TIME_UNIX_IN_FIRST_YEAR = 31535999L;
+	public final static Long MINIMUM_SECONDS_SINCE_EPOCH = 946684800L;
 	private final static String TAG = "CCNxServiceControl";
 	private static String mErrorMessage = "";
 
@@ -201,18 +201,18 @@ public final class CCNxServiceControl {
 
 	public boolean checkSystemOK() {
 		//
-		// Do a quick check of things before we start.  If we can't properly inialize the following, don't pass go.
-		// We fail write away rather than checking everything.
+		// Do a quick check of things before we start.  If we can't properly initialize the following, don't pass go.
+		// We fail right away rather than checking everything.
 		// 1) system time
 		// 2) check external storage writable
 		// 3) other checks - TBD ... In the future we may want to verify that we have at least one usable *face
 		//
 		Log.d(TAG, "Checking current time in millis: " + System.currentTimeMillis() + " and date today = " + new java.util.Date());
-		if (System.currentTimeMillis()/1000 <= EPOC_TIME_UNIX_IN_FIRST_YEAR) {
+		if (System.currentTimeMillis()/1000 < MINIMUM_SECONDS_SINCE_EPOCH) {
 			// Realistically no modern device will be shipping from the factory without a reasonable default
 			// near or close to the current date at manufacture, nor will it lack the ability to get time
 			// from the network.  However, in dealing with Android "open source", some devices still seem to 
-			// ship with time set to the beginning of Epoch (UNIX) time.
+			// ship with time set to the beginning of the epoch, i.e., 0.
 			Log.e(TAG,"Error in checkSystemOK(), please set OS System Time to valid, non-default date.");
 			mErrorMessage = mErrorMessage.concat("Please set OS System Time before running this service.");
 			return false;
