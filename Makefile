@@ -2,7 +2,7 @@ PROGRAMS = ccnxchat
 INSTALL_BASE = /usr/local
 INSTALL_BASE = $$HOME/ccnx
 IFLAGS = -I$(INSTALL_BASE)/include
-LFLAGS = -L$(INSTALL_BASE)/lib -lccn -lcrypto -lsocket
+LFLAGS = -L$(INSTALL_BASE)/lib -lccn -lcrypto -lc # -lsocket
 
 CFLAGS = -g
 
