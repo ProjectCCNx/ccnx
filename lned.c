@@ -84,18 +84,21 @@ shuttle(int peer, const char *prompt)
     int nmax;       /* limit on n, based on window */
     int ip = 0;     /* insertion point */
     int pl = 0;     /* prompt length */
+    int nfds = 0;   /* number of fds to poll */
+    int timeout = -1; /* timeout for poll */
     int shows = 0;
     int res;
     char ch;
 
     nmax = term_width(0);
     memset(fds, 0, sizeof(fds));
-    fds[0].fd = 0;
+    fds[0].fd = peer;
     fds[0].events = POLLIN;
-    fds[1].fd = 1;
-    fds[1].events = 0;
-    fds[2].fd = peer;
-    fds[2].events = POLLIN;
+    fds[1].fd = 0;
+    fds[1].events = POLLIN;
+    fds[2].fd = 1;
+    fds[2].events = POLLOUT;
+    nfds = 2;
     pl = 0;
     if (prompt != NULL) {
         pl = strlen(prompt);
@@ -117,7 +120,7 @@ shuttle(int peer, const char *prompt)
             ip = pl;
             continue;
         }
-        res = poll(fds, 3, shows ? -1 : 50);
+        res = poll(fds, nfds, shows ? timeout : 50);
         if (res < 0) {
             perror("poll");
             if (errno == EINTR)
@@ -131,19 +134,22 @@ shuttle(int peer, const char *prompt)
                 fillout('\b', n - ip);
                 shows = 1;
             }
-            continue;
         }
-        if ((fds[0].revents & POLLIN) != 0) {
+        if ((fds[1].revents & POLLNVAL) != 0) {
+            /* could be a broken poll implementation */
+            nfds = 1;
+            fds[1].revents = POLLIN;
+            timeout = 150;
+            fcntl(0, F_SETFL, O_NONBLOCK);
+        }
+        ch = '\0';
+        sres = 0;
+        if ((fds[1].revents & POLLIN) != 0) {
             sres = read(0, &ch, 1);
-            if (sres == 1 && ch == CTL('D') && n == ip)
-                sres = 0;  /* ^D at EOL is EOF */
-            if (sres <= 0) {
-                e = errno;
-                takedown(ip, n - ip);
-                write(peer, line + pl, n - pl);
-                errno = e;
-                return(sres);
-            }
+            if (sres == 0 || (sres < 0 && errno != EAGAIN))
+                ch = CTL('D');
+        }
+        if (ch != 0) {
             if (' ' <= ch && ch <= '~') {
                 if (ip < n) {
                     takedown(ip, n - ip);
@@ -155,6 +161,13 @@ shuttle(int peer, const char *prompt)
                 if (shows != 0)
                     write(2, &ch, 1);
                 continue;
+            }
+            if (ch == CTL('D')) {
+                e = errno;
+                takedown(ip, n - ip);
+                write(peer, line + pl, n - pl);
+                errno = e;
+                return(sres);
             }
             if (ch == CTL('B') && ip > pl) {
                 if (shows != 0)
@@ -219,7 +232,7 @@ shuttle(int peer, const char *prompt)
             write(2, "\007", 1);  /* BEL */
             continue;
         }
-        if ((fds[2].revents & POLLIN) != 0) {
+        if ((fds[0].revents & POLLIN) != 0) {
             if (shows != 0)
                 takedown(ip, n - ip);
             shows = 0;

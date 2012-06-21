@@ -1,8 +1,7 @@
 PROGRAMS = ccnxchat
-INSTALL_BASE = /usr/local
-INSTALL_BASE = $$HOME/ccnx
-IFLAGS = -I$(INSTALL_BASE)/include
-LFLAGS = -L$(INSTALL_BASE)/lib -lccn -lcrypto -lc # -lsocket
+
+IFLAGS = -I$(INSTALL_BASE)/include $(OPENSSL_CFLAGS)
+LFLAGS = -L$(INSTALL_BASE)/lib $(OPENSSL_LIBS) -lccn -lcrypto -lc # -lsocket
 
 CFLAGS = -g
 
@@ -13,3 +12,5 @@ ccnxchat: ccnxchat.c lned.c
 
 clean:
 	rm -f $(PROGRAMS) *.o
+
+include ../ccnx/csrc/conf.mk
