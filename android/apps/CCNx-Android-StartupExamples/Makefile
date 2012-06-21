@@ -1,4 +1,4 @@
-# Copyright (C) 2009,2010,2011 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -14,9 +14,9 @@
 ############
 # User-settable things
 
-APK_NAME := CCNx-Android-StartupExamples-debug.apk
-BIN := bin
-GEN := gen
+APK_NAME = CCNx-Android-StartupExamples-debug.apk
+BIN = bin
+GEN = gen
 
 ############
 # Nothing tweekable down here
@@ -27,12 +27,12 @@ GEN := gen
 
 ##########
 
-GENERATED_SOURCE_FILES :=
+GENERATED_SOURCE_FILES =
 
 # This is a lit of the targets in our libs directory
-JARS := libs/ccn.jar
+JARS = libs/ccn.jar
 
-TARGET  := $(BIN)/$(APK_NAME)
+TARGET = $(BIN)/$(APK_NAME)
 
 default all: $(TARGET) 
 
@@ -41,7 +41,8 @@ honeycomb: clean bcprov default
 bcprov:
 	./download.sh libs http://repo2.maven.org/maven2/org/bouncycastle/bcprov-jdk16/1.43 bcprov-jdk16-1.43.jar
 
-SRC := $(wildcard src/org/ccnx/android/examples/startup/*.java) AndroidManifest.xml
+# GNUMake
+SRC = $(wildcard src/org/ccnx/android/examples/startup/*.java) AndroidManifest.xml
 
 $(TARGET): $(JARS) local.properties build.xml $(SRC)
 	ant debug
@@ -49,14 +50,18 @@ $(TARGET): $(JARS) local.properties build.xml $(SRC)
 local.properties:
 	$(ANDROID_SDK)/tools/android update project --name CCNx-Android-StartupExamples -p . -t android-7 --library ../../CCNx-Android-Lib/
 
-libs/ccn.jar: ../../../javasrc/ccn.jar
+checkccnjar:
+	@test -f ../../../javasrc/ccn.jar || (echo Missing ccn.jar.  Please make CCNx javasrc before the Android port; \
+	exit 1;)
+
+libs/ccn.jar: checkccnjar
 	mkdir -p $(dir $@)
 	rm -f $@
 
 libs/ccnChat.jar: ../../../apps/ccnChat/ccnChat.jar
 	mkdir -p $(dir $@)
 	rm -f $@
-	ln -s ../$^ $@
+	ln -s ../../../../javasrc/ccn.jar $@
 
 ######################################
 # Maintenance targets

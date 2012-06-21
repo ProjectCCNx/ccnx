@@ -1,4 +1,4 @@
-# Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.  All Rights Reserved.
+# Copyright (C) 2010-2012 Palo Alto Research Center, Inc.  All Rights Reserved.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -11,13 +11,8 @@
 # Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301, USA.
 #
-export
 
-#
-
-SUBDIRS := CCNx-Android-Chat CCNx-Android-StartupExamples
-SUBDIRS_clean := $(addsuffix .clean,$(SUBDIRS))
-SUBDIRS_distclean := $(addsuffix .distclean,$(SUBDIRS))
+SUBDIRS = CCNx-Android-Chat CCNx-Android-StartupExamples
 
 .PHONY: subdirs mkdirs install $(SUBDIRS) $(SUBDIRS_clean)
 
@@ -37,9 +32,11 @@ honeycomb:
 	   	$(MAKE) honeycomb -C $$f $@; \
 	done
 
-clean: $(SUBDIRS_clean)
-
-distclean: $(SUBDIRS_distclean)
+clean distclean:
+	for i in $(SUBDIRS); do \
+		(cd "$$i" && pwd && $(MAKE) $@) || exit 1; \
+	done
+	@rm -f _always
 
 $(SUBDIRS_clean):
 	-$(MAKE) -C $(basename $@) clean

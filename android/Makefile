@@ -7,51 +7,34 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-export
 
-# If we don't have the right environment settings, skip the build.
-# Do this as a warning.
-ifeq ($(ANDROID_NDK),)
-SKIP_BUILD := true
-endif
-ifeq ($(ANDROID_SDK),)
-SKIP_BUILD := true
-endif
 
 #
 # Make all the Java jars and put them in "obj" directory.
 # pjproject-1.4.5 is configured for the host platform and built,
 # but not installed anywhere.
 
-SUBDIRS := external CCNx-Android-Lib CCNx-Android-Services apps
-SUBDIRS_clean := $(addsuffix .clean,$(SUBDIRS))
-SUBDIRS_distclean := $(addsuffix .distclean,$(SUBDIRS))
+SUBDIRS = external CCNx-Android-Lib CCNx-Android-Services apps
 
 .PHONY: subdirs $(SUBDIRS_clean) $(SUBDIRS) $(SUBDIRS_distclean) _always
 
-ifeq ($(SKIP_BUILD),)
-default all: $(SUBDIRS)
+default all: verifykits $(SUBDIRS)
 
-else
-default all honeycomb: 
-	@echo 
-	@echo '*************************************************'
-	@echo '    Missing either ANDROID_SDK or ANDROID_NDK,'
-	@echo '           NOT building Android targets.'
-	@echo
-	@echo '  ANDROID_SDK should point to a R16 or later SDK'
-	@echo '     with Android 2.1 (android-7) installed.'
-	@echo '  ANDROID_NDK should point to an R7 or later NDK.'
-	@echo '*************************************************'
-	@echo 
-endif
 
-../javasrc/ccn.jar:
-	$(error Please make CCN before the Android port)
+# 
+# Do we really want to instead just build it if it doesn't exist?
+#
+checkccnjar:
+	@test -f ../javasrc/ccn.jar || (echo Missing ccn.jar.  Please make CCNx javasrc before the Android port; \
+	exit 1;)
 
-CCNx-Android-Lib: 
+CCNx-Android-Lib: checkccnjar
 
-CCNx-Android-Services: external ../javasrc/ccn.jar
+# Since we've moved to a modern NDK, we should consider turning external projects
+# into NDK library module projects, and these can then simply be added as modules 
+# during the JNI build phase.  We'll have to still deal with external downloads 
+# because of export control handling.
+CCNx-Android-Services: checkccnjar external
 
 apps: 
 
@@ -71,21 +54,39 @@ honeycomb:
 	$(MAKE) -C CCNx-Android-Services $@
 	$(MAKE) -C apps $@
 
-clean: $(SUBDIRS_clean)
-
-distclean: $(SUBDIRS_distclean)
-
-$(SUBDIRS_clean):
-	-$(MAKE) -C $(basename $@) clean
-
-$(SUBDIRS_distclean):
-	-$(MAKE) -C $(basename $@) distclean
+clean distclean:
+	for i in $(SUBDIRS); do \
+		(cd "$$i" && pwd && $(MAKE) $@) || exit 1; \
+	done
+	@rm -f _always
 
 documentation: _always
 	doxygen
 
 dist-docs: _always
 	doxygen Doxyfile.dist
+
+# If we don't have the right environment settings, skip the build.
+# Do this as a warning (Why a warning, shouldn't this be a build failure?)
+# We should probably consider verifying the versions of the kits but this 
+# isn't an inherently clear item to verify since none of the tools provide
+# clues as to version, so it may make sense to look in the configuration 
+# files that come in the kits for these clues
+verifykits: _always
+	@test -d "$(ANDROID_NDK)" && test -d "$(ANDROID_SDK)" || (echo; \
+	echo '*******************************************************'; \
+	echo '    Missing either ANDROID_SDK or ANDROID_NDK,'; \
+	echo '           NOT building Android targets.'; \
+	echo; \
+	echo '  ANDROID_SDK should point to a R16 or later SDK'; \
+	echo '     with Android 2.1 (android-7) installed.'; \
+	echo '  ANDROID_NDK should point to an R7 or later NDK.'; \
+	echo '  Please set these environment variables and verify'; \
+	echo '  the directory location existence before proceeding.'; \
+	echo '*******************************************************'; \
+	echo; \
+	exit 1;)
+
 
 _always:
 
