@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2010-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -14,10 +14,10 @@
 ############
 # User-settable things
 
-PROJECT := CCNx-Android-Lib
-APK_NAME := $(PROJECT)-debug.apk
-BIN := bin
-GEN := gen
+PROJECT = CCNx-Android-Lib
+APK_NAME = $(PROJECT)-debug.apk
+BIN = bin
+GEN = gen
 
 ############
 # Nothing tweekable down here
@@ -28,9 +28,9 @@ GEN := gen
 
 ##########
 
-JARS := libs/ccn.jar
+JARS = libs/ccn.jar
 
-TARGET  := $(BIN)/$(APK_NAME)
+TARGET = $(BIN)/$(APK_NAME)
 
 default: project.properties default.properties local.properties libs/ccn.jar
 
@@ -39,15 +39,20 @@ all: $(TARGET)
 $(TARGET): $(JARS) environment project.properties default.properties local.properties build.xml
 	ant debug 
 
+# Guard against a bug in Android SDK r16	
+# You need to have android.library=true for rest of build to work
 local.properties project.properties default.properties:
 	$(ANDROID_SDK)/tools/android update lib-project -p . -t android-7
-	# Guard against a bug in Android SDK r16	
-	# You need to have android.library=true for rest of build to work
-	grep -q android.library=true project.properties || echo android.library=true >> project.properties 
-libs/ccn.jar: ../../javasrc/ccn.jar
+	grep -q android.library=true project.properties || echo android.library=true >> project.properties
+
+checkccnjar:
+	@test -f ../../javasrc/ccn.jar || (echo Missing ccn.jar.  Please make CCNx javasrc before the Android port; \
+	exit 1;)
+
+libs/ccn.jar: checkccnjar
 	rm -f $@
 	mkdir -p libs
-	ln -s ../$^ $@
+	ln -s ../../../javasrc/ccn.jar $@
 
 install:
 
