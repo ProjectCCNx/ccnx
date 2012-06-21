@@ -78,6 +78,7 @@ shuttle(int peer, const char *prompt)
 {
     struct pollfd fds[3];
     char line[MAX_TERM_WIDTH];
+    char buf[32];   /* for reading from peer */
     ssize_t sres = 0;
     int e = 0;
     int n = 0;      /* total valid chars in line, including prompt */
@@ -139,12 +140,12 @@ shuttle(int peer, const char *prompt)
             if (shows != 0)
                 takedown(ip, n - ip);
             shows = 0;
-            sres = read(peer, &ch, 1);
+            sres = read(peer, buf, sizeof(buf));
             if (sres == 0)
                 return(n);
             if (sres < 0)
                 return(-1);
-            write(1, &ch, 1);
+            write(1, buf, sres);
         }
         if ((fds[1].revents & POLLNVAL) != 0) {
             /* could be a broken poll implementation */
