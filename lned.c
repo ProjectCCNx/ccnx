@@ -20,7 +20,6 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <sys/ttycom.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -49,15 +48,18 @@ term_width(int fd)
 {
     int ans = 80;
 #ifdef TIOCGWINSZ
-    struct winsize w;
+    /* Just ignore the structs and pull out the second halfword.        */
+    /* If that is wrong, it will be obvious, and won't break horribly.  */
+    unsigned short ws[8] = {0}; /* rows, cols, etc. */
     int res;
-    
-    res = ioctl(fd, TIOCGWINSZ, &w);
+    res = ioctl(fd, TIOCGWINSZ, ws);
     if (res == 0)
-        ans = w.ws_col;
+        ans = ws[1];
 #endif
     if (ans > MAX_TERM_WIDTH)
         ans = MAX_TERM_WIDTH;
+    else if (ans < 12)
+        ans = 12;
     return(ans);
 }
 
