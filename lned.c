@@ -135,6 +135,17 @@ shuttle(int peer, const char *prompt)
                 shows = 1;
             }
         }
+        if ((fds[0].revents & POLLIN) != 0) {
+            if (shows != 0)
+                takedown(ip, n - ip);
+            shows = 0;
+            sres = read(peer, &ch, 1);
+            if (sres == 0)
+                return(n);
+            if (sres < 0)
+                return(-1);
+            write(1, &ch, 1);
+        }
         if ((fds[1].revents & POLLNVAL) != 0) {
             /* could be a broken poll implementation */
             nfds = 1;
@@ -231,17 +242,6 @@ shuttle(int peer, const char *prompt)
             }
             write(2, "\007", 1);  /* BEL */
             continue;
-        }
-        if ((fds[0].revents & POLLIN) != 0) {
-            if (shows != 0)
-                takedown(ip, n - ip);
-            shows = 0;
-            sres = read(peer, &ch, 1);
-            if (sres == 0)
-                return(n);
-            if (sres < 0)
-                return(-1);
-            write(1, &ch, 1);
         }
     }
 }
