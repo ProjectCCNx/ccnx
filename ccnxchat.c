@@ -826,20 +826,15 @@ append_interest_details(struct ccn_charbuf *c, const unsigned char *ccnb, size_t
 static int
 append_full_user_name(struct ccn_charbuf *c)
 {
-    struct passwd pwdspace;
-    struct passwd *pwd = NULL;
-    struct ccn_charbuf *tmp;
-    int bufl;
-    int res;
-    
-    bufl = sysconf(_SC_GETPW_R_SIZE_MAX);
-    if (bufl < 64) bufl = 255;
-    tmp = ccn_charbuf_create();
-    res = getpwuid_r(getuid(), &pwdspace,
-                     (char *)ccn_charbuf_reserve(tmp, bufl), bufl, &pwd);
-    if (res == 0)
+    int res = -1;
+#ifndef C_NO_GECOS
+    struct passwd *pwd;
+    pwd = getpwuid(getuid());
+    if (pwd != NULL) {
+        res = 0;
         ccn_charbuf_putf(c, "%s", pwd->pw_gecos);
-    ccn_charbuf_destroy(&tmp);
+    }
+#endif
     return(res);
 }
 
