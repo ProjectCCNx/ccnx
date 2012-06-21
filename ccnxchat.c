@@ -836,7 +836,7 @@ append_full_user_name(struct ccn_charbuf *c)
     if (bufl < 64) bufl = 255;
     tmp = ccn_charbuf_create();
     res = getpwuid_r(getuid(), &pwdspace,
-                     ccn_charbuf_reserve(tmp, bufl), bufl, &pwd);
+                     (char *)ccn_charbuf_reserve(tmp, bufl), bufl, &pwd);
     if (res == 0)
         ccn_charbuf_putf(c, "%s", pwd->pw_gecos);
     ccn_charbuf_destroy(&tmp);

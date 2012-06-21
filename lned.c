@@ -296,7 +296,7 @@ lned_run(int argc, char** argv, const char *prompt, int (*worker)(int, char**))
     if (res < 0) goto Direct;
     t = &(tc[3]);
     *t = tc[0];
-    t->c_lflag &= ~(ECHO | ECHOCTL | ICANON);
+    t->c_lflag &= ~(ECHO | ICANON);
     res = tcsetattr(0, TCSANOW, t);
     if (res < 0) goto Direct;
     pid = fork();
