@@ -33,6 +33,10 @@ GENERATED_SOURCE_FILES =
 JARS = libs/ccn.jar libs/ccnChat.jar
 
 TARGET = $(BIN)/$(APK_NAME)
+SRC = 	./src/org/ccnx/android/apps/chat/CcnxChatMain.java \
+		./src/org/ccnx/android/apps/chat/ChatCallback.java \
+		./src//org/ccnx/android/apps/chat/ChatScreen.java \
+		./src/org/ccnx/android/apps/chat/ChatWorker.java AndroidManifest.xml
 
 default all: $(TARGET) 
 
@@ -40,11 +44,6 @@ honeycomb: clean bcprov default
 
 bcprov:
 	./download.sh libs http://repo2.maven.org/maven2/org/bouncycastle/bcprov-jdk16/1.43 bcprov-jdk16-1.43.jar
-
-SRC =   ./src/org/ccnx/android/apps/chat/CcnxChatMain.java \
-	 	./src/org/ccnx/android/apps/chat/ChatCallback.java \
-		./src//org/ccnx/android/apps/chat/ChatScreen.java \
-		./src/org/ccnx/android/apps/chat/ChatWorker.java AndroidManifest.xml
 
 $(TARGET): $(JARS) local.properties build.xml $(SRC)
 	ant debug
