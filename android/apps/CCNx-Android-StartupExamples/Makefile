@@ -41,8 +41,10 @@ honeycomb: clean bcprov default
 bcprov:
 	./download.sh libs http://repo2.maven.org/maven2/org/bouncycastle/bcprov-jdk16/1.43 bcprov-jdk16-1.43.jar
 
-# GNUMake
-SRC = $(wildcard src/org/ccnx/android/examples/startup/*.java) AndroidManifest.xml
+SRC = 	./src/org/ccnx/android/examples/startup/BlockingStartup.java \
+		./src/org/ccnx/android/examples/startup/NonBlockingStartup.java
+		./src/org/ccnx/android/examples/startup/StartScreen.java \
+		./src/org/ccnx/android/examples/startup/StartupBase.java AndroidManifest.xml
 
 $(TARGET): $(JARS) local.properties build.xml $(SRC)
 	ant debug
