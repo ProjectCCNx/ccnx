@@ -36,7 +36,7 @@
 #define CTL(x) ((x)-'@')
 
 static int fillout(char ch, int k);
-static int takedown(int n, int extra);
+static int takedown(int n, int r);
 static int term_width(int fd);
 static int shuttle(int peer, const char *prompt);
 
@@ -69,7 +69,6 @@ term_width(int fd)
  * A very basic line editor is provided on the input side.
  * The peer will get a line at a time (unless the input is
  * oversize, in which case the input will arrive in chunks).
- * in which case the input will arrive in chunks).
  * The peer is responsible for echoing the input lines, if
  * appropriate for the application.
  */
@@ -247,6 +246,9 @@ shuttle(int peer, const char *prompt)
     }
 }
 
+/**
+ * Write k instances of ch.
+ */
 static int
 fillout(char ch, int k)
 {
@@ -262,12 +264,15 @@ fillout(char ch, int k)
     return(0);
 }
 
+/**
+ * Erase n chars to the left of the cursor, and r to the right.
+ */
 static int
-takedown(int n, int extra)
+takedown(int n, int r)
 {
-    if (extra > 0) {
-        fillout(' ', extra);
-        fillout('\b', extra);
+    if (r > 0) {
+        fillout(' ', r);
+        fillout('\b', r);
     }
     if (n > 0) {
         fillout('\b', n);
@@ -280,7 +285,7 @@ takedown(int n, int extra)
 /**
  * Interpose a simple line editor in front of a command-line utility
  *
- * This should be called early in the application's main program, in
+ * This should be called early in the application's main program,
  * in particular before the creation of threads or the use of stdio.
  *
  * If both stdin and stdout are tty devices, worker() is called in a forked
