@@ -17,7 +17,7 @@ EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib
 
 INSTALLED_PROGRAMS = \
-    ccn_ccnbtoxml ccn_splitccnb ccndumpnames ccnnamelist ccnrm \
+    ccn_ccnbtoxml ccn_splitccnb ccnc ccndumpnames ccnnamelist ccnrm \
     ccnls ccnslurp ccnbx ccncat ccnbasicconfig \
     ccnsendchunks ccncatchunks ccncatchunks2 \
     ccnpoke ccnpeek ccnhexdumpdata \
@@ -40,7 +40,9 @@ BROKEN_PROGRAMS =
 DEBRIS =
 SCRIPTSRC = ccn_initkeystore.sh
 CSRC =  ccn_ccnbtoxml.c ccn_splitccnb.c ccn_xmltoccnb.c ccnbasicconfig.c \
-       ccnbuzz.c ccnbx.c ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
+       ccnbuzz.c ccnbx.c \
+       ccnc.c \
+       ccncat.c ccnsimplecat.c ccncatchunks.c ccncatchunks2.c \
        ccndumpnames.c ccndumppcap.c ccnfilewatch.c ccnpeek.c ccnhexdumpdata.c \
        ccninitkeystore.c ccnls.c ccnnamelist.c ccnpoke.c ccnrm.c ccnsendchunks.c \
        ccnseqwriter.c \
@@ -81,6 +83,9 @@ dataresponsetest: dataresponsetest.o
 
 encodedecodetest: encodedecodetest.o
 	$(CC) $(CFLAGS) -o $@ encodedecodetest.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+
+ccnc: ccnc.o
+	$(CC) $(CFLAGS) -o $@ ccnc.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 ccndumpnames: ccndumpnames.o
 	$(CC) $(CFLAGS) -o $@ ccndumpnames.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
@@ -202,6 +207,9 @@ ccnbuzz.o: ccnbuzz.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
 ccnbx.o: ccnbx.c ../include/ccn/charbuf.h ../include/ccn/coding.h \
   ../include/ccn/ccn.h ../include/ccn/indexbuf.h
+ccnc.o: ccnc.c ../include/ccn/ccn.h ../include/ccn/coding.h \
+  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
+  ../include/ccn/lned.h ../include/ccn/uri.h
 ccncat.o: ccncat.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ../include/ccn/fetch.h

@@ -274,6 +274,7 @@ ccn_header.o: ccn_header.c ../include/ccn/ccn.h ../include/ccn/coding.h \
 ccn_fetch.o: ccn_fetch.c ../include/ccn/fetch.h ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h
+lned.o: lned.c ../include/ccn/lned.h
 encodedecodetest.o: encodedecodetest.c ../include/ccn/ccn.h \
   ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/bloom.h ../include/ccn/uri.h \

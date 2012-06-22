@@ -24,7 +24,7 @@
 #include <ccn/lned.h>
 #include <ccn/uri.h>
 
-#define USAGE "ccnx:/uri/of/chat/room"
+#define USAGE "ccnx:/uri/of/chat/room    - community text chat"
 
 /** Entry in the application's pending interest table */
 struct pit_entry {
@@ -692,7 +692,7 @@ fatal(int lineno, int val)
 static void
 usage(void)
 {
-    fprintf(stderr, "%s: " USAGE "\n", progname);
+    fprintf(stderr, "%s " USAGE "\n", progname);
     exit(1);
 }
 
