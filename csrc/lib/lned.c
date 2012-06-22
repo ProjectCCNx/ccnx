@@ -30,7 +30,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "lned.h"
+#include <ccn/lned.h>
 
 #define MAX_TERM_WIDTH 255
 #define CTL(x) ((x)-'@')

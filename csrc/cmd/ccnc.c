@@ -21,9 +21,8 @@
 #include <unistd.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
+#include <ccn/lned.h>
 #include <ccn/uri.h>
-
-#include "lned.h"
 
 #define USAGE "ccnx:/uri/of/chat/room"
 
@@ -118,8 +117,8 @@ static int append_full_user_name(struct ccn_charbuf *c);
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/** Main */
-int
+/** Main entry point for chat */
+static int
 chat_main(int argc, char **argv)
 {
     struct ccn *h = NULL;
