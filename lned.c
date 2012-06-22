@@ -331,6 +331,7 @@ lned_run(int argc, char** argv, const char *prompt, int (*worker)(int, char**))
         goto Direct;
     }
     close(sp[1]);
+    dup2(1, 2);
     shuttle(sp[0], prompt);
     shutdown(sp[0], SHUT_WR);
     while (read(sp[0], cb, 1) == 1)
