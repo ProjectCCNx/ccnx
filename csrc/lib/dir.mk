@@ -34,6 +34,7 @@ CSRC = ccn_bloom.c \
        ccn_verifysig.c ccn_versioning.c \
        ccn_header.c \
        ccn_fetch.c \
+       lned.c \
        encodedecodetest.c hashtb.c hashtbtest.c \
        signbenchtest.c skel_decode_test.c \
        basicparsetest.c ccnbtreetest.c \
@@ -48,7 +49,8 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_match.o hashtb.o ccn_merkle_path_asn1.o \
        ccn_sockaddrutil.o ccn_setup_sockaddr_un.o \
        ccn_bulkdata.o ccn_versioning.o ccn_header.o ccn_fetch.o \
-       ccn_btree.o ccn_btree_content.o ccn_btree_store.o
+       ccn_btree.o ccn_btree_content.o ccn_btree_store.o \
+       lned.o
 
 default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.

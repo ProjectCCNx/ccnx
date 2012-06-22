@@ -299,9 +299,8 @@ lned_run(int argc, char** argv, const char *prompt, int (*worker)(int, char**))
     struct termios *t;
     char cb[8];
     int sp[2] = {-1, -1};
-    int res;
     int i;
-    int e = 0;
+    int res;
     int st;
     pid_t pid;
 
