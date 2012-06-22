@@ -239,9 +239,8 @@ main(int argc, char** argv)
     struct termios *t;
     char cb[8];
     int sp[2] = {-1, -1};
-    int res;
     int i;
-    int e = 0;
+    int res;
     int st;
     pid_t pid;
 
