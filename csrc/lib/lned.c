@@ -32,7 +32,7 @@
 
 #include <ccn/lned.h>
 
-#define MAX_TERM_WIDTH 255
+#define MAX_TERM_WIDTH 256
 #define CTL(x) ((x)-'@')
 
 static int fillout(char ch, int k);
@@ -78,17 +78,17 @@ shuttle(int peer, const char *prompt)
     struct pollfd fds[3];
     char line[MAX_TERM_WIDTH];
     unsigned char buf[32];   /* scratch buffer for reading */
-    ssize_t sres = 0;
-    int e = 0;
+    ssize_t sres = 0; /* read/write results */
+    int ch;         /* current input character */ 
+    int exn = 0;    /* length of current escape sequence */
     int n = 0;      /* total valid chars in line, including prompt */
     int nmax;       /* limit on n, based on window */
     int ip = 0;     /* insertion point */
     int pl = 0;     /* prompt length */
     int nfds = 0;   /* number of fds to poll */
     int timeout = -1; /* timeout for poll */
-    int shows = 0;
+    int shows = 0;  /* set if the line is showing */
     int res;
-    int ch;         /* current input character */
 
     nmax = term_width(0);
     memset(fds, 0, sizeof(fds));
@@ -160,6 +160,22 @@ shuttle(int peer, const char *prompt)
             else
                 ch = buf[0];
         }
+        switch (exn) { /* Decode left and right arrow keys */
+            case 1:
+                if (ch == '[') {
+                    exn++;
+                    continue;
+                }
+                write(2, "\007", 1);  /* BEL */
+                exn = 0;
+                break;
+            case 2:
+                ch = CTL((ch == 'D') ? 'B' : (ch == 'C') ? 'F' : 'G');
+                exn = 0;
+                break;
+            default:
+                break;
+        }
         if (ch != 0) {
             if (' ' <= ch && ch <= '~') {
                 if (ip < n)
@@ -173,11 +189,11 @@ shuttle(int peer, const char *prompt)
                 continue;
             }
             if (ch < 0 || (ch == CTL('D') && ip == n)) {
-                e = errno;
+                res = errno;
                 if (shows)
                     shows = takedown(ip, n - ip);
                 write(peer, line + pl, n - pl);
-                errno = e;
+                errno = res;
                 return(sres);
             }
             if (ch == CTL('B') && ip > pl) {
@@ -237,8 +253,10 @@ shuttle(int peer, const char *prompt)
                 ip = n;
                 continue;
             }
-            write(2, "\007", 1);  /* BEL */
-            continue;
+            if (ch == 033)
+                exn++;
+            else
+                write(2, "\007", 1);  /* BEL */
         }
     }
 }
