@@ -253,6 +253,20 @@ shuttle(int peer, const char *prompt)
                 ip = n;
                 continue;
             }
+            if (ch == CTL('W') && ip > pl) {
+                res = ip;
+                while (res > pl && line[res - 1] <= ' ')
+                    res--;
+                while (res > pl && line[res - 1] > ' ')
+                    res--;
+                if (shows != 0)
+                    shows = takedown(ip, n - ip);
+                if (ip < n)
+                    memmove(line + res, line + ip, n - ip);
+                n = res + n - ip;
+                ip = res;
+                continue;
+            }
             if (ch == 033)
                 exn++;
             else
