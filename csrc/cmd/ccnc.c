@@ -13,6 +13,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#include <sys/time.h>
 #include <fcntl.h>
 #include <pwd.h>
 #include <stdio.h>
