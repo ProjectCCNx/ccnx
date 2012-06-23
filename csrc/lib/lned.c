@@ -77,7 +77,7 @@ shuttle(int peer, const char *prompt)
 {
     struct pollfd fds[3];
     char line[MAX_TERM_WIDTH];
-    char buf[32];   /* for reading from peer */
+    unsigned char buf[32];   /* scratch buffer for reading */
     ssize_t sres = 0;
     int e = 0;
     int n = 0;      /* total valid chars in line, including prompt */
@@ -88,7 +88,7 @@ shuttle(int peer, const char *prompt)
     int timeout = -1; /* timeout for poll */
     int shows = 0;
     int res;
-    char ch;
+    int ch;         /* current input character */
 
     nmax = term_width(0);
     memset(fds, 0, sizeof(fds));
@@ -110,8 +110,7 @@ shuttle(int peer, const char *prompt)
     for (;;) {
         if (n == nmax) {
             if (shows != 0)
-                takedown(ip, n - ip);
-            shows = 0;
+                shows = takedown(ip, n - ip);
             if (ip == pl)
                 ip = pl + 1;
             sres = write(peer, line + pl, ip - pl);
@@ -137,8 +136,7 @@ shuttle(int peer, const char *prompt)
         }
         if ((fds[0].revents & POLLIN) != 0) {
             if (shows != 0)
-                takedown(ip, n - ip);
-            shows = 0;
+                shows = takedown(ip, n - ip);
             sres = read(peer, buf, sizeof(buf));
             if (sres == 0)
                 return(n);
@@ -153,29 +151,31 @@ shuttle(int peer, const char *prompt)
             timeout = 150;
             fcntl(0, F_SETFL, O_NONBLOCK);
         }
-        ch = '\0';
+        ch = 0;
         sres = 0;
         if ((fds[1].revents & POLLIN) != 0) {
-            sres = read(0, &ch, 1);
+            sres = read(0, buf, 1);
             if (sres == 0 || (sres < 0 && errno != EAGAIN))
-                ch = CTL('D');
+                ch = -1;
+            else
+                ch = buf[0];
         }
         if (ch != 0) {
             if (' ' <= ch && ch <= '~') {
-                if (ip < n) {
-                    takedown(ip, n - ip);
-                    shows = 0;
-                    memmove(line+ip+1, line+ip, n - ip);
-                }
+                if (ip < n)
+                    memmove(line + ip + 1, line + ip, n - ip);
                 line[ip++] = ch;
                 n = n + 1;
-                if (shows != 0)
-                    write(2, &ch, 1);
+                if (shows != 0) {
+                    write(2, line + ip - 1, n - ip + 1);
+                    fillout('\b', n - ip);
+                }
                 continue;
             }
-            if (ch == CTL('D')) {
+            if (ch < 0 || (ch == CTL('D') && ip == n)) {
                 e = errno;
-                takedown(ip, n - ip);
+                if (shows)
+                    shows = takedown(ip, n - ip);
                 write(peer, line + pl, n - pl);
                 errno = e;
                 return(sres);
@@ -200,8 +200,7 @@ shuttle(int peer, const char *prompt)
             }
             if (ch == CTL('D') && ip < n) {
                 if (shows != 0)
-                    takedown(ip, n - ip);
-                shows = 0;
+                    shows = takedown(ip, n - ip);
                 n = n - 1;
                 memmove(line+ip, line+ip+1, n - ip);
                 continue;
@@ -209,8 +208,7 @@ shuttle(int peer, const char *prompt)
             if ((ch == '\b' || ch == '\177') && ip > pl) {
                 if (ip < n) {
                     if (shows != 0)
-                        takedown(ip, n - ip);
-                    shows = 0;
+                        shows = takedown(ip, n - ip);
                     memmove(line+ip-1, line+ip, n - ip);
                 }
                 if (shows != 0)
@@ -221,8 +219,7 @@ shuttle(int peer, const char *prompt)
             }
             if (ch == '\n') {
                 if (shows != 0)
-                    takedown(ip, n - ip);
-                shows = 0;
+                    shows = takedown(ip, n - ip);
                 line[n++] = ch;
                 sres = write(peer, line + pl, n - pl);
                 n = ip = pl;
