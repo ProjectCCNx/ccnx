@@ -7,7 +7,7 @@ ccnc - a simple community text chat program
 
 SYNOPSIS
 --------
-*ccnc* 'chatroomuri'
+*ccnc* 'chatroomURI'
 
 DESCRIPTION
 -----------
@@ -44,7 +44,7 @@ of the publisher public key digest (aka "robot name").
 (Some may consider this a feature rather than a bug.)
 
 There is inadequate notification if no other participants are present.
-(Typed lines will simply appear to vanish).
+(Typed lines will simply appear to vanish.)
 
 The diagnositics are too cryptic.
 

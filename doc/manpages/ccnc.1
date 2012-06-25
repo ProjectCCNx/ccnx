@@ -1,0 +1,73 @@
+'\" t
+.\"     Title: ccnc
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
+.\"      Date: 06/25/2012
+.\"    Manual: \ \&
+.\"    Source: \ \& 0.6.x
+.\"  Language: English
+.\"
+.TH "CCNC" "1" "06/25/2012" "\ \& 0\&.6\&.x" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccnc \- a simple community text chat program
+.SH "SYNOPSIS"
+.sp
+\fBccnc\fR \fIchatroomURI\fR
+.SH "DESCRIPTION"
+.sp
+The \fBccnc\fR utility is a text\-based community chat program\&.
+.sp
+A "chat room" argument (a ccnx URI) is used to identify the channel\&. All of the participants must use the same uri\&.
+.sp
+If standard input and standard output are both tty devices, a simple line editor is provided\&.
+.sp
+As is the case for all ccnx applications, a ccnd must be running on each machine, and suitable forwarding rules must be configured\&. Please refer to \fBccndstart(1)\fR and \fBccndc(1)\fR for details\&.
+.SH "ENVIRONMENT"
+.PP
+\fBCCNX_DIR=\fR\fB\fI/path/to/identity/directory\fR\fR
+.RS 4
+If you wish to use an identity (public key) other than your default, create one and set CCNX_DIR before starting
+\fBccnc\fR:
+.RE
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+mkdir \-p /var/tmp/friendlyname
+ccninitkeystore /var/tmp/friendlyname
+export CCNX_DIR=/var/tmp/friendlyname/\&.ccnx
+ccnc ccnx:/ccnx\&.org/chat
+.fi
+.if n \{\
+.RE
+.\}
+.SH "BUGS"
+.sp
+There is no implementation of "friendly names", as used by \fBccnchat(1)\fR\&. Instead, there is a display of a few leading hex digits of the publisher public key digest (aka "robot name")\&. (Some may consider this a feature rather than a bug\&.)
+.sp
+There is inadequate notification if no other participants are present\&. (Typed lines will simply appear to vanish\&.)
+.sp
+The diagnositics are too cryptic\&.
+.SH "AUTHOR"
+.sp
+Michael Plass
