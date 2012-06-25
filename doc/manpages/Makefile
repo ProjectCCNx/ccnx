@@ -18,6 +18,7 @@ PAGE_NAMES =        		\
 	ccn_xmltoccnb		\
 	ccnacl			\
 	ccngroup		\
+	ccnc			\
 	ccnd			\
 	ccndc			\
 	ccndcontrol		\
@@ -52,7 +53,7 @@ PAGE_NAMES =        		\
 	ccntestloop 		\
 
 
-PROJECT_NUMBER = 0.6.0
+PROJECT_NUMBER = 0.6.x
 SRC_TXT     = $(PAGE_NAMES:=.1.txt)
 DERIVED_HTML= $(PAGE_NAMES:=.1.html)
 DERIVED_PDF = $(PAGE_NAMES:=.1.pdf)
