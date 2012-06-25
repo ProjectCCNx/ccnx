@@ -2,6 +2,7 @@ ccn_ccnbtoxml.1.html
 ccn_xmltoccnb.1.html
 ccnacl.1.html
 ccngroup.1.html
+ccnc.1.html
 ccnd.1.html
 ccndc.1.html
 ccndcontrol.1.html
@@ -38,6 +39,7 @@ ccn_ccnbtoxml.1.pdf
 ccn_xmltoccnb.1.pdf
 ccnacl.1.pdf
 ccngroup.1.pdf
+ccnc.1.pdf
 ccnd.1.pdf
 ccndc.1.pdf
 ccndcontrol.1.pdf
@@ -76,6 +78,7 @@ ccn_ccnbtoxml.1.fo
 ccn_xmltoccnb.1.fo
 ccnacl.1.fo
 ccngroup.1.fo
+ccnc.1.fo
 ccnd.1.fo
 ccndc.1.fo
 ccndcontrol.1.fo
@@ -112,6 +115,7 @@ ccn_ccnbtoxml.1.xml
 ccn_xmltoccnb.1.xml
 ccnacl.1.xml
 ccngroup.1.xml
+ccnc.1.xml
 ccnd.1.xml
 ccndc.1.xml
 ccndcontrol.1.xml
