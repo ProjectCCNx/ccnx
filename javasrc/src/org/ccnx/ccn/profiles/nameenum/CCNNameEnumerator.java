@@ -34,6 +34,7 @@ import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.Link;
 import org.ccnx.ccn.io.content.Collection.CollectionObject;
 import org.ccnx.ccn.profiles.CommandMarker;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.VersioningProfile;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage;
 import org.ccnx.ccn.profiles.nameenum.NameEnumerationResponse.NameEnumerationResponseMessage.NameEnumerationResponseMessageObject;
@@ -243,7 +244,13 @@ public class CCNNameEnumerator implements CCNInterestHandler, CCNContentHandler 
 				newInterests.clear();
 
 				try {
-					neResponse = new NameEnumerationResponseMessageObject(c, _handle);
+					//need to make sure that the content object we got back is the first segment of the underlying stream.
+					if (SegmentationProfile.isFirstSegment(c.getContentName())) {
+						neResponse = new NameEnumerationResponseMessageObject(c, _handle);
+					} else {
+						neResponse = new NameEnumerationResponseMessageObject(SegmentationProfile.segmentRoot(c.getContentName()), _handle);
+						Log.fine(Log.FAC_SEARCH, "Discovery interest got a content object that wasn't the base segment, stripping off segment number and opening object with name");
+					}
 					links = neResponse.contents();
 					for (Link l: links) {
 						names.add(l.targetName());
