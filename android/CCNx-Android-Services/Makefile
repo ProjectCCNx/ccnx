@@ -85,13 +85,12 @@ uninstall:
 	adb uninstall org.ccnx.android.services
 
 environment:
-ifeq ($(ANDROID_NDK),)
-	$(error Please set ANDROID_NDK path to point to r7)
-endif
-ifeq ($(ANDROID_SDK),)
-	$(error Please set ANDROID_SDK path to point to r16 or later SDK)
-endif
-	@echo "Executing in $(CURDIR)"
+	@if test "$(ANDROID_SDK)" = "" ; then \
+		echo "Please set ANDROID_SDK path to point to an r16 or later" && exit 1; \
+	fi
+	@if test "$(ANDROID_NDK)" = "" ; then \
+		echo "Please set ANDROID_NDK path to point to an r7 or later" && exit 1; \
+	fi
 
 clean: simpleclean
 

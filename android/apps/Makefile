@@ -14,22 +14,24 @@
 
 SUBDIRS = CCNx-Android-Chat CCNx-Android-StartupExamples
 
-.PHONY: subdirs mkdirs install $(SUBDIRS) $(SUBDIRS_clean)
+.PHONY: subdirs mkdirs install $(SUBDIRS)
 
 default all: $(SUBDIRS)
 
 # Build externals without parallism
 $(SUBDIRS): 
-	$(MAKE) -C $@ -j 1
+	for i in $(SUBDIRS); do \
+		(cd "$$i" && pwd && $(MAKE) -j 1) || exit 1; \
+	done
 
 install uninstall:
 	for f in $(SUBDIRS); do \
-	   	$(MAKE) -C $$f $@; \
+		(cd "$$f" && pwd && $(MAKE) $@) || exit 1; \
 	done
 
 honeycomb:
 	for f in $(SUBDIRS); do \
-	   	$(MAKE) honeycomb -C $$f $@; \
+		(cd "$$f" && pwd && $(MAKE) honeycomb $@) || exit 1; \
 	done
 
 clean distclean:
@@ -37,10 +39,4 @@ clean distclean:
 		(cd "$$i" && pwd && $(MAKE) $@) || exit 1; \
 	done
 	@rm -f _always
-
-$(SUBDIRS_clean):
-	-$(MAKE) -C $(basename $@) clean
-
-$(SUBDIRS_distclean):
-	-$(MAKE) -C $(basename $@) distclean
 

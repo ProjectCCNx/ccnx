@@ -74,10 +74,9 @@ uninstall:
 	adb uninstall org.ccnx.android.examples.startup
 
 environment:
-ifeq ($(ANDROID_SDK),)
-	$(error Please set ANDROID_SDK path to point to an r16 or later SDK)
-endif
-	@echo "Executing in $(CURDIR)"
+	@if test "$(ANDROID_SDK)" = "" ; then \
+		echo "Please set ANDROID_SDK path to point to an r16 or later SDK" && exit 1; \
+	fi
 
 clean: simpleclean
 

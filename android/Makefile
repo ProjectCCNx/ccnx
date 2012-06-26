@@ -41,18 +41,20 @@ apps:
 subdirs: $(SUBDIRS)
 
 # Build externals without parallism
-$(SUBDIRS):
-	$(MAKE) -C $@ -j 1
+$(SUBDIRS): 
+	for i in $(SUBDIRS); do \
+		(cd "$$i" && pwd && $(MAKE) -j 1) || exit 1; \
+	done
 
-install uninstall: 
-	$(MAKE) -C CCNx-Android-Services $@
-	$(MAKE) -C apps $@
+install uninstall:
+	(cd CCNx-Android-Services && $(MAKE) $@)
+	(cd apps && $(MAKE) $@)
 
 honeycomb:
-	$(MAKE) -C external -j 1
-	$(MAKE) -C CCNx-Android-Lib
-	$(MAKE) -C CCNx-Android-Services $@
-	$(MAKE) -C apps $@
+	(cd external && $(MAKE) $@ -j 1)
+	(cd CCNx-Android-Lib && $(MAKE) $@)
+	(cd CCNx-Android-Services && $(MAKE) $@)
+	(cd apps && $(MAKE) $@)
 
 clean distclean:
 	for i in $(SUBDIRS); do \
