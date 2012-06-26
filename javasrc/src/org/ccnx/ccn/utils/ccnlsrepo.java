@@ -226,8 +226,9 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 	 */
 
 	public int handleNameEnumerator(ContentName prefix,	ArrayList<ContentName> names) {
-		allNames.addAll(names);
-
+		synchronized (allNames) {
+			allNames.addAll(names);
+		}
 		if (timeout <= 0) {
 			System.out.println("-----");
 			printNames();
@@ -246,7 +247,9 @@ public class ccnlsrepo implements BasicNameEnumeratorListener {
 	 *  @return void
 	 */
 	private void printNames() {
+		synchronized (allNames) {
 		for (ContentName c : allNames)
 			System.out.println(c.toString().replaceFirst("/", ""));
+		}
 	}
 }
