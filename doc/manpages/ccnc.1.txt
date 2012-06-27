@@ -1,0 +1,53 @@
+CCNC(1)
+=======
+
+NAME
+----
+ccnc - a simple community text chat program
+
+SYNOPSIS
+--------
+*ccnc* 'chatroomURI'
+
+DESCRIPTION
+-----------
+The *ccnc* utility is a text-based community chat program.
+
+A "chat room" argument (a ccnx URI) is used to identify the channel.
+All of the participants must use the same uri.
+
+If standard input and standard output are both tty devices,
+a simple line editor is provided.
+
+As is the case for all ccnx applications, a ccnd must be running on each
+machine, and suitable forwarding rules must be configured.
+Please refer to *ccndstart(1)* and *ccndc(1)* for details.
+
+ENVIRONMENT
+-----------
+
+*CCNX_DIR=_/path/to/identity/directory_*::
+    If you wish to use an identity (public key) other than your default,
+    create one and set CCNX_DIR before starting *ccnc*:
+-------------------------------------------
+mkdir -p /var/tmp/friendlyname
+ccninitkeystore /var/tmp/friendlyname
+export CCNX_DIR=/var/tmp/friendlyname/.ccnx
+ccnc ccnx:/ccnx.org/chat
+-------------------------------------------
+
+BUGS
+----
+There is no implementation of "friendly names", as used by *ccnchat(1)*.
+Instead, there is a display of a few leading hex digits
+of the publisher public key digest (aka "robot name").
+(Some may consider this a feature rather than a bug.)
+
+There is inadequate notification if no other participants are present.
+(Typed lines will simply appear to vanish.)
+
+The diagnositics are too cryptic.
+
+AUTHOR
+------
+Michael Plass
