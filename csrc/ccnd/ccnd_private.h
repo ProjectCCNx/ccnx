@@ -53,12 +53,21 @@ struct ccnd_handle;
 struct face;
 struct content_entry;
 struct nameprefix_entry;
+struct interest_entry;
+struct pit_face_item;
 struct propagating_entry;
 struct content_tree_node;
 struct ccn_forwarding;
 
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
+
+/**
+ * Used for keeping track of interest expiry.
+ *
+ * Modulo 2**32, time units and origin are abitrary and private.
+ */
+typedef uint32_t ccn_wrappedtime;
 
 typedef int (*ccnd_logger)(void *loggerdata, const char *format, va_list ap);
 
@@ -72,6 +81,7 @@ struct ccnd_handle {
     struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
     struct hashtb *propagating_tab; /**< keyed by nonce */
+    struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
     struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< faceid generation number */
@@ -90,6 +100,7 @@ struct ccnd_handle {
     struct ccn_gettime ticktock;    /**< our time generator */
     long sec;                       /**< cached gettime seconds */
     unsigned usec;                  /**< cached gettime microseconds */
+    ccn_wrappedtime wt;             /**< corresponding wrapped time */
     long starttime;                 /**< ccnd start time, in seconds */
     unsigned starttime_usec;        /**< ccnd start time fractional part */
     struct ccn_schedule *sched;     /**< our schedule */
@@ -271,6 +282,36 @@ struct sparse_straggler_entry {
 };
 
 /**
+ * The interest hash table is keyed by the interest message
+ *
+ * The interest message has fields that do not participate in the
+ * similarity test stripped out - in particular the nonce.
+ *
+ */
+struct interest_entry {
+    struct pit_face_item *faces;    /**< upstream and downstream faces */
+    struct ccn_parsed_interest *pi;	/**< cached parse info (may be NULL) */
+    unsigned char *interest_msg;	/**< pending interest message */
+    unsigned size;                  /**< size of interest message */
+};
+
+#define TYPICAL_NONCE_SIZE 8        /**< actual allocated size may differ */
+struct pit_face_item {
+    struct pit_face_item *next;     /**< next in list */
+    struct pit_face_item *prev;     /**< previous in list */
+    unsigned faceid;                /**< face id */
+    ccn_wrappedtime dnexpiry;       /**< when downstream loses interest */
+    ccn_wrappedtime upexpiry;       /**< when we lose interest in upstream */
+    unsigned pfi_flags;             /**< CCND_PFI_x */
+    unsigned char nonce[TYPICAL_NONCE_SIZE]; /**< nonce bytes */
+};
+#define CCND_PFI_NONCESZ 0x00FF     /**< Mask for actual nonce size */
+#define CCND_PFI_PENDING 0x0100     /**< Pending for immediate data */
+#define CCND_PFI_SUPDATA 0x0200     /**< Suppressed data reply */
+#define CCND_PFI_UPNONCE 0x0400     /**< Nonce was sent on this face */
+#define CCND_PFI_DNNONCE 0x0800     /**< Nonce was received on this face */
+
+/**
  * The propagating interest hash table is keyed by Nonce.
  *
  * While the interest is pending, the pe is also kept in a doubly-linked
@@ -280,6 +321,8 @@ struct sparse_straggler_entry {
  * list and is cleaned up by freeing unnecessary bits (including the interest
  * message itself).  It remains in the hash table for a time, in order to catch
  * duplicate nonces.
+ *
+ * XXX - with interest_entry/pit_face_item change, this goes away.
  */
 struct propagating_entry {
     struct propagating_entry *next; /**< next (in arrival order) */
