@@ -51,7 +51,7 @@ install uninstall:
 	(cd apps && $(MAKE) $@)
 
 honeycomb:
-	(cd external && $(MAKE) $@ -j 1)
+	(cd external && $(MAKE) -j 1)
 	(cd CCNx-Android-Lib && $(MAKE) $@)
 	(cd CCNx-Android-Services && $(MAKE) $@)
 	(cd apps && $(MAKE) $@)
