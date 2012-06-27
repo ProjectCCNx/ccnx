@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -7,21 +7,19 @@
 # WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
 # FOR A PARTICULAR PURPOSE.
 #
-export
 
 #
 # Make all the Java jars and put them in "obj" directory.
 # pjproject-1.4.5 is configured for the host platform and built,
 # but not installed anywhere.
 
-SUBDIRS := 
-SUBDIRS_clean := $(addsuffix .clean,$(SUBDIRS))
+SUBDIRS =
 
-.PHONY: subdirs mkdirs $(SUBDIRS_clean) openssl
+.PHONY: subdirs mkdirs openssl
 
 # This is just a reference, the makefile does
 # not do anything with them
-ANDROID_SUBDIRS := openssl-1.0.0d expat
+ANDROID_SUBDIRS = openssl-1.0.0d expat
 
 default all: mkdirs
 	touch all_made
@@ -35,9 +33,6 @@ mkdirs:
 clean: 
 	@echo Use distclean if you want to clean an external project
 
-$(SUBDIRS_clean):
-	-$(MAKE) -C $(basename $@) clean
-
-distclean: $(SUBDIRS_clean)
+distclean:
 	$(MAKE) -f Dirs.mk distclean all_made
 
