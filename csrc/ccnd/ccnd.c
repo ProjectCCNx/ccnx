@@ -60,7 +60,6 @@
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
-
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
 static int create_local_listener(struct ccnd_handle *h, const char *sockname, int backlog);
@@ -109,6 +108,11 @@ static void ccn_append_link_stuff(struct ccnd_handle *h,
 static int process_incoming_link_message(struct ccnd_handle *h,
                                          struct face *face, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
+
+/**
+ * Frequency of wrapped timer
+ */
+#define WTHZ 64U
 
 /**
  * Name of our unix-domain listener
@@ -870,6 +874,34 @@ finalize_propagating(struct hashtb_enumerator *e)
 {
     struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
     consume(h, e->data);
+}
+
+/**
+ * Clean up an interest when it is removed from its hash table.
+ */
+static void
+finalize_interest(struct hashtb_enumerator *e)
+{
+    struct pit_face_item *p = NULL;
+    struct pit_face_item *q = NULL;
+    struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
+    struct interest_entry *ie = e->data;
+    
+    ccnd_debug_ccnb(h, __LINE__, "finalize_interest", NULL,
+                    ie->interest_msg, ie->size);
+    p = ie->faces;
+    if (p != NULL)
+        ie->faces = p->prev->next = NULL;
+    while (p != NULL) {
+        q = p->next;
+        free(p);
+        p = q;
+    }
+    if (ie->pi != NULL) {
+        free(ie->pi);
+        ie->pi = NULL;
+    }
+    ie->interest_msg = NULL; /* part of hashtb, don't free this */
 }
 
 /**
@@ -3836,6 +3868,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         }
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
         h->interests_accepted += 1;
+        /* update interest_tab here? */
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
         matched = 0;
         hashtb_start(h->nameprefix_tab, e);
@@ -4848,11 +4881,17 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 {
     struct ccnd_handle *h = self->data;
     struct timeval now = {0};
+    ccn_wrappedtime wt, delta;
+    
     gettimeofday(&now, 0);
     result->s = now.tv_sec;
     result->micros = now.tv_usec;
     h->sec = now.tv_sec;
     h->usec = now.tv_usec;
+    wt = (ccn_wrappedtime)(h->sec) * WTHZ + h->usec / (1000000 / WTHZ);
+    delta = wt - h->wt;
+    if (delta < (1U << 31))
+        h->wt = wt;
 }
 
 /**
@@ -5183,6 +5222,8 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->content_tab = hashtb_create(sizeof(struct content_entry), &param);
     param.finalize = &finalize_nameprefix;
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
+    param.finalize = &finalize_interest;
+    h->interest_tab = hashtb_create(sizeof(struct interest_entry), &param);
     param.finalize = &finalize_propagating;
     h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     param.finalize = 0;
@@ -5197,6 +5238,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->starttime = h->sec;
     h->starttime_usec = h->usec;
+    h->wt = (ccn_wrappedtime)(h->sec) * WTHZ + h->usec / (1000000 / WTHZ);
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
     debugstr = getenv("CCND_DEBUG");
@@ -5331,6 +5373,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     hashtb_destroy(&h->faces_by_fd);
     hashtb_destroy(&h->content_tab);
     hashtb_destroy(&h->propagating_tab);
+    hashtb_destroy(&h->interest_tab);
     hashtb_destroy(&h->nameprefix_tab);
     hashtb_destroy(&h->sparse_straggler_tab);
     if (h->fds != NULL) {
