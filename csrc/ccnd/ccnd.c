@@ -811,6 +811,7 @@ content_skiplist_next(struct ccnd_handle *h, struct content_entry *content)
 /**
  * Cansume an interest.
  */
+// ZZZZ if we still need this, it needs to work on an interest_entry.
 static void
 consume(struct ccnd_handle *h, struct propagating_entry *pe)
 {
@@ -1535,6 +1536,7 @@ consume_matching_interests(struct ccnd_handle *h,
                            struct face *face)
 {
     int matches = 0;
+    // ZZZZ - turns into interest_entry
     struct propagating_entry *head;
     struct propagating_entry *next;
     struct propagating_entry *p;
@@ -3205,6 +3207,7 @@ do_propagate(struct ccn_schedule *sched,
              struct ccn_scheduled_event *ev,
              int flags)
 {
+    // ZZZZ - this gets a fairly major revision - base on interest_entry rather than pe
     struct ccnd_handle *h = clienth;
     struct propagating_entry *pe = ev->evdata;
     (void)(sched);
@@ -3291,6 +3294,7 @@ do_propagate(struct ccn_schedule *sched,
  */
 // XXX - rearrange to allow dummied-up "sent" entries.
 // XXX - subtle point - when similar interests are present in the PIT, and a new dest appears due to prefix registration, only one of the set should get sent to the new dest.
+// ZZZZ - most of this goes away, I think.
 static int
 adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
                                        unsigned char *msg,
@@ -3506,6 +3510,7 @@ propagate_interest(struct ccnd_handle *h,
         nonce = msg + pi->offset[CCN_PI_B_Nonce];
         noncesize = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
     }
+    // ZZZZ - obviously this needs to change
     hashtb_start(h->propagating_tab, e);
     hashtb_seek(e, nonce, noncesize, 0);
     pe = e->data;
@@ -3574,6 +3579,7 @@ propagate_interest(struct ccnd_handle *h,
 static struct nameprefix_entry *
 nameprefix_for_pe(struct ccnd_handle *h, struct propagating_entry *pe)
 {
+    // ZZZZ - maybe this can go away
     struct nameprefix_entry *npe;
     struct propagating_entry *p;
     
@@ -3593,6 +3599,7 @@ nameprefix_for_pe(struct ccnd_handle *h, struct propagating_entry *pe)
 static void
 replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
 {
+    // ZZZZ Most of this can go away.  Instead, we just need to add a new pit_face_item to the affected interests.
     struct nameprefix_entry *npe = NULL;
     struct ccn_indexbuf *x = pe->outbound;
     struct face *face = NULL;
@@ -3650,6 +3657,7 @@ static int
 is_duplicate_flooded(struct ccnd_handle *h, unsigned char *msg,
                      struct ccn_parsed_interest *pi, unsigned faceid)
 {
+    // ZZZZ - Instead of this, check the existing nonces hanging off the interest_entry
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct propagating_entry *pe = NULL;
@@ -3709,6 +3717,7 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
     int res = -1;
     struct nameprefix_entry *parent = NULL;
     struct nameprefix_entry *npe = NULL;
+    // ZZZZ - minor changes needed, mostly removing stuff.
     struct propagating_entry *head = NULL;
 
     if (ncomps + 1 > comps->n)
@@ -3745,6 +3754,8 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
     return(res);
 }
 
+// ZZZZ - not in the most obvious place - move closer to other content table stuff
+// XXX - missing doxy
 static struct content_entry *
 next_child_at_level(struct ccnd_handle *h,
                     struct content_entry *content, int level)
@@ -3868,7 +3879,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         }
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
         h->interests_accepted += 1;
-        /* update interest_tab here? */
+        // ZZZZ - update interest_tab here?
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
         matched = 0;
         hashtb_start(h->nameprefix_tab, e);
