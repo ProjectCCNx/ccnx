@@ -184,23 +184,20 @@ ccnd_collect_stats(struct ccnd_handle *h, struct ccnd_stats *ans)
     for (sum = 0, hashtb_start(h->nameprefix_tab, e);
          e->data != NULL; hashtb_next(e)) {
         struct nameprefix_entry *npe = e->data;
-        struct propagating_entry *head = &npe->pe_head;
-        struct propagating_entry *p;
-        for (p = head->next; p != head; p = p->next) {
-            if (ccnd_face_from_faceid(h, p->faceid) != NULL)
-                sum += 1;
+        struct ielinks *head = &npe->ie_head;
+        struct ielinks *ll;
+        for (ll = head->next; ll != head; ll = ll->next) {
+            struct interest_entry *ie = (struct interest_entry *)ll;
+            struct pit_face_item *p;
+            for (p = ie->pfl; p != NULL; p = p->next)
+                if ((p->pfi_flags & CCND_PFI_PENDING) != 0)
+                    if (ccnd_face_from_faceid(h, p->faceid) != NULL)
+                        sum += 1;
         }
     }
     ans->total_interest_counts = sum;
     hashtb_end(e);
-    for (sum = 0, hashtb_start(h->propagating_tab, e);
-         e->data != NULL; hashtb_next(e)) {
-        struct propagating_entry *pe = e->data;
-        if (pe->interest_msg == NULL)
-            sum += 1;
-    }
-    ans->total_flood_control = sum;
-    hashtb_end(e);
+    ans->total_flood_control = 0; /* N/A */
     /* Do a consistency check on pending interest counts */
     for (sum = 0, i = 0; i < h->face_limit; i++) {
         struct face *face = h->faces_by_faceid[i];
@@ -416,7 +413,7 @@ collect_stats_html(struct ccnd_handle *h)
         h->content_dups_recvd,
         h->content_items_sent,
         hashtb_n(h->nameprefix_tab), stats.total_interest_counts,
-        hashtb_n(h->propagating_tab) - stats.total_flood_control,
+        hashtb_n(h->interest_tab) - stats.total_flood_control,
         stats.total_flood_control,
         h->interests_accepted, h->interests_dropped,
         h->interests_sent, h->interests_stuffed);
@@ -587,7 +584,7 @@ collect_stats_xml(struct ccnd_handle *h)
         h->content_dups_recvd,
         h->content_items_sent,
         hashtb_n(h->nameprefix_tab), stats.total_interest_counts,
-        hashtb_n(h->propagating_tab) - stats.total_flood_control,
+        hashtb_n(h->interest_tab) - stats.total_flood_control,
         stats.total_flood_control,
         h->interests_accepted, h->interests_dropped,
         h->interests_sent, h->interests_stuffed);
