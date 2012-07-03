@@ -88,8 +88,6 @@ static ccn_accession_t content_skiplist_next(struct ccnd_handle *h,
                                              struct content_entry *content);
 static void reap_needed(struct ccnd_handle *h, int init_delay_usec);
 static void check_comm_file(struct ccnd_handle *h);
-static struct nameprefix_entry *nameprefix_for_pe(struct ccnd_handle *h,
-                                                  struct propagating_entry *pe);
 static int nameprefix_seek(struct ccnd_handle *h,
                            struct hashtb_enumerator *e,
                            const unsigned char *msg,
@@ -108,9 +106,37 @@ static void ccn_append_link_stuff(struct ccnd_handle *h,
 static int process_incoming_link_message(struct ccnd_handle *h,
                                          struct face *face, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
-
+static struct pit_face_item *
+pfi_get(struct ccnd_handle *h, struct interest_entry *ie,
+             unsigned faceid, unsigned flagmask);
+static struct pit_face_item *
+pfi_create(struct ccnd_handle *h, struct interest_entry *ie,
+             unsigned faceid, unsigned flags,
+             const unsigned char *nonce, size_t noncesize);
+static void
+pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
+            struct pit_face_item *p);
+static struct pit_face_item *
+pfi_set_nonce(struct ccnd_handle *h, struct interest_entry *ie,
+             struct pit_face_item *p,
+             const unsigned char *nonce, size_t noncesize);
+static int
+pfi_nonce_matches(struct pit_face_item *p,
+                  const unsigned char *nonce, size_t size);
+static struct pit_face_item *
+pfi_copy_nonce(struct ccnd_handle *h, struct interest_entry *ie,
+             struct pit_face_item *p, const struct pit_face_item *src);
+static int
+pfi_unique_nonce(struct ccnd_handle *h, struct interest_entry *ie,
+                 struct pit_face_item *p);
+static int wt_compare(ccn_wrappedtime, ccn_wrappedtime);
 /**
  * Frequency of wrapped timer
+ *
+ * A divisor of 1000000 is good here, and a power of 2 is needed unless the
+ * conversion from timevals is fixed up.  Making this too large reduces the
+ * maximum supported interest lifetime, and making it too small makes the
+ * timekeeping too coarse.
  */
 #define WTHZ 64U
 
@@ -809,28 +835,35 @@ content_skiplist_next(struct ccnd_handle *h, struct content_entry *content)
 }
 
 /**
- * Cansume an interest.
+ * Consume an interest.
  */
-// ZZZZ if we still need this, it needs to work on an interest_entry.
 static void
-consume(struct ccnd_handle *h, struct propagating_entry *pe)
+consume_interest(struct ccnd_handle *h, struct interest_entry *ie)
 {
     struct face *face = NULL;
-    ccn_indexbuf_destroy(&pe->outbound);
-    if (pe->interest_msg != NULL) {
-        free(pe->interest_msg);
-        pe->interest_msg = NULL;
-        face = face_from_faceid(h, pe->faceid);
-        if (face != NULL)
-            face->pending_interests -= 1;
+    struct pit_face_item *p = NULL;
+    
+    if (ie->interest_msg == NULL)
+        return;
+    if (ie->pi != NULL) {
+        free(ie->pi);
+        ie->pi = NULL;
     }
-    if (pe->next != NULL) {
-        pe->next->prev = pe->prev;
-        pe->prev->next = pe->next;
-        pe->next = pe->prev = NULL;
+    for (p = ie->pfl; p != NULL; p = p->next) {
+        if ((p->pfi_flags & CCND_PFI_PENDING) != 0) {
+            face = face_from_faceid(h, p->faceid);
+            if (face != NULL)
+                face->pending_interests -= 1;
+            p->faceid = CCN_NOFACEID;
+        }
     }
-    pe->usec = 0;
-}
+    if (ie->ll.next != NULL) {
+        ie->ll.next->prev = ie->ll.prev;
+        ie->ll.prev->next = ie->ll.next;
+        ie->ll.next = ie->ll.prev = NULL;
+    }
+    ie->interest_msg = NULL; /* part of hashtb, don't free this */
+}    
 
 /**
  * Clean up a name prefix entry when it is removed from the hash table.
@@ -840,10 +873,10 @@ finalize_nameprefix(struct hashtb_enumerator *e)
 {
     struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
     struct nameprefix_entry *npe = e->data;
-    struct propagating_entry *head = &npe->pe_head;
+    struct ielinks *head = &npe->ie_head;
     if (head->next != NULL) {
         while (head->next != head)
-            consume(h, head->next);
+            consume_interest(h, (struct interest_entry *)(head->next));
     }
     ccn_indexbuf_destroy(&npe->forward_to);
     ccn_indexbuf_destroy(&npe->tap);
@@ -858,51 +891,38 @@ finalize_nameprefix(struct hashtb_enumerator *e)
  * Link an interest to its name prefix entry.
  */
 static void
-link_propagating_interest_to_nameprefix(struct ccnd_handle *h,
-    struct propagating_entry *pe, struct nameprefix_entry *npe)
+link_interest_entry_to_nameprefix(struct ccnd_handle *h,
+    struct interest_entry *ie, struct nameprefix_entry *npe)
 {
-    struct propagating_entry *head = &npe->pe_head;
-    pe->next = head;
-    pe->prev = head->prev;
-    pe->prev->next = pe->next->prev = pe;
+    struct ielinks *head = &npe->ie_head;
+    struct ielinks *ll = &ie->ll;
+    ll->next = head;
+    ll->prev = head->prev;
+    ll->prev->next = ll->next->prev = ll;
 }
 
 /**
- * Clean up an interest when it is removed from its hash table.
- */
-static void
-finalize_propagating(struct hashtb_enumerator *e)
-{
-    struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
-    consume(h, e->data);
-}
-
-/**
- * Clean up an interest when it is removed from its hash table.
+ * Clean up an interest_entry when it is removed from its hash table.
  */
 static void
 finalize_interest(struct hashtb_enumerator *e)
 {
     struct pit_face_item *p = NULL;
-    struct pit_face_item *q = NULL;
+    struct pit_face_item *next = NULL;
     struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
     struct interest_entry *ie = e->data;
     
     ccnd_debug_ccnb(h, __LINE__, "finalize_interest", NULL,
-                    ie->interest_msg, ie->size);
-    p = ie->faces;
-    if (p != NULL)
-        ie->faces = p->prev->next = NULL;
-    while (p != NULL) {
-        q = p->next;
+                    ie->interest_msg, ie->size); // ZZZZ - temp
+    if (ie->interest_msg != NULL)
+        consume_interest(h, ie);
+    if (ie->ev != NULL)
+        ccn_schedule_cancel(h->sched, ie->ev);
+    for (p = ie->pfl; p != NULL; p = next) {
+        next = p->next;
         free(p);
-        p = q;
     }
-    if (ie->pi != NULL) {
-        free(ie->pi);
-        ie->pi = NULL;
-    }
-    ie->interest_msg = NULL; /* part of hashtb, don't free this */
+    if (ie->pi != NULL) abort();
 }
 
 /**
@@ -1494,29 +1514,21 @@ face_send_queue_insert(struct ccnd_handle *h,
     return (ans);
 }
 
-/**
- * If the pe interest is slated to be sent to the given faceid,
- * promote the faceid to the front of the list, preserving the order
- * of the others.
- * @returns -1 if not found, or pe->sent if successful.
- */
+// ZZZZ - doxy
 static int
-promote_outbound(struct propagating_entry *pe, unsigned faceid)
+is_pending_on(struct ccnd_handle *h, struct interest_entry *ie, unsigned faceid)
 {
-    struct ccn_indexbuf *ob = pe->outbound;
-    int lb = pe->sent;
-    int i;
-    if (ob == NULL || ob->n <= lb || lb < 0)
-        return(-1);
-    for (i = ob->n - 1; i >= lb; i--)
-        if (ob->buf[i] == faceid)
-            break;
-    if (i < lb)
-        return(-1);
-    for (; i > lb; i--)
-        ob->buf[i] = ob->buf[i-1];
-    ob->buf[lb] = faceid;
-    return(lb);
+    struct pit_face_item *x;
+    
+    for (x = ie->pfl; x != NULL; x = x->next) {
+        if (x->faceid == faceid) {
+            // ZZZ - can we assume this is not expired?
+            if ((x->pfi_flags & CCND_PFI_PENDING) != 0)
+                return(1);
+        }
+        // ZZZ - depending on how list is ordered, an early out is possible
+    }
+    return(0);
 }
 
 /**
@@ -1536,32 +1548,33 @@ consume_matching_interests(struct ccnd_handle *h,
                            struct face *face)
 {
     int matches = 0;
-    // ZZZZ - turns into interest_entry
-    struct propagating_entry *head;
-    struct propagating_entry *next;
-    struct propagating_entry *p;
+    struct ielinks *head;
+    struct ielinks *next;
+    struct ielinks *pl;
+    struct interest_entry *p;
+    struct pit_face_item *x;
     const unsigned char *content_msg;
     size_t content_size;
-    struct face *f;
     
-    head = &npe->pe_head;
+    head = &npe->ie_head;
     content_msg = content->key;
     content_size = content->size;
-    f = face;
-    for (p = head->next; p != head; p = next) {
-        next = p->next;
-        if (p->interest_msg != NULL &&
-            ((face == NULL && (f = face_from_faceid(h, p->faceid)) != NULL) ||
-             (face != NULL && p->faceid == face->faceid))) {
-            if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
-                                             p->interest_msg, p->size, NULL)) {
-                face_send_queue_insert(h, f, content);
-                if (h->debug & (32 | 8))
-                    ccnd_debug_ccnb(h, __LINE__, "consume", f,
-                                    p->interest_msg, p->size);
-                matches += 1;
-                consume(h, p);
+    for (pl = head->next; pl != head; pl = next) {
+        next = pl->next;
+        p = (struct interest_entry *)pl;
+        if (p->interest_msg == NULL)
+            continue;
+        if (face != NULL && is_pending_on(h, p, face->faceid) == 0)
+            continue;
+        if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
+                                         p->interest_msg, p->size, p->pi)) {
+            for (x = p->pfl; x != NULL; x = x->next) {
+                if ((x->pfi_flags & CCND_PFI_PENDING) != 0)
+                    face_send_queue_insert(h, face_from_faceid(h, x->faceid),
+                                           content);
             }
+            matches += 1;
+            consume_interest(h, p);
         }
     }
     return(matches);
@@ -1599,11 +1612,11 @@ adjust_npe_predicted_response(struct ccnd_handle *h,
  */
 static void
 adjust_predicted_response(struct ccnd_handle *h,
-                          struct propagating_entry *pe, int up)
+                          struct interest_entry *ie, int up)
 {
     struct nameprefix_entry *npe;
         
-    npe = nameprefix_for_pe(h, pe);
+    npe = ie->ll.npe;
     if (npe == NULL)
         return;
     adjust_npe_predicted_response(h, npe, up);
@@ -1631,33 +1644,6 @@ note_content_from(struct ccnd_handle *h,
     if (h->debug & 8)
         ccnd_msg(h, "sl.%d %u ci=%d osrc=%u src=%u usec=%d", __LINE__,
                  from_faceid, prefix_comps, npe->osrc, npe->src, npe->usec);
-}
-
-/**
- * Use the history to reorder the interest forwarding.
- *
- * @returns number of tap faces that are present.
- */
-static int
-reorder_outbound_using_history(struct ccnd_handle *h,
-                               struct nameprefix_entry *npe,
-                               struct propagating_entry *pe)
-{
-    int ntap = 0;
-    int i;
-    
-    if (npe->osrc != CCN_NOFACEID)
-        promote_outbound(pe, npe->osrc);
-    /* Process npe->src last so it will be tried first */
-    if (npe->src != CCN_NOFACEID)
-        promote_outbound(pe, npe->src);
-    /* Tap are really first. */
-    if (npe->tap != NULL) {
-        ntap = npe->tap->n;
-        for (i = 0; i < ntap; i++)
-            promote_outbound(pe, npe->tap->buf[i]);
-    }
-    return(ntap);
 }
 
 /**
@@ -1801,51 +1787,9 @@ static int
 ccn_stuff_interest(struct ccnd_handle *h,
                    struct face *face, struct ccn_charbuf *c)
 {
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
     int n_stuffed = 0;
-    int remaining_space;
     if (stuff_link_check(h, face, c) > 0)
         n_stuffed++;
-    remaining_space = h->mtu - c->length;
-    if (remaining_space < 20 || face == h->face0)
-        return(0);
-    for (hashtb_start(h->nameprefix_tab, e);
-         remaining_space >= 20 && e->data != NULL; hashtb_next(e)) {
-        struct nameprefix_entry *npe = e->data;
-        struct propagating_entry *head = &npe->pe_head;
-        struct propagating_entry *p;
-        for (p = head->next; p != head; p = p->next) {
-            if (p->outbound != NULL &&
-                p->outbound->n > p->sent &&
-                p->size <= remaining_space &&
-                p->interest_msg != NULL &&
-                ((p->flags & (CCN_PR_STUFFED1 | CCN_PR_WAIT1)) == 0) &&
-                ((p->flags & CCN_PR_UNSENT) == 0 ||
-                 p->outbound->buf[p->sent] == face->faceid) &&
-                promote_outbound(p, face->faceid) != -1) {
-                remaining_space -= p->size;
-                if ((p->flags & CCN_PR_UNSENT) != 0) {
-                    p->flags &= ~CCN_PR_UNSENT;
-                    p->flags |= CCN_PR_STUFFED1;
-                }
-                p->sent++;
-                n_stuffed++;
-                ccn_charbuf_append(c, p->interest_msg, p->size);
-                ccnd_meter_bump(h, face->meter[FM_INTO], 1);
-                h->interests_stuffed++;
-                if (h->debug & 2)
-                    ccnd_debug_ccnb(h, __LINE__, "stuff_interest_to", face,
-                                    p->interest_msg, p->size);
-                /*
-                 * Don't stuff multiple interests with same prefix
-                 * to avoid subverting attempts at redundancy.
-                 */
-                break;
-            }
-        }
-    }
-    hashtb_end(e);
     return(n_stuffed);
 }
 
@@ -2052,35 +1996,6 @@ check_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
 }
 
 /**
- * Check for expired propagating interests.
- * @returns number that have gone away.
- */
-static int
-check_propagating(struct ccnd_handle *h)
-{
-    int count = 0;
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    struct propagating_entry *pe;
-    
-    hashtb_start(h->propagating_tab, e);
-    for (pe = e->data; pe != NULL; pe = e->data) {
-        if (pe->interest_msg == NULL) {
-            if (pe->size == 0) {
-                count += 1;
-                hashtb_delete(e);
-                continue;
-            }
-            pe->size = (pe->size > 1); /* go around twice */
-            /* XXX - could use a flag bit instead of hacking size */
-        }
-        hashtb_next(e);
-    }
-    hashtb_end(e);
-    return(count);
-}
-
-/**
  * Ages src info and retires unused nameprefix entries.
  * @returns number that have gone away.
  */
@@ -2090,7 +2005,7 @@ check_nameprefix_entries(struct ccnd_handle *h)
     int count = 0;
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    struct propagating_entry *head;
+    struct ielinks *head;
     struct nameprefix_entry *npe;    
     
     hashtb_start(h->nameprefix_tab, e);
@@ -2100,7 +2015,9 @@ check_nameprefix_entries(struct ccnd_handle *h)
         if (  npe->src == CCN_NOFACEID &&
               npe->children == 0 &&
               npe->forwarding == NULL) {
-            head = &npe->pe_head;
+            if (npe->forward_to != NULL)
+                ccnd_msg(h, "huh - wha? - ccnd.c:%d", __LINE__); 
+            head = &npe->ie_head;
             if (head == head->next) {
                 count += 1;
                 if (npe->parent != NULL) {
@@ -2147,7 +2064,6 @@ reap(
         return(0);
     }
     check_dgram_faces(h);
-    check_propagating(h);
     check_nameprefix_entries(h);
     check_comm_file(h);
     return(2 * CCN_INTEREST_LIFETIME_MICROSEC);
@@ -3170,33 +3086,96 @@ get_outbound_faces(struct ccnd_handle *h,
 }
 
 /**
- * Compute the delay until the next timed action on a propagating interest.
+ * Compute the delay until the next timed action on an interest.
  */
 static int
-pe_next_usec(struct ccnd_handle *h,
-             struct propagating_entry *pe, int next_delay, int lineno)
+ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie)
 {
-    if (next_delay > pe->usec)
-        next_delay = pe->usec;
-    pe->usec -= next_delay;
-    if (h->debug & 32) {
-        struct ccn_charbuf *c = ccn_charbuf_create();
-        ccn_charbuf_putf(c, "%p.%dof%d,usec=%d+%d",
-                         (void *)pe,
-                         pe->sent,
-                         pe->outbound ? pe->outbound->n : -1,
-                         next_delay, pe->usec);
-        if (pe->interest_msg != NULL) {
-            ccnd_debug_ccnb(h, lineno, ccn_charbuf_as_string(c),
-                            face_from_faceid(h, pe->faceid),
-                            pe->interest_msg, pe->size);
+    struct pit_face_item **p;
+    struct pit_face_item *x;
+    struct face *face;
+    ccn_wrappedtime now;
+    ccn_wrappedtime delta;
+    ccn_wrappedtime mx;
+    ccn_wrappedtime mn;
+    int ans;
+    
+    now = h->wtnow;
+    mx = 0;
+    mn = ~mx;
+    for (p = &ie->pfl; x = *p, x != NULL; p = &x->next) {
+        face = face_from_faceid(h, x->faceid);
+        if (face == NULL) {
+            *p = x->next;
+            free(x);
+            x = *p;
+            if (x == NULL)
+                break;
+            continue;
         }
-        ccn_charbuf_destroy(&c);
+        delta = x->expiry - now;
+        if (delta < mn)
+            mn = delta;
+        else if (delta > mx)
+            mx = delta;
     }
-    return(next_delay);
+    if (mx >= 0x8000000) {
+        ccnd_msg(h, "alert - missed event?");
+    }
+    if (mn >= 600 * WTHZ)
+        mn = 600 * WTHZ;
+    ans = mn * 1000000 / WTHZ;
+    if (ans == 0)
+        ans = 1;
+    if (ie->ev != NULL) {
+        now += mn;
+        ie->ev->evint = now;
+    }
+    return(ans);
 }
 
-static void replan_propagation(struct ccnd_handle *, struct propagating_entry *);
+// ZZZZ - append_tagged_binary_number should be in libccn
+static int
+append_tagged_binary_number(struct ccn_charbuf *cb, enum ccn_dtag dtag, uintmax_t val) {
+    unsigned char buf[sizeof(val)];
+    int pos;
+    int res = 0;
+    for (pos = sizeof(buf); val != 0 && pos > 0; val >>= 8)
+        buf[--pos] = val & 0xff;
+    res |= ccnb_append_tagged_blob(cb, dtag, buf+pos, sizeof(buf)-pos);
+    return(res);
+}
+
+static void
+send_interest(struct ccnd_handle *h, struct interest_entry *ie,
+              struct face *face, struct pit_face_item *p)
+{
+    struct ccn_charbuf *c = h->send_interest_scratch;
+    const intmax_t default_life = CCN_INTEREST_LIFETIME_SEC << 12;
+    intmax_t lifetime = default_life;
+    ccn_wrappedtime delta;
+    size_t noncesize;
+    
+    if (p != NULL) {
+        delta = p->expiry - h->wtnow;
+        lifetime = (intmax_t)delta * 4096 / WTHZ;
+    }
+    /* clip lifetime against various limits here */
+    ccn_charbuf_reset(c);
+    if (lifetime != default_life)
+        append_tagged_binary_number(c, CCN_DTAG_InterestLifetime, lifetime);
+    if (p != NULL) {
+        noncesize = p->pfi_flags & CCND_PFI_NONCESZ;
+        if (noncesize != 0)
+            ccnb_append_tagged_blob(c, CCN_DTAG_Nonce, p->nonce, noncesize);
+    }
+    ccn_charbuf_append_closer(c);
+    // pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
+    h->interests_sent += 1;
+    ccnd_meter_bump(h, face->meter[FM_INTO], 1);
+    stuff_and_send(h, face, ie->interest_msg, ie->size - 1, c->buf, c->length);
+    /* caller beware - stuff_and_send can end up consuming the interest */
+}
 
 /**
  * Execute the next timed action on a propagating interest.
@@ -3207,193 +3186,92 @@ do_propagate(struct ccn_schedule *sched,
              struct ccn_scheduled_event *ev,
              int flags)
 {
-    // ZZZZ - this gets a fairly major revision - base on interest_entry rather than pe
     struct ccnd_handle *h = clienth;
-    struct propagating_entry *pe = ev->evdata;
+    struct interest_entry *ie = ev->evdata;
     (void)(sched);
-    int next_delay = 1;
-    int special_delay = 0;
-    if (pe->interest_msg == NULL)
+    int next_delay;
+    int i;
+    int pending;
+    struct face *face = NULL;
+    struct pit_face_item *p = NULL;
+    struct pit_face_item *next = NULL;
+    struct pit_face_item *dnstream[2] = { NULL, NULL };
+    ccn_wrappedtime delta;
+    
+    if (ie->ev == ev)
+        ie->ev = NULL;
+    if (ie->interest_msg == NULL)
         return(0);
-    if (flags & CCN_SCHEDULE_CANCEL) {
-        consume(h, pe);
+    if (flags & CCN_SCHEDULE_CANCEL)
         return(0);
+    if (0) {
+        adjust_predicted_response(h, ie, 1);
     }
-    if ((pe->flags & CCN_PR_WAIT1) != 0) {
-        pe->flags &= ~CCN_PR_WAIT1;
-        adjust_predicted_response(h, pe, 1);
+    for (pending = 0, p = ie->pfl; p != NULL; p = next) {
+        next = p->next;
+        if ((p->pfi_flags & CCND_PFI_DNSTREAM) != 0) {
+            delta = h->wtnow - p->expiry;
+            if (wt_compare(p->expiry, h->wtnow) >= 0) {
+                if (h->debug & 2)
+                    ccnd_debug_ccnb(h, __LINE__, "interest_expiry",
+                                    face_from_faceid(h, p->faceid),
+                                    ie->interest_msg, ie->size);
+                pfi_destroy(h, ie, p);
+                continue;
+            }
+            /* keep track of the 2 longest-lasting downstreams */
+            if ((p->pfi_flags & CCND_PFI_PENDING) != 0) {
+                if (dnstream[0] == NULL)
+                    dnstream[0] = p;
+                else if (dnstream[1] == NULL)
+                    dnstream[1] = p;
+                else if (wt_compare(dnstream[0]->expiry, p->expiry) > 0)
+                    dnstream[0] = p;
+                else if (wt_compare(dnstream[1]->expiry, p->expiry) > 0)
+                    dnstream[1] = p;
+                pending++;
+            }
+        }
     }
-    if (pe->usec <= 0) {
-        if (h->debug & 2)
-            ccnd_debug_ccnb(h, __LINE__, "interest_expiry",
-                            face_from_faceid(h, pe->faceid),
-                            pe->interest_msg, pe->size);
-        consume(h, pe);
+    if (pending == 0) {
+        consume_interest(h, ie);
         reap_needed(h, 0);
         return(0);        
     }
-    if ((pe->flags & CCN_PR_STUFFED1) != 0) {
-        pe->flags &= ~CCN_PR_STUFFED1;
-        pe->flags |= CCN_PR_WAIT1;
-        next_delay = special_delay = ev->evint;
-    }
-    else if (pe->outbound != NULL && pe->sent < pe->outbound->n) {
-        unsigned faceid = pe->outbound->buf[pe->sent];
-        struct face *face = face_from_faceid(h, faceid);
-        if (face != NULL && (face->flags & CCN_FACE_NOSEND) == 0) {
-            if (h->debug & 2)
-                ccnd_debug_ccnb(h, __LINE__, "interest_to", face,
-                                pe->interest_msg, pe->size);
-            pe->sent++;
-            h->interests_sent += 1;
-            h->interest_faceid = pe->faceid;
-            next_delay = nrand48(h->seed) % 8192 + 500;
-            if (((pe->flags & CCN_PR_TAP) != 0) &&
-                  ccn_indexbuf_member(nameprefix_for_pe(h, pe)->tap, pe->faceid)) {
-                next_delay = special_delay = 1;
-            }
-            else if ((pe->flags & CCN_PR_UNSENT) != 0) {
-                pe->flags &= ~CCN_PR_UNSENT;
-                pe->flags |= CCN_PR_WAIT1;
-                next_delay = special_delay = ev->evint;
-            }
-            stuff_and_send(h, face, pe->interest_msg, pe->size, NULL, 0);
-            ccnd_meter_bump(h, face->meter[FM_INTO], 1);
+    // ZZZZ - need to update the outgoing faces
+    /* Send the interests out */
+    for (p = ie->pfl; p != NULL; p = next) {
+        next = p->next;
+        if ((p->pfi_flags & CCND_PFI_UPSTREAM) == 0)
+            continue;
+        face = face_from_faceid(h, p->faceid);
+        if (face == NULL || (face->flags & CCN_FACE_NOSEND) != 0) {
+            pfi_destroy(h, ie, p);
+            continue;
         }
-        else
-            ccn_indexbuf_remove_first_match(pe->outbound, faceid);
+        if (wt_compare(h->wtnow, p->expiry) > 0)
+            continue;
+        for (i = 0; i < 2 && dnstream[i] != NULL; i++) {
+            if (dnstream[i]->faceid != p->faceid) {
+                p->expiry = dnstream[i]->expiry;
+                p = pfi_copy_nonce(h, ie, p, dnstream[i]);
+                break;
+            }
+        }
+        if (wt_compare(h->wtnow, p->expiry) <= 0) {
+            pfi_destroy(h, ie, p);
+            continue;
+        }
+        send_interest(h, ie, face, p);
     }
-    /* The internal client may have already consumed the interest */
-    if (pe->outbound == NULL)
-        next_delay = CCN_INTEREST_LIFETIME_MICROSEC;
-    else if (pe->sent == pe->outbound->n) {
-        if (pe->usec <= CCN_INTEREST_LIFETIME_MICROSEC / 4)
-            next_delay = CCN_INTEREST_LIFETIME_MICROSEC;
-        else if (special_delay == 0)
-            next_delay = CCN_INTEREST_LIFETIME_MICROSEC / 16;
-        if (pe->fgen != h->forward_to_gen)
-            replan_propagation(h, pe);
-    }
-    else {
-        unsigned faceid = pe->outbound->buf[pe->sent];
-        struct face *face = face_from_faceid(h, faceid);
-        /* Wait longer before sending interest to ccndc */
-        if (face != NULL && (face->flags & CCN_FACE_DC) != 0)
-            next_delay += 60000;
-    }
-    next_delay = pe_next_usec(h, pe, next_delay, __LINE__);
+    /* Determine when we need to run again */
+    ie->ev = ev;
+    next_delay = ie_next_usec(h, ie);
     return(next_delay);
 }
 
 /**
- * Adjust the outbound face list for a new Interest, based upon
- * existing similar interests.
- * @result besides possibly updating the outbound set, returns
- *         an extra delay time before propagation.  A negative return value
- *         indicates the interest should be dropped.
- */
-// XXX - rearrange to allow dummied-up "sent" entries.
-// XXX - subtle point - when similar interests are present in the PIT, and a new dest appears due to prefix registration, only one of the set should get sent to the new dest.
-// ZZZZ - most of this goes away, I think.
-static int
-adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
-                                       unsigned char *msg,
-                                       struct ccn_parsed_interest *pi,
-                                       struct nameprefix_entry *npe,
-                                       struct ccn_indexbuf *outbound)
-{
-    struct propagating_entry *head = &npe->pe_head;
-    struct propagating_entry *p;
-    size_t presize = pi->offset[CCN_PI_B_Nonce];
-    size_t postsize = pi->offset[CCN_PI_E] - pi->offset[CCN_PI_E_Nonce];
-    size_t minsize = presize + postsize;
-    unsigned char *post = msg + pi->offset[CCN_PI_E_Nonce];
-    int k = 0;
-    int max_redundant = 3; /* Allow this many dups from same face */
-    int i;
-    int n;
-    struct face *otherface;
-    int extra_delay = 0;
-
-    if ((face->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
-        max_redundant = 0;
-    if (outbound != NULL) {
-        for (p = head->prev; p != head && outbound->n > 0; p = p->prev) {
-            if (p->size > minsize &&
-                p->interest_msg != NULL &&
-                p->usec > 0 &&
-                0 == memcmp(msg, p->interest_msg, presize) &&
-                0 == memcmp(post, p->interest_msg + p->size - postsize, postsize)) {
-                /* Matches everything but the Nonce */
-                otherface = face_from_faceid(h, p->faceid);
-                if (otherface == NULL)
-                    continue;
-                /*
-                 * If scope is 2, we can't treat these as similar if
-                 * they did not originate on the same host
-                 */
-                if (pi->scope == 2 &&
-                    ((otherface->flags ^ face->flags) & CCN_FACE_GG) != 0)
-                    continue;
-                if (h->debug & 32)
-                    ccnd_debug_ccnb(h, __LINE__, "similar_interest",
-                                    face_from_faceid(h, p->faceid),
-                                    p->interest_msg, p->size);
-                if (face->faceid == p->faceid) {
-                    /*
-                     * This is one we've already seen before from the same face,
-                     * but dropping it unconditionally would lose resiliency
-                     * against dropped packets. Thus allow a few of them.
-                     * Add some delay, though.
-                     * XXX c.f. bug #13 // XXX - old bugid
-                     */
-                    extra_delay += npe->usec + 20000;
-                    if ((++k) < max_redundant)
-                        continue;
-                    outbound->n = 0;
-                    return(-1);
-                }
-                /*
-                 * The existing interest from another face will serve for us,
-                 * but we still need to send this interest there or we
-                 * could miss an answer from that direction. Note that
-                 * interests from two other faces could conspire to cover
-                 * this one completely as far as propagation is concerned,
-                 * but it is still necessary to keep it around for the sake
-                 * of returning content.
-                 * This assumes a unicast link.  If there are multiple
-                 * parties on this face (broadcast or multicast), we
-                 * do not want to send right away, because it is highly likely
-                 * that we've seen an interest that one of the other parties
-                 * is going to answer, and we'll see the answer, too.
-                 */
-                n = outbound->n;
-                outbound->n = 0;
-                for (i = 0; i < n; i++) {
-                    if (p->faceid == outbound->buf[i]) {
-                        outbound->buf[0] = p->faceid;
-                        outbound->n = 1;
-                        if ((otherface->flags & (CCN_FACE_MCAST | CCN_FACE_LINK)) != 0)
-                            extra_delay += npe->usec + 10000;
-                        break;
-                    }
-                }
-                p->flags |= CCN_PR_EQV; /* Don't add new faces */
-                /*
-                 * XXX - We would like to avoid having to keep this
-                 * interest around if we get here with (outbound->n == 0).
-                 * However, we still need to remember to send the content
-                 * back to this face, and the data structures are not
-                 * there right now to represent this.  c.f. #100321.
-                 */
-            }
-        }
-    }
-    return(extra_delay);
-}
-
-/**
- * Append an interest Nonce that is useful for debugging.
+ * Append an interest Nonce value that is useful for debugging.
  *
  * This does leak some information about the origin of interests, but it
  * also makes it easier to figure out what is happening.
@@ -3410,42 +3288,177 @@ adjust_outbound_for_existing_interests(struct ccnd_handle *h, struct face *face,
  *   SSss   - local time modulo 256 seconds, with 8 bits of fraction
  *   XXXXXX - 24 random bits.
  */
-static void
-ccnd_append_debug_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
-        unsigned char s[12];
-        int i;
-        
-        for (i = 0; i < 3; i++)
-            s[i] = h->ccnd_id[i];
-        s[i++] = h->logpid >> 8;
-        s[i++] = h->logpid;
-        s[i++] = face->faceid >> 8;
-        s[i++] = face->faceid;
-        s[i++] = h->sec;
-        s[i++] = h->usec * 256 / 1000000;
-        for (; i < sizeof(s); i++)
-            s[i] = nrand48(h->seed);
-        ccnb_append_tagged_blob(cb, CCN_DTAG_Nonce, s, i);
+static int
+ccnd_debug_nonce(struct ccnd_handle *h, struct face *face, unsigned char *s) {
+    int i;
+    
+    for (i = 0; i < 3; i++)
+        s[i] = h->ccnd_id[i];
+    s[i++] = h->logpid >> 8;
+    s[i++] = h->logpid;
+    s[i++] = face->faceid >> 8;
+    s[i++] = face->faceid;
+    s[i++] = h->sec;
+    s[i++] = h->usec * 256 / 1000000;
+    for (; i < TYPICAL_NONCE_SIZE; i++)
+        s[i] = nrand48(h->seed);
+    return(i);
 }
 
 /**
- * Append a random interest Nonce.
+ * Append a random interest Nonce value.
  *
  * For production use, although this uses a simple PRNG.
  */
+static int
+ccnd_plain_nonce(struct ccnd_handle *h, struct face *face, unsigned char *s) {
+    int noncebytes = 6;
+    int i;
+    
+    for (i = 0; i < noncebytes; i++)
+        s[i] = nrand48(h->seed);
+    return(i);
+}
+
+
+static int
+wt_compare(ccn_wrappedtime a, ccn_wrappedtime b)
+{
+    ccn_wrappedtime delta = b - a;
+    if (delta >= 0x80000000)
+        return(-1);
+    return(delta > 0);
+}
+
+static struct pit_face_item *
+pfi_get(struct ccnd_handle *h, struct interest_entry *ie,
+             unsigned faceid, unsigned flagmask)
+{
+    struct pit_face_item *p;
+    
+    for (p = ie->pfl; p != NULL; p = p->next)
+        if (p->faceid == faceid && (p->pfi_flags & flagmask) != 0)
+            break;
+    return(p);
+}
+
+static struct pit_face_item *
+pfi_create(struct ccnd_handle *h, struct interest_entry *ie,
+             unsigned faceid, unsigned flags,
+             const unsigned char *nonce, size_t noncesize)
+{
+    struct pit_face_item *p;    
+    size_t nsize = TYPICAL_NONCE_SIZE;
+    
+    if (noncesize > CCND_PFI_NONCESZ) return(NULL);
+    if (noncesize > nsize)
+        nsize = noncesize;
+    p = calloc(1, sizeof(*p) + nsize - TYPICAL_NONCE_SIZE);
+    if (p == NULL) return(NULL);
+    p->faceid = faceid;
+    p->expiry = h->wtnow;
+    p->pfi_flags = (flags & ~CCND_PFI_NONCESZ) + noncesize;
+    memcpy(p->nonce, nonce, noncesize);
+    p->next = ie->pfl;
+    ie->pfl = p;
+    return(p);    
+}
+
 static void
-ccnd_append_plain_nonce(struct ccnd_handle *h, struct face *face, struct ccn_charbuf *cb) {
-        int noncebytes = 6;
-        unsigned char *s = NULL;
-        int i;
-        
-        ccn_charbuf_append_tt(cb, CCN_DTAG_Nonce, CCN_DTAG);
-        ccn_charbuf_append_tt(cb, noncebytes, CCN_BLOB);
-        s = ccn_charbuf_reserve(cb, noncebytes);
-        for (i = 0; i < noncebytes; i++)
-            s[i] = nrand48(h->seed) >> i;
-        cb->length += noncebytes;
-        ccn_charbuf_append_closer(cb);
+pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
+            struct pit_face_item *p)
+{
+    struct face *face = NULL;
+    struct pit_face_item **pp;
+    
+    for (pp = &ie->pfl; *pp != p; pp = &(*pp)->next) {
+        if (*pp == NULL) abort();
+    }
+    if ((p->pfi_flags & CCND_PFI_PENDING) != 0) {
+        face = face_from_faceid(h, p->faceid);
+        if (face != NULL)
+            face->pending_interests -= 1;
+    }
+    *pp = p->next;
+    free(p);
+}
+
+static void
+pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
+                             struct pit_face_item *p, intmax_t lifetime)
+{
+    ccn_wrappedtime delta = lifetime / (4096 / WTHZ);
+    int minlifetime = 4096 / 4;
+    
+    // ZZZZ - should also enforce a maximum
+    if (lifetime < minlifetime)
+        lifetime = minlifetime;
+    delta = lifetime / (4096 / WTHZ);
+    p->expiry = h->wtnow + delta;
+}
+
+static struct pit_face_item *
+pfi_set_nonce(struct ccnd_handle *h, struct interest_entry *ie,
+             struct pit_face_item *p,
+             const unsigned char *nonce, size_t noncesize)
+{
+    struct pit_face_item *q = NULL;    
+    size_t nsize;
+    
+    nsize = (p->pfi_flags & CCND_PFI_NONCESZ);
+    if (noncesize != nsize) {
+        if (noncesize > TYPICAL_NONCE_SIZE) {
+            /* Hard case, need to reallocate */
+            q = pfi_create(h, ie, p->faceid, p->pfi_flags, nonce, noncesize);
+            if (q != NULL) {
+                q->expiry = p->expiry;
+                p->pfi_flags = 0; /* preserve pending interest accounting */
+                pfi_destroy(h, ie, p);
+            }
+            return(q);
+        }
+        p->pfi_flags = (p->pfi_flags & ~CCND_PFI_NONCESZ) + noncesize;
+    }
+    memcpy(p->nonce, nonce, noncesize);
+    return(p);
+}
+
+static int
+pfi_nonce_matches(struct pit_face_item *p,
+                  const unsigned char *nonce, size_t size)
+{
+    if (p == NULL)
+        return(0);
+    if (size != (p->pfi_flags & CCND_PFI_NONCESZ))
+        return(0);
+    if (memcmp(nonce, p->nonce, size) != 0)
+        return(0);
+    return(1);
+}
+
+static struct pit_face_item *
+pfi_copy_nonce(struct ccnd_handle *h, struct interest_entry *ie,
+             struct pit_face_item *p, const struct pit_face_item *src)
+{
+    p = pfi_set_nonce(h, ie, p, src->nonce, src->pfi_flags & CCND_PFI_NONCESZ);
+    return(p);
+}
+
+static int
+pfi_unique_nonce(struct ccnd_handle *h, struct interest_entry *ie,
+                 struct pit_face_item *p)
+{
+    struct pit_face_item *q = NULL;
+    size_t nsize;
+    
+    if (p == NULL)
+        return(1);
+    nsize = (p->pfi_flags & CCND_PFI_NONCESZ);
+    for (q = ie->pfl; q != NULL; q = q->next) {
+        if (q != p && pfi_nonce_matches(q, p->nonce, nsize))
+            return(1);
+    }
+    return(0);
 }
 
 /**
@@ -3460,248 +3473,75 @@ propagate_interest(struct ccnd_handle *h,
 {
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
-    unsigned char *nonce;
-    size_t noncesize;
-    struct ccn_charbuf *cb = NULL;
-    int res;
-    struct propagating_entry *pe = NULL;
-    unsigned char *msg_out = msg;
-    size_t msg_out_size = pi->offset[CCN_PI_E];
-    int usec;
-    int ntap;
-    int delaymask;
-    int extra_delay = 0;
+    struct pit_face_item *p = NULL;
+    struct interest_entry *ie = NULL;
     struct ccn_indexbuf *outbound = NULL;
+    const unsigned char *nonce;
     intmax_t lifetime;
+    ccn_wrappedtime delta;
+    unsigned char cb[TYPICAL_NONCE_SIZE];
+    size_t noncesize;
+    unsigned faceid;
+    int res;
     
+    faceid = face->faceid;
+    hashtb_start(h->interest_tab, e);
+    res = hashtb_seek(e, msg, pi->offset[CCN_PI_B_InterestLifetime], 1);
+    if (res < 0) goto Bail;
+    ie = e->data;
+    if (ie->interest_msg == NULL) {
+        link_interest_entry_to_nameprefix(h, ie, npe);
+        ie->interest_msg = e->key;
+        ie->size = pi->offset[CCN_PI_B_InterestLifetime] + 1;
+    }
     lifetime = ccn_interest_lifetime(msg, pi);
     outbound = get_outbound_faces(h, face, msg, pi, npe);
-    if (outbound->n != 0) {
-        extra_delay = adjust_outbound_for_existing_interests(h, face, msg, pi, npe, outbound);
-        if (extra_delay < 0) {
-            /*
-             * Completely subsumed by other interests.
-             * We do not have to worry about generating a nonce if it
-             * does not have one yet.
-             */
-            if (h->debug & 16)
-                ccnd_debug_ccnb(h, __LINE__, "interest_subsumed", face,
-                                msg_out, msg_out_size);
-            h->interests_dropped += 1;
-            ccn_indexbuf_destroy(&outbound);
-            return(0);
+    if (outbound == NULL) goto Bail;
+    nonce = msg + pi->offset[CCN_PI_B_Nonce];
+    noncesize = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
+    if (noncesize != 0)
+        ccn_ref_tagged_BLOB(CCN_DTAG_Nonce, msg,
+                            pi->offset[CCN_PI_B_Nonce],
+                            pi->offset[CCN_PI_E_Nonce],
+                            &nonce, &noncesize);
+    p = pfi_get(h, ie, faceid, CCND_PFI_DNSTREAM);
+    if (p == NULL) {
+        if (noncesize == 0) {
+            /* This interest has no nonce; generate one before going on */
+            noncesize = (h->noncegen)(h, face, cb);
+            nonce = cb;
         }
+        p = pfi_create(h, ie, faceid, CCND_PFI_DNSTREAM, nonce, noncesize);
+        if (p == NULL) goto Bail;
     }
-    if (pi->offset[CCN_PI_B_Nonce] == pi->offset[CCN_PI_E_Nonce]) {
-        /* This interest has no nonce; add one before going on */
-        size_t nonce_start = 0;
-        cb = charbuf_obtain(h);
-        ccn_charbuf_append(cb, msg, pi->offset[CCN_PI_B_Nonce]);
-        nonce_start = cb->length;
-        (h->appnonce)(h, face, cb);
-        noncesize = cb->length - nonce_start;
-        ccn_charbuf_append(cb, msg + pi->offset[CCN_PI_B_OTHER],
-                               pi->offset[CCN_PI_E] - pi->offset[CCN_PI_B_OTHER]);
-        nonce = cb->buf + nonce_start;
-        msg_out = cb->buf;
-        msg_out_size = cb->length;
+    if (pfi_nonce_matches(p, nonce, noncesize)) {
+        /* Downstream is simply reasserting that it is interested. */
     }
-    else {
-        nonce = msg + pi->offset[CCN_PI_B_Nonce];
-        noncesize = pi->offset[CCN_PI_E_Nonce] - pi->offset[CCN_PI_B_Nonce];
-    }
-    // ZZZZ - obviously this needs to change
-    hashtb_start(h->propagating_tab, e);
-    hashtb_seek(e, nonce, noncesize, 0);
-    pe = e->data;
-    if (pe != NULL && pe->interest_msg == NULL) {
-        unsigned char *m;
-        m = calloc(1, msg_out_size);
-        if (m == NULL) {
-            res = -1;
-            pe = NULL;
-            hashtb_delete(e);
-        }
-        else {
-            memcpy(m, msg_out, msg_out_size);
-            pe->interest_msg = m;
-            pe->size = msg_out_size;
-            pe->faceid = face->faceid;
+    else if (pfi_unique_nonce(h, ie, p)) {
+        
+        if ((p->pfi_flags & CCND_PFI_PENDING) == 0) {
+            p->pfi_flags |= CCND_PFI_PENDING;
             face->pending_interests += 1;
-            if (lifetime < INT_MAX / (1000000 >> 6) * (4096 >> 6))
-                pe->usec = lifetime * (1000000 >> 6) / (4096 >> 6);
-            else
-                pe->usec = INT_MAX;
-            delaymask = 0xFFF;
-            pe->sent = 0;            
-            pe->outbound = outbound;
-            pe->flags = 0;
-            if (pi->scope == 0)
-                pe->flags |= CCN_PR_SCOPE0;
-            else if (pi->scope == 1)
-                pe->flags |= CCN_PR_SCOPE1;
-            else if (pi->scope == 2)
-                pe->flags |= CCN_PR_SCOPE2;
-            pe->fgen = h->forward_to_gen;
-            link_propagating_interest_to_nameprefix(h, pe, npe);
-            ntap = reorder_outbound_using_history(h, npe, pe);
-            if (outbound->n > ntap &&
-                  outbound->buf[ntap] == npe->src &&
-                  extra_delay == 0) {
-                pe->flags |= CCN_PR_UNSENT;
-                delaymask = 0xFF;
-            }
-            outbound = NULL;
-            res = 0;
-            if (ntap > 0)
-                (usec = 1, pe->flags |= CCN_PR_TAP);
-            else
-                usec = (nrand48(h->seed) & delaymask) + 1 + extra_delay;
-            usec = pe_next_usec(h, pe, usec, __LINE__);
-            ccn_schedule_event(h->sched, usec, do_propagate, pe, npe->usec);
         }
     }
     else {
-        ccnd_msg(h, "Interesting - this shouldn't happen much - ccnd.c:%d", __LINE__);
-        /* We must have duplicated an existing nonce, or ENOMEM. */
-        res = -1;
+        /* Nonce has been seen before; do not forward. */
+        p->pfi_flags |= CCND_PFI_SUPDATA;
     }
+    pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
+    if (ie->ev != NULL) {
+        delta = p->expiry - (ccn_wrappedtime)ie->ev->evint;
+        if (delta >= 0x80000000)
+            ccn_schedule_cancel(h->sched, ie->ev);
+    }
+    // XXX - compute usec according to the pfi expiries.
+    int usec = 0;
+    if (ie->ev == NULL)
+        ie->ev = ccn_schedule_event(h->sched, usec, do_propagate, ie, h->wtnow);
+Bail:
     hashtb_end(e);
-    if (cb != NULL)
-        charbuf_release(h, cb);
     ccn_indexbuf_destroy(&outbound);
     return(res);
-}
-
-/**
- * Find the name prefix entry for a given propagating interest.
- */
-static struct nameprefix_entry *
-nameprefix_for_pe(struct ccnd_handle *h, struct propagating_entry *pe)
-{
-    // ZZZZ - maybe this can go away
-    struct nameprefix_entry *npe;
-    struct propagating_entry *p;
-    
-    /* If any significant time is spent here, a direct link is possible, but costs space. */
-    for (p = pe->next; p->faceid != CCN_NOFACEID; p = p->next)
-        continue;
-    npe = (void *)(((char *)p) - offsetof(struct nameprefix_entry, pe_head));
-    return(npe);
-}
-
-/**
- * Replan interest propagation.
- *
- * This comes up when a forwarding entry is added after an interest is
- * already pending.
- */
-static void
-replan_propagation(struct ccnd_handle *h, struct propagating_entry *pe)
-{
-    // ZZZZ Most of this can go away.  Instead, we just need to add a new pit_face_item to the affected interests.
-    struct nameprefix_entry *npe = NULL;
-    struct ccn_indexbuf *x = pe->outbound;
-    struct face *face = NULL;
-    struct face *from = NULL;
-    int i;
-    int k;
-    int n;
-    unsigned faceid;
-    unsigned checkmask = 0;
-    unsigned wantmask = 0;
-    
-    pe->fgen = h->forward_to_gen;
-    if ((pe->flags & (CCN_PR_SCOPE0 | CCN_PR_EQV)) != 0)
-        return;
-    from = face_from_faceid(h, pe->faceid);
-    if (from == NULL)
-        return;
-    npe = nameprefix_for_pe(h, pe);
-    while (npe->parent != NULL && npe->forwarding == NULL)
-        npe = npe->parent;
-    if (npe->fgen != h->forward_to_gen)
-        update_forward_to(h, npe);
-    if (npe->forward_to == NULL || npe->forward_to->n == 0)
-        return;
-    if ((pe->flags & CCN_PR_SCOPE1) != 0)
-        checkmask = CCN_FACE_GG;
-    if ((pe->flags & CCN_PR_SCOPE2) != 0)
-        checkmask = CCN_FACE_GG & ~(from->flags);
-    if ((npe->flags & CCN_FORW_LOCAL) != 0)
-        checkmask = ((from->flags & CCN_FACE_GG) != 0) ? CCN_FACE_GG : (~0);
-    wantmask = checkmask;
-    if (wantmask == CCN_FACE_GG)
-        checkmask |= CCN_FACE_DC;
-    for (n = npe->forward_to->n, i = 0; i < n; i++) {
-        faceid = npe->forward_to->buf[i];
-        face = face_from_faceid(h, faceid);
-        if (face != NULL && faceid != pe->faceid &&
-            ((face->flags & checkmask) == wantmask)) {
-            k = x->n;
-            ccn_indexbuf_set_insert(x, faceid);
-            if (x->n > k && (h->debug & 32) != 0)
-                ccnd_msg(h, "at %d adding %u", __LINE__, faceid);
-        }
-    }
-    // XXX - should account for similar interests, history, etc.
-}
-
-/**
- * Checks whether this Interest message has been seen before by using
- * its Nonce, recording it in the process.  Also, if it has been
- * seen and the original is still propagating, remove the face that
- * the duplicate arrived on from the outbound set of the original.
- */
-static int
-is_duplicate_flooded(struct ccnd_handle *h, unsigned char *msg,
-                     struct ccn_parsed_interest *pi, unsigned faceid)
-{
-    // ZZZZ - Instead of this, check the existing nonces hanging off the interest_entry
-    struct hashtb_enumerator ee;
-    struct hashtb_enumerator *e = &ee;
-    struct propagating_entry *pe = NULL;
-    int res;
-    size_t nonce_start = pi->offset[CCN_PI_B_Nonce];
-    size_t nonce_size = pi->offset[CCN_PI_E_Nonce] - nonce_start;
-    if (nonce_size == 0)
-        return(0);
-    hashtb_start(h->propagating_tab, e);
-    res = hashtb_seek(e, msg + nonce_start, nonce_size, 0);
-    if (res == HT_OLD_ENTRY) {
-        pe = e->data;
-        if (promote_outbound(pe, faceid) != -1)
-            pe->sent++;
-    }
-    hashtb_end(e);
-    return(res == HT_OLD_ENTRY);
-}
-
-/**
- * Finds the longest matching nameprefix, returns the component count or -1 for error.
- */
-/* UNUSED */ int
-nameprefix_longest_match(struct ccnd_handle *h, const unsigned char *msg,
-                         struct ccn_indexbuf *comps, int ncomps)
-{
-    int i;
-    int base;
-    int answer = 0;
-    struct nameprefix_entry *npe = NULL;
-
-    if (ncomps + 1 > comps->n)
-        return(-1);
-    base = comps->buf[0];
-    for (i = 0; i <= ncomps; i++) {
-        npe = hashtb_lookup(h->nameprefix_tab, msg + base, comps->buf[i] - base);
-        if (npe == NULL)
-            break;
-        answer = i;
-        if (npe->children == 0)
-            break;
-    }
-    ccnd_msg(h, "nameprefix_longest_match returning %d", answer);
-    return(answer);
 }
 
 /**
@@ -3718,7 +3558,7 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
     struct nameprefix_entry *parent = NULL;
     struct nameprefix_entry *npe = NULL;
     // ZZZZ - minor changes needed, mostly removing stuff.
-    struct propagating_entry *head = NULL;
+    struct ielinks *head = NULL;
 
     if (ncomps + 1 > comps->n)
         return(-1);
@@ -3729,10 +3569,10 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
             break;
         npe = e->data;
         if (res == HT_NEW_ENTRY) {
-            head = &npe->pe_head;
+            head = &npe->ie_head;
             head->next = head;
             head->prev = head;
-            head->faceid = CCN_NOFACEID;
+            head->npe = NULL;
             npe->parent = parent;
             npe->forwarding = NULL;
             npe->fgen = h->forward_to_gen - 1;
@@ -3838,11 +3678,6 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     if (pi->scope >= 0 && pi->scope < 2 &&
              (face->flags & CCN_FACE_GG) == 0) {
         ccnd_debug_ccnb(h, __LINE__, "interest_outofscope", face, msg, size);
-        h->interests_dropped += 1;
-    }
-    else if (is_duplicate_flooded(h, msg, pi, face->faceid)) {
-        if (h->debug & 16)
-             ccnd_debug_ccnb(h, __LINE__, "interest_dup", face, msg, size);
         h->interests_dropped += 1;
     }
     else {
@@ -4900,9 +4735,9 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
     h->sec = now.tv_sec;
     h->usec = now.tv_usec;
     wt = (ccn_wrappedtime)(h->sec) * WTHZ + h->usec / (1000000 / WTHZ);
-    delta = wt - h->wt;
+    delta = wt - h->wtnow;
     if (delta < (1U << 31))
-        h->wt = wt;
+        h->wtnow = wt;
 }
 
 /**
@@ -5218,7 +5053,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
         return(h);
     h->logger = logger;
     h->loggerdata = loggerdata;
-    h->appnonce = &ccnd_append_plain_nonce;
+    h->noncegen = &ccnd_plain_nonce;
     h->logpid = (int)getpid();
     h->progname = progname;
     h->debug = -1;
@@ -5235,12 +5070,11 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->nameprefix_tab = hashtb_create(sizeof(struct nameprefix_entry), &param);
     param.finalize = &finalize_interest;
     h->interest_tab = hashtb_create(sizeof(struct interest_entry), &param);
-    param.finalize = &finalize_propagating;
-    h->propagating_tab = hashtb_create(sizeof(struct propagating_entry), &param);
     param.finalize = 0;
     h->sparse_straggler_tab = hashtb_create(sizeof(struct sparse_straggler_entry), NULL);
     h->min_stale = ~0;
     h->max_stale = 0;
+    h->send_interest_scratch = ccn_charbuf_create();
     h->unsol = ccn_indexbuf_create();
     h->ticktock.descr[0] = 'C';
     h->ticktock.micros_per_base = 1000000;
@@ -5249,7 +5083,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->starttime = h->sec;
     h->starttime_usec = h->usec;
-    h->wt = (ccn_wrappedtime)(h->sec) * WTHZ + h->usec / (1000000 / WTHZ);
+    h->wtnow = (ccn_wrappedtime)(h->sec) * WTHZ + h->usec / (1000000 / WTHZ);
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
     debugstr = getenv("CCND_DEBUG");
@@ -5321,7 +5155,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     if (listen_on != NULL && listen_on[0] != 0)
         ccnd_msg(h, "CCND_LISTEN_ON=%s", listen_on);
     // if (h->debug & 256)
-        h->appnonce = &ccnd_append_debug_nonce;
+        h->noncegen = &ccnd_debug_nonce;
     /* Do keystore setup early, it takes a while the first time */
     ccnd_init_internal_keystore(h);
     ccnd_reseed(h);
@@ -5383,7 +5217,6 @@ ccnd_destroy(struct ccnd_handle **pccnd)
     hashtb_destroy(&h->dgram_faces);
     hashtb_destroy(&h->faces_by_fd);
     hashtb_destroy(&h->content_tab);
-    hashtb_destroy(&h->propagating_tab);
     hashtb_destroy(&h->interest_tab);
     hashtb_destroy(&h->nameprefix_tab);
     hashtb_destroy(&h->sparse_straggler_tab);
@@ -5402,6 +5235,7 @@ ccnd_destroy(struct ccnd_handle **pccnd)
         h->content_by_accession = NULL;
         h->content_by_accession_window = 0;
     }
+    ccn_charbuf_destroy(&h->send_interest_scratch);
     ccn_charbuf_destroy(&h->scratch_charbuf);
     ccn_charbuf_destroy(&h->autoreg);
     ccn_indexbuf_destroy(&h->skiplinks);
