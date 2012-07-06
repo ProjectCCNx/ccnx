@@ -98,7 +98,8 @@ static void update_forward_to(struct ccnd_handle *h,
                               struct nameprefix_entry *npe);
 static void stuff_and_send(struct ccnd_handle *h, struct face *face,
                            const unsigned char *data1, size_t size1,
-                           const unsigned char *data2, size_t size2);
+                           const unsigned char *data2, size_t size2,
+                           const char *tag, int lineno);
 static void ccn_link_state_init(struct ccnd_handle *h, struct face *face);
 static void ccn_append_link_stuff(struct ccnd_handle *h,
                                   struct face *face,
@@ -106,9 +107,6 @@ static void ccn_append_link_stuff(struct ccnd_handle *h,
 static int process_incoming_link_message(struct ccnd_handle *h,
                                          struct face *face, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
-static struct pit_face_item *
-pfi_get(struct ccnd_handle *h, struct interest_entry *ie,
-             unsigned faceid, unsigned flagmask);
 static struct pit_face_item *
 pfi_create(struct ccnd_handle *h, struct interest_entry *ie,
              unsigned faceid, unsigned flags,
@@ -845,6 +843,9 @@ consume_interest(struct ccnd_handle *h, struct interest_entry *ie)
     
     if (ie->interest_msg == NULL)
         return;
+    if (ie->size > 1) {
+        ccnd_debug_ccnb(h, ie->serial*10000+__LINE__, "consume_interest", NULL, ie->interest_msg, ie->size); // ZZZZ - temp
+    }
     if (ie->pi != NULL) {
         free(ie->pi);
         ie->pi = NULL;
@@ -912,8 +913,6 @@ finalize_interest(struct hashtb_enumerator *e)
     struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
     struct interest_entry *ie = e->data;
     
-    ccnd_debug_ccnb(h, __LINE__, "finalize_interest", NULL,
-                    ie->interest_msg, ie->size); // ZZZZ - temp
     if (ie->interest_msg != NULL)
         consume_interest(h, ie);
     if (ie->ev != NULL)
@@ -1327,7 +1326,7 @@ send_content(struct ccnd_handle *h, struct face *face, struct content_entry *con
     b = content->comps[n - 1];
     if (b - a != 36)
         abort(); /* strange digest length */
-    stuff_and_send(h, face, content->key, a, content->key + b, size - b);
+    stuff_and_send(h, face, content->key, a, content->key + b, size - b, 0, 0);
     ccnd_meter_bump(h, face->meter[FM_DATO], 1);
     h->content_items_sent += 1;
 }
@@ -1698,7 +1697,8 @@ match_interests(struct ccnd_handle *h, struct content_entry *content,
 static void
 stuff_and_send(struct ccnd_handle *h, struct face *face,
                const unsigned char *data1, size_t size1,
-               const unsigned char *data2, size_t size2) {
+               const unsigned char *data2, size_t size2,
+               const char *tag, int lineno) {
     struct ccn_charbuf *c = NULL;
     
     if ((face->flags & CCN_FACE_LINK) != 0) {
@@ -1708,6 +1708,8 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
         ccn_charbuf_append(c, data1, size1);
 		if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
+        if (tag != NULL)
+            ccnd_debug_ccnb(h, lineno, tag, face, c->buf + 4, c->length - 4);
         ccn_stuff_interest(h, face, c);
         ccn_append_link_stuff(h, face, c);
         ccn_charbuf_append_closer(c);
@@ -1719,11 +1721,15 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
         ccn_charbuf_append(c, data1, size1);
 		if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
+        if (tag != NULL)
+            ccnd_debug_ccnb(h, lineno, tag, face, c->buf, c->length);
         ccn_stuff_interest(h, face, c);
         ccn_append_link_stuff(h, face, c);
     }
     else {
         /* avoid a copy in this case */
+        if (tag != NULL)
+            ccnd_debug_ccnb(h, lineno, tag, face, data1, size1);
         ccnd_send(h, face, data1, size1);
         return;
     }
@@ -1973,12 +1979,12 @@ ccnd_destroy_face(struct ccnd_handle *h, unsigned faceid)
 }
 
 /**
- * Remove expired faces from npe->forward_to
+ * Remove expired faces from *ip
  */
 static void
-check_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
+check_forward_to(struct ccnd_handle *h, struct ccn_indexbuf **ip)
 {
-    struct ccn_indexbuf *ft = npe->forward_to;
+    struct ccn_indexbuf *ft = *ip;
     int i;
     int j;
     if (ft == NULL)
@@ -1990,7 +1996,7 @@ check_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
         if (face_from_faceid(h, ft->buf[j]) != NULL)
             ft->buf[i++] = ft->buf[j];
     if (i == 0)
-        ccn_indexbuf_destroy(&npe->forward_to);
+        ccn_indexbuf_destroy(ip);
     else if (i < ft->n)
         ft->n = i;
 }
@@ -2010,13 +2016,9 @@ check_nameprefix_entries(struct ccnd_handle *h)
     
     hashtb_start(h->nameprefix_tab, e);
     for (npe = e->data; npe != NULL; npe = e->data) {
-        if (npe->forward_to != NULL)
-            check_forward_to(h, npe);
         if (  npe->src == CCN_NOFACEID &&
               npe->children == 0 &&
               npe->forwarding == NULL) {
-            if (npe->forward_to != NULL)
-                ccnd_msg(h, "huh - wha? - ccnd.c:%d", __LINE__); 
             head = &npe->ie_head;
             if (head == head->next) {
                 count += 1;
@@ -2028,6 +2030,8 @@ check_nameprefix_entries(struct ccnd_handle *h)
                 continue;
             }
         }
+        check_forward_to(h, &npe->forward_to);
+        check_forward_to(h, &npe->tap);
         npe->osrc = npe->src;
         npe->src = CCN_NOFACEID;
         hashtb_next(e);
@@ -3173,7 +3177,7 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
     // pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
     h->interests_sent += 1;
     ccnd_meter_bump(h, face->meter[FM_INTO], 1);
-    stuff_and_send(h, face, ie->interest_msg, ie->size - 1, c->buf, c->length);
+    stuff_and_send(h, face, ie->interest_msg, ie->size - 1, c->buf, c->length, "interest_to", __LINE__);
     /* caller beware - stuff_and_send can end up consuming the interest */
 }
 
@@ -3213,7 +3217,7 @@ do_propagate(struct ccn_schedule *sched,
             delta = h->wtnow - p->expiry;
             if (wt_compare(p->expiry, h->wtnow) >= 0) {
                 if (h->debug & 2)
-                    ccnd_debug_ccnb(h, __LINE__, "interest_expiry",
+                    ccnd_debug_ccnb(h, ie->serial*10000+__LINE__, "interest_expiry",
                                     face_from_faceid(h, p->faceid),
                                     ie->interest_msg, ie->size);
                 pfi_destroy(h, ie, p);
@@ -3253,6 +3257,7 @@ do_propagate(struct ccn_schedule *sched,
             continue;
         for (i = 0; i < 2 && dnstream[i] != NULL; i++) {
             if (dnstream[i]->faceid != p->faceid) {
+                h->interest_faceid = dnstream[i]->faceid;
                 p->expiry = dnstream[i]->expiry;
                 p = pfi_copy_nonce(h, ie, p, dnstream[i]);
                 break;
@@ -3263,6 +3268,8 @@ do_propagate(struct ccn_schedule *sched,
             continue;
         }
         send_interest(h, ie, face, p);
+        if (ie->interest_msg == NULL)
+            return(0);
     }
     /* Determine when we need to run again */
     ie->ev = ev;
@@ -3330,6 +3337,7 @@ wt_compare(ccn_wrappedtime a, ccn_wrappedtime b)
     return(delta > 0);
 }
 
+#if 0
 static struct pit_face_item *
 pfi_get(struct ccnd_handle *h, struct interest_entry *ie,
              unsigned faceid, unsigned flagmask)
@@ -3341,6 +3349,7 @@ pfi_get(struct ccnd_handle *h, struct interest_entry *ie,
             break;
     return(p);
 }
+#endif
 
 static struct pit_face_item *
 pfi_create(struct ccnd_handle *h, struct interest_entry *ie,
@@ -3383,17 +3392,45 @@ pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
     free(p);
 }
 
+/**
+ * Find the pit face item with the given flag set,
+ * or create it if not present.
+ *
+ * New items are appended to the end of the list
+ */
+static struct pit_face_item *
+pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
+         unsigned faceid, unsigned pfi_flag)
+{
+    struct pit_face_item *p;
+    struct pit_face_item **pp;
+    
+    for (pp = &ie->pfl, p = ie->pfl; p != NULL; pp = &p->next, p = p->next) {
+        if (p->faceid == faceid && (p->pfi_flags & pfi_flag) != 0)
+            return(p);
+    }
+    p = calloc(1, sizeof(*p));
+    if (p != NULL) {
+        p->faceid = faceid;
+        p->pfi_flags = pfi_flag;
+        p->expiry = h->wtnow;
+        *pp = p;
+    }
+    return(p);
+}
+
 static void
 pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
                              struct pit_face_item *p, intmax_t lifetime)
 {
-    ccn_wrappedtime delta = lifetime / (4096 / WTHZ);
+    ccn_wrappedtime delta;
     int minlifetime = 4096 / 4;
     
     // ZZZZ - should also enforce a maximum
     if (lifetime < minlifetime)
         lifetime = minlifetime;
-    delta = lifetime / (4096 / WTHZ);
+    delta = (lifetime + (4096 / WTHZ - 1)) / (4096 / WTHZ);
+    // ZZZZ what if this shortens the expiry?
     p->expiry = h->wtnow + delta;
 }
 
@@ -3456,9 +3493,9 @@ pfi_unique_nonce(struct ccnd_handle *h, struct interest_entry *ie,
     nsize = (p->pfi_flags & CCND_PFI_NONCESZ);
     for (q = ie->pfl; q != NULL; q = q->next) {
         if (q != p && pfi_nonce_matches(q, p->nonce, nsize))
-            return(1);
+            return(0);
     }
-    return(0);
+    return(1);
 }
 
 /**
@@ -3482,6 +3519,7 @@ propagate_interest(struct ccnd_handle *h,
     unsigned char cb[TYPICAL_NONCE_SIZE];
     size_t noncesize;
     unsigned faceid;
+    int i;
     int res;
     
     faceid = face->faceid;
@@ -3489,6 +3527,9 @@ propagate_interest(struct ccnd_handle *h,
     res = hashtb_seek(e, msg, pi->offset[CCN_PI_B_InterestLifetime], 1);
     if (res < 0) goto Bail;
     ie = e->data;
+    if (res == HT_NEW_ENTRY) {
+        ie->serial = ++h->iserial;
+    }
     if (ie->interest_msg == NULL) {
         link_interest_entry_to_nameprefix(h, ie, npe);
         ie->interest_msg = e->key;
@@ -3504,21 +3545,14 @@ propagate_interest(struct ccnd_handle *h,
                             pi->offset[CCN_PI_B_Nonce],
                             pi->offset[CCN_PI_E_Nonce],
                             &nonce, &noncesize);
-    p = pfi_get(h, ie, faceid, CCND_PFI_DNSTREAM);
-    if (p == NULL) {
-        if (noncesize == 0) {
-            /* This interest has no nonce; generate one before going on */
-            noncesize = (h->noncegen)(h, face, cb);
-            nonce = cb;
-        }
-        p = pfi_create(h, ie, faceid, CCND_PFI_DNSTREAM, nonce, noncesize);
-        if (p == NULL) goto Bail;
+    else {
+        /* This interest has no nonce; generate one before going on */
+        noncesize = (h->noncegen)(h, face, cb);
+        nonce = cb;
     }
-    if (pfi_nonce_matches(p, nonce, noncesize)) {
-        /* Downstream is simply reasserting that it is interested. */
-    }
-    else if (pfi_unique_nonce(h, ie, p)) {
-        
+    p = pfi_seek(h, ie, faceid, CCND_PFI_DNSTREAM);
+    p = pfi_set_nonce(h, ie, p, nonce, noncesize);
+    if (nonce == cb || pfi_unique_nonce(h, ie, p)) {
         if ((p->pfi_flags & CCND_PFI_PENDING) == 0) {
             p->pfi_flags |= CCND_PFI_PENDING;
             face->pending_interests += 1;
@@ -3533,6 +3567,10 @@ propagate_interest(struct ccnd_handle *h,
         delta = p->expiry - (ccn_wrappedtime)ie->ev->evint;
         if (delta >= 0x80000000)
             ccn_schedule_cancel(h->sched, ie->ev);
+    }
+    for (i = 0; i < outbound->n; i++) {
+        /* no strategy to this, yet */
+        pfi_seek(h, ie, outbound->buf[i], CCND_PFI_UPSTREAM);
     }
     // XXX - compute usec according to the pfi expiries.
     int usec = 0;
