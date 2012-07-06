@@ -101,6 +101,7 @@ struct ccnd_handle {
     ccn_wrappedtime wtnow;          /**< corresponding wrapped time */
     long starttime;                 /**< ccnd start time, in seconds */
     unsigned starttime_usec;        /**< ccnd start time fractional part */
+    unsigned iserial;
     struct ccn_schedule *sched;     /**< our schedule */
     struct ccn_charbuf *send_interest_scratch; /**< for use by send_interest */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
@@ -301,6 +302,7 @@ struct interest_entry {
     struct ccn_scheduled_event *ev; /**< next scheduled event */
     const unsigned char *interest_msg; /**< pending interest message */
     unsigned size;                  /**< size of interest message */
+    unsigned serial;
 };
 
 #define TYPICAL_NONCE_SIZE 12       /**< actual allocated size may differ */
