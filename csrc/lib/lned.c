@@ -19,11 +19,11 @@
 
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <poll.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -75,7 +75,10 @@ term_width(int fd)
 static int
 shuttle(int peer, const char *prompt)
 {
-    struct pollfd fds[3];
+    fd_set readfds;
+    fd_set writefds;
+    fd_set errorfds;
+    struct timeval tv;
     char line[MAX_TERM_WIDTH];
     unsigned char buf[32];   /* scratch buffer for reading */
     ssize_t sres = 0; /* read/write results */
@@ -85,20 +88,10 @@ shuttle(int peer, const char *prompt)
     int nmax;       /* limit on n, based on window */
     int ip = 0;     /* insertion point */
     int pl = 0;     /* prompt length */
-    int nfds = 0;   /* number of fds to poll */
-    int timeout = -1; /* timeout for poll */
     int shows = 0;  /* set if the line is showing */
     int res;
 
     nmax = term_width(0);
-    memset(fds, 0, sizeof(fds));
-    fds[0].fd = peer;
-    fds[0].events = POLLIN;
-    fds[1].fd = 0;
-    fds[1].events = POLLIN;
-    fds[2].fd = 1;
-    fds[2].events = POLLOUT;
-    nfds = 2;
     pl = 0;
     if (prompt != NULL) {
         pl = strlen(prompt);
@@ -119,9 +112,18 @@ shuttle(int peer, const char *prompt)
             ip = pl;
             continue;
         }
-        res = poll(fds, nfds, shows ? timeout : 50);
+        FD_ZERO(&readfds);
+        FD_ZERO(&writefds);
+        FD_ZERO(&errorfds);
+        FD_SET(0, &readfds);
+        FD_SET(peer, &readfds);
+        FD_SET(0, &errorfds);
+        FD_SET(peer, &errorfds);
+        memset(&tv, 0, sizeof(tv));
+        tv.tv_usec = 50000;
+        res = select(peer + 1, &readfds, &writefds, &errorfds, shows ? NULL : &tv);
         if (res < 0) {
-            perror("poll");
+            perror("select");
             if (errno == EINTR)
                 res = 0;
             else
@@ -134,7 +136,9 @@ shuttle(int peer, const char *prompt)
                 shows = 1;
             }
         }
-        if ((fds[0].revents & POLLIN) != 0) {
+        if (FD_ISSET(0, &errorfds) || FD_ISSET(peer, &errorfds))
+            return(-1);
+        if (FD_ISSET(peer, &readfds)) {
             if (shows != 0)
                 shows = takedown(ip, n - ip);
             sres = read(peer, buf, sizeof(buf));
@@ -144,16 +148,9 @@ shuttle(int peer, const char *prompt)
                 return(-1);
             write(1, buf, sres);
         }
-        if ((fds[1].revents & POLLNVAL) != 0) {
-            /* could be a broken poll implementation */
-            nfds = 1;
-            fds[1].revents = POLLIN;
-            timeout = 150;
-            fcntl(0, F_SETFL, O_NONBLOCK);
-        }
         ch = 0;
         sres = 0;
-        if ((fds[1].revents & POLLIN) != 0) {
+        if (FD_ISSET(0, &readfds)) {
             sres = read(0, buf, 1);
             if (sres == 0 || (sres < 0 && errno != EAGAIN))
                 ch = -1;
