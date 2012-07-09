@@ -846,10 +846,6 @@ consume_interest(struct ccnd_handle *h, struct interest_entry *ie)
     if (ie->size > 1) {
         ccnd_debug_ccnb(h, ie->serial*10000+__LINE__, "consume_interest", NULL, ie->interest_msg, ie->size); // ZZZZ - temp
     }
-    if (ie->pi != NULL) {
-        free(ie->pi);
-        ie->pi = NULL;
-    }
     for (p = ie->pfl; p != NULL; p = p->next) {
         if ((p->pfi_flags & CCND_PFI_PENDING) != 0) {
             face = face_from_faceid(h, p->faceid);
@@ -921,7 +917,6 @@ finalize_interest(struct hashtb_enumerator *e)
         next = p->next;
         free(p);
     }
-    if (ie->pi != NULL) abort();
 }
 
 /**
@@ -1566,7 +1561,7 @@ consume_matching_interests(struct ccnd_handle *h,
         if (face != NULL && is_pending_on(h, p, face->faceid) == 0)
             continue;
         if (ccn_content_matches_interest(content_msg, content_size, 0, pc,
-                                         p->interest_msg, p->size, p->pi)) {
+                                         p->interest_msg, p->size, NULL)) {
             for (x = p->pfl; x != NULL; x = x->next) {
                 if ((x->pfi_flags & CCND_PFI_PENDING) != 0)
                     face_send_queue_insert(h, face_from_faceid(h, x->faceid),
