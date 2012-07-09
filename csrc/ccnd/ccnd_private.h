@@ -298,7 +298,6 @@ struct ielinks {
 struct interest_entry {
     struct ielinks ll;
     struct pit_face_item *pfl;      /**< upstream and downstream faces */
-    struct ccn_parsed_interest *pi;	/**< cached parse info (may be NULL) */
     struct ccn_scheduled_event *ev; /**< next scheduled event */
     const unsigned char *interest_msg; /**< pending interest message */
     unsigned size;                  /**< size of interest message */
