@@ -3570,7 +3570,9 @@ propagate_interest(struct ccnd_handle *h,
     }
     for (i = 0; i < outbound->n; i++) {
         /* no strategy to this, yet */
-        pfi_seek(h, ie, outbound->buf[i], CCND_PFI_UPSTREAM);
+        p = pfi_seek(h, ie, outbound->buf[i], CCND_PFI_UPSTREAM);
+        if (ie->ev != NULL && p->expiry == h->wtnow)
+            ccn_schedule_cancel(h->sched, ie->ev);
     }
     // XXX - compute usec according to the pfi expiries.
     int usec = 0;
@@ -4105,6 +4107,7 @@ Bail:
                 ccn_indexbuf_append_element(h->unsol, content->accession);
             }
         }
+        // ZZZZ - review whether the following is actually needed
         for (c = 0; c < CCN_CQ_N; c++) {
             q = face->q[c];
             if (q != NULL) {
