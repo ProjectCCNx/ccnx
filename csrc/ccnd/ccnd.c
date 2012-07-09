@@ -844,7 +844,7 @@ consume_interest(struct ccnd_handle *h, struct interest_entry *ie)
     if (ie->interest_msg == NULL)
         return;
     if (ie->size > 1) {
-        ccnd_debug_ccnb(h, ie->serial*10000+__LINE__, "consume_interest", NULL, ie->interest_msg, ie->size); // ZZZZ - temp
+        ccnd_debug_ccnb(h, __LINE__, "consume_interest", NULL, ie->interest_msg, ie->size); // ZZZZ - temp
     }
     for (p = ie->pfl; p != NULL; p = p->next) {
         if ((p->pfi_flags & CCND_PFI_PENDING) != 0) {
@@ -855,6 +855,7 @@ consume_interest(struct ccnd_handle *h, struct interest_entry *ie)
         }
     }
     if (ie->ll.next != NULL) {
+        ccnd_msg(h, "Unlinking ie %u from npe %p", ie->serial, ie->ll.npe);
         ie->ll.next->prev = ie->ll.prev;
         ie->ll.prev->next = ie->ll.next;
         ie->ll.next = ie->ll.prev = NULL;
@@ -896,6 +897,8 @@ link_interest_entry_to_nameprefix(struct ccnd_handle *h,
     ll->next = head;
     ll->prev = head->prev;
     ll->prev->next = ll->next->prev = ll;
+    ll->npe = npe;
+    ccnd_msg(h, "Linking ie %u to npe %p", ie->serial, npe);
 }
 
 /**
@@ -3526,9 +3529,15 @@ propagate_interest(struct ccnd_handle *h,
         ie->serial = ++h->iserial;
     }
     if (ie->interest_msg == NULL) {
+        struct ccn_parsed_interest xpi = {0};
+        int xres;
         link_interest_entry_to_nameprefix(h, ie, npe);
         ie->interest_msg = e->key;
         ie->size = pi->offset[CCN_PI_B_InterestLifetime] + 1;
+        /* Ugly bit, this.  Clear the extension byte. */
+        ((unsigned char *)(intptr_t)ie->interest_msg)[ie->size - 1] = 0;
+        xres = ccn_parse_interest(ie->interest_msg, ie->size, &xpi, NULL);
+        if (xres < 0) abort();
     }
     lifetime = ccn_interest_lifetime(msg, pi);
     outbound = get_outbound_faces(h, face, msg, pi, npe);
