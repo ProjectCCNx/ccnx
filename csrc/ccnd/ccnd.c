@@ -4699,6 +4699,11 @@ ccnd_run(struct ccnd_handle *h)
             sleep(1);
             continue;
         }
+        if (res > 0) {
+            /* we need a fresh current time for setting interest expiries */
+            struct ccn_timeval dummy;
+            h->ticktock.gettime(&h->ticktock, &dummy);
+        }
         for (i = 0; res > 0 && i < h->nfds; i++) {
             if (h->fds[i].revents != 0) {
                 res--;
