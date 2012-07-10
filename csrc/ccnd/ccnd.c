@@ -1296,7 +1296,6 @@ shutdown_client_fd(struct ccnd_handle *h, int fd)
     hashtb_delete(e);
     hashtb_end(e);
     check_comm_file(h);
-    reap_needed(h, 250000);
 }
 
 /**
@@ -3237,7 +3236,6 @@ do_propagate(struct ccn_schedule *sched,
     }
     if (pending == 0) {
         consume_interest(h, ie);
-        reap_needed(h, 0);
         return(0);        
     }
     // ZZZZ - need to update the outgoing faces
@@ -4297,10 +4295,8 @@ get_dgram_source(struct ccnd_handle *h, struct face *face,
                 hashtb_delete(e);
                 source = NULL;
             }
-            else {
+            else
                 ccnd_new_face_msg(h, source);
-                reap_needed(h, CCN_INTEREST_LIFETIME_MICROSEC);
-            }
         }
     }
     hashtb_end(e);
@@ -5227,6 +5223,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->ipv4_faceid = h->ipv6_faceid = CCN_NOFACEID;
     ccnd_listen_on(h, listen_on);
     clean_needed(h);
+    reap_needed(h, 55000);
     age_forwarding_needed(h);
     ccnd_internal_client_start(h);
     free(sockname);
