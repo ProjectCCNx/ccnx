@@ -128,6 +128,7 @@ static int
 pfi_unique_nonce(struct ccnd_handle *h, struct interest_entry *ie,
                  struct pit_face_item *p);
 static int wt_compare(ccn_wrappedtime, ccn_wrappedtime);
+
 /**
  * Frequency of wrapped timer
  *
@@ -838,29 +839,17 @@ content_skiplist_next(struct ccnd_handle *h, struct content_entry *content)
 static void
 consume_interest(struct ccnd_handle *h, struct interest_entry *ie)
 {
-    struct face *face = NULL;
-    struct pit_face_item *p = NULL;
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    int res;
     
-    if (ie->interest_msg == NULL)
-        return;
-    if (ie->size > 1) {
-        ccnd_debug_ccnb(h, __LINE__, "consume_interest", NULL, ie->interest_msg, ie->size); // ZZZZ - temp
-    }
-    for (p = ie->pfl; p != NULL; p = p->next) {
-        if ((p->pfi_flags & CCND_PFI_PENDING) != 0) {
-            face = face_from_faceid(h, p->faceid);
-            if (face != NULL)
-                face->pending_interests -= 1;
-            p->faceid = CCN_NOFACEID;
-        }
-    }
-    if (ie->ll.next != NULL) {
-        ccnd_msg(h, "Unlinking ie %u from npe %p", ie->serial, ie->ll.npe);
-        ie->ll.next->prev = ie->ll.prev;
-        ie->ll.prev->next = ie->ll.next;
-        ie->ll.next = ie->ll.prev = NULL;
-    }
-    ie->interest_msg = NULL; /* part of hashtb, don't free this */
+    ccnd_debug_ccnb(h, __LINE__, "consume_interest", NULL, ie->interest_msg, ie->size); // ZZZZ - temp
+    hashtb_start(h->interest_tab, e);
+    res = hashtb_seek(e, ie->interest_msg, ie->size - 1, 1);
+    if (res != HT_OLD_ENTRY)
+        abort();
+    hashtb_delete(e);
+    hashtb_end(e);
 }    
 
 /**
@@ -911,15 +900,28 @@ finalize_interest(struct hashtb_enumerator *e)
     struct pit_face_item *next = NULL;
     struct ccnd_handle *h = hashtb_get_param(e->ht, NULL);
     struct interest_entry *ie = e->data;
-    
-    if (ie->interest_msg != NULL)
-        consume_interest(h, ie);
+    struct face *face = NULL;
+
     if (ie->ev != NULL)
         ccn_schedule_cancel(h->sched, ie->ev);
+    if (ie->ll.next != NULL) {
+        ccnd_msg(h, "Unlinking ie %u from npe %p", ie->serial, ie->ll.npe);
+        ie->ll.next->prev = ie->ll.prev;
+        ie->ll.prev->next = ie->ll.next;
+        ie->ll.next = ie->ll.prev = NULL;
+        ie->ll.npe = NULL;
+    }
     for (p = ie->pfl; p != NULL; p = next) {
         next = p->next;
+        if ((p->pfi_flags & CCND_PFI_PENDING) != 0) {
+            face = face_from_faceid(h, p->faceid);
+            if (face != NULL)
+                face->pending_interests -= 1;
+        }
         free(p);
     }
+    ie->pfl = NULL;
+    ie->interest_msg = NULL; /* part of hashtb, don't free this */
 }
 
 /**
@@ -3175,7 +3177,6 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
     h->interests_sent += 1;
     ccnd_meter_bump(h, face->meter[FM_INTO], 1);
     stuff_and_send(h, face, ie->interest_msg, ie->size - 1, c->buf, c->length, "interest_to", __LINE__);
-    /* caller beware - stuff_and_send can end up consuming the interest */
 }
 
 /**
@@ -3214,7 +3215,7 @@ do_propagate(struct ccn_schedule *sched,
             delta = h->wtnow - p->expiry;
             if (wt_compare(p->expiry, h->wtnow) >= 0) {
                 if (h->debug & 2)
-                    ccnd_debug_ccnb(h, ie->serial*10000+__LINE__, "interest_expiry",
+                    ccnd_debug_ccnb(h, __LINE__, "interest_expiry",
                                     face_from_faceid(h, p->faceid),
                                     ie->interest_msg, ie->size);
                 pfi_destroy(h, ie, p);
@@ -3238,7 +3239,6 @@ do_propagate(struct ccn_schedule *sched,
         consume_interest(h, ie);
         return(0);        
     }
-    // ZZZZ - need to update the outgoing faces
     /* Send the interests out */
     for (p = ie->pfl; p != NULL; p = next) {
         next = p->next;
@@ -3265,7 +3265,7 @@ do_propagate(struct ccn_schedule *sched,
         }
         send_interest(h, ie, face, p);
         if (ie->interest_msg == NULL)
-            return(0);
+            abort();
     }
     /* Determine when we need to run again */
     ie->ev = ev;
@@ -4470,6 +4470,36 @@ process_internal_client_buffer(struct ccnd_handle *h)
 }
 
 /**
+ * Scheduled event for deferred processing of internal client
+ */
+static int
+process_icb_action(
+    struct ccn_schedule *sched,
+    void *clienth,
+    struct ccn_scheduled_event *ev,
+    int flags)
+{
+    struct ccnd_handle *h = clienth;
+    
+    if ((flags & CCN_SCHEDULE_CANCEL) != 0)
+        return(0);
+    process_internal_client_buffer(h);
+    return(0);
+}
+
+/**
+ * Schedule the processing of internal client results
+ *
+ * This little dance keeps us from destroying an interest
+ * entry while we are in the middle of processing it.
+ */
+static void
+process_internal_client_buffer_needed(struct ccnd_handle *h)
+{
+    ccn_schedule_event(h->sched, 0, process_icb_action, NULL, 0);
+}
+
+/**
  * Handle errors after send() or sendto().
  * @returns -1 if error has been dealt with, or 0 to defer sending.
  */
@@ -4555,7 +4585,7 @@ ccnd_send(struct ccnd_handle *h,
     if (face == h->face0) {
         ccnd_meter_bump(h, face->meter[FM_BYTO], size);
         ccn_dispatch_message(h->internal_client, (void *)data, size);
-        process_internal_client_buffer(h);
+        process_internal_client_buffer_needed(h);
         return;
     }
     if ((face->flags & CCN_FACE_DGRAM) == 0)
