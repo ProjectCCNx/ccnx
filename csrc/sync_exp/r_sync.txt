@@ -1,0 +1,25 @@
+sync_depends.h:    // from r_sync_enumerate (if enumIndex > 0)
+sync_depends.h:    // or from r_sync_notify_after (if enumIndex == 0)
+sync_depends.h:    int (* r_sync_enumerate)(struct sync_depends_data *sd,
+sync_depends.h:    int (* r_sync_lookup)(struct sync_depends_data *sd,
+sync_depends.h:    int (* r_sync_local_store)(struct sync_depends_data *sd,
+SyncActions.c:#include <ccnr/ccnr_sync.h>
+SyncActions.c:    res |= r_sync_lookup(base->client_handle, interest, cb);
+SyncActions.c:            res |= r_sync_local_store(base->client_handle, cob);
+SyncActions.c:        int res = r_sync_enumerate(base->client_handle, nin);
+SyncActions.c:        r_sync_notify_after(base->client_handle, commitPoint);
+SyncActions.c:        res = r_sync_enumerate(ccnr, nin);
+SyncActions.c:                        ret = r_sync_upcall_store(ccnr, CCN_UPCALL_CONTENT, info);
+SyncActions.c:    int res = r_sync_lookup(base->client_handle, interest, NULL);
+SyncActions.c:            lookupRes = r_sync_lookup(ccnr, interest, content);
+SyncBase.c:#include <ccnr/ccnr_sync.h>
+SyncTest.c:#include <ccnr/ccnr_sync.h>
+SyncTest.c:r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_hwm item)
+SyncTest.c:    // TBD: fix this if the one in ccnr_sync.c changes!
+SyncTest.c:r_sync_enumerate(struct ccnr_handle *ccnr,
+SyncTest.c:r_sync_lookup(struct ccnr_handle *ccnr,
+SyncTest.c:r_sync_upcall_store(struct ccnr_handle *ccnr,
+SyncTest.c:r_sync_local_store(struct ccnr_handle *ccnr,
+SyncUtil.c:#include <ccnr/ccnr_sync.h>
+SyncUtil.c:        res = r_sync_local_store(base->client_handle, cob);
+SyncUtil.c:    int res = r_sync_lookup(ccnr, interest, cb);

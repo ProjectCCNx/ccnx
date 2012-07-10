@@ -1,0 +1,43 @@
+SyncBase.h:    ccnr_hwm highWater;             // high water mark for accession numbers
+SyncHashCache.h:    ccnr_hwm stablePoint;               /**< stable point (roots only) */
+SyncPrivate.h:    ccnr_hwm stableTarget;
+SyncPrivate.h:    ccnr_hwm stableStored;
+SyncPrivate.h:    ccnr_hwm highWater;             // high water via SyncNotifyContent
+SyncPrivate.h:    ccnr_hwm stablePoint;           // stable point for this root
+sync_depends.h:struct ccnr_hwm;                    // opaque, defined by client?
+SyncActions.c:fetchStablePoint(struct SyncBaseStruct *base, ccnr_hwm *ptr) {
+SyncActions.c:                            *ptr = ccnr_hwm_decode(base->client_handle, val);
+SyncActions.c:storeStablePoint(struct SyncBaseStruct *base, ccnr_hwm point) {
+SyncActions.c:                      ccnr_hwm_encode(base->client_handle, point));
+SyncActions.c:isRootStableEnough(struct SyncRootStruct *root, ccnr_hwm target) {
+SyncActions.c:            ccnr_hwm chw = ce->stablePoint;
+SyncActions.c:            if (ccnr_hwm_compare(base->client_handle, chw, root->priv->stablePoint) > 0) {
+SyncActions.c:                if (ccnr_hwm_compare(base->client_handle, chw, priv->stableTarget) > 0)
+SyncActions.c:                             ccnr_hwm_encode(base->client_handle, chw));
+SyncActions.c:        && ccnr_hwm_compare(base->client_handle, priv->stableTarget, priv->stableStored) > 0) {
+SyncActions.c:                         ccnr_hwm_encode(base->client_handle, priv->stableTarget));
+SyncActions.c:        ccnr_hwm commitPoint = CCNR_NULL_HWM;
+SyncActions.c:                    root->priv->highWater = ccnr_hwm_update(base->client_handle,
+SyncActions.c:        base->highWater = ccnr_hwm_update(base->client_handle, base->highWater, item);
+SyncActions.c:                        ccnr_hwm hwm = root->priv->highWater;
+SyncActions.c:                        ce->stablePoint = hwm;
+SyncActions.c:                            if (hwm != CCNR_NULL_HWM) {
+SyncActions.c:                                         ccnr_hwm_encode(root->base->client_handle, hwm));
+SyncActions.c:                    ccnr_hwm hwm = root->priv->highWater;
+SyncActions.c:                    ce->stablePoint = hwm;
+SyncActions.c:                        if (hwm != CCNR_NULL_HWM) {
+SyncActions.c:                                     ccnr_hwm_encode(root->base->client_handle, hwm));
+SyncBase.c:            priv->stableTarget = ccnr_hwm_update(base->client_handle, priv->stableTarget, mark);
+SyncTest.c:r_sync_notify_after(struct ccnr_handle *ccnr, ccnr_hwm item)
+SyncTest.c:ccnr_hwm_encode(struct ccnr_handle *ccnr, ccnr_hwm hwm)
+SyncTest.c:    return(hwm);
+SyncTest.c:PUBLIC ccnr_hwm
+SyncTest.c:ccnr_hwm_decode(struct ccnr_handle *ccnr, uintmax_t encoded)
+SyncTest.c:ccnr_acc_in_hwm(struct ccnr_handle *ccnr, ccnr_accession a, ccnr_hwm hwm)
+SyncTest.c:    return(a <= hwm);
+SyncTest.c:PUBLIC ccnr_hwm
+SyncTest.c:ccnr_hwm_update(struct ccnr_handle *ccnr, ccnr_hwm hwm, ccnr_accession a)
+SyncTest.c:    return(a <= hwm ? hwm : a);
+SyncTest.c:PUBLIC ccnr_hwm
+SyncTest.c:ccnr_hwm_merge(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y)
+SyncTest.c:ccnr_hwm_compare(struct ccnr_handle *ccnr, ccnr_hwm x, ccnr_hwm y)
