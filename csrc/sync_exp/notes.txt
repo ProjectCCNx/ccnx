@@ -1,6 +1,6 @@
 gcc -o sync_diff.o -c -I.. -I../.. -I ../../include sync_diff.c
 
-gcc -g -o sync_track -I. -I.. -I../.. -I../../include sync_track.c sync_diff.c IndexSorter.c SyncBase.c SyncHashCache.c SyncNode.c SyncRoot.c SyncTreeWorker.c SyncUtil.c ../lib/{ccn_client,ccn_charbuf,ccn_indexbuf,ccn_coding,ccn_dtag_table,ccn_schedule,ccn_extend_dict,ccn_buf_decoder,ccn_uri,ccn_buf_encoder,ccn_bloom,ccn_name_util,ccn_face_mgmt,ccn_reg_mgmt,ccn_digest,ccn_interest,ccn_keystore,ccn_seqwriter,ccn_signing,ccn_sockcreate,ccn_traverse,ccn_match,hashtb,ccn_merkle_path_asn1,ccn_sockaddrutil,ccn_setup_sockaddr_un,ccn_bulkdata,ccn_versioning,ccn_header,ccn_fetch,ccn_btree,ccn_btree_content,ccn_btree_store}.o -lcrypto
+gcc -g -o sync_trax -I. -I.. -I../.. -I../../include sync_trax.c sync_diff.c ccn_sync.c IndexSorter.c SyncBase.c SyncHashCache.c SyncNode.c SyncRoot.c SyncTreeWorker.c SyncUtil.c  ../lib/{ccn_client,ccn_charbuf,ccn_indexbuf,ccn_coding,ccn_dtag_table,ccn_schedule,ccn_extend_dict,ccn_buf_decoder,ccn_uri,ccn_buf_encoder,ccn_bloom,ccn_name_util,ccn_face_mgmt,ccn_reg_mgmt,ccn_digest,ccn_interest,ccn_keystore,ccn_seqwriter,ccn_signing,ccn_sockcreate,ccn_traverse,ccn_match,hashtb,ccn_merkle_path_asn1,ccn_sockaddrutil,ccn_setup_sockaddr_un,ccn_bulkdata,ccn_versioning,ccn_header,ccn_fetch,ccn_btree,ccn_btree_content,ccn_btree_store}.o -lcrypto
 
 cd CCN/ccnx/csrc/sync_exp
 . ./setup
@@ -8,15 +8,15 @@ Setup
 
 StartTest
 
-WithCCND 0 gdb ./sync_track
+WithCCND 0 gdb ./sync_trax
 
-run -d 9 -topo /parc/sync -prefix /root/beer -secs 600
+run -d 77 -topo /parc/sync -prefix /root/beer -secs 600
 
 
 StoreFile 1 small
 StoreFile 2 small
-StoreFile 1 small
-StoreFile 2 small
+StoreFile 1 small; StoreFile 2 small
+StoreFile 1 big; StoreFile 2 big
 
 EndTest
 

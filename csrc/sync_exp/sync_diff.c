@@ -546,20 +546,25 @@ doPreload(struct sync_diff_data *sdd,
 
 // call the client to add the name from R's current position (in sdd->cbY),
 // then advance the tree worker for R
+// return < 0 to stop the comparison (without error)
 static int
 addNameFromCompare(struct sync_diff_data *sdd) {
     struct SyncRootStruct *root = sdd->root;
     struct ccn_charbuf *name = sdd->cbY;
     // callback for new name
     struct SyncTreeWorkerEntry *tweR = SyncTreeWorkerTop(sdd->twY);
-    sdd->namesAdded++;
-    int res = 0;
-    if (sdd->add != NULL && sdd->add->add != NULL)
-        res = sdd->add->add(sdd->add, name);
+    if (sdd->add != NULL && sdd->add->add != NULL) {
+        int res = sdd->add->add(sdd->add, name);
+        if (res < 0) {
+            sdd->state = sync_diff_state_done;
+            return res;
+        }
+    }
     // advance R
+    sdd->namesAdded++;
     tweR->pos++;
     tweR->count++;
-    return res;
+    return 1;
 }
 
 /*
@@ -644,7 +649,8 @@ doComparison(struct sync_diff_data *sdd) {
                     return comparisonFailed(sdd, "bad cache entry for R", __LINE__);
             } else {
                 // R is a leaf, so add it (and advance R)
-                addNameFromCompare(sdd);
+                if (addNameFromCompare(sdd) < 0)
+                    return 1;
             }
         } else {
             // L and R are both not empty
@@ -780,7 +786,8 @@ doComparison(struct sync_diff_data *sdd) {
                         tweL->pos++;
                     } else {
                         // L > R, so add R (and advance R)
-                        addNameFromCompare(sdd);
+                        if (addNameFromCompare(sdd) < 0)
+                            return 1;
                     }
                 } else {
                     // R is a leaf, but L is a node
@@ -795,7 +802,8 @@ doComparison(struct sync_diff_data *sdd) {
                     switch (scr) {
                         case SCR_before:
                             // R < Min(L), so add R (and advance R)
-                            addNameFromCompare(sdd);
+                            if (addNameFromCompare(sdd) < 0)
+                                return 1;
                             break;
                         case SCR_max:
                             // R == Max(L), advance both

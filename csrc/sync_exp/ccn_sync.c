@@ -29,16 +29,17 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <sys/time.h>
 #include <ccn/ccn.h>
 #include <ccn/coding.h>
 #include <ccn/digest.h>
 #include <ccn/schedule.h>
-#include <ccn/sync.h>
 #include <ccn/uri.h>
 #include <ccn/ccn_private.h>
 
+#include <sync/sync.h>
 #include <sync/sync_diff.h>
 #include <sync/SyncUtil.h>
 #include <sync/SyncNode.h>
@@ -103,7 +104,7 @@ struct ccns_handle {
 /*
  * Utility routines to allocate/deallocate ccns_slice structures
  */
-struct ccns_slice *
+extern struct ccns_slice *
 ccns_slice_create() {
     struct ccns_slice *s = calloc(1, sizeof(*s));
     if (s == NULL)
@@ -122,7 +123,7 @@ ccns_slice_create() {
     }
     return(s);
 }
-void
+extern void
 ccns_slice_destroy(struct ccns_slice **sp) {
     struct ccns_slice *s = *sp;
     if (s != NULL) {
@@ -143,7 +144,7 @@ ccns_slice_destroy(struct ccns_slice **sp) {
 /*
  * Utility routine to add a clause to a ccns_slice structure
  */
-int
+extern int
 ccns_slice_add_clause(struct ccns_slice *s, struct ccn_charbuf *c) {
     struct ccn_charbuf **clauses = NULL;
     struct ccn_charbuf *clause;
@@ -173,7 +174,7 @@ Cleanup:
  * Utility routine to set the topo and prefix fields to copies of the
  * passed in charbufs
  */
-int
+extern int
 ccns_slice_set_topo_prefix(struct ccns_slice *s,
                            struct ccn_charbuf *t,
                            struct ccn_charbuf *p) {
@@ -282,7 +283,7 @@ slice_parse(struct ccns_slice *s, const unsigned char *p, size_t size) {
  * @returns a ccn_charbuf with the ccnb encoded Name of the slice.
  */
 
-int
+extern int
 ccns_slice_name(struct ccn_charbuf *nm, struct ccns_slice *s)
 {
     struct ccn_charbuf *c;
@@ -326,7 +327,7 @@ Cleanup:
  *  on successful return.
  * @returns 0 on success, -1 otherwise.
  */
-int
+extern int
 ccns_read_slice(struct ccn *h, struct ccn_charbuf *name,
                 struct ccns_slice *slice) {
     struct ccn_parsed_ContentObject pco_space = { 0 };
@@ -778,20 +779,17 @@ each_round(struct ccn_schedule *sched,
 // start_round schedules a new comparison round,
 // cancelling any previously scheduled round
 static void
-start_round(struct sync_diff_data *sdd, int micros) {
-    struct SyncRootStruct *root = sdd->root;
-    struct SyncBaseStruct *base = root->base;
-    struct ccns_handle *ch = sdd->client_data;
+start_round(struct ccns_handle *ch, int micros) {
     struct ccn_scheduled_event *ev = ch->ev;
-    if (ev != NULL && ev->action != NULL && ev->evdata == sdd) {
-        // this one may wait too long, kick it now!
-        ccn_schedule_cancel(base->sd->sched, ev);
-    }
-    ch->ev = ccn_schedule_event(base->sd->sched,
-                               micros,
-                               each_round,
-                               ch,
-                               0);
+    if (ev != NULL && ev->action != NULL && ev->evdata == ch)
+        // get rid of the existing event
+        ccn_schedule_cancel(ch->sd->sched, ev);
+    // start a new event
+    ch->ev = ccn_schedule_event(ch->sd->sched,
+                                micros,
+                                each_round,
+                                ch,
+                                0);
     return;
 }
 
@@ -821,7 +819,7 @@ my_response(struct ccn_closure *selfp,
             if (sdd == NULL) break;
             struct ccns_handle *ch = sdd->client_data;
             free_fetch_data(ch, fd);
-            start_round(sdd, 10);
+            start_round(ch, 10);
             ret = CCN_UPCALL_RESULT_OK;
             break;
         }
@@ -887,7 +885,7 @@ my_response(struct ccn_closure *selfp,
                 }
                 if (flags != local_flags_null) {
                     // from start_interest
-                    start_round(sdd, 10);
+                    start_round(ch, 10);
                 } else {
                     // from sync_diff
                     sync_diff_note_node(sdd, ce);
@@ -1077,10 +1075,13 @@ my_add(struct sync_diff_add_closure *ac, struct ccn_charbuf *name) {
     char *here = "sync_track.my_add";
     struct sync_diff_data *sdd = ac->sdd;
     struct ccns_handle *ch = sdd->client_data;
-    if (ch->debug >= CCNL_INFO) {
-        if (name != NULL)
-            SyncNoteUri(sdd->root, here, "adding", name);
-        else {
+    if (name == NULL) {
+        // end of comparison, so fire off another round
+        struct SyncRootStruct *root = sdd->root;
+        struct ccn_charbuf *hash = ch->next_ce->hash;
+        struct SyncHashCacheEntry *ce = ch->next_ce;
+        int delay = 1000000;
+        if (ch->debug >= CCNL_INFO) {
             char temp[1024];
             int pos = 0;
             ch->add_accum += sdd->namesAdded;
@@ -1088,13 +1089,6 @@ my_add(struct sync_diff_add_closure *ac, struct ccn_charbuf *name) {
                             (intmax_t) sdd->namesAdded, (intmax_t) ch->add_accum);
             SyncNoteSimple(sdd->root, here, temp);
         }
-    }
-    if (name == NULL) {
-        // end of comparison, so fire off another round
-        struct SyncRootStruct *root = sdd->root;
-        struct ccn_charbuf *hash = ch->next_ce->hash;
-        struct SyncHashCacheEntry *ce = ch->next_ce;
-        int delay = 1000000;
         if (sdd->state == sync_diff_state_done) {
             // successful difference, so next_ce is covered
             ce->state |= SyncHashState_covered;
@@ -1116,7 +1110,7 @@ my_add(struct sync_diff_add_closure *ac, struct ccn_charbuf *name) {
                 ch->next_ce = ce;
             }
         }
-        start_round(sdd, delay);
+        start_round(ch, delay);
     } else {
         // accumulate the names
         struct SyncNameAccum *acc = ch->namesToAdd;
@@ -1125,6 +1119,19 @@ my_add(struct sync_diff_add_closure *ac, struct ccn_charbuf *name) {
             ch->namesToAdd = acc;
         }
         SyncNameAccumAppend(acc, SyncCopyName(name), 0);
+        if (ch->debug >= CCNL_INFO)
+            SyncNoteUri(sdd->root, here, "adding", name);
+        if (ch->callback != NULL) {
+            // callback per name
+            int res = ch->callback(ch,
+                                   ((ch->last_ce != NULL) ? ch->last_ce->hash : NULL),
+                                   ((ch->next_ce != NULL) ? ch->next_ce->hash : NULL),
+                                   name);
+            if (res < 0) {
+                // stop the comparison here
+                
+            }
+        }
     }
     return 0;
 }
@@ -1158,7 +1165,7 @@ struct sync_depends_client_methods client_methods = {
     my_r_sync_msg, NULL, NULL, NULL, NULL, NULL
 };
 
-struct ccns_handle *
+extern struct ccns_handle *
 ccns_open(struct ccn *h,
           struct ccns_slice *slice,
           ccns_callback callback,
@@ -1220,17 +1227,23 @@ ccns_open(struct ccn *h,
     
     base = SyncNewBase(sd);
     ch->base = base;
+    struct sync_depends_sync_methods *sync_methods = ch->sd->sync_methods;
+    if (sync_methods!= NULL && sync_methods->sync_start != NULL) {
+        // read the initial options, start life for the base
+        sync_methods->sync_start(ch->sd, NULL); 
+    }
     
-    base->priv->heartbeatMicros = 1000000;
-    base->priv->rootAdviseLifetime = 20;
-    base->priv->maxComparesBusy = 8;
-    base->debug = CCNL_WARNING; // how to fix this?
-    ch->debug = CCNL_WARNING; // how to fix this?
+    // make the debug levels agree
+    int debug = base->debug; // TBD: how to let client set this?
+    if (debug < CCNL_WARNING) debug = CCNL_WARNING;
+    base->debug = debug;
+    ch->debug = debug;
     root = SyncAddRoot(base, base->priv->syncScope,
                        slice->topo, slice->prefix, NULL);
     ch->root = root;
+    
     // register the root advise interest listener
-    struct ccn_charbuf *prefix = SyncCopyName(sdd->root->topoPrefix);
+    struct ccn_charbuf *prefix = sdd->root->topoPrefix;
     ccn_name_append_str(prefix, "\xC1.S.ra");
     ccn_name_append(prefix, root->sliceHash->buf, root->sliceHash->length);
     struct ccn_closure *action = NEW_STRUCT(1, ccn_closure);
@@ -1244,17 +1257,79 @@ ccns_open(struct ccn *h,
         ch = NULL;
     } else {
         // start the very first round
-        start_round(sdd, 10);
+        start_round(ch, 10);
     }
     return ch;
 }
 
-void ccns_close(struct ccns_handle **sh,
-                struct ccn_charbuf *rhash,
-                struct ccn_charbuf *pname) {
-    // TBD: implement this
+extern void
+ccns_close(struct ccns_handle **sh,
+           struct ccn_charbuf *rhash,
+           struct ccn_charbuf *pname) {
+    // Use this to shut down a ccns_handle and return the resources
+    // This should work any legal state!
+    // TBD: fill in pname argument
     if (sh != NULL) {
+        struct ccns_handle *ch = *sh;
         *sh = NULL;
+        if (ch != NULL) {
+            struct SyncRootStruct *root = ch->root;
+            
+            struct ccn_closure *registered = ch->registered;
+            if (registered != NULL) {
+                // break the link, remove this particular registration
+                registered->data = NULL;
+                ccn_set_interest_filter_with_flags(ch->sd->ccn,
+                                                   root->topoPrefix,
+                                                   registered,
+                                                   0);
+            }
+            // cancel my looping event
+            struct ccn_scheduled_event *ev = ch->ev;
+            if (ev != NULL) {
+                ch->ev = NULL;
+                ev->evdata = NULL;
+                ccn_schedule_cancel(ch->sd->sched, ev);
+            }
+            // stop any differencing
+            struct sync_diff_data *sdd = ch->sdd;
+            if (sdd != NULL) {
+                // no more differencing
+                ch->sdd = NULL;
+                sync_diff_stop(sdd);
+            }
+            // stop any updating
+            struct sync_update_data *ud = ch->ud;
+            if (ud != NULL) {
+                ch->ud = NULL;
+                stop_sync_update(ud);
+            }
+            // stop any fetching
+            while (ch->fd != NULL) {
+                free_fetch_data(ch, ch->fd);
+            }
+            
+            if (rhash != NULL) {
+                // save the current root hash
+                rhash->length = 0;
+                if (root->currentHash != NULL)
+                    ccn_charbuf_append_charbuf(rhash, root->currentHash);
+            }
+            
+            // get rid of the root
+            ch->root = NULL;
+            SyncRemRoot(root);
+            
+            // get rid of the base
+            if (ch->base != NULL) {
+                struct sync_depends_sync_methods *sync_methods = ch->sd->sync_methods;
+                ch->base = NULL;
+                if (sync_methods!= NULL && sync_methods->sync_stop != NULL) {
+                    sync_methods->sync_stop(ch->sd, NULL); 
+                }
+            }
+
+        }
     }
 }
 

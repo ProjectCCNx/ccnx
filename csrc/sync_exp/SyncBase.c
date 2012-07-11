@@ -108,6 +108,25 @@ sync_start_default(struct sync_depends_data *sd,
     if (enable <= 0) return -1;
     
     char *debugStr = getenv("CCNS_DEBUG");
+    int debug = 0;
+    // TBD: use a centralized definition that is NOT in Repo
+    if (strcasecmp(debugStr, "NONE") == 0)
+        debug = CCNL_NONE;
+    else if (strcasecmp(debugStr, "SEVERE") == 0)
+        debug = CCNL_SEVERE;
+    else if (strcasecmp(debugStr, "ERROR") == 0)
+        debug = CCNL_ERROR;
+    else if (strcasecmp(debugStr, "WARNING") == 0)
+        debug = CCNL_WARNING;
+    else if (strcasecmp(debugStr, "INFO") == 0)
+        debug = CCNL_INFO;
+    else if (strcasecmp(debugStr, "FINE") == 0)
+        debug = CCNL_FINE;
+    else if (strcasecmp(debugStr, "FINER") == 0)
+        debug = CCNL_FINER;
+    else if (strcasecmp(debugStr, "FINEST") == 0)
+        debug = CCNL_FINEST;
+    base->debug = debug;
     
     // enable/disable storing of sync tree nodes
     // default is to store
