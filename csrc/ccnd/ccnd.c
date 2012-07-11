@@ -128,6 +128,8 @@ static int
 pfi_unique_nonce(struct ccnd_handle *h, struct interest_entry *ie,
                  struct pit_face_item *p);
 static int wt_compare(ccn_wrappedtime, ccn_wrappedtime);
+static void
+update_npe_children(struct ccnd_handle *h, struct nameprefix_entry *npe, unsigned faceid);
 
 /**
  * Frequency of wrapped timer
@@ -2391,6 +2393,8 @@ ccnd_reg_prefix(struct ccnd_handle *h,
             res = -1;
     }
     hashtb_end(e);
+    if (res >= 0)
+        update_npe_children(h, npe, faceid);
     return(res);
 }
 
@@ -3047,7 +3051,7 @@ update_forward_to(struct ccnd_handle *h, struct nameprefix_entry *npe)
 static struct ccn_indexbuf *
 get_outbound_faces(struct ccnd_handle *h,
     struct face *from,
-    unsigned char *msg,
+    const unsigned char *msg,
     struct ccn_parsed_interest *pi,
     struct nameprefix_entry *npe)
 {
@@ -3584,6 +3588,64 @@ Bail:
     hashtb_end(e);
     ccn_indexbuf_destroy(&outbound);
     return(res);
+}
+
+/**
+ * We have a FIB change - accelerate forwarding of existing interests
+ */
+static void
+update_npe_children(struct ccnd_handle *h, struct nameprefix_entry *npe, unsigned faceid)
+{
+    struct hashtb_enumerator ee;
+    struct hashtb_enumerator *e = &ee;
+    struct face *fface = NULL;
+    struct ccn_parsed_interest pi;
+    struct pit_face_item *p = NULL;
+    struct interest_entry *ie = NULL;
+    struct nameprefix_entry *x = NULL;
+    struct ccn_indexbuf *ob = NULL;
+    int i;
+    int usec = 0;
+
+    hashtb_start(h->interest_tab, e);
+    for (ie = e->data; ie != NULL; ie = e->data) {
+        for (x = ie->ll.npe; x != NULL; x = x->parent) {
+            if (x == npe) {
+                for (fface = NULL, p = ie->pfl; p != NULL; p = p->next) {
+                    if (p->faceid == faceid) {
+                        if ((p->pfi_flags & CCND_PFI_DNSTREAM) != 0) {
+                            fface = NULL;
+                            break;
+                        }
+                    }
+                    else if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
+                        if (fface == NULL || (fface->flags & CCN_FACE_GG) == 0)
+                            fface = face_from_faceid(h, p->faceid);
+                    }
+                }
+                if (fface != NULL) {
+                    ccn_parse_interest(ie->interest_msg, ie->size, &pi, NULL);
+                    ob = get_outbound_faces(h, fface, ie->interest_msg,
+                                            &pi, ie->ll.npe);
+                    for (i = 0; i < ob->n; i++) {
+                        if (ob->buf[i] == faceid) {
+                            p = pfi_seek(h, ie, faceid, CCND_PFI_UPSTREAM);
+                            if (ie->ev != NULL && wt_compare(h->wtnow + 4, ie->ev->evint) < 0) {
+                                ccn_schedule_cancel(h->sched, ie->ev);
+                                ie->ev = ccn_schedule_event(h->sched, usec, do_propagate, ie, h->wtnow);
+                                usec += 200;
+                            }
+                            break;
+                        }
+                    }
+                    ccn_indexbuf_destroy(&ob);
+                }
+                break;
+            }
+        }
+        hashtb_next(e);
+    }
+    hashtb_end(e);
 }
 
 /**
