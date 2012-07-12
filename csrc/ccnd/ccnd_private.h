@@ -57,6 +57,7 @@ struct interest_entry;
 struct pit_face_item;
 struct content_tree_node;
 struct ccn_forwarding;
+struct ccn_strategy;
 
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
@@ -281,6 +282,16 @@ struct sparse_straggler_entry {
     struct content_entry *content;
 };
 
+/**
+ * State for the strategy engine
+ *
+ * This is very embryonic right now.
+ */
+struct ccn_strategy {
+    struct ccn_scheduled_event *ev; /**< for time-based strategy event */
+    int state;
+};
+
 struct ielinks;
 struct ielinks {
     struct ielinks *next;           /**< next in list */
@@ -297,8 +308,9 @@ struct ielinks {
  */
 struct interest_entry {
     struct ielinks ll;
+    struct ccn_strategy strategy;   /**< state of strategy engine */
     struct pit_face_item *pfl;      /**< upstream and downstream faces */
-    struct ccn_scheduled_event *ev; /**< next scheduled event */
+    struct ccn_scheduled_event *ev; /**< next interest timeout */
     const unsigned char *interest_msg; /**< pending interest message */
     unsigned size;                  /**< size of interest message */
     unsigned serial;
@@ -326,7 +338,6 @@ struct pit_face_item {
 #define CCND_PFI_DNSTREAM 0x1000    /**< Tracks downstream (recvd interest) */
 #define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
 #define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
-#define CCND_PFI_STRATEGY 0x8000    /**< Wakeup for recomputing strategy */
 
 /**
  * The nameprefix hash table is keyed by the Component elements of
