@@ -321,11 +321,12 @@ struct pit_face_item {
     unsigned char nonce[TYPICAL_NONCE_SIZE]; /**< nonce bytes */
 };
 #define CCND_PFI_NONCESZ  0x00FF    /**< Mask for actual nonce size */
-#define CCND_PFI_PENDING  0x0100    /**< Pending for immediate data */
-#define CCND_PFI_SUPDATA  0x0200    /**< Suppressed data reply */
+#define CCND_PFI_UPSTREAM 0x0100    /**< Tracks upstream (sent interest) */
+#define CCND_PFI_UPENDING 0x0200    /**< Has been sent upstream */
 #define CCND_PFI_DNSTREAM 0x1000    /**< Tracks downstream (recvd interest) */
-#define CCND_PFI_UPSTREAM 0x2000    /**< Tracks upstream (sent interest) */
-#define CCND_PFI_STRATEGY 0x4000    /**< Wakeup for recomputing strategy */
+#define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
+#define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
+#define CCND_PFI_STRATEGY 0x8000    /**< Wakeup for recomputing strategy */
 
 /**
  * The nameprefix hash table is keyed by the Component elements of
@@ -334,7 +335,7 @@ struct pit_face_item {
 struct nameprefix_entry {
     struct ielinks ie_head;      /**< list head for interest entries */
     struct ccn_indexbuf *forward_to; /**< faceids to forward to */
-    struct ccn_indexbuf *tap;    /**< faceids to forward to as tap*/
+    struct ccn_indexbuf *tap;    /**< faceids to forward to as tap */
     struct ccn_forwarding *forwarding; /**< detailed forwarding info */
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
     int children;                /**< number of children */
