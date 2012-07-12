@@ -130,6 +130,12 @@ pfi_unique_nonce(struct ccnd_handle *h, struct interest_entry *ie,
 static int wt_compare(ccn_wrappedtime, ccn_wrappedtime);
 static void
 update_npe_children(struct ccnd_handle *h, struct nameprefix_entry *npe, unsigned faceid);
+static void
+pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
+                             struct pit_face_item *p, intmax_t lifetime);
+static struct pit_face_item *
+pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
+         unsigned faceid, unsigned pfi_flag);
 
 /**
  * Frequency of wrapped timer
@@ -3166,6 +3172,7 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
     if (p != NULL) {
         delta = p->expiry - h->wtnow;
         lifetime = (intmax_t)delta * 4096 / WTHZ;
+        p->pfi_flags |= CCND_PFI_UPENDING;
     }
     /* clip lifetime against various limits here */
     ccn_charbuf_reset(c);
@@ -3181,6 +3188,66 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
     h->interests_sent += 1;
     ccnd_meter_bump(h, face->meter[FM_INTO], 1);
     stuff_and_send(h, face, ie->interest_msg, ie->size - 1, c->buf, c->length, "interest_to", __LINE__);
+}
+
+struct nameprefix_entry *
+get_fib_npe(struct ccnd_handle *h, struct interest_entry *ie)
+{
+    struct nameprefix_entry *npe;
+    
+    for (npe = ie->ll.npe; npe != NULL; npe = npe->parent)
+        if (npe->forwarding != NULL)
+            return(npe);
+    return(NULL);
+}
+
+enum ccn_strategy_op {
+    CCNST_NOP,
+    CCNST_FIRST,
+    CCNST_TIMER,
+};
+
+static void
+strategy_callout(struct ccnd_handle *h, enum ccn_strategy_op op,
+                 struct interest_entry *ie, struct pit_face_item *pfi)
+{
+    struct pit_face_item *p = NULL;
+    struct pit_face_item *q = NULL;
+    struct nameprefix_entry *npe = NULL;
+    struct ccn_indexbuf *tap = NULL;
+    unsigned best = CCN_NOFACEID;
+    intmax_t x = 4096 / 4;
+    
+    switch (op) {
+        case CCNST_NOP:
+            break;
+        case CCNST_FIRST:
+            npe = ie->ll.npe;
+            best = npe->src;
+            if (best == CCN_NOFACEID)
+                best = npe->osrc;
+            npe = get_fib_npe(h, ie);
+            if (npe != NULL)
+                tap = npe->tap;
+            npe = get_fib_npe(h, ie);
+            for (p = ie->pfl; p!= NULL; p = p->next) {
+                if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
+                    if (p->faceid == best ||
+                        (tap != NULL && ccn_indexbuf_member(tap, p->faceid))) {
+                        p->expiry = h->wtnow;
+                        q = pfi_seek(h, ie, best, CCND_PFI_STRATEGY);
+                        pfi_set_expiry_from_lifetime(h, ie, q, x);
+                    }
+                    else
+                        pfi_set_expiry_from_lifetime(h, ie, p, x); 
+                }
+            }
+            break;
+        case CCNST_TIMER:
+            adjust_predicted_response(h, ie, 1);
+            pfi_destroy(h, ie, pfi);
+            break;
+    }
 }
 
 /**
@@ -3202,21 +3269,19 @@ do_propagate(struct ccn_schedule *sched,
     struct pit_face_item *p = NULL;
     struct pit_face_item *next = NULL;
     struct pit_face_item *dnstream[2] = { NULL, NULL };
-    ccn_wrappedtime delta;
     
     if (ie->ev == ev)
         ie->ev = NULL;
-    if (ie->interest_msg == NULL)
-        return(0);
     if (flags & CCN_SCHEDULE_CANCEL)
         return(0);
-    if (0) {
-        adjust_predicted_response(h, ie, 1);
+    for (p = ie->pfl; p != NULL; p = p->next) {
+        if ((p->pfi_flags & CCND_PFI_STRATEGY) != 0) {
+            strategy_callout(h, CCNST_TIMER, ie, p);
+            break;
+        }
     }
     for (pending = 0, p = ie->pfl; p != NULL; p = next) {
-        next = p->next;
         if ((p->pfi_flags & CCND_PFI_DNSTREAM) != 0) {
-            delta = h->wtnow - p->expiry;
             if (wt_compare(p->expiry, h->wtnow) >= 0) {
                 if (h->debug & 2)
                     ccnd_debug_ccnb(h, __LINE__, "interest_expiry",
