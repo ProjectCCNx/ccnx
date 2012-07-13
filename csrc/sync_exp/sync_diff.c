@@ -31,13 +31,13 @@
 #include <ccn/sync.h>
 #include <ccn/uri.h>
 
-#include <sync/IndexSorter.h>
-#include <sync/SyncNode.h>
-#include <sync/SyncPrivate.h>
-#include <sync/SyncTreeWorker.h>
+#include "IndexSorter.h"
+#include "SyncNode.h"
+#include "SyncPrivate.h"
+#include "SyncTreeWorker.h"
 
-#include <sync/sync_depends.h>
-#include <sync/sync_diff.h>
+#include "sync_depends.h"
+#include "sync_diff.h"
 
 static int nodeSplitTrigger = 4000;     // in bytes, triggers node split
 static int hashSplitTrigger = 17;       // trigger for splitting based on hash (n/255)

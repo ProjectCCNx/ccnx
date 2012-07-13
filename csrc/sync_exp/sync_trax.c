@@ -46,14 +46,14 @@
 #include <ccn/charbuf.h>
 #include <ccn/uri.h>
 
-#include <sync/SyncMacros.h>
-#include <sync/SyncBase.h>
-#include <sync/SyncNode.h>
-#include <sync/SyncPrivate.h>
-#include <sync/SyncUtil.h>
-#include <sync/sync.h>
-#include <sync/sync_depends.h>
-#include <sync/sync_diff.h>
+#include "SyncMacros.h"
+#include "SyncBase.h"
+#include "SyncNode.h"
+#include "SyncPrivate.h"
+#include "SyncUtil.h"
+#include "sync.h"
+#include "sync_depends.h"
+#include "sync_diff.h"
 
 // types
 

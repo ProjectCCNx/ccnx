@@ -29,7 +29,7 @@
 #include <ccn/indexbuf.h>
 #include <ccn/schedule.h>
 #include <ccn/uri.h>
-#include <ccnr/ccnr_msg.h>
+#include <ccn/loglevels.h>
 
 #include "SyncMacros.h"
 #include "SyncPrivate.h"

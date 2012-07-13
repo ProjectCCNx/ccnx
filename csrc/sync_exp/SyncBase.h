@@ -22,6 +22,7 @@
 #define CCN_SyncBase
 
 #include <sys/types.h>
+#include <ccn/loglevels.h>
 #include <stdint.h>
 
 #include "sync_depends.h"
@@ -60,17 +61,6 @@ struct SyncErrStruct {
 
 // Logging support (veneer over sync_depends logging)
 void sync_msg(struct SyncBaseStruct *base, const char *fmt, ...);
-
-// TBD: move these to a better interface, cloned from ccnr_msg.h
-#define CCNL_NONE       0   /**< No logging at all */
-#define CCNL_SEVERE     3   /**< Severe errors */
-#define CCNL_ERROR      5   /**< Configuration errors */
-#define CCNL_WARNING    7   /**< Something might be wrong */
-#define CCNL_INFO       9   /**< Low-volume informational */
-#define CCNL_FINE      11   /**< Debugging */
-#define CCNL_FINER     13   /**< More debugging */
-#define CCNL_FINEST    15   /**< MORE DEBUGGING YET */
-
 
 // add a new error record
 // this routine should be called from the SET_SYNC_ERR macro

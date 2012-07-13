@@ -29,12 +29,12 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/time.h>
-#include <ccnr/ccnr_msg.h>
-#include <ccnr/ccnr_sync.h>
+//#include <ccnr/ccnr_sync.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
+#include <ccn/loglevels.h>
 #include <ccn/uri.h>
 
 

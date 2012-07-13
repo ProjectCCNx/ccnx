@@ -27,7 +27,7 @@
 #include <string.h>
 #include <strings.h>
 #include <ccn/ccn.h>
-#include <ccnr/ccnr_msg.h>
+#include <ccn/loglevels.h>
 
 static struct SyncHashCacheEntry *
 localFreeEntry(struct SyncHashCacheEntry *ce) {

@@ -39,11 +39,11 @@
 #include <ccn/uri.h>
 #include <ccn/ccn_private.h>
 
-#include <sync/sync.h>
-#include <sync/sync_diff.h>
-#include <sync/SyncUtil.h>
-#include <sync/SyncNode.h>
-#include <sync/SyncPrivate.h>
+#include "sync.h"
+#include "sync_diff.h"
+#include "SyncUtil.h"
+#include "SyncNode.h"
+#include "SyncPrivate.h"
 
 #define CCNL_NONE       0   /**< No logging at all */
 #define CCNL_SEVERE     3   /**< Severe errors */

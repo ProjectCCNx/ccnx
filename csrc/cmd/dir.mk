@@ -12,9 +12,10 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-LDLIBS = -L../lib $(MORE_LDLIBS) -lccn
+LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 EXPATLIBS = -lexpat
 CCNLIBDIR = ../lib
+SYNCOBJ = $(CCNLIBDIR)/ccn_sync.o
 
 INSTALLED_PROGRAMS = \
     ccn_ccnbtoxml ccn_splitccnb ccnc ccndumpnames ccnnamelist ccnrm \
@@ -24,7 +25,7 @@ INSTALLED_PROGRAMS = \
     ccnseqwriter ccnsimplecat \
     ccnfilewatch ccninitkeystore \
     ccnlibtest \
-	ccnsyncwatch ccnsyncslice \
+    ccnsyncwatch ccnsyncslice \
     $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
@@ -177,11 +178,11 @@ ccnfilewatch: ccnfilewatch.o
 ccnsnew: ccnsnew.o
 	$(CC) $(CFLAGS) -o $@ ccnsnew.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
-ccnsyncwatch: ccnsyncwatch.o
-	$(CC) $(CFLAGS) -o $@ ccnsyncwatch.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+ccnsyncwatch: ccnsyncwatch.o $(SYNCOBJ)
+	$(CC) $(CFLAGS) -o $@ ccnsyncwatch.o $(SYNCOBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
-ccnsyncslice: ccnsyncslice.o
-	$(CC) $(CFLAGS) -o $@ ccnsyncslice.o $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
+ccnsyncslice: ccnsyncslice.o $(SYNCOBJ)
+	$(CC) $(CFLAGS) -o $@ ccnsyncslice.o $(SYNCOBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
