@@ -1,5 +1,5 @@
 /**
- * @file ccn/sync.h
+ * @file sync/sync.h
  * 
  * Sync library interface.
  * Defines a library interface to the Sync protocol facilities implemented
@@ -32,10 +32,22 @@
 struct ccns_slice;
 struct ccns_handle;
 
-typedef int (*ccns_callback)(struct ccns_handle *ccns,
-                             struct ccn_charbuf *lhash,
-                             struct ccn_charbuf *rhash,
-                             struct ccn_charbuf *pname);
+/**
+ * sync_name_closure is a closure used to notify the client
+ * as each new name is added to the collection by calling the note_name
+ * procedure.  The data field refers to client data.
+ * The ccns field is filled in by ccns_open.  The count field is for client use.
+ * The storage for the closure belongs to the client at all times.
+ */
+struct sync_name_closure {
+    int (* note_name)(struct sync_name_closure *nc,
+                      struct ccn_charbuf *lhash,
+                      struct ccn_charbuf *rhash,
+                      struct ccn_charbuf *pname);
+    struct ccns_handle *ccns;
+    void *data;
+    uint64_t count;
+};
 
 /**
  * Allocate a ccns_slice structure
@@ -111,7 +123,7 @@ int ccns_delete_slice(struct ccn *h, struct ccn_charbuf *name);
  * Start notification of addition of names to a sync slice.
  * @param h is the ccn_handle on which to communicate.
  * @param slice is the slice to be opened.
- * @param callback is the procedure which will be called for each new name,
+ * @param nc is the closure which will be called for each new name,
  *  and returns 0 to continue enumeration, -1 to stop further enumeration.
  *  NOTE: It is not safe to call ccns_close from within the callback.
  * @param rhash
@@ -124,11 +136,12 @@ int ccns_delete_slice(struct ccn *h, struct ccn_charbuf *name);
  *  the sync tree represented by the root hash rhash.
  * @returns a pointer to a new sync handle, which will be freed at close.
  */
-struct ccns_handle *ccns_open(struct ccn *h,
-                                      struct ccns_slice *slice,
-                                      ccns_callback callback,
-                                      struct ccn_charbuf *rhash,
-                                      struct ccn_charbuf *pname);
+struct ccns_handle *
+ccns_open(struct ccn *h,
+          struct ccns_slice *slice,
+          struct sync_name_closure *nc,
+          struct ccn_charbuf *rhash,
+          struct ccn_charbuf *pname);
 
 /**
  * Stop notification of changes of names in a sync slice and free the handle.
@@ -138,7 +151,10 @@ struct ccns_handle *ccns_open(struct ccn *h,
  * @param pname if non-NULL will be filled in with the starting name
  *  for enumeration within the sync tree represented by the root hash rhash.
  */
-void ccns_close(struct ccns_handle **sh, struct ccn_charbuf *rhash, struct ccn_charbuf *pname);
+void
+ccns_close(struct ccns_handle **sh,
+           struct ccn_charbuf *rhash,
+           struct ccn_charbuf *pname);
 
 #endif
 

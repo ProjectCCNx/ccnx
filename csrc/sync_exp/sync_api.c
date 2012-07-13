@@ -1,5 +1,5 @@
 /**
- * @file csrc/ccn_sync.c
+ * @file sync/sync_api.c
  *
  * Sync library interface.
  * Implements a library interface to the Sync protocol facilities implemented
@@ -85,7 +85,7 @@ struct ccns_handle {
     struct SyncBaseStruct *base;
     struct SyncRootStruct *root;
     struct ccn_scheduled_event *ev;
-    ccns_callback callback;
+    struct sync_name_closure *nc;
     struct SyncHashCacheEntry *last_ce;
     struct SyncHashCacheEntry *next_ce;
     struct SyncNameAccum *namesToAdd;
@@ -1121,15 +1121,17 @@ my_add(struct sync_diff_add_closure *ac, struct ccn_charbuf *name) {
         SyncNameAccumAppend(acc, SyncCopyName(name), 0);
         if (ch->debug >= CCNL_INFO)
             SyncNoteUri(sdd->root, here, "adding", name);
-        if (ch->callback != NULL) {
+        if (ch->nc != NULL) {
             // callback per name
-            int res = ch->callback(ch,
-                                   ((ch->last_ce != NULL) ? ch->last_ce->hash : NULL),
-                                   ((ch->next_ce != NULL) ? ch->next_ce->hash : NULL),
-                                   name);
+            struct ccn_charbuf *lhash = ((ch->last_ce != NULL)
+                                         ? ch->last_ce->hash : NULL);
+            struct ccn_charbuf *rhash = ((ch->next_ce != NULL)
+                                         ? ch->next_ce->hash : NULL);
+            int res = ch->nc->note_name(ch->nc, lhash, rhash, name);
             if (res < 0) {
                 // stop the comparison here
-                
+                // TBD: anything else to do?
+                return -1;
             }
         }
     }
@@ -1168,13 +1170,17 @@ struct sync_depends_client_methods client_methods = {
 extern struct ccns_handle *
 ccns_open(struct ccn *h,
           struct ccns_slice *slice,
-          ccns_callback callback,
+          struct sync_name_closure *nc,
           struct ccn_charbuf *rhash,
           struct ccn_charbuf *pname) {
     struct ccns_handle *ch = calloc(1, sizeof(*ch));
     struct SyncBaseStruct *base = NULL;
     struct SyncRootStruct *root = NULL;
-    struct sync_depends_data *sd = calloc(1, sizeof(*sd));
+    struct sync_depends_data *sd = NULL;
+
+    if (nc == NULL || nc->note_name == NULL) return NULL;
+    
+    sd = calloc(1, sizeof(*sd));
     sd->client_methods = &client_methods;
     sd->ccn = h;
     sd->sched = ccn_get_schedule(h);
@@ -1193,32 +1199,32 @@ ccns_open(struct ccn *h,
         }
     }
     ch->sd = sd;
-    ch->callback = callback;
+    ch->nc = nc;
+    nc->ccns = ch;
     ch->ccn = h;
     
-    // gen the closures for 
+    // gen the closure for diff data
     struct sync_diff_data *sdd = calloc(1, sizeof(*sdd));
-    struct sync_diff_get_closure get_s;
-    struct sync_diff_add_closure add_s;
-    sdd->add = &add_s;
-    sdd->add->sdd = sdd;
-    sdd->add->add = my_add;
-    sdd->add->data = ch;
-    sdd->get = &get_s;
-    sdd->get->sdd = sdd;
-    sdd->get->get = my_get;
-    sdd->get->data = ch;
+    struct sync_diff_get_closure *gc = calloc(1, sizeof(*gc));
+    struct sync_diff_add_closure *ac = calloc(1, sizeof(*ac));
+    sdd->add = ac;
+    ac->sdd = sdd;
+    ac->add = my_add;
+    ac->data = ch;
+    sdd->get = gc;
+    gc->sdd = sdd;
+    gc->get = my_get;
+    gc->data = ch;
     
-    sdd->root = root;
     sdd->hashX = NULL;
     sdd->hashY = NULL;
     sdd->client_data = ch;
     ch->sdd = sdd;
     
-    struct sync_done_closure done_s;
+    // gen the closure for update data
+    struct sync_done_closure *dc = calloc(1, sizeof(*dc));
     struct sync_update_data *ud = calloc(1, sizeof(*ud));
-    ud->root = root;
-    ud->dc = &done_s;
+    ud->dc = dc;
     ud->dc->done = note_update_done;
     ud->dc->ud = ud;
     ud->dc->data = ch;
@@ -1241,9 +1247,11 @@ ccns_open(struct ccn *h,
     root = SyncAddRoot(base, base->priv->syncScope,
                        slice->topo, slice->prefix, NULL);
     ch->root = root;
+    sdd->root = root;
+    ud->root = root;
     
     // register the root advise interest listener
-    struct ccn_charbuf *prefix = sdd->root->topoPrefix;
+    struct ccn_charbuf *prefix = SyncCopyName(sdd->root->topoPrefix);
     ccn_name_append_str(prefix, "\xC1.S.ra");
     ccn_name_append(prefix, root->sliceHash->buf, root->sliceHash->length);
     struct ccn_closure *action = NEW_STRUCT(1, ccn_closure);
@@ -1251,6 +1259,7 @@ ccns_open(struct ccn *h,
     action->p = &advise_interest_arrived;
     ch->registered = action;
     int res = ccn_set_interest_filter(h, prefix, action);
+    ccn_charbuf_destroy(&prefix);
     if (res < 0) {
         noteErr2("ccns_open", "registration failed");
         ccns_close(&ch, rhash, pname);
@@ -1296,12 +1305,18 @@ ccns_close(struct ccns_handle **sh,
             if (sdd != NULL) {
                 // no more differencing
                 ch->sdd = NULL;
+                free(sdd->add);
+                sdd->add = NULL;
+                free(sdd->get);
+                sdd->get = NULL;
                 sync_diff_stop(sdd);
             }
             // stop any updating
             struct sync_update_data *ud = ch->ud;
             if (ud != NULL) {
                 ch->ud = NULL;
+                free(ud->dc);
+                ud->dc = NULL;
                 stop_sync_update(ud);
             }
             // stop any fetching
@@ -1319,16 +1334,18 @@ ccns_close(struct ccns_handle **sh,
             // get rid of the root
             ch->root = NULL;
             SyncRemRoot(root);
-            
+
             // get rid of the base
             if (ch->base != NULL) {
-                struct sync_depends_sync_methods *sync_methods = ch->sd->sync_methods;
+                struct sync_depends_sync_methods *sm = ch->sd->sync_methods;
                 ch->base = NULL;
-                if (sync_methods!= NULL && sync_methods->sync_stop != NULL) {
-                    sync_methods->sync_stop(ch->sd, NULL); 
+                if (sm != NULL && sm->sync_stop != NULL) {
+                    sm->sync_stop(ch->sd, NULL); 
                 }
             }
 
+            free(ch);
+            
         }
     }
 }

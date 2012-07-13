@@ -1,6 +1,16 @@
-gcc -o sync_diff.o -c -I.. -I../.. -I ../../include sync_diff.c
 
-gcc -g -o sync_trax -I. -I.. -I../.. -I../../include sync_trax.c sync_diff.c ccn_sync.c IndexSorter.c SyncBase.c SyncHashCache.c SyncNode.c SyncRoot.c SyncTreeWorker.c SyncUtil.c  ../lib/{ccn_client,ccn_charbuf,ccn_indexbuf,ccn_coding,ccn_dtag_table,ccn_schedule,ccn_extend_dict,ccn_buf_decoder,ccn_uri,ccn_buf_encoder,ccn_bloom,ccn_name_util,ccn_face_mgmt,ccn_reg_mgmt,ccn_digest,ccn_interest,ccn_keystore,ccn_seqwriter,ccn_signing,ccn_sockcreate,ccn_traverse,ccn_match,hashtb,ccn_merkle_path_asn1,ccn_sockaddrutil,ccn_setup_sockaddr_un,ccn_bulkdata,ccn_versioning,ccn_header,ccn_fetch,ccn_btree,ccn_btree_content,ccn_btree_store}.o -lcrypto
+# This simple test environment uses 3 shells.
+# Shell 0: for compilation
+# Shell 1: running the "old" version of Repo/Sync for 2 Repos
+# Shell 2: running the debugger for testing sync_trax
+
+# In Shell 0
+
+cd CCN/ccnx/csrc/sync_exp
+
+gcc -g -o sync_trax -I. -I.. -I../.. -I../../include sync_trax.c sync_diff.c sync_api.c IndexSorter.c SyncBase.c SyncHashCache.c SyncNode.c SyncRoot.c SyncTreeWorker.c SyncUtil.c  ../lib/{ccn_client,ccn_charbuf,ccn_indexbuf,ccn_coding,ccn_dtag_table,ccn_schedule,ccn_extend_dict,ccn_buf_decoder,ccn_uri,ccn_buf_encoder,ccn_bloom,ccn_name_util,ccn_face_mgmt,ccn_reg_mgmt,ccn_digest,ccn_interest,ccn_keystore,ccn_seqwriter,ccn_signing,ccn_sockcreate,ccn_traverse,ccn_match,hashtb,ccn_merkle_path_asn1,ccn_sockaddrutil,ccn_setup_sockaddr_un,ccn_bulkdata,ccn_versioning,ccn_header,ccn_fetch,ccn_btree,ccn_btree_content,ccn_btree_store}.o -lcrypto
+
+# In Shell 1
 
 cd CCN/ccnx/csrc/sync_exp
 . ./setup
@@ -8,10 +18,15 @@ Setup
 
 StartTest
 
+# In Shell 2
+
+cd CCN/ccnx/csrc/sync_exp
+export CCNS_DEBUG=INFO
 WithCCND 0 gdb ./sync_trax
 
-run -d 77 -topo /parc/sync -prefix /root/beer -secs 600
+run -topo /parc/sync -prefix /root/beer -secs 600 >gdb.txt
 
+# In Shell 1
 
 StoreFile 1 small
 StoreFile 2 small

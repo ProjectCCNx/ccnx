@@ -861,6 +861,8 @@ compareAction(struct ccn_schedule *sched,
     }
     
     int delay = 1000; // microseconds
+    if (sdd->nodeFetchFailed > 0)
+        return abortCompare(sdd, "node fetch failed");
     switch (sdd->state) {
         case sync_diff_state_init: {
             // nothing to do, flow into next state
@@ -899,17 +901,16 @@ compareAction(struct ccn_schedule *sched,
             if (res < 0)
                 return abortCompare(sdd, "doComparison failed");
             if (sdd->fetchQ != NULL) {
-                // we had a load started during compare, so retreat a state
-                sdd->state = sync_diff_state_preload;
-                if (debug >= CCNL_FINE)
-                    SyncNoteSimple(root, here, "retreat one state");
+                // we had a load start during compare, so stall
+                delay = 100000;
+                if (debug >= CCNL_WARNING)
+                    SyncNoteSimple(root, here, "doComparison fetch stall");
                 break;
             }
-            if (res == 0)
+            if (res == 0 || sdd->fetchQ != NULL)
                 // comparison not yet complete
                 break;
-            // either full success or failure gets here
-            sdd->state = ((res < 0) ? sync_diff_state_error: sync_diff_state_done);
+            sdd->state = sync_diff_state_done;
         case sync_diff_state_done: {
             // there is no change to the root hash when we are done
             // the client may wish to fetch content, then alter the hash state
@@ -919,6 +920,8 @@ compareAction(struct ccn_schedule *sched,
             int64_t dt = SyncDeltaTime(sdd->startTime, now);
             if (mh > sdd->maxHold) sdd->maxHold = mh;
             
+            if (sdd->nodeFetchFailed > 0)
+                return abortCompare(sdd, "node fetch failed");
             if (debug >= CCNL_INFO) {
                 char temp[64];
                 mh = (mh + 500) / 1000;
@@ -933,7 +936,8 @@ compareAction(struct ccn_schedule *sched,
             if (sdd->add != NULL && sdd->add->add != NULL)
                 // give the client a last shot at the data
                 sdd->add->add(sdd->add, NULL);
-            return -1;
+            delay = -1;
+            break;
         }
         case sync_diff_state_error: {
             if (sdd->add != NULL && sdd->add->add != NULL)
@@ -1490,7 +1494,8 @@ updateAction(struct ccn_schedule *sched,
             ud->ev = NULL;
             ev->evdata = NULL;
             ud->state = ((count < 0) ? sync_update_state_error : sync_update_state_done);
-            showCacheEntry2(root, here, "at exit", ud->ceStart, ud->ceStop);
+            if (debug >= CCNL_FINE)
+                showCacheEntry2(root, here, "at exit", ud->ceStart, ud->ceStop);
             if (ud->dc != NULL) {
                 // notify the caller
                 ud->dc->ud = ud;

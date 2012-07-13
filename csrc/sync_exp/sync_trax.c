@@ -60,22 +60,8 @@
 struct parms {
     struct ccn_charbuf *topo;
     struct ccn_charbuf *prefix;
-    struct SyncHashCacheEntry *last_ce;
-    struct SyncHashCacheEntry *next_ce;
-    struct SyncNameAccum *excl;
-    struct SyncNameAccum *namesToAdd;
-    struct SyncHashInfoList *hashSeen;
     int debug;
     struct ccn *ccn;
-    int skipToHash;
-    struct ccn_scheduled_event *ev;
-    struct sync_diff_fetch_data *fd;
-    struct sync_diff_data *sdd;
-    struct sync_update_data *ud;
-    int scope;
-    int fetchLifetime;
-    int needUpdate;
-    int64_t add_accum;
     int64_t startTime;
     int64_t timeLimit;
 };
@@ -88,16 +74,24 @@ noteErr2(const char *why, const char *msg) {
     return -1;
 }
 
-int my_callback(struct ccns_handle *ccns,
-                struct ccn_charbuf *lhash,
-                struct ccn_charbuf *rhash,
-                struct ccn_charbuf *pname) {
+int
+my_note_name(struct sync_name_closure *nc,
+             struct ccn_charbuf *lhash,
+             struct ccn_charbuf *rhash,
+             struct ccn_charbuf *pname) {
+    if (pname != NULL) {
+        struct ccn_charbuf *uri = SyncUriForName(pname);
+        char *str = ccn_charbuf_as_string(uri);
+        nc->count++;
+        printf("sync_trax, %ju, adding %s\n", (uintmax_t) nc->count, str);
+        ccn_charbuf_destroy(&uri);
+    }
     return 0;
 }
 
 int
 doTest(struct parms *p) {
-    char *here = "sync_track.doTest";
+    char *here = "sync_trax.doTest";
     int res = 0;
     p->startTime = SyncCurrentTime();
     if (ccn_connect(p->ccn, NULL) == -1) {
@@ -107,8 +101,16 @@ doTest(struct parms *p) {
     struct ccns_slice *slice = ccns_slice_create();
     ccns_slice_set_topo_prefix(slice, p->topo, p->prefix);
     
+    struct sync_name_closure *nc = calloc(1, sizeof(*nc));
+    nc->note_name = my_note_name;
+    struct ccns_handle *ch = ccns_open(p->ccn, slice, nc, NULL, NULL);
     
-    struct ccns_handle *ch = ccns_open(p->ccn, slice, my_callback, NULL, NULL);
+    for (;;) {
+        int64_t now = SyncCurrentTime();
+        int64_t dt = SyncDeltaTime(p->startTime, now);
+        if (dt > p->timeLimit) break;
+        ccn_run(p->ccn, 1000);
+    }
     
     ccns_close(&ch, NULL, NULL);
     ccns_slice_destroy(&slice);
@@ -130,8 +132,6 @@ main(int argc, char **argv) {
     p->prefix = ccn_charbuf_create();
     p->debug = 0;
     p->timeLimit = 60*1000000; // default is one minute (kinda arbitrary)
-    p->scope = -1;
-    p->fetchLifetime = 4;
     
     while (i < argc && res >= 0) {
         char * sw = argv[i];
