@@ -1461,8 +1461,8 @@ updateAction(struct ccn_schedule *sched,
                             if (debug >= CCNL_INFO) {
                                 char temp[64];
                                 snprintf(temp, sizeof(temp),
-										 "done (%d)",
-										 count);
+                                         "done (%d)",
+                                         count);
                                 showCacheEntry2(root, "Sync.$Update", temp,
                                                 ud->ceStart, ud->ceStop);
                             }
@@ -1539,8 +1539,8 @@ sync_diff_start(struct sync_diff_data *sdd) {
     sdd->state = sync_diff_state_init;
     
     kickCompare(sdd, 1);
-	// XXX - documented returns of negative and 0 can't happen.
-	return(1);
+    // XXX - documented returns of negative and 0 can't happen.
+    return(1);
 }
 
 // the client uses sync_diff_note_node to note the completion of a node fetch

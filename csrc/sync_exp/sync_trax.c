@@ -165,5 +165,5 @@ main(int argc, char **argv) {
             ccn_destroy(&p->ccn);
         }
     }
-	return(0);
+    return(0);
 }
