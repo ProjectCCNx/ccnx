@@ -100,7 +100,11 @@ public class ccnjavasyncwatch implements Usage, CCNSyncHandler{
 		} catch (InterruptedException e) {
 			System.out.println("interrupted while sleeping...  ");
 		}
-		mySync.stopSync(this, slice);
+		try {
+			mySync.stopSync(this, slice);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		CCNHandle.getHandle().close();
 		
 	}

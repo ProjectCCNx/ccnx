@@ -106,7 +106,9 @@ public class CCNSyncTest implements CCNSyncHandler{
 			
 			//the slice should be written..  now save content and get a callback.
 			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
-			int segments = writeFile(prefix1);
+			
+			// Write a 100 block file to test a true sync tree
+			int segments = writeFile(prefix1, false, SystemConfiguration.BLOCK_SIZE * 100);
 			int segmentCheck = checkCallbacks(prefix1, segments);
 			if (segmentCheck!=0)
 				Assert.fail("Did not receive all of the callbacks");
@@ -120,7 +122,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			//then close and make sure we don't get a callback
 			prefix1 = prefix1.append("round2");
 			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
-			segments = writeFile(prefix1);  //this should be a new version
+			segments = writeFile(prefix1, true, 0);  //this should be a new version
 			segmentCheck = checkCallbacks(prefix1, segments);
 			if (segmentCheck != segments) {
 				//we must have gotten callbacks...  bad.
@@ -157,8 +159,8 @@ public class CCNSyncTest implements CCNSyncHandler{
 			
 			//the slice should be written..  now save content and get a callback.
 			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
-			int segments = writeFile(prefix1);
-			int segments2 = writeFile(prefix2);
+			int segments = writeFile(prefix1, true, 0);
+			int segments2 = writeFile(prefix2, true, 0);
 			int segmentCheck = checkCallbacks(prefix1, segments);
 			if (segmentCheck!=0)
 				Assert.fail("Did not receive all of the callbacks");
@@ -196,7 +198,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			
 			//the slice should be written..  now save content and get a callback.
 			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
-			int segments = writeFile(prefix1);
+			int segments = writeFile(prefix1, true, 0);
 			int segmentCheck = checkCallbacks(prefix1, segments);
 			if (segmentCheck!=0)
 				Assert.fail("Did not receive all of the callbacks");
@@ -210,7 +212,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			//then close and make sure we don't get a callback
 			ContentName prefix1a = prefix1.append("round2");
 			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1a);
-			segments = writeFile(prefix1a);  //this should be a new version
+			segments = writeFile(prefix1a, true, 0);  //this should be a new version
 			segmentCheck = checkCallbacks(prefix1a, segments);
 			if (segmentCheck != segments) {
 				//we must have gotten callbacks...  bad.
@@ -236,7 +238,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			
 			//the slice should be written..  now save content and get a callback.
 			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1b);
-			segments = writeFile(prefix1b);
+			segments = writeFile(prefix1b, true, 0);
 			segmentCheck = checkCallbacks(prefix1b, segments);
 			if (segmentCheck!=0)
 				Assert.fail("Did not receive all of the callbacks");
@@ -268,7 +270,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 		}
 	}
 	
-	private int writeFile(ContentName name) {
+	private int writeFile(ContentName name, boolean random, int size) {
 		int segmentsToWrite = 0;
 		try {
 			RepositoryFileOutputStream rfos = new RepositoryFileOutputStream(name.append("randomFile"), CCNHandle.getHandle());
@@ -278,7 +280,11 @@ public class CCNSyncTest implements CCNSyncHandler{
 			int count = 0;
 			int towrite = 0;
 			Random rand = new Random();
-			int bytes = rand.nextInt(maxBytes) + 1;
+			int bytes = 0;
+			if (random) {
+				bytes = rand.nextInt(maxBytes) + 1;
+			} else
+				bytes = size;
 			double block = (double)bytes/(double)SystemConfiguration.BLOCK_SIZE;
 			segmentsToWrite = (int) (Math.ceil(block) + 1);
 			Log.fine(Log.FAC_TEST, "bytes: {0} block size: {1} div: {2} ceil: {3}", bytes, SystemConfiguration.BLOCK_SIZE, block, (int)Math.ceil(block));
@@ -300,9 +306,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			Assert.fail("Exception while writing test file to repo: " + CCNDigestHelper.DEFAULT_DIGEST_ALGORITHM);
 		}
 		return segmentsToWrite;
-
 	}
-
 	
 	private int checkCallbacks(ContentName prefix, int segments) {
 		Log.fine(Log.FAC_TEST, "checking for callbacks:  {0} segments: {1}", prefix, segments);
@@ -310,7 +314,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 		Arrays.fill(received, false);
 		boolean[]finished = (boolean[]) Array.newInstance(boolean.class, segments);
 		Arrays.fill(finished, true);
-		int loopsToTry = 20;
+		int loopsToTry = (segments * 2) + 20;
 		while (segments != 0 && loopsToTry > 0) {
 			try {
 				Thread.sleep(500);

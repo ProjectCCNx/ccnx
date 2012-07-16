@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2011 Palo Alto Research Center, Inc.
+ * Copyright (C) 2011, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -80,8 +80,6 @@ public class ConfigSlice extends GenericXMLEncodable {
 		}
 	}
 
-	private static final int SLICE_VERSION = 20110614;
-
 	/**
 	 * A ConfigSlice is always saved in the local repository under
 	 * /localhost/CS.s.cs, so the full name does not need to be passed
@@ -125,13 +123,13 @@ public class ConfigSlice extends GenericXMLEncodable {
 		}
 
 		public static ContentName nameFromHash(byte[] hash) {
-			return new ContentName(Sync.SYNC_PREFIX, hash);
+			return new ContentName(Sync.SYNC_SLICE_PREFIX, hash);
 		}
 
 		public ConfigSlice getData() { return _data; }
 	}
 
-	public int version = SLICE_VERSION;
+	public int version = Sync.SLICE_VERSION;
 	public ContentName topo;
 	public ContentName prefix;
 

@@ -1,7 +1,7 @@
 /*
  * Part of the CCNx Java Library.
  *
- * Copyright (C) 2008-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2008-2010, 2012 Palo Alto Research Center, Inc.
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License version 2.1
@@ -120,6 +120,12 @@ public class CommandMarker implements ContentName.ComponentProvider {
 	 * Repository "marker"
 	 */
 	public static final String REPOSITORY_NAMESPACE = "R";
+	
+	/**
+	 * Sync marker
+	 */
+	public static final String SYNC_NAMESPACE = "S";
+	
 	/**
 	 * Start write command.
 	 */
