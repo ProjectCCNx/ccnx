@@ -17,9 +17,6 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-// gcc -o sync_diff.o -c -I.. -I../.. -I ../../include sync_diff.c
-
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -47,7 +44,6 @@ static int namesYieldMicros = 20*1000;  // number of micros to use as yield trig
 
 static void
 setCovered(struct SyncHashCacheEntry *ce) {
-    char *here = "Sync.setCovered";
     if (ce->state & SyncHashState_covered) {
         // nothing to do, already covered
     } else if (ce->state & SyncHashState_remote) {
@@ -384,7 +380,6 @@ static int
 start_node_fetch(struct sync_diff_data *sdd,
                  struct SyncHashCacheEntry *ce,
                  enum sync_diff_side side) {
-    static char *here = "Sync.start_node_fetch";
     struct SyncRootStruct *root = sdd->root;
     struct sync_diff_get_closure *get = sdd->get;
     if (ce == NULL)
@@ -549,7 +544,7 @@ doPreload(struct sync_diff_data *sdd,
 // return < 0 to stop the comparison (without error)
 static int
 addNameFromCompare(struct sync_diff_data *sdd) {
-    struct SyncRootStruct *root = sdd->root;
+    //struct SyncRootStruct *root = sdd->root;
     struct ccn_charbuf *name = sdd->cbY;
     // callback for new name
     struct SyncTreeWorkerEntry *tweR = SyncTreeWorkerTop(sdd->twY);
@@ -582,7 +577,7 @@ addNameFromCompare(struct sync_diff_data *sdd) {
  */
 static int
 doComparison(struct sync_diff_data *sdd) {
-    struct SyncRootStruct *root = sdd->root;
+    //struct SyncRootStruct *root = sdd->root;
     struct SyncTreeWorkerHead *twX = sdd->twX;
     struct SyncTreeWorkerHead *twY = sdd->twY;
     
@@ -1265,7 +1260,7 @@ static int
 merge_names(struct sync_update_data *ud) {
     char *here = "Sync.merge_names";
     struct SyncRootStruct *root = ud->root;
-    struct SyncRootPrivate *rp = root->priv;
+    //struct SyncRootPrivate *rp = root->priv;
     int debug = root->base->debug;
     struct ccn_charbuf *cb = ud->cb;
     struct SyncTreeWorkerHead *head = ud->tw;
@@ -1300,7 +1295,6 @@ merge_names(struct sync_update_data *ud) {
                     // a leaf, so the element name is inline
                     enum SyncCompareResult cmp = SCR_after;
                     struct ccn_charbuf *name = NULL;
-                    uint64_t seq_num = 0;
                     int ax = ud->ax;
                     int aLen = ud->adding->len;
 
@@ -1466,10 +1460,9 @@ updateAction(struct ccn_schedule *sched,
                             // only do this if the update got something
                             if (debug >= CCNL_INFO) {
                                 char temp[64];
-                                int tlim = sizeof(temp)-16;
-                                int pos = snprintf(temp, sizeof(temp),
-                                                   "done (%d)",
-                                                   count);
+                                snprintf(temp, sizeof(temp),
+										 "done (%d)",
+										 count);
                                 showCacheEntry2(root, "Sync.$Update", temp,
                                                 ud->ceStart, ud->ceStop);
                             }
@@ -1521,9 +1514,7 @@ updateAction(struct ccn_schedule *sched,
 
 extern int
 sync_diff_start(struct sync_diff_data *sdd) {
-    char *here = "Sync.sync_diff_start";
     struct SyncRootStruct *root = sdd->root;
-    int debug = root->base->debug;
     int64_t mark = SyncCurrentTime();
     struct SyncHashCacheEntry *ceX = entryForHash(root, sdd->hashX);
     struct SyncHashCacheEntry *ceY = entryForHash(root, sdd->hashY);
@@ -1548,6 +1539,8 @@ sync_diff_start(struct sync_diff_data *sdd) {
     sdd->state = sync_diff_state_init;
     
     kickCompare(sdd, 1);
+	// XXX - documented returns of negative and 0 can't happen.
+	return(1);
 }
 
 // the client uses sync_diff_note_node to note the completion of a node fetch

@@ -21,12 +21,6 @@
  * Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-/* The following line for MacOS is custom.  Fix it some day.
- 
- gcc -g -c ccn_sync.c -I. -I.. -I../.. -I../../include 
- 
- */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -35,6 +29,7 @@
 #include <ccn/ccn.h>
 #include <ccn/coding.h>
 #include <ccn/digest.h>
+#include <ccn/loglevels.h>
 #include <ccn/schedule.h>
 #include <ccn/uri.h>
 #include <ccn/ccn_private.h>
@@ -44,15 +39,6 @@
 #include "SyncUtil.h"
 #include "SyncNode.h"
 #include "SyncPrivate.h"
-
-#define CCNL_NONE       0   /**< No logging at all */
-#define CCNL_SEVERE     3   /**< Severe errors */
-#define CCNL_ERROR      5   /**< Configuration errors */
-#define CCNL_WARNING    7   /**< Something might be wrong */
-#define CCNL_INFO       9   /**< Low-volume informational */
-#define CCNL_FINE      11   /**< Debugging */
-#define CCNL_FINER     13   /**< More debugging */
-#define CCNL_FINEST    15   /**< MORE DEBUGGING YET */
 
 #define CACHE_PURGE_TRIGGER 60     // cache entry purge, in seconds
 #define CACHE_CLEAN_BATCH 16       // seconds between cleaning batches
@@ -629,7 +615,7 @@ extractNode(struct SyncRootStruct *root, struct ccn_upcall_info *info) {
     return nc;
 }
 
-static struct sync_diff_fetch_data *
+/* UNUSED */ struct sync_diff_fetch_data *
 check_fetch_data(struct ccns_handle *ch, struct sync_diff_fetch_data *fd) {
     struct sync_diff_fetch_data *each = ch->fd;
     while (each != NULL) {
@@ -670,7 +656,7 @@ delink_fetch_data(struct ccns_handle *ch, struct sync_diff_fetch_data *fd) {
     return 0;
 }
 
-static int
+static void
 free_fetch_data(struct ccns_handle *ch, struct sync_diff_fetch_data *fd) {
     if (delink_fetch_data(ch, fd)) {
         struct ccn_closure *action = fd->action;
@@ -813,7 +799,7 @@ my_response(struct ccn_closure *selfp,
             break;
         case CCN_UPCALL_INTEREST_TIMED_OUT: {
             struct sync_diff_fetch_data *fd = selfp->data;
-            enum local_flags flags = selfp->intdata;
+            //enum local_flags flags = selfp->intdata;
             if (fd == NULL) break;
             struct sync_diff_data *sdd = fd->sdd;
             if (sdd == NULL) break;
@@ -926,23 +912,19 @@ advise_interest_arrived(struct ccn_closure *selfp,
             }
             struct sync_diff_data *sdd = ch->sdd;
             struct SyncRootStruct *root = ch->root;
-            struct SyncBaseStruct *base = root->base;
-            int skipToHash = SyncComponentCount(sdd->root->topoPrefix) + 2;
+            //struct SyncBaseStruct *base = root->base;
+            //int skipToHash = SyncComponentCount(sdd->root->topoPrefix) + 2;
             // skipToHash gets to the new hash
             // topo + marker + sliceHash
             const unsigned char *hp = NULL;
             size_t hs = 0;
-            size_t bytes = 0;
-            int failed = 0;
             if (ch->debug >= CCNL_FINE) {
                 struct ccn_charbuf *name = SyncNameForIndexbuf(info->interest_ccnb,
                                                                info->interest_comps);
                 SyncNoteUri(root, here, "entered", name);
                 ccn_charbuf_destroy(&name);
             }
-            int cres = ccn_name_comp_get(info->interest_ccnb,
-                                         info->interest_comps,
-                                         skipToHash, &hp, &hs);
+            //int cres = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, skipToHash, &hp, &hs);
             struct SyncHashCacheEntry *ce = SyncHashEnter(root->ch, hp, hs,
                                                           SyncHashState_remote);
             if (ce == NULL || ce->state & SyncHashState_covered) {
@@ -973,7 +955,7 @@ start_interest(struct sync_diff_data *sdd) {
     struct SyncBaseStruct *base = root->base;
     struct ccns_handle *ch = sdd->client_data;
     struct SyncHashCacheEntry *ce = ch->next_ce;
-    enum local_flags flags = local_flags_advise;
+    //enum local_flags flags = local_flags_advise;
     struct ccn_charbuf *prefix = SyncCopyName(sdd->root->topoPrefix);
     int res = 0;
     struct ccn *ccn = base->sd->ccn;
@@ -1078,7 +1060,7 @@ my_add(struct sync_diff_add_closure *ac, struct ccn_charbuf *name) {
     if (name == NULL) {
         // end of comparison, so fire off another round
         struct SyncRootStruct *root = sdd->root;
-        struct ccn_charbuf *hash = ch->next_ce->hash;
+        // struct ccn_charbuf *hash = ch->next_ce->hash;
         struct SyncHashCacheEntry *ce = ch->next_ce;
         int delay = 1000000;
         if (ch->debug >= CCNL_INFO) {

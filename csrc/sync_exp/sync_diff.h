@@ -168,7 +168,7 @@ struct sync_update_data {
  * be valid after the call completes, so the client must copy the name
  * if it needs to persist.
  *
- * Hint: If sdd->hashX is the empth hash (NULL or length == 0),
+ * Hint: If sdd->hashX is the empty hash (NULL or length == 0),
  *     then the differencing operation is simply an enumeration operation.
  *
  * @returns < 0 for failure, 0 if no difference running, > 0 for success.
