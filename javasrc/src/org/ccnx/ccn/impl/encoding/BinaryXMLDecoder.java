@@ -122,6 +122,10 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	public final void beginDecoding(InputStream istream) throws ContentDecodingException {
 		if (_resyncable)
 			istream.mark(_resyncLimit);
+		
+		_elements_type = new byte[_currentElements];
+		_elements_value = new int[_currentElements];
+		_elements_blob = new byte[_currentElements][];
 
 		try {
 			setupForDecoding(istream);
@@ -217,10 +221,9 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 	private int _currentElements = ELEM_FIRST;
 
 //	private final Element [] _elements = new Element[ELEM_MAX];
-	private byte [] _elements_type = new byte[ELEM_FIRST];
-	private int [] _elements_value = new int[ELEM_FIRST];
-	private byte [][] _elements_blob = new byte[ELEM_FIRST][];
-	private int _bytesRead = 0;
+	private byte [] _elements_type;
+	private int [] _elements_value;
+	private byte [][] _elements_blob;
 
 	// BLOB and UDATA now go in their own buffers, so don't really need the full BLOCKSIZE
 
@@ -258,8 +261,6 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 				throw new IOException(e.getMessage());
 			}
 		} while(read < buffer.length);
-
-		_bytesRead += read;
 
 		// now advance the buffers position
 //		_buffer.position(offset + read);
@@ -622,6 +623,10 @@ public final class BinaryXMLDecoder extends GenericXMLDecoder implements XMLDeco
 
 	public void setLimit(int limit) {
 		_resyncLimit = limit;
+	}
+	
+	public void setInitialBufferSize(int size) {
+		_currentElements = size;
 	}
 
 	// ==============================================================
