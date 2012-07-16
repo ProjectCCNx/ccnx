@@ -13,6 +13,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#include <sys/select.h>
 #include <sys/time.h>
 #include <fcntl.h>
 #include <pwd.h>
@@ -61,16 +62,17 @@ struct ccnxchat_state {
     int n_ver;                  /* Number of recently received versions */
     struct ccn_charbuf *ver[VER_LIMIT];
     struct ccn_closure *cc;     /* Closure for incoming content */
-    /* All these buffers contain ccnb-encoded data, except for payload */
-    struct ccn_charbuf *basename; /* The namespace we are serving */
-    struct ccn_charbuf *name;   /* Buffer for constructed name */
     struct ccn_charbuf *payload; /* Buffer for payload */
-    struct ccn_charbuf *cob;    /* Buffer for ContentObject */
-    struct ccn_charbuf *incob;  /* Most recent incoming ContentObject */
     struct ccn_charbuf *lineout; /* For building output line */
     struct ccn_charbuf *luser;   /* user's name */
+    /* The following buffers contain ccnb-encoded data */
+    struct ccn_charbuf *basename; /* The namespace we are serving */
+    struct ccn_charbuf *name;   /* Buffer for constructed name */
+    struct ccn_charbuf *cob;    /* Buffer for ContentObject */
+    struct ccn_charbuf *incob;  /* Most recent incoming ContentObject */    
     int eof;                    /* true if we have encountered eof */
-    int verbose;		/* to turn on debugging output */
+    int ready;                  /* true if payload is ready to go */
+    int verbose;                /* to turn on debugging output */
     int prefer_newest;          /* for saner startup */
 };
 
@@ -90,6 +92,8 @@ static void seed_random(void);
 static void usage(void);
 unsigned short wrappednow(void);
 
+static int wait_for_input_or_timeout(struct ccn *h, int fd);
+static void read_input(struct ccnxchat_state *);
 static void generate_new_data(struct ccnxchat_state *);
 static int  matchbox(struct ccnxchat_state *);
 static int  send_matching_data(struct ccnxchat_state *);
@@ -164,13 +168,18 @@ chat_main(int argc, char **argv)
     express_interest(st);
     /* Run the event loop */
     for (;;) {
-        res = ccn_run(h, 100);
+        res = wait_for_input_or_timeout(h, 0);
+        if (res == 1)
+            read_input(st);
+        res = ccn_run(h, (res < 0 || st->eof) ? 100 : 0);
         if (res != 0)
             FATAL(res);
-        if (st->n_cob == 0 || (st->n_pit != 0 && st->n_cob < CS_LIMIT))
-            generate_new_data(st);
+        generate_new_data(st);
         matchbox(st);
-        if (send_matching_data(st) > 0 || st->cc->refcount == 0)
+        res = send_matching_data(st);
+        if (st->eof && st->eof++ > 3)
+            exit(0);
+        if (res > 0 || st->cc->refcount == 0)
             express_interest(st);
         age_cs(st);
         age_pit(st);
@@ -416,53 +425,91 @@ generate_cob(struct ccnxchat_state *st)
     DB(st, st->cob);
 }
 
-/** Collect some new data and when ready, place it in store */
-static void
-generate_new_data(struct ccnxchat_state *st)
+/**
+ * Wait until input on fd is ready or ccn_run needs to be called
+ *
+ * @returns 1 if STDIN is ready to read, 0 if not, or -1 for error.
+ */
+static int
+wait_for_input_or_timeout(struct ccn *h, int fd)
 {
-    unsigned char *cp;
+    fd_set readfds;
+    struct timeval tv;
+    int ccnfd;
+    int maxfd = fd;
+    int res = -1;
+    
+    ccnfd = ccn_get_connection_fd(h);
+    if (ccnfd < 0)
+        return(-1);
+    if (maxfd < ccnfd)
+        maxfd = ccnfd;
+    FD_ZERO(&readfds);
+    FD_SET(fd, &readfds);
+    FD_SET(ccnfd, &readfds);
+    res = ccn_process_scheduled_operations(h);
+    if (res >= 0) {
+        tv.tv_sec  = res / 1000000U;
+        tv.tv_usec = res % 1000000U;
+        res = select(maxfd + 1, &readfds, 0, 0, &tv);                
+    }
+    if (res >= 0)
+        res = FD_ISSET(fd, &readfds);
+    return(res);
+}
+
+/** Read a line of standard input into payload */
+static void
+read_input(struct ccnxchat_state *st)
+{
+    unsigned char *cp = NULL;
     ssize_t res;
     int fl;
-    int ready = 0;    /* set when we have a whole line */
     int fd = 0;       /* standard input */
-
-    if (st->eof != 0) {
-        if (st->eof++ > 3)
-            exit(0);
-        if (st->payload->length == 0)
-            return;
-    } 
+    
+    if (st->ready)
+        return;
+    if (st->eof) {
+        if (st->payload->length > 0)
+            st->ready = 1;
+        return;
+    }
     fl = fcntl(fd, F_GETFL);
     fcntl(fd, F_SETFL, O_NONBLOCK | fl);
-    while (!ready) {
+    while (st->ready == 0) {
         cp = ccn_charbuf_reserve(st->payload, 1);
         res = read(fd, cp, 1);
         if (res == 1) {
-           if (cp[0] == '\n')
-               ready = 1;
-           else
-               st->payload->length++;
+            if (cp[0] == '\n')
+                st->ready = 1;
+            else
+                st->payload->length++;
         }
         else if (res == 0) {
             if (st->eof == 0) {
                 ccn_charbuf_putf(st->payload, "=== ");
                 ccn_charbuf_append_charbuf(st->payload, st->luser);
                 ccn_charbuf_putf(st->payload, " leaving chat");
+                st->eof = 1;
             }
-            if (st->cob->length > 0)
-                ready = 1;
-            st->eof++;
-            break;
+            st->ready = 1;
         }
         else
-            break;
+            break; /* partial line */
     }
-    if (ready) {    
+    fcntl(fd, F_SETFL, fl);
+}
+
+/** Collect some new data and when ready, place it in store */
+static void
+generate_new_data(struct ccnxchat_state *st)
+{
+    if (st->ready && st->n_pit > 0 && st->n_cob < CS_LIMIT) {    
         generate_cob(st);
         toss_in_cs(st, st->cob->buf, st->cob->length);
         ccn_charbuf_reset(st->payload);
+        st->ready = 0;
     }
-    fcntl(fd, F_SETFL, fl);
 }
 
 /**
