@@ -76,8 +76,6 @@ static int
 shuttle(int peer, const char *prompt)
 {
     fd_set readfds;
-    fd_set writefds;
-    fd_set errorfds;
     struct timeval tv;
     char line[MAX_TERM_WIDTH];
     unsigned char buf[32];   /* scratch buffer for reading */
@@ -113,19 +111,17 @@ shuttle(int peer, const char *prompt)
             continue;
         }
         FD_ZERO(&readfds);
-        FD_ZERO(&writefds);
-        FD_ZERO(&errorfds);
         FD_SET(0, &readfds);
         FD_SET(peer, &readfds);
-        FD_SET(0, &errorfds);
-        FD_SET(peer, &errorfds);
         memset(&tv, 0, sizeof(tv));
         tv.tv_usec = 50000;
-        res = select(peer + 1, &readfds, &writefds, &errorfds, shows ? NULL : &tv);
+        res = select(peer + 1, &readfds, NULL, NULL, shows ? NULL : &tv);
         if (res < 0) {
             perror("select");
-            if (errno == EINTR)
-                res = 0;
+            if (errno == EINTR) {
+                shows = 0;
+		continue;
+	    }
             else
                 return(-1);
         }
@@ -136,8 +132,6 @@ shuttle(int peer, const char *prompt)
                 shows = 1;
             }
         }
-        if (FD_ISSET(0, &errorfds) || FD_ISSET(peer, &errorfds))
-            return(-1);
         if (FD_ISSET(peer, &readfds)) {
             if (shows != 0)
                 shows = takedown(ip, n - ip);
