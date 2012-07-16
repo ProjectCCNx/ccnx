@@ -1,35 +1,22 @@
 /**
- * @file csrc/sync_trax.c
- *
- * Part of CCNx Sync.
- *
- * Copyright (C) 2012 Palo Alto Research Center, Inc.
- *
- * This library is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License version 2.1
- * as published by the Free Software Foundation.
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details. You should have received
- * a copy of the GNU Lesser General Public License along with this library;
- * if not, write to the Free Software Foundation, Inc., 51 Franklin Street,
- * Fifth Floor, Boston, MA 02110-1301 USA.
+ * @file sync_trax.c
+ * 
+ * A CCNx program.
  */
-
-/* The following line for MacOS is a simple custom build of this file
- 
- gcc -c -I.. -I../.. -I../../include sync_trax.c
- 
+/* Copyright (C) 2012 Palo Alto Research Center, Inc.
+ *
+ * This work is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation.
+ * This work is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details. You should have received a copy of the GNU General Public
+ * License along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
  */
-
-/* The following line for MacOS is custom to avoid conflicts with libccn and libsync.
- * It is derived from ccnx/csrc/lib/dir.mk
  
- gcc -g -o sync_trax -I. -I.. -I../.. -I../../include sync_trax.c sync_diff.c ccn_sync.c IndexSorter.c SyncBase.c SyncHashCache.c SyncNode.c SyncRoot.c SyncTreeWorker.c SyncUtil.c  ../lib/{ccn_client,ccn_charbuf,ccn_indexbuf,ccn_coding,ccn_dtag_table,ccn_schedule,ccn_extend_dict,ccn_buf_decoder,ccn_uri,ccn_buf_encoder,ccn_bloom,ccn_name_util,ccn_face_mgmt,ccn_reg_mgmt,ccn_digest,ccn_interest,ccn_keystore,ccn_seqwriter,ccn_signing,ccn_sockcreate,ccn_traverse,ccn_match,hashtb,ccn_merkle_path_asn1,ccn_sockaddrutil,ccn_setup_sockaddr_un,ccn_bulkdata,ccn_versioning,ccn_header,ccn_fetch,ccn_btree,ccn_btree_content,ccn_btree_store}.o -lcrypto
- 
- */
-
 #include <errno.h>
 #include <stdarg.h>
 #include <fcntl.h>
@@ -178,4 +165,5 @@ main(int argc, char **argv) {
             ccn_destroy(&p->ccn);
         }
     }
+	return(0);
 }
