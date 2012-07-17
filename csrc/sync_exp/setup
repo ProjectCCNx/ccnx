@@ -1,7 +1,7 @@
 #
 # ccnr/csrc/sync_exp/setup
 
-# must be executed in ccnx/csrc/sync_nerf
+# must be executed in ccnx/csrc/sync_exp
 . ./settings
 . ./functions
 . ./preamble

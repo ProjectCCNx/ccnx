@@ -6,13 +6,13 @@
 
 # In Shell 0
 
-cd CCN/ccnx/csrc/sync_exp
-
-gcc -g -o sync_trax -I. -I.. -I../.. -I../../include sync_trax.c sync_diff.c sync_api.c IndexSorter.c SyncBase.c SyncHashCache.c SyncNode.c SyncRoot.c SyncTreeWorker.c SyncUtil.c  ../lib/{ccn_client,ccn_charbuf,ccn_indexbuf,ccn_coding,ccn_dtag_table,ccn_schedule,ccn_extend_dict,ccn_buf_decoder,ccn_uri,ccn_buf_encoder,ccn_bloom,ccn_name_util,ccn_face_mgmt,ccn_reg_mgmt,ccn_digest,ccn_interest,ccn_keystore,ccn_seqwriter,ccn_signing,ccn_sockcreate,ccn_traverse,ccn_match,hashtb,ccn_merkle_path_asn1,ccn_sockaddrutil,ccn_setup_sockaddr_un,ccn_bulkdata,ccn_versioning,ccn_header,ccn_fetch,ccn_btree,ccn_btree_content,ccn_btree_store}.o -lcrypto
+cd CCN/ccnx
+make
 
 # In Shell 1
 
 cd CCN/ccnx/csrc/sync_exp
+export PATH=.:../sync:../../bin:$PATH
 . ./setup
 Setup
 
@@ -21,7 +21,10 @@ StartTest
 # In Shell 2
 
 cd CCN/ccnx/csrc/sync_exp
+export PATH=.:../sync:../../bin:$PATH
 export CCNS_DEBUG=INFO
+. settings
+. functions
 WithCCND 0 gdb ./sync_trax
 
 run -topo /parc/sync -prefix /root/beer -secs 600 >gdb.txt
