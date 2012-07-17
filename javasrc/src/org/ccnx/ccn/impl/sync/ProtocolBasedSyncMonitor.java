@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
+import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.BinaryXMLDecoder;
@@ -45,7 +46,7 @@ import org.ccnx.ccn.protocol.Interest;
  * timing out the handler by doing so. 
  *
  */
-public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentHandler, Runnable {
+public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentHandler, CCNInterestHandler, Runnable {
 	public static final int DECODER_SIZE = 756;
 	public enum SyncCompareState {INIT, PRELOAD, BUSY, COMPARE, DONE};
 
@@ -158,9 +159,11 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 				addHash(sr, hash);
 			}
 		}
-		Interest interest = new Interest(new ContentName(slice.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice.getHash()));
+		ContentName rootAdvise = new ContentName(slice.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice.getHash());
+		Interest interest = new Interest(rootAdvise);
 		interest.scope(1);
 		_handle.expressInterest(interest, this);
+		_handle.registerFilter(rootAdvise, this);
 	}
 
 	public void removeCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
@@ -198,6 +201,18 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			}
 		}
 		return null;
+	}
+	
+	public boolean handleInterest(Interest interest) {
+		Interest newInterest = new Interest(interest.name());
+		newInterest.scope(1);
+		try {
+			_handle.expressInterest(newInterest, this);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return true;
 	}
 	
 	private SyncRootTree genericContentHandler(ContentObject data, ContentName topo, SliceReferences sr, byte[] hash) {
