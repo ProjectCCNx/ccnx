@@ -110,7 +110,9 @@ sync_start_default(struct sync_depends_data *sd,
     char *debugStr = getenv("CCNS_DEBUG");
     int debug = 0;
     // TBD: use a centralized definition that is NOT in Repo
-    if (strcasecmp(debugStr, "NONE") == 0)
+    if (debugStr == NULL)
+        debug = CCNL_NONE;
+    else if (strcasecmp(debugStr, "NONE") == 0)
         debug = CCNL_NONE;
     else if (strcasecmp(debugStr, "SEVERE") == 0)
         debug = CCNL_SEVERE;
