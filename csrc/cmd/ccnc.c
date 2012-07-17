@@ -22,6 +22,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <ccn/ccn.h>
+#include <ccn/ccn_private.h> /* for ccn_process_scheduled_operations() */
 #include <ccn/charbuf.h>
 #include <ccn/lned.h>
 #include <ccn/uri.h>
@@ -92,27 +93,30 @@ static void seed_random(void);
 static void usage(void);
 unsigned short wrappednow(void);
 
-static int wait_for_input_or_timeout(struct ccn *h, int fd);
+static int wait_for_input_or_timeout(struct ccn *, int );
 static void read_input(struct ccnxchat_state *);
 static void generate_new_data(struct ccnxchat_state *);
 static int  matchbox(struct ccnxchat_state *);
 static int  send_matching_data(struct ccnxchat_state *);
 static void toss_in_cs(struct ccnxchat_state *, const unsigned char *, size_t);
-static void toss_in_pit(struct ccnxchat_state *, const unsigned char *, size_t);
+static void toss_in_pit(struct ccnxchat_state *,
+                        const unsigned char *, struct ccn_parsed_interest *);
 static void age_cs(struct ccnxchat_state *);
 static void age_pit(struct ccnxchat_state *);
-static void debug_logger(struct ccnxchat_state *, int lineno, struct ccn_charbuf *);
+static void debug_logger(struct ccnxchat_state *, int, struct ccn_charbuf *);
 static int append_interest_details(struct ccn_charbuf *c,
                                    const unsigned char *ccnb, size_t size);
 static void generate_cob(struct ccnxchat_state *);
-static void add_info_exclusion(struct ccnxchat_state *st, struct ccn_upcall_info *info);
-static void add_uri_exclusion(struct ccnxchat_state *st, const char *uri);
-static void add_ver_exclusion(struct ccnxchat_state *st, struct ccn_charbuf **c);
-static void display_the_content(struct ccnxchat_state *st, struct ccn_upcall_info *info);
-static void express_interest(struct ccnxchat_state *st);
-static void init_ver_exclusion(struct ccnxchat_state *st);
-static void prune_oldest_exclusion(struct ccnxchat_state *st);
-static int append_full_user_name(struct ccn_charbuf *c);
+static void add_info_exclusion(struct ccnxchat_state *,
+                               struct ccn_upcall_info *);
+static void add_uri_exclusion(struct ccnxchat_state *, const char *);
+static void add_ver_exclusion(struct ccnxchat_state *, struct ccn_charbuf **);
+static void display_the_content(struct ccnxchat_state *,
+                                struct ccn_upcall_info *);
+static void express_interest(struct ccnxchat_state *);
+static void init_ver_exclusion(struct ccnxchat_state *);
+static void prune_oldest_exclusion(struct ccnxchat_state *);
+static int append_full_user_name(struct ccn_charbuf *);
 
 /* Very simple error handling */
 #define FATAL(res) fatal(__LINE__, res)
@@ -134,6 +138,7 @@ chat_main(int argc, char **argv)
     struct ccnxchat_state state = {0};
     struct ccnxchat_state *st;
     int res;
+    int timeout_ms;
     
     name = ccn_charbuf_create();
     initialize(argc, argv, name);
@@ -150,6 +155,7 @@ chat_main(int argc, char **argv)
     in_content.data = st;
     st->h = h;
     st->cc = &in_content;
+    st->verbose = 0; // 1 here for DEBUG
     st->basename = name;
     st->name = ccn_charbuf_create();
     st->payload = ccn_charbuf_create();
@@ -168,10 +174,19 @@ chat_main(int argc, char **argv)
     express_interest(st);
     /* Run the event loop */
     for (;;) {
-        res = wait_for_input_or_timeout(h, 0);
-        if (res == 1)
+        res = -1;
+        timeout_ms = 10000;
+        if (st->ready == 0 && st->eof == 0 && st->n_pit != 0) {
+            res = wait_for_input_or_timeout(h, 0);
+            timeout_ms = 10;
+        }
+        if (res != 0)
             read_input(st);
-        res = ccn_run(h, (res < 0 || st->eof) ? 100 : 0);
+        if (st->eof)
+            timeout_ms = 100;
+        else if (st->ready)
+            timeout_ms = 10;
+        res = ccn_run(h, timeout_ms);
         if (res != 0)
             FATAL(res);
         generate_new_data(st);
@@ -201,12 +216,12 @@ incoming_interest(struct ccn_closure *selfp,
         case CCN_UPCALL_FINAL:
             break;
         case CCN_UPCALL_INTEREST:
-            toss_in_pit(st, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-            if (matchbox(st) != 0) {
-                /* We have a new match, so don't wait to process it */
-                ccn_set_run_timeout(info->h, 0);
+            ccn_set_run_timeout(info->h, 0);
+            toss_in_pit(st, info->interest_ccnb, info->pi);
+            if (st->ready)
+                generate_new_data(st);
+            if (matchbox(st) != 0)
                 return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
-            }
             break;
         default:
             break;
@@ -227,6 +242,7 @@ incoming_content(struct ccn_closure *selfp,
         case CCN_UPCALL_FINAL:
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_CONTENT_UNVERIFIED:
+            DB(st, NULL);
             add_info_exclusion(st, info);
             return(CCN_UPCALL_RESULT_VERIFY);
         case CCN_UPCALL_CONTENT:
@@ -236,6 +252,8 @@ incoming_content(struct ccn_closure *selfp,
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_INTEREST_TIMED_OUT:
             prune_oldest_exclusion(st);
+            if (st->eof == 0)
+                ccn_set_run_timeout(info->h, 0);
             return(CCN_UPCALL_RESULT_OK);
         default:
             /* something unexpected - make noise */
@@ -279,9 +297,8 @@ display_the_content(struct ccnxchat_state *st, struct ccn_upcall_info *info)
      ccn_charbuf_append(line, data, size);
      ccn_charbuf_putf(line, "\n");
      sres = write(1, line->buf, line->length);
-     if (sres != line->length) {
+     if (sres != line->length)
           exit(1);
-     }
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -531,11 +548,19 @@ toss_in_cs(struct ccnxchat_state *st, const unsigned char *p, size_t size)
 
 /** Insert a ccnb-encoded Interest message into our pending interest table */
 static void
-toss_in_pit(struct ccnxchat_state *st, const unsigned char *p, size_t size)
+toss_in_pit(struct ccnxchat_state *st, const unsigned char *p,
+            struct ccn_parsed_interest *pi)
 {
-    unsigned short lifetime_ms = CCN_INTEREST_LIFETIME_MICROSEC / 1000;
+    intmax_t lifetime;
+    unsigned short lifetime_ms = ((unsigned short)(~0)) >> 1;
     struct pit_entry *pie;
+    size_t size;
     
+    size = pi->offset[CCN_PI_E];
+    lifetime = ccn_interest_lifetime(p, pi); /* units: s/4096 */
+    lifetime = (lifetime * (1000 / 8) + (4096 / 8 - 1)) / (4096 / 8);
+    if (lifetime_ms > lifetime)
+        lifetime_ms = lifetime;
     if (st->n_pit == PIT_LIMIT)
         age_pit(st);
     if (st->n_pit == PIT_LIMIT) {
@@ -579,7 +604,7 @@ matchbox(struct ccnxchat_state *st)
             if (ccn_content_matches_interest(
                   cse->cob->buf, cse->cob->length, 1, NULL,
                   pie->pib->buf, pie->pib->length, NULL)) {
-                if (cse->matched == 0)
+                if (cse->sent == 0)
                     new_matches++;
                 cse->matched = 1;
                 pie->consumed = 1;
