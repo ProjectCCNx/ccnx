@@ -3120,7 +3120,12 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie)
     mx = 0;
     mn = ~mx;
     for (p = ie->pfl; p != NULL; p = p->next) {
-        delta = p->expiry - now;
+		delta = p->expiry - now;
+        ccnd_msg(h, "ie_next_usec.%d now+%u ie=%u f=%04x %u %02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X",
+				 __LINE__, (unsigned)delta, ie->serial, p->pfi_flags, p->faceid,
+				 p->nonce[0], p->nonce[1], p->nonce[2], p->nonce[3],
+				 p->nonce[4], p->nonce[5], p->nonce[6], p->nonce[7],
+				 p->nonce[8], p->nonce[9], p->nonce[10], p->nonce[11]);
         if (delta < mn)
             mn = delta;
         else if (delta > mx)
@@ -3137,7 +3142,9 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie)
     if (ie->ev != NULL) {
         now += mn; /* do wrapped arithmetic */
         ie->ev->evint = now;
+		ccnd_msg(h, "ie_next_usec.%d %x", __LINE__, (unsigned)now);
     }
+	ccnd_msg(h, "ie_next_usec.%d %d", __LINE__, ans);
     return(ans);
 }
 
@@ -3672,8 +3679,10 @@ propagate_interest(struct ccnd_handle *h,
     }
     if (res == HT_NEW_ENTRY)
         strategy_callout(h, ie, CCNST_FIRST);
-    if (ie->ev == NULL)
-        ie->ev = ccn_schedule_event(h->sched, 0, do_propagate, ie, h->wtnow);
+    if (ie->ev == NULL) {
+        ie_next_usec(h, ie); // for logging
+		ie->ev = ccn_schedule_event(h->sched, 0, do_propagate, ie, h->wtnow);
+	}
 Bail:
     hashtb_end(e);
     ccn_indexbuf_destroy(&outbound);
