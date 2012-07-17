@@ -59,8 +59,8 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
         h->logtime = t.tv_sec;
         h->logbreak = 30;
     }
-    ccn_charbuf_putf(b, "%ld.%06u ccnd[%d]: %s\n",
-        (long)t.tv_sec, (unsigned)t.tv_usec, h->logpid, fmt);
+    ccn_charbuf_putf(b, "%ld.%06u %08x.ccnd[%d]: %s\n",
+        (long)t.tv_sec, (unsigned)t.tv_usec, (unsigned)h->wtnow, h->logpid, fmt);
     va_start(ap, fmt);
     res = (*h->logger)(h->loggerdata, (const char *)b->buf, ap);
     va_end(ap);
