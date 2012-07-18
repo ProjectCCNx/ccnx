@@ -107,10 +107,6 @@ static void ccn_append_link_stuff(struct ccnd_handle *h,
 static int process_incoming_link_message(struct ccnd_handle *h,
                                          struct face *face, enum ccn_dtag dtag,
                                          unsigned char *msg, size_t size);
-static struct pit_face_item *
-pfi_create(struct ccnd_handle *h, struct interest_entry *ie,
-             unsigned faceid, unsigned flags,
-             const unsigned char *nonce, size_t noncesize);
 static void
 pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
             struct pit_face_item *p);
@@ -3440,9 +3436,10 @@ pfi_get(struct ccnd_handle *h, struct interest_entry *ie,
 #endif
 
 static struct pit_face_item *
-pfi_create(struct ccnd_handle *h, struct interest_entry *ie,
-             unsigned faceid, unsigned flags,
-             const unsigned char *nonce, size_t noncesize)
+pfi_create(struct ccnd_handle *h,
+           unsigned faceid, unsigned flags,
+           const unsigned char *nonce, size_t noncesize,
+           struct pit_face_item **pp)
 {
     struct pit_face_item *p;    
     size_t nsize = TYPICAL_NONCE_SIZE;
@@ -3456,8 +3453,10 @@ pfi_create(struct ccnd_handle *h, struct interest_entry *ie,
     p->expiry = h->wtnow;
     p->pfi_flags = (flags & ~CCND_PFI_NONCESZ) + noncesize;
     memcpy(p->nonce, nonce, noncesize);
-    p->next = ie->pfl;
-    ie->pfl = p;
+    if (pp != NULL) {
+        p->next = *pp;
+        *pp = p;
+    }
     return(p);    
 }
 
@@ -3549,7 +3548,8 @@ pfi_set_nonce(struct ccnd_handle *h, struct interest_entry *ie,
     if (noncesize != nsize) {
         if (noncesize > TYPICAL_NONCE_SIZE) {
             /* Hard case, need to reallocate */
-            q = pfi_create(h, ie, p->faceid, p->pfi_flags, nonce, noncesize);
+            q = pfi_create(h, p->faceid, p->pfi_flags,
+                           nonce, noncesize, &p->next);
             if (q != NULL) {
                 q->expiry = p->expiry;
                 p->pfi_flags = 0; /* preserve pending interest accounting */
