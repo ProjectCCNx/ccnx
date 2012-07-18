@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Stack;
 import java.util.Timer;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.CCNContentHandler;
 import org.ccnx.ccn.CCNHandle;
@@ -66,19 +67,19 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	
 	protected class SliceReferences {
 		protected byte[] _sliceHash;
-		protected SyncRootTree _externalRoot;
-		protected SyncRootTree _localRoot;
-		protected Stack<SyncRootTree> _remoteStack = new Stack<SyncRootTree>();
+		protected SyncRootTree _nextRoot;
+		protected SyncRootTree _currentRoot;
+		protected Stack<SyncRootTree> _nextStack = new Stack<SyncRootTree>();
 		protected Object _stateLock = new Object();
 		protected SyncCompareState _state = SyncCompareState.INIT;
 		protected SyncRootTree _nextHash = null;
-		protected HashMap<byte[], SyncRootTree> _remoteHashes = new HashMap<byte[], SyncRootTree>();
+		protected HashMap<byte[], SyncRootTree> _nextHashes = new HashMap<byte[], SyncRootTree>();
 		
 		protected SliceReferences(ContentName name, byte[] sliceHash) {
 			_sliceHash = sliceHash;
-			_externalRoot = new SyncRootTree(sliceHash, _decoder);
-			_localRoot = new SyncRootTree(sliceHash, _decoder);
-			_remoteHashes.put(sliceHash, _externalRoot);
+			_nextRoot = new SyncRootTree(sliceHash, _decoder);
+			_currentRoot = new SyncRootTree(sliceHash, _decoder);
+			_nextHashes.put(sliceHash, _nextRoot);
 		}
 		
 		protected byte[] getSliceHash() {
@@ -101,14 +102,14 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		 * Must be synchronized by caller
 		 */
 		protected SyncRootTree getByHash(byte[] hash) {
-			return _remoteHashes.get(hash);
+			return _nextHashes.get(hash);
 		}
 		
 		/**
 		 * Must be synchronized by caller
 		 */
 		protected void addHash(byte[] hash, SyncRootTree srt) {
-			_remoteHashes.put(hash, srt);
+			_nextHashes.put(hash, srt);
 		}
 		
 		protected SyncRootTree getNextHash() {
@@ -119,20 +120,28 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			_nextHash = srt;
 		}
 		
-		protected void pushRemote(SyncRootTree srt) {
-			_remoteStack.push(srt);
+		protected void pushNext(SyncRootTree srt) {
+			_nextStack.push(srt);
 		}
 		
-		protected SyncRootTree popRemote() {
-			if (!_remoteStack.isEmpty())
-				return _remoteStack.pop();
+		protected SyncRootTree popNext() {
+			if (!_nextStack.isEmpty())
+				return _nextStack.pop();
 			return null;
 		}
 		
-		protected SyncRootTree getRemoteHead() {
-			if (! _remoteStack.isEmpty())
-				return _remoteStack.lastElement();
+		protected SyncRootTree getNextHead() {
+			if (! _nextStack.isEmpty())
+				return _nextStack.lastElement();
 			return null;
+		}
+		
+		protected void nextRound() {
+			synchronized (this) {
+				_currentRoot = _nextRoot;
+				_nextRoot = new SyncRootTree(_sliceHash, _decoder);
+				_state = SyncCompareState.INIT;
+			}
 		}
 	}
 	
@@ -185,10 +194,12 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		ContentName name = data.name();
 		int hashComponent = name.containsWhere(Sync.SYNC_ROOT_ADVISE_MARKER);
 		if (hashComponent < 0) {
-			Log.info(Log.FAC_SYNC, "Received incorrect content in sync: {0}", name);
+			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+				Log.info(Log.FAC_SYNC, "Received incorrect content in sync: {0}", name);
 			return null;
 		}
-		Log.info(Log.FAC_SYNC, "Saw new content from sync: {0}", name);
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+			Log.fine(Log.FAC_SYNC, "Saw new content from sync: {0}", name);
 		ContentName topo = name.cut(Sync.SYNC_ROOT_ADVISE_MARKER.getBytes());
 		byte[] hash = name.component(hashComponent + 1);
 		SliceReferences sr = getReferencesBySliceHash(topo, hash);
@@ -252,12 +263,13 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	 * @return false if no preloads requested
 	 */
 	private boolean doPreload(ContentName topo, SliceReferences sr, SyncRootTree srt) {
-		SyncNodeComposite snc = srt.getRemoteCurrent();
+		SyncNodeComposite snc = srt.getNextNode();
 		Boolean ret = false;
 		if (null != snc) {
 			for (SyncNodeElement sne : snc.getRefs()) {
 				if (sne.getType() == SyncNodeType.HASH) {
 					byte[] hash = sne.getData();
+					Log.info("Preload requested something");
 					ret = requestNode(topo, sr, hash);
 				}
 			}
@@ -268,11 +280,11 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	private boolean requestNode(ContentName topo, SliceReferences sr, byte[] hash) {
 		boolean ret = false;
 		SyncRootTree tsrt = addHash(sr, hash);
-		if (tsrt.getRemoteCurrent() == null && !tsrt.getPending()) {
+		if (tsrt.getNextNode() == null && !tsrt.getPending()) {
 			tsrt.setPending(true);
 			ret = getHash(topo, sr.getSliceHash(), hash);
 			if (ret)
-				sr.pushRemote(tsrt);
+				sr.pushNext(tsrt);
 		}
 		return ret;
 	}
@@ -281,7 +293,8 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		boolean ret = false;
 		Interest interest = new Interest(new ContentName(topo, Sync.SYNC_NODE_FETCH_MARKER, sliceHash, hash));
 		interest.scope(1);
-		Log.fine(Log.FAC_TEST, "Requesting node for hash: {0}", interest.name());
+		if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+			Log.fine(Log.FAC_TEST, "Requesting node for hash: {0}", interest.name());
 		try {
 			_handle.expressInterest(interest, _nfh);
 			ret = true;
@@ -311,9 +324,10 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	}
 	
 	private void doComparison(ContentName topo, SliceReferences sr) {
-		SyncRootTree srt = sr.getRemoteHead();
+		boolean sawAHash = false;
+		SyncRootTree srt = sr.getNextHead();
 		while (null != srt) {
-			SyncNodeComposite snc = srt.getRemoteCurrent();
+			SyncNodeComposite snc = srt.getNextNode();
 			if (null != snc) {
 				for (SyncNodeComposite.SyncNodeElement sne : snc.getRefs()) {
 					switch (sne.getType()) {
@@ -337,18 +351,23 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 						}
 						break;
 					case HASH:
+						sawAHash = true;
 						byte[] hash = sne.getData();
 						requestNode(topo, sr, hash);
+						Log.info("We requested a node");
 						sr.setState(SyncCompareState.PRELOAD);
 						break;
 					default:
+						
 						break;
 					}
 				}
 			}
-			sr.popRemote();
-			srt = sr.getRemoteHead();
+			sr.popNext();
+			srt = sr.getNextHead();
 		}
+		if (sr.getNextHead()  == null && sr.getState()  == SyncCompareState.COMPARE || !sawAHash)
+			sr.setState(SyncCompareState.DONE);
 	}
 	
 	public void run() {
@@ -383,17 +402,17 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 						SyncRootTree srt = sr.getNextHash();
 						if (null == srt)
 							break;
-						sr.pushRemote(srt);
+						sr.pushNext(srt);
 						sr.setState(SyncCompareState.PRELOAD);
 						// Fall through
 					case PRELOAD:
 						synchronized (_timerLock) {
-							if (null == sr.getRemoteHead()) {
+							if (null == sr.getNextHead()) {
 								_keepComparing = false;
 								break;
 							}
 						}
-						if (doPreload(topo, sr, sr.getRemoteHead())) {
+						if (doPreload(topo, sr, sr.getNextHead())) {
 							break;
 						}
 						sr.setState(SyncCompareState.COMPARE);
@@ -401,11 +420,15 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 					case COMPARE:
 						doComparison(topo, sr);
 						synchronized (_timerLock) {
-							if (sr.getState()  == SyncCompareState.COMPARE)
+							if (sr.getState() == SyncCompareState.DONE)
 								_keepComparing = false;
+							else
+								break;
 						}
+						// Fall through
+					case DONE:
 						break;
-					}
+					}			
 				}
 			}
 			synchronized (_timerLock) {
@@ -421,18 +444,20 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			ContentName name = data.name();
 			int hashComponent = name.containsWhere(Sync.SYNC_NODE_FETCH_MARKER);
 			if (hashComponent < 0 || name.count() < (hashComponent + 1)) {
-				Log.info(Log.FAC_SYNC, "Received incorrect node content in sync: {0}", name);
+				if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+					Log.info(Log.FAC_SYNC, "Received incorrect node content in sync: {0}", name);
 				return null;
 			}
 			ContentName topo = name.cut(Sync.SYNC_NODE_FETCH_MARKER.getBytes());
 			byte[] sliceHash = name.component(hashComponent + 1);
 			byte[] hash = name.component(hashComponent + 2);
-			Log.info(Log.FAC_SYNC, "Saw data from nodefind: hash: {0}", name);
+			if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
+				Log.fine(Log.FAC_SYNC, "Saw data from nodefind: hash: {0}", name);
 			SliceReferences sr = getReferencesBySliceHash(topo, sliceHash);
 			if (null != sr) {
 				SyncRootTree srt = genericContentHandler(data, topo, sr, hash);
 				if (null != srt) {
-					sr.pushRemote(srt);
+					sr.pushNext(srt);
 					sr.setState(SyncCompareState.PRELOAD);
 					kickCompare();
 				}

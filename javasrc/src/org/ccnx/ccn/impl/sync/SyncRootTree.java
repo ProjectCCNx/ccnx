@@ -26,7 +26,7 @@ import org.ccnx.ccn.io.content.SyncNodeComposite;
  */
 public class SyncRootTree {
 	protected byte[] _hash;
-	protected SyncNodeComposite _remoteCurrent = null;
+	protected SyncNodeComposite _nextNode = null;
 	protected byte[] _rawContent = null;
 	protected XMLDecoder _decoder;
 	protected boolean _pending = false;
@@ -41,20 +41,20 @@ public class SyncRootTree {
 		_rawContent = content;
 	}
 	
-	public SyncNodeComposite getRemoteCurrent() {
-		if (null == _remoteCurrent && null != _rawContent) {
-			_remoteCurrent = new SyncNodeComposite();
+	public SyncNodeComposite getNextNode() {
+		if (null == _nextNode && null != _rawContent) {
+			_nextNode = new SyncNodeComposite();
 			try {
-				_remoteCurrent.decode(_rawContent, _decoder);
+				_nextNode.decode(_rawContent, _decoder);
 			} catch (ContentDecodingException e) {
 				e.printStackTrace();
-				_remoteCurrent = null;
+				_nextNode = null;
 				_rawContent = null;
 				return null;
 			}
 			_rawContent = null;
 		}
-		return _remoteCurrent;
+		return _nextNode;
 	}
 	
 	public byte[] getHash() {
