@@ -3306,6 +3306,7 @@ do_propagate(struct ccn_schedule *sched,
     if (flags & CCN_SCHEDULE_CANCEL)
         return(0);
     for (pending = 0, p = ie->pfl; p != NULL; p = next) {
+        next = p->next;
         if ((p->pfi_flags & CCND_PFI_DNSTREAM) != 0) {
             if (wt_compare(p->expiry, h->wtnow) >= 0) {
                 if (h->debug & 2)
