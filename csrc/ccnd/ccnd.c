@@ -3106,7 +3106,8 @@ get_outbound_faces(struct ccnd_handle *h,
  * Compute the delay until the next timed action on an interest.
  */
 static int
-ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie)
+ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
+             ccn_wrappedtime *expiry)
 {
     struct pit_face_item *p;
     ccn_wrappedtime now;
@@ -3130,20 +3131,16 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie)
         else if (delta > mx)
             mx = delta;
     }
-    if (mx >= 0x8000000) {
-        ccnd_msg(h, "alert - missed event?");
-    }
     if (mn >= 600 * WTHZ)
         mn = 600 * WTHZ;
     ans = mn * (1000000 / WTHZ);
     if (ans == 0)
         ans = 1;
-    if (ie->ev != NULL) {
-        now += mn; /* do wrapped arithmetic */
-        ie->ev->evint = now;
-		ccnd_msg(h, "ie_next_usec.%d %x", __LINE__, (unsigned)now);
+    if (expiry != NULL) {
+        *expiry = now + mn;
+		ccnd_msg(h, "ie_next_usec.%d expiry=%x", __LINE__, (unsigned)*expiry);
     }
-	ccnd_msg(h, "ie_next_usec.%d %d", __LINE__, ans);
+	ccnd_msg(h, "ie_next_usec.%d %d usec", __LINE__, ans);
     return(ans);
 }
 
@@ -3292,6 +3289,7 @@ do_propagate(struct ccn_schedule *sched,
     struct ccnd_handle *h = clienth;
     struct interest_entry *ie = ev->evdata;
     (void)(sched);
+    ccn_wrappedtime expiry;
     int next_delay;
     int i;
     int pending;
@@ -3354,14 +3352,16 @@ do_propagate(struct ccn_schedule *sched,
             }
         }
         if (wt_compare(h->wtnow, p->expiry) <= 0) {
-            pfi_destroy(h, ie, p);
+            /* Make sure the entry is unambigously expired. */
+            p->expiry--;
             continue;
         }
         send_interest(h, ie, face, p);
     }
     /* Determine when we need to run again */
+    next_delay = ie_next_usec(h, ie, &expiry);
+    ev->evint = expiry;
     ie->ev = ev;
-    next_delay = ie_next_usec(h, ie);
     return(next_delay);
 }
 
@@ -3619,11 +3619,13 @@ propagate_interest(struct ccnd_handle *h,
     const unsigned char *nonce;
     intmax_t lifetime;
     ccn_wrappedtime delta;
+    ccn_wrappedtime expiry;
     unsigned char cb[TYPICAL_NONCE_SIZE];
     size_t noncesize;
     unsigned faceid;
     int i;
     int res;
+    int usec;
     
     faceid = face->faceid;
     hashtb_start(h->interest_tab, e);
@@ -3677,17 +3679,15 @@ propagate_interest(struct ccnd_handle *h,
         if (delta >= 0x80000000)
             ccn_schedule_cancel(h->sched, ie->ev);
     }
-    for (i = 0; i < outbound->n; i++) {
+    for (i = 0; i < outbound->n; i++)
         p = pfi_seek(h, ie, outbound->buf[i], CCND_PFI_UPSTREAM);
-        if (ie->ev != NULL && p->expiry == h->wtnow)
-            ccn_schedule_cancel(h->sched, ie->ev);
-    }
     if (res == HT_NEW_ENTRY)
         strategy_callout(h, ie, CCNST_FIRST);
-    if (ie->ev == NULL) {
-        ie_next_usec(h, ie); // for logging
-		ie->ev = ccn_schedule_event(h->sched, 0, do_propagate, ie, h->wtnow);
-	}
+    usec = ie_next_usec(h, ie, &expiry);
+    if (ie->ev != NULL && wt_compare(expiry + 2, ie->ev->evint) > 0)
+        ccn_schedule_cancel(h->sched, ie->ev);
+    if (ie->ev == NULL)
+		ie->ev = ccn_schedule_event(h->sched, usec, do_propagate, ie, expiry);
 Bail:
     hashtb_end(e);
     ccn_indexbuf_destroy(&outbound);
