@@ -4977,7 +4977,7 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
     result->s = now.tv_sec;
     result->micros = now.tv_usec;
     sdelta = now.tv_sec - h->sec;
-    udelta = now.tv_usec - h->usec;
+    udelta = now.tv_usec + h->sliver - h->usec;
     h->sec = now.tv_sec;
     h->usec = now.tv_usec;
     while (udelta < 0) {
@@ -4989,8 +4989,11 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
         delta = 1;
     else if (sdelta >= (1U << 30) / WTHZ)
         delta = (1U << 30) / WTHZ;
-    else
-        delta = (unsigned)sdelta * WTHZ + (unsigned)udelta / (1000000U / WTHZ);
+    else {
+        delta = (unsigned)udelta / (1000000U / WTHZ);
+        h->sliver = udelta - delta * (1000000U / WTHZ);
+        delta += (unsigned)sdelta * WTHZ;
+    }
     h->wtnow += delta;
 }
 
