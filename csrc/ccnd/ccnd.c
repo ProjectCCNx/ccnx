@@ -143,8 +143,7 @@ pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
 /**
  * Frequency of wrapped timer
  *
- * A divisor of 1000000 is good here, and a power of 2 is needed unless the
- * conversion from timevals is fixed up.  Making this too large reduces the
+ * This should divide 1000000 evenly.  Making this too large reduces the
  * maximum supported interest lifetime, and making it too small makes the
  * timekeeping too coarse.
  */
@@ -3513,13 +3512,18 @@ pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
                              struct pit_face_item *p, intmax_t lifetime)
 {
     ccn_wrappedtime delta;
+    ccn_wrappedtime odelta;
     int minlifetime = 4096 / 4;
+    unsigned maxlifetime = 7 * 24 * 3600 * 4096U; /* one week */
     
-    // ZZZZ - should also enforce a maximum
     if (lifetime < minlifetime)
         lifetime = minlifetime;
-    delta = (lifetime + (4096 / WTHZ - 1)) / (4096 / WTHZ);
-    // ZZZZ what if this shortens the expiry?
+    if (lifetime > maxlifetime)
+        lifetime = maxlifetime;
+    delta = ((uintmax_t)lifetime * WTHZ + 4095U) / 4096U;
+    odelta = p->expiry - h->wtnow;
+    if (delta < odelta && odelta < 0x80000000)
+        ccnd_msg(h, "pfi_set_expiry_from_lifetime.%d Oops", __LINE__);
     p->expiry = h->wtnow + delta;
 }
 
@@ -4965,17 +4969,29 @@ ccnd_gettime(const struct ccn_gettime *self, struct ccn_timeval *result)
 {
     struct ccnd_handle *h = self->data;
     struct timeval now = {0};
-    ccn_wrappedtime wt, delta;
+    long int sdelta;
+    int udelta;
+    ccn_wrappedtime delta;
     
     gettimeofday(&now, 0);
     result->s = now.tv_sec;
     result->micros = now.tv_usec;
+    sdelta = now.tv_sec - h->sec;
+    udelta = now.tv_usec - h->usec;
     h->sec = now.tv_sec;
     h->usec = now.tv_usec;
-    wt = (ccn_wrappedtime)(h->sec) * WTHZ + h->usec / (1000000 / WTHZ);
-    delta = wt - h->wtnow;
-    if (delta < (1U << 31))
-        h->wtnow = wt;
+    while (udelta < 0) {
+        udelta += 1000000;
+        sdelta -= 1;
+    }
+    /* avoid letting time run backwards or taking huge steps */
+    if (sdelta < 0)
+        delta = 1;
+    else if (sdelta >= (1U << 30) / WTHZ)
+        delta = (1U << 30) / WTHZ;
+    else
+        delta = (unsigned)sdelta * WTHZ + (unsigned)udelta / (1000000U / WTHZ);
+    h->wtnow += delta;
 }
 
 /**
@@ -5321,7 +5337,7 @@ ccnd_create(const char *progname, ccnd_logger logger, void *loggerdata)
     h->sched = ccn_schedule_create(h, &h->ticktock);
     h->starttime = h->sec;
     h->starttime_usec = h->usec;
-    h->wtnow = (ccn_wrappedtime)(h->sec) * WTHZ + h->usec / (1000000 / WTHZ);
+    h->wtnow = 0xFFFF0000; /* provoke a rollover early on */
     h->oldformatcontentgrumble = 1;
     h->oldformatinterestgrumble = 1;
     debugstr = getenv("CCND_DEBUG");
