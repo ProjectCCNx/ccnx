@@ -100,6 +100,8 @@ struct ccnd_handle {
     long sec;                       /**< cached gettime seconds */
     unsigned usec;                  /**< cached gettime microseconds */
     ccn_wrappedtime wtnow;          /**< corresponding wrapped time */
+    long 
+    int sliver;                     /**< extra microseconds beyond wtnow */
     long starttime;                 /**< ccnd start time, in seconds */
     unsigned starttime_usec;        /**< ccnd start time fractional part */
     unsigned iserial;
