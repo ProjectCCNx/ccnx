@@ -3253,7 +3253,7 @@ strategy_callout(struct ccnd_handle *h,
             npe = ie->ll.npe;
             best = npe->src;
             if (best == CCN_NOFACEID)
-                best = npe->osrc;
+                best = npe->src = npe->osrc;
             for (p = ie->pfl; p!= NULL; p = p->next) {
                 if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
                     if (p->faceid == best) {
@@ -3268,6 +3268,10 @@ strategy_callout(struct ccnd_handle *h,
             }
             break;
         case CCNST_TIMER:
+            /*
+             * Our best choice has not responded in time.
+             * Increase the predicted response.
+             */
             adjust_predicted_response(h, ie, 1);
             break;
     }
