@@ -25,11 +25,16 @@ import org.ccnx.ccn.io.content.SyncNodeComposite;
  * IMPORTANT NOTE: For now we rely on external synchronization for access to internal values of this class
  */
 public class SyncRootTree {
+	// Flags values
+	protected final static long PENDING = 1;
+	protected final static long CURRENT = 2;
+	protected final static long COVERED = 4;
+
+	protected long _flags;
 	protected byte[] _hash;
 	protected SyncNodeComposite _nextNode = null;
 	protected byte[] _rawContent = null;
 	protected XMLDecoder _decoder;
-	protected boolean _pending = false;
 	
 	public SyncRootTree(byte[] hash, XMLDecoder decoder) {
 		_hash = new byte[hash.length];
@@ -62,10 +67,33 @@ public class SyncRootTree {
 	}
 	
 	public void setPending(boolean flag) {
-		_pending = flag;
+		setFlag(flag, PENDING);
 	}
 	
 	public boolean getPending() {
-		return _pending;
+		return (_flags & PENDING) != 0;
+	}
+	
+	public boolean getCurrent() {
+		return (_flags & CURRENT) != 0;
+	}
+	
+	public void setCurrent(boolean flag) {
+		setFlag(flag, CURRENT);
+	}
+	
+	public boolean isCovered() {
+		return (_flags & COVERED) != 0;
+	}
+	
+	public void setCovered(boolean flag) {
+		setFlag(flag, COVERED);
+	}
+	
+	private void setFlag(boolean flag, long type) {
+		if (flag)
+			_flags |= type;
+		else
+			_flags &= ~type;
 	}
 }
