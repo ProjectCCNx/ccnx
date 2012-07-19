@@ -197,6 +197,7 @@ main(int argc, char** argv)
     if (argv[optind] == NULL || argv[optind + 1] != NULL)
         usage(argv[0]);
     path = argv[optind];
+    setvbuf(out, NULL, _IOLBF, 0);
     res = ccn_filewatch(path,
                         out,
                         minsize,
