@@ -3168,6 +3168,7 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
         p->pfi_flags |= CCND_PFI_UPENDING;
     }
     /* clip lifetime against various limits here */
+    lifetime = (((lifetime + 511) >> 9) << 9); /* round up - 1/8 sec */
     ccn_charbuf_reset(c);
     if (lifetime != default_life)
         append_tagged_binary_number(c, CCN_DTAG_InterestLifetime, lifetime);
@@ -3523,6 +3524,7 @@ pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
         lifetime = minlifetime;
     if (lifetime > maxlifetime)
         lifetime = maxlifetime;
+    lifetime = (((lifetime + 511) >> 9) << 9); /* round up - 1/8 sec */
     delta = ((uintmax_t)lifetime * WTHZ + 4095U) / 4096U;
     odelta = p->expiry - h->wtnow;
     if (delta < odelta && odelta < 0x80000000)
