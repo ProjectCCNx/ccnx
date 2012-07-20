@@ -3848,6 +3848,25 @@ next_child_at_level(struct ccnd_handle *h,
 }
 
 /**
+ * Check whether the interest should be dropped for local namespace reasons
+ */
+static int
+drop_nonlocal_interest(struct ccnd_handle *h, struct nameprefix_entry *npe,
+                       struct face *face,
+                       unsigned char *msg, size_t size)
+{
+    if (npe->fgen != h->forward_to_gen)
+        update_forward_to(h, npe);
+    if ((npe->flags & CCN_FORW_LOCAL) != 0 &&
+        (face->flags & CCN_FACE_GG) == 0) {
+        ccnd_debug_ccnb(h, __LINE__, "interest_nonlocal", face, msg, size);
+        h->interests_dropped += 1;
+        return (1);
+    }
+    return(0);
+}
+
+/**
  * Process an incoming interest message.
  *
  * Parse the Interest and discard if it does not parse.
@@ -3875,6 +3894,7 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     int try;
     int matched;
     int s_ok;
+    struct interest_entry *ie = NULL;
     struct nameprefix_entry *npe = NULL;
     struct content_entry *content = NULL;
     struct content_entry *last_match = NULL;
@@ -3928,22 +3948,25 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
         }
         namesize = comps->buf[pi->prefix_comps] - comps->buf[0];
         h->interests_accepted += 1;
-        // ZZZZ - update interest_tab here?
+        ie = hashtb_lookup(h->interest_tab, msg,
+                           pi->offset[CCN_PI_B_InterestLifetime]);
+        if (ie != NULL) {
+            /* Since this is in the PIT, we do not need to check the CS. */
+            indexbuf_release(h, comps);
+            comps = NULL;
+            npe = ie->ll.npe;
+            if (drop_nonlocal_interest(h, npe, face, msg, size))
+                return;
+            propagate_interest(h, face, msg, pi, npe);
+            return;
+        }
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
         matched = 0;
         hashtb_start(h->nameprefix_tab, e);
         res = nameprefix_seek(h, e, msg, comps, pi->prefix_comps);
         npe = e->data;
-        if (npe == NULL)
+        if (npe == NULL || drop_nonlocal_interest(h, npe, face, msg, size))
             goto Bail;
-        if (npe->fgen != h->forward_to_gen)
-            update_forward_to(h, npe);
-        if ((npe->flags & CCN_FORW_LOCAL) != 0 &&
-            (face->flags & CCN_FACE_GG) == 0) {
-            ccnd_debug_ccnb(h, __LINE__, "interest_nonlocal", face, msg, size);
-            h->interests_dropped += 1;
-            goto Bail;
-        }
         if ((pi->answerfrom & CCN_AOK_CS) != 0) {
             last_match = NULL;
             content = find_first_match_candidate(h, msg, pi);
