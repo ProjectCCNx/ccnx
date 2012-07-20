@@ -3299,6 +3299,7 @@ do_propagate(struct ccn_schedule *sched,
     int next_delay;
     int i;
     int pending;
+    int upstreams;
     struct face *face = NULL;
     struct pit_face_item *p = NULL;
     struct pit_face_item *next = NULL;
@@ -3308,7 +3309,8 @@ do_propagate(struct ccn_schedule *sched,
         ie->ev = NULL;
     if (flags & CCN_SCHEDULE_CANCEL)
         return(0);
-    for (pending = 0, p = ie->pfl; p != NULL; p = next) {
+    pending = 0;
+    for (p = ie->pfl; p != NULL; p = next) {
         next = p->next;
         if ((p->pfi_flags & CCND_PFI_DNSTREAM) != 0) {
             if (wt_compare(p->expiry, h->wtnow) >= 0) {
@@ -3333,11 +3335,8 @@ do_propagate(struct ccn_schedule *sched,
             }
         }
     }
-    if (pending == 0) {
-        consume_interest(h, ie);
-        return(0);        
-    }
     /* Send the interests out */
+    upstreams = 0; /* Count unexpired upstreams */
     for (p = ie->pfl; p != NULL; p = next) {
         next = p->next;
         if ((p->pfi_flags & CCND_PFI_UPSTREAM) == 0)
@@ -3347,8 +3346,10 @@ do_propagate(struct ccn_schedule *sched,
             pfi_destroy(h, ie, p);
             continue;
         }
-        if (wt_compare(h->wtnow, p->expiry) > 0)
+        if (wt_compare(h->wtnow, p->expiry) > 0) {
+            upstreams++;
             continue;
+        }
         for (i = 0; i < 2 && dnstream[i] != NULL; i++) {
             if (dnstream[i]->faceid != p->faceid) {
                 h->interest_faceid = dnstream[i]->faceid;
@@ -3363,6 +3364,11 @@ do_propagate(struct ccn_schedule *sched,
             continue;
         }
         send_interest(h, ie, face, p);
+        upstreams++;
+    }
+    if (pending == 0 && upstreams == 0) {
+        consume_interest(h, ie);
+        return(0);
     }
     /* Determine when we need to run again */
     next_delay = ie_next_usec(h, ie, &expiry);
@@ -3420,7 +3426,6 @@ ccnd_plain_nonce(struct ccnd_handle *h, struct face *face, unsigned char *s) {
         s[i] = nrand48(h->seed);
     return(i);
 }
-
 
 static int
 wt_compare(ccn_wrappedtime a, ccn_wrappedtime b)
@@ -3629,7 +3634,6 @@ propagate_interest(struct ccnd_handle *h,
     struct ccn_indexbuf *outbound = NULL;
     const unsigned char *nonce;
     intmax_t lifetime;
-    ccn_wrappedtime delta;
     ccn_wrappedtime expiry;
     unsigned char cb[TYPICAL_NONCE_SIZE];
     size_t noncesize;
@@ -3685,13 +3689,11 @@ propagate_interest(struct ccnd_handle *h,
         p->pfi_flags |= CCND_PFI_SUPDATA;
     }
     pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
-    if (ie->ev != NULL) {
-        delta = p->expiry - (ccn_wrappedtime)ie->ev->evint;
-        if (delta >= 0x80000000)
-            ccn_schedule_cancel(h->sched, ie->ev);
-    }
-    for (i = 0; i < outbound->n; i++)
+    for (i = 0; i < outbound->n; i++) {
         p = pfi_seek(h, ie, outbound->buf[i], CCND_PFI_UPSTREAM);
+        if (wt_compare(p->expiry, h->wtnow) > 0)
+            p->expiry = h->wtnow;
+    }
     if (res == HT_NEW_ENTRY)
         strategy_callout(h, ie, CCNST_FIRST);
     usec = ie_next_usec(h, ie, &expiry);
