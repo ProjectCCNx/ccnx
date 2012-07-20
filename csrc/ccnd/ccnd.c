@@ -3298,18 +3298,20 @@ do_propagate(struct ccn_schedule *sched,
     ccn_wrappedtime expiry;
     int next_delay;
     int i;
+    int n;
     int pending;
     int upstreams;
     struct face *face = NULL;
     struct pit_face_item *p = NULL;
     struct pit_face_item *next = NULL;
-    struct pit_face_item *dnstream[2] = { NULL, NULL };
+    struct pit_face_item *d[3] = { NULL, NULL, NULL };
     
     if (ie->ev == ev)
         ie->ev = NULL;
     if (flags & CCN_SCHEDULE_CANCEL)
         return(0);
     pending = 0;
+    n = 0;
     for (p = ie->pfl; p != NULL; p = next) {
         next = p->next;
         if ((p->pfi_flags & CCND_PFI_DNSTREAM) != 0) {
@@ -3323,14 +3325,11 @@ do_propagate(struct ccn_schedule *sched,
             }
             /* keep track of the 2 longest-lasting downstreams */
             if ((p->pfi_flags & CCND_PFI_PENDING) != 0) {
-                if (dnstream[0] == NULL)
-                    dnstream[0] = p;
-                else if (dnstream[1] == NULL)
-                    dnstream[1] = p;
-                else if (wt_compare(dnstream[0]->expiry, p->expiry) > 0)
-                    dnstream[0] = p;
-                else if (wt_compare(dnstream[1]->expiry, p->expiry) > 0)
-                    dnstream[1] = p;
+                for (i = n; i > 0 && wt_compare(d[i-1]->expiry, p->expiry) > 0; i--)
+                    d[i] = d[i-1];
+                d[i] = p;
+                if (n < 2)
+                    n++;
                 pending++;
             }
         }
@@ -3350,11 +3349,11 @@ do_propagate(struct ccn_schedule *sched,
             upstreams++;
             continue;
         }
-        for (i = 0; i < 2 && dnstream[i] != NULL; i++) {
-            if (dnstream[i]->faceid != p->faceid) {
-                h->interest_faceid = dnstream[i]->faceid;
-                p->expiry = dnstream[i]->expiry;
-                p = pfi_copy_nonce(h, ie, p, dnstream[i]);
+        for (i = 0; i < n; i++) {
+            if (d[i]->faceid != p->faceid) {
+                h->interest_faceid = d[i]->faceid;
+                p->expiry = d[i]->expiry;
+                p = pfi_copy_nonce(h, ie, p, d[i]);
                 break;
             }
         }
