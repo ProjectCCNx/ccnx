@@ -849,7 +849,6 @@ consume_interest(struct ccnd_handle *h, struct interest_entry *ie)
     struct hashtb_enumerator *e = &ee;
     int res;
     
-    ccnd_debug_ccnb(h, __LINE__, "consume_interest", NULL, ie->interest_msg, ie->size); // ZZZZ - temp
     hashtb_start(h->interest_tab, e);
     res = hashtb_seek(e, ie->interest_msg, ie->size - 1, 1);
     if (res != HT_OLD_ENTRY)
@@ -893,7 +892,6 @@ link_interest_entry_to_nameprefix(struct ccnd_handle *h,
     ll->prev = head->prev;
     ll->prev->next = ll->next->prev = ll;
     ll->npe = npe;
-    ccnd_msg(h, "Linking ie %u to npe %p", ie->serial, npe);
 }
 
 /**
@@ -913,7 +911,6 @@ finalize_interest(struct hashtb_enumerator *e)
     if (ie->strategy.ev != NULL)
         ccn_schedule_cancel(h->sched, ie->strategy.ev);
     if (ie->ll.next != NULL) {
-        ccnd_msg(h, "Unlinking ie %u from npe %p", ie->serial, ie->ll.npe);
         ie->ll.next->prev = ie->ll.prev;
         ie->ll.prev->next = ie->ll.next;
         ie->ll.next = ie->ll.prev = NULL;
@@ -3117,11 +3114,16 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
     mn = ~mx;
     for (p = ie->pfl; p != NULL; p = p->next) {
 		delta = p->expiry - now;
-        ccnd_msg(h, "ie_next_usec.%d now+%u ie=%u f=%04x %u %02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X",
-				 __LINE__, (unsigned)delta, ie->serial, p->pfi_flags, p->faceid,
-				 p->nonce[0], p->nonce[1], p->nonce[2], p->nonce[3],
-				 p->nonce[4], p->nonce[5], p->nonce[6], p->nonce[7],
-				 p->nonce[8], p->nonce[9], p->nonce[10], p->nonce[11]);
+        if (h->debug & 32) {
+            static const char fmt_ie_next_usec[] = 
+              "ie_next_usec.%d now+%u ie=%u f=%04x %u "
+              " %02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X";
+            ccnd_msg(h, fmt_ie_next_usec, __LINE__,
+                     (unsigned)delta, ie->serial, p->pfi_flags, p->faceid,
+                     p->nonce[0], p->nonce[1], p->nonce[2], p->nonce[3],
+                     p->nonce[4], p->nonce[5], p->nonce[6], p->nonce[7],
+                     p->nonce[8], p->nonce[9], p->nonce[10], p->nonce[11]);
+        }
         if (delta < mn)
             mn = delta;
         else if (delta > mx)
@@ -3134,9 +3136,12 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
         ans = 1;
     if (expiry != NULL) {
         *expiry = now + mn;
-		ccnd_msg(h, "ie_next_usec.%d expiry=%x", __LINE__, (unsigned)*expiry);
+		if (h->debug & 32)
+            ccnd_msg(h, "ie_next_usec.%d expiry=%x", __LINE__,
+                     (unsigned)*expiry);
     }
-	ccnd_msg(h, "ie_next_usec.%d %d usec", __LINE__, ans);
+	if (h->debug & 32)
+        ccnd_msg(h, "ie_next_usec.%d %d usec", __LINE__, ans);
     return(ans);
 }
 
@@ -3181,7 +3186,7 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
     // pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
     h->interests_sent += 1;
     ccnd_meter_bump(h, face->meter[FM_INTO], 1);
-    stuff_and_send(h, face, ie->interest_msg, ie->size - 1, c->buf, c->length, "interest_to", __LINE__);
+    stuff_and_send(h, face, ie->interest_msg, ie->size - 1, c->buf, c->length, (h->debug & 2) ? "interest_to" : NULL, __LINE__);
 }
 
 struct nameprefix_entry *
@@ -3917,27 +3922,6 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
     else {
         if (h->debug & (16 | 8 | 2))
             ccnd_debug_ccnb(h, __LINE__, "interest_from", face, msg, size);
-        if (h->debug & 16)
-            ccnd_msg(h,
-                     "version: %d, "
-                     "prefix_comps: %d, "
-                     "min_suffix_comps: %d, "
-                     "max_suffix_comps: %d, "
-                     "orderpref: %d, "
-                     "answerfrom: %d, "
-                     "scope: %d, "
-                     "lifetime: %d.%04d, "
-                     "excl: %d bytes, "
-                     "etc: %d bytes",
-                     pi->magic,
-                     pi->prefix_comps,
-                     pi->min_suffix_comps,
-                     pi->max_suffix_comps,
-                     pi->orderpref, pi->answerfrom, pi->scope,
-                     ccn_interest_lifetime_seconds(msg, pi),
-                     (int)(ccn_interest_lifetime(msg, pi) & 0xFFF) * 10000 / 4096,
-                     pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
-                     pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
         if (pi->magic < 20090701) {
             if (++(h->oldformatinterests) == h->oldformatinterestgrumble) {
                 h->oldformatinterestgrumble *= 2;
@@ -3959,6 +3943,17 @@ process_incoming_interest(struct ccnd_handle *h, struct face *face,
                 return;
             propagate_interest(h, face, msg, pi, npe);
             return;
+        }
+        if (h->debug & 16) {
+            /* Only print details that are not already presented */
+            // ZZZZ - should do nifty Exclude presentation here
+            ccnd_msg(h,
+                     "version: %d, "
+                     "excl: %d bytes, "
+                     "etc: %d bytes",
+                     pi->magic,
+                     pi->offset[CCN_PI_E_Exclude] - pi->offset[CCN_PI_B_Exclude],
+                     pi->offset[CCN_PI_E_OTHER] - pi->offset[CCN_PI_B_OTHER]);
         }
         s_ok = (pi->answerfrom & CCN_AOK_STALE) != 0;
         matched = 0;

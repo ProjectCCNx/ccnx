@@ -48,6 +48,7 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
     va_list ap;
     struct ccn_charbuf *b;
     int res;
+    time_t clock;
     if (h == NULL || h->debug == 0 || h->logger == 0)
         return;
     b = ccn_charbuf_create();
@@ -55,13 +56,18 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
     if (((h->debug & 64) != 0) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
           t.tv_sec >= h->logtime + 30)) {
+        clock = t.tv_sec;
         ccn_charbuf_putf(b, "%ld.000000 ccnd[%d]: %s ____________________ %s",
-                         (long)t.tv_sec, h->logpid, h->portstr ? h->portstr : "", ctime(&t.tv_sec));
+                         (long)t.tv_sec, h->logpid,
+                         h->portstr ? h->portstr : "",
+                         ctime(&clock));
         h->logtime = t.tv_sec;
         h->logbreak = 30;
     }
-    ccn_charbuf_putf(b, "%ld.%06u %08x.ccnd[%d]: %s\n",
-        (long)t.tv_sec, (unsigned)t.tv_usec, (unsigned)h->wtnow, h->logpid, fmt);
+    ccn_charbuf_putf(b, "%ld.%06u ", (long)t.tv_sec, (unsigned)t.tv_usec);
+    if (h->debug & 32)
+        ccn_charbuf_putf(b, "%08x.", (unsigned)h->wtnow);
+    ccn_charbuf_putf(b, "ccnd[%d]: %s\n", h->logpid, fmt);
     va_start(ap, fmt);
     res = (*h->logger)(h->loggerdata, (const char *)b->buf, ap);
     va_end(ap);
