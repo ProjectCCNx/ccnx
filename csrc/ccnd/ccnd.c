@@ -143,7 +143,7 @@ pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
  * maximum supported interest lifetime, and making it too small makes the
  * timekeeping too coarse.
  */
-#define WTHZ 100000U
+#define WTHZ 500U
 
 /**
  * Name of our unix-domain listener
