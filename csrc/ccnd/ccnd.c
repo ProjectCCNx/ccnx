@@ -3105,17 +3105,16 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
     struct pit_face_item *p;
     ccn_wrappedtime now;
     ccn_wrappedtime delta;
-    ccn_wrappedtime mx;
     ccn_wrappedtime mn;
     int ans;
     
     now = h->wtnow;
-    mx = 0;
-    mn = ~mx;
+    mn = 600 * WTHZ;
     for (p = ie->pfl; p != NULL; p = p->next) {
 		delta = p->expiry - now;
-        if (delta >= 0x80000000 && (p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
-            delta = 10; // ZZZZZ - fix this better.
+        if (delta >= 0x80000000) {
+            ccnd_msg(h, "ie_next_usec.%d late event", __LINE__);
+            delta = (WTHZ + 999) / 1000;
         }
         if (h->debug & 32) {
             static const char fmt_ie_next_usec[] = 
@@ -3129,11 +3128,7 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
         }
         if (delta < mn)
             mn = delta;
-        else if (delta > mx)
-            mx = delta;
     }
-    if (mn >= 600 * WTHZ)
-        mn = 600 * WTHZ;
     ans = mn * (1000000 / WTHZ);
     if (ans == 0)
         ans = 1;
