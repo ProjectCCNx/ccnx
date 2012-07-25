@@ -287,11 +287,14 @@ struct sparse_straggler_entry {
 /**
  * State for the strategy engine
  *
- * This is very embryonic right now.
+ * This is still quite embryonic.
  */
 struct ccn_strategy {
     struct ccn_scheduled_event *ev; /**< for time-based strategy event */
     int state;
+    ccn_wrappedtime birth;          /**< when interest entry was created */
+    ccn_wrappedtime renewed;        /**< when interest entry was renewed */
+    unsigned renewals;              /**< number of times renewed */
 };
 
 struct ielinks;
@@ -315,7 +318,7 @@ struct interest_entry {
     struct ccn_scheduled_event *ev; /**< next interest timeout */
     const unsigned char *interest_msg; /**< pending interest message */
     unsigned size;                  /**< size of interest message */
-    unsigned serial;
+    unsigned serial;                /**< used for logging */
 };
 
 #define TYPICAL_NONCE_SIZE 12       /**< actual allocated size may differ */
@@ -330,6 +333,7 @@ struct interest_entry {
 struct pit_face_item {
     struct pit_face_item *next;     /**< next in list */
     unsigned faceid;                /**< face id */
+    ccn_wrappedtime renewed;        /**< when entry was last refreshed */
     ccn_wrappedtime expiry;         /**< when entry expires */
     unsigned pfi_flags;             /**< CCND_PFI_x */
     unsigned char nonce[TYPICAL_NONCE_SIZE]; /**< nonce bytes */
