@@ -3166,7 +3166,7 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
     size_t noncesize;
     
     if (p != NULL) {
-        delta = p->expiry - h->wtnow;
+        delta = p->expiry - p->renewed;
         lifetime = (intmax_t)delta * 4096 / WTHZ;
         p->pfi_flags |= CCND_PFI_UPENDING;
         if ((p->pfi_flags & CCND_PFI_SENDUPST) == 0) abort();
@@ -3178,6 +3178,8 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
     if (lifetime != default_life)
         append_tagged_binary_number(c, CCN_DTAG_InterestLifetime, lifetime);
     if (p != NULL) {
+        p->renewed = h->wtnow;
+        p->expiry = h->wtnow + (lifetime * WTHZ / 4096);
         noncesize = p->pfi_flags & CCND_PFI_NONCESZ;
         if (noncesize != 0)
             ccnb_append_tagged_blob(c, CCN_DTAG_Nonce, p->nonce, noncesize);
@@ -3303,6 +3305,8 @@ do_propagate(struct ccn_schedule *sched,
     int n;
     int pending;
     int upstreams;
+    unsigned life;
+    unsigned rem;
     struct face *face = NULL;
     struct pit_face_item *p = NULL;
     struct pit_face_item *next = NULL;
@@ -3325,15 +3329,21 @@ do_propagate(struct ccn_schedule *sched,
                 pfi_destroy(h, ie, p);
                 continue;
             }
+            if ((p->pfi_flags & CCND_PFI_PENDING) == 0)
+                continue;
+            pending++;
+            /* If this downstream will expire soon, don't use it */
+            life = p->expiry - p->renewed;
+            rem = p->expiry - h->wtnow;
+            if (rem * 8 <= life)
+                continue;
             /* keep track of the 2 longest-lasting downstreams */
-            if ((p->pfi_flags & CCND_PFI_PENDING) != 0) {
-                for (i = n; i > 0 && wt_compare(d[i-1]->expiry, p->expiry) < 0; i--)
-                    d[i] = d[i-1];
-                d[i] = p;
-                if (n < 2)
-                    n++;
-                pending++;
-            }
+            for (i = n; i > 0 && wt_compare(d[i-1]->expiry, p->expiry) < 0; i--)
+                d[i] = d[i-1];
+            d[i] = p;
+            if (n < 2)
+                n++;
+            pending++;
         }
     }
     /* Send the interests out */
@@ -3356,6 +3366,7 @@ do_propagate(struct ccn_schedule *sched,
         for (i = 0; i < n; i++) {
             if (d[i]->faceid != p->faceid) {
                 h->interest_faceid = d[i]->faceid;
+                p->renewed = d[i]->renewed; /* ZZZZ - not sure about this */
                 p->expiry = d[i]->expiry;
                 p = pfi_copy_nonce(h, ie, p, d[i]);
                 p->pfi_flags |= CCND_PFI_SENDUPST;
@@ -3466,6 +3477,7 @@ pfi_create(struct ccnd_handle *h,
     p = calloc(1, sizeof(*p) + nsize - TYPICAL_NONCE_SIZE);
     if (p == NULL) return(NULL);
     p->faceid = faceid;
+    p->renewed = h->wtnow;
     p->expiry = h->wtnow;
     p->pfi_flags = (flags & ~CCND_PFI_NONCESZ) + noncesize;
     memcpy(p->nonce, nonce, noncesize);
@@ -3568,6 +3580,7 @@ pfi_set_nonce(struct ccnd_handle *h, struct interest_entry *ie,
             q = pfi_create(h, p->faceid, p->pfi_flags,
                            nonce, noncesize, &p->next);
             if (q != NULL) {
+                q->renewed = p->renewed;
                 q->expiry = p->expiry;
                 p->pfi_flags = 0; /* preserve pending interest accounting */
                 pfi_destroy(h, ie, p);
@@ -3650,6 +3663,9 @@ propagate_interest(struct ccnd_handle *h,
     ie = e->data;
     if (res == HT_NEW_ENTRY) {
         ie->serial = ++h->iserial;
+        ie->strategy.birth = h->wtnow;
+        ie->strategy.renewed = h->wtnow;
+        ie->strategy.renewals = 0;
     }
     if (ie->interest_msg == NULL) {
         struct ccn_parsed_interest xpi = {0};
@@ -3680,6 +3696,8 @@ propagate_interest(struct ccnd_handle *h,
     p = pfi_seek(h, ie, faceid, CCND_PFI_DNSTREAM);
     p = pfi_set_nonce(h, ie, p, nonce, noncesize);
     if (nonce == cb || pfi_unique_nonce(h, ie, p)) {
+        ie->strategy.renewed = h->wtnow;
+        ie->strategy.renewals += 1;
         if ((p->pfi_flags & CCND_PFI_PENDING) == 0) {
             p->pfi_flags |= CCND_PFI_PENDING;
             face->pending_interests += 1;
@@ -3689,6 +3707,7 @@ propagate_interest(struct ccnd_handle *h,
         /* Nonce has been seen before; do not forward. */
         p->pfi_flags |= CCND_PFI_SUPDATA;
     }
+    p->renewed = h->wtnow; // ZZZZ - perhaps this is best done by following ...
     pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
     for (i = 0; i < outbound->n; i++) {
         p = pfi_seek(h, ie, outbound->buf[i], CCND_PFI_UPSTREAM);
