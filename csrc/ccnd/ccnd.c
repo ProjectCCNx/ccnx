@@ -3742,7 +3742,7 @@ update_npe_children(struct ccnd_handle *h, struct nameprefix_entry *npe, unsigne
     struct nameprefix_entry *x = NULL;
     struct ccn_indexbuf *ob = NULL;
     int i;
-    int usec = 4000; /* leave a bit of time for prefix reg to complete */
+    unsigned usec = 6000; /*  a bit of time for prefix reg  */
 
     hashtb_start(h->interest_tab, e);
     for (ie = e->data; ie != NULL; ie = e->data) {
@@ -3767,10 +3767,13 @@ update_npe_children(struct ccnd_handle *h, struct nameprefix_entry *npe, unsigne
                     for (i = 0; i < ob->n; i++) {
                         if (ob->buf[i] == faceid) {
                             p = pfi_seek(h, ie, faceid, CCND_PFI_UPSTREAM);
-                            if (ie->ev != NULL && wt_compare(h->wtnow + 4, ie->ev->evint) < 0) {
-                                ccn_schedule_cancel(h->sched, ie->ev);
-                                ie->ev = ccn_schedule_event(h->sched, usec, do_propagate, ie, h->wtnow);
+                            if ((p->pfi_flags & CCND_PFI_UPENDING) == 0) {
+                                p->expiry = h->wtnow + usec / (1000000 / WTHZ);
                                 usec += 200;
+                                if (ie->ev != NULL && wt_compare(p->expiry + 4, ie->ev->evint) < 0)
+                                    ccn_schedule_cancel(h->sched, ie->ev);
+                                if (ie->ev == NULL)
+                                    ie->ev = ccn_schedule_event(h->sched, usec, do_propagate, ie, p->expiry);
                             }
                             break;
                         }
