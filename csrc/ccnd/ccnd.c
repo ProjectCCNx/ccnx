@@ -3157,39 +3157,48 @@ append_tagged_binary_number(struct ccn_charbuf *cb, enum ccn_dtag dtag, uintmax_
     return(res);
 }
 
-static void
+/**
+ *  Forward an interest message
+ *
+ *  x is downstream (the interest came x).
+ *  p is upstream (the interest is to be forwarded to p).
+ *  @returns p (or its reallocated replacement).
+ */
+static struct pit_face_item *
 send_interest(struct ccnd_handle *h, struct interest_entry *ie,
-              struct face *face, struct pit_face_item *p)
+              struct pit_face_item *x, struct pit_face_item *p)
 {
+    struct face *face = NULL;
     struct ccn_charbuf *c = h->send_interest_scratch;
     const intmax_t default_life = CCN_INTEREST_LIFETIME_SEC << 12;
     intmax_t lifetime = default_life;
     ccn_wrappedtime delta;
     size_t noncesize;
     
-    if (p != NULL) {
-        delta = p->expiry - p->renewed;
-        lifetime = (intmax_t)delta * 4096 / WTHZ;
-        p->pfi_flags |= CCND_PFI_UPENDING;
-        if ((p->pfi_flags & CCND_PFI_SENDUPST) == 0) abort();
-        p->pfi_flags &= ~(CCND_PFI_SENDUPST | CCND_PFI_UPHUNGRY);
-    }
+    face = face_from_faceid(h, p->faceid);
+    if (face == NULL)
+        return(p);
+    h->interest_faceid = x->faceid; /* relevant if p is face 0 */
+    p = pfi_copy_nonce(h, ie, p, x);
+    delta = x->expiry - x->renewed;
+    lifetime = (intmax_t)delta * 4096 / WTHZ;
     /* clip lifetime against various limits here */
     lifetime = (((lifetime + 511) >> 9) << 9); /* round up - 1/8 sec */
+    p->renewed = h->wtnow;
+    p->expiry = h->wtnow + (lifetime * WTHZ / 4096);
     ccn_charbuf_reset(c);
     if (lifetime != default_life)
         append_tagged_binary_number(c, CCN_DTAG_InterestLifetime, lifetime);
-    if (p != NULL) {
-        p->renewed = h->wtnow;
-        p->expiry = h->wtnow + (lifetime * WTHZ / 4096);
-        noncesize = p->pfi_flags & CCND_PFI_NONCESZ;
-        if (noncesize != 0)
-            ccnb_append_tagged_blob(c, CCN_DTAG_Nonce, p->nonce, noncesize);
-    }
+    noncesize = p->pfi_flags & CCND_PFI_NONCESZ;
+    if (noncesize != 0)
+        ccnb_append_tagged_blob(c, CCN_DTAG_Nonce, p->nonce, noncesize);
     ccn_charbuf_append_closer(c);
     h->interests_sent += 1;
+    p->pfi_flags |= CCND_PFI_UPENDING;
+    p->pfi_flags &= ~(CCND_PFI_SENDUPST | CCND_PFI_UPHUNGRY);
     ccnd_meter_bump(h, face->meter[FM_INTO], 1);
     stuff_and_send(h, face, ie->interest_msg, ie->size - 1, c->buf, c->length, (h->debug & 2) ? "interest_to" : NULL, __LINE__);
+    return(p);
 }
 
 struct nameprefix_entry *
@@ -3248,6 +3257,7 @@ strategy_callout(struct ccnd_handle *h,
                  struct interest_entry *ie,
                  enum ccn_strategy_op op)
 {
+    struct pit_face_item *x = NULL;
     struct pit_face_item *p = NULL;
     struct nameprefix_entry *npe = NULL;
     struct ccn_indexbuf *tap = NULL;
@@ -3265,14 +3275,21 @@ strategy_callout(struct ccnd_handle *h,
             best = npe->src;
             if (best == CCN_NOFACEID)
                 best = npe->src = npe->osrc;
+            /* Find our downstream; right now there should be just one. */
+            for (x = ie->pfl; x != NULL; x = x->next)
+                if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
+                    break;
+            if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0)
+                break;
             for (p = ie->pfl; p!= NULL; p = p->next) {
                 if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
                     if (p->faceid == best) {
-                        p->expiry = h->wtnow; // ZZZZ should probably just send it right here
+                        p = send_interest(h, ie, x, p);
                         strategy_settimer(h, ie, npe->usec);
                     }
-                    else if (ccn_indexbuf_member(tap, p->faceid) >= 0)
-                        p->expiry = h->wtnow;
+                    else if (ccn_indexbuf_member(tap, p->faceid) >= 0) {
+                        p = send_interest(h, ie, x, p);
+                    }
                     else if (best == CCN_NOFACEID)
                         p->expiry = h->wtnow + scatter++;
                     else
@@ -3371,18 +3388,11 @@ do_propagate(struct ccn_schedule *sched,
             upstreams++;
             continue;
         }
-        for (i = 0; i < n; i++) {
-            if (d[i]->faceid != p->faceid) {
-                h->interest_faceid = d[i]->faceid;
-                p->renewed = d[i]->renewed; /* ZZZZ - not sure about this */
-                p->expiry = d[i]->expiry;
-                p = pfi_copy_nonce(h, ie, p, d[i]);
-                p->pfi_flags |= CCND_PFI_SENDUPST;
+        for (i = 0; i < n; i++)
+            if (d[i]->faceid != p->faceid)
                 break;
-            }
-        }
-        if ((p->pfi_flags & CCND_PFI_SENDUPST) != 0) {
-            send_interest(h, ie, face, p);
+        if (i < n) {
+            p = send_interest(h, ie, d[i], p);
             upstreams++;
             rem = p->expiry - now;
             if (rem < mn)
