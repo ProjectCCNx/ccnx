@@ -1710,7 +1710,7 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
         ccn_charbuf_reserve(c, size1 + size2 + 5 + 8);
         ccn_charbuf_append_tt(c, CCN_DTAG_CCNProtocolDataUnit, CCN_DTAG);
         ccn_charbuf_append(c, data1, size1);
-		if (size2 != 0)
+        if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
         if (tag != NULL)
             ccnd_debug_ccnb(h, lineno, tag, face, c->buf + 4, c->length - 4);
@@ -1723,7 +1723,7 @@ stuff_and_send(struct ccnd_handle *h, struct face *face,
              face->recvcount == 0) {
         c = charbuf_obtain(h);
         ccn_charbuf_append(c, data1, size1);
-		if (size2 != 0)
+        if (size2 != 0)
             ccn_charbuf_append(c, data2, size2);
         if (tag != NULL)
             ccnd_debug_ccnb(h, lineno, tag, face, c->buf, c->length);
