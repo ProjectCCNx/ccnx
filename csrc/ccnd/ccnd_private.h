@@ -342,6 +342,7 @@ struct pit_face_item {
 #define CCND_PFI_UPSTREAM 0x0100    /**< Tracks upstream (sent interest) */
 #define CCND_PFI_UPENDING 0x0200    /**< Has been sent upstream */
 #define CCND_PFI_SENDUPST 0x0400    /**< Should be sent upstream */
+#define CCND_PFI_UPHUNGRY 0x0800    /**< Upstream hungry, cupboard bare */
 #define CCND_PFI_DNSTREAM 0x1000    /**< Tracks downstream (recvd interest) */
 #define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
 #define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
