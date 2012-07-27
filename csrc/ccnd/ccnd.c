@@ -1601,8 +1601,8 @@ adjust_npe_predicted_response(struct ccnd_handle *h,
         t = t - (t >> 7);
     if (t < 127)
         t = 127;
-    else if (t > 1000000)
-        t = 1000000;
+    else if (t > 160000)
+        t = 160000;
     npe->usec = t;
 }
 
