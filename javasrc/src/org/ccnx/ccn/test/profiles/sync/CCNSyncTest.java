@@ -347,7 +347,11 @@ public class CCNSyncTest implements CCNSyncHandler{
 			loopsToTry = loopsToTry - 1;
 			Log.fine(Log.FAC_TEST, "trying to loop again looking for segments");
 		}
-		Log.fine(Log.FAC_TEST, "done looping, returning.  outstanding segments = {0}", segments);
+		int outstanding = 0;
+		for (int i = 0; i < received.length; i++)
+			if (!received[i])
+				outstanding++;
+		Log.fine(Log.FAC_TEST, "done looping, returning.  outstanding segments = {0}", outstanding);
 		return segments;
 	}
 }

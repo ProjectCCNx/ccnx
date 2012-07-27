@@ -83,6 +83,12 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	public ArrayList<SyncNodeElement> getRefs() {
 		return _refs;
 	}
+	
+	public SyncNodeElement getElement(int position) {
+		if (position >= _refs.size())
+			return null;
+		return _refs.get(position);
+	}
 
 	public void decode(XMLDecoder decoder) throws ContentDecodingException {
 		decoder.readStartElement(getElementLabel());

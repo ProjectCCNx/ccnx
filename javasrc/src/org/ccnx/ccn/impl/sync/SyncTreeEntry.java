@@ -18,13 +18,15 @@
 package org.ccnx.ccn.impl.sync;
 
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
+import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
+import org.ccnx.ccn.protocol.Component;
 
 /**
  * IMPORTANT NOTE: For now we rely on external synchronization for access to internal values of this class
  */
-public class SyncRootTree {
+public class SyncTreeEntry {
 	// Flags values
 	protected final static long PENDING = 1;
 	protected final static long CURRENT = 2;
@@ -32,34 +34,59 @@ public class SyncRootTree {
 
 	protected long _flags;
 	protected byte[] _hash;
-	protected SyncNodeComposite _nextNode = null;
+	protected SyncNodeComposite _node = null;
 	protected byte[] _rawContent = null;
 	protected XMLDecoder _decoder;
+	protected int _position = 0;
 	
-	public SyncRootTree(byte[] hash, XMLDecoder decoder) {
+	public SyncTreeEntry(byte[] hash, XMLDecoder decoder) {
 		_hash = new byte[hash.length];
 		_decoder = decoder;
 		System.arraycopy(hash, 0, _hash, 0, hash.length);
 	}
 	
 	public void setRawContent(byte[] content) {
+		_node = null;
 		_rawContent = content;
+		_position = 0;
 	}
 	
-	public SyncNodeComposite getNextNode() {
-		if (null == _nextNode && null != _rawContent) {
-			_nextNode = new SyncNodeComposite();
+	public SyncNodeComposite getNode() {
+		if (null == _node && null != _rawContent) {
+			_node = new SyncNodeComposite();
 			try {
-				_nextNode.decode(_rawContent, _decoder);
+				_node.decode(_rawContent, _decoder);
 			} catch (ContentDecodingException e) {
 				e.printStackTrace();
-				_nextNode = null;
+				_node = null;
 				_rawContent = null;
 				return null;
 			}
 			_rawContent = null;
+Log.info("decode node for {0} depth = {1} longhash is {2}, refs = {3}, position = {4}", Component.printURI(_hash), _node._treeDepth, Component.printURI(_node._longhash), _node.getRefs().size(), _position);
 		}
-		return _nextNode;
+		return _node;
+	}
+	
+	public SyncNodeComposite.SyncNodeElement getCurrentElement() {
+		SyncNodeComposite node = getNode();
+		if (null == node)
+			return null;
+		return node.getElement(_position);
+	}
+	
+	public void incPos() {
+		_position++;
+	}
+	
+	public void setPos(int position) {
+		_position = position;
+	}
+	
+	public boolean lastPos() {
+		if (_node == null)
+			return false;	// Needed to prompt a getNode
+		return (_position >= getNode().getRefs().size());
 	}
 	
 	public byte[] getHash() {
