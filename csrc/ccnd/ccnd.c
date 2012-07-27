@@ -3276,7 +3276,8 @@ strategy_callout(struct ccnd_handle *h,
     struct nameprefix_entry *npe = NULL;
     struct ccn_indexbuf *tap = NULL;
     unsigned best = CCN_NOFACEID;
-    int scatter = 0;
+    unsigned randlow, randrange;
+    int usec;
     
     switch (op) {
         case CCNST_NOP:
@@ -3294,8 +3295,17 @@ strategy_callout(struct ccnd_handle *h,
                 if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
                     break;
             if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0) {
-                ccnd_debug_ccnb(h, __LINE__, "canthappen", NULL, ie->interest_msg, ie->size);
+                ccnd_debug_ccnb(h, __LINE__, "canthappen", NULL,
+                                ie->interest_msg, ie->size);
                 break;
+            }
+            if (best == CCN_NOFACEID || npe->usec > 150000) {
+                randlow = 1;
+                randrange = 75000;
+            }
+            else {
+                randlow = npe->usec;
+                randrange = (randlow + 1) / 2;
             }
             for (p = ie->pfl; p!= NULL; p = p->next) {
                 if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
@@ -3303,13 +3313,14 @@ strategy_callout(struct ccnd_handle *h,
                         p = send_interest(h, ie, x, p);
                         strategy_settimer(h, ie, npe->usec, CCNST_TIMER);
                     }
-                    else if (ccn_indexbuf_member(tap, p->faceid) >= 0) {
+                    else if (ccn_indexbuf_member(tap, p->faceid) >= 0)
                         p = send_interest(h, ie, x, p);
+                    else if (p->faceid == npe->osrc)
+                        pfi_set_expiry_from_micros(h, ie, p, randlow);
+                    else {
+                        usec = randlow + nrand48(h->seed) % randrange;
+                        pfi_set_expiry_from_micros(h, ie, p, usec);
                     }
-                    else if (best == CCN_NOFACEID)
-                        p->expiry = h->wtnow + scatter++;
-                    else
-                        pfi_set_expiry_from_micros(h, ie, p, npe->usec); 
                 }
             }
             break;
