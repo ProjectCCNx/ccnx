@@ -1517,19 +1517,19 @@ face_send_queue_insert(struct ccnd_handle *h,
     return (ans);
 }
 
-// ZZZZ - doxy
+/**
+ * Return true iff the interest is pending on the given face
+ */
 static int
 is_pending_on(struct ccnd_handle *h, struct interest_entry *ie, unsigned faceid)
 {
     struct pit_face_item *x;
     
     for (x = ie->pfl; x != NULL; x = x->next) {
-        if (x->faceid == faceid) {
-            // ZZZ - can we assume this is not expired?
-            if ((x->pfi_flags & CCND_PFI_PENDING) != 0)
-                return(1);
-        }
-        // ZZZ - depending on how list is ordered, an early out is possible
+        if (x->faceid == faceid && (x->pfi_flags & CCND_PFI_PENDING) != 0)
+            return(1);
+        // XXX - depending on how list is ordered, an early out might be possible
+        // For now, we assume no particular ordering
     }
     return(0);
 }
@@ -3201,6 +3201,9 @@ send_interest(struct ccnd_handle *h, struct interest_entry *ie,
     return(p);
 }
 
+/**
+ * Find the entry for the longest name prefix that contains forwarding info
+ */
 struct nameprefix_entry *
 get_fib_npe(struct ccnd_handle *h, struct interest_entry *ie)
 {
@@ -3213,16 +3216,15 @@ get_fib_npe(struct ccnd_handle *h, struct interest_entry *ie)
 }
 
 enum ccn_strategy_op {
-    CCNST_NOP,
-    CCNST_FIRST,
-    CCNST_TIMER,
+    CCNST_NOP,      /* no-operation */
+    CCNST_FIRST,    /* newly created interest entry (pit entry) */
+    CCNST_TIMER,    /* wakeup used by strategy */
 };
 
-static void
-strategy_callout(struct ccnd_handle *h,
-                 struct interest_entry *ie,
-                 enum ccn_strategy_op op);
-
+static void strategy_callout(struct ccnd_handle *h,
+                             struct interest_entry *ie,
+                             enum ccn_strategy_op op);
+/** Implementation detail for strategy_settimer */
 static int
 strategy_timer(struct ccn_schedule *sched,
              void *clienth,
@@ -3237,21 +3239,33 @@ strategy_timer(struct ccn_schedule *sched,
         s->ev = NULL;
     if (flags & CCN_SCHEDULE_CANCEL)
         return(0);
-    strategy_callout(h, ie, CCNST_TIMER);
+    strategy_callout(h, ie, (enum ccn_strategy_op)ev->evint);
     return(0);
 }
 
-// ZZZZ - pass in deferred op here
+/**
+ * Schedule a strategy wakeup
+ *
+ * Any previously wakeup will be cancelled.
+ */
 static void
-strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie, int usec)
+strategy_settimer(struct ccnd_handle *h, struct interest_entry *ie,
+                  int usec, enum ccn_strategy_op op)
 {
     struct ccn_strategy *s = &ie->strategy;
     
     if (s->ev != NULL)
         ccn_schedule_cancel(h->sched, s->ev);
-    s->ev = ccn_schedule_event(h->sched, usec, strategy_timer, ie, h->wtnow);
+    if (op == CCNST_NOP)
+        return;
+    s->ev = ccn_schedule_event(h->sched, usec, strategy_timer, ie, op);
 }
 
+/**
+ * This implements the default strategy.
+ *
+ * Eventually there will be a way to have other strategies.
+ */
 static void
 strategy_callout(struct ccnd_handle *h,
                  struct interest_entry *ie,
@@ -3285,7 +3299,7 @@ strategy_callout(struct ccnd_handle *h,
                 if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
                     if (p->faceid == best) {
                         p = send_interest(h, ie, x, p);
-                        strategy_settimer(h, ie, npe->usec);
+                        strategy_settimer(h, ie, npe->usec, CCNST_TIMER);
                     }
                     else if (ccn_indexbuf_member(tap, p->faceid) >= 0) {
                         p = send_interest(h, ie, x, p);
@@ -3465,6 +3479,11 @@ ccnd_plain_nonce(struct ccnd_handle *h, struct face *face, unsigned char *s) {
     return(i);
 }
 
+/**
+ * Compare two wrapped time values
+ *
+ * @returns negative if a < b, 0 if a == b, positive if a > b
+ */
 static int
 wt_compare(ccn_wrappedtime a, ccn_wrappedtime b)
 {
@@ -3474,20 +3493,7 @@ wt_compare(ccn_wrappedtime a, ccn_wrappedtime b)
     return(delta > 0);
 }
 
-#if 0
-static struct pit_face_item *
-pfi_get(struct ccnd_handle *h, struct interest_entry *ie,
-             unsigned faceid, unsigned flagmask)
-{
-    struct pit_face_item *p;
-    
-    for (p = ie->pfl; p != NULL; p = p->next)
-        if (p->faceid == faceid && (p->pfi_flags & flagmask) != 0)
-            break;
-    return(p);
-}
-#endif
-
+/** Used in just one place; could go away */
 static struct pit_face_item *
 pfi_create(struct ccnd_handle *h,
            unsigned faceid, unsigned flags,
@@ -3514,6 +3520,7 @@ pfi_create(struct ccnd_handle *h,
     return(p);    
 }
 
+/** Remove the pit face item from the interest entry */
 static void
 pfi_destroy(struct ccnd_handle *h, struct interest_entry *ie,
             struct pit_face_item *p)
@@ -3560,6 +3567,13 @@ pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
     return(p);
 }
 
+/**
+ * Set the expiry of the pit face item based upon an interest lifetime
+ *
+ * lifetime is in the units specified by the CCNx protocal - 1/4096 sec
+ *
+ * Also sets the renewed timestamp to now.
+ */
 static void
 pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
                              struct pit_face_item *p, intmax_t lifetime)
@@ -3578,9 +3592,15 @@ pfi_set_expiry_from_lifetime(struct ccnd_handle *h, struct interest_entry *ie,
     odelta = p->expiry - h->wtnow;
     if (delta < odelta && odelta < 0x80000000)
         ccnd_msg(h, "pfi_set_expiry_from_lifetime.%d Oops", __LINE__);
+    p->renewed = h->wtnow;
     p->expiry = h->wtnow + delta;
 }
 
+/**
+ * Set the expiry of the pit face item using a time in microseconds from present
+ *
+ * Does not set the renewed timestamp.
+ */
 static void
 pfi_set_expiry_from_micros(struct ccnd_handle *h, struct interest_entry *ie,
                            struct pit_face_item *p, unsigned micros)
@@ -3591,6 +3611,11 @@ pfi_set_expiry_from_micros(struct ccnd_handle *h, struct interest_entry *ie,
     p->expiry = h->wtnow + delta;
 }
 
+/**
+ * Set the nonce in a pit face item
+ *
+ * @returns the replacement value, which is p unless the nonce will not fit.
+ */
 static struct pit_face_item *
 pfi_set_nonce(struct ccnd_handle *h, struct interest_entry *ie,
              struct pit_face_item *p,
@@ -3619,6 +3644,9 @@ pfi_set_nonce(struct ccnd_handle *h, struct interest_entry *ie,
     return(p);
 }
 
+/**
+ * Return true iff the nonce in p matches the given one.
+ */
 static int
 pfi_nonce_matches(struct pit_face_item *p,
                   const unsigned char *nonce, size_t size)
@@ -3632,6 +3660,11 @@ pfi_nonce_matches(struct pit_face_item *p,
     return(1);
 }
 
+/**
+ * Copy a nonce from src into p
+ *
+ * @returns p (or its replacement)
+ */
 static struct pit_face_item *
 pfi_copy_nonce(struct ccnd_handle *h, struct interest_entry *ie,
              struct pit_face_item *p, const struct pit_face_item *src)
@@ -3640,6 +3673,9 @@ pfi_copy_nonce(struct ccnd_handle *h, struct interest_entry *ie,
     return(p);
 }
 
+/**
+ * True iff the nonce in p does not occur in any of the other items of the entry
+ */
 static int
 pfi_unique_nonce(struct ccnd_handle *h, struct interest_entry *ie,
                  struct pit_face_item *p)
@@ -3733,7 +3769,6 @@ propagate_interest(struct ccnd_handle *h,
         /* Nonce has been seen before; do not forward. */
         p->pfi_flags |= CCND_PFI_SUPDATA;
     }
-    p->renewed = h->wtnow; // ZZZZ - perhaps this is best done by following ...
     pfi_set_expiry_from_lifetime(h, ie, p, lifetime);
     for (i = 0; i < outbound->n; i++) {
         p = pfi_seek(h, ie, outbound->buf[i], CCND_PFI_UPSTREAM);
@@ -3829,7 +3864,6 @@ nameprefix_seek(struct ccnd_handle *h, struct hashtb_enumerator *e,
     int res = -1;
     struct nameprefix_entry *parent = NULL;
     struct nameprefix_entry *npe = NULL;
-    // ZZZZ - minor changes needed, mostly removing stuff.
     struct ielinks *head = NULL;
 
     if (ncomps + 1 > comps->n)
