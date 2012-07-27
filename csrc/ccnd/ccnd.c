@@ -3293,8 +3293,10 @@ strategy_callout(struct ccnd_handle *h,
             for (x = ie->pfl; x != NULL; x = x->next)
                 if ((x->pfi_flags & CCND_PFI_DNSTREAM) != 0)
                     break;
-            if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0)
+            if (x == NULL || (x->pfi_flags & CCND_PFI_PENDING) == 0) {
+                ccnd_debug_ccnb(h, __LINE__, "canthappen", NULL, ie->interest_msg, ie->size);
                 break;
+            }
             for (p = ie->pfl; p!= NULL; p = p->next) {
                 if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
                     if (p->faceid == best) {
