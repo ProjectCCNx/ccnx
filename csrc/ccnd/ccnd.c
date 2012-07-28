@@ -3278,6 +3278,7 @@ strategy_callout(struct ccnd_handle *h,
     unsigned best = CCN_NOFACEID;
     unsigned randlow, randrange;
     int usec;
+    int usefirst;
     
     switch (op) {
         case CCNST_NOP:
@@ -3300,10 +3301,12 @@ strategy_callout(struct ccnd_handle *h,
                 break;
             }
             if (best == CCN_NOFACEID || npe->usec > 150000) {
-                randlow = 1;
+                usefirst = 1;
+                randlow = 4000;
                 randrange = 75000;
             }
             else {
+                usefirst = 0;
                 randlow = npe->usec;
                 randrange = (randlow + 1) / 2;
             }
@@ -3315,6 +3318,10 @@ strategy_callout(struct ccnd_handle *h,
                     }
                     else if (ccn_indexbuf_member(tap, p->faceid) >= 0)
                         p = send_interest(h, ie, x, p);
+                    else if (usefirst) {
+                        usefirst = 0;
+                        pfi_set_expiry_from_micros(h, ie, p, 0);
+                    }
                     else if (p->faceid == npe->osrc)
                         pfi_set_expiry_from_micros(h, ie, p, randlow);
                     else {
