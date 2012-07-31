@@ -33,21 +33,21 @@ struct ccns_slice;
 struct ccns_handle;
 
 /**
- * sync_name_closure is a closure used to notify the client
+ * ccns_name_closure is a closure used to notify the client
  * as each new name is added to the collection by calling the note_name
  * procedure.  The data field refers to client data.
  * The ccns field is filled in by ccns_open.  The count field is for client use.
  * The storage for the closure belongs to the client at all times.
  */
 
-struct sync_name_closure;
+struct ccns_name_closure;
 
-typedef int (*ccns_callback)(struct sync_name_closure *nc,
+typedef int (*ccns_callback)(struct ccns_name_closure *nc,
                              struct ccn_charbuf *lhash,
                              struct ccn_charbuf *rhash,
                              struct ccn_charbuf *pname);
 
-struct sync_name_closure {
+struct ccns_name_closure {
     ccns_callback note_name;
     struct ccns_handle *ccns;
     void *data;
@@ -143,7 +143,7 @@ int ccns_delete_slice(struct ccn *h, struct ccn_charbuf *name);
  */
 struct ccns_handle *ccns_open(struct ccn *h,
                               struct ccns_slice *slice,
-                              struct sync_name_closure *nc,
+                              struct ccns_name_closure *nc,
                               struct ccn_charbuf *rhash,
                               struct ccn_charbuf *pname);
 

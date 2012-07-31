@@ -62,7 +62,7 @@ noteErr2(const char *why, const char *msg) {
 }
 
 int
-my_note_name(struct sync_name_closure *nc,
+my_note_name(struct ccns_name_closure *nc,
              struct ccn_charbuf *lhash,
              struct ccn_charbuf *rhash,
              struct ccn_charbuf *pname) {
@@ -88,7 +88,7 @@ doTest(struct parms *p) {
     struct ccns_slice *slice = ccns_slice_create();
     ccns_slice_set_topo_prefix(slice, p->topo, p->prefix);
     
-    struct sync_name_closure *nc = calloc(1, sizeof(*nc));
+    struct ccns_name_closure *nc = calloc(1, sizeof(*nc));
     nc->note_name = my_note_name;
     struct ccns_handle *ch = ccns_open(p->ccn, slice, nc, NULL, NULL);
     

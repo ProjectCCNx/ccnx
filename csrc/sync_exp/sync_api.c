@@ -71,7 +71,7 @@ struct ccns_handle {
     struct SyncBaseStruct *base;
     struct SyncRootStruct *root;
     struct ccn_scheduled_event *ev;
-    struct sync_name_closure *nc;
+    struct ccns_name_closure *nc;
     struct SyncHashCacheEntry *last_ce;
     struct SyncHashCacheEntry *next_ce;
     struct SyncNameAccum *namesToAdd;
@@ -1152,7 +1152,7 @@ struct sync_depends_client_methods client_methods = {
 extern struct ccns_handle *
 ccns_open(struct ccn *h,
           struct ccns_slice *slice,
-          struct sync_name_closure *nc,
+          struct ccns_name_closure *nc,
           struct ccn_charbuf *rhash,
           struct ccn_charbuf *pname) {
     struct ccns_handle *ch = calloc(1, sizeof(*ch));
