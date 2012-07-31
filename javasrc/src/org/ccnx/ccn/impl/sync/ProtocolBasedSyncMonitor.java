@@ -60,11 +60,19 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	protected boolean _keepComparing = false;
 	protected Timer _timer = new Timer(false);
 	protected NodeFetchHandler _nfh = new NodeFetchHandler();
-	
 	protected Object _compareLock = new Object();
 	
-	protected HashMap<ContentName, HashMap<ConfigSlice, SliceReferences>> _rootsByTopo 
-				= new HashMap<ContentName, HashMap<ConfigSlice, SliceReferences>>();
+	protected ContentName _topo;
+	protected byte[] _sliceHash;
+	
+	protected SyncTreeEntry _nextRoot;
+	protected SyncTreeEntry _currentRoot;
+	protected Stack<SyncTreeEntry> _currentStack = new Stack<SyncTreeEntry>();
+	protected Stack<SyncTreeEntry> _nextStack = new Stack<SyncTreeEntry>();
+	protected Object _stateLock = new Object();
+	protected SyncCompareState _state = SyncCompareState.DONE;
+	protected HashMap<HashEntry, SyncTreeEntry> _hashes = new HashMap<HashEntry, SyncTreeEntry>();
+	protected ArrayList<SyncTreeEntry> _pendingEntries = new ArrayList<SyncTreeEntry>();
 	
 	protected class HashEntry {
 		protected byte[] _hash;
@@ -80,117 +88,6 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		}
 	}
 	
-	protected class SliceReferences {
-		protected byte[] _sliceHash;
-		protected SyncTreeEntry _nextRoot;
-		protected SyncTreeEntry _currentRoot;
-		protected Stack<SyncTreeEntry> _currentStack = new Stack<SyncTreeEntry>();
-		protected Stack<SyncTreeEntry> _nextStack = new Stack<SyncTreeEntry>();
-		protected Object _stateLock = new Object();
-		protected SyncCompareState _state = SyncCompareState.DONE;
-		protected HashMap<HashEntry, SyncTreeEntry> _hashes = new HashMap<HashEntry, SyncTreeEntry>();
-		protected ArrayList<SyncTreeEntry> _pendingEntries = new ArrayList<SyncTreeEntry>();
-		
-		protected SliceReferences(ContentName name, byte[] sliceHash) {
-			_sliceHash = sliceHash;
-			_nextRoot = new SyncTreeEntry(sliceHash, _decoder);
-			_currentRoot = new SyncTreeEntry(sliceHash, _decoder);
-			_hashes.put(new HashEntry(sliceHash), _nextRoot);
-		}
-		
-		protected byte[] getSliceHash() {
-			return _sliceHash;
-		}
-		
-		protected void setState(SyncCompareState scs) {
-			synchronized (_stateLock) {
-				_state = scs;
-			}
-		}
-		
-		protected SyncCompareState getState() {
-			synchronized (_stateLock) {
-				return _state;
-			}
-		}
-		
-		/**
-		 * Must be synchronized by caller
-		 */
-		protected SyncTreeEntry getByHash(HashEntry hash) {
-			return _hashes.get(hash);
-		}
-		
-		/**
-		 * Must be synchronized by caller
-		 */
-		protected void addHash(byte[] hash, SyncTreeEntry srt) {
-			_hashes.put(new HashEntry(hash), srt);
-		}
-		
-		protected void pushNext(SyncTreeEntry srt) {
-Log.info("pushing entry with hash: {0}", Component.printURI(srt._hash));
-			_nextStack.push(srt);
-		}
-		
-		protected SyncTreeEntry popNext() {
-			if (!_nextStack.isEmpty()) {
-				SyncTreeEntry srt =  _nextStack.pop();
-Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
-				return srt;
-			}
-			return null;
-		}
-		
-		protected SyncTreeEntry getNextHead() {
-			if (! _nextStack.isEmpty())
-				return _nextStack.lastElement();
-			return null;
-		}
-		
-		protected void pushCurrent(SyncTreeEntry srt) {
-			_currentStack.push(srt);
-		}
-		
-		protected SyncTreeEntry popCurrent() {
-			if (!_currentStack.isEmpty())
-				return _currentStack.pop();
-			return null;
-		}
-		
-		protected SyncTreeEntry getCurrentHead() {
-			if (! _currentStack.isEmpty())
-				return _currentStack.lastElement();
-			return null;
-		}
-		
-		protected void addPending(SyncTreeEntry ste) {
-			_pendingEntries.add(ste);
-		}
-		
-		protected ArrayList<SyncTreeEntry> getPending() {
-			return _pendingEntries;
-		}
-		
-		protected boolean hasPending() {
-			return _pendingEntries.size() > 0;
-		}
-		
-		protected void clearPending() {
-			_pendingEntries.clear();
-		}
-		
-		/**
-		 * Needs outside synchronization
-		 */
-		protected void nextRound() {
-			_currentRoot = _nextRoot;
-			for (SyncTreeEntry tsrt : _hashes.values()) {
-				tsrt.setCurrent(true);
-			}
-		}
-	}
-	
 	public ProtocolBasedSyncMonitor(CCNHandle handle) {
 		_handle = handle;
 		_decoder = new BinaryXMLDecoder();
@@ -198,26 +95,11 @@ Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 	}
 
 	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice) throws IOException {
-		synchronized (_rootsByTopo) {
-			HashMap<ConfigSlice, SliceReferences> topoMap = _rootsByTopo.get(slice.topo);
-			if (null == topoMap) {
-				topoMap = new HashMap<ConfigSlice, SliceReferences>();
-			}
-			byte[] hash = slice.getHash();
-			SliceReferences sr = topoMap.get(slice);
-			if (null == sr) {
-				sr = new SliceReferences(slice.topo, hash);
-				topoMap.put(slice, sr);
-				_rootsByTopo.put(slice.topo, topoMap);
-				addHash(sr, hash);
-			} else {
-				synchronized (sr) {
-					SyncTreeEntry ste = sr.getCurrentHead();
-					if (null != ste)
-						doCurrentTreeCallbacks(syncHandler, slice, ste);
-				}
-			}
-		}
+		_topo = slice.topo;
+		_sliceHash = slice.getHash();
+		_nextRoot = new SyncTreeEntry(_sliceHash, _decoder);
+		_currentRoot = new SyncTreeEntry(_sliceHash, _decoder);
+		_hashes.put(new HashEntry(_sliceHash), _nextRoot);
 		synchronized (callbacks) {
 			registerCallbackInternal(syncHandler, slice);
 		}
@@ -232,29 +114,6 @@ Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 		synchronized (callbacks) {
 			removeCallbackInternal(syncHandler, slice);
 		}
-		synchronized (_rootsByTopo) {
-			HashMap<ConfigSlice, SliceReferences> topoMap = _rootsByTopo.get(slice.topo);
-			if (topoMap != null) {
-				topoMap.remove(slice);
-				if (topoMap.isEmpty()) {
-					_rootsByTopo.remove(slice.topo);
-				}
-			}
-		}
-	}
-	
-	/**
-	 * For a newly added callback - first go through the current tree and make any callbacks
-	 * that we already had
-	 */
-	private void doCurrentTreeCallbacks(CCNSyncHandler syncHandler, ConfigSlice slice, SyncTreeEntry ste) {
-		SliceReferences sr = new SliceReferences(slice.topo, slice.getHash());
-		sr.pushNext(ste);
-		ArrayList<CCNSyncHandler> tal = new ArrayList<CCNSyncHandler>(1);
-		tal.add(syncHandler);
-		HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> hm = new HashMap<ConfigSlice, ArrayList<CCNSyncHandler>>(1);
-		hm.put(slice, tal);
-		doComparisonWithCallbacks(null, sr, hm);
 	}
 
 	public Interest handleContent(ContentObject data, Interest interest) {
@@ -266,23 +125,18 @@ Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 			return null;
 		}
 		Log.info(Log.FAC_SYNC, "Saw new content from sync: {0}", name);
-		ContentName topo = name.cut(Sync.SYNC_ROOT_ADVISE_MARKER.getBytes());
-		byte[] hash = name.component(hashComponent + 1);
-		SliceReferences sr = getReferencesBySliceHash(topo, hash);
-		if (null != sr) {
-			boolean newRound = false;
-			synchronized (sr) {
-				SyncTreeEntry ste = new SyncTreeEntry(_decoder);
-				ste.setRawContent(data.content());
-				sr.addPending(ste);
-				if (sr.getState() == SyncCompareState.DONE) {
-					sr.setState(SyncCompareState.INIT);
-					newRound = true;
-				}
+		boolean newRound = false;
+		synchronized (this) {
+			SyncTreeEntry ste = new SyncTreeEntry(_decoder);
+			ste.setRawContent(data.content());
+			_pendingEntries.add(ste);
+			if (_state == SyncCompareState.DONE) {
+				_state = SyncCompareState.INIT;
+				newRound = true;
 			}
-			if (newRound)
-				kickCompare();	// Don't want to do this inside lock
 		}
+		if (newRound)
+			kickCompare();	// Don't want to do this inside lock
 		return null;
 	}
 	
@@ -308,12 +162,12 @@ Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 		}
 	}
 	
-	private SyncTreeEntry addHash(SliceReferences sr, byte[] hash) {
-		synchronized (sr) {
-			SyncTreeEntry entry = sr.getByHash(new HashEntry(hash));
+	private SyncTreeEntry addHash(byte[] hash) {
+		synchronized (this) {
+			SyncTreeEntry entry = _hashes.get(new HashEntry(hash));
 			if (null == entry) {
 				entry = new SyncTreeEntry(hash, _decoder);
-				sr.addHash(hash, entry);
+				_hashes.put(new HashEntry(hash), entry);
 			}
 			return entry;
 		}
@@ -326,15 +180,15 @@ Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 	 * @param srt
 	 * @return false if no preloads requested
 	 */
-	private boolean doPreload(ContentName topo, SliceReferences sr, SyncTreeEntry srt) {
+	private boolean doPreload(ContentName topo, SyncTreeEntry srt) {
 		Boolean ret = false;
-		synchronized (sr) {
+		synchronized (this) {
 			SyncNodeComposite snc = srt.getNodeX();
 			if (null != snc) {
 				for (SyncNodeElement sne : snc.getRefs()) {
 					if (sne.getType() == SyncNodeType.HASH) {
 						byte[] hash = sne.getData();
-						ret = requestNode(topo, sr, hash);
+						ret = requestNode(topo, hash);
 					}
 				}
 			}
@@ -349,15 +203,15 @@ Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 	 * @param hash
 	 * @return true if request made
 	 */
-	private boolean requestNode(ContentName topo, SliceReferences sr, byte[] hash) {
+	private boolean requestNode(ContentName topo, byte[] hash) {
 		boolean ret = false;
 		if (null != topo) {
-			synchronized (sr) {
-				SyncTreeEntry tsrt = addHash(sr, hash);
+			synchronized (this) {
+				SyncTreeEntry tsrt = addHash(hash);
 				if (tsrt.getNodeX() == null && !tsrt.getPending()) {
 					tsrt.setPending(true);
 					Log.info("requesting node for hash: {0}", Component.printURI(hash));
-					ret = getHash(topo, sr.getSliceHash(), hash);
+					ret = getHash(topo, _sliceHash, hash);
 				}
 			}
 		}
@@ -379,26 +233,7 @@ Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 		return ret;
 	}
 	
-	/**
-	 * We could add a second HashMap to make this more efficient, but my belief is that its unlikely that
-	 * we will normally have to deal with so many slices in the same topo here that that is really necessary.
-	 * If that is not the case, this should be improved.
-	 */
-	private SliceReferences getReferencesBySliceHash(ContentName topo, byte[] hash) {
-		synchronized (_rootsByTopo) {
-			HashMap<ConfigSlice, SliceReferences> topoMap = _rootsByTopo.get(topo);
-			if (null != topoMap) {
-				for (ConfigSlice cs : topoMap.keySet()) {
-					SliceReferences sr = topoMap.get(cs);
-					if (Arrays.equals(hash, sr.getSliceHash()))
-						return sr;
-				}
-			}
-		}
-		return null;
-	}
-	
-	private void doComparison(ContentName topo, SliceReferences sr) {
+	private void doComparison(ContentName topo) {
 Log.info("started compare");
 		HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> tCallbacks = null;
 		
@@ -414,22 +249,22 @@ Log.info("started compare");
 				tCallbacks.put(cs, tal);
 			}
 		}
-		doComparisonWithCallbacks(topo, sr, tCallbacks);
+		doComparisonWithCallbacks(topo, tCallbacks);
 	}
 		
-	private void doComparisonWithCallbacks(ContentName topo, SliceReferences sr, HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> callbacks) {
+	private void doComparisonWithCallbacks(ContentName topo, HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> callbacks) {
 		SyncTreeEntry srtY = null;
 		SyncTreeEntry srtX = null;
 		
-		synchronized (sr) {
-			srtY = sr.getNextHead();
-			srtX = sr.getCurrentHead();
+		synchronized (this) {
+			srtY = getNextHead();
+			srtX = getCurrentHead();
 		}
 		while (null != srtY) {
 			boolean lastPos = false;
 			SyncNodeComposite.SyncNodeElement sneX = null;
 			SyncNodeComposite.SyncNodeElement sneY = null;
-			synchronized (sr) {
+			synchronized (this) {
 				SyncNodeComposite snc = srtY.getNodeX();
 				if (null != snc) {
 					sneY = srtY.getCurrentElement();
@@ -451,31 +286,31 @@ Log.info("Comparing hash for {0}, type is {1}", Component.printURI(srtY.getHash(
 					break;
 				case HASH:
 					byte[] hash = sneY.getData();
-					SyncTreeEntry entry = sr.getByHash(new HashEntry(hash));
+					SyncTreeEntry entry = _hashes.get(new HashEntry(hash));
 					if (null == entry) {
-						if (requestNode(topo, sr, sneY.getData())) {
+						if (requestNode(topo, sneY.getData())) {
 Log.info("requested from compare");
-							synchronized (sr) {
-								sr.setState(SyncCompareState.PRELOAD);
+							synchronized (this) {
+								_state = SyncCompareState.PRELOAD;
 							}
 						}
 					} else {
-						sr.pushNext(entry);
+						pushNext(entry);
 					}
 					break;
 				default:
 					break;
 				}
-				synchronized (sr) {
+				synchronized (this) {
 					srtY.incPos();
 					while (null != srtY && srtY.lastPos()) {
-						sr.popNext();
-						srtY = sr.getNextHead();
+						popNext();
+						srtY = getNextHead();
 					}
 				}
 			} else if (null == sneY  && !lastPos) {
 				Log.info("No data for {0}, pos is {1}", Component.printURI(srtY.getHash()), srtY.getPos());
-				requestNode(topo, sr, srtY.getHash());
+				requestNode(topo, srtY.getHash());
 				return;
 			} else if (null != sneX) {
 				if (sneX.getType() == SyncNodeType.LEAF && sneY.getType() == SyncNodeType.LEAF) {
@@ -492,19 +327,19 @@ Log.info("name 1 is {0}, name 2 is {1}, comp is {2}", sneX.getName(), sneY.getNa
 					}
 				}
 			} else {
-				synchronized (sr) {
+				synchronized (this) {
 					while (null != srtY && srtY.lastPos()) {
-						sr.popNext();
-						srtY = sr.getNextHead();
+						popNext();
+						getNextHead();
 					}
 				}
 			}
 		}
-		synchronized (sr) {
-			if (sr.getState() == SyncCompareState.COMPARE)
-				sr.setState(SyncCompareState.DONE);
+		synchronized (this) {
+			if (_state == SyncCompareState.COMPARE)
+				_state = SyncCompareState.DONE;
 		}
-Log.info("Exited 1 and status was: {0}", sr.getState());
+Log.info("Exited 1 and status was: {0}", _state);
 	}
 	
 	private void doCallbacks(HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> callbacks, SyncNodeComposite.SyncNodeElement sne) {
@@ -518,84 +353,104 @@ Log.info("Exited 1 and status was: {0}", sr.getState());
 		}
 	}
 	
+	protected void pushNext(SyncTreeEntry srt) {
+		_nextStack.push(srt);
+	}
+		
+	protected SyncTreeEntry popNext() {
+		if (!_nextStack.isEmpty()) {
+			SyncTreeEntry srt =  _nextStack.pop();
+Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
+		return srt;
+		}
+	return null;
+	}
+		
+	protected SyncTreeEntry getNextHead() {
+		if (! _nextStack.isEmpty())
+			return _nextStack.lastElement();
+		return null;
+	}
+		
+	protected void pushCurrent(SyncTreeEntry srt) {
+		_currentStack.push(srt);
+	}
+		
+	protected SyncTreeEntry popCurrent() {
+		if (!_currentStack.isEmpty())
+			return _currentStack.pop();
+		return null;
+	}
+		
+	protected SyncTreeEntry getCurrentHead() {
+		if (! _currentStack.isEmpty())
+			return _currentStack.lastElement();
+		return null;
+	}
+		
+		
+	protected void nextRound() {
+		_currentRoot = _nextRoot;
+		for (SyncTreeEntry tsrt : _hashes.values()) {
+			tsrt.setCurrent(true);
+		}
+	}
+	
 	public void run() {
 		try {
-			ArrayList<ContentName> topos = new ArrayList<ContentName>();		
 			do {
 				synchronized (_timerLock) {
 					_needToCompare = false;
 				}
-				
-				topos.clear();
-				synchronized (_rootsByTopo) {
-					for (ContentName topo : _rootsByTopo.keySet()) {
-						topos.add(topo);
-					}
-				}
-				
-				for (ContentName topo : topos) {
-					ArrayList<SliceReferences> slicesForTopo = new ArrayList<SliceReferences>();
-					synchronized (_rootsByTopo) {
-						HashMap<ConfigSlice, SliceReferences> hm = _rootsByTopo.get(topo);
-						if (null != hm) {
-							for (ConfigSlice cs : hm.keySet()) {
-								slicesForTopo.add(hm.get(cs));
+				switch (_state) {
+				case BUSY:
+					break;
+				case INIT:
+					synchronized (this) {
+						if (_pendingEntries.size() == 0) {
+							_state = SyncCompareState.DONE;
+							break;
+						}
+						nextRound();
+						for (SyncTreeEntry ste : _pendingEntries) {
+							SyncNodeComposite snc = ste.getNodeX();
+							if (null != snc) {
+								_hashes.put(new HashEntry(ste.setHash()), ste);
+								pushNext(ste);
 							}
 						}
+						_pendingEntries.clear();
+						_state = SyncCompareState.PRELOAD;
 					}
-					for (SliceReferences sr : slicesForTopo) {
-						switch (sr.getState()) {
-						case BUSY:
+					// Fall through
+				case PRELOAD:
+					synchronized (_timerLock) {
+						if (null == getNextHead()) {
+							_keepComparing = false;
 							break;
-						case INIT:
-							synchronized (sr) {
-								if (!sr.hasPending()) {
-									sr.setState(SyncCompareState.DONE);
-									break;
-								}
-								sr.nextRound();
-								ArrayList<SyncTreeEntry> entries = sr.getPending();
-								for (SyncTreeEntry ste : entries) {
-									SyncNodeComposite snc = ste.getNodeX();
-									if (null != snc) {
-										sr.addHash(ste.setHash(), ste);
-										sr.pushNext(ste);
-									}
-								}
-								sr.clearPending();
-								sr.setState(SyncCompareState.PRELOAD);
-							}
-							// Fall through
-						case PRELOAD:
-							synchronized (_timerLock) {
-								if (null == sr.getNextHead()) {
-									_keepComparing = false;
-									break;
-								}
-							}
-							if (doPreload(topo, sr, sr.getNextHead())) {
-								break;
-							}
-							sr.setState(SyncCompareState.COMPARE);
-							// Fall through
-						case COMPARE:
-							doComparison(topo, sr);
-							// Fall through
-						case DONE:
-							synchronized (sr) {
-								if (sr.hasPending()) {
-									sr.setState(SyncCompareState.INIT);
-									break;
-								}
-							}
-						default:
-							synchronized (_timerLock) {
-								_keepComparing = false;
-							}
-							break;
-						}			
+						}
 					}
-				}
+					if (doPreload(_topo, getNextHead())) {
+						break;
+					}
+					_state = SyncCompareState.COMPARE;
+					// Fall through
+				case COMPARE:
+					doComparison(_topo);
+					// Fall through
+				case DONE:
+					synchronized (this) {
+						if (_pendingEntries.size() > 0) {
+							_state = SyncCompareState.INIT;
+							break;
+						}
+					}
+				default:
+					synchronized (_timerLock) {
+						_keepComparing = false;
+					}
+					break;
+				}				
 				synchronized (_timerLock) {
 					if (!_keepComparing)
 						_needToCompare = true;
@@ -609,29 +464,25 @@ Log.info("Exited 1 and status was: {0}", sr.getState());
 
 		public Interest handleContent(ContentObject data, Interest interest) {
 			ContentName name = data.name();
+
 			int hashComponent = name.containsWhere(Sync.SYNC_NODE_FETCH_MARKER);
 			if (hashComponent < 0 || name.count() < (hashComponent + 1)) {
 				if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 					Log.info(Log.FAC_SYNC, "Received incorrect node content in sync: {0}", name);
 				return null;
 			}
-			ContentName topo = name.cut(Sync.SYNC_NODE_FETCH_MARKER.getBytes());
-			byte[] sliceHash = name.component(hashComponent + 1);
 			byte[] hash = name.component(hashComponent + 2);
 			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 				Log.info(Log.FAC_SYNC, "Saw data from nodefind: hash: {0}", name);
-			SliceReferences sr = getReferencesBySliceHash(topo, sliceHash);
-			if (null != sr) {
-				synchronized (sr) {
-					SyncTreeEntry srt = null;
-					srt = addHash(sr, hash);
-					srt.setRawContent(data.content());
-					srt.setPending(false);
-					if (null != srt) {
-						sr.pushNext(srt);
-						sr.setState(SyncCompareState.PRELOAD);
-						kickCompare();
-					}
+			synchronized (this) {
+				SyncTreeEntry srt = null;
+				srt = addHash(hash);
+				srt.setRawContent(data.content());
+				srt.setPending(false);
+				if (null != srt) {
+					pushNext(srt);
+					_state = SyncCompareState.PRELOAD;
+					kickCompare();
 				}
 			}
 			return null;

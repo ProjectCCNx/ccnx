@@ -32,7 +32,7 @@ public class CCNSync {
 	
 	protected SyncMonitor syncMon = null;
 	
-	public void startSync(CCNHandle handle, ConfigSlice syncSlice, CCNSyncHandler syncCallback) throws IOException, ConfigurationException{
+	public void startSync(CCNHandle handle, ConfigSlice syncSlice, CCNSyncHandler syncCallback, byte[] startHash, ContentName startName) throws IOException, ConfigurationException{
 		try {
 			syncSlice.checkAndCreate(handle);
 			if (syncMon == null)
