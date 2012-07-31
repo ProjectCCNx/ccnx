@@ -88,9 +88,8 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		protected Stack<SyncTreeEntry> _nextStack = new Stack<SyncTreeEntry>();
 		protected Object _stateLock = new Object();
 		protected SyncCompareState _state = SyncCompareState.DONE;
-		protected SyncTreeEntry _lastHash = null;
-		protected SyncTreeEntry _nextHash = null;
 		protected HashMap<HashEntry, SyncTreeEntry> _hashes = new HashMap<HashEntry, SyncTreeEntry>();
+		protected ArrayList<SyncTreeEntry> _pendingEntries = new ArrayList<SyncTreeEntry>();
 		
 		protected SliceReferences(ContentName name, byte[] sliceHash) {
 			_sliceHash = sliceHash;
@@ -129,14 +128,6 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			_hashes.put(new HashEntry(hash), srt);
 		}
 		
-		protected SyncTreeEntry getNextHash() {
-			return _nextHash;
-		}
-		
-		protected void addNextHash(SyncTreeEntry srt) {
-			_nextHash = srt;
-		}
-		
 		protected void pushNext(SyncTreeEntry srt) {
 Log.info("pushing entry with hash: {0}", Component.printURI(srt._hash));
 			_nextStack.push(srt);
@@ -173,22 +164,30 @@ Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 			return null;
 		}
 		
+		protected void addPending(SyncTreeEntry ste) {
+			_pendingEntries.add(ste);
+		}
+		
+		protected ArrayList<SyncTreeEntry> getPending() {
+			return _pendingEntries;
+		}
+		
+		protected boolean hasPending() {
+			return _pendingEntries.size() > 0;
+		}
+		
+		protected void clearPending() {
+			_pendingEntries.clear();
+		}
+		
 		/**
 		 * Needs outside synchronization
 		 */
-		protected void nextRound(SyncTreeEntry srt) {
-Log.info("Starting next round with hash: {0}", Component.printURI(srt.getHash()));
+		protected void nextRound() {
 			_currentRoot = _nextRoot;
-			_nextHash = srt;
-			_nextRoot = new SyncTreeEntry(_sliceHash, _decoder);
-			_state = SyncCompareState.INIT;
-			if (null != _lastHash) {
-				for (SyncTreeEntry tsrt : _hashes.values()) {
-					tsrt.setCurrent(true);
-				}
-				pushCurrent(_lastHash);
+			for (SyncTreeEntry tsrt : _hashes.values()) {
+				tsrt.setCurrent(true);
 			}
-			_lastHash = _nextHash;
 		}
 	}
 	
@@ -199,27 +198,33 @@ Log.info("Starting next round with hash: {0}", Component.printURI(srt.getHash())
 	}
 
 	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice) throws IOException {
-		synchronized (callbacks) {
-			registerCallbackInternal(syncHandler, slice);
-		}
 		synchronized (_rootsByTopo) {
 			HashMap<ConfigSlice, SliceReferences> topoMap = _rootsByTopo.get(slice.topo);
 			if (null == topoMap) {
 				topoMap = new HashMap<ConfigSlice, SliceReferences>();
 			}
 			byte[] hash = slice.getHash();
-			if (null == topoMap.get(slice)) {
-				SliceReferences sr = new SliceReferences(slice.topo, hash);
+			SliceReferences sr = topoMap.get(slice);
+			if (null == sr) {
+				sr = new SliceReferences(slice.topo, hash);
 				topoMap.put(slice, sr);
 				_rootsByTopo.put(slice.topo, topoMap);
 				addHash(sr, hash);
+			} else {
+				synchronized (sr) {
+					SyncTreeEntry ste = sr.getCurrentHead();
+					if (null != ste)
+						doCurrentTreeCallbacks(syncHandler, slice, ste);
+				}
 			}
+		}
+		synchronized (callbacks) {
+			registerCallbackInternal(syncHandler, slice);
 		}
 		ContentName rootAdvise = new ContentName(slice.topo, Sync.SYNC_ROOT_ADVISE_MARKER, slice.getHash());
 		Interest interest = new Interest(rootAdvise);
 		interest.scope(1);
 		_handle.registerFilter(rootAdvise, this);
-Log.info("Output root advise for {0}", rootAdvise);
 		_handle.expressInterest(interest, this);
 	}
 
@@ -237,6 +242,20 @@ Log.info("Output root advise for {0}", rootAdvise);
 			}
 		}
 	}
+	
+	/**
+	 * For a newly added callback - first go through the current tree and make any callbacks
+	 * that we already had
+	 */
+	private void doCurrentTreeCallbacks(CCNSyncHandler syncHandler, ConfigSlice slice, SyncTreeEntry ste) {
+		SliceReferences sr = new SliceReferences(slice.topo, slice.getHash());
+		sr.pushNext(ste);
+		ArrayList<CCNSyncHandler> tal = new ArrayList<CCNSyncHandler>(1);
+		tal.add(syncHandler);
+		HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> hm = new HashMap<ConfigSlice, ArrayList<CCNSyncHandler>>(1);
+		hm.put(slice, tal);
+		doComparisonWithCallbacks(null, sr, hm);
+	}
 
 	public Interest handleContent(ContentObject data, Interest interest) {
 		ContentName name = data.name();
@@ -251,16 +270,17 @@ Log.info("Output root advise for {0}", rootAdvise);
 		byte[] hash = name.component(hashComponent + 1);
 		SliceReferences sr = getReferencesBySliceHash(topo, hash);
 		if (null != sr) {
-			SyncTreeEntry srt = null;
+			boolean newRound = false;
 			synchronized (sr) {
-				srt = genericContentHandler(data, topo, sr, hash);
-				if (null != srt) {
-					if (sr.getState() == SyncCompareState.DONE) {
-						sr.nextRound(srt);
-					}
+				SyncTreeEntry ste = new SyncTreeEntry(_decoder);
+				ste.setRawContent(data.content());
+				sr.addPending(ste);
+				if (sr.getState() == SyncCompareState.DONE) {
+					sr.setState(SyncCompareState.INIT);
+					newRound = true;
 				}
 			}
-			if (null != srt)
+			if (newRound)
 				kickCompare();	// Don't want to do this inside lock
 		}
 		return null;
@@ -276,19 +296,6 @@ Log.info("Output root advise for {0}", rootAdvise);
 			e.printStackTrace();
 		}
 		return true;
-	}
-	
-	/**
-	 * Caller should synchronize
-	 */
-	private SyncTreeEntry genericContentHandler(ContentObject data, ContentName topo, SliceReferences sr, byte[] hash) {
-		SyncTreeEntry srt = null;
-		synchronized (sr) {
-			srt = addHash(sr, hash);
-			srt.setRawContent(data.content());
-			srt.setPending(false);
-		}
-		return srt;
 	}
 	
 	private void kickCompare() {
@@ -322,7 +329,7 @@ Log.info("Output root advise for {0}", rootAdvise);
 	private boolean doPreload(ContentName topo, SliceReferences sr, SyncTreeEntry srt) {
 		Boolean ret = false;
 		synchronized (sr) {
-			SyncNodeComposite snc = srt.getNode();
+			SyncNodeComposite snc = srt.getNodeX();
 			if (null != snc) {
 				for (SyncNodeElement sne : snc.getRefs()) {
 					if (sne.getType() == SyncNodeType.HASH) {
@@ -344,12 +351,14 @@ Log.info("Output root advise for {0}", rootAdvise);
 	 */
 	private boolean requestNode(ContentName topo, SliceReferences sr, byte[] hash) {
 		boolean ret = false;
-		synchronized (sr) {
-			SyncTreeEntry tsrt = addHash(sr, hash);
-			if (tsrt.getNode() == null && !tsrt.getPending()) {
-				tsrt.setPending(true);
-				Log.info("requesting node for hash: {0}", Component.printURI(hash));
-				ret = getHash(topo, sr.getSliceHash(), hash);
+		if (null != topo) {
+			synchronized (sr) {
+				SyncTreeEntry tsrt = addHash(sr, hash);
+				if (tsrt.getNodeX() == null && !tsrt.getPending()) {
+					tsrt.setPending(true);
+					Log.info("requesting node for hash: {0}", Component.printURI(hash));
+					ret = getHash(topo, sr.getSliceHash(), hash);
+				}
 			}
 		}
 		return ret;
@@ -391,70 +400,103 @@ Log.info("Output root advise for {0}", rootAdvise);
 	
 	private void doComparison(ContentName topo, SliceReferences sr) {
 Log.info("started compare");
-		SyncTreeEntry srt = null;
-		synchronized (sr) {
-			srt = sr.getNextHead();
+		HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> tCallbacks = null;
+		
+		synchronized(callbacks) {
+			// We can't call the callback with locks held so extract what we will call 
+			// under the lock
+			tCallbacks = new HashMap<ConfigSlice, ArrayList<CCNSyncHandler>>(callbacks.size());
+			for (ConfigSlice cs : callbacks.keySet()) {
+				ArrayList<CCNSyncHandler> tal = new ArrayList<CCNSyncHandler>();
+				for (CCNSyncHandler csh : callbacks.get(cs)) {
+					tal.add(csh);
+				}
+				tCallbacks.put(cs, tal);
+			}
 		}
-		while (null != srt) {
+		doComparisonWithCallbacks(topo, sr, tCallbacks);
+	}
+		
+	private void doComparisonWithCallbacks(ContentName topo, SliceReferences sr, HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> callbacks) {
+		SyncTreeEntry srtY = null;
+		SyncTreeEntry srtX = null;
+		
+		synchronized (sr) {
+			srtY = sr.getNextHead();
+			srtX = sr.getCurrentHead();
+		}
+		while (null != srtY) {
 			boolean lastPos = false;
-			SyncNodeComposite.SyncNodeElement sne = null;
+			SyncNodeComposite.SyncNodeElement sneX = null;
+			SyncNodeComposite.SyncNodeElement sneY = null;
 			synchronized (sr) {
-				SyncNodeComposite snc = srt.getNode();
+				SyncNodeComposite snc = srtY.getNodeX();
 				if (null != snc) {
-					sne = srt.getCurrentElement();
-					if (null == sne)
+					sneY = srtY.getCurrentElement();
+					if (null == sneY)
 						lastPos = true;
 				}
+				if (null != srtX) {
+					snc = srtX.getNodeX();
+					if (null != snc) {
+						sneX = srtX.getCurrentElement();
+					}
+				}
 			}
-			if (!lastPos) {
-				if (null != sne) {
-Log.info("Comparing hash for {0}, type is {1}", Component.printURI(srt.getHash()), sne.getType());
-					switch (sne.getType()) {
-					case LEAF:
-						ContentName name = sne.getName().parent();	// remove digest here
-						HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> tCallbacks = null;
-						synchronized(callbacks) {
-							// We can't call the callback with locks held so extract what we will call 
-							// under the lock
-							tCallbacks = new HashMap<ConfigSlice, ArrayList<CCNSyncHandler>>(callbacks.size());
-							for (ConfigSlice cs : callbacks.keySet()) {
-								ArrayList<CCNSyncHandler> tal = new ArrayList<CCNSyncHandler>();
-								for (CCNSyncHandler csh : callbacks.get(cs)) {
-									tal.add(csh);
-								}
-								tCallbacks.put(cs, tal);
-							}
-						}
-						for (ConfigSlice cs : tCallbacks.keySet()) {
-							if (cs.prefix.isPrefixOf(name)) {
-								for (CCNSyncHandler handler: tCallbacks.get(cs)) {
-									handler.handleContentName(cs, name);
-								}
-							}
-						}
-						break;
-					case HASH:
-						if (requestNode(topo, sr, sne.getData())) {
-	Log.info("requested from compare");
+			if (null == sneX && null != sneY && !lastPos) {
+Log.info("Comparing hash for {0}, type is {1}", Component.printURI(srtY.getHash()), sneY.getType());
+				switch (sneY.getType()) {
+				case LEAF:
+					doCallbacks(callbacks, sneY);
+					break;
+				case HASH:
+					byte[] hash = sneY.getData();
+					SyncTreeEntry entry = sr.getByHash(new HashEntry(hash));
+					if (null == entry) {
+						if (requestNode(topo, sr, sneY.getData())) {
+Log.info("requested from compare");
 							synchronized (sr) {
 								sr.setState(SyncCompareState.PRELOAD);
 							}
 						}
-						break;
-					default:
-						break;
+					} else {
+						sr.pushNext(entry);
 					}
-				} else {
-					Log.info("No data for {0}", Component.printURI(srt.getHash()));
-					requestNode(topo, sr, srt.getHash());
-					return;
+					break;
+				default:
+					break;
 				}
-			}
-			synchronized (sr) {
-				srt.incPos();
-				while (null != srt && srt.lastPos()) {
-					sr.popNext();
-					srt = sr.getNextHead();
+				synchronized (sr) {
+					srtY.incPos();
+					while (null != srtY && srtY.lastPos()) {
+						sr.popNext();
+						srtY = sr.getNextHead();
+					}
+				}
+			} else if (null == sneY  && !lastPos) {
+				Log.info("No data for {0}, pos is {1}", Component.printURI(srtY.getHash()), srtY.getPos());
+				requestNode(topo, sr, srtY.getHash());
+				return;
+			} else if (null != sneX) {
+				if (sneX.getType() == SyncNodeType.LEAF && sneY.getType() == SyncNodeType.LEAF) {
+					int comp = sneX.getName().compareTo(sneY.getName());
+Log.info("name 1 is {0}, name 2 is {1}, comp is {2}", sneX.getName(), sneY.getName(), comp);
+					if (comp == 0) {
+						srtX.incPos();
+						srtY.incPos();
+					} else if (comp > 0) {
+						srtX.incPos();
+					} else {
+						doCallbacks(callbacks, sneY);
+						srtY.incPos();
+					}
+				}
+			} else {
+				synchronized (sr) {
+					while (null != srtY && srtY.lastPos()) {
+						sr.popNext();
+						srtY = sr.getNextHead();
+					}
 				}
 			}
 		}
@@ -463,6 +505,17 @@ Log.info("Comparing hash for {0}, type is {1}", Component.printURI(srt.getHash()
 				sr.setState(SyncCompareState.DONE);
 		}
 Log.info("Exited 1 and status was: {0}", sr.getState());
+	}
+	
+	private void doCallbacks(HashMap<ConfigSlice, ArrayList<CCNSyncHandler>> callbacks, SyncNodeComposite.SyncNodeElement sne) {
+		ContentName name = sne.getName().parent();	// remove digest here
+		for (ConfigSlice cs : callbacks.keySet()) {
+			if (cs.prefix.isPrefixOf(name)) {
+				for (CCNSyncHandler handler: callbacks.get(cs)) {
+					handler.handleContentName(cs, name);
+				}
+			}
+		}
 	}
 	
 	public void run() {
@@ -495,11 +548,23 @@ Log.info("Exited 1 and status was: {0}", sr.getState());
 						case BUSY:
 							break;
 						case INIT:
-							SyncTreeEntry srt = sr.getNextHash();
-							if (null == srt)
-								break;
-							sr.pushNext(srt);
-							sr.setState(SyncCompareState.PRELOAD);
+							synchronized (sr) {
+								if (!sr.hasPending()) {
+									sr.setState(SyncCompareState.DONE);
+									break;
+								}
+								sr.nextRound();
+								ArrayList<SyncTreeEntry> entries = sr.getPending();
+								for (SyncTreeEntry ste : entries) {
+									SyncNodeComposite snc = ste.getNodeX();
+									if (null != snc) {
+										sr.addHash(ste.setHash(), ste);
+										sr.pushNext(ste);
+									}
+								}
+								sr.clearPending();
+								sr.setState(SyncCompareState.PRELOAD);
+							}
 							// Fall through
 						case PRELOAD:
 							synchronized (_timerLock) {
@@ -517,6 +582,12 @@ Log.info("Exited 1 and status was: {0}", sr.getState());
 							doComparison(topo, sr);
 							// Fall through
 						case DONE:
+							synchronized (sr) {
+								if (sr.hasPending()) {
+									sr.setState(SyncCompareState.INIT);
+									break;
+								}
+							}
 						default:
 							synchronized (_timerLock) {
 								_keepComparing = false;
@@ -552,7 +623,10 @@ Log.info("Exited 1 and status was: {0}", sr.getState());
 			SliceReferences sr = getReferencesBySliceHash(topo, sliceHash);
 			if (null != sr) {
 				synchronized (sr) {
-					SyncTreeEntry srt = genericContentHandler(data, topo, sr, hash);
+					SyncTreeEntry srt = null;
+					srt = addHash(sr, hash);
+					srt.setRawContent(data.content());
+					srt.setPending(false);
 					if (null != srt) {
 						sr.pushNext(srt);
 						sr.setState(SyncCompareState.PRELOAD);

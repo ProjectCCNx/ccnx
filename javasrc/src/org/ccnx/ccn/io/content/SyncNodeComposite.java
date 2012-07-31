@@ -135,5 +135,16 @@ public class SyncNodeComposite extends GenericXMLEncodable implements XMLEncodab
 	public boolean validate() {
 		return _version == Sync.SYNC_VERSION;
 	}
-
+	
+	public SyncNodeElement getMinName() {
+		return _minName;
+	}
+	
+	public SyncNodeElement getMaxName() {
+		return _maxName;
+	}
+	
+	public byte[] getHash() {
+		return _longhash;
+	}
 }

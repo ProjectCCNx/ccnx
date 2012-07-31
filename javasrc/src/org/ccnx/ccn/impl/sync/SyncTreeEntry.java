@@ -34,10 +34,14 @@ public class SyncTreeEntry {
 
 	protected long _flags;
 	protected byte[] _hash;
-	protected SyncNodeComposite _node = null;
+	protected SyncNodeComposite _nodeX = null;
 	protected byte[] _rawContent = null;
 	protected XMLDecoder _decoder;
 	protected int _position = 0;
+	
+	public SyncTreeEntry(XMLDecoder decoder) {
+		_decoder = decoder;
+	}
 	
 	public SyncTreeEntry(byte[] hash, XMLDecoder decoder) {
 		_hash = new byte[hash.length];
@@ -45,31 +49,40 @@ public class SyncTreeEntry {
 		System.arraycopy(hash, 0, _hash, 0, hash.length);
 	}
 	
+	public byte[] setHash() throws SyncException {
+		if (null == _nodeX)
+			throw new SyncException("No node when attempting setHash");
+		byte [] hash = _nodeX.getHash();
+		_hash = new byte[hash.length];
+		System.arraycopy(hash, 0, _hash, 0, hash.length);
+		return _hash;
+	}
+	
 	public void setRawContent(byte[] content) {
-		_node = null;
+		_nodeX = null;
 		_rawContent = content;
 		_position = 0;
 	}
 	
-	public SyncNodeComposite getNode() {
-		if (null == _node && null != _rawContent) {
-			_node = new SyncNodeComposite();
+	public SyncNodeComposite getNodeX() {
+		if (null == _nodeX && null != _rawContent) {
+			_nodeX = new SyncNodeComposite();
 			try {
-				_node.decode(_rawContent, _decoder);
+				_nodeX.decode(_rawContent, _decoder);
 			} catch (ContentDecodingException e) {
 				e.printStackTrace();
-				_node = null;
+				_nodeX = null;
 				_rawContent = null;
 				return null;
 			}
 			_rawContent = null;
-Log.info("decode node for {0} depth = {1} longhash is {2}, refs = {3}, position = {4}", Component.printURI(_hash), _node._treeDepth, Component.printURI(_node._longhash), _node.getRefs().size(), _position);
+Log.info("decode node for {0} depth = {1} refs = {2}, position = {3}", Component.printURI(_nodeX._longhash), _nodeX._treeDepth, _nodeX.getRefs().size(), _position);
 		}
-		return _node;
+		return _nodeX;
 	}
 	
 	public SyncNodeComposite.SyncNodeElement getCurrentElement() {
-		SyncNodeComposite node = getNode();
+		SyncNodeComposite node = getNodeX();
 		if (null == node)
 			return null;
 		return node.getElement(_position);
@@ -83,10 +96,14 @@ Log.info("decode node for {0} depth = {1} longhash is {2}, refs = {3}, position 
 		_position = position;
 	}
 	
+	public int getPos() {
+		return _position;
+	}
+	
 	public boolean lastPos() {
-		if (_node == null)
+		if (_nodeX == null)
 			return false;	// Needed to prompt a getNode
-		return (_position >= getNode().getRefs().size());
+		return (_position >= getNodeX().getRefs().size());
 	}
 	
 	public byte[] getHash() {
