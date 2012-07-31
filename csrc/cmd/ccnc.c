@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include <ccn/ccn.h>
 #include <ccn/ccn_private.h> /* for ccn_process_scheduled_operations() */
@@ -28,13 +29,15 @@
 #include <ccn/uri.h>
 
 #define USAGE                                                                 \
-    "[-hdnvq] [-i n] ccnx:/chat/room [cmd ...] - community text chat"    "\n" \
+    "[-hdi:nqr:vx:] ccnx:/chat/room - community text chat"               "\n" \
     " -h - help"                                                         "\n" \
     " -d - debug mode - no input editing"                                "\n" \
     " -i n - print n bytes of signer's public key digest in hex"         "\n" \
     " -n - no echo of own output"                                        "\n" \
     " -q - no automatic greeting or farwell"                             "\n" \
-    " -v - verbose trace of what is happening"
+    " -r command - hook up to input and output of responder command"     "\n" \
+    " -v - verbose trace of what is happening"                           "\n" \
+    " -x sec - set freshness"
 
 /** Entry in the application's pending interest table */
 struct pit_entry {
@@ -81,10 +84,11 @@ struct ccnxchat_state {
     int eof;                    /* true if we have encountered eof */
     int ready;                  /* true if payload is ready to go */
     int prefer_newest;          /* for saner startup */
-    int verbose;                /* to turn on debugging output */
     int echo;                   /* to see own output */
+    int freshness;              /* to set FreshnessSeconds */
     int quiet;                  /* no automatic greeting or farwell */
     int robotname;              /* print n bytes of robot name */
+    int verbose;                /* to turn on debugging output */
 };
 
 /* Prototypes */
@@ -476,7 +480,9 @@ generate_cob(struct ccnxchat_state *st)
     ccn_charbuf_append(st->name, st->basename->buf, st->basename->length);
     ccn_create_version(st->h, st->name, CCN_V_NOW, 0, 0);
     ccn_name_append_numeric(st->name, CCN_MARKER_SEQNUM, 0);
-    sp.sp_flags |= CCN_SP_FINAL_BLOCK;
+    sp.sp_flags |= CCN_SP_FINAL_BLOCK; /* always produce just one segment */
+    if (st->freshness > 0)
+        sp.freshness = st->freshness;
     /* Make a ContentObject using the constructed name and our payload */
     ccn_charbuf_reset(st->cob);
     res = ccn_sign_content(st->h, st->cob, st->name, &sp,
@@ -551,6 +557,7 @@ read_input(struct ccnxchat_state *st)
                 ccn_charbuf_putf(st->payload, "=== ");
                 ccn_charbuf_append_charbuf(st->payload, st->luser);
                 ccn_charbuf_putf(st->payload, " leaving chat");
+                st->freshness = 1;
             }
             st->eof = 1;
             if (st->payload->length > 0)
@@ -766,11 +773,12 @@ static const char *progname;
 static struct {
     int debug;
     int echo;
+    int freshness;
     int robotname;
     int quiet;
     int verbose;
     const char *basename;
-    const char **command;
+    const char *responder;
 } option;
 
 static void
@@ -784,7 +792,8 @@ parseopts(int argc, char **argv)
     option.robotname = 3;
     option.verbose = 0;
     option.quiet = 0;
-    while ((opt = getopt(argc, argv, "di:hnqv")) != -1) {
+    option.freshness = 30 * 60;
+    while ((opt = getopt(argc, argv, "hdi:nqr:vx:")) != -1) {
         switch (opt) {
             case 'd':
                 option.debug = 1;
@@ -800,8 +809,14 @@ parseopts(int argc, char **argv)
             case 'q':
                 option.quiet = 1;
                 break;
+            case 'r':
+                option.responder = optarg;
+                break;
             case 'v':
                 option.verbose++;
+                break;
+            case 'x':
+                option.freshness = atoi(optarg);
                 break;
             case 'h':
             default:
@@ -809,9 +824,8 @@ parseopts(int argc, char **argv)
         }
     }
     option.basename = argv[optind];
-    if (option.basename == NULL)
+    if (option.basename == NULL || argv[optind + 1] != NULL)
         usage();
-    option.command = &argv[optind + 1];
 }
 
 /**
@@ -831,6 +845,7 @@ initialize(struct ccnxchat_state *st, struct ccn_charbuf *basename)
     if (res < 0)
         usage();
     st->echo = option.echo;
+    st->freshness = option.freshness;
     st->verbose = option.verbose;
     st->robotname = option.robotname;
     st->quiet = option.quiet;
@@ -1009,10 +1024,57 @@ append_full_user_name(struct ccn_charbuf *c)
     return(res);
 }
 
+/**
+ * classic unix fork/exec to hook up an automatic responder
+ */
+static int
+robo_chat(int argc, char **argv)
+{
+    pid_t p;
+    int res;
+    int io[2] = {-1, -1};
+    int oi[2] = {-1, -1};
+    
+    res = socketpair(AF_UNIX, SOCK_STREAM, 0, io);
+    if (res < 0) exit(1);
+    res = socketpair(AF_UNIX, SOCK_STREAM, 0, oi);
+    if (res < 0) exit(1);
+    p = fork();
+    if (p < 0) {
+        perror("fork");
+        exit(1);
+    }
+    if (p == 0) {
+        /* child */
+        dup2(io[1], 0);
+        dup2(oi[1], 1);
+        close(io[0]);
+        close(io[1]);
+        close(oi[0]);
+        close(oi[1]);
+        execlp("sh", "sh", "-c", option.responder, NULL);
+        perror(option.responder); /* no return unless there was an error */
+        exit(1);
+    }
+    /* parent */
+    dup2(io[0], 1);
+    dup2(oi[0], 0);
+    close(io[0]);
+    close(io[1]);
+    close(oi[0]);
+    close(oi[1]);
+    /* Turn off echo and extra output for the robo-chat case */
+    option.echo = 0;
+    option.quiet = 1;
+    return(chat_main(argc, argv));
+}
+
 int
-main(int argc, char** argv)
+main(int argc, char **argv)
 {
     parseopts(argc, argv);
+    if (option.responder != NULL)
+        return(robo_chat(argc, argv));
     if (option.debug)
         return(chat_main(argc, argv));
     return(lned_run(argc, argv, "Chat.. ", &chat_main));
