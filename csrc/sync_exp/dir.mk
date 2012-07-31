@@ -117,11 +117,11 @@ SyncUtil.o: SyncUtil.c SyncBase.h ../include/ccn/loglevels.h \
 UpdateSketch.o: UpdateSketch.c
 sync_api.o: sync_api.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/digest.h ../include/ccn/schedule.h ../include/ccn/uri.h \
+  ../include/ccn/digest.h ../include/ccn/loglevels.h \
+  ../include/ccn/schedule.h ../include/ccn/uri.h \
   ../include/ccn/ccn_private.h sync.h sync_diff.h SyncHashCache.h \
   SyncRoot.h SyncTreeWorker.h SyncUtil.h IndexSorter.h SyncNode.h \
-  SyncMacros.h SyncPrivate.h SyncBase.h ../include/ccn/loglevels.h \
-  sync_depends.h
+  SyncMacros.h SyncPrivate.h SyncBase.h sync_depends.h
 sync_diff.o: sync_diff.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/digest.h ../include/ccn/schedule.h ../include/ccn/sync.h \
