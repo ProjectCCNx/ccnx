@@ -264,7 +264,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 	
 	
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
-		Log.fine(Log.FAC_TEST, "Callback for name: {0}", syncedContent);
+		Log.info(Log.FAC_TEST, "Callback for name: {0}", syncedContent);
 		synchronized (callbackNames) {
 			callbackNames.add(syncedContent);
 		}
