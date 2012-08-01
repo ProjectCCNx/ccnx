@@ -2,12 +2,12 @@
 .\"     Title: ccnc
 .\"    Author: [see the "AUTHOR" section]
 .\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
-.\"      Date: 06/25/2012
+.\"      Date: 08/01/2012
 .\"    Manual: \ \&
 .\"    Source: \ \& 0.6.x
 .\"  Language: English
 .\"
-.TH "CCNC" "1" "06/25/2012" "\ \& 0\&.6\&.x" "\ \&"
+.TH "CCNC" "1" "08/01/2012" "\ \& 0\&.6\&.x" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -41,6 +41,48 @@ A "chat room" argument (a ccnx URI) is used to identify the channel\&. All of th
 If standard input and standard output are both tty devices, a simple line editor is provided\&.
 .sp
 As is the case for all ccnx applications, a ccnd must be running on each machine, and suitable forwarding rules must be configured\&. Please refer to \fBccndstart(1)\fR and \fBccndc(1)\fR for details\&.
+.SH "OPTIONS"
+.PP
+\fB\-h\fR
+.RS 4
+Generate a brief help message and exit\&.
+.RE
+.PP
+\fB\-d\fR
+.RS 4
+Debug mode \- no input editing\&. This is rarely needed, except when running under a debugger\&.
+.RE
+.PP
+\fB\-i\fR \fIn\fR
+.RS 4
+Print n bytes of signer\(cqs public key digest in hex\&. This is the
+\fIrobot name\fR\&. The default is 3 (6 characters of hex)\&. There is one space separating the robot name from the text of the message\&. Use 0 here to suppress the robot name (and the space), or 32 if you need to know the complete signer digest\&.
+.RE
+.PP
+\fB\-n\fR
+.RS 4
+No echo of own messages\&.
+.RE
+.PP
+\fB\-q\fR
+.RS 4
+Disable automatic greeting or farewell messages\&. (At present only the farewell message is implemented\&.)
+.RE
+.PP
+\fB\-r\fR \fIcommand\fR
+.RS 4
+Operate using the specified command as an automatic responder\&. The command is executed using sh(1), with standard input receiving anything produced by peers on the chat channel, and standard output directed to the chat channel\&. Each line of output produces a separate message on the channel\&. The standard input and standard output that were passed to ccnc in this mode are unused, but standard error is available to the responder\&. For this mode, the effect of \-dnq is automatically applied\&. Care should be taken to prevent an automatic responder from reacting in an uncontrolled fashion to another responder\&. It is wise to include rate limiting or an output cap, and remember the dictum "if you don\(cqt know what to say, say nothing\&."
+.RE
+.PP
+\fB\-v\fR
+.RS 4
+Verbose trace of what is happening, on standard output\&.
+.RE
+.PP
+\fB\-x\fR \fIseconds\fR
+.RS 4
+Set the FreshnessSeconds in the content objects to the given value\&. The default is 1800 (1/2 hour)\&. Ask for 0 to avoid setting freshness\&.
+.RE
 .SH "ENVIRONMENT"
 .PP
 \fBCCNX_DIR=\fR\fB\fI/path/to/identity/directory\fR\fR
@@ -61,6 +103,9 @@ ccnc ccnx:/ccnx\&.org/chat
 .if n \{\
 .RE
 .\}
+.SH "EXAMPLES"
+.sp
+(see BUGS\&.)
 .SH "BUGS"
 .sp
 There is no implementation of "friendly names", as used by \fBccnchat(1)\fR\&. Instead, there is a display of a few leading hex digits of the publisher public key digest (aka "robot name")\&. (Some may consider this a feature rather than a bug\&.)
@@ -68,6 +113,8 @@ There is no implementation of "friendly names", as used by \fBccnchat(1)\fR\&. I
 There is inadequate notification if no other participants are present\&. (Typed lines will simply appear to vanish\&.)
 .sp
 The diagnositics are too cryptic\&.
+.sp
+The man page has no examples\&.
 .SH "AUTHOR"
 .sp
 Michael Plass

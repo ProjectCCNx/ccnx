@@ -23,6 +23,56 @@ As is the case for all ccnx applications, a ccnd must be running on each
 machine, and suitable forwarding rules must be configured.
 Please refer to *ccndstart(1)* and *ccndc(1)* for details.
 
+OPTIONS
+-------
+*-h*::
+    Generate a brief help message and exit.
+
+*-d*::
+    Debug mode - no input editing.
+    This is rarely needed, except when running under a debugger.
+
+*-i* 'n'::
+    Print n bytes of signer's public key digest in hex.
+    This is the 'robot name'.
+    The default is 3 (6 characters of hex).
+    There is one space separating the robot name from the text of the message.
+    Use 0 here to suppress the robot name (and the space), or 32 if
+    you need to know the complete signer digest.
+
+*-n*::
+    No echo of own messages.
+
+*-q*::
+    Disable automatic greeting or farewell messages.
+    (At present only the farewell message is implemented.)
+
+*-r* 'command'::
+    Operate using the specified command as an automatic responder.
+    The command is executed using sh(1), with standard input
+    receiving anything produced by peers on the chat channel,
+    and standard output directed to the chat channel.
+    Each line of output produces a separate message on the
+    channel.
+    The standard input and standard output that were passed
+    to ccnc in this mode are unused, but standard error is
+    available to the responder.
+    For this mode, the effect of -dnq is automatically applied.
+    Care should be taken to prevent an automatic responder
+    from reacting in an uncontrolled fashion to another
+    responder.
+    It is wise to include rate limiting or an output cap,
+    and remember the dictum
+    "if you don't know what to say, say nothing."
+
+*-v*::
+    Verbose trace of what is happening, on standard output.
+
+*-x* 'seconds'::
+    Set the FreshnessSeconds in the content objects to the given value.
+    The default is 1800 (1/2 hour).
+    Ask for 0 to avoid setting freshness.
+
 ENVIRONMENT
 -----------
 
@@ -36,6 +86,10 @@ export CCNX_DIR=/var/tmp/friendlyname/.ccnx
 ccnc ccnx:/ccnx.org/chat
 -------------------------------------------
 
+EXAMPLES
+--------
+(see BUGS.)
+
 BUGS
 ----
 There is no implementation of "friendly names", as used by *ccnchat(1)*.
@@ -47,6 +101,8 @@ There is inadequate notification if no other participants are present.
 (Typed lines will simply appear to vanish.)
 
 The diagnositics are too cryptic.
+
+The man page has no examples.
 
 AUTHOR
 ------
