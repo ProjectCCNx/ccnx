@@ -36,26 +36,16 @@ public class SyncTreeEntry {
 	protected byte[] _hash;
 	protected SyncNodeComposite _nodeX = null;
 	protected byte[] _rawContent = null;
-	protected XMLDecoder _decoder;
 	protected int _position = 0;
 	
-	public SyncTreeEntry(XMLDecoder decoder) {
-		_decoder = decoder;
+	public SyncTreeEntry(SyncNodeComposite nodeX) {
+		_nodeX = nodeX;
+		_hash = _nodeX.getHash();
 	}
 	
-	public SyncTreeEntry(byte[] hash, XMLDecoder decoder) {
-		_hash = new byte[hash.length];
-		_decoder = decoder;
-		System.arraycopy(hash, 0, _hash, 0, hash.length);
-	}
-	
-	public byte[] setHash() throws SyncException {
-		if (null == _nodeX)
-			throw new SyncException("No node when attempting setHash");
-		byte [] hash = _nodeX.getHash();
+	public SyncTreeEntry(byte[] hash) {
 		_hash = new byte[hash.length];
 		System.arraycopy(hash, 0, _hash, 0, hash.length);
-		return _hash;
 	}
 	
 	public void setRawContent(byte[] content) {
@@ -64,11 +54,11 @@ public class SyncTreeEntry {
 		_position = 0;
 	}
 	
-	public SyncNodeComposite getNodeX() {
+	public SyncNodeComposite getNodeX(XMLDecoder decoder) {
 		if (null == _nodeX && null != _rawContent) {
 			_nodeX = new SyncNodeComposite();
 			try {
-				_nodeX.decode(_rawContent, _decoder);
+				_nodeX.decode(_rawContent, decoder);
 			} catch (ContentDecodingException e) {
 				e.printStackTrace();
 				_nodeX = null;
@@ -82,10 +72,9 @@ Log.info("decode node for {0} depth = {1} refs = {2}, position = {3}", Component
 	}
 	
 	public SyncNodeComposite.SyncNodeElement getCurrentElement() {
-		SyncNodeComposite node = getNodeX();
-		if (null == node)
+		if (null == _nodeX)
 			return null;
-		return node.getElement(_position);
+		return _nodeX.getElement(_position);
 	}
 	
 	public void incPos() {
@@ -103,7 +92,7 @@ Log.info("decode node for {0} depth = {1} refs = {2}, position = {3}", Component
 	public boolean lastPos() {
 		if (_nodeX == null)
 			return false;	// Needed to prompt a getNode
-		return (_position >= getNodeX().getRefs().size());
+		return (_position >= _nodeX.getRefs().size());
 	}
 	
 	public byte[] getHash() {

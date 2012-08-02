@@ -264,7 +264,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 	
 	
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
-		Log.info(Log.FAC_TEST, "Callback for name: {0}", syncedContent);
+		Log.info(Log.FAC_TEST, "Callback for name: {0} - number is {1}", syncedContent, SegmentationProfile.getSegmentNumber(syncedContent));
 		synchronized (callbackNames) {
 			callbackNames.add(syncedContent);
 		}
@@ -348,10 +348,17 @@ public class CCNSyncTest implements CCNSyncHandler{
 			Log.fine(Log.FAC_TEST, "trying to loop again looking for segments");
 		}
 		int outstanding = 0;
-		for (int i = 0; i < received.length; i++)
-			if (!received[i])
+		String unreceived = "";
+		for (int i = 0; i < received.length; i++) {
+			if (received[i] != finished[i]) {
 				outstanding++;
-		Log.fine(Log.FAC_TEST, "done looping, returning.  outstanding segments = {0}", outstanding);
+				unreceived += (i == segments -1 ? "header " : i  + ", ");
+			}
+		}
+		Log.fine(Log.FAC_TEST, "done looping, returning.");
+		if (! unreceived.equals("")) {
+			Log.info(Log.FAC_TEST, "{0} outstanding segments = {1}", outstanding, unreceived);
+		}
 		return segments;
 	}
 }

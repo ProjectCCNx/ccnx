@@ -28,6 +28,7 @@ import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ConfigSlice;
+import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
@@ -38,6 +39,9 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	protected CCNHandle _handle;
 	protected HashMap<SyncHashEntry, ArrayList<SliceComparator>> _comparators = new HashMap<SyncHashEntry, ArrayList<SliceComparator>>();
 	
+	// received hashes can be kept in common
+	protected HashMap<SyncHashEntry, SyncTreeEntry> _hashes = new HashMap<SyncHashEntry, SyncTreeEntry>();
+	
 	public ProtocolBasedSyncMonitor(CCNHandle handle) {
 		_handle = handle;
 	}
@@ -46,7 +50,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		synchronized (callbacks) {
 			registerCallbackInternal(syncHandler, slice);
 		}
-		SliceComparator sc = new SliceComparator(syncHandler, slice, _handle);
+		SliceComparator sc = new SliceComparator(this, syncHandler, slice, _handle);
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(slice.getHash());
 			ArrayList<SliceComparator> al = _comparators.get(she);
@@ -83,6 +87,32 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			}
 		}
 	}
+	
+	public SyncTreeEntry addHash(byte[] hash, SyncNodeComposite snc) {
+		if (null == hash && null == snc)
+			return null;	// Shouldn't happen
+		if (null == hash)
+			hash = snc.getHash();
+		synchronized (this) {
+			SyncTreeEntry entry = _hashes.get(new SyncHashEntry(hash));
+			if (null == entry) {
+				if (null == snc)
+					entry = new SyncTreeEntry(hash);
+				else
+					entry = new SyncTreeEntry(snc);
+				_hashes.put(new SyncHashEntry(hash), entry);
+			}
+			return entry;
+		}
+	}
+	
+	public SyncTreeEntry getHash(byte[] hash) {
+		if (null == hash)
+			return null;
+		synchronized (this) {
+			return _hashes.get(new SyncHashEntry(hash));
+		}
+	}
 
 	public Interest handleContent(ContentObject data, Interest interest) {
 		ContentName name = data.name();
@@ -93,14 +123,12 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 			return null;
 		}
 		Log.info(Log.FAC_SYNC, "Saw new content from sync: {0}", name);
-		SyncHashEntry she = new SyncHashEntry(name.component(hashComponent + 1));
 		ArrayList<SliceComparator> al = null;
 		synchronized (this) {
-			al = _comparators.get(she);
+			al = _comparators.get(new SyncHashEntry(name.component(hashComponent + 1)));
 		}
 		if (null != al) {
 			for (SliceComparator sc : al) {
-Log.info(Log.FAC_SYNC, "Adding data for slice {0}", Component.printURI(she._hash));
 				sc.addPending(data.content());
 			}
 		}

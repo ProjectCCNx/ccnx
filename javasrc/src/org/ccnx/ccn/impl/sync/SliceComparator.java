@@ -17,7 +17,6 @@
 package org.ccnx.ccn.impl.sync;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Queue;
 import java.util.Stack;
 import java.util.Timer;
@@ -30,6 +29,7 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.BinaryXMLDecoder;
+import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ConfigSlice;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
@@ -39,6 +39,7 @@ import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
+import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 
 /**
@@ -51,7 +52,6 @@ public class SliceComparator implements Runnable {
 	public static enum SyncCompareState {INIT, PRELOAD, BUSY, COMPARE, DONE};
 
 	public final int COMPARE_INTERVAL = 100; // ms
-	protected CCNHandle _handle;
 	protected BinaryXMLDecoder _decoder;
 	protected Object _timerLock = new Object();
 	protected boolean _needToCompare = true;
@@ -62,16 +62,17 @@ public class SliceComparator implements Runnable {
 	
 	protected ConfigSlice _slice;
 	protected CCNSyncHandler _callback;
+	protected CCNHandle _handle;
+	protected ProtocolBasedSyncMonitor _pbsm = null;
 
 	protected Stack<SyncTreeEntry> _currentStack = new Stack<SyncTreeEntry>();
 	protected Stack<SyncTreeEntry> _nextStack = new Stack<SyncTreeEntry>();
-	protected Object _stateLock = new Object();
 	protected SyncCompareState _state = SyncCompareState.DONE;
-	protected HashMap<SyncHashEntry, SyncTreeEntry> _hashes = new HashMap<SyncHashEntry, SyncTreeEntry>();
-	protected Queue<SyncTreeEntry> _pendingEntries = new ConcurrentLinkedQueue<SyncTreeEntry>();
+	protected Queue<byte[]> _pendingEntries = new ConcurrentLinkedQueue<byte[]>();
 	protected SyncTreeEntry _currentRoot = null;
 	
-	public SliceComparator(CCNSyncHandler callback, ConfigSlice slice, CCNHandle handle) {
+	public SliceComparator(ProtocolBasedSyncMonitor pbsm, CCNSyncHandler callback, ConfigSlice slice, CCNHandle handle) {
+		_pbsm = pbsm;
 		_slice = slice;
 		_callback = callback;
 		_handle = handle;
@@ -79,19 +80,27 @@ public class SliceComparator implements Runnable {
 		_decoder.setInitialBufferSize(DECODER_SIZE);
 	}
 	
+	/**
+	 * This will normally be called by the handler in ProtocolBasedSyncMonitor so
+	 * it is therefore handler code. 
+	 * @param data
+	 */
 	public void addPending(byte[] data) {
-		boolean newRound = false;
+Log.info("Called pending add");
 		synchronized (this) {
-			SyncTreeEntry ste = new SyncTreeEntry(_decoder);
-			ste.setRawContent(data);
-			_pendingEntries.add(ste);
-			if (_state == SyncCompareState.DONE) {
-				_state = SyncCompareState.INIT;
-				newRound = true;
-			}
+			_pendingEntries.add(data);
+			checkNextRound();
 		}
-		if (newRound)
-			kickCompare();	
+		kickCompare();
+	}
+	
+	/**
+	 * Call synchronized with this
+	 */
+	public void checkNextRound() {
+		if (_state == SyncCompareState.DONE) {
+			_state = SyncCompareState.INIT;
+		}	
 	}
 	
 	public CCNSyncHandler getCallback() {
@@ -108,17 +117,6 @@ public class SliceComparator implements Runnable {
 		}
 	}
 	
-	private SyncTreeEntry addHash(byte[] hash) {
-		synchronized (this) {
-			SyncTreeEntry entry = _hashes.get(new SyncHashEntry(hash));
-			if (null == entry) {
-				entry = new SyncTreeEntry(hash, _decoder);
-				_hashes.put(new SyncHashEntry(hash), entry);
-			}
-			return entry;
-		}
-	}
-	
 	/**
 	 * 
 	 * @param sr
@@ -129,7 +127,7 @@ public class SliceComparator implements Runnable {
 	private boolean doPreload(SyncTreeEntry srt) {
 		Boolean ret = false;
 		synchronized (this) {
-			SyncNodeComposite snc = srt.getNodeX();
+			SyncNodeComposite snc = srt.getNodeX(_decoder);
 			if (null != snc) {
 				for (SyncNodeElement sne : snc.getRefs()) {
 					if (sne.getType() == SyncNodeType.HASH) {
@@ -152,22 +150,26 @@ public class SliceComparator implements Runnable {
 	private boolean requestNode(byte[] hash) {
 		boolean ret = false;
 		synchronized (this) {
-			SyncTreeEntry tsrt = addHash(hash);
-			if (tsrt.getNodeX() == null && !tsrt.getPending()) {
+			SyncTreeEntry tsrt = _pbsm.addHash(hash, null);
+			if (tsrt.getNodeX(_decoder) == null && !tsrt.getPending()) {
 				tsrt.setPending(true);
 				Log.info("requesting node for hash: {0}", Component.printURI(hash));
-				ret = getHash(_slice.topo, _slice.getHash(), hash);
+				ret = getHash(hash, false);
 			}
 		}
 		return ret;
 	}
 	
-	private boolean getHash(ContentName topo, byte[] sliceHash, byte[] hash) {
+	private boolean getHash(byte[] hash, boolean next) {
 		boolean ret = false;
-		Interest interest = new Interest(new ContentName(topo, Sync.SYNC_NODE_FETCH_MARKER, sliceHash, hash));
+		Interest interest = new Interest(new ContentName(_slice.topo, Sync.SYNC_NODE_FETCH_MARKER, _slice.getHash(), hash));
 		interest.scope(1);
-		if (Log.isLoggable(Log.FAC_SYNC, Level.FINE))
-			Log.fine(Log.FAC_TEST, "Requesting node for hash: {0}", interest.name());
+		if (next) {
+			Exclude exclude = Exclude.uptoFactory(hash);
+			interest.exclude(exclude);
+		}		
+		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+			Log.info(Log.FAC_TEST, "Requesting node for hash: {0}, next = {1}", interest.name(), next);
 		try {
 			_handle.expressInterest(interest, _nfh);
 			ret = true;
@@ -192,14 +194,14 @@ Log.info("started compare for slice {0}", Component.printURI(_slice.getHash()));
 			SyncNodeComposite.SyncNodeElement sneX = null;
 			SyncNodeComposite.SyncNodeElement sneY = null;
 			synchronized (this) {
-				SyncNodeComposite snc = srtY.getNodeX();
+				SyncNodeComposite snc = srtY.getNodeX(_decoder);
 				if (null != snc) {
 					sneY = srtY.getCurrentElement();
 					if (null == sneY)
 						lastPos = true;
 				}
 				if (null != srtX) {
-					snc = srtX.getNodeX();
+					snc = srtX.getNodeX(_decoder);
 					if (null != snc) {
 						sneX = srtX.getCurrentElement();
 					}
@@ -210,37 +212,41 @@ Log.info("Comparing hash for {0}, type is {1}", Component.printURI(srtY.getHash(
 				switch (sneY.getType()) {
 				case LEAF:
 					doCallback(sneY);
+					synchronized (this) {
+						srtY.incPos();
+						if (srtY.lastPos()) {
+							popNext();
+						}
+					}
 					break;
 				case HASH:
-					byte[] hash = sneY.getData();
-					SyncTreeEntry entry = _hashes.get(new SyncHashEntry(hash));
-					if (null == entry) {
-						if (requestNode(sneY.getData())) {
-Log.info("requested from compare");
-							synchronized (this) {
-								_state = SyncCompareState.PRELOAD;
-							}
-						}
-					} else {
+					SyncTreeEntry entry = handleHashNode(sneY);
+					if (null != entry) {
+Log.info("Got entry for {0}", Component.printURI(sneY.getData()));
 						pushNext(entry);
+					} else {
+Log.info("Missed entry for {0}", Component.printURI(sneY.getData()));
+						return;
+					}
+					synchronized (this) {
+						srtY.incPos();
 					}
 					break;
 				default:
 					break;
 				}
 				synchronized (this) {
-					srtY.incPos();
-					while (null != srtY && srtY.lastPos()) {
-						popNext();
+					if (srtY.lastPos())
 						srtY = getNextHead();
-					}
 				}
 			} else if (null == sneY  && !lastPos) {
 				Log.info("No data for {0}, pos is {1}", Component.printURI(srtY.getHash()), srtY.getPos());
 				requestNode(srtY.getHash());
 				return;
 			} else if (null != sneX) {
-				if (sneX.getType() == SyncNodeType.LEAF && sneY.getType() == SyncNodeType.LEAF) {
+				SyncNodeType typeX = sneX.getType();
+				SyncNodeType typeY = sneY.getType();
+				if (typeX == SyncNodeType.LEAF && typeY == SyncNodeType.LEAF) {
 					int comp = sneX.getName().compareTo(sneY.getName());
 Log.info("name 1 is {0}, name 2 is {1}, comp is {2}", sneX.getName(), sneY.getName(), comp);
 					if (comp == 0) {
@@ -252,17 +258,7 @@ Log.info("name 1 is {0}, name 2 is {1}, comp is {2}", sneX.getName(), sneY.getNa
 						doCallback(sneY);
 						srtY.incPos();
 					}
-				} else {
-					srtX.incPos();
-					srtY.incPos();
-					while (null != srtX && srtX.lastPos()) {
-						popCurrent();
-						srtX = getCurrentHead();
-					}
-					while (null != srtY && srtY.lastPos()) {
-						popNext();
-						srtY = getNextHead();
-					}
+				} else if (typeX == SyncNodeType.HASH && typeY == SyncNodeType.HASH) {
 				}
 			} else {
 				synchronized (this) {
@@ -281,17 +277,32 @@ Log.info("name 1 is {0}, name 2 is {1}, comp is {2}", sneX.getName(), sneY.getNa
 Log.info("Exited 1 and status was: {0}", _state);
 	}
 	
+	private SyncTreeEntry handleHashNode(SyncNodeElement sne) {
+		byte[] hash = sne.getData();
+		SyncTreeEntry entry = _pbsm.getHash(hash);
+		if (null == entry) {
+			if (requestNode(sne.getData())) {
+Log.info("requested from compare");
+				synchronized (this) {
+					_state = SyncCompareState.PRELOAD;
+				}
+			}
+		}
+		return entry;
+	}
+	
 	private void doCallback(SyncNodeComposite.SyncNodeElement sne) {
 		ContentName name = sne.getName().parent();	// remove digest here
 		_callback.handleContentName(_slice, name);
 	}
 	
 	protected void pushNext(SyncTreeEntry srt) {
+Log.info("pushing entry with hash: {0}", Component.printURI(srt._hash));
 		_nextStack.push(srt);
 	}
 		
 	protected SyncTreeEntry popNext() {
-		if (!_nextStack.isEmpty()) {
+		if (!_nextStack.empty()) {
 			SyncTreeEntry srt =  _nextStack.pop();
 Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 		return srt;
@@ -300,8 +311,10 @@ Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 	}
 		
 	protected SyncTreeEntry getNextHead() {
-		if (! _nextStack.isEmpty())
-			return _nextStack.lastElement();
+		if (! _nextStack.empty()) {
+Log.info("Head entry with hash: {0}", Component.printURI(_nextStack.lastElement()._hash));
+			return _nextStack.peek();
+		}
 		return null;
 	}
 		
@@ -310,25 +323,22 @@ Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 	}
 		
 	protected SyncTreeEntry popCurrent() {
-		if (!_currentStack.isEmpty())
+		if (!_currentStack.empty())
 			return _currentStack.pop();
 		return null;
 	}
 		
 	protected SyncTreeEntry getCurrentHead() {
-		if (! _currentStack.isEmpty())
-			return _currentStack.lastElement();
+		if (! _currentStack.empty())
+			return _currentStack.peek();
 		return null;
 	}
 		
 		
 	protected void nextRound() {
-		for (SyncTreeEntry tsrt : _hashes.values()) {
-			tsrt.setCurrent(true);
-		}
 		synchronized (this) {
 			if (_currentRoot != null)
-				_currentStack.push(_currentRoot);
+				pushCurrent(_currentRoot);
 		}
 	}
 	
@@ -349,19 +359,29 @@ Log.info("Run loop for {0} and state is {1}", Component.printURI(_slice.getHash(
 							break;
 						}
 						nextRound();
-						SyncTreeEntry ste = _pendingEntries.remove();
-						if (null != ste) {
-							_currentRoot = ste;
-							SyncNodeComposite snc = ste.getNodeX();
-							if (null != snc) {
-								_hashes.put(new SyncHashEntry(ste.setHash()), ste);
+						byte[] nextData = _pendingEntries.remove();
+						if (null != nextData) {
+							SyncNodeComposite snc = new SyncNodeComposite();
+							snc.decode(nextData, _decoder);
+Log.info("decode node for {0} depth = {1} refs = {2}", Component.printURI(snc._longhash), snc._treeDepth, snc.getRefs().size());
+							byte[] hash = snc.getHash();
+							if (null != hash) {
+								SyncTreeEntry ste = _pbsm.getHash(hash);
+								if (null == ste) {
+									ste = _pbsm.addHash(null, snc);
+								}
+								// Should we push a hash we already have? Yes! because this
+								// would have (probably) come from a different comparator and
+								// we don't yet know how it matches up to the comparison we are
+								// doing.
 								pushNext(ste);
+								_currentRoot = ste;
+								_state = SyncCompareState.PRELOAD;
 							}
-							_state = SyncCompareState.PRELOAD;
-						} else {
-							_state = SyncCompareState.DONE;
-							continue;
 						}
+						if (_state == SyncCompareState.INIT)
+							_state = SyncCompareState.DONE;
+						continue;
 					}
 					// Fall through
 				case PRELOAD:
@@ -378,7 +398,12 @@ Log.info("Run loop for {0} and state is {1}", Component.printURI(_slice.getHash(
 					// Fall through
 				case COMPARE:
 					doComparison();
-					// Fall through
+					if (_state == SyncCompareState.COMPARE) {
+						synchronized (_timerLock) {
+							_keepComparing = false;
+							break;
+						}
+					}
 				case DONE:
 					synchronized (this) {
 						if (_pendingEntries.size() > 0) {
@@ -386,6 +411,8 @@ Log.info("Run loop for {0} and state is {1}", Component.printURI(_slice.getHash(
 							break;
 						}
 					}
+					getHash(_currentRoot.getHash(), true);
+					
 				default:
 					synchronized (_timerLock) {
 						_keepComparing = false;
@@ -414,17 +441,19 @@ Log.info("Run loop for {0} and state is {1}", Component.printURI(_slice.getHash(
 			}
 			byte[] hash = name.component(hashComponent + 2);
 			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
-				Log.info(Log.FAC_SYNC, "Saw data from nodefind: hash: {0}", name);
+				Log.info(Log.FAC_SYNC, "Saw data from nodefind: hash: {0}", Component.printURI(hash));
 			synchronized (this) {
-				SyncTreeEntry srt = null;
-				srt = addHash(hash);
-				srt.setRawContent(data.content());
-				srt.setPending(false);
-				if (null != srt) {
-					pushNext(srt);
-					_state = SyncCompareState.PRELOAD;
-					kickCompare();
+				if (DataUtils.compare(hash, _currentRoot.getHash()) > 0) {
+					Log.info(Log.FAC_SYNC, "Did pending add in nf");
+					_pendingEntries.add(data.content());
+					checkNextRound();
+				} else {
+					SyncTreeEntry ste = null;
+					ste = _pbsm.addHash(hash, null);
+					ste.setRawContent(data.content());
+					ste.setPending(false);
 				}
+				kickCompare();
 			}
 			return null;
 		}
