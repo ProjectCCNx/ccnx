@@ -65,8 +65,8 @@ public class SliceComparator implements Runnable {
 	protected CCNHandle _handle;
 	protected ProtocolBasedSyncMonitor _pbsm = null;
 
-	protected Stack<SyncTreeEntry> _currentStack = new Stack<SyncTreeEntry>();
-	protected Stack<SyncTreeEntry> _nextStack = new Stack<SyncTreeEntry>();
+	protected Stack<SyncTreeEntry> _current = new Stack<SyncTreeEntry>();
+	protected Stack<SyncTreeEntry> _next = new Stack<SyncTreeEntry>();
 	protected SyncCompareState _state = SyncCompareState.DONE;
 	protected Queue<byte[]> _pendingEntries = new ConcurrentLinkedQueue<byte[]>();
 	protected SyncTreeEntry _currentRoot = null;
@@ -165,6 +165,7 @@ Log.info("Called pending add");
 		Interest interest = new Interest(new ContentName(_slice.topo, Sync.SYNC_NODE_FETCH_MARKER, _slice.getHash(), hash));
 		interest.scope(1);
 		if (next) {
+Log.info(Log.FAC_TEST, "Requesting next node");
 			Exclude exclude = Exclude.uptoFactory(hash);
 			interest.exclude(exclude);
 		}		
@@ -179,30 +180,48 @@ Log.info("Called pending add");
 		return ret;
 	}
 	
-	private void doComparison() {
+	private void doComparison() throws SyncException {
 Log.info("started compare for slice {0}", Component.printURI(_slice.getHash()));
 
 		SyncTreeEntry srtY = null;
 		SyncTreeEntry srtX = null;
 		
 		synchronized (this) {
-			srtY = getNextHead();
-			srtX = getCurrentHead();
+			srtY = getHead(_next);
+			srtX = getHead(_current);
 		}
 		while (null != srtY) {
 			boolean lastPos = false;
+			SyncNodeComposite sncX = null;
+			SyncNodeComposite sncY = null;
 			SyncNodeComposite.SyncNodeElement sneX = null;
 			SyncNodeComposite.SyncNodeElement sneY = null;
 			synchronized (this) {
-				SyncNodeComposite snc = srtY.getNodeX(_decoder);
-				if (null != snc) {
+				while (null != srtY && srtY.lastPos()) {
+					SyncTreeEntry tste = getHead(_next);
+					if (tste == srtY)
+						tste = pop(_next);
+					srtY = tste;
+				}
+				if (null == srtY) {
+					break;
+				}
+					
+				while (null != srtX && srtX.lastPos()) {
+					SyncTreeEntry tste = getHead(_current);
+					if (tste == srtX)
+						tste = pop(_current);
+					srtX = tste;
+				}
+				sncY = srtY.getNodeX(_decoder);
+				if (null != sncY) {
 					sneY = srtY.getCurrentElement();
 					if (null == sneY)
 						lastPos = true;
 				}
 				if (null != srtX) {
-					snc = srtX.getNodeX(_decoder);
-					if (null != snc) {
+					sncX = srtX.getNodeX(_decoder);
+					if (null != sncX) {
 						sneX = srtX.getCurrentElement();
 					}
 				}
@@ -214,16 +233,14 @@ Log.info("Comparing hash for {0}, type is {1}", Component.printURI(srtY.getHash(
 					doCallback(sneY);
 					synchronized (this) {
 						srtY.incPos();
-						if (srtY.lastPos()) {
-							popNext();
-						}
 					}
 					break;
 				case HASH:
 					SyncTreeEntry entry = handleHashNode(sneY);
 					if (null != entry) {
 Log.info("Got entry for {0}", Component.printURI(sneY.getData()));
-						pushNext(entry);
+						entry.setPos(0);
+						push(entry, _next);
 					} else {
 Log.info("Missed entry for {0}", Component.printURI(sneY.getData()));
 						return;
@@ -235,10 +252,6 @@ Log.info("Missed entry for {0}", Component.printURI(sneY.getData()));
 				default:
 					break;
 				}
-				synchronized (this) {
-					if (srtY.lastPos())
-						srtY = getNextHead();
-				}
 			} else if (null == sneY  && !lastPos) {
 				Log.info("No data for {0}, pos is {1}", Component.printURI(srtY.getHash()), srtY.getPos());
 				requestNode(srtY.getHash());
@@ -247,25 +260,85 @@ Log.info("Missed entry for {0}", Component.printURI(sneY.getData()));
 				SyncNodeType typeX = sneX.getType();
 				SyncNodeType typeY = sneY.getType();
 				if (typeX == SyncNodeType.LEAF && typeY == SyncNodeType.LEAF) {
+					// Both leaves
 					int comp = sneX.getName().compareTo(sneY.getName());
 Log.info("name 1 is {0}, name 2 is {1}, comp is {2}", sneX.getName(), sneY.getName(), comp);
 					if (comp == 0) {
 						srtX.incPos();
 						srtY.incPos();
-					} else if (comp > 0) {
+					} else if (comp < 0) {
 						srtX.incPos();
 					} else {
 						doCallback(sneY);
 						srtY.incPos();
 					}
 				} else if (typeX == SyncNodeType.HASH && typeY == SyncNodeType.HASH) {
-				}
-			} else {
-				synchronized (this) {
-					srtY.incPos();
-					while (null != srtY && srtY.lastPos()) {
-						popNext();
-						srtY = getNextHead();
+					// Both nodes
+					if (srtX == srtY) {
+						srtX.incPos();
+						srtY.incPos();
+					} else {
+						SyncTreeEntry entryY = handleHashNode(sneY);
+						if (null != entryY) {
+	Log.info("Got entry for {0}", Component.printURI(sneY.getData()));
+							entryY.setPos(0);
+							SyncTreeEntry entryX = handleHashNode(sneX);
+							if (null != entryX) {
+								entryX.setPos(0);
+								srtX.incPos();
+								srtY.incPos();
+								push(entryY, _next);
+								push(entryX, _current);
+							} else
+								return;
+						} else
+							return;
+					}
+Log.info("Compare LEAF {0} to NODE {1}", Component.printURI(srtX.getHash()), Component.printURI(srtY.getHash()));
+				} else if (typeX == SyncNodeType.LEAF && typeY == SyncNodeType.HASH) {
+					// X is leaf Y is Node
+					if (sneX.getName().compareTo(sncY.getMinName().getName()) < 0)
+						srtX.incPos();
+					else if (sneX.getName().compareTo(sncY.getMaxName().getName()) == 0) {
+						srtX.incPos();
+						srtY.incPos();
+					} else {
+						SyncTreeEntry entry = handleHashNode(sneY);
+						if (null != entry) {
+	Log.info("Got entry for {0}", Component.printURI(sneY.getData()));
+							entry.setPos(0);
+							srtY.incPos();
+							push(entry, _next);
+						} else {
+	Log.info("Missed entry for {0}", Component.printURI(sneY.getData()));
+							return;
+						}
+					}
+				} else {
+					// X is node Y is leaf
+					int resMin = sneY.getName().compareTo(sncX.getMinName().getName());
+					int resMax = sneY.getName().compareTo(sncX.getMaxName().getName());
+					if (resMin < 0) {
+						doCallback(sneY);
+						srtY.incPos();
+					} else if (resMin == 0) {
+						srtY.incPos();
+					} else if (resMax > 0) {
+						srtX.incPos();
+					} else if (resMax < 0) {
+						SyncTreeEntry entry = handleHashNode(sneX);
+						if (null != entry) {
+							entry.setPos(0);
+							srtX.incPos();
+							push(entry, _current);
+						} else {
+							return;
+						}
+					} else if (resMax == 0) {
+						srtX.incPos();
+						srtY.incPos();
+					} else {
+						throw new SyncException("Bogus comparison");
 					}
 				}
 			}
@@ -296,49 +369,34 @@ Log.info("requested from compare");
 		_callback.handleContentName(_slice, name);
 	}
 	
-	protected void pushNext(SyncTreeEntry srt) {
+	protected void push(SyncTreeEntry srt, Stack<SyncTreeEntry> stack) {
 Log.info("pushing entry with hash: {0}", Component.printURI(srt._hash));
-		_nextStack.push(srt);
+		stack.push(srt);
 	}
 		
-	protected SyncTreeEntry popNext() {
-		if (!_nextStack.empty()) {
-			SyncTreeEntry srt =  _nextStack.pop();
+	protected SyncTreeEntry pop(Stack<SyncTreeEntry> stack) {
+		if (!stack.empty()) {
+			SyncTreeEntry srt =  stack.pop();
 Log.info("popping entry with hash: {0}", Component.printURI(srt._hash));
 		return srt;
 		}
 	return null;
 	}
 		
-	protected SyncTreeEntry getNextHead() {
-		if (! _nextStack.empty()) {
-Log.info("Head entry with hash: {0}", Component.printURI(_nextStack.lastElement()._hash));
-			return _nextStack.peek();
+	protected SyncTreeEntry getHead(Stack<SyncTreeEntry> stack) {
+		if (! stack.empty()) {
+Log.info("Head entry with hash: {0}", Component.printURI(stack.lastElement()._hash));
+			return stack.peek();
 		}
 		return null;
 	}
 		
-	protected void pushCurrent(SyncTreeEntry srt) {
-		_currentStack.push(srt);
-	}
-		
-	protected SyncTreeEntry popCurrent() {
-		if (!_currentStack.empty())
-			return _currentStack.pop();
-		return null;
-	}
-		
-	protected SyncTreeEntry getCurrentHead() {
-		if (! _currentStack.empty())
-			return _currentStack.peek();
-		return null;
-	}
-		
-		
 	protected void nextRound() {
 		synchronized (this) {
-			if (_currentRoot != null)
-				pushCurrent(_currentRoot);
+			if (_currentRoot != null) {
+				_currentRoot.setPos(0);
+				push(_currentRoot, _current);
+			}
 		}
 	}
 	
@@ -374,7 +432,8 @@ Log.info("decode node for {0} depth = {1} refs = {2}", Component.printURI(snc._l
 								// would have (probably) come from a different comparator and
 								// we don't yet know how it matches up to the comparison we are
 								// doing.
-								pushNext(ste);
+								ste.setPos(0);
+								push(ste, _next);
 								_currentRoot = ste;
 								_state = SyncCompareState.PRELOAD;
 							}
@@ -386,12 +445,12 @@ Log.info("decode node for {0} depth = {1} refs = {2}", Component.printURI(snc._l
 					// Fall through
 				case PRELOAD:
 					synchronized (_timerLock) {
-						if (null == getNextHead()) {
+						if (null == getHead(_next)) {
 							_keepComparing = false;
 							break;
 						}
 					}
-					if (doPreload(getNextHead())) {
+					if (doPreload(getHead(_next))) {
 						break;
 					}
 					_state = SyncCompareState.COMPARE;

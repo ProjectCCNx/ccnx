@@ -30,7 +30,6 @@ import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ConfigSlice;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.profiles.sync.Sync;
-import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -136,6 +135,7 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	}
 	
 	public boolean handleInterest(Interest interest) {
+Log.info("Saw an interest for {0}", interest.name());
 		Interest newInterest = new Interest(interest.name());
 		newInterest.scope(1);
 		try {
