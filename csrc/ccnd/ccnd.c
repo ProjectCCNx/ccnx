@@ -60,6 +60,16 @@
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
+
+/** Ops for strategy callout */
+enum ccn_strategy_op {
+    CCNST_NOP,      /* no-operation */
+    CCNST_FIRST,    /* newly created interest entry (pit entry) */
+    CCNST_TIMER,    /* wakeup used by strategy */
+    CCNST_SATISFIED, /* matching content has arrived, pit entry will go away */
+    CCNST_TIMEOUT,  /* all downstreams timed out, pit entry will go away */
+};
+
 static void cleanup_at_exit(void);
 static void unlink_at_exit(const char *path);
 static int create_local_listener(struct ccnd_handle *h, const char *sockname, int backlog);
@@ -135,6 +145,9 @@ pfi_set_expiry_from_micros(struct ccnd_handle *h, struct interest_entry *ie,
 static struct pit_face_item *
 pfi_seek(struct ccnd_handle *h, struct interest_entry *ie,
          unsigned faceid, unsigned pfi_flag);
+static void strategy_callout(struct ccnd_handle *h,
+                             struct interest_entry *ie,
+                             enum ccn_strategy_op op);
 
 /**
  * Frequency of wrapped timer
@@ -1577,6 +1590,7 @@ consume_matching_interests(struct ccnd_handle *h,
                                            content);
             }
             matches += 1;
+            strategy_callout(h, p, CCNST_SATISFIED);
             consume_interest(h, p);
         }
     }
@@ -3215,15 +3229,6 @@ get_fib_npe(struct ccnd_handle *h, struct interest_entry *ie)
     return(NULL);
 }
 
-enum ccn_strategy_op {
-    CCNST_NOP,      /* no-operation */
-    CCNST_FIRST,    /* newly created interest entry (pit entry) */
-    CCNST_TIMER,    /* wakeup used by strategy */
-};
-
-static void strategy_callout(struct ccnd_handle *h,
-                             struct interest_entry *ie,
-                             enum ccn_strategy_op op);
 /** Implementation detail for strategy_settimer */
 static int
 strategy_timer(struct ccn_schedule *sched,
@@ -3338,6 +3343,10 @@ strategy_callout(struct ccnd_handle *h,
              */
             adjust_predicted_response(h, ie, 1);
             break;
+        case CCNST_SATISFIED:
+            break;
+        case CCNST_TIMEOUT:
+            break;
     }
 }
 
@@ -3438,6 +3447,7 @@ do_propagate(struct ccn_schedule *sched,
         }
     }
     if (pending == 0 && upstreams == 0) {
+        strategy_callout(h, ie, CCNST_TIMEOUT);
         consume_interest(h, ie);
         return(0);
     }
