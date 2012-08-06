@@ -3282,6 +3282,8 @@ strategy_callout(struct ccnd_handle *h,
     struct ccn_indexbuf *tap = NULL;
     unsigned best = CCN_NOFACEID;
     unsigned randlow, randrange;
+    unsigned nleft;
+    unsigned amt;
     int usec;
     int usefirst;
     
@@ -3289,6 +3291,7 @@ strategy_callout(struct ccnd_handle *h,
         case CCNST_NOP:
             break;
         case CCNST_FIRST:
+            
             npe = get_fib_npe(h, ie);
             if (npe != NULL)
                 tap = npe->tap;
@@ -3315,6 +3318,7 @@ strategy_callout(struct ccnd_handle *h,
                 randlow = npe->usec;
                 randrange = (randlow + 1) / 2;
             }
+            nleft = 0;
             for (p = ie->pfl; p!= NULL; p = p->next) {
                 if ((p->pfi_flags & CCND_PFI_UPSTREAM) != 0) {
                     if (p->faceid == best) {
@@ -3330,8 +3334,21 @@ strategy_callout(struct ccnd_handle *h,
                     else if (p->faceid == npe->osrc)
                         pfi_set_expiry_from_micros(h, ie, p, randlow);
                     else {
-                        usec = randlow + nrand48(h->seed) % randrange;
+                        /* Want to preserve the order of the rest */
+                        nleft++;
+                        p->pfi_flags |= CCND_PFI_SENDUPST;
+                    }
+                }
+            }
+            if (nleft > 0) {
+                /* Send remainder in order, with randomized timing */
+                amt = (2 * randrange + nleft - 1) / nleft;
+                if (amt == 0) amt = 1; /* paranoia - should never happen */
+                usec = randlow;
+                for (p = ie->pfl; p!= NULL; p = p->next) {
+                    if ((p->pfi_flags & CCND_PFI_SENDUPST) != 0) {
                         pfi_set_expiry_from_micros(h, ie, p, usec);
+                        usec += nrand48(h->seed) % amt;
                     }
                 }
             }
