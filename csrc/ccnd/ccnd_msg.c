@@ -136,7 +136,7 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
     if (pi.min_suffix_comps != 0 || pi.max_suffix_comps != 32767) {
         ccn_charbuf_putf(c, ",c=%d", pi.min_suffix_comps);
         if (pi.min_suffix_comps != pi.max_suffix_comps) {
-            ccn_charbuf_putf(c, "..");
+            ccn_charbuf_putf(c, ":");
             if (pi.max_suffix_comps != 32767)
                 ccn_charbuf_putf(c, "%d", pi.max_suffix_comps);
         }
