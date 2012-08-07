@@ -28,6 +28,7 @@
 #include <ccn/ccn.h>
 #include <ccn/ccnd.h>
 #include <ccn/charbuf.h>
+#include <ccn/hashtb.h>
 #include <ccn/uri.h>
 
 #include "ccnd_private.h"
@@ -47,6 +48,7 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
     va_list ap;
     struct ccn_charbuf *b;
     int res;
+    time_t clock;
     if (h == NULL || h->debug == 0 || h->logger == 0)
         return;
     b = ccn_charbuf_create();
@@ -54,13 +56,18 @@ ccnd_msg(struct ccnd_handle *h, const char *fmt, ...)
     if (((h->debug & 64) != 0) &&
         ((h->logbreak-- < 0 && t.tv_sec != h->logtime) ||
           t.tv_sec >= h->logtime + 30)) {
+        clock = t.tv_sec;
         ccn_charbuf_putf(b, "%ld.000000 ccnd[%d]: %s ____________________ %s",
-                         (long)t.tv_sec, h->logpid, h->portstr ? h->portstr : "", ctime(&t.tv_sec));
+                         (long)t.tv_sec, h->logpid,
+                         h->portstr ? h->portstr : "",
+                         ctime(&clock));
         h->logtime = t.tv_sec;
         h->logbreak = 30;
     }
-    ccn_charbuf_putf(b, "%ld.%06u ccnd[%d]: %s\n",
-        (long)t.tv_sec, (unsigned)t.tv_usec, h->logpid, fmt);
+    ccn_charbuf_putf(b, "%ld.%06u ", (long)t.tv_sec, (unsigned)t.tv_usec);
+    if (h->debug & 32)
+        ccn_charbuf_putf(b, "%08x.", (unsigned)h->wtnow);
+    ccn_charbuf_putf(b, "ccnd[%d]: %s\n", h->logpid, fmt);
     va_start(ap, fmt);
     res = (*h->logger)(h->loggerdata, (const char *)b->buf, ap);
     va_end(ap);
@@ -92,27 +99,64 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
     struct ccn_parsed_interest pi;
     const unsigned char *nonce = NULL;
     size_t nonce_size = 0;
+    const unsigned char *pubkey = NULL;
+    size_t pubkey_size = 0;
     size_t i;
+    struct interest_entry *ie = NULL;
+    int default_lifetime = CCN_INTEREST_LIFETIME_SEC << 12;
+    intmax_t lifetime = default_lifetime;
     
     if (h != NULL && h->debug == 0)
         return;
     if (ccn_parse_interest(ccnb, ccnb_size, &pi, NULL) >= 0) {
+        pubkey_size = (pi.offset[CCN_PI_E_PublisherIDKeyDigest] -
+                       pi.offset[CCN_PI_B_PublisherIDKeyDigest]);
+        pubkey = ccnb + pi.offset[CCN_PI_B_PublisherIDKeyDigest];
+        lifetime = ccn_interest_lifetime(ccnb, &pi);
         ccn_ref_tagged_BLOB(CCN_DTAG_Nonce, ccnb,
                   pi.offset[CCN_PI_B_Nonce],
                   pi.offset[CCN_PI_E_Nonce],
                   &nonce,
                   &nonce_size);
+        ie = hashtb_lookup(h->interest_tab, ccnb, pi.offset[CCN_PI_B_Nonce]);
     }
-    else
+    else {
+        pi.min_suffix_comps = 0;
+        pi.max_suffix_comps = 32767;
+        pi.orderpref = 0;
+        pi.answerfrom = CCN_AOK_DEFAULT;
         pi.scope = -1;
+    }
     c = ccn_charbuf_create();
     ccn_charbuf_putf(c, "debug.%d %s ", lineno, msg);
     if (face != NULL)
         ccn_charbuf_putf(c, "%u ", face->faceid);
     ccn_uri_append(c, ccnb, ccnb_size, 1);
     ccn_charbuf_putf(c, " (%u bytes", (unsigned)ccnb_size);
+    if (pi.min_suffix_comps != 0 || pi.max_suffix_comps != 32767) {
+        ccn_charbuf_putf(c, ",c=%d", pi.min_suffix_comps);
+        if (pi.min_suffix_comps != pi.max_suffix_comps) {
+            ccn_charbuf_putf(c, ":");
+            if (pi.max_suffix_comps != 32767)
+                ccn_charbuf_putf(c, "%d", pi.max_suffix_comps);
+        }
+    }
+    if (pubkey_size >= 3)
+        ccn_charbuf_putf(c, ",pb=%02X%02X%02X",
+                         pubkey[0], pubkey[1], pubkey[2]);
+    if (pi.orderpref != 0)
+        ccn_charbuf_putf(c, ",cs=%d", pi.orderpref);
+    if (pi.answerfrom != CCN_AOK_DEFAULT)
+        ccn_charbuf_putf(c, ",aok=%#x", pi.answerfrom);
     if (pi.scope != -1)
         ccn_charbuf_putf(c, ",scope=%d", pi.scope);
+    if (lifetime != default_lifetime) {
+        ccn_charbuf_putf(c, ",life=%d.%04d",
+                         (int)(lifetime >> 12),
+                         (int)(lifetime & 0xFFF) * 10000 / 4096);
+    }
+    if (ie != NULL)
+        ccn_charbuf_putf(c, ",i=%u", ie->serial);
     ccn_charbuf_putf(c, ")");
     if (nonce_size > 0) {
         const char *p = "";

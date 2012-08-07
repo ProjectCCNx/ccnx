@@ -2,7 +2,7 @@
 # 
 # Part of the CCNx distribution.
 #
-# Copyright (C) 2009 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -18,5 +18,5 @@ COUNT=`grep -c interest_from.\*/test/long/jot/ $L`
 # We expect some traffic to have made it to the spur, but not too much.
 test $COUNT -lt 120 || Fail more spur traffic than expected - $COUNT
 # Don't actually fail if is on the low side, but whine a bit
-test $COUNT -gt 15 || SkipTest less spur traffic than expected - $COUNT
+test $COUNT -gt 5 || SkipTest less spur traffic than expected - $COUNT
 echo Spur traffic $COUNT is within expected bounds
