@@ -3440,6 +3440,12 @@ do_propagate(struct ccn_schedule *sched,
             pfi_destroy(h, ie, p);
             continue;
         }
+        if ((face->flags & CCN_FACE_DC) != 0 &&
+            (p->pfi_flags & CCND_PFI_DCFACE) == 0) {
+            /* Add 60 ms extra delay before sending to a DC face */
+            p->expiry += (60 * WTHZ + 999) / 1000;
+            p->pfi_flags |= CCND_PFI_DCFACE;
+        }
         if (wt_compare(now + 1, p->expiry) < 0) {
             /* Not expired yet */
             rem = p->expiry - now;
