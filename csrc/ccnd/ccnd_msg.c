@@ -156,7 +156,7 @@ ccnd_debug_ccnb(struct ccnd_handle *h,
                          (int)(lifetime & 0xFFF) * 10000 / 4096);
     }
     if (ie != NULL)
-        ccn_charbuf_putf(c, ",ie=%u", ie->serial);
+        ccn_charbuf_putf(c, ",i=%u", ie->serial);
     ccn_charbuf_putf(c, ")");
     if (nonce_size > 0) {
         const char *p = "";

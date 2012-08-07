@@ -346,8 +346,7 @@ struct pit_face_item {
 #define CCND_PFI_DNSTREAM 0x1000    /**< Tracks downstream (recvd interest) */
 #define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
 #define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
-#define CCND_PFI_TAPFACE 0x10000    /**< This upstream is a tap face */
-#define CCND_PFI_DCFACE  0x20000    /**< This upstream is a DC face */
+#define CCND_PFI_DCFACE  0x10000    /**< This upstream is a DC face */
 
 /**
  * The nameprefix hash table is keyed by the Component elements of

@@ -3132,7 +3132,7 @@ ie_next_usec(struct ccnd_handle *h, struct interest_entry *ie,
             debug = 1;
         if (debug) {
             static const char fmt_ie_next_usec[] = 
-              "ie_next_usec.%d now%+d ie=%u f=%04x %u "
+              "ie_next_usec.%d now%+d i=%u f=%04x %u "
               " %02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X";
             ccnd_msg(h, fmt_ie_next_usec, __LINE__,
                      (int)delta - horizon, ie->serial, p->pfi_flags, p->faceid,
