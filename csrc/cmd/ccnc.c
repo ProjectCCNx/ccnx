@@ -13,19 +13,31 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#include <sys/select.h>
 #include <sys/time.h>
 #include <fcntl.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include <ccn/ccn.h>
+#include <ccn/ccn_private.h> /* for ccn_process_scheduled_operations() */
 #include <ccn/charbuf.h>
 #include <ccn/lned.h>
 #include <ccn/uri.h>
 
-#define USAGE "ccnx:/uri/of/chat/room    - community text chat"
+#define USAGE                                                                 \
+    "[-hdi:nqr:vx:] ccnx:/chat/room - community text chat"               "\n" \
+    " -h - help"                                                         "\n" \
+    " -d - debug mode - no input editing"                                "\n" \
+    " -i n - print n bytes of signer's public key digest in hex"         "\n" \
+    " -n - no echo of own output"                                        "\n" \
+    " -q - no automatic greeting or farwell"                             "\n" \
+    " -r command - hook up to input and output of responder command"     "\n" \
+    " -v - verbose trace of what is happening"                           "\n" \
+    " -x sec - set freshness"
 
 /** Entry in the application's pending interest table */
 struct pit_entry {
@@ -61,17 +73,22 @@ struct ccnxchat_state {
     int n_ver;                  /* Number of recently received versions */
     struct ccn_charbuf *ver[VER_LIMIT];
     struct ccn_closure *cc;     /* Closure for incoming content */
-    /* All these buffers contain ccnb-encoded data, except for payload */
-    struct ccn_charbuf *basename; /* The namespace we are serving */
-    struct ccn_charbuf *name;   /* Buffer for constructed name */
     struct ccn_charbuf *payload; /* Buffer for payload */
-    struct ccn_charbuf *cob;    /* Buffer for ContentObject */
-    struct ccn_charbuf *incob;  /* Most recent incoming ContentObject */
     struct ccn_charbuf *lineout; /* For building output line */
     struct ccn_charbuf *luser;   /* user's name */
+    /* The following buffers contain ccnb-encoded data */
+    struct ccn_charbuf *basename; /* The namespace we are serving */
+    struct ccn_charbuf *name;   /* Buffer for constructed name */
+    struct ccn_charbuf *cob;    /* Buffer for ContentObject */
+    struct ccn_charbuf *incob;  /* Most recent incoming ContentObject */    
     int eof;                    /* true if we have encountered eof */
-    int verbose;		/* to turn on debugging output */
+    int ready;                  /* true if payload is ready to go */
     int prefer_newest;          /* for saner startup */
+    int echo;                   /* to see own output */
+    int freshness;              /* to set FreshnessSeconds */
+    int quiet;                  /* no automatic greeting or farwell */
+    int robotname;              /* print n bytes of robot name */
+    int verbose;                /* to turn on debugging output */
 };
 
 /* Prototypes */
@@ -82,7 +99,7 @@ static enum ccn_upcall_res  incoming_content(struct ccn_closure *,
                                              enum ccn_upcall_kind,
                                              struct ccn_upcall_info *);
 static void fatal(int lineno, int val);
-static void initialize(int argc, char **argv, struct ccn_charbuf *);
+static void initialize(struct ccnxchat_state *st, struct ccn_charbuf *);
 struct ccn_charbuf *adjust_regprefix(struct ccn_charbuf *);
 static int namecompare(const void *, const void *);
 static void stampnow(struct ccn_charbuf *);
@@ -90,25 +107,30 @@ static void seed_random(void);
 static void usage(void);
 unsigned short wrappednow(void);
 
+static int wait_for_input_or_timeout(struct ccn *, int );
+static void read_input(struct ccnxchat_state *);
 static void generate_new_data(struct ccnxchat_state *);
 static int  matchbox(struct ccnxchat_state *);
 static int  send_matching_data(struct ccnxchat_state *);
 static void toss_in_cs(struct ccnxchat_state *, const unsigned char *, size_t);
-static void toss_in_pit(struct ccnxchat_state *, const unsigned char *, size_t);
+static void toss_in_pit(struct ccnxchat_state *,
+                        const unsigned char *, struct ccn_parsed_interest *);
 static void age_cs(struct ccnxchat_state *);
 static void age_pit(struct ccnxchat_state *);
-static void debug_logger(struct ccnxchat_state *, int lineno, struct ccn_charbuf *);
+static void debug_logger(struct ccnxchat_state *, int, struct ccn_charbuf *);
 static int append_interest_details(struct ccn_charbuf *c,
                                    const unsigned char *ccnb, size_t size);
 static void generate_cob(struct ccnxchat_state *);
-static void add_info_exclusion(struct ccnxchat_state *st, struct ccn_upcall_info *info);
-static void add_uri_exclusion(struct ccnxchat_state *st, const char *uri);
-static void add_ver_exclusion(struct ccnxchat_state *st, struct ccn_charbuf **c);
-static void display_the_content(struct ccnxchat_state *st, struct ccn_upcall_info *info);
-static void express_interest(struct ccnxchat_state *st);
-static void init_ver_exclusion(struct ccnxchat_state *st);
-static void prune_oldest_exclusion(struct ccnxchat_state *st);
-static int append_full_user_name(struct ccn_charbuf *c);
+static void add_info_exclusion(struct ccnxchat_state *,
+                               struct ccn_upcall_info *);
+static void add_uri_exclusion(struct ccnxchat_state *, const char *);
+static void add_ver_exclusion(struct ccnxchat_state *, struct ccn_charbuf **);
+static void display_the_content(struct ccnxchat_state *,
+                                struct ccn_upcall_info *);
+static void express_interest(struct ccnxchat_state *);
+static void init_ver_exclusion(struct ccnxchat_state *);
+static void prune_oldest_exclusion(struct ccnxchat_state *);
+static int append_full_user_name(struct ccn_charbuf *);
 
 /* Very simple error handling */
 #define FATAL(res) fatal(__LINE__, res)
@@ -130,9 +152,11 @@ chat_main(int argc, char **argv)
     struct ccnxchat_state state = {0};
     struct ccnxchat_state *st;
     int res;
+    int timeout_ms;
     
+    st = &state;
     name = ccn_charbuf_create();
-    initialize(argc, argv, name);
+    initialize(st, name);
     cob = ccn_charbuf_create();
     /* Connect to ccnd */
     h = ccn_create();
@@ -140,7 +164,7 @@ chat_main(int argc, char **argv)
         FATAL(-1);
     /* Set up state for interest handler */
     in_interest.p = &incoming_interest;
-    in_interest.data = st = &state;
+    in_interest.data = st;
     /* Set up state for content handler */
     in_content.p = &incoming_content;
     in_content.data = st;
@@ -164,13 +188,27 @@ chat_main(int argc, char **argv)
     express_interest(st);
     /* Run the event loop */
     for (;;) {
-        res = ccn_run(h, 100);
+        res = -1;
+        timeout_ms = 10000;
+        if (st->ready == 0 && st->eof == 0 && st->n_pit != 0) {
+            res = wait_for_input_or_timeout(h, 0);
+            timeout_ms = 10;
+        }
+        if (res != 0)
+            read_input(st);
+        if (st->eof)
+            timeout_ms = 100;
+        else if (st->ready)
+            timeout_ms = 10;
+        res = ccn_run(h, timeout_ms);
         if (res != 0)
             FATAL(res);
-        if (st->n_cob == 0 || (st->n_pit != 0 && st->n_cob < CS_LIMIT))
-            generate_new_data(st);
+        generate_new_data(st);
         matchbox(st);
-        if (send_matching_data(st) > 0 || st->cc->refcount == 0)
+        res = send_matching_data(st);
+        if (st->eof && st->eof++ > 3)
+            exit(0);
+        if (res > 0 || st->cc->refcount == 0)
             express_interest(st);
         age_cs(st);
         age_pit(st);
@@ -192,12 +230,12 @@ incoming_interest(struct ccn_closure *selfp,
         case CCN_UPCALL_FINAL:
             break;
         case CCN_UPCALL_INTEREST:
-            toss_in_pit(st, info->interest_ccnb, info->pi->offset[CCN_PI_E]);
-            if (matchbox(st) != 0) {
-                /* We have a new match, so don't wait to process it */
-                ccn_set_run_timeout(info->h, 0);
+            ccn_set_run_timeout(info->h, 0);
+            toss_in_pit(st, info->interest_ccnb, info->pi);
+            if (st->ready)
+                generate_new_data(st);
+            if (matchbox(st) != 0)
                 return(CCN_UPCALL_RESULT_INTEREST_CONSUMED);
-            }
             break;
         default:
             break;
@@ -218,6 +256,7 @@ incoming_content(struct ccn_closure *selfp,
         case CCN_UPCALL_FINAL:
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_CONTENT_UNVERIFIED:
+            DB(st, NULL);
             add_info_exclusion(st, info);
             return(CCN_UPCALL_RESULT_VERIFY);
         case CCN_UPCALL_CONTENT:
@@ -227,6 +266,8 @@ incoming_content(struct ccn_closure *selfp,
             return(CCN_UPCALL_RESULT_OK);
         case CCN_UPCALL_INTEREST_TIMED_OUT:
             prune_oldest_exclusion(st);
+            if (st->eof == 0)
+                ccn_set_run_timeout(info->h, 0);
             return(CCN_UPCALL_RESULT_OK);
         default:
             /* something unexpected - make noise */
@@ -247,6 +288,7 @@ display_the_content(struct ccnxchat_state *st, struct ccn_upcall_info *info)
     size_t size;
     size_t ksize;
     ssize_t sres;
+    int i;
     int res;
     
     /* We see our own data twice because of having 2 outstanding interests */
@@ -260,19 +302,21 @@ display_the_content(struct ccnxchat_state *st, struct ccn_upcall_info *info)
                                 &data, &size);
     if (res < 0) abort();
     res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
-                              cob->buf,
-                              info->pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
-                              info->pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
-                              &keyhash, &ksize);
+               cob->buf,
+               info->pco->offset[CCN_PCO_B_PublisherPublicKeyDigest],
+               info->pco->offset[CCN_PCO_E_PublisherPublicKeyDigest],
+               &keyhash, &ksize);
      if (res < 0 || ksize < 32) abort();
      ccn_charbuf_reset(line);
-     ccn_charbuf_putf(line, "%02x%02x%02x ", keyhash[0], keyhash[1], keyhash[2]);
+     for (i = 0; i < st->robotname; i++)
+         ccn_charbuf_putf(line, "%02x", keyhash[i]);
+     if (i > 0)
+         ccn_charbuf_putf(line, " ");
      ccn_charbuf_append(line, data, size);
      ccn_charbuf_putf(line, "\n");
      sres = write(1, line->buf, line->length);
-     if (sres != line->length) {
+     if (sres != line->length)
           exit(1);
-     }
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -332,10 +376,10 @@ add_info_exclusion(struct ccnxchat_state *st, struct ccn_upcall_info *info)
     if (info->content_comps->n > info->matched_comps + 1) {
         ccn_name_init(c);
         res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, info->content_ccnb,
-                                  info->content_comps->buf[info->matched_comps],
-                                  info->content_comps->buf[info->matched_comps + 1],
-                                  &ver,
-                                  &ver_size);
+                  info->content_comps->buf[info->matched_comps],
+                  info->content_comps->buf[info->matched_comps + 1],
+                  &ver,
+                  &ver_size);
         if (res < 0) abort();
         ccn_name_append(c, ver, ver_size);
         add_ver_exclusion(st, &c);
@@ -354,6 +398,36 @@ add_uri_exclusion(struct ccnxchat_state *st, const char *uri)
 }
 
 static void
+add_cob_exclusion(struct ccnxchat_state *st, struct ccn_charbuf *cob)
+{
+    struct ccn_parsed_ContentObject co;
+    struct ccn_parsed_ContentObject *pco = &co;
+    struct ccn_indexbuf *comps;
+    struct ccn_charbuf *c;
+    const unsigned char *ver = NULL;
+    size_t ver_size = 0;
+    int i;
+    int res;
+    
+    i = ccn_name_split(st->basename, NULL);
+    c = ccn_charbuf_create();
+    comps = ccn_indexbuf_create();
+    res = ccn_parse_ContentObject(cob->buf, cob->length, pco, comps);
+    if (res >= 0 && i + 1 < comps->n) {
+        res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, cob->buf,
+                                  comps->buf[i], comps->buf[i + 1],
+                                  &ver, &ver_size);
+        if (res >= 0) {
+            ccn_name_init(c);
+            ccn_name_append(c, ver, ver_size);
+            add_ver_exclusion(st, &c);
+        }
+    }
+    ccn_indexbuf_destroy(&comps);
+    ccn_charbuf_destroy(&c);
+}
+
+static void
 init_ver_exclusion(struct ccnxchat_state *st)
 {    
     add_uri_exclusion(st, "/%FE%00%00%00%00%00%00");
@@ -368,7 +442,7 @@ express_interest(struct ccnxchat_state *st)
     int i;
     
     ccn_charbuf_append_tt(templ, CCN_DTAG_Interest, CCN_DTAG);
-    ccn_charbuf_append(templ, st->basename->buf, st->basename->length); /* Name */
+    ccn_charbuf_append(templ, st->basename->buf, st->basename->length);
     ccnb_tagged_putf(templ, CCN_DTAG_MinSuffixComponents, "%d", 3);
     ccnb_tagged_putf(templ, CCN_DTAG_MaxSuffixComponents, "%d", 3);
     ccn_charbuf_append_tt(templ, CCN_DTAG_Exclude, CCN_DTAG);
@@ -406,7 +480,9 @@ generate_cob(struct ccnxchat_state *st)
     ccn_charbuf_append(st->name, st->basename->buf, st->basename->length);
     ccn_create_version(st->h, st->name, CCN_V_NOW, 0, 0);
     ccn_name_append_numeric(st->name, CCN_MARKER_SEQNUM, 0);
-    sp.sp_flags |= CCN_SP_FINAL_BLOCK;
+    sp.sp_flags |= CCN_SP_FINAL_BLOCK; /* always produce just one segment */
+    if (st->freshness > 0)
+        sp.freshness = st->freshness;
     /* Make a ContentObject using the constructed name and our payload */
     ccn_charbuf_reset(st->cob);
     res = ccn_sign_content(st->h, st->cob, st->name, &sp,
@@ -416,53 +492,96 @@ generate_cob(struct ccnxchat_state *st)
     DB(st, st->cob);
 }
 
+/**
+ * Wait until input on fd is ready or ccn_run needs to be called
+ *
+ * @returns 1 if STDIN is ready to read, 0 if not, or -1 for error.
+ */
+static int
+wait_for_input_or_timeout(struct ccn *h, int fd)
+{
+    fd_set readfds;
+    struct timeval tv;
+    int ccnfd;
+    int maxfd = fd;
+    int res = -1;
+    
+    ccnfd = ccn_get_connection_fd(h);
+    if (ccnfd < 0)
+        return(-1);
+    if (maxfd < ccnfd)
+        maxfd = ccnfd;
+    FD_ZERO(&readfds);
+    FD_SET(fd, &readfds);
+    FD_SET(ccnfd, &readfds);
+    res = ccn_process_scheduled_operations(h);
+    if (res >= 0) {
+        tv.tv_sec  = res / 1000000U;
+        tv.tv_usec = res % 1000000U;
+        res = select(maxfd + 1, &readfds, 0, 0, &tv);                
+    }
+    if (res >= 0)
+        res = FD_ISSET(fd, &readfds);
+    return(res);
+}
+
+/** Read a line of standard input into payload */
+static void
+read_input(struct ccnxchat_state *st)
+{
+    unsigned char *cp = NULL;
+    ssize_t res;
+    int fl;
+    int fd = 0;       /* standard input */
+    
+    if (st->ready)
+        return;
+    if (st->eof) {
+        if (st->payload->length > 0)
+            st->ready = 1;
+        return;
+    }
+    fl = fcntl(fd, F_GETFL);
+    fcntl(fd, F_SETFL, O_NONBLOCK | fl);
+    while (st->ready == 0) {
+        cp = ccn_charbuf_reserve(st->payload, 1);
+        res = read(fd, cp, 1);
+        if (res == 1) {
+            if (cp[0] == '\n')
+                st->ready = 1;
+            else
+                st->payload->length++;
+        }
+        else if (res == 0) {
+            if (st->eof == 0 && st->quiet == 0) {
+                ccn_charbuf_putf(st->payload, "=== ");
+                ccn_charbuf_append_charbuf(st->payload, st->luser);
+                ccn_charbuf_putf(st->payload, " leaving chat");
+                st->freshness = 1;
+            }
+            st->eof = 1;
+            if (st->payload->length > 0)
+                st->ready = 1;
+            break;
+        }
+        else
+            break; /* partial line */
+    }
+    fcntl(fd, F_SETFL, fl);
+}
+
 /** Collect some new data and when ready, place it in store */
 static void
 generate_new_data(struct ccnxchat_state *st)
 {
-    unsigned char *cp;
-    ssize_t res;
-    int fl;
-    int ready = 0;    /* set when we have a whole line */
-    int fd = 0;       /* standard input */
-
-    if (st->eof != 0) {
-        if (st->eof++ > 3)
-            exit(0);
-        if (st->payload->length == 0)
-            return;
-    } 
-    fl = fcntl(fd, F_GETFL);
-    fcntl(fd, F_SETFL, O_NONBLOCK | fl);
-    while (!ready) {
-        cp = ccn_charbuf_reserve(st->payload, 1);
-        res = read(fd, cp, 1);
-        if (res == 1) {
-           if (cp[0] == '\n')
-               ready = 1;
-           else
-               st->payload->length++;
-        }
-        else if (res == 0) {
-            if (st->eof == 0) {
-                ccn_charbuf_putf(st->payload, "=== ");
-                ccn_charbuf_append_charbuf(st->payload, st->luser);
-                ccn_charbuf_putf(st->payload, " leaving chat");
-            }
-            if (st->cob->length > 0)
-                ready = 1;
-            st->eof++;
-            break;
-        }
-        else
-            break;
-    }
-    if (ready) {    
+    if (st->ready && st->n_pit > 0 && st->n_cob < CS_LIMIT) {    
         generate_cob(st);
         toss_in_cs(st, st->cob->buf, st->cob->length);
+        if (st->echo == 0)
+            add_cob_exclusion(st, st->cob);
         ccn_charbuf_reset(st->payload);
+        st->ready = 0;
     }
-    fcntl(fd, F_SETFL, fl);
 }
 
 /**
@@ -484,11 +603,19 @@ toss_in_cs(struct ccnxchat_state *st, const unsigned char *p, size_t size)
 
 /** Insert a ccnb-encoded Interest message into our pending interest table */
 static void
-toss_in_pit(struct ccnxchat_state *st, const unsigned char *p, size_t size)
+toss_in_pit(struct ccnxchat_state *st, const unsigned char *p,
+            struct ccn_parsed_interest *pi)
 {
-    unsigned short lifetime_ms = CCN_INTEREST_LIFETIME_MICROSEC / 1000;
+    intmax_t lifetime;
+    unsigned short lifetime_ms = ((unsigned short)(~0)) >> 1;
     struct pit_entry *pie;
+    size_t size;
     
+    size = pi->offset[CCN_PI_E];
+    lifetime = ccn_interest_lifetime(p, pi); /* units: s/4096 */
+    lifetime = (lifetime * (1000 / 8) + (4096 / 8 - 1)) / (4096 / 8);
+    if (lifetime_ms > lifetime)
+        lifetime_ms = lifetime;
     if (st->n_pit == PIT_LIMIT)
         age_pit(st);
     if (st->n_pit == PIT_LIMIT) {
@@ -532,7 +659,7 @@ matchbox(struct ccnxchat_state *st)
             if (ccn_content_matches_interest(
                   cse->cob->buf, cse->cob->length, 1, NULL,
                   pie->pib->buf, pie->pib->length, NULL)) {
-                if (cse->matched == 0)
+                if (cse->sent == 0)
                     new_matches++;
                 cse->matched = 1;
                 pie->consumed = 1;
@@ -642,6 +769,64 @@ namecompare(const void *a, const void *b)
 
 /** Global progam name for messages */
 static const char *progname;
+/** Global option info */
+static struct {
+    int debug;
+    int echo;
+    int freshness;
+    int robotname;
+    int quiet;
+    int verbose;
+    const char *basename;
+    const char *responder;
+} option;
+
+static void
+parseopts(int argc, char **argv)
+{
+    int opt;
+    
+    progname = argv[0];
+    optind = 1;
+    option.echo = 1;
+    option.robotname = 3;
+    option.verbose = 0;
+    option.quiet = 0;
+    option.freshness = 30 * 60;
+    while ((opt = getopt(argc, argv, "hdi:nqr:vx:")) != -1) {
+        switch (opt) {
+            case 'd':
+                option.debug = 1;
+                break;
+            case 'i':
+                option.robotname = atoi(optarg);
+                if (option.robotname < 0 || option.robotname > 32)
+                    usage();
+                break;
+            case 'n':
+                option.echo = 0;
+                break;
+            case 'q':
+                option.quiet = 1;
+                break;
+            case 'r':
+                option.responder = optarg;
+                break;
+            case 'v':
+                option.verbose++;
+                break;
+            case 'x':
+                option.freshness = atoi(optarg);
+                break;
+            case 'h':
+            default:
+                usage();
+        }
+    }
+    option.basename = argv[optind];
+    if (option.basename == NULL || argv[optind + 1] != NULL)
+        usage();
+}
 
 /**
  * Initialization at startup
@@ -652,19 +837,18 @@ static const char *progname;
  * basename is a Name in ccnb encoding.
  */
 static void
-initialize(int argc, char **argv, struct ccn_charbuf *basename) {
+initialize(struct ccnxchat_state *st, struct ccn_charbuf *basename)
+{
     int res;
     
-    progname = argv[0];
-    if (argc > 2)
+    res = ccn_name_from_uri(basename, option.basename);
+    if (res < 0)
         usage();
-    if (argc > 1) {
-        if (argv[1][0] == '-')
-            usage();
-        res = ccn_name_from_uri(basename, argv[1]);
-        if (res < 0)
-            usage();
-    }
+    st->echo = option.echo;
+    st->freshness = option.freshness;
+    st->verbose = option.verbose;
+    st->robotname = option.robotname;
+    st->quiet = option.quiet;
     seed_random();
 }
 
@@ -751,7 +935,8 @@ debug_logger(struct ccnxchat_state *st, int lineno, struct ccn_charbuf *ccnb)
     ccn_charbuf_putf(c, "debug.%d %5d", lineno, wrappednow());
     if (st != NULL)
         ccn_charbuf_putf(c, " pit=%d pot=%d cob=%d buf=%d",
-                         st->n_pit, st->cc->refcount, st->n_cob, (int)st->payload->length);
+                         st->n_pit, st->cc->refcount,
+                         st->n_cob, (int)st->payload->length);
     if (ccnb != NULL) {
         ccn_charbuf_putf(c, " ");
         ccn_uri_append(c, ccnb->buf, ccnb->length, 1);
@@ -762,7 +947,8 @@ debug_logger(struct ccnxchat_state *st, int lineno, struct ccn_charbuf *ccnb)
 }
 
 static int
-append_interest_details(struct ccn_charbuf *c, const unsigned char *ccnb, size_t size)
+append_interest_details(struct ccn_charbuf *c,
+                        const unsigned char *ccnb, size_t size)
 {
     struct ccn_parsed_interest interest;
     struct ccn_parsed_interest *pi = &interest;
@@ -838,9 +1024,58 @@ append_full_user_name(struct ccn_charbuf *c)
     return(res);
 }
 
-int
-main(int argc, char** argv)
+/**
+ * classic unix fork/exec to hook up an automatic responder
+ */
+static int
+robo_chat(int argc, char **argv)
 {
-    return(lned_run(argc, argv, "Chat.. ", &chat_main));
+    pid_t p;
+    int res;
+    int io[2] = {-1, -1};
+    int oi[2] = {-1, -1};
+    
+    res = socketpair(AF_UNIX, SOCK_STREAM, 0, io);
+    if (res < 0) exit(1);
+    res = socketpair(AF_UNIX, SOCK_STREAM, 0, oi);
+    if (res < 0) exit(1);
+    p = fork();
+    if (p < 0) {
+        perror("fork");
+        exit(1);
+    }
+    if (p == 0) {
+        /* child */
+        dup2(io[1], 0);
+        dup2(oi[1], 1);
+        close(io[0]);
+        close(io[1]);
+        close(oi[0]);
+        close(oi[1]);
+        execlp("sh", "sh", "-c", option.responder, NULL);
+        perror(option.responder); /* no return unless there was an error */
+        exit(1);
+    }
+    /* parent */
+    dup2(io[0], 1);
+    dup2(oi[0], 0);
+    close(io[0]);
+    close(io[1]);
+    close(oi[0]);
+    close(oi[1]);
+    /* Turn off echo and extra output for the robo-chat case */
+    option.echo = 0;
+    option.quiet = 1;
+    return(chat_main(argc, argv));
 }
 
+int
+main(int argc, char **argv)
+{
+    parseopts(argc, argv);
+    if (option.responder != NULL)
+        return(robo_chat(argc, argv));
+    if (option.debug)
+        return(chat_main(argc, argv));
+    return(lned_run(argc, argv, "Chat.. ", &chat_main));
+}
