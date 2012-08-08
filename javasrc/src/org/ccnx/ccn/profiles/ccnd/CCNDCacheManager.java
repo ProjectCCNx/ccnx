@@ -29,39 +29,43 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
 public class CCNDCacheManager implements CCNContentHandler {
-	
+	int stale;
 	public void clearCache(ContentName prefix, CCNHandle handle, long timeout) throws IOException {
 		Interest interest = new Interest(prefix);
 		interest.answerOriginKind(Interest.DEFAULT_ANSWER_ORIGIN_KIND + Interest.MARK_STALE);
 		interest.scope(0);
-		long currentTime = System.currentTimeMillis();
-		long endTime = currentTime + timeout;
+		long startTime = System.currentTimeMillis();
+		long endTime = startTime + timeout;
 		boolean noTimeout = timeout == SystemConfiguration.NO_TIMEOUT;
-		while (noTimeout || currentTime < endTime) {
+		stale = 0;
+		while (noTimeout || System.currentTimeMillis() < endTime) {
+			int prevStale = stale;
 			handle.expressInterest(interest, this);
 			synchronized (this) {
 				try {
 					this.wait(SystemConfiguration.MEDIUM_TIMEOUT);
 				} catch (InterruptedException e) {}
 			}
-			long prevTime = currentTime;
-			currentTime = System.currentTimeMillis();
-			if (currentTime - prevTime > SystemConfiguration.MEDIUM_TIMEOUT) {
+			if (prevStale == stale) {
+				handle.cancelInterest(interest, this);
 				if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER))
-					Log.finer(Log.FAC_NETMANAGER, "ClearCache finished after {0} ms", currentTime - prevTime);
+					Log.finer(Log.FAC_NETMANAGER, "ClearCache finished after {0} ms, marked {1} stale.",
+							System.currentTimeMillis() - startTime, stale);
 				return;
 			}
 		}
-		Log.warning("ClearCache timed out before completion");
+		handle.cancelInterest(interest, this);
+		Log.warning(Log.FAC_NETMANAGER, "ClearCache timed out before completion, marked {0} stale.", stale);
 		throw new IOException("ClearCache timed out before completion");
 	}
 
 	public Interest handleContent(ContentObject data, Interest interest) {
 		synchronized (this) {
+			stale++;
 			this.notifyAll();
 			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER))
 				Log.finer(Log.FAC_NETMANAGER, "Set {0} stale", data.name());
 		}
-		return interest;
+		return null;
 	}
 }
