@@ -134,15 +134,15 @@ public final class Controller extends Activity implements OnClickListener {
             @Override
             public void onReceive(Context context, Intent intent) {
                 Log.d(TAG, "Received android.net.conn.CONNECTIVITY_CHANGE");
-                updateIPAddress(); 
+                updateIPAddress();
             }
         };
         this.registerReceiver(mReceiver, intentfilter);
         //
-        // Update on resume, as frequently, in old Android esp, WIFI gets 
+        // Update on resume, as frequently, in old Android esp, WIFI gets
         // shut off and may lose the address it had
-        // 
-        updateIPAddress(); 
+        //
+        updateIPAddress();
 
         // We should updateState on resuming, in case Service state has changed
         updateState();
@@ -330,9 +330,9 @@ public final class Controller extends Activity implements OnClickListener {
         String ipaddr = getIPAddress();
 
         if (ipaddr != null) {
-        	deviceIPAddress.setText(ipaddr);
+            deviceIPAddress.setText(ipaddr);
         } else {
-        	deviceIPAddress.setText("Unable to determine IP Address");
+            deviceIPAddress.setText("Unable to determine IP Address");
         }
     }
 
