@@ -837,7 +837,8 @@ r_store_look(struct ccnr_handle *h, const unsigned char *key, size_t size)
  * no lower bound, lower will be unchanged.
  * If there is no upper bound, a sentinel value is appended to upper.
  *
- * @returns 0 for success, or a negative value in case of error.
+ * @returns on success the number of Components in Exclude.
+ *          A negative value indicates an error.
  */
 static int
 ccn_append_interest_bounds(const unsigned char *interest_msg,
@@ -852,6 +853,7 @@ ccn_append_interest_bounds(const unsigned char *interest_msg,
     int atlower = 0;
     int atupper = 0;
     int res = 0;
+    int nexcl = 0;
     
     if (pi->offset[CCN_PI_B_Exclude] < pi->offset[CCN_PI_E_Exclude]) {
         d = ccn_buf_decoder_start(&decoder,
@@ -867,6 +869,7 @@ ccn_append_interest_bounds(const unsigned char *interest_msg,
         else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom))
             ccn_buf_advance_past_element(d);
         while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+            nexcl++;
             xstart = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
             ccn_buf_advance_past_element(d);
             xend = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
