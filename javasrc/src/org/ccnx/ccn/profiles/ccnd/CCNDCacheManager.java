@@ -37,21 +37,22 @@ public class CCNDCacheManager implements CCNContentHandler {
 		long startTime = System.currentTimeMillis();
 		long endTime = startTime + timeout;
 		boolean noTimeout = timeout == SystemConfiguration.NO_TIMEOUT;
-		stale = 0;
+		int prevStale;
+		stale = prevStale = 0;
+		handle.expressInterest(interest, this);
 		while (noTimeout || System.currentTimeMillis() < endTime) {
-			int prevStale = stale;
-			handle.expressInterest(interest, this);
 			synchronized (this) {
 				try {
 					this.wait(SystemConfiguration.MEDIUM_TIMEOUT);
 				} catch (InterruptedException e) {}
-			}
-			if (prevStale == stale) {
-				handle.cancelInterest(interest, this);
-				if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER))
-					Log.finer(Log.FAC_NETMANAGER, "ClearCache finished after {0} ms, marked {1} stale.",
-							System.currentTimeMillis() - startTime, stale);
-				return;
+				if (prevStale == stale) {
+					handle.cancelInterest(interest, this);
+					if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER))
+						Log.finer(Log.FAC_NETMANAGER, "ClearCache finished after {0} ms, marked {1} stale.",
+								System.currentTimeMillis() - startTime, stale);
+					return;
+				}
+				prevStale = stale;
 			}
 		}
 		handle.cancelInterest(interest, this);
@@ -62,10 +63,9 @@ public class CCNDCacheManager implements CCNContentHandler {
 	public Interest handleContent(ContentObject data, Interest interest) {
 		synchronized (this) {
 			stale++;
-			this.notifyAll();
-			if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER))
-				Log.finer(Log.FAC_NETMANAGER, "Set {0} stale", data.name());
 		}
-		return null;
+		if (Log.isLoggable(Log.FAC_NETMANAGER, Level.FINER))
+			Log.finer(Log.FAC_NETMANAGER, "Set {0} stale", data.name());
+		return interest;
 	}
 }
