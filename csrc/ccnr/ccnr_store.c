@@ -829,6 +829,142 @@ r_store_look(struct ccnr_handle *h, const unsigned char *key, size_t size)
     return(content);
 }
 
+/**
+ * Extract the flatname representations of the bounds for the
+ * next component after the name prefix of the interest.
+ * These are exclusive bounds.  The results are appended to
+ * lower and upper (when not NULL).  If there is
+ * no lower bound, lower will be unchanged.
+ * If there is no upper bound, a sentinel value is appended to upper.
+ *
+ * @returns 0 for success, or a negative value in case of error.
+ */
+static int
+ccn_append_interest_bounds(const unsigned char *interest_msg,
+                           const struct ccn_parsed_interest *pi,
+                           struct ccn_charbuf *lower,
+                           struct ccn_charbuf *upper)
+{
+    struct ccn_buf_decoder decoder;
+    struct ccn_buf_decoder *d = NULL;
+    size_t xstart = 0;
+    size_t xend = 0;
+    int atlower = 0;
+    int atupper = 0;
+    int res = 0;
+    
+    if (pi->offset[CCN_PI_B_Exclude] < pi->offset[CCN_PI_E_Exclude]) {
+        d = ccn_buf_decoder_start(&decoder,
+                                  interest_msg + pi->offset[CCN_PI_B_Exclude],
+                                  pi->offset[CCN_PI_E_Exclude] -
+                                  pi->offset[CCN_PI_B_Exclude]);
+        ccn_buf_advance(d);
+        if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+            ccn_buf_advance(d);
+            ccn_buf_check_close(d);
+            atlower = 1; /* look for <Exclude><Any/><Component>... case */
+        }
+        else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom))
+            ccn_buf_advance_past_element(d);
+        while (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
+            xstart = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
+            ccn_buf_advance_past_element(d);
+            xend = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
+            if (atlower && lower != NULL && d->decoder.state >= 0) {
+                res = ccn_flatname_append_from_ccnb(lower,
+                        interest_msg + xstart, xend - xstart, 0, 1);
+                if (res < 0)
+                    d->decoder.state = - __LINE__;
+            }
+            atlower = 0;
+            atupper = 0;
+            if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
+                atupper = 1; /* look for ...</Component><Any/></Exclude> case */
+                ccn_buf_advance(d);
+                ccn_buf_check_close(d);
+            }
+            else if (ccn_buf_match_dtag(d, CCN_DTAG_Bloom))
+                ccn_buf_advance_past_element(d);
+        }
+        ccn_buf_check_close(d);
+        res = d->decoder.state;
+    }
+    if (upper != NULL) {
+        if (atupper && res >= 0)
+            res = ccn_flatname_append_from_ccnb(upper,
+                     interest_msg + xstart, xend - xstart, 0, 1);
+        else
+            ccn_charbuf_append(upper, "\377\377\377", 3);
+    }
+    return (res < 0 ? res : 0);
+}
+
+static struct content_entry *
+r_store_lookup_backwards(struct ccnr_handle *h,
+                         const unsigned char *interest_msg,
+                         const struct ccn_parsed_interest *pi,
+                         struct ccn_indexbuf *comps)
+{
+    struct content_entry *content = NULL;
+    struct ccn_btree_node *leaf = NULL;
+    struct ccn_charbuf *flatname = NULL;
+    struct ccn_charbuf *lower = NULL;
+    struct ccn_charbuf *scratch = NULL;
+    size_t size;
+    size_t fsz;
+    int ndx;
+    int res;
+    int nc;
+    int rnc;
+    
+    size = pi->offset[CCN_PI_E];
+    flatname = ccn_charbuf_create_n(pi->offset[CCN_PI_E_Name]);
+    lower = ccn_charbuf_create();
+    scratch = ccn_charbuf_create();
+    nc = ccn_flatname_from_ccnb(flatname, interest_msg, size);
+    fsz = flatname->length;
+    ccn_charbuf_append_charbuf(lower, flatname);
+    res = ccn_append_interest_bounds(interest_msg, pi, lower, flatname);
+    if (res < 0) abort();
+    /* Now flatname is beyond any we care about */
+    res = ccn_btree_lookup(h->btree, flatname->buf, flatname->length, &leaf);
+    ndx = CCN_BT_SRCH_INDEX(res);
+    for (;;) {
+        if (ndx == 0) {
+            res = ccn_btree_prev_leaf(h->btree, leaf, &leaf);
+            if (res != 1) goto Done;
+            ndx = ccn_btree_node_nent(leaf);
+        }
+        ndx -= 1;
+        res = ccn_btree_compare(lower->buf, lower->length, leaf, ndx);
+        if (res > 0 || (res == 0 && lower->length > fsz))
+            goto Done;
+        scratch->length = 0;
+        res = ccn_btree_key_fetch(scratch, leaf, ndx);
+        rnc = ccn_flatname_next_comp(scratch->buf + fsz, scratch->length - fsz);
+        if (rnc <= 0) abort();
+        scratch->length = fsz + CCNFLATDELIMSZ(rnc) + CCNFLATDATASZ(rnc);
+        res = ccn_btree_lookup(h->btree, scratch->buf, scratch->length, &leaf);
+        if (res < 0) abort();
+        ndx = CCN_BT_SRCH_INDEX(res);
+        res = ccn_btree_match_interest(leaf, ndx, interest_msg, pi, scratch);
+        if (res == -1) {
+            ccnr_debug_ccnb(h, __LINE__, "match_error", NULL, interest_msg, size);
+            goto Done;
+        }
+        if (res == 1) {
+            ccn_btree_key_fetch(scratch, leaf, ndx);
+            content = r_store_look(h, scratch->buf, scratch->length);
+            goto Done;
+        }
+    }
+Done:
+    ccn_charbuf_destroy(&lower);
+    ccn_charbuf_destroy(&flatname);
+    ccn_charbuf_destroy(&scratch);
+    return(content);
+}
+
 PUBLIC struct content_entry *
 r_store_find_first_match_candidate(struct ccnr_handle *h,
                                    const unsigned char *interest_msg,
@@ -975,6 +1111,11 @@ r_store_lookup(struct ccnr_handle *h,
     int ndx;
     int res;
     int try;
+    
+    if ((pi->orderpref & 1) == 1) {
+        content = r_store_lookup_backwards(h, msg, pi, comps);
+        return(content);
+    }
     
     content = r_store_find_first_match_candidate(h, msg, pi);
     if (content != NULL && CCNSHOULDLOG(h, LM_8, CCNL_FINER))
