@@ -907,61 +907,77 @@ r_store_lookup_backwards(struct ccnr_handle *h,
 {
     struct content_entry *content = NULL;
     struct ccn_btree_node *leaf = NULL;
-    struct ccn_charbuf *flatname = NULL;
     struct ccn_charbuf *lower = NULL;
-    struct ccn_charbuf *scratch = NULL;
+    struct ccn_charbuf *f = NULL;
     size_t size;
     size_t fsz;
+    int errline = 0;
+    int try = 0;
     int ndx;
     int res;
-    int nc;
     int rnc;
     
     size = pi->offset[CCN_PI_E];
-    flatname = ccn_charbuf_create_n(pi->offset[CCN_PI_E_Name]);
+    f = ccn_charbuf_create_n(pi->offset[CCN_PI_E_Name]);
     lower = ccn_charbuf_create();
-    scratch = ccn_charbuf_create();
-    nc = ccn_flatname_from_ccnb(flatname, interest_msg, size);
-    fsz = flatname->length;
-    ccn_charbuf_append_charbuf(lower, flatname);
-    res = ccn_append_interest_bounds(interest_msg, pi, lower, flatname);
-    if (res < 0) abort();
-    /* Now flatname is beyond any we care about */
-    res = ccn_btree_lookup(h->btree, flatname->buf, flatname->length, &leaf);
+    if (f == NULL || lower == NULL) { errline = __LINE__; goto Done; };
+    rnc = ccn_flatname_from_ccnb(f, interest_msg, size);
+    fsz = f->length;
+    res = ccn_charbuf_append_charbuf(lower, f);
+    if (rnc < 0 || res < 0) { errline = __LINE__; goto Done; };
+    res = ccn_append_interest_bounds(interest_msg, pi, lower, f);
+    if (res < 0) { errline = __LINE__; goto Done; };
+    /* Now f is beyond any we care about */
+    res = ccn_btree_lookup(h->btree, f->buf, f->length, &leaf);
+    if (res < 0) { errline = __LINE__; goto Done; };
     ndx = CCN_BT_SRCH_INDEX(res);
-    for (;;) {
+    for (try = 1;; try++) {
         if (ndx == 0) {
             res = ccn_btree_prev_leaf(h->btree, leaf, &leaf);
-            if (res != 1) goto Done;
+            if (res != 1) { errline = __LINE__; goto Done; }
             ndx = ccn_btree_node_nent(leaf);
+            if (ndx == 0) goto Done;
         }
         ndx -= 1;
         res = ccn_btree_compare(lower->buf, lower->length, leaf, ndx);
         if (res > 0 || (res == 0 && lower->length > fsz))
             goto Done;
-        scratch->length = 0;
-        res = ccn_btree_key_fetch(scratch, leaf, ndx);
-        rnc = ccn_flatname_next_comp(scratch->buf + fsz, scratch->length - fsz);
-        if (rnc <= 0) abort();
-        scratch->length = fsz + CCNFLATDELIMSZ(rnc) + CCNFLATDATASZ(rnc);
-        res = ccn_btree_lookup(h->btree, scratch->buf, scratch->length, &leaf);
-        if (res < 0) abort();
-        ndx = CCN_BT_SRCH_INDEX(res);
-        res = ccn_btree_match_interest(leaf, ndx, interest_msg, pi, scratch);
-        if (res == -1) {
-            ccnr_debug_ccnb(h, __LINE__, "match_error", NULL, interest_msg, size);
-            goto Done;
+        f->length = 0;
+        res = ccn_btree_key_fetch(f, leaf, ndx);
+        if (res < 0) { errline = __LINE__; goto Done; }
+        if (f->length > fsz) {
+            rnc = ccn_flatname_next_comp(f->buf + fsz, f->length - fsz);
+            if (rnc < 0) { errline = __LINE__; goto Done; };
+            f->length = fsz + CCNFLATDELIMSZ(rnc) + CCNFLATDATASZ(rnc);
+            res = ccn_btree_lookup(h->btree, f->buf, f->length, &leaf);
+            if (res < 0) { errline = __LINE__; goto Done; };
+            ndx = CCN_BT_SRCH_INDEX(res);
         }
+        else if (f->length < fsz) { errline = __LINE__; goto Done; }
+        res = ccn_btree_match_interest(leaf, ndx, interest_msg, pi, f);
         if (res == 1) {
-            ccn_btree_key_fetch(scratch, leaf, ndx);
-            content = r_store_look(h, scratch->buf, scratch->length);
+            res = ccn_btree_key_fetch(f, leaf, ndx);
+            if (res < 0) { errline = __LINE__; goto Done; }
+            content = r_store_look(h, f->buf, f->length);
             goto Done;
         }
+        else if (res != 0) { errline = __LINE__; goto Done; }
     }
 Done:
+    if (errline != 0)
+        ccnr_debug_ccnb(h, errline, "match_error", NULL, interest_msg, size);
+    else {
+        if (content != NULL) {
+            h->count_rmc_found += 1;
+            h->count_rmc_found_iters += try;
+        }
+        else {
+            h->count_rmc_notfound += 1;
+            h->count_rmc_notfound_iters += try;
+        }
+    }
     ccn_charbuf_destroy(&lower);
-    ccn_charbuf_destroy(&flatname);
-    ccn_charbuf_destroy(&scratch);
+    ccn_charbuf_destroy(&f);
     return(content);
 }
 
