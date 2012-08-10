@@ -230,7 +230,7 @@ You will need to use gmake rather than make.
 
 _Android_
 
-Please see `android/README.build` for special notes about Android.
+Please see `android/README` for special notes about Android.
 
 _Ubuntu_
 
@@ -366,7 +366,8 @@ inconsistent as of this release.  Here are a few notable utilities:
                repo content since it requires name enumeration support
                available only there.  Also allows writing files to repo.
 * `ccnls` - primitive content listing by retrieval
-* `ccnlsrepo` - command-line content listing from repo (via name enumeration)
+* `ccnlsrepo` - command-line content listing from repo (via name 
+                enumeration)
 * `ccnputfile` - command-line tool to send file as CCNx data (asks repo
                to receive unless -raw arg given)
 * `ccngetfile` - command-line tool to retrieve CCNx content and store it
@@ -393,4 +394,49 @@ in that case you must tell the program what directory to use.
 
 ## 6. Support and contact information ##
 
+Support for CCNx is primarily found on the ccnx.org mailing lists.  There
+are three lists: ccnx-dev@ccnx.org (For Developers), ccnx-users@ccnx.org
+(for Users) and ccnx-interest@ccnx.org (for NEW and Updates).  Find out
+more at:
+    http://www.ccnx.org/subscribe-to-the-mailing-lists/
+
+Live support can be found in realtime on IRC: #ccnx
+
 Please see our website at http://www.ccnx.org.
+
+## 7. Contributions ##
+
+For developers looking to provide bug fixes, documentation, code samples, or
+new features, we recommend first reviewing our process for contributing code
+online:
+    http://www.ccnx.org/support/contributing-code/
+
+All code contributions and patches will require individuals to sign a
+Contributor Agreement.  Individuals representing an organization should
+first consult with their own legal departments before singing anything.
+Once we have a ratified document, we are free to take in source
+contributions.  We strongly recommend using the Fork feature of Github
+described here:
+    http://help.github.com/fork-a-repo/
+
+When code is ready for review, send a Pull Request, described here:
+    http://help.github.com/send-pull-requests/
+
+This process creates a nice dialogue and fosters transparency in the
+process.
+
+For organizations interested in contributing large bodies of work, we
+recommend contacting the project leads to discuss a Software Grant
+Agreement.
+
+If signing a Contributor Agreement is not possible due to organizational
+or legal restrictions, there are other ways to get involved, including
+contributing interesting code on our WIKI at: https://www.ccnx.org/wiki
+
+## 8. Related Work ##
+
+We are actively interested in promoting and fostering development and
+collaboration within the CCNx Community.  If you have something great to
+share related to CCNx, built on, forked from, or otherwise of interest to
+this Community, please contact us.  We will be looking for ways to publish
+community project via http://www.ccnx.org on our WIKI.

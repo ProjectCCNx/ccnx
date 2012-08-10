@@ -1,7 +1,68 @@
+Changes between 0.6.0 and 0.6.1:
+--------------------------------
+This highlights some important changes since the most recent numbered release.
+Refer to http://redmine.ccnx.org/projects/ccn/versions/10 for more details on
+CCNx 0.6.1.
+
+  * [GENERAL HIGHLIGHTS BLURB]
+
+  * Issues Resolved:
+	* Bug #100321: Improve efficiency interest suppression
+	* Bug #100358: DataUtils getBytesFromFile and large files
+	* Bug #100374: test.repo.Misc.java has bad logic
+	* Bug #100645: Android CCNx service control - tapping "Start All" button multiple times quickly causes services to fail.
+	* Bug #100682: CCNx tests uses grep flags unsupported by Solaris SunOS default grep but tests still succeed
+	* Bug #100694: Fix ccntestloop stop command to more reliably clean up spawned processes
+	* Bug #100711: Some gitignore files ignore too much
+	* Bug #100728: HttpProxy tries to generate a keystore using a script that is no longer installed
+	* Bug #100733: Binary decoder should increase its buffer size by larger increments at overflow
+	* Bug #100744: CCN_GET_NOKEYWAIT flag to ccn_get() doesn't work
+	* Bug #100746: Compiler erroneously detects uninitialized use of "cmd" in ccnsyncslice.c
+	* Bug #100747: duplicate object file in csrc/ccnd/Android.mk
+	* Bug #100748: small memory leak in ccnr when creating a new repository
+	* Bug #100749: Warning in java repo due to method change
+	* Bug #100750: Mac OS X 10.7 Lion users need clear instructions on what build pre-req tools need to be installed
+	* Bug #100755: ccnd should hold unsatisfied scope0 interests
+	* Bug #100758: SyncCacheEntryFetch can miss existing entries
+	* Bug #100764: Java logging for FAC_SEARCH is broken
+	* Bug #100765: BinaryXMLDecoder uses inappropriate algorithm for increasing decoder array sizes and the logging is broken.
+	* Bug #100766: Null pointer dereference in ccnr
+	* Bug #100768: fix potential NULL pointer deref and some uses of realloc() that could result in leaks
+	* Bug #100769: name enumeration attempts to open mid stream
+	* Bug #100770: versioning profile should be more defensive about what a valid version number is
+	* Bug #100771: CCNxProtocol document description of FIB should not refer to destinations
+	* Bug #100778: Android CCNx Service crashes on startup if CCNR "Unable to get repository policy object version"
+	* Bug #100780: CCNx Android makefile should be posix compliant
+	* Bug #100781: Android CCNx Service fails to start CCNR with "Unable to get repository policy object version"
+	* Bug #100783: libccn code should be compiled with PIC on NetBSD
+	* Bug #100784: Android CCNx Service displays loopback address on ICS even when other *faces are available
+	* Bug #100788: exception in ccnlsrepo
+	* Bug #100790: lned does not work properly on Mac OS X 10.5
+	* Bug #100791: ccnc input logic needs improvement
+	* Bug #100792: MergeSecureKeyCacheTestRepo has initialization bug
+	* Bug #100795: CCNDCacheManager.clearCache() issues too many interests
+	* Bug #100796: Improve performance of ccnr rightmost-child operations
+	* Feature #100041: java tools should support a -h argument
+	* Feature #100647: Default support for multiple architectures in MacOS X build
+	* Feature #100701: A number of methods in ContentName have no general test coverage
+	* Feature #100715: Provide interface for applications to set up Sync configuration slices and receive notification of (newly) sync'ed ContentObjects - in java library
+	* Feature #100727: Support for MAC content
+	* Feature #100752: Side door for quickly adding content to a repo
+	* Feature #100759: Extensions to HttpProxy
+	* Feature #100760: C library needs method for connecting to ccnd via TCP in place of Unix-domain socket
+	* Feature #100761: Implement deletion of btrees entries
+	* Feature #100767: ccnsyncwatch should flush output after each line
+	* Feature #100787: Provide a version of ccnchat that uses libccn
+	* Feature #100793: ccnc man page needs to be updated to document new options
+	* Support #100745: Update jenkins CI to use latest NDK/SDK for Android build project
+	* Support #100757: Prepare for ccnx-0.6.1 release
+	* Support #100779: CCNx Android build should explicitly set APP_PLATFORM and APP_ABI
+
 Changes between 0.5.1 and 0.6.0:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
-Refer to http://www.ccnx.org/redmine/ for more details.
+Refer to http://redmine.ccnx.org/projects/ccn/versions/9 for more details on
+CCNx 0.6.0.
 
   * A new varargs constructor has been added to ContentNames, a new Component
     class has been created, and ContentNameProvider and ComponentProvider
@@ -95,7 +156,8 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 Changes between 0.5.0 and 0.5.1:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
-Refer to http://www.ccnx.org/redmine/ for more details.
+Refer to http://redmine.ccnx.org/projects/ccn/versions/6 for more details on
+CCNx 0.5.1.
 
   • As a result of Sun Java JDK packages being removed for Ubuntu (see
     https://lists.ubuntu.com/archives/ubuntu-security-announce/2011-December/
@@ -141,7 +203,8 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 Changes between 0.4.2 and 0.5.0:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
-Refer to http://www.ccnx.org/redmine/ for more details.
+Refer to http://redmine.ccnx.org/projects/ccn/versions/5 for more details on
+CCNx 0.5.0.
 
   * Experience shows that many applications need local persistent storage.  With
      the introduction of Repository-based synchronization, we now expect that
@@ -296,7 +359,8 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 Changes between 0.4.1 and 0.4.2:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
-Refer to http://www.ccnx.org/redmine/ for more details.
+Refer to http://redmine.ccnx.org/projects/ccn/versions/3 for more details on
+CCNx 0.4.2.
 
   * Issues Resolved:
 	* Feature 100371 Implement marshalling/unmarshalling for Link objects
@@ -332,7 +396,8 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 Changes between 0.4.0 and 0.4.1:
 --------------------------------
 This highlights some important changes since the most recent numbered release.
-Refer to http://www.ccnx.org/redmine/ for more details.
+Refer to http://redmine.ccnx.org/projects/ccn/versions/2 for more details on
+CCNx 0.4.1.
 
   * The ant features used to process properties, -D<property>=<value> do not work with
 	ant 1.7.1.	If you have not done so already, you need to
@@ -396,7 +461,9 @@ Refer to http://www.ccnx.org/redmine/ for more details.
 	
 Changes between 0.3.0 and 0.4.0:
 --------------------------------
- 
+Refer to http://redmine.ccnx.org/projects/ccn/versions/1 for more details on
+CCNx 0.4.0.
+
   * The 'ping' responder in ccnd is deprecated. For compatibility, it is still
 	present by default, but further use should be phased out. The libraries
 	have been changed to use local service discovery instead. The java option
