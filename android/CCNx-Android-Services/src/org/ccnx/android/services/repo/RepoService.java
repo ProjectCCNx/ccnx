@@ -207,8 +207,8 @@ public final class RepoService extends CCNxService {
 				}
 			} catch(Exception e) {
 				e.printStackTrace();
-				thd = null;
-				return;
+				Log.d(TAG, "Exception while invoking runService().  Reason: " + e.getMessage());
+				setStatus(SERVICE_STATUS.SERVICE_ERROR);
 			} finally {
 				thd = null;
 			}
@@ -274,15 +274,22 @@ public final class RepoService extends CCNxService {
 					ccnrSetenv(entry.getKey(), entry.getValue(), 1);
 				}
 	
-				ccnrCreate(repo_version);
-				setStatus(SERVICE_STATUS.SERVICE_RUNNING);
-				try {
-					ccnrRun();
-				} finally {
-					ccnrDestroy();
+				if (ccnrCreate(repo_version) == 0) {
+					setStatus(SERVICE_STATUS.SERVICE_RUNNING);
+					try {
+						ccnrRun();
+					} finally {
+						ccnrDestroy();
+					}
+				} else {
+					// If we have problems initially creating the CCNR handle, we should shutdown with error
+					Log.d(TAG,"ccnrCreate failure, failed to start Repo.");
+					setStatus(SERVICE_STATUS.SERVICE_ERROR);
 				}
 			} catch(Exception e) {
 				e.printStackTrace();
+				Log.d(TAG, "Exception caught while starting up/shutting down.  Reason: " + e.getMessage()); 
+				setStatus(SERVICE_STATUS.SERVICE_ERROR);
 				// returning will end the thread
 			}
 			serviceStopped();
@@ -309,7 +316,7 @@ public final class RepoService extends CCNxService {
 			Log.d(TAG,"Unknown Repo version " + repo_version + " specified, failed to stop Repo.");
 			setStatus(SERVICE_STATUS.SERVICE_ERROR);
 		}
-		serviceStopped(); // XXX Is it really ok to assume we've stopped when we might get errors?
+		setStatus(SERVICE_STATUS.SERVICE_FINISHED); // XXX Is it really ok to assume we've stopped when we might get errors?
 	}
 
 	private String createRepoDir(String repodir) {
@@ -367,7 +374,6 @@ public final class RepoService extends CCNxService {
     static {
     	//
     	// load library
-    	//
     	try {
     		System.loadLibrary("controller");
     		Log.e(CLASS_TAG, "loaded native library: controller");

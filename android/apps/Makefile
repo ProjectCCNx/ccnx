@@ -1,4 +1,4 @@
-# Copyright (C) 2010, 2011 Palo Alto Research Center, Inc.  All Rights Reserved.
+# Copyright (C) 2010-2012 Palo Alto Research Center, Inc.  All Rights Reserved.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -11,39 +11,32 @@
 # Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301, USA.
 #
-export
 
-#
+SUBDIRS = CCNx-Android-Chat CCNx-Android-StartupExamples
 
-SUBDIRS := CCNx-Android-Chat CCNx-Android-StartupExamples
-SUBDIRS_clean := $(addsuffix .clean,$(SUBDIRS))
-SUBDIRS_distclean := $(addsuffix .distclean,$(SUBDIRS))
-
-.PHONY: subdirs mkdirs install $(SUBDIRS) $(SUBDIRS_clean)
+.PHONY: subdirs mkdirs install $(SUBDIRS)
 
 default all: $(SUBDIRS)
 
 # Build externals without parallism
 $(SUBDIRS): 
-	$(MAKE) -C $@ -j 1
+	for i in $(SUBDIRS); do \
+		(cd "$$i" && pwd && $(MAKE) -j 1) || exit 1; \
+	done
 
 install uninstall:
 	for f in $(SUBDIRS); do \
-	   	$(MAKE) -C $$f $@; \
+		(cd "$$f" && pwd && $(MAKE) $@) || exit 1; \
 	done
 
 honeycomb:
 	for f in $(SUBDIRS); do \
-	   	$(MAKE) honeycomb -C $$f $@; \
+		(cd "$$f" && pwd && $(MAKE) honeycomb $@) || exit 1; \
 	done
 
-clean: $(SUBDIRS_clean)
-
-distclean: $(SUBDIRS_distclean)
-
-$(SUBDIRS_clean):
-	-$(MAKE) -C $(basename $@) clean
-
-$(SUBDIRS_distclean):
-	-$(MAKE) -C $(basename $@) distclean
+clean distclean:
+	for i in $(SUBDIRS); do \
+		(cd "$$i" && pwd && $(MAKE) $@) || exit 1; \
+	done
+	@rm -f _always
 

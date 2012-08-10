@@ -136,7 +136,7 @@ public class BlockingStartup extends StartupBase {
 		public synchronized void shutdown() {
 			_latch.countDown();
 			try {
-				_ccnxService.stoptAll();
+				_ccnxService.stopAll();
 			} catch(Exception e) {
 				e.printStackTrace();
 			}

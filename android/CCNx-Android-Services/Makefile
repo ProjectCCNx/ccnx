@@ -1,4 +1,4 @@
-# Copyright (C) 2009,2010 Palo Alto Research Center, Inc.
+# Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
 #
 # This work is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2 as published by the
@@ -14,14 +14,14 @@
 ############
 # User-settable things
 
-APK_NAME := CCNx-Android-Services-debug.apk
-BIN := bin
-GEN := gen
+APK_NAME = CCNx-Android-Services-debug.apk
+BIN = bin
+GEN = gen
 
 ############
 # Nothing tweekable down here
 
-NDK_PATH := $(ANDROID_NDK)/ndk-build
+NDK_PATH = $(ANDROID_NDK)/ndk-build
 
 .PHONY: all ccnd environment prereq clean simpleclean distclean checkccnxdeps
 
@@ -30,9 +30,9 @@ NDK_PATH := $(ANDROID_NDK)/ndk-build
 ##########
 
 # This is a lit of the targets in our libs directory
-JARS := libs/ccn.jar
+JARS = libs/ccn.jar
 
-TARGET  := $(BIN)/$(APK_NAME)
+TARGET = $(BIN)/$(APK_NAME)
 
 default all: $(TARGET) 
 
@@ -67,7 +67,11 @@ ccnd: environment checkccnxdeps
 	mkdir -p libs/armeabi
 	$(NDK_PATH)
 
-libs/ccn.jar: ../../javasrc/ccn.jar
+checkccnjar:
+	@test -f ../../javasrc/ccn.jar || (echo Missing ccn.jar.  Please make CCNx javasrc before the Android port; \
+	exit 1;)
+
+libs/ccn.jar: checkccnjar
 	mkdir -p $(dir $@)
 	rm -f $@
 
@@ -81,13 +85,12 @@ uninstall:
 	adb uninstall org.ccnx.android.services
 
 environment:
-ifeq ($(ANDROID_NDK),)
-	$(error Please set ANDROID_NDK path to point to r7)
-endif
-ifeq ($(ANDROID_SDK),)
-	$(error Please set ANDROID_SDK path to point to r16 or later SDK)
-endif
-	@echo "Executing in $(CURDIR)"
+	@if test "$(ANDROID_SDK)" = "" ; then \
+		echo "Please set ANDROID_SDK path to point to an r16 or later" && exit 1; \
+	fi
+	@if test "$(ANDROID_NDK)" = "" ; then \
+		echo "Please set ANDROID_NDK path to point to an r7 or later" && exit 1; \
+	fi
 
 clean: simpleclean
 

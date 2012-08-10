@@ -16,22 +16,21 @@
 # User-settable things
 
 # This is the source file to download
-OPENSSL_HOST := http://www.openssl.org/source
-OPENSSL_SRC := openssl-1.0.0d.tar.gz
+OPENSSL_HOST = http://www.openssl.org/source
+OPENSSL_SRC = openssl-1.0.0d.tar.gz
 
 # This is the output directory for the armv5 version of openssl
 # This must match the link in CCNx-Android-Serices/jni/openssl
-OPENSSL_TARGET := openssl-armv5
+OPENSSL_TARGET = openssl-armv5
 
 
 #################################
 # Nothing user-settable down here
 #
-SUBDIRS := \
-			$(OPENSSL_TARGET)
+SUBDIRS = $(OPENSSL_TARGET)
 
 
-JARDIR ?= obj
+JARDIR = obj
 
 all: $(SUBDIRS) $(SUBDIRS_static)
 
@@ -45,7 +44,7 @@ downloads/$(OPENSSL_SRC):
 $(OPENSSL_TARGET): $(OPENSSL_TARGET)/make_timestamp
 
 # These are the Android make files used by the build
-SSLMKS := openssl_android_mks/Android.mk openssl_android_mks/crypto/Android.mk openssl_android_mks/ssl/Android.mk
+SSLMKS = openssl_android_mks/Android.mk openssl_android_mks/crypto/Android.mk openssl_android_mks/ssl/Android.mk
 
 $(OPENSSL_TARGET)/make_timestamp: downloads/$(OPENSSL_SRC) $(SSLMKS)
 	mkdir -p $(OPENSSL_TARGET)

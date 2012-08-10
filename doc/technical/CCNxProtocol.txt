@@ -240,7 +240,7 @@ application) contains the following data structures to provide
 buffering/caching and loop-free forwarding.
 
 Content Store (CS)::
-   A buffer memory organized for retrieval by longest prefix match
+   A buffer memory organized for retrieval by prefix match
    lookup on names.  Since CCNx Content Object messages are
    self-identifying and self-authenticating, each one is potentially
    useful to many consumers.  The CS SHOULD implement a replacement
@@ -248,17 +248,8 @@ Content Store (CS)::
    Least Recently Used (LRU) or Least Frequently Used (LFU).  The CS
    MUST also implement the link:Staleness.html[Staleness Bit].  The CS
    MAY retain Content Object messages indefinitely but is not required
-   to take any special measures to preserve them; the CS is a cache not
+   to take any special measures to preserve them; the CS is a cache, not
    a persistent store.
-Forwarding Information Base (FIB)::
-   A table of destinations for Interests, organized for retrieval by
-   longest prefix match lookup on names.  Each prefix entry in the FIB
-   may point to a list of destinations rather than only one.
-Pending Interest Table (PIT)::
-   A table of sources for unsatisfied Interests, organized for
-   retrieval by longest prefix match lookup on names.  Each entry in
-   the PIT may point to a list of sources.  Entries in the PIT MUST
-   timeout rather than being held indefinitely.
 Face::
    A 'face' is a generalization of the concept of 'interface': a face
    may be a connection to a network or directly to an application
@@ -270,6 +261,15 @@ Face::
    on the same machine, via an encapsulation like UDP or an
    OS-specific interprocess communication path.  All messages arrive
    through a face and are sent out through a face.
+Forwarding Information Base (FIB)::
+   A table of outbound faces for Interests, organized for retrieval by
+   longest prefix match lookup on names.  Each prefix entry in the FIB
+   may point to a list of faces rather than only one.
+Pending Interest Table (PIT)::
+   A table of sources for unsatisfied Interests, organized for
+   retrieval by longest prefix match lookup on names.  Each entry in
+   the PIT may point to a list of sources.  Entries in the PIT MUST
+   timeout rather than being held indefinitely.
 
 Note that the tables listed above may be interconnected through a
 single index to minimize the cost of lookup operations at the core of
@@ -298,12 +298,14 @@ Interests in the PIT entry and the the Interest Message is discarded.
 3. Lookup is performed on FIB.  If a matching prefix is found in the
 FIB, an entry is created in the PIT identifying the arrival face of
 the Interest Message and the message is transmitted according to the
-'strategy rules' to one or more of the destination faces registered
-for the prefix in the FIB.  Note that one of the destination faces may
+'strategy rules' to one or more of the outbound faces registered
+for the prefix in the FIB.  Note that one of the outbound faces may
 actually be connected to a local agent that uses the semantics of the
 name to dynamically configure new faces.
 4. If no match is found in the previous steps then the node has no way
-to satisfy the Interest Message and it is discarded.
+to satisfy the Interest Message at present.  It may be held for a short
+time before being discarded, since the creation of a new FIB entry may
+provide way to satisfy it.
 
 Processing Content Messages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -328,15 +330,15 @@ subsequently requested.
 Strategy Rules
 ~~~~~~~~~~~~~~
 
-Unlike in IP, CCNx FIB entries may point to multiple destinations
+Unlike in IP, CCNx FIB entries may point to multiple next-hop destinations
 simultaneously.  The self-identifying nature of Interest Messages and
 ContentObjects means that loops can be avoided without establishing a
 spanning tree allowing only one destination for any particular prefix
-at any particular node.  The possibility of multiple destinations
+at any particular node.  The possibility of multiple outbound faces
 means that different strategies may be employed to select among them
-for forwarding messages.  A node MUST implement some strategy rule,
+when forwarding messages.  A node MUST implement some strategy rule,
 even if it is only to transmit an Interest Message on all listed
-destination faces in sequence. A node MAY implement many different
+outbound faces in sequence. A node MAY implement many different
 strategies.  Strategy rules SHOULD be specified by FIB entries: in
 this case the FIB entry MAY contain effectively a constrained program
 for handling the forwarding of Interest Messages addressing the

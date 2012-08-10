@@ -53,12 +53,21 @@ struct ccnd_handle;
 struct face;
 struct content_entry;
 struct nameprefix_entry;
-struct propagating_entry;
+struct interest_entry;
+struct pit_face_item;
 struct content_tree_node;
 struct ccn_forwarding;
+struct ccn_strategy;
 
 //typedef uint_least64_t ccn_accession_t;
 typedef unsigned ccn_accession_t;
+
+/**
+ * Used for keeping track of interest expiry.
+ *
+ * Modulo 2**32, time units and origin are abitrary and private.
+ */
+typedef uint32_t ccn_wrappedtime;
 
 typedef int (*ccnd_logger)(void *loggerdata, const char *format, va_list ap);
 
@@ -71,7 +80,7 @@ struct ccnd_handle {
     struct hashtb *dgram_faces;     /**< keyed by sockaddr */
     struct hashtb *content_tab;     /**< keyed by portion of ContentObject */
     struct hashtb *nameprefix_tab;  /**< keyed by name prefix components */
-    struct hashtb *propagating_tab; /**< keyed by nonce */
+    struct hashtb *interest_tab;    /**< keyed by interest msg sans Nonce */
     struct ccn_indexbuf *skiplinks; /**< skiplist for content-ordered ops */
     unsigned forward_to_gen;        /**< for forward_to updates */
     unsigned face_gen;              /**< faceid generation number */
@@ -90,9 +99,14 @@ struct ccnd_handle {
     struct ccn_gettime ticktock;    /**< our time generator */
     long sec;                       /**< cached gettime seconds */
     unsigned usec;                  /**< cached gettime microseconds */
+    ccn_wrappedtime wtnow;          /**< corresponding wrapped time */
+    long 
+    int sliver;                     /**< extra microseconds beyond wtnow */
     long starttime;                 /**< ccnd start time, in seconds */
     unsigned starttime_usec;        /**< ccnd start time fractional part */
+    unsigned iserial;
     struct ccn_schedule *sched;     /**< our schedule */
+    struct ccn_charbuf *send_interest_scratch; /**< for use by send_interest */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
     struct ccn_indexbuf *scratch_indexbuf; /**< one-slot scratch cache */
     /** Next three fields are used for direct accession-to-content table */
@@ -141,7 +155,7 @@ struct ccnd_handle {
     struct ccn_scheduled_event *internal_client_refresh;
     struct ccn_scheduled_event *notice_push;
     unsigned data_pause_microsec;   /**< tunable, see choose_face_delay() */
-    void (*appnonce)(struct ccnd_handle *, struct face *, struct ccn_charbuf *);
+    int (*noncegen)(struct ccnd_handle *, struct face *, unsigned char *);
                                     /**< pluggable nonce generation */
     int tts_default;                /**< CCND_DEFAULT_TIME_TO_STALE (seconds) */
     int tts_limit;                  /**< CCND_MAX_TIME_TO_STALE (seconds) */
@@ -271,46 +285,77 @@ struct sparse_straggler_entry {
 };
 
 /**
- * The propagating interest hash table is keyed by Nonce.
+ * State for the strategy engine
  *
- * While the interest is pending, the pe is also kept in a doubly-linked
- * list off of a nameprefix_entry.
- *
- * When the interest is consumed, the pe is removed from the doubly-linked
- * list and is cleaned up by freeing unnecessary bits (including the interest
- * message itself).  It remains in the hash table for a time, in order to catch
- * duplicate nonces.
+ * This is still quite embryonic.
  */
-struct propagating_entry {
-    struct propagating_entry *next; /**< next (in arrival order) */
-    struct propagating_entry *prev; /**< previous (older) */
-    unsigned flags;             /**< CCN_PR_xxx */
-    unsigned faceid;            /**< origin of the interest, dest for matches */
-    int usec;                   /**< usec until timeout */
-    int sent;                   /**< leading faceids of outbound processed */
-    struct ccn_indexbuf *outbound; /**< in order of use */
-    unsigned char *interest_msg; /**< pending interest message */
-    unsigned size;              /**< size in bytes of interest_msg */
-    int fgen;                   /**< decide if outbound is stale */
+struct ccn_strategy {
+    struct ccn_scheduled_event *ev; /**< for time-based strategy event */
+    int state;
+    ccn_wrappedtime birth;          /**< when interest entry was created */
+    ccn_wrappedtime renewed;        /**< when interest entry was renewed */
+    unsigned renewals;              /**< number of times renewed */
 };
-// XXX - with new outbound/sent repr, some of these flags may not be needed.
-#define CCN_PR_UNSENT   0x01 /**< interest has not been sent anywhere yet */
-#define CCN_PR_WAIT1    0x02 /**< interest has been sent to one place */
-#define CCN_PR_STUFFED1 0x04 /**< was stuffed before sent anywhere else */
-#define CCN_PR_TAP      0x08 /**< at least one tap face is present */
-#define CCN_PR_EQV      0x10 /**< a younger similar interest exists */
-#define CCN_PR_SCOPE0   0x20 /**< interest scope is 0 */
-#define CCN_PR_SCOPE1   0x40 /**< interest scope is 1 (this host) */
-#define CCN_PR_SCOPE2   0x80 /**< interest scope is 2 (immediate neighborhood) */
+
+struct ielinks;
+struct ielinks {
+    struct ielinks *next;           /**< next in list */
+    struct ielinks *prev;           /**< previous in list */
+    struct nameprefix_entry *npe;   /**< owning npe, or NULL for head */
+};
+
+/**
+ * The interest hash table is keyed by the interest message
+ *
+ * The interest message has fields that do not participate in the
+ * similarity test stripped out - in particular the nonce.
+ *
+ */
+struct interest_entry {
+    struct ielinks ll;
+    struct ccn_strategy strategy;   /**< state of strategy engine */
+    struct pit_face_item *pfl;      /**< upstream and downstream faces */
+    struct ccn_scheduled_event *ev; /**< next interest timeout */
+    const unsigned char *interest_msg; /**< pending interest message */
+    unsigned size;                  /**< size of interest message */
+    unsigned serial;                /**< used for logging */
+};
+
+#define TYPICAL_NONCE_SIZE 12       /**< actual allocated size may differ */
+/**
+ * Per-face PIT information
+ *
+ * This is used to track the pending interest info that is specific to
+ * a face.  The list may contain up to two entries for a given face - one
+ * to track the most recent arrival on that face (the downstream), and
+ * one to track the most recently sent (the upstream).
+ */
+struct pit_face_item {
+    struct pit_face_item *next;     /**< next in list */
+    unsigned faceid;                /**< face id */
+    ccn_wrappedtime renewed;        /**< when entry was last refreshed */
+    ccn_wrappedtime expiry;         /**< when entry expires */
+    unsigned pfi_flags;             /**< CCND_PFI_x */
+    unsigned char nonce[TYPICAL_NONCE_SIZE]; /**< nonce bytes */
+};
+#define CCND_PFI_NONCESZ  0x00FF    /**< Mask for actual nonce size */
+#define CCND_PFI_UPSTREAM 0x0100    /**< Tracks upstream (sent interest) */
+#define CCND_PFI_UPENDING 0x0200    /**< Has been sent upstream */
+#define CCND_PFI_SENDUPST 0x0400    /**< Should be sent upstream */
+#define CCND_PFI_UPHUNGRY 0x0800    /**< Upstream hungry, cupboard bare */
+#define CCND_PFI_DNSTREAM 0x1000    /**< Tracks downstream (recvd interest) */
+#define CCND_PFI_PENDING  0x2000    /**< Pending for immediate data */
+#define CCND_PFI_SUPDATA  0x4000    /**< Suppressed data reply */
+#define CCND_PFI_DCFACE  0x10000    /**< This upstream is a DC face */
 
 /**
  * The nameprefix hash table is keyed by the Component elements of
  * the Name prefix.
  */
 struct nameprefix_entry {
-    struct propagating_entry pe_head; /**< list head for propagating entries */
+    struct ielinks ie_head;      /**< list head for interest entries */
     struct ccn_indexbuf *forward_to; /**< faceids to forward to */
-    struct ccn_indexbuf *tap;    /**< faceids to forward to as tap*/
+    struct ccn_indexbuf *tap;    /**< faceids to forward to as tap */
     struct ccn_forwarding *forwarding; /**< detailed forwarding info */
     struct nameprefix_entry *parent; /**< link to next-shorter prefix */
     int children;                /**< number of children */
