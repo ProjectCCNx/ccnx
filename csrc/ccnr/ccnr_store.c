@@ -970,59 +970,13 @@ r_store_find_first_match_candidate(struct ccnr_handle *h,
                                    const unsigned char *interest_msg,
                                    const struct ccn_parsed_interest *pi)
 {
-    int res;
-    size_t start = pi->offset[CCN_PI_B_Name];
-    size_t end = pi->offset[CCN_PI_E_Name];
-    struct ccn_charbuf *namebuf = NULL;
     struct ccn_charbuf *flatname = NULL;
     struct content_entry *content = NULL;
     
     flatname = ccn_charbuf_create_n(pi->offset[CCN_PI_E]);
     ccn_flatname_from_ccnb(flatname, interest_msg, pi->offset[CCN_PI_E]);
-    if (pi->offset[CCN_PI_B_Exclude] < pi->offset[CCN_PI_E_Exclude]) {
-        /* Check for <Exclude><Any/><Component>... fast case */
-        struct ccn_buf_decoder decoder;
-        struct ccn_buf_decoder *d;
-        size_t ex1start;
-        size_t ex1end;
-        d = ccn_buf_decoder_start(&decoder,
-                                  interest_msg + pi->offset[CCN_PI_B_Exclude],
-                                  pi->offset[CCN_PI_E_Exclude] -
-                                  pi->offset[CCN_PI_B_Exclude]);
-        ccn_buf_advance(d);
-        if (ccn_buf_match_dtag(d, CCN_DTAG_Any)) {
-            ccn_buf_advance(d);
-            ccn_buf_check_close(d);
-            if (ccn_buf_match_dtag(d, CCN_DTAG_Component)) {
-                ex1start = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
-                ccn_buf_advance_past_element(d);
-                ex1end = pi->offset[CCN_PI_B_Exclude] + d->decoder.token_index;
-                if (d->decoder.state >= 0) {
-                    namebuf = ccn_charbuf_create_n((end - start) + (ex1end - ex1start));
-                    ccn_charbuf_append(namebuf,
-                                       interest_msg + start,
-                                       end - start);
-                    namebuf->length--;
-                    ccn_charbuf_append(namebuf,
-                                       interest_msg + ex1start,
-                                       ex1end - ex1start);
-                    ccn_charbuf_append_closer(namebuf);
-                    res = ccn_flatname_append_from_ccnb(flatname,
-                                                        interest_msg + ex1start,
-                                                        ex1end - ex1start,
-                                                        0, 1);
-                    if (res != 1)
-                        ccnr_debug_ccnb(h, __LINE__, "fastex_bug", NULL,
-                                        namebuf->buf, namebuf->length);
-                    if (CCNSHOULDLOG(h, LM_8, CCNL_FINER))
-                        ccnr_debug_ccnb(h, __LINE__, "fastex", NULL,
-                                        namebuf->buf, namebuf->length);
-                }
-            }
-        }
-    }
+    ccn_append_interest_bounds(interest_msg, pi, flatname, NULL);
     content = r_store_look(h, flatname->buf, flatname->length);
-    ccn_charbuf_destroy(&namebuf);
     ccn_charbuf_destroy(&flatname);
     return(content);
 }
