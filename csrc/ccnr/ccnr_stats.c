@@ -577,7 +577,16 @@ collect_stats_xml(struct ccnr_handle *h)
         "<dropped>%lu</dropped>"
         "<sent>%lu</sent>"
         "<stuffed>%lu</stuffed>"
-        "</interests>",
+        "</interests>"
+        "<lookups>"
+        "<rightmost>"
+        "<found>%lu</found>"
+        "<iterations>%lu</iterations>"
+        "<notfound>%lu</notfound>"
+        "<iterations>%lu</iterations>"
+        "</rightmost>"
+        "</lookups>"
+        ,
         (unsigned long long)hashtb_n(h->content_by_accession_tab), // XXXXXX -
         (unsigned long long)(h->cob_count),
         h->n_stale,
@@ -588,7 +597,12 @@ collect_stats_xml(struct ccnr_handle *h)
         hashtb_n(h->propagating_tab) - stats.total_flood_control,
         stats.total_flood_control,
         h->interests_accepted, h->interests_dropped,
-        h->interests_sent, h->interests_stuffed);
+        h->interests_sent, h->interests_stuffed,
+        h->count_rmc_found, 
+        h->count_rmc_found_iters,
+        h->count_rmc_notfound,
+        h->count_rmc_notfound_iters
+        );
     collect_faces_xml(h, b);
     collect_forwarding_xml(h, b);
     ccn_charbuf_putf(b, "</ccnr>" NL);
