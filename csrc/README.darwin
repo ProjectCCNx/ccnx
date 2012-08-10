@@ -1,6 +1,33 @@
 * XCode
 
-Apple has provided numerous updates to XCode throughout the years, with both XCode 3.x and 4.x versions capable of building CCNx csrc.  In recent years, Apple has been moving aggressively to push users towards the latest version of XCode and Mac OS X, limiting availability of legacy versions of XCode as new versions are released.  There is no strict requirement to upgrade to the latest version of XCode in order to build CCNx for Mac OS X.
+Apple has provided numerous updates to XCode throughout the years, with
+both XCode 3.x and 4.x versions capable of building CCNx csrc.  In recent
+years, Apple has been moving aggressively to push users towards the latest
+version of XCode and Mac OS X, limiting availability of legacy versions of
+XCode as new versions are released.  There is no strict requirement to 
+upgrade to the latest version of XCode in order to build CCNx for Mac OS X.
+
+* Universal Binary Support
+
+Mac OS X gcc builds for the default architecture cpu subtype on the system.
+In modern a modern Mac, this will result in a x86_64 target binary.  To
+allow more control over the build architecture targets, it is recommended
+to use a local.mk file placed in the conf/ directory.  Using an override
+of the PLATCFLAGS variable, one can specify the desired target architectures.
+
+Setting the example below for PLATCFLAGS
+
+PLATCFLAGS=-fno-common -force_cpusubtype_ALL -arch ppc -arch i386 -arch x86_64
+
+will result in a Universal Binary with the following:
+> file ccnd
+ccnd: Mach-O universal binary with 3 architectures
+ccnd (for architecture ppc):    Mach-O executable ppc
+ccnd (for architecture i386):   Mach-O executable i386
+ccnd (for architecture x86_64): Mach-O 64-bit executable x86_64
+
+The decision not to support Universal Binary builds by default is
+to reduce overall build times.
 
 * MacOS 10.5
 
@@ -40,3 +67,9 @@ were obtained directly from the Apple Developer portal and included a
 complete distribution of XCode GUI tools + Command Line Tools as part of
 the installer.  Please make note of these extra steps when performing a new
 installation of XCode.
+
+* Mac OS X 10.8 (Mountain Lion)
+
+At the current time, Mac OS X 10.8 is very new and still has some vetting 
+before we can say we officially support it.  Please report any issues 
+found on this platform to the CCNx team.
