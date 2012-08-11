@@ -937,9 +937,9 @@ r_store_lookup_backwards(struct ccnr_handle *h,
     for (try = 1;; try++) {
         if (ndx == 0) {
             res = ccn_btree_prev_leaf(h->btree, leaf, &leaf);
-            if (res != 1) { errline = __LINE__; goto Done; }
+            if (res != 1) goto Done;
             ndx = ccn_btree_node_nent(leaf);
-            if (ndx == 0) goto Done;
+            if (ndx <= 0) goto Done;
         }
         ndx -= 1;
         res = ccn_btree_compare(lower->buf, lower->length, leaf, ndx);
