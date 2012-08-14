@@ -75,13 +75,13 @@ public class ServiceKeyDiscoveryTestRepo {
 				TEST_TIMEOUT, readerHandle);
 		
 		printResults(results);
-		Assert.assertTrue(results.size() == 1);
+		Assert.assertEquals(1, results.size());
 		
 		// Expect to get nothing back.
 		results = ServiceDiscoveryProfile.getLocalServiceKeys(NOT_A_SERVICE, 
 				TEST_TIMEOUT, readerHandle);
 		
-		Assert.assertTrue(results.size() == 0);
+		Assert.assertEquals(0, results.size());
 		System.out.println("Got no results for a nonexistent service.");
 		
 		ServiceDiscoveryProfile.publishLocalServiceKey(OTHER_PUBLISHED_SERVICE, null, server1Handle.keyManager());
@@ -89,7 +89,7 @@ public class ServiceKeyDiscoveryTestRepo {
 				TEST_TIMEOUT, readerHandle);
 		
 		printResults(results);
-		Assert.assertTrue(results.size() == 1);		
+		Assert.assertEquals(1, results.size());		
 
 		ServiceDiscoveryProfile.publishLocalServiceKey(PUBLISHED_SERVICE, null, server2Handle.keyManager());
 		ServiceDiscoveryProfile.publishLocalServiceKey(PUBLISHED_SERVICE, null, server3Handle.keyManager());
@@ -98,7 +98,7 @@ public class ServiceKeyDiscoveryTestRepo {
 				TEST_TIMEOUT, readerHandle);
 		
 		printResults(results);
-		Assert.assertTrue(results.size() == 3);
+		Assert.assertEquals(3, results.size());
 		
 		Log.info(Log.FAC_TEST, "Completed testGetLocalServiceKeys");
 	}
@@ -115,7 +115,7 @@ public class ServiceKeyDiscoveryTestRepo {
 			ServiceDiscoveryProfile.getLocalServiceKeys(ServiceDiscoveryProfile.REPOSITORY_SERVICE_NAME, 
 					TEST_TIMEOUT, readerHandle);
 		printResults(results);
-		Assert.assertTrue(results.size() == 1);		
+		Assert.assertEquals(1, results.size());		
 		
 		Log.info(Log.FAC_TEST, "Completed testGetRepoKeys");
 	}
@@ -132,7 +132,7 @@ public class ServiceKeyDiscoveryTestRepo {
 					TEST_TIMEOUT, readerHandle);
 		
 		printResults(results);
-		Assert.assertTrue(results.size() == 1);
+		Assert.assertEquals(1, results.size());
 		
 		Log.info(Log.FAC_TEST, "Completed testGetCcndKeys");
 	
