@@ -972,6 +972,10 @@ public class CCNNetworkManager implements Runnable {
 		}
 
 		setupTimers();
+		// set up filters before registering as registration may cause a pending interest
+		// to be delivered immediately.
+		Filter newOne = new Filter(filter, callbackHandler, caller);
+		_myFilters.add(filter, newOne);
 		if (_usePrefixReg) {
 			RegisteredPrefix prefix = null;
 			_registrationChangeInProgress.acquireUninterruptibly();
@@ -998,6 +1002,7 @@ public class CCNNetworkManager implements Runnable {
 					}
 					prefix = registerPrefix(filter, registrationFlags);
 				} catch (CCNDaemonException e) {
+					_myFilters.remove(filter, newOne);
 					Log.warning(Log.FAC_NETMANAGER, formatMessage("setInterestFilter: unexpected CCNDaemonException: " + e.getMessage()));
 					throw new IOException(e.getMessage());
 				}
@@ -1007,12 +1012,6 @@ public class CCNNetworkManager implements Runnable {
 			}
 			_registrationChangeInProgress.release();
 		}
-
-		// Now we've dealt with what ccnd needs to know, register our callback so we can be called on
-		// receipt of a matching interest
-		Filter newOne;
-		newOne = new Filter(filter, callbackHandler, caller);
-		_myFilters.add(filter, newOne);
 	}
 
 	/**
