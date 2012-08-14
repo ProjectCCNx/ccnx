@@ -1102,7 +1102,7 @@ r_store_lookup(struct ccnr_handle *h,
             content = NULL;
         }
     scratch = ccn_charbuf_create();
-    for (try = 0; content != NULL; try++) {
+    for (try = 1; content != NULL; try++) {
         res = ccn_btree_lookup(h->btree,
                                content->flatname->buf,
                                content->flatname->length,
@@ -1138,6 +1138,14 @@ r_store_lookup(struct ccnr_handle *h,
             content = r_store_content_from_accession(h, last_match_acc);
     }
     ccn_charbuf_destroy(&scratch);
+    if (content != NULL) {
+        h->count_lmc_found += 1;
+        h->count_lmc_found_iters += try;
+    }
+    else {
+        h->count_lmc_notfound += 1;
+        h->count_lmc_notfound_iters += try;
+    }
     return(content);
 }
 

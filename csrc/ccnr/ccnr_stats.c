@@ -585,6 +585,12 @@ collect_stats_xml(struct ccnr_handle *h)
         "<notfound>%lu</notfound>"
         "<iterations>%lu</iterations>"
         "</rightmost>"
+        "<leftmost>"
+        "<found>%lu</found>"
+        "<iterations>%lu</iterations>"
+        "<notfound>%lu</notfound>"
+        "<iterations>%lu</iterations>"
+        "</leftmost>"
         "</lookups>"
         ,
         (unsigned long long)hashtb_n(h->content_by_accession_tab), // XXXXXX -
@@ -598,6 +604,10 @@ collect_stats_xml(struct ccnr_handle *h)
         stats.total_flood_control,
         h->interests_accepted, h->interests_dropped,
         h->interests_sent, h->interests_stuffed,
+        h->count_lmc_found, 
+        h->count_lmc_found_iters,
+        h->count_lmc_notfound,
+        h->count_lmc_notfound_iters,
         h->count_rmc_found, 
         h->count_rmc_found_iters,
         h->count_rmc_notfound,

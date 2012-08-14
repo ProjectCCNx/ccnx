@@ -225,6 +225,10 @@ struct ccnr_handle {
     unsigned long interests_stuffed;
     unsigned long content_from_accession_hits;
     unsigned long content_from_accession_misses;
+    unsigned long count_lmc_found;
+    unsigned long count_lmc_found_iters;
+    unsigned long count_lmc_notfound;
+    unsigned long count_lmc_notfound_iters;
     unsigned long count_rmc_found;
     unsigned long count_rmc_found_iters;
     unsigned long count_rmc_notfound;
