@@ -77,6 +77,7 @@ struct content_entry {
 };
 
 static const unsigned char *bogon = NULL;
+const ccnr_accession r_store_mark_repoFile1 = ((ccnr_accession)1) << 48;
 
 static int
 r_store_set_flatname(struct ccnr_handle *h, struct content_entry *content,
@@ -1191,7 +1192,7 @@ r_store_content_flatname(struct ccnr_handle *h, struct content_entry *content)
 
 PUBLIC struct content_entry *
 process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
-                         unsigned char *msg, size_t size)
+                         unsigned char *msg, size_t size, off_t *offsetp)
 {
     struct ccn_parsed_ContentObject obj = {0};
     int res;
@@ -1211,6 +1212,11 @@ process_incoming_content(struct ccnr_handle *h, struct fdholder *fdholder,
     if (res < 0) goto Bail;
     ccnr_meter_bump(h, fdholder->meter[FM_DATI], 1);
     content->accession = CCNR_NULL_ACCESSION;
+    if (fdholder->filedesc == h->active_in_fd && offsetp != NULL) {
+        // if we are reading from repoFile1 to rebuild the index we already know
+        // the accession number
+        content->accession = ((ccnr_accession)*offsetp) | r_store_mark_repoFile1;
+    }
     r_store_enroll_content(h, content);
     if (CCNSHOULDLOG(h, LM_4, CCNL_FINE))
         ccnr_debug_content(h, __LINE__, "content_from", fdholder, content);
@@ -1259,7 +1265,6 @@ r_store_content_field_access(struct ccnr_handle *h,
     return(res);
 }
 
-const ccnr_accession r_store_mark_repoFile1 = ((ccnr_accession)1) << 48;
 
 PUBLIC int
 r_store_set_accession_from_offset(struct ccnr_handle *h,
@@ -1334,8 +1339,15 @@ r_store_send_content(struct ccnr_handle *h, struct fdholder *fdholder, struct co
 PUBLIC int
 r_store_commit_content(struct ccnr_handle *h, struct content_entry *content)
 {
+    struct fdholder *fdholder = r_io_fdholder_from_fd(h, h->active_out_fd);
     // XXX - here we need to check if this is something we *should* be storing, according to our policy
     if ((r_store_content_flags(content) & CCN_CONTENT_ENTRY_STABLE) == 0) {
+        if (fdholder == NULL)
+        {
+            ccnr_msg(h, "Repository shutting down due to error storing content.");
+            h->running = 0;
+            return(-1);
+        }
         r_store_send_content(h, r_io_fdholder_from_fd(h, h->active_out_fd), content);
         r_store_content_change_flags(content, CCN_CONTENT_ENTRY_STABLE, 0);
     }

@@ -401,7 +401,7 @@ r_proto_expect_content(struct ccn_closure *selfp,
     ic = info->interest_comps;
     
     content = process_incoming_content(ccnr, r_io_fdholder_from_fd(ccnr, ccn_get_connection_fd(info->h)),
-                                       (void *)ccnb, ccnb_size);
+                                       (void *)ccnb, ccnb_size, NULL);
     if (content == NULL) {
         ccnr_msg(ccnr, "r_proto_expect_content: failed to process incoming content");
         return(CCN_UPCALL_RESULT_ERR);

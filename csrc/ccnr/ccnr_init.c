@@ -708,7 +708,7 @@ r_init_map_and_process_file(struct ccnr_handle *h, struct ccn_charbuf *filename,
         if (!CCN_FINAL_DSTATE(d->state))
             break;
         if (add_content) {
-            content = process_incoming_content(h, fdholder, msg + d->index - dres, dres);
+            content = process_incoming_content(h, fdholder, msg + d->index - dres, dres, NULL);
             if (content != NULL)
                 r_store_commit_content(h, content);
         }
