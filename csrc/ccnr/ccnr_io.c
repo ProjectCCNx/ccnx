@@ -402,9 +402,9 @@ handle_send_error(struct ccnr_handle *h, int errnum, struct fdholder *fdholder,
         ccn_charbuf_destroy(&fdholder->outbuf);
     }
     else {
-        ccnr_msg(h, "send to fd %u failed: %s (errno = %d)",
+        ccnr_msg(h, "send/write to fd %u failed: %s (errno = %d)",
                  fdholder->filedesc, strerror(errnum), errnum);
-        if (errnum == EISCONN)
+        if (errnum == EISCONN || errnum == EFBIG || errnum == ENOSPC)
             res = 0;
     }
     return(res);
@@ -489,6 +489,13 @@ r_io_send(struct ccnr_handle *h,
         ccnr_msg(h, "sendto short");
         return;
     }
+    if ((fdholder->flags & CCNR_FACE_REPODATA) != 0) {
+        // need to truncate back to last known good object then exit.
+        ccnr_msg(h, "Unrecoverable write error writing to repository. Content NOT stored.");
+        ftruncate(fdholder->filedesc, offset);
+        h->running = 0;
+        return;
+    }
     fdholder->outbufindex = 0;
     fdholder->outbuf = ccn_charbuf_create();
     if (fdholder->outbuf == NULL) {
@@ -525,7 +532,8 @@ r_io_prepare_poll_fds(struct ccnr_handle *h)
                 h->fds[j].events |= POLLIN;
             if (fdholder->filedesc == h->active_in_fd)
                 h->fds[j].events |= POLLIN;
-            if ((fdholder->outbuf != NULL || (fdholder->flags & CCNR_FACE_CLOSING) != 0))
+            if (((fdholder->flags & CCNR_FACE_REPODATA) == 0) &&
+                ((fdholder->outbuf != NULL || (fdholder->flags & CCNR_FACE_CLOSING) != 0)))
                 h->fds[j].events |= POLLOUT;
              if ((fdholder->flags & CCNR_FACE_CCND) != 0) {
                  if (ccn_output_is_pending(h->direct_client)) {
