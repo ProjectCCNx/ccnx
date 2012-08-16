@@ -130,12 +130,15 @@ done
 
 # Get startup times
 echo Repo2 startup with stable index, no ccnd TEST_DATA_SIZE=$TEST_DATA_SIZE
-$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO ccnr
-
+ls -l $CCNR_DIRECTORY/repoFile1 >before.txt
+$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNS_ENALBE=0 ccnr
+ls -l $CCNR_DIRECTORY/repoFile1 >after.txt
+cmp -s before.txt after.txt || Fail Repository startup changed repository backing file
 echo Repo2 startup with index rebuild, no ccnd TEST_DATA_SIZE=$TEST_DATA_SIZE
 rm -R $CCNR_DIRECTORY/index
-$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO ccnr
-
+$TIME env CCN_LOCAL_PORT=1 CCNR_DEBUG=INFO CCNS_ENABLE=0 ccnr
+ls -l $CCNR_DIRECTORY/repoFile1 >after.txt
+cmp -s before.txt after.txt || Fail Repository startup with index rebuild changed repository backing file
 echo END $TRP
 # The tar file may have been useful for debugging the test, but it is not
 # very useful to keep around anymore.
