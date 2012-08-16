@@ -103,7 +103,7 @@ process_input_message(struct ccnr_handle *h, struct fdholder *fdholder,
 //            process_incoming_interest(h, fdholder, msg, size);
 //            return;
         case CCN_DTAG_ContentObject:
-            content = process_incoming_content(h, fdholder, msg, size);
+            content = process_incoming_content(h, fdholder, msg, size, offsetp);
             if (content != NULL)
                 r_store_commit_content(h, content);
             return;
