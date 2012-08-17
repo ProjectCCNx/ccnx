@@ -24,7 +24,7 @@ INSTALLED_PROGRAMS = \
     ccnseqwriter ccnsimplecat \
     ccnfilewatch ccninitkeystore \
     ccnlibtest \
-	ccnsyncwatch ccnsyncslice \
+    ccnsyncwatch ccnsyncslice \
     $(EXPAT_PROGRAMS) $(PCAP_PROGRAMS)
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
@@ -209,7 +209,7 @@ ccnbx.o: ccnbx.c ../include/ccn/charbuf.h ../include/ccn/coding.h \
   ../include/ccn/ccn.h ../include/ccn/indexbuf.h
 ccnc.o: ccnc.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/lned.h ../include/ccn/uri.h
+  ../include/ccn/ccn_private.h ../include/ccn/lned.h ../include/ccn/uri.h
 ccncat.o: ccncat.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h ../include/ccn/uri.h \
   ../include/ccn/fetch.h
