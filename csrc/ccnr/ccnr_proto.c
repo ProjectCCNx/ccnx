@@ -1076,7 +1076,9 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     ccnb_element_begin(es->reply_body, CCN_DTAG_Collection);
     es->content = content;
     es->interest = interest;
+    interest = NULL;
     es->interest_comps = comps;
+    comps = NULL;
     es->next_segment = 0;
     es->lastuse_sec = ccnr->sec;
     es->lastuse_usec = ccnr->usec;
@@ -1093,8 +1095,6 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         ans = r_proto_continue_enumeration(selfp, kind, info, marker_comp);
     else
         ans = CCN_UPCALL_RESULT_OK;
-    return(ans);
-    
 Bail:
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&interest);
