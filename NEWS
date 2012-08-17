@@ -70,6 +70,7 @@ CCNx 0.6.1.
 	  service key
 	* Bug #100801: ccnr takes a segmentation fault if output fd closed due to other errors
 	* Bug #100802: LatestVersionTest failures with new interest forwarding
+	* Bug #100805: Memory leak in ccnr
 	* Feature #100041: java tools should support a -h argument
 	* Feature #100647: Default support for multiple architectures in MacOS X build
 	* Feature #100701: A number of methods in ContentName have no general test coverage
