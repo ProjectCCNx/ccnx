@@ -38,14 +38,13 @@ public class SyncTreeEntry {
 	protected byte[] _rawContent = null;
 	protected int _position = 0;
 	
-	public SyncTreeEntry(SyncNodeComposite nodeX) {
-		_nodeX = nodeX;
-		_hash = _nodeX.getHash();
-	}
-	
 	public SyncTreeEntry(byte[] hash) {
 		_hash = new byte[hash.length];
 		System.arraycopy(hash, 0, _hash, 0, hash.length);
+	}
+	
+	public void setNode(SyncNodeComposite snc) {
+		_nodeX = snc;
 	}
 	
 	public void setRawContent(byte[] content) {

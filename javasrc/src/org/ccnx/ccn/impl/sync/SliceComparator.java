@@ -17,6 +17,7 @@
 package org.ccnx.ccn.impl.sync;
 
 import java.io.IOException;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Stack;
 import java.util.Timer;
@@ -29,7 +30,6 @@ import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
 import org.ccnx.ccn.impl.encoding.BinaryXMLDecoder;
-import org.ccnx.ccn.impl.support.DataUtils;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ConfigSlice;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
@@ -39,7 +39,6 @@ import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
-import org.ccnx.ccn.protocol.Exclude;
 import org.ccnx.ccn.protocol.Interest;
 
 /**
@@ -49,7 +48,7 @@ import org.ccnx.ccn.protocol.Interest;
  */
 public class SliceComparator implements Runnable {
 	public static final int DECODER_SIZE = 756;
-	public static enum SyncCompareState {INIT, PRELOAD, BUSY, COMPARE, DONE};
+	public static enum SyncCompareState {INIT, PRELOAD, COMPARE, DONE};
 
 	public final int COMPARE_INTERVAL = 100; // ms
 	protected BinaryXMLDecoder _decoder;
@@ -67,8 +66,9 @@ public class SliceComparator implements Runnable {
 
 	protected Stack<SyncTreeEntry> _current = new Stack<SyncTreeEntry>();
 	protected Stack<SyncTreeEntry> _next = new Stack<SyncTreeEntry>();
-	protected SyncCompareState _state = SyncCompareState.DONE;
-	protected Queue<byte[]> _pendingEntries = new ConcurrentLinkedQueue<byte[]>();
+	protected SyncCompareState _state = SyncCompareState.INIT;
+	protected Queue<SyncTreeEntry> _pendingEntries = new ConcurrentLinkedQueue<SyncTreeEntry>();
+	protected Queue<byte[]> _pendingContent = new ConcurrentLinkedQueue<byte[]>();
 	protected SyncTreeEntry _currentRoot = null;
 	
 	public SliceComparator(ProtocolBasedSyncMonitor pbsm, CCNSyncHandler callback, ConfigSlice slice, CCNHandle handle) {
@@ -81,17 +81,29 @@ public class SliceComparator implements Runnable {
 	}
 	
 	/**
-	 * This will normally be called by the handler in ProtocolBasedSyncMonitor so
-	 * it is therefore handler code. 
-	 * @param data
+	 * These will normally be called by handlers in ProtocolBasedSyncMonitor so
+	 * it is therefore handler code. They must be called lock
 	 */
-	public void addPending(byte[] data) {
-Log.info("Called pending add");
-		synchronized (this) {
-			_pendingEntries.add(data);
-			checkNextRound();
-		}
-		kickCompare();
+	public void addPending(SyncTreeEntry ste) {
+		_pendingEntries.add(ste);
+	}
+	
+	public void addPendingContent(byte[] data) {
+		_pendingContent.add(data);
+	}
+	
+	public SyncTreeEntry getPending() {
+		try {
+			return _pendingEntries.remove();
+		} catch (NoSuchElementException nsee) {}
+		return null;
+	}
+	
+	public byte[] getPendingContent() {
+		try {
+			return _pendingContent.remove();
+		} catch (NoSuchElementException nsee) {}
+		return null;
 	}
 	
 	/**
@@ -107,7 +119,7 @@ Log.info("Called pending add");
 		return _callback;
 	}
 
-	private void kickCompare() {
+	public void kickCompare() {
 		synchronized (_timerLock) {
 			_keepComparing = true;
 			if (_needToCompare) {
@@ -150,27 +162,22 @@ Log.info("Called pending add");
 	private boolean requestNode(byte[] hash) {
 		boolean ret = false;
 		synchronized (this) {
-			SyncTreeEntry tsrt = _pbsm.addHash(hash, null);
+			SyncTreeEntry tsrt = _pbsm.addHash(hash);
 			if (tsrt.getNodeX(_decoder) == null && !tsrt.getPending()) {
 				tsrt.setPending(true);
 				Log.info("requesting node for hash: {0}", Component.printURI(hash));
-				ret = getHash(hash, false);
+				ret = getHash(hash);
 			}
 		}
 		return ret;
 	}
 	
-	private boolean getHash(byte[] hash, boolean next) {
+	private boolean getHash(byte[] hash) {
 		boolean ret = false;
 		Interest interest = new Interest(new ContentName(_slice.topo, Sync.SYNC_NODE_FETCH_MARKER, _slice.getHash(), hash));
-		interest.scope(1);
-		if (next) {
-Log.info(Log.FAC_TEST, "Requesting next node");
-			Exclude exclude = Exclude.uptoFactory(hash);
-			interest.exclude(exclude);
-		}		
+		interest.scope(1);	
 		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
-			Log.info(Log.FAC_TEST, "Requesting node for hash: {0}, next = {1}", interest.name(), next);
+			Log.info(Log.FAC_TEST, "Requesting node for hash: {0}", interest.name());
 		try {
 			_handle.expressInterest(interest, _nfh);
 			ret = true;
@@ -408,31 +415,22 @@ Log.info("Run loop for {0} and state is {1}", Component.printURI(_slice.getHash(
 					_needToCompare = false;
 				}
 				switch (_state) {
-				case BUSY:
-					break;
 				case INIT:
+					nextRound();
 					synchronized (this) {
-						if (_pendingEntries.size() == 0) {
-							_state = SyncCompareState.DONE;
-							break;
-						}
-						nextRound();
-						byte[] nextData = _pendingEntries.remove();
-						if (null != nextData) {
-							SyncNodeComposite snc = new SyncNodeComposite();
-							snc.decode(nextData, _decoder);
-Log.info("decode node for {0} depth = {1} refs = {2}", Component.printURI(snc._longhash), snc._treeDepth, snc.getRefs().size());
-							byte[] hash = snc.getHash();
-							if (null != hash) {
-								SyncTreeEntry ste = _pbsm.getHash(hash);
-								if (null == ste) {
-									ste = _pbsm.addHash(null, snc);
-								}
-								// Should we push a hash we already have? Yes! because this
-								// would have (probably) come from a different comparator and
-								// we don't yet know how it matches up to the comparison we are
-								// doing.
-								ste.setPos(0);
+						SyncTreeEntry ste = getPending();
+						if (null != ste) {
+							ste.setPos(0);
+							push(ste, _next);
+							_currentRoot = ste;
+							_state = SyncCompareState.PRELOAD;
+						} else {
+							byte[] data = getPendingContent();
+							if (null != data) {
+								SyncNodeComposite snc = new SyncNodeComposite();
+								snc.decode(data);
+								ste = _pbsm.addHash(snc.getHash());
+								ste.setNode(snc);
 								push(ste, _next);
 								_currentRoot = ste;
 								_state = SyncCompareState.PRELOAD;
@@ -470,7 +468,6 @@ Log.info("decode node for {0} depth = {1} refs = {2}", Component.printURI(snc._l
 							break;
 						}
 					}
-					getHash(_currentRoot.getHash(), true);
 					
 				default:
 					synchronized (_timerLock) {
@@ -501,17 +498,11 @@ Log.info("decode node for {0} depth = {1} refs = {2}", Component.printURI(snc._l
 			byte[] hash = name.component(hashComponent + 2);
 			if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
 				Log.info(Log.FAC_SYNC, "Saw data from nodefind: hash: {0}", Component.printURI(hash));
+			SyncTreeEntry ste = _pbsm.addHash(hash);
 			synchronized (this) {
-				if (DataUtils.compare(hash, _currentRoot.getHash()) > 0) {
-					Log.info(Log.FAC_SYNC, "Did pending add in nf");
-					_pendingEntries.add(data.content());
-					checkNextRound();
-				} else {
-					SyncTreeEntry ste = null;
-					ste = _pbsm.addHash(hash, null);
-					ste.setRawContent(data.content());
-					ste.setPending(false);
-				}
+				// XXX should we check next round here?
+				ste.setRawContent(data.content());
+				ste.setPending(false);
 				kickCompare();
 			}
 			return null;

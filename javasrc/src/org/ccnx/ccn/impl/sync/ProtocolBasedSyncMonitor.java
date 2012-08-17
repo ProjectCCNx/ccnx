@@ -28,8 +28,8 @@ import org.ccnx.ccn.CCNInterestHandler;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ConfigSlice;
-import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.profiles.sync.Sync;
+import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
@@ -87,18 +87,11 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		}
 	}
 	
-	public SyncTreeEntry addHash(byte[] hash, SyncNodeComposite snc) {
-		if (null == hash && null == snc)
-			return null;	// Shouldn't happen
-		if (null == hash)
-			hash = snc.getHash();
+	public SyncTreeEntry addHash(byte[] hash) {
 		synchronized (this) {
 			SyncTreeEntry entry = _hashes.get(new SyncHashEntry(hash));
 			if (null == entry) {
-				if (null == snc)
-					entry = new SyncTreeEntry(hash);
-				else
-					entry = new SyncTreeEntry(snc);
+				entry = new SyncTreeEntry(hash);
 				_hashes.put(new SyncHashEntry(hash), entry);
 			}
 			return entry;
@@ -128,7 +121,11 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		}
 		if (null != al) {
 			for (SliceComparator sc : al) {
-				sc.addPending(data.content());
+				synchronized (sc) {
+					sc.addPendingContent(data.content());
+					sc.checkNextRound();
+					sc.kickCompare();
+				}
 			}
 		}
 		return null;
@@ -136,14 +133,28 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	
 	public boolean handleInterest(Interest interest) {
 Log.info("Saw an interest for {0}", interest.name());
-		Interest newInterest = new Interest(interest.name());
-		newInterest.scope(1);
-		try {
-			_handle.expressInterest(newInterest, this);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		ContentName name = interest.name();
+		int hashComponent = name.containsWhere(Sync.SYNC_ROOT_ADVISE_MARKER);
+		if (hashComponent < 0 || name.count() < hashComponent + 3) {
+			return false;
 		}
-		return true;
+		byte[] hash = name.component(hashComponent + 2);
+		if (hash.length == 0)
+			return false;
+		ArrayList<SliceComparator> al = null;
+		synchronized (this) {
+			al = _comparators.get(new SyncHashEntry(name.component(hashComponent + 1)));
+		}
+		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+			Log.info(Log.FAC_SYNC, "Saw data from interest: hash: {0}", Component.printURI(hash));
+		SyncTreeEntry ste = addHash(hash);
+		if (null != al) {
+			for (SliceComparator sc : al) {
+				sc.addPending(ste);
+				sc.checkNextRound();
+				sc.kickCompare();
+			}
+		}	
+		return false;		// We're just snooping so don't say we've handled this
 	}
 }

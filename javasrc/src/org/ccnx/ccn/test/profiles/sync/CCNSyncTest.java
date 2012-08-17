@@ -266,6 +266,10 @@ public class CCNSyncTest implements CCNSyncHandler{
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
 		Log.info(Log.FAC_TEST, "Callback for name: {0} - number is {1}", syncedContent, SegmentationProfile.getSegmentNumber(syncedContent));
 		synchronized (callbackNames) {
+for (ContentName name : callbackNames) {
+	if (syncedContent.equals(name))
+		System.out.println("foo");
+}
 			callbackNames.add(syncedContent);
 		}
 	}
