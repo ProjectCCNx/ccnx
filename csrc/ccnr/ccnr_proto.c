@@ -945,8 +945,10 @@ reap_enumerations(struct ccn_schedule *sched,
             if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
                 ccnr_debug_ccnb(ccnr, __LINE__, "reap enumeration state", NULL,
                                 es->name->buf, es->name->length);            
-            // everything but the name has already been destroyed
             ccn_charbuf_destroy(&es->name);
+            ccn_charbuf_destroy(&es->interest); // unnecessary?
+            ccn_charbuf_destroy(&es->reply_body);
+            ccn_indexbuf_destroy(&es->interest_comps);
             // remove the entry from the hash table
             hashtb_delete(e);
         }
@@ -1070,13 +1072,17 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     if (content != NULL &&
         !r_store_content_matches_interest_prefix(ccnr, content, interest->buf, interest->length))
         content = NULL;
+    ccn_charbuf_destroy(&es->cob[0]);
     es->cob[0] = ccn_charbuf_create();
     memset(es->cob_deferred, 0, sizeof(es->cob_deferred));
+    ccn_charbuf_destroy(&es->reply_body);
     es->reply_body = ccn_charbuf_create();
     ccnb_element_begin(es->reply_body, CCN_DTAG_Collection);
     es->content = content;
+    ccn_charbuf_destroy(&es->interest);
     es->interest = interest;
     interest = NULL;
+    ccn_indexbuf_destroy(&es->interest_comps);
     es->interest_comps = comps;
     comps = NULL;
     es->next_segment = 0;
