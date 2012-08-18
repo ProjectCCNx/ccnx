@@ -43,6 +43,6 @@ correct directory in which to install the vlc access plugins.
 The Makefile.OSX-VLCsrconly does not assume that pkg-config is present,
 so you must set VLCAPP to where the VLC app has been installed
 (typically /Applications/VLC.app) and VLCSRC to where the unpacked
-VLC source is present (e.g., /Users/example/Software/vlc-1.1.12)
+VLC source is present (e.g., /Users/example/Software/vlc-2.0.3)
 
 Note that to VLC, a CCN URI must start ccnx:/// (because of the URI parser in VLC).
