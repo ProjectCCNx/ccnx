@@ -55,6 +55,8 @@
 #define CCN_HEADER_TIMEOUT 1000
 #define CCN_DEFAULT_PREFETCH 5
 
+#define CCN_LIFETIME (1<<12)
+
 #define MAX_FIFO_TEXT N_("FIFO max blocks")
 #define MAX_FIFO_LONGTEXT N_(						\
 "Maximum number of blocks held in FIFO "			\
@@ -688,12 +690,12 @@ incoming_content(struct ccn_closure *selfp,
 
     /* Ask for the next fragment */
     name = sequenced_name(p_sys->p_name, p_sys->i_pos / p_sys->i_chunksize);
-    res = ccn_express_interest(info->h, name, selfp, NULL);
+    res = ccn_express_interest(info->h, name, selfp, p_sys->p_template);
     ccn_charbuf_destroy(&name);
     if (res < 0) abort();
     
     name = sequenced_name(p_sys->p_name, p_sys->i_prefetch + p_sys->i_pos / p_sys->i_chunksize);
-    res = ccn_express_interest(info->h, name, p_sys->prefetch, NULL);
+    res = ccn_express_interest(info->h, name, p_sys->prefetch, p_sys->p_template);
     ccn_charbuf_destroy(&name);
 
 exit:
@@ -720,6 +722,17 @@ sequenced_name(struct ccn_charbuf *basename, uintmax_t seq)
     return(name);
 }
 
+static int
+append_tagged_binary_number(struct ccn_charbuf *cb, enum ccn_dtag dtag, uintmax_t val) {
+    unsigned char buf[sizeof(val)];
+    int pos;
+    int res = 0;
+    for (pos = sizeof(buf); val != 0 && pos > 0; val >>= 8)
+        buf[--pos] = val & 0xff;
+    res |= ccnb_append_tagged_blob(cb, dtag, buf+pos, sizeof(buf)-pos);
+    return(res);
+}
+
 struct ccn_charbuf *
 make_data_template()
 {
@@ -730,6 +743,7 @@ make_data_template()
     ccn_charbuf_append_tt(templ, CCN_DTAG_MaxSuffixComponents, CCN_DTAG);
     ccnb_append_number(templ, 1);
     ccn_charbuf_append_closer(templ); /* </MaxSuffixComponents> */
+    append_tagged_binary_number(templ, CCN_DTAG_InterestLifetime, CCN_LIFETIME);
     ccn_charbuf_append_closer(templ); /* </Interest> */
     return(templ);
 }
