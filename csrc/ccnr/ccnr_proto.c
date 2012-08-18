@@ -932,6 +932,7 @@ reap_enumerations(struct ccn_schedule *sched,
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct enum_state *es = NULL;
+    int i;
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
         ccnr->reap_enumerations = NULL;
@@ -941,17 +942,19 @@ reap_enumerations(struct ccn_schedule *sched,
     for (es = e->data; es != NULL; es = e->data) {
         if (es->active != ES_ACTIVE &&
             r_util_timecmp(es->lastuse_sec + es->lifetime, es->lastuse_usec,
-                            ccnr->sec, ccnr->usec) <= 0) {
-            if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
-                ccnr_debug_ccnb(ccnr, __LINE__, "reap enumeration state", NULL,
-                                es->name->buf, es->name->length);            
-            ccn_charbuf_destroy(&es->name);
-            ccn_charbuf_destroy(&es->interest); // unnecessary?
-            ccn_charbuf_destroy(&es->reply_body);
-            ccn_indexbuf_destroy(&es->interest_comps);
-            // remove the entry from the hash table
-            hashtb_delete(e);
-        }
+                           ccnr->sec, ccnr->usec) <= 0) {
+                if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
+                    ccnr_debug_ccnb(ccnr, __LINE__, "reap enumeration state", NULL,
+                                    es->name->buf, es->name->length);            
+                ccn_charbuf_destroy(&es->name);
+                ccn_charbuf_destroy(&es->interest); // unnecessary?
+                ccn_charbuf_destroy(&es->reply_body);
+                ccn_indexbuf_destroy(&es->interest_comps);
+                for (i = 0; i < ENUM_N_COBS; i++)
+                    ccn_charbuf_destroy(&(es->cob[i]));
+                // remove the entry from the hash table
+                hashtb_delete(e);
+            }
         hashtb_next(e);
     }
     hashtb_end(e);
