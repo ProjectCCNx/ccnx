@@ -3353,7 +3353,6 @@ MakeNodeFromNames(struct SyncUpdateData *ud, int split) {
     while (split < lim) {
         struct ccn_charbuf *name = na->ents[split].name;
         ud->nameLenAccum += name->length;
-        ccn_charbuf_destroy(&(na->ents[i].name));
         na->ents[i] = na->ents[split];
         na->ents[split].name = NULL;
         i++;
