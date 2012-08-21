@@ -22,6 +22,7 @@ import java.util.Queue;
 import java.util.Stack;
 import java.util.Timer;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
@@ -35,6 +36,7 @@ import org.ccnx.ccn.io.content.ConfigSlice;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
 import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeElement;
 import org.ccnx.ccn.io.content.SyncNodeComposite.SyncNodeType;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.profiles.sync.Sync;
 import org.ccnx.ccn.protocol.Component;
 import org.ccnx.ccn.protocol.ContentName;
@@ -54,7 +56,10 @@ public class SliceComparator implements Runnable {
 	protected BinaryXMLDecoder _decoder;
 	protected Object _timerLock = new Object();
 	protected boolean _needToCompare = true;
-	protected boolean _keepComparing = false;
+	protected boolean _comparing = false;
+	
+	// Prevents the comparison task from being run more than once simultaneously
+	protected Semaphore _compareSemaphore = new Semaphore(1);
 	protected Timer _timer = new Timer(false);
 	protected NodeFetchHandler _nfh = new NodeFetchHandler();
 	protected Object _compareLock = new Object();
@@ -82,10 +87,25 @@ public class SliceComparator implements Runnable {
 	
 	/**
 	 * These will normally be called by handlers in ProtocolBasedSyncMonitor so
-	 * it is therefore handler code. They must be called lock
+	 * it is therefore handler code. They must be called locked
 	 */
-	public void addPending(SyncTreeEntry ste) {
+	public boolean addPending(SyncTreeEntry ste) {
+Log.info("Adding pending hash: {0}", Component.printURI(ste.getHash()));
+		for (SyncTreeEntry tste : _pendingEntries) {
+			if (ste.equals(tste)) {
+Log.info("Found matching entry in pending");
+				return false;
+			}
+		}
+		for (SyncTreeEntry tste: _next) {
+			if (ste.equals(tste)) {
+Log.info("Found matching entry in next");
+				return false;
+			}
+		}
+Log.info("Added pending");
 		_pendingEntries.add(ste);
+		return true;
 	}
 	
 	public void addPendingContent(byte[] data) {
@@ -99,6 +119,7 @@ public class SliceComparator implements Runnable {
 		return null;
 	}
 	
+	
 	public byte[] getPendingContent() {
 		try {
 			return _pendingContent.remove();
@@ -110,9 +131,11 @@ public class SliceComparator implements Runnable {
 	 * Call synchronized with this
 	 */
 	public void checkNextRound() {
-		if (_state == SyncCompareState.DONE) {
-			_state = SyncCompareState.INIT;
-		}	
+		synchronized (this) {
+			if (_state == SyncCompareState.DONE) {
+				_state = SyncCompareState.INIT;
+			}
+		}
 	}
 	
 	public CCNSyncHandler getCallback() {
@@ -121,11 +144,13 @@ public class SliceComparator implements Runnable {
 
 	public void kickCompare() {
 		synchronized (_timerLock) {
-			_keepComparing = true;
-			if (_needToCompare) {
-				SystemConfiguration._systemTimers.schedule(this, COMPARE_INTERVAL, TimeUnit.MILLISECONDS);
+Log.info("Kickcompare: " + (_comparing ? "We didn't" : "We did it"));
+			if (! _comparing) {
+				_comparing = true;
 				_needToCompare = false;
-			}
+				SystemConfiguration._systemTimers.schedule(this, COMPARE_INTERVAL, TimeUnit.MILLISECONDS);
+			} else
+				_needToCompare = true;
 		}
 	}
 	
@@ -185,6 +210,18 @@ public class SliceComparator implements Runnable {
 			Log.warning(Log.FAC_SYNC, "Preload failed: {0}", e.getMessage());
 		}
 		return ret;
+	}
+	
+	private void changeState(SyncCompareState state) {
+		synchronized (this) {
+			_state = state;
+		}
+	}
+	
+	private SyncCompareState getState() {
+		synchronized (this) {
+			return _state;
+		}
 	}
 	
 	private void doComparison() throws SyncException {
@@ -269,7 +306,8 @@ Log.info("Missed entry for {0}", Component.printURI(sneY.getData()));
 				if (typeX == SyncNodeType.LEAF && typeY == SyncNodeType.LEAF) {
 					// Both leaves
 					int comp = sneX.getName().compareTo(sneY.getName());
-Log.info("name 1 is {0}, name 2 is {1}, comp is {2}", sneX.getName(), sneY.getName(), comp);
+Log.info("Compare LEAF {0} to LEAF {1}", Component.printURI(srtX.getHash()), Component.printURI(srtY.getHash()));
+Log.info("name 1 is {0}, pos 1 is {1}, name 2 is {2}, pos 2 is {3} comp is {4}", SegmentationProfile.getSegmentNumber(sneX.getName().parent()), srtX.getPos(), SegmentationProfile.getSegmentNumber(sneY.getName().parent()), srtY.getPos(), comp);
 					if (comp == 0) {
 						srtX.incPos();
 						srtY.incPos();
@@ -280,48 +318,61 @@ Log.info("name 1 is {0}, name 2 is {1}, comp is {2}", sneX.getName(), sneY.getNa
 						srtY.incPos();
 					}
 				} else if (typeX == SyncNodeType.HASH && typeY == SyncNodeType.HASH) {
+Log.info("Compare NODE {0} to NODE {1}", Component.printURI(srtX.getHash()), Component.printURI(srtY.getHash()));
+Log.info("pos X is {0}, pos Y is {1}", srtX.getPos(), srtY.getPos());
 					// Both nodes
-					if (srtX == srtY) {
+					if (srtX.equals(srtY)) {
 						srtX.incPos();
 						srtY.incPos();
 					} else {
 						SyncTreeEntry entryY = handleHashNode(sneY);
 						if (null != entryY) {
-	Log.info("Got entry for {0}", Component.printURI(sneY.getData()));
+Log.info("Got entry for Y: {0}", Component.printURI(entryY.getHash()));
 							entryY.setPos(0);
 							SyncTreeEntry entryX = handleHashNode(sneX);
 							if (null != entryX) {
+Log.info("Got entry for X: {0}", Component.printURI(entryX.getHash()));
 								entryX.setPos(0);
 								srtX.incPos();
 								srtY.incPos();
 								push(entryY, _next);
 								push(entryX, _current);
+								srtX = entryX;
+								srtY = entryY;
 							} else
 								return;
 						} else
 							return;
 					}
-Log.info("Compare LEAF {0} to NODE {1}", Component.printURI(srtX.getHash()), Component.printURI(srtY.getHash()));
 				} else if (typeX == SyncNodeType.LEAF && typeY == SyncNodeType.HASH) {
+Log.info("Compare LEAF {0} to NODE {1}", Component.printURI(srtX.getHash()), Component.printURI(srtY.getHash()));
+Log.info("minname is {0}, maxname is {1}, X name is {2}, pos X is {3}, pos Y is {4}", SegmentationProfile.getSegmentNumber(sncY.getMinName().getName().parent()), SegmentationProfile.getSegmentNumber(sncY.getMaxName().getName().parent()), SegmentationProfile.getSegmentNumber(sneX.getName().parent()), srtX.getPos(), srtY.getPos());
+Log.info("minname (expanded) is {0}, maxname (expanded) is {1}", sncY.getMinName().getName(), sncY.getMaxName().getName());
+Log.info("sneX (expanded) is {0}, comp1 is {1}, comp2 is {2}", sneX.getName(), sneX.getName().compareTo(sncY.getMinName().getName()), sneX.getName().compareTo(sncY.getMaxName().getName()));
 					// X is leaf Y is Node
-					if (sneX.getName().compareTo(sncY.getMinName().getName()) < 0)
+					if (sneX.getName().compareTo(sncY.getMinName().getName()) < 0) {
 						srtX.incPos();
-					else if (sneX.getName().compareTo(sncY.getMaxName().getName()) == 0) {
-						srtX.incPos();
-						srtY.incPos();
 					} else {
+						if (sneX.getName().compareTo(sncY.getMaxName().getName()) == 0) {
+							// Just because we match maxname doesn't mean with seen everything in Y
+							// (so dive into it) but we have seen the current X
+							srtX.incPos();
+						}
 						SyncTreeEntry entry = handleHashNode(sneY);
 						if (null != entry) {
-	Log.info("Got entry for {0}", Component.printURI(sneY.getData()));
+Log.info("Got entry for {0}", Component.printURI(sneY.getData()));
 							entry.setPos(0);
 							srtY.incPos();
 							push(entry, _next);
+							srtY = entry;
 						} else {
-	Log.info("Missed entry for {0}", Component.printURI(sneY.getData()));
+Log.info("Missed entry for {0}", Component.printURI(sneY.getData()));
 							return;
 						}
 					}
 				} else {
+Log.info("Compare NODE {0} to LEAF {1}", Component.printURI(srtX.getHash()), Component.printURI(srtY.getHash()));
+Log.info("minname is {0}, maxname is {1}, pos X is {2}, pos Y is {3}", SegmentationProfile.getSegmentNumber(sncX.getMinName().getName().parent()), SegmentationProfile.getSegmentNumber(sncX.getMaxName().getName().parent()), srtX.getPos(), srtY.getPos());
 					// X is node Y is leaf
 					int resMin = sneY.getName().compareTo(sncX.getMinName().getName());
 					int resMax = sneY.getName().compareTo(sncX.getMaxName().getName());
@@ -338,6 +389,7 @@ Log.info("Compare LEAF {0} to NODE {1}", Component.printURI(srtX.getHash()), Com
 							entry.setPos(0);
 							srtX.incPos();
 							push(entry, _current);
+							srtX = entry;
 						} else {
 							return;
 						}
@@ -363,9 +415,7 @@ Log.info("Exited 1 and status was: {0}", _state);
 		if (null == entry) {
 			if (requestNode(sne.getData())) {
 Log.info("requested from compare");
-				synchronized (this) {
-					_state = SyncCompareState.PRELOAD;
-				}
+				changeState(SyncCompareState.PRELOAD);
 			}
 		}
 		return entry;
@@ -401,6 +451,7 @@ Log.info("Head entry with hash: {0}", Component.printURI(stack.lastElement()._ha
 	protected void nextRound() {
 		synchronized (this) {
 			if (_currentRoot != null) {
+Log.info("New current root is {0}", Component.printURI(_currentRoot.getHash()));
 				_currentRoot.setPos(0);
 				push(_currentRoot, _current);
 			}
@@ -408,13 +459,13 @@ Log.info("Head entry with hash: {0}", Component.printURI(stack.lastElement()._ha
 	}
 	
 	public void run() {
+		_compareSemaphore.acquireUninterruptibly();
+Log.info("got run semaphore");
+		boolean keepComparing = true;
 		try {
 			do {
 Log.info("Run loop for {0} and state is {1}", Component.printURI(_slice.getHash()), _state);
-				synchronized (_timerLock) {
-					_needToCompare = false;
-				}
-				switch (_state) {
+				switch (getState()) {
 				case INIT:
 					nextRound();
 					synchronized (this) {
@@ -422,8 +473,9 @@ Log.info("Run loop for {0} and state is {1}", Component.printURI(_slice.getHash(
 						if (null != ste) {
 							ste.setPos(0);
 							push(ste, _next);
+Log.info("Initial compare with root {0}", Component.printURI(ste.getHash()));
 							_currentRoot = ste;
-							_state = SyncCompareState.PRELOAD;
+							changeState(SyncCompareState.PRELOAD);
 						} else {
 							byte[] data = getPendingContent();
 							if (null != data) {
@@ -432,54 +484,60 @@ Log.info("Run loop for {0} and state is {1}", Component.printURI(_slice.getHash(
 								ste = _pbsm.addHash(snc.getHash());
 								ste.setNode(snc);
 								push(ste, _next);
+Log.info("Initial compare (content) with root {0}", Component.printURI(ste.getHash()));
 								_currentRoot = ste;
-								_state = SyncCompareState.PRELOAD;
+								changeState(SyncCompareState.PRELOAD);
 							}
 						}
-						if (_state == SyncCompareState.INIT)
-							_state = SyncCompareState.DONE;
+						synchronized (this) {
+							if (_state == SyncCompareState.INIT)
+								_state = SyncCompareState.DONE;
+						}
 						continue;
 					}
 					// Fall through
 				case PRELOAD:
-					synchronized (_timerLock) {
-						if (null == getHead(_next)) {
-							_keepComparing = false;
-							break;
-						}
-					}
-					if (doPreload(getHead(_next))) {
+					if (null == getHead(_next)) {
+						keepComparing = false;
 						break;
 					}
-					_state = SyncCompareState.COMPARE;
+					if (doPreload(getHead(_next))) {
+						keepComparing = false;
+						break;
+					}
+					changeState(SyncCompareState.COMPARE);
 					// Fall through
 				case COMPARE:
 					doComparison();
-					if (_state == SyncCompareState.COMPARE) {
-						synchronized (_timerLock) {
-							_keepComparing = false;
-							break;
-						}
+					if (getState() == SyncCompareState.COMPARE) {
+						keepComparing = false;
 					}
+					break;
 				case DONE:
 					synchronized (this) {
 						if (_pendingEntries.size() > 0) {
-							_state = SyncCompareState.INIT;
+Log.info("Going to INIT - size is: {0}", _pendingEntries.size());
+							changeState(SyncCompareState.INIT);
 							break;
 						}
 					}
 					
 				default:
-					synchronized (_timerLock) {
-						_keepComparing = false;
-					}
+					keepComparing = false;
 					break;
-				}				
-				synchronized (_timerLock) {
-					if (!_keepComparing)
-						_needToCompare = true;
 				}
-			} while (_keepComparing);
+				synchronized (_timerLock) {
+					if (!keepComparing) {
+						if (_needToCompare) {
+							keepComparing = true;
+							_needToCompare = false;
+						}
+						else
+							_comparing = false;
+					}
+				}
+			} while (keepComparing);
+			_compareSemaphore.release();
 		} catch (Exception ex) {Log.logStackTrace(Log.FAC_SYNC, Level.WARNING, ex);} 	
 		  catch (Error er) {Log.logStackTrace(Log.FAC_SYNC, Level.WARNING, er);} 
 	}

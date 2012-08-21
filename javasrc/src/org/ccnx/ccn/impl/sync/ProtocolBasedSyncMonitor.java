@@ -150,9 +150,10 @@ Log.info("Saw an interest for {0}", interest.name());
 		SyncTreeEntry ste = addHash(hash);
 		if (null != al) {
 			for (SliceComparator sc : al) {
-				sc.addPending(ste);
-				sc.checkNextRound();
-				sc.kickCompare();
+				if (sc.addPending(ste)) {
+					sc.checkNextRound();
+					sc.kickCompare();
+				}
 			}
 		}	
 		return false;		// We're just snooping so don't say we've handled this

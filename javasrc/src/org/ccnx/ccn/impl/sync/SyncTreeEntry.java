@@ -17,6 +17,8 @@
 
 package org.ccnx.ccn.impl.sync;
 
+import java.util.Arrays;
+
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
@@ -120,6 +122,10 @@ Log.info("decode node for {0} depth = {1} refs = {2}, position = {3}", Component
 	
 	public void setCovered(boolean flag) {
 		setFlag(flag, COVERED);
+	}
+	
+	public boolean equals(SyncTreeEntry ste) {
+		return Arrays.equals(_hash, ste.getHash());
 	}
 	
 	private void setFlag(boolean flag, long type) {
