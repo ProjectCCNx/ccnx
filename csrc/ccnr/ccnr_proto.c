@@ -932,6 +932,7 @@ reap_enumerations(struct ccn_schedule *sched,
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct enum_state *es = NULL;
+    int i;
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
         ccnr->reap_enumerations = NULL;
@@ -941,15 +942,19 @@ reap_enumerations(struct ccn_schedule *sched,
     for (es = e->data; es != NULL; es = e->data) {
         if (es->active != ES_ACTIVE &&
             r_util_timecmp(es->lastuse_sec + es->lifetime, es->lastuse_usec,
-                            ccnr->sec, ccnr->usec) <= 0) {
-            if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
-                ccnr_debug_ccnb(ccnr, __LINE__, "reap enumeration state", NULL,
-                                es->name->buf, es->name->length);            
-            // everything but the name has already been destroyed
-            ccn_charbuf_destroy(&es->name);
-            // remove the entry from the hash table
-            hashtb_delete(e);
-        }
+                           ccnr->sec, ccnr->usec) <= 0) {
+                if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
+                    ccnr_debug_ccnb(ccnr, __LINE__, "reap enumeration state", NULL,
+                                    es->name->buf, es->name->length);            
+                ccn_charbuf_destroy(&es->name);
+                ccn_charbuf_destroy(&es->interest); // unnecessary?
+                ccn_charbuf_destroy(&es->reply_body);
+                ccn_indexbuf_destroy(&es->interest_comps);
+                for (i = 0; i < ENUM_N_COBS; i++)
+                    ccn_charbuf_destroy(&(es->cob[i]));
+                // remove the entry from the hash table
+                hashtb_delete(e);
+            }
         hashtb_next(e);
     }
     hashtb_end(e);
@@ -1070,13 +1075,19 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
     if (content != NULL &&
         !r_store_content_matches_interest_prefix(ccnr, content, interest->buf, interest->length))
         content = NULL;
+    ccn_charbuf_destroy(&es->cob[0]);
     es->cob[0] = ccn_charbuf_create();
     memset(es->cob_deferred, 0, sizeof(es->cob_deferred));
+    ccn_charbuf_destroy(&es->reply_body);
     es->reply_body = ccn_charbuf_create();
     ccnb_element_begin(es->reply_body, CCN_DTAG_Collection);
     es->content = content;
+    ccn_charbuf_destroy(&es->interest);
     es->interest = interest;
+    interest = NULL;
+    ccn_indexbuf_destroy(&es->interest_comps);
     es->interest_comps = comps;
+    comps = NULL;
     es->next_segment = 0;
     es->lastuse_sec = ccnr->sec;
     es->lastuse_usec = ccnr->usec;
@@ -1093,8 +1104,6 @@ r_proto_begin_enumeration(struct ccn_closure *selfp,
         ans = r_proto_continue_enumeration(selfp, kind, info, marker_comp);
     else
         ans = CCN_UPCALL_RESULT_OK;
-    return(ans);
-    
 Bail:
     ccn_charbuf_destroy(&name);
     ccn_charbuf_destroy(&interest);
