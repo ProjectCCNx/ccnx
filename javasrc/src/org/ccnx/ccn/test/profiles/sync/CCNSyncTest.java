@@ -16,6 +16,7 @@
  */
 package org.ccnx.ccn.test.profiles.sync;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
@@ -25,6 +26,7 @@ import java.util.Vector;
 
 import junit.framework.Assert;
 
+import org.ccnx.ccn.CCNHandle;
 import org.ccnx.ccn.CCNSync;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.config.SystemConfiguration;
@@ -41,6 +43,7 @@ import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 import org.ccnx.ccn.test.CCNTestBase;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -54,12 +57,25 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 	int maxBytes = 10 * BUF_SIZE;
 	Vector<ContentName> callbackNames = new Vector<ContentName>();
 	String errorMessage = null;
+	static Vector<ConfigSlice> slices = new Vector<ConfigSlice>();
 	
 	@Before
 	public void setUpNameSpace() {
 		prefix = testHelper.getTestNamespace("ccnSyncTest");
 		topo = testHelper.getTestNamespace("topoPrefix");
 		Log.fine(Log.FAC_TEST, "setting up namespace for sync test  data: {0} syncControlTraffic: {1}", prefix, topo);
+	}
+	
+	@AfterClass
+	public static void cleanup() {
+		//need to delete the slices to clean up after the test.
+		for(ConfigSlice s: slices)
+			try {
+				s.deleteSlice(CCNHandle.getHandle());
+			} catch (IOException e) {
+				Log.warning(Log.FAC_TEST, "failed to get handle to clean up sync slices:{0}", e.getMessage());
+			}
+		
 	}
 	
 	@Test
@@ -70,6 +86,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 
 		CCNSync sync1 = new CCNSync();
 		ConfigSlice slice1 = sync1.startSync(getHandle, topo, prefix1, this);
+		slices.add(slice1);
 		
 		sync1.stopSync(this, slice1);
 			
@@ -84,6 +101,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 		prefix1 = prefix.append("slice2");
 		CCNSync sync1 = new CCNSync();
 		ConfigSlice slice2 = sync1.startSync(getHandle, topo, prefix1, this);
+		slices.add(slice2);
 		
 		sync1.stopSync(this, slice2);
 
@@ -98,6 +116,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 		prefix1 = prefix.append("slice3");
 		CCNSync sync1 = new CCNSync();
 		ConfigSlice slice3 = sync1.startSync(getHandle, topo, prefix1, this);
+		slices.add(slice3);
 		
 		//the slice should be written..  now save content and get a callback.
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
@@ -136,6 +155,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 		prefix1 = prefix.append("slice4");
 		CCNSync sync1 = new CCNSync();
 		ConfigSlice slice4 = sync1.startSync(getHandle, topo, prefix1, this);
+		slices.add(slice4);
 		prefix2 = prefix.append("slice5");
 		ConfigSlice slice5 = sync1.startSync(getHandle, topo, prefix2, this);
 		
@@ -153,6 +173,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 		//now close the callback interface
 		sync1.stopSync(this, slice4);
 		sync1.stopSync(this, slice5);
+
 			
 		Log.info(Log.FAC_TEST,"Finished running testSyncStop");
 	}
@@ -166,6 +187,7 @@ public class CCNSyncTest extends CCNTestBase implements CCNSyncHandler {
 		prefix1 = prefix.append("slice6");
 		CCNSync sync1 = new CCNSync();
 		ConfigSlice slice6 = sync1.startSync(getHandle, topo, prefix1, this);
+		slices.add(slice6);
 		
 		//the slice should be written..  now save content and get a callback.
 		Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
