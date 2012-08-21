@@ -4,11 +4,12 @@ This highlights some important changes since the most recent numbered release.
 Refer to http://redmine.ccnx.org/projects/ccn/versions/10 for more details on
 CCNx 0.6.1.
 
-  * Improvements in interest forwarding (#100321) - Introduce new PIT data structure.  Major 
-    revision to the way ccnd manages pending interests and improve way interest lifetimes are 
-    accounted.  In the default strategy, preserve more of the ordering.
-  * Sync API in Java (#100715) - Added new classes: FileBasedSyncMonitor, VersioningProfile, 
-    Exclude, ConfigSlice to support CCN Sync
+  * Improvements in interest forwarding (#100321) - Introduce new PIT data structure.  Major
+    revision to the way ccnd manages pending interests and improve way interest lifetimes are
+    accounted.  In the default strategy, preserve more of the ordering.  This change removes
+    the "hack" that allowed a few similar interests from the same source to pass through.
+    This may affect applications that attempt to do hole-filling by resending interests prior
+    to their timeout.  For an example, see #100806.
   * TCP for libccn connections (#100760) - Make it possible to configure only TCP for local 
     connect with -DCCN_LOCAL_TCP, as alternative to Unix-domain socket.  This offers a way for
     devices with sandboxed filesystems such as within the Android context to get around the issue
