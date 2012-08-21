@@ -4,14 +4,33 @@ This highlights some important changes since the most recent numbered release.
 Refer to http://redmine.ccnx.org/projects/ccn/versions/10 for more details on
 CCNx 0.6.1.
 
-  * [GENERAL HIGHLIGHTS BLURB]
+  * Improvements in interest forwarding (#100321) - Introduce new PIT data structure.  Major
+    revision to the way ccnd manages pending interests and improve way interest lifetimes are
+    accounted.  In the default strategy, preserve more of the ordering.  This change removes
+    the "hack" that allowed a few similar interests from the same source to pass through.
+    This may affect applications that attempt to do hole-filling by resending interests prior
+    to their timeout.  For an example, see #100806.
+  * TCP for libccn connections (#100760) - Make it possible to configure only TCP for local 
+    connect with -DCCN_LOCAL_TCP, as alternative to Unix-domain socket.  This offers a way for
+    devices with sandboxed filesystems such as within the Android context to get around the issue
+    of sharing the UNIX domain file descriptor to connect to ccnd.
+  * C implementation of text chat (ccnc) (#100787, #100790, #100791, #100793) - The *ccnc* utility 
+    is a text-based community chat program.  Works with existing CCNx chat clients.
+  * Improvements to Android CCNx Services stability (#100784, #100645, 100778, #100781) - Fixed
+    a number of Android CCNx Services stability issues, including refresh updates to IP address
+    in the UI when there an intent CONNECTIVITY_UPDATE is received, improve number of checks on
+    service startup to print useful diagnostics to the user, and avoid problems that may prevent
+    startup and proper functioning of CCNx.  Added About menu item to get CCNx version information
+    and added a Reset menu item to clear error states and clear startup/shutdown errors.
 
   * Issues Resolved:
 	* Bug #100321: Improve efficiency interest suppression
 	* Bug #100358: DataUtils getBytesFromFile and large files
 	* Bug #100374: test.repo.Misc.java has bad logic
-	* Bug #100645: Android CCNx service control - tapping "Start All" button multiple times quickly causes services to fail.
-	* Bug #100682: CCNx tests uses grep flags unsupported by Solaris SunOS default grep but tests still succeed
+	* Bug #100645: Android CCNx service control - tapping "Start All" button multiple times quickly
+	  causes services to fail.
+	* Bug #100682: CCNx tests uses grep flags unsupported by Solaris SunOS default grep but tests
+	  still succeed
 	* Bug #100694: Fix ccntestloop stop command to more reliably clean up spawned processes
 	* Bug #100711: Some gitignore files ignore too much
 	* Bug #100728: HttpProxy tries to generate a keystore using a script that is no longer installed
@@ -21,35 +40,48 @@ CCNx 0.6.1.
 	* Bug #100747: duplicate object file in csrc/ccnd/Android.mk
 	* Bug #100748: small memory leak in ccnr when creating a new repository
 	* Bug #100749: Warning in java repo due to method change
-	* Bug #100750: Mac OS X 10.7 Lion users need clear instructions on what build pre-req tools need to be installed
+	* Bug #100750: Mac OS X 10.7 Lion users need clear instructions on what build pre-req tools need
+	  to be installed
 	* Bug #100755: ccnd should hold unsatisfied scope0 interests
 	* Bug #100758: SyncCacheEntryFetch can miss existing entries
 	* Bug #100764: Java logging for FAC_SEARCH is broken
-	* Bug #100765: BinaryXMLDecoder uses inappropriate algorithm for increasing decoder array sizes and the logging is broken.
+	* Bug #100765: BinaryXMLDecoder uses inappropriate algorithm for increasing decoder array sizes
+	  and the logging is broken.
 	* Bug #100766: Null pointer dereference in ccnr
-	* Bug #100768: fix potential NULL pointer deref and some uses of realloc() that could result in leaks
+	* Bug #100768: fix potential NULL pointer deref and some uses of realloc() that could result in
+	  leaks
 	* Bug #100769: name enumeration attempts to open mid stream
 	* Bug #100770: versioning profile should be more defensive about what a valid version number is
 	* Bug #100771: CCNxProtocol document description of FIB should not refer to destinations
-	* Bug #100778: Android CCNx Service crashes on startup if CCNR "Unable to get repository policy object version"
+	* Bug #100778: Android CCNx Service crashes on startup if CCNR "Unable to get repository policy
+	  object version"
 	* Bug #100780: CCNx Android makefile should be posix compliant
-	* Bug #100781: Android CCNx Service fails to start CCNR with "Unable to get repository policy object version"
+	* Bug #100781: Android CCNx Service fails to start CCNR with "Unable to get repository policy
+	  object version"
 	* Bug #100783: libccn code should be compiled with PIC on NetBSD
-	* Bug #100784: Android CCNx Service displays loopback address on ICS even when other *faces are available
+	* Bug #100784: Android CCNx Service displays loopback address on ICS even when other *faces are
+	  available
 	* Bug #100788: exception in ccnlsrepo
 	* Bug #100790: lned does not work properly on Mac OS X 10.5
 	* Bug #100791: ccnc input logic needs improvement
 	* Bug #100792: MergeSecureKeyCacheTestRepo has initialization bug
 	* Bug #100795: CCNDCacheManager.clearCache() issues too many interests
 	* Bug #100796: Improve performance of ccnr rightmost-child operations
+	* Bug #100800: ServiceDiscoveryProfile suffers from a race condition when publishing a local
+	  service key
+	* Bug #100801: ccnr takes a segmentation fault if output fd closed due to other errors
+	* Bug #100802: LatestVersionTest failures with new interest forwarding
+	* Bug #100805: Memory leak in ccnr
+	* Bug #100806: VLC plugin needs updates
 	* Feature #100041: java tools should support a -h argument
 	* Feature #100647: Default support for multiple architectures in MacOS X build
 	* Feature #100701: A number of methods in ContentName have no general test coverage
-	* Feature #100715: Provide interface for applications to set up Sync configuration slices and receive notification of (newly) sync'ed ContentObjects - in java library
-	* Feature #100727: Support for MAC content
+	* Feature #100715: Provide interface for applications to set up Sync configuration slices and 
+	  receive notification of (newly) sync'ed ContentObjects - in java library
 	* Feature #100752: Side door for quickly adding content to a repo
 	* Feature #100759: Extensions to HttpProxy
-	* Feature #100760: C library needs method for connecting to ccnd via TCP in place of Unix-domain socket
+	* Feature #100760: C library needs method for connecting to ccnd via TCP in place of Unix-domain
+	  socket
 	* Feature #100761: Implement deletion of btrees entries
 	* Feature #100767: ccnsyncwatch should flush output after each line
 	* Feature #100787: Provide a version of ccnchat that uses libccn
@@ -100,8 +132,8 @@ CCNx 0.6.0.
 	* Bug 100726 Still some occasional deadlocks in VLC plugin
 	* Feature 100729 VLC CCN plugin should provide access to prefetch offset 
 	  via VLC option
-    * Feature 100499 Unify ContentName constructors
-    * Bug 100046 OpenSolaris build fails when cc is actually gcc
+	* Feature 100499 Unify ContentName constructors
+	* Bug 100046 OpenSolaris build fails when cc is actually gcc
 	* Bug 100724 Possible memory leaks of crypto allocated memory in merkle
 	  hash tree signature verification
 	* Bug 100723 VLC plugin needs prefetcher
@@ -125,32 +157,32 @@ CCNx 0.6.0.
 	* Feature 100713 Refactor matching code so Exclude tests can be done
 	  separately
 	* Bug 100716 fix couple of compiler warnings in ccn_sync.c	
-    * Support 100662 Setup CCNx Open Source project commit notifications via
-      email + outbound tweets for all commits to projectccnx
-    * Bug 100664 Remove ccnd/android_msg.c
-    * Feature 100675 C/Java Libraries should be able to use different digest
-      algorithms based on key type for signing
-    * Bug 100676 Multiple registrations using ccn_set_interest_filter with same
-      prefix do not work well
-    * Bug 100688 Man page for ccntestloop
-    * Feature 100690 Improve decoding performance
-    * Bug 100691 Inconsistent formatting and use of asciidoc markup
-    * Support 100692 Prepare for ccnx-0.6.0 release
-    * Support 100695 Improve comments in ccnd
-    * Bug 100696 Broken link in top-level README
-    * Support 100697 Prepare for ccnx-0.5.2 release
-    * Feature 100698 Add use of deltas to the RootAdvise protocol
-    * Bug 100699 ccndc fails with Unable to create face in ccnx-0.5.1 on
+	* Support 100662 Setup CCNx Open Source project commit notifications via
+	  email + outbound tweets for all commits to projectccnx
+	* Bug 100664 Remove ccnd/android_msg.c
+	* Feature 100675 C/Java Libraries should be able to use different digest
+	  algorithms based on key type for signing
+	* Bug 100676 Multiple registrations using ccn_set_interest_filter with same
+	  prefix do not work well
+	* Bug 100688 Man page for ccntestloop
+	* Feature 100690 Improve decoding performance
+	* Bug 100691 Inconsistent formatting and use of asciidoc markup
+	* Support 100692 Prepare for ccnx-0.6.0 release
+	* Support 100695 Improve comments in ccnd
+	* Bug 100696 Broken link in top-level README
+	* Support 100697 Prepare for ccnx-0.5.2 release
+	* Feature 100698 Add use of deltas to the RootAdvise protocol
+	* Bug 100699 ccndc fails with Unable to create face in ccnx-0.5.1 on
 	  guest OS (fixed on 0.6.0)
-    * Bug 100702 Intermittent test_repo_performance failures on slow platforms
-    * Bug 100703 sync header files include other files only needed for
-      implementation
-    * Feature 100706 Integrate ccn_schedule events with ccn_run()
-    * Feature 100707 Provide interface for applications to set up Sync
-      configuration slices and receive notification of (newly) sync'ed
-      ContentObjects
-    * Feature 100709 Update schema and assign DTAG for new sync delta
-      RootAdvise response
+	* Bug 100702 Intermittent test_repo_performance failures on slow platforms
+	* Bug 100703 sync header files include other files only needed for
+	  implementation
+	* Feature 100706 Integrate ccn_schedule events with ccn_run()
+	* Feature 100707 Provide interface for applications to set up Sync
+	  configuration slices and receive notification of (newly) sync'ed
+	  ContentObjects
+	* Feature 100709 Update schema and assign DTAG for new sync delta
+	  RootAdvise response
 
 
 Changes between 0.5.0 and 0.5.1:

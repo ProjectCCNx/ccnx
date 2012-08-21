@@ -44,6 +44,8 @@ cmd/ccnsyncwatch
 cmd/ccnsyncslice
 cmd/ccntimestamps
 cmd/dataresponsetest
+cmd/ccnc
+cmd/ccnsnew
 lib/Makefile
 lib/basicparsetest
 lib/ccn_verifysig
@@ -53,6 +55,7 @@ lib/libccn.a
 lib/matrixtest
 lib/signbenchtest
 lib/skel_decode_test
+lib/ccnbtreetest
 libexec/Makefile
 libexec/ccndc
 libexec/ccndc-inject
