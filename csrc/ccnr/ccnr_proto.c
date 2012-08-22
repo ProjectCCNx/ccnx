@@ -33,6 +33,7 @@
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/ccn_private.h>
+#include <ccn/hashtb.h>
 #include <ccn/schedule.h>
 #include <ccn/sockaddrutil.h>
 #include <ccn/uri.h>
@@ -918,6 +919,21 @@ Bail:
     return(ans);
 }
 
+void
+r_proto_finalize_enum_state(struct hashtb_enumerator *e)
+{
+    struct enum_state *es = e->data;
+    unsigned i;
+    
+    ccn_charbuf_destroy(&es->name);
+    ccn_charbuf_destroy(&es->interest); // unnecessary?
+    ccn_charbuf_destroy(&es->reply_body);
+    ccn_indexbuf_destroy(&es->interest_comps);
+    for (i = 0; i < ENUM_N_COBS; i++)
+        ccn_charbuf_destroy(&(es->cob[i]));
+    return;
+}
+
 #define ENUMERATION_STATE_TICK_MICROSEC 1000000
 /**
  * Remove expired enumeration table entries
@@ -932,7 +948,6 @@ reap_enumerations(struct ccn_schedule *sched,
     struct hashtb_enumerator ee;
     struct hashtb_enumerator *e = &ee;
     struct enum_state *es = NULL;
-    int i;
     
     if ((flags & CCN_SCHEDULE_CANCEL) != 0) {
         ccnr->reap_enumerations = NULL;
@@ -946,13 +961,7 @@ reap_enumerations(struct ccn_schedule *sched,
                 if (CCNSHOULDLOG(ccnr, LM_8, CCNL_FINER))
                     ccnr_debug_ccnb(ccnr, __LINE__, "reap enumeration state", NULL,
                                     es->name->buf, es->name->length);            
-                ccn_charbuf_destroy(&es->name);
-                ccn_charbuf_destroy(&es->interest); // unnecessary?
-                ccn_charbuf_destroy(&es->reply_body);
-                ccn_indexbuf_destroy(&es->interest_comps);
-                for (i = 0; i < ENUM_N_COBS; i++)
-                    ccn_charbuf_destroy(&(es->cob[i]));
-                // remove the entry from the hash table
+                // remove the entry from the hash table, finalization frees data
                 hashtb_delete(e);
             }
         hashtb_next(e);

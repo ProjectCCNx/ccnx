@@ -453,6 +453,31 @@ choose_limit(unsigned l, unsigned m)
     return(k + 1);
 }
 
+static void
+finalize_accession(struct hashtb_enumerator *e)
+{
+    struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
+    struct content_by_accession_entry *entry = e->data;
+    struct content_entry *content = entry->content;
+    unsigned i;
+    
+    if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
+        h->n_stale--;
+    if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
+        ccnr_debug_content(h, __LINE__, "remove", NULL, content);
+    /* Remove the cookie reference */
+    i = content->cookie & (h->cookie_limit - 1);
+    if (h->content_by_cookie[i] == content)
+        h->content_by_cookie[i] = NULL;
+    content->cookie = 0;
+    ccn_charbuf_destroy(&content->flatname);
+    if (content->cob != NULL) {
+        h->cob_count--;
+        ccn_charbuf_destroy(&content->cob);
+    }
+    free(content);
+}
+
 PUBLIC void
 r_store_init(struct ccnr_handle *h)
 {
@@ -468,13 +493,13 @@ r_store_init(struct ccnr_handle *h)
     
     path = ccn_charbuf_create();
     param.finalize_data = h;
-    param.finalize = 0;
+    param.finalize = &finalize_accession;
     
     h->cob_limit = r_init_confval(h, "CCNR_CONTENT_CACHE", 16, 2000000, 4201);
     h->cookie_limit = choose_limit(h->cob_limit, (ccnr_cookie)(~0U));
     h->content_by_cookie = calloc(h->cookie_limit, sizeof(h->content_by_cookie[0]));
     CHKPTR(h->content_by_cookie);
-    h->content_by_accession_tab = hashtb_create(sizeof(struct content_by_accession_entry), NULL);
+    h->content_by_accession_tab = hashtb_create(sizeof(struct content_by_accession_entry), &param);
     CHKPTR(h->content_by_accession_tab);
     h->btree = btree = ccn_btree_create();
     CHKPTR(btree);
@@ -738,22 +763,15 @@ r_store_content_btree_insert(struct ccnr_handle *h,
 PUBLIC void
 r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
 {
-    unsigned i;
     struct content_entry *entry = *pentry;
     
     if (entry == NULL)
         return;
     *pentry = NULL;
-    if ((entry->flags & CCN_CONTENT_ENTRY_STALE) != 0)
-        h->n_stale--;
-    if (CCNSHOULDLOG(h, LM_4, CCNL_FINER))
-        ccnr_debug_content(h, __LINE__, "remove", NULL, entry);
-    /* Remove the cookie reference */
-    i = entry->cookie & (h->cookie_limit - 1);
-    if (h->content_by_cookie[i] == entry)
-        h->content_by_cookie[i] = NULL;
-    entry->cookie = 0;
     /* Remove the accession reference */
+    /* more cleanup, including the content_by_cookie cleanup,
+     * is done by the finalizer for the accession hash table
+     */
     if (entry->accession != CCNR_NULL_ACCESSION) {
         struct hashtb_enumerator ee;
         struct hashtb_enumerator *e = &ee;
@@ -766,17 +784,10 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
             hashtb_end(e);
             return;
         }
+        entry->accession = CCNR_NULL_ACCESSION;
         hashtb_delete(e);
         hashtb_end(e);
-        entry->accession = CCNR_NULL_ACCESSION;
     }
-    /* Clean up allocated subfields */
-    ccn_charbuf_destroy(&entry->flatname);
-    if (entry->cob != NULL) {
-        h->cob_count--;
-        ccn_charbuf_destroy(&entry->cob);
-    }
-    free(entry);
 }
 
 /**
