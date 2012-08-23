@@ -100,11 +100,10 @@ struct ccnd_handle {
     long sec;                       /**< cached gettime seconds */
     unsigned usec;                  /**< cached gettime microseconds */
     ccn_wrappedtime wtnow;          /**< corresponding wrapped time */
-    long 
     int sliver;                     /**< extra microseconds beyond wtnow */
     long starttime;                 /**< ccnd start time, in seconds */
     unsigned starttime_usec;        /**< ccnd start time fractional part */
-    unsigned iserial;
+    unsigned iserial;               /**< interest serial number (for logs) */
     struct ccn_schedule *sched;     /**< our schedule */
     struct ccn_charbuf *send_interest_scratch; /**< for use by send_interest */
     struct ccn_charbuf *scratch_charbuf; /**< one-slot scratch cache */
