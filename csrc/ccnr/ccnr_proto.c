@@ -555,8 +555,10 @@ r_proto_policy_update(struct ccn_schedule *sched,
         goto Bail;
     }
     policy_link_cob = ccnr_init_policy_link_cob(ccnr, ccnr->direct_client, name);
-    if (policy_link_cob != NULL)
+    if (policy_link_cob != NULL) {
+        ccn_charbuf_destroy(&ccnr->policy_link_cob);
         ccnr->policy_link_cob = policy_link_cob;
+    }
     policyFileName = ccn_charbuf_create();
     ccn_charbuf_putf(policyFileName, "%s/repoPolicy", ccnr->directory);
     fd = open(ccn_charbuf_as_string(policyFileName), O_WRONLY | O_CREAT, 0666);
