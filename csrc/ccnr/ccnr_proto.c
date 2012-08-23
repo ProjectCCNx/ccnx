@@ -811,6 +811,7 @@ r_proto_start_write_checked(struct ccn_closure *selfp,
     ccn_charbuf_destroy(&interest);
     ccn_indexbuf_destroy(&comps);
     if (content == NULL) {
+        ccn_charbuf_destroy(&name);
         if (CCNSHOULDLOG(ccnr, LM_128, CCNL_FINE))
             ccnr_msg(ccnr, "r_proto_start_write_checked: NOT PRESENT");
         // XXX - dropping into the start_write case means we do not check the provided digest when fetching, so this is not completely right.
