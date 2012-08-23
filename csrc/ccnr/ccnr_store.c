@@ -454,11 +454,8 @@ choose_limit(unsigned l, unsigned m)
 }
 
 static void
-finalize_accession(struct hashtb_enumerator *e)
+cleanup_content_entry(struct ccnr_handle *h, struct content_entry *content)
 {
-    struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
-    struct content_by_accession_entry *entry = e->data;
-    struct content_entry *content = entry->content;
     unsigned i;
     
     if ((content->flags & CCN_CONTENT_ENTRY_STALE) != 0)
@@ -475,7 +472,15 @@ finalize_accession(struct hashtb_enumerator *e)
         h->cob_count--;
         ccn_charbuf_destroy(&content->cob);
     }
-    free(content);
+    free(content);    
+}
+static void
+finalize_accession(struct hashtb_enumerator *e)
+{
+    struct ccnr_handle *h = hashtb_get_param(e->ht, NULL);
+    struct content_by_accession_entry *entry = e->data;
+    
+    cleanup_content_entry(h, entry->content);
 }
 
 PUBLIC void
@@ -787,6 +792,9 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
         entry->accession = CCNR_NULL_ACCESSION;
         hashtb_delete(e);
         hashtb_end(e);
+    } else {
+        ccnr_msg(h, "removing unenrolled content");
+        cleanup_content_entry(h, entry);
     }
 }
 
