@@ -793,7 +793,9 @@ r_store_forget_content(struct ccnr_handle *h, struct content_entry **pentry)
         hashtb_delete(e);
         hashtb_end(e);
     } else {
-        ccnr_msg(h, "removing unenrolled content");
+        if (CCNSHOULDLOG(h, sdf, CCNL_FINER)) {
+              ccnr_debug_content(h, __LINE__, "removing unenrolled content", NULL, entry);
+        }
         cleanup_content_entry(h, entry);
     }
 }
