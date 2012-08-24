@@ -2593,7 +2593,7 @@ ccn_load_key_or_create(struct ccn *h,
       ccn_perror (h, "Keystore file [%s] exists, but private key cannot be loaded.  "
                   "Check if CCNX_KEYSTORE_PASSWORD is set to a correct password, "
                   "otherwise remove [%s] and it will be automatically created.",
-                  keystore);
+                  keystore, keystore);
       res = NOTE_ERR (h, -1);
       return res;
     }
@@ -2643,6 +2643,7 @@ ccn_chk_signing_params(struct ccn *h,
     int i;
     int conflicting;
     int needed;
+    struct stat sb;
     
     if (params != NULL)
         *result = *params;
@@ -2687,6 +2688,20 @@ ccn_chk_signing_params(struct ccn *h,
               // check HOME
               home = getenv("HOME");
               if (home != NULL) {
+                // step 1. Check if home directory exists
+                ccn_charbuf_reset(temp);
+                ccn_charbuf_putf(temp, "%s/.ccnx", home);
+                
+                res = stat (ccn_charbuf_as_string (temp), &sb);
+                if (res != 0 || !(sb.st_mode & S_IFDIR))
+                  {
+                    res = mkdir (ccn_charbuf_as_string (temp), S_IRWXU);
+                    if (res != 0)
+                      {
+                        ccn_perror (h, "Failed to create directory [%s]", ccn_charbuf_as_string (temp));
+                      }
+                  }
+                
                 ccn_charbuf_reset(temp);
                 ccn_charbuf_putf(temp, "%s/.ccnx/.ccnx_keystore", home);
                 
