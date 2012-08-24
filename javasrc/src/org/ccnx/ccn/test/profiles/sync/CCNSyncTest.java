@@ -25,6 +25,7 @@ import org.ccnx.ccn.profiles.metadata.MetadataProfile;
 import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.MalformedContentNameStringException;
 import org.ccnx.ccn.test.CCNTestHelper;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -37,12 +38,25 @@ public class CCNSyncTest implements CCNSyncHandler{
 	int BUF_SIZE = 1024;
 	int maxBytes = 10 * BUF_SIZE;
 	Vector<ContentName> callbackNames = new Vector<ContentName>();
+	static Vector<ConfigSlice> slices = new Vector<ConfigSlice>();
 	
 	@Before
 	public void setUpNameSpace() {
 		prefix = testHelper.getTestNamespace("ccnSyncTest");
 		topo = testHelper.getTestNamespace("topoPrefix");
 		Log.fine(Log.FAC_TEST, "setting up namespace for sync test  data: {0} syncControlTraffic: {1}", prefix, topo);
+	}
+	
+	@AfterClass
+	public static void cleanup() {
+		//need to delete the slices to clean up after the test.
+		for(ConfigSlice s: slices)
+			try {
+				s.deleteSlice(CCNHandle.getHandle());
+			} catch (IOException e) {
+				Log.warning(Log.FAC_TEST, "failed to get handle to clean up sync slices:{0}", e.getMessage());
+			}
+		
 	}
 	
 	@Test
@@ -55,7 +69,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 
 			CCNSync sync1 = new CCNSync();
 			ConfigSlice slice1 = sync1.startSync(handle, topo, prefix1, null, this);
-			
+			slices.add(slice1);
 			sync1.stopSync(this, slice1);
 		} catch (MalformedContentNameStringException e) {
 			Log.info(Log.FAC_TEST, "failed to create name for slice prefix: {0}", e.getMessage());
@@ -79,7 +93,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			prefix1 = prefix.append("slice2");
 			CCNSync sync1 = new CCNSync();
 			ConfigSlice slice2 = sync1.startSync(topo, prefix1, null, this);
-			
+			slices.add(slice2);
 			sync1.stopSync(this, slice2);
 		} catch (MalformedContentNameStringException e) {
 			Log.info(Log.FAC_TEST, "failed to create name for slice prefix: {0}", e.getMessage());
@@ -103,7 +117,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			prefix1 = prefix.append("slice3");
 			CCNSync sync1 = new CCNSync();
 			ConfigSlice slice3 = sync1.startSync(topo, prefix1, null, this);
-			
+			slices.add(slice3);
 			//the slice should be written..  now save content and get a callback.
 			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
 			int segments = writeFile(prefix1);
@@ -152,8 +166,10 @@ public class CCNSyncTest implements CCNSyncHandler{
 			prefix1 = prefix.append("slice4");
 			CCNSync sync1 = new CCNSync();
 			ConfigSlice slice4 = sync1.startSync(topo, prefix1, null, this);
+			slices.add(slice4);
 			prefix2 = prefix.append("slice5");
 			ConfigSlice slice5 = sync1.startSync(topo, prefix2, null, this);
+			slices.add(slice5);
 			
 			//the slice should be written..  now save content and get a callback.
 			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
@@ -193,6 +209,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			prefix1 = prefix.append("slice6");
 			CCNSync sync1 = new CCNSync();
 			ConfigSlice slice6 = sync1.startSync(topo, prefix1, null, this);
+			slices.add(slice6);
 			
 			//the slice should be written..  now save content and get a callback.
 			Log.fine(Log.FAC_TEST, "writing out file: {0}", prefix1);
@@ -222,6 +239,8 @@ public class CCNSyncTest implements CCNSyncHandler{
 			ContentName prefix1b = prefix1.append("round3");
 			//ConfigSlice slice3 = sync1.startSync(topo, prefix1, null, this);
 			ConfigSlice slice6b = sync1.startSync(topo, prefix1, null, this);
+			slices.add(slice6b);
+			
 			
 			Log.fine(Log.FAC_TEST, "check if slice 6 == slice 6b, they should be equal!");
 			if (slice6.equals(slice6b)) {
