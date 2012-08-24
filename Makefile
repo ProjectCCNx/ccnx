@@ -13,37 +13,48 @@
 #
 
 # Subdirectories we build in
-TOPSUBDIRS = doc/manpages doc/technical csrc schema javasrc apps `cat local.subdirs 2>/dev/null || :`
+TOPSUBDIRS = doc/manpages doc/technical csrc schema `cat local.subdirs 2>/dev/null || :`
 # Packing list for packaging
 PACKLIST = Makefile README LICENSE NEWS NOTICES configure doc/index.txt $(TOPSUBDIRS) android experiments
 BLDMSG = printf '=== %s ' 'Building $@ in' && pwd
+
+# Include build parameters
+include csrc/conf.mk
 
 default all: _always
 	for i in $(TOPSUBDIRS); do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
-	(cd csrc/lib && { test -f "$$HOME/.ccnx/.ccnx_keystore" || $(MAKE) test; }; )
+	if [ "x$(BUILD_JAVA)" = "xtrue" ]; then \
+	  (cd javasrc && $(MAKE) $@); \
+	  if [ "x$(BUILD_APPS)" = "xtrue" ]; then \
+	    (cd apps && $(MAKE) $@); \
+	  fi; \
+	fi
 	mkdir -p ./lib ./bin
 	test -d ./include || ln -s ./csrc/include
 	(cd csrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
-	(cd javasrc && $(MAKE) install INSTALL_BASE=`pwd`/..)
-	(cd apps && $(MAKE) install INSTALL_BASE=`pwd`/..)
+	if [ "x$(BUILD_JAVA)" = "xtrue" ]; then \
+	  (cd javasrc && $(MAKE) install INSTALL_BASE=`pwd`/..); \
+	  if [ "x$(BUILD_APPS)" = "xtrue" ]; then \
+	    (cd apps && $(MAKE) install INSTALL_BASE=`pwd`/..); \
+	  fi ;\
+	fi
 
 clean depend test check shared: _always
-	for i in $(TOPSUBDIRS); do         \
+	for i in $(TOPSUBDIRS) javasrc apps; do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always
 
 testinstall install uninstall: _always
-	IB=`[ -z '$(INSTALL_BASE)' ] && grep ^INSTALL_BASE csrc/conf.mk 2>/dev/null | sed -e 's/ //g' || echo INSTALL_BASE=$(INSTALL_BASE)`; \
-	for i in $(TOPSUBDIRS); do         \
-	  (cd "$$i" && pwd && $(MAKE) $$IB $@) || exit 1;	\
+	for i in $(TOPSUBDIRS) javasrc apps; do         \
+	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always
 
 documentation dist-docs: _always
-	for i in $(TOPSUBDIRS) android; do         \
+	for i in $(TOPSUBDIRS) javasrc apps android; do         \
 	  (cd "$$i" && pwd && $(MAKE) $@) || exit 1;	\
 	done
 	@rm -f _always

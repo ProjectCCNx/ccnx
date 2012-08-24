@@ -12,6 +12,8 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
+include ../csrc/conf.mk
+
 ANT = `command -v ant || echo echo SKIPPING ant`
 JAR = ccn.jar
 LIBS = $(JAR) lib/bcprov-jdk16-143.jar lib/kxml2-2.3.0.jar $(EXTRA_LIBS)
@@ -23,20 +25,15 @@ WARN_NO_INSTALL = echo Nothing installed from javasrc/
 # Default, the top-level Makefile default target will
 # call the install target here but override INSTALL_BASE
 # with dir in the source tree
-INSTALL_LIB = $(INSTALL_BASE)/lib
-INSTALL_BIN = $(INSTALL_BASE)/bin
-INSTALL = cp 
-CP = cp
-LS = /bin/ls
 
 default all: jar
 check: test
 
 install:
 	@test -f $(JAR) && $(MAKE) real_install \
-            INSTALL_BASE=$(INSTALL_BASE)        \
-            INSTALL_LIB=$(INSTALL_LIB)          \
-            INSTALL_BIN=$(INSTALL_BIN) || $(WARN_NO_INSTALL)
+            INSTALL_BASE=$(DESTDIR)$(INSTALL_BASE)        \
+            INSTALL_LIB=$(DESTDIR)$(INSTALL_LIB)          \
+            INSTALL_BIN=$(DESTDIR)$(INSTALL_BIN) || $(WARN_NO_INSTALL)
 
 real_install: _always
 	test -d $(INSTALL_LIB) 
@@ -46,8 +43,8 @@ real_install: _always
 	$(CP) -R tools/. $(INSTALL_BIN)
 
 uninstall:
-	for i in $(LIBS) ""; do test -z "$$i" || rm -f $(INSTALL_LIB)/`basename $$i`; done
-	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(INSTALL_BIN)/`basename $$i`; done
+	for i in $(LIBS) ""; do test -z "$$i" || rm -f $(DESTDIR)$(INSTALL_LIB)/`basename $$i`; done
+	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(DESTDIR)$(INSTALL_BIN)/`basename $$i`; done
 
 # Use ant to actually do the work for these targets
 jar test: _always

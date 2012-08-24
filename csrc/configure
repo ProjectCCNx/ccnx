@@ -39,16 +39,22 @@ TryAppend "`uname -sr | sed -e 's/ /-/g'`"
 TryAppend "local"
 TryScript "`uname`" "$@"
 TryScript "local" "$@"
-ProvideDefault CPREFLAGS = -I../include
-ProvideDefault PCAP_PROGRAMS = ccndumppcap
-ProvideDefault RESOLV_LIBS = -lresolv
+ProvideDefault CC = ${CC:=cc}
+ProvideDefault CPREFLAGS = -I../include ${CFLAGS:-}
+ProvideDefault PCAP_PROGRAMS = ${PCAP_PROGRAMS:-ccndumppcap}
+ProvideDefault RESOLV_LIBS = ${RESOLV_LIBS:--lresolv}
 ProvideDefault INSTALL_BASE = ${INSTALL_BASE:-/usr/local}
-ProvideDefault INSTALL_INCLUDE = '$(INSTALL_BASE)/include'
-ProvideDefault INSTALL_LIB = '$(INSTALL_BASE)/lib'
-ProvideDefault INSTALL_BIN = '$(INSTALL_BASE)/bin'
-ProvideDefault INSTALL = install
-ProvideDefault RM = rm -f
-ProvideDefault SH = /bin/sh
+ProvideDefault INSTALL_INCLUDE = ${INSTALL_INCLUDE:-\$(INSTALL_BASE)/include}
+ProvideDefault INSTALL_LIB = ${INSTALL_LIB:-\$(INSTALL_BASE)/lib}
+ProvideDefault INSTALL_BIN = ${INSTALL_BIN:-\$(INSTALL_BASE)/bin}
+ProvideDefault INSTALL = ${INSTALL:-install}
+ProvideDefault CP = ${CP:-cp}
+ProvideDefault RM = ${RM:-rm -f}
+ProvideDefault SH = ${SH:-/bin/sh}
+ProvideDefault LS = ${LS:-/bin/ls}
+
+ProvideDefault BUILD_JAVA = ${BUILD_JAVA:-true}
+ProvideDefault BUILD_APPS = ${BUILD_APPS:-true}
 
 echo ============= conf.mk =============>&2
 cat conf.mk				>&2

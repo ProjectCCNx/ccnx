@@ -19,7 +19,7 @@
 
 SUBDIRS = HttpProxy ccnChat ccnFileProxy `cat local.subdirs 2>/dev/null || :`
 MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk $(PASSTHRU)
-PASSTHRU = `[ -z '$(INSTALL_BASE)' ] || echo INSTALL_BASE=$(INSTALL_BASE)`
+PASSTHRU = `[ -z '$(INSTALL_BASE)' ] || echo INSTALL_BASE=$(DESTDIR)$(INSTALL_BASE)`
 CFLAGS = -g
 CSRCDIR = ../csrc
 

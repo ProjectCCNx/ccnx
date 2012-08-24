@@ -12,28 +12,22 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
+include ../conf.mk
+
 ANT = `command -v ant || echo echo SKIPPING ant`
 LIBS = $(JAR)
 WHINE = sh -c "type $(ANT) 2>/dev/null ||                  \
                echo Skipping java build in $$(pwd -L) -    \
                     $(ANT) is not installed; "
-# Default, the top-level Makefile default target will
-# call the install target here but override INSTALL_BASE
-# with dir in the source tree
-INSTALL_LIB = $(INSTALL_BASE)/lib
-INSTALL_BIN = $(INSTALL_BASE)/bin
-INSTALL = cp 
-CP = cp
-LS = /bin/ls
 
 default all: jar
 check: test
 
 install:
 	@test -f $(JAR) && $(MAKE) real_install \
-            INSTALL_BASE=$(INSTALL_BASE)        \
-            INSTALL_LIB=$(INSTALL_LIB)          \
-            INSTALL_BIN=$(INSTALL_BIN) || $(WARN_NO_INSTALL)
+            INSTALL_BASE=$(DESTDIR)$(INSTALL_BASE)        \
+            INSTALL_LIB=$(DESTDIR)$(INSTALL_LIB)          \
+            INSTALL_BIN=$(DESTDIR)$(INSTALL_BIN) || $(WARN_NO_INSTALL)
 
 real_install: _always
 	test -d $(INSTALL_LIB) 
@@ -43,8 +37,8 @@ real_install: _always
 	$(CP) -R tools/. $(INSTALL_BIN)
 
 uninstall:
-	for i in $(LIBS) ""; do test -z "$$i" || rm -f $(INSTALL_LIB)/`basename $$i`; done
-	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(INSTALL_BIN)/`basename $$i`; done
+	for i in $(LIBS) ""; do test -z "$$i" || rm -f $(DESTDIR)$(INSTALL_LIB)/`basename $$i`; done
+	for i in `$(LS) tools` "" ; do test -z "$$i" || rm -f $(DESTDIR)$(INSTALL_BIN)/`basename $$i`; done
 
 # Use ant to actually do the work for these targets
 jar test: _always
