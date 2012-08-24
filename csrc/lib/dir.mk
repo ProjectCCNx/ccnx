@@ -56,29 +56,29 @@ default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
 # all: shlib
 
-all: basicparsetest ccn_verifysig
+# all: basicparsetest ccn_verifysig
 
 install: install_headers
 install_headers:
-	@test -d $(INSTALL_INCLUDE) || (echo $(INSTALL_INCLUDE) does not exist.  Please mkdir -p $(INSTALL_INCLUDE) if this is what you intended. && exit 2)
-	mkdir -p $(INSTALL_INCLUDE)/ccn
+	@test -d $(DESTDIR)$(INSTALL_INCLUDE) || (echo $(DESTDIR)$(INSTALL_INCLUDE) does not exist.  Please mkdir -p $(DESTDIR)$(INSTALL_INCLUDE) if this is what you intended. && exit 2)
+	mkdir -p $(DESTDIR)$(INSTALL_INCLUDE)/ccn
 	for i in `cd ../include/ccn && echo *.h`; do                \
-	    cmp -s ../include/ccn/$$i $(INSTALL_INCLUDE)/ccn/$$i || \
-	        cp ../include/ccn/$$i $(INSTALL_INCLUDE)/ccn/$$i || \
+	    cmp -s ../include/ccn/$$i $(DESTDIR)$(INSTALL_INCLUDE)/ccn/$$i || \
+	        cp ../include/ccn/$$i $(DESTDIR)$(INSTALL_INCLUDE)/ccn/$$i || \
 	        exit 1;                                             \
 	done
 
 uninstall: uninstall_headers
 uninstall_headers:
-	test -L $(INSTALL_INCLUDE)/ccn && $(RM) $(INSTALL_INCLUDE)/ccn ||:
-	test -L $(INSTALL_INCLUDE) || $(RM) -r $(INSTALL_INCLUDE)/ccn
+	test -L $(DESTDIR)$(INSTALL_INCLUDE)/ccn && $(RM) $(DESTDIR)$(INSTALL_INCLUDE)/ccn ||:
+	test -L $(DESTDIR)$(INSTALL_INCLUDE) || $(RM) -r $(DESTDIR)$(INSTALL_INCLUDE)/ccn
 
 shlib: $(SHLIBNAME)
 
 lib: libccn.a
 
 test: default keystore_check encodedecodetest ccnbtreetest
-	./encodedecodetest -o /dev/null
+	./encodedecodetest -k $(CCNX_DIR)/.ccnx_keystore -o /dev/null
 	./ccnbtreetest
 	./ccnbtreetest - < q.dat
 	rm -R _bt_*
@@ -87,12 +87,12 @@ dtag_check: _always
 	@./gen_dtag_table 2>/dev/null | diff - ccn_dtag_table.c | grep '^[<]' >/dev/null && echo '*** Warning: ccn_dtag_table.c may be out of sync with tagnames.cvsdict' || :
 
 keystore_check: ccn_initkeystore.sh
-	test -f "$$HOME/.ccnx/.ccnx_keystore" || $(MAKE) -f dir.mk new_keystore
+	test -f "$(CCNX_DIR)/.ccnx_keystore" || $(MAKE) -f dir.mk new_keystore
 
 new_keystore:
 	@echo === CCNx Keystore not found in your home directory
 	@echo === I will create one for you now '(^C to abort)'
-	sleep 1 && sh ccn_initkeystore.sh && sleep 3 && mv .ccnx "$$HOME"
+	sleep 1 && sh ccn_initkeystore.sh && sleep 3 && mkdir -p "$(CCNX_DIR)/" && mv .ccnx/.ccnx_keystore "$(CCNX_DIR)/"
 
 libccn.a: $(LIB_OBJS)
 	ar crus $@ $(LIB_OBJS)
