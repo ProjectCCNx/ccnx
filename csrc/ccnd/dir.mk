@@ -15,7 +15,7 @@
 LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn
 CCNLIBDIR = ../lib
 
-INSTALLED_PROGRAMS = ccnd ccndsmoketest ccnd-init-keystore-helper
+INSTALLED_PROGRAMS = ccnd ccndsmoketest 
 PROGRAMS = $(INSTALLED_PROGRAMS)
 DEBRIS = anything.ccnb contentobjecthash.ccnb contentmishash.ccnb \
          contenthash.ccnb
@@ -24,7 +24,7 @@ BROKEN_PROGRAMS =
 CSRC = ccnd_main.c ccnd.c ccnd_msg.c ccnd_stats.c ccnd_internal_client.c ccndsmoketest.c
 HSRC = ccnd_private.h
 SCRIPTSRC = testbasics fortunes.ccnb contentobjecthash.ref anything.ref \
-            ccnd-init-keystore-helper.sh minsuffix.ref
+            minsuffix.ref
  
 default: $(PROGRAMS)
 
@@ -39,10 +39,6 @@ ccnd: $(CCND_OBJ) ccnd_built.sh
 
 ccnd_built.sh:
 	touch ccnd_built.sh
-
-ccnd-init-keystore-helper: ccnd-init-keystore-helper.sh
-	sed -e 's@/bin/sh@'`which sh`'@g' ccnd-init-keystore-helper.sh > $@
-	chmod +x $@
 
 ccndsmoketest: ccndsmoketest.o
 	$(CC) $(CFLAGS) -o $@ ccndsmoketest.o $(LDLIBS)
