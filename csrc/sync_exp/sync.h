@@ -34,7 +34,7 @@ struct ccns_handle;
 
 /**
  * ccns_name_closure is a closure used to notify the client
- * as each new name is added to the collection by calling the note_name
+ * as each new name is added to the collection by calling the callback
  * procedure.  The data field refers to client data.
  * The ccns field is filled in by ccns_open.  The count field is for client use.
  * The storage for the closure belongs to the client at all times.
@@ -48,7 +48,7 @@ typedef int (*ccns_callback)(struct ccns_name_closure *nc,
                              struct ccn_charbuf *pname);
 
 struct ccns_name_closure {
-    ccns_callback note_name;
+    ccns_callback callback;
     struct ccns_handle *ccns;
     void *data;
     uint64_t count;

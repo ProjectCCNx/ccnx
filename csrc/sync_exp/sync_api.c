@@ -1109,7 +1109,7 @@ my_add(struct sync_diff_add_closure *ac, struct ccn_charbuf *name) {
                                          ? ch->last_ce->hash : NULL);
             struct ccn_charbuf *rhash = ((ch->next_ce != NULL)
                                          ? ch->next_ce->hash : NULL);
-            int res = ch->nc->note_name(ch->nc, lhash, rhash, name);
+            int res = ch->nc->callback(ch->nc, lhash, rhash, name);
             if (res < 0) {
                 // stop the comparison here
                 // TBD: anything else to do?
@@ -1160,7 +1160,7 @@ ccns_open(struct ccn *h,
     struct SyncRootStruct *root = NULL;
     struct sync_depends_data *sd = NULL;
 
-    if (nc == NULL || nc->note_name == NULL) return NULL;
+    if (nc == NULL || nc->callback == NULL) return NULL;
     
     sd = calloc(1, sizeof(*sd));
     sd->client_methods = &client_methods;

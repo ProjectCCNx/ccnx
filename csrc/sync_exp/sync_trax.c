@@ -89,7 +89,7 @@ doTest(struct parms *p) {
     ccns_slice_set_topo_prefix(slice, p->topo, p->prefix);
     
     struct ccns_name_closure *nc = calloc(1, sizeof(*nc));
-    nc->note_name = my_note_name;
+    nc->callback = my_note_name;
     struct ccns_handle *ch = ccns_open(p->ccn, slice, nc, NULL, NULL);
     
     for (;;) {
