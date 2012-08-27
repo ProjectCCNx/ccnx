@@ -1512,7 +1512,7 @@ updateAction(struct ccn_schedule *sched,
 //// External operations
 /////////////////////////////////
 
-extern int
+int
 sync_diff_start(struct sync_diff_data *sdd) {
     struct SyncRootStruct *root = sdd->root;
     int64_t mark = SyncCurrentTime();
@@ -1546,7 +1546,7 @@ sync_diff_start(struct sync_diff_data *sdd) {
 // the client uses sync_diff_note_node to note the completion of a node fetch
 // the success of the fetch is inferred from the presence of a node object
 // in the cache entry (either ce->ncL or ce->ncR will do)
-extern int
+int
 sync_diff_note_node(struct sync_diff_data *sdd,
                     struct SyncHashCacheEntry *ce) {
     int res = 0;
@@ -1604,7 +1604,7 @@ sync_diff_note_node(struct sync_diff_data *sdd,
     return res;
 }
 
-extern int
+int
 sync_diff_stop(struct sync_diff_data *sdd) {
     struct SyncRootStruct *root = sdd->root;
     if (sdd == NULL
@@ -1620,7 +1620,7 @@ sync_diff_stop(struct sync_diff_data *sdd) {
     return 1; 
 }
 
-extern int
+int
 start_sync_update(struct sync_update_data *ud, struct SyncNameAccum *acc) {
     char *here = "Sync.start_sync_update";
     int64_t now = SyncCurrentTime();
@@ -1661,7 +1661,7 @@ start_sync_update(struct sync_update_data *ud, struct SyncNameAccum *acc) {
     }
 }
 
-extern int
+int
 stop_sync_update(struct sync_update_data *ud) {
     char *here = "Sync.stop_sync_update";
     struct SyncRootStruct *root = ud->root;
