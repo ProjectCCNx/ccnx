@@ -90,7 +90,7 @@ struct ccns_handle {
 /*
  * Utility routines to allocate/deallocate ccns_slice structures
  */
-extern struct ccns_slice *
+struct ccns_slice *
 ccns_slice_create() {
     struct ccns_slice *s = calloc(1, sizeof(*s));
     if (s == NULL)
@@ -109,7 +109,7 @@ ccns_slice_create() {
     }
     return(s);
 }
-extern void
+void
 ccns_slice_destroy(struct ccns_slice **sp) {
     struct ccns_slice *s = *sp;
     if (s != NULL) {
@@ -130,7 +130,7 @@ ccns_slice_destroy(struct ccns_slice **sp) {
 /*
  * Utility routine to add a clause to a ccns_slice structure
  */
-extern int
+int
 ccns_slice_add_clause(struct ccns_slice *s, struct ccn_charbuf *c) {
     struct ccn_charbuf **clauses = NULL;
     struct ccn_charbuf *clause;
@@ -160,7 +160,7 @@ Cleanup:
  * Utility routine to set the topo and prefix fields to copies of the
  * passed in charbufs
  */
-extern int
+int
 ccns_slice_set_topo_prefix(struct ccns_slice *s,
                            struct ccn_charbuf *t,
                            struct ccn_charbuf *p) {
@@ -269,7 +269,7 @@ slice_parse(struct ccns_slice *s, const unsigned char *p, size_t size) {
  * @returns a ccn_charbuf with the ccnb encoded Name of the slice.
  */
 
-extern int
+int
 ccns_slice_name(struct ccn_charbuf *nm, struct ccns_slice *s)
 {
     struct ccn_charbuf *c;
@@ -313,7 +313,7 @@ Cleanup:
  *  on successful return.
  * @returns 0 on success, -1 otherwise.
  */
-extern int
+int
 ccns_read_slice(struct ccn *h, struct ccn_charbuf *name,
                 struct ccns_slice *slice) {
     struct ccn_parsed_ContentObject pco_space = { 0 };
@@ -1149,7 +1149,7 @@ struct sync_depends_client_methods client_methods = {
     my_r_sync_msg, NULL, NULL, NULL, NULL, NULL
 };
 
-extern struct ccns_handle *
+struct ccns_handle *
 ccns_open(struct ccn *h,
           struct ccns_slice *slice,
           struct ccns_name_closure *nc,
@@ -1253,7 +1253,7 @@ ccns_open(struct ccn *h,
     return ch;
 }
 
-extern void
+void
 ccns_close(struct ccns_handle **sh,
            struct ccn_charbuf *rhash,
            struct ccn_charbuf *pname) {
