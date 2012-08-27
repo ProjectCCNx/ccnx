@@ -160,7 +160,6 @@ SyncRegisterInterests(struct SyncRootStruct *root);
 ///// General internal routines
 ///////////////////////////////////////////////////////////////////////////
 
-
 static int
 showCacheEntry(struct SyncRootStruct *root, char *dst, int lim,
                char *prefix, struct SyncHashCacheEntry *ce) {
@@ -3113,15 +3112,13 @@ MakeNodeFromNames(struct SyncUpdateData *ud, int split) {
             free(hex);
         }
         struct SyncNodeComposite *nc = SyncAllocComposite(root->base);
-        for (i = 0; i < split; i++) {
-            struct ccn_charbuf *name = na->ents[i].name;
-            SyncNodeAddName(nc, name);
-            ccn_charbuf_destroy(&name);
-            na->ents[i].name = NULL;
-        }
+        for (i = 0; i < split; i++)
+            SyncNodeAddName(nc, na->ents[i].name);
         SyncEndComposite(nc);
         newNodeCommon(root, ud->nodes, nc);
     }
+    for (i = 0; i < split; i++)
+        ccn_charbuf_destroy(&na->ents[i].name);
     // shift remaining elements down in the name accum
     ud->nameLenAccum = 0;
     i = 0;
