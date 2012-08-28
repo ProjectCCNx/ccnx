@@ -67,7 +67,7 @@ struct ccns_slice {
 #define CCNS_FLAGS_SC 1      // start at current root hash.
 
 struct ccns_handle {
-    struct sync_depends_data *sd;
+    struct sync_depends_data *depends_data;
     struct SyncBaseStruct *base;
     struct SyncRootStruct *root;
     struct ccn_scheduled_event *ev;
@@ -1163,18 +1163,15 @@ ccns_open(struct ccn *h,
     sd->ccn = h;
     sd->sched = ccn_get_schedule(h);
     if (sd->sched == NULL) {
-        // TBD: I'm not happy about this, the handle should export a scheduler
-        struct ccn_schedule *schedule = ccn_get_schedule(h);
-        if (schedule == NULL) {
-            struct ccn_gettime *timer = calloc(1, sizeof(*timer));
-            timer->descr[0]='S';
-            timer->micros_per_base = 1000000;
-            timer->gettime = &gettime;
-            timer->data = h;
-            schedule = ccn_schedule_create(h, timer);
-            ccn_set_schedule(h, schedule);
-            sd->sched = schedule;
-        }
+        struct ccn_schedule *schedule;
+        struct ccn_gettime *timer = calloc(1, sizeof(*timer));
+        timer->descr[0]='S';
+        timer->micros_per_base = 1000000;
+        timer->gettime = &gettime;
+        timer->data = h;
+        schedule = ccn_schedule_create(h, timer);
+        ccn_set_schedule(h, schedule);
+        sd->sched = schedule;
     }
     ch->sd = sd;
     ch->nc = nc;
