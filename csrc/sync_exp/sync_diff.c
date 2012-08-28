@@ -1621,8 +1621,8 @@ sync_diff_stop(struct sync_diff_data *sdd) {
 }
 
 int
-start_sync_update(struct sync_update_data *ud, struct SyncNameAccum *acc) {
-    char *here = "Sync.start_sync_update";
+sync_update_start(struct sync_update_data *ud, struct SyncNameAccum *acc) {
+    char *here = "Sync.sync_update_start";
     int64_t now = SyncCurrentTime();
     struct SyncRootStruct *root = ud->root;
     struct SyncBaseStruct *base = root->base;
@@ -1662,8 +1662,8 @@ start_sync_update(struct sync_update_data *ud, struct SyncNameAccum *acc) {
 }
 
 int
-stop_sync_update(struct sync_update_data *ud) {
-    char *here = "Sync.stop_sync_update";
+sync_update_stop(struct sync_update_data *ud) {
+    char *here = "Sync.sync_update_stop";
     struct SyncRootStruct *root = ud->root;
     int debug = root->base->debug;
     switch (ud->state) {

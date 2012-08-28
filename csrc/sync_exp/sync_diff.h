@@ -202,20 +202,20 @@ int
 sync_diff_stop(struct sync_diff_data *sdd);
 
 /**
- * start_sync_update is called to start an update of ud->ceStart,
+ * sync_update_start is called to start an update of ud->ceStart,
  * based on the names added via acc, to result in a tree with root hash
  * stored in ud->ceStop.
  * @returns < 0 for failure, 0 if update already running, > 0 for success.
  */
 int
-start_sync_update(struct sync_update_data *ud, struct SyncNameAccum *acc);
+sync_update_start(struct sync_update_data *ud, struct SyncNameAccum *acc);
 
 /**
- * stop_sync_update can be called to stop the update operation.
+ * sync_update_stop can be called to stop the update operation.
  * Internal resources are released.
  * @returns < 0 for failure, 0 if no update running, > 0 for success.
  */
 int
-stop_sync_update(struct sync_update_data *ud);
+sync_update_stop(struct sync_update_data *ud);
 
 #endif

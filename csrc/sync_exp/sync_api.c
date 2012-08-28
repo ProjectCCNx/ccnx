@@ -718,7 +718,7 @@ each_round(struct ccn_schedule *sched,
             case sync_update_state_error:
             case sync_update_state_done: {
                 if (ch->namesToAdd != NULL && ch->namesToAdd->len > 0) {
-                    start_sync_update(ch->update_data, ch->namesToAdd);
+                    sync_update_start(ch->update_data, ch->namesToAdd);
                 } else {
                     // update not very useful
                     ch->needUpdate = 0;
@@ -1295,7 +1295,7 @@ ccns_close(struct ccns_handle **sh,
                 ch->update_data = NULL;
                 free(ud->done_closure);
                 ud->done_closure = NULL;
-                stop_sync_update(ud);
+                sync_update_stop(ud);
             }
             // stop any fetching
             while (ch->fetch_data != NULL) {
