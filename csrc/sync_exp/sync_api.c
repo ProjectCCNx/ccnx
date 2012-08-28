@@ -1141,7 +1141,7 @@ note_update_done(struct sync_done_closure *dc) {
 
 // the only client routine we might need is the logger
 // there is no Repo in this application
-struct sync_depends_client_methods client_methods = {
+static struct sync_depends_client_methods client_methods = {
     my_r_sync_msg, NULL, NULL, NULL, NULL, NULL
 };
 
