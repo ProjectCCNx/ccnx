@@ -768,9 +768,9 @@ start_round(struct ccns_handle *ch, int micros) {
     struct ccn_scheduled_event *ev = ch->ev;
     if (ev != NULL && ev->action != NULL && ev->evdata == ch)
         // get rid of the existing event
-        ccn_schedule_cancel(ch->sd->sched, ev);
+        ccn_schedule_cancel(ch->depends_data->sched, ev);
     // start a new event
-    ch->ev = ccn_schedule_event(ch->sd->sched,
+    ch->ev = ccn_schedule_event(ch->depends_data->sched,
                                 micros,
                                 each_round,
                                 ch,
@@ -1173,7 +1173,7 @@ ccns_open(struct ccn *h,
         ccn_set_schedule(h, schedule);
         sd->sched = schedule;
     }
-    ch->sd = sd;
+    ch->depends_data = sd;
     ch->nc = nc;
     nc->ccns = ch;
     ch->ccn = h;
@@ -1208,10 +1208,10 @@ ccns_open(struct ccn *h,
     
     base = SyncNewBase(sd);
     ch->base = base;
-    struct sync_depends_sync_methods *sync_methods = ch->sd->sync_methods;
+    struct sync_depends_sync_methods *sync_methods = ch->depends_data->sync_methods;
     if (sync_methods!= NULL && sync_methods->sync_start != NULL) {
         // read the initial options, start life for the base
-        sync_methods->sync_start(ch->sd, NULL); 
+        sync_methods->sync_start(ch->depends_data, NULL); 
     }
     
     // make the debug levels agree
@@ -1263,7 +1263,7 @@ ccns_close(struct ccns_handle **sh,
             if (registered != NULL) {
                 // break the link, remove this particular registration
                 registered->data = NULL;
-                ccn_set_interest_filter_with_flags(ch->sd->ccn,
+                ccn_set_interest_filter_with_flags(ch->depends_data->ccn,
                                                    root->topoPrefix,
                                                    registered,
                                                    0);
@@ -1273,7 +1273,7 @@ ccns_close(struct ccns_handle **sh,
             if (ev != NULL) {
                 ch->ev = NULL;
                 ev->evdata = NULL;
-                ccn_schedule_cancel(ch->sd->sched, ev);
+                ccn_schedule_cancel(ch->depends_data->sched, ev);
             }
             // stop any differencing
             struct sync_diff_data *sdd = ch->diff_data;
@@ -1312,10 +1312,10 @@ ccns_close(struct ccns_handle **sh,
 
             // get rid of the base
             if (ch->base != NULL) {
-                struct sync_depends_sync_methods *sm = ch->sd->sync_methods;
+                struct sync_depends_sync_methods *sm = ch->depends_data->sync_methods;
                 ch->base = NULL;
                 if (sm != NULL && sm->sync_stop != NULL) {
-                    sm->sync_stop(ch->sd, NULL); 
+                    sm->sync_stop(ch->depends_data, NULL); 
                 }
             }
 
