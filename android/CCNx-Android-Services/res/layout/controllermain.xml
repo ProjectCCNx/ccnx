@@ -127,5 +127,23 @@
 		android:layout_width="fill_parent"
 		android:entries="@array/env_ccnr_debug">
 	</Spinner>
+	<TextView
+		android:id="@+id/label_ccns_debug"
+		android:textColor="#C81122"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="@string/label_ccns_debug"
+		android:layout_gravity="left"
+		android:layout_marginTop="1px"
+		android:layout_marginBottom="1px"
+		android:textSize="7pt">
+	</TextView>
+	<Spinner
+		android:id="@+id/key_ccns_debug"
+		android:layout_height="wrap_content"
+		android:prompt="@string/hint_ccns_debug"
+		android:layout_width="fill_parent"
+		android:entries="@array/env_ccns_debug">
+	</Spinner>
 	</LinearLayout>
 </ScrollView>

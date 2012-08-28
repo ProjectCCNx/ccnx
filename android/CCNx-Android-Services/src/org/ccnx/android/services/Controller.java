@@ -22,6 +22,7 @@ import org.ccnx.android.ccnlib.CCNxServiceCallback;
 import org.ccnx.android.ccnlib.CCNxServiceStatus.SERVICE_STATUS;
 import org.ccnx.android.ccnlib.CcndWrapper.CCND_OPTIONS;
 import org.ccnx.android.ccnlib.RepoWrapper.CCNR_OPTIONS;
+import org.ccnx.android.ccnlib.RepoWrapper.CCNS_OPTIONS;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
@@ -261,13 +262,23 @@ public final class Controller extends Activity implements OnClickListener {
 			}
 			
 			final Spinner ccnrDebugSpinner = (Spinner) findViewById(R.id.key_ccnr_debug);  
-			val = ccnrDebugSpinner.getSelectedItem().toString();  
+			val = ccnrDebugSpinner.getSelectedItem().toString();
 			if (isValid(val)) {
 				control.setCcnrOption(CCNR_OPTIONS.CCNR_DEBUG, val);
 			} else {
 				// Toast it, and return (so the user fixes the bum field)
 				// XXX I Don't think this will ever happen
 				Toast.makeText(this, "CCNR_DEBUG field is not valid.  Please set and then start.", 10).show();
+				return;
+			}
+			final Spinner ccnsDebugSpinner = (Spinner) findViewById(R.id.key_ccns_debug);  
+			val = ccnsDebugSpinner.getSelectedItem().toString();
+			if (isValid(val)) {
+				control.setSyncOption(CCNS_OPTIONS.CCNS_DEBUG, val);
+			} else {
+				// Toast it, and return (so the user fixes the bum field)
+				// XXX I Don't think this will ever happen
+				Toast.makeText(this, "CCNS_DEBUG field is not valid.  Please set and then start.", 10).show();
 				return;
 			}
 			control.startAllInBackground();
