@@ -68,7 +68,7 @@ public abstract class GenericXMLEncodable implements XMLEncodable {
 	}
  	
 	public void decode(byte [] content) throws ContentDecodingException {
-		decode(content, null);
+		decode(content, (String)null);
 	}
 
 	public void decode(byte [] content, String codec) throws ContentDecodingException {
