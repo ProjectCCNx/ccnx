@@ -18,11 +18,13 @@
 package org.ccnx.ccn.impl.sync;
 
 import java.util.Arrays;
+import java.util.logging.Level;
 
 import org.ccnx.ccn.impl.encoding.XMLDecoder;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ContentDecodingException;
 import org.ccnx.ccn.io.content.SyncNodeComposite;
+import org.ccnx.ccn.profiles.SegmentationProfile;
 import org.ccnx.ccn.protocol.Component;
 
 /**
@@ -31,8 +33,7 @@ import org.ccnx.ccn.protocol.Component;
 public class SyncTreeEntry {
 	// Flags values
 	protected final static long PENDING = 1;
-	protected final static long CURRENT = 2;
-	protected final static long COVERED = 4;
+	protected final static long COVERED = 2;
 
 	protected long _flags;
 	protected byte[] _hash;
@@ -67,7 +68,14 @@ public class SyncTreeEntry {
 				return null;
 			}
 			_rawContent = null;
-Log.info("decode node for {0} depth = {1} refs = {2}, position = {3}", Component.printURI(_nodeX._longhash), _nodeX._treeDepth, _nodeX.getRefs().size(), _position);
+			if (Log.isLoggable(Log.FAC_SYNC, Level.FINEST)) {
+				Log.finest(Log.FAC_SYNC, "decode node for {0} depth = {1} refs = {2}, position = {3}", Component.printURI(_nodeX._longhash), 
+						_nodeX._treeDepth, _nodeX.getRefs().size(), _position);
+				Log.finest(Log.FAC_SYNC, "min is {0}, max is {1}, expanded min is {2}, expanded max is {3}", 
+						SegmentationProfile.getSegmentNumber(_nodeX._minName.getName().parent()), 
+						SegmentationProfile.getSegmentNumber(_nodeX._maxName.getName().parent()),
+						_nodeX._minName.getName(), _nodeX._maxName.getName());
+			}
 		}
 		return _nodeX;
 	}
@@ -107,15 +115,7 @@ Log.info("decode node for {0} depth = {1} refs = {2}, position = {3}", Component
 	public boolean getPending() {
 		return (_flags & PENDING) != 0;
 	}
-	
-	public boolean getCurrent() {
-		return (_flags & CURRENT) != 0;
-	}
-	
-	public void setCurrent(boolean flag) {
-		setFlag(flag, CURRENT);
-	}
-	
+		
 	public boolean isCovered() {
 		return (_flags & COVERED) != 0;
 	}

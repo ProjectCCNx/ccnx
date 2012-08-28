@@ -37,6 +37,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 	int BUF_SIZE = 1024;
 	int maxBytes = 10 * BUF_SIZE;
 	Vector<ContentName> callbackNames = new Vector<ContentName>();
+	String errorMessage = null;
 	
 	@Before
 	public void setUpNameSpace() {
@@ -117,7 +118,6 @@ public class CCNSyncTest implements CCNSyncHandler{
 			
 			//now close the callback interface
 			sync1.stopSync(this, slice3);
-
 			
 			//then close and make sure we don't get a callback
 			prefix1 = prefix1.append("round2");
@@ -207,7 +207,7 @@ public class CCNSyncTest implements CCNSyncHandler{
 			
 			//now close the callback interface
 			sync1.stopSync(this, slice6);
-
+			callbackNames.clear();
 			
 			//then close and make sure we don't get a callback
 			ContentName prefix1a = prefix1.append("round2");
@@ -262,7 +262,6 @@ public class CCNSyncTest implements CCNSyncHandler{
 		Log.info(Log.FAC_TEST,"Finished running testSyncRestart");
 	}
 	
-	
 	public void handleContentName(ConfigSlice syncSlice, ContentName syncedContent) {
 		if ( MetadataProfile.isHeader(syncedContent)) {
 			Log.info(Log.FAC_TEST, "Callback for name: {0} - number is header", syncedContent);
@@ -270,10 +269,10 @@ public class CCNSyncTest implements CCNSyncHandler{
 			Log.info(Log.FAC_TEST, "Callback for name: {0} - number is {1}", syncedContent, SegmentationProfile.getSegmentNumber(syncedContent));
 		}
 		synchronized (callbackNames) {
-for (ContentName name : callbackNames) {
-	if (syncedContent.equals(name))
-		System.out.println("foo");
-}
+			for (ContentName name : callbackNames) {
+				if (name.equals(syncedContent))
+					errorMessage = "Saw duplicate name: " + syncedContent;
+			}
 			callbackNames.add(syncedContent);
 		}
 	}
@@ -324,6 +323,8 @@ for (ContentName name : callbackNames) {
 		Arrays.fill(finished, true);
 		int loopsToTry = (segments * 2) + 20;
 		while (segments != 0 && loopsToTry > 0) {
+			if (null != errorMessage)
+				Assert.fail(errorMessage);
 			try {
 				Thread.sleep(500);
 			} catch (InterruptedException e) {

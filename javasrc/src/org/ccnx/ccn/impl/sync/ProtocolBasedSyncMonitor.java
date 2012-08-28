@@ -34,17 +34,26 @@ import org.ccnx.ccn.protocol.ContentName;
 import org.ccnx.ccn.protocol.ContentObject;
 import org.ccnx.ccn.protocol.Interest;
 
+/**
+ * Snoops on the sync protocol to report new files seen by sync on a slice to a registered handler
+ */
 public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentHandler, CCNInterestHandler {
 	protected CCNHandle _handle;
 	protected HashMap<SyncHashEntry, ArrayList<SliceComparator>> _comparators = new HashMap<SyncHashEntry, ArrayList<SliceComparator>>();
 	
-	// received hashes can be kept in common
+	// This contains all received hashes. These can be shared via different slice comparators (of course they
+	// would have to be on the same slice to have the same hashes).
 	protected HashMap<SyncHashEntry, SyncTreeEntry> _hashes = new HashMap<SyncHashEntry, SyncTreeEntry>();
 	
 	public ProtocolBasedSyncMonitor(CCNHandle handle) {
 		_handle = handle;
 	}
 
+	/**
+	 * Register callback and output a root advise interest to start the process of looking at sync
+	 * hashes to find new files. We also start looking at interests for root advises on this slice
+	 * which are used to notice new hashes coming through which may contain unseen files.
+	 */
 	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice) throws IOException {
 		synchronized (callbacks) {
 			registerCallbackInternal(syncHandler, slice);
@@ -87,6 +96,11 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		}
 	}
 	
+	/**
+	 * Add a new hash to the list of ones we've seen
+	 * @param hash
+	 * @return new SyncTreeEntry for the hash
+	 */
 	public SyncTreeEntry addHash(byte[] hash) {
 		synchronized (this) {
 			SyncTreeEntry entry = _hashes.get(new SyncHashEntry(hash));
@@ -98,6 +112,11 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		}
 	}
 	
+	/**
+	 * Get a SyncTreeEntry for a hash if there is one
+	 * @param hash
+	 * @return
+	 */
 	public SyncTreeEntry getHash(byte[] hash) {
 		if (null == hash)
 			return null;
@@ -106,6 +125,10 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		}
 	}
 
+	/**
+	 * Start sync hash compare process after receiving content back from the
+	 * original root advise interest.
+	 */
 	public Interest handleContent(ContentObject data, Interest interest) {
 		ContentName name = data.name();
 		int hashComponent = name.containsWhere(Sync.SYNC_ROOT_ADVISE_MARKER);
@@ -114,7 +137,8 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 				Log.info(Log.FAC_SYNC, "Received incorrect content in sync: {0}", name);
 			return null;
 		}
-		Log.info(Log.FAC_SYNC, "Saw new content from sync: {0}", name);
+		if (Log.isLoggable(Log.FAC_SYNC, Level.INFO))
+			Log.info(Log.FAC_SYNC, "Saw new content from sync: {0}", name);
 		ArrayList<SliceComparator> al = null;
 		synchronized (this) {
 			al = _comparators.get(new SyncHashEntry(name.component(hashComponent + 1)));
@@ -131,8 +155,12 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 		return null;
 	}
 	
+	/**
+	 * We have seen a new hash. Feed it into the compare process to discover possible new
+	 * unseen files.
+	 */
 	public boolean handleInterest(Interest interest) {
-Log.info("Saw an interest for {0}", interest.name());
+		Log.info("Saw an interest for {0}", interest.name());
 		ContentName name = interest.name();
 		int hashComponent = name.containsWhere(Sync.SYNC_ROOT_ADVISE_MARKER);
 		if (hashComponent < 0 || name.count() < hashComponent + 3) {
