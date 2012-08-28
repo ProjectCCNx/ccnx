@@ -1,5 +1,5 @@
 /**
- * @file csrc/ccn_sync.c
+ * @file csrc/sync_diff.c
  *
  * Part of CCNx Sync.
  *
@@ -65,8 +65,8 @@ isCovered(struct SyncHashCacheEntry *ce) {
 static struct sync_diff_fetch_data *
 allocNodeFetch(struct sync_diff_data *sdd, struct SyncHashCacheEntry *ce) {
     struct sync_diff_fetch_data *fd = calloc(1, sizeof(*fd));
-    fd->sdd = sdd;
-    fd->ce = ce;
+    fd->diff_data = sdd;
+    fd->hash_cache_entry = ce;
     return fd;
 }
 
@@ -83,7 +83,7 @@ addNodeFetch(struct sync_diff_data *sdd,
     // check for the entry already being present
     while (fd != NULL) {
         struct sync_diff_fetch_data *next = fd->next;
-        if (ce == fd->ce) return NULL;
+        if (ce == fd->hash_cache_entry) return NULL;
         lag = fd;
         fd = next;
     }
@@ -108,7 +108,7 @@ remNodeFetch(struct sync_diff_data *sdd, struct SyncHashCacheEntry *ce) {
         struct sync_diff_fetch_data *lag = NULL;
         while (fd != NULL) {
             struct sync_diff_fetch_data *next = fd->next;
-            if (fd->ce == ce) {
+            if (fd->hash_cache_entry == ce) {
                 if (lag == NULL) sdd->fetchQ = next;
                 else lag->next = next;
                 fd->next = NULL;
@@ -228,9 +228,9 @@ abortCompare(struct sync_diff_data *sdd, char *why) {
     }
     sdd->ev = NULL;
     sdd->state = sync_diff_state_error;
-    if (sdd->add != NULL && sdd->add->add != NULL)
+    if (sdd->add_closure != NULL && sdd->add_closure->add != NULL)
         // give the client a last shot at the data
-        sdd->add->add(sdd->add, NULL);
+        sdd->add_closure->add(sdd->add_closure, NULL);
     return -1;
 }
 
@@ -381,7 +381,7 @@ start_node_fetch(struct sync_diff_data *sdd,
                  struct SyncHashCacheEntry *ce,
                  enum sync_diff_side side) {
     struct SyncRootStruct *root = sdd->root;
-    struct sync_diff_get_closure *get = sdd->get;
+    struct sync_diff_get_closure *get = sdd->get_closure;
     if (ce == NULL)
         // not supposed to happen, bad call
         return -1;
@@ -529,7 +529,7 @@ doPreload(struct sync_diff_data *sdd,
         if (fd == NULL) break;
         sdd->fetchQ = fd->next;
         fd->next = NULL;
-        struct SyncHashCacheEntry *ce = fd->ce;
+        struct SyncHashCacheEntry *ce = fd->hash_cache_entry;
         start_node_fetch(sdd, ce, side);
         freeFetchData(fd);
     }
@@ -548,8 +548,8 @@ addNameFromCompare(struct sync_diff_data *sdd) {
     struct ccn_charbuf *name = sdd->cbY;
     // callback for new name
     struct SyncTreeWorkerEntry *tweR = SyncTreeWorkerTop(sdd->twY);
-    if (sdd->add != NULL && sdd->add->add != NULL) {
-        int res = sdd->add->add(sdd->add, name);
+    if (sdd->add_closure != NULL && sdd->add_closure->add != NULL) {
+        int res = sdd->add_closure->add(sdd->add_closure, name);
         if (res < 0) {
             sdd->state = sync_diff_state_done;
             return res;
@@ -928,16 +928,16 @@ compareAction(struct ccn_schedule *sched,
                          (int) sdd->namesAdded);
                 SyncNoteSimple2(root, here, "done", temp);
             }
-            if (sdd->add != NULL && sdd->add->add != NULL)
+            if (sdd->add_closure != NULL && sdd->add_closure->add != NULL)
                 // give the client a last shot at the data
-                sdd->add->add(sdd->add, NULL);
+                sdd->add_closure->add(sdd->add_closure, NULL);
             delay = -1;
             break;
         }
         case sync_diff_state_error: {
-            if (sdd->add != NULL && sdd->add->add != NULL)
+            if (sdd->add_closure != NULL && sdd->add_closure->add != NULL)
                 // give the client a last shot at the data
-                sdd->add->add(sdd->add, NULL);
+                sdd->add_closure->add(sdd->add_closure, NULL);
             return abortCompare(sdd, "sync_diff_state_error");
         }
         default: {
@@ -1489,10 +1489,10 @@ updateAction(struct ccn_schedule *sched,
             ud->state = ((count < 0) ? sync_update_state_error : sync_update_state_done);
             if (debug >= CCNL_FINE)
                 showCacheEntry2(root, here, "at exit", ud->ceStart, ud->ceStop);
-            if (ud->dc != NULL) {
+            if (ud->done_closure != NULL) {
                 // notify the caller
-                ud->dc->ud = ud;
-                ud->dc->done(ud->dc);
+                ud->done_closure->update_data = ud;
+                ud->done_closure->done(ud->done_closure);
             }
             return -1;
         }

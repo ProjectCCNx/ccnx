@@ -34,20 +34,20 @@ enum sync_diff_side {
  * a name difference for sdd.  If name == NULL then there are no more names
  * to be produced, and there should be no future references to sdd.
  * The data is private to the closure, and the client owns all storage
- * in the closure, except for sdd.
+ * in the closure, except for sync_diff_data.
  */
 struct sync_diff_add_closure {
     int (* add)(struct sync_diff_add_closure *ac,
                 struct ccn_charbuf *name);
-    struct sync_diff_data *sdd;
+    struct sync_diff_data *diff_data;
     void *data;
 };
 
 struct sync_diff_fetch_data {
     struct sync_diff_fetch_data *next;
     struct ccn_closure *action;
-    struct sync_diff_data *sdd;
-    struct SyncHashCacheEntry *ce;
+    struct sync_diff_data *diff_data;
+    struct SyncHashCacheEntry *hash_cache_entry;
     enum sync_diff_side side;
     int64_t startTime;
 };
@@ -60,9 +60,9 @@ struct sync_diff_fetch_data {
  * The data is private to the closure.
  */
 struct sync_diff_get_closure {
-    int (* get)(struct sync_diff_get_closure *fc,
+    int (* get)(struct sync_diff_get_closure *gc,
                 struct sync_diff_fetch_data *fd);
-    struct sync_diff_data *sdd;
+    struct sync_diff_data *diff_data;
     void *data;
 };
 
@@ -80,8 +80,8 @@ struct sync_diff_data {
     struct SyncRootStruct *root;
     struct ccn_charbuf *hashX;
     struct ccn_charbuf *hashY;
-    struct sync_diff_add_closure *add;
-    struct sync_diff_get_closure *get;
+    struct sync_diff_add_closure *add_closure;
+    struct sync_diff_get_closure *get_closure;
     void *client_data;
     
     /* items set as things progress, not reset by sync_diff_stop */
@@ -111,7 +111,7 @@ struct sync_diff_data {
  */
 struct sync_done_closure {
     int (* done)(struct sync_done_closure *dc);
-    struct sync_update_data *ud;
+    struct sync_update_data *update_data;
     void *data;
 };
 
@@ -127,7 +127,7 @@ struct sync_update_data {
     /* items supplied by the client, not altered by sync_diff_stop */
     struct SyncRootStruct *root;
     struct SyncHashCacheEntry *ceStart; /*< entry for start hash (may be NULL) */
-    struct sync_done_closure *dc;
+    struct sync_done_closure *done_closure;
     void *client_data;
     
     /* items set as things progress, not reset by sync_update_stop */
