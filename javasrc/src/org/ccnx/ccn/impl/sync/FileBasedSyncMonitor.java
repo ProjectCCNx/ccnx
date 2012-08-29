@@ -289,7 +289,7 @@ public class FileBasedSyncMonitor extends SyncMonitor implements Runnable{
 	}
 	
 	
-	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice) {
+	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice, byte[] startHash, ContentName startName) {
 		//start monitoring the namespace, if not already monitored...  if so, add to the callback list
 		processCallback(syncHandler, slice);
 	}

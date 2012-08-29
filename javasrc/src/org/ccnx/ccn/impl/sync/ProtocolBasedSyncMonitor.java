@@ -54,11 +54,14 @@ public class ProtocolBasedSyncMonitor extends SyncMonitor implements CCNContentH
 	 * hashes to find new files. We also start looking at interests for root advises on this slice
 	 * which are used to notice new hashes coming through which may contain unseen files.
 	 */
-	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice) throws IOException {
+	public void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice, byte[] startHash, ContentName startName) throws IOException {
 		synchronized (callbacks) {
 			registerCallbackInternal(syncHandler, slice);
 		}
-		SliceComparator sc = new SliceComparator(this, syncHandler, slice, _handle);
+		SyncTreeEntry ste = null;
+		if (null != startHash)
+			ste = addHash(startHash);
+		SliceComparator sc = new SliceComparator(this, syncHandler, slice, ste, startName, _handle);
 		synchronized (this) {
 			SyncHashEntry she = new SyncHashEntry(slice.getHash());
 			ArrayList<SliceComparator> al = _comparators.get(she);

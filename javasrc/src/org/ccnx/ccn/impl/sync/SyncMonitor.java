@@ -24,6 +24,7 @@ import java.util.HashMap;
 import org.ccnx.ccn.CCNSyncHandler;
 import org.ccnx.ccn.impl.support.Log;
 import org.ccnx.ccn.io.content.ConfigSlice;
+import org.ccnx.ccn.protocol.ContentName;
 
 public abstract class SyncMonitor {
 	
@@ -77,7 +78,7 @@ public abstract class SyncMonitor {
 	 * @param slice
 	 * @throws IOException
 	 */
-	public abstract void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice) throws IOException;
+	public abstract void registerCallback(CCNSyncHandler syncHandler, ConfigSlice slice, byte[] startHash, ContentName startName) throws IOException;
 	
 	/**
 	 * Remove the argument handler for this slice

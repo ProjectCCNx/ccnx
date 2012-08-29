@@ -32,19 +32,21 @@ public class CCNSync {
 	
 	protected SyncMonitor syncMon = null;
 	
-	public void startSync(CCNHandle handle, ConfigSlice syncSlice, CCNSyncHandler syncCallback, byte[] startHash, ContentName startName) throws IOException, ConfigurationException{
-		try {
-			syncSlice.checkAndCreate(handle);
-			if (syncMon == null)
-				syncMon = new ProtocolBasedSyncMonitor(handle);
-			syncMon.registerCallback(syncCallback, syncSlice);
-		} catch (Exception e) {
-			Log.warning(Log.FAC_REPO, "Error when starting sync for slice: {0}", syncSlice);
-			throw new IOException("Unable to create sync slice: "+e.getMessage());
-		}
-	}
-		
-	public ConfigSlice startSync(CCNHandle handle, ContentName topo, ContentName prefix, Collection<ContentName> filters, CCNSyncHandler syncCallback) throws IOException, ConfigurationException{
+	/**
+	 * 
+	 * @param handle
+	 * @param topo
+	 * @param prefix
+	 * @param filters
+	 * @param startHash
+	 * @param startName Start enumerating names after this one. NOTE - this is currently implemented in a
+	 * 				    simplistic way which may not work in cases of disjoint hashes.
+	 * @param syncCallback
+	 * @return
+	 * @throws IOException
+	 * @throws ConfigurationException
+	 */
+	public ConfigSlice startSync(CCNHandle handle, ContentName topo, ContentName prefix, Collection<ContentName> filters, byte[] startHash, ContentName startName, CCNSyncHandler syncCallback) throws IOException, ConfigurationException{
 		if (handle == null)
 			handle = CCNHandle.getHandle();
 		Collection<Filter> f = new ArrayList<Filter>();
@@ -56,7 +58,7 @@ public class CCNSync {
 			ConfigSlice slice = ConfigSlice.checkAndCreate(topo, prefix, f, handle);
 			if (syncMon == null)
 				syncMon = new ProtocolBasedSyncMonitor(handle);
-			syncMon.registerCallback(syncCallback, slice);
+			syncMon.registerCallback(syncCallback, slice, startHash, startName);
 			return slice;
 		} catch (Exception e) {
 			Log.warning(Log.FAC_REPO, "Error when starting sync for slice with prefix: {0}", prefix);
@@ -64,13 +66,12 @@ public class CCNSync {
 		}
 	}
 	
-	public ConfigSlice startSync(ContentName topo, ContentName prefix, Collection<ContentName> filters, CCNSyncHandler syncCallback) throws IOException, ConfigurationException{
-		return startSync(null, topo, prefix, filters, syncCallback);
+	public ConfigSlice startSync(CCNHandle handle, ContentName topo, ContentName prefix, CCNSyncHandler syncCallback) throws IOException, ConfigurationException{
+		return startSync(handle, topo, prefix, null, null, null, syncCallback);
 	}
 	
 	public void stopSync(CCNSyncHandler syncHandler, ConfigSlice syncSlice) throws IOException{
 		//will unregister the callback here
 		syncMon.removeCallback(syncHandler, syncSlice);
 	}
-
 }

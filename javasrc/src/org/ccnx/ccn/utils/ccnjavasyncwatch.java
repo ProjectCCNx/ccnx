@@ -80,7 +80,7 @@ public class ccnjavasyncwatch implements Usage, CCNSyncHandler{
 		
 		CCNSync mySync = new CCNSync();
 		try {
-			slice = mySync.startSync(topo, prefix, filters, this);
+			slice = mySync.startSync(null, topo, prefix, filters, null, null, this);
 			System.out.println("created slice!");
 		} catch (IOException e) {
 			Log.warning("failed to start sync for prefix {0}: {1}", prefix, e.getMessage());

@@ -87,12 +87,19 @@ public class SliceComparator implements Runnable {
 	protected ArrayList<SyncTreeEntry> _pendingEntries = new ArrayList<SyncTreeEntry>();
 	protected Queue<byte[]> _pendingContent = new ConcurrentLinkedQueue<byte[]>();
 	protected SyncTreeEntry _currentRoot = null;
+	protected ContentName _startName = null;
+	protected boolean _doCallbacks = true;
 	
-	public SliceComparator(ProtocolBasedSyncMonitor pbsm, CCNSyncHandler callback, ConfigSlice slice, CCNHandle handle) {
+	public SliceComparator(ProtocolBasedSyncMonitor pbsm, CCNSyncHandler callback, ConfigSlice slice, 
+				SyncTreeEntry startHash, ContentName startName, CCNHandle handle) {
 		_pbsm = pbsm;
 		_slice = slice;
 		_callback = callback;
 		_handle = handle;
+		_currentRoot = startHash;
+		_startName = startName;
+		if (null != startName)
+			_doCallbacks = false;
 		_decoder = new BinaryXMLDecoder();
 		_decoder.setInitialBufferSize(DECODER_SIZE);
 	}
@@ -521,6 +528,11 @@ public class SliceComparator implements Runnable {
 	 */
 	private void doCallback(SyncNodeComposite.SyncNodeElement sne) {
 		ContentName name = sne.getName().parent();	// remove digest here
+		if (!_doCallbacks) {
+			if (!name.equals(_startName))
+				return;
+			_doCallbacks = true;
+		}
 		_callback.handleContentName(_slice, name);
 	}
 	
