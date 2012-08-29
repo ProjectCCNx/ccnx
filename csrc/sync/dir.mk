@@ -18,8 +18,7 @@ LDLIBS = -L$(CCNLIBDIR) $(MORE_LDLIBS) -lccn -L. -lsync
 INSTALLED_PROGRAMS = 
 
 PROGRAMS = $(INSTALLED_PROGRAMS) \
-    SyncTest  \
-    ccnsyncwatch
+    SyncTest
 
 BROKEN_PROGRAMS =
 DEBRIS =
@@ -36,8 +35,7 @@ CSRC = \
  SyncUtil.c \
  UpdateSketch.c \
  sync_api.c \
- sync_diff.c \
- ccnsyncwatch.c 
+ sync_diff.c
 
 HSRC = IndexSorter.h SyncActions.h SyncBase.h SyncHashCache.h SyncMacros.h SyncNode.h SyncPrivate.h SyncRoot.h SyncTreeWorker.h SyncUtil.h sync_depends.h sync_diff.h
 
@@ -59,10 +57,6 @@ libsync.a:	$(OBJ_GROUP2)
 SyncTest_OBJ = SyncTest.o
 SyncTest: $(SyncTest_OBJ) lib
 	$(CC) $(CFLAGS) -o $@ $(SyncTest_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
-
-ccnsyncwatch_OBJ = ccnsyncwatch.o sync_diff.o sync_api.o
-ccnsyncwatch: $(ccnsyncwatch_OBJ) libsync.a
-	$(CC) $(CFLAGS) -o $@ $(ccnsyncwatch_OBJ) $(LDLIBS) $(OPENSSL_LIBS) -lcrypto
 
 clean:
 	rm -f *.o *.a $(PROGRAMS) $(BROKEN_PROGRAMS) depend
@@ -121,16 +115,13 @@ UpdateSketch.o: UpdateSketch.c
 sync_api.o: sync_api.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/digest.h ../include/ccn/loglevels.h \
-  ../include/ccn/schedule.h ../include/ccn/uri.h \
-  ../include/ccn/ccn_private.h ../include/ccn/sync.h sync_diff.h SyncHashCache.h \
-  SyncRoot.h SyncTreeWorker.h SyncUtil.h IndexSorter.h SyncNode.h \
-  SyncMacros.h SyncPrivate.h SyncBase.h sync_depends.h
+  ../include/ccn/schedule.h ../include/ccn/sync.h ../include/ccn/uri.h \
+  ../include/ccn/ccn_private.h sync_diff.h SyncHashCache.h SyncRoot.h \
+  SyncTreeWorker.h SyncUtil.h IndexSorter.h SyncNode.h SyncMacros.h \
+  SyncPrivate.h SyncBase.h sync_depends.h
 sync_diff.o: sync_diff.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/digest.h ../include/ccn/schedule.h ../include/ccn/sync.h \
   ../include/ccn/uri.h IndexSorter.h SyncNode.h SyncMacros.h \
   SyncPrivate.h SyncBase.h ../include/ccn/loglevels.h sync_depends.h \
   SyncRoot.h SyncUtil.h SyncTreeWorker.h SyncHashCache.h sync_diff.h
-ccnsyncwatch.o: ccnsyncwatch.c ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/uri.h
