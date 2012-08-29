@@ -24,8 +24,8 @@ default all: $(PROGRAMS)
 
 $(PROGRAMS): $(CCNLIBDIR)/libccn.a
 
-ccndc: ccndc.o
-	$(CC) $(CFLAGS) -o $@ ccndc.o $(LDLIBS) $(OPENSSL_LIBS) $(RESOLV_LIBS) -lcrypto
+ccndc: ccndc-log.o ccndc-ccnb.o ccndc-main.o
+	$(CC) $(CFLAGS) -o $@ ccndc-log.o ccndc-ccnb.o ccndc-main.o $(LDLIBS) $(OPENSSL_LIBS) $(RESOLV_LIBS) -lcrypto
 
 udplink: udplink.o
 	$(CC) $(CFLAGS) -o $@ udplink.o $(LDLIBS)  $(OPENSSL_LIBS) -lcrypto
@@ -41,11 +41,8 @@ test:
 # Dependencies below here are checked by depend target
 # but must be updated manually.
 ###############################
-ccndc.o: ccndc.c ../include/ccn/bloom.h ../include/ccn/ccn.h \
-  ../include/ccn/coding.h ../include/ccn/charbuf.h \
-  ../include/ccn/indexbuf.h ../include/ccn/ccnd.h ../include/ccn/uri.h \
-  ../include/ccn/face_mgmt.h ../include/ccn/sockcreate.h \
-  ../include/ccn/reg_mgmt.h ../include/ccn/signing.h
+ccndc.o: ccndc-ccnb.c ccndc-ccnb.h  ccndc-main.c
+
 udplink.o: udplink.c ../include/ccn/ccn.h ../include/ccn/coding.h \
   ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
   ../include/ccn/ccnd.h

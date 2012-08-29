@@ -1,10 +1,11 @@
+/* -*- mode: C; c-file-style: "gnu"; c-basic-offset: 4; indent-tabs-mode:nil; -*- */
 /**
  * @file ccndc.c
  * @brief Bring up a link to another ccnd.
  *
  * A CCNx program.
  *
- * Copyright (C) 2009-2010 Palo Alto Research Center, Inc.
+ * Copyright (C) 2009-2012 Palo Alto Research Center, Inc.
  *
  * This work is free software; you can redistribute it and/or modify it under
  * the terms of the GNU General Public License version 2 as published by the
@@ -17,9 +18,10 @@
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
-#include <stdio.h>
+
+#include "ccndc-log.h"
+
 #include <stdlib.h>
-#include <stdarg.h>
 #include <limits.h>
 #include <string.h>
 #include <strings.h>
@@ -28,6 +30,7 @@
 #include <sys/time.h>
 #include <netdb.h>
 #include <netinet/in.h>
+
 #define BIND_8_COMPAT
 #include <arpa/nameser.h>
 #include <resolv.h>
@@ -39,141 +42,26 @@
 #include <ccn/uri.h>
 #include <ccn/face_mgmt.h>
 #include <ccn/reg_mgmt.h>
-#include <ccn/sockcreate.h>
 #include <ccn/signing.h>
-
-#if defined(NEED_GETADDRINFO_COMPAT)
-#include "getaddrinfo.h"
-#include "dummyin6.h"
-#endif
-
-#ifndef AI_ADDRCONFIG
-#define AI_ADDRCONFIG 0 /*IEEE Std 1003.1-2001/Cor 1-2002, item XSH/TC1/D6/20*/
-#endif
-
-#ifndef NS_MAXMSG
-#define NS_MAXMSG 65535
-#endif
-
-#ifndef NS_MAXDNAME
-#ifdef MAXDNAME
-#define NS_MAXDNAME MAXDNAME
-#endif
-#endif
-
-#ifndef T_SRV
-#define T_SRV 33
-#endif
-
-#define OP_REG  0
-#define OP_UNREG 1
 
 #define CMD_ADD 0
 #define CMD_DEL 1
 #define CMD_DELWITHFACE 2
 #define CMD_DESTROYFACE 3
 
-/*
- * private types
- */
-struct prefix_face_list_item {
-    int cmd;
-    struct ccn_charbuf *prefix;
-    struct ccn_face_instance *fi;
-    int flags;
-    struct prefix_face_list_item *next;
-};
-
-/*
- * global constant (but not staticly initializable) data
- */
+/// interest template for ccnget calls, specifying scope 1 (Local)
 static struct ccn_charbuf *local_scope_template = NULL;
+
+/// empty name necessary for signing purposes
 static struct ccn_charbuf *no_name = NULL;
-static unsigned char ccndid_storage[32] = {0};
-static const unsigned char *ccndid = ccndid_storage;
-static size_t ccndid_size = 0;
-
-/*
- * Global data
- */
-int verbose = 0;
-
-
-static void
-usage(const char *progname)
-{
-    fprintf(stderr,
-            "%s [-d] [-v] (-f configfile | (add|del|delwithface) uri (udp|tcp) host [port [flags [mcastttl [mcastif]]]])\n"
-            "   -d enter dynamic mode and create FIB entries based on DNS SRV records\n"
-            "   -f configfile add or delete FIB entries based on contents of configfile\n"
-            "   -v increase logging level\n"
-            "	add|del add or delete FIB entry based on parameters\n"
-            "   delwithface delete FIB entry and associated face\n"
-            "%s [-v] destroyface faceid\n"
-            "   destroy face based on face number\n",
-            progname,
-            progname);
-    exit(1);
-}
 
 void
-ccndc_warn(int lineno, const char *format, ...)
-{
-    struct timeval t;
-    va_list ap;
-    va_start(ap, format);
-    gettimeofday(&t, NULL);
-    fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), lineno);
-    vfprintf(stderr, format, ap);
-    va_end(ap);
-}
-
-void
-ccndc_fatal(int line, const char *format, ...)
-{
-    struct timeval t;
-    va_list ap;
-    va_start(ap, format);
-    gettimeofday(&t, NULL);
-    fprintf(stderr, "%d.%06d ccndc[%d]:%d: ", (int)t.tv_sec, (unsigned)t.tv_usec, (int)getpid(), line);
-    vfprintf(stderr, format, ap);
-    va_end(ap);
-    exit(1);
-}
-
-#define ON_ERROR_EXIT(resval, msg) on_error_exit((resval), __LINE__, msg)
-
-static void
-on_error_exit(int res, int lineno, const char *msg)
-{
-    if (res >= 0)
-        return;
-    ccndc_fatal(lineno, "fatal error, res = %d, %s\n", res, msg);
-}
-
-#define ON_ERROR_CLEANUP(resval) \
-{ 			\
-if ((resval) < 0) { \
-if (verbose > 0) ccndc_warn (__LINE__, "OnError cleanup\n"); \
-goto Cleanup; \
-} \
-}
-
-#define ON_NULL_CLEANUP(resval) \
-{ 			\
-if ((resval) == NULL) { \
-if (verbose > 0) ccndc_warn(__LINE__, "OnNull cleanup\n"); \
-goto Cleanup; \
-} \
-}
-
-static void
-initialize_global_data(void) {
+ccndc_initialize (void) {
     const char *msg = "Unable to initialize global data.";
     /* Set up an Interest template to indicate scope 1 (Local) */
     local_scope_template = ccn_charbuf_create();
     if (local_scope_template == NULL) {
-d        ON_ERROR_EXIT(-1, msg);
+        ON_ERROR_EXIT(-1, msg);
     }
     
     ON_ERROR_EXIT(ccn_charbuf_append_tt(local_scope_template, CCN_DTAG_Interest, CCN_DTAG), msg);
@@ -190,49 +78,10 @@ d        ON_ERROR_EXIT(-1, msg);
     ON_ERROR_EXIT(ccn_name_init(no_name), msg);
 }
 
-/*
- * this should eventually be used as the basis for a library function
- *    ccn_get_ccndid(...)
- * which would retrieve a copy of the ccndid from the
- * handle, where it should be cached.
- */
-static int
-get_ccndid(struct ccn *h, const unsigned char *ccndid, size_t ccndid_storage_size)
-{
-    
-    struct ccn_charbuf *name = NULL;
-    struct ccn_charbuf *resultbuf = NULL;
-    struct ccn_parsed_ContentObject pcobuf = {0};
-    char ccndid_uri[] = "ccnx:/%C1.M.S.localhost/%C1.M.SRV/ccnd/KEY";
-    const unsigned char *ccndid_result;
-    static size_t ccndid_result_size;
-    int res;
-    
-    name = ccn_charbuf_create();
-    if (name == NULL) {
-        ON_ERROR_EXIT(-1, "Unable to allocate storage for service locator name charbuf");
-    }
-    
-    resultbuf = ccn_charbuf_create();
-    if (resultbuf == NULL) {
-        ON_ERROR_EXIT(-1, "Unable to allocate storage for result charbuf");
-    }
-    
-    
-    ON_ERROR_EXIT(ccn_name_from_uri(name, ccndid_uri), "Unable to parse service locator URI for ccnd key");
-    ON_ERROR_EXIT(ccn_get(h, name, local_scope_template, 4500, resultbuf, &pcobuf, NULL, 0), "Unable to get key from ccnd");
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_PublisherPublicKeyDigest,
-                              resultbuf->buf,
-                              pcobuf.offset[CCN_PCO_B_PublisherPublicKeyDigest],
-                              pcobuf.offset[CCN_PCO_E_PublisherPublicKeyDigest],
-                              &ccndid_result, &ccndid_result_size);
-    ON_ERROR_EXIT(res, "Unable to parse ccnd response for ccnd id");
-    if (ccndid_result_size > ccndid_storage_size)
-        ON_ERROR_EXIT(-1, "Incorrect size for ccnd id in response");
-    memcpy((void *)ccndid, ccndid_result, ccndid_result_size);
-    ccn_charbuf_destroy(&name);
-    ccn_charbuf_destroy(&resultbuf);
-    return (ccndid_result_size);
+void
+ccndc_destroy (void) {
+    ccn_charbuf_destroy(no_name);
+    ccn_charbuf_destroy(local_scope_template);
 }
 
 static struct prefix_face_list_item *prefix_face_list_item_create(int cmdCode,
@@ -675,102 +524,7 @@ read_configfile(const char *filename, struct prefix_face_list_item *pfltail)
     fclose(cfg);
     return (configerrors);
 }
-int query_srv(const unsigned char *domain, int domain_size,
-              char **hostp, int *portp, char **proto)
-{
-    union {
-        HEADER header;
-        unsigned char buf[NS_MAXMSG];
-    } ans;
-    ssize_t ans_size;
-    char srv_name[NS_MAXDNAME];
-    int qdcount, ancount, i;
-    unsigned char *msg, *msgend;
-    unsigned char *end;
-    int type = 0, class = 0, ttl = 0, size = 0, priority = 0, weight = 0, port = 0, minpriority;
-    char host[NS_MAXDNAME];
-    
-    res_init();
-    
-    /* Step 1: construct the SRV record name, and see if there's a ccn service gateway.
-     * 	       Prefer TCP service over UDP, though this might change.
-     */
-    
-    *proto = "tcp";
-    snprintf(srv_name, sizeof(srv_name), "_ccnx._tcp.%.*s", (int)domain_size, domain);
-    ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
-    if (ans_size < 0) {
-        *proto = "udp";
-        snprintf(srv_name, sizeof(srv_name), "_ccnx._udp.%.*s", (int)domain_size, domain);
-        ans_size = res_query(srv_name, C_IN, T_SRV, ans.buf, sizeof(ans.buf));
-        if (ans_size < 0)
-            return (-1);
-    }
-    if (ans_size > sizeof(ans.buf))
-        return (-1);
-    
-    /* Step 2: skip over the header and question sections */
-    qdcount = ntohs(ans.header.qdcount);
-    ancount = ntohs(ans.header.ancount);
-    msg = ans.buf + sizeof(ans.header);
-    msgend = ans.buf + ans_size;
-    
-    for (i = qdcount; i > 0; --i) {
-        if ((size = dn_skipname(msg, msgend)) < 0)
-            return (-1);
-        msg = msg + size + QFIXEDSZ;
-    }
-    /* Step 3: process the answer section
-     *  return only the most desirable entry.
-     *  TODO: perhaps return a list of the decoded priority/weight/port/target
-     */
-    
-    minpriority = INT_MAX;
-    for (i = ancount; i > 0; --i) {
-        size = dn_expand(ans.buf, msgend, msg, srv_name, sizeof (srv_name));
-        if (size < 0) 
-            return (CCN_UPCALL_RESULT_ERR);
-        msg = msg + size;
-        GETSHORT(type, msg);
-        GETSHORT(class, msg);
-        GETLONG(ttl, msg);
-        GETSHORT(size, msg);
-        if ((end = msg + size) > msgend)
-            return (-1);
-        
-        if (type != T_SRV) {
-            msg = end;
-            continue;
-        }
-        
-        /* if the priority is numerically lower (more desirable) then remember
-         * everything -- note that priority is destroyed, but we don't use it
-         * when we register a prefix so it doesn't matter -- only the host
-         * and port are necessary.
-         */
-        GETSHORT(priority, msg);
-        if (priority < minpriority) {
-            minpriority = priority;
-            GETSHORT(weight, msg);
-            GETSHORT(port, msg);
-            size = dn_expand(ans.buf, msgend, msg, host, sizeof (host));
-            if (size < 0)
-                return (-1);
-        }
-        msg = end;
-    }
-    if (hostp) {
-        size = strlen(host);
-        *hostp = calloc(1, size);
-        if (!*hostp)
-            return (-1);
-        strncpy(*hostp, host, size);
-    }
-    if (portp) {
-        *portp = port;
-    }
-    return (0);
-}
+
 
 void
 process_prefix_face_list_item(struct ccn *h,
@@ -842,157 +596,3 @@ process_prefix_face_list_item(struct ccn *h,
     return;
 }
 
-enum ccn_upcall_res
-incoming_interest(
-                  struct ccn_closure *selfp,
-                  enum ccn_upcall_kind kind,
-                  struct ccn_upcall_info *info)
-{
-    const unsigned char *ccnb = info->interest_ccnb;
-    struct ccn_indexbuf *comps = info->interest_comps;
-    const unsigned char *comp0 = NULL;
-    size_t comp0_size = 0;
-    struct prefix_face_list_item pfl_storage = {0};
-    struct prefix_face_list_item *pflhead = &pfl_storage;
-    struct ccn_charbuf *uri;
-    int port;
-    char portstring[10];
-    char *host;
-    char *proto;
-    int res;
-    
-    if (kind == CCN_UPCALL_FINAL)
-        return (CCN_UPCALL_RESULT_OK);
-    if (kind != CCN_UPCALL_INTEREST)
-        return (CCN_UPCALL_RESULT_ERR);
-    if (comps->n < 1)
-        return (CCN_UPCALL_RESULT_OK);
-    
-    
-    res = ccn_ref_tagged_BLOB(CCN_DTAG_Component, ccnb, comps->buf[0], comps->buf[1],
-                              &comp0, &comp0_size);
-    if (res < 0 || comp0_size > (NS_MAXDNAME - 12))
-        return (CCN_UPCALL_RESULT_OK);
-    if (memchr(comp0, '.', comp0_size) == NULL)
-        return (CCN_UPCALL_RESULT_OK);
-    
-    host = NULL;
-    port = 0;
-    res = query_srv(comp0, comp0_size, &host, &port, &proto);
-    if (res < 0) {
-        free(host);
-        return (CCN_UPCALL_RESULT_ERR);
-    }
-    
-    uri = ccn_charbuf_create();
-    ccn_charbuf_append_string(uri, "ccnx:/");
-    ccn_uri_append_percentescaped(uri, comp0, comp0_size);
-    snprintf(portstring, sizeof(portstring), "%d", port);
-    
-    /* now process the results */
-    /* pflhead, lineno=0, "add" "ccnx:/asdfasdf.com/" "tcp|udp", host, portstring, NULL NULL NULL */
-    res = process_command_tokens(pflhead, 0,
-                                 "add",
-                                 ccn_charbuf_as_string(uri),
-                                 proto,
-                                 host,
-                                 portstring,
-                                 NULL, NULL, NULL);
-    if (res < 0)
-        return (CCN_UPCALL_RESULT_ERR);
-
-    process_prefix_face_list_item(info->h, pflhead->next);
-    prefix_face_list_destroy(&pflhead->next);
-    return(CCN_UPCALL_RESULT_OK);
-}
-
-
-int
-main(int argc, char **argv)
-{
-    struct ccn *h = NULL;
-    struct ccn_charbuf *temp = NULL;
-    const char *progname = NULL;
-    const char *configfile = NULL;
-    struct prefix_face_list_item pfl_storage = {0};
-    struct prefix_face_list_item *pflhead = &pfl_storage;
-    struct prefix_face_list_item *pfl;
-    int dynamic = 0;
-    struct ccn_closure interest_closure = {.p=&incoming_interest};
-    int res;
-    int opt;
-    
-    initialize_global_data();
-    
-    progname = argv[0];
-    while ((opt = getopt(argc, argv, "hf:dv")) != -1) {
-        switch (opt) {
-            case 'f':
-                configfile = optarg;
-                break;
-            case 'd':
-                dynamic = 1;
-                break;
-            case 'v':
-                verbose++;
-                break;
-            case 'h':
-            default:
-                usage(progname);
-        }
-    }
-
-    if (optind < argc) {
-        /* config file cannot be combined with command line */
-        if (configfile != NULL) {
-            usage(progname);
-        }
-        /* (add|delete) uri type host [port [flags [mcast-ttl [mcast-if]]]] */
-        
-        if (argc - optind < 2 || argc - optind > 8)
-            usage(progname);
-        
-        res = process_command_tokens(pflhead, 0,
-                                     argv[optind],
-                                     argv[optind+1],
-                                     (optind + 2) < argc ? argv[optind+2] : NULL,
-                                     (optind + 3) < argc ? argv[optind+3] : NULL,
-                                     (optind + 4) < argc ? argv[optind+4] : NULL,
-                                     (optind + 5) < argc ? argv[optind+5] : NULL,
-                                     (optind + 6) < argc ? argv[optind+6] : NULL,
-                                     (optind + 7) < argc ? argv[optind+7] : NULL);
-        if (res < 0)
-            usage(progname);
-    }
-    
-    if (configfile) {
-        read_configfile(configfile, pflhead);
-    }
-    
-    h = ccn_create();
-    res = ccn_connect(h, NULL);
-    if (res < 0) {
-        ccn_perror(h, "ccn_connect");
-        exit(1);
-    }
-    
-    if (pflhead->next) {        
-        ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
-        for (pfl = pflhead->next; pfl != NULL; pfl = pfl->next) {
-            process_prefix_face_list_item(h, pfl);
-        }
-        prefix_face_list_destroy(&pflhead->next);
-    }
-    if (dynamic) {
-        temp = ccn_charbuf_create();
-        if (ccndid_size == 0) ccndid_size = get_ccndid(h, ccndid, sizeof(ccndid_storage));
-        /* Set up a handler for interests */
-        ccn_name_init(temp);
-        ccn_set_interest_filter_with_flags(h, temp, &interest_closure,
-                                           CCN_FORW_ACTIVE | CCN_FORW_CHILD_INHERIT | CCN_FORW_LAST);
-        ccn_charbuf_destroy(&temp);
-        ccn_run(h, -1);
-    }
-    ccn_destroy(&h);
-    exit(res < 0);
-}
