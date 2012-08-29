@@ -20,6 +20,7 @@
 
 
 #include "SyncNode.h"
+#include "SyncRoot.h"
 #include "SyncUtil.h"
 
 #include <stdlib.h>
@@ -359,7 +360,7 @@ SyncParseComposite(struct SyncNodeComposite *nc, struct ccn_buf_decoder *d) {
             } else {
                 nc->longHash.pos = 0;
                 SyncSetCompErr(nc, -__LINE__);
-           }
+            }
             if (xp != NULL && xs > 0 && xs <= (ssize_t) MAX_HASH_BYTES) {
                 // fill the long hash from the raw hash bytes
                 // also fill the hash charbuf
@@ -434,4 +435,40 @@ SyncParseComposite(struct SyncNodeComposite *nc, struct ccn_buf_decoder *d) {
     }
     return nc->err;
 }
+
+extern struct SyncNodeComposite *
+SyncNodeFromBytes(struct SyncRootStruct *root, const unsigned char *cp, size_t cs) {
+    struct SyncNodeComposite *nc = SyncAllocComposite(root->base);
+    struct ccn_buf_decoder ds;
+    struct ccn_buf_decoder *d = ccn_buf_decoder_start(&ds, cp, cs);
+    int res = SyncParseComposite(nc, d);
+    if (res < 0) {
+        // failed, so back out of the allocations
+        SyncFreeComposite(nc);
+        nc = NULL;
+    }
+    return nc;
+}
+
+extern struct SyncNodeComposite *
+SyncNodeFromParsedObject(struct SyncRootStruct *root,
+                         const unsigned char *msg,
+                         struct ccn_parsed_ContentObject *pco) {
+    const unsigned char *cp = NULL;
+    size_t cs = 0;
+    int res = ccn_content_get_value(msg, pco->offset[CCN_PCO_E], pco,
+                                    &cp, &cs);
+    if (res >= 0 && cs > DEFAULT_HASH_BYTES) {
+        // may be a node
+        return SyncNodeFromBytes(root, cp, cs);
+    }
+    return NULL;
+}
+
+extern struct SyncNodeComposite *
+SyncNodeFromInfo(struct SyncRootStruct *root,
+                 struct ccn_upcall_info *info) {
+    return SyncNodeFromParsedObject(root, info->content_ccnb, info->pco);
+}
+
 

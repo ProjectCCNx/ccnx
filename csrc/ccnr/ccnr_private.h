@@ -47,7 +47,9 @@ struct hashtb;
 struct ccnr_meter;
 struct ccn_btree;
 
+struct sync_depends_data;
 struct SyncBaseStruct;
+
 /*
  * These are defined in this header.
  */
@@ -252,7 +254,8 @@ struct ccnr_handle {
     struct ccn_scheduled_event *direct_client_refresh;
     struct ccn_scheduled_event *notice_push;
     /* items related to sync/repo integration */
-    struct SyncBaseStruct *sync_handle;  /**< handle to pass to the sync code */
+    struct sync_depends_data *sync_depends_data;  /**< encapsulates methods and data */
+    struct SyncBaseStruct *sync_base;
     ccnr_accession notify_after;  /**< starting item for notifying sync */
     ccnr_accession active_enum[CCNR_MAX_ENUM]; /**< active sync enumerations */
     

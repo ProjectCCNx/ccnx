@@ -1570,7 +1570,7 @@ r_proto_initiate_key_fetch(struct ccnr_handle *ccnr,
     }
     ccn_charbuf_append_closer(templ); /* </Interest> */
     /* See if we already have it - if so we declare we are done. */
-    if (r_sync_lookup(ccnr, templ, NULL) == 0) {
+    if (r_lookup(ccnr, templ, NULL) == 0) {
         res = 1;
         // Note - it might be that the thing we found is not really the thing
         // we were after.  For now we don't check.

@@ -30,7 +30,7 @@ CSRC = ccn_bloom.c \
        ccn_match.c ccn_reg_mgmt.c ccn_face_mgmt.c \
        ccn_merkle_path_asn1.c ccn_name_util.c ccn_schedule.c \
        ccn_seqwriter.c ccn_signing.c \
-       ccn_sockcreate.c ccn_sync.c ccn_traverse.c ccn_uri.c \
+       ccn_sockcreate.c ccn_traverse.c ccn_uri.c \
        ccn_verifysig.c ccn_versioning.c \
        ccn_header.c \
        ccn_fetch.c \
@@ -52,7 +52,7 @@ LIB_OBJS = ccn_client.o ccn_charbuf.o ccn_indexbuf.o ccn_coding.o \
        ccn_btree.o ccn_btree_content.o ccn_btree_store.o \
        lned.o
 
-default all: dtag_check lib ccn_sync.o $(PROGRAMS)
+default all: dtag_check lib $(PROGRAMS)
 # Don't try to build shared libs right now.
 # all: shlib
 
@@ -131,9 +131,6 @@ ccn_signing.o:
 ccn_sockcreate.o:
 	$(CC) $(CFLAGS) -c ccn_sockcreate.c
 
-ccn_sync.o:
-	$(CC) $(CFLAGS) -I.. -c ccn_sync.c
-
 ccn_traverse.o:
 	$(CC) $(CFLAGS) $(OPENSSL_CFLAGS) -c ccn_traverse.c
 
@@ -170,22 +167,6 @@ ccnbtreetest: ccnbtreetest.o libccn.a
 clean:
 	rm -f *.o libccn.a libccn.1.$(SHEXT) $(PROGRAMS) depend
 	rm -rf *.dSYM $(DEBRIS) *% *~
-
-###############################
-# Dependencies here are NOT checked by depend target
-# and must be updated manually.
-###############################
-ccn_sync.o: \
-  ../sync/SyncActions.h ../sync/SyncBase.h ../ccnr/ccnr_private.h \
-  ../include/ccn/ccn_private.h ../include/ccn/reg_mgmt.h \
-  ../include/ccn/schedule.h ../include/ccn/seqwriter.h ../sync/SyncRoot.h \
-  ../sync/SyncUtil.h ../sync/IndexSorter.h ../sync/SyncNode.h \
-  ../sync/SyncMacros.h ../sync/SyncPrivate.h ../sync/SyncTreeWorker.h \
-  ../sync/SyncHashCache.h ../sync/IndexSorter.c ../sync/SyncBase.c \
-  ../sync/SyncActions.h ../sync/SyncPrivate.h ../ccnr/ccnr_msg.h \
-  ../ccnr/ccnr_private.h ../ccnr/ccnr_sync.h ../sync/SyncHashCache.c \
-  ../sync/SyncNode.h ../sync/SyncNode.c ../sync/SyncRoot.c \
-  ../sync/SyncTreeWorker.c ../sync/SyncTreeWorker.h ../sync/SyncUtil.c
 
 ###############################
 # Dependencies below here are checked by depend target
@@ -252,9 +233,6 @@ ccn_signing.o: ccn_signing.c ../include/ccn/merklepathasn1.h \
   ../include/ccn/indexbuf.h ../include/ccn/signing.h \
   ../include/ccn/random.h
 ccn_sockcreate.o: ccn_sockcreate.c ../include/ccn/sockcreate.h
-ccn_sync.o: ccn_sync.c ../include/ccn/ccn.h ../include/ccn/coding.h \
-  ../include/ccn/charbuf.h ../include/ccn/indexbuf.h \
-  ../include/ccn/digest.h ../include/ccn/sync.h ../include/ccn/uri.h
 ccn_traverse.o: ccn_traverse.c ../include/ccn/bloom.h \
   ../include/ccn/ccn.h ../include/ccn/coding.h ../include/ccn/charbuf.h \
   ../include/ccn/indexbuf.h ../include/ccn/uri.h

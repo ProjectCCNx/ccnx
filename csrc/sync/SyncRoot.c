@@ -29,11 +29,10 @@
 #include <ccn/indexbuf.h>
 #include <ccn/schedule.h>
 #include <ccn/uri.h>
-#include <ccnr/ccnr_msg.h>
+#include <ccn/loglevels.h>
 
 #include "SyncMacros.h"
 #include "SyncPrivate.h"
-#include "SyncActions.h"
 #include "SyncHashCache.h"
 #include "SyncUtil.h"
 #include "SyncRoot.h"
@@ -117,8 +116,6 @@ SyncAddRoot(struct SyncBaseStruct *base,
     int64_t now = SyncCurrentTime();
     root->priv->lastAdvise = now;
     root->priv->lastUpdate = now;
-    root->priv->stablePoint = CCNR_NULL_HWM;
-    root->priv->lastUpdate = CCNR_NULL_HWM;
     if (syncScope < 1 || syncScope > 2)
         // invalid scopes treated as unscoped
         syncScope = -1;
@@ -168,7 +165,6 @@ SyncAddRoot(struct SyncBaseStruct *base,
         ccn_digest_destroy(&cow);
     }
     
-    SyncRegisterInterests(root);
     return root;
 }
 
@@ -177,15 +173,6 @@ SyncRemRoot(struct SyncRootStruct *root) {
     if (root == NULL || root->base == NULL || root->compare != NULL)
         // NOTE: caller must ensure that there are no comparisons active!
         return root;
-    struct SyncActionData *actions = root->actions;
-    root->actions = NULL;
-    while (actions != NULL) {
-        // mark each interest as inactive, let the timeout free the data
-        struct SyncActionData *next = actions->next;
-        actions->root = NULL;
-        actions->next = NULL;
-        actions = next;
-    }
     struct SyncBaseStruct *base = root->base;
     struct SyncPrivate *priv = base->priv;
     struct SyncRootStruct *lag = NULL;
@@ -374,7 +361,7 @@ SyncRootLookupName(struct SyncRootStruct *root,
             struct ccn_charbuf *uri = ccn_charbuf_create();
             ccn_uri_append(uri, name->buf, name->length, 0);
             char *str = ccn_charbuf_as_string(uri);
-            ccnr_msg(root->base->client_handle, "SyncRootLookupName, rejected %s", str);
+            sync_msg(root->base, "SyncRootLookupName, rejected %s", str);
             ccn_charbuf_destroy(&uri);
         }
     }

@@ -21,11 +21,10 @@
 #ifndef CCN_SyncHashCache
 #define CCN_SyncHashCache
 
-#include <ccnr/ccnr_private.h>
-
 struct SyncRootStruct; // defined in SyncRoot
 
 enum SyncHashState {
+    SyncHashState_null = 0,      /**< empty, not much known */
     SyncHashState_local = 1,     /**< a local node exists */
     SyncHashState_remote = 2,    /**< a remote hash has been seen */
     SyncHashState_fetching = 4,  /**< remote node is being fetched */
@@ -56,10 +55,9 @@ struct SyncHashCacheEntry {
     struct ccn_charbuf *hash;           /**< hash used to reach this entry */
     struct SyncNodeComposite *ncL;      /**< the local node in memory */
     struct SyncNodeComposite *ncR;      /**< some remote node in memory */
-    int64_t lastUsed;                 /**< time when entry last used in compare */
-    int64_t lastLocalFetch;           /**< time when local entry last fetched */
-    int64_t lastRemoteFetch;          /**< time when remote entry last fetched */
-    ccnr_hwm stablePoint;               /**< stable point (roots only) */
+    int64_t lastUsed;                   /**< time when entry last used in compare */
+    int64_t lastLocalFetch;             /**< time when local entry last fetched */
+    int64_t lastRemoteFetch;            /**< time when remote entry last fetched */
 };
 
 /**

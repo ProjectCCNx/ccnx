@@ -31,10 +31,11 @@
 #include <ccn/digest.h>
 #include <ccn/loglevels.h>
 #include <ccn/schedule.h>
+#include <ccn/sync.h>
 #include <ccn/uri.h>
 #include <ccn/ccn_private.h>
 
-#include "sync.h"
+
 #include "sync_diff.h"
 #include "SyncUtil.h"
 #include "SyncNode.h"
@@ -912,7 +913,7 @@ advise_interest_arrived(struct ccn_closure *selfp,
             struct sync_diff_data *sdd = ch->diff_data;
             struct SyncRootStruct *root = ch->root;
             //struct SyncBaseStruct *base = root->base;
-            //int skipToHash = SyncComponentCount(sdd->root->topoPrefix) + 2;
+            int skipToHash = SyncComponentCount(sdd->root->topoPrefix) + 2;
             // skipToHash gets to the new hash
             // topo + marker + sliceHash
             const unsigned char *hp = NULL;
@@ -923,7 +924,12 @@ advise_interest_arrived(struct ccn_closure *selfp,
                 SyncNoteUri(root, here, "entered", name);
                 ccn_charbuf_destroy(&name);
             }
-            //int cres = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, skipToHash, &hp, &hs);
+            int cres = ccn_name_comp_get(info->interest_ccnb, info->interest_comps, skipToHash, &hp, &hs);
+            if (cres < 0) {
+                if (ch->debug >= CCNL_INFO)
+                    SyncNoteSimple(sdd->root, here, "wrong number of interest name components");
+                break;
+            }
             struct SyncHashCacheEntry *ce = SyncHashEnter(root->ch, hp, hs,
                                                           SyncHashState_remote);
             if (ce == NULL || ce->state & SyncHashState_covered) {

@@ -29,6 +29,7 @@
 #include "SyncMacros.h"
 
 struct SyncBaseStruct;  // defined in SyncBase.h
+struct SyncRootStruct;  // defined in SyncRoot.h
 
 typedef enum {
     SyncNodeKind_zero = 0,  /**< no bits set */
@@ -243,6 +244,18 @@ SyncWriteComposite(struct SyncNodeComposite *nc, FILE *f);
  */
 int
 SyncParseComposite(struct SyncNodeComposite *nc, struct ccn_buf_decoder *d);
+
+struct SyncNodeComposite *
+SyncNodeFromBytes(struct SyncRootStruct *root, const unsigned char *cp, size_t cs);
+
+struct SyncNodeComposite *
+SyncNodeFromParsedObject(struct SyncRootStruct *root,
+                         const unsigned char *msg,
+                         struct ccn_parsed_ContentObject *pco);
+
+struct SyncNodeComposite *
+SyncNodeFromInfo(struct SyncRootStruct *root,
+                 struct ccn_upcall_info *info);
 
 
 #endif

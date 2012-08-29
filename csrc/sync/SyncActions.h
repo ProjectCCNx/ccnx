@@ -59,84 +59,9 @@ struct SyncActionData {
 };
 
 /**
- * starts a slice enumeration for the root
- * @returns < 0 for error, 0 if some enumeration is busy, 1 for success
+ * construct a new base with methods at the SyncActions level
  */
-int
-SyncStartSliceEnum(struct SyncRootStruct *root);
-
-/**
- * starts a periodic wakeup that maintains state across all roots
- * @returns < 0 for error, >= 0 for success
- */
-int
-SyncStartHeartbeat(struct SyncBaseStruct *base);
-
-/**
- * starts a remote fetch of the given node, based on the hash
- * comp may be NULL if this is not for a compare
- * @returns < 0 for error, >= 0 for success
- */
-int
-SyncStartNodeFetch(struct SyncRootStruct *root,
-                   struct SyncHashCacheEntry *ce,
-                   struct SyncCompareData *comp);
-
-/**
- * starts a remote fetch of the given name
- * comp may be NULL if this is not for a compare
- * @returns < 0 for error, >= 0 for success
- */
-int
-SyncStartContentFetch(struct SyncRootStruct *root,
-                      struct ccn_charbuf *name,
-                      struct SyncCompareData *comp);
-
-/**
- * Adds the given name to any applicable roots.
- * Use item == 0 to ignore accession number.
- * @returns < 0 for failure, number of additions to roots for success.
- */
-int
-SyncAddName(struct SyncBaseStruct *base, struct ccn_charbuf *name, ccnr_accession item);
-
-/**
- * Creates a new slice from a full name.
- * The name must start with base->priv->sliceCmdPrefix.
- * @returns < 0 if an error occurred, otherwise the new root number.
- */
-int
-SyncHandleSlice(struct SyncBaseStruct *base, struct ccn_charbuf *name);
-
-/**
- * registers interests associated with the given root
- * these include %C1.S.RA (Root Advise) and %C1.S.NF (Node Fetch) interests
- * additional interests may be registered as the protocol evolves
- * @returns < 0 for error, >= 0 for success
- */
-int
-SyncRegisterInterests(struct SyncRootStruct *root);
-
-/**
- * send a root advise request for the given root
- * only one at a time may be outstanding
- * @returns < 0 for error, >= 0 for OK
- */
-int
-SyncSendRootAdviseInterest(struct SyncRootStruct *root);
-
-/**
- * updates the root with the current root->namesToAdd
- * @returns < 0 for error, >= 0 for OK
- */
-int
-SyncUpdateRoot(struct SyncRootStruct *root);
-
-/**
- * initiates a compare action with the given remote hash
- * @returns < 0 for error, >= 0 for OK
- */
-int
-SyncStartCompareAction(struct SyncRootStruct *root, struct ccn_charbuf *hashR);
+struct SyncBaseStruct *
+SyncNewBaseForActions(struct sync_depends_data *sd);
 
 #endif

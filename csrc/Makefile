@@ -12,7 +12,7 @@
 # FOR A PARTICULAR PURPOSE.
 #
 
-SUBDIRS = lib ccnd sync ccnr libexec cmd util sync_exp tests exttests
+SUBDIRS = lib ccnd sync ccnr libexec cmd util tests exttests
 OBJTREE = build
 MAKEF =  -f ../conf.mk -f dir.mk -f ../subr.mk
 CFLAGS = -g

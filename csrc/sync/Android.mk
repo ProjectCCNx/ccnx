@@ -23,7 +23,7 @@ LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/..
 
 LOCAL_C_INCLUDES	+= $(LOCAL_PATH)/../../android/external/openssl-armv5/include
 
-SYNCOBJ := IndexSorter.o SyncActions.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o SyncTreeWorker.o SyncUtil.o SyncTest.o
+SYNCOBJ := IndexSorter.o SyncBase.o SyncHashCache.o SyncNode.o SyncRoot.o SyncTreeWorker.o SyncUtil.o SyncTest.o sync_diff.o sync_api.o
 
 SYNCSRC := $(SYNCOBJ:.o=.c)
 

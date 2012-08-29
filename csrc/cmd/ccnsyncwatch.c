@@ -28,6 +28,7 @@
 #include <ccn/sync.h>
 #include <ccn/uri.h>
 
+
 char *
 hex_string(unsigned char *s, size_t l)
 {
@@ -64,7 +65,7 @@ usage(char *prog)
 }
 
 int
-sync_cb(struct ccns_handle *h,
+sync_cb(struct ccns_name_closure *nc,
         struct ccn_charbuf *lhash,
         struct ccn_charbuf *rhash,
         struct ccn_charbuf *name)
@@ -72,7 +73,6 @@ sync_cb(struct ccns_handle *h,
     char *hexL;
     char *hexR;
     struct ccn_charbuf *uri = ccn_charbuf_create();
-    ccn_uri_append(uri, name->buf, name->length, 1);
     if (lhash == NULL || lhash->length == 0) {
         hexL = strdup("none");
     } else
@@ -81,6 +81,10 @@ sync_cb(struct ccns_handle *h,
         hexR = strdup("none");
     } else
         hexR = hex_string(rhash->buf, rhash->length);
+    if (name != NULL)
+        ccn_uri_append(uri, name->buf, name->length, 1);
+    else
+        ccn_charbuf_append_string(uri, "(null)");
     printf("%s %s %s\n", ccn_charbuf_as_string(uri), hexL, hexR);
     fflush(stdout);
     free(hexL);
@@ -97,6 +101,8 @@ main(int argc, char **argv)
     struct ccn *h;
     struct ccns_slice *slice;
     struct ccns_handle *ccns;
+    struct ccns_name_closure nc = {0};
+    struct ccns_name_closure *closure = &nc;
     struct ccn_charbuf *prefix = ccn_charbuf_create();
     struct ccn_charbuf *roothash = NULL;
     struct ccn_charbuf *topo = ccn_charbuf_create();
@@ -150,7 +156,8 @@ main(int argc, char **argv)
     ccns_slice_set_topo_prefix(slice, topo, prefix);
     h = ccn_create();
     res = ccn_connect(h, NULL);
-    ccns = ccns_open(h, slice, &sync_cb, roothash, NULL);
+    closure->callback = &sync_cb;
+    ccns = ccns_open(h, slice, closure, roothash, NULL);
     ccn_run(h, timeout);
     ccns_close(&ccns, NULL, NULL);
     ccns_slice_destroy(&slice);

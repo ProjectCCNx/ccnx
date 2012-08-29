@@ -27,12 +27,13 @@
 
 struct SyncHashCacheEntry;              // from SyncHashCache.h
 
-struct SyncNameAccumList {
-    struct SyncNameAccumList *next;
-    struct SyncNameAccum *accum;
+struct SyncMethodsList {
+    struct SyncMethodsList *next;
+    struct sync_depends_sync_methods *sync_methods;
 };
 
 struct SyncPrivate {
+    struct SyncMethodsList *saveMethods;
     struct SyncRootStruct *rootHead;
     int nRoots;
     int useRepoStore;
@@ -46,10 +47,9 @@ struct SyncPrivate {
     struct SyncHashCacheEntry *storingTail;
     struct ccn_indexbuf *comps;     /*< used by SyncNotifyContent */
     int nStoring;
-    ccnr_hwm stableTarget;
-    ccnr_hwm stableStored;
-    int64_t lastStable;
     int64_t lastCacheClean;
+    int64_t lastFenceTime;
+    uint64_t lastFenceVal;
     int sliceEnum;
     int sliceBusy;
     int fauxErrorTrigger;
@@ -63,13 +63,6 @@ struct SyncPrivate {
     int maxComparesBusy;        /*< max # of roots doing compares */
     int deltasLimit;            /*< # of bytes permitted for RootAdvise delta mode */
     int syncScope;              /*< default sync scope */
-};
-
-struct SyncHashInfoList {
-    struct SyncHashInfoList *next;
-    struct SyncHashCacheEntry *ce;
-    int64_t lastSeen;
-    int64_t lastReplied;
 };
 
 struct SyncRootStats {
@@ -129,12 +122,13 @@ struct SyncRootPrivate {
     struct SyncNameAccum *remoteDeltas; /*< delta names from remote sources */
     int syncScope;                      /*< scope to be used for sync */
     int sliceBusy;
-    ccnr_hwm highWater;             // high water via SyncNotifyContent
-    ccnr_hwm stablePoint;           // stable point for this root
     int64_t lastAdvise;
     int64_t lastUpdate;
     int64_t lastStable;
     int64_t lastHashChange;
+    uint64_t max_seq_num_seen;          /*< max seq_num seen during adding */
+    uint64_t max_seq_num_build;         /*< max seq_num seen during building */
+    uint64_t max_seq_num_stable;        /*< set when root becomes stable (& stored) */
     int adviseNeed;
     struct SyncHashCacheEntry *lastLocalSent;
     size_t currentSize;

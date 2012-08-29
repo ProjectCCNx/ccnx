@@ -56,8 +56,6 @@
 #include <ccn/reg_mgmt.h>
 #include <ccn/uri.h>
 
-#include <sync/SyncBase.h>
-
 #include "ccnr_private.h"
 
 #include "ccnr_init.h"
@@ -73,9 +71,20 @@
 #include "ccnr_store.h"
 #include "ccnr_sync.h"
 #include "ccnr_util.h"
+#include <sync/sync_depends.h>
 
 static int load_policy(struct ccnr_handle *h);
 static int merge_files(struct ccnr_handle *h);
+
+static struct sync_depends_client_methods sync_client_methods = {
+    .r_sync_msg = &r_sync_msg,
+    .r_sync_fence = &r_sync_fence,
+    .r_sync_enumerate = &r_sync_enumerate,
+    .r_sync_lookup = &r_sync_lookup,
+    .r_sync_local_store = &r_sync_local_store,
+    .r_sync_upcall_store = &r_sync_upcall_store
+};
+
 
 /**
  * Read the contents of the repository config file
@@ -582,7 +591,12 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     }
     else
         ccn_disconnect(h->direct_client); // Apparently ccn_connect error case needs work.
-    h->sync_handle = SyncNewBase(h, h->direct_client, h->sched);
+    h->sync_depends_data = calloc(1, sizeof(struct sync_depends_data));
+    h->sync_depends_data->ccn = h->direct_client;
+    h->sync_depends_data->sched = h->sched;
+    h->sync_depends_data->client_methods = &sync_client_methods;
+    h->sync_depends_data->client_data = h;
+    h->sync_base = SyncNewBase(h->sync_depends_data);
     if (-1 == load_policy(h))
         goto Bail;
     r_net_listen_on(h, listen_on);
@@ -592,7 +606,7 @@ r_init_create(const char *progname, ccnr_logger logger, void *loggerdata)
     if (merge_files(h) == -1)
         r_init_fail(h, __LINE__, "Unable to merge additional repository data files.", errno);
     if (h->running == -1) goto Bail;
-    SyncInit(h->sync_handle);
+    // SyncInit(h->sync_handle); XXX: we need to call something to get things started...
 Bail:
     if (sockname)
         free(sockname);
@@ -630,7 +644,11 @@ r_init_destroy(struct ccnr_handle **pccnr)
     hashtb_destroy(&h->content_by_accession_tab);
     hashtb_destroy(&h->enum_state_tab);
     
-    SyncFreeBase(&h->sync_handle);
+    SyncFreeBase(&h->sync_base);
+    if (h->sync_depends_data != NULL) {
+        free(h->sync_depends_data);
+        h->sync_depends_data = NULL;
+    }
     
     r_store_final(h, stable);
     
@@ -1010,7 +1028,9 @@ CreateNewPolicy:
     policy_cob = ccnr_init_policy_cob(ccnr, ccnr->direct_client, basename,
                                       600, policy);
     // save the policy content object to the repository
-    r_sync_local_store(ccnr, policy_cob);
+    content = process_incoming_content(ccnr, ccnr->face0,
+                                       (void *)policy_cob->buf, policy_cob->length);
+    r_store_commit_content(ccnr, content);
     ccn_charbuf_destroy(&policy_cob);
     // make a link to the policy content object
     ccnr->policy_link_cob = ccnr_init_policy_link_cob(ccnr, ccnr->direct_client,

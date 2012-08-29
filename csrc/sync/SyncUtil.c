@@ -19,9 +19,9 @@
  */
 
 #include "SyncBase.h"
-#include "SyncActions.h"
 #include "SyncHashCache.h"
 #include "SyncNode.h"
+#include "SyncPrivate.h"
 #include "SyncRoot.h"
 #include "SyncUtil.h"
 #include "IndexSorter.h"
@@ -29,12 +29,12 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/time.h>
-#include <ccnr/ccnr_msg.h>
-#include <ccnr/ccnr_sync.h>
+//#include <ccnr/ccnr_sync.h>
 #include <ccn/ccn.h>
 #include <ccn/charbuf.h>
 #include <ccn/coding.h>
 #include <ccn/indexbuf.h>
+#include <ccn/loglevels.h>
 #include <ccn/uri.h>
 
 
@@ -140,7 +140,7 @@ SyncHexStr(const unsigned char *cp, size_t sz) {
 extern int
 SyncNoteFailed(struct SyncRootStruct *root, char *where, char *why, int line) {
     if (root->base->debug >= CCNL_SEVERE)
-        ccnr_msg(root->base->client_handle, "%s, root#%u, failed, %s, line %d",
+        sync_msg(root->base, "%s, root#%u, failed, %s, line %d",
                  where, root->rootId, why, line);
     SyncNoteErr("Sync.SyncNoteFailed");
     return -line;
@@ -148,24 +148,24 @@ SyncNoteFailed(struct SyncRootStruct *root, char *where, char *why, int line) {
 
 extern void
 SyncNoteSimple(struct SyncRootStruct *root, char *where, char *s1) {
-    ccnr_msg(root->base->client_handle, "%s, root#%u, %s", where, root->rootId, s1);
+    sync_msg(root->base, "%s, root#%u, %s", where, root->rootId, s1);
 }
 
 extern void
 SyncNoteSimple2(struct SyncRootStruct *root, char *where, char *s1, char *s2) {
-    ccnr_msg(root->base->client_handle, "%s, root#%u, %s, %s", where, root->rootId, s1, s2);
+    sync_msg(root->base, "%s, root#%u, %s, %s", where, root->rootId, s1, s2);
 }
 
 extern void
 SyncNoteSimple3(struct SyncRootStruct *root, char *where, char *s1, char *s2, char *s3) {
-    ccnr_msg(root->base->client_handle, "%s, root#%u, %s, %s, %s", where, root->rootId, s1, s2, s3);
+    sync_msg(root->base, "%s, root#%u, %s, %s, %s", where, root->rootId, s1, s2, s3);
 }
 
 extern void
 SyncNoteUri(struct SyncRootStruct *root, char *where, char *why, struct ccn_charbuf *name) {
     struct ccn_charbuf *uri = SyncUriForName(name);
     char *str = ccn_charbuf_as_string(uri);
-    ccnr_msg(root->base->client_handle, "%s, root#%u, %s, %s", where, root->rootId, why, str);
+    sync_msg(root->base, "%s, root#%u, %s, %s", where, root->rootId, why, str);
     ccn_charbuf_destroy(&uri);
 }
 
@@ -173,7 +173,7 @@ extern void
 SyncNoteUriBase(struct SyncBaseStruct *base, char *where, char *why, struct ccn_charbuf *name) {
     struct ccn_charbuf *uri = SyncUriForName(name);
     char *str = ccn_charbuf_as_string(uri);
-    ccnr_msg(base->client_handle, "%s, %s, %s", where, why, str);
+    sync_msg(base, "%s, %s, %s", where, why, str);
     ccn_charbuf_destroy(&uri);
 }
 
@@ -519,9 +519,31 @@ SyncNameForIndexbuf(const unsigned char *buf, struct ccn_indexbuf *comps) {
 extern struct ccn_charbuf *
 SyncUriForName(struct ccn_charbuf *name) {
     struct ccn_charbuf *ret = ccn_charbuf_create();
-    ccn_uri_append(ret, name->buf, name->length, 0);
+    if (name == NULL)
+        ccn_charbuf_append_string(ret, "(null)");
+    else ccn_uri_append(ret, name->buf, name->length, 0);
     return ret;
 }
+
+extern struct ccn_charbuf *
+SyncConstructCommandPrefix(struct SyncRootStruct *root, char *marker) {
+    struct ccn_charbuf *prefix = ccn_charbuf_create();
+    int res = 0;
+    ccn_name_init(prefix);
+    if (root->topoPrefix != NULL && root->topoPrefix->length > 0) {
+        // the topo (if any) always comes first
+        res |= SyncAppendAllComponents(prefix, root->topoPrefix);
+    }
+    // the command comes after the topo
+    ccn_name_append_str(prefix, marker);
+    res |= ccn_name_append(prefix, root->sliceHash->buf, root->sliceHash->length);
+    
+    if (res < 0) {
+        ccn_charbuf_destroy(&prefix);
+    }
+    return prefix;
+}
+
 
 /////////////////////////////////////////////////////////////////
 // Routines for dealing with hashes.
@@ -560,14 +582,24 @@ SyncGetHashPtr(const struct ccn_buf_decoder *hd,
     }
 }
 
-extern ssize_t
+extern int
 SyncCmpHashesRaw(const unsigned char * xp, ssize_t xs,
                  const unsigned char * yp, ssize_t ys) {
-    ssize_t cmp = xs - ys;
-    if (cmp == 0) {
-        cmp = memcmp(xp, yp, xs);
-    }
-    return cmp;
+    if (xs < ys) return -1;
+    if (xs > ys) return 1;
+    return memcmp(xp, yp, xs);
+}
+
+extern int
+SyncCompareHash(struct ccn_charbuf *hashX, struct ccn_charbuf *hashY) {
+    if (hashX == hashY) return 0;
+    if (hashX == NULL) return -1;
+    if (hashY == NULL) return 1;
+    size_t lenX = hashX->length;
+    size_t lenY = hashY->length;
+    if (lenX < lenY) return -1;
+    if (lenX > lenY) return 1;
+    return memcmp(hashX->buf, hashY->buf, lenX);
 }
 
 // accumulates a simple hash code into the hash accumulator
@@ -647,6 +679,85 @@ SyncSmallHash(const unsigned char * xp, ssize_t xs) {
     return ret;
 }
 
+struct SyncHashInfoList *
+SyncNoteHash(struct SyncHashInfoList *head, struct SyncHashCacheEntry *ce) {
+    struct SyncHashInfoList *each = head;
+    struct SyncHashInfoList *lag = NULL;
+    while (each != NULL) {
+        struct SyncHashInfoList *next = each->next;
+        if (each->ce == ce) {
+            // found it, so remove it for now
+            if (lag == NULL) head = next;
+            else lag->next = next;
+            break;
+        }
+        lag = each;
+        each = next;
+    }
+    if (each == NULL) {
+        each = NEW_STRUCT(1, SyncHashInfoList);
+        each->ce = ce;
+    }
+    each->lastSeen = SyncCurrentTime();
+    each->lastReplied = 0;
+    each->next = head;
+    return each;
+}
+
+extern struct SyncNameAccum *
+SyncExclusionsFromHashList(struct SyncRootStruct *root,
+                           struct SyncNameAccum *acc,
+                           struct SyncHashInfoList *list) {
+    int count = 0;
+    int limit = 1000;                   // exclusionLimit, in bytes
+    int64_t now = SyncCurrentTime();
+    int64_t limitMicros = 1000000 * 10; // exclusionTrig
+    if (acc == NULL)
+        acc = SyncAllocNameAccum(0);
+    
+    if (root->currentHash->length > 0) {
+        // if the current hash is not empty, start there
+        struct ccn_charbuf *hash = root->currentHash;
+        struct ccn_charbuf *name = ccn_charbuf_create();
+        count = count + hash->length + 8;
+        ccn_name_init(name);
+        ccn_name_append(name, hash->buf, hash->length);
+        SyncNameAccumAppend(acc, name, 0);
+    }
+    
+    while (list != NULL) {
+        struct SyncHashCacheEntry *ce = list->ce;
+        if (ce != NULL && (ce->state & SyncHashState_remote)
+            && (ce->state & SyncHashState_covered)
+            && SyncDeltaTime(ce->lastUsed, now) < limitMicros) {
+            // any remote root known to be covered is excluded
+            struct ccn_charbuf *hash = ce->hash;
+            count = count + hash->length + 8;
+            if (count > limit)
+                // exclusion list is getting too long, so ignore earlier roots
+                break;
+            struct ccn_charbuf *name = ccn_charbuf_create();
+            ccn_name_init(name);
+            ccn_name_append(name, hash->buf, hash->length);
+            SyncNameAccumAppend(acc, name, 0);
+        }
+        list = list->next;
+    }
+    if (acc->len == 0) {
+        SyncFreeNameAccum(acc);
+        return NULL;
+    }
+    struct SyncNameAccum *lag = acc;
+    if (acc->len == 0) {
+        // empty list convention is NULL
+        acc = NULL;
+    } else {
+        // exclusion list must be sorted
+        acc = SyncSortNames(root, acc);
+    }
+    SyncFreeNameAccum(lag);
+    return acc;
+}
 
 
 /////////////////////////////////////////////////////////////////
@@ -968,6 +1079,92 @@ SyncAccumNode(struct SyncNodeAccum *na, struct SyncNodeComposite *nc) {
     na->len = len + 1;
 }
 
+extern int
+SyncAddName(struct SyncBaseStruct *base,
+            struct ccn_charbuf *name,
+            uint64_t seq_num) {
+    static char *here = "Sync.SyncAddName";
+    struct SyncPrivate *priv = base->priv;
+    int debug = base->debug;
+    struct SyncRootStruct *root = priv->rootHead;
+    int count = 0;
+    while (root != NULL) {
+        if (SyncRootLookupName(root, name) == SyncRootLookupCode_covered) {
+            // ANY matching root gets an addition
+            // add the name for later processing
+            struct SyncRootPrivate *rp = root->priv;
+            struct ccn_charbuf *prev = NULL;
+            int pos = root->namesToAdd->len;
+            if (pos > 0) prev = root->namesToAdd->ents[pos-1].name;
+            if (prev != NULL && SyncCmpNames(name, prev) == 0) {
+                // this is a duplicate, so forget it!
+                if (debug >= CCNL_FINE) {
+                    SyncNoteUri(root, here, "ignore dup", name);
+                }
+            } else {
+                // not obviously a duplicate
+                uint64_t sn = seq_num;
+                if (sn == 0) {
+                    // TBD: is there a better inference method?
+                    sn = rp->max_seq_num_stable;
+                    if (rp->max_seq_num_build > sn)
+                        sn = rp->max_seq_num_build;
+                }
+                SyncNameAccumAppend(root->namesToAdd, SyncCopyName(name), sn);
+                count++;
+                if (sn > rp->max_seq_num_seen)
+                    rp->max_seq_num_seen = sn;
+                if (debug >= CCNL_FINE) {
+                    SyncNoteUri(root, here, "added", name);
+                }
+            }
+        }
+        root = root->next;
+    }
+    return count;
+}
+
+// take a list of names and sort them, removing duplicates!
+// should leave src empty  
+extern struct SyncNameAccum *
+SyncSortNames(struct SyncRootStruct *root, struct SyncNameAccum *src) {
+    char *here = "Sync.sortNames";
+    if (src == NULL) return NULL;
+    IndexSorter_Index ixLim = src->len;
+    IndexSorter_Base ixBase = IndexSorter_New(ixLim, -1);
+    ixBase->sorter = SyncNameAccumSorter;
+    ixBase->client = src;
+    IndexSorter_Index ix = 0;
+    for (ix = 0; ix < ixLim; ix++) IndexSorter_Add(ixBase, ix);
+    struct SyncNameAccum *dst = SyncAllocNameAccum(ixLim);
+    struct ccn_charbuf *lag = NULL;
+    for (ix = 0; ix < ixLim; ix++) {
+        IndexSorter_Index j = IndexSorter_Rem(ixBase);
+        if (j >= ixLim) {
+            SyncNoteFailed(root, here, "rem failed", __LINE__);
+            break;
+        }
+        struct ccn_charbuf *name = src->ents[j].name;
+        src->ents[j].name = NULL;
+        if (name == NULL) {
+            SyncNoteFailed(root, here, "name == NULL", __LINE__);
+            break;
+        }
+        if (lag == NULL || SyncCmpNames(lag, name) != 0) {
+            // only append the name if it is not a duplicate
+            SyncNameAccumAppend(dst, name, src->ents[j].data);
+            lag = name;
+        } else {
+            // this name needs to be destroyed
+            ccn_charbuf_destroy(&name);
+        }
+    }    
+    src->len = 0;
+    IndexSorter_Free(&ixBase);
+    return dst;
+}
+
+
 ///////////////////////////////////////////////////////
 // Routines for simple interest creation
 ///////////////////////////////////////////////////////
@@ -1118,7 +1315,7 @@ SyncSignBuf(struct SyncBaseStruct *base,
         ccn_charbuf_append_closer(sp.template_ccnb);
     }
     
-    int res = ccn_sign_content(base->ccn,
+    int res = ccn_sign_content(base->sd->ccn,
                                cob,
                                name,
                                &sp,
@@ -1144,13 +1341,20 @@ SyncLocalRepoStore(struct SyncBaseStruct *base,
                    int flags) {
     char *here = "Sync.SyncLocalRepoStore";
     int res = -__LINE__;
+    struct sync_depends_data *sd = base->sd;
+    if (sd->client_methods->r_sync_local_store == NULL)
+        return -__LINE__;
     struct ccn_charbuf *cob = SyncSignBuf(base, content, name, -1, flags);
     char *why = NULL;
-    if (cob == NULL)
+    if (cob == NULL) {
         why = "signing failed";
-    else {
-        res = r_sync_local_store(base->client_handle, cob);
-        if (res < 0) why = "store failed";
+        res = -__LINE__;
+    } else {
+        res = sd->client_methods->r_sync_local_store(sd, cob);
+        if (res < 0) {
+            why = "store failed";
+            res = -__LINE__;
+        }
         ccn_charbuf_destroy(&cob);
     }
     if (why != NULL)
@@ -1165,20 +1369,24 @@ SyncLocalRepoFetch(struct SyncBaseStruct *base,
                    struct ccn_charbuf *cb,
                    struct ccn_parsed_ContentObject *pco) {
     char *here = "Sync.SyncLocalRepoFetch";
-    struct ccnr_handle *ccnr = base->client_handle;
     struct ccn_charbuf *interest = SyncGenInterest(name, 1, 1, -1, 1, NULL);
     struct ccn_parsed_ContentObject pcos;
     if (pco == NULL) pco = &pcos;
+    struct sync_depends_data *sd = base->sd;
+    if (sd->client_methods->r_sync_lookup == NULL)
+        return -__LINE__;
     if (interest == NULL) return -__LINE__;
-    int res = r_sync_lookup(ccnr, interest, cb);
+    int res = sd->client_methods->r_sync_lookup(sd, interest, cb);
     char *why = NULL;
     ccn_charbuf_destroy(&interest);
-    if (res < 0) why = "fetch failed";
-    else {
+    if (res < 0) {
+        why = "fetch failed";
+        res = -__LINE__;
+    } else {
         res = ccn_parse_ContentObject(cb->buf, cb->length, pco, NULL);
         if (res < 0) why = "parse failed";
         else {
-            res = ccn_verify_content(base->ccn, cb->buf, pco);
+            res = ccn_verify_content(base->sd->ccn, cb->buf, pco);
             if (res < 0) why = "verify failed";
         }
     }
